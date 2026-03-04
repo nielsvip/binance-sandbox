@@ -3456,7 +3456,8 @@ class MultiAccountTradeManager:
         self.reentry_snapshot = {}
         self.ladder_snapshot = {}
         self.stop_snapshot = {}
-        self.reentry_plans = {} 
+        self.reentry_plans = {}
+        self.pending_reentries = {} 
         self.force_retry_counts = {} 
         self.log_cooldowns = {} 
         self.positions_to_gracefully_exit = set() # Used in load_graceful_exit_list
@@ -12089,16 +12090,26 @@ class MultiAccountTradeManager:
                                 self.positions_service.positions[position_key].last_signal = action.upper()
                         if action.upper() in ['OPEN', 'AUGMENT', 'REENTRY']:
                             if position_key in self.reentry_data:
-                                self.reentry_data.pop(position_key, None)
-                                logger.info(f"♻️ [REENTRY_CLEANUP] {position_key}: Cleared from reentry_data after successful {action}")
+                                self.reentry_data[position_key]['status'] = 'filled'
+                                self.reentry_data[position_key]['filled_at'] = datetime.now(timezone.utc).isoformat()
+                                logger.info(f"♻️ [REENTRY_FILLED] {position_key}: Marked reentry_data as filled after successful {action}")
+                            if position_key in self.pending_reentries:
+                                self.pending_reentries[position_key]['status'] = 'filled'
                             if position_key in self.reduced_positions:
                                 self.reduced_positions.pop(position_key, None)
                             if hasattr(self, 'service') and self.service:
                                 if position_key in self.service.reduced_positions:
                                     self.service.reduced_positions.pop(position_key, None)
                                     asyncio.create_task(self.service.save_reduced_positions(account_key, min_interval=0))
+                        if action.upper() in ['REDUCE', 'CLOSE', 'QUICK_CLOSE'] and getattr(config, 'REENTRY_MANDATORY', True):
+                            pos_after = await self.get_position(position_key)
+                            if pos_after:
+                                remaining_value = abs(float(getattr(pos_after, 'positionAmt', 0.0))) * safe_fetch_float(getattr(pos_after, 'mark_price', 0.0), 0.0)
+                                if remaining_value < config.START_POSITION_SIZE and position_key not in self.pending_reentries:
+                                    self.pending_reentries[position_key] = {'exit_price': safe_fetch_float(getattr(pos_after, 'mark_price', 0.0), 0.0), 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': reason, 'original_qty': float(qty), 'attempts': 0, 'status': 'pending'}
+                                    logger.info(f"[REENTRY_QUEUED] {position_key}: Position below START_SIZE after {action}, queued for reentry")
                         await self.clear_recent_signal(position_key)
-                        keep_lock_active = True 
+                        keep_lock_active = True
                         return 'SUCCESS'
                     else:
                         logger.warning(f"⚠️ [EXECUTE_UNVERIFIED] {position_key}: Maker success but not verified.")
@@ -12444,6 +12455,46 @@ class MultiAccountTradeManager:
             except Exception as e:
                 logger.error(f"[BREAKOUT_GUARD_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(2.0)
+
+    async def reentry_enforcement_loop(self):
+        logger.info("[REENTRY_ENFORCE] Reentry enforcement loop started (10s interval)")
+        while True:
+            try:
+                await asyncio.sleep(10.0)
+                if not getattr(config, 'REENTRY_MANDATORY', True): continue
+                for position_key, data in list(self.pending_reentries.items()):
+                    if data.get('status') == 'filled': continue
+                    account_key, symbol, pos_side = parse_position_key(position_key)
+                    is_long = pos_side == 'LONG'
+                    indicators = await ii(self, symbol)
+                    if not indicators: continue
+                    k_3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
+                    d_3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
+                    k_3m_prev = safe_fetch_float(indicators.get('k_3m_prev', 50), 50.0)
+                    k_15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50.0)
+                    k_1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50.0)
+                    k_4h = safe_fetch_float(indicators.get('stoch_k_4h', 50), 50.0)
+                    data['attempts'] = data.get('attempts', 0) + 1
+                    _strong = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
+                    _bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
+                    _htf_ok = (is_long and k_1h > 40 and k_4h > 40) or (not is_long and k_1h < 60 and k_4h < 60)
+                    should_reenter = False
+                    if _strong and _bounce:
+                        should_reenter = True
+                        reason = f"STRONG_TREND_REENTRY_attempt_{data['attempts']}"
+                    elif _htf_ok and _bounce:
+                        should_reenter = True
+                        reason = f"PULLBACK_REENTRY_attempt_{data['attempts']}"
+                    if should_reenter:
+                        logger.warning(f"[REENTRY_ENFORCE] {position_key}: Conditions met — queueing reentry ({reason})")
+                        result = await queue_trade_action(self.order_queue, self, position_key, "REENTRY", reason, 75.0)
+                        if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                            data['status'] = 'queued'
+                    elif data['attempts'] % 30 == 0:
+                        logger.info(f"[REENTRY_PENDING] {position_key}: Waiting for conditions (attempts={data['attempts']}, k_3m={k_3m:.1f}, k_15m={k_15m:.1f}, k_1h={k_1h:.1f})")
+            except Exception as e:
+                logger.error(f"[REENTRY_ENFORCE_ERROR] {e}", exc_info=True)
+                await asyncio.sleep(5.0)
 
 class OrderQueue:
 
@@ -15851,16 +15902,29 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         lower_low = high_3m and high_3m_prev and low_3m and low_3m_prev and high_3m <= high_3m_prev and (low_3m or current_price) <= low_3m_prev;higher_high = (high_3m or current_price) >= high_3m_prev and low_3m >= low_3m_prev
         higher_high_condition = is_long and higher_high and (dc_low_3m < current_price < dc_basis_3m or dc_low_15m < current_price < dc_basis_15m)
         lower_low_condition = not is_long and lower_low and (dc_high_3m > current_price > dc_basis_3m or dc_high_15m > current_price > dc_basis_15m)
+        _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
-            if higher_high_condition or lower_low_condition:
-                if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: k_15m {k_15m} too high/low but OVERRIDDEN by higher_high/lower_low condition")
+            if _strong_trend:
+                _k3_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
+                if _k3_bounce or higher_high_condition or lower_low_condition:
+                    logger.info(f"[STRONG_TREND_REENTRY] {position_key}: k_15m={k_15m:.1f} — strong trend + bounce confirmed, allowing reentry")
+                else:
+                    if config.VERBOSE: logger.info(f"[process_single_reentry_evaluation] {position_key}: k_15m {k_15m} strong trend but no bounce yet")
+                    return
+            elif higher_high_condition or lower_low_condition:
+                if config.VERBOSE: logger.info(f"[process_single_reentry_evaluation] {position_key}: k_15m {k_15m} too high/low but OVERRIDDEN by higher_high/lower_low condition")
             else:
-                if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: price ${current_price} level {reentry_level} k_15m {k_15m} too high/low")
-                return 
+                if config.VERBOSE: logger.info(f"[process_single_reentry_evaluation] {position_key}: price ${current_price} level {reentry_level} k_15m {k_15m} too high/low")
+                return
+        else:
+            _htf_ok = (is_long and k_1h > 40 and k_4h > 40) or (not is_long and k_1h < 60 and k_4h < 60)
+            _pullback_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
+            if _htf_ok and _pullback_bounce:
+                logger.info(f"[PULLBACK_REENTRY] {position_key}: HTF confirmed (k_1h={k_1h:.1f}, k_4h={k_4h:.1f}) + bounce (k_3m={k_3m:.1f})")
         if trade_manager._check_htf_confirmation(position_key, is_long, i, k_1h, k_1h_prev, k_4h, k_4h_prev, k_15m, k_15m_prev, d_15m, k_3m, k_3m_prev, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, sma_200_1m, safe_fetch_float(i.get('sma_200_1m_prev', 0), 0.0), config): return
-        if is_long and market_sentiment < -10:
+        if is_long and market_sentiment < -30:
             return
-        elif not is_long and market_sentiment > 10:
+        elif not is_long and market_sentiment > 30:
             return
         if k_3m is None or d_3m is None or k_15m is None or d_15m is None:
             return
