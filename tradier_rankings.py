@@ -164,7 +164,7 @@ async def _load_news_sentiment_tradier(rm=None):
             for name, conn in rm.connections.items():
                 if conn is None: continue
                 try:
-                    bulk = conn.get('news_sentiment_bulk')
+                    bulk = await conn.get('news_sentiment_bulk')
                     if bulk:
                         _news_sentiment_cache_tradier = {k: float(v) for k, v in json.loads(bulk).items()}
                         return

@@ -112,7 +112,7 @@ async def _load_news_sentiment(rm=None):
             for name, conn in rm.connections.items():
                 if conn is None: continue
                 try:
-                    bulk = conn.get('news_sentiment_bulk')
+                    bulk = await conn.get('news_sentiment_bulk')
                     if bulk:
                         _news_sentiment_cache = {k: float(v) for k, v in json.loads(bulk).items()}
                         return
@@ -775,7 +775,7 @@ async def process_historical_stochastic_events(symbols_list: List[str]) -> None:
     for i, symbol in enumerate(symbols_list):
         # Yield control every few symbols to prevent blocking the event loop
         if i % 10 == 0:
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.1)
 
         try:
             for timeframe, config in timeframe_configs.items():
