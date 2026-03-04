@@ -11909,7 +11909,7 @@ class MultiAccountTradeManager:
                     logger.critical(f"🛑 [STRICT_NO_LOSS_BLOCK][{account_key}] {position_key}: Blocking {action} at a loss ({pos.gain:.2f}%). STRICT_NO_LOSS is enabled.")
                     return "BLOCKED_BY_STRICT_NO_LOSS"
 
-        if is_hedge_account(config, account_key) and is_reduce and 'HEDGE' not in reason_upper and 'ENGINE' not in reason_upper and 'KILL' not in reason_upper and 'EMERGENCY' not in reason_upper and 'NOW_REDUCE' not in reason_upper and 'PROFIT' not in reason_upper and 'GAIN' not in reason_upper and 'TP' not in reason_upper and 'BOYCOTT' not in reason_upper and 'PROFIT_TAKE' not in action.upper():
+        if is_hedge_account(config, account_key) and is_reduce and 'HEDGE' not in reason_upper and 'ENGINE' not in reason_upper and 'KILL' not in reason_upper and 'EMERGENCY' not in reason_upper and 'NOW_REDUCE' not in reason_upper and 'PROFIT' not in reason_upper and 'GAIN' not in reason_upper and 'TP' not in reason_upper and 'BOYCOTT' not in reason_upper and 'PROFIT_TAKE' not in action.upper() and 'DC_BREACH' not in reason_upper:
             if self.tracker_manager:
                 async with self.tracker_manager._hedges_lock:
                     has_active_hedge = any(h.get('losing_position_key') == position_key for h in self.tracker_manager.active_hedges)
@@ -12265,17 +12265,16 @@ class MultiAccountTradeManager:
             h_amt = abs(float(getattr(h_pos, 'positionAmt', 0.0))) if h_pos else 0.0
             if h_amt > 0:
                 h_gain = safe_fetch_float(getattr(h_pos, 'gain', 0.0), 0.0)
-                if getattr(config, 'ORPHAN_HEDGE_CHECK_GAIN', True) and h_gain > 0.1:
-                    logger.info(f"[HEDGE_PROFIT_CLOSE] Orphaned hedge {h_key} in profit ({h_gain:.2f}%) — closing gracefully for profit.")
-                    h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
-                    h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
-                    asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"orphan_profit_{time.time()}", "ORPHAN_HEDGE_PROFIT_CLOSE", True, "REDUCE"))
-                else:
-                    logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! NUKING ORPHANED HEDGE {h_key} (gain={h_gain:.2f}%)")
-                    h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
-                    h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
-                    asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE"))
-            await self.tracker_manager.nuke_hedge_key(account_key, h_key)
+                if h_gain > 0.0:
+                    promoted = await self.tracker_manager.promote_hedge_to_independent(account_key, h_key, reason=f"PARENT_REDUCED_{closed_position_key}_gain_{h_gain:.2f}%")
+                    if promoted:
+                        logger.info(f"[HEDGE_PROMOTED] {h_key}: Hedge in profit ({h_gain:.2f}%) promoted to independent — will keep growing.")
+                        continue
+                logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! NUKING ORPHANED HEDGE {h_key} (gain={h_gain:.2f}%)")
+                h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
+                h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
+                asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE"))
+                await self.tracker_manager.nuke_hedge_key(account_key, h_key)
 
     def _should_bypass_post_fill_lock(self, position_key, account_key, side):
         position = self.positions.get(position_key)
@@ -12467,6 +12466,64 @@ class MultiAccountTradeManager:
                 logger.error(f"[BREAKOUT_GUARD_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(2.0)
 
+    async def monitor_dc_breach_reduce(self):
+        """When a losing position with an active hedge crosses dc_low_15m (LONG) or dc_high_15m (SHORT), promote profitable hedges to independent and reduce the loser. Queue reentry below exit price."""
+        logger.info("[DC_BREACH_MONITOR] DC breach reduce monitor started (3s interval)")
+        while True:
+            try:
+                await asyncio.sleep(3.0)
+                if not hasattr(self, 'tracker_manager') or not self.tracker_manager: continue
+                async with self.tracker_manager._hedges_lock:
+                    hedges_snapshot = list(self.tracker_manager.active_hedges)
+                if not hedges_snapshot: continue
+                losing_keys_checked = set()
+                for hedge_record in hedges_snapshot:
+                    losing_key = hedge_record.get('losing_position_key')
+                    h_key = hedge_record.get('position_key')
+                    acct = hedge_record.get('account')
+                    if not losing_key or not h_key or not acct: continue
+                    if losing_key in losing_keys_checked: continue
+                    losing_keys_checked.add(losing_key)
+                    losing_pos = await self.get_position(losing_key)
+                    if not losing_pos: continue
+                    losing_amt = abs(float(getattr(losing_pos, 'positionAmt', 0.0)))
+                    if losing_amt <= 0: continue
+                    _, symbol, pos_side = parse_position_key(losing_key)
+                    is_long = pos_side == 'LONG'
+                    indicators = await ii(self, symbol)
+                    if not indicators: continue
+                    current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0)
+                    if current_price <= 0: continue
+                    dc_low_15m = safe_fetch_float(indicators.get('dc_low_15m', 0.0), 0.0)
+                    dc_high_15m = safe_fetch_float(indicators.get('dc_high_15m', 0.0), 0.0)
+                    breached = (is_long and dc_low_15m > 0 and current_price < dc_low_15m) or (not is_long and dc_high_15m > 0 and current_price > dc_high_15m)
+                    if not breached: continue
+                    breach_key = f"dc_breach:{losing_key}"
+                    if hasattr(self, '_dc_breach_cooldown') and time.time() - self._dc_breach_cooldown.get(breach_key, 0) < 120: continue
+                    if not hasattr(self, '_dc_breach_cooldown'): self._dc_breach_cooldown = {}
+                    self._dc_breach_cooldown[breach_key] = time.time()
+                    logger.critical(f"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser.")
+                    related_hedges = [h for h in hedges_snapshot if h.get('losing_position_key') == losing_key and h.get('account') == acct]
+                    for rh in related_hedges:
+                        rh_key = rh.get('position_key')
+                        if not rh_key: continue
+                        rh_pos = await self.get_position(rh_key)
+                        rh_gain = safe_fetch_float(getattr(rh_pos, 'gain', 0.0), 0.0) if rh_pos else -999
+                        if rh_gain >= 0.0:
+                            await self.tracker_manager.promote_hedge_to_independent(acct, rh_key, reason=f"DC_BREACH_PROMOTE_{losing_key}_hgain_{rh_gain:.2f}%")
+                    pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, self.min_qty.get(symbol, 0.001))
+                    reduce_to = pos_min_qty
+                    reduce_qty = losing_amt - reduce_to
+                    if reduce_qty <= 0: continue
+                    side = 'SELL' if is_long else 'BUY'
+                    result = await queue_trade_action(self.order_queue, self, losing_key, "REDUCE", f"DC_BREACH_REDUCE_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}", 100.0)
+                    if result and ('QUEUED' in str(result) or 'SUCCESS' in str(result)):
+                        logger.warning(f"[DC_BREACH_REDUCE] {losing_key}: Reduce queued. Setting reentry below exit price {current_price:.6f}")
+                        self.pending_reentries[losing_key] = {'exit_price': current_price, 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': f'DC_BREACH_15m', 'original_qty': float(losing_amt), 'attempts': 0, 'status': 'pending', 'reentry_condition': 'below_exit_price'}
+            except Exception as e:
+                logger.error(f"[DC_BREACH_MONITOR_ERROR] {e}", exc_info=True)
+                await asyncio.sleep(5.0)
+
     async def reentry_enforcement_loop(self):
         logger.info("[REENTRY_ENFORCE] Reentry enforcement loop started (10s interval)")
         while True:
@@ -12486,14 +12543,21 @@ class MultiAccountTradeManager:
                     k_1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50.0)
                     k_4h = safe_fetch_float(indicators.get('stoch_k_4h', 50), 50.0)
                     data['attempts'] = data.get('attempts', 0) + 1
+                    current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0)
                     _strong = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
                     _bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
                     _htf_ok = (is_long and k_1h > 40 and k_4h > 40) or (not is_long and k_1h < 60 and k_4h < 60)
                     should_reenter = False
-                    if _strong and _bounce:
+                    if data.get('reentry_condition') == 'below_exit_price':
+                        exit_price = data.get('exit_price', 0.0)
+                        _price_ok = (is_long and current_price > 0 and current_price <= exit_price * 0.998) or (not is_long and current_price > 0 and current_price >= exit_price * 1.002)
+                        if _price_ok and _bounce:
+                            should_reenter = True
+                            reason = f"DC_BREACH_REENTRY_below_exit_{exit_price:.6f}_attempt_{data['attempts']}"
+                    if not should_reenter and _strong and _bounce:
                         should_reenter = True
                         reason = f"STRONG_TREND_REENTRY_attempt_{data['attempts']}"
-                    elif _htf_ok and _bounce:
+                    elif not should_reenter and _htf_ok and _bounce:
                         should_reenter = True
                         reason = f"PULLBACK_REENTRY_attempt_{data['attempts']}"
                     if should_reenter:

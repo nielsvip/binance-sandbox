@@ -3973,6 +3973,32 @@ class TrackerManager:
                 merged[k] = v 
         return merged
 
+    async def promote_hedge_to_independent(self, account_key: str, hedge_position_key: str, reason: str = "HEDGE_PROMOTED"):
+        """Remove hedge stickers (is_hedge, hedge_for, losing_position_key) from a profitable hedge so it becomes an independent position that survives parent close/reduce."""
+        promoted = False
+        async with self._hedges_lock:
+            new_hedges = []
+            for h in self.active_hedges:
+                if h.get('position_key') == hedge_position_key and h.get('account') == account_key:
+                    logger.warning(f"[HEDGE_PROMOTE] {hedge_position_key}: Removing hedge stickers — was hedging {h.get('losing_position_key')}. Reason: {reason}")
+                    promoted = True
+                else:
+                    new_hedges.append(h)
+            self.active_hedges = new_hedges
+        async with self._exit_candidates_lock:
+            if hedge_position_key in self.exit_candidates:
+                ec = self.exit_candidates[hedge_position_key]
+                ec.pop('is_hedge', None)
+                ec.pop('hedge_for', None)
+                ec.pop('hedge_id', None)
+                ec['promoted_from_hedge'] = True
+                ec['promoted_reason'] = reason
+                ec['promoted_at'] = time.time()
+                self._exit_candidates_dirty[account_key] = True
+        if promoted:
+            await self.save_tracker(account_key, force=True)
+            logger.info(f"[HEDGE_PROMOTE] {hedge_position_key}: Now independent. Will survive parent close/reduce.")
+        return promoted
     async def nuke_hedge_key(self, account_key: str, position_key: str):
         """ Aggressively removes a failed hedge key from ALL lists to prevent re-entry. """
         logger.warning(f"☢️ [NUKE_KEY] Permanently banishing failed hedge: {position_key}")
@@ -5757,7 +5783,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if is_hedge_account(config, account_key) and ('CLOSE' in action or 'REDUCE' in action) and not is_hedge:
         async with tracker_manager._hedges_lock:
             has_active_hedge = any(h.get('losing_position_key') == position_key for h in tracker_manager.active_hedges)
-        if has_active_hedge and "HEDGE" not in reason.upper() and "ENGINE" not in reason.upper() and "GAIN" not in reason.upper() and "PROFIT" not in reason.upper() and "TP" not in reason.upper():# and "BOYCOTT" not in reason.upper() and "KILL" not in reason.upper():
+        if has_active_hedge and "HEDGE" not in reason.upper() and "ENGINE" not in reason.upper() and "GAIN" not in reason.upper() and "PROFIT" not in reason.upper() and "TP" not in reason.upper() and "DC_BREACH" not in reason.upper():
             if "GLOBAL_HARD_STOP" not in reason.upper():
                 logger.warning(f"🛡️[HEDGE_MODE_BLOCK] {position_key}: Blocking {action} ({reason}) - Must be managed by HedgeEngine.")
                 return False, "BLOCKED_BY_HEDGE_MODE"
