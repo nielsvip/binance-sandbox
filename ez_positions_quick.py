@@ -2200,7 +2200,18 @@ class HedgeEngine:
                                 losing_pnl = ((l_price - losing_entry) / losing_entry * 100.0) if losing_pos.position_side == 'LONG' else ((losing_entry - l_price) / losing_entry * 100.0)
                             else:
                                 losing_pnl = 0.0
-                            if losing_pnl > 0.05:
+                            if hedge_gain > 0.15:
+                                logger.info(f"[HEDGE_PROFIT_COORD] {hedge_key}: Hedge in profit ({hedge_gain:.2f}%) — closing for profit immediately.")
+                                await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_PROFIT_TAKE_{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                                continue
+                            if losing_pnl > 0.0 and hedge_gain > 0.0:
+                                logger.info(f"[HEDGE_PROFIT_COORD] Both sides in profit! {losing_key}={losing_pnl:.2f}%, {hedge_key}={hedge_gain:.2f}%. Closing hedge first.")
+                                target_ratio = 0.0
+                            elif losing_pnl > 0.3:
+                                logger.info(f"[HEDGE_PROFIT_COORD] {losing_key} strong recovery ({losing_pnl:.2f}%). Releasing hedge {hedge_key}.")
+                                target_ratio = 0.0
+                            elif losing_pnl > 0.05:
                                 logger.info(f"⚖️ [HEDGE_RECOVERY_TRIM] {losing_key} recovered to {losing_pnl:.2f}%. Killing hedge {hedge_key} early.")
                                 target_ratio = 0.0
                             else:

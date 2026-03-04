@@ -3521,6 +3521,12 @@ class PositionService:
             logger.error(f"[_get_expected_symbol_count] Error reading symbols.json: {e}")
             return 236
 
+    def get_long_short_ratio(self, account_key: str) -> Dict[str, float]:
+        positions = self.positions_by_account.get(account_key, {})
+        long_value = sum(abs(float(getattr(p, 'positionAmt', 0))) * float(getattr(p, 'mark_price', 0) or getattr(p, 'entry_price', 0)) for k, p in positions.items() if k.endswith('_LONG') and abs(float(getattr(p, 'positionAmt', 0))) > 0)
+        short_value = sum(abs(float(getattr(p, 'positionAmt', 0))) * float(getattr(p, 'mark_price', 0) or getattr(p, 'entry_price', 0)) for k, p in positions.items() if k.endswith('_SHORT') and abs(float(getattr(p, 'positionAmt', 0))) > 0)
+        total = long_value + short_value
+        return {'long_value': long_value, 'short_value': short_value, 'long_pct': (long_value / total * 100) if total > 0 else 50.0, 'short_pct': (short_value / total * 100) if total > 0 else 50.0, 'ratio': (long_value / short_value) if short_value > 0 else float('inf')}
     def _load_symbols_list(self, file_path: Path) -> Set[str]:
         try :
             if not file_path:

@@ -10188,11 +10188,22 @@ class MultiAccountTradeManager:
         
         # --- SUBSTITUTION LOGIC (Make Room for Winners) ---
         is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT']
+        if is_entry_action and 'HEDGE' not in reason.upper() and self.positions_service:
+            try:
+                ratio_data = self.positions_service.get_long_short_ratio(account_key)
+                indicators_ratio = await ii(self, symbol) if symbol else None
+                _sentiment = safe_fetch_float(indicators_ratio.get('0market_sentiment_score', 0), 0.0) if indicators_ratio else 0.0
+                if position_side == 'LONG' and _sentiment < -20 and ratio_data.get('long_pct', 50) > 70:
+                    logger.warning(f"[RATIO_GATE] {position_key}: Blocking LONG entry — sentiment={_sentiment:.0f}, long_pct={ratio_data['long_pct']:.0f}%")
+                    return "BLOCKED_BY_RATIO_GATE"
+                if position_side == 'SHORT' and _sentiment > 20 and ratio_data.get('short_pct', 50) > 70:
+                    logger.warning(f"[RATIO_GATE] {position_key}: Blocking SHORT entry — sentiment={_sentiment:.0f}, short_pct={ratio_data['short_pct']:.0f}%")
+                    return "BLOCKED_BY_RATIO_GATE"
+            except Exception as e:
+                logger.debug(f"[RATIO_GATE] Error checking ratio for {position_key}: {e}")
         if is_entry_action and account_key in self.positions_by_account:
             acc_positions = self.positions_by_account[account_key]
             active_count = len([pk for pk, pos in acc_positions.items() if abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0)) > 0.0001])
-            
-            # If we have > 18 positions, we MUST make room for this new action
             if active_count >= 18:
                 logger.warning(f"🎰 [MARGIN_MANAGEMENT] {account_key} has {active_count} positions. Substitution Logic Triggered.")
                 
