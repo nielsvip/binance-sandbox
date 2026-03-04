@@ -12571,6 +12571,60 @@ class MultiAccountTradeManager:
                 logger.error(f"[REENTRY_ENFORCE_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(5.0)
 
+    async def ratio_rebalance_loop(self):
+        """Every ~2 hours, check long/short ratio per account. On 1h stoch crossover/crossunder with heavy skew, reduce weakest overweight positions."""
+        logger.info("[RATIO_REBALANCE] Ratio rebalance loop started (120s check, 2h enforcement interval)")
+        _last_rebalance = {acct: 0.0 for acct in config.ACCOUNT_KEYS}
+        REBALANCE_COOLDOWN = 7200.0
+        SKEW_THRESHOLD = 70.0
+        while True:
+            try:
+                await asyncio.sleep(120.0)
+                if not self.positions_service: continue
+                for account_key in config.ACCOUNT_KEYS:
+                    if time.time() - _last_rebalance.get(account_key, 0) < REBALANCE_COOLDOWN: continue
+                    ratio_data = self.positions_service.get_long_short_ratio(account_key)
+                    long_pct = ratio_data.get('long_pct', 50.0)
+                    short_pct = ratio_data.get('short_pct', 50.0)
+                    if long_pct <= SKEW_THRESHOLD and short_pct <= SKEW_THRESHOLD: continue
+                    acc_positions = self.positions_by_account.get(account_key, {})
+                    has_crossover = False
+                    has_crossunder = False
+                    for pk, pos in acc_positions.items():
+                        if abs(float(getattr(pos, 'positionAmt', 0.0))) < 0.0001: continue
+                        _, sym, _ = parse_position_key(pk)
+                        ind = await ii(self, sym)
+                        if not ind: continue
+                        if ind.get('stoch_crossover_1h'): has_crossover = True
+                        if ind.get('stoch_crossunder_1h'): has_crossunder = True
+                        if has_crossover and has_crossunder: break
+                    reduce_side = None
+                    if long_pct > SKEW_THRESHOLD and has_crossunder: reduce_side = 'LONG'
+                    elif short_pct > SKEW_THRESHOLD and has_crossover: reduce_side = 'SHORT'
+                    if not reduce_side: continue
+                    candidates = []
+                    for pk, pos in acc_positions.items():
+                        amt = abs(float(getattr(pos, 'positionAmt', 0.0)))
+                        if amt < 0.0001: continue
+                        _, sym, ps = parse_position_key(pk)
+                        if ps != reduce_side: continue
+                        gain = safe_fetch_float(getattr(pos, 'gain', 0.0), 0.0)
+                        ec = self.tracker_manager.exit_candidates.get(pk, {}) if self.tracker_manager else {}
+                        if ec.get('is_hedge'): continue
+                        candidates.append((pk, gain, amt))
+                    if not candidates: continue
+                    candidates.sort(key=lambda x: x[1])
+                    to_reduce = candidates[:max(1, len(candidates) // 4)]
+                    logger.critical(f"[RATIO_REBALANCE] {account_key}: {reduce_side} overweight ({long_pct:.0f}%L/{short_pct:.0f}%S) + 1h {'crossunder' if reduce_side == 'LONG' else 'crossover'} detected. Reducing {len(to_reduce)} weakest positions.")
+                    for pk, gain, amt in to_reduce:
+                        reason = f"RATIO_REBALANCE_{reduce_side}_{long_pct:.0f}L_{short_pct:.0f}S_gain_{gain:.2f}%"
+                        result = await queue_trade_action(self.order_queue, self, pk, "REDUCE", reason, 50.0)
+                        if result: logger.warning(f"[RATIO_REBALANCE] {pk}: Reduce queued (gain={gain:.2f}%, reason={reason})")
+                    _last_rebalance[account_key] = time.time()
+            except Exception as e:
+                logger.error(f"[RATIO_REBALANCE_ERROR] {e}", exc_info=True)
+                await asyncio.sleep(10.0)
+
 class OrderQueue:
 
     def __init__(self, trade_manager, max_concurrent_orders=500, positions_service=None):
@@ -18860,6 +18914,9 @@ async def main():
             background_tasks.append(asyncio.create_task(periodic_tasks(order_queue, trade_manager)))
             background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager))) 
             background_tasks.append(asyncio.create_task(trade_manager.monitor_strict_close_positions()))
+            background_tasks.append(asyncio.create_task(trade_manager.monitor_dc_breach_reduce()))
+            background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
+            background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
             for account_key in config.ACCOUNT_KEYS:
                 background_tasks.append(asyncio.create_task(continuous_queue_processor(order_queue, trade_manager, account_key)))
                 background_tasks.append(asyncio.create_task(process_symbols_periodically(order_queue, trade_manager, account_key)))
