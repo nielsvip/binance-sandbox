@@ -121,6 +121,12 @@ except ImportError:
 load_environment_from_gpg(None)
 config = Config()
 current_env = get_current_environment()
+def is_storm(indicators, position_side, account_key=None):
+    k15 = float(indicators.get('stoch_k_15m', 50) or 50)
+    k1h = float(indicators.get('stoch_k_1h', 50) or 50)
+    k4h = float(indicators.get('stoch_k_4h', 50) or 50)
+    if position_side == 'LONG': return k15 < 30 and (k1h < 30 or k4h < 30)
+    return k15 > 70 and (k1h > 70 or k4h > 70)
 TRADEABLE_KEYS = set()
 base_path=config.BASE_PATH
 logger = logging.getLogger("ez_manage")
@@ -8638,7 +8644,7 @@ class MultiAccountTradeManager:
                 else:
                     logger.debug(f" SIGNAL IGNORED: Unknown signal type {event_type}")
                     return
-                if getattr(self.config, 'EXIT_ON_ALL', False) and signal_category in ["BEARISH", "BULLISH"]:
+                if getattr(self.config, 'EXIT_ON_ALL', False) and getattr(self.config, 'EXIT_ON_ALL_ENABLED', False) and signal_category in ["BEARISH", "BULLISH"]:
                     target_side = "LONG" if signal_category == "BEARISH" else "SHORT"
                     now_utc = datetime.now(timezone.utc)
                     LEADERBOARD_FILTER = getattr(self.config, 'LEADERBOARD_FILTER', True)
@@ -11896,8 +11902,13 @@ class MultiAccountTradeManager:
                 async with self.tracker_manager._hedges_lock:
                     has_active_hedge = any(h.get('losing_position_key') == position_key for h in self.tracker_manager.active_hedges)
                 if has_active_hedge:
-                    logger.warning(f"🛡️ [HEDGE_MODE_BLOCK] {position_key}: Blocking {action} ({reason}) in execute_now - Must be managed by HedgeEngine.")
-                    return "BLOCKED_BY_HEDGE_MODE"
+                    pos_check = await self.get_position(position_key)
+                    pos_gain = safe_fetch_float(getattr(pos_check, 'gain', 0.0), 0.0) if pos_check else 0.0
+                    if pos_gain > 0.1:
+                        logger.info(f"🛡️ [HEDGE_PROFIT_PASS] {position_key}: Allowing {action} despite active hedge — position in profit ({pos_gain:.2f}%)")
+                    else:
+                        logger.warning(f"🛡️ [HEDGE_MODE_BLOCK] {position_key}: Blocking {action} ({reason}) in execute_now - Must be managed by HedgeEngine.")
+                        return "BLOCKED_BY_HEDGE_MODE"
         is_long = (position_side == 'LONG')
         if is_reduce:
             required_side = 'SELL' if is_long else 'BUY'
@@ -12231,10 +12242,17 @@ class MultiAccountTradeManager:
             h_pos = await self.get_position(h_key)
             h_amt = abs(float(getattr(h_pos, 'positionAmt', 0.0))) if h_pos else 0.0
             if h_amt > 0:
-                logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! INSTANTLY NUKING ORPHANED HEDGE {h_key}!")
-                h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
-                h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
-                asyncio.create_task( self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE") )
+                h_gain = safe_fetch_float(getattr(h_pos, 'gain', 0.0), 0.0)
+                if getattr(config, 'ORPHAN_HEDGE_CHECK_GAIN', True) and h_gain > 0.1:
+                    logger.info(f"[HEDGE_PROFIT_CLOSE] Orphaned hedge {h_key} in profit ({h_gain:.2f}%) — closing gracefully for profit.")
+                    h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
+                    h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
+                    asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"orphan_profit_{time.time()}", "ORPHAN_HEDGE_PROFIT_CLOSE", True, "REDUCE"))
+                else:
+                    logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! NUKING ORPHANED HEDGE {h_key} (gain={h_gain:.2f}%)")
+                    h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
+                    h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
+                    asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE"))
             await self.tracker_manager.nuke_hedge_key(account_key, h_key)
 
     def _should_bypass_post_fill_lock(self, position_key, account_key, side):
@@ -12387,19 +12405,32 @@ class MultiAccountTradeManager:
                         pnl_pct = ((current_price - entry_price) / entry_price) * 100.0
                     else:
                         pnl_pct = ((entry_price - current_price) / entry_price) * 100.0
-                    loss_threshold = safe_fetch_float(rules.get('strict_loss_threshold', -0.1))
+                    loss_threshold = safe_fetch_float(rules.get('strict_loss_threshold', config.get_account_setting(account_key, 'BREAKOUT_GUARD_LOSS_THRESHOLD')))
                     gain_threshold = safe_fetch_float(rules.get('strict_gain_threshold', 1.0))
                     momentum_lost = False
-                    if is_long and (k_1m < d_1m or k_3m < d_3m):
-                        momentum_lost = True
-                    elif not is_long and (k_1m > d_1m or k_3m > d_3m):
-                        momentum_lost = True
+                    if config.get_account_setting(account_key, 'BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED'):
+                        if is_long and (k_1m < d_1m or k_3m < d_3m):
+                            momentum_lost = True
+                        elif not is_long and (k_1m > d_1m or k_3m > d_3m):
+                            momentum_lost = True
                     if pnl_pct <= loss_threshold or momentum_lost:
+                        if config.get_account_setting(account_key, 'LOSS_EXIT_REQUIRES_HEDGE') and pnl_pct < 0:
+                            if hasattr(self, 'hedge_engine') and self.hedge_engine:
+                                losing_value = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0))) * current_price
+                                hedge_side = 'SHORT' if is_long else 'LONG'
+                                hedge_key = construct_position_key(account_key, symbol, hedge_side)
+                                hedge_pos = await self.get_position(hedge_key)
+                                hedge_value = abs(float(getattr(hedge_pos, 'positionAmt', 0.0))) * current_price if hedge_pos else 0.0
+                                ratio = config.get_account_setting(account_key, 'HEDGE_OVERSIZE_RATIO')
+                                if hedge_value < losing_value * ratio:
+                                    logger.warning(f"[BREAKOUT_GUARD_HEDGE_FIRST] {position_key}: PnL {pnl_pct:.2f}% — hedge ${hedge_value:.0f} < required ${losing_value*ratio:.0f}. Hedging first.")
+                                    asyncio.create_task(self.hedge_engine.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side=pos_side, losing_value_usd=losing_value, dry_run=False))
+                                    continue
                         reason = "MOMENTUM_LOST_BREAKOUT_GUARD" if momentum_lost else "STRICT_STOP_HIT_BREAKOUT_GUARD"
-                        logger.critical(f"🚨 [BREAKOUT_FAKEOUT] {position_key}: PnL {pnl_pct:.2f}%. Momentum Lost: {momentum_lost}. KILLING POSITION IMMEDIATELY.")
+                        logger.critical(f"🚨 [BREAKOUT_FAKEOUT] {position_key}: PnL {pnl_pct:.2f}%. Momentum Lost: {momentum_lost}. REDUCING POSITION.")
                         pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0)))
                         if pos_amt > 0 and hasattr(self, 'order_queue'):
-                            await queue_trade_action( self.order_queue, self, position_key, "QUICK_CLOSE", f"{reason}_{pnl_pct:.2f}%", 100.0)
+                            await queue_trade_action(self.order_queue, self, position_key, "REDUCE", f"{reason}_{pnl_pct:.2f}%", 100.0)
                         keys_to_remove.append(position_key)
                     elif pnl_pct >= gain_threshold:
                         logger.info(f"✅ [BREAKOUT_SUCCESS] {position_key}: Hit {pnl_pct:.2f}%. Removing tight stop. Handing off to trailing logic.")
@@ -16482,8 +16513,8 @@ async def _process_single_override_check(trade_manager, account_key: str, positi
             if is_close_to_k_15m:
                 if not hasattr(trade_manager, 'strict_close_positions'):
                     trade_manager.strict_close_positions = {}
-                trade_manager.strict_close_positions[position_key] = { 'augmented_at': datetime.now(timezone.utc), 'augment_price': position.entry_price, 'k_15': f'{k_15m}', 'strict_loss_threshold': -0.1, 'strict_gain_threshold': 12, 'strict_reduction_trigger': True }
-                logger.warning(f"[STRICT_CLOSE_LIMITS] {position_key}: Position close to k_15 top/bottom - STRICT close limits enabled: loss_threshold=-0.1%")#, gain_threshold=012%")
+                trade_manager.strict_close_positions[position_key] = { 'augmented_at': datetime.now(timezone.utc), 'augment_price': position.entry_price, 'k_15': f'{k_15m}', 'strict_loss_threshold': config.get_account_setting(account_key, 'BREAKOUT_GUARD_LOSS_THRESHOLD'), 'strict_gain_threshold': 12, 'strict_reduction_trigger': True }
+                logger.warning(f"[STRICT_CLOSE_LIMITS] {position_key}: Position close to k_15 top/bottom - STRICT close limits enabled: loss_threshold={config.get_account_setting(account_key, 'BREAKOUT_GUARD_LOSS_THRESHOLD')}%")#, gain_threshold=012%")
 
             await queue_trade_action(order_queue, trade_manager, position_key, 'AUGMENT' if position_value > config.MIN_POSITION_SIZE else 'OPEN', f'OVERRIDE__OPEN_RESTORE_FULL_SIZE_qty_{needed_qty}_{"LONG" if is_long else "SHORT"}_tup3m={t_up_3m}_tup15m={t_up_15m}_k_3mm={k_3m:.1f}_d_3mm={d_3m:.1f}_ha3m={ha_3m}_perc_sma1={perc_from_sma_1*100:.2f}%_perc_sma15={perc_from_sma_15*100:.2f}%_required=${required_position_size:.2f}_x{required_multiplier:.2f}_gain={position.gain:.3f}', base_conviction)#, override_qty=needed_qty)
             logger.warning(f"[O VERRIDE _CHECK] {position_key}: RESTORING to full size ${required_position_size:.2f} (x{required_multiplier:.2f}) current=${position_value:.2f} gain={position.gain:.3f} indicators_good t_up_3m={t_up_3m} t_up_15m={t_up_15m} k_3m={k_3m:.1f} d_3m={d_3m:.1f} ha_3m={ha_3m} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
@@ -16592,8 +16623,8 @@ async def override_check_uptrend_positions(trade_manager: MultiAccountTradeManag
                     if is_far_from_sma_15:
                         if not hasattr(trade_manager, 'strict_close_positions'):
                             trade_manager.strict_close_positions = {}
-                        trade_manager.strict_close_positions[position_key] = { 'augmented_at': datetime.now(timezone.utc), 'augment_price': current_price, 'sma_15_distance_pct': perc_from_sma_15 * 100, 'strict_loss_threshold': -0.12, 'strict_gain_threshold': 0.1, 'strict_reduction_trigger': True }
-                        logger.warning(f"[STRICT_CLOSE_LIMITS] {position_key}: Position FAR from SMA_15 ({perc_from_sma_15*100:.2f}%) - STRICT close limits enabled")
+                        trade_manager.strict_close_positions[position_key] = { 'augmented_at': datetime.now(timezone.utc), 'augment_price': current_price, 'sma_15_distance_pct': perc_from_sma_15 * 100, 'strict_loss_threshold': config.get_account_setting(account_key, 'BREAKOUT_GUARD_LOSS_THRESHOLD'), 'strict_gain_threshold': 0.1, 'strict_reduction_trigger': True }
+                        logger.warning(f"[STRICT_CLOSE_LIMITS] {position_key}: Position FAR from SMA_15 ({perc_from_sma_15*100:.2f}%) - STRICT close limits enabled: threshold={config.get_account_setting(account_key, 'BREAKOUT_GUARD_LOSS_THRESHOLD')}%")
                     if position_value < required_position_size:
                         if position:
                             now_utc = datetime.now(timezone.utc)
@@ -17319,7 +17350,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             has_crossunder_signal_stop = (is_long and (stoch_crossunder_3m or stoch_crossunder_15m or dc_basis_crossunder_3m or wt_crossunder_3m)) or (not is_long and (stoch_crossover_3m or stoch_crossover_15m or dc_basis_crossover_3m or wt_crossover_3m))
         about_to_be_in_loss_stop = current_gain < 0.1
         position = await trade_manager.get_position(position_key)
-        if (long_stop or short_stop) and config.MANAGE_REDUCE and (current_gain < -0.5 or current_gain > 0.5) and min_since_aug > 12.0 and (has_crossunder_signal_stop or (is_old_enough_stop and about_to_be_in_loss_stop) and position.positionAmt > 1.5*pos_min_qty / current_price):
+        _reduce_huge_thresh = config.get_account_setting(account_key, 'REDUCE_HUGE_LOSS_THRESHOLD')
+        if (long_stop or short_stop) and config.MANAGE_REDUCE and (current_gain < _reduce_huge_thresh or current_gain > 0.5) and min_since_aug > 12.0 and (has_crossunder_signal_stop or (is_old_enough_stop and about_to_be_in_loss_stop) and position.positionAmt > 1.5*pos_min_qty / current_price):
             if _check_loss_protection(position, position_key):
                 logger.debug(f"[LOSS_PROTECTION] {position_key}: not_allowed STOP_MAJOR_LOSS_REDUCE Allowing anyway- gain={current_gain:.3f}%")
                 return
@@ -17350,7 +17382,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.info(f" [HEDGE_PLACED] Dual hedge created for {position_key}")
                                 return f"HEDGE_MODE_BLOCK_STOP_MAJOR_LOSS_REDUCE"
                             else:
-                                if current_gain < -0.5:
+                                if current_gain < _reduce_huge_thresh:
                                     logger.error(f"🛑 [SUICIDE_PREVENTION] Hedge failed! BLOCKING REDUCE because loss is {current_gain:.2f}%. We will NOT suicide.")
                                     return "HEDGE_FAILED_BLOCKED_SUICIDE"
                                 logger.warning(f"⚠️ [HEDGE_FAILED] Could not create dual hedge for {position_key}: {hedge_result_stop}")

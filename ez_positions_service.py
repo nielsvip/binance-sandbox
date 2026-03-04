@@ -2639,19 +2639,23 @@ class StopLevelsManager:
             pos_timestamp = pos_timestamp.timestamp()
         age_seconds = time.time() - (pos_timestamp if pos_timestamp > 0 else time.time())
         is_mature_position = age_seconds > (15 * 60) 
-        dc_low_3m = float(indicators.get("dc_low_3m", 0.0) or 0.0)
-        dc_high_3m = float(indicators.get("dc_high_3m", 0.0) or 0.0)
-        dc_low4_3m = float(indicators.get("dc_low4_3m", 0.0) or 0.0)
-        dc_high4_3m = float(indicators.get("dc_high4_3m", 0.0) or 0.0)
-        if dc_low4_3m == 0: dc_low4_3m = dc_low_3m * 0.995
-        if dc_high4_3m == 0: dc_high4_3m = dc_high_3m * 1.005
-        atr_3m = float(indicators.get("atr_3m", 0.0) or 0.0)
+        _acct = position_key.split(':')[0] if ':' in position_key else 'ang'
+        _dc_low_k, _dc_high_k, _dc_low4_k, _dc_high4_k, _dc_basis_k = config.get_stop_indicator_keys(_acct)
+        dc_low = float(indicators.get(_dc_low_k, 0.0) or indicators.get("dc_low_3m", 0.0) or 0.0)
+        dc_high = float(indicators.get(_dc_high_k, 0.0) or indicators.get("dc_high_3m", 0.0) or 0.0)
+        dc_low4 = float(indicators.get(_dc_low4_k, 0.0) or indicators.get("dc_low4_3m", 0.0) or 0.0)
+        dc_high4 = float(indicators.get(_dc_high4_k, 0.0) or indicators.get("dc_high4_3m", 0.0) or 0.0)
+        if dc_low4 == 0: dc_low4 = dc_low * 0.995
+        if dc_high4 == 0: dc_high4 = dc_high * 1.005
+        _tf = config.get_account_setting(_acct, 'STOP_TIMEFRAME')
+        atr_key = f"atr_{_tf}" if _tf != '3m' else "atr_3m"
+        atr_val = float(indicators.get(atr_key, 0.0) or indicators.get("atr_3m", 0.0) or 0.0)
         entry_price = getattr(position, "entry_price", current_price)
         is_breakout = False
         if entry_price > 0:
-            if is_long and abs(entry_price - dc_high_3m) / entry_price < 0.005:
+            if is_long and abs(entry_price - dc_high) / entry_price < 0.005:
                 is_breakout = True
-            elif not is_long and abs(entry_price - dc_low_3m) / entry_price < 0.005:
+            elif not is_long and abs(entry_price - dc_low) / entry_price < 0.005:
                 is_breakout = True
         if getattr(position, "strategy", "") == "breakout":
             is_breakout = True
@@ -2659,34 +2663,34 @@ class StopLevelsManager:
         stop_reason = "init"
         if is_long:
             if is_breakout:
-                prev_dc_low = float(indicators.get("dc_low_3m_prev", dc_low_3m))
-                raw_stop_price = min(dc_low_3m, prev_dc_low)
-                stop_reason = "breakout_trail"
+                prev_dc_low = float(indicators.get(f"{_dc_low_k}_prev", dc_low) or indicators.get("dc_low_3m_prev", dc_low))
+                raw_stop_price = min(dc_low, prev_dc_low)
+                stop_reason = f"breakout_trail_{_tf}"
             else:
                 if is_mature_position:
-                    raw_stop_price = dc_low_3m
-                    stop_reason = "mature_dc3"
+                    raw_stop_price = dc_low
+                    stop_reason = f"mature_dc_{_tf}"
                 else:
-                    raw_stop_price = dc_low4_3m
-                    stop_reason = "new_dc4"
+                    raw_stop_price = dc_low4
+                    stop_reason = f"new_dc4_{_tf}"
             if raw_stop_price >= current_price:
-                 raw_stop_price = current_price - (2 * atr_3m)
-        else: 
+                 raw_stop_price = current_price - (2 * atr_val)
+        else:
             if is_breakout:
-                prev_dc_high = float(indicators.get("dc_high_3m_prev", dc_high_3m))
-                raw_stop_price = max(dc_high_3m, prev_dc_high)
-                stop_reason = "breakout_trail"
+                prev_dc_high = float(indicators.get(f"{_dc_high_k}_prev", dc_high) or indicators.get("dc_high_3m_prev", dc_high))
+                raw_stop_price = max(dc_high, prev_dc_high)
+                stop_reason = f"breakout_trail_{_tf}"
             else:
                 if is_mature_position:
-                    raw_stop_price = dc_high_3m
-                    stop_reason = "mature_dc3"
+                    raw_stop_price = dc_high
+                    stop_reason = f"mature_dc_{_tf}"
                 else:
-                    raw_stop_price = dc_high4_3m
-                    stop_reason = "new_dc4"
+                    raw_stop_price = dc_high4
+                    stop_reason = f"new_dc4_{_tf}"
             if raw_stop_price <= current_price:
-                raw_stop_price = current_price + (2 * atr_3m)
+                raw_stop_price = current_price + (2 * atr_val)
         min_dist = self._calculate_min_stop_distance(entry_price, indicators, is_long, current_price)
-        final_price = self._enforce_min_distance(raw_stop_price, entry_price, min_dist, is_long, dc_low_3m=dc_low_3m, dc_high_3m=dc_high_3m)
+        final_price = self._enforce_min_distance(raw_stop_price, entry_price, min_dist, is_long, dc_low_3m=dc_low, dc_high_3m=dc_high)
         levels = []
         if final_price > 0:
             levels.append(StopLevel( level=final_price, reduction_amount=positionAmt, position_side=position_side, strategy=stop_reason, created_at=now_ts, updated_at=now_ts ))
@@ -2764,7 +2768,6 @@ class StopLevelsManager:
 
     async def manage(self, *, account_key:str, symbol:str, position_key:str, position_side:str, position:Any, current_price:float, entry_price:Optional[float]=None, event:str="sync", force_sync:bool=False) -> List[StopLevel]:
         if not config.SERVICE_STOP: return []
-        if config.HEDGE_MODE: return []
         now_ts = time.time()
         last = self._last_sync_ts.get(position_key, 0)
         if not force_sync and now_ts - last < self.sync_cooldown: 
@@ -11090,10 +11093,11 @@ async def evaluate_master_stop_loss(ctx: dict) -> Optional[Signal]:
     position = service.positions.get(position_key)
     if position and position.positionAmt <= retention_qty * 1.05:
         return None
-    dc_low_3m = safe_fetch_float(indicators.get('dc_low_3m'), 0.0)
-    dc_high_3m = safe_fetch_float(indicators.get('dc_high_3m'), 0.0)
-    if (is_long and current_price < dc_low_3m) or (not is_long and current_price > dc_high_3m):
-        if gain > 0.1: 
+    _dc_low_k, _dc_high_k, _, _, _ = config.get_stop_indicator_keys(account_key)
+    dc_low_stop = safe_fetch_float(indicators.get(_dc_low_k, indicators.get('dc_low_3m')), 0.0)
+    dc_high_stop = safe_fetch_float(indicators.get(_dc_high_k, indicators.get('dc_high_3m')), 0.0)
+    if (is_long and current_price < dc_low_stop) or (not is_long and current_price > dc_high_stop):
+        if gain > 0.1:
             reduction = max(0.0, abs(position.positionAmt) - retention_qty) if position else 0.0
             return Signal('REDUCE', f"CRITICAL_LEVEL_BREACH_PROFIT_{gain:.2f}%", 95.0, reduction_amount=reduction)
     return None

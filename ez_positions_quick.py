@@ -1215,10 +1215,15 @@ class AdvancedSignalRater:
         if is_exit : 
             if min_since_aug < 12:
                 reasons.append("just_opened")
-            if pnl_pct < -0.65 and min_since_aug > 6:
+            _fct = config.get_account_setting(account_key, 'FAST_CUT_LOSS_THRESHOLD') if hasattr(config, 'get_account_setting') else -1.5
+            _fca = config.get_account_setting(account_key, 'FAST_CUT_LOSS_MIN_AGE_MINUTES') if hasattr(config, 'get_account_setting') else 15.0
+            _lehr = getattr(config, 'LOSS_EXIT_REQUIRES_HEDGE', True)
+            if pnl_pct < _fct and min_since_aug > _fca:
                     if is_long and (k_1m < k_1m_prev or current_price < low_3m):
+                        if _lehr: return -10, "STRONG_REDUCE", f"HEDGE_THEN_REDUCE:FAST_CUT_LOSS_{pnl_pct:.2f}%"
                         return -10, "STRONG_REDUCE", f"FAST_CUT_LOSS_{pnl_pct:.2f}%"
                     if not is_long and (k_1m > k_1m_prev or current_price > high_3m):
+                        if _lehr: return -10, "STRONG_REDUCE", f"HEDGE_THEN_REDUCE:FAST_CUT_LOSS_{pnl_pct:.2f}%"
                         return -10, "STRONG_REDUCE", f"FAST_CUT_LOSS_{pnl_pct:.2f}%"
             is_flip = (is_long and ((k_1m < d_1m and true_lag < 10.0) or k_3m < d_3m or k_15m < d_15m or lower_low_15m )) or (not is_long and ((k_1m > d_1m and true_lag < 10.0) or k_3m > d_3m or k_15m > d_15m or higher_high_15m))
             if not is_flip: reasons.append("no_flip") 
@@ -1232,7 +1237,8 @@ class AdvancedSignalRater:
             if momentum_against:
                  return -8.0, "NOW_REDUCE", "1m_3m_BOTH_AGAINST"
             is_1m_flip_against = (is_long and ((k_1m < d_1m and true_lag < 10.0)or k_3m < d_3m or current_price <= dc_low_3m)) or (not is_long and ((k_1m > d_1m and true_lag < 10.0)or k_3m > d_3m or current_price >= dc_high_3m)) and min_since_aug > 12
-            if pnl_pct < 0.17 and is_1m_flip_against:
+            _agg_enabled = config.get_account_setting(account_key, 'AGGRESSIVE_LOSS_CUT_ENABLED') if hasattr(config, 'get_account_setting') else False
+            if _agg_enabled and pnl_pct < 0.17 and is_1m_flip_against:
                 structure_is_safe = (is_long and (k_15m > d_15m or higher_high_15m) and k_1h > d_1h and k_15m < 90) or (not is_long and (k_15m < d_15m or lower_low_15m) and k_1h < d_1h and k_15m > 10)
                 if not structure_is_safe: return -8.0, "NOW_REDUCE", "AGGRESSIVE_LOSS_CUT_1m_FLIP"
                 else:
@@ -2070,7 +2076,8 @@ class HedgeEngine:
             if entry_price > 0:
                 if is_long: pnl_pct = ((mark_price - entry_price) / entry_price) * 100
                 else: pnl_pct = ((entry_price - mark_price) / entry_price) * 100
-            if pnl_pct < -1.0:
+            _hedge_trigger = self.config.get_account_setting(account_key, 'HEDGE_TRIGGER_LOSS_PCT') if hasattr(self.config, 'get_account_setting') else -0.3
+            if pnl_pct < _hedge_trigger:
                 await self._manage_hedge_for_position(account_key, position_key, pos, qty, mark_price, pnl_pct, tracker_data)
 
     async def _manage_hedge_for_position(self, account_key, losing_key, losing_pos, losing_qty, current_price, pnl_pct, tracker_data):
@@ -2085,13 +2092,15 @@ class HedgeEngine:
         losing_value = losing_qty * current_price
         existing_hedge_value = real_hedge_qty * current_price
         history_loss = safe_fetch_float(tracker_data.get('total_realized_pnl_$', 0.0)) if tracker_data else 0.0
+        _oversize = getattr(self.config, 'HEDGE_OVERSIZE_RATIO', 1.1)
         target_ratio = 0.0
-        if pnl_pct < -2.0 or history_loss < -30: target_ratio = 1.0
-        elif pnl_pct < -1.0 or history_loss < -10: target_ratio = 0.7
-        elif pnl_pct < -0.6: target_ratio = 0.4
+        if pnl_pct < -2.0 or history_loss < -30: target_ratio = max(1.0, _oversize)
+        elif pnl_pct < -1.0 or history_loss < -10: target_ratio = max(0.7, _oversize)
+        elif pnl_pct < -0.6: target_ratio = max(0.4, _oversize * 0.6)
+        else: target_ratio = _oversize * 0.5
         if target_ratio == 0: return
-        if real_hedge_qty > 0 and existing_hedge_value >= (losing_value * 0.5):
-             logger.debug(f"[HEDGE_GUARD] {losing_key} already has hedge {hedge_key} with value ${existing_hedge_value:.2f} (TargetRatio:{target_ratio}). Skipping.")
+        if real_hedge_qty > 0 and existing_hedge_value >= (losing_value * _oversize):
+             logger.debug(f"[HEDGE_GUARD] {losing_key} already has hedge {hedge_key} with value ${existing_hedge_value:.2f} >= ${losing_value*_oversize:.2f} (TargetRatio:{target_ratio}). Skipping.")
              return
         target_hedge_value = losing_value * target_ratio
         if existing_hedge_value >= (target_hedge_value * 0.95):
