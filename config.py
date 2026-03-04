@@ -89,6 +89,13 @@ class Config:
     LOSS_EXIT_REQUIRES_HEDGE: bool =        True   # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float =           1.1    # Hedge must be this * losing_value (110%)
     STORM_REDUCE_ENABLED: bool =            True   # Allow reducing losing position when HTF confirms storm
+    # === NEWS SENTIMENT ===
+    NEWS_SENTIMENT_ENABLED: bool =         True    # Master toggle for news sentiment in rankings
+    NEWS_SENTIMENT_WEIGHT: float =         0.10    # Max +/-10% score adjustment from news
+    NEWS_POLL_INTERVAL_CRYPTO: int =       300     # 5 min (CryptoPanic)
+    NEWS_POLL_INTERVAL_SOCIAL: int =       900     # 15 min (Reddit + Twitter)
+    NEWS_SENTIMENT_DECAY_HOURS: int =      4       # Older articles decay to 0
+    NEWS_SENTIMENT_MIN_ARTICLES: int =     2       # Min sources to form a score
     # TREND_GATES: bool =                     False
     # HTF1_CONF:bool =                        False
     # HTF4_CONF:bool =                        False

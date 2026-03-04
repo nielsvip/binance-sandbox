@@ -1,0 +1,23 @@
+[Unit]
+Description=Binance Bot - ez_news_scanner.py News Sentiment Scanner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+UMask=0022
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=true
+ReadWritePaths=/home/niels/binance /home/niels/logs
+WorkingDirectory=/home/niels/binance
+ExecStart=/home/niels/binance/run_with_watchdog_LINUX.sh ez_news_scanner.py
+Restart=always
+RestartSec=60s
+StandardOutput=journal
+StandardError=journal
+Environment="HOME=/home/niels"
+Environment="EZ_LOG_DIR=/home/niels/logs"
+
+[Install]
+WantedBy=default.target
