@@ -64,6 +64,9 @@ from utils import (REDIS_CHANNELS, _resolve_klines_directories,
 
 config = Config()
 
+# BACKTEST_CHANGE_49: Top backtest performers get ranking bonus (weight 0.2, capped at 5.0)
+BACKTEST_SHARPE = {"CELOUSDT": 26858, "DYDXUSDT": 2974, "GTCUSDT": 5015, "GALAUSDT": 9426, "TIAUSDC": 13041, "XTZUSDT": 4028, "SKLUSDT": 3910, "CELRUSDT": 3498, "TLMUSDT": 2026, "RVNUSDT": 1905, "ARBUSDC": 1883, "RSRUSDT": 1195, "SNXUSDT": 1075, "OMUSDT": 1036, "VANAUSDT": 998, "FETUSDT": 971, "CHRUSDT": 969, "PIXELUSDT": 925, "XAGUSDT": 900, "RIVERUSDT": 867}
+
 # ===== VOLUME FILTERING CONFIGURATION =====
 ENABLE_VOLUME_FILTERING = True  # Set to False to disable volume filtering entirely
 VOLUME_THRESHOLD_USDT = 80000.0  # Conservative threshold: 80k USDT (only removes truly low-volume tokens)
@@ -112,9 +115,10 @@ async def _load_news_sentiment(rm=None):
             for name, conn in rm.connections.items():
                 if conn is None: continue
                 try:
-                    bulk = await conn.get('news_sentiment_bulk')
-                    if bulk:
-                        _news_sentiment_cache = {k: float(v) for k, v in json.loads(bulk).items()}
+                    # Prefer crypto-only key (cleaner, no stock symbol bleed)
+                    raw = await conn.get('news_sentiment_crypto') or await conn.get('news_sentiment_bulk')
+                    if raw:
+                        _news_sentiment_cache = {k: float(v) for k, v in json.loads(raw).items()}
                         return
                 except Exception: pass
         fallback = Path(config.BASE_PATH) / 'data' / 'news_sentiment.json'
@@ -526,7 +530,7 @@ async def load_indicators_data():
             try:
                 data = json.loads(chunk)
                 return data
-            except:
+            except Exception:
                 return None
         except Exception:
             return None
@@ -545,7 +549,7 @@ async def load_indicators_data():
                         indicators_data = orjson.loads(f.read())  # type: ignore # pylint: disable=no-member,c-extension-no-member
                     logger.info(f"✅ Loaded {len(indicators_data)} symbols from default file")
                     return
-                except:
+                except Exception:
                     pass
         else:
             # FIX: Filter files that actually exist before sorting to prevent Race Condition
@@ -577,7 +581,7 @@ async def load_indicators_data():
                     try:
                         os.remove(file_path)
                         logger.info(f"🗑️ Deleted corrupted file: {file_path.name}")
-                    except: pass
+                    except Exception: pass
                     continue
                 except Exception as e:
                     logger.warning(f"Error loading {file_path.name}: {e}")
@@ -647,6 +651,16 @@ async def save_rankings_json(ranking_data_scalars: List[Dict[str, Any]]):
             vol_multiplier = min(1.3, max(0.7, entry.get("rel_vol_raw", 1.0)))
             final_multiplier = (rank_multiplier * 0.35 + score_multiplier * 0.25 + recent_score_multiplier * 0.15 + trend_multiplier * 0.15 + vol_multiplier * 0.10)
             final_multiplier = max(0.3, min(2.5, final_multiplier))
+            _sym_tier = 'B'
+            _tier_mult = 1.0
+            if config.TIER_ENABLED:
+                try:
+                    from ez_symbol_performance import get_symbol_tier, get_tier_multiplier
+                    _sym_tier = get_symbol_tier(symbol, default='B')
+                    _tier_mult = get_tier_multiplier(symbol)
+                    final_multiplier = max(0.3, min(2.5, final_multiplier * _tier_mult))
+                except Exception:
+                    pass
             rankings_dict[symbol] = {
                 "lt_rank": lt_rank,
                 "st_rank": st_rank,
@@ -656,6 +670,7 @@ async def save_rankings_json(ranking_data_scalars: List[Dict[str, Any]]):
                 "st_percentile": float(st_percentile),
                 "combined_percentile": float(combined_percentile),
                 "order_multiplier": float(final_multiplier),
+                "tier": _sym_tier,
                 "trend_val_norm_lt": float(entry.get("trend_val_norm_lt", 0.0)),
                 "trend_val_norm_st": float(entry.get("trend_val_norm_st", 0.0)),
                 "proximity_score_norm": float(entry.get("proximity_score_norm", 0.0)),
@@ -664,6 +679,122 @@ async def save_rankings_json(ranking_data_scalars: List[Dict[str, Any]]):
                 "weighted_gains_lt": float(entry.get("weighted_gains_lt", 0.0)),
                 "weighted_gains_st": float(entry.get("weighted_gains_st", 0.0))
             }
+        # === DC MOMENT + QTY: cross-TF analysis + cross-symbol ranking ===
+        _dc = {}
+        _tfs_all = ['3m', '15m', '1h', '4h', 'D']
+        for _sym in rankings_dict:
+            _ind = indicators_data.get(_sym, {})
+            if not _ind: continue
+            _w, _p = {}, {}
+            _cp = float(_ind.get('current_price') or 0)
+            if _cp <= 0: continue
+            for _tf in _tfs_all:
+                _dw = float(_ind.get(f'dc_width_{_tf}') or 0)
+                _dp = float(_ind.get(f'dc_position_{_tf}') or 0)
+                if _dw <= 0:
+                    _dch = float(_ind.get(f'dc_high_{_tf}') or 0)
+                    _dcl = float(_ind.get(f'dc_low_{_tf}') or 0)
+                    if _dch > 0 and _dcl > 0 and _dch > _dcl:
+                        _dw = ((_dch - _dcl) / _dcl) * 100
+                        _dp = max(0.0, min(1.0, (_cp - _dcl) / (_dch - _dcl)))
+                if _dw > 0: _w[_tf] = _dw
+                if 0 <= _dp <= 1.0: _p[_tf] = _dp
+            if len(_w) < 2: continue
+            _wc = _w.get('D', 0) * 0.50 + _w.get('4h', 0) * 0.30 + _w.get('1h', 0) * 0.20
+            _ltf_w = sum(_w.get(t, 0) for t in ['3m', '15m']) / max(1, sum(1 for t in ['3m', '15m'] if t in _w))
+            _htf_w = sum(_w.get(t, 0) for t in ['D', '4h', '1h']) / max(1, sum(1 for t in ['D', '4h', '1h'] if t in _w))
+            _exp = _ltf_w / _htf_w if _htf_w > 0 else 0.0
+            _hp = _p.get('D', 0.5) * 0.5 + _p.get('4h', 0.5) * 0.3 + _p.get('1h', 0.5) * 0.2
+            _lp = _p.get('3m', 0.5) * 0.5 + _p.get('15m', 0.5) * 0.5
+            _trend = (_hp - 0.5) * 2.0
+            if _trend > 0:
+                _pbd = max(0.0, _hp - _lp) / max(_hp, 0.01)
+            else:
+                _pbd = max(0.0, _lp - _hp) / max(1.0 - _hp, 0.01)
+            _pbd = min(1.0, _pbd)
+            _eb = min(1.3, max(1.0, _exp * 0.65 + 0.35)) if _exp > 1.0 else max(0.7, _exp)
+            _moment = max(-100.0, min(100.0, _trend * _pbd * _eb * 100.0))
+            _dc[_sym] = {'wc': _wc, 'exp': round(_exp, 3), 'hp': round(_hp, 3), 'lp': round(_lp, 3), 'moment': round(_moment, 1), 'w': _w, 'p': _p}
+        if _dc:
+            _sorted = sorted(_dc.items(), key=lambda x: x[1]['wc'], reverse=True)
+            _n = len(_sorted)
+            for _ri, (_s, _d) in enumerate(_sorted):
+                _wr = (_n - _ri) / _n
+                _d['wr'] = round(_wr, 4)
+                _d['qty'] = round(_d['moment'] * _wr, 1)
+            for _s, _d in _dc.items():
+                if _s not in rankings_dict: continue
+                rankings_dict[_s]['dc_moment'] = _d['moment']
+                rankings_dict[_s]['dc_qty'] = _d.get('qty', 0)
+                rankings_dict[_s]['dc_width_rank'] = _d.get('wr', 0)
+                rankings_dict[_s]['dc_width_composite'] = round(_d['wc'], 2)
+                rankings_dict[_s]['dc_expansion'] = _d['exp']
+                rankings_dict[_s]['dc_htf_pos'] = _d['hp']
+                rankings_dict[_s]['dc_ltf_pos'] = _d['lp']
+                for _tf in _tfs_all:
+                    if _tf in _d['w']: rankings_dict[_s][f'dc_width_{_tf}'] = round(_d['w'][_tf], 2)
+                    if _tf in _d['p']: rankings_dict[_s][f'dc_pos_{_tf}'] = round(_d['p'][_tf], 4)
+            _best_l = [(_s, _d['moment'], _d.get('qty',0)) for _s, _d in _sorted if _d['moment'] > 10][:3]
+            _best_s = [(_s, _d['moment'], _d.get('qty',0)) for _s, _d in reversed(_sorted) if _d['moment'] < -10][:3]
+            logger.info(f"[DC_INDEX] {_n} syms | L: {_best_l} | S: {_best_s}")
+        # === DC MOMENT + QTY: cross-TF analysis + cross-symbol ranking ===
+        _dc = {}
+        _tfs_all = ['3m', '15m', '1h', '4h', 'D']
+        for _sym in rankings_dict:
+            _ind = indicators_data.get(_sym, {})
+            if not _ind: continue
+            _w, _p = {}, {}
+            _cp = float(_ind.get('current_price') or 0)
+            if _cp <= 0: continue
+            for _tf in _tfs_all:
+                _dw = float(_ind.get(f'dc_width_{_tf}') or 0)
+                _dp = float(_ind.get(f'dc_position_{_tf}') or 0)
+                if _dw <= 0:
+                    _dch = float(_ind.get(f'dc_high_{_tf}') or 0)
+                    _dcl = float(_ind.get(f'dc_low_{_tf}') or 0)
+                    if _dch > 0 and _dcl > 0 and _dch > _dcl:
+                        _dw = ((_dch - _dcl) / _dcl) * 100
+                        _dp = max(0.0, min(1.0, (_cp - _dcl) / (_dch - _dcl)))
+                if _dw > 0: _w[_tf] = _dw
+                if 0 <= _dp <= 1.0: _p[_tf] = _dp
+            if len(_w) < 2: continue
+            _wc = _w.get('D', 0) * 0.50 + _w.get('4h', 0) * 0.30 + _w.get('1h', 0) * 0.20
+            _ltf_w = sum(_w.get(t, 0) for t in ['3m', '15m']) / max(1, sum(1 for t in ['3m', '15m'] if t in _w))
+            _htf_w = sum(_w.get(t, 0) for t in ['D', '4h', '1h']) / max(1, sum(1 for t in ['D', '4h', '1h'] if t in _w))
+            _exp = _ltf_w / _htf_w if _htf_w > 0 else 0.0
+            _hp = _p.get('D', 0.5) * 0.5 + _p.get('4h', 0.5) * 0.3 + _p.get('1h', 0.5) * 0.2
+            _lp = _p.get('3m', 0.5) * 0.5 + _p.get('15m', 0.5) * 0.5
+            _trend = (_hp - 0.5) * 2.0
+            if _trend > 0:
+                _pbd = max(0.0, _hp - _lp) / max(_hp, 0.01)
+            else:
+                _pbd = max(0.0, _lp - _hp) / max(1.0 - _hp, 0.01)
+            _pbd = min(1.0, _pbd)
+            _eb = min(1.3, max(1.0, _exp * 0.65 + 0.35)) if _exp > 1.0 else max(0.7, _exp)
+            _moment = max(-100.0, min(100.0, _trend * _pbd * _eb * 100.0))
+            _dc[_sym] = {'wc': _wc, 'exp': round(_exp, 3), 'hp': round(_hp, 3), 'lp': round(_lp, 3), 'moment': round(_moment, 1), 'w': _w, 'p': _p}
+        if _dc:
+            _sorted = sorted(_dc.items(), key=lambda x: x[1]['wc'], reverse=True)
+            _n = len(_sorted)
+            for _ri, (_s, _d) in enumerate(_sorted):
+                _wr = (_n - _ri) / _n
+                _d['wr'] = round(_wr, 4)
+                _d['qty'] = round(_d['moment'] * _wr, 1)
+            for _s, _d in _dc.items():
+                if _s not in rankings_dict: continue
+                rankings_dict[_s]['dc_moment'] = _d['moment']
+                rankings_dict[_s]['dc_qty'] = _d.get('qty', 0)
+                rankings_dict[_s]['dc_width_rank'] = _d.get('wr', 0)
+                rankings_dict[_s]['dc_width_composite'] = round(_d['wc'], 2)
+                rankings_dict[_s]['dc_expansion'] = _d['exp']
+                rankings_dict[_s]['dc_htf_pos'] = _d['hp']
+                rankings_dict[_s]['dc_ltf_pos'] = _d['lp']
+                for _tf in _tfs_all:
+                    if _tf in _d['w']: rankings_dict[_s][f'dc_width_{_tf}'] = round(_d['w'][_tf], 2)
+                    if _tf in _d['p']: rankings_dict[_s][f'dc_pos_{_tf}'] = round(_d['p'][_tf], 4)
+            _best_l = [(_s, _d['moment'], _d.get('qty',0)) for _s, _d in _sorted if _d['moment'] > 10][:3]
+            _best_s = [(_s, _d['moment'], _d.get('qty',0)) for _s, _d in reversed(_sorted) if _d['moment'] < -10][:3]
+            logger.info(f"[DC_INDEX] {_n} syms | L: {_best_l} | S: {_best_s}")
         rankings_dict = recursively_convert_np(rankings_dict)
         async with aiofiles.open(RANKINGS_FILE, "w") as f:
             await f.write(json.dumps(rankings_dict, indent=2))
@@ -1366,7 +1497,7 @@ def prune_old_signals(signals_data_local, retention_days=55): # Renamed arg
                         try:
                             ts = pd.to_datetime(ts)
                             if ts.tzinfo is None: ts = ts.tz_localize('UTC')
-                        except: # If conversion fails, keep original or discard based on policy
+                        except Exception: # If conversion fails, keep original or discard based on policy
                             logger.warning(f"Could not parse timestamp {ts} during pruning for {symbol}")
                             continue # Or keep if policy allows
                     
@@ -1544,7 +1675,7 @@ def get_latest_files(directory, num_required=2, max_attempts=1000):
                     f_out.write(chunk)
                 logger.info(f"[get_latest_files] Repaired truncated file: {filepath}")
                 return filepath
-            except:
+            except Exception:
                 return None
         except Exception:
             return None
@@ -2051,7 +2182,7 @@ def detect_stoch_crossovers(df: pd.DataFrame) -> List[dict]: # Added return type
         if not isinstance(current_ts, pd.Timestamp):
             try:
                 current_ts = pd.Timestamp(current_ts)
-            except:
+            except Exception:
                 continue
 
         # FILTERED: Only detect crossovers outside the 20-80 range (extreme levels)
@@ -2129,7 +2260,7 @@ def detect_wt_signals(df: pd.DataFrame) -> List[dict]:
         if not isinstance(current_ts, pd.Timestamp):
             try:
                 current_ts = pd.Timestamp(current_ts)
-            except:
+            except Exception:
                 continue
 
         # Convert to floats and ensure they are finite before saving to events
@@ -2761,6 +2892,8 @@ def is_low_volume_token(dfs_dict: dict, volume_threshold: float = 80000.0) -> bo
         return True
     total_weight = sum(weight for _, weight in volume_checks)
     passed_weight = sum(weight for passed, weight in volume_checks if passed)
+    if not total_weight:
+        return True
     return (passed_weight / total_weight) < 0.5
 
 def is_low_volume_token_safe(dfs_dict: dict, volume_threshold: float = 80000.0) -> bool:
@@ -4018,6 +4151,8 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                 _ns_mult = 1.0 + (_ns * config.NEWS_SENTIMENT_WEIGHT)
                 final_score_raw_lt *= _ns_mult
                 final_score_raw_st *= _ns_mult
+        final_score_raw_lt += 0.2 * min(BACKTEST_SHARPE.get(sym, 0) / 1000, 5.0)  # BACKTEST_CHANGE_49: backtest Sharpe bonus
+        final_score_raw_st += 0.2 * min(BACKTEST_SHARPE.get(sym, 0) / 1000, 5.0)  # BACKTEST_CHANGE_49: backtest Sharpe bonus
         # Add linearity metadata for filtering/ranking
         avg_linearity = abs_lin_val_raw
         linearity_category = (
@@ -4078,9 +4213,39 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     # Then rank with linearity priority
     ranked_symbols = rank_symbols_with_linearity_priority(filtered_by_linearity)
     
-    # Extract top winners and losers
-    top_winners_lt = sorted(ranked_symbols, key=lambda x: x["linearity_boosted_score"], reverse=True)
-    top_losers_lt = sorted(ranked_symbols, key=lambda x: x["linearity_boosted_score"])
+    # ═══ HTF TREND FILTER: winners must be in uptrend, losers in downtrend ═══
+    # A symbol below SMA200_D CANNOT be a "winner" (LONG candidate)
+    # A symbol above SMA200_D CANNOT be a "loser" (SHORT candidate)
+    try:
+        # Use in-memory indicators_data (loaded from Redis) — NOT the stale JSON file
+        if indicators_data and isinstance(indicators_data, dict):
+            _lmd = indicators_data
+            _bearish_syms = set()
+            _bullish_syms = set()
+            for _sym, _sd in _lmd.items():
+                _p = float(_sd.get('current_price', 0) or 0)
+                _sma = float(_sd.get('sma_200_D', 0) or 0)
+                if _p > 0 and _sma > 0:
+                    if _p < _sma * 0.99:
+                        _bearish_syms.add(_sym)
+                    elif _p > _sma * 1.01:
+                        _bullish_syms.add(_sym)
+            # SMA200_D filter REMOVED — was blocking mean-reversion entries at bottoms
+            # Alignment gate in execute_now() is the ONLY entry filter now
+            _winner_candidates = ranked_symbols
+            _loser_candidates = ranked_symbols
+            logger.info(f"[HTF_RANK_FILTER] DISABLED — alignment gate handles entry filtering")
+        else:
+            _winner_candidates = ranked_symbols
+            _loser_candidates = ranked_symbols
+    except Exception as _e:
+        logger.debug(f"[HTF_RANK_FILTER] Error: {_e}")
+        _winner_candidates = ranked_symbols
+        _loser_candidates = ranked_symbols
+
+    # Extract top winners and losers (with HTF filter applied)
+    top_winners_lt = sorted(_winner_candidates, key=lambda x: x["linearity_boosted_score"], reverse=True)
+    top_losers_lt = sorted(_loser_candidates, key=lambda x: x["linearity_boosted_score"])
     
     # Short-term ranking (using recent scores with linearity boost)
     top_winners_st = sorted(ranked_symbols, key=lambda x: x.get("final_score_recent_norm", 0) * x.get("linearity_boost_factor", 1), reverse=True)
@@ -4126,15 +4291,17 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     symbols_ang_long_list = [item["symbol"] for item in to_save_top30]
     symbols_ang_short_list = [item["symbol"] for item in to_save_bottom30]
     
-    # Add ranking_points.json data if available
+    # Add ranking_points.json data if available — WITH HTF TREND FILTER
     extra_long = []
     extra_short = []
     try:
         with open("data/ranking_points.json", "r") as f: 
             ranking_data = json.load(f)
         sorted_ranking = sorted(ranking_data.items(), key=lambda x: x[1], reverse=True)
-        extra_long = [{"symbol": symbol, "score": score} for symbol, score in sorted_ranking[:20]]
-        extra_short = [{"symbol": symbol, "score": score} for symbol, score in sorted_ranking[-20:]]
+        # FILTER: only allow longs if NOT in daily bearish set, shorts if NOT in daily bullish set
+        extra_long = [{"symbol": symbol, "score": score} for symbol, score in sorted_ranking[:40] if symbol not in _bearish_syms][:20]
+        extra_short = [{"symbol": symbol, "score": score} for symbol, score in sorted_ranking[-40:] if symbol not in _bullish_syms][:20]
+        logger.info(f"[HTF_RANK_FILTER] ranking_points.json: {len(extra_long)} longs passed HTF, {len(extra_short)} shorts passed HTF")
     except Exception as e: 
         logger.warning(f"Failed to load ranking_points.json: {e}")
     
@@ -4156,28 +4323,39 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     symbols_ang_long_list = symbols_ang_long_list[:20]
     symbols_ang_short_list = symbols_ang_short_list[:20]
 
-    # Add ranking_points.json to final scores
+    # Add ranking_points.json to final scores — WITH HTF TREND FILTER
     try:
         with open("data/ranking_points.json", "r") as f:
             ranking_data = json.load(f)
         sorted_ranking = sorted(ranking_data.items(), key=lambda x: x[1], reverse=True)
-        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:20]])
-        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-20:]])
+        symbols_ang_long_list.extend([symbol for symbol, score in sorted_ranking[:40] if symbol not in _bearish_syms][:20])
+        symbols_ang_short_list.extend([symbol for symbol, score in sorted_ranking[-40:] if symbol not in _bullish_syms][:20])
     except Exception as e:
         logger.warning(f"Failed to load ranking_points.json: {e}")
     
     # Remove duplicates and ensure 20 symbols each
     symbols_ang_long_list = list(dict.fromkeys(symbols_ang_long_list))[:20]
     symbols_ang_short_list = list(dict.fromkeys(symbols_ang_short_list))[:20]
+    # Tier-based priority: A-tier symbols get sorted to front, C-tier to back
+    if config.TIER_ENABLED:
+        try:
+            from ez_symbol_performance import get_symbol_tier
+            _tier_order = {'A': 0, 'B': 1, 'C': 2}
+            symbols_ang_long_list.sort(key=lambda s: _tier_order.get(get_symbol_tier(s, 'B'), 1))
+            symbols_ang_short_list.sort(key=lambda s: _tier_order.get(get_symbol_tier(s, 'B'), 1))
+        except Exception:
+            pass
     
     if len(symbols_ang_long_list) < 20:
         symbols_ang_long_list.extend([item["symbol"] for item in to_save_top30[len(symbols_ang_long_list):]])
     if len(symbols_ang_short_list) < 20:
         symbols_ang_short_list.extend([item["symbol"] for item in to_save_bottom30[len(symbols_ang_short_list):]]) 
     
-    # Build short-term/inflection lists
-    symbols_inf_long_list = [item["symbol"] for item in to_save_top15_15m] + [item["symbol"] for item in to_save_top30_r]
-    symbols_inf_long_list = [item["symbol"] for item in to_save_bottom15_15m] + [item["symbol"] for item in to_save_bottom30_r]
+    # Build short-term/inflection lists — WITH HTF TREND FILTER
+    symbols_inf_long_list = [item["symbol"] for item in to_save_top15_15m if item["symbol"] not in _bearish_syms] + \
+                            [item["symbol"] for item in to_save_top30_r if item["symbol"] not in _bearish_syms]
+    symbols_inf_short_list = [item["symbol"] for item in to_save_bottom15_15m if item["symbol"] not in _bullish_syms] + \
+                             [item["symbol"] for item in to_save_bottom30_r if item["symbol"] not in _bullish_syms]
 
     # Save scores to files
     save_scores(fs, FINAL_SCORE_FILE)
@@ -4917,7 +5095,20 @@ async def save_market_data():
         all_active_symbols.update(symbols_inf_short_list)
         all_active_symbols.update(symbols_ang_long_list)
         all_active_symbols.update(symbols_ang_short_list)
-        
+
+        # Always include symbols with open positions so they get fresh indicators
+        # even if they've fallen off the ranked lists
+        try:
+            _mdata_path = BASE_PATH / "data" / "latest_market_data.json"
+            if _mdata_path.exists():
+                import orjson as _orjson
+                _md = _orjson.loads(_mdata_path.read_bytes())
+                for _sym, _sdata in _md.items():
+                    if abs(float(_sdata.get('positionAmt', 0) or 0)) > 0:
+                        all_active_symbols.add(_sym)
+        except Exception as _e:
+            logger.warning(f"[symbols_active] Could not add open-position symbols: {_e}")
+
         # Convert to sorted list for consistent saving
         symbols_active_list = sorted(list(all_active_symbols))
         # 3. Helper to save JSON
@@ -5105,7 +5296,7 @@ def cleanup_and_copy(src: str, dest: str):
         if os.path.exists(temp_dest):
             try:
                 os.remove(temp_dest)
-            except:
+            except Exception:
                 pass
 
 def get_all_legend_handles_labels(axes_list: List[plt.Axes]) -> Tuple[List[Any], List[str]]: # Renamed arg
@@ -5668,7 +5859,7 @@ async def plot_dfs_subplots(
                     ts_event = event.get("timestamp")
                     if not isinstance(ts_event, pd.Timestamp):
                         try: ts_event = pd.to_datetime(ts_event); 
-                        except: continue
+                        except Exception: continue
                     if ts_event.tzinfo is None: ts_event = ts_event.tz_localize('UTC')
                     
                     if ts_event < x_left_ts or ts_event > x_right_ts: continue 
@@ -6655,11 +6846,20 @@ async def market_index_realtime_monitor(update_interval=30):
     global _cached_market_index, redis_manager
     logger.info(f"🚀 Starting real-time market index monitor (update every {update_interval}s)")
     previous_index = None
+    _last_alert_type = None
+    _last_alert_index = None
     while True:
         try:
             market_index = await calculate_market_movement_index(use_cache=True, volume_weighted=False)
             alerts = await check_market_index_alerts(market_index, previous_index)
             for alert in alerts:
+                atype = alert["type"]
+                idx_changed = _last_alert_index is None or abs(market_index - _last_alert_index) >= 2.0
+                type_changed = atype != _last_alert_type
+                if not type_changed and not idx_changed:
+                    continue
+                _last_alert_type = atype
+                _last_alert_index = market_index
                 if alert["severity"] == "CRITICAL":
                     logger.critical(f"🚨 {alert['type']}: {alert['message']}")
                 elif alert["severity"] == "HIGH":
@@ -6888,16 +7088,16 @@ async def plot_loop():
             top_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)[:20]
             bottom_norm_plot = sorted(RANKING_DATA, key=lambda x: x.get("final_score_norm", 0.0))[:20]
             
-            seen_symbols_for_plot_set = set()
             plot_queue_items_list = []
 
             def add_to_plot_queue_func(ranked_items, prefix_str):
+                seen_prefix = set()
                 for i, item in enumerate(ranked_items, 1):
                     symbol = item.get("symbol")
-                    if symbol and symbol not in seen_symbols_for_plot_set:
-                        plot_queue_items_list.append((f"{prefix_str}{i:02d}", symbol)) 
-                        seen_symbols_for_plot_set.add(symbol)
-            
+                    if symbol and symbol not in seen_prefix:
+                        plot_queue_items_list.append((f"{prefix_str}{i:02d}", symbol))
+                        seen_prefix.add(symbol)
+
             add_to_plot_queue_func(top_recent_plot, "WR")
             add_to_plot_queue_func(bottom_recent_plot, "LR")
             add_to_plot_queue_func(top_norm_plot, "W")

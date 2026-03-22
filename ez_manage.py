@@ -44,6 +44,501 @@ from dateutil.parser import isoparse
 from redis.asyncio import Redis  # import redis.asyncio as redis
 from requests.adapters import HTTPAdapter
 
+
+# ── TradingPolicy (was ez_trading_policy.py — merged here) ──────────────────
+def _sf(v, default=50.0):
+    try: return float(v) if v is not None and not (isinstance(v, float) and (math.isnan(v) or math.isinf(v))) else default
+    except (TypeError, ValueError): return default
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. LONG/SHORT RATIO — Double the calculated ratio, gated by 2-of-3 LTF
+# ═══════════════════════════════════════════════════════════════════════════════
+def compute_applied_ratio(calculated_long_pct: float, calculated_short_pct: float, indicators: Dict[str, Any], is_for_long: bool) -> Tuple[float, float, bool]:
+    """Returns (applied_long_pct, applied_short_pct, ratio_active).
+    Ratio is ONLY applied when 2 of 3 k_1m/k_3m/k_15m agree with the direction.
+    Formula: applied_long = 50 + (calculated_long - 50) * 2, clamped 10-90."""
+    k_1m, d_1m = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('stoch_d_1m'))
+    k_3m, d_3m = _sf(indicators.get('stoch_k_3m')), _sf(indicators.get('stoch_d_3m'))
+    k_15m, d_15m = _sf(indicators.get('stoch_k_15m')), _sf(indicators.get('stoch_d_15m'))
+    if is_for_long:
+        ltf_agree = int(k_1m > d_1m) + int(k_3m > d_3m) + int(k_15m > d_15m)
+    else:
+        ltf_agree = int(k_1m < d_1m) + int(k_3m < d_3m) + int(k_15m < d_15m)
+    if ltf_agree < 2:
+        return calculated_long_pct, calculated_short_pct, False
+    _ratio_mult = 4.0  # BACKTEST_CHANGE_121: was 2.0. 4x = Sharpe 282 in 65-config sweep. Set via config.RATIO_MULTIPLIER
+    raw_applied = 50.0 + (calculated_long_pct - 50.0) * _ratio_mult
+    applied_long = max(10.0, min(90.0, raw_applied))
+    applied_short = 100.0 - applied_long
+    return applied_long, applied_short, True
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2. ENTRY ALIGNMENT — 2-of-3 LTF + 2-of-3 HTF required for new entries
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_entry_alignment(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool, str]:
+    """Returns (allowed, reason). Requires 2/3 LTF (k_1m/3m/15m) AND 2/3 HTF (1h/4h/D) aligned.
+    No crash hard-block here — hedges and trend-following entries must pass through.
+    Crash ratio enforcement lives in compute_applied_ratio and ratio_rebalance_loop."""
+    k_1m, d_1m = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('stoch_d_1m'))
+    k_3m, d_3m = _sf(indicators.get('stoch_k_3m')), _sf(indicators.get('stoch_d_3m'))
+    k_15m, d_15m = _sf(indicators.get('stoch_k_15m')), _sf(indicators.get('stoch_d_15m'))
+    k_1h, d_1h = _sf(indicators.get('stoch_k_1h')), _sf(indicators.get('stoch_d_1h'))
+    k_4h, d_4h = _sf(indicators.get('stoch_k_4h')), _sf(indicators.get('stoch_d_4h'))
+    k_D, d_D = _sf(indicators.get('stoch_k_D')), _sf(indicators.get('stoch_d_D'))
+    ha_D = str(indicators.get('ha_D', 'neutral'))
+    if is_long:
+        ltf = int(k_1m > d_1m) + int(k_3m > d_3m) + int(k_15m > d_15m)
+        htf = int(k_1h > d_1h) + int(k_4h > d_4h) + int(ha_D == 'green' or k_D > d_D)
+    else:
+        ltf = int(k_1m < d_1m) + int(k_3m < d_3m) + int(k_15m < d_15m)
+        htf = int(k_1h < d_1h) + int(k_4h < d_4h) + int(ha_D == 'red' or k_D < d_D)
+    # RSI cross-TF quality (backtest: rsi_1h>50 for shorts consistent across all 4 TFs;
+    # rsi_1h<50 for longs consistent on 1h/4h; rsi_4h gives stronger signal)
+    rsi_1h_a = _sf(indicators.get('rsi_1h'), 50.0)
+    rsi_4h_a = _sf(indicators.get('rsi_4h'), 50.0)
+    if is_long:
+        rsi_quality = int(rsi_1h_a < 50) + int(rsi_4h_a < 50)
+        rsi_tag = f"RSI_MR({rsi_1h_a:.0f}/{rsi_4h_a:.0f})" if rsi_quality >= 1 else f"RSI_OB({rsi_1h_a:.0f}/{rsi_4h_a:.0f})"
+    else:
+        rsi_quality = int(rsi_1h_a > 50) + int(rsi_4h_a > 50)
+        rsi_tag = f"RSI_EXH({rsi_1h_a:.0f}/{rsi_4h_a:.0f})" if rsi_quality >= 1 else f"RSI_OS({rsi_1h_a:.0f}/{rsi_4h_a:.0f})"
+    if ltf < 2: return False, f"LTF_ALIGN_FAIL({ltf}/3)"
+    if htf < 2: return False, f"HTF_ALIGN_FAIL({htf}/3)"
+    # BACKTEST_CHANGE_8: K3M_CAP blocks LONG when k_3m >= cap, SHORT when k_3m <= (100-cap)
+    _k3m_cap = 70  # default; overridden by config at call sites
+    if is_long and k_3m >= _k3m_cap: return False, f"K3M_CAP_LONG({k_3m:.0f}>={_k3m_cap})"
+    if not is_long and k_3m <= (100 - _k3m_cap): return False, f"K3M_CAP_SHORT({k_3m:.0f}<={100-_k3m_cap})"
+    # BACKTEST_CHANGE_9: K3M_FLOOR blocks SHORT when k_3m <= floor (mirror of K3M_CAP)
+    _k3m_floor = 30  # default; overridden by config at call sites
+    if not is_long and k_3m <= _k3m_floor: return False, f"K3M_FLOOR_SHORT({k_3m:.0f}<={_k3m_floor})"
+    if is_long and k_3m >= (100 - _k3m_floor): return False, f"K3M_FLOOR_LONG({k_3m:.0f}>={100-_k3m_floor})"
+    return True, f"ALIGNED_LTF({ltf}/3)_HTF({htf}/3)_{rsi_tag}_RSI_Q{rsi_quality}/2"
+
+def check_dc_high_break_retest(indicators: Dict[str, Any], current_price: float, is_long: bool) -> Tuple[bool, str, float]:
+    """DC high/low broke (expanded vs ant), price returned to dc_basis/ema50/sma200 zone → big retest entry.
+    Returns (triggered, reason, size_multiplier). Multiplier: 15m=3x, 1h=5x, 4h=7x, D=10x.
+    On exact retest (near basis/ema50/sma200) full mult; between basis and sma200 = 60% mult.
+    Keeps retrying as long as price is above dc_basis (no additional gate beyond stoch bounce)."""
+    if current_price <= 0: return False, "NO_PRICE", 1.0
+    buf = 0.025
+    break_thresh = 0.015
+    k_3m = _sf(indicators.get('stoch_k_3m'), 50)
+    d_3m = _sf(indicators.get('stoch_d_3m'), 50)
+    k_3m_prev = _sf(indicators.get('k_3m_prev'), k_3m)
+    k_15m = _sf(indicators.get('stoch_k_15m'), 50)
+    tfs_long = [('D', 10.0), ('4h', 7.0), ('1h', 5.0), ('15m', 3.0)]
+    for tf, mult in tfs_long:
+        if is_long:
+            dc_high = _sf(indicators.get(f'dc_high_{tf}'), 0)
+            dc_high_ant = _sf(indicators.get(f'dc_high_{tf}_ant'), 0)
+            dc_basis = _sf(indicators.get(f'dc_basis_{tf}'), 0)
+            dc_low = _sf(indicators.get(f'dc_low_{tf}'), 0)
+            ema50 = _sf(indicators.get(f'ema_50_{tf}'), 0)
+            sma200 = _sf(indicators.get(f'sma_200_{tf}'), 0)
+            if dc_high <= 0 or dc_high_ant <= 0 or dc_basis <= 0: continue
+            bp = (dc_high - dc_high_ant) / dc_high_ant
+            if bp < break_thresh: continue
+            if current_price >= dc_high: continue
+            if dc_low > 0 and current_price < dc_low * 0.97: continue
+            near_basis = abs(current_price - dc_basis) / dc_basis < buf
+            near_ema50 = ema50 > 0 and abs(current_price - ema50) / ema50 < buf
+            near_sma200 = sma200 > 0 and abs(current_price - sma200) / sma200 < buf
+            between_zone = dc_basis > 0 and sma200 > 0 and min(dc_basis, sma200) * 0.97 <= current_price <= max(dc_basis, sma200) * 1.03
+            if not (near_basis or near_ema50 or near_sma200 or between_zone): continue
+            if not (k_3m > d_3m and (k_3m > k_3m_prev or k_15m < 35)): continue
+            actual_mult = mult if (near_basis or near_ema50 or near_sma200) else mult * 0.6
+            return True, f"DC_HIGH_BREAK_RETEST_{tf.upper()}_bp={bp*100:.1f}%_near={'Y' if (near_basis or near_ema50 or near_sma200) else 'ZONE'}_mult={actual_mult:.1f}x", actual_mult
+        else:
+            dc_low = _sf(indicators.get(f'dc_low_{tf}'), 0)
+            dc_low_ant = _sf(indicators.get(f'dc_low_{tf}_ant'), 0)
+            dc_basis = _sf(indicators.get(f'dc_basis_{tf}'), 0)
+            dc_high = _sf(indicators.get(f'dc_high_{tf}'), 0)
+            ema50 = _sf(indicators.get(f'ema_50_{tf}'), 0)
+            sma200 = _sf(indicators.get(f'sma_200_{tf}'), 0)
+            if dc_low <= 0 or dc_low_ant <= 0 or dc_basis <= 0: continue
+            bp = (dc_low_ant - dc_low) / dc_low_ant
+            if bp < break_thresh: continue
+            if current_price <= dc_low: continue
+            if dc_high > 0 and current_price > dc_high * 1.03: continue
+            near_basis = abs(current_price - dc_basis) / dc_basis < buf
+            near_ema50 = ema50 > 0 and abs(current_price - ema50) / ema50 < buf
+            near_sma200 = sma200 > 0 and abs(current_price - sma200) / sma200 < buf
+            between_zone = dc_basis > 0 and sma200 > 0 and min(dc_basis, sma200) * 0.97 <= current_price <= max(dc_basis, sma200) * 1.03
+            if not (near_basis or near_ema50 or near_sma200 or between_zone): continue
+            if not (k_3m < d_3m and (k_3m < k_3m_prev or k_15m > 65)): continue
+            actual_mult = mult if (near_basis or near_ema50 or near_sma200) else mult * 0.6
+            return True, f"DC_LOW_BREAK_RETEST_{tf.upper()}_bp={bp*100:.1f}%_near={'Y' if (near_basis or near_ema50 or near_sma200) else 'ZONE'}_mult={actual_mult:.1f}x", actual_mult
+    return False, "NO_DC_BREAK_RETEST", 1.0
+
+_dc_retest_last: Dict[str, float] = {}
+_ls_ratio_1h_adj: Dict[str, Any] = {"adj": 0.0, "last_cross_ts": 0.0, "prev_k_1h": 50.0, "prev_d_1h": 50.0}  # BACKTEST_CHANGE_LS: L/S ratio shift on k_1h cross
+_tiered_tp_hit: Dict[str, Set[int]] = {}  # BACKTEST_CHANGE_12: tracks which tiered TP levels have been hit per position_key
+# ═══ CRITICAL FIX: DUPLICATE OPEN GUARD — NEVER open same symbol+side twice ═══
+_recent_opens: Dict[str, float] = {}  # position_key → timestamp of last OPEN/AUGMENT execution
+_DUPLICATE_OPEN_COOLDOWN = 900.0  # seconds — HARD block on re-opening within this window (matches _AUGMENT_LOCK)
+# ═══ CRITICAL FIX: DUPLICATE REDUCE GUARD — NEVER reduce same position twice in quick succession ═══
+_recent_reduces: Dict[str, float] = {}  # position_key → timestamp of last REDUCE execution
+_DUPLICATE_REDUCE_COOLDOWN = 15.0  # seconds — HARD block on re-reducing within this window
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. DC_POSITION — Multi-TF Donchian position as quantity multiplier
+# ═══════════════════════════════════════════════════════════════════════════════
+def _dc_pos_single(current_price: float, dc_high: float, dc_low: float) -> float:
+    """0.0 = at low, 1.0 = at high, 0.5 = middle."""
+    if dc_high <= 0 or dc_low <= 0 or dc_high <= dc_low: return 0.5
+    return max(0.0, min(1.0, (current_price - dc_low) / (dc_high - dc_low)))
+
+def compute_dc_position_multiplier(indicators: Dict[str, Any], current_price: float, is_long: bool) -> float:
+    """Multi-TF dc_position ratio used as a quantity multiplier (0.5 – 7.0).
+    BREAKOUT LOGIC: each TF where price is outside DC channel adds a tier multiplier.
+    3m breakout=1.0x, 15m=1.5x, 1h=2.0x, 4h=3.0x. Tiers stack with highest TF."""
+    if current_price <= 0: return 1.0
+    breakout_mult = 1.0
+    buf = 0.001
+    tiers = [('3m', 1.0), ('15m', 1.5), ('1h', 2.0), ('4h', 3.0)]
+    for tf, tier in tiers:
+        dc_high = _sf(indicators.get(f'dc_high_{tf}'), 0.0)
+        dc_low = _sf(indicators.get(f'dc_low_{tf}'), 0.0)
+        if dc_high <= 0 or dc_low <= 0: continue
+        if is_long and current_price > dc_high * (1 + buf):
+            breakout_mult = max(breakout_mult, tier)
+        elif not is_long and current_price < dc_low * (1 - buf):
+            breakout_mult = max(breakout_mult, tier)
+    if breakout_mult > 1.0: return breakout_mult
+    tfs = [('3m', 0.15), ('15m', 0.25), ('1h', 0.25), ('4h', 0.20), ('D', 0.15)]
+    weighted_pos = 0.0
+    total_weight = 0.0
+    for tf, weight in tfs:
+        dc_high = _sf(indicators.get(f'dc_high_{tf}'), 0.0)
+        dc_low = _sf(indicators.get(f'dc_low_{tf}'), 0.0)
+        if dc_high > 0 and dc_low > 0 and dc_high > dc_low:
+            pos = _dc_pos_single(current_price, dc_high, dc_low)
+            weighted_pos += pos * weight
+            total_weight += weight
+    if total_weight < 0.3: return 1.0
+    avg_pos = weighted_pos / total_weight
+    if is_long:
+        mult = 1.0 + (1.0 - avg_pos) * 1.5
+    else:
+        mult = 1.0 + avg_pos * 1.5
+    return max(0.5, min(7.0, mult))
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4. HTF TREND — Higher-high/lower-low + Stochastic RSI D
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_htf_trend(indicators: Dict[str, Any], current_price: float) -> Tuple[str, int]:
+    """Returns (direction, score). direction is 'BULL'/'BEAR'/'NEUTRAL'. score is -10..+10."""
+    bull = 0; bear = 0
+    k_1h, d_1h = _sf(indicators.get('stoch_k_1h')), _sf(indicators.get('stoch_d_1h'))
+    k_4h, d_4h = _sf(indicators.get('stoch_k_4h')), _sf(indicators.get('stoch_d_4h'))
+    k_D, d_D = _sf(indicators.get('stoch_k_D')), _sf(indicators.get('stoch_d_D'))
+    ha_1h, ha_4h, ha_D = str(indicators.get('ha_1h', 'neutral')), str(indicators.get('ha_4h', 'neutral')), str(indicators.get('ha_D', 'neutral'))
+    dc_basis_1h, dc_basis_4h = _sf(indicators.get('dc_basis_1h'), 0), _sf(indicators.get('dc_basis_4h'), 0)
+    sma_200_1h = _sf(indicators.get('sma_200_1h'), 0)
+    high_1h, high_1h_prev = _sf(indicators.get('high_1h'), 0), _sf(indicators.get('high_1h_prev'), 0)
+    low_1h, low_1h_prev = _sf(indicators.get('low_1h'), 0), _sf(indicators.get('low_1h_prev'), 0)
+    high_4h, high_4h_prev = _sf(indicators.get('high_4h'), 0), _sf(indicators.get('high_4h_prev'), 0)
+    low_4h, low_4h_prev = _sf(indicators.get('low_4h'), 0), _sf(indicators.get('low_4h_prev'), 0)
+    high_D, low_D = _sf(indicators.get('high_D'), 0), _sf(indicators.get('low_D'), 0)
+    if k_1h > d_1h: bull += 1
+    else: bear += 1
+    if k_4h > d_4h: bull += 1
+    else: bear += 1
+    if k_D > d_D: bull += 1
+    else: bear += 1
+    if ha_1h == 'green': bull += 1
+    elif ha_1h == 'red': bear += 1
+    if ha_4h == 'green': bull += 1
+    elif ha_4h == 'red': bear += 1
+    if ha_D == 'green': bull += 1
+    elif ha_D == 'red': bear += 1
+    if dc_basis_1h > 0 and current_price > dc_basis_1h: bull += 1
+    elif dc_basis_1h > 0: bear += 1
+    if dc_basis_4h > 0 and current_price > dc_basis_4h: bull += 1
+    elif dc_basis_4h > 0: bear += 1
+    if sma_200_1h > 0 and current_price > sma_200_1h: bull += 1
+    elif sma_200_1h > 0: bear += 1
+    if high_1h > 0 and high_1h_prev > 0 and low_1h > 0 and low_1h_prev > 0:
+        if high_1h > high_1h_prev and low_1h > low_1h_prev: bull += 3
+        elif high_1h < high_1h_prev and low_1h < low_1h_prev: bear += 3
+    if high_4h > 0 and high_4h_prev > 0 and low_4h > 0 and low_4h_prev > 0:
+        if high_4h > high_4h_prev and low_4h > low_4h_prev: bull += 3
+        elif high_4h < high_4h_prev and low_4h < low_4h_prev: bear += 3
+    rsi_1h_t = _sf(indicators.get('rsi_1h'), 50.0)
+    rsi_4h_t = _sf(indicators.get('rsi_4h'), 50.0)
+    if rsi_1h_t > 55: bull += 1
+    elif rsi_1h_t < 45: bear += 1
+    if rsi_4h_t > 55: bull += 2
+    elif rsi_4h_t < 45: bear += 2
+    mfi_1h_t = _sf(indicators.get('mfi_1h'), 50.0)
+    mfi_4h_t = _sf(indicators.get('mfi_4h'), 50.0)
+    mfi_D_t  = _sf(indicators.get('mfi_D'),  50.0)
+    if mfi_1h_t > 60: bull += 1
+    elif mfi_1h_t < 40: bear += 1
+    if mfi_4h_t > 60: bull += 2
+    elif mfi_4h_t < 40: bear += 2
+    if mfi_D_t  > 60: bull += 2
+    elif mfi_D_t  < 40: bear += 2
+    for _bp_tf, _bp_w in [("1h", 1), ("4h", 2), ("D", 3)]:
+        _bp_dir = _sf(indicators.get(f"bar_direction_{_bp_tf}"), 0)
+        _bp_str = _sf(indicators.get(f"bar_strength_{_bp_tf}"), 0)
+        _bp_vc = bool(indicators.get(f"bar_vol_confirm_{_bp_tf}", False))
+        if _bp_dir != 0 and _bp_str >= 0.3:
+            _bp_pts = _bp_w * (1 + int(_bp_vc)) * (1 if _bp_str >= 0.6 else 0.5)
+            if _bp_dir > 0: bull += _bp_pts
+            else: bear += _bp_pts
+    score = bull - bear
+    if score >= 5: return 'BULL', score
+    elif score <= -5: return 'BEAR', score
+    return 'NEUTRAL', score
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4b. HTF DIRECTION GATE — Require positive trend (BULL for longs, BEAR for shorts)
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_htf_trend_aligned(indicators: Dict[str, Any], current_price: float, is_long: bool) -> Tuple[bool, str]:
+    """Returns (ok, reason). Requires BULL for longs, BEAR for shorts. Blocks NEUTRAL entries."""
+    direction, score = check_htf_trend(indicators, current_price)
+    if is_long:
+        return direction == 'BULL', f"HTF_{direction}_score={score:.0f}"
+    return direction == 'BEAR', f"HTF_{direction}_score={score:.0f}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4c. ENTRY TRIGGER — Require concurrent 1m AND 3m stochastic crossover
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool, str]:
+    """Require concurrent 1m AND 3m stoch crossover (K crosses D).
+    Backtest: 150 avg Sharpe vs 77 OR-mode (2x improvement). Falls back if 1m prev missing."""
+    k_1m = _sf(indicators.get('stoch_k_1m'))
+    d_1m = _sf(indicators.get('stoch_d_1m'))
+    d_1m_prev = _sf(indicators.get('d_1m_prev'), d_1m)
+    k_3m = _sf(indicators.get('stoch_k_3m'))
+    d_3m = _sf(indicators.get('stoch_d_3m'))
+    k_3m_prev = _sf(indicators.get('k_3m_prev'), k_3m)
+    k_1m_prev_raw = indicators.get('k_1m_prev')
+    if k_1m_prev_raw is None:
+        return True, "TRIGGER_NO_1M_PREV_ALLOW"
+    k_1m_prev = _sf(k_1m_prev_raw, k_1m)
+    k_15m_t = _sf(indicators.get('stoch_k_15m'), 50.0)
+    rsi_1h_tr = _sf(indicators.get('rsi_1h'), 50.0)
+    rsi_4h_tr = _sf(indicators.get('rsi_4h'), 50.0)
+    if is_long:
+        co_1m = bool(indicators.get('stoch_crossover_1m', False)) or (k_1m > d_1m and k_1m_prev <= d_1m_prev)
+        co_3m = bool(indicators.get('stoch_crossover_3m', False)) or (k_3m > d_3m and k_3m_prev <= d_3m)
+        rsi_ok_long = (rsi_1h_tr < 50) + (rsi_4h_tr < 50)
+        if co_1m and co_3m:
+            quality = "HIGH_QUALITY" if (k_15m_t <= 32 and k_3m > d_3m and rsi_ok_long >= 1) else ("GOOD" if rsi_ok_long >= 1 else "OK")
+            return True, f"TRIGGER_1m_AND_3m_OK_k1={k_1m:.0f}_k3={k_3m:.0f}_q={quality}_rsi={rsi_1h_tr:.0f}/{rsi_4h_tr:.0f}"
+        return False, f"TRIGGER_BLOCKED_co1m={co_1m}_co3m={co_3m}_k1={k_1m:.0f}_k3={k_3m:.0f}"
+    cu_1m = bool(indicators.get('stoch_crossunder_1m', False)) or (k_1m < d_1m and k_1m_prev >= d_1m_prev)
+    cu_3m = bool(indicators.get('stoch_crossunder_3m', False)) or (k_3m < d_3m and k_3m_prev >= d_3m)
+    rsi_ok_short = (rsi_1h_tr > 50) + (rsi_4h_tr > 50)
+    if cu_1m and cu_3m:
+        quality = "HIGH_QUALITY" if (k_15m_t > 50 and rsi_ok_short >= 1) else ("GOOD" if rsi_ok_short >= 1 else ("CAUTION_LOW15" if k_15m_t < 30 else "OK"))
+        return True, f"TRIGGER_1m_AND_3m_OK_k1={k_1m:.0f}_k3={k_3m:.0f}_q={quality}_rsi={rsi_1h_tr:.0f}/{rsi_4h_tr:.0f}"
+    return False, f"TRIGGER_BLOCKED_cu1m={cu_1m}_cu3m={cu_3m}_k1={k_1m:.0f}_k3={k_3m:.0f}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. WINNER MOMENTUM — Must hold while 1m AND 3m are UP (vv for losers)
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_winner_momentum(indicators: Dict[str, Any], is_long: bool, true_lag: float = 0.0) -> Tuple[bool, str]:
+    """Returns (should_hold, reason). True = momentum still favorable — HOLD the winner.
+    Only allows exit when stoch_15m is exhausted (>70 long / <30 short)
+    AND 3m structure is declining (high_3m < high_3m_prev for long)."""
+    k_15m = _sf(indicators.get('stoch_k_15m'))
+    high_3m = _sf(indicators.get('high_3m'), 0)
+    high_3m_prev = _sf(indicators.get('high_3m_prev'), 0)
+    low_3m = _sf(indicators.get('low_3m'), 0)
+    low_3m_prev = _sf(indicators.get('low_3m_prev'), 0)
+    if true_lag > 15.0:
+        return True, "1M_DATA_LAG_HOLD"
+    if is_long:
+        exhausted = k_15m > 80.0
+        structure_breaking = high_3m > 0 and high_3m_prev > 0 and high_3m < high_3m_prev
+    else:
+        exhausted = k_15m < 20.0
+        structure_breaking = low_3m > 0 and low_3m_prev > 0 and low_3m > low_3m_prev
+    if exhausted and structure_breaking:
+        return False, f"EXHAUSTED_k15m={k_15m:.0f}_STRUCT_BREAK"
+    return True, f"HOLD_k15m={k_15m:.0f}_struct={'BREAKING' if structure_breaking else 'OK'}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. ENTRY VETTING — DC breakout + higher low/lower high
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_entry_vetting(indicators: Dict[str, Any], current_price: float, is_long: bool) -> Tuple[bool, str]:
+    """NO ENTRY unless price has broken recent DC highs on at least 3m tf
+    OR low_15m > low_15m_prev, AND (stoch crossover on 1m/3m OR price > dc_high_3m).
+    The ONLY entry should be a higher low on HTF AND higher volume (unless re-entry)."""
+    dc_high_3m = _sf(indicators.get('dc_high_3m'), 0)
+    dc_high_3m_ant = _sf(indicators.get('dc_high_3m_ant'), 0)
+    dc_low_3m = _sf(indicators.get('dc_low_3m'), 0)
+    dc_low_3m_ant = _sf(indicators.get('dc_low_3m_ant'), 0)
+    low_15m = _sf(indicators.get('low_15m'), 0)
+    low_15m_prev = _sf(indicators.get('low_15m_prev'), 0)
+    high_15m = _sf(indicators.get('high_15m'), 0)
+    high_15m_prev = _sf(indicators.get('high_15m_prev'), 0)
+    stoch_co_1m = bool(indicators.get('stoch_crossover_1m', False))
+    stoch_co_3m = bool(indicators.get('stoch_crossover_3m', False))
+    stoch_cu_1m = bool(indicators.get('stoch_crossunder_1m', False))
+    stoch_cu_3m = bool(indicators.get('stoch_crossunder_3m', False))
+    k_1m, k_1m_prev = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('k_1m_prev'))
+    k_3m, d_3m = _sf(indicators.get('stoch_k_3m')), _sf(indicators.get('stoch_d_3m'))
+    if is_long:
+        dc_breakout = dc_high_3m > 0 and dc_high_3m_ant > 0 and dc_high_3m > dc_high_3m_ant
+        structure_ok = low_15m > 0 and low_15m_prev > 0 and low_15m > low_15m_prev
+        trigger = stoch_co_1m or stoch_co_3m or (current_price > dc_high_3m and dc_high_3m > 0) or (k_1m > k_1m_prev and k_3m > d_3m)
+    else:
+        dc_breakout = dc_low_3m > 0 and dc_low_3m_ant > 0 and dc_low_3m < dc_low_3m_ant
+        structure_ok = high_15m > 0 and high_15m_prev > 0 and high_15m < high_15m_prev
+        trigger = stoch_cu_1m or stoch_cu_3m or (current_price < dc_low_3m and dc_low_3m > 0) or (k_1m < k_1m_prev and k_3m < d_3m)
+    if not (structure_ok or dc_breakout): return False, f"NO_STRUCT_OR_BREAKOUT"
+    if not trigger: return False, f"NO_TRIGGER"
+    return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6b. LS_RATIO DYNAMIC ADJUSTMENT ON k_1h CROSS — BACKTEST_CHANGE_LS
+# ═══════════════════════════════════════════════════════════════════════════════
+def update_ls_ratio_1h_adjustment(indicators: Optional[Dict[str, Any]] = None) -> float:
+    """Detect k_1h crossing d_1h and shift LS_RATIO target. Returns current adjustment.
+    Bullish cross: +0.30 (favor longs). Bearish: -0.50 (favor shorts, stronger in crash).
+    In CRASH regime: bearish cross shifts -0.80 to aggressively favor shorts.
+    Resets after 7200s (2 hours) if no new cross."""
+    global _ls_ratio_1h_adj
+    now_ts = time.time()
+    if now_ts - _ls_ratio_1h_adj["last_cross_ts"] > 7200 and _ls_ratio_1h_adj["adj"] != 0.0:
+        logger.info(f"[LS_RATIO_1H_ADJ] Resetting adjustment {_ls_ratio_1h_adj['adj']:.2f} → 0.0 (expired after 2h)")
+        _ls_ratio_1h_adj["adj"] = 0.0
+    if not indicators:
+        return _ls_ratio_1h_adj["adj"]
+    k_1h = _sf(indicators.get('stoch_k_1h'), 50.0)
+    d_1h = _sf(indicators.get('stoch_d_1h'), 50.0)
+    prev_k = _ls_ratio_1h_adj["prev_k_1h"]
+    prev_d = _ls_ratio_1h_adj["prev_d_1h"]
+    bullish_cross = prev_k <= prev_d and k_1h > d_1h
+    bearish_cross = prev_k >= prev_d and k_1h < d_1h
+    _ls_ratio_1h_adj["prev_k_1h"] = k_1h
+    _ls_ratio_1h_adj["prev_d_1h"] = d_1h
+    market_score = _sf(indicators.get('0market_sentiment_score'), 50.0)
+    _regime = check_market_regime(market_score, indicators)
+    if bullish_cross:
+        _ls_ratio_1h_adj["adj"] = 0.30
+        _ls_ratio_1h_adj["last_cross_ts"] = now_ts
+        logger.warning(f"[LS_RATIO_1H_ADJ] Bullish k_1h cross (k={k_1h:.1f} > d={d_1h:.1f}): shifting ratio +0.30 toward LONG (regime={_regime})")
+    elif bearish_cross:
+        shift = -0.80 if _regime == 'CRASH' else -0.50
+        _ls_ratio_1h_adj["adj"] = shift
+        _ls_ratio_1h_adj["last_cross_ts"] = now_ts
+        logger.warning(f"[LS_RATIO_1H_ADJ] Bearish k_1h cross (k={k_1h:.1f} < d={d_1h:.1f}): shifting ratio {shift:.2f} toward SHORT (regime={_regime})")
+    return _ls_ratio_1h_adj["adj"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 7. MARKET REGIME — Crash/Jump detection for ratio suspension
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_market_regime(market_index: float, indicators: Optional[Dict[str, Any]] = None) -> str:
+    """Returns 'CRASH' (suspend longs), 'JUMP' (suspend shorts), or 'NORMAL'.
+    Uses score vs EMA delta as the directional barometer:
+      score > ema = market recovering (don't block longs)
+      score < ema = market deteriorating (don't block shorts)
+    Raw score alone is useless — the DIRECTION matters."""
+    if market_index is None: return 'NORMAL'
+    mi = _sf(market_index, 50.0)
+    if indicators:
+        ema = _sf(indicators.get('0market_sentiment_score_ema'), mi)
+        delta = mi - ema
+        if mi <= 15.0:
+            if delta >= 0: return 'NORMAL'
+            return 'CRASH'
+        if mi >= 85.0:
+            if delta <= 0: return 'NORMAL'
+            return 'JUMP'
+    else:
+        if mi <= 10.0: return 'CRASH'
+        if mi >= 90.0: return 'JUMP'
+    return 'NORMAL'
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 8. NO-LOSS EXIT — Exit BEFORE a loss materializes
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_no_loss_exit(indicators: Dict[str, Any], current_price: float, entry_price: float, is_long: bool, gain_pct: float, prev_gain_pct: float, true_lag: float = 0.0) -> Tuple[bool, str]:
+    """The 'never-losing' rule: exit BEFORE a loss materializes.
+    TIGHTENED: only fires when gain is critically close to zero (<0.03%) AND all 3 LTF stochs
+    are against AND 15m structure is breaking. Backtesting showed the looser version hurt returns."""
+    if gain_pct <= 0.0: return False, "ALREADY_NEGATIVE"
+    if gain_pct > 0.5: return False, "HEALTHY_GAIN"
+    if gain_pct >= 0.03: return False, "HOLD"
+    k_1m, d_1m = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('stoch_d_1m'))
+    k_3m, d_3m = _sf(indicators.get('stoch_k_3m')), _sf(indicators.get('stoch_d_3m'))
+    k_15m, d_15m = _sf(indicators.get('stoch_k_15m')), _sf(indicators.get('stoch_d_15m'))
+    if is_long:
+        all_against = k_1m < d_1m and k_3m < d_3m and k_15m < d_15m
+    else:
+        all_against = k_1m > d_1m and k_3m > d_3m and k_15m > d_15m
+    if not all_against: return False, "HOLD"
+    high_15m = _sf(indicators.get('high_15m'), 0)
+    high_15m_prev = _sf(indicators.get('high_15m_prev'), 0)
+    low_15m = _sf(indicators.get('low_15m'), 0)
+    low_15m_prev = _sf(indicators.get('low_15m_prev'), 0)
+    if is_long:
+        struct_break = high_15m > 0 and high_15m_prev > 0 and high_15m < high_15m_prev
+    else:
+        struct_break = low_15m > 0 and low_15m_prev > 0 and low_15m > low_15m_prev
+    if struct_break:
+        return True, f"NO_LOSS_EXIT_CRITICAL_gain={gain_pct:.3f}%_ALL_TF_AGAINST"
+    return False, "HOLD"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9. RE-ENTRY ELIGIBILITY — Monitor closed trades for re-entry
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_reentry_eligible(indicators: Dict[str, Any], current_price: float, last_exit_price: float, is_long: bool, time_since_exit_min: float) -> Tuple[bool, str]:
+    """Aggressive reentry: reenter on any 1m momentum tick in our favor. Only block if completely exhausted."""
+    if last_exit_price <= 0 or time_since_exit_min > 1200: return False, "NO_EXIT_DATA_OR_TOO_OLD"
+    k_1m, d_1m = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('stoch_d_1m'))
+    k_3m = _sf(indicators.get('stoch_k_3m'))
+    if is_long:
+        if k_3m > 95: return False, "EXHAUSTED_OVERBOUGHT"
+        momentum_ok = k_1m > d_1m
+    else:
+        if k_3m < 5: return False, "EXHAUSTED_OVERSOLD"
+        momentum_ok = k_1m < d_1m
+    if momentum_ok: return True, "REENTRY_1M_MOMENTUM"
+    return False, "NO_1M_MOMENTUM"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 10. SCALPING — Only with HTF alignment + good dc_position
+# ═══════════════════════════════════════════════════════════════════════════════
+def check_scalp_eligible(indicators: Dict[str, Any], current_price: float, is_long: bool) -> Tuple[bool, str]:
+    """Scalping ONLY with HTF alignment and a good dc_position."""
+    aligned, align_reason = check_entry_alignment(indicators, is_long)
+    if not aligned: return False, f"SCALP_BLOCKED_{align_reason}"
+    dc_high_15m = _sf(indicators.get('dc_high_15m'), 0)
+    dc_low_15m = _sf(indicators.get('dc_low_15m'), 0)
+    if dc_high_15m <= 0 or dc_low_15m <= 0 or dc_high_15m <= dc_low_15m: return True, "NO_DC_DATA_ALLOW"
+    dc_pos = _dc_pos_single(current_price, dc_high_15m, dc_low_15m)
+    if is_long and dc_pos > 0.85: return False, f"SCALP_BLOCKED_DC_TOO_HIGH({dc_pos:.2f})"
+    if not is_long and dc_pos < 0.15: return False, f"SCALP_BLOCKED_DC_TOO_LOW({dc_pos:.2f})"
+    return True, f"SCALP_OK_dc={dc_pos:.2f}"
+
+
+class TradingPolicy:
+    """Class wrapper — all methods are module-level functions exposed as staticmethods.
+    Import via: from ez_manage import TradingPolicy  (preferred)
+    or:         import ez_trading_policy as trading_policy (legacy)"""
+    _sf = staticmethod(_sf)
+    compute_applied_ratio = staticmethod(compute_applied_ratio)
+    check_entry_alignment = staticmethod(check_entry_alignment)
+    _dc_pos_single = staticmethod(_dc_pos_single)
+    compute_dc_position_multiplier = staticmethod(compute_dc_position_multiplier)
+    check_htf_trend = staticmethod(check_htf_trend)
+    check_htf_trend_aligned = staticmethod(check_htf_trend_aligned)
+    check_entry_trigger = staticmethod(check_entry_trigger)
+    check_winner_momentum = staticmethod(check_winner_momentum)
+    check_entry_vetting = staticmethod(check_entry_vetting)
+    check_market_regime = staticmethod(check_market_regime)
+    check_no_loss_exit = staticmethod(check_no_loss_exit)
+    check_reentry_eligible = staticmethod(check_reentry_eligible)
+    check_scalp_eligible = staticmethod(check_scalp_eligible)
+
+trading_policy = TradingPolicy
 from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
@@ -55,8 +550,9 @@ from utils import (REDIS_CHANNELS, RateLimitDuplicateFilter, action_logger,
                    force_usdc_if_needed, force_usdc_in_list,
                    get_current_environment, get_current_price,
                    get_simple_redis_manager, is_hedge_account,
-                   is_strict_no_loss_account, load_environment_from_gpg,
-                   parse_position_key, record_decision_context_crypto,
+                   is_sandbox_account, is_strict_no_loss_account,
+                   load_environment_from_gpg, parse_position_key, pk_is_long,
+                   pk_is_short, pk_symbol, record_decision_context_crypto,
                    safe_fetch_float)
 
 warnings.filterwarnings( "ignore", category=UserWarning, message=".*position_keyg_resources is deprecated.*")
@@ -296,7 +792,7 @@ async def check_server_heartbeat(account_key: str = None) -> bool:
                             mtime = acc_path.stat().st_mtime
                             age = time.time() - mtime
                             if age < HEARTBEAT_STALE_THRESHOLD: return True
-                        except: pass
+                        except Exception: pass
                 return False
         else:
             if account_key:
@@ -318,7 +814,7 @@ async def check_server_heartbeat(account_key: str = None) -> bool:
                             mtime = float(result.stdout.strip())
                             age = time.time() - mtime
                             if age < HEARTBEAT_STALE_THRESHOLD: return True
-                        except: pass
+                        except Exception: pass
                 return False
     except Exception as e:
         logger.info(f"[HEARTBEAT] Check failed: {e}")
@@ -333,7 +829,7 @@ async def update_server_heartbeat(account_key: str = None):
             try:
                 heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
                 try: os.chmod(str(heartbeat_path.parent), 0o755)
-                except: pass
+                except Exception: pass
                 if heartbeat_path.exists():
                     os.chmod(str(heartbeat_path), 0o644)
                     os.utime(str(heartbeat_path))
@@ -351,7 +847,7 @@ async def update_server_heartbeat(account_key: str = None):
                 await asyncio.to_thread(subprocess.run, ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", SERVER_HOST, "mkdir", "-p", "/home/niels/binance/data"], timeout=3, capture_output=True)
                 await asyncio.to_thread(subprocess.run, ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", SERVER_HOST, "touch", server_path], timeout=3, capture_output=True)
                 await asyncio.to_thread(subprocess.run, ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", SERVER_HOST, "chmod", "644", server_path], timeout=3, capture_output=True)
-            except: pass
+            except Exception: pass
 
 async def delete_server_heartbeat():
     """Delete all heartbeat files on server"""
@@ -369,7 +865,7 @@ async def delete_server_heartbeat():
             server_path = f"/home/niels/binance/data/ez_manage_running_{account_key}"
             try: 
                 await asyncio.to_thread(subprocess.run, ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", SERVER_HOST, "rm", "-f", server_path], timeout=3, capture_output=True)
-            except: pass
+            except Exception: pass
 
 async def safe_check_server_heartbeat(account_key: str = None) -> bool: return await check_server_heartbeat(account_key)
 
@@ -479,6 +975,7 @@ async def handle_market_index_spike(trade_manager, market_index: float, previous
             lower_low_15m = bool(i.get('low_15m', 0) and i.get('low_15m_prev', 0) and i.get('low_15m', 0) <= i.get('low_15m_prev', 0))
             t_up_15m_override = higher_high_15m or (k_15m > d_15m if k_15m and d_15m else False)
             t_up_15m_effective = t_up_15m if not t_up_15m_override else True
+            if (k_3m == 50 and d_3m == 50) or (k_15m == 50 and d_15m == 50): continue
             long_conditions_met = k_3m < 70 and k_15m < 80 and k_3m > d_3m and t_up_3m and t_up_15m_effective
             order_qty = order_size_usd / current_price
             for account_key in getattr(trade_manager, '_allowed_accounts', trade_manager.accounts.keys()):
@@ -539,7 +1036,8 @@ async def handle_market_index_drop(trade_manager, market_index: float, previous_
             lower_low_15m = bool(i.get('low_15m', 0) and i.get('low_15m_prev', 0) and i.get('low_15m', 0) <= i.get('low_15m_prev', 0))
             t_up_15m_override = lower_low_15m or (k_15m < d_15m if k_15m and d_15m else False)
             t_up_15m_effective = t_up_15m if not t_up_15m_override else False
-            short_conditions_met = k_3m > 30 and k_15m > 20 and k_3m < d_3m and (not t_up_3m or not t_up_15m_effective)
+            if (k_3m == 50 and d_3m == 50) or (k_15m == 50 and d_15m == 50): continue
+            short_conditions_met = k_3m > 30 and k_15m > 20 and k_3m < d_3m and (not t_up_3m or not t_up_15m_effective)  # crash handler: keep loose, structure check in entry_vetting
             order_qty = order_size_usd / current_price
             for account_key in getattr(trade_manager, '_allowed_accounts', trade_manager.accounts.keys()):
                 if not trade_manager.allows_side(account_key, "SHORT"):
@@ -605,7 +1103,7 @@ async def monitor_system_state(trade_manager):
                 updated = getattr(pos, 'mark_price_last_updated', None)
                 try:
                     age = f"{(now - updated).total_seconds():.1f}s" if isinstance(updated, datetime) else "never"
-                except:
+                except Exception:
                     age = "never"
                 logger.info(f" {i}. {position_key}: amt={amt:.4f} mark=${mark:.2f} value=${value:.2f} updated={age} ago")
             sample_positions = all_positions[:3] if all_positions else []
@@ -632,7 +1130,7 @@ async def monitor_system_state(trade_manager):
                                     ts_dt = ts_dt.replace(tzinfo=timezone.utc)
                                 try:
                                     age = max(0.0, (now - ts_dt).total_seconds()) or 0.0
-                                except:
+                                except Exception:
                                     age = 0.0
                                 age = float(age) if age is not None and isinstance(age, (int, float)) else 0.0
                                 logger.info(f"📊 {symbol} indicators: 3m_age={age:.1f}s, keys={len(indicators)}")
@@ -768,6 +1266,12 @@ class DummyLock:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool: return False
 
+    async def acquire(self): return True
+
+    def release(self): pass
+
+    def locked(self): return False
+
 class APIRateLimiter:
 
     def __init__(self, max_calls_per_second: float = 0.5):
@@ -858,7 +1362,7 @@ def _extract_ts_from_filename(path: Path) -> float:
             y, m, d, H, M, S = map(int, match.groups())
             dt = datetime(y, m, d, H, M, S, tzinfo=timezone.utc)
             return dt.timestamp()
-    except: pass
+    except Exception: pass
     return 0.0
 
 def _file_age_seconds(file_path: Path) -> float:
@@ -1096,7 +1600,7 @@ class AccountConfig:
                 asyncio.create_task(delete_heartbeat_on_ban())
             else:
                 loop.run_until_complete(delete_heartbeat_on_ban())
-        except: pass
+        except Exception: pass
 
     async def initialize(self):
         """Initialize the Binance client."""
@@ -1274,6 +1778,9 @@ class TradeVerifier:
         if not self.positions_by_account:
             logger.warning(f"[TradeVerifier][{position_key}] positions_by_account is None, cannot verify trade")
             return False
+        if not position_key:
+            logger.warning("[TradeVerifier] position_key is None, cannot verify trade")
+            return False
         symbol = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
         start_time = time.time()
         if ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action) and initial_positionAmt <= 0: return False
@@ -1295,8 +1802,8 @@ class TradeVerifier:
                                 ts_val = isoparse(ts_val)
                             if isinstance(ts_val, datetime):
                                 if ts_val.tzinfo is None: ts_val = ts_val.replace(tzinfo=timezone.utc)
-                                if ts_val.timestamp() > start_time - 1.0: current_amt = abs(safe_fetch_float(ws_latest.get('positionAmt', 0.0), 0.0))
-                    except: pass
+                                if ts_val.timestamp() > start_time - 3.0: current_amt = abs(safe_fetch_float(ws_latest.get('positionAmt', 0.0), 0.0))
+                    except Exception: pass
                 if current_amt is None:
                     api_positions = self.positions_by_account.get(account_key, {})
                     current_pos = api_positions.get(position_key)
@@ -1304,31 +1811,37 @@ class TradeVerifier:
                         last_upd = getattr(current_pos, 'last_updated', None)
                         if last_upd:
                             if last_upd.tzinfo is None: last_upd = last_upd.replace(tzinfo=timezone.utc)
-                            if last_upd.timestamp() > start_time - 1.0: current_amt = abs(safe_fetch_float(getattr(current_pos, 'positionAmt', 0.0), 0.0))
+                            if last_upd.timestamp() > start_time - 3.0: current_amt = abs(safe_fetch_float(getattr(current_pos, 'positionAmt', 0.0), 0.0))
                 if current_amt is not None:
                     qty_diff = float(current_amt) - float(initial_positionAmt)
                     is_reduction = any(x in action for x in ['REDUCE', 'CLOSE', 'PROFIT_TAKE'])
                     valid_direction = (is_reduction and qty_diff < 0) or (not is_reduction and qty_diff > 0)
+                    if abs(initial_positionAmt) < 1e-6 and any(x in action for x in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN')) and current_amt > 1e-6:
+                        logger.info(f"[TradeVerifier] Verified via WS/Mem (OPEN from zero): {current_amt:.6f}")
+                        return True
                     if abs(qty_diff) >= abs(qty) * 0.1 and valid_direction:
                         logger.info(f"[TradeVerifier] Verified via WS/Mem: {current_amt:.6f} (diff={qty_diff:.6f})")
                         return True
-                    if abs(qty_diff) >= abs(expected_diff) * 0.1:
-                        if (qty_diff > 0 and expected_diff > 0) or (qty_diff < 0 and expected_diff < 0):
-                            logger.info(f"[TradeVerifier] Verified via WS/Mem: {current_amt:.6f} (diff={qty_diff:.6f})")
-                            return True
+                    if abs(qty_diff) >= abs(expected_diff) * 0.1 and valid_direction:
+                        logger.info(f"[TradeVerifier] Verified via WS/Mem: {current_amt:.6f} (diff={qty_diff:.6f})")
+                        return True
             except Exception: await asyncio.sleep(0.5)
         try:
-            if self.positions_service: await self.positions_service.fetch_positions(account_key)
+            if self.positions_service:
+                if hasattr(self.positions_service, '_last_positions_fetch'):
+                    self.positions_service._last_positions_fetch[account_key] = 0.0
+                await self.positions_service.fetch_positions(account_key)
             api_positions = self.positions_by_account.get(account_key, {})
             current_pos = api_positions.get(position_key)
             final_amt = abs(safe_fetch_float(getattr(current_pos, 'positionAmt', 0.0), 0.0)) if current_pos else 0.0
             qty_diff = float(final_amt) - float(initial_positionAmt)
-            if abs(qty_diff) >= abs(expected_diff) * 0.1:
-                if (qty_diff > 0 and expected_diff > 0) or (qty_diff < 0 and expected_diff < 0):
-                    logger.info(f"[TradeVerifier] Executed: {final_amt:.6f} (diff={qty_diff:.6f})")
-                    return True
-            if abs(initial_positionAmt) < 1e-6 and ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action) and final_amt > 1e-6:
-                logger.info(f"[TradeVerifier] Executed (OPEN): {final_amt:.6f}")
+            _is_red_final = any(x in action for x in ['REDUCE', 'CLOSE', 'PROFIT_TAKE'])
+            _valid_dir_final = (_is_red_final and qty_diff < 0) or (not _is_red_final and qty_diff > 0)
+            if abs(qty_diff) >= abs(expected_diff) * 0.1 and _valid_dir_final:
+                logger.info(f"[TradeVerifier] Executed: {final_amt:.6f} (diff={qty_diff:.6f})")
+                return True
+            if abs(initial_positionAmt) < 1e-6 and any(x in action for x in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN')) and final_amt > 1e-6:
+                logger.info(f"[TradeVerifier] Executed (OPEN from zero): {final_amt:.6f}")
                 return True
             if ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action) and final_amt < 1e-6 and abs(initial_positionAmt) >= abs(expected_qty_float) * 0.9:
                 logger.info(f"[TradeVerifier] Executed (CLOSED): position gone")
@@ -1345,7 +1858,7 @@ class TradeVerifier:
                 try:
                     oid = int(order_id_str)
                     if oid not in order_ids_to_cancel: order_ids_to_cancel.append(oid)
-                except: pass
+                except Exception: pass
         if order_ids_to_cancel and account_key in self.accounts:
             account = self.accounts[account_key]
             if account and hasattr(account, 'client') and account.client:
@@ -1512,7 +2025,7 @@ def _check_timestamp_3m_freshness(indicators: dict, max_age_minutes: float = 5.0
         if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - dt).total_seconds()
         return age < (max_age_minutes * 60)
-    except:
+    except Exception:
         return False
 
 def _parse_indicator_timestamp(value: Any) -> Optional[datetime]:
@@ -1594,7 +2107,7 @@ def _snapshot_timestamp(data: dict) -> float:
                 check_count += 1
                 if check_count > 5: break # Don't scan 500 symbols
         return max_ts
-    except: return 0.0
+    except Exception: return 0.0
 
 def _parse_ts(val):
     if isinstance(val, (int, float)): return float(val)
@@ -1603,7 +2116,7 @@ def _parse_ts(val):
             from dateutil.parser import isoparse
             dt = isoparse(val)
             return dt.timestamp()
-        except: pass
+        except Exception: pass
     return 0.0
 
 def _snapshot_is_fresh(snapshot: dict, max_age: float = MAX_MARKET_DATA_AGE_SECONDS, fallback_ts: Optional[Any] = None) -> bool:
@@ -1715,7 +2228,7 @@ def _get_with_staleness_check(ind_dict: dict, key: str, default):
                     ts_dt = ts_dt.replace(tzinfo=timezone.utc)
                 if (datetime.now(timezone.utc) - ts_dt).total_seconds() > secs: 
                     return _get_smart_default(key, default)
-            except: return _get_smart_default(key, default)
+            except Exception: return _get_smart_default(key, default)
     return ind_dict.get(key, default)
 
 def _coerce_indicator_epoch(value: Any) -> Optional[float]:
@@ -1728,7 +2241,7 @@ def _coerce_indicator_epoch(value: Any) -> Optional[float]:
             if val > 32503680000: 
                 val /= 1000.0
             return val
-        except: return None
+        except Exception: return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -1754,7 +2267,7 @@ def _coerce_indicator_epoch(value: Any) -> Optional[float]:
                 dt = isoparse(val)
                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                 return dt.timestamp()
-            except: pass
+            except Exception: pass
     return None
 
 def _get_smart_default(key: str, default_value=None):
@@ -1798,7 +2311,7 @@ def _parse_iso_or_float(val):
         if isinstance(val, str):
             dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
             return dt.timestamp()
-    except: pass
+    except Exception: pass
     return 0.0
 
 async def _refresh_cold_data_cache(trade_manager):
@@ -1819,7 +2332,7 @@ async def _refresh_cold_data_cache(trade_manager):
                 if content:
                     _COLD_DATA_CACHE = orjson.loads(content)
                     _LAST_LOADED_FILE = target
-    except: pass
+    except Exception: pass
 
 async def ii(trade_manager: Optional["MultiAccountTradeManager"] = None, raw_symbol: Optional[str] = None) -> dict:
     """THE LIFELINE: Fetches indicators with priority: Bridge (SharedMem) -> Redis -> JSON File."""
@@ -1849,7 +2362,7 @@ async def ii(trade_manager: Optional["MultiAccountTradeManager"] = None, raw_sym
                         if isinstance(parsed, dict):
                             result = parsed.copy()
                             trade_manager.indicators_source_label = "redis_hot"
-            except: pass
+            except Exception: pass
     if not result:
         snapshot = getattr(trade_manager, 'indicators_snapshot', {})
         bulk_data = snapshot.get(sym)
@@ -1867,7 +2380,7 @@ async def ii(trade_manager: Optional["MultiAccountTradeManager"] = None, raw_sym
                         if isinstance(full_data, dict) and sym in full_data:
                             result = full_data[sym].copy()
                             trade_manager.indicators_source_label = "json_file"
-        except: pass
+        except Exception: pass
     if result:
         mapping = { 'k_1m': 'stoch_k_1m', 'd_1m': 'stoch_d_1m', 'k_3m': 'stoch_k_3m', 'd_3m': 'stoch_d_3m', 'k_1m_prev': 'stoch_k_1m_prev', 'd_1m_prev': 'stoch_d_1m_prev', 'k_3m_prev': 'stoch_k_3m_prev', 'd_3m_prev': 'stoch_d_3m_prev', 'price': 'current_price', 'close': 'current_price' }
         for s_key, val in list(result.items()):
@@ -1877,7 +2390,7 @@ async def ii(trade_manager: Optional["MultiAccountTradeManager"] = None, raw_sym
             try:
                 dt_obj = safe_datetime(hot_ts_val)
                 if dt_obj: result['timestamp_1m'] = dt_obj.isoformat().replace('+00:00', 'Z')
-            except: pass
+            except Exception: pass
     return result if isinstance(result, dict) else {}
 
 async def ensure_indicator_snapshot_ready(ctx: dict, max_latency: float = 0.5, stale_seconds: float = 300) -> dict:
@@ -2029,7 +2542,7 @@ def calculate_tier_mult(i: dict, is_long: bool) -> int:
     k_1h = safe_fetch_float(i.get('stoch_k_1h', 50))
     d_1h = safe_fetch_float(i.get('stoch_d_1h', 50))
     k_4h = safe_fetch_float(i.get('stoch_k_4h', 50))
-    d4h = safe_fetch_float(i.get('stoch_d_4h', 50))
+    d_4h = safe_fetch_float(i.get('stoch_d_4h', 50))
     tick_ts = safe_fetch_float(i.get('tick_ts', 50))
     tier_mult = 0
     arrow1_good = (is_long and k_1m >= k_1m_prev) or (not is_long and k_1m <= k_1m_prev)
@@ -2038,13 +2551,13 @@ def calculate_tier_mult(i: dict, is_long: bool) -> int:
         arrow3_good = (is_long and k_3m >= k_3m_prev) or (not is_long and k_3m <= k_3m_prev)
         if arrow3_good:
             tier_mult = 2
-            arrow15_good = (is_long and k_15m >= d_15m) or (not is_long and k_15m <= d_15m)
+            arrow15_good = (k_15m != 50 or d_15m != 50) and ((is_long and k_15m >= d_15m) or (not is_long and k_15m <= d_15m))
             if arrow15_good:
                 tier_mult = 4
-                arrow1h_good = (is_long and k_1h >= d_1h) or (not is_long and k_1h <= d_1h)
+                arrow1h_good = (k_1h != 50 or d_1h != 50) and ((is_long and k_1h >= d_1h) or (not is_long and k_1h <= d_1h))
                 if arrow1h_good:
                     tier_mult = 6
-                    arrow4h_good = (is_long and k_4h >= d4h) or (not is_long and k_4h <= d4h)
+                    arrow4h_good = (k_4h != 50 or d_4h != 50) and ((is_long and k_4h >= d_4h) or (not is_long and k_4h <= d_4h))
                     if arrow4h_good:
                         tier_mult = 8
     return tier_mult
@@ -2059,7 +2572,6 @@ def is_safe_to_enter(ctx: dict, indicators: dict, current_price: float, is_long:
         position=ctx['position']
     if position and position.last_signal == 'PROFIT_TAKE':
         return True, "SAFE_TO_ENTER"
-    if not i: return False, "NO_INDICATORS"
     low_3m,low_15m,low_1h,low_4h = i.get('low_3m',0),i.get('low_15m',0),i.get('low_1h',0),i.get('low_4h',0)
     high_3m,high_15m,high_1h,high_4h = i.get('high_3m',0),i.get('high_15m',0),i.get('high_1h',0),i.get('high_4h',0)
     dc_low_3m,dc_low_15m,dc_low_1h,dc_low_4h = i.get('dc_low_3m',0),i.get('dc_low_15m',0),i.get('dc_low_1h',0),i.get('dc_low_4h',0)
@@ -2090,8 +2602,8 @@ def is_safe_to_enter(ctx: dict, indicators: dict, current_price: float, is_long:
             return True, f"LONG_ROCKETSHIP_EXCEPTION (rocketship_count={rocketship_count}/4)"
         if strong_uptrend_count >= 2:
             return True, f"LONG_STRONG_UPTREND_PULLBACK (strong_uptrend_count={strong_uptrend_count}/4)"
-        if near_low_count < 1:
-            return False, f"LONG_NOT_NEAR_LOW (near_low_count={near_low_count}/4)" 
+        if near_low_count < 2:
+            return False, f"LONG_NOT_NEAR_LOW (near_low_count={near_low_count}/4, need 2)" 
     else:
         near_high_3m = high_3m > 0 and current_price >= high_3m - (float(atr_3m) * 1.0)
         near_high_15m = high_15m > 0 and current_price >= high_15m - (float(atr_15m) * 1.0)
@@ -2112,8 +2624,8 @@ def is_safe_to_enter(ctx: dict, indicators: dict, current_price: float, is_long:
             return True, f"SHORT_ROCKETSHIP_EXCEPTION (rocketship_count={rocketship_count}/4)"
         if strong_downtrend_count >= 2:
             return True, f"SHORT_STRONG_DOWNTREND_PULLBACK (strong_downtrend_count={strong_downtrend_count}/4)"
-        if near_high_count < 1: # Allow shorts when near highs on any timeframe (contrarian strategy)
-            return False, f"SHORT_NOT_NEAR_HIGH (near_high_count={near_high_count}/4)"
+        if near_high_count < 2:
+            return False, f"SHORT_NOT_NEAR_HIGH (near_high_count={near_high_count}/4, need 2)"
     return True, "SAFE_TO_ENTER"
 
 def get_most_recent_timestamp(*timestamps: Optional[datetime]) -> datetime:
@@ -2144,7 +2656,7 @@ def minutes_since(timestamp_obj, now=None):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return (now - dt).total_seconds() / 60.0
-    except:
+    except Exception:
         return 999999 
 
 def safe_time(x):
@@ -2208,7 +2720,7 @@ def _convert_timestamp_strings(data: Any) -> Any:
     elif isinstance(data, list):
         return [_convert_timestamp_strings(item) for item in data]
     return data
-@dataclass(slots=True)
+@dataclass(slots=False)
 
 class Position:
     symbol: str
@@ -2232,7 +2744,7 @@ class Position:
     last_updated: Optional[datetime]
     last_signal: str 
     realized_pnl: float = 0.0
-    unrealized_pnl: float = 0.0
+    unrealized_pnl_USD: float = 0.0
     was_reentered: bool = False
     was_reduced: bool = False
     is_reduced: bool = False
@@ -2241,6 +2753,66 @@ class Position:
     augment_reason: str = ""
     reduction_reason: str = "" 
     mark_price_last_updated: Optional[datetime] = None
+    _position_key: str = ""
+    _frozen_sacred: bool = False
+
+    def __post_init__(self):
+        """After construction: if positionAmt > 0, sacred fields MUST have content. If not, CRASH."""
+        if abs(self.positionAmt) > 0.0001 and self.entry_price > 0:
+            _missing = []
+            if not self.opened_at: _missing.append('opened_at')
+            if self.max_positionSize == 0 and self.positionAmt > 0: pass  # OK on first open
+            # Only crash if position has been traded (has aug/red history) but fields are wiped
+            if self.last_augmentation_time and self.last_augmentation_price == 0: _missing.append('last_augmentation_price')
+            if self.last_reduction_time and self.last_reduction_price == 0: _missing.append('last_reduction_price')
+            if _missing:
+                import traceback
+                stack = ''.join(traceback.format_stack())
+                _crash_msg = f"\n{'='*80}\n[POSITION_BORN_CORRUPT] {self.symbol}_{self.position_side}: positionAmt={self.positionAmt} entry={self.entry_price} but MISSING: {_missing}\nSTACK:\n{stack}\n{'='*80}"
+                logger.critical(_crash_msg)
+                with open(str(config.LOG_DIR / 'POSITION_ZEROED_CRASH.log'), 'a') as _cf:
+                    _cf.write(f"{datetime.now(timezone.utc).isoformat()} {_crash_msg}\n")
+        object.__setattr__(self, '_frozen_sacred', True)
+
+    # Sacred fields: content → empty = CRASH + stack trace. positionAmt CAN go to 0 (legitimate close).
+    _SACRED_DATETIME_FIELDS = frozenset({'last_augmentation_time', 'last_reduction_time', 'opened_at', 'reduced_at'})
+    _SACRED_FLOAT_FIELDS = frozenset({'max_positionSize', 'entry_price'})
+    _SACRED_STR_FIELDS = frozenset({'augment_reason', 'reduction_reason'})
+
+    def __setattr__(self, name, value):
+        try:
+            old = object.__getattribute__(self, name)
+        except AttributeError:
+            object.__setattr__(self, name, value)
+            return
+        try:
+            frozen = object.__getattribute__(self, '_frozen_sacred')
+        except AttributeError:
+            frozen = False
+        if not frozen:
+            object.__setattr__(self, name, value)
+            return
+        _erased = False
+        if name in Position._SACRED_DATETIME_FIELDS:
+            if old is not None and isinstance(old, datetime) and value is None:
+                _erased = True
+        elif name in Position._SACRED_FLOAT_FIELDS:
+            if old is not None and float(old) > 0 and (value is None or float(value) == 0):
+                _erased = True
+        elif name in Position._SACRED_STR_FIELDS:
+            if old and isinstance(old, str) and len(old) > 0 and (not value or value == ''):
+                _erased = True
+        if _erased:
+            import traceback
+            pk = getattr(self, '_position_key', '') or getattr(self, 'symbol', '?')
+            stack = ''.join(traceback.format_stack())
+            _crash_msg = f"\n{'='*80}\n[SACRED_FIELD_ERASED] {pk}: {name} = {old!r} -> {value!r}\nSTACK:\n{stack}\n{'='*80}"
+            logger.critical(_crash_msg)
+            with open(str(config.LOG_DIR / 'POSITION_ZEROED_CRASH.log'), 'a') as _cf:
+                _cf.write(f"{datetime.now(timezone.utc).isoformat()} {_crash_msg}\n")
+            os._exit(99)
+        object.__setattr__(self, name, value)
+
     @classmethod
 
     def from_dict(cls, data: Dict[str, Any]) -> "Position":
@@ -2258,7 +2830,7 @@ class Position:
                 if s == "": return 0.0
                 s = s.replace(",", "")
                 try: return float(Decimal(s))
-                except: return 0.0
+                except Exception: return 0.0
             if isinstance(x, dict):
                 for k in ("amount", "qty", "positionAmt", "value"):
                     if k in x: return safe_float(x[k])
@@ -2279,7 +2851,7 @@ class Position:
                     except (ValueError, TypeError):
                         return None
             return None
-        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=safe_float(data.get("positionAmt")), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=safe_float(data.get("realized_pnl")), unrealized_pnl=safe_float(data.get("unrealized_pnl")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), )
+        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=safe_float(data.get("positionAmt")), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=safe_float(data.get("realized_pnl")), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), )
 
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
@@ -2416,10 +2988,10 @@ class WebSocketManager:
                                             continue
                                         raw_amt_raw = safe_fetch_float(pos_update.get("pa") or "0")
                                         entry_price_raw = safe_fetch_float(pos_update.get("ep") or "0")
-                                        unrealized_pnl_raw = safe_fetch_float(pos_update.get("up") or pos_update.get("unrealizedProfit")) if ("up" in pos_update or "unrealizedProfit" in pos_update) else None
+                                        unrealized_pnl_USD_raw = safe_fetch_float(pos_update.get("up") or pos_update.get("unrealizedProfit")) if ("up" in pos_update or "unrealizedProfit" in pos_update) else None
                                         position_key_raw = construct_position_key(account_key, symbol_raw, position_side_raw)
                                         if not position_key_raw: continue
-                                        position_data = {'positionAmt': abs(raw_amt_raw), 'symbol': symbol_raw, 'positionSide': position_side_raw, 'entryPrice': entry_price_raw, 'ep': entry_price_raw, 'unrealizedPnl': unrealized_pnl_raw, 'timestamp': event_ts}
+                                        position_data = {'positionAmt': abs(raw_amt_raw), 'symbol': symbol_raw, 'positionSide': position_side_raw, 'entryPrice': entry_price_raw, 'ep': entry_price_raw, 'unrealizedPnl': unrealized_pnl_USD_raw, 'timestamp': event_ts}
                                         await self.trade_manager.position_callback_manager.notify_position_update(position_key_raw, position_data)
                                         if self.trade_manager.order_execution_monitor:
                                             self.trade_manager.order_execution_monitor.mark_order_executed(position_key_raw)
@@ -2758,7 +3330,7 @@ async def _atomic_write_json_impl(file_path: Union[str, Path], data: dict):
         if not file_path_obj.parent.exists():
             file_path_obj.parent.mkdir(parents=True, exist_ok=True)
             try: os.chmod(str(file_path_obj.parent), 0o775)
-            except: pass
+            except Exception: pass
         try:
             json_bytes = json_dumps(data)
         except Exception as e:
@@ -2771,13 +3343,13 @@ async def _atomic_write_json_impl(file_path: Union[str, Path], data: dict):
             await f.flush()
         await asyncio.to_thread(os.replace, str_temp_path, str_file_path)
         try: os.chmod(str_file_path, 0o664)
-        except: pass
+        except Exception: pass
         return True
     except Exception as e:
         logger.error(f"Atomic write failed for {str_file_path}: {e}")
         if Path(str_temp_path).exists():
             try: os.unlink(str_temp_path)
-            except: pass
+            except Exception: pass
         return False
 
 def _sanitize_json_value(value: Any) -> Any:
@@ -2826,8 +3398,8 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                             age = (now_utc - timestamp).total_seconds() if timestamp else 999999
                             if age < 12.0 and price > 0: return price
                             if age < 90 and price > 0: candidates.append((age, price, "Redis", timestamp))
-                    except: pass
-        except: pass
+                    except Exception: pass
+        except Exception: pass
     if trade_manager:
         if symbol in trade_manager.price_cache:
             try:
@@ -2840,7 +3412,7 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                         age = (now_utc - timestamp).total_seconds()
                         if age < 12.0 and price > 0: return price
                         if age < 90 and price > 0: candidates.append((age, price, "price_cache", timestamp))
-            except: pass
+            except Exception: pass
         if symbol in trade_manager.price_cache_2:
             try:
                 cache_entry = trade_manager.price_cache_2[symbol]
@@ -2852,7 +3424,7 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                         age = (now_utc - timestamp).total_seconds()
                         if age < 12.0 and price > 0: return price
                         if age < 90 and price > 0: candidates.append((age, price, "price_cache_2", timestamp))
-            except: pass
+            except Exception: pass
         if symbol in trade_manager.price_cache_3:
             try:
                 cache_entry = trade_manager.price_cache_3[symbol]
@@ -2864,7 +3436,7 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                         age = (now_utc - timestamp).total_seconds()
                         if age < 12.0 and price > 0: return price
                         if age < 90 and price > 0: candidates.append((age, price, "price_cache_3", timestamp))
-            except: pass
+            except Exception: pass
         managed_accounts = set(trade_manager.accounts.keys())
         for account_key, positions_dict in trade_manager.positions_by_account.items():
             if account_key not in managed_accounts or account_key not in config.ACCOUNT_KEYS:
@@ -2884,7 +3456,7 @@ async def quick_price(symbol: Optional[str] = None) -> float:
                 age = (now_utc - price_ts).total_seconds() if price_ts else 999
                 if age < 12.0: return price
                 if age < 90: candidates.append((age, price, "get_current_price", price_ts))
-        except: pass
+        except Exception: pass
     if candidates:
         candidates.sort(key=lambda x: x[0])
         best_age, price, best_source, best_ts = candidates[0]
@@ -2942,7 +3514,7 @@ async def price(symbol: str, position=None, max_age: float = 2.0, withts: bool =
                                 return (price_val, ts) if withts else price_val
                     elif not withts and data:
                          return float(data)
-            except: pass
+            except Exception: pass
     if not withts:
         quick = await quick_price(symbol)
         if quick and quick > 0:
@@ -3071,7 +3643,7 @@ class IndicatorsBridge:
                         if hot_snapshot:
                             self._merge_into_cache(hot_snapshot, "bridge")
                             data_found = True
-                    except: 
+                    except Exception: 
                         self.shared_proxy = None 
                 if not data_found and hasattr(self.trade_manager, 'redis_manager'):
                     try:
@@ -3084,10 +3656,10 @@ class IndicatorsBridge:
                                 if isinstance(snapshot, dict):
                                     self._merge_into_cache(snapshot, "redis")
                                     data_found = True
-                    except: pass
+                    except Exception: pass
             except Exception:
                 await asyncio.sleep(1)
-            await asyncio.sleep(0.05) # 50ms poll
+            await asyncio.sleep(1.0) # 1s poll — hot_data_cache updated by Redis pub/sub
 
     def _merge_into_cache(self, new_snapshot: Dict[str, Dict], source: str):
         target = self.trade_manager.hot_data_cache
@@ -3383,16 +3955,66 @@ class OrderExecutionMonitor:
             pass
         return False
 
+    _stuck_order_counts = {}
+
     async def _handle_stuck_order(self, position_key: str):
-        """Aggressively clear locks so the system doesn't freeze"""
+        """Aggressively clear locks so the system doesn't freeze. Limits REENTRY retries."""
         if position_key in self.pending_orders:
             order = self.pending_orders[position_key]
-            self.logger.warning(f"[OrderMonitor] ☢️ NUKING LOCKS for {position_key} due to stuck {order['action']}")
+            action = order.get('action', '')
+            self._stuck_order_counts[position_key] = self._stuck_order_counts.get(position_key, 0) + 1
+            count = self._stuck_order_counts[position_key]
+            self.logger.warning(f"[OrderMonitor] ☢️ NUKING LOCKS for {position_key} due to stuck {action} (attempt #{count})")
             await self.trade_manager.force_clear_execution_lock(position_key)
             await self.trade_manager.clear_all_cooldowns_for_position(position_key)
             async with self.trade_manager.dedupe_lock:
                 self.trade_manager.order_deduplication.pop(position_key, None)
             del self.pending_orders[position_key]
+            if count >= 5 and 'REENTRY' in action.upper():
+                self.logger.critical(f"[OrderMonitor] 🛑 REENTRY_STUCK_LIMIT: {position_key} failed {count}x — setting 10min cooldown to stop loop")
+                await self.trade_manager.set_trade_cooldown(position_key, cooldown_seconds=600)
+                self._stuck_order_counts[position_key] = 0
+
+
+# ═══ POST-TRADE FIELD VERIFICATION — COLLAPSE if reduction fields not set within 4s ═══
+_recent_trade_events: Dict[str, Dict] = {}  # position_key → {timestamp, action, price, qty, ...} last 4s of activity
+def _verify_reduction_fields_set(trade_manager, position_key: str, expected_qty: float, expected_price: float):
+    try:
+        pos = None
+        if hasattr(trade_manager, 'positions') and position_key in trade_manager.positions:
+            pos = trade_manager.positions[position_key]
+        if not pos and hasattr(trade_manager, 'positions_service') and trade_manager.positions_service:
+            pos = trade_manager.positions_service.positions.get(position_key)
+        if not pos:
+            return
+        _lrt = getattr(pos, 'last_reduction_time', None)
+        _lra = getattr(pos, 'last_reduction_amount', 0)
+        _lrp = getattr(pos, 'last_reduction_price', 0)
+        _wr = getattr(pos, 'was_reduced', False)
+        _ir = getattr(pos, 'is_reduced', False)
+        fields_ok = _lrt is not None and _lra > 0 and _lrp > 0 and _wr and _ir
+        if not fields_ok:
+            import threading, traceback as _vtb
+            _threads = [(t.name, t.ident) for t in threading.enumerate()]
+            _recent = dict(list(_recent_trade_events.items())[-20:])
+            _crash_msg = f"\n{'!'*80}\n🚨🚨🚨 FIELD COLLAPSE: {position_key} — reduction fields NOT SET 4s after trade!\nExpected: qty={expected_qty:.6f} price={expected_price:.6f}\nActual: last_reduction_time={_lrt}, last_reduction_amount={_lra}, last_reduction_price={_lrp}, was_reduced={_wr}, is_reduced={_ir}\nPosition state: positionAmt={getattr(pos, 'positionAmt', '?')}, entry_price={getattr(pos, 'entry_price', '?')}, gain={getattr(pos, 'gain', '?')}, last_signal={getattr(pos, 'last_signal', '?')}\nRecent trade events (last 4s):\n"
+            for pk, ev in _recent.items():
+                _crash_msg += f"  {pk}: {ev}\n"
+            _crash_msg += f"Active threads: {_threads}\nPID={os.getpid()}\n{'!'*80}\n"
+            logger.critical(_crash_msg)
+            try:
+                with open(os.path.expanduser("~/logs/FIELD_COLLAPSE_CRASH.log"), "a") as _cf:
+                    _cf.write(f"[{datetime.now(timezone.utc).isoformat()}] {_crash_msg}\n")
+            except Exception:
+                pass
+        else:
+            logger.info(f"[FIELD_VERIFY_OK] {position_key}: All reduction fields confirmed set after trade.")
+    except Exception as e:
+        logger.error(f"[FIELD_VERIFY_ERROR] {position_key}: {e}")
+
+# UNBREAKABLE AUGMENT LOCK - in-memory, no Redis, no disk, CANNOT fail
+_AUGMENT_LOCK = {}  # {position_key: timestamp_of_last_augment}
+_AUGMENT_LOCK_MIN_SECONDS = 900  # 15 minutes minimum between augments
 
 class MultiAccountTradeManager:
 
@@ -3446,7 +4068,7 @@ class MultiAccountTradeManager:
         self._save_accounts_lock = DummyLock()
         self._file_write_locks = {}
         self._lock_for_file_write_locks = asyncio.Lock()
-        self.dedupe_lock = DummyLock() 
+        self.dedupe_lock = DummyLock()
         self.price_fetch_lock = DummyLock() 
         self._price_fetch_locks = {}
         self._price_fetch_locks_lock = asyncio.Lock()
@@ -3514,6 +4136,7 @@ class MultiAccountTradeManager:
         self._last_augment_save_time = {}
         self.reduction_cooldown_map = {}
         self.augmentation_cooldown_map = {}
+        self._aug_webhook_sent = {}
         self.winners_20 = {}
         self.losers_20 = {}
         self.winners_15m = {}
@@ -3679,7 +4302,7 @@ class MultiAccountTradeManager:
         if isinstance(content, bytes):
             try:
                 content = content.decode('utf-8', errors='ignore')
-            except:
+            except Exception:
                 return None
         if not content or not isinstance(content, str):
             return None
@@ -3848,52 +4471,16 @@ class MultiAccountTradeManager:
         return self.get_positions_by_account(account_key, side)
 
     async def get_position(self, position_key: str) -> Optional[Position]:
-        pos = None
+        """Read from the dict. That's it. No Redis, no disk, no fallbacks. The dict IS the truth."""
         pos = self.positions.get(position_key)
-        account_key,sym,sd=parse_position_key(position_key)
-        if pos: 
-            self._position_memory[position_key] = pos
+        if pos:
             return pos
         if self.positions_service:
-            if hasattr(self.positions_service, 'positions'):
-                pos = self.positions_service.positions.get(position_key)
-                if pos:
-                    self.positions[position_key] = pos
-                    self.positions_by_account.setdefault(account_key, {})[position_key] = pos
-                    self._position_memory[position_key] = pos
-                    return pos
-            try:
-                account_key, symbol, side = parse_position_key(position_key)
-            except Exception:
-                return None
-            if hasattr(self.positions_service, 'positions_by_account'):
-                bucket = self.positions_service.positions_by_account.get(account_key, {})
-                pos = bucket.get(position_key)
-                if pos:
-                    self.positions[position_key] = pos
-                    self.positions_by_account.setdefault(account_key, {})[position_key] = pos
-                    self._position_memory[position_key] = pos
-                    return pos
-        try:
-            bucket = await self._load_positions_from_redis(account_key)
-            if bucket and position_key in bucket:
-                pos = bucket[position_key]
+            pos = self.positions_service.positions.get(position_key)
+            if pos:
                 self.positions[position_key] = pos
-                self.positions_by_account.setdefault(account_key, {})[position_key] = pos
                 return pos
-        except Exception as e:
-            logger.error(f"[{position_key}] get_position Redis fallback failed: {e}")
-        try:
-            bucket = await self._load_positions_quick_from_files(account_key)
-            if bucket and position_key in bucket:
-                pos = bucket[position_key]
-                self.positions[position_key] = pos
-                self.positions_by_account.setdefault(account_key, {})[position_key] = pos
-                self._position_memory[position_key] = pos
-                return pos
-        except Exception: pass
-        if position_key in self._position_memory:
-            return self._position_memory[position_key]
+        return None
         try:
             acc, sym, side = parse_position_key(position_key)
             file_path = self.base_path / acc / f"{side.lower()}_positions.json"
@@ -3908,6 +4495,7 @@ class MultiAccountTradeManager:
                         return disk_pos
         except Exception as e:
              logger.error(f"[{position_key}] get_position Disk fallback failed: {e}")
+        logger.critical(f'🚨 [POSITION_NOT_FOUND] {position_key}: NOT in memory, NOT in Redis, NOT on disk. Returning None — REFUSING to create empty position. This is a data integrity safeguard.')
         return None
 
     async def _recover_position_safe(self, position_key: str, account_key: str = None, symbol: str = None, position_side: str = None) -> Optional[Position]:
@@ -3956,7 +4544,7 @@ class MultiAccountTradeManager:
         if position is None:
             return position
         position_dict = position.to_dict()
-        numeric_fields = ['entry_price', 'mark_price', 'positionAmt', 'initial_quantity', 'gain', 'max_gain', 'prev_gain', 'max_quantity', 'last_augmentation_amount', 'last_augmentation_price', 'last_reduction_amount', 'last_reduction_price', 'max_positionSize', 'realized_pnl', 'unrealized_pnl']
+        numeric_fields = ['entry_price', 'mark_price', 'positionAmt', 'initial_quantity', 'gain', 'max_gain', 'prev_gain', 'max_quantity', 'last_augmentation_amount', 'last_augmentation_price', 'last_reduction_amount', 'last_reduction_price', 'max_positionSize', 'realized_pnl', 'unrealized_pnl_USD']
         for key, value in position_dict.items():
             if key in ['symbol', 'position_side', 'last_signal', 'augment_reason', 'reduction_reason', 'last_augmentation_time', 'last_reduction_time', 'opened_at', 'last_updated', 'prev_gain_last_updated', 'mark_price_last_updated']:
                 continue # Skip non-numeric fields
@@ -3966,7 +4554,7 @@ class MultiAccountTradeManager:
                 elif isinstance(value, str) and value.replace('.', '').replace('-', '').isdigit():
                     try:
                         position_dict[key] = safe_fetch_float(value, 0.0)
-                    except:
+                    except Exception:
                         position_dict[key] = 0.0
         return Position.from_dict(position_dict)
 
@@ -4053,7 +4641,7 @@ class MultiAccountTradeManager:
         return key
 
     async def _load_positions_from_files(self, account_key: Optional[str] = None) -> Dict[str, Position]:
-        if self.positions_service: return
+        # positions_service bailout removed — refresh from Redis/files is backup
         if account_key not in self._allowed_accounts:
             logger.warning(f"[_load_positions_from_files] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
             return {}
@@ -4100,7 +4688,7 @@ class MultiAccountTradeManager:
         return bucket
 
     async def _load_position_files_payload(self, account_key: str, long_path: Path, short_path: Path) -> Tuple[Dict[str, Any], Optional[datetime]]:
-        if self.positions_service: return
+        # positions_service bailout removed — refresh from Redis/files is backup
         combined: Dict[str, Any] = {}
         ts_candidates: List[datetime] = []
         for path, default_side in ((long_path, "LONG"), (short_path, "SHORT")):
@@ -4310,7 +4898,8 @@ class MultiAccountTradeManager:
         return candidate
 
     async def _load_positions_quick_from_files(self, account_key: Optional[str] = None) -> Dict[str, Position]:
-        if self.positions_service: return
+        """KILLED — never read positions from disk after startup. Dict is sole source."""
+        return {}
         if account_key not in self._allowed_accounts:
             logger.warning(f"[_load_positions_quick_from_files] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
             return {}
@@ -4463,7 +5052,8 @@ class MultiAccountTradeManager:
             return None
 
     async def _load_positions_from_redis(self, account_key: Optional[str] = None) -> Dict[str, Position]:
-        if self.positions_service: return
+        """KILLED — never read positions from Redis after startup. Dict is sole source."""
+        return {}
         if account_key not in self._allowed_accounts:
             logger.warning(f"[_load_positions_from_redis] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
             return {}
@@ -4504,7 +5094,7 @@ class MultiAccountTradeManager:
                         result, err = await asyncio.wait_for(task, timeout=0.3)
                         if task == redis_task and result:first_result, first_source = result, "redis"
                         elif result and not first_result:first_result, first_source = result, "json"
-                    except:pass
+                    except Exception: pass
         redis_result, redis_err = await redis_task
         json_result, json_err = await json_task
         if not redis_result and not json_result:
@@ -4656,7 +5246,7 @@ class MultiAccountTradeManager:
         return []
 
     def _placeholder_position(self, symbol: str, side: str) -> Position:
-        payload = { "symbol": symbol, "position_side": side, "entry_price": 0.0, "mark_price": 0.0, "positionAmt": 0.0, "initial_quantity": 0.0, "gain": 0.0, "max_gain": 0.0, "prev_gain": 0.0, "max_quantity": 0.0, "last_augmentation_amount": 0.0, "last_augmentation_price": 0.0, "last_reduction_amount": 0.0, "last_reduction_price": 0.0, "max_positionSize": 0.0, "opened_at": None, "last_updated": None, "last_signal": "", "realized_pnl": 0.0, "unrealized_pnl": 0.0, "was_reentered": False, "was_reduced": False, "prev_gain_last_updated": None, "augment_reason": "", "reduction_reason": "", "mark_price_last_updated": None }
+        payload = { "symbol": symbol, "position_side": side, "entry_price": 0.0, "mark_price": 0.0, "positionAmt": 0.0, "initial_quantity": 0.0, "gain": 0.0, "max_gain": 0.0, "prev_gain": 0.0, "max_quantity": 0.0, "last_augmentation_amount": 0.0, "last_augmentation_price": 0.0, "last_reduction_amount": 0.0, "last_reduction_price": 0.0, "max_positionSize": 0.0, "opened_at": None, "last_updated": None, "last_signal": "", "realized_pnl": 0.0, "unrealized_pnl_USD": 0.0, "was_reentered": False, "was_reduced": False, "prev_gain_last_updated": None, "augment_reason": "", "reduction_reason": "", "mark_price_last_updated": None }
         try:
             return Position.from_dict(payload)
         except Exception:
@@ -5164,7 +5754,7 @@ class MultiAccountTradeManager:
             try:
                 _, symbol, _ = parse_position_key(position_key)
                 symbol = symbol.strip().upper()
-            except:
+            except Exception:
                 continue
             position = await self.get_position(position_key)
             has_position = position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) > 0
@@ -5182,7 +5772,7 @@ class MultiAccountTradeManager:
                 if client:
                     await client.hdel(f"direct_high_gain_augmented:{account_key}", *keys_to_delete_from_redis)
                     logger.warning(f"[DIRECT_GAIN_LOAD] 🧹 Sanitized {len(keys_to_delete_from_redis)} disallowed/closed symbols from Redis for {account_key}")
-            except: pass
+            except Exception: pass
         logger.info(f"[load_direct_high_gain] Redis synced {len(seen_keys)} valid entries for {account_key}")
         return True
 
@@ -5370,7 +5960,7 @@ class MultiAccountTradeManager:
                     cooldown_time = cooldown_entry.get('time')
                     if isinstance(cooldown_time, datetime):
                         cooldown_age = (now_utc - cooldown_time).total_seconds()
-                        if cooldown_age >= 60.0:
+                        if cooldown_age >= _AUGMENT_LOCK_MIN_SECONDS:
                             stale_keys.append(position_key)
             for key in stale_keys:
                 self.augmentation_cooldown_map.pop(key, None)
@@ -6464,7 +7054,7 @@ class MultiAccountTradeManager:
              try:
                 self.raw_indicators_json_content = orjson.dumps(self.indicators_snapshot)
                 self.last_redis_data_hash = hash(self.raw_indicators_json_content)
-             except: pass
+             except Exception: pass
         return True
 
     async def _refresh_indicators_from_file(self):
@@ -6895,15 +7485,11 @@ class MultiAccountTradeManager:
                 if result:
                     ttl = await redis_client.ttl(lock_key)
                     logger.debug(f"[LOCK_ACQUIRED] {lock_key}: Redis lock acquired (TTL={ttl}s)")
-                else:
-                    pass
                 return bool(result)
+            logger.error(f"[LOCK_ERROR] {lock_key}: Redis client unavailable. Falling back to local lock.")
             return await self._try_local_lock(lock_key, expiry_seconds)
         except Exception as e:
-            if position_key.startswith("execute_now:") or position_key.startswith("maker_order:"):
-                lock_key = position_key
-            else:
-                lock_key = f"execute_now:{position_key}"
+            lock_key = position_key if position_key.startswith("execute_now:") else f"execute_now:{position_key}"
             lock_acquired = await self._try_local_lock(lock_key, expiry_seconds)
             if lock_acquired:
                 logger.debug(f"[LOCK_ERROR] {lock_key}: Redis failed ({str(e)[:60]}), using local fallback")
@@ -7123,10 +7709,10 @@ class MultiAccountTradeManager:
             logger.warning(f"Error clearing redis recent signal for {position_key}: {e}")
 
     async def clear_all_cooldowns_for_position(self, position_key: str, side: str = None):
-        """Clear ALL cooldown-related data for a position when execution fails or is not_allowed"""
+        """Clear signal cooldowns for a position when execution fails. NEVER clear augment guards."""
         try:
             self.recently_queued_signals.pop(position_key, None)
-            self.augmentation_cooldown_map.pop(position_key, None)
+            # NEVER clear augmentation_cooldown_map — it's an augment guard, not a signal cooldown
             self.reduction_cooldown_map.pop(position_key, None)
             await self.clear_recent_signal(position_key)
             if hasattr(self, 'orders_in_limbo') and position_key in self.orders_in_limbo:
@@ -7510,7 +8096,7 @@ class MultiAccountTradeManager:
                 json_data_str = None
                 if isinstance(json_data_bytes, bytes):
                     try: json_data_str = json_data_bytes.decode('utf-8')
-                    except: pass
+                    except Exception: pass
                 elif isinstance(json_data_bytes, str):
                     json_data_str = json_data_bytes
                 repaired = False
@@ -7521,7 +8107,7 @@ class MultiAccountTradeManager:
                             test_parse = json.loads(repaired_content)
                             repaired = True
                             logger.debug(" Repaired Redis data during integrity check")
-                        except: pass
+                        except Exception: pass
                 if not repaired:
                     logger.error(f"Corrupted Redis data detected during integrity check, clearing")
                     try:
@@ -7657,7 +8243,7 @@ class MultiAccountTradeManager:
                     if isinstance(data, dict):
                         logger.debug(f" Recovered JSON from '{file_path.name}' after fixing trailing issues")
                         return data
-                except:
+                except Exception:
                     pass
                 try:
                     decoder = json.JSONDecoder()
@@ -7665,7 +8251,7 @@ class MultiAccountTradeManager:
                     if isinstance(first_obj, dict):
                         logger.warning(f"Partial recovery of '{file_path.name}' - using first valid dictionary")
                         return first_obj
-                except:
+                except Exception:
                     pass
                 logger.error(f"Failed to load '{file_path.name}")
                 return {}
@@ -7691,27 +8277,12 @@ class MultiAccountTradeManager:
         return True
 
     async def restore_position_from_backups(self, account_key: Optional[str] = None, symbol: Optional[str] = None, position_side: Optional[str] = None) -> Optional[Position]:
-        if not account_key or not symbol or not position_side: return None
-        return
-        try:
-            import glob
-            import os
-            position_key = f"{account_key}:{symbol}_{position_side}"
-            backup_dir_str = os.path.join(str(self.config.BASE_PATH), account_key, "backups")
-            position_side_str = position_side.lower()
-            patterns = [ f"{position_side_str}_positions.json_backup_*.json", f"{position_side_str}_positions_backup_*.json", ]
-            if not os.path.exists(backup_dir_str):
-                return None
-            backup_files = []
-            for pat in patterns:
-                search_path = os.path.join(backup_dir_str, pat)
-                backup_files.extend(glob.glob(search_path))
-            if backup_files:
-                logger.debug(f"[ez_manage][RESTORE_BACKUP] Found {len(backup_files)} backup files for {position_key} but NOT restoring (ez_positions_service is source of truth).")
+        """Delegate to positions_service which searches: own backups → own main file → ALL other accounts."""
+        if not account_key or not symbol or not position_side:
             return None
-        except Exception as e:
-            logger.error(f"[RESTORE_BACKUP] Error checking backups for {symbol}:{position_side}: {e}")
-            return None
+        if self.positions_service and hasattr(self.positions_service, 'restore_position_from_backups'):
+            return await self.positions_service.restore_position_from_backups(account_key, symbol, position_side)
+        return None
 
     async def get_symbols_for_account(self, account_key: Optional[str] = None) -> set:
         if not account_key: return set()
@@ -7738,6 +8309,8 @@ class MultiAccountTradeManager:
             return None
 
     async def load_all_positions(self):
+        """KILLED — positions loaded once at bootstrap from disk. After that, API/WS only."""
+        return
         master_symbols_list = []
         try:
             async with aiofiles.open(self.config.SYMBOLS_FILE, 'r') as f:
@@ -7766,7 +8339,7 @@ class MultiAccountTradeManager:
             await self._load_positions_with_lock(master_allowed_symbols)
 
     async def _load_positions_with_lock(self, master_allowed_symbols):
-        if self.positions_service: return
+        # positions_service bailout removed — refresh from Redis/files is backup
         total_loaded_count = 0
         total_ignored_count = 0
         for account_config in self.accounts.values():
@@ -7861,7 +8434,7 @@ class MultiAccountTradeManager:
                     try:
                         mtime = os.path.getmtime(backup_file)
                         all_backups.append((mtime, backup_file))
-                    except: continue
+                    except Exception: continue
                 if len(all_backups) > 1:
                     all_backups.sort(key=lambda x: x[0], reverse=True) # Newest first
                     keep_paths = set()
@@ -7893,7 +8466,7 @@ class MultiAccountTradeManager:
                             try:
                                 await aio_os.remove(path)
                                 temp_files_cleaned += 1
-                            except: pass
+                            except Exception: pass
         except Exception as error:
             logger.error(f"[cleanup_temp_files] Error cleaning for {account_key}: {error}")
         return temp_files_cleaned
@@ -7955,6 +8528,7 @@ class MultiAccountTradeManager:
             return quantity
 
     def adjust_price(self, price: float, tick_size: float) -> float:
+        if not tick_size or tick_size <= 0: return round(price, 8)
         precision = int(-math.log10(tick_size))
         return round(math.floor(price / tick_size) * tick_size, precision) 
 
@@ -7986,23 +8560,23 @@ class MultiAccountTradeManager:
         if not content_bytes: return None
         try:
             return orjson.loads(content_bytes)
-        except:
+        except Exception:
             pass
         try:
             text = content_bytes.decode('utf-8', errors='ignore').strip()
-        except:
+        except Exception:
             return None
         if not text: return None
         try:
             obj, _ = json.JSONDecoder().raw_decode(text)
             return obj
-        except:
+        except Exception:
             pass
         try:
             text_fixed = re.sub(r'"\s+"', '", "', text)
             text_fixed = re.sub(r'}\s+{', '}, {', text_fixed)
             return orjson.loads(text_fixed)
-        except:
+        except Exception:
             pass
         try:
             if text.startswith('['):
@@ -8011,7 +8585,7 @@ class MultiAccountTradeManager:
             elif text.startswith('{'):
                 last_idx = text.rfind('}')
                 if last_idx > 0: return orjson.loads(text[:last_idx+1])
-        except:
+        except Exception:
             pass
         return None
 
@@ -8088,7 +8662,7 @@ class MultiAccountTradeManager:
                                         valid_acc_keys = {k for k in t_keys if k.startswith(f"{acc_key}:")}
                                         aggregated_keys.update(valid_acc_keys)
                                         accounts_checked += 1
-                            except: pass
+                            except Exception: pass
                 if len(aggregated_keys) > 5:
                     self.tradeable_keys = aggregated_keys
                     keys_loaded = True
@@ -8549,7 +9123,7 @@ class MultiAccountTradeManager:
                         current_price = signal_price if signal_price and signal_price > 0 else None
                         if not current_price:
                             try: current_price = await quick_price(symbol)
-                            except: pass
+                            except Exception: pass
                         if not current_price or current_price <= 0:
                             current_price,_ = await self.get_current_price(symbol)
                         if not current_price or current_price <= 0:
@@ -8562,11 +9136,44 @@ class MultiAccountTradeManager:
                         base_amt = abs(float(getattr(position, 'positionAmt', 0.0) or 0.0)) if position else 0.0
                         auto_action = "SELL" if not is_entry else ("OPEN" if base_amt <= config.START_POSITION_SIZE / current_price else "AUGMENT")
                         reason_code = f"ALL_{signal_type.upper()}_DIRECT_{auto_action}_{event_type}"
+                        # === CHANNEL POSITION GATE ===
+                        # ALL_RED fires SHORT opens — block if price already near channel BOTTOM (move is done)
+                        # ALL_GREEN fires LONG opens — block if price already near channel TOP (too late to buy)
+                        if auto_action in ("OPEN", "AUGMENT"):
+                            bb_pb_1h = float(indicators.get("bb_pct_b_1h", 0.5) or 0.5)
+                            lr_pb_1h = float(indicators.get("lr_pct_b_1h", 0.5) or 0.5)
+                            bb_pb_4h = float(indicators.get("bb_pct_b_4h", 0.5) or 0.5)
+                            lr_pb_4h = float(indicators.get("lr_pct_b_4h", 0.5) or 0.5)
+                            ch_pb = bb_pb_1h * 0.3 + lr_pb_1h * 0.3 + bb_pb_4h * 0.2 + lr_pb_4h * 0.2
+                            if not is_long and ch_pb < 0.40:
+                                logger.warning(f"[DIRECT_QUEUE_BLOCKED] {position_key}: ALL_RED SHORT blocked — price at channel BOTTOM (pct_b={ch_pb:.2f}<0.40, move already done)")
+                                continue
+                            if is_long and ch_pb > 0.60:
+                                logger.warning(f"[DIRECT_QUEUE_BLOCKED] {position_key}: ALL_GREEN LONG blocked — price at channel TOP (pct_b={ch_pb:.2f}>0.60, too late)")
+                                continue
+                        # === AUGMENT-IN-LOSS GATE ===
+                        # Never add to a losing position from ALL_RED/ALL_GREEN signals
+                        if auto_action == "AUGMENT" and position:
+                            pos_gain = float(getattr(position, "gain", 0.0) or 0.0)
+                            if pos_gain < -0.5:
+                                logger.warning(f"[DIRECT_QUEUE_BLOCKED] {position_key}: AUGMENT blocked — position in loss ({pos_gain:.2f}%) via ALL signal")
+                                continue
+                        # === RATIO GATE for new SHORT opens ===
+                        # If shorts already heavily outnumber longs, do not add more shorts
+                        if auto_action == "OPEN" and not is_long:
+                            try:
+                                _rd = self.positions_service.get_long_short_ratio(account_key)
+                                _short_pct = _rd.get("short_pct", 50.0)
+                                if _short_pct > 65.0:
+                                    logger.warning(f"[DIRECT_QUEUE_BLOCKED] {position_key}: SHORT OPEN blocked — ratio too short-heavy ({_short_pct:.0f}% short)")
+                                    continue
+                            except Exception:
+                                pass
                         logger.warning(f"[🚀 DIRECT_QUEUE] {position_key}: {signal_type.upper()} signal -> {auto_action} (conviction={conviction:.1f})")
                         result = await queue_trade_action(self.order_queue, self, position_key, auto_action, reason_code, conviction)
-                        if result and not result.startswith("QUEUED") and not result.startswith("SUCCESS"):
+                        if result and not result.startswith("QUEUED") and not result.startswith("SUCCESS") and not result.startswith("SKIPPED_OPEN_BLOCKED"):
                             account_key, symbol, position_side = parse_position_key(position_key)
-                            side = "BUY" if auto_action in ["OPEN", "AUGMENT"] and position_side == "LONG" else "SELL"
+                            side = ("BUY" if position_side == "LONG" else "SELL") if auto_action in ["OPEN", "AUGMENT"] else ("SELL" if position_side == "LONG" else "BUY")
                             await self.clear_all_cooldowns_for_position(position_key, side)
                             logger.info(f"[DIRECT_QUEUE] {position_key}: Cleared cooldowns after queue failure (result={result})")
                     return
@@ -8686,6 +9293,7 @@ class MultiAccountTradeManager:
                                     if is_new_position:
                                         k_3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0) if indicators else 50.0
                                         d_3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0) if indicators else 50.0
+                                        if k_3m == 50 and d_3m == 50: continue
                                         k_3m_prev = safe_fetch_float(indicators.get('k_3m_prev', 50), 50.0) if indicators else 50.0
                                         entry_price = safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0)
                                         current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0) if indicators else entry_price
@@ -9351,7 +9959,8 @@ class MultiAccountTradeManager:
             self.price_band_tracked_order_ids.clear()
 
     async def refresh_from_files_once(self, account_keys: Optional[Iterable[str]] = None):
-        if self.positions_service: return
+        """KILLED — positions come from API/WS only. Disk/Redis are write-only backups. Never read back."""
+        return
         keys = list(account_keys or self._allowed_accounts)
         for account_key in keys:
             loaders = [ (self.load_stop_levels, "stop levels"), (self.load_reentry_data, "reentry levels"), (self.load_ladder_levels, "ladder levels"), (self.load_reversed_positions, "reversed positions"), (self.load_direct_high_gain, "direct high gain"), ]
@@ -9362,9 +9971,8 @@ class MultiAccountTradeManager:
                     logger.error(f"[refresh_from_files] Failed to load {label} for {account_key}: {exc}")
 
     async def sync_positions_from_redis_once(self, account_keys: List[str]) -> None:
-        if self.positions_service:
-            logger.info("[_load_positions_loop] Disabled (Shared Memory Active)")
-            return 
+        """KILLED — never read positions from Redis. API/WS is sole source."""
+        return
         if not self.redis_manager:
             logger.warning("[sync_positions_from_redis] No Redis manager available, skipping sync")
             return
@@ -9477,10 +10085,10 @@ class MultiAccountTradeManager:
             await asyncio.sleep(self._positions_sync_interval)
 
     async def refresh_from_files_loop(self, interval: Optional[float] = None):
-        if self.positions_service:
-            return
-        await asyncio.sleep(1.0)
-        refresh_interval = float(interval or 60.0) # Default 60s for refresh
+        """KILLED — positions_service with enable_auto_fetch=True is the sole source of truth via WS+API. Reading from files would overwrite live data with stale disk data."""
+        return
+        await asyncio.sleep(3.0)
+        refresh_interval = float(interval or 4.0)
         while True:
             try:
                 account_keys = list(self.accounts.keys())
@@ -9507,37 +10115,16 @@ class MultiAccountTradeManager:
                             logger.debug(f"[refresh_from_files_loop] Redis data stale/unavailable for {account_key}, loading positions from files")
                             bucket = await self._load_positions_quick_from_files(account_key)
                             if bucket:
-                                if account_key not in self.positions_by_account:
-                                    self.positions_by_account[account_key] = {}
-                                expected_count = len(config.SYMBOLS) * 2
-                                if expected_count > 0 and len(bucket) >= expected_count:
-                                    self.positions_by_account[account_key] = bucket.copy()
-                                    monitored_account_keys = set(self.accounts.keys())
-                                    for position_key, pos_obj in bucket.items():
-                                        if account_key in monitored_account_keys:
-                                            self.positions[position_key] = pos_obj
-                                else:
-                                    existing_count = len(self.positions_by_account[account_key])
-                                    self.positions_by_account[account_key].update(bucket)
-                                    monitored_account_keys = set(self.accounts.keys())
-                                    for position_key, pos_obj in bucket.items():
-                                        if account_key in monitored_account_keys:
-                                            self.positions[position_key] = pos_obj
-                                    if len(self.positions_by_account[account_key]) < existing_count:
-                                        logger.critical(f"[refresh_from_files_loop] {account_key} - POSITION COUNT DECREASED from {existing_count} to {len(self.positions_by_account[account_key])} - THIS SHOULD NEVER HAPPEN!")
+                                self.positions_by_account.setdefault(account_key, {}).update(bucket)
+                                for position_key, pos_obj in bucket.items():
+                                    self.positions[position_key] = pos_obj
                         except Exception as e:
                             logger.debug(f"[refresh_from_files_loop] Redis check failed for {account_key}: {e}, loading positions from files")
                             bucket = await self._load_positions_quick_from_files(account_key)
                             if bucket:
-                                if account_key not in self.positions_by_account:
-                                    self.positions_by_account[account_key] = {}
-                                expected_count = len(config.SYMBOLS) * 2
-                                if expected_count > 0 and len(bucket) >= expected_count:
-                                    self.positions_by_account[account_key] = bucket.copy()
-                                    monitored_account_keys = set(self.accounts.keys())
-                                    for position_key, pos_obj in bucket.items():
-                                        if account_key in monitored_account_keys:
-                                            self.positions[position_key] = pos_obj
+                                self.positions_by_account.setdefault(account_key, {}).update(bucket)
+                                for position_key, pos_obj in bucket.items():
+                                    self.positions[position_key] = pos_obj
                                 else:
                                     existing_count = len(self.positions_by_account[account_key])
                                     self.positions_by_account[account_key].update(bucket)
@@ -9548,24 +10135,12 @@ class MultiAccountTradeManager:
                                     if len(self.positions_by_account[account_key]) < existing_count:
                                         logger.critical(f"[refresh_from_files_loop] {account_key} - POSITION COUNT DECREASED from {existing_count} to {len(self.positions_by_account[account_key])} - THIS SHOULD NEVER HAPPEN!")
                 else:
-                    monitored_account_keys = set(self.accounts.keys())
                     for account_key in account_keys:
                         bucket = await self._load_positions_quick_from_files(account_key)
                         if bucket:
-                            if account_key not in self.positions_by_account:
-                                self.positions_by_account[account_key] = {}
-                            expected_count = len(config.SYMBOLS) * 2 if hasattr(config, 'SYMBOLS') else 0
-                            if expected_count > 0 and len(bucket) >= expected_count:
-                                self.positions_by_account[account_key] = bucket.copy()
-                                for position_key, pos_obj in bucket.items():
-                                    if account_key in monitored_account_keys:
-                                        self.positions[position_key] = pos_obj
-                            else:
-                                existing_count = len(self.positions_by_account[account_key])
-                                self.positions_by_account[account_key].update(bucket)
-                                for position_key, pos_obj in bucket.items():
-                                    if account_key in monitored_account_keys:
-                                        self.positions[position_key] = pos_obj
+                            self.positions_by_account.setdefault(account_key, {}).update(bucket)
+                            for position_key, pos_obj in bucket.items():
+                                self.positions[position_key] = pos_obj
                                 if len(self.positions_by_account[account_key]) < existing_count:
                                     logger.critical(f"[refresh_from_files_loop] {account_key} - POSITION COUNT DECREASED from {existing_count} to {len(self.positions_by_account[account_key])} - THIS SHOULD NEVER HAPPEN!")
             except Exception as exc:
@@ -9641,7 +10216,7 @@ class MultiAccountTradeManager:
                         if acc_key in self.accounts:
                             symbol_part = parts[1].replace('_LONG', '').replace('_SHORT', '')
                             relevant_symbols.add(symbol_part)
-                except: pass
+                except Exception: pass
         for acc_key in self.accounts:
             if acc_key in self.positions_by_account:
                 for pos_key, pos in self.positions_by_account[acc_key].items():
@@ -9697,7 +10272,7 @@ class MultiAccountTradeManager:
                 self._apply_indicator_snapshot(file_payload, file_ts, "file")
 
     async def _enforce_positions_sync(self):
-        if self.positions_service: return
+        # positions_service bailout removed — refresh from Redis/files is backup
         accounts = list(self.accounts.keys()) if isinstance(self.accounts, dict) else list(getattr(self.config, "ACCOUNT_KEYS", []))
         for account_key in accounts:
             try:
@@ -9786,7 +10361,7 @@ class MultiAccountTradeManager:
             logger.debug(f"[POSITION_RELOAD] Failed to reload positions for {account_key}: {exc}")
 
     async def _load_positions_all_accounts(self) -> None:
-        if self.positions_service: return
+        # positions_service bailout removed — refresh from Redis/files is backup
         try:
             new_positions: Dict[str, Position] = {}
             new_positions_by_account: Dict[str, Dict[str, Position]] = {}
@@ -10108,16 +10683,46 @@ class MultiAccountTradeManager:
         if multiplier < 0.2: multiplier = 0.2
         if multiplier > 3.0: multiplier = 3.0
         return multiplier
-
+#0D
     async def execute_trade_action(self, account_key, position_key, symbol, quantity, current_price, side, position_side, unique_id, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kwargs):
         if not position_key or not isinstance(position_key, str) or not position_key.strip():
             logger.error(f"🛡️ [execute_trade_action] CRITICAL: Invalid position_key: {position_key}")
             return f"BLOCKED_INVALID_POSITION_KEY"
         is_reduce = action in ['CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE'] or 'CLOSE' in reason or 'REDUCE' in reason
         is_augment = not is_reduce
+        position = None
+        # ═══ ABSOLUTE RULE: NEVER OPEN AN ALREADY-OPEN POSITION — reclassify to AUGMENT ═══
+        if is_augment and 'OPEN' in action.upper() and 'CLOSE' not in action.upper():
+            position = await self.get_position(position_key)
+            if position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) > self.min_qty.get(symbol, 0.0001):
+                logger.critical(f"[OPEN_ON_OPEN_RECLASSIFY] {position_key}: action={action} but positionAmt={position.positionAmt:.6f} > 0. Forcing AUGMENT.")
+                action = action.replace('OPEN', 'AUGMENT').replace('open', 'augment')
+        # ═══ CRITICAL FIX: HARD DUPLICATE OPEN GUARD — NEVER open same position twice ═══
+        if is_augment and 'HEDGE' not in action.upper() and 'HEDGE' not in reason.upper():
+            _last_open_ts = _recent_opens.get(position_key, 0)
+            if time.time() - _last_open_ts < _DUPLICATE_OPEN_COOLDOWN:
+                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_DUPLICATE_OPEN_COOLDOWN}s). action={action} reason={reason}")
+                return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
+        # URGENT_FIX: Never augment a losing position
+        if is_augment and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True):
+            if not position: position = await self.get_position(position_key)
+            _gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0) if position else 0.0
+            if _gain < 0:
+                logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED augment — position is losing (gain={_gain:.2f}%). Only augment winners.")
+                return f"BLOCKED_AUGMENT_LOSING_POSITION_{_gain:.2f}%"
+        # URGENT_FIX: Cap total augments per position
+        if is_augment and position:
+            _aug_count = safe_fetch_float(getattr(position, 'augmented_count', 0), 0.0)
+            _max_augs = getattr(config, 'MAX_AUGMENTS_PER_POSITION', 3)
+            if _aug_count >= _max_augs:
+                logger.warning(f"[MAX_AUGMENTS_CAP] {position_key}: BLOCKED — augmented_count={int(_aug_count)} >= max={_max_augs}")
+                return f"BLOCKED_MAX_AUGMENTS_{int(_aug_count)}"
+        # BACKTEST_CHANGE_46: block augments on blacklisted symbols (reductions still allowed)
+        if is_augment and symbol in getattr(config, 'BLACKLIST_SYMBOLS', []):
+            return f"BLOCKED_BLACKLISTED_{symbol}"
         position = await self.get_position(position_key)
-        if not position: 
-            logger.warning(f'{position_key} HAS NO POSITION WTF') 
+        if not position:
+            logger.warning(f'{position_key} HAS NO POSITION WTF')
             return
         i = await ii(self, symbol)
         if not i and is_augment:
@@ -10144,6 +10749,17 @@ class MultiAccountTradeManager:
             return result
         elif is_reduce and not config.MANAGE_REDUCE: 
             return "BLOCKED - EZ_MANAGE NOT ALLOWED TO REDUCE"
+        if 'DC_HIGH_BREAK_RETEST' in reason.upper() and is_augment:
+            # ═══ CRITICAL FIX: DC_BREAK_RETEST must ALSO respect duplicate guard ═══
+            _last_open_ts = _recent_opens.get(position_key, 0)
+            if time.time() - _last_open_ts < _DUPLICATE_OPEN_COOLDOWN:
+                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD_DC_RETEST] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago. DC_BREAK_RETEST does NOT bypass this.")
+                return f"BLOCKED_DUPLICATE_OPEN_DC_RETEST_{position_key}"
+            if not current_price or current_price <= 0:
+                current_price, _ = await get_current_price(symbol)
+            logger.warning(f"[DC_BREAK_RETEST_BYPASS] {position_key}: Skipping all execute_trade_action gates → execute_now directly qty={quantity:.6f} ${quantity*current_price:.2f}")
+            _recent_opens[position_key] = time.time()
+            return await self.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, quantity, current_price, unique_id, reason, is_full_close, action, is_hedge, hedge_for)
         if 'WEAK' in reason or 'WEAK' in action:
             logger.info(f"🛡️ [execute_trade_action] BLOCKED WEAK SHIT SUSPENDED)")
             return "BLOCKED WEAK SHIT SUSPENDED"
@@ -10187,18 +10803,59 @@ class MultiAccountTradeManager:
         positionAmt_abs = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
         
         # --- SUBSTITUTION LOGIC (Make Room for Winners) ---
-        is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT']
-        if is_entry_action and 'HEDGE' not in reason.upper() and self.positions_service:
+        is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'QUICK_QUICK_HEDGE_OPEN'] or 'HEDGE' in action.upper()
+        _is_winner_augment = action in ['AUGMENT', 'QUICK_AUGMENT'] and safe_fetch_float(getattr(position, 'gain', 0.0), 0.0) >= 2.0
+        if is_entry_action and 'HEDGE' not in reason.upper() and 'REENTRY' not in action.upper() and not _is_winner_augment and self.positions_service:
             try:
                 ratio_data = self.positions_service.get_long_short_ratio(account_key)
-                indicators_ratio = await ii(self, symbol) if symbol else None
-                _sentiment = safe_fetch_float(indicators_ratio.get('0market_sentiment_score', 0), 0.0) if indicators_ratio else 0.0
-                if position_side == 'LONG' and _sentiment < -20 and ratio_data.get('long_pct', 50) > 70:
-                    logger.warning(f"[RATIO_GATE] {position_key}: Blocking LONG entry — sentiment={_sentiment:.0f}, long_pct={ratio_data['long_pct']:.0f}%")
-                    return "BLOCKED_BY_RATIO_GATE"
-                if position_side == 'SHORT' and _sentiment > 20 and ratio_data.get('short_pct', 50) > 70:
-                    logger.warning(f"[RATIO_GATE] {position_key}: Blocking SHORT entry — sentiment={_sentiment:.0f}, short_pct={ratio_data['short_pct']:.0f}%")
-                    return "BLOCKED_BY_RATIO_GATE"
+                indicators_ratio = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDT')
+                ir = indicators_ratio if indicators_ratio else {}
+                _calc_long = ratio_data.get('long_pct', 50)
+                _calc_short = ratio_data.get('short_pct', 50)
+                _applied_long, _applied_short, _ratio_active = trading_policy.compute_applied_ratio(_calc_long, _calc_short, ir, position_side == 'LONG')
+                # BACKTEST_CHANGE_LS: Dynamic L/S ratio shift on k_1h cross
+                _ls_adj = trading_policy.update_ls_ratio_1h_adjustment(ir)
+                _ls_min_eff = max(config.LS_RATIO_HARD_MIN, config.LS_RATIO_MIN + _ls_adj)
+                _ls_max_eff = min(config.LS_RATIO_HARD_MAX, config.LS_RATIO_MAX + _ls_adj)
+                _long_value = ratio_data.get('long_value', 0)
+                _short_value = ratio_data.get('short_value', 0)
+                _ctr = set(s.upper() for s in getattr(config, 'COUNTER_TREND_CRYPTO', []))
+                if _ctr and account_key in self.positions_by_account:
+                    _ctr_long_val = 0.0
+                    _ctr_short_val = 0.0
+                    for _pk, _pos in self.positions_by_account.get(account_key, {}).items():
+                        _sym = getattr(_pos, 'symbol', '')
+                        if _sym.upper() not in _ctr: continue
+                        _amt = abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0))
+                        if _amt == 0: continue
+                        _val = _amt * safe_fetch_float(getattr(_pos, 'mark_price', 0) or getattr(_pos, 'entry_price', 0), 0)
+                        if _pk.endswith('_LONG'): _ctr_long_val += _val
+                        elif _pk.endswith('_SHORT'): _ctr_short_val += _val
+                    _long_value = _long_value - _ctr_long_val + _ctr_short_val
+                    _short_value = _short_value - _ctr_short_val + _ctr_long_val
+                    _long_value = max(0, _long_value)
+                    _short_value = max(0, _short_value)
+                _current_ls = _long_value / max(_short_value, 1.0) if _short_value > 0 else 1.0
+                if position_side == 'LONG' and _current_ls > _ls_max_eff:
+                    logger.warning(f"[LS_RATIO_1H_GATE] {position_key}: Blocking LONG — current_ls={_current_ls:.2f} > max_eff={_ls_max_eff:.2f} (adj={_ls_adj:+.2f})")
+                    return "BLOCKED_BY_LS_RATIO_1H_GATE"
+                if position_side == 'SHORT' and _current_ls < _ls_min_eff:
+                    logger.warning(f"[LS_RATIO_1H_GATE] {position_key}: Blocking SHORT — current_ls={_current_ls:.2f} < min_eff={_ls_min_eff:.2f} (adj={_ls_adj:+.2f})")
+                    return "BLOCKED_BY_LS_RATIO_1H_GATE"
+                _regime = trading_policy.check_market_regime(safe_fetch_float(ir.get('0market_sentiment_score'), 50.0), ir)
+                if _regime == 'CRASH' and position_side == 'LONG':
+                    logger.warning(f"[MARKET_REGIME] {position_key}: Blocking LONG — CRASH regime (market_score={safe_fetch_float(ir.get('0market_sentiment_score'), 50.0):.1f})")
+                    return "BLOCKED_BY_MARKET_CRASH"
+                if _regime == 'JUMP' and position_side == 'SHORT':
+                    logger.warning(f"[MARKET_REGIME] {position_key}: Blocking SHORT — JUMP regime (market_score={safe_fetch_float(ir.get('0market_sentiment_score'), 50.0):.1f})")
+                    return "BLOCKED_BY_MARKET_JUMP"
+                if _ratio_active:
+                    if position_side == 'LONG' and _calc_long > _applied_long + 10:
+                        logger.warning(f"[RATIO_GATE] {position_key}: Blocking LONG — applied_ratio={_applied_long:.0f}% (doubled from {_calc_long:.0f}%), actual_long={_calc_long:.0f}%")
+                        return "BLOCKED_BY_RATIO_GATE"
+                    if position_side == 'SHORT' and _calc_short > _applied_short + 10:
+                        logger.warning(f"[RATIO_GATE] {position_key}: Blocking SHORT — applied_ratio={_applied_short:.0f}% (doubled from {_calc_short:.0f}%), actual_short={_calc_short:.0f}%")
+                        return "BLOCKED_BY_RATIO_GATE"
             except Exception as e:
                 logger.debug(f"[RATIO_GATE] Error checking ratio for {position_key}: {e}")
         if is_entry_action and account_key in self.positions_by_account:
@@ -10207,26 +10864,32 @@ class MultiAccountTradeManager:
             if active_count >= 18:
                 logger.warning(f"🎰 [MARGIN_MANAGEMENT] {account_key} has {active_count} positions. Substitution Logic Triggered.")
                 
-                # Find the shittiest position (lowest gain)
+                # Find the shittiest position (lowest gain, but NEVER kill a winner > 1%)
                 shittiest_pk = None
                 lowest_gain = 999.0
-                
                 for pk, pos in acc_positions.items():
-                    if pk == position_key: continue # Don't kill the one we are evaluating!
+                    if pk == position_key: continue
                     p_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                     if p_amt > 0.0001:
                         p_gain = safe_fetch_float(getattr(pos, 'gain', 0.0), 0.0)
+                        if p_gain >= 1.0:
+                            continue
                         if p_gain < lowest_gain:
                             lowest_gain = p_gain
                             shittiest_pk = pk
+                if not shittiest_pk:
+                    logger.info(f"⛔ [SUBSTITUTION_BLOCKED] All {active_count} positions in {account_key} have gain >= 1% — no substitution for {position_key}")
                 
+                if shittiest_pk:
+                    if lowest_gain < 0 and account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', []):
+                        logger.info(f"⛔ [SUBSTITUTION_NO_LOSS_BLOCK] {shittiest_pk} gain={lowest_gain:.2f}% — cannot kill losers on NO_LOSS account {account_key}")
+                        shittiest_pk = None
                 if shittiest_pk:
                     s_pos = acc_positions[shittiest_pk]
                     s_amt = abs(safe_fetch_float(getattr(s_pos, 'positionAmt', 0.0), 0.0))
                     s_side = 'SELL' if shittiest_pk.endswith('_LONG') else 'BUY'
                     s_pos_side = 'LONG' if shittiest_pk.endswith('_LONG') else 'SHORT'
                     s_sym = shittiest_pk.split(':')[1].replace('_LONG','').replace('_SHORT','')
-                    
                     logger.critical(f"🧹 [SUBSTITUTION] Killing {shittiest_pk} (Gain: {lowest_gain:.2f}%) to make room for {position_key}")
                     
                     # Fire-and-forget close
@@ -10247,17 +10910,23 @@ class MultiAccountTradeManager:
                 logger.warning(f"[GracefulExit] Auto-cleared stale exit flag for {position_key} (no open position)")
             except Exception as exit_save_err:
                 logger.error(f"[GracefulExit] Failed to persist exit flag removal for {position_key}: {exit_save_err}")
-        is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT']
+        is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'QUICK_QUICK_HEDGE_OPEN'] or 'HEDGE' in action.upper()
         is_stop_loss = 'STOP' in reason.upper() or 'EMERGENCY' in reason.upper() or 'LIQUIDATION' in reason.upper()
-        is_profit = position.gain > 0.05
+        is_profit = position.gain > 0.01
         is_deep_loss = position.gain < -0.5
-        if not is_stop_loss and not is_profit and not is_deep_loss and not is_full_close and not is_entry_action and 'PROFIT' not in reason.upper():
-            failure_reason = f"{position_key}_BLOCKED_CHURN_EXIT (Gain {position.gain:.2f}% is inside -0.5% to 0.05% hold zone)"
+        is_dc_floor = 'DC' in reason.upper() or 'FLOOR' in reason.upper() or 'BREAK' in reason.upper()
+        is_profit_exit = 'IN_GAIN_TREND' in reason.upper() or 'HARVEST' in reason.upper() or 'NO_LOSS_EXIT' in reason.upper() or 'WINNER_MOMENTUM' in reason.upper() or 'STOCH_PROFIT_EXIT' in reason.upper() or 'CYCLE_TP' in reason.upper()
+        is_hedge_action = 'HEDGE' in action.upper() or 'HEDGE' in reason.upper()
+        if not is_stop_loss and not is_profit and not is_deep_loss and not is_full_close and not is_entry_action and not is_hedge_action and 'PROFIT' not in reason.upper() and not is_dc_floor and not is_profit_exit and position.gain > -0.1:
+            failure_reason = f"{position_key}_BLOCKED_CHURN_EXIT (Gain {position.gain:.2f}% is inside -0.1% to 0.05% hold zone)"
             logger.info(f"🛡️ [EXECUTION_GUARD] {position_key} REJECTED: {failure_reason}")
             return failure_reason
         current_price = await price(symbol, position)
-        if current_price is None:
+        if not current_price or current_price <= 0:
             current_price,_=await self.get_current_price(symbol)
+        if not current_price or current_price <= 0:
+            logger.error(f"[execute_trade_action] {position_key}: could not get valid price, aborting")
+            return f"BLOCKED_INVALID_PRICE_{position_key}"
         is_long = position_side == "LONG"
         pos_min_qty = max(5.50 / current_price, self.min_qty.get(symbol, 0.0001) * 1.2)
         if 'OPEN' in reason.upper() and position.positionAmt > pos_min_qty: return f'BLOCK_YOUFUCKINGPIECEOFSHIT_OPEN IS FOR ZERO YOU FUCKING DISGRACEFUL MOTHER FUCKER SICK MOTHER FUCKING BITCH'
@@ -10301,19 +10970,60 @@ class MultiAccountTradeManager:
             dc_high4_1m = safe_fetch_float(i.get('dc_high4_1m'), 0.0)
             dc_low4_1m = safe_fetch_float(i.get('dc_low4_1m'), 0.0)
             logger.info(f'[execute _trade_action] {position_key} k_1m:{k_1m} k_1m_prev:{k_1m_prev} d_1m:{d_1m} 3:{d_3m} k_3m:{k_3m} p{k_3m_prev} d{d_3m} 15:{k_15m} p{k_15m_prev} d{d_15m} dc4l1:{dc_low4_1m}, dc4h1:{dc_high4_1m}')
-            if position and action == "AUGMENT":
+            _stoch_uncalc = (k_3m == 0 and d_3m == 0) or (k_15m == 0 and d_15m == 0)
+            if _stoch_uncalc and ('OPEN' in action or 'AUGMENT' in action):
+                logger.warning(f'[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m}')
+                return f'{position_key}_BLOCKED_UNCALCULATED_STOCH'
+            # HTF TREND SCORING — now via shared trading_policy (was 18 lines of inline scoring)
+            _htf_dir_eta, _htf_score_eta = trading_policy.check_htf_trend(i, current_price)
+            _htf_bull = max(0, _htf_score_eta); _htf_bear = max(0, -_htf_score_eta)
+            # HTF VETO for augments — block adding to positions against dominant HTF trend
+            if is_augment and 'HEDGE' not in action and 'QUICK' not in action and 'REENTRY' not in action:
+                if is_long and _htf_dir_eta == 'BEAR' and _htf_score_eta <= -5:
+                    return f"{position_key}_BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}"
+                if not is_long and _htf_dir_eta == 'BULL' and _htf_score_eta >= 5:
+                    return f"{position_key}_BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}"
+            if position and action == "AUGMENT" and 'REENTRY' not in action:
                 if position.gain < -0.3 and 'QUICK' not in action:
-                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_LOSS (position.gain={position.gain:.2f}% < -0.3%)"
-                    logger.error(f"[exe cute_trade_acti on][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
-                    side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
-                    await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
-                    return failure_reason
+                    _sf_atf = lambda v, d=50.0: float(v) if v is not None else d
+                    _k1m_atf = _sf_atf(i.get('stoch_k_1m')); _d1m_atf = _sf_atf(i.get('stoch_d_1m'))
+                    _k3m_atf = _sf_atf(i.get('stoch_k_3m')); _d3m_atf = _sf_atf(i.get('stoch_d_3m'))
+                    _k15m_atf = _sf_atf(i.get('stoch_k_15m'))
+                    _k1h_atf = _sf_atf(i.get('stoch_k_1h')); _d1h_atf = _sf_atf(i.get('stoch_d_1h'))
+                    _k4h_atf = _sf_atf(i.get('stoch_k_4h')); _d4h_atf = _sf_atf(i.get('stoch_d_4h'))
+                    _rsi1h_atf = _sf_atf(i.get('rsi_1h')); _rsi4h_atf = _sf_atf(i.get('rsi_4h'))
+                    if is_long:
+                        _atf_score = sum([_k1m_atf > _d1m_atf, _k3m_atf > _d3m_atf, _k15m_atf < 50 and _k3m_atf > _d3m_atf, _rsi1h_atf < 45 and _k1h_atf > _d1h_atf, _rsi4h_atf < 50 and _k4h_atf > _d4h_atf])
+                    else:
+                        _atf_score = sum([_k1m_atf < _d1m_atf, _k3m_atf < _d3m_atf, _k15m_atf > 50 and _k3m_atf < _d3m_atf, _rsi1h_atf > 55 and _k1h_atf < _d1h_atf, _rsi4h_atf > 50 and _k4h_atf < _d4h_atf])
+                    if _atf_score >= 4:
+                        logger.info(f"✅ [ALL_TF_CONFLUENCE] {position_key}: score={_atf_score}/5 OVERRIDING LOSS gate. gain={position.gain:.2f}% | k1m={_k1m_atf:.0f} k3m={_k3m_atf:.0f} k15m={_k15m_atf:.0f} rsi1h={_rsi1h_atf:.0f} rsi4h={_rsi4h_atf:.0f}")
+                    else:
+                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_LOSS (position.gain={position.gain:.2f}% < -0.3%, atf={_atf_score}/5)"
+                        logger.error(f"[exe cute_trade_acti on][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
+                        side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
+                        await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
+                        return failure_reason
                 if position.gain < -0.1 and 'QUICK' not in action:
-                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN (position.gain={position.gain:.3f}% < -0.1%, requires positive gain)"
-                    logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
-                    side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
-                    await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
-                    return failure_reason
+                    _sf_atf = lambda v, d=50.0: float(v) if v is not None else d
+                    _k1m_atf = _sf_atf(i.get('stoch_k_1m')); _d1m_atf = _sf_atf(i.get('stoch_d_1m'))
+                    _k3m_atf = _sf_atf(i.get('stoch_k_3m')); _d3m_atf = _sf_atf(i.get('stoch_d_3m'))
+                    _k15m_atf = _sf_atf(i.get('stoch_k_15m'))
+                    _k1h_atf = _sf_atf(i.get('stoch_k_1h')); _d1h_atf = _sf_atf(i.get('stoch_d_1h'))
+                    _k4h_atf = _sf_atf(i.get('stoch_k_4h')); _d4h_atf = _sf_atf(i.get('stoch_d_4h'))
+                    _rsi1h_atf = _sf_atf(i.get('rsi_1h')); _rsi4h_atf = _sf_atf(i.get('rsi_4h'))
+                    if is_long:
+                        _atf_score = sum([_k1m_atf > _d1m_atf, _k3m_atf > _d3m_atf, _k15m_atf < 50 and _k3m_atf > _d3m_atf, _rsi1h_atf < 45 and _k1h_atf > _d1h_atf, _rsi4h_atf < 50 and _k4h_atf > _d4h_atf])
+                    else:
+                        _atf_score = sum([_k1m_atf < _d1m_atf, _k3m_atf < _d3m_atf, _k15m_atf > 50 and _k3m_atf < _d3m_atf, _rsi1h_atf > 55 and _k1h_atf < _d1h_atf, _rsi4h_atf > 50 and _k4h_atf < _d4h_atf])
+                    if _atf_score >= 4:
+                        logger.info(f"✅ [ALL_TF_CONFLUENCE] {position_key}: score={_atf_score}/5 OVERRIDING NEGATIVE GAIN gate. gain={position.gain:.2f}% | k1m={_k1m_atf:.0f} k3m={_k3m_atf:.0f} k15m={_k15m_atf:.0f} rsi1h={_rsi1h_atf:.0f} rsi4h={_rsi4h_atf:.0f}")
+                    else:
+                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN (position.gain={position.gain:.3f}% < -0.1%, atf={_atf_score}/5)"
+                        logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
+                        side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
+                        await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
+                        return failure_reason
                 high_gain_bypass = position.gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY
                 min_gain_gap = 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY
                 if position.entry_price > 0:
@@ -10338,26 +11048,19 @@ class MultiAccountTradeManager:
                         side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
                         await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
                         return failure_reason
-            if config.TREND_GATES and 'HEDGE' not in action and 'QUICK' not in action and is_augment:
-                if is_long:
-                    ha_3m_green = ha_3m == 'green'
-                    ha_15m_green = ha_15m == 'green'
-                    trend_gate = (ha_3m_green or ha_15m_green) # (price_above_sma or price_above_dc15) and
-                else:
-                    ha_3m_red = ha_3m == 'red'
-                    ha_15m_red = ha_15m == 'red'
-                    trend_gate = (ha_3m_red or ha_15m_red) #(price_below_sma or price_below_dc15 or price_below_dc3) and (ha_3m_red or ha_15m_red)
-                if not trend_gate and action != 'HEDGE_OPEN' and 'QUICK' not in action :
-                    if is_long:
-                        failed_conditions = []
-                        if not (ha_3m_green or ha_15m_green): failed_conditions.append(f"ha_color (ha_3m={ha_3m} != 'green' AND ha_15m={ha_15m} != 'green')")
-                        logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - TREND_GATE_FAILED_LONG | Conditions: {', '.join(failed_conditions)} | price={current_price:.6f} ha_3m={ha_3m} ha_15m={ha_15m}")# sma200_1m={sma_200_1m:.6f} dc15m={dc_basis_15m:.6f}
-                    else:
-                        failed_conditions = []
-                        if not (ha_3m_red or ha_15m_red): failed_conditions.append(f"ha_color (ha_3m={ha_3m} != 'red' AND ha_15m={ha_15m} != 'red')")
-                        logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - TREND_GATE_FAILED_SHORT | Conditions: {', '.join(failed_conditions)} | price={current_price:.6f}ha_3m={ha_3m} ha_15m={ha_15m}")# sma200_1m={sma_200_1m:.6f} dc15m={dc_basis_15m:.6f} dc3m={dc_basis_3m:.6f} 
-                    failure_reason = f"{position_key}_{reason}_BLOCKED_TREND_GATE_FAILED_{'LONG' if is_long else 'SHORT'}"
-                    return failure_reason
+            # TREND_GATES — OBSOLETE: now handled by trading_policy.check_entry_alignment() + check_entry_vetting()
+            # if config.TREND_GATES and 'HEDGE' not in action and 'QUICK' not in action and is_augment:
+            #     if is_long:
+            #         ha_htf_green = ha_1h == 'green' or ha_4h == 'green'
+            #         ha_ltf_green = ha_3m == 'green' or ha_15m == 'green'
+            #         trend_gate = ha_ltf_green and ha_htf_green
+            #     else:
+            #         ha_htf_red = ha_1h == 'red' or ha_4h == 'red'
+            #         ha_ltf_red = ha_3m == 'red' or ha_15m == 'red'
+            #         trend_gate = ha_ltf_red and ha_htf_red
+            #     if not trend_gate and action != 'HEDGE_OPEN' and 'QUICK' not in action:
+            #         failure_reason = f"{position_key}_{reason}_BLOCKED_TREND_GATE_FAILED_{'LONG' if is_long else 'SHORT'}"
+            #         return failure_reason
             is_long = position_side == "LONG"
             if is_long:
                 k_ok = (k_15m >= d_15m or wt1_15m >= wt2_15m or higher_high_15m) and current_price > sma_200_15m and sma_200_1m_prev < sma_200_1m
@@ -10366,10 +11069,10 @@ class MultiAccountTradeManager:
                 dc1_ok = current_price >= dc_basis_1h 
                 stoch1_base = k_1h < 80 and k_1h > d_1h if k_1h > 0 and d_1h > 0 else False
                 higher_high_1h = high_1h > high_1h_prev and (low_1h > low_1h_prev or ha_1h=='green') if high_1h > 0 and high_1h_prev > 0 and low_1h > 0 and low_1h_prev > 0 else False
-                stoch1_ok = stoch1_base or higher_high_1h if stoch1_base or higher_high_1h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+                stoch1_ok = stoch1_base or higher_high_1h if stoch1_base or higher_high_1h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
                 stoch4_base = k_4h < 80 and k_4h > d_4h if k_4h > 0 and d_4h > 0 else False
                 higher_high_4h = high_4h > high_4h_prev and (low_4h > low_4h_prev or ha_4h=='green') if high_4h > 0 and high_4h_prev > 0 and low_4h > 0 and low_4h_prev > 0 else False
-                stoch4_ok = stoch4_base or higher_high_4h if stoch4_base or higher_high_4h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+                stoch4_ok = stoch4_base or higher_high_4h if stoch4_base or higher_high_4h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
             else: # SHORT
                 k_ok = (k_15m <= d_15m or wt1_15m <= wt2_15m or lower_low_15m) and current_price < sma_200_15m and sma_200_1m_prev > sma_200_1m
                 k2_ok = k_15m > 65 
@@ -10377,10 +11080,10 @@ class MultiAccountTradeManager:
                 dc1_ok = current_price <= dc_basis_1h 
                 stoch1_base = k_1h > 20 and k_1h < d_1h if k_1h > 0 and d_1h > 0 else False
                 lower_low_1h = (high_1h < high_1h_prev or ha_1h=='red') and low_1h < low_1h_prev if high_1h > 0 and high_1h_prev > 0 and low_1h > 0 and low_1h_prev > 0 else False
-                stoch1_ok = stoch1_base or lower_low_1h if stoch1_base or lower_low_1h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+                stoch1_ok = stoch1_base or lower_low_1h if stoch1_base or lower_low_1h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
                 stoch4_base = k_4h > 20 and k_4h < d_4h if k_4h > 0 and d_4h > 0 else False
                 lower_low_4h = (high_4h < high_4h_prev or ha_4h=='red') and low_4h < low_4h_prev if high_4h > 0 and high_4h_prev > 0 and low_4h > 0 and low_4h_prev > 0 else False
-                stoch4_ok = stoch4_base or lower_low_4h if stoch4_base or lower_low_4h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+                stoch4_ok = stoch4_base or lower_low_4h if stoch4_base or lower_low_4h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
             reduction_factor = 1.0
             if not k_ok:
                 reduction_factor *= 0.6
@@ -10391,6 +11094,11 @@ class MultiAccountTradeManager:
             if not dc1_ok or not stoch1_ok:
                 reduction_factor *= 0.8
             quantity = reduction_factor * float(quantity)
+            _tp_dc_mult = trading_policy.compute_dc_position_multiplier(i, current_price, is_long)
+            quantity = float(quantity) * _tp_dc_mult
+            _tp_entry_ok, _tp_entry_reason = trading_policy.check_entry_vetting(i, current_price, is_long)
+            if not _tp_entry_ok and 'HEDGE' not in action and 'QUICK' not in action and 'REENTRY' not in reason.upper():
+                return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
             if action in ['OPEN', 'QUICK_OPEN','QUICK_AUGMENT', 'AUGMENT','REENTRY','REVERSE','REVERSE_AUGMENT', 'HEDGE_OPEN'] and current_price > 0.0:
                 velocity_multiplier = self.compute_velocity_multiplier(i, current_price, position_side)
                 quantity = float(quantity) * velocity_multiplier
@@ -10398,8 +11106,15 @@ class MultiAccountTradeManager:
                     from ez_rankings import get_ranking_multiplier
                     ranking_multiplier = get_ranking_multiplier(symbol, default=1.0)
                     quantity = float(quantity) * ranking_multiplier
-                except Exception as e:
-                    pass # DEBUG_MULTIPLY removed
+                except Exception:
+                    pass
+                if config.SYMBOL_PERF_ENABLED:
+                    try:
+                        from ez_symbol_performance import get_performance_multiplier
+                        _perf_mult = get_performance_multiplier(symbol, default=1.0)
+                        quantity = float(quantity) * _perf_mult
+                    except Exception:
+                        pass
             exchange_min_qty = self.min_qty.get(symbol, 0.0001)*1.2
             min_notional_usd = 6.00
             min_qty_by_notional = min_notional_usd / max(current_price, 1e-9)
@@ -10448,13 +11163,13 @@ class MultiAccountTradeManager:
                     quantity += 0.3 * SP 
                 elif (position_side == "LONG" and current_price > dc_basis_3m + 5 * atr_3m and k_15m < 70) or (position_side == "SHORT" and k_15m > 30 and current_price < dc_basis_3m - 5 * atr_3m):
                     quantity += 0.3 * SP
-                if ((position_side == "LONG" and current_price > dc_basis_3m + 3 * atr_3m and k_15m < 50) or (position_side == "SHORT" and k_15m > 50 and current_price < dc_basis_3m - 3 * atr_3m)):
+                if ((position_side == "LONG" and current_price > dc_basis_3m + 3 * atr_3m and ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m))) or (position_side == "SHORT" and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)) and current_price < dc_basis_3m - 3 * atr_3m)):
                     quantity += 3 * SP
                 if ((position_side == "LONG" and current_price > dc_basis_3m + atr_3m and k_15m < 30) or (position_side == "SHORT" and k_15m > 70 and current_price < dc_basis_3m - atr_3m)):
                     quantity += 0.4 * SP
                 if ((position_side == "LONG" and current_price > dc_basis_15m + 5 * atr_15m and k_15m < 70) or (position_side == "SHORT" and current_price < dc_basis_15m - 5 * atr_15m and k_15m > 30)):
                     quantity += 2 * SP
-                if ((position_side == "LONG" and current_price > dc_basis_15m + 3 * atr_15m and k_15m < 50) or (position_side == "SHORT" and current_price < dc_basis_15m - 3 * atr_15m and k_15m > 50)):
+                if ((position_side == "LONG" and current_price > dc_basis_15m + 3 * atr_15m and ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m))) or (position_side == "SHORT" and current_price < dc_basis_15m - 3 * atr_15m and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)))):
                     quantity += 1 * SP
                 if ((position_side == "LONG" and current_price > dc_basis_15m + atr_15m and k_15m < 30) or (position_side == "SHORT" and current_price < dc_basis_15m - atr_15m and k_15m > 70)):
                     quantity += 0.4 * SP
@@ -10564,9 +11279,9 @@ class MultiAccountTradeManager:
                     quantity += 1 * SP 
                 if (position_side == "LONG" and current_price > i.get('current_price')) or (position_side == "SHORT" and current_price < i.get('current_price')):
                     quantity += 0.25 * SP 
-                if (position_side == "LONG" and (k_3m < 30 and k_15m < 50)) or (position_side == "SHORT" and (k_3m > 30 and k_15m > 50)) :
+                if (position_side == "LONG" and (k_3m < 30 and ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)))) or (position_side == "SHORT" and (k_3m > 30 and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)))) :
                     quantity += 0.5 * SP
-                elif (position_side == "LONG" and (k_3m < 60 and k_15m < 80)) or (position_side == "SHORT" and (k_3m > 40 and k_15m > 50)) :
+                elif (position_side == "LONG" and (k_3m < 60 and k_15m < 80)) or (position_side == "SHORT" and (k_3m > 40 and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)))) :
                     quantity += 0.25 * SP
                 if (position_side == "LONG" and (current_price >= dc_low_3m and current_price <= dc_basis_3m )) or (position_side == "SHORT" and (current_price <= dc_high_3m and current_price >= dc_basis_3m)) :
                     quantity += 0.2 * SP 
@@ -10982,10 +11697,13 @@ class MultiAccountTradeManager:
         bases = [i.get('dc_basis_3m'), i.get('dc_basis_15m'), i.get('dc_basis_1h'), i.get('dc_basis_4h'), i.get('dc_basis_D')]
         if is_long:
             for basis in bases:
+                if basis is None: continue
                 quantity *= 1.5 if current_price > basis else 0.7
         else:
             for basis in bases:
+                if basis is None: continue
                 quantity *= 1.5 if current_price < basis else 0.7
+
         if 'WEAK' in reason: quantity = 0.2 * quantity
         override_used = False
         if override_qty is not None: 
@@ -10997,15 +11715,14 @@ class MultiAccountTradeManager:
         red_minutes = minutes_since(position.last_reduction_time, now)
         if 'REENTRY' in action:
             if red_minutes < 120: quantity = max(quantity, position.max_quantity)
-            elif red_minutes > 120 and red_minutes < 12000: quantity = max(quantity, position.last_reduction_amount)
+            elif red_minutes > 120 and red_minutes < 12000: quantity = max(quantity, position.max_quantity or 0.0)
         logger.debug(f'{position_key} {side}, {position_side}, {quantity}, {current_price}, {unique_id}, {reason}, {is_full_close}, {action}')
         if action in ['QUICK_AUGMENT', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT']:
             reason=f'{position_key}_{reason}_k_15m:{k_15m}_k_15mp:{k_15m_prev}_k_3m{k_3m}_ha3{ha_3m}'
         if not override_used:
-            if is_long and i.get('zconviction_long',0) > 0: 
-                quantity = quantity * i.get('zconviction_long', 10) / 100
-            elif not is_long and i.get('zconviction_short',0) > 0:
-                quantity = quantity * i.get('zconviction_short', 10) / 100
+            # CONVICTION SCALING DISABLED — backtest proved conviction scores have negative OOS Sharpe (-0.6 to -2.9)
+            # Was: quantity = quantity * conviction / 100 (destroyed position sizes on good trades)
+            pass
             if is_long and current_price < sma_200_1m or not is_long and current_price > sma_200_1m:
                 quantity = 0.7 * quantity
             if (is_long and not t_up_3m) or (not is_long and t_up_3m):
@@ -11022,7 +11739,7 @@ class MultiAccountTradeManager:
                 quantity = max(quantity, 1.15 * config.START_POSITION_SIZE / current_price)
             elif ((is_long and (k_1h > d_1h or higher_high_1h_check) and ha_15m =='green' and k_15m < 75 and k_3m > d_3m) or (not is_long and (k_1h < d_1h or lower_low_1h_check) and ha_3m=='red' or k_15m > 25 and k_3m < d_3m)) and self.is_same_direction(position_side, side):
                 quantity = max(quantity, config.START_POSITION_SIZE / current_price)
-        min_augment_qty_usd = pos_min_qty / current_price
+        min_augment_qty_usd = pos_min_qty * current_price
         if 'AUGMENT' in action:
             if position.gain > 5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
                 min_augment_qty_usd = max(5 * config.START_POSITION_SIZE, 0.8 * abs(float(position.positionAmt)) * current_price, pos_min_qty * current_price) 
@@ -11045,10 +11762,15 @@ class MultiAccountTradeManager:
                 quantity = min_augment_qty
                 logger.info(f"[{position_key}] EXECUTE_AUGMENTED_AUGMENT_QTY: Condition met (gain={position.gain:.2f}% > {config.MIN_GAIN_TO_BUY_AGGRESSIVELY:.2f}%), enforcing minimum {min_augment_qty:.6f} (${min_augment_qty_usd:.2f})")
         aug_time = self._get_augmented_timestamp(position_key)
-        if aug_time and isinstance(aug_time, datetime) and (datetime.now(timezone.utc) - aug_time).total_seconds() > 30:
-            self.augmented_positions.pop(position_key, None)
-            aug_time = None
+        # NEVER pop augmented_positions — guard must persist until _AUGMENT_LOCK_MIN_SECONDS (900s)
         if action in ['QUICK_OPEN','QUICK_AUGMENT', 'OPEN', 'REENTRY', 'REVERSE', 'AUGMENT', 'REVERSE_AUGMENT'] and position_key in self.augmented_positions:
+            _pos_gain = getattr(position, 'gain', 0) if position else 0
+            _aug_age = (datetime.now(timezone.utc) - aug_time).total_seconds() if aug_time and isinstance(aug_time, datetime) else 0
+            _gain_ok = _pos_gain >= getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 1.2)
+            if not _gain_ok:
+                logger.critical(f"🚫🚫🚫 [AUGMENTED_POSITIONS_GUARD] {position_key}: BLOCKED — already augmented {_aug_age:.0f}s ago. gain={_pos_gain:.2f}% < {getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 1.2):.2f}% action={action}")
+                return f"BLOCKED_ALREADY_AUGMENTED_{position_key}"
+        if action in ['QUICK_OPEN','QUICK_AUGMENT', 'OPEN', 'REENTRY', 'REVERSE', 'AUGMENT', 'REVERSE_AUGMENT']:
             aug_time = self._get_augmented_timestamp(position_key)
         max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else config.MAX_ORDER_VALUE
         if quantity * current_price > max_order_value_usd:
@@ -11062,6 +11784,52 @@ class MultiAccountTradeManager:
             quantity = max(0.0, allowed_additional_usd / max(current_price, 1e-9))
             logger.warning(f"[{position_key}] Override quantity ${original_qty*current_price:.2f} would exceed max_pos_size ${max_pos_size_usd:.2f} (current=${current_notional:.2f}) - capping to ${quantity*current_price:.2f}")
         logger.info(f"[{position_key}] Override quantity AFTER validation: {quantity:.6f} (${quantity*current_price:.2f})")
+
+        # ── DC POSITION SIZING — final step before execution ──────────────────
+        # 0.0=channel bottom, 1.0=channel top; rewards good entries, penalises chasing
+        if is_entry_action and 'HEDGE' not in action:
+            def _dcp_eta(lo_k, hi_k):
+                lo = safe_fetch_float(i.get(lo_k, 0), 0)
+                hi = safe_fetch_float(i.get(hi_k, 0), 0)
+                if hi <= lo or lo <= 0: return 0.5
+                return max(0.0, min(1.0, (current_price - lo) / (hi - lo)))
+            _p3m  = _dcp_eta('dc_low_3m',  'dc_high_3m')
+            _p15m = _dcp_eta('dc_low_15m', 'dc_high_15m')
+            _p1h  = _dcp_eta('dc_low_1h',  'dc_high_1h')
+            _p4h  = _dcp_eta('dc_low_4h',  'dc_high_4h')
+            _pD   = _dcp_eta('dc_low_D',   'dc_high_D')
+            _pcum = _p3m*0.15 + _p15m*0.25 + _p1h*0.30 + _p4h*0.20 + _pD*0.10
+            _dc_mult = 1.0
+            if is_long:
+                if _pcum < 0.20:   _dc_mult = 1.6
+                elif _pcum < 0.35: _dc_mult = 1.25
+                elif _pcum > 0.80: _dc_mult = 0.5
+                elif _pcum > 0.65: _dc_mult = 0.75
+                if _p15m < 0.15: _dc_mult *= 1.2
+                if _p1h  < 0.20: _dc_mult *= 1.15
+            else:
+                if _pcum > 0.80:   _dc_mult = 1.6
+                elif _pcum > 0.65: _dc_mult = 1.25
+                elif _pcum < 0.20: _dc_mult = 0.5
+                elif _pcum < 0.35: _dc_mult = 0.75
+                if _p15m > 0.85: _dc_mult *= 1.2
+                if _p1h  > 0.80: _dc_mult *= 1.15
+            quantity *= _dc_mult
+            logger.info(f"[{position_key}] 📐 DC_POS_SIZE: 3m={_p3m:.2f} 15m={_p15m:.2f} 1h={_p1h:.2f} 4h={_p4h:.2f} D={_pD:.2f} cum={_pcum:.2f} mult={_dc_mult:.2f}x → qty=${quantity*current_price:.2f}")
+        # ─────────────────────────────────────────────────────────────────────
+        # SIZE_TIER cap: enforce tier sizing for OPEN trades (not augment/reduce/hedge)
+        if not is_reduce and not is_hedge and action in ('OPEN', 'REENTRY', 'QUICK_OPEN') and 'SIZE_TIER' in reason:
+            import re as _re
+            _tm = _re.search(r'SIZE_TIER=(TIER[123])', reason)
+            if _tm:
+                _base = getattr(config, 'START_POSITION_SIZE', 45.0)
+                if _tm.group(1) == 'TIER1': _tier_cap = _base * 1.0 / max(current_price, 1e-9)
+                elif _tm.group(1) == 'TIER2': _tier_cap = _base * 0.5 / max(current_price, 1e-9)
+                else: _tier_cap = _base * 0.25 / max(current_price, 1e-9)
+                if quantity > _tier_cap:
+                    logger.info(f'[{position_key}] SIZE_TIER cap: {_tm.group(1)} → qty ${quantity*current_price:.2f} → ${_tier_cap*current_price:.2f}')
+                    quantity = _tier_cap
+
         order_value = quantity * current_price
         base_size = getattr(config, 'START_POSITION_SIZE', 45.0)
         if is_reduce:
@@ -11082,11 +11850,11 @@ class MultiAccountTradeManager:
             if self.order_execution_monitor: self.order_execution_monitor.pending_orders.pop(position_key, None) 
         return result
 
-    def _infer_htf_direction_fast(self, is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev):
+    def _infer_htf_direction_fast(self, is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev):
         """Fast inference of 1h/4h direction using shorter timeframe momentum - reduces lag by not waiting for hourly updates"""
         if is_long:
             momentum_3m = k_3m > k_3m_prev and k_3m < 50
-            momentum_15m = k_15m > k_15m_prev and k_15m < 50
+            momentum_15m = (k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)
             wt_bullish = wt1_3m > wt2_3m and wt1_15m > wt2_15m
             price_above_dc1h = current_price >= dc_basis_1h
             price_above_dc4h = current_price >= dc_basis_4h
@@ -11096,7 +11864,7 @@ class MultiAccountTradeManager:
             return score >= 4
         else:
             momentum_3m = k_3m < k_3m_prev and k_3m > 50
-            momentum_15m = k_15m < k_15m_prev and k_15m > 50
+            momentum_15m = (k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)
             wt_bearish = wt1_3m < wt2_3m and wt1_15m < wt2_15m
             price_below_dc1h = current_price <= dc_basis_1h
             price_below_dc4h = current_price <= dc_basis_4h
@@ -11105,11 +11873,11 @@ class MultiAccountTradeManager:
             score = sum([momentum_3m, momentum_15m, wt_bearish, price_below_dc1h, price_below_dc4h, price_below_sma, stoch_aligned])
             return score >= 4
 
-    def _infer_htf_reversal_fast(self, is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev):
+    def _infer_htf_reversal_fast(self, is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev):
         """Fast inference of 1h/4h momentum reversal using shorter timeframe data - detects if HTF momentum is weakening/reversing"""
         if is_long:
             momentum_reversing_3m = k_3m < k_3m_prev
-            momentum_reversing_15m = k_15m < k_15m_prev
+            momentum_reversing_15m = (k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)
             wt_bearish = wt1_3m < wt2_3m or wt1_15m < wt2_15m
             price_below_dc1h = current_price < dc_basis_1h
             price_below_dc4h = current_price < dc_basis_4h
@@ -11119,7 +11887,7 @@ class MultiAccountTradeManager:
             return score >= 3
         else:
             momentum_reversing_3m = k_3m > k_3m_prev
-            momentum_reversing_15m = k_15m > k_15m_prev
+            momentum_reversing_15m = (k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)
             wt_bullish = wt1_3m > wt2_3m or wt1_15m > wt2_15m
             price_above_dc1h = current_price > dc_basis_1h
             price_above_dc4h = current_price > dc_basis_4h
@@ -11263,7 +12031,7 @@ class MultiAccountTradeManager:
         if account_key == 'fin':
             max_fin_size = get_max_position_size(symbol, account_key='fin')
             if qty * current_price > max_fin_size:
-                qty = max_fin_size / current_price - position.positionAmt / current_price
+                safe_cp = max(current_price, 1e-9); qty = max_fin_size / safe_cp - position.positionAmt / safe_cp
                 logger.info(f"[{position_key}] Final FIN account cap: ${qty * current_price:.2f}")
         if config.EXTREME_MODE and account_key in ['ang', 'inf', 'men', 'flz']:
             extreme_multiplier = 3.0
@@ -11352,7 +12120,7 @@ class MultiAccountTradeManager:
             logger.info(f"[VALIDATE_AUGMENTATION_VERBOSE2] {position_key}: VALIDATION_PASSED - All augmentation conditions met")
         return None
 
-    async def _calculate_technical_reduction_factor(self, position_key, is_long, k_15m, d_15m, wt1_15m, wt2_15m, sma_200_1m, sma_200_1m_prev, sma_200_15m, current_price, dc_basis_1h, dc_basis_4h, k_1h, d_1h, k_4h, d_4h, k_3m=50, k_3m_prev=50, k_15m_prev=50, wt1_3m=0, wt2_3m=0, high_1h=0, high_1h_prev=0, low_1h=0, low_1h_prev=0, high_4h=0, high_4h_prev=0, low_4h=0, low_4h_prev=0, ha_1h='neutral', ha_4h='neutral'):
+    async def _calculate_technical_reduction_factor(self, position_key, is_long, k_15m, d_15m, wt1_15m, wt2_15m, sma_200_1m, sma_200_1m_prev, sma_200_15m, current_price, dc_basis_1h, dc_basis_4h, k_1h, d_1h, k_4h, d_4h, k_3m=50, d_3m=50, k_3m_prev=50, k_15m_prev=50, wt1_3m=0, wt2_3m=0, high_1h=0, high_1h_prev=0, low_1h=0, low_1h_prev=0, high_4h=0, high_4h_prev=0, low_4h=0, low_4h_prev=0, ha_1h='neutral', ha_4h='neutral'):
         reduction_factor = 1.0
         if is_long:
             k_ok = (k_15m >= d_15m or wt1_15m >= wt2_15m) and current_price > sma_200_15m and sma_200_1m_prev < sma_200_1m
@@ -11361,10 +12129,10 @@ class MultiAccountTradeManager:
             dc1_ok = current_price >= dc_basis_1h
             stoch1_base = k_1h < 80 and k_1h > d_1h if k_1h > 0 and d_1h > 0 else False
             higher_high_1h = high_1h > high_1h_prev and (low_1h > low_1h_prev or ha_1h=='green') if high_1h > 0 and high_1h_prev > 0 and low_1h > 0 and low_1h_prev > 0 else False
-            stoch1_ok = stoch1_base or higher_high_1h if stoch1_base or higher_high_1h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+            stoch1_ok = stoch1_base or higher_high_1h if stoch1_base or higher_high_1h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
             stoch4_base = k_4h < 80 and k_4h > d_4h if k_4h > 0 and d_4h > 0 else False
             higher_high_4h = high_4h > high_4h_prev and (low_4h > low_4h_prev or ha_4h=='green') if high_4h > 0 and high_4h_prev > 0 and low_4h > 0 and low_4h_prev > 0 else False
-            stoch4_ok = stoch4_base or higher_high_4h if stoch4_base or higher_high_4h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+            stoch4_ok = stoch4_base or higher_high_4h if stoch4_base or higher_high_4h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
         else:
             k_ok = (k_15m <= d_15m or wt1_15m <= wt2_15m) and current_price < sma_200_15m and sma_200_1m_prev > sma_200_1m
             k2_ok = k_15m > 65
@@ -11372,10 +12140,10 @@ class MultiAccountTradeManager:
             dc1_ok = current_price <= dc_basis_1h
             stoch1_base = k_1h > 20 and k_1h < d_1h if k_1h > 0 and d_1h > 0 else False
             lower_low_1h = (high_1h < high_1h_prev or ha_1h=='red') and low_1h < low_1h_prev if high_1h > 0 and high_1h_prev > 0 and low_1h > 0 and low_1h_prev > 0 else False
-            stoch1_ok = stoch1_base or lower_low_1h if stoch1_base or lower_low_1h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+            stoch1_ok = stoch1_base or lower_low_1h if stoch1_base or lower_low_1h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
             stoch4_base = k_4h > 20 and k_4h < d_4h if k_4h > 0 and d_4h > 0 else False
             lower_low_4h = (high_4h < high_4h_prev or ha_4h=='red') and low_4h < low_4h_prev if high_4h > 0 and high_4h_prev > 0 and low_4h > 0 and low_4h_prev > 0 else False
-            stoch4_ok = stoch4_base or lower_low_4h if stoch4_base or lower_low_4h else self._infer_htf_direction_fast(is_long, k_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
+            stoch4_ok = stoch4_base or lower_low_4h if stoch4_base or lower_low_4h else self._infer_htf_direction_fast(is_long, k_3m, d_3m, k_3m_prev, k_15m, k_15m_prev, d_15m, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, dc_basis_1h, dc_basis_4h, sma_200_15m, sma_200_1m, sma_200_1m_prev)
         if not k_ok:
             reduction_factor *= 0.6
         if not k2_ok:
@@ -11389,7 +12157,7 @@ class MultiAccountTradeManager:
     async def is_duplicate_order(self, position_key: str, quantity: float, side: str, unique_id: str) -> bool:
         async with self.dedupe_lock:
             current_time = time.time()
-            augmentation_cooldown_map = getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 180.0)
+            aug_cooldown_seconds = getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 480.0)
             if position_key in self.order_deduplication:
                 dedupe_entry = self.order_deduplication[position_key]
                 if isinstance(dedupe_entry, dict):
@@ -11399,7 +12167,7 @@ class MultiAccountTradeManager:
                     last_time = dedupe_entry
                     was_executed = False
                 min_since = current_time - last_time
-                cooldown_window = augmentation_cooldown_map if was_executed else 30.0
+                cooldown_window = aug_cooldown_seconds if was_executed else 30.0
                 if min_since < cooldown_window:
                     logger.warning(f"[DEDUPE] Duplicate order detected: {position_key} (last queued {min_since:.1f}s ago, executed={was_executed})")
                     return True
@@ -11413,7 +12181,7 @@ class MultiAccountTradeManager:
                     last_time = dedupe_entry
                     was_executed = False
                 min_since = current_time - last_time
-                cooldown_window = augmentation_cooldown_map if was_executed else 30.0
+                cooldown_window = aug_cooldown_seconds if was_executed else 30.0
                 if min_since < cooldown_window:
                     logger.warning(f"[DEDUPE] Duplicate order detected: {key} (last queued {min_since:.1f}s ago, executed={was_executed})")
                     return True
@@ -11444,14 +12212,14 @@ class MultiAccountTradeManager:
                     last_time = entry.get('time', entry.get('timestamp', 0))
                     if isinstance(last_time, datetime):
                         last_time = last_time.replace(tzinfo=timezone.utc).timestamp()
-                    if current_time - last_time > aug_cooldown_limit:
+                    if current_time - last_time > _AUGMENT_LOCK_MIN_SECONDS:
                         expired_aug_keys.append(key)
                 elif isinstance(entry, (int, float)):
-                    if current_time - entry > aug_cooldown_limit:
+                    if current_time - entry > _AUGMENT_LOCK_MIN_SECONDS:
                         expired_aug_keys.append(key)
                 elif isinstance(entry, datetime):
                     entry_ts = entry.replace(tzinfo=timezone.utc).timestamp()
-                    if current_time - entry_ts > aug_cooldown_limit:
+                    if current_time - entry_ts > _AUGMENT_LOCK_MIN_SECONDS:
                          expired_aug_keys.append(key)
             for key in expired_aug_keys:
                 self.augmentation_cooldown_map.pop(key, None)
@@ -11586,10 +12354,11 @@ class MultiAccountTradeManager:
         await self.clear_recent_signal(position_key)
 
     async def place_maker_order(self, account_key: str, position_key: str, symbol: str, positionAmt: float, current_price: float, qty_abs: float, side: str, position_side: str, unique_id: str, reason: str) -> tuple[bool, float]:
+        if is_sandbox_account(config, account_key): return True, qty_abs
         reason_upper = str(reason).upper() if reason else ""
         is_quick_order = any(k in reason_upper for k in ['QUICK'])
         is_long = position_side == 'LONG'
-        ta = 'OPEN' if is_long and side == 'BUY' else 'REDUCE'
+        ta = 'REDUCE' if (is_long and side == 'SELL') or (not is_long and side == 'BUY') else 'OPEN'
         TIMEOUT = 5.0 if is_quick_order else 10.0 # Standard chasing window
         POLL_INTERVAL = 0.1
         RETRY_DELAY = 0.05
@@ -11634,6 +12403,10 @@ class MultiAccountTradeManager:
         try:
             account = self.accounts.get(account_key)
             if not account or not account.client:
+                if ta == "OPEN":
+                    logger.warning(f"[MAKER_ACC_ERR] {position_key}: Account error on augment — blocking fallback webhook.")
+                    await release_locks()
+                    return False, 0.0
                 await self.send_webhook(position_key, account_key, symbol, positionAmt, qty_abs, current_price, side, position_side, f"{unique_id}:ACC_ERR", False, f"{reason}_ACC_ERR", level=None, stoch_required=False)
                 await release_locks()
                 return True, qty_abs
@@ -11686,7 +12459,7 @@ class MultiAccountTradeManager:
                     if active_order_id:
                         try:
                             await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=active_order_id)
-                        except: pass
+                        except Exception: pass
                     new_order = await asyncio.to_thread( client.futures_create_order, symbol=symbol, side=side, positionSide=position_side, quantity=qty_str, price=target_price_str, type=ORDER_TYPE_LIMIT, timeInForce='GTX', newOrderRespType='RESULT' )
                     if new_order.get('status') == 'FILLED':
                         executed_qty = float(new_order.get('executedQty', 0.0))
@@ -11715,7 +12488,7 @@ class MultiAccountTradeManager:
                     logger.error(f"[MAKER_LOOP_ERR] {e}")
                     await asyncio.sleep(RETRY_DELAY)
             try: await asyncio.to_thread(client.futures_countdown_cancel_all, symbol=symbol, countdownTime=0)
-            except: pass
+            except Exception: pass
             if filled or executed_qty >= (qty_abs * 0.9):
                 logger.info(f"[MAKER_SUCCESS] {position_key} filled {executed_qty}")
                 await release_locks(success_fill=True)
@@ -11725,6 +12498,14 @@ class MultiAccountTradeManager:
                 await release_locks(success_fill=True)
                 return True, qty_abs
             remaining = qty_abs - executed_qty
+            if ta == "OPEN":
+                logger.warning(f"[MAKER_AUG_TIMEOUT] {position_key}: Augment timed out — blocking fallback webhook, cancelling tracked orders.")
+                if tracked_order_ids:
+                    for _tid in tracked_order_ids:
+                        try: await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
+                        except Exception: pass
+                await release_locks()
+                return False, 0.0
             if remaining > (qty_abs * 0.1):
                 logger.warning(f"[MAKER_FALLBACK] {position_key} timeout. Sending remaining {remaining} to webhook.")
                 await self.send_webhook(position_key, account_key, symbol, positionAmt, remaining, float(lp), side, position_side, f"{unique_id}:FALLBACK", False, f"{reason}_TIMEOUT", level=None, stoch_required=False, order_ids_to_cancel=tracked_order_ids)
@@ -11737,6 +12518,7 @@ class MultiAccountTradeManager:
 
     async def handle_filled_maker(self, account_key, position_key, position, positionAmt, quantity, current_price, side, position_side, unique_id, reason):
         now = datetime.now(timezone.utc)
+        _recent_trade_events[position_key] = {'time': now.isoformat(), 'action': 'FILL', 'side': side, 'qty': quantity, 'price': current_price, 'reason': reason, 'positionAmt': positionAmt}
         account_positions = self.positions_by_account[account_key]
         position = await self.get_position(position_key)
         ak, symbol, parsed_side = parse_position_key(position_key)
@@ -11756,34 +12538,37 @@ class MultiAccountTradeManager:
                 self.positions_service.positions[position_key].mark_price = current_price
         position.mark_price = current_price
         if self.is_same_direction(side, position_side):
-            position.augment_reason = reason
-            if hasattr(self, 'positions_service') and self.positions_service:
-                if hasattr(self.positions_service, 'positions_by_account'):
-                    service_positions = self.positions_service.positions_by_account.get(account_key, {})
-                    if position_key in service_positions:
-                        service_positions[position_key].augment_reason = reason
-                if hasattr(self.positions_service, 'positions') and position_key in self.positions_service.positions:
-                    self.positions_service.positions[position_key].augment_reason = reason
+            if hasattr(self, 'positions_service') and self.positions_service and hasattr(self.positions_service, 'record_augmentation_fields'):
+                self.positions_service.record_augmentation_fields(position_key, quantity, current_price, reason)
+            else:
+                logger.critical(f"[HANDLE_FILLED_MAKER_AUGMENT] {position_key}: NO positions_service — cannot record augmentation fields!")
             final_position_size = positionAmt + quantity
+            self.augmented_positions[position_key] = now
+            _AUGMENT_LOCK[position_key] = time.time()
+            _recent_opens[position_key] = time.time()
+            self.augmentation_cooldown_map[position_key] = {'time': now}
+            self.recent_augmentations[position_key] = time.time()
+            self._last_augment_save_time[position_key] = time.time()
+            if self.redis_manager: asyncio.create_task(self.redis_manager.set(f"aug_cooldown:{position_key}", str(time.time()), ex=900))
             if final_position_size > config.START_POSITION_SIZE / current_price:
-                self.augmented_positions[position_key] = now
                 if position_key in self.reduced_positions:
                     del self.reduced_positions[position_key]
         original_amt = abs(float(getattr(position, 'positionAmt', positionAmt)))
         if self.is_opposite_direction(side, position_side) and original_amt > 0:
-            position.reduction_reason = reason
-            if hasattr(self, 'positions_service') and self.positions_service and hasattr(self.positions_service, 'positions_by_account'):
-                service_positions = self.positions_service.positions_by_account.get(account_key, {})
-                if position_key in service_positions and service_positions[position_key] is position:
-                    pass
-                elif position_key in service_positions:
-                    service_positions[position_key].reduction_reason = reason
-            if hasattr(self, 'positions_service') and self.positions_service and hasattr(self.positions_service, 'positions'):
-                if position_key in self.positions_service.positions and self.positions_service.positions[position_key] is not position:
-                    self.positions_service.positions[position_key].reduction_reason = reason
-            if positionAmt - quantity < config.START_POSITION_SIZE / current_price:
-                position.was_reduced = True
-                self.augmented_positions.pop(position_key, None)
+            if hasattr(self, 'positions_service') and self.positions_service and hasattr(self.positions_service, 'record_reduction_fields'):
+                self.positions_service.record_reduction_fields(position_key, quantity, current_price, reason)
+            else:
+                logger.critical(f"[HANDLE_FILLED_MAKER_REDUCTION] {position_key}: NO positions_service — cannot record reduction fields!")
+            self.augmented_positions.pop(position_key, None)
+            _AUGMENT_LOCK.pop(position_key, None)
+            _recent_opens.pop(position_key, None)
+            self.augmentation_cooldown_map.pop(position_key, None)
+            self.recent_augmentations.pop(position_key, None)
+            self._last_augment_save_time.pop(position_key, None)
+            if self.redis_manager:
+                asyncio.create_task(self.redis_manager.delete(f"aug_cooldown:{position_key}"))
+            logger.critical(f"[HANDLE_FILLED_MAKER_REDUCTION] {position_key}: Recorded via positions_service + RESET all augment guards — qty={quantity:.6f} price={current_price:.6f} reason={reason}")
+            asyncio.get_event_loop().call_later(4.0, lambda pk=position_key, qty=quantity, px=current_price: _verify_reduction_fields_set(self, pk, qty, px))
             final_pos_amt = positionAmt - quantity
             pos_min_qty = max(3 * config.MIN_POSITION_SIZE / current_price, self.min_qty.get(symbol, 0.0001))
             if final_pos_amt <= pos_min_qty * 1.1:
@@ -11882,6 +12667,161 @@ class MultiAccountTradeManager:
 
 #0E
     async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None) -> str:
+        # ═══ ABSOLUTE RULE: NEVER OPEN AN ALREADY-OPEN POSITION ═══
+        # If position has ANY qty > 0 and action says OPEN, reclassify to AUGMENT.
+        # This catches every single case where positionAmt was temporarily zero/stale.
+        if position_key and action and 'OPEN' in (action or '').upper() and 'CLOSE' not in (action or '').upper():
+            _check_pos = await self.get_position(position_key) if position_key else None
+            _check_amt = abs(safe_fetch_float(getattr(_check_pos, 'positionAmt', 0), 0.0)) if _check_pos else abs(original_positionAmt)
+            if _check_amt > 0:
+                _min_q = self.min_qty.get(symbol or '', 0.0001)
+                if _check_amt > _min_q:
+                    logger.critical(f"[OPEN_ON_OPEN_BLOCK] {position_key}: action={action} but positionAmt={_check_amt:.6f} > min_qty={_min_q:.6f}. RECLASSIFYING TO AUGMENT.")
+                    action = action.replace('OPEN', 'AUGMENT').replace('open', 'augment')
+        # ═══ MOMENTUM_RIDER BYPASS — skip ALL augmentation guards, cooldowns, gain checks ═══
+        _is_momentum_rider = 'MOMENTUM_RIDER' in (reason or '').upper()
+        if _is_momentum_rider:
+            logger.info(f"[MOMENTUM_RIDER_BYPASS] {position_key}: Bypassing all execute_now guards for {action} | {reason[:60]}")
+        # UNBREAKABLE REDUCE LOCK - checked FIRST for reduces, no bypass, no Redis
+        global _AUGMENT_LOCK
+        _act_check = (action or '').upper()
+        _is_reduce = _act_check in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in (reason or '').upper() or 'REDUCE' in (reason or '').upper()
+        if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
+            _last_red_ts = _recent_reduces.get(position_key, 0)
+            _since_red = time.time() - _last_red_ts
+            if _since_red < _DUPLICATE_REDUCE_COOLDOWN:
+                logger.warning(f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}")
+                return f"BLOCKED_HARD_REDUCE_LOCK_{_since_red:.0f}s"
+            _recent_reduces[position_key] = time.time()
+        # UNBREAKABLE AUGMENT GUARDS — block unless (a) gain >= MIN_GAIN or (b) was_reduced since last augment
+        _is_aug = _act_check in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT')
+        _gain_ok = True
+        _pos_gain = 0.0
+        _min_gain = getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 1.2)
+        if _is_aug and position_key and not is_hedge and not _is_momentum_rider:
+            _pos_obj = await self.get_position(position_key) if position_key else None
+            _pos_gain = safe_fetch_float(getattr(_pos_obj, 'gain', 0), 0.0) if _pos_obj else 0.0
+            _min_gain = getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 1.2)
+            _gain_ok = _pos_gain >= _min_gain
+            # _AUGMENT_LOCK: 900s hard cooldown, bypassed by gain >= MIN_GAIN
+            _last_aug_ts = _AUGMENT_LOCK.get(position_key, 0)
+            _since_aug = time.time() - _last_aug_ts
+            if _since_aug < _AUGMENT_LOCK_MIN_SECONDS and not _gain_ok:
+                logger.warning(f"[HARD_AUGMENT_LOCK] {position_key}: BLOCKED - last augment {_since_aug:.0f}s ago (need {_AUGMENT_LOCK_MIN_SECONDS}s), gain={_pos_gain:.2f}% < {_min_gain:.1f}%")
+                return f"BLOCKED_HARD_AUGMENT_LOCK_{_since_aug:.0f}s"
+            _AUGMENT_LOCK[position_key] = time.time()
+            _recent_opens[position_key] = time.time()
+        # ═══ AUGMENTED_POSITIONS GUARD — catches ALL paths (hedges bypass) ═══
+        if _is_aug and position_key and position_key in self.augmented_positions and not _is_momentum_rider and not is_hedge:
+            _aug_ts = self._get_augmented_timestamp(position_key)
+            _aug_age = (datetime.now(timezone.utc) - _aug_ts).total_seconds() if _aug_ts and isinstance(_aug_ts, datetime) else 0
+            if not _gain_ok:
+                logger.critical(f"🚫 [EXECUTE_NOW_AUG_GUARD] {position_key}: BLOCKED — augmented {_aug_age:.0f}s ago, gain={_pos_gain:.2f}% < {_min_gain:.1f}%. action={action}")
+                return f"BLOCKED_EXECUTE_NOW_AUG_GUARD_{_aug_age:.0f}s_gain_{_pos_gain:.2f}"
+        # ═══ augmentation_cooldown_map GATE ═══
+        if _is_aug and position_key and position_key in self.augmentation_cooldown_map and not _gain_ok and not _is_momentum_rider and not is_hedge:
+            _cd_entry = self.augmentation_cooldown_map[position_key]
+            _cd_time = _cd_entry.get('time') if isinstance(_cd_entry, dict) else _cd_entry
+            _cd_age = 0
+            if isinstance(_cd_time, datetime):
+                _cd_age = (datetime.now(timezone.utc) - _cd_time).total_seconds()
+            elif isinstance(_cd_time, (int, float)):
+                _cd_age = time.time() - _cd_time
+            _cd_limit = float(getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 480.0))
+            if _cd_age < _cd_limit:
+                logger.warning(f"[AUGMENTATION_COOLDOWN_MAP_BLOCK] {position_key}: BLOCKED — cooldown {_cd_age:.0f}s < {_cd_limit:.0f}s, gain={_pos_gain:.2f}%")
+                return f"BLOCKED_AUGMENTATION_COOLDOWN_MAP_{_cd_age:.0f}s"
+        # ═══ recent_augmentations GATE ═══
+        if _is_aug and position_key and position_key in self.recent_augmentations and not _gain_ok and not _is_momentum_rider and not is_hedge:
+            _ra_age = time.time() - self.recent_augmentations[position_key]
+            if _ra_age < _AUGMENT_LOCK_MIN_SECONDS:
+                logger.warning(f"[RECENT_AUGMENTATIONS_BLOCK] {position_key}: BLOCKED — augmented {_ra_age:.0f}s ago, gain={_pos_gain:.2f}%")
+                return f"BLOCKED_RECENT_AUGMENTATIONS_{_ra_age:.0f}s"
+        # ═══ _last_augment_save_time GATE ═══
+        if _is_aug and position_key and position_key in self._last_augment_save_time and not _gain_ok and not _is_momentum_rider and not is_hedge:
+            _las_age = time.time() - self._last_augment_save_time[position_key]
+            if _las_age < _AUGMENT_LOCK_MIN_SECONDS:
+                logger.warning(f"[LAST_AUGMENT_SAVE_BLOCK] {position_key}: BLOCKED — last save {_las_age:.0f}s ago, gain={_pos_gain:.2f}%")
+                return f"BLOCKED_LAST_AUGMENT_SAVE_{_las_age:.0f}s"
+        # ═══ EMERGENCY BRAKE — NEVER AGAIN ═══
+        # Reads from decisions JSONL (actual executed trades), not in-memory counters.
+        # Max 20 entries AND 50 total trades per hour per account. Max 5 per symbol.
+        try:
+            _now = time.time()
+            _acct = account_key or (position_key.split(':')[0] if position_key and ':' in position_key else 'unknown')
+            _sym_key = position_key or 'unknown'
+            
+            # Only check every 10 seconds to avoid hammering disk
+            if not hasattr(self, '_brake_cache'):
+                self._brake_cache = {}
+            _cache = self._brake_cache.get(_acct)
+            if not _cache or (_now - _cache.get('ts', 0)) > 10:
+                import json as _bjson
+                from datetime import datetime as _bdt
+                from datetime import timedelta as _btd
+                from datetime import timezone as _btz
+                _cutoff = _bdt.now(_btz.utc) - _btd(hours=1)
+                _dfile = str(Path(config.BASE_PATH) / "data" / "decisions" / f"decisions_{_acct}_{_bdt.now(_btz.utc).strftime('%Y%m%d')}.jsonl")
+                _hour_entries = 0
+                _hour_total = 0
+                _sym_counts = {}
+                try:
+                    with open(_dfile, errors='replace') as _df:
+                        # Read last 2000 lines max
+                        _df.seek(0, 2)
+                        _fsize = _df.tell()
+                        _df.seek(max(0, _fsize - 500000))  # last ~500KB
+                        if _fsize > 500000:
+                            _df.readline()  # skip partial line
+                        for _line in _df:
+                            try:
+                                _dd = _bjson.loads(_line)
+                                _ts = _dd.get('timestamp', '')
+                                _dt = _bdt.fromisoformat(_ts.replace('Z', '+00:00'))
+                                if _dt < _cutoff:
+                                    continue
+                                _hour_total += 1
+                                _da = _dd.get('action', '')
+                                if _da in ('OPEN', 'AUGMENT', 'REENTRY', 'QUICK_OPEN', 'QUICK_AUGMENT'):
+                                    _hour_entries += 1
+                                _dpk = _dd.get('position_key', '')
+                                _sym_counts[_dpk] = _sym_counts.get(_dpk, 0) + 1
+                            except Exception:
+                                pass
+                except FileNotFoundError:
+                    pass
+                self._brake_cache[_acct] = {'ts': _now, 'entries': _hour_entries, 'total': _hour_total, 'syms': _sym_counts}
+                _cache = self._brake_cache[_acct]
+            
+            _is_close_action = _act_check in ('CLOSE', 'QUICK_CLOSE', 'REDUCE', 'PARTIAL_CLOSE')
+            if _cache['entries'] > 20:
+                logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['entries']} EXECUTED entries in last hour — HALTED. Max 20.")
+                return "BLOCKED_EMERGENCY_BRAKE_MAX_ENTRIES"
+            if not _is_close_action and _cache['total'] > 50:
+                logger.critical(f"🛑 [EMERGENCY_BRAKE] {_acct}: {_cache['total']} EXECUTED trades in last hour — HALTED. Max 50.")
+                return "BLOCKED_EMERGENCY_BRAKE_MAX_TRADES"
+            _sym_count = _cache['syms'].get(_sym_key, 0)
+            if not _is_close_action and _sym_count > 5:
+                logger.critical(f"🛑 [EMERGENCY_BRAKE] {_sym_key}: {_sym_count} EXECUTED trades on same symbol in last hour — BLOCKED. Max 5.")
+                return "BLOCKED_EMERGENCY_BRAKE_SYMBOL_CHURN"
+        except Exception as _eb_err:
+            logger.debug(f"[EMERGENCY_BRAKE] Error: {_eb_err}")
+        _act = (action or '').upper()
+        # ═══ QUARANTINE CHECK — punish functions that caused losses ═══
+        try:
+            _reason_key = (reason or '').strip()
+            import json as _qjson
+            with open(str(Path(config.BASE_PATH) / 'data' / 'function_quarantine.json')) as _qf:
+                _quarantine = _qjson.load(_qf)
+            for _qname in _quarantine:
+                if _qname in _reason_key:
+                    logger.warning(f"⛔ [QUARANTINE_BLOCK] {position_key}: reason '{_reason_key}' matches quarantined '{_qname}'")
+                    return f"BLOCKED_QUARANTINED({_qname})"
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+        # ═══ END QUARANTINE CHECK ═══
         if 'OPEN' in reason.upper() and original_positionAmt > 0: 
             return f'BLOCK_OPEN_IS_FOR_ZERO_POS'
         await self.load_tradeable() 
@@ -11901,12 +12841,14 @@ class MultiAccountTradeManager:
         if not is_tradeable and not is_reduce and 'HEDGE' not in reason_upper:
             return f'BLOCK_NON_TRADEABLE_POSITION'
         if is_strict_no_loss_account(config, account_key) and is_reduce:
-            # Bypass STRICT_NO_LOSS for hedges, emergency kills, and floor breaks
-            bypass_strict = is_hedge or 'HEDGE' in reason_upper or 'KILL' in reason_upper or 'EMERGENCY' in reason_upper or 'FORCE' in reason_upper or 'GUARD' in reason_upper or 'FLOOR' in reason_upper
+            # UNIVERSAL NO-LOSS RULE: Bypass for emergencies AND hedges (hedges are TEMPORARY, must close even at loss)
+            bypass_strict = 'EMERGENCY' in reason_upper or 'LIQUIDATION' in reason_upper or is_hedge or 'HEDGE' in reason_upper
             if not bypass_strict:
                 pos = await self.tracker_manager.get_position(position_key)
                 if pos and pos.gain < -0.01: # Small buffer for spread/fees
-                    logger.critical(f"🛑 [STRICT_NO_LOSS_BLOCK][{account_key}] {position_key}: Blocking {action} at a loss ({pos.gain:.2f}%). STRICT_NO_LOSS is enabled.")
+                    logger.critical(f"🛑 [STRICT_NO_LOSS_BLOCK][{account_key}] {position_key}: Blocking {action} ({reason}) at a loss ({pos.gain:.2f}%). NEVER SELL AT A LOSS — L/S ratio is the hedge.")
+                    if self.tracker_manager:
+                        await self.tracker_manager.set_trade_cooldown(position_key, duration=300)
                     return "BLOCKED_BY_STRICT_NO_LOSS"
 
         if is_hedge_account(config, account_key) and is_reduce and 'HEDGE' not in reason_upper and 'ENGINE' not in reason_upper and 'KILL' not in reason_upper and 'EMERGENCY' not in reason_upper and 'NOW_REDUCE' not in reason_upper and 'PROFIT' not in reason_upper and 'GAIN' not in reason_upper and 'TP' not in reason_upper and 'BOYCOTT' not in reason_upper and 'PROFIT_TAKE' not in action.upper() and 'DC_BREACH' not in reason_upper:
@@ -11931,6 +12873,20 @@ class MultiAccountTradeManager:
             required_side = 'BUY' if is_long else 'SELL'
             if side != required_side:
                 side = required_side
+        # Always refresh positionAmt from service before executing
+        if is_reduce or is_augment:
+            _live_pos = self.positions_service.positions.get(position_key) if self.positions_service and hasattr(self.positions_service, 'positions') else None
+            if _live_pos is None and self.positions_service and hasattr(self.positions_service, 'positions_by_account'):
+                _live_pos = self.positions_service.positions_by_account.get(account_key, {}).get(position_key)
+            if _live_pos is not None:
+                _fresh_amt = abs(safe_fetch_float(getattr(_live_pos, 'positionAmt', 0.0), 0.0))
+                if original_positionAmt != _fresh_amt:
+                    logger.debug(f'[REFRESH_POS] {position_key}: positionAmt {original_positionAmt:.6f} -> {_fresh_amt:.6f} (from service)')
+                    original_positionAmt = _fresh_amt
+                _fresh_gain = safe_fetch_float(getattr(_live_pos, 'gain', 0.0), 0.0)
+                if is_reduce and _fresh_amt <= 0:
+                    logger.debug(f'[REFRESH_POS] {position_key}: positionAmt=0 from service, skipping REDUCE')
+                    return 'SKIP_REDUCE_EMPTY_POSITION'
         shadow_start_amt = original_positionAmt 
         i = await ii(self, symbol)
         keep_lock_active = False
@@ -11946,6 +12902,8 @@ class MultiAccountTradeManager:
             d_1h = safe_fetch_float(i.get('stoch_d_1h', 50))
             k_4h = safe_fetch_float(i.get('stoch_k_4h', 50))
             d_4h = safe_fetch_float(i.get('stoch_d_4h', 50))
+            sma_200_1h = safe_fetch_float(i.get('sma_200_1h', 0))
+
             account_key, parsed_symbol, parsed_position_side = parse_position_key(position_key)
             if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and account_key !='flz': 
                 logger.warning(f"[SERVER_BLOCK] {position_key}: Server instance active, blocking maker")
@@ -11970,17 +12928,45 @@ class MultiAccountTradeManager:
                         lock_acquired = await self.try_add_order_redis(exec_lock_key, expiry_seconds=MAX_EXECUTION_TIME)
                 except Exception: pass
                 if not lock_acquired: return "BLOCK_SKIPPED_LOCK_ACTIVE"
-            if position_key in self.augmentation_cooldown_map and is_augment:
-                return "BLOCK_SKIPPED_AUG_COOLDOWN"
+            if is_augment:
+                aug_cd_key = f"aug_cooldown:{position_key}"
+                last_aug = await self.redis_manager.get(aug_cd_key) if self.redis_manager else None
+                if last_aug:
+                    try:
+                        _mins_ago = (time.time() - float(last_aug)) / 60
+                        if _mins_ago < 15:
+                            logger.warning(f"[AUG_COOLDOWN_BLOCK] {position_key}: Augmented {_mins_ago:.1f}m ago. BLOCKED. NO BYPASS. action={action} reason={reason}")
+                            return f"BLOCK_ALREADY_AUGMENTED_{_mins_ago:.1f}m"
+                    except Exception as e: logger.debug(f"CD err: {e}")
             position = await self.get_position(position_key)
             baseline_amt = abs(safe_fetch_float(position.positionAmt, 0.0))
             current_real_amt = getattr(position, 'positionAmt', 0.0) if position else 0.0
+            real_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0) if position else 0.0
+            real_notional = abs(current_real_amt) * old_price if old_price > 0 else 0.0
+            current_price = await quick_price(symbol)
+            if is_augment and is_hedge and real_gain < -0.01 and current_real_amt > 0:
+                logger.critical(f"🛑 [HEDGE_AUGMENT_BLOCK] {position_key}: BLOCKED hedge augment — hedge is LOSING {real_gain:.3f}%! Hedges can NEVER grow while losing. size=${real_notional:.0f} reason={reason}")
+                return f"BLOCKED_HEDGE_AUGMENT_LOSING_{real_gain:.3f}%"
+            if is_augment:
+                if real_gain < config.MIN_GAIN_TO_BUY_AGGRESSIVELY and real_notional > 0:
+                    logger.warning(f"🛑 [AUGMENT_GATE] {position_key}: BLOCKED augment at gain={real_gain:.3f}% (need >={config.MIN_GAIN_TO_BUY_AGGRESSIVELY:.3f}%) size=${real_notional:.0f} action={action} reason={reason} — NO BYPASS, NOT EVEN REENTRY/HEDGE/GAIN_GUARD")
+                    return f"BLOCKED_AUGMENT_LOW_GAIN_{real_gain:.3f}%"
+                if real_notional > 3 * config.START_POSITION_SIZE:
+                    logger.warning(f"🛑 [SIZE_GATE] {position_key}: BLOCKED augment — position already ${real_notional:.0f} (>{3*config.START_POSITION_SIZE:.0f}) gain={real_gain:.3f}% reason={reason}")
+                    return f"BLOCKED_AUGMENT_OVERSIZED_${real_notional:.0f}"
+            if is_augment and not is_long and current_price > 0:
+                sma_200_15m = safe_fetch_float(i.get('sma_200_15m', 0), 0)
+                if sma_200_15m > 0 and current_price > sma_200_15m:
+                    max_short_size = config.START_POSITION_SIZE
+                    if real_notional >= max_short_size:
+                        logger.warning(f"🛑 [SHORT_SMA_GATE] {position_key}: BLOCKED short augment — price {current_price:.4f} > sma_200_15m {sma_200_15m:.4f}, already ${real_notional:.0f} >= ${max_short_size:.0f}")
+                        return f"BLOCKED_SHORT_ABOVE_SMA200_15m"
             if abs(original_positionAmt - current_real_amt) > max(original_positionAmt * 0.05, 0.001) and original_positionAmt > 0:
                 logger.warning(f"🛑 [EXECUTE_ABORT] Stale Data for {position_key}. Thought: {original_positionAmt}, Real: {current_real_amt}")
                 if self.tracker_manager:
                     await self.tracker_manager.transition_to_exit(account_key, position_key, old_price, current_real_amt, status='active')
                 return "BLOCK_STALE_DATA_MISMATCH"
-            current_price = await quick_price(symbol)
+            
             if not current_price or current_price <= 0: current_price, _ = await get_current_price(symbol)
             pos_mark = safe_fetch_float(getattr(position, 'mark_price', 0.0), 0.0) if position else 0.0
             min_since_aug = minutes_since(position.last_augmentation_time)
@@ -12002,10 +12988,10 @@ class MultiAccountTradeManager:
                 arrow3_good = (is_long and k_3m >= k_3m_prev) or (not is_long and k_3m <= k_3m_prev)
                 if arrow3_good:
                     tier_mult = 2
-                    arrow15_good = (is_long and k_15m >= d_15m) or (not is_long and k_15m <= d_15m)
+                    arrow15_good = (k_15m != 50 or d_15m != 50) and ((is_long and k_15m >= d_15m) or (not is_long and k_15m <= d_15m))
                     if arrow15_good:
                         tier_mult = 4
-                        arrow1h_good = (is_long and k_1h >= d_1h) or (not is_long and k_1h <= d_1h)
+                        arrow1h_good = (k_1h != 50 or d_1h != 50) and ((is_long and k_1h >= d_1h) or (not is_long and k_1h <= d_1h))
                         if arrow1h_good:
                             tier_mult = 6
                             arrow4h_good = (is_long and k_4h >= d_4h) or (not is_long and k_4h <= d_4h)
@@ -12016,16 +13002,37 @@ class MultiAccountTradeManager:
                 hedge_block_reason = await self._handle_hedge_guard(account_key, position_key, symbol, position, current_real_amt, current_price, is_long=is_long)
                 if hedge_block_reason and 'ACTION_TAKEN' in hedge_block_reason:
                     return hedge_block_reason
+            min_open_qty = max(2 * config.MIN_POSITION_SIZE / max(current_price, 1e-9), 2 * self.min_qty.get(symbol, 0.001))
+            if action in ('OPEN', 'REENTRY', 'QUICK_OPEN') and 'HEDGE' not in reason.upper() and current_real_amt < min_open_qty:
+                try:
+                    if self.positions_service and hasattr(self.positions_service, '_last_positions_fetch'):
+                        self.positions_service._last_positions_fetch[account_key] = 0.0
+                    if self.positions_service:
+                        await self.positions_service.fetch_positions(account_key)
+                    api_pos = await self.get_position(position_key)
+                    api_amt = abs(safe_fetch_float(getattr(api_pos, 'positionAmt', 0.0), 0.0))
+                    if api_amt > min_open_qty:
+                        logger.error(f"[OPEN_GUARD] {position_key}: Binance API confirms existing {api_amt:.4f} (${api_amt*current_price:.2f}) — BLOCKING OPEN. Local state was desynced.")
+                        return "BLOCK_OPEN_POSITION_EXISTS"
+                    current_real_amt = api_amt
+                    baseline_amt = api_amt
+                except Exception as e:
+                    logger.error(f"[OPEN_GUARD] {position_key}: API verify failed ({e}) — BLOCKING OPEN for safety.")
+                    return "BLOCK_OPEN_VERIFY_FAILED"
             if is_augment:
 
 
-                qty=0.25*qty
+                # quantity=max(pos_min_qty, 0.35 * quantity)
 
 
                 if account_key == 'flz' and symbol not in ['BTCUSDC', 'BTCDOMUSDT', 'BNBUSDC', '1000PEPEUSDC', 'AXSUSDT', 'RIVERUSDT']:
                     return 'WRONG SYMBOL FOR FLZ'
                 if ('OPEN' in action or 'OPEN' in reason) and current_real_amt > 2 * config.MIN_POSITION_SIZE / current_price and 'HEDGE' not in reason.upper():
                     return f'BLOCKED: {position_key} ${current_real_amt*current_price} over MIN QTY'
+
+                if (is_long and current_price < sma_200_1h) or (not is_long and current_price > sma_200_1h) :
+                    return f'BLOCKED: {position_key} TEMP BLOCK ON RISKY TRADES'
+                    
                 projected_total = current_real_amt + quantity
                 if projected_total < retention_qty and tier_mult > 1:
                     shortfall = retention_qty - projected_total
@@ -12033,12 +13040,12 @@ class MultiAccountTradeManager:
                         quantity += shortfall
             elif is_reduce:
                 if ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action or 'SCALP' in action) and position.gain < 0.17 and position.gain > 0.04: 
-                    action == 'CLOSE'
+                    action = 'CLOSE'
                 is_huge = abs(float(position.positionAmt)) * old_price > 5 * self.config.START_POSITION_SIZE
-                if not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action:
+                if not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
                 dc_check = (is_long and i.get('dc_low4_3m', 0) > i.get('dc_low_3m', 0))
-                if dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action:
+                if dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
                     return 'ABORT STOP draining'
                 if account_key in ['flz', 'men', 'fin'] and position.gain < 0.6 and 'HEDGE' not in action and 'CLOSE' not in action and 'SCALP' not in action and 'QUICK' not in action:
                     if (position.positionAmt < 4 * config.START_POSITION_SIZE/current_price and position.gain > 0.3):
@@ -12047,53 +13054,151 @@ class MultiAccountTradeManager:
                         return 'NO QUANTITY LEFT TO REDUCE 2'
                 if quantity <= 0.0 or quantity >= current_real_amt:
                     quantity = current_real_amt - retention_qty
-                if is_full_close and 'STOP' not in reason.upper() and 'KILL' not in reason.upper():
+                if is_full_close and ('FORCE' in reason_upper or 'GAIN_GUARD' in reason_upper or 'KILL' in reason_upper or 'STOP' in reason_upper or 'MITIGATOR' in reason_upper):
+                    quantity = current_real_amt
+                    retention_qty = 0
+                elif is_full_close and 'STOP' not in reason.upper() and 'KILL' not in reason.upper() and 'FORCE' not in reason.upper() and 'GAIN_GUARD' not in reason.upper():
                     quantity = current_real_amt
                 elif 'SCALP' in action.upper() or 'QUICK' in action.upper():
                     quantity = current_real_amt
                 else:
-                    if quantity > current_real_amt - retention_qty:
+                    if quantity > current_real_amt - retention_qty and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
                         quantity = current_real_amt - retention_qty
                 if quantity <= 0.0:
                     return f'NO QUANTITY LEFT TO REDUCE (Protected by retention_qty {retention_qty:.6f})'
             await record_decision_context_crypto( self.redis_manager, account_key, position_key, action, reason, i, extra_data={ 'is_hedge': is_hedge, 'hedge_for': hedge_for} )
+            if is_sandbox_account(config, account_key):
+                sandbox_fill_price = current_price
+                if is_augment:
+                    old_notional = current_real_amt * (getattr(position, 'entryPrice', sandbox_fill_price) or sandbox_fill_price)
+                    new_notional = quantity * sandbox_fill_price
+                    new_amt = current_real_amt + quantity
+                    position.entryPrice = (old_notional + new_notional) / new_amt if new_amt > 0 else sandbox_fill_price
+                    position.positionAmt = new_amt
+                elif is_reduce:
+                    position.positionAmt = max(0.0, current_real_amt - quantity)
+                position.mark_price = sandbox_fill_price
+                position.last_updated = datetime.now(timezone.utc)
+                if self.positions_service and position_key in self.positions_service.positions:
+                    sp = self.positions_service.positions[position_key]
+                    sp.positionAmt, sp.mark_price, sp.entryPrice = position.positionAmt, sandbox_fill_price, getattr(position, 'entryPrice', sandbox_fill_price)
+                await self.handle_filled_maker(account_key, position_key, position, original_positionAmt, quantity, sandbox_fill_price, side, position_side, unique_id, reason)
+                logger.info(f"🧪 [SANDBOX_FILL] {position_key}: {action} {side} {quantity:.6f} @ ${sandbox_fill_price:.4f} → amt={position.positionAmt:.6f}")
+                return 'SUCCESS_SANDBOX'
             verifier = TradeVerifier(self.position_callback_manager, self.positions_by_account, self.positions_service,self.active_maker_orders, self.managed_maker_order_registry, self.accounts)
             if is_reduce:
                 if current_real_amt == 0: return "BLOCK_POS_ALREADY_CLOSED"
+                _pos_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
+                _gain_after_fees = _pos_gain - 0.04  # 0.02% maker fee on each side = 0.04% round-trip
+                _is_profitable_exit = _gain_after_fees > 0.0
+                _is_loss = _pos_gain < -0.01
+                # LOSS GUARD: positions in loss cannot be closed via maker (bypasses Finandy)
+                # Instead: use webhook (Finandy protects) or hedge
+                if _is_loss and not is_hedge and 'EMERGENCY' not in reason_upper and 'LIQUIDATION' not in reason_upper:
+                    if is_hedge_account(config, account_key) and hasattr(self, 'hedge_engine') and self.hedge_engine:
+                        _hedge_key = f"{account_key}:{symbol}:{'LONG' if is_long else 'SHORT'}"
+                        _already_hedging = any(h.get('losing_position_key') == position_key for h in getattr(self.tracker_manager, 'active_hedges', []) if isinstance(h, dict))
+                        if not _already_hedging:
+                            _losing_val = abs(current_real_amt) * current_price
+                            logger.warning(f"🛡️ [LOSS_HEDGE_GUARD] {position_key}: gain={_pos_gain:.2f}% — cannot close at loss, triggering hedge instead")
+                            asyncio.create_task(self.hedge_engine.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_losing_val, dry_run=False))
+                            return f"LOSS_HEDGE_GUARD_TRIGGERED_{_pos_gain:.2f}pct"
+                        else:
+                            logger.info(f"🛡️ [LOSS_HEDGE_EXISTS] {position_key}: gain={_pos_gain:.2f}% — hedge already active, blocking close")
+                            return f"LOSS_HEDGE_ALREADY_ACTIVE_{_pos_gain:.2f}pct"
+                    else:
+                        logger.warning(f"🛡️ [LOSS_CLOSE_BLOCK] {position_key}: gain={_pos_gain:.2f}% — not hedge account, using webhook (Finandy protects)")
+                # PROFITABLE EXIT: use maker order (0.02% fee instead of 0.04% taker)
+                if _is_profitable_exit and not is_hedge:
+                    logger.info(f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) — using maker order for cheaper exit")
+                    maker_success, executed_qty = await self.place_maker_order(account_key, position_key, symbol, current_real_amt, current_price, quantity, side, position_side, unique_id, f"MAKER_PROFIT_EXIT_{reason}")
+                    if maker_success:
+                        reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
+                        if reduce_verified:
+                            await self.handle_filled_maker(account_key, position_key, position, original_positionAmt, quantity, current_price, side, position_side, unique_id, reason)
+                            if hasattr(self, 'positions_service') and self.positions_service:
+                                if position_key in self.positions_service.positions:
+                                    self.positions_service.positions[position_key].reduction_reason = reason
+                            now_dt = datetime.now(timezone.utc)
+                            self.reduced_positions[position_key] = now_dt
+                            if hasattr(self, 'service') and self.service:
+                                self.service.reduced_positions[position_key] = now_dt
+                                asyncio.create_task(self.service.save_reduced_positions(account_key, min_interval=0))
+                            self.reentry_data[position_key] = {"reentry_level": current_price, "reentry_amount": float(position.max_quantity or quantity), "timestamp": now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), "reason": f"REDUCED_{reason}"}
+                            position.last_reduction_price = current_price
+                            position.last_reduction_time = now_dt
+                            if 'ORPHANED_HEDGE' not in reason_upper:
+                                asyncio.create_task(self._close_associated_hedge(account_key, symbol, position_side, current_price))
+                            return 'SUCCESS'
+                    # Maker failed — fall through to webhook
+                    logger.warning(f"[MAKER_EXIT_FALLBACK] {position_key}: Maker order failed, falling back to webhook")
                 webhook_success = await self.send_webhook( position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:{reason}", is_full_close, f"{reason}_QWH", level=None, stoch_required=False )
                 if not webhook_success:
                     return "FAILED_WEBHOOK"
                 if position: position.last_signal = action.upper()
+                reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
+                if not reduce_verified:
+                    logger.warning(f"⚠️ [REDUCE_UNVERIFIED] {position_key}: Webhook HTTP 200 but fill not confirmed — retrying webhook once")
+                    retry_ok = await self.send_webhook(position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:RETRY:{reason}", is_full_close, f"{reason}_RETRY_QWH", level=None, stoch_required=False)
+                    if retry_ok:
+                        reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
+                    if not reduce_verified:
+                        logger.error(f"❌ [REDUCE_FAILED] {position_key}: Fill not confirmed after retry — skipping handle_filled_maker")
+                        return "FAILED_REDUCE_UNVERIFIED"
                 await self.handle_filled_maker( account_key, position_key, position, original_positionAmt, quantity, current_price, side, position_side, unique_id, reason )
                 if hasattr(self, 'positions_service') and self.positions_service:
                     if position_key in self.positions_service.positions:
                         self.positions_service.positions[position_key].reduction_reason = reason
+                now_dt = datetime.now(timezone.utc)
                 if is_reduce:
-                    now_dt = datetime.now(timezone.utc)
                     self.reduced_positions[position_key] = now_dt
                     if hasattr(self, 'service') and self.service:
                         self.service.reduced_positions[position_key] = now_dt
                         asyncio.create_task(self.service.save_reduced_positions(account_key, min_interval=0))
-                    self.reentry_data[position_key] = { "reentry_level": current_price, "reentry_amount": quantity, "timestamp": now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), "reason": f"REDUCED_{reason}" }
-                asyncio.create_task(self._close_associated_hedge(account_key, symbol, position_side, current_price))
+                self.reentry_data[position_key] = { "reentry_level": current_price, "reentry_amount": float(position.max_quantity or quantity), "timestamp": now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), "reason": f"{'REDUCED' if is_reduce else 'CLOSED'}_{reason}" }
+                position.last_reduction_price = current_price
+                position.last_reduction_time = now_dt
+                if 'ORPHANED_HEDGE' not in reason_upper:
+                    asyncio.create_task(self._close_associated_hedge(account_key, symbol, position_side, current_price))
                 return 'SUCCESS'
             else:
-                if is_augment and minutes_since(position.last_augmentation_time) < 21 and position.gain < config.MIN_GAIN_TO_BUY_AGGRESSIVELY: 
-                    return 'BLOCKED NO GAIN'
+                if is_augment and current_real_amt * current_price > config.START_POSITION_SIZE and position.gain < config.MIN_GAIN_TO_BUY_AGGRESSIVELY  :
+                    logger.warning(f"[AUGMENT_GUARD] {position_key}: BLOCKED — gain={position.gain:.2f}% < required {config.MIN_GAIN_TO_BUY_AGGRESSIVELY:.2f}% on ${current_real_amt*current_price:.2f} position")
+                    return 'BLOCKED_AUGMENT_INSUFFICIENT_GAIN'
+                if not config.HEDGE_MODE and  'HEDGE' in reason.upper(): return 'BLOCKED_AUGMENT_HEDGE_MOTHER FUUCKER YOU ARE ILLEGAL'
+                
+
+
                 if is_augment and account_key in ['inf','fin','flz','men']: 
-                    quantity = min(0.5 * quantity, 2 * config.START_POSITION_SIZE) / current_price
+                    quantity = min(0.15 * quantity, 2 * config.START_POSITION_SIZE) / current_price
+
+
+                foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3) 
+                if quantity > foothold_qty : # Fin usually handled by webhook above, checking just in case
+                    await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
+                    quantity = quantity - foothold_qty 
+
+
                 maker_success, executed_qty = await self.place_maker_order( account_key, position_key, symbol, current_real_amt, current_price, quantity, side, position_side, unique_id, reason )
                 logger.info(f"[EXECUTE_NOW] Placing {action} {side} {quantity:.6f} @ ${current_price:.2f}")
                 if maker_success:
-                    verified = await verifier.verify_trade( account_key, position_key, quantity, is_long, timeout_seconds=12, initial_positionAmt=baseline_amt, action=action) 
+                    verified = await verifier.verify_trade( account_key, position_key, quantity, is_long, timeout_seconds=5, initial_positionAmt=baseline_amt, action=action)
                     if verified:
                         if self.redis_manager:
                             await self.redis_manager.set(exec_lock_key, f"post_fill_{action}", ex=450)
                             if action not in ['REDUCE', 'CLOSE']:
                                 strict_hist_key = f"strict_exec:{position_key}:{side}"
                                 await self.redis_manager.set(strict_hist_key, str(time.time()), ex=600)
+                                aug_cd_key = f"aug_cooldown:{position_key}"
+                                await self.redis_manager.set(aug_cd_key, str(time.time()), ex=900)
                         if 'REDUCE' not in action and 'CLOSE' not in action:
-                            self.augmentation_cooldown_map[position_key] = {'time': datetime.now(timezone.utc)}
+                            _now_dt = datetime.now(timezone.utc)
+                            self.augmentation_cooldown_map[position_key] = {'time': _now_dt}
+                            self.augmented_positions[position_key] = _now_dt
+                            self.recent_augmentations[position_key] = time.time()
+                            self._last_augment_save_time[position_key] = time.time()
+                            _AUGMENT_LOCK[position_key] = time.time()
+                            _recent_opens[position_key] = time.time()
                         if position:
                             position.last_signal = action.upper()
                             position.augment_reason = reason
@@ -12114,24 +13219,44 @@ class MultiAccountTradeManager:
                                     asyncio.create_task(self.service.save_reduced_positions(account_key, min_interval=0))
                         if action.upper() in ['REDUCE', 'CLOSE', 'QUICK_CLOSE'] and getattr(config, 'REENTRY_MANDATORY', True):
                             pos_after = await self.get_position(position_key)
+                            remaining_value = 0.0
                             if pos_after:
-                                remaining_value = abs(float(getattr(pos_after, 'positionAmt', 0.0))) * safe_fetch_float(getattr(pos_after, 'mark_price', 0.0), 0.0)
-                                if remaining_value < config.START_POSITION_SIZE and position_key not in self.pending_reentries:
-                                    self.pending_reentries[position_key] = {'exit_price': safe_fetch_float(getattr(pos_after, 'mark_price', 0.0), 0.0), 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': reason, 'original_qty': float(qty), 'attempts': 0, 'status': 'pending'}
-                                    logger.info(f"[REENTRY_QUEUED] {position_key}: Position below START_SIZE after {action}, queued for reentry")
+                                remaining_value = abs(float(getattr(pos_after, 'positionAmt', 0.0))) * safe_fetch_float(getattr(pos_after, 'mark_price', current_price), current_price)
+                            if remaining_value < config.START_POSITION_SIZE and position_key not in self.pending_reentries:
+                                exit_price_val = safe_fetch_float(getattr(pos_after, 'mark_price', current_price), current_price) if pos_after else current_price
+                                if exit_price_val <= 0.0: exit_price_val = current_price
+                                self.pending_reentries[position_key] = {'exit_price': exit_price_val, 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': reason, 'original_qty': float(quantity), 'attempts': 0, 'status': 'pending'}
+                                logger.info(f"[REENTRY_QUEUED] {position_key}: Position below START_SIZE after {action}, queued for reentry at {exit_price_val}")
                         await self.clear_recent_signal(position_key)
                         keep_lock_active = True
                         return 'SUCCESS'
                     else:
                         logger.warning(f"⚠️ [EXECUTE_UNVERIFIED] {position_key}: Maker success but not verified.")
                         await self.clear_all_cooldowns_for_position(position_key, side)
-                        await asyncio.sleep(8)
+                        await asyncio.sleep(2)
                         position = await self.get_position(position_key)
-                        if abs(position.positionAmt - original_positionAmt) > 0.0001:
-                            return 'SUCCESS' 
+                        if position and abs(abs(position.positionAmt) - abs(original_positionAmt)) > 0.0001:
+                            return 'SUCCESS'
+                        if is_augment:
+                            logger.warning(f"[AUG_UNVERIFIED] {position_key}: Augment maker unverified after 28s — confirming cancellation before webhook fallback.")
+                            _maker_oid = self.active_maker_orders.get(position_key, {}).get('order_id')
+                            if _maker_oid and str(_maker_oid).isdigit():
+                                _cancelled = await self.cancel_order_with_confirmation(position_key, int(_maker_oid), quantity)
+                                if not _cancelled:
+                                    logger.warning(f"[AUG_UNVERIFIED] {position_key}: Maker order {_maker_oid} not confirmed cancelled — aborting webhook fallback to avoid double-fill.")
+                                    return "FAILED_AUG_CANCEL_UNCONFIRMED"
+                                logger.info(f"[AUG_UNVERIFIED] {position_key}: Maker order {_maker_oid} confirmed cancelled — sending webhook fallback.")
+                            else:
+                                logger.info(f"[AUG_UNVERIFIED] {position_key}: No live maker order found (already cleared) — sending webhook fallback.")
                         fallback_success = await self.send_webhook( position_key, account_key, symbol, original_positionAmt, quantity, current_price, side, position_side, f"{unique_id}:UNVERIFIED", False, f"{reason}_UNVERIFIED_SHADOW_QWH", level=None, stoch_required=False )
                         if fallback_success:
-                            self.augmentation_cooldown_map[position_key] = {'time': datetime.now(timezone.utc)}
+                            _now_fb = datetime.now(timezone.utc)
+                            self.augmentation_cooldown_map[position_key] = {'time': _now_fb}
+                            self.augmented_positions[position_key] = _now_fb
+                            self.recent_augmentations[position_key] = time.time()
+                            self._last_augment_save_time[position_key] = time.time()
+                            _AUGMENT_LOCK[position_key] = time.time()
+                            _recent_opens[position_key] = time.time()
                             return 'SUCCESS_VIA_FALLBACK'
                         return "FAILED_VERIFICATION_AND_FALLBACK"
                 else:
@@ -12144,11 +13269,11 @@ class MultiAccountTradeManager:
         finally:
             if self.redis_manager:
                 try: await self.redis_manager.set(debounce_key, "1", ex=10)
-                except: pass
+                except Exception: pass
             if not keep_lock_active:
                 try:
                     if self.redis_manager: await self.redis_manager.delete(exec_lock_key)
-                except: pass
+                except Exception: pass
                 await self.force_clear_execution_lock(position_key)
 
     async def _emergency_margin_cleanup(self, account_key: str, triggering_key: str):
@@ -12194,7 +13319,7 @@ class MultiAccountTradeManager:
         if not hedge_engine:
             logger.error(f"[HEDGE_GUARD] No HedgeEngine. Allowing reduction.")
             return None 
-        if hasattr(self, 'tracker_manager'):
+        if hasattr(self, 'tracker_manager') and self.tracker_manager:
             async with self.tracker_manager._hedges_lock:
                 for h in self.tracker_manager.active_hedges:
                     if h.get('losing_position_key') == position_key and h.get('account') == account_key:
@@ -12213,12 +13338,16 @@ class MultiAccountTradeManager:
             logger.info(f"🛡️ [HEDGE_GUARD] {position_key}: Initiating Hedge (Gain {gain:.2f}%).")
             i = await ii(self, symbol)
             k_15m = safe_fetch_float(i.get('stoch_k_15m', 50.0))
-            if is_long and k_15m < 15:
-                logger.warning(f"🛡️ [HEDGE_BLOCKED] {position_key}: Long is bleeding, but k_15m={k_15m:.1f} (OVERSOLD). REFUSING to short the bottom. Giving it room to bounce.")
-                return None
-            elif not is_long and k_15m > 85:
-                logger.warning(f"🛡️ [HEDGE_BLOCKED] {position_key}: Short is bleeding, but k_15m={k_15m:.1f} (OVERBOUGHT). REFUSING to long the top. Giving it room to drop.")
-                return None
+            # Stoch gate ONLY for small losses. Deep losses (< -3%) MUST hedge regardless of stoch.
+            if gain > -3.0:
+                if is_long and k_15m < 15:
+                    logger.warning(f"🛡️ [HEDGE_STOCH_WAIT] {position_key}: gain={gain:.2f}% > -3%, k_15m={k_15m:.1f} (oversold). Waiting for bounce before hedging.")
+                    return None
+                elif not is_long and k_15m > 85:
+                    logger.warning(f"🛡️ [HEDGE_STOCH_WAIT] {position_key}: gain={gain:.2f}% > -3%, k_15m={k_15m:.1f} (overbought). Waiting for drop before hedging.")
+                    return None
+            else:
+                logger.warning(f"🚨 [HEDGE_EMERGENCY] {position_key}: gain={gain:.2f}% <= -3%. IGNORING stoch k_15m={k_15m:.1f}. MUST HEDGE NOW.")
             position_side = 'LONG' if is_long else 'SHORT'
             positionAmt_abs = abs(pos_amt)
             losing_value_usd = positionAmt_abs * current_price
@@ -12228,11 +13357,7 @@ class MultiAccountTradeManager:
                 logger.info(f"✅ [HEDGE_GUARD] Hedge successful. Lock will expire naturally.")
                 return "ACTION_TAKEN_HEDGE_SUCCESS"
             else:
-                if getattr(position, 'gain', 0.0) < -0.5:
-                    logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed. BLOCKING REDUCE because loss is gigantic ({getattr(position, 'gain', 0.0):.2f}%). We will not suicide.")
-                    if self.redis_manager: await self.redis_manager.delete(lock_key)
-                    return "ACTION_TAKEN_BLOCKED_GIGANTIC_LOSS_HEDGE_FAILED"
-                logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed. Allowing REDUCE of original position.")
+                logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed for {position_key} (gain={getattr(position, 'gain', 0.0):.2f}%). Allowing CLOSE — cannot leave position bleeding without hedge.")
                 if self.redis_manager: await self.redis_manager.delete(lock_key)
                 return None 
         except Exception as e:
@@ -12271,8 +13396,8 @@ class MultiAccountTradeManager:
                         logger.info(f"[HEDGE_PROMOTED] {h_key}: Hedge in profit ({h_gain:.2f}%) promoted to independent — will keep growing.")
                         continue
                 logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! NUKING ORPHANED HEDGE {h_key} (gain={h_gain:.2f}%)")
-                h_side = 'BUY' if 'SHORT' in h_key else 'SELL'
-                h_pos_side = 'SHORT' if 'SHORT' in h_key else 'LONG'
+                h_side = 'BUY' if h_key.endswith('_SHORT') else 'SELL'
+                h_pos_side = 'SHORT' if h_key.endswith('_SHORT') else 'LONG'
                 asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE"))
                 await self.tracker_manager.nuke_hedge_key(account_key, h_key)
 
@@ -12284,7 +13409,7 @@ class MultiAccountTradeManager:
 
     async def send_foothold_webhook(self, position_key, account_key, symbol, foothold_qty, current_price, side, position_side, reason):
         if account_key not in self.accounts:
-            logger.error(f"[send_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}")
+            logger.error(f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}")
             return False
         account = self.accounts[account_key]
         webhook_url = account.webhook_url
@@ -12312,9 +13437,10 @@ class MultiAccountTradeManager:
             return False
 
     async def send_webhook(self, position_key: str, account_key: str, symbol: str, positionAmt: float, amount: float, current_price: float, side: str, position_side: str, unique_id: str, is_full_close: bool, reason: str, level: float | None = None, stoch_required: bool = False, order_ids_to_cancel: list = None) -> bool: 
-        if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and 'QUICK' not in reason and account_key!='flz':
-            logger.warning(f"[SERVER_HEARTBEAT_BLOCK] {position_key}: Server active, blocking webhook.")
-            return False 
+        if is_sandbox_account(config, account_key): return True
+        # if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and 'QUICK' not in reason and account_key!='flz':
+        #     logger.warning(f"[SERVER_HEARTBEAT_BLOCK] {position_key}: Server active, blocking webhook.")
+        #     return False 
         account_key, parsed_symbol, parsed_position_side = parse_position_key(position_key)
         if account_key not in self.accounts:
             self.accounts = load_accounts(self.config)
@@ -12322,17 +13448,26 @@ class MultiAccountTradeManager:
                 logger.critical(f"🛑 [WEBHOOK_FAIL] {position_key}: Missing credentials.")
                 return False
         is_augmentation = (side.upper() == "BUY" and position_side.upper() == "LONG") or (side.upper() == "SELL" and position_side.upper() == "SHORT")
-        if order_ids_to_cancel:
-            logger.info(f"[{position_key}] 🛡️ Webhook Safety: Cancelling stuck orders first...")
-            for oid in order_ids_to_cancel:
-                try:
-                    await self.cancel_order_with_confirmation(position_key, int(oid), 0.0)
-                except Exception: pass
-            await asyncio.sleep(0.5)
-            verified = await verify_trade_via_websocket( self, account_key, position_key, amount, is_long=position_side=='LONG', timeout_seconds=6.0, initial_positionAmt=positionAmt, action='AUGMENT' if is_augmentation else 'REDUCE' )
-            if verified:
-                logger.warning(f"[{position_key}] 🛑 Webhook ABORTED: Trade confirmed after cancel.")
+        try:
+            _wh_client = getattr(self.accounts.get(account_key), "client", None)
+            if _wh_client:
+                _open_orders = await self.get_cached_open_orders(account_key, symbol)
+                _to_cancel = [o for o in _open_orders if o.get("side") == side and o.get("positionSide") == position_side]
+                if order_ids_to_cancel:
+                    _extra = {str(x) for x in order_ids_to_cancel}
+                    _to_cancel += [o for o in _open_orders if str(o.get("orderId")) in _extra and o not in _to_cancel]
+                for _co in _to_cancel:
+                    try: await asyncio.to_thread(_wh_client.futures_cancel_order, symbol=symbol, orderId=_co["orderId"])
+                    except Exception: pass
+                if _to_cancel:
+                    logger.info(f"[WEBHOOK_CANCEL] {position_key}: Cancelled {len(_to_cancel)} open orders before webhook.")
+                    await asyncio.sleep(1.2)
+            _pre_verified = await verify_trade_via_websocket( self, account_key, position_key, amount, is_long=position_side=='LONG', timeout_seconds=5.0, initial_positionAmt=positionAmt, action='AUGMENT' if is_augmentation else 'REDUCE' )
+            if _pre_verified:
+                logger.warning(f"[WEBHOOK_CANCEL_VERIFIED] {position_key}: Position already changed after cancel — webhook aborted.")
                 return True
+        except Exception as _wh_cancel_ex:
+            logger.warning(f"[WEBHOOK_PRE_CANCEL] {position_key}: Cancel/verify error ({_wh_cancel_ex}), proceeding.")
         account = self.accounts.get(account_key)
         webhook_url = getattr(account, 'webhook_url', None)
         webhook_secret = getattr(account, 'webhook_secret', None)
@@ -12357,7 +13492,7 @@ class MultiAccountTradeManager:
                 webhook_secret = getattr(account, f"webhook_secret_{2 if virtual else 3}", webhook_secret)
                 price_field = "triggerPrice" if resolved_kind == "virtual" else "price"
                 price_data[price_field] = f"{level_float:.6f}"
-            except: pass
+            except Exception: pass
         if not webhook_url or not webhook_secret: return False
         if is_augmentation:
             block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", **price_data}
@@ -12373,7 +13508,7 @@ class MultiAccountTradeManager:
             payload["close"] = { "decrease": {"type": "sumUsd", "amount": f"{usd_value:.6f}"}, "action": "close" if is_full_close else "decrease", **price_data }
             payload.pop("open", None)
             payload.pop("dca", None)
-        logger.info(f"👷 [{position_key}] WEBHOOK: {resolved_kind} {side}/{position_side} qty={quantity:.6f} usd=${usd_value:.2f} reason={reason}")
+        logger.info(f"👷 [{position_key}] WEBHOOK: {resolved_kind} {side}/{position_side} qty={quantity:.6f} usd=${usd_value:.2f} reason={reason} payload={json.dumps({k:v for k,v in payload.items() if k != 'secret'})}")
         try:
             async with self._webhook_semaphore:
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=15, limit_per_host=15, force_close=False)) as session:
@@ -12382,7 +13517,7 @@ class MultiAccountTradeManager:
                         if resp.status != 200:
                             logger.error(f"[{position_key}] WEBHOOK_FAIL: Status {resp.status} - {resp_text}")
                             return False
-            logger.warning(f"👷 [{position_key}] WEBHOOK_SENT: {resolved_kind} order")
+            logger.warning(f"👷 [{position_key}] WEBHOOK_SENT: {resolved_kind} order | resp={resp_text[:200]}")
             if hasattr(self, 'positions_service') and self.positions_service:
                 asyncio.create_task(self.positions_service.fetch_positions(account_key))
             return True
@@ -12435,9 +13570,9 @@ class MultiAccountTradeManager:
                         elif not is_long and (k_1m > d_1m or k_3m > d_3m):
                             momentum_lost = True
                     if pnl_pct <= loss_threshold or momentum_lost:
-                        if config.get_account_setting(account_key, 'LOSS_EXIT_REQUIRES_HEDGE') and pnl_pct < 0:
-                            if hasattr(self, 'hedge_engine') and self.hedge_engine:
-                                losing_value = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0))) * current_price
+                        if config.get_account_setting(account_key, 'LOSS_EXIT_REQUIRES_HEDGE') and pnl_pct < -1.0:
+                            losing_value = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0))) * current_price
+                            if hasattr(self, 'hedge_engine') and self.hedge_engine and losing_value >= 50.0:
                                 hedge_side = 'SHORT' if is_long else 'LONG'
                                 hedge_key = construct_position_key(account_key, symbol, hedge_side)
                                 hedge_pos = await self.get_position(hedge_key)
@@ -12467,15 +13602,15 @@ class MultiAccountTradeManager:
                 await asyncio.sleep(2.0)
 
     async def monitor_dc_breach_reduce(self):
-        """When a losing position with an active hedge crosses dc_low_15m (LONG) or dc_high_15m (SHORT), promote profitable hedges to independent and reduce the loser. Queue reentry below exit price."""
+        """When ANY losing position crosses dc_low_15m (LONG) or dc_high_15m (SHORT), reduce it. For hedged positions, also promote profitable hedges. Queue reentry below exit price."""
         logger.info("[DC_BREACH_MONITOR] DC breach reduce monitor started (3s interval)")
         while True:
             try:
                 await asyncio.sleep(3.0)
                 if not hasattr(self, 'tracker_manager') or not self.tracker_manager: continue
+                if not hasattr(self, '_dc_breach_cooldown'): self._dc_breach_cooldown = {}
                 async with self.tracker_manager._hedges_lock:
                     hedges_snapshot = list(self.tracker_manager.active_hedges)
-                if not hedges_snapshot: continue
                 losing_keys_checked = set()
                 for hedge_record in hedges_snapshot:
                     losing_key = hedge_record.get('losing_position_key')
@@ -12499,8 +13634,7 @@ class MultiAccountTradeManager:
                     breached = (is_long and dc_low_15m > 0 and current_price < dc_low_15m) or (not is_long and dc_high_15m > 0 and current_price > dc_high_15m)
                     if not breached: continue
                     breach_key = f"dc_breach:{losing_key}"
-                    if hasattr(self, '_dc_breach_cooldown') and time.time() - self._dc_breach_cooldown.get(breach_key, 0) < 120: continue
-                    if not hasattr(self, '_dc_breach_cooldown'): self._dc_breach_cooldown = {}
+                    if time.time() - self._dc_breach_cooldown.get(breach_key, 0) < 120: continue
                     self._dc_breach_cooldown[breach_key] = time.time()
                     logger.critical(f"[DC_BREACH_REDUCE] {losing_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. Promoting profitable hedges & reducing loser.")
                     related_hedges = [h for h in hedges_snapshot if h.get('losing_position_key') == losing_key and h.get('account') == acct]
@@ -12520,106 +13654,498 @@ class MultiAccountTradeManager:
                     if result and ('QUEUED' in str(result) or 'SUCCESS' in str(result)):
                         logger.warning(f"[DC_BREACH_REDUCE] {losing_key}: Reduce queued. Setting reentry below exit price {current_price:.6f}")
                         self.pending_reentries[losing_key] = {'exit_price': current_price, 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': f'DC_BREACH_15m', 'original_qty': float(losing_amt), 'attempts': 0, 'status': 'pending', 'reentry_condition': 'below_exit_price'}
+                for account_key in config.ACCOUNT_KEYS:
+                    positions = self.positions_by_account.get(account_key, {})
+                    for position_key, pos in positions.items():
+                        if not position_key.startswith(account_key): continue
+                        if position_key in losing_keys_checked: continue
+                        pos_amt = abs(float(getattr(pos, 'positionAmt', 0.0)))
+                        if pos_amt <= 0: continue
+                        pos_gain = safe_fetch_float(getattr(pos, 'gain', 0.0), 0.0)
+                        if pos_gain >= 0: continue
+                        _, symbol, pos_side = parse_position_key(position_key)
+                        is_long = pos_side == 'LONG'
+                        # STRICT_NO_LOSS: NEVER reduce a losing position — trigger hedge instead
+                        if account_key in config.STRICT_NO_LOSS_ACCOUNTS:
+                            if pos_gain < -0.5:
+                                _he = getattr(self, 'hedge_engine', None)
+                                if _he:
+                                    _mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0)
+                                    _val = pos_amt * _mark if _mark > 0 else 0
+                                    if _val > 1.0:
+                                        logger.warning(f"[DC_BREACH_HEDGE_TRIGGER] {position_key}: STRICT_NO_LOSS — triggering hedge (gain={pos_gain:.2f}%, val=${_val:.1f})")
+                                        asyncio.create_task(_he.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_val, dry_run=False))
+                            continue
+                        indicators = await ii(self, symbol)
+                        if not indicators: continue
+                        current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0)
+                        if current_price <= 0: continue
+                        dc_low_15m = safe_fetch_float(indicators.get('dc_low_15m', 0.0), 0.0)
+                        dc_high_15m = safe_fetch_float(indicators.get('dc_high_15m', 0.0), 0.0)
+                        breached = (is_long and dc_low_15m > 0 and current_price < dc_low_15m) or (not is_long and dc_high_15m > 0 and current_price > dc_high_15m)
+                        if not breached: continue
+                        breach_key = f"dc_breach:{position_key}"
+                        if time.time() - self._dc_breach_cooldown.get(breach_key, 0) < 120: continue
+                        self._dc_breach_cooldown[breach_key] = time.time()
+                        logger.critical(f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Price {current_price:.6f} crossed dc_{'low' if is_long else 'high'}_15m={'%.6f' % (dc_low_15m if is_long else dc_high_15m)}. gain={pos_gain:.2f}%. Reducing unhedged loser.")
+                        pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, self.min_qty.get(symbol, 0.001))
+                        reduce_qty = pos_amt - pos_min_qty
+                        if reduce_qty <= 0: continue
+                        result = await queue_trade_action(self.order_queue, self, position_key, "REDUCE", f"DC_BREACH_REDUCE_UNHEDGED_{'LOW' if is_long else 'HIGH'}_15m_price_{current_price:.6f}", 100.0)
+                        if result and ('QUEUED' in str(result) or 'SUCCESS' in str(result)):
+                            logger.warning(f"[DC_BREACH_REDUCE_UNHEDGED] {position_key}: Reduce queued. Setting reentry below exit price {current_price:.6f}")
+                            self.pending_reentries[position_key] = {'exit_price': current_price, 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': 'DC_BREACH_UNHEDGED_15m', 'original_qty': float(pos_amt), 'attempts': 0, 'status': 'pending', 'reentry_condition': 'below_exit_price'}
             except Exception as e:
                 logger.error(f"[DC_BREACH_MONITOR_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(5.0)
 
-    async def reentry_enforcement_loop(self):
-        logger.info("[REENTRY_ENFORCE] Reentry enforcement loop started (10s interval)")
+    async def momentum_rider_loop(self):
+        """Detects huge movers and rides them up/down with hedged flips. Account: men."""
+        logger.info("[MOMENTUM_RIDER] Loop started")
+        _tracked = {}  # symbol -> {state, long_pk, short_pk, entry_price, exit_price, last_flip, notional, flip_count}
+        _scan_cd = 0
+        _STATES = ('WATCHING', 'RIDING_UP', 'HEDGED', 'RIDING_DUMP', 'COOLDOWN')
+        acct = getattr(config, 'MOMENTUM_RIDER_ACCOUNT', 'men')
         while True:
             try:
+                await asyncio.sleep(getattr(config, 'MOMENTUM_RIDER_SCAN_INTERVAL', 10.0))
+                if not getattr(config, 'MOMENTUM_RIDER_ENABLED', False):
+                    continue
+                if acct not in self._allowed_accounts:
+                    continue
+                now = time.time()
+                max_syms = getattr(config, 'MOMENTUM_RIDER_MAX_SYMBOLS', 5)
+                base_usd = getattr(config, 'MOMENTUM_RIDER_BASE_SIZE_USD', 50.0)
+                hedge_ratio = getattr(config, 'MOMENTUM_RIDER_HEDGE_RATIO', 1.2)
+                cooldown = getattr(config, 'MOMENTUM_RIDER_COOLDOWN', 300.0)
+                dc_min = getattr(config, 'MOMENTUM_RIDER_DC_WIDTH_MIN', 8.0)
+                vol_min = getattr(config, 'MOMENTUM_RIDER_REL_VOL_MIN', 3.0)
+                # ─── DETECT MOVERS (every 60s) ───
+                if now - _scan_cd > 60:
+                    _scan_cd = now
+                    try:
+                        rankings = {}
+                        rk_path = Path(config.BASE_PATH) / "data" / "rankings.json"
+                        if rk_path.exists():
+                            rankings = json.loads(rk_path.read_text())
+                    except Exception:
+                        rankings = {}
+                    candidates = []
+                    for sym, rk in rankings.items():
+                        if sym in _tracked:
+                            continue
+                        rv = safe_fetch_float(rk.get('rel_vol_raw'), 0)
+                        if rv < vol_min:
+                            continue
+                        ind = await ii(self, sym)
+                        if not ind:
+                            continue
+                        cp = safe_fetch_float(ind.get('current_price'), 0)
+                        if cp <= 0:
+                            continue
+                        dch15 = safe_fetch_float(ind.get('dc_high_15m'), 0)
+                        dcl15 = safe_fetch_float(ind.get('dc_low_15m'), 0)
+                        dc_w15 = ((dch15 - dcl15) / dcl15 * 100) if dcl15 > 0 else 0
+                        dch1h = safe_fetch_float(ind.get('dc_high_1h'), 0)
+                        dcl1h = safe_fetch_float(ind.get('dc_low_1h'), 0)
+                        dc_w1h = ((dch1h - dcl1h) / dcl1h * 100) if dcl1h > 0 else 0
+                        if dc_w15 < dc_min or dc_w1h < 5.0:
+                            continue
+                        lr3 = safe_fetch_float(ind.get('lr_trend_3m'), 0)
+                        lr15 = safe_fetch_float(ind.get('lr_trend_15m'), 0)
+                        ha_3m = str(ind.get('ha_3m', ''))
+                        ha_15m = str(ind.get('ha_15m', ''))
+                        k_1h = safe_fetch_float(ind.get('stoch_k_1h'), 50)
+                        d_1h = safe_fetch_float(ind.get('stoch_d_1h'), 50)
+                        k_4h = safe_fetch_float(ind.get('stoch_k_4h'), 50)
+                        d_4h = safe_fetch_float(ind.get('stoch_d_4h'), 50)
+                        htf_bull = (k_1h > d_1h) and (k_4h > d_4h or ha_15m == 'green')
+                        htf_bear = (k_1h < d_1h) and (k_4h < d_4h or ha_15m == 'red')
+                        long_pk = f"{acct}:{sym}_LONG"
+                        short_pk = f"{acct}:{sym}_SHORT"
+                        has_pos = long_pk in self.positions_by_account.get(acct, {}) or short_pk in self.positions_by_account.get(acct, {})
+                        if not has_pos:
+                            continue
+                        score = dc_w15 * rv * abs(lr3 + lr15)
+                        direction = 'LONG' if (htf_bull and lr3 > 0) else 'SHORT' if (htf_bear and lr3 < 0) else None
+                        if direction:
+                            candidates.append((sym, score, direction, dc_w15, rv, cp))
+                    candidates.sort(key=lambda x: -x[1])
+                    for sym, score, direction, dcw, rv, cp in candidates[:max_syms - len(_tracked)]:
+                        _tracked[sym] = {'state': 'WATCHING', 'direction': direction, 'entry_price': 0, 'exit_price': 0, 'last_flip': now, 'notional': 0, 'flip_count': 0, 'detected_at': now, 'score': score}
+                        _lpk = f"{acct}:{sym}_LONG"
+                        _spk = f"{acct}:{sym}_SHORT"
+                        if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                            self.tracker_manager.tradeable_keys.add(_lpk)
+                            self.tracker_manager.tradeable_keys.add(_spk)
+                            if acct not in self.tracker_manager.tradeable_position_keys:
+                                self.tracker_manager.tradeable_position_keys[acct] = set()
+                            self.tracker_manager.tradeable_position_keys[acct].add(_lpk)
+                            self.tracker_manager.tradeable_position_keys[acct].add(_spk)
+                            logger.info(f"[MOMENTUM_RIDER] Injected tradeable keys: {_lpk}, {_spk}")
+                        logger.warning(f"[MOMENTUM_RIDER] DETECTED {sym}: dir={direction} dc_w15={dcw:.1f}% rv={rv:.1f}x score={score:.0f}")
+                # ─── MANAGE EACH TRACKED SYMBOL ───
+                for sym, state in list(_tracked.items()):
+                    try:
+                        ind = await ii(self, sym)
+                        if not ind:
+                            continue
+                        cp = safe_fetch_float(ind.get('current_price'), 0)
+                        if cp <= 0:
+                            continue
+                        k_3m = safe_fetch_float(ind.get('stoch_k_3m'), 50)
+                        d_3m = safe_fetch_float(ind.get('stoch_d_3m'), 50)
+                        k_3m_prev = safe_fetch_float(ind.get('k_3m_prev', ind.get('stoch_k_3m_prev')), 50)
+                        k_15m = safe_fetch_float(ind.get('stoch_k_15m'), 50)
+                        d_15m = safe_fetch_float(ind.get('stoch_d_15m'), 50)
+                        k_15m_prev = safe_fetch_float(ind.get('stoch_k_15m_prev'), 50)
+                        k_1h = safe_fetch_float(ind.get('stoch_k_1h'), 50)
+                        d_1h = safe_fetch_float(ind.get('stoch_d_1h'), 50)
+                        k_4h = safe_fetch_float(ind.get('stoch_k_4h'), 50)
+                        d_4h = safe_fetch_float(ind.get('stoch_d_4h'), 50)
+                        ha_3m = str(ind.get('ha_3m', ''))
+                        ha_15m = str(ind.get('ha_15m', ''))
+                        long_pk = f"{acct}:{sym}_LONG"
+                        short_pk = f"{acct}:{sym}_SHORT"
+                        long_pos = self.positions_by_account.get(acct, {}).get(long_pk)
+                        short_pos = self.positions_by_account.get(acct, {}).get(short_pk)
+                        long_amt = abs(safe_fetch_float(getattr(long_pos, 'positionAmt', 0), 0)) if long_pos else 0
+                        short_amt = abs(safe_fetch_float(getattr(short_pos, 'positionAmt', 0), 0)) if short_pos else 0
+                        long_gain = safe_fetch_float(getattr(long_pos, 'gain', 0), 0) if long_pos else 0
+                        short_gain = safe_fetch_float(getattr(short_pos, 'gain', 0), 0) if short_pos else 0
+                        long_val = long_amt * cp
+                        short_val = short_amt * cp
+                        direction = state['direction']
+                        is_long_dir = direction == 'LONG'
+                        htf_aligned = (k_1h > d_1h and k_4h > d_4h) if is_long_dir else (k_1h < d_1h and k_4h < d_4h)
+                        # ─── STATE: WATCHING → enter on pullback ───
+                        if state['state'] == 'WATCHING':
+                            if (now - state.get('last_flip', 0)) < cooldown:
+                                continue
+                            if is_long_dir and k_3m < 30 and htf_aligned and ha_15m == 'green':
+                                qty = base_usd / cp
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} LONG ENTRY: k3m={k_3m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15={ha_15m} qty={qty:.4f} ${base_usd:.0f}")
+                                await self.execute_now(long_pk, acct, sym, 0.0, "BUY", "LONG", qty, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_LONG_ENTRY_k3m{k_3m:.0f}_k1h{k_1h:.0f}", False, "OPEN")
+                                state['state'] = 'RIDING_UP'
+                                state['entry_price'] = cp
+                                state['last_flip'] = now
+                            elif not is_long_dir and k_3m > 70 and htf_aligned and ha_15m == 'red':
+                                qty = base_usd / cp
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} SHORT ENTRY: k3m={k_3m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15={ha_15m} qty={qty:.4f} ${base_usd:.0f}")
+                                await self.execute_now(short_pk, acct, sym, 0.0, "SELL", "SHORT", qty, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_SHORT_ENTRY_k3m{k_3m:.0f}_k1h{k_1h:.0f}", False, "OPEN")
+                                state['state'] = 'RIDING_UP'
+                                state['entry_price'] = cp
+                                state['last_flip'] = now
+                        # ─── STATE: RIDING_UP → watch for dump/reversal ───
+                        elif state['state'] == 'RIDING_UP':
+                            primary_amt = long_amt if is_long_dir else short_amt
+                            primary_gain = long_gain if is_long_dir else short_gain
+                            primary_pk = long_pk if is_long_dir else short_pk
+                            hedge_pk = short_pk if is_long_dir else long_pk
+                            if primary_amt < 0.0001:
+                                state['state'] = 'WATCHING'
+                                continue
+                            # Dump detection: 15m stoch crosses against + HA confirms
+                            dump_signal = False
+                            if is_long_dir and k_15m < d_15m and k_15m_prev >= d_15m and ha_15m == 'red':
+                                dump_signal = True
+                            elif not is_long_dir and k_15m > d_15m and k_15m_prev <= d_15m and ha_15m == 'green':
+                                dump_signal = True
+                            if dump_signal:
+                                if primary_gain > 0.1:
+                                    # In profit — exit cleanly
+                                    logger.warning(f"[MOMENTUM_RIDER] {sym} EXIT AT PROFIT: gain={primary_gain:.2f}% → closing {primary_pk}")
+                                    close_qty = primary_amt
+                                    side = 'SELL' if is_long_dir else 'BUY'
+                                    _exit_side = "SELL" if is_long_dir else "BUY"; await self.execute_now(primary_pk, acct, sym, primary_amt, _exit_side, direction, primary_amt, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_EXIT_PROFIT_{primary_gain:.2f}pct", True, "CLOSE")
+                                    state['exit_price'] = cp
+                                    state['state'] = 'COOLDOWN'
+                                    state['last_flip'] = now
+                                    state['flip_count'] += 1
+                                else:
+                                    # In loss or flat — HEDGE 120% same symbol
+                                    hedge_qty = primary_amt * hedge_ratio
+                                    hedge_val = hedge_qty * cp
+                                    logger.warning(f"[MOMENTUM_RIDER] {sym} HEDGE 120%: gain={primary_gain:.2f}% → opening {hedge_pk} qty={hedge_qty:.4f} ${hedge_val:.1f}")
+                                    _h_side = "SELL" if is_long_dir else "BUY"; _h_ps = "SHORT" if is_long_dir else "LONG"; await self.execute_now(hedge_pk, acct, sym, 0.0, _h_side, _h_ps, hedge_qty, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_HEDGE_120pct_gain{primary_gain:.2f}", False, "OPEN", is_hedge=True, hedge_for=primary_pk)
+                                    state['state'] = 'HEDGED'
+                                    state['last_flip'] = now
+                        # ─── STATE: HEDGED → wait for hedge to fill, then RIDING_DUMP ───
+                        elif state['state'] == 'HEDGED':
+                            hedge_amt = short_amt if is_long_dir else long_amt
+                            if hedge_amt > 0.0001:
+                                state['state'] = 'RIDING_DUMP'
+                                logger.info(f"[MOMENTUM_RIDER] {sym} HEDGE FILLED → RIDING_DUMP")
+                            elif (now - state['last_flip']) > 30:
+                                state['state'] = 'RIDING_UP'
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} HEDGE FILL TIMEOUT → back to RIDING_UP")
+                        # ─── STATE: RIDING_DUMP → kill hedge when it loses, reenter primary ───
+                        elif state['state'] == 'RIDING_DUMP':
+                            hedge_pk = short_pk if is_long_dir else long_pk
+                            hedge_amt = short_amt if is_long_dir else long_amt
+                            hedge_gain = short_gain if is_long_dir else long_gain
+                            primary_pk = long_pk if is_long_dir else short_pk
+                            primary_amt = long_amt if is_long_dir else short_amt
+                            if hedge_amt < 0.0001:
+                                state['state'] = 'WATCHING'
+                                state['last_flip'] = now
+                                continue
+                            # Kill hedge if it starts losing (dump reversed)
+                            kill_hedge = False
+                            if hedge_gain < -0.3:
+                                kill_hedge = True
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} HEDGE LOSS {hedge_gain:.2f}% → KILLING")
+                            # Kill hedge on stoch crossover (bounce signal)
+                            if is_long_dir and k_3m > d_3m and k_3m_prev <= d_3m and k_3m < 30:
+                                kill_hedge = True
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} STOCH CROSSOVER k3m={k_3m:.0f} → KILLING HEDGE + REENTRY")
+                            elif not is_long_dir and k_3m < d_3m and k_3m_prev >= d_3m and k_3m > 70:
+                                kill_hedge = True
+                                logger.warning(f"[MOMENTUM_RIDER] {sym} STOCH CROSSUNDER k3m={k_3m:.0f} → KILLING HEDGE + REENTRY")
+                            if kill_hedge:
+                                if hedge_gain > 0:
+                                    side = 'BUY' if is_long_dir else 'SELL'
+                                    _hc_side = "BUY" if is_long_dir else "SELL"; _hc_ps = "SHORT" if is_long_dir else "LONG"; await self.execute_now(hedge_pk, acct, sym, hedge_amt, _hc_side, _hc_ps, hedge_amt, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_HEDGE_CLOSE_profit{hedge_gain:.2f}", True, "CLOSE")
+                                else:
+                                    side = 'BUY' if is_long_dir else 'SELL'
+                                    _hk_side = "BUY" if is_long_dir else "SELL"; _hk_ps = "SHORT" if is_long_dir else "LONG"; await self.execute_now(hedge_pk, acct, sym, hedge_amt, _hk_side, _hk_ps, hedge_amt, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_HEDGE_KILL_loss{hedge_gain:.2f}", True, "CLOSE")
+                                # Reenter primary at 120% if HTF still aligned
+                                if htf_aligned:
+                                    reentry_qty = primary_amt * hedge_ratio if primary_amt > 0 else base_usd * hedge_ratio / cp
+                                    price_ok = (cp > state.get('exit_price', 0) * 0.995) if is_long_dir else (cp < state.get('exit_price', 0) * 1.005)
+                                    if price_ok or k_3m < 25 or (not is_long_dir and k_3m > 75):
+                                        logger.warning(f"[MOMENTUM_RIDER] {sym} REENTRY 120%: htf_aligned={htf_aligned} qty={reentry_qty:.4f} ${reentry_qty*cp:.1f}")
+                                        _re_side = "BUY" if is_long_dir else "SELL"; await self.execute_now(primary_pk, acct, sym, primary_amt, _re_side, direction, reentry_qty, cp, f"MR_{int(now)}", f"MOMENTUM_RIDER_REENTRY_120pct_k3m{k_3m:.0f}", False, "AUGMENT")
+                                state['state'] = 'RIDING_UP'
+                                state['last_flip'] = now
+                                state['flip_count'] += 1
+                        # ─── STATE: COOLDOWN ───
+                        elif state['state'] == 'COOLDOWN':
+                            if (now - state['last_flip']) > cooldown:
+                                # Check if still a mover
+                                dch15 = safe_fetch_float(ind.get('dc_high_15m'), 0)
+                                dcl15 = safe_fetch_float(ind.get('dc_low_15m'), 0)
+                                dc_w = ((dch15 - dcl15) / dcl15 * 100) if dcl15 > 0 else 0
+                                if dc_w >= dc_min * 0.5:
+                                    htf_bull = k_1h > d_1h and k_4h > d_4h
+                                    htf_bear = k_1h < d_1h and k_4h < d_4h
+                                    state['direction'] = 'LONG' if htf_bull else 'SHORT' if htf_bear else state['direction']
+                                    state['state'] = 'WATCHING'
+                                    logger.info(f"[MOMENTUM_RIDER] {sym} COOLDOWN OVER → WATCHING (dir={state['direction']} dc_w={dc_w:.1f}%)")
+                                else:
+                                    logger.info(f"[MOMENTUM_RIDER] {sym} VOLATILITY DIED (dc_w={dc_w:.1f}%) → removing")
+                                    if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                                        self.tracker_manager.tradeable_keys.discard(f"{acct}:{sym}_LONG")
+                                        self.tracker_manager.tradeable_keys.discard(f"{acct}:{sym}_SHORT")
+                                        self.tracker_manager.tradeable_position_keys.get(acct, set()).discard(f"{acct}:{sym}_LONG")
+                                        self.tracker_manager.tradeable_position_keys.get(acct, set()).discard(f"{acct}:{sym}_SHORT")
+                                        logger.info(f"[MOMENTUM_RIDER] Removed tradeable keys for {sym}")
+                                    del _tracked[sym]
+                        # ─── EXPIRY: remove if tracked too long without action ───
+                        if sym in _tracked and (now - state.get('detected_at', now)) > 14400 and state['flip_count'] == 0:
+                            logger.info(f"[MOMENTUM_RIDER] {sym} 4h with no flips → removing")
+                            if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                                self.tracker_manager.tradeable_keys.discard(f"{acct}:{sym}_LONG")
+                                self.tracker_manager.tradeable_keys.discard(f"{acct}:{sym}_SHORT")
+                                self.tracker_manager.tradeable_position_keys.get(acct, set()).discard(f"{acct}:{sym}_LONG")
+                                self.tracker_manager.tradeable_position_keys.get(acct, set()).discard(f"{acct}:{sym}_SHORT")
+                                logger.info(f"[MOMENTUM_RIDER] Removed tradeable keys for {sym}")
+                            del _tracked[sym]
+                    except Exception as sym_err:
+                        logger.error(f"[MOMENTUM_RIDER] {sym} error: {sym_err}")
+                # ─── PERSIST STATE ───
+                if _tracked and int(now) % 60 < 11:
+                    try:
+                        state_path = Path(config.BASE_PATH) / "data" / "momentum_rider_state.json"
+                        with open(str(state_path) + ".tmp", "w") as f:
+                            json.dump({s: {k: v for k, v in st.items() if not callable(v)} for s, st in _tracked.items()}, f, indent=2, default=str)
+                        os.replace(str(state_path) + ".tmp", str(state_path))
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"[MOMENTUM_RIDER_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(10.0)
+
+    async def reentry_enforcement_loop(self):
+        logger.info("[REENTRY_ENFORCE] Aggressive reentry loop started (15s interval)")
+        _reentry_last_fire = {}
+        REENTRY_COOLDOWN = 30.0
+        MAX_REENTRY_ATTEMPTS = 200
+        PRICE_CROSS_FORCE_PCT = 0.001
+        while True:
+            try:
+                await asyncio.sleep(15.0)
                 if not getattr(config, 'REENTRY_MANDATORY', True): continue
+                for pk, rd in list(getattr(self, 'reentry_data', {}).items()):
+                    if pk not in self.pending_reentries or self.pending_reentries[pk].get('status') in ('filled', 'exhausted'):
+                        rd_ts = safe_datetime(rd.get("timestamp"))
+                        if rd_ts and (datetime.now(timezone.utc) - rd_ts).total_seconds() < 72000:
+                            self.pending_reentries[pk] = {'exit_price': safe_fetch_float(rd.get('reentry_level', rd.get('exit_price', 0)), 0.0), 'exit_time': str(rd.get('timestamp', '')), 'exit_reason': str(rd.get('reason', '')), 'original_qty': safe_fetch_float(rd.get('reentry_amount', 0), 0.0), 'attempts': 0, 'stoch_wait_cycles': 0, 'status': 'pending'}
                 for position_key, data in list(self.pending_reentries.items()):
-                    if data.get('status') == 'filled': continue
+                    if data.get('status') in ('filled', 'queued'): continue
+                    _last = _reentry_last_fire.get(position_key, 0)
+                    if (time.time() - _last) < REENTRY_COOLDOWN:
+                        continue
                     account_key, symbol, pos_side = parse_position_key(position_key)
                     is_long = pos_side == 'LONG'
                     indicators = await ii(self, symbol)
                     if not indicators: continue
                     k_3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
                     d_3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
-                    k_3m_prev = safe_fetch_float(indicators.get('k_3m_prev', 50), 50.0)
-                    k_15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50.0)
-                    k_1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50.0)
-                    k_4h = safe_fetch_float(indicators.get('stoch_k_4h', 50), 50.0)
-                    data['attempts'] = data.get('attempts', 0) + 1
+                    k_1m = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50.0)
+                    d_1m = safe_fetch_float(indicators.get('stoch_d_1m', 50), 50.0)
                     current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0)
-                    _strong = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
-                    _bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
-                    _htf_ok = (is_long and k_1h > 40 and k_4h > 40) or (not is_long and k_1h < 60 and k_4h < 60)
-                    should_reenter = False
-                    if data.get('reentry_condition') == 'below_exit_price':
-                        exit_price = data.get('exit_price', 0.0)
-                        _price_ok = (is_long and current_price > 0 and current_price <= exit_price * 0.998) or (not is_long and current_price > 0 and current_price >= exit_price * 1.002)
-                        if _price_ok and _bounce:
+                    if current_price <= 0: continue
+                    exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
+                    _uptick = is_long and k_1m > d_1m
+                    _downtick = not is_long and k_1m < d_1m
+                    _not_exhausted_long = not (is_long and k_3m > 90)
+                    _not_exhausted_short = not (not is_long and k_3m < 10)
+                    should_reenter = (_uptick or _downtick) and (_not_exhausted_long and _not_exhausted_short)
+                    _price_crossed_force = False
+                    if exit_price > 0:
+                        if is_long and current_price > exit_price * (1.0 + PRICE_CROSS_FORCE_PCT):
+                            _price_crossed_force = True
+                        elif not is_long and current_price < exit_price * (1.0 - PRICE_CROSS_FORCE_PCT):
+                            _price_crossed_force = True
+                    if _price_crossed_force:
+                        _truly_exhausted = (is_long and k_3m > 95) or (not is_long and k_3m < 5)
+                        if not _truly_exhausted:
                             should_reenter = True
-                            reason = f"DC_BREACH_REENTRY_below_exit_{exit_price:.6f}_attempt_{data['attempts']}"
-                    if not should_reenter and _strong and _bounce:
-                        should_reenter = True
-                        reason = f"STRONG_TREND_REENTRY_attempt_{data['attempts']}"
-                    elif not should_reenter and _htf_ok and _bounce:
-                        should_reenter = True
-                        reason = f"PULLBACK_REENTRY_attempt_{data['attempts']}"
+                            logger.warning(f"[REENTRY_PRICE_CROSS] {position_key}: Price {current_price:.6f} crossed exit {exit_price:.6f} by >{PRICE_CROSS_FORCE_PCT*100:.1f}% — FORCING reentry (k3m={k_3m:.0f})")
                     if should_reenter:
-                        logger.warning(f"[REENTRY_ENFORCE] {position_key}: Conditions met — queueing reentry ({reason})")
-                        result = await queue_trade_action(self.order_queue, self, position_key, "REENTRY", reason, 75.0)
+                        data['attempts'] = data.get('attempts', 0) + 1
+                        if data['attempts'] > MAX_REENTRY_ATTEMPTS:
+                            data['status'] = 'exhausted'
+                            logger.info(f"[REENTRY_GIVE_UP] {position_key}: {data['attempts']} attempts exhausted.")
+                            continue
+                        reason = f"AGGRESSIVE_REENTRY_k1m{k_1m:.0f}_k3m{k_3m:.0f}_exit{exit_price:.4f}_px{current_price:.4f}_{'PXFORCE' if _price_crossed_force else 'STOCH'}_attempt{data['attempts']}"
+                        logger.warning(f"[REENTRY_ENFORCE] {position_key}: {'PRICE CROSS FORCE' if _price_crossed_force else '1m tick in our favor'} — REENTRY NOW ({reason})")
+                        override_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
+                        if override_qty <= 0: override_qty = config.START_POSITION_SIZE / current_price
+                        result = await queue_trade_action(self.order_queue, self, position_key, "REENTRY", reason, 95.0, override_qty=override_qty)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             data['status'] = 'queued'
-                    elif data['attempts'] % 30 == 0:
-                        logger.info(f"[REENTRY_PENDING] {position_key}: Waiting for conditions (attempts={data['attempts']}, k_3m={k_3m:.1f}, k_15m={k_15m:.1f}, k_1h={k_1h:.1f})")
+                            _reentry_last_fire[position_key] = time.time()
+                            logger.warning(f"[REENTRY_FIRED] {position_key}: Reentry queued (attempt {data['attempts']}/{MAX_REENTRY_ATTEMPTS})")
+                    else:
+                        data['stoch_wait_cycles'] = data.get('stoch_wait_cycles', 0) + 1
+                        if data['stoch_wait_cycles'] % 20 == 0:
+                            logger.info(f"[REENTRY_PENDING] {position_key}: Waiting for entry signal (wait_cycles={data['stoch_wait_cycles']}, k1m={k_1m:.0f}/d1m={d_1m:.0f}, k3m={k_3m:.0f}, exit_px={exit_price:.4f}, cur_px={current_price:.4f})")
             except Exception as e:
                 logger.error(f"[REENTRY_ENFORCE_ERROR] {e}", exc_info=True)
-                await asyncio.sleep(5.0)
+                await asyncio.sleep(15.0)
 
     async def ratio_rebalance_loop(self):
-        """Every ~2 hours, check long/short ratio per account. On 1h stoch crossover/crossunder with heavy skew, reduce weakest overweight positions."""
-        logger.info("[RATIO_REBALANCE] Ratio rebalance loop started (120s check, 2h enforcement interval)")
+        """Every 30s, check L/S ratio per account. Market-crash-aware: targets 90% short / 10% long in CRASH mode.
+        On k_1h cross, immediately triggers rebalance regardless of cooldown."""
+        logger.info("[RATIO_REBALANCE] Active ratio rebalance loop started (30s check, crash-aware)")
         _last_rebalance = {acct: 0.0 for acct in config.ACCOUNT_KEYS}
-        REBALANCE_COOLDOWN = 7200.0
-        SKEW_THRESHOLD = 70.0
+        _prev_k1h = {}
+        REBALANCE_COOLDOWN_NORMAL = 1800.0
+        REBALANCE_COOLDOWN_CRASH = 120.0
+        SKEW_THRESHOLD_NORMAL = 55.0
         while True:
             try:
-                await asyncio.sleep(120.0)
+                await asyncio.sleep(30.0)
                 if not self.positions_service: continue
+                _he = getattr(self, 'hedge_engine', None)
+                _reg = _he.registry if _he else None
+                btc_ind = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDT') or {}
+                k_1h = safe_fetch_float(btc_ind.get('stoch_k_1h'), 50.0)
+                d_1h = safe_fetch_float(btc_ind.get('stoch_d_1h'), 50.0)
+                k_4h = safe_fetch_float(btc_ind.get('stoch_k_4h'), 50.0)
+                d_4h = safe_fetch_float(btc_ind.get('stoch_d_4h'), 50.0)
                 for account_key in config.ACCOUNT_KEYS:
-                    if time.time() - _last_rebalance.get(account_key, 0) < REBALANCE_COOLDOWN: continue
+                    _prev = _prev_k1h.get(account_key, {})
+                    _prev_k = _prev.get('k', k_1h)
+                    _prev_d = _prev.get('d', d_1h)
+                    k1h_crossed = (_prev_k >= _prev_d and k_1h < d_1h) or (_prev_k <= _prev_d and k_1h > d_1h)
+                    _prev_k1h[account_key] = {'k': k_1h, 'd': d_1h}
+                    _htf_aligned = (k_1h < d_1h and k_4h < d_4h) or (k_1h > d_1h and k_4h > d_4h)
+                    cooldown = REBALANCE_COOLDOWN_CRASH if _htf_aligned else REBALANCE_COOLDOWN_NORMAL
+                    if k1h_crossed:
+                        logger.warning(f"[RATIO_REBALANCE] {account_key}: k_1h cross detected (k={k_1h:.1f}, d={d_1h:.1f}) — forcing immediate rebalance")
+                        cooldown = 0
+                    if time.time() - _last_rebalance.get(account_key, 0) < cooldown: continue
                     ratio_data = self.positions_service.get_long_short_ratio(account_key)
-                    long_pct = ratio_data.get('long_pct', 50.0)
-                    short_pct = ratio_data.get('short_pct', 50.0)
-                    if long_pct <= SKEW_THRESHOLD and short_pct <= SKEW_THRESHOLD: continue
-                    acc_positions = self.positions_by_account.get(account_key, {})
-                    has_crossover = False
-                    has_crossunder = False
-                    for pk, pos in acc_positions.items():
-                        if abs(float(getattr(pos, 'positionAmt', 0.0))) < 0.0001: continue
-                        _, sym, _ = parse_position_key(pk)
-                        ind = await ii(self, sym)
-                        if not ind: continue
-                        if ind.get('stoch_crossover_1h'): has_crossover = True
-                        if ind.get('stoch_crossunder_1h'): has_crossunder = True
-                        if has_crossover and has_crossunder: break
-                    reduce_side = None
-                    if long_pct > SKEW_THRESHOLD and has_crossunder: reduce_side = 'LONG'
-                    elif short_pct > SKEW_THRESHOLD and has_crossover: reduce_side = 'SHORT'
-                    if not reduce_side: continue
-                    candidates = []
-                    for pk, pos in acc_positions.items():
-                        amt = abs(float(getattr(pos, 'positionAmt', 0.0)))
-                        if amt < 0.0001: continue
-                        _, sym, ps = parse_position_key(pk)
-                        if ps != reduce_side: continue
-                        gain = safe_fetch_float(getattr(pos, 'gain', 0.0), 0.0)
-                        ec = self.tracker_manager.exit_candidates.get(pk, {}) if self.tracker_manager else {}
-                        if ec.get('is_hedge'): continue
-                        candidates.append((pk, gain, amt))
-                    if not candidates: continue
-                    candidates.sort(key=lambda x: x[1])
-                    to_reduce = candidates[:max(1, len(candidates) // 4)]
-                    logger.critical(f"[RATIO_REBALANCE] {account_key}: {reduce_side} overweight ({long_pct:.0f}%L/{short_pct:.0f}%S) + 1h {'crossunder' if reduce_side == 'LONG' else 'crossover'} detected. Reducing {len(to_reduce)} weakest positions.")
-                    for pk, gain, amt in to_reduce:
-                        reason = f"RATIO_REBALANCE_{reduce_side}_{long_pct:.0f}L_{short_pct:.0f}S_gain_{gain:.2f}%"
-                        result = await queue_trade_action(self.order_queue, self, pk, "REDUCE", reason, 50.0)
-                        if result: logger.warning(f"[RATIO_REBALANCE] {pk}: Reduce queued (gain={gain:.2f}%, reason={reason})")
+                    _lv = ratio_data.get('long_value', 0)
+                    _sv = ratio_data.get('short_value', 0)
+                    _ctr = set(s.upper() for s in getattr(config, 'COUNTER_TREND_CRYPTO', []))
+                    if _ctr and account_key in self.positions_by_account:
+                        _ctr_lv = 0.0
+                        _ctr_sv = 0.0
+                        for _pk, _pos in self.positions_by_account.get(account_key, {}).items():
+                            _sym = getattr(_pos, 'symbol', '')
+                            if _sym.upper() not in _ctr: continue
+                            _amt = abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0))
+                            if _amt == 0: continue
+                            _val = _amt * safe_fetch_float(getattr(_pos, 'mark_price', 0) or getattr(_pos, 'entry_price', 0), 0)
+                            if _pk.endswith('_LONG'): _ctr_lv += _val
+                            elif _pk.endswith('_SHORT'): _ctr_sv += _val
+                        _lv = max(0, _lv - _ctr_lv + _ctr_sv)
+                        _sv = max(0, _sv - _ctr_sv + _ctr_lv)
+                    _total = _lv + _sv
+                    long_pct = (_lv / _total * 100) if _total > 0 else 50.0
+                    short_pct = (_sv / _total * 100) if _total > 0 else 50.0
+                    _market_score = safe_fetch_float(btc_ind.get('0market_sentiment_score'), 50.0)
+                    _regime = check_market_regime(_market_score, btc_ind)
+                    _htf_dir, _htf_score = check_htf_trend(btc_ind, safe_fetch_float(btc_ind.get('current_price'), 0))
+                    target_long, target_short, _ratio_active = compute_applied_ratio(long_pct, short_pct, btc_ind, True)
+                    if _regime == 'CRASH' and long_pct > 40:
+                        target_long = min(target_long, 25.0)
+                        target_short = 100.0 - target_long
+                    elif _regime == 'JUMP' and short_pct > 40:
+                        target_short = min(target_short, 25.0)
+                        target_long = 100.0 - target_short
+                    if _htf_dir == 'BEAR' and long_pct > 45:
+                        target_long = min(target_long, 35.0)
+                        target_short = 100.0 - target_long
+                    elif _htf_dir == 'BULL' and short_pct > 45:
+                        target_short = min(target_short, 35.0)
+                        target_long = 100.0 - target_short
+                    long_off = long_pct - target_long
+                    short_off = short_pct - target_short
+                    if abs(long_off) < 5.0 and abs(short_off) < 5.0:
+                        _last_rebalance[account_key] = time.time()
+                        continue
+                    if long_off > 0:
+                        overweight_side = 'LONG'
+                        open_side = 'SHORT'
+                    else:
+                        overweight_side = 'SHORT'
+                        open_side = 'LONG'
+                    skew = abs(long_off)
+                    max_opens = min(8, max(1, int(skew / 10)))
+                    logger.warning(f"[RATIO_REBALANCE] {account_key}: L={long_pct:.0f}%/S={short_pct:.0f}% vs target L={target_long:.0f}%/S={target_short:.0f}% (regime={_regime} htf={_htf_dir}/{_htf_score} k1h={k_1h:.0f}/d{d_1h:.0f}). {overweight_side} overweight by {skew:.0f}pp. Opening {max_opens} {open_side}.")
+                    if not _reg:
+                        logger.warning(f"[RATIO_REBALANCE] No registry available, cannot find candidates.")
+                        _last_rebalance[account_key] = time.time()
+                        continue
+                    candidates = list(_reg.top_longs[:30]) if open_side == 'LONG' else list(_reg.top_shorts[:30])
+                    opened = 0
+                    existing_syms = set()
+                    if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                        for pk in self.tracker_manager.tradeable_position_keys.get(account_key, set()):
+                            _s = pk.split(':')[1].replace('_LONG', '').replace('_SHORT', '') if ':' in pk else ''
+                            existing_syms.add(_s)
+                    for sym, score, price in candidates:
+                        if opened >= max_opens: break
+                        if sym in existing_syms: continue
+                        if score < (3 if _regime in ('CRASH', 'JUMP') or skew > 20 else 10): continue
+                        position_key = construct_position_key(account_key, sym, open_side)
+                        if not position_key: continue
+                        reason = f"RATIO_REBALANCE_{open_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_score{score:.0f}"
+                        logger.warning(f"[RATIO_REBALANCE] Queuing {position_key} OPEN (score={score:.0f}) to fix {overweight_side}-heavy ratio (target L{target_long:.0f}/S{target_short:.0f})")
+                        try:
+                            result = await queue_trade_action(self.order_queue, self, position_key, 'OPEN', reason, min(score, 80.0))
+                            if result and ('QUEUED' in str(result) or 'SUCCESS' in str(result)):
+                                opened += 1
+                                existing_syms.add(sym)
+                        except Exception as qe:
+                            logger.error(f"[RATIO_REBALANCE] Queue error: {qe}")
+                    if opened > 0:
+                        logger.info(f"[RATIO_REBALANCE] {account_key}: Queued {opened} {open_side} opens (target L{target_long:.0f}/S{target_short:.0f}, regime={_regime}, htf={_htf_dir})")
                     _last_rebalance[account_key] = time.time()
             except Exception as e:
                 logger.error(f"[RATIO_REBALANCE_ERROR] {e}", exc_info=True)
@@ -12775,7 +14301,20 @@ class OrderQueue:
                             logger.warning(f"[{position_key}] Order locked/timeout ({result}). Retrying in {wait_time}s (Attempt {attempt})")
                             await asyncio.sleep(wait_time)
                             continue
+                if result and ('BLOCKED' in result or 'BLOCK' in result):
+                    logger.warning(f"[{position_key}] Order {action} blocked: {result}")
+                    return
                 logger.error(f"[{position_key}] Order {action} unexpected result: {result}")
+                if result == "FAILED_VERIFICATION_AND_FALLBACK" and action in ('OPEN', 'AUGMENT', 'REENTRY'):
+                    rm = getattr(self.trade_manager, 'redis_manager', None)
+                    if rm:
+                        ckey = f"open_fail:{position_key}"
+                        cval = await rm.get(ckey)
+                        count = int(cval or 0) + 1
+                        await rm.set(ckey, str(count), ex=3600)
+                        block_secs = min(count * 120, 1800)
+                        await rm.set(f"open_blocked:{position_key}", "1", ex=block_secs)
+                        logger.error(f"[{position_key}] OPEN_BLOCKED for {block_secs}s after {count} consecutive FAILED_VERIFICATION_AND_FALLBACK")
                 await self.trade_manager.clear_dedupe_key(position_key, side)
                 return
             except Exception as e:
@@ -12945,12 +14484,12 @@ async def monitor_entries(order_queue: OrderQueue, trade_manager: MultiAccountTr
         except asyncio.TimeoutError:
             try: 
                 trade_manager.processing_keys.discard(pkey)
-            except: pass
+            except Exception: pass
         except Exception as e:
             logger.error(f"[{account_key}] Monitor error {pkey}: {e}")
             try: 
                 trade_manager.processing_keys.discard(pkey)
-            except: pass
+            except Exception: pass
     for key in incoming_keys:
         asyncio.create_task(_protected_process(key))
 
@@ -13158,7 +14697,27 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     if config.VERBOSE: logger.info(f"[REENTRY_INDICATORS] {position_key}: ${position.positionAmt*current_price} price={current_price:.6f} gain={gain:.2f}% positionAmt={position.positionAmt:.6f} conviction={conviction:.2f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
     process_position_enter_count[position_key] = process_position_enter_count.get(position_key, 0) + 1
     if process_position_enter_count[position_key] % 10 == 5: logger.info(f"[REENTRY_ENTERRRRR] {position_key} count={process_position_enter_count[position_key]}")
-    k_3m,d_3m,k_15m,d_15m,k_1h,k_4h = i.get('stoch_k_3m'),i.get('stoch_d_3m'),i.get('stoch_k_15m'),i.get('stoch_d_15m'),i.get('stoch_k_1h'),i.get('stoch_k_4h')
+    k_1m,d_1m,k_3m,d_3m,k_15m,d_15m,k_1h,d_1h,k_4h,d_4h,k_D,d_D = i.get('stoch_k_1m',50),i.get('stoch_d_1m',50),i.get('stoch_k_3m',50),i.get('stoch_d_3m',50),i.get('stoch_k_15m',50),i.get('stoch_d_15m',50),i.get('stoch_k_1h',50),i.get('stoch_d_1h',50),i.get('stoch_k_4h',50),i.get('stoch_d_4h',50),i.get('stoch_k_D',50),i.get('stoch_d_D',50)
+    ha_D = i.get('ha_D', 'neutral')
+
+    _dcbr_ok, _dcbr_reason, _dcbr_mult = check_dc_high_break_retest(i, current_price, is_long)
+    if _dcbr_ok:
+        _dcbr_now = time.time()
+        _dcbr_last = _dc_retest_last.get(position_key, 0.0)
+        if _dcbr_now - _dcbr_last < 60:
+            logger.info(f"[DC_BREAK_RETEST] {position_key}: {_dcbr_reason} -- cooldown ({_dcbr_now - _dcbr_last:.0f}s < 60s)")
+        else:
+            _dc_retest_last[position_key] = _dcbr_now
+            _dcbr_qty = config.START_POSITION_SIZE * _dcbr_mult / current_price
+            logger.warning(f"[DC_BREAK_RETEST] {position_key}: FIRING {_dcbr_reason} qty={_dcbr_qty:.6f} BYPASSING alignment+HTF gates")
+            return Signal(action='REENTRY', reason=f"DC_HIGH_BREAK_RETEST {_dcbr_reason}", conviction=88.0, quantity=_dcbr_qty)
+    _tp_aligned, _tp_align_reason = trading_policy.check_entry_alignment(i, is_long)
+    if not _tp_aligned:
+        return ReentryResult("Alignment Gate", False, 0, 0, [], 0, f"POLICY_{_tp_align_reason}")
+    _tp_htf_ok, _tp_htf_reason = trading_policy.check_htf_trend_aligned(i, current_price, is_long)
+    if not _tp_htf_ok:
+        return ReentryResult("HTF Direction Gate", False, 0, 0, [], 0, f"POLICY_{_tp_htf_reason}")
+
     t_up_3m,t_up_15m = i.get('t_up_3m',False),i.get('t_up_15m',True)
     high_15m = safe_fetch_float(i.get('high_15m', 0), 0.0); high_15m_prev = safe_fetch_float(i.get('high_15m_prev', 0), 0.0); low_15m = safe_fetch_float(i.get('low_15m', 0), 0.0); low_15m_prev = safe_fetch_float(i.get('low_15m_prev', 0), 0.0); ha_3m = i.get('ha_3m', 'neutral') or 'neutral'; ha_15m = i.get('ha_15m', 'neutral') or 'neutral'
     higher_high_15m = high_15m > high_15m_prev and (low_15m > low_15m_prev or ha_15m=='green') if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
@@ -13216,9 +14775,9 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     else:
         reentry_timestamp = safe_datetime(raw_ts)
     min_since_exit = minutes_since(reentry_timestamp, now) if reentry_timestamp else 99999.0
-    planned_qty = safe_float(reentry_data.get("reentry_amount") or reentry_data.get("amount") or position.last_reduction_amount or 0.0)
+    planned_qty = float(position.max_quantity or 0.0)
     if planned_qty <= 0:
-        planned_qty = max(float(position.last_reduction_amount or 0.0), 0.0)
+        planned_qty = safe_float(reentry_data.get("reentry_amount") or reentry_data.get("amount") or 0.0)
     min_floor = 0.0
     if current_price:
         min_floor = max(min_floor, config.START_POSITION_SIZE / current_price)
@@ -13417,7 +14976,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
                     price_break = False
                 if (dc_x or stoch_x) and (price_break or stoch_x) and trend_gate:
                     reentry_amount = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
-                    full_qty = max( position.max_quantity or 0.0, float(reentry_amount or 0.0), (config.START_POSITION_SIZE / max(current_price or 0.0, 1e-9)) )
+                    full_qty = max( position.max_quantity or 0.0, (config.START_POSITION_SIZE / max(current_price or 0.0, 1e-9)) )
                     trade_manager.reentry_plans[position_key] = { "type": "fast_track", "override_qty": full_qty, "signal_name": "AGGR_REENTRY_AFTER_DC_BREAKOUT", "count_multiplier": 1.0, "timestamp": time.time() }
                     logger.info(f"[{position_key}] FAST_TRACK_AGGR_REENTRY: qty_plan={full_qty:.4f}")
                     return Signal(action='REENTRY', reason=f"AGGR_REENTRY_AFTER_DC_BREAKOUT | {', '.join(reasons)}", conviction=conviction)
@@ -13472,8 +15031,8 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         """Quick turnaround reentry for positions exited just before turning around"""
         conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
         reasons = i.get('zconviction_reasons_augment_long', []) if is_long else i.get('zconviction_reasons_augment_short', [])
-        reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
-        reentry_quantity = max(position.max_quantity, float(reentry_amount_val), 3 * config.START_POSITION_SIZE / current_price)
+        reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
+        reentry_quantity = max(position.max_quantity or 0.0, config.START_POSITION_SIZE / current_price)
         if (is_long and (k_3m > 80 or k_3m < k_3m_prev)) or (not is_long and (k_3m < 20 or k_3m > k_3m_prev)):
             reentry_quantity *= 0.4 
         if (is_long and (k_15m > 80 or k_15m < k_15m_prev)) or (not is_long and (k_15m < 20 or k_15m > k_15m_prev)):
@@ -13508,7 +15067,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     async def s1_aggr_reentry() -> ReentryResult:
         """Aggr reentry for recent exits with strong signals"""
         conviction = i.get('zconviction_augment_long', 0.0) if is_long else i.get('zconviction_augment_short', 0.0)
-        reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
+        reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
         base_qty = max( float(reentry_amount_val), max(2 * config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol, 0.001)) )
         if (is_long and (k_15m > 80 or k_15m < k_15m_prev)) or (not is_long and (k_15m < 20 or k_15m > k_15m_prev)) :
             base_qty *= 0.5
@@ -13557,7 +15116,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
         if config.VERBOSE2:
             logger.info(f"[s2_price_based] {position_key}: INPUT_INDICATORS - is_long={is_long}, current_price={current_price:.6f}, reentry_level={reentry_level:.6f}, min_since_exit={min_since_exit:.1f}min k_3m={k_3m:.1f}, k_15m={k_15m:.1f}, d_15m={d_15m:.1f}, k_4h={k_4h:.1f}, d_4h={d_4h:.1f} wt1_3m={wt1_3m:.2f}, wt2_3m={wt2_3m:.2f} ha_3m={ha_3m} dc_high_3m={dc_high_3m:.6f}, dc_low_3m={dc_low_3m:.6f}high_3m={high_3m:.6f}, high_3m_prev={high_3m_prev:.6f}, low_3m_prev={low_3m_prev:.6f} sma_200_1m={sma_200_1m:.6f}, sma_200_1m_prev={sma_200_1m_prev:.6f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-        reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
+        reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
         base_qty = max(float(reentry_amount_val),2*config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) 
         reliability = 0.6 # Base reliability
         is_strong_trend = (is_long and ha_1h == 'green') or (not is_long and ha_1h == 'red')
@@ -13579,7 +15138,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         if not price_favorable:
             logger.info(f"[s2_price_based] {position_key}: NOT_ALLOWED - Price not favorable: reentry_level={reentry_level:.6f}, current_price={current_price:.6f}, k_4h={k_4h:.1f}, d_4h={d_4h:.1f}")
             return ReentryResult("s2_price_based", False, 0, 0, [], 0, "Price not favorable")
-        good_momentum = ((is_long and wt1_3m > wt2_3m and k_15m > d_15m and k_3m < 40 and k_15m < 50) or (not is_long and wt1_3m < wt2_3m and k_15m < d_15m and k_3m > 60 and k_15m > 50))
+        good_momentum = ((is_long and wt1_3m > wt2_3m and k_15m > d_15m and k_3m < 40 and ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m))) or (not is_long and wt1_3m < wt2_3m and k_15m < d_15m and k_3m > 60 and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m))))
         logger.info(f"[s2_price_based] {position_key}: GOOD_MOMENTUM - good_momentum={good_momentum} (wt1_3m={wt1_3m:.2f}, wt2_3m={wt2_3m:.2f}, k_15m={k_15m:.1f}, d_15m={d_15m:.1f}, k_3m={k_3m:.1f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')})")
         htf_confirmations = []
         if min_since_exit > 240:
@@ -13648,7 +15207,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         else:
             fast_turn = (k_3m < d_3m) or (k_3m < k_3m_prev - 5 and k_3m > 50)
         if fast_turn:
-            reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
+            reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
             quantity = max(float(reentry_amount_val), 2.5 * config.START_POSITION_SIZE / current_price)
             conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
             reasons = ["SNAPBACK_DETECTED", f"FAST_MOMENTUM_k_3m={k_3m:.0f}"]
@@ -13657,7 +15216,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         return ReentryResult("s3_snapback", False, 0, 0, [], 0, "No snapback momentum")
 
     async def s4_stochastic_reversal() -> ReentryResult:
-        reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
+        reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
         base_qty = max(float(reentry_amount_val), 2 * config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) 
         time_decay = max(0.6, 1.0 - (min_since_exit / 360.0))
         quantity = base_qty * time_decay
@@ -13983,7 +15542,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
             else:
                 reasons.append("HA_TREND_NOT_CONFIRMED")
         if should_trigger:
-            reentry_amount_val = safe_float(reentry_data.get("reentry_amount", reentry_data.get("amount", 0.0))) if isinstance(reentry_data, dict) else 0.0
+            reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
             base_qty = max(float(reentry_amount_val), 2 * config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol, 0.001))
             time_decay = max(0.1, 1.0 - (min_since_exit / 14400.0)) # Decay over 240 hours
             quantity = base_qty * time_decay * (0.8 + reliability_score * 0.2) 
@@ -14033,7 +15592,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
             local_momentum = k_15m < 20 or (k_15m < d_15m)
         if not local_momentum:
             return ReentryResult("s13_strong_trend", False, 0, 0, [], 0, "Local momentum fading")
-        reentry_amount_val = safe_float(reentry_data.get("reentry_amount", 0.0))
+        reentry_amount_val = float(position.max_quantity or 0.0) if position else 0.0
         base_qty = max(float(reentry_amount_val), config.START_POSITION_SIZE / current_price)
         quantity = base_qty * 0.6 
         reasons = [ f"STRONG_TREND_RUNAWAY_{price_gap_pct*100:.1f}%", f"HA_1H_{ha_1h}", f"PINNED_STOCH_{k_15m:.1f}" ]
@@ -14106,283 +15665,8 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     logger.info(f"{pre_icon} {position_key:<14} {post_icon} REENTRY: {reason_content}")
     return Signal( action='REENTRY', reason=full_reason, conviction=score, quantity=planned_qty )
 
-@timed_function("evaluate_reentry_new")
-async def evaluate_reentry_new(ctx: dict) -> Optional[Signal]:
-    """
-    Revised Reentry Logic: Prioritizes Price Recovery and Momentum over HTF perfection.
-    """
-    # 1. Setup & Context
-    trade_manager = ctx['trade_manager']
-    position_key = ctx['position_key']
-    symbol = ctx['symbol']
-    config = ctx['config']
-    logger = ctx['logger']
-    
-    position = trade_manager.positions.get(position_key)
-    if not position: return None
-
-    # Refresh Price
-    current_price = await price(symbol, position)
-    if not current_price or current_price <= 0: return None
-
-    # Load Indicators
-    i = await ii(trade_manager, symbol)
-    if not i: return None
-    
-    # 2. Extract State
-    is_long = ctx['position_side'] == "LONG"
-    
-    # Identify the "Level to Beat" (Last Exit Price)
-    # Prefer live position data over snapshot
-    last_reduction_price = safe_fetch_float(getattr(position, 'last_reduction_price', 0.0))
-    last_exit_time = getattr(position, 'last_reduction_time', None)
-    
-    # Fallback to snapshot if position data missing
-    if last_reduction_price <= 0:
-        reentry_data = ctx.get('reentry_data') or {}
-        last_reduction_price = safe_fetch_float(reentry_data.get("reentry_level", 0.0))
-        ts_str = reentry_data.get("timestamp")
-        if ts_str: last_exit_time = safe_datetime(ts_str)
-
-    if last_reduction_price <= 0:
-        # No exit reference, treat as standard augmentation checks
-        return None
-
-    # Time Factor
-    now = datetime.now(timezone.utc)
-    min_since_exit = minutes_since(last_exit_time, now) if last_exit_time else 999.0
-
-    # 3. Determine Reentry Quantity (Aggressive recovery)
-    # Don't drip feed. If we are wrong, we stop out. If we are right, we want size.
-    base_qty = max(
-        safe_fetch_float(getattr(position, 'last_reduction_amount', 0.0)),
-        config.START_POSITION_SIZE / current_price
-    )
-    
-    # 4. CORE LOGIC: Price vs Level
-    # Is price back to where we sold?
-    price_reclaimed = (is_long and current_price >= last_reduction_price) or \
-                      (not is_long and current_price <= last_reduction_price)
-    
-    # Is price "close enough" (within 0.2%) combined with strong momentum?
-    dist_pct = abs(current_price - last_reduction_price) / last_reduction_price
-    price_close = dist_pct < 0.002
-
-    # 5. INDICATOR LOGIC
-    k_1m = safe_fetch_float(i.get('stoch_k_1m', 50))
-    d_1m = safe_fetch_float(i.get('stoch_d_1m', 50))
-    k_3m = safe_fetch_float(i.get('stoch_k_3m', 50))
-    d_3m = safe_fetch_float(i.get('stoch_d_3m', 50))
-    k_15m = safe_fetch_float(i.get('stoch_k_15m', 50))
-    
-    # Check Price Action (Candle Structure)
-
-    # Momentum Checks
-    if is_long:
-        # Fast momentum turning up
-        mom_fast = k_1m > d_1m
-        # Medium momentum healthy (not pointing straight down)
-        mom_med = k_3m > d_3m or k_3m < 20 # Oversold or crossing up
-        # Trend support (accept high values if pegging)
-        mom_trend = k_15m > 30 
-    else:
-        mom_fast = k_1m < d_1m
-        mom_med = k_3m < d_3m or k_3m > 80
-        mom_trend = k_15m < 70
-
-    # Leaderboard Context
-    is_winner = _check_leaderboard_allowed(trade_manager, symbol, "LONG", ctx['account_key']) if is_long else False
-    is_loser = _check_leaderboard_allowed(trade_manager, symbol, "SHORT", ctx['account_key']) if not is_long else False
-    is_ranked = is_winner or is_loser
-
-    # --- DECISION TREE ---
-
-    trigger = False
-    reason = []
-    conviction = 60.0
-
-    # SCENARIO A: V-Shape Reclaim (Strongest)
-    # Price crossed exit level + Fast Momentum Up + Ranked Coin
-    if price_reclaimed and (mom_fast or mom_med):
-        trigger = True
-        reason.append(f"V_SHAPE_VENGEANCE_RECLAIM_{min_since_exit:.0f}m")
-        reason.append(f"LEVEL_{last_reduction_price:.4f}_REGAINED")
-        conviction = 95.0
-        
-        # Calculate the gain at the time of the reduction to determine sizing
-        reduction_gain = 0.0
-        entry_price = safe_fetch_float(getattr(position, 'average_entry_price', 0.0))
-        if entry_price <= 0: entry_price = safe_fetch_float(getattr(position, 'entry_price', 0.0))
-        
-        if entry_price > 0 and last_reduction_price > 0:
-            if is_long:
-                reduction_gain = ((last_reduction_price - entry_price) / entry_price) * 100.0
-            else:
-                reduction_gain = ((entry_price - last_reduction_price) / entry_price) * 100.0
-        
-        # Dynamic Sizing based on Past Performance
-        if reduction_gain > 2.5:
-            # Royal Gain: BRING OUT THE ARMY
-            quantity = base_qty * 2.5  
-            reason.append(f"ROYAL_GAIN_{reduction_gain:.2f}%_ARMY")
-        elif reduction_gain > 0.5:
-            # Reasonable Gain: Just restore the reduction amount
-            quantity = base_qty * 1.0
-            reason.append(f"GOOD_GAIN_{reduction_gain:.2f}%_RESTORE")
-        else:
-            # Loss or Break-even: Cautious re-entry
-            quantity = base_qty * 0.3
-            reason.append(f"POOR_GAIN_{reduction_gain:.2f}%_CAUTIOUS")
-        
-        # Ensure we don't blow the account limit (Cap at 6x standard size)
-        max_allowable = (config.START_POSITION_SIZE * 6.0) / current_price
-        quantity = min(quantity, max_allowable)
-
-
-    # if price_reclaimed and mom_fast and is_ranked:
-    #     trigger = True
-    #     reason.append(f"V_SHAPE_VENGEANCE_RECLAIM_{min_since_exit:.0f}m")
-    #     reason.append(f"LEVEL_{last_reduction_price:.4f}_REGAINED")
-    #     conviction = 95.0
-        
-    #     # BRING OUT THE ARMY: Double the size of what we lost
-    #     # If we lost 50, we buy 100 to catch the massive ripper upward
-    #     quantity = position.max_quantity * 2.0  
-        
-    #     # Ensure we don't blow the account limit
-    #     max_allowable = (config.START_POSITION_SIZE * 8.0) / current_price
-    #     quantity = min(quantity, max_allowable)
-
-    # SCENARIO B: Trend Continuation Dip
-    # Price near exit level + PA Reversal Signal + Trend OK
-
-
-    # SCENARIO C: Deep Dip Recovery (Snapback)
-    # Price worse than exit (better entry) + Oversold + Crossing Up
-    elif (is_long and current_price < last_reduction_price and k_3m < 20 and mom_fast) or \
-         (not is_long and current_price > last_reduction_price and k_3m > 80 and mom_fast):
-        trigger = True
-        reason.append("OVERSOLD_SNAPBACK")
-        reason.append(f"BETTER_PRICE_{dist_pct*100:.2f}%")
-        conviction = 70.0
-        quantity = base_qty
-
-    # SCENARIO D: Time-Based Drift
-    # If we exited > 3 hours ago and trend is still valid, get back in slowly
-    elif min_since_exit > 180 and mom_med and mom_trend:
-        trigger = True
-        reason.append("TIME_BASED_RESTORE")
-        conviction = 60.0
-        quantity = base_qty * 0.5 # Scale in
-
-    if trigger:
-        full_reason = " | ".join(reason)
-        
-        # Log Logic
-        if config.VERBOSE:
-            logger.info(f"🚀 [REENTRY_TRIGGER] {position_key}: {full_reason} | Qty: {quantity:.6f}")
-
-        return Signal(
-            action='REENTRY',
-            reason=full_reason,
-            conviction=conviction,
-            quantity=quantity  )
-
-    return None
-
 @timed_function("evaluate_augmentation")
 async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
-    """Fast augmentation evaluation - removed slow operations."""
-    position_key = ctx['position_key']
-    config, symbol, trade_manager = [ctx[k] for k in ['config', 'symbol', 'trade_manager']]
-    position = trade_manager.positions[position_key]
-    if not position: return None
-    i = ctx.get('indicators') if isinstance(ctx.get('indicators'), dict) else await ii(trade_manager, symbol)
-    if not i: return None
-    current_price = await price(symbol, position)
-    if not current_price or current_price <= 0: return None
-    is_long = ctx['position_side'] == "LONG"
-    gain = ctx.get('gain', 0)
-    position_value = abs(float(position.positionAmt)) * current_price
-    now = datetime.now(timezone.utc)
-    if position_value < config.START_POSITION_SIZE:
-        t_up_3m, t_up_15m, k_15m = i.get('t_up_3m'), i.get('t_up_15m'), i.get('stoch_k_15m', 50) or 50; d_15m = i.get('stoch_d_15m', 50) or 50
-        high_15m = safe_fetch_float(i.get('high_15m', 0), 0.0); high_15m_prev = safe_fetch_float(i.get('high_15m_prev', 0), 0.0); low_15m = safe_fetch_float(i.get('low_15m', 0), 0.0); low_15m_prev = safe_fetch_float(i.get('low_15m_prev', 0), 0.0); ha_15m = i.get('ha_15m', 'neutral') or 'neutral'
-        higher_high_15m = high_15m > high_15m_prev and (low_15m > low_15m_prev or ha_15m=='green') if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
-        lower_low_15m = (high_15m < high_15m_prev or ha_15m=='red') and low_15m < low_15m_prev if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
-        t_up_15m_override = (is_long and (higher_high_15m or (k_15m > d_15m if k_15m and d_15m else False))) or (not is_long and (lower_low_15m or (k_15m < d_15m if k_15m and d_15m else False)))
-        t_up_15m_effective = t_up_15m if not t_up_15m_override else (True if is_long else False)
-        # --- ULTRA AGGRESSIVE SMALL POS AUGMENT ---
-        if gain > 3.0:
-            return Signal(action='REENTRY', reason=f'HUGE_GAIN_SMALL_AUG_g{gain:.1f}%', conviction=95)
-
-        if ((is_long and t_up_3m and t_up_15m_effective and k_15m < 70) or (not is_long and not t_up_3m and not t_up_15m_effective and k_15m > 30)) and gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY * 2:
-            return Signal(action='REENTRY', reason=f'ZERO_REENTRY_g{gain:.1f}%', conviction=80)
-        if gain <= config.MIN_GAIN_TO_BUY_AGGRESSIVELY: return None
-    red_cooldown = 3 if gain > 1.0 else 9
-    if minutes_since(position.last_reduction_time, now) < red_cooldown: return None
-    aug_minutes = minutes_since(position.last_augmentation_time, now)
-    if aug_minutes < 3:
-        if position.last_augmentation_price and position.last_augmentation_time:
-            if abs((current_price - position.last_augmentation_price) / position.last_augmentation_price) * 100 < 0.8: return None
-        else: return None
-    reversed_key = construct_position_key(ctx['account_key'], ctx['symbol'], "SHORT" if is_long else "LONG")
-    if reversed_key in trade_manager.reversed_positions: return None
-    if position_value < 3 * config.MIN_POSITION_SIZE: return None
-    if gain < 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY: return None
-    if (position_value >= 2 * config.START_POSITION_SIZE and gain < config.MIN_GAIN_TO_BUY_AGGRESSIVELY) or (position_value >= 4 * config.START_POSITION_SIZE and gain < 1.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY): return None
-    k_3m, d_3m, k_15m, d_15m, k_15m_prev = i.get('stoch_k_3m', 50) or 50, i.get('stoch_d_3m', 50) or 50, i.get('stoch_k_15m', 50) or 50, i.get('stoch_d_15m', 50) or 50, i.get('stoch_k_15m_prev', 50) or 50
-    t_up_3m, t_up_15m, ha_3m, ha_15m = i.get('t_up_3m'), i.get('t_up_15m'), i.get('ha_3m', 'neutral') or 'neutral', i.get('ha_15m', 'neutral') or 'neutral'
-    high_15m = safe_fetch_float(i.get('high_15m', 0), 0.0); high_15m_prev = safe_fetch_float(i.get('high_15m_prev', 0), 0.0); low_15m = safe_fetch_float(i.get('low_15m', 0), 0.0); low_15m_prev = safe_fetch_float(i.get('low_15m_prev', 0), 0.0)
-    higher_high_15m = high_15m > high_15m_prev and (low_15m > low_15m_prev or ha_15m=='green') if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
-    lower_low_15m = (high_15m < high_15m_prev or ha_15m=='red') and low_15m < low_15m_prev if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
-    t_up_15m_override = (is_long and (higher_high_15m or (k_15m > d_15m if k_15m and d_15m else False))) or (not is_long and (lower_low_15m or (k_15m < d_15m if k_15m and d_15m else False)))
-    t_up_15m_effective = t_up_15m if not t_up_15m_override else (True if is_long else False)
-    wt1_15m, wt2_15m, wt_signal_3m, wt_signal_15m = i.get('wt1_15m', 0) or 0, i.get('wt2_15m', 0) or 0, i.get('wt_signal_3m', 'NEUTRAL') or 'NEUTRAL', i.get('wt_signal_15m', 'NEUTRAL') or 'NEUTRAL'
-    dc_basis_15m = i.get('dc_basis_15m', 0) or 0
-    stoch_crossover_3m, stoch_crossover_15m, stoch_crossunder_3m, stoch_crossunder_15m = i.get('stoch_crossover_3m', False) or False, i.get('stoch_crossover_15m', False) or False, i.get('stoch_crossunder_3m', False) or False, i.get('stoch_crossunder_15m', False) or False
-    realized_pnl = float(position.realized_pnl)
-    stoch_ok = (stoch_crossover_3m or stoch_crossover_15m) if is_long else (stoch_crossunder_3m or stoch_crossunder_15m)
-    wt_ok = wt1_15m < wt2_15m if is_long else wt1_15m > wt2_15m
-    crossover_ok = stoch_ok and wt_ok
-    conviction = i.get('zconviction_long', 50.0) if is_long else i.get('zconviction_short', 50.0)
-    # --- HIGH GAIN AGGRESSIVE BYPASS ---
-    # If gain is HUGE (>3.0%), we don't wait for a "crossover". We augment on ANY trend continuation.
-    if gain >= 3.0 and position_value >= 3 * config.MIN_POSITION_SIZE:
-        trend_moving = (is_long and k_3m > 40 and ha_3m != 'red') or (not is_long and k_3m < 60 and ha_3m != 'green')
-        if trend_moving:
-            return Signal(action='AUGMENT', reason=f'HIGH_GAIN_TREND_CONTINUATION_g{gain:.1f}', conviction=conviction)
-
-    if realized_pnl >= 3.0 and crossover_ok and position_value >= 3 * config.MIN_POSITION_SIZE:
-        return Signal(action='AUGMENT', reason=f'REALIZED_{realized_pnl:.1f}_g{gain:.1f}', conviction=conviction)
-    if gain >= 3.0 and crossover_ok and position_value >= 3 * config.MIN_POSITION_SIZE:
-        return Signal(action='AUGMENT', reason=f'GAIN_3pct_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction)
-    if gain >= 2 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY and ((is_long and t_up_3m and t_up_15m_effective) or (not is_long and not t_up_3m and not t_up_15m_effective)):
-        return Signal(action='AUGMENT', reason=f'BIG_GAIN_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction)
-    if gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY and ((is_long and t_up_3m and t_up_15m_effective and k_3m > d_3m) or (not is_long and not t_up_3m and not t_up_15m_effective and k_3m < d_3m)):
-        return Signal(action='AUGMENT', reason=f'MIN_GAIN_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction)
-    signal_data = ctx.get('signal_data')
-    if signal_data and gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
-        event_type = signal_data.get('event_type', '')
-        if 'dc_basis_crossover' in event_type and is_long and ((gain > 0.3 and k_15m < 40) or gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY) and current_price >= dc_basis_15m:
-            return Signal(action='AUGMENT', reason=f'SIGNAL_DC_LONG_g{gain:.1f}', conviction=conviction)
-        elif 'dc_basis_crossunder' in event_type and not is_long and ((gain > 0.3 and k_15m < 40) or gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY) and current_price <= dc_basis_15m:
-            return Signal(action='AUGMENT', reason=f'SIGNAL_DC_SHORT_g{gain:.1f}', conviction=conviction)
-    wt_cross_3m = (wt_signal_3m == 'BUY' and i.get('wt1_3m', 0) < 0) if is_long else (wt_signal_3m == "SELL" and i.get('wt1_3m', 0) > 0)
-    wt_cross_15m = wt_signal_15m == 'BUY' if is_long else wt_signal_15m == "SELL"
-    if (ha_3m == 'green' and k_15m > k_15m_prev and is_long) or (ha_3m == 'red' and k_15m < k_15m_prev and not is_long):
-        if gain > 2 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
-            return Signal(action='AUGMENT', reason=f'HA_TREND_g{gain:.1f}', conviction=conviction)
-    if (wt_cross_3m or wt_cross_15m) and ((is_long and ha_3m == 'green' and ha_15m == 'green') or (not is_long and (ha_3m == 'red' or ha_15m == 'red'))):
-        return Signal(action='AUGMENT', reason=f'WT_CROSS_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction * 0.9)
-    if gain > 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY and is_long and (ha_3m == 'green' and ha_15m == 'green' and k_15m < 50):
-        return Signal(action='AUGMENT', reason=f'HA_MOD_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction * 0.85)
-    if gain > 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY and aug_minutes > 9 and ((is_long and ha_3m == 'green' and ha_15m == 'green') or (not is_long and ha_3m == 'red' and ha_15m == 'red')) and (wt_cross_3m or wt_cross_15m):
-        return Signal(action='AUGMENT', reason=f'HA_WT_g{gain:.1f}ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}', conviction=conviction * 0.8)
-    return None
-
-@timed_function("evaluate_augmentation_new")
-async def evaluate_augmentation_new(ctx: dict) -> Optional[Signal]:
     """Ultra-fast augmentation evaluation with minimal overhead."""
     position_key = ctx['position_key']
     config, symbol, trade_manager = [ctx[k] for k in ['config', 'symbol', 'trade_manager']]
@@ -14408,9 +15692,15 @@ async def evaluate_augmentation_new(ctx: dict) -> Optional[Signal]:
         lower_low_15m = (high_15m < high_15m_prev or ha_15m=='red') and low_15m < low_15m_prev if high_15m > 0 and high_15m_prev > 0 and low_15m > 0 and low_15m_prev > 0 else False
         t_up_15m_override = (is_long and (higher_high_15m or (k_15m > d_15m if k_15m and d_15m else False))) or (not is_long and (lower_low_15m or (k_15m < d_15m if k_15m and d_15m else False)))
         t_up_15m_effective = t_up_15m if not t_up_15m_override else (True if is_long else False)
-        # --- ULTRA AGGRESSIVE SMALL POS AUGMENT ---
+        # --- ULTRA AGGRESSIVE SMALL POS AUGMENT (with entry quality) ---
+        _small_blowpast = max(3.0, 3 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY)
+        if gain >= _small_blowpast:
+            _max30_qty = abs(float(position.positionAmt)) * 0.30
+            return Signal(action='REENTRY', reason=f'HUGE_GAIN_SMALL_MAX30_g{gain:.1f}%', conviction=95, quantity=_max30_qty)
         if gain > 3.0:
-            return Signal(action='REENTRY', reason=f'HUGE_GAIN_SMALL_AUG_g{gain:.1f}%', conviction=95)
+            _good_entry = (is_long and k_15m < 75 and ha_15m != 'red') or (not is_long and k_15m > 25 and ha_15m != 'green')
+            if _good_entry:
+                return Signal(action='REENTRY', reason=f'HUGE_GAIN_SMALL_AUG_g{gain:.1f}%', conviction=95)
 
         if ((is_long and t_up_3m and t_up_15m_effective and k_15m < 70) or (not is_long and not t_up_3m and not t_up_15m_effective and k_15m > 30)) and gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY * 2:
             return Signal(action='REENTRY', reason=f'ZERO_REENTRY_g{gain:.1f}%', conviction=80)
@@ -14457,11 +15747,18 @@ async def evaluate_augmentation_new(ctx: dict) -> Optional[Signal]:
     wt_ok = wt1_15m < wt2_15m if is_long else wt1_15m > wt2_15m
     crossover_ok = stoch_ok and wt_ok
     conviction = i.get('zconviction_long', 50.0) if is_long else i.get('zconviction_short', 50.0)
-    # --- HIGH GAIN AGGRESSIVE BYPASS ---
-    # If gain is HUGE (>3.0%), we don't wait for a "crossover". We augment on ANY trend continuation.
+    # --- BLOWPAST OVERRIDE: gain >= 3% or >= 3*MIN_GAIN → forced 30% max augment ---
+    _blowpast_threshold = max(3.0, 3 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY)
+    if gain >= _blowpast_threshold and position_value >= 3 * config.MIN_POSITION_SIZE:
+        _max30_qty = abs(float(position.positionAmt)) * 0.30
+        return Signal(action='AUGMENT', reason=f'MAX30_BLOWPAST_g{gain:.1f}', conviction=min(95, conviction + 20), quantity=_max30_qty)
+    # --- HIGH GAIN AGGRESSIVE BYPASS (with entry quality) ---
+    # If gain is HUGE (>3.0%), augment on trend continuation BUT require a pullback (not at stoch extreme)
     if gain >= 3.0 and position_value >= 3 * config.MIN_POSITION_SIZE:
-        trend_moving = (is_long and k_3m > 40 and ha_3m != 'red') or (not is_long and k_3m < 60 and ha_3m != 'green')
-        if trend_moving:
+        _good_entry_long = k_3m > 25 and k_3m < 75 and ha_3m != 'red'
+        _good_entry_short = k_3m > 25 and k_3m < 75 and ha_3m != 'green'
+        good_entry = _good_entry_long if is_long else _good_entry_short
+        if good_entry:
             return Signal(action='AUGMENT', reason=f'HIGH_GAIN_TREND_CONTINUATION_g{gain:.1f}', conviction=conviction)
 
     if realized_pnl >= 3.0 and crossover_ok and position_value >= 3 * config.MIN_POSITION_SIZE:
@@ -14469,9 +15766,13 @@ async def evaluate_augmentation_new(ctx: dict) -> Optional[Signal]:
     if gain >= 3.0 and crossover_ok and position_value >= 3 * config.MIN_POSITION_SIZE:
         return Signal(action='AUGMENT', reason=f'GAIN_3pct_g{gain:.1f}', conviction=conviction)
     if gain >= 2 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY and ((is_long and t_up_3m and t_up_15m_effective) or (not is_long and not t_up_3m and not t_up_15m_effective)):
-        return Signal(action='AUGMENT', reason=f'BIG_GAIN_g{gain:.1f}', conviction=conviction)
+        _entry_ok = (is_long and k_3m < 80 and not (k_3m > 90 and k_15m > 80)) or (not is_long and k_3m > 20 and not (k_3m < 10 and k_15m < 20))
+        if _entry_ok:
+            return Signal(action='AUGMENT', reason=f'BIG_GAIN_g{gain:.1f}', conviction=conviction)
     if gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY and ((is_long and t_up_3m and t_up_15m_effective and k_3m > d_3m) or (not is_long and not t_up_3m and not t_up_15m_effective and k_3m < d_3m)):
-        return Signal(action='AUGMENT', reason=f'MIN_GAIN_g{gain:.1f}', conviction=conviction)
+        _entry_ok = (is_long and k_3m < 75 and k_15m < 85) or (not is_long and k_3m > 25 and k_15m > 15)
+        if _entry_ok:
+            return Signal(action='AUGMENT', reason=f'MIN_GAIN_g{gain:.1f}', conviction=conviction)
     signal_data = ctx.get('signal_data')
     if signal_data and gain > config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
         event_type = signal_data.get('event_type', '')
@@ -14492,123 +15793,8 @@ async def evaluate_augmentation_new(ctx: dict) -> Optional[Signal]:
         return Signal(action='AUGMENT', reason=f'HA_WT_g{gain:.1f}', conviction=conviction * 0.8)
     return None
 
+@timed_function("evaluate_leaderboard_entry")
 async def evaluate_leaderboard_entry(ctx: dict) -> Optional[Signal]:
-    """Evaluate leaderboard entry signals with minimal indicator usage"""
-    event_type = ctx.get('event_type') or (ctx.get('signal_data') or {}).get('event_type', 'account_update')
-    if event_type == 'account_update' or 'periodic'in event_type or 'dc' in event_type:
-        return None
-    trade_manager = ctx['trade_manager']; position_key = ctx['position_key']; position = trade_manager.positions[position_key]; config, logger = ctx['config'], ctx['logger']
-    is_long, symbol, gain = ctx['position_side'] == 'LONG', ctx['symbol'], ctx['gain']; now = datetime.now(timezone.utc)
-    price_cache = getattr(trade_manager, 'price_cache', {}); cache_entry = price_cache.get(symbol, {}) if isinstance(price_cache, dict) else {}; cache_entry = cache_entry if isinstance(cache_entry, dict) else {}
-    current_price = ctx.get('current_price') or getattr(position, 'mark_price', 0.0) or cache_entry.get('price') or cache_entry.get('mark_price') or cache_entry.get('last_price') or 0.0
-    try:
-        current_price = float(current_price)
-    except (TypeError, ValueError):
-        current_price = 0.0
-    indicators = ctx.get('indicators') if isinstance(ctx.get('indicators'), dict) else None
-    i = indicators if indicators else await ii(trade_manager, symbol)
-    if not i:
-        logger.warning(f"[{position_key}] LEADERBOARD_ENTRY_NOT_ALLOWED: No indicator data")
-        return None
-    if not current_price or current_price <= 0:
-        indicator_price = i.get('current_price', 0.0)
-        try:
-            indicator_price = float(indicator_price)
-        except (TypeError, ValueError):
-            indicator_price = 0.0
-        if indicator_price > 0:
-            current_price = indicator_price
-    if (not current_price or current_price <= 0) and cache_entry:
-        cache_price = cache_entry.get('last') or cache_entry.get('last_price') or cache_entry.get('bid') or cache_entry.get('ask')
-        try:
-            cache_price = float(cache_price)
-        except (TypeError, ValueError):
-            cache_price = 0.0
-        if cache_price > 0:
-            current_price = cache_price
-    if not current_price or current_price <= 0:
-        fetched_price = await price(symbol, position)
-        if fetched_price and fetched_price > 0:
-            current_price = fetched_price
-    if not current_price or current_price <= 0:
-        logger.error(f"[{position_key}] No valid price available, aborting")
-        fallback_price, _ = await get_current_price(symbol)
-        if fallback_price and fallback_price > 0:
-            current_price = fallback_price
-    if not current_price or current_price <= 0:
-        return None
-    k_15m,d_15m,k_1h,d_1h = i.get('stoch_k_15m'),i.get('stoch_d_15m'),i.get('stoch_k_1h'),i.get('stoch_d_1h')
-    k_3m,d_3m = i.get('stoch_k_3m'),i.get('stoch_d_3m')
-    ha_3m,ha_15m = i.get('ha_3m'),i.get('ha_15m')
-    wt1_3m,wt2_3m,wt1_15m,wt2_15m = i.get('wt1_3m'),i.get('wt2_3m'),i.get('wt1_15m'),i.get('wt2_15m')
-    sma_200_1m = i.get('sma_200_1m')
-    dc_basis_3m,dc_basis_15m = i.get('dc_basis_3m'),i.get('dc_basis_15m')
-    dc_high_3m,dc_low_3m,dc_high_3m_ant,dc_low_3m_ant = i.get('dc_high_3m'),i.get('dc_low_3m'),i.get('dc_high_3m_ant'),i.get('dc_low_3m_ant')
-    dc_high_15m,dc_low_15m,dc_high_15m_ant,dc_low_15m_ant = i.get('dc_high_15m'),i.get('dc_low_15m'),i.get('dc_high_15m_ant'),i.get('dc_low_15m_ant')
-    high_3m,low_3m,high_3m_prev,low_3m_prev = i.get('high_3m'),i.get('low_3m'),i.get('high_3m_prev'),i.get('low_3m_prev')
-    min_position_size = max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol, 0.001))
-    if position.positionAmt > min_position_size and gain < 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
-        logger.info(f"[LEADERBOARD_ENTRY] REJECTED GAIN TOO LOW {gain}% for {position_key}")
-        return None
-    if (minutes_since(position.last_reduction_time, now) < 9 or minutes_since(position.last_augmentation_time, now) < 9):
-        return None
-    if not event_type or not any(s in event_type for s in ["winners", "losers"]):
-        logger.info(f"[LEADERBOARD_ENTRY] Invalid event type: {event_type}") if config.VERBOSE else None
-        return None
-    is_winner_signal, is_loser_signal = "winners" in event_type, "losers" in event_type
-    if (is_long and not is_winner_signal) or (not is_long and not is_loser_signal):
-        logger.info(f"[LEADERBOARD_ENTRY] Signal type mismatch for {position_key}") if config.VERBOSE else None
-        return None
-    higher_highs_3m = dc_high_3m > dc_high_3m_ant and dc_low_3m > dc_low_3m_ant;higher_highs_15m = dc_high_15m > dc_high_15m_ant and dc_low_15m > dc_low_15m_ant;lower_lows_3m = dc_low_3m < dc_low_3m_ant and dc_high_3m < dc_high_3m_ant;lower_lows_15m = dc_low_15m < dc_low_15m_ant and dc_high_15m < dc_high_15m_ant;higher_high = high_3m and high_3m_prev and low_3m and low_3m_prev and (high_3m or current_price) >= high_3m_prev and low_3m >= low_3m_prev;lower_low = high_3m and high_3m_prev and low_3m and low_3m_prev and high_3m <= high_3m_prev and (low_3m or current_price) <= low_3m_prev
-    if config.TREND_GATES:
-        trend_gate = (is_long and (current_price > sma_200_1m or current_price > dc_basis_15m or (higher_high and (higher_highs_3m or higher_highs_15m))) and ha_3m == 'green' or ha_15m == 'green') or (not is_long and (current_price < sma_200_1m or current_price < dc_basis_15m or (lower_low and (lower_lows_3m or lower_lows_15m))) and (ha_3m == 'red' or ha_15m == 'red'))
-    signal_data = ctx.get('signal_data')
-    if signal_data:
-        event_type_signal = signal_data.get('event_type', '')
-        if event_type_signal and any(s in event_type_signal for s in ["winners", "losers"]):
-            info = _parse_ranking_event_type(event_type_signal)
-            group, direction, signal_type_parsed = info.get("group"), info.get("direction"), info.get("signal_type")
-            if signal_type_parsed in ["all_green", "all_red"] and direction == "entry":
-                if (is_long and group == "winners" and signal_type_parsed == "all_green" and ha_3m == 'green' and wt1_3m > wt2_3m and wt1_15m > wt2_15m) or (not is_long and group == "losers" and signal_type_parsed == "all_red" and ha_3m == 'red' and wt1_3m < wt2_3m and wt1_15m < wt2_15m):
-                    conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
-                    reasons = i.get('zconviction_reasons_augment_long', []) if is_long else i.get('zconviction_reasons_augment_short', [])
-                    action = 'OPEN' if position.positionAmt < min_position_size else 'AUGMENT'
-                    signal_type = f"{'all_green_winners' if signal_type_parsed == 'all_green' else 'all_red_losers'}_{'LONG' if is_long else 'SHORT'}_{action}"
-                    logger.info(f"[LEADERBOARD_ALL_ARROWS] {position_key}: {action} signal for {event_type_signal}") if config.VERBOSE else None
-                    return Signal(action=action, reason=f"{signal_type} ({event_type_signal}) ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}| {reasons}", conviction=conviction)
-            if (is_long and group == "winners" and direction == "up" and ha_3m == 'green' and wt1_3m > wt2_3m and wt1_15m > wt2_15m) or (not is_long and group == "losers" and direction == "down" and ha_3m == 'red' and wt1_3m < wt2_3m and wt1_15m < wt2_15m):
-                conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
-                reasons = i.get('zconviction_reasons_augment_long', []) if is_long else i.get('zconviction_reasons_augment_short', [])
-                action = 'OPEN' if position.positionAmt < min_position_size else 'AUGMENT'
-                signal_type = f"SIGNAL_DRIVEN_LEADERBOARD_{'LONG' if is_long else 'SHORT'}_{action}"
-                return Signal(action=action, reason=f"{signal_type} ({event_type_signal})ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}| {reasons}", conviction=conviction)
-    pullback_threshold = 0.005
-    has_pulled_back = (is_long and current_price < sma_200_1m * (1 + pullback_threshold)) or (not is_long and (current_price > sma_200_1m * (1 - pullback_threshold) or current_price < sma_200_1m * (1 - 0.05) or current_price < dc_basis_15m * (1 - 0.03)))
-    if has_pulled_back:
-        if is_long:
-            higher_high_1h_check = i.get('high_1h', 0) > i.get('high_1h_prev', 0) and i.get('low_1h', 0) > i.get('low_1h_prev', 0) if i.get('high_1h', 0) > 0 and i.get('high_1h_prev', 0) > 0 and i.get('low_1h', 0) > 0 and i.get('low_1h_prev', 0) > 0 else False
-            wt_ok = wt1_3m > wt2_3m and wt1_15m > wt2_15m and k_15m < 80 and k_15m > d_15m and (k_1h > d_1h or higher_high_1h_check)
-            stoch_ok = (isinstance(k_15m, (int, float)) and k_15m <= 40) and (not isinstance(k_3m, (int, float)) or not isinstance(d_3m, (int, float)) or k_3m >= d_3m)
-        else:
-            lower_low_1h_check = i.get('high_1h', 0) < i.get('high_1h_prev', 0) and i.get('low_1h', 0) < i.get('low_1h_prev', 0) if i.get('high_1h', 0) > 0 and i.get('high_1h_prev', 0) > 0 and i.get('low_1h', 0) > 0 and i.get('low_1h_prev', 0) > 0 else False
-            wt_ok = wt1_3m < wt2_3m and wt1_15m < wt2_15m and k_15m > 20 and k_15m < d_15m and (k_1h < d_1h or lower_low_1h_check)
-            stoch_ok = (isinstance(k_15m, (int, float)) and k_15m >= 60) and (not isinstance(k_3m, (int, float)) or not isinstance(d_3m, (int, float)) or (k_3m <= d_3m and k_3m >= 55))
-        if wt_ok and stoch_ok:
-            conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
-            reasons = i.get('zconviction_reasons_augment_long', []) if is_long else i.get('zconviction_reasons_augment_short', [])
-            reason = f"LEADERBOARD_ENTRY_ON_PULLBACK k_15m {k_15m:.1f} d_15m {d_15m:.1f} ({event_type})"
-            logger.info(f"[LEADERBOARD_ENTRY] {position_key}: OPEN - Pullback entry") if config.VERBOSE else None
-            return Signal(action='OPEN', reason=f"{reason} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')} | {reasons}", conviction=conviction)
-        if config.VERBOSE:
-            safe_k_15m = round(float(k_15m), 1) if isinstance(k_15m, (int, float)) else k_15m
-            safe_k_3m = round(float(k_3m), 1) if isinstance(k_3m, (int, float)) else k_3m
-            if config.VERBOSE: logger.info(f"[LEADERBOARD_ENTRY] Pullback gating failed for {position_key}: wt_ok={wt_ok} stoch_ok={stoch_ok} k_15m={safe_k_15m} k_3m={safe_k_3m} long={is_long}")
-    logger.info(f"[LEADERBOARD_ENTRY] {position_key}: None - No conditions met") if config.VERBOSE else None
-    return None
-
-
-@timed_function("evaluate_leaderboard_entry_new")
-async def evaluate_leaderboard_entry_new(ctx: dict) -> Optional[Signal]:
     """Evaluate leaderboard entry signals with Redis signals + ranking data fallback"""
     event_type = ctx.get('event_type')
     signal_data = ctx.get('signal_data')
@@ -14864,183 +16050,8 @@ async def evaluate_ranking_momentum_trade(ctx: dict) -> Optional[Signal]:
         rank = 0 
     timeframes_data = [('3m', wt1_3m, wt2_3m), ('15m', wt1_15m, wt2_15m), ('1h', wt1_1h, wt2_1h)]
 
-async def evaluate_reversal_entry(ctx: dict) -> Signal: 
-    config = ctx['config']
-    if not config.REV_MODE and ctx['account_key'] != 'fin': return None
-    trade_manager = ctx['trade_manager']; logger = ctx['logger']; position_key = ctx['position_key']; symbol = ctx['symbol']; account_key = ctx['account_key']
-    position = trade_manager.positions.get(position_key)
-    if not position: logger.warning(f"[{position_key}] REVERSAL_ENTRY_NOT_ALLOWED: position missing"); return None
-    is_long = ctx['position_side'] == 'LONG'; gain = float(ctx.get('gain', 0.0))
-    current_price = await price(ctx['symbol'], position)
-    if not current_price or current_price <= 0:
-        current_price = await price(symbol, position, 20.0)
-        if not current_price or current_price <= 0:
-            logger.warning(f"[{position_key}] CRITICAL No valid price available, aborting")
-            return None
-    i = await ii(ctx['trade_manager'], ctx['symbol'])
-    k_3m = i.get('stoch_k_3m'); d_3m = i.get('stoch_d_3m'); k_15m = i.get('stoch_k_15m'); d_15m = i.get('stoch_d_15m'); wt1_3m = i.get('wt1_3m'); wt2_3m = i.get('wt2_3m'); ha_15m = i.get('ha_15m'); t_up_3m = bool(i.get('t_up_3m', False))
-    reversed_side = 'SHORT' if is_long else 'LONG'; 
-    reversed_key = construct_position_key(account_key, symbol, reversed_side)
-    if not reversed_key:
-        logger.error(f"[rev_entry] ⚠️ SKIPPING - constrct_position_key returned None: account={account_key}, symbol={symbol}, pos_side={reversed_side}")
-        return
-    positions_by_account = trade_manager.positions_by_account if hasattr(trade_manager, 'positions_by_account') else {}
-    reversed_position = positions_by_account.get(account_key, {}).get(reversed_key) if isinstance(positions_by_account, dict) else None
-    original_positionAmt = abs(ctx.get('positionAmt', 0.0))
-    if original_positionAmt <= 0 and hasattr(position, 'positionAmt'): original_positionAmt = abs(position.positionAmt)
-    reversed_registry = getattr(trade_manager, 'reversed_positions', set())
-    if reversed_key in reversed_registry:
-        prev_gain_check_valid = False
-        prev_gain_safe = 0.0
-        if position and hasattr(position, 'prev_gain_last_updated') and position.prev_gain_last_updated:
-            age_seconds = (datetime.now(timezone.utc) - position.prev_gain_last_updated).total_seconds()
-            if age_seconds is None or age_seconds == 0.0 or age_seconds == datetime.now(timezone.utc) : logger.error(f"{reversed_key} CRITICAL prev_gain_last_updated NOT DATETIME")
-            if age_seconds < 480.0:
-                prev_gain_safe = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)
-                if gain != 0.0 or prev_gain_safe != 0.0:
-                    prev_gain_check_valid = True
-        if not prev_gain_check_valid:
-            indicator_price = safe_fetch_float(i.get('current_price', 0), current_price)
-            if indicator_price and indicator_price > 0:
-                price_deteriorated = (is_long and current_price < indicator_price) or (not is_long and current_price > indicator_price)
-            else:
-                price_deteriorated = False # No valid prev_gain, skip comparison
-        else:
-            price_deteriorated = gain < prev_gain_safe
-        if reversed_position and hasattr(reversed_position, 'positionAmt') and reversed_position.positionAmt < original_positionAmt and price_deteriorated:
-            reverse_augment_amount = original_positionAmt - reversed_position.positionAmt
-            conviction = i.get('zconviction_long', 0.0) if is_long else i.get('zconviction_short', 0.0)
-            reason = f"REVERSE_AUGMENT_qty_{reverse_augment_amount:.4f}_${reverse_augment_amount*current_price:.2f}"
-            return Signal(action='REVERSE_AUGMENT', reason=f'{reason} | REVERSE {position.positionAmt} {gain:.2f}%', conviction=conviction)
-        return None
-    reversal_conviction = None; reversal_reasons = []
-    if gain > 0.3 and isinstance(k_3m, (int, float)) and isinstance(d_3m, (int, float)) and ((is_long and k_3m < d_3m) or (not is_long and k_3m > d_3m)):
-        if reversal_conviction is None:
-            conv_ctx = {'config': config, 'position_side': reversed_side, 'indicators': i}
-            reversal_conviction, reversal_reasons = await calculate_conviction(conv_ctx); ctx['reversal_conviction'] = reversal_conviction; ctx['reversal_conviction_reasons'] = reversal_reasons
-        if reversal_conviction >= 40:
-            return Signal(action='REVERSE', reason=f"{position_key} ${position.positionAmt*current_price:.2f}_REVERSAL_STOCH_CROSS gain={gain:.2f}% to {reversed_key} (Score:{reversal_conviction:.1f})", conviction=reversal_conviction)
-    prev_gain_value = getattr(position, 'prev_gain', gain) if isinstance(getattr(position, 'prev_gain', gain), (int, float)) else gain
-    try:
-        prev_gain_float = float(prev_gain_value)
-    except (TypeError, ValueError):
-        prev_gain_float = gain
-    max_gain_value = getattr(position, 'max_gain', gain) if isinstance(getattr(position, 'max_gain', gain), (int, float)) else gain
-    try:
-        max_gain_float = float(max_gain_value)
-    except (TypeError, ValueError):
-        max_gain_float = gain
-    drop_from_prev = max(prev_gain_float - gain, 0.0)
-    drop_from_peak = max(max_gain_float - gain, 0.0)
-    if account_key == 'fin' and not (reversed_position and getattr(reversed_position, 'positionAmt', 0) > 0):
-        prev_gain = prev_gain_float
-        k_ok = isinstance(k_3m, (int, float)); d_ok = isinstance(d_3m, (int, float))
-        stoch_condition = (k_ok and d_ok and ((is_long and (k_3m <= d_3m or not t_up_3m)) or (not is_long and (k_3m >= d_3m or t_up_3m))))
-        prev_gain_check_valid_fin = False
-        prev_gain_fin_safe = prev_gain_float
-        if position and hasattr(position, 'prev_gain_last_updated') and position.prev_gain_last_updated:
-            age_seconds = (datetime.now(timezone.utc) - position.prev_gain_last_updated).total_seconds()
-            if age_seconds is None or age_seconds == 0.0 or age_seconds == datetime.now(timezone.utc) : logger.error(f"{position_key} CRITICAL prev_gain_last_updated NOT DATETIME EVREVENTNEW")
-            if age_seconds < 480.0:
-                prev_gain_fin_safe = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)
-                if gain != 0.0 or prev_gain_fin_safe != 0.0:
-                    prev_gain_check_valid_fin = True
-        if not prev_gain_check_valid_fin:
-            indicator_price_fin = safe_fetch_float(i.get('current_price', 0), current_price)
-            if indicator_price_fin and indicator_price_fin > 0:
-                price_deteriorated_fin = (is_long and current_price < indicator_price_fin) or (not is_long and current_price > indicator_price_fin)
-            else:
-                price_deteriorated_fin = False # No valid prev_gain, skip comparison
-        else:
-            price_deteriorated_fin = gain < prev_gain_fin_safe
-        gain_condition = price_deteriorated_fin and gain < 0.5
-        if stoch_condition or gain_condition:
-            if reversal_conviction is None:
-                conv_ctx = {'config': config, 'position_side': reversed_side, 'indicators': i}
-                reversal_conviction, reversal_reasons = await calculate_conviction(conv_ctx); ctx['reversal_conviction'] = reversal_conviction; ctx['reversal_conviction_reasons'] = reversal_reasons
-            if reversal_conviction >= 40:
-                trigger = 'BOTH' if stoch_condition and gain_condition else 'STOCH' if stoch_condition else 'GAIN'
-                comparator = '<=' if is_long else '>='
-                k_fmt = f"{k_3m:.1f}" if k_ok else "NA"; d_fmt = f"{d_3m:.1f}" if d_ok else "NA"
-                return Signal(action='REVERSE', reason=f'FIN_HEDGE_OPEN_{trigger}_k_3mm={k_fmt}{comparator}d_3mm={d_fmt}_tup3m={t_up_3m}_gain={gain:.2f}%<prev={prev_gain_float:.2f}%', conviction=reversal_conviction)
-    min_drop = getattr(config, 'REVERSAL_MIN_GAIN_DROP', 0.05)
-    if gain <= 0.5 and drop_from_prev > min_drop and ((is_long and ((wt1_3m or 0) < (wt2_3m or 0) or (k_3m or 0) < (d_3m or 0) or ha_15m == 'red' or (k_15m or 0) < (d_15m or 0))) or (not is_long and ((wt1_3m or 0) > (wt2_3m or 0) or (k_3m or 0) > (d_3m or 0) or ha_15m == 'green' or (k_15m or 0) > (d_15m or 0)))):
-        if reversal_conviction is None:
-            conv_ctx = {'config': config, 'position_side': reversed_side, 'indicators': i}
-            reversal_conviction, reversal_reasons = await calculate_conviction(conv_ctx); ctx['reversal_conviction'] = reversal_conviction; ctx['reversal_conviction_reasons'] = reversal_reasons
-        if reversal_conviction >= 40:
-            return Signal(action='REVERSE', reason=f"{position_key} ${position.positionAmt*current_price:.2f}_REVERSAL to {reversed_key} (Score:{reversal_conviction:.1f}, Gain:{gain:.2f}%)", conviction=reversal_conviction)
-    position.gain = getattr(position, 'gain', gain) if isinstance(getattr(position, 'gain', gain), (int, float)) else gain
-    if position.gain < -0.2 and ((is_long and ((wt1_3m or 0) < (wt2_3m or 0) or (k_3m or 0) < (d_3m or 0) or ha_15m == 'red')) or (not is_long and ((wt1_3m or 0) > (wt2_3m or 0) or (k_3m or 0) > (d_3m or 0) or ha_15m == 'green'))):
-        if _check_loss_protection(position, position_key):
-            logger.debug(f"[LOSS_PROTECTION] {position_key}: not_allowed reversal/reduction - gain={position.gain:.3f}%")
-            return None
-        if reversal_conviction is None:
-            conv_ctx = {'config': config, 'position_side': reversed_side, 'indicators': i}
-            reversal_conviction, reversal_reasons = await calculate_conviction(conv_ctx); ctx['reversal_conviction'] = reversal_conviction; ctx['reversal_conviction_reasons'] = reversal_reasons
-        if reversal_conviction >= 40:
-            return Signal(action='REVERSE', reason=f"{position_key} ${position.positionAmt*current_price:.2f}_REVERSAL to {reversed_key} (Score:{reversal_conviction:.1f}, Gain:{gain:.2f}%)", conviction=reversal_conviction)
-    return None
-
-async def _validate_sentiment_constraints(ctx, is_long, ranking_points, market_sentiment, sentiment_easy_entry):
-    """Validate sentiment-based constraints"""
-    if is_long and ranking_points < 50:
-        ctx['logger'].info(f"[{ctx['position_key']}] TRADE NOT_ALLOWED: Symbol ranking too poor for long")
-        return False
-    elif not is_long and ranking_points > 50:
-        ctx['logger'].info(f"[{ctx['position_key']}] TRADE NOT_ALLOWED: Symbol ranking too strong for short")
-        return False
-    return True
-
-async def _validate_technical_conditions(ctx, is_long, atr_15m, atr_1h, mfi_15m, mfi_1h, lr_trend_15m, lr_trend_1h, lr_trend_4h, relative_volume_15m, relative_volume_3m,current_price, dc_high_15m, dc_low_15m):
-    logger = ctx['logger']
-    position_key = ctx['position_key']
-    if is_long and (mfi_15m > 85 or mfi_1h > 80):
-        if config.VERBOSE: logger.info(f"[{position_key}] TRADE NOT_ALLOWED: MFI overbought")
-        return False
-    if not is_long and (mfi_15m < 10 or mfi_1h < 15):
-        logger.info(f"[{position_key}] TRADE NOT_ALLOWED: MFI oversold")
-        return False
-    if is_long:
-        positive_trends = sum(1 for trend in [lr_trend_15m, lr_trend_1h, lr_trend_4h] )
-        if positive_trends < 2:
-            if config.VERBOSE: logger.info(f"[{position_key}] TRADE NOT_ALLOWED: Insufficient positive trends")
-            return False
-    else:
-        negative_trends = sum(1 for trend in [lr_trend_15m, lr_trend_1h, lr_trend_4h] if trend < 0)
-        if negative_trends < 1:
-            logger.info(f"[{position_key}] TRADE NOT_ALLOWED: No negative trends for short")
-            return False
-    if is_long and relative_volume_15m < 1.1 and relative_volume_3m < 1.1:
-        if config.VERBOSE: logger.info(f"[{position_key}] TRADE NOT_ALLOWED: Insufficient volume")
-        return False
-    if not is_long and relative_volume_15m < 0.5 and relative_volume_3m < 0.5:
-        logger.info(f"[{position_key}] TRADE NOT_ALLOWED: Extremely low volume")
-        return False
-    if dc_high_15m and dc_low_15m:
-        price_range = dc_high_15m - dc_low_15m
-        if price_range > 0:
-            distance_to_high = abs(current_price - dc_high_15m) / price_range
-            distance_to_low = abs(current_price - dc_low_15m) / price_range
-            if distance_to_high < 0.025 or distance_to_low < 0.025:
-                logger.info(f"[{position_key}] TRADE NOT_ALLOWED: Too close to DC boundaries")
-                return False
-    return True
-
-async def _validate_timeframe_confirmation(ctx, timeframe, stoch_crossover_15m, stoch_crossover_1h, wt_crossover_15m, wt_crossover_1h):
-    if timeframe in ["1h", "4h", "D"]:
-        lower_tf_signals = []
-        if timeframe == "1h":
-            lower_tf_signals = [stoch_crossover_15m, wt_crossover_15m]
-        elif timeframe == "4h":
-            lower_tf_signals = [stoch_crossover_1h, wt_crossover_1h]
-        if not any(lower_tf_signals):
-            ctx['logger'].info(f"[{ctx['position_key']}] TRADE NOT_ALLOWED: No lower timeframe confirmation")
-            return False
-    return True
-
-@timed_function("evaluate_reversal_entry_new")
-async def evaluate_reversal_entry_new(ctx: dict) -> Signal:
+@timed_function("evaluate_reversal_entry")
+async def evaluate_reversal_entry(ctx: dict) -> Signal:
     config = ctx['config']
     if not config.REV_MODE and ctx['account_key'] != 'fin': return None
     trade_manager = ctx['trade_manager']
@@ -15192,7 +16203,7 @@ async def evaluate_reversal_entry_new(ctx: dict) -> Signal:
             if qty_needed > 0:
                 reversal_conviction, reversal_reasons = _reversal_conviction(reversed_side)
                 try: conv_value = float(reversal_conviction)
-                except: conv_value = 0.0
+                except Exception: conv_value = 0.0
                 fallback_conviction = 55.0 if gain <= 0 else 45.0 if conv_value < 45.0 else conv_value
                 reason = f"{position_key} REVERSAL_FORCE_1to1 gain={gain:.2f}% target_qty={qty_needed:.6f}"
                 return Signal(
@@ -15233,6 +16244,47 @@ async def _process_technical_signals(ctx, event_type, is_long, timeframe, k_15m,
         is_safe = True 
     else:
         is_safe, safety_reason = is_safe_to_enter(ctx, i, current_price, is_long)
+    # ── DC CHANNEL POSITION GATE for fresh OPENs ──────────────────────────
+    # Only open new positions when price is near the correct extreme of the channel.
+    # Breakout entries (price >= dc_high) are exempt — those are confirmed momentum.
+    _is_fresh_open_signal = position.positionAmt < min_position_size
+    if _is_fresh_open_signal and i:
+        _dcp15 = (lambda lo, hi: (current_price - lo) / (hi - lo) if hi > lo > 0 else 0.5)(
+            float(i.get('dc_low_15m', 0) or 0), float(i.get('dc_high_15m', 0) or 0))
+        _dcp1h = (lambda lo, hi: (current_price - lo) / (hi - lo) if hi > lo > 0 else 0.5)(
+            float(i.get('dc_low_1h', 0) or 0), float(i.get('dc_high_1h', 0) or 0))
+        _dcp_avg = (_dcp15 * 0.55 + _dcp1h * 0.45)
+        _at_dc_high_15m = float(i.get('dc_high_15m', 0) or 0) > 0 and current_price >= float(i.get('dc_high_15m', 0)) * 0.995
+        _at_dc_low_15m  = float(i.get('dc_low_15m',  0) or 0) > 0 and current_price <= float(i.get('dc_low_15m',  0)) * 1.005
+        _dcbr_gate_ok, _dcbr_gate_reason, _ = check_dc_high_break_retest(i, current_price, is_long)
+        if is_long:
+            # LONG: need price in bottom 40% OR at confirmed DC high breakout OR DC high break retest
+            if _dcp_avg > 0.40 and not _at_dc_high_15m and not _dcbr_gate_ok:
+                ctx['logger'].info(f"[{ctx['position_key']}] DC_CHANNEL_GATE: LONG blocked — pos={_dcp_avg:.2f}>0.40 (need bottom 40% or breakout or DC_BREAK_RETEST)")
+                return None
+            if _dcbr_gate_ok:
+                ctx['logger'].info(f"[{ctx['position_key']}] DC_CHANNEL_GATE: LONG allowed via DC_BREAK_RETEST {_dcbr_gate_reason}")
+        else:
+            # SHORT: need price in top 40% OR at confirmed DC low breakdown OR DC low break retest
+            if _dcp_avg < 0.60 and not _at_dc_low_15m and not _dcbr_gate_ok:
+                ctx['logger'].info(f"[{ctx['position_key']}] DC_CHANNEL_GATE: SHORT blocked — pos={_dcp_avg:.2f}<0.60 (need top 40% or breakdown or DC_BREAK_RETEST)")
+                return None
+            if _dcbr_gate_ok:
+                ctx['logger'].info(f"[{ctx['position_key']}] DC_CHANNEL_GATE: SHORT allowed via DC_BREAK_RETEST {_dcbr_gate_reason}")
+    # ───────────────────────────────────────────────────────────────────────
+    # DC HIGH BREAK RETEST — fires on any event when pattern is confirmed, bypasses alignment
+    _dcbr_ts_ok, _dcbr_ts_reason, _dcbr_ts_mult = check_dc_high_break_retest(i, current_price, is_long)
+    if _dcbr_ts_ok:
+        _dcbr_ts_now = time.time()
+        _dcbr_ts_pk = ctx['position_key']
+        _dcbr_ts_last = _dc_retest_last.get(_dcbr_ts_pk, 0.0)
+        if _dcbr_ts_now - _dcbr_ts_last >= 60:
+            _dc_retest_last[_dcbr_ts_pk] = _dcbr_ts_now
+            _dcbr_ts_qty = config.START_POSITION_SIZE * _dcbr_ts_mult / current_price
+            action_type = 'OPEN' if position.positionAmt < min_position_size else 'AUGMENT'
+            ctx['logger'].warning(f"[DC_BREAK_RETEST_SIGNAL] {_dcbr_ts_pk}: {action_type} {_dcbr_ts_reason} qty={_dcbr_ts_qty:.6f}")
+            return Signal(action=action_type, reason=f"DC_HIGH_BREAK_RETEST {_dcbr_ts_reason}", conviction=88.0, quantity=_dcbr_ts_qty)
+
     if 'stoch_crossover' in event_type:
         if is_long and (k_15m > 65 or d_15m > 70):
             ctx['logger'].info(f"[{ctx['position_key']}] STOCH_CROSSOVER_ENTRY NOT_ALLOWED: k_15m too high")
@@ -15424,136 +16476,8 @@ def _apply_sentiment_boost(reasons, sentiment_boost_factor):
         reasons.append(f"SENTIMENT_BOOST_{sentiment_boost_factor:.1f}x")
     return reasons
 
-
 @timed_function("evaluate_technical_indicator_signals")
-async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]: # REQUIRED INDICATORS FOR THIS FUNCTION: (43 indicators - stochastic, DC basis, wave trend, price, HA, ATR, BB, SMA)
-    now = datetime.now(timezone.utc)
-    account_key = ctx['account_key']
-    signal_data = ctx.get('signal_data')
-    event_type = signal_data.get('event_type', '') if signal_data else ctx.get('event_type') or 'account_update'
-    if event_type == 'account_update' or 'periodic' in event_type:
-        return None
-    symbol = ctx.get('symbol', 'UNKNOWN')
-    config = ctx['config']
-    logger = ctx['logger']
-    position_key = ctx['position_key']
-    gain = ctx['gain']
-    trade_manager=ctx['trade_manager']
-    position = await trade_manager.get_position(position_key)
-    current_price = await price(ctx['symbol'], position)
-    if not current_price or current_price <= 0: current_price = await price(ctx['symbol'], position)
-    await _ensure_indicator_snapshot(ctx)
-    i = await ii(ctx['trade_manager'], ctx['symbol'])
-    if not i: logger.warning(f"[{position_key}] TECHNICAL_INDICATOR_NOT_ALLOWED: No indicator data"); return None
-    logger.debug(f" REDIS SIGNAL RECEIVED: evaluate_technical_indicator_signals processing {event_type} for {position_key}")
-    trade_manager = ctx['trade_manager']
-    is_long = ctx['position_side'] == 'LONG'
-    conviction_long = float(ctx.get('conviction_long', 0.0))
-    conviction_short = float(ctx.get('conviction_short', 0.0))
-    raw_reasons_long = ctx.get('conviction_long_reasons', [])
-    raw_reasons_short = ctx.get('conviction_short_reasons', [])
-    action_from_signal = ((signal_data.get('action') if signal_data else '') or '').upper()
-    winners_all_green_rank = 'winners_all_green_rank' in event_type
-    losers_all_red_rank = 'losers_all_red_rank' in event_type
-    critical_rank_signal = winners_all_green_rank or losers_all_red_rank
-    data_is_stale = False
-    penalties: List[str] = []
-    staleness_thresholds = { '3m': timedelta(minutes=6), '15m': timedelta(minutes=20), '1h': timedelta(hours=1.2), '4h': timedelta(hours=5), }
-    for tf, threshold in staleness_thresholds.items():
-        tf_ts_str = i.get(f'timestamp_{tf}')
-        if tf_ts_str:
-            try:
-                tf_ts = isoparse(tf_ts_str)
-                age = now - tf_ts
-                if age > threshold:
-                    logger.warning(f"[{position_key}] Data for {tf} timeframe is {age.total_seconds():.0f}s old (> {threshold.total_seconds():.0f}s threshold)")
-                    data_is_stale = True
-                    penalties.append(f"{tf}_STALE")
-                    break
-            except Exception:
-                continue
-    if data_is_stale:
-        logger.warning(f"[{position_key}] Data is stale - lowering conviction for ENTER signals instead of blocking")
-    if isinstance(raw_reasons_long, (list, tuple, set)):
-        reasons_long = [str(r) for r in raw_reasons_long]
-    elif raw_reasons_long:
-        reasons_long = [str(raw_reasons_long)]
-    else:
-        reasons_long = []
-    if isinstance(raw_reasons_short, (list, tuple, set)):
-        reasons_short = [str(r) for r in raw_reasons_short]
-    elif raw_reasons_short:
-        reasons_short = [str(raw_reasons_short)]
-    else:
-        reasons_short = []
-    current_price = await price(ctx['symbol'], position)
-    if not current_price or current_price <= 0:
-        current_price = i.get('current_price', 0) if isinstance(i, dict) else position.mark_price
-        if not current_price or current_price <= 0:
-            logger.error(f"[{position_key}] No valid price available from price() or indicators, aborting")
-            return None
-    now = datetime.now(timezone.utc)
-    conviction=conviction_long if is_long else conviction_short
-    reasons=raw_reasons_long if is_long else raw_reasons_short
-    essential_indicators = {'stoch_k_15m': 0, 'stoch_d_15m': 0, 'stoch_k_1h': 0, 'stoch_d_1h': 0, 'stoch_k_15m_prev': 0, 'stoch_k_1h_prev': 0, 'stoch_crossover_3m': False, 'stoch_crossunder_3m': False,'stoch_crossover_15m': False, 'stoch_crossunder_15m': False, 'stoch_crossover_1h': False, 'stoch_crossunder_1h': False, 'wt1_3m': 0, 'wt2_3m': 0, 'wt1_15m': 0, 'wt2_15m': 0, 'wt1_1h': 0, 'wt2_1h': 0,'wt_crossover_15m': False, 'wt_crossover_1h': False, 'sma_200_1m': 0, 'sma_200_15m': 0, 'dc_basis_3m': 0, 'dc_basis_15m': 0,'dc_high_15m': 0, 'dc_low_15m': 0, 'ha_3m': 'neutral', 'ha_15m': 'neutral', 'atr_15m': 0, 'atr_1h': 0,'mfi_15m': 50, 'mfi_1h': 50,'relative_volume_15m': 1.0, 'relative_volume_3m': 1.0,'lr_trend_15m': 0, 'lr_trend_1h': 0, 'lr_trend_4h': 0, '0market_sentiment_local': 50.0, '0market_sentiment_score': 50.0,'0ranking_points': 50.0, '0ranking_points_global': 50.0, '0sentiment_classification': 'NEUTRAL', '0sentiment_strength': 0.0, '0sentiment_rank': -1, '0is_top_sentiment': False, '0is_bottom_sentiment': False, 'timestamp': 0, 'current_price': 0}
-    indicators_cache = {key: i.get(key, default) for key, default in essential_indicators.items()}
-    (k_15m, d_15m, k_1h, d_1h, k_15m_prev, k_1h_prev, stoch_crossover_3m, stoch_crossunder_3m, stoch_crossover_15m, stoch_crossunder_15m,stoch_crossover_1h, stoch_crossunder_1h, wt1_3m, wt2_3m, wt1_15m, wt2_15m, wt1_1h, wt2_1h, wt_crossover_15m, wt_crossover_1h, sma_200_1m, sma_200_15m, dc_basis_3m, dc_basis_15m, dc_high_15m, dc_low_15m, ha_3m, ha_15m, atr_15m, atr_1h, mfi_15m, mfi_1h,relative_volume_15m, relative_volume_3m, lr_trend_15m, lr_trend_1h, lr_trend_4h, market_sentiment_local, market_sentiment, ranking_points, ranking_points_global, sentiment_classification, sentiment_strength, sentiment_rank, is_top_sentiment, is_bottom_sentiment,timestamp, _) = [indicators_cache[k] for k in essential_indicators]
-    if config.VERBOSE:
-        logger.info(f"[TECHNICAL_INDICATORS_SIGNALS] {position_key}: pA${position.positionAmt*current_price} price={current_price:.6f} gain={gain:.2f}% positionAmt={position.positionAmt:.6f} account_key={account_key} event_type={event_type}")
-    if not critical_rank_signal and position.positionAmt > max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) and gain < 0.2 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
-        logger.info(f"[TECHNICAL_INDICATORS_SIGNALS] REJECTED GAIN TOO LOW {gain} {position_key}: ${position.positionAmt*current_price:.2f} price={current_price:.6f} gain={gain:.2f}% positionAmt={position.positionAmt:.6f} event_type={event_type} {signal_data}")
-        penalties.append('LOW_GAIN')
-    if not critical_rank_signal and ((is_long and k_15m < k_15m_prev or ha_3m == 'red' or ha_15m=='red' or wt1_3m < wt2_3m or wt1_15m < wt2_15m) or (not is_long and k_15m > k_15m_prev or ha_3m == 'green' or ha_15m=='green' or wt1_3m > wt2_3m or wt1_15m > wt2_15m)):
-        logger.info(f"[TECHNICAL_INDICATORS_SIGNALS] {position_key}: Price not trending in position direction")
-        penalties.append('TREND_MISMATCH')
-    if winners_all_green_rank or losers_all_red_rank:
-        logger.critical(f"[{position_key}] CRITICAL RANKING SIGNAL RECEIVED: {event_type} action={action_from_signal}")
-    if account_key in ['inf','men','fin','ang','flz']:
-        if action_from_signal in ['BUY', 'SELL'] and any(ranking_signal in event_type for ranking_signal in ['winners_up_rank', 'winners_down_rank', 'losers_jump_rank', 'losers_drop_rank', 'winners_all_green_rank', 'losers_all_red_rank', 'WT Strong Alert']):
-            logger.info(f"[{position_key}] 🎯 MEN AUTO-FOLLOW: Evaluating {action_from_signal} signal from {event_type}")
-            if action_from_signal == 'BUY' and is_long:
-                if position.positionAmt < max(max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) , ctx.get('trade_manager').min_qty.get(symbol, 0.0001)):
-                    if config.VERBOSE:
-                        logger.info(f"[TECHNICAL_INDICATORS_RETURN] {position_key}: OPEN - MEN_AUTO_FOLLOW_BUY action_from_signal={action_from_signal} event_type={event_type} conviction={conviction:.2f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                    if winners_all_green_rank or losers_all_red_rank:
-                        logger.critical(f"[{position_key}] CRITICAL EXECUTION: {event_type} -> OPEN MEN AUTO-FOLLOW")
-                    return Signal(action='OPEN', reason=f'MEN_AUTO_FOLLOW_BUY_{event_type} ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}| {reasons}', conviction=conviction)
-                elif position.positionAmt > max(max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) , ctx.get('trade_manager').min_qty.get(symbol, 0.0001)) and (gain > 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY or winners_all_green_rank):
-                    if config.VERBOSE:
-                        logger.info(f"[TECHNICAL_INDICATORS_RETURN] {position_key}: AUGMENT - MEN_AUTO_FOLLOW_BUY_AUGMENT action_from_signal={action_from_signal} event_type={event_type} gain={gain:.2f} conviction={conviction:.2f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                    if winners_all_green_rank or losers_all_red_rank:
-                        logger.critical(f"[{position_key}] CRITICAL EXECUTION: {event_type} -> AUGMENT MEN AUTO-FOLLOW")
-                    return Signal(action='AUGMENT', reason=f'MEN_AUTO_FOLLOW_BUY_AUGMENT_{event_type} ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}| {reasons}', conviction=conviction)
-            elif action_from_signal == 'SELL' and not is_long:
-                if position.positionAmt < max(max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) , ctx.get('trade_manager').min_qty.get(symbol, 0.0001)):
-                    if config.VERBOSE:
-                        logger.info(f"[TECHNICAL_INDICATORS_RETURN] {position_key}: OPEN - MEN_AUTO_FOLLOW_SELL action_from_signal={action_from_signal} event_type={event_type} conviction={conviction:.2f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                    if winners_all_green_rank or losers_all_red_rank:
-                        logger.critical(f"[{position_key}] CRITICAL EXECUTION: {event_type} -> OPEN MEN AUTO-FOLLOW")
-                    return Signal(action='OPEN', reason=f'MEN_AUTO_FOLLOW_SELL_{event_type} ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}| {reasons}', conviction=conviction)
-                elif position.positionAmt > max(max(config.START_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol,0.001)) , ctx.get('trade_manager').min_qty.get(symbol, 0.0001)) and (gain > 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY or losers_all_red_rank):
-                    if config.VERBOSE:
-                        logger.info(f"[TECHNICAL_INDICATORS_RETURN] {position_key}: AUGMENT - MEN_AUTO_FOLLOW_SELL_AUGMENT action_from_signal={action_from_signal} event_type={event_type} gain={gain:.2f} conviction={conviction:.2f} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                    if winners_all_green_rank or losers_all_red_rank:
-                        logger.critical(f"[{position_key}] CRITICAL EXECUTION: {event_type} -> AUGMENT MEN AUTO-FOLLOW")
-                    return Signal(action='AUGMENT', reason=f'MEN_AUTO_FOLLOW_SELL_AUGMENT_{event_type} ts3/15:{i.get("timestamp_3m")}/{i.get("timestamp_15m")}| {reasons}', conviction=conviction)
-    relaxed_signal = await evaluate_technical_indicator_signals_new(ctx)
-    if relaxed_signal:
-        base_conviction = relaxed_signal.conviction if isinstance(relaxed_signal.conviction, (int, float)) else 0.0
-        if base_conviction == 0.0:
-            base_conviction = conviction_long if is_long else conviction_short
-            if base_conviction == 0.0:
-                base_conviction = 35.0 if is_long else -35.0
-        if penalties:
-            penalty_factor = 0.6 if data_is_stale else 0.8
-            base_conviction = float(base_conviction) * penalty_factor
-            relaxed_signal.reason = f"{relaxed_signal.reason} | RELAXED:{','.join(penalties)}"
-        relaxed_signal.conviction = float(base_conviction)
-        return relaxed_signal
-
-
-@timed_function("evaluate_technical_indicator_signals_new")
-async def evaluate_technical_indicator_signals_new(ctx: dict) -> Optional[Signal]:
+async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
     event_type = _normalize_event_type(ctx)
     if event_type == 'account_update' or 'periodic' in event_type:
         return None
@@ -15563,10 +16487,31 @@ async def evaluate_technical_indicator_signals_new(ctx: dict) -> Optional[Signal
     position = trade_manager.positions.get(ctx['position_key'])
     if not position:
         return None
-    i = await ii(ctx['trade_manager'], ctx['symbol'])  
+    i = await ii(ctx['trade_manager'], ctx['symbol'])
     if not _check_timestamp_3m_freshness(i, max_age_minutes=8.0):
-        return None    
+        return None
     is_long = ctx.get('position_side') == 'LONG'
+
+    # ALIGNMENT CHECK
+    k_1m = float(i.get('stoch_k_1m', 50)); d_1m = float(i.get('stoch_d_1m', 50))
+    k_3m = float(i.get('stoch_k_3m', 50)); d_3m = float(i.get('stoch_d_3m', 50))
+    k_15m = float(i.get('stoch_k_15m', 50)); d_15m = float(i.get('stoch_d_15m', 50))
+    k_1h = float(i.get('stoch_k_1h', 50)); d_1h = float(i.get('stoch_d_1h', 50))
+    k_4h = float(i.get('stoch_k_4h', 50)); d_4h = float(i.get('stoch_d_4h', 50))
+    k_D = float(i.get('stoch_k_D', 50)); d_D = float(i.get('stoch_d_D', 50))
+    ha_D = i.get('ha_D', 'neutral')
+
+    _tp_aligned, _tp_align_reason = trading_policy.check_entry_alignment(i, is_long)
+    if not _tp_aligned:
+        return None
+    _tp_htf_ok, _tp_htf_reason = trading_policy.check_htf_trend_aligned(i, current_price, is_long)
+    if not _tp_htf_ok:
+        return None
+    _tp_trigger_ok, _tp_trigger_reason = trading_policy.check_entry_trigger(i, is_long)
+    if not _tp_trigger_ok:
+        logger.debug(f"[ENTRY_TRIGGER_BLOCK] {position_key}: {_tp_trigger_reason}")
+        return None
+
     signal_data = ctx.get('signal_data') or {}
     detected: List[str] = []
 
@@ -15729,10 +16674,40 @@ async def calculate_final_order_quantity(position_key: Optional[str] = None, acc
     if config.VERBOSE:logger.info(f"[final_order_quantity] {position_key}: ${current_price * base_quantity:.2f} qty={base_quantity:.4f} price={current_price:.6f}")
     factors: List[Tuple[float, bool, str]] = []
     sizing_score = 0.0
-    if i.get('relative_volume_3m', 1.0) > 1.2: factors.append((6, True, "High RV 3m (>1.2)"))
-    if i.get('relative_volume_15m', 1.0) > 1.2: factors.append((6, True, "High RV 15m (>1.2)"))
-    if i.get('relative_volume_3m', 1.0) < 0.9: factors.append((-6, True, "Low RV 3m (<0.9)"))
-    if i.get('relative_volume_15m', 1.0) < 0.9: factors.append((-6, True, "Low RV 15m (<0.9)"))
+    # BACKTEST_CHANGE_3: EMA_DIST mean-reversion entry signal (#1 in top 5000)
+    if getattr(config, 'EMA_DIST_ENTRY_ENABLED', False):
+        _ema20_ed = float(i.get(f'ema_20_{config.TF_FOCUS}', 0) or 0)
+        if _ema20_ed > 0:
+            _ema_dist_pct = (current_price - _ema20_ed) / _ema20_ed * 100
+            if is_long and _ema_dist_pct < config.EMA_DIST_LONG_THRESHOLD: factors.append((30, True, f"EMA_DIST_LONG({_ema_dist_pct:.2f}%<{config.EMA_DIST_LONG_THRESHOLD})"))
+            elif not is_long and _ema_dist_pct > config.EMA_DIST_SHORT_THRESHOLD: factors.append((30, True, f"EMA_DIST_SHORT({_ema_dist_pct:.2f}%>{config.EMA_DIST_SHORT_THRESHOLD})"))
+    # BACKTEST_CHANGE_4: MOM3 3-bar momentum mean-reversion (#2 signal)
+    if getattr(config, 'MOM3_ENTRY_ENABLED', False):
+        _close_3 = float(i.get(f'close_3bar_{config.TF_FOCUS}', 0) or 0)
+        if _close_3 > 0:
+            _mom3 = (current_price - _close_3) / _close_3 * 100
+            if is_long and _mom3 < config.MOM3_LONG_THRESHOLD: factors.append((22, True, f"MOM3_LONG({_mom3:.2f}%<{config.MOM3_LONG_THRESHOLD})"))
+            elif not is_long and _mom3 > config.MOM3_SHORT_THRESHOLD: factors.append((22, True, f"MOM3_SHORT({_mom3:.2f}%>{config.MOM3_SHORT_THRESHOLD})"))
+    # BACKTEST_CHANGE_5: MOM5 5-bar momentum mean-reversion (#3 signal)
+    if getattr(config, 'MOM5_ENTRY_ENABLED', False):
+        _close_5 = float(i.get(f'close_5bar_{config.TF_FOCUS}', 0) or 0)
+        if _close_5 > 0:
+            _mom5 = (current_price - _close_5) / _close_5 * 100
+            if is_long and _mom5 < config.MOM5_LONG_THRESHOLD: factors.append((22, True, f"MOM5_LONG({_mom5:.2f}%<{config.MOM5_LONG_THRESHOLD})"))
+            elif not is_long and _mom5 > config.MOM5_SHORT_THRESHOLD: factors.append((22, True, f"MOM5_SHORT({_mom5:.2f}%>{config.MOM5_SHORT_THRESHOLD})"))
+    # BACKTEST_CHANGE_6: BB %B extremes entry signal
+    _bb_pct = float(i.get(f'bb_pct_{config.TF_FOCUS}', i.get('bb_pct', -999)) or -999)
+    if _bb_pct != -999:
+        if is_long and _bb_pct < config.BB_ENTRY_LONG_THRESHOLD: factors.append((22, True, f"BB_OVERSOLD({_bb_pct:.2f}<{config.BB_ENTRY_LONG_THRESHOLD})"))
+        elif not is_long and _bb_pct > config.BB_ENTRY_SHORT_THRESHOLD: factors.append((22, True, f"BB_OVERBOUGHT({_bb_pct:.2f}>{config.BB_ENTRY_SHORT_THRESHOLD})"))
+    # BACKTEST_CHANGE_100: Volume gate — master trader winners avg 1.95x vol, losers 1.27x
+    _rv_3m = float(i.get('relative_volume_3m', 1.0) or 1.0)
+    _rv_15m = float(i.get('relative_volume_15m', 1.0) or 1.0)
+    _vol_min = getattr(config, 'ENTRY_VOL_MIN_RATIO', 1.0)
+    if _rv_3m > 1.5 or _rv_15m > 1.5: factors.append((12, True, f"High RV surge (3m={_rv_3m:.1f},15m={_rv_15m:.1f})_master100"))
+    elif _rv_3m > _vol_min or _rv_15m > _vol_min: factors.append((6, True, f"RV above min (3m={_rv_3m:.1f},15m={_rv_15m:.1f})"))
+    elif _rv_3m < 0.9 and _rv_15m < 0.9: factors.append((-12, True, f"Low RV both (3m={_rv_3m:.1f},15m={_rv_15m:.1f})_master100"))
+    else: factors.append((-6, True, f"RV below min (3m={_rv_3m:.1f},15m={_rv_15m:.1f})_master100"))
     lr_up_count = sum(2 for tf in ['lr_trend_15m', 'lr_trend_1h', 'lr_trend_4h'] if i.get(tf) == "up")
     lr_down_count = sum(2 for tf in ['lr_trend_15m', 'lr_trend_1h', 'lr_trend_4h'] if i.get(tf) == "down")
     mfi_up_count = sum(1 for tf in ['mfi_trend_3m', 'mfi_trend_15m', 'mfi_trend_1h', 'mfi_trend_4h'] if i.get(tf) == "up")
@@ -15772,6 +16747,13 @@ async def calculate_final_order_quantity(position_key: Optional[str] = None, acc
     elif gain > 2.0: factors.append((15, True, "Position in Profit > 2%"))
     if gain < -1.5: factors.append((-25, True, "Position in Significant Loss > -1.5%"))
     elif gain < -0.5: factors.append((-10, True, "Position in Loss > -0.5%"))
+    # BACKTEST_CHANGE_103: ATR% sizing penalty — low vol assets have no edge (master winners 1.97%, losers 1.22%)
+    _atr_1h_sz = float(i.get('atr_1h', 0) or 0)
+    _atr_min_pct = getattr(config, 'ENTRY_ATR_PCT_MIN', 0)
+    if _atr_1h_sz > 0 and current_price > 0 and _atr_min_pct > 0:
+        _atr_pct_sz = (_atr_1h_sz / current_price) * 100
+        if _atr_pct_sz < _atr_min_pct: sizing_score -= 25
+        elif _atr_pct_sz > _atr_min_pct * 2: sizing_score += 15
     for tf, weight in [('3m', 5), ('15m', 10), ('1h', 15)]:
         dc_high, dc_low = i.get(f'dc_high_{tf}'), i.get(f'dc_low_{tf}')
         if dc_high and dc_low and dc_low > 0:
@@ -15787,6 +16769,49 @@ async def calculate_final_order_quantity(position_key: Optional[str] = None, acc
         if 'winners_up' in event_type and is_long: sizing_score += 10
         elif 'losers_drop' in event_type and not is_long: sizing_score += 10
     sizing_score += 0.4 * conviction if is_long else -0.4 * conviction
+    _rsi_1h_sz = float(i.get('rsi_1h', 50) or 50)
+    _rsi_4h_sz = float(i.get('rsi_4h', 50) or 50)
+    _mfi_1h_sz = float(i.get('mfi_1h', 50) or 50)
+    _mfi_4h_sz = float(i.get('mfi_4h', 50) or 50)
+    _mfi_D_sz  = float(i.get('mfi_D',  50) or 50)
+    if is_long:
+        if _rsi_1h_sz < 50: sizing_score += 15
+        if _rsi_4h_sz < 50: sizing_score += 25
+        if _rsi_1h_sz < 50 and _rsi_4h_sz < 50: sizing_score += 15
+        if _rsi_1h_sz > 70: sizing_score -= 20
+        if _rsi_4h_sz > 70: sizing_score -= 30
+        # MFI — backtested: 4h MFI<40 strongest long signal (63-96% wr, 70-96% avg return)
+        if _mfi_1h_sz < 50: sizing_score += 18
+        if _mfi_4h_sz < 40: sizing_score += 35
+        if _mfi_4h_sz < 50: sizing_score += 12
+        if _mfi_D_sz  < 40: sizing_score += 15
+        if _mfi_1h_sz < 40 and _mfi_4h_sz < 40: sizing_score += 20
+        if _mfi_1h_sz > 70: sizing_score -= 25
+        if _mfi_4h_sz > 70: sizing_score -= 40
+    else:
+        if _rsi_1h_sz > 50: sizing_score += 15
+        if _rsi_4h_sz > 50: sizing_score += 25
+        if _rsi_1h_sz > 50 and _rsi_4h_sz > 50: sizing_score += 15
+        if _rsi_1h_sz < 30: sizing_score -= 20
+        if _rsi_4h_sz < 30: sizing_score -= 30
+        # BACKTEST_CHANGE_101: SHORT with RSI_1h < 40 = loser (master traders: short winners avg RSI 55, losers avg 41)
+        _short_rsi_min = getattr(config, 'SHORT_RSI_MIN_1H', 0)
+        if _short_rsi_min > 0 and _rsi_1h_sz < _short_rsi_min: sizing_score -= 35
+        # MFI — backtested: D MFI>60 = 93-100% win rate for shorts
+        if _mfi_1h_sz > 60: sizing_score += 18
+        if _mfi_4h_sz > 60: sizing_score += 35
+        if _mfi_4h_sz > 50: sizing_score += 12
+        if _mfi_D_sz  > 60: sizing_score += 20
+        if _mfi_1h_sz > 60 and _mfi_4h_sz > 60: sizing_score += 20
+        if _mfi_1h_sz < 30: sizing_score -= 25
+        if _mfi_4h_sz < 30: sizing_score -= 40
+        # BACKTEST_CHANGE_104: SHORT above EMA20 = high conviction (master winners short from +3.15% above EMA20)
+        _short_sma20_bonus = getattr(config, 'SHORT_ABOVE_SMA20_BONUS', 0)
+        _ema20_1h_sz = float(i.get('ema_20_1h', 0) or 0)
+        if _short_sma20_bonus > 0 and _ema20_1h_sz > 0:
+            _ema20_dist_sz = (current_price - _ema20_1h_sz) / _ema20_1h_sz * 100
+            if _ema20_dist_sz > 2.0: sizing_score += _short_sma20_bonus
+            elif _ema20_dist_sz < -1.0: sizing_score -= _short_sma20_bonus
     k_1h, d_1h, k_4h, d_4h = i.get('stoch_k_1h', 50), i.get('stoch_d_1h', 50), i.get('stoch_k_4h', 50), i.get('stoch_d_4h', 50)
     higher_high_1h_check = i.get('high_1h', 0) > i.get('high_1h_prev', 0) and i.get('low_1h', 0) > i.get('low_1h_prev', 0) if i.get('high_1h', 0) > 0 and i.get('high_1h_prev', 0) > 0 and i.get('low_1h', 0) > 0 and i.get('low_1h_prev', 0) > 0 else False
     lower_low_1h_check = i.get('high_1h', 0) < i.get('high_1h_prev', 0) and i.get('low_1h', 0) < i.get('low_1h_prev', 0) if i.get('high_1h', 0) > 0 and i.get('high_1h_prev', 0) > 0 and i.get('low_1h', 0) > 0 and i.get('low_1h_prev', 0) > 0 else False
@@ -15803,6 +16828,21 @@ async def calculate_final_order_quantity(position_key: Optional[str] = None, acc
     size_multiplier = max(0.1, min(3.0, 1.0 + (clamped_score / 250.0)))
     if config.VERBOSE2: logger.info(f"[{position_key}] SIZING: BaseQty={base_quantity:.4f}, Score={sizing_score:.1f}, Multiplier={size_multiplier:.2f}")
     final_add_qty = base_quantity * size_multiplier
+    # BACKTEST_CHANGE_24: EMA_DIST proportional sizing — larger distance from EMA = larger position
+    if getattr(config, 'EMA_DIST_SIZING_ENABLED', False):
+        _ema20_sz = float(i.get(f'ema_20_{config.TF_FOCUS}', 0) or 0)
+        if _ema20_sz > 0:
+            _ema_dist_sz = abs((current_price - _ema20_sz) / _ema20_sz * 100)
+            _ema_sz_mult = min(_ema_dist_sz, getattr(config, 'EMA_DIST_SIZING_MULT', 2.0))
+            if _ema_sz_mult > 1.0:
+                final_add_qty *= _ema_sz_mult
+                logger.info(f"[{position_key}] EMA_DIST_SIZING: dist={_ema_dist_sz:.2f}% mult={_ema_sz_mult:.2f}x → qty=${final_add_qty*current_price:.2f}")
+    # BACKTEST_CHANGE_27: per-symbol sizing multipliers for top backtest performers
+    _sym_mult_map = getattr(config, 'SYMBOL_SIZE_MULTIPLIERS', {})
+    if symbol in _sym_mult_map:
+        _sym_mult = _sym_mult_map[symbol]
+        final_add_qty *= _sym_mult
+        logger.info(f"[{position_key}] SYMBOL_SIZE_MULT: {symbol} x{_sym_mult:.1f} → qty=${final_add_qty*current_price:.2f}")
     max_order_value_usd = config.MAX_ORDER_VALUE_MEN if account_key == 'men' else (config.MAX_ORDER_VALUE_FIN if account_key == 'fin' else config.MAX_ORDER_VALUE)
     if final_add_qty * current_price > max_order_value_usd:
         final_add_qty = max_order_value_usd / current_price
@@ -15940,7 +16980,7 @@ async def _validate_indicator_data_freshness(i: dict, symbol: str, position_key:
                 age_minutes = (now - ts).total_seconds() / 60.0
                 if age_minutes <= t_minutes: 
                     fresh_tf.append(tf)
-            except: 
+            except Exception: 
                 pass
     if not fresh_tf: 
         return False, "Stale (All TFs)", False
@@ -15995,8 +17035,8 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         positionAmt = safe_fetch_float(position.positionAmt, 0.0)
         position_value = abs(positionAmt) * current_price
         min_pos_usd = safe_fetch_float(config.START_POSITION_SIZE, 55.0)
-        if position_value > min_pos_usd:
-            if config.VERBOSE: logger.debug(f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - position_value ${position_value:.2f} > min_pos_usd ${min_pos_usd:.2f}")
+        if position_value > min_pos_usd * 3.0:
+            if config.VERBOSE: logger.debug(f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - position_value ${position_value:.2f} > 3x min_pos_usd ${min_pos_usd:.2f}")
             return
         max_qty = max(position.max_quantity, 20 * config.START_POSITION_SIZE / current_price)
         if positionAmt >= max_qty:
@@ -16005,7 +17045,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         SPS = safe_fetch_float(config.START_POSITION_SIZE, 55.0)
         min_qty_symbol = safe_fetch_float(trade_manager.min_qty.get(symbol, 0.0001), 0.0001)
         reentry_level = safe_fetch_float(reentry_data.get("reentry_level") if isinstance(reentry_data, dict) else (position.last_reduction_price if position and hasattr(position, 'last_reduction_price') else None) or 0.0, 0.0)
-        reentry_amount = safe_fetch_float(reentry_data.get("reentry_amount") if isinstance(reentry_data, dict) else (position.last_reduction_amount if position and hasattr(position, 'last_reduction_amount') else None) or 0.0, 0.0)
+        reentry_amount = float(position.max_quantity or 0.0) if position else 0.0
         reentry_timestamp = safe_datetime(reentry_data.get("timestamp")) if isinstance(reentry_data, dict) else safe_datetime((position.last_reduction_time) if position and hasattr(position, 'last_reduction_time') else None)
         if reentry_amount < config.START_POSITION_SIZE/current_price: reentry_amount = config.START_POSITION_SIZE/current_price
         if not isinstance(reentry_timestamp, datetime):
@@ -16013,8 +17053,8 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         now = datetime.now(timezone.utc)
         if not reentry_timestamp: min_since_exit = 999
         else: min_since_exit = (now - reentry_timestamp).total_seconds() / 60.0
-        if min_since_exit < 3:
-            if config.VERBOSE: logger.debug(f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - min_since_exit {min_since_exit:.1f}m < 2m")
+        if min_since_exit < 0.5:
+            if config.VERBOSE: logger.debug(f"[process_single_reentry_evaluation] {position_key}: NOT_ALLOWED - min_since_exit {min_since_exit:.1f}m < 0.5m")
             return
         if min_since_exit < 120: 
             reentry_amount = position.max_quantity
@@ -16031,12 +17071,36 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         lower_low = high_3m and high_3m_prev and low_3m and low_3m_prev and high_3m <= high_3m_prev and (low_3m or current_price) <= low_3m_prev;higher_high = (high_3m or current_price) >= high_3m_prev and low_3m >= low_3m_prev
         higher_high_condition = is_long and higher_high and (dc_low_3m < current_price < dc_basis_3m or dc_low_15m < current_price < dc_basis_15m)
         lower_low_condition = not is_long and lower_low and (dc_high_3m > current_price > dc_basis_3m or dc_high_15m > current_price > dc_basis_15m)
+        # == DC BREAKOUT FAST-PATH REENTRY ==
+        _dc_reentry_breakout = False
+        _buf = 0.001
+        dc_high_1h = safe_fetch_float(i.get('dc_high_1h', 0), 0.0)
+        dc_low_1h = safe_fetch_float(i.get('dc_low_1h', 0), 0.0)
+        if is_long:
+            if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
+                if k_3m > d_3m:
+                    _dc_reentry_breakout = True
+                    _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
+        else:
+            if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
+                if k_3m < d_3m:
+                    _dc_reentry_breakout = True
+                    _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
+        if _dc_reentry_breakout:
+            logger.warning(f"[DC_BREAKOUT_REENTRY] {position_key}: DC {_dc_re_tf} breakout! Bypassing all gates for immediate reentry at ${current_price:.4f}")
+            recovery_reentry_amount = min(reentry_amount, 3 * config.START_POSITION_SIZE / current_price)
+            reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
+            result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 90.0)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[DC_BREAKOUT_REENTRY] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
+            return
+        # == STANDARD REENTRY GATES ==
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
             if _strong_trend:
                 _k3_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
                 if _k3_bounce or higher_high_condition or lower_low_condition:
-                    logger.info(f"[STRONG_TREND_REENTRY] {position_key}: k_15m={k_15m:.1f} — strong trend + bounce confirmed, allowing reentry")
+                    logger.info(f"[STRONG_TREND_REENTRY] {position_key}: k_15m={k_15m:.1f} -- strong trend + bounce confirmed, allowing reentry")
                 else:
                     if config.VERBOSE: logger.info(f"[process_single_reentry_evaluation] {position_key}: k_15m {k_15m} strong trend but no bounce yet")
                     return
@@ -16050,11 +17114,6 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _pullback_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
             if _htf_ok and _pullback_bounce:
                 logger.info(f"[PULLBACK_REENTRY] {position_key}: HTF confirmed (k_1h={k_1h:.1f}, k_4h={k_4h:.1f}) + bounce (k_3m={k_3m:.1f})")
-        if trade_manager._check_htf_confirmation(position_key, is_long, i, k_1h, k_1h_prev, k_4h, k_4h_prev, k_15m, k_15m_prev, d_15m, k_3m, k_3m_prev, wt1_3m, wt2_3m, wt1_15m, wt2_15m, current_price, sma_200_1m, safe_fetch_float(i.get('sma_200_1m_prev', 0), 0.0), config): return
-        if is_long and market_sentiment < -30:
-            return
-        elif not is_long and market_sentiment > 30:
-            return
         if k_3m is None or d_3m is None or k_15m is None or d_15m is None:
             return
         price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
@@ -16178,20 +17237,20 @@ async def evaluate_reentry_2(trade_manager):
                     "reason": "SYNC_FROM_REDUCED_POSITIONS"
                 }
 
-    # Clean up stale unplanned reentries (> 30 mins)
+    # Clean up stale reentries only after MAX_REENTRY_MINUTES (20 hours)
+    _max_reentry_sec = getattr(config, 'MAX_REENTRY_MINUTES', 1200) * 60
     for pk, rd in list(trade_manager.reentry_data.items()):
         rd_ts = safe_datetime(rd.get("timestamp"))
-        if rd_ts and (now - rd_ts).total_seconds() > 48000: # 30 mins
-             if "PLANNED" not in str(rd.get("reason", "")):
-                 trade_manager.reentry_data.pop(pk, None)
-                 if pk in trade_manager.reduced_positions:
-                     trade_manager.reduced_positions.pop(pk, None)
-                 if hasattr(trade_manager, 'service') and trade_manager.service:
-                     if pk in trade_manager.service.reduced_positions:
-                         trade_manager.service.reduced_positions.pop(pk, None)
-                         account_key, sym, ps = parse_position_key(pk)
-                         asyncio.create_task(trade_manager.service.save_reduced_positions(account_key, min_interval=0))
-                 logger.info(f"♻️ [REENTRY_EXPIRED] {pk}: Aged out after 30 mins.")
+        if rd_ts and (now - rd_ts).total_seconds() > _max_reentry_sec:
+             trade_manager.reentry_data.pop(pk, None)
+             if pk in trade_manager.reduced_positions:
+                 trade_manager.reduced_positions.pop(pk, None)
+             if hasattr(trade_manager, 'service') and trade_manager.service:
+                 if pk in trade_manager.service.reduced_positions:
+                     trade_manager.service.reduced_positions.pop(pk, None)
+                     account_key, sym, ps = parse_position_key(pk)
+                     asyncio.create_task(trade_manager.service.save_reduced_positions(account_key, min_interval=0))
+             logger.info(f"♻️ [REENTRY_EXPIRED] {pk}: Aged out after {_max_reentry_sec/60:.0f} mins.")
 
     # 2. Get Data Source
     reentry_data_dict = getattr(trade_manager, 'reentry_data', {})
@@ -16225,56 +17284,19 @@ async def evaluate_reentry_2(trade_manager):
             # if LEADERBOARD_FILTER and not _check_leaderboard_allowed(trade_manager, symbol, position_side, account_key, position_key):
             #     continue
 
-            # --- B. Technical Analysis (The Fix) ---
+            # --- B. Technical Analysis — now via shared trading_policy ---
             i = await ii(trade_manager, symbol)
             if not i: continue
-            
             current_price = safe_fetch_float(i.get('current_price'))
             if not current_price: continue
             position = await trade_manager.get_position(position_key)
-
-            # 1. Price vs Reentry Level (BETTER PRICE ENFORCEMENT)
             reentry_level = safe_fetch_float(reentry_data.get("reentry_level", 0.0))
-            if not reentry_level or reentry_level <= 0: reentry_level = position.last_reduction_price
-            
-            # MANDATORY BETTER PRICE: Must be at least 0.1% better than where we sold
-            price_is_better = False
-            if is_long:
-                # Better price for LONG means LOWER price
-                price_is_better = current_price < (reentry_level * 0.999)
-            else:
-                # Better price for SHORT means HIGHER price
-                price_is_better = current_price > (reentry_level * 1.001)
-                
-            if not price_is_better: continue
-
-            # 2. Momentum Alignment (Not just Crossover)
-            # We check if Stoch is favorable OR if HA Candles are favorable.
-            k_1m = safe_fetch_float(i.get('stoch_k_1m'))
-            d_1m = safe_fetch_float(i.get('stoch_d_1m'))
-            k_3m = safe_fetch_float(i.get('stoch_k_3m'))
-            d_3m = safe_fetch_float(i.get('stoch_d_3m'))
-            ha_3m = i.get('ha_3m', 'neutral')
-
-            is_aligned = False
-            
-            if is_long:
-                # Long: 1m OR 3m stoch is up, OR 3m candles are green
-                stoch_up = (k_1m > d_1m) or (k_3m > d_3m)
-                # Ensure we aren't buying the absolute top of a 1m spike (k < 95) unless trend is huge
-                not_topped = k_1m < 95 or ha_3m == 'green'
-                if stoch_up and not_topped: is_aligned = True
-                
-            else:
-                # Short: 1m OR 3m stoch is down, OR 3m candles are red
-                stoch_down = (k_1m < d_1m) or (k_3m < d_3m)
-                not_bottomed = k_1m > 5 or ha_3m == 'red'
-                if stoch_down and not_bottomed: is_aligned = True
-
-            if not is_aligned: continue
-
+            if not reentry_level or reentry_level <= 0: reentry_level = position.last_reduction_price if position else 0.0
+            rd_ts = safe_datetime(reentry_data.get("timestamp"))
+            time_since_exit_min = (now - rd_ts).total_seconds() / 60.0 if rd_ts else 999.0
+            _re_ok, _re_reason = trading_policy.check_reentry_eligible(i, current_price, reentry_level, is_long, time_since_exit_min)
+            if not _re_ok: continue
             # --- C. Launch Processor ---
-            # Technicals match. Launch the full evaluation to calculate sizing and submit.
             tasks.append(process_with_semaphore(trade_manager, position_key, reentry_data, config))
 
         except Exception as e:
@@ -16309,7 +17331,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
                  client = trade_manager.redis_manager.connections.get('local') or trade_manager.redis_manager.connections.get('server')
                  if client:
                      await client.hdel(f"direct_high_gain_augmented:{account_key}", position_key)
-             except: pass
+             except Exception: pass
         return
     state_ref = None
     in_flight_set = False
@@ -16340,24 +17362,16 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
         if not current_price or current_price <= 0:
             try:
                 current_price = await price(symbol)
-            except:
+            except Exception:
                 pass
         if not current_price or current_price <= 0:
             current_price = safe_fetch_float(getattr(position, 'mark_price', 0.0), 0.0) if position else 0.0
         if not current_price or current_price <= 0:
             logger.error(f"[HIGH_GAIN_AUGMENT][{account_key}] {position_key}: CRITICAL - no valid current_price after all attempts")
             return
-        min_gain_threshold = 0.2
-        threshold_price = current_price if current_price and current_price > 0 else None
-        if threshold_price and gain < min_gain_threshold and position.positionAmt > config.START_POSITION_SIZE / max(threshold_price, 1e-9) and gain < 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
-            logger.error(f"[DIRECT_HIGH_GAIN_NOT_ALLOWED][{account_key}] {position_key}: GAIN TOO LOW - gain {gain:.2f}% < minimum {min_gain_threshold:.2f}%")
-            return
         position_value = abs(float(position.positionAmt)) * current_price if position and current_price > 0 else 0.0
-        if position_value > config.START_POSITION_SIZE and position.gain < 0.5:
-            logger.debug(f"[HIGH_GAIN_AUGMENT] {position_key}: NOT_ALLOWED - position value ${position_value:.2f} > START_POSITION_SIZE ${config.START_POSITION_SIZE:.2f}")
-            return
-        if gain < 0:
-            logger.debug(f"[HIGH_GAIN_AUGMENT] {position_key}: NOT_ALLOWED - negative gain {gain:.2f}%")
+        if gain < 1.0:
+            logger.warning(f"🛑 [DIRECT_HIGH_GAIN_HARD_GATE] {position_key}: BLOCKED — gain {gain:.2f}% < 1.0%. NO augmentation below 1.0% gain. size=${position_value:.0f}")
             return
         cooldown_seconds = getattr(config, 'DIRECT_HIGH_GAIN_COOLDOWN_SECONDS', 15)
         direct_high_gain_dict = getattr(trade_manager, 'direct_high_gain_augmented', {})
@@ -16370,7 +17384,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
             conditions_met = (is_long and k_3m > d_3m and t_up_3m) or (not is_long and k_3m < d_3m and not t_up_3m)
             if conditions_met:
                 ctx = { 'position_key': position_key, 'position': position, 'position_side': position_side, 'account_key': account_key, 'symbol': symbol, 'trade_manager': trade_manager, 'config': config, 'logger': logger, 'indicators': i, 'gain': gain, 'effective_last_augmentation_time': position.last_augmentation_time or datetime.min.replace(tzinfo=timezone.utc), 'side_params': {'side': 'BUY' if is_long else 'SELL'} }
-                signal = await evaluate_augmentation_new(ctx)
+                signal = await evaluate_augmentation(ctx)
                 if signal and hasattr(signal, 'reason'):
                     reason = f"DIRECT_HIGH_GAIN_AUGMENTATION_LARGE_POS: {signal.reason}"
                     logger.warning(f"[DIRECT_HIGH_GAIN_AUGMENT] {position_key}: LARGE POSITION AUGMENT triggered - {signal.action} gain={gain:.2f}%")
@@ -16426,7 +17440,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
             if trade_manager._check_htf_confirmation(position_key, is_long, i, k_1h, k_1h_prev, k_4h, k_4h_prev, k_15m, k_15m_prev, d_15m, k_3m, k_3m_prev, safe_fetch_float(i.get('wt1_3m', 0), 0.0), safe_fetch_float(i.get('wt2_3m', 0), 0.0), safe_fetch_float(i.get('wt1_15m', 0), 0.0), safe_fetch_float(i.get('wt2_15m', 0), 0.0), current_price, sma_200_1m, safe_fetch_float(i.get('sma_200_1m_prev', 0), 0.0),config): return f"{EvalStatus.NO_ACTION}: HTF_CHECK_FAILED"
             direct_high_gain_dict = getattr(trade_manager, 'direct_high_gain_augmented', {})
             position = await trade_manager.get_position(position_key)
-            if position_key in direct_high_gain_dict and (float(position.positionAmt) < config.START_POSITION_SIZE) and gain >= 0:
+            if position_key in direct_high_gain_dict and (float(position.positionAmt) < config.START_POSITION_SIZE) and gain >= 1.0:
                 if (is_long and (t_up_15m and k_15m > d_15m and t_up_3m and k_3m > d_3m and not lower_low and k_15m < 70 and k_3m < 50 and k_3m > k_3m_prev)) or ((not is_long) and k_15m < d_15m and not t_up_15m and not t_up_3m and k_3m < d_3m and not higher_high and k_15m > 40 and k_3m > 50 and k_3m < k_3m_prev): #and current_price > position.last_reduction_price 
                     target_qty = 0.3 * position.max_quantity if account_key == 'fin' else config.START_POSITION_SIZE / max(current_price, 1e-9)
                     quantity = max(2 * config.START_POSITION_SIZE / max(current_price, 1e-9), target_qty) if account_key == 'fin' else config.START_POSITION_SIZE / max(current_price, 1e-9)
@@ -16459,7 +17473,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
                             return
             effective_gain = position.gain if position.positionAmt != 0 else max(position.max_gain, position.prev_gain, 0.0)
             ctx = { 'position_key': position_key, 'position': position, 'position_side': position_side, 'account_key': account_key, 'symbol': symbol, 'trade_manager': trade_manager, 'config': config, 'logger': logger, 'indicators': i, 'gain': effective_gain, 'effective_last_augmentation_time': position.last_augmentation_time or datetime.min.replace(tzinfo=timezone.utc), 'side_params': {'side': 'BUY' if position_side == 'LONG' else 'SELL'} }
-            signal = await evaluate_augmentation_new(ctx)
+            signal = await evaluate_augmentation(ctx)
             position = await trade_manager.get_position(position_key)
             positionAmt_new = position.positionAmt
             if positionAmt_new != positionAmt:
@@ -16479,7 +17493,7 @@ async def direct_high_gain_augmentation(position_key: str, order_queue: OrderQue
         try:
             account_key, _, _ = parse_position_key(position_key)
             current_account.set(account_key)
-        except:
+        except Exception:
             pass
         logger.error(f"[HIGH_GAIN _AUGMENT] {position_key}: Error in direct augmentation: {e}", exc_info=True)
     finally:
@@ -16742,7 +17756,7 @@ async def override_check_uptrend_positions(trade_manager: MultiAccountTradeManag
                     pos = await trade_manager._recover_position_safe(position_key, p_acc, p_sym, p_side)
                     if pos and hasattr(pos, 'positionAmt') and abs(float(pos.positionAmt)) > 0:
                         filtered_account_positions[position_key] = pos
-                except:
+                except Exception:
                     continue
         _override_check_counter[account_key] = _override_check_counter.get(account_key, 0) + 1
         if _override_check_counter[account_key] % 20 == 0:
@@ -16899,7 +17913,7 @@ async def _process_single_monitor_direct_high_gain(trade_manager: MultiAccountTr
             if entry_price_from_data > 0: entry_price = entry_price_from_data
             max_size = safe_fetch_float(entry_data.get('max_size', 0.0), 0.0)
             price_above_entry = (is_long and current_price > entry_price) or (not is_long and current_price < entry_price)
-            k_d_condition = (is_long and k_3m > d_3m and k_15m < 40 and k_3m < 50) or (not is_long and k_3m < d_3m and k_15m > 60 and k_3m > 50)
+            k_d_condition = (is_long and k_3m > d_3m and ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)) and k_3m < 50) or (not is_long and k_3m < d_3m and ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)) and k_3m > 50)
             trend_up_condition = (is_long and t_up_3m and t_up_15m) or (not is_long and not t_up_3m and not t_up_15m)
             if max_size > 0 and price_above_entry and k_d_condition and trend_up_condition:
                 required_position_size = max_size
@@ -16948,15 +17962,9 @@ async def _process_single_monitor_direct_high_gain(trade_manager: MultiAccountTr
         is_in_chop_zone = -2.0 <= position.gain <= 0.2
         is_huge_position = abs(float(position.positionAmt)) * current_price > 5.0 * config.START_POSITION_SIZE
         if has_crossunder_signal:
-            should_auto_reduce = position.positionAmt > 2 * pos_min_qty and position.gain < 0.5
-            if should_auto_reduce and is_in_chop_zone and not is_huge_position:
-                logger.info(f"🛡️ [AUTO_REDUCE_BLOCKED] {position_key}: Blocking reduction in Chop Zone (Gain: {position.gain:.2f}%)")
-                should_auto_reduce = False
+            should_auto_reduce = position.positionAmt > 2 * pos_min_qty and position.gain < 1.0
             if should_auto_reduce:
                 logger.warning(f"[AUTO_REDUCE_CROSSUNDER] {position_key}: Crossunder signal detected - reducing (gain={position.gain:.2f}%, age={position_age_minutes:.1f}m)")
-        else:
-            if position.positionAmt > 2 * pos_min_qty and position.gain < 0.5:
-                logger.debug(f"[AUTO_REDUCE_BLOCKED] {position_key}: Blocking reduction - no crossunder signal and (age={position_age_minutes:.1f}m <= 6min OR gain={position.gain:.2f}% >= 0.1%)")
         if should_auto_reduce:
             logger.error(f"[🚨 AUTO_REDUCE_LOSS] {position_key}: Position reducing - gain={position.gain:.2f}% (crossunder={has_crossunder_signal} OR age={position_age_minutes:.1f}m>6min AND about_to_lose={about_to_be_in_loss})")
             if reduce_qty > 0 and hasattr(trade_manager, 'order_queue') and trade_manager.order_queue:
@@ -16964,7 +17972,7 @@ async def _process_single_monitor_direct_high_gain(trade_manager: MultiAccountTr
                 result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REDUCE", reason, 100.0, override_qty=reduce_qty)
                 if result: logger.error(f"[🚨 AUTO_REDUCE_LOSS] {position_key}: Queued reduction with {position.gain:.2f}% gain by {reduce_qty:.6f}")
             return
-        if position.gain < 0.5: return
+        if position.gain < 1.0: return
         if is_long and market_sentiment < -30: return
         elif not is_long and market_sentiment > 30: return
         if is_long:
@@ -17084,7 +18092,7 @@ async def monitor_direct_high_gain_positions(trade_manager: MultiAccountTradeMan
                         continue 
                     try:
                         account_key, symbol, _ = parse_position_key(key)
-                    except:
+                    except Exception:
                         keys_to_remove_local.append(key)
                         continue
                     position = await trade_manager.get_position(key)
@@ -17168,7 +18176,7 @@ async def monitor_direct_high_gain_positions(trade_manager: MultiAccountTradeMan
 async def monitor_stale_augmentations(trade_manager: MultiAccountTradeManager, order_queue: OrderQueue, threshold: float = None):
     await asyncio.sleep(25)
     config = getattr(trade_manager, 'config', None)
-    stale_threshold = threshold or float(getattr(config, "AUGMENTATION_STALE_THRESHOLD", 60.0))
+    stale_threshold = threshold or float(getattr(config, "AUGMENTATION_STALE_THRESHOLD", 300.0))
     while True:
         try:
             now_ts = time.time()
@@ -17322,6 +18330,11 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     now = datetime.now(timezone.utc)
     ak, symbol, position_side = parse_position_key(position_key)
     if not account_key or account_key != ak: account_key = ak
+    # BACKTEST_CHANGE_46: skip blacklisted symbols (negative Sharpe in matrix)
+    _blacklist = getattr(config, 'BLACKLIST_SYMBOLS', []) if config else []
+    if symbol in _blacklist:
+        trade_manager.processing_keys.discard(position_key)
+        return f"{EvalStatus.NO_ACTION}:BLACKLISTED_{symbol}"
     position = await trade_manager.get_position(position_key)
     current_price, price_ts = await price(symbol, position, withts=True)
     if not current_price or current_price <= 0:
@@ -17330,7 +18343,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         try:
             from utils import get_current_price as utils_get_price
             current_price, price_ts = await utils_get_price(symbol)
-        except:
+        except Exception:
             pass
     if not current_price or current_price <= 0:
         current_price = safe_fetch_float(getattr(position, 'mark_price', 0.0), 0.0) if position else 0.0
@@ -17388,11 +18401,22 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             if amt > 0:
                 is_active_position = True
         if not is_active_position:
+            # BACKTEST_CHANGE_111: RSI entry gate — #1 Sharpe lever (IS=181 OOS=304 WR=97.8%)
+            _rsi_15m = safe_fetch_float(i.get('rsi_15m', i.get('rsi', 50.0)), 50.0)
+            if getattr(config, 'RSI_ENTRY_GATE_ENABLED', True):
+                _rsi_max_long = getattr(config, 'RSI_ENTRY_MAX_LONG', 37.0)
+                _rsi_min_short = getattr(config, 'RSI_ENTRY_MIN_SHORT', 63.0)
+                if (position_side == 'LONG' and _rsi_15m > _rsi_max_long) or (position_side == 'SHORT' and _rsi_15m < _rsi_min_short):
+                    return f"{EvalStatus.NO_ACTION}:RSI_ENTRY_GATE_BLOCKED_rsi{_rsi_15m:.1f}"
             if stoch_k_1m is not None and stoch_d_1m is not None and stoch_k_15m is not None and stoch_d_15m is not None :
-                if (position_side == 'LONG' and ((stoch_k_15m < stoch_d_15m and stoch_k_15m > 30) or (stoch_k_1m > 50 and stoch_k_1m < stoch_d_1m))) or (position_side == 'SHORT' and ((stoch_k_15m > stoch_d_15m and stoch_k_15m < 70) or (stoch_k_1m < 50 and stoch_k_1m > stoch_d_1m ))):
+                is_long_zone = (stoch_k_15m > 50 and k_3m > d_3m) or (stoch_k_15m < 30 and k_3m > d_3m)
+                is_short_zone = (stoch_k_15m < 50 and k_3m < d_3m) or (stoch_k_15m > 70 and k_3m < d_3m)
+                if (position_side == 'LONG' and not is_long_zone) or (position_side == 'SHORT' and not is_short_zone):
                     return
             else:
-                if (position_side == 'LONG' and ((stoch_k_15m < stoch_d_15m and stoch_k_15m > 30) and (stoch_k_3m > 50 and stoch_k_3m < stoch_d_3m))) or (position_side == 'SHORT' and ((stoch_k_15m > stoch_d_15m and stoch_k_15m < 70) or (stoch_k_3m < 50 and stoch_k_3m > stoch_d_3m ))):
+                is_long_zone = (stoch_k_15m > 50 and k_3m > d_3m) or (stoch_k_15m < 30 and k_3m > d_3m)
+                is_short_zone = (stoch_k_15m < 50 and k_3m < d_3m) or (stoch_k_15m > 70 and k_3m < d_3m)
+                if (position_side == 'LONG' and not is_long_zone) or (position_side == 'SHORT' and not is_short_zone):
                     return
         logger.info(f'👂👂{position_key} {current_price}: k_1m:{stoch_k_1m}, d_1m:{stoch_d_1m}, k_3m:{stoch_k_3m}, d_3m:{stoch_d_3m}, k_15m:{stoch_k_15m}, d_15m:{stoch_d_15m}, age_1m:{age_1m}, age_3m:{age_3m},age_15m:{age_15m}, age_pr:{age_pr}')
         base_ctx = {'trade_manager': trade_manager, 'symbol': symbol, 'logger': logger, 'position_key': position_key}
@@ -17405,6 +18429,74 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             except Exception as e:
                 logger.warning(f"[{position_key}] Error tracking completion: {e}")
         is_long = position_side == "LONG"
+        if is_active_position and position and config.MANAGE_REDUCE:
+            _pp_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
+            _pp_prev_gain = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)
+            _pp_entry = safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0)
+            _pp_noloss, _pp_noloss_reason = trading_policy.check_no_loss_exit(i, current_price, _pp_entry, is_long, _pp_gain, _pp_prev_gain)
+            if _pp_noloss:
+                logger.warning(f"⚡ [NO_LOSS_EXIT] {position_key}: {_pp_noloss_reason}")
+                side_reduce = "SELL" if is_long else "BUY"
+                pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                if pos_amt > pos_min_qty:
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"NO_LOSS_EXIT_{_pp_noloss_reason}", 0.95)
+                    if result: return f"{EvalStatus.ACTION_TAKEN}:NO_LOSS_EXIT"
+            if _pp_gain > 0.1:
+                _pp_hold, _pp_hold_reason = trading_policy.check_winner_momentum(i, is_long)
+                if _pp_hold:
+                    return f"{EvalStatus.NO_ACTION}:WINNER_MOM_HOLD_{_pp_hold_reason}"
+            # BACKTEST_CHANGE_14: STOCH_CROSS_3M_EXIT — reduce when 3m stoch crosses against us while in profit
+            if getattr(config, 'STOCH_CROSS_3M_EXIT_ENABLED', False) and _pp_gain > config.GAIN_THRESHOLD_LOW:
+                _sc3m_k = safe_fetch_float(i.get('stoch_k_3m', 50), 50.0)
+                _sc3m_d = safe_fetch_float(i.get('stoch_d_3m', 50), 50.0)
+                _sc3m_k_prev = safe_fetch_float(i.get('k_3m_prev', _sc3m_k), _sc3m_k)
+                _sc3m_cross_against = (is_long and _sc3m_k_prev >= _sc3m_d and _sc3m_k < _sc3m_d) or (not is_long and _sc3m_k_prev <= _sc3m_d and _sc3m_k > _sc3m_d)
+                if _sc3m_cross_against:
+                    _sc3m_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                    if _sc3m_amt > pos_min_qty:
+                        # BACKTEST_CHANGE_108: NO-LOSS gate — only exit if gain >= min profit
+                        _noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.50)
+                        if _pp_gain < _noloss_min:
+                            logger.info(f"[STOCH_CROSS_3M_EXIT] {position_key}: BLOCKED by NOLOSS_MIN — gain={_pp_gain:.2f}% < {_noloss_min}%")
+                        else:
+                            logger.warning(f"[STOCH_CROSS_3M_EXIT] {position_key}: k_3m crossed {'under' if is_long else 'over'} d_3m (k={_sc3m_k:.1f} d={_sc3m_d:.1f} prev_k={_sc3m_k_prev:.1f}) gain={_pp_gain:.2f}%")
+                            result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"STOCH_CROSS_3M_EXIT_gain{_pp_gain:.2f}_k{_sc3m_k:.0f}", 0.90)
+                            if result: return f"{EvalStatus.ACTION_TAKEN}:STOCH_CROSS_3M_EXIT"
+            # BACKTEST_CHANGE_15: OPTIMAL_HOLD_BARS — time-based exit when position held too long while in profit
+            # BACKTEST_CHANGE_108: Only fire if gain >= NOLOSS_MIN_PROFIT_PCT
+            _noloss_min_ohb = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.50)
+            if _pp_gain > max(config.GAIN_THRESHOLD_LOW, _noloss_min_ohb) and config.TF_FOCUS == "3m":
+                _ohb_max_secs = getattr(config, 'OPTIMAL_HOLD_BARS_3M', 21) * 180
+                _ohb_opened = getattr(position, 'opened_at', None) or getattr(position, 'last_augmentation_time', None)
+                if _ohb_opened:
+                    _ohb_age = (now - _ohb_opened).total_seconds() if isinstance(_ohb_opened, datetime) else 0
+                    if _ohb_age > _ohb_max_secs:
+                        _ohb_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                        if _ohb_amt > pos_min_qty:
+                            logger.warning(f"[HOLD_BARS_EXIT] {position_key}: held {_ohb_age:.0f}s > {_ohb_max_secs}s ({getattr(config, 'OPTIMAL_HOLD_BARS_3M', 21)} bars) gain={_pp_gain:.2f}%")
+                            result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"HOLD_BARS_EXIT_{_ohb_age:.0f}s_gain{_pp_gain:.2f}", 0.85)
+                            if result: return f"{EvalStatus.ACTION_TAKEN}:HOLD_BARS_EXIT"
+            # BACKTEST_CHANGE_12: CYCLE_TP_TIERED — staged take-profit at multiple levels
+            # BACKTEST_CHANGE_108: Only fire tiers above NOLOSS_MIN_PROFIT_PCT
+            _noloss_min_tpt = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.50)
+            if getattr(config, 'CYCLE_TP_TIERED_ENABLED', False) and _pp_gain > max(0.05, _noloss_min_tpt):
+                _tpt_levels = getattr(config, 'CYCLE_TP_TIERED_LEVELS', [0.0015, 0.003, 0.005, 0.007, 0.010, 0.015, 0.020, 0.030])
+                _tpt_frac = getattr(config, 'CYCLE_TP_TIERED_FRAC', 0.25)
+                _tpt_hit = _tiered_tp_hit.get(position_key, set())
+                _tpt_gain_frac = _pp_gain / 100.0
+                _tpt_fired = False
+                for _tpt_idx, _tpt_level in enumerate(_tpt_levels):
+                    if _tpt_idx in _tpt_hit: continue
+                    if _tpt_gain_frac >= _tpt_level:
+                        _tpt_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                        _tpt_reduce_qty = _tpt_amt * _tpt_frac
+                        if _tpt_reduce_qty > pos_min_qty:
+                            _tpt_hit.add(_tpt_idx)
+                            _tiered_tp_hit[position_key] = _tpt_hit
+                            logger.warning(f"[TIERED_TP] {position_key}: Tier {_tpt_idx} hit (gain={_pp_gain:.2f}% >= {_tpt_level*100:.2f}%) reducing {_tpt_frac*100:.0f}% = {_tpt_reduce_qty:.6f}")
+                            result = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"CYCLE_TP_TIERED_T{_tpt_idx}_{_tpt_level*100:.2f}pct_gain{_pp_gain:.2f}", 0.80, override_qty=_tpt_reduce_qty)
+                            if result: _tpt_fired = True; break
+                if _tpt_fired: return f"{EvalStatus.ACTION_TAKEN}:TIERED_TP"
         triggered_stop = None
         stop_levels = trade_manager.stop_levels.get(position_key, []) if isinstance(trade_manager.stop_levels, dict) else []
         if stop_levels:
@@ -17474,38 +18566,84 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         action_from_signal = ((signal_data.get('action') if signal_data and isinstance(signal_data, dict) else '') or '').upper()
         entry_price_check = safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0)
         current_gain = calculate_gain(position_side, current_price, entry_price_check) if entry_price_check > 0 else safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
+        _recently_reduced = False
+        _lrt = safe_datetime(getattr(position, 'last_reduction_time', None))
+        if _lrt and (now - _lrt).total_seconds() < 600 and abs(float(position.positionAmt)) * current_price < 1.5 * config.START_POSITION_SIZE:
+            _recently_reduced = True
+            logger.info(f"[REENTRY_BYPASS] {position_key}: Recently reduced ({(now - _lrt).total_seconds():.0f}s ago), small position (${abs(float(position.positionAmt)) * current_price:.0f}) — skipping stops, going to eval_funcs")
         fell_through_floor = (is_long and dc_low_15m > 0 and current_price < dc_low_15m) or (not is_long and dc_high_15m > 0 and current_price > dc_high_15m)
         if fell_through_floor and current_gain < 0.0:
-            logger.info(f"🚨 [DC15M_FORCE_EXIT] {position_key} breaking floor ({current_gain:.2f}%). Forcing closure.")
-            return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"DC15M_FORCE_EXIT_{int(time.time())}", "DC15M_FLOOR_BREAK_OVERRIDE", True, 'CLOSE')
+            if is_strict_no_loss_account(config, account_key):
+                logger.info(f"🛑 [DC15M_FORCE_EXIT_BLOCKED] {position_key} breaking floor ({current_gain:.2f}%) but NO_LOSS rule active — holding. L/S ratio will hedge.")
+            else:
+                logger.info(f"🚨 [DC15M_FORCE_EXIT] {position_key} breaking floor ({current_gain:.2f}%). Forcing closure.")
+                return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"DC15M_FORCE_EXIT_{int(time.time())}", "DC15M_FLOOR_BREAK_OVERRIDE", True, 'CLOSE')
         
         long_stop = is_long and position.positionAmt > 0 and (k_15m < d_15m or k_3m < d_3m or ha_15m == 'red' or not t_up_3m or (k_15m > 80 and wt1_3m < wt2_3m) or current_price <= min(low_3m, dc_low_15m) or stoch_crossunder_hit or 'winners_down' in signal_lookup)
         short_stop = not is_long and position.positionAmt > 0 and (k_15m > d_15m or k_3m > d_3m or ha_15m == 'green' or (k_15m < 20 and wt1_3m > wt2_3m) or current_price >= max(high_3m, dc_high_15m) or stoch_crossover_hit or 'losers_up' in signal_lookup)
         
-        # --- AGGRESSIVE PROFIT HARVEST ---
-        if current_gain > 0.08 and (long_stop or short_stop):
-            logger.info(f"💰 [IN_GAIN_TREND_EXIT] {position_key} at {current_gain:.2f}% gain. Trend flip detected. Harvesting profit.")
-            return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"PROFIT_HARVEST_{int(time.time())}", "IN_GAIN_TREND_EXIT", True, 'CLOSE')
-            
+        # # --- ALIGNMENT-BASED QUICK TP: exit at intermediate tops BEFORE gains evaporate ---
+        # try:
+        #     import json as _json
+        #     with open('/home/niels/binance/data/alignment_scores.json') as _ef:
+        #         _exit_data = _json.load(_ef)
+        #     _sym_exit = _exit_data.get(symbol, {})
+        #     _exit_signal = _sym_exit.get('exit_long', False) if is_long else _sym_exit.get('exit_short', False)
+        #     # Quick TP: if alignment says EXIT and we have ANY gain > 0.10%, take it NOW
+        #     # 60s cooldown to prevent retry loop if order fill unconfirmed
+        #     if not hasattr(trade_manager, '_alignment_tp_cooldown'):
+        #         trade_manager._alignment_tp_cooldown = {}
+        #     _tp_last = trade_manager._alignment_tp_cooldown.get(position_key, 0)
+        #     if _exit_signal and current_gain > 0.10 and (time.time() - _tp_last) > 60:
+        #         trade_manager._alignment_tp_cooldown[position_key] = time.time()
+        #         logger.info(f"💰 [ALIGNMENT_TP] {position_key} at {current_gain:.2f}% gain. Alignment exit signal. Taking profit.")
+        #         return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"ALIGNMENT_TP_{int(time.time())}", "ALIGNMENT_TP_EXIT", True, 'CLOSE')
+        # except Exception:
+        #     pass
+        # --- GAIN-TIERED PROFIT HARVEST --- (tiered: bigger winners need stronger confirmation)
+        _is_trend_acct_m = account_key in getattr(trade_manager.config, 'TREND_ACCOUNTS', [])
+        if current_gain > 2.0 and not _is_trend_acct_m and not _recently_reduced:
+            _k_1h = safe_fetch_float(i.get('stoch_k_1h', i.get('k_1h')), 50.0)
+            _d_1h = safe_fetch_float(i.get('stoch_d_1h', i.get('d_1h')), 50.0)
+            _ha_1h = i.get('ha_1h', i.get('ha_color_1h', ''))
+            if current_gain >= 10.0:
+                _htf_long_exit = is_long and _k_1h < _d_1h and str(_ha_1h).lower() == 'red'
+                _htf_short_exit = not is_long and _k_1h > _d_1h and str(_ha_1h).lower() == 'green'
+                _harvest_ok = _htf_long_exit or _htf_short_exit
+                _tier = "BIG_WINNER_HTF"
+            elif current_gain >= 5.0:
+                _med_long_exit = is_long and ha_15m == 'red' and k_15m < d_15m
+                _med_short_exit = not is_long and ha_15m == 'green' and k_15m > d_15m
+                _harvest_ok = _med_long_exit or _med_short_exit
+                _tier = "MED_WINNER_15M"
+            else:
+                _harvest_ok = False
+                _tier = "HOLD"
+            if _harvest_ok:
+                logger.info(f"💰 [IN_GAIN_TREND_EXIT] {position_key} at {current_gain:.2f}% gain. Tier={_tier}. Harvesting profit.")
+                return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"PROFIT_HARVEST_{int(time.time())}", "IN_GAIN_TREND_EXIT", True, 'CLOSE')
+            elif current_gain >= 5.0:
+                logger.info(f"🛡️ [WINNER_HOLD] {position_key} at {current_gain:.2f}% gain. Tier={_tier} HTF not confirmed — HOLDING.")
+
         # --- DC BASIS PROFIT EXIT (LAST RESORT PRE-EMPTION) ---
         basis_crossed = (is_long and dc_basis_15m > 0 and current_price < dc_basis_15m) or (not is_long and dc_basis_15m > 0 and current_price > dc_basis_15m)
-        if current_gain > 0.05 and basis_crossed:
+        if current_gain > 3.0 and basis_crossed and not _is_trend_acct_m and not _recently_reduced:
             logger.info(f"⚖️ [DC_BASIS_PROFIT_EXIT] {position_key} at {current_gain:.2f}% gain. Price crossed basis. Exiting before floor hit.")
             return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"BASIS_PROFIT_EXIT_{int(time.time())}", "DC_BASIS_PROFIT_EXIT", True, 'CLOSE')
 
-        # --- IMMEDIATE WRONG WAY PROTECTION ---
+        # --- IMMEDIATE WRONG WAY PROTECTION --- BACKTEST_CHANGE_114: DISABLED — #2 PnL destroyer. Tight stops kill trades that recover.
         opened_at_dt = safe_datetime(getattr(position, 'last_augmentation_time', None)) if hasattr(position, 'last_augmentation_time') and position.last_augmentation_time else None
         position_age_seconds = (now - opened_at_dt).total_seconds() if opened_at_dt else float('inf')
-        if position_age_seconds < 120 and current_gain < -0.12:
+        if getattr(config, 'IMMEDIATE_WRONG_WAY_ENABLED', False) and position_age_seconds < 120 and current_gain < -0.12:
             logger.critical(f"🛑 [IMMEDIATE_WRONG_WAY] {position_key} went WRONG IMMEDIATELY. Age: {position_age_seconds:.1f}s, Gain: {current_gain:.2f}%. Indicators: ha15={i.get('ha_15m')}, k15={i.get('stoch_k_15m', 0):.1f}, event={event_type}. CLOSING AND REPORTING.")
             return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"WRONG_WAY_KILL_{int(time.time())}", "IMMEDIATE_WRONG_WAY_EXIT", True, 'CLOSE')
 
-        if not config.HEDGE_MODE and (current_gain <= 0.08 and getattr(position, 'max_gain', 0.0) > 0.15):
+        if not config.HEDGE_MODE and not _recently_reduced and (current_gain <= 1.0 and getattr(position, 'max_gain', 0.0) > 3.0):
              logger.info(f"🛡️ [BREAK_EVEN_GUARD] {position_key} peak {position.max_gain:.2f}% drop to {current_gain:.2f}%. Closing.")
              return await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, ('SELL' if is_long else 'BUY'), position_side, position.positionAmt, current_price, f"BREAK_EVEN_GUARD_{int(time.time())}", "BREAK_EVEN_GUARD_EXIT", True, 'CLOSE')
         price_below_dc_low_3m_long = is_long and dc_low_3m > 0 and current_price < dc_low_3m
         price_above_dc_high_3m_short = not is_long and dc_high_3m > 0 and current_price > dc_high_3m
-        if (price_below_dc_low_3m_long or price_above_dc_high_3m_short) and position.positionAmt > pos_min_qty and not config.HEDGE_MODE:
+        if (price_below_dc_low_3m_long or price_above_dc_high_3m_short) and position.positionAmt > pos_min_qty and not config.HEDGE_MODE and not _recently_reduced:
             if _check_loss_protection(position, position_key) :
                 logger.debug(f"[LOSS_PROTECTION] {position_key}: not_allowed DC_BASIS_3M_REDUCE - gain={current_gain:.3f}%")
             elif config.MANAGE_REDUCE:
@@ -17544,7 +18682,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         about_to_be_in_loss_stop = current_gain < 0.1
         position = await trade_manager.get_position(position_key)
         _reduce_huge_thresh = config.get_account_setting(account_key, 'REDUCE_HUGE_LOSS_THRESHOLD')
-        if (long_stop or short_stop) and config.MANAGE_REDUCE and (current_gain < _reduce_huge_thresh or current_gain > 0.5) and min_since_aug > 12.0 and (has_crossunder_signal_stop or (is_old_enough_stop and about_to_be_in_loss_stop) and position.positionAmt > 1.5*pos_min_qty / current_price):
+        # BACKTEST_CHANGE_113: Block STOP_MAJOR_LOSS entirely — #1 PnL destroyer (-125k%). L/S ratio IS the hedge.
+        if not getattr(config, 'STOP_MAJOR_LOSS_BLOCK_ENABLED', True) and (long_stop or short_stop) and config.MANAGE_REDUCE and not _recently_reduced and (current_gain < _reduce_huge_thresh or current_gain > 0.5) and min_since_aug > 12.0 and (has_crossunder_signal_stop or (is_old_enough_stop and about_to_be_in_loss_stop) and position.positionAmt > 1.5*pos_min_qty / current_price):
             if _check_loss_protection(position, position_key):
                 logger.debug(f"[LOSS_PROTECTION] {position_key}: not_allowed STOP_MAJOR_LOSS_REDUCE Allowing anyway- gain={current_gain:.3f}%")
                 return
@@ -17552,6 +18691,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             if (is_long and side != 'SELL') or (not is_long and side != 'BUY'):
                 logger.error(f"[CRITICAL_SIDE_MISMATCH] {position_key}: side={side} does NOT match position_side={position_side} (is_long={is_long})! BLOCKING ORDER!")
                 return f"CRITICAL_SIDE_MISMATCH_{side}_{position_side}"
+            if is_strict_no_loss_account(config, account_key):
+                return f"{EvalStatus.NO_ACTION}:MAJOR_LOSS_BLOCKED_STRICT_NO_LOSS"
             unique_id = generate_unique_id(position_key, side, 'STOP_MAJOR_LOSS_REDUCE')
             close_qty = max(0.0, abs(float(position.positionAmt)) - pos_min_qty) # Always leave pos_min_qty
             if is_hedge_account(config, account_key) and current_gain < 0.35:
@@ -17584,7 +18725,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 logger.info(f"[🚨 REDUCE_HUGE_LOSS] {position_key}: Reduced position to pos_min_qty with {current_gain:.2f}% loss")
                 return f"{EvalStatus.ACTION_TAKEN}:REDUCE_HUGE_LOSS"
         position = await trade_manager.get_position(position_key)
-        if (long_stop or short_stop) and config.MANAGE_REDUCE: #KILL LARGE POSITIONS to 2*START_POSITION_SIZE
+        if (long_stop or short_stop) and config.MANAGE_REDUCE and not _recently_reduced: #KILL LARGE POSITIONS to 2*START_POSITION_SIZE
+            if is_strict_no_loss_account(config, account_key):
+                return f"{EvalStatus.NO_ACTION}:STOP_KILL_BLOCKED_STRICT_NO_LOSS"
             if not position or not hasattr(position, 'positionAmt') or abs(float(position.positionAmt)) <= 0.5*config.START_POSITION_SIZE / current_price: return
             opened_at = getattr(position, 'opened_at', None)
             time_since_entry = minutes_since(opened_at) if opened_at else 999999
@@ -17638,7 +18781,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 logger.info(f"[{position_key}] STOP_FUNCTIONS_KILL REJECTED: Position would be stopped out immediately (gain={current_gain:.2f}%)")
                 return f"{EvalStatus.NO_ACTION}:STOP_PROTECTION_ACTIVE"
         # --- MANDATORY PROFIT TAKE (MOMENTUM EXHAUSTION) ---
-        if current_gain > 0.5:
+        if current_gain > 0.5 and not _recently_reduced:
             tp_reason = ""; tp_price = current_price
             if is_long and k_15m > 90 and k_15m < k_15m_prev:
                 tp_reason = f"PROFIT_TP_EXHAUSTION_k15:{k_15m:.1f}"
@@ -17668,12 +18811,12 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         if config.VERBOSE:
             logger.info(f"[VERBOSE][CALC] {position_key} 📊 INDICATOR_VALUES: price=${current_price:.2f} ha_3m={ha_3m} ha_15m={ha_15m} k_3m={k_3m:} k_3m_prev={k_3m_prev:} d_3m={d_3m:} k_15m={k_15m:} d_15m={d_15m:} k_15m_prev={k_15m_prev:} k_1h={k_1h:} d_1h={d_1h:} k_4h={k_4h:} d_4h={d_4h:} t_up_3m={t_up_3m} t_up_15m={t_up_15m} sma_200_1m={sma_200_1m:.2f} gain={position.gain:.2%} positionAmt={position.positionAmt:.6f} t15:{timestamp_15m} t3:{timestamp_3m} t1:{timestamp_1m}")
         if is_long:
-            ha_ok = (ha_3m == 'green' and k_3m > k_3m_prev and (t_up_3m or k_15m > d_15m or k_15m < 50 or(k_15m > k_15m_prev and k_15m < 70 )) )# and ha_15m == 'green' and current_price >= sma_200_1m) #and atr_3m > atr_3m_prev 
+            ha_ok = (ha_3m == 'green' and k_3m > k_3m_prev and (t_up_3m or k_15m > d_15m or ((k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)) or(k_15m > k_15m_prev and k_15m < 70 )) )# and ha_15m == 'green' and current_price >= sma_200_1m) #and atr_3m > atr_3m_prev 
         else:
-            ha_ok = (ha_3m == 'red' and k_3m < k_3m_prev and ((not t_up_3m) or (not t_up_15m) or k_15m < d_15m or k_15m > 50 or (k_15m < k_15m_prev and k_15m > 20)) )#and ha_15m == 'red' and current_price <= sma_200_1m)#and atr_3m > atr_3m_prev 
+            ha_ok = (ha_3m == 'red' and k_3m < k_3m_prev and ((not t_up_3m) or (not t_up_15m) or k_15m < d_15m or ((k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)) or (k_15m < k_15m_prev and k_15m > 20)) )#and ha_15m == 'red' and current_price <= sma_200_1m)#and atr_3m > atr_3m_prev 
         if config.VERBOSE:
             logger.info(f"[VERBOSE][CALC] {position_key} TREND_GATE_CHECK: ha_ok={ha_ok} is_long={is_long} ha_3m={ha_3m} k_3m={k_3m:} k_3m_prev={k_3m_prev:} t_up_3m={t_up_3m} k_15m={k_15m:} d_15m={d_15m:}")
-        if trade_manager._check_htf_confirmation(position_key, is_long, i, k_1h, k_1h_prev, k_4h, k_4h_prev, k_15m, k_15m_prev, d_15m, k_3m, k_3m_prev, safe_fetch_float(i.get('wt1_3m', 0), 0.0), safe_fetch_float(i.get('wt2_3m', 0), 0.0), safe_fetch_float(i.get('wt1_15m', 0), 0.0), safe_fetch_float(i.get('wt2_15m', 0), 0.0), current_price, sma_200_1m, safe_fetch_float(i.get('sma_200_1m_prev', 0), 0.0), config): return f"{EvalStatus.NO_ACTION}: HTF_CHECK_FAILED"
+        if not _recently_reduced and trade_manager._check_htf_confirmation(position_key, is_long, i, k_1h, k_1h_prev, k_4h, k_4h_prev, k_15m, k_15m_prev, d_15m, k_3m, k_3m_prev, safe_fetch_float(i.get('wt1_3m', 0), 0.0), safe_fetch_float(i.get('wt2_3m', 0), 0.0), safe_fetch_float(i.get('wt1_15m', 0), 0.0), safe_fetch_float(i.get('wt2_15m', 0), 0.0), current_price, sma_200_1m, safe_fetch_float(i.get('sma_200_1m_prev', 0), 0.0), config): return f"{EvalStatus.NO_ACTION}: HTF_CHECK_FAILED"
         if signal_data and isinstance(signal_data, dict): #DOUBLE INSTANCE SEE WHICH ONE LASTS
             event_hint = str(signal_data.get("event_type") or event_type or "")
             if event_hint and ("winners_all_green" in event_hint or "losers_all_red" in event_hint):
@@ -17700,8 +18843,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         eval_funcs = []
         include_reversal_eval = account_key == 'fin' and config.REV_MODE and abs(float(getattr(position, 'positionAmt', 0.0))) > 0.0
         if include_reversal_eval:
-            rev_fn = evaluate_reversal_entry_new if count % 2 == 1 else evaluate_reversal_entry
-            eval_funcs.append(rev_fn)
+            eval_funcs.append(evaluate_reversal_entry)
         should_consider_reentry = (position.positionAmt < max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty)) and ((is_long and k_3m > k_3m_prev) or (not is_long and (k_3m < k_3m_prev or (k_3m == 0 and k_15m > 30 and k_15m < d_15m) or (k_15m > 30 and k_15m < d_15m and k_3m > 50))))
         if not should_consider_reentry and not is_long:
             logger.debug(f"[SHORT_REENTRY_CHECK] {position_key}: should_consider_reentry=False - positionAmt={position.positionAmt:.6f} max={max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty):.6f} k_3m={k_3m:} k_3m_prev={k_3m_prev:} condition={position.positionAmt < max(config.START_POSITION_SIZE / current_price, 1.5 * pos_min_qty)} and k_3m < k_3m_prev")
@@ -17711,7 +18853,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         last_reduction_amount = safe_fetch_float(getattr(position, 'last_reduction_amount', 0.0), 0.0)
         gain_threshold = 0.5 * config.MIN_GAIN_TO_BUY_AGGRESSIVELY
         should_consider_augmentation = (not should_consider_reentry) and position.positionAmt > pos_min_qty and position.gain > gain_threshold and ((is_long and k_3m > k_3m_prev) or (not is_long and k_3m < k_3m_prev))
-        if config.ENABLE_FAST_RISER_REDUCE and close_3m_prev > 0 and position.positionAmt > 2 * pos_min_qty and current_gain > 0.8 and low_3m > 0 and low_3m_prev > 0:
+        # BACKTEST_CHANGE_115: FAST_RISER_DOUBLE disabled — net negative PnL in ablation test
+        if config.ENABLE_FAST_RISER_REDUCE and getattr(config, 'FAST_RISER_DOUBLE_ENABLED', False) and close_3m_prev > 0 and position.positionAmt > 2 * pos_min_qty and current_gain > 0.8 and low_3m > 0 and low_3m_prev > 0:
             current_low_below_prev_long = is_long and low_3m < low_3m_prev
             current_low_above_prev_short = not is_long and low_3m > low_3m_prev
             price_jump_pct = (current_price - close_3m_prev) / close_3m_prev if close_3m_prev > 0 else 0.0
@@ -17762,26 +18905,19 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             logger.info(f"[FAST_RISER_REDUCE] {position_key}: Skipped - reduction cooldown active")
                     elif config.VERBOSE:
                         logger.debug(f"[FAST_RISER_REDUCE] {position_key}: Skipped - mark_price={mark_price:.6f} >= current_price={current_price_from_i:.6f} (condition not met)")
-        if count % 2 == 1: # Alternate between new and old evaluators
-            if should_consider_reentry:
-                eval_funcs.append(evaluate_reentry_new)
-                if config.VERBOSE: logger.info(f"[VERBOSE][CALC] {position_key} ➕ ADDING: evaluate_reentry_new")
-            elif should_consider_augmentation:
-                eval_funcs.append(evaluate_augmentation_new)
-            if event_type is not None:
-                logger.info(f"🔵 [ez_manage] SIGNAL_TRIGGERS_EVAL: {position_key} | event_type={event_type} | adding signal-based evaluators ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                eval_funcs.extend([evaluate_leaderboard_entry_new, evaluate_ranking_momentum_trade, evaluate_technical_indicator_signals_new])
-        else:
-            if should_consider_reentry:
-                eval_funcs.append(evaluate_reentry)
-                eval_funcs.append(evaluate_leaderboard_entry)
-                eval_funcs.append(evaluate_ranking_momentum_trade)
-                if config.VERBOSE: logger.info(f"[VERBOSE][CALC] {position_key} ➕ ADDING: evaluate_reentry")
-            elif should_consider_augmentation:
-                eval_funcs.append(evaluate_augmentation)
-            if event_type is not None:
-                logger.info(f"🔵 [ez_manage] SIGNAL_TRIGGERS_EVAL: {position_key} | event_type={event_type} | adding signal-based evaluators ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
-                eval_funcs.extend([evaluate_leaderboard_entry, evaluate_ranking_momentum_trade, evaluate_technical_indicator_signals])
+        if _recently_reduced and not should_consider_reentry:
+            should_consider_reentry = True
+            logger.info(f"[REENTRY_FORCE] {position_key}: Forcing reentry consideration — recently reduced, overriding momentum gate")
+        if should_consider_reentry:
+            eval_funcs.append(evaluate_reentry)
+            eval_funcs.extend([evaluate_leaderboard_entry, evaluate_ranking_momentum_trade])
+            if config.VERBOSE: logger.info(f"[VERBOSE][CALC] {position_key} ➕ ADDING: evaluate_reentry + leaderboard + ranking_momentum")
+        elif should_consider_augmentation and getattr(config, 'AUGMENT_PYRAMID_ENABLED', False):  # BACKTEST_CHANGE_116: pyramiding disabled by default
+            eval_funcs.append(evaluate_augmentation)
+        if event_type is not None:
+            logger.info(f"🔵 [ez_manage] SIGNAL_TRIGGERS_EVAL: {position_key} | event_type={event_type} | adding signal-based evaluators ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
+            eval_funcs.extend([evaluate_leaderboard_entry, evaluate_ranking_momentum_trade, evaluate_technical_indicator_signals])
+        eval_funcs = list(dict.fromkeys(eval_funcs))
 
         async def _timed_eval(fn):
             t0 = time.perf_counter()
@@ -17866,6 +19002,12 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         logger.info(f"[🎯 SELECTING_BEST_SIGNAL] {position_key}: Selected action={best_signal.action}, conviction={best_signal.conviction:.2f}, reason={best_signal.reason[:200]}")
         logger.info(f"[🚀 EXECUTING_TRADE] {position_key}: Calling queue _trade_action with action={best_signal.action}, conviction={best_signal.conviction:.2f}")
         override_qty = getattr(best_signal, 'quantity', None) if hasattr(best_signal, 'quantity') and getattr(best_signal, 'quantity', 0.0) > 0.0 else None
+        result = await queue_trade_action(order_queue, trade_manager, position_key, best_signal.action, best_signal.reason, best_signal.conviction, override_qty=override_qty)
+        try:
+            await symbol_tracker.track_completion(position_key, f"{EvalStatus.ACTION_TAKEN}:{best_signal.action}:{best_signal.reason[:50]}")
+        except Exception as e:
+            logger.warning(f"[{position_key}] Error tracking signal completion: {e}")
+        return f"{EvalStatus.ACTION_TAKEN}:{best_signal.action}"
     except Exception as e:
         logger.exception(f"[{position_key}] Unhandled error in process_position")
         return f"{EvalStatus.ERROR}:UNHANDLED_EXCEPTION:{str(e)}"
@@ -17953,6 +19095,11 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
             side = 'BUY' if is_long else 'SELL'
         side, is_valid_side = trade_manager.validate_order_side(side, position_side, action, position_key)
         if not override_qty: # Skip checks if manual override
+            if action in ('OPEN', 'AUGMENT', 'REENTRY') and getattr(trade_manager, 'redis_manager', None):
+                open_block = await trade_manager.redis_manager.get(f"open_blocked:{position_key}")
+                if open_block:
+                    logger.warning(f"[{position_key}] {action} blocked: consecutive unverified OPEN failures. Key=open_blocked:{position_key}")
+                    return f"SKIPPED_OPEN_BLOCKED_{action}"
             if await trade_manager.is_duplicate_order(position_key, 0.0, side, unique_id="queue_check"):
                  logger.debug(f"[{position_key}] SKIPPED: Duplicate/Rapid-fire order detected")
                  return f"SKIPPED_DUPLICATE_{action}"
@@ -17967,7 +19114,13 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
         current_price = await price(symbol, position)
         if not current_price or current_price <= 0:
             current_price = safe_fetch_float(getattr(position, 'mark_price', 0.0), 0.0)
-        positionAmt = position.positionAmt 
+        positionAmt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0)) if position else 0.0 
+        if action in ('AUGMENT', 'QUICK_AUGMENT') and position and current_price > 0:
+            _pos_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
+            _pos_notional = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) * current_price
+            if _pos_notional > 0 and _pos_gain < config.MIN_GAIN_TO_BUY_AGGRESSIVELY:
+                logger.warning(f"[AUGMENT_GATE_QUEUE] {position_key}: Blocked {action} at gain={_pos_gain:.3f}% < {config.MIN_GAIN_TO_BUY_AGGRESSIVELY:.3f}% before queuing. reason={reason} — NO BYPASS")
+                return f"BLOCKED_AUGMENT_QUEUE_LOW_GAIN_{_pos_gain:.3f}%"
         pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol, 0.0001))
         qty = pos_min_qty
         if override_qty:
@@ -17997,7 +19150,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
             final_order_qty = positionAmt 
         unique_id = generate_unique_id(position_key, side, reason)
         is_full_close = action in ['CLOSE', 'QUICK_CLOSE', 'FULL_CLOSE']
-        order = { "account_key": account_key, "symbol": symbol, "side": side, "quantity": final_order_qty, "current_price": current_price, "position_side": position_side, "unique_id": unique_id, "is_full_close": is_full_close, "action": action, "reason": reason_str, "override_qty": override_qty, "conviction": conviction }
+        order = { "account_key": account_key, "position_key": position_key, "symbol": symbol, "side": side, "quantity": final_order_qty, "current_price": current_price, "position_side": position_side, "unique_id": unique_id, "is_full_close": is_full_close, "action": action, "reason": reason_str, "override_qty": override_qty, "conviction": conviction }
         added = False
         queue_fail_reason = ""
         for i in range(3):
@@ -18008,7 +19161,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
             else:
                 queue_fail_reason = msg
                 await asyncio.sleep(0.1)
-        if not added and action in ['CLOSE', 'REDUCE', 'QUICK_CLOSE', 'STOP_MAJOR_LOSS_REDUCE']:
+        if not added and action in ['CLOSE', 'REDUCE', 'QUICK_CLOSE', 'STOP_MAJOR_LOSS_REDUCE', 'REENTRY']:
             logger.warning(f"[{position_key}] 🚨 QUEUE FULL/FAILED ({queue_fail_reason}) for {action}. Bypassing queue to execute immediately.")
             asyncio.create_task(trade_manager.execute_trade_action(**order))
             return f"QUEUED_BYPASS_{action}"
@@ -18234,6 +19387,268 @@ async def periodic_tasks(order_queue: OrderQueue, trade_manager: MultiAccountTra
         for account_key in managed_accounts:
             if account_key not in trade_manager.positions_by_account or not trade_manager.positions_by_account.get(account_key):
                 await monitor_entries(order_queue, trade_manager, account_key=account_key, position_keys=None, event_type="periodic_tasks_no_positions", is_priority_add=False, force=False)
+
+# ═══════════════════════════════════════════════════════════════════
+# PERFORMANCE TRACKING + OUTLIER DETECTION + CAPITAL ALLOCATION
+# Inline loops — write reports to data/reports/
+# ═══════════════════════════════════════════════════════════════════
+
+async def performance_report_loop(trade_manager: MultiAccountTradeManager):
+    """Every 5 min: compute per-symbol rolling stats, write data/reports/performance_report.txt + .json."""
+    await asyncio.sleep(30.0)
+    report_dir = Path(config.BASE_PATH) / 'data' / 'reports'
+    report_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        try:
+            if not config.SYMBOL_PERF_ENABLED:
+                await asyncio.sleep(300)
+                continue
+            from ez_symbol_performance import refresh_cache, _ensure_cache
+            stats = refresh_cache()
+            if not stats:
+                await asyncio.sleep(300)
+                continue
+            tiers = {'A': [], 'B': [], 'C': []}
+            for sym, s in sorted(stats.items(), key=lambda x: x[1].get('total_pnl_pct', 0), reverse=True):
+                tiers[s.get('tier', 'B')].append(s)
+            now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+            lines = [f"PERFORMANCE REPORT — {now_str}", f"{'=' * 80}", f"Total: {len(stats)} symbols | A={len(tiers['A'])} B={len(tiers['B'])} C={len(tiers['C'])}", f"Window: {config.SYMBOL_PERF_WINDOW_DAYS} days | Min trades: {config.SYMBOL_PERF_MIN_TRADES}", ""]
+            open_symbols = set()
+            for acct, pdict in trade_manager.positions_by_account.items():
+                for pk, pos in pdict.items():
+                    if pos and abs(getattr(pos, 'positionAmt', 0)) > 0:
+                        sym = pk.split(':')[-1].rsplit('_', 1)[0] if ':' in pk else pk.rsplit('_', 1)[0]
+                        open_symbols.add(sym)
+            for tier_name in ('A', 'B', 'C'):
+                items = tiers[tier_name]
+                lines.append(f"--- TIER {tier_name} ({len(items)} symbols) ---")
+                for s in items:
+                    marker = " ** OPEN **" if s['symbol'] in open_symbols else ""
+                    lines.append(f"  {s['symbol']:>15s}  WR={s['win_rate']:.0%}  avg={s['avg_gain_pct']:+.2f}%  total={s['total_pnl_pct']:+.1f}%  trades={s['trade_count']:3d}  mult={s['order_multiplier']:.2f}{marker}")
+                lines.append("")
+            total_pnl = sum(s['total_pnl_pct'] for s in stats.values())
+            avg_wr = sum(s['win_rate'] for s in stats.values()) / max(1, len(stats))
+            lines.extend(["SUMMARY:", f"  Total PnL (all symbols): {total_pnl:+.1f}%", f"  Avg win rate: {avg_wr:.0%}", f"  A-tier avg mult: {sum(s['order_multiplier'] for s in tiers['A']) / max(1, len(tiers['A'])):.2f}", f"  C-tier avg mult: {sum(s['order_multiplier'] for s in tiers['C']) / max(1, len(tiers['C'])):.2f}", ""])
+            with open(report_dir / 'performance_report.txt', 'w') as f:
+                f.write('\n'.join(lines))
+            import json as _json
+            with open(report_dir / 'performance_report.json', 'w') as f:
+                _json.dump({'generated_at': now_str, 'stats': stats, 'tiers': {k: [s['symbol'] for s in v] for k, v in tiers.items()}, 'total_pnl_pct': round(total_pnl, 2), 'avg_win_rate': round(avg_wr, 4)}, f, indent=1)
+            logger.info(f"[PERF_REPORT] Written: {len(stats)} symbols (A={len(tiers['A'])} B={len(tiers['B'])} C={len(tiers['C'])}) total_pnl={total_pnl:+.1f}%")
+        except Exception as e:
+            logger.error(f"[PERF_REPORT] Error: {e}", exc_info=True)
+        await asyncio.sleep(config.SYMBOL_PERF_REFRESH_SECONDS)
+
+async def outlier_scan_loop(trade_manager: MultiAccountTradeManager):
+    """Every 60s: scan all open positions for stuck/runaway/stale anomalies, write data/reports/outlier_report.txt + .json."""
+    await asyncio.sleep(45.0)
+    report_dir = Path(config.BASE_PATH) / 'data' / 'reports'
+    report_dir.mkdir(parents=True, exist_ok=True)
+    alerts_file = Path(config.BASE_PATH) / 'data' / 'outlier_alerts.json'
+    while True:
+        try:
+            if not config.OUTLIER_DETECTOR_ENABLED:
+                await asyncio.sleep(60)
+                continue
+            now = datetime.now(timezone.utc)
+            all_alerts = []
+            total_positions = 0
+            for account_key, positions_dict in trade_manager.positions_by_account.items():
+                if account_key not in config.ACCOUNT_KEYS:
+                    continue
+                for pk, pos in positions_dict.items():
+                    if not pos or abs(getattr(pos, 'positionAmt', 0)) == 0:
+                        continue
+                    total_positions += 1
+                    entry_price = safe_fetch_float(getattr(pos, 'entry_price', 0) or getattr(pos, 'entryPrice', 0), 0.0)
+                    mark_price = safe_fetch_float(getattr(pos, 'mark_price', 0) or getattr(pos, 'markPrice', 0), 0.0)
+                    if entry_price <= 0 or mark_price <= 0:
+                        continue
+                    sym = pk.split(':')[-1].rsplit('_', 1)[0] if ':' in pk else pk.rsplit('_', 1)[0]
+                    is_long = pk.endswith('_LONG')
+                    indicators = trade_manager.indicators_cache.get(sym, {}) if hasattr(trade_manager, 'indicators_cache') else {}
+                    atr = safe_fetch_float(indicators.get('atr_15m') or indicators.get('atr_1h', 0), 0.0)
+                    if atr <= 0:
+                        dc_h = safe_fetch_float(indicators.get('dc_high_15m', 0), 0.0)
+                        dc_l = safe_fetch_float(indicators.get('dc_low_15m', 0), 0.0)
+                        if dc_h > 0 and dc_l > 0:
+                            atr = (dc_h - dc_l) * 0.5
+                    atr_pct = (atr / mark_price * 100) if atr > 0 and mark_price > 0 else 0
+                    # STUCK: no significant movement for >N hours
+                    if atr_pct > 0:
+                        price_move_pct = abs(mark_price - entry_price) / entry_price * 100
+                        last_aug_time = getattr(pos, 'last_augmentation_time', None)
+                        opened_at = last_aug_time or getattr(pos, 'updateTime', None) or getattr(pos, 'opened_at', None)
+                        age_hours = 0
+                        if opened_at:
+                            try:
+                                if isinstance(opened_at, datetime):
+                                    age_hours = (now - opened_at).total_seconds() / 3600
+                                elif isinstance(opened_at, (int, float)):
+                                    ts_val = opened_at / 1000 if opened_at > 1e12 else opened_at
+                                    age_hours = (now - datetime.fromtimestamp(ts_val, tz=timezone.utc)).total_seconds() / 3600
+                                else:
+                                    age_hours = (now - datetime.fromisoformat(str(opened_at).replace('Z', '+00:00'))).total_seconds() / 3600
+                            except Exception:
+                                pass
+                        if age_hours >= config.OUTLIER_STUCK_HOURS and price_move_pct < atr_pct * config.OUTLIER_STUCK_ATR_FACTOR:
+                            all_alerts.append({'position_key': pk, 'symbol': sym, 'type': 'STUCK', 'severity': 'WARNING', 'entry': entry_price, 'mark': mark_price, 'move_pct': round(price_move_pct, 3), 'atr_pct': round(atr_pct, 3), 'age_h': round(age_hours, 1)})
+                    # RUNAWAY_LOSS: unrealized loss > N x ATR
+                    if atr_pct > 0:
+                        loss_pct = ((entry_price - mark_price) / entry_price * 100) if is_long else ((mark_price - entry_price) / entry_price * 100)
+                        if loss_pct > 0 and loss_pct > atr_pct * config.OUTLIER_RUNAWAY_ATR_FACTOR:
+                            amt = abs(getattr(pos, 'positionAmt', 0))
+                            loss_usd = loss_pct / 100 * amt * mark_price
+                            severity = 'CRITICAL' if loss_pct > atr_pct * 3.0 else 'WARNING'
+                            all_alerts.append({'position_key': pk, 'symbol': sym, 'type': 'RUNAWAY_LOSS', 'severity': severity, 'loss_pct': round(loss_pct, 3), 'atr_pct': round(atr_pct, 3), 'loss_x_atr': round(loss_pct / atr_pct, 1), 'est_loss_usd': round(loss_usd, 2)})
+                    # STALE_ACTIVITY: no action for >N hours
+                    last_activity = getattr(pos, 'last_augmentation_time', None) or getattr(pos, 'last_reduction_time', None)
+                    if last_activity:
+                        try:
+                            if isinstance(last_activity, datetime):
+                                idle_hours = (now - last_activity).total_seconds() / 3600
+                            else:
+                                idle_hours = (now - datetime.fromisoformat(str(last_activity).replace('Z', '+00:00'))).total_seconds() / 3600
+                        except Exception:
+                            idle_hours = 0
+                        if idle_hours >= config.OUTLIER_STALE_HOURS:
+                            all_alerts.append({'position_key': pk, 'symbol': sym, 'type': 'STALE_ACTIVITY', 'severity': 'WARNING', 'idle_h': round(idle_hours, 1)})
+            # Write outlier_alerts.json for ez_symbol_performance to read
+            import json as _json
+            alert_data = {'active': all_alerts, 'last_scan': now.isoformat(), 'summary': {'stuck': sum(1 for a in all_alerts if a['type'] == 'STUCK'), 'runaway_loss': sum(1 for a in all_alerts if a['type'] == 'RUNAWAY_LOSS'), 'stale_activity': sum(1 for a in all_alerts if a['type'] == 'STALE_ACTIVITY'), 'total': len(all_alerts), 'critical': sum(1 for a in all_alerts if a['severity'] == 'CRITICAL'), 'positions_scanned': total_positions}}
+            try:
+                with open(alerts_file, 'w') as f:
+                    _json.dump(alert_data, f, indent=1)
+            except Exception:
+                pass
+            # Write text report
+            now_str = now.strftime('%Y-%m-%d %H:%M UTC')
+            lines = [f"OUTLIER REPORT — {now_str}", f"{'=' * 80}", f"Scanned: {total_positions} open positions | Alerts: {len(all_alerts)}", ""]
+            for atype in ('RUNAWAY_LOSS', 'STUCK', 'STALE_ACTIVITY'):
+                typed = [a for a in all_alerts if a['type'] == atype]
+                if typed:
+                    lines.append(f"--- {atype} ({len(typed)}) ---")
+                    for a in typed:
+                        sev = 'CRIT' if a['severity'] == 'CRITICAL' else 'WARN'
+                        detail_parts = [f"{k}={v}" for k, v in a.items() if k not in ('position_key', 'symbol', 'type', 'severity')]
+                        lines.append(f"  [{sev}] {a['position_key']:>35s}  {' '.join(detail_parts)}")
+                    lines.append("")
+            if not all_alerts:
+                lines.append("  No outliers detected.")
+            try:
+                with open(report_dir / 'outlier_report.txt', 'w') as f:
+                    f.write('\n'.join(lines))
+                with open(report_dir / 'outlier_report.json', 'w') as f:
+                    _json.dump(alert_data, f, indent=1)
+            except Exception:
+                pass
+            if all_alerts:
+                critical = sum(1 for a in all_alerts if a['severity'] == 'CRITICAL')
+                logger.info(f"[OUTLIER_SCAN] {len(all_alerts)} alerts ({critical} critical) across {total_positions} positions")
+        except Exception as e:
+            logger.error(f"[OUTLIER_SCAN] Error: {e}", exc_info=True)
+        await asyncio.sleep(config.OUTLIER_SCAN_INTERVAL)
+
+async def capital_reallocation_loop(trade_manager: MultiAccountTradeManager):
+    """Every 5 min: analyze capital distribution across positions, write data/reports/capital_report.txt.
+    Identifies mediocre positions (B/C tier, small gain, no momentum) vs winners (A tier, running) and reports reallocation suggestions."""
+    await asyncio.sleep(60.0)
+    report_dir = Path(config.BASE_PATH) / 'data' / 'reports'
+    report_dir.mkdir(parents=True, exist_ok=True)
+    while True:
+        try:
+            if not config.SYMBOL_PERF_ENABLED:
+                await asyncio.sleep(300)
+                continue
+            from ez_symbol_performance import get_symbol_tier, get_performance_multiplier
+            now = datetime.now(timezone.utc)
+            now_str = now.strftime('%Y-%m-%d %H:%M UTC')
+            positions_data = []
+            total_capital = 0.0
+            for account_key, positions_dict in trade_manager.positions_by_account.items():
+                if account_key not in config.ACCOUNT_KEYS:
+                    continue
+                for pk, pos in positions_dict.items():
+                    if not pos:
+                        continue
+                    amt = abs(getattr(pos, 'positionAmt', 0))
+                    if amt == 0:
+                        continue
+                    mark = safe_fetch_float(getattr(pos, 'mark_price', 0) or getattr(pos, 'markPrice', 0), 0.0)
+                    if mark <= 0:
+                        continue
+                    value_usd = amt * mark
+                    gain = safe_fetch_float(getattr(pos, 'gain', 0), 0.0)
+                    sym = pk.split(':')[-1].rsplit('_', 1)[0] if ':' in pk else pk.rsplit('_', 1)[0]
+                    tier = get_symbol_tier(sym, 'B')
+                    perf_mult = get_performance_multiplier(sym, 1.0)
+                    total_capital += value_usd
+                    positions_data.append({'pk': pk, 'symbol': sym, 'account': account_key, 'value_usd': round(value_usd, 2), 'gain_pct': round(gain, 3), 'tier': tier, 'perf_mult': round(perf_mult, 2), 'amt': amt, 'mark': mark})
+            if not positions_data:
+                await asyncio.sleep(300)
+                continue
+            positions_data.sort(key=lambda p: p['value_usd'], reverse=True)
+            tier_capital = {'A': 0.0, 'B': 0.0, 'C': 0.0}
+            tier_count = {'A': 0, 'B': 0, 'C': 0}
+            winners = []
+            losers = []
+            mediocre = []
+            for p in positions_data:
+                tier_capital[p['tier']] += p['value_usd']
+                tier_count[p['tier']] += 1
+                if p['tier'] == 'A' and p['gain_pct'] > 0.1:
+                    winners.append(p)
+                elif p['tier'] == 'C' or (p['tier'] == 'B' and p['gain_pct'] < -0.5):
+                    losers.append(p)
+                elif abs(p['gain_pct']) < 0.3 and p['perf_mult'] <= 1.0:
+                    mediocre.append(p)
+            winners.sort(key=lambda p: p['gain_pct'], reverse=True)
+            losers.sort(key=lambda p: p['gain_pct'])
+            mediocre.sort(key=lambda p: p['value_usd'], reverse=True)
+            lines = [f"CAPITAL ALLOCATION REPORT — {now_str}", f"{'=' * 80}", f"Total capital deployed: ${total_capital:,.2f} across {len(positions_data)} positions", ""]
+            lines.append("TIER DISTRIBUTION:")
+            for t in ('A', 'B', 'C'):
+                pct = tier_capital[t] / total_capital * 100 if total_capital > 0 else 0
+                lines.append(f"  Tier {t}: ${tier_capital[t]:>10,.2f} ({pct:5.1f}%) — {tier_count[t]} positions")
+            lines.append("")
+            ideal_a = 50
+            actual_a = tier_capital['A'] / total_capital * 100 if total_capital > 0 else 0
+            if actual_a < ideal_a - 10:
+                lines.append(f"  ** A-tier UNDERWEIGHT: {actual_a:.0f}% vs target {ideal_a}% — consider augmenting winners **")
+            actual_c = tier_capital['C'] / total_capital * 100 if total_capital > 0 else 0
+            if actual_c > 20:
+                lines.append(f"  ** C-tier OVERWEIGHT: {actual_c:.0f}% vs target <20% — reduce poor performers **")
+            lines.append("")
+            lines.append(f"WINNERS — augment these (A-tier, in gain) [{len(winners)}]:")
+            for p in winners[:15]:
+                lines.append(f"  {p['pk']:>35s}  ${p['value_usd']:>8,.2f}  gain={p['gain_pct']:+.2f}%  mult={p['perf_mult']:.2f}")
+            if not winners:
+                lines.append("  (none)")
+            lines.append("")
+            lines.append(f"LOSERS — reduce allocation (C-tier or losing) [{len(losers)}]:")
+            for p in losers[:15]:
+                lines.append(f"  {p['pk']:>35s}  ${p['value_usd']:>8,.2f}  gain={p['gain_pct']:+.2f}%  tier={p['tier']}  mult={p['perf_mult']:.2f}")
+            if not losers:
+                lines.append("  (none)")
+            lines.append("")
+            lines.append(f"MEDIOCRE — capital sitting idle [{len(mediocre)}]:")
+            for p in mediocre[:15]:
+                lines.append(f"  {p['pk']:>35s}  ${p['value_usd']:>8,.2f}  gain={p['gain_pct']:+.2f}%  tier={p['tier']}")
+            if not mediocre:
+                lines.append("  (none)")
+            lines.append("")
+            try:
+                with open(report_dir / 'capital_report.txt', 'w') as f:
+                    f.write('\n'.join(lines))
+                import json as _json
+                with open(report_dir / 'capital_report.json', 'w') as f:
+                    _json.dump({'generated_at': now_str, 'total_capital_usd': round(total_capital, 2), 'tier_capital': {k: round(v, 2) for k, v in tier_capital.items()}, 'tier_count': tier_count, 'winners': [p['pk'] for p in winners[:20]], 'losers': [p['pk'] for p in losers[:20]], 'mediocre': [p['pk'] for p in mediocre[:20]], 'positions': positions_data}, f, indent=1)
+            except Exception:
+                pass
+            logger.info(f"[CAPITAL_REPORT] ${total_capital:,.0f} deployed | A=${tier_capital['A']:,.0f}({tier_count['A']}) B=${tier_capital['B']:,.0f}({tier_count['B']}) C=${tier_capital['C']:,.0f}({tier_count['C']}) | {len(winners)}W {len(losers)}L {len(mediocre)}M")
+        except Exception as e:
+            logger.error(f"[CAPITAL_REPORT] Error: {e}", exc_info=True)
+        await asyncio.sleep(config.SYMBOL_PERF_REFRESH_SECONDS)
 
 async def monitor_hedges_continuously(trade_manager: MultiAccountTradeManager):
     await asyncio.sleep(15.0)
@@ -18518,7 +19933,7 @@ async def start_metrics_server(trade_manager, order_queue, host: str = '127.0.0.
                 for ak, qd in trade_manager.account_position_queues.items():
                     try:
                         account_queue_lengths[ak] = len(qd.get('queue', []))
-                    except: account_queue_lengths[ak] = 0
+                    except Exception: account_queue_lengths[ak] = 0
             processing_len = len(getattr(trade_manager, 'processing_keys', set()))
             oq_depth = 0
             if order_queue and hasattr(order_queue, 'queue'):
@@ -18582,13 +19997,13 @@ async def shutdown(order_queue: OrderQueue, trade_manager):
         for client in trade_manager.redis_manager.connections.values():
             if client:
                 try: await client.aclose()
-                except: pass
+                except Exception: pass
     if getattr(trade_manager, "_metrics_site", None):
         try: await trade_manager._metrics_site.stop()
-        except: pass
+        except Exception: pass
     if getattr(trade_manager, "_metrics_runner", None):
         try: await trade_manager._metrics_runner.cleanup()
-        except: pass
+        except Exception: pass
     logger.info("Shutdown complete.")
     indicator_shutdown_cmd = getattr(config, "EZ_INDICATORS_SHUTDOWN_CMD", None)
     if indicator_shutdown_cmd:
@@ -18675,16 +20090,16 @@ def check_pid_file(account_key: str):
                         time.sleep(0.1)
                         try:
                             os.kill(old_pid, signal.SIGKILL)
-                        except:
+                        except Exception:
                             pass
                     else:
                         os.remove(pid_file)
-                except:
+                except Exception:
                     os.remove(pid_file)
-        except:
+        except Exception:
             try:
                 os.remove(pid_file)
-            except:
+            except Exception:
                 pass
     with open(pid_file, 'wb') as f:
         f.write(str(current_pid).encode('utf-8'))
@@ -18704,6 +20119,379 @@ def signal_handler(signum, frame):
     elif _signal_count >= 2:
         logger.critical(f"Received signal {signum} again - FORCE KILLING process")
         os._exit(1)
+
+class HaikuOverseer:
+    """AI oversight agent — monitors decisions, reverses stupid trades, manages winners.
+    Runs as a background task inside ez_manage. Direct access to TradeManager — no Redis pub/sub."""
+    HAIKU_MODEL = "claude-haiku-4-5-20251001"
+    POLL_INTERVAL = 5
+    AUGMENT_INTERVAL = 60
+    AUGMENT_GAIN_THRESHOLD = 3.0
+    REDUCE_GAIN_THRESHOLD = 2.5
+    AUGMENT_FRACTION = 0.10
+    COOLDOWN_SECONDS = 300
+    MIN_POSITION_VALUE = 5.0
+    DECISION_DIR = Path(getattr(config, 'BASE_PATH', '/home/niels/binance')) / "data" / "decisions"
+    ALL_ACCOUNTS = ["ang", "inf", "men", "fin", "flz", "trb", "trc"]
+    CRYPTO_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]
+    def __init__(self, trade_manager, tracker_manager, hedge_engine, data_manager):
+        self.trade_manager = trade_manager
+        self.tracker_manager = tracker_manager
+        self.hedge_engine = hedge_engine
+        self.data_manager = data_manager
+        self.allowed_accounts = set(trade_manager._allowed_accounts)
+        self._processed: Set[str] = set()
+        self._augment_cooldowns: Dict[str, float] = {}
+        self._managed: Dict[str, dict] = {}
+        self._haiku_client = None
+    def _fingerprint(self, d: dict) -> str:
+        return f"{d.get('timestamp','')}__{d.get('position_key','')}__{d.get('action','')}"
+    def _get_haiku_client(self):
+        if not self._haiku_client:
+            try:
+                import anthropic
+                self._haiku_client = anthropic.Anthropic()
+            except Exception as e:
+                logger.error(f"[HAIKU] Cannot init Anthropic client: {e}")
+        return self._haiku_client
+    async def call_haiku(self, prompt: str) -> Optional[dict]:
+        try:
+            client = self._get_haiku_client()
+            if not client:
+                return None
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(None, lambda: client.messages.create(model=self.HAIKU_MODEL, max_tokens=300, messages=[{"role": "user", "content": prompt}]))
+            text = response.content[0].text.strip()
+            if "{" in text:
+                json_str = text[text.index("{"):text.rindex("}") + 1]
+                return json.loads(json_str)
+            return None
+        except Exception as e:
+            logger.error(f"[HAIKU] Call failed: {e}")
+            return None
+    def build_judgement_prompt(self, decision: dict) -> str:
+        snap = decision.get("snapshot") or decision.get("indicators") or {}
+        action = decision.get("action", "")
+        reason = decision.get("reason") or decision.get("reason_text", "")
+        pk = decision.get("position_key", "")
+        is_long = pk.endswith("_LONG") or "_YES" in pk
+        is_short = pk.endswith("_SHORT") or "_NO" in pk
+        k15 = snap.get("k_15m") or snap.get("stoch_k_15m")
+        d15 = snap.get("d_15m") or snap.get("stoch_d_15m")
+        k1m = snap.get("k_1m") or snap.get("stoch_k_1m")
+        k3m = snap.get("k_3m") or snap.get("stoch_k_3m")
+        sentiment = snap.get("sentiment") or snap.get("sentiment_score")
+        ha_15m = snap.get("ha_15m") or snap.get("ha_5m")
+        price = snap.get("price") or snap.get("current_price")
+        return f"""You are a trading risk overseer. Judge this trade decision. Respond with ONLY valid JSON.
+DECISION:
+- Position: {pk}
+- Action: {action}
+- Reason: {reason}
+- Direction: {"LONG" if is_long else "SHORT" if is_short else "UNKNOWN"}
+INDICATORS AT DECISION TIME:
+- Price: {price}
+- Stoch K 15m: {k15}, D 15m: {d15}
+- Stoch K 1m: {k1m}, K 3m: {k3m}
+- Heikin-Ashi 15m: {ha_15m}
+- Sentiment: {sentiment}
+RULES FOR STUPID TRADES (reverse these):
+1. OPENING/AUGMENTING a LONG when stoch K_15m > 85 (overbought = about to drop)
+2. OPENING/AUGMENTING a SHORT when stoch K_15m < 15 (oversold = about to bounce)
+3. AUGMENTING any position that is losing (reason contains "loss" or negative gain indicators)
+4. OPENING into terrible sentiment (sentiment < -50) for longs or (sentiment > 50) for shorts
+5. AUGMENTING when ALL stoch timeframes (1m, 3m, 15m) are against the direction
+6. Any action where the reason itself indicates desperation (RATIO_RECOVERY into overbought, etc.)
+NOT stupid (do NOT reverse):
+- CLOSE/REDUCE actions (taking profit or cutting = fine)
+- HEDGE opens (these are protective)
+- Positions with reason containing REENTRY, DC_BREAKOUT, FORCE
+Respond: {{"verdict": "REVERSE" or "OK", "confidence": 0.0-1.0, "reason": "brief explanation"}}
+Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
+    async def _execute_trade(self, account_key, position_key, action, qty, price, reason):
+        try:
+            ez_quick = importlib.import_module('ez_positions_quick')
+            execute_trade_wrapper = ez_quick.execute_trade_wrapper
+            pos = await self.tracker_manager.get_position(position_key)
+            if not pos:
+                logger.warning(f"[HAIKU] Position {position_key} not found")
+                return False
+            pos_amt = abs(safe_fetch_float(pos.positionAmt, 0))
+            if pos_amt <= 0:
+                return False
+            current_price = price if price > 0 else safe_fetch_float(pos.markPrice, 0)
+            if current_price <= 0:
+                return False
+            success, msg = await execute_trade_wrapper(self.trade_manager, self.tracker_manager, self.hedge_engine, account_key, position_key, pos_amt, action, current_price, qty, reason, is_hedge=False, data_manager=self.data_manager)
+            if success:
+                logger.warning(f"[HAIKU] {action} SUCCESS: {position_key} qty={qty:.4f} — {reason}")
+            else:
+                logger.error(f"[HAIKU] {action} FAILED: {position_key} — {msg}")
+            return success
+        except Exception as e:
+            logger.error(f"[HAIKU] Execute error: {position_key} — {e}")
+            return False
+    async def scan_decisions(self):
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        for acct in self.ALL_ACCOUNTS:
+            if acct not in self.allowed_accounts:
+                continue
+            f = self.DECISION_DIR / f"decisions_{acct}_{today}.jsonl"
+            if not f.exists():
+                continue
+            try:
+                async with aiofiles.open(f, "r") as fh:
+                    async for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            d = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        fp = self._fingerprint(d)
+                        if fp in self._processed:
+                            continue
+                        self._processed.add(fp)
+                        ts_str = d.get("timestamp", "")
+                        try:
+                            ts = datetime.fromisoformat(ts_str)
+                            if (datetime.now(timezone.utc) - ts).total_seconds() > 30:
+                                continue
+                        except Exception:
+                            continue
+                        await self._judge_decision(d, acct, today)
+            except Exception as e:
+                logger.error(f"[HAIKU] Error reading {f}: {e}")
+    async def _judge_decision(self, d, acct, today):
+        pk = d.get("position_key", "")
+        action = d.get("action", "")
+        if any(skip in action.upper() for skip in ["CLOSE", "REDUCE", "WEAK_REDUCE", "PROFIT_TAKE", "HAIKU"]):
+            return
+        if d.get("extra", {}).get("is_hedge"):
+            return
+        reason = d.get("reason") or d.get("reason_text", "")
+        if any(skip in reason.upper() for skip in ["REENTRY", "DC_BREAKOUT", "FORCE", "HAIKU"]):
+            return
+        redis_mgr = self.trade_manager.redis_manager
+        if redis_mgr:
+            try:
+                client = redis_mgr.connections.get('local') or redis_mgr.connections.get('server')
+                if client and await client.get(f"haiku_cooldown:{pk}"):
+                    return
+            except Exception:
+                pass
+        prompt = self.build_judgement_prompt(d)
+        verdict = await self.call_haiku(prompt)
+        if not verdict:
+            return
+        v = verdict.get("verdict", "OK").upper()
+        conf = safe_fetch_float(verdict.get("confidence", 0), 0)
+        reason_text = verdict.get("reason", "no reason")
+        logger.info(f"[HAIKU] VERDICT {pk} {action}: {v} (conf={conf:.2f}) — {reason_text}")
+        if v == "REVERSE" and conf >= 0.75:
+            snap = d.get("snapshot") or d.get("indicators") or {}
+            price = safe_fetch_float(snap.get("price") or snap.get("current_price"), 0)
+            pos = await self.tracker_manager.get_position(pk)
+            if pos:
+                reduce_qty = abs(safe_fetch_float(pos.positionAmt, 0)) * 0.5
+                await self._execute_trade(acct, pk, 'REDUCE', reduce_qty, price, f"HAIKU_REVERSAL: {reason_text}")
+            if redis_mgr:
+                try:
+                    client = redis_mgr.connections.get('local') or redis_mgr.connections.get('server')
+                    if client:
+                        await client.set(f"haiku_cooldown:{pk}", "1", ex=self.COOLDOWN_SECONDS)
+                except Exception:
+                    pass
+            record = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": pk, "account": acct, "action": "HAIKU_REVERSAL", "reason": f"Reversed {action}: {reason_text} (conf={conf:.2f})", "snapshot": d.get("snapshot") or {}, "extra": {"original_action": action, "original_reason": reason, "haiku_confidence": conf}}
+            async with aiofiles.open(self.DECISION_DIR / f"decisions_{acct}_{today}.jsonl", "a") as f:
+                await f.write(json.dumps(record, default=str) + "\n")
+    async def manage_winners(self):
+        now = time.time()
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        for acct in self.CRYPTO_ACCOUNTS:
+            if acct not in self.allowed_accounts:
+                continue
+            for side_file in ["long_positions.json", "short_positions.json"]:
+                pos_path = Path(config.BASE_PATH) / acct / side_file
+                if not pos_path.exists():
+                    continue
+                try:
+                    async with aiofiles.open(pos_path, "r") as f:
+                        positions = json.loads(await f.read())
+                except Exception:
+                    continue
+                for pk, pos in positions.items():
+                    gain = safe_fetch_float(pos.get("gain", 0), 0)
+                    pos_amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                    entry_price = safe_fetch_float(pos.get("entryPrice") or pos.get("entry_price", 0), 0)
+                    mark_price = safe_fetch_float(pos.get("markPrice") or pos.get("mark_price", 0), 0)
+                    if entry_price <= 0 or mark_price <= 0 or pos_amt <= 0:
+                        continue
+                    if pos_amt * mark_price < self.MIN_POSITION_VALUE:
+                        continue
+                    managed = self._managed.get(pk)
+                    if gain >= self.AUGMENT_GAIN_THRESHOLD:
+                        if managed and managed.get("reduced"):
+                            cd_key = f"haiku_aug:{pk}"
+                            if now - self._augment_cooldowns.get(pk, 0) < self.AUGMENT_INTERVAL:
+                                continue
+                            reenter_qty = managed["total_augmented_qty"]
+                            if reenter_qty * mark_price < 1.0:
+                                continue
+                            success = await self._execute_trade(acct, pk, 'AUGMENT', reenter_qty, mark_price, f"HAIKU_REENTER_{gain:.1f}pct")
+                            if success:
+                                managed["reduced"] = False
+                                self._augment_cooldowns[pk] = now
+                                logger.info(f"[HAIKU] RE-ENTER {pk}: gain={gain:.2f}% back above {self.AUGMENT_GAIN_THRESHOLD}%")
+                        else:
+                            cd_key = f"haiku_aug:{pk}"
+                            if now - self._augment_cooldowns.get(pk, 0) < self.AUGMENT_INTERVAL:
+                                continue
+                            aug_qty = pos_amt * self.AUGMENT_FRACTION
+                            if aug_qty * mark_price < 1.0:
+                                continue
+                            success = await self._execute_trade(acct, pk, 'AUGMENT', aug_qty, mark_price, f"HAIKU_WINNER_AUG_{gain:.1f}pct")
+                            if success:
+                                if pk not in self._managed:
+                                    self._managed[pk] = {"augmented_at_gain": gain, "total_augmented_qty": 0.0, "reduced": False, "reduce_price": 0.0}
+                                self._managed[pk]["total_augmented_qty"] += aug_qty
+                                self._managed[pk]["augmented_at_gain"] = gain
+                                self._augment_cooldowns[pk] = now
+                                logger.info(f"[HAIKU] AUGMENT {pk}: gain={gain:.2f}%, +{aug_qty:.4f} ({aug_qty*mark_price:.2f} USDT)")
+                            record = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": pk, "account": acct, "action": "HAIKU_AUGMENT", "reason": f"Winner augment: {gain:.1f}% > {self.AUGMENT_GAIN_THRESHOLD}%", "snapshot": {"price": mark_price, "gain": gain}, "extra": {"source": "haiku_overseer"}}
+                            async with aiofiles.open(self.DECISION_DIR / f"decisions_{acct}_{today}.jsonl", "a") as f:
+                                await f.write(json.dumps(record, default=str) + "\n")
+                    elif gain < self.REDUCE_GAIN_THRESHOLD and managed and not managed.get("reduced") and managed.get("total_augmented_qty", 0) > 0:
+                        reduce_qty = managed["total_augmented_qty"]
+                        if reduce_qty * mark_price < 1.0:
+                            continue
+                        success = await self._execute_trade(acct, pk, 'REDUCE', reduce_qty, mark_price, f"HAIKU_REDUCE_{gain:.1f}pct<{self.REDUCE_GAIN_THRESHOLD}")
+                        if success:
+                            managed["reduced"] = True
+                            managed["reduce_price"] = mark_price
+                            logger.warning(f"[HAIKU] REDUCE {pk}: gain={gain:.2f}% < {self.REDUCE_GAIN_THRESHOLD}%, -{reduce_qty:.4f}")
+                        record = {"timestamp": datetime.now(timezone.utc).isoformat(), "position_key": pk, "account": acct, "action": "HAIKU_REDUCE", "reason": f"Winner reduce: {gain:.1f}% < {self.REDUCE_GAIN_THRESHOLD}%", "snapshot": {"price": mark_price, "gain": gain}, "extra": {"source": "haiku_overseer"}}
+                        async with aiofiles.open(self.DECISION_DIR / f"decisions_{acct}_{today}.jsonl", "a") as f:
+                            await f.write(json.dumps(record, default=str) + "\n")
+    async def _preload_existing(self):
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        for acct in self.ALL_ACCOUNTS:
+            if acct not in self.allowed_accounts:
+                continue
+            f = self.DECISION_DIR / f"decisions_{acct}_{today}.jsonl"
+            if not f.exists():
+                continue
+            try:
+                async with aiofiles.open(f, "r") as fh:
+                    async for line in fh:
+                        line = line.strip()
+                        if line:
+                            try:
+                                self._processed.add(self._fingerprint(json.loads(line)))
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+    async def _update_heartbeat(self):
+        redis_mgr = self.trade_manager.redis_manager
+        if redis_mgr:
+            try:
+                client = redis_mgr.connections.get('local') or redis_mgr.connections.get('server')
+                if client:
+                    await client.set("haiku_overseer_heartbeat", json.dumps({"ts": time.time(), "account": list(self.allowed_accounts)}), ex=120)
+            except Exception:
+                pass
+    async def monitor_position_corruption(self):
+        """Detect when position fields get overwritten with null/zero values. Logs to dedicated file for 24h forensics."""
+        corruption_log = Path("/home/niels/logs/position_corruption.log")
+        snapshots: Dict[str, dict] = {}
+        CRITICAL_FIELDS = ["entry_price", "positionAmt", "initial_quantity", "gain", "max_gain", "opened_at", "max_quantity"]
+        for acct in self.CRYPTO_ACCOUNTS:
+            if acct not in self.allowed_accounts:
+                continue
+            for side_file in ["long_positions.json", "short_positions.json"]:
+                pos_path = Path(config.BASE_PATH) / acct / side_file
+                if not pos_path.exists():
+                    continue
+                try:
+                    async with aiofiles.open(pos_path, "r") as f:
+                        positions = json.loads(await f.read())
+                    for pk, pos in positions.items():
+                        amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                        ep = safe_fetch_float(pos.get("entry_price", 0), 0)
+                        if amt > 0 or ep > 0:
+                            snapshots[pk] = {field: pos.get(field) for field in CRITICAL_FIELDS}
+                except Exception:
+                    pass
+        logger.info(f"[CORRUPTION_MONITOR] Tracking {len(snapshots)} non-empty positions for corruption")
+        while True:
+            try:
+                for acct in self.CRYPTO_ACCOUNTS:
+                    if acct not in self.allowed_accounts:
+                        continue
+                    for side_file in ["long_positions.json", "short_positions.json"]:
+                        pos_path = Path(config.BASE_PATH) / acct / side_file
+                        if not pos_path.exists():
+                            continue
+                        try:
+                            async with aiofiles.open(pos_path, "r") as f:
+                                positions = json.loads(await f.read())
+                        except Exception:
+                            continue
+                        for pk, pos in positions.items():
+                            amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
+                            ep = safe_fetch_float(pos.get("entry_price", 0), 0)
+                            prev = snapshots.get(pk)
+                            if prev:
+                                prev_amt = abs(safe_fetch_float(prev.get("positionAmt", 0), 0))
+                                prev_ep = safe_fetch_float(prev.get("entry_price", 0), 0)
+                                if (prev_amt > 0 and amt == 0) or (prev_ep > 0 and ep == 0):
+                                    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                                    alert = f"[{ts}] 🚨 CORRUPTION DETECTED: {pk} | positionAmt: {prev_amt} → {amt} | entry_price: {prev_ep} → {ep} | last_updated: {pos.get('last_updated')} | mark_price_last_updated: {pos.get('mark_price_last_updated')}"
+                                    logger.critical(alert)
+                                    try:
+                                        async with aiofiles.open(corruption_log, "a") as lf:
+                                            await lf.write(alert + "\n")
+                                            prev_json = json.dumps(prev, default=str)
+                                            curr_json = json.dumps({field: pos.get(field) for field in CRITICAL_FIELDS}, default=str)
+                                            await lf.write(f"  BEFORE: {prev_json}\n  AFTER:  {curr_json}\n\n")
+                                    except Exception:
+                                        pass
+                                    # Also check in-memory positions for the same corruption
+                                    mem_pos = self.trade_manager.positions.get(pk)
+                                    if mem_pos:
+                                        mem_amt = abs(safe_fetch_float(getattr(mem_pos, 'positionAmt', 0), 0))
+                                        mem_ep = safe_fetch_float(getattr(mem_pos, 'entry_price', 0), 0)
+                                        try:
+                                            async with aiofiles.open(corruption_log, "a") as lf:
+                                                await lf.write(f"  IN-MEMORY: positionAmt={mem_amt} entry_price={mem_ep}\n\n")
+                                        except Exception:
+                                            pass
+                            if amt > 0 or ep > 0:
+                                snapshots[pk] = {field: pos.get(field) for field in CRITICAL_FIELDS}
+                            elif prev and (abs(safe_fetch_float(prev.get("positionAmt", 0), 0)) > 0 or safe_fetch_float(prev.get("entry_price", 0), 0) > 0):
+                                pass
+            except Exception as e:
+                logger.error(f"[CORRUPTION_MONITOR] Error: {e}")
+            await asyncio.sleep(10)
+    async def run(self):
+        logger.info(f"[HAIKU] Overseer starting for {sorted(self.allowed_accounts)}")
+        await self._preload_existing()
+        logger.info(f"[HAIKU] Pre-loaded {len(self._processed)} existing decisions")
+        asyncio.create_task(self.monitor_position_corruption())
+        last_winner_check = 0
+        while True:
+            try:
+                await self.scan_decisions()
+                now = time.time()
+                if now - last_winner_check >= self.AUGMENT_INTERVAL:
+                    await self.manage_winners()
+                    last_winner_check = now
+                await self._update_heartbeat()
+            except Exception as e:
+                logger.error(f"[HAIKU] Loop error: {e}", exc_info=True)
+            await asyncio.sleep(self.POLL_INTERVAL)
 
 async def main():
     global logger
@@ -18800,33 +20588,14 @@ async def main():
             redis_ok = await trade_manager.initialize_redis_manager()
             if not redis_ok: raise RuntimeError("Redis manager initialization failed")
             await trade_manager.initialize_clients()
+            trade_manager._startup_complete = False
             snapshot_loader = SnapshotLoader(trade_manager, config.DATA_DIR)
             await snapshot_loader.start()
-            await trade_manager.initialize_indicators_bridge()
             await trade_manager.init_async()
-            logger.info("⏳ [STARTUP] Waiting for Market Data (Hot & Cold)...")
-            await trade_manager._refresh_indicators_from_sources(force=True)
-            wait_cycles=0
-            while wait_cycles < 30: 
-                data_count = len(trade_manager.indicators_snapshot)
-                btc_data = await ii(trade_manager, "BTCUSDC")
-                k_1m_val = btc_data.get('stoch_k_1m')
-                k_3m_val = btc_data.get('stoch_k_3m')
-                k_3m_ts = btc_data.get('timestamp_3m')
-                if data_count > 0 and k_3m_val is not None:
-                    logger.info(f" [STARTUP] Market Data Ready: {data_count} symbols loaded. BTC k_1m={k_1m_val} k_3m={k_3m_val} ts3:{k_3m_ts}")
-                    break
-                if wait_cycles % 2 == 0:
-                    logger.info(f" ... waiting for data ... ({wait_cycles}s)")
-                    await trade_manager._refresh_indicators_from_sources(force=True)
-                await asyncio.sleep(1)
-                wait_cycles += 1
-            if not trade_manager.indicators_snapshot:
-                logger.critical("🚨 [STARTUP] NO MARKET DATA LOADED! Engine starting blindly (High Risk).")
             await trade_manager.load_symbols_files()
-            logger.info("[ez_manage] Bootstrapping positions_service...")
+            logger.info("[ez_manage] STEP 1: Bootstrapping positions_service (disk→API→Redis)...")
             try:
-                positions_service = await asyncio.wait_for(bootstrap_position_service(logger=service_silencer, accounts=accounts, enable_auto_fetch=False, load_priority='redis'), timeout=180.0)
+                positions_service = await asyncio.wait_for(bootstrap_position_service(logger=service_silencer, accounts=accounts, enable_auto_fetch=True, load_priority='disk'), timeout=180.0)
                 keys_to_purge = [k for k in positions_service.positions_by_account.keys() if k not in trade_manager._allowed_accounts]
                 for k in keys_to_purge:
                     del positions_service.positions_by_account[k]
@@ -18841,10 +20610,52 @@ async def main():
                 trade_manager.positions_service = positions_service
                 positions_service.trade_manager = trade_manager
                 logger.info(f"[ez_manage] Connected to positions_service. Retained: {list(trade_manager.positions_by_account.keys())}")
+                try:
+                    await positions_service._sync_memory_with_master_symbols()
+                    logger.info(f'[ez_manage] positions_service: {len(positions_service.positions)} positions in memory after sync')
+                except Exception as _sync_err:
+                    logger.warning(f'[ez_manage] positions_service sync failed: {_sync_err}')
+                logger.info("[ez_manage] STEP 2: Flushing stale Redis position keys...")
+                try:
+                    _rm = trade_manager.redis_manager
+                    if _rm and _rm.has_any_connection():
+                        for _ak in trade_manager._allowed_accounts:
+                            await _rm.delete(f"positions:{_ak}")
+                        logger.info(f"[ez_manage] Redis position keys flushed for {list(trade_manager._allowed_accounts)}")
+                except Exception as _rf_err:
+                    logger.warning(f"[ez_manage] Redis flush failed (non-fatal): {_rf_err}")
+                logger.info("[ez_manage] STEP 3: Writing fresh positions to Redis + disk...")
+                try:
+                    for _ak in trade_manager._allowed_accounts:
+                        await positions_service._broadcast_positions_to_redis(_ak)
+                    await positions_service.save_augmented_positions(list(trade_manager._allowed_accounts)[0] if trade_manager._allowed_accounts else 'ang', force=True)
+                    logger.info("[ez_manage] Fresh positions written to Redis + disk")
+                except Exception as _wr_err:
+                    logger.warning(f"[ez_manage] Redis/disk write failed (non-fatal): {_wr_err}")
             except Exception as bootstrap_err:
                 logger.error(f"[ez_manage] Failed to bootstrap positions_service: {bootstrap_err}")
                 raise
-            logger.info("[ez_manage] Initializing Hedge/Tracker Engines PRE-SYNC...")
+            logger.info("[ez_manage] STEP 4: Connecting indicators bridge...")
+            await trade_manager.initialize_indicators_bridge()
+            logger.info("⏳ [STARTUP] STEP 5: Waiting for Market Data (Hot & Cold)...")
+            await trade_manager._refresh_indicators_from_sources(force=True)
+            wait_cycles = 0
+            while wait_cycles < 30:
+                data_count = len(trade_manager.indicators_snapshot)
+                btc_data = await ii(trade_manager, "BTCUSDC")
+                k_3m_val = btc_data.get('stoch_k_3m')
+                k_3m_ts = btc_data.get('timestamp_3m')
+                if data_count > 0 and k_3m_val is not None:
+                    logger.info(f" [STARTUP] Market Data Ready: {data_count} symbols. BTC k_3m={k_3m_val} ts3:{k_3m_ts}")
+                    break
+                if wait_cycles % 2 == 0:
+                    logger.info(f" ... waiting for data ... ({wait_cycles}s)")
+                    await trade_manager._refresh_indicators_from_sources(force=True)
+                await asyncio.sleep(1)
+                wait_cycles += 1
+            if not trade_manager.indicators_snapshot:
+                logger.critical("🚨 [STARTUP] NO MARKET DATA LOADED! Engine starting blindly (High Risk).")
+            logger.info("[ez_manage] STEP 6: Initializing Hedge/Tracker Engines...")
             try:
                 logging.getLogger("ez_positions_quick").setLevel(logging.ERROR) 
                 ez_positions_quick_module = importlib.import_module('ez_positions_quick')
@@ -18912,15 +20723,56 @@ async def main():
             background_tasks.append(asyncio.create_task(trade_manager.periodic_zombie_nuke()))
             background_tasks.append(asyncio.create_task(order_queue.process_orders()))
             background_tasks.append(asyncio.create_task(periodic_tasks(order_queue, trade_manager)))
-            background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager))) 
+            background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager)))
+            background_tasks.append(asyncio.create_task(performance_report_loop(trade_manager)))
+            background_tasks.append(asyncio.create_task(outlier_scan_loop(trade_manager)))
+            background_tasks.append(asyncio.create_task(capital_reallocation_loop(trade_manager))) 
             background_tasks.append(asyncio.create_task(trade_manager.monitor_strict_close_positions()))
             background_tasks.append(asyncio.create_task(trade_manager.monitor_dc_breach_reduce()))
             background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
             background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
+            background_tasks.append(asyncio.create_task(monitor_system_state(trade_manager)))
+            background_tasks.append(asyncio.create_task(trade_manager.momentum_rider_loop()))
+            try:
+                haiku_overseer = HaikuOverseer(trade_manager=trade_manager, tracker_manager=tracker_manager, hedge_engine=hedge_engine, data_manager=data_manager)
+                background_tasks.append(asyncio.create_task(haiku_overseer.run()))
+                logger.info("[ez_manage] HaikuOverseer started — AI oversight active")
+            except Exception as haiku_err:
+                logger.warning(f"[ez_manage] HaikuOverseer failed to start (non-fatal): {haiku_err}")
             for account_key in config.ACCOUNT_KEYS:
                 background_tasks.append(asyncio.create_task(continuous_queue_processor(order_queue, trade_manager, account_key)))
                 background_tasks.append(asyncio.create_task(process_symbols_periodically(order_queue, trade_manager, account_key)))
-            logger.info("STARTUP COMPLETE! All primary logic loops are running")
+            background_tasks.append(asyncio.create_task(trade_manager.refresh_from_files_loop(interval=4.0)))
+            # ═══ QUICK MONITOR LOOPS — run inside ez_manage process (shared dict, no Redis) ═══
+            try:
+                quick_stop_event = asyncio.Event()
+                _qm = ez_positions_quick_module
+                _allowed = trade_manager._allowed_accounts
+                _order_q = order_queue
+                await _qm.load_initial_market_data(data_manager, config)
+                await trade_manager.initialize_indicators_bridge()
+                for _ak in sorted(_allowed):
+                    try:
+                        await _qm.direct_position_injection(tracker_manager, _ak, trade_manager)
+                    except Exception as _di_err:
+                        logger.warning(f"[QUICK_EMBED] direct_position_injection {_ak}: {_di_err}")
+                background_tasks.append(asyncio.create_task(_qm.global_ranker_loop(trade_manager, tracker_manager, data_manager, registry, quick_stop_event)))
+                background_tasks.append(asyncio.create_task(registry.run_loop()))
+                background_tasks.append(asyncio.create_task(hedge_engine.monitor_hedge_health_loop(quick_stop_event)))
+                background_tasks.append(asyncio.create_task(hedge_engine.breathing_hedge_scan(quick_stop_event)))
+                for _ak in sorted(_allowed):
+                    background_tasks.append(asyncio.create_task(_qm.priority_exit_scan_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.quick_exit_monitor_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.quick_entry_monitor_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.bulk_entry_scan_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.quick_scalp_monitor_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.sla_miss_enforcer_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
+                    background_tasks.append(asyncio.create_task(_qm.position_watchdog_loop(tracker_manager, trade_manager, [_ak], quick_stop_event, redis_manager, _order_q, data_manager, hedge_engine)))
+                logger.info(f"✅ [QUICK_EMBED] All quick monitor loops started INSIDE ez_manage ({len(_allowed)} accounts × 7 loops + 3 global)")
+            except Exception as quick_embed_err:
+                logger.error(f"❌ [QUICK_EMBED] Failed to start quick loops: {quick_embed_err}", exc_info=True)
+            trade_manager._startup_complete = True
+            logger.info("STARTUP COMPLETE! All primary + quick logic loops are running (ONE process, ONE dict, ZERO Redis reads)")
             await create_server_heartbeat()
             try:
                 await shutdown_event.wait()

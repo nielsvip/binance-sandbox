@@ -27,8 +27,7 @@ from matplotlib.ticker import MaxNLocator
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
 from tradier_indicators import TradierBarManager, TradierPriceCacheManager
-from utils import (get_simple_redis_manager, load_environment_from_gpg,
-                   orjson_default)
+from utils import (get_simple_redis_manager, load_environment_from_gpg, orjson_default)
 
 _NYSE_CAL = mcal.get_calendar("XNYS")
 NY_TZ = "America/New_York"
@@ -81,12 +80,10 @@ except ImportError:
         return json.dumps(obj, default=default_json_serializer, **kwargs)
     def safe_json_loads(s: Union[bytes, bytearray, memoryview, str], **kwargs) -> Any:
             if not s: return {}
-            if isinstance(s, str):
-                if not s.strip(): return {}
-                s = s.encode('utf-8')
-            elif isinstance(s, (bytes, bytearray, memoryview)):
-                if not s.strip(): return {}
-            return orjson.loads(s)  # In the except block, use json.loads(s, **kwargs)
+            if isinstance(s, (bytes, bytearray, memoryview)):
+                s = s.decode('utf-8', errors='replace')
+            if not isinstance(s, str) or not s.strip(): return {}
+            return json.loads(s, **kwargs)
     JSONDecodeError = json.JSONDecodeError
 # Load environment from .env.gpg
 def json_safe(obj): 
@@ -99,23 +96,7 @@ def json_safe(obj):
 load_environment_from_gpg(None)
 client = TradierAPIClient()
 from ez_rankings import DAYS_PLOT  # Ranking functions; Utility functions
-from ez_rankings import (add_gradient, add_stochrsi_zones,
-                         assign_points_proximity_3m, build_ranking_info,
-                         calculate_3min_returns_for_symbols,
-                         calculate_15min_returns_for_symbols, calculate_atr,
-                         calculate_min_max,
-                         calculate_multi_timeframe_band_score,
-                         calculate_regression_band,
-                         calculate_regression_slope_line,
-                         calculate_relative_volume, calculate_weighted_gains,
-                         cleanup_old_plots, detect_stoch_crossovers,
-                         detect_tops_bottoms, find_rank_in_list,
-                         get_legend_handles_labels, get_proximity_range,
-                         get_ranking_data, get_ranking_multiplier,
-                         initialize_caches, load_cache, load_signals,
-                         merge_htf_band_into_ltf, normalize_log_signed,
-                         parse_timestamp, save_cache, save_rankings_json,
-                         to_json_safe)
+from ez_rankings import (add_gradient, add_stochrsi_zones, assign_points_proximity_3m, build_ranking_info, calculate_3min_returns_for_symbols, calculate_15min_returns_for_symbols, calculate_atr, calculate_min_max, calculate_multi_timeframe_band_score, calculate_regression_band, calculate_regression_slope_line, calculate_relative_volume, calculate_weighted_gains, cleanup_old_plots, detect_stoch_crossovers, detect_tops_bottoms, find_rank_in_list, get_legend_handles_labels, get_proximity_range, get_ranking_data, get_ranking_multiplier, initialize_caches, load_cache, load_signals, merge_htf_band_into_ltf, normalize_log_signed, parse_timestamp, save_cache, save_rankings_json, to_json_safe)
 
 _global_file_write_semaphore = asyncio.Semaphore(40)
 config = TradierConfig()
@@ -156,6 +137,20 @@ bar_manager = None
 redis_manager = None
 mark_price_cache = {}
 _news_sentiment_cache_tradier: Dict[str, float] = {}
+_NEWS_INJECTION_FILE = Path(config.BASE_PATH) / "data" / "news_injections.json"
+
+def _merge_news_injections(symbols: list, account: str, side: str) -> list:
+    try:
+        if not _NEWS_INJECTION_FILE.exists():
+            return symbols
+        with open(_NEWS_INJECTION_FILE, 'r') as f:
+            injections = json.load(f)
+        for inj in injections.get('active', []):
+            if inj.get('account') == account and inj.get('side') == side and inj.get('symbol') not in symbols:
+                symbols.append(inj['symbol'])
+    except Exception:
+        pass
+    return symbols
 
 async def _load_news_sentiment_tradier(rm=None):
     global _news_sentiment_cache_tradier
@@ -164,9 +159,10 @@ async def _load_news_sentiment_tradier(rm=None):
             for name, conn in rm.connections.items():
                 if conn is None: continue
                 try:
-                    bulk = await conn.get('news_sentiment_bulk')
-                    if bulk:
-                        _news_sentiment_cache_tradier = {k: float(v) for k, v in json.loads(bulk).items()}
+                    # Prefer stocks-only key; fall back to bulk which may include crypto
+                    raw = await conn.get('news_sentiment_stocks') or await conn.get('news_sentiment_bulk')
+                    if raw:
+                        _news_sentiment_cache_tradier = {k: float(v) for k, v in json.loads(raw).items()}
                         return
                 except Exception: pass
         fallback = Path(config.BASE_PATH) / 'data' / 'news_sentiment.json'
@@ -253,7 +249,7 @@ async def load_json_safe(file_path: Union[str, Path]) -> dict:
                     data = json.loads(txt[:end_idx+1])
                     await atomic_write_json(file_path, data)
                     return _convert_timestamp_strings(data)
-            except: pass
+            except Exception: pass
             return {}
         return _convert_timestamp_strings(data) if isinstance(data, (dict, list)) else {}
 
@@ -515,7 +511,7 @@ async def load_indicators_data():
                     indicators_data = data
                     ez_rankings.indicators_data = indicators_data
                     return
-            except: pass
+            except Exception: pass
             
         # 2. Immediate Fallback to JSON
         latest_file = config.DATA_DIR / "tradier_indicators_latest.json"
@@ -560,7 +556,7 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
                     ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
                     if price and is_fresh(ts):
                         return float(price), ts
-                except: pass
+                except Exception: pass
         
         # 2. Check indicators_data
         if symbol in indicators_data:
@@ -575,7 +571,7 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
                             # Update mark_price_cache if fresh
                             mark_price_cache[symbol] = {"price": price, "timestamp": ts_str}
                             return float(price), ts
-                    except: pass
+                    except Exception: pass
         
         # 3. Check bar_manager (LATEST BARS)
         if bar_manager:
@@ -632,7 +628,7 @@ async def load_dfs_for_plotting(symbol, cache_dir):
                 df = df.sort_values('close_time').tail(BARS_PER_TF).reset_index(drop=True)
                 df['plot_idx'] = range(len(df))
                 dfs[tf] = df
-        except: continue
+        except Exception: continue
     return dfs
 
 def filter_market_hours(df, tf):
@@ -787,6 +783,51 @@ async def plot_dfs_subplots(
         df_tf.dropna(subset=['close_time'], inplace=True)
         df_tf.sort_values("close_time", inplace=True)
         df_tf = df_tf.reset_index(drop=True)
+        _TARGET = 600
+        # LTF map: for each TF, the lower TF we can resample into it (more detail, shorter history)
+        _LTF_MAP = {"5m": ("1m", "5min"), "15m": ("5m", "15min"), "1h": ("15m", "1h"), "4h": ("1h", "4h")}
+        # HTF map: fallback after LTF exhausted — every 4th bar, drawn as line (less detail, longer history)
+        _HTF_MAP = {"5m": "15m", "15m": "1h", "1h": "4h", "4h": "D"}
+        df_tf = df_tf.tail(_TARGET).reset_index(drop=True)
+        df_tf['_synthetic'] = False
+        _htf_fill_label = None
+        # Step 1: fill from lower TF by resampling — proper OHLC candles, shorter reach
+        _ltf_info = _LTF_MAP.get(tf_plot_loop)
+        if len(df_tf) < _TARGET and _ltf_info:
+            _ltf_key, _resample_freq = _ltf_info
+            if _ltf_key in dfs and isinstance(dfs[_ltf_key], pd.DataFrame) and not dfs[_ltf_key].empty:
+                _df_ltf = dfs[_ltf_key].copy()
+                _df_ltf['close_time'] = pd.to_datetime(_df_ltf['close_time'], errors='coerce')
+                _df_ltf = _df_ltf.dropna(subset=['close_time']).sort_values('close_time')
+                if not df_tf.empty:
+                    _df_ltf = _df_ltf[_df_ltf['close_time'] < df_tf['close_time'].iloc[0]]
+                if not _df_ltf.empty and all(c in _df_ltf.columns for c in ['open', 'high', 'low', 'close']):
+                    _rs = _df_ltf.set_index('close_time')[['open', 'high', 'low', 'close', 'volume']].resample(_resample_freq, label='right', closed='right').agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'}).dropna(subset=['close']).reset_index()
+                    _rs.rename(columns={_rs.columns[0]: 'close_time'}, inplace=True)
+                    _n_need = _TARGET - len(df_tf)
+                    _rs = _rs.tail(_n_need).copy()
+                    if not _rs.empty:
+                        _rs['_synthetic'] = False
+                        df_tf = pd.concat([_rs, df_tf], ignore_index=True).sort_values('close_time').reset_index(drop=True)
+        # Step 2: if still short, fill remaining gap from higher TF — every 4th bar, drawn as line
+        _htf_key = _HTF_MAP.get(tf_plot_loop)
+        if len(df_tf) < _TARGET and _htf_key and _htf_key in dfs and isinstance(dfs[_htf_key], pd.DataFrame) and not dfs[_htf_key].empty:
+            _df_htf = dfs[_htf_key].copy()
+            _df_htf['close_time'] = pd.to_datetime(_df_htf['close_time'], errors='coerce')
+            _df_htf = _df_htf.dropna(subset=['close_time']).sort_values('close_time').reset_index(drop=True)
+            _df_htf_s = _df_htf.iloc[::4].copy()
+            if not df_tf.empty:
+                _df_htf_s = _df_htf_s[_df_htf_s['close_time'] < df_tf['close_time'].iloc[0]]
+            _n_need = _TARGET - len(df_tf)
+            _avail = [c for c in ['close_time', 'open', 'high', 'low', 'close', 'volume'] if c in _df_htf_s.columns]
+            _df_fill = _df_htf_s.tail(_n_need)[_avail].copy()
+            if not _df_fill.empty:
+                for _col in ['open', 'high', 'low', 'volume']:
+                    if _col not in _df_fill.columns:
+                        _df_fill[_col] = _df_fill['close']
+                _df_fill['_synthetic'] = True
+                df_tf = pd.concat([_df_fill, df_tf], ignore_index=True).sort_values('close_time').reset_index(drop=True)
+                _htf_fill_label = _htf_key
         df_tf['plot_idx'] = range(len(df_tf))
         x_indices = df_tf['plot_idx'].values
         n_bars = len(df_tf)
@@ -803,7 +844,11 @@ async def plot_dfs_subplots(
         range_span = ymax_data - ymin_data
         margin_abs_val = (0.012 * range_span) if range_span > 1e-9 else 0.02
         ax_plot.set_ylim(ymin_data - margin_abs_val, ymax_data + margin_abs_val)
-        plot_candles(ax_plot, df_tf)
+        _df_real = df_tf[~df_tf['_synthetic']].copy() if '_synthetic' in df_tf.columns else df_tf
+        _df_synth = df_tf[df_tf['_synthetic']].copy() if '_synthetic' in df_tf.columns else pd.DataFrame()
+        plot_candles(ax_plot, _df_real)
+        if not _df_synth.empty and 'close' in _df_synth.columns:
+            ax_plot.plot(_df_synth['plot_idx'].values, pd.to_numeric(_df_synth['close'], errors='coerce').values, color='#78909c', lw=1.2, alpha=0.80, zorder=1, solid_capstyle='round', label=f'{_htf_fill_label}↗ fill')
         def get_x_idx(ts, _df=df_tf):
             pos = _df["close_time"].searchsorted(ts)
             pos = min(max(int(pos), 0), len(_df) - 1)
@@ -822,7 +867,7 @@ async def plot_dfs_subplots(
                     ts_event = event.get("timestamp")
                     if not isinstance(ts_event, pd.Timestamp):
                         try: ts_event = pd.to_datetime(ts_event)
-                        except: continue
+                        except Exception: continue
                     if ts_event.tzinfo is None: ts_event = ts_event.tz_localize('UTC')
                     if ts_event < x_left_ts or ts_event > x_right_ts: continue
                     price_event = event.get("price")
@@ -2015,6 +2060,11 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         df_D = dfs_calc.get("D", pd.DataFrame())
         lin_val_raw = sum(r for r in item["r_values_raw"].values() if pd.notna(r)) / len([r for r in item["r_values_raw"].values() if pd.notna(r)]) if item["r_values_raw"] and any(pd.notna(r) for r in item["r_values_raw"].values()) else 0.0
         abs_lin_val_raw = sum(abs(r) for r in item["r_values_raw"].values() if pd.notna(r)) / len([r for r in item["r_values_raw"].values() if pd.notna(r)]) if item["r_values_raw"] and any(pd.notna(r) for r in item["r_values_raw"].values()) else 0.0
+        # HTF R (D+1h) = trend quality gate; LTF R (15m+5m+1m) = momentum quality
+        _htf_tfs = [tf for tf in ["D", "1h"] if tf in item["r_values_raw"] and pd.notna(item["r_values_raw"][tf])]
+        _ltf_tfs = [tf for tf in ["15m", "5m", "1m"] if tf in item["r_values_raw"] and pd.notna(item["r_values_raw"][tf])]
+        htf_r = sum(abs(item["r_values_raw"][tf]) for tf in _htf_tfs) / len(_htf_tfs) if _htf_tfs else abs_lin_val_raw
+        ltf_r = sum(abs(item["r_values_raw"][tf]) for tf in _ltf_tfs) / len(_ltf_tfs) if _ltf_tfs else abs_lin_val_raw
         rel_vol_h1 = calculate_relative_volume(df_1h, 50)
         rel_vol_m15 = calculate_relative_volume(df_15m, 50)
         rel_vol_m5 = calculate_relative_volume(df_5m, 50)
@@ -2065,20 +2115,24 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         # Short-term: 1 day of 5m data (288 bars), decay factor 0.98 for faster decay (use 5m instead of 1m for less noise)
         weighted_gains_st = calculate_weighted_gains(df_5m, 288, decay_factor=0.98) if df_5m is not None else 0.0
         # Final trend calculation - compensate for slope scale (shorter TF = smaller slopes = higher weights)
-        trend_val_lt = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 100, "1h": 200, "15m": 300, "5m": 400, "1m": 500}.items())
-        trend_val_st = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 50, "1h": 150, "15m": 300, "5m": 500, "1m": 700}.items())
-        linearity_multiplier_lt = 1 + (0.8 * abs_lin_val_raw)
-        linearity_multiplier_st = 1 + (1.0 * abs_lin_val_raw)
+        # 4h slope included when available; weights rebalanced
+        trend_val_lt = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 200, "4h": 150, "1h": 200, "15m": 200, "5m": 300, "1m": 350}.items())
+        trend_val_st = sum(item["slopes_raw"].get(tf, 0.0) * w for tf, w in {"D": 80, "4h": 120, "1h": 150, "15m": 300, "5m": 500, "1m": 700}.items())
+        # HTF R as confidence gate: high linearity amplifies strongly (LT max 4×)
+        linearity_multiplier_lt = min(1.0 + (3.0 * htf_r), 4.0)
+        linearity_multiplier_st = 1.0 + (2.0 * htf_r) + (0.5 * ltf_r)
         long_term_score_raw = (trend_val_lt * linearity_multiplier_lt) + price_vs_sma_score + band_score * 0.5 + breakthrough_bonus + (weighted_gains_lt * 50)
-        short_term_score_raw = (trend_val_st * linearity_multiplier_st) + price_vs_sma_score * 1.5 + band_score * 0.7 + breakthrough_bonus * 1.2 + mean_prox_score_raw_1m * 0.5 + (weighted_gains_st * 80)
+        # ST: band 0.7→0.9, proximity 0.5→0.8
+        short_term_score_raw = (trend_val_st * linearity_multiplier_st) + price_vs_sma_score * 1.5 + band_score * 0.9 + breakthrough_bonus * 1.2 + mean_prox_score_raw_1m * 0.8 + (weighted_gains_st * 80)
         final_score_raw_lt = long_term_score_raw * rel_vol_tot_norm_factor
         final_score_raw_st = short_term_score_raw * rel_vol_tot_norm_factor_r
-        if config.NEWS_SENTIMENT_ENABLED and _news_sentiment_cache_tradier:
-            _ns = _news_sentiment_cache_tradier.get(sym, _news_sentiment_cache_tradier.get(sym.replace('USDT', '').replace('USDC', ''), 0.0))
-            if _ns != 0.0:
-                _ns_mult = 1.0 + (_ns * config.NEWS_SENTIMENT_WEIGHT)
-                final_score_raw_lt *= _ns_mult
-                final_score_raw_st *= _ns_mult
+        # BACKTEST_CHANGE_T39: 0xxx sweep showed sentiment useless (3/200 positive Sharpe)
+        # if config.NEWS_SENTIMENT_ENABLED and _news_sentiment_cache_tradier:
+        #     _ns = _news_sentiment_cache_tradier.get(sym, _news_sentiment_cache_tradier.get(sym.replace('USDT', '').replace('USDC', ''), 0.0))
+        #     if _ns != 0.0:
+        #         _ns_mult = 1.0 + (_ns * config.NEWS_SENTIMENT_WEIGHT)
+        #         final_score_raw_lt *= _ns_mult
+        #         final_score_raw_st *= _ns_mult
         final_ranking_data_scalars.append({
             "symbol": sym, "slopes_raw": item['slopes_raw'], "r_values_raw": item['r_values_raw'],
             "trend_val_norm_lt": item["trend_val_norm_lt"], "trend_val_norm_st": item["trend_val_norm_st"],
@@ -2113,11 +2167,18 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         df_15m = entry.get("dfs_for_calc", {}).get("15m")
         if df_15m is not None and not df_15m.empty and "close" in df_15m.columns:
             if len(df_15m) >= 2:
-                entry["return_15m"] = float((df_15m["close"].iloc[-1] - df_15m["close"].iloc[-2]) / df_15m["close"].iloc[-2] * 100.0)
+                p15 = df_15m["close"].iloc[-2]; entry["return_15m"] = float((df_15m["close"].iloc[-1] - p15) / p15 * 100.0) if p15 else 0.0
         if df_1m is not None and not df_1m.empty and "close" in df_1m.columns:
             if len(df_1m) >= 2:
-                entry["return_1m"] = float((df_1m["close"].iloc[-1] - df_1m["close"].iloc[-2]) / df_1m["close"].iloc[-2] * 100.0)
+                p1 = df_1m["close"].iloc[-2]; entry["return_1m"] = float((df_1m["close"].iloc[-1] - p1) / p1 * 100.0) if p1 else 0.0
     # Sort by final score
+    # Dedup: if symbol appears twice keep highest-scoring entry
+    _seen_syms = {}
+    for _entry in final_ranking_data_scalars:
+        _s = _entry["symbol"]
+        if _s not in _seen_syms or _entry.get("final_score_norm", 0.0) > _seen_syms[_s].get("final_score_norm", 0.0):
+            _seen_syms[_s] = _entry
+    final_ranking_data_scalars = list(_seen_syms.values())
     final_ranking_data_scalars.sort(key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
     # Create leaderboard lists (winners/losers) like ez_rankings
     top_winners_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0), reverse=True)
@@ -2137,25 +2198,44 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     returns_15m = await calculate_15min_returns_for_symbols(all_dfs_for_returns)
     returns_5m = await calculate_3min_returns_for_symbols(all_dfs_for_returns)
     # Filter top 100 by returns (like ez_rankings does)
-    top_100_set = set([item["symbol"] for item in top_winners_lt[:100]])
+    # winners_15m: from top 100 LT winners; losers_15m: from top 100 LT LOSERS (fix: was using winners)
+    top_100_winners_set = set([item["symbol"] for item in top_winners_lt[:100]])
+    top_100_losers_set  = set([item["symbol"] for item in top_losers_lt[:100]])
     to_save_top15_15m = []
     to_save_bottom15_15m = []
-    for sym in top_100_set:
+    for sym in top_100_winners_set:
         ret_15 = returns_15m.get(sym, 0)
         ret_5 = returns_5m.get(sym, 0)
         if (pd.notna(ret_15) and ret_15 > 1.0) or (pd.notna(ret_5) and ret_5 > 0.9):
             to_save_top15_15m.append({"symbol": sym, "returns_15m": float(ret_15) if pd.notna(ret_15) else None, "returns_5m": float(ret_5) if pd.notna(ret_5) else None})
+    for sym in top_100_losers_set:
+        ret_15 = returns_15m.get(sym, 0)
+        ret_5 = returns_5m.get(sym, 0)
         if (pd.notna(ret_15) and ret_15 < -0.9) or (pd.notna(ret_5) and ret_5 < -0.75):
             to_save_bottom15_15m.append({"symbol": sym, "returns_15m": float(ret_15) if pd.notna(ret_15) else None, "returns_5m": float(ret_5) if pd.notna(ret_5) else None})
-    # Create symbol lists (symbols_trc_longc and symbols_trc_short)
-    symbols_trc_long = [item["symbol"] for item in to_save_top30] + [item["symbol"] for item in to_save_top15_r]
-    symbols_trc_short = [item["symbol"] for item in to_save_bottom30] + [item["symbol"] for item in to_save_bottom15_r]
-    symbols_tra_long = list(dict.fromkeys(symbols_trc_long))  
-    symbols_tra_short = list(dict.fromkeys(symbols_trc_short))
-    symbols_trb_long = list(dict.fromkeys(symbols_trc_long))  
-    symbols_trb_short = list(dict.fromkeys(symbols_trc_short)) 
-    symbols_trc_long = list(dict.fromkeys(symbols_trc_long))  
-    symbols_trc_short = list(dict.fromkeys(symbols_trc_short))
+    # Create symbol lists — enforce parity, strip non-shortable + options from shorts
+    import re as _re
+    _options_re = _re.compile(r'\d{6}[CP]\d+')
+    _non_shortable = set(s.upper() for s in getattr(config, 'NON_SHORTABLE', set()))
+    _blacklist = set(s.upper() for s in getattr(config, 'BLACKLIST', []))
+    _raw_longs  = list(dict.fromkeys([item["symbol"] for item in to_save_top30]    + [item["symbol"] for item in to_save_top15_r]))
+    _raw_shorts = list(dict.fromkeys([item["symbol"] for item in to_save_bottom30] + [item["symbol"] for item in to_save_bottom15_r]))
+    _raw_longs  = [s for s in _raw_longs  if not _options_re.search(s) and s not in _blacklist]
+    _raw_shorts = [s for s in _raw_shorts if not _options_re.search(s) and s not in _non_shortable and s not in _blacklist]
+    # Pad shorts from full losers pool to match longs count
+    if len(_raw_shorts) < len(_raw_longs):
+        _extra_pool = [item["symbol"] for item in top_losers_lt if item["symbol"] not in _non_shortable and item["symbol"] not in _raw_shorts and not _options_re.search(item["symbol"])]
+        _raw_shorts += _extra_pool[:len(_raw_longs) - len(_raw_shorts)]
+    if len(_raw_longs) < len(_raw_shorts):
+        _extra_longs = [item["symbol"] for item in top_winners_lt if item["symbol"] not in _raw_longs and not _options_re.search(item["symbol"])]
+        _raw_longs += _extra_longs[:len(_raw_shorts) - len(_raw_longs)]
+    logger.info(f"[rankings] Symbol parity: {len(_raw_longs)}L / {len(_raw_shorts)}S")
+    symbols_trc_long  = _raw_longs
+    symbols_trc_short = _raw_shorts
+    symbols_tra_long  = _raw_longs
+    symbols_tra_short = _raw_shorts
+    symbols_trb_long  = _raw_longs
+    symbols_trb_short = _raw_shorts
     try:
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = int(time.time())
@@ -2177,8 +2257,10 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         shutil.copy2(config.DATA_DIR / f"losers_30r_{timestamp}.json", config.DATA_DIR / "losers_30r")
         shutil.copy2(config.DATA_DIR / f"winners_15m_{timestamp}.json", config.DATA_DIR / "winners_15m")
         shutil.copy2(config.DATA_DIR / f"losers_15m_{timestamp}.json", config.DATA_DIR / "losers_15m")
+        _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
+        _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
         await _save_json_async(config.BASE_PATH / "symbols_tra_long.json", symbols_tra_long)
-        await _save_json_async(config.BASE_PATH / "symbols_tra_short.json", symbols_tra_short)        
+        await _save_json_async(config.BASE_PATH / "symbols_tra_short.json", symbols_tra_short)
         await _save_json_async(config.BASE_PATH / "symbols_trb_long.json", symbols_trb_long)
         await _save_json_async(config.BASE_PATH / "symbols_trb_short.json", symbols_trb_short)
         await _save_json_async(config.BASE_PATH / "symbols_trc_long.json", symbols_trc_long)
@@ -2193,6 +2275,26 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         "source": "tradier_rankings"
     }
     return final_ranking_data_scalars, metadata
+
+async def market_mode_poll_loop():
+    """Poll data/market_mode.json every 30s to pick up EXTREME_MODE changes from news scanner or ez_rankings."""
+    last_mode = Config._CURRENT_MARKET_MODE
+    mode_file = Path(config.BASE_PATH) / "data" / "market_mode.json"
+    while True:
+        try:
+            if mode_file.exists():
+                async with aiofiles.open(mode_file, "r") as f:
+                    data = json.loads(await f.read())
+                mode = data.get("mode", "NORMAL_MODE")
+                if mode in {"NORMAL_MODE", "EXTREME_MODE", "LIGHT_MODE"} and mode != last_mode:
+                    Config.set_market_mode(mode)
+                    news_reason = data.get("news_reason", "")
+                    source = "news_scanner" if data.get("news_trigger") else "ez_rankings"
+                    logger.warning(f"[MARKET_MODE] Mode changed: {last_mode} -> {mode} (source={source}) {news_reason}")
+                    last_mode = mode
+        except Exception as e:
+            logger.debug(f"[MARKET_MODE] Poll error: {e}")
+        await asyncio.sleep(30)
 
 async def ranking_loop(symbols_list_arg: List[str]):
     """Tradier ranking loop - uses Tradier timeframes"""
@@ -2613,7 +2715,8 @@ async def main():
         tasks = [
             asyncio.create_task(ranking_loop(symbols_list)),
             asyncio.create_task(plot_loop()),
-            asyncio.create_task(indicators_sync_loop())
+            asyncio.create_task(indicators_sync_loop()),
+            asyncio.create_task(market_mode_poll_loop()),
         ]
         logger.info("✅ All systems go! Running Tradier ranking and plot loops...")
         await asyncio.gather(*tasks)

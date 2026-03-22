@@ -1,3 +1,4 @@
+# ── PositionsServiceClient (was service_clients.py — merged here) ────────────
 import asyncio
 import asyncio.subprocess as aio_subprocess
 import fnmatch
@@ -43,6 +44,203 @@ from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from config import Config
+from utils import get_current_environment
+
+
+class PositionsServiceClient:
+    def __init__(self, host: str = "127.0.0.1", port: int = 8765, *, timeout: float = 5.0, connect_timeout: Optional[float] = None, long_timeout: Optional[float] = None, endpoints: Optional[Sequence[Union[str, Tuple[str, int]]]] = None, logger: Optional[logging.Logger] = None) -> None:
+        self.timeout = max(timeout, 1.0)
+        base_connect = max(self.timeout * 0.5, 1.5)
+        self.connect_timeout = connect_timeout or min(base_connect, 5.0)
+        self.logger = logger or logging.getLogger("positions_rpc_client")
+        self._env = get_current_environment() or {}
+        self._endpoints = self._normalize_endpoints(endpoints, host, port)
+        self._preferred_idx = 0
+        self._state_lock = asyncio.Lock()
+        self._long_methods = {"get_snapshot", "get_latest_market_data", "manage_all_stops"}
+        self._long_timeout = max(long_timeout or self.timeout * 3.0, self.timeout)
+        if not self._endpoints:
+            self._endpoints = [(host, port)]
+
+    def _normalize_endpoints(self, endpoints: Optional[Sequence[Union[str, Tuple[str, int]]]], primary_host: str, primary_port: int) -> List[Tuple[str, int]]:
+        raw: List[Tuple[str, int]] = []
+        if endpoints:
+            for entry in endpoints:
+                if isinstance(entry, str):
+                    host, port = (entry.split(":", 1) + [str(primary_port)])[:2]
+                    raw.append((host.strip() or primary_host, int(port.strip() or primary_port)))
+                else:
+                    host, port = entry
+                    raw.append((str(host).strip() or primary_host, int(port)))
+        else:
+            raw.extend(self._default_endpoints(primary_host, primary_port))
+        env_hosts = os.environ.get("EZ_POSITIONS_RPC_HOSTS", "")
+        if env_hosts:
+            for entry in env_hosts.split(","):
+                candidate = entry.strip()
+                if not candidate:
+                    continue
+                host, port = (candidate.split(":", 1) + [str(primary_port)])[:2]
+                raw.append((host.strip() or primary_host, int(port.strip() or primary_port)))
+        unique: List[Tuple[str, int]] = []
+        seen = set()
+        for host, port in raw:
+            key = f"{host}:{port}"
+            if host and key not in seen:
+                seen.add(key)
+                unique.append((host, port))
+        return unique
+
+    def _default_endpoints(self, primary_host: str, primary_port: int) -> List[Tuple[str, int]]:
+        env = self._env.get("env", "")
+        baseline = [
+            (primary_host, primary_port),
+            ("127.0.0.1", primary_port),
+            ("localhost", primary_port)
+        ]
+        if env == "macbook":
+            baseline.extend([
+                ("157.90.168.35", primary_port),
+                ("157.180.125.52", primary_port)
+            ])
+        elif env == "gateway":
+            baseline.extend([
+                ("10.0.0.3", primary_port),
+                ("157.180.125.52", primary_port)
+            ])
+        elif env == "server":
+            baseline.extend([
+                ("10.0.0.2", primary_port),
+                ("157.90.168.35", primary_port)
+            ])
+        return baseline
+
+    async def _set_preferred(self, idx: int) -> None:
+        async with self._state_lock:
+            self._preferred_idx = idx % len(self._endpoints)
+
+    async def _advance_preferred(self, failed_idx: int) -> None:
+        async with self._state_lock:
+            if not self._endpoints:
+                return
+            if failed_idx == self._preferred_idx:
+                self._preferred_idx = (failed_idx + 1) % len(self._endpoints)
+
+    async def _open_connection(self, host: str, port: int) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+        return await asyncio.wait_for(asyncio.open_connection(host, port), timeout=self.connect_timeout)
+
+    async def _call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        if not self._endpoints:
+            raise RuntimeError("positions_service RPC has no endpoints configured")
+        last_exc: Optional[BaseException] = None
+        failures: List[str] = []
+        total = len(self._endpoints)
+        for offset in range(total):
+            idx = (self._preferred_idx + offset) % total
+            host, port = self._endpoints[idx]
+            reader: Optional[asyncio.StreamReader] = None
+            writer: Optional[asyncio.StreamWriter] = None
+            try:
+                reader, writer = await self._open_connection(host, port)
+                payload = json.dumps({"method": method, "params": params or {}}, ensure_ascii=False, separators=(",", ":")) + "\n"
+                writer.write(payload.encode("utf-8"))
+                await writer.drain()
+                method_timeout = self._long_timeout if method in self._long_methods else self.timeout
+                response_line = await asyncio.wait_for(reader.readline(), timeout=method_timeout)
+                if not response_line:
+                    raise RuntimeError("positions_service returned empty response")
+                response = json.loads(response_line.decode("utf-8"))
+                if not response.get("ok"):
+                    raise RuntimeError(str(response.get("error", "unknown error")))
+                await self._set_preferred(idx)
+                return response.get("result")
+            except Exception as exc:
+                last_exc = exc
+                failures.append(f"{host}:{port}({type(exc).__name__})")
+                await self._advance_preferred(idx)
+            finally:
+                if writer:
+                    writer.close()
+                    with suppress(Exception):
+                        await writer.wait_closed()
+        summary = "; ".join(failures) if failures else "no endpoints attempted"
+        message = f"positions_service RPC failed for {method}: {summary}"
+        if self.logger:
+            now = time.time()
+            if not hasattr(self, "_last_failure_log_ts") or now - getattr(self, "_last_failure_log_ts", 0) > 15:
+                setattr(self, "_last_failure_log_ts", now)
+                self.logger.warning(message)
+        if last_exc:
+            raise RuntimeError(message) from last_exc
+        raise RuntimeError(message)
+
+    async def ping(self) -> str:
+        return await self._call("ping")
+
+    async def get_snapshot(self, account_key: Optional[str] = None) -> Dict[str, Any]:
+        params = {"account_key": account_key} if account_key else None
+        result = await self._call("get_snapshot", params)
+        if not isinstance(result, dict):
+            raise RuntimeError("positions_service snapshot response malformed")
+        return result
+
+    async def get_indicators(self, symbol: str, *, force_refresh: bool = False) -> Dict[str, Any]:
+        if not symbol:
+            raise ValueError("symbol required")
+        params = {"symbol": symbol, "force_refresh": force_refresh}
+        result = await self._call("get_indicators", params)
+        if not isinstance(result, dict):
+            return {}
+        return result
+
+    async def get_latest_market_data(self) -> Dict[str, Any]:
+        """Fetch the latest full indicator snapshot via RPC."""
+        result = await self._call("get_latest_market_data")
+        if isinstance(result, dict):
+            return result
+        return {}
+
+    async def purge_obsolete_symbols(self, *, dry_run: bool = False, include_backups: bool = False) -> Dict[str, Any]:
+        params = {"dry_run": bool(dry_run), "include_backups": bool(include_backups)}
+        result = await self._call("purge_obsolete_symbols", params)
+        if isinstance(result, dict):
+            return result
+        return {}
+
+    async def cleanup_temp_files(self, account_key: str) -> int:
+        if not account_key:
+            raise ValueError("account_key required")
+        result = await self._call("cleanup_temp_files", {"account_key": account_key})
+        if isinstance(result, int):
+            return result
+        try:
+            return int(result)
+        except Exception:
+            return 0
+
+    async def manage_all_stops(self, account_key: str) -> Dict[str, List[Dict[str, Any]]]:
+        if not account_key:
+            raise ValueError("account_key required")
+        result = await self._call("manage_all_stops", {"account_key": account_key})
+        if isinstance(result, dict):
+            return {k: v for k, v in result.items() if isinstance(v, list)}
+        return {}
+
+    async def manage_stop(self, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be dict")
+        result = await self._call("manage_stop", payload)
+        if isinstance(result, list):
+            return [entry for entry in result if isinstance(entry, dict)]
+        return []
+
+    async def shutdown_service(self, reason: str = "client_request") -> bool:
+        try:
+            result = await self._call("shutdown", {"reason": reason})
+            return bool(result)
+        except Exception:
+            return False
+
 from ez_indicators import bootstrap_indicators_service, get_indicators_service
 from ez_prices import bootstrap_price_service, get_price_service
 from utils import (REDIS_CHANNELS, RateLimitDuplicateFilter, action_logger,
@@ -50,9 +248,9 @@ from utils import (REDIS_CHANNELS, RateLimitDuplicateFilter, action_logger,
                    construct_position_key, current_account,
                    force_usdc_if_needed, get_current_environment,
                    get_current_price, get_simple_redis_manager,
-                   is_hedge_account, is_strict_no_loss_account,
-                   load_environment_from_gpg, parse_position_key,
-                   safe_fetch_float)
+                   is_hedge_account, is_sandbox_account,
+                   is_strict_no_loss_account, load_environment_from_gpg,
+                   parse_position_key, safe_fetch_float)
 
 try :
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -473,7 +671,7 @@ def minutes_since(timestamp_obj, now=None):
         else:
             dt = timestamp_obj
         return (now - dt).total_seconds() / 60.0
-    except :
+    except Exception:
         return 999999 
 
 def _get_smart_default(indicator_key: str):
@@ -588,6 +786,96 @@ async def _atomic_write_json_impl(file_path: Union[str, Path], data: dict):
         file_path_obj = Path(file_path)
     except Exception:
         return False
+    name_lower = file_path_obj.name.lower()
+    if ("long_positions.json" in name_lower or "short_positions.json" in name_lower) and isinstance(data, dict):
+        try:
+            if file_path_obj.exists():
+                with open(file_path_obj, "r") as _ef:
+                    _existing = json.load(_ef)
+                if isinstance(_existing, dict):
+                    _protected = 0
+                    for _pk, _old in _existing.items():
+                        if not isinstance(_old, dict):
+                            continue
+                        _o_amt = abs(float(_old.get("positionAmt", 0) or 0))
+                        _o_ep = float(_old.get("entry_price", 0) or 0)
+                        _o_iq = float(_old.get("initial_quantity", 0) or 0)
+                        _o_oa = _old.get("opened_at")
+                        if _o_amt > 0 or _o_ep > 0 or _o_iq > 0 or _o_oa is not None:
+                            _new = data.get(_pk)
+                            if isinstance(_new, dict):
+                                _n_amt = abs(float(_new.get("positionAmt", 0) or 0))
+                                _n_ep = float(_new.get("entry_price", 0) or 0)
+                                _n_iq = float(_new.get("initial_quantity", 0) or 0)
+                                _n_oa = _new.get("opened_at")
+                                if _n_amt == 0 and _n_ep == 0 and _n_iq == 0 and _n_oa is None:
+                                    data[_pk] = _old
+                                    _protected += 1
+                                else:
+                                    _field_fixed = 0
+                                    for _cf in ("entry_price", "max_gain", "last_reduction_price", "last_reduction_amount", "last_augmentation_price", "last_augmentation_amount", "initial_quantity", "max_quantity", "max_positionSize", "augment_reason", "reduction_reason", "opened_at", "last_augmentation_time", "last_reduction_time"):
+                                        _ov = _old.get(_cf)
+                                        _nv = _new.get(_cf)
+                                        if _ov and _ov != "" and _ov != 0 and _ov != "0" and _ov != "None" and (_nv is None or _nv == "" or _nv == 0 or _nv == "0" or _nv == "None"):
+                                            _new[_cf] = _ov
+                                            _field_fixed += 1
+                                    if _field_fixed > 0:
+                                        import subprocess as _fgsp
+                                        import threading
+                                        import traceback as _fgtb
+                                        _fg_stack = "".join(_fgtb.format_stack()[-10:])
+                                        _fg_threads = "\n".join([f"  Thread {t.name} (id={t.ident}, daemon={t.daemon})" for t in threading.enumerate()])
+                                        _fg_erased_fields = []
+                                        for _cf2 in ("entry_price", "max_gain", "last_reduction_price", "last_reduction_amount", "last_augmentation_price", "last_augmentation_amount", "initial_quantity", "max_quantity", "max_positionSize", "augment_reason", "reduction_reason", "opened_at", "last_augmentation_time", "last_reduction_time"):
+                                            _ov2 = _old.get(_cf2)
+                                            _nv2_orig = data.get(_pk, {}).get(_cf2) if _pk in data else None
+                                            if _ov2 and _ov2 != "" and _ov2 != 0 and (_nv2_orig is None or _nv2_orig == "" or _nv2_orig == 0):
+                                                _fg_erased_fields.append(f"    {_cf2}: {_ov2} → {_nv2_orig}")
+                                        _fg_crash_log = f"""
+{'='*80}
+🚨🚨🚨 FIELD ERASURE CAUGHT — {_pk} — {datetime.now(timezone.utc).isoformat()}
+{'='*80}
+ERASED FIELDS ({_field_fixed}):
+{chr(10).join(_fg_erased_fields)}
+
+FULL CALL STACK:
+{_fg_stack}
+
+ALL THREADS ({threading.active_count()}):
+{_fg_threads}
+
+PID: {os.getpid()}
+FILE: {file_path_obj.name}
+
+POSITION BEFORE (on disk):
+{json.dumps(_old, default=str, indent=2)[:2000]}
+
+POSITION AFTER (attempted write):
+{json.dumps(_new, default=str, indent=2)[:2000]}
+{'='*80}
+"""
+                                        logger.critical(_fg_crash_log)
+                                        try:
+                                            _crash_path = Path(os.path.expanduser("~/logs")) / "FIELD_ERASURE_CRASH.log"
+                                            with open(_crash_path, "a") as _crash_f:
+                                                _crash_f.write(_fg_crash_log)
+                                                try:
+                                                    _ps_out = _fgsp.run(["ps", "aux"], capture_output=True, text=True, timeout=5)
+                                                    _crash_f.write(f"\nALL PROCESSES:\n{_ps_out.stdout}\n")
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
+                                        _protected += 1
+                            elif _pk not in data:
+                                data[_pk] = _old
+                                _protected += 1
+                    if _protected > 0:
+                        import traceback as _tb
+                        _stack = "".join(_tb.format_stack()[-6:])
+                        logger.critical(f"🛡️ [WRITE_GUARD_IMPL] {file_path_obj.name}: Protected {_protected} positions from null overwrite. PID={os.getpid()}\nStack:\n{_stack}")
+        except Exception as _ge:
+            logger.error(f"[WRITE_GUARD_IMPL] Guard check failed for {file_path_obj.name}: {_ge}")
     random_suffix = uuid.uuid4().hex
     temp_path_obj = file_path_obj.with_name(f".{file_path_obj.name}.{random_suffix}.atom")
     str_file_path = str(file_path_obj)
@@ -625,7 +913,7 @@ async def _atomic_write_json_impl(file_path: Union[str, Path], data: dict):
         logger.error(f"Atomic write failed for {str_file_path}: {e}", exc_info=True)
         if await aio_os.path.exists(str_temp_path):
             try : await aio_os.remove(str_temp_path)
-            except : pass
+            except Exception: pass
         return False
 
 def _sanitize_json_value(value: Any) -> Any:
@@ -725,8 +1013,8 @@ async def quick_price(symbol: str) -> float:
                             age = (now_utc - timestamp).total_seconds() if timestamp else 999999
                             if age < 2.0 and price > 0: return price
                             if age < 90 and price > 0: candidates.append((age, price, "Redis", timestamp))
-                    except : pass
-        except : pass
+                    except Exception: pass
+        except Exception: pass
     if service:
         if hasattr(service, 'price_cache') and symbol in service.price_cache:
             try :
@@ -744,7 +1032,7 @@ async def quick_price(symbol: str) -> float:
                     age = (now_utc - ts_dt).total_seconds()
                     if age < 2.0 and price > 0: return price
                     if age < 90 and price > 0: candidates.append((age, price, "price_cache", ts_dt))
-            except : pass
+            except Exception: pass
         if hasattr(service, 'price_cache_2') and symbol in service.price_cache_2:
             try :
                 cache_entry = service.price_cache_2[symbol]
@@ -763,7 +1051,7 @@ async def quick_price(symbol: str) -> float:
                     age = (now_utc - ts_dt).total_seconds()
                     if age < 2.0 and price > 0: return price
                     if age < 90 and price > 0: candidates.append((age, price, "price_cache_2", ts_dt))
-            except : pass
+            except Exception: pass
         if hasattr(service, 'price_cache_3') and symbol in service.price_cache_3:
             try :
                 cache_entry = service.price_cache_3[symbol]
@@ -780,7 +1068,7 @@ async def quick_price(symbol: str) -> float:
                     age = (now_utc - ts_dt).total_seconds()
                     if age < 2.0 and price > 0: return price
                     if age < 90 and price > 0: candidates.append((age, price, "price_cache_3", ts_dt))
-            except : pass
+            except Exception: pass
         for account_key, positions_dict in service.positions_by_account.items():
             for pos_key, position in positions_dict.items():
                 if position and position.symbol == symbol and hasattr(position, 'mark_price') and position.mark_price and position.mark_price > 0:
@@ -795,7 +1083,7 @@ async def quick_price(symbol: str) -> float:
                     age = (now_utc - price_ts).total_seconds() if price_ts else 0
                     if age < 90 and price > 0: return price
                     candidates.append((age, price, "get_current_price", price_ts))
-        except : pass
+        except Exception: pass
     if candidates:
         candidates.sort(key=lambda x: x[0])
         best_age, best_price, best_source, best_ts = candidates[0]
@@ -1015,7 +1303,7 @@ class AccountConfig:
                 asyncio.create_task(delete_heartbeat_on_ban())
             else:
                 loop.run_until_complete(delete_heartbeat_on_ban())
-        except : pass
+        except Exception: pass
 
     async def initialize(self):
         """Initialize the Binance client."""
@@ -1157,7 +1445,11 @@ def _convert_timestamp_strings_positions(data: Any) -> Any:
     elif isinstance(data, list):
         return [_convert_timestamp_strings_positions(item) for item in data]
     return data
-@dataclass(slots=True)
+_POSITION_PROTECTED_FIELDS = frozenset({"entry_price", "max_gain", "last_reduction_price", "last_reduction_amount", "last_augmentation_price", "last_augmentation_amount", "initial_quantity", "max_quantity", "max_positionSize", "augment_reason", "reduction_reason", "opened_at", "last_augmentation_time", "last_reduction_time"})
+_POSITION_SERVICE_ONLY_FIELDS = frozenset({"positionAmt", "entry_price", "last_reduction_price", "last_reduction_amount", "last_reduction_time", "last_augmentation_price", "last_augmentation_amount", "last_augmentation_time", "initial_quantity", "was_reduced", "is_reduced", "reduced_at", "was_reentered", "opened_at", "augment_reason", "reduction_reason"})
+_POSITION_WRITE_ALLOWED_FILES = frozenset({"ez_positions_service.py", "ez_positions.py", "tradier_positions.py", "ez_manage.py", "ez_positions_quick.py", "tradier_manage.py"})
+
+@dataclass
 
 class Position:
     symbol: str
@@ -1181,7 +1473,7 @@ class Position:
     last_updated: Optional[datetime]
     last_signal: str
     realized_pnl: float = 0.0
-    unrealized_pnl: float = 0.0
+    unrealized_pnl_USD: float = 0.0
     was_reentered: bool = False
     was_reduced: bool = False
     is_reduced: bool = False
@@ -1189,6 +1481,50 @@ class Position:
     prev_gain_last_updated: Optional[datetime] = None
     augment_reason: str = ""
     reduction_reason: str = ""
+
+    def __setattr__(self, name, value):
+        if name in _POSITION_SERVICE_ONLY_FIELDS and hasattr(self, name):
+            old_val = object.__getattribute__(self, name)
+            if old_val == value:
+                object.__setattr__(self, name, value)
+                return
+            import traceback as _setattr_tb
+            _frame = _setattr_tb.extract_stack(limit=6)
+            _caller_file = _frame[-2].filename if len(_frame) >= 2 else ""
+            _caller_basename = os.path.basename(_caller_file) if _caller_file else ""
+            _caller_func = _frame[-2].name if len(_frame) >= 2 else ""
+            if _caller_func == "__init__" or _caller_func == "from_dict":
+                object.__setattr__(self, name, value)
+                return
+            if _caller_basename and _caller_basename not in _POSITION_WRITE_ALLOWED_FILES:
+                _sym = getattr(self, 'symbol', '?')
+                _side = getattr(self, 'position_side', '?')
+                _crash_msg = f"\n{'!'*80}\n🚫 ILLEGAL POSITION WRITE from {_caller_basename}:{_caller_func}: {_sym}_{_side}.{name}: {old_val} → {value}\nCaller: {_frame[-2]}\nPID={os.getpid()}\n{'!'*80}\n"
+                logger.critical(_crash_msg)
+                try:
+                    with open(os.path.expanduser("~/logs/ILLEGAL_POSITION_WRITE.log"), "a") as _ef:
+                        _ef.write(f"[{datetime.now(timezone.utc).isoformat()}] {_crash_msg}\n")
+                except Exception:
+                    pass
+                return
+        if name in _POSITION_PROTECTED_FIELDS and hasattr(self, name):
+            old_val = object.__getattribute__(self, name)
+            _old_is_set = old_val is not None and old_val != "" and old_val != 0 and old_val != 0.0 and old_val != "0" and old_val != "None"
+            _new_is_empty = value is None or value == "" or value == 0 or value == 0.0 or value == "0" or value == "None"
+            if _old_is_set and _new_is_empty:
+                import traceback as _setattr_tb2
+                _stack = "".join(_setattr_tb2.format_stack()[-8:])
+                _sym = getattr(self, 'symbol', '?')
+                _side = getattr(self, 'position_side', '?')
+                _crash_msg = f"\n{'!'*80}\n🚨 FIELD ERASURE IN-MEMORY: {_sym}_{_side}.{name}: {old_val} → {value}\nPID={os.getpid()}\nStack:\n{_stack}{'!'*80}\n"
+                logger.critical(_crash_msg)
+                try:
+                    with open(os.path.expanduser("~/logs/FIELD_ERASURE_CRASH.log"), "a") as _ef:
+                        _ef.write(_crash_msg)
+                except Exception:
+                    pass
+                return
+        object.__setattr__(self, name, value)
     mark_price_last_updated: Optional[datetime] = None
     @classmethod
 
@@ -1207,7 +1543,7 @@ class Position:
                 if s == "": return 0.0
                 s = s.replace(", ", "")
                 try : return float(Decimal(s))
-                except : return 0.0
+                except Exception: return 0.0
             if isinstance(x, dict):
                 for k in ("amount", "qty", "positionAmt", "value"):
                     if k in x: return safe_float(x[k])
@@ -1225,7 +1561,7 @@ class Position:
                 except ValueError:
                     pass
             return None
-        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl=safe_float(data.get("unrealized_pnl")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), )
+        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=abs(safe_float(data.get("positionAmt")) or 0.0), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=(safe_float(data.get("realized_pnl"))), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), )
 
     def to_json(self) -> Dict[str, Any]:
         payload = asdict(self)
@@ -1255,7 +1591,7 @@ class Position:
                     age_seconds = (now - mark_dt).total_seconds()
                     if age_seconds > 300: 
                         result['mark_price_last_updated'] = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-                except :
+                except Exception:
                     result['mark_price_last_updated'] = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
             else:
                 result['mark_price_last_updated'] = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
@@ -1300,7 +1636,7 @@ class IndicatorSnapshot:
                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                 if (now - dt).total_seconds() > limit:
                     self._stale_timeframes.add(tf)
-            except :
+            except Exception:
                 self._stale_timeframes.add(tf)
 
     def get(self, key: str, default_value=None, symbol: str = None):
@@ -1313,7 +1649,7 @@ class IndicatorSnapshot:
             if value is None:
                 return _get_smart_default(key)
             return value
-        except :
+        except Exception:
             return _get_smart_default(key)
 
     def many(self, *key_default_pairs, symbol: str = None):
@@ -1415,7 +1751,7 @@ class IndicatorsBridge:
                 if self.shared_proxy:
                     try : 
                         updates = self.shared_proxy.get_all()
-                    except : 
+                    except Exception: 
                         self.shared_proxy = None
                 if updates:
                     self._hot_data = updates
@@ -1462,7 +1798,7 @@ class IndicatorsBridge:
             try :
                 raw = await self.redis_manager.get(f"hot_metrics:{symbol}")
                 if raw: hot_item = orjson.loads(raw) 
-            except : pass
+            except Exception: pass
         if hot_item:
             mappings = { 'k_1m': 'stoch_k_1m', 'd1': 'stoch_d_1m', 'k_3m': 'stoch_k_3m', 'd3': 'stoch_d_3m', 'k_1m_p': 'k_1m_prev', 'd1p': 'd_1m_prev', 'k_3m_p': 'k_3m_prev', 'd3p': 'd_3m_prev', 'price': 'current_price' }
             for s_key, l_key in mappings.items():
@@ -1675,7 +2011,7 @@ async def load_json_safe(file_path: str | Path, account_key: str = None) -> dict
                             bk_content = await f.read()
                         try :
                             data = safe_json_loads(bk_content)
-                        except :
+                        except Exception:
                             data = _attempt_repair(bk_content.decode('utf-8', errors='ignore'))
                         if isinstance(data, dict):
                             logger.info(f"[load_json_safe] RECOVERED data from backup: {candidate}")
@@ -1994,7 +2330,7 @@ class WebSocketManager:
                             if time.time() - last_message_time > 180:
                                 logger.warning(f"[{account_key}] WS frozen (no msg > 180s). Resetting.")
                                 try : await ws.close()
-                                except : pass
+                                except Exception: pass
                                 break
                     watchdog_task = asyncio.create_task(message_watchdog())
                     try :
@@ -2080,7 +2416,13 @@ class WebSocketManager:
                 symbol = symbol.strip().upper()
                 side = (pos_update.get("ps") or "BOTH").upper()
                 broadcast_sides.add(side)
-                raw_amt = safe_fetch_float(pos_update.get("pa") or "0")
+                raw_pa = pos_update.get("pa")
+                if raw_pa is None or raw_pa == "":
+                    logger.debug(f"[{account_key}] WS position update for {symbol} has no 'pa' field — skipping (would falsely zero position)")
+                    continue
+                raw_amt = safe_fetch_float(raw_pa)
+                if raw_amt is None:
+                    continue
                 amt_abs = abs(raw_amt)
                 position_key = construct_position_key(account_key, symbol, side)
                 expected_prefix = f"{account_key}:"
@@ -2106,11 +2448,14 @@ class WebSocketManager:
                     if self.service and hasattr(self.service, '_is_zero_confirmed') and self.service._is_zero_confirmed(position_key, threshold=config.ZERO_CONFIRMATION_THRESHOLD_WS):
                         real_size = 0.0
                         if real_size == 0.0:
-                            logger.info(f"[WS_CONFIRMED_ZERO][{position_key}] Zero amount confirmed by WS after {config.ZERO_CONFIRMATION_THRESHOLD_WS} reports. Closing via reduction handler.")
-                            await self.service.handle_reduction(existing_position, position_key, prev_amt, 0.0, prev_amt, current_price, existing_position.entry_price, reduction_source="detected")
+                            logger.info(f"[WS_CONFIRMED_ZERO][{position_key}] Zero amount confirmed by WS after {config.ZERO_CONFIRMATION_THRESHOLD_WS} reports (prev_amt={prev_amt}). Closing via reduction handler.")
+                            await self.service.handle_reduction(existing_position, position_key, prev_amt, 0.0, prev_amt, current_price, existing_position.entry_price or current_price, reduction_source="ws_confirmed_zero")
                             self.service._clear_zero_report(position_key)
-                            await self.service.handle_reduction(existing_position, position_key, prev_amt, 0.0, prev_amt, current_price, existing_position.entry_price or current_price, reduction_source="detected")
+                            _old_ws = existing_position.positionAmt
                             existing_position.positionAmt = amt_abs
+                            _acct = position_key.split(':')[0] if ':' in position_key else ''
+                            existing_position.max_positionSize = float(config.get_account_setting(_acct, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
+                            logger.critical(f"[POSAMT_WRITE][WS_ZERO][{position_key}] {_old_ws} -> {amt_abs} (ws_confirmed_zero)")
                             account_positions[position_key] = existing_position
                             self.service.positions[position_key] = existing_position
                         updated_position_keys.add(position_key)
@@ -2123,16 +2468,18 @@ class WebSocketManager:
                     existing_position.mark_price = current_price
                     if hasattr(existing_position, 'mark_price_last_updated'):
                         existing_position.mark_price_last_updated = price_ts
-                        if existing_position.positionAmt == 0.0:
-                            existing_position.gain = 0.0
-                            existing_position.unrealized_pnl = 0.0
+                        pass
+                if prev_amt > 0 and amt_abs != prev_amt:
+                    logger.warning(f"[WS_AMT_CHANGE][{position_key}] prev={prev_amt} ws={amt_abs} diff={amount_diff:.6f}")
                 if amount_diff < tolerance:
                     if self.service and hasattr(self.service, 'handle_unchanged_position'):
                         await self.service.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                 elif amt_abs > prev_amt:
+                    logger.critical(f"[POSAMT_WRITE][WS_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via WS")
                     if self.service and hasattr(self.service, 'handle_augmentation'):
                         await self.service.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price)
                 elif amt_abs < prev_amt:
+                    logger.critical(f"[POSAMT_WRITE][WS_RED][{position_key}] {prev_amt} -> {amt_abs} (-{prev_amt-amt_abs}) via WS")
                     if self.service and hasattr(self.service, 'handle_reduction'):
                         await self.service.handle_reduction(existing_position, position_key, prev_amt, amt_abs, prev_amt - amt_abs, current_price, existing_position.entry_price or current_price, reduction_source="ws_update") 
                 account_positions[position_key] = existing_position
@@ -2142,7 +2489,8 @@ class WebSocketManager:
                     if hasattr(self.service, '_position_update_timestamps'):
                         self.service._position_update_timestamps[position_key] = now
                     if hasattr(self.service, '_ws_update_timestamps'):
-                        self.service._ws_update_timestamps[position_key] = now
+                        self.service._ws_update_timestamps[position_key] = time.time()
+                        self.service._ws_update_timestamps[account_key] = time.time()
                     if hasattr(self.service, '_mark_positions_dirty'):
                         self.service._mark_positions_dirty()
                 updated_position_keys.add(position_key)
@@ -2697,6 +3045,7 @@ class StopLevelsManager:
         return levels[:self.max_stop_levels]
 
     async def _sync_with_exchange(self, *, account_key: str, symbol: str, position_key: str, position_side: str, open_orders: List[Dict[str, Any]], desired_levels: List[StopLevel], current_price: float, positionAmt: float, pos_min_qty: float) -> None:
+        return
         """ Revised Sync: 1. Identifies OUR order strictly. 2. Preserves ID if price is close (no churn). 3. Never cancels external orders. """
         if config.HEDGE_MODE: return 
         client = self._get_client(account_key)
@@ -2772,19 +3121,16 @@ class StopLevelsManager:
         last = self._last_sync_ts.get(position_key, 0)
         if not force_sync and now_ts - last < self.sync_cooldown: 
             return self.stop_levels.get(position_key, [])
+        if current_price <= 0:
+            return self.stop_levels.get(position_key, [])
         pos_amt = abs(float(getattr(position, "positionAmt", 0)))
         min_qty_val = self._get_min_qty(symbol) if self._get_min_qty else 0.001
         pos_min_qty = max(self.config.MIN_POSITION_SIZE / current_price, min_qty_val * 1.2)
         indicators = await self._fetch_indicators_for_symbol(symbol)
         desired = self.build_levels( position_key=position_key, position_side=position_side, positionAmt=pos_amt, current_price=current_price, indicators=indicators, position=position )
+        open_orders = []
         if self.get_cached_open_orders:
             open_orders = await self.get_cached_open_orders(account_key, symbol)
-        else:
-            client = self._get_client(account_key)
-            if client:
-                open_orders = await asyncio.to_thread(client.futures_get_open_orders, symbol=symbol)
-            else:
-                open_orders = []
         await self._sync_with_exchange( account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, open_orders=open_orders, desired_levels=desired, current_price=current_price, positionAmt=pos_amt, pos_min_qty=pos_min_qty )
         self.stop_levels[position_key] = desired
         self._last_sync_ts[position_key] = now_ts
@@ -2964,7 +3310,7 @@ class StopLevelsManager:
         for level in existing_levels:
             if isinstance(level, dict): stop_price = level.get('level', 0); strategy = level.get('strategy', '')
             else: stop_price = getattr(level, 'level', 0); strategy = getattr(level, 'strategy', '')
-            price_diff_pct = abs(stop_price - current_price) / current_price
+            price_diff_pct = abs(stop_price - current_price) / current_price if current_price > 0 else 1.0
             if price_diff_pct < 0.1: validated.append(level)
         return validated
 
@@ -3511,7 +3857,7 @@ class PositionService:
                     try :
                         import orjson
                         symbols_data = orjson.loads(content) 
-                    except :
+                    except Exception:
                         import json
                         symbols_data = json.loads(content)
                 if isinstance(symbols_data, list):
@@ -3645,7 +3991,7 @@ class PositionService:
             ts = getattr(position, "mark_price_last_updated", None) or getattr(position, "last_updated", None)
             if isinstance(ts, str):
                 try : ts = isoparse(ts)
-                except : ts = None
+                except Exception: ts = None
             if isinstance(ts, datetime) and ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
             if ts and (now_utc - ts).total_seconds() < 2:
@@ -3663,12 +4009,12 @@ class PositionService:
                             timestamp = datetime.fromtimestamp(ts_raw / divisor, tz=timezone.utc)
                         elif isinstance(ts_raw, str):
                             try : timestamp = isoparse(ts_raw)
-                            except : pass
+                            except Exception: pass
                     elif isinstance(p_data, (int, float, str)):
                         try :
                             price = float(p_data)
                             timestamp = None 
-                        except :
+                        except Exception:
                             pass
                     if price and timestamp:
                          if isinstance(timestamp, datetime) and timestamp.tzinfo is None:
@@ -3837,9 +4183,40 @@ class PositionService:
         data_to_write = payload
         try :
             name = path.name.lower() if isinstance(path.name, str) else ""
-            is_positions_file = name.endswith("_positions.json")
+            is_positions_file = name.endswith("_positions.json") and ("long_positions" in name or "short_positions" in name)
             if is_positions_file and isinstance(payload, dict):
-                 data_to_write = self._sort_positions_dict(payload)
+                try:
+                    if path.exists():
+                        async with LimitedAioOpen(path, "r") as ef:
+                            existing = json.loads(await ef.read())
+                        if isinstance(existing, dict):
+                            protected = 0
+                            for pk, old_data in existing.items():
+                                if not isinstance(old_data, dict):
+                                    continue
+                                old_amt = abs(float(old_data.get("positionAmt", 0)))
+                                old_ep = float(old_data.get("entry_price", 0))
+                                old_iq = float(old_data.get("initial_quantity", 0) or 0)
+                                old_mg = float(old_data.get("max_gain", 0) or 0)
+                                old_oa = old_data.get("opened_at")
+                                has_real = old_amt > 0 or old_ep > 0 or old_iq > 0 or old_mg != 0 or old_oa is not None
+                                if has_real:
+                                    new_data = payload.get(pk)
+                                    if isinstance(new_data, dict):
+                                        new_amt = abs(float(new_data.get("positionAmt", 0)))
+                                        new_ep = float(new_data.get("entry_price", 0))
+                                        new_iq = float(new_data.get("initial_quantity", 0) or 0)
+                                        new_oa = new_data.get("opened_at")
+                                        if new_amt == 0 and new_ep == 0 and new_iq == 0 and new_oa is None:
+                                            payload[pk] = old_data
+                                            protected += 1
+                            if protected > 0:
+                                import traceback
+                                stack = "".join(traceback.format_stack()[-6:])
+                                logger.critical(f"🛡️ [WRITE_GUARD] {path.name}: Protected {protected} positions from null overwrite. PID={os.getpid()}\nStack:\n{stack}")
+                except Exception as guard_err:
+                    logger.error(f"[WRITE_GUARD] Error checking {path.name}: {guard_err}")
+                data_to_write = self._sort_positions_dict(payload)
             json_bytes = json_dumps(data_to_write)
             if isinstance(json_bytes, str): json_bytes = json_bytes.encode('utf-8')
             do_backup = False
@@ -3894,7 +4271,7 @@ class PositionService:
                     account_positions[pos_key] = pos_obj
                     self.positions[pos_key] = pos_obj
                     loaded_count += 1
-                except : pass
+                except Exception: pass
             if loaded_count > 0:
                 self._accounts_loaded_once.add(account_key)
                 logger.info(f"[load_account_from_redis] {account_key}: Hydrated {loaded_count} positions from Redis.")
@@ -3930,7 +4307,7 @@ class PositionService:
                     parsed_account, _, _ = parse_position_key(position_key)
                     if parsed_account != account_key:
                         continue
-                except :
+                except Exception:
                     pass
                 if not isinstance(payload, dict): continue
                 existing_position = account_positions.get(position_key)
@@ -4508,7 +4885,7 @@ class PositionService:
                                     filtered_snapshot[k] = v
                                 else:
                                     logger.warning(f"[_load_positions_raw_from_files][{account_key}:{side}] ⚠️ SKIPPING position with mismatched account: {k} (parsed: {parsed_account}, expected: {account_key})")
-                            except :
+                            except Exception:
                                 filtered_snapshot[k] = v
                         else:
                             pass
@@ -4519,7 +4896,7 @@ class PositionService:
                         ts = datetime.fromtimestamp(stat_result.st_mtime, tz=timezone.utc)
                         if not latest_ts or ts > latest_ts:
                             latest_ts = ts
-                except : pass
+                except Exception: pass
                 missing_symbols = set()
                 if master_symbols:
                     for symbol in master_symbols:
@@ -4556,7 +4933,7 @@ class PositionService:
                                             bk_account_key, sym, _ = parse_position_key(bk_key)
                                             if bk_account_key != account_key:
                                                 continue
-                                        except : 
+                                        except Exception: 
                                             if ":" in bk_key:
                                                 parts = bk_key.split(":")
                                                 if len(parts) >= 2 and parts[0] != account_key:
@@ -4567,7 +4944,7 @@ class PositionService:
                                         if sym in missing_symbols:
                                             try :
                                                 std_key = construct_position_key(account_key, sym, side)
-                                            except :
+                                            except Exception:
                                                 std_key = f"{account_key}:{sym}_{side}"
                                             bk_val["symbol"] = sym
                                             bk_val["position_side"] = side
@@ -4586,7 +4963,6 @@ class PositionService:
             return combined, latest_ts
 
     async def ensure_position_present(self, account_key: str, symbol: str, position_side: str, position_key: Optional[str] = None) -> Optional[Position]:
-        return
         try :
             if not position_key:
                 position_key = construct_position_key(account_key, symbol, position_side)
@@ -4896,7 +5272,7 @@ class PositionService:
                                 if current_price <= 0:
                                     try :
                                         current_price = await quick_price(symbol) or 0.0
-                                    except :
+                                    except Exception:
                                         pass
                                 if current_price > 0:
                                     await self.handle_unchanged_position( position, position_key, 0.0, current_price )
@@ -4915,9 +5291,15 @@ class PositionService:
             try :
                 now = time.time()
                 if now - self._last_full_save_time >= self._full_save_interval:
-                    logger.debug(f"[_periodic_full_save_loop] Running periodic full save (every {self._full_save_interval}s)")
-                    logger.debug(f"[_periodic_full_save_loop] ⏸️ SAVE DISABLED - only realtime scripts should write")
+                    for acc_key in list(self.positions_by_account.keys()):
+                        try:
+                            all_keys = set(self.positions_by_account.get(acc_key, {}).keys())
+                            if all_keys:
+                                await self._broadcast_positions_to_redis(acc_key, all_keys)
+                        except Exception as be:
+                            logger.debug(f"[_periodic_full_save_loop] Redis broadcast failed for {acc_key}: {be}")
                     self._last_full_save_time = now
+                    self._mark_positions_dirty()
                 await asyncio.sleep(self._full_save_interval)
             except asyncio.CancelledError:
                 break
@@ -5099,7 +5481,7 @@ class PositionService:
             for f in backup_path.glob(f"{prefix}*_backup_*.json"):
                 try :
                     files.append((datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc), f))
-                except : continue
+                except Exception: continue
             if not files: return
             files.sort(key=lambda x: x[0], reverse=True)
             keep = set()
@@ -5165,23 +5547,108 @@ class PositionService:
             logger.error(f"[_check_for_deletions] Error during check: {e}")
 
     async def restore_position_from_backups(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
-        return
-        try :
+        """Search ALL backup files (newest first) for this position. Any backup data is sacred — even zero-amt positions have history (entry_price, max_gain, etc). The most recent backup with this key wins. positionAmt is preserved from backup; caller overrides with API amt if needed."""
+        try:
             position_key = f"{account_key}:{symbol}_{position_side}"
             backup_dir_str = os.path.join(str(self.config.BASE_PATH), account_key, "backups")
             position_side_str = position_side.lower()
-            patterns = [ f"{position_side_str}_positions.json_backup_*.json", f"{position_side_str}_positions_backup_*.json", ]
+            patterns = [f"{position_side_str}_positions_backup_*.json", f"{position_side_str}_positions.json_backup_*.json"]
             if not os.path.exists(backup_dir_str):
+                logger.warning(f"[RESTORE_BACKUP] No backup directory for {account_key}: {backup_dir_str}")
                 return None
             backup_files = []
             for pat in patterns:
-                search_path = os.path.join(backup_dir_str, pat)
-                backup_files.extend(glob.glob(search_path))
-            if backup_files:
-                logger.debug(f"[ez_manage][RESTORE_BACKUP] Found {len(backup_files)} backup files for {position_key} but NOT restoring (ez_positions_service is source of truth).")
+                backup_files.extend(glob.glob(os.path.join(backup_dir_str, pat)))
+            backup_files.sort(reverse=True)
+            if not backup_files:
+                logger.warning(f"[RESTORE_BACKUP] No backup files found for {position_key}")
+                return None
+            for bf in backup_files:
+                try:
+                    with open(bf, "r") as f:
+                        data = json.load(f)
+                    if isinstance(data, dict) and "positions" in data:
+                        data = data["positions"]
+                    pos_data = data.get(position_key)
+                    if not pos_data or not isinstance(pos_data, dict):
+                        continue
+                    backup_amt = abs(safe_fetch_float(pos_data.get("positionAmt", 0), 0))
+                    pos_data["positionAmt"] = 0.0
+                    restored = Position.from_dict(pos_data)
+                    restored.positionAmt = 0.0
+                    ep = safe_fetch_float(pos_data.get("entry_price", 0), 0)
+                    logger.critical(f"[RESTORE_FROM_BACKUP] {position_key}: Recovered from {os.path.basename(bf)} — backup_amt={backup_amt} (SET TO 0) entry={ep} max_gain={getattr(restored, 'max_gain', 0)}")
+                    return restored
+                except Exception as bf_err:
+                    logger.debug(f"[RESTORE_BACKUP] Failed to parse {os.path.basename(bf)} for {position_key}: {bf_err}")
+                    continue
+            also_check_main = os.path.join(str(self.config.BASE_PATH), account_key, f"{position_side_str}_positions.json")
+            if os.path.exists(also_check_main):
+                try:
+                    with open(also_check_main, "r") as f:
+                        data = json.load(f)
+                    if isinstance(data, dict) and "positions" in data:
+                        data = data["positions"]
+                    pos_data = data.get(position_key)
+                    if pos_data and isinstance(pos_data, dict):
+                        pos_data["positionAmt"] = 0.0
+                        restored = Position.from_dict(pos_data)
+                        restored.positionAmt = 0.0
+                        logger.critical(f"[RESTORE_FROM_MAIN_FILE] {position_key}: Recovered from main file (positionAmt SET TO 0)")
+                        return restored
+                except Exception:
+                    pass
+            logger.warning(f"[RESTORE_BACKUP] Not found in {account_key} backups/main — searching OTHER accounts for {symbol}_{position_side}")
+            all_accounts = ["ang", "inf", "flz", "men", "fin"]
+            for other_acct in all_accounts:
+                if other_acct == account_key:
+                    continue
+                other_pk = f"{other_acct}:{symbol}_{position_side}"
+                other_main = os.path.join(str(self.config.BASE_PATH), other_acct, f"{position_side_str}_positions.json")
+                if os.path.exists(other_main):
+                    try:
+                        with open(other_main, "r") as f:
+                            data = json.load(f)
+                        if isinstance(data, dict) and "positions" in data:
+                            data = data["positions"]
+                        pos_data = data.get(other_pk)
+                        if pos_data and isinstance(pos_data, dict):
+                            pos_data["symbol"] = symbol
+                            pos_data["position_side"] = position_side
+                            pos_data["positionAmt"] = 0.0
+                            restored = Position.from_dict(pos_data)
+                            restored.positionAmt = 0.0
+                            logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT] {position_key}: Copied structure from {other_acct} (amt zeroed, all other fields preserved)")
+                            return restored
+                    except Exception:
+                        continue
+                other_backup_dir = os.path.join(str(self.config.BASE_PATH), other_acct, "backups")
+                if os.path.exists(other_backup_dir):
+                    other_backups = []
+                    for pat in patterns:
+                        other_backups.extend(glob.glob(os.path.join(other_backup_dir, pat)))
+                    other_backups.sort(reverse=True)
+                    for obf in other_backups[:3]:
+                        try:
+                            with open(obf, "r") as f:
+                                data = json.load(f)
+                            if isinstance(data, dict) and "positions" in data:
+                                data = data["positions"]
+                            pos_data = data.get(other_pk)
+                            if pos_data and isinstance(pos_data, dict):
+                                pos_data["symbol"] = symbol
+                                pos_data["position_side"] = position_side
+                                pos_data["positionAmt"] = 0.0
+                                restored = Position.from_dict(pos_data)
+                                restored.positionAmt = 0.0
+                                logger.critical(f"[RESTORE_FROM_OTHER_ACCOUNT_BACKUP] {position_key}: Copied from {other_acct} backup {os.path.basename(obf)}")
+                                return restored
+                        except Exception:
+                            continue
+            logger.critical(f"[RESTORE_BACKUP] ABSOLUTE FAILURE: {position_key} not found in ANY account, ANY backup, ANY file on the entire system")
             return None
         except Exception as e:
-            logger.error(f"[RESTORE_BACKUP] Error checking backups for {symbol}:{position_side}: {e}")
+            logger.error(f"[RESTORE_BACKUP] Error searching backups for {position_key}: {e}")
             return None
 
     async def get_symbols_for_account(self, account_key: str) -> set:
@@ -5357,7 +5824,7 @@ class PositionService:
                             if (is_leaderboard and age > 600) or (is_trash and age > 120):
                                 os.remove(entry.path)
                                 cleaned += 1
-                        except : pass
+                        except Exception: pass
             except Exception as e:
                 self.logger.error(f"Cleanup failed for {dr}: {e}")
         if account_key:
@@ -5485,6 +5952,7 @@ class PositionService:
         logger.warning(f"[_rest_poll_loop][{account_key}] ⚠️ Loop exiting - _account_monitor_stop={self._account_monitor_stop}")
 
     async def fetch_positions(self, account_key: str):
+        if is_sandbox_account(config, account_key): return {}
         if hasattr(self, '_allowed_accounts') and self._allowed_accounts:
             if account_key not in self._allowed_accounts:
                 logger.warning(f"[fetch_positions] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
@@ -5511,16 +5979,10 @@ class PositionService:
         account = self.accounts.get(account_key)
         if not account:
             return {}
-        positions_in_dict = self.positions_by_account.get(account_key, {})
-        dict_is_fresh = False
-        if positions_in_dict and len(positions_in_dict) > 0:
-            for pos_key, pos in positions_in_dict.items():
-                if hasattr(pos, 'mark_price_last_updated') and isinstance(pos.last_updated, datetime):
-                    pos_age = (datetime.now(timezone.utc) - pos.last_updated).total_seconds()
-                    if pos_age < 10.0:
-                        dict_is_fresh = True
-                        break
-        force_fetch = time_since_last > 8.0 and not dict_is_fresh 
+        last_ws = self._ws_update_timestamps.get(account_key, 0) if hasattr(self, '_ws_update_timestamps') else 0
+        ws_age = now - last_ws if last_ws > 0 else 9999
+        ws_alive = ws_age < 3.0
+        force_fetch = not ws_alive and time_since_last > 3.0
         if not force_fetch and time_since_last < min_interval:
             if time_since_last > 10.0:
                 logger.warning(f"[fetch_positions][{account_key}] ⚠️ SKIPPING - rate limited but stale (last: {time_since_last:.2f}s ago, min: {min_interval}s) - positions may be outdated!")
@@ -5532,7 +5994,7 @@ class PositionService:
             logger.debug(f"[fetch_positions][{account_key}] 🚨 SKIPPING - account rate limited (last: {time_since_last:.1f}s ago, rate_limit_until: {account.rate_limit_until})")
             return {}
         if force_fetch: 
-            logger.warning(f"[fetch_positions][{account_key}] ⚠️ Forcing fetch - last fetch was {time_since_last:.1f}s ago (>2min) and dict is not fresh (dict_fresh={dict_is_fresh})")
+            logger.warning(f"[fetch_positions][{account_key}] ⚠️ Forcing fetch - last fetch was {time_since_last:.1f}s ago, ws_alive={ws_alive}")
         self._positions_refreshing[account_key] = True
         if not force_fetch and self._is_circuit_open(account_key): 
             logger.debug(f"[fetch_positions][{account_key}] 🚨 SKIPPING - circuit breaker open (last: {time_since_last:.1f}s ago)")
@@ -5758,7 +6220,7 @@ class PositionService:
                     continue
                 amt_abs = abs(raw_amt)
                 position_side = (pos_api_data.get("ps") or pos_api_data.get("positionSide") or ("LONG" if raw_amt >= 0 else "SHORT")).upper()
-                unrealized_pnl = safe_fetch_float(pos_api_data.get("up") or pos_api_data.get("unrealizedProfit")) if ("up" in pos_api_data or "unrealizedProfit" in pos_api_data) else None
+                unrealized_pnl_USD = safe_fetch_float(pos_api_data.get("up") or pos_api_data.get("unrealizedProfit")) if ("up" in pos_api_data or "unrealizedProfit" in pos_api_data) else None
                 position_key = construct_position_key(account_key, symbol, position_side)
                 expected_prefix = f"{account_key}:"
                 if not isinstance(position_key, str) or not position_key.startswith(expected_prefix):
@@ -5772,35 +6234,9 @@ class PositionService:
                     logger.warning(f"[_process_account_update_impl][{account_key}] ⚠️ Position {position_key} not in memory - attempting to restore from backup")
                     existing_position = await self.restore_position_from_backups(account_key, symbol, position_side)
                     if not existing_position:
-                        logger.warning(f"[_process_account_update_impl][{account_key}] DYNAMIC FALLBACK: Instantiating empty position for {position_key}")
-                        now_dt = datetime.now(timezone.utc)
-                        existing_position = Position(
-                            symbol=symbol, position_side=position_side, entry_price=0.0, mark_price=0.0, positionAmt=0.0,
-                            initial_quantity=0.0, gain=0.0, max_gain=0.0, prev_gain=0.0, max_quantity=0.0,
-                            last_augmentation_amount=0.0, last_augmentation_price=0.0, last_augmentation_time=None,
-                            last_reduction_amount=0.0, last_reduction_price=0.0, last_reduction_time=None,
-                            max_positionSize=0.0, opened_at=None, last_updated=now_dt, last_signal="",
-                            realized_pnl=0.0, unrealized_pnl=0.0, was_reentered=False, was_reduced=False,
-                            prev_gain_last_updated=None, augment_reason="", reduction_reason="", mark_price_last_updated=now_dt
-                        )
-                        try:
-                            rd = self.reentry_data.get(position_key)
-                            if isinstance(rd, dict):
-                                if rd.get("reentry_amount", 0) > 0: existing_position.last_reduction_amount = float(rd["reentry_amount"])
-                                if rd.get("reentry_level", 0) > 0: existing_position.last_reduction_price = float(rd["reentry_level"])
-                                if rd.get("timestamp"): existing_position.last_reduction_time = safe_datetime(rd["timestamp"])
-                                if rd.get("reason"): existing_position.reduction_reason = str(rd["reason"])
-                                existing_position.was_reduced = True; existing_position.was_reentered = True
-                            if position_key in self.reduced_positions:
-                                existing_position.was_reduced = True; existing_position.is_reduced = True
-                                if not existing_position.last_reduction_time: existing_position.last_reduction_time = self.reduced_positions[position_key]
-                                existing_position.reduced_at = self.reduced_positions.get(position_key)
-                            if position_key in self.augmented_positions:
-                                if not existing_position.last_augmentation_time: existing_position.last_augmentation_time = self.augmented_positions[position_key]
-                            self._validate_position_consistency(existing_position, position_key)
-                            logger.info(f"[DYNAMIC_FALLBACK_ENRICHED][{position_key}] Recovered: was_reduced={existing_position.was_reduced} was_reentered={existing_position.was_reentered} red_amt={existing_position.last_reduction_amount} aug_time={existing_position.last_augmentation_time}")
-                        except Exception as enrich_err:
-                            logger.warning(f"[DYNAMIC_FALLBACK_ENRICH_FAILED][{position_key}] {enrich_err}")
+                        logger.critical(f"🚨 [POSITION_CREATION_BLOCKED][{account_key}] {position_key}: NOT in memory, NOT in backups. REFUSING to create empty position. Skipping this API update.")
+                        skipped_count += 1
+                        continue
                     account_positions[position_key] = existing_position
                     self.positions[position_key] = existing_position
                 last_update_time = self._position_update_timestamps.get(position_key)
@@ -5816,7 +6252,7 @@ class PositionService:
                     candidates = [safe_fetch_float(pos_api_data.get("mp")), safe_fetch_float(pos_api_data.get("markPrice"))]
                     try : 
                         candidates.append(await quick_price(symbol))
-                    except : pass
+                    except Exception: pass
                     candidates.append(safe_fetch_float(existing_position.mark_price))
                     price_from_getter = next((p for p in candidates if p is not None and p > 0), None)
                 except (ValueError, Exception): pass
@@ -5824,22 +6260,40 @@ class PositionService:
                 current_price = price_from_getter or mt_price or safe_fetch_float(existing_position.mark_price, 0.0)
                 tolerance = max(0.000001, prev_amt * 0.001)
                 amount_diff = abs(amt_abs - prev_amt)
-                if unrealized_pnl is not None:
-                    existing_position.unrealized_pnl = unrealized_pnl
+                if unrealized_pnl_USD is not None:
+                    existing_position.unrealized_pnl_USD = unrealized_pnl_USD
                 if current_price and current_price > 0:
                     existing_position.mark_price = current_price
                 elif (not existing_position.mark_price or existing_position.mark_price <= 0) and current_price and current_price > 0:
                     existing_position.mark_price = current_price
+                trade_just_executed = False
+                last_trade_ts = self._position_update_timestamps.get(f"_trade_exec_{position_key}", 0)
+                if last_trade_ts and isinstance(last_trade_ts, (int, float)) and (time.time() - last_trade_ts) < 120:
+                    trade_just_executed = True
+                if prev_amt > 0 and amt_abs != prev_amt:
+                    logger.warning(f"[API_AMT_CHANGE][{position_key}] prev={prev_amt} api={amt_abs} diff={amount_diff:.6f} tol={tolerance:.6f} trade_just_exec={trade_just_executed}")
                 if amount_diff < tolerance:
                     await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                 elif amt_abs > prev_amt:
+                    logger.critical(f"[POSAMT_WRITE][API_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via API")
                     await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price)
                 elif amt_abs < prev_amt:
-                    await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, prev_amt - amt_abs, current_price, existing_position.entry_price or current_price, reduction_source="api_sync")
+                    if trade_just_executed:
+                        logger.warning(f"[API_SYNC_BLOCKED][{position_key}] API says amt={amt_abs} < prev={prev_amt} but a trade was JUST executed (120s cooldown). Keeping local amt. API data is stale.")
+                    elif amt_abs == 0 and prev_amt > 0:
+                        current_count = self._log_zero_report(position_key, now, source="API_ZERO")
+                        is_confirmed = self._is_zero_confirmed(position_key, threshold=config.ZERO_CONFIRMATION_THRESHOLD_API)
+                        if is_confirmed:
+                            logger.warning(f"[API_ZERO_CONFIRMED][{position_key}] API reports amt=0 confirmed after {current_count} cycles (prev={prev_amt}). Processing reduction.")
+                            await self.handle_reduction(existing_position, position_key, prev_amt, 0.0, prev_amt, current_price, existing_position.entry_price or current_price, reduction_source="api_zero_confirmed")
+                            self._clear_zero_report(position_key)
+                        else:
+                            logger.warning(f"[API_ZERO_REPORT][{position_key}] API reports amt=0 but NOT confirmed yet ({current_count}/{config.ZERO_CONFIRMATION_THRESHOLD_API}). Keeping prev_amt={prev_amt}. REFUSING to zero.")
+                    else:
+                        await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, prev_amt - amt_abs, current_price, existing_position.entry_price or current_price, reduction_source="api_sync")
                 else:
-                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price) 
+                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
                 existing_position.last_updated = now
-                existing_position.positionAmt = amt_abs
                 account_positions[position_key] = existing_position
                 self.positions[position_key] = existing_position
                 self._position_update_timestamps[position_key] = now
@@ -5851,28 +6305,21 @@ class PositionService:
                     position_obj = account_positions.get(pk_mem_not_api) 
                     fresh_price = None
                     try : fresh_price = await quick_price(position_obj.symbol)
-                    except : pass
-                    position_obj.mark_price = fresh_price
-                    position_obj.mark_price_last_updated = now
+                    except Exception: pass
+                    if fresh_price is not None and fresh_price > 0:
+                        position_obj.mark_price = fresh_price
+                        position_obj.mark_price_last_updated = now
                     prev_amt = abs(position_obj.positionAmt) if position_obj.positionAmt else 0.0
                     if prev_amt > 0:
                         current_count = self._log_zero_report(pk_mem_not_api, now, source="API")
                         is_confirmed = self._is_zero_confirmed(pk_mem_not_api, threshold=config.ZERO_CONFIRMATION_THRESHOLD_API)
                         if is_confirmed:
+                            logger.warning(f"[API_ABSENCE_CONFIRMED][{pk_mem_not_api}] Position absent from API for {current_count}/{config.ZERO_CONFIRMATION_THRESHOLD_API} cycles (amt={prev_amt}). Confirming closure.")
                             if not fresh_price or fresh_price <= 0:
-                                try : fresh_price, _ = await get_current_price(position_obj.symbol)
-                                except : pass
-                            if not fresh_price or fresh_price <= 0:
-                                for pos_api_data in raw_positions_data:
-                                    api_symbol = pos_api_data.get("s") or pos_api_data.get("symbol")
-                                    if api_symbol == position_obj.symbol:
-                                        mark_price_api = safe_fetch_float(pos_api_data.get("mp") or pos_api_data.get("markPrice"))
-                                        if mark_price_api and mark_price_api > 0: fresh_price = mark_price_api; break
-                            if not fresh_price or fresh_price <= 0:
-                                if position_obj and hasattr(position_obj, 'mark_price') and position_obj.mark_price and position_obj.mark_price > 0: fresh_price = position_obj.mark_price
-                                elif position_obj and hasattr(position_obj, 'entry_price') and position_obj.entry_price and position_obj.entry_price > 0: fresh_price = position_obj.entry_price
-                            if not fresh_price or fresh_price <= 0: logger.error(f"[API_CONFIRMED_ZERO][{pk_mem_not_api}] CRITICAL: No valid price found! mark_price={getattr(position_obj, 'mark_price', None)}, entry_price={getattr(position_obj, 'entry_price', None)}"); fresh_price = position_obj.mark_price if position_obj and hasattr(position_obj, 'mark_price') and position_obj.mark_price else (position_obj.entry_price if position_obj and hasattr(position_obj, 'entry_price') and position_obj.entry_price else 1.0)
-                            await self.handle_reduction(position_obj, pk_mem_not_api, position_obj.positionAmt, 0.0, position_obj.positionAmt, fresh_price, position_obj.entry_price, reduction_source="api_absence")
+                                try: fresh_price, _ = await get_current_price(position_obj.symbol)
+                                except Exception: pass
+                            if not fresh_price or fresh_price <= 0: fresh_price = position_obj.mark_price or position_obj.entry_price or 1.0
+                            await self.handle_reduction(position_obj, pk_mem_not_api, position_obj.positionAmt, 0.0, position_obj.positionAmt, fresh_price, position_obj.entry_price, reduction_source="api_absence_confirmed")
                             self._clear_zero_report(pk_mem_not_api)
                             updated_keys_in_api.add(pk_mem_not_api)
                         else:
@@ -5911,6 +6358,8 @@ class PositionService:
             logger.error(f"Exceeded max failures for {symbol}. Closing position.")
 
     def deteriorate_reentry_amounts(self, position: Position, progress: float, current_price: float):
+        if not current_price or current_price <= 0:
+            return
         try :
             position_key = None
             for account_key, account_positions in self.positions_by_account.items():
@@ -5960,9 +6409,6 @@ class PositionService:
                     for position_key, position in account_positions.items():
                         if position and position.positionAmt == 0.0:
                             updated = False
-                            if hasattr(position, 'gain') and position.gain != 0.0:
-                                position.gain = 0.0
-                                updated = True
                             if position.realized_pnl != 0.0:
                                 original_pnl = position.realized_pnl
                                 deteriorated_pnl = self.deteriorate_realized_pnl(account_key, position)
@@ -5999,12 +6445,13 @@ class PositionService:
         first_run = True
         try :
             while not self._housekeeping_stop:
-                if not first_run:
-                    await asyncio.sleep(180) 
-                else:
+                if first_run:
+                    await asyncio.sleep(300)
                     first_run = False
+                else:
+                    await asyncio.sleep(180)
                 now = datetime.now(timezone.utc)
-                snapshot: List[Tuple[str, str, str, float, float, Optional[datetime]]] = [] 
+                snapshot: List[Tuple[str, str, str, float, float, Optional[datetime], float]] = []
                 async with self._positions_lock:
                     for position_key, position in self.positions.items():
                         symbol = getattr(position, "symbol", "")
@@ -6012,10 +6459,11 @@ class PositionService:
                         entry = safe_fetch_float(getattr(position, "entry_price", 0.0), 0.0)
                         mark_price = safe_fetch_float(getattr(position, "mark_price", 0.0), 0.0)
                         mark_ts = getattr(position, "mark_price_last_updated", None)
-                        snapshot.append((position_key, symbol, position_side, entry, mark_price, mark_ts))
+                        pos_amt = abs(safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0))
+                        snapshot.append((position_key, symbol, position_side, entry, mark_price, mark_ts, pos_amt))
                 updates: Dict[str, Tuple[float, float, datetime]] = {}
                 touched_accounts: Set[str] = set()
-                for position_key, symbol, position_side, entry_price, mark_price, mark_ts in snapshot:
+                for position_key, symbol, position_side, entry_price, mark_price, mark_ts, snap_pos_amt in snapshot:
                     account_key, _, _ = parse_position_key(position_key)
                     touched_accounts.add(account_key)
                     current_price = mark_price or 0.0
@@ -6035,8 +6483,11 @@ class PositionService:
                     if current_price <= 0.0:
                         current_price = entry_price if entry_price > 0 else 0.0
                     calc_entry = entry_price if entry_price > 0 else current_price
-                    if calc_entry <= 0 or calc_entry < current_price * 0.01 or calc_entry > current_price * 100 or position.positionAmt == 0:
+                    if calc_entry <= 0 or calc_entry < current_price * 0.01 or calc_entry > current_price * 100:
+                        if snap_pos_amt > 0 and entry_price > 0: logger.critical(f"[GAIN_ZEROED_PREVGAIN] {position_key}: calc_entry={calc_entry} cp={current_price} ep={entry_price} snap_amt={snap_pos_amt} REASON: {'ce<=0' if calc_entry<=0 else 'ce<cp*0.01' if calc_entry<current_price*0.01 else 'ce>cp*100'}")
                         current_gain = 0.0
+                    elif snap_pos_amt == 0:
+                        current_gain = None
                     else:
                         current_gain = calculate_gain(position_side, current_price, calc_entry if calc_entry > 0 else current_price or 1.0)
                     updates[position_key] = (current_gain, current_price, now)
@@ -6050,10 +6501,15 @@ class PositionService:
                         if price_value > 0:
                             position.mark_price = price_value
                             position.mark_price_last_updated = timestamp_value
-                        # if is_active or time_since_close > 120:
-                        #     if position.gain != gain_value:
-                        #         position.prev_gain = position.gain
-                        #         position.prev_gain_last_updated = timestamp_value
+                        if gain_value is None:
+                            if is_active and position.entry_price and position.entry_price > 0 and price_value > 0:
+                                gain_value = calculate_gain(getattr(position, 'position_side', 'LONG'), price_value, position.entry_price)
+                            else:
+                                gain_value = 0.0
+                        if is_active or time_since_close > 120:
+                            if position.gain != gain_value:
+                                position.prev_gain = position.gain
+                                position.prev_gain_last_updated = timestamp_value
                         position.gain = gain_value
                         try :
                             parsed_account_key, _, _ = parse_position_key(position_key)
@@ -6067,6 +6523,9 @@ class PositionService:
     async def handle_unchanged_position(self, position, position_key: str, amt_abs:float, current_price: float):
         now = datetime.now(timezone.utc)
         account_key, _, _ = parse_position_key(position_key)
+        if abs(position.positionAmt) > 0 and amt_abs == 0:
+            logger.critical(f"[UNCHANGED_ZEROING][{position_key}] handle_unchanged called with amt_abs=0 but position.positionAmt={position.positionAmt}! Caller is trying to zero a live position via unchanged handler. BLOCKING.")
+            return
         async with self._positions_lock:
             if current_price and current_price > 0:
                 position.mark_price = current_price
@@ -6078,26 +6537,28 @@ class PositionService:
                     pass
                 position.mark_price_last_updated = ensure_tz(price_ts) if price_ts else now
             current_price = position.mark_price or current_price
-            position.positionAmt = amt_abs
             if amt_abs == 0.0:
-                position.max_gain = max(position.max_gain, position.gain)
-                position.gain = 0.0
+                pass
             else:
                 base_entry = position.entry_price if position.entry_price not in (None, 0.0) else current_price
                 if base_entry <= 0 or base_entry < current_price * 0.01 or base_entry > current_price * 100:
-                    position.gain = 0.0
+                    pass
                 else:
-                    position.gain = calculate_gain(position.position_side, current_price, base_entry or current_price)
+                    new_gain = calculate_gain(position.position_side, current_price, base_entry or current_price)
+                    if abs(new_gain - position.gain) > 0.1:
+                        position.prev_gain = position.gain
+                        position.prev_gain_last_updated = now
+                    position.gain = new_gain
                 position.max_gain = max(position.gain, position.max_gain)
-            position.last_updated = now 
+            position.last_updated = now
         qty = _safe_float(position.positionAmt)
         if qty:
             if (position.position_side or "").upper() == "LONG":
-                position.unrealized_pnl = (current_price - base_entry) * qty
+                position.unrealized_pnl_USD = (current_price - base_entry) * qty
             else:
-                position.unrealized_pnl = (base_entry - current_price) * qty
+                position.unrealized_pnl_USD = (base_entry - current_price) * qty
         else:
-            position.unrealized_pnl = None
+            position.unrealized_pnl_USD = None
         self.positions[position_key] = position
         try :
             account_key, _, _ = parse_position_key(position_key)
@@ -6123,8 +6584,7 @@ class PositionService:
         was_tiny_position = positionAmt * current_price <= max(config.MIN_POSITION_SIZE * 2, min_qty * current_price)
         position_value = positionAmt * current_price
         position_value_str = f"{position_value:.2f}"
-        if position.last_signal in ['PROFIT_TAKE', 'REDUCE', 'CLOSE']:
-            position.last_signal = 'AUGMENT'
+        # last_signal set after decision_context fetch below (line ~6673)
         augment_value = augment_qty * current_price
         if augment_qty > 0:
             position.last_augmentation_amount = augment_qty
@@ -6170,10 +6630,11 @@ class PositionService:
                 await self.save_reentry_data(position_key, force=True)
             except Exception as re_save_err:
                 logger.warning(f"[{position_key}] Failed to persist reentry update: {re_save_err}")
-        if was_tiny_position: 
+        if was_tiny_position:
             if position.last_signal == 'AUGMENT':
                 position.last_signal = 'OPEN'
-            position.opened_at = now
+            if not position.opened_at:
+                position.opened_at = now
         else:
             try :
                 indicators_now = await self.get_indicators_for_symbol(position.symbol, force_refresh=True)
@@ -6186,11 +6647,14 @@ class PositionService:
                         self.invalidation_levels[position_key] = { 'level': invalidation_level, 'timestamp': now, 'position_side': position.position_side }
             except Exception as e:
                 logger.error(f"[{position_key}] Could not set invalidation price during augmentation: {e}")
+        _old_aug = position.positionAmt
         position.positionAmt = positionAmt_abs
+        position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
+        logger.critical(f"[POSAMT_WRITE][HANDLE_AUG][{position_key}] {_old_aug} -> {positionAmt_abs} (augment_qty={augment_qty})")
         if augment_qty > 0 and position.positionAmt > 0:
             old_quantity = position.positionAmt - augment_qty
             if old_quantity > pos_min_qty:
-                old_entry_price = position.entry_price
+                old_entry_price = position.entry_price if position.entry_price > 0 else current_price
                 old_value = old_quantity * old_entry_price
                 new_value = augment_qty * current_price
                 total_quantity = position.positionAmt
@@ -6200,22 +6664,23 @@ class PositionService:
                 position.initial_quantity = augment_qty
         base_entry_for_gain = position.entry_price
         new_gain = calculate_gain(position.position_side, current_price, base_entry_for_gain)
+        if abs(new_gain - position.gain) > 0.1:
+            position.prev_gain = position.gain
+            position.prev_gain_last_updated = now
         position.gain = new_gain
-        # position.prev_gain = new_gain 
-        # position.prev_gain_last_updated = now
-        position.max_gain = new_gain
+        position.max_gain = max(position.max_gain, new_gain)
         deteriorated_max_qty = self.deteriorate_max_quantity(account_key, position, current_price)
         if position.positionAmt > deteriorated_max_qty:
             position.max_quantity = position.positionAmt
         else:
             position.max_quantity = deteriorated_max_qty
-        position.is_reduced = False
+        # NEVER reset is_reduced — reduction history must survive augmentation
         self.augmented_positions[position_key] = now
         reversed_side = "SHORT" if position_side == "LONG" else "LONG" 
         reversed_key = construct_position_key(account_key, symbol, reversed_side)
         if reversed_key in self.reversed_positions:
             self.unmark_reversed(reversed_key)
-        if positionAmt_abs > config.START_POSITION_SIZE / current_price:
+        if current_price > 0 and positionAmt_abs > config.START_POSITION_SIZE / current_price:
             self.mark_augmented(position_key, timestamp=now)
         self._validate_position_consistency(position, position_key)
         await self.save_invalidation_levels(account_key)
@@ -6232,6 +6697,10 @@ class PositionService:
         if position_key not in self.position_reasons:
             self.position_reasons[position_key] = {}
         reason_text = decision_context.get('reason') if decision_context else (position.augment_reason or "Unknown")
+        _action_from_ctx = decision_context.get('action', '') if decision_context else ''
+        position.last_signal = _action_from_ctx or reason_text or 'AUGMENT'
+        if not position.augment_reason and reason_text and reason_text != "Unknown":
+            position.augment_reason = reason_text
         self.position_reasons[position_key]['last_augment_reason'] = reason_text
         self.position_reasons[position_key]['last_augment_full_context'] = decision_context
         await self._append_to_history(position_key, "AUGMENT", augment_qty, current_price, decision_context )
@@ -6241,7 +6710,13 @@ class PositionService:
         timestamp_3m = indicators_log.get('timestamp_3m') if indicators_log else None
         k_3m = indicators_log.get('stoch_k_3m') if indicators_log else None
         k_3m_prv = indicators_log.get('k_3m_prev') if indicators_log else None
-        log_augment_action( position_key=position_key, position_value_str=position_value_str, augment_value_str=augment_value_str, gain=position.gain, reason=position.augment_reason, conviction=conviction, origin="CONFIRMED", timestamp_3m=timestamp_3m, k_3m=k_3m, k_3m_prv=k_3m_prv ) 
+        _aug_log_key = f"{position_key}:{round(float(augment_qty),6)}"
+        _aug_log_ts = self._augmentation_dedup.get(_aug_log_key, 0)
+        if time.time() - _aug_log_ts > 10:
+            self._augmentation_dedup[_aug_log_key] = time.time()
+            log_augment_action( position_key=position_key, position_value_str=position_value_str, augment_value_str=augment_value_str, gain=position.gain, reason=position.augment_reason, conviction=conviction, origin="CONFIRMED", timestamp_3m=timestamp_3m, k_3m=k_3m, k_3m_prv=k_3m_prv )
+        else:
+            logger.debug(f"[AUGMENT_LOG_DEDUP] {position_key}: skipping duplicate action log within 10s")
         if self.stop_manager:
             asyncio.create_task(self.stop_manager.manage(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, current_price=current_price, entry_price=entry_price, event="augmentation", force_sync=True))
             logger.info(f"[HANDLE_AUGMENTATION] {position_key}: Triggered stop level sync after augmentation (final_pos={positionAmt_abs:.6f})")
@@ -6251,32 +6726,80 @@ class PositionService:
         self.positions[position_key] = position
         logger.info(f"[HANDLE_AUGMENTATION] {position_key}: Added to dict (total positions: {len(self.positions)}, account positions: {len(account_positions)})")
         self._mark_positions_dirty()
+        asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
+        from ez_positions import atomic_save_positions
+        await atomic_save_positions(self, account_key, force=True)
 
     async def _fetch_decision_context(self, position_key: str) -> dict:
-        """Retry-enabled fetch for decision context from Redis"""
-        if not self.redis_manager: return {}
-        redis_key = f"decision:{position_key}" 
-        client = None
-        if hasattr(self.redis_manager, 'connections'):
-             client = self.redis_manager.connections.get('local')
-        if not client: return {}
-        for _ in range(3): 
-            try :
-                data = await client.get(redis_key)
-                if data: return orjson.loads(data) 
-            except : pass
-            await asyncio.sleep(0.2)
+        """Fetch decision context: Redis first, then JSONL fallback, then history fallback."""
+        # 1. Try Redis (fastest, 5 min TTL)
+        if self.redis_manager:
+            redis_key = f"decision:{position_key}"
+            client = self.redis_manager.connections.get('local') if hasattr(self.redis_manager, 'connections') else None
+            if client:
+                for _ in range(3):
+                    try:
+                        data = await client.get(redis_key)
+                        if data: return orjson.loads(data)
+                    except Exception: pass
+                    await asyncio.sleep(0.2)
+        # 2. Try decisions JSONL (on disk, persists forever)
+        try:
+            account_key = position_key.split(':')[0] if ':' in position_key else ''
+            if account_key:
+                from pathlib import Path as _P
+                _now = datetime.now(timezone.utc)
+                for _days_back in range(2):
+                    _date = (_now - timedelta(days=_days_back)).strftime('%Y%m%d')
+                    _jfile = _P(config.BASE_PATH) / 'data' / 'decisions' / f'decisions_{account_key}_{_date}.jsonl'
+                    if not _jfile.exists(): continue
+                    _last_match = None
+                    with open(_jfile, 'r') as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if not _line: continue
+                            if position_key in _line:
+                                try: _last_match = orjson.loads(_line)
+                                except Exception: pass
+                    if _last_match: return _last_match
+        except Exception: pass
+        # 3. Try history JSONL (trade log)
+        try:
+            if account_key:
+                _sym_side = position_key.split(':')[1] if ':' in position_key else ''
+                _hfile = _P(config.BASE_PATH) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
+                if _hfile.exists():
+                    _last = None
+                    with open(_hfile, 'r') as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if _line:
+                                try: _last = orjson.loads(_line)
+                                except Exception: pass
+                    if _last:
+                        return {'action': _last.get('type', ''), 'reason': _last.get('reason', ''), 'snapshot': _last.get('indicators', {}), 'timestamp': _last.get('ts', '')}
+        except Exception: pass
         return {}
 
+    _history_dedup = {}
     async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, decision_context: dict = None):
         try :
+            dedup_key = f"{position_key}:{trade_type}:{round(float(qty),6)}"
+            now_ts = time.time()
+            last_ts = self._history_dedup.get(dedup_key, 0)
+            if now_ts - last_ts < 10.0:
+                return
+            self._history_dedup[dedup_key] = now_ts
+            if len(self._history_dedup) > 5000:
+                cutoff = now_ts - 60
+                self._history_dedup = {k: v for k, v in self._history_dedup.items() if v > cutoff}
             parts = position_key.split(':')
             account_key = parts[0] if len(parts) > 0 else "unknown"
             symbol_side = parts[1] if len(parts) > 1 else position_key
             hist_dir = Path(self.config.DATA_DIR) / "history" / account_key
             hist_dir.mkdir(parents=True, exist_ok=True)
             filename = hist_dir / f"{symbol_side}.jsonl"
-            MAX_SIZE_BYTES = 200 * 1024 
+            MAX_SIZE_BYTES = 200 * 1024
             if filename.exists():
                 try :
                     stat = filename.stat()
@@ -6291,7 +6814,7 @@ class PositionService:
                 try :
                     raw = await self.redis_manager.get(redis_key)
                     if raw: context = json.loads(raw)
-                except : pass
+                except Exception: pass
             reason = context.get('reason') or context.get('reason_text') or "Manual/System Detection"
             snapshot = context.get('snapshot') or context.get('indicators', {})
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
@@ -6300,6 +6823,38 @@ class PositionService:
             if self.redis_manager: await self.redis_manager.delete(redis_key)
         except Exception as e:
             logger.error(f"[HISTORY] Write error {position_key}: {e}")
+
+    def record_reduction_fields(self, position_key: str, quantity: float, price: float, reason: str = ""):
+        now = datetime.now(timezone.utc)
+        for pos in self._get_all_position_refs(position_key):
+            pos.last_reduction_amount = quantity
+            pos.last_reduction_price = price
+            pos.last_reduction_time = now
+            pos.reduced_at = now
+            pos.is_reduced = True
+            pos.was_reduced = True
+            pos.reduction_reason = reason
+        logger.critical(f"[RECORD_REDUCTION] {position_key}: qty={quantity:.6f} price={price:.6f} reason={reason}")
+
+    def record_augmentation_fields(self, position_key: str, quantity: float, price: float, reason: str = ""):
+        now = datetime.now(timezone.utc)
+        for pos in self._get_all_position_refs(position_key):
+            pos.last_augmentation_amount = quantity
+            pos.last_augmentation_price = price
+            pos.last_augmentation_time = now
+            pos.augment_reason = reason
+        logger.critical(f"[RECORD_AUGMENTATION] {position_key}: qty={quantity:.6f} price={price:.6f} reason={reason}")
+
+    def _get_all_position_refs(self, position_key: str) -> list:
+        refs = []
+        if position_key in self.positions:
+            refs.append(self.positions[position_key])
+        ak = position_key.split(':')[0] if ':' in position_key else ''
+        if ak and ak in self.positions_by_account:
+            p = self.positions_by_account[ak].get(position_key)
+            if p and p not in refs:
+                refs.append(p)
+        return refs
 
     async def handle_reduction(self, position, position_key, positionAmt, positionAmt_abs, reduce_qty, current_price, entry_price, reduction_source="system", reason=None):
         now = datetime.now(timezone.utc) 
@@ -6353,13 +6908,11 @@ class PositionService:
             position.realized_pnl += realized_gain
             logger.debug(f"[{position_key}] PnL Update: Realized {gain_at_reduction*100:.2f}% (weighted: {realized_gain*100:.2f}%) from this reduction. " f"New cumulative Realized PnL: {position.realized_pnl*100:.2f}%")
         if is_tiny_position:
-            position.entry_price = current_price
-            # position.prev_gain = position.gain
-            # position.prev_gain_last_updated = now
             position.max_gain = max(position.gain, position.max_gain)
-            position.gain = 0.0 
-            position.unrealized_pnl = 0.0
+        _old_red = position.positionAmt
         position.positionAmt = positionAmt_abs
+        position.max_positionSize = float(config.get_account_setting(account_key, 'MAX_POSITION_SIZE') or config.MAX_POSITION_SIZE)
+        logger.critical(f"[POSAMT_WRITE][HANDLE_RED][{position_key}] {_old_red} -> {positionAmt_abs} (reduction_source={reduction_source})")
         min_qty = self.min_qty.get(symbol, 0.0001)
         pos_min_qty = max(3 * config.MIN_POSITION_SIZE / current_price, min_qty)
         if positionAmt_abs <= pos_min_qty * 1.1:
@@ -6384,18 +6937,14 @@ class PositionService:
             if position.was_reentered or position.was_reduced:
                 position.was_reentered = False
                 position.was_reduced = True
-        if position.last_signal != 'PROFIT_TAKE':
-            position.last_signal = 'REDUCE'
+        # last_signal set after decision_context fetch below (line ~6905)
         if positionAmt > pos_min_qty:
             new_gain = calculate_gain(position.position_side, current_price, position.entry_price)
+            if abs(new_gain - position.gain) > 0.1:
+                position.prev_gain = position.gain
+                position.prev_gain_last_updated = now
             position.gain = new_gain
-            # position.prev_gain = new_gain
-            # position.prev_gain_last_updated = now
             position.max_gain = max(new_gain, position.max_gain)
-        else:
-            # position.prev_gain = position.gain
-            # position.prev_gain_last_updated = now
-            position.gain = 0.0
         position.last_updated = now
         existing_reentry_amount = 0.0
         if position_key in self.reentry_data:
@@ -6446,6 +6995,15 @@ class PositionService:
         if position_key not in self.position_reasons:
             self.position_reasons[position_key] = {}
         reason_text = decision_context.get('reason') if decision_context else (reason or "Unknown")
+        _red_action = decision_context.get('action', '') if decision_context else ''
+        position.last_signal = _red_action or reason_text or reduction_reason or 'REDUCE'
+        if not position.reduction_reason and reason_text and reason_text != "Unknown":
+            position.reduction_reason = reason_text
+            reduction_reason = reason_text
+        elif not reduction_reason or not reduction_reason.strip():
+            fallback_reason = reduction_source if reduction_source and reduction_source != "system" else "detected_reduction"
+            position.reduction_reason = fallback_reason
+            reduction_reason = fallback_reason
         self.position_reasons[position_key]['last_reduction_reason'] = reason_text
         self.position_reasons[position_key]['last_reduction_full_context'] = decision_context
         await self._append_to_history(position_key, "REDUCE", reduce_qty, current_price, decision_context )
@@ -6455,6 +7013,9 @@ class PositionService:
         account_positions[position_key] = position
         self.positions[position_key] = position
         self._mark_positions_dirty()
+        asyncio.create_task(self._broadcast_positions_to_redis(account_key, {position_key}))
+        from ez_positions import atomic_save_positions
+        await atomic_save_positions(self, account_key, force=True)
         try :
             await self.stop_manager.manage(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, current_price=current_price, entry_price=entry_price, event="reduction", force_sync=True )
         except Exception as update_err:
@@ -7023,7 +7584,7 @@ class PositionService:
                     try :
                         actual_size = (await aio_os.stat(tmp_path)).st_size if await aio_os.path.exists(tmp_path) else -1
                         msg = f"Temp file {tmp_path} verification failed after {max_verify_attempts} attempts. Expected: {expected_size}, Got: {actual_size}"
-                    except : msg = f"Temp file {tmp_path} verification failed after {max_verify_attempts} attempts"
+                    except Exception: msg = f"Temp file {tmp_path} verification failed after {max_verify_attempts} attempts"
                     logger.error(msg)
                     raise RuntimeError(msg)
                 await asyncio.to_thread(os.replace, str(tmp_path), str(filepath))
@@ -7383,7 +7944,13 @@ class PositionService:
                 ts_str = str(ts_value)
             else:
                 ts_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-            entry = { "reentry_level": float(data.get("level", 0.0) or 0.0), "reentry_amount": float(data.get("amount", 0.0) or 0.0), "timestamp": ts_str, "reason": str(data.get("reason", "")), }
+            new_rl = float(data.get("level", 0.0) or 0.0)
+            new_ra = float(data.get("amount", 0.0) or 0.0)
+            existing = self.reentry_data.get(cleaned_key, {})
+            existing_rl = float(existing.get("reentry_level", 0) or 0) if isinstance(existing, dict) else 0
+            if new_rl <= 0 and existing_rl > 0:
+                continue
+            entry = { "reentry_level": new_rl, "reentry_amount": new_ra, "timestamp": ts_str, "reason": str(data.get("reason", "")), }
             self.reentry_data[cleaned_key] = entry
             updated += 1
         prefix = f"{account_key}:"
@@ -7503,6 +8070,100 @@ class PositionService:
             except Exception as exc:
                 logger.error(f"[reentry] maintenance loop error: {exc}")
             await asyncio.sleep(10.0)
+
+    async def _reentry_guardian_loop(self) -> None:
+        """GUARDIAN: Scans all sources every 60s to ensure no position ever loses its reentry level.
+        Sources: reentry_data dict, *_reentry.json, reduced_positions dict, tracker.json, *_positions.json.bak, ladder files.
+        Also writes last_reduction_price back to position object every cycle."""
+        await asyncio.sleep(15.0)
+        logger.info("[REENTRY_GUARDIAN] Started — scanning all sources every 60s")
+        while not self._housekeeping_stop:
+            try:
+                recovered = 0
+                for account_key in sorted(self.positions_by_account.keys()):
+                    acc_positions = self.positions_by_account.get(account_key, {})
+                    for pk, pos in list(acc_positions.items()):
+                        if not pos:
+                            continue
+                        existing_rd = self.reentry_data.get(pk, {})
+                        existing_rl = float(existing_rd.get('reentry_level', 0)) if isinstance(existing_rd, dict) else 0
+                        pos_lrp = float(getattr(pos, 'last_reduction_price', 0) or 0)
+                        if existing_rl > 0 and pos_lrp > 0:
+                            continue
+                        if existing_rl > 0 and pos_lrp <= 0:
+                            pos.last_reduction_price = existing_rl
+                            logger.info(f"[REENTRY_GUARDIAN] {pk}: Restored position.last_reduction_price={existing_rl:.6f} from reentry_data")
+                            continue
+                        best_rl = 0.0
+                        best_ra = 0.0
+                        best_source = ""
+                        best_ts = ""
+                        _, symbol, side_str = parse_position_key(pk)
+                        side_lower = "long" if side_str == "LONG" else "short"
+                        bp = self.config.BASE_PATH if hasattr(self.config, 'BASE_PATH') else Path(".")
+                        sources_to_check = [bp / account_key / f"{side_lower}_reentry.json", bp / account_key / "tracker.json", bp / account_key / f"{side_lower}_positions.json", bp / account_key / f"{side_lower}_positions.json.bak", bp / account_key / f"{side_lower}_ladder.json", bp / account_key / f"{side_lower}_stop_levels.json", bp / account_key / "reduced_positions.json"]
+                        _price_fields = ('reentry_level', 'last_reduction_price', 'exit_price', 'average_exit_price')
+                        _amt_fields = ('reentry_amount', 'last_reduction_amount', 'positionAmt')
+                        _ts_fields = ('timestamp', 'last_reduction_time', 'last_exit_timestamp', 'reduced_at', 'updated_at')
+                        for src_path in sources_to_check:
+                            try:
+                                if not src_path.exists():
+                                    continue
+                                async with aiofiles.open(src_path, 'r') as f:
+                                    raw = await f.read()
+                                if not raw or len(raw) < 3:
+                                    continue
+                                src_data = json.loads(raw)
+                                if isinstance(src_data, dict):
+                                    entry = src_data.get(pk, {})
+                                    if isinstance(entry, dict):
+                                        rl = 0.0
+                                        for _pf in _price_fields:
+                                            _v = float(entry.get(_pf, 0) or 0)
+                                            if _v > 0:
+                                                rl = _v
+                                                break
+                                        ra = 0.0
+                                        for _af in _amt_fields:
+                                            _v = float(entry.get(_af, 0) or 0)
+                                            if _v > 0:
+                                                ra = _v
+                                                break
+                                        src_ts = ""
+                                        for _tf in _ts_fields:
+                                            _v = str(entry.get(_tf, "") or "")
+                                            if _v and len(_v) > 10:
+                                                src_ts = _v
+                                                break
+                                        if rl > 0 and (not best_ts or src_ts > best_ts):
+                                            best_rl = rl
+                                            best_ra = ra if ra > 0 else best_ra
+                                            best_source = str(src_path.name)
+                                            best_ts = src_ts
+                            except Exception:
+                                continue
+                        if best_rl <= 0:
+                            red_price = float(getattr(pos, 'last_reduction_price', 0) or 0)
+                            red_amt = float(getattr(pos, 'last_reduction_amount', 0) or 0)
+                            if red_price > 0:
+                                best_rl = red_price
+                                best_ra = red_amt if red_amt > 0 else abs(float(pos.positionAmt)) * 0.5
+                                best_source = "position.last_reduction_price"
+                        if best_rl <= 0:
+                            pass
+                        if best_rl > 0:
+                            self.reentry_data[pk] = {"reentry_level": best_rl, "reentry_amount": best_ra, "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), "reason": f"GUARDIAN_RECOVERED_from_{best_source}"}
+                            pos.last_reduction_price = best_rl
+                            if best_ra > 0: pos.last_reduction_amount = best_ra
+                            recovered += 1
+                            logger.warning(f"[REENTRY_GUARDIAN] {pk}: RECOVERED reentry_level={best_rl:.6f} amt={best_ra:.4f} from {best_source} → wrote to position object")
+                if recovered > 0:
+                    logger.info(f"[REENTRY_GUARDIAN] Cycle complete: recovered {recovered} missing reentry levels")
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error(f"[REENTRY_GUARDIAN] Error: {exc}")
+            await asyncio.sleep(60.0)
 
     async def save_all_ladder_levels(self, account_key: str = None):
         if self._save_all_ladder_levels_active:
@@ -7682,7 +8343,12 @@ class PositionService:
             self.logger.error(f"[fin] Failed to write file: {e}")
 
     async def _universe_maintenance_loop(self) -> None:
-        self.logger.info("[UNIVERSE_MAINTENANCE] 🚀 Loop started - Running initial cleanup...")
+        self.logger.info("[UNIVERSE_MAINTENANCE] 🚀 Loop started - Waiting for positions to load before first cleanup...")
+        try:
+            await asyncio.wait_for(self._loading_complete_event.wait(), timeout=120.0)
+        except asyncio.TimeoutError:
+            self.logger.warning("[UNIVERSE_MAINTENANCE] ⏳ Timed out waiting for positions to load, proceeding anyway")
+        self.logger.info("[UNIVERSE_MAINTENANCE] Positions loaded, running initial cleanup...")
         try :
             await asyncio.wait_for(self.cleanup_positions(force=True), timeout=60.0)
         except asyncio.TimeoutError:
@@ -7703,23 +8369,23 @@ class PositionService:
         if not content_bytes: return None
         try :
             return orjson.loads(content_bytes) 
-        except :
+        except Exception:
             pass
         try :
             text = content_bytes.decode('utf-8', errors='ignore').strip()
-        except :
+        except Exception:
             return None
         if not text: return None
         try :
             obj, _ = json.JSONDecoder().raw_decode(text)
             return obj
-        except :
+        except Exception:
             pass
         try :
             text_fixed = re.sub(r'"\s+"', '", "', text)
             text_fixed = re.sub(r'}\s+{', '}, {', text_fixed)
             return orjson.loads(text_fixed) 
-        except :
+        except Exception:
             pass
         try :
             if text.startswith('['):
@@ -7728,7 +8394,7 @@ class PositionService:
             elif text.startswith('{'):
                 last_idx = text.rfind('}')
                 if last_idx > 0: return orjson.loads(text[:last_idx+1]) 
-        except :
+        except Exception:
             pass
         return None
 
@@ -7748,7 +8414,7 @@ class PositionService:
                     data = self._robust_json_decode(await f.read())
                 if isinstance(data, dict): data = data.get('symbols', []) or data.get('pairs', [])
                 return {str(s).strip().upper() for s in data} if isinstance(data, list) else set()
-            except : return set()
+            except Exception: return set()
         self.symbols_ang_long = await _get_symbols(getattr(self.config, 'SYMBOLS_ANG_LONG', 'symbols_ang_long.json'))
         self.symbols_ang_short = await _get_symbols(getattr(self.config, 'SYMBOLS_ANG_SHORT', 'symbols_ang_short.json'))
         self.symbols_inf_long = await _get_symbols(getattr(self.config, 'SYMBOLS_INF_LONG', 'symbols_inf_long.json'))
@@ -7802,7 +8468,7 @@ class PositionService:
                                         valid_acc_keys = {k for k in t_keys if k.startswith(f"{acc_key}:")}
                                         aggregated_keys.update(valid_acc_keys)
                                         accounts_checked += 1
-                            except : pass
+                            except Exception: pass
                 if len(aggregated_keys) > 5:
                     self.tradeable_keys = aggregated_keys
                     keys_loaded = True
@@ -7835,25 +8501,39 @@ class PositionService:
                 if account_key not in self.positions_by_account:
                     self.positions_by_account[account_key] = {}
                 
-                # 1. Add missing positions
+                # 1. Add missing positions — ONLY if not already in memory or on disk
                 for symbol in master_symbols:
                     for side in ["LONG", "SHORT"]:
                         pos_key = f"{account_key}:{symbol}_{side}"
-                        if pos_key not in self.positions_by_account[account_key]:
-                            raise 
-                            # now_dt = datetime.now(timezone.utc)
-                            # new_pos = Position(
-                            #     symbol=symbol, position_side=side, entry_price=0.0, mark_price=0.0, positionAmt=0.0,
-                            #     initial_quantity=0.0, gain=0.0, max_gain=0.0, prev_gain=0.0, max_quantity=0.0,
-                            #     last_augmentation_amount=0.0, last_augmentation_price=0.0, last_augmentation_time=None,
-                            #     last_reduction_amount=0.0, last_reduction_price=0.0, last_reduction_time=None,
-                            #     max_positionSize=0.0, opened_at=None, last_updated=now_dt, last_signal="",
-                            #     realized_pnl=0.0, unrealized_pnl=0.0, was_reentered=False, was_reduced=False,
-                            #     prev_gain_last_updated=None, augment_reason="", reduction_reason="", mark_price_last_updated=now_dt
-                            # )
-                            # self.positions_by_account[account_key][pos_key] = new_pos
-                            # self.positions[pos_key] = new_pos
-                            # added_count += 1
+                        if pos_key in self.positions_by_account[account_key]:
+                            continue
+                        if pos_key in self.positions:
+                            existing = self.positions[pos_key]
+                            self.positions_by_account[account_key][pos_key] = existing
+                            continue
+                        disk_pos = None
+                        try:
+                            side_file = self.base_path / account_key / f"{side.lower()}_positions.json"
+                            if side_file.exists():
+                                with open(side_file, "r") as df:
+                                    disk_data = json.load(df)
+                                if isinstance(disk_data, dict) and "positions" in disk_data:
+                                    disk_data = disk_data["positions"]
+                                if pos_key in disk_data and isinstance(disk_data[pos_key], dict):
+                                    disk_pos = Position.from_dict(disk_data[pos_key])
+                                    logger.debug(f"[_sync_memory] Loaded {pos_key} from disk (amt={disk_pos.positionAmt})")
+                        except Exception:
+                            pass
+                        if not disk_pos:
+                            backup_pos = await self.restore_position_from_backups(account_key, symbol, side)
+                            if backup_pos:
+                                disk_pos = backup_pos
+                        if disk_pos:
+                            self.positions_by_account[account_key][pos_key] = disk_pos
+                            self.positions[pos_key] = disk_pos
+                            added_count += 1
+                        else:
+                            logger.error(f"[_sync_memory] {pos_key}: NOT on disk, NOT in backups. Position data truly missing — cannot create without data.")
                 
                 # 2. Remove obsolete empty positions
                 keys_to_remove = []
@@ -7921,7 +8601,7 @@ class PositionService:
             if persistence_file.exists():
                 async with aiofiles.open(str(persistence_file), 'rb') as f:
                     old_persistence = orjson.loads(await f.read()) 
-        except : pass
+        except Exception: pass
         global_known_hedges_history = set()
         current_active_hedges = set()
         managed_accounts = list(self.accounts.keys()) 
@@ -7989,7 +8669,7 @@ class PositionService:
                 try :
                     sym = k.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
                     is_short_term = (sym in w15 or sym in l15) and (sym not in w20 and sym not in l20)
-                except : pass
+                except Exception: pass
                 limit = short_term_seconds if is_short_term else retention_seconds
                 if age < limit or limit < 1.0: 
                     final_local_persistence[k] = ts
@@ -8006,7 +8686,59 @@ class PositionService:
             for h_key in current_active_hedges:
                 if h_key.startswith(account_prefix):
                     valid_keys_for_this_account.add(h_key)
-                    final_local_persistence[h_key] = now_ts 
+                    final_local_persistence[h_key] = now_ts
+
+            # --- HEDGE PAIR CLEANUP ---
+            # If both LONG and SHORT exist for the same symbol, it's a hedge pair.
+            # Remove BOTH keys. Then re-add: winner → LONG only, loser → SHORT only.
+            symbols_in_account = {}
+            for k in list(valid_keys_for_this_account):
+                try:
+                    _parts = k.split(':')[1] if ':' in k else k
+                    if '_LONG' in _parts:
+                        _sym = _parts.replace('_LONG', '')
+                        symbols_in_account.setdefault(_sym, {})['LONG'] = k
+                    elif '_SHORT' in _parts:
+                        _sym = _parts.replace('_SHORT', '')
+                        symbols_in_account.setdefault(_sym, {})['SHORT'] = k
+                except Exception:
+                    pass
+
+            for _sym, sides in symbols_in_account.items():
+                if 'LONG' in sides and 'SHORT' in sides:
+                    # Hedge pair detected — only clean up sides with positionAmt == 0
+                    long_key = sides['LONG']
+                    short_key = sides['SHORT']
+                    long_pos = positions.get(long_key)
+                    short_pos = positions.get(short_key)
+                    long_open = long_pos and abs(float(getattr(long_pos, 'positionAmt', 0.0))) > 0
+                    short_open = short_pos and abs(float(getattr(short_pos, 'positionAmt', 0.0))) > 0
+
+                    # Only remove CLOSED hedge sides — open positions ALWAYS stay tradeable
+                    if not long_open and not short_open:
+                        # Both closed: remove both, re-add based on winner/loser
+                        valid_keys_for_this_account.discard(long_key)
+                        valid_keys_for_this_account.discard(short_key)
+                        final_local_persistence.pop(long_key, None)
+                        final_local_persistence.pop(short_key, None)
+                        if _sym in all_winners:
+                            valid_keys_for_this_account.add(long_key)
+                            final_local_persistence[long_key] = now_ts
+                        elif _sym in all_losers:
+                            valid_keys_for_this_account.add(short_key)
+                            final_local_persistence[short_key] = now_ts
+                        self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — both closed. Keep={'LONG' if _sym in all_winners else 'SHORT' if _sym in all_losers else 'NONE'}")
+                    elif not long_open:
+                        # Only LONG closed: remove LONG key, SHORT stays (open position)
+                        valid_keys_for_this_account.discard(long_key)
+                        final_local_persistence.pop(long_key, None)
+                        self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — LONG closed, SHORT still open")
+                    elif not short_open:
+                        # Only SHORT closed: remove SHORT key, LONG stays (open position)
+                        valid_keys_for_this_account.discard(short_key)
+                        final_local_persistence.pop(short_key, None)
+                        self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — SHORT closed, LONG still open")
+
             final_keys_set.update(valid_keys_for_this_account)
         external_keys = set()
         try :
@@ -9152,7 +9884,7 @@ class PositionService:
                  try :
                      redis_manager = await get_simple_redis_manager()
                      self.redis_manager = redis_manager
-                 except : pass
+                 except Exception: pass
             tracker_manager = getattr(self, 'tracker_manager', None)
             if not tracker_manager and TrackerManagerClass:
                 try :
@@ -9230,6 +9962,7 @@ class PositionService:
             self._reversed_save_task = None
         self._auxiliary_snapshot_task = asyncio.create_task(self._auxiliary_snapshot_loop()) 
         self._reentry_maintenance_task = asyncio.create_task(self._reentry_maintenance_loop())
+        self._reentry_guardian_task = asyncio.create_task(self._reentry_guardian_loop())
         self._positions_periodic_save_task = asyncio.create_task(self._positions_periodic_save_loop())
         self._mark_price_update_task = asyncio.create_task(self._update_mark_prices_loop())
         logger.info("[HOUSEKEEPING] tasks started (all loaded)")
@@ -9395,7 +10128,7 @@ class PositionService:
                     try :
                         account_key = position_key.split(':')[0]
                         if account_key == 'flz':continue
-                    except :
+                    except Exception:
                         keys_to_remove.append(position_key)
                         continue
                     position = self.positions.get(position_key)
@@ -9509,7 +10242,7 @@ class PositionService:
                     master_symbols = []
             else:
                 master_symbols = []
-        except :
+        except Exception:
             master_symbols = []
         expected_symbols = set(str(s).strip().upper() for s in master_symbols)
         recovered_count = 0
@@ -9529,23 +10262,33 @@ class PositionService:
                 try :
                     pk = construct_position_key(account_key, sym, side)
                     all_expected_keys.add(pk)
-                except : 
+                except Exception: 
                     pass
             for pk in all_expected_keys:
-                if pk in acc_positions:
+                if pk in acc_positions and acc_positions[pk] is not None:
                     continue
-                final_position_obj = None
                 candidate_pos = None
                 if pk in disk_snapshot:
                     payload = disk_snapshot[pk]
                     if isinstance(payload, dict):
                         try :
                             candidate_pos = Position.from_dict(payload)
+                            recovered_count += 1
                         except Exception as e:
                             logger.error(f"[_ensure_full_pk_coverage] Failed to parse disk entry for {pk}: {e}")
-                final_position_obj = candidate_pos 
-                acc_positions[pk] = final_position_obj
-                self.positions[pk] = final_position_obj
+                if not candidate_pos:
+                    try:
+                        _, sym, sd = parse_position_key(pk)
+                        candidate_pos = await self.restore_position_from_backups(account_key, sym, sd)
+                        if candidate_pos:
+                            recovered_count += 1
+                    except Exception:
+                        pass
+                if candidate_pos:
+                    acc_positions[pk] = candidate_pos
+                    self.positions[pk] = candidate_pos
+                else:
+                    logger.error(f"[_ensure_full_pk_coverage] {pk}: NOT on disk, NOT in backups — cannot populate")
         if recovered_count > 0 or created_count > 0:
             logger.info(f"[_ensure_full_pk_coverage] {account_key}: Recovered {recovered_count} from disk/backup, Created {created_count} fresh positions. Total now: {len(acc_positions)}")
             logger.debug(f"[_ensure_full_pk_coverage] ⏸️ SAVE DISABLED - updates queued for periodic saver")
@@ -10432,9 +11175,9 @@ class PositionService:
                 if not hasattr(position, 'prev_gain_last_updated') or position.prev_gain_last_updated is None:
                     position.prev_gain_last_updated = now
                     current_gain = getattr(position, 'gain', 0.0)
-                    # prev_gain = getattr(position, 'prev_gain', 0.0)
-                    # if prev_gain == 0.0 and current_gain != 0.0:
-                    #     position.prev_gain = current_gain
+                    prev_gain = getattr(position, 'prev_gain', 0.0)
+                    if prev_gain == 0.0 and current_gain != 0.0:
+                        position.prev_gain = current_gain
                     try :
                         account_key, _, _ = parse_position_key(position_key)
                         touched_accounts.add(account_key)
@@ -10525,7 +11268,7 @@ class PositionService:
         self.reentry_plans[position_key] = replace(plan, reentry_amount=deteriorated_amount, updated_at=datetime.now(timezone.utc))
 
     def ensure_position_floats(self, position: Position) -> Position:
-        numeric_fields = [ "entry_price", "mark_price", "positionAmt", "initial_quantity", "gain", "max_gain", "prev_gain", "max_quantity", "last_augmentation_amount", "last_augmentation_price", "last_reduction_amount", "last_reduction_price", "max_positionSize", "realized_pnl", "unrealized_pnl" ]
+        numeric_fields = [ "entry_price", "mark_price", "positionAmt", "initial_quantity", "gain", "max_gain", "prev_gain", "max_quantity", "last_augmentation_amount", "last_augmentation_price", "last_reduction_amount", "last_reduction_price", "max_positionSize", "realized_pnl", "unrealized_pnl_USD" ]
         for field in numeric_fields:
             if hasattr(position, field):
                 val = getattr(position, field)
@@ -10588,11 +11331,11 @@ class PositionService:
         qty = _safe_float(api_positionAmt_abs)
         if qty:
             if (position.position_side or "").upper() == "LONG":
-                position.unrealized_pnl = (current_price - position.entry_price) * qty
+                position.unrealized_pnl_USD = (current_price - position.entry_price) * qty
             else:
-                position.unrealized_pnl = (position.entry_price - current_price) * qty
+                position.unrealized_pnl_USD = (position.entry_price - current_price) * qty
         else:
-            position.unrealized_pnl = None
+            position.unrealized_pnl_USD = None
             self.positions[position_key] = position
             try :
                 account_key, _, _ = parse_position_key(position_key)
@@ -10753,6 +11496,8 @@ async def _is_in_cooldown_period(ctx: dict, position) -> bool:
 
 async def _check_predefined_stop_levels(ctx: dict, position, current_price: float, is_long: bool) -> Optional[Signal]:
     """Check predefined stop loss levels"""
+    if not current_price or current_price <= 0:
+        return None
     position_key = ctx['position_key']
     service = ctx['service']
     stop_levels = await safe_get_stop_levels_data(position_key, service)
@@ -10848,7 +11593,7 @@ async def _check_immediate_reduction_triggers(ctx: dict, indicators: dict, posit
         return None
     except Exception as e:
         try : ctx.get('logger').error(f"CRITICAL ERROR in _check_immediate_reduction_triggers: {e}")
-        except : print(f"CRITICAL ERROR in _check_immediate_reduction_triggers: {e}")
+        except Exception: print(f"CRITICAL ERROR in _check_immediate_reduction_triggers: {e}")
         return None
 
 async def _check_aggressive_exit_conditions(ctx: dict, indicators: dict, position, current_price: float, is_long: bool) -> Optional[Signal]:
@@ -10901,7 +11646,38 @@ async def _check_signal_driven_exits(ctx: dict, indicators: dict, position, curr
     if ('dc_low_crossunder' in event_type and is_long) or ('dc_high_crossover' in event_type and not is_long):
         return _create_stop_signal(ctx, position, f"SIGNAL_DRIVEN_DC_{'LOW' if is_long else 'HIGH'}_STOP", is_long)
     stoch_k_15m = indicators.get('stoch_k_15m', 50) or 50
-    if ('stoch_crossunder' in event_type and is_long and stoch_k_15m > 70) or ('stoch_crossover' in event_type and not is_long and stoch_k_15m < 30):
+    stoch_d_15m = indicators.get('stoch_d_15m', 50) or 50
+    stoch_k_3m = indicators.get('stoch_k_3m', 50) or 50
+    stoch_d_3m = indicators.get('stoch_d_3m', 50) or 50
+    stoch_k_1m = indicators.get('stoch_k_1m', 50) or 50
+    stoch_d_1m = indicators.get('stoch_d_1m', 50) or 50
+    stoch_k_1h = indicators.get('stoch_k_1h', 50) or 50
+    stoch_d_1h = indicators.get('stoch_d_1h', 50) or 50
+    stoch_k_4h = indicators.get('stoch_k_4h', 50) or 50
+    stoch_d_4h = indicators.get('stoch_d_4h', 50) or 50
+    stoch_k_D = indicators.get('stoch_k_D', 50) or 50
+    stoch_d_D = indicators.get('stoch_d_D', 50) or 50
+    ha_D = indicators.get('ha_D', 'neutral')
+
+    if is_long:
+        # Exit LONG requires checking SHORT entry conditions
+        ltf_aligned = sum([stoch_k_1m < stoch_d_1m, stoch_k_3m < stoch_d_3m, stoch_k_15m < stoch_d_15m]) >= 2
+        htf_aligned = sum([stoch_k_1h < stoch_d_1h, stoch_k_4h < stoch_d_4h, ha_D == 'red' or stoch_k_D < stoch_d_D]) >= 2
+        stoch_ok = (stoch_k_15m < 50 and stoch_k_3m < stoch_d_3m) or (stoch_k_15m > 70 and stoch_k_3m < stoch_d_3m)  # bearish 15m OR overbought extreme
+        rsi_1h_le = float(indicators.get('rsi_1h', 50) or 50)
+        rsi_exit_ok = rsi_1h_le > 50  # exit longs when RSI confirms overbought (1h RSI > 50)
+        is_long_exit_zone = stoch_ok and ltf_aligned and htf_aligned and rsi_exit_ok
+        is_short_exit_zone = False
+    else:
+        # Exit SHORT requires checking LONG entry conditions
+        ltf_aligned = sum([stoch_k_1m > stoch_d_1m, stoch_k_3m > stoch_d_3m, stoch_k_15m > stoch_d_15m]) >= 2
+        htf_aligned = sum([stoch_k_1h > stoch_d_1h, stoch_k_4h > stoch_d_4h, ha_D == 'green' or stoch_k_D > stoch_d_D]) >= 2
+        stoch_ok = (stoch_k_15m > 50 and stoch_k_3m > stoch_d_3m) or (stoch_k_15m < 30 and stoch_k_3m > stoch_d_3m)
+        rsi_short_exit_ok = float(indicators.get('rsi_1h', 50) or 50) < 50  # exit shorts when RSI falls below 50
+        is_short_exit_zone = stoch_ok and ltf_aligned and htf_aligned and rsi_short_exit_ok
+        is_long_exit_zone = False
+
+    if ('stoch_crossunder' in event_type and is_long and is_long_exit_zone) or ('stoch_crossover' in event_type and not is_long and is_short_exit_zone):
         return _create_stop_signal(ctx, position, f"SIGNAL_DRIVEN_STOCH_{'OVERBOUGHT' if is_long else 'OVERSOLD'}_STOP", is_long)
     wt_signal_3m = indicators.get('wt_signal_3m', '') or ''
     if ('wt_signal_3m' in event_type and ((is_long and wt_signal_3m == 'SELL' and (time_since_augment < 12 or stoch_k_15m > 90)) or (not is_long and wt_signal_3m == 'BUY' and (time_since_augment < 12 or stoch_k_15m < 10)))):
@@ -10958,6 +11734,8 @@ async def _check_proactive_profit_taking(ctx: dict, indicators: dict, position, 
     return None
 
 async def _check_trailing_stops(ctx: dict, indicators: dict, position, current_price: float, is_long: bool) -> Optional[Signal]:
+    if not current_price or current_price <= 0:
+        return None
     i = indicators
     now = datetime.now(timezone.utc)
     time_since_augment = minutes_since(position.last_augmentation_time, now)
@@ -11044,6 +11822,8 @@ async def _check_atr_stops(ctx: dict, indicators: dict, position, current_price:
 
 async def _check_momentum_stops(ctx: dict, indicators: dict, position, current_price: float, is_long: bool) -> Optional[Signal]:
     """Check momentum-based stop conditions"""
+    if not current_price or current_price <= 0:
+        return None
     signal_data = ctx.get('signal_data')
     if not signal_data:
         return None
@@ -11092,6 +11872,8 @@ async def evaluate_master_stop_loss(ctx: dict) -> Optional[Signal]:
     indicators = ctx['indicators']
     service = ctx['service']
     if is_hedge_account(config, account_key) and gain < 0.0:
+        return None
+    if not current_price or current_price <= 0:
         return None
     pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, service.min_qty.get(ctx['symbol'], 0.001))
     tier_mult = calculate_tier_mult(indicators, is_long)
@@ -11157,11 +11939,28 @@ async def evaluate_reversal_exit(ctx: dict) -> Optional[Signal]:
         return None
     i = ii(ctx['service'], ctx['symbol'])
     if account_key == 'fin' and config.REV_MODE and reversed_position and reversed_position.positionAmt > 0:
-        k_3m = i.get('stoch_k_3m', 50)
-        d_3m = i.get('stoch_d_3m', 50)
-        t_up_3m = i.get('t_up_3m', False)
+        k_1m = i.get('stoch_k_1m', 50); d_1m = i.get('stoch_d_1m', 50)
+        k_3m = i.get('stoch_k_3m', 50); d_3m = i.get('stoch_d_3m', 50)
+        k_15m = i.get('stoch_k_15m', 50); d_15m = i.get('stoch_d_15m', 50)
+        k_1h = i.get('stoch_k_1h', 50); d_1h = i.get('stoch_d_1h', 50)
+        k_4h = i.get('stoch_k_4h', 50); d_4h = i.get('stoch_d_4h', 50)
+        k_D = i.get('stoch_k_D', 50); d_D = i.get('stoch_d_D', 50)
+        ha_D = i.get('ha_D', 'neutral')
+
+        # Since this is an exit, we use the inverse condition
+        if is_long:
+            ltf_aligned = sum([k_1m < d_1m, k_3m < d_3m, k_15m < d_15m]) >= 2
+            htf_aligned = sum([k_1h < d_1h, k_4h < d_4h, ha_D == 'red' or k_D < d_D]) >= 2
+            stoch_condition = (k_15m < 50 and k_3m < d_3m) or (k_15m > 70 and k_3m < d_3m)  # bearish 15m OR overbought extreme
+        else:
+            ltf_aligned = sum([k_1m > d_1m, k_3m > d_3m, k_15m > d_15m]) >= 2
+            htf_aligned = sum([k_1h > d_1h, k_4h > d_4h, ha_D == 'green' or k_D > d_D]) >= 2
+            stoch_condition = (k_15m > 50 and k_3m > d_3m) or (k_15m < 30 and k_3m > d_3m)
+
+        if not ltf_aligned or not htf_aligned:
+            stoch_condition = False
+
         if k_3m is not None and d_3m is not None:
-            stoch_condition = (is_long and k_3m < d_3m and not t_up_3m) or (not is_long and k_3m > d_3m and t_up_3m)
             prev_gain_check_valid_rev_exit = False
             prev_gain_rev_exit = 0.0
             if position and hasattr(position, 'prev_gain_last_updated') and position.prev_gain_last_updated:
@@ -11181,8 +11980,8 @@ async def evaluate_reversal_exit(ctx: dict) -> Optional[Signal]:
             gain_condition = (price_deteriorated_rev_exit and gain < 0.5)
             if stoch_condition and gain_condition:
                 if config.VERBOSE_STOPS:
-                    logger.info(f"[REVERSAL_EXIT_RETURN] {position_key}: REVERSE_CLOSE - FIN account hedge exit condition met k_3m={k_3m:.1f} d_3m={d_3m:.1f} t_up_3m={t_up_3m} gain={gain:.2f}% prev_gain={position.prev_gain:.2f}%")
-                return Signal(action='REVERSE_CLOSE', reason=f'FIN_HEDGE_EXIT_k_3mm<d3m={k_3m:.1f}<{d_3m:.1f}_tup3m={t_up_3m}_gain={gain:.2f}%<prev={position.prev_gain:.2f}%', conviction=95.0 if is_long else -95.0)
+                    logger.info(f"[REVERSAL_EXIT_RETURN] {position_key}: REVERSE_CLOSE - FIN account hedge exit condition met k_3m={k_3m:.1f} d_3m={d_3m:.1f} gain={gain:.2f}% prev_gain={position.prev_gain:.2f}%")
+                return Signal(action='REVERSE_CLOSE', reason=f'FIN_HEDGE_EXIT_k_3mm<d3m={k_3m:.1f}<{d_3m:.1f}__gain={gain:.2f}%<prev={position.prev_gain:.2f}%', conviction=95.0 if is_long else -95.0)
     if reversed_position and reversed_position.positionAmt > 0:
         current_reversed_amt = reversed_position.positionAmt
         current_original_amt = position.positionAmt
@@ -11301,6 +12100,8 @@ async def check_position_reductions(service, position_key: str, account_key: str
             return
     try :
         current_price = safe_fetch_float(getattr(position, 'mark_price', 0), 0.0)
+        if not current_price or current_price <= 0:
+            return
         gain = getattr(position, 'gain', 0.0)
         pos_amt = abs(float(getattr(position, 'positionAmt', 0)))
         pos_min_qty = max(2 * config.MIN_POSITION_SIZE / current_price, service.min_qty.get(symbol, 0.0001))
@@ -11644,7 +12445,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                 if should_reduce_immediate and minutes_since(position.last_reduction_time, now_dt) >= 3:
                     reduction_qty = min(reduction_qty, position.positionAmt - retention_qty)
                     if position.positionAmt * current_price > 250:
-                        reduction_qty = position.positionAmt / current_price - 200 / current_price
+                        reduction_qty = position.positionAmt - 200 / current_price
                     if reduction_qty > retention_qty:
                         logger.warning(f"[IMMEDIATE_REDUCTION] {position_key}: Good gain/extreme stoch + {'lower_low' if is_long else 'higher_high'}. gain={position.gain:.2f}% k_15m={k_15m:.1f} value=${value_usd:.0f}")
                         side = 'SELL' if position_side == 'LONG' else 'BUY'
@@ -11673,7 +12474,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                         price_deteriorated_protection = False 
                 else:
                     price_deteriorated_protection = position.gain < prev_gain_protection
-                if value_usd > medium_position_threshold and price_deteriorated_protection and minutes_since(position.opened_at, now_dt) >= 5 and position.gain < 0.2:
+                if value_usd > medium_position_threshold and price_deteriorated_protection and minutes_since(position.opened_at, now_dt) >= 5 and position.gain < -0.5:
                     if minutes_since(position.last_reduction_time, now_dt) >= 3:
                         target_value_first = 200.0
                         if value_usd > target_value_first:
@@ -11719,7 +12520,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                     if price_deteriorated_deterioration:
                         deterioration_count = service.gain_deterioration_count.get(position_key, 0) + 1
                         service.gain_deterioration_count[position_key] = deterioration_count
-                        if deterioration_count >= 2 and position_key not in service.gain_deterioration_reentry:
+                        if deterioration_count >= 5 and position_key not in service.gain_deterioration_reentry and position.gain < 0.0:
                             reduction_qty = max(position.positionAmt * 0.5, position.positionAmt - 2 * retention_qty)
                             reduction_qty = min(reduction_qty, position.positionAmt - retention_qty)
                             if reduction_qty > retention_qty:
@@ -11786,7 +12587,10 @@ async def check_position_reductions(service, position_key: str, account_key: str
                         d_3m = i.get('stoch_d_3m', 50.0)
                         t_up_3m = i.get('t_up_3m', False)
                         stoch_condition = (is_long and k_3m > d_3m and t_up_3m) or (not is_long and k_3m < d_3m and not t_up_3m)
-                        if stoch_condition:
+                        k_15m_r = safe_fetch_float(i.get('stoch_k_15m', 50.0), 50.0)
+                        d_15m_r = safe_fetch_float(i.get('stoch_d_15m', 50.0), 50.0)
+                        htf_aligned = (is_long and k_15m_r > d_15m_r) or (not is_long and k_15m_r < d_15m_r)
+                        if stoch_condition and htf_aligned and position.gain > 0.3:
                             pre_reduction_value = (position.positionAmt + position.last_reduction_amount) * position.last_reduction_price
                             was_large_position = pre_reduction_value > 3.0 * START_USD
                             if was_large_position:
@@ -11798,7 +12602,7 @@ async def check_position_reductions(service, position_key: str, account_key: str
                                 current_notional = abs(position.positionAmt) * current_price
                                 if current_notional + (reentry_qty * current_price) > max_pos_size_usd:
                                     allowed_additional_usd = max_pos_size_usd - current_notional
-                                reentry_qty = allowed_additional_usd / current_price 
+                                    reentry_qty = allowed_additional_usd / current_price if current_price else reentry_qty
                                 logger.info(f"[IMMEDIATE_REENTRY] {position_key}: Price crossed back ({current_price:.6f} {'>' if is_long else '<'} {position.last_reduction_price:.6f}) within {time_since_reduction:.1f}min, k_3m={k_3m:.1f} d_3m={d_3m:.1f} t_up_3m={t_up_3m}, reentrying full reduction amount {reentry_qty:.6f}")
                                 side = 'BUY' if position_side == 'LONG' else 'SELL'
                                 unique_id = f"immediate_reentry_{int(time.time())}_{uuid.uuid4().hex[:8]}"
@@ -11846,7 +12650,7 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
         content = raw_data
         if isinstance(content, (bytes, bytearray)):
             try : content = content.decode('utf-8')
-            except : pass
+            except Exception: pass
         if not isinstance(content, (str, dict)): return None
         if isinstance(content, dict): return content
         try :
@@ -11857,7 +12661,7 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
                     try :
                         decoded = ast.literal_eval(decoded).decode('utf-8')
                         return json.loads(decoded)
-                    except : pass
+                    except Exception: pass
                 if decoded.strip().startswith('{'):
                     return robust_decode(decoded)
             return decoded
@@ -11868,7 +12672,7 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
                 if content.startswith('"') and content.endswith('"'):
                     import ast
                     return json.loads(ast.literal_eval(content))
-            except : pass
+            except Exception: pass
         return None
     redis_loaded_successfully = False
     if load_priority == 'redis' and service.redis_manager and service.redis_manager.has_any_connection():
@@ -11956,10 +12760,10 @@ if __name__ == "__main__":
                         if kill_flag.exists():
                             logger.warning(f"[positions_service] Kill flag file found - exiting cleanly for deployment")
                             try : kill_flag.unlink()
-                            except : pass
+                            except Exception: pass
                             await _graceful_shutdown("kill_flag")
                             break
-                    except : pass
+                    except Exception: pass
                 try :
                     await asyncio.wait_for(service._shutdown_event.wait(), timeout=1.0)
                     break

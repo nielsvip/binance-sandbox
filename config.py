@@ -19,44 +19,50 @@ class Config:
 
     def __hash__(self):
         return id(self)
-    MIN_POSITION_SIZE: float =              0.3
-    MAX_POSITION_SIZE: float =              800.0
-    MAX_POSITION_SIZE_BTC: float =          6000.0
-    MAX_POSITION_SIZE_MEN: float =          1200.0
-    MAX_POSITION_SIZE_FIN: float =          4000.0
-    HIGH_GAIN_AUGMENTATION_MIN_SIZE=        200
 
-    MAX_ORDER_VALUE:float      =            280
-    MAX_ORDER_VALUE_MEN: float =            240.0
-    MAX_ORDER_VALUE_FIN: float =            120.0
-    START_POSITION_SIZE: float =            55.0
+    MIN_POSITION_SIZE: float = 0.9
+    MAX_POSITION_SIZE: float = 800.0
+    MAX_POSITION_SIZE_BTC: float = 6000.0
+    MAX_POSITION_SIZE_MEN: float = 1200.0
+    MAX_POSITION_SIZE_FIN: float = 4000.0
+    HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
+
+    MAX_ORDER_VALUE: float = 280
+    MAX_ORDER_VALUE_MEN: float = 240.0
+    MAX_ORDER_VALUE_FIN: float = 120.0
+    START_POSITION_SIZE: 16.0 = 18.0
 
     # PnL Deterioration Settings
-    PNL_DECAY_START_HOURS: int =            1 #HOURS
-    PNL_DECAY_COMPLETE_DAYS: int =          5 #DAYS
-    
-    PNL_DECAY_FINAL_PERCENTAGE: float =     0.1  # Keep 10% after full decay
-    MAX_DECAY_START_HOURS=                  1
-    MAX_DECAY_COMPLETE_DAYS=                7
-    MAX_GAIN_DECAY_COMPLETE_DAYS=           7
+    PNL_DECAY_START_HOURS: int = 1  # HOURS
+    PNL_DECAY_COMPLETE_DAYS: int = 5  # DAYS
+
+    PNL_DECAY_FINAL_PERCENTAGE: float = 0.1  # Keep 10% after full decay
+    MAX_DECAY_START_HOURS = 1
+    MAX_DECAY_COMPLETE_DAYS = 7
+    MAX_GAIN_DECAY_COMPLETE_DAYS = 7
     # PNL_PERFORMANCE_WINDOW_HOURS: int =     48   # Window for recent performance calculation
-    ZERO_CONFIRMATION_THRESHOLD_WS:    int =   2
-    ZERO_CONFIRMATION_THRESHOLD_API:    int =  1
-    MIN_PERC_FROM_SMA_1: float          =   1.0 /100   #SMA_1
-    MIN_PERC_FROM_SMA_15: float         =   3.0 /100   #SMA_15
-    MIN_GAIN_TO_BUY_AGGRESSIVELY: float =   0.7
+    ZERO_CONFIRMATION_THRESHOLD_WS: int = 2
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 5
+    MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
+    MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
+    MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 5.0  # ABLATION_BACKTEST: was 1.5. Higher = much better Sharpe. Only augment confirmed 5%+ winners
+    AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
+    MAX_AUGMENTS_PER_POSITION: int = 3  # URGENT_FIX: cap total augments, stop piling into losers
+    BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs
     # MIN_PROFIT_FOR_PROFIT_TAKING: float =   0.4
 
-    EXTREME_MODE: bool =                    False
-    LIGHT_MODE: bool =                      False
-    MARKET_MODE: str =                      "NORMAL_MODE"
-    REV_MODE: bool =                        False
+    EXTREME_MODE: bool = False
+    LIGHT_MODE: bool = False
+    MARKET_MODE: str = "NORMAL_MODE"
+    REV_MODE: bool = False
 
-    SERVICE_STOP=                           True
-    SERVICE_REDUCE=                         True
-    MANAGE_REDUCE=                          True
-    HEDGE_MODE:bool =                       True
-    SCALP_MODE =                            True
+    SERVICE_STOP = True
+    SERVICE_REDUCE = True
+    MANAGE_REDUCE = True
+    HEDGE_MODE: bool = True  # Hedges protect positions — open hedges IN TIME before losses develop
+    SCALP_MODE = False  # OPTIMAL_V1: OFF (Phase 3 winner)
+    SANDBOX_MODE: bool = False
+    SANDBOX_ACCOUNTS: List[str] = field(default_factory=lambda: ["sbx"])
 
     # SERVICE_STOP=                           True
     # SERVICE_REDUCE=                         True
@@ -64,69 +70,271 @@ class Config:
     # HEDGE_MODE:bool =                       False
     # SCALP_MODE =                            False
 
-    SCALP_ACCOUNTS=                         ['ang','men', 'flz']
-    HEDGE_ACCOUNTS=                         ['ang','inf','fin','men','flz']
-    STRICT_NO_LOSS_ACCOUNTS=                ['ang','inf','men','fin']
-    SCALP_OVERRIDE=                         False
-    ACCOUNT_OVERRIDES: Dict[str, Dict] = field(default_factory=lambda: {'ang': {}, 'inf': {}, 'men': {}, 'fin': {}, 'flz': {}})
-    BASIS_CONDITION: bool =                 True
+    SCALP_ACCOUNTS = ["ang", "men"]
+    HEDGE_ACCOUNTS = ["ang", "inf", "fin", "men", "flz"]  # Hedge accounts — ALL accounts get hedge protection
+    STRICT_NO_LOSS_ACCOUNTS = [
+        "ang",
+        "inf",
+        "men",
+        "fin",
+        "flz",
+    ]  # UNIVERSAL: never sell at a loss on ANY account
+    SCALP_OVERRIDE = False
+    ACCOUNT_OVERRIDES: Dict[str, Dict] = field(
+        default_factory=lambda: {"ang": {}, "inf": {}, "men": {}, "fin": {}, "flz": {}}
+    )
 
-    ENABLE_LOSS_PROTECTION: bool =          True   # Block closing positions with gain <= 0.12%
-    NEW_POSITION_MIN_AGE_SECONDS: float =   180.0   # Consider position "new" if opened within this time
-    NEW_POSITION_MAX_LOSS_THRESHOLD: float= -0.7  # New positions can only reduce if loss > this threshold (loss > -0.2% allows reduction)
+    # --- Timeframe Focus Architecture ---
+    TF_FOCUS: str = "3m"  # BACKTEST_CHANGE_1: was "15m". 3m dominates top 5000 (79%, avg Sharpe 305 vs 256)
+    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m
+    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry
+    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit
+    TF_ALIGNMENT_MIN_TOTAL: int = 3  # BACKTEST_CHANGE_32: was 4. Over-filtering kills entries, mask=0 avg Sharpe 394
+    TF_ALIGNMENT_MIN_SHORT: int = 1  # BACKTEST_CHANGE_33: was 2. Only need 3m to agree
+    TF_ALIGNMENT_MIN_LONG: int = 1  # BACKTEST_CHANGE_34: was 2. HTF adds value but shouldn't hard-block
+
+    ENABLE_LOSS_PROTECTION: bool = True  # Block closing positions with gain <= 0.12%
+    NEW_POSITION_MIN_AGE_SECONDS: float = (
+        180.0  # Consider position "new" if opened within this time
+    )
+    NEW_POSITION_MAX_LOSS_THRESHOLD: float = (
+        -0.7
+    )  # New positions can only reduce if loss > this threshold (loss > -0.2% allows reduction)
     # === STOP-THE-BLEED: Centralized Loss Prevention ===
-    STOP_TIMEFRAME: str =                   '15m'  # Controls dc_low/dc_high used for stops (was hardcoded 3m)
-    FAST_CUT_LOSS_THRESHOLD: float =        -1.5   # Was -0.65 (too tight)
-    FAST_CUT_LOSS_MIN_AGE_MINUTES: float =  15.0   # Was 6 min (too short)
-    AGGRESSIVE_LOSS_CUT_ENABLED: bool =     False  # Was implicitly True
-    BREAKOUT_GUARD_LOSS_THRESHOLD: float =  -0.5   # Was -0.1 (instant death)
+    STOP_TIMEFRAME: str = (
+        "15m"  # Controls dc_low/dc_high used for stops (was hardcoded 3m)
+    )
+    FAST_CUT_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_18: was -1.5. Dead code — ALL accounts STRICT_NO_LOSS
+    FAST_CUT_LOSS_MIN_AGE_MINUTES: float = 15.0  # Was 6 min (too short)
+    AGGRESSIVE_LOSS_CUT_ENABLED: bool = False  # Was implicitly True
+    BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills
-    EXIT_ON_ALL_ENABLED: bool =             False  # Was True via EXIT_ON_ALL
-    REDUCE_HUGE_LOSS_THRESHOLD: float =     -2.0   # Was -0.5
-    HEDGE_TRIGGER_LOSS_PCT: float =         -0.3   # Was -1.0 (hedge earlier)
-    ORPHAN_HEDGE_CHECK_GAIN: bool =         True   # Check gain before killing orphans
-    REENTRY_MANDATORY: bool =               True   # Enforce reentry after every exit
-    LOSS_EXIT_REQUIRES_HEDGE: bool =        True   # Master: can only exit at loss if hedge >= losing value
-    HEDGE_OVERSIZE_RATIO: float =           1.1    # Hedge must be this * losing_value (110%)
-    STORM_REDUCE_ENABLED: bool =            True   # Allow reducing losing position when HTF confirms storm
+    EXIT_ON_ALL_ENABLED: bool = False  # Was True via EXIT_ON_ALL
+    REDUCE_HUGE_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_19: was -2.0. Dead code under STRICT_NO_LOSS
+    STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk
+    HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
+    ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
+    REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
+    LOSS_EXIT_REQUIRES_HEDGE: bool = (
+        True  # Master: can only exit at loss if hedge >= losing value
+    )
+    HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
+    HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate = immediate hedge when trigger hits.
+    HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
+    HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # BACKTEST_CHANGE_119: Trigger cross-symbol hedge when position loses 2%. Sweet spot: -2% > -1% > -0.5% > -3%.
+    HEDGE_SAME_SYMBOL_ENABLED: bool = False  # BACKTEST_CHANGE_120: Same-symbol hedge DISABLED. Cross-symbol only. Same-symbol creates the BCH disaster (200% oversized hedge).
+    RATIO_MULTIPLIER: float = 4.0  # BACKTEST_CHANGE_121: was 2.0 (hardcoded in compute_applied_ratio). 4x exaggeration = Sharpe 282 (ratio-only). Best: 3.5-4x. Above 5x degrades.
+    # === L/S RATIO ENFORCEMENT ===
+    LS_RATIO_ENFORCE: bool = True  # Master toggle for L/S ratio enforcement
+    LS_RATIO_MIN: float = 0.50  # URGENT_FIX: was 0.70. Allow more shorts in bear market
+    LS_RATIO_MAX: float = 1.10  # URGENT_FIX: was 1.40. Bear market — block new longs when ratio > 1.1
+    LS_RATIO_HARD_MIN: float = 0.50  # Was 0.25 — allowed extreme short-heavy. Now hard blocks below 0.50
+    LS_RATIO_HARD_MAX: float = 2.00  # Was 4.00 — allowed 4:1 imbalance. Now hard blocks above 2.0
+    LS_RATIO_REBALANCE_THRESHOLD: float = (
+        0.60  # Was 0.35 — rebalance kicks in earlier to prevent short-heavy drift
+    )
+    LS_RATIO_LOG_INTERVAL: int = 60  # Seconds between ratio warning logs
+    STORM_REDUCE_ENABLED: bool = (
+        True  # Allow reducing losing position when HTF confirms storm
+    )
+    # === MOMENTUM RIDER ===
+    MOMENTUM_RIDER_ENABLED: bool = True
+    MOMENTUM_RIDER_ACCOUNT: str = "men"
+    MOMENTUM_RIDER_SCAN_INTERVAL: float = 10.0
+    MOMENTUM_RIDER_MAX_SYMBOLS: int = 5
+    MOMENTUM_RIDER_BASE_SIZE_USD: float = 50.0
+    MOMENTUM_RIDER_MAX_SIZE_USD: float = 400.0
+    MOMENTUM_RIDER_HEDGE_RATIO: float = 1.2
+    MOMENTUM_RIDER_DC_WIDTH_MIN: float = 8.0
+    MOMENTUM_RIDER_REL_VOL_MIN: float = 3.0
+    MOMENTUM_RIDER_COOLDOWN: float = 300.0
     # === NEWS SENTIMENT ===
-    NEWS_SENTIMENT_ENABLED: bool =         True    # Master toggle for news sentiment in rankings
-    NEWS_SENTIMENT_WEIGHT: float =         0.10    # Max +/-10% score adjustment from news
-    NEWS_POLL_INTERVAL_CRYPTO: int =       300     # 5 min (CryptoPanic)
-    NEWS_POLL_INTERVAL_SOCIAL: int =       900     # 15 min (Reddit + Twitter)
-    NEWS_SENTIMENT_DECAY_HOURS: int =      4       # Older articles decay to 0
-    NEWS_SENTIMENT_MIN_ARTICLES: int =     2       # Min sources to form a score
+    NEWS_SENTIMENT_ENABLED: bool = True  # Master toggle for news sentiment in rankings
+    NEWS_SENTIMENT_WEIGHT: float = 0.10  # Max +/-10% score adjustment from news
+    NEWS_POLL_INTERVAL_CRYPTO: int = 300  # 5 min (CryptoPanic)
+    NEWS_POLL_INTERVAL_SOCIAL: int = 900  # 15 min (Reddit + Twitter)
+    NEWS_SENTIMENT_DECAY_HOURS: int = 4  # Older articles decay to 0
+    NEWS_SENTIMENT_MIN_ARTICLES: int = 2  # Min sources to form a score
+    # === SYMBOL PERFORMANCE TRACKING ===
+    SYMBOL_PERF_ENABLED: bool = True
+    SYMBOL_PERF_WINDOW_DAYS: int = 14
+    SYMBOL_PERF_MIN_TRADES: int = 5
+    SYMBOL_PERF_MAX_MULT: float = 10.0
+    SYMBOL_PERF_MIN_MULT: float = 0.1
+    SYMBOL_PERF_REFRESH_SECONDS: float = 3600.0
+    SYMBOL_PERF_DECAY_HOURS: float = 12.0
+    # === OUTLIER DETECTION ===
+    OUTLIER_DETECTOR_ENABLED: bool = True
+    OUTLIER_SCAN_INTERVAL: float = 60.0
+    OUTLIER_STUCK_HOURS: float = 2.0
+    OUTLIER_STUCK_ATR_FACTOR: float = 0.5
+    OUTLIER_RUNAWAY_ATR_FACTOR: float = 2.0
+    OUTLIER_STALE_HOURS: float = 6.0
+    # === WINNER/LOSER TIERING ===
+    TIER_ENABLED: bool = True
+    TIER_A_WIN_RATE: float = 0.60
+    TIER_A_MIN_GAIN: float = 0.3
+    TIER_A_MIN_TRADES: int = 10
+    TIER_B_WIN_RATE: float = 0.45
+    TIER_B_MIN_TRADES: int = 5
+    TIER_A_MULTIPLIER: float = 1.2
+    TIER_C_MULTIPLIER: float = 0.7
     # TREND_GATES: bool =                     False
     # HTF1_CONF:bool =                        False
     # HTF4_CONF:bool =                        False
-    TREND_GATES: bool =                     True
-    HTF1_CONF:bool =                        True
-    HTF4_CONF:bool =                        True
-    BASIS_CONDITION: bool =                 True #No opening on wrong side of dc_basis_15m + 1h + 4h
+    TREND_GATES: bool = True
+    HTF1_CONF: bool = False  # BACKTEST_CHANGE_35: was True. 1h hard-gate blocks too many good 3m entries
+    HTF4_CONF: bool = True
+    BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
+    # === BB SQUEEZE BREAKOUT ===
+    BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
+    BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze
+    BB_SQUEEZE_MIN_ALIGNMENT: int = 10  # Minimum alignment score to allow BB squeeze entry
+    BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
+    VOL_SPIKE_ENABLED: bool = True  # Volume spike reversal: 93.5% WR, Sharpe 13.9
+    VOL_SPIKE_RELVOL_THRESHOLD: float = 3.0  # Relative volume must be > 3x 20-bar avg
+    VOL_SPIKE_BODY_RATIO: float = 0.7  # Candle body must be > 70% of total range
+    VOL_SPIKE_COOLDOWN: float = 300.0  # Seconds between vol spike entries per symbol
+    VOL_SPIKE_MIN_ALIGNMENT: int = 8  # Lower alignment threshold for spike entries
+    VOL_SPIKE_LS_MAX_IMBALANCE: float = 1.5  # Max L/S ratio imbalance before blocking
+    # === BACKTEST SWEEP WINNERS (2026-03-16) ===
+    K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
+    K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
+    CYCLE_TP_PCT: float = 0.60  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
+    CYCLE_TP_CONDITIONAL_EXIT: float = 0.005  # 0.5% — exit at this gain ONLY when stoch is against or gains decaying
+    ACCOUNT_TP_PCT: Dict[str, float] = field(default_factory=lambda: {"ang": 0.02, "inf": 0.02, "men": 0.02, "fin": 0.02, "flz": 0.01})  # BACKTEST_CHANGE_107: Tournament winner=2%. Prior 8% was too wide. flz=1% per account profile.
+    TREND_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz"])
+    TREND_HTF_MIN_BULL: int = 7
+    TREND_HTF_MIN_BEAR: int = 7
+    TREND_EXIT_SCORE_FLIP: int = 0
+    TREND_MIN_GAIN_EXIT: float = 0.10
+    TREND_HEDGE_MAX_SEC: int = 180
+    HTF_STRICT: bool = True  # BACKTEST_CHANGE_106: REVERTED to True. Tournament winner uses strict (all HTFs K>D+HA aligned). Sharpe 242 vs 133 for kd_only.
+    HA_3M_ENTRY_WEIGHT: float = -0.5  # BACKTEST_CHANGE_31: was 0.0. HA harmful for entries — use as negative (contrarian) signal
+    # === METRIC SWEEP WINNERS (2026-03-16 — 360 sym × 4 TF × 45 metrics, min Sharpe 75) ===
+    # bb_squeeze: 11 symbols, avg Sharpe 89.7 — tight bands predict explosive moves
+    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold)
+    BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal
+    BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal
+    # sma200_dist: 9 symbols, avg Sharpe 93.2 — price distance from SMA200
+    SMA200_DIST_ENTRY_ENABLED: bool = True  # SHORT when price crosses back above SMA200 on 1h
+    SMA200_DIST_LONG_THRESHOLD: float = -3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups
+    # ema20_slope: 6 symbols, avg Sharpe 86.4 — EMA20 momentum direction
+    EMA20_SLOPE_ENTRY_ENABLED: bool = True
+    EMA20_SLOPE_SHORT_THRESHOLD_1H: float = 0.05  # SHORT when ema20 slope > this (extended, mean revert)
+    # Best TF for entries: 1h (55% of winners), 15m (38%)
+    SWEEP_OPTIMAL_ENTRY_TF: str = "1h"  # 1h produced most Sharpe>75 results
+    SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period
+    # === BACKTEST MATRIX WINNERS (2026-03-18 — 4,982,146 combos × 360 sym × 5 TF × 22 indicators) ===
+    # Entry signals: mean-reversion on 3m is the core edge
+    EMA_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_3: #1 signal in top 5000
+    EMA_DIST_LONG_THRESHOLD: float = -1.0  # LONG when ema_dist < -1.0 (price far below EMA20)
+    EMA_DIST_SHORT_THRESHOLD: float = 1.0  # SHORT when ema_dist > 1.0 (price far above EMA20)
+    MOM3_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_4: #2 signal, 3-bar momentum mean-reversion
+    MOM3_LONG_THRESHOLD: float = -1.0  # LONG when mom3 < -1.0
+    MOM3_SHORT_THRESHOLD: float = 1.0  # SHORT when mom3 > 1.0
+    MOM5_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_5: #3 signal, 5-bar momentum
+    MOM5_LONG_THRESHOLD: float = -1.0
+    MOM5_SHORT_THRESHOLD: float = 1.0
+    BB_ENTRY_LONG_THRESHOLD: float = -0.2  # BACKTEST_CHANGE_6: BB %B extremes
+    BB_ENTRY_SHORT_THRESHOLD: float = 1.0
+    # Exit: tiered TP + hold bars
+    CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols
+    CYCLE_TP_TIERED_LEVELS: list = field(default_factory=lambda: [0.0015, 0.003, 0.005, 0.007, 0.010, 0.015, 0.020, 0.030])
+    CYCLE_TP_TIERED_FRAC: float = 0.25  # Close 25% of remaining at each tier
+    STOCH_CROSS_3M_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_14: secondary exit on 3m stoch cross
+    OPTIMAL_HOLD_BARS_3M: int = 21  # BACKTEST_CHANGE_15: 63 min max hold on 3m (most common in top 5000)
+    OPTIMAL_HOLD_BARS_15M: int = 13  # BACKTEST_CHANGE_16: 3.25h max hold on 15m
+    # Sizing: ema_dist proportional sizing
+    EMA_DIST_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_24: scale size by ema_dist strength
+    EMA_DIST_SIZING_MULT: float = 2.0  # Max 2x size when ema_dist is extreme
+    # Per-symbol sizing multipliers for top backtest performers
+    SYMBOL_SIZE_MULTIPLIERS: Dict[str, float] = field(default_factory=lambda: {"CELOUSDT": 2.0, "DYDXUSDT": 1.5, "GTCUSDT": 1.5, "1000SATSUSDT": 1.5})  # BACKTEST_CHANGE_27
+    # === DC WIDTH INDEX SIZING (2026-03-16) ===
+    DC_WIDTH_SIZING_ENABLED: bool = True
+    DC_WIDTH_MAX_MULT: float = 5.0  # BACKTEST_CHANGE_23: was 8.0. DC is 7th best indicator, don't over-weight
+    DC_WIDTH_CAP_MULT: float = 10.0
+    # === MASTER TRADER ANALYSIS FILTERS (2026-03-18 — 400 trades × 20 Finandy traders, indicator overlay) ===
+    ENTRY_VOL_MIN_RATIO: float = 1.3  # BACKTEST_CHANGE_100: was 1.0. Winners enter at 1.95x avg vol vs losers 1.27x — raise floor
+    SHORT_RSI_MIN_1H: 44 = 40  # BACKTEST_CHANGE_101: NEW. Block SHORT when rsi_1h < 40 — shorting oversold = loser (RSI 41 avg losers vs 55 winners)
+    LONG_STOCH_CHASE_BLOCK: bool = True  # BACKTEST_CHANGE_102: NEW. Block LONG when stoch_k_1h > 70 AND ha_streak > 2 — chasing overbought = loser
+    ENTRY_ATR_PCT_MIN: float = 1.5  # BACKTEST_CHANGE_103: NEW. Min ATR% for entry — winners trade 1.97% ATR vs losers 1.22%
+    SHORT_ABOVE_SMA20_BONUS: int = 15  # BACKTEST_CHANGE_104: NEW. Bonus for SHORT when price above EMA20 — mean-reversion shorts win (3.15% above vs losers 0.10%)
+    # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 207 sym × 15m, 1765 combos) ===
+    NOLOSS_MIN_PROFIT_PCT: float = 0.50  # BACKTEST_CHANGE_108: Min profit % before ANY exit allowed. 0.5% sweet spot: 95%+ WR, fast exits, <0.1% stuck. Never sell at a loss.
+    K_ZONE_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_109: K-zone entry — enter when K in zone (<35 LONG / >65 SHORT) + K turning + candle confirms. No crossover wait needed.
+    K_ZONE_LONG_THRESHOLD: int = 35  # K must be below this for LONG entry signal
+    K_ZONE_SHORT_THRESHOLD: int = 65  # K must be above this for SHORT entry signal
+    K_ZONE_ENTRY_BONUS: int = 25  # Score bonus when K-zone + candle confirms (HA flip, hammer, engulfing)
+    BOUNCE_REENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_110: After profitable exit, require K to pull back to zone before reentering. 96%+ reentry WR.
+    BOUNCE_REENTRY_K_RESET_LONG: int = 35  # K must drop below this after exit before LONG reentry allowed
+    BOUNCE_REENTRY_K_RESET_SHORT: int = 65  # K must rise above this after exit before SHORT reentry allowed
+    # === ABLATION BACKTEST RESULTS (2026-03-21 — 3507 configs × 243 sym, P1+P2+P3 OOS-validated) ===
+    RSI_ENTRY_GATE_ENABLED: bool = True  # BACKTEST_CHANGE_111: RSI<37 entry filter. #1 Sharpe lever. IS=181 OOS=304 WR=97.8%. Filters noisy entries.
+    RSI_ENTRY_MAX_LONG: float = 37.0  # BACKTEST_CHANGE_111: RSI must be below this for LONG entry. 37 = OOS champion (Sharpe 304)
+    RSI_ENTRY_MIN_SHORT: float = 63.0  # BACKTEST_CHANGE_111: RSI must be above this for SHORT entry (100 - 37)
+    EXIT_GAIN_THRESHOLD_MIN: float = 1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = fewer whipsaw exits. IS+OOS validated.
+    STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
+    IMMEDIATE_WRONG_WAY_ENABLED: bool = False  # BACKTEST_CHANGE_114: was implicitly True. #2 PnL destroyer. Tight stops kill trades that recover.
+    FAST_RISER_DOUBLE_ENABLED: bool = False  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
+    AUGMENT_PYRAMID_ENABLED: bool = False  # BACKTEST_CHANGE_116: was True. Pyramiding destroys value (Sharpe -43→-23 without). Only re-enable at 5%+ gain if ever.
 
-    MAX_HEDGE_BALANCE_VALUE_USD: float =    500.0  # Maximum USD value for hedge balance adjustments
-    MAX_HEDGE_BALANCE_MULTIPLIER: float =   1.8  # Maximum hedge size multiplier (1.5x = hedge can be 1.5x regular position)
-    HEDGE_BALANCE_COOLDOWN_SECONDS: float = 180.0  # Cooldown between hedge balance adjustments (5 minutes)
+    MAX_HEDGE_BALANCE_VALUE_USD: float = (
+        500.0  # Maximum USD value for hedge balance adjustments
+    )
+    MAX_HEDGE_BALANCE_MULTIPLIER: float = (
+        1.8  # Maximum hedge size multiplier (1.5x = hedge can be 1.5x regular position)
+    )
+    HEDGE_BALANCE_COOLDOWN_SECONDS: float = (
+        180.0  # Cooldown between hedge balance adjustments (5 minutes)
+    )
 
+    # Loss Mitigator Settings (ez_loss_mitigator.py — ang account gain guard)
+    MITIGATOR_ENABLED: bool = False  # DISABLED: 8 triggers kill winners between 0.03-2.5%. Let winners run.
+    MITIGATOR_ACCOUNT: list = field(default_factory=lambda: [])
+    MITIGATOR_SCAN_INTERVAL: float = 3.0
+    MITIGATOR_TIER1_PEAK: float = 0.15  # Peak gain must reach this before tier 1 arms
+    MITIGATOR_TIER1_DROP: float = 0.08  # Reduce 25% when gain drops to this
+    MITIGATOR_TIER1_REDUCE_PCT: float = 0.25
+    MITIGATOR_TIER2_DROP: float = 0.02  # Reduce 50% of remaining at breakeven
+    MITIGATOR_TIER2_REDUCE_PCT: float = 0.50
+    MITIGATOR_TIER3_DROP: float = -0.05  # Full close — tiny loss better than big loss
+    MITIGATOR_AUGMENT_THRESHOLD: float = 0.30  # Augment winners above this gain
+    MITIGATOR_AUGMENT_CONSECUTIVE: int = 3  # Must rise for 3+ scans
+    MITIGATOR_COOLDOWN: float = 15.0  # Seconds between actions per position
+    MITIGATOR_REENTRY_COOLDOWN: float = 180.0  # 3 min before re-entry
+    MITIGATOR_REENTRY_PRICE_PCT: float = 0.15  # Favorable price move for re-entry
+    STOP_LOSS_THRESHOLD = 999.0  # BACKTEST_CHANGE_17: was 1.0. Dead code under STRICT_NO_LOSS — disabled
+    GAIN_THRESHOLD_LOW = 1.0  # BACKTEST_CHANGE_112: was 0.15 (was 0.50). Higher = fewer whipsaw exits. OOS-validated at 1.0%
+    CHECK_INTERVAL = 3.0  # Check every 4 seconds
+    ENABLE_FAST_RISER_REDUCE: bool = (
+        True  # Enable fast riser logic: DOUBLE when k_3m < 70 and quick jump (momentum), REDUCE when k_3m > 70 and overbought (take profit)
+    )
+    LEADERBOARD_FILTER: bool = True
+    COUNTER_TREND_CRYPTO: list = field(
+        default_factory=lambda: [
+            "XAUUSDT",
+            "PAXGUSDT",
+            "XAGUSDT",
+            "BTCDOMUSDT",
+            "SKYUSDT",
+            "TRXUSDT",  # BACKTEST_CHANGE_48: worst real symbol in backtest (-63 Sharpe)
+        ]
+    )  # Go up when market goes down — invert ratio_mult
+    BLACKLIST_SYMBOLS: list = field(default_factory=lambda: [])  # REVERTED: Change #46+50 removed. All symbols in symbols.json must remain tradeable
 
+    VALIDATE_REFRESH: int = 2  # seconds
+    VERBOSE: bool = True
+    VERBOSE2: bool = False
+    VERBOSE_STOPS: bool = False
+    VERBOSE_TIMER: bool = False
+    VERBOSE_FETCH_LOGGING: bool = False
+    DEBUG: bool = False
+    REDUCTION_COOLDOWN_SECONDS = 90.0
+    AUGMENTATION_COOLDOWN_SECONDS = 540.0
 
-    STOP_LOSS_THRESHOLD =                   0.2  # Minimum gain percentage that must be reached before stop loss can be set to 0. Before this, stop loss cannot come closer than dc_low_3m (LONG) or dc_high_3m (SHORT)
-    GAIN_THRESHOLD_LOW =                    0.11  # Close position if it drops below this AFTER having reached STOP_LOSS_THRESHOLD (accounts for commissions) - protects profits by closing before they erode
-    CHECK_INTERVAL =                        3.0  # Check every 4 seconds
-    ENABLE_FAST_RISER_REDUCE: bool =        True  # Enable fast riser logic: DOUBLE when k_3m < 70 and quick jump (momentum), REDUCE when k_3m > 70 and overbought (take profit)
-    LEADERBOARD_FILTER:bool =               True
+    PERSIST =7200.0  # minutes to stay in tradeable_keys after deletion
 
-    VALIDATE_REFRESH: int =                 2 #seconds
-    VERBOSE: bool =                         True
-    VERBOSE2: bool =                        False
-    VERBOSE_STOPS: bool =                   False
-    VERBOSE_TIMER: bool =                   False
-    VERBOSE_FETCH_LOGGING: bool =           False
-    DEBUG: bool =                           False
-    REDUCTION_COOLDOWN_SECONDS            = 90.0
-    AUGMENTATION_COOLDOWN_SECONDS         = 480.0
-
-    PERSIST                              =  12000.0 #minutes to stay in tradeable_keys after deletion
     # STOP_ORDERS_FULL_UPDATE:         int =   40  #STOP ORDERS FULL UPDATE
     # THREE_MIN_STRATEGY: Dict[str, Any] = field(default_factory=lambda: {
     #     'ENABLED': True,
@@ -140,17 +348,21 @@ class Config:
     def __post_init__(self):
         self._INSTANCES.add(self)
         self._apply_mode(self._resolve_initial_mode())
+        if self.SANDBOX_MODE:
+            for sa in self.SANDBOX_ACCOUNTS:
+                if sa not in self.ACCOUNT_KEYS:
+                    self.ACCOUNT_KEYS.append(sa)
 
     def _resolve_initial_mode(self) -> str:
         if self.EXTREME_MODE and not self.LIGHT_MODE:
             return "EXTREME_MODE"
         if self.LIGHT_MODE and not self.EXTREME_MODE:
             return "LIGHT_MODE"
-        if self.MARKET_MODE in {"EXTREME_MODE","LIGHT_MODE","NORMAL_MODE"}:
+        if self.MARKET_MODE in {"EXTREME_MODE", "LIGHT_MODE", "NORMAL_MODE"}:
             return self.MARKET_MODE
         return self._CURRENT_MARKET_MODE
 
-    def _apply_mode(self, mode: str):#emergency mode
+    def _apply_mode(self, mode: str):  # emergency mode
         light = {
             # "START_POSITION_SIZE": 11.0,#emergency mode
             # "MAX_POSITION_SIZE": 250.0,
@@ -163,7 +375,7 @@ class Config:
             # "MIN_GAIN_TO_BUY_AGGRESSIVELY": 1.2,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 800.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 900.0#emergency mode
-            "START_POSITION_SIZE": 6.0,#emergency mode
+            "START_POSITION_SIZE": 6.0,  # emergency mode
             "MAX_POSITION_SIZE": 155.0,
             "MAX_ORDER_VALUE": 80.0,
             "MAX_ORDER_VALUE_MEN": 440.0,
@@ -171,9 +383,9 @@ class Config:
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 660.0,
-            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 1.4,
+            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 5.0,  # ABLATION_BACKTEST: was 1.4
             "MAX_POSITION_SIZE_MEN": 220.0,
-            "MAX_POSITION_SIZE_FIN": 120.0
+            "MAX_POSITION_SIZE_FIN": 120.0,
         }
         base = {
             # "START_POSITION_SIZE": 15.0,#emergency mode
@@ -187,17 +399,17 @@ class Config:
             # "MIN_GAIN_TO_BUY_AGGRESSIVELY": 0.8,#emergency mode
             # "MAX_POSITION_SIZE_MEN": 160.0,#emergency mode
             # "MAX_POSITION_SIZE_FIN": 300.0#emergency mode
-            "START_POSITION_SIZE": 8.0,
+            "START_POSITION_SIZE": 15.0,  # BACKTEST_CHANGE_21: was 18. Higher WR supports larger starts
             "MAX_POSITION_SIZE": 880.0,
-            "MAX_ORDER_VALUE": 92,
+            "MAX_ORDER_VALUE": 120,  # BACKTEST_CHANGE_22: was 92. Higher confidence entries
             "MAX_ORDER_VALUE_MEN": 121.0,
             "MAX_ORDER_VALUE_FIN": 175.0,
-            "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
-            "REDUCTION_COOLDOWN_SECONDS": 30.0,
-            "AUGMENTATION_COOLDOWN_SECONDS": 160.0,
-            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 0.5,
+            "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 50,  # BACKTEST_CHANGE_25: was 100
+            "REDUCTION_COOLDOWN_SECONDS": 15.0,  # BACKTEST_CHANGE_42: was 30. Faster gain-taking on 3m
+            "AUGMENTATION_COOLDOWN_SECONDS": 90.0,  # BACKTEST_CHANGE_41: was 160. 3m TF needs faster aug
+            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 5.0,  # ABLATION_BACKTEST: was 1.5. Only augment confirmed 5%+ winners
             "MAX_POSITION_SIZE_MEN": 860.0,
-            "MAX_POSITION_SIZE_FIN": 620.0
+            "MAX_POSITION_SIZE_FIN": 620.0,
         }
         extreme = {
             "START_POSITION_SIZE": 70.0,
@@ -208,9 +420,9 @@ class Config:
             "HIGH_GAIN_AUGMENTATION_MIN_SIZE": 100,
             "REDUCTION_COOLDOWN_SECONDS": 30.0,
             "AUGMENTATION_COOLDOWN_SECONDS": 190.0,  # REDUCED: From 240 to 120 for faster reactions
-            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 1.4,
+            "MIN_GAIN_TO_BUY_AGGRESSIVELY": 5.0,  # ABLATION_BACKTEST: was 1.4
             "MAX_POSITION_SIZE_MEN": 3200.0,
-            "MAX_POSITION_SIZE_FIN": 4000.0
+            "MAX_POSITION_SIZE_FIN": 4000.0,
         }
 
         for key, value in base.items():
@@ -228,78 +440,120 @@ class Config:
 
     @classmethod
     def set_market_mode(cls, mode: str):
-        if mode not in {"NORMAL_MODE","EXTREME_MODE","LIGHT_MODE"}:
+        if mode not in {"NORMAL_MODE", "EXTREME_MODE", "LIGHT_MODE"}:
             mode = "NORMAL_MODE"
         cls._CURRENT_MARKET_MODE = mode
         for instance in list(cls._INSTANCES):
             instance._apply_mode(mode)
 
     def get_account_setting(self, account_key: str, setting_name: str):
-        return self.ACCOUNT_OVERRIDES.get(account_key, {}).get(setting_name, getattr(self, setting_name, None))
+        return self.ACCOUNT_OVERRIDES.get(account_key, {}).get(
+            setting_name, getattr(self, setting_name, None)
+        )
+
     def get_stop_indicator_keys(self, account_key: str) -> tuple:
-        tf = self.get_account_setting(account_key, 'STOP_TIMEFRAME')
-        return (f'dc_low_{tf}', f'dc_high_{tf}', f'dc_low4_{tf}', f'dc_high4_{tf}', f'dc_basis_{tf}')
+        tf = self.get_account_setting(account_key, "STOP_TIMEFRAME")
+        return (
+            f"dc_low_{tf}",
+            f"dc_high_{tf}",
+            f"dc_low4_{tf}",
+            f"dc_high4_{tf}",
+            f"dc_basis_{tf}",
+        )
+
     MARKET_MODE_FILE: str = "data/market_mode.json"
+
     async def save_market_mode(self):
         import json as _json
+
         path = self.BASE_PATH / self.MARKET_MODE_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
-        async with aiofiles.open(path, 'w') as f:
-            await f.write(_json.dumps({'market_mode': self.MARKET_MODE, 'updated_at': datetime.now(timezone.utc).isoformat()}))
+        async with aiofiles.open(path, "w") as f:
+            await f.write(
+                _json.dumps(
+                    {
+                        "market_mode": self.MARKET_MODE,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            )
+
     async def load_market_mode(self):
         import json as _json
+
         path = self.BASE_PATH / self.MARKET_MODE_FILE
         try:
-            async with aiofiles.open(path, 'r') as f:
+            async with aiofiles.open(path, "r") as f:
                 data = _json.loads(await f.read())
-                mode = data.get('market_mode', 'NORMAL_MODE')
+                mode = data.get("market_mode", "NORMAL_MODE")
                 if mode in {"NORMAL_MODE", "EXTREME_MODE", "LIGHT_MODE"}:
                     self.set_market_mode(mode)
         except (FileNotFoundError, _json.JSONDecodeError):
             pass
-    PAPER_TRADING: bool =                   False  # Enable paper trading mode - records trades without executing
-    PAPER_TRADING_QUICK: bool =             False  # Enable paper trading mode - records trades without executing
 
-    SLEEP_TIME_PER_TASKS: int =             3 #FETCH and leaderboards
-    SLEEP_TIME_PROC_ACCT: float =           5 #Check symbols - 100 times per minute minimum
-    DIRECT_HIGH_GAIN_COOLDOWN_SECONDS =     15
+    PAPER_TRADING: bool = (
+        False  # Enable paper trading mode - records trades without executing
+    )
+    PAPER_TRADING_QUICK: bool = (
+        False  # Enable paper trading mode - records trades without executing
+    )
+
+    SLEEP_TIME_PER_TASKS: int = 3  # FETCH and leaderboards
+    SLEEP_TIME_PROC_ACCT: float = 5  # Check symbols - 100 times per minute minimum
+    DIRECT_HIGH_GAIN_COOLDOWN_SECONDS = 15
     # =============================================================================
     # TIMING CONFIGURATION - ALL TIMING SETTINGS IN ONE PLACE FOR EASY TWEAKING
     # =============================================================================
-    MAX_CONCURRENT_ORDERS: float =          186
+    MAX_CONCURRENT_ORDERS: float = 186
     # MAX_CONCURRENT_TASKS: float =           75 #SEMAPHORE (under 40 limit for API throttling)
-    FORCE_REFRESH_SECONDS: float =          16
-    MAX_MARKET_DATA_FILE_AGE_SECONDS:float= 1200
+    FORCE_REFRESH_SECONDS: float = 10  # BACKTEST_CHANGE_43: was 16. Fresher data for 3m decisions
+    MAX_MARKET_DATA_FILE_AGE_SECONDS: float = 1200
     MARKET_DATA_REFRESH_INTERVAL_SECONDS: float = 45.0
     # --- CACHE TIMING (seconds) ---
     # POSITION_CACHE_TTL: int =               5  # Position data cache duration
-    ORDER_CACHE_TTL: int =                  10  # Open orders cache duration
-    POSITIONS_SNAPSHOT_MAX_AGE: float =     6.0  # Max age (seconds) accepted for RPC snapshots
-    LOCAL_DATA_MAX_AGE: float =             200.0  # Max age (seconds) accepted for file-based fallbacks
-    INDICATOR_MAX_AGE_SECONDS =             200.0
+    ORDER_CACHE_TTL: int = 60  # Open orders cache duration (was 10 — caused IP bans with 5 accounts)
+    POSITIONS_SNAPSHOT_MAX_AGE: float = (
+        6.0  # Max age (seconds) accepted for RPC snapshots
+    )
+    LOCAL_DATA_MAX_AGE: float = (
+        200.0  # Max age (seconds) accepted for file-based fallbacks
+    )
+    INDICATOR_MAX_AGE_SECONDS = 200.0
     STALE_WARNING_INTERVAL_SECONDS: float = 30.0
-    POSITION_SAVE_INTERVAL: float =         6.0
+    POSITION_SAVE_INTERVAL: float = 6.0
     INDICATORS_SAVE_INTERVAL_SECONDS: float = 10.0
     POSITION_REDIS_REFRESH_INTERVAL: float = 6.0
-    LADDER_AUTO_SAVE_SECONDS: float =       60.0
+    LADDER_AUTO_SAVE_SECONDS: float = 60.0
     MONITOR_REDUCTION_STALE_THRESHOLD: float = 180.0
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
     # MARK_PRICE_GUARD_INTERVAL: float =      1.0  # Seconds between websocket staleness checks
-    MARK_PRICE_MAX_STALENESS: float =       2  # Maximum acceptable age of cached mark price
+    MARK_PRICE_MAX_STALENESS: float = 2  # Maximum acceptable age of cached mark price
     # PRICE_FALLBACK_INTERVAL: float =        1.0  # Interval for REST/Redis mark-price fallback loop
-    EZ_INDICATORS_SHUTDOWN_CMD: Optional[str] = None  # shell command to stop ez_indicators gracefully
-    EZ_INDICATORS_START_CMD: Optional[str] = None  # shell command to (re)start ez_indicators
-    EZ_INDICATORS_RESTART_COOLDOWN: float = 60.0  # Minimum seconds between ez_indicators restart attempts
-    EZ_INDICATORS_CMD_TIMEOUT: float =      10.0  # Timeout for ez_indicators start/stop commands
-    POSITIONS_SERVICE_START_CMD: Optional[str] = None  # shell command to start ez_positions_service
+    EZ_INDICATORS_SHUTDOWN_CMD: Optional[str] = (
+        None  # shell command to stop ez_indicators gracefully
+    )
+    EZ_INDICATORS_START_CMD: Optional[str] = (
+        None  # shell command to (re)start ez_indicators
+    )
+    EZ_INDICATORS_RESTART_COOLDOWN: float = (
+        60.0  # Minimum seconds between ez_indicators restart attempts
+    )
+    EZ_INDICATORS_CMD_TIMEOUT: float = (
+        10.0  # Timeout for ez_indicators start/stop commands
+    )
+    POSITIONS_SERVICE_START_CMD: Optional[str] = (
+        None  # shell command to start ez_positions_service
+    )
     POSITIONS_SERVICE_HEALTH_TIMEOUT: float = 4.0  # Seconds to wait for RPC ping
-    POSITIONS_SERVICE_HEALTH_RETRIES: int = 3  # Number of retries before giving up on RPC ping
-    #STOP_ORDERS_CACHE_TTL: int =            15  # Stop orders cache duration
+    POSITIONS_SERVICE_HEALTH_RETRIES: int = (
+        3  # Number of retries before giving up on RPC ping
+    )
+    # STOP_ORDERS_CACHE_TTL: int =            15  # Stop orders cache duration
     # INDICATOR_CACHE_TTL: int =              10   # Indicator cache duration (seconds, keep data sub-second)
 
     # --- API RATE LIMITING ---
     # POSITION_RATE_LIMIT_SECONDS: int =      2  # Min seconds between position API calls (4 per minute)
-    CIRCUIT_BREAKER_COOLDOWN: int =         120 # 5 minutes cooldown after rate limit
+    CIRCUIT_BREAKER_COOLDOWN: int = 60  # BACKTEST_CHANGE_40: was 120. 3m TF needs faster recovery
 
     # --- PROCESSING INTERVALS (seconds) ---
     # FETCH_POSITIONS_SLEEP: int =            2   # Sleep between position fetches
@@ -336,39 +590,43 @@ class Config:
     # --- COOLDOWNS (seconds) ---
 
     # COOLDOWN_SECS: int =                    5  # Process position cooldown
-    REENTER_SAVE_DEBOUNCE_SECONDS: int =    50   # Reenter save debounce
+    REENTER_SAVE_DEBOUNCE_SECONDS: int = 30  # BACKTEST_CHANGE_45: was 50. Faster reentry on 3m TF
 
     # --- OTHER TIMING ---
-    #FORCE_REFRESH_SECONDS: int =            600
-    #FORCE_SYMBOL_REFRESH_SECONDS: int =     600
-    LADDER_TTL_MINUTES: int =               24*60  # Ladder order TTL
+    # FORCE_REFRESH_SECONDS: int =            600
+    # FORCE_SYMBOL_REFRESH_SECONDS: int =     600
+    LADDER_TTL_MINUTES: int = 24 * 60  # Ladder order TTL
     # SAVE_INTERVAL: int =                    60
     # RETRY_DELAY: int =                      5
-    REDIS_EXPIRY_SECONDS: int =             180
-    MIN_USD_DELTA_CONFIRM: float =          1.0
+    REDIS_EXPIRY_SECONDS: int = 180
+    MIN_USD_DELTA_CONFIRM: float = 1.0
 
     FAPI_BASE_URL: str = "https://fapi.binance.com/fapi/v1"
     FSTREAM_WS_URL_BASE: str = "wss://fstream.binance.com/stream"
     WS_URL: str = "wss://fstream.binance.com/ws"
-    USE_WS_3M: bool = True          # If True, consume 3m klines directly from Binance WS (no local resampling)
-    REDIS_1M_TAIL: int = 1500        # Number of most recent 1m bars to keep/publish in Redis payload
+    USE_WS_3M: bool = (
+        True  # If True, consume 3m klines directly from Binance WS (no local resampling)
+    )
+    REDIS_1M_TAIL: int = (
+        1500  # Number of most recent 1m bars to keep/publish in Redis payload
+    )
     # EXTERNAL_3M_PRODUCER: bool = True  # If True, ez_prices skips internal 3m generation (handled by WS or external)
     # MARK_PRICES_ONLY: bool = True    # If True, ez_mark_prices only publishes mark prices (no 1m Redis publish), but still writes 1m JSON
     # FETCH_1M_FROM_API: bool = False
     # FETCH_3M_FROM_API: bool = True
     # ENABLE_WS_BACKUP_CONSOLIDATION: bool = True  # Enable backup consolidation in ez_prices_ws
-    INDICATORS_DATA_CACHE_SIZE         =    2048
+    INDICATORS_DATA_CACHE_SIZE = 2048
     # ORDER_WORKERS                       =   20
-    LOG_MAX_BYTES = 1024*1024*20
+    LOG_MAX_BYTES = 1024 * 1024 * 20
     LOG_BACKUP_COUNT = 30
     # ENABLE_CONVICTION: bool =               True
-    USE_INDICATOR_SNAPSHOT: bool =          True
-    POSITION_REFRESH_MIN_INTERVAL: int =    1 #\seconds
-    #SINGLE_FETCH_COOLDOWN: int =            15
+    USE_INDICATOR_SNAPSHOT: bool = True
+    POSITION_REFRESH_MIN_INTERVAL: int = 1  # \seconds
+    # SINGLE_FETCH_COOLDOWN: int =            15
 
     # PERIODIC_STOP_ORDERS_ENABLED: bool =    False
     # Enable periodic stop order management
-    #PERIODIC_STOP_ORDERS_INTERVAL: int =    20   # Run every 20 seconds (check for missing stops)    SYMBOL_TRACKER_ENABLED: bool = False
+    # PERIODIC_STOP_ORDERS_INTERVAL: int =    20   # Run every 20 seconds (check for missing stops)    SYMBOL_TRACKER_ENABLED: bool = False
     # RATE_LIMIT_DUPLICATE_FILTER_ENABLED: bool = True
     # MAKER_ORDER_CONFIG: Dict[str, Any] = field(default_factory=lambda: {
     # "TIMEOUT_SECONDS": 30, })
@@ -417,7 +675,7 @@ class Config:
     # BACKUP_PLOTS: Path = HD_ROOT / "backups/plots"
 
     SYMBOLS_FILE: Path = BASE_PATH / "symbols.json"
-    SYMBOLS: Path =     BASE_PATH / "symbols.json"
+    SYMBOLS: Path = BASE_PATH / "symbols.json"
     SYMBOLS_ACTIVE_FILE: Path = BASE_PATH / "symbols_active.json"
     SYMBOLS_ANG_LONG: Path = BASE_PATH / "symbols_ang_long.json"
     SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_inf_long.json"
@@ -440,7 +698,7 @@ class Config:
     MULT_FILE: Path = BASE_PATH / "multipliers.json"
     SYMBOL_CONFIGS_FILE: Path = BASE_PATH / "symbol_configs.json"
     RANKING_RESULTS_FILE: Path = BASE_PATH / "ranking_results.json"
-    TRADEABLE_KEYS : Path = BASE_PATH / "tradeable_keys.json"
+    TRADEABLE_KEYS: Path = BASE_PATH / "tradeable_keys.json"
 
     WINNERS_20_FILE: Path = DATA_DIR / "winners_20_final_score"
     LOSERS_20_FILE: Path = DATA_DIR / "losers_20_final_score"
@@ -454,7 +712,7 @@ class Config:
     SCORE_RANGES_FILE: Path = DATA_DIR / "score_ranges.json"
     RANKING_POINTS_FILE: Path = DATA_DIR / "ranking_points.json"
     LAST_EVENTS_FILE: Path = DATA_DIR / "last_events.json"
-    indicators_filepath: Path = DATA_DIR /"latest_market_data.json"
+    indicators_filepath: Path = DATA_DIR / "latest_market_data.json"
     LATEST_MARKET_DATA_FILE: Path = DATA_DIR / "latest_market_data.json"
     GRACEFUL_EXIT_FILE_TEMPLATE: Path = BASE_PATH / "graceful_exit_{account_key}.json"
     LOG_FILE_EZ_RANKINGS: Path = Path.home() / "logs" / "ez_rankings.log"
@@ -464,7 +722,7 @@ class Config:
     # KLINE_API_FETCH_LIMIT: int = 800
     # KLINES_CACHE_MAX_ITEMS: int = 400  # Reduced to prevent file handle accumulation
     # KLINE_STALENESS_BARS: Dict[str, int] = field(default_factory=lambda: {
-        # "3m": 5, "15m": 4, "1h": 3, "4h": 2, "D": 2
+    # "3m": 5, "15m": 4, "1h": 3, "4h": 2, "D": 2
     # })
     # DEPRECATED: PRICE_STALENESS_THRESHOLD is no longer used - replaced with Redis Pub/Sub-driven timestamp extraction
     # PRICE_STALENESS_THRESHOLD: int = 60
@@ -481,7 +739,9 @@ class Config:
 
     # --- TIME WINDOWS ---
     # ORPHAN_STOP_LEVEL_THRESHOLD: timedelta = field(default_factory=lambda: timedelta(days=2))
-    REENTER_ORPHAN_THRESHOLD: timedelta = field(default_factory=lambda: timedelta(days=70))
+    REENTER_ORPHAN_THRESHOLD: timedelta = field(
+        default_factory=lambda: timedelta(days=70)
+    )
 
     # --- ANALYZER SETTINGS ---
     # ANALYZER_DAYS_BACK: int = 30  # How many days back the analyzer should look
@@ -489,26 +749,39 @@ class Config:
     # ANALYZER_SHOW_TOP_N_TRADES: int = 5  # Number of top/bottom trades to show
 
     ACCOUNT_SIDE_MAPPING = {
-        'ang': ['LONG', 'SHORT'],
-        'inf': ['LONG', 'SHORT'],
-        'men': ['LONG', 'SHORT'],
-        'flz': ['LONG', 'SHORT'],
-        'fin': ['LONG', 'SHORT']}
+        "ang": ["LONG", "SHORT"],
+        "inf": ["LONG", "SHORT"],
+        "men": ["LONG", "SHORT"],
+        "flz": ["LONG", "SHORT"],
+        "fin": ["LONG", "SHORT"],
+    }
 
     # --- REDIS SETTINGS ---
-    REDIS_HOST: str = 'localhost'
+    REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_CHANNEL_SIGNALS: str = "signals_channel"
-    REDIS_KEY_MARKET_DATA: str = "latest_market_data"  # Redis key for market data (not a channel)
-    WORKER_INSTANCE_ID: int = int(os.getenv("WORKER_INSTANCE_ID", "0"))  # 0-based instance ID for symbol splitting (0, 1, 2, ...)
-    WORKER_TOTAL_INSTANCES: int = int(os.getenv("WORKER_TOTAL_INSTANCES", "1"))  # Total number of worker instances (1=single, 2=dual, etc.)
-    ENABLE_MULTI_INSTANCE_ON_MACBOOK: bool = False  # If False, forces single instance on macbook even if WORKER_TOTAL_INSTANCES > 1
+    REDIS_KEY_MARKET_DATA: str = (
+        "latest_market_data"  # Redis key for market data (not a channel)
+    )
+    WORKER_INSTANCE_ID: int = int(
+        os.getenv("WORKER_INSTANCE_ID", "0")
+    )  # 0-based instance ID for symbol splitting (0, 1, 2, ...)
+    WORKER_TOTAL_INSTANCES: int = int(
+        os.getenv("WORKER_TOTAL_INSTANCES", "1")
+    )  # Total number of worker instances (1=single, 2=dual, etc.)
+    ENABLE_MULTI_INSTANCE_ON_MACBOOK: bool = (
+        False  # If False, forces single instance on macbook even if WORKER_TOTAL_INSTANCES > 1
+    )
 
     # --- CONSTANTS ---
-    KLINE_COLUMNS: List[str] = field(default_factory=lambda: ['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    KLINE_COLUMNS: List[str] = field(
+        default_factory=lambda: ["timestamp", "open", "high", "low", "close", "volume"]
+    )
     # ALL_TIMEFRAMES: List[str] = field(default_factory=lambda: ["3m", "15m", "1h", "4h", "D"])
-    ACCOUNT_KEYS: List[str] = field(default_factory=lambda: ["ang", "inf", "men", "flz", "fin"])
+    ACCOUNT_KEYS: List[str] = field(
+        default_factory=lambda: ["ang", "inf", "men", "flz", "fin"]
+    )
 
     # Volatility normalization
     ATR_LONG_WINDOW = 100
@@ -538,18 +811,18 @@ class Config:
     # =============================================================================
 
     # --- EZ_KLINES CONTROLS (gateway, server, macbook) ---
-    EZ_KLINES_API_MAX_PER_SECOND: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 22, "server": 20, "macbook": 22
-    })
-    EZ_KLINES_API_MAX_PER_MINUTE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 200, "server": 200, "macbook": 300
-    })
-    EZ_KLINES_MAX_CONCURRENT: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 10, "server": 10, "macbook": 15
-    })
-    EZ_KLINES_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 10, "server": 10, "macbook": 15
-    })
+    EZ_KLINES_API_MAX_PER_SECOND: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 22, "server": 20, "macbook": 22}
+    )
+    EZ_KLINES_API_MAX_PER_MINUTE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 200, "server": 200, "macbook": 300}
+    )
+    EZ_KLINES_MAX_CONCURRENT: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 10, "server": 10, "macbook": 15}
+    )
+    EZ_KLINES_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 10, "server": 10, "macbook": 15}
+    )
 
     # # --- EZ_POSITIONS CONTROLS (gateway, server, macbook) ---
     # EZ_POSITIONS_API_RATE_LIMIT: Dict[str, float] = field(default_factory=lambda: {
@@ -575,84 +848,87 @@ class Config:
     # })
 
     # --- EZ_MANAGE CONTROLS (gateway, macbook) ---
-    EZ_MANAGE_WS_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 140, "macbook": 140
-    })
-    EZ_MANAGE_RATE_LIMIT_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 35, "macbook": 50
-    })
-    EZ_MANAGE_MAKER_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 45, "macbook": 65
-    })
-    EZ_MANAGE_THROTTLER_RATE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 200, "macbook": 250  # INCREASED: From 50/125 to 200/250 for faster position processing
-    })
-    EZ_MANAGE_CONCURRENCY_LIMIT: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 190, "macbook": 180
-    })
+    EZ_MANAGE_WS_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 140, "macbook": 140}
+    )
+    EZ_MANAGE_RATE_LIMIT_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 35, "macbook": 50}
+    )
+    EZ_MANAGE_MAKER_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 45, "macbook": 65}
+    )
+    EZ_MANAGE_THROTTLER_RATE: Dict[str, int] = field(
+        default_factory=lambda: {
+            "gateway": 200,
+            "macbook": 250,  # INCREASED: From 50/125 to 200/250 for faster position processing
+        }
+    )
+    EZ_MANAGE_CONCURRENCY_LIMIT: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 190, "macbook": 180}
+    )
     # --- EZ_PRICEWS CONTROLS (gateway, server, macbook) ---
-    EZ_PRICEWS_API_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 2, "server": 2, "macbook": 2
-    })
-    EZ_PRICEWS_CONNECTOR_LIMIT: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 5, "server": 5, "macbook": 5
-    })
-    EZ_PRICEWS_LIMIT_PER_HOST: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 3, "server": 3, "macbook": 3
-    })
-    EZ_PRICEWS_API_DELAY: Dict[str, float] = field(default_factory=lambda: {
-        "gateway": 0.5, "server": 0.5, "macbook": 0.5
-    })
+    EZ_PRICEWS_API_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 2, "server": 2, "macbook": 2}
+    )
+    EZ_PRICEWS_CONNECTOR_LIMIT: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 5, "server": 5, "macbook": 5}
+    )
+    EZ_PRICEWS_LIMIT_PER_HOST: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 3, "server": 3, "macbook": 3}
+    )
+    EZ_PRICEWS_API_DELAY: Dict[str, float] = field(
+        default_factory=lambda: {"gateway": 0.5, "server": 0.5, "macbook": 0.5}
+    )
 
     # --- EZ_INDICATORS CONTROLS (gateway, macbook) ---
     # EZ_INDICATORS_FILE_READ_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        # "gateway": 10000, "macbook": 5000
+    # "gateway": 10000, "macbook": 5000
     # })
     # EZ_INDICATORS_STAGE_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        # "gateway": 15000, "macbook": 7500
+    # "gateway": 15000, "macbook": 7500
     # })
     # EZ_INDICATORS_UPDATE_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        # "gateway": 5000, "macbook": 2500
+    # "gateway": 5000, "macbook": 2500
     # })
     # EZ_INDICATORS_THROTTLER_RATE: Dict[str, int] = field(default_factory=lambda: {
-        # "gateway": 2000, "macbook": 5000
+    # "gateway": 2000, "macbook": 5000
     # })
 
     # --- EZ_RANKINGS CONTROLS (gateway, macbook) ---
-    EZ_RANKINGS_THROTTLER_RATE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 500, "macbook": 250
-    })
+    EZ_RANKINGS_THROTTLER_RATE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 500, "macbook": 250}
+    )
 
     # --- EZ_MARK_PRICES CONTROLS (gateway, server, macbook) ---
-    EZ_MARK_PRICES_API_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 35, "server": 35, "macbook": 35
-    })
-    EZ_MARK_PRICES_STARTUP_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 30, "server": 30, "macbook": 30
-    })
+    EZ_MARK_PRICES_API_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 35, "server": 35, "macbook": 35}
+    )
+    EZ_MARK_PRICES_STARTUP_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 30, "server": 30, "macbook": 30}
+    )
 
     # --- EZ_PRICES CONTROLS (already configured above) ---
     # FILE_IO_CONCURRENCY, API_CONCURRENCY, fapi_semaphore in ResamplingAndGapFillEngine.__init__
-    EZ_PRICES_FILE_IO_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 100, "server": 100, "macbook": 50
-    })
-    EZ_PRICES_API_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 3, "server": 3, "macbook": 3
-    })
-    EZ_PRICES_FAPI_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 2, "server": 2, "macbook": 2
-    })
-    EZ_PRICES_API_DELAY: Dict[str, float] = field(default_factory=lambda: {
-        "gateway": 0.5, "server": 0.5, "macbook": 0.5
-    })
-    EZ_PRICES_API_SLEEP_AFTER: Dict[str, float] = field(default_factory=lambda: {
-        "gateway": 0.3, "server": 0.3, "macbook": 0.3
-    })
-    EZ_PRICES_LIMIT_PER_HOST: Dict[str, int] = field(default_factory=lambda: {
-        "gateway": 10, "server": 10, "macbook": 5
-    })
+    EZ_PRICES_FILE_IO_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 100, "server": 100, "macbook": 50}
+    )
+    EZ_PRICES_API_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 3, "server": 3, "macbook": 3}
+    )
+    EZ_PRICES_FAPI_SEMAPHORE: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 2, "server": 2, "macbook": 2}
+    )
+    EZ_PRICES_API_DELAY: Dict[str, float] = field(
+        default_factory=lambda: {"gateway": 0.5, "server": 0.5, "macbook": 0.5}
+    )
+    EZ_PRICES_API_SLEEP_AFTER: Dict[str, float] = field(
+        default_factory=lambda: {"gateway": 0.3, "server": 0.3, "macbook": 0.3}
+    )
+    EZ_PRICES_LIMIT_PER_HOST: Dict[str, int] = field(
+        default_factory=lambda: {"gateway": 10, "server": 10, "macbook": 5}
+    )
     # EZ_PRICES_SYNC_KEY_SEMAPHORE: Dict[str, int] = field(default_factory=lambda: {
-        # "gateway": 160, "server": 160, "macbook": 80
+    # "gateway": 160, "server": 160, "macbook": 80
     # })
 
     # --- RANKINGS TIMING SETTINGS ---
@@ -664,7 +940,7 @@ class Config:
     # --- LOOP INTERVALS ---
     # MEMORY_CHECK_INTERVAL_SECONDS: int = 60  # Memory monitoring interval
     # INITIAL_SETUP_WAIT_SECONDS: int = 30  # Wait for initial setup
-    RANKING_LOOP_SLEEP_SECONDS: int = 180  # Ranking loop sleep (3 minutes)
+    RANKING_LOOP_SLEEP_SECONDS: int = 120  # BACKTEST_CHANGE_44: ranking loop sleep (2 minutes, was 3)
     # SIGNALS_LOOP_SLEEP_SECONDS: int = 300  # Signals loop sleep (5 minutes)
     # PLOT_LOOP_SLEEP_SECONDS: int = 3600  # Plot loop sleep (1 hour)
     # REDIS_HEALTH_CHECK_INTERVAL_SECONDS: int = 120  # Redis health check interval
@@ -677,6 +953,7 @@ class Config:
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))
+
 
 # REQUIRED_INDICATORS: List[str] = [#v1
 #     # === RANKING & SCORING (MANDATORY) from dicts ===
@@ -907,107 +1184,278 @@ class Config:
 
 REQUIRED_INDICATORS: List[str] = [
     # === RANKING & SCORING (MANDATORY) ===
-    '0ranking_points', '0ranking_points_global', '0market_sentiment_score', '0market_sentiment_score_ema', '0market_sentiment_local',
-    '0sentiment_classification', '0sentiment_strength', '0is_top_sentiment', '0is_bottom_sentiment',
-    '0sentiment_rank', '0final_score_norm',
-
+    "0ranking_points",
+    "0ranking_points_global",
+    "0market_sentiment_score",
+    "0market_sentiment_score_ema",
+    "0market_sentiment_local",
+    "0sentiment_classification",
+    "0sentiment_strength",
+    "0is_top_sentiment",
+    "0is_bottom_sentiment",
+    "0sentiment_rank",
+    "0final_score_norm",
     # === CONVICTION SCORES (CALCULATED IN PIPELINE) ===
-    'zconviction_augment_long', 'zconviction_augment_short',
-    'zconviction_reasons_augment_long', 'zconviction_reasons_augment_short',
-
+    "zconviction_augment_long",
+    "zconviction_augment_short",
+    "zconviction_reasons_augment_long",
+    "zconviction_reasons_augment_short",
     # === BASIC PRICE DATA (MANDATORY) ===
-    'current_price', 'prev_price', 'timestamp',
-    'timestamp_3m', 'timestamp_15m', 'timestamp_1h', 'timestamp_4h', 'timestamp_D',
-
+    "current_price",
+    "prev_price",
+    "timestamp",
+    "timestamp_3m",
+    "timestamp_15m",
+    "timestamp_1h",
+    "timestamp_4h",
+    "timestamp_D",
     # === 1M TIMEFRAME ===
-    'stoch_k_1m', 'stoch_d_1m', 'k_1m_prev', 'd_1m_prev',
-    'sma_200_1m', 'sma_200_1m_prev',
-    'sma_crossover_1m', 'sma_crossunder_1m',
-
+    "stoch_k_1m",
+    "stoch_d_1m",
+    "k_1m_prev",
+    "d_1m_prev",
+    "sma_200_1m",
+    "sma_200_1m_prev",
+    "sma_crossover_1m",
+    "sma_crossunder_1m",
     # === 3M TIMEFRAME ===
-    'lr_trend_3m',
-    'dc_high_3m', 'dc_low_3m', 'dc_basis_3m', 'dc_high_3m_prev', 'dc_low_3m_prev',
-    'dc_high_3m_ant', 'dc_low_3m_ant', 'dc_basis_3m_ant', 'dc_high4_3m', 'dc_low4_3m',
-    'wt1_3m', 'wt2_3m', 'wt_signal_3m', 'wt_score_3m',
-    'stoch_k_3m', 'stoch_d_3m', 'k_3m_prev', 'd_3m_prev',
-    'stoch_crossover_3m', 'stoch_crossunder_3m',
-    'dc_basis_crossover_3m', 'dc_basis_crossunder_3m',
-    'dc_high_crossover_3m', 'dc_low_crossunder_3m', 'dc_high_crossunder_3m', 'dc_low_crossover_3m',
-    'ha_3m', 'ha_3m_prev',
-    'atr_3m', 'atr_3m_prev',
-    'relative_volume_3m',
-    'high_3m', 'low_3m', 'high_3m_prev', 'low_3m_prev',
-    'mfi_3m', 'rsi_3m',
-    'ema_20_3m', 'ema_20_std_3m','t_up_3m', 'tco_3m', 'tcu_3m',
-
+    "lr_trend_3m",
+    "dc_high_3m",
+    "dc_low_3m",
+    "dc_basis_3m",
+    "dc_high_3m_prev",
+    "dc_low_3m_prev",
+    "dc_high_3m_ant",
+    "dc_low_3m_ant",
+    "dc_basis_3m_ant",
+    "dc_high4_3m",
+    "dc_low4_3m",
+    "wt1_3m",
+    "wt2_3m",
+    "wt_signal_3m",
+    "wt_score_3m",
+    "stoch_k_3m",
+    "stoch_d_3m",
+    "k_3m_prev",
+    "d_3m_prev",
+    "stoch_crossover_3m",
+    "stoch_crossunder_3m",
+    "dc_basis_crossover_3m",
+    "dc_basis_crossunder_3m",
+    "dc_high_crossover_3m",
+    "dc_low_crossunder_3m",
+    "dc_high_crossunder_3m",
+    "dc_low_crossover_3m",
+    "ha_3m",
+    "ha_3m_prev",
+    "atr_3m",
+    "atr_3m_prev",
+    "relative_volume_3m",
+    "high_3m",
+    "low_3m",
+    "high_3m_prev",
+    "low_3m_prev",
+    "mfi_3m",
+    "rsi_3m",
+    "ema_20_3m",
+    "ema_20_std_3m",
+    "t_up_3m",
+    "tco_3m",
+    "tcu_3m",
     # === 15M TIMEFRAME ===
-    'lr_trend_15m',
-    'dc_high_15m', 'dc_low_15m', 'dc_basis_15m', 'dc_high_15m_prev', 'dc_low_15m_prev',
-    'dc_high_15m_ant', 'dc_low_15m_ant', 'dc_basis_15m_ant',
-    'dc_high4_15m', 'dc_low4_15m',
-    'stoch_k_15m', 'stoch_d_15m', 'stoch_k_15m_prev', 'd_15m_prev',
-    'stoch_crossover_15m', 'stoch_crossunder_15m',
-    'sma_crossover_15m', 'sma_crossunder_15m',
-    'dc_basis_crossover_15m', 'dc_basis_crossunder_15m',
-    'dc_high_crossover_15m', 'dc_low_crossunder_15m', 'dc_high_crossunder_15m', 'dc_low_crossover_15m',
-    'wt1_15m', 'wt2_15m', 'wt_signal_15m', 'wt_score_15m', 'ha_15m',
-    'atr_15m', 'atr_15m_prev',
-    'relative_volume_15m',
-    'high_15m', 'low_15m', 'high_15m_prev', 'low_15m_prev',
-    'sma_200_15m', 'sma_200_15m_prev',
-    'mfi_15m', 'rsi_15m',
-    'ema_20_15m', 't_up_15m',
-
+    "lr_trend_15m",
+    "dc_high_15m",
+    "dc_low_15m",
+    "dc_basis_15m",
+    "dc_high_15m_prev",
+    "dc_low_15m_prev",
+    "dc_high_15m_ant",
+    "dc_low_15m_ant",
+    "dc_basis_15m_ant",
+    "dc_high4_15m",
+    "dc_low4_15m",
+    "stoch_k_15m",
+    "stoch_d_15m",
+    "stoch_k_15m_prev",
+    "d_15m_prev",
+    "stoch_crossover_15m",
+    "stoch_crossunder_15m",
+    "sma_crossover_15m",
+    "sma_crossunder_15m",
+    "dc_basis_crossover_15m",
+    "dc_basis_crossunder_15m",
+    "dc_high_crossover_15m",
+    "dc_low_crossunder_15m",
+    "dc_high_crossunder_15m",
+    "dc_low_crossover_15m",
+    "wt1_15m",
+    "wt2_15m",
+    "wt_signal_15m",
+    "wt_score_15m",
+    "ha_15m",
+    "atr_15m",
+    "atr_15m_prev",
+    "relative_volume_15m",
+    "high_15m",
+    "low_15m",
+    "open_15m",
+    "close_15m",
+    "high_15m_prev",
+    "low_15m_prev",
+    "sma_200_15m",
+    "sma_200_15m_prev",
+    "mfi_15m",
+    "rsi_15m",
+    "ema_20_15m",
+    "t_up_15m",
     # === 1H TIMEFRAME ===
-    'lr_trend_1h',
-    'dc_high_1h', 'dc_low_1h', 'dc_basis_1h', 'dc_high_1h_ant', 'dc_low_1h_ant',
-    'dc_basis_1h_ant', 'dc_high4_1h', 'dc_low4_1h',
-    'stoch_k_1h', 'stoch_d_1h', 'k_1h_prev', 'd_1h_prev',
-    'stoch_crossover_1h', 'stoch_crossunder_1h',
-    'sma_crossover_1h', 'sma_crossunder_1h',
-    'dc_basis_crossover_1h', 'dc_basis_crossunder_1h',
-    'dc_high_crossover_1h', 'dc_low_crossunder_1h', 'dc_high_crossunder_1h', 'dc_low_crossover_1h',
-    'wt1_1h', 'wt2_1h', 'wt_signal_1h', 'wt_score_1h',
-    'ha_1h',
-    'atr_1h', 'atr_1h_prev',
-    'sma_200_1h', 'sma_200_1h_prev',
-    'high_1h', 'low_1h', 'high_1h_prev', 'low_1h_prev',
-    'mfi_1h', 'rsi_1h',
-    'ema_20_1h',
-
+    "lr_trend_1h",
+    "dc_high_1h",
+    "dc_low_1h",
+    "dc_basis_1h",
+    "dc_high_1h_ant",
+    "dc_low_1h_ant",
+    "dc_basis_1h_ant",
+    "dc_high4_1h",
+    "dc_low4_1h",
+    "stoch_k_1h",
+    "stoch_d_1h",
+    "k_1h_prev",
+    "d_1h_prev",
+    "stoch_crossover_1h",
+    "stoch_crossunder_1h",
+    "sma_crossover_1h",
+    "sma_crossunder_1h",
+    "dc_basis_crossover_1h",
+    "dc_basis_crossunder_1h",
+    "dc_high_crossover_1h",
+    "dc_low_crossunder_1h",
+    "dc_high_crossunder_1h",
+    "dc_low_crossover_1h",
+    "wt1_1h",
+    "wt2_1h",
+    "wt_signal_1h",
+    "wt_score_1h",
+    "ha_1h",
+    "atr_1h",
+    "atr_1h_prev",
+    "sma_200_1h",
+    "sma_200_1h_prev",
+    "high_1h",
+    "low_1h",
+    "high_1h_prev",
+    "low_1h_prev",
+    "mfi_1h",
+    "rsi_1h",
+    "ema_20_1h",
     # === 4H TIMEFRAME ===
-    'lr_trend_4h', 
-    'slope_close_4h', 'linearity_4h',
-    'dc_high_4h', 'dc_low_4h', 'dc_basis_4h', 'dc_high_4h_ant', 'dc_low_4h_ant',
-    'dc_basis_4h_ant', 'dc_high4_4h', 'dc_low4_4h',
-    'stoch_k_4h', 'stoch_d_4h', 'k_4h_prev', 'stoch_d_4h_prev',
-    'stoch_crossover_4h', 'stoch_crossunder_4h',
-    'sma_crossover_4h', 'sma_crossunder_4h',
-    'dc_basis_crossover_4h', 'dc_basis_crossunder_4h',
-    'dc_high_crossover_4h', 'dc_low_crossunder_4h', 'dc_high_crossunder_4h', 'dc_low_crossover_4h',
-    'wt1_4h', 'wt2_4h', 'wt_signal_4h', 'wt_score_4h',
-    'ha_4h',
-    'atr_4h', 'atr_4h_prev',
-    'sma_200_4h', 'sma_200_4h_prev', 'ema_20_std_4h'
-    'high_4h', 'low_4h', 'high_4h_prev', 'low_4h_prev',
-    'mfi_4h', 'rsi_4h',
-    'ema_20_4h',
-
+    "lr_trend_4h",
+    "slope_close_4h",
+    "linearity_4h",
+    "dc_high_4h",
+    "dc_low_4h",
+    "dc_basis_4h",
+    "dc_high_4h_ant",
+    "dc_low_4h_ant",
+    "dc_basis_4h_ant",
+    "dc_high4_4h",
+    "dc_low4_4h",
+    "stoch_k_4h",
+    "stoch_d_4h",
+    "k_4h_prev",
+    "stoch_d_4h_prev",
+    "stoch_crossover_4h",
+    "stoch_crossunder_4h",
+    "sma_crossover_4h",
+    "sma_crossunder_4h",
+    "dc_basis_crossover_4h",
+    "dc_basis_crossunder_4h",
+    "dc_high_crossover_4h",
+    "dc_low_crossunder_4h",
+    "dc_high_crossunder_4h",
+    "dc_low_crossover_4h",
+    "wt1_4h",
+    "wt2_4h",
+    "wt_signal_4h",
+    "wt_score_4h",
+    "ha_4h",
+    "atr_4h",
+    "atr_4h_prev",
+    "sma_200_4h",
+    "sma_200_4h_prev",
+    "ema_20_std_4h",
+    "high_4h",
+    "low_4h",
+    "high_4h_prev",
+    "low_4h_prev",
+    "mfi_4h",
+    "rsi_4h",
+    "ema_20_4h",
     # === DAILY (D) TIMEFRAME ===
-    'dc_high_D', 'dc_low_D', 'dc_basis_D', 'dc_high_D_prev', 'dc_low_D_prev', 'dc_basis_D_prev',
-    'dc_high_D_ant', 'dc_low_D_ant', 'dc_basis_D_ant',
-    'dc_basis_crossover_D', 'dc_basis_crossunder_D',
-    'dc_high_crossover_D', 'dc_low_crossunder_D', 'dc_high_crossunder_D', 'dc_low_crossover_D',
-    'stoch_k_D', 'stoch_d_D', 'k_D_prev', 'stoch_d_D_prev', 'stoch_crossover_D', 'stoch_crossunder_D',
-    'wt1_D', 'wt2_D', 'wt_signal_D', 'wt_score_D',
-    'ha_D', 'atr_D', 'atr_D_prev', 'sma_200_D', 'sma_200_D_prev',
-    'mfi_D', 'rsi_D',
-    'high_D', 'low_D',
+    "dc_high_D",
+    "dc_low_D",
+    "dc_basis_D",
+    "dc_high_D_prev",
+    "dc_low_D_prev",
+    "dc_basis_D_prev",
+    "dc_high_D_ant",
+    "dc_low_D_ant",
+    "dc_basis_D_ant",
+    "dc_basis_crossover_D",
+    "dc_basis_crossunder_D",
+    "dc_high_crossover_D",
+    "dc_low_crossunder_D",
+    "dc_high_crossunder_D",
+    "dc_low_crossover_D",
+    "stoch_k_D",
+    "stoch_d_D",
+    "k_D_prev",
+    "stoch_d_D_prev",
+    "stoch_crossover_D",
+    "stoch_crossunder_D",
+    "wt1_D",
+    "wt2_D",
+    "wt_signal_D",
+    "wt_score_D",
+    "ha_D",
+    "atr_D",
+    "atr_D_prev",
+    "sma_200_D",
+    "sma_200_D_prev",
+    "mfi_D",
+    "rsi_D",
+    "high_D",
+    "low_D",
+    # === BAR PATTERN + VOLUME (HTF) ===
+    "bar_pattern_1h",
+    "bar_direction_1h",
+    "bar_strength_1h",
+    "bar_vol_confirm_1h",
+    "bar_vol_ratio_1h",
+    "bar_body_ratio_1h",
+    "bar_upper_wick_1h",
+    "bar_lower_wick_1h",
+    "bar_pattern_4h",
+    "bar_direction_4h",
+    "bar_strength_4h",
+    "bar_vol_confirm_4h",
+    "bar_vol_ratio_4h",
+    "bar_body_ratio_4h",
+    "bar_upper_wick_4h",
+    "bar_lower_wick_4h",
+    "bar_pattern_D",
+    "bar_direction_D",
+    "bar_strength_D",
+    "bar_vol_confirm_D",
+    "bar_vol_ratio_D",
+    "bar_body_ratio_D",
+    "bar_upper_wick_D",
+    "bar_lower_wick_D",
 ]
 _DEFAULT_FINAL_SCORING_INDICATORS: List[str] = [
-    indicator for indicator in REQUIRED_INDICATORS if indicator.startswith('0')
+    indicator for indicator in REQUIRED_INDICATORS if indicator.startswith("0")
 ]
 
 _DEFAULT_CORE_TECHNICAL_INDICATORS: List[str] = [
-    indicator for indicator in REQUIRED_INDICATORS if not indicator.startswith('0')
+    indicator for indicator in REQUIRED_INDICATORS if not indicator.startswith("0")
 ]
