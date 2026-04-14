@@ -694,8 +694,12 @@ class TradierConfig:
     DELTA_LT_COOLDOWN_BARS: int = 120  # ~10h
     DELTA_LT_HTF_GATE: str = "4h_D"
     # STRUCTURAL RANGE SHIFT EXIT (stocks) — hold losers, cut at 4h DC boundary when range shifts
-    STRUCTURAL_RANGE_SHIFT_EXIT: bool = False  # V8 ABLATION 2026-04-13: OFF=Sharpe 1.146 vs ON=0.813. SRS hurts stocks.
-    STRUCTURAL_RANGE_SHIFT_TF: str = "bb_4h"  # 2026-04-10 APPLIED — Tier 16 stocks winner: bb_4h Sharpe 1.021, PnL +0.70%, WR 42.3% (beats dc_4h 0.838/0.42%/38.0%)
+    STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # 2026-04-14 RE-ENABLED with cascade logic (was False with naive approach trigger). User directive: bb_1h for stocks.
+    STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # 2026-04-14 USER: bb_upper_1h/bb_lower_1h for stocks (cascade rewrite — was bb_4h)
+    # Cascade params (stocks) — same knobs as crypto unless overridden
+    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0
+    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0
+    STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True

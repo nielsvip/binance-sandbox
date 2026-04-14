@@ -324,6 +324,12 @@ class Config:
     # shifted, recovery is unlikely. Gated by config, default OFF for live, ON for sweep testing.
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # 2026-04-10 APPLIED — sweep winner: SRS=True Sharpe +0.830 vs False +0.804, PnL +29.5% vs +28.5%. NOLOSS=0.0 per user "we'll swallow the commissions"
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"  # Which range defines "structural shift". Options: dc_1h, dc_4h, dc_D, bb_1h, bb_4h, bb_D. Sweep Tier 15 tests all 6.
+    # 2026-04-14 CASCADE: exit on multi-TF exhaustion near the boundary (NOT on approach alone)
+    # LONG: entry > upper; wait until 1h+15m k overbought turning down + wt bearish, then 3m wt bearish cross fires close
+    # SHORT: entry > lower; wait until 1h+15m k oversold turning up + wt bullish, then 3m wt bullish cross fires close
+    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0     # LONG: stoch_k_1h/15m must be >= this AND turning down
+    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0      # SHORT: stoch_k_1h/15m must be <= this AND turning up
+    STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0  # Price must be within N bps of the boundary (100bps = 1%)
     # Multi-TF minimum for ANY action (rule 6: no single TF triggers)
     DELTA_MIN_TF_FOR_ACTION: int = 2       # Minimum TFs confirming for any buy/sell decision
     # ═══ GAIN EROSION TRAILING STOP (sweepable) — user directive 2026-04-10 ═══

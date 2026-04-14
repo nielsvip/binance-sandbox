@@ -207,13 +207,23 @@ def spawn_fix_agent(incident_path):
         return
     try:
         safe_prompt = prompt.replace('"', '\\"').replace("\n", " ")
+        cmd_line = f"cd {BASE} && echo 'SENTINEL FIX AGENT — incident {incident_path.name}' && claude --dangerously-skip-permissions \\\"{safe_prompt}\\\""
         applescript = (
-            f'tell application "Terminal" to do script '
-            f'"cd {BASE} && echo \'SENTINEL FIX AGENT — incident {incident_path.name}\' && '
-            f'claude --dangerously-skip-permissions \\"{safe_prompt}\\""'
+            'tell application "iTerm2"\n'
+            '  activate\n'
+            '  if (count of windows) = 0 then\n'
+            '    create window with default profile\n'
+            '  end if\n'
+            '  tell current window\n'
+            '    create tab with default profile\n'
+            '    tell current session of current tab\n'
+            f'      write text "{cmd_line}"\n'
+            '    end tell\n'
+            '  end tell\n'
+            'end tell'
         )
         subprocess.Popen(["osascript", "-e", applescript], start_new_session=True)
-        log(f"spawned fix agent in Terminal.app for {incident_path.name}")
+        log(f"spawned fix agent in iTerm2 tab for {incident_path.name}")
     except Exception as e:
         log(f"agent spawn failed: {e}")
 
@@ -249,13 +259,22 @@ def pull_remote_incidents():
             fake_inc = INCIDENT_DIR / f"{tag}_{pending.stem}.json"
             fake_inc.write_text(json.dumps({"remote": tag, "original": data}, indent=2))
             log(f"picked up remote incident from {tag}: {pending.name}")
-            is_mac = True
             try:
                 safe_prompt = data["prompt"].replace('"', '\\"').replace("\n", " ")
+                cmd_line = f"cd {BASE} && echo 'SENTINEL REMOTE FIX ({tag}) — {pending.name}' && claude --dangerously-skip-permissions \\\"{safe_prompt}\\\""
                 applescript = (
-                    f'tell application "Terminal" to do script '
-                    f'"cd {BASE} && echo \'SENTINEL REMOTE FIX ({tag}) — {pending.name}\' && '
-                    f'claude --dangerously-skip-permissions \\"{safe_prompt}\\""'
+                    'tell application "iTerm2"\n'
+                    '  activate\n'
+                    '  if (count of windows) = 0 then\n'
+                    '    create window with default profile\n'
+                    '  end if\n'
+                    '  tell current window\n'
+                    '    create tab with default profile\n'
+                    '    tell current session of current tab\n'
+                    f'      write text "{cmd_line}"\n'
+                    '    end tell\n'
+                    '  end tell\n'
+                    'end tell'
                 )
                 subprocess.Popen(["osascript", "-e", applescript], start_new_session=True)
             except Exception as e:

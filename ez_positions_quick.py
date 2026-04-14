@@ -10321,9 +10321,13 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         if _pe_high_3m > 0 and _pe_high_3m_prev > 0 and _pe_high_3m > _pe_high_3m_prev:
                             hard_exit_reason = f"PARABOLIC_EXIT_SHORT_k15={_pe_k15m:.0f}_px<{_pe_dc_low_3m:.6f}_high3m={_pe_high_3m:.6f}>prev{_pe_high_3m_prev:.6f}"
                             logger.critical(f"🔥 [PARABOLIC_EXIT_SHORT] {position_key}: {hard_exit_reason}")
-                # ═══ STRUCTURAL RANGE SHIFT EXIT (USER 2026-04-10): hold losers, cut at boundary when range shifts ═══
-                # Configurable via STRUCTURAL_RANGE_SHIFT_TF: dc_1h, dc_4h, dc_D, bb_1h, bb_4h, bb_D
-                # If entry_price is OUTSIDE the selected channel, close at the near boundary.
+                # ═══ STRUCTURAL RANGE SHIFT EXIT — CASCADE (USER 2026-04-14) ═══
+                # LONG: entry > upper. Exit when 1h+15m k overbought turning down + wt bearish,
+                #       within proximity band of upper, AND wt 3m bearish cross fires → local high.
+                # SHORT: entry > lower. Exit when 1h+15m k oversold turning up + wt bullish,
+                #        within proximity band of lower, AND wt 3m bullish cross fires → local low.
+                # Configurable TF (crypto default dc_4h) + cascade knobs in config.
+                # SRS reason explicitly bypasses UNIVERSAL_NOLOSS_GATE + STRICT_NO_LOSS guards.
                 if not hard_exit_reason and not is_hedge and getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
                     _srs_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                     _srs_tf = getattr(config, 'STRUCTURAL_RANGE_SHIFT_TF', 'dc_4h')
@@ -10335,14 +10339,36 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     _srs_high_key, _srs_low_key = _srs_field_map.get(_srs_tf, ('dc_high_4h', 'dc_low_4h'))
                     _srs_high = safe_fetch_float(indicators.get(_srs_high_key, 0), 0)
                     _srs_low = safe_fetch_float(indicators.get(_srs_low_key, 0), 0)
+                    _srs_k_hi = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
+                    _srs_k_lo = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
+                    _srs_prox_bps = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
+                    _srs_band = _srs_prox_bps / 10000.0
+                    _srs_k1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50)
+                    _srs_k1h_prev = safe_fetch_float(indicators.get('stoch_k_1h_prev', 50), 50)
+                    _srs_k15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50)
+                    _srs_k15m_prev = safe_fetch_float(indicators.get('stoch_k_15m_prev', 50), 50)
+                    _srs_wt1_1h = safe_fetch_float(indicators.get('wt1_1h', 0), 0)
+                    _srs_wt2_1h = safe_fetch_float(indicators.get('wt2_1h', 0), 0)
+                    _srs_wt1_15m = safe_fetch_float(indicators.get('wt1_15m', 0), 0)
+                    _srs_wt2_15m = safe_fetch_float(indicators.get('wt2_15m', 0), 0)
+                    _srs_wt1_3m = safe_fetch_float(indicators.get('wt1_3m', 0), 0)
+                    _srs_wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
                     if _srs_entry > 0 and _srs_high > 0 and _srs_low > 0:
-                        _srs_range_shifted = (is_long and _srs_entry > _srs_high) or (not is_long and _srs_entry < _srs_low)
-                        if _srs_range_shifted:
-                            if is_long and current_price >= _srs_high * 0.999:
-                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_LONG_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_high_key}={_srs_high:.6f}"
+                        if is_long and _srs_entry > _srs_high:
+                            _srs_prox = abs(current_price - _srs_high) / _srs_high <= _srs_band
+                            _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_prev) and (_srs_wt1_1h < _srs_wt2_1h)
+                            _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_prev) and (_srs_wt1_15m < _srs_wt2_15m)
+                            _srs_3m = _srs_wt1_3m < _srs_wt2_3m
+                            if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
+                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_LONG_CASCADE_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_high_key}={_srs_high:.6f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}"
                                 logger.critical(f"🏗️ [STRUCTURAL_RANGE_SHIFT] {position_key}: {hard_exit_reason}")
-                            elif not is_long and current_price <= _srs_low * 1.001:
-                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_SHORT_{_srs_tf}_entry={_srs_entry:.6f}<{_srs_low_key}={_srs_low:.6f}"
+                        elif (not is_long) and _srs_entry > _srs_low:
+                            _srs_prox = abs(current_price - _srs_low) / _srs_low <= _srs_band
+                            _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_prev) and (_srs_wt1_1h > _srs_wt2_1h)
+                            _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_prev) and (_srs_wt1_15m > _srs_wt2_15m)
+                            _srs_3m = _srs_wt1_3m > _srs_wt2_3m
+                            if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
+                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_SHORT_CASCADE_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_low_key}={_srs_low:.6f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}"
                                 logger.critical(f"🏗️ [STRUCTURAL_RANGE_SHIFT] {position_key}: {hard_exit_reason}")
                 # ═══ D-LOW BOUNCE AUGMENT (2026-04-11) — DCA deep losers at daily support ═══
                 # When position at huge loss + price bouncing off dc_low_D + k_D oversold crossing up:

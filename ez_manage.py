@@ -9781,8 +9781,10 @@ class MultiAccountTradeManager:
                                                 logger.error(f"[🚨 IMMEDIATE_REDUCE_NOT_ALLOWED] {position_key}: REDUCE COOLDOWN ACTIVE - last reduction was {red_seconds:.0f}s ago (required={config.REDUCTION_COOLDOWN_SECONDS}s) - NO EXCEPTIONS")
                                                 continue
                                             # STRICT_NO_LOSS: NEVER reduce at a loss. Take a hedge instead.
+                                            # SRS bypass (2026-04-14): STRUCTURAL_RANGE_SHIFT is a controlled-loss exit.
                                             _noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.5)
-                                            if is_strict_no_loss_account(config, account_key) and position.gain < _noloss_min:
+                                            _imm_srs = 'STRUCTURAL_RANGE_SHIFT' in str(event_type or '').upper() or 'STRUCTURAL_RANGE_SHIFT' in str(signal_category or '').upper()
+                                            if is_strict_no_loss_account(config, account_key) and position.gain < _noloss_min and not _imm_srs:
                                                 logger.warning(f"[IMMEDIATE_REDUCE_BLOCKED_NOLOSS] {position_key}: gain={position.gain:.2f}% < {_noloss_min}%. STRICT_NO_LOSS — NEVER close at a loss. Hedging instead.")
                                                 continue
                                             reason_code = f"[HANDLE_SIGNAL]:{signal_category}_{event_type}_IMMEDIATE_REDUCE" if signal_category != "UNKNOWN" else f"{event_type}_IMMEDIATE_REDUCE"
