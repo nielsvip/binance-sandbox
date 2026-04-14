@@ -234,7 +234,9 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
             result['wt_velocity_1m'] = wt1m['velocity']
 
         # 4. WaveTrend 3m — FULL intelligence
-        wt3m = wavetrend_numpy(closes_3m, closes_3m, closes_3m)
+        # Fallback: if insufficient 3m bars, resample 1m→3m (every 3rd close)
+        _c3m = closes_3m if len(closes_3m) >= 29 else ([closes_1m[i] for i in range(2, len(closes_1m), 3)] if len(closes_1m) >= 87 else closes_3m)
+        wt3m = wavetrend_numpy(_c3m, _c3m, _c3m)
         if wt3m:
             result['wt1_3m'] = wt3m['wt1']; result['wt2_3m'] = wt3m['wt2']
             result['wt1_3m_prev'] = wt3m['wt1_prev']; result['wt2_3m_prev'] = wt3m['wt2_prev']
@@ -308,12 +310,27 @@ class HighResMarketData:
         if symbol in self.data: return
         hist_1m = KlineLoader.load_history(symbol, '1m')
         hist_3m = KlineLoader.load_history(symbol, '3m')
-        
         closes_1m = OrderedDict()
         closes_3m = OrderedDict()
         for ts in sorted(hist_1m.keys()): closes_1m[int(ts)] = float(hist_1m[ts])
         for ts in sorted(hist_3m.keys()): closes_3m[int(ts)] = float(hist_3m[ts])
-
+        # WT needs ≥29 3m bars, stoch needs ≥22 1m bars. If 1m/3m files missing,
+        # derive synthetic candles from 15m history (exists for all symbols).
+        # Each 15m bar → 15 synthetic 1m bars + 5 synthetic 3m bars (same close).
+        # Seeded values are replaced by live ticks within minutes — accuracy not required here.
+        if len(closes_1m) < 50 or len(closes_3m) < 30:
+            hist_15m = KlineLoader.load_history(symbol, '15m')
+            if hist_15m:
+                sorted_15m_keys = sorted(hist_15m.keys())[-40:]  # last 40 15m bars = 10 hours
+                for ts_15m in sorted_15m_keys:
+                    close = float(hist_15m[ts_15m])
+                    ts_base = int(ts_15m)
+                    if len(closes_1m) < 50:
+                        for m in range(15):
+                            closes_1m[ts_base + m * 60] = close
+                    if len(closes_3m) < 30:
+                        for t in range(5):
+                            closes_3m[ts_base + t * 180] = close
         while len(closes_1m) > 180: closes_1m.popitem(last=False)
         while len(closes_3m) > 180: closes_3m.popitem(last=False)
 

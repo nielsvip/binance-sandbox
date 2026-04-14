@@ -862,10 +862,41 @@ TRADIER_TIER25 = {
 # 4 × 2 × 2 × 2 × 2 × 2 × 2 = 256 configs (ALL proven to vary behavior)
 
 # ═══════════════════════════════════════════════════════════════
+# CRYPTO Tier 25 — V8-LIVE PARAMETERS ABLATION (crypto equivalent of TRADIER_TIER25)
+# Tests the production on/off switches that actually drive crypto V8 results.
+# Mirrors tradier_t25 design: each boolean tested independently + entry threshold grid.
+# STRUCTURAL_RANGE_SHIFT_TF locked to dc_4h (ABSOLUTE RULE — never change for crypto).
+# Run with: --tier 25 --mode crypto --start 2024-01-01 --workers 2 --symbols fast
+# ═══════════════════════════════════════════════════════════════
+CRYPTO_TIER25 = {
+    # WT_DC entry threshold — same gate as tradier, controls wt_dc_score minimum
+    "WT_DC_ENTRY_THRESHOLD": [35, 43, 55, 75],
+    # Structural range shift — crypto uses dc_4h (ABSOLUTE: never change TF for crypto)
+    "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+    "STRUCTURAL_RANGE_SHIFT_TF": ["dc_4h"],  # LOCKED — dc_4h is the only valid value for crypto
+    "STRUCTURAL_RANGE_SHIFT_K_HIGH": [75.0],
+    "STRUCTURAL_RANGE_SHIFT_K_LOW": [25.0],
+    # WT crossunder final — dominant exit signal (WT1<WT2 on 1h+4h)
+    "WT_CROSSUNDER_FINAL_ENABLED": [True, False],
+    # Delta engine — master on/off for entire delta entry+exit system
+    "DELTA_ENGINE_ENABLED": [True, False],
+    # Delta entry — independent of delta exit
+    "DELTA_ENTRY_ENABLED": [True, False],
+    # RZ exit — zone-based exits (TOP/BOTTOM exhaustion signals)
+    "RZ_EXIT_ENABLED": [True, False],
+    # SATOSHIT — copy trader entry filter (SATOSHIT_ENABLED in config.py)
+    "SATOSHIT_ENABLED": [True, False],
+    # NOLOSS: always OFF for crypto (no stop loss paths)
+    "NOLOSS_MIN_PROFIT_PCT": [-999.0],
+    "STRICT_NO_LOSS_ACCOUNTS": [[]],
+}
+# 4 × 2 × 2 × 2 × 2 × 2 × 2 = 256 configs
+
+# ═══════════════════════════════════════════════════════════════
 # CRYPTO Tier 30 — Copy Trader Entry Gate Sweep (BC_170–BC_174)
 # Tests 5 new entry gates individually, combined, and top-3 combo.
 # All gates default to False in config.py; sweep enables them one at a time.
-# Run with: --tier 30 --mode crypto --start 2024-01-01 --workers 2
+# Run with: --tier 30 --mode crypto --start 2024-01-01 --workers 2 --symbols fast
 # ═══════════════════════════════════════════════════════════════
 _CT_GATE_BASE = {
     "NOLOSS_MIN_PROFIT_PCT": -999.0,
@@ -1065,6 +1096,8 @@ def main():
 
     if args.mode == "crypto":
         if args.tier == 30: param_grid = None  # Tier 30 uses fixed configs
+        elif args.tier == 25: param_grid = CRYPTO_TIER25  # production ablation sweep (mirrors tradier t25)
+        elif _tier_name == "15b": param_grid = CRYPTO_TIER15B  # SRS cascade knob sweep
         elif _tier_name == "11f": param_grid = CRYPTO_TIER11F
         elif _tier_name == "3f": param_grid = CRYPTO_TIER3F
         elif args.tier == 17: param_grid = None  # Tier 17 uses fixed configs (exit ablation)

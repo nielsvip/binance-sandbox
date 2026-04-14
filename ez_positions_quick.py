@@ -4932,8 +4932,8 @@ class HedgeEngine:
                 # Hedges live for minutes only — they damp losses while origin is in freefall, then die the moment
                 # the move decelerates or WT reverses. Profit/loss does NOT matter. Close, nuke, CLEAR completed-lockout
                 # so the next loss augmentation can re-open a fresh hedge (if conditions allow per _hedge_entry_is_valid).
-                _wt1_3m = safe_fetch_float(indicators.get('wt1_3m') or metrics.get('wt1_3m', 0), 0); _wt2_3m = safe_fetch_float(indicators.get('wt2_3m') or metrics.get('wt2_3m', 0), 0)
-                _wt1_15m = safe_fetch_float(indicators.get('wt1_15m') or metrics.get('wt1_15m', 0), 0); _wt2_15m = safe_fetch_float(indicators.get('wt2_15m') or metrics.get('wt2_15m', 0), 0)
+                _wt1_3m = safe_fetch_float(indicators.get('wt1_3m', 0)); _wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0))
+                _wt1_15m = safe_fetch_float(indicators.get('wt1_15m', 0)); _wt2_15m = safe_fetch_float(indicators.get('wt2_15m', 0))
                 _wt3m_against_hedge = (is_hedge_long and _wt1_3m < _wt2_3m) or (not is_hedge_long and _wt1_3m > _wt2_3m)
                 _wt15m_against_hedge = (is_hedge_long and _wt1_15m < _wt2_15m) or (not is_hedge_long and _wt1_15m > _wt2_15m)
                 _delta_decel_against = False
