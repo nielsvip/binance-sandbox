@@ -162,8 +162,13 @@ run_script() {
     local start_time=$(date +%s)
     log "Starting $SCRIPT ${ARGS[*]}"
 
-    # Python handles its own logging via RotatingFileHandler — redirect stdout to /dev/null
-    "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" > /dev/null 2>&1 &
+    # Scripts using Python logging write to their own log file — stdout to /dev/null
+    # Exception: ez_klines uses print() so redirect stdout to its monitored log file
+    if [[ "$SCRIPT_BASE" == "ez_klines" ]]; then
+        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" >> "$PYTHON_LOG" 2>&1 &
+    else
+        "$PYTHON" -u "$SCRIPT" "${ARGS[@]}" > /dev/null 2>&1 &
+    fi
     local script_pid=$!
     CHILD_PID=$script_pid
     
