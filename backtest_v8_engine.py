@@ -431,12 +431,11 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
 # STEP 6: NPZ data loader
 # ═══════════════════════════════════════════════════════════════
 def get_npz_dir(mode):
-    # Crypto: V4 first (V8 NPZ has zero WT fields — linter bug never fixed)
-    # Tradier: V4_tradier first (has full 2yr stock data)
+    # V4 deprecated — backtest_v8 is primary for both crypto and tradier
     if mode == "crypto":
-        search = ["backtest_v4", "backtest_v8", "backtest_v7"]
+        search = ["backtest_v8", "backtest_v7"]
     else:
-        search = ["backtest_v4_tradier", "backtest_v8", "backtest_v7"]
+        search = ["backtest_v8", "backtest_v7"]
     for prefix in search:
         d = BASE_PATH / prefix / "indicators"
         if d.exists() and any(d.glob("*.npz")):
