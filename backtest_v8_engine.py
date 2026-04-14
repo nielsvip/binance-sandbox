@@ -1106,6 +1106,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if p <= 0:
                 continue
             indicators = store.build_indicator_dict(idx)
+            _ha_map_c = {-1: 'red', 0: 'neutral', 1: 'green'}
+            for _ha_tf_c in ['3m', '5m', '15m', '1h', '4h', 'D']:
+                _ha_k_c = f'ha_{_ha_tf_c}'
+                _ha_v_c = indicators.get(_ha_k_c)
+                if isinstance(_ha_v_c, (int, float, np.integer, np.floating)):
+                    indicators[_ha_k_c] = _ha_map_c.get(int(_ha_v_c), 'neutral')
             # Inject timestamp fields so staleness checks pass
             sim_dt = datetime.utcfromtimestamp(ts)
             sim_iso = sim_dt.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
@@ -1191,7 +1197,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # V8 SRS SWEEP: check_exit_candidates reads SRS from ez_positions_quick.config
         # which has the strict entry>upper+AND cascade. Run the V8 relaxed SRS (OR cascade,
         # no entry>upper gate) as a second pass on still-active positions.
-        _v8_srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
+        _v8_srs_on = getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
         if _v8_srs_on:
             _v8_srs_still_active = [pk for pk, pos in trade_manager.positions.items()
                                     if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
@@ -1206,14 +1212,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if _srs_qty <= 0 or _srs_p <= 0:
                     continue
                 _srs_is_long = _srs_pk.endswith('_LONG')
-                _srs_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
+                _srs_tf = getattr(config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
                 _srs_fm = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_D': ('dc_high_D', 'dc_low_D'), 'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h'), 'bb_D': ('bb_upper_D', 'bb_lower_D')}
                 _srs_hk, _srs_lk = _srs_fm.get(_srs_tf, ('bb_upper_1h', 'bb_lower_1h'))
                 _srs_hi = float(_srs_ind.get(_srs_hk, 0) or 0)
                 _srs_lo = float(_srs_ind.get(_srs_lk, 0) or 0)
-                _srs_band = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0)) / 10000.0
-                _srs_k_hi = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
-                _srs_k_lo = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
+                _srs_band = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0)) / 10000.0
+                _srs_k_hi = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
+                _srs_k_lo = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
                 _srs_k1h = float(_srs_ind.get('stoch_k_1h', 50) or 50)
                 _srs_k1h_p = float(_srs_ind.get('stoch_k_1h_prev', 50) or 50)
                 _srs_k15m = float(_srs_ind.get('stoch_k_15m', 50) or 50)
@@ -1653,8 +1659,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
                     if not _sat_ok:
                         return "BLOCKED_SATOSHIT_FILTER"
-                except Exception:
-                    pass
+                except Exception as _sat_e1:
+                    v8_logger.warning(f"[V8_SATOSHIT_FALLBACK_ETA] gate error (blocking): {_sat_e1}")
+                    return "BLOCKED_SATOSHIT_ERROR"
             if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
                 if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
                     return "BLOCKED_DELTA_ENTRY_DISABLED"
@@ -1729,8 +1736,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
                         if not _sat_ok:
                             return "BLOCKED_SATOSHIT_FILTER"
-                    except Exception:
-                        pass
+                    except Exception as _sat_e2:
+                        v8_logger.warning(f"[V8_SATOSHIT_REAL_ETA] gate error (blocking): {_sat_e2}")
+                        return "BLOCKED_SATOSHIT_ERROR"
                 if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and _reason:
                     if "DELTA_ENTRY" in _reason.upper() or "DELTA_SIGNAL" in _reason.upper():
                         return "BLOCKED_DELTA_ENTRY_DISABLED"
@@ -2051,6 +2059,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _sat_ok:
                     score += 15.0
                     reason = f"SAT_v{_sat_votes}+{reason}"
+                else:
+                    score = 0.0
+                    reason = f"BLOCKED_SATOSHIT_v{_sat_votes}+{reason}"
             except Exception:
                 pass
         return score, reason
@@ -2069,6 +2080,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             p = store.price(idx)
             if p <= 0: continue
             ind = store.build_indicator_dict(idx)
+            _ha_map = {-1: 'red', 0: 'neutral', 1: 'green'}
+            for _ha_tf in ['5m', '15m', '1h', '4h', 'D']:
+                _ha_k = f'ha_{_ha_tf}'
+                _ha_v = ind.get(_ha_k)
+                if isinstance(_ha_v, (int, float, np.integer, np.floating)):
+                    ind[_ha_k] = _ha_map.get(int(_ha_v), 'neutral')
             ind['ts'] = float(ts)
             ind['_tick_ts'] = float(ts)
             ind['current_price'] = p
@@ -2089,19 +2106,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
         manager.market_snapshot = dict(indicator_cache)
-        # FIX 2026-04-14: Feed delta tracker on EVERY bar for continuous history.
-        # Without this, delta tracker only gets update() calls during process_position
-        # (every 3rd bar for candidates) → prev dict never builds → deltas always 0
-        # → DELTA_ENTRY_ENABLED switch is dead (no entries to gate).
-        # The tracker's _last_bar_ts guard (line ~197 in wt_dc_delta.py) prevents
-        # double-updating prev when process_position calls update() on the same bar.
-        if hasattr(manager, 'delta_tracker') and manager.delta_tracker:
-            for _dt_sym, _dt_ind in indicator_cache.items():
-                if _dt_ind:
-                    try:
-                        manager.delta_tracker.update(_dt_sym, _dt_ind)
-                    except Exception:
-                        pass
+        # DELTA_ENTRY prev-warmup: done AFTER process_position (see below).
         # Update position gains from current prices
         if manager.position_manager:
             for _pk, _pos in manager.position_manager.positions.items():
@@ -2145,19 +2150,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _is_long_ok = True
                     _is_short_ok = True
                 if pk_l not in open_keys and _is_long_ok:
-                    if _sat_enabled and _v8_sat_entry:
-                        _sat_ok, _, _ = _v8_sat_entry(ind, True, tm_mod.config)
-                        if _sat_ok:
-                            cand_keys.append(pk_l)
-                    elif not _sat_enabled:
-                        cand_keys.append(pk_l)
+                    cand_keys.append(pk_l)
                 if pk_s not in open_keys and _is_short_ok:
-                    if _sat_enabled and _v8_sat_entry:
-                        _sat_ok, _, _ = _v8_sat_entry(ind, False, tm_mod.config)
-                        if _sat_ok:
-                            cand_keys.append(pk_s)
-                    elif not _sat_enabled:
-                        cand_keys.append(pk_s)
+                    cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
         if not all_keys: continue
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
@@ -2170,6 +2165,29 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     oq._orders.task_done()
                 except: break
         await asyncio.sleep(0)
+        if hasattr(manager, 'delta_tracker') and manager.delta_tracker:
+            _dt_wt_fields = ["wt1", "wt2", "wt_score", "wt_velocity", "wt_acceleration", "wt_percentile", "wt_zscore"]
+            _dt_dc_fields = ["dc_basis", "dc_high", "dc_low"]
+            _dt_tfs = list(manager.delta_tracker.cfg.get("tf_weights", {}).keys()) or ["1h", "4h", "D"]
+            for _dt_sym, _dt_ind in indicator_cache.items():
+                if not _dt_ind:
+                    continue
+                _dt_prev = manager.delta_tracker._prev[_dt_sym]
+                _dt_cur_ts = float(_dt_ind.get("_tick_ts", 0) or 0)
+                if _dt_cur_ts == _dt_prev.get("_last_bar_ts", 0):
+                    continue
+                for _dt_tf in _dt_tfs:
+                    for _dt_f in _dt_wt_fields:
+                        _dt_k = f"{_dt_f}_{_dt_tf}"
+                        _dt_v = _dt_ind.get(_dt_k)
+                        if _dt_v is not None:
+                            _dt_prev[_dt_k] = float(_dt_v)
+                    for _dt_f in _dt_dc_fields:
+                        _dt_k = f"{_dt_f}_{_dt_tf}"
+                        _dt_v = _dt_ind.get(_dt_k)
+                        if _dt_v is not None:
+                            _dt_prev[_dt_k] = float(_dt_v)
+                _dt_prev["_last_bar_ts"] = _dt_cur_ts
         if step > 0 and step % report_every == 0:
             v8_logger.info(f"[{step}/{len(all_ts)} {step*100//len(all_ts)}%] active={len(open_keys)} trades={len(executed_trades)} {_real_time_module.time()-t0:.0f}s")
     elapsed = _real_time_module.time() - t0

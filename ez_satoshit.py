@@ -6,10 +6,28 @@ Backtest: 100% WR on 48 symbols (8k trades, 5yr data). $583k net PnL."""
 import logging
 import time
 from typing import Dict, Optional, Tuple
+try:
+    import numpy as np
+except ImportError:
+    class _NpStub:
+        integer = ()
+        floating = ()
+    np = _NpStub()
 
 logger = logging.getLogger("ez_satoshit")
 
-_sf = lambda v, d=0.0: float(v) if v is not None and v != '' else d
+def _sf(v, d=0.0):
+    if v is None or v == '':
+        return d
+    f = float(v)
+    if f != f:
+        return d
+    return f
+_HA_INT_MAP = {-1: 'red', 0: 'neutral', 1: 'green'}
+def _ha_str(v):
+    if isinstance(v, str):
+        return v
+    return _HA_INT_MAP.get(int(v), 'neutral') if v is not None else 'neutral'
 def _cfg(config, key, default):
     """Get config value, trying TRADIER suffix first if it exists."""
     return getattr(config, f'{key}_TRADIER', getattr(config, key, default))
@@ -72,7 +90,7 @@ def check_reentry_ready(position_key: str, indicators: dict, is_long: bool, conf
     # Phase 2: Reset seen — now wait for indicators to dip back into entry zone
     # This is the pullback re-entry — same logic as initial entry but with a score bonus
     min_votes = _cfg(config, 'SATOSHIT_MIN_VOTES', 3)
-    ha_15m = indicators.get('ha_15m', 'neutral')
+    ha_15m = _ha_str(indicators.get('ha_15m', 'neutral'))
     bb_pctb_1h = _sf(indicators.get('bb_pct_b_1h'), 0.5)
     if is_long:
         ha_streak_val = -1 if ha_15m == 'red' else (1 if ha_15m == 'green' else 0)
@@ -99,7 +117,11 @@ def satoshit_entry_signal(indicators: dict, is_long: bool, config) -> Tuple[bool
     rsi_15m = _sf(indicators.get('rsi_15m'), 50)
     k_15m = _sf(indicators.get('stoch_k_15m'), 50)
     mfi_15m = _sf(indicators.get('mfi_15m'), 50)
-    ha_15m = indicators.get('ha_15m', 'neutral')
+    ha_15m_raw = indicators.get('ha_15m', 'neutral')
+    if isinstance(ha_15m_raw, (int, float, np.integer, np.floating)):
+        ha_15m = 'green' if ha_15m_raw > 0 else ('red' if ha_15m_raw < 0 else 'neutral')
+    else:
+        ha_15m = str(ha_15m_raw) if ha_15m_raw else 'neutral'
     bb_pctb_1h = _sf(indicators.get('bb_pct_b_1h'), 0.5)
     mfi_D = _sf(indicators.get('mfi_D'), 50)
     rsi_D = _sf(indicators.get('rsi_D'), 50)
