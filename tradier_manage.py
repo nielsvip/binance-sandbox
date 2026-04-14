@@ -3869,6 +3869,8 @@ class StockStrategy:
             _srs_low = float((_srs_ind).get(_srs_low_key, 0) or 0)
             _srs_prox_bps = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
             _srs_band = _srs_prox_bps / 10000.0
+            _srs_k_high = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 80.0))
+            _srs_k_low = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 20.0))
             _srs_k1h = float((_srs_ind).get('stoch_k_1h', 50) or 50)
             _srs_k15m = float((_srs_ind).get('stoch_k_15m', 50) or 50)
             _srs_k5m = float((_srs_ind).get('stoch_k_5m', 50) or 50)
@@ -3876,16 +3878,16 @@ class StockStrategy:
             if _srs_entry > 0 and _srs_high > 0 and _srs_low > 0:
                 if is_long and _srs_entry > _srs_high:
                     _srs_prox = abs(current_price - _srs_high) / _srs_high <= _srs_band
-                    _srs_1h = _srs_k1h > 80.0
-                    _srs_15m = _srs_k15m > 80.0
+                    _srs_1h = _srs_k1h > _srs_k_high
+                    _srs_15m = _srs_k15m > _srs_k_high
                     _srs_5m_down = _srs_k5m < _srs_k5m_prev
                     if _srs_prox and _srs_1h and _srs_15m and _srs_5m_down:
                         logger.critical(f"🏗️ [RANGE_TOP_EXIT] {symbol} LONG {_srs_tf}: entry={_srs_entry:.4f}>{_srs_high_key}={_srs_high:.4f} price={current_price:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f} k5m={_srs_k5m:.0f}↓{_srs_k5m_prev:.0f}")
                         return True, f"STRUCTURAL_RANGE_SHIFT_LONG_{_srs_tf}_top={_srs_high:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_k5m={_srs_k5m:.0f}", qty
                 elif not is_long and _srs_entry < _srs_low:
                     _srs_prox = abs(current_price - _srs_low) / _srs_low <= _srs_band
-                    _srs_1h = _srs_k1h < 20.0
-                    _srs_15m = _srs_k15m < 20.0
+                    _srs_1h = _srs_k1h < _srs_k_low
+                    _srs_15m = _srs_k15m < _srs_k_low
                     _srs_5m_up = _srs_k5m > _srs_k5m_prev
                     if _srs_prox and _srs_1h and _srs_15m and _srs_5m_up:
                         logger.critical(f"🏗️ [RANGE_BOTTOM_EXIT] {symbol} SHORT {_srs_tf}: entry={_srs_entry:.4f}<{_srs_low_key}={_srs_low:.4f} price={current_price:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f} k5m={_srs_k5m:.0f}↑{_srs_k5m_prev:.0f}")

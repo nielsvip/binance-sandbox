@@ -701,8 +701,8 @@ class TradierConfig:
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # bb_4h Apr-13 DISASTER avg -0.95% 16%WR. bb_1h is correct for stocks (user directive). dc_4h is for crypto only.
     STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # STOCKS: bb_1h (user directive — bb_upper_1h/bb_lower_1h). CRYPTO: dc_4h. bb_4h was wrong and caused April-13 losses.
     # Cascade params (stocks) — same knobs as crypto unless overridden
-    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0
-    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0
+    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 80.0  # 2026-04-14: user directive — k_1h/k_15m > 80 required for LONG exit
+    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 20.0   # 2026-04-14: user directive — k_1h/k_15m < 20 required for SHORT exit
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
