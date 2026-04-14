@@ -817,13 +817,11 @@ TRADIER_TIER25 = {
     "WT_CROSSUNDER_FINAL_ENABLED": [True, False],
     # DELTA ENGINE — master on/off for entire delta entry+exit system
     "DELTA_ENGINE_ENABLED": [True, False],
-    # DELTA ENTRY — delta entry independent of delta exit
-    "DELTA_ENTRY_ENABLED": [True, False],
     # RZ EXIT — zone-based exits (TOP_FAILED_BREAKOUT, TOP_EXIT_LONG, BOTTOM_*)
     # Isolation: ON=507 trades vs OFF=486 trades
     "RZ_EXIT_ENABLED": [True, False],
-    # SATOSHIT — the should_enter pre-filter (live uses this as sole entry)
-    "SATOSHIT_ENABLED_TRADIER": [True, False],
+    # DELTA_ENTRY_ENABLED — PRUNED 2026-04-14: zero effect on stocks (verified in sweep_verify run)
+    # SATOSHIT_ENABLED_TRADIER — PRUNED 2026-04-14: zero effect on stocks (verified in sweep_verify run)
     # ═══ REMOVED 2026-04-12 (proven zero effect in isolation tests) ═══
     # DELTA_EXIT_DECAY_RATIO: standard weakness exit overshadowed by RZ/WT_CROSS exits
     # DELTA_EXIT_MIN_TF_LOST: same — standard weakness never fires as deciding path

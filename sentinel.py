@@ -50,12 +50,20 @@ INCIDENT_DIR.mkdir(parents=True, exist_ok=True)
 POLL_SEC = int(os.environ.get("SENTINEL_POLL_SEC", "30"))
 DEAD_STDEV = float(os.environ.get("SENTINEL_DEAD_STDEV", "0.01"))
 DEAD_MIN_ROWS = int(os.environ.get("SENTINEL_DEAD_MIN_ROWS", "10"))
-AUTO_FIX = os.environ.get("SENTINEL_AUTO_FIX", "0") == "1"
+AUTO_FIX = os.environ.get("SENTINEL_AUTO_FIX", "1") == "1"
+BACKUP_DIR = BASE / "backups" / "sentinel"
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+CRITICAL_FILES = [
+    "ez_manage.py", "ez_positions_service.py", "ez_positions_quick.py",
+    "tradier_manage.py", "tradier_positions.py", "config.py", "config_tradier.py",
+    "utils.py", "backtest_v8_engine.py", "backtest_v8_sweep.py",
+]
 FRESH_SEC = int(os.environ.get("SENTINEL_FRESH_SEC", "21600"))  # only scan files modified in last 6h
 
 SWEEP_CSV_GLOBS = [
     str(BASE / "backtest_v8" / "sweeps" / "v8_sweep_*.csv"),
     str(HOME / "binance" / "backtest_v8" / "sweeps" / "v8_sweep_*.csv"),
+    str(HOME / "binance-sandbox" / "backtest_v8" / "sweeps" / "v8_sweep_*.csv"),
 ]
 LOG_GLOBS = [
     str(HOME / "logs" / "*.log"),
@@ -163,16 +171,33 @@ def write_incident(kind, detail, offending_pids=None, stopped_pids=None):
     return path
 
 
+def snapshot_critical_files(tag):
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    snap = BACKUP_DIR / f"{ts}_{tag}"
+    snap.mkdir(parents=True, exist_ok=True)
+    for f in CRITICAL_FILES:
+        src = BASE / f
+        if src.exists():
+            try:
+                (snap / f).write_bytes(src.read_bytes())
+            except Exception as e:
+                log(f"backup {f} failed: {e}")
+    log(f"snapshot -> {snap}")
+    return snap
+
+
 def spawn_fix_agent(incident_path):
     if not AUTO_FIX:
         log("AUTO_FIX off; skipping agent spawn")
         return
+    snap = snapshot_critical_files(f"pre_fix_{incident_path.stem}")
     prompt = (
-        f"HANDS_OFF sentinel incident. Read {incident_path}. Diagnose root cause "
-        f"in /Users/niels/Documents/binance. DO NOT modify ez_manage.py, "
-        f"ez_positions_service.py, ez_positions_quick.py, tradier_manage.py "
-        f"without explicit user approval. Propose a patch written to "
-        f"data/sentinel/proposed_fixes/. Do not apply to live code."
+        f"HANDS_OFF sentinel incident auto-fix. Read incident at {incident_path}. "
+        f"Pre-fix backup at {snap}. Diagnose root cause in {BASE} and apply minimal "
+        f"fix. MANDATORY before ANY edit: cp <file> backups/before_sentinel_fix_<YYYYMMDDHHMM>.py. "
+        f"NEVER revert newer code to older. Prefer editing sweep/engine scripts over live "
+        f"trading scripts (ez_manage, ez_positions_*, tradier_manage). "
+        f"After fix: rm {ACK_FILE} so sentinel resumes."
     )
     try:
         subprocess.Popen(
