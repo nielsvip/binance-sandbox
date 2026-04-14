@@ -38,7 +38,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("dup_guard")
 
-DUPLICATE_THRESHOLD = 3  # N configs sharing identical output = suspect
+DUPLICATE_THRESHOLD = 8  # N configs sharing identical output = suspect (3 was too noisy — coincidental matches in 200+ config sweeps)
 KILL_ON_DETECT = False    # set True to auto-kill offending sweep screen
 
 MACHINES = [

@@ -33,8 +33,10 @@ logging.basicConfig(
 )
 log = logging.getLogger("regression")
 
-REGRESSION_PCT = 0.20  # new sharpe < best * (1 - 0.20) = 20% drop triggers alert
-MIN_BEST_SHARPE = 0.10  # don't flag when best is basically zero
+REGRESSION_PCT = 0.50  # new sharpe < best * (1 - 0.50) = 50% drop triggers alert
+MIN_BEST_SHARPE = 0.30  # don't flag when best is basically noise
+MIN_TRADES = 15         # ignore runs with too few trades — not meaningful signal
+REGRESSION_COOLDOWN_SECS = 14400  # 4 hours: at most one alert per CSV per 4h
 
 MACHINES = [
     {"name": "Local", "host": None, "sweep_dir": str(BASE / "backtest_v8" / "sweeps")},
@@ -94,8 +96,15 @@ def _diff_cfgs(a, b):
 
 
 def _write_regression_alert(machine, csv_path, best_row, worse_row, drop_pct):
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    p = ALERT_DIR / f"regression_{machine}_{ts}_{worse_row.get('run_id')}.json"
+    # One alert FILE per CSV (not per run_id). Filename uses CSV stem so cooldown is per-CSV.
+    import re
+    csv_stem = re.sub(r'[^a-zA-Z0-9_]', '_', Path(csv_path).stem)[:60]
+    p = ALERT_DIR / f"regression_{machine}_{csv_stem}.json"
+    if p.exists():
+        age = time.time() - p.stat().st_mtime
+        if age < REGRESSION_COOLDOWN_SECS:
+            log.info(f"regression cooldown {csv_stem} ({age:.0f}s < {REGRESSION_COOLDOWN_SECS}s) — skip")
+            return False
     payload = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "machine": machine,
@@ -108,6 +117,7 @@ def _write_regression_alert(machine, csv_path, best_row, worse_row, drop_pct):
     p.write_text(json.dumps(payload, indent=2))
     suspects = list(payload["suspect_knobs"].keys())
     log.warning(f"REGRESSION {machine}: {worse_row.get('run_id')} sharpe {worse_row.get('sharpe')} vs best {best_row.get('sharpe')} ({drop_pct*100:.0f}% drop) suspects={suspects}")
+    return True
 
 
 def main():
@@ -128,20 +138,29 @@ def main():
             rows = _parse_rows(raw)
             ok_rows = [r for r in rows if r.get("status") == "ok"]
             seen = set(csv_state["seen_run_ids"])
+            worst_drop, worst_row = 0.0, None
             for r in ok_rows:
                 rid = r.get("run_id")
                 if not rid or rid in seen: continue
-                try: sh = float(r.get("sharpe", "0"))
+                try:
+                    sh = float(r.get("sharpe", "0"))
+                    tr = int(r.get("trades", "0"))
                 except Exception: continue
                 best = csv_state.get("best_sharpe")
-                if best is not None and best >= MIN_BEST_SHARPE and sh < best * (1 - REGRESSION_PCT):
-                    drop = (best - sh) / best
-                    _write_regression_alert(m["name"], path, csv_state["best_row"], r, drop)
-                    new_alerts += 1
-                if best is None or sh > best:
-                    csv_state["best_sharpe"] = sh
-                    csv_state["best_row"] = r
+                if tr >= MIN_TRADES:
+                    # Only meaningful runs (MIN_TRADES+) can set the best baseline or trigger regression
+                    if best is not None and best >= MIN_BEST_SHARPE and sh < best * (1 - REGRESSION_PCT):
+                        drop = (best - sh) / best
+                        if drop > worst_drop:
+                            worst_drop = drop
+                            worst_row = r
+                    if best is None or sh > best:
+                        csv_state["best_sharpe"] = sh
+                        csv_state["best_row"] = r
                 csv_state["seen_run_ids"].append(rid)
+            if worst_row is not None:
+                if _write_regression_alert(m["name"], path, csv_state["best_row"], worst_row, worst_drop):
+                    new_alerts += 1
     _save_state(state)
     log.info(f"scan complete — {new_alerts} regression alerts raised")
 

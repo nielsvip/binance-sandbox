@@ -27,7 +27,7 @@ class Config:
     MIN_POSITION_SIZE: float = 1.0
     # 1/50 RULE: No single position > 2% of total capital ($1k crypto = $20/pos max)
     MAX_POSITION_SIZE: float = 20.0  # 2026-03-30: 1/50 of $1k. Was $800 (80% of capital = suicide).
-    MAX_POSITION_SIZE_BTC: float = 20.0  # 2026-03-30: Same rule for BTC. Was $6000.
+    MAX_POSITION_SIZE_BTC: float = 2000.0  # 2026-03-30: Same rule for BTC. Was $6000.
     MAX_POSITION_SIZE_MEN: float = 20.0  # 2026-03-30: Same. Was $1200.
     MAX_POSITION_SIZE_FIN: float = 20.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented

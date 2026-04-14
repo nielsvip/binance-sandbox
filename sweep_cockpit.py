@@ -1486,19 +1486,22 @@ def results_page():
     def _f(x, d=0.0):
         try: return float(x)
         except Exception: return d
-    ok_rows.sort(key=lambda r: _f(r.get("sharpe", 0)), reverse=True)
-    top = ok_rows[:25]
+    # MIN_DISPLAY_TRADES: filter out small-sample noise (2-trade Sharpe=14 is not meaningful)
+    MIN_DISPLAY_TRADES = 15
+    meaningful_rows = [r for r in ok_rows if _f(r.get("trades", 0)) >= MIN_DISPLAY_TRADES]
+    meaningful_rows.sort(key=lambda r: _f(r.get("sharpe", 0)), reverse=True)
+    top = meaningful_rows[:25]
     top_rows = [f'<tr><td>{r["_machine"]}</td><td>{r.get("run_id","?")}</td><td>{r.get("sharpe","?")}</td><td>${_f(r.get("pnl")):.2f}</td><td>{r.get("trades","?")}</td><td>{r.get("wins","?")}/{r.get("losses","?")}</td><td style="font-size:10px; max-width:400px">{r.get("name","")[:80]}</td></tr>' for r in top]
-    # Switch variance check: for each cfg_* column, group rows by all OTHER cfg values fixed,
-    # see if the column actually moves the needle
+    # Switch variance check: use meaningful rows only (>=15 trades, sharpe>0) to avoid noise
+    variance_base = [r for r in ok_rows if _f(r.get("trades", 0)) >= MIN_DISPLAY_TRADES and _f(r.get("sharpe", 0)) > 0]
     cfg_cols = set()
-    for r in ok_rows:
+    for r in variance_base:
         cfg_cols.update(c for c in r if c.startswith("cfg_"))
     variance_rows = []
     for col in sorted(cfg_cols):
         # Find pairs differing ONLY by this column
         sig_groups = _dd(list)
-        for r in ok_rows:
+        for r in variance_base:
             sig = tuple((k, r.get(k)) for k in sorted(cfg_cols) if k != col)
             sig_groups[sig].append(r)
         pairs = [g for g in sig_groups.values() if len(g) >= 2 and len({r.get(col) for r in g}) >= 2]
@@ -1516,8 +1519,8 @@ def results_page():
         color = {"alive": "#4caf50", "DEAD": "#ff4444", "partial": "#ffaa00", "no-data": "#888"}[status]
         variance_rows.append(f'<tr style="color:{color}"><td>{col.replace("cfg_","")}</td><td>{status.upper()}</td><td>{note}</td></tr>')
     body = f"""
-    <h2>🏆 Top 25 Configs by Sharpe ({len(ok_rows)} total OK)</h2>
-    <p style="color:#888">Aggregated from last ~5 sweep CSVs per machine. Sort: Sharpe desc.</p>
+    <h2>🏆 Top 25 Configs by Sharpe ({len(ok_rows)} total OK, {len(meaningful_rows)} with ≥{MIN_DISPLAY_TRADES} trades)</h2>
+    <p style="color:#888">Aggregated from last ~5 sweep CSVs per machine. Filtered to ≥{MIN_DISPLAY_TRADES} trades (removes small-sample noise). Sort: Sharpe desc.</p>
     <table style="width:100%; font-size:12px"><tr><th>Machine</th><th>Run ID</th><th>Sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th><th>Name</th></tr>
     {''.join(top_rows) or '<tr><td colspan=7>No OK rows yet.</td></tr>'}
     </table>
