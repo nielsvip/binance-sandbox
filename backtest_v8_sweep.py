@@ -469,6 +469,26 @@ CRYPTO_TIER15 = {
 }
 # = 6 configs — one per TF/indicator. Direct A/B/C/D/E/F comparison.
 
+# CRYPTO Tier 15b — SRS CASCADE KNOBS (2026-04-14)
+# Tests the cascade thresholds added for the new rejection-detector logic.
+# K_HIGH: overbought floor for LONG exit (stoch_k_1h & 15m both turning down from >=K_HIGH)
+# K_LOW: oversold ceiling for SHORT exit (stoch_k_1h & 15m both turning up from <=K_LOW)
+# PROXIMITY_BPS: how close to dc_high_4h/dc_low_4h the current_price must be before cascade fires
+CRYPTO_TIER15B = {
+    "NOLOSS_MIN_PROFIT_PCT": [0.0],
+    "STRICT_NO_LOSS_ACCOUNTS": [[]],
+    "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+    "STRUCTURAL_RANGE_SHIFT_TF": ["dc_4h"],
+    "STRUCTURAL_RANGE_SHIFT_K_HIGH": [70.0, 75.0, 80.0],
+    "STRUCTURAL_RANGE_SHIFT_K_LOW": [20.0, 25.0, 30.0],
+    "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS": [50.0, 100.0, 200.0],
+    "DELTA_EXIT_DOM_TF_ENABLED": [True],
+    "DELTA_EXIT_TF": ["3m"],
+    "DELTA_EXIT_DECAY_RATIO": [0.90],
+    "DELTA_EXIT_MIN_TF_LOST": [1],
+}
+# = 3×3×3 = 27 configs — cascade knob grid.
+
 # CRYPTO Tier 14 — STRUCTURAL RANGE SHIFT EXIT (hold losers, cut at DC boundary)
 # USER 2026-04-10: test "hold until profit OR 4h DC range shift" vs standard exits.
 # A/B: STRUCTURAL_RANGE_SHIFT_EXIT True (new patience rule) vs False (baseline).
@@ -810,9 +830,13 @@ TRADIER_TIER25 = {
     # WT_DC ENTRY — the REAL entry gate (wt_dc_score_entry threshold)
     # A/B: threshold=1 vs 99 → 0.309 vs 0.371 Sharpe
     "WT_DC_ENTRY_THRESHOLD": [35, 43, 55, 75],
-    # STRUCTURAL RANGE SHIFT — exit on DC range break
-    # Isolation: ON=0.278 vs OFF=0.259 (21 more trades)
+    # STRUCTURAL RANGE SHIFT — cascade rewrite (2026-04-14): TF bb_1h + k/wt cascade
+    # Isolation: ON=0.278 vs OFF=0.259 (21 more trades) — pre-cascade numbers
     "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+    "STRUCTURAL_RANGE_SHIFT_TF": ["bb_1h"],
+    "STRUCTURAL_RANGE_SHIFT_K_HIGH": [75.0],
+    "STRUCTURAL_RANGE_SHIFT_K_LOW": [25.0],
+    "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS": [100.0],
     # WT CROSSUNDER FINAL — dominant exit (WT1<WT2 on 1h+4h)
     # Disabling forces delta/RZ to be sole exit path — completely different regime
     "WT_CROSSUNDER_FINAL_ENABLED": [True, False],
@@ -824,7 +848,7 @@ TRADIER_TIER25 = {
     # Isolation: ON=507 trades vs OFF=486 trades
     "RZ_EXIT_ENABLED": [True, False],
     # SATOSHIT — the should_enter pre-filter (live uses this as sole entry)
-    "SATOSHIT_ENABLED_TRADIER": [True, False],
+    "SATOSHIT_ENTRY_FILTER": [True, False],
     # RULE 2026-04-14: NEVER prune knobs that appear dead. If a toggle produces no variance,
     # the OTHER settings around it are wrong and need to change until True/False matters.
     # Dead knob = signal that some upstream gate is blocking the feature from firing.

@@ -101,8 +101,12 @@ def run(cmd, timeout=SUBPROC_TO, shell=False):
 
 def ssh(host, cmd, timeout=SUBPROC_TO):
     return run(
-        ["ssh", "-o", f"ConnectTimeout={min(timeout-2,5)}", "-o", "BatchMode=yes",
-         "-o", "StrictHostKeyChecking=no", host, cmd],
+        ["ssh",
+         "-o", f"ConnectTimeout={min(timeout-2,5)}",
+         "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no",
+         "-o", "ControlMaster=no", "-o", "ControlPath=none",
+         "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2",
+         host, cmd],
         timeout=timeout,
     )
 
@@ -471,8 +475,10 @@ def pull_remote_incidents(state):
         local = DATA / f"incidents_{tag}"
         local.mkdir(parents=True, exist_ok=True)
         rc, _ = run(
-            ["rsync", "-az", "--timeout=5", f"{host}:/home/niels/binance/data/sentinel/incidents/", str(local) + "/"],
-            timeout=8,
+            ["rsync", "-az", "--timeout=5",
+             "-e", "ssh -o ConnectTimeout=5 -o BatchMode=yes -o ControlMaster=no -o ControlPath=none",
+             f"{host}:/home/niels/binance/data/sentinel/incidents/", str(local) + "/"],
+            timeout=10,
         )
         if rc != 0:
             continue

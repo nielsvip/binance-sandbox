@@ -1307,6 +1307,57 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         qty = int(max(1, _base_qty))
                         conf = _entry_score
                         reason = f"WT_DC_ENTRY_{_entry_score:.0f}_{_entry_reason[:60]}"
+                # VARIANCE_FIX 2026-04-14 — canonical-switch gate application on PRIMARY entry path.
+                # The 8 previously-DEAD switches (K_ZONE_LONG/SHORT_THRESHOLD, MI_ENTRY_ENABLED,
+                # MI_EXIT_ENABLED, WT_COMPOSITE_SCORING_ENABLED, WT_EXIT_TFS, WT_EXIT_MIN_TFS,
+                # ENTRY_SCORE_THRESHOLD) were wired into calculate_signal_score/evaluate_open,
+                # but process_position's PRIMARY entry path is wt_dc_score_entry and never called
+                # evaluate_open. This block applies them as post-entry veto gates so flipping
+                # them in V8 sweeps produces real paired-run variance. Defaults are non-restrictive
+                # (preserve current live behaviour); sweeps that flip them tighter will gate trades.
+                if action_type == "OPEN" and account_key != 'tra':
+                    _veto = None
+                    _side_vf = "LONG" if is_long else "SHORT"
+                    # ENTRY_SCORE_THRESHOLD: gate the wt_dc _entry_score against the canonical knob.
+                    # Default 0 means "no extra gate" — live behaviour unchanged.
+                    _min_es = float(_cfg("ENTRY_SCORE_THRESHOLD", 0, account_key, symbol, _side_vf) or 0)
+                    if _min_es > 0 and float(_entry_score) < _min_es:
+                        _veto = f"ENTRY_SCORE_GATE({_entry_score:.0f}<{_min_es:.0f})"
+                    # K_ZONE_LONG/SHORT_THRESHOLD: if enabled, require K_4h in the zone.
+                    if _veto is None and getattr(config, 'K_ZONE_VETO_ENABLED_TRADIER', False):
+                        _k4h_vf = float(i.get('stoch_k_4h', 50) or 50)
+                        if is_long:
+                            _kz_l = float(_cfg('K_ZONE_LONG_THRESHOLD_TRADIER', 100, account_key, symbol, _side_vf) or 100)
+                            if _k4h_vf >= _kz_l:
+                                _veto = f"K_ZONE_L_GATE(k4h={_k4h_vf:.0f}>={_kz_l:.0f})"
+                        else:
+                            _kz_s = float(_cfg('K_ZONE_SHORT_THRESHOLD_TRADIER', 0, account_key, symbol, _side_vf) or 0)
+                            if _k4h_vf <= _kz_s:
+                                _veto = f"K_ZONE_S_GATE(k4h={_k4h_vf:.0f}<={_kz_s:.0f})"
+                    # MI_ENTRY_ENABLED: when True, require at least one MI confluence signal on 4h.
+                    if _veto is None and _cfg('MI_ENTRY_ENABLED_TRADIER', False, account_key, symbol, _side_vf):
+                        _wt_peak_4h_vf = i.get('wt_peak_structure_4h', '')
+                        _wt_trough_4h_vf = i.get('wt_trough_structure_4h', '')
+                        _wt_mom_4h_vf = i.get('wt_momentum_state_4h', '')
+                        _wt_div_4h_vf = i.get('wt_divergence_4h', None)
+                        if is_long:
+                            _mi_ok = (_wt_trough_4h_vf == 'HL') or (_wt_mom_4h_vf == 'EXHAUST_DOWN') or (_wt_div_4h_vf == 'BULL')
+                        else:
+                            _mi_ok = (_wt_peak_4h_vf == 'LH') or (_wt_mom_4h_vf == 'EXHAUST_UP') or (_wt_div_4h_vf == 'BEAR')
+                        if not _mi_ok:
+                            _veto = f"MI_ENTRY_GATE(no_4h_confluence)"
+                    # WT_COMPOSITE_SCORING_ENABLED: when sweep VETO knob is on AND composite scoring is on,
+                    # require wt alignment >=3 on favourable side. Gated by WT_COMPOSITE_VETO_ENABLED_TRADIER
+                    # so flipping the scoring switch alone in live code doesn't change entries.
+                    if _veto is None and getattr(config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', False) and _cfg('WT_COMPOSITE_SCORING_ENABLED_TRADIER', False, account_key, symbol, _side_vf):
+                        _wt_align_vf = float(i.get('wt_bull_alignment' if is_long else 'wt_bear_alignment', 0) or 0)
+                        _wt_comp_vf = float(i.get('wt_composite_long' if is_long else 'wt_composite_short', 0) or 0)
+                        if _wt_align_vf < 3 or _wt_comp_vf < -20.0:
+                            _veto = f"WT_COMP_GATE(align={_wt_align_vf:.0f}<3_comp={_wt_comp_vf:.0f})"
+                    if _veto is not None:
+                        logger.info(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto}")
+                        action_type = "NO_ACTION"
+                        reason = _veto
                 if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
                     logger.critical(f"🛑 [CIRCUIT_BREAKER] {account_key}:{symbol}_{position_side}: BLOCKED entry '{reason}' — path auto-disabled after repeated collapses")
                     return "CIRCUIT_BREAKER_BLOCKED"
@@ -3894,6 +3945,39 @@ class StockStrategy:
                 _rz_zr = _rz_sig.zone_reason or f"zone={_rz_zone}"
                 logger.warning(f"[RZ_EXIT_STANDALONE] {symbol} {'L' if is_long else 'S'}: zone={_rz_zone} {_rz_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
                 return True, f"RZ_EXIT_{_rz_zone}_{_rz_zr}_g={gain:.2f}%_hold{hold_time_min:.0f}m", qty
+        # WT CROSSUNDER FINAL standalone — fires independently when DELTA_ENGINE is OFF
+        if not _is_opts_check and not _delta_exit_gate:
+            _xu_ind = indicators if indicators else i
+            _wt1_5m = float((_xu_ind or {}).get('wt1_5m', (_xu_ind or {}).get('wt1_3m', 0)) or 0)
+            _wt2_5m = float((_xu_ind or {}).get('wt2_5m', (_xu_ind or {}).get('wt2_3m', 0)) or 0)
+            _wt1_15m = float((_xu_ind or {}).get('wt1_15m', 0) or 0)
+            _wt2_15m = float((_xu_ind or {}).get('wt2_15m', 0) or 0)
+            _wt1_1h = float((_xu_ind or {}).get('wt1_1h', 0) or 0)
+            _wt2_1h = float((_xu_ind or {}).get('wt2_1h', 0) or 0)
+            _wt1_4h = float((_xu_ind or {}).get('wt1_4h', 0) or 0)
+            _wt2_4h = float((_xu_ind or {}).get('wt2_4h', 0) or 0)
+            _wt1_D = float((_xu_ind or {}).get('wt1_D', 0) or 0)
+            _wt2_D = float((_xu_ind or {}).get('wt2_D', 0) or 0)
+            if is_long:
+                _ltf_down = _wt1_5m < _wt2_5m
+                _15m_confirm = (_wt1_15m < _wt2_15m) or (_wt1_15m > 95)
+                _htf_against = (_wt1_1h < _wt2_1h) or (_wt1_4h < _wt2_4h) or (_wt1_D < _wt2_D)
+                if _ltf_down and _15m_confirm and _htf_against:
+                    _xu_1h = _wt1_1h < _wt2_1h
+                    _xu_4h = _wt1_4h < _wt2_4h
+                    _xu_D = _wt1_D < _wt2_D
+                    logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
+                    return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+            else:
+                _ltf_up = _wt1_5m > _wt2_5m
+                _15m_confirm = (_wt1_15m > _wt2_15m) or (_wt1_15m < -95)
+                _htf_against = (_wt1_1h > _wt2_1h) or (_wt1_4h > _wt2_4h) or (_wt1_D > _wt2_D)
+                if _ltf_up and _15m_confirm and _htf_against:
+                    _xo_1h = _wt1_1h > _wt2_1h
+                    _xo_4h = _wt1_4h > _wt2_4h
+                    _xo_D = _wt1_D > _wt2_D
+                    logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
+                    return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
         # OPTIONS: exit ONLY on Daily reversal (CLAUDE.md rule, not stock ST scalping)
         _is_options_pos = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if _is_options_pos:
@@ -3930,6 +4014,57 @@ class StockStrategy:
         # Only exception: position max hold timeout (8 hours).
         # --------------------------------------------------
         if _exit_score < _exit_threshold:
+            # VARIANCE_FIX 2026-04-14 — canonical-switch exit gates run BEFORE SCORER_HOLD early return.
+            # WT_EXIT_TFS/MIN_TFS/MI_EXIT_ENABLED were wired into evaluate_multi_tf_exit, but that code
+            # is never reached because the wt_dc_score_exit early-returns above. Apply them here so the
+            # switches actually gate exits. All gates are off/inert by default — only toggling them on
+            # changes behaviour.
+            _vf_exit_side = "LONG" if is_long else "SHORT"
+            _vf_acct = current_account.get('')
+            # WT_EXIT_TFS / WT_EXIT_MIN_TFS — only fires if WT_EXIT_VETO_ENABLED_TRADIER is on.
+            if getattr(config, 'WT_EXIT_VETO_ENABLED_TRADIER', False):
+                try:
+                    _vf_wt_tfs_str = _cfg('WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D', _vf_acct, symbol, _vf_exit_side)
+                    _vf_wt_min_tfs = int(_cfg('WT_EXIT_MIN_TFS_TRADIER', 5, _vf_acct, symbol, _vf_exit_side) or 5)
+                    _vf_wt_tfs = [t.strip() for t in str(_vf_wt_tfs_str).replace('+', ',').split(',') if t.strip()]
+                    _vf_wt_against = 0
+                    _vf_against_tfs = []
+                    for _tf in _vf_wt_tfs:
+                        _w1 = float(i.get(f'wt1_{_tf}', 0) or 0)
+                        _w2 = float(i.get(f'wt2_{_tf}', 0) or 0)
+                        if is_long and _w1 < _w2:
+                            _vf_wt_against += 1; _vf_against_tfs.append(_tf)
+                        elif not is_long and _w1 > _w2:
+                            _vf_wt_against += 1; _vf_against_tfs.append(_tf)
+                    if _vf_wt_min_tfs > 0 and _vf_wt_against >= _vf_wt_min_tfs and len(_vf_wt_tfs) > 0:
+                        logger.warning(f"[VARIANCE_FIX_WT_EXIT] {symbol} {_vf_exit_side}: {_vf_wt_against}/{len(_vf_wt_tfs)}>={_vf_wt_min_tfs} ({'+'.join(_vf_against_tfs)}) g={gain:.2f}%")
+                        return True, f"WT_EXIT_TFS_VARFIX({_vf_wt_against}/{len(_vf_wt_tfs)}>={_vf_wt_min_tfs}:{'+'.join(_vf_against_tfs)})_g={gain:.2f}%", qty
+                except Exception:
+                    pass
+            # MI_EXIT_ENABLED — only fires if MI_EXIT_VETO_ENABLED_TRADIER is on (uses same 5-signal logic as evaluate_multi_tf_exit).
+            if getattr(config, 'MI_EXIT_VETO_ENABLED_TRADIER', False) and _cfg('MI_EXIT_ENABLED_TRADIER', False, _vf_acct, symbol, _vf_exit_side):
+                _vf_mi_min_gain = float(getattr(config, 'MI_MIN_GAIN_EXIT_TRADIER', 0.0) or 0.0)
+                if gain >= _vf_mi_min_gain:
+                    _vf_mi_signals = 0
+                    _vf_mi_reasons = []
+                    if is_long:
+                        if i.get('wt_peak_structure_1h', '') == 'LH': _vf_mi_signals += 1; _vf_mi_reasons.append("LH_1h")
+                        if i.get('wt_peak_structure_4h', '') == 'LH': _vf_mi_signals += 1; _vf_mi_reasons.append("LH_4h")
+                        if i.get('wt_momentum_state_1h', '') == 'EXHAUST_UP': _vf_mi_signals += 1; _vf_mi_reasons.append("EXH_1h")
+                        if i.get('wt_momentum_state_4h', '') == 'EXHAUST_UP': _vf_mi_signals += 1; _vf_mi_reasons.append("EXH_4h")
+                        if i.get('wt_divergence_1h', None) == 'BEAR': _vf_mi_signals += 1; _vf_mi_reasons.append("DIV_BEAR_1h")
+                        if i.get('wt_divergence_4h', None) == 'BEAR': _vf_mi_signals += 1; _vf_mi_reasons.append("DIV_BEAR_4h")
+                    else:
+                        if i.get('wt_trough_structure_1h', '') == 'HL': _vf_mi_signals += 1; _vf_mi_reasons.append("HL_1h")
+                        if i.get('wt_trough_structure_4h', '') == 'HL': _vf_mi_signals += 1; _vf_mi_reasons.append("HL_4h")
+                        if i.get('wt_momentum_state_1h', '') == 'EXHAUST_DOWN': _vf_mi_signals += 1; _vf_mi_reasons.append("EXH_1h")
+                        if i.get('wt_momentum_state_4h', '') == 'EXHAUST_DOWN': _vf_mi_signals += 1; _vf_mi_reasons.append("EXH_4h")
+                        if i.get('wt_divergence_1h', None) == 'BULL': _vf_mi_signals += 1; _vf_mi_reasons.append("DIV_BULL_1h")
+                        if i.get('wt_divergence_4h', None) == 'BULL': _vf_mi_signals += 1; _vf_mi_reasons.append("DIV_BULL_4h")
+                    _vf_mi_min = int(getattr(config, 'MI_TF_AGREE_MIN_TRADIER', 3) or 3)
+                    if _vf_mi_signals >= _vf_mi_min:
+                        logger.warning(f"[VARIANCE_FIX_MI_EXIT] {symbol} {_vf_exit_side}: {_vf_mi_signals}/{_vf_mi_min} ({'+'.join(_vf_mi_reasons)}) g={gain:.2f}%")
+                        return True, f"MI_EXIT_VARFIX({_vf_mi_signals}/{_vf_mi_min},g={gain:.2f}%,{'+'.join(_vf_mi_reasons)})", qty
             # Scorer says HOLD — check max hold timeout if enabled
             if getattr(config, 'EXIT_MAX_HOLD_ENABLED', False) and hold_time_min > getattr(config, 'EXIT_MAX_HOLD_MINUTES', 99999):
                 return True, f"MAX_HOLD_TIMEOUT_{hold_time_min:.0f}min_scorer={_exit_score:.0f}", qty
@@ -7547,8 +7682,8 @@ class TradierTradeManager:
     async def should_enter_long(self, symbol: str, indicators: Dict[str, Any]) -> bool:
         """Configurable entry gate. SATOSHIT default; SHOULD_ENTER_FALLBACK_ENABLED allows other paths."""
         try:
-            # SATOSHIT — fast path (opt-in via SATOSHIT_ENABLED_TRADIER, default True for backward compat)
-            if getattr(config, 'SATOSHIT_ENABLED_TRADIER', True):
+            # SATOSHIT — fast path (opt-in via SATOSHIT_ENTRY_FILTER, default True for backward compat)
+            if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
                 _sat_ok, _sat_votes, _sat_reason = satoshit_entry_signal(indicators, True, config)
                 if _sat_ok:
@@ -7724,7 +7859,7 @@ class TradierTradeManager:
     async def should_enter_short(self, symbol: str, indicators: Dict[str, Any]) -> bool:
         """Configurable entry gate. SATOSHIT default; SHOULD_ENTER_FALLBACK_ENABLED allows other paths."""
         try:
-            if getattr(config, 'SATOSHIT_ENABLED_TRADIER', True):
+            if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
                 _sat_ok, _sat_votes, _sat_reason = satoshit_entry_signal(indicators, False, config)
                 if _sat_ok:
@@ -7958,7 +8093,7 @@ class TradierTradeManager:
     #                         logger.info(f"[MFI_VOLUME_DRY] LONG {symbol}: MFI 1h={_mfi_1h:.0f} still high but 5m={_mfi_5m:.0f} 15m={_mfi_15m:.0f} dying — rally losing steam, gain={gain:.2f}%")
     #             # SATOSHIT EXIT — 15m RSI+StochK reach opposite extreme
     #             _sat_exit_long = False
-    #             if getattr(config, 'SATOSHIT_ENABLED_TRADIER', False) and gain > 0.3:
+    #             if getattr(config, 'SATOSHIT_ENTRY_FILTER', False) and gain > 0.3:
     #                 from ez_satoshit import satoshit_exit_check
     #                 _sat_pk = f"tradier:{symbol}_LONG"
     #                 _sat_exit_long, _sat_exit_reason = satoshit_exit_check(indicators, True, config, position_key=_sat_pk)
@@ -8041,7 +8176,7 @@ class TradierTradeManager:
     #                         logger.info(f"[MFI_VOLUME_RISE] SHORT {symbol}: MFI 1h={_mfi_1h:.0f} still low but 5m={_mfi_5m:.0f} 15m={_mfi_15m:.0f} rising — bounce forming, gain={gain:.2f}%")
     #             # SATOSHIT EXIT — 15m RSI+StochK reach opposite extreme
     #             _sat_exit_short = False
-    #             if getattr(config, 'SATOSHIT_ENABLED_TRADIER', False) and gain > 0.3:
+    #             if getattr(config, 'SATOSHIT_ENTRY_FILTER', False) and gain > 0.3:
     #                 from ez_satoshit import satoshit_exit_check
     #                 _sat_pk = f"tradier:{symbol}_SHORT"
     #                 _sat_exit_short, _sat_exit_reason = satoshit_exit_check(indicators, False, config, position_key=_sat_pk)
@@ -8270,7 +8405,7 @@ class TradierTradeManager:
     #                     if _tra_satoshit_only:
     #                         # tra: SATOSHIT-only — call dedicated satoshit check, skip full should_enter_long
     #                         _sat_enter = False
-    #                         if getattr(config, 'SATOSHIT_ENABLED_TRADIER', False):
+    #                         if getattr(config, 'SATOSHIT_ENTRY_FILTER', False):
     #                             from ez_satoshit import satoshit_entry_signal
     #                             _sat_ok, _sat_votes, _sat_reason = satoshit_entry_signal(indicators, True, config)
     #                             if _sat_ok:
@@ -8319,7 +8454,7 @@ class TradierTradeManager:
     #                         if _tra_satoshit_only:
     #                             # tra: SATOSHIT-only — dedicated satoshit check for shorts
     #                             _sat_enter_s = False
-    #                             if getattr(config, 'SATOSHIT_ENABLED_TRADIER', False):
+    #                             if getattr(config, 'SATOSHIT_ENTRY_FILTER', False):
     #                                 from ez_satoshit import satoshit_entry_signal
     #                                 _sat_ok_s, _sat_votes_s, _sat_reason_s = satoshit_entry_signal(indicators, False, config)
     #                                 if _sat_ok_s:

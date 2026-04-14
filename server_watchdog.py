@@ -38,16 +38,19 @@ SWEEPS = {
     "sweep_crypto":  {"mode": "crypto",  "account": "inf", "start": "2024-01-01", "capital": 1000, "workers": 2, "tier": 30, "symbols": None,                  "log": "/tmp/v8_crypto.log"},
 }
 
+GATEWAY = "157.90.168.35"  # gateway-internal public IP for ProxyJump (bypasses ~/.ssh/config)
 SERVERS = {
     "S2": {
-        "host": "s2-int",
+        "host": "10.0.0.4",
+        "proxy_jump": f"niels@{GATEWAY}",
         "user": "niels",
         "python": "/home/niels/miniconda3/envs/binance_env/bin/python",
         "sweeps": list(SWEEPS.keys()),
         "run_sentinel": True,
     },
     "S1": {
-        "host": "s1-int",
+        "host": "10.0.0.3",
+        "proxy_jump": f"niels@{GATEWAY}",
         "user": "niels",
         "python": "/home/niels/.conda/envs/binance_env/bin/python",
         "sweeps": [],
@@ -90,9 +93,16 @@ def release_lock():
 def ssh(host, user, cmd, timeout=SSH_TIMEOUT):
     try:
         result = subprocess.run(
-            ["ssh", "-o", f"ConnectTimeout={timeout}", "-o", "BatchMode=yes",
-             "-o", "StrictHostKeyChecking=no", f"{user}@{host}", cmd],
-            capture_output=True, text=True, timeout=timeout + 10,
+            ["ssh",
+             "-o", f"ConnectTimeout={min(timeout-2, 8)}",
+             "-o", "BatchMode=yes",
+             "-o", "StrictHostKeyChecking=no",
+             "-o", "ControlMaster=no",
+             "-o", "ControlPath=none",
+             "-o", "ServerAliveInterval=5",
+             "-o", "ServerAliveCountMax=2",
+             f"{user}@{host}", cmd],
+            capture_output=True, text=True, timeout=timeout + 5,
         )
         return result.returncode, (result.stdout or "") + (result.stderr or "")
     except subprocess.TimeoutExpired:

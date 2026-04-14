@@ -1309,29 +1309,63 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # always return None so backtest uses class defaults.
     import config_tradier as _ct
     _ct.TradierConfig._get_regime_from_redis = classmethod(lambda cls, full_key: None)
-    # Apply config overrides to TRADIER config (V8_OVERRIDE_FILE targets crypto config by default)
+    # Apply config overrides to TRADIER config — ALL 4 LEVELS (module, class, dataclass, instances)
     _t_override_file = os.environ.get("V8_OVERRIDE_FILE", "")
+    _t_overrides = {}
     if _t_override_file and Path(_t_override_file).exists():
         with open(_t_override_file) as _tf:
             _t_overrides = json.load(_tf)
         _applied = 0
         _skipped = []
         for _tk, _tv in _t_overrides.items():
-            # Strip ONLY the leading "TRADIER_" prefix, preserve trailing _TRADIER in attr names
             _clean_k = _tk[8:] if _tk.startswith("TRADIER_") else _tk
+            # 1. Instance attr (tm_mod.config is the module-level TradierConfig instance)
             setattr(tm_mod.config, _clean_k, _tv)
-            # BUG FIX: some config attrs keep the TRADIER_ prefix (e.g. TRADIER_MIN_HOLD_MINUTES).
-            # The code reads getattr(config, 'TRADIER_MIN_HOLD_MINUTES') — full name with prefix.
-            # Set BOTH stripped and original to cover all cases.
             if _tk.startswith("TRADIER_") and _clean_k != _tk:
                 setattr(tm_mod.config, _tk, _tv)
+            # 2. Class attr (so any new TradierConfig() lookups see the override)
+            try:
+                setattr(_ct.TradierConfig, _clean_k, _tv)
+                if _tk.startswith("TRADIER_") and _clean_k != _tk:
+                    setattr(_ct.TradierConfig, _tk, _tv)
+            except Exception:
+                pass
+            # 3. Dataclass field default (so new TradierConfig() instances get override)
+            try:
+                if hasattr(_ct.TradierConfig, '__dataclass_fields__') and _clean_k in _ct.TradierConfig.__dataclass_fields__:
+                    _ct.TradierConfig.__dataclass_fields__[_clean_k].default = _tv
+                if _tk.startswith("TRADIER_") and _clean_k != _tk and hasattr(_ct.TradierConfig, '__dataclass_fields__') and _tk in _ct.TradierConfig.__dataclass_fields__:
+                    _ct.TradierConfig.__dataclass_fields__[_tk].default = _tv
+            except Exception:
+                pass
             _applied += 1
         if _applied:
-            v8_logger.info(f"Applied {_applied} tradier config overrides (unconditional)")
+            v8_logger.info(f"Applied {_applied} tradier config overrides (module + class + dataclass default)")
             for _tk, _tv in _t_overrides.items():
                 _ck = _tk[8:] if _tk.startswith("TRADIER_") else _tk
                 _actual = getattr(tm_mod.config, _ck, "MISSING")
                 v8_logger.info(f"  OVERRIDE VERIFY: {_ck} = {_actual} (requested {_tv})")
+    # 4. Re-apply overrides to all existing TradierConfig instances (belt-and-suspenders)
+    if _t_override_file and Path(_t_override_file).exists():
+        for _inst_attr in ['config']:
+            _tc_inst = getattr(tm_mod, _inst_attr, None)
+            if _tc_inst and isinstance(_tc_inst, _ct.TradierConfig):
+                for _tk, _tv in _t_overrides.items():
+                    _ck = _tk[8:] if _tk.startswith("TRADIER_") else _tk
+                    setattr(_tc_inst, _ck, _tv)
+                    if _tk.startswith("TRADIER_") and _ck != _tk:
+                        setattr(_tc_inst, _tk, _tv)
+    # FIX 2026-04-14: WT_CROSSUNDER_FINAL and RZ_EXIT live INSIDE the delta gate block
+    # in tradier_manage.evaluate_stop. When DELTA_ENGINE_ENABLED=False the block is
+    # skipped, making those switches dead. Force tracker creation; gate standard delta
+    # exits in the evaluate_stop wrapper instead.
+    _orig_delta_engine_off = not getattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
+    _orig_delta_entry = getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)
+    setattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
+    setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
+    if _orig_delta_engine_off:
+        setattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', False)
+        v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY blocked.")
     tm_mod.time = _SimTime()
     _real_dt = datetime
     def _sim_now_t(tz=None):
@@ -1514,13 +1548,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
-        # NOTE: Entry quality gates (ZONE + ALIGNMENT) are handled by the REAL
-        # process_position → execute_trade_action call chain. The V8 patch should
-        # NOT duplicate them here because:
-        # 1. The real gates have complex bypasses (fast windows, reentries, proven strategies)
-        # 2. A simplified version blocks ALL entries (proven 2026-04-11: 0 trades)
-        # 3. The real code already gates via WT_DC_ENTRY_THRESHOLD in process_position
-        # If entry quality testing is needed, modify process_position, not this patch.
+        # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
+        if not is_reduce:
+            if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True):
+                try:
+                    from ez_satoshit import satoshit_entry_signal
+                    _sat_ind = manager.market_snapshot.get(symbol.upper(), {})
+                    _sat_is_long = (position_side == "LONG")
+                    _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
+                    if not _sat_ok:
+                        return "BLOCKED_SATOSHIT_FILTER"
+                except Exception:
+                    pass
+            if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
+                if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
+                    return "BLOCKED_DELTA_ENTRY_DISABLED"
         v8_logger.warning(f"[V8_ETA] {position_key} {side} qty={qty:.4f} px={px:.4f} {act} {reason[:60]}")
         await _place(symbol=symbol, side=side, quantity=qty, price=px, action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
         # Update position (check both dicts — tradier uses position_manager.positions)
@@ -1577,9 +1619,27 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if _use_real_eta and _orig_eta:
         v8_logger.info("Using REAL execute_trade_action (all entry gates active)")
         async def _v8_real_eta_wrapper(account_key='', position_key='', symbol='', quantity=0, current_price=0, side='', position_side='', unique_id=None, is_full_close=False, action='', reason='', override_qty=None, is_hedge=False, hedge_for=None, **kw):
-            # Pre-create empty position if OPEN so real ETA's ensure_position_present finds it
             _pk = str(position_key or '')
             _act = str(action or '')
+            _reason = str(reason or '')
+            _is_reduce = _act.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in _reason.upper() or 'REDUCE' in _reason.upper()
+            # SWEEPABLE ENTRY GATES (must be in REAL ETA wrapper, not just fallback)
+            if not _is_reduce:
+                _sat_on = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True)
+                if _sat_on:
+                    try:
+                        from ez_satoshit import satoshit_entry_signal
+                        _sat_ind = manager.market_snapshot.get(str(symbol).upper(), {})
+                        _sat_is_long = (str(position_side) == "LONG")
+                        _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
+                        if not _sat_ok:
+                            return "BLOCKED_SATOSHIT_FILTER"
+                    except Exception:
+                        pass
+                if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and _reason:
+                    if "DELTA_ENTRY" in _reason.upper() or "DELTA_SIGNAL" in _reason.upper():
+                        return "BLOCKED_DELTA_ENTRY_DISABLED"
+            # Pre-create empty position if OPEN so real ETA's ensure_position_present finds it
             if _act in ('OPEN', 'QUICK_OPEN', 'REENTRY') and manager.position_manager and _pk not in manager.position_manager.positions:
                 class _EmptyPos:
                     pass
@@ -1650,6 +1710,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_CROSSUNDER_FINAL_DISABLED"
             if "WT_CROSSOVER_FINAL" in reason and not _wt_xu_enabled:
                 return "BLOCKED_WT_CROSSOVER_FINAL_DISABLED"
+        # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
+        if not is_reduce:
+            if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True):
+                try:
+                    from ez_satoshit import satoshit_entry_signal
+                    _sat_ind = manager.market_snapshot.get(symbol.upper(), {})
+                    _sat_is_long = (position_side == "LONG")
+                    _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
+                    if not _sat_ok:
+                        return "BLOCKED_SATOSHIT_FILTER"
+                except Exception:
+                    pass
+            if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
+                if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
+                    return "BLOCKED_DELTA_ENTRY_DISABLED"
         v8_logger.warning(f"[V8_EXEC_NOW] {position_key} {side} qty={quantity} px={old_price} action={action}")
         act = action or ("CLOSE" if is_reduce else "OPEN")
         await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
@@ -1752,17 +1827,86 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     manager.order_queue = tm_mod.OrderQueue(manager)
     v8_logger.warning(f"[V8_DEBUG] ETA method: {manager.execute_trade_action.__name__}, is wrapper: {'_v8_real_eta_wrapper' in str(manager.execute_trade_action)}")
     manager.running = True
-    # SWEEPABLE GATE: wrap evaluate_stop to block WT_CROSSUNDER_FINAL at SOURCE
-    # The execute_now-level gate (line ~1648) is unreachable when real ETA blocks first.
     _orig_evaluate_stop = manager.strategy.evaluate_stop
+    _RZ_REASON_MARKERS = ("SMART_RZ_", "TOP_EXIT", "TOP_FAILED", "BOTTOM_BOUNCE", "BREAKDOWN_TRUCK", "BASELINE_BOUNCE", "REJECTION_OLD_REDZONE")
     async def _v8_gated_evaluate_stop(symbol, position, indicators, market_context=None, in_grace_period=False):
         should_exit, reason, qty = await _orig_evaluate_stop(symbol, position, indicators, market_context, in_grace_period)
         if should_exit and reason:
             _wt_xu_on = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
             if not _wt_xu_on and ("WT_CROSSUNDER_FINAL" in reason or "WT_CROSSOVER_FINAL" in reason):
                 return False, "BLOCKED_WT_XU_FINAL_DISABLED", 0
+            if reason.startswith("RZ_EXIT_") and "DELTA_EXIT_" not in reason:
+                _rz_on = getattr(tm_mod.config, 'RZ_EXIT_ENABLED', True)
+                if not _rz_on:
+                    return False, "BLOCKED_RZ_EXIT_DISABLED", 0
+            if "DELTA_EXIT_" in reason:
+                _is_rz = any(m in reason for m in _RZ_REASON_MARKERS)
+                if _is_rz:
+                    _rz_on = getattr(tm_mod.config, 'RZ_EXIT_ENABLED', True)
+                    if not _rz_on:
+                        return False, "BLOCKED_RZ_EXIT_DISABLED", 0
+                elif _orig_delta_engine_off:
+                    return False, "BLOCKED_DELTA_ENGINE_DISABLED", 0
+        _wt_xu_on2 = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
+        if not should_exit and _wt_xu_on2:
+            _xu_ind = indicators if indicators else {}
+            _xu_qty = abs(float(getattr(position, 'positionAmt', 0)))
+            if _xu_qty > 0:
+                _xu_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
+                _xu_gain = float(getattr(position, 'gain', 0))
+                _xu_wt1_5m = float(_xu_ind.get('wt1_5m', _xu_ind.get('wt1_3m', 0)) or 0)
+                _xu_wt2_5m = float(_xu_ind.get('wt2_5m', _xu_ind.get('wt2_3m', 0)) or 0)
+                _xu_wt1_15m = float(_xu_ind.get('wt1_15m', 0) or 0)
+                _xu_wt2_15m = float(_xu_ind.get('wt2_15m', 0) or 0)
+                _xu_wt1_1h = float(_xu_ind.get('wt1_1h', 0) or 0)
+                _xu_wt2_1h = float(_xu_ind.get('wt2_1h', 0) or 0)
+                _xu_wt1_4h = float(_xu_ind.get('wt1_4h', 0) or 0)
+                _xu_wt2_4h = float(_xu_ind.get('wt2_4h', 0) or 0)
+                _xu_wt1_D = float(_xu_ind.get('wt1_D', 0) or 0)
+                _xu_wt2_D = float(_xu_ind.get('wt2_D', 0) or 0)
+                if _xu_is_long:
+                    _xu_ltf = _xu_wt1_5m < _xu_wt2_5m
+                    _xu_15m = (_xu_wt1_15m < _xu_wt2_15m) or (_xu_wt1_15m > 95)
+                    _xu_htf = (_xu_wt1_1h < _xu_wt2_1h) or (_xu_wt1_4h < _xu_wt2_4h) or (_xu_wt1_D < _xu_wt2_D)
+                    if _xu_ltf and _xu_15m and _xu_htf:
+                        _xu_r = f"WT_CROSSUNDER_FINAL_V8_5m_15m_1h{_xu_wt1_1h<_xu_wt2_1h}_4h{_xu_wt1_4h<_xu_wt2_4h}_D{_xu_wt1_D<_xu_wt2_D}_g{_xu_gain:.2f}%_MANDATORY_REENTRY"
+                        return True, _xu_r, _xu_qty
+                else:
+                    _xu_ltf = _xu_wt1_5m > _xu_wt2_5m
+                    _xu_15m = (_xu_wt1_15m > _xu_wt2_15m) or (_xu_wt1_15m < -95)
+                    _xu_htf = (_xu_wt1_1h > _xu_wt2_1h) or (_xu_wt1_4h > _xu_wt2_4h) or (_xu_wt1_D > _xu_wt2_D)
+                    if _xu_ltf and _xu_15m and _xu_htf:
+                        _xu_r = f"WT_CROSSOVER_FINAL_V8_5m_15m_1h{_xu_wt1_1h>_xu_wt2_1h}_4h{_xu_wt1_4h>_xu_wt2_4h}_D{_xu_wt1_D>_xu_wt2_D}_g{_xu_gain:.2f}%_MANDATORY_REENTRY"
+                        return True, _xu_r, _xu_qty
         return should_exit, reason, qty
     manager.strategy.evaluate_stop = _v8_gated_evaluate_stop
+    _v8_satoshit_override = _t_overrides.get("SATOSHIT_ENABLED_TRADIER") if _t_overrides else None
+    if _v8_satoshit_override is not None:
+        _actual_sat = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', "MISSING")
+        if _actual_sat != _v8_satoshit_override:
+            v8_logger.warning(f"[V8_FIX] SATOSHIT_ENABLED_TRADIER drift: config={_actual_sat}, override={_v8_satoshit_override}. Force-setting.")
+            setattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', _v8_satoshit_override)
+        v8_logger.info(f"[V8] SATOSHIT_ENABLED_TRADIER = {getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', 'MISSING')} (override={_v8_satoshit_override})")
+    try:
+        from ez_satoshit import satoshit_entry_signal as _v8_sat_entry
+        v8_logger.info("[V8] ez_satoshit imported OK for direct SATOSHIT gating")
+    except ImportError as _sat_imp_err:
+        v8_logger.error(f"[V8_SATOSHIT_IMPORT_FAIL] {_sat_imp_err} — SATOSHIT gate will be NO-OP")
+        _v8_sat_entry = None
+    _orig_wt_dc_score_entry = tm_mod.wt_dc_score_entry
+    def _v8_satoshit_wt_dc_score_entry(indicators, is_long, current_price=0.0):
+        score, reason = _orig_wt_dc_score_entry(indicators, is_long, current_price)
+        if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True) and _v8_sat_entry:
+            try:
+                _sat_ok, _sat_votes, _ = _v8_sat_entry(indicators, is_long, tm_mod.config)
+                if _sat_ok:
+                    score += 15.0
+                    reason = f"SAT_v{_sat_votes}+{reason}"
+            except Exception:
+                pass
+        return score, reason
+    tm_mod.wt_dc_score_entry = _v8_satoshit_wt_dc_score_entry
+    v8_logger.info(f"[V8] SATOSHIT wt_dc_score_entry wrapper installed (boost=+15 when SATOSHIT fires)")
     start_ts_filter = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter))
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")
@@ -1800,20 +1944,19 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if not _sim_irth(): continue
         manager.last_monitored_positions.clear()
         open_keys = [pk for pk, pos in (manager.position_manager.positions if manager.position_manager else {}).items() if pk.startswith(f"{account_key}:") and abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0))) > 0]
-        # ENTRY PRE-FILTER: now respects should_enter_long/short, which are CONFIGURABLE.
-        # 2026-04-12: Restored should_enter call after making SATOSHIT_ENABLED_TRADIER and
-        # SHOULD_ENTER_FALLBACK_ENABLED real switches in tradier_manage.py. V8 now matches live.
-        # If you want to bypass should_enter entirely (test BRANCH B in isolation), set
-        # V8_BYPASS_SHOULD_ENTER=1 env var.
+        # ENTRY PRE-FILTER: SATOSHIT_ENABLED_TRADIER gates entry candidates.
+        # 2026-04-14 FIX: SATOSHIT was dead because should_enter silently failed (import
+        # error caught by except:pass). Now uses eagerly imported _v8_sat_entry directly.
+        # SATOSHIT=True: only candidates passing satoshit_entry_signal are allowed.
+        # SATOSHIT=False: all candidates pass (process_position's delta/wt_dc decides).
         cand_keys = []
-        _v8_bypass = os.environ.get("V8_BYPASS_SHOULD_ENTER", "0") == "1"
+        _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True)
         if step % 3 == 0:
             for s in stores:
                 ind = indicator_cache.get(s.upper(), {})
                 if not ind: continue
                 pk_l = f"{account_key}:{s}_LONG"
                 pk_s = f"{account_key}:{s}_SHORT"
-                # DYNAMIC RANKINGS: only enter if symbol is tradeable at this bar
                 _store = stores[s]
                 _bar_idx = _store.ts_to_idx.get(ts, -1)
                 _tl = _store.arrays.get("tradeable_long")
@@ -1824,23 +1967,19 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _is_long_ok = True
                     _is_short_ok = True
                 if pk_l not in open_keys and _is_long_ok:
-                    if _v8_bypass:
+                    if _sat_enabled and _v8_sat_entry:
+                        _sat_ok, _, _ = _v8_sat_entry(ind, True, tm_mod.config)
+                        if _sat_ok:
+                            cand_keys.append(pk_l)
+                    elif not _sat_enabled:
                         cand_keys.append(pk_l)
-                    else:
-                        try:
-                            if await manager.should_enter_long(s, ind):
-                                cand_keys.append(pk_l)
-                        except Exception:
-                            pass
                 if pk_s not in open_keys and _is_short_ok:
-                    if _v8_bypass:
+                    if _sat_enabled and _v8_sat_entry:
+                        _sat_ok, _, _ = _v8_sat_entry(ind, False, tm_mod.config)
+                        if _sat_ok:
+                            cand_keys.append(pk_s)
+                    elif not _sat_enabled:
                         cand_keys.append(pk_s)
-                    else:
-                        try:
-                            if await manager.should_enter_short(s, ind):
-                                cand_keys.append(pk_s)
-                        except Exception:
-                            pass
         all_keys = open_keys + cand_keys
         if not all_keys: continue
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)

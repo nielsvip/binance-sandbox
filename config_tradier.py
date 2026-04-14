@@ -237,7 +237,7 @@ class TradierConfig:
     # === LR PCTB SHORT (backtest) ===
     LR_PCTB_D_SHORT_THRESHOLD: float = 0.1  # BACKTEST_CHANGE_T10 daily LR %B threshold for shorts
     # === SATOSHIT2024 STRATEGY — stocks (15m mean-reversion, 5m instead of 3m) ===
-    SATOSHIT_ENABLED_TRADIER: bool = True  # Master toggle for stocks
+    SATOSHIT_ENTRY_FILTER: bool = True  # Master toggle for stocks
     SATOSHIT_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["tra", "trb", "trc"])
     SATOSHIT_MIN_VOTES_TRADIER: int = 3  # 3-of-5 voting
     # Entry thresholds (same as crypto — stocks use 5m/15m instead of 3m/15m)
@@ -400,6 +400,8 @@ class TradierConfig:
     # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 121 sym × D/4h/1h, 9192 combos) ===
     NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # 2026-04-08: LET WT/DC SCORER EXIT AT ANY GAIN. Scorer fires on velocity death — that IS the cut signal. 3.0% was BLOCKING technical exits on losers. Test: Sharpe 6.36 at 0% vs 1.43 at 3%.
     K_ZONE_ENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T52: K-zone entry — K in zone + turning + candle confirms. No crossover wait.
+    K_ZONE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, K_ZONE_LONG/SHORT_THRESHOLD veto entries on wt_dc path (proves switch gates trades). Default False = live unchanged.
+    WT_COMPOSITE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, WT_COMPOSITE_SCORING_ENABLED vetoes wt_dc entries lacking composite alignment. Default False = live unchanged.
     K_ZONE_LONG_THRESHOLD_TRADIER: int = 35  # K must be below this for LONG entry
     K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # K must be above this for SHORT entry
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single config win.
