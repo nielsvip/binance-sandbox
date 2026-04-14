@@ -698,8 +698,8 @@ class TradierConfig:
     DELTA_LT_COOLDOWN_BARS: int = 120  # ~10h
     DELTA_LT_HTF_GATE: str = "4h_D"
     # STRUCTURAL RANGE SHIFT EXIT (stocks) — hold losers, cut at 4h DC boundary when range shifts
-    STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # 2026-04-14 RE-ENABLED with cascade logic (was False with naive approach trigger). User directive: bb_1h for stocks.
-    STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # 2026-04-14 USER: bb_upper_1h/bb_lower_1h for stocks (cascade rewrite — was bb_4h)
+    STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # bb_4h Apr-13 DISASTER avg -0.95% 16%WR. bb_1h is correct for stocks (user directive). dc_4h is for crypto only.
+    STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # STOCKS: bb_1h (user directive — bb_upper_1h/bb_lower_1h). CRYPTO: dc_4h. bb_4h was wrong and caused April-13 losses.
     # Cascade params (stocks) — same knobs as crypto unless overridden
     STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0
     STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0
