@@ -1513,6 +1513,19 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         setattr(tm_mod.config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
         setattr(_ct.TradierConfig, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
         v8_logger.info(f"WT_COMPOSITE_VETO_ENABLED_TRADIER forced True (sweep tests WT_COMPOSITE_SCORING_ENABLED_TRADIER={_t_overrides['TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER']})")
+    # ALIAS 2026-04-14: old sweep runs used SATOSHIT_ENABLED_TRADIER as the key name;
+    # current sweep uses SATOSHIT_ENTRY_FILTER. Map old→new so running sweeps still work.
+    # If override has SATOSHIT_ENABLED_TRADIER but NOT SATOSHIT_ENTRY_FILTER, inject it.
+    if "SATOSHIT_ENABLED_TRADIER" in _t_overrides and "SATOSHIT_ENTRY_FILTER" not in _t_overrides:
+        _t_overrides["SATOSHIT_ENTRY_FILTER"] = _t_overrides["SATOSHIT_ENABLED_TRADIER"]
+        setattr(tm_mod.config, "SATOSHIT_ENTRY_FILTER", _t_overrides["SATOSHIT_ENABLED_TRADIER"])
+        try: setattr(_ct.TradierConfig, "SATOSHIT_ENTRY_FILTER", _t_overrides["SATOSHIT_ENABLED_TRADIER"])
+        except Exception: pass
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and "SATOSHIT_ENTRY_FILTER" in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__["SATOSHIT_ENTRY_FILTER"].default = _t_overrides["SATOSHIT_ENABLED_TRADIER"]
+        except Exception: pass
+        v8_logger.info(f"[V8_SATOSHIT_ALIAS] SATOSHIT_ENABLED_TRADIER={_t_overrides['SATOSHIT_ENABLED_TRADIER']} → SATOSHIT_ENTRY_FILTER applied to tradier_manage.config")
     # FIX 2026-04-14 sentinel DUPE_RESULTS: SATOSHIT_ENTRY_FILTER and STRUCTURAL_RANGE_SHIFT_EXIT
     # appeared dead in t25_3sym sweep. Force-apply at ALL levels (module, class, dataclass, instance,
     # and cross-injected configs ez_positions_quick.config + config). Loud verification logging so
