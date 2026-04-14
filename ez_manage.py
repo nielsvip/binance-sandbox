@@ -20167,7 +20167,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # entire exit block in wt_dc_delta.py was SKIPPED (gated on `if position_state`).
             # Now construct position_state so speed_dead/decel/peak_decay/opposing/tf_lost/MFI
             # exits actually fire.
-            if trade_manager.delta_tracker and getattr(config, 'DELTA_EXIT_ENABLED', True):
+            # RECONNECT 2026-04-14 — rz: RZ_EXIT_ENABLED master gate (delegated to delta_tracker.cfg.rz_exit_enabled)
+            _rz_exit_enabled = bool(getattr(config, 'RZ_EXIT_ENABLED', True))
+            if trade_manager.delta_tracker and getattr(config, 'DELTA_EXIT_ENABLED', True) and _rz_exit_enabled:
                 _de_pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0))
                 _de_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0), 0) or current_price
                 _de_n_entries = int(safe_fetch_float(getattr(position, 'n_entries', 1), 1) or 1)

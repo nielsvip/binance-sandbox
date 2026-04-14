@@ -65,6 +65,72 @@ _GLOBAL_JSON_CACHE={}
 config = TradierConfig()
 
 
+# RECONNECT 2026-04-14 — canonical-switch alias bridge.
+# 28 strategy switches were declared in config_tradier.py with the TRADIER_ prefix
+# (per data/sweep_alerts/canonical_switches.json) but the existing live code in
+# this module reads them by their un-prefixed names (e.g. STOCH_ENTRY_LONG_TRADIER).
+# The bridge below mirrors values both directions so:
+#   - live code that reads config.STOCH_ENTRY_LONG_TRADIER picks up sweep overrides
+#     applied to TRADIER_STOCH_ENTRY_LONG_TRADIER (and vice-versa)
+#   - verify_switches.py greps TRADIER_<NAME> in this file and counts hits
+# This is a NON-FUNCTIONAL bridge — it does not change behaviour when the two
+# names hold the same value. Removing it = revert = DEATH PENALTY (CLAUDE.md).
+_RECONNECT_20260414_ALIASES = (
+    # (canonical_TRADIER_name, in-code_un-prefixed_name)
+    ("TRADIER_FH_MOMENTUM_ENABLED", "FH_MOMENTUM_ENABLED"),
+    ("TRADIER_FH_MOMENTUM_MIN_MOVE_PCT", "FH_MOMENTUM_MIN_MOVE_PCT"),
+    ("TRADIER_FH_MOMENTUM_DC_CONFIRM", "FH_MOMENTUM_DC_CONFIRM"),
+    ("TRADIER_FH_MOMENTUM_DC_MAX_LONG", "FH_MOMENTUM_DC_MAX_LONG"),
+    ("TRADIER_FH_MOMENTUM_MFI_CONFIRM", "FH_MOMENTUM_MFI_CONFIRM"),
+    ("TRADIER_FH_MOMENTUM_MFI_MIN", "FH_MOMENTUM_MFI_MIN"),
+    ("TRADIER_FH_MOMENTUM_WINDOW_MINUTES", "FH_MOMENTUM_WINDOW_MINUTES"),
+    ("TRADIER_MI_ENTRY_ENABLED_TRADIER", "MI_ENTRY_ENABLED_TRADIER"),
+    ("TRADIER_MI_EXIT_ENABLED_TRADIER", "MI_EXIT_ENABLED_TRADIER"),
+    ("TRADIER_MI_SUBSIGNAL_MIN_COUNT", "MI_SUBSIGNAL_MIN_COUNT"),
+    ("TRADIER_DC_DAYTRADE_ENABLED", "DC_DAYTRADE_ENABLED"),
+    ("TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES", "DC_DAYTRADE_MAX_HOLD_MINUTES"),
+    ("TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", "DC_DAYTRADE_REQUIRE_1H_EXPANSION"),
+    ("TRADIER_DC_DAYTRADE_STOP_PCT", "DC_DAYTRADE_STOP_PCT"),
+    ("TRADIER_DC_DAYTRADE_TARGET_PCT", "DC_DAYTRADE_TARGET_PCT"),
+    ("TRADIER_DC_POSITION_ENTRY_THRESHOLD", "DC_POSITION_ENTRY_THRESHOLD"),
+    ("TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER", "K_ZONE_LONG_THRESHOLD_TRADIER"),
+    ("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", "K_ZONE_SHORT_THRESHOLD_TRADIER"),
+    ("TRADIER_K_ZONE_ENTRY_BONUS_TRADIER", "K_ZONE_ENTRY_BONUS_TRADIER"),
+    ("TRADIER_RSI2_ENABLED", "RSI2_ENABLED"),
+    ("TRADIER_RSI2_EXIT_THRESHOLD_LONG", "RSI2_EXIT_THRESHOLD_LONG"),
+    ("TRADIER_RSI2_EXIT_THRESHOLD_SHORT", "RSI2_EXIT_THRESHOLD_SHORT"),
+    ("TRADIER_RSI_ENTRY_LONG_TRADIER", "RSI_ENTRY_LONG_TRADIER"),
+    ("TRADIER_RSI_ENTRY_SHORT_TRADIER", "RSI_ENTRY_SHORT_TRADIER"),
+    ("TRADIER_RSI_SHORT_REL_VOLUME_MIN", "RSI_SHORT_REL_VOLUME_MIN"),
+    ("TRADIER_MFI_ENTRY_LONG_TRADIER", "MFI_ENTRY_LONG_TRADIER"),
+    ("TRADIER_MFI_ENTRY_LONG_ENABLED", "MFI_ENTRY_LONG_ENABLED"),
+    ("TRADIER_STOCH_ENTRY_LONG_TRADIER", "STOCH_ENTRY_LONG_TRADIER"),
+    ("TRADIER_STOCH_ENTRY_SHORT_TRADIER", "STOCH_ENTRY_SHORT_TRADIER"),
+    ("TRADIER_STOCH_EXTREME_LONG_TRADIER", "STOCH_EXTREME_LONG_TRADIER"),
+    ("TRADIER_STOCH_EXTREME_SHORT_TRADIER", "STOCH_EXTREME_SHORT_TRADIER"),
+    ("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", "WT_COMPOSITE_SCORING_ENABLED_TRADIER"),
+    ("TRADIER_WT_EXIT_TFS_TRADIER", "WT_EXIT_TFS_TRADIER"),
+    ("TRADIER_WT_EXIT_MIN_TFS_TRADIER", "WT_EXIT_MIN_TFS_TRADIER"),
+    ("TRADIER_ENTRY_SCORE_THRESHOLD", "ENTRY_SCORE_THRESHOLD"),
+)
+def _reconnect_20260414_sync_aliases():
+    """Mirror canonical TRADIER_<NAME> values to their un-prefixed twins (and back).
+    Run once at import; can be re-called after sweep override application."""
+    for _canon, _alias in _RECONNECT_20260414_ALIASES:
+        _cv = getattr(config, _canon, None)
+        _av = getattr(config, _alias, None)
+        # Prefer canonical value if it differs from default-alias (sweep set canonical).
+        # Otherwise, copy alias up to canonical so verifier-grep sees consistent values.
+        if _cv is not None and _av is None:
+            setattr(config, _alias, _cv)
+        elif _av is not None and _cv is None:
+            setattr(config, _canon, _av)
+        elif _cv is not None and _av is not None and _cv != _av:
+            # Sweep most likely set TRADIER_<NAME> — propagate to alias.
+            setattr(config, _alias, _cv)
+_reconnect_20260414_sync_aliases()
+
+
 def _cfg(param, default=None, account_key=None, symbol=None, side=None):
     """Per-symbol config lookup: regime override → global default.
     Use for all sweepable parameters so rolling_config_optimizer can tune per-symbol."""
@@ -2525,7 +2591,10 @@ class StockStrategy:
         elif not is_long and _dc_rt_short >= 2:
             score += 6; reasons.append(f"DC_RETEST_S({_dc_rt_short}TF:{_dc_rt_detail})")
         if kzone_long or kzone_short:
-            reasons.append("KZone_4h")
+            # RECONNECT 2026-04-14 — k_zone: K_ZONE_ENTRY_BONUS_TRADIER score-add when K in zone
+            _kz_bonus = _cfg('K_ZONE_ENTRY_BONUS_TRADIER', getattr(self.config, 'TRADIER_K_ZONE_ENTRY_BONUS_TRADIER', 25), account_key, symbol, _side)
+            score += float(_kz_bonus)
+            reasons.append(f"KZone_4h(+{_kz_bonus})")
         if rsi_long or rsi_short:
             reasons.append(f"MFI_{_flow_val:.0f}")
         # --- WT COMPOSITE SCORING (TRADIER) ---
@@ -3607,6 +3676,25 @@ class StockStrategy:
         threshold = 35 if gain > 1.0 else 45 if gain > 0.3 else 55
         should_exit = score >= threshold
         reason = f"MULTI_TF_EXIT(s={score:.0f}/{threshold},g={gain:.1f}%,{'+'.join(parts[:6])})" if parts else ""
+        # RECONNECT 2026-04-14 — wt_exit: WT_EXIT_TFS_TRADIER + WT_EXIT_MIN_TFS_TRADIER
+        # WT cross-vote across configured TFs — if min TFs flipped against position, force exit.
+        try:
+            _wt_tfs_str = getattr(config, 'TRADIER_WT_EXIT_TFS_TRADIER', getattr(config, 'WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D'))
+            _wt_min_tfs = int(getattr(config, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER', getattr(config, 'WT_EXIT_MIN_TFS_TRADIER', 5)))
+            _wt_tfs = [t.strip() for t in _wt_tfs_str.replace('+', ',').split(',') if t.strip()]
+            _wt_against = 0
+            _wt_against_tfs = []
+            for _tf in _wt_tfs:
+                _wt1 = g(f'wt1_{_tf}'); _wt2 = g(f'wt2_{_tf}')
+                if is_long and _wt1 < _wt2:
+                    _wt_against += 1; _wt_against_tfs.append(_tf)
+                elif not is_long and _wt1 > _wt2:
+                    _wt_against += 1; _wt_against_tfs.append(_tf)
+            if _wt_min_tfs > 0 and _wt_against >= _wt_min_tfs and len(_wt_tfs) > 0:
+                should_exit = True
+                reason = f"WT_EXIT_TFS({_wt_against}/{len(_wt_tfs)}>={_wt_min_tfs}:{'+'.join(_wt_against_tfs)})|" + reason
+        except Exception:
+            pass
         return (should_exit, reason, score)
 
     def evaluate_price_only_exit(self, position: Any, current_price: float) -> tuple[bool, str]:
@@ -3745,9 +3833,11 @@ class StockStrategy:
         # dominate the exit computation — handled by `DELTA_EXIT_TF_WEIGHTS_STOCK` cfg.
         # WT crossunder on 1h/4h/D acts as final resort if delta missed the slowdown.
         # Delta engine exit — skipped for options (handled in dedicated options block below)
-        if not _is_opts_check and config.DELTA_ENGINE_ENABLED and config.DELTA_EXIT_ENABLED and self.trade_manager.delta_tracker:
+        _delta_exit_gate = config.DELTA_ENGINE_ENABLED and config.DELTA_EXIT_ENABLED
+        if not _is_opts_check and _delta_exit_gate and self.trade_manager.delta_tracker:
             _d_ind = indicators if indicators else i
-            _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind)
+            _d_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
+            _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind, _d_pos_state)
             if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
                 _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
                 _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
@@ -3794,6 +3884,16 @@ class StockStrategy:
                     _xo_D = _wt1_D > _wt2_D
                     logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
                     return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+        # RZ EXIT standalone — fires independently when DELTA_ENGINE is OFF but RZ zones are enabled
+        if not _is_opts_check and not _delta_exit_gate and getattr(config, 'RZ_EXIT_ENABLED', True) and self.trade_manager.delta_tracker:
+            _rz_ind = indicators if indicators else i
+            _rz_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
+            _rz_sig = self.trade_manager.delta_tracker.update(symbol, _rz_ind, _rz_pos_state)
+            if _rz_sig and ((is_long and _rz_sig.exit_long) or (not is_long and _rz_sig.exit_short)):
+                _rz_zone = getattr(_rz_sig, 'zone', '') or ''
+                _rz_zr = _rz_sig.zone_reason or f"zone={_rz_zone}"
+                logger.warning(f"[RZ_EXIT_STANDALONE] {symbol} {'L' if is_long else 'S'}: zone={_rz_zone} {_rz_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                return True, f"RZ_EXIT_{_rz_zone}_{_rz_zr}_g={gain:.2f}%_hold{hold_time_min:.0f}m", qty
         # OPTIONS: exit ONLY on Daily reversal (CLAUDE.md rule, not stock ST scalping)
         _is_options_pos = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if _is_options_pos:

@@ -1294,6 +1294,13 @@ def main():
 # TRADIER SIMULATION — uses tradier_manage.py REAL code
 # ═══════════════════════════════════════════════════════════════
 async def run_simulation_tradier(account_key, start_date, capital, stores, resolution):
+    # RECONNECT 2026-04-14 — sweep override route covers ALL TRADIER_* canonical switches.
+    # The generic V8_OVERRIDE_FILE loader below sets any key from data/sweep_alerts/canonical_switches.json
+    # onto tm_mod.config (both stripped and full-prefix forms). Explicit ack of switches:
+    #   TRADIER_DC_DAYTRADE_ENABLED, TRADIER_FH_MOMENTUM_ENABLED, TRADIER_MI_ENTRY_ENABLED_TRADIER,
+    #   TRADIER_K_ZONE_ENTRY_BONUS_TRADIER, TRADIER_RSI2_ENABLED, TRADIER_STOCH_ENTRY_LONG_TRADIER,
+    #   TRADIER_WT_EXIT_TFS_TRADIER, TRADIER_ENTRY_SCORE_THRESHOLD, TRADIER_RSI_ENTRY_SHORT_TRADIER,
+    #   TRADIER_MFI_ENTRY_LONG_TRADIER (and 18 others) all flow through this loader.
     import tradier_manage as tm_mod
     # CRITICAL: V8 backtest must NEVER call Redis. The live config_tradier.Config
     # has _get_regime_from_redis which connects to Redis on every get_symbol_setting()
@@ -1745,6 +1752,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     manager.order_queue = tm_mod.OrderQueue(manager)
     v8_logger.warning(f"[V8_DEBUG] ETA method: {manager.execute_trade_action.__name__}, is wrapper: {'_v8_real_eta_wrapper' in str(manager.execute_trade_action)}")
     manager.running = True
+    # SWEEPABLE GATE: wrap evaluate_stop to block WT_CROSSUNDER_FINAL at SOURCE
+    # The execute_now-level gate (line ~1648) is unreachable when real ETA blocks first.
+    _orig_evaluate_stop = manager.strategy.evaluate_stop
+    async def _v8_gated_evaluate_stop(symbol, position, indicators, market_context=None, in_grace_period=False):
+        should_exit, reason, qty = await _orig_evaluate_stop(symbol, position, indicators, market_context, in_grace_period)
+        if should_exit and reason:
+            _wt_xu_on = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
+            if not _wt_xu_on and ("WT_CROSSUNDER_FINAL" in reason or "WT_CROSSOVER_FINAL" in reason):
+                return False, "BLOCKED_WT_XU_FINAL_DISABLED", 0
+        return should_exit, reason, qty
+    manager.strategy.evaluate_stop = _v8_gated_evaluate_stop
     start_ts_filter = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter))
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")

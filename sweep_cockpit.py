@@ -307,11 +307,46 @@ NAV_ITEMS = [
 ]
 
 
+def _alert_summary():
+    """2026-04-14: Scan data/sweep_alerts/ and return a HTML banner with counts.
+    Aggregates from duplicate_guard, regression_watcher, coordinator_v8."""
+    d = os.path.join(BASE_DIR, "data", "sweep_alerts")
+    if not os.path.isdir(d): return ""
+    counts = {"dupe": 0, "regression": 0, "coord_dupe": 0, "fix_required": 0}
+    latest = None
+    try:
+        for fn in os.listdir(d):
+            p = os.path.join(d, fn)
+            if fn.startswith("duplicate_"): counts["dupe"] += 1
+            elif fn.startswith("regression_"): counts["regression"] += 1
+            elif fn.startswith("coord_dupe_"): counts["coord_dupe"] += 1
+            elif fn.startswith("FIX_REQUIRED_"): counts["fix_required"] += 1
+            try: mt = os.path.getmtime(p)
+            except Exception: continue
+            if latest is None or mt > latest[0]: latest = (mt, fn)
+    except Exception:
+        return ""
+    total = sum(counts.values())
+    if total == 0:
+        return '<div style="background:#1a3a1a; color:#9fe89f; padding:8px; border-radius:4px; margin:8px 0;">✅ No active sweep alerts</div>'
+    latest_ago = int(time.time() - latest[0]) if latest else 0
+    return f'''<div style="background:#3a1a1a; color:#ff8888; padding:10px; border:2px solid #ff4444; border-radius:4px; margin:8px 0;">
+        ⚠️ <strong>ACTIVE ALERTS:</strong>
+        <a href="/alerts" style="color:#ffaaaa">{counts["fix_required"]} FIX_REQUIRED</a> ·
+        {counts["dupe"]} dead-knob groups ·
+        {counts["regression"]} regressions ·
+        {counts["coord_dupe"]} cross-machine dupes
+        &nbsp;·&nbsp; latest: {latest[1] if latest else "?"} ({latest_ago}s ago)
+    </div>'''
+
+
 def render_page(body, title="Sweep Cockpit", active_nav="Home"):
     nav_html = ""
     for label, href in NAV_ITEMS:
         cls = ' class="active"' if label == active_nav else ""
         nav_html += f'<a href="{href}"{cls}>{label}</a>'
+    # 2026-04-14: alert banner from sweep_duplicate_guard + regression_watcher + coordinator
+    alert_banner = _alert_summary()
     return f"""<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
@@ -320,9 +355,10 @@ def render_page(body, title="Sweep Cockpit", active_nav="Home"):
 <style>{STYLE}</style>
 </head><body>
 <div class="refresh-bar"></div>
-<div class="navbar">{nav_html}</div>
+<div class="navbar">{nav_html} &nbsp;|&nbsp; <a href="/results">🏆 Results</a> &nbsp;|&nbsp; <a href="/alerts">🚨 Alerts</a> &nbsp;|&nbsp; <a href="/switches">🔌 Switches</a> &nbsp;|&nbsp; <a href="/live_vs_sandbox">🟢 Live vs 🧪 Sandbox</a></div>
 <h1>V8 Sweep Cockpit</h1>
 <div class="subtitle">Auto-refresh 30s | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
+{alert_banner}
 {body}
 </body></html>"""
 
@@ -1342,6 +1378,191 @@ def monitor_page():
     <div class="log-box" style="max-height:600px; overflow-y:auto; font-size:12px">{log_html}</div>
     """
     return render_page(body, title="Monitor Agent", active_nav="Monitor")
+
+
+# ---------------------------------------------------------------------------
+# 2026-04-14: New routes — /alerts, /switches, /live_vs_sandbox
+# ---------------------------------------------------------------------------
+@app.route("/alerts")
+def alerts_page():
+    d = os.path.join(BASE_DIR, "data", "sweep_alerts")
+    if not os.path.isdir(d):
+        return render_page("<p>No alerts directory.</p>", title="Alerts", active_nav="Home")
+    entries = []
+    for fn in sorted(os.listdir(d), reverse=True):
+        if fn.startswith("_"): continue  # state files
+        p = os.path.join(d, fn)
+        try:
+            mt = os.path.getmtime(p)
+            data = json.load(open(p))
+        except Exception:
+            continue
+        entries.append({"fn": fn, "mtime": mt, "data": data})
+    entries.sort(key=lambda e: e["mtime"], reverse=True)
+    rows = []
+    for e in entries[:200]:
+        ago = int(time.time() - e["mtime"])
+        kind = "FIX" if e["fn"].startswith("FIX_REQUIRED_") else ("DUPE" if e["fn"].startswith("duplicate_") else ("REGRESSION" if e["fn"].startswith("regression_") else "COORD"))
+        summary = ""
+        if kind == "FIX":
+            summary = f"knob={e['data'].get('knob')} values={e['data'].get('values_tried')} output={e['data'].get('identical_output')}"
+        elif kind == "DUPE":
+            knobs = [dk.get("knob") for dk in e["data"].get("dead_knobs", [])]
+            summary = f"machine={e['data'].get('machine')} dead_knobs={knobs} output={e['data'].get('output_key')}"
+        elif kind == "REGRESSION":
+            suspects = list(e["data"].get("suspect_knobs", {}).keys())
+            summary = f"machine={e['data'].get('machine')} drop={e['data'].get('drop_pct')}% suspects={suspects}"
+        elif kind == "COORD":
+            summary = f"fingerprint={e['data'].get('fingerprint')} first={e['data'].get('first_run', {}).get('machine')} dupe={e['data'].get('duplicate_run', {}).get('machine')}"
+        rows.append(f'<tr><td>{kind}</td><td>{ago}s</td><td>{e["fn"]}</td><td style="font-size:11px">{summary}</td></tr>')
+    body = f"""
+    <h2>Sweep Alerts ({len(entries)} total)</h2>
+    <p style="color:#888">Sources: sweep_duplicate_guard (2m) + sweep_regression_watcher (2m) + sweep_coordinator_v8 (5m). FIX_REQUIRED files are one-per-dead-knob.</p>
+    <table style="width:100%; font-size:12px"><tr><th>Kind</th><th>Age</th><th>File</th><th>Summary</th></tr>
+    {''.join(rows)}
+    </table>
+    """
+    return render_page(body, title="Alerts", active_nav="Home")
+
+
+@app.route("/switches")
+def switches_page():
+    try:
+        r = subprocess.run(["/opt/anaconda3/envs/binance_env/bin/python", os.path.join(BASE_DIR, "verify_switches.py"), "--json"], capture_output=True, text=True, timeout=30)
+        data = json.loads(r.stdout)
+    except Exception as e:
+        return render_page(f"<p>verify_switches failed: {e}</p>", title="Switches", active_nav="Home")
+    def _tbl(title, items, color):
+        rows_h = []
+        for e in items:
+            files_str = ", ".join(f"{k}={v}" for k, v in e["files"].items())
+            rows_h.append(f'<tr><td>{e["switch"]}</td><td>{e["category"]}</td><td>{e.get("status","")}</td><td style="font-size:11px">{files_str}</td></tr>')
+        return f'<h3 style="color:{color}">{title} ({len(items)})</h3><table style="width:100%; font-size:12px"><tr><th>Switch</th><th>Category</th><th>Status</th><th>Files</th></tr>{"".join(rows_h)}</table>'
+    body = _tbl("❌ MISSING (revert alarm)", data["missing"], "#ff4444") + _tbl("⚠ Partial", data["partial"], "#ffaa00") + _tbl("✅ OK", data["ok"], "#4caf50") + _tbl("◼ Disabled by design", data["disabled_by_design"], "#888")
+    return render_page(body, title="Switches", active_nav="Home")
+
+
+@app.route("/results")
+def results_page():
+    """2026-04-14: The HONEST results view. Not claim-based. Reads latest sweep CSVs
+    from all 3 machines, shows Sharpe/PnL breakdown + per-switch variance test.
+
+    A switch is 'verified alive' if paired runs (flipping ONLY that switch with
+    everything else fixed) produce different Sharpe values in the LATEST data.
+    canonical_switches.json marking a switch 'yes' does NOT imply verified —
+    this page is the truth source."""
+    from collections import defaultdict as _dd
+    machines = [
+        {"name": "Local", "host": None, "dir": os.path.join(BASE_DIR, "backtest_v8", "sweeps")},
+        {"name": "S1", "host": "s1-int", "dir": "/home/niels/binance-sandbox/backtest_v8/sweeps"},
+        {"name": "S2", "host": "s2-int", "dir": "/home/niels/binance-sandbox/backtest_v8/sweeps"},
+    ]
+    all_rows = []
+    for m in machines:
+        try:
+            if m["host"] is None:
+                files = sorted(glob.glob(os.path.join(m["dir"], "v8_sweep_*.csv")))[-5:]
+                raw = ""
+                for f in files: raw += open(f).read() + "\n"
+            else:
+                raw = _ssh_run(m["host"], None, f'tail -n +1 {m["dir"]}/v8_sweep_*.csv 2>/dev/null | tail -5000')
+        except Exception: continue
+        header = None
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line: continue
+            if line.startswith("run_id,"):
+                header = next(csv.reader(io.StringIO(line)))
+                continue
+            if header is None: continue
+            try:
+                vals = next(csv.reader(io.StringIO(line)))
+                if len(vals) == len(header):
+                    r = dict(zip(header, vals))
+                    r["_machine"] = m["name"]
+                    all_rows.append(r)
+            except Exception: continue
+    ok_rows = [r for r in all_rows if r.get("status") == "ok"]
+    def _f(x, d=0.0):
+        try: return float(x)
+        except Exception: return d
+    ok_rows.sort(key=lambda r: _f(r.get("sharpe", 0)), reverse=True)
+    top = ok_rows[:25]
+    top_rows = [f'<tr><td>{r["_machine"]}</td><td>{r.get("run_id","?")}</td><td>{r.get("sharpe","?")}</td><td>${_f(r.get("pnl")):.2f}</td><td>{r.get("trades","?")}</td><td>{r.get("wins","?")}/{r.get("losses","?")}</td><td style="font-size:10px; max-width:400px">{r.get("name","")[:80]}</td></tr>' for r in top]
+    # Switch variance check: for each cfg_* column, group rows by all OTHER cfg values fixed,
+    # see if the column actually moves the needle
+    cfg_cols = set()
+    for r in ok_rows:
+        cfg_cols.update(c for c in r if c.startswith("cfg_"))
+    variance_rows = []
+    for col in sorted(cfg_cols):
+        # Find pairs differing ONLY by this column
+        sig_groups = _dd(list)
+        for r in ok_rows:
+            sig = tuple((k, r.get(k)) for k in sorted(cfg_cols) if k != col)
+            sig_groups[sig].append(r)
+        pairs = [g for g in sig_groups.values() if len(g) >= 2 and len({r.get(col) for r in g}) >= 2]
+        if not pairs:
+            status, note = "no-data", "no paired runs yet"
+        else:
+            alive = 0; dead = 0
+            for g in pairs:
+                outputs = {(round(_f(r.get("sharpe")), 3), round(_f(r.get("pnl")), 2)) for r in g}
+                if len(outputs) == 1: dead += 1
+                else: alive += 1
+            if alive == 0: status, note = "DEAD", f"{dead} paired groups all identical"
+            elif dead == 0: status, note = "alive", f"{alive} paired groups varied"
+            else: status, note = "partial", f"{alive} alive / {dead} dead"
+        color = {"alive": "#4caf50", "DEAD": "#ff4444", "partial": "#ffaa00", "no-data": "#888"}[status]
+        variance_rows.append(f'<tr style="color:{color}"><td>{col.replace("cfg_","")}</td><td>{status.upper()}</td><td>{note}</td></tr>')
+    body = f"""
+    <h2>🏆 Top 25 Configs by Sharpe ({len(ok_rows)} total OK)</h2>
+    <p style="color:#888">Aggregated from last ~5 sweep CSVs per machine. Sort: Sharpe desc.</p>
+    <table style="width:100%; font-size:12px"><tr><th>Machine</th><th>Run ID</th><th>Sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th><th>Name</th></tr>
+    {''.join(top_rows) or '<tr><td colspan=7>No OK rows yet.</td></tr>'}
+    </table>
+    <h2 style="margin-top:30px">🔌 Switch-by-Switch Variance (empirical)</h2>
+    <p style="color:#888">For each cfg_ column, finds rows differing ONLY in that column. If all such paired groups produce identical Sharpe+PnL → switch is DEAD regardless of what canonical_switches.json claims.</p>
+    <table style="width:100%; font-size:12px"><tr><th>Switch</th><th>Verdict</th><th>Evidence</th></tr>
+    {''.join(variance_rows)}
+    </table>
+    """
+    return render_page(body, title="Results", active_nav="Home")
+
+
+@app.route("/live_vs_sandbox")
+def live_vs_sandbox():
+    """2026-04-14: Distinguish real live trades from backtest sweep results."""
+    # LIVE = recent data/decisions/ JSONL (MacBook, real orders)
+    live_dir = os.path.join(BASE_DIR, "data", "decisions")
+    live_rows = []
+    if os.path.isdir(live_dir):
+        for fn in sorted(os.listdir(live_dir), reverse=True)[:5]:
+            p = os.path.join(live_dir, fn)
+            try:
+                size = os.path.getsize(p)
+                mt = os.path.getmtime(p)
+                with open(p) as fh:
+                    lines = fh.readlines()
+                live_rows.append(f'<tr><td>{fn}</td><td>{len(lines)}</td><td>{size//1024}KB</td><td>{int(time.time()-mt)}s ago</td></tr>')
+            except Exception:
+                continue
+    # SANDBOX = sweep CSVs via coordinator plan
+    plan_path = os.path.join(BASE_DIR, "data", "sweep_alerts", "_coordinator_plan.json")
+    sandbox_info = {}
+    try:
+        with open(plan_path) as fh: sandbox_info = json.load(fh)
+    except Exception: pass
+    bm = sandbox_info.get("by_machine", {})
+    sb_rows = [f'<tr><td>{m}</td><td>{s.get("ok",0)}</td><td>{s.get("fail",0)}</td><td>{s.get("rows",0)}</td><td>{int(s.get("elapsed_total",0)//60)} min</td></tr>' for m, s in bm.items()]
+    body = f"""
+    <h2 style="color:#4caf50">🟢 LIVE — Real orders (data/decisions/)</h2>
+    <table style="width:100%"><tr><th>File</th><th>Decisions</th><th>Size</th><th>Age</th></tr>{''.join(live_rows) or '<tr><td colspan=4>No live decisions logged yet today.</td></tr>'}</table>
+    <h2 style="color:#ffaa00; margin-top:20px">🧪 SANDBOX — Backtest sweeps</h2>
+    <p style="color:#888">Source: sweep_coordinator_v8.py (every 5 min). Total unique configs: {sandbox_info.get('total_unique_configs', '?')}</p>
+    <table style="width:100%"><tr><th>Machine</th><th>OK</th><th>Fail</th><th>Total Rows</th><th>Elapsed</th></tr>{''.join(sb_rows) or '<tr><td colspan=5>No data yet.</td></tr>'}</table>
+    """
+    return render_page(body, title="Live vs Sandbox", active_nav="Home")
 
 
 # ---------------------------------------------------------------------------

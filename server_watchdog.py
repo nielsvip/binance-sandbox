@@ -116,13 +116,8 @@ def check_server(name, cfg, state):
     host = cfg["host"]
     user = cfg["user"]
 
-    # Combined health check: memory + existing screens + process count
-    probe_cmd = (
-        "echo FREE=$(free -m | awk '/^Mem:/{print $7}'); "
-        "echo SWEEP_PROCS=$(pgrep -f backtest_v8_sweep.py | wc -l); "
-        "echo SCREENS=$(screen -ls 2>/dev/null | grep -oE '[0-9]+\\.[a-zA-Z_]+' || true)"
-    )
-    rc, out = ssh(host, user, probe_cmd)
+    probe_cmd = "free -m | awk '/^Mem:/{print \"FREE=\"$7}'; pgrep -cf backtest_v8_sweep.py | awk '{print \"SWEEP_PROCS=\"$0}'; screen -ls 2>/dev/null | grep -oE '[0-9]+\\.[a-zA-Z_]+' | awk '{print \"SCREEN=\"$0}'"
+    rc, out = ssh(host, user, probe_cmd, timeout=30)
     if rc != 0:
         state[name]["reachable"] = False
         if state[name]["down_since"] is None:
@@ -137,7 +132,7 @@ def check_server(name, cfg, state):
 
     free_mb = 0
     sweep_procs = 0
-    screens_line = ""
+    existing_screens = set()
     for ln in out.splitlines():
         if ln.startswith("FREE="):
             try: free_mb = int(ln.split("=", 1)[1])
@@ -145,14 +140,10 @@ def check_server(name, cfg, state):
         elif ln.startswith("SWEEP_PROCS="):
             try: sweep_procs = int(ln.split("=", 1)[1])
             except ValueError: pass
-        elif ln.startswith("SCREENS="):
-            screens_line = ln.split("=", 1)[1]
-
-    existing_screens = set()
-    for tok in screens_line.split():
-        parts = tok.split(".", 1)
-        if len(parts) == 2:
-            existing_screens.add(parts[1])
+        elif ln.startswith("SCREEN="):
+            parts = ln.split("=", 1)[1].split(".", 1)
+            if len(parts) == 2:
+                existing_screens.add(parts[1])
 
     state[name].update({
         "free_mb": free_mb,
@@ -164,32 +155,34 @@ def check_server(name, cfg, state):
         log(f"{name}: LOW RAM {free_mb}MB — skipping spawn this cycle")
         return
 
-    # Ensure sentinel screen is up
+    # Ensure sentinel screen is up. Double-check via screen -ls AFTER attempt to detect silent spawn failures.
     if cfg["run_sentinel"] and "sentinel" not in existing_screens:
         log(f"{name}: sentinel missing — spawning")
-        cmd = (
-            f"flock -n /tmp/watchdog_sentinel.lock -c "
-            f"\"screen -dmS sentinel bash -c 'cd /home/niels/binance && "
-            f"SENTINEL_AUTO_FIX=1 {cfg['python']} -u sentinel.py > /tmp/sentinel.log 2>&1'\""
+        inner = f"cd /home/niels/binance && SENTINEL_AUTO_FIX=1 {cfg['python']} -u sentinel.py > /tmp/sentinel.log 2>&1"
+        # Write launcher script remotely + spawn screen pointing to it. Avoids shell escape issues.
+        setup = (
+            f"cat > /tmp/launch_sentinel.sh <<'EOF'\n#!/bin/bash\n{inner}\nEOF\n"
+            f"chmod +x /tmp/launch_sentinel.sh && "
+            f"screen -dmS sentinel bash /tmp/launch_sentinel.sh && "
+            f"sleep 1 && screen -ls | grep -q sentinel && echo SENTINEL_UP || echo SENTINEL_FAIL"
         )
-        ssh(host, user, cmd)
+        rc2, out2 = ssh(host, user, setup, timeout=30)
+        log(f"{name}: sentinel spawn rc={rc2} result={out2.strip()[-80:]}")
 
-    # Ensure each expected sweep screen is up
     for sweep_name in cfg["sweeps"]:
         if sweep_name in existing_screens:
             continue
         sweep_cfg = SWEEPS[sweep_name]
         inner = build_sweep_cmd(cfg, sweep_cfg, cfg["python"])
-        # flock prevents two watchdog cycles racing to spawn the same sweep
-        inner_escaped = inner.replace("'", "'\\''")
-        cmd = (
-            f"flock -n /tmp/watchdog_{sweep_name}.lock -c "
-            f"'screen -dmS {sweep_name} bash -c {json_shell(inner)}'"
+        setup = (
+            f"cat > /tmp/launch_{sweep_name}.sh <<'EOF'\n#!/bin/bash\n{inner}\nEOF\n"
+            f"chmod +x /tmp/launch_{sweep_name}.sh && "
+            f"screen -dmS {sweep_name} bash /tmp/launch_{sweep_name}.sh && "
+            f"sleep 1 && screen -ls | grep -q {sweep_name} && echo {sweep_name}_UP || echo {sweep_name}_FAIL"
         )
         log(f"{name}: {sweep_name} missing — spawning")
-        rc2, out2 = ssh(host, user, cmd)
-        if rc2 != 0:
-            log(f"{name}: {sweep_name} spawn rc={rc2} {out2[:200]}")
+        rc2, out2 = ssh(host, user, setup, timeout=30)
+        log(f"{name}: {sweep_name} spawn rc={rc2} result={out2.strip()[-80:]}")
 
     log(f"{name}: OK free={free_mb}MB procs={sweep_procs} screens={sorted(existing_screens)}")
 
