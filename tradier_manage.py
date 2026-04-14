@@ -1347,13 +1347,28 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         if not _mi_ok:
                             _veto = f"MI_ENTRY_GATE(no_4h_confluence)"
                     # WT_COMPOSITE_SCORING_ENABLED: when sweep VETO knob is on AND composite scoring is on,
-                    # require wt alignment >=3 on favourable side. Gated by WT_COMPOSITE_VETO_ENABLED_TRADIER
+                    # require wt alignment >=2 on favourable side. Gated by WT_COMPOSITE_VETO_ENABLED_TRADIER
                     # so flipping the scoring switch alone in live code doesn't change entries.
+                    # FIX 2026-04-14 sentinel ZERO_TRADES: was using i.get() which reads parse_market_data()
+                    # output — wt_bull_alignment is NOT in that dict, so i.get() always returned 0 → 0<3 always
+                    # True → ALL entries vetoed. Fix: read from _entry_ind (=indicators_raw). Also lowered
+                    # threshold from <3 to <2: SATOSHIT fires at WT crosses (alignment 1-2), >=3 vetoed all.
                     if _veto is None and getattr(config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', False) and _cfg('WT_COMPOSITE_SCORING_ENABLED_TRADIER', False, account_key, symbol, _side_vf):
-                        _wt_align_vf = float(i.get('wt_bull_alignment' if is_long else 'wt_bear_alignment', 0) or 0)
-                        _wt_comp_vf = float(i.get('wt_composite_long' if is_long else 'wt_composite_short', 0) or 0)
-                        if _wt_align_vf < 3 or _wt_comp_vf < -20.0:
-                            _veto = f"WT_COMP_GATE(align={_wt_align_vf:.0f}<3_comp={_wt_comp_vf:.0f})"
+                        _wt_align_vf = float(_entry_ind.get('wt_bull_alignment' if is_long else 'wt_bear_alignment', 0) or 0)
+                        _wt_comp_vf = float(_entry_ind.get('wt_composite_long' if is_long else 'wt_composite_short', 0) or 0)
+                        if _wt_align_vf < 2 or _wt_comp_vf < -20.0:
+                            _veto = f"WT_COMP_GATE(align={_wt_align_vf:.0f}<2_comp={_wt_comp_vf:.0f})"
+                    # DC_POSITION_ENTRY_THRESHOLD: when DC_ENTRY_VETO_ENABLED_TRADIER is on, require price
+                    # to be in the DC channel zone. Gated by DC_ENTRY_VETO_ENABLED_TRADIER so live code is
+                    # unchanged (T65 removed DC from gate — this is sweep-only, proves threshold gates trades).
+                    if _veto is None and getattr(config, 'DC_ENTRY_VETO_ENABLED_TRADIER', False):
+                        _dc_th_vf = float(getattr(config, 'DC_POSITION_ENTRY_THRESHOLD', 0.25) or 0.25)
+                        _dc_1h_vf = float(_entry_ind.get('dc_position_1h', 0.5) or 0.5)
+                        _dc_4h_vf = float(_entry_ind.get('dc_position_4h', 0.5) or 0.5)
+                        if is_long and not (_dc_1h_vf < _dc_th_vf or _dc_4h_vf < _dc_th_vf):
+                            _veto = f"DC_ENTRY_GATE_L(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}>={_dc_th_vf:.2f})"
+                        elif not is_long and not (_dc_1h_vf > (1.0 - _dc_th_vf) or _dc_4h_vf > (1.0 - _dc_th_vf)):
+                            _veto = f"DC_ENTRY_GATE_S(1h={_dc_1h_vf:.2f}_4h={_dc_4h_vf:.2f}<={(1.0 - _dc_th_vf):.2f})"
                     if _veto is not None:
                         logger.info(f"[VARIANCE_FIX_VETO] {account_key}:{symbol}_{_side_vf}: {_veto}")
                         action_type = "NO_ACTION"

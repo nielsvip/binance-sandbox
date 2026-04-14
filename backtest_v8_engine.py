@@ -1501,18 +1501,42 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         except Exception:
             pass
         v8_logger.info(f"[V8_FIX] TRA_WT_DC_ENTRY_THRESHOLD mirrored to {_wt_dc_thr_ov_f} (sweep WT_DC_ENTRY_THRESHOLD was dead for tra account)")
-    if _t_overrides.get("TRADIER_MI_EXIT_ENABLED_TRADIER") is not None:
-        setattr(tm_mod.config, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
-        setattr(_ct.TradierConfig, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
-        v8_logger.info(f"MI_EXIT_VETO_ENABLED_TRADIER forced True (sweep tests MI_EXIT_ENABLED_TRADIER={_t_overrides['TRADIER_MI_EXIT_ENABLED_TRADIER']})")
-    if _t_overrides.get("TRADIER_WT_EXIT_MIN_TFS_TRADIER") is not None:
-        setattr(tm_mod.config, 'WT_EXIT_VETO_ENABLED_TRADIER', True)
-        setattr(_ct.TradierConfig, 'WT_EXIT_VETO_ENABLED_TRADIER', True)
-        v8_logger.info(f"WT_EXIT_VETO_ENABLED_TRADIER forced True (sweep tests WT_EXIT_MIN_TFS_TRADIER={_t_overrides['TRADIER_WT_EXIT_MIN_TFS_TRADIER']})")
-    if _t_overrides.get("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER") is not None:
-        setattr(tm_mod.config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
-        setattr(_ct.TradierConfig, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
-        v8_logger.info(f"WT_COMPOSITE_VETO_ENABLED_TRADIER forced True (sweep tests WT_COMPOSITE_SCORING_ENABLED_TRADIER={_t_overrides['TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER']})")
+    # SENTINEL_FIX 2026-04-14 (incident 729bd16a90): MI_EXIT_VETO, WT_EXIT_VETO, WT_COMPOSITE_VETO
+    # were only set at module+class levels (2/4). Missing: dataclass default + instance re-apply.
+    # Apply at ALL 4 levels per DEATH PENALTY rule so the sweep knob actually gates exits.
+    _veto_pairs = [
+        ("TRADIER_MI_EXIT_ENABLED_TRADIER", "MI_EXIT_VETO_ENABLED_TRADIER"),
+        ("TRADIER_WT_EXIT_MIN_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
+        ("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", "WT_COMPOSITE_VETO_ENABLED_TRADIER"),
+        # SENTINEL_FIX 2026-04-14 DEAD_PARAMS T4: K_ZONE thresholds were dead because
+        # K_ZONE_VETO_ENABLED_TRADIER was never set True (the veto gate at process_position
+        # line 1327 requires it). Enable it when sweep varies K_ZONE thresholds.
+        ("TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
+        ("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
+        # DC_POSITION_ENTRY_THRESHOLD was only a +5 score bonus, never gated entries.
+        # DC_ENTRY_VETO_ENABLED_TRADIER enables the new dc_pos zone gate in process_position.
+        ("TRADIER_DC_POSITION_ENTRY_THRESHOLD", "DC_ENTRY_VETO_ENABLED_TRADIER"),
+    ]
+    for _sweep_k, _veto_k in _veto_pairs:
+        if _t_overrides.get(_sweep_k) is None:
+            continue
+        # Level 1: module instance
+        setattr(tm_mod.config, _veto_k, True)
+        # Level 2: class attribute
+        try: setattr(_ct.TradierConfig, _veto_k, True)
+        except Exception: pass
+        # Level 3: dataclass field default
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and _veto_k in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__[_veto_k].default = True
+        except Exception: pass
+        # Level 4: ez_positions_quick cross-inject (EPQ also calls evaluate_stop paths)
+        try:
+            _epq_cfg3 = getattr(ez_positions_quick, 'config', None)
+            if _epq_cfg3: setattr(_epq_cfg3, _veto_k, True)
+        except Exception: pass
+        _veto_verify = getattr(tm_mod.config, _veto_k, 'MISSING')
+        v8_logger.info(f"[V8_VETO_FIX] {_veto_k}={_veto_verify} (sweep tests {_sweep_k}={_t_overrides[_sweep_k]}) — applied module+class+dataclass+epq")
     # ALIAS 2026-04-14: old sweep runs used SATOSHIT_ENABLED_TRADIER as the key name;
     # current sweep uses SATOSHIT_ENTRY_FILTER. Map old→new so running sweeps still work.
     # If override has SATOSHIT_ENABLED_TRADIER but NOT SATOSHIT_ENTRY_FILTER, inject it.
@@ -1689,6 +1713,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 v8_logger.info(f"  DELTA_CFG FIX: {_dt_key} = {_tv}")
         if _dt_applied:
             v8_logger.info(f"Injected {_dt_applied} overrides into delta_tracker.cfg")
+    # SENTINEL_FIX 2026-04-14 (incident 729bd16a90): Re-apply VETO flags to manager.config instance
+    # (belt-and-suspenders: manager.__init__ runs after setattr above, could snapshot config state).
+    for _sweep_k2, _veto_k2 in _veto_pairs:
+        if _t_overrides.get(_sweep_k2) is None:
+            continue
+        setattr(tm_mod.config, _veto_k2, True)
+        if hasattr(manager, 'config'): setattr(manager.config, _veto_k2, True)
+        if hasattr(manager, 'strategy') and hasattr(manager.strategy, 'config'): setattr(manager.strategy.config, _veto_k2, True)
+        v8_logger.info(f"[V8_VETO_REAPPLY] {_veto_k2}=True re-applied to manager+strategy instances after TradierTradeManager.__init__")
     class _CaptureAPI:
         connected = True
         async def connect(self): pass
