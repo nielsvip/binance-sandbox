@@ -1645,7 +1645,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         act = action or ("CLOSE" if is_reduce else "OPEN")
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
         if not is_reduce:
-            if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True):
+            if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
                 try:
                     from ez_satoshit import satoshit_entry_signal
                     _sat_ind = manager.market_snapshot.get(symbol.upper(), {})
@@ -1720,7 +1720,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _is_reduce = _act.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in _reason.upper() or 'REDUCE' in _reason.upper()
             # SWEEPABLE ENTRY GATES (must be in REAL ETA wrapper, not just fallback)
             if not _is_reduce:
-                _sat_on = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True)
+                _sat_on = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
                 if _sat_on:
                     try:
                         from ez_satoshit import satoshit_entry_signal
@@ -1807,7 +1807,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_CROSSOVER_FINAL_DISABLED"
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
         if not is_reduce:
-            if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True):
+            if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
                 try:
                     from ez_satoshit import satoshit_entry_signal
                     _sat_ind = manager.market_snapshot.get(symbol.upper(), {})
@@ -2029,13 +2029,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return True, _xu_r, _xu_qty
         return should_exit, reason, qty
     manager.strategy.evaluate_stop = _v8_gated_evaluate_stop
-    _v8_satoshit_override = _t_overrides.get("SATOSHIT_ENABLED_TRADIER") if _t_overrides else None
+    _v8_satoshit_override = _t_overrides.get("SATOSHIT_ENTRY_FILTER") if _t_overrides else None
     if _v8_satoshit_override is not None:
-        _actual_sat = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', "MISSING")
+        _actual_sat = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', "MISSING")
         if _actual_sat != _v8_satoshit_override:
-            v8_logger.warning(f"[V8_FIX] SATOSHIT_ENABLED_TRADIER drift: config={_actual_sat}, override={_v8_satoshit_override}. Force-setting.")
-            setattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', _v8_satoshit_override)
-        v8_logger.info(f"[V8] SATOSHIT_ENABLED_TRADIER = {getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', 'MISSING')} (override={_v8_satoshit_override})")
+            v8_logger.warning(f"[V8_FIX] SATOSHIT_ENTRY_FILTER drift: config={_actual_sat}, override={_v8_satoshit_override}. Force-setting.")
+            setattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', _v8_satoshit_override)
+        v8_logger.info(f"[V8] SATOSHIT_ENTRY_FILTER = {getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', 'MISSING')} (override={_v8_satoshit_override})")
     try:
         from ez_satoshit import satoshit_entry_signal as _v8_sat_entry
         v8_logger.info("[V8] ez_satoshit imported OK for direct SATOSHIT gating")
@@ -2045,7 +2045,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _orig_wt_dc_score_entry = tm_mod.wt_dc_score_entry
     def _v8_satoshit_wt_dc_score_entry(indicators, is_long, current_price=0.0):
         score, reason = _orig_wt_dc_score_entry(indicators, is_long, current_price)
-        if getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True) and _v8_sat_entry:
+        if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True) and _v8_sat_entry:
             try:
                 _sat_ok, _sat_votes, _ = _v8_sat_entry(indicators, is_long, tm_mod.config)
                 if _sat_ok:
@@ -2122,13 +2122,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         if not _sim_irth(): continue
         manager.last_monitored_positions.clear()
         open_keys = [pk for pk, pos in (manager.position_manager.positions if manager.position_manager else {}).items() if pk.startswith(f"{account_key}:") and abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0))) > 0]
-        # ENTRY PRE-FILTER: SATOSHIT_ENABLED_TRADIER gates entry candidates.
+        # ENTRY PRE-FILTER: SATOSHIT_ENTRY_FILTER gates entry candidates.
         # 2026-04-14 FIX: SATOSHIT was dead because should_enter silently failed (import
         # error caught by except:pass). Now uses eagerly imported _v8_sat_entry directly.
         # SATOSHIT=True: only candidates passing satoshit_entry_signal are allowed.
         # SATOSHIT=False: all candidates pass (process_position's delta/wt_dc decides).
         cand_keys = []
-        _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENABLED_TRADIER', True)
+        _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
         if step % 3 == 0:
             for s in stores:
                 ind = indicator_cache.get(s.upper(), {})
