@@ -7661,14 +7661,21 @@ class TradierTradeManager:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
                             continue
                         # STOCH GATE: k_5m must be below 50 AND rising (LONG) or above 50 AND falling (SHORT).
-                        # k_15m can be >90 (sustained momentum OK). LTF stoch must confirm momentum direction
-                        # and not be in overbought/high territory — prevents immediate DELTA_EXIT on reentry.
+                        # HTF STOCH GATE: k_1h and k_15m must NOT be overbought (>80 LONG) / oversold (<20 SHORT).
+                        # A k5m dip to 25 inside a k_1h=83 overbought environment is noise — DELTA_EXIT fires again immediately.
                         _rm_k5_mid = 50.0
+                        k_1h_rm = float(i.get("stoch_k_1h", 50))
                         if side == "LONG" and not (k_5m < _rm_k5_mid and k_5m > k_5m_prev):
                             logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising)")
                             continue
+                        if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
+                            logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
+                            continue
                         if side == "SHORT" and not (k_5m > _rm_k5_mid and k_5m < k_5m_prev):
                             logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling)")
+                            continue
+                        if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
+                            logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                             continue
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned
                         if side == "LONG":
