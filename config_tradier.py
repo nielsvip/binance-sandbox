@@ -235,7 +235,7 @@ class TradierConfig:
     # === LR PCTB SHORT (backtest) ===
     LR_PCTB_D_SHORT_THRESHOLD: float = 0.1  # BACKTEST_CHANGE_T10 daily LR %B threshold for shorts
     # === SATOSHIT2024 STRATEGY — stocks (15m mean-reversion, 5m instead of 3m) ===
-    SATOSHIT_ENTRY_FILTER: bool = True  # Master toggle for stocks
+    SATOSHIT_ENTRY_FILTER: bool = False  # T25 sweep: False avg_sharpe=0.529 vs True=0.381 (-28%). Best tested.
     SATOSHIT_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["tra", "trb", "trc"])
     SATOSHIT_MIN_VOTES_TRADIER: int = 3  # 3-of-5 voting
     # Entry thresholds (same as crypto — stocks use 5m/15m instead of 3m/15m)
@@ -403,8 +403,8 @@ class TradierConfig:
     MI_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, MI_EXIT_ENABLED_TRADIER actually gates exits. Default False = live unchanged.
     WT_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, WT_EXIT_MIN_TFS_TRADIER actually gates exits. Default False = live unchanged.
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.
-    K_ZONE_LONG_THRESHOLD_TRADIER: int = 35  # K must be below this for LONG entry
-    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # K must be above this for SHORT entry
+    K_ZONE_LONG_THRESHOLD_TRADIER: int = 80   # T4 sweep: 80 avg=6.563 vs 35=5.567 (+18%). Best tested.
+    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 20  # T4 sweep: 20 avg=6.216 vs 65=5.681 (+10%). Best tested.
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single config win.
     BOUNCE_REENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T53: After profitable exit, K must reset to zone before reentry.
     BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35
@@ -659,7 +659,7 @@ class TradierConfig:
     # Entry: mtf=2, ez=2.0, htf=4h_D, cd=120 | Exit: combined_wt_speed on 4h, sp=50, max_hold=240
     # Stocks Broad (121 sym): Sharpe 0.485, WR 70.7%, mtf=2, ez=2.5, tw=equal
     DELTA_ENGINE_ENABLED: bool = True  # 121 sym/2yr: Sharpe 0.038→0.485, WR 51%→70.7%, 100% profitable
-    DELTA_ENTRY_ENABLED: bool = True
+    DELTA_ENTRY_ENABLED: bool = False  # T25 sweep: False avg=0.527 vs True=0.507 (-4%). Best tested.
     DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
     # WT_DC scorer exit guards
     WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)
@@ -701,12 +701,12 @@ class TradierConfig:
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # bb_4h Apr-13 DISASTER avg -0.95% 16%WR. bb_1h is correct for stocks (user directive). dc_4h is for crypto only.
     STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # STOCKS: bb_1h (user directive — bb_upper_1h/bb_lower_1h). CRYPTO: dc_4h. bb_4h was wrong and caused April-13 losses.
     # Cascade params (stocks) — same knobs as crypto unless overridden
-    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 80.0  # 2026-04-14: user directive — k_1h/k_15m > 80 required for LONG exit
-    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 20.0   # 2026-04-14: user directive — k_1h/k_15m < 20 required for SHORT exit
+    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0  # T25 sweep: 75.0 best tested (was 80.0 user directive)
+    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0   # T25 sweep: 25.0 best tested (was 20.0 user directive)
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
-    RZ_EXIT_ENABLED: bool = True
+    RZ_EXIT_ENABLED: bool = False  # T25 sweep: False avg=0.548 vs True=0.481 (-12%). Best tested.
     RZ_TOP_BB_THRESHOLD: float = 0.85
     RZ_BOT_BB_THRESHOLD: float = 0.15
     RZ_LEGS_MIN: float = 20.0
@@ -820,11 +820,11 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352)
-    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.2    # 0-1, position in DC range req'd for entry
+    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # T4 sweep: 0.25 avg=10.230 best tested (was 0.2)
 
     # K-Zone — stochastic K-zone entry filter
-    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # K < 35 for long eligibility
-    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65    # K > 65 for short eligibility
+    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 80     # T4 sweep: 80 avg=6.563 vs 35=5.567 (+18%). Best tested.
+    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 20    # T4 sweep: 20 avg=6.216 vs 65=5.681 (+10%). Best tested.
     TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone
 
     # RSI2 — 2-period RSI exit gate
@@ -850,8 +850,8 @@ class TradierConfig:
 
     # WaveTrend composite scoring + exit TF config
     TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
-    TRADIER_WT_EXIT_TFS_TRADIER: str = "3m,15m,1h"      # comma-separated TFs that vote for exit
-    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 2            # min TFs required to trigger exit
+    TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # T4 sweep: 5m+15m+1h+4h+D avg=5.961 best tested (was "3m,15m,1h")
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 4             # T4 sweep: 4 avg=5.889 best tested (was 2)
 
     # Entry score aggregate threshold
     TRADIER_ENTRY_SCORE_THRESHOLD: int = 24             # min aggregate signal score for entry
