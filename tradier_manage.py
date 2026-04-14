@@ -4915,10 +4915,10 @@ class StockStrategy:
         if current_price is None:
             return "NO_ACTION", "No Price", 0.0, 0.0
         current_price = float(current_price)
-        logger.info(f"[REENTRY_EVAL] {symbol}: positionAmt={getattr(position, 'quantity', 'N/A')} gain={getattr(position, 'gain', 'N/A')} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
-
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
-        positionAmt = abs(float(getattr(position, 'quantity', 0) or 0))
+        # Tradier positions use 'positionAmt'; crypto uses 'quantity'. Check both.
+        positionAmt = abs(float(getattr(position, 'positionAmt', None) or getattr(position, 'quantity', 0) or 0))
+        logger.info(f"[REENTRY_EVAL] {symbol}: positionAmt={positionAmt} gain={getattr(position, 'gain', 'N/A')} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_quantity', 0) or getattr(position, 'max_positionSize', 0) or positionAmt)
         last_red_time = getattr(position, 'last_reduction_time', None)
