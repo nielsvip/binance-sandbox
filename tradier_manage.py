@@ -3849,10 +3849,12 @@ class StockStrategy:
         _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if not _is_opts_check and hold_time_min < _stock_min_hold:
             return False, f"STOCK_MIN_HOLD({hold_time_min:.0f}m<{_stock_min_hold:.0f}m)", 0
-        # ═══ STRUCTURAL RANGE SHIFT EXIT (stocks) — CASCADE (USER 2026-04-14) ═══
-        # LONG: entry > upper. Exit on 1h+15m k overbought turning down + wt bearish, proximity to upper, 3m wt bearish cross.
-        # SHORT: entry > lower. Exit on 1h+15m k oversold turning up + wt bullish, proximity to lower, 3m wt bullish cross.
-        # Stocks default TF: bb_1h (user directive). SRS reason bypasses STRICT_NO_LOSS in execute_now.
+        # ═══ RANGE TOP/BOTTOM EXIT (stocks) — USER 2026-04-14 ═══
+        # LONG: entry_price > bb_upper_1h (entered above the range). When price comes back to the top of
+        #   the range AND k_1h > 80 AND k_15m > 80 AND k_5m turning down → exit (sells into the retest).
+        # SHORT: entry_price < bb_lower_1h (entered below the range). When price comes back to the bottom
+        #   of the range AND k_1h < 20 AND k_15m < 20 AND k_5m turning up → cover (buys into the retest).
+        # SRS reason bypasses STRICT_NO_LOSS in execute_now.
         if not _is_opts_check and getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
             _srs_entry = float(getattr(position, 'entry_price', 0) or 0)
             _srs_tf = getattr(config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
@@ -3865,37 +3867,29 @@ class StockStrategy:
             _srs_ind = indicators or i
             _srs_high = float((_srs_ind).get(_srs_high_key, 0) or 0)
             _srs_low = float((_srs_ind).get(_srs_low_key, 0) or 0)
-            _srs_k_hi = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
-            _srs_k_lo = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
             _srs_prox_bps = float(getattr(config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
             _srs_band = _srs_prox_bps / 10000.0
             _srs_k1h = float((_srs_ind).get('stoch_k_1h', 50) or 50)
-            _srs_k1h_prev = float((_srs_ind).get('stoch_k_1h_prev', 50) or 50)
             _srs_k15m = float((_srs_ind).get('stoch_k_15m', 50) or 50)
-            _srs_k15m_prev = float((_srs_ind).get('stoch_k_15m_prev', 50) or 50)
-            _srs_wt1_1h = float((_srs_ind).get('wt1_1h', 0) or 0)
-            _srs_wt2_1h = float((_srs_ind).get('wt2_1h', 0) or 0)
-            _srs_wt1_15m = float((_srs_ind).get('wt1_15m', 0) or 0)
-            _srs_wt2_15m = float((_srs_ind).get('wt2_15m', 0) or 0)
-            _srs_wt1_3m = float((_srs_ind).get('wt1_3m', 0) or 0)
-            _srs_wt2_3m = float((_srs_ind).get('wt2_3m', 0) or 0)
+            _srs_k5m = float((_srs_ind).get('stoch_k_5m', 50) or 50)
+            _srs_k5m_prev = float((_srs_ind).get('stoch_k_5m_prev', 50) or 50)
             if _srs_entry > 0 and _srs_high > 0 and _srs_low > 0:
                 if is_long and _srs_entry > _srs_high:
                     _srs_prox = abs(current_price - _srs_high) / _srs_high <= _srs_band
-                    _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_prev) and (_srs_wt1_1h < _srs_wt2_1h)
-                    _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_prev) and (_srs_wt1_15m < _srs_wt2_15m)
-                    _srs_3m = _srs_wt1_3m < _srs_wt2_3m
-                    if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
-                        logger.critical(f"🏗️ [STRUCTURAL_RANGE_SHIFT] {symbol} LONG {_srs_tf}: entry={_srs_entry:.4f}>{_srs_high_key}={_srs_high:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f}")
-                        return True, f"STRUCTURAL_RANGE_SHIFT_LONG_CASCADE_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_high:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}", qty
-                elif (not is_long) and _srs_entry > _srs_low:
+                    _srs_1h = _srs_k1h > 80.0
+                    _srs_15m = _srs_k15m > 80.0
+                    _srs_5m_down = _srs_k5m < _srs_k5m_prev
+                    if _srs_prox and _srs_1h and _srs_15m and _srs_5m_down:
+                        logger.critical(f"🏗️ [RANGE_TOP_EXIT] {symbol} LONG {_srs_tf}: entry={_srs_entry:.4f}>{_srs_high_key}={_srs_high:.4f} price={current_price:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f} k5m={_srs_k5m:.0f}↓{_srs_k5m_prev:.0f}")
+                        return True, f"STRUCTURAL_RANGE_SHIFT_LONG_{_srs_tf}_top={_srs_high:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_k5m={_srs_k5m:.0f}", qty
+                elif not is_long and _srs_entry < _srs_low:
                     _srs_prox = abs(current_price - _srs_low) / _srs_low <= _srs_band
-                    _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_prev) and (_srs_wt1_1h > _srs_wt2_1h)
-                    _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_prev) and (_srs_wt1_15m > _srs_wt2_15m)
-                    _srs_3m = _srs_wt1_3m > _srs_wt2_3m
-                    if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
-                        logger.critical(f"🏗️ [STRUCTURAL_RANGE_SHIFT] {symbol} SHORT {_srs_tf}: entry={_srs_entry:.4f}>{_srs_low_key}={_srs_low:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f}")
-                        return True, f"STRUCTURAL_RANGE_SHIFT_SHORT_CASCADE_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_low:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}", qty
+                    _srs_1h = _srs_k1h < 20.0
+                    _srs_15m = _srs_k15m < 20.0
+                    _srs_5m_up = _srs_k5m > _srs_k5m_prev
+                    if _srs_prox and _srs_1h and _srs_15m and _srs_5m_up:
+                        logger.critical(f"🏗️ [RANGE_BOTTOM_EXIT] {symbol} SHORT {_srs_tf}: entry={_srs_entry:.4f}<{_srs_low_key}={_srs_low:.4f} price={current_price:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f} k5m={_srs_k5m:.0f}↑{_srs_k5m_prev:.0f}")
+                        return True, f"STRUCTURAL_RANGE_SHIFT_SHORT_{_srs_tf}_bot={_srs_low:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_k5m={_srs_k5m:.0f}", qty
         # NO PERCENTAGE GATES. Technicals decide exits. Period.
         # User directive 2026-04-10: NO trailing stops. Stocks exit ONLY when 1h/4h/D
         # delta slows down. Configure DeltaTracker tf_weights so LTF (5m/15m) don't
@@ -7237,9 +7231,8 @@ class TradierTradeManager:
             if is_reduce and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'REDUCTION_COOLDOWN_SECONDS', 30.0):
                 position = self.position_manager.positions.get(position_key) if self.position_manager else None
                 position_gain = getattr(position, 'gain', 0.0) if position else 0.0
-                # Cooldown applies regardless of gain — loss positions were bypassing this gate
-                # Only allow bypass for catastrophic losses (< -5%) so we can still stop-loss
-                if position_gain > -5.0:
+                # Cooldown applies regardless of gain — no bypass for any loss level
+                if True:
                     logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Reduction cooldown active (gain={position_gain:.2f}%)")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
@@ -7254,7 +7247,7 @@ class TradierTradeManager:
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
                 if _en_srs:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
-                elif _en_noloss_min > -900 and _en_gain < _en_noloss_min and _en_gain > -5.0:
+                elif _en_noloss_min > -900 and _en_gain < _en_noloss_min:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)

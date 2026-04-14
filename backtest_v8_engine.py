@@ -1506,6 +1506,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # Apply at ALL 4 levels per DEATH PENALTY rule so the sweep knob actually gates exits.
     _veto_pairs = [
         ("TRADIER_MI_EXIT_ENABLED_TRADIER", "MI_EXIT_VETO_ENABLED_TRADIER"),
+        ("TRADIER_WT_EXIT_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
         ("TRADIER_WT_EXIT_MIN_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
         ("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", "WT_COMPOSITE_VETO_ENABLED_TRADIER"),
         # SENTINEL_FIX 2026-04-14 DEAD_PARAMS T4: K_ZONE thresholds were dead because
