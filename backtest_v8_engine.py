@@ -1925,7 +1925,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _orig_evaluate_stop = manager.strategy.evaluate_stop
     _RZ_REASON_MARKERS = ("SMART_RZ_", "TOP_EXIT", "TOP_FAILED", "BOTTOM_BOUNCE", "BREAKDOWN_TRUCK", "BASELINE_BOUNCE", "REJECTION_OLD_REDZONE")
     _srs_min_hold = float(getattr(tm_mod.config, 'TRADIER_MIN_HOLD_MINUTES', 240.0))
-    _srs_diag = {"calls": 0, "exit_true": 0, "srs_on_block": 0, "hold_fail": 0, "qty_fail": 0, "prox_fail": 0, "turn_fail": 0, "fired": 0}
+    _srs_pctb_map = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}
     async def _v8_gated_evaluate_stop(symbol, position, indicators, market_context=None, in_grace_period=False):
         should_exit, reason, qty = await _orig_evaluate_stop(symbol, position, indicators, market_context, in_grace_period)
         if should_exit and reason:
@@ -1948,23 +1948,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 elif _orig_delta_engine_off:
                     return False, "BLOCKED_DELTA_ENGINE_DISABLED", 0
         _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
-        _srs_diag["calls"] += 1
-        if should_exit:
-            _srs_diag["exit_true"] += 1
         if not should_exit and _srs_on:
             _srs_opened = getattr(position, 'opened_at', None)
             _srs_hold_ok = False
             if _srs_opened:
                 _srs_dt = _srs_opened if isinstance(_srs_opened, datetime) else datetime.utcfromtimestamp(float(_srs_opened)).replace(tzinfo=timezone.utc)
                 _srs_hold_ok = (_sim_datetime_now(timezone.utc) - _srs_dt).total_seconds() / 60.0 >= _srs_min_hold
-            if not _srs_hold_ok:
-                _srs_diag["hold_fail"] += 1
             if _srs_hold_ok:
                 _srs_ind = indicators if indicators else {}
                 _srs_qty = abs(float(getattr(position, 'positionAmt', 0)))
                 _srs_entry = float(getattr(position, 'entry_price', 0) or 0)
-                if not (_srs_qty > 0 and _srs_entry > 0):
-                    _srs_diag["qty_fail"] += 1
                 if _srs_qty > 0 and _srs_entry > 0:
                     _srs_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
                     _srs_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
@@ -1983,33 +1976,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _srs_k15m_p = float(_srs_ind.get('stoch_k_15m_prev', 50) or 50)
                     _srs_d1h = float(_srs_ind.get('stoch_d_1h', 50) or 50)
                     _srs_d15m = float(_srs_ind.get('stoch_d_15m', 50) or 50)
+                    _srs_pctb_key = _srs_pctb_map.get(_srs_tf, 'bb_pct_b_1h')
+                    _srs_pctb = float(_srs_ind.get(_srs_pctb_key, 0.5) or 0.5)
                     if _srs_is_long and _srs_hi > 0 and _srs_p > 0:
-                        _srs_prox = _srs_p >= _srs_hi * (1 - _srs_band)
+                        _srs_prox = (_srs_p >= _srs_hi * (1 - _srs_band)) or (_srs_pctb >= 0.80)
                         _srs_1h_turn = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p)
                         _srs_15m_turn = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p)
                         _srs_kd_cross = (_srs_k1h < _srs_d1h) and (_srs_k15m < _srs_d15m)
-                        if not _srs_prox:
-                            _srs_diag["prox_fail"] += 1
-                        elif not (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_diag["turn_fail"] += 1
                         if _srs_prox and (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_diag["fired"] += 1
                             _srs_g = float(getattr(position, 'gain', 0))
-                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_hk}={_srs_hi:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_hk}={_srs_hi:.4f}_pctb={_srs_pctb:.2f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
                             return True, _srs_r, _srs_qty
                     elif not _srs_is_long and _srs_lo > 0 and _srs_p > 0:
-                        _srs_prox = _srs_p <= _srs_lo * (1 + _srs_band)
+                        _srs_prox = (_srs_p <= _srs_lo * (1 + _srs_band)) or (_srs_pctb <= 0.20)
                         _srs_1h_turn = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p)
                         _srs_15m_turn = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p)
                         _srs_kd_cross = (_srs_k1h > _srs_d1h) and (_srs_k15m > _srs_d15m)
-                        if not _srs_prox:
-                            _srs_diag["prox_fail"] += 1
-                        elif not (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_diag["turn_fail"] += 1
                         if _srs_prox and (_srs_1h_turn or _srs_15m_turn or _srs_kd_cross):
-                            _srs_diag["fired"] += 1
                             _srs_g = float(getattr(position, 'gain', 0))
-                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_lk}={_srs_lo:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                            _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_lk}={_srs_lo:.4f}_pctb={_srs_pctb:.2f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
                             return True, _srs_r, _srs_qty
         _wt_xu_on2 = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
         if not should_exit and _wt_xu_on2:
@@ -2197,7 +2182,6 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         for t in executed_trades:
             f.write(json.dumps(t, default=str) + "\n")
     v8_logger.info(f"\n{'='*60}\n  V8 TRADIER: {len(stores)} syms, {len(all_ts)} bars, {len(executed_trades)} trades, {elapsed:.0f}s\n  Log: {log_path}\n{'='*60}")
-    v8_logger.info(f"[SRS_DIAG] {_srs_diag}")
     print(f"V8_LOG: {log_path}")
 
 
