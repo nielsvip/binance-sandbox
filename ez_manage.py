@@ -13204,6 +13204,9 @@ class MultiAccountTradeManager:
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
         if _is_open_action and position_key:
+            if position_key not in self.tradeable_keys:
+                logger.critical(f"🚫🚫🚫 [WHAT THE FUCK IS THIS {position_key}: Position ${_pos_val_check:.1f} IS NOT EVEN FUCKING TRADEABLE FUCK action={action} reason={reason}")
+                return
             _pos_check = await self.get_position(position_key)
             _pos_amt_check = abs(safe_fetch_float(getattr(_pos_check, 'positionAmt', 0), 0.0)) if _pos_check else 0.0
             _pos_val_check = _pos_amt_check * (old_price if old_price > 0 else safe_fetch_float(getattr(_pos_check, 'mark_price', 0), 0.0) if _pos_check else 0)

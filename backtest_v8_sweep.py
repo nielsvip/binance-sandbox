@@ -96,6 +96,8 @@ CRYPTO_TIER2 = {
 # Representative 12-symbol fast-sweep set (diverse sectors, ~5-7 min per config)
 FAST_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD"
 FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,SKYUSDT,LTCUSDT,UNIUSDT"
+# CORE: 4 symbols for fast crypto cycles (completes in ~5-8 min vs 30 min for 12 symbols)
+CORE_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT"
 
 # TRADIER Tier 1 — WT exit TF combos × DC daytrade settings (NO_LOSS always off)
 # Which TFs should LEAD exit decisions (4h/D = "getting close to end")
@@ -850,6 +852,10 @@ TRADIER_TIER25 = {
     "RZ_EXIT_ENABLED": [True, False],
     # SATOSHIT — the should_enter pre-filter (live uses this as sole entry)
     "SATOSHIT_ENTRY_FILTER": [True, False],
+    # SHOULD_ENTER_FALLBACK_ENABLED — activate traditional WT/stochastic entry logic AFTER satoshit check.
+    # MUST be True or entries are fully blocked when SATOSHIT returns False.
+    # Without this, SATOSHIT=False configs produce 0 trades (should_enter_long returns False).
+    "SHOULD_ENTER_FALLBACK_ENABLED": [True],
     # RULE 2026-04-14: NEVER prune knobs that appear dead. If a toggle produces no variance,
     # the OTHER settings around it are wrong and need to change until True/False matters.
     # Dead knob = signal that some upstream gate is blocking the feature from firing.
@@ -860,7 +866,7 @@ TRADIER_TIER25 = {
     # RZ_DIV_EXIT_ENABLED: structurally unreachable (standard weakness fires first)
     # RZ_TWO_PHASE_EXIT_ENABLED: structurally unreachable (standard weakness fires first)
 }
-# 4 × 2 × 2 × 2 × 2 × 2 × 2 = 256 configs (ALL proven to vary behavior)
+# 4 × 2 × 2 × 2 × 2 × 2 × 2 × 1 = 256 configs (SHOULD_ENTER_FALLBACK_ENABLED=True fixed — required for entries)
 
 # ═══════════════════════════════════════════════════════════════
 # CRYPTO Tier 25 — V8-LIVE PARAMETERS ABLATION (crypto equivalent of TRADIER_TIER25)
@@ -1221,10 +1227,12 @@ def main():
         configs = build_configs(param_grid)
     total = len(configs)
 
-    # Symbols filter: 'fast' → use curated 12-symbol set, otherwise pass through
+    # Symbols filter: 'fast' → use curated 12-symbol set, 'core' → 4-symbol fast crypto, otherwise pass through
     symbols_filter = args.symbols
     if symbols_filter == "fast":
         symbols_filter = FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO
+    elif symbols_filter == "core":
+        symbols_filter = CORE_SYMBOLS_CRYPTO
     syms_tag = f"_fast" if args.symbols == "fast" else (f"_{len(symbols_filter.split(','))}sym_{hashlib.md5(symbols_filter.encode()).hexdigest()[:6]}" if symbols_filter else "")
 
     ts_tag = datetime.utcnow().strftime("%Y%m%d_%H%M")

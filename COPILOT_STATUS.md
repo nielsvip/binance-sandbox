@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-14 21:34:44 UTC
+# Copilot Status — 2026-04-14 21:50:04 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T21:32:31
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:32:31
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:32:31
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T21:33:32
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:33:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:33:32
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T21:33:43
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T21:34:34
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:34:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:34:34
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:47:52
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:47:52
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T21:48:02
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T21:48:53
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:48:53
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:48:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T21:49:54
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T21:49:54
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-14T21:49:54
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T21:50:04
 
 ## Missed Trades (trader comparison)
 
@@ -27,18 +27,17 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 10 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-48.6%
+- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-48.5%
 - HELD: **ARM** LONG (tradier) peak +8.6%, now +-0.3%
 - HELD: **USO** LONG (tradier) peak +7.7%, now +-0.5%
 - HELD: **MSFT** LONG (tradier) peak +7.7%, now +0.5%
 - HELD: **MU** LONG (tradier) peak +7.2%, now +3.5%
 - HELD: **ETH** LONG (tradier) peak +5.3%, now +-1.2%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.6%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.5%
 - HELD: **SNDK** LONG (tradier) peak +3.8%, now +0.2%
 - HELD: **XOM** SHORT (tradier) peak +3.8%, now +-0.5%
-- HELD: **MANAUSDT** SHORT (crypto) peak +3.4%, now +-0.1%
 
 - WATCHING: **SOLUSDC** SHORT (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **FIVN** SHORT (tradier) peaked +3.3%, exited 0m ago
@@ -48,7 +47,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 32
+**Issues (last 1h):** 50
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
