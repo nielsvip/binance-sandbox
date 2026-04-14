@@ -44,6 +44,7 @@ POLL_SEC = int(os.environ.get("SENTINEL_POLL_SEC", "30"))
 DEAD_STDEV = float(os.environ.get("SENTINEL_DEAD_STDEV", "0.01"))
 DEAD_MIN_ROWS = int(os.environ.get("SENTINEL_DEAD_MIN_ROWS", "10"))
 AUTO_FIX = os.environ.get("SENTINEL_AUTO_FIX", "1") == "1"
+MAX_CONCURRENT_AGENTS = int(os.environ.get("SENTINEL_MAX_AGENTS", "2"))  # throttle: never spawn >N claude agents at once
 FRESH_SEC = int(os.environ.get("SENTINEL_FRESH_SEC", "21600"))
 HTTP_PORTS = [int(p) for p in os.environ.get("SENTINEL_HTTP_PORTS", "5050,5051").split(",") if p]
 EXTERNAL_SITES = [
@@ -187,10 +188,23 @@ def iterm_tab_count():
         return -1
 
 
+def active_agent_count():
+    """Count currently running claude --dangerously-skip-permissions processes."""
+    try:
+        r = subprocess.run(["pgrep", "-f", "claude.*dangerously-skip-permissions"], capture_output=True, text=True)
+        return len([l for l in r.stdout.splitlines() if l.strip()])
+    except Exception:
+        return 0
+
+
 def spawn_iterm_agent(prompt, title_tag):
     """Spawn claude agent in new iTerm2 tab. Returns True if tab count increased."""
     if not IS_MAC or not AUTO_FIX:
         log(f"spawn skipped (mac={IS_MAC} auto_fix={AUTO_FIX})")
+        return False
+    active = active_agent_count()
+    if active >= MAX_CONCURRENT_AGENTS:
+        log(f"spawn throttled: {active}/{MAX_CONCURRENT_AGENTS} agents already running — skipping {title_tag}")
         return False
     prompt_file = INCIDENT_DIR / f"{title_tag}.prompt.txt"
     prompt_file.write_text(prompt)
