@@ -1371,6 +1371,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
     if _orig_delta_engine_off:
         v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY_ENABLED={getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)} (independent). Delta exits gated in evaluate_stop wrapper.")
+    # FIX 2026-04-14 sentinel: MI_EXIT, WT_EXIT_MIN_TFS, WT_COMPOSITE_SCORING are gated
+    # behind VETO flags that default False — making those sweep knobs dead. Enable the
+    # veto gates when the sweep overrides include the corresponding switch.
+    if _t_overrides.get("TRADIER_MI_EXIT_ENABLED_TRADIER") is not None:
+        setattr(tm_mod.config, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
+        setattr(_ct.TradierConfig, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
+        v8_logger.info(f"MI_EXIT_VETO_ENABLED_TRADIER forced True (sweep tests MI_EXIT_ENABLED_TRADIER={_t_overrides['TRADIER_MI_EXIT_ENABLED_TRADIER']})")
+    if _t_overrides.get("TRADIER_WT_EXIT_MIN_TFS_TRADIER") is not None:
+        setattr(tm_mod.config, 'WT_EXIT_VETO_ENABLED_TRADIER', True)
+        setattr(_ct.TradierConfig, 'WT_EXIT_VETO_ENABLED_TRADIER', True)
+        v8_logger.info(f"WT_EXIT_VETO_ENABLED_TRADIER forced True (sweep tests WT_EXIT_MIN_TFS_TRADIER={_t_overrides['TRADIER_WT_EXIT_MIN_TFS_TRADIER']})")
+    if _t_overrides.get("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER") is not None:
+        setattr(tm_mod.config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
+        setattr(_ct.TradierConfig, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
+        v8_logger.info(f"WT_COMPOSITE_VETO_ENABLED_TRADIER forced True (sweep tests WT_COMPOSITE_SCORING_ENABLED_TRADIER={_t_overrides['TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER']})")
     tm_mod.time = _SimTime()
     _real_dt = datetime
     def _sim_now_t(tz=None):
@@ -1860,6 +1875,51 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', True)
                 if not _srs_on:
                     return False, "BLOCKED_SRS_EXIT_DISABLED", 0
+        _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
+        if not should_exit and _srs_on:
+            _srs_ind = indicators if indicators else {}
+            _srs_qty = abs(float(getattr(position, 'positionAmt', 0)))
+            _srs_entry = float(getattr(position, 'entry_price', 0) or 0)
+            if _srs_qty > 0 and _srs_entry > 0:
+                _srs_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
+                _srs_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
+                _srs_fm = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_D': ('dc_high_D', 'dc_low_D'), 'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h'), 'bb_D': ('bb_upper_D', 'bb_lower_D')}
+                _srs_hk, _srs_lk = _srs_fm.get(_srs_tf, ('bb_upper_1h', 'bb_lower_1h'))
+                _srs_hi = float(_srs_ind.get(_srs_hk, 0) or 0)
+                _srs_lo = float(_srs_ind.get(_srs_lk, 0) or 0)
+                _srs_k_hi = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
+                _srs_k_lo = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
+                _srs_prox_bps = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
+                _srs_band = _srs_prox_bps / 10000.0
+                _srs_p = float(_srs_ind.get('current_price', 0) or 0)
+                _srs_k1h = float(_srs_ind.get('stoch_k_1h', 50) or 50)
+                _srs_k1h_p = float(_srs_ind.get('stoch_k_1h_prev', 50) or 50)
+                _srs_k15m = float(_srs_ind.get('stoch_k_15m', 50) or 50)
+                _srs_k15m_p = float(_srs_ind.get('stoch_k_15m_prev', 50) or 50)
+                _srs_wt1_1h = float(_srs_ind.get('wt1_1h', 0) or 0)
+                _srs_wt2_1h = float(_srs_ind.get('wt2_1h', 0) or 0)
+                _srs_wt1_15m = float(_srs_ind.get('wt1_15m', 0) or 0)
+                _srs_wt2_15m = float(_srs_ind.get('wt2_15m', 0) or 0)
+                _srs_wt1_3m = float(_srs_ind.get('wt1_3m', _srs_ind.get('wt1_5m', 0)) or 0)
+                _srs_wt2_3m = float(_srs_ind.get('wt2_3m', _srs_ind.get('wt2_5m', 0)) or 0)
+                if _srs_is_long and _srs_hi > 0 and _srs_entry >= _srs_hi * (1.0 - _srs_band):
+                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
+                    _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p) and (_srs_wt1_1h < _srs_wt2_1h)
+                    _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p) and (_srs_wt1_15m < _srs_wt2_15m)
+                    _srs_3m = _srs_wt1_3m < _srs_wt2_3m
+                    if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
+                        _srs_g = float(getattr(position, 'gain', 0))
+                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_hk}={_srs_hi:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                        return True, _srs_r, _srs_qty
+                elif not _srs_is_long and _srs_lo > 0 and _srs_entry <= _srs_lo * (1.0 + _srs_band):
+                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
+                    _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p) and (_srs_wt1_1h > _srs_wt2_1h)
+                    _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p) and (_srs_wt1_15m > _srs_wt2_15m)
+                    _srs_3m = _srs_wt1_3m > _srs_wt2_3m
+                    if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
+                        _srs_g = float(getattr(position, 'gain', 0))
+                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_lk}={_srs_lo:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                        return True, _srs_r, _srs_qty
         _wt_xu_on2 = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
         if not should_exit and _wt_xu_on2:
             _xu_ind = indicators if indicators else {}
@@ -1891,47 +1951,6 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if _xu_ltf and _xu_15m and _xu_htf:
                         _xu_r = f"WT_CROSSOVER_FINAL_V8_5m_15m_1h{_xu_wt1_1h>_xu_wt2_1h}_4h{_xu_wt1_4h>_xu_wt2_4h}_D{_xu_wt1_D>_xu_wt2_D}_g{_xu_gain:.2f}%_MANDATORY_REENTRY"
                         return True, _xu_r, _xu_qty
-        _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
-        if not should_exit and _srs_on:
-            _srs_ind = indicators if indicators else {}
-            _srs_qty = abs(float(getattr(position, 'positionAmt', 0)))
-            _srs_entry = float(getattr(position, 'entry_price', 0) or 0)
-            if _srs_qty > 0 and _srs_entry > 0:
-                _srs_is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
-                _srs_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
-                _srs_fm = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_D': ('dc_high_D', 'dc_low_D'), 'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h'), 'bb_D': ('bb_upper_D', 'bb_lower_D')}
-                _srs_hk, _srs_lk = _srs_fm.get(_srs_tf, ('bb_upper_1h', 'bb_lower_1h'))
-                _srs_hi = float(_srs_ind.get(_srs_hk, 0) or 0)
-                _srs_lo = float(_srs_ind.get(_srs_lk, 0) or 0)
-                _srs_k_hi = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_HIGH', 75.0))
-                _srs_k_lo = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_K_LOW', 25.0))
-                _srs_prox_bps = float(getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS', 100.0))
-                _srs_band = _srs_prox_bps / 10000.0
-                _srs_p = float(_srs_ind.get('current_price', 0) or 0)
-                _srs_k1h = float(_srs_ind.get('stoch_k_1h', 50) or 50)
-                _srs_k1h_p = float(_srs_ind.get('stoch_k_1h_prev', 50) or 50)
-                _srs_wt1_1h = float(_srs_ind.get('wt1_1h', 0) or 0)
-                _srs_wt2_1h = float(_srs_ind.get('wt2_1h', 0) or 0)
-                _srs_wt1_3m = float(_srs_ind.get('wt1_3m', _srs_ind.get('wt1_5m', 0)) or 0)
-                _srs_wt2_3m = float(_srs_ind.get('wt2_3m', _srs_ind.get('wt2_5m', 0)) or 0)
-                if _srs_is_long and _srs_hi > 0 and _srs_entry >= _srs_hi * (1.0 - _srs_band):
-                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
-                    _srs_turn = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p)
-                    _srs_wt_bear = _srs_wt1_1h < _srs_wt2_1h
-                    _srs_wt_3m = _srs_wt1_3m < _srs_wt2_3m
-                    if _srs_prox and _srs_turn and (_srs_wt_bear or _srs_wt_3m):
-                        _srs_g = float(getattr(position, 'gain', 0))
-                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_hk}={_srs_hi:.4f}_k1h={_srs_k1h:.0f}_g={_srs_g:.2f}%"
-                        return True, _srs_r, _srs_qty
-                elif not _srs_is_long and _srs_lo > 0 and _srs_entry <= _srs_lo * (1.0 + _srs_band):
-                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
-                    _srs_turn = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p)
-                    _srs_wt_bull = _srs_wt1_1h > _srs_wt2_1h
-                    _srs_wt_3m = _srs_wt1_3m > _srs_wt2_3m
-                    if _srs_prox and _srs_turn and (_srs_wt_bull or _srs_wt_3m):
-                        _srs_g = float(getattr(position, 'gain', 0))
-                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_lk}={_srs_lo:.4f}_k1h={_srs_k1h:.0f}_g={_srs_g:.2f}%"
-                        return True, _srs_r, _srs_qty
         return should_exit, reason, qty
     manager.strategy.evaluate_stop = _v8_gated_evaluate_stop
     _v8_satoshit_override = _t_overrides.get("SATOSHIT_ENABLED_TRADIER") if _t_overrides else None
