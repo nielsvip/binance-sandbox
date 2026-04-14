@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-14 11:26:30 UTC
+# Copilot Status — 2026-04-14 11:41:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:20:06
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:20:47
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:21:08
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:22:09
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:22:51
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:23:11
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:24:15
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:24:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:25:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:26:19
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:27:21
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:28:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:29:24
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:31:08
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:33:11
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:35:15
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:39:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:40:45
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T11:41:26
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-14T11:41:47
 
 ## Missed Trades (trader comparison)
 
@@ -29,14 +29,14 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-46.8%
-- HELD: **USO** LONG (tradier) peak +7.8%, now +4.1%
+- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-47.1%
+- HELD: **USO** LONG (tradier) peak +7.8%, now +3.9%
 - HELD: **MSFT** LONG (tradier) peak +6.8%, now +3.2%
-- HELD: **MU** LONG (tradier) peak +4.8%, now +3.5%
+- HELD: **MU** LONG (tradier) peak +4.8%, now +3.8%
 - HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.9%
-- HELD: **COPX** LONG (tradier) peak +4.0%, now +2.9%
-- HELD: **IBIT** LONG (tradier) peak +4.0%, now +3.4%
-- HELD: **NVDA** LONG (tradier) peak +3.7%, now +0.6%
+- HELD: **COPX** LONG (tradier) peak +4.0%, now +3.0%
+- HELD: **IBIT** LONG (tradier) peak +4.0%, now +3.3%
+- HELD: **NVDA** LONG (tradier) peak +3.7%, now +0.5%
 - HELD: **FIVN** SHORT (tradier) peak +3.3%, now +-7.7%
 
 - WATCHING: **SOLUSDC** SHORT (crypto) peaked +3.8%, exited 0m ago
@@ -47,8 +47,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] ez_klines.py running but log stale (623min)
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] ez_klines.py running but log stale (638min)
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_prices.py running but log stale (96min)
-- [MEDIUM] ez_klines.py running but log stale (624min)
+- [MEDIUM] ez_klines.py running but log stale (639min)
