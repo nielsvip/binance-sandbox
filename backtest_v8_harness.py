@@ -259,28 +259,38 @@ class IndicatorStore:
                 self.arrays[_stk] = self.arrays[_fb_k].copy()
                 if _std in self.arrays and _fb_d in self.arrays:
                     self.arrays[_std] = self.arrays[_fb_d].copy()
-        # ── Step 4c: compute stoch _prev arrays (not in NPZ) ─────────────
-        # stoch_k_{tf}_prev defaults to 50 when missing → breaks all oversold/overbought
-        # turn entry conditions. Compute as previous-bar shift.
+        # ── Step 4c: compute stoch _prev arrays ─────────────────────────
+        # NPZ precompute stores k_{tf}_prev / d_{tf}_prev as proper HTF-period
+        # previous values (computed before HTF→base mapping). Prefer those over
+        # bar-shifted versions which are identical within an HTF period and make
+        # "falling stoch" conditions dead.
         for _tf in ("5m", "15m", "1h", "4h", "D"):
             _k_key = f"stoch_k_{_tf}"
             _p_key = f"stoch_k_{_tf}_prev"
-            if _k_key in self.arrays and _p_key not in self.arrays:
-                arr = self.arrays[_k_key]
-                if arr.dtype.kind == 'f':
-                    prev = np.empty_like(arr)
-                    prev[0] = arr[0]
-                    prev[1:] = arr[:-1]
-                    self.arrays[_p_key] = prev
+            _npz_k_prev = f"k_{_tf}_prev"
+            if _p_key not in self.arrays:
+                if _npz_k_prev in self.arrays:
+                    self.arrays[_p_key] = self.arrays[_npz_k_prev]
+                elif _k_key in self.arrays:
+                    arr = self.arrays[_k_key]
+                    if arr.dtype.kind == 'f':
+                        prev = np.empty_like(arr)
+                        prev[0] = arr[0]
+                        prev[1:] = arr[:-1]
+                        self.arrays[_p_key] = prev
             _d_key = f"stoch_d_{_tf}"
             _dp_key = f"stoch_d_{_tf}_prev"
-            if _d_key in self.arrays and _dp_key not in self.arrays:
-                arr = self.arrays[_d_key]
-                if arr.dtype.kind == 'f':
-                    prev = np.empty_like(arr)
-                    prev[0] = arr[0]
-                    prev[1:] = arr[:-1]
-                    self.arrays[_dp_key] = prev
+            _npz_d_prev = f"d_{_tf}_prev"
+            if _dp_key not in self.arrays:
+                if _npz_d_prev in self.arrays:
+                    self.arrays[_dp_key] = self.arrays[_npz_d_prev]
+                elif _d_key in self.arrays:
+                    arr = self.arrays[_d_key]
+                    if arr.dtype.kind == 'f':
+                        prev = np.empty_like(arr)
+                        prev[0] = arr[0]
+                        prev[1:] = arr[:-1]
+                        self.arrays[_dp_key] = prev
         # stoch_k_1m is aliased from 5m/3m — compute its prev too
         if "stoch_k_1m" in self.arrays and "stoch_k_1m_prev" not in self.arrays:
             arr = self.arrays["stoch_k_1m"]

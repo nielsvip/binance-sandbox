@@ -1904,8 +1904,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _srs_wt2_3m = float(_srs_ind.get('wt2_3m', _srs_ind.get('wt2_5m', 0)) or 0)
                 if _srs_is_long and _srs_hi > 0 and _srs_p > 0:
                     _srs_prox = abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
-                    _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p) and (_srs_wt1_1h < _srs_wt2_1h)
-                    _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p) and (_srs_wt1_15m < _srs_wt2_15m)
+                    _srs_1h = ((_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p)) or (_srs_wt1_1h < _srs_wt2_1h)
+                    _srs_15m = ((_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p)) or (_srs_wt1_15m < _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m < _srs_wt2_3m
                     if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
                         _srs_g = float(getattr(position, 'gain', 0))
@@ -1913,8 +1913,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return True, _srs_r, _srs_qty
                 elif not _srs_is_long and _srs_lo > 0 and _srs_p > 0:
                     _srs_prox = abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
-                    _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p) and (_srs_wt1_1h > _srs_wt2_1h)
-                    _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p) and (_srs_wt1_15m > _srs_wt2_15m)
+                    _srs_1h = ((_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p)) or (_srs_wt1_1h > _srs_wt2_1h)
+                    _srs_15m = ((_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p)) or (_srs_wt1_15m > _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m > _srs_wt2_3m
                     if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
                         _srs_g = float(getattr(position, 'gain', 0))
@@ -2003,6 +2003,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             for _tf in ['5m', '15m', '1h', '4h', 'D']:
                 ind[f'timestamp_{_tf}'] = _sim_iso
                 ind[f'age_{_tf}'] = 0.0
+            for _ptf in ['15m', '1h', '4h', 'D']:
+                _pk = f'stoch_k_{_ptf}_prev'
+                if _pk not in ind:
+                    _pidx = max(0, idx - 1)
+                    _src_k = f'stoch_k_{_ptf}'
+                    ind[_pk] = float(store.get(_src_k, _pidx)) if _pidx != idx and _src_k in store.arrays else ind.get(_src_k, 50)
             indicator_cache[sym.upper()] = ind
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
