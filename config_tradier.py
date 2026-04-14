@@ -382,7 +382,7 @@ class TradierConfig:
     FH_MOMENTUM_DC_MAX_LONG: float = 0.5  # Sweep: 0.25-1.0 all Sharpe>1.36. 0.5 = balanced.
 
     # === EXIT ENHANCEMENTS (backtest) ===
-    WT_CROSSUNDER_FINAL_ENABLED: bool = True  # Sweepable: WT cross final-resort exit (multi-TF crossunder/crossover)
+    WT_CROSSUNDER_FINAL_ENABLED: bool = True  # T25 2026-04-14: True=0.357 vs False=0.363 (Δ=0.006) — essentially noise. Keeping True for live WT exit coverage.
     ATR_TRAIL_2X_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trail = #1 stock PnL destroyer (-2557% cumulative). Disabled.
     STOCH_CROSS_1H_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_T17 stoch cross on 1h triggers exit
     # === TIME ZONE SIZING (backtest) ===
