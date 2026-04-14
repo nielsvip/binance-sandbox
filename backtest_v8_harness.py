@@ -378,11 +378,16 @@ class IndicatorStore:
             result["wt_bear_alignment"] = 0
         # === FULL LIVE-COMPATIBLE ALIASES ===
         # Live Redis provides short-form k_3m/d_3m aliases that ez_manage expects
+        # FIX 2026-04-14: compute stoch prev from PREVIOUS bar (idx-1), not current bar.
+        # Without this, stoch_k_{tf}_prev == stoch_k_{tf} → SRS exit conditions impossible.
+        _prev_idx = max(0, idx - 1)
         for tf in ["1m", "3m", "5m", "15m", "1h", "4h", "D"]:
             sk = f"stoch_k_{tf}"; sd = f"stoch_d_{tf}"
             if sk in result:
-                _kp = result.get(f"stoch_k_{tf}_prev", result.get(f"k_{tf}_prev", result[sk]))
-                _dp = result.get(f"stoch_d_{tf}_prev", result.get(f"d_{tf}_prev", result.get(sd, 50)))
+                _kp_from_arr = float(self.get(sk, _prev_idx, result[sk]))
+                _dp_from_arr = float(self.get(sd, _prev_idx, result.get(sd, 50)))
+                _kp = result.get(f"stoch_k_{tf}_prev", result.get(f"k_{tf}_prev", _kp_from_arr))
+                _dp = result.get(f"stoch_d_{tf}_prev", result.get(f"d_{tf}_prev", _dp_from_arr))
                 result[f"k_{tf}_prev"] = _kp
                 result[f"d_{tf}_prev"] = _dp
                 if f"stoch_k_{tf}_prev" not in result:

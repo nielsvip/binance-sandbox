@@ -1872,7 +1872,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 elif _orig_delta_engine_off:
                     return False, "BLOCKED_DELTA_ENGINE_DISABLED", 0
             if "STRUCTURAL_RANGE_SHIFT" in reason:
-                _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', True)
+                _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
                 if not _srs_on:
                     return False, "BLOCKED_SRS_EXIT_DISABLED", 0
         _srs_on = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
@@ -1902,23 +1902,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _srs_wt2_15m = float(_srs_ind.get('wt2_15m', 0) or 0)
                 _srs_wt1_3m = float(_srs_ind.get('wt1_3m', _srs_ind.get('wt1_5m', 0)) or 0)
                 _srs_wt2_3m = float(_srs_ind.get('wt2_3m', _srs_ind.get('wt2_5m', 0)) or 0)
-                if _srs_is_long and _srs_hi > 0 and _srs_entry >= _srs_hi * (1.0 - _srs_band):
-                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
+                if _srs_is_long and _srs_hi > 0 and _srs_p > 0:
+                    _srs_prox = abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
                     _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p) and (_srs_wt1_1h < _srs_wt2_1h)
                     _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p) and (_srs_wt1_15m < _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m < _srs_wt2_3m
                     if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
                         _srs_g = float(getattr(position, 'gain', 0))
-                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_hk}={_srs_hi:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_LONG_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_hk}={_srs_hi:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
                         return True, _srs_r, _srs_qty
-                elif not _srs_is_long and _srs_lo > 0 and _srs_entry <= _srs_lo * (1.0 + _srs_band):
-                    _srs_prox = _srs_p > 0 and abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
+                elif not _srs_is_long and _srs_lo > 0 and _srs_p > 0:
+                    _srs_prox = abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
                     _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p) and (_srs_wt1_1h > _srs_wt2_1h)
                     _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p) and (_srs_wt1_15m > _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m > _srs_wt2_3m
                     if _srs_prox and _srs_1h and (_srs_15m or _srs_3m):
                         _srs_g = float(getattr(position, 'gain', 0))
-                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_entry={_srs_entry:.4f}>{_srs_lk}={_srs_lo:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
+                        _srs_r = f"STRUCTURAL_RANGE_SHIFT_SHORT_V8_{_srs_tf}_p={_srs_p:.4f}~{_srs_lk}={_srs_lo:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_g={_srs_g:.2f}%"
                         return True, _srs_r, _srs_qty
         _wt_xu_on2 = getattr(tm_mod.config, 'WT_CROSSUNDER_FINAL_ENABLED', True)
         if not should_exit and _wt_xu_on2:
