@@ -13,16 +13,18 @@
 
 | File | Locked Since | Reason / What Is Working | Who Locked |
 |------|-------------|--------------------------|-----------|
+| `run_with_watchdog.sh` | 2026-04-03 | Singleton guard + SIGTERM restart + --accounts flag parsing. Fixed tra dying permanently after SIGTERM. | user |
+| `ez_mem_watchdog.py` | 2026-03-25 | DISABLED — was causing 14k+ restarts/day by killing "duplicates" without stopping parent watchdog. LaunchAgent removed. DO NOT re-enable or re-launch. | user |
 | `ez_prices.py` | 2026-03-13 | WebSocket price feeds stable, no issues reported | user |
-| ~~`ez_klines.py`~~ | UNLOCKED 2026-03-16 | Unlocked to fix klines deletion destroying historical data | user |
-| ~~`ez_indicators.py`~~ | UNLOCKED 2026-03-17 | Unlocked to fix dc_position ghost field → 0dc_moment always zero | user |
+| ~~`ez_klines.py`~~ | RELOCKED 2026-03-27 | See entry below | user |
+| `ez_indicators.py` | RELOCKED 2026-04-08 | Re-locked per user request. Indicator pipeline stable. CWD fallback removed 2026-04-08. | user |
 | `ez_indicators_merger.py` | 2026-03-14 | Indicator merging pipeline — infrastructure | user |
-| `ez_market_data.py` | 2026-03-14 | Market-wide data aggregation — infrastructure | user |
-| `ez_positions.py` | 2026-03-13 | Core position data structures — fundamental, only touch if data model changes | user |
-| ~~`ez_positions_service.py`~~ | UNLOCKED 2026-03-16 | Unlocked to fix position corruption backdoors | user |
+| `ez_market_data.py` | 2026-03-26 | WT 1m/3m hot_metrics + klines_cache_writeback (60s cycle, merges composed candles to disk). DO NOT revert. | user |
+| `ez_positions.py` | 2026-03-13 | Core position data structures — fundamental, only touch if data model changes. Log path fixed to ~/logs 2026-04-08. | user |
+| ~~`ez_positions_service.py`~~ | RELOCKED 2026-03-27 | See entry below | user |
 | `ez_positions_realtime.py` | 2026-03-13 | Real-time monitor stable (all account variants) | user |
 | `ez_positions_watchdog.py` | 2026-03-14 | Process watchdog — infrastructure | user |
-| ~~`ez_rankings.py`~~ | UNLOCKED 2026-03-18 | Unlocked to apply backtest ranking changes (BACKTEST_CHANGE_44, _49) | user |
+| ~~`ez_rankings.py`~~ | RELOCKED 2026-03-27 | See entry below | user |
 | `ez_mark_prices.py` | 2026-03-13 | Mark price tracking stable | user |
 | `ez_share_ind.py` | 2026-03-13 | Shared indicator server stable, heartbeat working | user |
 | `ez_gain_protector.py` | 2026-03-13 | Trailing stop logic stable | user |
@@ -39,8 +41,33 @@
 | ~~`tradier_rankings.py`~~ | UNLOCKED 2026-03-18 | Unlocked to apply backtest ranking changes (BACKTEST_CHANGE_T39-T42) | user |
 | `tradier_webhook_bridge.py` | 2026-03-13 | Webhook integration stable | user |
 | `utils.py` | 2026-03-13 | Helpers (pk_is_long, pk_is_short, parse_position_key) stable — touching breaks everything | user |
+| ~~`tradier_indicators.py`~~ | UNLOCKED 2026-04-03 | Unlocked to integrate wt_composite for complete backtest NPZ | user |
+| `tradier_rankings.py` | 2026-03-23 | Rankings pipeline stable | user |
+| `tradier_positions.py` | 2026-03-23 | Position management stable + option gain/price fix. NEVER mutilate sync logic. | user |
+| `tradier_positions.py` | 2026-03-30 | DOUBLE-LOCKED: Position sync was broken for 5+ weeks (phantom positions, merge-not-replace, 1s disk reload race). Fixed 2026-03-30. DO NOT touch sync_real_positions_from_api, save_all_positions, sync_positions_loop in tradier_manage.py either. | user |
+| `tradier_prices.py` | 2026-03-23 | Price feeds stable | user |
+| `ez_rankings.py` | 2026-03-27 | Rankings pipeline stable — data pipeline, not trading logic | user |
+| `ez_klines.py` | 2026-03-27 | Kline fetching/caching stable — data pipeline | user |
+| `wt_composite.py` | 2026-03-27 | Cross-TF WaveTrend composite scoring — core signal system | user |
+| `wt_dc_delta.py` | RELOCKED 2026-04-11 19:50 | **SMART_RZ_EXIT v2**: k_15m>90 + red zone + (MFI OR lower_low OR lower_high OR delta_decel OR wt_vel_neg OR dc_falling OR prev_low_break). Sets exit_pending → Phase 2 sells at next bar high. reentry_if_momentum flag. Renamed all tags to SMART_RZ_*. Backup: backups/before_rz_rename_202604111950.py. DO NOT revert to flat K threshold. DO NOT remove slowdown requirement. | user |
+| `ez_positions_service.py` | RELOCKED 2026-04-08 | CWD fallback removed, logs to ~/logs only. Phantom kill after API fetch done. | user |
 
 ---
+
+| `backtest_v8_precompute.py` | 2026-04-04 | Full indicator precompute with fabricate_3m/5m, HTF resample, 404 fields. DO NOT remove fabricate_3m. DO NOT change base_tf. | user |
+| `backtest_v8_harness.py` | 2026-04-04 | NPZ loader with HTF forward-fill. DO NOT remove ffill logic. | user |
+| ~~`backtest_v8_engine.py`~~ | UNLOCKED 2026-04-08 | Unlocked to run V8 backtest with delta engine and compare vs fake vectorized results. | user |
+| `ez_manage.py` | RELOCKED 2026-04-10 23:10 | Prior: all earlier patches. **2026-04-10 23:10 NEW**: UNIVERSAL_NOLOSS_GATE at line ~13455 in execute_now — replaces Finandy's external NO_LOSS. Calculates REAL gain from entry_price (not tracker .gain). Blocks ALL reduce/close at loss except: is_hedge=True, STRUCTURAL_RANGE_SHIFT, LIQUIDATION. NO delta_exit bypass (that was the leak). Also added config toggle gates: EXIT_MARKET_SPIKE_REDUCE_ENABLED, EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED, EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED, EXIT_HARD_MAX_LOSS_CAP_ENABLED. Backups at backups/before_universal_noloss_*. DO NOT remove UNIVERSAL_NOLOSS_GATE. DO NOT add delta_exit bypass. DO NOT touch tradeable_keys, sync_real_positions_from_api. | user |
+| `ez_positions_quick.py` | RELOCKED 2026-04-10 23:10 | Prior: all earlier patches. **2026-04-10 23:10 NEW**: EXIT_PREEMPTIVE_BREAKEVEN_ENABLED toggle gate at line ~4623. Backups at backups/before_universal_noloss_*. DO NOT remove delta_sig, tracker sync, hedge engine, WT_GATE_BYPASS_RZ, wt_3m hedge kill, HEDGE_PROFIT_PROTECT, PARABOLIC_EXHAUSTION_EXIT, _hedge_entry_is_valid, GAIN_EROSION, STRUCTURAL_RANGE_SHIFT_EXIT, or the PREEMPTIVE_BREAKEVEN toggle. | user |
+| `ez_positions_service.py` | RELOCKED 2026-04-09 | Delta wired into check_position_reductions ctx. Immediate reduction, trailing stops, bleed stop all gated by config. DO NOT touch tradeable_keys logic. | user |
+| `config.py` | RELOCKED 2026-04-14 00:50 | **2026-04-14**: Added BOUNCE_AUGMENT_ENABLED=True, BOUNCE_AUGMENT_PAPER=True, BOUNCE_AUGMENT_MIN_LOSS_PCT=-0.5, BOUNCE_AUGMENT_K_D_THRESHOLD=20, BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE=0.02, BOUNCE_AUGMENT_K_D_CROSSING_UP=True. Prior: EXIT_HARD_MAX_LOSS_CAP_ENABLED=False, HARD_MAX_LOSS_PCT=-999, RZ_K_EXIT=95, UNIVERSAL_NOLOSS_GATE=True. DO NOT re-enable HARD_MAX_LOSS_CAP. DO NOT set RZ_K_EXIT<90. | user |
+
+| `tradier_manage.py` | LOCKED 2026-04-10 17:30 | Prior: all earlier edits (see git). **2026-04-10 17:30 APPLIED**: STRUCTURAL_RANGE_SHIFT_EXIT in evaluate_stop — if entry outside [dc_low_4h, dc_high_4h], close LONG at dc_high_4h / SHORT at dc_low_4h (0.1% tolerance). Inserted before delta exit. Backup: `backups/before_srs_tradier_202604101730.py`. DO NOT revert SRS block. DO NOT touch sync_real_positions_from_api or tradeable_keys. | user |
+| `config_tradier.py` | RELOCKED 2026-04-10 23:25 | Prior: SRS. **2026-04-10 23:25 NEW**: EXIT_SCORER_MIN_CONDITIONS/K_EXTREME/DC_EXTREME/PARTIAL_SCORE/FULL_SCORE (configurable exit scorer params). UNIVERSAL_NOLOSS_GATE=True, EXIT_HARD_MAX_LOSS_CAP_ENABLED=True, HARD_MAX_LOSS_PCT=-5.0. Backup: backups/before_scorer_config_ct_202604102320.py. DO NOT change START_POSITION_SIZE or WT_DC_ENTRY_THRESHOLD without sweep proof. | user |
+| `wt_dc_exit_scorer.py` | LOCKED 2026-04-10 23:25 | **2026-04-10 23:25 NEW**: score_exit() now accepts cfg param. Reads EXIT_SCORER_MIN_CONDITIONS (3-5), EXIT_SCORER_K_EXTREME (65-85), EXIT_SCORER_DC_EXTREME (0.70-0.90) from config. Defaults match previous hardcoded values. Backup: backups/before_scorer_config_202604102320.py. DO NOT revert to hardcoded params. | user |
+| `tradier_manage.py` | RELOCKED 2026-04-10 23:25 | Prior: SRS. **2026-04-10 23:25 NEW**: score_exit() call now passes cfg=config. Backup: backups/before_scorer_config_tm_202604102320.py. DO NOT revert cfg= param. | user |
+| `tradier_api.py` | LOCKED 2026-03-13 | Tradier API client stable — any breakage kills all stock trading | user |
+| `tradier_positions.py` | DOUBLE-LOCKED 2026-03-30 | Position sync fixed after 5-week break. DO NOT touch sync_real_positions_from_api. | user |
 
 ## Actively Editable (Hot Zone — Requires Care)
 
@@ -50,8 +77,6 @@ These files are currently being worked on. They are NOT locked but treat every e
 |------|----------------|-----------------|
 | `ez_manage.py` | Main orchestrator — trading decisions, constant tuning | Hedge execution, reduce fill verification |
 | `ez_positions_quick.py` | Scalp/hedge execution — constant tuning | Ratio recovery, staleness gate |
-| `tradier_manage.py` | Stock orchestrator — tuning | pk.endswith fix |
-| `config.py` | Config flags — intentional changes | N/A |
 | `ez_news_scanner.py` | News scanner — active dev | Free sources v4 |
 
 ---

@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/rsync_helpers.sh"
 MACBOOK_HOST="niels@192.168.1.100"
-SERVER_HOST="niels@157.180.125.52"
+SERVER_HOST="s1-int"
 GATEWAY_BASE="/home/niels/binance/"
 MACBOOK_BASE="/Users/niels/Documents/binance/"
 SERVER_BASE="/home/niels/binance/"

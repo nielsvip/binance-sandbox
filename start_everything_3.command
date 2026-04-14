@@ -40,8 +40,10 @@ SCRIPTS=(
     "tradier_positions.py --accounts tra trb trc"
     "tradier_indicators.py"
     "tradier_rankings.py"
+    "tradier_manage.py --accounts tra"
     "tradier_manage.py --accounts trb"
     "tradier_manage.py --accounts trc"
+    "ez_copilot.py"
 )
 
 # Create log directory
@@ -52,17 +54,23 @@ cd "$WORKDIR" || exit 1
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ===== TRADIER SYSTEM RESTART START =====" | tee -a "$LAUNCHER_LOG"
 
-# 1. Targeted cleanup for Tradier
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Cleaning up existing Tradier processes..." | tee -a "$LAUNCHER_LOG"
+# SCORCHED EARTH: kill ALL tradier processes, watchdogs, and iTerm launchers
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Killing ALL tradier processes..." | tee -a "$LAUNCHER_LOG"
 pkill -9 -f "python.*tradier_" 2>/dev/null || true
+pkill -9 -f "python.*ez_copilot" 2>/dev/null || true
 pkill -9 -f "bash.*run_with_watchdog.*tradier_" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_copilot" 2>/dev/null || true
+pkill -9 -f "bash.*iterm_launch_tradier" 2>/dev/null || true
+pkill -9 -f "bash.*iterm_launch_ez_copilot" 2>/dev/null || true
+rm -f /Users/niels/logs/start_everything_3.lock 2>/dev/null
+sleep 3
 
-sleep 2
-
-# Verify cleanup
+# Verify cleanup — force kill stragglers
 REMAINING=$(pgrep -f "python.*tradier" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$REMAINING" -gt 0 ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $REMAINING Tradier processes still running" | tee -a "$LAUNCHER_LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $REMAINING Tradier processes survived, force killing..." | tee -a "$LAUNCHER_LOG"
+    pkill -9 -f "python.*tradier" 2>/dev/null || true
+    sleep 2
 fi
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting all Tradier scripts..." | tee -a "$LAUNCHER_LOG"
@@ -72,11 +80,7 @@ for full_cmd in "${SCRIPTS[@]}"; do
     # Extract filename for pgrep check
     script_name="${full_cmd%% *}"
     
-    # Check if script is already running (check filename only)
-    if pgrep -f "$PYTHON.*$script_name" >/dev/null 2>&1; then
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] $script_name is already running. Skipping launch." | tee -a "$LAUNCHER_LOG"
-        continue
-    fi
+    # After scorched earth, nothing should be running — launch unconditionally
     
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Launching $full_cmd in Terminal..." | tee -a "$LAUNCHER_LOG"
     
@@ -130,8 +134,10 @@ for full_cmd in "${SCRIPTS[@]}"; do
     fi
 done
 
-TOTAL=$(pgrep -f "python.*tradier" 2>/dev/null | wc -l | tr -d ' ')
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] TOTAL RUNNING: $TOTAL/${#SCRIPTS[@]}" | tee -a "$LAUNCHER_LOG"
+TRADIER_COUNT=$(pgrep -f "python.*tradier" 2>/dev/null | wc -l | tr -d ' ')
+COPILOT_COUNT=$(pgrep -f "python.*ez_copilot" 2>/dev/null | wc -l | tr -d ' ')
+TOTAL=$((TRADIER_COUNT + COPILOT_COUNT))
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] TOTAL RUNNING: $TOTAL/${#SCRIPTS[@]} (tradier: $TRADIER_COUNT, copilot: $COPILOT_COUNT)" | tee -a "$LAUNCHER_LOG"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ===== DONE =====" | tee -a "$LAUNCHER_LOG"
 
 # Keep window open only if run interactively (terminal attached)

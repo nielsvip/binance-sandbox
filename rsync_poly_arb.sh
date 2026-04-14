@@ -2,7 +2,7 @@
 # Continuous rsync of poly arb engine data from server to local
 # Run: bash rsync_poly_arb.sh
 
-SERVER="niels@157.180.125.52"
+SERVER="s1-int"
 REMOTE="/home/niels/binance/data/poly/arb_engine/"
 LOCAL="/Users/niels/Documents/binance/data/poly/arb_engine/"
 LOG_REMOTE="/home/niels/logs/poly_arb_engine.log"

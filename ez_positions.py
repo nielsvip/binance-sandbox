@@ -58,9 +58,10 @@ if logger.hasHandlers():
             pass
         logger.removeHandler(handler)
 
-os.makedirs("logs", exist_ok=True)
-log_path = "logs/ez_positions.log"
-file_handler = RotatingFileHandler("logs/ez_positions.log", maxBytes=100 * 1024 * 1024, backupCount=5, encoding="utf-8", mode="a")
+_logs_dir = Path.home() / "logs"
+_logs_dir.mkdir(parents=True, exist_ok=True)
+log_path = str(_logs_dir / "ez_positions.log")
+file_handler = RotatingFileHandler(log_path, maxBytes=100 * 1024 * 1024, backupCount=5, encoding="utf-8", mode="a")
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 file_handler.setFormatter(file_formatter)
@@ -541,18 +542,7 @@ async def run_service() -> None:
         asyncio.create_task(service.start_housekeeping_tasks())
     except Exception as e:
         logger.error(f"[ez_positions] Service start failed: {e}", exc_info=True)
-    logger.warning("[ez_positions] 🚀 Launching realtime updaters...")
-    script_dir = Path(__file__).parent
-    logs_dir = script_dir / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    for script_name in ["ez_positions_realtime_men.py", "ez_positions_realtime_fin.py", "ez_positions_realtime_inf.py", "ez_positions_realtime_ang.py", "ez_positions_realtime_flz.py"]:
-        if (script_dir / script_name).exists():
-            try:
-                log_file = logs_dir / f"{script_name.replace('.py', '')}.log"
-                log_f = open(log_file, "a")
-                subprocess.Popen([sys.executable, str(script_dir / script_name)], stdout=log_f, stderr=subprocess.STDOUT, cwd=str(script_dir), env=os.environ.copy(), start_new_session=True)
-            except Exception as e:
-                logger.error(f"[ez_positions] Failed to launch {script_name}: {e}")
+    # NOTE: Realtime updaters are launched by ez_positions_watchdog.py when data is stale — NOT here
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):

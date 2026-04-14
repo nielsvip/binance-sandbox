@@ -1922,6 +1922,12 @@ async def get_current_price(symbol: str) -> Tuple[Optional[float], Optional[date
                         if p > 0: return p, ts
             except Exception: pass
     if not best_price or best_price <= 0:
+        try:
+            _valid_symbols = set(json.load(open(Path(getattr(config, 'BASE_PATH', Path.home() / 'binance')) / 'symbols.json')))
+        except Exception:
+            _valid_symbols = set()
+        if _valid_symbols and symbol not in _valid_symbols:
+            logger.warning(f"⚠️ [PRICE_SKIP] {symbol} not in symbols.json (delisted?) — returning None instead of crashing"); return None, None
         logger.critical(f"🛑 [FATAL] No price found for {symbol} in ANY source! Crashing for restart."); raise RuntimeError(f"UNACCEPTABLE: Current price for {symbol} is None/Zero. Force system restart.")
     return best_price, best_timestamp
 
@@ -2516,15 +2522,19 @@ class SimpleRedisManager:
 
     async def subscribe(self, channel, callback, data_type="generic", target=None):
         async def listener(name, conn):
-            ps = conn.pubsub()
-            await ps.subscribe(channel)
             while not self._stop_event.is_set():
                 try:
-                    msg = await ps.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                    if msg:
-                        data = json.loads(msg['data']) if isinstance(msg['data'], str) else msg['data']
-                        await callback(data)
-                except Exception: await asyncio.sleep(0.1)
+                    ps = conn.pubsub()
+                    await ps.subscribe(channel)
+                    while not self._stop_event.is_set():
+                        try:
+                            msg = await ps.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                            if msg:
+                                data = json.loads(msg['data']) if isinstance(msg['data'], str) else msg['data']
+                                await callback(data)
+                        except Exception: await asyncio.sleep(0.1)
+                except Exception:
+                    await asyncio.sleep(5)  # Redis down — wait and retry, NEVER crash
 
         if target and self.connections.get(target):
             asyncio.create_task(listener(target, self.connections[target]))
@@ -4401,3 +4411,253 @@ async def get_prices_local_redis():
 #             with suppress(Exception):await client.close()
 #         self._initialized=False
 #         logger.info("🧹 Rum shutdown complete.")
+
+
+# ═══ SYMBOL PERFORMANCE (was ez_symbol_performance.py — merged here) ═══
+_perf_config = Config()
+_perf_logger = setup_logger('ez_symbol_performance', str(_perf_config.LOG_DIR / 'ez_symbol_performance.log'), logging.INFO)
+_PERF_BASE_PATH = Path(os.getenv('EZ_BASE_PATH', str(_perf_config.BASE_PATH)))
+_PERF_DATA_DIR = _PERF_BASE_PATH / 'data'
+_PERF_HISTORY_DIR = _PERF_DATA_DIR / 'history'
+_PERF_FILE = _PERF_DATA_DIR / 'symbol_performance.json'
+_PERF_OUTLIER_FILE = _PERF_DATA_DIR / 'outlier_alerts.json'
+_perf_cache: Dict[str, dict] = {}
+_perf_cache_ts: float = 0.0
+_PERF_ENTRY_TYPES = frozenset({'AUGMENT', 'OPEN', 'QUICK_OPEN', 'REENTRY'})
+_PERF_EXIT_TYPES = frozenset({'REDUCE', 'CLOSE', 'QUICK_CLOSE'})
+
+def _perf_parse_history_file(filepath: Path, cutoff: datetime) -> list:
+    records = []
+    seen = set()
+    try:
+        with open(filepath, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                ts_str = rec.get('ts', '')
+                rtype = rec.get('type', '')
+                qty = rec.get('qty', 0.0)
+                price = rec.get('price', 0.0)
+                value = rec.get('value', 0.0)
+                if not ts_str or not rtype:
+                    continue
+                dedup_key = (ts_str[:19], rtype, str(qty))
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
+                try:
+                    ts = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
+                except Exception:
+                    continue
+                if ts < cutoff:
+                    continue
+                records.append((ts, rtype, float(qty), float(price), float(value)))
+    except Exception as e:
+        _perf_logger.debug(f"Error parsing {filepath.name}: {e}")
+    return records
+
+def _perf_reconstruct_trades(records: list) -> list:
+    if not records:
+        return []
+    records.sort(key=lambda r: r[0])
+    trades = []
+    entry_cost = 0.0
+    entry_qty = 0.0
+    entry_time = None
+    for ts, rtype, qty, price, value in records:
+        if rtype in _PERF_ENTRY_TYPES:
+            if entry_time is None:
+                entry_time = ts
+            entry_cost += value if value > 0 else qty * price
+            entry_qty += qty
+        elif rtype in _PERF_EXIT_TYPES and entry_qty > 0:
+            exit_price = price
+            entry_avg = entry_cost / entry_qty if entry_qty > 0 else price
+            hold_sec = (ts - entry_time).total_seconds() if entry_time else 0
+            pnl_pct = (exit_price - entry_avg) / entry_avg * 100 if entry_avg > 0 else 0.0
+            trades.append({'entry_avg': entry_avg, 'exit_avg': exit_price, 'qty': min(qty, entry_qty), 'pnl_pct': pnl_pct, 'hold_seconds': hold_sec})
+            closed_qty = min(qty, entry_qty)
+            entry_qty -= closed_qty
+            if entry_qty > 0:
+                entry_cost = entry_avg * entry_qty
+            else:
+                entry_cost = 0.0
+                entry_qty = 0.0
+                entry_time = None
+    return trades
+
+def _perf_get_outlier_penalty(symbol: Optional[str]) -> float:
+    try:
+        if _PERF_OUTLIER_FILE.exists():
+            with open(_PERF_OUTLIER_FILE, 'r') as f:
+                alerts = json.load(f)
+            if symbol:
+                for a in alerts.get('active', []):
+                    if a.get('symbol') == symbol and a.get('severity') == 'CRITICAL':
+                        return 0.8
+    except Exception:
+        pass
+    return 1.0
+
+def _perf_compute_multiplier(win_rate: float, avg_gain: float, n_trades: int) -> float:
+    if n_trades < _perf_config.SYMBOL_PERF_MIN_TRADES:
+        return 1.0
+    win_score = (win_rate - 0.5) * 4.0
+    gain_score = max(-2.0, min(2.0, avg_gain * 1.5))
+    confidence = min(1.0, n_trades / 20.0)
+    raw_score = (win_score + gain_score) * confidence
+    if raw_score > 0:
+        raw = 1.0 + raw_score * 4.5
+    else:
+        raw = max(0.1, 1.0 / (1.0 - raw_score * 2.0))
+    outlier_penalty = _perf_get_outlier_penalty(None)
+    raw *= outlier_penalty
+    return max(_perf_config.SYMBOL_PERF_MIN_MULT, min(_perf_config.SYMBOL_PERF_MAX_MULT, raw))
+
+def _perf_compute_tier(win_rate: float, avg_gain: float, n_trades: int) -> str:
+    if n_trades < _perf_config.TIER_B_MIN_TRADES:
+        return 'B'
+    if win_rate >= _perf_config.TIER_A_WIN_RATE and avg_gain >= _perf_config.TIER_A_MIN_GAIN and n_trades >= _perf_config.TIER_A_MIN_TRADES:
+        return 'A'
+    if win_rate >= _perf_config.TIER_B_WIN_RATE or (avg_gain > 0 and n_trades >= _perf_config.TIER_B_MIN_TRADES):
+        return 'B'
+    return 'C'
+
+def compute_all_stats(window_days: int = None) -> Dict[str, dict]:
+    if window_days is None:
+        window_days = _perf_config.SYMBOL_PERF_WINDOW_DAYS
+    cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
+    stats: Dict[str, dict] = {}
+    if not _PERF_HISTORY_DIR.exists():
+        _perf_logger.warning(f"[PERF] History dir not found: {_PERF_HISTORY_DIR}")
+        return stats
+    for acct_dir in _PERF_HISTORY_DIR.iterdir():
+        if not acct_dir.is_dir():
+            continue
+        for jfile in acct_dir.glob('*.jsonl'):
+            fname = jfile.stem
+            if '_LONG' in fname:
+                symbol = fname.replace('_LONG', '')
+                side = 'LONG'
+            elif '_SHORT' in fname:
+                symbol = fname.replace('_SHORT', '')
+                side = 'SHORT'
+            else:
+                continue
+            records = _perf_parse_history_file(jfile, cutoff)
+            if not records:
+                continue
+            trades = _perf_reconstruct_trades(records)
+            if not trades:
+                continue
+            key = f"{symbol}_{side}"
+            if key not in stats:
+                stats[key] = {'symbol': symbol, 'side': side, 'trades': [], 'accounts': set()}
+            stats[key]['trades'].extend(trades)
+            stats[key]['accounts'].add(acct_dir.name)
+    result = {}
+    for key, data in stats.items():
+        symbol = data['symbol']
+        all_trades = data['trades']
+        n_trades = len(all_trades)
+        if n_trades == 0:
+            continue
+        wins = sum(1 for t in all_trades if t['pnl_pct'] > 0)
+        win_rate = wins / n_trades
+        avg_gain = sum(t['pnl_pct'] for t in all_trades) / n_trades
+        avg_hold_sec = sum(t['hold_seconds'] for t in all_trades) / n_trades
+        total_pnl_pct = sum(t['pnl_pct'] for t in all_trades)
+        best_trade = max(t['pnl_pct'] for t in all_trades)
+        worst_trade = min(t['pnl_pct'] for t in all_trades)
+        if symbol not in result or result[symbol].get('trade_count', 0) < n_trades:
+            multiplier = _perf_compute_multiplier(win_rate, avg_gain, n_trades)
+            tier = _perf_compute_tier(win_rate, avg_gain, n_trades)
+            now_iso = datetime.now(timezone.utc).isoformat()
+            result[symbol] = {'symbol': symbol, 'trade_count': n_trades, 'win_rate': round(win_rate, 4), 'avg_gain_pct': round(avg_gain, 4), 'total_pnl_pct': round(total_pnl_pct, 2), 'best_trade_pct': round(best_trade, 2), 'worst_trade_pct': round(worst_trade, 2), 'avg_hold_hours': round(avg_hold_sec / 3600, 2), 'accounts': list(data['accounts']), 'raw_multiplier': round(multiplier, 4), 'order_multiplier': round(multiplier, 3), 'tier': tier, 'set_at': now_iso, 'updated_at': now_iso}
+    return result
+
+def refresh_cache() -> Dict[str, dict]:
+    global _perf_cache, _perf_cache_ts
+    if not _perf_config.SYMBOL_PERF_ENABLED:
+        return {}
+    try:
+        stats = compute_all_stats()
+        _perf_cache = stats
+        _perf_cache_ts = time.time()
+        try:
+            with open(_PERF_FILE, 'w') as f:
+                json.dump(stats, f, indent=1)
+            outperformers = sum(1 for s in stats.values() if s.get('raw_multiplier', 1.0) > 2.0)
+            underperformers = sum(1 for s in stats.values() if s.get('raw_multiplier', 1.0) < 0.5)
+            _perf_logger.info(f"[PERF] Refreshed: {len(stats)} symbols, A={sum(1 for s in stats.values() if s['tier']=='A')}, B={sum(1 for s in stats.values() if s['tier']=='B')}, C={sum(1 for s in stats.values() if s['tier']=='C')} | outperf(>2x)={outperformers} underperf(<0.5x)={underperformers}")
+        except Exception as e:
+            _perf_logger.warning(f"[PERF] Failed to write {_PERF_FILE.name}: {e}")
+        return stats
+    except Exception as e:
+        _perf_logger.error(f"[PERF] Refresh error: {e}", exc_info=True)
+        return _perf_cache
+
+def _ensure_cache() -> Dict[str, dict]:
+    global _perf_cache, _perf_cache_ts
+    if _perf_cache and (time.time() - _perf_cache_ts) < _perf_config.SYMBOL_PERF_REFRESH_SECONDS:
+        return _perf_cache
+    if _PERF_FILE.exists():
+        try:
+            with open(_PERF_FILE, 'r') as f:
+                _perf_cache = json.load(f)
+            _perf_cache_ts = time.time()
+            return _perf_cache
+        except Exception:
+            pass
+    return refresh_cache()
+
+def _perf_apply_decay(raw_mult: float, set_at_str: str) -> float:
+    try:
+        set_at = datetime.fromisoformat(set_at_str.replace('Z', '+00:00'))
+    except Exception:
+        return 1.0
+    elapsed_hours = (datetime.now(timezone.utc) - set_at).total_seconds() / 3600.0
+    if elapsed_hours <= 0:
+        return raw_mult
+    half_life = getattr(_perf_config, 'SYMBOL_PERF_DECAY_HOURS', 60.0)
+    decay = 0.5 ** (elapsed_hours / half_life)
+    return 1.0 + (raw_mult - 1.0) * decay
+
+def get_performance_multiplier(symbol: str, default: float = 1.0) -> float:
+    if not _perf_config.SYMBOL_PERF_ENABLED:
+        return default
+    cache = _ensure_cache()
+    entry = cache.get(symbol)
+    if not entry:
+        return default
+    raw = entry.get('raw_multiplier', entry.get('order_multiplier', default))
+    set_at = entry.get('set_at', entry.get('updated_at', ''))
+    if not set_at:
+        return raw
+    return max(_perf_config.SYMBOL_PERF_MIN_MULT, min(_perf_config.SYMBOL_PERF_MAX_MULT, _perf_apply_decay(raw, set_at)))
+
+def get_symbol_tier(symbol: str, default: str = 'B') -> str:
+    if not _perf_config.TIER_ENABLED:
+        return default
+    cache = _ensure_cache()
+    entry = cache.get(symbol)
+    if not entry:
+        return default
+    return entry.get('tier', default)
+
+def get_tier_multiplier(symbol: str) -> float:
+    tier = get_symbol_tier(symbol)
+    if tier == 'A':
+        return _perf_config.TIER_A_MULTIPLIER
+    if tier == 'C':
+        return _perf_config.TIER_C_MULTIPLIER
+    return 1.0
+
+def get_full_stats(symbol: str) -> Optional[dict]:
+    cache = _ensure_cache()
+    return cache.get(symbol)

@@ -91,7 +91,7 @@ for account in "${ACCOUNTS[@]}"; do
     if ! pgrep -f "ez_positions.py.*--account.*${account}" >/dev/null 2>&1; then
         log_message "Starting ez_positions.py for ${account} via watchdog..."
         (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-        nohup bash "$WATCHDOG_BIN" ez_positions.py --account "$account" >> "${LOG_DIR}/watchdog_ez_positions_${account}.log" 2>&1 &)
+        nohup bash "$WATCHDOG_BIN" ez_positions.py --account "$account" > /dev/null 2>&1 &)
         sleep 2
     else
         log_message "ez_positions.py for ${account} already running"
@@ -101,7 +101,7 @@ done
 if ! pgrep -f "tradier_positions.py" >/dev/null 2>&1; then
     log_message "Starting tradier_positions.py for all accounts via watchdog..."
     (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-    nohup bash "$WATCHDOG_BIN" tradier_positions.py --accounts tra trb trc >> "${LOG_DIR}/watchdog_tradier_positions.log" 2>&1 &)
+    nohup bash "$WATCHDOG_BIN" tradier_positions.py --accounts tra trb trc > /dev/null 2>&1 &)
     sleep 2
 else
     log_message "tradier_positions.py already running"
@@ -134,14 +134,14 @@ fi
 if ! pgrep -f "tradier_prices.py" >/dev/null 2>&1; then
     log_message "Starting tradier_prices.py via watchdog..."
     (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-    nohup bash "$WATCHDOG_BIN" tradier_prices.py >> "${LOG_DIR}/watchdog_tradier_prices.log" 2>&1 &)
+    nohup bash "$WATCHDOG_BIN" tradier_prices.py > /dev/null 2>&1 &)
     sleep 2
 fi
 
 if ! pgrep -f "tradier_rankings.py" >/dev/null 2>&1; then
     log_message "Starting tradier_rankings.py via watchdog..."
     (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-    nohup bash "$WATCHDOG_BIN" tradier_rankings.py >> "${LOG_DIR}/watchdog_tradier_rankings.log" 2>&1 &)
+    nohup bash "$WATCHDOG_BIN" tradier_rankings.py > /dev/null 2>&1 &)
     sleep 2
 fi
 
@@ -151,7 +151,7 @@ sleep 2
 log_message "STEP 2: Starting watchdog (will start ez_positions_quick.py)..."
 if ! pgrep -f "ez_positions_watchdog.py" >/dev/null 2>&1; then
     (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-    nohup python3 -u ez_positions_watchdog.py >> "${LOG_DIR}/ez_positions_watchdog.log" 2>&1 &)
+    nohup python3 -u ez_positions_watchdog.py > /dev/null 2>&1 &)
     log_message "✅ Watchdog started"
 else
     log_message "Watchdog already running"
@@ -173,20 +173,20 @@ if [ "$WORKER_TOTAL" -gt 1 ]; then
             log_message "Starting indicator worker ${i} via watchdog..."
             (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
             export WORKER_INSTANCE_ID=$i && export WORKER_TOTAL_INSTANCES=$WORKER_TOTAL && \
-            nohup bash "$WATCHDOG_BIN" ez_indicators.py --worker $i >> "${LOG_DIR}/watchdog_ez_indicators_worker${i}.log" 2>&1 &)
+            nohup bash "$WATCHDOG_BIN" ez_indicators.py --worker $i > /dev/null 2>&1 &)
             sleep 3
         fi
     done
     if ! pgrep -f "ez_indicators_merger.py" >/dev/null 2>&1; then
         log_message "Starting indicator merger via watchdog..."
         (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-        nohup bash "$WATCHDOG_BIN" ez_indicators_merger.py >> "${LOG_DIR}/watchdog_ez_indicators_merger.log" 2>&1 &)
+        nohup bash "$WATCHDOG_BIN" ez_indicators_merger.py > /dev/null 2>&1 &)
     fi
     
     if ! pgrep -f "tradier_indicators.py" >/dev/null 2>&1; then
         log_message "Starting tradier_indicators.py via watchdog..."
         (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-        nohup bash "$WATCHDOG_BIN" tradier_indicators.py >> "${LOG_DIR}/watchdog_tradier_indicators.log" 2>&1 &)
+        nohup bash "$WATCHDOG_BIN" tradier_indicators.py > /dev/null 2>&1 &)
     fi
 
     log_message "✅ Indicator workers started"
@@ -215,39 +215,47 @@ if command -v systemctl >/dev/null 2>&1; then
         sleep 2
     done
 
-    # Loss mitigator (ang gain guard)
-    log_message "Starting binance-loss-mitigator.service..."
-    systemctl --user restart "binance-loss-mitigator.service" 2>&1 | tee -a "$LOG_FILE"
+    # ez_loss_mitigator REMOVED 2026-03-26 — violates STRICT_NO_LOSS, closes positions at a loss
 
     log_message "✅ Trading services started"
 else
     log_message "⚠️ systemctl not available - skipping trading services"
 fi
 
-TRADIER_MANAGE_ACCOUNTS=("trb" "trc")
+TRADIER_MANAGE_ACCOUNTS=("tra" "trb" "trc")
 for account in "${TRADIER_MANAGE_ACCOUNTS[@]}"; do
     if ! pgrep -f "tradier_manage.py.*--accounts.*${account}" >/dev/null 2>&1; then
         log_message "Starting tradier_manage.py for ${account} via watchdog..."
         (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-        nohup bash "$WATCHDOG_BIN" tradier_manage.py --accounts "$account" >> "${LOG_DIR}/watchdog_tradier_manage_${account}.log" 2>&1 &)
+        nohup bash "$WATCHDOG_BIN" tradier_manage.py --accounts "$account" > /dev/null 2>&1 &)
         sleep 2
     else
         log_message "tradier_manage.py for ${account} already running"
     fi
 done
 
+# STEP 4.5: Start copilot (autonomous trading oversight)
+log_message "STEP 4.5: Starting ez_copilot.py via watchdog..."
+if ! pgrep -f "ez_copilot.py" >/dev/null 2>&1; then
+    (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
+    nohup bash "$WATCHDOG_BIN" ez_copilot.py > /dev/null 2>&1 &)
+    log_message "✅ ez_copilot.py started"
+else
+    log_message "ez_copilot.py already running"
+fi
+
 # STEP 5: Start analytics dashboard (trade_analytics.py on port 5050)
 log_message "STEP 5: Starting trade_analytics.py on port 5050..."
 fuser -k 5050/tcp 2>/dev/null || true
 sleep 1
 (cd "$BINANCE_DIR" && source "$CONDA_SH" && conda activate binance_env && \
-nohup python3 -u trade_analytics.py >> "${LOG_DIR}/trade_analytics.log" 2>&1 &)
+nohup python3 -u trade_analytics.py > /dev/null 2>&1 &)
 log_message "✅ trade_analytics.py started"
 
 # STEP 6: Start disk space watchdog
 log_message "STEP 6: Starting ez_disk_watchdog.py..."
 if ! pgrep -f "ez_disk_watchdog.py" >/dev/null 2>&1; then
-    (cd "$BINANCE_DIR" && nohup /home/niels/.conda/envs/binance_env/bin/python -u ez_disk_watchdog.py >> "${LOG_DIR}/ez_disk_watchdog.log" 2>&1 &)
+    (cd "$BINANCE_DIR" && nohup /home/niels/.conda/envs/binance_env/bin/python -u ez_disk_watchdog.py > /dev/null 2>&1 &)
     log_message "✅ ez_disk_watchdog.py started"
 else
     log_message "ez_disk_watchdog.py already running"
@@ -260,6 +268,7 @@ log_message "Watchdog: $(pgrep -f "ez_positions_watchdog.py" | wc -l) processes 
 log_message "ez_positions_quick: $(pgrep -f "ez_positions_quick.py" | wc -l) processes running"
 log_message "Indicators: $(pgrep -f "ez_indicators" | wc -l) processes running"
 log_message "Tradier processes: $(pgrep -f "python.*tradier" | wc -l) processes running"
+log_message "Copilot: $(pgrep -f "ez_copilot.py" | wc -l) processes running"
 if command -v systemctl >/dev/null 2>&1; then
     log_message "Trading/Data services status:"
     systemctl --user list-units --type=service --state=running 'binance-*.service' --no-pager 2>&1 | tee -a "$LOG_FILE"

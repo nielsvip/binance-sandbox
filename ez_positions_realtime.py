@@ -141,9 +141,16 @@ async def main():
         logger.warning(f"[REALTIME][{account_key}] ⚠️ Log setup error: {log_err}")
     
     try:
-        logger.critical(f"[REALTIME][{account_key}] 🚨🚨🚨 Calling bootstrap_position_service...")
-        # CRITICAL: Positions loaded ONCE at startup, never reloaded - initialize() blocks reloads if positions already loaded
-        service = await bootstrap_position_service(enable_auto_fetch=False)
+        logger.critical(f"[REALTIME][{account_key}] 🚨🚨🚨 Calling bootstrap_position_service (single account)...")
+        from ez_positions_service import load_accounts_from_config
+        from config import Config as _Cfg
+        _cfg = _Cfg()
+        _all_accounts = await load_accounts_from_config(_cfg, logger)
+        _single_accounts = {account_key: _all_accounts[account_key]} if account_key in _all_accounts else {}
+        if not _single_accounts:
+            logger.critical(f"[REALTIME][{account_key}] Account not found in config — exiting")
+            return
+        service = await bootstrap_position_service(enable_auto_fetch=False, accounts=_single_accounts, start_maintenance=False)
         logger.critical(f"[REALTIME][{account_key}] 🚨🚨🚨 bootstrap_position_service returned: service={service}, accounts={list(service.accounts.keys()) if service else 'None'}")
         if not service or account_key not in service.accounts:
             logger.critical(f"Account {account_key} not found")

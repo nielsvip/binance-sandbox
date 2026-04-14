@@ -30,6 +30,7 @@ import pandas as pd
 import redis.asyncio as redis
 
 from config import Config
+# wt_composite logic inlined into _inject_wt_composite() — no external dependency
 PositionsServiceClient = None  # lazy import — avoid circular dep with ez_positions_service
 from utils import (REDIS_CHANNELS, clean_nans, default_serializer,
                    get_current_environment, orjson_default)
@@ -86,6 +87,77 @@ def atr_series(df: pd.DataFrame, length: int) -> Optional[pd.Series]:
     atr = true_range.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
     return atr
 
+def adx_value(df: pd.DataFrame, length: int = 14) -> Optional[float]:
+    if df is None or df.empty or len(df) < length * 2 + 1:
+        return None
+    high = _ensure_float_series(df["high"])
+    low = _ensure_float_series(df["low"])
+    plus_dm = high.diff().clip(lower=0.0)
+    minus_dm = (-low.diff()).clip(lower=0.0)
+    mask = plus_dm < minus_dm
+    plus_dm = plus_dm.where(~mask, 0.0)
+    minus_dm = minus_dm.where(mask, 0.0)
+    atr = atr_series(df, length)
+    if atr is None:
+        return None
+    alpha = 1.0 / float(length)
+    plus_di = 100.0 * (plus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean() / atr.replace(0.0, np.nan))
+    minus_di = 100.0 * (minus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean() / atr.replace(0.0, np.nan))
+    di_sum = (plus_di + minus_di).replace(0.0, np.nan)
+    dx = ((plus_di - minus_di).abs() / di_sum) * 100.0
+    adx = dx.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
+    val = adx.iloc[-1]
+    return float(val) if pd.notna(val) else None
+
+def macd_values(series: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], bool, bool]:
+    if series is None or len(series) < 35:
+        return None, None, None, False, False
+    data = _ensure_float_series(series)
+    ema12 = data.ewm(span=12, adjust=False).mean()
+    ema26 = data.ewm(span=26, adjust=False).mean()
+    macd_line = ema12 - ema26
+    signal = macd_line.ewm(span=9, adjust=False).mean()
+    hist = macd_line - signal
+    crossover = bool(macd_line.iloc[-1] > signal.iloc[-1] and macd_line.iloc[-2] <= signal.iloc[-2])
+    crossunder = bool(macd_line.iloc[-1] < signal.iloc[-1] and macd_line.iloc[-2] >= signal.iloc[-2])
+    return float(macd_line.iloc[-1]), float(signal.iloc[-1]), float(hist.iloc[-1]), crossover, crossunder
+
+def ha_streak_count(df: pd.DataFrame) -> int:
+    if df is None or len(df) < 3:
+        return 0
+    streak = 0
+    for idx in range(len(df) - 1, max(len(df) - 21, 1), -1):
+        ha_c = (df["open"].iloc[idx] + df["high"].iloc[idx] + df["low"].iloc[idx] + df["close"].iloc[idx]) / 4.0
+        if idx > 0:
+            prev_c = (df["open"].iloc[idx - 1] + df["high"].iloc[idx - 1] + df["low"].iloc[idx - 1] + df["close"].iloc[idx - 1]) / 4.0
+            prev_o = (df["open"].iloc[idx - 1] + df["close"].iloc[idx - 1]) / 2.0
+        else:
+            break
+        ha_o = (prev_c + prev_o) / 2.0
+        color = 1 if ha_c >= ha_o else -1
+        if streak == 0:
+            streak = color
+        elif (streak > 0 and color > 0) or (streak < 0 and color < 0):
+            streak += color
+        else:
+            break
+    return streak
+
+def choppiness_index(df: pd.DataFrame, length: int = 14) -> Optional[float]:
+    if df is None or len(df) < length + 2:
+        return None
+    atr_1 = atr_series(df, 1)
+    if atr_1 is None:
+        return None
+    atr_sum = float(atr_1.iloc[-length:].sum())
+    high_max = float(df["high"].iloc[-length:].max())
+    low_min = float(df["low"].iloc[-length:].min())
+    hl_range = high_max - low_min
+    if hl_range <= 0:
+        return None
+    chop = 100.0 * math.log10(atr_sum / hl_range) / math.log10(float(length))
+    return max(0.0, min(100.0, chop))
+
 
 logger = logging.getLogger("ez_indicators")
 logger.setLevel(logging.INFO)
@@ -96,10 +168,7 @@ if not logger.handlers:
     # Add file handler with append mode and restart separator
     from logging.handlers import RotatingFileHandler
     logs_dir = Path.home() / "logs"
-    try:
-        logs_dir.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        logs_dir = Path.cwd()
+    logs_dir.mkdir(parents=True, exist_ok=True)
     _wid = int(os.getenv("WORKER_INSTANCE_ID", "0"))
     _wtot = int(os.getenv("WORKER_TOTAL_INSTANCES", "1"))
     log_file = logs_dir / (f"ez_indicators_worker{_wid}.log" if _wtot > 1 else "ez_indicators.log")
@@ -116,8 +185,8 @@ if not logger.handlers:
 
 TIMEFRAMES: Dict[str, Dict[str, Any]] = {
     "3m": {"seconds": 180, "half": 90, "dc_window": 20, "ema": [20], "sma": [("sma_200_1m", 70)], "atr": 14},
-    "15m": {"seconds": 900, "half": 450, "dc_window": 20, "ema": [20], "sma": [("sma_200_15m", 200)], "atr": 14},
-    "1h": {"seconds": 3600, "half": 1800, "dc_window": 20, "ema": [20], "sma": [("sma_200_1h", 200), ("sma_500_1h", 500)], "atr": 14},
+    "15m": {"seconds": 900, "half": 450, "dc_window": 20, "ema": [9, 14, 20], "sma": [("sma_200_15m", 200)], "atr": 14},
+    "1h": {"seconds": 3600, "half": 1800, "dc_window": 20, "ema": [9, 14, 20], "sma": [("sma_200_1h", 200)], "atr": 14},
     "4h": {"seconds": 14400, "half": 7200, "dc_window": 20, "ema": [20], "sma": [("sma_200_4h", 200)], "atr": 14},
     "D": {"seconds": 86400, "half": 43200, "dc_window": 20, "ema": [20], "sma": [("sma_200_D", 200)], "atr": 14}
 }
@@ -128,8 +197,8 @@ WT_N1 = 10
 WT_N2 = 21
 WT_SMOOTH = 3
 STOCH_LEN = 14
-STOCH_K = 5  # Tournament winner: stoch_smooth=5 (was 3)
-STOCH_D = 5
+STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
+STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -837,6 +906,28 @@ class KlineManager:
             pass
         return None
 
+    async def _calculate_3m_from_1m(self, symbol: str) -> Optional[pd.DataFrame]:
+        try:
+            df_1m, _, _ = await self.get_latest(symbol, "1m")
+            if df_1m is None or df_1m.empty or "timestamp_dt" not in df_1m.columns:
+                return None
+            df_1m = df_1m.copy()
+            df_1m = df_1m.sort_values("timestamp_dt").dropna(subset=["timestamp_dt"])
+            if df_1m.empty or len(df_1m) < 3:
+                return None
+            df_1m = df_1m.set_index("timestamp_dt")
+            for col in ["open", "high", "low", "close", "volume"]:
+                if col in df_1m.columns:
+                    df_1m[col] = pd.to_numeric(df_1m[col], errors="coerce")
+            df_3m = df_1m.resample("3min", label="right", closed="right").agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}).dropna()
+            if df_3m.empty:
+                return None
+            df_3m = df_3m.reset_index()
+            df_3m["timestamp"] = df_3m["timestamp_dt"].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            return df_3m
+        except Exception:
+            return None
+
     async def _calculate_15m_from_3m(self, symbol: str) -> Optional[pd.DataFrame]:
         try:
             df_3m, _, _ = await self.get_latest(symbol, "3m")
@@ -900,6 +991,17 @@ class KlineManager:
             best_df = fallback_df
             best_ts = fallback_ts
             best_path = fallback_path
+        if best_df is None and timeframe == "3m":
+            calc_df = await self._calculate_3m_from_1m(symbol)
+            if calc_df is not None and not calc_df.empty and "timestamp_dt" in calc_df.columns:
+                ts_series = calc_df["timestamp_dt"].dropna()
+                if not ts_series.empty:
+                    close_ts = ts_series.iloc[-1].to_pydatetime().astimezone(timezone.utc)
+                    age_seconds = (now - close_ts).total_seconds()
+                    if age_seconds <= tolerance:
+                        best_df = calc_df
+                        best_ts = close_ts
+                        best_path = None
         if best_df is None and timeframe == "15m":
             calc_df = await self._calculate_15m_from_3m(symbol)
             if calc_df is not None and not calc_df.empty and "timestamp_dt" in calc_df.columns:
@@ -1081,6 +1183,52 @@ def bb_features(series: pd.Series, length: int = 20, std_mult: float = 2.0) -> T
     pct_b = (price - lower) / band_width if band_width > 0 else 0.5
     return upper, lower, max(0.0, min(1.0, pct_b))
 
+
+def bb_auto_tune(high_series: pd.Series, low_series: pd.Series, close_series: pd.Series, length: int = 20, lookback: int = 100, touch_pct: float = 0.002) -> Tuple[float, float, float, float, int]:
+    """Auto-tune BB σ multiplier to maximize upper+lower band touches.
+    Sweeps σ from 1.5 to 3.5, counts bars where high touches upper or low touches lower.
+    Returns (best_mult, auto_upper, auto_lower, auto_pct_b, touch_count).
+    touch_pct: how close price must be to band to count as a touch (0.2% default)."""
+    n = len(close_series)
+    if n < length + 10:
+        return 2.0, 0, 0, 0.5, 0
+    # Use more history for touch counting but BB params from rolling window
+    lb = min(lookback, n - length)
+    close_arr = close_series.values[-lb - length:].astype(np.float64)
+    high_arr = high_series.values[-lb:].astype(np.float64) if high_series is not None and len(high_series) >= lb else close_arr[-lb:]
+    low_arr = low_series.values[-lb:].astype(np.float64) if low_series is not None and len(low_series) >= lb else close_arr[-lb:]
+    # Rolling SMA and std over the lookback period
+    best_mult = 2.0
+    best_touches = 0
+    # Precompute rolling mean/std for the last `lb` bars
+    _rolling_mid = np.array([np.mean(close_arr[i:i + length]) for i in range(lb)])
+    _rolling_std = np.array([np.std(close_arr[i:i + length], ddof=0) for i in range(lb)])
+    for mult_10 in range(15, 36):  # 1.5 to 3.5 in 0.1 steps
+        mult = mult_10 / 10.0
+        upper = _rolling_mid + mult * _rolling_std
+        lower = _rolling_mid - mult * _rolling_std
+        # Count touches: high within touch_pct of upper OR low within touch_pct of lower
+        # ALSO require the touch is a real reversal: high touches upper but close < upper (rejection)
+        upper_touch = int(np.sum((high_arr >= upper * (1 - touch_pct)) & (high_arr <= upper * (1 + touch_pct))))
+        lower_touch = int(np.sum((low_arr <= lower * (1 + touch_pct)) & (low_arr >= lower * (1 - touch_pct))))
+        # Score: total touches BUT penalize imbalance (want BOTH sides touched, not just one)
+        total = upper_touch + lower_touch
+        balance = min(upper_touch, lower_touch) / max(upper_touch, lower_touch, 1)
+        score = total * (0.5 + 0.5 * balance)  # Perfect balance = full score, one-sided = 50%
+        if score > best_touches:
+            best_touches = score
+            best_mult = mult
+    # Compute final bands at best_mult using latest window
+    window = close_series.iloc[-length:]
+    mid = float(window.mean())
+    std = float(window.std(ddof=0))
+    auto_upper = mid + best_mult * std
+    auto_lower = mid - best_mult * std
+    price = float(close_series.iloc[-1])
+    bw = auto_upper - auto_lower
+    auto_pct_b = (price - auto_lower) / bw if bw > 0 else 0.5
+    return best_mult, auto_upper, auto_lower, round(max(0.0, min(1.0, auto_pct_b)), 4), int(best_touches)
+
 def linreg_channel(series: pd.Series, length: int, std_mult: float = 2.5) -> Tuple[Optional[float], Optional[float], Optional[float]]:
     if series is None or len(series) < length:
         return None, None, None
@@ -1130,18 +1278,237 @@ def donchian_prev(high: pd.Series, low: pd.Series, window: int) -> Tuple[Optiona
     basis_val = (high_val + low_val) / 2.0
     return float(high_val), float(low_val), float(basis_val)
 
-def wavetrend(df: pd.DataFrame) -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
-    WT_N1 = 10
-    WT_N2 = 21
-    if len(df) < max(WT_N1, WT_N2):
+# Per-TF WaveTrend parameters (decoupled ESA/channel/signal)
+# Validated by test_wt_optimization.py: 48 symbols, 4-6yr, 1h TF sweep (2026-03-25)
+# Phase 0: ESA=6 DEMA (+7.97), sig=15 (+7.89), chan=8 (+7.89)
+# Phase 1: ESA=8 (+7.33), chan=14 (+7.19)
+# Phase 3: sig=12 (+7.15), smooth=3 (+7.13), CI=0.010 (+7.14)
+# Phase 4: 1h_dom TF weights = Sharpe 10.2 (biggest single finding)
+# Winner: esa8_chan10_1h_dom = Sharpe 10.25 SHORT, 9.27 LONG
+# 15m validated separately by backtest_wt_15m_deep.py: ESA=8(DEMA) CHAN=25(EMA) SIG=30 SM=5 CI=0.020
+WT_TF_PARAMS = {
+    "1m": {"esa": 6, "chan": 8, "sig": 12, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.010},
+    "3m": {"esa": 6, "chan": 10, "sig": 12, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.010},
+    "5m": {"esa": 8, "chan": 12, "sig": 15, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.010},
+    "15m": {"esa": 8, "chan": 25, "sig": 30, "smooth": 5, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.020},
+    "1h": {"esa": 8, "chan": 10, "sig": 12, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.010},
+    "4h": {"esa": 8, "chan": 14, "sig": 15, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.010},
+    "D": {"esa": 10, "chan": 14, "sig": 15, "smooth": 3, "esa_ma": "dema", "chan_ma": "ema", "ci": 0.015},
+}
+
+def _dema_pd(series: pd.Series, span: int) -> pd.Series:
+    e1 = series.ewm(span=span, adjust=False).mean()
+    e2 = e1.ewm(span=span, adjust=False).mean()
+    return 2 * e1 - e2
+
+def _ma_pd(series: pd.Series, span: int, ma_type: str) -> pd.Series:
+    if ma_type == "dema":
+        return _dema_pd(series, span)
+    elif ma_type == "sma":
+        return series.rolling(window=span, min_periods=1).mean()
+    return series.ewm(span=span, adjust=False).mean()
+
+def wavetrend(df: pd.DataFrame, timeframe: str = "") -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
+    p = WT_TF_PARAMS.get(timeframe, {"esa": 10, "chan": 10, "sig": 21, "smooth": 3, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.015})
+    if len(df) < max(p["esa"], p["sig"]):
         return None, None
     typical = (df["high"] + df["low"] + df["close"]) / 3
-    esa = typical.ewm(span=WT_N1, adjust=False).mean()
-    d = (typical - esa).abs().ewm(span=WT_N1, adjust=False).mean()
-    ci = (typical - esa) / (0.015 * d.replace(0, 1e-10))
-    wt1 = ci.ewm(span=WT_N2, adjust=False).mean()
-    wt2 = wt1.rolling(window=3, min_periods=1).mean()
+    esa = _ma_pd(typical, p["esa"], p["esa_ma"])
+    d = _ma_pd((typical - esa).abs(), p["chan"], p["chan_ma"])
+    ci = (typical - esa) / (p["ci"] * d.replace(0, 1e-10))
+    wt1 = ci.ewm(span=p["sig"], adjust=False).mean()
+    wt2 = wt1.rolling(window=p["smooth"], min_periods=1).mean()
     return wt1, wt2
+
+def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_series: pd.Series, high_series: pd.Series, low_series: pd.Series, timeframe: str) -> Dict[str, Any]:
+    result = {}
+    tf = timeframe
+    wt1_arr = wt1_series.values.astype(float)
+    wt2_arr = wt2_series.values.astype(float)
+    close_arr = close_series.values.astype(float)
+    high_arr = high_series.values.astype(float)
+    low_arr = low_series.values.astype(float)
+    n = len(wt1_arr)
+    if n < 5:
+        return result
+    wt1_val = float(wt1_arr[-1])
+    wt2_val = float(wt2_arr[-1])
+    result[f"wt1_{tf}"] = wt1_val
+    result[f"wt2_{tf}"] = wt2_val
+    result[f"wt_score_{tf}"] = wt1_val - wt2_val
+    # --- Cross Detection & Memory ---
+    cross_above = (wt1_arr[1:] > wt2_arr[1:]) & (wt1_arr[:-1] <= wt2_arr[:-1])
+    cross_below = (wt1_arr[1:] < wt2_arr[1:]) & (wt1_arr[:-1] >= wt2_arr[:-1])
+    cross_above_idx = np.where(cross_above)[0] + 1
+    cross_below_idx = np.where(cross_below)[0] + 1
+    # Current bar cross (fires only on the exact cross bar)
+    current_cross = None
+    if len(cross_above_idx) > 0 and cross_above_idx[-1] == n - 1:
+        current_cross = "BULL"
+    elif len(cross_below_idx) > 0 and cross_below_idx[-1] == n - 1:
+        current_cross = "BEAR"
+    result[f"wt_cross_{tf}"] = current_cross
+    # Most recent cross (persists after the cross bar — needed for evaluate functions)
+    recent_cross = None
+    recent_cross_value = None
+    recent_cross_prev_value = None
+    recent_cross_rising = None
+    recent_cross_bars_ago = 999
+    if len(cross_above_idx) > 0 and len(cross_below_idx) > 0:
+        last_bull_idx = cross_above_idx[-1]; last_bear_idx = cross_below_idx[-1]
+        if last_bull_idx > last_bear_idx:
+            recent_cross = "BULL"; recent_cross_bars_ago = n - 1 - last_bull_idx
+            recent_cross_value = float(wt1_arr[last_bull_idx])
+            if len(cross_above_idx) >= 2: recent_cross_prev_value = float(wt1_arr[cross_above_idx[-2]]); recent_cross_rising = recent_cross_value > recent_cross_prev_value
+        else:
+            recent_cross = "BEAR"; recent_cross_bars_ago = n - 1 - last_bear_idx
+            recent_cross_value = float(wt1_arr[last_bear_idx])
+            if len(cross_below_idx) >= 2: recent_cross_prev_value = float(wt1_arr[cross_below_idx[-2]]); recent_cross_rising = recent_cross_value < recent_cross_prev_value
+    elif len(cross_above_idx) > 0:
+        recent_cross = "BULL"; recent_cross_bars_ago = n - 1 - cross_above_idx[-1]
+        recent_cross_value = float(wt1_arr[cross_above_idx[-1]])
+        if len(cross_above_idx) >= 2: recent_cross_prev_value = float(wt1_arr[cross_above_idx[-2]]); recent_cross_rising = recent_cross_value > recent_cross_prev_value
+    elif len(cross_below_idx) > 0:
+        recent_cross = "BEAR"; recent_cross_bars_ago = n - 1 - cross_below_idx[-1]
+        recent_cross_value = float(wt1_arr[cross_below_idx[-1]])
+        if len(cross_below_idx) >= 2: recent_cross_prev_value = float(wt1_arr[cross_below_idx[-2]]); recent_cross_rising = recent_cross_value < recent_cross_prev_value
+    # Use recent cross for all fields (so they're never missing when a cross happened recently)
+    cross_value = recent_cross_value
+    cross_prev_value = recent_cross_prev_value
+    cross_rising = recent_cross_rising
+    result[f"wt_cross_{tf}"] = recent_cross  # Override: show most recent cross direction, not just current-bar
+    result[f"wt_cross_value_{tf}"] = cross_value
+    result[f"wt_cross_prev_value_{tf}"] = cross_prev_value
+    result[f"wt_cross_rising_{tf}"] = cross_rising
+    result[f"wt_cross_bars_ago_{tf}"] = recent_cross_bars_ago  # How many bars since the last cross
+    lookback = min(50, n - 1)
+    start = n - 1 - lookback
+    result[f"wt_cross_count_bull_{tf}"] = int(np.sum(cross_above[max(0, start - 1):]))
+    result[f"wt_cross_count_bear_{tf}"] = int(np.sum(cross_below[max(0, start - 1):]))
+    # --- Structure Analysis (peaks/troughs via 3-bar pivot) ---
+    peaks_mask = np.zeros(n, dtype=bool)
+    troughs_mask = np.zeros(n, dtype=bool)
+    if n >= 3:
+        peaks_mask[1:-1] = (wt1_arr[1:-1] > wt1_arr[:-2]) & (wt1_arr[1:-1] > wt1_arr[2:])
+        troughs_mask[1:-1] = (wt1_arr[1:-1] < wt1_arr[:-2]) & (wt1_arr[1:-1] < wt1_arr[2:])
+    peak_idx = np.where(peaks_mask)[0]
+    trough_idx = np.where(troughs_mask)[0]
+    wt_peak = float(wt1_arr[peak_idx[-1]]) if len(peak_idx) >= 1 else None
+    wt_peak_prev = float(wt1_arr[peak_idx[-2]]) if len(peak_idx) >= 2 else None
+    wt_trough = float(wt1_arr[trough_idx[-1]]) if len(trough_idx) >= 1 else None
+    wt_trough_prev = float(wt1_arr[trough_idx[-2]]) if len(trough_idx) >= 2 else None
+    result[f"wt_peak_{tf}"] = wt_peak
+    result[f"wt_peak_prev_{tf}"] = wt_peak_prev
+    result[f"wt_trough_{tf}"] = wt_trough
+    result[f"wt_trough_prev_{tf}"] = wt_trough_prev
+    peak_structure = None
+    if wt_peak is not None and wt_peak_prev is not None:
+        peak_structure = "HH" if wt_peak > wt_peak_prev else "LH"
+    trough_structure = None
+    if wt_trough is not None and wt_trough_prev is not None:
+        trough_structure = "HL" if wt_trough > wt_trough_prev else "LL"
+    result[f"wt_peak_structure_{tf}"] = peak_structure
+    result[f"wt_trough_structure_{tf}"] = trough_structure
+    result[f"wt_structure_{tf}"] = peak_structure if peak_structure is not None else trough_structure
+    # --- Divergence Detection (WT structure vs price structure) ---
+    price_peak = None
+    price_peak_prev = None
+    price_trough = None
+    price_trough_prev = None
+    price_peaks_mask = np.zeros(n, dtype=bool)
+    price_troughs_mask = np.zeros(n, dtype=bool)
+    if n >= 3:
+        price_peaks_mask[1:-1] = (high_arr[1:-1] > high_arr[:-2]) & (high_arr[1:-1] > high_arr[2:])
+        price_troughs_mask[1:-1] = (low_arr[1:-1] < low_arr[:-2]) & (low_arr[1:-1] < low_arr[2:])
+    ppeak_idx = np.where(price_peaks_mask)[0]
+    ptrough_idx = np.where(price_troughs_mask)[0]
+    if len(ppeak_idx) >= 2:
+        price_peak = float(high_arr[ppeak_idx[-1]])
+        price_peak_prev = float(high_arr[ppeak_idx[-2]])
+    if len(ptrough_idx) >= 2:
+        price_trough = float(low_arr[ptrough_idx[-1]])
+        price_trough_prev = float(low_arr[ptrough_idx[-2]])
+    divergence = None
+    divergence_strength = 0.0
+    if price_trough is not None and price_trough_prev is not None and wt_trough is not None and wt_trough_prev is not None:
+        price_ll = price_trough < price_trough_prev
+        wt_hl = wt_trough > wt_trough_prev
+        price_hl = price_trough > price_trough_prev
+        wt_ll = wt_trough < wt_trough_prev
+        if price_ll and wt_hl:
+            divergence = "BULL"
+            price_range = abs(price_trough_prev - price_trough) / (abs(price_trough_prev) + 1e-10)
+            wt_range = abs(wt_trough - wt_trough_prev) / (abs(wt_trough_prev) + 1e-10)
+            divergence_strength = min(1.0, (price_range + wt_range) / 2.0)
+        elif price_hl and wt_ll:
+            divergence = "HIDDEN_BULL"
+            divergence_strength = min(1.0, abs(wt_trough_prev - wt_trough) / (abs(wt_trough_prev) + 1e-10))
+    if divergence is None and price_peak is not None and price_peak_prev is not None and wt_peak is not None and wt_peak_prev is not None:
+        price_hh = price_peak > price_peak_prev
+        wt_lh = wt_peak < wt_peak_prev
+        price_lh = price_peak < price_peak_prev
+        wt_hh = wt_peak > wt_peak_prev
+        if price_hh and wt_lh:
+            divergence = "BEAR"
+            price_range = abs(price_peak - price_peak_prev) / (abs(price_peak_prev) + 1e-10)
+            wt_range = abs(wt_peak_prev - wt_peak) / (abs(wt_peak_prev) + 1e-10)
+            divergence_strength = min(1.0, (price_range + wt_range) / 2.0)
+        elif price_lh and wt_hh:
+            divergence = "HIDDEN_BEAR"
+            divergence_strength = min(1.0, abs(wt_peak - wt_peak_prev) / (abs(wt_peak_prev) + 1e-10))
+    result[f"wt_divergence_{tf}"] = divergence
+    result[f"wt_divergence_strength_{tf}"] = round(divergence_strength, 4)
+    # --- Velocity & Acceleration (4-Quadrant Model) ---
+    lag = 3
+    velocity = wt1_arr[-1] - wt1_arr[-1 - lag] if n > lag else 0.0
+    velocity_prev = wt1_arr[-1 - lag] - wt1_arr[-1 - 2 * lag] if n > 2 * lag else 0.0
+    acceleration = velocity - velocity_prev
+    result[f"wt_velocity_{tf}"] = round(velocity, 4)
+    result[f"wt_acceleration_{tf}"] = round(acceleration, 4)
+    wt_rising = velocity > 0
+    if wt_rising and acceleration > 0:
+        momentum_state = "IMPULSE_UP"
+    elif wt_rising and acceleration <= 0:
+        momentum_state = "EXHAUST_UP"
+    elif not wt_rising and acceleration < 0:
+        momentum_state = "IMPULSE_DOWN"
+    else:
+        momentum_state = "EXHAUST_DOWN"
+    result[f"wt_momentum_state_{tf}"] = momentum_state
+    # --- Adaptive Bands (percentile, zscore, extreme) ---
+    window = min(200, n)
+    wt1_window = wt1_arr[-window:]
+    percentile = float(np.sum(wt1_window <= wt1_val) / window * 100.0)
+    mean_w = float(np.mean(wt1_window))
+    std_w = float(np.std(wt1_window))
+    zscore = (wt1_val - mean_w) / std_w if std_w > 1e-10 else 0.0
+    result[f"wt_percentile_{tf}"] = round(percentile, 2)
+    result[f"wt_zscore_{tf}"] = round(zscore, 4)
+    result[f"wt_extreme_{tf}"] = abs(zscore) > 2.0
+    # --- Wave Position (expansion/contraction via zero-crossing peak tracking) ---
+    zero_cross_idx = np.where((wt1_arr[1:] * wt1_arr[:-1]) < 0)[0] + 1
+    wave_phase = "TRANSITIONING"
+    if len(zero_cross_idx) >= 1 and zero_cross_idx[-1] == n - 1:
+        wave_phase = "TRANSITIONING"
+    elif len(peak_idx) >= 2:
+        abs_last = abs(wt1_arr[peak_idx[-1]])
+        abs_prev = abs(wt1_arr[peak_idx[-2]])
+        wave_phase = "EXPANDING" if abs_last > abs_prev else "CONTRACTING"
+    elif len(trough_idx) >= 2:
+        abs_last = abs(wt1_arr[trough_idx[-1]])
+        abs_prev = abs(wt1_arr[trough_idx[-2]])
+        wave_phase = "EXPANDING" if abs_last > abs_prev else "CONTRACTING"
+    result[f"wt_wave_phase_{tf}"] = wave_phase
+    # --- Legacy signal (backward compat) ---
+    prev_wt1 = float(wt1_arr[-2]) if n > 1 else wt1_val
+    prev_wt2 = float(wt2_arr[-2]) if n > 1 else wt2_val
+    if prev_wt1 <= prev_wt2 and wt1_val > wt2_val and wt1_val < -50:
+        result[f"wt_signal_{tf}"] = "BUY"
+    elif prev_wt1 >= prev_wt2 and wt1_val < wt2_val and wt1_val > 50:
+        result[f"wt_signal_{tf}"] = "SELL"
+    else:
+        result[f"wt_signal_{tf}"] = "NEUTRAL"
+    return result
 
 def heikin_ashi(df: pd.DataFrame) -> Tuple[str, Optional[str]]:
     if df.empty:
@@ -1210,8 +1577,8 @@ def hull_trend_indicators(close_series: pd.Series, length_short: int = 9, length
     except Exception: return None, None, None
 
 STOCH_LEN = 14
-STOCH_K = 5  # Tournament winner: stoch_smooth=5 (was 3)
-STOCH_D = 5
+STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.28 WR 52.9% Sharpe 4.41 (was 5)
+STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
 
 def stoch_result(series: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float], bool, bool]:
     def fallback(window: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float], bool, bool]:
@@ -1275,90 +1642,190 @@ def atr_values(df: pd.DataFrame, short_len: int, long_len: int) -> Tuple[Optiona
     return (float(curr) if pd.notna(curr) else None, float(prev) if pd.notna(prev) else None, float(long_val) if long_val is not None and pd.notna(long_val) else None)
 
 def detect_bar_patterns(df: pd.DataFrame, timeframe: str) -> Dict[str, Any]:
-    """Detect candlestick patterns with volume confirmation on HTF (1h, 4h, D)."""
+    """Detect candlestick patterns, multi-bar structure, vol regime, streak on HTF."""
     result: Dict[str, Any] = {}
-    if df is None or len(df) < 5:
+    if df is None or len(df) < 10:
         return result
     o = df["open"].astype(float)
     h = df["high"].astype(float)
     l = df["low"].astype(float)
     c = df["close"].astype(float)
     v = df["volume"].astype(float)
-    o1, h1, l1, c1, v1 = float(o.iloc[-1]), float(h.iloc[-1]), float(l.iloc[-1]), float(c.iloc[-1]), float(v.iloc[-1])
-    o2, h2, l2, c2, v2 = float(o.iloc[-2]), float(h.iloc[-2]), float(l.iloc[-2]), float(c.iloc[-2]), float(v.iloc[-2])
-    o3, h3, l3, c3 = float(o.iloc[-3]), float(h.iloc[-3]), float(l.iloc[-3]), float(c.iloc[-3])
-    body1 = abs(c1 - o1)
-    range1 = h1 - l1 if h1 > l1 else 1e-10
-    body2 = abs(c2 - o2)
-    range2 = h2 - l2 if h2 > l2 else 1e-10
-    body3 = abs(c3 - o3)
-    range3 = h3 - l3 if h3 > l3 else 1e-10
+    n = len(df)
+    def _b(i): return float(o.iloc[i]), float(h.iloc[i]), float(l.iloc[i]), float(c.iloc[i]), float(v.iloc[i])
+    o1, h1, l1, c1, v1 = _b(-1)
+    o2, h2, l2, c2, v2 = _b(-2)
+    o3, h3, l3, c3, v3 = _b(-3)
+    o4, h4, l4, c4, v4 = _b(-4)
+    o5, h5, l5, c5, v5 = _b(-5)
+    body1, body2, body3, body4 = abs(c1 - o1), abs(c2 - o2), abs(c3 - o3), abs(c4 - o4)
+    range1 = max(h1 - l1, 1e-10)
+    range2 = max(h2 - l2, 1e-10)
+    range3 = max(h3 - l3, 1e-10)
     upper_wick1 = h1 - max(o1, c1)
     lower_wick1 = min(o1, c1) - l1
     body_ratio1 = body1 / range1
-    vol_avg = float(v.iloc[-21:-1].mean()) if len(v) >= 21 else float(v.iloc[:-1].mean()) if len(v) >= 2 else v1
+    is_bull1, is_bear1 = c1 > o1, c1 < o1
+    is_bull2, is_bear2 = c2 > o2, c2 < o2
+    is_bull3, is_bear3 = c3 > o3, c3 < o3
+    # --- Volume analysis ---
+    vol_window = min(20, n - 1)
+    vol_avg = float(v.iloc[-vol_window - 1:-1].mean()) if vol_window > 0 else v1
     vol_ratio = v1 / vol_avg if vol_avg > 0 else 1.0
     vol_confirm = vol_ratio >= 1.3
+    vol_spike = vol_ratio >= 2.0
+    vol_dry = vol_ratio < 0.6
+    vol_expanding = all(float(v.iloc[-i]) > float(v.iloc[-i - 1]) for i in range(1, min(4, n)))
+    # --- ATR percentile (volatility regime) ---
+    atr_arr = (h - l).astype(float)
+    atr_curr = float(atr_arr.iloc[-1])
+    atr_window = min(50, n)
+    atr_hist = atr_arr.iloc[-atr_window:].sort_values()
+    atr_rank = float((atr_hist < atr_curr).sum()) / max(len(atr_hist), 1)
+    vol_regime = "low" if atr_rank < 0.25 else ("high" if atr_rank > 0.75 else "normal")
+    # --- Streak (consecutive directional closes) ---
+    streak = 0
+    for i in range(1, min(8, n)):
+        ci_v = float(c.iloc[-i])
+        oi_v = float(o.iloc[-i])
+        if ci_v > oi_v:
+            if streak >= 0: streak += 1
+            else: break
+        elif ci_v < oi_v:
+            if streak <= 0: streak -= 1
+            else: break
+        else:
+            break
+    # --- Swing structure (higher-high/higher-low or lower-low/lower-high) ---
+    hh = h1 > h2 and h2 > h3
+    hl = l1 > l2 and l2 > l3
+    ll = l1 < l2 and l2 < l3
+    lh = h1 < h2 and h2 < h3
+    swing_bull = hh and hl
+    swing_bear = ll and lh
+    # --- Range compression (N bars narrowing) ---
+    ranges_5 = [max(float(h.iloc[-i]) - float(l.iloc[-i]), 1e-10) for i in range(1, min(6, n))]
+    compression = all(ranges_5[i] <= ranges_5[i + 1] for i in range(len(ranges_5) - 1)) if len(ranges_5) >= 3 else False
+    compression_ratio = ranges_5[0] / ranges_5[-1] if len(ranges_5) >= 3 and ranges_5[-1] > 0 else 1.0
+    # --- Multi-inside (2+ consecutive inside bars) ---
+    inside_count = 0
+    for i in range(1, min(5, n - 1)):
+        if float(h.iloc[-i]) < float(h.iloc[-i - 1]) and float(l.iloc[-i]) > float(l.iloc[-i - 1]):
+            inside_count += 1
+        else:
+            break
+    # --- Pattern detection (priority order) ---
     pattern = "none"
     direction = 0
     strength = 0.0
-    is_bull1 = c1 > o1
-    is_bear1 = c1 < o1
-    is_bull2 = c2 > o2
-    is_bear2 = c2 < o2
-    # --- Engulfing ---
-    if is_bull1 and is_bear2 and c1 > o2 and o1 < c2 and body1 > body2:
+    # 1. Morning Star (3-bar bull reversal: big bear + small body + big bull)
+    if is_bear3 and body3 > range3 * 0.5 and body2 < range2 * 0.3 and is_bull1 and body1 > range1 * 0.5 and c1 > (o3 + c3) / 2:
+        pattern = "morning_star"
+        direction = 1
+        strength = min(1.0, (body1 + body3) / (2 * range1 + 1e-10))
+    # 2. Evening Star (3-bar bear reversal: big bull + small body + big bear)
+    elif is_bull3 and body3 > range3 * 0.5 and body2 < range2 * 0.3 and is_bear1 and body1 > range1 * 0.5 and c1 < (o3 + c3) / 2:
+        pattern = "evening_star"
+        direction = -1
+        strength = min(1.0, (body1 + body3) / (2 * range1 + 1e-10))
+    # 3. Three White Soldiers (3 consecutive strong bull candles with higher closes)
+    elif is_bull1 and is_bull2 and is_bull3 and c1 > c2 > c3 and body1 > range1 * 0.5 and body2 > range2 * 0.5 and body3 > range3 * 0.5:
+        pattern = "three_white_soldiers"
+        direction = 1
+        strength = min(1.0, min(body1, body2, body3) / max(range1, range2, range3))
+    # 4. Three Black Crows (3 consecutive strong bear candles with lower closes)
+    elif is_bear1 and is_bear2 and is_bear3 and c1 < c2 < c3 and body1 > range1 * 0.5 and body2 > range2 * 0.5 and body3 > range3 * 0.5:
+        pattern = "three_black_crows"
+        direction = -1
+        strength = min(1.0, min(body1, body2, body3) / max(range1, range2, range3))
+    # 5. Bullish Engulfing
+    elif is_bull1 and is_bear2 and c1 > o2 and o1 < c2 and body1 > body2:
         pattern = "bull_engulfing"
         direction = 1
-        strength = min(1.0, (body1 / body2) * 0.5) if body2 > 0 else 0.5
+        strength = min(1.0, (body1 / (body2 + 1e-10)) * 0.5)
+    # 6. Bearish Engulfing
     elif is_bear1 and is_bull2 and c1 < o2 and o1 > c2 and body1 > body2:
         pattern = "bear_engulfing"
         direction = -1
-        strength = min(1.0, (body1 / body2) * 0.5) if body2 > 0 else 0.5
-    # --- Hammer / Shooting Star ---
+        strength = min(1.0, (body1 / (body2 + 1e-10)) * 0.5)
+    # 7. Tweezer Bottom (two bars with nearly identical lows, 2nd is bull)
+    elif is_bull1 and abs(l1 - l2) < range1 * 0.05 and l1 < min(l3, l4):
+        pattern = "tweezer_bottom"
+        direction = 1
+        strength = min(1.0, 1.0 - abs(l1 - l2) / range1)
+    # 8. Tweezer Top (two bars with nearly identical highs, 2nd is bear)
+    elif is_bear1 and abs(h1 - h2) < range1 * 0.05 and h1 > max(h3, h4):
+        pattern = "tweezer_top"
+        direction = -1
+        strength = min(1.0, 1.0 - abs(h1 - h2) / range1)
+    # 9. Hammer
     elif body_ratio1 < 0.35 and lower_wick1 > body1 * 2.0 and upper_wick1 < body1 * 0.5:
         pattern = "hammer"
         direction = 1
         strength = min(1.0, lower_wick1 / range1)
+    # 10. Shooting Star
     elif body_ratio1 < 0.35 and upper_wick1 > body1 * 2.0 and lower_wick1 < body1 * 0.5:
         pattern = "shooting_star"
         direction = -1
         strength = min(1.0, upper_wick1 / range1)
-    # --- Inside Bar (contraction → breakout pending) ---
+    # 11. Bullish Harami (small bull inside prior big bear)
+    elif is_bull1 and is_bear2 and body1 < body2 * 0.5 and h1 < h2 and l1 > l2:
+        pattern = "bull_harami"
+        direction = 1
+        strength = 0.5 * (1.0 - body1 / (body2 + 1e-10))
+    # 12. Bearish Harami (small bear inside prior big bull)
+    elif is_bear1 and is_bull2 and body1 < body2 * 0.5 and h1 < h2 and l1 > l2:
+        pattern = "bear_harami"
+        direction = -1
+        strength = 0.5 * (1.0 - body1 / (body2 + 1e-10))
+    # 13. Multi-Inside Bar Breakout (2+ inside bars = coiled spring)
+    elif inside_count >= 2:
+        pattern = "multi_inside"
+        direction = 0
+        strength = min(1.0, inside_count * 0.3)
+    # 14. Inside Bar
     elif h1 < h2 and l1 > l2:
         pattern = "inside_bar"
         direction = 0
         strength = 1.0 - (range1 / range2)
-    # --- Outside Bar / Engulfing range ---
+    # 15. Outside Bar
     elif h1 > h2 and l1 < l2 and body_ratio1 > 0.6:
         pattern = "outside_bar"
         direction = 1 if is_bull1 else -1
         strength = body_ratio1
-    # --- Pin Bar (rejection wick > 60% of range) ---
+    # 16. Pin Bar Bull
     elif lower_wick1 > range1 * 0.6 and body_ratio1 < 0.25:
         pattern = "pin_bar_bull"
         direction = 1
         strength = lower_wick1 / range1
+    # 17. Pin Bar Bear
     elif upper_wick1 > range1 * 0.6 and body_ratio1 < 0.25:
         pattern = "pin_bar_bear"
         direction = -1
         strength = upper_wick1 / range1
-    # --- Three Bar Reversal (3 down then bull, or 3 up then bear) ---
-    elif is_bull1 and is_bear2 and c3 < o3 and c1 > h2:
+    # 18. Three Bar Bull Reversal
+    elif is_bull1 and is_bear2 and is_bear3 and c1 > h2:
         pattern = "three_bar_bull"
         direction = 1
         strength = min(1.0, body1 / (body2 + body3 + 1e-10))
-    elif is_bear1 and is_bull2 and c3 > o3 and c1 < l2:
+    # 19. Three Bar Bear Reversal
+    elif is_bear1 and is_bull2 and is_bull3 and c1 < l2:
         pattern = "three_bar_bear"
         direction = -1
         strength = min(1.0, body1 / (body2 + body3 + 1e-10))
-    # --- Doji (indecision, useful with volume spike) ---
+    # 20. Doji
     elif body_ratio1 < 0.1:
         pattern = "doji"
         direction = 0
         strength = 0.3 + (0.4 if vol_confirm else 0.0)
+    # --- Volume + direction amplifier ---
     if vol_confirm and direction != 0:
         strength = min(1.0, strength * 1.3)
+    if vol_spike and direction != 0:
+        strength = min(1.0, strength * 1.2)
+    if vol_dry and direction != 0:
+        strength *= 0.6
+    # --- Core outputs ---
     result[f"bar_pattern_{timeframe}"] = pattern
     result[f"bar_direction_{timeframe}"] = direction
     result[f"bar_strength_{timeframe}"] = round(strength, 3)
@@ -1367,6 +1834,17 @@ def detect_bar_patterns(df: pd.DataFrame, timeframe: str) -> Dict[str, Any]:
     result[f"bar_body_ratio_{timeframe}"] = round(body_ratio1, 3)
     result[f"bar_upper_wick_{timeframe}"] = round(upper_wick1 / range1, 3) if range1 > 0 else 0.0
     result[f"bar_lower_wick_{timeframe}"] = round(lower_wick1 / range1, 3) if range1 > 0 else 0.0
+    # --- Structure outputs ---
+    result[f"bar_streak_{timeframe}"] = streak
+    result[f"bar_swing_bull_{timeframe}"] = swing_bull
+    result[f"bar_swing_bear_{timeframe}"] = swing_bear
+    result[f"bar_compression_{timeframe}"] = compression
+    result[f"bar_compression_ratio_{timeframe}"] = round(compression_ratio, 3)
+    result[f"bar_inside_count_{timeframe}"] = inside_count
+    result[f"bar_vol_spike_{timeframe}"] = vol_spike
+    result[f"bar_vol_expanding_{timeframe}"] = vol_expanding
+    result[f"bar_vol_regime_{timeframe}"] = vol_regime
+    result[f"bar_atr_rank_{timeframe}"] = round(atr_rank, 3)
     return result
 
 def mfi_value(df: pd.DataFrame) -> Optional[float]:
@@ -1543,24 +2021,10 @@ class IndicatorCalculator:
             result[f"stoch_d_{timeframe}"] = d_curr if d_curr is not None else k_curr
             result[f"k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
             result[f"d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
-        wt1, wt2 = wavetrend(adjusted_df)
+        wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
-            wt1_val = float(wt1.iloc[-1]) if pd.notna(wt1.iloc[-1]) else None
-            wt2_val = float(wt2.iloc[-1]) if pd.notna(wt2.iloc[-1]) else None
-            if wt1_val is not None:
-                result[f"wt1_{timeframe}"] = wt1_val
-            if wt2_val is not None:
-                result[f"wt2_{timeframe}"] = wt2_val
-            if wt1_val is not None and wt2_val is not None:
-                result[f"wt_score_{timeframe}"] = wt1_val - wt2_val
-                prev_wt1 = float(wt1.iloc[-2]) if len(wt1) > 1 and pd.notna(wt1.iloc[-2]) else wt1_val
-                prev_wt2 = float(wt2.iloc[-2]) if len(wt2) > 1 and pd.notna(wt2.iloc[-2]) else wt2_val
-                if prev_wt1 <= prev_wt2 and wt1_val > wt2_val and wt1_val < -50:
-                    result[f"wt_signal_{timeframe}"] = "BUY"
-                elif prev_wt1 >= prev_wt2 and wt1_val < wt2_val and wt1_val > 50:
-                    result[f"wt_signal_{timeframe}"] = "SELL"
-                else:
-                    result[f"wt_signal_{timeframe}"] = "NEUTRAL"
+            wt_intel = wavetrend_intelligence(wt1, wt2, close_series, high_series, low_series, timeframe)
+            result.update(wt_intel)
         else:
             result[f"wt_signal_{timeframe}"] = "NEUTRAL"
         ha_color, ha_prev = heikin_ashi(adjusted_df)
@@ -1572,8 +2036,8 @@ class IndicatorCalculator:
             result[f"atr_{timeframe}"] = atr_curr
         if atr_prev is not None:
             result[f"atr_{timeframe}_prev"] = atr_prev
-        if atr_long is not None:
-            result[f"atr_long_{timeframe}"] = atr_long
+        # atr_long REMOVED — 0 references in consumers
+        pass
         rel_vol = relative_volume(adjusted_df, REL_VOL_LENGTH)
         if rel_vol is not None:
             result[f"relative_volume_{timeframe}"] = rel_vol
@@ -1583,6 +2047,25 @@ class IndicatorCalculator:
         rsi_val = rsi_value(close_series, 14)
         if rsi_val is not None:
             result[f"rsi_{timeframe}"] = rsi_val
+        # New indicators restricted to 1h only (where they're consumed) to save CPU
+        if timeframe in ("1h", "4h"):
+            rsi2_val = rsi_value(close_series, 2)
+            if rsi2_val is not None:
+                result[f"rsi_2_{timeframe}"] = rsi2_val
+            adx_val = adx_value(adjusted_df, 14)
+            if adx_val is not None:
+                result[f"adx_{timeframe}"] = adx_val
+            _macd, _macd_sig, _macd_hist, _macd_co, _macd_cu = macd_values(close_series)
+            if _macd is not None:
+                result[f"macd_{timeframe}"] = _macd
+                result[f"macd_signal_{timeframe}"] = _macd_sig
+                result[f"macd_hist_{timeframe}"] = _macd_hist
+                result[f"macd_crossover_{timeframe}"] = _macd_co
+                result[f"macd_crossunder_{timeframe}"] = _macd_cu
+        if timeframe in ("1h", "4h", "15m"):
+            _ha_streak = ha_streak_count(adjusted_df)
+            result[f"ha_streak_{timeframe}"] = _ha_streak
+        # chop REMOVED — computed but 0 consumers. Re-enable when REGIME_ADAPTIVE_ENABLED is wired.
         for ema_length in TIMEFRAMES[timeframe]["ema"]:
             ema_curr, ema_prev = ema_pair(close_series, ema_length)
             if ema_curr is not None:
@@ -1610,19 +2093,42 @@ class IndicatorCalculator:
         if timeframe == "4h" and linearity is not None:
             result["linearity_4h"] = linearity
             result["slope_close_4h"] = slope
-        if timeframe in ("1h", "4h", "D"):
-            _bb_u, _bb_l, _bb_pb = bb_features(close_series, length=20, std_mult=2.0)
-            if _bb_pb is not None:
-                result[f"bb_upper_{timeframe}"] = _bb_u
-                result[f"bb_lower_{timeframe}"] = _bb_l
-                result[f"bb_pct_b_{timeframe}"] = _bb_pb
+        if True:  # BB on ALL timeframes — auto-tuned σ per symbol (natural S/R)
+            # Auto-tune: find the σ where bands touch price highs+lows the most
+            if len(adjusted_df) >= 120:
+                _at_mult, _at_u, _at_l, _at_pb, _at_touches = bb_auto_tune(adjusted_df["high"], adjusted_df["low"], close_series, length=20, lookback=100, touch_pct=0.002)
+            else:
+                _at_mult, _at_u, _at_l, _at_pb, _at_touches = 2.0, 0, 0, 0.5, 0
+                _fb = bb_features(close_series, length=20, std_mult=2.0)
+                if _fb[2] is not None:
+                    _at_u, _at_l, _at_pb = _fb
+            if _at_u and _at_l:
+                _bb_mid = (_at_u + _at_l) / 2.0
+                result[f"bb_upper_{timeframe}"] = _at_u
+                result[f"bb_lower_{timeframe}"] = _at_l
+                result[f"bb_mid_{timeframe}"] = _bb_mid
+                result[f"bb_pct_b_{timeframe}"] = _at_pb
+                result[f"bb_width_{timeframe}"] = round((_at_u - _at_l) / _bb_mid * 100.0, 3) if _bb_mid > 0 else 0.0
+                result[f"bb_mult_{timeframe}"] = round(_at_mult, 2)
+                result[f"bb_touches_{timeframe}"] = _at_touches
             _lr_u, _lr_l, _lr_pb = linreg_channel(close_series, LINREG_LENGTH, std_mult=2.5)
             if _lr_pb is not None:
-                result[f"lr_upper_{timeframe}"] = _lr_u
-                result[f"lr_lower_{timeframe}"] = _lr_l
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
-            bar_pat = detect_bar_patterns(adjusted_df, timeframe)
-            result.update(bar_pat)
+                # lr_upper/lr_lower REMOVED — 0 references in consumers
+            # bar_pat RESTORED — BACKTEST_CHANGE_150 compression breakout needs bar_atr_rank_{tf}
+            try:
+                bar_pat = detect_bar_patterns(adjusted_df, timeframe)
+                if bar_pat:
+                    result.update(bar_pat)
+            except Exception:
+                pass
+            # Candle body comparison (current vs prev) — needed by Strategy 3 (EMA200+StochRSI)
+            _cb_body = abs(float(close_series.iloc[-1]) - float(open_series.iloc[-1]))
+            _cb_body_prev = abs(float(close_series.iloc[-2]) - float(open_series.iloc[-2])) if len(close_series) > 1 else _cb_body
+            result[f"candle_body_{timeframe}"] = round(_cb_body, 8)
+            result[f"candle_body_prev_{timeframe}"] = round(_cb_body_prev, 8)
+            result[f"candle_body_ratio_{timeframe}"] = round(_cb_body / _cb_body_prev, 3) if _cb_body_prev > 0 else 1.0
+            pass
         if timeframe == "3m":
             # Calculate THMA-based trend indicators with floor division
             t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
@@ -1641,22 +2147,8 @@ class IndicatorCalculator:
                 result["tco_15m"] = tco
             if tcu is not None:
                 result["tcu_15m"] = tcu
-        if timeframe == "1h":
-            t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
-            if t_up is not None:
-                result["t_up_1h"] = t_up
-            if tco is not None:
-                result["tco_1h"] = tco
-            if tcu is not None:
-                result["tcu_1h"] = tcu
-        if timeframe == "3m":
-            t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
-            if t_up is not None:
-                result["t_up_3m"] = t_up
-            if tco is not None:
-                result["tco_3m"] = tco
-            if tcu is not None:
-                result["tcu_3m"] = tcu
+        # Hull 1h REMOVED — only 3m/15m used in rankings. Saves ~20-50ms/symbol.
+        # Duplicate 3m Hull computation REMOVED — already computed above.
             sma_1m_curr, sma_1m_prev = sma_pair(close_series, 70)
             if sma_1m_curr is not None:
                 result["sma_200_1m"] = sma_1m_curr
@@ -2260,10 +2752,11 @@ class IndicatorOrchestrator:
                     break
         self._inject_external_scores(symbol, symbol_data)
         self._inject_dc_moment(symbol, symbol_data)
+        self._inject_wt_composite(symbol, symbol_data)
         self._flag_errors(symbol_data)
         self._update_master_timestamp(symbol_data)
         state.last_df = df.copy()
-        
+
         # Ensure tick timestamp is set from the result if not already there
         if '_tick_ts' not in symbol_data and 'timestamp' in symbol_data:
             try:
@@ -2300,6 +2793,7 @@ class IndicatorOrchestrator:
         symbol_data.update(result)
         self._inject_external_scores(symbol, symbol_data)
         self._inject_dc_moment(symbol, symbol_data)
+        self._inject_wt_composite(symbol, symbol_data)
         self._flag_errors(symbol_data)
         state.mid_done = True
         state.last_mid_finish = utc_now()
@@ -3257,20 +3751,101 @@ class IndicatorOrchestrator:
         wr = float(rd.get('dc_width_rank', 0.5))
         symbol_data['0dc_qty'] = round(moment * wr, 1)
 
+    def _inject_wt_composite(self, symbol: str, symbol_data: Dict[str, Any]) -> None:
+        """Cross-TF WaveTrend composite — inlined from wt_composite.py.
+        Produces wt_bull_alignment, wt_composite_bias, wt_hh_count, etc."""
+        try:
+            tfs = ["3m", "15m", "1h", "4h", "D"]
+            _sf = lambda v, d=0.0: float(v) if v is not None else d
+            n_tfs = len(tfs)
+            bull_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt1_{tf}")) > _sf(symbol_data.get(f"wt2_{tf}")))
+            symbol_data["wt_bull_alignment"] = bull_count
+            symbol_data["wt_bear_alignment"] = n_tfs - bull_count
+            htf_tfs = [tf for tf in tfs if tf not in ("3m", "5m")]
+            hl_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_trough_structure_{tf}") == "HL")
+            lh_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_peak_structure_{tf}") == "LH")
+            ll_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_trough_structure_{tf}") == "LL")
+            hh_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_peak_structure_{tf}") == "HH")
+            symbol_data["wt_hl_count"] = hl_count
+            symbol_data["wt_lh_count"] = lh_count
+            symbol_data["wt_ll_count"] = ll_count
+            symbol_data["wt_hh_count"] = hh_count
+            symbol_data["wt_any_bull_div"] = False
+            symbol_data["wt_any_bear_div"] = False
+            symbol_data["wt_strongest_bull_div_tf"] = None
+            symbol_data["wt_strongest_bear_div_tf"] = None
+            for tf in tfs:
+                div = symbol_data.get(f"wt_divergence_{tf}")
+                if div in ("BULL", "HIDDEN_BULL"):
+                    symbol_data["wt_any_bull_div"] = True
+                    symbol_data["wt_strongest_bull_div_tf"] = tf
+                if div in ("BEAR", "HIDDEN_BEAR"):
+                    symbol_data["wt_any_bear_div"] = True
+                    symbol_data["wt_strongest_bear_div_tf"] = tf
+            states = {tf: (symbol_data.get(f"wt_momentum_state_{tf}") or "") for tf in tfs}
+            symbol_data["wt_momentum_narrative"] = states
+            rising_crosses = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_rising_{tf}") is True)
+            falling_crosses = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_rising_{tf}") is False)
+            symbol_data["wt_rising_cross_count"] = rising_crosses
+            symbol_data["wt_falling_cross_count"] = falling_crosses
+            os_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_percentile_{tf}"), 50) < 20)
+            ob_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_percentile_{tf}"), 50) > 80)
+            symbol_data["wt_oversold_tf_count"] = os_count
+            symbol_data["wt_overbought_tf_count"] = ob_count
+            vel_up = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_velocity_{tf}")) > 0)
+            vel_down = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_velocity_{tf}")) < 0)
+            symbol_data["wt_velocity_up_count"] = vel_up
+            symbol_data["wt_velocity_down_count"] = vel_down
+            bull_cross_count = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_{tf}") == "BULL")
+            bear_cross_count = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_{tf}") == "BEAR")
+            symbol_data["wt_bull_cross_count"] = bull_cross_count
+            symbol_data["wt_bear_cross_count"] = bear_cross_count
+            _tw = {"D": 5, "4h": 4, "1h": 3, "15m": 2, "3m": 1, "5m": 1}
+            long_score, short_score = 0.0, 0.0
+            long_score += (bull_count - n_tfs / 2.0) * 10
+            short_score += ((n_tfs - bull_count) - n_tfs / 2.0) * 10
+            long_score += hl_count * 5 - lh_count * 5 + hh_count * 3 - ll_count * 3
+            short_score += lh_count * 5 - hl_count * 5 + ll_count * 3 - hh_count * 3
+            if symbol_data["wt_any_bull_div"]: long_score += 20
+            if symbol_data["wt_any_bear_div"]: short_score += 20
+            long_score += os_count * 5 - ob_count * 3
+            short_score += ob_count * 5 - os_count * 3
+            long_score += rising_crosses * 3
+            short_score += falling_crosses * 3
+            long_score += bull_cross_count * 3 - bear_cross_count * 2
+            short_score += bear_cross_count * 3 - bull_cross_count * 2
+            long_score += vel_up * 2 - vel_down
+            short_score += vel_down * 2 - vel_up
+            for tf in tfs:
+                w = _tw.get(tf, 1)
+                st = states.get(tf, "")
+                if st == "EXHAUST_DOWN": long_score += w
+                elif st == "IMPULSE_UP": long_score += w * 0.7
+                elif st == "EXHAUST_UP": short_score += w
+                elif st == "IMPULSE_DOWN": short_score += w * 0.7
+            symbol_data["wt_composite_long"] = max(-100.0, min(100.0, long_score))
+            symbol_data["wt_composite_short"] = max(-100.0, min(100.0, short_score))
+            symbol_data["wt_composite_bias"] = "LONG" if long_score > short_score + 10 else ("SHORT" if short_score > long_score + 10 else "NEUTRAL")
+            symbol_data["wt_composite_delta"] = round(long_score - short_score, 2)
+        except Exception:
+            pass
+
+    _nullable_keywords = {'divergence', 'wt_cross', 'wt_peak', 'wt_trough', 'bar_pattern', 'wt_strongest', 'wt_any', 'wt_wave_phase', 'wt_extreme'}
     def _flag_errors(self, symbol_data: Dict[str, Any]) -> None:
         issues: Dict[str, str] = {}
         for key, value in symbol_data.items():
             if key.startswith("_"):
                 continue
             if value is None:
-                issues[key] = "missing"
+                if not any(nk in key for nk in self._nullable_keywords):
+                    issues[key] = "missing"
                 continue
             if isinstance(value, str):
                 if value == "ERROR":
                     issues[key] = "error"
                 continue
             if isinstance(value, (int, float)) and not isinstance(value, bool):
-                if value == 0.0 and not any(marker in key for marker in self.zero_allowed_keywords):
+                if value == 0.0 and not any(marker in key for marker in self.zero_allowed_keywords) and 'bb_pct' not in key and 'dc_position' not in key:
                     issues[key] = "zero"
         if issues:
             symbol_data["_calculation_errors"] = issues
@@ -3560,6 +4135,7 @@ class IndicatorOrchestrator:
 
             ranking_list.append((symbol, norm_val))
             self._compute_conviction(values)
+            # wt_composite now runs in _inject_wt_composite() during indicator computation — no need here
 
         # --- 3. Update EMA and Ranks ---
         prev_ema = None

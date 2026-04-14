@@ -2,7 +2,7 @@
 # Continuously sync klines from gateway to macbook
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/rsync_helpers.sh"
-GATEWAY_HOST="niels@157.90.168.35"
+GATEWAY_HOST="gateway-internal"
 GATEWAY_SOURCE="/home/niels/binance/klines_cache/"
 MACBOOK_TARGET="/Users/niels/Documents/binance/klines_cache_gateway/"
 LOG_FILE="$HOME/logs/rsync_from_gateway.log"

@@ -63,12 +63,16 @@ except ImportError:
 
 # --- LOGGING ---
 Path(LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()]
-)
 logger = logging.getLogger("DataEngine")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    _fh = logging.FileHandler(LOG_FILE)
+    _fh.setFormatter(_fmt)
+    _sh = logging.StreamHandler()
+    _sh.setFormatter(_fmt)
+    logger.addHandler(_fh)
+    logger.addHandler(_sh)
 
 def resilient_json_load(path: Path):
     try:
@@ -98,6 +102,48 @@ def z_to_ts(z) -> float:
     return 0.0
 
 # --- FAST NUMPY MATH ---
+def wavetrend_numpy(highs, lows, closes, n1=10, n2=21, smooth=3):
+    """Fast WaveTrend for hot_metrics. Returns dict with all WT fields or None."""
+    n = len(closes)
+    if n < n2 + smooth + 5: return None
+    src = np.array(closes, dtype=np.float64)
+    h = np.array(highs, dtype=np.float64); l = np.array(lows, dtype=np.float64)
+    hlc3 = (h + l + src) / 3.0
+    alpha1 = 2.0 / (n1 + 1)
+    esa = np.zeros(n); esa[0] = hlc3[0]
+    for i in range(1, n): esa[i] = alpha1 * hlc3[i] + (1 - alpha1) * esa[i-1]
+    d = np.abs(hlc3 - esa)
+    de = np.zeros(n); de[0] = d[0]
+    for i in range(1, n): de[i] = alpha1 * d[i] + (1 - alpha1) * de[i-1]
+    ci = np.where(de > 0, (hlc3 - esa) / (0.015 * de), 0.0)
+    alpha3 = 2.0 / (n2 + 1)
+    wt1 = np.zeros(n); wt1[0] = ci[0]
+    for i in range(1, n): wt1[i] = alpha3 * ci[i] + (1 - alpha3) * wt1[i-1]
+    wt2 = np.convolve(wt1, np.ones(smooth)/smooth, mode='same')
+    # Cross detection (current bar)
+    cross_bull_arr = (wt1[1:] > wt2[1:]) & (wt1[:-1] <= wt2[:-1])
+    cross_bear_arr = (wt1[1:] < wt2[1:]) & (wt1[:-1] >= wt2[:-1])
+    bull_idx = np.where(cross_bull_arr)[0] + 1
+    bear_idx = np.where(cross_bear_arr)[0] + 1
+    # Most recent cross direction, value, and bars ago
+    recent_cross = None; cross_value = None; cross_prev_value = None; cross_rising = None; bars_ago = 999
+    if len(bull_idx) > 0 and len(bear_idx) > 0:
+        if bull_idx[-1] > bear_idx[-1]:
+            recent_cross = "BULL"; bars_ago = n - 1 - bull_idx[-1]; cross_value = round(float(wt1[bull_idx[-1]]), 2)
+            if len(bull_idx) >= 2: cross_prev_value = round(float(wt1[bull_idx[-2]]), 2); cross_rising = cross_value > cross_prev_value
+        else:
+            recent_cross = "BEAR"; bars_ago = n - 1 - bear_idx[-1]; cross_value = round(float(wt1[bear_idx[-1]]), 2)
+            if len(bear_idx) >= 2: cross_prev_value = round(float(wt1[bear_idx[-2]]), 2); cross_rising = cross_value < cross_prev_value
+    elif len(bull_idx) > 0:
+        recent_cross = "BULL"; bars_ago = n - 1 - bull_idx[-1]; cross_value = round(float(wt1[bull_idx[-1]]), 2)
+        if len(bull_idx) >= 2: cross_prev_value = round(float(wt1[bull_idx[-2]]), 2); cross_rising = cross_value > cross_prev_value
+    elif len(bear_idx) > 0:
+        recent_cross = "BEAR"; bars_ago = n - 1 - bear_idx[-1]; cross_value = round(float(wt1[bear_idx[-1]]), 2)
+        if len(bear_idx) >= 2: cross_prev_value = round(float(wt1[bear_idx[-2]]), 2); cross_rising = cross_value < cross_prev_value
+    # Velocity (3-bar lag)
+    velocity = float(wt1[-1] - wt1[-4]) if n > 4 else 0.0
+    return {"wt1": round(float(wt1[-1]), 2), "wt2": round(float(wt2[-1]), 2), "wt1_prev": round(float(wt1[-2]), 2), "wt2_prev": round(float(wt2[-2]), 2), "cross_bull": bool(cross_bull_arr[-1]) if len(cross_bull_arr) > 0 else False, "cross_bear": bool(cross_bear_arr[-1]) if len(cross_bear_arr) > 0 else False, "cross": recent_cross, "cross_value": cross_value, "cross_prev_value": cross_prev_value, "cross_rising": cross_rising, "cross_bars_ago": bars_ago, "bullish": bool(wt1[-1] > wt2[-1]), "score": round(float(wt1[-1] - wt2[-1]), 2), "velocity": round(velocity, 2)}
+
 def stoch_rsi_numpy(closes, period=14, k_window=3, d_window=3):
     n = len(closes)
     if n < period + k_window + d_window + 2: return None
@@ -159,10 +205,11 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
         else:
             k3 = d3 = k3p = d3p = 50.0
 
-        return {
+        result = {
             'price': last_price,
             '_tick_ts': last_tick_ts,
-            'timestamp_1m': last_tick_ts, 
+            '_calc_ts': last_tick_ts,  # Computation freshness = data freshness (mark price timestamp, NOT wall clock)
+            'timestamp_1m': last_tick_ts,
             'is_partial_1m': True,
             'is_partial_3m': True,
             'k_1m': round(float(k1), 2), 'd_1m': round(float(d1), 2),
@@ -172,6 +219,34 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
             'valid': True,
             '_hot_source': 'metrics'
         }
+
+        # 3. WaveTrend 1m — FULL intelligence (cross value, rising, bars_ago, velocity)
+        wt1m = wavetrend_numpy(closes_1m, closes_1m, closes_1m)
+        if wt1m:
+            result['wt1_1m'] = wt1m['wt1']; result['wt2_1m'] = wt1m['wt2']
+            result['wt1_1m_prev'] = wt1m['wt1_prev']; result['wt2_1m_prev'] = wt1m['wt2_prev']
+            result['wt_cross_bull_1m'] = wt1m['cross_bull']; result['wt_cross_bear_1m'] = wt1m['cross_bear']
+            result['wt_bullish_1m'] = wt1m['bullish']; result['wt_score_1m'] = wt1m['score']
+            result['wt_cross_1m'] = wt1m['cross']; result['wt_cross_value_1m'] = wt1m['cross_value']
+            result['wt_cross_prev_value_1m'] = wt1m['cross_prev_value']
+            result['wt_cross_rising_1m'] = wt1m['cross_rising']
+            result['wt_cross_bars_ago_1m'] = wt1m['cross_bars_ago']
+            result['wt_velocity_1m'] = wt1m['velocity']
+
+        # 4. WaveTrend 3m — FULL intelligence
+        wt3m = wavetrend_numpy(closes_3m, closes_3m, closes_3m)
+        if wt3m:
+            result['wt1_3m'] = wt3m['wt1']; result['wt2_3m'] = wt3m['wt2']
+            result['wt1_3m_prev'] = wt3m['wt1_prev']; result['wt2_3m_prev'] = wt3m['wt2_prev']
+            result['wt_cross_bull_3m'] = wt3m['cross_bull']; result['wt_cross_bear_3m'] = wt3m['cross_bear']
+            result['wt_bullish_3m'] = wt3m['bullish']; result['wt_score_3m'] = wt3m['score']
+            result['wt_cross_3m'] = wt3m['cross']; result['wt_cross_value_3m'] = wt3m['cross_value']
+            result['wt_cross_prev_value_3m'] = wt3m['cross_prev_value']
+            result['wt_cross_rising_3m'] = wt3m['cross_rising']
+            result['wt_cross_bars_ago_3m'] = wt3m['cross_bars_ago']
+            result['wt_velocity_3m'] = wt3m['velocity']
+
+        return result
     except Exception as e:
         return None
 
@@ -383,29 +458,44 @@ class MarketDataEngine:
                 await asyncio.sleep(5)
 
     async def redis_injector(self):
-        """Source 2: Redis Fallback Poll (Grabs prices pushed by other workers)"""
+        """Source 2: Redis Fallback Poll (ALL price sources from ALL scripts)"""
         while self.running:
             try:
                 if self.redis:
                     symbols_list = list(self.symbols)
+                    # Source 2a: mark_price:{sym} (written by ez_positions_service from WS)
                     async with self.redis.pipeline() as pipe:
                         for s in symbols_list:
                             pipe.get(f"mark_price:{s}")
                         results = await pipe.execute()
-                    
                     for i, raw in enumerate(results):
                         if raw:
-                            obj = orjson.loads(raw)
-                            sym = symbols_list[i]
-                            ts = z_to_ts(obj.get('timestamp'))
-                            
-                            # Only inject if Redis data is NEWER than what's in our buffer
-                            if ts > self.price_buffer.get(sym, {}).get('t', 0):
-                                p = float(obj.get('price', obj.get('last', 0)))
-                                self.price_buffer[sym] = {'p': p, 't': ts}
+                            try:
+                                obj = orjson.loads(raw)
+                                sym = symbols_list[i]
+                                ts = z_to_ts(obj.get('timestamp'))
+                                if ts > self.price_buffer.get(sym, {}).get('t', 0):
+                                    p = float(obj.get('price', obj.get('last', 0)))
+                                    if p > 0: self.price_buffer[sym] = {'p': p, 't': ts}
+                            except Exception: pass
+                    # Source 2b: mark_prices hash (written by ez_mark_prices)
+                    try:
+                        all_marks = await self.redis.hgetall("mark_prices")
+                        if all_marks:
+                            for sym_bytes, val_bytes in all_marks.items():
+                                try:
+                                    sym = sym_bytes.decode() if isinstance(sym_bytes, bytes) else str(sym_bytes)
+                                    if sym not in self.symbols: continue
+                                    obj = orjson.loads(val_bytes)
+                                    ts = z_to_ts(obj.get('timestamp', obj.get('ts', obj.get('time'))))
+                                    if ts > self.price_buffer.get(sym, {}).get('t', 0):
+                                        p = float(obj.get('price', obj.get('mark_price', obj.get('last', 0))))
+                                        if p > 0: self.price_buffer[sym] = {'p': p, 't': ts}
+                                except Exception: pass
+                    except Exception: pass
             except Exception:
                 pass
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1.0)  # Was 1.5s — tighter polling for fresher data
 
     async def json_injector(self):
         """Source 3: Disk Cache Fallback (Slowest, but failsafe)"""
@@ -505,7 +595,7 @@ class MarketDataEngine:
                 async with self.redis.pipeline() as pipe:
                     for sym, payload in results:
                         pipe.set(f"hot_metrics_ts:{sym}", payload['_tick_ts'], ex=60)
-                        pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload), ex=60)
+                        pipe.set(f"hot_metrics:{sym}", orjson.dumps(payload, option=orjson.OPT_SERIALIZE_NUMPY), ex=60)
                     await pipe.execute()
 
             # Ensure we don't spin uncontrollably
@@ -517,6 +607,72 @@ class MarketDataEngine:
             logger.info(f"💓 Engine Alive | Symbols: {len(self.market.data)} | {status}")
             await asyncio.sleep(30)
 
+    async def klines_cache_writeback(self):
+        """Periodically merge composed 1m/3m candles back to klines_cache so ez_indicators stays fresh."""
+        cache_dir = BASE_PATH / "klines_cache"
+        await asyncio.sleep(60)
+        while self.running:
+            try:
+                written = 0
+                for symbol, store in self.market.data.items():
+                    for tf, closes_key in [("1m", "closes_1m"), ("3m", "closes_3m")]:
+                        closes = store.get(closes_key)
+                        if not closes or len(closes) < 10:
+                            continue
+                        path = cache_dir / f"{symbol}_{tf}.json"
+                        existing = []
+                        if path.exists():
+                            try:
+                                async with aiofiles.open(path, "rb") as f:
+                                    existing = orjson.loads(await f.read())
+                                if not isinstance(existing, list):
+                                    existing = []
+                            except Exception:
+                                existing = []
+                        existing_ts = set()
+                        for bar in existing:
+                            if isinstance(bar, dict):
+                                ts_raw = bar.get("timestamp", "")
+                                try:
+                                    existing_ts.add(int(isoparse(ts_raw).timestamp()))
+                                except Exception:
+                                    pass
+                        new_bars = []
+                        for ts_epoch, close_price in closes.items():
+                            if ts_epoch not in existing_ts:
+                                ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                                new_bars.append({"timestamp": ts_iso, "open": close_price, "high": close_price, "low": close_price, "close": close_price, "volume": 0})
+                            else:
+                                for bar in existing:
+                                    if isinstance(bar, dict):
+                                        try:
+                                            bar_ts = int(isoparse(bar.get("timestamp", "")).timestamp())
+                                        except Exception:
+                                            continue
+                                        if bar_ts == ts_epoch:
+                                            bar["close"] = close_price
+                                            bar["high"] = max(float(bar.get("high", close_price)), close_price)
+                                            bar["low"] = min(float(bar.get("low", close_price)), close_price)
+                                            break
+                        if new_bars:
+                            merged = existing + new_bars
+                            merged.sort(key=lambda b: b.get("timestamp", ""))
+                            tmp = path.with_suffix(".tmp")
+                            async with aiofiles.open(tmp, "wb") as f:
+                                await f.write(orjson.dumps(merged))
+                            os.replace(tmp, path)
+                            written += 1
+                        elif existing:
+                            tmp = path.with_suffix(".tmp")
+                            async with aiofiles.open(tmp, "wb") as f:
+                                await f.write(orjson.dumps(existing))
+                            os.replace(tmp, path)
+                if written > 0:
+                    logger.info(f"📝 [KLINES_WRITEBACK] Updated {written} klines_cache files")
+            except Exception as e:
+                logger.error(f"[KLINES_WRITEBACK] Error: {e}")
+            await asyncio.sleep(60)
+
     async def main(self):
         await self.load_symbols()
         try:
@@ -527,7 +683,8 @@ class MarketDataEngine:
                 self.json_injector(),
                 self.broadcast_loop(),
                 self.heartbeat(),
-                self.shared_mem_watchdog()
+                self.shared_mem_watchdog(),
+                self.klines_cache_writeback()
             )
         except KeyboardInterrupt:
             self.running = False

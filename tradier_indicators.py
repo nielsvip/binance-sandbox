@@ -18,6 +18,7 @@ from datetime import timedelta, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from tradier_indicators_extra import compute_clenow_score, compute_smfi, compute_minervini_sepa, compute_connors_rsi
 from zoneinfo import ZoneInfo
 
 import aiofiles
@@ -30,6 +31,7 @@ from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
+# wt_composite logic inlined into _inject_wt_composite() — no external dependency
 from utils import (clean_nans, get_current_environment,
                    get_simple_redis_manager, load_environment_from_gpg,
                    safe_datetime)
@@ -89,11 +91,18 @@ logger.addHandler(file_handler)
 logger.setLevel(logging.DEBUG)
 ET = pytz.timezone("America/New_York")
 
+def _to_utc(series_or_val, errors="coerce"):
+    """Parse timestamps to UTC, handling mixed timezone formats (Z, -04:00, -05:00, naive)."""
+    try:
+        return pd.to_datetime(series_or_val, utc=True, errors=errors)
+    except (ValueError, TypeError):
+        return pd.to_datetime(series_or_val, format="mixed", utc=True, errors=errors)
+
 def filter_strict_market_hours(df: pd.DataFrame, is_fast_tf: bool) -> pd.DataFrame:
     if df.empty: return df
     df = df.copy()
     source_col = "timestamp" if "timestamp" in df.columns else "time"
-    dt_series = pd.to_datetime(df[source_col], utc=True).dt.tz_convert(ET)
+    dt_series = _to_utc(df[source_col]).dt.tz_convert(ET)
     time_series = dt_series.dt.time
     start_time = dt_time(8, 30) if is_fast_tf else dt_time(9, 30)
     end_time = dt_time(16, 0)
@@ -143,7 +152,7 @@ def resample_tf(df, tf):
     df = df.copy()
     
     source_col = "close_time" if "close_time" in df.columns else "timestamp"
-    df["close_time"] = pd.to_datetime(df[source_col], utc=True, errors='coerce')
+    df["close_time"] = _to_utc(df[source_col])
     df = df.dropna(subset=['close_time'])
     if df.empty: return pd.DataFrame()
     
@@ -197,7 +206,7 @@ def resample_tf(df, tf):
         out.index = out.index.tz_convert(pytz.UTC)
         
     out = out.reset_index()
-    out["close_time"] = pd.to_datetime(out["close_time"], utc=True)
+    out["close_time"] = _to_utc(out["close_time"])
     out["timestamp"] = out["close_time"].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     return out
 
@@ -215,7 +224,7 @@ def is_intraday_data(df, expected_tf):
     if not ts_col:
         return True
     try:
-        dts = pd.to_datetime(df[ts_col], utc=True, errors="coerce").dropna()
+        dts = _to_utc(df[ts_col]).dropna()
         if len(dts) < 3:
             return True
         median_gap = dts.diff().dropna().dt.total_seconds().median()
@@ -265,6 +274,26 @@ def atr_series(df: pd.DataFrame, length: int) -> Optional[pd.Series]:
     alpha = 1.0 / float(length)
     atr = true_range.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
     return atr
+
+def adx_value(df: pd.DataFrame, length: int = 14) -> Optional[float]:
+    if df is None or df.empty or len(df) < length * 2 + 1: return None
+    high = _ensure_float_series(df["high"])
+    low = _ensure_float_series(df["low"])
+    plus_dm = high.diff().clip(lower=0.0)
+    minus_dm = (-low.diff()).clip(lower=0.0)
+    mask = plus_dm < minus_dm
+    plus_dm = plus_dm.where(~mask, 0.0)
+    minus_dm = minus_dm.where(mask, 0.0)
+    atr = atr_series(df, length)
+    if atr is None: return None
+    alpha = 1.0 / float(length)
+    plus_di = 100.0 * (plus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean() / atr.replace(0.0, np.nan))
+    minus_di = 100.0 * (minus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean() / atr.replace(0.0, np.nan))
+    di_sum = (plus_di + minus_di).replace(0.0, np.nan)
+    dx = ((plus_di - minus_di).abs() / di_sum) * 100.0
+    adx = dx.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
+    val = adx.iloc[-1]
+    return float(val) if pd.notna(val) else None
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -392,18 +421,316 @@ def donchian_prev(high: pd.Series, low: pd.Series, window: int) -> Tuple[Optiona
     basis_val = (high_val + low_val) / 2.0
     return float(high_val), float(low_val), float(basis_val)
 
-def wavetrend(df: pd.DataFrame) -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
-    WT_N1 = 10
-    WT_N2 = 21
-    if len(df) < max(WT_N1, WT_N2):
+# Per-TF WaveTrend parameters for stocks
+# Validated by test_wt_optimization.py: 48 stocks, 3+ years, 1h TF sweep (2026-03-25)
+# Stocks: EMA > DEMA (less noise), D_dom TF weights (daily TF matters most), CI=0.010
+# Phase 0: esa=6-14 (flat), sig=15-25 (flat), EMA wins (62% top 50)
+# Phase 3: CI=0.010 (+5.59), smooth=3-4 (close)
+# Phase 4: D_dom weights = Sharpe 5.91 (vs default 5.42)
+WT_TF_PARAMS_STOCK = {
+    "5m": {"esa": 8, "chan": 12, "sig": 15, "smooth": 3, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010},
+    "15m": {"esa": 8, "chan": 14, "sig": 21, "smooth": 3, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010},
+    "1h": {"esa": 10, "chan": 10, "sig": 21, "smooth": 3, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010},
+    "4h": {"esa": 10, "chan": 14, "sig": 21, "smooth": 4, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010},
+    "D": {"esa": 10, "chan": 18, "sig": 25, "smooth": 4, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010},
+}
+def _dema_pd_stock(series: pd.Series, span: int) -> pd.Series:
+    e1 = series.ewm(span=span, adjust=False).mean()
+    e2 = e1.ewm(span=span, adjust=False).mean()
+    return 2 * e1 - e2
+def _ma_pd_stock(series: pd.Series, span: int, ma_type: str) -> pd.Series:
+    if ma_type == "dema": return _dema_pd_stock(series, span)
+    elif ma_type == "sma": return series.rolling(window=span, min_periods=1).mean()
+    return series.ewm(span=span, adjust=False).mean()
+def wavetrend(df: pd.DataFrame, timeframe: str = "") -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
+    p = WT_TF_PARAMS_STOCK.get(timeframe, {"esa": 10, "chan": 10, "sig": 21, "smooth": 3, "esa_ma": "ema", "chan_ma": "ema", "ci": 0.010})
+    if len(df) < max(p["esa"], p["sig"]):
         return None, None
     typical = (df["high"] + df["low"] + df["close"]) / 3
-    esa = typical.ewm(span=WT_N1, adjust=False).mean()
-    d = (typical - esa).abs().ewm(span=WT_N1, adjust=False).mean()
-    ci = (typical - esa) / (0.015 * d.replace(0, 1e-10))
-    wt1 = ci.ewm(span=WT_N2, adjust=False).mean()
-    wt2 = wt1.rolling(window=3, min_periods=1).mean()
+    esa = _ma_pd_stock(typical, p["esa"], p["esa_ma"])
+    d = _ma_pd_stock((typical - esa).abs(), p["chan"], p["chan_ma"])
+    ci = (typical - esa) / (p["ci"] * d.replace(0, 1e-10))
+    wt1 = ci.ewm(span=p["sig"], adjust=False).mean()
+    wt2 = wt1.rolling(window=p["smooth"], min_periods=1).mean()
     return wt1, wt2
+
+def analyze_multi_tf_state_tradier(ind: dict, is_long: bool, current_price: float, config=None) -> dict:
+    """Unified K+WT+DC multi-TF analysis for STOCKS. Three signal layers per TF:
+    1. K zones: WHERE in the stochastic range
+    2. WT intelligence: WHAT's happening (crosses, velocity, divergence)
+    3. DC position: WHERE in the actual price range (0=bottom, 1=top)
+    Stock-specific: D_dom weighting, EMA-based WT, wider channels."""
+    _sf = lambda v, d=0.0: float(v) if v is not None else d
+    _sb = lambda v, d=False: v if v is not None else d
+    _w = lambda tf, d: getattr(config, f'MTS_WEIGHT_{tf}', d) if config and hasattr(config, f'MTS_WEIGHT_{tf}') else d
+    _tf_cfg = [('5m', _w('5m', 2), 'stoch_k_5m', 'stoch_d_5m'), ('15m', _w('15m', 4), 'stoch_k_15m', 'stoch_d_15m'), ('1h', _w('1h', 3), 'stoch_k_1h', 'stoch_d_1h'), ('4h', _w('4h', 5), 'stoch_k_4h', 'stoch_d_4h'), ('D', _w('D', 12), 'stoch_k_D', 'stoch_d_D')]
+    tf_breakdown = {}
+    total_bottom = 0.0; total_entry = 0.0; total_dir = 0.0; total_range = 0.0; total_weight = 0.0
+    extreme_count = 0; htf_bullish_count = 0
+    details = []
+    for tf_name, weight, k_key, d_key in _tf_cfg:
+        k_val = _sf(ind.get(k_key), 50.0); d_val = _sf(ind.get(d_key), 50.0)
+        k_prev = _sf(ind.get(f'{k_key}_prev'), k_val)
+        wt1 = _sf(ind.get(f'wt1_{tf_name}')); wt2 = _sf(ind.get(f'wt2_{tf_name}'))
+        wt_score = wt1 - wt2
+        wt_cross = ind.get(f'wt_cross_{tf_name}')
+        wt_cross_val = _sf(ind.get(f'wt_cross_value_{tf_name}'), None)
+        wt_cross_prev = _sf(ind.get(f'wt_cross_prev_value_{tf_name}'), None)
+        wt_cross_rising = _sb(ind.get(f'wt_cross_rising_{tf_name}'))
+        wt_velocity = _sf(ind.get(f'wt_velocity_{tf_name}'))
+        wt_bars_ago = _sf(ind.get(f'wt_cross_bars_ago_{tf_name}'), 999)
+        wt_divergence = ind.get(f'wt_divergence_{tf_name}', '')
+        wt_momentum = ind.get(f'wt_momentum_state_{tf_name}', '')
+        wt_bullish = wt1 > wt2
+        # DC position per TF: 0=bottom, 1=top of channel
+        dc_pos = _sf(ind.get(f'dc_position_{tf_name}'), 0.5)
+        if dc_pos > 1.0: dc_pos = dc_pos / 100.0
+        dc_pos = max(0.0, min(1.0, dc_pos))
+        dc_width = _sf(ind.get(f'dc_width_{tf_name}'), 0)
+        k_extreme_long = k_val < 10; k_extreme_short = k_val > 90
+        k_zone_long = k_val < 30; k_zone_short = k_val > 70
+        k_rising = k_val > k_prev
+        if is_long and k_extreme_long: extreme_count += 1
+        elif not is_long and k_extreme_short: extreme_count += 1
+        tf_bottom = 0.0
+        if is_long:
+            if k_extreme_long: tf_bottom += 20
+            if k_zone_long: tf_bottom += 10
+            if wt_cross == "BULL" and wt_bars_ago < 5: tf_bottom += 15
+            if wt_cross_val is not None and wt_cross_val < -40: tf_bottom += 15
+            elif wt_cross_val is not None and wt_cross_val < -20: tf_bottom += 8
+            if wt_cross_rising: tf_bottom += 10
+            if wt_divergence in ('BULL', 'HIDDEN_BULL'): tf_bottom += 20
+            if wt_momentum == 'EXHAUST_DOWN': tf_bottom += 10
+            if wt_velocity > 0 and k_rising: tf_bottom += 5
+            if dc_pos < 0.10: tf_bottom += 25
+            elif dc_pos < 0.20: tf_bottom += 18
+            elif dc_pos < 0.30: tf_bottom += 12
+            elif dc_pos < 0.40: tf_bottom += 5
+            elif dc_pos > 0.80: tf_bottom -= 10
+        else:
+            if k_extreme_short: tf_bottom += 20
+            if k_zone_short: tf_bottom += 10
+            if wt_cross == "BEAR" and wt_bars_ago < 5: tf_bottom += 15
+            if wt_cross_val is not None and wt_cross_val > 40: tf_bottom += 15
+            elif wt_cross_val is not None and wt_cross_val > 20: tf_bottom += 8
+            if wt_cross_rising: tf_bottom += 10
+            if wt_divergence in ('BEAR', 'HIDDEN_BEAR'): tf_bottom += 20
+            if wt_momentum == 'EXHAUST_UP': tf_bottom += 10
+            if wt_velocity < 0 and not k_rising: tf_bottom += 5
+            if dc_pos > 0.90: tf_bottom += 25
+            elif dc_pos > 0.80: tf_bottom += 18
+            elif dc_pos > 0.70: tf_bottom += 12
+            elif dc_pos > 0.60: tf_bottom += 5
+            elif dc_pos < 0.20: tf_bottom -= 10
+        tf_entry = 0.0
+        if wt_cross_val is not None and wt_cross_prev is not None:
+            if is_long and wt_cross_val > wt_cross_prev: tf_entry += 15
+            elif not is_long and wt_cross_val < wt_cross_prev: tf_entry += 15
+        if wt_bars_ago < 3: tf_entry += 15
+        elif wt_bars_ago < 10: tf_entry += 5
+        if wt_cross_rising: tf_entry += 10
+        if is_long and dc_pos < 0.25 and wt_bullish: tf_entry += 15
+        elif not is_long and dc_pos > 0.75 and not wt_bullish: tf_entry += 15
+        tf_range = ((1.0 - dc_pos) * 100) if is_long else (dc_pos * 100)
+        if dc_width > 5.0: tf_range *= 1.3
+        elif dc_width < 2.0: tf_range *= 0.5
+        tf_dir = 0.0
+        if wt_bullish: tf_dir += 30; htf_bullish_count += 1
+        if wt_score > 10: tf_dir += 20
+        elif wt_score > 0: tf_dir += 10
+        elif wt_score < -10: tf_dir -= 20
+        elif wt_score < 0: tf_dir -= 10
+        if k_val > d_val: tf_dir += 10
+        else: tf_dir -= 10
+        if wt_velocity > 2: tf_dir += 15
+        elif wt_velocity < -2: tf_dir -= 15
+        tf_breakdown[tf_name] = {'bottom': tf_bottom, 'entry': tf_entry, 'direction': tf_dir, 'range': tf_range, 'k': k_val, 'd': d_val, 'dc_pos': dc_pos, 'dc_width': dc_width, 'wt_score': wt_score, 'wt_bullish': wt_bullish, 'wt_velocity': wt_velocity, 'wt_bars_ago': wt_bars_ago}
+        total_bottom += tf_bottom * weight; total_entry += tf_entry * weight; total_dir += tf_dir * weight; total_range += tf_range * weight; total_weight += weight
+    if total_weight > 0:
+        bottom_score = total_bottom / total_weight; entry_quality = total_entry / total_weight; direction = total_dir / total_weight; range_score = total_range / total_weight
+    else:
+        bottom_score = 0.0; entry_quality = 0.0; direction = 0.0; range_score = 50.0
+    if extreme_count >= 4: bottom_score *= 2.0; details.append(f"K_EXTREME_4+({extreme_count}TF)")
+    elif extreme_count >= 3: bottom_score *= 1.5; details.append(f"K_EXTREME_3({extreme_count}TF)")
+    entry_quality += htf_bullish_count * 5
+    bottom_score = max(-100, min(100, bottom_score)); entry_quality = max(-100, min(100, entry_quality)); direction = max(-100, min(100, direction))
+    # Gain potential from DC width + range score (how much room to profit)
+    _dc_h_1h = _sf(ind.get('dc_high_1h'), 0); _dc_l_1h = _sf(ind.get('dc_low_1h'), 0)
+    dc_width_pct = ((_dc_h_1h - _dc_l_1h) / current_price * 100) if current_price > 0 and _dc_l_1h > 0 else 2.0
+    gain_potential = min(100, dc_width_pct * 15)  # Stocks: wider channels = 15x (vs 20x crypto)
+    gain_potential = gain_potential * (range_score / 50.0)
+    gain_potential = min(100, max(0, gain_potential))
+    if abs(direction) > 50: gain_potential *= 1.2
+    gain_potential = min(100, gain_potential)
+    size_multiplier = max(0.3, min(3.0, 0.5 + gain_potential / 50))
+    # === MULTI-TF CONVERGENCE — same logic as crypto (see ez_positions_quick.py) ===
+    # Phase 1: detect bottom/top convergence (WT low + K low + DC near extreme = 2+ signals per TF)
+    # Phase 2: WITH convergence = bounce/reversal play. THROUGH convergence = breakout/breakdown play.
+    _conv_dc_thresh = 0.15; _conv_wt_bars = 12
+    bottom_conv_count = 0; bottom_conv_tfs = []; bottom_conv_score = 0.0
+    top_conv_count = 0; top_conv_tfs = []; top_conv_score = 0.0
+    for tf_name, tfd in tf_breakdown.items():
+        dc_p = tfd.get('dc_pos', 0.5); k = tfd.get('k', 50); wt_sc = tfd.get('wt_score', 0); wt_ba = tfd.get('wt_bars_ago', 999)
+        _bot_sigs = int(dc_p < _conv_dc_thresh) + int(wt_sc < -15) + int(k < 25) + int(wt_ba < _conv_wt_bars and tfd.get('wt_bullish', False))
+        if _bot_sigs >= 2:
+            bottom_conv_count += 1; bottom_conv_tfs.append(tf_name)
+            bottom_conv_score += min(1.0, _bot_sigs / 4.0) * (1.0 - dc_p / max(_conv_dc_thresh, 0.01))
+        _top_sigs = int(dc_p > 1.0 - _conv_dc_thresh) + int(wt_sc > 15) + int(k > 75) + int(wt_ba < _conv_wt_bars and not tfd.get('wt_bullish', True))
+        if _top_sigs >= 2:
+            top_conv_count += 1; top_conv_tfs.append(tf_name)
+            top_conv_score += min(1.0, _top_sigs / 4.0) * (1.0 - (1.0 - dc_p) / max(_conv_dc_thresh, 0.01))
+    _focus_dc = 0.5
+    for _ftf in ['5m', '15m', '1h']:
+        _v = float(ind.get(f'dc_position_{_ftf}', 0.5) or 0.5)
+        if _v != 0.5: _focus_dc = _v; break
+    if _focus_dc > 1.0: _focus_dc /= 100.0
+    _price_below = _focus_dc < 0.05; _price_above = _focus_dc > 0.95
+    _price_near_low = _focus_dc < 0.15; _price_near_high = _focus_dc > 0.85
+    btb_multiplier = 1.0; convergence_count = 0; convergence_tfs = []; convergence_score = 0.0; _price_through_extreme = False
+    if is_long:
+        if bottom_conv_count >= 2 and (_price_near_low or _price_below):
+            convergence_count = bottom_conv_count; convergence_tfs = bottom_conv_tfs; convergence_score = bottom_conv_score
+            btb_multiplier = 3.0 if bottom_conv_count >= 4 else (2.5 if bottom_conv_count >= 3 else 1.8)
+            if _price_below: btb_multiplier *= 1.2; _price_through_extreme = True
+            details.append(f"BTB_LONG_BOUNCE({bottom_conv_count}TF:{'+'.join(bottom_conv_tfs)},dc={_focus_dc:.3f},x{btb_multiplier:.1f})")
+            bottom_score += 10 * bottom_conv_count; entry_quality += 8 * bottom_conv_count
+        elif top_conv_count >= 2 and _price_above:
+            convergence_count = top_conv_count; convergence_tfs = top_conv_tfs; convergence_score = top_conv_score; _price_through_extreme = True
+            btb_multiplier = 3.5 if top_conv_count >= 4 else (3.0 if top_conv_count >= 3 else 2.0)
+            details.append(f"BTB_LONG_BREAKOUT({top_conv_count}TF_RES_BROKEN:{'+'.join(top_conv_tfs)},dc={_focus_dc:.3f},x{btb_multiplier:.1f})")
+            bottom_score += 15 * top_conv_count; entry_quality += 12 * top_conv_count
+    else:
+        if top_conv_count >= 2 and (_price_near_high or _price_above):
+            convergence_count = top_conv_count; convergence_tfs = top_conv_tfs; convergence_score = top_conv_score
+            btb_multiplier = 3.0 if top_conv_count >= 4 else (2.5 if top_conv_count >= 3 else 1.8)
+            if _price_above: btb_multiplier *= 1.2; _price_through_extreme = True
+            details.append(f"BTB_SHORT_REVERSAL({top_conv_count}TF:{'+'.join(top_conv_tfs)},dc={_focus_dc:.3f},x{btb_multiplier:.1f})")
+            bottom_score += 10 * top_conv_count; entry_quality += 8 * top_conv_count
+        elif bottom_conv_count >= 2 and _price_below:
+            convergence_count = bottom_conv_count; convergence_tfs = bottom_conv_tfs; convergence_score = bottom_conv_score; _price_through_extreme = True
+            btb_multiplier = 3.5 if bottom_conv_count >= 4 else (3.0 if bottom_conv_count >= 3 else 2.0)
+            details.append(f"BTB_SHORT_BREAKDOWN({bottom_conv_count}TF_SUP_BROKEN:{'+'.join(bottom_conv_tfs)},dc={_focus_dc:.3f},x{btb_multiplier:.1f})")
+            bottom_score += 15 * bottom_conv_count; entry_quality += 12 * bottom_conv_count
+    size_multiplier = max(0.3, min(5.0, size_multiplier * btb_multiplier))
+    bottom_score = max(-100, min(100, bottom_score)); entry_quality = max(-100, min(100, entry_quality))
+    _top3 = sorted(tf_breakdown.items(), key=lambda x: x[1]['bottom'], reverse=True)[:3]
+    for tf, d in _top3:
+        if d['bottom'] > 0: details.append(f"{tf}:b{d['bottom']:.0f}/dc{d['dc_pos']:.2f}/wt{d['wt_score']:.0f}")
+    details.append(f"dir={direction:.0f}/eq={entry_quality:.0f}/gp={gain_potential:.0f}/rng={range_score:.0f}/sz={size_multiplier:.1f}x/conv={convergence_count}")
+    return {"bottom_score": bottom_score, "entry_quality": entry_quality, "gain_potential": gain_potential, "direction": direction, "size_multiplier": size_multiplier, "range_score": range_score, "convergence_count": convergence_count, "convergence_score": convergence_score, "btb_multiplier": btb_multiplier, "price_through_extreme": _price_through_extreme, "details": "|".join(details), "tf_breakdown": tf_breakdown}
+
+def wavetrend_intelligence(wt1_series: pd.Series, wt2_series: pd.Series, close_series: pd.Series, high_series: pd.Series, low_series: pd.Series, timeframe: str) -> Dict[str, Any]:
+    result = {}
+    tf = timeframe
+    wt1_arr = wt1_series.values.astype(float)
+    wt2_arr = wt2_series.values.astype(float)
+    close_arr = close_series.values.astype(float)
+    high_arr = high_series.values.astype(float)
+    low_arr = low_series.values.astype(float)
+    n = len(wt1_arr)
+    if n < 5:
+        return result
+    wt1_val = float(wt1_arr[-1])
+    wt2_val = float(wt2_arr[-1])
+    result[f"wt1_{tf}"] = wt1_val
+    result[f"wt2_{tf}"] = wt2_val
+    result[f"wt_score_{tf}"] = wt1_val - wt2_val
+    cross_above = (wt1_arr[1:] > wt2_arr[1:]) & (wt1_arr[:-1] <= wt2_arr[:-1])
+    cross_below = (wt1_arr[1:] < wt2_arr[1:]) & (wt1_arr[:-1] >= wt2_arr[:-1])
+    cross_above_idx = np.where(cross_above)[0] + 1
+    cross_below_idx = np.where(cross_below)[0] + 1
+    # Most recent cross (persists after cross bar — not just exact bar)
+    recent_cross = None; cross_value = None; cross_prev_value = None; cross_rising = None; bars_ago = 999
+    if len(cross_above_idx) > 0 and len(cross_below_idx) > 0:
+        if cross_above_idx[-1] > cross_below_idx[-1]:
+            recent_cross = "BULL"; bars_ago = n - 1 - cross_above_idx[-1]; cross_value = float(wt1_arr[cross_above_idx[-1]])
+            if len(cross_above_idx) >= 2: cross_prev_value = float(wt1_arr[cross_above_idx[-2]]); cross_rising = cross_value > cross_prev_value
+        else:
+            recent_cross = "BEAR"; bars_ago = n - 1 - cross_below_idx[-1]; cross_value = float(wt1_arr[cross_below_idx[-1]])
+            if len(cross_below_idx) >= 2: cross_prev_value = float(wt1_arr[cross_below_idx[-2]]); cross_rising = cross_value < cross_prev_value
+    elif len(cross_above_idx) > 0:
+        recent_cross = "BULL"; bars_ago = n - 1 - cross_above_idx[-1]; cross_value = float(wt1_arr[cross_above_idx[-1]])
+        if len(cross_above_idx) >= 2: cross_prev_value = float(wt1_arr[cross_above_idx[-2]]); cross_rising = cross_value > cross_prev_value
+    elif len(cross_below_idx) > 0:
+        recent_cross = "BEAR"; bars_ago = n - 1 - cross_below_idx[-1]; cross_value = float(wt1_arr[cross_below_idx[-1]])
+        if len(cross_below_idx) >= 2: cross_prev_value = float(wt1_arr[cross_below_idx[-2]]); cross_rising = cross_value < cross_prev_value
+    result[f"wt_cross_{tf}"] = recent_cross
+    result[f"wt_cross_value_{tf}"] = cross_value
+    result[f"wt_cross_prev_value_{tf}"] = cross_prev_value
+    result[f"wt_cross_rising_{tf}"] = cross_rising
+    result[f"wt_cross_bars_ago_{tf}"] = bars_ago
+    lookback = min(50, n - 1)
+    start = n - 1 - lookback
+    result[f"wt_cross_count_bull_{tf}"] = int(np.sum(cross_above[max(0, start - 1):]))
+    result[f"wt_cross_count_bear_{tf}"] = int(np.sum(cross_below[max(0, start - 1):]))
+    peaks_mask = np.zeros(n, dtype=bool)
+    troughs_mask = np.zeros(n, dtype=bool)
+    if n >= 3:
+        peaks_mask[1:-1] = (wt1_arr[1:-1] > wt1_arr[:-2]) & (wt1_arr[1:-1] > wt1_arr[2:])
+        troughs_mask[1:-1] = (wt1_arr[1:-1] < wt1_arr[:-2]) & (wt1_arr[1:-1] < wt1_arr[2:])
+    peak_idx = np.where(peaks_mask)[0]
+    trough_idx = np.where(troughs_mask)[0]
+    wt_peak = float(wt1_arr[peak_idx[-1]]) if len(peak_idx) >= 1 else None
+    wt_peak_prev = float(wt1_arr[peak_idx[-2]]) if len(peak_idx) >= 2 else None
+    wt_trough = float(wt1_arr[trough_idx[-1]]) if len(trough_idx) >= 1 else None
+    wt_trough_prev = float(wt1_arr[trough_idx[-2]]) if len(trough_idx) >= 2 else None
+    result[f"wt_peak_{tf}"] = wt_peak
+    result[f"wt_peak_prev_{tf}"] = wt_peak_prev
+    result[f"wt_trough_{tf}"] = wt_trough
+    result[f"wt_trough_prev_{tf}"] = wt_trough_prev
+    peak_structure = ("HH" if wt_peak > wt_peak_prev else "LH") if wt_peak is not None and wt_peak_prev is not None else None
+    trough_structure = ("HL" if wt_trough > wt_trough_prev else "LL") if wt_trough is not None and wt_trough_prev is not None else None
+    result[f"wt_peak_structure_{tf}"] = peak_structure
+    result[f"wt_trough_structure_{tf}"] = trough_structure
+    result[f"wt_structure_{tf}"] = peak_structure if peak_structure is not None else trough_structure
+    divergence, divergence_strength = None, 0.0
+    price_peaks_mask = np.zeros(n, dtype=bool)
+    price_troughs_mask = np.zeros(n, dtype=bool)
+    if n >= 3:
+        price_peaks_mask[1:-1] = (high_arr[1:-1] > high_arr[:-2]) & (high_arr[1:-1] > high_arr[2:])
+        price_troughs_mask[1:-1] = (low_arr[1:-1] < low_arr[:-2]) & (low_arr[1:-1] < low_arr[2:])
+    ppeak_idx = np.where(price_peaks_mask)[0]
+    ptrough_idx = np.where(price_troughs_mask)[0]
+    if len(ptrough_idx) >= 2 and wt_trough is not None and wt_trough_prev is not None:
+        pt, ptp = float(low_arr[ptrough_idx[-1]]), float(low_arr[ptrough_idx[-2]])
+        if pt < ptp and wt_trough > wt_trough_prev: divergence = "BULL"; divergence_strength = min(1.0, (abs(ptp - pt) / (abs(ptp) + 1e-10) + abs(wt_trough - wt_trough_prev) / (abs(wt_trough_prev) + 1e-10)) / 2.0)
+        elif pt > ptp and wt_trough < wt_trough_prev: divergence = "HIDDEN_BULL"; divergence_strength = min(1.0, abs(wt_trough_prev - wt_trough) / (abs(wt_trough_prev) + 1e-10))
+    if divergence is None and len(ppeak_idx) >= 2 and wt_peak is not None and wt_peak_prev is not None:
+        pp, ppp = float(high_arr[ppeak_idx[-1]]), float(high_arr[ppeak_idx[-2]])
+        if pp > ppp and wt_peak < wt_peak_prev: divergence = "BEAR"; divergence_strength = min(1.0, (abs(pp - ppp) / (abs(ppp) + 1e-10) + abs(wt_peak_prev - wt_peak) / (abs(wt_peak_prev) + 1e-10)) / 2.0)
+        elif pp < ppp and wt_peak > wt_peak_prev: divergence = "HIDDEN_BEAR"; divergence_strength = min(1.0, abs(wt_peak - wt_peak_prev) / (abs(wt_peak_prev) + 1e-10))
+    result[f"wt_divergence_{tf}"] = divergence
+    result[f"wt_divergence_strength_{tf}"] = round(divergence_strength, 4)
+    lag = 3
+    velocity = wt1_arr[-1] - wt1_arr[-1 - lag] if n > lag else 0.0
+    velocity_prev = wt1_arr[-1 - lag] - wt1_arr[-1 - 2 * lag] if n > 2 * lag else 0.0
+    acceleration = velocity - velocity_prev
+    result[f"wt_velocity_{tf}"] = round(velocity, 4)
+    result[f"wt_acceleration_{tf}"] = round(acceleration, 4)
+    wt_rising = velocity > 0
+    momentum_state = "IMPULSE_UP" if wt_rising and acceleration > 0 else "EXHAUST_UP" if wt_rising else "IMPULSE_DOWN" if acceleration < 0 else "EXHAUST_DOWN"
+    result[f"wt_momentum_state_{tf}"] = momentum_state
+    window = min(200, n)
+    wt1_window = wt1_arr[-window:]
+    percentile = float(np.sum(wt1_window <= wt1_val) / window * 100.0)
+    mean_w, std_w = float(np.mean(wt1_window)), float(np.std(wt1_window))
+    zscore = (wt1_val - mean_w) / std_w if std_w > 1e-10 else 0.0
+    result[f"wt_percentile_{tf}"] = round(percentile, 2)
+    result[f"wt_zscore_{tf}"] = round(zscore, 4)
+    result[f"wt_extreme_{tf}"] = abs(zscore) > 2.0
+    zero_cross_idx = np.where((wt1_arr[1:] * wt1_arr[:-1]) < 0)[0] + 1
+    wave_phase = "TRANSITIONING"
+    if len(zero_cross_idx) >= 1 and zero_cross_idx[-1] == n - 1: wave_phase = "TRANSITIONING"
+    elif len(peak_idx) >= 2: wave_phase = "EXPANDING" if abs(wt1_arr[peak_idx[-1]]) > abs(wt1_arr[peak_idx[-2]]) else "CONTRACTING"
+    elif len(trough_idx) >= 2: wave_phase = "EXPANDING" if abs(wt1_arr[trough_idx[-1]]) > abs(wt1_arr[trough_idx[-2]]) else "CONTRACTING"
+    result[f"wt_wave_phase_{tf}"] = wave_phase
+    prev_wt1 = float(wt1_arr[-2]) if n > 1 else wt1_val
+    prev_wt2 = float(wt2_arr[-2]) if n > 1 else wt2_val
+    if prev_wt1 <= prev_wt2 and wt1_val > wt2_val and wt1_val < -50: result[f"wt_signal_{tf}"] = "BUY"
+    elif prev_wt1 >= prev_wt2 and wt1_val < wt2_val and wt1_val > 50: result[f"wt_signal_{tf}"] = "SELL"
+    else: result[f"wt_signal_{tf}"] = "NEUTRAL"
+    return result
 
 def heikin_ashi(df: pd.DataFrame) -> Tuple[str, Optional[str]]:
     if df.empty:
@@ -466,8 +793,8 @@ def hull_trend_indicators(close_series: pd.Series, length_short: int = 9, length
     except Exception: return None, None, None
 
 STOCH_LEN = 14
-STOCH_K = 3
-STOCH_D = 5
+STOCH_K = 7  # BACKTEST_CHANGE_101: marathon winner PF 2.81 Sharpe 5.04 for stocks (was 3)
+STOCH_D = 7  # BACKTEST_CHANGE_101: slower smoothing (was 5)
 
 def stoch_result(series: pd.Series) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float], bool, bool]:
     def fallback(window: pd.Series) -> Tuple[float, float, float, float, bool, bool]:
@@ -624,6 +951,139 @@ ATR_LONG_LENGTH = 100
 REL_VOL_LENGTH = 20
 LINREG_LENGTH = 50
 
+def detect_bar_patterns(df: pd.DataFrame, timeframe: str) -> Dict[str, Any]:
+    """Detect candlestick patterns, multi-bar structure, vol regime, streak on HTF."""
+    result: Dict[str, Any] = {}
+    if df is None or len(df) < 10:
+        return result
+    o = df["open"].astype(float)
+    h = df["high"].astype(float)
+    l = df["low"].astype(float)
+    c = df["close"].astype(float)
+    v = df["volume"].astype(float)
+    n = len(df)
+    def _b(i): return float(o.iloc[i]), float(h.iloc[i]), float(l.iloc[i]), float(c.iloc[i]), float(v.iloc[i])
+    o1, h1, l1, c1, v1 = _b(-1)
+    o2, h2, l2, c2, v2 = _b(-2)
+    o3, h3, l3, c3, v3 = _b(-3)
+    o4, h4, l4, c4, v4 = _b(-4)
+    o5, h5, l5, c5, v5 = _b(-5)
+    body1, body2, body3, body4 = abs(c1 - o1), abs(c2 - o2), abs(c3 - o3), abs(c4 - o4)
+    range1 = max(h1 - l1, 1e-10)
+    range2 = max(h2 - l2, 1e-10)
+    range3 = max(h3 - l3, 1e-10)
+    upper_wick1 = h1 - max(o1, c1)
+    lower_wick1 = min(o1, c1) - l1
+    body_ratio1 = body1 / range1
+    is_bull1, is_bear1 = c1 > o1, c1 < o1
+    is_bull2, is_bear2 = c2 > o2, c2 < o2
+    is_bull3, is_bear3 = c3 > o3, c3 < o3
+    vol_window = min(20, n - 1)
+    vol_avg = float(v.iloc[-vol_window - 1:-1].mean()) if vol_window > 0 else v1
+    vol_ratio = v1 / vol_avg if vol_avg > 0 else 1.0
+    vol_confirm = vol_ratio >= 1.3
+    vol_spike = vol_ratio >= 2.0
+    vol_dry = vol_ratio < 0.6
+    vol_expanding = all(float(v.iloc[-i]) > float(v.iloc[-i - 1]) for i in range(1, min(4, n)))
+    atr_arr = (h - l).astype(float)
+    atr_curr = float(atr_arr.iloc[-1])
+    atr_window = min(50, n)
+    atr_hist = atr_arr.iloc[-atr_window:].sort_values()
+    atr_rank = float((atr_hist < atr_curr).sum()) / max(len(atr_hist), 1)
+    vol_regime = "low" if atr_rank < 0.25 else ("high" if atr_rank > 0.75 else "normal")
+    streak = 0
+    for i in range(1, min(8, n)):
+        ci_v = float(c.iloc[-i])
+        oi_v = float(o.iloc[-i])
+        if ci_v > oi_v:
+            if streak >= 0: streak += 1
+            else: break
+        elif ci_v < oi_v:
+            if streak <= 0: streak -= 1
+            else: break
+        else:
+            break
+    hh = h1 > h2 and h2 > h3
+    hl = l1 > l2 and l2 > l3
+    ll = l1 < l2 and l2 < l3
+    lh = h1 < h2 and h2 < h3
+    swing_bull = hh and hl
+    swing_bear = ll and lh
+    ranges_5 = [max(float(h.iloc[-i]) - float(l.iloc[-i]), 1e-10) for i in range(1, min(6, n))]
+    compression = all(ranges_5[i] <= ranges_5[i + 1] for i in range(len(ranges_5) - 1)) if len(ranges_5) >= 3 else False
+    compression_ratio = ranges_5[0] / ranges_5[-1] if len(ranges_5) >= 3 and ranges_5[-1] > 0 else 1.0
+    inside_count = 0
+    for i in range(1, min(5, n - 1)):
+        if float(h.iloc[-i]) < float(h.iloc[-i - 1]) and float(l.iloc[-i]) > float(l.iloc[-i - 1]):
+            inside_count += 1
+        else:
+            break
+    pattern = "none"
+    direction = 0
+    strength = 0.0
+    if is_bear3 and body3 > range3 * 0.5 and body2 < range2 * 0.3 and is_bull1 and body1 > range1 * 0.5 and c1 > (o3 + c3) / 2:
+        pattern = "morning_star"; direction = 1; strength = min(1.0, (body1 + body3) / (2 * range1 + 1e-10))
+    elif is_bull3 and body3 > range3 * 0.5 and body2 < range2 * 0.3 and is_bear1 and body1 > range1 * 0.5 and c1 < (o3 + c3) / 2:
+        pattern = "evening_star"; direction = -1; strength = min(1.0, (body1 + body3) / (2 * range1 + 1e-10))
+    elif is_bull1 and is_bull2 and is_bull3 and c1 > c2 > c3 and body1 > range1 * 0.5 and body2 > range2 * 0.5 and body3 > range3 * 0.5:
+        pattern = "three_white_soldiers"; direction = 1; strength = min(1.0, min(body1, body2, body3) / max(range1, range2, range3))
+    elif is_bear1 and is_bear2 and is_bear3 and c1 < c2 < c3 and body1 > range1 * 0.5 and body2 > range2 * 0.5 and body3 > range3 * 0.5:
+        pattern = "three_black_crows"; direction = -1; strength = min(1.0, min(body1, body2, body3) / max(range1, range2, range3))
+    elif is_bull1 and is_bear2 and c1 > o2 and o1 < c2 and body1 > body2:
+        pattern = "bull_engulfing"; direction = 1; strength = min(1.0, (body1 / (body2 + 1e-10)) * 0.5)
+    elif is_bear1 and is_bull2 and c1 < o2 and o1 > c2 and body1 > body2:
+        pattern = "bear_engulfing"; direction = -1; strength = min(1.0, (body1 / (body2 + 1e-10)) * 0.5)
+    elif is_bull1 and abs(l1 - l2) < range1 * 0.05 and l1 < min(l3, l4):
+        pattern = "tweezer_bottom"; direction = 1; strength = min(1.0, 1.0 - abs(l1 - l2) / range1)
+    elif is_bear1 and abs(h1 - h2) < range1 * 0.05 and h1 > max(h3, h4):
+        pattern = "tweezer_top"; direction = -1; strength = min(1.0, 1.0 - abs(h1 - h2) / range1)
+    elif body_ratio1 < 0.35 and lower_wick1 > body1 * 2.0 and upper_wick1 < body1 * 0.5:
+        pattern = "hammer"; direction = 1; strength = min(1.0, lower_wick1 / range1)
+    elif body_ratio1 < 0.35 and upper_wick1 > body1 * 2.0 and lower_wick1 < body1 * 0.5:
+        pattern = "shooting_star"; direction = -1; strength = min(1.0, upper_wick1 / range1)
+    elif is_bull1 and is_bear2 and body1 < body2 * 0.5 and h1 < h2 and l1 > l2:
+        pattern = "bull_harami"; direction = 1; strength = 0.5 * (1.0 - body1 / (body2 + 1e-10))
+    elif is_bear1 and is_bull2 and body1 < body2 * 0.5 and h1 < h2 and l1 > l2:
+        pattern = "bear_harami"; direction = -1; strength = 0.5 * (1.0 - body1 / (body2 + 1e-10))
+    elif inside_count >= 2:
+        pattern = "multi_inside"; direction = 0; strength = min(1.0, inside_count * 0.3)
+    elif h1 < h2 and l1 > l2:
+        pattern = "inside_bar"; direction = 0; strength = 1.0 - (range1 / range2)
+    elif h1 > h2 and l1 < l2 and body_ratio1 > 0.6:
+        pattern = "outside_bar"; direction = 1 if is_bull1 else -1; strength = body_ratio1
+    elif lower_wick1 > range1 * 0.6 and body_ratio1 < 0.25:
+        pattern = "pin_bar_bull"; direction = 1; strength = lower_wick1 / range1
+    elif upper_wick1 > range1 * 0.6 and body_ratio1 < 0.25:
+        pattern = "pin_bar_bear"; direction = -1; strength = upper_wick1 / range1
+    elif is_bull1 and is_bear2 and is_bear3 and c1 > h2:
+        pattern = "three_bar_bull"; direction = 1; strength = min(1.0, body1 / (body2 + body3 + 1e-10))
+    elif is_bear1 and is_bull2 and is_bull3 and c1 < l2:
+        pattern = "three_bar_bear"; direction = -1; strength = min(1.0, body1 / (body2 + body3 + 1e-10))
+    elif body_ratio1 < 0.1:
+        pattern = "doji"; direction = 0; strength = 0.3 + (0.4 if vol_confirm else 0.0)
+    if vol_confirm and direction != 0: strength = min(1.0, strength * 1.3)
+    if vol_spike and direction != 0: strength = min(1.0, strength * 1.2)
+    if vol_dry and direction != 0: strength *= 0.6
+    result[f"bar_pattern_{timeframe}"] = pattern
+    result[f"bar_direction_{timeframe}"] = direction
+    result[f"bar_strength_{timeframe}"] = round(strength, 3)
+    result[f"bar_vol_confirm_{timeframe}"] = vol_confirm
+    result[f"bar_vol_ratio_{timeframe}"] = round(vol_ratio, 2)
+    result[f"bar_body_ratio_{timeframe}"] = round(body_ratio1, 3)
+    result[f"bar_upper_wick_{timeframe}"] = round(upper_wick1 / range1, 3) if range1 > 0 else 0.0
+    result[f"bar_lower_wick_{timeframe}"] = round(lower_wick1 / range1, 3) if range1 > 0 else 0.0
+    result[f"bar_streak_{timeframe}"] = streak
+    result[f"bar_swing_bull_{timeframe}"] = swing_bull
+    result[f"bar_swing_bear_{timeframe}"] = swing_bear
+    result[f"bar_compression_{timeframe}"] = compression
+    result[f"bar_compression_ratio_{timeframe}"] = round(compression_ratio, 3)
+    result[f"bar_inside_count_{timeframe}"] = inside_count
+    result[f"bar_vol_spike_{timeframe}"] = vol_spike
+    result[f"bar_vol_expanding_{timeframe}"] = vol_expanding
+    result[f"bar_vol_regime_{timeframe}"] = vol_regime
+    result[f"bar_atr_rank_{timeframe}"] = round(atr_rank, 3)
+    return result
+
 class IndicatorCalculator:
     def compute(self, df: pd.DataFrame, symbol, timeframe: str, mark_price: Optional[float], mark_ts: Optional[datetime], mid_run: bool) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
@@ -638,16 +1098,16 @@ class IndicatorCalculator:
                 
         if "timestamp_dt" not in df.columns:
             if "timestamp" in df.columns:
-                df["timestamp_dt"] = pd.to_datetime(df["timestamp"], utc=True, errors='coerce')
+                df["timestamp_dt"] = _to_utc(df["timestamp"])
             elif "close_time" in df.columns:
-                df["timestamp_dt"] = pd.to_datetime(df["close_time"], utc=True, errors='coerce')
+                df["timestamp_dt"] = _to_utc(df["close_time"])
             elif "time" in df.columns:
-                df["timestamp_dt"] = pd.to_datetime(df["time"], utc=True, errors='coerce')
+                df["timestamp_dt"] = _to_utc(df["time"])
             else:
                 return result
         else:
             if not pd.api.types.is_datetime64_any_dtype(df["timestamp_dt"]):
-                df["timestamp_dt"] = pd.to_datetime(df["timestamp_dt"], utc=True, errors='coerce')
+                df["timestamp_dt"] = _to_utc(df["timestamp_dt"])
         
         df = df.dropna(subset=["timestamp_dt"])
         if df.empty: return result
@@ -767,24 +1227,22 @@ class IndicatorCalculator:
             result[f"stoch_k_{timeframe}_prev"] = k_prev if k_prev is not None else k_curr
             result[f"stoch_d_{timeframe}_prev"] = d_prev if d_prev is not None else d_curr
             
-        wt1, wt2 = wavetrend(adjusted_df)
+        wt1, wt2 = wavetrend(adjusted_df, timeframe=timeframe)
         if wt1 is not None and wt2 is not None and not wt1.empty and not wt2.empty:
-            wt1_val = float(wt1.iloc[-1]) if pd.notna(wt1.iloc[-1]) else None
-            wt2_val = float(wt2.iloc[-1]) if pd.notna(wt2.iloc[-1]) else None
-            if wt1_val is not None:
-                result[f"wt1_{timeframe}"] = wt1_val
-            if wt2_val is not None:
-                result[f"wt2_{timeframe}"] = wt2_val
-            if wt1_val is not None and wt2_val is not None:
-                result[f"wt_score_{timeframe}"] = wt1_val - wt2_val
-                prev_wt1 = float(wt1.iloc[-2]) if len(wt1) > 1 and pd.notna(wt1.iloc[-2]) else wt1_val
-                prev_wt2 = float(wt2.iloc[-2]) if len(wt2) > 1 and pd.notna(wt2.iloc[-2]) else wt2_val
-                if prev_wt1 <= prev_wt2 and wt1_val > wt2_val and wt1_val < -50:
-                    result[f"wt_signal_{timeframe}"] = "BUY"
-                elif prev_wt1 >= prev_wt2 and wt1_val < wt2_val and wt1_val > 50:
-                    result[f"wt_signal_{timeframe}"] = "SELL"
-                else:
-                    result[f"wt_signal_{timeframe}"] = "NEUTRAL"
+            result[f"wt1_{timeframe}"] = float(wt1.iloc[-1]) if pd.notna(wt1.iloc[-1]) else 0
+            result[f"wt2_{timeframe}"] = float(wt2.iloc[-1]) if pd.notna(wt2.iloc[-1]) else 0
+            result[f"wt_score_{timeframe}"] = result[f"wt1_{timeframe}"] - result[f"wt2_{timeframe}"]
+            prev_wt1 = float(wt1.iloc[-2]) if len(wt1) > 1 and pd.notna(wt1.iloc[-2]) else result[f"wt1_{timeframe}"]
+            prev_wt2 = float(wt2.iloc[-2]) if len(wt2) > 1 and pd.notna(wt2.iloc[-2]) else result[f"wt2_{timeframe}"]
+            if prev_wt1 <= prev_wt2 and result[f"wt1_{timeframe}"] > result[f"wt2_{timeframe}"] and result[f"wt1_{timeframe}"] < -50: result[f"wt_signal_{timeframe}"] = "BUY"
+            elif prev_wt1 >= prev_wt2 and result[f"wt1_{timeframe}"] < result[f"wt2_{timeframe}"] and result[f"wt1_{timeframe}"] > 50: result[f"wt_signal_{timeframe}"] = "SELL"
+            else: result[f"wt_signal_{timeframe}"] = "NEUTRAL"
+            try:
+                wt_intel = wavetrend_intelligence(wt1, wt2, close_series, _ensure_float_series(adjusted_df["high"]), _ensure_float_series(adjusted_df["low"]), timeframe)
+                for k, v in wt_intel.items():
+                    if k not in result: result[k] = v
+            except Exception:
+                pass
         else:
             result[f"wt_signal_{timeframe}"] = "NEUTRAL"
             
@@ -812,6 +1270,23 @@ class IndicatorCalculator:
         rsi_val = rsi_value(close_series, 14)
         if rsi_val is not None:
             result[f"rsi_{timeframe}"] = rsi_val
+        # ADX + BB width + DC width — needed for market quality scoring (BACKTEST_CHANGE_146)
+        if timeframe in ("1h", "4h", "D"):
+            _adx_val = adx_value(adjusted_df, 14)
+            if _adx_val is not None:
+                result[f"adx_{timeframe}"] = _adx_val
+            _bb_u = result.get(f"bb_upper_{timeframe}")
+            _bb_l = result.get(f"bb_lower_{timeframe}")
+            if _bb_u and _bb_l:
+                _bb_mid = (_bb_u + _bb_l) / 2.0 if (_bb_u + _bb_l) > 0 else 0
+                result[f"bb_width_{timeframe}"] = round((_bb_u - _bb_l) / _bb_mid * 100.0, 3) if _bb_mid > 0 else 0.0
+            _dc_h = result.get(f"dc_high_{timeframe}")
+            _dc_l = result.get(f"dc_low_{timeframe}")
+            if _dc_h and _dc_l and _dc_l > 0:
+                result[f"dc_width_{timeframe}"] = round((_dc_h - _dc_l) / _dc_l * 100, 4)
+                _dc_range = _dc_h - _dc_l
+                if _dc_range > 0:
+                    result[f"dc_position_{timeframe}"] = round(max(0.0, min(1.0, (current_price - _dc_l) / _dc_range)), 4)
             
         for ema_length in tf_config["ema"]:
             ema_curr, ema_prev = ema_pair(close_series, ema_length)
@@ -853,7 +1328,14 @@ class IndicatorCalculator:
                 result[f"lr_upper_{timeframe}"] = _lr_u
                 result[f"lr_lower_{timeframe}"] = _lr_l
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
-
+            bar_pat = detect_bar_patterns(adjusted_df, timeframe)
+            result.update(bar_pat)
+            # Candle body comparison (current vs prev) — needed by Strategy 3 (EMA200+StochRSI)
+            _cb_body = abs(float(close_series.iloc[-1]) - float(open_series.iloc[-1]))
+            _cb_body_prev = abs(float(close_series.iloc[-2]) - float(open_series.iloc[-2])) if len(close_series) > 1 else _cb_body
+            result[f"candle_body_{timeframe}"] = round(_cb_body, 8)
+            result[f"candle_body_prev_{timeframe}"] = round(_cb_body_prev, 8)
+            result[f"candle_body_ratio_{timeframe}"] = round(_cb_body / _cb_body_prev, 3) if _cb_body_prev > 0 else 1.0
         t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
         if t_up is not None: result[f"t_up_{timeframe}"] = t_up
         if tco is not None: result[f"tco_{timeframe}"] = tco
@@ -866,7 +1348,6 @@ class IndicatorCalculator:
 
         if timeframe == "1m":
             result["current_price_1m"] = current_price
-            
             if use_mark and mark_ts:
                 result["timestamp"] = isoformat(mark_ts)
             else:
@@ -998,7 +1479,7 @@ class TradierBarManager:
                     df = pd.DataFrame(data)
                     ts_col = "timestamp" if "timestamp" in df.columns else ("time" if "time" in df.columns else None)
                     if ts_col:
-                        df["close_time"] = pd.to_datetime(df[ts_col], utc=True, errors='coerce')
+                        df["close_time"] = _to_utc(df[ts_col])
                         df["timestamp_dt"] = df["close_time"]
                         df = df.dropna(subset=["close_time"])
                     else:
@@ -1072,8 +1553,8 @@ class TradierBarManager:
              try:
                  core_cols = ["timestamp", "open", "high", "low", "close", "volume"]
                  repeats = 7 if target_tf == "1h" else 2
-                 first_ts = pd.to_datetime(df_lower['timestamp'].iloc[0], utc=True) if not df_lower.empty else pd.Timestamp.now(tz='UTC')
-                 df_higher_dt = pd.to_datetime(df_higher['timestamp'], utc=True)
+                 first_ts = _to_utc(df_lower['timestamp'].iloc[0]) if not df_lower.empty else pd.Timestamp.now(tz='UTC')
+                 df_higher_dt = _to_utc(df_higher['timestamp'])
                  pad = df_higher[df_higher_dt < first_ts].copy()
                  if pad.empty: return df_lower
                  expanded_rows = []
@@ -1167,13 +1648,15 @@ class TradierBarManager:
             for tf in bundle:
                 bundle[tf] = clip_bars(bundle[tf], tf=tf)
 
-        # ONLY WRITE TO DISK ON NEW HISTORICAL FETCH — never shrink files
+        # ONLY WRITE TO DISK — guard against writing near-empty data
+        # disk_counts was captured pre-clip from the raw file read. After merge+clip, the bundle
+        # is trimmed by clip_bars(). Compare new count against the PRE-CLIP count only if the new
+        # data is suspiciously small (< 50 bars), not against bloated legacy files.
         for tf, df in bundle.items():
             if not df.empty:
-                old_count = disk_counts.get(tf, 0)
                 new_count = len(df)
-                if old_count > 50 and new_count < old_count * 0.5:
-                    logger.error(f"BLOCKED write {symbol}_{tf}: would shrink from {old_count} to {new_count} bars — refusing to destroy data")
+                if new_count < 50 and disk_counts.get(tf, 0) > 200:
+                    logger.error(f"BLOCKED write {symbol}_{tf}: only {new_count} bars (disk had {disk_counts.get(tf, 0)}) — refusing to destroy data")
                     continue
                 await self._write_json(self.cache_dir / f"{symbol}_{tf}.json", df.to_dict("records"))
             
@@ -1202,8 +1685,11 @@ class TradierBarManager:
                 if path.exists():
                     existing_size = path.stat().st_size
                     new_size = len(json_bytes) if isinstance(json_bytes, bytes) else len(json_bytes.encode('utf-8'))
-                    if existing_size > 1000 and new_size < existing_size * 0.3:
-                        logger.error(f"BLOCKED write to {path.name}: new size {new_size} is <30% of existing {existing_size} — refusing to destroy data")
+                    env_info = get_current_environment()
+                    _env = env_info.get("env", "macbook") if isinstance(env_info, dict) else "macbook"
+                    min_ratio = 0.1 if _env == "macbook" else 0.3
+                    if existing_size > 1000 and new_size < existing_size * min_ratio:
+                        logger.error(f"BLOCKED write to {path.name}: new size {new_size} is <{int(min_ratio*100)}% of existing {existing_size} — refusing to destroy data")
                         return
                 random_suffix = uuid.uuid4().hex
                 tmp = path.with_name(f".{path.name}.{random_suffix}.tmp")
@@ -1348,7 +1834,15 @@ class TradierIndicatorOrchestrator:
                     raise e
                     
             _atomic_write_sync(latest_file, json_bytes)
-            logger.info(f"✅ Saved indicators for {len(indicators)} symbols to latest JSON")
+            # Also write timestamped file so tradier_manage can read the freshest one (latest gets stuck in OS cache)
+            ts_file = self.config.DATA_DIR / f"tradier_indicators_{int(time.time())}.json"
+            _atomic_write_sync(ts_file, json_bytes)
+            # Clean old timestamped files (keep last 5)
+            ts_files = sorted(self.config.DATA_DIR.glob("tradier_indicators_[0-9]*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+            for old_f in ts_files[5:]:
+                try: old_f.unlink()
+                except Exception: pass
+            logger.info(f"✅ Saved indicators for {len(indicators)} symbols to latest + timestamped JSON")
         except Exception as e:
             logger.error(f"❌ Error saving indicators to JSON: {e}", exc_info=True)
     
@@ -1425,7 +1919,8 @@ class TradierIndicatorOrchestrator:
 
         tasks = [asyncio.create_task(process_symbol_parallel(s)) for s in self.symbols]
         await asyncio.gather(*tasks)
-        
+        # === BACKTEST WINNERS: Enrich all symbols with Clenow/SMFI/Minervini/Connors ===
+        await asyncio.to_thread(self._enrich_backtest_winners)
         self._refresh_sentiment()
         self._save_due = True
         self._dirty = True
@@ -1459,7 +1954,7 @@ class TradierIndicatorOrchestrator:
                     new_bar = state.last_close is None or (close_ts is not None and close_ts > state.last_close)
                     
                     if new_bar or needs_refresh or (required_keys and force):
-                        await self._run_full(symbol, timeframe, df, close_ts, mark_price, state)
+                        await self._run_full(symbol, timeframe, df, close_ts, mark_price, state, mark_ts=mark_ts)
                         state.last_close = close_ts
                         state.full_done = True
                         state.mid_done = False
@@ -1471,7 +1966,7 @@ class TradierIndicatorOrchestrator:
                         state.full_done = True
                         if await self._maybe_run_mid(symbol, timeframe, df, close_ts, mark_price):
                             pass
-                    elif state.last_df is not None:
+                    elif state.last_df is not None and mark_price is not None:
                         state.full_done = True
                 except Exception as e:
                     logger.error(f"Error processing {symbol} {timeframe}: {e}")
@@ -1498,10 +1993,9 @@ class TradierIndicatorOrchestrator:
                           f"stoch_k_{timeframe}", f"stoch_d_{timeframe}", f"atr_{timeframe}", f"rsi_{timeframe}"]
         return base_indicators
 
-    async def _run_full(self, symbol: str, timeframe: str, df: pd.DataFrame, close_ts: datetime, mark_price: Optional[float], state: SymbolTimeframeState) -> None:
+    async def _run_full(self, symbol: str, timeframe: str, df: pd.DataFrame, close_ts: datetime, mark_price: Optional[float], state: SymbolTimeframeState, mark_ts=None) -> None:
         required_keys = self._required_by_timeframe(timeframe)
-        mark_ts = None
-        if required_keys and mark_price is None:
+        if mark_ts is None and required_keys and mark_price is None:
             q = await self.price_cacheman.get_quote(symbol)
             if q:
                 mark_price = float(q.get('price') or q.get('last') or 0.0)
@@ -1516,14 +2010,16 @@ class TradierIndicatorOrchestrator:
                             mark_ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
                     except Exception: pass
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df['timestamp'] = _to_utc(df['timestamp'])
         if 'close_time' in df.columns:
-            df['close_time'] = pd.to_datetime(df['close_time'], utc=True, errors='coerce')
-        
+            df['close_time'] = _to_utc(df['close_time'])
+
         result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=False)
         if not result: return
         symbol_data = self.data.setdefault(symbol, {})
         symbol_data.update(result)
+        self._inject_dc_moment(symbol, symbol_data)
+        self._inject_wt_composite(symbol, symbol_data)
         self._update_master_timestamp(symbol_data)
         state.last_df = df.copy()
         await self._mark_dirty()
@@ -1552,14 +2048,16 @@ class TradierIndicatorOrchestrator:
                             mark_ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
                     except Exception: pass
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df['timestamp'] = _to_utc(df['timestamp'])
         if 'close_time' in df.columns:
-            df['close_time'] = pd.to_datetime(df['close_time'], utc=True, errors='coerce')
+            df['close_time'] = _to_utc(df['close_time'])
         result = self.calculator.compute(df, symbol, timeframe, mark_price, mark_ts, mid_run=True)
         if not result:
             return False
         symbol_data = self.data.setdefault(symbol, {})
         symbol_data.update(result)
+        self._inject_dc_moment(symbol, symbol_data)
+        self._inject_wt_composite(symbol, symbol_data)
         self._update_master_timestamp(symbol_data)
         state.mid_done = True
         state.last_mid_finish = utc_now()
@@ -1594,6 +2092,123 @@ class TradierIndicatorOrchestrator:
             return False
         return all(self._symbol_complete(sym) for sym in self.symbols)
     
+    def _inject_wt_composite(self, symbol: str, symbol_data: Dict[str, Any]) -> None:
+        """Cross-TF WaveTrend composite — inlined. Stock TFs: 5m, 15m, 1h, 4h, D."""
+        try:
+            tfs = ["5m", "15m", "1h", "4h", "D"]
+            _sf = lambda v, d=0.0: float(v) if v is not None else d
+            n_tfs = len(tfs)
+            bull_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt1_{tf}")) > _sf(symbol_data.get(f"wt2_{tf}")))
+            symbol_data["wt_bull_alignment"] = bull_count
+            symbol_data["wt_bear_alignment"] = n_tfs - bull_count
+            htf_tfs = [tf for tf in tfs if tf not in ("3m", "5m")]
+            hl_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_trough_structure_{tf}") == "HL")
+            lh_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_peak_structure_{tf}") == "LH")
+            ll_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_trough_structure_{tf}") == "LL")
+            hh_count = sum(1 for tf in htf_tfs if symbol_data.get(f"wt_peak_structure_{tf}") == "HH")
+            symbol_data["wt_hl_count"] = hl_count
+            symbol_data["wt_lh_count"] = lh_count
+            symbol_data["wt_ll_count"] = ll_count
+            symbol_data["wt_hh_count"] = hh_count
+            symbol_data["wt_any_bull_div"] = False
+            symbol_data["wt_any_bear_div"] = False
+            symbol_data["wt_strongest_bull_div_tf"] = None
+            symbol_data["wt_strongest_bear_div_tf"] = None
+            for tf in tfs:
+                div = symbol_data.get(f"wt_divergence_{tf}")
+                if div in ("BULL", "HIDDEN_BULL"):
+                    symbol_data["wt_any_bull_div"] = True
+                    symbol_data["wt_strongest_bull_div_tf"] = tf
+                if div in ("BEAR", "HIDDEN_BEAR"):
+                    symbol_data["wt_any_bear_div"] = True
+                    symbol_data["wt_strongest_bear_div_tf"] = tf
+            states = {tf: (symbol_data.get(f"wt_momentum_state_{tf}") or "") for tf in tfs}
+            symbol_data["wt_momentum_narrative"] = states
+            rising_crosses = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_rising_{tf}") is True)
+            falling_crosses = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_rising_{tf}") is False)
+            symbol_data["wt_rising_cross_count"] = rising_crosses
+            symbol_data["wt_falling_cross_count"] = falling_crosses
+            os_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_percentile_{tf}"), 50) < 20)
+            ob_count = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_percentile_{tf}"), 50) > 80)
+            symbol_data["wt_oversold_tf_count"] = os_count
+            symbol_data["wt_overbought_tf_count"] = ob_count
+            vel_up = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_velocity_{tf}")) > 0)
+            vel_down = sum(1 for tf in tfs if _sf(symbol_data.get(f"wt_velocity_{tf}")) < 0)
+            symbol_data["wt_velocity_up_count"] = vel_up
+            symbol_data["wt_velocity_down_count"] = vel_down
+            bull_cross_count = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_{tf}") == "BULL")
+            bear_cross_count = sum(1 for tf in tfs if symbol_data.get(f"wt_cross_{tf}") == "BEAR")
+            symbol_data["wt_bull_cross_count"] = bull_cross_count
+            symbol_data["wt_bear_cross_count"] = bear_cross_count
+            _tw = {"D": 5, "4h": 4, "1h": 3, "15m": 2, "5m": 1}
+            long_score, short_score = 0.0, 0.0
+            long_score += (bull_count - n_tfs / 2.0) * 10
+            short_score += ((n_tfs - bull_count) - n_tfs / 2.0) * 10
+            long_score += hl_count * 5 - lh_count * 5 + hh_count * 3 - ll_count * 3
+            short_score += lh_count * 5 - hl_count * 5 + ll_count * 3 - hh_count * 3
+            if symbol_data["wt_any_bull_div"]: long_score += 20
+            if symbol_data["wt_any_bear_div"]: short_score += 20
+            long_score += os_count * 5 - ob_count * 3
+            short_score += ob_count * 5 - os_count * 3
+            long_score += rising_crosses * 3
+            short_score += falling_crosses * 3
+            long_score += bull_cross_count * 3 - bear_cross_count * 2
+            short_score += bear_cross_count * 3 - bull_cross_count * 2
+            long_score += vel_up * 2 - vel_down
+            short_score += vel_down * 2 - vel_up
+            for tf in tfs:
+                w = _tw.get(tf, 1)
+                st = states.get(tf, "")
+                if st == "EXHAUST_DOWN": long_score += w
+                elif st == "IMPULSE_UP": long_score += w * 0.7
+                elif st == "EXHAUST_UP": short_score += w
+                elif st == "IMPULSE_DOWN": short_score += w * 0.7
+            symbol_data["wt_composite_long"] = max(-100.0, min(100.0, long_score))
+            symbol_data["wt_composite_short"] = max(-100.0, min(100.0, short_score))
+            symbol_data["wt_composite_bias"] = "LONG" if long_score > short_score + 10 else ("SHORT" if short_score > long_score + 10 else "NEUTRAL")
+            symbol_data["wt_composite_delta"] = round(long_score - short_score, 2)
+        except Exception:
+            pass
+
+    def _inject_dc_moment(self, symbol: str, symbol_data: Dict[str, Any]) -> None:
+        """Compute DC composite fields for stocks — same logic as ez_indicators."""
+        tfs_all = ['5m', '15m', '1h', '4h', 'D']
+        w, p = {}, {}
+        cp = float(symbol_data.get('current_price') or 0)
+        if cp <= 0: return
+        for tf in tfs_all:
+            dw = float(symbol_data.get(f'dc_width_{tf}') or 0)
+            dp = float(symbol_data.get(f'dc_position_{tf}') or 0)
+            if dp > 1.0: dp = dp / 100.0
+            if dw <= 0 or dp < 0:
+                dch = float(symbol_data.get(f'dc_high_{tf}') or 0)
+                dcl = float(symbol_data.get(f'dc_low_{tf}') or 0)
+                if dch > 0 and dcl > 0 and dch > dcl:
+                    if dw <= 0: dw = ((dch - dcl) / dcl) * 100
+                    if dp < 0: dp = max(0.0, min(1.0, (cp - dcl) / (dch - dcl)))
+            if dw > 0: w[tf] = dw
+            if 0 <= dp <= 1.0: p[tf] = dp
+        if len(w) < 2 or len(p) < 2: return
+        wc = w.get('D', 0) * 0.50 + w.get('4h', 0) * 0.30 + w.get('1h', 0) * 0.20
+        ltf_w = sum(w.get(t, 0) for t in ['5m', '15m']) / max(1, sum(1 for t in ['5m', '15m'] if t in w))
+        htf_w = sum(w.get(t, 0) for t in ['D', '4h', '1h']) / max(1, sum(1 for t in ['D', '4h', '1h'] if t in w))
+        exp = ltf_w / htf_w if htf_w > 0 else 0.0
+        hp = p.get('D', 0.5) * 0.5 + p.get('4h', 0.5) * 0.3 + p.get('1h', 0.5) * 0.2
+        lp = p.get('5m', 0.5) * 0.5 + p.get('15m', 0.5) * 0.5
+        trend = (hp - 0.5) * 2.0
+        if trend > 0:
+            pbd = max(0.0, hp - lp) / max(hp, 0.01)
+        else:
+            pbd = max(0.0, lp - hp) / max(1.0 - hp, 0.01)
+        pbd = min(1.0, pbd)
+        eb = min(1.3, max(1.0, exp * 0.65 + 0.35)) if exp > 1.0 else max(0.7, exp)
+        moment = max(-100.0, min(100.0, trend * pbd * eb * 100.0))
+        symbol_data['0dc_moment'] = round(moment, 1)
+        symbol_data['0dc_width_composite'] = round(wc, 2)
+        symbol_data['0dc_expansion'] = round(exp, 3)
+        symbol_data['0dc_htf_pos'] = round(hp, 3)
+        symbol_data['0dc_ltf_pos'] = round(lp, 3)
+
     def _update_master_timestamp(self, symbol_data: Dict[str, Any]) -> None:
         latest = None
         ts_1m_str = symbol_data.get("timestamp_1m")
@@ -1867,6 +2482,46 @@ class TradierIndicatorOrchestrator:
             payload_str = payload_bytes.decode('utf-8') if isinstance(payload_bytes, bytes) else payload_bytes
             await self.redis_manager.publish("tradier_indicators_channel", payload_str)
             
+    def _enrich_backtest_winners(self) -> None:
+        """Enrich self.data with Clenow/SMFI/Minervini/Connors indicators from daily klines on disk."""
+        enriched = 0
+        for symbol in self.symbols:
+            try:
+                d_path = self.cache_dir / f"{symbol}_D.json"
+                if not d_path.exists():
+                    continue
+                raw = json.loads(d_path.read_text())
+                bars = raw if isinstance(raw, list) else raw.get('bars', raw.get('candles', []))
+                if not bars or len(bars) < 100:
+                    continue
+                bars = bars[-300:]
+                closes = [float(b.get('close') or b.get('c') or 0) for b in bars if float(b.get('close') or b.get('c') or 0) > 0]
+                opens = [float(b.get('open') or b.get('o') or 0) for b in bars if float(b.get('close') or b.get('c') or 0) > 0]
+                highs = [float(b.get('high') or b.get('h') or 0) for b in bars if float(b.get('close') or b.get('c') or 0) > 0]
+                lows = [float(b.get('low') or b.get('l') or 0) for b in bars if float(b.get('close') or b.get('c') or 0) > 0]
+                vols = [float(b.get('volume') or b.get('v') or 0) for b in bars if float(b.get('close') or b.get('c') or 0) > 0]
+                if len(closes) < 100:
+                    continue
+                s_data = self.data.get(symbol, {})
+                clenow = compute_clenow_score(closes, 90)
+                if clenow:
+                    s_data.update(clenow)
+                sepa = compute_minervini_sepa(closes, highs, lows, vols)
+                if sepa:
+                    s_data.update(sepa)
+                smfi = compute_smfi(opens, highs, lows, closes, 20)
+                if smfi:
+                    s_data.update(smfi)
+                crsi = compute_connors_rsi(closes)
+                if crsi:
+                    s_data.update(crsi)
+                self.data[symbol] = s_data
+                enriched += 1
+            except Exception:
+                continue
+        if enriched > 0:
+            logger.info(f"📊 [BACKTEST_WINNERS] Enriched {enriched}/{len(self.symbols)} symbols with Clenow/SMFI/Minervini/Connors")
+
     async def _save_data(self) -> None:
         async with self._save_lock:
             self._refresh_sentiment()

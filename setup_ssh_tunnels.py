@@ -16,15 +16,15 @@ import os
 import socket
 
 CONTROL_DIR = os.path.expanduser("~/.ssh/tunnel_controls")
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+LOG_DIR = os.path.join(os.path.expanduser("~"), "logs")
 
 # Group tunnels by host — each host gets ONE multiplexed SSH connection
 HOSTS = {
     "server": {
         "host": "niels@157.180.125.52",
         "forwards": [
-            {"name": "Server Redis", "local_port": 6381, "remote_port": 6379},
-            {"name": "Analytics Dashboard", "local_port": 5050, "remote_port": 5050},
+            # {"name": "Server Redis", "local_port": 6381, "remote_port": 6379},  # DISABLED — local scripts must NEVER use server Redis (1.5s latency per call)
+            # {"name": "Analytics Dashboard", "local_port": 5050, "remote_port": 5050},  # DISABLED — trade_analytics.py runs locally now. Re-enable when push.py moves scripts back to server.
             {"name": "OpenClaw Dashboard", "local_port": 18789, "remote_port": 18789},
         ],
     },

@@ -1,0 +1,479 @@
+#!/opt/anaconda3/envs/binance_env/bin/python
+# pylint: disable=W,C,R,I
+"""Autonomous Trader Research Agent — runs daily via cron.
+
+Pipeline:
+1. Scrape fresh trade data from Bitget top traders
+2. Run deep analysis with indicator overlay on ALL accumulated CSVs
+3. Extract winning patterns via decision trees
+4. Compare patterns against our live system gates/thresholds
+5. Generate actionable report + email digest
+
+Usage:
+  python trader_research_agent.py              # Full daily cycle
+  python trader_research_agent.py --scrape     # Scrape only (no analysis)
+  python trader_research_agent.py --analyze    # Analyze only (skip scrape)
+  python trader_research_agent.py --report     # Show latest report
+  python trader_research_agent.py --daemon     # Run every 6h forever
+"""
+import argparse
+import csv
+import json
+import logging
+import os
+import platform
+import signal
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta, timezone
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+IS_MAC = platform.system() == "Darwin"
+if IS_MAC:
+    BASE_PATH = Path("/Users/niels/Documents/binance")
+    PYTHON = "/opt/anaconda3/envs/binance_env/bin/python"
+    LOG_DIR = Path("/Users/niels/logs")
+else:
+    BASE_PATH = Path("/home/niels/binance")
+    PYTHON = "/home/niels/.conda/envs/binance_env/bin/python"
+    LOG_DIR = Path("/home/niels/logs")
+sys.path.insert(0, str(BASE_PATH))
+from config import Config
+config = Config()
+DATA_DIR = config.DATA_DIR / "bitget_traders"
+ANALYSIS_DIR = config.DATA_DIR / "trader_analysis"
+REPORT_DIR = config.DATA_DIR / "trader_research_reports"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger("trader_research_agent")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S"))
+    logger.addHandler(console)
+    fh = RotatingFileHandler(LOG_DIR / "trader_research_agent.log", maxBytes=5_000_000, backupCount=3)
+    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(fh)
+SHUTDOWN = False
+
+
+def _sigterm(signum, frame):
+    global SHUTDOWN
+    SHUTDOWN = True
+    logger.info("Received signal, shutting down gracefully...")
+
+
+signal.signal(signal.SIGTERM, _sigterm)
+signal.signal(signal.SIGINT, _sigterm)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 1 — SCRAPE FRESH DATA
+# ═══════════════════════════════════════════════════════════════════
+
+def scrape_traders() -> Optional[Path]:
+    """Run bitget_trader_scraper.py to pull fresh trade data. Returns CSV path or None."""
+    logger.info("=== PHASE 1: Scraping fresh Bitget trader data ===")
+    script = BASE_PATH / "bitget_trader_scraper.py"
+    if not script.exists():
+        logger.error(f"Scraper not found: {script}")
+        return None
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    csv_path = DATA_DIR / f"{today}_trades.csv"
+    try:
+        result = subprocess.run([PYTHON, str(script), "--full"], capture_output=True, text=True, timeout=600, cwd=str(BASE_PATH))
+        if result.returncode != 0:
+            logger.warning(f"Scraper exited with code {result.returncode}")
+            if result.stderr:
+                logger.warning(f"Scraper stderr: {result.stderr[-500:]}")
+        if csv_path.exists() and csv_path.stat().st_size > 100:
+            line_count = sum(1 for _ in open(csv_path)) - 1
+            logger.info(f"Scrape complete: {csv_path.name} ({line_count} trades)")
+            return csv_path
+        logger.warning("Scrape produced no CSV output, will use existing data")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.error("Scraper timed out after 600s")
+        return None
+    except Exception as e:
+        logger.error(f"Scraper failed: {e}")
+        return None
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 2 — MERGE ALL CSVs INTO UNIFIED DATASET
+# ═══════════════════════════════════════════════════════════════════
+
+def merge_all_csvs() -> Path:
+    """Merge all daily CSVs into one master CSV for comprehensive analysis."""
+    logger.info("=== PHASE 2: Merging all trade CSVs ===")
+    all_rows = []
+    seen_keys = set()
+    csv_files = sorted(DATA_DIR.glob("*_trades.csv"))
+    for csv_file in csv_files:
+        try:
+            with open(csv_file) as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    key = f"{row.get('trader_id', '')}_{row.get('symbol', '')}_{row.get('entry_time', '')}_{row.get('side', '')}"
+                    if key not in seen_keys:
+                        seen_keys.add(key)
+                        all_rows.append(row)
+        except Exception as e:
+            logger.warning(f"Failed to read {csv_file}: {e}")
+    merged_path = DATA_DIR / "merged_all_trades.csv"
+    if all_rows:
+        fieldnames = ["trader_id", "symbol", "side", "entry_price", "exit_price", "entry_time", "exit_time", "pnl", "pnl_pct", "leverage", "position_size_usd"]
+        with open(merged_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(all_rows)
+        logger.info(f"Merged {len(all_rows)} unique trades from {len(csv_files)} CSVs into {merged_path.name}")
+    else:
+        logger.warning("No trade data found in any CSV")
+    return merged_path
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 3 — DEEP ANALYSIS
+# ═══════════════════════════════════════════════════════════════════
+
+def run_deep_analysis(csv_path: Path) -> Dict[str, Any]:
+    """Run trader_deep_analyzer on merged data. Returns analysis results dict."""
+    logger.info("=== PHASE 3: Running deep analysis with indicator overlay ===")
+    try:
+        from trader_deep_analyzer import ingest_trades, overlay_indicators, winner_loser_analysis, extract_patterns, compute_trader_health, regime_correlation, generate_report, per_trader_summary
+    except ImportError as e:
+        logger.error(f"Failed to import trader_deep_analyzer: {e}")
+        return {}
+    if not csv_path.exists():
+        logger.error(f"Merged CSV not found: {csv_path}")
+        return {}
+    trades = ingest_trades(str(csv_path))
+    if not trades:
+        logger.error("No trades ingested from merged CSV")
+        return {}
+    logger.info(f"Ingested {len(trades)} trades from {len(set(t.trader_id for t in trades))} traders")
+    logger.info("Starting indicator overlay (this takes ~30s)...")
+    enriched_count = overlay_indicators(trades)
+    logger.info(f"Indicator overlay: {enriched_count}/{len(trades)} trades enriched ({enriched_count/len(trades)*100:.1f}%)")
+    logger.info("Running winner/loser analysis...")
+    indicator_analysis = winner_loser_analysis(trades)
+    logger.info("Extracting patterns via decision tree...")
+    patterns = extract_patterns(trades, min_samples_leaf=15)
+    logger.info("Computing trader health scores...")
+    health = compute_trader_health(trades)
+    logger.info("Computing regime correlation...")
+    regime_data = regime_correlation(trades)
+    logger.info("Generating standard report files...")
+    generate_report(trades, indicator_analysis, patterns, health, regime_data)
+    return {"trades": trades, "enriched_count": enriched_count, "indicator_analysis": indicator_analysis, "patterns": patterns, "health": health, "regime_data": regime_data}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 4 — COMPARE PATTERNS TO OUR SYSTEM
+# ═══════════════════════════════════════════════════════════════════
+
+def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
+    """Compare extracted patterns and indicator importance against our live system.
+    Returns list of actionable findings."""
+    logger.info("=== PHASE 4: Comparing findings to our system ===")
+    findings = []
+    indicator_analysis = analysis.get("indicator_analysis", {})
+    patterns = analysis.get("patterns", [])
+    health = analysis.get("health", {})
+    trades = analysis.get("trades", [])
+    if not trades:
+        return ["No trade data to analyze"]
+    # --- 1. Top discriminative indicators ---
+    if indicator_analysis:
+        top_5 = list(indicator_analysis.items())[:5]
+        for name, vals in top_5:
+            if vals["p_value"] < 0.05 and abs(vals["cohens_d"]) > 0.2:
+                direction = "higher" if vals["cohens_d"] > 0 else "lower"
+                findings.append(f"INDICATOR_EDGE: {name} — winners have {direction} values (W={vals['winner_mean']:.3f} vs L={vals['loser_mean']:.3f}, d={vals['cohens_d']:+.3f}, p={vals['p_value']:.4f})")
+    # --- 2. High-WR patterns ---
+    for p in patterns[:5]:
+        if p["win_rate"] >= 0.72 and p["n_trades"] >= 20:
+            findings.append(f"PATTERN: WR={p['win_rate']*100:.1f}% (n={p['n_trades']}) {p['dominant_side']} — {p['rule_str']}")
+    # --- 3. Regime insights ---
+    regime_data = analysis.get("regime_data", {})
+    regime_agg = {}
+    for trader_id, regimes in regime_data.items():
+        for regime, stats in regimes.items():
+            if regime not in regime_agg:
+                regime_agg[regime] = {"trades": 0, "wins": 0, "pnl": 0.0}
+            regime_agg[regime]["trades"] += stats["n_trades"]
+            regime_agg[regime]["wins"] += int(stats["n_trades"] * stats["win_rate"] / 100)
+            regime_agg[regime]["pnl"] += stats["total_pnl"]
+    for regime, stats in sorted(regime_agg.items(), key=lambda x: x[1]["trades"], reverse=True):
+        if stats["trades"] >= 20:
+            wr = stats["wins"] / stats["trades"] * 100 if stats["trades"] > 0 else 0
+            findings.append(f"REGIME: {regime} — {stats['trades']} trades, WR={wr:.1f}%, PnL=${stats['pnl']:.0f}")
+    # --- 3b. Overall Sharpe ---
+    import numpy as np
+    all_pnls = [t.pnl_pct for t in trades if t.pnl_pct != 0]
+    if len(all_pnls) > 5:
+        sharpe = np.mean(all_pnls) / np.std(all_pnls) * np.sqrt(252) if np.std(all_pnls) > 0 else 0
+        findings.append(f"SHARPE: {sharpe:.2f} (annualized, {len(all_pnls)} trades)")
+    # --- 4. Healthy trader edge ---
+    green_traders = {tid: h for tid, h in health.items() if h["status"] == "GREEN" and h["n_trades"] >= 20}
+    if green_traders:
+        green_trades = [t for t in trades if t.trader_id in green_traders and t.indicators]
+        if green_trades:
+            green_winners = [t for t in green_trades if t.is_winner()]
+            green_wr = len(green_winners) / len(green_trades) * 100 if green_trades else 0
+            findings.append(f"GREEN_TRADERS: {len(green_traders)} healthy traders, {len(green_trades)} enriched trades, WR={green_wr:.1f}%")
+            # What indicators do GREEN trader winners share?
+            if len(green_winners) >= 10:
+                import numpy as np
+                stoch_vals = [t.indicators.get("stoch_k") for t in green_winners if t.indicators.get("stoch_k") is not None]
+                rsi_vals = [t.indicators.get("rsi_14") for t in green_winners if t.indicators.get("rsi_14") is not None]
+                atr_vals = [t.indicators.get("atr_pct") for t in green_winners if t.indicators.get("atr_pct") is not None]
+                if stoch_vals:
+                    findings.append(f"GREEN_ENTRY_STOCH: median K={np.median(stoch_vals):.1f}, mean={np.mean(stoch_vals):.1f} (at entry)")
+                if rsi_vals:
+                    findings.append(f"GREEN_ENTRY_RSI: median={np.median(rsi_vals):.1f}, mean={np.mean(rsi_vals):.1f} (at entry)")
+                if atr_vals:
+                    findings.append(f"GREEN_ENTRY_ATR%: median={np.median(atr_vals):.2f}%, mean={np.mean(atr_vals):.2f}%")
+    # --- 5. Hold time analysis ---
+    all_winners = [t for t in trades if t.is_winner() and t.hold_hours() > 0]
+    all_losers = [t for t in trades if not t.is_winner() and t.hold_hours() > 0]
+    if all_winners and all_losers:
+        import numpy as np
+        w_hold = np.median([t.hold_hours() for t in all_winners])
+        l_hold = np.median([t.hold_hours() for t in all_losers])
+        findings.append(f"HOLD_TIME: winner median={w_hold:.1f}h, loser median={l_hold:.1f}h")
+    # --- 6. Side bias ---
+    longs = [t for t in trades if t.side == "LONG"]
+    shorts = [t for t in trades if t.side == "SHORT"]
+    if longs and shorts:
+        long_wr = sum(1 for t in longs if t.is_winner()) / len(longs) * 100
+        short_wr = sum(1 for t in shorts if t.is_winner()) / len(shorts) * 100
+        findings.append(f"SIDE: LONG WR={long_wr:.1f}% (n={len(longs)}), SHORT WR={short_wr:.1f}% (n={len(shorts)})")
+    # --- 7. Leverage sweet spot ---
+    import numpy as np
+    leveraged_winners = [t for t in trades if t.is_winner() and t.leverage > 0]
+    leveraged_losers = [t for t in trades if not t.is_winner() and t.leverage > 0]
+    if leveraged_winners and leveraged_losers:
+        w_lev = np.median([t.leverage for t in leveraged_winners])
+        l_lev = np.median([t.leverage for t in leveraged_losers])
+        findings.append(f"LEVERAGE: winner median={w_lev:.1f}x, loser median={l_lev:.1f}x")
+    return findings
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 5 — GENERATE RESEARCH REPORT
+# ═══════════════════════════════════════════════════════════════════
+
+def generate_research_report(analysis: Dict[str, Any], findings: List[str]) -> Path:
+    """Generate a comprehensive research report with actionable recommendations."""
+    logger.info("=== PHASE 5: Generating research report ===")
+    now = datetime.now(timezone.utc)
+    datestamp = now.strftime("%Y%m%d_%H%M")
+    report_path = REPORT_DIR / f"research_{datestamp}.md"
+    trades = analysis.get("trades", [])
+    patterns = analysis.get("patterns", [])
+    health = analysis.get("health", {})
+    indicator_analysis = analysis.get("indicator_analysis", {})
+    enriched_count = analysis.get("enriched_count", 0)
+    n_traders = len(set(t.trader_id for t in trades)) if trades else 0
+    total_pnl = sum(t.pnl for t in trades) if trades else 0
+    overall_wr = (sum(1 for t in trades if t.is_winner()) / len(trades) * 100) if trades else 0
+    lines = []
+    lines.append(f"# Trader Research Report — {now.strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append(f"- **Trades analyzed**: {len(trades)} ({enriched_count} with indicator overlay)")
+    lines.append(f"- **Traders**: {n_traders}")
+    lines.append(f"- **Total PnL**: ${total_pnl:,.2f}")
+    lines.append(f"- **Overall Win Rate**: {overall_wr:.1f}%")
+    lines.append(f"- **Patterns found**: {len(patterns)} (>70% WR, min 15 trades)")
+    lines.append("")
+    lines.append("## Actionable Findings")
+    lines.append("")
+    if findings:
+        for f in findings:
+            lines.append(f"- {f}")
+    else:
+        lines.append("- No actionable findings this cycle.")
+    lines.append("")
+    lines.append("## Top Discriminative Indicators (Winners vs Losers)")
+    lines.append("")
+    if indicator_analysis:
+        lines.append("| Indicator | Winner Mean | Loser Mean | Cohen's d | p-value |")
+        lines.append("|-----------|------------|------------|----------|---------|")
+        for i, (key, vals) in enumerate(indicator_analysis.items()):
+            if i >= 15:
+                break
+            sig = " ***" if vals["p_value"] < 0.001 else " **" if vals["p_value"] < 0.01 else " *" if vals["p_value"] < 0.05 else ""
+            lines.append(f"| {key} | {vals['winner_mean']:.4f} | {vals['loser_mean']:.4f} | {vals['cohens_d']:+.4f} | {vals['p_value']:.6f}{sig} |")
+    else:
+        lines.append("No indicator data available.")
+    lines.append("")
+    lines.append("## High Win-Rate Patterns")
+    lines.append("")
+    if patterns:
+        for i, p in enumerate(patterns[:10]):
+            lines.append(f"### Pattern #{i+1}: WR={p['win_rate']*100:.1f}% (n={p['n_trades']})")
+            lines.append(f"- Side: {p['dominant_side']} | Avg PnL%: {p['avg_pnl_pct']:.2f}%")
+            lines.append(f"- Rule: `{p['rule_str']}`")
+            lines.append("")
+    else:
+        lines.append("No patterns with >70% WR and sufficient sample size.")
+    lines.append("")
+    lines.append("## Trader Health")
+    lines.append("")
+    red_traders = {tid: h for tid, h in health.items() if h["status"] == "RED"}
+    green_traders = {tid: h for tid, h in health.items() if h["status"] == "GREEN"}
+    lines.append(f"- **GREEN**: {len(green_traders)} traders (healthy)")
+    lines.append(f"- **YELLOW**: {len(health) - len(green_traders) - len(red_traders)} traders (caution)")
+    lines.append(f"- **RED**: {len(red_traders)} traders (blowup risk)")
+    if red_traders:
+        lines.append("")
+        lines.append("### RED Traders (avoid copying)")
+        for tid, h in red_traders.items():
+            lines.append(f"- {tid[:12]}.. Score={h['score']}/100 | WR={h['win_rate']:.1f}% | PnL=${h['total_pnl']:.2f}")
+            for w in h["warnings"][:3]:
+                lines.append(f"  - {w}")
+    lines.append("")
+    lines.append("---")
+    lines.append(f"*Generated by trader_research_agent.py at {now.strftime('%Y-%m-%d %H:%M UTC')}*")
+    report_text = "\n".join(lines)
+    with open(report_path, "w") as f:
+        f.write(report_text)
+    logger.info(f"Research report written: {report_path}")
+    # Also save findings as JSON for programmatic access
+    findings_path = REPORT_DIR / f"findings_{datestamp}.json"
+    with open(findings_path, "w") as f:
+        json.dump({"timestamp": now.isoformat(), "n_trades": len(trades), "n_enriched": enriched_count, "n_traders": n_traders, "overall_wr": round(overall_wr, 2), "total_pnl": round(total_pnl, 2), "n_patterns": len(patterns), "findings": findings, "top_patterns": [{"rule": p["rule_str"], "wr": p["win_rate"], "n": p["n_trades"], "side": p["dominant_side"], "avg_pnl_pct": p["avg_pnl_pct"]} for p in patterns[:10]]}, f, indent=2)
+    logger.info(f"Findings JSON written: {findings_path}")
+    return report_path
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 6 — EMAIL DIGEST (optional)
+# ═══════════════════════════════════════════════════════════════════
+
+def email_digest(report_path: Path, findings: List[str]):
+    """Send findings as email digest if morning_email infrastructure is available."""
+    try:
+        from morning_email import send_email
+        lines = [f"<h2>Trader Research — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}</h2>", f"<p><b>{len(findings)} findings</b></p>", "<ul>"]
+        for f in findings[:15]:
+            lines.append(f"<li>{f}</li>")
+        lines.append("</ul>")
+        lines.append(f"<p><i>Full report: {report_path.name}</i></p>")
+        send_email("\n".join(lines), subject=f"Trader Research — {len(findings)} findings")
+        logger.info("Email digest sent")
+    except ImportError:
+        logger.info("Email not available (morning_email not found), skipping")
+    except Exception as e:
+        logger.warning(f"Email failed: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ORCHESTRATION
+# ═══════════════════════════════════════════════════════════════════
+
+def run_full_cycle(skip_scrape: bool = False):
+    """Run the complete research cycle."""
+    start = time.time()
+    logger.info(f"{'='*60}")
+    logger.info(f"TRADER RESEARCH AGENT — Starting full cycle")
+    logger.info(f"Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    logger.info(f"{'='*60}")
+    # Phase 1: Scrape
+    if not skip_scrape:
+        scrape_traders()
+    else:
+        logger.info("Skipping scrape (--analyze mode)")
+    # Phase 2: Merge
+    merged_csv = merge_all_csvs()
+    if not merged_csv.exists() or merged_csv.stat().st_size < 100:
+        logger.error("No merged data available. Aborting.")
+        return
+    # Phase 3: Deep analysis
+    analysis = run_deep_analysis(merged_csv)
+    if not analysis:
+        logger.error("Deep analysis failed. Aborting.")
+        return
+    # Phase 4: Compare to our system
+    findings = compare_to_our_system(analysis)
+    # Phase 5: Generate report
+    report_path = generate_research_report(analysis, findings)
+    # Phase 6: Email — use unified newsletter (delta-only)
+    try:
+        from unified_newsletter import run as send_unified_newsletter
+        send_unified_newsletter()
+    except Exception as e:
+        logger.warning(f"Unified newsletter failed, falling back to legacy: {e}")
+        email_digest(report_path, findings)
+    elapsed = time.time() - start
+    logger.info(f"{'='*60}")
+    logger.info(f"CYCLE COMPLETE in {elapsed:.0f}s — {len(findings)} findings")
+    logger.info(f"Report: {report_path}")
+    logger.info(f"{'='*60}")
+    # Print findings to stdout
+    print(f"\n{'='*70}")
+    print(f"  TRADER RESEARCH FINDINGS ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')})")
+    print(f"{'='*70}")
+    for f in findings:
+        print(f"  • {f}")
+    if not findings:
+        print("  No actionable findings this cycle.")
+    print(f"{'='*70}\n")
+
+
+def show_latest_report():
+    """Display the most recent research report."""
+    reports = sorted(REPORT_DIR.glob("research_*.md"), reverse=True)
+    if not reports:
+        print("No research reports found. Run a full cycle first.")
+        return
+    with open(reports[0]) as f:
+        print(f.read())
+
+
+def daemon_loop(interval_hours: float = 6.0):
+    """Run full cycles on a loop."""
+    logger.info(f"Daemon mode: running every {interval_hours}h")
+    while not SHUTDOWN:
+        try:
+            run_full_cycle()
+        except Exception as e:
+            logger.error(f"Cycle failed: {e}", exc_info=True)
+        next_run = datetime.now(timezone.utc) + timedelta(hours=interval_hours)
+        logger.info(f"Next run at {next_run.strftime('%Y-%m-%d %H:%M UTC')}")
+        wait_until = time.time() + interval_hours * 3600
+        while time.time() < wait_until and not SHUTDOWN:
+            time.sleep(30)
+    logger.info("Daemon shut down cleanly")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Autonomous Trader Research Agent")
+    parser.add_argument("--scrape", action="store_true", help="Scrape only (no analysis)")
+    parser.add_argument("--analyze", action="store_true", help="Analyze only (skip scrape)")
+    parser.add_argument("--report", action="store_true", help="Show latest research report")
+    parser.add_argument("--daemon", action="store_true", help="Run every 6h forever")
+    parser.add_argument("--interval", type=float, default=6.0, help="Daemon interval in hours (default: 6)")
+    args = parser.parse_args()
+    if args.report:
+        show_latest_report()
+        return
+    if args.scrape:
+        scrape_traders()
+        return
+    if args.daemon:
+        daemon_loop(args.interval)
+        return
+    run_full_cycle(skip_scrape=args.analyze)
+
+
+if __name__ == "__main__":
+    main()

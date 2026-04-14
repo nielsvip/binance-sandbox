@@ -162,7 +162,7 @@ def get_positions():
 @app.route('/api/logs')
 def get_logs():
     res = {'stock': '', 'crypto': ''}
-    log_dirs = [os.path.join(PROJECT_ROOT, "logs"), "/logs", "/binance/data/decisions", "/home/niels/logs"]
+    log_dirs = [os.path.expanduser("~/logs"), "/home/niels/logs", "/binance/data/decisions"]
     
     # Standard log files
     log_files = ["actions.log", "tradier.log", "crypto_actions.log", "tradier_actions.log"]

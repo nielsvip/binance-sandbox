@@ -1,903 +1,328 @@
+#!/usr/bin/env python3
+"""ez_backup.py — Archive large data to external drives before disk fills up.
+Runs hourly from start_everything_1. Handles both MacBook and server.
+
+Archives: klines, indicator caches, position history, backtest results, logs.
+Targets: /Volumes/SSD2T (primary), /Volumes/TOSHIBA_EXT (secondary mirror).
+Server: rsync large dirs to local external drives via SSH.
+
+NEVER deletes source data — only copies/mirrors to external drives.
+"""
+import json, logging, os, platform, shutil, subprocess, sys, time
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, Dict, List, Union
 
-import os
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-5s %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
+logger = logging.getLogger("ez_backup")
 
-import json
+IS_MAC = platform.system() == "Darwin"
+if IS_MAC:
+    BASE_PATH = Path("/Users/niels/Documents/binance")
+    LOG_DIR = Path("/Users/niels/logs")
+else:
+    BASE_PATH = Path("/home/niels/binance")
+    LOG_DIR = Path("/home/niels/logs")
 
-import tempfile
+# External drives (Mac only — server archives TO these via rsync)
+SSD2T = Path("/Volumes/SSD2T")
+TOSHIBA = Path("/Volumes/TOSHIBA_EXT")
 
-import shutil
+# Archive layout on external drives
+ARCHIVE_DIRS = {
+    "klines": "binance_archive/klines_cache",
+    "klines_tradier": "binance_archive/klines_cache_tradier",
+    "data": "binance_archive/data",
+    "backups": "binance_archive/backups",
+    "logs": "binance_archive/logs",
+    "positions": "binance_archive/positions",
+    "indicator_cache": "binance_archive/indicator_cache",
+}
 
-import asyncio
+SERVER = "s1-int"
+SERVER_LARGE_DIRS = {
+    "klines": "/home/niels/binance-sandbox/klines_cache",
+    "indicator_cache": "/home/niels/binance-sandbox/indicator_cache",
+    "data": "/home/niels/binance/data",
+    "logs": "/home/niels/logs",
+    "positions_ang": "/home/niels/binance/ang",
+    "positions_inf": "/home/niels/binance/inf",
+    "positions_fin": "/home/niels/binance/fin",
+    "positions_men": "/home/niels/binance/men",
+    "positions_flz": "/home/niels/binance/flz",
+}
 
-import time
+# Disk space thresholds (bytes)
+WARN_THRESHOLD = 20 * 1024**3  # 20GB free = warning
+CRITICAL_THRESHOLD = 10 * 1024**3  # 10GB free = critical, start moving
 
-import pandas as pd
 
-from collections import defaultdict
-
-from influxdb_client import InfluxDBClient, Point, WritePrecision
-
-from influxdb_client.client.write_api import SYNCHRONOUS # Or ASYNCHRONOUS for batching
-
-# Try to import pdfplumber, but don't fail if it's not needed/installed yet
-
-try:
-    import pdfplumber
-
-except ImportError:
-    pdfplumber = None # Will be checked before use
-
-# Local source folders
-
-BASE_PATH = Path("/Users/niels/Documents/binance") #!UPDATE THIS TO YOUR ACTUAL BASE PATH
-
-KLINES_CACHE_DIR = BASE_PATH / "klines_cache"
-
-DATA_DIR = BASE_PATH / "data" # For incoming market_data_*.json and PDFs
-
-PLOTS_DIR = BASE_PATH / "plots"
-
-# Directory for CSVs generated from market_data_*.json files (one CSV per symbol)
-
-SYMBOL_MARKET_DATA_CSVS_DIR = BASE_PATH / "symbol_market_data_csvs"
-
-# Directory for CSVs generated from PDF files
-
-PDF_CSV_EXPORT_DIR = BASE_PATH / "symbol_pdf_data_csvs" # CSVs from PDFs go here
-
-# External HD target folders
-
-HD_ROOT = Path("/Volumes/SSD2T") #!UPDATE THIS TO YOUR ACTUAL HD ROOT
-
-BACKUP_KLINES_CACHE = HD_ROOT / "backups/klines_cache"
-
-BACKUP_DATA = HD_ROOT / "backups/data" # For market_data_*.json and PDFs
-
-BACKUP_PLOTS = HD_ROOT / "backups/plots"
-
-BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR = HD_ROOT / "backups/symbol_market_data_csvs"
-
-BACKUP_PDF_CSV_EXPORT_DIR = HD_ROOT / "backups/symbol_pdf_data_csvs" # Backup for PDF-derived CSVs
-
-# Config: number of klines to keep locally per file
-
-MAX_LOCAL_KLINES = 2400
-
-# Ensure all necessary folders exist
-
-for folder in [KLINES_CACHE_DIR, DATA_DIR, PLOTS_DIR, SYMBOL_MARKET_DATA_CSVS_DIR, PDF_CSV_EXPORT_DIR, BACKUP_KLINES_CACHE, BACKUP_DATA, BACKUP_PLOTS, BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR, BACKUP_PDF_CSV_EXPORT_DIR]:
-    folder.mkdir(parents=True, exist_ok=True)
-
-# --- KLINE DATA FUNCTIONS --- (Consolidated by month: one file per symbol/timeframe/month)
-
-def consolidate_by_month(symbol, interval, all_data_df):
-    """Consolidate klines to one file per symbol/timeframe/month"""
-    if all_data_df.empty: return {}
-    all_data_df['timestamp'] = pd.to_datetime(all_data_df['timestamp'], utc=True, errors='coerce')
-    all_data_df = all_data_df.dropna(subset=['timestamp']).drop_duplicates('timestamp').sort_values('timestamp')
-    if all_data_df.empty: return {}
-    all_data_df['year_month'] = all_data_df['timestamp'].dt.to_period('M')
-    consolidated = {}
-    for period, group_df in all_data_df.groupby('year_month'):
-        month_key = f"{period.year}{period.month:02d}"
-        file_name = f"{symbol}_{interval}_{month_key}.json"
-        consolidated[file_name] = group_df.drop(columns=['year_month'])
-    return consolidated
-
-def append_and_trim_kline_data():
-    """Backup and consolidate klines - one file per symbol/timeframe/month"""
-    symbol_interval_data = {}
-    for file in KLINES_CACHE_DIR.glob("*.json"):
-        try:
-            file_name = file.stem
-            if '_' not in file_name: continue
-            parts = file_name.rsplit('_', 1)
-            if len(parts) != 2: continue
-            symbol, interval = parts
-            local_df = pd.read_json(file)
-            local_df["timestamp"] = pd.to_datetime(local_df["timestamp"], utc=True, errors='coerce')
-            local_df = local_df.dropna(subset=['timestamp']).drop_duplicates("timestamp").sort_values("timestamp")
-            if local_df.empty: continue
-            key = f"{symbol}_{interval}"
-            if key not in symbol_interval_data:
-                symbol_interval_data[key] = {'symbol': symbol, 'interval': interval, 'dataframes': []}
-            symbol_interval_data[key]['dataframes'].append(local_df)
-        except Exception as e:
-            print(f" Error reading local kline file {file.name}: {e}")
-            continue
-    for key, info in symbol_interval_data.items():
-        symbol, interval = info['symbol'], info['interval']
-        try:
-            combined_df = pd.concat(info['dataframes'], ignore_index=True).drop_duplicates('timestamp').sort_values('timestamp')
-            consolidated = consolidate_by_month(symbol, interval, combined_df)
-            for file_name, month_df in consolidated.items():
-                backup_file = BACKUP_KLINES_CACHE / file_name
-                if backup_file.exists():
-                    try:
-                        existing_df = pd.read_json(backup_file)
-                        existing_df['timestamp'] = pd.to_datetime(existing_df['timestamp'], utc=True, errors='coerce')
-                        month_df['timestamp'] = pd.to_datetime(month_df['timestamp'], utc=True, errors='coerce')
-                        merged = pd.concat([existing_df, month_df], ignore_index=True).drop_duplicates('timestamp').sort_values('timestamp')
-                        atomic_save_json(merged, backup_file)
-                    except Exception as e:
-                        print(f" Error merging backup {backup_file.name}: {e}. Overwriting.")
-                        atomic_save_json(month_df, backup_file)
-                else:
-                    atomic_save_json(month_df, backup_file)
-                print(f" Updated kline backup: {file_name} ({len(month_df)} rows)")
-            trimmed_df = combined_df.tail(MAX_LOCAL_KLINES)
-            local_file = KLINES_CACHE_DIR / f"{symbol}_{interval}.json"
-            atomic_save_json(trimmed_df, local_file)
-            print(f" Trimmed local kline {symbol}_{interval}.json to {len(trimmed_df)} rows")
-        except Exception as e:
-            print(f" Failed to process {symbol} {interval}: {e}")
-
-def atomic_save_json(df: pd.DataFrame, file_path: Path):
-    file_path_str = str(file_path)
-    target_dir = file_path.parent
-    tmp_fd, tmp_path_str = tempfile.mkstemp(suffix='.json', prefix='tmp_atomic_', dir=str(target_dir))
-    os.close(tmp_fd)
-    tmp_path = Path(tmp_path_str)
+def get_free_space(path):
+    """Get free space in bytes for the filesystem containing path."""
     try:
-        df.to_json(tmp_path, orient='records', date_format='iso')
-        shutil.move(str(tmp_path), file_path_str)
+        st = os.statvfs(str(path))
+        return st.f_bavail * st.f_frsize
+    except Exception:
+        return None
+
+
+def get_dir_size(path):
+    """Get total size of a directory in bytes."""
+    total = 0
+    try:
+        for dirpath, dirnames, filenames in os.walk(str(path)):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+    except Exception:
+        pass
+    return total
+
+
+def fmt_size(nbytes):
+    """Format bytes as human-readable."""
+    if nbytes is None:
+        return "N/A"
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if abs(nbytes) < 1024:
+            return f"{nbytes:.1f}{unit}"
+        nbytes /= 1024
+    return f"{nbytes:.1f}PB"
+
+
+def find_archive_drive():
+    """Find the best external drive for archiving. Prefer SSD2T (faster)."""
+    for drive in [SSD2T, TOSHIBA]:
+        if drive.exists() and drive.is_dir():
+            free = get_free_space(drive)
+            if free and free > 5 * 1024**3:  # At least 5GB free
+                return drive
+    return None
+
+
+def ensure_archive_dirs(drive):
+    """Create archive directory structure on the external drive."""
+    for key, subdir in ARCHIVE_DIRS.items():
+        target = drive / subdir
+        target.mkdir(parents=True, exist_ok=True)
+
+
+def rsync_local(src, dst, delete=False):
+    """rsync a local directory to the archive drive."""
+    if not Path(src).exists():
+        return 0
+    cmd = ["rsync", "-a", "--update", "--timeout=120"]
+    if delete:
+        cmd.append("--delete")
+    cmd.extend([str(src).rstrip("/") + "/", str(dst) + "/"])
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        if result.returncode == 0:
+            return 1
+        else:
+            logger.warning(f"rsync failed: {src} → {dst}: {result.stderr[:200]}")
+            return 0
     except Exception as e:
-        print(f" Error during atomic save to {file_path_str}: {e}")
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+        logger.error(f"rsync error: {src} → {dst}: {e}")
+        return 0
 
-# --- FILE MOVEMENT FUNCTIONS ---
 
-def move_market_data():
-    cutoff_time = time.time() - 0.5 * 12 * 60 * 60  # 6 hours ago
-    for file_pattern in ["market_data_*.json", "*.pdf"]:
-        for file in DATA_DIR.glob(file_pattern):
-            try:
-                backup_file_path = BACKUP_DATA / file.name
-                shutil.copy(file, backup_file_path)
-                print(f" Market data ({file.suffix}) copied: {file.name} to {backup_file_path}")
-                mtime = file.stat().st_mtime
-                if mtime < cutoff_time:
-                    file.unlink()
-                    print(f" Old market data ({file.suffix}) deleted from local: {file.name}")
-            except Exception as e:
-                print(f"Error processing market data file {file.name}: {e}")
+def rsync_from_server(remote_path, local_dst):
+    """rsync a server directory to a local archive drive."""
+    cmd = ["rsync", "-az", "--update", "--timeout=120", f"{SERVER}:{remote_path}/", str(local_dst) + "/"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        if result.returncode == 0:
+            return 1
+        else:
+            logger.warning(f"Server rsync failed: {remote_path} → {local_dst}: {result.stderr[:200]}")
+            return 0
+    except Exception as e:
+        logger.error(f"Server rsync error: {remote_path} → {local_dst}: {e}")
+        return 0
 
-def move_plot_files():
-    cutoff_time = time.time() - 0.5 * 24 * 60 * 60  # 12 hours ago
-    for file in PLOTS_DIR.glob("*.png"):
+
+def archive_local_data(drive):
+    """Archive local MacBook data to external drive."""
+    logger.info(f"Archiving local data to {drive.name}...")
+    count = 0
+    # Klines (crypto)
+    klines_src = BASE_PATH / "klines_cache"
+    if klines_src.exists():
+        count += rsync_local(klines_src, drive / ARCHIVE_DIRS["klines"])
+        logger.info(f"  Klines (crypto): {fmt_size(get_dir_size(klines_src))}")
+    # Klines (tradier/stocks)
+    klines_tradier = BASE_PATH / "klines_cache" / "tradier"
+    if klines_tradier.exists():
+        count += rsync_local(klines_tradier, drive / ARCHIVE_DIRS["klines_tradier"])
+        logger.info(f"  Klines (tradier): {fmt_size(get_dir_size(klines_tradier))}")
+    # Data directory (decisions, backtest results, etc)
+    data_src = BASE_PATH / "data"
+    if data_src.exists():
+        count += rsync_local(data_src, drive / ARCHIVE_DIRS["data"])
+        logger.info(f"  Data: {fmt_size(get_dir_size(data_src))}")
+    # Backups
+    backups_src = BASE_PATH / "backups"
+    if backups_src.exists():
+        count += rsync_local(backups_src, drive / ARCHIVE_DIRS["backups"])
+    # Logs
+    if LOG_DIR.exists():
+        count += rsync_local(LOG_DIR, drive / ARCHIVE_DIRS["logs"])
+    # Position files (per account)
+    for acct in ["ang", "inf", "fin", "men", "flz"]:
+        acct_dir = BASE_PATH / acct
+        if acct_dir.exists():
+            target = drive / ARCHIVE_DIRS["positions"] / acct
+            target.mkdir(parents=True, exist_ok=True)
+            count += rsync_local(acct_dir, target)
+    logger.info(f"  Local archive: {count} dirs synced")
+    return count
+
+
+def archive_server_data(drive):
+    """Pull server large directories to external drive via SSH."""
+    logger.info(f"Archiving server data to {drive.name}...")
+    count = 0
+    for key, remote_path in SERVER_LARGE_DIRS.items():
+        if key.startswith("positions_"):
+            acct = key.replace("positions_", "")
+            local_dst = drive / ARCHIVE_DIRS["positions"] / f"server_{acct}"
+        elif key in ARCHIVE_DIRS:
+            local_dst = drive / ARCHIVE_DIRS[key].replace("binance_archive", "binance_archive/server")
+        else:
+            local_dst = drive / "binance_archive" / "server" / key
+        local_dst.mkdir(parents=True, exist_ok=True)
+        logger.info(f"  Server {key}: {remote_path} → {local_dst}")
+        count += rsync_from_server(remote_path, local_dst)
+    logger.info(f"  Server archive: {count} dirs synced")
+    return count
+
+
+def mirror_to_secondary(primary, secondary):
+    """Mirror primary archive to secondary drive (TOSHIBA as backup of SSD2T)."""
+    archive_dir = primary / "binance_archive"
+    if not archive_dir.exists():
+        return 0
+    target = secondary / "binance_archive"
+    target.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Mirroring {primary.name}/binance_archive → {secondary.name}/binance_archive...")
+    return rsync_local(archive_dir, target)
+
+
+def disk_space_report():
+    """Print disk space report for all locations."""
+    logger.info("=" * 60)
+    logger.info("DISK SPACE REPORT")
+    logger.info("=" * 60)
+    # MacBook internal
+    mac_free = get_free_space(BASE_PATH)
+    mac_status = "OK" if mac_free and mac_free > WARN_THRESHOLD else "WARNING" if mac_free and mac_free > CRITICAL_THRESHOLD else "CRITICAL"
+    logger.info(f"  MacBook internal:  {fmt_size(mac_free)} free [{mac_status}]")
+    # External drives
+    for drive_name, drive_path in [("SSD2T", SSD2T), ("TOSHIBA_EXT", TOSHIBA)]:
+        if drive_path.exists():
+            free = get_free_space(drive_path)
+            archive_size = get_dir_size(drive_path / "binance_archive") if (drive_path / "binance_archive").exists() else 0
+            logger.info(f"  {drive_name}:          {fmt_size(free)} free, archive={fmt_size(archive_size)}")
+        else:
+            logger.info(f"  {drive_name}:          NOT MOUNTED")
+    # Server (via SSH)
+    try:
+        result = subprocess.run(["ssh", SERVER, "df -h / | tail -1 | awk '{print $4}'"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            logger.info(f"  Server:            {result.stdout.strip()} free")
+    except Exception:
+        logger.info(f"  Server:            UNREACHABLE")
+    # Local data sizes
+    logger.info("  --- Local data sizes ---")
+    for label, path in [("klines_cache", BASE_PATH / "klines_cache"), ("data", BASE_PATH / "data"), ("backups", BASE_PATH / "backups"), ("logs", LOG_DIR)]:
+        if path.exists():
+            logger.info(f"    {label}: {fmt_size(get_dir_size(path))}")
+    logger.info("=" * 60)
+
+
+def clean_old_server_data():
+    """Clean safely deletable data on server to free space."""
+    logger.info("Checking server for cleanable data...")
+    cleanable = [
+        ("Old backup (pre-march18)", "/home/niels/_binance_old_backup_pre_march18", 17),
+        ("Old binance_ copy", "/home/niels/binance_", 3.5),
+        ("Duplicate klines_cache_macbook", "/home/niels/binance/klines_cache_macbook", 4.4),
+        ("Duplicate klines_cache_gateway", "/home/niels/binance/klines_cache_gateway", 1.2),
+        ("Sandbox klines_cache_macbook", "/home/niels/binance-sandbox/klines_cache_macbook", 0.7),
+        ("Sandbox klines_cache_gateway", "/home/niels/binance-sandbox/klines_cache_gateway", 1.4),
+        ("Old framework backup", "/home/niels/binance-sandbox/backtest_framework_backup_20260316", 1.9),
+    ]
+    for label, path, est_gb in cleanable:
         try:
-            shutil.copy(file, BACKUP_PLOTS / file.name)
-            print(f" Plot copied: {file.name}")
-            mtime = file.stat().st_mtime
-            if mtime < cutoff_time:
-                file.unlink()
-                print(f" Old plot deleted: {file.name}")
-        except Exception as e:
-            print(f"Error processing plot file {file.name}: {e}")
-
-# --- JSON MARKET DATA TO CSV PROCESSING ---
-
-def process_market_data_json_to_symbol_csvs(json_source_dirs: list[Path], csv_output_dir: Path):
-    print(f"Starting processing of market_data_*.json for symbol CSVs from {json_source_dirs} to {csv_output_dir}")
-    csv_output_dir.mkdir(parents=True, exist_ok=True)
-    processed_json_files = set() # To avoid processing the same file if present in multiple source_dirs
-    # Iterate through all source directories (local DATA_DIR and BACKUP_DATA)
-    all_json_files_to_process = []
-    for source_dir in json_source_dirs:
-        for json_file in source_dir.glob("market_data_*.json"):
-            abs_path = json_file.resolve()
-            if abs_path not in processed_json_files:
-                all_json_files_to_process.append(json_file)
-                processed_json_files.add(abs_path)
-    # Sort files by name (which often includes timestamp) to process in chronological order
-    all_json_files_to_process.sort(key=lambda p: p.name)
-    print(f"Found {len(all_json_files_to_process)} unique market_data_*.json files to process.")
-    for json_file in all_json_files_to_process:
-        print(f"  Processing JSON file: {json_file.name}")
-        try:
-            with json_file.open("r") as f:
-                data_from_json = json.load(f)
-            if not isinstance(data_from_json, dict):
-                print(f"    WARN: Content of {json_file.name} is not a dictionary. Skipping.")
-                continue
-            for symbol_key, indicators_dict in data_from_json.items():
-                if not isinstance(indicators_dict, dict) or "timestamp" not in indicators_dict:
-                    # print(f"    WARN: Invalid/missing data for symbol '{symbol_key}' in {json_file.name}. Skipping.")
-                    continue
-                # Prepare the single record for this symbol from this JSON file
-                record = {"symbol": symbol_key} 
-                record.update(indicators_dict)
-                # Convert timestamp early
-                try:
-                    record_timestamp = pd.to_datetime(record["timestamp"], utc=True, errors='coerce')
-                    if pd.isna(record_timestamp):
-                        print(f"    WARN: Invalid timestamp '{record['timestamp']}' for symbol '{symbol_key}' in {json_file.name}. Skipping record.")
-                        continue
-                    record["timestamp"] = record_timestamp # Store as datetime object
-                except Exception as e_ts:
-                    print(f"    ERROR converting timestamp for '{symbol_key}' in {json_file.name}: {e_ts}. Skipping record.")
-                    continue
-                new_record_df = pd.DataFrame([record]) # DataFrame with a single row
-                output_csv_file = csv_output_dir / f"{symbol_key}.csv"
-                if output_csv_file.exists():
-                    try:
-                        # Read only a small part to get headers, or handle potential errors
-                        existing_df = pd.read_csv(output_csv_file, nrows=1) # Read only header to check columns
-                        header = True # Existing file has header
-                        mode = 'a' # Append mode
-                        # Check if all columns from new_record_df exist in existing_df
-                        # If not, it's safer to read the whole thing, reindex, and rewrite.
-                        # This is a trade-off: appending is faster but less robust to schema changes.
-                        # For simplicity and robustness if schema changes, we'll read, concat, dedupe, rewrite.
-                        # This means it's not truly "append only" but "merge and rewrite".
-                        full_existing_df = pd.read_csv(output_csv_file)
-                        if "timestamp" in full_existing_df.columns:
-                            full_existing_df["timestamp"] = pd.to_datetime(full_existing_df["timestamp"], utc=True, errors='coerce')
-                            full_existing_df.dropna(subset=["timestamp"], inplace=True)
-                        # Align columns before concat
-                        all_cols = new_record_df.columns.union(full_existing_df.columns)
-                        full_existing_df_reindexed = full_existing_df.reindex(columns=all_cols)
-                        new_record_df_reindexed = new_record_df.reindex(columns=all_cols)
-                        combined_df = pd.concat([full_existing_df_reindexed, new_record_df_reindexed], ignore_index=True)
-                        key_indicator_columns = [col for col in combined_df.columns if col not in ['symbol']] # All columns except symbol
-                        combined_df.sort_values(by='timestamp', inplace=True)
-                        combined_df.drop_duplicates(subset=['timestamp'], keep='last', inplace=True) # Keep the latest entry for a given timestamp
-                        combined_df.to_csv(output_csv_file, index=False)
-                        print(f"    Updated CSV for {symbol_key} with {len(combined_df)} total rows.")
-                    except pd.errors.EmptyDataError:
-                        # Existing file is empty, write new data with header
-                        new_record_df.to_csv(output_csv_file, index=False, header=True, mode='w')
-                        # print(f"    Created new CSV for {symbol_key} (existing was empty).")
-                    except Exception as e_append:
-                        print(f"    ERROR updating CSV for {symbol_key} ({output_csv_file.name}): {e_append}. Attempting overwrite with new record.")
-                        try:
-                            new_record_df.to_csv(output_csv_file, index=False, header=True, mode='w') # Overwrite
-                        except Exception as e_ow:
-                             print(f"    FATAL ERROR: Could not even overwrite CSV for {symbol_key}: {e_ow}")
-                else:
-                    # CSV doesn't exist, create it with the new record
-                    new_record_df.to_csv(output_csv_file, index=False, header=True, mode='w')
-                    # print(f"    Created new CSV for {symbol_key}.")
-        except json.JSONDecodeError as e_json:
-            print(f"    ERROR decoding JSON from {json_file.name}: {e_json}. Skipping file.")
-        except Exception as e_file:
-            print(f"    UNEXPECTED ERROR processing file {json_file.name}: {e_file}")
-    print("Processing of market_data_*.json files to symbol CSVs finished.")
-    # Backup of these CSVs is implicitly handled because we are writing to BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR
-
-# def process_market_data_json_to_symbol_csvs(json_source_dirs: list[Path], csv_output_dir: Path):
-
-#     print(f"Starting processing of market_data_*.json for symbol CSVs from {json_source_dirs} to {csv_output_dir}")
-
-#     csv_output_dir.mkdir(parents=True, exist_ok=True)
-
-#     all_symbol_records = defaultdict(list)
-
-#     processed_files = set()
-
-#     for source_dir in json_source_dirs:
-
-#         for json_file in source_dir.glob("market_data_*.json"):
-
-#             abs_path = json_file.resolve()
-
-#             if abs_path in processed_files:
-
-#                 continue
-
-#             processed_files.add(abs_path)
-
-#             print(f"  Processing JSON file: {json_file.name}")
-
-#             try:
-
-#                 with json_file.open("r") as f:
-
-#                     data = json.load(f)
-
-#                 for symbol_key, indicators_dict in data.items():
-
-#                     if not isinstance(indicators_dict, dict) or "timestamp" not in indicators_dict:
-
-#                         print(f"    WARN: Invalid/missing data for symbol '{symbol_key}' in {json_file.name}. Skipping.")
-
-#                         continue
-
-#                     record = {"symbol": symbol_key}
-
-#                     record.update(indicators_dict)
-
-#                     all_symbol_records[symbol_key].append(record)
-
-#             except Exception as e:
-
-#                 print(f"    ERROR processing {json_file.name}: {e}")
-
-#     if not all_symbol_records:
-
-#         print("No data records found in any market_data_*.json files.")
-
-#         return
-
-#     for symbol, records_list in all_symbol_records.items():
-
-#         if not records_list: continue
-
-#         print(f"  Updating JSON-derived CSV for symbol: {symbol} with {len(records_list)} new records")
-
-#         new_df = pd.DataFrame(records_list)
-
-#         try:
-
-#             new_df["timestamp"] = pd.to_datetime(new_df["timestamp"], utc=True, errors='coerce')
-
-#             new_df.dropna(subset=["timestamp"], inplace=True)
-
-#             if new_df.empty:
-
-#                 print(f"    WARN: No valid timestamped JSON data for {symbol} after conversion. Skipping.")
-
-#                 continue
-
-#         except Exception as e:
-
-#             print(f"    ERROR converting 'timestamp' for {symbol} from JSON: {e}. Skipping.")
-
-#             continue
-
-#         output_csv_file = csv_output_dir / f"{symbol}.csv"
-
-#         combined_df = new_df
-
-#         if output_csv_file.exists():
-
-#             try:
-
-#                 existing_df = pd.read_csv(output_csv_file)
-
-#                 if not existing_df.empty and "timestamp" in existing_df.columns:
-
-#                     print(f"    Loading existing JSON-derived data for {symbol} from {output_csv_file.name}")
-
-#                     existing_df["timestamp"] = pd.to_datetime(existing_df["timestamp"], utc=True, errors='coerce')
-
-#                     existing_df.dropna(subset=["timestamp"], inplace=True)
-
-#                     all_cols = new_df.columns.union(existing_df.columns)
-
-#                     existing_df = existing_df.reindex(columns=all_cols)
-
-#                     new_df_reindexed = new_df.reindex(columns=all_cols)
-
-#                     combined_df = pd.concat([existing_df, new_df_reindexed], ignore_index=True)
-
-#                 elif existing_df.empty:
-
-#                      print(f"    Existing JSON-derived CSV for {symbol} is empty. Using new data.")
-
-#                 else: # Missing timestamp or other issue
-
-#                     print(f"    WARN: Existing JSON-derived CSV for {symbol} invalid. Overwriting.")
-
-#             except Exception as e:
-
-#                 print(f"    ERROR reading existing JSON-derived CSV for {symbol}: {e}. Using new data.")
-
-#         key_columns = [col for col in combined_df.columns if col not in ['symbol']]
-
-#         if key_columns:
-
-#             combined_df.sort_values(by=['timestamp'] + [k for k in key_columns if k != 'timestamp'], inplace=True)
-
-#             combined_df.drop_duplicates(subset=key_columns, keep='last', inplace=True)
-
-#         combined_df.sort_values(by='timestamp', inplace=True)
-
-#         try:
-
-#             combined_df.to_csv(output_csv_file, index=False)
-
-#             print(f"    SUCCESS: Wrote {len(combined_df)} unique rows for {symbol} to JSON-derived {output_csv_file.name}")
-
-#         except Exception as e:
-
-#             print(f"    ERROR writing JSON-derived CSV for {symbol}: {e}")
-
-#     print("Processing of market_data_*.json files finished.")
-
-#     # if BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR.exists():
-
-#     #     print(f"Backing up generated symbol market data CSVs (from JSON) to {BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR}...")
-
-#     #     for csv_file in csv_output_dir.glob("*.csv"):
-
-#     #         try:
-
-#     #             shutil.copy(csv_file, BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR / csv_file.name)
-
-#     #             print(f"  Backed up {csv_file.name}")
-
-#     #         except Exception as e:
-
-#     #             print(f"  Error backing up {csv_file.name}: {e}")
-
-# --- PDF MARKET DATA TO CSV PROCESSING ---
-
-# --- PDF MARKET DATA TO CSV PROCESSING ---
-
-def process_pdfs_to_symbol_csvs(pdf_source_dirs: list[Path], csv_output_dir: Path):
-    if pdfplumber is None:
-        print("WARN: pdfplumber library is not installed. PDF processing will be skipped.")
+            result = subprocess.run(["ssh", SERVER, f"test -d {path} && echo EXISTS"], capture_output=True, text=True, timeout=10)
+            if "EXISTS" in result.stdout:
+                logger.info(f"  CLEANABLE: {label} (~{est_gb}GB) — {path}")
+        except Exception:
+            pass
+
+
+def run_backup_cycle():
+    """Run one complete backup cycle."""
+    t0 = time.time()
+    logger.info(f"{'=' * 60}")
+    logger.info(f"BACKUP CYCLE START — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    logger.info(f"{'=' * 60}")
+    disk_space_report()
+    if not IS_MAC:
+        logger.info("Running on server — skipping archive (no external drives). Use MacBook to archive.")
         return
-    print(f"Starting processing of PDF files for symbol CSVs from {pdf_source_dirs} to {csv_output_dir}")
-    csv_output_dir.mkdir(parents=True, exist_ok=True)
-    # --- ###! CUSTOMIZE THIS PDF PARSING LOGIC THOROUGHLY !### ---
-    def parse_pdf_content(pdf_file_path: Path) -> list[dict]:
-        # ... (Your existing parse_pdf_content function)
-        # IMPORTANT: Ensure this function returns a list of dictionaries,
-        # and each dictionary MUST have 'symbol' and 'timestamp' keys.
-        # It should be robust enough to handle variations in your PDFs.
-        extracted_data = []
-        # print(f"  Attempting to parse PDF: {pdf_file_path.name}")
-        SYMBOL_COLUMN_NAME_IN_PDF = 'Symbol' 
-        TIMESTAMP_COLUMN_NAME_IN_PDF = 'Timestamp'
-        try:
-            with pdfplumber.open(pdf_file_path) as pdf:
-                for page_num, page in enumerate(pdf.pages):
-                    tables = page.extract_tables()
-                    if not tables: continue
-                    for table_idx, table_data in enumerate(tables):
-                        if not table_data or len(table_data) < 2: continue
-                        headers = [str(h).strip() if h is not None else '' for h in table_data[0]]
-                        try:
-                            symbol_col_idx = headers.index(SYMBOL_COLUMN_NAME_IN_PDF)
-                            timestamp_col_idx = headers.index(TIMESTAMP_COLUMN_NAME_IN_PDF)
-                        except ValueError:
-                            # print(f"    WARN: Table {table_idx} page {page_num+1} in {pdf_file_path.name} missing headers. Headers: {headers}.")
-                            continue
-                        for row_values in table_data[1:]:
-                            if len(row_values) != len(headers): continue
-                            record: dict[str, Any] = {'source_pdf_file': pdf_file_path.name, 'source_pdf_page': f"p{page_num+1}_t{table_idx}"}
-                            symbol_val = str(row_values[symbol_col_idx]).strip() if row_values[symbol_col_idx] else None
-                            timestamp_val = str(row_values[timestamp_col_idx]).strip() if row_values[timestamp_col_idx] else None
-                            if not symbol_val or not timestamp_val: continue
-                            record['symbol'] = symbol_val
-                            record['timestamp'] = timestamp_val
-                            for i, header_name in enumerate(headers):
-                                if i not in [symbol_col_idx, timestamp_col_idx]:
-                                    clean_header = header_name.replace(' ', '_').lower()
-                                    record[clean_header] = str(row_values[i]).strip() if row_values[i] is not None else None
-                            extracted_data.append(record)
-            # if not extracted_data:
-            #     print(f"  INFO: No data extracted from {pdf_file_path.name} via parse_pdf_content.")
-        except Exception as e:
-            print(f"  ERROR parsing PDF {pdf_file_path.name}: {e}")
-        return extracted_data
-    # --- END OF CUSTOMIZABLE PDF PARSING LOGIC ---
-    processed_pdf_files = set()
-    all_pdf_files_to_process = []
-    for source_dir in pdf_source_dirs:
-        for pdf_file in source_dir.glob("*.pdf"): # Adjust glob if needed
-            abs_path = pdf_file.resolve()
-            if abs_path not in processed_pdf_files:
-                all_pdf_files_to_process.append(pdf_file)
-                processed_pdf_files.add(abs_path)
-    all_pdf_files_to_process.sort(key=lambda p: p.name) # Process PDFs in name order
-    print(f"Found {len(all_pdf_files_to_process)} unique PDF files to process.")
-    for pdf_file in all_pdf_files_to_process:
-        print(f"  Processing PDF file: {pdf_file.name}")
-        parsed_rows_from_pdf = parse_pdf_content(pdf_file)
-        if not parsed_rows_from_pdf:
-            # print(f"    INFO: No data returned from parsing PDF {pdf_file.name}. Skipping.")
-            continue
-        # Group data by symbol from this single PDF
-        data_by_symbol_this_pdf = defaultdict(list)
-        for row in parsed_rows_from_pdf:
-            if 'symbol' in row and 'timestamp' in row:
-                try:
-                    # Convert timestamp early
-                    row_timestamp = pd.to_datetime(row["timestamp"], utc=True, errors='coerce')
-                    if pd.isna(row_timestamp):
-                        # print(f"    WARN: Invalid PDF timestamp '{row['timestamp']}' for symbol '{row['symbol']}'. Skipping row.")
-                        continue
-                    row["timestamp"] = row_timestamp
-                    data_by_symbol_this_pdf[row['symbol']].append(row)
-                except Exception as e_ts_pdf:
-                    print(f"    ERROR converting PDF timestamp for '{row['symbol']}': {e_ts_pdf}. Skipping row.")
-            else:
-                # print(f"    WARN: Row from PDF {pdf_file.name} missing 'symbol' or 'timestamp'. Row: {row}")
-                pass
-        for symbol, records_list in data_by_symbol_this_pdf.items():
-            if not records_list: continue
-            new_records_df = pd.DataFrame(records_list)
-            output_csv_file = csv_output_dir / f"{symbol}.csv" # Assumes CSV named by symbol
-            if output_csv_file.exists():
-                try:
-                    existing_df = pd.read_csv(output_csv_file)
-                    if "timestamp" in existing_df.columns:
-                        existing_df["timestamp"] = pd.to_datetime(existing_df["timestamp"], utc=True, errors='coerce')
-                        existing_df.dropna(subset=["timestamp"], inplace=True)
-                    all_cols = new_records_df.columns.union(existing_df.columns)
-                    existing_df_reindexed = existing_df.reindex(columns=all_cols)
-                    new_records_df_reindexed = new_records_df.reindex(columns=all_cols)
-                    combined_df = pd.concat([existing_df_reindexed, new_records_df_reindexed], ignore_index=True)
-                    # Deduplicate based on timestamp and other defining columns from PDF
-                    # Exclude 'source_pdf_file', 'source_pdf_page' from dedupe keys
-                    dedupe_subset = [col for col in combined_df.columns if col not in ['symbol', 'source_pdf_file', 'source_pdf_page']]
-                    if 'timestamp' not in dedupe_subset: # Should always be there
-                        print(f"    CRITICAL WARN: Timestamp somehow missing from dedupe keys for PDF data of {symbol}. This might lead to data loss.")
-                        combined_df.sort_values(by=['timestamp'], inplace=True) # Sort anyway
-                    else:
-                        combined_df.sort_values(by=['timestamp'] + [k for k in dedupe_subset if k != 'timestamp'], inplace=True)
-                        combined_df.drop_duplicates(subset=dedupe_subset, keep='last', inplace=True)
-                    combined_df.to_csv(output_csv_file, index=False)
-                    # print(f"    Updated PDF-derived CSV for {symbol} with {len(combined_df)} total rows.")
-                except pd.errors.EmptyDataError:
-                    new_records_df.sort_values(by='timestamp', inplace=True)
-                    new_records_df.to_csv(output_csv_file, index=False, header=True, mode='w')
-                except Exception as e_append_pdf:
-                    print(f"    ERROR updating PDF-derived CSV for {symbol} ({output_csv_file.name}): {e_append_pdf}. Attempting overwrite.")
-                    try:
-                        new_records_df.sort_values(by='timestamp', inplace=True)
-                        new_records_df.to_csv(output_csv_file, index=False, header=True, mode='w') # Overwrite
-                    except Exception as e_ow_pdf:
-                        print(f"    FATAL ERROR: Could not overwrite PDF-derived CSV for {symbol}: {e_ow_pdf}")
-            else:
-                new_records_df.sort_values(by='timestamp', inplace=True)
-                new_records_df.to_csv(output_csv_file, index=False, header=True, mode='w')
-                # print(f"    Created new PDF-derived CSV for {symbol}.")
-    print("PDF data to symbol-specific CSV processing finished.")
-    # Backup of these CSVs is implicitly handled
-
-# def process_pdfs_to_symbol_csvs(pdf_source_dirs: list[Path], csv_output_dir: Path):
-
-#     if pdfplumber is None:
-
-#         print("WARN: pdfplumber library is not installed. PDF processing will be skipped.")
-
-#         print("      To enable PDF processing, run: pip install pdfplumber")
-
-#         return
-
-#     print(f"Starting processing of PDF files for symbol CSVs from {pdf_source_dirs} to {csv_output_dir}")
-
-#     csv_output_dir.mkdir(parents=True, exist_ok=True)
-
-#     # --- ###! CUSTOMIZE THIS ENTIRE FUNCTION TO MATCH YOUR PDF STRUCTURE !### ---
-
-#     def parse_pdf_content(pdf_file_path: Path) -> list[dict]:
-
-#         """
-
-#         Parses a single PDF file and extracts structured data.
-
-#         Each dictionary in the returned list should represent one row of data.
-
-#         It MUST include 'symbol' and 'timestamp' keys.
-
-#         Other keys will become columns in the CSV.
-
-#         This is an EXAMPLE assuming data is in tables.
-
-#         YOU WILL LIKELY NEED TO MODIFY THIS SIGNIFICANTLY.
-
-#         """
-
-#         extracted_data = []
-
-#         print(f"  Attempting to parse PDF: {pdf_file_path.name}")
-
-#         ###! CUSTOMIZE HERE !###
-
-#         # Adjust these based on your PDF table's actual column header names
-
-#         SYMBOL_COLUMN_NAME_IN_PDF = 'Symbol'  # e.g., 'Ticker', 'Pair', etc.
-
-#         TIMESTAMP_COLUMN_NAME_IN_PDF = 'Timestamp' # e.g., 'Date', 'Time', 'datetime_utc'
-
-#         # Add other expected column names if you want to explicitly map them
-
-#         # or handle type conversions for specific columns.
-
-#         # EXPECTED_DATA_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Volume'] 
-
-#         try:
-
-#             with pdfplumber.open(pdf_file_path) as pdf:
-
-#                 for page_num, page in enumerate(pdf.pages):
-
-#                     # Option 1: Extract tables (preferred if data is tabular)
-
-#                     tables = page.extract_tables()
-
-#                     if not tables:
-
-#                         # print(f"    INFO: No tables found on page {page_num + 1} of {pdf_file_path.name}")
-
-#                         # You might fallback to text extraction here if needed:
-
-#                         # text = page.extract_text()
-
-#                         # ... (add regex or line-by-line parsing for text) ...
-
-#                         continue
-
-#                     for table_idx, table_data in enumerate(tables):
-
-#                         if not table_data or len(table_data) < 2: # Needs at least a header and one data row
-
-#                             # print(f"    INFO: Table {table_idx} on page {page_num+1} in {pdf_file_path.name} is empty or has no data rows.")
-
-#                             continue
-
-#                         headers = [str(h).strip() if h is not None else '' for h in table_data[0]]
-
-#                         # Try to find symbol and timestamp columns
-
-#                         try:
-
-#                             symbol_col_idx = headers.index(SYMBOL_COLUMN_NAME_IN_PDF)
-
-#                             timestamp_col_idx = headers.index(TIMESTAMP_COLUMN_NAME_IN_PDF)
-
-#                         except ValueError:
-
-#                             print(f"    WARN: Table {table_idx} on page {page_num+1} in {pdf_file_path.name} "
-
-#                                   f"is missing required headers ('{SYMBOL_COLUMN_NAME_IN_PDF}' or '{TIMESTAMP_COLUMN_NAME_IN_PDF}'). Headers found: {headers}. Skipping table.")
-
-#                             continue
-
-#                         # Process data rows
-
-#                         for row_values in table_data[1:]:
-
-#                             if len(row_values) != len(headers):
-
-#                                 # print(f"    WARN: Row length mismatch in table {table_idx}, page {page_num+1}. Headers: {len(headers)}, Row: {len(row_values)}. Skipping row: {row_values}")
-
-#                                 continue
-
-#                             record = {'source_pdf_page': f"{pdf_file_path.name}_p{page_num+1}_t{table_idx}"}
-
-#                             symbol_val = str(row_values[symbol_col_idx]).strip() if row_values[symbol_col_idx] else None
-
-#                             timestamp_val = str(row_values[timestamp_col_idx]).strip() if row_values[timestamp_col_idx] else None
-
-#                             if not symbol_val or not timestamp_val:
-
-#                                 # print(f"    WARN: Missing symbol or timestamp in row: {row_values} from {pdf_file_path.name}. Skipping.")
-
-#                                 continue
-
-#                             record['symbol'] = symbol_val
-
-#                             record['timestamp'] = timestamp_val # Keep as string for now, convert to datetime later
-
-#                             # Add other columns
-
-#                             for i, header_name in enumerate(headers):
-
-#                                 if i not in [symbol_col_idx, timestamp_col_idx]: # Avoid re-adding symbol/timestamp
-
-#                                     clean_header = header_name.replace(' ', '_').lower() # Clean up header for DataFrame column
-
-#                                     record[clean_header] = str(row_values[i]).strip() if row_values[i] is not None else None
-
-#                             extracted_data.append(record)
-
-#             if not extracted_data:
-
-#                 print(f"  INFO: No data successfully extracted from {pdf_file_path.name} based on current parsing logic.")
-
-#         except Exception as e:
-
-#             print(f"  ERROR during PDF parsing for {pdf_file_path.name}: {e}")
-
-#             import traceback
-
-#             traceback.print_exc() # For more detailed error during development
-
-#         return extracted_data
-
-#     # --- END OF CUSTOMIZABLE PDF PARSING LOGIC ---
-
-#     all_data_by_symbol = defaultdict(list)
-
-#     processed_pdf_files = set()
-
-#     for source_dir in pdf_source_dirs:
-
-#         # ###! CUSTOMIZE HERE !### : Adjust glob pattern if your PDFs have a more specific naming scheme
-
-#         for pdf_file in source_dir.glob("*.pdf"): 
-
-#             abs_path = pdf_file.resolve()
-
-#             if abs_path in processed_pdf_files:
-
-#                 continue
-
-#             processed_pdf_files.add(abs_path)
-
-#             parsed_rows = parse_pdf_content(pdf_file)
-
-#             for row in parsed_rows: # `parse_pdf_content` should ensure symbol and timestamp exist
-
-#                 symbol = row['symbol'] # Assumes parse_pdf_content ensures this key exists
-
-#                 all_data_by_symbol[symbol].append(row)
-
-#     if not all_data_by_symbol:
-
-#         print("No data records found in any PDF files (or PDF parsing needs customization).")
-
-#         return
-
-#     # Process collected data for each symbol
-
-#     for symbol, records_list in all_data_by_symbol.items():
-
-#         if not records_list: continue
-
-#         print(f"  Updating PDF-derived CSV for symbol: {symbol} with {len(records_list)} new records")
-
-#         new_df = pd.DataFrame(records_list)
-
-#         # Convert timestamp column to datetime objects for proper sorting and duplicate handling
-
-#         if 'timestamp' not in new_df.columns:
-
-#             print(f"    ERROR: 'timestamp' column missing in data extracted for {symbol} from PDFs. Skipping.")
-
-#             continue
-
-#         try:
-
-#             new_df['timestamp'] = pd.to_datetime(new_df['timestamp'], utc=True, errors='coerce')
-
-#             new_df.dropna(subset=['timestamp'], inplace=True) # Drop rows where timestamp conversion failed
-
-#             if new_df.empty:
-
-#                 print(f"    WARN: No valid timestamped PDF data for {symbol} after conversion. Skipping.")
-
-#                 continue
-
-#         except Exception as e:
-
-#             print(f"    ERROR: Could not convert 'timestamp' column to datetime for {symbol} from PDF data: {e}. Skipping.")
-
-#             continue
-
-#         # ###! CUSTOMIZE HERE !### : Decide CSV naming. Using symbol name directly.
-
-#         output_csv_file = csv_output_dir / f"{symbol}.csv" 
-
-#         combined_df = new_df # Default if no existing file or existing is bad
-
-#         if output_csv_file.exists():
-
-#             try:
-
-#                 existing_df = pd.read_csv(output_csv_file)
-
-#                 if not existing_df.empty and 'timestamp' in existing_df.columns:
-
-#                     print(f"    Loading existing PDF-derived data for {symbol} from {output_csv_file.name}")
-
-#                     existing_df['timestamp'] = pd.to_datetime(existing_df['timestamp'], utc=True, errors='coerce')
-
-#                     existing_df.dropna(subset=['timestamp'], inplace=True)
-
-#                     # Align columns before concat
-
-#                     all_cols = new_df.columns.union(existing_df.columns)
-
-#                     existing_df = existing_df.reindex(columns=all_cols)
-
-#                     new_df_reindexed = new_df.reindex(columns=all_cols)
-
-#                     combined_df = pd.concat([existing_df, new_df_reindexed], ignore_index=True)
-
-#                 elif existing_df.empty:
-
-#                     print(f"    Existing PDF-derived CSV for {symbol} is empty. Using new data.")
-
-#                 else: # Missing timestamp or other issue
-
-#                     print(f"    WARN: Existing PDF-derived CSV {output_csv_file.name} for {symbol} invalid. Overwriting.")
-
-#             except pd.errors.EmptyDataError:
-
-#                 print(f"    WARN: Existing PDF-derived CSV {output_csv_file.name} for {symbol} is empty. Overwriting.")
-
-#             except Exception as e:
-
-#                 print(f"    ERROR reading existing PDF-derived CSV {output_csv_file.name} for {symbol}: {e}. Will use only new data.")
-
-#         # Deduplicate and sort
-
-#         # Key columns for uniqueness: typically timestamp + all other actual data fields.
-
-#         # Exclude source metadata like 'source_pdf_page'. 'symbol' is already per-file.
-
-#         key_columns = [col for col in combined_df.columns if col not in ['symbol', 'source_pdf_page']]
-
-#         if key_columns: # Ensure there are columns to deduplicate by
-
-#             # Sort before dropping duplicates to control which one is kept (e.g., 'last' based on processing order)
-
-#             # Sorting by all key_columns can make keep='first' or keep='last' more predictable.
-
-#             sort_by_cols = ['timestamp'] + [k for k in key_columns if k != 'timestamp']
-
-#             combined_df.sort_values(by=sort_by_cols, inplace=True) 
-
-#             combined_df.drop_duplicates(subset=key_columns, keep='last', inplace=True)
-
-#         # Final sort by timestamp
-
-#         combined_df.sort_values(by='timestamp', inplace=True)
-
-#         try:
-
-#             combined_df.to_csv(output_csv_file, index=False)
-
-#             print(f"    SUCCESS: Wrote {len(combined_df)} unique rows for {symbol} to PDF-derived {output_csv_file.name}")
-
-#         except Exception as e:
-
-#             print(f"    ERROR writing PDF-derived CSV {output_csv_file.name} for {symbol}: {e}")
-
-#     print("PDF data to symbol-specific CSV processing finished.")
-
-#     if BACKUP_PDF_CSV_EXPORT_DIR.exists():
-
-#         print(f"Backing up generated PDF-derived CSVs to {BACKUP_PDF_CSV_EXPORT_DIR}...")
-
-#         for csv_file in csv_output_dir.glob("*.csv"): # Assumes simple *.csv naming
-
-#             try:
-
-#                 shutil.copy(csv_file, BACKUP_PDF_CSV_EXPORT_DIR / csv_file.name)
-
-#                 print(f"  Backed up {csv_file.name}")
-
-#             except Exception as e:
-
-#                 print(f"  Error backing up {csv_file.name}: {e}")
-
-# --- MAIN EXECUTION ---
-
-async def main():
+    drive = find_archive_drive()
+    if not drive:
+        logger.warning("NO EXTERNAL DRIVE AVAILABLE — skipping archive. Plug in SSD2T or TOSHIBA_EXT.")
+        return
+    logger.info(f"Using archive drive: {drive.name} ({fmt_size(get_free_space(drive))} free)")
+    ensure_archive_dirs(drive)
+    # 1. Archive local data
+    archive_local_data(drive)
+    # 2. Archive server data (only if server reachable)
+    try:
+        result = subprocess.run(["ssh", "-o", "ConnectTimeout=5", SERVER, "echo OK"], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            archive_server_data(drive)
+            clean_old_server_data()
+        else:
+            logger.warning("Server unreachable — skipping server archive")
+    except Exception:
+        logger.warning("Server unreachable — skipping server archive")
+    # 3. Mirror to secondary drive if both connected
+    if drive == SSD2T and TOSHIBA.exists():
+        mirror_to_secondary(SSD2T, TOSHIBA)
+    elif drive == TOSHIBA and SSD2T.exists():
+        mirror_to_secondary(TOSHIBA, SSD2T)
+    elapsed = time.time() - t0
+    logger.info(f"BACKUP CYCLE COMPLETE in {elapsed:.0f}s")
+    disk_space_report()
+
+
+def main():
+    """Run backup cycle, then repeat hourly."""
+    import argparse
+    parser = argparse.ArgumentParser(description="Archive trading data to external drives")
+    parser.add_argument("--once", action="store_true", help="Run once and exit (no hourly loop)")
+    parser.add_argument("--report", action="store_true", help="Just print disk space report")
+    args = parser.parse_args()
+    if args.report:
+        disk_space_report()
+        return
+    if args.once:
+        run_backup_cycle()
+        return
     while True:
-        print(f"\n{time.strftime('%Y-%m-%d %H:%M:%S')} Hourly backup and processing starting...")
-        print("\n--- Kline Data Processing (JSON in klines_cache) ---")
-        append_and_trim_kline_data()
-        print("\n--- Market Data File Management (Copying to Backup & Local Cleanup) ---")
-        move_market_data() # Handles market_data_*.json AND *.pdf in DATA_DIR
-        print("\n--- Plot File Management ---")
-        move_plot_files()
-        print("\n--- Processing market_data_*.json to Symbol CSVs (Directly to Backup) ---")
-        json_market_data_sources = [DATA_DIR, BACKUP_DATA] 
-        # Pass the BACKUP directory as the output directory
-        process_market_data_json_to_symbol_csvs(json_market_data_sources, BACKUP_SYMBOL_MARKET_DATA_CSVS_DIR)
-        print("\n--- Processing PDF Market Data to Symbol CSVs (Directly to Backup) ---")
-        pdf_market_data_sources = [DATA_DIR, BACKUP_DATA] 
-        # Pass the BACKUP directory as the output directory
-        process_pdfs_to_symbol_csvs(pdf_market_data_sources, BACKUP_PDF_CSV_EXPORT_DIR)
-        await asyncio.sleep(3600)
+        try:
+            run_backup_cycle()
+        except Exception as e:
+            logger.error(f"Backup cycle error: {e}")
+        logger.info("Next backup in 1 hour...")
+        time.sleep(3600)
+
 
 if __name__ == "__main__":
-    if pdfplumber is None:
-        print("Warning: pdfplumber library is not installed. PDF processing will be skipped.")
-        print("If you intend to process PDFs, please install it using: pip install pdfplumber")
-        # You might choose to exit here if PDF processing is critical and not optional
-        # exit(1) 
-    asyncio.run(main())
+    main()

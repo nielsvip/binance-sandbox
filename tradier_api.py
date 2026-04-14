@@ -343,6 +343,48 @@ class TradierAPIClient:
             return {"status": "error", "reason": "Gateway Rejected / Bad Request"}
             
         return res
+    async def place_option_order(self, account_key: str, symbol: str, option_symbol: str, side: str, quantity: int, order_type: str = "limit", price: float = None, duration: str = "day") -> Dict:
+        """Place an option order. side: buy_to_open, sell_to_close, buy_to_close, sell_to_open."""
+        if not self._current_id:
+            return {"error": "Missing Account ID"}
+        data = {"class": "option", "symbol": symbol.upper(), "option_symbol": option_symbol, "side": side.lower(), "quantity": str(int(quantity)), "type": order_type.lower(), "duration": duration.lower()}
+        if price is not None:
+            data["price"] = f"{float(price):.2f}"
+        res = await self._request("POST", f"/accounts/{self._current_id}/orders", data=data, use_data_context=False)
+        if not res:
+            return {"status": "error", "reason": "Gateway Rejected / Bad Request"}
+        return res
+
+    async def get_option_expirations(self, symbol: str) -> List[str]:
+        """Get all available expiration dates for a symbol's options."""
+        res = await self._request("GET", "/markets/options/expirations", params={"symbol": symbol, "includeAllRoots": "true", "strikes": "false"}, use_data_context=True)
+        if res and "expirations" in res and res["expirations"]:
+            dates = res["expirations"].get("date", [])
+            if isinstance(dates, str):
+                return [dates]
+            return dates if isinstance(dates, list) else []
+        return []
+
+    async def get_option_chain(self, symbol: str, expiration: str, greeks: bool = True) -> List[Dict]:
+        """Fetch full option chain for a symbol and expiration."""
+        res = await self._request("GET", "/markets/options/chains", params={"symbol": symbol, "expiration": expiration, "greeks": "true" if greeks else "false"}, use_data_context=True)
+        if res and "options" in res and res["options"]:
+            chain = res["options"].get("option", [])
+            if isinstance(chain, dict):
+                return [chain]
+            return chain if isinstance(chain, list) else []
+        return []
+
+    async def get_option_strikes(self, symbol: str, expiration: str) -> List[float]:
+        """Get available strikes for a symbol and expiration."""
+        res = await self._request("GET", "/markets/options/strikes", params={"symbol": symbol, "expiration": expiration}, use_data_context=True)
+        if res and "strikes" in res and res["strikes"]:
+            strikes = res["strikes"].get("strike", [])
+            if isinstance(strikes, (int, float)):
+                return [float(strikes)]
+            return [float(s) for s in strikes] if isinstance(strikes, list) else []
+        return []
+
     async def cancel_order(self, account_key: str, order_id: Any) -> Dict:
         if not self._current_id: return {}
         return await self._request("DELETE", f"/accounts/{self._current_id}/orders/{order_id}", use_data_context=False) or {}

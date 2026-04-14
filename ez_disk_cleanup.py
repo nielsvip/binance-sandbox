@@ -132,7 +132,7 @@ def cleanup_temp_files():
 def cleanup_old_logs(keep_days=7):
     """Cleanup old log files, keeping last N days"""
     print(f"\n4. Cleaning log files older than {keep_days} days...")
-    logs_dir=BASE_PATH/"logs"
+    logs_dir=Path.home()/"logs"
     if not logs_dir.exists():
         print("   ⚠️ logs/ directory not found")
         return 0

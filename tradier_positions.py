@@ -117,6 +117,10 @@ def safe_float(x, default=0.0):
             pass
         return default
 
+_OPT_RE = re.compile(r'^[A-Z]{1,6}\d{6}[CP]\d{4,}$')
+def is_option(symbol):
+    return bool(_OPT_RE.match((symbol or "").upper()))
+
 def calculate_gain(position_side, current_price, entry_price):
     if entry_price <= 0: return 0.0
     if position_side == 'LONG': 
@@ -929,28 +933,42 @@ class TradierPositionManager:
                 #      # This populates _price_cache AND _price_cache_time
                 #     prices = await self.fetch_current_prices(self.symbols)
 
-                # 2. Update Memory Positions
+                # 2. Fetch option quotes for positions missing from price cache
+                option_symbols = [pos.symbol for pos in self.positions.values() if pos.symbol not in prices and abs(float(pos.positionAmt or 0)) > 0 and is_option(pos.symbol)]
+                if option_symbols:
+                    client = self._get_market_data_client()
+                    if client and time.time() > getattr(client, '_global_ban_expires', 0):
+                        try:
+                            quotes = await client.get_quotes(option_symbols)
+                            for sym, quote in quotes.items():
+                                p = float(quote.get('last', 0))
+                                if p > 0:
+                                    prices[sym] = p
+                                    self._price_cache[sym] = p
+                                    self._price_cache_time[sym] = datetime.now(timezone.utc)
+                        except Exception as e:
+                            logger.debug(f"Option quote fetch failed: {e}")
+                # 3. Update Memory Positions
                 if prices:
                     async with self._positions_lock:
                         for pos in self.positions.values():
                             if pos.symbol in prices:
                                 new_p = prices[pos.symbol]
-                                
-                                # GET TIMESTAMP FROM CACHE
                                 price_ts = self._price_cache_time.get(pos.symbol)
-                                
+                                is_opt = is_option(pos.symbol)
                                 if new_p > 0:
                                     pos.mark_price = new_p
-                                    # ONLY UPDATE TIMESTAMP IF WE HAVE A SOURCE TIMESTAMP
                                     if price_ts:
                                         pos.mark_price_last_updated = price_ts
-                                    
-                                    # Recalc Gain/PnL
                                     if pos.entry_price > 0:
-                                        pos.gain = calculate_gain(pos.position_side, new_p, pos.entry_price)
+                                        if is_opt:
+                                            pos.gain = ((new_p * 100 - pos.entry_price) / pos.entry_price) * 100 if pos.position_side == "LONG" else ((pos.entry_price - new_p * 100) / pos.entry_price) * 100
+                                            pos.unrealized_pnl = (new_p * 100 - pos.entry_price) * pos.positionAmt if pos.position_side == "LONG" else (pos.entry_price - new_p * 100) * pos.positionAmt
+                                        else:
+                                            pos.gain = calculate_gain(pos.position_side, new_p, pos.entry_price)
+                                            diff = (new_p - pos.entry_price) if pos.position_side == "LONG" else (pos.entry_price - new_p)
+                                            pos.unrealized_pnl = diff * pos.positionAmt
                                         pos.max_gain = max(pos.gain, pos.max_gain)
-                                        diff = (new_p - pos.entry_price) if pos.position_side == "LONG" else (pos.entry_price - new_p)
-                                        pos.unrealized_pnl = diff * pos.positionAmt
                 await asyncio.sleep(4)
             except Exception as e:
                 logger.error(f"Price Loop Error: {e}")
@@ -1363,13 +1381,16 @@ class TradierPositionManager:
 
         now = datetime.now(timezone.utc)
         updated_keys_in_api: Set[str] = set()
+        skipped_count = 0
         account_positions = self.positions
         
         if isinstance(raw_positions_data, list):
             for pos_api_data in raw_positions_data:
                 symbol = pos_api_data.get("symbol", "").upper()
                 if not symbol: continue
-                
+                # Skip option OCC symbols — managed by options agent, not tradier_manage
+                if len(symbol) > 10:
+                    continue
                 # 3. GET THE "HOT" PRICE FOR THIS SYMBOL
                 # If Redis/Disk doesn't have it, we fall back to the last known mark_price
                 current_market_price = fresh_prices.get(symbol)
@@ -1541,10 +1562,11 @@ class TradierPositionManager:
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
             if count >= THRESHOLD:
-                logger.warning(f"[GHOST_ZERO] {pk}: absent from Tradier API for {count} consecutive syncs. Zeroing local position (amt was {amt}).")
+                logger.warning(f"[GHOST_ZERO] {pk}: absent {count}x from Tradier API — zeroing positionAmt (Tradier returns ALL held positions, absence = closed)")
                 pos.positionAmt = 0.0
                 pos.gain = 0.0
-                pos.max_gain = 0.0
+                pos.unrealized_pnl = 0.0
+                pos.last_updated = now
                 self._api_absence_count.pop(pk, None)
 
     async def _update_prices_for_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
@@ -1654,7 +1676,10 @@ class TradierPositionManager:
                     position.positionAmt=float(abs(position_amt))
                 else:
                     position.prev_gain=position.gain
-                    position.gain = calculate_gain(position.position_side, current_price, base_entry or current_price)
+                    if is_option(position.symbol):
+                        position.gain = ((current_price * 100 - base_entry) / base_entry) * 100 if position.position_side == "LONG" else ((base_entry - current_price * 100) / base_entry) * 100
+                    else:
+                        position.gain = calculate_gain(position.position_side, current_price, base_entry or current_price)
                 position.max_gain = max(position.gain, position.max_gain)
             position.last_updated = now  # CRITICAL: Update timestamp so position doesn't appear stale
         positionAmt = safe_float(position.positionAmt)
@@ -2294,10 +2319,15 @@ class TradierPositionManager:
             local_cache = getattr(self, 'price_cache', {})
             if symbol in local_cache:
                 entry = local_cache[symbol]
-                p = float(entry.get('price', 0))
-                t = safe_parse_ts(entry.get('timestamp'))
-                if p > 0 and t and (now - t).total_seconds() < MAX_AGE:
-                    return p, t
+                if isinstance(entry, (int, float)):
+                    p = float(entry)
+                    if p > 0:
+                        return p, now
+                elif isinstance(entry, dict):
+                    p = float(entry.get('price', 0))
+                    t = safe_parse_ts(entry.get('timestamp'))
+                    if p > 0 and t and (now - t).total_seconds() < MAX_AGE:
+                        return p, t
 
             # --- LAYER 2: REDIS (Metadata-Aware) ---
             if getattr(self, 'redis_manager', None):

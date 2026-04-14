@@ -24,10 +24,12 @@ import pandas_market_calendars as mcal
 import pytz
 from matplotlib.ticker import MaxNLocator
 
+from config import Config
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
-from tradier_indicators import TradierBarManager, TradierPriceCacheManager
-from utils import (get_simple_redis_manager, load_environment_from_gpg, orjson_default)
+from tradier_indicators import TradierBarManager, TradierPriceCacheManager, _to_utc
+from utils import (get_simple_redis_manager, load_environment_from_gpg,
+                   orjson_default)
 
 _NYSE_CAL = mcal.get_calendar("XNYS")
 NY_TZ = "America/New_York"
@@ -96,7 +98,23 @@ def json_safe(obj):
 load_environment_from_gpg(None)
 client = TradierAPIClient()
 from ez_rankings import DAYS_PLOT  # Ranking functions; Utility functions
-from ez_rankings import (add_gradient, add_stochrsi_zones, assign_points_proximity_3m, build_ranking_info, calculate_3min_returns_for_symbols, calculate_15min_returns_for_symbols, calculate_atr, calculate_min_max, calculate_multi_timeframe_band_score, calculate_regression_band, calculate_regression_slope_line, calculate_relative_volume, calculate_weighted_gains, cleanup_old_plots, detect_stoch_crossovers, detect_tops_bottoms, find_rank_in_list, get_legend_handles_labels, get_proximity_range, get_ranking_data, get_ranking_multiplier, initialize_caches, load_cache, load_signals, merge_htf_band_into_ltf, normalize_log_signed, parse_timestamp, save_cache, save_rankings_json, to_json_safe)
+from ez_rankings import (add_gradient, add_stochrsi_zones,
+                         assign_points_proximity_3m, build_ranking_info,
+                         calculate_3min_returns_for_symbols,
+                         calculate_15min_returns_for_symbols, calculate_atr,
+                         calculate_min_max,
+                         calculate_multi_timeframe_band_score,
+                         calculate_regression_band,
+                         calculate_regression_slope_line,
+                         calculate_relative_volume, calculate_weighted_gains,
+                         cleanup_old_plots, detect_stoch_crossovers,
+                         detect_tops_bottoms, find_rank_in_list,
+                         get_legend_handles_labels, get_proximity_range,
+                         get_ranking_data, get_ranking_multiplier,
+                         initialize_caches, load_cache, load_signals,
+                         merge_htf_band_into_ltf, normalize_log_signed,
+                         parse_timestamp, save_cache, save_rankings_json,
+                         to_json_safe)
 
 _global_file_write_semaphore = asyncio.Semaphore(40)
 config = TradierConfig()
@@ -175,6 +193,42 @@ price_cache_manager = None
 
 
 # ===== DATA FUNCTIONS =====
+def _prune_tiered(data_dir: Path, prefix: str):
+    """Tiered retention: keep 1 file per bucket (0-15m, 15m-1h, 1h-4h, 4h-1d, 1d-1W), delete the rest."""
+    try:
+        all_files = [f for f in os.listdir(data_dir) if f.startswith(prefix) and f.endswith(".json")]
+        if len(all_files) <= 5:
+            return
+        now = time.time()
+        buckets = [(0, 900), (900, 3600), (3600, 14400), (14400, 86400), (86400, 604800)]
+        def extract_ts(fname):
+            try:
+                return int(fname.replace(prefix, "").replace(".json", ""))
+            except ValueError:
+                return 0
+        all_files.sort(key=extract_ts, reverse=True)
+        keep = set()
+        for bs, be in buckets:
+            for f in all_files:
+                age = now - extract_ts(f)
+                if bs <= age < be:
+                    keep.add(f)
+                    break
+        if all_files:
+            keep.add(all_files[0])
+        deleted = 0
+        for f in all_files:
+            if f not in keep:
+                try:
+                    os.remove(os.path.join(data_dir, f))
+                    deleted += 1
+                except Exception:
+                    break
+        if deleted > 0:
+            logger.info(f"[prune] {prefix}*: deleted {deleted}, kept {len(keep)}")
+    except Exception as e:
+        logger.error(f"[prune] Error for {prefix}: {e}")
+
 async def atomic_write_json(file_path: Union[str, Path], data: Any):
     """Atomically write JSON using orjson for speed and reliability."""
     file_path_obj = Path(file_path)
@@ -468,13 +522,13 @@ async def convert_tradier_bars_to_analysis_df(symbol: str, timeframe: str) -> pd
         if "timestamp_dt" not in df_result.columns:
             ts_col = "timestamp" if "timestamp" in df_result.columns else ("time" if "time" in df_result.columns else None)
             if ts_col:
-                df_result["timestamp_dt"] = pd.to_datetime(df_result[ts_col], utc=True, errors="coerce")
+                df_result["timestamp_dt"] = _to_utc(df_result[ts_col])
             else:
                 return pd.DataFrame()
         else:
             # Column exists, but might be strings
             if not pd.api.types.is_datetime64_any_dtype(df_result["timestamp_dt"]):
-                df_result["timestamp_dt"] = pd.to_datetime(df_result["timestamp_dt"], utc=True, errors="coerce")
+                df_result["timestamp_dt"] = _to_utc(df_result["timestamp_dt"])
 
         df_result = df_result.dropna(subset=["timestamp_dt"])
         df_result = df_result.sort_values("timestamp_dt")
@@ -624,7 +678,7 @@ async def load_dfs_for_plotting(symbol, cache_dir):
                 data = json.load(f)
             df = pd.DataFrame(data)
             if not df.empty:
-                df['close_time'] = pd.to_datetime(df['timestamp'], utc=True)
+                df['close_time'] = _to_utc(df['timestamp'])
                 df = df.sort_values('close_time').tail(BARS_PER_TF).reset_index(drop=True)
                 df['plot_idx'] = range(len(df))
                 dfs[tf] = df
@@ -778,8 +832,7 @@ async def plot_dfs_subplots(
             if col_check not in df_tf.columns:
                 if 'close' in df_tf.columns: df_tf[col_check] = df_tf['close']
                 else: continue
-        df_tf['close_time'] = pd.to_datetime(df_tf['close_time'], errors='coerce')
-        if df_tf['close_time'].dt.tz is None: df_tf['close_time'] = df_tf['close_time'].dt.tz_localize('UTC')
+        df_tf['close_time'] = _to_utc(df_tf['close_time'])
         df_tf.dropna(subset=['close_time'], inplace=True)
         df_tf.sort_values("close_time", inplace=True)
         df_tf = df_tf.reset_index(drop=True)
@@ -797,7 +850,7 @@ async def plot_dfs_subplots(
             _ltf_key, _resample_freq = _ltf_info
             if _ltf_key in dfs and isinstance(dfs[_ltf_key], pd.DataFrame) and not dfs[_ltf_key].empty:
                 _df_ltf = dfs[_ltf_key].copy()
-                _df_ltf['close_time'] = pd.to_datetime(_df_ltf['close_time'], errors='coerce')
+                _df_ltf['close_time'] = _to_utc(_df_ltf['close_time'])
                 _df_ltf = _df_ltf.dropna(subset=['close_time']).sort_values('close_time')
                 if not df_tf.empty:
                     _df_ltf = _df_ltf[_df_ltf['close_time'] < df_tf['close_time'].iloc[0]]
@@ -813,7 +866,7 @@ async def plot_dfs_subplots(
         _htf_key = _HTF_MAP.get(tf_plot_loop)
         if len(df_tf) < _TARGET and _htf_key and _htf_key in dfs and isinstance(dfs[_htf_key], pd.DataFrame) and not dfs[_htf_key].empty:
             _df_htf = dfs[_htf_key].copy()
-            _df_htf['close_time'] = pd.to_datetime(_df_htf['close_time'], errors='coerce')
+            _df_htf['close_time'] = _to_utc(_df_htf['close_time'])
             _df_htf = _df_htf.dropna(subset=['close_time']).sort_values('close_time').reset_index(drop=True)
             _df_htf_s = _df_htf.iloc[::4].copy()
             if not df_tf.empty:
@@ -897,7 +950,8 @@ async def plot_dfs_subplots(
                         ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
         if len(df_tf) > 2 and 'close' in df_tf.columns:
             try:
-                from ez_rankings import calculate_regression_slope_line, calculate_regression_band
+                from ez_rankings import (calculate_regression_band,
+                                         calculate_regression_slope_line)
                 slope_pct_local, rvv_local, yhat_abs_local = calculate_regression_slope_line(df_tf[['close_time','close']].copy())
                 if len(yhat_abs_local) == len(df_tf):
                     slope_str_local_title = f"Slope={fmt_f(slope_pct_local)}%, R={fmt_f(rvv_local)}"
@@ -942,7 +996,8 @@ async def plot_dfs_subplots(
                 df_btf_data = dfs[btf_overlay].copy()
                 if 'close_time' in df_btf_data.columns and 'close' in df_btf_data.columns:
                     try:
-                        from ez_rankings import calculate_regression_band, merge_htf_band_into_ltf
+                        from ez_rankings import (calculate_regression_band,
+                                                 merge_htf_band_into_ltf)
                         band_htf_overlay = calculate_regression_band(df_btf_data)
                         if not band_htf_overlay.empty:
                             df_tf_merged_htf_band = merge_htf_band_into_ltf(df_tf.copy(), band_htf_overlay)
@@ -2187,12 +2242,12 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     top_losers_st = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_recent_norm", 0.0))
     to_save_top20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:25]]
     to_save_bottom20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:25]]
-    to_save_top30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:30]]
-    to_save_bottom30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:30]]
+    to_save_top30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:50]]
+    to_save_bottom30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:50]]
     to_save_top30_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:30]]
     to_save_bottom30_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:30]]
-    to_save_top15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:15]]
-    to_save_bottom15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:15]]
+    to_save_top15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:10]]
+    to_save_bottom15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:10]]
     # Calculate returns for 15m filtering (similar to ez_rankings)
     all_dfs_for_returns = {item["symbol"]: item.get("dfs_for_calc", {}) for item in final_ranking_data_scalars}
     returns_15m = await calculate_15min_returns_for_symbols(all_dfs_for_returns)
@@ -2257,6 +2312,8 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
         shutil.copy2(config.DATA_DIR / f"losers_30r_{timestamp}.json", config.DATA_DIR / "losers_30r")
         shutil.copy2(config.DATA_DIR / f"winners_15m_{timestamp}.json", config.DATA_DIR / "winners_15m")
         shutil.copy2(config.DATA_DIR / f"losers_15m_{timestamp}.json", config.DATA_DIR / "losers_15m")
+        for _pfx in ["winners_20_", "losers_20_", "winners_30_", "losers_30_", "winners_30r_", "losers_30r_", "winners_15m_", "losers_15m_"]:
+            _prune_tiered(config.DATA_DIR, _pfx)
         _merge_news_injections(symbols_trb_long, 'trb', 'LONG')
         _merge_news_injections(symbols_trb_short, 'trb', 'SHORT')
         await _save_json_async(config.BASE_PATH / "symbols_tra_long.json", symbols_tra_long)

@@ -1,302 +1,397 @@
-# CLAUDE.md — Trading System Rules for Claude Code
+# CLAUDE.md — Trading System Rules
 
-## STEP 0 — On Every Conversation Start (Mandatory)
+## 🚨 MANDATORY BACKUP BEFORE EVERY EDIT — NO EXCEPTIONS
 
-### 0a — Refresh + Search the Conversation Knowledge Base
+**Every edit MUST follow this exact sequence:**
 
-**ALWAYS run this first, on every single prompt, no exceptions:**
 ```bash
-cd /Users/niels/Documents/binance && python3 export_conversations.py
-```
-This regenerates `memory/conversations/` from all past sessions. Run it BEFORE reading any memory files.
+# 1. Backup to /backups/ with timestamp BEFORE editing
+cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
 
-Then search the knowledge base based on what the user is asking about:
-
-1. **If a specific script is mentioned** (e.g. `ez_manage.py`, `ez_positions_quick.py`):
-   → Read the matching section in `memory/conversations/SCRIPT_STATE.md`
-
-2. **If a topic is mentioned** (hedge, staleness, ratio, positions, klines, orders, pnl/JSONL, redis, news_scanner, scalp):
-   → Read the matching section in `memory/conversations/TOPIC_STATE.md`
-
-3. **If context about recent work is needed** (e.g. "continue from last time", "what did we change"):
-   → Read `memory/conversations/INDEX.md` to find the relevant session, then open that `session_*.md`
-
-4. **If none of the above applies**: skip — do not read all files speculatively.
-
----
-
-### 0b — Before ANY File Edit (Mandatory Pre-Check)
-
-1. Open `LOCKED_FILES.md` and scan the **Currently Locked Files** table.
-2. If the target file is listed there → **STOP**. Tell the user it is locked. Do NOT proceed.
-3. Only continue if the user says **"unlock \<file\>"** in the same message.
-4. Lock applies to both local and server copies. No exceptions. Not even imports. Not even one line.
-
----
-
-## Absolute Prohibitions (Never Do These)
-
-| Rule | Detail |
-|------|--------|
-| **NEVER** git reset / restore / checkout | Only move forward. No reverting. |
-| **NEVER** revert to backup or older version | Ask the user instead. |
-| **NEVER** access `.history/` | Unless explicitly permitted. |
-| **NEVER** delete/pop/clear position dict entries | Only modify values. Symbol count in `symbols.json` must match position count exactly or the system crashes. |
-| **NEVER** overwrite a file with an older version | Without explicit permission. |
-| **NEVER** create a position from zero | NO CODE PATH may EVER instantiate Position() or TradierPosition() with zero/default values. Not `ensure_permanent_positions`, not `_create_default_position`, not `ensure_position_present`, not `DYNAMIC_FALLBACK`, not any other function. Only `add_new_symbols.py` creates positions. If a position is missing from memory: (1) search own backups, (2) search own main file, (3) search ALL other accounts' files+backups and copy structure (amt=0 but all other fields preserved). A position ALWAYS exists somewhere. |
-| **NEVER** zero a position from API absence | Absence from Binance/Tradier API response does NOT mean closed. The API only returns recently-active symbols. `_handle_missing_positions`, `api_absence` reduction, ghost clearing — ALL DISABLED. Only explicit WS `positionAmt=0` (threshold 5+) can confirm closure. |
-| **NEVER** make account-specific scripts | Put account-specific logic as conditions inside the shared scripts. Separate scripts = chaos. |
-| **NEVER** call `ez_backup.py` | It is a live system script, not a Claude utility. |
-
----
-
-## STEP 1 — Required Workflow for Every File Edit
-
-```
-1. Read LOCKED_FILES.md — is it locked? → STOP if yes
-2. Backup: cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py  (on server)
-3. Edit the file on SERVER (/home/niels/binance/<file>)
-4. Verify: cat the changed lines to confirm the edit took effect
-5. Test run (if applicable)
-6. rsync back to local: rsync -av niels@157.180.125.52:/home/niels/binance/<file> /Users/niels/Documents/binance/
-7. Run push.py from local to restart services with backup
+# 2. Then edit
 ```
 
-Backup naming: `before_<short description of change>_<YYYYMMDDHHMM>.py`
-Example: `before_ratio_recovery_fix_202603141045.py`
+**Additionally — autosave runs every 15 minutes via launchd:**
+- `autosave_15min.py` copies all critical files to `backups/autosave/<timestamp>/`
+- Auto-commits to git every 15 min as safety net
+- LaunchAgent: `~/Library/LaunchAgents/com.niels.autosave-15min.plist`
+- If autosave process dies, launchd restarts it. If missing, reload it.
+
+**If you find yourself editing without a fresh backup STOP — create the backup first.** Losing an hour of work because rogue agent reverted something = unacceptable. The /backups/ folder is the ONLY reliable history — `.history/` is stale, git has 1 ancient commit.
 
 ---
 
-## Code Style — Non-Negotiable
+## ⚠️ NO LYING / NO GUESSING — REAL MONEY
+
+- **NEVER** claim something works without log/exchange proof.
+- **NEVER** guess root causes — trace the actual code path.
+- **NEVER** present backtest numbers from reimplemented logic. Only `process_position()`, `check_entry_candidates()`, `check_exit_candidates()` produce valid numbers.
+- **NEVER** inflate, extrapolate, or cherry-pick numbers. Report exactly what the code produced.
+- **NEVER** cover up errors. Say "I made an error in X" immediately.
+- **NEVER** blame external systems (Redis, API) before exhausting code-level causes.
+- When in doubt: say "I don't know yet" or "Can you clarify?" — not a confident wrong answer.
+
+---
+
+## ⚠️ ALL CLOCKS = UTC. MARKETS = ET (UTC−4 now)
+
+| Event | ET | UTC |
+|-------|-----|-----|
+| Market open | 9:30 AM | **13:30** |
+| Market close | 4:00 PM | **20:00** |
+| Pre-market prep | 8:00 AM | **12:00** |
+
+**NEVER write cron times in ET. NEVER assume `date` is ET. NEVER say "market closed" without checking UTC.**
+
+---
+
+## STEP 0 — Every Conversation Start
+
+1. **Read STATE OF AFFAIRS** at bottom of this file first.
+2. **Read `100.md`** — master audit doc (Parts 1–15). Skim headers, read relevant sections.
+3. **Refresh knowledge base**: `cd /Users/niels/Documents/binance && python3 export_conversations.py`
+4. **Search based on request**:
+   - Script mentioned → `memory/conversations/SCRIPT_STATE.md`
+   - Topic (hedge, ratio, positions, klines, redis, scalp) → `memory/conversations/TOPIC_STATE.md`
+   - "Continue from last time" → `memory/conversations/INDEX.md` → relevant `session_*.md`
+   - No match → skip (don't read speculatively)
+
+---
+
+## STEP 0b — Before ANY File Edit
+
+1. Read `LOCKED_FILES.md` — is it locked? → **STOP** if yes.
+2. Only continue if user says **"unlock \<file\>"** in same message.
+
+---
+
+## STEP 1 — Every File Edit Workflow
+
+```
+1. Read LOCKED_FILES.md — locked? STOP.
+2. Backup: cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
+3. Edit locally (/Users/niels/Documents/binance/<file>)
+4. Compile: python -c "import py_compile; py_compile.compile('<file>', doraise=True)"
+5. Verify: grep/read changed lines to confirm.
+```
+
+---
+
+## Absolute Prohibitions
+
+| NEVER | Detail |
+|-------|--------|
+| git reset / restore / checkout | Only move forward. |
+| Revert to backup/older version | Ask user instead. |
+| Access `.history/` | Unless explicitly permitted. |
+| delete/pop/clear position dict entries | `symbols.json` count must match position count exactly. No `.pop()`, `del`, `.clear()`. |
+| Overwrite file with older version | Without explicit permission. |
+| Create position from zero | Only `add_new_symbols.py` creates positions. |
+| Zero position from API absence | Absence ≠ closed. Only explicit WS `positionAmt=0` (threshold 5+) confirms closure. |
+| Zero entry_price, max_gain, opened_at | SACRED. Only `positionAmt` may be zeroed on confirmed close. |
+| Overwrite Redis memory without validation | Redis may be poisoned/stale. |
+| Use `.clear()` on positions dicts | Empty source = source failed, NOT positions gone. |
+| Make account-specific scripts | Put account logic as conditions inside shared scripts. |
+| Call `ez_backup.py` | Live system script, not a Claude utility. |
+| Close positions at a loss on live | STRICT_NO_LOSS active. Under review via Part 15. |
+| Add stop-loss code to tradier_manage.py | `HARD_STOP_LOSS_MAX_PAIN` caused $500+ losses 2026-03-24. ALL stop loss paths DISABLED. |
+| Present backtest results from reimplemented logic | Only real `process_position()` / `check_entry/exit_candidates()` results count. |
+| Inflate trade counts or PnL | Report raw numbers. 120 trades = 120. Not "~150". |
+| Call backtest "working" until it matches live logs | Compare vs `data/decisions/` JSONL trade-by-trade. |
+| Blame "strict gates" for low trade counts | Missing trades = missing mock attributes or broken patches. |
+| Place orders outside `execute_now()` | THE ONLY gate for ALL Binance orders. No exceptions. |
+| Add `not is_hedge` bypasses to execute_now guards | Guards apply to ALL callers. Hedge-specific logic goes INSIDE execute_now. |
+| Let MOMENTUM_RIDER bypass execute_now | PERMANENTLY DISABLED. |
+| Add new entry strategies to live code | See NEW STRATEGY PROHIBITION. |
+| Add autonomous position-opening loops | No `asyncio.create_task(scan_and_open_*)`. |
+| Add percentage-based exit triggers | No `if gain < -X%: exit`. Exits on technicals ONLY. |
+| Hardcode config values in backtest engines | Backtests MUST read from config.py. |
+| Auto-expand tradeable_keys | Hand-picked per account. No `.add()` from scanners. |
+| Add hedge loops independent of HEDGE_MODE | All hedges via ez_positions_quick only, HEDGE_MODE=True. |
+| Implement YouTube/web strategies directly into live | Research → full sweep backtest (48 crypto 4yr S1 + 128 stocks 2yr S2) → paper trade days → user approval → live. |
+| Use HANDS_FREE to add new strategies | HANDS_FREE = bug fixes + proven changes only. |
+
+---
+
+## NEW STRATEGY PROHIBITION (2026-03-27 disaster: 8 strategies → 0 trades + 15,378 rogue opens)
+
+1. NEVER add strategy to ez_manage/tradier_manage/ez_positions_quick without explicit user approval outside HANDS_FREE.
+2. NEVER enable on real money without full sweep backtest proof (48 crypto 4yr on S1 + 128 stocks 2yr on S2) + paper trading days.
+3. NEVER "backtest" with reimplemented logic.
+4. NEVER add >1 new strategy per conversation.
+5. NEVER wire strategy into main loop without a kill switch defaulting to OFF.
+6. Before ANY new strategy: present entry logic, exit logic, data pipeline, trade freq, risk, interaction with existing strategies.
+7. After implementation: verify it fires in 24h paper with trades in decision JSONL.
+
+**Banned without V5 backtest proof**: ORB, Clenow, SMFI, Minervini, Connors RSI, DC Daytrade, Episodic Pivot, Squeeze, Outlier Scalper, Outlier Hunter, Mover Detection, momentum fade/rider, autonomous scanners.
+
+---
+
+## EXECUTE_NOW IS THE ONLY GATE
+
+1. ALL orders (open, augment, reduce, close, hedge) go through `execute_now()` in ez_manage.py.
+2. NO `not is_hedge` bypasses — guards apply to ALL callers.
+3. NO reason-string bypasses (MOMENTUM_RIDER etc.) — reason is for logging only.
+4. OPEN on empty position = allowed. AUGMENT on existing = gain check applies to ALL.
+5. No `futures_create_order` or REST `/fapi/v1/order` calls outside execute_now.
+6. **CONSULT TRACKER BEFORE HEDGING** — check `active_hedges` + `exit_candidates` in tracker.json. Don't hedge-the-hedge. Don't double-hedge. (2026-03-29 death spiral: 24,833 rogue orders from not consulting tracker.)
+7. `persist_hedge_record` MUST be called after any execute_now for a hedge.
+
+---
+
+## STRICT_NO_LOSS — UNDER REVIEW (Part 15, deadline 2026-04-03)
+
+**LIVE: STRICT_NO_LOSS = active. BACKTEST (P15 configs): disabled for testing.**
+
+Disabled % stop paths in tradier_manage.py (MUST STAY DISABLED):
+- `HARD_STOP_LOSS_MAX_PAIN` (gain < -1.5%)
+- `STALE_DATA_HARD_STOP` (gain < -1.5% on stale data)
+- `STALE_DATA_GAIN_EROSION` (trailing on stale)
+- `Market_Against_Position` bias reduce (gain < -0.5%)
+
+**If you EVER see `gain < -` followed by `return True` in any exit path — DISABLE IT.**
+
+Part 15 tests: % stops ALWAYS bad. Technical exits (WT cross, structure break) at a loss MAY be ok — that's what the sweep tests.
+
+---
+
+## Current Operating Mode (2026-03-31)
+
+| Location | Role | Status |
+|----------|------|--------|
+| **Local MacBook** | SOURCE OF TRUTH — all trading runs here | ACTIVE |
+| **Server 1 (157.180.125.52)** | Tera-sweep backtesting | ACTIVE |
+| **Server 2 (204.168.181.211)** | Tera-sweep backtesting | ACTIVE |
+
+- DO NOT start/restart trading services on servers. DO NOT edit scripts on servers (local only).
+- Server Redis tunnel DISABLED — dummy on 6381. DO NOT re-enable.
+- Local Redis: 6379. Gateway Redis: 6380.
+- To restore server trading: run `push.py` from local.
+- **TRADIER IS PRIORITY** — $70k stocks vs $1k crypto.
+- **⚠️ SERVER LOCKS**: Before ANY server action, read `SERVER_LOCKS.md` AND check `/home/niels/SWEEP_RUNNING` on the target server. If a lock exists, DO NOT kill processes or start new scripts. NEVER run `killall python3` without checking locks. Screen sessions named `sweep48h` are PROTECTED.
+
+---
+
+## Code Style
 
 **Formatter**: `black` | **Linter**: `pylint`
 
-### Long Lines Rule — CRITICAL
-
-Function calls and `logger.*` calls are **always one line**. No exceptions. Even at 2000+ characters.
-
-```python
-# WRONG — never break a logger or function call across lines
-logger.warning(
-    f"Something happened to {symbol} with value {value}"
-)
-some_func(
-    arg1, arg2, arg3
-)
-
-# CORRECT — always one line
-logger.warning(f"Something happened to {symbol} with value {value}")
-some_func(arg1, arg2, arg3)
-```
-
-### Other Style Rules
-
-- One blank line between functions. **Zero blank lines inside a function body.**
-- Minimize total line count — no code spamming, no redundant comments.
-- Follow existing naming conventions exactly. `symbol` is `symbol` — not `sym`, `s`, `sb`, `sm`.
-- No docstrings, comments, or type annotations on code you didn't change.
+- `logger.*` and function calls are **always one line** — never broken across lines.
+- One blank line between functions. **Zero blank lines inside function bodies.**
+- Use `config.BASE_PATH` — never hardcoded paths.
+- No docstrings/comments/type annotations on code you didn't change.
+- Follow existing naming: `symbol` = `symbol`, not `sym`/`s`/`sb`.
 
 ---
 
-## Python Environments
+## Environments & Servers
 
-| Location | Python |
-|----------|--------|
-| Server | `/home/niels/.conda/envs/binance_env/bin/python` |
-| Local | `/opt/anaconda3/envs/binance_env/bin/python` |
-
----
-
-## Servers & Paths
-
-| Location | Address | Path | Role |
-|----------|---------|------|------|
-| **Server (source of truth)** | `ssh niels@157.180.125.52` | `/home/niels/binance` | All scripts run here — edit here first |
-| **Server logs** | same | `/home/niels/logs` | All service logs |
-| **Local** | — | `/Users/niels/Documents/binance` | Reference / push target |
-| **Klines-only box** | `ssh niels@157.90.168.35` | `/home/niels/binance` | Klines only — NO scripts, NO editing |
+| Location | Python | Path |
+|----------|--------|------|
+| Local | `/opt/anaconda3/envs/binance_env/bin/python` | `/Users/niels/Documents/binance` |
+| Server 1 | `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance` |
+| Server 2 | `/home/niels/miniconda3/envs/binance_env/bin/python` | `/home/niels/binance` |
+| Sandbox | same as Server 1 | `/home/niels/binance-sandbox` (klines + backtest data) |
+| Klines box | — | `157.90.168.35` — klines ONLY, no scripts |
 
 ---
 
 ## Architecture
 
-See `ez_system.md` for full crypto system details and `tradier_system.md` for stock system details.
+**WaveTrend (WT)** = primary signal. 26 fields/TF/symbol. See `wt_composite.py` + `ez_indicators.py`.
 
-### Core Services (Crypto — ez_)
+| TF Level | Timeframes | Role |
+|----------|-----------|------|
+| LTF (Triggers) | M, W, D, 4h, 1h | Setup detection |
+| Entry Confirmation | 15m, 3m | Structure break + momentum |
+| Entry Execution | 3m | 3m break + 15m confirm (PF 1.55, Sharpe 3.21) |
+| Exit | 3m | Structure break |
 
-| File | Role |
-|------|------|
-| `ez_manage.py` | Main orchestrator — all trading decisions, entry/exit, risk |
-| `ez_positions_service.py` | Position persistence, sync, market snapshots |
-| `ez_positions_quick.py` | Scalp/hedge execution, sentiment rebalancing |
-| `ez_prices.py` | Binance WebSocket price feeds → Redis |
-| `ez_rankings.py` | Symbol scoring, sentiment tracking |
-| `ez_market_data.py` | Market-wide RSI/Stochastic/BB aggregation |
-| `ez_indicators.py` | Technical indicators, signal generation, shared memory |
-| `ez_klines.py` | Kline fetching and caching |
-| `ez_positions.py` | Position data structures |
-| `ez_gain_protector.py` | Trailing stop logic |
-| `ez_gap_filler.py` | Gap-fill entry logic |
-| `ez_crosses.py` | MA/indicator cross detection |
-| `ez_double.py` | Double-down / averaging logic |
-| `ez_positions_realtime.py` | Real-time position monitor (variants: `_ang` `_fin` `_flz` `_inf` `_men`) |
-| `ez_mark_prices.py` | Mark price tracking |
-| `ez_share_ind.py` | Shared indicator data distribution |
-| `ez_news_scanner.py` | News sentiment scanner (CoinGecko + Finnhub + RSS + F&G) |
+**Crypto core**: ez_manage.py, ez_positions_service.py, ez_positions_quick.py, ez_prices.py, ez_rankings.py, ez_market_data.py, ez_indicators.py, ez_klines.py, wt_composite.py
 
-### Stock Services (Tradier — tradier_)
+**Stock core**: tradier_manage.py (STOP LOSSES DISABLED), tradier_api.py, tradier_positions.py, tradier_prices.py, tradier_rankings.py, tradier_indicators.py
 
-| File | Role |
-|------|------|
-| `tradier_manage.py` | Main stock orchestrator |
-| `tradier_api.py` | Tradier API client |
-| `tradier_positions.py` | Stock position management |
-| `tradier_prices.py` | Stock price feeds |
-| `tradier_rankings.py` | Stock scoring |
-| `tradier_indicators.py` | Stock technical indicators |
-| `tradier_webhook_bridge.py` | Webhook alerts |
+**Accounts**: Crypto: `ang`, `inf`, `flz`, `men`, `fin` | Stocks: `trb`, `trc`
 
-### Data Flow
+**Config**: `config.py` (crypto), `config_tradier.py` (stocks), `symbols.json` (350+ pairs, count must match positions exactly), `.env.gpg` (API keys — do not touch)
 
-```
-Binance/Tradier APIs → ez_prices.py / tradier_prices.py (WebSocket)
- → Redis (price_cache, klines_cache)
- → ez_indicators.py / tradier_indicators.py + ez_market_data.py
- → ez_manage.py / tradier_manage.py (decisions)
- → ez_positions_quick.py / tradier_positions.py (execution)
- → Binance/Tradier APIs (orders)
- → Position state files (*/long_positions.json, */short_positions.json)
-```
-
-### Accounts
-
-- **Crypto**: `ang`, `inf`, `flz`, `men`, `fin` (scalp: `ang`, `men`, `flz`; strict no-loss: `ang`, `inf`, `men`, `fin`)
-- **Stocks**: `trb`, `trc` (Tradier)
-- Each account directory: `long_positions.json`, `short_positions.json`, `long_ladder.json`, `short_ladder.json`, `long_reentry.json`, `short_reentry.json`, `long_stop_levels.json`, `short_stop_levels.json`, `tracker.json`
-
-### Config Files
-
-- `config.py` — position sizing, trading mode flags, risk parameters, account classification
-- `symbols.json` — 350+ crypto pairs (array); count must match position count exactly
-- `symbol_configs.json` — per-symbol config
-- `symbols_ang.json`, `symbols_fin.json`, etc. — per-account active lists
-- `.env.gpg` — GPG-encrypted API keys — **do not touch**
-
-### Infrastructure
-
-- **Redis**: inter-service message bus
-- **Systemd services** (`scripts/`): one per account + price/kline/ranking services
-- **Frontend**: React 18 + TypeScript + Vite + Tailwind in `analyzer/` (`cd analyzer && npm run dev`)
-
-### Trade Data Sources
-
-- `data/decisions/` — JSONL per account per day (`decisions_{acct}_{YYYYMMDD}.jsonl`). **Best source for trade info** — full indicators, action, reason, price, stoch/RSI/HA/sentiment.
-- `/home/niels/logs/` — Best for investigating **why trades did NOT happen** (stale indicators, cooldowns, gate failures).
-
-### Large Directories (do not bulk-edit)
-
-- `klines_cache/` — 1.5 GB (~1,400 symbol dirs)
-- `plots/` — 1.1 GB
-- `data/` — 344 MB
-- `logs/` — 328 MB
+**Trade data**: `data/decisions/` JSONL per account per day — best source for trade info.
 
 ---
 
-## SERVER MODE — BACKTEST ONLY (until Wed 2026-03-18)
+## Timeframe Derivation — NEVER claim missing data
 
-**ALL ez_ and tradier_ live trading services on server (157.180.125.52) are DISABLED.**
-The server is running backtests on all 16 CPUs at 100% until we have final numbers (deadline: Wed 2026-03-18).
+**15m klines = ALL timeframes since 2020.**
 
-- **DO NOT** start/restart any ez_manage, ez_positions, tradier_manage, or any trading service on the server
-- **DO NOT** edit live trading scripts on the server — edits are LOCAL ONLY until backtest window ends
-- Infrastructure services (ez_prices, ez_klines, ez_indicators, Redis) may remain running as backtests need price data
-- Backtest framework: `/home/niels/binance-sandbox/backtest_framework/`
-- Monitor: `ssh niels@157.180.125.52 "htop"` — all 16 cores should be at 100%
+| 15m → Derived | Method |
+|--------------|--------|
+| 1h | resample('1h').agg(open=first, high=max, low=min, close=last, volume=sum) |
+| 4h | resample('4h') same |
+| D | resample('1D') same |
+| 1m | each 15m bar × 15 with interpolated OHLCV |
+| 3m/5m | each 15m bar × 5/3 |
+
+Map HTF arrays back to 15m via `np.searchsorted`.
+
+---
+
+## Backtest System (V5 — only valid system)
+
+V5 calls ACTUAL live functions. V3/V4/old scripts = RETIRED in `old/` — do NOT use.
+
+**Phase 0 (prep, run once or after indicator changes)**:
+- `backtest_v4_precompute.py` — crypto indicators → NPZ
+- `backtest_v4_precompute_tradier.py` — stock indicators → NPZ
+- `backtest_v5_interpolate_3m.py` / `_5m.py` — higher-res NPZ
+
+**Phase 1 (run backtest)**:
+- `backtest_v5_engine.py` — ONLY valid crypto backtest (all evaluate functions)
+- `backtest_v5_full_tradier.py` — ONLY valid stock backtest (all evaluate functions)
+- ⚠️ NEVER use `backtest_v5_run.py` / `_run_tradier.py` — stripped, wrong results
+
+**Phase 2 (sweep)**: `backtest_v5_sweep.py`, `backtest_v5_hedge_sweep.py`, `backtest_v5_master.py`
+
+**Phase 3 (analyze/validate)**:
+- `backtest_v5_analyze.py` — Sharpe, WR, drawdown breakdown
+- `backtest_evaluate_functions.py` — validate vs live `data/decisions/` JSONL
+- `backtest_evaluate_functions_tradier.py` — **MANDATORY before any tradier_manage.py change**
+
+**Data paths** (on Server 1):
+- Crypto NPZ: `/home/niels/binance-sandbox/backtest_v4/indicators/`
+- Stock NPZ: `/home/niels/binance-sandbox/backtest_v4_tradier/indicators/`
+- 3m NPZ: `/home/niels/binance-sandbox/backtest_v5/indicators_3m/`
+- 5m NPZ: `/home/niels/binance-sandbox/backtest_v5/indicators_5m_tradier/`
+- Logs: `/home/niels/binance-sandbox/backtest_v5/logs/`
+- Klines: `/home/niels/binance-sandbox/klines_cache/` (67 symbols, 4–6yr, 15m)
+- Stock klines: `/home/niels/binance-sandbox/klines_cache_backtest/tradier/` (128 symbols, 25mo)
+- Standard test: 48 symbols in `/home/niels/binance-sandbox/backtest_48_symbols.json`
+
+**Rules**: NEVER write new backtest that reimplements logic. NEVER trust `old/`. ALWAYS validate with `backtest_evaluate_functions*.py` before deploying. NEVER compare results across different precomputed versions.
+
+---
+
+## Crypto vs Stock Parameters — OPPOSITE — NEVER copy between them
+
+| Parameter | Crypto Best | Stock Best |
+|-----------|------------|------------|
+| Entry score | 18 | **24** |
+| Reentry stoch gate | K<50 | K<**80** |
+| HTF alignment | ≥1 | ≥**2** |
+| ADX in sizing | Disable | **Keep** |
+| Sizing indicator | RSI ok | **MFI only** |
+| WT cross alignment | ≥2 | ≥**3** |
+| Combined stoch gate | 50 | **60** |
+
+**MANDATORY**: Before any tradier_manage.py / config_tradier.py change, run `backtest_evaluate_functions_tradier.py`. NEVER assume crypto finding transfers to stocks.
 
 ---
 
 ## position_key Conventions
 
-- Always use `key.endswith("_LONG")` / `key.endswith("_SHORT")` — **never** `"LONG" in key`
-- Helpers in `utils.py`: `pk_is_long()`, `pk_is_short()`, `pk_symbol()`
+- Always: `key.endswith("_LONG")` / `key.endswith("_SHORT")` — NEVER `"LONG" in key`
+- Helpers: `pk_is_long()`, `pk_is_short()`, `pk_symbol()` in `utils.py`
 - `parse_position_key` uses `split("_", 1)` — do not change to rsplit
-- LONG = profits when price UP (open=BUY, close=SELL)
-- SHORT = profits when price DOWN (open=SELL, close=BUY)
+- LONG = profits price UP (open=BUY, close=SELL) | SHORT = profits price DOWN (open=SELL, close=BUY)
 - `is_reduce = (SELL+LONG) or (BUY+SHORT)`
-
----
-
-## L/S Ratio IS the Hedge — Absolute Rule
-
-- **NEVER close losing positions** — the long/short ratio across all positions is the hedge.
-- `STRICT_NO_LOSS` is correct and intentional — do NOT circumvent it.
-- Any code that closes a loser "to protect gains" violates this principle.
-- The hedge engine caused 40%+ loss in one day (2026-03-06) — see `HEDGE_POSTMORTEM.md`.
-
----
-
-## Strategy Development Philosophy — GENERAL FIRST, PER-SYMBOL LATER
-
-**Phase 1 (CURRENT):** Build and validate **general rules** that work across ALL symbols.
-- No per-symbol optimizations, no symbol-specific parameters.
-- All backtest results must be evaluated as cross-symbol averages, not cherry-picked top performers.
-- A strategy is only valid if it works on the MAJORITY of symbols, not just the best 5.
-- Config parameters must be universal: one `NOLOSS_MIN_PROFIT_PCT` for all, not per-symbol.
-
-**Phase 2 (AFTER solid generals):** Day-by-day analysis of best and worst performers.
-- Compare daily: which symbols hit TP fastest? Which sit underwater longest?
-- Build **short-term per-symbol adjustments** (tighter/wider TP, entry zone shifts, direction bias).
-- These adjustments are TEMPORARY and re-evaluated weekly.
-
-**DO NOT skip to Phase 2.** If a general strategy has <90% WR across all symbols, fix the generals first.
 
 ---
 
 ## HANDS_FREE Mode
 
-### How to start a HANDS_FREE session
+Activate with **`HANDS_FREE`** in your message. When active: no confirmations, no check-ins, auto-approve edits, chain steps, handle errors silently, full report at end.
 
-**Option A — Current session** (already running): include `HANDS_FREE` anywhere in your message.
-
-**Option B — New overnight session** (zero popups, fully unattended):
-```bash
-claude --dangerously-skip-permissions
-```
-
-**Option C — Permanent** (all sessions, no popups ever): already configured in `~/.claude/settings.json` — all tools auto-approved.
-
-### Rules when HANDS_FREE is active
-
-Activate by including **`HANDS_FREE`** anywhere in your message (e.g. "HANDS_FREE — fix the ratio recovery and deploy").
-
-When active, Claude MUST:
-
-| Rule | Detail |
-|------|--------|
-| **No confirmation prompts** | Never ask "shall I proceed?", "want me to continue?", "should I also fix X?" — just do it |
-| **No progress check-ins** | Do not pause mid-task to report status — finish first, report at end |
-| **Auto-approve all edits** | Backup → edit → verify → rsync → restart without asking |
-| **Auto-approve restarts** | `push.py` / `systemctl restart` run automatically |
-| **Chain all steps** | If fixing A reveals B needs fixing, fix B too without asking |
-| **Handle errors silently** | If a step fails, try the next reasonable approach before reporting |
-| **End with a full report** | When completely done: list every file changed, every service restarted, every issue found and resolved |
-
-HANDS_FREE does NOT override:
-- `LOCKED_FILES.md` — still checked, locked files still blocked
-- Absolute Prohibitions table — still enforced
-- The L/S Ratio / STRICT_NO_LOSS rule — never violated regardless of mode
+Does NOT override: LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 
 ---
 
-## Auto-Confirm (No Confirmation Needed)
+## HANDS_OFF Mode
 
-Proceed without asking when the shell warning is:
-- "Command contains empty quotes before dash (potential bypass)"
-- "Command contains `$()` command substitution"
+Activate with **`HANDS_OFF`** in your message. When active: no questions, no confirmation prompts, green light for any changes — keep executing until the final result is delivered. Full report at end.
+
+Does NOT override: LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 
 ---
 
-## Context Compaction
+## Misc Rules
 
-- **Before compacting**: save full conversation to disk, note the path.
-- Keep a todo list in case terminal crashes.
+- **Strategy development**: Phase 1 = general cross-symbol rules. Phase 2 = per-symbol. DO NOT skip to Phase 2.
+- **Context compaction**: Before compacting, save full conversation to disk + note path.
+- **100.md condense**: Keep only last 7 days of performance rows. Merge "Applied Today" after 3 days. Move raw test data to CSV. Never delete Parts 1–5, active BC entries, or "Not Yet Applied" priorities.
+- **Auto-Confirm**: Proceed without asking for: "Command contains empty quotes before dash" or "Command contains `$()` command substitution".
+
+---
+
+## STATE OF AFFAIRS (2026-03-31)
+
+### What Is Working (DO NOT BREAK)
+
+| System | Status |
+|--------|--------|
+| Crypto trading (local) | ACTIVE — ez_manage + ez_positions_quick + services on MacBook |
+| Stock trading (local) | ACTIVE — tradier_manage + tradier_indicators + tradier_rankings |
+| WaveTrend pipeline | ACTIVE — 28 WT fields/TF, Redis via ez_market_data |
+| Signal accuracy tracker | ACTIVE — 61% accuracy at 15m–1h |
+| Trade analytics | ACTIVE — Flask :5050, /feed per-account |
+| BTC ticker | ACTIVE — localhost:8777 |
+| Backtest V4 sweep | Server running — DO NOT interfere |
+
+### What Was Recently Fixed (DO NOT REVERT)
+
+| Fix | Date |
+|-----|------|
+| execute_dual_hedge re-enabled (inline trigger only, no loops) | 2026-04-01 |
+| Triple SIREN order bypass | 2026-03-25 |
+| 14 entry pipeline root causes | 2026-03-25 |
+| Server Redis tunnel DISABLED | 2026-03-25 |
+| Augment gate 5.0→3.0% | 2026-03-26 |
+| BC_152 direction-favorable reentry | 2026-03-26 |
+| BC_153 ratio dead zone 2pp/5pp | 2026-03-26 |
+| BC_150 compression breakout (ATR) | 2026-03-26 |
+| Metrics key aliases stoch_k/d_3m | 2026-03-26 |
+| Logging fix ez_market_data.py | 2026-03-26 |
+| Watchdog timeout 180s→300s | 2026-03-26 |
+| NOT_TRADEABLE logging | 2026-03-26 |
+| Manipulation flag sizing ×0.3 cap $10 | 2026-03-25 |
+| evaluate_technical_indicator_signals fixed | 2026-03-25 |
+
+### In Progress (DO NOT DUPLICATE)
+
+| Project | Status |
+|---------|--------|
+| Backtest V4 sweep | Running: 24 configs × 48 symbols |
+| Master revalidation | 15/143 (10.5%) |
+| SBA v2 rerun | Paused at 10/239 symbols |
+| WT 15m deep sweep | 32/160 combos done |
+| Tradier recovery agent | Recovering ASTS, SNDK, STZ, FIVN |
+
+### Config Values That Must Not Change
+
+| Config | Value | Why |
+|--------|-------|-----|
+| `MIN_GAIN_TO_BUY_AGGRESSIVELY` | 3.0% | NEVER below 2.5% |
+| `STRICT_NO_LOSS` | ELIMINATED 2026-04-01 (STRICT_NO_LOSS_ACCOUNTS=[]) | Replaced by technical exits (WT/DC). Hedge + ratio IS the protection. |
+| `RATIO_MULTIPLIER` | 3.0 | Ratio-only Sharpe 357 vs closing-losers 19 |
+| `HARD_STOP_LOSS_MAX_PAIN` | DISABLED | $500+ losses 2026-03-24 |
+| `STALE_DATA_PROFIT_SHIELD` | DISABLED | Was killing USO position |
+| `HEDGE_MODE` | True (inf/fin/men) | Re-enabled 2026-03-13 |
+| `ATR_TRAIL_ENABLED` (tradier) | False | #1 stock PnL destroyer (-2557%) |
+
+### Active BACKTEST_CHANGEs
+
+- **BC_150**: COMPRESSION_BREAKOUT ATR sizing boost (ACTIVE)
+- **BC_151**: MIN_GAIN_TO_BUY_AGGRESSIVELY 5.0→3.0% (ACTIVE)
+- **BC_152**: Direction-favorable reentry within 120min (ACTIVE)
+- **BC_153**: Dynamic ratio dead zone 2pp/5pp (ACTIVE)
+- See `100.md` for full history (BC_1 through BC_160)
+
+### ACTIVE: Part 15 — NOLOSS Dogma Sweep (deadline 2026-04-03)
+
+Testing 10 configs (P15_BASELINE through P15_HYBRID) to validate removing STRICT_NO_LOSS. Configs in `backtest_v5_sweep.py`. Results in `data/sweep_results/` + `100.md Part 15`. **NO applying winners to live until ALL 10 complete.**
+
+### Centralization Rules
+
+1. `100.md` = single source of truth for backtest results
+2. `data/sweep_results/` = all CSV sweep output
+3. `backtest_v5_sweep.py` = only way to run sweep configs
+4. `push.py` syncs `100.md` + `config.py` + sweep configs to server
+5. `CLAUDE.md` syncs to server via `push.py`

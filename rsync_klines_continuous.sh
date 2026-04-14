@@ -3,7 +3,7 @@
 # Runs every 60 seconds in a loop
 
 LOG="/home/niels/logs/klines_sync_continuous.log"
-SRC="niels@157.90.168.35:/home/niels/binance/klines_cache/"
+SRC="gateway-internal:/home/niels/binance/klines_cache/"
 DST="/home/niels/binance/klines_cache_gateway/"
 
 mkdir -p "$DST"

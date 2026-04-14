@@ -4762,7 +4762,7 @@ class ResamplingAndGapFillEngine:
                         original_size = json_file.stat().st_size
                         df = await self._read_file_unlocked(json_file)
                         # Server: keep ALL bars for backtesting — never clip
-                        # MacBook: all TFs clip >1800 → 1200 to save disk
+                        # MacBook: clip >1800 → 1200 to save disk
                         if env == 'server':
                             continue
                         if not df.empty and len(df) > 1800:

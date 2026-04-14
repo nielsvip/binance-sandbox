@@ -20,7 +20,7 @@ tell application "Terminal"
     
     -- Terminal 2: SSH to gateway server with binance setup (force conda activation)
     try
-        do script "ssh niels@157.90.168.35 -t \"source /home/niels/miniforge3/etc/profile.d/conda.sh && conda activate binance_env && cd binance && exec bash -i\""
+        do script "ssh gateway-internal -t \"source /home/niels/miniforge3/etc/profile.d/conda.sh && conda activate binance_env && cd binance && exec bash -i\""
         set custom title of front window to "Gateway 157.90.168.35"
     on error
         display notification "Failed to open Gateway SSH" with title "Binance Terminals"
@@ -29,7 +29,7 @@ tell application "Terminal"
     
     -- Terminal 3: SSH to second server with binance setup (force conda activation)
     try
-        do script "ssh niels@157.180.125.52 -t \"source /home/niels/miniforge3/etc/profile.d/conda.sh && conda activate binance_env && cd binance && exec bash -i\""
+        do script "ssh s1-int -t \"source /home/niels/miniforge3/etc/profile.d/conda.sh && conda activate binance_env && cd binance && exec bash -i\""
         set custom title of front window to "Server 157.180.125.52"
     on error
         display notification "Failed to open Server SSH" with title "Binance Terminals"

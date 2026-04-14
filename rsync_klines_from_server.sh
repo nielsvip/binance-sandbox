@@ -3,7 +3,7 @@
 # Runs every 120 seconds in a loop
 
 LOG="/Users/niels/logs/klines_sync_from_server.log"
-SRC="niels@157.180.125.52:/home/niels/binance/klines_cache/"
+SRC="s1-int:/home/niels/binance/klines_cache/"
 DST="/Users/niels/Documents/binance/klines_cache/"
 
 mkdir -p "$DST"

@@ -7,10 +7,23 @@ from datetime import datetime
 from pathlib import Path
 
 # --- CONFIGURATION ---
-REMOTE_USER_HOST = "niels@157.180.125.52"
+REMOTE_USER_HOST = "s1-int"
 REMOTE_DIR = "/home/niels/binance"
 WORKINGSET_BASE = "/home/niels/binance/workingset"
 LOG_DIR = "/home/niels/logs"
+
+# Server2: backtest-only, no restart. Syncs live code into sandbox so backtests always use latest.
+SERVER2_HOST = "s2-int"
+SERVER2_SANDBOX = "/home/niels/binance-sandbox"
+# Files that backtest imports from sandbox (must stay current)
+SERVER2_SYNC_FILES = [
+    "tradier_manage.py", "tradier_indicators.py", "tradier_api.py", "tradier_positions.py",
+    "tradier_rankings.py", "config_tradier.py", "config.py", "utils.py",
+    "ez_manage.py", "ez_indicators.py", "ez_positions_quick.py", "ez_positions_service.py",
+    "backtest_v5_full_tradier.py", "backtest_v5_engine.py", "backtest_v5_sweep.py",
+    "backtest_v5_harness.py", "backtest_v5_analyze.py",
+    "backtest_wt_intel_sweep.py",
+]
 
 # THE SOURCE OF TRUTH - only tradier_*, ez_*, and shared config/utils
 FILES = [
@@ -25,13 +38,16 @@ FILES = [
     "ez_positions_quick.py", "ez_positions_realtime.py",
     "ez_positions_realtime_ang.py", "ez_positions_realtime_fin.py", "ez_positions_realtime_flz.py",
     "ez_positions_realtime_inf.py", "ez_positions_realtime_men.py", "ez_positions_watchdog.py",
-    "ez_loss_mitigator.py", "trade_analytics.py",
+    "ez_copilot.py", "trade_analytics.py",
     # --- Shared config/utils ---
     "utils.py", "config.py", "config_tradier.py",
     # --- Managed on server, pulled before pushing ---
     "symbols.json", "symbols_men.json", "symbols_fin.json", "symbols_tradier.json",
     # --- Templates ---
-    "templates/stocks.html","CLAUDE.md"
+    "templates/stocks.html","CLAUDE.md",
+    # --- Backtest & docs ---
+    "100.md", "backtest_v5_sweep.py", "backtest_v5_engine.py", "backtest_v5_full_tradier.py",
+    "backtest_v5_harness.py", "backtest_v5_analyze.py",
 ]
 
 # Shell/bash scripts pushed separately (not pulled — they're the authority)
@@ -178,6 +194,26 @@ def main():
     restart_job = f"cd {REMOTE_DIR} && chmod +x sh.sh && ./sh.sh"
     final_cmd = f"ssh {REMOTE_USER_HOST} 'nohup bash -c \"{restart_job}\" > {LOG_DIR}/push_restore.log 2>&1 &'"
     run_cmd(final_cmd)
+
+    # 5. SYNC TO SERVER2 SANDBOX (no restart — backtest-only server)
+    # Ensures any backtest run on server2 uses the LATEST live code
+    log("Syncing live code to SERVER2 sandbox (no restart)...", "🖥️")
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f2:
+        for item in SERVER2_SYNC_FILES:
+            f2.write(f"{item}\n")
+        f2_list = f2.name
+    try:
+        rc2, _, err2 = run_cmd(f"rsync -avzu --no-perms --timeout=30 --files-from={f2_list} {base_dir}/ {SERVER2_HOST}:{SERVER2_SANDBOX}/")
+        if rc2 != 0:
+            log(f"Server2 sync failed (non-fatal): {err2}", "⚠️")
+        else:
+            # Clear stale bytecode cache on server2
+            run_cmd(f"ssh {SERVER2_HOST} 'find {SERVER2_SANDBOX} -name \"*.pyc\" -delete 2>/dev/null; find {SERVER2_SANDBOX} -name \"__pycache__\" -type d -exec rm -rf {{}} + 2>/dev/null; echo pycache_cleared'")
+            log("Server2 sandbox synced + pycache cleared.", "✅")
+    finally:
+        if os.path.exists(f2_list):
+            os.unlink(f2_list)
 
     elapsed = time.time() - start_time
     log(f"DEPLOYMENT COMPLETE in {elapsed:.1f}s", "✅")

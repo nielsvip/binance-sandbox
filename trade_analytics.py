@@ -13,9 +13,10 @@ from flask_cors import CORS
 BASE_DIR = Path(__file__).resolve().parent
 HISTORY_DIR = BASE_DIR / "data" / "history"
 TRADIER_HISTORY_DIR = BASE_DIR / "data" / "tradier" / "history"
-LOGS_DIR = Path(os.environ.get("LOGS_DIR", "/home/niels/logs" if Path("/home/niels/logs").exists() else str(BASE_DIR / "logs")))
+LOGS_DIR = Path(os.environ.get("LOGS_DIR", "/Users/niels/logs" if Path("/Users/niels/logs").exists() else "/home/niels/logs" if Path("/home/niels/logs").exists() else str(BASE_DIR / "logs")))
 CRYPTO_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
-STOCK_ACCOUNTS = ["trb", "trc"]
+STOCK_ACCOUNTS = ["trb", "trc", "tra"]
+PAPER_ACCOUNTS = {"trc"}  # Paper trading — exclude from PnL totals and cumulative charts
 ALL_ACCOUNTS = CRYPTO_ACCOUNTS + STOCK_ACCOUNTS
 TAIL_LINES = 2000
 _OPT_RE = re.compile(r'^[A-Z]{1,6}\d{6}[CP]\d{4,}$')
@@ -604,7 +605,7 @@ def parse_tradier_confirmed_fills(n=2000):
         show_gain = act_lower in ("reduce", "close", "quick_close", "sell")
         fills.append({"ts": ts, "account": real_acct, "key": pos_key, "symbol": symbol, "action": act_lower, "side": side, "qty": qty_i, "price": price_f, "value": round(qty_i * price_f, 2), "gain_pct": gain_pct if show_gain else 0.0, "gain_dollar": gain_dollar if show_gain else 0.0, "entry_price": 0.0})
     # Parse enriched [TRADE] format from tradier_manage_{acct}.log (has gain/entry/posval)
-    for acct in ["trb", "trc"]:
+    for acct in STOCK_ACCOUNTS:
         manage_path = LOGS_DIR / f"tradier_manage_{acct}.log"
         for line in _tail_file(manage_path, 5000, strip_ansi=True):
             m = RE_TRADIER_ENRICHED.search(line)
@@ -697,15 +698,19 @@ def load_stock_decisions(accounts=None):
 
 
 def build_stock_monitor():
-    """Build stock-specific monitor for trb+trc accounts."""
-    signals = parse_tradier_signals("trb", 500) + parse_tradier_signals("trc", 500)
-    execs_trb, blocks_trb, rebalances_trb = parse_tradier_executions("trb")
-    execs_trc, blocks_trc, rebalances_trc = parse_tradier_executions("trc")
-    execs = execs_trb + execs_trc
-    blocks = blocks_trb + blocks_trc
-    rebalances = rebalances_trb + rebalances_trc
+    """Build stock-specific monitor for all stock accounts."""
+    signals = []
+    execs = []
+    blocks = []
+    rebalances = []
+    for acct in STOCK_ACCOUNTS:
+        signals.extend(parse_tradier_signals(acct, 500))
+        a_execs, a_blocks, a_rebalances = parse_tradier_executions(acct)
+        execs.extend(a_execs)
+        blocks.extend(a_blocks)
+        rebalances.extend(a_rebalances)
     # Primary: decisions JSONL (only actual trades)
-    decision_events, decision_fills = load_stock_decisions(["trb", "trc"])
+    decision_events, decision_fills = load_stock_decisions(STOCK_ACCOUNTS)
     # Fallback: log-based fills for older data without trade details in decisions
     log_fills = parse_tradier_confirmed_fills()
     # Merge fills — decisions take priority, fall back to log fills for data without trade details
@@ -724,7 +729,7 @@ def build_stock_monitor():
             seen_fill.add(dk)
             fills.append(f)
     positions = {}
-    for acct in ["trb", "trc"]:
+    for acct in STOCK_ACCOUNTS:
         for side_file in ["long_positions.json", "short_positions.json"]:
             path = BASE_DIR / acct / side_file
             if not path.exists():
@@ -755,10 +760,16 @@ def build_stock_monitor():
         side = pos.get("position_side", "LONG")
         sym = pos.get("symbol", "")
         opt = is_option(sym)
-        mult = 100 if opt else 1
-        cur_val = qty * mark * mult
-        pnl = (cur_val - qty * entry) if side == "LONG" else (qty * entry - cur_val)
-        gain = round(((cur_val / qty - entry) / entry * 100) if (opt and entry > 0 and qty > 0) else pos.get("gain", 0), 2)
+        if opt:
+            cur_val = qty * mark * 100
+            pnl = (mark * 100 - entry) * qty if side == "LONG" else (entry - mark * 100) * qty
+            gain = round(((mark * 100 - entry) / entry * 100) if (entry > 0) else 0, 2)
+            if side == "SHORT":
+                gain = round(((entry - mark * 100) / entry * 100) if (entry > 0) else 0, 2)
+        else:
+            cur_val = qty * mark
+            pnl = (mark - entry) * qty if side == "LONG" else (entry - mark) * qty
+            gain = round(pos.get("gain", 0), 2)
         pos_list.append({"key": key, "symbol": sym, "side": side, "qty": qty, "entry": entry, "mark": mark, "gain": gain, "max_gain": round(pos.get("max_gain", 0), 2), "value": round(cur_val, 2), "pnl": round(pnl, 2), "is_option": opt})
     stock_events = load_tradier_history()
     stock_events.sort(key=lambda e: e.get("ts", ""))
@@ -908,19 +919,208 @@ def get_analytics():
     return result
 
 # ---------------------------------------------------------------------------
+# Unified Dashboard — crypto + stocks combined
+# ---------------------------------------------------------------------------
+
+_unified_cache = {"data": None, "ts": 0}
+UNIFIED_TTL = 30
+
+
+def build_open_positions():
+    """Build unified open positions list with real gain/loss from position JSONs."""
+    positions = load_positions()
+    pos_list = []
+    for key, pos in sorted(positions.items()):
+        qty = float(pos.get("positionAmt", 0))
+        if qty == 0:
+            continue
+        account = pos.get("_account", "")
+        is_stock = pos.get("_is_stock", False)
+        entry = float(pos.get("entry_price", 0))
+        mark = float(pos.get("mark_price", 0))
+        side = pos.get("position_side", "LONG")
+        sym = pos.get("symbol", "")
+        opt = is_option(sym)
+        entry_per_share = entry / 100 if (opt and entry > 0) else entry
+        if is_stock:
+            if opt:
+                # Options: entry_price = cost_basis/qty (total cost per contract), mark_price = per-share premium
+                value = abs(qty) * mark * 100
+                if side == "LONG":
+                    pnl = (mark * 100 - entry) * abs(qty)
+                else:
+                    pnl = (entry - mark * 100) * abs(qty)
+            else:
+                value = abs(qty) * mark
+                if side == "LONG":
+                    pnl = (mark - entry) * abs(qty)
+                else:
+                    pnl = (entry - mark) * abs(qty)
+        else:
+            unr = pos.get("unrealized_pnl")
+            if unr is not None:
+                pnl = float(unr)
+            else:
+                if side == "LONG":
+                    pnl = (mark - entry) * abs(qty) if entry > 0 and mark > 0 else 0
+                else:
+                    pnl = (entry - mark) * abs(qty) if entry > 0 and mark > 0 else 0
+            value = abs(qty) * mark if mark > 0 else abs(qty) * entry
+        gain_pct = float(pos.get("gain", 0))
+        if opt and entry > 0:
+            # Recalculate gain for options since stored gain uses mismatched units
+            if side == "LONG":
+                gain_pct = ((mark * 100 - entry) / entry) * 100
+            else:
+                gain_pct = ((entry - mark * 100) / entry) * 100
+        max_gain = float(pos.get("max_gain", 0))
+        opened_at = pos.get("opened_at", "")
+        display_entry = round(entry_per_share, 4) if (opt and is_stock) else round(entry, 4)
+        display_mark = round(mark, 4)
+        cost_basis = round(entry * abs(qty), 2) if opt else round(entry * abs(qty), 2)
+        pos_list.append({"key": key, "account": account, "symbol": sym, "side": side, "qty": abs(qty), "entry": display_entry, "mark": display_mark, "gain_pct": round(gain_pct, 2), "max_gain": round(max_gain, 2), "pnl": round(pnl, 2), "value": round(value, 2), "cost_basis": cost_basis, "opened_at": opened_at[:16] if opened_at else "", "is_stock": is_stock, "is_option": opt})
+    return pos_list
+
+
+def build_closed_positions(all_trades):
+    """Build closed positions list — positions with positionAmt=0 that had trades, with realized PnL from pre-computed trades."""
+    positions = load_positions()
+    trade_pnl = defaultdict(lambda: {"pnl": 0.0, "trades": 0, "last_close": ""})
+    for t in all_trades:
+        key = (t["account"], t["symbol"], t["side"])
+        tp = trade_pnl[key]
+        tp["pnl"] += t["pnl_usd"]
+        tp["trades"] += 1
+        if t["close_time"] > tp["last_close"]:
+            tp["last_close"] = t["close_time"]
+    closed = []
+    for key, pos in positions.items():
+        qty = float(pos.get("positionAmt", 0))
+        if qty != 0:
+            continue
+        account = pos.get("_account", "")
+        is_stock = pos.get("_is_stock", False)
+        side = pos.get("position_side", "LONG")
+        sym = pos.get("symbol", "")
+        entry = float(pos.get("entry_price", 0))
+        max_gain = float(pos.get("max_gain", 0))
+        opened_at = pos.get("opened_at", "")
+        tp = trade_pnl.get((account, sym, side))
+        if not tp or tp["trades"] == 0:
+            continue
+        closed.append({"key": key, "account": account, "symbol": sym, "side": side, "entry": round(entry, 4), "max_gain": round(max_gain, 2), "realized_pnl": round(tp["pnl"], 2), "num_trades": tp["trades"], "last_close": tp["last_close"][:16], "opened_at": opened_at[:16] if opened_at else "", "is_stock": is_stock})
+    closed.sort(key=lambda x: x["realized_pnl"], reverse=True)
+    return closed
+
+
+def get_unified_dashboard():
+    now = datetime.now(timezone.utc).timestamp()
+    if _unified_cache["data"] and now - _unified_cache["ts"] < UNIFIED_TTL:
+        return _unified_cache["data"]
+    # Crypto trades
+    crypto_events = [e for e in load_and_merge() if not e.get("is_stock")]
+    crypto_trades = reconstruct_trades(crypto_events)
+    # Stock trades
+    stock_events = load_tradier_history()
+    decision_events, _ = load_stock_decisions(STOCK_ACCOUNTS)
+    stock_seen = {(e["ts"][:16], e["symbol"], e["side"], e["type"]) for e in stock_events}
+    for de in decision_events:
+        k = (de["ts"][:16], de["symbol"], de["side"], de["type"])
+        if k not in stock_seen:
+            stock_events.append(de)
+    stock_events.sort(key=lambda e: e.get("ts", ""))
+    stock_trades = reconstruct_trades(stock_events)
+    # Deduplicate stock trades by (close_time minute, symbol, side, account)
+    stock_seen_trades = set()
+    stock_trades_deduped = []
+    for t in stock_trades:
+        dk = (t["close_time"][:16], t["symbol"], t["side"], t["account"])
+        if dk not in stock_seen_trades:
+            stock_seen_trades.add(dk)
+            stock_trades_deduped.append(t)
+    stock_trades = stock_trades_deduped
+    # Combined
+    all_trades = crypto_trades + stock_trades
+    all_trades.sort(key=lambda t: t.get("close_time", ""), reverse=True)
+    # Dedup all trades
+    all_seen = set()
+    all_trades_deduped = []
+    for t in all_trades:
+        dk = (t["close_time"][:16], t["symbol"], t["side"], t["account"])
+        if dk not in all_seen:
+            all_seen.add(dk)
+            all_trades_deduped.append(t)
+    all_trades = all_trades_deduped
+    # Open positions with real numbers
+    open_pos = build_open_positions()
+    closed_pos = build_closed_positions(crypto_trades + stock_trades)
+    # Stats
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    week_start = (datetime.now(timezone.utc) - timedelta(days=datetime.now(timezone.utc).weekday())).strftime("%Y-%m-%d")
+    # Exclude paper accounts from summary totals
+    real_open = [p for p in open_pos if p["account"] not in PAPER_ACCOUNTS]
+    real_all = [t for t in all_trades if t["account"] not in PAPER_ACCOUNTS]
+    real_crypto = [t for t in crypto_trades if t["account"] not in PAPER_ACCOUNTS]
+    real_stock = [t for t in stock_trades if t["account"] not in PAPER_ACCOUNTS]
+    today_trades = [t for t in real_all if t.get("close_time", "").startswith(today_str)]
+    week_trades = [t for t in real_all if t.get("close_time", "")[:10] >= week_start]
+    today_pnl = sum(t["pnl_usd"] for t in today_trades)
+    week_pnl = sum(t["pnl_usd"] for t in week_trades)
+    total_realized = sum(t["pnl_usd"] for t in real_all)
+    total_unrealized = sum(p["pnl"] for p in real_open)
+    crypto_unrealized = sum(p["pnl"] for p in real_open if not p["is_stock"])
+    stock_unrealized = sum(p["pnl"] for p in real_open if p["is_stock"])
+    crypto_realized = sum(t["pnl_usd"] for t in real_crypto)
+    stock_realized = sum(t["pnl_usd"] for t in real_stock)
+    total_trades_count = len(real_all)
+    win_count = sum(1 for t in real_all if t["pnl_usd"] > 0)
+    win_rate = (win_count / total_trades_count * 100) if total_trades_count > 0 else 0
+    # Symbol rankings (combined)
+    sym_stats = compute_symbol_stats(all_trades)
+    # Add unrealized PnL to symbol stats from open positions
+    sym_unrealized = defaultdict(float)
+    for p in open_pos:
+        sym_unrealized[p["symbol"]] += p["pnl"]
+    for s in sym_stats:
+        s["unrealized"] = round(sym_unrealized.get(s["symbol"], 0), 2)
+        s["total_combined"] = round(s["total_pnl"] + s["unrealized"], 2)
+    sym_stats.sort(key=lambda x: x["total_combined"], reverse=True)
+    # Account stats (combined)
+    acc_stats = compute_account_stats(all_trades)
+    acc_unrealized = defaultdict(float)
+    for p in open_pos:
+        acc_unrealized[p["account"]] += p["pnl"]
+    for a in acc_stats:
+        a["unrealized"] = round(acc_unrealized.get(a["account"], 0), 2)
+        a["total_combined"] = round(a["total_pnl"] + a["unrealized"], 2)
+        a["is_stock"] = a["account"] in STOCK_ACCOUNTS
+        a["is_paper"] = a["account"] in PAPER_ACCOUNTS
+    acc_stats.sort(key=lambda x: x["total_combined"], reverse=True)
+    # Daily PnL (combined, excluding paper accounts)
+    real_trades = [t for t in all_trades if t["account"] not in PAPER_ACCOUNTS]
+    daily_pnl = compute_daily_pnl(real_trades)
+    cumulative_by_acc = compute_cumulative_by_account(real_trades)
+    # Strategy stats
+    strat_stats = compute_strategy_stats(all_trades)
+    result = {"summary": {"total_realized": round(total_realized, 2), "total_unrealized": round(total_unrealized, 2), "total_combined": round(total_realized + total_unrealized, 2), "today_pnl": round(today_pnl, 2), "week_pnl": round(week_pnl, 2), "total_trades": total_trades_count, "win_rate": round(win_rate, 1), "today_trades": len(today_trades), "crypto_realized": round(crypto_realized, 2), "crypto_unrealized": round(crypto_unrealized, 2), "stock_realized": round(stock_realized, 2), "stock_unrealized": round(stock_unrealized, 2), "active_positions": len(open_pos), "crypto_positions": len([p for p in open_pos if not p["is_stock"]]), "stock_positions": len([p for p in open_pos if p["is_stock"]])}, "positions": sorted(open_pos, key=lambda p: p["pnl"], reverse=True), "closed_positions": closed_pos, "trades": all_trades[:300], "symbols": sym_stats, "accounts": acc_stats, "daily_pnl": daily_pnl, "cumulative_by_account": cumulative_by_acc, "strategies": strat_stats, "tips": generate_tips(strat_stats, sym_stats, acc_stats, all_trades), "monitor": get_monitor(), "stock_monitor": get_stock_monitor(), "total_events": len(crypto_events) + len(stock_events)}
+    _unified_cache["data"] = result
+    _unified_cache["ts"] = now
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Flask Routes
 # ---------------------------------------------------------------------------
 
 @app.route("/")
 def dashboard():
-    data = get_analytics()
-    data["monitor"] = get_monitor()
+    data = get_unified_dashboard()
     return render_template("dashboard.html", data=data)
 
 
 @app.route("/api/summary")
 def api_summary():
-    data = get_analytics()
+    data = get_unified_dashboard()
     return jsonify(data["summary"])
 
 
@@ -1238,8 +1438,547 @@ def api_news_all_charts():
     return jsonify(charts)
 
 
+# ---------------------------------------------------------------------------
+# LIVE TRADE FEED — per-account, deduplicated, clear what/why/when/gain$/%
+# ---------------------------------------------------------------------------
+
+_feed_cache = {"data": None, "ts": 0}
+FEED_TTL = 15
+
+
+def build_live_feed(days=3):
+    """Build per-account live trade feed. Stocks from decisions JSONL (has trade details), crypto from confirmed fills (actions.log + history JSONL)."""
+    per_account = defaultdict(list)
+    seen = set()
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(days=days)
+    cutoff_str = cutoff.strftime("%Y-%m-%d")
+    decisions_dir = BASE_DIR / "data" / "decisions"
+    date_strs = [(now_utc - timedelta(days=i)).strftime('%Y%m%d') for i in range(days)]
+    for acct in STOCK_ACCOUNTS:
+        for date_str in date_strs:
+            fpath = decisions_dir / f"decisions_{acct}_{date_str}.jsonl"
+            if not fpath.exists():
+                continue
+            try:
+                with open(fpath, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        action_raw = rec.get("action", "")
+                        action_upper = action_raw.upper().replace("\U0001f680", "").replace("\U0001f4a5", "").replace("\U0001f7e2", "").strip()
+                        if action_upper in ("HOLD", "WAIT", "SKIP", ""):
+                            continue
+                        trade = rec.get("trade", {})
+                        if not trade or float(trade.get("qty", 0) or 0) == 0:
+                            continue
+                        ts = rec.get("timestamp", "")[:19]
+                        pk = rec.get("position_key", "")
+                        reason = rec.get("reason_text", rec.get("reason", ""))
+                        parts = pk.rsplit("_", 1) if "_" in pk else (pk, "LONG")
+                        sym_part = parts[0].split(":")[-1] if ":" in parts[0] else parts[0]
+                        side = parts[1] if len(parts) == 2 else "LONG"
+                        price = float(trade.get("price", 0) or 0)
+                        qty = float(trade.get("qty", 0) or 0)
+                        entry_price = float(trade.get("entry_price", 0) or 0)
+                        gain_pct = float(trade.get("gain_pct", 0) or 0)
+                        position_amt = float(trade.get("position_amt", 0) or 0)
+                        value = round(qty * price, 2)
+                        action_type = trade.get("action_type", action_upper).upper().replace("\U0001f680", "").replace("\U0001f4a5", "").replace("\U0001f7e2", "").strip()
+                        is_exit = action_type in ("CLOSE", "REDUCE", "QUICK_CLOSE", "SELL")
+                        gain_dollar = round(gain_pct / 100.0 * position_amt * entry_price, 2) if (is_exit and gain_pct and position_amt and entry_price) else (round(gain_pct / 100.0 * qty * price, 2) if (is_exit and gain_pct and qty and price) else 0.0)
+                        dedup_key = (ts[:16], pk, action_type)
+                        if dedup_key in seen:
+                            continue
+                        seen.add(dedup_key)
+                        per_account[acct].append({"ts": ts, "symbol": sym_part, "side": side, "action": action_type, "reason": _clean_reason(reason), "price": price, "qty": qty, "value": value, "entry_price": entry_price, "gain_pct": round(gain_pct, 2) if is_exit else 0.0, "gain_dollar": round(gain_dollar, 2) if is_exit else 0.0, "is_exit": is_exit, "is_stock": True, "position_key": pk})
+            except Exception:
+                continue
+    for acct in CRYPTO_ACCOUNTS:
+        acct_dir = HISTORY_DIR / acct
+        if not acct_dir.exists():
+            continue
+        for jsonl_file in acct_dir.glob("*.jsonl"):
+            stem = jsonl_file.stem
+            parts = stem.rsplit("_", 1)
+            symbol = parts[0] if len(parts) == 2 else stem
+            side = parts[1] if len(parts) == 2 else "UNKNOWN"
+            try:
+                with open(jsonl_file, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        ts = rec.get("ts", "")
+                        if ts[:10] < cutoff_str:
+                            continue
+                        ev_type = rec.get("type", "").upper()
+                        if not ev_type:
+                            continue
+                        price = float(rec.get("price", 0) or 0)
+                        qty = float(rec.get("qty", 0) or 0)
+                        value = float(rec.get("value", 0) or 0)
+                        reason = rec.get("reason", "")
+                        is_exit = ev_type in ("REDUCE", "CLOSE", "QUICK_CLOSE")
+                        gain_pct = 0.0
+                        if is_exit and reason:
+                            gm = re.search(r'([\d.]+)%', reason)
+                            if gm:
+                                gain_pct = float(gm.group(1))
+                        gain_dollar = round(gain_pct / 100.0 * value, 2) if (is_exit and gain_pct and value) else 0.0
+                        dedup_key = (ts[:16], f"{acct}:{symbol}_{side}", ev_type)
+                        if dedup_key in seen:
+                            continue
+                        seen.add(dedup_key)
+                        per_account[acct].append({"ts": ts[:19], "symbol": symbol, "side": side, "action": ev_type, "reason": _clean_reason(reason), "price": price, "qty": qty, "value": value, "entry_price": 0.0, "gain_pct": round(gain_pct, 2) if is_exit else 0.0, "gain_dollar": round(gain_dollar, 2) if is_exit else 0.0, "is_exit": is_exit, "is_stock": False, "position_key": f"{acct}:{symbol}_{side}"})
+            except Exception:
+                continue
+    fills = parse_confirmed_fills(2000)
+    for f in fills:
+        if f.get("is_stock"):
+            continue
+        ts = f.get("ts", "")
+        if len(ts) < 10 or ts[:10] < cutoff_str:
+            continue
+        acct = f.get("account", "")
+        pk = f.get("key", "")
+        action = f.get("action", "").upper()
+        parts = pk.rsplit("_", 1) if "_" in pk else (pk, "UNKNOWN")
+        sym_part = parts[0].split(":")[-1] if ":" in parts[0] else parts[0]
+        side = parts[1] if len(parts) == 2 else "UNKNOWN"
+        is_exit = action in ("REDUCED", "AUGMENTED", "CLOSE")
+        gain_pct = float(f.get("gain", 0))
+        reason = f.get("reason", "")
+        dedup_key = (ts[:16], pk, action)
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+        per_account[acct].append({"ts": ts[:19], "symbol": sym_part, "side": side, "action": action, "reason": _clean_reason(reason), "price": 0.0, "qty": 0.0, "value": 0.0, "entry_price": 0.0, "gain_pct": round(gain_pct, 2) if is_exit else 0.0, "gain_dollar": 0.0, "is_exit": is_exit, "is_stock": False, "position_key": pk})
+    for acct in per_account:
+        per_account[acct].sort(key=lambda x: x["ts"], reverse=True)
+        per_account[acct] = per_account[acct][:200]
+    return dict(per_account)
+
+
+def _clean_reason(reason):
+    """Truncate and clean up reason text for display."""
+    if not reason:
+        return ""
+    reason = reason.replace("QUICK_REDUCE_", "").replace("QUICK_OPEN_", "").replace("HOLD_", "")
+    parts = reason.split("_bc")
+    reason = parts[0] if parts else reason
+    return reason[:80]
+
+
+def get_live_feed():
+    now = datetime.now(timezone.utc).timestamp()
+    if _feed_cache["data"] and now - _feed_cache["ts"] < FEED_TTL:
+        return _feed_cache["data"]
+    feed = build_live_feed(days=3)
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    summary = {}
+    for acct, trades in feed.items():
+        today_trades = [t for t in trades if t["ts"].startswith(today_str)]
+        exits_today = [t for t in today_trades if t["is_exit"]]
+        entries_today = [t for t in today_trades if not t["is_exit"]]
+        realized_today = sum(t["gain_dollar"] for t in exits_today)
+        summary[acct] = {"total_today": len(today_trades), "entries_today": len(entries_today), "exits_today": len(exits_today), "realized_today": round(realized_today, 2)}
+    result = {"accounts": feed, "summary": summary, "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
+    _feed_cache["data"] = result
+    _feed_cache["ts"] = now
+    return result
+
+
+@app.route("/api/live_feed")
+def api_live_feed():
+    data = get_live_feed()
+    account = request.args.get("account")
+    limit = int(request.args.get("limit", 100))
+    if account:
+        acct_data = data["accounts"].get(account, [])
+        return jsonify({"account": account, "trades": acct_data[:limit], "summary": data["summary"].get(account, {}), "generated_at": data["generated_at"]})
+    return jsonify(data)
+
+
+@app.route("/feed")
+def feed_dashboard():
+    data = get_live_feed()
+    return render_template("feed.html", data=data)
+
+
+# =========================================================================
+# SWEEP DASHBOARD — Real-time view of all backtest machines + results
+# =========================================================================
+import subprocess as _sp
+import threading
+import time as time
+
+_sweep_cache = {"data": None, "ts": 0}
+
+def _ssh_quick(host, cmd, timeout=8):
+    try:
+        r = _sp.run(["ssh", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=3", host, cmd], capture_output=True, text=True, timeout=timeout)
+        return r.stdout.strip() if r.returncode == 0 else f"ERROR:{r.stderr[:100]}"
+    except Exception as e:
+        return f"TIMEOUT:{str(e)[:50]}"
+
+def _parse_log_results(log_dir, pattern="wt_pure_*.log"):
+    results = []
+    from pathlib import Path
+    for f in sorted(Path(log_dir).glob(pattern)):
+        name = f.stem
+        try:
+            text = f.read_text()
+            r = {"name": name, "status": "running", "pnl": 0, "trades": 0, "wr": 0, "dd": 0, "equity": 0}
+            for line in text.split("\n"):
+                if "Realized:" in line and "PnL:" in line:
+                    try: r["trades"] = int(line.split("Realized:")[1].split("trades")[0].strip())
+                    except: pass
+                    try: r["pnl"] = float(line.split("PnL: $")[1].split()[0].replace(",",""))
+                    except: pass
+                    r["status"] = "done"
+                if "Win rate:" in line:
+                    try: r["wr"] = float(line.split("Win rate:")[1].split("%")[0].strip())
+                    except: pass
+                if "Max DD:" in line:
+                    try: r["dd"] = float(line.split("Max DD:")[1].split("%")[0].strip())
+                    except: pass
+                if "eq: $" in line:
+                    try: r["equity"] = float(line.split("eq: $")[1].split()[0].replace(",",""))
+                    except: pass
+                if "closed" in line and "PnL:" in line and r["status"] != "done":
+                    try: r["pnl"] = float(line.split("PnL: $")[1].split()[0].replace(",",""))
+                    except: pass
+                    try:
+                        pct = line.split("%")[0].split()[-1]
+                        r["progress"] = pct
+                    except: pass
+            # Check IBS/WT breakdown
+            for line in text.split("\n"):
+                if "IBS_LONG" in line and "PnL=$" in line:
+                    try: r["ibs_pnl"] = float(line.split("PnL=$")[1].split()[0].replace(",",""))
+                    except: pass
+                if "WT_4h" in line and "PnL=$" in line and "EXIT BREAK" not in line:
+                    try: r["wt_pnl"] = float(line.split("PnL=$")[1].split()[0].replace(",",""))
+                    except: pass
+            results.append(r)
+        except: pass
+    return results
+
+def get_sweep_data():
+    now = time.time()
+    if _sweep_cache["data"] and now - _sweep_cache["ts"] < 30:
+        return _sweep_cache["data"]
+    machines = []
+    # Local
+    try:
+        procs = _sp.run("ps aux | grep -E 'backtest_v5|wt_pure|sweep_orch' | grep -v grep | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        cpu = _sp.run("ps aux | grep -E 'backtest_v5|wt_pure' | grep -v grep | awk '{sum+=$3} END {printf \"%.0f\", sum}'", shell=True, capture_output=True, text=True).stdout.strip()
+        mem = _sp.run("ps aux | grep -E 'backtest_v5|wt_pure' | grep -v grep | awk '{sum+=$6} END {printf \"%.0f\", sum/1024}'", shell=True, capture_output=True, text=True).stdout.strip()
+        machines.append({"name": "Local MacBook", "host": "localhost", "procs": int(procs or 0), "cpu_pct": float(cpu or 0), "mem_mb": float(mem or 0), "status": "ok"})
+    except: machines.append({"name": "Local MacBook", "host": "localhost", "status": "error"})
+    # Server 1
+    out = _ssh_quick("s1-int", "pgrep -f 'backtest_v5|wt_pure' -c 2>/dev/null; echo '|'; free -m | grep Mem | awk '{print $2,$3}'")
+    if "ERROR" in out or "TIMEOUT" in out:
+        machines.append({"name": "Server 1", "host": "157.180.125.52", "status": out[:30], "procs": 0, "mem_pct": 100})
+    else:
+        parts = out.split("|")
+        procs = int(parts[0].strip()) if parts[0].strip().isdigit() else 0
+        mem_parts = parts[1].strip().split() if len(parts) > 1 else ["30000", "25000"]
+        total = int(mem_parts[0]) if mem_parts else 30000
+        used = int(mem_parts[1]) if len(mem_parts) > 1 else 25000
+        machines.append({"name": "Server 1", "host": "157.180.125.52", "procs": procs, "mem_total": total, "mem_used": used, "mem_pct": round(used/max(total,1)*100, 1), "status": "ok"})
+    # Server 2
+    out = _ssh_quick("s2-int", "pgrep -f 'backtest_v5|wt_pure|v5_sweep' -c 2>/dev/null; echo '|'; free -m | grep Mem | awk '{print $2,$3}'")
+    if "ERROR" in out or "TIMEOUT" in out:
+        machines.append({"name": "Server 2", "host": "204.168.181.211", "status": out[:30], "procs": 0, "mem_pct": 100})
+    else:
+        parts = out.split("|")
+        procs = int(parts[0].strip()) if parts[0].strip().isdigit() else 0
+        mem_parts = parts[1].strip().split() if len(parts) > 1 else ["30000", "25000"]
+        total = int(mem_parts[0]) if mem_parts else 30000
+        used = int(mem_parts[1]) if len(mem_parts) > 1 else 25000
+        machines.append({"name": "Server 2", "host": "204.168.181.211", "procs": procs, "mem_total": total, "mem_used": used, "mem_pct": round(used/max(total,1)*100, 1), "status": "ok"})
+    # Results
+    local_results = _parse_log_results("/Users/niels/logs", "wt_pure_*.log")
+    local_results += _parse_log_results("/Users/niels/logs", "sweep_*.log")
+    local_results += _parse_log_results("/Users/niels/logs", "htf_*.log")
+    # Sort by PnL descending
+    local_results.sort(key=lambda x: x.get("pnl", 0), reverse=True)
+    data = {"machines": machines, "results": local_results, "total_tests": len(local_results), "completed": sum(1 for r in local_results if r.get("status") == "done"), "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
+    _sweep_cache["data"] = data
+    _sweep_cache["ts"] = now
+    return data
+
+@app.route("/sweep")
+def sweep_dashboard():
+    return render_template("sweep.html")
+
+@app.route("/api/sweep")
+def api_sweep():
+    return jsonify(get_sweep_data())
+
+
+# =========================================================================
+# INTEL SWEEP — human-readable backtest signal sweep results from server2
+# =========================================================================
+import re as _re
+
+INTEL_SWEEP_DELETED = BASE_DIR / "data" / "sweep_deleted.json"
+INTEL_SWEEP_PRIORITY = BASE_DIR / "data" / "sweep_priority.json"
+_intel_cache = {"tradier": None, "crypto": None, "tradier_ts": 0, "crypto_ts": 0}
+INTEL_TTL = 120
+
+SIGNAL_LABELS = {
+    "LENTRY_dc_high_xover_D": "DC Daily High Breakout ↑",
+    "LENTRY_dc_high_xover_1h": "DC 1h High Breakout ↑",
+    "LENTRY_dc_high_xover_15m": "DC 15m High Breakout ↑",
+    "LENTRY_dc_high_xover_5m": "DC 5m High Breakout ↑",
+    "LENTRY_dc_high_xover_4h": "DC 4h High Breakout ↑",
+    "SENTRY_dc_low_xunder_D": "DC Daily Low Breakdown ↓",
+    "SENTRY_dc_low_xunder_5m": "DC 5m Low Breakdown ↓",
+    "LENTRY_xcross_bull_15m": "WT Bull Cross 15m ↑",
+    "LENTRY_xcross_bull_1h": "WT Bull Cross 1h ↑",
+    "SENTRY_xcross_bear_D": "WT Bear Cross Daily ↓",
+    "LENTRY_bullish_15m": "WT Bullish 15m",
+    "LENTRY_pct_lt20_15m": "WT Oversold <20 on 15m",
+    "LENTRY_pct_lt30_1h": "WT Oversold <30 on 1h",
+    "SENTRY_pct_gt80_D": "WT Overbought >80 Daily",
+    "LENTRY_z_ltn2p0_D": "WT Z-score <-2.0 Daily",
+    "LENTRY_impulse_up_15m": "WT Impulse UP 15m",
+    "LENTRY_exhaust_dn_1h": "WT Exhausting DOWN 1h",
+    "LEXIT_xcross_bear_1h": "WT Bear Cross 1h (exit)",
+    "LEXIT_pct_gt75_15m": "WT Overbought >75 on 15m (exit)",
+    "LEXIT_pct_gt80_15m": "WT Overbought >80 on 15m (exit)",
+    "LEXIT_z_gt1p0_15m": "WT Z-score >1.0 on 15m (exit)",
+    "LEXIT_z_gt2p0_1h": "WT Z-score >2.0 on 1h (exit)",
+    "LEXIT_exhaust_up_1h": "WT Exhausting UP 1h (exit)",
+    "LEXIT_vel_ltn5_D": "WT Velocity turning negative Daily (exit)",
+    "LEXIT_dc_low_xunder_D": "DC Daily Low Breakdown (exit)",
+    "SEXIT_pct_lt15_4h": "WT Oversold <15 on 4h (exit)",
+    "SEXIT_pct_lt15_1h": "WT Oversold <15 on 1h (exit)",
+    "SEXIT_exhaust_dn_1h": "WT Exhausting DOWN 1h (exit)",
+    "SEXIT_xcross_bull_4h": "WT Bull Cross 4h (short exit)",
+    "SEXIT_bullish_4h": "WT Turned Bullish 4h (short exit)",
+}
+
+
+def _signal_label(name):
+    if name in SIGNAL_LABELS:
+        return SIGNAL_LABELS[name]
+    raw = name
+    for prefix in ("LENTRY_", "SENTRY_", "LEXIT_", "SEXIT_"):
+        if raw.startswith(prefix):
+            raw = raw[len(prefix):]
+            break
+    raw = raw.replace("ltn", "<").replace("gt", ">")
+    raw = _re.sub(r'([<>])n(\d)', r'\g<1>-\2', raw)
+    raw = _re.sub(r'(\d)p(\d)', r'\1.\2', raw)
+    raw = raw.replace("_", " ")
+    return raw.strip()
+
+
+def _load_json_set(path):
+    try:
+        return set(json.loads(path.read_text()))
+    except Exception:
+        return set()
+
+
+def _save_json_set(path, s):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(sorted(s)))
+
+
+def _fetch_intel_csv(sweep_type):
+    now = time.time()
+    key_ts = f"{sweep_type}_ts"
+    if _intel_cache[sweep_type] is not None and now - _intel_cache[key_ts] < INTEL_TTL:
+        return _intel_cache[sweep_type]
+    if sweep_type == "tradier":
+        cmd = "cat /home/niels/binance-sandbox/intel_sweep_tradier/chunk_*.csv 2>/dev/null"
+    else:
+        cmd = "cat /home/niels/binance-sandbox/intel_sweep_crypto/chunk_*.csv 2>/dev/null"
+    try:
+        r = _sp.run(["ssh", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=3", "s2-int", cmd], capture_output=True, text=True, timeout=15)
+        raw = r.stdout.strip()
+    except Exception:
+        raw = ""
+    rows = []
+    seen_headers = False
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("entry,exit,"):
+            if not seen_headers:
+                seen_headers = True
+            continue
+        parts = line.split(",")
+        if len(parts) < 8:
+            continue
+        try:
+            rows.append({
+                "entry": parts[0].strip(),
+                "exit": parts[1].strip(),
+                "direction": parts[2].strip(),
+                "n_sym": int(parts[3]),
+                "trades": int(parts[4]),
+                "win_rate": float(parts[5]),
+                "sharpe": float(parts[6]),
+                "pnl_pct": float(parts[7]),
+            })
+        except (ValueError, IndexError):
+            continue
+    _intel_cache[sweep_type] = rows
+    _intel_cache[key_ts] = now
+    return rows
+
+
+def _fetch_intel_progress(sweep_type):
+    if sweep_type == "tradier":
+        done_cmd = "ls /home/niels/binance-sandbox/intel_sweep_tradier/done_*.txt 2>/dev/null | wc -l"
+        total_cmd = "ls /home/niels/binance-sandbox/intel_sweep_tradier/worker_*.sh 2>/dev/null | wc -l"
+    else:
+        done_cmd = "ls /home/niels/binance-sandbox/intel_sweep_crypto/done_*.txt 2>/dev/null | wc -l"
+        total_cmd = "ls /home/niels/binance-sandbox/intel_sweep_crypto/worker_*.sh 2>/dev/null | wc -l"
+    try:
+        r_done = _sp.run(["ssh", "-o", "ConnectTimeout=5", "s2-int", done_cmd], capture_output=True, text=True, timeout=8)
+        r_total = _sp.run(["ssh", "-o", "ConnectTimeout=5", "s2-int", total_cmd], capture_output=True, text=True, timeout=8)
+        done = int(r_done.stdout.strip() or 0)
+        total = int(r_total.stdout.strip() or 0)
+        if total == 0:
+            return {"done": done, "total": 0, "pct": "0%"}
+        pct = round(done / total * 100, 1)
+        return {"done": done, "total": total, "pct": f"{pct}%"}
+    except Exception:
+        return {"done": 0, "total": 0, "pct": "?"}
+
+
+def _build_intel_rows(rows, deleted_set, priority_set, min_trades=0, min_syms=0, direction_filter="both"):
+    result = []
+    for r in rows:
+        if min_trades > 0 and r["trades"] < min_trades:
+            continue
+        if min_syms > 0 and r["n_sym"] < min_syms:
+            continue
+        if direction_filter != "both" and r["direction"].upper() != direction_filter.upper():
+            continue
+        key = f"{r['entry']}|{r['exit']}"
+        result.append({
+            "entry": r["entry"],
+            "exit": r["exit"],
+            "entry_label": _signal_label(r["entry"]),
+            "exit_label": _signal_label(r["exit"]),
+            "direction": r["direction"],
+            "n_sym": r["n_sym"],
+            "trades": r["trades"],
+            "win_rate": r["win_rate"],
+            "sharpe": r["sharpe"],
+            "pnl_pct": r["pnl_pct"],
+            "deleted": key in deleted_set,
+            "priority": key in priority_set,
+            "key": key,
+        })
+    result.sort(key=lambda x: (not x["priority"], -x["sharpe"]))
+    return result
+
+
+@app.route("/intel_sweep")
+def intel_sweep_dashboard():
+    return render_template("intel_sweep.html")
+
+
+@app.route("/intel_sweep/data")
+def intel_sweep_data():
+    sweep_type = request.args.get("type", "tradier")
+    min_trades = int(request.args.get("min_trades", 0))
+    min_syms = int(request.args.get("min_syms", 0))
+    direction_filter = request.args.get("direction", "both")
+    show_deleted = request.args.get("show_deleted", "0") == "1"
+    rows_raw = _fetch_intel_csv(sweep_type)
+    deleted_set = _load_json_set(INTEL_SWEEP_DELETED)
+    priority_set = _load_json_set(INTEL_SWEEP_PRIORITY)
+    progress = _fetch_intel_progress(sweep_type)
+    rows = _build_intel_rows(rows_raw, deleted_set, priority_set, min_trades, min_syms, direction_filter)
+    if not show_deleted:
+        rows = [r for r in rows if not r["deleted"]]
+    ts_cached = _intel_cache.get(f"{sweep_type}_ts", 0)
+    age_s = int(time.time() - ts_cached) if ts_cached else -1
+    last_updated = f"{age_s}s ago" if age_s >= 0 else "never"
+    return jsonify({
+        "rows": rows,
+        "total": len(rows_raw),
+        "tradier_progress": _fetch_intel_progress("tradier") if sweep_type == "tradier" else None,
+        "crypto_progress": _fetch_intel_progress("crypto") if sweep_type == "crypto" else None,
+        "progress": progress,
+        "last_updated": last_updated,
+        "deleted_count": len(deleted_set),
+        "priority_count": len(priority_set),
+    })
+
+
+@app.route("/intel_sweep/delete/<path:entry_name>/<path:exit_name>", methods=["POST"])
+def intel_sweep_delete(entry_name, exit_name):
+    deleted_set = _load_json_set(INTEL_SWEEP_DELETED)
+    key = f"{entry_name}|{exit_name}"
+    if key in deleted_set:
+        deleted_set.discard(key)
+        action = "restored"
+    else:
+        deleted_set.add(key)
+        action = "deleted"
+    _save_json_set(INTEL_SWEEP_DELETED, deleted_set)
+    return jsonify({"ok": True, "action": action, "key": key})
+
+
+@app.route("/intel_sweep/priority/<path:entry_name>/<path:exit_name>", methods=["POST"])
+def intel_sweep_priority(entry_name, exit_name):
+    priority_set = _load_json_set(INTEL_SWEEP_PRIORITY)
+    key = f"{entry_name}|{exit_name}"
+    if key in priority_set:
+        priority_set.discard(key)
+        action = "unprioritized"
+    else:
+        priority_set.add(key)
+        action = "prioritized"
+    _save_json_set(INTEL_SWEEP_PRIORITY, priority_set)
+    return jsonify({"ok": True, "action": action, "key": key})
+
+
 if __name__ == "__main__":
+    import socket, signal, sys
+    # Kill any stale process on 5050 before starting
+    def _kill_port(port):
+        try:
+            import subprocess
+            result = subprocess.run(["lsof", "-t", f"-i:{port}"], capture_output=True, text=True)
+            for pid_str in result.stdout.strip().split("\n"):
+                pid_str = pid_str.strip()
+                if pid_str and pid_str.isdigit() and int(pid_str) != os.getpid():
+                    os.kill(int(pid_str), 9)
+            import time; time.sleep(0.5)
+        except Exception:
+            pass
+    _kill_port(5050)
     print(f"Trade Analytics Dashboard starting on http://0.0.0.0:5050")
     print(f"History dir: {HISTORY_DIR}")
+    print(f"Logs dir: {LOGS_DIR}")
     print(f"Accounts: {ALL_ACCOUNTS}")
-    app.run(host="0.0.0.0", port=5050, debug=False)
+    # Allow port reuse to prevent "Address already in use" after restart
+    from werkzeug.serving import WSGIRequestHandler
+    import werkzeug.serving
+    _orig_socket = werkzeug.serving.get_sockaddr
+    class ReusableServer(werkzeug.serving.BaseWSGIServer):
+        allow_reuse_address = True
+    werkzeug.serving.BaseWSGIServer.allow_reuse_address = True
+    app.run(host="0.0.0.0", port=5050, debug=False, threaded=True)

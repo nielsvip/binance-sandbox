@@ -21,9 +21,10 @@ from utils import load_environment_from_gpg, orjson_default
 load_environment_from_gpg(None)
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s %(message)s")
 logger = logging.getLogger("ez_positions_active")
-os.makedirs("logs", exist_ok=True)
+_logs_dir = Path.home() / "logs"
+_logs_dir.mkdir(parents=True, exist_ok=True)
 from logging.handlers import RotatingFileHandler
-file_handler = RotatingFileHandler("logs/ez_positions_active.log", maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
+file_handler = RotatingFileHandler(str(_logs_dir / "ez_positions_active.log"), maxBytes=100*1024*1024, backupCount=5, encoding='utf-8', mode='a')
 file_handler.setLevel(logging.DEBUG)
 file_formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s")
 file_handler.setFormatter(file_formatter)

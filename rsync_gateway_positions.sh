@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to continuously sync position files from x86 gateway to server
-SERVER_HOST="niels@157.180.125.52"
+SERVER_HOST="s1-int"
 ACCOUNT_FOLDERS=("ang" "fin" "flz" "men" "inf")
 POSITION_SIDES=("long" "short")
 SYNC_INTERVAL=1  # Check for changes every second

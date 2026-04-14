@@ -41,7 +41,7 @@ DATA_DIR = BASE_PATH / "data" / "paper_tournament"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_FILE = DATA_DIR / "results.json"
 TRADES_FILE = DATA_DIR / "trades.jsonl"
-LOG_FILE = BASE_PATH / "logs" / "paper_tournament.log"
+LOG_FILE = Path.home() / "logs" / "paper_tournament.log"
 
 # Top 20 most liquid crypto futures
 SYMBOLS = [

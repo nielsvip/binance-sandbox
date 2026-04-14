@@ -61,11 +61,8 @@ fi
 
 log "ALERT: Missing processes:$MISSING"
 
-# Check if start_everything_3 is already running
-if pgrep -f "start_everything_3" >/dev/null 2>&1; then
-    log "start_everything_3 already running, waiting..."
-    exit 0
-fi
+# Ignore start_everything_3 — always do targeted recovery of missing processes
+# (start_everything_3 often stays alive as a dead shell, blocking recovery)
 
 # Pre-market launch (9:15-9:30 ET) — full restart
 if [ "$ET_MINS" -lt 570 ]; then
@@ -78,7 +75,7 @@ if [ "$ET_MINS" -lt 570 ]; then
             continue
         fi
         log "  Launching: $full_cmd"
-        nohup bash "$WATCHDOG" $full_cmd >> "$LOGDIR/${script_name%.py}_watchdog.log" 2>&1 &
+        nohup bash "$WATCHDOG" $full_cmd > /dev/null 2>&1 &
         sleep 2
     done
     sleep 10
@@ -97,31 +94,30 @@ if [ "$ET_MINS" -lt 570 ]; then
 fi
 
 # During market hours — targeted restart of missing processes only
-log "MARKET HOURS RECOVERY: Restarting missing processes"
+# IMPORTANT: Only restart if BOTH the python process AND any run_with_watchdog wrapper are dead.
+# If a wrapper is alive, it will restart the python process itself — don't create a second wrapper.
+log "MARKET HOURS RECOVERY: Checking missing processes"
 cd "$WORKDIR"
-if ! pgrep -f "$PYTHON.*tradier_prices.py" >/dev/null 2>&1; then
-    log "  Restarting tradier_prices.py"
-    nohup bash "$WATCHDOG" tradier_prices.py >> "$LOGDIR/tradier_prices_watchdog.log" 2>&1 &
+TRADIER_RESTART_LIST=(
+    "tradier_prices.py|tradier_prices.py"
+    "tradier_positions.py|tradier_positions.py --accounts tra trb trc"
+    "tradier_indicators.py|tradier_indicators.py"
+    "tradier_rankings.py|tradier_rankings.py"
+    "tradier_manage.py.*trb|tradier_manage.py --accounts trb"
+)
+for entry in "${TRADIER_RESTART_LIST[@]}"; do
+    pattern="${entry%%|*}"
+    full_cmd="${entry##*|}"
+    script_name="${full_cmd%% *}"
+    if pgrep -f "$PYTHON.*$pattern" >/dev/null 2>&1; then
+        continue  # Python process alive — all good
+    fi
+    if pgrep -f "run_with_watchdog.*$script_name" >/dev/null 2>&1; then
+        log "  SKIP: $script_name — run_with_watchdog wrapper alive, will self-heal"
+        continue
+    fi
+    log "  Restarting $full_cmd (both python + wrapper dead)"
+    nohup bash "$WATCHDOG" $full_cmd > /dev/null 2>&1 &
     sleep 3
-fi
-if ! pgrep -f "$PYTHON.*tradier_positions.py" >/dev/null 2>&1; then
-    log "  Restarting tradier_positions.py"
-    nohup bash "$WATCHDOG" tradier_positions.py --accounts tra trb trc >> "$LOGDIR/tradier_positions_watchdog.log" 2>&1 &
-    sleep 3
-fi
-if ! pgrep -f "$PYTHON.*tradier_indicators.py" >/dev/null 2>&1; then
-    log "  Restarting tradier_indicators.py"
-    nohup bash "$WATCHDOG" tradier_indicators.py >> "$LOGDIR/tradier_indicators_watchdog.log" 2>&1 &
-    sleep 3
-fi
-if ! pgrep -f "$PYTHON.*tradier_rankings.py" >/dev/null 2>&1; then
-    log "  Restarting tradier_rankings.py"
-    nohup bash "$WATCHDOG" tradier_rankings.py >> "$LOGDIR/tradier_rankings_watchdog.log" 2>&1 &
-    sleep 3
-fi
-if ! pgrep -f "$PYTHON.*tradier_manage.py.*trb" >/dev/null 2>&1; then
-    log "  Restarting tradier_manage.py --accounts trb"
-    nohup bash "$WATCHDOG" tradier_manage.py --accounts trb >> "$LOGDIR/tradier_manage_watchdog.log" 2>&1 &
-    sleep 3
-fi
+done
 log "RECOVERY COMPLETE"

@@ -9,11 +9,15 @@ from collections import defaultdict
 from datetime import datetime
 
 
-SERVER = "niels@157.180.125.52"
+SERVER = "s1-int"
 LOG_PATH = "/home/niels/logs"
 BINANCE_PATH = "/home/niels/binance"
+LOCAL_LOG_PATHS = ["/Users/niels/Documents/binance/logs", "/Users/niels/logs"]
+LOCAL_BINANCE_PATH = "/Users/niels/Documents/binance"
 CRYPTO_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 STOCK_ACCOUNTS = ["trb", "trc"]
+_source = "server"  # tracks whether we're reading server or local
+_server_reachable = None  # None=unknown, True/False after first check
 
 # ---------------------------------------------------------------------------
 # Pattern registries — actual tags found in production logs
@@ -183,19 +187,41 @@ TRADIER_PATTERNS = {
 
 
 def find_recent_logs(name_pattern, hours=24):
-    """Find log files modified within the last N hours."""
-    cmd = f"ssh {SERVER} 'find {LOG_PATH} -name \"{name_pattern}\" -type f -mmin -{hours * 60} ! -name \"*watchdog*\" 2>/dev/null | sort -r | head -10'"
-    try:
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
-        return [f.strip() for f in r.stdout.strip().split("\n") if f.strip()]
-    except Exception:
-        return []
+    """Find log files modified within the last N hours. Try server first, fall back to local."""
+    global _source, _server_reachable
+    if _server_reachable is not False:
+        remote_cmd = f'find {LOG_PATH} -name "{name_pattern}" -type f -mmin -{hours * 60} ! -name "*watchdog*" 2>/dev/null | sort -r | head -10'
+        try:
+            r = subprocess.run(["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes", SERVER, remote_cmd], capture_output=True, text=True, timeout=10)
+            files = [f.strip() for f in r.stdout.strip().split("\n") if f.strip()]
+            if files:
+                _server_reachable = True
+                return files
+            if r.returncode == 0:
+                _server_reachable = True  # reachable but no matching files
+            else:
+                _server_reachable = False
+        except (subprocess.TimeoutExpired, Exception):
+            _server_reachable = False
+    # Fallback: search local logs (multiple directories)
+    import glob as globmod
+    import os
+    cutoff = time.time() - hours * 3600
+    local_files = []
+    for ldir in LOCAL_LOG_PATHS:
+        local_files.extend(globmod.glob(os.path.join(ldir, name_pattern)))
+    local_files = [f for f in local_files if os.path.getmtime(f) > cutoff and "watchdog" not in f and "_cron" not in f and os.path.getsize(f) < 50 * 1024 * 1024]
+    local_files = sorted(local_files, key=os.path.getmtime, reverse=True)[:10]
+    if local_files:
+        _source = "local"
+    return local_files
 
 
 def count_patterns(pattern_dict, log_files):
-    """Count all patterns in one SSH call via a remote script. Returns {category: {tag: count}}."""
+    """Count all patterns via grep. Uses SSH for server files, local shell for local files."""
     if not log_files:
         return {cat: {tag: 0 for tag in tags} for cat, tags in pattern_dict.items()}
+    is_local = log_files[0].startswith("/Users/")
     flat = []
     idx_map = {}
     idx = 0
@@ -204,14 +230,17 @@ def count_patterns(pattern_dict, log_files):
             flat.append((cat, tag, regex))
             idx_map[idx] = (cat, tag)
             idx += 1
-    log_glob = " ".join(log_files)
+    log_glob = " ".join(f'"{f}"' for f in log_files)
     grep_lines = []
     for i, (_, tag, regex) in enumerate(flat):
         grep_lines.append(f'echo "PAT{i}:$(grep -cE \'{regex}\' /tmp/_pa_combined.log 2>/dev/null || echo 0)"')
     script = f"cat {log_glob} > /tmp/_pa_combined.log 2>/dev/null\n" + "\n".join(grep_lines) + "\nrm -f /tmp/_pa_combined.log"
     results = {cat: {tag: 0 for tag in tags} for cat, tags in pattern_dict.items()}
     try:
-        r = subprocess.run(["ssh", SERVER, "bash -s"], input=script, capture_output=True, text=True, timeout=120)
+        if is_local:
+            r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=120)
+        else:
+            r = subprocess.run(["ssh", SERVER, "bash -s"], input=script, capture_output=True, text=True, timeout=120)
         if r.returncode == 0:
             for line in r.stdout.strip().split("\n"):
                 if line.startswith("PAT") and ":" in line:
@@ -228,75 +257,91 @@ def count_patterns(pattern_dict, log_files):
     return results
 
 
+def _read_json_file(path, is_local=False):
+    """Read a JSON file either locally or via SSH."""
+    try:
+        if is_local:
+            import os
+            if not os.path.exists(path):
+                return None
+            with open(path) as f:
+                return json.load(f)
+        else:
+            r = subprocess.run(["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes", SERVER, f"cat {path}"], capture_output=True, text=True, timeout=10)
+            if r.returncode == 0 and r.stdout.strip():
+                return json.loads(r.stdout)
+    except Exception:
+        pass
+    return None
+
+
 def load_positions():
-    """Load open crypto positions from server."""
+    """Load open crypto positions. Try server first, fall back to local."""
     positions = {}
+    use_local = _source == "local"
+    base = LOCAL_BINANCE_PATH if use_local else BINANCE_PATH
     for account in CRYPTO_ACCOUNTS:
         for side_file in ["long_positions.json", "short_positions.json"]:
             side_default = "LONG" if "long" in side_file else "SHORT"
-            cmd = f"ssh {SERVER} 'cat {BINANCE_PATH}/{account}/{side_file} 2>/dev/null'"
-            try:
-                r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
-                if r.returncode == 0 and r.stdout.strip():
-                    data = json.loads(r.stdout)
-                    for raw_key, pos in data.items():
-                        if not isinstance(pos, dict):
-                            continue
-                        amt = float(pos.get("positionAmt", 0) or 0)
-                        mark = float(pos.get("mark_price", 0) or 0)
-                        entry = float(pos.get("entry_price", 0) or 0)
-                        if abs(amt) < 1e-9:
-                            continue
-                        raw_sym = raw_key.split(":", 1)[-1] if ":" in raw_key else raw_key
-                        clean = raw_sym.replace("_LONG", "").replace("_SHORT", "")
-                        side = pos.get("position_side", side_default)
-                        pk = f"{account}:{clean}_{side}"
-                        usd = abs(amt) * mark
-                        pnl_pct = 0.0
-                        if entry > 0:
-                            if side == "LONG":
-                                pnl_pct = ((mark - entry) / entry) * 100
-                            else:
-                                pnl_pct = ((entry - mark) / entry) * 100
-                        positions[pk] = {"symbol": clean, "account": account, "side": side, "qty": amt, "mark": mark, "entry": entry, "usd": usd, "pnl_pct": pnl_pct}
-            except Exception:
-                pass
+            path = f"{base}/{account}/{side_file}"
+            data = _read_json_file(path, is_local=use_local)
+            if not data:
+                continue
+            for raw_key, pos in data.items():
+                if not isinstance(pos, dict):
+                    continue
+                amt = float(pos.get("positionAmt", 0) or 0)
+                mark = float(pos.get("mark_price", 0) or 0)
+                entry = float(pos.get("entry_price", 0) or 0)
+                if abs(amt) < 1e-9:
+                    continue
+                raw_sym = raw_key.split(":", 1)[-1] if ":" in raw_key else raw_key
+                clean = raw_sym.replace("_LONG", "").replace("_SHORT", "")
+                side = pos.get("position_side", side_default)
+                pk = f"{account}:{clean}_{side}"
+                usd = abs(amt) * mark
+                pnl_pct = 0.0
+                if entry > 0:
+                    if side == "LONG":
+                        pnl_pct = ((mark - entry) / entry) * 100
+                    else:
+                        pnl_pct = ((entry - mark) / entry) * 100
+                positions[pk] = {"symbol": clean, "account": account, "side": side, "qty": amt, "mark": mark, "entry": entry, "usd": usd, "pnl_pct": pnl_pct}
     return positions
 
 
 def load_stock_positions():
-    """Load open stock positions from server."""
+    """Load open stock positions. Try server first, fall back to local."""
     positions = {}
+    use_local = _source == "local"
+    base = LOCAL_BINANCE_PATH if use_local else BINANCE_PATH
     for account in STOCK_ACCOUNTS:
         for side_file in ["long_positions.json", "short_positions.json"]:
             side_default = "LONG" if "long" in side_file else "SHORT"
-            cmd = f"ssh {SERVER} 'cat {BINANCE_PATH}/{account}/{side_file} 2>/dev/null'"
-            try:
-                r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
-                if r.returncode == 0 and r.stdout.strip():
-                    data = json.loads(r.stdout)
-                    for raw_key, pos in data.items():
-                        if not isinstance(pos, dict):
-                            continue
-                        qty = abs(float(pos.get("positionAmt", 0) or pos.get("quantity", 0) or 0))
-                        mark = float(pos.get("mark_price", 0) or pos.get("last_price", 0) or 0)
-                        entry = float(pos.get("entry_price", 0) or 0)
-                        if qty < 0.01:
-                            continue
-                        raw_sym = raw_key.split(":", 1)[-1] if ":" in raw_key else raw_key
-                        clean = raw_sym.replace("_LONG", "").replace("_SHORT", "")
-                        side = pos.get("position_side", side_default)
-                        pk = f"{account}:{clean}_{side}"
-                        usd = qty * mark
-                        pnl_pct = 0.0
-                        if entry > 0:
-                            if side == "LONG":
-                                pnl_pct = ((mark - entry) / entry) * 100
-                            else:
-                                pnl_pct = ((entry - mark) / entry) * 100
-                        positions[pk] = {"symbol": clean, "account": account, "side": side, "qty": qty, "mark": mark, "entry": entry, "usd": usd, "pnl_pct": pnl_pct}
-            except Exception:
-                pass
+            path = f"{base}/{account}/{side_file}"
+            data = _read_json_file(path, is_local=use_local)
+            if not data:
+                continue
+            for raw_key, pos in data.items():
+                if not isinstance(pos, dict):
+                    continue
+                qty = abs(float(pos.get("positionAmt", 0) or pos.get("quantity", 0) or 0))
+                mark = float(pos.get("mark_price", 0) or pos.get("last_price", 0) or 0)
+                entry = float(pos.get("entry_price", 0) or 0)
+                if qty < 0.01:
+                    continue
+                raw_sym = raw_key.split(":", 1)[-1] if ":" in raw_key else raw_key
+                clean = raw_sym.replace("_LONG", "").replace("_SHORT", "")
+                side = pos.get("position_side", side_default)
+                pk = f"{account}:{clean}_{side}"
+                usd = qty * mark
+                pnl_pct = 0.0
+                if entry > 0:
+                    if side == "LONG":
+                        pnl_pct = ((mark - entry) / entry) * 100
+                    else:
+                        pnl_pct = ((entry - mark) / entry) * 100
+                positions[pk] = {"symbol": clean, "account": account, "side": side, "qty": qty, "mark": mark, "entry": entry, "usd": usd, "pnl_pct": pnl_pct}
     return positions
 
 
@@ -367,6 +412,9 @@ def main():
     parser.add_argument("--interval", type=int, default=300, help="Seconds between runs in continuous mode (default: 300)")
     args = parser.parse_args()
     hours = args.hours
+    global _source, _server_reachable
+    _source = "server"  # reset each run
+    _server_reachable = None
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{'#'*70}")
     print(f"  POSITION ANALYZER v2 -- {ts}")
@@ -377,7 +425,9 @@ def main():
     quick_logs = find_recent_logs("ez_positions_quick*.log", hours)
     tradier_logs = find_recent_logs("tradier_manage*.log", hours) if not args.no_stocks else []
     elapsed_find = time.time() - t0
-    print(f"\n  Log files found in {elapsed_find:.1f}s:")
+    src_label = "LOCAL (MacBook)" if _source == "local" else "SERVER (157.180.125.52)"
+    print(f"\n  Source: {src_label}")
+    print(f"  Log files found in {elapsed_find:.1f}s:")
     for lbl, logs in [("ez_manage", manage_logs), ("ez_quick", quick_logs), ("tradier", tradier_logs)]:
         if logs or lbl != "tradier" or not args.no_stocks:
             print(f"    {lbl + ':':<20} {len(logs)} files")

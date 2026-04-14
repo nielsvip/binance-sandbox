@@ -57,9 +57,15 @@ SCRIPTS=(
     "ez_news_scanner.py"
     #"ez_positions_quick.py"  # EMBEDDED in ez_manage.py since 2026-03-17 — no standalone process
     #"ez_gain_protector.py"
-    "ez_loss_mitigator.py"
+    #"ez_loss_mitigator.py"  # REMOVED 2026-03-26 — violates STRICT_NO_LOSS, closes positions at a loss
+    "ez_copilot.py"
+    "ez_backup.py"
     "pa.py"
-    "rsync_market_data_to_server_continuous.sh")
+    "rsync_market_data_to_server_continuous.sh"
+    "rsync_from_gateway_continuous.sh"
+    "trade_analytics.py"
+    "sweep_cockpit.py"
+    "sweep_monitor_agent.py")
 
     # Create log directory
     mkdir -p "$LOGDIR"
@@ -76,6 +82,8 @@ SCRIPTS=(
         pgrep -f "$PYTHON.*ez_indicators_merger" >/dev/null 2>&1
     elif [ "$script_name" = "rsync_market_data_to_server_continuous.sh" ]; then
         pgrep -f "bash.*rsync_market_data_to_server_continuous" >/dev/null 2>&1
+    elif [ "$script_name" = "rsync_from_gateway_continuous.sh" ]; then
+        pgrep -f "bash.*rsync_from_gateway_continuous" >/dev/null 2>&1
     else
         pgrep -f "$PYTHON.*$script_name" >/dev/null 2>&1
     fi
@@ -83,26 +91,33 @@ SCRIPTS=(
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] ===== RESTART START =====" | tee -a "$LAUNCHER_LOG"
 
-# Kill all existing processes using the central nuke script
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Running system nuke..." | tee -a "$LAUNCHER_LOG"
-"$WORKDIR/nuke_everything.sh" >> "$LAUNCHER_LOG" 2>&1
+# SCORCHED EARTH: kill ALL ez_ processes, watchdogs, and iTerm launchers
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Killing ALL ez_ processes..." | tee -a "$LAUNCHER_LOG"
+pkill -9 -f "python.*ez_" 2>/dev/null || true
+pkill -9 -f "python.*pa.py" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_" 2>/dev/null || true
+pkill -9 -f "bash.*iterm_launch_ez_" 2>/dev/null || true
+pkill -9 -f "bash.*iterm_launch_pa" 2>/dev/null || true
+pkill -9 -f "bash.*rsync_market_data" 2>/dev/null || true
+pkill -9 -f "bash.*rsync_from_gateway" 2>/dev/null || true
+pkill -9 -f "ez_indicators_merger" 2>/dev/null || true
+pkill -9 -f "ez_mem_watchdog" 2>/dev/null || true
+pkill -9 -f "python.*trade_analytics" 2>/dev/null || true
+rm -f /Users/niels/logs/start_everything_1.lock 2>/dev/null
+sleep 3
 
-sleep 2
-
-# Verify cleanup
+# Verify cleanup — force kill stragglers
 REMAINING=$(pgrep -f "python.*ez_" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$REMAINING" -gt 0 ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $REMAINING processes still running" | tee -a "$LAUNCHER_LOG"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $REMAINING processes survived, force killing..." | tee -a "$LAUNCHER_LOG"
+    pkill -9 -f "python.*ez_" 2>/dev/null || true
+    sleep 2
 fi
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting all scripts..." | tee -a "$LAUNCHER_LOG"
 # Launch each script with watchdog in Terminal windows
 for script in "${SCRIPTS[@]}"; do
-    # Check if script is already running
-    if is_script_running "$script"; then
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] $script is already running. Skipping launch." | tee -a "$LAUNCHER_LOG"
-        continue
-    fi
+    # After scorched earth, nothing should be running — launch unconditionally
 
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Launching $script in Terminal window..." | tee -a "$LAUNCHER_LOG"
 
@@ -112,6 +127,8 @@ for script in "${SCRIPTS[@]}"; do
         CMD="cd $WORKDIR && $PYTHON -u ez_indicators_merger.py"
     elif [ "$script" = "rsync_market_data_to_server_continuous.sh" ]; then
         CMD="cd $WORKDIR && bash rsync_market_data_to_server_continuous.sh"
+    elif [ "$script" = "rsync_from_gateway_continuous.sh" ]; then
+        CMD="cd $WORKDIR && bash rsync_from_gateway_continuous.sh"
     else
         CMD="cd $WORKDIR && bash $WATCHDOG $script"
     fi
@@ -169,4 +186,55 @@ START_EVERYTHING_2_CMD_PATH="/Users/niels/Documents/binance/start_everything_2.c
 nohup "$START_EVERYTHING_2_CMD_PATH" >> "$LAUNCHER_LOG" 2>&1 &
 SE2_PID=$!
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] start_everything_2.command launched with PID $SE2_PID" | tee -a "$LAUNCHER_LOG"
+
+# Wait for SE2 to finish launching trading accounts
+sleep 30
+
+# Open iTerm log-tail tabs for EVERY running service so errors are visible
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Opening log-tail tabs in iTerm..." | tee -a "$LAUNCHER_LOG"
+LOG_TABS=(
+    "ez_manage_ang"
+    "ez_manage_inf"
+    "ez_manage_flz"
+    "ez_manage_men"
+    "ez_manage_fin"
+    "ez_prices_ws"
+    "ez_prices"
+    "ez_klines"
+    "ez_mark_prices"
+    "ez_share_ind"
+    "ez_indicators"
+    "ez_indicators_merger"
+    "ez_market_data"
+    "ez_positions_watchdog"
+    "ez_crosses"
+    "ez_rankings"
+    "ez_news_scanner"
+    "ez_copilot"
+    "ez_backup"
+    "tradier_manage"
+    "tradier_indicators"
+    "tradier_rankings"
+    "tradier_prices"
+    "trade_analytics"
+    "sweep_cockpit"
+    "sweep_monitor_agent"
+    "pa"
+)
+for tab in "${LOG_TABS[@]}"; do
+    LOG_PATH="/Users/niels/logs/${tab}.log"
+    if [ ! -f "$LOG_PATH" ]; then continue; fi
+    osascript -e "
+tell application \"iTerm\"
+    tell current window
+        set newTab to (create tab with default profile)
+        tell current session of newTab
+            set name to \"LOG-${tab}\"
+            write text \"printf '\\\\e]0;LOG-${tab}\\\\a'; tail -F /Users/niels/logs/${tab}.log\"
+        end tell
+    end tell
+end tell" >/dev/null 2>&1
+    sleep 1.5
+done
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Log tabs opened." | tee -a "$LAUNCHER_LOG"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Script completed." | tee -a "$LAUNCHER_LOG"

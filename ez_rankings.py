@@ -655,7 +655,7 @@ async def save_rankings_json(ranking_data_scalars: List[Dict[str, Any]]):
             _tier_mult = 1.0
             if config.TIER_ENABLED:
                 try:
-                    from ez_symbol_performance import get_symbol_tier, get_tier_multiplier
+                    from utils import get_symbol_tier, get_tier_multiplier
                     _sym_tier = get_symbol_tier(symbol, default='B')
                     _tier_mult = get_tier_multiplier(symbol)
                     final_multiplier = max(0.3, min(2.5, final_multiplier * _tier_mult))
@@ -1602,7 +1602,13 @@ def detect_trading_signals():
         RANKING_INFO[symbol]["wt2_3m"] = curr.get("wt2_3m", None)
         RANKING_INFO[symbol]["wt1_15m"] = curr.get("wt1_15m", None)
         RANKING_INFO[symbol]["wt2_15m"] = curr.get("wt2_15m", None)
-        RANKING_INFO[symbol]["current_price"] = curr.get("current_price", None)  
+        RANKING_INFO[symbol]["wt1_1h"] = curr.get("wt1_1h", None)
+        RANKING_INFO[symbol]["wt2_1h"] = curr.get("wt2_1h", None)
+        RANKING_INFO[symbol]["wt1_4h"] = curr.get("wt1_4h", None)
+        RANKING_INFO[symbol]["wt2_4h"] = curr.get("wt2_4h", None)
+        RANKING_INFO[symbol]["wt1_D"] = curr.get("wt1_D", None)
+        RANKING_INFO[symbol]["wt2_D"] = curr.get("wt2_D", None)
+        RANKING_INFO[symbol]["current_price"] = curr.get("current_price", None)
 
         current_price_val = curr.get("current_price") # Use this for signals
         rp[symbol]=curr.get("0ranking_points", 0)
@@ -3757,18 +3763,39 @@ def calculate_smart_score(trend_val: float,linearity: float, volume_score: float
     return score
 
 
-def calculate_final_scores(trend_val: float,linearity_multiplier: float,price_vs_sma_score: float,band_score: float,breakthrough_bonus: float,weighted_gains: float,proximity_score: float,is_long_term: bool = True ) -> float:
+def compute_wt_composite_for_ranking(sym: str) -> float:
+    """Compute multi-TF WaveTrend composite score from RANKING_INFO (Redis data). Backtest: 53.6% WR at 4h, PF 1.45. Dominant predictor for 1D-1M (LT) and 15m-4h (ST)."""
+    ri = RANKING_INFO.get(sym, {})
+    if not ri:
+        return 0.0
+    tf_keys = [("wt1_3m", "wt2_3m", 0.5), ("wt1_15m", "wt2_15m", 1.0), ("wt1_1h", "wt2_1h", 2.0), ("wt1_4h", "wt2_4h", 3.0), ("wt1_D", "wt2_D", 2.0)]
+    wt_score = 0.0
+    for wt1_key, wt2_key, weight in tf_keys:
+        wt1_val = ri.get(wt1_key)
+        wt2_val = ri.get(wt2_key)
+        if wt1_val is not None and wt2_val is not None:
+            try:
+                wt_score += (float(wt1_val) - float(wt2_val)) * weight
+            except (TypeError, ValueError):
+                pass
+    return wt_score
+
+
+def calculate_final_scores(trend_val: float, linearity_multiplier: float, price_vs_sma_score: float, band_score: float, breakthrough_bonus: float, weighted_gains: float, proximity_score: float, is_long_term: bool = True, wt_composite: float = 0.0) -> float:
     if is_long_term:
+        # BACKTEST_CHANGE_154: LT weights optimized for 1D-1M forward returns
+        # Winner: WT+BAND (55% WR at 1D, 61% shorts at 1M) — WT composite dominant
         weights = {
-            'trend': 2.5,          # Base trend weight
-            'linearity': 4.0,      # 4x importance - boosted!
-            'price_vs_sma': 0.8,
-            'band': 0.6,
-            'breakthrough': 0.5,
-            'gains': 1.0,
-            'proximity': 0.3  }
+            'trend': 1.0,          # Reduced from 2.5 — trend alone has poor LT predictive value
+            'linearity': 2.0,      # Reduced from 4.0 — less dominant
+            'price_vs_sma': 0.3,   # Reduced from 0.8
+            'band': 1.5,           # RAISED from 0.6 — band position is key for LT mean reversion
+            'breakthrough': 0.3,   # Reduced from 0.5
+            'gains': 0.5,          # Reduced from 1.0
+            'proximity': 1.0,      # RAISED from 0.3 — proximity matters for LT
+            'wt_composite': 2.5  } # NEW — WT composite is #1 LT predictor (backtest validated)
         trend_component = trend_val * linearity_multiplier * weights['trend']
-        linearity_value = (linearity_multiplier - 1) / 3.2  # For LT
+        linearity_value = (linearity_multiplier - 1) / 3.2
         linearity_component = linearity_value * 100 * weights['linearity']
         score = (
             trend_component +
@@ -3777,18 +3804,22 @@ def calculate_final_scores(trend_val: float,linearity_multiplier: float,price_vs
             band_score * weights['band'] +
             breakthrough_bonus * weights['breakthrough'] +
             weighted_gains * weights['gains'] +
-            proximity_score * weights['proximity']  )        
+            proximity_score * weights['proximity'] +
+            wt_composite * weights['wt_composite']  )
     else:
+        # BACKTEST_CHANGE_155: ST weights optimized for 15m-4h forward returns
+        # Winner: WT_DOMINANT (55-58% WR at 1h, 61% shorts at 4h) — WT 3x + trend 1x + band 0.4x + gains 0.6x
         weights = {
-            'trend': 1.5,
-            'linearity': 4.0,      # 4x importance - boosted!
-            'price_vs_sma': 0.6,
-            'band': 0.8,
-            'breakthrough': 0.7,
-            'gains': 1.2,
-            'proximity': 0.6  }        
+            'trend': 1.0,          # Reduced from 1.5
+            'linearity': 2.0,      # Reduced from 4.0
+            'price_vs_sma': 0.3,   # Reduced from 0.6
+            'band': 0.4,           # Reduced from 0.8 — band less useful for ST
+            'breakthrough': 0.3,   # Reduced from 0.7
+            'gains': 0.6,          # Reduced from 1.2
+            'proximity': 0.3,      # Reduced from 0.6
+            'wt_composite': 3.0  } # NEW — WT composite is #1 ST predictor (backtest validated)
         trend_component = trend_val * linearity_multiplier * weights['trend']
-        linearity_value = (linearity_multiplier - 1) / 4.0  # For ST
+        linearity_value = (linearity_multiplier - 1) / 4.0
         linearity_component = linearity_value * 100 * weights['linearity']
         score = (
             trend_component +
@@ -3797,7 +3828,8 @@ def calculate_final_scores(trend_val: float,linearity_multiplier: float,price_vs
             band_score * weights['band'] +
             breakthrough_bonus * weights['breakthrough'] +
             weighted_gains * weights['gains'] +
-            proximity_score * weights['proximity']  )
+            proximity_score * weights['proximity'] +
+            wt_composite * weights['wt_composite']  )
     return score
    
 def filter_by_linearity(symbols_data: List[Dict], min_linearity: float = 0.4) -> List[Dict]:
@@ -4119,27 +4151,30 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         linearity_multiplier_lt = 1 + (3.2 * abs_lin_val_raw)  # 320% boost - 4x more important
         linearity_multiplier_st = 1 + (4.0 * abs_lin_val_raw)  # 400% boost - 4x more important
         
-        # Calculate final scores with 4x linearity emphasis
+        # BACKTEST_CHANGE_154/155: Compute WT composite from RANKING_INFO (Redis indicators)
+        wt_composite_score = compute_wt_composite_for_ranking(sym)
+        # Calculate final scores with WT composite (backtest-optimized weights)
         long_term_score_raw = calculate_final_scores(
             trend_val=trend_val_lt,
-            linearity_multiplier=linearity_multiplier_lt,  # 4x linearity
+            linearity_multiplier=linearity_multiplier_lt,
             price_vs_sma_score=price_vs_sma_score,
             band_score=band_score,
             breakthrough_bonus=breakthrough_bonus,
             weighted_gains=weighted_gains_lt,
             proximity_score=weighted_prox_raw,
-            is_long_term=True
+            is_long_term=True,
+            wt_composite=wt_composite_score
         )
-        
         short_term_score_raw = calculate_final_scores(
             trend_val=trend_val_st,
-            linearity_multiplier=linearity_multiplier_st,  # 4x linearity
+            linearity_multiplier=linearity_multiplier_st,
             price_vs_sma_score=price_vs_sma_score,
             band_score=band_score,
             breakthrough_bonus=breakthrough_bonus,
             weighted_gains=weighted_gains_st,
             proximity_score=weighted_prox_raw,
-            is_long_term=False
+            is_long_term=False,
+            wt_composite=wt_composite_score
         )
         
         # Apply volume adjustment
@@ -4339,7 +4374,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     # Tier-based priority: A-tier symbols get sorted to front, C-tier to back
     if config.TIER_ENABLED:
         try:
-            from ez_symbol_performance import get_symbol_tier
+            from utils import get_symbol_tier
             _tier_order = {'A': 0, 'B': 1, 'C': 2}
             symbols_ang_long_list.sort(key=lambda s: _tier_order.get(get_symbol_tier(s, 'B'), 1))
             symbols_ang_short_list.sort(key=lambda s: _tier_order.get(get_symbol_tier(s, 'B'), 1))
@@ -5138,6 +5173,9 @@ async def save_market_data():
         await prune_old_backups(WINNERS_15M_FILE.parent, WINNERS_15M_FILE.name + "_", 5)
         await prune_old_backups(LOSERS_15M_FILE.parent, LOSERS_15M_FILE.name + "_", 5)
         await prune_old_backups(WINNERS_30_FILE.parent, WINNERS_30_FILE.name + "_", 5)
+        await prune_old_backups(LOSERS_30_FILE.parent, LOSERS_30_FILE.name + "_", 5)
+        await prune_old_backups(WINNERS_30R_FILE.parent, WINNERS_30R_FILE.name + "_", 5)
+        await prune_old_backups(LOSERS_30R_FILE.parent, LOSERS_30R_FILE.name + "_", 5)
 
         # 6. Copy to latest files ATOMICALLY
         files_to_copy_map = [
@@ -5243,38 +5281,44 @@ def get_rank_fields(ranking_info_ref: dict, symbol: str, tf: str) -> dict: # Ren
     return out
 
 
-async def prune_old_backups(backup_folder_path: Path, prefix: str, max_backups: int = config.MAX_FILES): # Use Path
+async def prune_old_backups(backup_folder_path: Path, prefix: str, max_backups: int = 5):
+    """Tiered retention: keep 1 file per bucket (0-15m, 15m-1h, 1h-4h, 4h-1d, 1d-1W), delete the rest."""
     try:
-        # Ensure backup_folder_path is a Path object
         if not isinstance(backup_folder_path, Path):
             backup_folder_path = Path(backup_folder_path)
-
         if not backup_folder_path.is_dir():
-            # logger.debug(f"Backup folder {backup_folder_path} does not exist. Skipping prune.")
             return
-
-        # Find files matching prefix_timestamp.json pattern
-        all_backups_paths = [
-            p for p in backup_folder_path.iterdir()
-            if p.is_file() and p.name.startswith(prefix) and p.name.endswith(".json")
-        ]
-        
-        if len(all_backups_paths) <= max_backups:
+        all_backups = [p for p in backup_folder_path.iterdir() if p.is_file() and p.name.startswith(prefix) and p.name.endswith(".json")]
+        if len(all_backups) <= 5:
             return
-
-        # Sort by modification time (oldest first)
-        all_backups_paths.sort(key=lambda p: p.stat().st_mtime)
-        
-        files_to_delete_count = len(all_backups_paths) - max_backups
-        for i in range(files_to_delete_count):
-            oldest_path = all_backups_paths[i]
+        now = time.time()
+        buckets = [(0, 900), (900, 3600), (3600, 14400), (14400, 86400), (86400, 604800)]
+        def extract_ts(p):
             try:
-                oldest_path.unlink() # Remove file
-                logger.debug(f"Pruned old backup: {oldest_path}")
-            except Exception as ex_unlink:
-                logger.warning(f"Could not remove old backup {oldest_path}: {ex_unlink}")
-                # If one fails, perhaps stop to avoid repeated errors on permissions issues etc.
-                break 
+                return int(p.name.replace(prefix, "").replace(".json", ""))
+            except ValueError:
+                return 0
+        all_backups.sort(key=extract_ts, reverse=True)
+        keep = set()
+        for bucket_start, bucket_end in buckets:
+            for p in all_backups:
+                age = now - extract_ts(p)
+                if bucket_start <= age < bucket_end:
+                    keep.add(p)
+                    break
+        if all_backups:
+            keep.add(all_backups[0])
+        deleted = 0
+        for p in all_backups:
+            if p not in keep:
+                try:
+                    p.unlink()
+                    deleted += 1
+                except Exception as ex_unlink:
+                    logger.warning(f"Could not remove {p}: {ex_unlink}")
+                    break
+        if deleted > 0:
+            logger.info(f"[prune] {prefix}*: deleted {deleted}, kept {len(keep)}")
     except Exception as e:
         logger.error(f"Error in prune_old_backups for {backup_folder_path}/{prefix}: {e}")
 
@@ -7543,25 +7587,8 @@ async def signals_loop():
                 await send_signal(sig_event_aligned, signals_data)
                 logger.info(f"[signals_loop] 🎯 [ARROW SIGNAL] Broadcast {action_str} signal for {sym_aligned} - All arrows aligned! (rank={arrow_rank}, confidence={item_aligned.get('confidence', 0.0)})")
             
-            # Send BUY signals for winners with all green arrows (only after a down signal)
-            for idx, item_green in enumerate(all_green_arrows, 1):
-                sym_green = item_green["symbol"]
-                slopes_green = item_green.get("slopes", {})
-                slope_3m = slopes_green.get("3m", 0.0)
-                last_state = ARROW_SIGNAL_STATE.get(sym_green, None)
-                if last_state != "down" and slope_3m > 0:
-                    continue
-                await send_aligned_arrow_sig(item_green, "BUY", f"winners_all_green_rank{idx}", idx)
-                ARROW_SIGNAL_STATE[sym_green] = "up"
-            
-            # Send SELL signals for losers with all red arrows (check if 3m is going down)
-            for idx, item_red in enumerate(all_red_arrows, 1):
-                sym_red = item_red["symbol"]
-                slopes_red = item_red.get("slopes", {})
-                slope_3m = slopes_red.get("3m", 0.0)
-                if slope_3m < 0:
-                    await send_aligned_arrow_sig(item_red, "SELL", f"losers_all_red_rank{idx}", idx)
-                    ARROW_SIGNAL_STATE[sym_red] = "down"
+            # DISABLED: Duplicate of fast arrow loop above (lines 7245-7260) — caused triple-order bug 2026-03-25
+            # send_aligned_arrow_sig_fast already fires the same signals; this second loop doubled them
             
             # Check for reversals in symbols that previously had all green arrows
             if PREV_ALL_GREEN_ARROWS:

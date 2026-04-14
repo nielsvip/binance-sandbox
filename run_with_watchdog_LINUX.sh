@@ -67,19 +67,20 @@ BASE_DIR="/home/niels/binance" # Where Python scripts reside
 SCRIPT_PATH="${BASE_DIR}/${TARGET_SCRIPT_NAME}"
 # SCRIPT_NAME_BASE and ACCOUNT_NAME already defined earlier for lock file
 
-# !!! IMPORTANT: Log directory changed as per user request !!!
-LOG_DIR="/home/niels/logs" # Main directory for all logs
+# Watchdog logs go here; Python scripts manage their own logs via RotatingFileHandler
+LOG_DIR="/home/niels/logs"
 
 # Only append account name to log files if we actually have an account
 if [[ -n "$ACCOUNT_NAME" ]]; then
     WATCHDOG_LOG_FILE="${LOG_DIR}/watchdog_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log"
-    PYTHON_SCRIPT_LOG_FILE="${LOG_DIR}/${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log" # Dedicated log for the python script's stdout/stderr
+    # Point at Python's RotatingFileHandler output for liveness monitoring (NOT stdout capture)
+    PYTHON_SCRIPT_LOG_FILE="${BASE_DIR}/logs/${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.log"
     FLAPPING_RECORD_FILE="${LOG_DIR}/.watchdog_restarts_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}.txt" # Hidden file
     PID_FILE="/tmp/watchdog_pid_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}_${UID_TAG}.txt" # Store PID of monitored Python script
     PID_FILE_ALT="${BASE_DIR}/pids/watchdog_pid_${SCRIPT_NAME_BASE}_${ACCOUNT_NAME}_${UID_TAG}.txt"
 else
     WATCHDOG_LOG_FILE="${LOG_DIR}/watchdog_${SCRIPT_NAME_BASE}.log"
-    PYTHON_SCRIPT_LOG_FILE="${LOG_DIR}/${SCRIPT_NAME_BASE}.log" # Dedicated log for the python script's stdout/stderr
+    PYTHON_SCRIPT_LOG_FILE="${BASE_DIR}/logs/${SCRIPT_NAME_BASE}.log"
     FLAPPING_RECORD_FILE="${LOG_DIR}/.watchdog_restarts_${SCRIPT_NAME_BASE}.txt" # Hidden file
     PID_FILE="/tmp/watchdog_pid_${SCRIPT_NAME_BASE}_${UID_TAG}.txt" # Store PID of monitored Python script
     PID_FILE_ALT="${BASE_DIR}/pids/watchdog_pid_${SCRIPT_NAME_BASE}_${UID_TAG}.txt"
@@ -109,7 +110,7 @@ UNAME_S=$(uname -s)
 if [[ "$UNAME_S" == "Darwin" ]]; then
     STAT_CMD=(stat -f %m)
 else
-    STAT_CMD=(stat -c %Y)
+    STAT_CMD=(stat -L -c %Y)
 fi
 
 # --- State Variables ---
@@ -118,13 +119,23 @@ _WATCHDOG_START_TIME=$(date +%s) # Epoch time when this watchdog script started
 
 # --- Logging function for Watchdog ---
 # Must be defined early, especially before TRAP.
+WATCHDOG_LOG_MAX_BYTES=$((5 * 1024 * 1024)) # 5MB max for watchdog's own log
 log_wd() {
-    # Appends to watchdog's own log file AND outputs to stdout (for systemd journal)
+    local msg
     if [[ -n "$ACCOUNT_NAME" ]]; then
-        echo "$(date +'%Y-%m-%d %H:%M:%S') | WD(${TARGET_SCRIPT_NAME} ${ACCOUNT_NAME}) | $1" | tee -a "$WATCHDOG_LOG_FILE"
+        msg="$(date +'%Y-%m-%d %H:%M:%S') | WD(${TARGET_SCRIPT_NAME} ${ACCOUNT_NAME}) | $1"
     else
-        echo "$(date +'%Y-%m-%d %H:%M:%S') | WD(${TARGET_SCRIPT_NAME}) | $1" | tee -a "$WATCHDOG_LOG_FILE"
+        msg="$(date +'%Y-%m-%d %H:%M:%S') | WD(${TARGET_SCRIPT_NAME}) | $1"
     fi
+    # Rotate watchdog log if over 5MB
+    if [[ -f "$WATCHDOG_LOG_FILE" ]]; then
+        local sz
+        sz=$(wc -c < "$WATCHDOG_LOG_FILE" 2>/dev/null || echo 0)
+        if (( sz > WATCHDOG_LOG_MAX_BYTES )); then
+            mv -f "$WATCHDOG_LOG_FILE" "${WATCHDOG_LOG_FILE}.1" 2>/dev/null || true
+        fi
+    fi
+    echo "$msg" | tee -a "$WATCHDOG_LOG_FILE"
 }
 
 ensure_writable_file() {
@@ -146,9 +157,10 @@ if ! mkdir -p "$LOG_DIR"; then
 fi
 # Touch files to ensure they exist and have correct initial ownership if created now.
 # This command failing means fundamental permission issues.
-for init_file in "$WATCHDOG_LOG_FILE" "$PYTHON_SCRIPT_LOG_FILE" "$FLAPPING_RECORD_FILE"; do
+for init_file in "$WATCHDOG_LOG_FILE" "$FLAPPING_RECORD_FILE"; do
     ensure_writable_file "$init_file" || exit 1
 done
+# PYTHON_SCRIPT_LOG_FILE now points to Python's RotatingFileHandler output — don't touch/create it here
 
 # --- Trap for Watchdog Script's Own Exit ---
 cleanup_and_exit() {
@@ -258,15 +270,9 @@ start_python_script() {
     log_wd "   Script Path: $SCRIPT_PATH"
     log_wd "   Output Log: $PYTHON_SCRIPT_LOG_FILE"
 
-    # Truncate Python script's specific log file before new run
-    # This makes "no output" check (mtime) more reliable and logs cleaner for current run.
-    # The 'true' ensures this line doesn't fail script if > fails (e.g. file just deleted by something)
-    # The initial 'touch' should have ensured permissions are okay.
-
-#    :> "$PYTHON_SCRIPT_LOG_FILE" || log_wd "⚠️ WARNING: Could not truncate ${PYTHON_SCRIPT_LOG_FILE} (using :>)"
-
-    # Run Python script in background, redirect stdout/stderr, use unbuffered output
-    nohup "$PYTHON_EXECUTABLE" -u "$SCRIPT_PATH" "${PYTHON_SCRIPT_ARGS[@]}" >> "$PYTHON_SCRIPT_LOG_FILE" 2>&1 &
+    # Python scripts handle their own logging via RotatingFileHandler.
+    # Redirect stdout/stderr to /dev/null — DO NOT append to a file here (causes unbounded growth).
+    nohup "$PYTHON_EXECUTABLE" -u "$SCRIPT_PATH" "${PYTHON_SCRIPT_ARGS[@]}" > /dev/null 2>&1 &
     _CURRENT_PYTHON_PID=$! # Capture PID of the backgrounded Python script
 
     sleep 0.5 # Brief pause to allow script to fail fast (e.g., Python exec not found, script not found)

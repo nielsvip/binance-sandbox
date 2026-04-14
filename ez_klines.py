@@ -356,26 +356,26 @@ async def fetch_missing_klines(missing_bars, auto_confirm=AUTO_CONFIRM):
         if not fetch_plan:
             return
 
-        log(f"Fetching data for {len(fetch_plan)} symbol/timeframe combinations...")
+        log(f"Fetching data for {len(fetch_plan)} symbol/timeframe combinations (parallel, sem={MAX_CONCURRENT_REQUESTS})...")
         saved_count = 0
-        for symbol, interval in fetch_plan:
+        async def _fetch_one(symbol, interval):
+            nonlocal saved_count
             try:
                 result = await fetch_klines_api(symbol, interval, semaphore, session)
-                if not result: continue
+                if not result: return
                 _, _, data = result
                 if data:
                     added = merge_and_write(symbol, interval, data)
-                    log(f"Saved {len(data)} bars for {symbol} {interval} (+{added})")
+                    if added > 0: log(f"Saved {len(data)} bars for {symbol} {interval} (+{added})")
                     saved_count += 1
                     add_issue(symbol, interval, 'REFRESHED', 'INFO', f'{len(data)} bars fetched (+{added})')
-                    
-                    # If we still have very few bars and added 0 or 1, mark it maxed 
-                    # so check_completeness doesn't flag it as RED every time.
                     fetch_threshold = MIN_KLINES_PER_INTERVAL.get(interval, MIN_KLINES_THRESHOLD)
                     if len(data) < fetch_threshold and added <= 1:
                         mark_symbol_maxed(symbol, interval, len(data))
             except Exception as e:
                 log(f"Error updating {symbol} {interval}: {e}")
+        # Run all fetches concurrently — semaphore + throttle control concurrency
+        await asyncio.gather(*[_fetch_one(s, i) for s, i in fetch_plan])
         log(f"\nAPI update complete: {saved_count}/{len(fetch_plan)} files updated.")
 
 
@@ -457,44 +457,41 @@ def get_max_age_for_interval(interval):
     return now - timedelta(minutes=interval_minutes.get(interval, 60))
 
 def get_latest_bar_in_file(data):
-    """Get the latest timestamp from the file data"""
+    """Get the latest timestamp from the file data. Bars are time-sorted, so check last element first."""
     if not data:
         return None
-
-    latest_bar = None
-    latest_ts = None
-
-    for bar in data:
+    from dateutil.parser import isoparse
+    # Fast path: bars are sorted by time, last element is the latest
+    for bar in reversed(data):
         ts = bar.get('timestamp')
         if ts:
             try:
-                # Parse the timestamp - format is like "2025-06-21T20:00:00.000000Z"
-                from dateutil.parser import isoparse
-                dt = isoparse(ts)
-
-                if latest_ts is None or dt > latest_ts:
-                    latest_ts = dt
-                    latest_bar = ts
-            except Exception as e:
-                log(f"Warning: Could not parse timestamp '{ts}': {e}")
+                isoparse(ts)  # validate it parses
+                return ts
+            except Exception:
                 continue
-
-    return latest_bar
+    return None
 
 def get_best_klines_file(symbol,interval):
     best_file=None
     best_count=0
     best_latest=None
+    from dateutil.parser import isoparse
     for klines_dir in get_klines_directories():
         file_path=f'{klines_dir}/{symbol}_{interval}.json'
         if not os.path.exists(file_path): continue
         try:
+            # Quick file-mod-time pre-check: skip if older than best AND smaller
+            if best_file and best_latest:
+                mod_time = os.path.getmtime(file_path)
+                mod_dt = datetime.fromtimestamp(mod_time, tz=timezone.utc)
+                if mod_dt < best_latest - timedelta(hours=1):
+                    continue
             with open(file_path,'r') as f: data=json.load(f)
             if not data: continue
             count=len(data)
             latest=get_latest_bar_in_file(data)
             if latest:
-                from dateutil.parser import isoparse
                 latest_dt=isoparse(latest)
                 if best_latest is None or latest_dt>best_latest or (latest_dt==best_latest and count>best_count):
                     best_file=file_path
@@ -512,58 +509,37 @@ def check_completeness():
     symbols = get_symbols()
     active = get_active_symbols()
     log("=== KLINES CACHE COMPLETENESS CHECK ===")
-    
+    from dateutil.parser import isoparse
+    now = datetime.now(timezone.utc)
+    maxed_symbols = load_maxed_symbols()
     for symbol in symbols:
         if symbol not in active: continue
         for interval in ['3m', '15m', '1h', '4h', 'D']:
             file_path, bar_count, latest_dt = get_best_klines_file(symbol, interval)
             min_threshold = MIN_KLINES_PER_INTERVAL.get(interval, MIN_KLINES_THRESHOLD)
-            # Check if this is a known short-history coin
-            maxed_info = load_maxed_symbols().get(f'{symbol}_{interval}')
-            
+            maxed_info = maxed_symbols.get(f'{symbol}_{interval}')
             if not file_path:
                 missing_bars.append(f'{symbol} {interval} - FILE MISSING')
                 add_issue(symbol, interval, 'FILE_MISSING', 'RED', 'cache file missing')
                 continue
-
             try:
-                with open(file_path, 'r') as f: data = json.load(f)
-                actual_latest = get_latest_bar_in_file(data)
                 max_age_dt = get_max_age_for_interval(interval)
-                
-                is_stale = False
-                if actual_latest:
-                    from dateutil.parser import isoparse
-                    actual_dt = isoparse(actual_latest)
-                    is_stale = actual_dt < max_age_dt
-                else:
-                    is_stale = True
-
-                # 1. Handle Stale Data (ALWAYS RED/YELLOW)
+                # Use latest_dt from get_best_klines_file — no need to re-read the file
+                is_stale = latest_dt is None or latest_dt.astimezone(timezone.utc) < max_age_dt
                 if is_stale:
                     age_str = "Unknown"
-                    if actual_latest:
-                        from dateutil.parser import isoparse
-                        now = datetime.now(timezone.utc)
-                        age_minutes = (now - isoparse(actual_latest)).total_seconds() / 60
+                    if latest_dt:
+                        age_minutes = (now - latest_dt.astimezone(timezone.utc)).total_seconds() / 60
                         age_str = f'{age_minutes:.0f}min'
-                    
                     missing_bars.append(f'{symbol} {interval} - STALE: {age_str} old')
                     add_issue(symbol, interval, 'STALE', 'RED', f'Latest bar {age_str} old')
-
-                # 2. Handle Low Bar Count
                 if bar_count < min_threshold:
-                    # If we ALREADY know it's a short-history coin, make it INFO not RED
-                    if maxed_info:
-                        pass
-                    else:
+                    if not maxed_info:
                         missing_bars.append(f'{symbol} {interval} - LOW BAR COUNT: {bar_count} bars (need {min_threshold})')
                         add_issue(symbol, interval, 'LOW_BARS', 'RED', f'only {bar_count}/{min_threshold} bars')
-
             except Exception as e:
                 missing_bars.append(f'{symbol} {interval} - ERROR: {str(e)}')
                 add_issue(symbol, interval, 'ERROR', 'RED', str(e))
-                
     return missing_bars
 
 # def check_completeness():

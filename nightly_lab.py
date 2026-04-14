@@ -319,7 +319,84 @@ def deploy_staged_settings():
     except Exception:
         pass
     save_status("deployed", f"{applied_count} settings deployed")
+    amplify_trc_from_trb()
     return applied_count > 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 6b: AMPLIFY TRC — Auto-generate aggressive TRC_ overrides from trb values
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TRC_MULTIPLIERS = {
+    "START_POSITION_SIZE": ("TRC_START_POSITION_SIZE", 3.3),
+    "MAX_ORDER_VALUE": ("TRC_MAX_ORDER_VALUE", 2.5),
+    "MAX_POSITION_SIZE": ("TRC_MAX_POSITION_SIZE", 3.0),
+    "SCALP_START_SIZE": ("TRC_SCALP_START_SIZE", 3.3),
+    "SCALP_MAX_POSITIONS_PER_SIDE": ("TRC_SCALP_MAX_POSITIONS_PER_SIDE", 2.0),
+    "MAX_CONCURRENT_POSITIONS": ("TRC_MAX_CONCURRENT_POSITIONS", 2.0),
+    "ROTATION_POSITION_SIZE": ("TRC_ROTATION_POSITION_SIZE", 2.5),
+    "RSI2_POSITION_SIZE": ("TRC_RSI2_POSITION_SIZE", 3.3),
+    "GAP_FILL_POSITION_SIZE": ("TRC_GAP_FILL_POSITION_SIZE", 3.3),
+    "DC_DAYTRADE_START_SIZE": ("TRC_DC_DAYTRADE_START_SIZE", 3.3),
+    "DC_DAYTRADE_LONG_BUDGET": ("TRC_DC_DAYTRADE_LONG_BUDGET", 3.3),
+    "DC_DAYTRADE_SHORT_BUDGET": ("TRC_DC_DAYTRADE_SHORT_BUDGET", 3.3),
+    "SWING_LONG_BUDGET": ("TRC_SWING_LONG_BUDGET", 4.0),
+    "SWING_SHORT_BUDGET": ("TRC_SWING_SHORT_BUDGET", 4.0),
+    "SCALP_LONG_BUDGET": ("TRC_SCALP_LONG_BUDGET", 5.0),
+    "SCALP_SHORT_BUDGET": ("TRC_SCALP_SHORT_BUDGET", 5.0),
+}
+TRC_FIXED_OVERRIDES = {
+    "TRC_BEAR_MARKET_MODE": "False",
+    "TRC_ENTRY_ZONE_LONG": "30.0",
+    "TRC_ENTRY_ZONE_SHORT": "70.0",
+    "TRC_ENTRY_MIN_ALIGNMENT": "6",
+    "TRC_LS_RATIO_MIN": "0.30",
+    "TRC_LS_RATIO_MAX": "3.00",
+    "TRC_MAX_DAILY_LOSS_PCT": "10.0",
+    "TRC_SCALP_TARGET_PCT": "0.01",
+    "TRC_NOLOSS_MIN_PROFIT_PCT": "0.5",
+}
+
+def _cfg_read_val(content, param):
+    """Read a value from dataclass config format: 'PARAM: type = value'."""
+    m = re.search(rf"^\s*{re.escape(param)}:\s*\w+\s*=\s*([\d.]+)", content, re.MULTILINE)
+    return float(m.group(1)) if m else None
+
+def _cfg_write_val(content, param, new_val):
+    """Write a value in dataclass config format, preserving 'PARAM: type = new_val'."""
+    pattern = rf"(^\s*{re.escape(param)}:\s*\w+\s*=\s*)\S+"
+    if re.search(pattern, content, re.MULTILINE):
+        return re.sub(pattern, rf"\g<1>{new_val}", content, count=1, flags=re.MULTILINE)
+    return content
+
+def amplify_trc_from_trb():
+    """Read current trb values from config_tradier.py, write amplified TRC_ overrides."""
+    if not CONFIG_TRADIER.exists():
+        return
+    content = CONFIG_TRADIER.read_text()
+    updated = content
+    applied = []
+    for trb_param, (trc_param, mult) in TRC_MULTIPLIERS.items():
+        trb_val = _cfg_read_val(content, trb_param)
+        if trb_val is None:
+            continue
+        trc_val = round(trb_val * mult, 1)
+        if "POSITIONS" in trb_param or "MAX_CONCURRENT" in trb_param:
+            trc_val = int(trc_val)
+        new_content = _cfg_write_val(updated, trc_param, trc_val)
+        if new_content != updated:
+            updated = new_content
+            applied.append(f"{trc_param}={trc_val}")
+    for trc_param, val in TRC_FIXED_OVERRIDES.items():
+        new_content = _cfg_write_val(updated, trc_param, val)
+        if new_content != updated:
+            updated = new_content
+            applied.append(f"{trc_param}={val}")
+    if updated != content:
+        CONFIG_TRADIER.write_text(updated)
+        logger.info(f"[TRC_AMPLIFY] Updated {len(applied)} TRC overrides from trb values: {', '.join(applied[:5])}...")
+    else:
+        logger.info("[TRC_AMPLIFY] No changes needed — TRC overrides already in sync")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

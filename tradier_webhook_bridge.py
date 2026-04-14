@@ -31,7 +31,7 @@ import asyncio
 import json
 import logging
 from flask import Flask, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 from pathlib import Path
@@ -39,6 +39,7 @@ import threading
 import subprocess
 from io import StringIO
 from dotenv import dotenv_values
+import redis
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -101,6 +102,37 @@ def validate_secret(secret: str) -> bool:
     if not WEBHOOK_SECRET: return True
     if not secret: return False
     return secret == WEBHOOK_SECRET or (secret.startswith("tra") and WEBHOOK_SECRET.startswith("tra"))
+
+# TradingView webhook source IPs (per https://www.tradingview.com/support/solutions/43000529348)
+# Defense-in-depth: nginx allow-list at edge, plus this app-level check.
+TRADINGVIEW_IPS = {
+    "52.89.214.238",
+    "34.212.75.30",
+    "54.218.53.128",
+    "52.32.178.7",
+}
+
+def get_client_ip() -> str:
+    """Resolve real client IP behind nginx reverse proxy."""
+    real_ip = request.headers.get("X-Real-IP", "").strip()
+    if real_ip:
+        return real_ip
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr or ""
+
+def validate_source_ip() -> bool:
+    """Return True if request comes from TradingView or localhost (for testing)."""
+    ip = get_client_ip()
+    if ip in TRADINGVIEW_IPS:
+        return True
+    if ip in ("127.0.0.1", "::1", "localhost"):
+        return True
+    if ip.startswith("10.0.0."):  # internal network
+        return True
+    logger.warning(f"[WEBHOOK_REJECT_IP] Rejected request from {ip}")
+    return False
 
 async def get_position_for_account(account_key: str, symbol: str) -> float:
     try:
@@ -226,26 +258,85 @@ def parse_payload(data: dict) -> dict:
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
+        if not validate_source_ip():
+            return jsonify({"error": "Forbidden"}), 403
         data = request.get_json(silent=True) or request.form.to_dict()
-        
+        logger.info(f"[WEBHOOK_RAW] from={get_client_ip()} {json.dumps(data, default=str)}")
+
         secret = data.get('secret') or data.get('webhook_secret')
         if not validate_secret(secret):
             return jsonify({"error": "Unauthorized"}), 401
-            
+
         try:
             order_params = parse_payload(data)
         except ValueError as e:
             logger.error(f"❌ Payload Error: {e}")
             return jsonify({"error": str(e)}), 400
-            
+
         loop = get_shared_loop()
         future = asyncio.run_coroutine_threadsafe(execute_smart_order(order_params), loop)
         result = future.result(timeout=30)
-        
+
+        logger.info(f"[WEBHOOK_RESULT] {order_params.get('symbol')} {order_params.get('raw_side')} qty={order_params.get('quantity')} → {json.dumps(result, default=str)}")
         return jsonify({"success": True, "data": result})
 
     except Exception as e:
         logger.error(f"Webhook Fatal: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+CRYPTO_REDIS = None
+def get_crypto_redis():
+    global CRYPTO_REDIS
+    if CRYPTO_REDIS is None:
+        CRYPTO_REDIS = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True, socket_connect_timeout=3)
+    return CRYPTO_REDIS
+
+CRYPTO_SIDE_MAP = {
+    "BUY": {"event_type": "wt_crossover", "action": "BUY"},
+    "SELL": {"event_type": "wt_crossunder", "action": "SELL"},
+    "CLOSE_LONG": {"event_type": "wt_crossunder", "action": "CLOSE"},
+    "CLOSE_SHORT": {"event_type": "wt_crossover", "action": "CLOSE"},
+    "REDUCE": {"event_type": "wt_crossunder", "action": "REDUCE"},
+}
+
+@app.route('/crypto', methods=['POST'])
+def crypto_webhook():
+    try:
+        if not validate_source_ip():
+            return jsonify({"error": "Forbidden"}), 403
+        data = request.get_json(silent=True) or request.form.to_dict()
+        secret = data.get('secret') or data.get('webhook_secret')
+        if not validate_secret(secret):
+            return jsonify({"error": "Unauthorized"}), 401
+        symbol = (data.get('symbol') or data.get('ticker') or '').strip().upper()
+        if not symbol:
+            return jsonify({"error": "Symbol missing"}), 400
+        side = (data.get('side') or 'BUY').strip().upper()
+        mapping = CRYPTO_SIDE_MAP.get(side, CRYPTO_SIDE_MAP["BUY"])
+        price = float(data['price']) if data.get('price') else 0
+        signal = {
+            "event_type": data.get('event_type') or mapping["event_type"],
+            "symbol": symbol,
+            "action": data.get('action') or mapping["action"],
+            "price": price,
+            "source": "tradingview_webhook",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": {
+                "event_type": data.get('event_type') or mapping["event_type"],
+                "symbol": symbol,
+                "position_side": data.get('position_side', ''),
+                "account": data.get('account', ''),
+            }
+        }
+        r = get_crypto_redis()
+        r.publish("signals_data", json.dumps(signal))
+        logger.info(f"[CRYPTO] Published {symbol} {side} → Redis signals_data")
+        return jsonify({"success": True, "symbol": symbol, "side": side, "published": True})
+    except redis.ConnectionError as e:
+        logger.error(f"[CRYPTO] Redis connection failed: {e}")
+        return jsonify({"error": "Redis unavailable"}), 503
+    except Exception as e:
+        logger.error(f"[CRYPTO] Error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

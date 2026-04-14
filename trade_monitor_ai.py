@@ -288,6 +288,75 @@ def trim_report_file(max_reports=144):
         logger.error(f"Trim error: {e}")
 
 
+def analyze_blocked_trades():
+    """Analyze blocked trades and compute what-if PnL at current prices."""
+    import redis as _redis
+    try:
+        r = _redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        r.ping()
+    except Exception:
+        return "Redis unavailable for blocked trade analysis"
+    blocked_dir = f'{BASE}/data/blocked_trades'
+    if not os.path.exists(blocked_dir):
+        return "No blocked trades data yet"
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.strftime('%Y%m%d')
+    lines = []
+    for acct in ALL_ACCOUNTS:
+        fpath = f'{blocked_dir}/blocked_{acct}_{today}.jsonl'
+        if not os.path.exists(fpath):
+            continue
+        entries = []
+        try:
+            with open(fpath) as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        entries.append(json.loads(line))
+        except Exception:
+            continue
+        if not entries:
+            continue
+        missed_pnl = 0.0
+        missed_count = 0
+        details = []
+        for e in entries[-50:]:
+            symbol = e.get('symbol', '')
+            block_price = float(e.get('price_at_block', 0))
+            qty = float(e.get('qty', 0))
+            pk = e.get('position_key', '')
+            action = e.get('action', '')
+            block_reason = e.get('block_reason', '')
+            if block_price <= 0 or qty <= 0:
+                continue
+            try:
+                raw = r.get(f'mark_price:{symbol}')
+                if not raw:
+                    continue
+                d = json.loads(raw) if raw.startswith('{') else {'price': raw}
+                current_price = float(d.get('price', raw))
+            except Exception:
+                continue
+            is_long = pk.endswith('_LONG')
+            if 'OPEN' in action or 'AUGMENT' in action:
+                if is_long:
+                    pnl_pct = ((current_price - block_price) / block_price) * 100
+                else:
+                    pnl_pct = ((block_price - current_price) / block_price) * 100
+                pnl_usd = qty * block_price * pnl_pct / 100
+                missed_pnl += pnl_usd
+                missed_count += 1
+                if abs(pnl_pct) > 1.0:
+                    details.append(f"`{pk}` blocked@${block_price:.4f} now {pnl_pct:+.2f}% (${pnl_usd:+.2f}) [{block_reason}]")
+        if missed_count > 0:
+            lines.append(f"**{acct}**: {missed_count} blocked trades, missed PnL: ${missed_pnl:+.2f}")
+            for d in details[:5]:
+                lines.append(f"  - {d}")
+    if not lines:
+        return "No blocked trades today (or no price data available)"
+    return "\n".join(lines)
+
+
 def main():
     logger.info(f"Trade Monitor v3 started — cycle every {CYCLE_SECONDS}s, output: {OUT_FILE}")
     while True:

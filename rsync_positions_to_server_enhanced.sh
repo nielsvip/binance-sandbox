@@ -1,6 +1,6 @@
 #!/bin/bash
 # Enhanced rsync script with fswatch for immediate syncing on file changes
-SERVER_HOST="niels@157.180.125.52"
+SERVER_HOST="s1-int"
 MACBOOK_BASE="/Users/niels/Documents/binance/"
 SERVER_BASE="/home/niels/binance/"
 LOG_FILE="$HOME/logs/rsync_positions_to_server.log"

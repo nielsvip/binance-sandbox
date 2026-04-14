@@ -2,7 +2,7 @@
 # Continuously sync market_data files from server to macbook
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/rsync_helpers.sh"
-SERVER_HOST="niels@157.180.125.52"
+SERVER_HOST="s1-int"
 SERVER_SOURCE="/home/niels/binance/data/"
 MACBOOK_TARGET="/Users/niels/Documents/binance/data/"
 LOG_FILE="$HOME/logs/rsync_market_data_from_server.log"

@@ -39,20 +39,22 @@ def fix_file_permissions(file_path, retry_count=3):
         return False
 
 def safe_file_write(file_path, content, mode='w'):
-    """Safely write to file with automatic permission fixing"""
+    """Safely write to file with atomic temp-file-then-rename pattern"""
     for attempt in range(3):
         try:
-            # Ensure parent directory exists and is writable
             parent_dir = os.path.dirname(file_path)
             if parent_dir and not os.path.exists(parent_dir):
                 os.makedirs(parent_dir, exist_ok=True)
                 fix_file_permissions(parent_dir)
-            
-            with open(file_path, mode) as f:
+            temp_path = str(file_path) + ".tmp"
+            with open(temp_path, mode) as f:
                 if isinstance(content, str):
                     f.write(content)
                 else:
                     json.dump(content, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, file_path)
             return True
         except PermissionError:
             logging.warning(f"⚠️ Permission denied writing to {file_path}, fixing permissions...")
@@ -62,6 +64,11 @@ def safe_file_write(file_path, content, mode='w'):
                 logging.error(f"❌ Failed to fix permissions for {file_path} after {attempt + 1} attempts")
         except Exception as e:
             logging.error(f"❌ Error writing to {file_path}: {e}")
+            if os.path.exists(str(file_path) + ".tmp"):
+                try:
+                    os.remove(str(file_path) + ".tmp")
+                except OSError:
+                    pass
             return False
     return False
 
@@ -71,13 +78,13 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('gateway_broadcaster.log')
+        logging.FileHandler(str(Path.home() / 'logs' / 'gateway_broadcaster.log'))
     ]
 )
 logger = logging.getLogger(__name__)
 
 # Process management
-PID_FILE = "gateway_broadcaster.pid"
+PID_FILE = str(Path.home() / "logs" / "gateway_broadcaster.pid")
 
 def check_pid_file():
     """Check if another instance is already running."""
