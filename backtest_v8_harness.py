@@ -381,8 +381,14 @@ class IndicatorStore:
         for tf in ["1m", "3m", "5m", "15m", "1h", "4h", "D"]:
             sk = f"stoch_k_{tf}"; sd = f"stoch_d_{tf}"
             if sk in result:
-                result[f"k_{tf}_prev"] = result.get(f"stoch_k_{tf}_prev", result.get(f"k_{tf}_prev", result[sk]))
-                result[f"d_{tf}_prev"] = result.get(f"stoch_d_{tf}_prev", result.get(f"d_{tf}_prev", result.get(sd, 50)))
+                _kp = result.get(f"stoch_k_{tf}_prev", result.get(f"k_{tf}_prev", result[sk]))
+                _dp = result.get(f"stoch_d_{tf}_prev", result.get(f"d_{tf}_prev", result.get(sd, 50)))
+                result[f"k_{tf}_prev"] = _kp
+                result[f"d_{tf}_prev"] = _dp
+                if f"stoch_k_{tf}_prev" not in result:
+                    result[f"stoch_k_{tf}_prev"] = _kp
+                if f"stoch_d_{tf}_prev" not in result:
+                    result[f"stoch_d_{tf}_prev"] = _dp
         # WT 1m aliases from 3m (live has 1m WT, NPZ only has 3m)
         for f in ["wt1", "wt2", "wt_score", "wt_velocity", "wt_bullish",
                    "wt_cross_bull", "wt_cross_bear", "wt_cross", "wt_cross_value",

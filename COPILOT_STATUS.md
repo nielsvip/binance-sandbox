@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-14 06:12:21 UTC
+# Copilot Status — 2026-04-14 06:27:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:05:16
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:06:16
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:07:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:08:18
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:09:18
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:09:19
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:10:19
-- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:11:20
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:11:20
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:12:21
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:13:21
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:13:21
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:14:22
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:15:23
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-14T06:16:23
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:17:24
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:19:25
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:21:27
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:25:30
+- **STALE_INDICATORS** [tradier]  — 2026-04-14T06:27:31
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-46.2%
 - HELD: **USO** LONG (tradier) peak +7.8%, now +2.5%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-6.0%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-6.2%
 - HELD: **IBIT** LONG (tradier) peak +4.0%, now +3.4%
 - HELD: **NVDA** LONG (tradier) peak +3.7%, now +-0.2%
 - HELD: **FIVN** SHORT (tradier) peak +3.3%, now +-7.4%
@@ -44,8 +44,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_klines.py running but log stale (309min)
+- [MEDIUM] ez_klines.py running but log stale (324min)
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] ez_klines.py running but log stale (310min)
+- [MEDIUM] ez_prices.py running but log stale (12min)
+- [MEDIUM] ez_klines.py running but log stale (325min)
