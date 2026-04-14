@@ -785,6 +785,76 @@ class TradierConfig:
     TRC_SMFI_LONG_BUDGET: float = 9900.0
     TRC_SMFI_SHORT_BUDGET: float = 9900.0
     TRC_MINERVINI_LONG_BUDGET: float = 13200.0
+
+    # ========================================================================
+    # --- 10b. RECONNECTED STRATEGY SWITCHES (2026-04-14) ---
+    # All 28 switches below were previously tested by backtest_v8_sweep.py but
+    # had NO live implementation (verified against all local + server backups).
+    # Re-declared here per user directive 2026-04-14 under HANDS_OFF + DEATH
+    # PENALTY anti-revert rule. Each has corresponding entry/exit wiring in
+    # tradier_manage.py (search by switch name for the gate site).
+    # ========================================================================
+
+    # First-Hour Momentum (FH) — opening-range breakout detection, minutes 0-60
+    # after market open. KB: Sharpe 1.36-1.54, 25/25 profitable pre-revert.
+    TRADIER_FH_MOMENTUM_ENABLED: bool = True
+    TRADIER_FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5       # min gap move % to qualify
+    TRADIER_FH_MOMENTUM_DC_CONFIRM: bool = True         # require DC breakout confirm
+    TRADIER_FH_MOMENTUM_DC_MAX_LONG: float = 0.33       # only longs in bottom third of DC range
+    TRADIER_FH_MOMENTUM_MFI_CONFIRM: bool = True        # require MFI > threshold confirm
+    TRADIER_FH_MOMENTUM_MFI_MIN: float = 55.0           # min MFI for FH long entry
+    TRADIER_FH_MOMENTUM_WINDOW_MINUTES: int = 60        # FH window in minutes after 13:30 UTC
+
+    # Momentum Interception (MI) — 5 sub-signal momentum degradation detector
+    TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False      # wait for MI reset before entry
+    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False       # close when MI detects intercept down
+    TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3             # N of 5 sub-signals must fire
+
+    # DC Daytrade — buy DC upper-quarter breakouts on 5m/15m with 1h expansion
+    TRADIER_DC_DAYTRADE_ENABLED: bool = True
+    TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES: int = 240
+    TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
+    TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
+    TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352)
+    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.2    # 0-1, position in DC range req'd for entry
+
+    # K-Zone — stochastic K-zone entry filter
+    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # K < 35 for long eligibility
+    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65    # K > 65 for short eligibility
+    TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone
+
+    # RSI2 — 2-period RSI exit gate
+    TRADIER_RSI2_ENABLED: bool = True
+    TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0      # exit long when RSI2 > this
+    TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0     # exit short when RSI2 < this
+
+    # RSI Entry — SHORTS ONLY (2026-04-14 rule). Longs use MFI only.
+    # Short side: RSI + relative volume gate (high short volume distorts MFI).
+    TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0        # SENTINEL: <0 => DISABLED (long uses MFI)
+    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0       # RSI > this to consider short
+    TRADIER_RSI_SHORT_REL_VOLUME_MIN: float = 1.2       # relative vol > 1.2× avg required
+
+    # MFI Entry — LONGS ONLY (2026-04-14 rule, companion to RSI-shorts rule)
+    TRADIER_MFI_ENTRY_LONG_TRADIER: float = 60.0        # MFI > this for long entry
+    TRADIER_MFI_ENTRY_LONG_ENABLED: bool = True
+
+    # Stoch entry filters (non-K-zone)
+    TRADIER_STOCH_ENTRY_LONG_TRADIER: int = 30          # K < this for normal long entry
+    TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 70         # K > this for normal short entry
+    TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long
+    TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short
+
+    # WaveTrend composite scoring + exit TF config
+    TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
+    TRADIER_WT_EXIT_TFS_TRADIER: str = "3m,15m,1h"      # comma-separated TFs that vote for exit
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 2            # min TFs required to trigger exit
+
+    # Entry score aggregate threshold
+    TRADIER_ENTRY_SCORE_THRESHOLD: int = 24             # min aggregate signal score for entry
+    # ========================================================================
+    # --- END RECONNECTED SWITCHES ---
+    # ========================================================================
+
     # --- 11. Logging ---
     LOG_DIR: Path = Path.home() / "logs"
     LOG_FILE_TRADIER_PRICES: Path = LOG_DIR / "tradier_prices.log"

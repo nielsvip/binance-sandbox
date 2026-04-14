@@ -24,7 +24,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SERVERS = [
     {
         "name": "S1",
-        "host": "157.180.125.52",
+        "host": "s1-int",
         "user": "niels",
         "sweep_dir": "/home/niels/binance-sandbox/backtest_v8/sweeps",
         "log_path": "/tmp/v8_t25.log",
@@ -32,7 +32,7 @@ SERVERS = [
     },
     {
         "name": "S2",
-        "host": "204.168.181.211",
+        "host": "s2-int",
         "user": "niels",
         "sweep_dir": "/home/niels/binance-sandbox/backtest_v8/sweeps",
         "log_path": "/tmp/v8_t25.log",
@@ -68,7 +68,10 @@ def _cached(key, fn):
 
 
 def _ssh_run(host, user, cmd, timeout=10):
-    full = ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", f"{user}@{host}", cmd]
+    # 2026-04-14: host is now an SSH alias (s1-int, s2-int) — alias embeds user+ProxyJump via ~/.ssh/config.
+    # If caller still passes old IP-based host, fall back to legacy user@host form.
+    target = host if (host and host.endswith("-int")) else f"{user}@{host}"
+    full = ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", target, cmd]
     r = subprocess.run(full, capture_output=True, text=True, timeout=timeout)
     return r.stdout.strip()
 
@@ -608,8 +611,8 @@ def api_data():
 # Live Run Monitor helpers
 # ---------------------------------------------------------------------------
 LIVE_SERVERS = [
-    {"name": "S1", "host": "157.180.125.52", "user": "niels"},
-    {"name": "S2", "host": "204.168.181.211", "user": "niels"},
+    {"name": "S1", "host": "s1-int", "user": "niels"},
+    {"name": "S2", "host": "s2-int", "user": "niels"},
 ]
 
 LIVE_LOGS = ["/tmp/v8_full_stocks.log", "/tmp/v8_full_crypto.log"]

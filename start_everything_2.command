@@ -140,23 +140,23 @@ end tell" >/dev/null 2>&1 &
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] [Launcher_SE2] Log tail tabs opened." | tee -a "$LAUNCHER_LOG"
 
 # Stop server ez_manage services to prevent interference (Mac takeover)
-SERVER_HOST="157.180.125.52"
+SERVER_HOST="s1-int"
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] [Launcher_SE2] Requesting server ez_manage stop on ${SERVER_HOST}..." | tee -a "$LAUNCHER_LOG"
-timeout 15 ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no niels@"$SERVER_HOST" \
+timeout 15 ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no "$SERVER_HOST" \
   "/home/niels/binance/start_everything_2_LINUX.sh stop 'MAC_SE2' 'Mac takeover via start_everything_2.command'" \
   >> "$LAUNCHER_LOG" 2>&1 || echo "[$(date +"%Y-%m-%d %H:%M:%S")] [Launcher_SE2] WARNING: Could not contact server to stop ez_manage." | tee -a "$LAUNCHER_LOG"
 
 # Create/update server leadership flag so server knows Mac is leading
 SERVER_FLAG="/home/niels/binance/mac_leads_manage.flag"
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] [Launcher_SE2] Setting server leadership flag $SERVER_FLAG" | tee -a "$LAUNCHER_LOG"
-timeout 15 ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no niels@"$SERVER_HOST" \
+timeout 15 ssh -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no "$SERVER_HOST" \
   "bash -lc 'mkdir -p /home/niels/binance && : > \"$SERVER_FLAG\"'" >> "$LAUNCHER_LOG" 2>&1 || echo "[$(date +"%Y-%m-%d %H:%M:%S")] [Launcher_SE2] WARNING: Could not set server leadership flag." | tee -a "$LAUNCHER_LOG"
 
 # Background monitor: remove server flag when local ez_manage stops
 nohup bash -c '
   while true; do
     if ! pgrep -f "/Users/niels/Documents/binance/ez_manage.py --account" >/dev/null 2>&1; then
-      timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=3 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no niels@"'$SERVER_HOST'" "rm -f \"$SERVER_FLAG\"" 2>/dev/null || true
+      timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=3 -o ConnectionAttempts=1 -o StrictHostKeyChecking=no "'$SERVER_HOST'" "rm -f \"$SERVER_FLAG\"" 2>/dev/null || true
       exit 0
     fi
     sleep 15

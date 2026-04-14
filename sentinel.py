@@ -59,6 +59,7 @@ CRITICAL_FILES = [
     "utils.py", "backtest_v8_engine.py", "backtest_v8_sweep.py",
 ]
 FRESH_SEC = int(os.environ.get("SENTINEL_FRESH_SEC", "21600"))  # only scan files modified in last 6h
+HTTP_PORTS = [int(p) for p in os.environ.get("SENTINEL_HTTP_PORTS", "5050,5051").split(",") if p]
 
 SWEEP_CSV_GLOBS = [
     str(BASE / "backtest_v8" / "sweeps" / "v8_sweep_*.csv"),
@@ -192,13 +193,40 @@ def spawn_fix_agent(incident_path):
         return
     snap = snapshot_critical_files(f"pre_fix_{incident_path.stem}")
     is_macbook = sys.platform == "darwin"
+    kind_hint = ""
+    try:
+        _inc = json.loads(Path(incident_path).read_text())
+        if _inc.get("kind") == "DUPE_RESULTS":
+            _sample = _inc.get("detail", {}).get("sample_names", [])
+            kind_hint = (
+                "INCIDENT TYPE: DUPE_RESULTS. Two or more sweep configs produced IDENTICAL "
+                "Sharpe/PnL/Trades — meaning one of the switches that differs between them is DEAD "
+                f"(not wired into the backtest). Sample config names: {_sample}. "
+                "PER CLAUDE.md DEATH PENALTY RULE: you MUST IMPLEMENT the dead switch in the consume "
+                "code (backtest_v8_engine.py override section, tradier_manage.py, or wt_dc_delta.py). "
+                "FORBIDDEN ACTIONS: removing the switch from backtest_v8_sweep.py tier definition, "
+                "disabling it, marking it dead, or 'skipping' it. ALLOWED ACTIONS: tracing where the "
+                "flag is read, discovering the upstream gate blocking it, adding a working wire-up."
+            )
+        elif _inc.get("kind") == "DEAD_PARAMS":
+            kind_hint = (
+                "INCIDENT TYPE: DEAD_PARAMS. Sharpe stdev across 10+ configs is <0.01, indicating "
+                "most sweep knobs have no effect. Diagnose which knobs ARE live and which are dead, "
+                "then IMPLEMENT the dead ones (never prune). Consider adjusting upstream gates."
+            )
+        elif _inc.get("kind") == "LOG_ERROR":
+            kind_hint = "INCIDENT TYPE: LOG_ERROR. Fix the underlying error in the log; do NOT suppress or filter."
+        elif _inc.get("kind") == "HTTP_DOWN":
+            kind_hint = f"INCIDENT TYPE: HTTP_DOWN on port {_inc.get('detail', {}).get('port')}. Diagnose and restart the service."
+    except Exception:
+        pass
     prompt = (
-        f"HANDS_OFF sentinel incident auto-fix. Read incident at {incident_path}. "
-        f"Pre-fix backup at {snap}. Diagnose root cause in {BASE} and apply minimal "
-        f"fix. MANDATORY before ANY edit: cp <file> backups/before_sentinel_fix_$(date +%Y%m%d%H%M).py. "
-        f"NEVER revert newer code to older. Prefer editing sweep/engine scripts over live "
-        f"trading scripts (ez_manage, ez_positions_*, tradier_manage). "
-        f"After fix: rm {ACK_FILE} so sentinel resumes."
+        f"HANDS_OFF sentinel incident auto-fix. {kind_hint} "
+        f"Read full incident at {incident_path}. Pre-fix backup of critical files at {snap}. "
+        f"MANDATORY: cp <file> backups/before_sentinel_fix_$(date +%Y%m%d%H%M).py BEFORE any edit. "
+        f"NEVER revert live code (CLAUDE.md DEATH PENALTY). NEVER prune sweep knobs. "
+        f"Prefer editing backtest_v8_engine.py override section over live trading scripts. "
+        f"After fix: rm {ACK_FILE} so sentinel resumes monitoring."
     )
     if not is_macbook:
         log(f"non-macbook host; writing pending-fix flag for macbook pickup")
@@ -206,8 +234,9 @@ def spawn_fix_agent(incident_path):
         pending.write_text(json.dumps({"incident": str(incident_path), "prompt": prompt, "snap": str(snap), "host": HOST}))
         return
     try:
-        safe_prompt = prompt.replace('"', '\\"').replace("\n", " ")
-        cmd_line = f"cd {BASE} && echo 'SENTINEL FIX AGENT — incident {incident_path.name}' && claude --dangerously-skip-permissions \\\"{safe_prompt}\\\""
+        prompt_file = INCIDENT_DIR / f"{incident_path.stem}.prompt.txt"
+        prompt_file.write_text(prompt)
+        cmd_line = f"cd {BASE} && echo 'SENTINEL FIX AGENT — incident {incident_path.name}' && claude --dangerously-skip-permissions \"$(cat {prompt_file})\""
         applescript = (
             'tell application "iTerm2"\n'
             '  activate\n'
@@ -217,7 +246,7 @@ def spawn_fix_agent(incident_path):
             '  tell current window\n'
             '    create tab with default profile\n'
             '    tell current session of current tab\n'
-            f'      write text "{cmd_line}"\n'
+            f'      write text {json.dumps(cmd_line)}\n'
             '    end tell\n'
             '  end tell\n'
             'end tell'
@@ -260,8 +289,9 @@ def pull_remote_incidents():
             fake_inc.write_text(json.dumps({"remote": tag, "original": data}, indent=2))
             log(f"picked up remote incident from {tag}: {pending.name}")
             try:
-                safe_prompt = data["prompt"].replace('"', '\\"').replace("\n", " ")
-                cmd_line = f"cd {BASE} && echo 'SENTINEL REMOTE FIX ({tag}) — {pending.name}' && claude --dangerously-skip-permissions \\\"{safe_prompt}\\\""
+                remote_prompt_file = INCIDENT_DIR / f"{tag}_{pending.stem}.prompt.txt"
+                remote_prompt_file.write_text(data["prompt"])
+                cmd_line = f"cd {BASE} && echo 'SENTINEL REMOTE FIX ({tag}) — {pending.name}' && claude --dangerously-skip-permissions \"$(cat {remote_prompt_file})\""
                 applescript = (
                     'tell application "iTerm2"\n'
                     '  activate\n'
@@ -271,7 +301,7 @@ def pull_remote_incidents():
                     '  tell current window\n'
                     '    create tab with default profile\n'
                     '    tell current session of current tab\n'
-                    f'      write text "{cmd_line}"\n'
+                    f'      write text {json.dumps(cmd_line)}\n'
                     '    end tell\n'
                     '  end tell\n'
                     'end tell'
@@ -327,15 +357,46 @@ def check_sweep_csvs(state):
                     fp = tuple(r.get(c, "") for c in fingerprint_cols)
                     name = r.get("name") or r.get("config") or ""
                     buckets[fp].append(name)
-                dup_groups = [(fp, names) for fp, names in buckets.items() if len(names) >= 3]
-                if dup_groups:
+                dup_groups = [(fp, names) for fp, names in buckets.items() if len(names) >= 2]
+                seen_dup_key = f"dupseen::{csv_path}"
+                already_seen = set(state.get(seen_dup_key, []))
+                for fp, names in dup_groups:
+                    fp_hash = hashlib.md5(str(fp).encode()).hexdigest()[:12]
+                    if fp_hash in already_seen:
+                        continue
+                    already_seen.add(fp_hash)
                     incidents.append(("DUPE_RESULTS", {
                         "csv": csv_path,
-                        "groups": len(dup_groups),
-                        "sample_fp": list(dup_groups[0][0]),
-                        "sample_names": dup_groups[0][1][:5],
+                        "fingerprint": list(fp),
+                        "config_names": names[:10],
+                        "group_size": len(names),
                         "rows": len(rows),
+                        "fp_hash": fp_hash,
                     }))
+                state[seen_dup_key] = list(already_seen)
+    return incidents
+
+
+def check_http_ports(state):
+    """Probe local HTTP endpoints; flag outage."""
+    import urllib.request
+    import urllib.error
+    incidents = []
+    for port in HTTP_PORTS:
+        key = f"http::{port}"
+        try:
+            req = urllib.request.Request(f"http://127.0.0.1:{port}/", headers={"User-Agent": "sentinel"})
+            urllib.request.urlopen(req, timeout=3)
+            state[key] = "ok"
+        except urllib.error.HTTPError as e:
+            # HTTP 4xx/5xx still means server is alive (just wrong path) — not an incident
+            state[key] = f"http_{e.code}"
+        except Exception as e:
+            prev = state.get(key)
+            state[key] = "down"
+            # Only flag on transition from ok → down (avoid storm)
+            if prev == "ok":
+                incidents.append(("HTTP_DOWN", {"port": port, "error": str(e)[:200]}))
     return incidents
 
 
@@ -383,6 +444,7 @@ def scan_once(state):
     incidents = []
     incidents.extend(check_sweep_csvs(state))
     incidents.extend(check_logs(state))
+    incidents.extend(check_http_ports(state))
     if not incidents:
         return
     sweep_pids = find_sweep_pids()
@@ -390,7 +452,12 @@ def scan_once(state):
     seen_keys = set()
     unique = []
     for kind, detail in incidents:
-        dedup_key = (kind, detail.get("csv") or detail.get("log") or "")
+        # For DUPE_RESULTS, each dead-switch fingerprint gets its own incident/agent.
+        # For other kinds, dedup by source.
+        if kind == "DUPE_RESULTS":
+            dedup_key = (kind, detail.get("csv", ""), detail.get("fp_hash", ""))
+        else:
+            dedup_key = (kind, detail.get("csv") or detail.get("log") or detail.get("port", ""))
         if dedup_key in seen_keys:
             continue
         seen_keys.add(dedup_key)

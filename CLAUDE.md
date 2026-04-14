@@ -1,5 +1,26 @@
 # CLAUDE.md — Trading System Rules
 
+## ☠️ DEATH PENALTY — NEVER REVERT LIVE CODE ☠️
+
+**REVERTING live scripts (tradier_manage.py, ez_manage.py, config*.py, backtest_v8_engine.py, ez_positions_quick.py, or any other core file) to an older version is PROHIBITED. NO EXCEPTIONS.**
+
+A "revert" includes:
+- Copying an older backup OVER a newer file
+- Removing strategy wiring that was previously implemented (First-Hour Momentum, Momentum Interception, DC Daytrade, K-Zone, RSI2, Stoch Entry filters, WT Composite Scoring, SATOSHIT, DELTA_ENGINE, etc.)
+- Deleting config switches that sweep files test for
+- Replacing a long file with a shorter one without tracing EVERY removed line
+- Auto-accepting a merge/resolution that drops implemented strategies
+
+**If you believe reverting is necessary — STOP. Ask the user first. Never auto-revert.**
+
+If a switch is dead (flipping produces identical backtest results), the only acceptable action is **IMPLEMENT IT**. Never "skip", "disable", "remove from sweep", or "rollback" — those are reverts and are FORBIDDEN.
+
+Historical damage from reverts includes the 2026-04-14 wipeout of 33 strategy switches documented in `data/sweep_alerts/FIX_REQUIRED_*.json`. This must NEVER happen again.
+
+**Verification at every session start:** grep each of the 33 canonical switches (see `data/sweep_alerts/canonical_switches.json`) in tradier_manage.py AND ez_manage.py AND config.py AND config_tradier.py AND backtest_v8_engine.py. If ANY are missing → immediate red alert, no other work until restored.
+
+---
+
 ## 🚨 MANDATORY BACKUP BEFORE EVERY EDIT — NO EXCEPTIONS
 
 **Every edit MUST follow this exact sequence:**

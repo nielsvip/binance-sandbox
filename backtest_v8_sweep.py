@@ -12,6 +12,7 @@ Usage:
 """
 import argparse
 import csv
+import hashlib
 import itertools
 import json
 import logging
@@ -1094,7 +1095,7 @@ def main():
     symbols_filter = args.symbols
     if symbols_filter == "fast":
         symbols_filter = FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO
-    syms_tag = f"_fast" if args.symbols == "fast" else (f"_{len(symbols_filter.split(','))}sym" if symbols_filter else "")
+    syms_tag = f"_fast" if args.symbols == "fast" else (f"_{len(symbols_filter.split(','))}sym_{hashlib.md5(symbols_filter.encode()).hexdigest()[:6]}" if symbols_filter else "")
 
     ts_tag = datetime.utcnow().strftime("%Y%m%d_%H%M")
     csv_path = SWEEP_DIR / f"v8_sweep_{args.mode}_t{args.tier}{syms_tag}_{ts_tag}.csv"
