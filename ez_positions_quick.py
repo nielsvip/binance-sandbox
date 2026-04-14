@@ -4912,21 +4912,6 @@ class HedgeEngine:
                 if current_price <= 0: current_price = safe_fetch_float(indicators.get('current_price', 0))
                 if current_price <= 0: continue
                 hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0); hedge_max_gain = safe_fetch_float(getattr(hedge_pos, 'max_gain', 0.0), 0.0); hedge_prev_gain = safe_fetch_float(getattr(hedge_pos, 'prev_gain', 0.0), 0.0); is_hedge_long = (hedge_pos.position_side == 'LONG'); now_ts = time.time(); exact_tick_ts = metrics.get('_tick_ts', 0); true_lag = now_ts - exact_tick_ts
-                # ═══ HEDGE PROFIT PROTECT (USER RULE 2026-04-10): close on decay BEFORE commission floor ═══
-                # Hedges that try to close at a loss get stuck (Finandy/STRICT_NO_LOSS rejects). The fix: close on the
-                # way DOWN from peak, while still meaningfully profitable. 0.15% is the commission break-even floor —
-                # closing below 0.15% nets ~0 after fees, so the close range starts there.
-                # USER 2026-04-10 03:50: raised lower bound from 0.0 to 0.15 — anything below is break-even-after-fees.
-                if hedge_max_gain >= 0.30 and 0.15 <= hedge_gain <= 0.20:
-                    logger.critical(f"🛡️ [HEDGE_PROFIT_PROTECT] {hedge_key}: peak={hedge_max_gain:.2f}% now={hedge_gain:.2f}% — closing before it goes negative")
-                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_PROFIT_PROTECT_peak{hedge_max_gain:.2f}_cur{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
-                    await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                    if original_key:
-                        self._hedge_completed.pop(original_key, None)
-                        self._hedge_cooldowns.pop(symbol, None)
-                        self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
-                        self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
-                    continue
                 # ═══ HEDGE KILL: WT_3M AGAINST / WT_15M AGAINST / DELTA DECEL → KILL IMMEDIATELY. NO EXCEPTION. ═══
                 # USER RULE 2026-04-09: A hedge can NEVER exist across a wt1_3m cross OR while delta is decelerating.
                 # Hedges live for minutes only — they damp losses while origin is in freefall, then die the moment
@@ -4959,6 +4944,17 @@ class HedgeEngine:
                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_{_tf_trigger}_wt3m={_wt1_3m:.1f}/{_wt2_3m:.1f}_wt15m={_wt1_15m:.1f}/{_wt2_15m:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                     # CLEAR hedge completed lockout so next loss augmentation reopens hedge immediately
+                    if original_key:
+                        self._hedge_completed.pop(original_key, None)
+                        self._hedge_cooldowns.pop(symbol, None)
+                        self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
+                        self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
+                    continue
+                # ═══ HEDGE PROFIT PROTECT (USER RULE 2026-04-10): close on decay BEFORE commission floor ═══
+                if hedge_max_gain >= 0.30 and 0.15 <= hedge_gain <= 0.20:
+                    logger.critical(f"🛡️ [HEDGE_PROFIT_PROTECT] {hedge_key}: peak={hedge_max_gain:.2f}% now={hedge_gain:.2f}% — closing before it goes negative")
+                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_PROFIT_PROTECT_peak{hedge_max_gain:.2f}_cur{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
+                    await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                     if original_key:
                         self._hedge_completed.pop(original_key, None)
                         self._hedge_cooldowns.pop(symbol, None)
@@ -9423,6 +9419,26 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # NOTE: No total hedge exposure cap — hedges must be free to protect the portfolio during market drops.
     # The 200% per-hedge cap above is sufficient to prevent runaway hedge monsters.
     _is_aug_action = action in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE') or 'OPEN' in action or 'AUGMENT' in action
+    # ═══ ABSOLUTE HEDGE WT3M GATE — NO BYPASS, NO EXCEPTIONS ═══
+    # LONG hedge CANNOT open/augment when wt1_3m <= wt2_3m.
+    # SHORT hedge CANNOT open/augment when wt1_3m >= wt2_3m.
+    # If WT3m is against the hedge, it will be killed within 5s by HEDGE_WT_KILL anyway.
+    # Blocking here ensures it never opens or grows while waiting for the kill.
+    if _is_aug_action and is_hedge and current_price > 0 and data_manager:
+        _hg_sym = parse_position_key(position_key)[1] if parse_position_key(position_key) else ""
+        _hg_is_long = position_key.endswith("_LONG")
+        try:
+            _, _hg_ind, _, _, _, _, _ = await data_manager.get_hot_state(_hg_sym)
+            if isinstance(_hg_ind, dict):
+                _hg_w1 = safe_fetch_float(_hg_ind.get('wt1_3m', 0), 0)
+                _hg_w2 = safe_fetch_float(_hg_ind.get('wt2_3m', 0), 0)
+                if _hg_w1 != 0 or _hg_w2 != 0:
+                    _hg_blocked = (_hg_is_long and _hg_w1 <= _hg_w2) or (not _hg_is_long and _hg_w1 >= _hg_w2)
+                    if _hg_blocked:
+                        logger.critical(f"🚫 [HEDGE_WT3M_BLOCK] {position_key}: {'LONG' if _hg_is_long else 'SHORT'} hedge wt1_3m={_hg_w1:.1f} wt2_3m={_hg_w2:.1f} — WT3m AGAINST hedge direction. BLOCKED. action={action} reason={reason[:60]}")
+                        return False, f"BLOCKED_HEDGE_WT3M_{_hg_w1:.1f}/{_hg_w2:.1f}"
+        except Exception as _hg_e:
+            logger.debug(f"[HEDGE_WT3M_BLOCK] indicator check failed for {position_key}: {_hg_e}")
     # ═══ BACKTEST_CHANGE_100-104: HARD ENTRY QUALITY GATE — NO BYPASS, NO EXCEPTIONS ═══
     # 2026-04-09 EXCEPTION: winner augments (gain ≥ MIN_GAIN) and pullback augments
     # (max_gain > current_gain AND gain ≥ 0.5×MIN_GAIN) bypass the LTF/HTF gates entirely.

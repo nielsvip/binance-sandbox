@@ -1050,6 +1050,7 @@ def run_config(args_tuple) -> Dict:
     # ZERO_TRADES_TIMEOUT: if V8_RESULT_LIVE shows closes=0 for N secs → filters too strict → kill
     HEARTBEAT_TIMEOUT = 600   # seconds with no heartbeat/result → kill (OOM or crash)
     ZERO_TRADES_TIMEOUT = 60  # seconds closes=0 persists after first V8_RESULT_LIVE → kill
+    MAX_RUNTIME = 1800        # 30 min hard cap per config — prevents infinite runs
     kill_reason = [None]
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(SCRIPTS_DIR))
@@ -1085,6 +1086,11 @@ def run_config(args_tuple) -> Dict:
                     proc.kill()
                     kill_reason[0] = f"zero_trades_for_{ZERO_TRADES_TIMEOUT}s"
                     break
+            # Hard cap: kill if running longer than MAX_RUNTIME regardless
+            if elapsed_now > MAX_RUNTIME:
+                proc.kill()
+                kill_reason[0] = f"max_runtime_{MAX_RUNTIME}s_exceeded"
+                break
             time.sleep(0.5)
         proc.wait()
         t_reader.join(timeout=5)

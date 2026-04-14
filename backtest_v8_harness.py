@@ -387,6 +387,12 @@ class IndicatorStore:
         if not isinstance(result.get("wt_bear_alignment"), int):
             result["wt_bear_alignment"] = 0
         # === FULL LIVE-COMPATIBLE ALIASES ===
+        # NPZ uses relative_volume_{tf}, tradier_manage expects rel_vol_{tf}
+        for _rvol_tf in ["5m", "15m", "1h", "4h", "D"]:
+            _long_key = f"relative_volume_{_rvol_tf}"
+            _short_key = f"rel_vol_{_rvol_tf}"
+            if _long_key in result and _short_key not in result:
+                result[_short_key] = result[_long_key]
         # Live Redis provides short-form k_3m/d_3m aliases that ez_manage expects
         # FIX 2026-04-14: compute stoch prev from PREVIOUS bar (idx-1), not current bar.
         # Without this, stoch_k_{tf}_prev == stoch_k_{tf} → SRS exit conditions impossible.
