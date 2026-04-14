@@ -21,6 +21,7 @@ import platform
 import re
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -869,8 +870,9 @@ TRADIER_TIER25 = {
 # Run with: --tier 25 --mode crypto --start 2024-01-01 --workers 2 --symbols fast
 # ═══════════════════════════════════════════════════════════════
 CRYPTO_TIER25 = {
-    # WT_DC entry threshold — same gate as tradier, controls wt_dc_score minimum
-    "WT_DC_ENTRY_THRESHOLD": [35, 43, 55, 75],
+    # WT_DC_ENTRY_THRESHOLD: DEAD FOR CRYPTO — ez_positions_quick never reads it.
+    # Only used in tradier_manage.py. Removed to halve config count (256→64).
+    # "WT_DC_ENTRY_THRESHOLD": [35, 43, 55, 75],
     # Structural range shift — crypto uses dc_4h (ABSOLUTE: never change TF for crypto)
     "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
     "STRUCTURAL_RANGE_SHIFT_TF": ["dc_4h"],  # LOCKED — dc_4h is the only valid value for crypto
@@ -880,7 +882,9 @@ CRYPTO_TIER25 = {
     "WT_CROSSUNDER_FINAL_ENABLED": [True, False],
     # Delta engine — master on/off for entire delta entry+exit system
     "DELTA_ENGINE_ENABLED": [True, False],
-    # Delta entry — independent of delta exit
+    # Delta entry FILTER — requires delta engine approval to open a position
+    # True = entries blocked unless delta engine fires (use as strict entry gate)
+    # False = entries proceed normally, delta engine only affects exits
     "DELTA_ENTRY_ENABLED": [True, False],
     # RZ exit — zone-based exits (TOP/BOTTOM exhaustion signals)
     "RZ_EXIT_ENABLED": [True, False],
@@ -890,7 +894,7 @@ CRYPTO_TIER25 = {
     "NOLOSS_MIN_PROFIT_PCT": [-999.0],
     "STRICT_NO_LOSS_ACCOUNTS": [[]],
 }
-# 4 × 2 × 2 × 2 × 2 × 2 × 2 = 256 configs
+# 2^6 = 64 configs (WT_DC_ENTRY_THRESHOLD removed — dead for crypto)
 
 # ═══════════════════════════════════════════════════════════════
 # TRADIER Tier 26 — Reentry Rally Gate Sweep
@@ -1024,22 +1028,62 @@ def run_config(args_tuple) -> Dict:
         json.dump(cfg, f)
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = str(override_path)
-    # Always use real execute_trade_action gates (zone, alignment, DC4)
     env["V8_REAL_ETA"] = os.environ.get("V8_REAL_ETA", "1")
-    env["V8_BYPASS_SHOULD_ENTER"] = os.environ.get("V8_BYPASS_SHOULD_ENTER", "0")  # Let should_enter run so SATOSHIT is testable
+    env["V8_BYPASS_SHOULD_ENTER"] = os.environ.get("V8_BYPASS_SHOULD_ENTER", "0")
+    env["V8_SWEEP_MODE"] = "1"  # suppress verbose logs → 10-50x faster simulation
     cmd = [PYTHON, str(ENGINE), "--mode", mode, "--account", account, "--start", start, "--capital", str(capital)]
     if npz_dir:
         cmd += ["--npz-dir", npz_dir]
     if symbols_filter:
         cmd += ["--symbols", symbols_filter]
     t0 = time.time()
+    # Kill thresholds:
+    # HEARTBEAT_TIMEOUT: if no V8_HEARTBEAT or V8_RESULT_LIVE after N secs → OOM/crash → kill
+    # ZERO_TRADES_TIMEOUT: if V8_RESULT_LIVE shows closes=0 for N secs → filters too strict → kill
+    HEARTBEAT_TIMEOUT = 90   # seconds with no heartbeat/result → kill (OOM or crash)
+    ZERO_TRADES_TIMEOUT = 30  # seconds closes=0 persists after first V8_RESULT_LIVE → kill
+    kill_reason = [None]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT, env=env, cwd=str(SCRIPTS_DIR))
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(SCRIPTS_DIR))
+        output_lines = []
+        first_live_t = [None]       # wall-clock time when first V8_RESULT_LIVE seen
+        last_live_closes = [None]   # closes= value from most recent V8_RESULT_LIVE
+        last_alive_t = [time.time()]  # tracks last heartbeat or result line
+        def _reader():
+            for line in iter(proc.stdout.readline, ''):
+                output_lines.append(line)
+                if 'V8_HEARTBEAT:' in line or 'V8_RESULT_LIVE:' in line:
+                    last_alive_t[0] = time.time()
+                if 'V8_RESULT_LIVE:' in line:
+                    mc = re.search(r'closes=(\d+)', line)
+                    if mc:
+                        n = int(mc.group(1))
+                        if first_live_t[0] is None:
+                            first_live_t[0] = time.time()
+                        last_live_closes[0] = n
+        t_reader = threading.Thread(target=_reader, daemon=True)
+        t_reader.start()
+        while proc.poll() is None:
+            now = time.time()
+            elapsed_now = now - t0
+            # Kill if no heartbeat/result in HEARTBEAT_TIMEOUT seconds (OOM or crash)
+            if now - last_alive_t[0] > HEARTBEAT_TIMEOUT and first_live_t[0] is None:
+                proc.kill()
+                kill_reason[0] = f"no_heartbeat_after_{HEARTBEAT_TIMEOUT}s"
+                break
+            # Kill if zero closes persist after first report
+            if first_live_t[0] is not None and last_live_closes[0] == 0:
+                if now - first_live_t[0] > ZERO_TRADES_TIMEOUT:
+                    proc.kill()
+                    kill_reason[0] = f"zero_trades_for_{ZERO_TRADES_TIMEOUT}s"
+                    break
+            time.sleep(0.5)
+        proc.wait()
+        t_reader.join(timeout=5)
         elapsed = time.time() - t0
-        output = proc.stdout + proc.stderr
-        # Parse V8_RESULT line (extended format with $ PnL)
+        output = ''.join(output_lines)
         m = re.search(r"V8_RESULT:\s+sharpe=([-\d.]+)\s+pnl=([-\d.]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)(?:\s+total_pnl_dollars=([-\d.]+))?(?:\s+avg_pnl=([-\d.]+))?(?:\s+avg_pos_value=([-\d.]+))?", output)
-        if m:
+        if m and int(m.group(3)) > 0:
             result = {
                 "run_id": run_id, "name": name, "config": cfg,
                 "sharpe": float(m.group(1)), "pnl": float(m.group(2)),
@@ -1049,10 +1093,8 @@ def run_config(args_tuple) -> Dict:
                 "elapsed": round(elapsed, 1), "status": "ok",
             }
         else:
-            result = {"run_id": run_id, "name": name, "config": cfg, "sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0, "avg_pos_value": 0.0, "elapsed": round(elapsed, 1), "status": "no_result", "error": output[-500:]}
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - t0
-        result = {"run_id": run_id, "name": name, "config": cfg, "sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "elapsed": round(elapsed, 1), "status": "timeout"}
+            status = "killed_" + kill_reason[0] if kill_reason[0] else "no_result"
+            result = {"run_id": run_id, "name": name, "config": cfg, "sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0, "avg_pos_value": 0.0, "elapsed": round(elapsed, 1), "status": status, "error": output[-500:]}
     except Exception as e:
         elapsed = time.time() - t0
         result = {"run_id": run_id, "name": name, "config": cfg, "sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "elapsed": round(elapsed, 1), "status": "error", "error": str(e)}

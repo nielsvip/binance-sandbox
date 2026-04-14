@@ -62,6 +62,13 @@ else:
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
 v8_logger = logging.getLogger("v8_engine")
 v8_logger.setLevel(logging.INFO)
+# V8_SWEEP_MODE=1: suppress verbose per-trade logs, speeds up simulation 10-50x
+_SWEEP_MODE = os.environ.get("V8_SWEEP_MODE", "0") == "1"
+if _SWEEP_MODE:
+    logging.root.setLevel(logging.ERROR)
+    v8_logger.setLevel(logging.WARNING)
+    for _lg_name in list(logging.Logger.manager.loggerDict.keys()):
+        logging.getLogger(_lg_name).setLevel(logging.ERROR)
 
 # Import config — ez_manage.py does `config = Config()` at line 645 which gives
 # the module-level name a Config instance. ez_positions_quick reads config.BASE_PATH
@@ -1034,10 +1041,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     queue_task = asyncio.create_task(order_queue.process_orders())
 
     t0 = _real_time_module.time()
-    report_every = max(1, min(2000, len(sorted_ts) // 60))  # ~60 reports per run, capped at every 2k bars
+    # In sweep mode: report every 200 steps for fast feedback. Normal: every 2000 (60 reports/run).
+    report_every = 200 if _SWEEP_MODE else max(1, min(2000, len(sorted_ts) // 60))
+    _last_heartbeat = _real_time_module.time()
 
     for step, ts in enumerate(sorted_ts):
         _sim_ts[0] = float(ts)
+        # Heartbeat every 10s wall-clock so sweep monitor knows engine is alive
+        _now_real = _real_time_module.time()
+        if _now_real - _last_heartbeat > 10.0:
+            print(f"V8_HEARTBEAT: step={step}/{len(sorted_ts)} closes={_live_pnl['n_closes']}", flush=True)
+            _last_heartbeat = _now_real
 
         # Clear per-bar cooldowns/debounces — in live these use wall clock,
         # in V8 multiple bars process per real second so cooldowns block everything.
