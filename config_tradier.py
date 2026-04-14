@@ -235,7 +235,7 @@ class TradierConfig:
     # === LR PCTB SHORT (backtest) ===
     LR_PCTB_D_SHORT_THRESHOLD: float = 0.1  # BACKTEST_CHANGE_T10 daily LR %B threshold for shorts
     # === SATOSHIT2024 STRATEGY — stocks (15m mean-reversion, 5m instead of 3m) ===
-    SATOSHIT_ENTRY_FILTER: bool = False  # T25 sweep: False avg_sharpe=0.529 vs True=0.381 (-28%). Best tested.
+    SATOSHIT_ENTRY_FILTER: bool = False  # T25 2026-04-14 (fixed gates): True=0.388 vs False=0.328 (+18%). Previous stale result (False=0.529) was broken-gate run. Marginal — leaving False until larger sweep.
     SATOSHIT_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["tra", "trb", "trc"])
     SATOSHIT_MIN_VOTES_TRADIER: int = 3  # 3-of-5 voting
     # Entry thresholds (same as crypto — stocks use 5m/15m instead of 3m/15m)
@@ -640,7 +640,7 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 55  # V8 ABLATION 2026-04-13: Sharpe 1.276 (best of 35/55/75/95). Was 80.
+    WT_DC_ENTRY_THRESHOLD: float = 55  # V8 ABLATION 2026-04-13: Sharpe 1.276 (best of 35/55/75/95). T25 2026-04-14: DC=55 avg_sharpe=0.386 best among 35(0.356)/43(0.342)/55(0.386). DC=75 fires 0 trades.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage
@@ -663,7 +663,7 @@ class TradierConfig:
     # Stocks LT WINNER: Sharpe 0.487, WR 70.7%, 100% profitable
     # Entry: mtf=2, ez=2.0, htf=4h_D, cd=120 | Exit: combined_wt_speed on 4h, sp=50, max_hold=240
     # Stocks Broad (121 sym): Sharpe 0.485, WR 70.7%, mtf=2, ez=2.5, tw=equal
-    DELTA_ENGINE_ENABLED: bool = True  # 121 sym/2yr: Sharpe 0.038→0.485, WR 51%→70.7%, 100% profitable
+    DELTA_ENGINE_ENABLED: bool = True  # 121 sym/2yr: Sharpe 0.038→0.485. T25 2026-04-14: True=0.346 vs False=0.373 (-7%). False marginally better but diff is small; keeping True for live delta tracking.
     DELTA_ENTRY_ENABLED: bool = False  # T25 sweep: False avg=0.527 vs True=0.507 (-4%). Best tested.
     DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
     # WT_DC scorer exit guards
@@ -711,7 +711,7 @@ class TradierConfig:
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
-    RZ_EXIT_ENABLED: bool = False  # T25 sweep: False avg=0.548 vs True=0.481 (-12%). Best tested.
+    RZ_EXIT_ENABLED: bool = True  # T25 sweep 2026-04-14 (10sym, fixed gates): True avg=0.492 vs False=0.229 (+115%). Previous stale result (False=0.548) was from broken-gate run.
     RZ_TOP_BB_THRESHOLD: float = 0.85
     RZ_BOT_BB_THRESHOLD: float = 0.15
     RZ_LEGS_MIN: float = 20.0

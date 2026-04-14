@@ -4963,7 +4963,7 @@ class StockStrategy:
         _t2_min_t = getattr(config, 'REENTRY_TIER2_MIN_MINUTES_TRADIER', 10.0)
         _t2_max_t = getattr(config, 'REENTRY_TIER2_MAX_MINUTES_TRADIER', 120.0)
         _t2_size_t = getattr(config, 'REENTRY_TIER2_SIZE_MULT_TRADIER', 0.8)
-        k_5m_t2 = float(i.get('stoch_k_5m', 50) or 50); k_5m_prev_t2 = float(i.get('stoch_k_5m_prev', 50) or 50)
+        k_5m_t2 = float(i.get('stoch_k_5m', 50) or 50); k_5m_prev_t2 = float(i.get('stoch_k_5m_prev', 50) or 50); k_15m_t2 = float(i.get('stoch_k_15m', 50) or 50)
         if _last_red_px > 0 and last_red_age_min >= _t2_min_t and last_red_age_min < 1200:
             _trend_past_t = (is_long and current_price > _last_red_px * (1.0 + _t2_pct_t)) or (not is_long and current_price < _last_red_px * (1.0 - _t2_pct_t))
             _mom_ok_t = (is_long and k_5m_t2 > k_5m_prev_t2) or (not is_long and k_5m_t2 < k_5m_prev_t2)
@@ -4985,7 +4985,7 @@ class StockStrategy:
         _wt1_5m = float(i.get('wt1_5m', 0) or 0); _wt2_5m = float(i.get('wt2_5m', 0) or 0)
         _wt1_15m = float(i.get('wt1_15m', 0) or 0); _wt2_15m = float(i.get('wt2_15m', 0) or 0)
         _wt1_1h = float(i.get('wt1_1h', 0) or 0); _wt2_1h = float(i.get('wt2_1h', 0) or 0)
-        _wt1_4h = float(i.get('wt1_4h', 0) or 0); _wt2_4h = float(i.get('wt2_4h', 0) or 0)
+        _wt1_4h = float(i.get('wt1_4h', 0) or 0); _wt2_4h = float(i.get('wt2_4h', 0) or 0); _wt1_D_re = float(i.get('wt1_D', 0) or 0); _wt2_D_re = float(i.get('wt2_D', 0) or 0)
         # 4h must be aligned — 5m dip within a 4h bearish trend is a dead-cat bounce, not a reentry
         if is_long and _wt1_4h <= _wt2_4h:
             return "NO_ACTION", f"4H_WT_BEARISH_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}_no_reentry", 0.0, 0.0
@@ -5007,9 +5007,19 @@ class StockStrategy:
                 return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
             if not is_long and not (k_5m_t2 > 50.0 and k_5m_t2 < k_5m_prev_t2):
                 return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
+            # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs)
+            _rally_k15m_max = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0))
+            _rally_htf_min = int(getattr(config, 'REENTRY_RALLY_HTF_MIN', 1))
+            if _rally_k15m_max < 100.0:
+                _k15m_ok = (k_15m_t2 < _rally_k15m_max) if is_long else (k_15m_t2 > (100.0 - _rally_k15m_max))
+                if not _k15m_ok:
+                    return "NO_ACTION", f"RALLY_K15M_GATE_k15m={k_15m_t2:.0f}_max={_rally_k15m_max:.0f}_side={'L' if is_long else 'S'}", 0.0, 0.0
+            _htf_fav_re = sum(1 for w1, w2 in [(_wt1_1h, _wt2_1h), (_wt1_4h, _wt2_4h), (_wt1_D_re, _wt2_D_re)] if (w1 > w2 if is_long else w1 < w2))
+            if _htf_fav_re < _rally_htf_min:
+                return "NO_ACTION", f"RALLY_HTF_GATE_htf={_htf_fav_re}<{_rally_htf_min}_1h={_wt1_1h:.0f}/{_wt2_1h:.0f}_4h={_wt1_4h:.0f}/{_wt2_4h:.0f}_D={_wt1_D_re:.0f}/{_wt2_D_re:.0f}", 0.0, 0.0
             _re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor k5m={k_5m_t2:.0f} → REENTER qty={_re_qty:.2f}")
-            return "REENTRY_OPEN", f"WT_2of3_REENTRY_{_wt_fav}of3_favor", 85.0, _re_qty
+            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor k5m={k_5m_t2:.0f} k15m={k_15m_t2:.0f} htf={_htf_fav_re}/3 → REENTER qty={_re_qty:.2f}")
+            return "REENTRY_OPEN", f"WT_2of3_REENTRY_{_wt_fav}of3_favor_htf{_htf_fav_re}", 85.0, _re_qty
         _wt_cross_bull_5m = i.get('wt_cross_bull_5m', i.get('wt_cross_5m') == "BULL")
         _wt_cross_bear_5m = i.get('wt_cross_bear_5m', i.get('wt_cross_5m') == "BEAR")
         _dc_pos = float(i.get('dc_position_1h', 0.5) or 0.5)

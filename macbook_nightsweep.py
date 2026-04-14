@@ -52,8 +52,21 @@ def _already_running() -> bool:
         return False
 
 
+def _t26_done() -> bool:
+    """Return True if tier-26 tradier sweep result CSV already exists for today."""
+    import datetime as _dt2
+    today = _dt2.datetime.utcnow().strftime("%Y%m%d")
+    sweep_dir = BASE / "data" / "sweep_results"
+    return any(sweep_dir.glob(f"v8_sweep_tradier_t26_*{today}*.csv")) if sweep_dir.exists() else False
+
+
 def _start_sweep():
-    # Conservative config — 4 workers, small symbol set, t25 (the current active tier)
+    # Tier 25: production ablation (256 configs) — runs until done, then tier 26 picks up next tick
+    # Tier 26: reentry rally gate sweep (9 configs — k15m cap + HTF min)
+    # Simple rule: prefer t26 (fast, 9 configs) when t25 already has results; otherwise t25 first
+    sweep_dir = BASE / "data" / "sweep_results"
+    t25_done = bool(list(sweep_dir.glob("v8_sweep_tradier_t25_*.csv"))) if sweep_dir.exists() else False
+    tier = "26" if t25_done and not _t26_done() else "25"
     cmd = [
         "/opt/anaconda3/envs/binance_env/bin/python",
         "-u",
@@ -63,15 +76,15 @@ def _start_sweep():
         "--start", "2024-06-01",
         "--capital", "2000",
         "--workers", "4",
-        "--tier", "25",
+        "--tier", tier,
         "--symbols", "AAPL,MSFT,NVDA,AMZN,AMD,XOM,QQQ,SPY,DIS,META",
         "--resume",
     ]
     log_path = LOG_DIR / "macbook_nightsweep_last.log"
-    log.info(f"starting sweep: {' '.join(cmd)}")
+    log.info(f"starting sweep tier={tier}: {' '.join(cmd)}")
     with open(log_path, "w") as f:
         subprocess.Popen(cmd, cwd=str(BASE), stdout=f, stderr=subprocess.STDOUT, start_new_session=True)
-    log.info(f"sweep kicked off — see {log_path}")
+    log.info(f"sweep tier={tier} kicked off — see {log_path}")
 
 
 def main():

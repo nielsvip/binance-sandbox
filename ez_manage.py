@@ -16086,9 +16086,23 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         if _wt1_15r < _wt2_15r: _wt_fav += 1
         if _wt1_1hr < _wt2_1hr: _wt_fav += 1
     if _wt_fav >= 2:
+        # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs REENTRY_RALLY_K15M_MAX / REENTRY_RALLY_HTF_MIN)
+        _rally_k15m_max = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0))
+        _rally_htf_min = int(getattr(config, 'REENTRY_RALLY_HTF_MIN', 1))
+        if _rally_k15m_max < 100.0:
+            _k15m_ok = (k_15m < _rally_k15m_max) if is_long else (k_15m > (100.0 - _rally_k15m_max))
+            if not _k15m_ok:
+                logger.info(f"[REENTRY_RALLY_K15M] {position_key}: k15m={k_15m:.0f} fails max={_rally_k15m_max:.0f} side={'L' if is_long else 'S'}")
+                return None
+        _wt1_4hr_re = safe_fetch_float(i.get('wt1_4h', 0), 0); _wt2_4hr_re = safe_fetch_float(i.get('wt2_4h', 0), 0)
+        _wt1_Dr_re = safe_fetch_float(i.get('wt1_D', 0), 0); _wt2_Dr_re = safe_fetch_float(i.get('wt2_D', 0), 0)
+        _htf_fav_re = sum(1 for w1, w2 in [(_wt1_1hr, _wt2_1hr), (_wt1_4hr_re, _wt2_4hr_re), (_wt1_Dr_re, _wt2_Dr_re)] if (w1 > w2 if is_long else w1 < w2))
+        if _htf_fav_re < _rally_htf_min:
+            logger.info(f"[REENTRY_RALLY_HTF] {position_key}: htf={_htf_fav_re}<{_rally_htf_min} 1h={_wt1_1hr:.0f}/{_wt2_1hr:.0f} 4h={_wt1_4hr_re:.0f}/{_wt2_4hr_re:.0f} D={_wt1_Dr_re:.0f}/{_wt2_Dr_re:.0f}")
+            return None
         _re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-        logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {position_key}: {_wt_fav}/3 WT favor → REENTER qty={_re_qty:.6f}")
-        return Signal(action="REENTRY", reason=f"WT_2of3_REENTRY_{_wt_fav}of3", conviction=85.0, quantity=_re_qty)
+        logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {position_key}: {_wt_fav}/3 WT favor k15m={k_15m:.0f} htf={_htf_fav_re}/3 → REENTER qty={_re_qty:.6f}")
+        return Signal(action="REENTRY", reason=f"WT_2of3_REENTRY_{_wt_fav}of3_htf{_htf_fav_re}", conviction=85.0, quantity=_re_qty)
     # === BC_156: GUARANTEED REENTRY — exit price crossed + WT confirmation ===
     # Bottom: wt1_15m bouncing from oversold while wt1_1h > wt2_1h (HTF trend intact) → 150%
     # Cross: exit price crossed + 3/4 WT bullish → 50-100% based on DC position

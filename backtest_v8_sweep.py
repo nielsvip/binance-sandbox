@@ -893,6 +893,35 @@ CRYPTO_TIER25 = {
 # 4 × 2 × 2 × 2 × 2 × 2 × 2 = 256 configs
 
 # ═══════════════════════════════════════════════════════════════
+# TRADIER Tier 26 — Reentry Rally Gate Sweep
+# Tests REENTRY_RALLY_K15M_MAX (k15m level cap on WT_2of3 reentry) and
+# REENTRY_RALLY_HTF_MIN (min HTF TFs aligned: 1h/4h/D) added to evaluate_reentry.
+# 100=off means original stoch gate only; 40/20 add k15m level cap.
+# HTF_MIN=1: at least 1 of (1h/4h/D) — lenient; 3: all 3 required — strict.
+# 3 × 3 = 9 configs
+# Run with: --tier 26 --mode tradier --account trb --start 2024-06-01 --workers 4
+# ═══════════════════════════════════════════════════════════════
+TRADIER_TIER26 = {
+    "REENTRY_RALLY_K15M_MAX": [100.0, 40.0, 20.0],
+    "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
+}
+# 3 × 3 = 9 configs
+
+# ═══════════════════════════════════════════════════════════════
+# CRYPTO Tier 26 — Reentry Rally Gate Sweep (mirrors TRADIER_TIER26)
+# Same knobs applied to crypto evaluate_reentry WT_2of3 block.
+# Crypto uses 3m/15m/1h for _wt_fav, then 1h/4h/D for HTF count.
+# Run with: --tier 26 --mode crypto --start 2024-01-01 --workers 2 --symbols fast
+# ═══════════════════════════════════════════════════════════════
+CRYPTO_TIER26 = {
+    "REENTRY_RALLY_K15M_MAX": [100.0, 40.0, 20.0],
+    "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
+    "NOLOSS_MIN_PROFIT_PCT": [-999.0],
+    "STRICT_NO_LOSS_ACCOUNTS": [[]],
+}
+# 3 × 3 = 9 configs
+
+# ═══════════════════════════════════════════════════════════════
 # CRYPTO Tier 30 — Copy Trader Entry Gate Sweep (BC_170–BC_174)
 # Tests 5 new entry gates individually, combined, and top-3 combo.
 # All gates default to False in config.py; sweep enables them one at a time.
@@ -1097,6 +1126,7 @@ def main():
     if args.mode == "crypto":
         if args.tier == 30: param_grid = None  # Tier 30 uses fixed configs
         elif args.tier == 25: param_grid = CRYPTO_TIER25  # production ablation sweep (mirrors tradier t25)
+        elif args.tier == 26: param_grid = CRYPTO_TIER26  # reentry rally gate sweep (k15m cap + HTF min)
         elif _tier_name == "15b": param_grid = CRYPTO_TIER15B  # SRS cascade knob sweep
         elif _tier_name == "11f": param_grid = CRYPTO_TIER11F
         elif _tier_name == "3f": param_grid = CRYPTO_TIER3F
@@ -1128,6 +1158,7 @@ def main():
         elif args.tier == 17: param_grid = None  # Tier 17 uses fixed configs (exit ablation stocks)
         elif args.tier == 20: param_grid = TRADIER_TIER20
         elif args.tier == 25: param_grid = TRADIER_TIER25
+        elif args.tier == 26: param_grid = TRADIER_TIER26  # reentry rally gate sweep (k15m cap + HTF min)
         else: param_grid = TRADIER_TIER1
 
     if args.tier == 17 and args.mode == "crypto":

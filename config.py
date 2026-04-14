@@ -188,6 +188,8 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
+    REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20 — k15m level cap on WT_2of3 reentry gate
+    REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
@@ -261,7 +263,7 @@ class Config:
     DELTA_ACCEL_LOOKBACK: int = 5
     DELTA_TF_WEIGHTS: dict = None  # Set in __post_init__ — 3m dominant
     DELTA_TF_Z_THRESHOLD: float = 1.5  # WINNER: tz=1.5
-    DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # WINNER: ez=2.5 (was 1.5, strict = higher Sharpe)
+    DELTA_ENTRY_Z_THRESHOLD: float = 2.5  # WINNER: ez=2.5 (was 1.5). NOTE: crypto_t13 2026-04-10 reversal: 1.5=2.045 vs 2.5=1.961 Sharpe on 4sym. Keeping 2.5 until larger cross-symbol sweep confirms reversal.
     DELTA_ENTRY_ACCEL_THRESHOLD: float = 0.0  # WINNER: ea=0.0
     DELTA_ENTRY_MIN_TF: int = 3  # WINNER: mtf=3 (was 2, strict = higher Sharpe)
     DELTA_EXIT_DECAY_RATIO: float = 0.90  # 2026-04-10 04:15 APPLIED — winner per user "yes apply" (was 0.80)
