@@ -4,9 +4,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
-
 from dotenv import load_dotenv
-
 load_dotenv()
 
 @dataclass

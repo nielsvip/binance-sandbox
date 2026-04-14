@@ -256,7 +256,7 @@ class Config:
     DELTA_ENGINE_ENABLED: bool = True  # Master switch
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True
-    DELTA_PYRAMID_ENABLED: bool = False  # Disabled until sweep validates
+    DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5
     DELTA_TF_WEIGHTS: dict = None  # Set in __post_init__ — 3m dominant
@@ -1032,7 +1032,9 @@ class Config:
         if cached and now - cached.get("_cache_ts", 0) < 5.0:
             return cached
         try:
-            import redis as _redis, json as _json
+            import json as _json
+
+            import redis as _redis
             r = _redis.Redis(host="localhost", port=6379, db=0, socket_connect_timeout=1)
             raw = r.get(f"regime_cfg:{full_key}")
             if raw:
