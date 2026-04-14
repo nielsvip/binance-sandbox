@@ -1045,9 +1045,11 @@ def run_config(args_tuple) -> Dict:
     t0 = time.time()
     # Kill thresholds:
     # HEARTBEAT_TIMEOUT: if no V8_HEARTBEAT or V8_RESULT_LIVE after N secs → OOM/crash → kill
+    #   600s needed: 12 tradier symbols × 2yr NPZ load takes 4-6 min before first heartbeat.
+    #   Engine prints V8_INIT_HEARTBEAT during loading phase to avoid false kills.
     # ZERO_TRADES_TIMEOUT: if V8_RESULT_LIVE shows closes=0 for N secs → filters too strict → kill
-    HEARTBEAT_TIMEOUT = 90   # seconds with no heartbeat/result → kill (OOM or crash)
-    ZERO_TRADES_TIMEOUT = 30  # seconds closes=0 persists after first V8_RESULT_LIVE → kill
+    HEARTBEAT_TIMEOUT = 600   # seconds with no heartbeat/result → kill (OOM or crash)
+    ZERO_TRADES_TIMEOUT = 60  # seconds closes=0 persists after first V8_RESULT_LIVE → kill
     kill_reason = [None]
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(SCRIPTS_DIR))
@@ -1058,7 +1060,7 @@ def run_config(args_tuple) -> Dict:
         def _reader():
             for line in iter(proc.stdout.readline, ''):
                 output_lines.append(line)
-                if 'V8_HEARTBEAT:' in line or 'V8_RESULT_LIVE:' in line:
+                if 'V8_HEARTBEAT:' in line or 'V8_RESULT_LIVE:' in line or 'V8_INIT_HEARTBEAT:' in line:
                     last_alive_t[0] = time.time()
                 if 'V8_RESULT_LIVE:' in line:
                     mc = re.search(r'closes=(\d+)', line)

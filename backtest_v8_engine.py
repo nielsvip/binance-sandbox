@@ -1363,10 +1363,14 @@ def main():
     args = parser.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
+    if _SWEEP_MODE:
+        print(f"V8_INIT_HEARTBEAT: loading n_symbols={len(symbols) if symbols else 'all'}", flush=True)
     stores, resolution = load_stores(args.mode, symbols, args.start, npz_dir_override=args.npz_dir)
     if not stores:
         v8_logger.error("No data loaded")
         return
+    if _SWEEP_MODE:
+        print(f"V8_INIT_HEARTBEAT: loaded={len(stores)} symbols starting simulation", flush=True)
 
     if args.mode == "tradier":
         asyncio.run(run_simulation_tradier(args.account, args.start, args.capital, stores, resolution))
