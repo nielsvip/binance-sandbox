@@ -2305,9 +2305,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter))
     v8_logger.info(f"Tradier: {len(all_ts)} bars, {len(stores)} symbols from {start_date}")
     t0 = _real_time_module.time()
-    report_every = max(1, len(all_ts) // 20)
+    report_every = 200 if _SWEEP_MODE else max(1, len(all_ts) // 20)
+    _last_heartbeat_t = _real_time_module.time()
     for step, ts in enumerate(all_ts):
         _sim_ts[0] = float(ts)
+        if _SWEEP_MODE:
+            _now_real = _real_time_module.time()
+            if _now_real - _last_heartbeat_t > 10.0:
+                _t_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
+                print(f"V8_HEARTBEAT: step={step}/{len(all_ts)} closes={_t_closes}", flush=True)
+                _last_heartbeat_t = _now_real
         for sym, store in stores.items():
             idx = store.ts_to_idx.get(ts, -1)
             if idx < 0: continue
@@ -2442,6 +2449,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _dt_prev["_last_bar_ts"] = _dt_cur_ts
         if step > 0 and step % report_every == 0:
             v8_logger.info(f"[{step}/{len(all_ts)} {step*100//len(all_ts)}%] active={len(open_keys)} trades={len(executed_trades)} {_real_time_module.time()-t0:.0f}s")
+            if _SWEEP_MODE:
+                _r_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
+                print(f"V8_RESULT_LIVE: step={step}/{len(all_ts)} closes={_r_closes} elapsed={_real_time_module.time()-t0:.0f}s", flush=True)
     elapsed = _real_time_module.time() - t0
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)

@@ -20234,19 +20234,26 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if _wt15_near_cross:
                         _hedge_side = "SHORT" if is_long else "LONG"
                         _hedge_pk = f"{account_key}:{symbol}_{_hedge_side}"
-                        _hedge_pos = await trade_manager.get_position(_hedge_pk)
-                        _hedge_existing = abs(safe_fetch_float(getattr(_hedge_pos, 'positionAmt', 0), 0)) if _hedge_pos else 0
-                        if _hedge_existing == 0:
-                            _h_order_side = "SELL" if _hedge_side == "SHORT" else "BUY"
-                            _h_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
-                            logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} near_cross={_wt_cross_prev_15m:.1f} gain={_pp_gain:.2f}% → HEDGING {_hedge_pk}")
-                            _h_uid = f"WT15M_HEDGE_{int(time.time())}_{uuid.uuid4().hex[:6].upper()}"
-                            _h_result = await trade_manager.execute_now(_hedge_pk, account_key, symbol, 0.0, _h_order_side, _hedge_side, _h_qty, current_price, _h_uid, f"WT_15M_SAME_HEDGE_FOR_{position_key}_wt1{_wt1_15m_h:.1f}", False, "OPEN", is_hedge=True, hedge_for=position_key)
-                            if _h_result and "SUCCESS" in str(_h_result):
-                                _he = getattr(trade_manager, 'hedge_engine', None)
-                                if _he:
-                                    await _he.persist_hedge_record(account_key, {'type': 'WT_15M_SAME_HEDGE', 'position_key': _hedge_pk, 'losing_position_key': position_key, 'symbol': symbol, 'target_symbol': symbol, 'position_side': _hedge_side, 'quantity': _h_qty, 'account': account_key, 'is_hedge': True, 'hedge_for': position_key, 'hedge_id': f"wt15m_hedge_{int(time.time() * 1000)}"})
-                                logger.warning(f"[WT_15M_SAME_HEDGE_OK] {_hedge_pk}: opened to hedge {position_key}")
+                        _he_wt = getattr(trade_manager, 'hedge_engine', None)
+                        _hc_ts_wt = _he_wt._hedge_completed.get(position_key, 0) if _he_wt else 0
+                        if (time.time() - _hc_ts_wt) < 300:
+                            logger.debug(f"[WT_15M_SAME_HEDGE_COOLDOWN] {position_key}: hedge opened {int(time.time()-_hc_ts_wt)}s ago (<300s), skipping duplicate")
+                        else:
+                            _hedge_pos = await trade_manager.get_position(_hedge_pk)
+                            _hedge_existing = abs(safe_fetch_float(getattr(_hedge_pos, 'positionAmt', 0), 0)) if _hedge_pos else 0
+                            if _hedge_existing == 0:
+                                _h_order_side = "SELL" if _hedge_side == "SHORT" else "BUY"
+                                _h_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                                logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} near_cross={_wt_cross_prev_15m:.1f} gain={_pp_gain:.2f}% → HEDGING {_hedge_pk}")
+                                _h_uid = f"WT15M_HEDGE_{int(time.time())}_{uuid.uuid4().hex[:6].upper()}"
+                                if _he_wt: _he_wt._hedge_completed[position_key] = time.time()
+                                _h_result = await trade_manager.execute_now(_hedge_pk, account_key, symbol, 0.0, _h_order_side, _hedge_side, _h_qty, current_price, _h_uid, f"WT_15M_SAME_HEDGE_FOR_{position_key}_wt1{_wt1_15m_h:.1f}", False, "OPEN", is_hedge=True, hedge_for=position_key)
+                                if _h_result and "SUCCESS" in str(_h_result):
+                                    if _he_wt:
+                                        await _he_wt.persist_hedge_record(account_key, {'type': 'WT_15M_SAME_HEDGE', 'position_key': _hedge_pk, 'losing_position_key': position_key, 'symbol': symbol, 'target_symbol': symbol, 'position_side': _hedge_side, 'quantity': _h_qty, 'account': account_key, 'is_hedge': True, 'hedge_for': position_key, 'hedge_id': f"wt15m_hedge_{int(time.time() * 1000)}"})
+                                    logger.warning(f"[WT_15M_SAME_HEDGE_OK] {_hedge_pk}: opened to hedge {position_key}")
+                                else:
+                                    if _he_wt: _he_wt._hedge_completed.pop(position_key, None)
             if _pp_gain > 0.1:
                 _pp_hold, _pp_hold_reason = trading_policy.check_winner_momentum(i, is_long)
                 if _pp_hold:
