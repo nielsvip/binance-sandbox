@@ -1364,8 +1364,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     setattr(tm_mod.config, 'DELTA_ENGINE_ENABLED', True)
     setattr(tm_mod.config, 'DELTA_EXIT_ENABLED', True)
     if _orig_delta_engine_off:
-        setattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', False)
-        v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY blocked.")
+        v8_logger.info(f"DELTA_ENGINE forced True for tracker creation (sweep wanted OFF). DELTA_ENTRY_ENABLED={getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True)} (independent). Delta exits gated in evaluate_stop wrapper.")
     tm_mod.time = _SimTime()
     _real_dt = datetime
     def _sim_now_t(tz=None):
@@ -1471,6 +1470,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             "STRUCTURAL_RANGE_SHIFT_EXIT": "structural_range_shift_exit",
             "RZ_REQUIRE_STRUCT": "rz_require_struct",
             "RZ_ZSCORE_ZONE_ENABLED": "rz_zscore_zone_enabled",
+            "DELTA_ENTRY_ENABLED": "entry_enabled",
         }
         _dt_applied = 0
         for _tk, _tv in _t_overrides.items():
@@ -1920,10 +1920,33 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             p = store.price(idx)
             if p <= 0: continue
             ind = store.build_indicator_dict(idx)
+            ind['ts'] = float(ts)
+            ind['_tick_ts'] = float(ts)
+            ind['current_price'] = p
+            ind['mark_price'] = p
+            _sim_dt = datetime.utcfromtimestamp(ts)
+            _sim_iso = _sim_dt.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            ind['timestamp'] = _sim_iso
+            for _tf in ['5m', '15m', '1h', '4h', 'D']:
+                ind[f'timestamp_{_tf}'] = _sim_iso
+                ind[f'age_{_tf}'] = 0.0
             indicator_cache[sym.upper()] = ind
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
         manager.market_snapshot = dict(indicator_cache)
+        # FIX 2026-04-14: Feed delta tracker on EVERY bar for continuous history.
+        # Without this, delta tracker only gets update() calls during process_position
+        # (every 3rd bar for candidates) → prev dict never builds → deltas always 0
+        # → DELTA_ENTRY_ENABLED switch is dead (no entries to gate).
+        # The tracker's _last_bar_ts guard (line ~197 in wt_dc_delta.py) prevents
+        # double-updating prev when process_position calls update() on the same bar.
+        if hasattr(manager, 'delta_tracker') and manager.delta_tracker:
+            for _dt_sym, _dt_ind in indicator_cache.items():
+                if _dt_ind:
+                    try:
+                        manager.delta_tracker.update(_dt_sym, _dt_ind)
+                    except Exception:
+                        pass
         # Update position gains from current prices
         if manager.position_manager:
             for _pk, _pos in manager.position_manager.positions.items():

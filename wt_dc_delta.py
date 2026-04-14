@@ -623,6 +623,9 @@ class DeltaTracker:
             _loc = next((l for l in _tb if "_run_redzone" in l and "line" in l), "unknown")
             logger.warning(f"[RZ_ERROR] {type(_rz_err).__name__}: {_rz_err} at {_loc.strip()}")
 
+        if not cfg.get("entry_enabled", True):
+            sig.entry_long = False
+            sig.entry_short = False
         self._prev[symbol] = prev
         return sig
 
