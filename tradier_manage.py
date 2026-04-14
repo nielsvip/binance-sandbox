@@ -1335,11 +1335,14 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             if _k4h_vf <= _kz_s:
                                 _veto = f"K_ZONE_S_GATE(k4h={_k4h_vf:.0f}<={_kz_s:.0f})"
                     # MI_ENTRY_ENABLED: when True, require at least one MI confluence signal on 4h.
+                    # FIX 2026-04-14 sentinel: was using i.get() which reads parse_market_data() output.
+                    # wt_peak_structure_4h/wt_divergence_4h/wt_momentum_state_4h are NOT in that dict →
+                    # always returned '' or None → _mi_ok=False → ALL entries vetoed. Use _entry_ind (=indicators_raw).
                     if _veto is None and _cfg('MI_ENTRY_ENABLED_TRADIER', False, account_key, symbol, _side_vf):
-                        _wt_peak_4h_vf = i.get('wt_peak_structure_4h', '')
-                        _wt_trough_4h_vf = i.get('wt_trough_structure_4h', '')
-                        _wt_mom_4h_vf = i.get('wt_momentum_state_4h', '')
-                        _wt_div_4h_vf = i.get('wt_divergence_4h', None)
+                        _wt_peak_4h_vf = _entry_ind.get('wt_peak_structure_4h', '')
+                        _wt_trough_4h_vf = _entry_ind.get('wt_trough_structure_4h', '')
+                        _wt_mom_4h_vf = _entry_ind.get('wt_momentum_state_4h', '')
+                        _wt_div_4h_vf = _entry_ind.get('wt_divergence_4h', None)
                         if is_long:
                             _mi_ok = (_wt_trough_4h_vf == 'HL') or (_wt_mom_4h_vf == 'EXHAUST_DOWN') or (_wt_div_4h_vf == 'BULL')
                         else:
