@@ -5000,8 +5000,14 @@ class StockStrategy:
             if _wt1_15m < _wt2_15m: _wt_fav += 1
             if _wt1_1h < _wt2_1h: _wt_fav += 1
         if _wt_fav >= 2:
+            # STOCH GATE: k_5m < 50 AND rising (LONG) or > 50 AND falling (SHORT)
+            # Same rule as REENTRY_MONITOR — prevents immediate DELTA_EXIT after reentry
+            if is_long and not (k_5m_t2 < 50.0 and k_5m_t2 > k_5m_prev_t2):
+                return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
+            if not is_long and not (k_5m_t2 > 50.0 and k_5m_t2 < k_5m_prev_t2):
+                return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
             _re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
-            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor → REENTER qty={_re_qty:.2f}")
+            logger.warning(f"[WT_2of3_REENTRY] {'L' if is_long else 'S'} {symbol}: {_wt_fav}/3 WT favor k5m={k_5m_t2:.0f} → REENTER qty={_re_qty:.2f}")
             return "REENTRY_OPEN", f"WT_2of3_REENTRY_{_wt_fav}of3_favor", 85.0, _re_qty
         _wt_cross_bull_5m = i.get('wt_cross_bull_5m', i.get('wt_cross_5m') == "BULL")
         _wt_cross_bear_5m = i.get('wt_cross_bear_5m', i.get('wt_cross_5m') == "BEAR")
@@ -7621,6 +7627,7 @@ class TradierTradeManager:
                         k_5m = float(i.get("stoch_k_5m", 50))
                         k_5m_prev = float(i.get("stoch_k_5m_prev", 50))
                         d_5m = float(i.get("stoch_d_5m", 50))
+                        k_15m = float(i.get("stoch_k_15m", 50))
                         wt1_5m = float(i.get("wt1_5m", 0))
                         wt2_5m = float(i.get("wt2_5m", 0))
                         wt1_15m = float(i.get("wt1_15m", 0))
@@ -7635,6 +7642,9 @@ class TradierTradeManager:
                         # (a) 1h WT cross is NOT bear (or has flipped to BULL for LONG)
                         # (b) 4h WT is aligned with trade direction (not turning against)
                         # (c) Current exit score < threshold (NOT just 2/3 wt1>wt2)
+                        # (d) STOCH GATE: k15m not overbought (LONG) or not oversold (SHORT)
+                        #     Prevents reentry immediately after exit when stoch hasn't reset.
+                        #     k15=95 at exit → reenter immediately → DELTA_EXIT fires again.
                         reenter = False
                         wt_cross_1h = str(i.get("wt_cross_1h", ""))
                         wt1_4h = float(i.get("wt1_4h", 0))
@@ -7644,6 +7654,16 @@ class TradierTradeManager:
                         _rm_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 25)
                         if _rm_exit_score >= _rm_threshold:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
+                            continue
+                        # STOCH GATE: k_5m must be below 50 AND rising (LONG) or above 50 AND falling (SHORT).
+                        # k_15m can be >90 (sustained momentum OK). LTF stoch must confirm momentum direction
+                        # and not be in overbought/high territory — prevents immediate DELTA_EXIT on reentry.
+                        _rm_k5_mid = 50.0
+                        if side == "LONG" and not (k_5m < _rm_k5_mid and k_5m > k_5m_prev):
+                            logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising)")
+                            continue
+                        if side == "SHORT" and not (k_5m > _rm_k5_mid and k_5m < k_5m_prev):
+                            logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling)")
                             continue
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned
                         if side == "LONG":

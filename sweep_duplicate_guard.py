@@ -140,12 +140,26 @@ def _write_alert(alert):
     return p
 
 
+FIX_REQUIRED_COOLDOWN_SECS = 7200  # 2 hours: don't re-write same FIX_REQUIRED within this window
+
+
 def _write_fix_request(alert):
-    """One fix-request per dead knob — picked up by agent spawn loop."""
+    """One fix-request per dead knob — picked up by agent spawn loop.
+
+    Cooldown: if a FIX_REQUIRED for this knob already exists and is < FIX_REQUIRED_COOLDOWN_SECS
+    old, skip writing to avoid refreshing the timestamp every 2 min (which would keep spawning
+    new agents even when no fix has been deployed yet).
+    """
     written = []
+    now = time.time()
     for dk in alert["dead_knobs"]:
         knob = dk["knob"]
         p = ALERT_DIR / f"FIX_REQUIRED_{knob}.json"
+        if p.exists():
+            age = now - p.stat().st_mtime
+            if age < FIX_REQUIRED_COOLDOWN_SECS:
+                log.info(f"FIX_REQUIRED_{knob} cooldown ({age:.0f}s < {FIX_REQUIRED_COOLDOWN_SECS}s) — skip re-write")
+                continue
         payload = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "knob": knob,

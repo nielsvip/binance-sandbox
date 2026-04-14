@@ -1344,6 +1344,22 @@ async def _manage_gtc_orders(client: TradierAPIClient, config, positions: list, 
         # Check if we already have a GTC order for this OCC
         if occ in gtc_orders:
             order_id = gtc_orders[occ].get("order_id")
+            # CANCEL COOLDOWN: user canceled a GTC → no_re-place for 4h to stop the loop
+            if not order_id:
+                _ccat = gtc_orders[occ].get("_user_canceled_at")
+                if _ccat:
+                    try:
+                        _cc_dt = datetime.fromisoformat(_ccat)
+                        _cc_hrs = (datetime.utcnow() - _cc_dt).total_seconds() / 3600.0
+                    except Exception:
+                        _cc_hrs = 99.0
+                    if _cc_hrs < 4.0:
+                        logger.debug(f"GTC cancel cooldown active for {occ} ({_cc_hrs:.1f}h < 4h)")
+                        continue
+                    del gtc_orders[occ]
+                    changed = True
+                else:
+                    continue
             if order_id and account_id:
                 order_status = await client._request("GET", f"/accounts/{account_id}/orders/{order_id}", use_data_context=False)
                 if order_status and "order" in order_status:
@@ -1356,8 +1372,8 @@ async def _manage_gtc_orders(client: TradierAPIClient, config, positions: list, 
                         changed = True
                         continue
                     elif st in ("canceled", "rejected", "expired"):
-                        logger.info(f"GTC order {order_id} for {occ} is {st} — removing tracker")
-                        del gtc_orders[occ]
+                        logger.info(f"GTC order {order_id} for {occ} is {st} — adding 4h cancel cooldown")
+                        gtc_orders[occ] = {"_user_canceled_at": datetime.utcnow().isoformat(), "order_id": None}
                         changed = True
                     else:
                         # Still open — check if thesis reversed (D now impulse against us)
