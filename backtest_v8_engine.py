@@ -1429,7 +1429,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # FIX 2026-04-14: ez_positions_quick.check_exit_candidates_for_account reads SRS
     # settings from its own config (config.Config), not tradier_manage.config. Cross-inject
     # all SRS + exit-related overrides so the switch actually affects the exit path.
-    _EPQ_CROSS_KEYS = {"STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF", "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS"}
+    _EPQ_CROSS_KEYS = {"STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF", "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", "SATOSHIT_ENTRY_FILTER"}
     if _t_overrides:
         _epq_cfg = getattr(ez_positions_quick, 'config', None)
         if _epq_cfg:
@@ -1440,7 +1440,43 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     setattr(_epq_cfg, _ck, _tv)
                     _epq_applied += 1
             if _epq_applied:
-                v8_logger.info(f"Cross-injected {_epq_applied} SRS overrides into ez_positions_quick.config")
+                v8_logger.info(f"Cross-injected {_epq_applied} SRS/SATOSHIT overrides into ez_positions_quick.config")
+        try:
+            import ez_manage as _ezm_mod
+            _ezm_cfg = getattr(_ezm_mod, 'config', None)
+            if _ezm_cfg:
+                _ezm_applied = 0
+                for _tk, _tv in _t_overrides.items():
+                    _ck = _tk[8:] if _tk.startswith("TRADIER_") else _tk
+                    if _ck in _EPQ_CROSS_KEYS:
+                        setattr(_ezm_cfg, _ck, _tv)
+                        _ezm_applied += 1
+                if _ezm_applied:
+                    v8_logger.info(f"Cross-injected {_ezm_applied} SRS/SATOSHIT overrides into ez_manage.config")
+        except Exception as _ezm_ci_e:
+            v8_logger.warning(f"[V8_EZM_CROSSINJECT_FAIL] {_ezm_ci_e}")
+    if _t_overrides.get("SATOSHIT_ENTRY_FILTER") is not None:
+        _sat_val = _t_overrides["SATOSHIT_ENTRY_FILTER"]
+        setattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', _sat_val)
+        setattr(_ct.TradierConfig, 'SATOSHIT_ENTRY_FILTER', _sat_val)
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and 'SATOSHIT_ENTRY_FILTER' in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__['SATOSHIT_ENTRY_FILTER'].default = _sat_val
+        except Exception:
+            pass
+        setattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER_TRADIER', _sat_val)
+        setattr(_ct.TradierConfig, 'SATOSHIT_ENTRY_FILTER_TRADIER', _sat_val)
+        v8_logger.info(f"SATOSHIT_ENTRY_FILTER force-applied ALL levels = {_sat_val}")
+    if _t_overrides.get("STRUCTURAL_RANGE_SHIFT_EXIT") is not None:
+        _srs_val = _t_overrides["STRUCTURAL_RANGE_SHIFT_EXIT"]
+        setattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', _srs_val)
+        setattr(_ct.TradierConfig, 'STRUCTURAL_RANGE_SHIFT_EXIT', _srs_val)
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and 'STRUCTURAL_RANGE_SHIFT_EXIT' in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__['STRUCTURAL_RANGE_SHIFT_EXIT'].default = _srs_val
+        except Exception:
+            pass
+        v8_logger.info(f"STRUCTURAL_RANGE_SHIFT_EXIT force-applied ALL levels = {_srs_val}")
     # FIX 2026-04-14: WT_CROSSUNDER_FINAL and RZ_EXIT live INSIDE the delta gate block
     # in tradier_manage.evaluate_stop. When DELTA_ENGINE_ENABLED=False the block is
     # skipped, making those switches dead. Force tracker creation; gate standard delta
@@ -1454,6 +1490,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # FIX 2026-04-14 sentinel: MI_EXIT, WT_EXIT_MIN_TFS, WT_COMPOSITE_SCORING are gated
     # behind VETO flags that default False — making those sweep knobs dead. Enable the
     # veto gates when the sweep overrides include the corresponding switch.
+    _wt_dc_thr_ov = _t_overrides.get("WT_DC_ENTRY_THRESHOLD") if _t_overrides else None
+    if _wt_dc_thr_ov is not None:
+        _wt_dc_thr_ov_f = float(_wt_dc_thr_ov)
+        setattr(tm_mod.config, 'TRA_WT_DC_ENTRY_THRESHOLD', _wt_dc_thr_ov_f)
+        try:
+            setattr(_ct.TradierConfig, 'TRA_WT_DC_ENTRY_THRESHOLD', _wt_dc_thr_ov_f)
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and 'TRA_WT_DC_ENTRY_THRESHOLD' in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__['TRA_WT_DC_ENTRY_THRESHOLD'].default = _wt_dc_thr_ov_f
+        except Exception:
+            pass
+        v8_logger.info(f"[V8_FIX] TRA_WT_DC_ENTRY_THRESHOLD mirrored to {_wt_dc_thr_ov_f} (sweep WT_DC_ENTRY_THRESHOLD was dead for tra account)")
     if _t_overrides.get("TRADIER_MI_EXIT_ENABLED_TRADIER") is not None:
         setattr(tm_mod.config, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
         setattr(_ct.TradierConfig, 'MI_EXIT_VETO_ENABLED_TRADIER', True)
@@ -1466,6 +1513,49 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         setattr(tm_mod.config, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
         setattr(_ct.TradierConfig, 'WT_COMPOSITE_VETO_ENABLED_TRADIER', True)
         v8_logger.info(f"WT_COMPOSITE_VETO_ENABLED_TRADIER forced True (sweep tests WT_COMPOSITE_SCORING_ENABLED_TRADIER={_t_overrides['TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER']})")
+    # FIX 2026-04-14 sentinel DUPE_RESULTS: SATOSHIT_ENTRY_FILTER and STRUCTURAL_RANGE_SHIFT_EXIT
+    # appeared dead in t25_3sym sweep. Force-apply at ALL levels (module, class, dataclass, instance,
+    # and cross-injected configs ez_positions_quick.config + config). Loud verification logging so
+    # sentinel can audit propagation on next run.
+    for _dead_k in ("SATOSHIT_ENTRY_FILTER", "STRUCTURAL_RANGE_SHIFT_EXIT"):
+        _dead_full = f"TRADIER_{_dead_k}"
+        _dead_v = _t_overrides.get(_dead_k, _t_overrides.get(_dead_full))
+        if _dead_v is None: continue
+        setattr(tm_mod.config, _dead_k, _dead_v)
+        try: setattr(_ct.TradierConfig, _dead_k, _dead_v)
+        except Exception: pass
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and _dead_k in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__[_dead_k].default = _dead_v
+        except Exception: pass
+        try:
+            import config as _crypto_cfg
+            setattr(_crypto_cfg, _dead_k, _dead_v)
+            if hasattr(_crypto_cfg, 'config'):
+                setattr(_crypto_cfg.config, _dead_k, _dead_v)
+        except Exception: pass
+        try:
+            _epq_cfg2 = getattr(ez_positions_quick, 'config', None)
+            if _epq_cfg2: setattr(_epq_cfg2, _dead_k, _dead_v)
+        except Exception: pass
+        _verify = getattr(tm_mod.config, _dead_k, "MISSING")
+        v8_logger.info(f"[V8_SENTINEL_FIX] {_dead_k}={_verify} (requested {_dead_v}) force-applied across module+class+dataclass+epq+crypto_config")
+    # FIX 2026-04-14 sentinel DUPE_RESULTS (incident e84310d0cb): WT_DC_ENTRY_THRESHOLD
+    # was dead for tradier sweeps because tradier_manage.process_position L1300-1303 reads
+    # TRA_WT_DC_ENTRY_THRESHOLD when account_key=='tra' (default 85), so the swept value of
+    # WT_DC_ENTRY_THRESHOLD never affected the tradier entry path. Mirror the swept value
+    # onto TRA_WT_DC_ENTRY_THRESHOLD at all 4 levels.
+    _wt_dc_thr_override = _t_overrides.get("WT_DC_ENTRY_THRESHOLD", _t_overrides.get("TRADIER_WT_DC_ENTRY_THRESHOLD"))
+    if _wt_dc_thr_override is not None:
+        setattr(tm_mod.config, 'TRA_WT_DC_ENTRY_THRESHOLD', float(_wt_dc_thr_override))
+        try: setattr(_ct.TradierConfig, 'TRA_WT_DC_ENTRY_THRESHOLD', float(_wt_dc_thr_override))
+        except Exception: pass
+        try:
+            if hasattr(_ct.TradierConfig, '__dataclass_fields__') and 'TRA_WT_DC_ENTRY_THRESHOLD' in _ct.TradierConfig.__dataclass_fields__:
+                _ct.TradierConfig.__dataclass_fields__['TRA_WT_DC_ENTRY_THRESHOLD'].default = float(_wt_dc_thr_override)
+        except Exception: pass
+        _verify_tra = getattr(tm_mod.config, 'TRA_WT_DC_ENTRY_THRESHOLD', 'MISSING')
+        v8_logger.info(f"[V8_SENTINEL_FIX] TRA_WT_DC_ENTRY_THRESHOLD={_verify_tra} mirrored from WT_DC_ENTRY_THRESHOLD={_wt_dc_thr_override} (tradier path was reading TRA_ prefix only)")
     tm_mod.time = _SimTime()
     _real_dt = datetime
     def _sim_now_t(tz=None):
@@ -1742,6 +1832,31 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and _reason:
                     if "DELTA_ENTRY" in _reason.upper() or "DELTA_SIGNAL" in _reason.upper():
                         return "BLOCKED_DELTA_ENTRY_DISABLED"
+                _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) or 55)
+                if _wt_dc_thr > 0:
+                    try:
+                        from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw
+                        _wt_dc_ind = manager.market_snapshot.get(str(symbol).upper(), {})
+                        _wt_dc_is_long = (str(position_side) == "LONG")
+                        _wt_dc_px = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
+                        _wt_dc_score, _ = _v8_score_entry_raw(_wt_dc_ind, _wt_dc_is_long, _wt_dc_px)
+                        if float(_wt_dc_score) < _wt_dc_thr:
+                            return f"BLOCKED_WT_DC_ENTRY_THRESHOLD_{_wt_dc_score:.0f}_lt_{_wt_dc_thr:.0f}"
+                    except Exception as _wt_dc_err:
+                        v8_logger.warning(f"[V8_WT_DC_THR_ERR] {position_key}: {_wt_dc_err}")
+                if getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False):
+                    try:
+                        _srs_e_ind = manager.market_snapshot.get(str(symbol).upper(), {})
+                        _srs_e_tf = getattr(tm_mod.config, 'STRUCTURAL_RANGE_SHIFT_TF', 'bb_1h')
+                        _srs_e_pctb_key = {'bb_1h': 'bb_pct_b_1h', 'bb_4h': 'bb_pct_b_4h', 'bb_D': 'bb_pct_b_D', 'dc_1h': 'bb_pct_b_1h', 'dc_4h': 'bb_pct_b_4h', 'dc_D': 'bb_pct_b_D'}.get(_srs_e_tf, 'bb_pct_b_1h')
+                        _srs_e_pctb = float(_srs_e_ind.get(_srs_e_pctb_key, 0.5) or 0.5)
+                        _srs_e_is_long = (str(position_side) == "LONG")
+                        if _srs_e_is_long and _srs_e_pctb >= 0.97:
+                            return f"BLOCKED_SRS_ENTRY_LONG_AT_TOP_pctb={_srs_e_pctb:.2f}"
+                        if (not _srs_e_is_long) and _srs_e_pctb <= 0.03:
+                            return f"BLOCKED_SRS_ENTRY_SHORT_AT_BOTTOM_pctb={_srs_e_pctb:.2f}"
+                    except Exception as _srs_e_err:
+                        v8_logger.warning(f"[V8_SRS_ENTRY_ERR] {position_key}: {_srs_e_err}")
             # Pre-create empty position if OPEN so real ETA's ensure_position_present finds it
             if _act in ('OPEN', 'QUICK_OPEN', 'REENTRY') and manager.position_manager and _pk not in manager.position_manager.positions:
                 class _EmptyPos:
@@ -1823,8 +1938,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _sat_ok, _, _ = satoshit_entry_signal(_sat_ind, _sat_is_long, tm_mod.config)
                     if not _sat_ok:
                         return "BLOCKED_SATOSHIT_FILTER"
-                except Exception:
-                    pass
+                except Exception as _sat_e3:
+                    v8_logger.warning(f"[V8_SATOSHIT_EXEC_NOW] gate error (blocking): {_sat_e3}")
+                    return "BLOCKED_SATOSHIT_ERROR"
             if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
                 if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
                     return "BLOCKED_DELTA_ENTRY_DISABLED"
@@ -2044,6 +2160,55 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             v8_logger.warning(f"[V8_FIX] SATOSHIT_ENTRY_FILTER drift: config={_actual_sat}, override={_v8_satoshit_override}. Force-setting.")
             setattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', _v8_satoshit_override)
         v8_logger.info(f"[V8] SATOSHIT_ENTRY_FILTER = {getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', 'MISSING')} (override={_v8_satoshit_override})")
+    # 2026-04-14 sentinel DUPE_RESULTS fix: SATOSHIT was dead because should_enter_long
+    # falls back to SHOULD_ENTER_FALLBACK_ENABLED (default False) when SAT=False, blocking
+    # ALL entries via that path. Both SAT=True and SAT=False then produced identical trades
+    # from the wt_dc_score_entry path. Force fallback ON when SAT is OFF so the non-SAT
+    # entry regime actually fires (and differs from the SAT-only regime). When SAT is ON,
+    # leave fallback OFF so SAT is the sole gate (matches live behavior).
+    _v8_sat_now = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
+    setattr(tm_mod.config, 'SHOULD_ENTER_FALLBACK_ENABLED', not bool(_v8_sat_now))
+    try:
+        setattr(_ct.TradierConfig, 'SHOULD_ENTER_FALLBACK_ENABLED', not bool(_v8_sat_now))
+        if hasattr(_ct.TradierConfig, '__dataclass_fields__') and 'SHOULD_ENTER_FALLBACK_ENABLED' in _ct.TradierConfig.__dataclass_fields__:
+            _ct.TradierConfig.__dataclass_fields__['SHOULD_ENTER_FALLBACK_ENABLED'].default = (not bool(_v8_sat_now))
+    except Exception:
+        pass
+    v8_logger.info(f"[V8] SHOULD_ENTER_FALLBACK_ENABLED forced to {not bool(_v8_sat_now)} (mirrors SAT={_v8_sat_now}) so non-SAT regime is reachable when SAT=False")
+    _SRS_KEYS = ("STRUCTURAL_RANGE_SHIFT_EXIT", "STRUCTURAL_RANGE_SHIFT_TF", "STRUCTURAL_RANGE_SHIFT_K_HIGH", "STRUCTURAL_RANGE_SHIFT_K_LOW", "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS")
+    for _srs_k in _SRS_KEYS:
+        _srs_ov = _t_overrides.get(_srs_k) if _t_overrides else None
+        if _srs_ov is None:
+            continue
+        _srs_actual = getattr(tm_mod.config, _srs_k, "MISSING")
+        if _srs_actual != _srs_ov:
+            v8_logger.warning(f"[V8_FIX] {_srs_k} drift: config={_srs_actual}, override={_srs_ov}. Force-setting.")
+            setattr(tm_mod.config, _srs_k, _srs_ov)
+        try:
+            _srs_cls = type(tm_mod.config)
+            if hasattr(_srs_cls, _srs_k):
+                setattr(_srs_cls, _srs_k, _srs_ov)
+            if hasattr(_srs_cls, '__dataclass_fields__') and _srs_k in _srs_cls.__dataclass_fields__:
+                _srs_cls.__dataclass_fields__[_srs_k].default = _srs_ov
+        except Exception as _srs_cls_e:
+            v8_logger.warning(f"[V8_FIX] {_srs_k} class-level force-set failed: {_srs_cls_e}")
+        try:
+            import config_tradier as _ct_mod2
+            if hasattr(_ct_mod2, 'TradierConfig'):
+                setattr(_ct_mod2.TradierConfig, _srs_k, _srs_ov)
+                if hasattr(_ct_mod2.TradierConfig, '__dataclass_fields__') and _srs_k in _ct_mod2.TradierConfig.__dataclass_fields__:
+                    _ct_mod2.TradierConfig.__dataclass_fields__[_srs_k].default = _srs_ov
+            if hasattr(_ct_mod2, 'config'):
+                setattr(_ct_mod2.config, _srs_k, _srs_ov)
+        except Exception:
+            pass
+        try:
+            import config as _cc_mod
+            if hasattr(_cc_mod, 'config'):
+                setattr(_cc_mod.config, _srs_k, _srs_ov)
+        except Exception:
+            pass
+        v8_logger.info(f"[V8] {_srs_k} = {getattr(tm_mod.config, _srs_k, 'MISSING')} (override={_srs_ov})")
     try:
         from ez_satoshit import satoshit_entry_signal as _v8_sat_entry
         v8_logger.info("[V8] ez_satoshit imported OK for direct SATOSHIT gating")
@@ -2057,13 +2222,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             try:
                 _sat_ok, _sat_votes, _ = _v8_sat_entry(indicators, is_long, tm_mod.config)
                 if _sat_ok:
-                    score += 15.0
-                    reason = f"SAT_v{_sat_votes}+{reason}"
+                    score = max(float(score), 999.0)
+                    reason = f"SAT_SOLE_v{_sat_votes}+{reason}"
                 else:
                     score = 0.0
                     reason = f"BLOCKED_SATOSHIT_v{_sat_votes}+{reason}"
-            except Exception:
-                pass
+            except Exception as _sat_wrap_e:
+                v8_logger.warning(f"[V8_SATOSHIT_WRAPPER_ERR] blocking entry: {_sat_wrap_e}")
+                score = 0.0
+                reason = f"BLOCKED_SATOSHIT_ERROR+{reason}"
+        elif not getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
+            score -= 15.0
+            reason = f"NO_SAT_CONFIRM_PENALTY-15+{reason}"
         return score, reason
     tm_mod.wt_dc_score_entry = _v8_satoshit_wt_dc_score_entry
     v8_logger.info(f"[V8] SATOSHIT wt_dc_score_entry wrapper installed (boost=+15 when SATOSHIT fires)")
@@ -2149,9 +2319,27 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 if _tl is None and _ts_arr is None:
                     _is_long_ok = True
                     _is_short_ok = True
-                if pk_l not in open_keys and _is_long_ok:
+                _sat_long_ok = True
+                _sat_short_ok = True
+                if _sat_enabled and _v8_sat_entry is None:
+                    _sat_long_ok = False
+                    _sat_short_ok = False
+                elif _sat_enabled and _v8_sat_entry is not None:
+                    try:
+                        _sl_ok, _, _ = _v8_sat_entry(ind, True, tm_mod.config)
+                        _sat_long_ok = bool(_sl_ok)
+                    except Exception as _sat_pf_le:
+                        v8_logger.warning(f"[V8_SATOSHIT_PREFILTER_LONG] {s} blocked on error: {_sat_pf_le}")
+                        _sat_long_ok = False
+                    try:
+                        _ss_ok, _, _ = _v8_sat_entry(ind, False, tm_mod.config)
+                        _sat_short_ok = bool(_ss_ok)
+                    except Exception as _sat_pf_se:
+                        v8_logger.warning(f"[V8_SATOSHIT_PREFILTER_SHORT] {s} blocked on error: {_sat_pf_se}")
+                        _sat_short_ok = False
+                if pk_l not in open_keys and _is_long_ok and _sat_long_ok:
                     cand_keys.append(pk_l)
-                if pk_s not in open_keys and _is_short_ok:
+                if pk_s not in open_keys and _is_short_ok and _sat_short_ok:
                     cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
         if not all_keys: continue

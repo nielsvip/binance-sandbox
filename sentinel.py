@@ -46,10 +46,23 @@ DEAD_MIN_ROWS = int(os.environ.get("SENTINEL_DEAD_MIN_ROWS", "10"))
 AUTO_FIX = os.environ.get("SENTINEL_AUTO_FIX", "1") == "1"
 FRESH_SEC = int(os.environ.get("SENTINEL_FRESH_SEC", "21600"))
 HTTP_PORTS = [int(p) for p in os.environ.get("SENTINEL_HTTP_PORTS", "5050,5051").split(",") if p]
+EXTERNAL_SITES = [
+    # Public-facing websites on gateway 157.90.168.35 — must stay reachable from anywhere
+    "https://niels.com/",
+    "https://www.niels.com/",
+    "https://niels.co/",
+    "https://www.niels.co/",
+    "https://flasherz.co/",
+    "https://www.flasherz.co/",
+    "http://niels.com/",
+    "http://niels.co/",
+    "http://flasherz.co/",
+]
 CPU_MIN = float(os.environ.get("SENTINEL_CPU_MIN", "85.0"))
 SUBPROC_TO = int(os.environ.get("SENTINEL_SUBPROC_TIMEOUT", "8"))
 ZERO_TRADES_MIN_CONFIGS = 5
 ZERO_TRADES_RATIO = 0.80
+DUPE_MIN_TRADES = int(os.environ.get("SENTINEL_DUPE_MIN_TRADES", "10"))
 STUCK_SWEEP_AGE_SEC = int(os.environ.get("SENTINEL_STUCK_AGE_SEC", "300"))  # CSV not updated in 5min while screen alive = stuck
 
 IS_MAC = sys.platform == "darwin"
@@ -89,9 +102,12 @@ def log(msg):
     print(f"[{ts}] {msg}", flush=True)
 
 
+_RUN_ENV = {**os.environ, "HOME": os.path.expanduser("~")}
+
+
 def run(cmd, timeout=SUBPROC_TO, shell=False):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, shell=shell)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, shell=shell, env=_RUN_ENV)
         return r.returncode, (r.stdout or "") + (r.stderr or "")
     except subprocess.TimeoutExpired:
         return 124, "TIMEOUT"
@@ -243,6 +259,12 @@ def build_prompt(incident_path, kind, detail, snap):
             f"INCIDENT TYPE: HTTP_DOWN port={detail.get('port')} err={detail.get('error')}. "
             "Restart the service."
         ),
+        "SITE_DOWN": (
+            f"INCIDENT TYPE: SITE_DOWN url={detail.get('url')} err={detail.get('error')}. "
+            "Public website unreachable. Likely causes: (1) UFW on gateway 157.90.168.35 blocking 80/443 "
+            "from public internet (check `sudo ufw status`), (2) nginx not running on gateway, "
+            "(3) DNS misconfiguration. Fix: ensure UFW allows tcp 80,443 from anywhere; restart nginx if needed."
+        ),
         "STUCK_SWEEP": (
             f"INCIDENT TYPE: STUCK_SWEEP csv={detail.get('csv')} rows={detail.get('rows')} stuck_sec={detail.get('stuck_sec')}. "
             "Sweep screen is alive but CSV has not grown. Diagnose: (1) backtest_v8_engine.py hung on NPZ load, "
@@ -365,8 +387,13 @@ def detect_sweep_csvs(state):
                 buckets = defaultdict(list)
                 for r in rows:
                     fp = tuple(r.get(c, "") for c in fp_cols)
-                    # Skip all-zero rows (covered by ZERO_TRADES)
-                    if str(r.get(trades_col, "0")).strip() in ("0", "0.0", ""):
+                    # Skip rows with too few trades to differentiate switches
+                    # (1-trade configs produce identical fingerprints regardless of switch state)
+                    try:
+                        _t_cnt = int(float(str(r.get(trades_col, "0")).strip() or "0"))
+                    except ValueError:
+                        _t_cnt = 0
+                    if _t_cnt < DUPE_MIN_TRADES:
                         continue
                     buckets[fp].append(r.get("name") or r.get("config") or "")
                 for fp, names in buckets.items():
@@ -413,20 +440,44 @@ def detect_logs(state):
 
 
 def detect_http(state):
-    import urllib.request, urllib.error
+    import urllib.request, urllib.error, ssl
     incidents = []
+    ctx = ssl.create_default_context()
     for port in HTTP_PORTS:
         key = f"http::{port}"
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
             state[key] = "ok"
         except urllib.error.HTTPError:
-            state[key] = "ok"  # server alive
+            state[key] = "ok"
         except Exception as e:
             prev = state.get(key, "unknown")
             state[key] = "down"
             if prev == "ok":
                 incidents.append(("HTTP_DOWN", {"port": port, "error": str(e)[:200]}))
+    # External public websites — critical, must be reachable from anywhere
+    if IS_MAC:
+        for url in EXTERNAL_SITES:
+            key = f"site::{url}"
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "sentinel/1.0"})
+                resp = urllib.request.urlopen(req, timeout=5, context=ctx)
+                state[key] = f"ok_{resp.status}"
+            except urllib.error.HTTPError as e:
+                # 4xx/5xx means DNS + TCP + TLS worked — site is up, just a bad path/error
+                # Flag only 5xx as incident (client errors may be intentional)
+                if e.code >= 500:
+                    prev = state.get(key, "unknown")
+                    state[key] = f"http_{e.code}"
+                    if not str(prev).startswith("http_5"):
+                        incidents.append(("SITE_DOWN", {"url": url, "error": f"HTTP {e.code}"}))
+                else:
+                    state[key] = f"ok_{e.code}"
+            except Exception as e:
+                prev = state.get(key, "unknown")
+                state[key] = "down"
+                if str(prev).startswith("ok"):
+                    incidents.append(("SITE_DOWN", {"url": url, "error": str(e)[:200]}))
     return incidents
 
 
