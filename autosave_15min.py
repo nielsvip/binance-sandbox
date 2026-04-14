@@ -57,14 +57,42 @@ def backup_cycle():
             except Exception as e:
                 log(f"  SKIP {fn}: {e}")
     log(f"Backup {ts}: {saved}/{len(CRITICAL)} files → {dest}")
-    # Prune old — keep last 96 (24h at 15min intervals)
+    # Smart pruning: only delete when disk usage exceeds 5GB.
+    # Keep versions with LARGEST edit gaps (stable versions that ran longest).
+    import os as _os
+    def _dirsize(p):
+        total = 0
+        for root, _, files in _os.walk(p):
+            for f in files:
+                try: total += _os.path.getsize(_os.path.join(root, f))
+                except OSError: pass
+        return total
+    MAX_BYTES = 5 * 1024 * 1024 * 1024  # 5GB
+    current_size = _dirsize(BACKUP_DIR)
+    if current_size < MAX_BYTES:
+        return  # plenty of space, keep everything
+    log(f"Backup dir at {current_size/1e9:.1f}GB — pruning by stability score")
+    # Sort by timestamp, compute edit gap (time to next backup)
     all_backups = sorted(BACKUP_DIR.glob("*"))
-    if len(all_backups) > 96:
-        for old in all_backups[:-96]:
-            try:
-                shutil.rmtree(old)
-            except Exception:
-                pass
+    if len(all_backups) < 10:
+        return
+    # For each backup, compute gap to next one. Keep the ones with LARGEST gaps.
+    scored = []
+    for i, b in enumerate(all_backups[:-1]):
+        try:
+            gap = all_backups[i+1].stat().st_mtime - b.stat().st_mtime
+            scored.append((gap, b))
+        except OSError:
+            pass
+    # Sort by gap DESC — largest gap = most stable = keep
+    scored.sort(reverse=True)
+    keep = set(b for _, b in scored[:48])  # keep top 48 stable versions
+    keep.add(all_backups[-1])  # always keep newest
+    for b in all_backups:
+        if b not in keep:
+            try: shutil.rmtree(b); log(f"  pruned {b.name}")
+            except Exception: pass
+            if _dirsize(BACKUP_DIR) < MAX_BYTES * 0.7: break
 
 
 def git_commit():
