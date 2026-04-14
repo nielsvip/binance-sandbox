@@ -1540,6 +1540,8 @@ class TradierBarManager:
              if tf in ('1m', '3m', '5m'):
                  if len(df) > 4800:
                      return df.tail(3600).reset_index(drop=True)
+             elif tf == 'D':
+                 return df
              else:
                  if len(df) > 1800:
                      return df.tail(1200).reset_index(drop=True)
@@ -1679,18 +1681,34 @@ class TradierBarManager:
             if not data:
                 logger.warning(f"Refusing to write empty data to {path.name}")
                 return
-            json_bytes = json_dumps(data)
             def _write():
                 path.parent.mkdir(parents=True, exist_ok=True)
+                write_data = data
                 if path.exists():
                     existing_size = path.stat().st_size
-                    new_size = len(json_bytes) if isinstance(json_bytes, bytes) else len(json_bytes.encode('utf-8'))
+                    tentative = json_dumps(data)
+                    new_size = len(tentative) if isinstance(tentative, bytes) else len(tentative.encode('utf-8'))
                     env_info = get_current_environment()
                     _env = env_info.get("env", "macbook") if isinstance(env_info, dict) else "macbook"
                     min_ratio = 0.1 if _env == "macbook" else 0.3
                     if existing_size > 1000 and new_size < existing_size * min_ratio:
-                        logger.error(f"BLOCKED write to {path.name}: new size {new_size} is <{int(min_ratio*100)}% of existing {existing_size} — refusing to destroy data")
-                        return
+                        try:
+                            with open(path, 'rb') as f:
+                                existing = safe_json_loads(f.read())
+                            if existing:
+                                merged_map = {r['timestamp']: r for r in existing if 'timestamp' in r}
+                                for r in data:
+                                    if 'timestamp' in r:
+                                        merged_map[r['timestamp']] = r
+                                write_data = sorted(merged_map.values(), key=lambda r: r['timestamp'])
+                                logger.info(f"MERGED {path.name}: {len(existing)} existing + {len(data)} new → {len(write_data)} bars")
+                            else:
+                                logger.error(f"BLOCKED write to {path.name}: unreadable existing, new size {new_size} < {int(min_ratio*100)}% of {existing_size}")
+                                return
+                        except Exception as e:
+                            logger.error(f"BLOCKED write to {path.name}: merge failed ({e})")
+                            return
+                json_bytes = json_dumps(write_data)
                 random_suffix = uuid.uuid4().hex
                 tmp = path.with_name(f".{path.name}.{random_suffix}.tmp")
                 with open(tmp, 'wb') as f:
