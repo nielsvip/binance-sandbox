@@ -191,25 +191,75 @@ def spawn_fix_agent(incident_path):
         log("AUTO_FIX off; skipping agent spawn")
         return
     snap = snapshot_critical_files(f"pre_fix_{incident_path.stem}")
+    is_macbook = sys.platform == "darwin"
     prompt = (
         f"HANDS_OFF sentinel incident auto-fix. Read incident at {incident_path}. "
         f"Pre-fix backup at {snap}. Diagnose root cause in {BASE} and apply minimal "
-        f"fix. MANDATORY before ANY edit: cp <file> backups/before_sentinel_fix_<YYYYMMDDHHMM>.py. "
+        f"fix. MANDATORY before ANY edit: cp <file> backups/before_sentinel_fix_$(date +%Y%m%d%H%M).py. "
         f"NEVER revert newer code to older. Prefer editing sweep/engine scripts over live "
         f"trading scripts (ez_manage, ez_positions_*, tradier_manage). "
         f"After fix: rm {ACK_FILE} so sentinel resumes."
     )
+    if not is_macbook:
+        log(f"non-macbook host; writing pending-fix flag for macbook pickup")
+        pending = INCIDENT_DIR / f"{incident_path.stem}.pending_macbook"
+        pending.write_text(json.dumps({"incident": str(incident_path), "prompt": prompt, "snap": str(snap), "host": HOST}))
+        return
     try:
-        subprocess.Popen(
-            ["claude", "--dangerously-skip-permissions", "-p", prompt],
-            cwd=str(BASE),
-            stdout=open(INCIDENT_DIR / f"{incident_path.stem}_agent.log", "w"),
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
+        safe_prompt = prompt.replace('"', '\\"').replace("\n", " ")
+        applescript = (
+            f'tell application "Terminal" to do script '
+            f'"cd {BASE} && echo \'SENTINEL FIX AGENT — incident {incident_path.name}\' && '
+            f'claude --dangerously-skip-permissions \\"{safe_prompt}\\""'
         )
-        log(f"spawned fix agent for {incident_path.name}")
+        subprocess.Popen(["osascript", "-e", applescript], start_new_session=True)
+        log(f"spawned fix agent in Terminal.app for {incident_path.name}")
     except Exception as e:
         log(f"agent spawn failed: {e}")
+
+
+def pull_remote_incidents():
+    """macbook only — rsync S1/S2 incidents dirs so their DUPE/ERROR findings trigger local Terminal agents."""
+    if sys.platform != "darwin":
+        return
+    remotes = [
+        ("s1", "niels@157.180.125.52", "/home/niels/binance/data/sentinel/incidents/"),
+        ("s2", "niels@204.168.181.211", "/home/niels/binance/data/sentinel/incidents/"),
+    ]
+    for tag, host, path in remotes:
+        local = INCIDENT_DIR.parent / f"incidents_{tag}"
+        local.mkdir(parents=True, exist_ok=True)
+        try:
+            subprocess.run(
+                ["rsync", "-az", "--timeout=10", f"{host}:{path}", str(local) + "/"],
+                timeout=20, capture_output=True,
+            )
+        except Exception as e:
+            log(f"rsync {tag} failed: {e}")
+            continue
+        for pending in local.glob("*.pending_macbook"):
+            try:
+                data = json.loads(pending.read_text())
+            except Exception:
+                continue
+            marker = INCIDENT_DIR / f"{tag}_{pending.stem}.seen"
+            if marker.exists():
+                continue
+            marker.write_text(data.get("host", tag))
+            fake_inc = INCIDENT_DIR / f"{tag}_{pending.stem}.json"
+            fake_inc.write_text(json.dumps({"remote": tag, "original": data}, indent=2))
+            log(f"picked up remote incident from {tag}: {pending.name}")
+            is_mac = True
+            try:
+                safe_prompt = data["prompt"].replace('"', '\\"').replace("\n", " ")
+                applescript = (
+                    f'tell application "Terminal" to do script '
+                    f'"cd {BASE} && echo \'SENTINEL REMOTE FIX ({tag}) — {pending.name}\' && '
+                    f'claude --dangerously-skip-permissions \\"{safe_prompt}\\""'
+                )
+                subprocess.Popen(["osascript", "-e", applescript], start_new_session=True)
+            except Exception as e:
+                log(f"remote agent spawn failed: {e}")
 
 
 def check_sweep_csvs(state):
@@ -344,6 +394,7 @@ def main():
         log(f"sentinel up host={HOST} base={BASE} auto_fix={AUTO_FIX} poll={POLL_SEC}s")
         while True:
             try:
+                pull_remote_incidents()
                 scan_once(state)
                 save_state(state)
             except Exception as e:
