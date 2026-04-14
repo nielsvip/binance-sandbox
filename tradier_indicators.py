@@ -1694,7 +1694,12 @@ class TradierBarManager:
                     if existing_size > 1000 and new_size < existing_size * min_ratio:
                         try:
                             with open(path, 'rb') as f:
-                                existing = safe_json_loads(f.read())
+                                raw = f.read()
+                            try:
+                                existing = safe_json_loads(raw)
+                            except Exception:
+                                import json as _json
+                                existing = _json.loads(raw)
                             if existing:
                                 merged_map = {r['timestamp']: r for r in existing if 'timestamp' in r}
                                 for r in data:

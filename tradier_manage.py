@@ -7635,50 +7635,58 @@ class TradierTradeManager:
                         k_5m_prev = float(i.get("stoch_k_5m_prev", 50))
                         d_5m = float(i.get("stoch_d_5m", 50))
                         k_15m = float(i.get("stoch_k_15m", 50))
+                        k_15m_prev = float(i.get("stoch_k_15m_prev", 50))
+                        k_1h_rm = float(i.get("stoch_k_1h", 50))
                         wt1_5m = float(i.get("wt1_5m", 0))
                         wt2_5m = float(i.get("wt2_5m", 0))
                         wt1_15m = float(i.get("wt1_15m", 0))
                         wt2_15m = float(i.get("wt2_15m", 0))
                         wt1_1h = float(i.get("wt1_1h", 0))
                         wt2_1h = float(i.get("wt2_1h", 0))
+                        wt1_4h = float(i.get("wt1_4h", 0))
+                        wt2_4h = float(i.get("wt2_4h", 0))
+                        wt1_D = float(i.get("wt1_D", 0))
+                        wt2_D = float(i.get("wt2_D", 0))
                         cand["last_check"] = now_utc.isoformat()
                         cand["attempts"] = cand.get("attempts", 0) + 1
                         changed = True
-                        # REENTRY must wait for the SAME signal that caused exit to REVERSE
-                        # Exit scorer fires on 1h BEAR cross + 4h turn. Reentry must require:
-                        # (a) 1h WT cross is NOT bear (or has flipped to BULL for LONG)
-                        # (b) 4h WT is aligned with trade direction (not turning against)
-                        # (c) Current exit score < threshold (NOT just 2/3 wt1>wt2)
-                        # (d) STOCH GATE: k15m not overbought (LONG) or not oversold (SHORT)
-                        #     Prevents reentry immediately after exit when stoch hasn't reset.
-                        #     k15=95 at exit → reenter immediately → DELTA_EXIT fires again.
                         reenter = False
                         wt_cross_1h = str(i.get("wt_cross_1h", ""))
-                        wt1_4h = float(i.get("wt1_4h", 0))
-                        wt2_4h = float(i.get("wt2_4h", 0))
                         # Check the current exit score — if it's still high, DO NOT reenter
                         _rm_exit_score, _rm_exit_reason = wt_dc_score_exit(i, side == "LONG", current_price)
                         _rm_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 25)
                         if _rm_exit_score >= _rm_threshold:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
                             continue
-                        # STOCH GATE: k_5m must be below 50 AND rising (LONG) or above 50 AND falling (SHORT).
-                        # HTF STOCH GATE: k_1h and k_15m must NOT be overbought (>80 LONG) / oversold (<20 SHORT).
-                        # A k5m dip to 25 inside a k_1h=83 overbought environment is noise — DELTA_EXIT fires again immediately.
-                        _rm_k5_mid = 50.0
-                        k_1h_rm = float(i.get("stoch_k_1h", 50))
-                        if side == "LONG" and not (k_5m < _rm_k5_mid and k_5m > k_5m_prev):
-                            logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising)")
-                            continue
-                        if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
-                            logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
-                            continue
-                        if side == "SHORT" and not (k_5m > _rm_k5_mid and k_5m < k_5m_prev):
-                            logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling)")
-                            continue
-                        if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
-                            logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
-                            continue
+                        # STOCH GATE — 3 tiers based on hours since exit:
+                        # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
+                        # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering
+                        # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
+                        if hours_since < 3.0:
+                            _k5m_rising = k_5m > k_5m_prev
+                            _k15m_rising = k_15m > k_15m_prev
+                            _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
+                            if side == "LONG" and not (_k5m_rising and _k15m_rising and _htf_wt_fav >= 2):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG rally gate FAIL k5m={k_5m:.0f}(rising={_k5m_rising}) k15m(rising={_k15m_rising}) htf={_htf_wt_fav}/3 (need rising+rising+2/3 HTF, <3h window)")
+                                continue
+                            if side == "SHORT" and not (k_5m < k_5m_prev and k_15m < k_15m_prev and _htf_wt_fav >= 2):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m(falling={k_15m < k_15m_prev}) htf={_htf_wt_fav}/3 (need falling+falling+2/3 HTF, <3h window)")
+                                continue
+                        elif hours_since < 48.0:
+                            if side == "LONG" and not (k_5m < 50.0 and k_5m > k_5m_prev):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising, {hours_since:.1f}h)")
+                                continue
+                            if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
+                                continue
+                            if side == "SHORT" and not (k_5m > 50.0 and k_5m < k_5m_prev):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling, {hours_since:.1f}h)")
+                                continue
+                            if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
+                                continue
+                        else:
+                            logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch gate BYPASSED, relying on exit score + WT alignment")
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned
                         if side == "LONG":
                             htf_aligned = (wt1_4h > wt2_4h) and (wt_cross_1h != "BEAR")
