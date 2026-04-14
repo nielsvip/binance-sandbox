@@ -4990,6 +4990,12 @@ class StockStrategy:
         _wt1_5m = float(i.get('wt1_5m', 0) or 0); _wt2_5m = float(i.get('wt2_5m', 0) or 0)
         _wt1_15m = float(i.get('wt1_15m', 0) or 0); _wt2_15m = float(i.get('wt2_15m', 0) or 0)
         _wt1_1h = float(i.get('wt1_1h', 0) or 0); _wt2_1h = float(i.get('wt2_1h', 0) or 0)
+        _wt1_4h = float(i.get('wt1_4h', 0) or 0); _wt2_4h = float(i.get('wt2_4h', 0) or 0)
+        # 4h must be aligned — 5m dip within a 4h bearish trend is a dead-cat bounce, not a reentry
+        if is_long and _wt1_4h <= _wt2_4h:
+            return "NO_ACTION", f"4H_WT_BEARISH_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}_no_reentry", 0.0, 0.0
+        if not is_long and _wt1_4h >= _wt2_4h:
+            return "NO_ACTION", f"4H_WT_BULLISH_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}_no_reentry", 0.0, 0.0
         _wt_fav = 0
         if is_long:
             if _wt1_5m > _wt2_5m: _wt_fav += 1
@@ -7119,7 +7125,14 @@ class TradierTradeManager:
         if action == "AUGMENT" and not _is_reentry and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
-            
+        # HARD WALL: position already open (positionAmt > 0) → NO buy of any kind without MIN_GAIN.
+        # Applies to ALL action labels (AUGMENT, REENTRY, OPEN, etc.) — no _is_reentry bypass.
+        # Only exemption: exit actions (CLOSE, REDUCE, PROFIT_TAKE).
+        _pos_qty_hw = abs(float(getattr(position, 'positionAmt', 0) or 0))
+        if not is_exit_action and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+            logger.warning(f"[HARD_MIN_GAIN_WALL] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED action={action}")
+            return f"BLOCKED_MIN_GAIN_WALL_{position.gain:.2f}pct<{_min_aug_gain}pct"
+
         if action == "OPEN" and position_side == "SHORT" and symbol.upper() in self.non_shortable_symbols:
             logger.warning(f"✋ {symbol} BLOCKED: Symbol not available for short sales on Tradier")
             return "NON_SHORTABLE"

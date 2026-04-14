@@ -53,7 +53,7 @@ def _ssh_run(host, cmd, timeout=15):
     return r.stdout
 
 
-MAX_CSV_AGE_HOURS = 48  # Only scan CSVs newer than this — old CSVs keep regenerating stale alerts
+MAX_CSV_AGE_HOURS = 12  # Only scan CSVs newer than this — old CSVs keep regenerating stale alerts
 
 def _list_csvs(m):
     cutoff = time.time() - MAX_CSV_AGE_HOURS * 3600
@@ -61,8 +61,8 @@ def _list_csvs(m):
         d = Path(m["sweep_dir"])
         if not d.exists(): return []
         return sorted([str(p) for p in d.glob("v8_sweep_*.csv") if p.stat().st_mtime >= cutoff])
-    # For remote: use ls -lt and filter by timestamp via find
-    raw = _ssh_run(m["host"], f'find {m["sweep_dir"]} -name "v8_sweep_*.csv" -mmin -{MAX_CSV_AGE_HOURS * 60} 2>/dev/null')
+    # For remote: use ls -lt and filter by timestamp via find (-maxdepth 1 excludes archive/ subdir)
+    raw = _ssh_run(m["host"], f'find {m["sweep_dir"]} -maxdepth 1 -name "v8_sweep_*.csv" -mmin -{MAX_CSV_AGE_HOURS * 60} 2>/dev/null')
     return [p.strip() for p in raw.splitlines() if p.strip()]
 
 
@@ -114,6 +114,8 @@ def _analyse_csv(machine_name, csv_path, rows):
         if len(members) < DUPLICATE_THRESHOLD: continue
         # Skip low-trade groups — too few trades to distinguish switch effect from noise
         if out_key[2] < 5: continue
+        # Skip losing configs — dead knobs on negative-sharpe groups are noise, not actionable
+        if out_key[0] <= 0: continue
         cfg_cols = [c for c in members[0].keys() if c.startswith("cfg_")]
         dead = []
         for col in cfg_cols:
