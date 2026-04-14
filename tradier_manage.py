@@ -7666,12 +7666,18 @@ class TradierTradeManager:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
-                            if side == "LONG" and not (_k5m_rising and _k15m_rising and _htf_wt_fav >= 2):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG rally gate FAIL k5m={k_5m:.0f}(rising={_k5m_rising}) k15m(rising={_k15m_rising}) htf={_htf_wt_fav}/3 (need rising+rising+2/3 HTF, <3h window)")
-                                continue
-                            if side == "SHORT" and not (k_5m < k_5m_prev and k_15m < k_15m_prev and _htf_wt_fav >= 2):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m(falling={k_15m < k_15m_prev}) htf={_htf_wt_fav}/3 (need falling+falling+2/3 HTF, <3h window)")
-                                continue
+                            _rally_k15m_max = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0))
+                            _rally_htf_min = int(getattr(config, 'REENTRY_RALLY_HTF_MIN', 2))
+                            if side == "LONG":
+                                _k15m_lvl_ok = k_15m < _rally_k15m_max
+                                if not (_k5m_rising and _k15m_rising and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG rally gate FAIL k5m={k_5m:.0f}(rising={_k5m_rising}) k15m={k_15m:.0f}<{_rally_k15m_max:.0f}(rising={_k15m_rising}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
+                                    continue
+                            else:
+                                _k15m_lvl_ok = k_15m > (100.0 - _rally_k15m_max) if _rally_k15m_max < 100.0 else True
+                                if not (k_5m < k_5m_prev and k_15m < k_15m_prev and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
+                                    continue
                         elif hours_since < 48.0:
                             if side == "LONG" and not (k_5m < 50.0 and k_5m > k_5m_prev):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising, {hours_since:.1f}h)")

@@ -415,6 +415,11 @@ class TradierConfig:
     REENTRY_TIER2_PRICE_PCT_TRADIER: float = 0.003  # 0.3% price move triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
     REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 120.0  # Force entry after 120min
+    # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned
+    # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold
+    # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
+    REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20
+    REENTRY_RALLY_HTF_MIN: int = 2          # sweep: 1 / 2 / 3
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
     MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%.
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
