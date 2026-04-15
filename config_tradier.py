@@ -403,8 +403,8 @@ class TradierConfig:
     MI_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, MI_EXIT_ENABLED_TRADIER actually gates exits. Default False = live unchanged.
     WT_EXIT_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, WT_EXIT_MIN_TFS_TRADIER actually gates exits. Default False = live unchanged.
     DC_ENTRY_VETO_ENABLED_TRADIER: bool = False  # SENTINEL_FIX 2026-04-14: when True, DC_POSITION_ENTRY_THRESHOLD gates entries (require dc_pos in zone). Default False = live unchanged.
-    K_ZONE_LONG_THRESHOLD_TRADIER: int = 80   # T4 sweep: 80 avg=6.563 vs 35=5.567 (+18%). Best tested.
-    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 20  # T4 sweep: 20 avg=6.216 vs 65=5.681 (+10%). Best tested.
+    K_ZONE_LONG_THRESHOLD_TRADIER: int = 35   # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)
+    K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single config win.
     BOUNCE_REENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T53: After profitable exit, K must reset to zone before reentry.
     BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35
@@ -532,7 +532,7 @@ class TradierConfig:
     TF_MACRO: str = "D"     # Same as HTF3 for stocks (no weekly in live)
     # === BACKTEST-VALIDATED GATES (121 stocks, train/test confirmed) ===
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True  # Block entries on signals confirmed -EV on both train+test
-    DC_POSITION_ENTRY_THRESHOLD: float = 0.25  # Backtest: DC pos < 0.25 = Sharpe 18.57 on 61 test stocks (STRICT_NO_LOSS)
+    DC_POSITION_ENTRY_THRESHOLD: float = 0.15  # S1_SWEEP_2026-04-15: 0.15 top S1 config Sharpe=4.23 on 20605 trades (was 0.25)
     MFI_FLIP_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_148: Exit when MFI exhausts (+3.91% avg vs +1.09% fixed TP, 44 trades)
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0  # Exit LONG when MFI_1h > 70 (overbought = sell)
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0  # Exit SHORT when MFI_1h < 30 (oversold = cover)
@@ -628,7 +628,7 @@ class TradierConfig:
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
     # === MOMENTUM INTERCEPTION (MI) — Early exit/entry via slowing deltas, LH/LL structure, divergence ===
-    MI_EXIT_ENABLED_TRADIER: bool = False  # Master switch — OFF until sweep-proven
+    MI_EXIT_ENABLED_TRADIER: bool = True  # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades
     MI_ENTRY_ENABLED_TRADIER: bool = False  # Entry scoring bonus for favorable MI signals
     MI_STRUCT_EXIT_ENABLED_TRADIER: bool = True  # WT peak LH / trough HL = structural weakening
     MI_EXHAUST_EXIT_ENABLED_TRADIER: bool = True  # EXHAUST_UP/DOWN on 1h/4h
@@ -743,7 +743,7 @@ class TradierConfig:
     DELTA_OPTIONS_GIVEBACK_PCT: float = 30.0  # Close when 30% of max gain given back
     # Legacy (superseded by scorers but kept for V8 sweep compatibility)
     WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"
-    WT_EXIT_MIN_TFS_TRADIER: int = 5
+    WT_EXIT_MIN_TFS_TRADIER: int = 4  # S1_SWEEP_2026-04-15: 4 top S1 cfg Sharpe=4.23 on 20605 trades (was 5)
     WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler.
     MIN_HOLD_BARS_TRADIER: int = 32  # Grace period only (160min). Actual avg hold = 239 bars (20hrs) — WT exit rides the full wave.
     COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min).
@@ -816,7 +816,7 @@ class TradierConfig:
 
     # Momentum Interception (MI) — 5 sub-signal momentum degradation detector
     TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False      # wait for MI reset before entry
-    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False       # close when MI detects intercept down
+    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = True        # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades
     TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3             # N of 5 sub-signals must fire
 
     # DC Daytrade — buy DC upper-quarter breakouts on 5m/15m with 1h expansion
@@ -825,11 +825,11 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352)
-    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # T4 sweep: 0.25 avg=10.230 best tested (was 0.2)
+    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.15   # S1_SWEEP_2026-04-15: 0.15 top S1 cfg Sharpe=4.23 on 20605 trades (was 0.25)
 
     # K-Zone — stochastic K-zone entry filter
-    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 80     # T4 sweep: 80 avg=6.563 vs 35=5.567 (+18%). Best tested.
-    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 20    # T4 sweep: 20 avg=6.216 vs 65=5.681 (+10%). Best tested.
+    TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)
+    TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65    # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)
     TRADIER_K_ZONE_ENTRY_BONUS_TRADIER: int = 25        # score add when K in zone
 
     # RSI2 — 2-period RSI exit gate
@@ -856,7 +856,7 @@ class TradierConfig:
     # WaveTrend composite scoring + exit TF config
     TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
     TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # T4 sweep: 5m+15m+1h+4h+D avg=5.961 best tested (was "3m,15m,1h")
-    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 4             # T4 sweep: 4 avg=5.889 best tested (was 2)
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 4             # S1_SWEEP_2026-04-15 confirms: 4 top S1 cfg Sharpe=4.23 on 20605 trades (unchanged)
 
     # Entry score aggregate threshold
     TRADIER_ENTRY_SCORE_THRESHOLD: int = 24             # min aggregate signal score for entry

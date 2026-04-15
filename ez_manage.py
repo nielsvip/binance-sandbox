@@ -15203,22 +15203,53 @@ class MultiAccountTradeManager:
                     if current_price <= 0: continue
                     exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
                     if exit_price <= 0: continue
+                    # ═══ 2026-04-15 REWRITE — 60min / exit-price / full-HTF rule ═══
+                    # Pathway A (exit crossed):      qty 100%
+                    #   <60min: only needs k_3m in favor + rising (bypass HTF)
+                    #   >60min: needs full HTF stack (wt_3m AND wt_15m AND 2/3 of 1h/4h/D)
+                    # Pathway B (exit NOT crossed): qty 135% (between 120-150%)
+                    #   any time: needs full HTF stack
                     _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                    # Elapsed since exit (ISO timestamp string on data['exit_time'])
+                    _elapsed_s = 999999.0
+                    _exit_ts_raw = data.get('exit_time', '')
+                    if _exit_ts_raw:
+                        try:
+                            _exit_dt = datetime.fromisoformat(str(_exit_ts_raw).replace('Z', '+00:00'))
+                            _elapsed_s = (datetime.now(timezone.utc) - _exit_dt).total_seconds()
+                        except Exception:
+                            pass
+                    _under_60 = _elapsed_s < 3600.0
+                    # WT stack
+                    _wt1_3m_gr = safe_fetch_float(indicators.get('wt1_3m', 0), 0.0); _wt2_3m_gr = safe_fetch_float(indicators.get('wt2_3m', 0), 0.0)
+                    _wt1_15m_gr = safe_fetch_float(indicators.get('wt1_15m', 0), 0.0); _wt2_15m_gr = safe_fetch_float(indicators.get('wt2_15m', 0), 0.0)
+                    _wt1_1h_gr = safe_fetch_float(indicators.get('wt1_1h', 0), 0.0); _wt2_1h_gr = safe_fetch_float(indicators.get('wt2_1h', 0), 0.0)
+                    _wt1_4h_gr = safe_fetch_float(indicators.get('wt1_4h', 0), 0.0); _wt2_4h_gr = safe_fetch_float(indicators.get('wt2_4h', 0), 0.0)
+                    _wt1_D_gr = safe_fetch_float(indicators.get('wt1_D', 0), 0.0); _wt2_D_gr = safe_fetch_float(indicators.get('wt2_D', 0), 0.0)
+                    _wt3m_ok = (is_long and _wt1_3m_gr > _wt2_3m_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr)
+                    _wt15m_ok = (is_long and _wt1_15m_gr > _wt2_15m_gr) or (not is_long and _wt1_15m_gr < _wt2_15m_gr)
+                    _wt1h_ok = (is_long and _wt1_1h_gr > _wt2_1h_gr) or (not is_long and _wt1_1h_gr < _wt2_1h_gr)
+                    _wt4h_ok = (is_long and _wt1_4h_gr > _wt2_4h_gr) or (not is_long and _wt1_4h_gr < _wt2_4h_gr)
+                    _wtD_ok = (is_long and _wt1_D_gr > _wt2_D_gr) or (not is_long and _wt1_D_gr < _wt2_D_gr)
+                    _htf_count = int(_wt1h_ok) + int(_wt4h_ok) + int(_wtD_ok)
+                    _full_stack = _wt3m_ok and _wt15m_ok and _htf_count >= 2
+                    # k_3m bias for under-60min crossed bypass
+                    _k3m_bias_ok = (is_long and k_3m < 50 and k_3m > d_3m) or (not is_long and k_3m > 50 and k_3m < d_3m)
+                    should_reenter = False
+                    _qty_mult = 0.0
+                    _reason_tag = ""
                     if _price_crossed:
-                        should_reenter = True
+                        if _under_60 and _k3m_bias_ok:
+                            should_reenter = True; _qty_mult = 1.0; _reason_tag = "CROSSED_u60_kbias"
+                        elif (not _under_60) and _full_stack:
+                            should_reenter = True; _qty_mult = 1.0; _reason_tag = f"CROSSED_o60_FULLSTACK_htf{_htf_count}"
                         if position_key not in _price_crossed_since:
                             _price_crossed_since[position_key] = time.time()
-                            logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} — MUST REENTER NOW. ZERO TOLERANCE.")
+                            logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s u60={_under_60} k3m_bias={_k3m_bias_ok} full_stack={_full_stack}")
                     else:
                         _price_crossed_since.pop(position_key, None)
-                        _uptick = is_long and k_1m > d_1m
-                        _downtick = not is_long and k_1m < d_1m
-                        _not_exhausted_long = not (is_long and k_3m > 90)
-                        _not_exhausted_short = not (not is_long and k_3m < 10)
-                        _wt1_3m_gr = safe_fetch_float(indicators.get('wt1_3m', 0), 0.0)
-                        _wt2_3m_gr = safe_fetch_float(indicators.get('wt2_3m', 0), 0.0)
-                        _wt_ok_gr = (is_long and _wt1_3m_gr > _wt2_3m_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr)
-                        should_reenter = (_uptick or _downtick) and (_not_exhausted_long and _not_exhausted_short) and _wt_ok_gr
+                        if _full_stack:
+                            should_reenter = True; _qty_mult = 1.35; _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}"
                     if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
                         should_reenter = False
                         logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")
@@ -15229,10 +15260,11 @@ class MultiAccountTradeManager:
                             logger.info(f"[GUARANTEED_REENTRY_DELTA_BLOCK] {position_key}: {_gr_reason}")
                     if should_reenter:
                         data['attempts'] = data.get('attempts', 0) + 1
-                        reason = f"GUARANTEED_REENTRY_k1m{k_1m:.0f}_k3m{k_3m:.0f}_exit{exit_price:.4f}_px{current_price:.4f}_crossed{_price_crossed}_attempt{data['attempts']}"
-                        logger.warning(f"[REENTRY_ENFORCE] {position_key}: Price {'CROSSED EXIT — 0%% TOLERANCE' if _price_crossed else '1m tick'} — REENTRY NOW ({reason})")
-                        override_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
-                        if override_qty <= 0: override_qty = config.START_POSITION_SIZE / current_price
+                        reason = f"GUARANTEED_REENTRY_{_reason_tag}_k3m{k_3m:.0f}_exit{exit_price:.4f}_px{current_price:.4f}_mult{_qty_mult:.2f}_elapsed{_elapsed_s:.0f}s_attempt{data['attempts']}"
+                        logger.warning(f"[REENTRY_ENFORCE] {position_key}: {_reason_tag} mult={_qty_mult:.2f} elapsed={_elapsed_s:.0f}s — REENTRY NOW ({reason})")
+                        _base_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
+                        if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
+                        override_qty = _base_qty * _qty_mult
                         result = await queue_trade_action(self.order_queue, self, position_key, "REENTRY", reason, 99.0, override_qty=override_qty)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             data['status'] = 'queued'

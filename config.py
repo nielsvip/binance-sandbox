@@ -196,7 +196,7 @@ class Config:
     HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
     HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
-    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.50  # Hedge when wt1_15m goes against + loss > 0.50%.
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = 0.0  # 2026-04-15 user rule: hedge the INSTANT gain goes <0% — don't wait for larger loss
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
@@ -355,7 +355,7 @@ class Config:
     DELTA_EXIT_SCORE_BONUS: int = 20       # Score bonus when delta confirms exit
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
-    LEGACY_GUARANTEED_REENTRY: bool = False    # OFF 2026-04-15 per user — fired mid-move on LTF only
+    LEGACY_GUARANTEED_REENTRY: bool = True     # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
     LEGACY_DIRECTION_FAVORABLE: bool = True    # ON — gated by tolerant delta
     LEGACY_DC_BREAKOUT_REENTRY: bool = True    # ON — gated by tolerant delta
     LEGACY_PROC_SINGLE_REENTRY: bool = False   # OFF 2026-04-15 per user — fired mid-move on LTF only

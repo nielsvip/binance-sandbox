@@ -2126,19 +2126,36 @@ def _try_restart_script_with_args(script_name: str, *args):
 
 def spawn_opus_agent(issue_key: str, prompt: str) -> Optional[int]:
     """Spawn a Claude Opus agent in the background to diagnose/fix an issue.
-    Returns the subprocess PID, or None if blocked by cooldown/limit."""
-    import subprocess
+    Returns the subprocess PID, or None if blocked by cooldown/limit/killswitch/budget."""
+    import subprocess, json as _json
+    if os.environ.get("OPUS_SPAWN_ENABLED", "0") != "1":
+        logger.warning(f"[SUPERVISOR] Opus spawn DISABLED (OPUS_SPAWN_ENABLED!=1) — skipping '{issue_key}'")
+        return None
     now = time.time()
-    # Cooldown check
+    _budget_path = LOG_DIR / "opus_spawn_budget.json"
+    _today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        _b = _json.loads(_budget_path.read_text()) if _budget_path.exists() else {}
+    except Exception:
+        _b = {}
+    _daily_count = int(_b.get(_today, 0))
+    _daily_cap = int(os.environ.get("OPUS_SPAWN_DAILY_CAP", "8"))
+    if _daily_count >= _daily_cap:
+        logger.warning(f"[SUPERVISOR] Opus daily budget {_daily_cap} exhausted ({_daily_count}) — skipping '{issue_key}'")
+        return None
     if now - _opus_cooldowns.get(issue_key, 0) < OPUS_AGENT_COOLDOWN:
         return None
-    # Concurrency check
     active = {k: v for k, v in _opus_agents_running.items() if now - v < 300}
     _opus_agents_running.clear()
     _opus_agents_running.update(active)
     if len(_opus_agents_running) >= OPUS_MAX_CONCURRENT:
         logger.info(f"[SUPERVISOR] Opus agent limit reached ({OPUS_MAX_CONCURRENT}), queuing {issue_key}")
         return None
+    _b[_today] = _daily_count + 1
+    try:
+        _budget_path.write_text(_json.dumps(_b))
+    except Exception:
+        pass
     # Spawn agent
     log_file = LOG_DIR / f"opus_agent_{issue_key.replace(' ', '_')[:40]}_{datetime.now(timezone.utc).strftime('%H%M')}.log"
     full_prompt = f"""You are a trading system supervisor agent. Diagnose and fix the following issue.

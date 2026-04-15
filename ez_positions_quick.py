@@ -5291,6 +5291,35 @@ class HedgeEngine:
                                     logger.info(f"[HEDGE_COMPLETED_LOCK_SET] {losing_position_key}: actual hedge opened. Locked for {self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s.")
                                     results['actual_symbol'] = {'status': 'success', 'record': hedge_record}
                                     if _is_last_resort:
+                                        # 2026-04-15: LAST_RESORT firing means the origin was opened badly.
+                                        # Log the origin's last_reason + append to flagged_origins.json for review.
+                                        try:
+                                            _cand = await self.tracker_manager.get_exit_candidate(losing_position_key)
+                                            _origin_reason = str(_cand.get('last_reason', '') if _cand else '')
+                                        except Exception:
+                                            _origin_reason = ''
+                                        logger.critical(f"🚩 [HEDGE_SAME_SYM_LAST_RESORT] FLAG_ORIGIN: {losing_position_key} opened badly — last_reason='{_origin_reason}' — hedge {hedge_position_key} locking loss.")
+                                        try:
+                                            import json as _fj
+                                            _flag_path = self.config.BASE_PATH / 'data' / 'flagged_origins.json'
+                                            _flag_path.parent.mkdir(parents=True, exist_ok=True)
+                                            _flagged = {}
+                                            if _flag_path.exists():
+                                                try:
+                                                    with open(_flag_path) as _ff: _flagged = _fj.load(_ff)
+                                                except Exception: _flagged = {}
+                                            _entry = _flagged.get(losing_position_key, {'count': 0, 'reasons': []})
+                                            _entry['count'] = _entry.get('count', 0) + 1
+                                            _entry['last_ts'] = time.time()
+                                            _entry['last_price'] = current_price
+                                            _reasons = _entry.get('reasons', [])
+                                            if _origin_reason and _origin_reason not in _reasons:
+                                                _reasons.append(_origin_reason)
+                                            _entry['reasons'] = _reasons[-10:]
+                                            _flagged[losing_position_key] = _entry
+                                            with open(_flag_path, 'w') as _ff: _fj.dump(_flagged, _ff, indent=2)
+                                        except Exception as _fe:
+                                            logger.debug(f"[FLAG_ORIGIN] write failed: {_fe}")
                                         logger.critical(f"[HEDGE_SAME_SYM_LAST_RESORT] SUCCESS: {hedge_position_key} opened to lock loss on {losing_position_key}")
                                 else:
                                     results['actual_symbol'] = {'status': 'failed', 'reason': failure_reason}
