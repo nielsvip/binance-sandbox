@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-15 07:52:38 UTC
+# Copilot Status — 2026-04-15 08:07:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T07:48:54
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T07:48:54
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T07:48:54
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T07:49:55
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T07:49:55
-- **STALE_INDICATORS** [tradier]  — 2026-04-15T07:50:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T07:50:56
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T07:50:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T07:51:58
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T07:51:58
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T08:05:22
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T08:05:22
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T08:05:22
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T08:06:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T08:06:23
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T08:06:23
+- **STALE_INDICATORS** [tradier]  — 2026-04-15T08:07:24
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T08:07:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T08:07:24
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T08:07:24
 
 ## Missed Trades (trader comparison)
 
@@ -35,7 +35,7 @@ _None_
 - HELD: **MSFT** LONG (tradier) peak +7.7%, now +0.5%
 - HELD: **MU** LONG (tradier) peak +7.2%, now +3.5%
 - HELD: **ETH** LONG (tradier) peak +5.3%, now +-1.2%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-4.6%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-4.8%
 - HELD: **SNDK** LONG (tradier) peak +3.8%, now +0.2%
 - HELD: **XOM** SHORT (tradier) peak +3.8%, now +-0.5%
 
