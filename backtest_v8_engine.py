@@ -430,6 +430,52 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
             pass
         ez_positions_quick.load_initial_market_data = _skip_market_data
 
+    # --- PERF FIX 2026-04-15: last_events.json refresh was firing every bar ---
+    # Root cause: cache TTL uses time.time() which V8 patches to sim time.
+    # Sim time advances 900s/bar, so (now - last_save) > 60 is always True.
+    # Result: 1MB JSON parsed 500+ times in 500 bars = 6s/500 bars = 12ms/bar.
+    # In backtest there's no live event data — stub refresh to no-op and pre-set cache.
+    if hasattr(ez_positions_quick, '_refresh_last_events_cache'):
+        def _noop_refresh_cache():
+            # Set cache_time to a huge future value so TTL check (t-cached)>60 is False.
+            import time as _rt
+            ez_positions_quick._last_events_cache = {}
+            ez_positions_quick._last_events_cache_time = 1e18
+        ez_positions_quick._refresh_last_events_cache = _noop_refresh_cache
+        ez_positions_quick._last_events_cache = {}
+        ez_positions_quick._last_events_cache_time = 1e18
+
+    # --- PERF FIX 2026-04-15: save_tracker was writing tracker JSON every bar ---
+    # Root cause: min_interval check uses time.time() which advances 900s/bar.
+    # Tracker gets serialized + written every bar = ~1-2ms × N_bars.
+    # In backtest we don't need the JSON on disk — noop the save path.
+    if hasattr(ez_positions_quick, 'TrackerManager'):
+        async def _noop_save_tracker(self, account_key: str, force: bool = False,
+                                      min_interval: int = 30, trade_manager=None):
+            # Clear dirty flags to preserve downstream correctness (no-op save).
+            try:
+                self._exit_candidates_dirty[account_key] = False
+                self._entry_candidates_dirty[account_key] = False
+                self._last_tracker_save_time[account_key] = _sim_ts[0]
+            except Exception:
+                pass
+        ez_positions_quick.TrackerManager.save_tracker = _noop_save_tracker
+
+    # --- PERF FIX 2026-04-15: PositionService._hot_path_loop polling multiprocessing ---
+    # The hot path background task polls a SharedMemoryProxy every 0.1s REAL time,
+    # which in backtest accumulates recv() overhead (pickle.loads + posix.read).
+    # In V8 we update data_manager._cold_data directly each bar — no need for polling.
+    if hasattr(ez_positions_service, 'PositionService'):
+        async def _noop_hot_path(self):
+            while not getattr(self, '_shutdown', False):
+                await asyncio.sleep(10.0)  # real sleep patched to no-op via _SimTime; this yields only
+        ez_positions_service.PositionService._hot_path_loop = _noop_hot_path
+        if hasattr(ez_positions_service.PositionService, '_cold_data_loop'):
+            async def _noop_cold_path(self):
+                while not getattr(self, '_shutdown', False):
+                    await asyncio.sleep(10.0)
+            ez_positions_service.PositionService._cold_data_loop = _noop_cold_path
+
     # --- Return refs for the simulation loop ---
     return _indicator_cache, _price_cache, _executed_trades
 
@@ -1044,6 +1090,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # In sweep mode: report every 200 steps for fast feedback. Normal: every 2000 (60 reports/run).
     report_every = 200 if _SWEEP_MODE else max(1, min(2000, len(sorted_ts) // 60))
     _last_heartbeat = _real_time_module.time()
+    # V8_MAX_BARS env var (for profiling / diagnostic runs) — cap total bars processed
+    _v8_max_bars = int(os.environ.get("V8_MAX_BARS", "0") or 0)
+    if _v8_max_bars > 0:
+        sorted_ts = sorted_ts[:_v8_max_bars]
+        v8_logger.info(f"[V8_MAX_BARS] capped sim to {_v8_max_bars} bars")
 
     for step, ts in enumerate(sorted_ts):
         _sim_ts[0] = float(ts)
