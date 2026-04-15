@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-15 10:50:53 UTC
+# Copilot Status — 2026-04-15 11:06:13 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T10:48:30
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T10:48:30
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T10:48:30
-- **STALE_INDICATORS** [tradier]  — 2026-04-15T10:49:31
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T10:49:31
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T10:49:31
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T10:49:31
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T10:50:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T10:50:32
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T10:50:32
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T11:03:51
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T11:03:51
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T11:03:51
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T11:04:52
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T11:04:52
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T11:04:52
+- **STALE_INDICATORS** [tradier]  — 2026-04-15T11:05:52
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T11:05:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T11:05:53
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T11:05:53
 
 ## Missed Trades (trader comparison)
 
@@ -29,13 +29,13 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-48.8%
+- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-49.1%
 - HELD: **ARM** LONG (tradier) peak +8.6%, now +-0.3%
 - HELD: **USO** LONG (tradier) peak +7.7%, now +-0.5%
 - HELD: **MSFT** LONG (tradier) peak +7.7%, now +0.5%
 - HELD: **MU** LONG (tradier) peak +7.2%, now +3.5%
 - HELD: **ETH** LONG (tradier) peak +5.3%, now +-1.2%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.7%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.4%
 - HELD: **SNDK** LONG (tradier) peak +3.8%, now +0.2%
 - HELD: **XOM** SHORT (tradier) peak +3.8%, now +-0.5%
 
