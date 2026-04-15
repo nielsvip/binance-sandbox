@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-15 03:37:05 UTC
+# Copilot Status — 2026-04-15 03:52:26 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T03:35:01
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:35:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:35:01
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T03:36:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:36:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:36:02
-- **STALE_INDICATORS** [tradier]  — 2026-04-15T03:37:03
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T03:37:04
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:37:04
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:37:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:49:21
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T03:50:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:50:23
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:50:23
+- **STALE_INDICATORS** [tradier]  — 2026-04-15T03:51:24
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-15T03:51:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:51:24
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:51:24
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T03:52:25
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T03:52:25
 
 ## Missed Trades (trader comparison)
 
@@ -27,19 +27,18 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 9 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 9 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-47.8%
+- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-47.4%
 - HELD: **ARM** LONG (tradier) peak +8.6%, now +-0.3%
 - HELD: **USO** LONG (tradier) peak +7.7%, now +-0.5%
 - HELD: **MSFT** LONG (tradier) peak +7.7%, now +0.5%
 - HELD: **MU** LONG (tradier) peak +7.2%, now +3.5%
 - HELD: **ETH** LONG (tradier) peak +5.3%, now +-1.2%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.2%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.3%
 - HELD: **SNDK** LONG (tradier) peak +3.8%, now +0.2%
 - HELD: **XOM** SHORT (tradier) peak +3.8%, now +-0.5%
 
-- WATCHING: **SOLUSDC** SHORT (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **FIVN** SHORT (tradier) peaked +3.3%, exited 0m ago
 - WATCHING: **1000BONKUSDC** SHORT (crypto) peaked +3.1%, exited 0m ago
 
