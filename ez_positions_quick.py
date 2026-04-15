@@ -10770,7 +10770,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _fresh_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
                         _fresh_gain = ((_fresh_price - _fresh_entry) / _fresh_entry * 100) if _fresh_entry > 0 and is_long else (((_fresh_entry - _fresh_price) / _fresh_entry * 100) if _fresh_entry > 0 else current_gain)
                         _spa_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
-                        _spa_allow_near_be = _spa_max_g >= 0.5 and _fresh_gain > -0.5
+                        _spa_allow_near_be = getattr(config, 'LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED', False) and _spa_max_g >= 0.5 and _fresh_gain > -0.5
                         _spa_is_breakeven = hard_exit_reason and ('BREAKEVEN' in hard_exit_reason or 'DC_LOW4_3M' in hard_exit_reason or 'DC_HIGH4_3M' in hard_exit_reason)
                         if _fresh_gain < -0.01 and not is_hedge and not _spa_allow_near_be and not _spa_is_breakeven:
                             logger.critical(f"🛑 [STALE_PRICE_ABORT] {position_key}: {hard_exit_reason} triggered at {current_gain:.2f}% but FRESH gain={_fresh_gain:.2f}% (entry={_fresh_entry:.6f} fresh_px={_fresh_price:.6f}). ABORTING — would close at loss.")

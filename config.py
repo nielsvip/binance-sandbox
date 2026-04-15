@@ -250,6 +250,19 @@ class Config:
     # Exceptions: hedges (is_hedge=True), STRUCTURAL_RANGE_SHIFT_EXIT, LIQUIDATION
     # This replaces Finandy's external NO_LOSS so it can be turned off safely.
     UNIVERSAL_NOLOSS_GATE: bool = True
+    # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
+    # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
+    # AND current 3m close has recovered to within tolerance of entry_price,
+    # AND current 3m bar shows reversal, ALLOW close at loss (bypass UNIVERSAL_NOLOSS_GATE).
+    # Replaces UNIVERSAL_NOLOSS for "bad-entry escape near breakeven". Defaults OFF — sweep first.
+    DC_RECOVERY_EXIT_ENABLED: bool = False
+    DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25  # crypto pct tolerance around entry_price
+    DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT: float = 0.0  # if >0, uses 0.0..N * atr_3m instead of pct
+    # === LOSS-EXIT SWITCH GATES (2026-04-15) — default OFF, sweep-only ===
+    # Each wraps an existing close/reduce-at-loss path so it stays disabled in live unless sweep enables.
+    LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = False  # ez_manage.py:20621 STOP_FUNCTIONS_KILL @ gain<-5%
+    LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED: bool = False  # ez_manage.py:20647 hedge-failed escape @ gain<-15% & 30min unhedged
+    LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED: bool = False  # ez_positions_quick.py:10778 allow exit when max_gain≥0.5% & fresh_gain>-0.5
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable
     # Entry: mtf=3, ez=2.5, ea=0.0, tz=1.5, htf=4h_D, cd=120, tw=3m-dominant

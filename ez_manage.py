@@ -13482,8 +13482,41 @@ class MultiAccountTradeManager:
                     _is_long = position_side == 'LONG'
                     _real_gain = ((old_price - _entry_px) / _entry_px * 100) if _entry_px > 0 and old_price > 0 and _is_long else (((_entry_px - old_price) / _entry_px * 100) if _entry_px > 0 and old_price > 0 else safe_fetch_float(getattr(pos, 'gain', 0), 0.0))
                     if _real_gain < -0.01:
+                        # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, default OFF) ===
+                        _dc_recov_bypass = False
+                        if getattr(config, 'DC_RECOVERY_EXIT_ENABLED', False):
+                            _ind = None
+                            try:
+                                if getattr(self, 'data_manager', None) is not None:
+                                    _hs = await self.data_manager.get_hot_state(symbol)
+                                    _ind = _hs[1] if isinstance(_hs, tuple) and len(_hs) > 1 else None
+                            except Exception:
+                                _ind = None
+                            if _ind:
+                                _dch_4h = safe_fetch_float(_ind.get('dc_high_4h', 0), 0.0)
+                                _dcl_4h = safe_fetch_float(_ind.get('dc_low_4h', 0), 0.0)
+                                _atr_3m = safe_fetch_float(_ind.get('atr_3m', 0), 0.0)
+                                _ha_3m = _ind.get('ha_3m', 'neutral')
+                                _k3 = safe_fetch_float(_ind.get('stoch_k_3m', 0), 0.0)
+                                _k3p = safe_fetch_float(_ind.get('k_3m_prev', 0), 0.0)
+                                _tol_pct = safe_fetch_float(getattr(config, 'DC_RECOVERY_EXIT_TOLERANCE_PCT', 0.25), 0.25)
+                                _tol_atr_m = safe_fetch_float(getattr(config, 'DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT', 0.0), 0.0)
+                                _tol_abs = (_tol_atr_m * _atr_3m) if (_tol_atr_m > 0 and _atr_3m > 0) else (_entry_px * _tol_pct / 100.0)
+                                _within_tol = _entry_px > 0 and abs(old_price - _entry_px) <= _tol_abs
+                                if _is_long and _entry_px > _dch_4h > 0 and _within_tol:
+                                    _reversal = (_ha_3m == 'red') or (_k3 < _k3p)
+                                    if _reversal:
+                                        _dc_recov_bypass = True
+                                        logger.warning(f"⚠️ [DC_RECOVERY_EXIT_BYPASS][{account_key}] {position_key}: LONG entry={_entry_px:.6f}>dc_high_4h={_dch_4h:.6f}, recovered to {old_price:.6f} (tol={_tol_abs:.6f}), 3m reversal — allowing close at loss ({_real_gain:.2f}%)")
+                                elif (not _is_long) and 0 < _entry_px < _dcl_4h and _within_tol:
+                                    _reversal = (_ha_3m == 'green') or (_k3 > _k3p)
+                                    if _reversal:
+                                        _dc_recov_bypass = True
+                                        logger.warning(f"⚠️ [DC_RECOVERY_EXIT_BYPASS][{account_key}] {position_key}: SHORT entry={_entry_px:.6f}<dc_low_4h={_dcl_4h:.6f}, recovered to {old_price:.6f} (tol={_tol_abs:.6f}), 3m reversal — allowing close at loss ({_real_gain:.2f}%)")
                         if _ung_srs:
                             logger.warning(f"⚠️ [UNIVERSAL_NOLOSS_SRS_BYPASS][{account_key}] {position_key}: gain={_real_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
+                        elif _dc_recov_bypass:
+                            pass
                         else:
                             logger.critical(f"🛑 [UNIVERSAL_NOLOSS_GATE][{account_key}] {position_key}: Blocking {action} ({reason[:80]}) at REAL loss ({_real_gain:.2f}%). Wait for recovery to 0% or structural shift.")
                             if self.tracker_manager:
@@ -20618,7 +20651,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             opened_at = getattr(position, 'opened_at', None)
             time_since_entry = minutes_since(opened_at) if opened_at else 999999
             should_stop_kill = False
-            if current_gain < -5.0 and position.positionAmt > 5 * config.START_POSITION_SIZE / current_price:
+            if getattr(config, 'LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED', False) and current_gain < -5.0 and position.positionAmt > 5 * config.START_POSITION_SIZE / current_price:
                 should_stop_kill = True
                 logger.info(f"[{position_key}] ${position.positionAmt*current_price} STOP_FUNCTIONS_KILL allowed: gain={current_gain:.2f}% < -0.7%")
             elif time_since_entry >= 5.0:
@@ -20644,7 +20677,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     else:
                         trade_manager._hmb_unhedged_ts.pop(position_key, None)
                         _hmb_wait_min = 0
-                    _hmb_escape = not _hmb_has_hedge and current_gain < -15.0 and _hmb_wait_min > 30.0
+                    _hmb_escape = getattr(config, 'LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED', False) and not _hmb_has_hedge and current_gain < -15.0 and _hmb_wait_min > 30.0
                     if _hmb_escape:
                         logger.critical(f"[HEDGE_MODE_BLOCK_ESCAPE] {position_key}: gain={current_gain:.2f}% unhedged for {_hmb_wait_min:.0f}min. Hedge failed repeatedly. Allowing partial reduction to slow bleeding.")
                     else:

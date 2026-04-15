@@ -397,6 +397,14 @@ class TradierConfig:
     HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone
     # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 121 sym × D/4h/1h, 9192 combos) ===
     NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # 2026-04-08: LET WT/DC SCORER EXIT AT ANY GAIN. Scorer fires on velocity death — that IS the cut signal. 3.0% was BLOCKING technical exits on losers. Test: Sharpe 6.36 at 0% vs 1.43 at 3%.
+    # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, stocks) ===
+    # When True: if entry_price > bb_high_1h (LONG) or < bb_low_1h (SHORT),
+    # AND current 3m close has recovered within tolerance of entry_price,
+    # AND current 3m bar shows reversal, ALLOW close at loss (bypass NOLOSS gate).
+    # Defaults OFF — sweep first.
+    BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = False
+    BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30  # stock pct tolerance around entry_price
+    BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0  # if >0, uses N * atr_3m instead of pct
     K_ZONE_ENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T52: K-zone entry — K in zone + turning + candle confirms. No crossover wait.
     K_ZONE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, K_ZONE_LONG/SHORT_THRESHOLD veto entries on wt_dc path (proves switch gates trades). Default False = live unchanged.
     WT_COMPOSITE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, WT_COMPOSITE_SCORING_ENABLED vetoes wt_dc entries lacking composite alignment. Default False = live unchanged.

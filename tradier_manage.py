@@ -7256,8 +7256,43 @@ class TradierTradeManager:
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
+                # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, default OFF) ===
+                _bb_recov_bypass = False
+                if getattr(config, 'BB_RECOVERY_EXIT_ENABLED_TRADIER', False) and _en_pos is not None:
+                    try:
+                        _br_entry = float(getattr(_en_pos, 'entry_price', 0) or 0)
+                        _br_is_long = position_side == 'LONG'
+                        _br_px = float(old_price or 0)
+                        _br_ind = None
+                        try:
+                            _br_ind = self.get_indicators(symbol)
+                        except Exception:
+                            _br_ind = None
+                        if _br_ind and _br_entry > 0 and _br_px > 0:
+                            _bbh_1h = float(_br_ind.get('bb_high_1h', 0) or 0)
+                            _bbl_1h = float(_br_ind.get('bb_low_1h', 0) or 0)
+                            _br_atr = float(_br_ind.get('atr_3m', 0) or 0)
+                            _br_ha = _br_ind.get('ha_3m', 'neutral')
+                            _br_k3 = float(_br_ind.get('stoch_k_3m', 0) or 0)
+                            _br_k3p = float(_br_ind.get('k_3m_prev', _br_k3) or _br_k3)
+                            _br_tol_pct = float(getattr(config, 'BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER', 0.30) or 0.30)
+                            _br_tol_atr_m = float(getattr(config, 'BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER', 0.0) or 0.0)
+                            _br_tol_abs = (_br_tol_atr_m * _br_atr) if (_br_tol_atr_m > 0 and _br_atr > 0) else (_br_entry * _br_tol_pct / 100.0)
+                            _br_within = abs(_br_px - _br_entry) <= _br_tol_abs
+                            if _br_is_long and _br_entry > _bbh_1h > 0 and _br_within:
+                                if _br_ha == 'red' or _br_k3 < _br_k3p:
+                                    _bb_recov_bypass = True
+                                    logger.warning(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: LONG entry={_br_entry:.4f}>bb_high_1h={_bbh_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%")
+                            elif (not _br_is_long) and 0 < _br_entry < _bbl_1h and _br_within:
+                                if _br_ha == 'green' or _br_k3 > _br_k3p:
+                                    _bb_recov_bypass = True
+                                    logger.warning(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: SHORT entry={_br_entry:.4f}<bb_low_1h={_bbl_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%")
+                    except Exception as _br_e:
+                        logger.debug(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}")
                 if _en_srs:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
+                elif _bb_recov_bypass:
+                    pass
                 elif _en_noloss_min > -900 and _en_gain < _en_noloss_min:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}")
                     if lock_acquired and self.redis_manager:
