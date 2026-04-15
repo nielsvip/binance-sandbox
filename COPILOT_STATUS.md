@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-15 01:21:03 UTC
+# Copilot Status — 2026-04-15 01:39:34 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-15T01:17:58
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:17:58
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:17:58
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:18:59
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:18:59
-- **STALE_INDICATORS** [tradier]  — 2026-04-15T01:20:00
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:20:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:20:01
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:21:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:21:02
+- **STALE_INDICATORS** [tradier]  — 2026-04-15T01:36:29
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:36:29
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:36:29
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:37:30
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:37:30
+- **STALE_INDICATORS** [tradier]  — 2026-04-15T01:38:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:38:32
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:38:32
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-15T01:39:33
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-15T01:39:33
 
 ## Missed Trades (trader comparison)
 
@@ -29,13 +29,13 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 3 | **Reentered:** 0
 
-- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-48.3%
+- HELD: **PARTIUSDT** LONG (crypto) peak +15.7%, now +-48.2%
 - HELD: **ARM** LONG (tradier) peak +8.6%, now +-0.3%
 - HELD: **USO** LONG (tradier) peak +7.7%, now +-0.5%
 - HELD: **MSFT** LONG (tradier) peak +7.7%, now +0.5%
 - HELD: **MU** LONG (tradier) peak +7.2%, now +3.5%
 - HELD: **ETH** LONG (tradier) peak +5.3%, now +-1.2%
-- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.5%
+- HELD: **AVAXUSDC** SHORT (crypto) peak +4.5%, now +-5.4%
 - HELD: **SNDK** LONG (tradier) peak +3.8%, now +0.2%
 - HELD: **XOM** SHORT (tradier) peak +3.8%, now +-0.5%
 
@@ -45,9 +45,10 @@ _None_
 
 ## Supervisor
 
-**Active Opus agents:** 0 / 2
+**Active Opus agents:** 1 / 2
+- `PROCESS_DOWN:ez_manage.py --account inf` running 5min
 
-**Issues (last 1h):** 50
+**Issues (last 1h):** 41
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
