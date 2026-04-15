@@ -13808,8 +13808,10 @@ class MultiAccountTradeManager:
                 
 
 
-                if account_key in ['inf','fin','flz','men'] and not is_hedge:
+                if account_key in ['inf','fin','men'] and not is_hedge:
                     quantity = min(0.15 * quantity, 2 * config.START_POSITION_SIZE) / current_price
+
+
                 _order_usd = abs(quantity * current_price)
                 _max_order_usd = getattr(config, 'MAX_ORDER_VALUE', 120.0)
                 if _order_usd > _max_order_usd:
