@@ -11156,13 +11156,9 @@ class MultiAccountTradeManager:
             logger.info(f"🛡️ [execute_trade_action] BLOCKED WEAK SHIT SUSPENDED)")
             return "BLOCKED WEAK SHIT SUSPENDED"
         tradeable_keys = await self.load_tradeable()
-        if position_key not in tradeable_keys and account_key != 'flz':
-            if is_hedge:
-                self.tradeable_keys.add(position_key)
-                logger.warning(f"[HEDGE_TRADEABLE_ADD_ETA] {position_key}: added to tradeable_keys for hedge open (execute_trade_action path)")
-            else:
-                logger.error(f"🛡️ [execute_trade_action] : BLOCKED NOT TRADEABLE {position_key} (no HEDGE bypass)")
-                return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
+        if position_key not in tradeable_keys and account_key != 'flz' and not is_reduce:
+            logger.error(f"🛡️ [execute_trade_action] BLOCKED NOT TRADEABLE {position_key} (no hedge auto-add) is_hedge={is_hedge} action={action} reason={reason}")
+            return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
         if ('OPEN' in action or 'OPEN' in reason) and position.positionAmt > 2 * config.MIN_POSITION_SIZE / current_price and 'HEDGE' not in action.upper() and 'HEDGE' not in reason.upper():
             return f'ex_tr BLOCKED: {position_key} ${position.positionAmt*current_price} over MIN QTY NO *OPEN* ORDER POSSIBLE'
         # ═══ 15m DIRECTION HARD BLOCK — NEVER enter when 15m indicators are moving AGAINST the trade ═══
@@ -13205,8 +13201,8 @@ class MultiAccountTradeManager:
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
         if _is_open_action and position_key:
             if position_key not in self.tradeable_keys:
-                logger.critical(f"🚫🚫🚫 [WHAT THE FUCK IS THIS {position_key}: Position ${_pos_val_check:.1f} IS NOT EVEN FUCKING TRADEABLE FUCK action={action} reason={reason}")
-                return
+                logger.critical(f"🚫🚫🚫 [NON_TRADEABLE_HARD_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED. action={action} reason={reason} is_hedge={is_hedge}")
+                return f"BLOCKED_NON_TRADEABLE_{position_key}"
             _pos_check = await self.get_position(position_key)
             _pos_amt_check = abs(safe_fetch_float(getattr(_pos_check, 'positionAmt', 0), 0.0)) if _pos_check else 0.0
             _pos_val_check = _pos_amt_check * (old_price if old_price > 0 else safe_fetch_float(getattr(_pos_check, 'mark_price', 0), 0.0) if _pos_check else 0)
@@ -13419,11 +13415,8 @@ class MultiAccountTradeManager:
         is_augment = ( act_upper in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT'] )
         is_tradeable = position_key in self.tradeable_keys or account_key == 'flz'
         if not is_tradeable and not is_reduce:
-            if is_hedge:
-                self.tradeable_keys.add(position_key)
-                logger.warning(f"[HEDGE_TRADEABLE_ADD] {position_key}: added to tradeable_keys for hedge open")
-            else:
-                return f'BLOCK_NON_TRADEABLE_POSITION'
+            logger.critical(f"🚫 [NON_TRADEABLE_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED (no auto-add). action={action} reason={reason} is_hedge={is_hedge}")
+            return f'BLOCK_NON_TRADEABLE_POSITION'
         # ═══ FIX 2026-04-07: 15-MINUTE NEWBORN PROTECTION — NO closing positions < 15min old ═══
         # UNLESS price broke through dc_3m_low (LONG) or dc_3m_high (SHORT) = structure destroyed
         # Uses time.time() (Unix epoch) — works in both live and backtest (V8 patches time.time).
@@ -14522,14 +14515,11 @@ class MultiAccountTradeManager:
                             if not has_pos:
                                 continue
                             _tracked[(acct, sym)] = {'state': 'WATCHING', 'direction': direction, 'entry_price': 0, 'exit_price': 0, 'last_flip': now, 'notional': 0, 'flip_count': 0, 'detected_at': now, 'score': score}
-                            if hasattr(self, 'tracker_manager') and self.tracker_manager:
-                                self.tracker_manager.tradeable_keys.add(long_pk)
-                                self.tracker_manager.tradeable_keys.add(short_pk)
-                                if acct not in self.tracker_manager.tradeable_position_keys:
-                                    self.tracker_manager.tradeable_position_keys[acct] = set()
-                                self.tracker_manager.tradeable_position_keys[acct].add(long_pk)
-                                self.tracker_manager.tradeable_position_keys[acct].add(short_pk)
-                                logger.info(f"[MOMENTUM_RIDER] {acct} Injected tradeable keys: {long_pk}, {short_pk}")
+                            # 2026-04-15: MOMENTUM_RIDER tradeable_keys auto-injection DISABLED per user rule.
+                            # tradeable_keys is hand-picked via symbols.json. No scanner may auto-expand it.
+                            # if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                            #     self.tracker_manager.tradeable_keys.add(long_pk)
+                            #     self.tracker_manager.tradeable_keys.add(short_pk)
                             logger.warning(f"[MOMENTUM_RIDER] {acct} DETECTED {sym}: dir={direction} dc_w15={dcw:.1f}% rv={rv:.1f}x score={score:.0f}")
                 # ─── MANAGE EACH TRACKED SYMBOL ───
                 for (acct, sym), state in list(_tracked.items()):
