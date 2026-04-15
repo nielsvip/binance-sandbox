@@ -12,9 +12,13 @@ Searched (2026-04-15):
 
 ## What user must supply
 
-Hetzner Robot (dedicated servers) uses HTTP Basic-Auth against `robot-ws.your-server.de`. The user needs to:
+Hetzner Robot (dedicated servers) uses HTTP Basic-Auth against `robot-ws.your-server.de`.
 
-1. Log in to https://robot.hetzner.com/
+**IMPORTANT: The Robot webservice user is SEPARATE from the account 2FA.** It's a dedicated API credential pair used only by `robot-ws.your-server.de`. Account 2FA does NOT gate it. So auto-reboot is feasible even with 2FA enabled on the main Hetzner account.
+
+Steps:
+
+1. Log in to https://robot.hetzner.com/ (one-time, with 2FA — just to create the webservice user)
 2. Navigate to `Settings -> Web service settings` (or `Web service and app settings` in new UI).
 3. Enable Webservice access, create a dedicated API username + password (NOT the account password).
 4. Store them locally, e.g. append to `~/.config/hetzner.env`:

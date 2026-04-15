@@ -49,6 +49,7 @@ SSH_TIMEOUT = 15
 SWEEP_STALE_SECONDS = 120
 IDLE_LOAD_THRESHOLD = 2.0
 IDLE_WINDOW_SECONDS = 180
+V8_VERIFY_INTERVAL_SECONDS = 86400
 
 # Hard upper bounds — NEVER exceed regardless of env vars
 MAX_OPUS_SPAWNS_PER_HOUR = 1
@@ -297,6 +298,24 @@ def hourly_fix_pass():
     return 0
 
 
+def run_v8_verify_daily():
+    """Invoke backtest_v8_verify_daily.py for yesterday across all accounts.
+    Compares V8 output vs live data/decisions/ JSONL per CLAUDE.md rule."""
+    script = BASE / "backtest_v8_verify_daily.py"
+    if not script.exists():
+        log.warning(f"v8 verify script missing at {script}")
+        return
+    python = "/opt/anaconda3/envs/binance_env/bin/python"
+    try:
+        r = subprocess.run([python, str(script)], capture_output=True, text=True, timeout=1800, cwd=str(BASE))
+        tag = "PASS" if r.returncode == 0 else ("FAIL" if r.returncode == 1 else "ERROR")
+        log.info(f"V8_VERIFY_DAILY exit={r.returncode} ({tag}); tail:\n{(r.stdout or '')[-1500:]}")
+    except subprocess.TimeoutExpired:
+        log.error("V8_VERIFY_DAILY timed out after 30 min")
+    except Exception as e:
+        log.exception(f"V8_VERIFY_DAILY crashed: {e}")
+
+
 def supervisor_loop():
     acquire_lock()
     state = load_state()
@@ -310,6 +329,7 @@ def supervisor_loop():
 
     log.info(f"supervisor start pid={os.getpid()}; max_opus/hr={MAX_OPUS_SPAWNS_PER_HOUR}; ssh/min={MAX_SSH_CALLS_PER_MINUTE}")
     last_hourly = state.get("last_hourly_ts", 0)
+    last_v8_verify = state.get("last_v8_verify_ts", 0)
     try:
         while not shutdown["flag"]:
             tick_start = time.time()
@@ -337,6 +357,11 @@ def supervisor_loop():
                         log.warning(f"SWEEP_STALE {s['loc']} {s['file']} age={s['age_s']}s (inner ZERO_TRADES_TIMEOUT=60 should have caught this)")
             except Exception as e:
                 log.exception(f"sweep freshness check crashed: {e}")
+            if time.time() - last_v8_verify >= V8_VERIFY_INTERVAL_SECONDS:
+                log.info("v8_verify_daily window reached → running")
+                run_v8_verify_daily()
+                last_v8_verify = time.time()
+                state["last_v8_verify_ts"] = last_v8_verify
             if time.time() - last_hourly >= 3600:
                 if os.environ.get("SUPERVISOR_ENABLE_HOURLY_FIX", "0") == "1":
                     log.info("hourly-fix window reached; SUPERVISOR_ENABLE_HOURLY_FIX=1 → running")

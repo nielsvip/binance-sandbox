@@ -12901,8 +12901,10 @@ class MultiAccountTradeManager:
                 return False, 0.0
             await asyncio.sleep(RETRY_DELAY)
         if not lock_acquired:
-            logger.warning(f"[MAKER_BLOCK] {position_key}: Lock busy, falling back to webhook")
-            return False, 0.0
+            # 2026-04-15: lock busy = another concurrent call holds the maker slot.
+            # That call will fire its own webhook on failure. Don't double-send from here.
+            logger.warning(f"[MAKER_BLOCK] {position_key}: Lock busy — suppressing webhook fallback (sentinel -1.0) to avoid double-order race")
+            return False, -1.0
         await self.try_add_order_redis(active_lock_key, expiry_seconds=60)
         tracked_order_ids = []
 
@@ -12943,9 +12945,9 @@ class MultiAccountTradeManager:
             step = Decimal(str(symbol_conf["step_size"]))
             qty_dec = (Decimal(str(qty_abs)) // step) * step
             if qty_dec.is_zero():
-                logger.critical(f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED.")
+                logger.critical(f"🚫 [MAKER_ZERO_QTY] {position_key}: qty_abs={qty_abs} step={step} → qty_dec=0. ORDER NOT PLACED — suppressing webhook fallback (sentinel -1.0)")
                 await release_locks()
-                return False, 0.0
+                return False, -1.0
             qty_str = f"{qty_dec}"
             logger.critical(f"📊 [MAKER_QTY] {position_key}: qty_abs={qty_abs:.6f} step={step} → qty_str={qty_str} side={side} reason={reason[:50]}")
             placement_start_time = time.time()
@@ -13022,13 +13024,15 @@ class MultiAccountTradeManager:
             remaining = qty_abs - executed_qty
             _is_hedge_order = 'HEDGE' in reason_upper
             if ta == "OPEN" and not _is_hedge_order:
-                logger.warning(f"[MAKER_AUG_TIMEOUT] {position_key}: Augment timed out — blocking fallback webhook, cancelling tracked orders.")
+                # 2026-04-15: maker could still fill after timeout. A webhook fallback now would double-order.
+                # Cancel tracked orders, suppress outer webhook via -1.0 sentinel.
+                logger.warning(f"[MAKER_AUG_TIMEOUT] {position_key}: Augment timed out — cancelling tracked orders, suppressing webhook fallback (sentinel -1.0) to avoid double-fill.")
                 if tracked_order_ids:
                     for _tid in tracked_order_ids:
                         try: await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
                         except Exception: pass
                 await release_locks()
-                return False, 0.0
+                return False, -1.0
             elif ta == "OPEN" and _is_hedge_order:
                 logger.warning(f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: Hedge maker timed out — falling through to webhook")
             if remaining > (qty_abs * 0.1):
@@ -13758,7 +13762,11 @@ class MultiAccountTradeManager:
                             if 'ORPHANED_HEDGE' not in reason_upper:
                                 asyncio.create_task(self._close_associated_hedge(account_key, symbol, position_side, current_price))
                             return 'SUCCESS'
-                    # Maker failed — fall through to webhook
+                    # Maker failed — fall through to webhook UNLESS sentinel says suppress
+                    if executed_qty < 0:
+                        logger.warning(f"[MAKER_EXIT_SUPPRESS_WEBHOOK] {position_key}: Maker returned suppress-sentinel — NOT firing webhook fallback")
+                        await self.clear_all_cooldowns_for_position(position_key, side)
+                        return "BLOCKED_MAKER_SUPPRESS_WEBHOOK"
                     logger.warning(f"[MAKER_EXIT_FALLBACK] {position_key}: Maker order failed, falling back to webhook")
                 webhook_success = await self.send_webhook( position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:{reason}", is_full_close, f"{reason}_QWH", level=None, stoch_required=False )
                 if not webhook_success:
@@ -13914,6 +13922,10 @@ class MultiAccountTradeManager:
                             return 'SUCCESS_VIA_FALLBACK'
                         return "FAILED_VERIFICATION_AND_FALLBACK"
                 else:
+                    if executed_qty < 0:
+                        logger.warning(f"⛔ [MAKER_FAILED_SUPPRESS_WEBHOOK] {position_key}: Maker returned suppress-sentinel (lock busy / zero qty / AUG timeout) — NOT firing webhook fallback")
+                        await self.clear_all_cooldowns_for_position(position_key, side)
+                        return "BLOCKED_MAKER_SUPPRESS_WEBHOOK"
                     logger.warning(f"⚠️ [MAKER_FAILED_FALLBACK] {position_key}: Maker order failed — sending webhook fallback for {action} {side} {quantity:.6f}")
                     fallback_ok = await self.send_webhook(position_key, account_key, symbol, original_positionAmt, quantity, current_price, side, position_side, f"{unique_id}:MAKER_FAIL", False, f"{reason}_FALLBACK_QWH", level=None, stoch_required=False)
                     if fallback_ok:
