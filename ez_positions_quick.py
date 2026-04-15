@@ -3503,8 +3503,24 @@ class RatingRegistry:
                 logger.error(f"[REGISTRY] Loop Error: {e}", exc_info=True)
                 await asyncio.sleep(10)
 
+    def _is_symbol_tradeable(self, symbol: str) -> bool:
+        """Tradeable filter (2026-04-15 user rule): only cache ratings for symbols whose
+        {acct}:{symbol}_LONG or _SHORT exists in tracker_manager.tradeable_keys for any account."""
+        try:
+            tk = getattr(self.tracker_manager, 'tradeable_keys', None) or set()
+            if not tk:
+                return True  # registry pre-load: don't block before tradeable_keys is populated
+            for _pk in tk:
+                if _pk.endswith(f":{symbol}_LONG") or _pk.endswith(f":{symbol}_SHORT"):
+                    return True
+            return False
+        except Exception:
+            return True
+
     async def update(self, symbol, side, rating_tuple):
         """Manual update hook for external callers."""
+        if not self._is_symbol_tradeable(symbol):
+            return
         async with self._lock:
             if symbol not in self.cache: self.cache[symbol] = {}
             if isinstance(rating_tuple, (list, tuple)):
@@ -3582,6 +3598,7 @@ class RatingRegistry:
         _master_symbols = getattr(self.trade_manager, 'symbols', set()) or set()
         for symbol, data in snapshot.items():
             if _master_symbols and symbol not in _master_symbols: continue
+            if not self._is_symbol_tradeable(symbol): continue  # 2026-04-15 user rule: registry limited to tradeable_keys
             if not isinstance(data, dict): continue
             price = safe_fetch_float(data.get('current_price', 0) or data.get('close', 0))
             if price <= 0: continue
@@ -4912,38 +4929,32 @@ class HedgeEngine:
                 if current_price <= 0: current_price = safe_fetch_float(indicators.get('current_price', 0))
                 if current_price <= 0: continue
                 hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0); hedge_max_gain = safe_fetch_float(getattr(hedge_pos, 'max_gain', 0.0), 0.0); hedge_prev_gain = safe_fetch_float(getattr(hedge_pos, 'prev_gain', 0.0), 0.0); is_hedge_long = (hedge_pos.position_side == 'LONG'); now_ts = time.time(); exact_tick_ts = metrics.get('_tick_ts', 0); true_lag = now_ts - exact_tick_ts
-                # ═══ HEDGE KILL: WT_3M AGAINST / WT_15M AGAINST / DELTA DECEL → KILL IMMEDIATELY. NO EXCEPTION. ═══
-                # USER RULE 2026-04-09: A hedge can NEVER exist across a wt1_3m cross OR while delta is decelerating.
-                # Hedges live for minutes only — they damp losses while origin is in freefall, then die the moment
-                # the move decelerates or WT reverses. Profit/loss does NOT matter. Close, nuke, CLEAR completed-lockout
-                # so the next loss augmentation can re-open a fresh hedge (if conditions allow per _hedge_entry_is_valid).
-                _wt1_3m = safe_fetch_float(indicators.get('wt1_3m', 0)); _wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0))
-                _wt1_15m = safe_fetch_float(indicators.get('wt1_15m', 0)); _wt2_15m = safe_fetch_float(indicators.get('wt2_15m', 0))
-                _wt3m_against_hedge = (is_hedge_long and _wt1_3m < _wt2_3m) or (not is_hedge_long and _wt1_3m > _wt2_3m)
-                _wt15m_against_hedge = (is_hedge_long and _wt1_15m < _wt2_15m) or (not is_hedge_long and _wt1_15m > _wt2_15m)
-                _delta_decel_against = False
-                _delta_decel_tag = ""
-                if hasattr(self.data_manager, 'delta_tracker') and self.data_manager.delta_tracker:
+                # ═══ HEDGE KILL: LOSING-POSITION WT_3M RECOVERS → KILL HEDGE IMMEDIATELY ═══
+                # USER RULE 2026-04-15: A hedge dies the moment the LOSING position it protects starts to recover.
+                # Recovery = wt1_3m crossing in favor of the losing position's own direction (NOT hedge symbol).
+                #   loser LONG  → kill when wt1_3m >  wt2_3m on LOSING symbol
+                #   loser SHORT → kill when wt1_3m <  wt2_3m on LOSING symbol
+                # Profit/loss/DC ignored. Hedges re-open automatically when losses augment again.
+                _loser_is_long = None; _loser_sym = None; _loser_wt1_3m = 0.0; _loser_wt2_3m = 0.0
+                if original_key:
                     try:
-                        _hx_sig = self.data_manager.delta_tracker.update(hedge_pos.symbol, indicators, position_state=None)
-                        if _hx_sig is not None:
-                            _accel_ok = _hx_sig.bull_accel if is_hedge_long else _hx_sig.bear_accel
-                            if not _accel_ok:
-                                _delta_decel_against = True
-                                _delta_decel_tag = f"bull={_hx_sig.bull_speed:.1f}_bear={_hx_sig.bear_speed:.1f}"
-                    except Exception as _hx_e:
-                        logger.debug(f"[HEDGE_WT_KILL_DELTA] {hedge_key} delta check skipped: {_hx_e}")
-                if _wt3m_against_hedge or _wt15m_against_hedge or _delta_decel_against:
-                    if _wt3m_against_hedge:
-                        _tf_trigger = "3m"; _wt1_t = _wt1_3m; _wt2_t = _wt2_3m
-                    elif _wt15m_against_hedge:
-                        _tf_trigger = "15m"; _wt1_t = _wt1_15m; _wt2_t = _wt2_15m
-                    else:
-                        _tf_trigger = "DELTA_DECEL"; _wt1_t = 0.0; _wt2_t = 0.0
-                    logger.critical(f"🚨 [HEDGE_WT_KILL] {hedge_key} {'LONG' if is_hedge_long else 'SHORT'}: trigger={_tf_trigger} wt1_3m={_wt1_3m:.1f} wt2_3m={_wt2_3m:.1f} wt1_15m={_wt1_15m:.1f} wt2_15m={_wt2_15m:.1f} {_delta_decel_tag} hedge_gain={hedge_gain:.2f}% — KILLING.")
-                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_{_tf_trigger}_wt3m={_wt1_3m:.1f}/{_wt2_3m:.1f}_wt15m={_wt1_15m:.1f}/{_wt2_15m:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
+                        _, _loser_sym, _loser_side = parse_position_key(original_key)
+                        _loser_is_long = (_loser_side == 'LONG')
+                        _loser_ind = self.data_manager._cold_data.get(_loser_sym, {}) if self.data_manager else {}
+                        if not _loser_ind and hasattr(self.data_manager, 'shared_proxy') and self.data_manager.shared_proxy:
+                            _loser_ind = dict(self.data_manager.shared_proxy.get_symbol(_loser_sym) or {})
+                        _loser_wt1_3m = safe_fetch_float(_loser_ind.get('wt1_3m', 0), 0.0)
+                        _loser_wt2_3m = safe_fetch_float(_loser_ind.get('wt2_3m', 0), 0.0)
+                    except Exception as _lk_e:
+                        logger.debug(f"[HEDGE_WT_KILL] {hedge_key} loser-WT fetch failed: {_lk_e}")
+                _loser_recovering = False
+                if _loser_is_long is not None and _loser_wt1_3m != 0 and _loser_wt2_3m != 0:
+                    _loser_recovering = (_loser_is_long and _loser_wt1_3m > _loser_wt2_3m) or (not _loser_is_long and _loser_wt1_3m < _loser_wt2_3m)
+                if _loser_recovering:
+                    logger.critical(f"🚨 [HEDGE_WT_KILL] {hedge_key} (hedges loser {original_key}): loser {_loser_sym} {'LONG' if _loser_is_long else 'SHORT'} RECOVERING wt1_3m={_loser_wt1_3m:.1f} {'>' if _loser_is_long else '<'} wt2_3m={_loser_wt2_3m:.1f} — KILLING hedge regardless of gain/DC. hedge_gain={hedge_gain:.2f}%")
+                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_LOSER_RECOVER_{_loser_sym}_wt3m={_loser_wt1_3m:.1f}/{_loser_wt2_3m:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                    # CLEAR hedge completed lockout so next loss augmentation reopens hedge immediately
+                    # CLEAR completed lockout so next loss augmentation re-opens hedge immediately
                     if original_key:
                         self._hedge_completed.pop(original_key, None)
                         self._hedge_cooldowns.pop(symbol, None)

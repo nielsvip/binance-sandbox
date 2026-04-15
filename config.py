@@ -355,10 +355,18 @@ class Config:
     DELTA_EXIT_SCORE_BONUS: int = 20       # Score bonus when delta confirms exit
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
-    LEGACY_GUARANTEED_REENTRY: bool = True     # ON — gated by tolerant delta
+    LEGACY_GUARANTEED_REENTRY: bool = False    # OFF 2026-04-15 per user — fired mid-move on LTF only
     LEGACY_DIRECTION_FAVORABLE: bool = True    # ON — gated by tolerant delta
     LEGACY_DC_BREAKOUT_REENTRY: bool = True    # ON — gated by tolerant delta
-    LEGACY_PROC_SINGLE_REENTRY: bool = True    # ON — gated by tolerant delta
+    LEGACY_PROC_SINGLE_REENTRY: bool = False   # OFF 2026-04-15 per user — fired mid-move on LTF only
+    # Per-variant reentry switches (each fires a distinct path so backtest can A/B)
+    LEGACY_REENTRY_GUARANTEED_BOTTOM: bool = False     # ez_manage.py:16128 — wt15m bounce + 1h trend + 2/4 WT, 150%
+    LEGACY_REENTRY_GUARANTEED_CROSS: bool = False      # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos
+    LEGACY_REENTRY_GUARANTEED_2WT: bool = False        # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%
+    LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = False    # ez_manage.py:18757 — price ± atr_3m within 60min, k cross
+    LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False    # ez_manage.py:18777 LONG / 18798 SHORT — k_3m/15m crossover above dc_low_3m/15m
+    LEGACY_REENTRY_PSR_FULL_DC: bool = False           # ez_manage.py:18812 — full reentry stoch_above_dc OR dc_basis_crossover_3m
+    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False         # ez_manage.py:18836 — DC bounce within 8h, near dc_high/low
     LEGACY_WR_PULLBACK: bool = True            # ON
     LEGACY_FAST_CUT_LOSS: bool = False         # OFF — % stop in disguise
     LEGACY_AGGRESSIVE_LOSS_CUT: bool = False   # OFF — single TF 1m flip

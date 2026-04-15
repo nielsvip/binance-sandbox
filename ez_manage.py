@@ -16125,17 +16125,17 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
         else:
             _wt15m_bouncing = _wt1_15m > 20 and _wt_vel_15m < 0
             _1h_trend_ok = _wt1_1h < _wt2_1h
-        if _wt15m_bouncing and _1h_trend_ok and _wt_confirm_count >= 2:
+        if _wt15m_bouncing and _1h_trend_ok and _wt_confirm_count >= 2 and getattr(config, 'LEGACY_REENTRY_GUARANTEED_BOTTOM', False):
             _bottom_mult = 1.5
             _re_qty = max(_re_base * _bottom_mult, effective_min_qty)
             logger.warning(f"[GUARANTEED_REENTRY_BOTTOM] {position_key}: WT15m bounce(wt1={_wt1_15m:.1f},vel={_wt_vel_15m:.1f}) + 1h trend(wt1={_wt1_1h:.1f}>{_wt2_1h:.1f}) + {_wt_confirm_count}/4 WT → 150% qty={_re_qty:.4f}")
             return Signal(action='REENTRY', reason=f"GUARANTEED_BOTTOM_150pct_wt15m{_wt1_15m:.0f}_vel{_wt_vel_15m:.1f}_1h{_wt1_1h:.0f}_exit{_re_level:.4f}", conviction=85.0, quantity=_re_qty)
-        elif _re_crossed and _wt_confirm_count >= 3:
+        elif _re_crossed and _wt_confirm_count >= 3 and getattr(config, 'LEGACY_REENTRY_GUARANTEED_CROSS', False):
             _cross_mult = 0.5 + 0.5 * (1.0 - _dc_pos) if is_long else 0.5 + 0.5 * _dc_pos
             _re_qty = max(_re_base * _cross_mult, effective_min_qty)
             logger.warning(f"[GUARANTEED_REENTRY] {position_key}: EXIT CROSSED + {_wt_confirm_count}/4 WT → {_cross_mult*100:.0f}% reentry qty={_re_qty:.4f} dc_pos={_dc_pos:.2f}")
             return Signal(action='REENTRY', reason=f"GUARANTEED_CROSS_{_cross_mult*100:.0f}pct_WT{_wt_confirm_count}_exit{_re_level:.4f}_px{current_price:.4f}", conviction=90.0, quantity=_re_qty)
-        elif _re_crossed and _wt_confirm_count >= 2 and abs(current_price / _re_level - 1.0) > 0.003:
+        elif _re_crossed and _wt_confirm_count >= 2 and abs(current_price / _re_level - 1.0) > 0.003 and getattr(config, 'LEGACY_REENTRY_GUARANTEED_2WT', False):
             _cross_mult = 0.5
             _re_qty = max(_re_base * _cross_mult, effective_min_qty)
             logger.warning(f"[GUARANTEED_REENTRY_2WT] {position_key}: EXIT CROSSED by {abs(current_price/_re_level-1)*100:.2f}% + {_wt_confirm_count}/4 WT → 50% reentry qty={_re_qty:.4f}")
@@ -18754,7 +18754,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 quick_recovery_long = is_long and current_price > (last_reduction_price + atr_3m) and k_3m > d_3m
                 quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
                 if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY check - minutes_since_reduction={minutes_since_reduction:.1f}m, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}, current_price={current_price:.6f}, price_threshold={'above' if is_long else 'below'} {last_reduction_price + atr_3m if is_long else last_reduction_price - atr_3m:.6f}, k_3m={k_3m:.1f}, d_3m={d_3m:.1f}, k_3m>d_3m={k_3m > d_3m if is_long else k_3m < d_3m}, quick_recovery_long={quick_recovery_long}, quick_recovery_short={quick_recovery_short}")
-                if quick_recovery_long or quick_recovery_short:
+                if (quick_recovery_long or quick_recovery_short) and getattr(config, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False):
                     recovery_reentry_amount = min(reentry_amount, 2 * config.START_POSITION_SIZE / current_price); reason = f"PROC_SINGLE_REENTRY]:quick_recovery {minutes_since_reduction:.1f}_qty_{recovery_reentry_amount}_${current_price}_price{'above' if is_long else 'below'}_{position.last_reducion_level}+atr"; conviction = 75.0; 
                     if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY CONDITIONS MET - queuing REENTRY")
                     result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction)#), override_qty=recovery_reentry_amount)
@@ -18774,7 +18774,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and is_invalidated:
                 trade_manager.reentry_invalidated[position_key] = {'invalidated': False, 'invalidated_at': None, 'reason': '[PROC_SINGLE_REENTRY]: invalidated'}; logger.debug(f"[evaluate_reentry_2] {position_key}: Reentry REVALIDATED - k_15m crossover above dc_low_15m {dc_low_15m:.6f}")
             if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: LONG CROSSOVER check - stoch_crossover_3m={stoch_crossover_3m} (k_3m={k_3m:.1f} d_3m={d_3m:.1f} k_3m_prev={k_3m_prev:.1f} d_3m_prev={d_3m_prev:.1f}), stoch_crossover_15m={stoch_crossover_15m} (k_15m={k_15m:.1f} d_15m={d_15m:.1f} k_15m_prev={k_15m_prev:.1f}), prev_price={i.get('prev_price')}, current_price={current_price:.6f}, dc_low_3m={dc_low_3m:.6f}, dc_low_15m={dc_low_15m:.6f}, k_3mm_crossover_above_dc_low_3m={k_3mm_crossover_above_dc_low_3m}, k_15mm_crossover_above_dc_low_15m={k_15mm_crossover_above_dc_low_15m}, is_invalidated={is_invalidated}")
-            if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and k_15m >= d_15m and k_3m >= d_3m and k_15m < 70 and k_3m < 70 and not is_invalidated and getattr(config, 'LEGACY_PROC_SINGLE_REENTRY', True):
+            if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and k_15m >= d_15m and k_3m >= d_3m and k_15m < 70 and k_3m < 70 and not is_invalidated and getattr(config, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
                 _psr_delta_ok, _psr_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _psr_delta_ok:
                     logger.info(f"[PROC_SINGLE_REENTRY_DELTA_BLOCK] {position_key}: {_psr_delta_reason}")
@@ -18795,7 +18795,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             if k_15mm_crossunder_below_dc_high_15m and is_invalidated and k_15m < d_15m and k_3m < d_3m and k_15m > 30 and k_3m > 30:
                 trade_manager.reentry_invalidated[position_key] = {'invalidated': False, 'invalidated_at': None, 'reason': '[PROC_SINGLE_REENTRY]:k_15mm_crossunder_below_dc_high_15m'}; logger.debug(f"[evaluate_reentry_2] {position_key}: Reentry REVALIDATED - k_15m crossunder below dc_high_15m {dc_high_15m:.6f}")
             if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: SHORT CROSSUNDER check - stoch_crossunder_3m={stoch_crossunder_3m} (k_3m={k_3m:.1f} d_3m={d_3m:.1f} k_3m_prev={k_3m_prev:.1f} d_3m_prev={d_3m_prev:.1f}), stoch_crossover_15m={stoch_crossover_15m} (k_15m={k_15m:.1f} d_15m={d_15m:.1f} k_15m_prev={k_15m_prev:.1f}), prev_price={i.get('prev_price')}, current_price={current_price:.6f}, dc_high_3m={dc_high_3m:.6f}, dc_high_15m={dc_high_15m:.6f}, k_3mm_crossunder_below_dc_high_3m={k_3mm_crossunder_below_dc_high_3m}, k_15mm_crossunder_below_dc_high_15m={k_15mm_crossunder_below_dc_high_15m}, is_invalidated={is_invalidated}")
-            if (k_3mm_crossunder_below_dc_high_3m or k_15mm_crossunder_below_dc_high_15m) and k_15m <= d_15m and k_3m <= d_3m and k_15m > 30 and k_3m > 30 and not is_invalidated and getattr(config, 'LEGACY_PROC_SINGLE_REENTRY', True):
+            if (k_3mm_crossunder_below_dc_high_3m or k_15mm_crossunder_below_dc_high_15m) and k_15m <= d_15m and k_3m <= d_3m and k_15m > 30 and k_3m > 30 and not is_invalidated and getattr(config, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
                 _psr_delta_ok_s, _psr_delta_reason_s = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _psr_delta_ok_s:
                     logger.info(f"[PROC_SINGLE_REENTRY_DELTA_BLOCK] {position_key}: {_psr_delta_reason_s}")
@@ -18809,7 +18809,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         full_reentry_stoch_above_dc = stoch_crossover_3m and ((is_long and current_price > dc_basis_15m and dc_basis_15m > 0) or (not is_long and current_price < dc_basis_15m and dc_basis_15m > 0))
         if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: FULL_REENTRY check - stoch_crossover_3m={stoch_crossover_3m}, full_reentry_stoch_above_dc={full_reentry_stoch_above_dc}, dc_basis_crossover_3m={dc_basis_crossover_3m}, is_invalidated={is_invalidated}, current_price={current_price:.6f}, dc_basis_15m={dc_basis_15m:.6f}")
         _psr_notional = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * current_price
-        if (full_reentry_stoch_above_dc or dc_basis_crossover_3m) and not is_invalidated and _psr_notional < config.START_POSITION_SIZE:
+        if (full_reentry_stoch_above_dc or dc_basis_crossover_3m) and not is_invalidated and _psr_notional < config.START_POSITION_SIZE and getattr(config, 'LEGACY_REENTRY_PSR_FULL_DC', False):
             reason = f"PROC_SINGLE_REENTRY]: full_reentry_qty_{reentry_amount}_{'stoch3m_crossover_above_dc15m' if full_reentry_stoch_above_dc else 'dc3m_crossover'}"; conviction = 80.0;
             if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: FULL_REENTRY CONDITIONS MET - queuing REENTRY")
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction)#,override_qty=reentry_amount)
@@ -18833,7 +18833,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     bounce_dc_high_15m = (not is_long and current_price >= dc_high_15m * 0.998 and current_price <= dc_high_15m * 1.002) if dc_high_15m > 0 else False
                     cross_dc_basis_15m = (is_long and current_price >= dc_basis_15m) or (not is_long and current_price <= dc_basis_15m) if dc_basis_15m > 0 else False
                     if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: DC_BOUNCE check - hours_since_reduction={hours_since_reduction:.1f}h, bounce_dc_low_1h={bounce_dc_low_1h}, bounce_dc_low_15m={bounce_dc_low_15m}, bounce_dc_high_1h={bounce_dc_high_1h}, bounce_dc_high_15m={bounce_dc_high_15m}, cross_dc_basis_15m={cross_dc_basis_15m}, dc_high_1h={dc_high_1h:.6f}, dc_high_1h_ant={dc_high_1h_ant:.6f}, dc_high_1h>dc_high_1h_ant={dc_high_1h > dc_high_1h_ant}, (t_up_3m={t_up_3m}, k_3m={k_3m:.1f} d_3m={d_3m:.1f}, k_15m={k_15m:.1f} d_15m={d_15m:.1f})")
-                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and dc_high_1h > dc_high_1h_ant :
+                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and dc_high_1h > dc_high_1h_ant and getattr(config, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
                         reentry_amount = min(reentry_amount, config.START_POSITION_SIZE / current_price)
                         if dc_low_15m > dc_low_15m_ant:
                             reentry_amount = reentry_amount * 1.5
