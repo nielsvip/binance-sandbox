@@ -125,9 +125,16 @@ def check_scalp_v2_entry(symbol: str, position_key: str, indicators: Dict, curre
     if current_price <= 0:
         return None
 
-    tfs = list(getattr(config, "SCALP_V2_DC_HTF_LIST", ["15m", "1h"]))
-    require_all = bool(getattr(config, "SCALP_V2_DC_HTF_REQUIRE_ALL", True))
-    ok, detail = _htf_breakout_ok(indicators, current_price, is_long, tfs, require_all)
+    # 2026-04-16 FIX: entry mode switchable — breakout (original, LOSING) vs pullback (NEW)
+    entry_mode = str(getattr(config, "SCALP_V2_ENTRY_MODE", "pullback"))
+
+    if entry_mode == "pullback":
+        ok, detail = _htf_pullback_ok(indicators, current_price, is_long)
+    else:  # "breakout" — legacy, confirmed losing (PF 0.9, Sharpe -0.02 in scalp_v2_fast_backtest)
+        tfs = list(getattr(config, "SCALP_V2_DC_HTF_LIST", ["15m", "1h"]))
+        require_all = bool(getattr(config, "SCALP_V2_DC_HTF_REQUIRE_ALL", True))
+        ok, detail = _htf_breakout_ok(indicators, current_price, is_long, tfs, require_all)
+
     if not ok:
         return None
 
@@ -135,8 +142,68 @@ def check_scalp_v2_entry(symbol: str, position_key: str, indicators: Dict, curre
     return {
         "action": "OPEN",
         "side": "LONG" if is_long else "SHORT",
-        "reason": f"{SCALP_V2_REASON_PREFIX}{variant}_{detail}",
+        "reason": f"{SCALP_V2_REASON_PREFIX}{variant}_{entry_mode}_{detail}",
     }
+
+
+def _htf_pullback_ok(indicators, current_price, is_long):
+    """PULLBACK-to-trend entry (2026-04-16 user priority).
+
+    LONG: Fundamentally rising ticker (HTF trend up) pulled back to support →
+    price near 15m DC low, stoch oversold + turning up, 1h WT bouncing.
+
+    SHORT: Fundamentally falling ticker rallied to resistance →
+    price near 15m DC high, stoch overbought + turning down, 1h WT rolling over.
+
+    Enters at TEMP BOTTOM/TOP not END of move.
+    """
+    dc_high_15m = _f(indicators, "dc_high_15m"); dc_low_15m = _f(indicators, "dc_low_15m")
+    dc_high_1h = _f(indicators, "dc_high_1h"); dc_low_1h = _f(indicators, "dc_low_1h")
+    k_3m = _f(indicators, "stoch_k_3m", 50); k_3m_prev = _f(indicators, "stoch_k_3m_prev", k_3m)
+    d_3m = _f(indicators, "stoch_d_3m", 50)
+    wt1_1h = _f(indicators, "wt1_1h"); wt2_1h = _f(indicators, "wt2_1h")
+    wt1_4h = _f(indicators, "wt1_4h"); wt2_4h = _f(indicators, "wt2_4h")
+    wt_vel_3m = _f(indicators, "wt_velocity_3m", 0)
+    wt_vel_1h = _f(indicators, "wt_velocity_1h", 0)
+
+    if dc_high_15m <= 0 or dc_low_15m <= 0:
+        return False, "NO_DC_15M"
+
+    dc_range = max(dc_high_15m - dc_low_15m, 1e-9)
+    dc_pos_15m = (current_price - dc_low_15m) / dc_range  # 0=at low, 1=at high
+
+    if is_long:
+        # HTF must be trending UP (fundamentally rising)
+        htf_up = (wt1_1h > wt2_1h) and (wt1_4h > wt2_4h) and (wt_vel_1h > -1.0)
+        if not htf_up:
+            return False, f"HTF_NOT_UP wt1h={wt1_1h:.1f}/{wt2_1h:.1f} wt4h={wt1_4h:.1f}/{wt2_4h:.1f}"
+        # Price pulled back to lower quarter of 15m DC
+        at_bottom = dc_pos_15m < 0.25
+        if not at_bottom:
+            return False, f"NOT_AT_BOTTOM dc_pos={dc_pos_15m:.2f}"
+        # Stoch deep oversold AND turning up
+        stoch_bounce = (k_3m < 30) and (k_3m > k_3m_prev) and (k_3m > d_3m)
+        if not stoch_bounce:
+            return False, f"NO_STOCH_BOUNCE k3m={k_3m:.0f}/{k_3m_prev:.0f}/d={d_3m:.0f}"
+        # 3m velocity bouncing from negative
+        vel_turning = wt_vel_3m > -0.5
+        if not vel_turning:
+            return False, f"VEL_STILL_DROPPING vel3m={wt_vel_3m:.2f}"
+        return True, f"PULLBACK_LONG dc_pos={dc_pos_15m:.2f}_k3m={k_3m:.0f}_v3m={wt_vel_3m:.1f}_wt1h={wt1_1h:.1f}>{wt2_1h:.1f}"
+    else:
+        htf_down = (wt1_1h < wt2_1h) and (wt1_4h < wt2_4h) and (wt_vel_1h < 1.0)
+        if not htf_down:
+            return False, f"HTF_NOT_DOWN"
+        at_top = dc_pos_15m > 0.75
+        if not at_top:
+            return False, f"NOT_AT_TOP dc_pos={dc_pos_15m:.2f}"
+        stoch_roll = (k_3m > 70) and (k_3m < k_3m_prev) and (k_3m < d_3m)
+        if not stoch_roll:
+            return False, f"NO_STOCH_ROLL k3m={k_3m:.0f}"
+        vel_turning = wt_vel_3m < 0.5
+        if not vel_turning:
+            return False, f"VEL_STILL_RISING vel3m={wt_vel_3m:.2f}"
+        return True, f"PULLBACK_SHORT dc_pos={dc_pos_15m:.2f}_k3m={k_3m:.0f}_v3m={wt_vel_3m:.1f}"
 
 
 def _exit_v1_wt_confirm(indicators: Dict, is_long: bool) -> Tuple[bool, str]:

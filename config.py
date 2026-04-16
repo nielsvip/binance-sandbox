@@ -100,6 +100,8 @@ class Config:
     SCALP_V2_MAX_CONCURRENT: int = 5      # P3: fine for now, only tune if hitting position limits
     SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop
     SCALP_V2_ISOLATE: bool = True          # 2026-04-16: ON for live — V2 positions ONLY use V2 exits, main pipeline exits skip them. V8 -0.30 Sharpe was from main exits trampling V2 positions.
+    # 2026-04-16 FIX: "breakout" LOSES money (PF 0.9, Sharpe -0.02). "pullback" enters at temp bottom/top.
+    SCALP_V2_ENTRY_MODE: str = "pullback"  # "pullback" | "breakout"
     # ═══ SCALP_V2 SECONDARY EXITS — PRIORITY P1/P2 (test after P0 stable) ════
     SCALP_V2_REDZONE_EXIT: bool = True     # P1: #2 in sweep (Sharpe 97). Catches exits V1_WT misses. +6 extra exits in smoke test.
     SCALP_V2_REDZONE_K_THRESHOLD: int = 90 # P1: sweep winner=90. Try 80 only after 90 tested.

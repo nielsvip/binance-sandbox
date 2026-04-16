@@ -61,6 +61,10 @@ NEEDED_FIELDS = {
     "wt1_3m", "wt2_3m", "wt1_3m_prev", "wt2_3m_prev", "wt_cross_3m",
     "high_3m", "high_3m_prev", "low_3m", "low_3m_prev",
     "ha_3m", "close_3m",
+    # 2026-04-16 PULLBACK MODE additions — needed for _htf_pullback_ok
+    "wt1_1h", "wt2_1h", "wt1_4h", "wt2_4h",
+    "wt_velocity_3m", "wt_velocity_1h",
+    "stoch_k_3m", "stoch_k_3m_prev", "stoch_d_3m",
 }
 
 
