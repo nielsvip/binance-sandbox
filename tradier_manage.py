@@ -10044,6 +10044,8 @@ class TradierTradeManager:
         orb_size = getattr(config, f'{account_key.upper()}_ORB_POSITION_SIZE', getattr(config, 'ORB_POSITION_SIZE', 600.0))
         orb_max_per_day = getattr(config, 'ORB_MAX_PER_DAY', 3)
         orb_rvol_min = getattr(config, 'ORB_RVOL_MIN', 1.5)
+        _orb_long_budget = getattr(config, 'ORB_LONG_BUDGET', 2000.0)
+        _orb_short_budget = getattr(config, 'ORB_SHORT_BUDGET', 2000.0)
         _entries_today = self._orb_entries_today.get(account_key, 0)
         if _entries_today >= orb_max_per_day:
             return
@@ -10089,6 +10091,11 @@ class TradierTradeManager:
                 stop_price = orb_midpoint if getattr(config, 'ORB_STOP_MIDPOINT', True) else orb_low
                 target_price = orb_high + target_mult * orb_range
                 qty = max(1, int(orb_size / price))
+                if _orb_long_budget > 0:
+                    _total_orb_long = sum(v['entry'] * max(1, int(orb_size / v['entry'])) for k, v in self._orb_positions.items() if v.get('direction') == 'LONG')
+                    if _total_orb_long + (qty * price) > _orb_long_budget:
+                        logger.info(f"[{account_key}] [ORB] long budget cap hit ${_total_orb_long:.0f}/${_orb_long_budget:.0f}")
+                        continue
                 logger.info(f"[{account_key}] [ORB] LONG BREAKOUT {sym}: price={price:.2f} > orb_high={orb_high:.2f} range={orb_range:.2f} RVOL={_rvol:.2f} stop={stop_price:.2f} target={target_price:.2f} qty={qty}")
                 self._orb_positions[pk] = {'entry': price, 'stop': stop_price, 'target': target_price, 'direction': 'LONG', 'orb_range': orb_range, 'opened_at': datetime.now(timezone.utc)}
                 await queue_trade_action(self.order_queue, self, pk, "OPEN", f"ORB_BREAKOUT_LONG range={orb_range:.2f} RVOL={_rvol:.1f}", 88.0, override_qty=qty)
@@ -10107,6 +10114,11 @@ class TradierTradeManager:
                 stop_price = orb_midpoint if getattr(config, 'ORB_STOP_MIDPOINT', True) else orb_high
                 target_price = orb_low - target_mult * orb_range
                 qty = max(1, int(orb_size / price))
+                if _orb_short_budget > 0:
+                    _total_orb_short = sum(v['entry'] * max(1, int(orb_size / v['entry'])) for k, v in self._orb_positions.items() if v.get('direction') == 'SHORT')
+                    if _total_orb_short + (qty * price) > _orb_short_budget:
+                        logger.info(f"[{account_key}] [ORB] short budget cap hit ${_total_orb_short:.0f}/${_orb_short_budget:.0f}")
+                        continue
                 logger.info(f"[{account_key}] [ORB] SHORT BREAKDOWN {sym}: price={price:.2f} < orb_low={orb_low:.2f} range={orb_range:.2f} RVOL={_rvol:.2f} stop={stop_price:.2f} target={target_price:.2f} qty={qty}")
                 self._orb_positions[pk] = {'entry': price, 'stop': stop_price, 'target': target_price, 'direction': 'SHORT', 'orb_range': orb_range, 'opened_at': datetime.now(timezone.utc)}
                 await queue_trade_action(self.order_queue, self, pk, "OPEN", f"ORB_BREAKDOWN_SHORT range={orb_range:.2f} RVOL={_rvol:.1f}", 88.0, override_qty=qty)
@@ -10318,6 +10330,11 @@ class TradierTradeManager:
                 if has_pos: continue
                 if not self.is_symbol_tradeable(sym, account_key, 'LONG'): continue
                 qty = max(1, int(smfi_size / price))
+                if _smfi_long_budget > 0:
+                    _total_smfi_long = sum(float(getattr(p, 'entry_price', 0) or 0) * abs(float(getattr(p, 'positionAmt', 0))) for k, p in positions.items() if k.endswith('_LONG') and 'SMFI' in str(getattr(p, 'augment_reason', '')))
+                    if _total_smfi_long + (qty * price) > _smfi_long_budget:
+                        logger.info(f"[{account_key}] [SMFI] long budget cap hit ${_total_smfi_long:.0f}/${_smfi_long_budget:.0f}")
+                        continue
                 logger.info(f"[{account_key}] [SMFI] LONG {sym}: bull divergence (price<SMA, SMFI>SMA) qty={qty}")
                 await queue_trade_action(self.order_queue, self, pk, "OPEN", f"SMFI_BULL_DIV", 82.0, override_qty=qty)
                 smfi_long_count += 1
@@ -10330,6 +10347,11 @@ class TradierTradeManager:
                 if has_pos: continue
                 if not self.is_symbol_tradeable(sym, account_key, 'SHORT'): continue
                 qty = max(1, int(smfi_size / price))
+                if _smfi_short_budget > 0:
+                    _total_smfi_short = sum(float(getattr(p, 'entry_price', 0) or 0) * abs(float(getattr(p, 'positionAmt', 0))) for k, p in positions.items() if k.endswith('_SHORT') and 'SMFI' in str(getattr(p, 'augment_reason', '')))
+                    if _total_smfi_short + (qty * price) > _smfi_short_budget:
+                        logger.info(f"[{account_key}] [SMFI] short budget cap hit ${_total_smfi_short:.0f}/${_smfi_short_budget:.0f}")
+                        continue
                 logger.info(f"[{account_key}] [SMFI] SHORT {sym}: bear divergence (price>SMA, SMFI<SMA) qty={qty}")
                 await queue_trade_action(self.order_queue, self, pk, "OPEN", f"SMFI_BEAR_DIV", 82.0, override_qty=qty)
                 smfi_short_count += 1

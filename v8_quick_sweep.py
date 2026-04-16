@@ -114,6 +114,8 @@ def run_one_config(args_tuple):
         return {"run_id": run_id, "sharpe": 0, "pnl": 0, "trades": 0, "wins": 0, "losses": 0, "status": "no_data", "config": cfg_dict}
     cfg = QuickConfig()
     cfg.MODE = mode
+    if mode == "tradier":
+        cfg.apply_tradier_defaults()
     for k, v in cfg_dict.items():
         if hasattr(cfg, k):
             setattr(cfg, k, v)
