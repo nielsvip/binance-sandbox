@@ -16308,19 +16308,27 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     has_wt_cross = wt_cross_bull_3m or wt_cross_bull_15m
     min_gain = safe_fetch_float(getattr(config, 'MIN_GAIN', 5.0), 5.0)
     base_qty = config.START_POSITION_SIZE / current_price
-    if gain >= 3 * min_gain and k_not_exhausted:
-        aug_qty = min(pos_amt * 0.30, base_qty * 2.0)
-        return Signal(action='AUGMENT', reason=f'BLOWPAST_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}', conviction=90.0, quantity=aug_qty)
-    if has_wt_cross and wt_tf_aligned >= 2 and gain >= min_gain and k_not_exhausted:
-        aug_qty = base_qty * k_runway
-        cross_tf = '3m' if wt_cross_bull_3m else '15m'
-        return Signal(action='AUGMENT', reason=f'WT_CROSS_{cross_tf}_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}', conviction=80.0, quantity=aug_qty)
-    if wt_tf_aligned >= 3 and wt_dir_3m and gain >= 0.5 * min_gain and k_not_exhausted and k_runway > 0.25:
-        aug_qty = base_qty * 0.5 * k_runway
-        return Signal(action='AUGMENT', reason=f'WT_ALIGNED_3TF_g{gain:.1f}%_k_run={k_runway:.0%}', conviction=70.0, quantity=aug_qty)
-    if gain >= min_gain and wt_dir_15m and wt_dir_1h and k_runway > 0.30:
-        aug_qty = base_qty * 0.3 * k_runway
-        return Signal(action='AUGMENT', reason=f'HTF_TREND_g{gain:.1f}%_k_run={k_runway:.0%}', conviction=65.0, quantity=aug_qty)
+    # AUG_A: BLOWPAST (gain >= 3×min_gain, conviction 90) — highest conviction
+    if getattr(config, 'AUGMENT_BLOWPAST_ENABLED', True):
+        if gain >= 3 * min_gain and k_not_exhausted:
+            aug_qty = min(pos_amt * 0.30, base_qty * 2.0)
+            return Signal(action='AUGMENT', reason=f'AUG_A_BLOWPAST_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}', conviction=90.0, quantity=aug_qty)
+    # AUG_B: WT cross + aligned 2/3 TFs (conviction 80)
+    if getattr(config, 'AUGMENT_WT_CROSS_ENABLED', True):
+        if has_wt_cross and wt_tf_aligned >= 2 and gain >= min_gain and k_not_exhausted:
+            aug_qty = base_qty * k_runway
+            cross_tf = '3m' if wt_cross_bull_3m else '15m'
+            return Signal(action='AUGMENT', reason=f'AUG_B_WT_CROSS_{cross_tf}_g{gain:.1f}%_wt={wt_tf_aligned}/3_k_run={k_runway:.0%}', conviction=80.0, quantity=aug_qty)
+    # AUG_C: WT aligned 3/3 LTF + smaller gain (conviction 70)
+    if getattr(config, 'AUGMENT_WT_3TF_ENABLED', True):
+        if wt_tf_aligned >= 3 and wt_dir_3m and gain >= 0.5 * min_gain and k_not_exhausted and k_runway > 0.25:
+            aug_qty = base_qty * 0.5 * k_runway
+            return Signal(action='AUGMENT', reason=f'AUG_C_WT_3TF_g{gain:.1f}%_k_run={k_runway:.0%}', conviction=70.0, quantity=aug_qty)
+    # AUG_D: HTF trend only (conviction 65) — lowest bar, most frequent
+    if getattr(config, 'AUGMENT_HTF_TREND_ENABLED', True):
+        if gain >= min_gain and wt_dir_15m and wt_dir_1h and k_runway > 0.30:
+            aug_qty = base_qty * 0.3 * k_runway
+            return Signal(action='AUGMENT', reason=f'AUG_D_HTF_TREND_g{gain:.1f}%_k_run={k_runway:.0%}', conviction=65.0, quantity=aug_qty)
     return None
 
 @timed_function("evaluate_leaderboard_entry")
@@ -17695,7 +17703,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _wt1_3m_dfr = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
             _wt2_3m_dfr = safe_fetch_float(i.get('wt2_3m', 0), 0.0)
             _wt_confirm = (is_long and _wt1_15m > _wt2_15m and _wt1_3m_dfr > _wt2_3m_dfr) or (not is_long and _wt1_15m < _wt2_15m and _wt1_3m_dfr < _wt2_3m_dfr)
-            if (_dir_fav_long or _dir_fav_short) and _wt_confirm and getattr(config, 'LEGACY_DIRECTION_FAVORABLE', True):
+            if (_dir_fav_long or _dir_fav_short) and _wt_confirm and getattr(config, 'LEGACY_DIRECTION_FAVORABLE', True) and getattr(config, 'REENTRY2_DIR_FAV_ENABLED', True):
                 _dfr_delta_ok, _dfr_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _dfr_delta_ok:
                     logger.info(f"[DIRECTION_FAVORABLE_DELTA_BLOCK] {position_key}: {_dfr_delta_reason}")
@@ -17707,9 +17715,11 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[DIRECTION_FAVORABLE_REENTRY] {position_key}: QUEUED at ${current_price:.4f}")
                 return
-        # == DC BREAKOUT FAST-PATH REENTRY ==
+        # == DC BREAKOUT FAST-PATH REENTRY == (gated by REENTRY2_DC_BREAK_ENABLED)
         _dc_reentry_breakout = False
         _buf = 0.001
+        if not getattr(config, 'REENTRY2_DC_BREAK_ENABLED', True):
+            _dc_reentry_breakout = None  # skip this block entirely
         dc_high_1h = safe_fetch_float(i.get('dc_high_1h', 0), 0.0)
         dc_low_1h = safe_fetch_float(i.get('dc_low_1h', 0), 0.0)
         if is_long:
@@ -17722,7 +17732,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 if k_3m < d_3m:
                     _dc_reentry_breakout = True
                     _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
-        if _dc_reentry_breakout:
+        if _dc_reentry_breakout is True:
             _dcbr_pos_notional = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * current_price
             if _dcbr_pos_notional >= config.START_POSITION_SIZE:
                 logger.info(f"[DC_BREAKOUT_REENTRY_BLOCKED] {position_key}: position already at full size (${_dcbr_pos_notional:.0f} >= ${config.START_POSITION_SIZE:.0f}). No reentry.")
@@ -17806,7 +17816,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         if not stoch_ready:
             return
         last_reduction_time = getattr(position, 'last_reduction_time', None); last_reduction_price = safe_fetch_float(getattr(position, 'last_reduction_price', 0.0), 0.0);atr_3m = safe_fetch_float(i.get('atr_3m', 0), 0.0)
-        if last_reduction_time and last_reduction_price > 0 and atr_3m > 0:
+        if last_reduction_time and last_reduction_price > 0 and atr_3m > 0 and getattr(config, 'REENTRY2_QUICK_RECOVERY_ENABLED', True):
             minutes_since_reduction = (now - last_reduction_time).total_seconds() / 60.0
             if minutes_since_reduction < 60.0:
                 quick_recovery_long = is_long and current_price > (last_reduction_price + atr_3m) and k_3m > d_3m
@@ -17822,6 +17832,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - conditions not met")
             elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - minutes_since_reduction {minutes_since_reduction:.1f}m >= 60.0m")
         elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - last_reduction_time={last_reduction_time}, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}")
+        if not getattr(config, 'REENTRY2_STOCH_CROSS_ENABLED', True): return
         invalidated_state = trade_manager.reentry_invalidated.get(position_key, {}); is_invalidated = invalidated_state.get('invalidated', False); stoch_crossover_3m = (is_long and k_3m > d_3m and k_3m_prev <= d_3m_prev) or (not is_long and k_3m <= d_3m and k_3m_prev > d_3m_prev); stoch_crossover_15m = (is_long and k_15m >= d_15m and k_15m_prev < d_15m_prev) or (not is_long and k_15m <= d_15m and k_15m_prev > d_15m_prev); dc_basis_crossover_3m = i.get('dc_basis_crossover_3m', False) if is_long else i.get('dc_basis_crossunder_3m', False)
         if is_long:
             price_below_dc_low_3m = dc_low_3m > 0 and current_price <= dc_low_3m; price_below_dc_low_15m = dc_low_15m > 0 and current_price <= dc_low_15m; k_3mm_crossover_above_dc_low_3m = stoch_crossover_3m and dc_low_3m > 0 and i.get('prev_price') <= dc_low_3m and current_price > dc_low_3m; k_15mm_crossover_above_dc_low_15m = stoch_crossover_15m and dc_low_15m > 0 and current_price > dc_low_15m
@@ -17908,10 +17919,19 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
 
 @timed_function("evaluate_reentry_2")
 async def evaluate_reentry_2(trade_manager):
+    """Periodic reentry pass over positions with pending reentry_data.
+    Master switch: REENTRY_2_ENABLED (default True — contributes ~$420 PnL per ablation).
+    Sub-blocks inside process_single_reentry_evaluation:
+      - DIRECTION_FAVORABLE_REENTRY (BC_152): gated by REENTRY2_DIR_FAV_ENABLED
+      - DC_BREAKOUT_REENTRY: gated by REENTRY2_DC_BREAK_ENABLED
+      - STRONG_TREND/PULLBACK: gated by REENTRY2_TREND_ENABLED
+      - QUICK_RECOVERY_REENTRY: gated by REENTRY2_QUICK_RECOVERY_ENABLED
+      - STOCH_CROSSOVER_REENTRY: gated by REENTRY2_STOCH_CROSS_ENABLED"""
     global _evaluate_reentry_2_counter
     _evaluate_reentry_2_counter += 1
-    # 1. Efficient Account Filtering
     config = getattr(trade_manager, 'config', None)
+    if config and not getattr(config, 'REENTRY_2_ENABLED', True):
+        return
     config_accounts = set(getattr(config, 'ACCOUNT_KEYS', [])) if config else set()
     loaded_accounts = set(trade_manager.accounts.keys()) if hasattr(trade_manager, 'accounts') else set()
     managed_accounts = config_accounts.intersection(loaded_accounts)
