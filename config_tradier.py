@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
+from weakref import WeakSet
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -969,6 +970,595 @@ class TradierConfig:
             "data_dir": self.DATA_DIR,        
             "account_dir": account_dir, 
             "is_sandbox": is_sandbox         }
+
+    # ═══════════════════════════════════════════════════════════════
+    # SWITCH PARITY WITH config.py (2026-04-16)
+    # 583 switches added for tradier sweep parity.
+    # TRADIER LIVE BEHAVIOR UNCHANGED — tradier_manage.py must explicitly read.
+    # ═══════════════════════════════════════════════════════════════
+    ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # Disable aggressive_hedge_scanner
+    ABLATION_DISABLE_AUGMENTATION: bool = False  # -0.3 Sharpe when removed. Moderate help. Keep.
+    ABLATION_DISABLE_CHECK_NOLOSS: bool = False  # Keep
+    ABLATION_DISABLE_DC_BREACH_REDUCE: bool = False  # Disable DC breach reduce monitor
+    ABLATION_DISABLE_ENTRY_LEADERBOARD: bool = False  # Keep — needs live testing
+    ABLATION_DISABLE_ENTRY_RANKING: bool = True  # ABLATION: 0.000 Sharpe delta = no effect (needs Redis, adds noise)
+    ABLATION_DISABLE_ENTRY_REVERSAL: bool = False  # Keep — reversal entry untested
+    ABLATION_DISABLE_ENTRY_TECHNICAL: bool = True  # ABLATION: -0.018 Sharpe delta = redundant. REENTRY alone = same performance.
+    ABLATION_DISABLE_FAST_RISER: bool = False  # Keep
+    ABLATION_DISABLE_HEDGE: bool = False  # Keep
+    ABLATION_DISABLE_HIGH_GAIN_AUGMENT: bool = False  # Disable direct_high_gain_augmentation
+    ABLATION_DISABLE_PERIODIC_REENTRY: bool = False  # Disable periodic_evaluate_reentry (evaluate_reentry_2)
+    ABLATION_DISABLE_QUICK_ENTRY: bool = False  # Disable check_entry_candidates (quick entries)
+    ABLATION_DISABLE_QUICK_EXIT: bool = False  # Disable check_exit_candidates (WT/DC exits)
+    ABLATION_DISABLE_RATIO_REBALANCE: bool = False  # Keep
+    ABLATION_DISABLE_REENTRY: bool = False  # CRITICAL: -1.9 Sharpe when removed. THE system IS reentry. NEVER disable.
+    ABLATION_DISABLE_REENTRY_ENFORCE: bool = False  # Disable reentry enforcement loop
+    ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
+    ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
+    ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN
+    ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD: float = 0.9  # dc_position > this = breakout UP
+    ADAPTIVE_REGIME_DECAY_HALFLIFE_H: float = 24.0  # Exponential weight half-life (hours)
+    ADAPTIVE_REGIME_ENABLED: bool = True  # Master switch for regime daemon
+    ADAPTIVE_REGIME_HEAT_TRIGGER: float = 30.0  # Re-optimize when heat score > this
+    ADAPTIVE_REGIME_LOOKBACK_DAYS: int = 7  # Rolling backtest window
+    ADAPTIVE_REGIME_MIN_SIGNALS: int = 5  # Min weighted signals to trust optimizer (paper: 5, live: 10+)
+    ADAPTIVE_REGIME_NPZ_CACHE_HOURS: float = 4.0  # Re-fetch NPZ from server every N hours
+    ADAPTIVE_REGIME_PAPER: bool = True  # Paper mode: log decisions, don't override real configs
+    ADAPTIVE_REGIME_SHARPE_FLOOR: float = 0.0  # Paper phase: observe all. Raise to 0.5+ for live.
+    ADX_RANGING_THRESHOLD: float = 20.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion)
+    ADX_REGIME_FILTER_ENABLED: bool = True  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
+    ADX_TF: str = '1h'
+    ADX_TRENDING_THRESHOLD: float = 25.0  # BACKTEST_CHANGE_137: ADX above this = trending
+    AGGRESSIVE_LOSS_CUT_ENABLED: bool = False  # DEAD CODE — replaced by STRUCTURAL_RANGE_SHIFT_EXIT (2026-04-11). DO NOT re-enable.
+    ASYMMETRIC_LOSER_MIN_AGE_SECONDS: float = 540  # 9min = 3 bars. Below this, no stop (avoid noise).
+    ASYMMETRIC_STOPS_ENABLED: bool = False  # TIER_A: estimated Sharpe +0.5 alone.
+    ASYMMETRIC_WINNER_GAIN_PCT: float = 1.5  # At this gain, position switches to winner rules.
+    ATR_ADAPTIVE_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_135: Inverse ATR sizing (high vol = smaller)
+    ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 2.0  # BACKTEST_CHANGE_135: Target ATR%. Size=1x at this ATR.
+    ATR_ADAPTIVE_STOP_ENABLED: bool = False  # BACKTEST_CHANGE_130: ATR-based sizing reduction (not stop — STRICT_NO_LOSS)
+    ATR_ADAPTIVE_STOP_MULT: float = 2.0  # BACKTEST_CHANGE_130: ATR(14) x this = risk distance
+    ATR_ADAPTIVE_STOP_TF: str = '1h'
+    ATR_LONG_WINDOW = 100
+    AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
+    AUGMENT_HTF_TREND_ENABLED: bool = True  # HTF trend only, conviction 65. Most frequent.
+    AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk
+    AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
+    AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
+    BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
+    BB_BREAKOUT_ENABLED: bool = False  # BACKTEST_CHANGE_132: BB breakout + SMA200 (trending regime only)
+    BB_BREAKOUT_SCORE: int = 20  # BACKTEST_CHANGE_132: Score bonus for breakout
+    BB_BREAKOUT_TF: str = '1h'
+    BB_ENTRY_LONG_THRESHOLD: float = -0.2  # BACKTEST_CHANGE_6: BB %B extremes
+    BB_ENTRY_SHORT_THRESHOLD: float = 1.0
+    BB_RSI_STOCH_SCALP_ENABLED: bool = False  # BACKTEST_CHANGE_134: BB+RSI+Stoch triple confirmation scalp (73-77% WR)
+    BB_RSI_STOCH_SCALP_SCORE: int = 25  # BACKTEST_CHANGE_134: Score bonus for triple confirmation
+    BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
+    BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
+    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold)
+    BB_SQUEEZE_MIN_ALIGNMENT: int = 10  # Minimum alignment score to allow BB squeeze entry
+    BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal
+    BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal
+    BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze
+    BINANCE_API_BASE: str = 'https://fapi.binance.com'
+    BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE: float = 0.02  # Price within 2% of dc_low_D
+    BOUNCE_AUGMENT_ENABLED: bool = True  # D-low bounce augment for losing positions
+    BOUNCE_AUGMENT_K_D_CROSSING_UP: bool = True  # k_D must be turning up (k_D > k_D_prev)
+    BOUNCE_AUGMENT_K_D_THRESHOLD: float = 20.0  # k_D must be below this (oversold on daily)
+    BOUNCE_AUGMENT_MIN_LOSS_PCT: float = -0.5  # ANY loss triggers evaluation (user: "not -10%, ANY loss")
+    BOUNCE_AUGMENT_PAPER: bool = True  # Paper mode — log only, no real orders
+    BREAKEVEN_DC_LOW4_ENABLED: bool = True  # DC_LOW4_3M structural stop
+    BREAKEVEN_GRACE_MINUTES: float = 15.0  # Grace period before no-loss kicks in
+    BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS
+    BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills
+    CHECK_INTERVAL = 3.0  # Check every 4 seconds
+    CHOP_RANGING_THRESHOLD: float = 61.8  # Choppiness above this = ranging
+    CHOP_TRENDING_THRESHOLD: float = 38.2  # Choppiness below this = trending
+    CIRCUIT_BREAKER_ACCOUNT_HALT_MIN: int = 60  # halt duration (min)
+    CIRCUIT_BREAKER_ACCOUNT_LOSSES: int = 5  # N consec losses/account → halt
+    CIRCUIT_BREAKER_COOLDOWN: int = 60  # BACKTEST_CHANGE_40: was 120. 3m TF needs faster recovery
+    CIRCUIT_BREAKER_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Prevents regime-mismatch bleed.
+    CIRCUIT_BREAKER_SYMBOL_HALT_MIN: int = 30  # halt duration (min)
+    CIRCUIT_BREAKER_SYMBOL_LOSSES: int = 3  # N consec losses/symbol → halt
+    CRYPTO_FH_MOMENTUM_DC_CONFIRM: bool = True  # DC retest scoring
+    CRYPTO_FH_MOMENTUM_DC_MAX_LONG: float = 0.5
+    CRYPTO_FH_MOMENTUM_ENABLED: bool = True
+    CRYPTO_FH_MOMENTUM_MAX_POSITIONS: int = 4
+    CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5
+    CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT: float = 1.0  # Multiplier of START_POSITION_SIZE
+    CRYPTO_SPIKE_FADE_COOLDOWN_SEC: float = 540.0  # 3 bars × 3min = 9min. SWEEP: cd=3 bars wins.
+    CRYPTO_SPIKE_FADE_ENABLED: bool = True
+    CRYPTO_SPIKE_FADE_K_EXHAUSTION: float = 80.0  # SWEEP: 80 slightly better than 75. Not critical.
+    CRYPTO_SPIKE_FADE_LOOKBACK_BARS: int = 3  # SWEEP: 3 bars (9min) beats all longer lookbacks. Catch spike fast.
+    CRYPTO_SPIKE_FADE_MAX_POSITIONS: int = 6
+    CRYPTO_SPIKE_FADE_THRESHOLD_PCT: float = 10.0  # SWEEP: 10% > 5% > 3% > 2%. Higher threshold = fewer but much better trades.
+    CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
+    CT_CHOP_4H_GATE_ENABLED: bool = False  # BC_173: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe (no choppiness_4h in NPZ). OFF forever.
+    CT_CHOP_4H_MAX: float = 50.0  # BC_173: max choppiness_4h
+    CT_DC_CROSSOVER_SKIP_ENABLED: bool = True  # BC_172: ENABLED 2026-04-08. 5yr validated: SHORT Sharpe +34%, removes only 1.3% of trades. Skip SHORT when DC basis crosses over on 15m/1h.
+    CT_MFI_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
+    CT_MFI_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
+    CT_REL_VOL_MIN: float = 1.3  # BC_174: min relative_volume for entry
+    CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
+    CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
+    CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
+    CT_WT_VELOCITY_1H_MIN: float = 0.0  # BC_170: min wt_velocity_1h (0=must be directional)
+    CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
+    CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior.
+    CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
+    CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols
+    CYCLE_TP_TIERED_FRAC: float = 0.25  # Close 25% of remaining at each tier
+    DATA_READY_TIMEOUT_SECONDS: int = 20  # 5 minutes timeout for data_ready.flag
+    DAYS_PLOT: int = 20  # days to save plots
+    DC_BREAKOUT_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_133: Donchian breakout entry (trend-following)
+    DC_BREAKOUT_SCORE: int = 15  # BACKTEST_CHANGE_133: Conservative (30% WR in ranging)
+    DC_BREAKOUT_TF: str = '1h'
+    DC_EDGE_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat.
+    DC_EDGE_SIZING_MAX_MULT: float = 3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (sideways).
+    DC_EDGE_SIZING_MIN_MULT: float = 1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in sideways.
+    DC_EDGE_SIZING_PERIOD: int = 20  # DC lookback period for edge detection
+    DC_RECOVERY_EXIT_ENABLED: bool = False
+    DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT: float = 0.0  # if >0, uses 0.0..N * atr_3m instead of pct
+    DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25  # crypto pct tolerance around entry_price
+    DC_WIDTH_CAP_MULT: float = 10.0
+    DC_WIDTH_MAX_MULT: float = 5.0  # BACKTEST_CHANGE_23: was 8.0. DC is 7th best indicator, don't over-weight
+    DC_WIDTH_SIZING_ENABLED: bool = True
+    DELTA_ENTRY_SCORE_BONUS: int = 15  # Score bonus when delta confirms entry
+    DELTA_ENTRY_SCORE_PENALTY: int = -25  # Score penalty when delta opposes entry
+    DELTA_EXIT_DC_FLOOR: bool = True  # DC15M floor break as exit
+    DELTA_EXIT_DOM_TF_ENABLED: bool = True  # 2026-04-10 04:15 APPLIED — winner per user "yes apply" (was False)
+    DELTA_EXIT_OVERRIDE_NOLOSS: bool = True  # Delta exits bypass STRICT_NO_LOSS
+    DELTA_EXIT_SCORE_BONUS: int = 20  # Score bonus when delta confirms exit
+    DELTA_EXIT_SPEED_DECAY: bool = True  # Speed decay exit (primary)
+    DELTA_EXIT_WT_CROSS: bool = True  # WT cross against as exit
+    DELTA_GATE_AUGMENT: bool = True  # Block AUGMENT without delta signal
+    DELTA_GATE_BB_SQUEEZE: bool = True  # Block BB_SQUEEZE entries without delta
+    DELTA_GATE_DC_BREAKOUT: bool = True  # Block DC_BREAKOUT entries without delta
+    DELTA_GATE_GUARANTEED_REENTRY: bool = True  # Block GUARANTEED_REENTRY — #1 loss source
+    DELTA_GATE_HEDGE_OPEN: bool = False  # Do NOT gate hedges — they must always execute
+    DELTA_GATE_OPEN: bool = True  # Block OPEN without delta signal
+    DELTA_GATE_RATIO_REBALANCE: bool = False  # Block RATIO_REBALANCE opens — OFF: ratio is sacred
+    DELTA_GATE_REENTRY: bool = True  # Block REENTRY without delta signal
+    DELTA_GATE_SBA: bool = False  # Block SBA (underwater adds) without delta — OFF: SBA has own logic
+    DELTA_GATE_STDEV_BREAKOUT: bool = True  # Block STDEV_BREAKOUT without delta
+    DELTA_GATE_VOL_SPIKE: bool = True  # Block VOL_SPIKE_REVERSAL without delta
+    DELTA_MIN_TF_FOR_ACTION: int = 2  # Minimum TFs confirming for any buy/sell decision
+    DELTA_REENTRY_HTF_GATE: str = '4h'
+    DELTA_REENTRY_MIN_TF: int = 2  # 2 TFs vs 3 for fresh entries
+    DELTA_REENTRY_REQUIRE_NOT_EXITING: bool = True  # Delta must not be in exit state
+    DELTA_REENTRY_Z_THRESHOLD: float = 1.0  # 1.0 vs 2.5 for fresh entries
+    DELTA_SCORE_WEIGHT: float = 30.0  # Weight of delta signal in AdvancedSignalRater (0-100)
+    DELTA_SERVICE_BLEED_STOP: bool = True  # Bleed stop uses delta
+    DELTA_SERVICE_REDUCE_GATE: bool = True  # Service reductions need delta confirmation
+    DELTA_SERVICE_TRAILING_STOP: bool = True  # Trailing stops use delta context
+    DIRECT_HIGH_GAIN_COOLDOWN_SECONDS = 15
+    EMA200_STOCHRSI_BODY_MULT: float = 1.05  # BACKTEST_CHANGE_127: Candle body 5%+ larger than prev
+    EMA200_STOCHRSI_ENABLED: bool = False  # BACKTEST_CHANGE_127: EMA200 trend + StochRSI reversal + candle body
+    EMA200_STOCHRSI_K_LONG: float = 20.0  # BACKTEST_CHANGE_127: Stoch K below this for LONG
+    EMA200_STOCHRSI_K_SHORT: float = 80.0  # BACKTEST_CHANGE_127: Stoch K above this for SHORT
+    EMA200_STOCHRSI_SCORE: int = 25  # BACKTEST_CHANGE_127: Score bonus
+    EMA200_STOCHRSI_TF: str = '1h'
+    EMA20_SLOPE_ENTRY_ENABLED: bool = True
+    EMA20_SLOPE_SHORT_THRESHOLD_1H: float = 0.05  # SHORT when ema20 slope > this (extended, mean revert)
+    EMA_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_3: #1 signal in top 5000
+    EMA_DIST_LONG_THRESHOLD: float = -1.0  # LONG when ema_dist < -1.0 (price far below EMA20)
+    EMA_DIST_SHORT_THRESHOLD: float = 1.0  # SHORT when ema_dist > 1.0 (price far above EMA20)
+    EMA_DIST_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_24: scale size by ema_dist strength
+    EMA_DIST_SIZING_MULT: float = 2.0  # Max 2x size when ema_dist is extreme
+    EMA_PULLBACK_ENABLED: bool = False  # BACKTEST_CHANGE_128: EMA pullback + StochRSI oversold in trend. Validated by academia + copy traders.
+    EMA_PULLBACK_SCORE_BONUS: int = 35  # BACKTEST_CHANGE_128: Highest score — matches "retest-and-launch" core edge
+    EMA_PULLBACK_TF: str = '15m'
+    ENABLE_LOSS_PROTECTION: bool = True  # Block closing positions with gain <= 0.12%
+    ENTRY_ATR_PCT_MIN: float = 1.5  # BACKTEST_CHANGE_103: NEW. Min ATR% for entry — winners trade 1.97% ATR vs losers 1.22%
+    ENTRY_VOL_MIN_RATIO: float = 1.3  # BACKTEST_CHANGE_100: was 1.0. Winners enter at 1.95x avg vol vs losers 1.27x — raise floor
+    ERROR_RECOVERY_SLEEP_SECONDS: int = 60  # Sleep after errors
+    EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED: bool = False  # 2026-04-11 SWEEP: dead code, no effect on results. Disabled.
+    EXIT_DC_BREACH_REDUCE_ENABLED: bool = True  # Augmented position DC breach
+    EXIT_DEAD_CODE_ENABLED: bool = False  # Dead code path — disabled
+    EXIT_DELTA_SPEED_ENABLED: bool = True  # Delta engine speed decay exit (PRIMARY)
+    EXIT_EMERGENCY_DC1H_ENABLED: bool = False  # Emergency DC 1h breach — disabled, too aggressive
+    EXIT_GAIN_EROSION_ENABLED: bool = True  # Peak gain eroding toward 0 with WT against
+    EXIT_GAIN_THRESHOLD_MIN: float = 1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = fewer whipsaw exits. IS+OOS validated.
+    EXIT_HARD_MAX_LOSS_CAP_ENABLED: bool = False  # 2026-04-11 SWEEP WINNER: #1 PnL destroyer. Sharpe 2.3 disabled vs 0.2 enabled. UNIVERSAL_NOLOSS_GATE handles loss protection.
+    EXIT_HEDGE_LOSS_KILL_ENABLED: bool = True  # Kill losing hedges when gain < prev_gain
+    EXIT_HEDGE_ORPHAN_KILL_ENABLED: bool = True  # Kill hedges with no original position
+    EXIT_MARKET_SPIKE_REDUCE_ENABLED: bool = True  # Reduce shorts on market spike / longs on drop — sweep: keeps Sharpe
+    EXIT_ON_ALL_ENABLED: bool = False  # Was True via EXIT_ON_ALL
+    EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED: bool = True  # 2026-04-11: now gated by WT 3m+15m both against
+    EXIT_PREEMPTIVE_BREAKEVEN_ENABLED: bool = True  # Sweep: helps slightly, keep on
+    EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = True  # BB breakout failure (price back inside bands)
+    EXIT_TREND_REVERSAL_ENABLED: bool = True  # HTF trend score flip
+    FAST_CUT_LOSS_MIN_AGE_MINUTES: float = 15.0  # Was 6 min (too short)
+    FAST_CUT_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_18: was -1.5. Dead code — ALL accounts STRICT_NO_LOSS
+    FAST_RISER_DOUBLE_ENABLED: bool = False  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
+    FG_FEAR_THRESHOLD: int = 25  # BACKTEST_CHANGE_141: F&G below this = extreme fear → increase size
+    FG_GREED_THRESHOLD: int = 75  # BACKTEST_CHANGE_141: F&G above this = extreme greed → decrease size
+    FG_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_141: F&G sizing multiplier (1,240% vs 680% B&H). Fear=bigger, Greed=smaller.
+    FORCE_REFRESH_SECONDS: float = 10  # BACKTEST_CHANGE_43: was 16. Fresher data for 3m decisions
+    GAIN_THRESHOLD_LOW = 1.0  # BACKTEST_CHANGE_112: was 0.15 (was 0.50). Higher = fewer whipsaw exits. OOS-validated at 1.0%
+    HARD_MAX_LOSS_PCT: float = -5.0  # 2026-04-10: SAFETY NET. NO position ever allowed past -5% loss. DELTA/WT/DC should normally fire way before. Set -9999 to disable (ablation only).
+    HA_3M_ENTRY_WEIGHT: float = -0.5  # BACKTEST_CHANGE_31: was 0.0. HA harmful for entries — use as negative (contrarian) signal
+    HA_WICK_QUALITY_ENABLED: bool = False  # BACKTEST_CHANGE_144: HA streak quality scoring (62% WR with EMA filter)
+    HA_WICK_QUALITY_SCORE: int = 15  # BACKTEST_CHANGE_144: Score bonus for strong HA streak
+    HA_WICK_QUALITY_TF: str = '1h'
+    HEDGE_ACCOUNTS = ['ang', 'fin', 'men', 'flz']
+    HEDGE_ALL_POSITIONS: bool = False  # BC_988: NEW. If True, hedge ALL positions when wt15m against (not just losers). Test pending.
+    HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
+    HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
+    HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
+    HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
+    HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
+    HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
+    HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
+    HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
+    HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
+    HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
+    HOUR_OF_DAY_GATE_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Audit hourly Sharpe first.
+    HTF_STRICT: bool = True  # BACKTEST_CHANGE_106: REVERTED to True. Tournament winner uses strict (all HTFs K>D+HA aligned). Sharpe 242 vs 133 for kd_only.
+    IMMEDIATE_WRONG_WAY_ENABLED: bool = False  # BACKTEST_CHANGE_114: was implicitly True. #2 PnL destroyer. Tight stops kill trades that recover.
+    INDICATORS_DATA_CACHE_SIZE = 2048
+    INDICATORS_SAVE_INTERVAL_SECONDS: float = 10.0
+    INDICATOR_MAX_AGE_SECONDS = 200.0
+    INF_RANKING_BYPASS_DELTA: bool = False  # DELTA_GATE_OPEN bypass (not measured yet)
+    INF_RANKING_BYPASS_FRESHNESS_MIN: int = 30  # only bypass within N min of list entry
+    INF_RANKING_BYPASS_HTF: bool = True  # 2/3 HTF -> 1/3 HTF — +18pp on top of stoch
+    INF_RANKING_BYPASS_MAX_POS: int = 8  # soft cap on concurrent bypass-entries
+    INF_RANKING_BYPASS_SCORE: bool = False  # score gate bypass (unclear impact, keep off)
+    INF_RANKING_BYPASS_STOCH: bool = True  # relax K3M_CAP/K15M — unlocks 73.6% alone
+    INF_RANKING_BYPASS_WT: bool = False  # WT composite bypass (trend misread risk)
+    INF_RANKING_PRIORITY_BYPASS: bool = False  # master switch
+    K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
+    K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
+    LADDER_AUTO_SAVE_SECONDS: float = 60.0
+    LADDER_TTL_MINUTES: int = 24 * 60  # Ladder order TTL
+    LEGACY_AGGRESSIVE_LOSS_CUT: bool = False  # OFF — single TF 1m flip
+    LEGACY_DC_BREAKOUT_REENTRY: bool = True  # ON — gated by tolerant delta
+    LEGACY_FAST_CUT_LOSS: bool = False  # OFF — % stop in disguise
+    LEGACY_GUARANTEED_REENTRY: bool = True  # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
+    LEGACY_PROC_SINGLE_REENTRY: bool = False  # OFF 2026-04-15 per user — fired mid-move on LTF only
+    LEGACY_REENTRY_GUARANTEED_2WT: bool = False  # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%
+    LEGACY_REENTRY_GUARANTEED_BOTTOM: bool = False  # ez_manage.py:16128 — wt15m bounce + 1h trend + 2/4 WT, 150%
+    LEGACY_REENTRY_GUARANTEED_CROSS: bool = False  # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos
+    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False  # ez_manage.py:18836 — DC bounce within 8h, near dc_high/low
+    LEGACY_REENTRY_PSR_FULL_DC: bool = False  # ez_manage.py:18812 — full reentry stoch_above_dc OR dc_basis_crossover_3m
+    LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False  # ez_manage.py:18777 LONG / 18798 SHORT — k_3m/15m crossover above dc_low_3m/15m
+    LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = False  # ez_manage.py:18757 — price ± atr_3m within 60min, k cross
+    LEGACY_WR_PULLBACK: bool = True  # ON
+    LOG_INTERVAL_SECONDS: int = 10  # Log interval for waiting operations
+    LONG_STOCH_CHASE_BLOCK: bool = True  # BACKTEST_CHANGE_102: NEW. Block LONG when stoch_k_1h > 70 AND ha_streak > 2 — chasing overbought = loser
+    LOSS_CUT_ENABLED: bool = False  # NEVER enable — proven to lose 20%+ weekly
+    LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED: bool = False  # ez_manage.py:20647 hedge-failed escape @ gain<-15% & 30min unhedged
+    LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
+    LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED: bool = False  # ez_positions_quick.py:10778 allow exit when max_gain≥0.5% & fresh_gain>-0.5
+    LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = False  # ez_manage.py:20621 STOP_FUNCTIONS_KILL @ gain<-5%
+    LS_RATIO_CONTRARIAN_ENABLED: bool = False  # BACKTEST_CHANGE_142: L/S ratio contrarian filter
+    LS_RATIO_EXTREME_THRESHOLD: float = 70.0  # BACKTEST_CHANGE_142: L/S ratio above this = suppress that side
+    LS_RATIO_HARD_MAX: float = 3.5  # Was 2.00 — raised to let shorts open while ratio recovers. Still blocks extreme >3.5 longs.
+    LS_RATIO_HARD_MIN: float = 0.05  # Near-zero: ratio must FOLLOW the WT direction, not fight it
+    LS_RATIO_LOG_INTERVAL: int = 60  # Seconds between ratio warning logs
+    LS_RATIO_PENALTY: int = 15  # BACKTEST_CHANGE_142: Score penalty for crowded side
+    MACD_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_136: MACD cross-back exit for profitable positions
+    MACD_EXIT_MIN_GAIN: float = 0.3  # BACKTEST_CHANGE_136: Min gain% before MACD exit allowed
+    MACD_EXIT_TF: str = '15m'
+    MACD_ZERO_CROSS_ENABLED: bool = False  # BACKTEST_CHANGE_131: MACD below-zero crossover + SMA200 trend. Confirmation only.
+    MACD_ZERO_CROSS_SCORE: int = 15  # BACKTEST_CHANGE_131: Conservative score (MACD 20% WR on crypto standalone)
+    MACD_ZERO_CROSS_TF: str = '1h'
+    MANAGE_REDUCE = True
+    MARKET_DATA_REFRESH_INTERVAL_SECONDS: float = 45.0
+    MARK_PRICE_MAX_STALENESS: float = 2  # Maximum acceptable age of cached mark price
+    MAX_AUGMENTS_PER_POSITION: int = 3  # URGENT_FIX: cap total augments, stop piling into losers
+    MAX_CONCURRENT_ORDERS: float = 186
+    MAX_DECAY_COMPLETE_DAYS = 7
+    MAX_DECAY_START_HOURS = 1
+    MAX_GAIN_DECAY_COMPLETE_DAYS = 7
+    MAX_MEMORY_GB: int = 8
+    MAX_ORDER_VALUE_FIN: float = 20.0  # Was $120.
+    MAX_ORDER_VALUE_MEN: float = 20.0  # Was $240.
+    MAX_POSITION_SIZE_BTC: float = 2000.0  # 2026-03-30: Same rule for BTC. Was $6000.
+    MAX_POSITION_SIZE_FIN: float = 20.0  # 2026-03-30: Same. Was $4000.
+    MAX_POSITION_SIZE_MEN: float = 20.0  # 2026-03-30: Same. Was $1200.
+    MEMORY_MONITOR_SLEEP_SECONDS: int = 60  # Memory monitor loop sleep
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 32  # V4: 8 hours min hold. Sharpe 0.503 vs 0.460 baseline (+9.3%), PnL +49%.
+    MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
+    MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
+    MIN_USD_DELTA_CONFIRM: float = 1.0
+    MITIGATOR_AUGMENT_CONSECUTIVE: int = 3  # Must rise for 3+ scans
+    MITIGATOR_AUGMENT_THRESHOLD: float = 0.3  # Augment winners above this gain
+    MITIGATOR_COOLDOWN: float = 15.0  # Seconds between actions per position
+    MITIGATOR_ENABLED: bool = False  # DISABLED: 8 triggers kill winners between 0.03-2.5%. Let winners run.
+    MITIGATOR_REENTRY_COOLDOWN: float = 180.0  # 3 min before re-entry
+    MITIGATOR_REENTRY_PRICE_PCT: float = 0.15  # Favorable price move for re-entry
+    MITIGATOR_SCAN_INTERVAL: float = 3.0
+    MITIGATOR_TIER1_DROP: float = 0.08  # Reduce 25% when gain drops to this
+    MITIGATOR_TIER1_PEAK: float = 0.15  # Peak gain must reach this before tier 1 arms
+    MITIGATOR_TIER1_REDUCE_PCT: float = 0.25
+    MITIGATOR_TIER2_DROP: float = 0.02  # Reduce 50% of remaining at breakeven
+    MITIGATOR_TIER2_REDUCE_PCT: float = 0.5
+    MITIGATOR_TIER3_DROP: float = -0.05  # Full close — tiny loss better than big loss
+    MOM3_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_4: #2 signal, 3-bar momentum mean-reversion
+    MOM3_LONG_THRESHOLD: float = -1.0  # LONG when mom3 < -1.0
+    MOM3_SHORT_THRESHOLD: float = 1.0  # SHORT when mom3 > 1.0
+    MOM5_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_5: #3 signal, 5-bar momentum
+    MOM5_LONG_THRESHOLD: float = -1.0
+    MOM5_SHORT_THRESHOLD: float = 1.0
+    MOMENTUM_RIDER_ACCOUNT: str = 'men'
+    MOMENTUM_RIDER_BASE_SIZE_USD: float = 50.0
+    MOMENTUM_RIDER_COOLDOWN: float = 300.0
+    MOMENTUM_RIDER_DC_WIDTH_MIN: float = 8.0
+    MOMENTUM_RIDER_ENABLED: bool = False  # DISABLED 2026-03-29: bypasses ALL execute_now guards + auto-expands tradeable_keys
+    MOMENTUM_RIDER_HEDGE_RATIO: float = 1.2
+    MOMENTUM_RIDER_MAX_SIZE_USD: float = 400.0
+    MOMENTUM_RIDER_MAX_SYMBOLS: int = 5
+    MOMENTUM_RIDER_REL_VOL_MIN: float = 3.0
+    MOMENTUM_RIDER_SCAN_INTERVAL: float = 10.0
+    MONITOR_REDUCTION_STALE_THRESHOLD: float = 180.0
+    MOVER_ACCOUNT: str = 'inf'
+    MOVER_DETECTION_ENABLED: bool = True  # BACKTEST_CHANGE_111: Scan all symbols for sudden spikes, fade them (mean reversion)
+    MOVER_LINEARITY_MIN: float = 0.3  # BACKTEST_CHANGE_111: Min R² — 0.3 = clean directional move (not choppy)
+    MOVER_LOOKBACK: int = 8  # BACKTEST_CHANGE_111: Bars to compute slope/linearity (8 on 15m = 2h window). Best: 8-13.
+    MOVER_MAX_POSITIONS: int = 6  # Max concurrent mover positions in inf account
+    MOVER_SCORE_BONUS: int = 40  # Score bonus for mover-detected entries (high conviction)
+    MOVER_THRESHOLD: float = 5.0  # BACKTEST_CHANGE_111: Min mover score to qualify. 5.0 = 99.7% WR across 193 symbols. Higher = fewer but cleaner.
+    MOVER_VOL_MIN: float = 1.0  # BACKTEST_CHANGE_111: Min relative volume to confirm move is real
+    MTS_BOTTOM_BONUS_THRESHOLD: float = 25.0  # bottom_score above this adds +4 score bonus
+    MTS_BOTTOM_MIN_SHORT: float = 10.0  # Shorts: slightly relaxed (was 5)
+    MTS_BOTTOM_STRONG_THRESHOLD: float = 40.0  # bottom_score above this adds +8 score bonus
+    MTS_ENTRY_QUALITY_BONUS: float = 25.0  # entry_quality above this adds +2 score bonus
+    MTS_ENTRY_QUALITY_MIN_SHORT: float = 5.0  # Shorts: slightly relaxed (was 0)
+    MTS_ENTRY_QUALITY_STRONG: float = 40.0  # entry_quality above this adds +5 score bonus
+    NEWS_POLL_INTERVAL_CRYPTO: int = 300  # 5 min (CryptoPanic)
+    NEWS_POLL_INTERVAL_SOCIAL: int = 900  # 15 min (Reddit + Twitter)
+    NEWS_SENTIMENT_DECAY_HOURS: int = 4  # Older articles decay to 0
+    NEWS_SENTIMENT_MIN_ARTICLES: int = 2  # Min sources to form a score
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5  # 2026-04-16: reverted from 0.0 — was hedging on rounding-error noise
+    OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
+    OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
+    OI_DIVERGENCE_ENABLED: bool = False  # BACKTEST_CHANGE_143: OI divergence confirmation
+    OI_DIVERGENCE_PENALTY: int = 10  # BACKTEST_CHANGE_143: Score penalty for OI divergence
+    OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners.
+    OPTIMAL_HOLD_BARS_3M: int = 999  # ABLATION_V3_REVERT: was 21 (BC_15). Confirmed on BOTH v2 (4-day) and v3 (3-year, 215 sym): +1.04 Sharpe, 85% improved. Forced exit kills winners.
+    ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
+    OUTLIER_RUNAWAY_ATR_FACTOR: float = 2.0
+    OUTLIER_STUCK_ATR_FACTOR: float = 0.5
+    OUTLIER_STUCK_HOURS: float = 2.0
+    PERSIST = 7200.0  # minutes to stay in tradeable_keys after deletion
+    PER_SYMBOL_CONFIG_ENABLED: bool = False  # TIER_B: Sharpe +0.1-0.2. Overnight sweep infra ready.
+    PLOT_LOOP_INTERVAL_SECONDS: int = 1800  # Plot loop interval
+    PNL_DECAY_COMPLETE_DAYS: int = 5  # DAYS
+    PNL_DECAY_FINAL_PERCENTAGE: float = 0.1  # Keep 10% after full decay
+    PNL_DECAY_START_HOURS: int = 1  # HOURS
+    POSITIONS_SERVICE_HEALTH_TIMEOUT: float = 4.0  # Seconds to wait for RPC ping
+    POSITION_REDIS_REFRESH_INTERVAL: float = 6.0
+    POSITION_REFRESH_MIN_INTERVAL: int = 5  # \seconds
+    POSITION_SAVE_INTERVAL: float = 6.0
+    POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
+    PROGRESSIVE_LOCK_ENABLED: bool = False  # TIER_A: Sharpe +0.3. Staged profit without full close.
+    PROGRESSIVE_LOCK_FRACTION: float = 0.25  # Reduce fraction per tier.
+    PYRAMID_ENABLED: bool = False  # TIER_D: Sharpe +0.2. Amplifies winners.
+    PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3  # SHORT: DC pos < 0.3 = lower third.
+    PYRAMID_MIN_DC_POS_15M: float = 0.7  # LONG: DC pos > 0.7 = upper third.
+    PYRAMID_MIN_GAIN_PCT: float = 1.5  # Fires once gain >= this.
+    PYRAMID_MIN_WT_VEL_1H: float = 2.0  # 1h velocity must trend.
+    PYRAMID_SIZE_MULT: float = 0.5  # Add N × position_amt (0.5 = 50%).
+    RANKING_LOOP_SLEEP_SECONDS: int = 120  # BACKTEST_CHANGE_44: ranking loop sleep (2 minutes, was 3)
+    RATIO_EMERGENCY_EXIT_COOLDOWN: float = 999999.0  # Infinite cooldown
+    RATIO_EMERGENCY_EXIT_ENABLED: bool = False  # PERMANENTLY DISABLED: closing losers = Sharpe 19 vs ratio-only 357. Fix ratio by OPENING underweight side, NEVER by closing losers.
+    RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT: float = -999.0  # Set to impossible value
+    RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE: int = 0  # Zero = can never close anything
+    RATIO_EMERGENCY_EXIT_THRESHOLD: float = 999.0  # Set to impossible value so it can NEVER trigger even if enabled by accident
+    REACTIVE_MODE: bool = False
+    REDIS_CHANNEL_SIGNALS: str = 'signals_channel'
+    REDIS_EXPIRY_SECONDS: int = 180
+    REDUCE_HUGE_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_19: was -2.0. Dead code under STRICT_NO_LOSS
+    REENTER_SAVE_DEBOUNCE_SECONDS: int = 30  # BACKTEST_CHANGE_45: was 50. Faster reentry on 3m TF
+    REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
+    REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
+    REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
+    REENTRY_2_ENABLED: bool = True  # Master switch. ~$420 PnL per ablation.
+    REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True  # ABLATION: Sharpe 0.31/0.32, 22K/14K trades, 62.5% WR. Best balance.
+    REENTRY_B04_DC_RETEST_ENABLED: bool = True  # ABLATION: Sharpe 0.39/0.31, 579/335 trades. High quality.
+    REENTRY_B09_SNAPBACK_ENABLED: bool = False  # ABLATION: Sharpe 0.022/0.024 = weak. CUT.
+    REENTRY_B10_STOCH_REV_ENABLED: bool = True  # ABLATION: Sharpe 0.07/0.12, 69-75% WR. Keep for WR.
+    REENTRY_B11_DC_BREAK_ENABLED: bool = True  # ABLATION: Sharpe 0.34/0.31, 94-97% WR. Top quality.
+    REENTRY_B12_WT_MOM_ENABLED: bool = True  # ABLATION: Sharpe 0.15/0.17, 112K/73K trades. Volume king.
+    REENTRY_B14_HA_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.11/0.13. Moderate.
+    REENTRY_B15_STRONG_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.89/0.72, 94-97% WR. Sniper.
+    REENTRY_COOLDOWN_S: float = 0.0  # Was 15s; zero for instant reentry
+    REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
+    REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
+    REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
+    REGIME_ADAPTIVE_ENABLED: bool = False  # Regime-adaptive strategy selection (ADX+CHOP)
+    REGIME_ATR_RATIO_MIN: float = 0.25  # atr_3m/atr_1h min. Below = compressed.
+    REGIME_BB_WIDTH_PCT_MIN: float = 2.0  # bb_width_1h as % of price. Below = squeeze.
+    REGIME_BTC_MARKET_WEIGHT: float = 0.5  # BTC influence on market-wide regime
+    REGIME_DC_ATR_RATIO_MIN: float = 1.5  # dc_width_15m / atr_3m. Below = no room.
+    REGIME_DETECTION_ENABLED: bool = False  # Master switch — OFF until backtest-proven
+    REGIME_ENTER_TRENDING_THRESHOLD: float = 30.0  # Score > 30 to enter TRENDING_UP (< -30 for DOWN)
+    REGIME_EXIT_TRENDING_THRESHOLD: float = 15.0  # Score < 15 to exit back to RANGING (hysteresis)
+    REGIME_GATE_ENABLED: bool = False  # TIER_A: Sharpe +0.3. Kills low-WR chop tail.
+    REGIME_MIN_DWELL_BARS: int = 16  # 4h at 15m — minimum bars before regime switch
+    REGIME_RANGING_DC_BREAKOUT_SCORE: int = 0  # DC breakout disabled in ranging
+    REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15  # Exit at 0.15% gain
+    REGIME_RANGING_K_ZONE_BONUS: int = 40  # Mean reversion K-zone bonus (was 25)
+    REGIME_RANGING_MIN_HOLD_BARS: int = 8  # 2h at 15m — fast turnover
+    REGIME_RANGING_NOLOSS_MIN: float = 0.05  # Take ANY profit in ranging
+    REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5  # Half-size, more slots
+    REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0  # Standard reentry
+    REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.6  # Reserve 60% slots for new entries
+    REGIME_RANGING_STALE_HOURS: float = 48.0  # Evict breakeven positions after 48h
+    REGIME_RANGING_STALE_MIN_PROFIT: float = 0.02  # Must be slightly profitable to evict
+    REGIME_RANGING_WT_EXIT_VEL: float = -3.0  # Exit on lighter reversal
+    REGIME_RANGING_WT_REDUCE_FRAC_LOW: float = 0.4  # 0.3-0.5% gain → reduce 40%
+    REGIME_RANGING_WT_REDUCE_FRAC_MED: float = 0.6  # 0.5-1.0% gain → reduce 60%
+    REGIME_TRENDING_DC_BREAKOUT_SCORE: int = 30  # DC breakout valuable in trends
+    REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0  # Only exit at 2%+ gain
+    REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0  # Shallower pullback K reset
+    REGIME_TRENDING_K_ZONE_BONUS: int = 15  # K-zone less important
+    REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
+    REGIME_TRENDING_NOLOSS_MIN: float = 0.5  # Let winners run in trends
+    REGIME_TRENDING_POSITION_SIZE_MULT: float = 1.5  # Full-size, fewer trades
+    REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0  # Aggressive reentry in trends
+    REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.4  # Reserve 40% slots
+    REGIME_TRENDING_WT_EXIT_VEL: float = -12.0  # Only exit on strong reversal
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.1  # Trim gently
+    REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15  # Still gentle
+    RSI2_MEAN_REVERSION_ENABLED: bool = False  # BACKTEST_CHANGE_126: RSI(2) ultra-oversold (91% WR daily, tiny gains)
+    RSI2_SCORE_BONUS: int = 20  # BACKTEST_CHANGE_126: Score bonus for RSI(2) extreme
+    RSI2_THRESHOLD_LONG: float = 15.0  # BACKTEST_CHANGE_126: RSI(2) below this = LONG signal
+    RSI2_THRESHOLD_SHORT: float = 85.0  # BACKTEST_CHANGE_126: RSI(2) above this = SHORT signal
+    RSI_ENTRY_GATE_ENABLED: bool = False  # BC_154: DISABLED — 67-config ablation (48sym/4yr): stoch_gate_50 does the filtering. no_filter+stoch50 = Sharpe 0.790 (#1) vs RSI37 = 0.638
+    RSI_ENTRY_MAX_LONG: float = 37.0  # BC_154: kept for reference but gate is disabled
+    RSI_ENTRY_MIN_SHORT: float = 63.0  # BC_154: kept for reference but gate is disabled
+    RSI_MACD_EMA_ENABLED: bool = False  # BACKTEST_CHANGE_129: RSI+MACD+EMA9 cross combined entry
+    RSI_MACD_EMA_RSI_LONG: float = 35.0  # BACKTEST_CHANGE_129: Relaxed RSI — 35 not 30
+    RSI_MACD_EMA_RSI_SHORT: float = 65.0  # BACKTEST_CHANGE_129: Relaxed RSI — 65 not 70
+    RSI_MACD_EMA_SCORE: int = 25  # BACKTEST_CHANGE_129: Score bonus
+    RSI_MACD_EMA_TF: str = '1h'
+    RSI_MOMENTUM_MODE: bool = False  # BACKTEST_CHANGE_138: Toggle RSI gate to momentum (>50=buy). Crypto-specific.
+    RZ_DIV_BLOCK_MIN: int = 2
+    RZ_DIV_EXIT_ENABLED: bool = True
+    RZ_K_ENTRY_BOTTOM: float = 10.0  # Stoch K below this at BOTTOM = exit short (mirror)
+    RZ_MFI_ENTRY_BOTTOM: float = 15.0  # MFI below this at BOTTOM = exit short (mirror)
+    RZ_TWO_PHASE_EXIT_ENABLED: bool = True
+    RZ_ZSCORE_EXIT_ENABLED: bool = True
+    RZ_ZSCORE_ZONE_ENABLED: bool = True
+    SANDBOX_MODE: bool = False
+    SATOSHIT_ENABLED: bool = True
+    SATOSHIT_EXIT_ENABLED: bool = True  # Fixed 2026-04-07 — now exits at 1m/3m TOP (stoch cross down from OB), never at higher low
+    SATOSHIT_EXIT_PARTIAL_PCT: float = 0.7  # Close 70% of position, keep 30% as runner
+    SATOSHIT_EXIT_USE_MAKER: bool = True  # Use maker order for partial close (bypasses Finandy full close)
+    SATOSHIT_LONG_BB_PCTB_MAX: float = 0.5  # 1h BB%B proxy (his 15m median: 0.08)
+    SATOSHIT_LONG_HA_STREAK_MAX: int = 1  # HA must be bearish/neutral (his median: -3)
+    SATOSHIT_PROTECT_TRADES: bool = True  # ON — only Satoshit exit can close Satoshit-opened positions
+    SATOSHIT_QTY_MULT: float = 3.0  # 3x position size for satoshit entries — 100% WR, avg +5.58% gain
+    SATOSHIT_SCORE_BONUS: int = 30  # Score bonus when Satoshit fires (below mover=40)
+    SATOSHIT_SHORT_BB_PCTB_MIN: float = 0.55  # 1h BB%B proxy (his 15m median: 1.16)
+    SATOSHIT_SHORT_HA_STREAK_MIN: int = 0  # HA must be bullish (his median: 4)
+    SBA_ADX_TF: str = '1h'
+    SBA_COOLDOWN_GLOBAL_S: int = 300  # BACKTEST_CHANGE_145: 5min between ANY SBA add (crash guard)
+    SBA_COOLDOWN_POSITION_S: int = 3375  # BACKTEST_CHANGE_145: ~56min between adds (backtest: 15 bars × 15m = 3375s optimal)
+    SBA_MAX_CONCURRENT: int = 3  # BACKTEST_CHANGE_145: Max positions receiving SBA at once
+    SBA_MAX_TOTAL_MULT: float = 2.5  # BACKTEST_CHANGE_145: Position can't exceed 2.5x START_POSITION_SIZE
+    SBA_MIN_SCORE: float = 3.5  # BACKTEST_CHANGE_145: Min bounce score to trigger (backtest: 3.5 > 4.0/4.5, 66% SBA WR)
+    SCALP_ACCOUNTS = ['inf']
+    SCALP_MODE: bool = True  # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
+    SCALP_OVERRIDE = False
+    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
+    SCALP_V2_ISOLATE: bool = True  # 2026-04-16: ON for live — V2 positions ONLY use V2 exits, main pipeline exits skip them. V8 -0.30 Sharpe was from main exits trampling V2 positions.
+    SCALP_V2_LH_LL_EXIT: bool = True  # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
+    SCALP_V2_LH_LL_TF: str = '15m'
+    SCALP_V2_MAX_CONCURRENT: int = 5  # P3: fine for now, only tune if hitting position limits
+    SCALP_V2_MAX_HOLD_MINUTES: float = 15.0  # P0: sweep-proven, 60m universally worse for inf
+    SCALP_V2_REDZONE_EXIT: bool = True  # P1: #2 in sweep (Sharpe 97). Catches exits V1_WT misses. +6 extra exits in smoke test.
+    SCALP_V2_REDZONE_K_THRESHOLD: int = 90  # P1: sweep winner=90. Try 80 only after 90 tested.
+    SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop
+    SCALP_V2_VARIANT: str = 'V1_WT_CONFIRM'
+    SERVICE_REDUCE = True
+    SERVICE_STOP = True
+    SHORT_ABOVE_SMA20_BONUS: int = 15  # BACKTEST_CHANGE_104: NEW. Bonus for SHORT when price above EMA20 — mean-reversion shorts win (3.15% above vs losers 0.10%)
+    SHORT_RSI_MIN_1H: float = 40.0  # BACKTEST_CHANGE_101: Block SHORT when rsi_1h < 40
+    SIGNALS_LOOP_INTERVAL_SECONDS: int = 300  # Signals loop interval
+    SIMPLE_TP_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_139: Simple fixed TP% exit. 567k backtests: simple > complex trailing.
+    SIMPLE_TP_PCT: float = 0.5  # BACKTEST_CHANGE_139: Fixed TP percentage
+    SLEEP_TIME_PROC_ACCT: float = 5  # Check symbols - 100 times per minute minimum
+    SMA200_DIST_LONG_THRESHOLD: float = -3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups
+    STALE_WARNING_INTERVAL_SECONDS: float = 30.0
+    STOCH_CROSS_3M_EXIT_ENABLED: bool = False  # 2026-04-10: REMOVED — stoch is way lagging vs DELTA/WT. DELTA→WT priority means this never reaches if upstream works.
+    STOP_LOSS_THRESHOLD = 999.0  # BACKTEST_CHANGE_17: was 1.0. Dead code under STRICT_NO_LOSS — disabled
+    STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
+    STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk
+    STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']
+    SWEEP_OPTIMAL_ENTRY_TF: str = '1h'
+    SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period
+    SYMBOL_PERF_DECAY_HOURS: float = 12.0
+    SYMBOL_PERF_MAX_MULT: float = 10.0
+    SYMBOL_PERF_MIN_MULT: float = 0.1
+    SYMBOL_PERF_MIN_TRADES: int = 5
+    SYMBOL_PERF_WINDOW_DAYS: int = 14
+    TASK_STAGGER_SECONDS: int = 15  # Stagger between starting background tasks
+    TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against
+    TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against
+    TF_ALIGNMENT_MIN_TOTAL: int = 4  # 2026-03-30: Entries need 3/3 LTF + D mandatory + 2/3 HTF = 4+ TFs. Hardcoded in check_entry_alignment.
+    TF_ALL: list = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO]
+    TF_FOCUS: str = '3m'
+    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry
+    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit
+    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m
+    TIER_A_MIN_GAIN: float = 0.3
+    TIER_A_MIN_TRADES: int = 10
+    TIER_A_MULTIPLIER: float = 1.2
+    TIER_A_WIN_RATE: float = 0.6
+    TIER_B_MIN_TRADES: int = 5
+    TIER_B_WIN_RATE: float = 0.45
+    TIER_C_MULTIPLIER: float = 0.7
+    TIER_ENABLED: bool = True
+    TREND_EXIT_SCORE_FLIP: int = 0
+    TREND_HEDGE_MAX_SEC: int = 180
+    TREND_HTF_MIN_BEAR: int = 7
+    TREND_HTF_MIN_BULL: int = 7
+    TREND_MIN_GAIN_EXIT: float = 0.1
+    TRIPLE_CONF_ENABLED: bool = False  # BACKTEST_CHANGE_125: MACD+RSI+Stoch triple confirmation entry
+    TRIPLE_CONF_RSI_LONG: float = 30.0  # BACKTEST_CHANGE_125: RSI(14) below this for LONG
+    TRIPLE_CONF_RSI_SHORT: float = 70.0  # BACKTEST_CHANGE_125: RSI(14) above this for SHORT
+    TRIPLE_CONF_SCORE: int = 30  # BACKTEST_CHANGE_125: Score bonus when all 3 align
+    TRIPLE_CONF_STOCH_LONG: float = 20.0  # BACKTEST_CHANGE_125: Stoch K below this for LONG
+    TRIPLE_CONF_STOCH_SHORT: float = 80.0  # BACKTEST_CHANGE_125: Stoch K above this for SHORT
+    TRIPLE_CONF_TF: str = '1h'
+    TR_ADX4H_BOYCOTT_SCORE: int = -40  # BC_155a: Severe. Stacked with BB_width: 81% OOS WR
+    TR_ADX4H_GATE_ENABLED: bool = True  # BC_155a: Boycott when ADX_4h trending (bad for mean-reversion system)
+    TR_ADX4H_MAX: float = 20.0  # BC_155a: Conservative (16 optimal). ADX_4h above this = heavy penalty
+    TR_BBWIDTH4H_BOYCOTT_SCORE: int = -35  # BC_155b: Severe penalty when too volatile
+    TR_BBWIDTH4H_GATE_ENABLED: bool = True  # BC_155b: Boycott wide BBands (high vol = bad entries)
+    TR_BBWIDTH4H_MAX: float = 10.0  # BC_155b: Conservative (7.94 optimal)
+    TR_CHOP4H_BONUS: int = 15  # BC_155c: Mean-reversion sweet spot
+    TR_CHOP4H_GATE_ENABLED: bool = True  # BC_155c: Bonus choppy, penalty trending. Our system IS mean-reversion.
+    TR_CHOP4H_MIN: float = 50.0  # BC_155c: Choppy above this = bonus
+    TR_CHOP4H_PENALTY: int = -20  # BC_155c: Penalty in trending regime
+    TR_CHOP4H_TREND_MAX: float = 38.0  # BC_155c: Strong trend below this = penalty
+    TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE: int = -25  # BC_155e: Moderate penalty
+    TR_DCWIDTH4H_SHORT_ENABLED: bool = True  # BC_155e: SHORT boycott in wide DC channel
+    TR_DCWIDTH4H_SHORT_MAX: float = 15.0  # BC_155e: Conservative (winners median ~11)
+    TR_MFI4H_LONG_BOYCOTT_SCORE: int = -25  # BC_155d: Moderate penalty
+    TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
+    TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
+    UNIVERSAL_NOLOSS_GATE: bool = True
+    USE_INDICATOR_SNAPSHOT: bool = True
+    V8Q_COOLDOWN_BARS: int = 3
+    V8Q_D_TREND_REQUIRED: bool = True
+    V8Q_HTF_MIN_ALIGNED: int = 1
+    V8Q_K3M_FLOOR: int = 30
+    V8Q_MIN_HOLD_BARS: int = 10
+    V8Q_PROFIT_TARGET_ENABLED: bool = True
+    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90)
+    V8Q_STRENGTH_FILTER_ENABLED: bool = True
+    V8Q_STRENGTH_MIN_SCORE: float = 5.0
+    V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT')
+    V8Q_SYMBOL_TIER_TOP4: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT')
+    V8Q_SYMBOL_TIER_TOP5: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT')
+    V8Q_SYMBOL_TIER_TOP6: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT', 'SOLUSDT')
+    V8Q_WT_EXIT_MIN_TFS: int = 2
+    VALIDATE_REFRESH: int = 2  # seconds
+    VOLUME_CONFIRMATION_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Kills dead-zone entries.
+    VOLUME_CONFIRMATION_MULT: float = 1.2  # volume_3m > N × avg_20_3m required.
+    VOL_SPIKE_BODY_RATIO: float = 0.7  # Candle body must be > 70% of total range
+    VOL_SPIKE_COOLDOWN: float = 300.0  # Seconds between vol spike entries per symbol
+    VOL_SPIKE_ENABLED: bool = True  # Volume spike reversal: 93.5% WR, Sharpe 13.9
+    VOL_SPIKE_LS_MAX_IMBALANCE: float = 1.5  # Max L/S ratio imbalance before blocking
+    VOL_SPIKE_MIN_ALIGNMENT: int = 3  # Lower alignment threshold for spike entries
+    VOL_SPIKE_RELVOL_THRESHOLD: float = 3.0  # Relative volume must be > 3x 20-bar avg
+    WIN_TRAIL_EROSION_PCT: float = 0.5  # BACKTEST_CHANGE_105: Tournament v2: 50% trail slightly better than 30% (let winners run more). Was 0.30.
+    WT_15M_SAME_HEDGE_COOLDOWN_SEC: int = 1800  # 2026-04-16: Redis-backed cooldown (survives restarts — old 300s in-memory wiped on process restart).
+    WT_15M_SAME_HEDGE_DAILY_CAP: int = 2  # 2026-04-16: max SAME_HEDGE opens per symbol per day. 45× BAT/DOT/ATOM firestorm = daily cap missing.
+    WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
+    WT_EXIT_VEL_THRESHOLD: float = -6.0  # V4: was -2.0 hardcoded. Calmer exits = let winners run longer.
+    WT_REDUCE_FRAC_HIGH: float = 0.5  # V4: at gains 1-3%, reduce 50% (was 70%).
+    WT_REDUCE_FRAC_LOW: float = 0.15  # V4: was 0.30. At gains 0.3-0.5%, only reduce 15% (was 30%).
+    WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # FIX 2026-03-29: was 1, killed real hedges on fin. Need 2 misses to confirm phantom.
+    ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
+    _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'
+    _INSTANCES: ClassVar[WeakSet] = WeakSet()
+    _REGIME_LOG: ClassVar[list] = []
+    _REGIME_REDIS_TS: ClassVar[float] = 0.0
 
     def __post_init__(self):
         if self.DELTA_TF_WEIGHTS is None:
