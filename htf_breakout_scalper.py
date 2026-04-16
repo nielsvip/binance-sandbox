@@ -125,8 +125,10 @@ def check_scalp_v2_entry(symbol: str, position_key: str, indicators: Dict, curre
     if current_price <= 0:
         return None
 
-    # 2026-04-16 FIX: entry mode switchable — breakout (original, LOSING) vs pullback (NEW)
-    entry_mode = str(getattr(config, "SCALP_V2_ENTRY_MODE", "pullback"))
+    # 2026-04-16: entry mode switchable. Default "breakout" (live, unchanged).
+    # "pullback" variant written but NOT YET backtested per-account — DO NOT SET DEFAULT
+    # until backtested on inf (the only SCALP_ACCOUNT) and forward-tested.
+    entry_mode = str(getattr(config, "SCALP_V2_ENTRY_MODE", "breakout"))
 
     if entry_mode == "pullback":
         ok, detail = _htf_pullback_ok(indicators, current_price, is_long)
