@@ -505,15 +505,45 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
     v8_logger.info(f"Using {npz_dir} ({resolution} resolution)")
     stores = {}
     start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if start_date else 0
-    for npz_path in sorted(npz_dir.glob("*.npz")):
+    # ── Mode-aware symbol filter (BACKTEST-ONLY OOM GUARD 2026-04-16) ──
+    # Without this, crypto sweep with no --symbols loads all 324 NPZ files
+    # (stocks + crypto), spikes 17GB+ RAM per worker, and gets OOM-killed
+    # by the kernel after 165s (before producing any V8_RESULT) → status=no_result.
+    # Crypto symbols on Binance Futures end in USDT/USDC/USD/BUSD/FDUSD.
+    # Tradier symbols are equity tickers (no quote-currency suffix).
+    _CRYPTO_QUOTE_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD", "DAI")
+    def _is_crypto_sym(s: str) -> bool:
+        return any(s.endswith(q) for q in _CRYPTO_QUOTE_SUFFIXES)
+    n_skipped_mode = 0
+    n_skipped_explicit = 0
+    n_skipped_stale = 0
+    candidate_paths = sorted(npz_dir.glob("*.npz"))
+    v8_logger.info(f"Found {len(candidate_paths)} NPZ files in {npz_dir} — filtering for mode={mode}")
+    for npz_path in candidate_paths:
         sym = npz_path.stem
         if symbols and sym not in symbols:
+            n_skipped_explicit += 1
             continue
-        store = IndicatorStore(str(npz_path))
+        # Mode filter: crypto-only loads quote-currency symbols, tradier-only excludes them.
+        # Skip when explicit --symbols filter is given (user knows what they want).
+        if not symbols:
+            if mode == "crypto" and not _is_crypto_sym(sym):
+                n_skipped_mode += 1
+                continue
+            if mode == "tradier" and _is_crypto_sym(sym):
+                n_skipped_mode += 1
+                continue
+        try:
+            store = IndicatorStore(str(npz_path))
+        except Exception as _e:
+            v8_logger.warning(f"[NPZ_LOAD_FAIL] {sym}: {type(_e).__name__}: {_e}")
+            continue
         if start_ts and store.timestamps[-1] < start_ts:
+            n_skipped_stale += 1
             continue
         stores[sym] = store
-    v8_logger.info(f"Loaded {len(stores)} symbols")
+    v8_logger.info(f"Loaded {len(stores)} symbols (skipped: mode={n_skipped_mode}, explicit={n_skipped_explicit}, stale={n_skipped_stale})")
+    print(f"V8_INIT_HEARTBEAT: stores_loaded={len(stores)} skipped_mode={n_skipped_mode} skipped_stale={n_skipped_stale}", flush=True)
     return stores, resolution
 
 
