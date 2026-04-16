@@ -1691,13 +1691,19 @@ class AdvancedSignalRater:
         _delta_z = 0.0
         if data_manager and hasattr(data_manager, 'delta_tracker') and data_manager.delta_tracker and getattr(config, 'DELTA_ENGINE_ENABLED', False):
             try:
-                _pos_state = {'side': 'LONG' if is_long else 'SHORT', 'max_speed': 0, 'n_entries': 0} if positionAmt > 0 else None
+                _ep_r = safe_fetch_float(getattr(position, 'entry_price', 0) if position else 0, 0) or current_price
+                _pos_state = {'side': 'LONG' if is_long else 'SHORT', 'n_entries': 1, 'last_entry_price': _ep_r} if positionAmt > 0 else None
                 _delta_sig = data_manager.delta_tracker.update(symbol, ind, _pos_state)
                 if _delta_sig:
                     _delta_active_tfs = getattr(_delta_sig, 'active_tf_count', _delta_sig.bull_tf_count if is_long else _delta_sig.bear_tf_count)
                     _delta_z = _delta_sig.bull_speed_z if is_long else _delta_sig.bear_speed_z
                     _delta_entry_ok = (is_long and _delta_sig.entry_long) or (not is_long and _delta_sig.entry_short)
                     _delta_exit_ok = (is_long and _delta_sig.exit_long) or (not is_long and _delta_sig.exit_short)
+                    _cache = getattr(tracker_manager, '_rate_delta_sig_cache', None)
+                    if _cache is None:
+                        _cache = {}
+                        tracker_manager._rate_delta_sig_cache = _cache
+                    _cache[position_key] = (time.time(), _delta_sig)
             except Exception:
                 pass
         _delta_score_weight = getattr(config, 'DELTA_SCORE_WEIGHT', 30.0)
@@ -11901,9 +11907,14 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             logger.info(f"[COMPRESSION_WATCH] {position_key}: {_cb_compressed}/3 TFs compressed (1h={_cb_atr_1h:.2f} 4h={_cb_atr_4h:.2f} D={_cb_atr_D:.2f}) but rate() score too low ({score:.0f}) or WT not aligned")
                 # == DELTA + RED ZONE ENGINE — entry/exit/augment from WT+DC+BB zone assessment ==
                 if config.DELTA_ENGINE_ENABLED and data_manager.delta_tracker:
-                    _ep_delta = safe_fetch_float(getattr(position, "entry_price", 0) if position else 0, 0) or current_price
-                    _pos_state_for_delta = {"side": "LONG" if is_long else "SHORT", "n_entries": 1, "last_entry_price": _ep_delta} if pos_amt > 0 else None
-                    _delta_sig = data_manager.delta_tracker.update(symbol, indicators, _pos_state_for_delta)
+                    _rate_cache = getattr(tracker_manager, '_rate_delta_sig_cache', None) or {}
+                    _cached = _rate_cache.get(position_key)
+                    if _cached is not None and (time.time() - _cached[0]) < 5.0:
+                        _delta_sig = _cached[1]
+                    else:
+                        _ep_delta = safe_fetch_float(getattr(position, "entry_price", 0) if position else 0, 0) or current_price
+                        _pos_state_for_delta = {"side": "LONG" if is_long else "SHORT", "n_entries": 1, "last_entry_price": _ep_delta} if pos_amt > 0 else None
+                        _delta_sig = data_manager.delta_tracker.update(symbol, indicators, _pos_state_for_delta)
                     _rz = _delta_sig.zone  # BASELINE / TOP / BOTTOM / TRANSIT
                     _rz_action = _delta_sig.zone_action  # BUY / SELL / EXIT_LONG / EXIT_SHORT / HOLD
                     _rz_reason = _delta_sig.zone_reason
