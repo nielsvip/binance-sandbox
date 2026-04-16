@@ -292,6 +292,17 @@ class Config:
     REENTRY2_DIR_FAV_ENABLED: bool = True  # BC_152 direction-favorable immediate reentry
     REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
+    # === V8_QUICK BEST CONFIG (2026-04-16 sweep winner) ===
+    # 11-symbol 4yr crypto sweep: Sharpe 0.938, 87.2% WR, 1.42% avg PnL/trade, 188 trades
+    # Baseline Sharpe was 0.17 — this is 5.5× improvement
+    V8Q_STRENGTH_FILTER_ENABLED: bool = True  # Weighted block score filter
+    V8Q_STRENGTH_MIN_SCORE: float = 5.0  # Block weighted sum ≥ 5 required to enter
+    V8Q_HTF_MIN_ALIGNED: int = 2  # At least 2/3 of (1h,4h,D) must agree on direction
+    V8Q_MIN_HOLD_BARS: int = 10  # Hold for 10 bars (30min) minimum — avoids noise exits
+    V8Q_WT_EXIT_MIN_TFS: int = 2  # Exit on 2/3 WT against (not 3/3)
+    V8Q_COOLDOWN_BARS: int = 3
+    V8Q_D_TREND_REQUIRED: bool = True  # Daily HA color must align or be neutral
+    V8Q_K3M_FLOOR: int = 30
     REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable
