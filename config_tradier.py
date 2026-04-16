@@ -417,6 +417,12 @@ class TradierConfig:
     BOUNCE_REENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T53: After profitable exit, K must reset to zone before reentry.
     BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35
     BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65
+    # ═══ SAFETY SWITCHES (2026-04-16 audit) ═══
+    TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys
+    TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
+    TRADIER_RATIO_BOOST_MIN_GAIN_PCT: float = 1.0  # Min gain for ratio boost to fire
+    TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = True  # True=legacy (bypass after 48h); False=always enforce stoch
+    TRADIER_NOLOSS_SRS_BYPASS: bool = True          # True=SRS reason bypasses NOLOSS; False=no reason bypass
     # === TWO-TIER MANDATORY REENTRY — STOCKS (BC_155) ===
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # Tier 1: 150% of closed qty
     REENTRY_TIER2_SIZE_MULT_TRADIER: float = 0.8  # Tier 2: 80% of closed qty

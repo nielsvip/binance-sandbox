@@ -7232,6 +7232,14 @@ class TradierTradeManager:
             is_hedge = action in ('HEDGE_OPEN', 'HEDGE_CLOSE') if action else False
             is_long = position_side == 'LONG'
             _is_augment_or_entry = is_augment
+            # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══
+            if is_augment and getattr(config, 'TRADIER_REQUIRE_TRADEABLE_KEY', True):
+                await self.load_tradeable()
+                if position_key not in self.tradeable_keys:
+                    logger.critical(f"🚫 [TRADIER_TRADEABLE_GATE] {position_key}: NOT in tradeable_keys — entry/augment BLOCKED. action={action} reason={reason}")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return "BLOCKED_NON_TRADEABLE"
             
             if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0):
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
@@ -7250,9 +7258,10 @@ class TradierTradeManager:
                     return "REDUCTION_COOLDOWN"
             
             # STRICT_NO_LOSS guard — block reductions at a loss (unless Part 15 sweep disables it)
-            # SRS bypass (2026-04-14): STRUCTURAL_RANGE_SHIFT reasons are controlled-loss exits, let through.
+            # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
             if is_reduce and not is_hedge:
-                _en_srs = 'STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper()
+                _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
+                _en_srs = _srs_bypass_allowed and 'STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper()
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
@@ -7351,9 +7360,15 @@ class TradierTradeManager:
                 _r_min = getattr(config, "LS_RATIO_MIN_TRADIER", 0.50)
                 _r_max = getattr(config, "LS_RATIO_MAX_TRADIER", 2.00)
                 if _is_augment_or_entry:
-                    if _effective_long and _r < _r_min:
+                    # ═══ SAFETY SWITCH 2: RATIO BOOST REQUIRES MIN GAIN (2026-04-16) ═══
+                    _ratio_gain_gate = getattr(config, 'TRADIER_RATIO_REQUIRE_MIN_GAIN', False)
+                    _ratio_min_gain = getattr(config, 'TRADIER_RATIO_BOOST_MIN_GAIN_PCT', 1.0)
+                    _pos_for_gain = self.position_manager.positions.get(position_key) if self.position_manager else None
+                    _pos_gain = float(getattr(_pos_for_gain, 'gain', 0.0) or 0) if _pos_for_gain else 0.0
+                    _allow_boost = (not _ratio_gain_gate) or (_pos_gain >= _ratio_min_gain)
+                    if _effective_long and _r < _r_min and _allow_boost:
                         quantity = quantity * 1.5; reason = (reason or '') + f"|RATIO_BOOST_L(R={_r:.2f})"
-                    elif not _effective_long and _r > _r_max:
+                    elif not _effective_long and _r > _r_max and _allow_boost:
                         quantity = quantity * 1.5; reason = (reason or '') + f"|RATIO_BOOST_S(R={_r:.2f})"
                     elif _effective_long and _r > _r_max:
                         quantity = quantity * 0.6; reason = (reason or '') + f"|RATIO_CUT_L(R={_r:.2f})"
@@ -7724,19 +7739,26 @@ class TradierTradeManager:
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
                                     continue
                         elif hours_since < 48.0:
-                            if side == "LONG" and not (k_5m < 50.0 and k_5m > k_5m_prev):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising, {hours_since:.1f}h)")
-                                continue
-                            if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
-                                continue
-                            if side == "SHORT" and not (k_5m > 50.0 and k_5m < k_5m_prev):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling, {hours_since:.1f}h)")
-                                continue
-                            if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
-                                continue
+                            # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16) ═══
+                            _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)
+                            if _bounce_enabled:
+                                if side == "LONG" and not (k_5m < 50.0 and k_5m > k_5m_prev):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising, {hours_since:.1f}h)")
+                                    continue
+                                if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
+                                    continue
+                                if side == "SHORT" and not (k_5m > 50.0 and k_5m < k_5m_prev):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling, {hours_since:.1f}h)")
+                                    continue
+                                if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
+                                    continue
                         else:
+                            # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) ═══
+                            if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
+                                continue
                             logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch gate BYPASSED, relying on exit score + WT alignment")
                         # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned
                         if side == "LONG":

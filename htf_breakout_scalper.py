@@ -214,6 +214,18 @@ def _exit_htf_reclaim(indicators: Dict, current_price: float, is_long: bool, tfs
     return False, ""
 
 
+def _exit_redzone(indicators: Dict, is_long: bool, k_threshold: int = 90) -> Tuple[bool, str]:
+    """Exit when stoch K crosses back from extreme zone (overbought→reversal for LONG, oversold→reversal for SHORT)."""
+    k_3m = _f(indicators, "stoch_k_3m", 50)
+    k_3m_prev = _f(indicators, "k_3m_prev", _f(indicators, "stoch_k_3m_prev", k_3m))
+    if is_long and k_3m_prev >= k_threshold and k_3m < k_threshold:
+        return True, f"REDZONE_K{k_threshold} k={k_3m:.0f}<{k_threshold} prev={k_3m_prev:.0f}"
+    mirror = 100 - k_threshold
+    if not is_long and k_3m_prev <= mirror and k_3m > mirror:
+        return True, f"REDZONE_K{k_threshold} k={k_3m:.0f}>{mirror} prev={k_3m_prev:.0f}"
+    return False, ""
+
+
 def _universal_technical_stop(indicators: Dict, current_price: float, is_long: bool) -> Tuple[bool, str]:
     """Hard technical stop applied across ALL variants — low_3m_prev for LONG,
     high_3m_prev for SHORT. The user explicitly chose this over a percentage stop."""
@@ -273,9 +285,18 @@ def check_scalp_v2_exit(position_key: str, indicators: Dict, current_price: floa
         _v8_tfs = list(getattr(config, "SCALP_V2_DC_HTF_LIST", ["15m", "1h"]))
         exit_fired, detail = _exit_htf_reclaim(indicators, current_price, is_long, _v8_tfs)
 
+    # 2b. Secondary exit layers — fire if primary variant didn't, each independently toggleable
+    if not exit_fired and getattr(config, "SCALP_V2_REDZONE_EXIT", False):
+        exit_fired, detail = _exit_redzone(indicators, is_long, int(getattr(config, "SCALP_V2_REDZONE_K_THRESHOLD", 90)))
+    if not exit_fired and getattr(config, "SCALP_V2_LH_LL_EXIT", False):
+        _lh_tf = str(getattr(config, "SCALP_V2_LH_LL_TF", "15m"))
+        exit_fired, detail = _exit_lh_ll(indicators, is_long, _lh_tf)
+        if exit_fired:
+            detail = f"LH_LL_{_lh_tf}_{detail}"
+
     # 3. Max-hold safety net
     if not exit_fired:
-        max_hold_min = float(getattr(config, "SCALP_V2_MAX_HOLD_MINUTES", 30.0))
+        max_hold_min = float(getattr(config, "SCALP_V2_MAX_HOLD_MINUTES", 15.0))
         opened_at = getattr(position, "opened_at", None)
         if opened_at:
             try:
