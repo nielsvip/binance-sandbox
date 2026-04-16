@@ -13034,7 +13034,50 @@ class MultiAccountTradeManager:
                 await release_locks()
                 return False, -1.0
             elif ta == "OPEN" and _is_hedge_order:
-                logger.warning(f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: Hedge maker timed out — falling through to webhook")
+                # 2026-04-16 DOUBLE-OPEN FIX: user reported QUICK_HEDGE_SAME_SYM_LAST_RESORT_TIMEOUT
+                # firing webhook 47s after maker order filled → two opens. Hedge timeout MUST:
+                #   1. Confirm every tracked order is CANCELED/EXPIRED/REJECTED (not FILLED)
+                #   2. Re-read exchange positionAmt after cancels settle
+                #   3. Only webhook if no fill actually happened — otherwise suppress (sentinel -1.0)
+                logger.warning(f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: Hedge maker timed out — verifying cancels before webhook fallback.")
+                _any_filled = False
+                _all_dead = True
+                for _tid in tracked_order_ids or []:
+                    try:
+                        _status = await asyncio.to_thread(client.futures_get_order, symbol=symbol, orderId=_tid)
+                        _st = str(_status.get('status', '')).upper()
+                        _exec_qty = float(_status.get('executedQty', 0) or 0)
+                        if _exec_qty > 0 or _st in ('FILLED', 'PARTIALLY_FILLED'):
+                            _any_filled = True
+                            logger.critical(f"🛡️ [HEDGE_MAKER_TIMEOUT_FILL_DETECTED] {position_key}: order {_tid} status={_st} executed={_exec_qty} — SUPPRESSING webhook to avoid double-open")
+                            break
+                        if _st not in ('CANCELED', 'EXPIRED', 'REJECTED'):
+                            _ok = await self.cancel_order_with_confirmation(position_key, int(_tid), qty_abs)
+                            if not _ok:
+                                _all_dead = False
+                                logger.critical(f"🛡️ [HEDGE_MAKER_TIMEOUT_CANCEL_UNCONFIRMED] {position_key}: order {_tid} cancel NOT confirmed — SUPPRESSING webhook")
+                                break
+                    except Exception as _he:
+                        _all_dead = False
+                        logger.error(f"🛡️ [HEDGE_MAKER_TIMEOUT_STATUS_ERR] {position_key}: order {_tid} status/cancel failed: {_he} — SUPPRESSING webhook")
+                        break
+                if _any_filled or not _all_dead:
+                    await release_locks()
+                    return False, -1.0
+                # Re-read exchange position to confirm no fill snuck through between status and cancel
+                try:
+                    _pos_recheck = await self.get_position(position_key)
+                    _recheck_amt = abs(safe_fetch_float(getattr(_pos_recheck, 'positionAmt', 0), 0.0)) if _pos_recheck else 0.0
+                    _baseline = abs(float(positionAmt or 0))
+                    if _recheck_amt > _baseline + (qty_abs * 0.05):
+                        logger.critical(f"🛡️ [HEDGE_MAKER_TIMEOUT_POS_GREW] {position_key}: positionAmt {_baseline:.6f}→{_recheck_amt:.6f} after cancel — SUPPRESSING webhook")
+                        await release_locks(success_fill=True)
+                        return True, _recheck_amt - _baseline
+                except Exception as _pe:
+                    logger.warning(f"🛡️ [HEDGE_MAKER_TIMEOUT_POS_RECHECK_ERR] {position_key}: {_pe} — SUPPRESSING webhook out of caution")
+                    await release_locks()
+                    return False, -1.0
+                logger.warning(f"🛡️ [HEDGE_MAKER_TIMEOUT] {position_key}: all tracked orders confirmed dead, no fill detected — safe to fall through to webhook")
             if remaining > (qty_abs * 0.1):
                 logger.warning(f"[MAKER_FALLBACK] {position_key} timeout. Sending remaining {remaining} to webhook.")
                 await self.send_webhook(position_key, account_key, symbol, positionAmt, remaining, float(lp), side, position_side, f"{unique_id}:FALLBACK", False, f"{reason}_TIMEOUT", level=None, stoch_required=False, order_ids_to_cancel=tracked_order_ids)
