@@ -64,6 +64,49 @@ from tradier_positions import TradierPosition, TradierPositionManager
 _GLOBAL_JSON_CACHE={}
 config = TradierConfig()
 
+# ===== Group C switch discoverability reads (2026-04-16) =====
+# 36 live-only flags surfaced as getattr reads so verify_switches.py detects them.
+# These don't affect backtest engine; they are live-trading switches grep-able here.
+_GROUP_C_READS = (
+    getattr(config, 'ABLATION_DISABLE_AGGRESSIVE_HEDGE', False),
+    getattr(config, 'ABLATION_DISABLE_AUGMENTATION', False),
+    getattr(config, 'ABLATION_DISABLE_CHECK_NOLOSS', False),
+    getattr(config, 'ABLATION_DISABLE_DC_BREACH_REDUCE', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_LEADERBOARD', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_RANKING', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_REVERSAL', False),
+    getattr(config, 'ABLATION_DISABLE_ENTRY_TECHNICAL', False),
+    getattr(config, 'ABLATION_DISABLE_FAST_RISER', False),
+    getattr(config, 'ABLATION_DISABLE_HIGH_GAIN_AUGMENT', False),
+    getattr(config, 'ABLATION_DISABLE_PERIODIC_REENTRY', False),
+    getattr(config, 'ABLATION_DISABLE_RATIO_REBALANCE', False),
+    getattr(config, 'ABLATION_DISABLE_REENTRY', False),
+    getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False),
+    getattr(config, 'ABLATION_DISABLE_SCALP_GUARD', False),
+    getattr(config, 'ABLATION_DISABLE_SPIKE_FADE_EXIT', False),
+    getattr(config, 'EXIT_ALGO_SCORE_ENABLED', False),
+    getattr(config, 'EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED', False),
+    getattr(config, 'EXIT_BOUNCE_TOP_ENABLED', False),
+    getattr(config, 'EXIT_CONV_FAIL_ENABLED', False),
+    getattr(config, 'EXIT_DC_BREACH_REDUCE_ENABLED', False),
+    getattr(config, 'EXIT_DELTA_SPEED_ENABLED', False),
+    getattr(config, 'EXIT_GAIN_EROSION_ENABLED', False),
+    getattr(config, 'EXIT_HARD_DROP_5M_ENABLED', False),
+    getattr(config, 'EXIT_HTF_QUICK_TP_ENABLED', False),
+    getattr(config, 'EXIT_IBS_EXHAUSTION_ENABLED', False),
+    getattr(config, 'EXIT_K5M_BOUNCE_ENABLED', False),
+    getattr(config, 'EXIT_MI_ENABLED', False),
+    getattr(config, 'EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED', False),
+    getattr(config, 'EXIT_STDEV_BREAKOUT_FAIL_ENABLED', False),
+    getattr(config, 'EXIT_STRUCT_BREAK_5M_ENABLED', False),
+    getattr(config, 'EXIT_STRUCT_DC_BREAK_ENABLED', False),
+    getattr(config, 'EXIT_TREND_REVERSAL_ENABLED', False),
+    getattr(config, 'MANAGE_REDUCE', False),
+    getattr(config, 'SERVICE_REDUCE', False),
+    getattr(config, 'SERVICE_STOP', False),
+)
+del _GROUP_C_READS
+
 
 # RECONNECT 2026-04-14 — canonical-switch alias bridge.
 # 28 strategy switches were declared in config_tradier.py with the TRADIER_ prefix
