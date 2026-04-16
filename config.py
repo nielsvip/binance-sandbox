@@ -353,10 +353,13 @@ class Config:
     V8Q_COOLDOWN_BARS: int = 3
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
-    V8Q_PROFIT_TARGET_ENABLED: bool = True  # v2 NEW: lock gains before technical exit
-    V8Q_PROFIT_TARGET_PCT: float = 1.5  # Optimal: 1.5 (range 0.5-2.0 all work; 1.5 is peak)
-    V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT")  # Sharpe 1.90, 98% WR
-    V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT")  # Sharpe 1.74, 96% WR
+    V8Q_PROFIT_TARGET_ENABLED: bool = True
+    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90)
+    # Symbol tiers — sorted by per-symbol Sharpe descending
+    V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT")  # Sharpe 1.93, 58 trades, 98.3% WR
+    V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT")  # Sharpe 1.88, 78 trades, 96.2% WR (best balance)
+    V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT")  # Sharpe 1.74, 89 trades, 95.5% WR
+    V8Q_SYMBOL_TIER_TOP6: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT", "SOLUSDT")  # Sharpe 1.78, 126 trades, 95.2% WR
     REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable
