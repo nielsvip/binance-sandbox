@@ -20206,6 +20206,17 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 logger.warning(f"[{position_key}] Error tracking completion: {e}")
         is_long = position_side == "LONG"
         # ==================================================================
+        # SCALP_V2 ISOLATION — V2-tagged positions skip ALL main exit logic.
+        # V2 exits are handled exclusively by ez_positions_quick (htf_breakout_scalper).
+        # Without this, main exits (WT_4H_VEL, hedges, profit takes) trample V2 positions
+        # → V8 showed -0.30 Sharpe. Added 2026-04-16.
+        # ==================================================================
+        if is_active_position and getattr(config, 'SCALP_V2_ISOLATE', False) and getattr(config, 'SCALP_MODE', False):
+            _v2_reason = str(getattr(position, 'augment_reason', '') or getattr(position, 'reason', '') or '')
+            if _v2_reason.startswith('SCALP_V2_OPEN_'):
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.NO_ACTION}:SCALP_V2_ISOLATED"
+        # ==================================================================
         # #1 RULE: EXIT ON 4H WT VELOCITY SLOWDOWN — MANDATORY REENTRY
         # V5 WT Pure backtest 2026-03-31: 4h velocity = +$10,074 (WINNER)
         # 1h cross = -$15k (too fast), D = breakeven (too slow), 4h = sweet spot

@@ -87,20 +87,20 @@ class Config:
     #   WT_DC_SCORER underperforms — multi-TF consensus too slow for spike-fade.
     # ───────────────────────────────────────────────────────────────────────────
     # ═══ SCALP_V2 — PRIORITY P0 (test first, week 1) ═══════════════════════════
-    SCALP_MODE: bool = False              # P0: KEEP OFF — V8 real-engine shows NEGATIVE Sharpe (-0.30). Isolated sweep was misleading. Needs parameter work before live.
+    SCALP_MODE: bool = True               # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # P0: sweep winner Sharpe=107. DO NOT change until V8 validates
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
     SCALP_V2_MAX_HOLD_MINUTES: float = 15.0   # P0: sweep-proven, 60m universally worse for inf
     SCALP_V2_DC_HTF_LIST: list = field(default_factory=lambda: ["15m", "1h"])  # P3: adding "4h" didn't improve
     SCALP_V2_MAX_CONCURRENT: int = 5      # P3: fine for now, only tune if hitting position limits
     SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop
-    SCALP_V2_ISOLATE: bool = False         # BACKTEST ONLY — never True in live
+    SCALP_V2_ISOLATE: bool = True          # 2026-04-16: ON for live — V2 positions ONLY use V2 exits, main pipeline exits skip them. V8 -0.30 Sharpe was from main exits trampling V2 positions.
     # ═══ SCALP_V2 SECONDARY EXITS — PRIORITY P1/P2 (test after P0 stable) ════
     SCALP_V2_REDZONE_EXIT: bool = True     # P1: #2 in sweep (Sharpe 97). Catches exits V1_WT misses. +6 extra exits in smoke test.
     SCALP_V2_REDZONE_K_THRESHOLD: int = 90 # P1: sweep winner=90. Try 80 only after 90 tested.
     SCALP_V2_LH_LL_EXIT: bool = True       # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
     SCALP_V2_LH_LL_TF: str = "15m"        # P2: sweep winner=15m. 1h too slow, 3m too noisy.
-    HEDGE_ACCOUNTS = ["ang", "inf", "fin", "men", "flz"]  # Hedge accounts — ALL accounts get hedge protection
+    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-16: REMOVED inf — hedging is counterproductive for scalp accounts. Scalp entries get hedged immediately → cascade.
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
