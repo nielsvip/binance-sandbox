@@ -47,8 +47,8 @@ class TradierConfig:
     # === WING BUDGETS ===
     SWING_LONG_BUDGET: float = 2000.0       # Max $ in swing longs
     SWING_SHORT_BUDGET: float = 2000.0      # Max $ in swing shorts
-    SWING_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for swing
-    SWING_START_SIZE: float = 800.0          # Base order value for swing
+    SWING_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    SWING_START_SIZE: float = 800.0          # Base order value for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     SCALP_LONG_BUDGET: float = 1000.0       # Max $ in scalp longs
     SCALP_SHORT_BUDGET: float = 1000.0      # Max $ in scalp shorts
     SCALP_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for scalp
@@ -61,7 +61,7 @@ class TradierConfig:
     SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify
     SCALP_MIN_MOVE_PCT: float = 0.003        # Min 0.3% 5m deviation from ema_20_5m
     MAX_ORDER_VALUE: float = 2000.0
-    ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})
+    ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # tra = SATOSHIT-only account. Block all other strategies (HODL, rotation, RSI2, gap fill, ORB, EP).
     TRA_SATOSHIT_ONLY: bool = True
     # ───────────────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class TradierConfig:
     TRA_MIN_HOLD_MINUTES: float = 1440.0             # 24h hold floor before any exit considered
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
-    TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])
+    TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     BLACKLIST = []#'PLTR' ,'MSTR', 'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview
     ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD"}
@@ -210,9 +210,9 @@ class TradierConfig:
     OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets
     OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets
     # === OPTIONS EXIT THRESHOLDS (was -80/-60/-40 — too lenient; losers bled Apr 13-16) ===
-    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80)
-    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60)
-    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40)
+    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     # WT-velocity (NOT greeks delta) acceleration exit:
     # CALL exits if wt_velocity_D flips negative AND |velocity| grows bar-over-bar.
     # PUT exits if wt_velocity_D flips positive AND velocity grows bar-over-bar.
@@ -239,10 +239,10 @@ class TradierConfig:
     }
     # === ENTRY ZONE GATES (backtest: 1h primary for stocks, SMA200 Sharpe 89, MFI_D Sharpe 78) ===
     ENTRY_ZONE_LONG: float =               35.0   # V8 ABLATION 2026-04-13: Sharpe 1.437 (best combo). Was 25.
-    ENTRY_ZONE_SHORT: float =              65.0   # Mirror of ZONE_LONG (100-35=65). Was 75.
+    ENTRY_ZONE_SHORT: float =              65.0   # Mirror of ZONE_LONG (100-35=65). Was 75. ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7106 short-side entry zone gate
     ENTRY_MIN_ALIGNMENT: int =             10     # V8 ABLATION 2026-04-13: Sharpe 1.0, WR 53.9%. Was 8.
     ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF
-    ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks)
+    ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:2680 referenced in entry eval
     # === SMA200 DISTANCE FILTER (backtest) ===
     SMA200_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_T3 SMA200 distance gate for entries
     SMA200_DIST_LONG_THRESHOLD_4H: float = -10.0  # BACKTEST_CHANGE_T3 only long when price within -10% of SMA200 on 4h
@@ -253,14 +253,14 @@ class TradierConfig:
     WT_CROSSUNDER_15M_SHORT: bool = True  # BACKTEST_CHANGE_T5 enable WT crossunder on 15m for short entries
     # === ALIGNMENT GATE (backtest) ===
     ALIGNMENT_GATE_MIN: int = 4  # BACKTEST_CHANGE_T8 minimum indicators aligned
-    ALIGNMENT_GATE_TOTAL: int = 12  # BACKTEST_CHANGE_T8 total alignment score required
+    ALIGNMENT_GATE_TOTAL: int = 12  # BACKTEST_CHANGE_T8 total alignment score required ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:8009,8187 alignment gate log denominator
     # === CONVICTION THRESHOLDS (backtest) ===
     CONVICTION_SHORT_THRESHOLD: int = 20  # BACKTEST_CHANGE_T9 min conviction score for short entries
     # === LR PCTB SHORT (backtest) ===
     LR_PCTB_D_SHORT_THRESHOLD: float = 0.1  # BACKTEST_CHANGE_T10 daily LR %B threshold for shorts
     # === SATOSHIT2024 STRATEGY — stocks (15m mean-reversion, 5m instead of 3m) ===
     SATOSHIT_ENTRY_FILTER: bool = False  # T25 2026-04-14 (fixed gates): True=0.388 vs False=0.328 (+18%). Previous stale result (False=0.529) was broken-gate run. Marginal — leaving False until larger sweep.
-    SATOSHIT_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["tra", "trb", "trc"])
+    SATOSHIT_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["tra", "trb", "trc"])  # DEAD_CONFIRMED (priority 35/100) — no plausible wiring site found 20260416
     SATOSHIT_MIN_VOTES_TRADIER: int = 3  # 3-of-5 voting
     # Entry thresholds (same as crypto — stocks use 5m/15m instead of 3m/15m)
     SATOSHIT_LONG_RSI_MAX_TRADIER: float = 50.0
@@ -290,24 +290,24 @@ class TradierConfig:
     VERBOSE: bool = True
     VERBOSE2: bool = False
     VERBOSE_STOPS: bool = True
-    VERBOSE_TIMER: bool = False
+    VERBOSE_TIMER: bool = False  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     VERBOSE_FETCH_LOGGING: bool = False
     DEBUG: bool = False
 
     # --- 3. API Configuration ---
-    TRADIER_API_BASE_URL: str = "https://api.tradier.com/v1"
-    TRADIER_SANDBOX_URL: str = "https://sandbox.tradier.com/v1"
-    TRADIER_STREAMING_URL: str = "https://stream.tradier.com/v1"
+    TRADIER_API_BASE_URL: str = "https://api.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
+    TRADIER_SANDBOX_URL: str = "https://sandbox.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
+    TRADIER_STREAMING_URL: str = "https://stream.tradier.com/v1"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     TRADIER_WS_URL: str = "wss://ws.tradier.com/v1"
 
     # TRADIER_WS_URL: str = "wss://ws.tradier.com/v1/markets/events"
     
     # --- 4. Global Settings ---
-    USE_SANDBOX: bool = os.getenv("TRADIER_USE_SANDBOX", "false").lower() == "true"
+    USE_SANDBOX: bool = os.getenv("TRADIER_USE_SANDBOX", "false").lower() == "true"  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
 
     # --- 5. Rate Limits ---
     API_RATE_LIMIT_PER_SECOND: int = 10
-    API_RATE_LIMIT_PER_MINUTE: int = 300
+    API_RATE_LIMIT_PER_MINUTE: int = 300  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     WS_RECONNECT_DELAY: float = 5.0
 
     # --- 6. PATH RESOLUTION ---
@@ -323,7 +323,7 @@ class TradierConfig:
     AVAILABLE_IPS: List[str] = field(default_factory=lambda: ["49.13.39.233"])
        # "5.75.211.216", "49.13.32.80",  "157.180.125.52" ])
     
-    ENABLE_IP_ROTATION: bool = field(init=False)
+    ENABLE_IP_ROTATION: bool = field(init=False)  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
 
     ACCOUNT_KEYS = ['tra','trb','trc']
     BASE_PATH: Path = _resolve_base_path()
@@ -331,9 +331,9 @@ class TradierConfig:
     KLINES_CACHE_DIR: Path = BASE_PATH / "klines_cache" / "tradier"
     SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"
     TRADIER_SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"
-    LEADERBOARD_LONG: Path = BASE_PATH / "symbols_long_tr.json"
-    LEADERBOARD_SHORT: Path = BASE_PATH / "symbols_short_tr.json"
-    INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"
+    LEADERBOARD_LONG: Path = BASE_PATH / "symbols_long_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
+    LEADERBOARD_SHORT: Path = BASE_PATH / "symbols_short_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
+    INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     PRICE_CACHE_FILE: Path = DATA_DIR / "price_cache_tradier.json"
     PRICE_CACHE_FILE_2: Path = DATA_DIR / "price_cache_tradier_2.json"
     PRICE_CACHE_FILE_3: Path = DATA_DIR / "price_cache_tradier_3.json"
@@ -344,20 +344,20 @@ class TradierConfig:
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
     REDIS_DB: int = 0
     REDIS_KEY_MARKET_DATA: str = "tradier_indicators_latest" 
-    REDIS_CHANNEL_MARKET_DATA: str = "tradier_indicators_channel"
-    REDIS_CHANNEL_PRICES: str = "tradier_prices_channel"
+    REDIS_CHANNEL_MARKET_DATA: str = "tradier_indicators_channel"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
+    REDIS_CHANNEL_PRICES: str = "tradier_prices_channel"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     REDIS_CHANNEL_POSITIONS: str = "tradier_positions_channel"
 
-    PRICE_REFRESH_INTERVAL: float = 3.0
-    POSITION_REFRESH_INTERVAL: float = 6.0
+    PRICE_REFRESH_INTERVAL: float = 3.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
+    POSITION_REFRESH_INTERVAL: float = 6.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     ORDER_CACHE_TTL: int = 10
-    POSITION_CACHE_TTL: int = 5
+    POSITION_CACHE_TTL: int = 5  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     PRICE_UPDATE_INTERVAL: float = 1.0
-    INDICATOR_UPDATE_INTERVAL: float = 30.0  # BACKTEST_CHANGE_T49 was 60 → 30 faster indicator refresh
+    INDICATOR_UPDATE_INTERVAL: float = 30.0  # BACKTEST_CHANGE_T49 was 60 → 30 faster indicator refresh ; DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     RANKING_UPDATE_INTERVAL: float = 180.0  # BACKTEST_CHANGE_T50 was 300 → 180 faster ranking refresh
     TIMEFRAMES: List[str] = field(default_factory=lambda: ["1m", "5m", "15m", "1h", "4h", "D"])
-    MARKET_OPEN_HOUR: int = 9
-    MARKET_OPEN_MINUTE: int = 30
+    MARKET_OPEN_HOUR: int = 9  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
+    MARKET_OPEN_MINUTE: int = 30  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     MARKET_CLOSE_HOUR: int = 16
     MARKET_CLOSE_MINUTE: int = 0
     EXTREME_MODE: bool = False
@@ -415,10 +415,10 @@ class TradierConfig:
     ZONE_MID_THRESHOLD: int = 30  # BACKTEST_CHANGE_T21 minutes into session = "mid zone" start
     ZONE_CLOSE_THRESHOLD: int = 20  # BACKTEST_CHANGE_T22 minutes before close = "close zone"
     CLOSE_ZONE_SIZE_MULT: float = 1.5  # BACKTEST_CHANGE_T23 size multiplier in close zone
-    MID_ZONE_SHORT_EXTRA_IND: str = "wt_crossunder_15m"  # BACKTEST_CHANGE_T24 extra indicator for mid-zone shorts
-    HOLD_BARS_OPEN: int = 200  # BACKTEST_CHANGE_T25 max hold bars during open zone
-    HOLD_BARS_MID: int = 500  # BACKTEST_CHANGE_T25 max hold bars during mid zone
-    HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone
+    MID_ZONE_SHORT_EXTRA_IND: str = "wt_crossunder_15m"  # BACKTEST_CHANGE_T24 extra indicator for mid-zone shorts ; DEAD_CONFIRMED (priority 35/100) — no plausible wiring site found 20260416
+    HOLD_BARS_OPEN: int = 200  # BACKTEST_CHANGE_T25 max hold bars during open zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    HOLD_BARS_MID: int = 500  # BACKTEST_CHANGE_T25 max hold bars during mid zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 121 sym × D/4h/1h, 9192 combos) ===
     NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # 2026-04-08: LET WT/DC SCORER EXIT AT ANY GAIN. Scorer fires on velocity death — that IS the cut signal. 3.0% was BLOCKING technical exits on losers. Test: Sharpe 6.36 at 0% vs 1.43 at 3%.
     # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, stocks) ===
@@ -439,8 +439,8 @@ class TradierConfig:
     K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single config win.
     BOUNCE_REENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T53: After profitable exit, K must reset to zone before reentry.
-    BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35
-    BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65
+    BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35  # DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65  # DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     # ═══ SAFETY SWITCHES (2026-04-16 audit) ═══
     TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys
     TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
@@ -448,7 +448,7 @@ class TradierConfig:
     TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = True  # True=legacy (bypass after 48h); False=always enforce stoch
     TRADIER_NOLOSS_SRS_BYPASS: bool = True          # True=SRS reason bypasses NOLOSS; False=no reason bypass
     # === TWO-TIER MANDATORY REENTRY — STOCKS (BC_155) ===
-    REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # Tier 1: 150% of closed qty
+    REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # Tier 1: 150% of closed qty ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REENTRY_TIER2_SIZE_MULT_TRADIER: float = 0.8  # Tier 2: 80% of closed qty
     REENTRY_TIER2_PRICE_PCT_TRADIER: float = 0.003  # 0.3% price move triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
@@ -459,7 +459,7 @@ class TradierConfig:
     REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 2          # sweep: 1 / 2 / 3
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
-    MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%.
+    MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
     # Entry needs multi-TF WT alignment → exit needs multi-TF WT disalignment
     # Prevents 5m noise from killing positions that 15m/1h/4h still support
@@ -467,13 +467,13 @@ class TradierConfig:
     # BOUNCE-TOP EXIT — V4 backtest proven: Sharpe -0.5 → +0.42 on 121 stocks 2yr
     # Exits losing positions at the TOP of a bounce (not the bottom like a stop loss).
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross.
-    BOUNCE_TOP_EXIT_ENABLED: bool = False  # KILLED 2026-03-30: percentage stop loss in disguise. Exits ONLY on technicals.
+    BOUNCE_TOP_EXIT_ENABLED: bool = False  # KILLED 2026-03-30: percentage stop loss in disguise. Exits ONLY on technicals. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     BOUNCE_TOP_MIN_HOLD_MINUTES: float = 1440.0  # 24h min hold before bounce exit eligible
     BOUNCE_TOP_MIN_LOSS_PCT: float = -3.0  # Only fires when loss is between -3% and -50%
     BOUNCE_TOP_MAX_LOSS_PCT: float = -50.0  # Don't exit positions beyond -50% (too late)
-    BOUNCE_TOP_REENTRY_MULT: float = 1.5  # 150% qty on pullback reentry
-    BOUNCE_TOP_RISING_CROSS_MULT: float = 2.0  # 200% qty on rising WT cross reentry
-    HODL_LONG_ONLY: bool = True  # BACKTEST_CHANGE_T54: HODL strategy is LONG only. SHORT on stocks = negative returns (upward bias kills hold-forever shorts).
+    BOUNCE_TOP_REENTRY_MULT: float = 1.5  # 150% qty on pullback reentry ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    BOUNCE_TOP_RISING_CROSS_MULT: float = 2.0  # 200% qty on rising WT cross reentry ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    HODL_LONG_ONLY: bool = True  # BACKTEST_CHANGE_T54: HODL strategy is LONG only. SHORT on stocks = negative returns (upward bias kills hold-forever shorts). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === MOMENTUM FADE — STOCKS (2026-03-23 — crypto-validated, adapted for stocks) ===
     MOMENTUM_FADE_ENABLED_TRADIER: bool = False  # DISABLED: Gate ablation 2026-03-26 proved zero impact (Sharpe +0.00, +0 trades). Was T55b.
     MOMENTUM_FADE_BODY_ATR_MIN_TRADIER: float = 2.0  # BACKTEST_CHANGE_T55b: Candle range must be >= 2x ATR. Stocks move less so 2x is still significant.
@@ -487,18 +487,18 @@ class TradierConfig:
     RSI_EXIT_LONG_TRADIER: float = 85.0  # BACKTEST_CHANGE_T56: was 70. Exit at RSI>85 = let winners run longer. +311% PnL over 4.8yr
     RSI_EXIT_SHORT_TRADIER: float = 15.0  # BACKTEST_CHANGE_T56: exit when RSI < 15
     SMA_FILTER_PERIOD_TRADIER: int = 100  # BACKTEST_CHANGE_T57: was 200. SMA100 filter = best OOS. Only LONG above SMA, SHORT below
-    ATR_TRAIL_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trailing stop = #1 stock PnL destroyer (-2557%). Disabled.
+    ATR_TRAIL_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trailing stop = #1 stock PnL destroyer (-2557%). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     STOCH_CROSS_ENTRY_TRADIER: bool = False  # BACKTEST_CHANGE_T59: was True. Stoch crossover = noise on daily bars. RSI(10) is the real entry.
-    AUGMENT_PYRAMID_TRADIER: bool = False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades). Disabled.
+    AUGMENT_PYRAMID_TRADIER: bool = False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades). Disabled. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # === BEAR MARKET MODE ===
     BEAR_MARKET_MODE_TRADIER: bool = True  # URGENT_FIX: favor shorts in current bear market
     AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER: bool = True  # URGENT_FIX: never augment losing positions
     # === HEDGE vs RATIO SWEEP (2026-03-21 — 65 configs, both systems) ===
     RATIO_MULTIPLIER_TRADIER: float = 3.5  # BACKTEST_CHANGE_T61: was 2.0. 3.5x ratio exaggeration = Sharpe 260 (vs 249 at 2x). Best: 3.5-4x.
-    HEDGE_CROSS_SYMBOL_TRADIER: bool = True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1%, no momentum gate.
-    HEDGE_SIZE_RATIO_TRADIER: float = 0.25  # BACKTEST_CHANGE_T62: Hedge at 25% of losing value. Sweet spot in sweep.
-    HEDGE_TRIGGER_LOSS_TRADIER: float = -1.0  # BACKTEST_CHANGE_T62: Trigger hedge at -1% loss (stocks: tighter than crypto -2% due to daily gaps).
-    HEDGE_SAME_SYMBOL_TRADIER: bool = False  # BACKTEST_CHANGE_T63: Same-symbol hedge DISABLED for stocks. Cross-symbol only.
+    HEDGE_CROSS_SYMBOL_TRADIER: bool = True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1%, no momentum gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
+    HEDGE_SIZE_RATIO_TRADIER: float = 0.25  # BACKTEST_CHANGE_T62: Hedge at 25% of losing value. Sweet spot in sweep. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
+    HEDGE_TRIGGER_LOSS_TRADIER: float = -1.0  # BACKTEST_CHANGE_T62: Trigger hedge at -1% loss (stocks: tighter than crypto -2% due to daily gaps). ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
+    HEDGE_SAME_SYMBOL_TRADIER: bool = False  # BACKTEST_CHANGE_T63: Same-symbol hedge DISABLED for stocks. Cross-symbol only. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     # === HEDGE MODE (backtest) ===
     HEDGE_MODE_TRADIER: bool = False  # BACKTEST_CHANGE_T31 hedge mode disabled for stocks
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
@@ -527,7 +527,7 @@ class TradierConfig:
     TRC_LS_RATIO_MAX: float = 3.00  # Wider than trb (2.00)
     TRC_MAX_DAILY_LOSS_PCT: float = 10.0  # 3.3x trb (3%) — paper money, let it run
     TRC_SCALP_TARGET_PCT: float = 0.01  # 2x trb (0.005) — let winners run further
-    TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers.
+    TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY.
     # === CONCENTRATION CAP — prevent single-symbol overexposure ===
     MAX_SYMBOL_VALUE_TRADIER: float = 15000.0  # Max $ value per symbol. USO hit $352K, IBIT $119K — caused disaster losses.
@@ -564,10 +564,10 @@ class TradierConfig:
     # TF HIERARCHY — Tradier stocks (no 1m/3m candles, use 5m/15m)
     TF_MICRO: str = "5m"    # Fastest available for stocks
     TF_SCALP: str = "15m"   # Scalp TF for stocks
-    TF_HTF1: str = "1h"     # First confirmation
+    TF_HTF1: str = "1h"     # First confirmation ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7131 entry eval
     TF_HTF2: str = "4h"     # Second confirmation
-    TF_HTF3: str = "D"      # Daily — strongest trend
-    TF_MACRO: str = "D"     # Same as HTF3 for stocks (no weekly in live)
+    TF_HTF3: str = "D"      # Daily — strongest trend ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7132 entry eval
+    TF_MACRO: str = "D"     # Same as HTF3 for stocks (no weekly in live) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7133 entry eval
     # === BACKTEST-VALIDATED GATES (121 stocks, train/test confirmed) ===
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True  # Block entries on signals confirmed -EV on both train+test
     DC_POSITION_ENTRY_THRESHOLD: float = 0.15  # S1_SWEEP_2026-04-15: 0.15 top S1 config Sharpe=4.23 on 20605 trades (was 0.25)
@@ -577,54 +577,54 @@ class TradierConfig:
     # === MARKET QUALITY + SBA + EOD (BACKTEST_CHANGE_146/147) — 11K-trade validated ===
     MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_146: Market quality scorer for stock entries
     EOD_RATIO_ENFORCE_TRADIER: bool = False  # BACKTEST_CHANGE_147: Scale down entries 30min before close, block at 5min
-    SBA_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_145: Strategic Bounce Averaging for stock hold positions
-    SBA_MIN_LOSS_PCT_TRADIER: float = -3.0  # Stocks are less volatile, wider threshold than crypto -2%
-    SBA_MAX_LOSS_PCT_TRADIER: float = -12.0  # Stop averaging beyond -12%
-    SBA_SIZE_FRACTION_TRADIER: float = 0.25  # 25% of START_POSITION_SIZE per add (smaller than crypto 35%)
-    SBA_MAX_ADDS_TRADIER: int = 2  # Max recovery adds per stock position
-    SBA_COOLDOWN_S_TRADIER: int = 7200  # 2hr between adds (stocks move slower, 2x crypto's 1hr)
-    SBA_ADX_MAX_TRADIER: float = 22.0  # Stocks trend more cleanly, slightly higher ADX threshold
+    SBA_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_145: Strategic Bounce Averaging for stock hold positions ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_MIN_LOSS_PCT_TRADIER: float = -3.0  # Stocks are less volatile, wider threshold than crypto -2% ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_MAX_LOSS_PCT_TRADIER: float = -12.0  # Stop averaging beyond -12% ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_SIZE_FRACTION_TRADIER: float = 0.25  # 25% of START_POSITION_SIZE per add (smaller than crypto 35%) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_MAX_ADDS_TRADIER: int = 2  # Max recovery adds per stock position ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_COOLDOWN_S_TRADIER: int = 7200  # 2hr between adds (stocks move slower, 2x crypto's 1hr) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    SBA_ADX_MAX_TRADIER: float = 22.0  # Stocks trend more cleanly, slightly higher ADX threshold ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     # === YOUTUBE CONSENSUS STRATEGIES (2026-03-27 — research: 16 verified profitable traders) ===
     # === STRATEGY ALLOCATION: trb=PROVEN only, trc=EXPERIMENTAL (paper) ===
     # --- VWAP Filter — PROVEN, on trb+trc ---
     VWAP_FILTER_ENABLED: bool = True  # LONG only above VWAP, SHORT only below
-    VWAP_BOUNCE_ENTRY_ENABLED: bool = True  # Enter on VWAP bounce (pullback to VWAP + reversal)
-    VWAP_BOUNCE_DIST_PCT: float = 0.3  # Price must be within 0.3% of VWAP for bounce entry
-    VWAP_SCORE_BONUS: int = 10  # Score bonus when price is on correct side of VWAP
+    VWAP_BOUNCE_ENTRY_ENABLED: bool = True  # Enter on VWAP bounce (pullback to VWAP + reversal) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    VWAP_BOUNCE_DIST_PCT: float = 0.3  # Price must be within 0.3% of VWAP for bounce entry ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    VWAP_SCORE_BONUS: int = 10  # Score bonus when price is on correct side of VWAP ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     # --- Opening Range Breakout — EXPERIMENTAL, trc only (TRC_ override enables) ---
     ORB_ENABLED: bool = False  # OFF for trb (real $). TRC overrides to True.
-    ORB_WINDOW_MINUTES: int = 15
+    ORB_WINDOW_MINUTES: int = 15  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     ORB_RVOL_MIN: float = 1.5
     ORB_TARGET_MULT: float = 1.5
     ORB_STOP_MIDPOINT: bool = True
     ORB_MAX_HOLD_MINUTES: float = 150.0
     ORB_POSITION_SIZE: float = 600.0
     ORB_MAX_PER_DAY: int = 3
-    ORB_LONG_BUDGET: float = 2000.0
-    ORB_SHORT_BUDGET: float = 2000.0
+    ORB_LONG_BUDGET: float = 2000.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    ORB_SHORT_BUDGET: float = 2000.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     # --- Lunch Dead Zone — PROVEN, on trb+trc ---
     LUNCH_DEADZONE_ENABLED: bool = True
     LUNCH_DEADZONE_MODE: str = "BLOCK_MOMENTUM"
-    LUNCH_DEADZONE_SIZE_MULT: float = 0.5
+    LUNCH_DEADZONE_SIZE_MULT: float = 0.5  # DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
     # --- RVOL Gate Tightening — PROVEN, on trb+trc ---
     RVOL_MOMENTUM_MIN: float = 1.5
-    RVOL_SCALP_MIN: float = 1.0
-    RVOL_SCORE_BOOST_THRESHOLD: float = 2.0
-    RVOL_SCORE_BOOST_PCT: float = 0.20
+    RVOL_SCALP_MIN: float = 1.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    RVOL_SCORE_BOOST_THRESHOLD: float = 2.0  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    RVOL_SCORE_BOOST_PCT: float = 0.20  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # --- 9/21 EMA — PROVEN, on trb+trc ---
     EMA_9_21_FILTER_ENABLED: bool = True
     EMA_9_21_TIMEFRAME: str = "5m"
-    EMA_9_21_SCORE_BONUS: int = 5
+    EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---
-    SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True.
-    SQUEEZE_SCORE_BONUS: int = 15
+    SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # --- Episodic Pivot — EXPERIMENTAL, trc only ---
     EPISODIC_PIVOT_ENABLED: bool = False  # OFF for trb. TRC overrides to True.
-    EP_MIN_GAP_PCT: float = 5.0
-    EP_MIN_VOL_MULT: float = 3.0
+    EP_MIN_GAP_PCT: float = 5.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    EP_MIN_VOL_MULT: float = 3.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     EP_POSITION_SIZE: float = 800.0
-    EP_MAX_CONSOLIDATION_DAYS: int = 8
-    EP_MAX_RETRACE_PCT: float = 25.0
+    EP_MAX_CONSOLIDATION_DAYS: int = 8  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    EP_MAX_RETRACE_PCT: float = 25.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     # --- Bounce-Top Exit — EXPERIMENTAL, trc only (exits losers = risky) ---
     # Note: BOUNCE_TOP_EXIT_ENABLED above applies to trb. TRC override below.
     # --- TRC Overrides: enable ALL experimental strategies on paper account ---
@@ -657,8 +657,8 @@ class TradierConfig:
     STDEV_BREAKOUT_RETEST_PCTB_MAX: float = 1.05
     STDEV_BREAKOUT_MAX_RETESTS: int = 3
     STDEV_BREAKOUT_RETEST_SIZE_MULT: float = 1.5
-    STDEV_BREAKOUT_COOLDOWN: float = 600.0
-    STDEV_BREAKOUT_RETEST_COOLDOWN: float = 300.0
+    STDEV_BREAKOUT_COOLDOWN: float = 600.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    STDEV_BREAKOUT_RETEST_COOLDOWN: float = 300.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     STDEV_BREAKOUT_SCORE: int = 25
     STDEV_BREAKOUT_RETEST_SCORE: int = 22
     STDEV_BREAKOUT_RVOL_MIN: float = 1.2
@@ -687,7 +687,7 @@ class TradierConfig:
     EXIT_ALGO_SCORE_ENABLED: bool = False        # Old calculate_signal_score exit. Bypassed scorer, closed PLTR.
     EXIT_STRUCT_BREAK_5M_ENABLED: bool = False   # 5m LH/HL structure exit. Too noisy for swing/options.
     EXIT_IBS_EXHAUSTION_ENABLED: bool = False    # Internal Bar Strength extreme. Minor signal, not worth standalone exit.
-    EXIT_SENTIMENT_ENABLED: bool = False         # Sentiment collapse exit. Unreliable signal source.
+    EXIT_SENTIMENT_ENABLED: bool = False         # Sentiment collapse exit. Unreliable signal source. ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     EXIT_MI_ENABLED: bool = False                # Momentum Interception sub-signals. Tested: marginal value.
     EXIT_CONV_FAIL_ENABLED: bool = False         # Convergence failure early exit. Was closing at tiny gains.
     EXIT_BOUNCE_TOP_ENABLED: bool = False        # Bounce-top loss exit. Percentage-based in disguise.
@@ -706,7 +706,7 @@ class TradierConfig:
     DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
     # WT_DC scorer exit guards
     WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)
-    DELTA_PYRAMID_ENABLED: bool = False
+    DELTA_PYRAMID_ENABLED: bool = False  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5
     DELTA_TF_WEIGHTS: dict = None  # Set in __post_init__
@@ -716,7 +716,7 @@ class TradierConfig:
     DELTA_ENTRY_MIN_TF: int = 3  # WINNER ST: mtf=3 (LT: 2)
     DELTA_EXIT_DECAY_RATIO: float = 0.30  # WINNER: sp=70 → 30% decay from peak (stocks ST sweep #1)
     DELTA_EXIT_TF: str = "15m"  # WINNER ST: 15m exit TF (sweep top 8 all used 15m)
-    DELTA_EXIT_TYPE: str = "speed_decay"  # WINNER ST: speed_decay sp=70 Sharpe 0.710 WR 77.7% (corrected from wt_cross)
+    DELTA_EXIT_TYPE: str = "speed_decay"  # WINNER ST: speed_decay sp=70 Sharpe 0.710 WR 77.7% (corrected from wt_cross) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_EXIT_ACCEL_THRESHOLD: float = -0.1
     DELTA_EXIT_OPPOSING_RATIO: float = 1.5
     DELTA_EXIT_MIN_TF_LOST: int = 2
@@ -727,19 +727,19 @@ class TradierConfig:
     DELTA_PYRAMID_QTY_MULT: float = 1.5
     DELTA_PYRAMID_ACCEL_THRESHOLD: float = 0.2
     DELTA_Z_WINDOW: int = 200
-    DELTA_MAX_HOLD_BARS: int = 0  # DISABLED — ride winners until technicals turn. No fixed time exits.
-    DELTA_COOLDOWN_BARS: int = 60  # WINNER ST: 60 bars (5h)
+    DELTA_MAX_HOLD_BARS: int = 0  # DISABLED — ride winners until technicals turn. No fixed time exits. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_COOLDOWN_BARS: int = 60  # WINNER ST: 60 bars (5h) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_HTF_GATE: str = "4h"  # WINNER ST: 4h must confirm (LT: 4h_D)
     DELTA_ATR_ENTRY_FILTER: bool = True  # ATR filter on for stocks
     # Stocks LT overrides (for longer holds, ez_positions_quick can switch to these)
-    DELTA_LT_ENTRY_MIN_TF: int = 2
-    DELTA_LT_ENTRY_Z_THRESHOLD: float = 2.0
-    DELTA_LT_ENTRY_ACCEL_THRESHOLD: float = 0.0
-    DELTA_LT_EXIT_TF: str = "4h"
-    DELTA_LT_EXIT_TYPE: str = "combined_wt_speed"
-    DELTA_LT_EXIT_SPEED_PCT: int = 50
-    DELTA_LT_COOLDOWN_BARS: int = 120  # ~10h
-    DELTA_LT_HTF_GATE: str = "4h_D"
+    DELTA_LT_ENTRY_MIN_TF: int = 2  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_ENTRY_Z_THRESHOLD: float = 2.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_ENTRY_ACCEL_THRESHOLD: float = 0.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_EXIT_TF: str = "4h"  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_EXIT_TYPE: str = "combined_wt_speed"  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_EXIT_SPEED_PCT: int = 50  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_COOLDOWN_BARS: int = 120  # ~10h ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_LT_HTF_GATE: str = "4h_D"  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # STRUCTURAL RANGE SHIFT EXIT (stocks) — hold losers, cut at 4h DC boundary when range shifts
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # bb_4h Apr-13 DISASTER avg -0.95% 16%WR. bb_1h is correct for stocks (user directive). dc_4h is for crypto only.
     STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # STOCKS: bb_1h (user directive — bb_upper_1h/bb_lower_1h). CRYPTO: dc_4h. bb_4h was wrong and caused April-13 losses.
@@ -773,18 +773,18 @@ class TradierConfig:
     # ═══ REENTRY — user directive "reenter ASAP" ═══
     TRADIER_REOPEN_WAIT_S: float = 0.0       # Was 300s (5 min); zero for instant reentry
     # === OPTIONS-SPECIFIC OVERRIDES (when position is in trb_long/trb_short options) ===
-    DELTA_OPTIONS_ENTRY_Z: float = 3.0  # Stricter: ez=3.0 for options (wider spreads)
-    DELTA_OPTIONS_HTF_GATE: str = "4h_D"  # Both 4h AND D must confirm
-    DELTA_OPTIONS_COOLDOWN: int = 120  # 10h between trades
-    DELTA_OPTIONS_MAX_HOLD: int = 240  # 20h max hold
-    DELTA_OPTIONS_EXIT_TYPE: str = "giveback"  # V2 sweep: giveback wins for options
-    DELTA_OPTIONS_GIVEBACK_PCT: float = 30.0  # Close when 30% of max gain given back
+    DELTA_OPTIONS_ENTRY_Z: float = 3.0  # Stricter: ez=3.0 for options (wider spreads) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_OPTIONS_HTF_GATE: str = "4h_D"  # Both 4h AND D must confirm ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_OPTIONS_COOLDOWN: int = 120  # 10h between trades ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_OPTIONS_MAX_HOLD: int = 240  # 20h max hold ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_OPTIONS_EXIT_TYPE: str = "giveback"  # V2 sweep: giveback wins for options ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_OPTIONS_GIVEBACK_PCT: float = 30.0  # Close when 30% of max gain given back ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # Legacy (superseded by scorers but kept for V8 sweep compatibility)
     WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"
     WT_EXIT_MIN_TFS_TRADIER: int = 4  # S1_SWEEP_2026-04-15: 4 top S1 cfg Sharpe=4.23 on 20605 trades (was 5)
-    WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler.
+    WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
     MIN_HOLD_BARS_TRADIER: int = 32  # Grace period only (160min). Actual avg hold = 239 bars (20hrs) — WT exit rides the full wave.
-    COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min).
+    COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === YOUTUBE STRATEGIES (2026-03-27) — DISABLED on trb 2026-03-30 ===
     # These were implemented from YouTube research with FAKE backtests (reimplemented logic, not real functions).
     # "Sharpe 5.17" etc were fabricated numbers. Connors RSI augmented MRVL at -6.74% on real money.
@@ -792,7 +792,7 @@ class TradierConfig:
     # Paper-only on trc via TRC_ overrides below.
     # --- Clenow Exp Regression — DISABLED on trb, paper on trc ---
     CLENOW_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
-    CLENOW_LOOKBACK: int = 90  # Regression window (Clenow default)
+    CLENOW_LOOKBACK: int = 90  # Regression window (Clenow default) ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     CLENOW_TOP_N: int = 20  # Buy top N% of ranked symbols
     CLENOW_POSITION_SIZE: float = 800.0  # Per-entry size
     CLENOW_REBALANCE_DAYS: int = 21  # Monthly rebalance
@@ -801,9 +801,9 @@ class TradierConfig:
     # --- Smart Money Flow Index — DISABLED on trb, paper on trc ---
     SMFI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
     SMFI_POSITION_SIZE: float = 600.0
-    SMFI_MAX_HOLD_DAYS: int = 10  # Exit when price > 20SMA or 10d hold
-    SMFI_LONG_BUDGET: float = 3000.0
-    SMFI_SHORT_BUDGET: float = 3000.0
+    SMFI_MAX_HOLD_DAYS: int = 10  # Exit when price > 20SMA or 10d hold ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    SMFI_LONG_BUDGET: float = 3000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    SMFI_SHORT_BUDGET: float = 3000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     SMFI_MAX_PER_SIDE: int = 5  # Max concurrent SMFI positions per side
     # --- Minervini SEPA Screen — DISABLED on trb, paper on trc ---
     MINERVINI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
@@ -811,13 +811,13 @@ class TradierConfig:
     MINERVINI_MIN_SEPA_SCORE: int = 5  # Need 5 of 6 conditions
     MINERVINI_MAX_HOLD_DAYS: int = 40  # Swing trade hold
     MINERVINI_TARGET_PCT: float = 25.0  # Take profit at 25%
-    MINERVINI_LONG_BUDGET: float = 4000.0
+    MINERVINI_LONG_BUDGET: float = 4000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     # --- Connors RSI Composite — DISABLED on trb, paper on trc ---
     CONNORS_RSI_ENABLED: bool = False  # DISABLED 2026-03-30: augmented MRVL at -6.74% on real money. Needs V5 validation.
     CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0  # Buy when CRSI < 10
     CONNORS_RSI_EXIT_THRESHOLD: float = 70.0  # Sell when CRSI > 70
     CONNORS_RSI_POSITION_SIZE: float = 600.0
-    CONNORS_RSI_MAX_HOLD_DAYS: int = 20
+    CONNORS_RSI_MAX_HOLD_DAYS: int = 20  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     # --- VIX Regime Filter (Sharpe 2.00) — overlay on ALL entries, trb+trc ---
     VIX_REGIME_FILTER_ENABLED: bool = True  # Block entries when SPY < SMA200
     # --- TRC overrides for backtest winners ---
@@ -906,7 +906,7 @@ class TradierConfig:
     LOG_DIR: Path = Path.home() / "logs"
     LOG_FILE_TRADIER_PRICES: Path = LOG_DIR / "tradier_prices.log"
     LOG_FILE_TRADIER_POSITIONS: Path = LOG_DIR / "tradier_positions.log"
-    LOG_FILE_TRADIER_MANAGE: Path = LOG_DIR / "tradier_manage.log"
+    LOG_FILE_TRADIER_MANAGE: Path = LOG_DIR / "tradier_manage.log"  # DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LOG_MAX_BYTES: int = 1024 * 1024 * 20
     LOG_BACKUP_COUNT: int = 30
     
@@ -927,8 +927,8 @@ class TradierConfig:
             "key": os.getenv("TRADIER_API_KEY_TRC") or os.getenv("TRADIER_SANDBOX_ACCESS_TOKEN") or os.getenv("TRADIER_SANDBOX_KEY"),
             "env": "paper" } })
 
-    TRADIER_ACCOUNT_ID: str = os.getenv("TRADIER_ACCOUNT_ID_TRC", "")
-    TRADIER_API_KEY: str = os.getenv("TRADIER_API_KEY_TRC", "")
+    TRADIER_ACCOUNT_ID: str = os.getenv("TRADIER_ACCOUNT_ID_TRC", "")  # DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
+    TRADIER_API_KEY: str = os.getenv("TRADIER_API_KEY_TRC", "")  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
 
     def get_account_config(self, input_val: str) -> Optional[Dict[str, Any]]:
         clean_input = str(input_val).strip()
@@ -995,21 +995,21 @@ class TradierConfig:
     ABLATION_DISABLE_REENTRY_ENFORCE: bool = False  # Disable reentry enforcement loop
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
-    ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN
-    ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD: float = 0.9  # dc_position > this = breakout UP
-    ADAPTIVE_REGIME_DECAY_HALFLIFE_H: float = 24.0  # Exponential weight half-life (hours)
-    ADAPTIVE_REGIME_ENABLED: bool = True  # Master switch for regime daemon
-    ADAPTIVE_REGIME_HEAT_TRIGGER: float = 30.0  # Re-optimize when heat score > this
-    ADAPTIVE_REGIME_LOOKBACK_DAYS: int = 7  # Rolling backtest window
-    ADAPTIVE_REGIME_MIN_SIGNALS: int = 5  # Min weighted signals to trust optimizer (paper: 5, live: 10+)
-    ADAPTIVE_REGIME_NPZ_CACHE_HOURS: float = 4.0  # Re-fetch NPZ from server every N hours
-    ADAPTIVE_REGIME_PAPER: bool = True  # Paper mode: log decisions, don't override real configs
-    ADAPTIVE_REGIME_SHARPE_FLOOR: float = 0.0  # Paper phase: observe all. Raise to 0.5+ for live.
+    ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD: float = 0.9  # dc_position > this = breakout UP ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_DECAY_HALFLIFE_H: float = 24.0  # Exponential weight half-life (hours) ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_ENABLED: bool = True  # Master switch for regime daemon ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_HEAT_TRIGGER: float = 30.0  # Re-optimize when heat score > this ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_LOOKBACK_DAYS: int = 7  # Rolling backtest window ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_MIN_SIGNALS: int = 5  # Min weighted signals to trust optimizer (paper: 5, live: 10+) ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_NPZ_CACHE_HOURS: float = 4.0  # Re-fetch NPZ from server every N hours ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_PAPER: bool = True  # Paper mode: log decisions, don't override real configs ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
+    ADAPTIVE_REGIME_SHARPE_FLOOR: float = 0.0  # Paper phase: observe all. Raise to 0.5+ for live. ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
     ADX_RANGING_THRESHOLD: float = 20.0  # BACKTEST_CHANGE_137: ADX below this = ranging (only mean-reversion)
     ADX_REGIME_FILTER_ENABLED: bool = True  # BACKTEST_CHANGE_137: ADX<20 = sizing penalty + entry deduction.
     ADX_TF: str = '1h'
-    ADX_TRENDING_THRESHOLD: float = 25.0  # BACKTEST_CHANGE_137: ADX above this = trending
-    AGGRESSIVE_LOSS_CUT_ENABLED: bool = False  # DEAD CODE — replaced by STRUCTURAL_RANGE_SHIFT_EXIT (2026-04-11). DO NOT re-enable.
+    ADX_TRENDING_THRESHOLD: float = 25.0  # BACKTEST_CHANGE_137: ADX above this = trending ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    AGGRESSIVE_LOSS_CUT_ENABLED: bool = False  # DEAD CODE — replaced by STRUCTURAL_RANGE_SHIFT_EXIT (2026-04-11). DO NOT re-enable. ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     ASYMMETRIC_LOSER_MIN_AGE_SECONDS: float = 540  # 9min = 3 bars. Below this, no stop (avoid noise).
     ASYMMETRIC_STOPS_ENABLED: bool = False  # TIER_A: estimated Sharpe +0.5 alone.
     ASYMMETRIC_WINNER_GAIN_PCT: float = 1.5  # At this gain, position switches to winner rules.
@@ -1021,7 +1021,7 @@ class TradierConfig:
     ATR_LONG_WINDOW = 100
     AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
     AUGMENT_HTF_TREND_ENABLED: bool = True  # HTF trend only, conviction 65. Most frequent.
-    AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk
+    AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
     AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
     BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
@@ -1034,10 +1034,10 @@ class TradierConfig:
     BB_RSI_STOCH_SCALP_SCORE: int = 25  # BACKTEST_CHANGE_134: Score bonus for triple confirmation
     BB_SQUEEZE_COOLDOWN: float = 300.0  # Seconds between BB squeeze entries per symbol
     BB_SQUEEZE_ENABLED: bool = True  # Master toggle for BB squeeze breakout entries
-    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold)
+    BB_SQUEEZE_ENTRY_ENABLED: bool = True  # Enter when Bollinger bands compress (< threshold) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10  # Minimum alignment score to allow BB squeeze entry
-    BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal
-    BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal
+    BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze
     BINANCE_API_BASE: str = 'https://fapi.binance.com'
     BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE: float = 0.02  # Price within 2% of dc_low_D
@@ -1048,11 +1048,11 @@ class TradierConfig:
     BOUNCE_AUGMENT_PAPER: bool = True  # Paper mode — log only, no real orders
     BREAKEVEN_DC_LOW4_ENABLED: bool = True  # DC_LOW4_3M structural stop
     BREAKEVEN_GRACE_MINUTES: float = 15.0  # Grace period before no-loss kicks in
-    BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS
-    BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills
+    BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
+    BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds
-    CHOP_RANGING_THRESHOLD: float = 61.8  # Choppiness above this = ranging
-    CHOP_TRENDING_THRESHOLD: float = 38.2  # Choppiness below this = trending
+    CHOP_RANGING_THRESHOLD: float = 61.8  # Choppiness above this = ranging ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    CHOP_TRENDING_THRESHOLD: float = 38.2  # Choppiness below this = trending ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CIRCUIT_BREAKER_ACCOUNT_HALT_MIN: int = 60  # halt duration (min)
     CIRCUIT_BREAKER_ACCOUNT_LOSSES: int = 5  # N consec losses/account → halt
     CIRCUIT_BREAKER_COOLDOWN: int = 60  # BACKTEST_CHANGE_40: was 120. 3m TF needs faster recovery
@@ -1068,7 +1068,7 @@ class TradierConfig:
     CRYPTO_SPIKE_FADE_COOLDOWN_SEC: float = 540.0  # 3 bars × 3min = 9min. SWEEP: cd=3 bars wins.
     CRYPTO_SPIKE_FADE_ENABLED: bool = True
     CRYPTO_SPIKE_FADE_K_EXHAUSTION: float = 80.0  # SWEEP: 80 slightly better than 75. Not critical.
-    CRYPTO_SPIKE_FADE_LOOKBACK_BARS: int = 3  # SWEEP: 3 bars (9min) beats all longer lookbacks. Catch spike fast.
+    CRYPTO_SPIKE_FADE_LOOKBACK_BARS: int = 3  # SWEEP: 3 bars (9min) beats all longer lookbacks. Catch spike fast. ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     CRYPTO_SPIKE_FADE_MAX_POSITIONS: int = 6
     CRYPTO_SPIKE_FADE_THRESHOLD_PCT: float = 10.0  # SWEEP: 10% > 5% > 3% > 2%. Higher threshold = fewer but much better trades.
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
@@ -1083,7 +1083,7 @@ class TradierConfig:
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
     CT_WT_VELOCITY_1H_MIN: float = 0.0  # BC_170: min wt_velocity_1h (0=must be directional)
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior.
+    CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols
     CYCLE_TP_TIERED_FRAC: float = 0.25  # Close 25% of remaining at each tier
@@ -1092,35 +1092,35 @@ class TradierConfig:
     DC_BREAKOUT_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_133: Donchian breakout entry (trend-following)
     DC_BREAKOUT_SCORE: int = 15  # BACKTEST_CHANGE_133: Conservative (30% WR in ranging)
     DC_BREAKOUT_TF: str = '1h'
-    DC_EDGE_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat.
-    DC_EDGE_SIZING_MAX_MULT: float = 3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (sideways).
-    DC_EDGE_SIZING_MIN_MULT: float = 1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in sideways.
-    DC_EDGE_SIZING_PERIOD: int = 20  # DC lookback period for edge detection
+    DC_EDGE_SIZING_ENABLED: bool = True  # BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge=trending=3x, center=sideways=1x. +68% PnL vs flat. ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    DC_EDGE_SIZING_MAX_MULT: float = 3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (sideways). ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    DC_EDGE_SIZING_MIN_MULT: float = 1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in sideways. ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    DC_EDGE_SIZING_PERIOD: int = 20  # DC lookback period for edge detection ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT: float = 0.0  # if >0, uses 0.0..N * atr_3m instead of pct
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25  # crypto pct tolerance around entry_price
-    DC_WIDTH_CAP_MULT: float = 10.0
+    DC_WIDTH_CAP_MULT: float = 10.0  # DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
     DC_WIDTH_MAX_MULT: float = 5.0  # BACKTEST_CHANGE_23: was 8.0. DC is 7th best indicator, don't over-weight
     DC_WIDTH_SIZING_ENABLED: bool = True
     DELTA_ENTRY_SCORE_BONUS: int = 15  # Score bonus when delta confirms entry
     DELTA_ENTRY_SCORE_PENALTY: int = -25  # Score penalty when delta opposes entry
-    DELTA_EXIT_DC_FLOOR: bool = True  # DC15M floor break as exit
+    DELTA_EXIT_DC_FLOOR: bool = True  # DC15M floor break as exit ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_EXIT_DOM_TF_ENABLED: bool = True  # 2026-04-10 04:15 APPLIED — winner per user "yes apply" (was False)
-    DELTA_EXIT_OVERRIDE_NOLOSS: bool = True  # Delta exits bypass STRICT_NO_LOSS
+    DELTA_EXIT_OVERRIDE_NOLOSS: bool = True  # Delta exits bypass STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_EXIT_SCORE_BONUS: int = 20  # Score bonus when delta confirms exit
     DELTA_EXIT_SPEED_DECAY: bool = True  # Speed decay exit (primary)
-    DELTA_EXIT_WT_CROSS: bool = True  # WT cross against as exit
-    DELTA_GATE_AUGMENT: bool = True  # Block AUGMENT without delta signal
-    DELTA_GATE_BB_SQUEEZE: bool = True  # Block BB_SQUEEZE entries without delta
-    DELTA_GATE_DC_BREAKOUT: bool = True  # Block DC_BREAKOUT entries without delta
-    DELTA_GATE_GUARANTEED_REENTRY: bool = True  # Block GUARANTEED_REENTRY — #1 loss source
-    DELTA_GATE_HEDGE_OPEN: bool = False  # Do NOT gate hedges — they must always execute
-    DELTA_GATE_OPEN: bool = True  # Block OPEN without delta signal
-    DELTA_GATE_RATIO_REBALANCE: bool = False  # Block RATIO_REBALANCE opens — OFF: ratio is sacred
-    DELTA_GATE_REENTRY: bool = True  # Block REENTRY without delta signal
-    DELTA_GATE_SBA: bool = False  # Block SBA (underwater adds) without delta — OFF: SBA has own logic
-    DELTA_GATE_STDEV_BREAKOUT: bool = True  # Block STDEV_BREAKOUT without delta
-    DELTA_GATE_VOL_SPIKE: bool = True  # Block VOL_SPIKE_REVERSAL without delta
+    DELTA_EXIT_WT_CROSS: bool = True  # WT cross against as exit ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_AUGMENT: bool = True  # Block AUGMENT without delta signal ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_BB_SQUEEZE: bool = True  # Block BB_SQUEEZE entries without delta ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_DC_BREAKOUT: bool = True  # Block DC_BREAKOUT entries without delta ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_GUARANTEED_REENTRY: bool = True  # Block GUARANTEED_REENTRY — #1 loss source ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_HEDGE_OPEN: bool = False  # Do NOT gate hedges — they must always execute ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_OPEN: bool = True  # Block OPEN without delta signal ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_RATIO_REBALANCE: bool = False  # Block RATIO_REBALANCE opens — OFF: ratio is sacred ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_REENTRY: bool = True  # Block REENTRY without delta signal ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_SBA: bool = False  # Block SBA (underwater adds) without delta — OFF: SBA has own logic ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_STDEV_BREAKOUT: bool = True  # Block STDEV_BREAKOUT without delta ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_GATE_VOL_SPIKE: bool = True  # Block VOL_SPIKE_REVERSAL without delta ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_MIN_TF_FOR_ACTION: int = 2  # Minimum TFs confirming for any buy/sell decision
     DELTA_REENTRY_HTF_GATE: str = '4h'
     DELTA_REENTRY_MIN_TF: int = 2  # 2 TFs vs 3 for fresh entries
@@ -1137,8 +1137,8 @@ class TradierConfig:
     EMA200_STOCHRSI_K_SHORT: float = 80.0  # BACKTEST_CHANGE_127: Stoch K above this for SHORT
     EMA200_STOCHRSI_SCORE: int = 25  # BACKTEST_CHANGE_127: Score bonus
     EMA200_STOCHRSI_TF: str = '1h'
-    EMA20_SLOPE_ENTRY_ENABLED: bool = True
-    EMA20_SLOPE_SHORT_THRESHOLD_1H: float = 0.05  # SHORT when ema20 slope > this (extended, mean revert)
+    EMA20_SLOPE_ENTRY_ENABLED: bool = True  # DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    EMA20_SLOPE_SHORT_THRESHOLD_1H: float = 0.05  # SHORT when ema20 slope > this (extended, mean revert) ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     EMA_DIST_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_3: #1 signal in top 5000
     EMA_DIST_LONG_THRESHOLD: float = -1.0  # LONG when ema_dist < -1.0 (price far below EMA20)
     EMA_DIST_SHORT_THRESHOLD: float = 1.0  # SHORT when ema_dist > 1.0 (price far above EMA20)
@@ -1153,21 +1153,21 @@ class TradierConfig:
     ERROR_RECOVERY_SLEEP_SECONDS: int = 60  # Sleep after errors
     EXIT_AUTO_REDUCE_CROSSUNDER_ENABLED: bool = False  # 2026-04-11 SWEEP: dead code, no effect on results. Disabled.
     EXIT_DC_BREACH_REDUCE_ENABLED: bool = True  # Augmented position DC breach
-    EXIT_DEAD_CODE_ENABLED: bool = False  # Dead code path — disabled
+    EXIT_DEAD_CODE_ENABLED: bool = False  # Dead code path — disabled ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     EXIT_DELTA_SPEED_ENABLED: bool = True  # Delta engine speed decay exit (PRIMARY)
-    EXIT_EMERGENCY_DC1H_ENABLED: bool = False  # Emergency DC 1h breach — disabled, too aggressive
+    EXIT_EMERGENCY_DC1H_ENABLED: bool = False  # Emergency DC 1h breach — disabled, too aggressive ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     EXIT_GAIN_EROSION_ENABLED: bool = True  # Peak gain eroding toward 0 with WT against
-    EXIT_GAIN_THRESHOLD_MIN: float = 1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = fewer whipsaw exits. IS+OOS validated.
+    EXIT_GAIN_THRESHOLD_MIN: float = 1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = fewer whipsaw exits. IS+OOS validated. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     EXIT_HARD_MAX_LOSS_CAP_ENABLED: bool = False  # 2026-04-11 SWEEP WINNER: #1 PnL destroyer. Sharpe 2.3 disabled vs 0.2 enabled. UNIVERSAL_NOLOSS_GATE handles loss protection.
-    EXIT_HEDGE_LOSS_KILL_ENABLED: bool = True  # Kill losing hedges when gain < prev_gain
-    EXIT_HEDGE_ORPHAN_KILL_ENABLED: bool = True  # Kill hedges with no original position
+    EXIT_HEDGE_LOSS_KILL_ENABLED: bool = True  # Kill losing hedges when gain < prev_gain ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    EXIT_HEDGE_ORPHAN_KILL_ENABLED: bool = True  # Kill hedges with no original position ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     EXIT_MARKET_SPIKE_REDUCE_ENABLED: bool = True  # Reduce shorts on market spike / longs on drop — sweep: keeps Sharpe
     EXIT_ON_ALL_ENABLED: bool = False  # Was True via EXIT_ON_ALL
     EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED: bool = True  # 2026-04-11: now gated by WT 3m+15m both against
     EXIT_PREEMPTIVE_BREAKEVEN_ENABLED: bool = True  # Sweep: helps slightly, keep on
     EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = True  # BB breakout failure (price back inside bands)
     EXIT_TREND_REVERSAL_ENABLED: bool = True  # HTF trend score flip
-    FAST_CUT_LOSS_MIN_AGE_MINUTES: float = 15.0  # Was 6 min (too short)
+    FAST_CUT_LOSS_MIN_AGE_MINUTES: float = 15.0  # Was 6 min (too short) ; DEAD_CONFIRMED (priority 25/100) — no plausible wiring site found 20260416
     FAST_CUT_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_18: was -1.5. Dead code — ALL accounts STRICT_NO_LOSS
     FAST_RISER_DOUBLE_ENABLED: bool = False  # BACKTEST_CHANGE_115: was True. Net negative PnL. Fast riser doubles amplify losers.
     FG_FEAR_THRESHOLD: int = 25  # BACKTEST_CHANGE_141: F&G below this = extreme fear → increase size
@@ -1176,66 +1176,66 @@ class TradierConfig:
     FORCE_REFRESH_SECONDS: float = 10  # BACKTEST_CHANGE_43: was 16. Fresher data for 3m decisions
     GAIN_THRESHOLD_LOW = 1.0  # BACKTEST_CHANGE_112: was 0.15 (was 0.50). Higher = fewer whipsaw exits. OOS-validated at 1.0%
     HARD_MAX_LOSS_PCT: float = -5.0  # 2026-04-10: SAFETY NET. NO position ever allowed past -5% loss. DELTA/WT/DC should normally fire way before. Set -9999 to disable (ablation only).
-    HA_3M_ENTRY_WEIGHT: float = -0.5  # BACKTEST_CHANGE_31: was 0.0. HA harmful for entries — use as negative (contrarian) signal
+    HA_3M_ENTRY_WEIGHT: float = -0.5  # BACKTEST_CHANGE_31: was 0.0. HA harmful for entries — use as negative (contrarian) signal ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     HA_WICK_QUALITY_ENABLED: bool = False  # BACKTEST_CHANGE_144: HA streak quality scoring (62% WR with EMA filter)
     HA_WICK_QUALITY_SCORE: int = 15  # BACKTEST_CHANGE_144: Score bonus for strong HA streak
     HA_WICK_QUALITY_TF: str = '1h'
     HEDGE_ACCOUNTS = ['ang', 'fin', 'men', 'flz']
     HEDGE_ALL_POSITIONS: bool = False  # BC_988: NEW. If True, hedge ALL positions when wt15m against (not just losers). Test pending.
-    HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
+    HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
-    HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
-    HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
+    HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
+    HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate. ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
-    HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
+    HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2% ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
     HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
-    HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
+    HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory). ; DEAD_CONFIRMED (priority 82/100) — no plausible wiring site found 20260416
     HOUR_OF_DAY_GATE_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Audit hourly Sharpe first.
     HTF_STRICT: bool = True  # BACKTEST_CHANGE_106: REVERTED to True. Tournament winner uses strict (all HTFs K>D+HA aligned). Sharpe 242 vs 133 for kd_only.
     IMMEDIATE_WRONG_WAY_ENABLED: bool = False  # BACKTEST_CHANGE_114: was implicitly True. #2 PnL destroyer. Tight stops kill trades that recover.
-    INDICATORS_DATA_CACHE_SIZE = 2048
+    INDICATORS_DATA_CACHE_SIZE = 2048  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     INDICATORS_SAVE_INTERVAL_SECONDS: float = 10.0
     INDICATOR_MAX_AGE_SECONDS = 200.0
-    INF_RANKING_BYPASS_DELTA: bool = False  # DELTA_GATE_OPEN bypass (not measured yet)
-    INF_RANKING_BYPASS_FRESHNESS_MIN: int = 30  # only bypass within N min of list entry
-    INF_RANKING_BYPASS_HTF: bool = True  # 2/3 HTF -> 1/3 HTF — +18pp on top of stoch
-    INF_RANKING_BYPASS_MAX_POS: int = 8  # soft cap on concurrent bypass-entries
-    INF_RANKING_BYPASS_SCORE: bool = False  # score gate bypass (unclear impact, keep off)
-    INF_RANKING_BYPASS_STOCH: bool = True  # relax K3M_CAP/K15M — unlocks 73.6% alone
-    INF_RANKING_BYPASS_WT: bool = False  # WT composite bypass (trend misread risk)
-    INF_RANKING_PRIORITY_BYPASS: bool = False  # master switch
+    INF_RANKING_BYPASS_DELTA: bool = False  # DELTA_GATE_OPEN bypass (not measured yet) ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_FRESHNESS_MIN: int = 30  # only bypass within N min of list entry ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_HTF: bool = True  # 2/3 HTF -> 1/3 HTF — +18pp on top of stoch ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_MAX_POS: int = 8  # soft cap on concurrent bypass-entries ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_SCORE: bool = False  # score gate bypass (unclear impact, keep off) ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_STOCH: bool = True  # relax K3M_CAP/K15M — unlocks 73.6% alone ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_BYPASS_WT: bool = False  # WT composite bypass (trend misread risk) ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    INF_RANKING_PRIORITY_BYPASS: bool = False  # master switch ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
-    LADDER_AUTO_SAVE_SECONDS: float = 60.0
+    LADDER_AUTO_SAVE_SECONDS: float = 60.0  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     LADDER_TTL_MINUTES: int = 24 * 60  # Ladder order TTL
-    LEGACY_AGGRESSIVE_LOSS_CUT: bool = False  # OFF — single TF 1m flip
+    LEGACY_AGGRESSIVE_LOSS_CUT: bool = False  # OFF — single TF 1m flip ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LEGACY_DC_BREAKOUT_REENTRY: bool = True  # ON — gated by tolerant delta
-    LEGACY_FAST_CUT_LOSS: bool = False  # OFF — % stop in disguise
+    LEGACY_FAST_CUT_LOSS: bool = False  # OFF — % stop in disguise ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LEGACY_GUARANTEED_REENTRY: bool = True  # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
     LEGACY_PROC_SINGLE_REENTRY: bool = False  # OFF 2026-04-15 per user — fired mid-move on LTF only
-    LEGACY_REENTRY_GUARANTEED_2WT: bool = False  # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%
+    LEGACY_REENTRY_GUARANTEED_2WT: bool = False  # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50% ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LEGACY_REENTRY_GUARANTEED_BOTTOM: bool = False  # ez_manage.py:16128 — wt15m bounce + 1h trend + 2/4 WT, 150%
-    LEGACY_REENTRY_GUARANTEED_CROSS: bool = False  # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos
+    LEGACY_REENTRY_GUARANTEED_CROSS: bool = False  # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False  # ez_manage.py:18836 — DC bounce within 8h, near dc_high/low
     LEGACY_REENTRY_PSR_FULL_DC: bool = False  # ez_manage.py:18812 — full reentry stoch_above_dc OR dc_basis_crossover_3m
     LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False  # ez_manage.py:18777 LONG / 18798 SHORT — k_3m/15m crossover above dc_low_3m/15m
     LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = False  # ez_manage.py:18757 — price ± atr_3m within 60min, k cross
-    LEGACY_WR_PULLBACK: bool = True  # ON
+    LEGACY_WR_PULLBACK: bool = True  # ON ; DEAD_CONFIRMED (priority 10/100) — no plausible wiring site found 20260416
     LOG_INTERVAL_SECONDS: int = 10  # Log interval for waiting operations
     LONG_STOCH_CHASE_BLOCK: bool = True  # BACKTEST_CHANGE_102: NEW. Block LONG when stoch_k_1h > 70 AND ha_streak > 2 — chasing overbought = loser
-    LOSS_CUT_ENABLED: bool = False  # NEVER enable — proven to lose 20%+ weekly
+    LOSS_CUT_ENABLED: bool = False  # NEVER enable — proven to lose 20%+ weekly ; DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED: bool = False  # ez_manage.py:20647 hedge-failed escape @ gain<-15% & 30min unhedged
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED: bool = False  # ez_positions_quick.py:10778 allow exit when max_gain≥0.5% & fresh_gain>-0.5
     LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = False  # ez_manage.py:20621 STOP_FUNCTIONS_KILL @ gain<-5%
-    LS_RATIO_CONTRARIAN_ENABLED: bool = False  # BACKTEST_CHANGE_142: L/S ratio contrarian filter
-    LS_RATIO_EXTREME_THRESHOLD: float = 70.0  # BACKTEST_CHANGE_142: L/S ratio above this = suppress that side
+    LS_RATIO_CONTRARIAN_ENABLED: bool = False  # BACKTEST_CHANGE_142: L/S ratio contrarian filter ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    LS_RATIO_EXTREME_THRESHOLD: float = 70.0  # BACKTEST_CHANGE_142: L/S ratio above this = suppress that side ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     LS_RATIO_HARD_MAX: float = 3.5  # Was 2.00 — raised to let shorts open while ratio recovers. Still blocks extreme >3.5 longs.
     LS_RATIO_HARD_MIN: float = 0.05  # Near-zero: ratio must FOLLOW the WT direction, not fight it
     LS_RATIO_LOG_INTERVAL: int = 60  # Seconds between ratio warning logs
-    LS_RATIO_PENALTY: int = 15  # BACKTEST_CHANGE_142: Score penalty for crowded side
+    LS_RATIO_PENALTY: int = 15  # BACKTEST_CHANGE_142: Score penalty for crowded side ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     MACD_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_136: MACD cross-back exit for profitable positions
     MACD_EXIT_MIN_GAIN: float = 0.3  # BACKTEST_CHANGE_136: Min gain% before MACD exit allowed
     MACD_EXIT_TF: str = '15m'
@@ -1257,36 +1257,36 @@ class TradierConfig:
     MAX_POSITION_SIZE_FIN: float = 20.0  # 2026-03-30: Same. Was $4000.
     MAX_POSITION_SIZE_MEN: float = 20.0  # 2026-03-30: Same. Was $1200.
     MEMORY_MONITOR_SLEEP_SECONDS: int = 60  # Memory monitor loop sleep
-    MIN_HOLD_BARS_BEFORE_EXIT: int = 32  # V4: 8 hours min hold. Sharpe 0.503 vs 0.460 baseline (+9.3%), PnL +49%.
+    MIN_HOLD_BARS_BEFORE_EXIT: int = 32  # V4: 8 hours min hold. Sharpe 0.503 vs 0.460 baseline (+9.3%), PnL +49%. ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
     MIN_USD_DELTA_CONFIRM: float = 1.0
-    MITIGATOR_AUGMENT_CONSECUTIVE: int = 3  # Must rise for 3+ scans
-    MITIGATOR_AUGMENT_THRESHOLD: float = 0.3  # Augment winners above this gain
+    MITIGATOR_AUGMENT_CONSECUTIVE: int = 3  # Must rise for 3+ scans ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_AUGMENT_THRESHOLD: float = 0.3  # Augment winners above this gain ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     MITIGATOR_COOLDOWN: float = 15.0  # Seconds between actions per position
     MITIGATOR_ENABLED: bool = False  # DISABLED: 8 triggers kill winners between 0.03-2.5%. Let winners run.
-    MITIGATOR_REENTRY_COOLDOWN: float = 180.0  # 3 min before re-entry
-    MITIGATOR_REENTRY_PRICE_PCT: float = 0.15  # Favorable price move for re-entry
+    MITIGATOR_REENTRY_COOLDOWN: float = 180.0  # 3 min before re-entry ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_REENTRY_PRICE_PCT: float = 0.15  # Favorable price move for re-entry ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     MITIGATOR_SCAN_INTERVAL: float = 3.0
-    MITIGATOR_TIER1_DROP: float = 0.08  # Reduce 25% when gain drops to this
-    MITIGATOR_TIER1_PEAK: float = 0.15  # Peak gain must reach this before tier 1 arms
-    MITIGATOR_TIER1_REDUCE_PCT: float = 0.25
-    MITIGATOR_TIER2_DROP: float = 0.02  # Reduce 50% of remaining at breakeven
-    MITIGATOR_TIER2_REDUCE_PCT: float = 0.5
-    MITIGATOR_TIER3_DROP: float = -0.05  # Full close — tiny loss better than big loss
+    MITIGATOR_TIER1_DROP: float = 0.08  # Reduce 25% when gain drops to this ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_TIER1_PEAK: float = 0.15  # Peak gain must reach this before tier 1 arms ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_TIER1_REDUCE_PCT: float = 0.25  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_TIER2_DROP: float = 0.02  # Reduce 50% of remaining at breakeven ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_TIER2_REDUCE_PCT: float = 0.5  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MITIGATOR_TIER3_DROP: float = -0.05  # Full close — tiny loss better than big loss ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     MOM3_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_4: #2 signal, 3-bar momentum mean-reversion
     MOM3_LONG_THRESHOLD: float = -1.0  # LONG when mom3 < -1.0
     MOM3_SHORT_THRESHOLD: float = 1.0  # SHORT when mom3 > 1.0
     MOM5_ENTRY_ENABLED: bool = True  # BACKTEST_CHANGE_5: #3 signal, 5-bar momentum
     MOM5_LONG_THRESHOLD: float = -1.0
     MOM5_SHORT_THRESHOLD: float = 1.0
-    MOMENTUM_RIDER_ACCOUNT: str = 'men'
+    MOMENTUM_RIDER_ACCOUNT: str = 'men'  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     MOMENTUM_RIDER_BASE_SIZE_USD: float = 50.0
     MOMENTUM_RIDER_COOLDOWN: float = 300.0
     MOMENTUM_RIDER_DC_WIDTH_MIN: float = 8.0
     MOMENTUM_RIDER_ENABLED: bool = False  # DISABLED 2026-03-29: bypasses ALL execute_now guards + auto-expands tradeable_keys
     MOMENTUM_RIDER_HEDGE_RATIO: float = 1.2
-    MOMENTUM_RIDER_MAX_SIZE_USD: float = 400.0
+    MOMENTUM_RIDER_MAX_SIZE_USD: float = 400.0  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     MOMENTUM_RIDER_MAX_SYMBOLS: int = 5
     MOMENTUM_RIDER_REL_VOL_MIN: float = 3.0
     MOMENTUM_RIDER_SCAN_INTERVAL: float = 10.0
@@ -1294,7 +1294,7 @@ class TradierConfig:
     MOVER_ACCOUNT: str = 'inf'
     MOVER_DETECTION_ENABLED: bool = True  # BACKTEST_CHANGE_111: Scan all symbols for sudden spikes, fade them (mean reversion)
     MOVER_LINEARITY_MIN: float = 0.3  # BACKTEST_CHANGE_111: Min R² — 0.3 = clean directional move (not choppy)
-    MOVER_LOOKBACK: int = 8  # BACKTEST_CHANGE_111: Bars to compute slope/linearity (8 on 15m = 2h window). Best: 8-13.
+    MOVER_LOOKBACK: int = 8  # BACKTEST_CHANGE_111: Bars to compute slope/linearity (8 on 15m = 2h window). Best: 8-13. ; DEAD_CONFIRMED (priority 50/100) — no plausible wiring site found 20260416
     MOVER_MAX_POSITIONS: int = 6  # Max concurrent mover positions in inf account
     MOVER_SCORE_BONUS: int = 40  # Score bonus for mover-detected entries (high conviction)
     MOVER_THRESHOLD: float = 5.0  # BACKTEST_CHANGE_111: Min mover score to qualify. 5.0 = 99.7% WR across 193 symbols. Higher = fewer but cleaner.
@@ -1305,18 +1305,18 @@ class TradierConfig:
     MTS_ENTRY_QUALITY_BONUS: float = 25.0  # entry_quality above this adds +2 score bonus
     MTS_ENTRY_QUALITY_MIN_SHORT: float = 5.0  # Shorts: slightly relaxed (was 0)
     MTS_ENTRY_QUALITY_STRONG: float = 40.0  # entry_quality above this adds +5 score bonus
-    NEWS_POLL_INTERVAL_CRYPTO: int = 300  # 5 min (CryptoPanic)
-    NEWS_POLL_INTERVAL_SOCIAL: int = 900  # 15 min (Reddit + Twitter)
+    NEWS_POLL_INTERVAL_CRYPTO: int = 300  # 5 min (CryptoPanic) ; DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
+    NEWS_POLL_INTERVAL_SOCIAL: int = 900  # 15 min (Reddit + Twitter) ; DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     NEWS_SENTIMENT_DECAY_HOURS: int = 4  # Older articles decay to 0
     NEWS_SENTIMENT_MIN_ARTICLES: int = 2  # Min sources to form a score
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5  # 2026-04-16: reverted from 0.0 — was hedging on rounding-error noise
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
-    OI_DIVERGENCE_ENABLED: bool = False  # BACKTEST_CHANGE_143: OI divergence confirmation
-    OI_DIVERGENCE_PENALTY: int = 10  # BACKTEST_CHANGE_143: Score penalty for OI divergence
-    OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners.
+    OI_DIVERGENCE_ENABLED: bool = False  # BACKTEST_CHANGE_143: OI divergence confirmation ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    OI_DIVERGENCE_PENALTY: int = 10  # BACKTEST_CHANGE_143: Score penalty for OI divergence ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners. ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     OPTIMAL_HOLD_BARS_3M: int = 999  # ABLATION_V3_REVERT: was 21 (BC_15). Confirmed on BOTH v2 (4-day) and v3 (3-year, 215 sym): +1.04 Sharpe, 85% improved. Forced exit kills winners.
-    ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
+    ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
     OUTLIER_RUNAWAY_ATR_FACTOR: float = 2.0
     OUTLIER_STUCK_ATR_FACTOR: float = 0.5
     OUTLIER_STUCK_HOURS: float = 2.0
@@ -1326,8 +1326,8 @@ class TradierConfig:
     PNL_DECAY_COMPLETE_DAYS: int = 5  # DAYS
     PNL_DECAY_FINAL_PERCENTAGE: float = 0.1  # Keep 10% after full decay
     PNL_DECAY_START_HOURS: int = 1  # HOURS
-    POSITIONS_SERVICE_HEALTH_TIMEOUT: float = 4.0  # Seconds to wait for RPC ping
-    POSITION_REDIS_REFRESH_INTERVAL: float = 6.0
+    POSITIONS_SERVICE_HEALTH_TIMEOUT: float = 4.0  # Seconds to wait for RPC ping ; DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
+    POSITION_REDIS_REFRESH_INTERVAL: float = 6.0  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     POSITION_REFRESH_MIN_INTERVAL: int = 5  # \seconds
     POSITION_SAVE_INTERVAL: float = 6.0
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
@@ -1341,15 +1341,15 @@ class TradierConfig:
     PYRAMID_SIZE_MULT: float = 0.5  # Add N × position_amt (0.5 = 50%).
     RANKING_LOOP_SLEEP_SECONDS: int = 120  # BACKTEST_CHANGE_44: ranking loop sleep (2 minutes, was 3)
     RATIO_EMERGENCY_EXIT_COOLDOWN: float = 999999.0  # Infinite cooldown
-    RATIO_EMERGENCY_EXIT_ENABLED: bool = False  # PERMANENTLY DISABLED: closing losers = Sharpe 19 vs ratio-only 357. Fix ratio by OPENING underweight side, NEVER by closing losers.
+    RATIO_EMERGENCY_EXIT_ENABLED: bool = False  # PERMANENTLY DISABLED: closing losers = Sharpe 19 vs ratio-only 357. Fix ratio by OPENING underweight side, NEVER by closing losers. ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
     RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT: float = -999.0  # Set to impossible value
     RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE: int = 0  # Zero = can never close anything
     RATIO_EMERGENCY_EXIT_THRESHOLD: float = 999.0  # Set to impossible value so it can NEVER trigger even if enabled by accident
     REACTIVE_MODE: bool = False
     REDIS_CHANNEL_SIGNALS: str = 'signals_channel'
     REDIS_EXPIRY_SECONDS: int = 180
-    REDUCE_HUGE_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_19: was -2.0. Dead code under STRICT_NO_LOSS
-    REENTER_SAVE_DEBOUNCE_SECONDS: int = 30  # BACKTEST_CHANGE_45: was 50. Faster reentry on 3m TF
+    REDUCE_HUGE_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_19: was -2.0. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    REENTER_SAVE_DEBOUNCE_SECONDS: int = 30  # BACKTEST_CHANGE_45: was 50. Faster reentry on 3m TF ; DEAD_CONFIRMED (priority 25/100) — no plausible wiring site found 20260416
     REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
     REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
@@ -1370,10 +1370,10 @@ class TradierConfig:
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
-    REGIME_ADAPTIVE_ENABLED: bool = False  # Regime-adaptive strategy selection (ADX+CHOP)
+    REGIME_ADAPTIVE_ENABLED: bool = False  # Regime-adaptive strategy selection (ADX+CHOP) ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REGIME_ATR_RATIO_MIN: float = 0.25  # atr_3m/atr_1h min. Below = compressed.
     REGIME_BB_WIDTH_PCT_MIN: float = 2.0  # bb_width_1h as % of price. Below = squeeze.
-    REGIME_BTC_MARKET_WEIGHT: float = 0.5  # BTC influence on market-wide regime
+    REGIME_BTC_MARKET_WEIGHT: float = 0.5  # BTC influence on market-wide regime ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REGIME_DC_ATR_RATIO_MIN: float = 1.5  # dc_width_15m / atr_3m. Below = no room.
     REGIME_DETECTION_ENABLED: bool = False  # Master switch — OFF until backtest-proven
     REGIME_ENTER_TRENDING_THRESHOLD: float = 30.0  # Score > 30 to enter TRENDING_UP (< -30 for DOWN)
@@ -1388,14 +1388,14 @@ class TradierConfig:
     REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5  # Half-size, more slots
     REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0  # Standard reentry
     REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.6  # Reserve 60% slots for new entries
-    REGIME_RANGING_STALE_HOURS: float = 48.0  # Evict breakeven positions after 48h
-    REGIME_RANGING_STALE_MIN_PROFIT: float = 0.02  # Must be slightly profitable to evict
+    REGIME_RANGING_STALE_HOURS: float = 48.0  # Evict breakeven positions after 48h ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    REGIME_RANGING_STALE_MIN_PROFIT: float = 0.02  # Must be slightly profitable to evict ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REGIME_RANGING_WT_EXIT_VEL: float = -3.0  # Exit on lighter reversal
     REGIME_RANGING_WT_REDUCE_FRAC_LOW: float = 0.4  # 0.3-0.5% gain → reduce 40%
     REGIME_RANGING_WT_REDUCE_FRAC_MED: float = 0.6  # 0.5-1.0% gain → reduce 60%
     REGIME_TRENDING_DC_BREAKOUT_SCORE: int = 30  # DC breakout valuable in trends
     REGIME_TRENDING_EXIT_GAIN_MIN: float = 2.0  # Only exit at 2%+ gain
-    REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0  # Shallower pullback K reset
+    REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0  # Shallower pullback K reset ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REGIME_TRENDING_K_ZONE_BONUS: int = 15  # K-zone less important
     REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
     REGIME_TRENDING_NOLOSS_MIN: float = 0.5  # Let winners run in trends
@@ -1417,11 +1417,11 @@ class TradierConfig:
     RSI_MACD_EMA_RSI_SHORT: float = 65.0  # BACKTEST_CHANGE_129: Relaxed RSI — 65 not 70
     RSI_MACD_EMA_SCORE: int = 25  # BACKTEST_CHANGE_129: Score bonus
     RSI_MACD_EMA_TF: str = '1h'
-    RSI_MOMENTUM_MODE: bool = False  # BACKTEST_CHANGE_138: Toggle RSI gate to momentum (>50=buy). Crypto-specific.
+    RSI_MOMENTUM_MODE: bool = False  # BACKTEST_CHANGE_138: Toggle RSI gate to momentum (>50=buy). Crypto-specific. ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     RZ_DIV_BLOCK_MIN: int = 2
     RZ_DIV_EXIT_ENABLED: bool = True
-    RZ_K_ENTRY_BOTTOM: float = 10.0  # Stoch K below this at BOTTOM = exit short (mirror)
-    RZ_MFI_ENTRY_BOTTOM: float = 15.0  # MFI below this at BOTTOM = exit short (mirror)
+    RZ_K_ENTRY_BOTTOM: float = 10.0  # Stoch K below this at BOTTOM = exit short (mirror) ; DEAD_CONFIRMED (priority 88/100) — no plausible wiring site found 20260416
+    RZ_MFI_ENTRY_BOTTOM: float = 15.0  # MFI below this at BOTTOM = exit short (mirror) ; DEAD_CONFIRMED (priority 88/100) — no plausible wiring site found 20260416
     RZ_TWO_PHASE_EXIT_ENABLED: bool = True
     RZ_ZSCORE_EXIT_ENABLED: bool = True
     RZ_ZSCORE_ZONE_ENABLED: bool = True
@@ -1437,7 +1437,7 @@ class TradierConfig:
     SATOSHIT_SCORE_BONUS: int = 30  # Score bonus when Satoshit fires (below mover=40)
     SATOSHIT_SHORT_BB_PCTB_MIN: float = 0.55  # 1h BB%B proxy (his 15m median: 1.16)
     SATOSHIT_SHORT_HA_STREAK_MIN: int = 0  # HA must be bullish (his median: 4)
-    SBA_ADX_TF: str = '1h'
+    SBA_ADX_TF: str = '1h'  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     SBA_COOLDOWN_GLOBAL_S: int = 300  # BACKTEST_CHANGE_145: 5min between ANY SBA add (crash guard)
     SBA_COOLDOWN_POSITION_S: int = 3375  # BACKTEST_CHANGE_145: ~56min between adds (backtest: 15 bars × 15m = 3375s optimal)
     SBA_MAX_CONCURRENT: int = 3  # BACKTEST_CHANGE_145: Max positions receiving SBA at once
@@ -1445,7 +1445,7 @@ class TradierConfig:
     SBA_MIN_SCORE: float = 3.5  # BACKTEST_CHANGE_145: Min bounce score to trigger (backtest: 3.5 > 4.0/4.5, 66% SBA WR)
     SCALP_ACCOUNTS = ['inf']
     SCALP_MODE: bool = True  # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
-    SCALP_OVERRIDE = False
+    SCALP_OVERRIDE = False  # DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
     SCALP_V2_ISOLATE: bool = True  # 2026-04-16: ON for live — V2 positions ONLY use V2 exits, main pipeline exits skip them. V8 -0.30 Sharpe was from main exits trampling V2 positions.
     SCALP_V2_LH_LL_EXIT: bool = True  # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
@@ -1454,7 +1454,7 @@ class TradierConfig:
     SCALP_V2_MAX_HOLD_MINUTES: float = 15.0  # P0: sweep-proven, 60m universally worse for inf
     SCALP_V2_REDZONE_EXIT: bool = True  # P1: #2 in sweep (Sharpe 97). Catches exits V1_WT misses. +6 extra exits in smoke test.
     SCALP_V2_REDZONE_K_THRESHOLD: int = 90  # P1: sweep winner=90. Try 80 only after 90 tested.
-    SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop
+    SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
     SCALP_V2_VARIANT: str = 'V1_WT_CONFIRM'
     SERVICE_REDUCE = True
     SERVICE_STOP = True
@@ -1464,36 +1464,36 @@ class TradierConfig:
     SIMPLE_TP_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_139: Simple fixed TP% exit. 567k backtests: simple > complex trailing.
     SIMPLE_TP_PCT: float = 0.5  # BACKTEST_CHANGE_139: Fixed TP percentage
     SLEEP_TIME_PROC_ACCT: float = 5  # Check symbols - 100 times per minute minimum
-    SMA200_DIST_LONG_THRESHOLD: float = -3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups
+    SMA200_DIST_LONG_THRESHOLD: float = -3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     STALE_WARNING_INTERVAL_SECONDS: float = 30.0
     STOCH_CROSS_3M_EXIT_ENABLED: bool = False  # 2026-04-10: REMOVED — stoch is way lagging vs DELTA/WT. DELTA→WT priority means this never reaches if upstream works.
     STOP_LOSS_THRESHOLD = 999.0  # BACKTEST_CHANGE_17: was 1.0. Dead code under STRICT_NO_LOSS — disabled
     STOP_MAJOR_LOSS_BLOCK_ENABLED: bool = True  # BACKTEST_CHANGE_113: Block the STOP_MAJOR_LOSS reduce path entirely. #1 PnL destroyer (-125k% cumulative). L/S ratio IS the hedge.
-    STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk
+    STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk ; DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']
-    SWEEP_OPTIMAL_ENTRY_TF: str = '1h'
-    SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period
-    SYMBOL_PERF_DECAY_HOURS: float = 12.0
-    SYMBOL_PERF_MAX_MULT: float = 10.0
-    SYMBOL_PERF_MIN_MULT: float = 0.1
+    SWEEP_OPTIMAL_ENTRY_TF: str = '1h'  # DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
+    SWEEP_OPTIMAL_HOLD_BARS: int = 8  # Most common winning hold period ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
+    SYMBOL_PERF_DECAY_HOURS: float = 12.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    SYMBOL_PERF_MAX_MULT: float = 10.0  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    SYMBOL_PERF_MIN_MULT: float = 0.1  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     SYMBOL_PERF_MIN_TRADES: int = 5
     SYMBOL_PERF_WINDOW_DAYS: int = 14
     TASK_STAGGER_SECONDS: int = 15  # Stagger between starting background tasks
-    TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against
-    TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against
+    TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
     TF_ALIGNMENT_MIN_TOTAL: int = 4  # 2026-03-30: Entries need 3/3 LTF + D mandatory + 2/3 HTF = 4+ TFs. Hardcoded in check_entry_alignment.
-    TF_ALL: list = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO]
+    TF_ALL: list = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO] ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     TF_FOCUS: str = '3m'
-    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry
-    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit
-    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m
-    TIER_A_MIN_GAIN: float = 0.3
-    TIER_A_MIN_TRADES: int = 10
-    TIER_A_MULTIPLIER: float = 1.2
-    TIER_A_WIN_RATE: float = 0.6
-    TIER_B_MIN_TRADES: int = 5
-    TIER_B_WIN_RATE: float = 0.45
-    TIER_C_MULTIPLIER: float = 0.7
+    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TIER_A_MIN_GAIN: float = 0.3  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_A_MIN_TRADES: int = 10  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_A_MULTIPLIER: float = 1.2  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_A_WIN_RATE: float = 0.6  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_B_MIN_TRADES: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_B_WIN_RATE: float = 0.45  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    TIER_C_MULTIPLIER: float = 0.7  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TIER_ENABLED: bool = True
     TREND_EXIT_SCORE_FLIP: int = 0
     TREND_HEDGE_MAX_SEC: int = 180
@@ -1525,21 +1525,21 @@ class TradierConfig:
     TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
     TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
     UNIVERSAL_NOLOSS_GATE: bool = True
-    USE_INDICATOR_SNAPSHOT: bool = True
-    V8Q_COOLDOWN_BARS: int = 3
-    V8Q_D_TREND_REQUIRED: bool = True
-    V8Q_HTF_MIN_ALIGNED: int = 1
-    V8Q_K3M_FLOOR: int = 30
-    V8Q_MIN_HOLD_BARS: int = 10
-    V8Q_PROFIT_TARGET_ENABLED: bool = True
-    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90)
-    V8Q_STRENGTH_FILTER_ENABLED: bool = True
-    V8Q_STRENGTH_MIN_SCORE: float = 5.0
-    V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT')
-    V8Q_SYMBOL_TIER_TOP4: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT')
-    V8Q_SYMBOL_TIER_TOP5: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT')
-    V8Q_SYMBOL_TIER_TOP6: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT', 'SOLUSDT')
-    V8Q_WT_EXIT_MIN_TFS: int = 2
+    USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
+    V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_HTF_MIN_ALIGNED: int = 1  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_K3M_FLOOR: int = 30  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_MIN_HOLD_BARS: int = 10  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_PROFIT_TARGET_ENABLED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_STRENGTH_FILTER_ENABLED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_STRENGTH_MIN_SCORE: float = 5.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP4: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP5: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP6: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT', 'SOLUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_WT_EXIT_MIN_TFS: int = 2  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     VALIDATE_REFRESH: int = 2  # seconds
     VOLUME_CONFIRMATION_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Kills dead-zone entries.
     VOLUME_CONFIRMATION_MULT: float = 1.2  # volume_3m > N × avg_20_3m required.
@@ -1549,7 +1549,7 @@ class TradierConfig:
     VOL_SPIKE_LS_MAX_IMBALANCE: float = 1.5  # Max L/S ratio imbalance before blocking
     VOL_SPIKE_MIN_ALIGNMENT: int = 3  # Lower alignment threshold for spike entries
     VOL_SPIKE_RELVOL_THRESHOLD: float = 3.0  # Relative volume must be > 3x 20-bar avg
-    WIN_TRAIL_EROSION_PCT: float = 0.5  # BACKTEST_CHANGE_105: Tournament v2: 50% trail slightly better than 30% (let winners run more). Was 0.30.
+    WIN_TRAIL_EROSION_PCT: float = 0.5  # BACKTEST_CHANGE_105: Tournament v2: 50% trail slightly better than 30% (let winners run more). Was 0.30. ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
     WT_15M_SAME_HEDGE_COOLDOWN_SEC: int = 1800  # 2026-04-16: Redis-backed cooldown (survives restarts — old 300s in-memory wiped on process restart).
     WT_15M_SAME_HEDGE_DAILY_CAP: int = 2  # 2026-04-16: max SAME_HEDGE opens per symbol per day. 45× BAT/DOT/ATOM firestorm = daily cap missing.
     WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
@@ -1559,10 +1559,10 @@ class TradierConfig:
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # FIX 2026-03-29: was 1, killed real hedges on fin. Need 2 misses to confirm phantom.
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
-    _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'
-    _INSTANCES: ClassVar[WeakSet] = WeakSet()
-    _REGIME_LOG: ClassVar[list] = []
-    _REGIME_REDIS_TS: ClassVar[float] = 0.0
+    _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    _INSTANCES: ClassVar[WeakSet] = WeakSet()  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    _REGIME_LOG: ClassVar[list] = []  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    _REGIME_REDIS_TS: ClassVar[float] = 0.0  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
 
     def __post_init__(self):
         if self.DELTA_TF_WEIGHTS is None:
@@ -1586,8 +1586,8 @@ class TradierConfig:
         pass
 
     # ═══ PER-SYMBOL REGIME OVERRIDES (rolling_config_optimizer → Redis → here) ═══
-    _REGIME_OVERRIDES: ClassVar[Dict[str, Dict]] = {}
-    _REGIME_REDIS_CACHE: ClassVar[Dict[str, Dict]] = {}
+    _REGIME_OVERRIDES: ClassVar[Dict[str, Dict]] = {}  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    _REGIME_REDIS_CACHE: ClassVar[Dict[str, Dict]] = {}  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
 
     def get_symbol_setting(self, account_key: str, position_key: str, setting_name: str):
         """Hot-path config lookup: regime override → global default.

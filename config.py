@@ -568,6 +568,11 @@ class Config:
     BREAKOUT_TF_SIZE_MULT_4H: float = 3.0
     BREAKOUT_TF_SIZE_MULT_D: float = 4.0
     BREAKOUT_TF_SIZE_CAP_MULT: float = 5.0  # absolute cap on any TF multiplier
+    # 2026-04-16 per user directive: NO _LONG tradeable_keys can be without a position while price > dc_high_3m and rising. vv for _SHORT.
+    # Extends existing _process_single_override_check to also OPEN from zero (it currently skips zero positions at line 18061).
+    # Respects tradeable_keys (hand-picked), HTF_GATE via queue_trade_action gates downstream, and ratio gates.
+    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True
+    TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0  # uses START_POSITION_SIZE if <=0
     HTF_GATE_BYPASS_RZ: bool = True  # preserve RZ bounce bypass (bounce logic HTF-validates internally)
     # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
     WT_CROSS_EXIT_ENABLED: bool = True

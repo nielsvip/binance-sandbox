@@ -18055,9 +18055,40 @@ _override_check_semaphore = asyncio.Semaphore(100)
 
 async def _process_single_override_check(trade_manager, account_key: str, position_key: str, filtered_account_positions: dict, order_queue, now_ts: float, config):
     if position_key not in trade_manager.tradeable_keys:
-        return 
+        return
     try:
         position = filtered_account_positions.get(position_key)
+        # ═══ ZERO-POSITION ENFORCEMENT (2026-04-16 per user directive) ═══
+        # NO _LONG in tradeable_keys can be without a position while price > dc_high_3m AND rising.
+        # NO _SHORT in tradeable_keys can be without a position while price < dc_low_3m AND falling.
+        # Existing block at line ~18113 handles sizing-up when a position exists; this covers the zero-amt case.
+        _has_amt = position and hasattr(position, 'positionAmt') and abs(float(position.positionAmt)) > 0
+        if not _has_amt and bool(getattr(config, 'TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED', True)):
+            try:
+                _ak_z, _sym_z, _side_z = parse_position_key(position_key)
+                _is_long_z = _side_z == 'LONG'
+                _is_short_z = _side_z == 'SHORT'
+                if _sym_z and (_is_long_z or _is_short_z):
+                    _ind_z = await ii(trade_manager, _sym_z)
+                    if isinstance(_ind_z, dict):
+                        _px_z = await price(_sym_z, position)
+                        _px_z = safe_fetch_float(_px_z, 0) or safe_fetch_float(_ind_z.get('current_price'), 0)
+                        _dch3m_z = safe_fetch_float(_ind_z.get('dc_high_3m'), 0)
+                        _dcl3m_z = safe_fetch_float(_ind_z.get('dc_low_3m'), 0)
+                        _k3_z = safe_fetch_float(_ind_z.get('stoch_k_3m'), 50)
+                        _k3p_z = safe_fetch_float(_ind_z.get('k_3m_prev') or _ind_z.get('stoch_k_3m_prev'), _k3_z)
+                        _ha3_z = _ind_z.get('ha_3m', 'neutral')
+                        _rising_z = (_k3_z > _k3p_z) or (_ha3_z == 'green')
+                        _falling_z = (_k3_z < _k3p_z) or (_ha3_z == 'red')
+                        _trigger_z = (_is_long_z and _dch3m_z > 0 and _px_z > 0 and _px_z > _dch3m_z and _rising_z) or \
+                                     (_is_short_z and _dcl3m_z > 0 and _px_z > 0 and _px_z < _dcl3m_z and _falling_z)
+                        if _trigger_z:
+                            _tiny_usd = float(getattr(config, 'TRADEABLE_KEYS_MANDATORY_SIZE_USD', 9.0)) or float(getattr(config, 'START_POSITION_SIZE', 9.0))
+                            _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
+                            logger.warning(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _reason_z, 75.0)
+            except Exception as _tkm_e:
+                logger.debug(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}")
         if not position or not hasattr(position, 'positionAmt') or abs(float(position.positionAmt)) <= 0: return
         symbol = position.symbol; position_side = position.position_side; is_long = position_side == 'LONG'
         if not position_key: construct_position_key(account_key,symbol,position_side)
@@ -18297,6 +18328,16 @@ async def override_check_uptrend_positions(trade_manager: MultiAccountTradeManag
         account_positions = trade_manager.get_positions_by_account(account_key)
         _tk = trade_manager.tradeable_keys or set()
         all_position_keys = [pk for pk, pos in account_positions.items() if pos and hasattr(pos, 'positionAmt') and abs(float(pos.positionAmt)) > 0 and (not _tk or pk in _tk)]
+        # 2026-04-16: zero-amt tradeable keys scanned separately for mandatory-open enforcement.
+        # Respects tradeable_keys (hand-picked). Gate downstream in _process_single_override_check.
+        _zero_tradeable_keys = []
+        if bool(getattr(config, 'TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED', True)) and _tk:
+            _acct_prefix = f"{account_key}:"
+            for _tkp in _tk:
+                if not _tkp.startswith(_acct_prefix): continue
+                _tpos = account_positions.get(_tkp)
+                if _tpos and hasattr(_tpos, 'positionAmt') and abs(float(_tpos.positionAmt)) > 0: continue
+                _zero_tradeable_keys.append(_tkp)
         stable_valid_keys = getattr(trade_manager, '_stable_valid_keys_cache', {}).get(account_key, set())
         if not stable_valid_keys: stable_valid_keys = all_position_keys
         filtered_position_keys = _filter_position_keys(trade_manager, all_position_keys)
@@ -18322,6 +18363,12 @@ async def override_check_uptrend_positions(trade_manager: MultiAccountTradeManag
                     await _process_single_override_check(trade_manager, account_key, pk, filtered_account_positions, order_queue, now_ts, config)
             tasks = [process_with_semaphore(pk) for pk in filtered_position_keys]
             if tasks: await asyncio.gather(*tasks, return_exceptions=True)
+            # 2026-04-16: also process zero-amt tradeable keys so mandatory-open can fire.
+            # filtered_account_positions will not contain them → _process_single_override_check takes
+            # the zero-position branch (added 2026-04-16) and queues OPEN if price/trend conditions met.
+            if _zero_tradeable_keys:
+                _zero_tasks = [process_with_semaphore(pk) for pk in _zero_tradeable_keys]
+                if _zero_tasks: await asyncio.gather(*_zero_tasks, return_exceptions=True)
         symbols = await trade_manager.get_symbols_for_account(account_key)
         for symbol in symbols:
             try:

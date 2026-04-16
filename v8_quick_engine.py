@@ -666,8 +666,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
     # ===== Auto-hooked entry gates (Group B switches) =====
     # Each adds a simple filter; when flipped, impacts entry signal density.
     extra_ok = np.ones(n, dtype=bool)
-    # Tradier MFI entry long gate
-    if getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_ENABLED', False) and is_long:
+    # Tradier MFI entry long gate — tradier mode only (crypto regression 2026-04-16)
+    if getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_ENABLED', False) and is_long and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50)
         extra_ok = extra_ok & (mfi_1h_arr < getattr(cfg, 'TRADIER_MFI_ENTRY_LONG_TRADIER', 60.0))
     # RSI entry gate

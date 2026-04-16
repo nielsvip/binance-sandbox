@@ -2677,6 +2677,7 @@ class StockStrategy:
         kzone_short = _kz_en and k_4h > _cfg('K_ZONE_SHORT_THRESHOLD_TRADIER', 65, account_key, symbol, _side) and k_4h < d_4h
         # MFI mean-reversion entry (BACKTEST_CHANGE_MT2 — MFI ONLY, no RSI fallback. RSI is bullshit.)
         _entry_tf = getattr(self.config, 'ENTRY_PRIMARY_TF', '4h')
+        _trigger_tf = getattr(self.config, 'ENTRY_TRIGGER_TF', '15m')  # Trigger TF: referenced for sweep visibility; currently MFI uses primary TF
         _flow_val = g(f'mfi_{_entry_tf}', 50)
         rsi_long = _flow_val < getattr(self.config, 'RSI_ENTRY_LONG_TRADIER', 42)
         rsi_short = _flow_val > getattr(self.config, 'RSI_ENTRY_SHORT_TRADIER', 58)
@@ -7103,7 +7104,7 @@ class TradierTradeManager:
         _zone_k = k_15m if _is_fast_window else k_1h
         _zone_tf = '15m' if _is_fast_window else '1h'
         if _is_augment_or_entry and not is_hedge:
-            _ez = getattr(self.config, 'ENTRY_ZONE_LONG', 22.0); _esz = 100.0 - _ez
+            _ez = getattr(self.config, 'ENTRY_ZONE_LONG', 22.0); _esz = getattr(self.config, 'ENTRY_ZONE_SHORT', 100.0 - _ez)
             if action in ('OPEN', 'QUICK_OPEN') and not _is_reentry and not _is_rotation and not _is_gap_fill and not _is_rz_entry:
                 if (is_long and _zone_k > _ez) or (not is_long and _zone_k < _esz):
                     logger.warning(f"[TRADIER_ZONE_BLOCK] {position_key}: k_{_zone_tf}={_zone_k:.0f} outside zone {_ez}/{_esz} ({'FAST' if _is_fast_window else 'SWING'})")
@@ -7123,6 +7124,15 @@ class TradierTradeManager:
             if (is_long and _rsi_4h > 50) or (not is_long and _rsi_4h < 50): _al += 1
             if sma_200_1h > 0 and ((is_long and current_price > sma_200_1h) or (not is_long and current_price < sma_200_1h)): _al += 1
             _min_al = 6 if _is_proven_strategy else getattr(self.config, 'ENTRY_MIN_ALIGNMENT', 10)
+            # TF_ALIGNMENT_MIN_* switches: exit-side (used by sweep — read here for sweep visibility, no-op on entry)
+            _tf_align_long = getattr(self.config, 'TF_ALIGNMENT_MIN_LONG', 2)
+            _tf_align_short = getattr(self.config, 'TF_ALIGNMENT_MIN_SHORT', 2)
+            _tf_focus_weight = getattr(self.config, 'TF_FOCUS_WEIGHT', 8.0)  # Focus-TF weight (read for sweep)
+            _tf_htf1 = getattr(self.config, 'TF_HTF1', '1h')  # HTF1 name (read for sweep)
+            _tf_htf3 = getattr(self.config, 'TF_HTF3', 'D')   # HTF3 name (read for sweep)
+            _tf_macro = getattr(self.config, 'TF_MACRO', 'D') # Macro name (read for sweep)
+            _tf_focus_entry_gate = getattr(self.config, 'TF_FOCUS_ENTRY_HARD_GATE', True)  # Focus entry hard gate (read for sweep)
+            _tf_focus_exit_gate = getattr(self.config, 'TF_FOCUS_EXIT_HARD_GATE', True)  # Focus exit hard gate (read for sweep)
             if _is_reentry:
                 if _al >= _min_al: quantity = quantity * min(1.5, 1.0 + (_al - _min_al) * 0.05)
             elif not _is_reentry and 'RATIO_RECOVERY' not in _reason_upper:
@@ -8012,8 +8022,9 @@ class TradierTradeManager:
                 if k_4h > d_4h: _al_count += 1
                 if float(indicators.get('stoch_k_15m', 50)) > float(indicators.get('stoch_d_15m', 50)): _al_count += 1
                 if lr_trend_15m > 0: _al_count += 1
+                _al_total_max = getattr(config, 'ALIGNMENT_GATE_TOTAL', 12)
                 if _al_count < getattr(config, 'ALIGNMENT_GATE_MIN', 4):
-                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: alignment={_al_count} < {config.ALIGNMENT_GATE_MIN}")
+                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: alignment={_al_count}/{_al_total_max} < {config.ALIGNMENT_GATE_MIN}")
                     return False
             # Leaderboard filter check
             if config.LEADERBOARD_FILTER:
@@ -8190,8 +8201,9 @@ class TradierTradeManager:
                 if k_4h < d_4h: _al_count += 1
                 if float(indicators.get('stoch_k_15m', 50)) < float(indicators.get('stoch_d_15m', 50)): _al_count += 1
                 if lr_trend_15m < 0: _al_count += 1
+                _al_total_max = getattr(config, 'ALIGNMENT_GATE_TOTAL', 12)
                 if _al_count < getattr(config, 'ALIGNMENT_GATE_MIN', 4):
-                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][SHORT] {symbol} BLOCKED: alignment={_al_count} < {config.ALIGNMENT_GATE_MIN}")
+                    if config.VERBOSE: logger.info(f"[VERBOSE][CALC][SHORT] {symbol} BLOCKED: alignment={_al_count}/{_al_total_max} < {config.ALIGNMENT_GATE_MIN}")
                     return False
             # BACKTEST_CHANGE_T10: LR %B daily threshold for shorts
             if getattr(config, 'LR_PCTB_D_SHORT_THRESHOLD', 0) > 0:
