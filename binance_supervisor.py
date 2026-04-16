@@ -44,8 +44,8 @@ LOG_FILE = LOG_DIR / "supervisor.log"
 STATE_FILE = LOG_DIR / "supervisor_state.json"
 PID_FILE = Path("/tmp/binance_supervisor.pid")
 
-CHECK_INTERVAL = 60  # 2026-04-16: back to 60s — 30s too tight with slow SSH handshake
-SSH_TIMEOUT = 35  # 2026-04-16: SSH handshake on this link can take 16-32s — must tolerate
+CHECK_INTERVAL = 120  # 2026-04-16: 2min — slow remote when sweeps are CPU-pegging hosts
+SSH_TIMEOUT = 120  # 2026-04-16: observed 3min SSH under CPU load; 120s to distinguish real-dead from slow
 SWEEP_STALE_SECONDS = 120
 IDLE_LOAD_THRESHOLD = 2.0
 IDLE_WINDOW_SECONDS = 180

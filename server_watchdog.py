@@ -26,7 +26,7 @@ PID_FILE = Path("/tmp/server_watchdog.pid")
 STATUS_FILE = Path.home() / "server_watchdog.status"
 LOG_FILE = Path.home() / "server_watchdog.log"
 CHECK_INTERVAL = 60
-SSH_TIMEOUT = 15
+SSH_TIMEOUT = 120  # 2026-04-16: SSH can take 3min under remote CPU load
 MIN_FREE_MB = 4000
 
 # 2026-04-16: SWEEPS replaced by AUTOCHAIN per server.
@@ -224,7 +224,7 @@ def main():
     try:
         state = {name: {"reachable": True, "down_since": None, "free_mb": 0,
                         "sweep_procs": 0, "screens": []} for name in SERVERS}
-        log(f"server_watchdog up — managing {list(SERVERS.keys())} with sweeps={list(SWEEPS.keys())}")
+        log(f"server_watchdog up — managing {list(SERVERS.keys())} via autochain per-server")
         while True:
             try:
                 for name, cfg in SERVERS.items():
