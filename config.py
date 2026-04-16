@@ -307,11 +307,24 @@ class Config:
     # Without this, UNIVERSAL_NOLOSS_GATE turns all technical exits into no-ops on losing positions,
     # which is the exact pattern that kept ATOMUSDT SHORT bleeding from 0 to -2.78%.
     UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL: bool = True
+    # Substrings matched (uppercased) against the exit reason. If ANY matches, UNIVERSAL_NOLOSS_GATE
+    # allows the close at a loss. These are technical (reversal) exits only — no %-based stops.
+    # Per CLAUDE.md: "NO % Stops — Technical Exits ONLY. Only WT turn, volume die, DC reversal, stoch cross."
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(default_factory=lambda: [
         "WT_CROSS_EXIT",
         "WT_CROSS_BULLISH",
         "WT_CROSS_BEARISH",
-        "RATIO_CLOSE_LOSING_OVERWEIGHT",
+        "DELTA_EXIT",                      # existing wt_dc_delta engine reversal signal
+        "BREAKEVEN_GAIN_EROSION",          # age-based structural exit (BE grace + technical turn)
+        "QUICK_BREAKEVEN_GAIN_EROSION",
+        "DC_LOW4_3M",                      # 3m 4-bar Donchian break
+        "DC_HIGH4_3M",
+        "DC_BREAK",                        # generic DC structure break
+        "EMERGENCY_DC1H_BREACH",           # 1h DC breach
+        "STDEV_BREAKOUT",                  # HTF pctb retreat (sweep-enabled only)
+        "PARABOLIC_EXIT",                  # stoch-extreme + structural + 3m opposite
+        "STRUCTURAL_RANGE_SHIFT",          # kept — already bypassed in existing code
+        "RATIO_CLOSE_LOSING_OVERWEIGHT",   # opt-in ratio close (user-flipped)
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

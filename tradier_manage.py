@@ -7685,6 +7685,44 @@ class TradierTradeManager:
         except Exception as e:
             logger.error(f"[REENTRY_SEED] Error: {e}", exc_info=True)
 
+    def would_exit_trigger_now(self, symbol, indicators, side, *, current_price=None):
+        # Symmetric gate: returns (blocked: bool, reason: str).
+        # Blocks an entry/reentry whenever the mirror exit rubric would fire for `side`.
+        # Consulted rubrics: wt_dc_score_exit, DELTA engine (zone+exit flags), DELTA speed floor.
+        try:
+            i = indicators or {}
+            is_long = str(side).upper() == "LONG"
+            px = float(current_price) if current_price else float(i.get("current_price", 0) or 0)
+            if px <= 0:
+                return False, "no_price"
+            _s, _r = wt_dc_score_exit(i, is_long, px)
+            _th = getattr(config, 'WT_DC_EXIT_THRESHOLD', 25)
+            if _s >= _th:
+                return True, f"WT_DC_SCORE_{_s:.0f}>={_th}_{_r[:40]}"
+            _dt = getattr(self, 'delta_tracker', None)
+            if config.DELTA_ENGINE_ENABLED and _dt:
+                _sig = _dt.update(symbol, i, {"side": "LONG" if is_long else "SHORT"})
+                if _sig:
+                    if is_long and _sig.exit_long:
+                        return True, f"DELTA_EXIT_LONG_{_sig.zone}_{_sig.zone_reason or ''}"[:90]
+                    if (not is_long) and _sig.exit_short:
+                        return True, f"DELTA_EXIT_SHORT_{_sig.zone}_{_sig.zone_reason or ''}"[:90]
+                    if is_long and _sig.zone in ("TOP", "TOP_TOP"):
+                        return True, f"DELTA_TOP_ZONE_LONG_{_sig.zone}"
+                    if (not is_long) and _sig.zone in ("BOTTOM", "BOTTOM_BOTTOM"):
+                        return True, f"DELTA_BOTTOM_ZONE_SHORT_{_sig.zone}"
+                    _speed_min = float(getattr(config, 'REENTRY_SYMGATE_SPEED_MIN', 1.0))
+                    _bs = float(getattr(_sig, 'bull_speed', 0.0) or 0.0)
+                    _es = float(getattr(_sig, 'bear_speed', 0.0) or 0.0)
+                    if is_long and _bs < _speed_min:
+                        return True, f"DELTA_SPEED_SLOW_LONG_bs={_bs:.1f}<{_speed_min:.1f}"
+                    if (not is_long) and _es < _speed_min:
+                        return True, f"DELTA_SPEED_SLOW_SHORT_es={_es:.1f}<{_speed_min:.1f}"
+            return False, "ok"
+        except Exception as e:
+            logger.warning(f"[SYMGATE] {symbol} {side}: error {e} — failing OPEN (allow)")
+            return False, f"error:{e}"
+
     async def reentry_monitor_loop(self):
         logger.info("[REENTRY_MONITOR] Dedicated reentry monitor started (15s cycle)")
         await asyncio.sleep(30)
@@ -7713,6 +7751,10 @@ class TradierTradeManager:
                         except Exception:
                             exit_dt = now_utc
                         hours_since = (now_utc - exit_dt).total_seconds() / 3600.0
+                        _min_gap_min = float(getattr(config, 'REENTRY_MIN_GAP_MINUTES', 15.0))
+                        if hours_since * 60.0 < _min_gap_min:
+                            logger.info(f"[REENTRY_MONITOR] {pk}: GAP {hours_since*60.0:.1f}m<{_min_gap_min:.0f}m — waiting for min-gap window")
+                            continue
                         # REENTRIES NEVER EXPIRE — WT always cycles back. Weekend gaps can be 66+ hours.
                         if hours_since > 168.0:  # Only expire after 1 WEEK (absolute safety net)
                             cand["status"] = "EXPIRED"
@@ -7761,6 +7803,11 @@ class TradierTradeManager:
                         if _rm_exit_score >= _rm_threshold:
                             logger.info(f"[REENTRY_MONITOR] {pk}: exit score {_rm_exit_score:.0f}>={_rm_threshold} — signal still says EXIT, waiting for reversal")
                             continue
+                        if getattr(config, 'REENTRY_SYMGATE_ENABLED', True):
+                            _sg_blocked, _sg_reason = self.would_exit_trigger_now(symbol, i, side, current_price=current_price)
+                            if _sg_blocked:
+                                logger.info(f"[REENTRY_MONITOR] {pk}: SYMGATE block — {_sg_reason}")
+                                continue
                         # STOCH GATE — 3 tiers based on hours since exit:
                         # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
                         # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering
@@ -7858,6 +7905,11 @@ class TradierTradeManager:
     async def should_enter_long(self, symbol: str, indicators: Dict[str, Any]) -> bool:
         """Configurable entry gate. SATOSHIT default; SHOULD_ENTER_FALLBACK_ENABLED allows other paths."""
         try:
+            if getattr(config, 'ENTRY_SYMGATE_ENABLED', True):
+                _sg_blocked, _sg_reason = self.would_exit_trigger_now(symbol, indicators, "LONG")
+                if _sg_blocked:
+                    if config.VERBOSE: logger.info(f"[SYMGATE] LONG {symbol} BLOCKED: {_sg_reason}")
+                    return False
             # SATOSHIT — fast path (opt-in via SATOSHIT_ENTRY_FILTER, default True for backward compat)
             if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
@@ -8035,6 +8087,11 @@ class TradierTradeManager:
     async def should_enter_short(self, symbol: str, indicators: Dict[str, Any]) -> bool:
         """Configurable entry gate. SATOSHIT default; SHOULD_ENTER_FALLBACK_ENABLED allows other paths."""
         try:
+            if getattr(config, 'ENTRY_SYMGATE_ENABLED', True):
+                _sg_blocked, _sg_reason = self.would_exit_trigger_now(symbol, indicators, "SHORT")
+                if _sg_blocked:
+                    if config.VERBOSE: logger.info(f"[SYMGATE] SHORT {symbol} BLOCKED: {_sg_reason}")
+                    return False
             if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
                 _sat_ok, _sat_votes, _sat_reason = satoshit_entry_signal(indicators, False, config)

@@ -1,0 +1,878 @@
+# config_tradier.py Wiring Audit
+
+Source file: `config_tradier.py` (123840 bytes)
+Switches extracted: 1159
+
+## Summary
+
+| Bucket | Count |
+|--------|-------|
+| WIRED_LIVE | 359 |
+| WIRED_BACKTEST_ONLY | 2 |
+| WIRED_ELSEWHERE | 449 |
+| DEAD | 349 |
+| **TOTAL** | **1159** |
+
+## DEAD switches (not read anywhere outside config files)
+
+- `MTS_WEIGHT_D`  (line 35)  current_default=`12.0   # DOMINANT for stocks (vs 1h dominant for crypto)`
+- `SWING_MAX_POSITION_SIZE`  (line 50)  current_default=`2000.0  # Per-symbol cap for swing`
+- `SWING_START_SIZE`  (line 51)  current_default=`800.0          # Base order value for swing`
+- `ACCOUNT_SIDE_MAPPING`  (line 64)  current_default=`field(default_factory=lambda: {"tra": ["LONG"]})`
+- `TRA_PREFERRED_SYMBOLS`  (line 92)  current_default=`field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM"...`
+- `OPTIONS_MAX_LOSS_PCT_DTE_30`  (line 213)  current_default=`-40.0   # DTE > 30: exit when down 40%+ (was -80)`
+- `OPTIONS_MAX_LOSS_PCT_DTE_14`  (line 214)  current_default=`-30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60)`
+- `OPTIONS_MAX_LOSS_PCT_DTE_LOW`  (line 215)  current_default=`-20.0  # DTE <= 14: exit when down 20%+ (was -40)`
+- `ENTRY_ZONE_SHORT`  (line 242)  current_default=`65.0   # Mirror of ZONE_LONG (100-35=65). Was 75.`
+- `ENTRY_TRIGGER_TF`  (line 245)  current_default=`'15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks)`
+- `ALIGNMENT_GATE_TOTAL`  (line 256)  current_default=`12  # BACKTEST_CHANGE_T8 total alignment score required`
+- `SATOSHIT_ACCOUNTS_TRADIER`  (line 263)  current_default=`field(default_factory=lambda: ["tra", "trb", "trc"])`
+- `SATOSHIT_LONG_RSI_MAX_TRADIER`  (line 266)  current_default=`50.0`
+- `SATOSHIT_LONG_STOCH_K_MAX_TRADIER`  (line 267)  current_default=`60.0`
+- `SATOSHIT_LONG_MFI_MAX_TRADIER`  (line 268)  current_default=`60.0`
+- `SATOSHIT_SHORT_RSI_MIN_TRADIER`  (line 269)  current_default=`55.0`
+- `SATOSHIT_SHORT_STOCH_K_MIN_TRADIER`  (line 270)  current_default=`50.0`
+- `SATOSHIT_SHORT_MFI_MIN_TRADIER`  (line 271)  current_default=`50.0`
+- `SATOSHIT_HTF_MFI_D_MIN_TRADIER`  (line 272)  current_default=`30.0`
+- `SATOSHIT_HTF_RVOL_1H_MIN_TRADIER`  (line 273)  current_default=`0.3`
+- `VERBOSE_TIMER`  (line 293)  current_default=`False`
+- `TRADIER_API_BASE_URL`  (line 298)  current_default=`"https://api.tradier.com/v1"`
+- `TRADIER_SANDBOX_URL`  (line 299)  current_default=`"https://sandbox.tradier.com/v1"`
+- `TRADIER_STREAMING_URL`  (line 300)  current_default=`"https://stream.tradier.com/v1"`
+- `USE_SANDBOX`  (line 306)  current_default=`os.getenv("TRADIER_USE_SANDBOX", "false").lower() == "true"`
+- `API_RATE_LIMIT_PER_MINUTE`  (line 310)  current_default=`300`
+- `ENABLE_IP_ROTATION`  (line 326)  current_default=`field(init=False)`
+- `LEADERBOARD_LONG`  (line 334)  current_default=`BASE_PATH / "symbols_long_tr.json"`
+- `LEADERBOARD_SHORT`  (line 335)  current_default=`BASE_PATH / "symbols_short_tr.json"`
+- `INDICATORS_FILE`  (line 336)  current_default=`DATA_DIR / "tradier_indicators_latest.json"`
+- `REDIS_CHANNEL_MARKET_DATA`  (line 347)  current_default=`"tradier_indicators_channel"`
+- `REDIS_CHANNEL_PRICES`  (line 348)  current_default=`"tradier_prices_channel"`
+- `PRICE_REFRESH_INTERVAL`  (line 351)  current_default=`3.0`
+- `POSITION_REFRESH_INTERVAL`  (line 352)  current_default=`6.0`
+- `POSITION_CACHE_TTL`  (line 354)  current_default=`5`
+- `INDICATOR_UPDATE_INTERVAL`  (line 356)  current_default=`30.0  # BACKTEST_CHANGE_T49 was 60 → 30 faster indicator refresh`
+- `MARKET_OPEN_HOUR`  (line 359)  current_default=`9`
+- `MARKET_OPEN_MINUTE`  (line 360)  current_default=`30`
+- `MID_ZONE_SHORT_EXTRA_IND`  (line 418)  current_default=`"wt_crossunder_15m"  # BACKTEST_CHANGE_T24 extra indicator for mid-zone shorts`
+- `HOLD_BARS_OPEN`  (line 419)  current_default=`200  # BACKTEST_CHANGE_T25 max hold bars during open zone`
+- `HOLD_BARS_MID`  (line 420)  current_default=`500  # BACKTEST_CHANGE_T25 max hold bars during mid zone`
+- `HOLD_BARS_CLOSE`  (line 421)  current_default=`50  # BACKTEST_CHANGE_T25 max hold bars during close zone`
+- `K_ZONE_LONG_THRESHOLD_TRADIER`  (line 438)  current_default=`35   # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)`
+- `K_ZONE_SHORT_THRESHOLD_TRADIER`  (line 439)  current_default=`65  # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)`
+- `K_ZONE_ENTRY_BONUS_TRADIER`  (line 440)  current_default=`20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single...`
+- `BOUNCE_REENTRY_K_RESET_LONG_TRADIER`  (line 442)  current_default=`35`
+- `BOUNCE_REENTRY_K_RESET_SHORT_TRADIER`  (line 443)  current_default=`65`
+- `REENTRY_TIER1_SIZE_MULT_TRADIER`  (line 451)  current_default=`1.5  # Tier 1: 150% of closed qty`
+- `MIN_HOLD_MINUTES_TRADIER`  (line 462)  current_default=`30.0  # No exits before 30 min. Bypassed only if loss > -5%.`
+- `MIN_EXIT_TF_AGAINST_TRADIER`  (line 466)  current_default=`2  # Need 2+ TFs (of 5m/15m/1h/4h) with WT against position before exit`
+- `BOUNCE_TOP_EXIT_ENABLED`  (line 470)  current_default=`False  # KILLED 2026-03-30: percentage stop loss in disguise. Exits ONLY on t...`
+- `BOUNCE_TOP_REENTRY_MULT`  (line 474)  current_default=`1.5  # 150% qty on pullback reentry`
+- `BOUNCE_TOP_RISING_CROSS_MULT`  (line 475)  current_default=`2.0  # 200% qty on rising WT cross reentry`
+- `HODL_LONG_ONLY`  (line 476)  current_default=`True  # BACKTEST_CHANGE_T54: HODL strategy is LONG only. SHORT on stocks = ne...`
+- `ATR_TRAIL_ENABLED_TRADIER`  (line 490)  current_default=`False  # BACKTEST_CHANGE_T58: was True. ATR trailing stop = #1 stock PnL dest...`
+- `AUGMENT_PYRAMID_TRADIER`  (line 492)  current_default=`False  # BACKTEST_CHANGE_T60: Pyramiding barely fires on stocks (0-10 trades)...`
+- `HEDGE_CROSS_SYMBOL_TRADIER`  (line 498)  current_default=`True  # BACKTEST_CHANGE_T62: Cross-symbol hedge enabled. 25% size, trigger -1...`
+- `HEDGE_SIZE_RATIO_TRADIER`  (line 499)  current_default=`0.25  # BACKTEST_CHANGE_T62: Hedge at 25% of losing value. Sweet spot in sweep.`
+- `HEDGE_TRIGGER_LOSS_TRADIER`  (line 500)  current_default=`-1.0  # BACKTEST_CHANGE_T62: Trigger hedge at -1% loss (stocks: tighter than ...`
+- `HEDGE_SAME_SYMBOL_TRADIER`  (line 501)  current_default=`False  # BACKTEST_CHANGE_T63: Same-symbol hedge DISABLED for stocks. Cross-sy...`
+- `TRC_START_POSITION_SIZE`  (line 506)  current_default=`1980.0  # 3.3x trb ($600)`
+- `TRC_MAX_ORDER_VALUE`  (line 507)  current_default=`5000.0  # 2.5x trb ($2000)`
+- `TRC_MAX_POSITION_SIZE`  (line 508)  current_default=`15000.0  # 3x trb ($5000)`
+- `TRC_SCALP_START_SIZE`  (line 509)  current_default=`1980.0  # 3.3x trb ($600)`
+- `TRC_SCALP_MAX_POSITIONS_PER_SIDE`  (line 510)  current_default=`12  # 2x trb (6)`
+- `TRC_MAX_CONCURRENT_POSITIONS`  (line 511)  current_default=`32  # ~2x trb (16)`
+- `TRC_ROTATION_POSITION_SIZE`  (line 512)  current_default=`3000.0  # 2.5x trb ($1200)`
+- `TRC_RSI2_POSITION_SIZE`  (line 513)  current_default=`1980.0  # 3.3x trb ($600)`
+- `TRC_GAP_FILL_POSITION_SIZE`  (line 514)  current_default=`1980.0  # 3.3x trb ($600)`
+- `TRC_DC_DAYTRADE_START_SIZE`  (line 515)  current_default=`1980.0  # 3.3x trb ($600)`
+- `TRC_DC_DAYTRADE_LONG_BUDGET`  (line 516)  current_default=`9900.0  # 3.3x trb ($3000)`
+- `TRC_DC_DAYTRADE_SHORT_BUDGET`  (line 517)  current_default=`9900.0  # 3.3x trb ($3000)`
+- `TRC_SWING_LONG_BUDGET`  (line 518)  current_default=`8000.0  # 4x trb ($2000)`
+- `TRC_SWING_SHORT_BUDGET`  (line 519)  current_default=`8000.0  # 4x trb ($2000)`
+- `TRC_SCALP_LONG_BUDGET`  (line 520)  current_default=`5000.0  # 5x trb ($1000)`
+- `TRC_SCALP_SHORT_BUDGET`  (line 521)  current_default=`5000.0  # 5x trb ($1000)`
+- `TRC_ENTRY_ZONE_LONG`  (line 523)  current_default=`30.0  # Wider than trb (25)`
+- `TRC_ENTRY_ZONE_SHORT`  (line 524)  current_default=`70.0  # Wider than trb (75)`
+- `TRC_ENTRY_MIN_ALIGNMENT`  (line 525)  current_default=`6  # Looser than trb (8)`
+- `TRC_LS_RATIO_MIN`  (line 526)  current_default=`0.30  # Wider than trb (0.50)`
+- `TRC_LS_RATIO_MAX`  (line 527)  current_default=`3.00  # Wider than trb (2.00)`
+- `TRC_MAX_DAILY_LOSS_PCT`  (line 528)  current_default=`10.0  # 3.3x trb (3%) — paper money, let it run`
+- `TRC_SCALP_TARGET_PCT`  (line 529)  current_default=`0.01  # 2x trb (0.005) — let winners run further`
+- `TRB_NOLOSS_MIN_PROFIT_PCT`  (line 530)  current_default=`0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers.`
+- `TRC_NOLOSS_MIN_PROFIT_PCT`  (line 531)  current_default=`0.0  # 2026-04-08: TECHNICALS ONLY.`
+- `TRC_MAX_SYMBOL_VALUE`  (line 534)  current_default=`15000.0  # trc cap (was uncapped — USO grew to $352K)`
+- `TRB_MAX_SYMBOL_VALUE`  (line 535)  current_default=`10000.0  # trb cap (smaller account)`
+- `TF_HTF1`  (line 567)  current_default=`"1h"     # First confirmation`
+- `TF_HTF3`  (line 569)  current_default=`"D"      # Daily — strongest trend`
+- `TF_MACRO`  (line 570)  current_default=`"D"     # Same as HTF3 for stocks (no weekly in live)`
+- `SBA_ENABLED_TRADIER`  (line 580)  current_default=`False  # BACKTEST_CHANGE_145: Strategic Bounce Averaging for stock hold posit...`
+- `SBA_MIN_LOSS_PCT_TRADIER`  (line 581)  current_default=`-3.0  # Stocks are less volatile, wider threshold than crypto -2%`
+- `SBA_MAX_LOSS_PCT_TRADIER`  (line 582)  current_default=`-12.0  # Stop averaging beyond -12%`
+- `SBA_SIZE_FRACTION_TRADIER`  (line 583)  current_default=`0.25  # 25% of START_POSITION_SIZE per add (smaller than crypto 35%)`
+- `SBA_MAX_ADDS_TRADIER`  (line 584)  current_default=`2  # Max recovery adds per stock position`
+- `SBA_COOLDOWN_S_TRADIER`  (line 585)  current_default=`7200  # 2hr between adds (stocks move slower, 2x crypto's 1hr)`
+- `SBA_ADX_MAX_TRADIER`  (line 586)  current_default=`22.0  # Stocks trend more cleanly, slightly higher ADX threshold`
+- `VWAP_BOUNCE_ENTRY_ENABLED`  (line 591)  current_default=`True  # Enter on VWAP bounce (pullback to VWAP + reversal)`
+- `VWAP_BOUNCE_DIST_PCT`  (line 592)  current_default=`0.3  # Price must be within 0.3% of VWAP for bounce entry`
+- `VWAP_SCORE_BONUS`  (line 593)  current_default=`10  # Score bonus when price is on correct side of VWAP`
+- `ORB_WINDOW_MINUTES`  (line 596)  current_default=`15`
+- `ORB_LONG_BUDGET`  (line 603)  current_default=`2000.0`
+- `ORB_SHORT_BUDGET`  (line 604)  current_default=`2000.0`
+- `LUNCH_DEADZONE_SIZE_MULT`  (line 608)  current_default=`0.5`
+- `RVOL_SCALP_MIN`  (line 611)  current_default=`1.0`
+- `RVOL_SCORE_BOOST_THRESHOLD`  (line 612)  current_default=`2.0`
+- `RVOL_SCORE_BOOST_PCT`  (line 613)  current_default=`0.20`
+- `EMA_9_21_SCORE_BONUS`  (line 617)  current_default=`5`
+- `SQUEEZE_ENABLED`  (line 619)  current_default=`False  # OFF for trb. TRC overrides to True.`
+- `SQUEEZE_SCORE_BONUS`  (line 620)  current_default=`15`
+- `EP_MIN_GAP_PCT`  (line 623)  current_default=`5.0`
+- `EP_MIN_VOL_MULT`  (line 624)  current_default=`3.0`
+- `EP_MAX_CONSOLIDATION_DAYS`  (line 626)  current_default=`8`
+- `EP_MAX_RETRACE_PCT`  (line 627)  current_default=`25.0`
+- `TRC_ORB_ENABLED`  (line 631)  current_default=`True  # ORB on paper only`
+- `TRC_EPISODIC_PIVOT_ENABLED`  (line 632)  current_default=`True  # EP on paper only`
+- `TRC_SQUEEZE_ENABLED`  (line 633)  current_default=`True  # Squeeze on paper only`
+- `TRC_MOMENTUM_FADE_ENABLED`  (line 634)  current_default=`True  # Re-enable momentum fade on paper`
+- `TRC_ORB_POSITION_SIZE`  (line 635)  current_default=`1980.0`
+- `TRC_EP_POSITION_SIZE`  (line 636)  current_default=`2640.0`
+- `TRC_ORB_LONG_BUDGET`  (line 637)  current_default=`6600.0`
+- `TRC_ORB_SHORT_BUDGET`  (line 638)  current_default=`6600.0`
+- `STDEV_BREAKOUT_COOLDOWN`  (line 660)  current_default=`600.0`
+- `STDEV_BREAKOUT_RETEST_COOLDOWN`  (line 661)  current_default=`300.0`
+- `MI_EXIT_ENABLED_TRADIER`  (line 669)  current_default=`True  # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades`
+- `MI_ENTRY_ENABLED_TRADIER`  (line 670)  current_default=`False  # Entry scoring bonus for favorable MI signals`
+- `EXIT_SENTIMENT_ENABLED`  (line 690)  current_default=`False         # Sentiment collapse exit. Unreliable signal source.`
+- `DELTA_PYRAMID_ENABLED`  (line 709)  current_default=`False`
+- `DELTA_EXIT_TYPE`  (line 719)  current_default=`"speed_decay"  # WINNER ST: speed_decay sp=70 Sharpe 0.710 WR 77.7% (correcte...`
+- `DELTA_MAX_HOLD_BARS`  (line 730)  current_default=`0  # DISABLED — ride winners until technicals turn. No fixed time exits.`
+- `DELTA_COOLDOWN_BARS`  (line 731)  current_default=`60  # WINNER ST: 60 bars (5h)`
+- `DELTA_LT_ENTRY_MIN_TF`  (line 735)  current_default=`2`
+- `DELTA_LT_ENTRY_Z_THRESHOLD`  (line 736)  current_default=`2.0`
+- `DELTA_LT_ENTRY_ACCEL_THRESHOLD`  (line 737)  current_default=`0.0`
+- `DELTA_LT_EXIT_TF`  (line 738)  current_default=`"4h"`
+- `DELTA_LT_EXIT_TYPE`  (line 739)  current_default=`"combined_wt_speed"`
+- `DELTA_LT_EXIT_SPEED_PCT`  (line 740)  current_default=`50`
+- `DELTA_LT_COOLDOWN_BARS`  (line 741)  current_default=`120  # ~10h`
+- `DELTA_LT_HTF_GATE`  (line 742)  current_default=`"4h_D"`
+- `DELTA_OPTIONS_ENTRY_Z`  (line 776)  current_default=`3.0  # Stricter: ez=3.0 for options (wider spreads)`
+- `DELTA_OPTIONS_HTF_GATE`  (line 777)  current_default=`"4h_D"  # Both 4h AND D must confirm`
+- `DELTA_OPTIONS_COOLDOWN`  (line 778)  current_default=`120  # 10h between trades`
+- `DELTA_OPTIONS_MAX_HOLD`  (line 779)  current_default=`240  # 20h max hold`
+- `DELTA_OPTIONS_EXIT_TYPE`  (line 780)  current_default=`"giveback"  # V2 sweep: giveback wins for options`
+- `DELTA_OPTIONS_GIVEBACK_PCT`  (line 781)  current_default=`30.0  # Close when 30% of max gain given back`
+- `WT_EXIT_VELOCITY_TRADIER`  (line 785)  current_default=`False  # SWEEP: velocity makes zero difference. Cross is simpler.`
+- `COOLDOWN_BARS_TRADIER`  (line 787)  current_default=`8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Wa...`
+- `CLENOW_LOOKBACK`  (line 795)  current_default=`90  # Regression window (Clenow default)`
+- `SMFI_MAX_HOLD_DAYS`  (line 804)  current_default=`10  # Exit when price > 20SMA or 10d hold`
+- `SMFI_LONG_BUDGET`  (line 805)  current_default=`3000.0`
+- `SMFI_SHORT_BUDGET`  (line 806)  current_default=`3000.0`
+- `MINERVINI_LONG_BUDGET`  (line 814)  current_default=`4000.0`
+- `CONNORS_RSI_MAX_HOLD_DAYS`  (line 820)  current_default=`20`
+- `TRC_CLENOW_ENABLED`  (line 824)  current_default=`True  # Paper-only: needs V5 validation before trb`
+- `TRC_SMFI_ENABLED`  (line 825)  current_default=`True  # Paper-only: needs V5 validation before trb`
+- `TRC_MINERVINI_ENABLED`  (line 826)  current_default=`True  # Paper-only: needs V5 validation before trb`
+- `TRC_CONNORS_RSI_ENABLED`  (line 827)  current_default=`True  # Paper-only: needs V5 validation before trb`
+- `TRC_CLENOW_POSITION_SIZE`  (line 828)  current_default=`2640.0`
+- `TRC_SMFI_POSITION_SIZE`  (line 829)  current_default=`1980.0`
+- `TRC_MINERVINI_POSITION_SIZE`  (line 830)  current_default=`2640.0`
+- `TRC_CONNORS_RSI_POSITION_SIZE`  (line 831)  current_default=`1980.0`
+- `TRC_SMFI_LONG_BUDGET`  (line 832)  current_default=`9900.0`
+- `TRC_SMFI_SHORT_BUDGET`  (line 833)  current_default=`9900.0`
+- `TRC_MINERVINI_LONG_BUDGET`  (line 834)  current_default=`13200.0`
+- `TRADIER_FH_MOMENTUM_ENABLED`  (line 847)  current_default=`True`
+- `TRADIER_FH_MOMENTUM_MIN_MOVE_PCT`  (line 848)  current_default=`0.5       # min gap move % to qualify`
+- `TRADIER_FH_MOMENTUM_DC_CONFIRM`  (line 849)  current_default=`True         # require DC breakout confirm`
+- `TRADIER_FH_MOMENTUM_DC_MAX_LONG`  (line 850)  current_default=`0.33       # only longs in bottom third of DC range`
+- `TRADIER_FH_MOMENTUM_MFI_CONFIRM`  (line 851)  current_default=`True        # require MFI > threshold confirm`
+- `TRADIER_FH_MOMENTUM_MFI_MIN`  (line 852)  current_default=`55.0           # min MFI for FH long entry`
+- `TRADIER_FH_MOMENTUM_WINDOW_MINUTES`  (line 853)  current_default=`60        # FH window in minutes after 13:30 UTC`
+- `TRADIER_MI_ENTRY_ENABLED_TRADIER`  (line 856)  current_default=`False      # wait for MI reset before entry`
+- `TRADIER_MI_EXIT_ENABLED_TRADIER`  (line 857)  current_default=`True        # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades`
+- `TRADIER_MI_SUBSIGNAL_MIN_COUNT`  (line 858)  current_default=`3             # N of 5 sub-signals must fire`
+- `TRADIER_DC_DAYTRADE_ENABLED`  (line 861)  current_default=`True`
+- `TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES`  (line 862)  current_default=`240`
+- `TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION`  (line 863)  current_default=`True`
+- `TRADIER_DC_DAYTRADE_STOP_PCT`  (line 864)  current_default=`0.005         # 0.5% hard stop`
+- `TRADIER_DC_DAYTRADE_TARGET_PCT`  (line 865)  current_default=`0.005       # 0.5% target (winner per 100.md:1352)`
+- `TRADIER_DC_POSITION_ENTRY_THRESHOLD`  (line 866)  current_default=`0.15   # S1_SWEEP_2026-04-15: 0.15 top S1 cfg Sharpe=4.23 on 20605 trades (wa...`
+- `TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER`  (line 869)  current_default=`35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was ...`
+- `TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER`  (line 870)  current_default=`65    # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)`
+- `TRADIER_RSI_ENTRY_LONG_TRADIER`  (line 880)  current_default=`-1.0        # SENTINEL: <0 => DISABLED (long uses MFI)`
+- `TRADIER_RSI_ENTRY_SHORT_TRADIER`  (line 881)  current_default=`70.0       # RSI > this to consider short`
+- `TRADIER_RSI_SHORT_REL_VOLUME_MIN`  (line 882)  current_default=`1.2       # relative vol > 1.2× avg required`
+- `TRADIER_STOCH_ENTRY_LONG_TRADIER`  (line 889)  current_default=`30          # K < this for normal long entry`
+- `TRADIER_STOCH_ENTRY_SHORT_TRADIER`  (line 890)  current_default=`70         # K > this for normal short entry`
+- `TRADIER_STOCH_EXTREME_LONG_TRADIER`  (line 891)  current_default=`15        # deeper K for high-conviction long`
+- `TRADIER_STOCH_EXTREME_SHORT_TRADIER`  (line 892)  current_default=`85       # deeper K for high-conviction short`
+- `TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER`  (line 895)  current_default=`True`
+- `LOG_FILE_TRADIER_MANAGE`  (line 909)  current_default=`LOG_DIR / "tradier_manage.log"`
+- `TRADIER_ACCOUNT_ID`  (line 930)  current_default=`os.getenv("TRADIER_ACCOUNT_ID_TRC", "")`
+- `TRADIER_API_KEY`  (line 931)  current_default=`os.getenv("TRADIER_API_KEY_TRC", "")`
+- `ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD`  (line 998)  current_default=`0.1  # dc_position < this = breakout DOWN`
+- `ADAPTIVE_REGIME_DC_BREAKOUT_THRESHOLD`  (line 999)  current_default=`0.9  # dc_position > this = breakout UP`
+- `ADAPTIVE_REGIME_DECAY_HALFLIFE_H`  (line 1000)  current_default=`24.0  # Exponential weight half-life (hours)`
+- `ADAPTIVE_REGIME_ENABLED`  (line 1001)  current_default=`True  # Master switch for regime daemon`
+- `ADAPTIVE_REGIME_HEAT_TRIGGER`  (line 1002)  current_default=`30.0  # Re-optimize when heat score > this`
+- `ADAPTIVE_REGIME_LOOKBACK_DAYS`  (line 1003)  current_default=`7  # Rolling backtest window`
+- `ADAPTIVE_REGIME_MIN_SIGNALS`  (line 1004)  current_default=`5  # Min weighted signals to trust optimizer (paper: 5, live: 10+)`
+- `ADAPTIVE_REGIME_NPZ_CACHE_HOURS`  (line 1005)  current_default=`4.0  # Re-fetch NPZ from server every N hours`
+- `ADAPTIVE_REGIME_PAPER`  (line 1006)  current_default=`True  # Paper mode: log decisions, don't override real configs`
+- `ADAPTIVE_REGIME_SHARPE_FLOOR`  (line 1007)  current_default=`0.0  # Paper phase: observe all. Raise to 0.5+ for live.`
+- `ADX_TRENDING_THRESHOLD`  (line 1011)  current_default=`25.0  # BACKTEST_CHANGE_137: ADX above this = trending`
+- `AGGRESSIVE_LOSS_CUT_ENABLED`  (line 1012)  current_default=`False  # DEAD CODE — replaced by STRUCTURAL_RANGE_SHIFT_EXIT (2026-04-11). DO...`
+- `AUGMENT_PYRAMID_ENABLED`  (line 1024)  current_default=`True  # Re-enabled — pyramid must always run, sizing handles risk`
+- `BB_SQUEEZE_ENTRY_ENABLED`  (line 1037)  current_default=`True  # Enter when Bollinger bands compress (< threshold)`
+- `BB_SQUEEZE_THRESHOLD_15M`  (line 1039)  current_default=`0.025  # bb_squeeze < this on 15m = entry signal`
+- `BB_SQUEEZE_THRESHOLD_1H`  (line 1040)  current_default=`0.03  # bb_squeeze < this on 1h = entry signal`
+- `BREAKOUT_GUARD_LOSS_THRESHOLD`  (line 1051)  current_default=`-999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS`
+- `BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED`  (line 1052)  current_default=`False  # Disables 1-sec momentum kills`
+- `CHOP_RANGING_THRESHOLD`  (line 1054)  current_default=`61.8  # Choppiness above this = ranging`
+- `CHOP_TRENDING_THRESHOLD`  (line 1055)  current_default=`38.2  # Choppiness below this = trending`
+- `CRYPTO_SPIKE_FADE_LOOKBACK_BARS`  (line 1071)  current_default=`3  # SWEEP: 3 bars (9min) beats all longer lookbacks. Catch spike fast.`
+- `CYCLE_TP_CONDITIONAL_EXIT`  (line 1086)  current_default=`0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when sto...`
+- `DC_EDGE_SIZING_ENABLED`  (line 1095)  current_default=`True  # BACKTEST_CHANGE_122: Scale position size by DC channel position. Edge...`
+- `DC_EDGE_SIZING_MAX_MULT`  (line 1096)  current_default=`3.0  # BACKTEST_CHANGE_122: Max 3x at DC edges (trending). 1x at DC center (s...`
+- `DC_EDGE_SIZING_MIN_MULT`  (line 1097)  current_default=`1.0  # BACKTEST_CHANGE_122: Min 1x at DC center. Set to 0.5 to reduce in side...`
+- `DC_EDGE_SIZING_PERIOD`  (line 1098)  current_default=`20  # DC lookback period for edge detection`
+- `DC_WIDTH_CAP_MULT`  (line 1102)  current_default=`10.0`
+- `DELTA_EXIT_DC_FLOOR`  (line 1107)  current_default=`True  # DC15M floor break as exit`
+- `DELTA_EXIT_OVERRIDE_NOLOSS`  (line 1109)  current_default=`True  # Delta exits bypass STRICT_NO_LOSS`
+- `DELTA_EXIT_WT_CROSS`  (line 1112)  current_default=`True  # WT cross against as exit`
+- `DELTA_GATE_AUGMENT`  (line 1113)  current_default=`True  # Block AUGMENT without delta signal`
+- `DELTA_GATE_BB_SQUEEZE`  (line 1114)  current_default=`True  # Block BB_SQUEEZE entries without delta`
+- `DELTA_GATE_DC_BREAKOUT`  (line 1115)  current_default=`True  # Block DC_BREAKOUT entries without delta`
+- `DELTA_GATE_GUARANTEED_REENTRY`  (line 1116)  current_default=`True  # Block GUARANTEED_REENTRY — #1 loss source`
+- `DELTA_GATE_HEDGE_OPEN`  (line 1117)  current_default=`False  # Do NOT gate hedges — they must always execute`
+- `DELTA_GATE_OPEN`  (line 1118)  current_default=`True  # Block OPEN without delta signal`
+- `DELTA_GATE_RATIO_REBALANCE`  (line 1119)  current_default=`False  # Block RATIO_REBALANCE opens — OFF: ratio is sacred`
+- `DELTA_GATE_REENTRY`  (line 1120)  current_default=`True  # Block REENTRY without delta signal`
+- `DELTA_GATE_SBA`  (line 1121)  current_default=`False  # Block SBA (underwater adds) without delta — OFF: SBA has own logic`
+- `DELTA_GATE_STDEV_BREAKOUT`  (line 1122)  current_default=`True  # Block STDEV_BREAKOUT without delta`
+- `DELTA_GATE_VOL_SPIKE`  (line 1123)  current_default=`True  # Block VOL_SPIKE_REVERSAL without delta`
+- `EMA20_SLOPE_ENTRY_ENABLED`  (line 1140)  current_default=`True`
+- `EMA20_SLOPE_SHORT_THRESHOLD_1H`  (line 1141)  current_default=`0.05  # SHORT when ema20 slope > this (extended, mean revert)`
+- `EXIT_DEAD_CODE_ENABLED`  (line 1156)  current_default=`False  # Dead code path — disabled`
+- `EXIT_EMERGENCY_DC1H_ENABLED`  (line 1158)  current_default=`False  # Emergency DC 1h breach — disabled, too aggressive`
+- `EXIT_GAIN_THRESHOLD_MIN`  (line 1160)  current_default=`1.0  # BACKTEST_CHANGE_112: was 0.3 (GAIN_THRESHOLD_LOW). Higher threshold = ...`
+- `EXIT_HEDGE_LOSS_KILL_ENABLED`  (line 1162)  current_default=`True  # Kill losing hedges when gain < prev_gain`
+- `EXIT_HEDGE_ORPHAN_KILL_ENABLED`  (line 1163)  current_default=`True  # Kill hedges with no original position`
+- `FAST_CUT_LOSS_MIN_AGE_MINUTES`  (line 1170)  current_default=`15.0  # Was 6 min (too short)`
+- `HA_3M_ENTRY_WEIGHT`  (line 1179)  current_default=`-0.5  # BACKTEST_CHANGE_31: was 0.0. HA harmful for entries — use as negative...`
+- `HEDGE_CLOSE_WT_TFS_FAVOR`  (line 1185)  current_default=`3  # BC_988: r2 winner but this is now unused — 15m WT close in code.`
+- `HEDGE_MAX_RATIO`  (line 1187)  current_default=`2.0  # Hard cap 200% of losing position value.`
+- `HEDGE_MOMENTUM_GATE`  (line 1188)  current_default=`False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.`
+- `HEDGE_OVERSIZE_RATIO`  (line 1191)  current_default=`2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% a...`
+- `HEDGE_TRIGGER_LOSS_PCT_ENTRY`  (line 1194)  current_default=`-2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).`
+- `INDICATORS_DATA_CACHE_SIZE`  (line 1198)  current_default=`2048`
+- `INF_RANKING_BYPASS_DELTA`  (line 1201)  current_default=`False  # DELTA_GATE_OPEN bypass (not measured yet)`
+- `INF_RANKING_BYPASS_FRESHNESS_MIN`  (line 1202)  current_default=`30  # only bypass within N min of list entry`
+- `INF_RANKING_BYPASS_HTF`  (line 1203)  current_default=`True  # 2/3 HTF -> 1/3 HTF — +18pp on top of stoch`
+- `INF_RANKING_BYPASS_MAX_POS`  (line 1204)  current_default=`8  # soft cap on concurrent bypass-entries`
+- `INF_RANKING_BYPASS_SCORE`  (line 1205)  current_default=`False  # score gate bypass (unclear impact, keep off)`
+- `INF_RANKING_BYPASS_STOCH`  (line 1206)  current_default=`True  # relax K3M_CAP/K15M — unlocks 73.6% alone`
+- `INF_RANKING_BYPASS_WT`  (line 1207)  current_default=`False  # WT composite bypass (trend misread risk)`
+- `INF_RANKING_PRIORITY_BYPASS`  (line 1208)  current_default=`False  # master switch`
+- `LADDER_AUTO_SAVE_SECONDS`  (line 1211)  current_default=`60.0`
+- `LEGACY_AGGRESSIVE_LOSS_CUT`  (line 1213)  current_default=`False  # OFF — single TF 1m flip`
+- `LEGACY_FAST_CUT_LOSS`  (line 1215)  current_default=`False  # OFF — % stop in disguise`
+- `LEGACY_REENTRY_GUARANTEED_2WT`  (line 1218)  current_default=`False  # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%`
+- `LEGACY_REENTRY_GUARANTEED_CROSS`  (line 1220)  current_default=`False  # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos`
+- `LEGACY_WR_PULLBACK`  (line 1225)  current_default=`True  # ON`
+- `LOSS_CUT_ENABLED`  (line 1228)  current_default=`False  # NEVER enable — proven to lose 20%+ weekly`
+- `LS_RATIO_CONTRARIAN_ENABLED`  (line 1233)  current_default=`False  # BACKTEST_CHANGE_142: L/S ratio contrarian filter`
+- `LS_RATIO_EXTREME_THRESHOLD`  (line 1234)  current_default=`70.0  # BACKTEST_CHANGE_142: L/S ratio above this = suppress that side`
+- `LS_RATIO_PENALTY`  (line 1238)  current_default=`15  # BACKTEST_CHANGE_142: Score penalty for crowded side`
+- `MIN_HOLD_BARS_BEFORE_EXIT`  (line 1260)  current_default=`32  # V4: 8 hours min hold. Sharpe 0.503 vs 0.460 baseline (+9.3%), PnL +49%.`
+- `MITIGATOR_AUGMENT_CONSECUTIVE`  (line 1264)  current_default=`3  # Must rise for 3+ scans`
+- `MITIGATOR_AUGMENT_THRESHOLD`  (line 1265)  current_default=`0.3  # Augment winners above this gain`
+- `MITIGATOR_REENTRY_COOLDOWN`  (line 1268)  current_default=`180.0  # 3 min before re-entry`
+- `MITIGATOR_REENTRY_PRICE_PCT`  (line 1269)  current_default=`0.15  # Favorable price move for re-entry`
+- `MITIGATOR_TIER1_DROP`  (line 1271)  current_default=`0.08  # Reduce 25% when gain drops to this`
+- `MITIGATOR_TIER1_PEAK`  (line 1272)  current_default=`0.15  # Peak gain must reach this before tier 1 arms`
+- `MITIGATOR_TIER1_REDUCE_PCT`  (line 1273)  current_default=`0.25`
+- `MITIGATOR_TIER2_DROP`  (line 1274)  current_default=`0.02  # Reduce 50% of remaining at breakeven`
+- `MITIGATOR_TIER2_REDUCE_PCT`  (line 1275)  current_default=`0.5`
+- `MITIGATOR_TIER3_DROP`  (line 1276)  current_default=`-0.05  # Full close — tiny loss better than big loss`
+- `MOMENTUM_RIDER_ACCOUNT`  (line 1283)  current_default=`'men'`
+- `MOMENTUM_RIDER_MAX_SIZE_USD`  (line 1289)  current_default=`400.0`
+- `MOVER_LOOKBACK`  (line 1297)  current_default=`8  # BACKTEST_CHANGE_111: Bars to compute slope/linearity (8 on 15m = 2h wind...`
+- `NEWS_POLL_INTERVAL_CRYPTO`  (line 1308)  current_default=`300  # 5 min (CryptoPanic)`
+- `NEWS_POLL_INTERVAL_SOCIAL`  (line 1309)  current_default=`900  # 15 min (Reddit + Twitter)`
+- `OI_DIVERGENCE_ENABLED`  (line 1315)  current_default=`False  # BACKTEST_CHANGE_143: OI divergence confirmation`
+- `OI_DIVERGENCE_PENALTY`  (line 1316)  current_default=`10  # BACKTEST_CHANGE_143: Score penalty for OI divergence`
+- `OPTIMAL_HOLD_BARS_15M`  (line 1317)  current_default=`999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST ...`
+- `ORPHAN_HEDGE_CHECK_GAIN`  (line 1319)  current_default=`True  # Check gain before killing orphans`
+- `POSITIONS_SERVICE_HEALTH_TIMEOUT`  (line 1329)  current_default=`4.0  # Seconds to wait for RPC ping`
+- `POSITION_REDIS_REFRESH_INTERVAL`  (line 1330)  current_default=`6.0`
+- `RATIO_EMERGENCY_EXIT_ENABLED`  (line 1344)  current_default=`False  # PERMANENTLY DISABLED: closing losers = Sharpe 19 vs ratio-only 357. ...`
+- `REDUCE_HUGE_LOSS_THRESHOLD`  (line 1351)  current_default=`-999.0  # BACKTEST_CHANGE_19: was -2.0. Dead code under STRICT_NO_LOSS`
+- `REENTER_SAVE_DEBOUNCE_SECONDS`  (line 1352)  current_default=`30  # BACKTEST_CHANGE_45: was 50. Faster reentry on 3m TF`
+- `REGIME_ADAPTIVE_ENABLED`  (line 1373)  current_default=`False  # Regime-adaptive strategy selection (ADX+CHOP)`
+- `REGIME_BTC_MARKET_WEIGHT`  (line 1376)  current_default=`0.5  # BTC influence on market-wide regime`
+- `REGIME_RANGING_STALE_HOURS`  (line 1391)  current_default=`48.0  # Evict breakeven positions after 48h`
+- `REGIME_RANGING_STALE_MIN_PROFIT`  (line 1392)  current_default=`0.02  # Must be slightly profitable to evict`
+- `REGIME_TRENDING_K_RESET_THRESHOLD`  (line 1398)  current_default=`40.0  # Shallower pullback K reset`
+- `RSI_MOMENTUM_MODE`  (line 1420)  current_default=`False  # BACKTEST_CHANGE_138: Toggle RSI gate to momentum (>50=buy). Crypto-s...`
+- `RZ_K_ENTRY_BOTTOM`  (line 1423)  current_default=`10.0  # Stoch K below this at BOTTOM = exit short (mirror)`
+- `RZ_MFI_ENTRY_BOTTOM`  (line 1424)  current_default=`15.0  # MFI below this at BOTTOM = exit short (mirror)`
+- `SATOSHIT_LONG_BB_PCTB_MAX`  (line 1433)  current_default=`0.5  # 1h BB%B proxy (his 15m median: 0.08)`
+- `SATOSHIT_LONG_HA_STREAK_MAX`  (line 1434)  current_default=`1  # HA must be bearish/neutral (his median: -3)`
+- `SATOSHIT_SHORT_BB_PCTB_MIN`  (line 1438)  current_default=`0.55  # 1h BB%B proxy (his 15m median: 1.16)`
+- `SATOSHIT_SHORT_HA_STREAK_MIN`  (line 1439)  current_default=`0  # HA must be bullish (his median: 4)`
+- `SBA_ADX_TF`  (line 1440)  current_default=`'1h'`
+- `SCALP_OVERRIDE`  (line 1448)  current_default=`False`
+- `SCALP_V2_REENTRY_COOLDOWN_S`  (line 1457)  current_default=`300  # P3: 5 min reasonable, shorter = more chop`
+- `SMA200_DIST_LONG_THRESHOLD`  (line 1467)  current_default=`-3.0  # BACKTEST_CHANGE_7: was -2.0. Wider captures more mean-reversion setups`
+- `STOP_MAJOR_LOSS_ENABLED`  (line 1472)  current_default=`False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L...`
+- `SWEEP_OPTIMAL_ENTRY_TF`  (line 1474)  current_default=`'1h'`
+- `SWEEP_OPTIMAL_HOLD_BARS`  (line 1475)  current_default=`8  # Most common winning hold period`
+- `SYMBOL_PERF_DECAY_HOURS`  (line 1476)  current_default=`12.0`
+- `SYMBOL_PERF_MAX_MULT`  (line 1477)  current_default=`10.0`
+- `SYMBOL_PERF_MIN_MULT`  (line 1478)  current_default=`0.1`
+- `TF_ALIGNMENT_MIN_LONG`  (line 1482)  current_default=`2  # Exits need 2 TFs turning against`
+- `TF_ALIGNMENT_MIN_SHORT`  (line 1483)  current_default=`2  # Exits need 2 TFs turning against`
+- `TF_ALL`  (line 1485)  current_default=`None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MA...`
+- `TF_FOCUS_ENTRY_HARD_GATE`  (line 1487)  current_default=`True  # Focus TF must agree for entry`
+- `TF_FOCUS_EXIT_HARD_GATE`  (line 1488)  current_default=`True  # Focus TF crossunder = immediate exit`
+- `TF_FOCUS_WEIGHT`  (line 1489)  current_default=`8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m`
+- `TIER_A_MIN_GAIN`  (line 1490)  current_default=`0.3`
+- `TIER_A_MIN_TRADES`  (line 1491)  current_default=`10`
+- `TIER_A_MULTIPLIER`  (line 1492)  current_default=`1.2`
+- `TIER_A_WIN_RATE`  (line 1493)  current_default=`0.6`
+- `TIER_B_MIN_TRADES`  (line 1494)  current_default=`5`
+- `TIER_B_WIN_RATE`  (line 1495)  current_default=`0.45`
+- `TIER_C_MULTIPLIER`  (line 1496)  current_default=`0.7`
+- `USE_INDICATOR_SNAPSHOT`  (line 1528)  current_default=`True`
+- `V8Q_COOLDOWN_BARS`  (line 1529)  current_default=`3`
+- `V8Q_D_TREND_REQUIRED`  (line 1530)  current_default=`True`
+- `V8Q_HTF_MIN_ALIGNED`  (line 1531)  current_default=`1`
+- `V8Q_K3M_FLOOR`  (line 1532)  current_default=`30`
+- `V8Q_MIN_HOLD_BARS`  (line 1533)  current_default=`10`
+- `V8Q_PROFIT_TARGET_ENABLED`  (line 1534)  current_default=`True`
+- `V8Q_PROFIT_TARGET_PCT`  (line 1535)  current_default=`1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90)`
+- `V8Q_STRENGTH_FILTER_ENABLED`  (line 1536)  current_default=`True`
+- `V8Q_STRENGTH_MIN_SCORE`  (line 1537)  current_default=`5.0`
+- `V8Q_SYMBOL_TIER_TOP3`  (line 1538)  current_default=`('LINKUSDT', 'ETHUSDT', 'DOTUSDT')`
+- `V8Q_SYMBOL_TIER_TOP4`  (line 1539)  current_default=`('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT')`
+- `V8Q_SYMBOL_TIER_TOP5`  (line 1540)  current_default=`('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT')`
+- `V8Q_SYMBOL_TIER_TOP6`  (line 1541)  current_default=`('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT', 'SOLUSDT')`
+- `V8Q_WT_EXIT_MIN_TFS`  (line 1542)  current_default=`2`
+- `WIN_TRAIL_EROSION_PCT`  (line 1552)  current_default=`0.5  # BACKTEST_CHANGE_105: Tournament v2: 50% trail slightly better than 30%...`
+- `_CURRENT_MARKET_MODE`  (line 1562)  current_default=`'NORMAL_MODE'`
+- `_INSTANCES`  (line 1563)  current_default=`WeakSet()`
+- `_REGIME_LOG`  (line 1564)  current_default=`[]`
+- `_REGIME_REDIS_TS`  (line 1565)  current_default=`0.0`
+- `_REGIME_OVERRIDES`  (line 1589)  current_default=`{}`
+- `_REGIME_REDIS_CACHE`  (line 1590)  current_default=`{}`
+
+## WIRED_BACKTEST_ONLY switches
+
+- `FAST_CUT_LOSS_THRESHOLD`  (line 1171)  read in: backtest_v8_engine.py
+- `HEDGE_ACCOUNTS`  (line 1183)  read in: backtest_v8_engine.py
+
+## WIRED_ELSEWHERE switches
+
+- `HIGH_GAIN_AUGMENTATION_MIN_SIZE`  (line 40)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `SECTOR_MAP`  (line 99)  read in: tradier_options_agent.py
+- `SECTOR_GROUPS`  (line 182)  read in: tradier_options_agent.py
+- `OPTIONS_BASE_CAP`  (line 199)  read in: tradier_options_agent.py
+- `OPTIONS_HEDGED_CAP`  (line 200)  read in: tradier_options_agent.py
+- `OPTIONS_FULL_DIV_CAP`  (line 201)  read in: tradier_options_agent.py
+- `OPTIONS_MAX_PER_SECTOR`  (line 202)  read in: tradier_options_agent.py
+- `OPTIONS_MAX_PER_GROUP`  (line 203)  read in: tradier_options_agent.py
+- `OPTIONS_MAX_PER_SYMBOL`  (line 204)  read in: tradier_options_agent.py
+- `OPTIONS_MIN_SECTORS`  (line 205)  read in: tradier_options_agent.py
+- `OPTIONS_MIN_GROUPS`  (line 206)  read in: tradier_options_agent.py
+- `OPTIONS_HEDGE_RATIO_MIN`  (line 207)  read in: tradier_options_agent.py
+- `OPTIONS_MAX_CONTRACTS_PER_ORDER`  (line 208)  read in: tradier_options_agent.py
+- `OPTIONS_MARKET_RATIO_MIN`  (line 210)  read in: tradier_options_agent.py
+- `OPTIONS_MARKET_RATIO_MAX`  (line 211)  read in: tradier_options_agent.py
+- `OPTIONS_WT_ACCEL_MIN_ABS`  (line 219)  read in: tradier_options_analyzer.py
+- `OPTIONS_WT_ACCEL_GROWTH_PCT`  (line 220)  read in: tradier_options_analyzer.py
+- `OPTIONS_LEVEL_BREAK_BUFFER`  (line 222)  read in: tradier_options_analyzer.py
+- `OPTIONS_LEVEL_BREAK_MIN_DTE`  (line 223)  read in: tradier_options_analyzer.py
+- `OPTIONS_CONTINUOUS_SECTOR_GATE`  (line 225)  read in: tradier_options_agent.py
+- `OPTIONS_USER_CANCEL_COOLDOWN_HOURS`  (line 226)  read in: tradier_options_agent.py
+- `SATOSHIT_MIN_VOTES_TRADIER`  (line 264)  read in: v8_quick_engine.py
+- `SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER`  (line 275)  read in: v8_quick_engine.py
+- `SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER`  (line 276)  read in: v8_quick_engine.py
+- `SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER`  (line 277)  read in: v8_quick_engine.py
+- `SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER`  (line 278)  read in: v8_quick_engine.py
+- `VERBOSE2`  (line 291)  read in: ez_manage.py, import argparse.py
+- `VERBOSE_STOPS`  (line 292)  read in: ez_positions_service.py, import argparse.py
+- `DEBUG`  (line 295)  read in: ez_manage.py, import argparse.py
+- `PRICE_CACHE_FILE_2`  (line 338)  read in: ez_double.py, ez_indicators.py, ez_manage.py, ez_positions_service.py, ez_prices.py, ... (8 files total)
+- `PRICE_CACHE_FILE_3`  (line 339)  read in: ez_double.py, ez_manage.py, ez_positions_service.py, ez_prices.py, ez_rankings.py, ... (7 files total)
+- `SYMBOL_CONFIGS_FILE`  (line 340)  read in: ez_double.py, ez_manage.py, ez_positions_service.py, import argparse.py
+- `MULT_FILE`  (line 341)  read in: ez_crosses.py
+- `RANKING_RESULTS_FILE`  (line 342)  read in: ez_crosses.py, ez_rankings.py
+- `REDIS_DB`  (line 345)  read in: ez_gap_filler.py, ez_indicators.py, ez_indicators_merger.py, ez_manage.py, ez_mark_prices.py, ... (11 files total)
+- `ORDER_CACHE_TTL`  (line 353)  read in: ez_manage.py, import argparse.py
+- `TIMEFRAMES`  (line 358)  read in: gateway_data_broadcaster.py
+- `LIGHT_MODE`  (line 364)  read in: ez_manage.py, ez_positions_quick.py, import argparse.py
+- `MARKET_MODE`  (line 365)  read in: ez_manage.py, ez_positions_quick.py, import argparse.py
+- `REV_MODE`  (line 366)  read in: ez_manage.py, ez_positions_quick.py, ez_positions_service.py, import argparse.py
+- `EXIT_ON_ALL`  (line 367)  read in: ez_manage.py, import argparse.py
+- `ENABLE_FAST_RISER_REDUCE`  (line 372)  read in: ez_manage.py, import argparse.py
+- `WT_CROSSUNDER_FINAL_ENABLED`  (line 409)  read in: v8_quick_engine.py
+- `RSI_EXIT_LONG_TRADIER`  (line 487)  read in: v8_quick_engine.py
+- `RSI_EXIT_SHORT_TRADIER`  (line 488)  read in: v8_quick_engine.py
+- `STOCH_CROSS_ENTRY_TRADIER`  (line 491)  read in: v8_quick_engine.py
+- `TF_MICRO`  (line 565)  read in: ez_positions_quick.py
+- `TF_SCALP`  (line 566)  read in: ez_positions_quick.py
+- `TF_HTF2`  (line 568)  read in: ez_positions_quick.py
+- `MFI_FLIP_EXIT_LONG_THRESHOLD`  (line 575)  read in: v8_quick_engine.py
+- `MFI_FLIP_EXIT_SHORT_THRESHOLD`  (line 576)  read in: v8_quick_engine.py
+- `STDEV_BREAKOUT_EXIT_PCTB_FAIL`  (line 666)  read in: ez_positions_quick.py
+- `STDEV_BREAKOUT_EXIT_WT_ENABLED`  (line 667)  read in: ez_positions_quick.py
+- `DELTA_TF_WEIGHTS`  (line 712)  read in: ez_manage.py, ez_positions_quick.py
+- `DELTA_EXIT_TF`  (line 718)  read in: ez_manage.py, ez_positions_quick.py
+- `TRADIER_RSI2_ENABLED`  (line 874)  read in: v8_quick_engine.py
+- `TRADIER_RSI2_EXIT_THRESHOLD_LONG`  (line 875)  read in: v8_quick_engine.py
+- `TRADIER_RSI2_EXIT_THRESHOLD_SHORT`  (line 876)  read in: v8_quick_engine.py
+- `TRADIER_MFI_ENTRY_LONG_TRADIER`  (line 885)  read in: v8_quick_engine.py
+- `TRADIER_MFI_ENTRY_LONG_ENABLED`  (line 886)  read in: v8_quick_engine.py
+- `TRADIER_ENTRY_SCORE_THRESHOLD`  (line 900)  read in: v8_quick_engine.py
+- `ABLATION_DISABLE_HEDGE`  (line 988)  read in: ez_positions_quick.py
+- `ABLATION_DISABLE_QUICK_ENTRY`  (line 991)  read in: ez_positions_quick.py, v8_quick_engine.py
+- `ABLATION_DISABLE_QUICK_EXIT`  (line 992)  read in: ez_positions_quick.py, v8_quick_engine.py
+- `ADX_RANGING_THRESHOLD`  (line 1008)  read in: ez_manage.py, ez_positions_quick.py
+- `ADX_REGIME_FILTER_ENABLED`  (line 1009)  read in: ez_manage.py, ez_positions_quick.py
+- `ADX_TF`  (line 1010)  read in: ez_manage.py, ez_positions_quick.py
+- `ASYMMETRIC_LOSER_MIN_AGE_SECONDS`  (line 1013)  read in: strategy_enhancements.py
+- `ASYMMETRIC_STOPS_ENABLED`  (line 1014)  read in: strategy_enhancements.py
+- `ASYMMETRIC_WINNER_GAIN_PCT`  (line 1015)  read in: strategy_enhancements.py
+- `ATR_ADAPTIVE_SIZING_ENABLED`  (line 1016)  read in: ez_manage.py
+- `ATR_ADAPTIVE_SIZING_TARGET_PCT`  (line 1017)  read in: ez_manage.py
+- `ATR_ADAPTIVE_STOP_ENABLED`  (line 1018)  read in: ez_manage.py
+- `ATR_ADAPTIVE_STOP_MULT`  (line 1019)  read in: ez_manage.py
+- `ATR_ADAPTIVE_STOP_TF`  (line 1020)  read in: ez_manage.py
+- `ATR_LONG_WINDOW`  (line 1021)  read in: ez_indicators.py
+- `AUGMENT_BLOWPAST_ENABLED`  (line 1022)  read in: ez_manage.py
+- `AUGMENT_HTF_TREND_ENABLED`  (line 1023)  read in: ez_manage.py
+- `AUGMENT_WT_3TF_ENABLED`  (line 1025)  read in: ez_manage.py
+- `AUGMENT_WT_CROSS_ENABLED`  (line 1026)  read in: ez_manage.py
+- `BASIS_CONDITION`  (line 1027)  read in: ez_positions_quick.py
+- `BB_BREAKOUT_ENABLED`  (line 1028)  read in: ez_positions_quick.py
+- `BB_BREAKOUT_SCORE`  (line 1029)  read in: ez_positions_quick.py
+- `BB_BREAKOUT_TF`  (line 1030)  read in: ez_positions_quick.py
+- `BB_ENTRY_LONG_THRESHOLD`  (line 1031)  read in: ez_manage.py
+- `BB_ENTRY_SHORT_THRESHOLD`  (line 1032)  read in: ez_manage.py
+- `BB_RSI_STOCH_SCALP_ENABLED`  (line 1033)  read in: ez_positions_quick.py
+- `BB_RSI_STOCH_SCALP_SCORE`  (line 1034)  read in: ez_positions_quick.py
+- `BB_SQUEEZE_COOLDOWN`  (line 1035)  read in: ez_positions_quick.py
+- `BB_SQUEEZE_ENABLED`  (line 1036)  read in: ez_positions_quick.py
+- `BB_SQUEEZE_MIN_ALIGNMENT`  (line 1038)  read in: ez_positions_quick.py
+- `BB_SQUEEZE_WIDTH_PERCENTILE`  (line 1041)  read in: ez_positions_quick.py
+- `BINANCE_API_BASE`  (line 1042)  read in: ez_rankings.py
+- `BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE`  (line 1043)  read in: ez_positions_quick.py
+- `BOUNCE_AUGMENT_ENABLED`  (line 1044)  read in: ez_positions_quick.py
+- `BOUNCE_AUGMENT_K_D_CROSSING_UP`  (line 1045)  read in: ez_positions_quick.py
+- `BOUNCE_AUGMENT_K_D_THRESHOLD`  (line 1046)  read in: ez_positions_quick.py
+- `BOUNCE_AUGMENT_MIN_LOSS_PCT`  (line 1047)  read in: ez_positions_quick.py
+- `BOUNCE_AUGMENT_PAPER`  (line 1048)  read in: ez_positions_quick.py
+- `BREAKEVEN_DC_LOW4_ENABLED`  (line 1049)  read in: ez_positions_quick.py
+- `BREAKEVEN_GRACE_MINUTES`  (line 1050)  read in: ez_positions_quick.py
+- `CHECK_INTERVAL`  (line 1053)  read in: ez_gain_protector.py
+- `CIRCUIT_BREAKER_ACCOUNT_HALT_MIN`  (line 1056)  read in: strategy_enhancements.py
+- `CIRCUIT_BREAKER_ACCOUNT_LOSSES`  (line 1057)  read in: strategy_enhancements.py
+- `CIRCUIT_BREAKER_COOLDOWN`  (line 1058)  read in: ez_manage.py, import argparse.py
+- `CIRCUIT_BREAKER_ENABLED`  (line 1059)  read in: strategy_enhancements.py
+- `CIRCUIT_BREAKER_SYMBOL_HALT_MIN`  (line 1060)  read in: strategy_enhancements.py
+- `CIRCUIT_BREAKER_SYMBOL_LOSSES`  (line 1061)  read in: strategy_enhancements.py
+- `CRYPTO_FH_MOMENTUM_DC_CONFIRM`  (line 1062)  read in: ez_manage.py
+- `CRYPTO_FH_MOMENTUM_DC_MAX_LONG`  (line 1063)  read in: ez_manage.py
+- `CRYPTO_FH_MOMENTUM_ENABLED`  (line 1064)  read in: ez_manage.py
+- `CRYPTO_FH_MOMENTUM_MAX_POSITIONS`  (line 1065)  read in: ez_manage.py
+- `CRYPTO_FH_MOMENTUM_MIN_MOVE_PCT`  (line 1066)  read in: ez_manage.py
+- `CRYPTO_FH_MOMENTUM_POSITION_SIZE_MULT`  (line 1067)  read in: ez_manage.py
+- `CRYPTO_SPIKE_FADE_COOLDOWN_SEC`  (line 1068)  read in: ez_manage.py
+- `CRYPTO_SPIKE_FADE_ENABLED`  (line 1069)  read in: ez_manage.py
+- `CRYPTO_SPIKE_FADE_K_EXHAUSTION`  (line 1070)  read in: ez_manage.py
+- `CRYPTO_SPIKE_FADE_MAX_POSITIONS`  (line 1072)  read in: ez_manage.py
+- `CRYPTO_SPIKE_FADE_THRESHOLD_PCT`  (line 1073)  read in: ez_manage.py
+- `CT_15M_MOMENTUM_GATE_ENABLED`  (line 1074)  read in: ez_manage.py, v8_million_sweep.py, v8_pullback_sweep.py, v8_quick_ablation.py
+- `CT_CHOP_4H_GATE_ENABLED`  (line 1075)  read in: ez_manage.py, v8_million_sweep.py, v8_pullback_sweep.py, v8_quick_ablation.py
+- `CT_CHOP_4H_MAX`  (line 1076)  read in: ez_manage.py
+- `CT_DC_CROSSOVER_SKIP_ENABLED`  (line 1077)  read in: ez_manage.py, v8_million_sweep.py, v8_pullback_sweep.py, v8_quick_ablation.py, v8_quick_engine.py
+- `CT_MFI_15M_LONG_MIN`  (line 1078)  read in: ez_manage.py
+- `CT_MFI_15M_SHORT_MAX`  (line 1079)  read in: ez_manage.py
+- `CT_REL_VOL_MIN`  (line 1080)  read in: ez_manage.py
+- `CT_STOCH_K_15M_LONG_MIN`  (line 1081)  read in: ez_manage.py
+- `CT_STOCH_K_15M_SHORT_MAX`  (line 1082)  read in: ez_manage.py
+- `CT_VOLUME_SURGE_GATE_ENABLED`  (line 1083)  read in: ez_manage.py, v8_million_sweep.py, v8_pullback_sweep.py, v8_quick_ablation.py
+- `CT_WT_VELOCITY_1H_MIN`  (line 1084)  read in: ez_manage.py, v8_quick_engine.py
+- `CT_WT_VELOCITY_GATE_ENABLED`  (line 1085)  read in: ez_manage.py, v8_million_sweep.py, v8_pullback_sweep.py, v8_quick_ablation.py, v8_quick_engine.py
+- `CYCLE_TP_PCT`  (line 1087)  read in: _patch_tradier_backtest.py, _patch_tradier_short_exit.py
+- `CYCLE_TP_TIERED_ENABLED`  (line 1088)  read in: ez_manage.py, v8_quick_engine.py
+- `CYCLE_TP_TIERED_FRAC`  (line 1089)  read in: ez_manage.py
+- `DATA_READY_TIMEOUT_SECONDS`  (line 1090)  read in: ez_rankings.py
+- `DAYS_PLOT`  (line 1091)  read in: ez_rankings.py
+- `DC_BREAKOUT_ENTRY_ENABLED`  (line 1092)  read in: ez_positions_quick.py
+- `DC_BREAKOUT_SCORE`  (line 1093)  read in: ez_positions_quick.py
+- `DC_BREAKOUT_TF`  (line 1094)  read in: ez_positions_quick.py
+- `DC_RECOVERY_EXIT_ENABLED`  (line 1099)  read in: ez_manage.py, v8_quick_engine.py
+- `DC_RECOVERY_EXIT_TOLERANCE_ATR_MULT`  (line 1100)  read in: ez_manage.py
+- `DC_RECOVERY_EXIT_TOLERANCE_PCT`  (line 1101)  read in: ez_manage.py, v8_quick_engine.py
+- `DC_WIDTH_MAX_MULT`  (line 1103)  read in: _patch_all_dc.py, _patch_dc_moment_qty.py, _patch_dc_width_index.py, _patch_quick_sizing.py, ez_positions_quick.py
+- `DC_WIDTH_SIZING_ENABLED`  (line 1104)  read in: _patch_all_dc.py, _patch_dc_moment_qty.py, _patch_dc_width_index.py, _patch_quick_sizing.py, ez_positions_quick.py
+- `DELTA_ENTRY_SCORE_BONUS`  (line 1105)  read in: ez_positions_quick.py
+- `DELTA_ENTRY_SCORE_PENALTY`  (line 1106)  read in: ez_positions_quick.py
+- `DELTA_EXIT_DOM_TF_ENABLED`  (line 1108)  read in: ez_manage.py, ez_positions_quick.py
+- `DELTA_EXIT_SCORE_BONUS`  (line 1110)  read in: ez_positions_quick.py
+- `DELTA_EXIT_SPEED_DECAY`  (line 1111)  read in: ez_positions_quick.py
+- `DELTA_MIN_TF_FOR_ACTION`  (line 1124)  read in: ez_positions_quick.py, ez_positions_service.py
+- `DELTA_REENTRY_HTF_GATE`  (line 1125)  read in: ez_manage.py
+- `DELTA_REENTRY_MIN_TF`  (line 1126)  read in: ez_manage.py
+- `DELTA_REENTRY_REQUIRE_NOT_EXITING`  (line 1127)  read in: ez_manage.py
+- `DELTA_REENTRY_Z_THRESHOLD`  (line 1128)  read in: ez_manage.py
+- `DELTA_SCORE_WEIGHT`  (line 1129)  read in: ez_positions_quick.py
+- `DELTA_SERVICE_BLEED_STOP`  (line 1130)  read in: ez_positions_service.py
+- `DELTA_SERVICE_REDUCE_GATE`  (line 1131)  read in: ez_positions_service.py
+- `DELTA_SERVICE_TRAILING_STOP`  (line 1132)  read in: ez_positions_service.py
+- `DIRECT_HIGH_GAIN_COOLDOWN_SECONDS`  (line 1133)  read in: ez_manage.py, import argparse.py
+- `EMA200_STOCHRSI_BODY_MULT`  (line 1134)  read in: ez_positions_quick.py
+- `EMA200_STOCHRSI_ENABLED`  (line 1135)  read in: ez_positions_quick.py
+- `EMA200_STOCHRSI_K_LONG`  (line 1136)  read in: ez_positions_quick.py
+- `EMA200_STOCHRSI_K_SHORT`  (line 1137)  read in: ez_positions_quick.py
+- `EMA200_STOCHRSI_SCORE`  (line 1138)  read in: ez_positions_quick.py
+- `EMA200_STOCHRSI_TF`  (line 1139)  read in: ez_positions_quick.py
+- `EMA_DIST_ENTRY_ENABLED`  (line 1142)  read in: ez_manage.py
+- `EMA_DIST_LONG_THRESHOLD`  (line 1143)  read in: ez_manage.py
+- `EMA_DIST_SHORT_THRESHOLD`  (line 1144)  read in: ez_manage.py
+- `EMA_DIST_SIZING_ENABLED`  (line 1145)  read in: ez_manage.py
+- `EMA_DIST_SIZING_MULT`  (line 1146)  read in: ez_manage.py
+- `EMA_PULLBACK_ENABLED`  (line 1147)  read in: ez_positions_quick.py
+- `EMA_PULLBACK_SCORE_BONUS`  (line 1148)  read in: ez_positions_quick.py
+- `EMA_PULLBACK_TF`  (line 1149)  read in: ez_positions_quick.py
+- `ENABLE_LOSS_PROTECTION`  (line 1150)  read in: ez_manage.py, import argparse.py
+- `ENTRY_ATR_PCT_MIN`  (line 1151)  read in: ez_manage.py, ez_positions_quick.py
+- `ENTRY_VOL_MIN_RATIO`  (line 1152)  read in: ez_manage.py, ez_positions_quick.py
+- `ERROR_RECOVERY_SLEEP_SECONDS`  (line 1153)  read in: ez_rankings.py
+- `EXIT_HARD_MAX_LOSS_CAP_ENABLED`  (line 1161)  read in: ez_manage.py
+- `EXIT_MARKET_SPIKE_REDUCE_ENABLED`  (line 1164)  read in: ez_manage.py
+- `EXIT_ON_ALL_ENABLED`  (line 1165)  read in: ez_manage.py, import argparse.py
+- `EXIT_PREEMPTIVE_BREAKEVEN_ENABLED`  (line 1167)  read in: ez_positions_quick.py
+- `FAST_RISER_DOUBLE_ENABLED`  (line 1172)  read in: ez_manage.py
+- `FG_FEAR_THRESHOLD`  (line 1173)  read in: ez_manage.py
+- `FG_GREED_THRESHOLD`  (line 1174)  read in: ez_manage.py
+- `FG_SIZING_ENABLED`  (line 1175)  read in: ez_manage.py
+- `FORCE_REFRESH_SECONDS`  (line 1176)  read in: ez_manage.py, import argparse.py
+- `GAIN_THRESHOLD_LOW`  (line 1177)  read in: ez_gain_protector.py, ez_manage.py
+- `HARD_MAX_LOSS_PCT`  (line 1178)  read in: ez_manage.py
+- `HA_WICK_QUALITY_ENABLED`  (line 1180)  read in: ez_positions_quick.py
+- `HA_WICK_QUALITY_SCORE`  (line 1181)  read in: ez_positions_quick.py
+- `HA_WICK_QUALITY_TF`  (line 1182)  read in: ez_positions_quick.py
+- `HEDGE_ALL_POSITIONS`  (line 1184)  read in: ez_positions_quick.py
+- `HEDGE_DUAL_IF_HEDGE_MODE`  (line 1186)  read in: ez_positions_quick.py
+- `HEDGE_NEWBORN_DC_BREACH_ALLOWED`  (line 1189)  read in: ez_positions_quick.py
+- `HEDGE_NEWBORN_GRACE_MINUTES`  (line 1190)  read in: ez_positions_quick.py
+- `HEDGE_SAME_SYMBOL_ENABLED`  (line 1192)  read in: ez_positions_quick.py
+- `HEDGE_TRIGGER_LOSS_PCT`  (line 1193)  read in: ez_positions_quick.py
+- `HOUR_OF_DAY_GATE_ENABLED`  (line 1195)  read in: strategy_enhancements.py
+- `HTF_STRICT`  (line 1196)  read in: ez_positions_quick.py
+- `IMMEDIATE_WRONG_WAY_ENABLED`  (line 1197)  read in: ez_manage.py
+- `INDICATOR_MAX_AGE_SECONDS`  (line 1200)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `K3M_CAP`  (line 1209)  read in: ez_positions_quick.py
+- `K3M_FLOOR`  (line 1210)  read in: v8_quick_engine.py
+- `LADDER_TTL_MINUTES`  (line 1212)  read in: ez_positions_service.py
+- `LEGACY_DC_BREAKOUT_REENTRY`  (line 1214)  read in: ez_manage.py
+- `LEGACY_GUARANTEED_REENTRY`  (line 1216)  read in: ez_manage.py
+- `LEGACY_PROC_SINGLE_REENTRY`  (line 1217)  read in: ez_manage.py
+- `LEGACY_REENTRY_GUARANTEED_BOTTOM`  (line 1219)  read in: ez_reentry_vectorized.py
+- `LEGACY_REENTRY_PSR_DC_BOUNCE`  (line 1221)  read in: ez_manage.py
+- `LEGACY_REENTRY_PSR_FULL_DC`  (line 1222)  read in: ez_manage.py
+- `LEGACY_REENTRY_PSR_K_DC_CROSSOVER`  (line 1223)  read in: ez_manage.py
+- `LEGACY_REENTRY_PSR_QUICK_RECOVERY`  (line 1224)  read in: ez_manage.py
+- `LOG_INTERVAL_SECONDS`  (line 1226)  read in: ez_rankings.py
+- `LONG_STOCH_CHASE_BLOCK`  (line 1227)  read in: ez_positions_quick.py
+- `LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED`  (line 1229)  read in: ez_manage.py
+- `LOSS_EXIT_REQUIRES_HEDGE`  (line 1230)  read in: ez_positions_quick.py
+- `LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED`  (line 1231)  read in: ez_positions_quick.py
+- `LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED`  (line 1232)  read in: ez_manage.py
+- `LS_RATIO_HARD_MAX`  (line 1235)  read in: _fix_quotes.py, _patch_manage.py, ez_manage.py, ez_positions_quick.py, import argparse.py
+- `LS_RATIO_HARD_MIN`  (line 1236)  read in: _fix_quotes.py, _patch_manage.py, ez_manage.py, ez_positions_quick.py, import argparse.py
+- `LS_RATIO_LOG_INTERVAL`  (line 1237)  read in: _fix_quotes.py, ez_positions_quick.py
+- `MACD_EXIT_ENABLED`  (line 1239)  read in: ez_positions_quick.py
+- `MACD_EXIT_MIN_GAIN`  (line 1240)  read in: ez_positions_quick.py
+- `MACD_EXIT_TF`  (line 1241)  read in: ez_positions_quick.py
+- `MACD_ZERO_CROSS_ENABLED`  (line 1242)  read in: ez_positions_quick.py
+- `MACD_ZERO_CROSS_SCORE`  (line 1243)  read in: ez_positions_quick.py
+- `MACD_ZERO_CROSS_TF`  (line 1244)  read in: ez_positions_quick.py
+- `MARKET_DATA_REFRESH_INTERVAL_SECONDS`  (line 1246)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `MARK_PRICE_MAX_STALENESS`  (line 1247)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `MAX_AUGMENTS_PER_POSITION`  (line 1248)  read in: ez_manage.py
+- `MAX_CONCURRENT_ORDERS`  (line 1249)  read in: ez_manage.py, ez_positions_quick.py, import argparse.py
+- `MAX_DECAY_COMPLETE_DAYS`  (line 1250)  read in: ez_positions_service.py
+- `MAX_DECAY_START_HOURS`  (line 1251)  read in: ez_positions_service.py
+- `MAX_GAIN_DECAY_COMPLETE_DAYS`  (line 1252)  read in: ez_positions_service.py
+- `MAX_MEMORY_GB`  (line 1253)  read in: ez_double.py, ez_manage.py, ez_rankings.py, import argparse.py
+- `MAX_ORDER_VALUE_FIN`  (line 1254)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `MAX_ORDER_VALUE_MEN`  (line 1255)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `MAX_POSITION_SIZE_BTC`  (line 1256)  read in: ez_double.py, ez_manage.py, ez_positions_service.py, import argparse.py
+- `MAX_POSITION_SIZE_FIN`  (line 1257)  read in: ez_double.py, ez_manage.py, ez_positions_service.py, import argparse.py
+- `MAX_POSITION_SIZE_MEN`  (line 1258)  read in: ez_double.py, ez_manage.py, ez_positions_service.py, import argparse.py
+- `MEMORY_MONITOR_SLEEP_SECONDS`  (line 1259)  read in: ez_rankings.py
+- `MIN_PERC_FROM_SMA_1`  (line 1261)  read in: ez_manage.py, import argparse.py
+- `MIN_PERC_FROM_SMA_15`  (line 1262)  read in: ez_manage.py, import argparse.py
+- `MIN_USD_DELTA_CONFIRM`  (line 1263)  read in: ez_positions_service.py
+- `MOM3_ENTRY_ENABLED`  (line 1277)  read in: ez_manage.py
+- `MOM3_LONG_THRESHOLD`  (line 1278)  read in: ez_manage.py
+- `MOM3_SHORT_THRESHOLD`  (line 1279)  read in: ez_manage.py
+- `MOM5_ENTRY_ENABLED`  (line 1280)  read in: ez_manage.py
+- `MOM5_LONG_THRESHOLD`  (line 1281)  read in: ez_manage.py
+- `MOM5_SHORT_THRESHOLD`  (line 1282)  read in: ez_manage.py
+- `MOMENTUM_RIDER_BASE_SIZE_USD`  (line 1284)  read in: ez_manage.py
+- `MOMENTUM_RIDER_COOLDOWN`  (line 1285)  read in: ez_manage.py
+- `MOMENTUM_RIDER_DC_WIDTH_MIN`  (line 1286)  read in: ez_manage.py
+- `MOMENTUM_RIDER_ENABLED`  (line 1287)  read in: ez_manage.py
+- `MOMENTUM_RIDER_HEDGE_RATIO`  (line 1288)  read in: ez_manage.py
+- `MOMENTUM_RIDER_MAX_SYMBOLS`  (line 1290)  read in: ez_manage.py
+- `MOMENTUM_RIDER_REL_VOL_MIN`  (line 1291)  read in: ez_manage.py
+- `MOMENTUM_RIDER_SCAN_INTERVAL`  (line 1292)  read in: ez_manage.py
+- `MONITOR_REDUCTION_STALE_THRESHOLD`  (line 1293)  read in: ez_positions_service.py
+- `MOVER_ACCOUNT`  (line 1294)  read in: ez_positions_quick.py
+- `MOVER_DETECTION_ENABLED`  (line 1295)  read in: ez_positions_quick.py
+- `MOVER_LINEARITY_MIN`  (line 1296)  read in: ez_positions_quick.py
+- `MOVER_MAX_POSITIONS`  (line 1298)  read in: ez_positions_quick.py
+- `MOVER_SCORE_BONUS`  (line 1299)  read in: ez_positions_quick.py
+- `MOVER_THRESHOLD`  (line 1300)  read in: ez_positions_quick.py
+- `MOVER_VOL_MIN`  (line 1301)  read in: ez_positions_quick.py
+- `MTS_BOTTOM_BONUS_THRESHOLD`  (line 1302)  read in: ez_positions_quick.py
+- `MTS_BOTTOM_MIN_SHORT`  (line 1303)  read in: ez_positions_quick.py
+- `MTS_BOTTOM_STRONG_THRESHOLD`  (line 1304)  read in: ez_positions_quick.py
+- `MTS_ENTRY_QUALITY_BONUS`  (line 1305)  read in: ez_positions_quick.py
+- `MTS_ENTRY_QUALITY_MIN_SHORT`  (line 1306)  read in: ez_positions_quick.py
+- `MTS_ENTRY_QUALITY_STRONG`  (line 1307)  read in: ez_positions_quick.py
+- `NEWS_SENTIMENT_DECAY_HOURS`  (line 1310)  read in: ez_news_scanner.py
+- `NEWS_SENTIMENT_MIN_ARTICLES`  (line 1311)  read in: ez_news_scanner.py
+- `OBLIGATORY_HEDGE_MIN_LOSS_PCT`  (line 1312)  read in: ez_positions_quick.py
+- `OBLIGATORY_HEDGE_PCT`  (line 1313)  read in: ez_positions_quick.py
+- `OBLIGATORY_HEDGE_WT_TFS`  (line 1314)  read in: ez_positions_quick.py
+- `OPTIMAL_HOLD_BARS_3M`  (line 1318)  read in: ez_manage.py
+- `OUTLIER_RUNAWAY_ATR_FACTOR`  (line 1320)  read in: ez_manage.py
+- `OUTLIER_STUCK_ATR_FACTOR`  (line 1321)  read in: ez_manage.py
+- `OUTLIER_STUCK_HOURS`  (line 1322)  read in: ez_manage.py
+- `PERSIST`  (line 1323)  read in: ez_positions_service.py
+- `PER_SYMBOL_CONFIG_ENABLED`  (line 1324)  read in: strategy_enhancements.py
+- `PLOT_LOOP_INTERVAL_SECONDS`  (line 1325)  read in: ez_rankings.py
+- `PNL_DECAY_COMPLETE_DAYS`  (line 1326)  read in: ez_positions_service.py
+- `PNL_DECAY_FINAL_PERCENTAGE`  (line 1327)  read in: ez_positions_service.py
+- `PNL_DECAY_START_HOURS`  (line 1328)  read in: ez_positions_service.py
+- `POSITION_REFRESH_MIN_INTERVAL`  (line 1331)  read in: ez_positions_service.py
+- `POSITION_SAVE_INTERVAL`  (line 1332)  read in: ez_positions_service.py
+- `POSITION_STALE_THRESHOLD_SECONDS`  (line 1333)  read in: ez_manage.py, import argparse.py
+- `PROGRESSIVE_LOCK_ENABLED`  (line 1334)  read in: strategy_enhancements.py
+- `PROGRESSIVE_LOCK_FRACTION`  (line 1335)  read in: strategy_enhancements.py
+- `PYRAMID_ENABLED`  (line 1336)  read in: strategy_enhancements.py
+- `PYRAMID_MAX_DC_POS_15M_SHORT`  (line 1337)  read in: strategy_enhancements.py
+- `PYRAMID_MIN_DC_POS_15M`  (line 1338)  read in: strategy_enhancements.py
+- `PYRAMID_MIN_GAIN_PCT`  (line 1339)  read in: strategy_enhancements.py
+- `PYRAMID_MIN_WT_VEL_1H`  (line 1340)  read in: strategy_enhancements.py
+- `PYRAMID_SIZE_MULT`  (line 1341)  read in: strategy_enhancements.py
+- `RANKING_LOOP_SLEEP_SECONDS`  (line 1342)  read in: ez_rankings.py
+- `RATIO_EMERGENCY_EXIT_COOLDOWN`  (line 1343)  read in: ez_manage.py
+- `RATIO_EMERGENCY_EXIT_MAX_LOSS_PCT`  (line 1345)  read in: ez_manage.py
+- `RATIO_EMERGENCY_EXIT_MAX_PER_CYCLE`  (line 1346)  read in: ez_manage.py
+- `RATIO_EMERGENCY_EXIT_THRESHOLD`  (line 1347)  read in: ez_manage.py
+- `REACTIVE_MODE`  (line 1348)  read in: ez_indicators.py
+- `REDIS_CHANNEL_SIGNALS`  (line 1349)  read in: ez_rankings.py
+- `REDIS_EXPIRY_SECONDS`  (line 1350)  read in: ez_mark_prices.py, ez_prices_ws.py
+- `REENTRY2_DC_BREAK_ENABLED`  (line 1353)  read in: ez_manage.py
+- `REENTRY2_QUICK_RECOVERY_ENABLED`  (line 1354)  read in: ez_manage.py
+- `REENTRY2_STOCH_CROSS_ENABLED`  (line 1355)  read in: ez_manage.py
+- `REENTRY_2_ENABLED`  (line 1356)  read in: ez_manage.py
+- `REENTRY_B02_BC156_BOTTOM_ENABLED`  (line 1357)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B04_DC_RETEST_ENABLED`  (line 1358)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B09_SNAPBACK_ENABLED`  (line 1359)  read in: ez_manage.py
+- `REENTRY_B10_STOCH_REV_ENABLED`  (line 1360)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B11_DC_BREAK_ENABLED`  (line 1361)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B12_WT_MOM_ENABLED`  (line 1362)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B14_HA_TREND_ENABLED`  (line 1363)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_B15_STRONG_TREND_ENABLED`  (line 1364)  read in: ez_manage.py, v8_quick_engine.py
+- `REENTRY_COOLDOWN_S`  (line 1365)  read in: ez_manage.py
+- `REENTRY_ESCALATION_CRIT_MIN`  (line 1370)  read in: ez_positions_quick.py
+- `REENTRY_ESCALATION_WARN_MIN`  (line 1371)  read in: ez_positions_quick.py
+- `REENTRY_MANDATORY`  (line 1372)  read in: ez_manage.py, import argparse.py
+- `REGIME_ATR_RATIO_MIN`  (line 1374)  read in: strategy_enhancements.py
+- `REGIME_BB_WIDTH_PCT_MIN`  (line 1375)  read in: strategy_enhancements.py
+- `REGIME_DC_ATR_RATIO_MIN`  (line 1377)  read in: strategy_enhancements.py
+- `REGIME_DETECTION_ENABLED`  (line 1378)  read in: ez_positions_quick.py
+- `REGIME_ENTER_TRENDING_THRESHOLD`  (line 1379)  read in: ez_regime.py
+- `REGIME_EXIT_TRENDING_THRESHOLD`  (line 1380)  read in: ez_regime.py
+- `REGIME_GATE_ENABLED`  (line 1381)  read in: strategy_enhancements.py
+- `REGIME_MIN_DWELL_BARS`  (line 1382)  read in: ez_regime.py
+- `REGIME_RANGING_DC_BREAKOUT_SCORE`  (line 1383)  read in: ez_regime.py
+- `REGIME_RANGING_EXIT_GAIN_MIN`  (line 1384)  read in: ez_regime.py
+- `REGIME_RANGING_K_ZONE_BONUS`  (line 1385)  read in: ez_regime.py
+- `REGIME_RANGING_MIN_HOLD_BARS`  (line 1386)  read in: ez_regime.py
+- `REGIME_RANGING_NOLOSS_MIN`  (line 1387)  read in: ez_regime.py
+- `REGIME_RANGING_POSITION_SIZE_MULT`  (line 1388)  read in: ez_regime.py
+- `REGIME_RANGING_REENTRY_SIZE_MULT`  (line 1389)  read in: ez_regime.py
+- `REGIME_RANGING_SLOT_RESERVE_PCT`  (line 1390)  read in: ez_regime.py
+- `REGIME_RANGING_WT_EXIT_VEL`  (line 1393)  read in: ez_regime.py
+- `REGIME_RANGING_WT_REDUCE_FRAC_LOW`  (line 1394)  read in: ez_regime.py
+- `REGIME_RANGING_WT_REDUCE_FRAC_MED`  (line 1395)  read in: ez_regime.py
+- `REGIME_TRENDING_DC_BREAKOUT_SCORE`  (line 1396)  read in: ez_regime.py
+- `REGIME_TRENDING_EXIT_GAIN_MIN`  (line 1397)  read in: ez_regime.py
+- `REGIME_TRENDING_K_ZONE_BONUS`  (line 1399)  read in: ez_regime.py
+- `REGIME_TRENDING_MIN_HOLD_BARS`  (line 1400)  read in: ez_regime.py
+- `REGIME_TRENDING_NOLOSS_MIN`  (line 1401)  read in: ez_regime.py
+- `REGIME_TRENDING_POSITION_SIZE_MULT`  (line 1402)  read in: ez_regime.py
+- `REGIME_TRENDING_REENTRY_SIZE_MULT`  (line 1403)  read in: ez_regime.py
+- `REGIME_TRENDING_SLOT_RESERVE_PCT`  (line 1404)  read in: ez_regime.py
+- `REGIME_TRENDING_WT_EXIT_VEL`  (line 1405)  read in: ez_regime.py
+- `REGIME_TRENDING_WT_REDUCE_FRAC_LOW`  (line 1406)  read in: ez_regime.py
+- `REGIME_TRENDING_WT_REDUCE_FRAC_MED`  (line 1407)  read in: ez_regime.py
+- `RSI2_MEAN_REVERSION_ENABLED`  (line 1408)  read in: ez_positions_quick.py
+- `RSI2_SCORE_BONUS`  (line 1409)  read in: ez_positions_quick.py
+- `RSI2_THRESHOLD_LONG`  (line 1410)  read in: ez_positions_quick.py
+- `RSI2_THRESHOLD_SHORT`  (line 1411)  read in: ez_positions_quick.py
+- `RSI_ENTRY_GATE_ENABLED`  (line 1412)  read in: v8_quick_engine.py
+- `RSI_ENTRY_MAX_LONG`  (line 1413)  read in: v8_quick_engine.py
+- `RSI_ENTRY_MIN_SHORT`  (line 1414)  read in: v8_quick_engine.py
+- `RSI_MACD_EMA_ENABLED`  (line 1415)  read in: ez_positions_quick.py
+- `RSI_MACD_EMA_RSI_LONG`  (line 1416)  read in: ez_positions_quick.py
+- `RSI_MACD_EMA_RSI_SHORT`  (line 1417)  read in: ez_positions_quick.py
+- `RSI_MACD_EMA_SCORE`  (line 1418)  read in: ez_positions_quick.py
+- `RSI_MACD_EMA_TF`  (line 1419)  read in: ez_positions_quick.py
+- `SANDBOX_MODE`  (line 1428)  read in: ez_positions.py
+- `SATOSHIT_EXIT_ENABLED`  (line 1430)  read in: ez_manage.py, v8_quick_engine.py
+- `SATOSHIT_EXIT_PARTIAL_PCT`  (line 1431)  read in: ez_manage.py
+- `SATOSHIT_EXIT_USE_MAKER`  (line 1432)  read in: ez_manage.py
+- `SATOSHIT_PROTECT_TRADES`  (line 1435)  read in: ez_manage.py
+- `SBA_COOLDOWN_GLOBAL_S`  (line 1441)  read in: ez_positions_quick.py
+- `SBA_COOLDOWN_POSITION_S`  (line 1442)  read in: ez_positions_quick.py
+- `SBA_MAX_CONCURRENT`  (line 1443)  read in: ez_positions_quick.py
+- `SBA_MAX_TOTAL_MULT`  (line 1444)  read in: ez_positions_quick.py
+- `SBA_MIN_SCORE`  (line 1445)  read in: ez_positions_quick.py
+- `SCALP_ACCOUNTS`  (line 1446)  read in: ez_positions_quick.py, htf_breakout_scalper.py
+- `SCALP_MODE`  (line 1447)  read in: ez_manage.py, ez_positions_quick.py, htf_breakout_scalper.py
+- `SCALP_V2_DC_HTF_REQUIRE_ALL`  (line 1449)  read in: htf_breakout_scalper.py
+- `SCALP_V2_ISOLATE`  (line 1450)  read in: ez_manage.py, ez_positions_quick.py
+- `SCALP_V2_LH_LL_EXIT`  (line 1451)  read in: htf_breakout_scalper.py
+- `SCALP_V2_LH_LL_TF`  (line 1452)  read in: htf_breakout_scalper.py
+- `SCALP_V2_MAX_CONCURRENT`  (line 1453)  read in: ez_positions_quick.py
+- `SCALP_V2_MAX_HOLD_MINUTES`  (line 1454)  read in: htf_breakout_scalper.py, scalp_v2_fast_backtest.py
+- `SCALP_V2_REDZONE_EXIT`  (line 1455)  read in: htf_breakout_scalper.py
+- `SCALP_V2_REDZONE_K_THRESHOLD`  (line 1456)  read in: htf_breakout_scalper.py
+- `SCALP_V2_VARIANT`  (line 1458)  read in: htf_breakout_scalper.py
+- `SHORT_ABOVE_SMA20_BONUS`  (line 1461)  read in: ez_manage.py, ez_positions_quick.py
+- `SHORT_RSI_MIN_1H`  (line 1462)  read in: ez_positions_quick.py
+- `SIGNALS_LOOP_INTERVAL_SECONDS`  (line 1463)  read in: ez_rankings.py
+- `SIMPLE_TP_EXIT_ENABLED`  (line 1464)  read in: ez_positions_quick.py
+- `SIMPLE_TP_PCT`  (line 1465)  read in: ez_positions_quick.py
+- `SLEEP_TIME_PROC_ACCT`  (line 1466)  read in: ez_manage.py, import argparse.py
+- `STALE_WARNING_INTERVAL_SECONDS`  (line 1468)  read in: ez_manage.py, import argparse.py
+- `STOCH_CROSS_3M_EXIT_ENABLED`  (line 1469)  read in: v8_quick_engine.py
+- `STOP_LOSS_THRESHOLD`  (line 1470)  read in: ez_gain_protector.py
+- `STOP_MAJOR_LOSS_BLOCK_ENABLED`  (line 1471)  read in: ez_manage.py
+- `SYMBOL_PERF_MIN_TRADES`  (line 1479)  read in: ez_manage.py
+- `SYMBOL_PERF_WINDOW_DAYS`  (line 1480)  read in: ez_manage.py
+- `TASK_STAGGER_SECONDS`  (line 1481)  read in: ez_rankings.py
+- `TF_ALIGNMENT_MIN_TOTAL`  (line 1484)  read in: v8_quick_engine.py
+- `TF_FOCUS`  (line 1486)  read in: ez_manage.py, ez_positions_quick.py
+- `TIER_ENABLED`  (line 1497)  read in: ez_rankings.py
+- `TREND_EXIT_SCORE_FLIP`  (line 1498)  read in: ez_positions_quick.py
+- `TREND_HEDGE_MAX_SEC`  (line 1499)  read in: ez_positions_quick.py
+- `TREND_HTF_MIN_BEAR`  (line 1500)  read in: ez_positions_quick.py
+- `TREND_HTF_MIN_BULL`  (line 1501)  read in: ez_positions_quick.py
+- `TREND_MIN_GAIN_EXIT`  (line 1502)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_ENABLED`  (line 1503)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_RSI_LONG`  (line 1504)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_RSI_SHORT`  (line 1505)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_SCORE`  (line 1506)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_STOCH_LONG`  (line 1507)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_STOCH_SHORT`  (line 1508)  read in: ez_positions_quick.py
+- `TRIPLE_CONF_TF`  (line 1509)  read in: ez_positions_quick.py
+- `TR_ADX4H_BOYCOTT_SCORE`  (line 1510)  read in: ez_positions_quick.py
+- `TR_ADX4H_GATE_ENABLED`  (line 1511)  read in: ez_manage.py, ez_positions_quick.py
+- `TR_ADX4H_MAX`  (line 1512)  read in: ez_manage.py, ez_positions_quick.py
+- `TR_BBWIDTH4H_BOYCOTT_SCORE`  (line 1513)  read in: ez_positions_quick.py
+- `TR_BBWIDTH4H_GATE_ENABLED`  (line 1514)  read in: ez_positions_quick.py
+- `TR_BBWIDTH4H_MAX`  (line 1515)  read in: ez_positions_quick.py
+- `TR_CHOP4H_BONUS`  (line 1516)  read in: ez_positions_quick.py
+- `TR_CHOP4H_GATE_ENABLED`  (line 1517)  read in: ez_positions_quick.py
+- `TR_CHOP4H_MIN`  (line 1518)  read in: ez_positions_quick.py
+- `TR_CHOP4H_PENALTY`  (line 1519)  read in: ez_positions_quick.py
+- `TR_CHOP4H_TREND_MAX`  (line 1520)  read in: ez_positions_quick.py
+- `TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE`  (line 1521)  read in: ez_positions_quick.py
+- `TR_DCWIDTH4H_SHORT_ENABLED`  (line 1522)  read in: ez_positions_quick.py
+- `TR_DCWIDTH4H_SHORT_MAX`  (line 1523)  read in: ez_positions_quick.py
+- `TR_MFI4H_LONG_BOYCOTT_SCORE`  (line 1524)  read in: ez_positions_quick.py
+- `TR_MFI4H_LONG_ENABLED`  (line 1525)  read in: ez_positions_quick.py
+- `TR_MFI4H_LONG_MIN`  (line 1526)  read in: ez_positions_quick.py
+- `UNIVERSAL_NOLOSS_GATE`  (line 1527)  read in: ez_manage.py
+- `VALIDATE_REFRESH`  (line 1543)  read in: ez_manage.py, ez_positions_service.py, import argparse.py
+- `VOLUME_CONFIRMATION_ENABLED`  (line 1544)  read in: strategy_enhancements.py, v8_quick_engine.py
+- `VOLUME_CONFIRMATION_MULT`  (line 1545)  read in: strategy_enhancements.py, v8_quick_engine.py
+- `VOL_SPIKE_BODY_RATIO`  (line 1546)  read in: ez_positions_quick.py
+- `VOL_SPIKE_COOLDOWN`  (line 1547)  read in: ez_positions_quick.py
+- `VOL_SPIKE_ENABLED`  (line 1548)  read in: ez_positions_quick.py
+- `VOL_SPIKE_LS_MAX_IMBALANCE`  (line 1549)  read in: ez_positions_quick.py
+- `VOL_SPIKE_MIN_ALIGNMENT`  (line 1550)  read in: ez_positions_quick.py
+- `VOL_SPIKE_RELVOL_THRESHOLD`  (line 1551)  read in: ez_positions_quick.py
+- `WT_15M_SAME_HEDGE_COOLDOWN_SEC`  (line 1553)  read in: ez_manage.py
+- `WT_15M_SAME_HEDGE_DAILY_CAP`  (line 1554)  read in: ez_manage.py
+- `WT_15M_SAME_HEDGE_ENABLED`  (line 1555)  read in: ez_manage.py
+- `WT_EXIT_VEL_THRESHOLD`  (line 1556)  read in: ez_positions_quick.py
+- `WT_REDUCE_FRAC_HIGH`  (line 1557)  read in: ez_positions_quick.py
+- `WT_REDUCE_FRAC_LOW`  (line 1558)  read in: ez_positions_quick.py
+- `WT_REDUCE_FRAC_MED`  (line 1559)  read in: ez_positions_quick.py
+- `ZERO_CONFIRMATION_THRESHOLD_API`  (line 1560)  read in: ez_positions_service.py
+- `ZERO_CONFIRMATION_THRESHOLD_WS`  (line 1561)  read in: ez_positions_service.py
+
+## WIRED_LIVE summary
+
+Total WIRED_LIVE switches: **359**
+
+Sample of 20 WIRED_LIVE switch names:
+
+- `ABLATION_DISABLE_AGGRESSIVE_HEDGE`  (line 979)  read in: tradier_manage.py
+- `ABLATION_DISABLE_AUGMENTATION`  (line 980)  read in: tradier_manage.py
+- `ABLATION_DISABLE_CHECK_NOLOSS`  (line 981)  read in: tradier_manage.py
+- `ABLATION_DISABLE_DC_BREACH_REDUCE`  (line 982)  read in: tradier_manage.py
+- `ABLATION_DISABLE_ENTRY_LEADERBOARD`  (line 983)  read in: tradier_manage.py
+- `ABLATION_DISABLE_ENTRY_RANKING`  (line 984)  read in: tradier_manage.py
+- `ABLATION_DISABLE_ENTRY_REVERSAL`  (line 985)  read in: tradier_manage.py
+- `ABLATION_DISABLE_ENTRY_TECHNICAL`  (line 986)  read in: tradier_manage.py
+- `ABLATION_DISABLE_FAST_RISER`  (line 987)  read in: tradier_manage.py
+- `ABLATION_DISABLE_HIGH_GAIN_AUGMENT`  (line 989)  read in: tradier_manage.py
+- `ABLATION_DISABLE_PERIODIC_REENTRY`  (line 990)  read in: tradier_manage.py
+- `ABLATION_DISABLE_RATIO_REBALANCE`  (line 993)  read in: tradier_manage.py
+- `ABLATION_DISABLE_REENTRY`  (line 994)  read in: tradier_manage.py
+- `ABLATION_DISABLE_REENTRY_ENFORCE`  (line 995)  read in: tradier_manage.py
+- `ABLATION_DISABLE_SCALP_GUARD`  (line 996)  read in: tradier_manage.py
+- `ABLATION_DISABLE_SPIKE_FADE_EXIT`  (line 997)  read in: tradier_manage.py
+- `ACCOUNTS`  (line 914)  read in: tradier_manage.py, tradier_positions.py
+- `ACCOUNT_KEYS`  (line 328)  read in: tradier_manage.py
+- `ALIGNMENT_GATE_MIN`  (line 255)  read in: tradier_manage.py
+- `ALWAYS_TRADEABLE`  (line 94)  read in: tradier_manage.py
+
+## DEAD prefix distribution
+
+- `TRC_*` : 44
+- `DELTA_*` : 32
+- `TRADIER_*` : 31
+- `V8Q_*` : 14
+- `SATOSHIT_*` : 13
+- `ADAPTIVE_*` : 10
+- `MITIGATOR_*` : 10
+- `HEDGE_*` : 9
+- `TF_*` : 9
+- `SBA_*` : 8
+- `INF_*` : 8
+- `TIER_*` : 7
+- `EXIT_*` : 6
+- `_*` : 6
+- `BOUNCE_*` : 5
+- `DC_*` : 5
+- `LEGACY_*` : 5
+- `REGIME_*` : 5
+- `EP_*` : 4
+- `OPTIONS_*` : 3
+- `POSITION_*` : 3
+- `HOLD_*` : 3
+- `K_*` : 3
+- `MIN_*` : 3
+- `VWAP_*` : 3
