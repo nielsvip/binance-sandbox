@@ -112,6 +112,15 @@ class QuickConfig:
     REENTRY_PULL2_ENABLED: bool = False  # Rising fundamentals + SMA200 pullback bounce
     REENTRY_PULL3_ENABLED: bool = False  # BB lower-band + trend up + stoch cross
     REENTRY_PULL4_ENABLED: bool = False  # RSI pullback + HTF healthy + wt bouncing
+    # TRADIER alpha blocks — wired into reentry blocks dict for tradier mode (2026-04-16)
+    # K_ZONE: live Sharpe 4.23 on 20,605 trades. FH_MOMENTUM: Sharpe 1.54 validated.
+    REENTRY_B_KZONE_ENABLED: bool = False  # tradier auto-enables via apply_tradier_defaults
+    REENTRY_B_FH_MOM_ENABLED: bool = False
+    REENTRY_B_MFI_D_OVERSOLD_ENABLED: bool = False
+    FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5  # % move in first hour
+    FH_MOMENTUM_WINDOW_SEC: int = 3600  # 60 min window after open
+    MFI_LONG_THRESHOLD_D: float = 20.0  # mfi_D < 20 for long
+    MFI_SHORT_THRESHOLD_D: float = 80.0  # mfi_D > 80 for short
     # Velocity-decay exit — OPT-IN: hasn't been validated vs V8Q v3 baseline (test first)
     WT_VEL_DECAY_EXIT_ENABLED: bool = False
     WT_VEL_DECAY_THRESHOLD: float = 1.0
@@ -141,6 +150,14 @@ class QuickConfig:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4  # bars between multi-lung entries
+
+    # ===== Early-abort rule (2026-04-16 user directive) =====
+    # Stop evaluating a config if after N symbols its Sharpe < floor. Saves compute
+    # on combos that clearly don't clear the baseline. Only fires when stores has
+    # >= EARLY_ABORT_MIN_SYMBOLS, so small fast sweeps (11/12 syms) run to completion.
+    EARLY_ABORT_ENABLED: bool = True
+    EARLY_ABORT_MIN_SYMBOLS: int = 15
+    EARLY_ABORT_SHARPE_FLOOR: float = 1.0
 
     # ===== Auto-hooked Group B switches (2026-04-16) =====
     # 229 switches from config_tradier.py/config.py, defaults preserved.
@@ -410,6 +427,14 @@ class QuickConfig:
         self.STOCH_CROSS_1H_EXIT_ENABLED = True
         self.MFI_FLIP_EXIT_ENABLED = True
         self.WT_CROSSUNDER_FINAL_ENABLED = True
+        # 2026-04-16: wire 3 real tradier alpha sources into reentry block dict
+        self.REENTRY_B_KZONE_ENABLED = True      # live Sharpe 4.23 / 20,605 trades
+        self.REENTRY_B_FH_MOM_ENABLED = True     # live Sharpe 1.54 validated
+        self.REENTRY_B_MFI_D_OVERSOLD_ENABLED = True  # MFI_D<20 oversold entry
+        # TF-alignment — stocks require 2+ (per CLAUDE.md: crypto=1, stock=2)
+        self.HTF_MIN_ALIGNED = 2
+        # WT cross alignment — stocks need 3 (per CLAUDE.md)
+        self.WT_EXIT_MIN_TFS = 3
         self.MI_EXIT_ENABLED = True
         self.ENTRY_SCORE_THRESHOLD = 24.0  # stocks: 24 (crypto: 18) — per CLAUDE.md OPPOSITE params
         self.K3M_FLOOR = 30.0
@@ -605,6 +630,61 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             wt_rolling_3m = (wt_vel_3m < 0) & (wt1_3m > 15) & (wt1_3m < wt1_15m * 1.3)
             blocks["B_PULL4"] = rally_rsi & htf_bearish & wt_rolling_3m
 
+    # ═══════════════════════════════════════════════════════════════
+    # TRADIER ALPHA BLOCKS (2026-04-16) — ported from tradier_manage.py
+    # K_ZONE: live Sharpe 4.23 / 20,605 trades (live config value 35 / 65)
+    # FH_MOMENTUM: live Sharpe 1.54 validated (2026-04-07)
+    # MFI_D_OVERSOLD: MFI_LONG_THRESHOLD_D=20 from live config
+    # ═══════════════════════════════════════════════════════════════
+    k_4h_arr = _safe(npz, 'stoch_k_4h', n, 50)
+    d_4h_arr = _safe(npz, 'stoch_d_4h', n, 50)
+
+    # B_KZONE: K_4h in zone AND turning (K crosses over D for longs)
+    if getattr(cfg, 'REENTRY_B_KZONE_ENABLED', False):
+        kz_long_th = float(getattr(cfg, 'K_ZONE_LONG_THRESHOLD_TRADIER',
+                              getattr(cfg, 'K_ZONE_LONG_THRESHOLD', 35)))
+        kz_short_th = float(getattr(cfg, 'K_ZONE_SHORT_THRESHOLD_TRADIER',
+                              getattr(cfg, 'K_ZONE_SHORT_THRESHOLD', 65)))
+        if is_long:
+            blocks["B_KZONE"] = (k_4h_arr < kz_long_th) & (k_4h_arr > d_4h_arr)
+        else:
+            blocks["B_KZONE"] = (k_4h_arr > kz_short_th) & (k_4h_arr < d_4h_arr)
+
+    # B_FH_MOM: first 60 min after US market open (13:30 UTC) + minimum move
+    if getattr(cfg, 'REENTRY_B_FH_MOM_ENABLED', False):
+        ts = npz.get('timestamps')
+        if ts is None or len(ts) == 0:
+            blocks["B_FH_MOM"] = np.zeros(n, dtype=bool)
+        else:
+            ts = np.asarray(ts, dtype=np.int64)[:n]
+            if len(ts) < n:
+                pad = np.full(n - len(ts), ts[-1] if len(ts) else 0, dtype=np.int64)
+                ts = np.concatenate([ts, pad])
+            sec_of_day = ts % 86400
+            win = int(getattr(cfg, 'FH_MOMENTUM_WINDOW_SEC', 3600))
+            # Market open = 13:30 UTC = 48600s. First-hour window: [48600, 48600+win]
+            fh_window = (sec_of_day >= 48600) & (sec_of_day < 48600 + win)
+            close_1h = _safe(npz, 'close_1h', n)
+            open_1h = _safe(npz, 'open_1h', n)
+            mv_pct = np.zeros(n, dtype=np.float32)
+            safe_o = np.where(open_1h > 0, open_1h, 1.0)
+            mv_pct = (close_1h - open_1h) / safe_o * 100.0
+            min_move = float(getattr(cfg, 'FH_MOMENTUM_MIN_MOVE_PCT', 0.5))
+            if is_long:
+                blocks["B_FH_MOM"] = fh_window & (mv_pct >= min_move)
+            else:
+                blocks["B_FH_MOM"] = fh_window & (mv_pct <= -min_move)
+
+    # B_MFI_D_OVERSOLD: MFI_D < 20 for long / > 80 for short (mean-reversion)
+    if getattr(cfg, 'REENTRY_B_MFI_D_OVERSOLD_ENABLED', False):
+        mfi_D_arr = _safe(npz, 'mfi_D', n, 50)
+        long_th = float(getattr(cfg, 'MFI_LONG_THRESHOLD_D', 20))
+        short_th = float(getattr(cfg, 'MFI_SHORT_THRESHOLD_D', 80))
+        if is_long:
+            blocks["B_MFI_D_OVERSOLD"] = mfi_D_arr < long_th
+        else:
+            blocks["B_MFI_D_OVERSOLD"] = mfi_D_arr > short_th
+
     return blocks
 
 
@@ -689,6 +769,10 @@ def compute_entry_signals(npz, n, is_long, cfg):
             "B10": 1, "B12": 1, "B14": 1,
             # Pullback blocks (2026-04-16 experiment — tested, kept at low weight)
             "B_PULL1": 1, "B_PULL2": 1, "B_PULL3": 1, "B_PULL4": 1,
+            # Tradier alpha blocks (2026-04-16) — weights match historical Sharpe
+            "B_KZONE": 4,       # live Sharpe 4.23
+            "B_FH_MOM": 3,      # live Sharpe 1.54
+            "B_MFI_D_OVERSOLD": 2,
         }
         score = np.zeros(n, dtype=np.float32)
         for name, arr in blocks.items():
@@ -943,6 +1027,12 @@ def simulate(stores, cfg, capital=10000.0):
     start_size = cfg.START_POSITION_SIZE
     cooldown = cfg.COOLDOWN_BARS
     min_hold = cfg.MIN_HOLD_BARS
+    # Early-abort (user directive 2026-04-16): stop a config if after N symbols Sharpe < floor.
+    ea_enabled = bool(getattr(cfg, 'EARLY_ABORT_ENABLED', True))
+    ea_min_syms = int(getattr(cfg, 'EARLY_ABORT_MIN_SYMBOLS', 15))
+    ea_floor = float(getattr(cfg, 'EARLY_ABORT_SHARPE_FLOOR', 1.0))
+    symbols_processed = 0
+    early_abort = False
     for sym, npz in stores.items():
         ts = npz.get('timestamps', npz.get('timestamp_3m', np.array([])))
         n = len(ts)
@@ -996,9 +1086,20 @@ def simulate(stores, cfg, capital=10000.0):
                             continue
                     all_pnl.append(pnl)
                     in_pos = False; cd = max(cooldown, min_gap_bars)
+        symbols_processed += 1
+        # Early-abort: after both directions for this symbol, check cumulative Sharpe
+        if ea_enabled and symbols_processed >= ea_min_syms and len(all_pnl) >= 2:
+            p_chk = np.array(all_pnl)
+            s_chk = p_chk.std()
+            cur_sharpe = (p_chk.mean() / s_chk) if s_chk > 0 else 0.0
+            if cur_sharpe < ea_floor:
+                early_abort = True
+                break
     n_trades = len(all_pnl)
     if n_trades < 2:
-        return {"sharpe": 0, "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0, "avg_pnl_pct": 0, "wr": 0}
+        return {"sharpe": 0, "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0,
+                "avg_pnl_pct": 0, "wr": 0, "early_abort": early_abort,
+                "symbols_used": symbols_processed}
     p = np.array(all_pnl)
     w = int((p > 0).sum()); l = int((p <= 0).sum())
     m = p.mean(); s = p.std()
@@ -1008,6 +1109,8 @@ def simulate(stores, cfg, capital=10000.0):
         "trades": n_trades, "wins": w, "losses": l,
         "avg_pnl_pct": round(m, 4),
         "wr": round(w / n_trades * 100, 1) if n_trades > 0 else 0,
+        "early_abort": early_abort,
+        "symbols_used": symbols_processed,
     }
 
 

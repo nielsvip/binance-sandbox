@@ -146,20 +146,20 @@ def build_param_grid_breakout_multi_lung_tradier():
 
 
 def build_param_grid_tradier_core():
-    """Tradier-specific grid. Tradier defaults set ENTRY_SCORE=24, stricter gates.
-    Sweep lower thresholds to unlock trades, also test PT_PCT since tradier needs wider."""
+    """Tradier-specific grid tuned around K_ZONE + FH_MOM + MFI_D alpha blocks.
+    Seed test 2026-04-16: peak Sharpe 0.72 at score=6, pt=2.0, hold=20, wt_exit=3."""
     grid = {
-        "STRENGTH_FILTER_ENABLED": [True, False],
-        "STRENGTH_MIN_SCORE": [3.0, 5.0, 8.0],
-        "MIN_HOLD_BARS": [10, 20, 40, 80],
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [4.0, 5.0, 6.0, 7.0, 8.0],
+        "MIN_HOLD_BARS": [10, 20, 30, 40],
         "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.8, 1.5, 2.5, 5.0],
+        "PROFIT_TARGET_PCT": [1.0, 1.5, 2.0, 2.5, 3.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "HTF_MIN_ALIGNED": [1, 2],
+        "HTF_MIN_ALIGNED": [2, 3],
         "D_TREND_REQUIRED": [True, False],
-        "ENTRY_SCORE_THRESHOLD": [12.0, 18.0, 24.0],
-        "K3M_FLOOR": [20.0, 30.0, 40.0],
-        "TRADIER_MFI_ENTRY_LONG_ENABLED": [True, False],
+        "K_ZONE_LONG_THRESHOLD": [25, 35, 45],
+        "MFI_LONG_THRESHOLD_D": [15.0, 20.0, 25.0, 30.0],
+        "FH_MOMENTUM_MIN_MOVE_PCT": [0.3, 0.5, 0.7],
     }
     return grid
 
@@ -210,7 +210,13 @@ def run_one_config(args_tuple):
     elapsed = time.time() - t0
     result["run_id"] = run_id
     result["elapsed"] = round(elapsed, 1)
-    result["status"] = "ok" if result["trades"] > 0 else "no_trades"
+    # Status taxonomy: "useless" (early-aborted as Sharpe<floor), "no_trades", or "ok"
+    if result.get("early_abort"):
+        result["status"] = "useless"
+    elif result["trades"] > 0:
+        result["status"] = "ok"
+    else:
+        result["status"] = "no_trades"
     result["config"] = cfg_dict
     return result
 
@@ -225,6 +231,10 @@ def main():
     parser.add_argument("--npz-dir", type=str, default="")
     parser.add_argument("--limit", type=int, default=0, help="Max configs to run (0=all)")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--kill-sharpe", type=float, default=0.5,
+                        help="Abort sweep if best Sharpe stays below this after --kill-warmup configs (default 0.5)")
+    parser.add_argument("--kill-warmup", type=int, default=200,
+                        help="Configs to run before kill-rule applies (default 200)")
     args = parser.parse_args()
 
     symbols_list = None
@@ -256,7 +266,9 @@ def main():
         with open(csv_path) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row.get("status") == "ok":
+                # resume skips anything with a terminal status: ok, useless, no_trades
+                # (prior runs with blank/error status will re-run)
+                if row.get("status") in ("ok", "useless", "no_trades"):
                     done_hashes.add(row.get("config_hash", ""))
 
     todo = []
@@ -277,7 +289,7 @@ def main():
 
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     with open(csv_path, "a", newline="") as csvfile:
-        fieldnames = ["run_id", "config_hash", "sharpe", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status"]
+        fieldnames = ["run_id", "config_hash", "sharpe", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
         cfg_keys = sorted(configs[0].keys())
         for k in cfg_keys:
             fieldnames.append(f"cfg_{k}")
@@ -311,6 +323,8 @@ def main():
                     "avg_pnl_pct": result.get("avg_pnl_pct", 0),
                     "elapsed": result.get("elapsed", 0),
                     "status": result.get("status", "error"),
+                    "early_abort": 1 if result.get("early_abort") else 0,
+                    "symbols_used": result.get("symbols_used", 0),
                 }
                 for k in cfg_keys:
                     row[f"cfg_{k}"] = cfg_dict.get(k, "")
@@ -325,6 +339,13 @@ def main():
                 if completed % 10 == 0 or completed <= 5:
                     print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} trades={result.get('trades', 0)} "
                           f"best={best_sharpe:.4f} rate={rate:.1f}/s ETA={eta:.1f}h")
+                # KILL RULE: abort if best_sharpe stays below threshold after warmup
+                if completed >= args.kill_warmup and best_sharpe < args.kill_sharpe:
+                    print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
+                    print(f"  Aborting sweep — grid likely missing the right alpha knobs")
+                    for f in futures:
+                        f.cancel()
+                    break
 
     print(f"\n{'='*70}")
     print(f"  SWEEP COMPLETE — {completed} configs in {time.time()-t_start:.0f}s")

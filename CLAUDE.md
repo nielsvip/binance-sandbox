@@ -144,7 +144,26 @@ Anything NOT in that legitimate-differ list must bit-match. If you find a drift,
 3. Edit locally (/Users/niels/Documents/binance/<file>)
 4. Compile: python -c "import py_compile; py_compile.compile('<file>', doraise=True)"
 5. Verify: grep/read changed lines to confirm.
+6. ⚠️ SANDBOX SYNC — rsync the edited file(s) to S1 AND S2 IMMEDIATELY (see rule below).
+7. Verify md5 parity across MacBook + S1 + S2 before declaring "done".
 ```
+
+### 🔴 RULE: ANY LIVE EDIT → SANDBOX SYNC IS NOT OPTIONAL
+
+**If you edit a live file on MacBook and do NOT sync it to S1 + S2 in the same turn, the sandboxes are now testing OLD code and every backtest/sweep that runs on them is LYING.** This has cost real money before (2026-04-14 canonical-switch wipeout, 2026-04-16 D4 stub mismatch). It will keep costing money until the reflex is automatic.
+
+**The reflex** — after EVERY edit to any live file in the 6-critical list (`ez_manage.py`, `ez_positions_quick.py`, `ez_positions_service.py`, `tradier_manage.py`, `config.py`, `config_tradier.py`) OR the backtest infra (`v8_quick_engine.py`, `v8_quick_sweep.py`, `backtest_v8_*.py`, `breakout_multi_lung.py`, any other `ez_*.py`/`tradier_*.py`/`wt_*.py`/`utils.py`/`symbols.json`):
+
+```bash
+# Run these in the same turn as the edit, no exceptions:
+rsync -az --existing --update <edited_files> niels@157.180.125.52:/home/niels/binance-sandbox/
+rsync -az --existing --update <edited_files> niels@204.168.181.211:/home/niels/binance-sandbox/
+# Verify md5 match across MacBook + S1 + S2.
+```
+
+**If a sweep is currently running on S1 or S2** and you just synced new code, flag it: the running worker has the OLD code loaded in memory — only NEXT-spawned workers pick up the change. Either wait for the sweep to finish a batch naturally, or explicitly restart it with user approval.
+
+**"I forgot to rsync"** is not an acceptable failure mode. Apply every live-file edit as a two-step atomic: edit + rsync-to-sandboxes. Missing the rsync = the edit didn't happen, because sweeps now test a ghost version of the file.
 
 ---
 

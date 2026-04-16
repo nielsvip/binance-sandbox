@@ -35,6 +35,15 @@ from ez_manage import TradingPolicy as trading_policy
 from ez_manage import (_last_events_cache_time, generate_unique_id,
                        load_accounts, minutes_since,
                        verify_trade_via_websocket)
+# Helpers needed by the ported reentry loops (ez_positions_quick.py OWNS these loops now).
+# We still import the small leaf helpers — they are not zombie logic; they are stateless
+# helpers that live in ez_manage for historical reasons.
+from ez_manage import Signal as _EM_Signal
+from ez_manage import ii as _ez_ii
+from ez_manage import price as _ez_price
+from ez_manage import queue_trade_action as _ez_queue_trade_action
+from ez_manage import check_reentry_delta_tolerant as _ez_check_reentry_delta_tolerant
+from ez_manage import check_dc_high_break_retest as _ez_check_dc_high_break_retest
 from ez_positions_service import bootstrap_position_service
 from ez_share_ind import get_shared_memory_client
 from utils import (SimpleRedisManager, construct_position_key,
@@ -11749,6 +11758,37 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             logger.warning(f"⚠️ [REENTRY_OVERDUE] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, STILL not reentered! k3m={_px_k3m:.0f} exhausted={_px_exhausted} momentum={_px_momentum}")
                         elif not should_trade and _min_since_exit_epq >= _warn_min:
                             logger.info(f"[REENTRY_PENDING] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, waiting for signal. k3m={_px_k3m:.0f}")
+                # == EVALUATE_REENTRY (ported from ez_manage.py:16010) — 7-block per-symbol reentry evaluator ==
+                # Runs as fallback when TIER1/TIER2 did NOT fire. Reuses SAME MIN_GAP + SYMGATE + RALLY_K15M guards.
+                if (not should_trade) and pos_amt <= _pos_min_qty_entry:
+                    try:
+                        _er_ctx = {
+                            'config': config, 'logger': logger,
+                            'position_key': position_key, 'symbol': symbol,
+                            'account_key': account_key, 'position_side': position_side,
+                            'trade_manager': trade_manager, 'current_price': current_price,
+                            'indicators': indicators, 'data_manager': data_manager,
+                            'last_exit_timestamp': entry_meta.get('last_exit_timestamp'),
+                        }
+                        _er_signal = await evaluate_reentry_epq(_er_ctx)
+                    except Exception as _er_err:
+                        logger.debug(f"[EVAL_REENTRY_EPQ_ERR] {position_key}: {_er_err}")
+                        _er_signal = None
+                    if _er_signal is not None:
+                        should_trade = True
+                        _dc_breakout_entry = True
+                        score = max(score, safe_fetch_float(getattr(_er_signal, 'conviction', 70.0), 70.0) / 5.0)
+                        reason = f"EVAL_REENTRY_EPQ_{getattr(_er_signal, 'reason', '?')}"
+                        rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                        logger.warning(f"[EVAL_REENTRY_EPQ_FIRED] {position_key}: {reason}")
+                # == ENTRY_SYMGATE (fresh entries only — no prior exit) ==
+                # Mirrors the reentry SYMGATE but for fresh OPENs. Fails OPEN on any error.
+                if (not should_trade) and pos_amt <= _pos_min_qty_entry and bool(getattr(config, 'ENTRY_SYMGATE_ENABLED', True)):
+                    _has_prior_exit = bool(tracker_manager.last_exit_times.get(position_key, 0.0) or entry_meta.get('last_exit_timestamp'))
+                    if not _has_prior_exit:
+                        if _epq_reentry_symgate_blocked(data_manager, config, symbol, indicators, is_long, position_key):
+                            logger.info(f"[ENTRY_SYMGATE] {position_key}: fresh entry blocked by DELTA gate")
+                            return
                 # == DC BREAKOUT CHECK (PRIMARY - runs BEFORE signal gates) ==
                 if 'STALE_INDICATORS' not in str(reason) and position_key in tracker_manager.tradeable_position_keys.get(account_key, set()):
                     _force_fresh = False
@@ -12237,6 +12277,759 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
 #     d_1m = safe_fetch_float(metrics.get('d_1m', 50.0), 50.0)
 #     logger.info(f"⚡ [SCALPING][{account_key}] {action} {position_key} | " f"k_1m={k_1m:.1f}, k_1m_prev={k_1m_prev:.1f}, d_1m={d_1m:.1f} | " f"Reason: {reason}")
 # DEAD_CODE_END — log_scalping_action: defined but never called
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PORTED REENTRY FUNCTIONS (from ez_manage.py — now LIVE here)
+# 2026-04-16 integration: ez_positions_quick.py OWNS the full reentry path.
+# - reentry_enforcement_loop_epq        (port of reentry_enforcement_loop @14972)
+# - evaluate_reentry_epq                (port of evaluate_reentry @16010)
+# - evaluate_reentry_2_epq              (port of evaluate_reentry_2 @17770)
+# - process_single_reentry_evaluation_epq (port of helper @17481)
+#
+# All three apply the MANDATORY new guards before any order is queued:
+#   REENTRY_MIN_GAP_MINUTES · REENTRY_SYMGATE_ENABLED · REENTRY_RALLY_K15M_MAX
+# Guards fail OPEN (a broken DELTA tracker does NOT lock the bot).
+# Coexistence with the BC_155 TIER1/TIER2 block at 11690-11709 is intentional:
+# that block fires inside check_entry_candidates_for_account and uses the SAME
+# MIN_GAP + SYMGATE guard; this enforcement loop is a second, independent layer
+# that fires every 15s across all accounts using pending_reentries state.
+# ═══════════════════════════════════════════════════════════════════════════════
+_epq_reentry_eval_semaphore = asyncio.Semaphore(50)
+
+def _epq_reentry_symgate_blocked(data_manager, config_obj, symbol: str, indicators: dict, is_long: bool, position_key: str) -> bool:
+    """Shared SYMGATE helper — fails OPEN on any error (returns False)."""
+    try:
+        if not bool(getattr(config_obj, 'REENTRY_SYMGATE_ENABLED', True)):
+            return False
+        if not data_manager or not hasattr(data_manager, 'delta_tracker'):
+            return False
+        dt = data_manager.delta_tracker
+        if not dt:
+            return False
+        if not bool(getattr(config_obj, 'DELTA_ENGINE_ENABLED', False)):
+            return False
+        sig = dt.update(symbol, indicators, {"side": "LONG" if is_long else "SHORT"})
+        if not sig:
+            return False
+        speed_min = float(getattr(config_obj, 'REENTRY_SYMGATE_SPEED_MIN', 0.5))
+        bs = float(getattr(sig, 'bull_speed', 0.0) or 0.0)
+        es = float(getattr(sig, 'bear_speed', 0.0) or 0.0)
+        zone = getattr(sig, 'zone', '')
+        blocked = False; why = ''
+        if is_long:
+            if getattr(sig, 'exit_long', False): blocked = True; why = 'exit_long'
+            elif zone in ("TOP", "TOP_TOP"): blocked = True; why = f'zone={zone}'
+            elif bs < speed_min: blocked = True; why = f'bull_speed={bs:.2f}<{speed_min:.2f}'
+        else:
+            if getattr(sig, 'exit_short', False): blocked = True; why = 'exit_short'
+            elif zone in ("BOTTOM", "BOTTOM_BOTTOM"): blocked = True; why = f'zone={zone}'
+            elif es < speed_min: blocked = True; why = f'bear_speed={es:.2f}<{speed_min:.2f}'
+        if blocked:
+            logger.info(f"[SYMGATE_BLOCK] {position_key}: {why} bs={bs:.2f} es={es:.2f} zone={zone}")
+        return blocked
+    except Exception as _sg_err:
+        logger.debug(f"[SYMGATE_FAIL_OPEN] {position_key}: {_sg_err} — allowing through")
+        return False
+
+def _epq_rally_k15m_blocked(indicators: dict, is_long: bool, config_obj, position_key: str) -> bool:
+    """REENTRY_RALLY_K15M_MAX guard (default 100.0 = disabled). Fails OPEN on error."""
+    try:
+        thr = float(getattr(config_obj, 'REENTRY_RALLY_K15M_MAX', 100.0))
+        if thr >= 100.0:
+            return False
+        k15 = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
+        if is_long and k15 >= thr:
+            logger.info(f"[RALLY_K15M_BLOCK] {position_key}: LONG k15m={k15:.1f} >= {thr:.1f}")
+            return True
+        if (not is_long) and k15 <= (100.0 - thr):
+            logger.info(f"[RALLY_K15M_BLOCK] {position_key}: SHORT k15m={k15:.1f} <= {100.0 - thr:.1f}")
+            return True
+        return False
+    except Exception as _rk_err:
+        logger.debug(f"[RALLY_K15M_FAIL_OPEN] {position_key}: {_rk_err} — allowing through")
+        return False
+
+def _epq_min_gap_blocked(exit_ts_raw, config_obj, position_key: str) -> bool:
+    """REENTRY_MIN_GAP_MINUTES guard (crypto default 3.0). Fails OPEN on parse error."""
+    try:
+        thr_min = float(getattr(config_obj, 'REENTRY_MIN_GAP_MINUTES', 3.0))
+        if thr_min <= 0:
+            return False
+        if not exit_ts_raw:
+            return False
+        if isinstance(exit_ts_raw, (int, float)):
+            # epoch seconds
+            elapsed = (time.time() - float(exit_ts_raw)) / 60.0
+        elif isinstance(exit_ts_raw, datetime):
+            elapsed = (datetime.now(timezone.utc) - exit_ts_raw).total_seconds() / 60.0
+        else:
+            _dt = datetime.fromisoformat(str(exit_ts_raw).replace('Z', '+00:00'))
+            elapsed = (datetime.now(timezone.utc) - _dt).total_seconds() / 60.0
+        if elapsed < thr_min:
+            logger.info(f"[REENTRY_GAP_BLOCK] {position_key}: elapsed={elapsed:.2f}m < {thr_min:.1f}m")
+            return True
+        return False
+    except Exception as _mg_err:
+        logger.debug(f"[REENTRY_GAP_FAIL_OPEN] {position_key}: {_mg_err} — allowing through")
+        return False
+
+async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event, data_manager: FastDataManager = None):
+    """Aggressive reentry loop — fires every 15s. Ported from ez_manage.py:14972.
+    P0 3m-rescue + CROSSED/NOCROSS pathways, qty multipliers (1.0 / 1.35),
+    delta-tolerant guard, crash-if-fail safeguard AFTER REENTRY_CRASH_TIMEOUT_SEC.
+    New guards applied BEFORE any order is queued:
+      · REENTRY_MIN_GAP_MINUTES (3.0 crypto / 15.0 stocks)
+      · REENTRY_SYMGATE_ENABLED (DELTA zone/exit/speed)
+      · REENTRY_RALLY_K15M_MAX  (stoch k_15m ceiling for LONG / floor for SHORT)
+    Guards fail OPEN: a broken DELTA tracker does NOT lock the bot.
+    Respects ABLATION_DISABLE_REENTRY_ENFORCE for backtest isolation."""
+    logger.info("[REENTRY_ENFORCE_EPQ] Aggressive reentry loop started (15s interval)")
+    _reentry_last_fire = {}
+    _price_crossed_since = {}
+    REENTRY_COOLDOWN = float(getattr(config, 'REENTRY_COOLDOWN_S', 0.0))
+    REENTRY_CRASH_TIMEOUT_SEC = 300.0
+    while not stop_event.is_set():
+        try:
+            await asyncio.sleep(15.0)
+            if bool(getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False)):
+                continue
+            if not getattr(config, 'REENTRY_MANDATORY', True):
+                continue
+            if not hasattr(trade_manager, 'pending_reentries'):
+                trade_manager.pending_reentries = {}
+            _reentry_src = trade_manager.service.reentry_data if getattr(trade_manager, 'service', None) else getattr(trade_manager, 'reentry_data', {}) or {}
+            for pk, rd in list(_reentry_src.items()):
+                if not isinstance(rd, dict): continue
+                _re_amt = safe_fetch_float(rd.get('reentry_amount', 0), 0.0)
+                if _re_amt <= 0: continue
+                if pk not in trade_manager.pending_reentries or trade_manager.pending_reentries[pk].get('status') in ('filled',):
+                    trade_manager.pending_reentries[pk] = {
+                        'exit_price': safe_fetch_float(rd.get('reentry_level', rd.get('exit_price', 0)), 0.0),
+                        'exit_time': str(rd.get('timestamp', '')),
+                        'exit_reason': str(rd.get('reason', '')),
+                        'original_qty': _re_amt,
+                        'attempts': 0,
+                        'stoch_wait_cycles': 0,
+                        'status': 'pending',
+                    }
+            for position_key, data in list(trade_manager.pending_reentries.items()):
+                if data.get('status') in ('filled', 'queued'): continue
+                _last = _reentry_last_fire.get(position_key, 0)
+                if (time.time() - _last) < REENTRY_COOLDOWN:
+                    continue
+                account_key, symbol, pos_side = parse_position_key(position_key)
+                is_long = pos_side == 'LONG'
+                indicators = await _ez_ii(trade_manager, symbol)
+                if not indicators: continue
+                # === NEW GUARDS (MIN_GAP + SYMGATE + RALLY_K15M) — fail OPEN ===
+                if _epq_min_gap_blocked(data.get('exit_time', ''), config, position_key):
+                    continue
+                if _epq_reentry_symgate_blocked(data_manager, config, symbol, indicators, is_long, position_key):
+                    continue
+                if _epq_rally_k15m_blocked(indicators, is_long, config, position_key):
+                    continue
+                # === END NEW GUARDS ===
+                k_3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
+                d_3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
+                k_1m = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50.0)
+                d_1m = safe_fetch_float(indicators.get('stoch_d_1m', 50), 50.0)
+                current_price = safe_fetch_float(indicators.get('current_price', 0.0), 0.0)
+                if current_price <= 0: continue
+                exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
+                if exit_price <= 0: continue
+                _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                _elapsed_s = 999999.0
+                _exit_ts_raw = data.get('exit_time', '')
+                if _exit_ts_raw:
+                    try:
+                        _exit_dt = datetime.fromisoformat(str(_exit_ts_raw).replace('Z', '+00:00'))
+                        _elapsed_s = (datetime.now(timezone.utc) - _exit_dt).total_seconds()
+                    except Exception:
+                        pass
+                _under_60 = _elapsed_s < 3600.0
+                _wt1_3m_gr = safe_fetch_float(indicators.get('wt1_3m', 0), 0.0); _wt2_3m_gr = safe_fetch_float(indicators.get('wt2_3m', 0), 0.0)
+                _wt1_15m_gr = safe_fetch_float(indicators.get('wt1_15m', 0), 0.0); _wt2_15m_gr = safe_fetch_float(indicators.get('wt2_15m', 0), 0.0)
+                _wt1_1h_gr = safe_fetch_float(indicators.get('wt1_1h', 0), 0.0); _wt2_1h_gr = safe_fetch_float(indicators.get('wt2_1h', 0), 0.0)
+                _wt1_4h_gr = safe_fetch_float(indicators.get('wt1_4h', 0), 0.0); _wt2_4h_gr = safe_fetch_float(indicators.get('wt2_4h', 0), 0.0)
+                _wt1_D_gr = safe_fetch_float(indicators.get('wt1_D', 0), 0.0); _wt2_D_gr = safe_fetch_float(indicators.get('wt2_D', 0), 0.0)
+                _wt3m_ok = (is_long and _wt1_3m_gr > _wt2_3m_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr)
+                _wt15m_ok = (is_long and _wt1_15m_gr > _wt2_15m_gr) or (not is_long and _wt1_15m_gr < _wt2_15m_gr)
+                _wt1h_ok = (is_long and _wt1_1h_gr > _wt2_1h_gr) or (not is_long and _wt1_1h_gr < _wt2_1h_gr)
+                _wt4h_ok = (is_long and _wt1_4h_gr > _wt2_4h_gr) or (not is_long and _wt1_4h_gr < _wt2_4h_gr)
+                _wtD_ok = (is_long and _wt1_D_gr > _wt2_D_gr) or (not is_long and _wt1_D_gr < _wt2_D_gr)
+                _htf_count = int(_wt1h_ok) + int(_wt4h_ok) + int(_wtD_ok)
+                _full_stack = _wt3m_ok and _wt15m_ok and _htf_count >= 2
+                _k3m_bias_ok = (is_long and k_3m < 50 and k_3m > d_3m) or (not is_long and k_3m > 50 and k_3m < d_3m)
+                should_reenter = False
+                _qty_mult = 0.0
+                _reason_tag = ""
+                _wt1_3m_prev_gr = safe_fetch_float(indicators.get('wt1_3m_prev', _wt1_3m_gr), _wt1_3m_gr)
+                _delta_rising = (is_long and _wt1_3m_gr > _wt2_3m_gr and _wt1_3m_gr > _wt1_3m_prev_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr and _wt1_3m_gr < _wt1_3m_prev_gr)
+                _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
+                _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
+                if is_long:
+                    _off_red_count = int(k_3m < 70) + int(_k_15m_r < 70) + int(_k_1h_r < 70)
+                else:
+                    _off_red_count = int(k_3m > 30) + int(_k_15m_r > 30) + int(_k_1h_r > 30)
+                _clear_of_red = _off_red_count >= 2
+                _exit_reason_str = str(data.get('exit_reason', '')).upper()
+                _was_3m_exit = any(t in _exit_reason_str for t in ('3M', 'DELTA_EXIT', 'STOCH_CROSSUNDER', 'STOCH_CROSSOVER', 'WT_3M'))
+                _3m_entry_fires = (is_long and _wt3m_ok and k_3m > d_3m) or (not is_long and _wt3m_ok and k_3m < d_3m)
+                if _was_3m_exit and _wt1h_ok and _3m_entry_fires:
+                    should_reenter = True
+                    _qty_mult = 1.0
+                    _reason_tag = "P0_3M_RESCUE_1H_OK"
+                    logger.warning(f"🟢 [REENTRY_P0_3M_RESCUE] {position_key}: exit_reason='{_exit_reason_str[:40]}' wt1h_ok={_wt1h_ok} 3m_entry=TRUE — BYPASS FILTERS")
+                if not should_reenter:
+                    _safety_ok = _delta_rising and _clear_of_red
+                    if _price_crossed:
+                        if _under_60 and _k3m_bias_ok and _safety_ok:
+                            should_reenter = True; _qty_mult = 1.0; _reason_tag = "CROSSED_u60_kbias_SAFE"
+                        elif (not _under_60) and _full_stack and _safety_ok:
+                            should_reenter = True; _qty_mult = 1.0; _reason_tag = f"CROSSED_o60_FULLSTACK_htf{_htf_count}_SAFE"
+                        if position_key not in _price_crossed_since:
+                            _price_crossed_since[position_key] = time.time()
+                            logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s u60={_under_60} k3m_bias={_k3m_bias_ok} full_stack={_full_stack} delta_rising={_delta_rising} clear_red={_clear_of_red}(off={_off_red_count}/3)")
+                    else:
+                        _price_crossed_since.pop(position_key, None)
+                        if _full_stack and _safety_ok:
+                            should_reenter = True; _qty_mult = 1.35; _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}_SAFE"
+                if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
+                    should_reenter = False
+                    logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")
+                if should_reenter:
+                    _gr_ok, _gr_reason = _ez_check_reentry_delta_tolerant(indicators, is_long, trade_manager, symbol)
+                    if not _gr_ok:
+                        should_reenter = False
+                        logger.info(f"[GUARANTEED_REENTRY_DELTA_BLOCK] {position_key}: {_gr_reason}")
+                if should_reenter:
+                    data['attempts'] = data.get('attempts', 0) + 1
+                    reason = f"GUARANTEED_REENTRY_{_reason_tag}_k3m{k_3m:.0f}_exit{exit_price:.4f}_px{current_price:.4f}_mult{_qty_mult:.2f}_elapsed{_elapsed_s:.0f}s_attempt{data['attempts']}"
+                    logger.warning(f"[REENTRY_ENFORCE_EPQ] {position_key}: {_reason_tag} mult={_qty_mult:.2f} elapsed={_elapsed_s:.0f}s — REENTRY NOW ({reason})")
+                    _base_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
+                    if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
+                    override_qty = _base_qty * _qty_mult
+                    result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 99.0, override_qty=override_qty)
+                    if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                        data['status'] = 'queued'
+                        data['_filled_at'] = time.time()
+                        _reentry_last_fire[position_key] = time.time()
+                        _price_crossed_since.pop(position_key, None)
+                        logger.warning(f"[REENTRY_FIRED_EPQ] {position_key}: Reentry queued (attempt {data['attempts']})")
+                    elif _price_crossed:
+                        _crossed_at = _price_crossed_since.get(position_key, time.time())
+                        _sec_since_cross = time.time() - _crossed_at
+                        if _sec_since_cross > REENTRY_CRASH_TIMEOUT_SEC:
+                            logger.critical(f"💀💀💀 [REENTRY_CRASH_EPQ] {position_key}: Price crossed exit {exit_price:.6f} {_sec_since_cross:.0f}s ago, reentry FAILED {data['attempts']} times. result={result}. CRASHING SCRIPT — REENTRY IS MANDATORY.")
+                            os._exit(1)
+                        else:
+                            logger.critical(f"🚨 [REENTRY_RETRY_EPQ] {position_key}: Price crossed exit but order failed (result={result}). {_sec_since_cross:.0f}s/{REENTRY_CRASH_TIMEOUT_SEC:.0f}s until CRASH. Retrying...")
+                else:
+                    data['stoch_wait_cycles'] = data.get('stoch_wait_cycles', 0) + 1
+                    if data['stoch_wait_cycles'] % 20 == 0:
+                        logger.info(f"[REENTRY_PENDING_EPQ] {position_key}: Waiting for entry signal (wait_cycles={data['stoch_wait_cycles']}, k1m={k_1m:.0f}/d1m={d_1m:.0f}, k3m={k_3m:.0f}, exit_px={exit_price:.4f}, cur_px={current_price:.4f})")
+                if data.get('status') == 'queued' and data.get('_filled_at'):
+                    _fill_age = time.time() - data['_filled_at']
+                    if _fill_age >= 360.0:
+                        pos = None
+                        try:
+                            pos = await trade_manager.get_position(position_key)
+                        except Exception:
+                            pos = None
+                        if pos and abs(float(getattr(pos, 'positionAmt', 0))) > 0:
+                            _gain = float(getattr(pos, 'gain', 0) or 0)
+                            if _gain < 0:
+                                logger.critical(f"💀💀💀 [REENTRY_LOSS_KILL_EPQ] {position_key}: Reentered {_fill_age:.0f}s ago, gain={_gain*100:.2f}% — NOT WINNING AFTER 6MIN. CRASHING.")
+                                os._exit(1)
+        except asyncio.CancelledError:
+            logger.info("[REENTRY_ENFORCE_EPQ] Cancelled — exiting loop")
+            break
+        except Exception as e:
+            logger.error(f"[REENTRY_ENFORCE_EPQ_ERROR] {e}", exc_info=True)
+            await asyncio.sleep(15.0)
+
+async def evaluate_reentry_epq(ctx: dict):
+    """Ported from ez_manage.py:16010. 7 proven reentry blocks with per-block switches
+    (B15 STRONG_TREND, B04 DC_RETEST, B11 DC_BREAK, B02 BC156_BOTTOM, B12 WT_MOM,
+    B14 HA_TREND, B10 STOCH_REV, plus B01/B09 for sweep). Returns a Signal or None.
+    Guards applied BEFORE any block can fire: MIN_GAP + SYMGATE + RALLY_K15M.
+    Guards fail OPEN — broken DELTA tracker does NOT lock the bot."""
+    cfg = ctx.get('config', config); log_ = ctx.get('logger', logger)
+    position_key = ctx['position_key']
+    symbol = ctx['symbol']
+    trade_manager = ctx['trade_manager']
+    position = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
+    if not position:
+        try:
+            position = await trade_manager.get_position(position_key)
+        except Exception:
+            position = None
+    if not position: return None
+    is_long = ctx.get('position_side', 'LONG') == "LONG"
+    current_price = safe_fetch_float(ctx.get('current_price') or ctx.get('mark_price') or getattr(position, 'mark_price', 0.0), 0.0)
+    if not current_price: current_price = await _ez_price(symbol, position, 3)
+    if current_price <= 0: return None
+    positionAmt = safe_fetch_float(position.positionAmt, 0.0)
+    position_value = abs(positionAmt) * current_price
+    min_pos_size = safe_fetch_float(cfg.MIN_POSITION_SIZE, 55.0)
+    if position_value > 2 * min_pos_size: return None
+    i = ctx.get('indicators') if isinstance(ctx.get('indicators'), dict) else await _ez_ii(trade_manager, symbol)
+    if not i: return None
+    # === NEW GUARDS (MIN_GAP + SYMGATE + RALLY_K15M) — fail OPEN ===
+    _exit_ts_raw = ctx.get('last_exit_timestamp') or getattr(position, 'last_reduction_time', None) or ctx.get('exit_time', '')
+    if _epq_min_gap_blocked(_exit_ts_raw, cfg, position_key):
+        return None
+    _dm = ctx.get('data_manager')
+    if _epq_reentry_symgate_blocked(_dm, cfg, symbol, i, is_long, position_key):
+        return None
+    if _epq_rally_k15m_blocked(i, is_long, cfg, position_key):
+        return None
+    # === END NEW GUARDS ===
+    _sf = safe_fetch_float
+    re_qty = cfg.START_POSITION_SIZE / max(current_price, 1e-9)
+    wt1_3m = _sf(i.get('wt1_3m'), 0); wt2_3m = _sf(i.get('wt2_3m'), 0)
+    wt1_15m = _sf(i.get('wt1_15m'), 0); wt2_15m = _sf(i.get('wt2_15m'), 0)
+    wt1_1h = _sf(i.get('wt1_1h'), 0); wt2_1h = _sf(i.get('wt2_1h'), 0)
+    wt1_4h = _sf(i.get('wt1_4h'), 0); wt2_4h = _sf(i.get('wt2_4h'), 0)
+    wt_vel_3m = _sf(i.get('wt_velocity_3m'), 0); wt_vel_15m = _sf(i.get('wt_velocity_15m'), 0)
+    wt_vel_1h = _sf(i.get('wt_velocity_1h'), 0)
+    k_3m = _sf(i.get('stoch_k_3m'), 50); d_3m = _sf(i.get('stoch_d_3m'), 50)
+    k_15m = _sf(i.get('stoch_k_15m'), 50); k_1h = _sf(i.get('stoch_k_1h'), 50)
+    k_3m_prev = _sf(i.get('k_3m_prev'), k_3m)
+    dc_high_4h = _sf(i.get('dc_high_4h'), 0); dc_low_4h = _sf(i.get('dc_low_4h'), 0)
+    dc_high_1h = _sf(i.get('dc_high_1h'), 0); dc_high_15m = _sf(i.get('dc_high_15m'), 0)
+    dc_low_1h = _sf(i.get('dc_low_1h'), 0); dc_low_15m = _sf(i.get('dc_low_15m'), 0)
+    ha_3m = i.get('ha_3m', 'neutral'); ha_15m = i.get('ha_15m', 'neutral'); ha_1h = i.get('ha_1h', 'neutral')
+    # B15: STRONG TREND CONTINUATION
+    if getattr(cfg, 'REENTRY_B15_STRONG_TREND_ENABLED', True):
+        if is_long and dc_high_4h > 0 and current_price > dc_high_4h and wt_vel_1h > 2.0 and k_1h < 85:
+            log_.warning(f"[REENTRY_B15_EPQ] {position_key}: STRONG_TREND_LONG dc4h={dc_high_4h:.4f} vel1h={wt_vel_1h:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B15_STRONG_TREND_LONG_dc4h={dc_high_4h:.4f}_vel1h={wt_vel_1h:.1f}', conviction=95.0, quantity=re_qty)
+        if not is_long and dc_low_4h > 0 and current_price < dc_low_4h and wt_vel_1h < -2.0 and k_1h > 15:
+            log_.warning(f"[REENTRY_B15_EPQ] {position_key}: STRONG_TREND_SHORT dc4h={dc_low_4h:.4f} vel1h={wt_vel_1h:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B15_STRONG_TREND_SHORT_dc4h={dc_low_4h:.4f}_vel1h={wt_vel_1h:.1f}', conviction=95.0, quantity=re_qty)
+    # B04: DC HIGH BREAK RETEST
+    if getattr(cfg, 'REENTRY_B04_DC_RETEST_ENABLED', True):
+        _dcbr_ok, _dcbr_reason, _dcbr_mult = _ez_check_dc_high_break_retest(i, current_price, is_long)
+        if _dcbr_ok:
+            _dcbr_qty = cfg.START_POSITION_SIZE * _dcbr_mult / current_price
+            log_.warning(f"[REENTRY_B04_EPQ] {position_key}: DC_RETEST {_dcbr_reason}")
+            return _EM_Signal(action='REENTRY', reason=f'B04_DC_RETEST_{_dcbr_reason}', conviction=88.0, quantity=_dcbr_qty)
+    # B11: DC CHANNEL BREAKOUT
+    if getattr(cfg, 'REENTRY_B11_DC_BREAK_ENABLED', True):
+        if is_long and dc_high_1h > 0 and current_price > dc_high_1h * 1.001 and wt1_15m > wt2_15m:
+            log_.warning(f"[REENTRY_B11_EPQ] {position_key}: DC_BREAK_LONG dc1h={dc_high_1h:.4f}")
+            return _EM_Signal(action='REENTRY', reason=f'B11_DC_BREAK_LONG_dc1h={dc_high_1h:.4f}', conviction=88.0, quantity=re_qty)
+        if not is_long and dc_low_1h > 0 and current_price < dc_low_1h * 0.999 and wt1_15m < wt2_15m:
+            log_.warning(f"[REENTRY_B11_EPQ] {position_key}: DC_BREAK_SHORT dc1h={dc_low_1h:.4f}")
+            return _EM_Signal(action='REENTRY', reason=f'B11_DC_BREAK_SHORT_dc1h={dc_low_1h:.4f}', conviction=88.0, quantity=re_qty)
+    # B02: BC156 BOTTOM BOUNCE
+    if getattr(cfg, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True):
+        wt_bull_count = sum(1 for tf in ['3m','15m','1h','4h'] if (bool(i.get(f'wt_bullish_{tf}', False)) == is_long) or (not bool(i.get(f'wt_bullish_{tf}', False)) == (not is_long)))
+        if is_long and wt1_15m < -20 and wt_vel_15m > 0 and wt1_1h > wt2_1h and wt_bull_count >= 2:
+            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_LONG wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_LONG_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
+        if not is_long and wt1_15m > 20 and wt_vel_15m < 0 and wt1_1h < wt2_1h and wt_bull_count >= 2:
+            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_SHORT wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_SHORT_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
+    # B12: WT MOMENTUM
+    if getattr(cfg, 'REENTRY_B12_WT_MOM_ENABLED', True):
+        if is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m and wt1_1h > wt2_1h and wt_vel_3m > 1.0:
+            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_LONG vel3m={wt_vel_3m:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
+        if not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m and wt1_1h < wt2_1h and wt_vel_3m < -1.0:
+            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_SHORT vel3m={wt_vel_3m:.1f}")
+            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
+    # B14: HA TREND CONFIRMATION
+    if getattr(cfg, 'REENTRY_B14_HA_TREND_ENABLED', True):
+        _ha_val = lambda h: 1 if h == 'green' or h == 1 else (-1 if h == 'red' or h == -1 else 0)
+        if is_long and _ha_val(ha_3m) == 1 and _ha_val(ha_15m) == 1 and _ha_val(ha_1h) == 1 and k_3m < 60:
+            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_LONG k3m={k_3m:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_LONG_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+        if not is_long and _ha_val(ha_3m) == -1 and _ha_val(ha_15m) == -1 and _ha_val(ha_1h) == -1 and k_3m > 40:
+            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_SHORT k3m={k_3m:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_SHORT_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+    # B10: STOCHASTIC REVERSAL
+    if getattr(cfg, 'REENTRY_B10_STOCH_REV_ENABLED', True):
+        if is_long and k_3m_prev <= d_3m and k_3m > d_3m and k_3m < 25 and k_15m < 40:
+            log_.info(f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_LONG k3m={k_3m:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B10_STOCH_REV_LONG_k3m={k_3m:.0f}_k15m={k_15m:.0f}', conviction=72.0, quantity=re_qty)
+        if not is_long and k_3m_prev >= d_3m and k_3m < d_3m and k_3m > 75 and k_15m > 60:
+            log_.info(f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_SHORT k3m={k_3m:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B10_STOCH_REV_SHORT_k3m={k_3m:.0f}_k15m={k_15m:.0f}', conviction=72.0, quantity=re_qty)
+    # B01: WT 2/3 IN FAVOR — default OFF (ablation noise), switch kept for sweep
+    if getattr(cfg, 'REENTRY_B01_WT_2of3_ENABLED', False):
+        if is_long:
+            _wf = int(wt1_3m > wt2_3m) + int(wt1_15m > wt2_15m) + int(wt1_1h > wt2_1h)
+        else:
+            _wf = int(wt1_3m < wt2_3m) + int(wt1_15m < wt2_15m) + int(wt1_1h < wt2_1h)
+        if _wf >= 2:
+            return _EM_Signal(action='REENTRY', reason=f'B01_WT_2of3_{_wf}of3', conviction=85.0, quantity=re_qty)
+    # B09: SNAPBACK — default OFF (ablation weak), switch kept for sweep
+    if getattr(cfg, 'REENTRY_B09_SNAPBACK_ENABLED', False):
+        if is_long and dc_low_15m > 0 and current_price < dc_low_15m * 1.003 and wt_vel_3m > 0.5 and k_3m < 30:
+            return _EM_Signal(action='REENTRY', reason=f'B09_SNAPBACK_LONG', conviction=65.0, quantity=re_qty)
+        if not is_long and dc_high_15m > 0 and current_price > dc_high_15m * 0.997 and wt_vel_3m < -0.5 and k_3m > 70:
+            return _EM_Signal(action='REENTRY', reason=f'B09_SNAPBACK_SHORT', conviction=65.0, quantity=re_qty)
+    return None
+
+async def process_single_reentry_evaluation_epq(trade_manager, position_key, reentry_data, config_obj, data_manager=None):
+    """Ported from ez_manage.py:17481. Per-position reentry evaluator used by
+    evaluate_reentry_2_epq. Preserves DIRECTION_FAVORABLE + DC_BREAKOUT + AGE_GATE +
+    STANDARD_GATES + QUICK_RECOVERY + STOCH_CROSS + FULL_DC + DC_BOUNCE blocks,
+    each behind its original LEGACY_*/REENTRY2_* switch.
+    Applies MIN_GAP + SYMGATE + RALLY_K15M guards upfront (fail OPEN)."""
+    try:
+        account_key, symbol, position_side = parse_position_key(position_key)
+        if account_key not in getattr(trade_manager, 'positions_by_account', {}):
+            return
+        position = None
+        try:
+            position = await trade_manager.get_position(position_key)
+        except Exception:
+            position = None
+        if not position:
+            position = trade_manager.positions_by_account.get(account_key, {}).get(position_key)
+        if not position:
+            return
+        current_price = safe_fetch_float(getattr(position, 'mark_price', 0) or 0.0, 0.0)
+        if not current_price or current_price <= 0:
+            current_price = await _ez_price(symbol, position)
+            if not current_price or current_price <= 0:
+                return
+        positionAmt = safe_fetch_float(position.positionAmt, 0.0)
+        position_value = abs(positionAmt) * current_price
+        min_pos_usd = safe_fetch_float(config_obj.START_POSITION_SIZE, 55.0)
+        if position_value > min_pos_usd * 3.0: return
+        max_qty = max(getattr(position, 'max_quantity', 0) or 0.0, 20 * config_obj.START_POSITION_SIZE / current_price)
+        if positionAmt >= max_qty: return
+        reentry_level = safe_fetch_float(reentry_data.get("reentry_level") if isinstance(reentry_data, dict) else (getattr(position, 'last_reduction_price', 0) if position else 0) or 0.0, 0.0)
+        reentry_amount = float(getattr(position, 'max_quantity', 0) or 0.0) if position else 0.0
+        reentry_timestamp = safe_datetime(reentry_data.get("timestamp")) if isinstance(reentry_data, dict) else safe_datetime(getattr(position, 'last_reduction_time', None))
+        if reentry_amount < config_obj.START_POSITION_SIZE/current_price: reentry_amount = config_obj.START_POSITION_SIZE/current_price
+        if not isinstance(reentry_timestamp, datetime):
+            reentry_timestamp = safe_datetime(reentry_timestamp)
+        now = datetime.now(timezone.utc)
+        if not reentry_timestamp: min_since_exit = 999
+        else: min_since_exit = (now - reentry_timestamp).total_seconds() / 60.0
+        if min_since_exit < 0.5: return
+        if min_since_exit < 120:
+            reentry_amount = getattr(position, 'max_quantity', reentry_amount) or reentry_amount
+        is_long = getattr(position, 'position_side', position_side) == "LONG"
+        i = await _ez_ii(trade_manager, symbol)
+        if not i: return
+        # === NEW GUARDS (MIN_GAP + SYMGATE + RALLY_K15M) — fail OPEN ===
+        if _epq_min_gap_blocked(reentry_timestamp, config_obj, position_key):
+            return
+        if _epq_reentry_symgate_blocked(data_manager, config_obj, symbol, i, is_long, position_key):
+            return
+        if _epq_rally_k15m_blocked(i, is_long, config_obj, position_key):
+            return
+        # === END NEW GUARDS ===
+        price_ready = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
+        price_above_reduction = price_ready
+        _sf = safe_fetch_float
+        k_3m = _sf(i.get('stoch_k_3m')); d_3m = _sf(i.get('stoch_d_3m'))
+        k_15m = _sf(i.get('stoch_k_15m')); d_15m = _sf(i.get('stoch_d_15m'))
+        k_15m_prev = _sf(i.get('stoch_k_15m_prev', 0), 0.0); k_3m_prev = _sf(i.get('k_3m_prev', 0), 0.0)
+        d_3m_prev = _sf(i.get('stoch_d_3m_p', 0), 0.0); d_15m_prev = _sf(i.get('stoch_d_15m_prev', 0), 0.0)
+        t_up_3m = i.get('t_up_3m'); t_up_15m = i.get('t_up_15m')
+        wt1_3m = _sf(i.get('wt1_3m', 0), 0.0); wt2_3m = _sf(i.get('wt2_3m', 0), 0.0)
+        wt1_15m = _sf(i.get('wt1_15m', 0), 0.0); wt2_15m = _sf(i.get('wt2_15m', 0), 0.0)
+        ha_3m = i.get('ha_3m', 'neutral'); ha_15m = i.get('ha_15m', 'neutral')
+        k_1h = _sf(i.get('stoch_k_1h', 0), 0.0); d_1h = _sf(i.get('stoch_d_1h', 0), 0.0)
+        k_4h = _sf(i.get('stoch_k_4h', 0), 0.0); d_4h = _sf(i.get('stoch_d_4h', 0), 0.0)
+        dc_basis_15m = _sf(i.get('dc_basis_15m', 0), 0.0); dc_basis_3m = _sf(i.get('dc_basis_3m', 0), 0.0)
+        dc_low_3m = _sf(i.get('dc_low_3m', 0), 0.0); dc_low_15m = _sf(i.get('dc_low_15m', 0), 0.0)
+        dc_high_3m = _sf(i.get('dc_high_3m', 0), 0.0); dc_high_15m = _sf(i.get('dc_high_15m', 0), 0.0)
+        dc_high_1h = _sf(i.get('dc_high_1h', 0), 0.0); dc_low_1h = _sf(i.get('dc_low_1h', 0), 0.0)
+        dc_high_1h_ant = _sf(i.get('dc_high_1h_ant', 0), 0.0); dc_low_15m_ant = _sf(i.get('dc_low_15m_ant', 0), 0.0)
+        high_3m = _sf(i.get('high_3m', 0), 0.0); high_3m_prev = _sf(i.get('high_3m_prev', 0), 0.0)
+        low_3m = _sf(i.get('low_3m', 0), 0.0); low_3m_prev = _sf(i.get('low_3m_prev', 0), 0.0)
+        lower_low = high_3m and high_3m_prev and low_3m and low_3m_prev and high_3m <= high_3m_prev and (low_3m or current_price) <= low_3m_prev
+        higher_high = (high_3m or current_price) >= high_3m_prev and low_3m >= low_3m_prev
+        higher_high_condition = is_long and higher_high and (dc_low_3m < current_price < dc_basis_3m or dc_low_15m < current_price < dc_basis_15m)
+        lower_low_condition = not is_long and lower_low and (dc_high_3m > current_price > dc_basis_3m or dc_high_15m > current_price > dc_basis_15m)
+        # DIRECTION_FAVORABLE REENTRY (BC_152)
+        _dfr_pos_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
+        if min_since_exit < 120 and _dfr_pos_notional < config_obj.START_POSITION_SIZE:
+            _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
+            _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15
+            _wt_confirm = (is_long and wt1_15m > wt2_15m and wt1_3m > wt2_3m) or (not is_long and wt1_15m < wt2_15m and wt1_3m < wt2_3m)
+            if (_dir_fav_long or _dir_fav_short) and _wt_confirm and getattr(config_obj, 'LEGACY_DIRECTION_FAVORABLE', True) and getattr(config_obj, 'REENTRY2_DIR_FAV_ENABLED', True):
+                _dfr_delta_ok, _dfr_delta_reason = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+                if not _dfr_delta_ok:
+                    logger.info(f"[DIRECTION_FAVORABLE_DELTA_BLOCK_EPQ] {position_key}: {_dfr_delta_reason}")
+                    return
+                _dfr_reason = f"DIRECTION_FAVORABLE_REENTRY_k3m{k_3m:.0f}_k15m{k_15m:.0f}_min{min_since_exit:.0f}"
+                logger.warning(f"[DIRECTION_FAVORABLE_REENTRY_EPQ] {position_key}: {'LONG' if is_long else 'SHORT'} direction still favorable within {min_since_exit:.0f}m of exit. k_3m={k_3m:.1f} k_15m={k_15m:.1f}. delta={_dfr_delta_reason}. Immediate reentry.")
+                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _dfr_reason, 85.0)
+                if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                    logger.warning(f"[DIRECTION_FAVORABLE_REENTRY_EPQ] {position_key}: QUEUED at ${current_price:.4f}")
+                return
+        # DC BREAKOUT FAST-PATH REENTRY
+        _dc_reentry_breakout = False
+        _buf = 0.001
+        _dc_re_tf = ""
+        if not getattr(config_obj, 'REENTRY2_DC_BREAK_ENABLED', True):
+            _dc_reentry_breakout = None
+        if _dc_reentry_breakout is False:
+            if is_long:
+                if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) or (dc_high_15m > 0 and current_price > dc_high_15m * (1 + _buf)):
+                    if k_3m > d_3m:
+                        _dc_reentry_breakout = True
+                        _dc_re_tf = "1H" if (dc_high_1h > 0 and current_price > dc_high_1h * (1 + _buf)) else "15M"
+            else:
+                if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) or (dc_low_15m > 0 and current_price < dc_low_15m * (1 - _buf)):
+                    if k_3m < d_3m:
+                        _dc_reentry_breakout = True
+                        _dc_re_tf = "1H" if (dc_low_1h > 0 and current_price < dc_low_1h * (1 - _buf)) else "15M"
+        if _dc_reentry_breakout is True:
+            _dcbr_pos_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
+            if _dcbr_pos_notional >= config_obj.START_POSITION_SIZE:
+                return
+            if not hasattr(trade_manager, '_dc_breakout_reentry_cd'):
+                trade_manager._dc_breakout_reentry_cd = {}
+            _dcbr_now = time.time()
+            _dcbr_last = trade_manager._dc_breakout_reentry_cd.get(position_key, 0)
+            if _dcbr_now - _dcbr_last < 900:
+                return
+            trade_manager._dc_breakout_reentry_cd[position_key] = _dcbr_now
+            if not getattr(config_obj, 'LEGACY_DC_BREAKOUT_REENTRY', True):
+                return
+            _dcbr_delta_ok, _dcbr_delta_reason = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+            if not _dcbr_delta_ok:
+                logger.info(f"[DC_BREAKOUT_DELTA_BLOCK_EPQ] {position_key}: {_dcbr_delta_reason}")
+                return
+            logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}")
+            reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
+            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 90.0)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
+            return
+        # AGE_GATE
+        _age_gate = reentry_data.get('age_gate', 'normal') if isinstance(reentry_data, dict) else 'normal'
+        if _age_gate in ('elevated', 'strict', 'extreme'):
+            _ag_k3_align = (is_long and k_3m > d_3m) or (not is_long and k_3m < d_3m)
+            _ag_k15_align = (is_long and k_15m > d_15m) or (not is_long and k_15m < d_15m)
+            _ag_k1h_align = (is_long and k_1h > d_1h) or (not is_long and k_1h < d_1h)
+            _ag_wt_confirm = (is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m) or (not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m)
+            _ag_k4h_align = (is_long and k_4h > d_4h) or (not is_long and k_4h < d_4h)
+            if _age_gate == 'elevated':
+                if sum([_ag_k3_align, _ag_k15_align, _ag_wt_confirm]) < 2: return
+            elif _age_gate == 'strict':
+                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align): return
+            elif _age_gate == 'extreme':
+                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align and _ag_k4h_align): return
+        # STANDARD GATES
+        _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
+        if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
+            if _strong_trend:
+                _k3_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
+                if _k3_bounce or higher_high_condition or lower_low_condition:
+                    logger.info(f"[STRONG_TREND_REENTRY_EPQ] {position_key}: k_15m={k_15m:.1f} — strong trend + bounce confirmed")
+                else:
+                    return
+            elif higher_high_condition or lower_low_condition:
+                pass
+            else:
+                return
+        else:
+            _htf_ok = (is_long and k_1h > 40 and k_4h > 40) or (not is_long and k_1h < 60 and k_4h < 60)
+            _pullback_bounce = (is_long and k_3m > d_3m and k_3m > k_3m_prev) or (not is_long and k_3m < d_3m and k_3m < k_3m_prev)
+            if _htf_ok and _pullback_bounce:
+                logger.info(f"[PULLBACK_REENTRY_EPQ] {position_key}: HTF confirmed (k_1h={k_1h:.1f}, k_4h={k_4h:.1f}) + bounce (k_3m={k_3m:.1f})")
+        if k_3m is None or d_3m is None or k_15m is None or d_15m is None:
+            return
+        stoch_ready = (is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)) or (not is_long and (k_3m < d_3m or not t_up_3m) and (k_15m < d_15m or not t_up_15m))
+        if not stoch_ready: return
+        # QUICK_RECOVERY
+        last_reduction_time = getattr(position, 'last_reduction_time', None)
+        last_reduction_price = _sf(getattr(position, 'last_reduction_price', 0), 0.0)
+        atr_3m = _sf(i.get('atr_3m', 0), 0.0)
+        if last_reduction_time and last_reduction_price > 0 and atr_3m > 0 and getattr(config_obj, 'REENTRY2_QUICK_RECOVERY_ENABLED', True):
+            minutes_since_reduction = (now - last_reduction_time).total_seconds() / 60.0 if isinstance(last_reduction_time, datetime) else 999.0
+            if minutes_since_reduction < 60.0:
+                quick_recovery_long = is_long and current_price > (last_reduction_price + atr_3m) and k_3m > d_3m
+                quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
+                if (quick_recovery_long or quick_recovery_short) and getattr(config_obj, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False):
+                    reason = f"[PROC_SINGLE_REENTRY_EPQ]:quick_recovery_{minutes_since_reduction:.1f}m"
+                    result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 75.0)
+                    if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                        logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: QUICK RECOVERY queued — price={current_price:.6f}")
+                    return
+        if not getattr(config_obj, 'REENTRY2_STOCH_CROSS_ENABLED', True): return
+        # STOCH CROSS + DC FULL + DC BOUNCE — legacy paths, all gated OFF by default
+        invalidated_state = getattr(trade_manager, 'reentry_invalidated', {}).get(position_key, {})
+        is_invalidated = invalidated_state.get('invalidated', False)
+        stoch_crossover_3m = (is_long and k_3m > d_3m and k_3m_prev <= d_3m_prev) or (not is_long and k_3m <= d_3m and k_3m_prev > d_3m_prev)
+        stoch_crossover_15m = (is_long and k_15m >= d_15m and k_15m_prev < d_15m_prev) or (not is_long and k_15m <= d_15m and k_15m_prev > d_15m_prev)
+        dc_basis_crossover_3m = i.get('dc_basis_crossover_3m', False) if is_long else i.get('dc_basis_crossunder_3m', False)
+        if is_long:
+            price_below_dc_low_3m = dc_low_3m > 0 and current_price <= dc_low_3m
+            price_below_dc_low_15m = dc_low_15m > 0 and current_price <= dc_low_15m
+            k_3mm_crossover_above_dc_low_3m = stoch_crossover_3m and dc_low_3m > 0 and _sf(i.get('prev_price', 0), 0) <= dc_low_3m and current_price > dc_low_3m
+            k_15mm_crossover_above_dc_low_15m = stoch_crossover_15m and dc_low_15m > 0 and current_price > dc_low_15m
+            if price_below_dc_low_3m and (not is_invalidated or invalidated_state.get('reason') != 'dc_low_3m_broken'):
+                if not hasattr(trade_manager, 'reentry_invalidated'): trade_manager.reentry_invalidated = {}
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': True, 'invalidated_at': now, 'reason': 'dc_low_3m_broken'}
+            if price_below_dc_low_15m and (not is_invalidated or invalidated_state.get('reason') != 'dc_low_15m_broken'):
+                if not hasattr(trade_manager, 'reentry_invalidated'): trade_manager.reentry_invalidated = {}
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': True, 'invalidated_at': now, 'reason': 'dc_low_15m_broken'}
+            if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and is_invalidated:
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': False, 'invalidated_at': None, 'reason': '[PROC_SINGLE_REENTRY_EPQ]: revalidated'}
+            if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and k_15m >= d_15m and k_3m >= d_3m and k_15m < 70 and k_3m < 70 and not is_invalidated and getattr(config_obj, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config_obj, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
+                _psr_delta_ok, _psr_delta_reason = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+                if not _psr_delta_ok: return
+                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY_EPQ]_LONG_k3m_cross_above_dc_low_3m_delta_{_psr_delta_reason[:30]}", 75.0)
+                if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                    logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSOVER ABOVE DC_LOW_3M queued")
+                return
+        else:
+            stoch_crossunder_3m = (not is_long and k_3m <= d_3m and k_3m_prev > d_3m_prev)
+            price_above_dc_high_3m = dc_high_3m > 0 and current_price > dc_high_3m
+            price_above_dc_high_15m = dc_high_15m > 0 and current_price > dc_high_15m
+            k_3mm_crossunder_below_dc_high_3m = stoch_crossunder_3m and dc_high_3m > 0 and current_price < dc_high_3m and _sf(i.get('prev_price', 0), 0) >= dc_high_3m
+            k_15mm_crossunder_below_dc_high_15m = stoch_crossover_15m and dc_high_15m > 0 and current_price < dc_high_15m
+            if price_above_dc_high_3m and (not is_invalidated or invalidated_state.get('reason') != 'dc_high_3m_broken'):
+                if not hasattr(trade_manager, 'reentry_invalidated'): trade_manager.reentry_invalidated = {}
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': True, 'invalidated_at': now, 'reason': 'dc_high_3m_broken'}
+            if price_above_dc_high_15m and (not is_invalidated or invalidated_state.get('reason') != 'dc_high_15m_broken'):
+                if not hasattr(trade_manager, 'reentry_invalidated'): trade_manager.reentry_invalidated = {}
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': True, 'invalidated_at': now, 'reason': 'dc_high_15m_broken'}
+            if k_15mm_crossunder_below_dc_high_15m and is_invalidated and k_15m < d_15m and k_3m < d_3m and k_15m > 30 and k_3m > 30:
+                trade_manager.reentry_invalidated[position_key] = {'invalidated': False, 'invalidated_at': None, 'reason': '[PROC_SINGLE_REENTRY_EPQ]: revalidated'}
+            if (k_3mm_crossunder_below_dc_high_3m or k_15mm_crossunder_below_dc_high_15m) and k_15m <= d_15m and k_3m <= d_3m and k_15m > 30 and k_3m > 30 and not is_invalidated and getattr(config_obj, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config_obj, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
+                _psr_delta_ok_s, _psr_delta_reason_s = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+                if not _psr_delta_ok_s: return
+                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY_EPQ]_SHORT_k3m_cross_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}", 75.0)
+                if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                    logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSUNDER BELOW DC_HIGH_3M queued")
+                return
+        # FULL DC
+        full_reentry_stoch_above_dc = stoch_crossover_3m and ((is_long and current_price > dc_basis_15m and dc_basis_15m > 0) or (not is_long and current_price < dc_basis_15m and dc_basis_15m > 0))
+        _psr_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
+        if (full_reentry_stoch_above_dc or dc_basis_crossover_3m) and not is_invalidated and _psr_notional < config_obj.START_POSITION_SIZE and getattr(config_obj, 'LEGACY_REENTRY_PSR_FULL_DC', False):
+            reason = f"[PROC_SINGLE_REENTRY_EPQ]: full_reentry_{'stoch3m_x_dc15m' if full_reentry_stoch_above_dc else 'dc3m_cross'}"
+            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 80.0)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: FULL REENTRY queued")
+            return
+        # DC BOUNCE
+        if last_reduction_time and ((is_long and dc_high_15m > 0 and dc_high_1h > 0) or (not is_long and dc_low_15m > 0 and dc_low_1h > 0)):
+            hours_since_reduction = (now - last_reduction_time).total_seconds() / 3600.0 if isinstance(last_reduction_time, datetime) else 99.0
+            if hours_since_reduction < 8.0 and last_reduction_price > 0:
+                near_dc_high_15m = abs(last_reduction_price - dc_high_15m) / dc_high_15m < 0.02 if dc_high_15m > 0 else False
+                near_dc_high_1h = abs(last_reduction_price - dc_high_1h) / dc_high_1h < 0.02 if dc_high_1h > 0 else False
+                if (is_long and (near_dc_high_15m or near_dc_high_1h)) or (not is_long and ((abs(last_reduction_price - dc_low_15m) / dc_low_15m < 0.02 if dc_low_15m > 0 else False) or (abs(last_reduction_price - dc_low_1h) / dc_low_1h < 0.02 if dc_low_1h > 0 else False))):
+                    bounce_dc_low_1h = (is_long and current_price >= dc_low_1h * 0.998 and current_price <= dc_low_1h * 1.002) if dc_low_1h > 0 else False
+                    bounce_dc_low_15m = (is_long and current_price >= dc_low_15m * 0.998 and current_price <= dc_low_15m * 1.002) if dc_low_15m > 0 else False
+                    bounce_dc_high_1h = (not is_long and current_price >= dc_high_1h * 0.998 and current_price <= dc_high_1h * 1.002) if dc_high_1h > 0 else False
+                    bounce_dc_high_15m = (not is_long and current_price >= dc_high_15m * 0.998 and current_price <= dc_high_15m * 1.002) if dc_high_15m > 0 else False
+                    cross_dc_basis_15m = (is_long and current_price >= dc_basis_15m) or (not is_long and current_price <= dc_basis_15m) if dc_basis_15m > 0 else False
+                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and dc_high_1h > dc_high_1h_ant and getattr(config_obj, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
+                        reason = f"[PROC_SINGLE_REENTRY_EPQ]: dc_bounce_{hours_since_reduction:.1f}h"
+                        result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 65.0)
+                        if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                            logger.info(f"[evaluate_reentry_2_EPQ] {position_key}: DC bounce reentry queued")
+                        return
+    except Exception as e:
+        logger.debug(f"[evaluate_reentry_2_EPQ] Error processing {position_key}: {e}", exc_info=True)
+
+async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
+    """Ported from ez_manage.py:17770. Periodic reentry pass over positions with
+    pending reentry_data. Master switch REENTRY_2_ENABLED (default True, ~$420 PnL
+    per ablation). Sub-blocks inside process_single_reentry_evaluation_epq:
+      - DIRECTION_FAVORABLE_REENTRY (REENTRY2_DIR_FAV_ENABLED)
+      - DC_BREAKOUT_REENTRY (REENTRY2_DC_BREAK_ENABLED)
+      - STRONG_TREND/PULLBACK (REENTRY2_TREND_ENABLED)
+      - QUICK_RECOVERY (REENTRY2_QUICK_RECOVERY_ENABLED)
+      - STOCH_CROSSOVER (REENTRY2_STOCH_CROSS_ENABLED)"""
+    if not getattr(config, 'REENTRY_2_ENABLED', True):
+        return
+    config_accounts = set(getattr(config, 'ACCOUNT_KEYS', []))
+    loaded_accounts = set(trade_manager.accounts.keys()) if hasattr(trade_manager, 'accounts') else set()
+    managed_accounts = config_accounts.intersection(loaded_accounts)
+    if not managed_accounts: return
+    now = datetime.now(timezone.utc)
+    if hasattr(trade_manager, 'service') and trade_manager.service:
+        for pk, ts in list(getattr(trade_manager, 'reduced_positions', {}).items()):
+            if pk not in trade_manager.reentry_data:
+                _pos = trade_manager.positions.get(pk) if hasattr(trade_manager, 'positions') else None
+                _re_lvl = safe_fetch_float(getattr(_pos, 'last_reduction_price', 0), 0) if _pos else 0.0
+                _re_amt = float(getattr(_pos, 'max_quantity', 0) or 0) if _pos else 0.0
+                trade_manager.reentry_data[pk] = {
+                    "reentry_level": _re_lvl,
+                    "reentry_amount": _re_amt,
+                    "timestamp": ts.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if isinstance(ts, datetime) else str(ts),
+                    "reason": "SYNC_FROM_REDUCED_POSITIONS",
+                }
+    # Age-gate + 72h purge
+    _tk = getattr(trade_manager, 'tradeable_keys', None) or set()
+    for pk in list(trade_manager.reentry_data.keys()):
+        rd = trade_manager.reentry_data[pk]
+        if _tk and pk not in _tk:
+            del trade_manager.reentry_data[pk]
+            continue
+        rd_ts = safe_datetime(rd.get("timestamp"))
+        if rd_ts:
+            _age_hrs = (now - rd_ts).total_seconds() / 3600.0
+            if _age_hrs > 72.0:
+                del trade_manager.reentry_data[pk]
+                continue
+            elif _age_hrs > 48.0: rd['age_gate'] = 'strict'
+            elif _age_hrs > 24.0: rd['age_gate'] = 'elevated'
+            else: rd['age_gate'] = 'normal'
+    reentry_data_dict = trade_manager.service.reentry_data if getattr(trade_manager, 'service', None) else getattr(trade_manager, 'reentry_data', {})
+    tasks = []
+    try:
+        _eval_tk = await trade_manager.load_tradeable()
+    except Exception:
+        _eval_tk = _tk
+    for position_key, reentry_data in list(reentry_data_dict.items()):
+        try:
+            if _eval_tk and position_key not in _eval_tk: continue
+            parts = position_key.split(':')
+            if len(parts) < 2: continue
+            account_key = parts[0]
+            if account_key not in managed_accounts: continue
+            symbol_side_part = parts[1]
+            if not (symbol_side_part.endswith('_LONG') or symbol_side_part.endswith('_SHORT')):
+                continue
+            i = await _ez_ii(trade_manager, symbol_side_part.rsplit('_', 1)[0])
+            if not i: continue
+            current_price = safe_fetch_float(i.get('current_price'))
+            if not current_price: continue
+            k_3m_pre = safe_fetch_float(i.get('stoch_k_3m', 50), 50)
+            is_long_pre = symbol_side_part.endswith('_LONG')
+            if (is_long_pre and k_3m_pre > 95) or (not is_long_pre and k_3m_pre < 5): continue
+            async def _sem_worker(pk=position_key, rd=reentry_data):
+                async with _epq_reentry_eval_semaphore:
+                    await process_single_reentry_evaluation_epq(trade_manager, pk, rd, config, data_manager=data_manager)
+            tasks.append(_sem_worker())
+        except Exception:
+            continue
+    if tasks:
+        logger.info(f"🔥 ♻️ [EVAL_REENTRY_2_EPQ] Triggering {len(tasks)} reentries")
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+async def evaluate_reentry_2_periodic_loop_epq(trade_manager, stop_event: asyncio.Event, data_manager: FastDataManager = None):
+    """Wrapper: run evaluate_reentry_2_epq every 60s until stop_event set."""
+    logger.info("[EVAL_REENTRY_2_LOOP_EPQ] started (60s interval)")
+    while not stop_event.is_set():
+        try:
+            await asyncio.sleep(60.0)
+            if not getattr(config, 'REENTRY_2_ENABLED', True):
+                continue
+            if bool(getattr(config, 'ABLATION_DISABLE_REENTRY_ENFORCE', False)):
+                continue
+            await evaluate_reentry_2_epq(trade_manager, data_manager=data_manager)
+        except asyncio.CancelledError:
+            logger.info("[EVAL_REENTRY_2_LOOP_EPQ] cancelled")
+            break
+        except Exception as e:
+            logger.error(f"[EVAL_REENTRY_2_LOOP_EPQ_ERROR] {e}", exc_info=True)
+            await asyncio.sleep(15.0)
 
 async def monitor_market_mode(config: Config):
     """Monitor market_mode.json and update config when ez_rankings changes the mode"""
@@ -13241,6 +14034,10 @@ async def main(account_key_filter: Optional[str] = None) -> None:
         all_background_tasks['realtime_monitoring'] = asyncio.create_task(tracker_manager.realtime_monitoring_task(stop_event, list(allowed_accounts), trade_manager, data_manager))
         all_background_tasks['global_ranker'] = asyncio.create_task(global_ranker_loop(trade_manager, tracker_manager, data_manager, registry, stop_event))
         all_background_tasks['registry_loop'] = asyncio.create_task(registry.run_loop())
+        # Ported from ez_manage.py (which is now zombie for loops). The live crypto path
+        # spawns reentry enforcement + evaluate_reentry_2 periodic pass here.
+        all_background_tasks['reentry_enforce_epq'] = asyncio.create_task(reentry_enforcement_loop_epq(trade_manager, stop_event, data_manager))
+        all_background_tasks['evaluate_reentry_2_loop_epq'] = asyncio.create_task(evaluate_reentry_2_periodic_loop_epq(trade_manager, stop_event, data_manager))
         # monitor_hedge_health_loop always runs: manages same-symbol hedge lifecycle (BANDAID_OFF/DECAY_NUKE)
         # regardless of HEDGE_MODE. breathing_hedge_scan remains permanently disabled (cascade).
         all_background_tasks['hedge_balancing'] = asyncio.create_task(hedge_engine.monitor_hedge_health_loop(stop_event))
