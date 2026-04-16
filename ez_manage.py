@@ -19507,6 +19507,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} near_cross={_wt_cross_prev_15m:.1f} gain={_pp_gain:.2f}% → HEDGING {_hedge_pk}")
                                 _h_uid = f"WT15M_HEDGE_{int(time.time())}_{uuid.uuid4().hex[:6].upper()}"
                                 _now_ts_h = time.time()
+                                _hedge_id = f"wt15m_hedge_{int(_now_ts_h * 1000)}"
                                 if _he_wt: _he_wt._hedge_completed[position_key] = _now_ts_h
                                 try:
                                     if trade_manager.redis_manager:
@@ -19514,13 +19515,43 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                         await trade_manager.redis_manager.set(_rds_daily_key, str(_daily_count + 1), ex=86400 + 3600)
                                 except Exception as _rds_e:
                                     logger.debug(f"[WT_15M_SAME_HEDGE_REDIS_SET] {position_key}: {_rds_e}")
+                                # ═══ 2026-04-16 PRE-ORDER TRACKER SAVE ═══
+                                # Save hedge record to tracker.json BEFORE sending the order so that
+                                # active_hedges is authoritative even when positions admin is stale.
+                                # Any other function (this one included, via existence gate (c)) that
+                                # checks tracker_manager.active_hedges will see the pending record and
+                                # refuse to open a second hedge. Status='pending' until execute_now succeeds.
+                                _hedge_record_pending = {'type': 'WT_15M_SAME_HEDGE', 'position_key': _hedge_pk, 'losing_position_key': position_key, 'symbol': symbol, 'target_symbol': symbol, 'position_side': _hedge_side, 'quantity': _h_qty, 'notional_usd': _h_qty * current_price, 'price': current_price, 'account': account_key, 'is_hedge': True, 'hedge_for': position_key, 'hedge_id': _hedge_id, 'status': 'pending', 'opened_at': datetime.now(timezone.utc).isoformat()}
+                                if _he_wt:
+                                    try:
+                                        await _he_wt.persist_hedge_record(account_key, dict(_hedge_record_pending))
+                                        logger.info(f"[WT_15M_SAME_HEDGE_TRACKER_PRESAVE] {_hedge_pk}: pending record saved BEFORE order dispatch (hedge_for={position_key})")
+                                    except Exception as _ps_e:
+                                        logger.critical(f"[WT_15M_SAME_HEDGE_TRACKER_PRESAVE_FAIL] {_hedge_pk}: {_ps_e} — ABORTING hedge (cannot establish tracker authority)")
+                                        if _he_wt: _he_wt._hedge_completed.pop(position_key, None)
+                                        try:
+                                            if trade_manager.redis_manager:
+                                                await trade_manager.redis_manager.delete(_rds_cooldown_key)
+                                        except Exception: pass
+                                        return f"{EvalStatus.NO_ACTION}:WT_15M_SAME_HEDGE_TRACKER_PRESAVE_FAIL"
                                 _h_result = await trade_manager.execute_now(_hedge_pk, account_key, symbol, 0.0, _h_order_side, _hedge_side, _h_qty, current_price, _h_uid, f"WT_15M_SAME_HEDGE_FOR_{position_key}_wt1{_wt1_15m_h:.1f}", False, "OPEN", is_hedge=True, hedge_for=position_key)
                                 if _h_result and "SUCCESS" in str(_h_result):
+                                    # Re-persist with status='filled' so downstream sees the hedge as confirmed.
                                     if _he_wt:
-                                        await _he_wt.persist_hedge_record(account_key, {'type': 'WT_15M_SAME_HEDGE', 'position_key': _hedge_pk, 'losing_position_key': position_key, 'symbol': symbol, 'target_symbol': symbol, 'position_side': _hedge_side, 'quantity': _h_qty, 'account': account_key, 'is_hedge': True, 'hedge_for': position_key, 'hedge_id': f"wt15m_hedge_{int(time.time() * 1000)}"})
+                                        _filled_rec = dict(_hedge_record_pending); _filled_rec['status'] = 'filled'; _filled_rec['filled_at'] = datetime.now(timezone.utc).isoformat()
+                                        await _he_wt.persist_hedge_record(account_key, _filled_rec)
                                     logger.warning(f"[WT_15M_SAME_HEDGE_OK] {_hedge_pk}: opened to hedge {position_key}")
                                 else:
-                                    if _he_wt: _he_wt._hedge_completed.pop(position_key, None)
+                                    if _he_wt:
+                                        _he_wt._hedge_completed.pop(position_key, None)
+                                        # Roll back the pending tracker record
+                                        try:
+                                            async with _he_wt.tracker_manager._hedges_lock:
+                                                _he_wt.tracker_manager.active_hedges = [h for h in _he_wt.tracker_manager.active_hedges if h.get('hedge_id') != _hedge_id]
+                                            await _he_wt.tracker_manager.save_tracker(account_key, force=True)
+                                            logger.warning(f"[WT_15M_SAME_HEDGE_TRACKER_ROLLBACK] {_hedge_pk}: order failed ({_h_result}) — pending tracker record removed")
+                                        except Exception as _rb_e:
+                                            logger.error(f"[WT_15M_SAME_HEDGE_TRACKER_ROLLBACK_FAIL] {_hedge_pk}: {_rb_e}")
                                     try:
                                         if trade_manager.redis_manager:
                                             await trade_manager.redis_manager.delete(_rds_cooldown_key)
