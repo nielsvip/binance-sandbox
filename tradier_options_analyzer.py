@@ -1000,7 +1000,7 @@ async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
     return option_positions
 
 
-async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicators: Dict, risk_free_rate: float = 0.043, portfolio_over_limit: bool = False, allowed_call_symbols: set = None, allowed_put_symbols: set = None) -> Tuple[OptionPosition, List[ExitSignal]]:
+async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicators: Dict, risk_free_rate: float = 0.043, portfolio_over_limit: bool = False, allowed_call_symbols: set = None, allowed_put_symbols: set = None, wt_history: Dict = None, config=None) -> Tuple[OptionPosition, List[ExitSignal]]:
     """Analyze a single option position for exit signals."""
     symbol = pos["symbol"]
     occ = pos["occ_symbol"]
@@ -1180,6 +1180,48 @@ async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicator
             sell_threshold = 70 if dte > 14 else 50
             if reversal_score >= sell_threshold:
                 exit_signals.append(ExitSignal(position=opt_pos, reason="BULLISH_REVERSAL", urgency="HIGH" if reversal_score >= 80 else "MEDIUM", action="SELL_NOW" if reversal_score >= 80 else "WATCH", detail=f"Bullish reversal signals ({reversal_score}): {', '.join(reversal_parts)}", score=reversal_score))
+    # 3b. WT_DELTA_ACCEL — WaveTrend velocity (NOT greeks delta) accelerating against position.
+    # User rule: "sell when decline accelerates (delta going up)". In this system
+    # "delta" = wt_velocity (bar-over-bar change of the WT oscillator). A CALL dies
+    # when wt_velocity_D flips negative AND its magnitude grows on successive bars;
+    # a PUT dies when wt_velocity_D flips positive AND grows.
+    if ind and wt_history is not None and config is not None:
+        wt_vel_D_now = ind.get("wt_velocity_D", 0) or 0
+        wt_vel_4h_now = ind.get("wt_velocity_4h", 0) or 0
+        prev_entry = wt_history.get(occ, {}) if isinstance(wt_history, dict) else {}
+        wt_vel_D_prev = prev_entry.get("wt_velocity_D", wt_vel_D_now)
+        min_abs = getattr(config, "OPTIONS_WT_ACCEL_MIN_ABS", 10.0)
+        growth_pct = getattr(config, "OPTIONS_WT_ACCEL_GROWTH_PCT", 25.0)
+        accel_detected = False
+        accel_detail = ""
+        # Direction: adverse = negative velocity for calls, positive for puts
+        if is_call and wt_vel_D_now < 0 and wt_vel_4h_now < 0:
+            if abs(wt_vel_D_now) >= min_abs and abs(wt_vel_D_now) > abs(wt_vel_D_prev) * (1 + growth_pct / 100.0):
+                accel_detected = True
+                accel_detail = f"CALL WT_vel_D={wt_vel_D_now:.1f} (prev {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — decline accelerating"
+        elif (not is_call) and wt_vel_D_now > 0 and wt_vel_4h_now > 0:
+            if abs(wt_vel_D_now) >= min_abs and abs(wt_vel_D_now) > abs(wt_vel_D_prev) * (1 + growth_pct / 100.0):
+                accel_detected = True
+                accel_detail = f"PUT WT_vel_D={wt_vel_D_now:.1f} (prev {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — rally accelerating"
+        if accel_detected:
+            exit_signals.append(ExitSignal(position=opt_pos, reason="WT_DELTA_ACCEL", urgency="HIGH", action="SELL_NOW", detail=accel_detail, score=85))
+    # 3c. LEVEL_BREAK — support (calls) or resistance (puts) broken beyond buffer.
+    # User rule: "sell when key levels are broken (fall through red zones)".
+    # Only fire on dte > OPTIONS_LEVEL_BREAK_MIN_DTE — sub-14-DTE is noise-dominated
+    # and already covered by THETA_URGENT / DEEP_OTM.
+    if ind and config is not None:
+        buf = getattr(config, "OPTIONS_LEVEL_BREAK_BUFFER", 0.01)
+        min_lb_dte = getattr(config, "OPTIONS_LEVEL_BREAK_MIN_DTE", 14)
+        if dte > min_lb_dte and underlying_price > 0:
+            dc_low_D_lb = ind.get("dc_low_D")
+            dc_high_D_lb = ind.get("dc_high_D")
+            wt_cross_D_lb = ind.get("wt_cross_D", "")
+            if is_call and dc_low_D_lb and underlying_price < dc_low_D_lb * (1.0 - buf):
+                confirm = "confirmed" if wt_cross_D_lb == "BEAR" else "unconfirmed"
+                exit_signals.append(ExitSignal(position=opt_pos, reason="SUPPORT_BREAK", urgency="HIGH" if confirm == "confirmed" else "MEDIUM", action="SELL_NOW" if confirm == "confirmed" else "TIGHTEN_STOP", detail=f"CALL: underlying ${underlying_price:.2f} broke dc_low_D ${dc_low_D_lb:.2f} (buf {buf*100:.1f}%) — D {confirm}", score=82 if confirm == "confirmed" else 60))
+            elif (not is_call) and dc_high_D_lb and underlying_price > dc_high_D_lb * (1.0 + buf):
+                confirm = "confirmed" if wt_cross_D_lb == "BULL" else "unconfirmed"
+                exit_signals.append(ExitSignal(position=opt_pos, reason="RESISTANCE_BREAK", urgency="HIGH" if confirm == "confirmed" else "MEDIUM", action="SELL_NOW" if confirm == "confirmed" else "TIGHTEN_STOP", detail=f"PUT: underlying ${underlying_price:.2f} broke dc_high_D ${dc_high_D_lb:.2f} (buf {buf*100:.1f}%) — D {confirm}", score=82 if confirm == "confirmed" else 60))
     # 4. IV CRUSH — IV dropping = option losing extrinsic value
     if iv and iv < 0.15 and dte > 14:
         exit_signals.append(ExitSignal(position=opt_pos, reason="IV_CRUSH", urgency="MEDIUM", action="TIGHTEN_STOP", detail=f"IV at {iv*100:.1f}% — very low, extrinsic value minimal. Consider selling if near breakeven.", score=45))
@@ -1189,9 +1231,20 @@ async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicator
         exit_signals.append(ExitSignal(position=opt_pos, reason="DEEP_OTM_CALL", urgency="HIGH", action="SELL_NOW", detail=f"Call {(moneyness-1)*100:.1f}% OTM with only {dte} DTE. Low probability of profit.", score=75))
     elif not is_call and moneyness < 0.85 and dte < 10:
         exit_signals.append(ExitSignal(position=opt_pos, reason="DEEP_OTM_PUT", urgency="HIGH", action="SELL_NOW", detail=f"Put {(1-moneyness)*100:.1f}% OTM with only {dte} DTE. Low probability of profit.", score=75))
-    # 6. MAX LOSS GUARD — DTE-aware. With 60+ DTE there's plenty of time to recover.
-    # Wide bid/ask spreads can make you look -30% instantly — that's NOT a real loss.
-    loss_threshold = -80 if dte > 30 else (-60 if dte > 14 else -40)
+    # 6. MAX LOSS GUARD — DTE-aware. With 60+ DTE there's plenty of time to recover,
+    # but bleeding to -80% is not "recovery" — it's capitulation-minus-slippage.
+    # Thresholds pulled from config_tradier.OPTIONS_MAX_LOSS_PCT_DTE_* so they are tunable.
+    _cfg_loss = config
+    if _cfg_loss is None:
+        try:
+            from config_tradier import TradierConfig as _TC
+            _cfg_loss = _TC()
+        except Exception:
+            _cfg_loss = None
+    _t30 = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_30", -40.0) if _cfg_loss else -40.0
+    _t14 = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_14", -30.0) if _cfg_loss else -30.0
+    _tlo = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", -20.0) if _cfg_loss else -20.0
+    loss_threshold = _t30 if dte > 30 else (_t14 if dte > 14 else _tlo)
     if unrealized_pct <= loss_threshold:
         exit_signals.append(ExitSignal(position=opt_pos, reason="MAX_LOSS_GUARD", urgency="HIGH", action="SELL_NOW", detail=f"Position down {unrealized_pct:.1f}% (threshold {loss_threshold}% for {dte} DTE). Salvage remaining ${current_price*abs(quantity)*100:.2f} premium.", score=80))
     elif unrealized_pct <= loss_threshold + 15:
@@ -1276,6 +1329,28 @@ def _save_gtc_orders(config, gtc_orders: Dict):
     gtc_file = config.DATA_DIR / "options_gtc_orders.json"
     with open(gtc_file, "w") as f:
         json.dump(gtc_orders, f, indent=2, default=str)
+
+
+def _wt_history_path(config) -> Path:
+    return config.DATA_DIR / "options_wt_history.json"
+
+
+def _load_wt_history(config) -> Dict:
+    """Per-OCC snapshot of last seen WT velocities so we can detect bar-over-bar acceleration."""
+    p = _wt_history_path(config)
+    if p.exists():
+        try:
+            with open(p) as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_wt_history(config, hist: Dict):
+    p = _wt_history_path(config)
+    with open(p, "w") as f:
+        json.dump(hist, f, indent=2, default=str)
 
 
 def _compute_gtc_target(opt_pos: OptionPosition, ind: Dict) -> Optional[float]:
@@ -1524,8 +1599,16 @@ async def run_watch(args):
             gtc_orders = await _manage_gtc_orders(client, config, positions, indicators)
             if gtc_orders:
                 print(f"\n  \033[96m{len(gtc_orders)} GTC sell order(s) active — waiting for fills\033[0m")
+            # Load prior WT velocity snapshots so WT_DELTA_ACCEL can compare bar-over-bar
+            wt_history = _load_wt_history(config)
+            wt_history_updated = {}
             for pos_data in positions:
-                opt_pos, exit_signals = await analyze_option_position(client, pos_data, indicators, portfolio_over_limit=portfolio_over, allowed_call_symbols=allowed_calls, allowed_put_symbols=allowed_puts)
+                opt_pos, exit_signals = await analyze_option_position(client, pos_data, indicators, portfolio_over_limit=portfolio_over, allowed_call_symbols=allowed_calls, allowed_put_symbols=allowed_puts, wt_history=wt_history, config=config)
+                # record this cycle's velocity for next comparison (per-OCC)
+                _occ_key = pos_data.get("occ_symbol", "") or pos_data.get("symbol", "")
+                _ind_sym = indicators.get(opt_pos.symbol, {}) if indicators else {}
+                if _occ_key:
+                    wt_history_updated[_occ_key] = {"wt_velocity_D": _ind_sym.get("wt_velocity_D", 0) or 0, "wt_velocity_4h": _ind_sym.get("wt_velocity_4h", 0) or 0, "ts": datetime.utcnow().isoformat()}
                 # ── EMERGENCY CHECK: underlying moving 3x+ more than market ──
                 _und_sym = opt_pos.symbol
                 if _und_sym not in emergency_symbols and _bench_moves:
@@ -1620,6 +1703,9 @@ async def run_watch(args):
             watch_data = {"timestamp": datetime.now().isoformat(), "account": account_key, "positions": len(positions), "sell_signals": len(all_sell_now), "auto_sell": auto_sell, "gtc_orders": len(gtc_orders)}
             with open(watch_file, "w") as f:
                 json.dump(watch_data, f, indent=2)
+            # Persist WT velocity snapshots for next bar's acceleration comparison
+            if wt_history_updated:
+                _save_wt_history(config, wt_history_updated)
             if not daemon:
                 break
             print(f"\n  Next check in {interval}s...")

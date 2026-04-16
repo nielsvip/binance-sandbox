@@ -45,7 +45,8 @@ from tradier_options_analyzer import (
     analyze_chain_for_outliers, get_option_positions, analyze_option_position,
     smart_fill_option, place_option_order, build_occ_symbol, parse_occ_symbol,
     implied_vol, bs_price, bs_greeks, DirectionalSignal, OptionOutlier,
-    SpreadOpportunity, ExitSignal, _load_gtc_orders, _save_gtc_orders
+    SpreadOpportunity, ExitSignal, _load_gtc_orders, _save_gtc_orders,
+    _load_wt_history, _save_wt_history
 )
 
 logger = logging.getLogger("options_agent")
@@ -995,6 +996,103 @@ def _gtc_pending_buy_exposure(gtc_orders: dict) -> tuple:
     return call_cost, put_cost
 
 
+def _build_live_exposure_map(positions: list, gtc_orders: dict, config) -> dict:
+    """Build the CURRENT effective exposure book by symbol/sector/group across
+    live positions PLUS pending buy_to_open GTC orders. Spread-strategy symbols
+    excluded. Returns {by_symbol, by_sector, by_group, total, hedge_ratio,
+    call_cost, put_cost, bull_exp, bear_exp, bull_fraction}."""
+    sector_map = getattr(config, "SECTOR_MAP", {}) or {}
+    group_map = getattr(config, "SECTOR_GROUPS", {}) or {}
+    bear_set = getattr(config, "BEAR_SCENARIO_SYMBOLS", set()) or set()
+    by_symbol, by_sector, by_group = {}, {}, {}
+    call_cost, put_cost = 0.0, 0.0
+    bull_exp, bear_exp = 0.0, 0.0
+    def _add(sym: str, opt_type: str, cost: float):
+        nonlocal call_cost, put_cost, bull_exp, bear_exp
+        if sym in SPREAD_EXCLUDED_SYMBOLS or cost <= 0:
+            return
+        sector = sector_map.get(sym, "UNKNOWN")
+        group = group_map.get(sector, "OTHER")
+        by_symbol[sym] = by_symbol.get(sym, 0.0) + cost
+        by_sector[sector] = by_sector.get(sector, 0.0) + cost
+        by_group[group] = by_group.get(group, 0.0) + cost
+        if opt_type == "put":
+            put_cost += cost
+        else:
+            call_cost += cost
+        bear = sym in bear_set
+        is_bull_bet = (opt_type == "call" and not bear) or (opt_type == "put" and bear)
+        if is_bull_bet:
+            bull_exp += cost
+        else:
+            bear_exp += cost
+    for p in positions or []:
+        occ = p.get("occ_symbol", "") or p.get("symbol", "")
+        sym = _occ_underlying(occ)
+        opt_type = _classify_occ_side(occ)
+        _add(sym, opt_type, abs(float(p.get("cost_basis", 0) or 0)))
+    for occ, info in (gtc_orders or {}).items():
+        if info.get("side") != "buy_to_open":
+            continue
+        sym = info.get("symbol") or _occ_underlying(occ)
+        opt_type = info.get("type") or _classify_occ_side(occ)
+        price = info.get("target_price") or info.get("gtc_price") or 0
+        try:
+            qty = int(info.get("qty", 1) or 1)
+        except (TypeError, ValueError):
+            qty = 1
+        _add(sym, opt_type, float(price) * qty * 100)
+    total = call_cost + put_cost
+    hedge_ratio = put_cost / total if total > 0 else 0.0
+    market_total = bull_exp + bear_exp
+    bull_fraction = bull_exp / market_total if market_total > 0 else 0.5
+    return {"by_symbol": by_symbol, "by_sector": by_sector, "by_group": by_group, "total": total, "call_cost": call_cost, "put_cost": put_cost, "hedge_ratio": hedge_ratio, "bull_exp": bull_exp, "bear_exp": bear_exp, "bull_fraction": bull_fraction}
+
+
+def _sector_gate_would_violate(expo: dict, symbol: str, opt_type: str, new_cost: float, config) -> Tuple[bool, str]:
+    """Return (blocked, reason). Blocks a proposed BUY if it would widen an
+    existing sector/group/symbol violation OR push bull/bear market-direction
+    past configured extremes. Matches the stocks-side 'block-on-violation'
+    pattern — guidance is entry-time preventive, not a rebalancer."""
+    if not getattr(config, "OPTIONS_CONTINUOUS_SECTOR_GATE", True):
+        return False, ""
+    if symbol in SPREAD_EXCLUDED_SYMBOLS or new_cost <= 0:
+        return False, ""
+    sector_map = getattr(config, "SECTOR_MAP", {}) or {}
+    group_map = getattr(config, "SECTOR_GROUPS", {}) or {}
+    bear_set = getattr(config, "BEAR_SCENARIO_SYMBOLS", set()) or set()
+    sector = sector_map.get(symbol, "UNKNOWN")
+    group = group_map.get(sector, "OTHER")
+    new_total = expo["total"] + new_cost
+    new_sym = expo["by_symbol"].get(symbol, 0.0) + new_cost
+    new_sec = expo["by_sector"].get(sector, 0.0) + new_cost
+    new_grp = expo["by_group"].get(group, 0.0) + new_cost
+    max_sym = getattr(config, "OPTIONS_MAX_PER_SYMBOL", 0.25)
+    max_sec = getattr(config, "OPTIONS_MAX_PER_SECTOR", 0.40)
+    max_grp = getattr(config, "OPTIONS_MAX_PER_GROUP", 0.60)
+    if new_total > 0:
+        if new_sym / new_total > max_sym:
+            return True, f"{symbol}: {new_sym/new_total*100:.0f}% > {max_sym*100:.0f}% per-symbol cap"
+        if new_sec / new_total > max_sec:
+            return True, f"sector {sector}: {new_sec/new_total*100:.0f}% > {max_sec*100:.0f}% per-sector cap"
+        if new_grp / new_total > max_grp:
+            return True, f"group {group}: {new_grp/new_total*100:.0f}% > {max_grp*100:.0f}% per-group cap"
+    bear = symbol in bear_set
+    is_bull_bet = (opt_type == "call" and not bear) or (opt_type == "put" and bear)
+    new_bull = expo["bull_exp"] + (new_cost if is_bull_bet else 0.0)
+    new_bear = expo["bear_exp"] + (0.0 if is_bull_bet else new_cost)
+    new_mkt_total = new_bull + new_bear
+    if new_mkt_total > 0:
+        new_bull_frac = new_bull / new_mkt_total
+        mmin = getattr(config, "OPTIONS_MARKET_RATIO_MIN", 0.25)
+        mmax = getattr(config, "OPTIONS_MARKET_RATIO_MAX", 0.75)
+        if is_bull_bet and new_bull_frac > mmax:
+            return True, f"market bull_frac {new_bull_frac*100:.0f}% > {mmax*100:.0f}% (too long-market)"
+        if (not is_bull_bet) and new_bull_frac < mmin:
+            return True, f"market bull_frac {new_bull_frac*100:.0f}% < {mmin*100:.0f}% (too short-market)"
+    return False, ""
+
+
 def _ratio_would_violate(call_cost: float, put_cost: float, new_type: str, new_cost: float) -> bool:
     """Return True if adding `new_cost` on `new_type` side pushes the call/put
     ratio past MAX_CALL_RATIO/MAX_PUT_RATIO. Always allow the FIRST order on the
@@ -1174,6 +1272,14 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
     # the live ratio so we never queue up an order that would push us over the cap.
     running_call = float(limits["call_cost"])
     running_put = float(limits["put_cost"])
+    # Build a running sector/group/market-direction exposure map so we can block
+    # any new order that would widen an existing concentration/ratio violation.
+    try:
+        positions_for_expo = await get_option_positions(client)
+    except Exception:
+        positions_for_expo = []
+    gtc_for_expo = _load_gtc_orders(config)
+    running_expo = _build_live_exposure_map(positions_for_expo, gtc_for_expo, config)
     # ── CALLS: only trb_long symbols ──
     if limits["can_buy_calls"]:
         call_signals = [s for s in signals if s.direction == "LONG" and s.conviction >= 50 and s.symbol in call_allowed]
@@ -1203,8 +1309,16 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
                     logger.info(f"RATIO_GATE skip CALL {sig.symbol} — would push call ratio past {MAX_CALL_RATIO:.0%} (running calls=${running_call:.0f}, puts=${running_put:.0f})")
                     await asyncio.sleep(0.3)
                     continue
+                _sec_blocked, _sec_reason = _sector_gate_would_violate(running_expo, sig.symbol, "call", contract_cost, config)
+                if _sec_blocked:
+                    logger.info(f"SECTOR_GATE skip CALL {sig.symbol} — {_sec_reason}")
+                    await asyncio.sleep(0.3)
+                    continue
                 opportunities.append({"symbol": sig.symbol, "type": "call", "strike": best.strike, "expiration": best.expiration, "dte": best.dte, "bid": best.bid, "ask": best.ask, "mid": best.mid, "gtc_price": gtc_price, "edge_pct": best.edge_pct, "iv_deviation": best.iv_deviation_pct, "delta": best.greeks["delta"], "oi": best.open_interest, "score": best.score, "conviction": sig.conviction, "reason": f"D oversold — conv {sig.conviction:.0f}, edge {best.edge_pct:+.1f}%", "priority": "HIGH" if sig.conviction >= 70 else "MEDIUM", "qty": 1})
                 running_call += contract_cost
+                # Re-score the live exposure map so the next pick sees this one as filled
+                running_expo = _build_live_exposure_map(positions_for_expo, {**gtc_for_expo, f"_plan_{sig.symbol}_C{best.strike}": {"side": "buy_to_open", "symbol": sig.symbol, "type": "call", "target_price": gtc_price, "qty": 1}}, config)
+                gtc_for_expo = {**gtc_for_expo, f"_plan_{sig.symbol}_C{best.strike}": {"side": "buy_to_open", "symbol": sig.symbol, "type": "call", "target_price": gtc_price, "qty": 1}}
             await asyncio.sleep(0.3)
     else:
         logger.info(f"CALLS blocked: ratio {limits['call_cost']/(limits['total']+0.01):.0%} >= {MAX_CALL_RATIO:.0%} or at ceiling")
@@ -1258,9 +1372,16 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
                     logger.info(f"RATIO_GATE skip PUT {sig.symbol} — would push put ratio past {MAX_PUT_RATIO:.0%} (running calls=${running_call:.0f}, puts=${running_put:.0f})")
                     await asyncio.sleep(0.3)
                     continue
+                _sec_blocked, _sec_reason = _sector_gate_would_violate(running_expo, sig.symbol, "put", contract_cost, config)
+                if _sec_blocked:
+                    logger.info(f"SECTOR_GATE skip PUT {sig.symbol} — {_sec_reason}")
+                    await asyncio.sleep(0.3)
+                    continue
                 hedge_note = f" [hedge short losing {sig.signals.get('loss_pct', '?')}%]" if sig.signals.get("hedge_short") else ""
                 opportunities.append({"symbol": sig.symbol, "type": "put", "strike": best.strike, "expiration": best.expiration, "dte": best.dte, "bid": best.bid, "ask": best.ask, "mid": best.mid, "gtc_price": gtc_price, "edge_pct": best.edge_pct, "iv_deviation": best.iv_deviation_pct, "delta": best.greeks["delta"], "oi": best.open_interest, "score": best.score, "conviction": sig.conviction, "reason": f"D bearish — conv {sig.conviction:.0f}, edge {best.edge_pct:+.1f}%{hedge_note}", "priority": "HIGH" if needs_puts or sig.conviction >= 60 else "MEDIUM", "qty": 1})
                 running_put += contract_cost
+                running_expo = _build_live_exposure_map(positions_for_expo, {**gtc_for_expo, f"_plan_{sig.symbol}_P{best.strike}": {"side": "buy_to_open", "symbol": sig.symbol, "type": "put", "target_price": gtc_price, "qty": 1}}, config)
+                gtc_for_expo = {**gtc_for_expo, f"_plan_{sig.symbol}_P{best.strike}": {"side": "buy_to_open", "symbol": sig.symbol, "type": "put", "target_price": gtc_price, "qty": 1}}
             await asyncio.sleep(0.3)
     else:
         logger.info(f"PUTS blocked: ratio {limits['put_cost']/(limits['total']+0.01):.0%} >= {MAX_PUT_RATIO:.0%} or at ceiling")
@@ -1339,8 +1460,14 @@ async def run_daily_cycle(args):
         total_call_val = 0
         total_put_val = 0
         total_pnl = 0
+        wt_history = _load_wt_history(config)
+        wt_history_updated = {}
         for pos_data in positions:
-            opt_pos, exit_signals = await analyze_option_position(client, pos_data, indicators)
+            opt_pos, exit_signals = await analyze_option_position(client, pos_data, indicators, wt_history=wt_history, config=config)
+            _occ_key = pos_data.get("occ_symbol", "") or pos_data.get("symbol", "")
+            _ind_sym = indicators.get(opt_pos.symbol, {}) if indicators else {}
+            if _occ_key:
+                wt_history_updated[_occ_key] = {"wt_velocity_D": _ind_sym.get("wt_velocity_D", 0) or 0, "wt_velocity_4h": _ind_sym.get("wt_velocity_4h", 0) or 0, "ts": datetime.utcnow().isoformat()}
             is_call = opt_pos.option_type.lower() == "call"
             value = opt_pos.current_price * abs(opt_pos.quantity) * 100
             held_symbols.add(opt_pos.symbol)
@@ -1354,6 +1481,8 @@ async def run_daily_cycle(args):
             sig_str = f" [{len(exit_signals)} signals]" if exit_signals else ""
             print(f"    {opt_pos.symbol:6s} {opt_pos.option_type.upper():4s} ${opt_pos.strike:>8.2f} {opt_pos.expiration} ({opt_pos.dte}d) x{abs(opt_pos.quantity):.0f}  PnL: ${opt_pos.unrealized_pnl:+.2f} ({opt_pos.unrealized_pct:+.1f}%)  D={opt_pos.delta:+.3f}{sig_str}")
             await asyncio.sleep(0.2)
+        if wt_history_updated:
+            _save_wt_history(config, wt_history_updated)
         needs_puts = total_calls > total_puts * 1.5
         # Check portfolio limits — pass GTC orders so pending buys count toward the cap
         gtc_orders_for_limits = _load_gtc_orders(config)
@@ -1391,13 +1520,35 @@ async def run_daily_cycle(args):
         selected = []
         sel_running_call = float(limits["call_cost"])
         sel_running_put = float(limits["put_cost"])
+        # Sector/group/market-direction guard — built fresh here because the
+        # opportunity list may have been trimmed/re-sorted above.
+        sel_expo = _build_live_exposure_map(positions, _load_gtc_orders(config), config)
+        sel_gtc_extra: Dict = {}
+        # User-cancel cooldown: skip any OCC the user canceled within N hours
+        _user_cancel_cooldown_h = float(getattr(config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 4.0))
+        _existing_gtc = _load_gtc_orders(config)
         for opp in opportunities:
             cost = opp["gtc_price"] * opp.get("qty", 1) * 100
             if total_cost + cost > budget:
                 continue
             opp_type = opp.get("type", "call")
+            _opp_occ = build_occ_symbol(opp["symbol"], opp["expiration"], opp_type, opp["strike"])
+            _prev = _existing_gtc.get(_opp_occ, {})
+            _cancel_ts = _prev.get("_user_canceled_at")
+            if _cancel_ts:
+                try:
+                    _cc_hrs = (datetime.utcnow() - datetime.fromisoformat(_cancel_ts)).total_seconds() / 3600.0
+                except Exception:
+                    _cc_hrs = 99.0
+                if _cc_hrs < _user_cancel_cooldown_h:
+                    logger.info(f"CANCEL_COOLDOWN skip {_opp_occ} — user canceled {_cc_hrs:.1f}h ago (< {_user_cancel_cooldown_h:.1f}h)")
+                    continue
             if _ratio_would_violate(sel_running_call, sel_running_put, opp_type, cost):
                 logger.info(f"RATIO_GATE skip plan {opp['symbol']} {opp_type.upper()} — would push ratio past cap (calls=${sel_running_call:.0f}, puts=${sel_running_put:.0f})")
+                continue
+            _sec_blocked, _sec_reason = _sector_gate_would_violate(sel_expo, opp["symbol"], opp_type, cost, config)
+            if _sec_blocked:
+                logger.info(f"SECTOR_GATE skip plan {opp['symbol']} {opp_type.upper()} — {_sec_reason}")
                 continue
             total_cost += cost
             selected.append(opp)
@@ -1405,6 +1556,8 @@ async def run_daily_cycle(args):
                 sel_running_put += cost
             else:
                 sel_running_call += cost
+            sel_gtc_extra[f"_sel_{opp['symbol']}_{opp_type}_{opp['strike']}"] = {"side": "buy_to_open", "symbol": opp["symbol"], "type": opp_type, "target_price": opp["gtc_price"], "qty": opp.get("qty", 1)}
+            sel_expo = _build_live_exposure_map(positions, {**_load_gtc_orders(config), **sel_gtc_extra}, config)
         print(f"  Found {len(opportunities)}, selected {len(selected)} (${total_cost:.0f}):")
         for opp in selected:
             print(f"    [{opp['priority']:6s}] {opp['symbol']:6s} {opp['type'].upper():4s} ${opp['strike']:>8.2f} {opp['expiration']} ({opp['dte']}d)  GTC=${opp['gtc_price']:.2f} (ask=${opp['ask']:.2f})  Edge:{opp['edge_pct']:+.1f}%  OI:{opp['oi']}  Score:{opp['score']:.0f}")
@@ -1468,10 +1621,32 @@ async def run_premarket(args):
         if not orders:
             print("  No pending orders. Run --daily first.")
             return
+        # Pull current portfolio so premarket also respects sector/ratio/cancel cooldown
+        positions_pm = []
+        try:
+            positions_pm = await get_option_positions(client)
+        except Exception as e:
+            logger.warning(f"premarket: failed to fetch positions: {e}")
+        existing_gtc_pm = _load_gtc_orders(config)
+        pm_expo = _build_live_exposure_map(positions_pm, existing_gtc_pm, config)
+        pm_running_call = float(sum(c for c in [pm_expo.get("call_cost", 0.0)]))
+        pm_running_put = float(sum(c for c in [pm_expo.get("put_cost", 0.0)]))
+        cooldown_h = float(getattr(config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 4.0))
         adjusted = []
         for order in orders:
             symbol = order["symbol"]
             occ = build_occ_symbol(symbol, order["expiration"], order["type"], order["strike"])
+            # Skip any OCC the user canceled within the cooldown window
+            _prev = existing_gtc_pm.get(occ, {})
+            _cancel_ts = _prev.get("_user_canceled_at")
+            if _cancel_ts:
+                try:
+                    _cc_hrs = (datetime.utcnow() - datetime.fromisoformat(_cancel_ts)).total_seconds() / 3600.0
+                except Exception:
+                    _cc_hrs = 99.0
+                if _cc_hrs < cooldown_h:
+                    print(f"  {occ}: SKIP — user canceled {_cc_hrs:.1f}h ago (< {cooldown_h:.0f}h cooldown)")
+                    continue
             opt_quote_res = await client._request("GET", "/markets/quotes", params={"symbols": occ}, use_data_context=True)
             opt_quote = {}
             if opt_quote_res and "quotes" in opt_quote_res and "quote" in opt_quote_res["quotes"]:
@@ -1494,13 +1669,37 @@ async def run_premarket(args):
             thesis_ok = True
             if not is_call and d_mom == "IMPULSE_UP":
                 thesis_ok = False
+            # Drop calls if D flipped strongly bearish (symmetric to put guard)
+            if is_call and d_mom == "IMPULSE_DOWN":
+                thesis_ok = False
             order["bid"] = new_bid
             order["ask"] = new_ask
             order["gtc_price"] = new_price
+            # Sector/ratio re-check at fire time — market moved overnight, the book may
+            # have drifted; don't blindly place a stale plan order that now widens a
+            # violation (the exact scenario the user cancels every morning).
+            pm_cost = new_price * order.get("qty", 1) * 100
+            pm_type = order["type"]
+            ratio_violate = _ratio_would_violate(pm_running_call, pm_running_put, pm_type, pm_cost)
+            sec_blocked, sec_reason = _sector_gate_would_violate(pm_expo, symbol, pm_type, pm_cost, config)
+            if ratio_violate:
+                thesis_ok = False
+                status_extra = " [RATIO_GATE]"
+            elif sec_blocked:
+                thesis_ok = False
+                status_extra = f" [SECTOR_GATE {sec_reason}]"
+            else:
+                status_extra = ""
             status = "DROP" if not thesis_ok else ("ADJ" if abs(change) > 2 else "OK")
-            print(f"  {occ}: ${old_price:.2f}->${new_price:.2f} ({change:+.1f}%) D={d_mom} [{status}]")
+            print(f"  {occ}: ${old_price:.2f}->${new_price:.2f} ({change:+.1f}%) D={d_mom} [{status}]{status_extra}")
             if thesis_ok:
                 adjusted.append(order)
+                if pm_type == "put":
+                    pm_running_put += pm_cost
+                else:
+                    pm_running_call += pm_cost
+                pm_expo = _build_live_exposure_map(positions_pm, {**existing_gtc_pm, f"_pm_{symbol}_{pm_type}_{order['strike']}": {"side": "buy_to_open", "symbol": symbol, "type": pm_type, "target_price": new_price, "qty": order.get("qty", 1)}}, config)
+                existing_gtc_pm = {**existing_gtc_pm, f"_pm_{symbol}_{pm_type}_{order['strike']}": {"side": "buy_to_open", "symbol": symbol, "type": pm_type, "target_price": new_price, "qty": order.get("qty", 1)}}
             await asyncio.sleep(0.2)
         if adjusted:
             print(f"\n  Placing {len(adjusted)} adjusted orders...")

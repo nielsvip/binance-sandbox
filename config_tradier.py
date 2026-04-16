@@ -208,6 +208,21 @@ class TradierConfig:
     # Market direction ratio: bull_exposure / (bull + bear). Too high = over-long market.
     OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets
     OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets
+    # === OPTIONS EXIT THRESHOLDS (was -80/-60/-40 — too lenient; losers bled Apr 13-16) ===
+    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80)
+    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60)
+    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40)
+    # WT-velocity (NOT greeks delta) acceleration exit:
+    # CALL exits if wt_velocity_D flips negative AND |velocity| grows bar-over-bar.
+    # PUT exits if wt_velocity_D flips positive AND velocity grows bar-over-bar.
+    OPTIONS_WT_ACCEL_MIN_ABS: float = 10.0       # min |wt_velocity_D| to count as "accelerating"
+    OPTIONS_WT_ACCEL_GROWTH_PCT: float = 25.0    # velocity must grow at least 25% bar-over-bar
+    # Support/resistance break exit — symmetric to DC-High Reversal rule on stocks side
+    OPTIONS_LEVEL_BREAK_BUFFER: float = 0.01     # 1% buffer past dc_low_D (call) / dc_high_D (put)
+    OPTIONS_LEVEL_BREAK_MIN_DTE: int = 14        # Don't fire on sub-14-DTE (noise dominates)
+    # Continuous sector/put-call enforcement (applied in daily + premarket cycles)
+    OPTIONS_CONTINUOUS_SECTOR_GATE: bool = True  # Block new buys that widen existing sector/group/symbol violation
+    OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours
     # === BEAR_SCENARIO_SYMBOLS — symbols that go UP when markets go DOWN ===
     # A CALL on a bear_scenario symbol = bearish market bet (like a PUT on SPY).
     # A PUT on a bear_scenario symbol = bullish market bet (like a CALL on SPY).
