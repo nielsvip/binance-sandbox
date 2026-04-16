@@ -102,10 +102,11 @@ class QuickConfig:
     CONFLUENCE_MODE_ENABLED: bool = False
     CONFLUENCE_MIN_BLOCKS: int = 2  # How many blocks must agree simultaneously
     # NEW: Signal strength filter — only take top-percentile setups
-    STRENGTH_FILTER_ENABLED: bool = False
-    STRENGTH_MIN_SCORE: float = 3.0  # Min total block score to enter
-    # Holding period enforcement (avoid rapid exit noise)
-    MIN_HOLD_BARS: int = 0  # Don't exit for first N bars after entry
+    # WINNER 2026-04-16: score=5 gave Sharpe 0.94, 87.2% WR, 1.42% avg on 11-sym 4yr
+    STRENGTH_FILTER_ENABLED: bool = True
+    STRENGTH_MIN_SCORE: float = 5.0
+    # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
+    MIN_HOLD_BARS: int = 10
     # Profit target exit (sweep-only — boosts Sharpe by locking gains)
     PROFIT_TARGET_ENABLED: bool = False
     PROFIT_TARGET_PCT: float = 1.5  # Exit at this gain % even without technical signal
