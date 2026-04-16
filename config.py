@@ -1311,6 +1311,23 @@ class Config:
     SYMBOLS_ANG_LONG: Path = BASE_PATH / "symbols_ang_long.json"
     SYMBOLS_INF_LONG: Path = BASE_PATH / "symbols_inf_long.json"
     SYMBOLS_INF_SHORT: Path = BASE_PATH / "symbols_inf_short.json"
+    # ================================================================
+    # INF RANKING PRIORITY BYPASS — 2026-04-16
+    # When a symbol is in symbols_inf_long/short (built by ez_rankings
+    # from recent 15m/3m extreme movers), relax specific entry gates
+    # that empirically block 94% of qualifying big movers (replay test
+    # inf_replay_gates.py on 72 missed >=3% moves 2026-02-24..03-26).
+    # MASTER FLAG DEFAULTS OFF — sub-flags do nothing until master=True.
+    # Wiring into live entry code is pending V8 backtest validation.
+    # ================================================================
+    INF_RANKING_PRIORITY_BYPASS: bool = False            # master switch
+    INF_RANKING_BYPASS_STOCH: bool = True                # relax K3M_CAP/K15M — unlocks 73.6% alone
+    INF_RANKING_BYPASS_HTF: bool = True                  # 2/3 HTF -> 1/3 HTF — +18pp on top of stoch
+    INF_RANKING_BYPASS_SCORE: bool = False               # score gate bypass (unclear impact, keep off)
+    INF_RANKING_BYPASS_DELTA: bool = False               # DELTA_GATE_OPEN bypass (not measured yet)
+    INF_RANKING_BYPASS_WT: bool = False                  # WT composite bypass (trend misread risk)
+    INF_RANKING_BYPASS_FRESHNESS_MIN: int = 30           # only bypass within N min of list entry
+    INF_RANKING_BYPASS_MAX_POS: int = 8                  # soft cap on concurrent bypass-entries
     SYMBOLS_FLZ: Path = BASE_PATH / "symbols_flz.json"
     SYMBOLS_MEN: Path = BASE_PATH / "symbols_men.json"
     SYMBOLS_ANG_SHORT: Path = BASE_PATH / "symbols_ang_short.json"
