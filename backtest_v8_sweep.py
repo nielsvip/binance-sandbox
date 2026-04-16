@@ -114,7 +114,7 @@ TRADIER_TIER1 = {
         "1h+4h",                       # 2 HTFs only — fastest exits
         "4h+D",                        # 2 slowest — most patient
     ],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [2, 3, 4, 5],  # Require 2-5 TFs against
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [2, 3, 4],  # 5/5 = zero trades (Sharpe 0.001), removed
     "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": [True, False],
     "TRADIER_MI_EXIT_ENABLED_TRADIER": [True, False],  # MI: momentum interception exit A/B
     "TRADIER_MI_ENTRY_ENABLED_TRADIER": [True, False],  # MI: momentum interception entry A/B
@@ -128,7 +128,7 @@ TRADIER_TIER3 = {
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": [65, 50, 20],    # Mirror for shorts
     "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER": [25, 15, 5],         # Lower bonus = less score dependence
     "TRADIER_WT_EXIT_TFS_TRADIER": ["5m+15m+1h+4h+D", "15m+1h+4h+D", "1h+4h+D"],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [3, 4, 5],              # Require majority TF agreement
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [3, 4],              # 5 removed — zero trades
     "TRADIER_DC_DAYTRADE_ENABLED": [True],
     "TRADIER_MI_EXIT_ENABLED_TRADIER": [True, False],  # MI: momentum interception exit A/B
     "TRADIER_MI_ENTRY_ENABLED_TRADIER": [True, False],  # MI: momentum interception entry A/B
@@ -143,9 +143,9 @@ TRADIER_TIER4 = {
     # Gate loosening: widen stoch zone to let more winners in
     "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER": [35, 50, 80],
     "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": [65, 50, 20],
-    # WT exit: patience (proven winner = MIN 4-5)
+    # WT exit: MIN=4 only (5/5 produces zero trades, Sharpe 0.001)
     "TRADIER_WT_EXIT_TFS_TRADIER": ["5m+15m+1h+4h+D", "1h+4h+D"],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4, 5],
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],
     # WT composite (uses cross-TF alignment for entry scoring)
     "TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER": [True, False],
     # DC daytrade (marginal positive effect)
@@ -173,7 +173,7 @@ def _build_tier5():
                 "TRADIER_RSI_ENTRY_LONG_TRADIER": ml, "TRADIER_RSI_ENTRY_SHORT_TRADIER": ms,
                 "TRADIER_DC_DAYTRADE_ENABLED": True,
                 "TRADIER_WT_EXIT_TFS_TRADIER": "5m+15m+1h+4h+D",
-                "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 5,
+                "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 4,
                 "TRADIER_MI_EXIT_ENABLED_TRADIER": mi_exit,
                 "TRADIER_MI_ENTRY_ENABLED_TRADIER": mi_entry,
             })
@@ -192,7 +192,7 @@ TRADIER_TIER6 = {
     "TRADIER_GAP_FILL_MIN_GAP_PCT": [0.5, 1.0, 1.5, 2.0],
     # Lock in proven winners
     "TRADIER_DC_DAYTRADE_ENABLED": [True],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [5],  # MIN=5 proven best (sweep report)
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],  # 5 banned — zero trades (Sharpe 0.001)
     "TRADIER_MI_EXIT_ENABLED_TRADIER": [True, False],  # MI: momentum interception exit A/B
     "TRADIER_MI_ENTRY_ENABLED_TRADIER": [True, False],  # MI: momentum interception entry A/B
 }
@@ -212,7 +212,7 @@ TRADIER_TIER10 = {
     "TRADIER_RSI2_ENABLED": [False],
     "TRADIER_SPIKE_FADE_ENABLED": [False],
     "TRADIER_DC_DAYTRADE_ENABLED": [False],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [5],
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],
 }
 # = 5 × 5 × 1 × 1 × 1 × 1 × 1 = 25 configs — FH move threshold × DC entry zone
 
@@ -372,7 +372,7 @@ TRADIER_TIER9 = {
     "TRADIER_MI_VELOCITY_EXIT_ENABLED_TRADIER": [True],
     "TRADIER_MI_WAVE_EXIT_ENABLED_TRADIER": [True, False],
     "TRADIER_WT_EXIT_TFS_TRADIER": ["5m+15m+1h+4h+D"],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [5],
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],
     "TRADIER_DC_DAYTRADE_ENABLED": [True],
 }
 # Grid: 1 × 2 × 3 × 3 × 2 × 2 × 2 × 1 × 2 × 1 × 1 × 1 = 288 configs
@@ -385,7 +385,7 @@ TRADIER_TIER9F = {
     "TRADIER_MI_MIN_GAIN_EXIT_TRADIER": [0.30, 0.50, 1.00],
     "TRADIER_MI_VELOCITY_EXIT_ENABLED_TRADIER": [True],
     "TRADIER_MI_WAVE_EXIT_ENABLED_TRADIER": [True, False],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [5],
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],
     "TRADIER_DC_DAYTRADE_ENABLED": [True],
 }
 # = 1 × 2 × 3 × 3 × 1 × 2 × 1 × 1 = 36 configs (fast)
@@ -736,7 +736,7 @@ def _build_tradier_tier11():
             "STDEV_BREAKOUT_RVOL_MIN": rv, "TRADIER_STDEV_BREAKOUT_RVOL_MIN": rv,
             "STDEV_BREAKOUT_EXIT_PCTB_FAIL": ex, "TRADIER_STDEV_BREAKOUT_EXIT_PCTB_FAIL": ex,
             "STDEV_BREAKOUT_MAX_RETESTS": rt, "TRADIER_STDEV_BREAKOUT_MAX_RETESTS": rt,
-            "TRADIER_DC_DAYTRADE_ENABLED": True, "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 5,
+            "TRADIER_DC_DAYTRADE_ENABLED": True, "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 4,
         }
         cfgs.append(c)
     return cfgs
@@ -760,7 +760,7 @@ def _build_tradier_tier11f():
             "STDEV_BREAKOUT_HTF_LIST": htf, "TRADIER_STDEV_BREAKOUT_HTF_LIST": htf,
             "STDEV_BREAKOUT_RVOL_MIN": rv, "TRADIER_STDEV_BREAKOUT_RVOL_MIN": rv,
             "STDEV_BREAKOUT_EXIT_PCTB_FAIL": ex, "TRADIER_STDEV_BREAKOUT_EXIT_PCTB_FAIL": ex,
-            "TRADIER_DC_DAYTRADE_ENABLED": True, "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 5,
+            "TRADIER_DC_DAYTRADE_ENABLED": True, "TRADIER_WT_EXIT_MIN_TFS_TRADIER": 4,
         }
         cfgs.append(c)
     return cfgs
@@ -803,9 +803,9 @@ TRADIER_TIER20 = {
     "TRADIER_FH_MOMENTUM_DC_CONFIRM": [True],
     "TRADIER_FH_MOMENTUM_MFI_CONFIRM": [False],       # MFI barely matters (1.314 vs 1.313)
     "TRADIER_FH_MOMENTUM_DC_MAX_LONG": [0.25, 1.0],   # Bottom quarter vs anywhere (barely matters but test both)
-    # WT exit patience: 5/5 = let trades mature (proven best)
+    # WT exit patience: MIN=4 (5/5 produces zero trades, Sharpe 0.001)
     "TRADIER_WT_EXIT_TFS_TRADIER": ["5m+15m+1h+4h+D"],
-    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [5],
+    "TRADIER_WT_EXIT_MIN_TFS_TRADIER": [4],
     # DC daytrade: on (confirmed profitable in Tier 10 combo)
     "TRADIER_DC_DAYTRADE_ENABLED": [True],
     # Gate loosening: score 6 vs 12 (Tier 7 showed 96.6% of winners killed by strict gates)
