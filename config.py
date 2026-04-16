@@ -86,21 +86,20 @@ class Config:
     #   hold=60m universally worse — inf needs rapid exits, not holding.
     #   WT_DC_SCORER underperforms — multi-TF consensus too slow for spike-fade.
     # ───────────────────────────────────────────────────────────────────────────
-    SCALP_MODE: bool = False
-    SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"
-    SCALP_V2_DC_HTF_LIST: list = field(default_factory=lambda: ["15m", "1h"])
-    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True
-    SCALP_V2_MAX_CONCURRENT: int = 5
-    SCALP_V2_MAX_HOLD_MINUTES: float = 15.0  # 2026-04-16: sweep winner = 15m, NOT 30m
-    SCALP_V2_REENTRY_COOLDOWN_S: int = 300
-    SCALP_V2_ISOLATE: bool = False
-    # SCALP_V2 SECONDARY EXIT LAYERS — tested in expanded sweep (2026-04-16)
-    # These fire IN ADDITION to the primary variant if enabled, catching exits
-    # the primary variant misses. Each is independently toggleable.
-    SCALP_V2_REDZONE_EXIT: bool = False       # K90 reversal exit (Sharpe 97, #2 in sweep)
-    SCALP_V2_REDZONE_K_THRESHOLD: int = 90    # stoch K threshold for overbought/oversold reversal
-    SCALP_V2_LH_LL_EXIT: bool = False         # lower-high/higher-low 15m exit (Sharpe 68, #4)
-    SCALP_V2_LH_LL_TF: str = "15m"            # TF for LH/LL structure break
+    # ═══ SCALP_V2 — PRIORITY P0 (test first, week 1) ═══════════════════════════
+    SCALP_MODE: bool = False              # P0: KEEP OFF — V8 real-engine shows NEGATIVE Sharpe (-0.30). Isolated sweep was misleading. Needs parameter work before live.
+    SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # P0: sweep winner Sharpe=107. DO NOT change until V8 validates
+    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
+    SCALP_V2_MAX_HOLD_MINUTES: float = 15.0   # P0: sweep-proven, 60m universally worse for inf
+    SCALP_V2_DC_HTF_LIST: list = field(default_factory=lambda: ["15m", "1h"])  # P3: adding "4h" didn't improve
+    SCALP_V2_MAX_CONCURRENT: int = 5      # P3: fine for now, only tune if hitting position limits
+    SCALP_V2_REENTRY_COOLDOWN_S: int = 300  # P3: 5 min reasonable, shorter = more chop
+    SCALP_V2_ISOLATE: bool = False         # BACKTEST ONLY — never True in live
+    # ═══ SCALP_V2 SECONDARY EXITS — PRIORITY P1/P2 (test after P0 stable) ════
+    SCALP_V2_REDZONE_EXIT: bool = True     # P1: #2 in sweep (Sharpe 97). Catches exits V1_WT misses. +6 extra exits in smoke test.
+    SCALP_V2_REDZONE_K_THRESHOLD: int = 90 # P1: sweep winner=90. Try 80 only after 90 tested.
+    SCALP_V2_LH_LL_EXIT: bool = True       # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
+    SCALP_V2_LH_LL_TF: str = "15m"        # P2: sweep winner=15m. 1h too slow, 3m too noisy.
     HEDGE_ACCOUNTS = ["ang", "inf", "fin", "men", "flz"]  # Hedge accounts — ALL accounts get hedge protection
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
@@ -179,6 +178,8 @@ class Config:
     STOP_MAJOR_LOSS_ENABLED: bool = False  # ABLATION_BACKTEST: was implicitly True. #1 PnL destroyer (-125k%). L/S ratio hedge handles risk
     HEDGE_TRIGGER_LOSS_PCT: float = -0.05  # BACKTEST_CHANGE_38: was -0.10. Hedge earlier with 0.3% TP system
     ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
+    # ═══ ROGUE HEDGE FIX 2026-04-16 — CRITICAL ═══════════════════════════════
+    WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
     # === TWO-TIER MANDATORY REENTRY (BC_155) ===
     # Tier 1 (PULLBACK): Wait for K zone reset, enter at 120-150% size (better price)
@@ -728,15 +729,15 @@ class Config:
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
     CT_WT_VELOCITY_1H_MIN: float = 0.0  # BC_170: min wt_velocity_1h (0=must be directional)
-    CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DISABLED — standalone backtest proved USELESS (same avg return, worse monthly consistency 54.5%). Do NOT enable.
+    CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_MFI_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_MFI_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_DC_CROSSOVER_SKIP_ENABLED: bool = True  # BC_172: ENABLED 2026-04-08. 5yr validated: SHORT Sharpe +34%, removes only 1.3% of trades. Skip SHORT when DC basis crosses over on 15m/1h.
-    CT_CHOP_4H_GATE_ENABLED: bool = False  # BC_173: Skip if choppiness_4h > threshold. d=0.60 cross-trader. Winners=40.5, losers=51.3.
+    CT_CHOP_4H_GATE_ENABLED: bool = False  # BC_173: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe (no choppiness_4h in NPZ). OFF forever.
     CT_CHOP_4H_MAX: float = 50.0  # BC_173: max choppiness_4h
-    CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: Require relative_volume_1h or _4h above threshold. d=2.80 (Graal strongest). Winners=2.6x, losers=1.0x.
+    CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
     CT_REL_VOL_MIN: float = 1.3  # BC_174: min relative_volume for entry
     EMA_PULLBACK_ENABLED: bool = False  # BACKTEST_CHANGE_128: EMA pullback + StochRSI oversold in trend. Validated by academia + copy traders.
     EMA_PULLBACK_SCORE_BONUS: int = 35  # BACKTEST_CHANGE_128: Highest score — matches "retest-and-launch" core edge

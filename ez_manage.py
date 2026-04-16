@@ -10996,8 +10996,11 @@ class MultiAccountTradeManager:
             logger.info(f"[REENTRY_GUARANTEED] {position_key}: pos=${_re_val:.2f} — TRUE reentry (action={action})")
         # ═══ CRITICAL FIX: HARD DUPLICATE OPEN GUARD — NEVER open same position twice ═══
         # REENTRY is EXEMPT — the whole point of reentry is to rebuild a reduced position quickly.
+        # 2026-04-16 FIX: REMOVED hedge exemption — was allowing unlimited hedge cascade
+        # (WT_15M_SAME_HEDGE open → orphan kill → reopen → infinite loop, all bypassing cooldown).
+        # Hedges MUST also respect the 900s cooldown. No exceptions.
         _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
-        if is_augment and not _original_action_was_reentry and 'HEDGE' not in action.upper() and 'HEDGE' not in reason.upper():
+        if is_augment and not _original_action_was_reentry:
             _last_open_ts = _recent_opens.get(position_key, 0)
             if time.time() - _last_open_ts < _dup_cooldown:
                 logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
@@ -11159,7 +11162,8 @@ class MultiAccountTradeManager:
         if position_key not in tradeable_keys and account_key != 'flz' and not is_reduce:
             logger.error(f"🛡️ [execute_trade_action] BLOCKED NOT TRADEABLE {position_key} (no hedge auto-add) is_hedge={is_hedge} action={action} reason={reason}")
             return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
-        if ('OPEN' in action or 'OPEN' in reason) and position.positionAmt > 2 * config.MIN_POSITION_SIZE / current_price and 'HEDGE' not in action.upper() and 'HEDGE' not in reason.upper():
+        # 2026-04-16 FIX: REMOVED hedge exemption — was allowing hedge opens to bypass size gate
+        if ('OPEN' in action or 'OPEN' in reason) and position.positionAmt > 2 * config.MIN_POSITION_SIZE / current_price:
             return f'ex_tr BLOCKED: {position_key} ${position.positionAmt*current_price} over MIN QTY NO *OPEN* ORDER POSSIBLE'
         # ═══ 15m DIRECTION HARD BLOCK — NEVER enter when 15m indicators are moving AGAINST the trade ═══
         # 2026-04-09: For winner/pullback augments, replace the K-based 15m gate with the simple
@@ -20222,7 +20226,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _oa_dt = safe_datetime(_oa_raw) if _oa_raw else None
             _pos_age_s = (now - _oa_dt).total_seconds() if isinstance(_oa_dt, datetime) and isinstance(now, datetime) else 9999
             _pp_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            if _4h_against and _pos_age_s > 360 and _pp_g > 0.5:
+            if _4h_against and _pos_age_s > 360:
                 logger.warning(f"[WT_4H_VEL_EXIT] {position_key}: vel_4h={_wt_vel_4h:.1f} wt1/2={_wt1_4h:.1f}/{_wt2_4h:.1f} g={_pp_g:.2f}% → MANDATORY_REENTRY")
                 result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"WT_4H_VEL_EXIT_vel={_wt_vel_4h:.1f}_g={_pp_g:.2f}%_MANDATORY_REENTRY", 0.95)
                 if result:
@@ -20335,8 +20339,11 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _wt1_3m_exit = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
             _wt2_3m_exit = safe_fetch_float(i.get('wt2_3m', 0), 0.0)
             _wt3m_against = (is_long and _wt1_3m_exit < _wt2_3m_exit) or (not is_long and _wt1_3m_exit > _wt2_3m_exit)
-            # RULE #3: WT_15M_SAME_HEDGE — can't close (gain<=0, STRICT_NO_LOSS), wt1_15m against + near prev cross → HEDGE SAME SYMBOL NO EXCEPTIONS
-            if _wt3m_against and _pp_gain <= 0.0:
+            # RULE #3: WT_15M_SAME_HEDGE — DISABLED 2026-04-16: caused rogue unlimited hedge opens on inf (BTCDOMUSDT cascade).
+            # Root cause: each hedge becomes a losing position → triggers reverse hedge → cascade.
+            # 5-min cooldown resets on restart. Re-enable only after adding per-symbol daily hedge cap.
+            # Config gate: WT_15M_SAME_HEDGE_ENABLED (default False)
+            if getattr(config, 'WT_15M_SAME_HEDGE_ENABLED', False) and _wt3m_against and _pp_gain <= 0.0:
                 _wt1_15m_h = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
                 _wt2_15m_h = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
                 _wt15_against = (is_long and _wt1_15m_h < _wt2_15m_h) or (not is_long and _wt1_15m_h > _wt2_15m_h)
