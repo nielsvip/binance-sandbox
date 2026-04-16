@@ -3888,7 +3888,7 @@ class StockStrategy:
         # User directive 2026-04-10: STOCKS must be held at least 4h. Stocks are NOT
         # crypto — they are swing/position trades, not scalps. The 1h/4h/D slowdown
         # is what signals a reversal; LTF noise must not close a position.
-        _stock_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', 240.0))
+        _stock_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
         # Options held separately (D reversal only — handled below)
         _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if not _is_opts_check and hold_time_min < _stock_min_hold:
@@ -10294,6 +10294,8 @@ class TradierTradeManager:
         if not snapshot: return
         smfi_size = getattr(config, 'SMFI_POSITION_SIZE', 600.0)
         max_per_side = getattr(config, 'SMFI_MAX_PER_SIDE', 5)
+        _smfi_long_budget = getattr(config, 'SMFI_LONG_BUDGET', 3000.0)
+        _smfi_short_budget = getattr(config, 'SMFI_SHORT_BUDGET', 3000.0)
         positions = self.position_manager.get_positions_by_account(account_key)
         balance = self.get_current_portfolio_balance()
         long_pct = balance.get('long_pct', 0.5)
@@ -10350,6 +10352,7 @@ class TradierTradeManager:
         if not snapshot: return
         min_size = getattr(config, 'MINERVINI_POSITION_SIZE', 800.0)
         min_sepa = getattr(config, 'MINERVINI_MIN_SEPA_SCORE', 5)
+        _min_long_budget = getattr(config, 'MINERVINI_LONG_BUDGET', 4000.0)  # Total budget cap across MINERVINI longs
         positions = self.position_manager.get_positions_by_account(account_key)
         balance = self.get_current_portfolio_balance()
         long_pct = balance.get('long_pct', 0.5)
@@ -10386,6 +10389,12 @@ class TradierTradeManager:
             if not self.is_symbol_tradeable(sym, account_key, 'LONG'): continue
             qty = max(1, int(min_size / price))
             pct_52 = extras.get('sepa_pct_from_52w_high', 0)
+            # Budget cap: stop opening once total MINERVINI long exposure exceeds budget (only enforced if > 0)
+            if _min_long_budget > 0:
+                _total_minervini = sum(float(getattr(p, 'entry_price', 0) or 0) * abs(float(getattr(p, 'positionAmt', 0))) for k, p in positions.items() if 'MINERVINI' in str(getattr(p, 'augment_reason', '')) and k.endswith('_LONG'))
+                if _total_minervini + (qty * price) > _min_long_budget:
+                    logger.info(f"[{account_key}] [MINERVINI] budget cap hit ${_total_minervini:.0f}/${_min_long_budget:.0f}")
+                    break
             logger.info(f"[{account_key}] [MINERVINI] LONG {sym}: SEPA={sepa_score}/6 vol_surge=True pct_52wk={pct_52:.1f}% qty={qty}")
             await queue_trade_action(self.order_queue, self, pk, "OPEN", f"MINERVINI_SEPA score={sepa_score}", 85.0, override_qty=qty)
             _entered += 1

@@ -210,9 +210,9 @@ class TradierConfig:
     OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets
     OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets
     # === OPTIONS EXIT THRESHOLDS (was -80/-60/-40 — too lenient; losers bled Apr 13-16) ===
-    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
-    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
-    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1244 (audit miss)
+    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1245 (audit miss)
+    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1246 (audit miss)
     # WT-velocity (NOT greeks delta) acceleration exit:
     # CALL exits if wt_velocity_D flips negative AND |velocity| grows bar-over-bar.
     # PUT exits if wt_velocity_D flips positive AND velocity grows bar-over-bar.
@@ -333,7 +333,7 @@ class TradierConfig:
     TRADIER_SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"
     LEADERBOARD_LONG: Path = BASE_PATH / "symbols_long_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     LEADERBOARD_SHORT: Path = BASE_PATH / "symbols_short_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
-    INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
+    INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"  # WIRED 2026-04-16 (priority 15/100) — tradier_rankings.py:144
     PRICE_CACHE_FILE: Path = DATA_DIR / "price_cache_tradier.json"
     PRICE_CACHE_FILE_2: Path = DATA_DIR / "price_cache_tradier_2.json"
     PRICE_CACHE_FILE_3: Path = DATA_DIR / "price_cache_tradier_3.json"
@@ -459,7 +459,7 @@ class TradierConfig:
     REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 2          # sweep: 1 / 2 / 3
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
-    MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
     # Entry needs multi-TF WT alignment → exit needs multi-TF WT disalignment
     # Prevents 5m noise from killing positions that 15m/1h/4h still support
@@ -600,8 +600,8 @@ class TradierConfig:
     ORB_MAX_HOLD_MINUTES: float = 150.0
     ORB_POSITION_SIZE: float = 600.0
     ORB_MAX_PER_DAY: int = 3
-    ORB_LONG_BUDGET: float = 2000.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
-    ORB_SHORT_BUDGET: float = 2000.0  # DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
+    ORB_LONG_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination
+    ORB_SHORT_BUDGET: float = 2000.0  # WIRED 2026-04-16 (priority 85/100) — tradier_manage.py:5286 TRC override destination
     # --- Lunch Dead Zone — PROVEN, on trb+trc ---
     LUNCH_DEADZONE_ENABLED: bool = True
     LUNCH_DEADZONE_MODE: str = "BLOCK_MOMENTUM"
@@ -616,7 +616,7 @@ class TradierConfig:
     EMA_9_21_TIMEFRAME: str = "5m"
     EMA_9_21_SCORE_BONUS: int = 5  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # --- TTM Squeeze — EXPERIMENTAL, trc only ---
-    SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    SQUEEZE_ENABLED: bool = False  # OFF for trb. TRC overrides to True. ; WIRED 2026-04-16 (priority 80/100) — tradier_manage.py:5286 TRC override destination
     SQUEEZE_SCORE_BONUS: int = 15  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # --- Episodic Pivot — EXPERIMENTAL, trc only ---
     EPISODIC_PIVOT_ENABLED: bool = False  # OFF for trb. TRC overrides to True.
@@ -687,7 +687,7 @@ class TradierConfig:
     EXIT_ALGO_SCORE_ENABLED: bool = False        # Old calculate_signal_score exit. Bypassed scorer, closed PLTR.
     EXIT_STRUCT_BREAK_5M_ENABLED: bool = False   # 5m LH/HL structure exit. Too noisy for swing/options.
     EXIT_IBS_EXHAUSTION_ENABLED: bool = False    # Internal Bar Strength extreme. Minor signal, not worth standalone exit.
-    EXIT_SENTIMENT_ENABLED: bool = False         # Sentiment collapse exit. Unreliable signal source. ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
+    EXIT_SENTIMENT_ENABLED: bool = False         # Sentiment collapse exit. Unreliable signal source. ; WIRED 2026-04-16 (priority 60/100) — tradier_manage.py:4149 exit guard
     EXIT_MI_ENABLED: bool = False                # Momentum Interception sub-signals. Tested: marginal value.
     EXIT_CONV_FAIL_ENABLED: bool = False         # Convergence failure early exit. Was closing at tiny gains.
     EXIT_BOUNCE_TOP_ENABLED: bool = False        # Bounce-top loss exit. Percentage-based in disguise.
@@ -802,8 +802,8 @@ class TradierConfig:
     SMFI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
     SMFI_POSITION_SIZE: float = 600.0
     SMFI_MAX_HOLD_DAYS: int = 10  # Exit when price > 20SMA or 10d hold ; DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
-    SMFI_LONG_BUDGET: float = 3000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
-    SMFI_SHORT_BUDGET: float = 3000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    SMFI_LONG_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
+    SMFI_SHORT_BUDGET: float = 3000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     SMFI_MAX_PER_SIDE: int = 5  # Max concurrent SMFI positions per side
     # --- Minervini SEPA Screen — DISABLED on trb, paper on trc ---
     MINERVINI_ENABLED: bool = False  # DISABLED 2026-03-30: fake backtest Sharpe. Needs V5 validation.
@@ -811,7 +811,7 @@ class TradierConfig:
     MINERVINI_MIN_SEPA_SCORE: int = 5  # Need 5 of 6 conditions
     MINERVINI_MAX_HOLD_DAYS: int = 40  # Swing trade hold
     MINERVINI_TARGET_PCT: float = 25.0  # Take profit at 25%
-    MINERVINI_LONG_BUDGET: float = 4000.0  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    MINERVINI_LONG_BUDGET: float = 4000.0  # WIRED 2026-04-16 (priority 75/100) — tradier_manage.py:5286 TRC override destination
     # --- Connors RSI Composite — DISABLED on trb, paper on trc ---
     CONNORS_RSI_ENABLED: bool = False  # DISABLED 2026-03-30: augmented MRVL at -6.74% on real money. Needs V5 validation.
     CONNORS_RSI_ENTRY_THRESHOLD: float = 10.0  # Buy when CRSI < 10
@@ -1479,14 +1479,14 @@ class TradierConfig:
     SYMBOL_PERF_MIN_TRADES: int = 5
     SYMBOL_PERF_WINDOW_DAYS: int = 14
     TASK_STAGGER_SECONDS: int = 15  # Stagger between starting background tasks
-    TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
-    TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TF_ALIGNMENT_MIN_LONG: int = 2  # Exits need 2 TFs turning against ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7128 entry eval
+    TF_ALIGNMENT_MIN_SHORT: int = 2  # Exits need 2 TFs turning against ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7129 entry eval
     TF_ALIGNMENT_MIN_TOTAL: int = 4  # 2026-03-30: Entries need 3/3 LTF + D mandatory + 2/3 HTF = 4+ TFs. Hardcoded in check_entry_alignment.
-    TF_ALL: list = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO] ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
+    TF_ALL: list = None  # Auto-populated: [TF_MICRO, TF_SCALP, TF_HTF1, TF_HTF2, TF_HTF3, TF_MACRO] ; DEAD_CONFIRMED (priority 40/100) — auto-populated placeholder, no wiring needed
     TF_FOCUS: str = '3m'
-    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
-    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
-    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m ; DEAD_CONFIRMED (priority 92/100) — no plausible wiring site found 20260416
+    TF_FOCUS_ENTRY_HARD_GATE: bool = True  # Focus TF must agree for entry ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7134 entry eval
+    TF_FOCUS_EXIT_HARD_GATE: bool = True  # Focus TF crossunder = immediate exit ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7135 entry eval
+    TF_FOCUS_WEIGHT: float = 8.0  # BACKTEST_CHANGE_2: was 5.0. 3m is 1.9x better than 15m ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7130 entry eval
     TIER_A_MIN_GAIN: float = 0.3  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TIER_A_MIN_TRADES: int = 10  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TIER_A_MULTIPLIER: float = 1.2  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
@@ -1559,7 +1559,7 @@ class TradierConfig:
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # FIX 2026-03-29: was 1, killed real hedges on fin. Need 2 misses to confirm phantom.
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
-    _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
+    _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'  # WIRED 2026-04-16 (priority 5/100) — tradier_rankings.py:2338 regime tracking
     _INSTANCES: ClassVar[WeakSet] = WeakSet()  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     _REGIME_LOG: ClassVar[list] = []  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     _REGIME_REDIS_TS: ClassVar[float] = 0.0  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
