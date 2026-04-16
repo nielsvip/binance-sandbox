@@ -297,7 +297,7 @@ class Config:
     # Baseline Sharpe was 0.17 — this is 5.5× improvement
     V8Q_STRENGTH_FILTER_ENABLED: bool = True  # Weighted block score filter
     V8Q_STRENGTH_MIN_SCORE: float = 5.0  # Block weighted sum ≥ 5 required to enter
-    V8Q_HTF_MIN_ALIGNED: int = 2  # At least 2/3 of (1h,4h,D) must agree on direction
+    V8Q_HTF_MIN_ALIGNED: int = 1  # Top sweep config: HTF=1 (D_TREND_REQUIRED gives primary filter)
     V8Q_MIN_HOLD_BARS: int = 10  # Hold for 10 bars (30min) minimum — avoids noise exits
     V8Q_WT_EXIT_MIN_TFS: int = 2  # Exit on 2/3 WT against (not 3/3)
     V8Q_COOLDOWN_BARS: int = 3
