@@ -59,14 +59,10 @@ SERVERS = {
 
 
 def log(msg):
+    # 2026-04-16: launchd redirects stdout→LOG_FILE, so just print. File-write removed
+    # to stop the double-log (both launchd and log() were writing to same file).
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    line = f"[{ts}] {msg}"
-    print(line, flush=True)
-    try:
-        with open(LOG_FILE, "a") as f:
-            f.write(line + "\n")
-    except Exception:
-        pass
+    print(f"[{ts}] {msg}", flush=True)
 
 
 def acquire_lock():
