@@ -252,12 +252,12 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20 — k15m level cap on WT_2of3 reentry gate
+    REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20 — k15m level cap on WT_2of3 reentry gate
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     REENTRY_MIN_GAP_MINUTES: float = 3.0    # Crypto: 3 min floor between exit and reentry (stocks=15). Fires before any tier gate.
-    REENTRY_SYMGATE_ENABLED: bool = True    # Block reentry if DELTA/score/speed says exit for the proposed side (same as stocks)
+    REENTRY_SYMGATE_ENABLED: bool = False# Block reentry if DELTA/score/speed says exit for the proposed side (same as stocks)
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
-    ENTRY_SYMGATE_ENABLED: bool = True      # Same guard on fresh entries, not just reentries
+    ENTRY_SYMGATE_ENABLED: bool = False# Same guard on fresh entries, not just reentries
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
@@ -409,6 +409,16 @@ class Config:
     DELTA_ENGINE_ENABLED: bool = True  # Master switch
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True
+    # --- CASCADE TF + RATE-INTEGRATED RZ/DELTA (user directive 2026-04-16) ---
+    # Drill-down TF cascade in rate(): k_3m>=THRESH → k_15m → k_1h → k_4h → k_D.
+    # Higher depth = MORE TFs aligned = stronger signal (more bullish for LONG).
+    # Red zones + delta + wt_dc integrated into rate() as first-class decision inputs.
+    RATE_CASCADE_ENABLED: bool = True
+    CASCADE_K_THRESHOLD: float = 80.0  # LONG needs K>=80; SHORT needs K<=20
+    CASCADE_SCORE_PER_DEPTH: float = 1.5  # bonus per cascade step (max 22.5 for depth 15)
+    CASCADE_RZ_ENTRY_MIN_DEPTH: int = 3  # min composite depth (0-15) for RZ breakout entry
+    RATE_DELTA_3M_EXIT_ENABLED: bool = True  # 3m delta slowdown / WT reverse = hard exit
+    RATE_REENTRY_CROSSBACK_ENABLED: bool = True  # cross-back of exit price = full reentry
     DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5

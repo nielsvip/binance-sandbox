@@ -239,7 +239,7 @@ class TradierConfig:
     }
     # === ENTRY ZONE GATES (backtest: 1h primary for stocks, SMA200 Sharpe 89, MFI_D Sharpe 78) ===
     ENTRY_ZONE_LONG: float =               35.0   # V8 ABLATION 2026-04-13: Sharpe 1.437 (best combo). Was 25.
-    ENTRY_ZONE_SHORT: float =              65.0   # Mirror of ZONE_LONG (100-35=65). Was 75. ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7106 short-side entry zone gate
+    ENTRY_ZONE_SHORT: float = 100.0# Mirror of ZONE_LONG (100-35=65). Was 75. ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7106 short-side entry zone gate
     ENTRY_MIN_ALIGNMENT: int =             10     # V8 ABLATION 2026-04-13: Sharpe 1.0, WR 53.9%. Was 8.
     ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF
     ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:2680 referenced in entry eval
@@ -456,7 +456,7 @@ class TradierConfig:
     # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned
     # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
-    REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20
+    REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 2          # sweep: 1 / 2 / 3
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
     MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
