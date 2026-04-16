@@ -4299,7 +4299,18 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     to_save_bottom20[:] = [{"symbol": e["symbol"], "score": e["final_score_norm"], "linearity": e.get("avg_linearity", 0)} for e in top_losers_lt[:20]]
     
     # Build top 100 long-term list
-    top_100_long_term.extend([item["symbol"] for item in top_winners_lt[:90]])
+    # 2026-04-16: cap size via config.LT_TOP_SIZE, log every refresh for verification + downstream consumers.
+    try:
+        _lt_cap = int(getattr(Config(), 'LT_TOP_SIZE', 100))
+        _st_lt_enabled = bool(getattr(Config(), 'ST_LT_SPLIT_ENABLED', True))
+    except Exception:
+        _lt_cap = 100
+        _st_lt_enabled = True
+    top_100_long_term.extend([item["symbol"] for item in top_winners_lt[:_lt_cap]])
+    if _st_lt_enabled:
+        try:
+            logger.info(f"[ST_LT_SPLIT] top_100_long_term populated size={len(top_100_long_term)} cap={_lt_cap} first10={top_100_long_term[:10]}")
+        except Exception: pass
     
     # Merge returns data
     def merge_filter(ret15_dict, ret3_dict, top_100_set, cond15_func, cond3_func):

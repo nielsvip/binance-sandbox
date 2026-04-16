@@ -177,11 +177,10 @@ def run(args):
                         while not ok:
                             time.sleep(0.5)
                             ok, cpu, mem = check_resources(args.cpu_cap, args.mem_cap)
-                    # Mask build
-                    mask_keys = [f"{side}_{k}" for k in combo]
+                    # Mask build — combo keys already have side prefix (from long_keys/short_keys)
                     try:
-                        mask = np.ones_like(C[mask_keys[0]])
-                        for k in mask_keys:
+                        mask = np.ones_like(C[combo[0]])
+                        for k in combo:
                             mask &= C[k]
                     except KeyError:
                         batch_dead.append((ch, -99.0, time.time()))
@@ -198,8 +197,10 @@ def run(args):
                         n_dead += 1
                     else:
                         comp = composite_score(m["sharpe"], m["wr"], m["mean"])
+                        # Store combo without the side prefix so phase2 can re-prefix by side
+                        combo_str = "+".join(k[2:] if k.startswith(side + "_") else k for k in combo)
                         batch_survivors.append(
-                            (ch, "+".join(combo), side, h, m["sharpe"], m["wr"], m["mean"],
+                            (ch, combo_str, side, h, m["sharpe"], m["wr"], m["mean"],
                              m["std"], m["pf"], m["n"], comp, time.time())
                         )
                         n_survivors += 1
@@ -237,7 +238,7 @@ def main():
     ap.add_argument("--db", default="")
     ap.add_argument("--sharpe-floor", type=float, default=1.0)
     ap.add_argument("--top-n", type=int, default=5000)
-    ap.add_argument("--min-trades", type=int, default=100)
+    ap.add_argument("--min-trades", type=int, default=20)
     ap.add_argument("--worker-id", type=int, default=0)
     ap.add_argument("--total-workers", type=int, default=1)
     ap.add_argument("--cpu-cap", type=float, default=95.0)

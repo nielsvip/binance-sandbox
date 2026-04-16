@@ -411,6 +411,7 @@ class Config:
     DELTA_ENGINE_ENABLED: bool = True  # Master switch
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True
+    WT_COMPOSITE_SCORING_ENABLED: bool = True  # reach existing bonus block at ez_positions_quick.py:1715-1751 (stocks already on via WT_COMPOSITE_SCORING_ENABLED_TRADIER)
     DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5
@@ -589,6 +590,35 @@ class Config:
     # Respects tradeable_keys (hand-picked), HTF_GATE via queue_trade_action gates downstream, and ratio gates.
     TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True  # 2026-04-16: re-enabled. The HTF_TREND_VETO block is fixed separately via HTF_TREND_VETO_BYPASS_REASONS.
     TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0  # uses START_POSITION_SIZE if <=0
+    # ═══ 2026-04-16 MARKET-DATA INTEGRATION — route 598 pre-computed composite fields into scoring + winner protection ═══
+    # Per user directive: "integrate ALL values, understand ST/LT outperformers, best buys get priority, don't close too soon".
+    # Zero new strategy logic — only routes already-computed fields (0dc_moment, 0ranking_points_global, etc.) into
+    # existing scoring and exit paths. All switchable so a sweep can disable individually.
+    # --- Feature 1: Rank-driven conviction boost (uses 0ranking_points_global) ---
+    RANK_CONVICTION_ENABLED: bool = True
+    RP_STRONG_THRESHOLD: float = 70.0  # |ranking_points_global| >= this, direction matches → bonus
+    RP_STRONG_BONUS: float = 15.0
+    RP_WEAK_THRESHOLD: float = 30.0    # |ranking_points_global| < this → penalty (low quality symbol)
+    RP_WEAK_PENALTY: float = -10.0
+    RP_OPPOSITE_PENALTY: float = -20.0  # ranking_points opposite to direction + strong → heavy penalty
+    # --- Feature 2: DC-moment strength gate (uses 0dc_moment) ---
+    DC_MOMENT_ENABLED: bool = True
+    DC_MOMENT_STRONG_THRESHOLD: float = 40.0  # |dc_moment| >= this, sign matches direction → bonus
+    DC_MOMENT_STRONG_BONUS: float = 10.0
+    DC_MOMENT_OPPOSITE_PENALTY: float = -15.0  # dc_moment opposite to direction + strong → penalty
+    # --- Feature 3: Winner protection in exit evaluation (uses 0ranking_points_global) ---
+    # High-rank winners skip the poll-based exit cycle until they've locked >= RP_PROTECT_MIN_GAIN.
+    # Technical exits (WT_CROSS_EXIT, DC_LOW4_3M, DELTA_EXIT, HEDGE paths, STRUCTURAL_RANGE_SHIFT) still fire.
+    WINNER_PROTECT_ENABLED: bool = True
+    RP_PROTECT_THRESHOLD: float = 70.0  # ranking_points_global matches direction AND >= this → protect
+    RP_PROTECT_MIN_GAIN: float = 2.0    # below this gain, skip poll-based soft exits (not technical exits)
+    # --- Feature 4: ST vs LT outperformer split in ez_rankings ---
+    # Populates top_100_long_term (currently unused) and keeps top_longs/top_shorts biased to ST momentum.
+    # Ratio_rebalance_loop + RZ augment priority can then prefer LT winners for augments, ST for fresh opens.
+    ST_LT_SPLIT_ENABLED: bool = True
+    LT_SCORE_WEIGHT_HTF: float = 0.7   # weight for 4h/D/sentiment when scoring LT outperformers
+    ST_SCORE_WEIGHT_LTF: float = 0.7   # weight for 3m/15m/velocity when scoring ST outperformers
+    LT_TOP_SIZE: int = 100             # cap for top_100_long_term
     # 2026-04-16: HTF_TREND_VETO at ez_manage.py:11013-11023 blocks all non-REDUCE non-HEDGE non-REENTRY non-QUICK
     # entries when HTF is opposite. It has no RZ/breakout exemption. That's why breakouts through red zones,
     # DC levels, compression expansions don't actually open — they bypass MY new gate but hit this old one.

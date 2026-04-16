@@ -1697,8 +1697,11 @@ class AdvancedSignalRater:
                 if _delta_sig:
                     _delta_active_tfs = getattr(_delta_sig, 'active_tf_count', _delta_sig.bull_tf_count if is_long else _delta_sig.bear_tf_count)
                     _delta_z = _delta_sig.bull_speed_z if is_long else _delta_sig.bear_speed_z
-                    _delta_entry_ok = (is_long and _delta_sig.entry_long) or (not is_long and _delta_sig.entry_short)
-                    _delta_exit_ok = (is_long and _delta_sig.exit_long) or (not is_long and _delta_sig.exit_short)
+                    _rza = getattr(_delta_sig, 'zone_action', '') or ''
+                    _py_l = getattr(_delta_sig, 'pyramid_long', False)
+                    _py_s = getattr(_delta_sig, 'pyramid_short', False)
+                    _delta_entry_ok = (is_long and (_delta_sig.entry_long or _rza == "BUY" or _py_l)) or (not is_long and (_delta_sig.entry_short or _rza == "SELL" or _py_s))
+                    _delta_exit_ok = (is_long and (_delta_sig.exit_long or _rza == "EXIT_LONG")) or (not is_long and (_delta_sig.exit_short or _rza == "EXIT_SHORT"))
                     _cache = getattr(tracker_manager, '_rate_delta_sig_cache', None)
                     if _cache is None:
                         _cache = {}
@@ -1753,6 +1756,22 @@ class AdvancedSignalRater:
             elif ind.get("wt_any_bear_div") and not is_long: score += 10; reasons.append(f"WT_BEAR_DIV({ind.get('wt_strongest_bear_div_tf')},+10)")
             if is_long and _wt_bull_cross_n >= 2: score += 3; reasons.append(f"WT_MULTI_BULL_X({_wt_bull_cross_n:.0f},+3)")
             elif not is_long and _wt_bear_cross_n >= 2: score += 3; reasons.append(f"WT_MULTI_BEAR_X({_wt_bear_cross_n:.0f},+3)")
+        # === DC_MOMENT SIGNAL (2026-04-16): route pre-computed 0dc_moment into score ===
+        # 0dc_moment is the cross-TF DC strength composite (already in market_data, was fetched at line 707
+        # but never fed into scoring). Aligned with direction = higher conviction; opposite = penalty.
+        if bool(getattr(config, 'DC_MOMENT_ENABLED', True)) and not is_exit:
+            _dcm = safe_fetch_float(ind.get('0dc_moment', metrics.get('0dc_moment') if isinstance(metrics, dict) else 0), 0)
+            _dcm_strong = float(getattr(config, 'DC_MOMENT_STRONG_THRESHOLD', 40.0))
+            _dcm_bonus = float(getattr(config, 'DC_MOMENT_STRONG_BONUS', 10.0))
+            _dcm_pen = float(getattr(config, 'DC_MOMENT_OPPOSITE_PENALTY', -15.0))
+            if is_long and _dcm > _dcm_strong:
+                score += _dcm_bonus; reasons.append(f"DC_MOMENT_STRONG_L({_dcm:.0f},+{_dcm_bonus:.0f})")
+            elif not is_long and _dcm < -_dcm_strong:
+                score += _dcm_bonus; reasons.append(f"DC_MOMENT_STRONG_S({_dcm:.0f},+{_dcm_bonus:.0f})")
+            elif is_long and _dcm < -_dcm_strong:
+                score += _dcm_pen; reasons.append(f"DC_MOMENT_OPPOSITE_L({_dcm:.0f},{_dcm_pen:.0f})")
+            elif not is_long and _dcm > _dcm_strong:
+                score += _dcm_pen; reasons.append(f"DC_MOMENT_OPPOSITE_S({_dcm:.0f},{_dcm_pen:.0f})")
         # === MARKET REGIME DETECTION (replaces old ADX_REGIME_FILTER) ===
         _regime_info = None
         _regime_params = None
@@ -1798,6 +1817,29 @@ class AdvancedSignalRater:
                 score -= 10; reasons.append(f"RATIO_OVERWEIGHT_LONG(R={_rs_ratio:.2f},-10)")
             elif not is_long and _rs_ratio < _rs_min:
                 score -= 10; reasons.append(f"RATIO_OVERWEIGHT_SHORT(R={_rs_ratio:.2f},-10)")
+        # === RANK_CONVICTION (2026-04-16): route 0ranking_points_global into score ===
+        # 0ranking_points / 0ranking_points_global is a continuous symbol rank already computed every tick.
+        # Positive = bullish rank; negative = bearish rank. Direction-matching strong rank → big bonus.
+        # Opposite strong rank → heavy penalty (low-quality against-trend entry).
+        if bool(getattr(config, 'RANK_CONVICTION_ENABLED', True)) and not is_exit:
+            _rp_raw = ind.get('0ranking_points_global', ind.get('0ranking_points'))
+            if _rp_raw is None and isinstance(metrics, dict):
+                _rp_raw = metrics.get('0ranking_points_global', metrics.get('0ranking_points', 0))
+            _rp = safe_fetch_float(_rp_raw, 0)
+            _rp_strong = float(getattr(config, 'RP_STRONG_THRESHOLD', 70.0))
+            _rp_weak = float(getattr(config, 'RP_WEAK_THRESHOLD', 30.0))
+            _rp_bonus = float(getattr(config, 'RP_STRONG_BONUS', 15.0))
+            _rp_weak_pen = float(getattr(config, 'RP_WEAK_PENALTY', -10.0))
+            _rp_opp_pen = float(getattr(config, 'RP_OPPOSITE_PENALTY', -20.0))
+            _rp_abs = abs(_rp)
+            _rp_dir_match = (is_long and _rp > 0) or (not is_long and _rp < 0)
+            _rp_dir_opposite = (is_long and _rp < 0) or (not is_long and _rp > 0)
+            if _rp_dir_match and _rp_abs >= _rp_strong:
+                score += _rp_bonus; reasons.append(f"RANK_STRONG({_rp:.0f},+{_rp_bonus:.0f})")
+            elif _rp_abs < _rp_weak:
+                score += _rp_weak_pen; reasons.append(f"RANK_WEAK({_rp:.0f},{_rp_weak_pen:.0f})")
+            elif _rp_dir_opposite and _rp_abs >= _rp_strong:
+                score += _rp_opp_pen; reasons.append(f"RANK_OPPOSITE({_rp:.0f},{_rp_opp_pen:.0f})")
         # WT+K UNIFIED ENTRY CONDITIONS (replaces is_long_stoch_ok / is_short_stoch_ok)
         # _mts already computed above (before alignment helpers)
         _mts_bottom = _mts['bottom_score']; _mts_eq = _mts['entry_quality']; _mts_dir = _mts['direction']; _mts_gp = _mts['gain_potential']; _mts_sz = _mts['size_multiplier']
@@ -11184,8 +11226,22 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     pass  # ALL percentage-based exits KILLED 2026-03-30. Technical exits only (WT/stoch/DC/structure).
                 # AUTO_HEDGE exit: DISABLED 2026-03-28. Caused 1100+ closes/day from tick noise.
                 # Hedges now only close via HEDGE_RECOVERY when original is actually profitable (>1%).
+                # === WINNER_PROTECT (2026-04-16): high-rank same-direction winners skip TREND_REVERSAL_EXIT ===
+                # TREND_REVERSAL_EXIT is an HTF-score poll exit that closes positions on mild score flips —
+                # one of the main "closed too soon" culprits. Technical reversals below (WT_CROSS, DC_LOW4,
+                # DELTA, structural, hedge) STILL fire — we only skip this soft poll gate for top-ranked names.
+                _winner_protect_skip_trend_reversal = False
+                if bool(getattr(config, 'WINNER_PROTECT_ENABLED', True)) and not is_hedge:
+                    _wp_rp_raw = indicators.get('0ranking_points_global', indicators.get('0ranking_points', 0))
+                    _wp_rp = safe_fetch_float(_wp_rp_raw, 0)
+                    _wp_thr = float(getattr(config, 'RP_PROTECT_THRESHOLD', 70.0))
+                    _wp_min_gain = float(getattr(config, 'RP_PROTECT_MIN_GAIN', 2.0))
+                    _wp_match = (is_long and _wp_rp >= _wp_thr) or (not is_long and _wp_rp <= -_wp_thr)
+                    if _wp_match and 0 <= current_gain < _wp_min_gain:
+                        _winner_protect_skip_trend_reversal = True
+                        logger.info(f"🛡️[WINNER_PROTECT] {position_key}: rank={_wp_rp:.0f} (direction match), gain={current_gain:.2f}% < {_wp_min_gain}% — skipping TREND_REVERSAL_EXIT this cycle")
                 # TREND_REVERSAL_EXIT: for trend accounts, exit when HTF trend flips against position
-                if not hard_exit_reason and not is_hedge and account_key in getattr(config, 'TREND_ACCOUNTS', []):
+                if not hard_exit_reason and not is_hedge and not _winner_protect_skip_trend_reversal and account_key in getattr(config, 'TREND_ACCOUNTS', []):
                     _tr_min_gain = getattr(config, 'TREND_MIN_GAIN_EXIT', 0.10)
                     _tr_flip = getattr(config, 'TREND_EXIT_SCORE_FLIP', 0)
                     if current_gain >= _tr_min_gain:
