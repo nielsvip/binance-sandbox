@@ -185,6 +185,8 @@ class Config:
     ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
     # ═══ ROGUE HEDGE FIX 2026-04-16 — CRITICAL ═══════════════════════════════
     WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
+    WT_15M_SAME_HEDGE_DAILY_CAP: int = 2  # 2026-04-16: max SAME_HEDGE opens per symbol per day. 45× BAT/DOT/ATOM firestorm = daily cap missing.
+    WT_15M_SAME_HEDGE_COOLDOWN_SEC: int = 1800  # 2026-04-16: Redis-backed cooldown (survives restarts — old 300s in-memory wiped on process restart).
     # ═══════════════════════════════════════════════════════════════════════
     # SHARPE-TRIPLE ENHANCEMENTS 2026-04-16 — break the 0.69 plateau
     # Implementations in strategy_enhancements.py. ALL DEFAULT OFF so agents

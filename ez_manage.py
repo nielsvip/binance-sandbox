@@ -13245,11 +13245,34 @@ class MultiAccountTradeManager:
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
     async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None) -> str:
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
+        global _AUGMENT_LOCK
         # ═══ FIX 2026-04-08: ATOMIC OPEN-IN-FLIGHT GUARD — if another execute_now is opening this key, HARD BLOCK ═══
         _act_upper_early = (action or '').upper()
         _ENTRY_ACTIONS = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
+        # ═══ 2026-04-16 PREFLIGHT INTENT LOCK — closes the fill-propagation race window ═══
+        # Root cause of BEAT 7× BUY at 10:18:24-34: every augment lock (HARD_AUGMENT_LOCK, augmented_positions,
+        # augmentation_cooldown_map, recent_augmentations, _last_augment_save_time) is gated on
+        # `_has_existing_position` (line 13380), computed from cached Binance positionAmt. During the 1-3s
+        # Binance fill-propagation window, positionAmt=0 for all concurrent callers → NO lock ever written
+        # → every call enters OPEN path and dispatches an order. Asymmetry: REDUCE path sets its lock at
+        # line 13356 unconditionally at entry; AUGMENT path only sets post-fill. This fix sets the intent
+        # lock BEFORE any await/position-fetch, matching reduce behavior. 60s window is enough for fill
+        # propagation; legitimate retries after 60s still work, and post-fill 900s guards remain unchanged.
+        _reason_up_preflight = (reason or '').upper()
+        _is_reentry_preflight = 'REENTRY' in _reason_up_preflight or 'GUARANTEED' in _reason_up_preflight or 'RECLAIM_LEVEL' in _reason_up_preflight or 'QUICK_RECOVERY' in _reason_up_preflight or action == 'REENTRY'
+        if _is_open_action and position_key and not _is_reentry_preflight:
+            _pf_ts = max(_recent_opens.get(position_key, 0), _AUGMENT_LOCK.get(position_key, 0))
+            _pf_age = time.time() - _pf_ts if _pf_ts > 0 else float('inf')
+            _pf_race_window = 60.0  # 60s pre-dispatch race guard
+            if _pf_ts > 0 and _pf_age < _pf_race_window:
+                logger.critical(f"🚫🚫🚫 [PREFLIGHT_INTENT_LOCK] {position_key}: BLOCKED — prior open/augment intent {_pf_age:.1f}s ago (race_window={_pf_race_window:.0f}s). action={action} is_hedge={is_hedge} reason={(reason or '')[:80]}")
+                return f"BLOCKED_PREFLIGHT_INTENT_LOCK_{_pf_age:.1f}s"
+            # Write intent stamp IMMEDIATELY — before any await, before any Binance/Redis call.
+            # This is overwritten (same semantics) after successful fill at line 13932.
+            _recent_opens[position_key] = time.time()
+            _AUGMENT_LOCK[position_key] = time.time()
         if _is_open_action and position_key:
             if position_key not in self.tradeable_keys:
                 logger.critical(f"🚫🚫🚫 [NON_TRADEABLE_HARD_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED. action={action} reason={reason} is_hedge={is_hedge}")
@@ -13344,7 +13367,6 @@ class MultiAccountTradeManager:
         # ═══ MOMENTUM_RIDER BYPASS — DISABLED 2026-03-29: NOTHING bypasses execute_now guards ═══
         _is_momentum_rider = False  # KILLED: was bypassing ALL augment guards, cooldowns, gain checks
         # UNBREAKABLE REDUCE LOCK - checked FIRST for reduces, no bypass, no Redis
-        global _AUGMENT_LOCK
         _act_check = (action or '').upper()
         _is_reduce = _act_check in ('CLOSE', 'REDUCE', 'SELL', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in (reason or '').upper() or 'REDUCE' in (reason or '').upper()
         if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
@@ -13940,10 +13962,19 @@ class MultiAccountTradeManager:
                 if _order_usd > _max_order_usd:
                     logger.warning(f"[ORDER_SIZE_CAP] {position_key}: ${_order_usd:.2f} > MAX_ORDER_VALUE ${_max_order_usd:.2f} — capping")
                     quantity = _max_order_usd / current_price
+                # ═══ 2026-04-16 MANDATORY FOOTHOLD ═══
+                # Every OPEN/AUGMENT/REENTRY/HEDGE_OPEN MUST write a foothold webhook first so the reason
+                # string is visible on Binance side. Previous `if quantity > foothold_qty` branch let
+                # small orders bypass the foothold, producing naked maker orders with no visible origin.
+                # For this branch (is_augment else-path), action is always an entry — unconditional.
                 foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
-                if quantity > foothold_qty :
-                    await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
+                await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
+                if quantity > foothold_qty:
                     quantity = quantity - foothold_qty
+                else:
+                    # Entire order is foothold-sized → foothold webhook IS the order.
+                    logger.info(f"[FOOTHOLD_ONLY] {position_key}: quantity {quantity:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker")
+                    return 'SUCCESS'
 
 
                 # EMERGENCY: if this is a REDUCE, skip maker and use webhook (Finandy protects)
@@ -19388,28 +19419,101 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # 5-min cooldown resets on restart. Re-enable only after adding per-symbol daily hedge cap.
             # Config gate: WT_15M_SAME_HEDGE_ENABLED (default False)
             if getattr(config, 'WT_15M_SAME_HEDGE_ENABLED', False) and _wt3m_against and _pp_gain <= 0.0:
-                _wt1_15m_h = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
-                _wt2_15m_h = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
-                _wt15_against = (is_long and _wt1_15m_h < _wt2_15m_h) or (not is_long and _wt1_15m_h > _wt2_15m_h)
-                if _wt15_against:
-                    _wt_cross_prev_15m = safe_fetch_float(i.get('wt_cross_prev_value_15m', 0), 0.0)
-                    _wt15_near_cross = abs(_wt1_15m_h - _wt_cross_prev_15m) <= abs(_wt_cross_prev_15m) * 0.25 if _wt_cross_prev_15m != 0 else False
-                    if _wt15_near_cross:
-                        _hedge_side = "SHORT" if is_long else "LONG"
-                        _hedge_pk = f"{account_key}:{symbol}_{_hedge_side}"
-                        _he_wt = getattr(trade_manager, 'hedge_engine', None)
-                        _hc_ts_wt = _he_wt._hedge_completed.get(position_key, 0) if _he_wt else 0
-                        if (time.time() - _hc_ts_wt) < 300:
-                            logger.debug(f"[WT_15M_SAME_HEDGE_COOLDOWN] {position_key}: hedge opened {int(time.time()-_hc_ts_wt)}s ago (<300s), skipping duplicate")
-                        else:
-                            _hedge_pos = await trade_manager.get_position(_hedge_pk)
-                            _hedge_existing = abs(safe_fetch_float(getattr(_hedge_pos, 'positionAmt', 0), 0)) if _hedge_pos else 0
-                            if _hedge_existing == 0:
+                # ═══ 2026-04-16 EXISTENCE GATES RUN FIRST ═══
+                # Before reading any indicator or checking any cooldown, refuse to do ANYTHING
+                # if (a) a hedge position already exists, (b) an open order for the hedge is
+                # already on the exchange, (c) tracker_manager already records an active hedge
+                # for this losing position, or (d) a preflight intent lock was taken within 60s.
+                # User directive 2026-04-16: "NEVER send anything anywhere unless no other hedge exists".
+                _hedge_side = "SHORT" if is_long else "LONG"
+                _hedge_pk = f"{account_key}:{symbol}_{_hedge_side}"
+                _skip_hedge = False
+                _skip_reason = ""
+                # (a) hedge position already exists (cache + fresh pos if available)
+                _hedge_pos_pre = await trade_manager.get_position(_hedge_pk)
+                _hedge_existing_pre = abs(safe_fetch_float(getattr(_hedge_pos_pre, 'positionAmt', 0), 0)) if _hedge_pos_pre else 0
+                if _hedge_existing_pre > 0:
+                    _skip_hedge = True
+                    _skip_reason = f"HEDGE_ALREADY_OPEN_amt={_hedge_existing_pre:.6f}"
+                # (b) pending open orders on hedge side
+                if not _skip_hedge:
+                    try:
+                        _open_orders_fn = getattr(trade_manager, 'get_open_orders', None) or getattr(trade_manager, 'fetch_open_orders', None)
+                        if _open_orders_fn:
+                            _oo = await _open_orders_fn(account_key, symbol)
+                            _h_order_side_pre = "SELL" if _hedge_side == "SHORT" else "BUY"
+                            if _oo:
+                                for _o in _oo:
+                                    _o_side = (_o.get('side') if isinstance(_o, dict) else getattr(_o, 'side', '')) or ''
+                                    _o_ps = (_o.get('positionSide') if isinstance(_o, dict) else getattr(_o, 'positionSide', '')) or ''
+                                    if _o_side.upper() == _h_order_side_pre and _o_ps.upper() == _hedge_side:
+                                        _skip_hedge = True
+                                        _skip_reason = f"HEDGE_OPEN_ORDER_PENDING_{_o_side}_{_o_ps}"
+                                        break
+                    except Exception as _oo_e:
+                        logger.debug(f"[WT_15M_SAME_HEDGE_OO_CHECK] {_hedge_pk}: {_oo_e}")
+                # (c) tracker_manager already tracks an active hedge for this losing pk
+                if not _skip_hedge and hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
+                    if any(h.get('losing_position_key') == position_key or h.get('position_key') == _hedge_pk for h in trade_manager.tracker_manager.active_hedges):
+                        _skip_hedge = True
+                        _skip_reason = "TRACKER_ALREADY_HEDGED"
+                # (d) preflight intent lock
+                if not _skip_hedge:
+                    _pf_h = max(_recent_opens.get(_hedge_pk, 0), _AUGMENT_LOCK.get(_hedge_pk, 0))
+                    if _pf_h > 0 and (time.time() - _pf_h) < 60:
+                        _skip_hedge = True
+                        _skip_reason = f"HEDGE_PREFLIGHT_INFLIGHT_{time.time() - _pf_h:.1f}s"
+                if _skip_hedge:
+                    logger.debug(f"[WT_15M_SAME_HEDGE_SKIP_EXIST] {position_key}→{_hedge_pk}: {_skip_reason} — not evaluating WT/cooldown")
+                else:
+                    _wt1_15m_h = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
+                    _wt2_15m_h = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
+                    _wt15_against = (is_long and _wt1_15m_h < _wt2_15m_h) or (not is_long and _wt1_15m_h > _wt2_15m_h)
+                    if _wt15_against:
+                        _wt_cross_prev_15m = safe_fetch_float(i.get('wt_cross_prev_value_15m', 0), 0.0)
+                        _wt15_near_cross = abs(_wt1_15m_h - _wt_cross_prev_15m) <= abs(_wt_cross_prev_15m) * 0.25 if _wt_cross_prev_15m != 0 else False
+                        if _wt15_near_cross:
+                            _he_wt = getattr(trade_manager, 'hedge_engine', None)
+                            # ═══ 2026-04-16 REDIS-BACKED COOLDOWN + DAILY CAP ═══
+                            # In-memory _hedge_completed is wiped on every ez_manage restart → 300s cooldown
+                            # is lost → 45× runs on BAT/DOT/ATOM. Persist to Redis + per-symbol daily cap.
+                            _rds_cooldown_key = f"wt_same_hedge_cd:{position_key}"
+                            _rds_daily_key = f"wt_same_hedge_daily:{account_key}:{symbol}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+                            _hc_ts_wt = _he_wt._hedge_completed.get(position_key, 0) if _he_wt else 0
+                            _rds_ts_raw = None
+                            try:
+                                if trade_manager.redis_manager:
+                                    _rds_ts_raw = await trade_manager.redis_manager.get(_rds_cooldown_key)
+                            except Exception as _rds_e:
+                                logger.debug(f"[WT_15M_SAME_HEDGE_REDIS_GET] {position_key}: {_rds_e}")
+                            _rds_ts = float(_rds_ts_raw) if _rds_ts_raw else 0
+                            _hc_ts_final = max(_hc_ts_wt, _rds_ts)
+                            _daily_count = 0
+                            try:
+                                if trade_manager.redis_manager:
+                                    _dc_raw = await trade_manager.redis_manager.get(_rds_daily_key)
+                                    _daily_count = int(_dc_raw) if _dc_raw else 0
+                            except Exception as _rds_e:
+                                logger.debug(f"[WT_15M_SAME_HEDGE_DAILY_GET] {position_key}: {_rds_e}")
+                            _daily_cap = int(getattr(config, 'WT_15M_SAME_HEDGE_DAILY_CAP', 2))
+                            _rds_cooldown = int(getattr(config, 'WT_15M_SAME_HEDGE_COOLDOWN_SEC', 1800))
+                            if _daily_count >= _daily_cap:
+                                logger.warning(f"[WT_15M_SAME_HEDGE_DAILY_CAP] {position_key}: {_daily_count}/{_daily_cap} hedges today — BLOCKED")
+                            elif (time.time() - _hc_ts_final) < _rds_cooldown:
+                                logger.debug(f"[WT_15M_SAME_HEDGE_COOLDOWN] {position_key}: hedge opened {int(time.time()-_hc_ts_final)}s ago (<{_rds_cooldown}s, Redis-backed), skipping duplicate")
+                            else:
                                 _h_order_side = "SELL" if _hedge_side == "SHORT" else "BUY"
                                 _h_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                                 logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} near_cross={_wt_cross_prev_15m:.1f} gain={_pp_gain:.2f}% → HEDGING {_hedge_pk}")
                                 _h_uid = f"WT15M_HEDGE_{int(time.time())}_{uuid.uuid4().hex[:6].upper()}"
-                                if _he_wt: _he_wt._hedge_completed[position_key] = time.time()
+                                _now_ts_h = time.time()
+                                if _he_wt: _he_wt._hedge_completed[position_key] = _now_ts_h
+                                try:
+                                    if trade_manager.redis_manager:
+                                        await trade_manager.redis_manager.set(_rds_cooldown_key, str(_now_ts_h), ex=_rds_cooldown + 60)
+                                        await trade_manager.redis_manager.set(_rds_daily_key, str(_daily_count + 1), ex=86400 + 3600)
+                                except Exception as _rds_e:
+                                    logger.debug(f"[WT_15M_SAME_HEDGE_REDIS_SET] {position_key}: {_rds_e}")
                                 _h_result = await trade_manager.execute_now(_hedge_pk, account_key, symbol, 0.0, _h_order_side, _hedge_side, _h_qty, current_price, _h_uid, f"WT_15M_SAME_HEDGE_FOR_{position_key}_wt1{_wt1_15m_h:.1f}", False, "OPEN", is_hedge=True, hedge_for=position_key)
                                 if _h_result and "SUCCESS" in str(_h_result):
                                     if _he_wt:
@@ -19417,6 +19521,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                     logger.warning(f"[WT_15M_SAME_HEDGE_OK] {_hedge_pk}: opened to hedge {position_key}")
                                 else:
                                     if _he_wt: _he_wt._hedge_completed.pop(position_key, None)
+                                    try:
+                                        if trade_manager.redis_manager:
+                                            await trade_manager.redis_manager.delete(_rds_cooldown_key)
+                                    except Exception: pass
             if _pp_gain > 0.1:
                 _pp_hold, _pp_hold_reason = trading_policy.check_winner_momentum(i, is_long)
                 if _pp_hold:
