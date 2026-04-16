@@ -15041,18 +15041,39 @@ class MultiAccountTradeManager:
                     should_reenter = False
                     _qty_mult = 0.0
                     _reason_tag = ""
-                    if _price_crossed:
-                        if _under_60 and _k3m_bias_ok:
-                            should_reenter = True; _qty_mult = 1.0; _reason_tag = "CROSSED_u60_kbias"
-                        elif (not _under_60) and _full_stack:
-                            should_reenter = True; _qty_mult = 1.0; _reason_tag = f"CROSSED_o60_FULLSTACK_htf{_htf_count}"
-                        if position_key not in _price_crossed_since:
-                            _price_crossed_since[position_key] = time.time()
-                            logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s u60={_under_60} k3m_bias={_k3m_bias_ok} full_stack={_full_stack}")
+                    # Safety gates applied to Pathways A/B (not P0 rescue). User directive 2026-04-16.
+                    _wt1_3m_prev_gr = safe_fetch_float(indicators.get('wt1_3m_prev', _wt1_3m_gr), _wt1_3m_gr)
+                    _delta_rising = (is_long and _wt1_3m_gr > _wt2_3m_gr and _wt1_3m_gr > _wt1_3m_prev_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr and _wt1_3m_gr < _wt1_3m_prev_gr)
+                    _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
+                    _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
+                    if is_long:
+                        _off_red_count = int(k_3m < 70) + int(_k_15m_r < 70) + int(_k_1h_r < 70)
                     else:
-                        _price_crossed_since.pop(position_key, None)
-                        if _full_stack:
-                            should_reenter = True; _qty_mult = 1.35; _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}"
+                        _off_red_count = int(k_3m > 30) + int(_k_15m_r > 30) + int(_k_1h_r > 30)
+                    _clear_of_red = _off_red_count >= 2
+                    # PATHWAY 0: 3m-exit rescue — bypass filters if exit was 3m-level AND 1h still trending AND 3m entry fires
+                    _exit_reason_str = str(data.get('exit_reason', '')).upper()
+                    _was_3m_exit = any(t in _exit_reason_str for t in ('3M', 'DELTA_EXIT', 'STOCH_CROSSUNDER', 'STOCH_CROSSOVER', 'WT_3M'))
+                    _3m_entry_fires = (is_long and _wt3m_ok and k_3m > d_3m) or (not is_long and _wt3m_ok and k_3m < d_3m)
+                    if _was_3m_exit and _wt1h_ok and _3m_entry_fires:
+                        should_reenter = True
+                        _qty_mult = 1.0
+                        _reason_tag = "P0_3M_RESCUE_1H_OK"
+                        logger.warning(f"🟢 [REENTRY_P0_3M_RESCUE] {position_key}: exit_reason='{_exit_reason_str[:40]}' wt1h_ok={_wt1h_ok} 3m_entry=TRUE — BYPASS FILTERS")
+                    if not should_reenter:
+                        _safety_ok = _delta_rising and _clear_of_red
+                        if _price_crossed:
+                            if _under_60 and _k3m_bias_ok and _safety_ok:
+                                should_reenter = True; _qty_mult = 1.0; _reason_tag = "CROSSED_u60_kbias_SAFE"
+                            elif (not _under_60) and _full_stack and _safety_ok:
+                                should_reenter = True; _qty_mult = 1.0; _reason_tag = f"CROSSED_o60_FULLSTACK_htf{_htf_count}_SAFE"
+                            if position_key not in _price_crossed_since:
+                                _price_crossed_since[position_key] = time.time()
+                                logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s u60={_under_60} k3m_bias={_k3m_bias_ok} full_stack={_full_stack} delta_rising={_delta_rising} clear_red={_clear_of_red}(off={_off_red_count}/3)")
+                        else:
+                            _price_crossed_since.pop(position_key, None)
+                            if _full_stack and _safety_ok:
+                                should_reenter = True; _qty_mult = 1.35; _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}_SAFE"
                     if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
                         should_reenter = False
                         logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")

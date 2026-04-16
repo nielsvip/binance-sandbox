@@ -102,6 +102,49 @@ def build_param_grid_v3_core():
     return grid
 
 
+def build_param_grid_breakout_multi_lung():
+    """D4 BREAKOUT MULTI-LUNG — sweep the multi-TF candle+volume composite.
+    Origin: ez_breakout_agent.py orphan. Tests if composite breath beats baseline.
+    Baseline rule: accept only Sharpe > 2 per MEMORY."""
+    grid = {
+        "BREAKOUT_MULTI_LUNG_ENABLED": [True],
+        "BREAKOUT_MULTI_LUNG_MODE": ["AUGMENT", "REPLACE"],
+        "BREAKOUT_MULTI_LUNG_TIER": ["CRYPTO", "MOVER"],  # tradier_core appends STOCK
+        "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE": [0.10, 0.15, 0.20, 0.25, 0.30],
+        "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE": [-0.20, -0.10, -0.05],
+        "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE": [0.10, 0.15, 0.25],
+        "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS": [2, 4, 8],
+        # Baseline companions — keep proven v3_core defaults
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [10],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.6],
+        "WT_EXIT_MIN_TFS": [3],
+    }
+    return grid
+
+
+def build_param_grid_breakout_multi_lung_tradier():
+    """D4 tradier variant — STOCK tier only, wider PT to match stock volatility."""
+    grid = {
+        "BREAKOUT_MULTI_LUNG_ENABLED": [True],
+        "BREAKOUT_MULTI_LUNG_MODE": ["AUGMENT", "REPLACE"],
+        "BREAKOUT_MULTI_LUNG_TIER": ["STOCK"],
+        "BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE": [0.10, 0.15, 0.20, 0.25, 0.30],
+        "BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE": [-0.20, -0.10, -0.05],
+        "BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE": [0.10, 0.15, 0.25],
+        "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS": [4, 8, 16],
+        "STRENGTH_FILTER_ENABLED": [True],
+        "MIN_HOLD_BARS": [20, 40],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.5, 2.5],
+        "WT_EXIT_MIN_TFS": [3],
+        "ENTRY_SCORE_THRESHOLD": [24.0],
+    }
+    return grid
+
+
 def build_param_grid_tradier_core():
     """Tradier-specific grid. Tradier defaults set ENTRY_SCORE=24, stricter gates.
     Sweep lower thresholds to unlock trades, also test PT_PCT since tradier needs wider."""
@@ -127,6 +170,8 @@ TIER_MAP = {
     "full": build_param_grid_full,
     "v3_core": build_param_grid_v3_core,
     "tradier_core": build_param_grid_tradier_core,
+    "breakout_multi_lung": build_param_grid_breakout_multi_lung,
+    "breakout_multi_lung_tradier": build_param_grid_breakout_multi_lung_tradier,
 }
 
 

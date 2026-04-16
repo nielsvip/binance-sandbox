@@ -747,6 +747,16 @@ class TradierConfig:
     STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0  # T25 sweep: 75.0 best tested (was 80.0 user directive)
     STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0   # T25 sweep: 25.0 best tested (was 20.0 user directive)
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
+    # ═══ D4 BREAKOUT MULTI-LUNG (stocks, 2026-04-16) — extracted from ez_breakout_agent.py ════
+    # UNPROVEN: default OFF until sweep tier breakout_multi_lung_tradier delivers Sharpe > 2 on 128-stock × 2yr.
+    # NEVER flip ENABLED=True in live config without sweep proof.
+    BREAKOUT_MULTI_LUNG_ENABLED: bool = False
+    BREAKOUT_MULTI_LUNG_MODE: str = "AUGMENT"      # "AUGMENT" (OR) | "REPLACE"
+    BREAKOUT_MULTI_LUNG_TIER: str = "STOCK"        # stocks default to STOCK tier (D+W+4h)
+    BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE: float = 0.20
+    BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10
+    BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15
+    BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 8     # stocks breathe slower than crypto
     # === RED ZONE (stocks) — structural levels with HTF confirmation ===
     RZ_ENTRY_ENABLED: bool = True
     RZ_EXIT_ENABLED: bool = True  # T25 sweep 2026-04-14 (10sym, fixed gates): True avg=0.492 vs False=0.229 (+115%). Previous stale result (False=0.548) was from broken-gate run.

@@ -108,6 +108,16 @@ class Config:
     SCALP_V2_REDZONE_K_THRESHOLD: int = 90 # P1: sweep winner=90. Try 80 only after 90 tested.
     SCALP_V2_LH_LL_EXIT: bool = True       # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
     SCALP_V2_LH_LL_TF: str = "15m"        # P2: sweep winner=15m. 1h too slow, 3m too noisy.
+    # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
+    # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
+    # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
+    BREAKOUT_MULTI_LUNG_ENABLED: bool = False
+    BREAKOUT_MULTI_LUNG_MODE: str = "AUGMENT"      # "AUGMENT" (OR with existing entries) | "REPLACE" (use only)
+    BREAKOUT_MULTI_LUNG_TIER: str = "CRYPTO"       # "CRYPTO" | "MOVER" | "STOCK"
+    BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE: float = 0.20    # Entry threshold
+    BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
+    BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
+    BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
     HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-16: REMOVED inf — hedging is counterproductive for scalp accounts. Scalp entries get hedged immediately → cascade.
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False

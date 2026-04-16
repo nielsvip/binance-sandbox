@@ -70,6 +70,15 @@ class QuickConfig:
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
     REENTRY_RALLY_K15M_MAX: float = 100.0
     REENTRY_RALLY_HTF_MIN: int = 1
+    # Symmetric exit-would-fire gate — when True, strip entry bars that are simultaneously exit bars.
+    ENTRY_SYMGATE_ENABLED: bool = False
+    REENTRY_SYMGATE_ENABLED: bool = False  # vectorized loop has no entry/reentry split; mirrors ENTRY gate
+    # Min-gap cooldown in bars between exit and next entry. 0 = disabled (use COOLDOWN_BARS only).
+    REENTRY_MIN_GAP_BARS: int = 0
+    # Stoch-K zone gate — disabled by default (LONG=0 always passes, SHORT=100 always passes).
+    ENTRY_ZONE_LONG: float = 0.0
+    ENTRY_ZONE_SHORT: float = 100.0
+    ENTRY_ZONE_K_TF: str = "15m"  # which TF for the zone gate
     HTF_ALIGNMENT_ENABLED: bool = True
     HTF_MIN_ALIGNED: int = 1
     D_TREND_REQUIRED: bool = True
@@ -121,6 +130,17 @@ class QuickConfig:
     # Stop loss exit (sweep-only — cap max loss)
     STOP_LOSS_ENABLED: bool = False
     STOP_LOSS_PCT: float = 2.0  # Exit at this loss %
+
+    # ===== D4 BREAKOUT MULTI-LUNG (2026-04-16, default OFF, awaiting Sharpe>2 sweep proof) =====
+    # Origin: ez_breakout_agent.py (70 KB orphaned). See DIAMOND_DIFF_2026-04-16.md verdict D4=EXTRACT.
+    # NEVER flip ENABLED=True in live config before 48-crypto × 4yr + 128-tradier × 2yr sweep > 2 Sharpe.
+    BREAKOUT_MULTI_LUNG_ENABLED: bool = False
+    BREAKOUT_MULTI_LUNG_MODE: str = "AUGMENT"  # "AUGMENT" (OR into existing signals) | "REPLACE" (use only multi-lung)
+    BREAKOUT_MULTI_LUNG_TIER: str = "CRYPTO"   # "CRYPTO" | "MOVER" | "STOCK"
+    BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE: float = 0.20
+    BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10
+    BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15
+    BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4  # bars between multi-lung entries
 
     # ===== Auto-hooked Group B switches (2026-04-16) =====
     # 229 switches from config_tradier.py/config.py, defaults preserved.
@@ -393,6 +413,8 @@ class QuickConfig:
         self.MI_EXIT_ENABLED = True
         self.ENTRY_SCORE_THRESHOLD = 24.0
         self.K3M_FLOOR = 30.0
+        # D4: default tier STOCK for tradier mode when enabled
+        self.BREAKOUT_MULTI_LUNG_TIER = "STOCK"
 
 
 def load_npz(mode, symbols, start_date, npz_dir=""):
@@ -716,7 +738,38 @@ def compute_entry_signals(npz, n, is_long, cfg):
         mfi_D_arr = _safe(npz, 'mfi_D', n, 50)
         if is_long: extra_ok = extra_ok & (mfi_D_arr >= 40)
         else: extra_ok = extra_ok & (mfi_D_arr <= 60)
-    return raw & k3m_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
+    # ENTRY_ZONE gate — LONG requires k_TF < ENTRY_ZONE_LONG ceiling (oversold); SHORT requires > ENTRY_ZONE_SHORT floor (overbought).
+    # Disabled defaults (LONG=0 / SHORT=100) trivially pass. When set (e.g. LONG=35, SHORT=65) they become real gates.
+    _zone_tf = str(getattr(cfg, 'ENTRY_ZONE_K_TF', '15m') or '15m')
+    _zone_k_arr = k_15m if _zone_tf == '15m' else (k_1h if _zone_tf == '1h' else (k_3m if _zone_tf in ('3m', '5m') else k_15m))
+    if is_long:
+        _zl = float(getattr(cfg, 'ENTRY_ZONE_LONG', 0.0) or 0.0)
+        if _zl > 0.0:
+            extra_ok = extra_ok & (_zone_k_arr < _zl)
+    else:
+        _zs = float(getattr(cfg, 'ENTRY_ZONE_SHORT', 100.0) or 100.0)
+        if _zs < 100.0:
+            extra_ok = extra_ok & (_zone_k_arr > _zs)
+    # REENTRY_RALLY_K15M_MAX — cap on k_15m for entries during rally. 100=disabled.
+    _rally_cap = float(getattr(cfg, 'REENTRY_RALLY_K15M_MAX', 100.0) or 100.0)
+    if _rally_cap < 100.0:
+        if is_long:
+            extra_ok = extra_ok & (k_15m < _rally_cap)
+        else:
+            extra_ok = extra_ok & (k_15m > (100.0 - _rally_cap))
+    base_sig = raw & k3m_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
+    # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
+    if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
+        try:
+            from breakout_multi_lung import multi_lung_entry_signal
+            ml_sig = multi_lung_entry_signal(npz, n, is_long, cfg)
+            mode = str(getattr(cfg, 'BREAKOUT_MULTI_LUNG_MODE', 'AUGMENT')).upper()
+            if mode == 'REPLACE':
+                return ml_sig
+            return base_sig | ml_sig
+        except Exception:
+            pass  # graceful fallback if NPZ missing OHLCV fields
+    return base_sig
 
 
 def compute_exit_signals(npz, n, is_long, cfg):
@@ -855,7 +908,19 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'CYCLE_TP_TIERED_ENABLED', False):
         # Engine has PROFIT_TARGET_PCT; CYCLE_TP_PCT acts as upper cap
         pass  # handled in simulate() via PROFIT_TARGET_PCT
-    return delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+    # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
+    if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
+        try:
+            from breakout_multi_lung import multi_lung_exit_signal
+            ml_exit = multi_lung_exit_signal(npz, n, is_long, cfg)
+            mode = str(getattr(cfg, 'BREAKOUT_MULTI_LUNG_MODE', 'AUGMENT')).upper()
+            if mode == 'REPLACE':
+                return ml_exit
+            return base_exit | ml_exit
+        except Exception:
+            pass
+    return base_exit
 
 
 def simulate(stores, cfg, capital=10000.0):
@@ -874,11 +939,18 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # SYMGATE: strip entries that coincide with exit signals — mirror exit rubric applied to entries.
+            # ENTRY_SYMGATE_ENABLED covers fresh entries; REENTRY_SYMGATE_ENABLED mirrors it in the vectorized loop
+            # (no separate reentry path here) — either flag turns it on.
+            if bool(getattr(cfg, 'ENTRY_SYMGATE_ENABLED', False)) or bool(getattr(cfg, 'REENTRY_SYMGATE_ENABLED', False)):
+                entry_sig = entry_sig & ~exit_sig
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
             pt_pct = cfg.PROFIT_TARGET_PCT
             sl_enabled = cfg.STOP_LOSS_ENABLED
             sl_pct = cfg.STOP_LOSS_PCT
+            # REENTRY_MIN_GAP_BARS — extra cooldown after exit before next entry. 0 = use COOLDOWN_BARS only.
+            min_gap_bars = int(getattr(cfg, 'REENTRY_MIN_GAP_BARS', 0) or 0)
             for i in range(n):
                 if cd > 0: cd -= 1; continue
                 px = close[i]
@@ -890,10 +962,10 @@ def simulate(stores, cfg, capital=10000.0):
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     # Profit target hit — exit immediately regardless of technical signal
                     if pt_enabled and live_pnl >= pt_pct:
-                        all_pnl.append(live_pnl); in_pos = False; cd = cooldown; continue
+                        all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     # Stop loss hit — exit at loss
                     if sl_enabled and live_pnl <= -sl_pct:
-                        all_pnl.append(live_pnl); in_pos = False; cd = cooldown; continue
+                        all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                 if in_pos and exit_sig[i] and (i - eb) >= min_hold:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     if cfg.NOLOSS_ENABLED and pnl < 0:
@@ -908,7 +980,7 @@ def simulate(stores, cfg, capital=10000.0):
                         else:
                             continue
                     all_pnl.append(pnl)
-                    in_pos = False; cd = cooldown
+                    in_pos = False; cd = max(cooldown, min_gap_bars)
     n_trades = len(all_pnl)
     if n_trades < 2:
         return {"sharpe": 0, "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0, "avg_pnl_pct": 0, "wr": 0}
