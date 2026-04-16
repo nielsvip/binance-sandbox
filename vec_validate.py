@@ -40,13 +40,24 @@ TRADIER_TOP_COMBOS = [
 
 
 CRYPTO_TOP_COMBOS = [
+    # Pick=5 winners from vec_mass_crypto 2026-04-16 (incl. RSI — honest val)
+    ("dc_x1h", "k15_lt40", "mfi15_lt40", "rsi15_lt35", "sma200up"),
+    ("dc_x1h", "k15_lt30", "k15_lt40", "rsi15_lt35", "sma200up"),
+    ("dc_x1h", "mfi15_lt30", "mfi15_lt40", "rsi15_lt35", "sma200up"),
+    ("dc_x1h", "dcpos_lt30", "mfi15_lt40", "wt_1h", "wt_4h"),
+    ("dc_x1h", "dcpos_lt30", "k15_lt40", "mfi1h_lt40", "sma200up"),
+    ("dc_x1h", "k15_lt40", "mom_wt_all3", "sma200up", "wt_1h"),
+    ("dc_x1h", "k15_lt40", "mom_wt_all3", "sma200up", "wt_4h"),
+    ("dc_x1h", "dcpos_lt30", "k15_lt30", "wt_1h", "wt_4h"),
+    ("dc_x1h", "mfi15_lt40", "mom_wt_all3", "wt_1h", "wt_4h"),
+    ("dc_x1h", "mfi15_lt40", "mom_wt_all3", "wt_4h", "wt_D"),
+    # Pick=4 winners (no RSI, MFI-only flow — aligns with memory rule)
     ("dc_x1h", "dcpos_lt30", "mfi1h_lt40", "sma200up"),
     ("dc_x1h", "dcpos_lt30", "wt_1h", "wt_4h"),
     ("dc_x1h", "dcpos_lt30", "wt_1h", "wt_D"),
     ("dc_x1h", "mfi15_lt40", "mom_wt_all3", "wt_1h"),
     ("dc_x1h", "dcpos_lt30", "mfi15_lt40", "wt_1h"),
     ("dc_x1h", "dcpos_lt30", "k15_lt30", "mfi1h_lt40"),
-    ("dc_x1h", "k15_lt40", "mfi15_lt30", "rsi15_lt35"),
 ]
 
 

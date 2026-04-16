@@ -475,7 +475,7 @@ class Config:
     # ═══ BREAKEVEN STOP — user directive 2026-04-10 ═══
     # "NO LOSS ACCEPTED after first 12-15min or dc_low4_3m crossunder"
     # After grace: if gain < 0 → exit. DC_LOW4_3M crossunder: structural stop ANY TIME.
-    BREAKEVEN_GRACE_MINUTES: float = 15.0    # Grace period before no-loss kicks in
+    # BREAKEVEN_GRACE_MINUTES moved to line ~606 (canonical 5.0) — duplicate 15.0 removed 2026-04-16
     BREAKEVEN_DC_LOW4_ENABLED: bool = True   # DC_LOW4_3M structural stop
     # Feature toggles for ablation (2026-04-11)
     RZ_ZSCORE_ZONE_ENABLED: bool = True
@@ -553,7 +553,7 @@ class Config:
     # === HTF DIRECTION GATE — entries must align with D/4h/1h WT + price vs SMA200D ===
     # Added 2026-04-16 after audit: shorts opened against bullish 4h/1h/D caused 1:10 short-heavy PnL trap
     HTF_DIRECTION_GATE_ENABLED: bool = True
-    HTF_GATE_MIN_CONFIRMATIONS: int = 3  # 2 or 3 of 4 signals (wt_D, wt_4h, wt_1h, price_vs_sma200_D)
+    HTF_GATE_MIN_CONFIRMATIONS: int = 2  # 2026-04-16: lowered 3→2 per user directive "HTF confirmations should not be exaggerated". D still mandatory via HTF_GATE_D_MANDATORY.
     HTF_GATE_D_MANDATORY: bool = True  # wt_D must align with trade direction (else block)
     HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
     HTF_GATE_APPLY_TO_OPEN: bool = True  # gate applies to OPEN actions
@@ -598,7 +598,7 @@ class Config:
     # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
     WT_CROSS_EXIT_ENABLED: bool = True
     WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True
-    WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 2.0  # grace to avoid same-bar whipsaw on entry
+    WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 1.0  # 2026-04-16: 2.0→1.0 per user "exit before getting into a loss"
     WT_CROSS_EXIT_APPLIES_TO_LOSERS: bool = True  # fire on losing positions (the whole point)
     WT_CROSS_EXIT_APPLIES_TO_WINNERS: bool = True
     BREAKEVEN_GRACE_MINUTES: float = 5.0  # was 15.0 — cut losers faster on gain erosion
