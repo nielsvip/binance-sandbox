@@ -557,7 +557,17 @@ class Config:
     HTF_GATE_D_MANDATORY: bool = True  # wt_D must align with trade direction (else block)
     HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
     HTF_GATE_APPLY_TO_OPEN: bool = True  # gate applies to OPEN actions
-    HTF_GATE_APPLY_TO_AUGMENT: bool = False  # AUGMENT still uses existing 3m+15m gate
+    HTF_GATE_APPLY_TO_AUGMENT: bool = True  # 2026-04-16 flipped True: enforce 4h/D veto on augments too. Existing 3m+15m gate still runs in addition.
+    # TF→size multipliers for RZ/breakout entries. Size = START_POSITION_SIZE × mult_for_tf_of_signal.
+    # TF parsed from reason string markers (_3M_, _15M_, _1H_, _4H_, _D_). Default 1.0× if no marker.
+    # Higher TF signals get bigger size because the setup is more reliable and less likely to reverse.
+    BREAKOUT_TF_SIZE_ENABLED: bool = True
+    BREAKOUT_TF_SIZE_MULT_3M: float = 0.5
+    BREAKOUT_TF_SIZE_MULT_15M: float = 1.0
+    BREAKOUT_TF_SIZE_MULT_1H: float = 2.0
+    BREAKOUT_TF_SIZE_MULT_4H: float = 3.0
+    BREAKOUT_TF_SIZE_MULT_D: float = 4.0
+    BREAKOUT_TF_SIZE_CAP_MULT: float = 5.0  # absolute cap on any TF multiplier
     HTF_GATE_BYPASS_RZ: bool = True  # preserve RZ bounce bypass (bounce logic HTF-validates internally)
     # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
     WT_CROSS_EXIT_ENABLED: bool = True

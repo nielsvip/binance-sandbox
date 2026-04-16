@@ -19996,6 +19996,30 @@ async def get_stop_levels_data(position_key: str, trade_manager):
     # DEAD_CODE:         logger.error(f"❌ stop snapshot fallback failed for {position_key}: {err}")
     # DEAD_CODE: return fallback_entry or []
 
+def _breakout_tf_size_mult(reason: str) -> tuple:
+    """Parse TF marker from an entry reason and return (multiplier, tf_label) per BREAKOUT_TF_SIZE_MULT_* config.
+    Returns (1.0, '') if disabled or no TF marker found. Matches tokens _3M_ / _15M_ / _1H_ / _4H_ / _D_
+    (with word boundaries so '3m' inside another token doesn't double-match). Higher TF wins when multiple present."""
+    if not bool(getattr(config, 'BREAKOUT_TF_SIZE_ENABLED', True)):
+        return 1.0, ''
+    if not reason:
+        return 1.0, ''
+    _r = reason.upper()
+    # Check highest TF first so the largest multiplier wins when multiple markers appear in the reason.
+    _tf_checks = [
+        ('_D_', float(getattr(config, 'BREAKOUT_TF_SIZE_MULT_D', 4.0)), 'D'),
+        ('_4H_', float(getattr(config, 'BREAKOUT_TF_SIZE_MULT_4H', 3.0)), '4H'),
+        ('_1H_', float(getattr(config, 'BREAKOUT_TF_SIZE_MULT_1H', 2.0)), '1H'),
+        ('_15M_', float(getattr(config, 'BREAKOUT_TF_SIZE_MULT_15M', 1.0)), '15M'),
+        ('_3M_', float(getattr(config, 'BREAKOUT_TF_SIZE_MULT_3M', 0.5)), '3M'),
+    ]
+    for _marker, _mult, _lbl in _tf_checks:
+        if _marker in _r:
+            _cap = float(getattr(config, 'BREAKOUT_TF_SIZE_CAP_MULT', 5.0))
+            return min(_mult, _cap), _lbl
+    return 1.0, ''
+
+
 async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccountTradeManager", position_key: Optional[str] = None, action: str = "", reason: str = "", conviction: float = 0.5, override_qty: Optional[float] = None, account_key: Optional[str] = None) -> str:
     logger.info(f"[queue_trade_action] 🚨 Queueing: {position_key} ")
     now = datetime.now(timezone.utc)
@@ -20061,8 +20085,15 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
                 elif action == 'AUGMENT':
                     preliminary_qty = max(2 * trade_manager.config.START_POSITION_SIZE / current_price, 0.6 * position.positionAmt)
                 elif action in ['REENTRY', 'QUICK_OPEN', 'REENTRY', 'AUGMENT', 'REVERSE', 'HEDGE_OPEN']:
-                    preliminary_qty = max(2 * trade_manager.config.START_POSITION_SIZE / current_price, 0.6 * position.positionAmt) 
+                    preliminary_qty = max(2 * trade_manager.config.START_POSITION_SIZE / current_price, 0.6 * position.positionAmt)
                 if preliminary_qty > 0:
+                    # 2026-04-16: breakout TF-size multiplier. Hedges opt out (hedge sizing owned by HedgeEngine).
+                    if 'HEDGE' not in (reason or '').upper() and action not in ('HEDGE_OPEN',):
+                        _tf_mult, _tf_lbl = _breakout_tf_size_mult(reason)
+                        if _tf_mult != 1.0:
+                            _orig_q = preliminary_qty
+                            preliminary_qty = preliminary_qty * _tf_mult
+                            logger.info(f"[BREAKOUT_TF_SIZE] {position_key} {action}: TF={_tf_lbl} mult={_tf_mult:.2f} qty {_orig_q:.6f}→{preliminary_qty:.6f} (reason={reason[:60]})")
                     final_order_qty = await calculate_final_order_quantity( position_key, account_key, symbol, position, action, trade_manager, conviction, preliminary_qty, reason, None )
             except Exception as e:
                 logger.warning(f"[{position_key}] Preliminary qty calc failed ({e}), using default for handler.")

@@ -98,13 +98,13 @@ class QuickConfig:
     REENTRY_B12_WT_MOM_ENABLED: bool = True
     REENTRY_B14_HA_TREND_ENABLED: bool = True
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
-    # PULLBACK-FIRST entry blocks (2026-04-16) — enter at temp top/bottom, not at end of move
-    REENTRY_PULL1_ENABLED: bool = True   # HTF uptrend + LTF deep oversold + reversing
-    REENTRY_PULL2_ENABLED: bool = True   # Rising fundamentals + SMA200 pullback bounce
-    REENTRY_PULL3_ENABLED: bool = True   # BB lower-band + trend up + stoch cross
-    REENTRY_PULL4_ENABLED: bool = True   # RSI pullback + HTF healthy + wt bouncing
-    # Velocity-decay exit (sell when wt_delta slows down — user priority)
-    WT_VEL_DECAY_EXIT_ENABLED: bool = True
+    # PULLBACK-FIRST entry blocks (2026-04-16) — OPT-IN: Sharpe 0.80 test, keep OFF until proven
+    REENTRY_PULL1_ENABLED: bool = False  # HTF uptrend + LTF deep oversold + reversing
+    REENTRY_PULL2_ENABLED: bool = False  # Rising fundamentals + SMA200 pullback bounce
+    REENTRY_PULL3_ENABLED: bool = False  # BB lower-band + trend up + stoch cross
+    REENTRY_PULL4_ENABLED: bool = False  # RSI pullback + HTF healthy + wt bouncing
+    # Velocity-decay exit — OPT-IN: hasn't been validated vs V8Q v3 baseline (test first)
+    WT_VEL_DECAY_EXIT_ENABLED: bool = False
     WT_VEL_DECAY_THRESHOLD: float = 1.0
     # NEW: Confluence mode — only enter when N blocks agree
     CONFLUENCE_MODE_ENABLED: bool = False
@@ -135,7 +135,7 @@ class QuickConfig:
     ATR_TRAIL_ENABLED_TRADIER: bool = False
     BB_ENTRY_LONG_THRESHOLD: float = -0.2
     BB_ENTRY_SHORT_THRESHOLD: float = 1.0
-    BB_SQUEEZE_ENTRY_ENABLED: bool = True
+    BB_SQUEEZE_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven, was default True from agent
     BB_SQUEEZE_THRESHOLD_15M: float = 0.025
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03
     CHOP_RANGING_THRESHOLD: float = 61.8
@@ -202,10 +202,10 @@ class QuickConfig:
     MIN_PERC_FROM_SMA_15: float = 0.03
     MI_ENTRY_ENABLED_TRADIER: bool = False
     MI_EXIT_ENABLED_TRADIER: bool = True
-    MOM3_ENTRY_ENABLED: bool = True
+    MOM3_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven
     MOM3_LONG_THRESHOLD: float = -1.0
     MOM3_SHORT_THRESHOLD: float = 1.0
-    MOM5_ENTRY_ENABLED: bool = True
+    MOM5_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven
     MOM5_LONG_THRESHOLD: float = -1.0
     MOM5_SHORT_THRESHOLD: float = 1.0
     PYRAMID_ENABLED: bool = False
@@ -220,7 +220,7 @@ class QuickConfig:
     REENTRY_2_ENABLED: bool = True
     REENTRY_B09_SNAPBACK_ENABLED: bool = False
     REENTRY_COOLDOWN_S: float = 0.0
-    REENTRY_MANDATORY: bool = True
+    REENTRY_MANDATORY: bool = False  # 2026-04-16: off — was forcing reentries
     REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5
     REGIME_ADAPTIVE_ENABLED: bool = False
     REGIME_ATR_RATIO_MIN: float = 0.25
@@ -264,7 +264,7 @@ class QuickConfig:
     RSI_MOMENTUM_MODE: bool = False
     RZ_K_ENTRY_BOTTOM: float = 10.0
     RZ_MFI_ENTRY_BOTTOM: float = 15.0
-    SATOSHIT_EXIT_ENABLED: bool = True
+    SATOSHIT_EXIT_ENABLED: bool = False  # 2026-04-16: off — duplicates existing sat_exit, caused Sharpe regression
     SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER: float = 55.0
     SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER: float = 60.0
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.7
@@ -290,8 +290,8 @@ class QuickConfig:
     TF_ALIGNMENT_MIN_LONG: int = 2
     TF_ALIGNMENT_MIN_SHORT: int = 2
     TF_ALIGNMENT_MIN_TOTAL: int = 4
-    TF_FOCUS_ENTRY_HARD_GATE: bool = True
-    TF_FOCUS_EXIT_HARD_GATE: bool = True
+    TF_FOCUS_ENTRY_HARD_GATE: bool = False  # 2026-04-16: off until sweep-proven
+    TF_FOCUS_EXIT_HARD_GATE: bool = False  # 2026-04-16: off until sweep-proven
     TF_FOCUS_WEIGHT: float = 8.0
     TF_HTF1: str = "1h"
     TF_HTF3: str = "D"
@@ -317,7 +317,7 @@ class QuickConfig:
     TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False
     TRADIER_MI_EXIT_ENABLED_TRADIER: bool = True
     TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3
-    TRADIER_RSI2_ENABLED: bool = True
+    TRADIER_RSI2_ENABLED: bool = False  # 2026-04-16: off until backtested tradier-only
     TRADIER_RSI2_EXIT_THRESHOLD_LONG: float = 90.0
     TRADIER_RSI2_EXIT_THRESHOLD_SHORT: float = 10.0
     TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0
@@ -333,14 +333,14 @@ class QuickConfig:
     VOLUME_CONFIRMATION_ENABLED: bool = False
     VOLUME_CONFIRMATION_MULT: float = 1.2
     VWAP_BOUNCE_DIST_PCT: float = 0.3
-    VWAP_BOUNCE_ENTRY_ENABLED: bool = True
+    VWAP_BOUNCE_ENTRY_ENABLED: bool = False  # 2026-04-16: off until sweep-proven
     WIN_TRAIL_EROSION_PCT: float = 0.5
     ABLATION_DISABLE_HEDGE: bool = False
     ABLATION_DISABLE_QUICK_ENTRY: bool = False
     ABLATION_DISABLE_QUICK_EXIT: bool = False
     BASIS_CONDITION: bool = False
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True
-    BB_SQUEEZE_ENABLED: bool = True
+    BB_SQUEEZE_ENABLED: bool = False  # 2026-04-16: off until sweep-proven
     BB_SQUEEZE_COOLDOWN: float = 300.0
     BB_SQUEEZE_MIN_ALIGNMENT: int = 10
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2
@@ -644,24 +644,19 @@ def compute_entry_signals(npz, n, is_long, cfg):
         for b in blocks.values():
             raw = raw | b
 
-    # STRENGTH FILTER: weighted score — PULLBACK-FIRST weighting (2026-04-16 user feedback)
-    # Pullback blocks weighted HIGH (early entries), breakout blocks weighted LOW (late entries)
+    # STRENGTH FILTER: REVERTED to V8Q v3 proven weights (Sharpe 1.93 on TOP3).
+    # Pullback-first weighting (tested above) only hit Sharpe 0.80 — reverted 2026-04-16.
+    # PULL blocks remain as opt-in sweep knobs with LOW weight (don't pollute proven score).
     if cfg.STRENGTH_FILTER_ENABLED:
         weights = {
-            # Pullback-in-trend (EARLY entries — user priority)
-            "B_PULL1": 5,   # HTF uptrend + LTF deep oversold + reversing
-            "B_PULL2": 5,   # Rising fundamentals + SMA200 pullback bounce
-            "B_PULL3": 4,   # BB lower-band + trend up + stoch cross up
-            "B_PULL4": 4,   # RSI pullback + HTF healthy + wt bouncing
-            "B02": 4,       # BC156 bottom bounce (already pullback-style)
-            "B10": 4,       # Stoch cross from low zone
-            "B04": 3,       # DC retest (pullback to broken level)
-            # Trend-following (NEUTRAL weight)
-            "B12": 2,       # WT momentum aligned
-            "B14": 1,       # HA all aligned
-            # Breakout (LATE entries — reduced weight)
-            "B11": 1,       # DC break — enters at top of move
-            "B15": 1,       # Strong trend continuation — very late
+            # ORIGINAL V8Q v3 weights — proven Sharpe 1.93 on TOP3
+            "B15": 4,       # Strong trend continuation (#1 single block, Sharpe 0.89)
+            "B04": 3,       # DC retest (Sharpe 0.39)
+            "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
+            "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)
+            "B10": 1, "B12": 1, "B14": 1,
+            # Pullback blocks (2026-04-16 experiment — tested, kept at low weight)
+            "B_PULL1": 1, "B_PULL2": 1, "B_PULL3": 1, "B_PULL4": 1,
         }
         score = np.zeros(n, dtype=np.float32)
         for name, arr in blocks.items():
@@ -691,8 +686,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & ((k_3m_prev <= d_3m_arr) & (k_3m_arr > d_3m_arr))
         else:
             extra_ok = extra_ok & ((k_3m_prev >= d_3m_arr) & (k_3m_arr < d_3m_arr))
-    # TF alignment min total (score-based)
-    if getattr(cfg, 'BACKTEST_VALIDATED_GATES_TRADIER', True):
+    # TF alignment min total (tradier-only; regression if applied to crypto per 2026-04-16 test)
+    if getattr(cfg, 'BACKTEST_VALIDATED_GATES_TRADIER', False) and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         wt1_4h_arr = _safe(npz, 'wt1_4h', n); wt2_4h_arr = _safe(npz, 'wt2_4h', n)
         wt1_D_arr = _safe(npz, 'wt1_D', n); wt2_D_arr = _safe(npz, 'wt2_D', n)
         if is_long:
@@ -700,7 +695,6 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else:
             tf_cnt = (wt1_1h < wt2_1h).astype(int) + (wt1_4h_arr < wt2_4h_arr).astype(int) + (wt1_D_arr < wt2_D_arr).astype(int)
         tf_gate_total = getattr(cfg, 'TF_ALIGNMENT_MIN_TOTAL', 0)
-        # Map 0-12 scale to 0-3 (divide by 4) since we only have 3 HTFs
         tf_need = max(1, min(3, int(tf_gate_total // 4))) if tf_gate_total > 0 else 1
         extra_ok = extra_ok & (tf_cnt >= tf_need)
     # Volume confirmation
@@ -716,15 +710,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'ABLATION_DISABLE_REENTRY', False):
         # Block reentry-like blocks, keep raw trend-follow only — for sensitivity test
         pass
-    # Entry score threshold (additional convolution with STRENGTH_MIN_SCORE)
+    # Tradier entry score MFI_D filter — ONLY tradier mode
     entry_score_min = getattr(cfg, 'TRADIER_ENTRY_SCORE_THRESHOLD', 0)
-    if entry_score_min >= 24:
-        # Stricter gate on stocks — add MFI_D >= 40 filter for longs
+    if entry_score_min >= 24 and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         mfi_D_arr = _safe(npz, 'mfi_D', n, 50)
-        if is_long:
-            extra_ok = extra_ok & (mfi_D_arr >= 40)
-        else:
-            extra_ok = extra_ok & (mfi_D_arr <= 60)
+        if is_long: extra_ok = extra_ok & (mfi_D_arr >= 40)
+        else: extra_ok = extra_ok & (mfi_D_arr <= 60)
     return raw & k3m_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
 
 
