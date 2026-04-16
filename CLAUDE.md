@@ -42,6 +42,55 @@ cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
 
 ---
 
+## 🔴 SANDBOX PARITY — S1 & S2 MUST ALWAYS MATCH MACBOOK
+
+**Live MacBook is the SOLE SOURCE OF TRUTH. Sandboxes (S1 `/home/niels/binance-sandbox/` and S2 `/home/niels/binance-sandbox/`) backtest against these files. If sandboxes drift, sweep results LIE — we've been here before, it cost real money.**
+
+### The 6 files that MUST be bit-identical on MacBook + S1 + S2 at ALL times
+
+1. `ez_manage.py`  · 2. `ez_positions_quick.py`  · 3. `ez_positions_service.py`
+4. `tradier_manage.py`  · 5. `config.py`  · 6. `config_tradier.py`
+
+Plus the backtest infrastructure: `v8_quick_engine.py`, `v8_quick_sweep.py`, `backtest_v8_*.py`, `breakout_multi_lung.py`, and all `ez_*.py` / `tradier_*.py` / `wt_*.py` / `utils.py` / `symbols.json` that existed on MacBook root.
+
+### Rules
+
+1. **Session start**: run `python3 check_sandbox_parity.py` (tool section below). If any DRIFT, STOP all work until resolved.
+2. **Before launching any sweep on a server**: confirm all 24 core files bit-match MacBook via size+md5. A stale sandbox engine running a sweep produces GARBAGE results that corrupt decisions.
+3. **After editing ANY of the 6 critical files**: immediately `rsync --existing --update MacBook → S1` AND `→ S2`. Verify with `check_sandbox_parity.py`.
+4. **Automated edits count**: bots like `build_switch_registry.py` or `config_usage_audit.py` that silently edit `v8_quick_engine.py` can cause drift. After any MacBook file mtime change, resync the sandboxes.
+5. **Never edit scripts on servers** (per "Current Operating Mode"). If an edit on a server is required, STOP and do it on MacBook first, then rsync.
+6. **Never use `push.py`**. Use `rsync --existing --update` — this preserves server-local files that never existed on MacBook and does not re-add files MacBook has archived to /old.
+
+### Past disasters caused by sandbox drift (to prevent, not to relive)
+
+- 2026-04-14: 33 canonical switches wiped by a revert — sandbox had older version that got copied back. See `data/sweep_alerts/FIX_REQUIRED_*.json`.
+- 2026-04-16 early: D4 breakout multi-lung sweep on S2 ran 5 configs with wrong engine (MacBook had newer `v8_quick_engine.py` with D4 logic, S2 had pre-D4 stub). Results were garbage. Caught before poisoning decision DB — only by explicit parity check.
+
+### The sync command (run anytime)
+
+```bash
+# From MacBook — keeps server-local files intact, only updates if MacBook is newer.
+rsync -az --existing --update \
+  ez_*.py tradier_*.py wt_*.py utils.py config.py config_tradier.py symbols.json \
+  v8_*.py backtest_v8_*.py breakout_multi_lung.py \
+  s1-int:/home/niels/binance-sandbox/
+# Then repeat with s2-int.
+```
+
+### Files that LEGITIMATELY differ between machines
+
+- `/old/inventory_*/` archives — each machine has its own history
+- `data/sweep_results/*.csv` — servers write, MacBook reads
+- `data/decisions/` JSONL — live-only on MacBook
+- `SWEEP_RUNNING` lock — server-specific
+- `backups/autosave/` — MacBook-only (15min launchd)
+- `klines_cache*/` — bidirectional rsync handled separately
+
+Anything NOT in that legitimate-differ list must bit-match. If you find a drift, fix it IMMEDIATELY — don't queue it.
+
+---
+
 ## ⚠️ NO LYING / NO GUESSING — REAL MONEY
 
 - **NEVER** claim something works without log/exchange proof.
@@ -71,7 +120,8 @@ cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
 1. **Read STATE OF AFFAIRS** at bottom of this file first.
 2. **Read `100.md`** — master audit doc (Parts 1–15). Skim headers, read relevant sections.
 3. **Refresh knowledge base**: `cd /Users/niels/Documents/binance && python3 export_conversations.py`
-4. **Search based on request**:
+4. **Sandbox parity check**: `python3 check_sandbox_parity.py` — if any of the 24 core files DRIFT vs S1 or S2, STOP until fixed (see SANDBOX PARITY section above).
+5. **Search based on request**:
    - Script mentioned → `memory/conversations/SCRIPT_STATE.md`
    - Topic (hedge, ratio, positions, klines, redis, scalp) → `memory/conversations/TOPIC_STATE.md`
    - "Continue from last time" → `memory/conversations/INDEX.md` → relevant `session_*.md`

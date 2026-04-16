@@ -7818,11 +7818,23 @@ class TradierTradeManager:
                             if _sg_blocked:
                                 logger.info(f"[REENTRY_MONITOR] {pk}: SYMGATE block — {_sg_reason}")
                                 continue
-                        # STOCH GATE — 3 tiers based on hours since exit:
+                        # ═══ PATHWAY 0: 5m-exit rescue (user directive 2026-04-16) ═══
+                        _er_str = str(cand.get("exit_reason", "")).upper()
+                        _was_5m_exit = any(t in _er_str for t in ('5M', '_5M_', 'DELTA_EXIT', 'STOCH_CROSS', 'WT_CROSSUNDER', 'WT_CROSSOVER', 'MANDATORY_REENTRY', 'WT_DC_EXIT'))
+                        if side == "LONG":
+                            _1h_still_trending = wt1_1h > wt2_1h
+                            _5m_entry_fires = (wt1_5m > wt2_5m) and (k_5m > d_5m)
+                        else:
+                            _1h_still_trending = wt1_1h < wt2_1h
+                            _5m_entry_fires = (wt1_5m < wt2_5m) and (k_5m < d_5m)
+                        _p0_rescue = _was_5m_exit and _1h_still_trending and _5m_entry_fires
+                        if _p0_rescue:
+                            logger.warning(f"🟢 [REENTRY_P0_5M_RESCUE] {pk}: exit_reason='{_er_str[:40]}' 1h_trending={_1h_still_trending} 5m_entry=TRUE — BYPASS FILTERS")
+                        # STOCH GATE — 3 tiers based on hours since exit (skipped if P0 rescue fires):
                         # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
                         # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering
                         # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
-                        if hours_since < 3.0:
+                        if not _p0_rescue and hours_since < 3.0:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
@@ -7838,7 +7850,7 @@ class TradierTradeManager:
                                 if not (k_5m < k_5m_prev and k_15m < k_15m_prev and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
                                     continue
-                        elif hours_since < 48.0:
+                        elif not _p0_rescue and hours_since < 48.0:
                             # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16) ═══
                             _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)
                             if _bounce_enabled:
@@ -7854,21 +7866,25 @@ class TradierTradeManager:
                                 if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                                     continue
-                        else:
+                        elif not _p0_rescue:
                             # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) ═══
                             if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
                                 continue
                             logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch gate BYPASSED, relying on exit score + WT alignment")
-                        # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned
-                        if side == "LONG":
-                            htf_aligned = (wt1_4h > wt2_4h) and (wt_cross_1h != "BEAR")
-                            wt_support = sum(1 for w1, w2 in [(wt1_5m, wt2_5m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h)] if w1 > w2)
-                        else:
-                            htf_aligned = (wt1_4h < wt2_4h) and (wt_cross_1h != "BULL")
-                            wt_support = sum(1 for w1, w2 in [(wt1_5m, wt2_5m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h)] if w1 < w2)
-                        if wt_support >= 2 and htf_aligned:
+                        # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or P0 rescue fired)
+                        if _p0_rescue:
+                            wt_support = 3  # for logging
                             reenter = True
+                        else:
+                            if side == "LONG":
+                                htf_aligned = (wt1_4h > wt2_4h) and (wt_cross_1h != "BEAR")
+                                wt_support = sum(1 for w1, w2 in [(wt1_5m, wt2_5m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h)] if w1 > w2)
+                            else:
+                                htf_aligned = (wt1_4h < wt2_4h) and (wt_cross_1h != "BULL")
+                                wt_support = sum(1 for w1, w2 in [(wt1_5m, wt2_5m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h)] if w1 < w2)
+                            if wt_support >= 2 and htf_aligned:
+                                reenter = True
                         if reenter:
                             pos_amt_at_exit = float(cand.get("position_amt_at_exit", 0))
                             reentry_qty = max(1, int(pos_amt_at_exit)) if pos_amt_at_exit > 0 else max(1, int(await self.calculate_position_size(symbol, current_price, account_key=acc)))

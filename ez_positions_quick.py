@@ -11687,7 +11687,26 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     _entry_lrp = safe_fetch_float(entry_meta.get('last_reduction_price', 0.0), 0.0)
                     _reentry_px = _exit_px if _exit_px > 0 else _entry_lrp
                     _min_since_exit_epq = (now - _exit_tm) / 60.0 if _exit_tm > 0 else 99999.0
-                    if _reentry_px > 0 and (now - _exit_tm) < 72000:
+                    _reentry_min_gap = float(getattr(config, 'REENTRY_MIN_GAP_MINUTES', 3.0))
+                    _gap_ok = _min_since_exit_epq >= _reentry_min_gap
+                    _symgate_on = bool(getattr(config, 'REENTRY_SYMGATE_ENABLED', True))
+                    _symgate_blocked = False
+                    if _symgate_on and data_manager and hasattr(data_manager, 'delta_tracker') and data_manager.delta_tracker and getattr(config, 'DELTA_ENGINE_ENABLED', False):
+                        try:
+                            _sg_sig = data_manager.delta_tracker.update(symbol, indicators, {"side": "LONG" if is_long else "SHORT"})
+                            if _sg_sig:
+                                _speed_min = float(getattr(config, 'REENTRY_SYMGATE_SPEED_MIN', 0.5))
+                                _bs = float(getattr(_sg_sig, 'bull_speed', 0.0) or 0.0)
+                                _es = float(getattr(_sg_sig, 'bear_speed', 0.0) or 0.0)
+                                if is_long and (_sg_sig.exit_long or _sg_sig.zone in ("TOP", "TOP_TOP") or _bs < _speed_min):
+                                    _symgate_blocked = True
+                                elif (not is_long) and (_sg_sig.exit_short or _sg_sig.zone in ("BOTTOM", "BOTTOM_BOTTOM") or _es < _speed_min):
+                                    _symgate_blocked = True
+                                if _symgate_blocked:
+                                    logger.info(f"[SYMGATE] {position_key}: reentry blocked — delta says EXIT (zone={_sg_sig.zone} bs={_bs:.1f} es={_es:.1f})")
+                        except Exception:
+                            pass
+                    if _reentry_px > 0 and (now - _exit_tm) < 72000 and _gap_ok and not _symgate_blocked:
                         _px_cross_pct = 0.001
                         _t2_price_pct = getattr(config, 'REENTRY_TIER2_PRICE_PCT', 0.003)
                         _t2_min_min = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', 10.0)

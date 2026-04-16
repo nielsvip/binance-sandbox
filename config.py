@@ -254,6 +254,10 @@ class Config:
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_RALLY_K15M_MAX: float = 100.0  # sweep: 100 (off) / 40 / 20 — k15m level cap on WT_2of3 reentry gate
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
+    REENTRY_MIN_GAP_MINUTES: float = 3.0    # Crypto: 3 min floor between exit and reentry (stocks=15). Fires before any tier gate.
+    REENTRY_SYMGATE_ENABLED: bool = True    # Block reentry if DELTA/score/speed says exit for the proposed side (same as stocks)
+    REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
+    ENTRY_SYMGATE_ENABLED: bool = True      # Same guard on fresh entries, not just reentries
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.

@@ -78,7 +78,7 @@ class QuickConfig:
     # Stoch-K zone gate — disabled by default (LONG=0 always passes, SHORT=100 always passes).
     ENTRY_ZONE_LONG: float = 0.0
     ENTRY_ZONE_SHORT: float = 100.0
-    ENTRY_ZONE_K_TF: str = "15m"  # which TF for the zone gate
+    ENTRY_ZONE_K_TF: str = "3m"  # crypto default (stocks override to 15m in apply_tradier_defaults)
     HTF_ALIGNMENT_ENABLED: bool = True
     HTF_MIN_ALIGNED: int = 1
     D_TREND_REQUIRED: bool = True
@@ -401,7 +401,7 @@ class QuickConfig:
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"
-        self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
+        self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"  # stocks: bb_1h (crypto: dc_4h) — NEVER swap
         self.K_ZONE_ENTRY_ENABLED = True
         self.MFI_ENTRY_ENABLED = True
         self.VWAP_FILTER_ENABLED = True
@@ -411,8 +411,18 @@ class QuickConfig:
         self.MFI_FLIP_EXIT_ENABLED = True
         self.WT_CROSSUNDER_FINAL_ENABLED = True
         self.MI_EXIT_ENABLED = True
-        self.ENTRY_SCORE_THRESHOLD = 24.0
+        self.ENTRY_SCORE_THRESHOLD = 24.0  # stocks: 24 (crypto: 18) — per CLAUDE.md OPPOSITE params
         self.K3M_FLOOR = 30.0
+        # Entry zone gates — stocks use explicit zones (crypto relies on reentry blocks)
+        # Default off (LONG=0, SHORT=100) until swept — see live config_tradier ENTRY_ZONE_LONG=35, ENTRY_ZONE_SHORT=65
+        self.ENTRY_ZONE_LONG = 0.0
+        self.ENTRY_ZONE_SHORT = 100.0
+        self.ENTRY_ZONE_K_TF = "15m"  # stocks: 15m entry-zone TF (crypto: 3m). Swap = disaster.
+        # Reentry gap — stocks 15 bars (~15min on 1m), crypto 3 bars (~3min on 1m). Default off.
+        self.REENTRY_MIN_GAP_BARS = 0
+        # SYMGATE — default off; flip True to test symmetric entry/exit gate
+        self.ENTRY_SYMGATE_ENABLED = False
+        self.REENTRY_SYMGATE_ENABLED = False
         # D4: default tier STOCK for tradier mode when enabled
         self.BREAKOUT_MULTI_LUNG_TIER = "STOCK"
 
@@ -740,8 +750,13 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else: extra_ok = extra_ok & (mfi_D_arr <= 60)
     # ENTRY_ZONE gate — LONG requires k_TF < ENTRY_ZONE_LONG ceiling (oversold); SHORT requires > ENTRY_ZONE_SHORT floor (overbought).
     # Disabled defaults (LONG=0 / SHORT=100) trivially pass. When set (e.g. LONG=35, SHORT=65) they become real gates.
-    _zone_tf = str(getattr(cfg, 'ENTRY_ZONE_K_TF', '15m') or '15m')
-    _zone_k_arr = k_15m if _zone_tf == '15m' else (k_1h if _zone_tf == '1h' else (k_3m if _zone_tf in ('3m', '5m') else k_15m))
+    _zone_tf = str(getattr(cfg, 'ENTRY_ZONE_K_TF', '3m') or '3m')
+    if _zone_tf == '15m':
+        _zone_k_arr = k_15m
+    elif _zone_tf == '1h':
+        _zone_k_arr = k_1h
+    else:
+        _zone_k_arr = k_3m
     if is_long:
         _zl = float(getattr(cfg, 'ENTRY_ZONE_LONG', 0.0) or 0.0)
         if _zl > 0.0:
