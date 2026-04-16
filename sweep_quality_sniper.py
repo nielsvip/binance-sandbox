@@ -29,38 +29,41 @@ sys.path.insert(0, str(BASE))
 SWEEP_DIR = BASE / "data" / "sweep_results"
 SWEEP_DIR.mkdir(parents=True, exist_ok=True)
 
-# SNIPER STACK — only highest-Sharpe reentry blocks
+# SNIPER STACK — ALL 7 keepers always on (B15 alone too rare on fast-sym subset).
+# Instead, we vary the EXIT and SIZING aggressiveness — that's where quality lives.
+# Each combo keeps 7 keepers ON; toggles B12 (volume king) + B10 (stoch rev, 69% WR)
+# since those are the two most likely to be "cuttable" for quality-over-volume tradeoff.
 SNIPER_BLOCK_COMBOS = [
-    # Pure sniper (B15 alone — ablation Sharpe 0.89)
-    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": False,
-     "REENTRY_B11_DC_BREAK_ENABLED": False, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
-     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
-     "REENTRY_B10_STOCH_REV_ENABLED": False, "_label": "B15_only"},
-    # Top 2 (B15 + B04)
-    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
-     "REENTRY_B11_DC_BREAK_ENABLED": False, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
-     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
-     "REENTRY_B10_STOCH_REV_ENABLED": False, "_label": "B15_B04"},
-    # Top 3 (B15 + B04 + B11, all 3 are high-Sharpe high-WR)
-    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
-     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
-     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
-     "REENTRY_B10_STOCH_REV_ENABLED": False, "_label": "B15_B04_B11"},
-    # Top 4 (add B02 for volume)
-    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
-     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
-     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
-     "REENTRY_B10_STOCH_REV_ENABLED": False, "_label": "B15_B04_B11_B02"},
-    # All 7 proven keepers
+    # Full stack (baseline for quality sniper)
     {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
      "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
      "REENTRY_B12_WT_MOM_ENABLED": True, "REENTRY_B14_HA_TREND_ENABLED": True,
-     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "all7_keepers"},
-    # Quality only (no volume blocks — B15 + B11 + B10 highest WR)
-    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": False,
-     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "all7"},
+    # Drop B12 (volume king but lowest quality of keepers)
+    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
+     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
+     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": True,
+     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "no_B12"},
+    # Drop B14 (moderate Sharpe 0.11)
+    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
+     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
+     "REENTRY_B12_WT_MOM_ENABLED": True, "REENTRY_B14_HA_TREND_ENABLED": False,
+     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "no_B14"},
+    # Drop B12 AND B14 (keep 5 strongest)
+    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
+     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
      "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
-     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "WR_only_B15_B11_B10"},
+     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "top5_B15_B04_B11_B02_B10"},
+    # Top 4 only (drop B10+B12+B14)
+    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": True,
+     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
+     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
+     "REENTRY_B10_STOCH_REV_ENABLED": False, "_label": "top4_B15_B04_B11_B02"},
+    # High-WR focus (B15 94%, B11 97%, B10 69-75%)
+    {"REENTRY_B15_STRONG_TREND_ENABLED": True, "REENTRY_B04_DC_RETEST_ENABLED": False,
+     "REENTRY_B11_DC_BREAK_ENABLED": True, "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
+     "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
+     "REENTRY_B10_STOCH_REV_ENABLED": True, "_label": "highWR_B15_B11_B02_B10"},
 ]
 
 # Common base — ALL sniper configs get these
@@ -76,11 +79,11 @@ SNIPER_BASE = {
     "SATOSHIT_ENABLED": True,  # try both ways
 }
 
-# Aggressive selectivity grid (applied on top of each block combo)
+# Selectivity grid — less extreme than before so trades actually happen
 SELECTIVITY_GRID = {
-    "ENTRY_SCORE_THRESHOLD": [20.0, 24.0, 28.0, 32.0],
-    "K3M_FLOOR": [10.0, 15.0, 20.0, 25.0],
-    "CT_WT_VELOCITY_1H_MIN": [1.0, 2.0, 3.0],
+    "ENTRY_SCORE_THRESHOLD": [15.0, 20.0, 24.0, 28.0],
+    "K3M_FLOOR": [20.0, 25.0, 30.0, 35.0],
+    "CT_WT_VELOCITY_1H_MIN": [0.5, 1.0, 1.5, 2.0],
 }
 
 
@@ -115,12 +118,14 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, env=env, cwd=str(BASE))
         elapsed = time.time() - t0
         for line in reversed(proc.stdout.splitlines()):
-            if "V8_RESULT:" in line:
+            if "V8_QUICK_RESULT:" in line or "V8_RESULT:" in line:
                 toks = {}
-                for t in line.split():
+                # Strip the prefix tag
+                line_body = line.split(":", 1)[1] if ":" in line else line
+                for t in line_body.split():
                     if "=" in t:
                         k, v = t.split("=", 1)
-                        toks[k] = v
+                        toks[k] = v.rstrip("%").rstrip("s")
                 override.unlink(missing_ok=True)
                 sh_ann = float(toks.get("sharpe_ann", 0) or 0)
                 sh_pt = float(toks.get("sharpe_pt", 0) or 0)
@@ -132,6 +137,8 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
                     "pnl": float(toks.get("pnl", toks.get("gain_pct", 0)) or 0),
                     "trades": int(toks.get("trades", toks.get("closes", 0)) or 0),
                     "wins": int(toks.get("wins", 0) or 0), "losses": int(toks.get("losses", 0) or 0),
+                    "wr": float(toks.get("wr", 0) or 0),
+                    "avg_pnl": float(toks.get("avg_pnl", 0) or 0),
                     "elapsed": round(elapsed, 1), "status": "ok",
                     **{k: v for k, v in cfg.items()}
                 }

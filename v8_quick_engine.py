@@ -106,6 +106,12 @@ class QuickConfig:
     STRENGTH_MIN_SCORE: float = 3.0  # Min total block score to enter
     # Holding period enforcement (avoid rapid exit noise)
     MIN_HOLD_BARS: int = 0  # Don't exit for first N bars after entry
+    # Profit target exit (sweep-only — boosts Sharpe by locking gains)
+    PROFIT_TARGET_ENABLED: bool = False
+    PROFIT_TARGET_PCT: float = 1.5  # Exit at this gain % even without technical signal
+    # Stop loss exit (sweep-only — cap max loss)
+    STOP_LOSS_ENABLED: bool = False
+    STOP_LOSS_PCT: float = 2.0  # Exit at this loss %
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -419,13 +425,26 @@ def simulate(stores, cfg, capital=10000.0):
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
+            pt_enabled = cfg.PROFIT_TARGET_ENABLED
+            pt_pct = cfg.PROFIT_TARGET_PCT
+            sl_enabled = cfg.STOP_LOSS_ENABLED
+            sl_pct = cfg.STOP_LOSS_PCT
             for i in range(n):
                 if cd > 0: cd -= 1; continue
                 px = close[i]
                 if px <= 0: continue
                 if not in_pos and entry_sig[i]:
                     in_pos = True; ep = px; eb = i
-                elif in_pos and exit_sig[i] and (i - eb) >= min_hold:
+                    continue
+                if in_pos:
+                    live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # Profit target hit — exit immediately regardless of technical signal
+                    if pt_enabled and live_pnl >= pt_pct:
+                        all_pnl.append(live_pnl); in_pos = False; cd = cooldown; continue
+                    # Stop loss hit — exit at loss
+                    if sl_enabled and live_pnl <= -sl_pct:
+                        all_pnl.append(live_pnl); in_pos = False; cd = cooldown; continue
+                if in_pos and exit_sig[i] and (i - eb) >= min_hold:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     if cfg.NOLOSS_ENABLED and pnl < 0:
                         if cfg.DC_RECOVERY_EXIT_ENABLED:

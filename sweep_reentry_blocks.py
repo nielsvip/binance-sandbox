@@ -58,18 +58,20 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, env=env, cwd=str(BASE))
         elapsed = time.time() - t0
         for line in reversed(proc.stdout.splitlines()):
-            if "V8_RESULT:" in line:
+            if "V8_QUICK_RESULT:" in line or "V8_RESULT:" in line:
                 toks = {}
-                for t in line.split():
+                line_body = line.split(":", 1)[1] if ":" in line else line
+                for t in line_body.split():
                     if "=" in t:
                         k, v = t.split("=", 1)
-                        toks[k] = v
+                        toks[k] = v.rstrip("%").rstrip("s")
                 override.unlink(missing_ok=True)
                 return {
-                    "label": label, "sharpe": float(toks.get("sharpe", toks.get("sharpe_w", 0))),
-                    "pnl": float(toks.get("pnl", toks.get("gain_pct", 0))),
-                    "trades": int(toks.get("trades", toks.get("closes", 0))),
-                    "wins": int(toks.get("wins", 0)), "losses": int(toks.get("losses", 0)),
+                    "label": label, "sharpe": float(toks.get("sharpe", toks.get("sharpe_w", 0)) or 0),
+                    "pnl": float(toks.get("pnl", toks.get("gain_pct", 0)) or 0),
+                    "trades": int(toks.get("trades", toks.get("closes", 0)) or 0),
+                    "wins": int(toks.get("wins", 0) or 0), "losses": int(toks.get("losses", 0) or 0),
+                    "wr": float(toks.get("wr", 0) or 0),
                     "elapsed": round(elapsed, 1), "status": "ok",
                     **{k: v for k, v in cfg.items()}
                 }
