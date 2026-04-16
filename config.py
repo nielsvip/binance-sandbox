@@ -1,3 +1,8 @@
+# ═══════════════════════════════════════════════════════════════════════
+# SWEEP REFERENCE: data/sweep_tiers.json — prioritized list of ALL sweepable
+# switches with ranges, tiers (TIER_1→TIER_3), and notes. Agents: read that
+# file before starting any parameter sweep. TIER_1 first, skip DEAD/FIXED.
+# ═══════════════════════════════════════════════════════════════════════
 import asyncio
 import os
 import platform

@@ -16156,11 +16156,117 @@ def calculate_reduction_conviction(ctx):
     reasons = ['REDUCTION_CONVICTION_NOT_USED']
     return float(conviction), reasons
 
+_evaluate_reentry_original = None
 @timed_function("evaluate_reentry")
 async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
-    global _last_events_cache
-    now = datetime.now(timezone.utc); config = ctx['config']; logger = ctx['logger']; position_key = ctx['position_key']; symbol = ctx['symbol']; account_key = ctx['account_key']; position = ctx['trade_manager'].positions[position_key];trade_manager=ctx['trade_manager']
-    _re_diag = ctx.get('reentry_data') or {}
+    """Compacted evaluate_reentry — 7 proven blocks with per-block switches.
+    ABLATION 2026-04-16: 9 blocks tested on 11 crypto + 12 tradier symbols.
+    2 blocks CUT (B01_WT_2of3: Sharpe 0.033 noise, B09_SNAPBACK: 0.022 weak).
+    7 blocks KEPT with switches for sweep testing.
+    Original 1177-line version in backups/before_reentry_compact_*.py"""
+    config = ctx['config']; logger = ctx['logger']; position_key = ctx['position_key']
+    symbol = ctx['symbol']; account_key = ctx['account_key']
+    trade_manager = ctx['trade_manager']
+    position = trade_manager.positions.get(position_key)
+    if not position: return None
+    is_long = ctx.get('position_side', 'LONG') == "LONG"
+    current_price = safe_fetch_float(ctx.get('current_price') or ctx.get('mark_price') or getattr(position, 'mark_price', 0.0), 0.0)
+    if not current_price: current_price = await price(symbol, position, 3)
+    if current_price <= 0: return None
+    positionAmt = safe_fetch_float(position.positionAmt, 0.0)
+    position_value = abs(positionAmt) * current_price
+    min_pos_size = safe_fetch_float(config.MIN_POSITION_SIZE, 55.0)
+    if position_value > 2 * min_pos_size: return None
+    i = await ii(trade_manager, symbol)
+    if not i: return None
+    _sf = safe_fetch_float
+    re_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+    wt1_3m = _sf(i.get('wt1_3m'), 0); wt2_3m = _sf(i.get('wt2_3m'), 0)
+    wt1_15m = _sf(i.get('wt1_15m'), 0); wt2_15m = _sf(i.get('wt2_15m'), 0)
+    wt1_1h = _sf(i.get('wt1_1h'), 0); wt2_1h = _sf(i.get('wt2_1h'), 0)
+    wt1_4h = _sf(i.get('wt1_4h'), 0); wt2_4h = _sf(i.get('wt2_4h'), 0)
+    wt_vel_3m = _sf(i.get('wt_velocity_3m'), 0); wt_vel_15m = _sf(i.get('wt_velocity_15m'), 0)
+    wt_vel_1h = _sf(i.get('wt_velocity_1h'), 0)
+    k_3m = _sf(i.get('stoch_k_3m'), 50); d_3m = _sf(i.get('stoch_d_3m'), 50)
+    k_15m = _sf(i.get('stoch_k_15m'), 50); k_1h = _sf(i.get('stoch_k_1h'), 50)
+    k_3m_prev = _sf(i.get('k_3m_prev'), k_3m)
+    dc_high_4h = _sf(i.get('dc_high_4h'), 0); dc_low_4h = _sf(i.get('dc_low_4h'), 0)
+    dc_high_1h = _sf(i.get('dc_high_1h'), 0); dc_high_15m = _sf(i.get('dc_high_15m'), 0)
+    dc_low_1h = _sf(i.get('dc_low_1h'), 0); dc_low_15m = _sf(i.get('dc_low_15m'), 0)
+    ha_3m = i.get('ha_3m', 'neutral'); ha_15m = i.get('ha_15m', 'neutral'); ha_1h = i.get('ha_1h', 'neutral')
+    bb_pctb_1h = _sf(i.get('bb_pct_b_1h'), 0.5)
+    # B15: STRONG TREND CONTINUATION — Sharpe 0.89 crypto, 0.72 tradier, 94-97% WR
+    if getattr(config, 'REENTRY_B15_STRONG_TREND_ENABLED', True):
+        if is_long and dc_high_4h > 0 and current_price > dc_high_4h and wt_vel_1h > 2.0 and k_1h < 85:
+            logger.warning(f"[REENTRY_B15] {position_key}: STRONG_TREND_LONG dc4h={dc_high_4h:.4f} vel1h={wt_vel_1h:.1f}")
+            return Signal(action='REENTRY', reason=f'B15_STRONG_TREND_LONG_dc4h={dc_high_4h:.4f}_vel1h={wt_vel_1h:.1f}', conviction=95.0, quantity=re_qty)
+        if not is_long and dc_low_4h > 0 and current_price < dc_low_4h and wt_vel_1h < -2.0 and k_1h > 15:
+            logger.warning(f"[REENTRY_B15] {position_key}: STRONG_TREND_SHORT dc4h={dc_low_4h:.4f} vel1h={wt_vel_1h:.1f}")
+            return Signal(action='REENTRY', reason=f'B15_STRONG_TREND_SHORT_dc4h={dc_low_4h:.4f}_vel1h={wt_vel_1h:.1f}', conviction=95.0, quantity=re_qty)
+    # B04: DC HIGH BREAK RETEST — Sharpe 0.39 crypto, 0.31 tradier
+    if getattr(config, 'REENTRY_B04_DC_RETEST_ENABLED', True):
+        _dcbr_ok, _dcbr_reason, _dcbr_mult = check_dc_high_break_retest(i, current_price, is_long)
+        if _dcbr_ok:
+            _dcbr_qty = config.START_POSITION_SIZE * _dcbr_mult / current_price
+            logger.warning(f"[REENTRY_B04] {position_key}: DC_RETEST {_dcbr_reason}")
+            return Signal(action='REENTRY', reason=f'B04_DC_RETEST_{_dcbr_reason}', conviction=88.0, quantity=_dcbr_qty)
+    # B11: DC CHANNEL BREAKOUT — Sharpe 0.34 crypto, 0.31 tradier, 94-97% WR
+    if getattr(config, 'REENTRY_B11_DC_BREAK_ENABLED', True):
+        if is_long and dc_high_1h > 0 and current_price > dc_high_1h * 1.001 and wt1_15m > wt2_15m:
+            logger.warning(f"[REENTRY_B11] {position_key}: DC_BREAK_LONG dc1h={dc_high_1h:.4f}")
+            return Signal(action='REENTRY', reason=f'B11_DC_BREAK_LONG_dc1h={dc_high_1h:.4f}', conviction=88.0, quantity=re_qty)
+        if not is_long and dc_low_1h > 0 and current_price < dc_low_1h * 0.999 and wt1_15m < wt2_15m:
+            logger.warning(f"[REENTRY_B11] {position_key}: DC_BREAK_SHORT dc1h={dc_low_1h:.4f}")
+            return Signal(action='REENTRY', reason=f'B11_DC_BREAK_SHORT_dc1h={dc_low_1h:.4f}', conviction=88.0, quantity=re_qty)
+    # B02: BC156 BOTTOM BOUNCE — Sharpe 0.31 both, 62.5% WR, best volume+quality balance
+    if getattr(config, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True):
+        wt_bull_count = sum(1 for tf in ['3m','15m','1h','4h'] if (bool(i.get(f'wt_bullish_{tf}', False)) == is_long) or (not bool(i.get(f'wt_bullish_{tf}', False)) == (not is_long)))
+        if is_long and wt1_15m < -20 and wt_vel_15m > 0 and wt1_1h > wt2_1h and wt_bull_count >= 2:
+            logger.warning(f"[REENTRY_B02] {position_key}: BC156_BOTTOM_LONG wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+            return Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_LONG_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
+        if not is_long and wt1_15m > 20 and wt_vel_15m < 0 and wt1_1h < wt2_1h and wt_bull_count >= 2:
+            logger.warning(f"[REENTRY_B02] {position_key}: BC156_BOTTOM_SHORT wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+            return Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_SHORT_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
+    # B12: WT MOMENTUM — Sharpe 0.15-0.17, volume king (112K/73K trades)
+    if getattr(config, 'REENTRY_B12_WT_MOM_ENABLED', True):
+        if is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m and wt1_1h > wt2_1h and wt_vel_3m > 1.0:
+            logger.info(f"[REENTRY_B12] {position_key}: WT_MOM_LONG vel3m={wt_vel_3m:.1f}")
+            return Signal(action='REENTRY', reason=f'B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
+        if not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m and wt1_1h < wt2_1h and wt_vel_3m < -1.0:
+            logger.info(f"[REENTRY_B12] {position_key}: WT_MOM_SHORT vel3m={wt_vel_3m:.1f}")
+            return Signal(action='REENTRY', reason=f'B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
+    # B14: HA TREND CONFIRMATION — Sharpe 0.11-0.13
+    if getattr(config, 'REENTRY_B14_HA_TREND_ENABLED', True):
+        _ha_val = lambda h: 1 if h == 'green' or h == 1 else (-1 if h == 'red' or h == -1 else 0)
+        if is_long and _ha_val(ha_3m) == 1 and _ha_val(ha_15m) == 1 and _ha_val(ha_1h) == 1 and k_3m < 60:
+            logger.info(f"[REENTRY_B14] {position_key}: HA_TREND_LONG k3m={k_3m:.0f}")
+            return Signal(action='REENTRY', reason=f'B14_HA_TREND_LONG_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+        if not is_long and _ha_val(ha_3m) == -1 and _ha_val(ha_15m) == -1 and _ha_val(ha_1h) == -1 and k_3m > 40:
+            logger.info(f"[REENTRY_B14] {position_key}: HA_TREND_SHORT k3m={k_3m:.0f}")
+            return Signal(action='REENTRY', reason=f'B14_HA_TREND_SHORT_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+    # B10: STOCHASTIC REVERSAL — Sharpe 0.07-0.12, high WR (69-75%)
+    if getattr(config, 'REENTRY_B10_STOCH_REV_ENABLED', True):
+        if is_long and k_3m_prev <= d_3m and k_3m > d_3m and k_3m < 25 and k_15m < 40:
+            logger.info(f"[REENTRY_B10] {position_key}: STOCH_REV_LONG k3m={k_3m:.0f}")
+            return Signal(action='REENTRY', reason=f'B10_STOCH_REV_LONG_k3m={k_3m:.0f}_k15m={k_15m:.0f}', conviction=72.0, quantity=re_qty)
+        if not is_long and k_3m_prev >= d_3m and k_3m < d_3m and k_3m > 75 and k_15m > 60:
+            logger.info(f"[REENTRY_B10] {position_key}: STOCH_REV_SHORT k3m={k_3m:.0f}")
+            return Signal(action='REENTRY', reason=f'B10_STOCH_REV_SHORT_k3m={k_3m:.0f}_k15m={k_15m:.0f}', conviction=72.0, quantity=re_qty)
+    # B01: WT 2/3 IN FAVOR — ABLATION: Sharpe 0.033 = noise. Default OFF. Switch kept for sweep.
+    if getattr(config, 'REENTRY_B01_WT_2of3_ENABLED', False):
+        if is_long:
+            _wf = int(wt1_3m > wt2_3m) + int(wt1_15m > wt2_15m) + int(wt1_1h > wt2_1h)
+        else:
+            _wf = int(wt1_3m < wt2_3m) + int(wt1_15m < wt2_15m) + int(wt1_1h < wt2_1h)
+        if _wf >= 2:
+            return Signal(action='REENTRY', reason=f'B01_WT_2of3_{_wf}of3', conviction=85.0, quantity=re_qty)
+    # B09: SNAPBACK — ABLATION: Sharpe 0.022 = weak. Default OFF. Switch kept for sweep.
+    if getattr(config, 'REENTRY_B09_SNAPBACK_ENABLED', False):
+        if is_long and dc_low_15m > 0 and current_price < dc_low_15m * 1.003 and wt_vel_3m > 0.5 and k_3m < 30:
+            return Signal(action='REENTRY', reason=f'B09_SNAPBACK_LONG', conviction=65.0, quantity=re_qty)
+        if not is_long and dc_high_15m > 0 and current_price > dc_high_15m * 0.997 and wt_vel_3m < -0.5 and k_3m > 70:
+            return Signal(action='REENTRY', reason=f'B09_SNAPBACK_SHORT', conviction=65.0, quantity=re_qty)
+    return None
     logger.info(f"[REENTRY_EVAL] {position_key}: positionAmt={position.positionAmt:.6f} gain={ctx.get('gain', 0):.2f}% reentry_data={{'level': _re_diag.get('reentry_level'), 'amount': _re_diag.get('reentry_amount'), 'reason': _re_diag.get('reason', '')[:40]}} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
     if config.VERBOSE: logger.info(f"[REENTRY_START] {position_key}: Starting reentry evaluation - positionAmt={position.positionAmt:.6f}, gain={ctx.get('gain', 0):.2f}%")
     gain = ctx['gain']; is_long = ctx['position_side'] == "LONG"; trade_manager = ctx['trade_manager']

@@ -1,3 +1,11 @@
+# ═══════════════════════════════════════════════════════════════════════
+# SWEEP REFERENCE: data/sweep_tiers.json → "tradier" section — prioritized
+# switches with ranges and tiers. Agents: read that file before sweeping.
+# KEY RULE: Stock params are OPPOSITE to crypto. NEVER copy between them.
+#   entry_score=24 (not 18), stoch_gate=60 (not 50), HTF_align>=2 (not 1),
+#   MFI only (never RSI), ATR_TRAIL=OFF (#1 PnL destroyer).
+#   SRS TF = bb_1h (NEVER bb_4h or dc_4h — caused April-13 disaster).
+# ═══════════════════════════════════════════════════════════════════════
 import os
 import platform
 import sys
