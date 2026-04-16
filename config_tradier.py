@@ -1377,6 +1377,8 @@ class TradierConfig:
     REENTRY_SYMGATE_ENABLED: bool = True   # Symmetric gate: block reentry if DELTA/score/speed says exit for the proposed side
     REENTRY_SYMGATE_SPEED_MIN: float = 1.0  # Min bull_speed (LONG) / bear_speed (SHORT). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = True     # Apply same guard to fresh entries, not just reentries
+    NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside bb_1h (stocks) / dc_4h (crypto) — hedge instead.
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS gate
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit

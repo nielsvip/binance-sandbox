@@ -258,6 +258,8 @@ class Config:
     REENTRY_SYMGATE_ENABLED: bool = False# Block reentry if DELTA/score/speed says exit for the proposed side (same as stocks)
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = False# Same guard on fresh entries, not just reentries
+    NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside dc_4h channel — hedge instead.
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS_DC4H
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
@@ -409,16 +411,6 @@ class Config:
     DELTA_ENGINE_ENABLED: bool = True  # Master switch
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True
-    # --- CASCADE TF + RATE-INTEGRATED RZ/DELTA (user directive 2026-04-16) ---
-    # Drill-down TF cascade in rate(): k_3m>=THRESH → k_15m → k_1h → k_4h → k_D.
-    # Higher depth = MORE TFs aligned = stronger signal (more bullish for LONG).
-    # Red zones + delta + wt_dc integrated into rate() as first-class decision inputs.
-    RATE_CASCADE_ENABLED: bool = True
-    CASCADE_K_THRESHOLD: float = 80.0  # LONG needs K>=80; SHORT needs K<=20
-    CASCADE_SCORE_PER_DEPTH: float = 1.5  # bonus per cascade step (max 22.5 for depth 15)
-    CASCADE_RZ_ENTRY_MIN_DEPTH: int = 3  # min composite depth (0-15) for RZ breakout entry
-    RATE_DELTA_3M_EXIT_ENABLED: bool = True  # 3m delta slowdown / WT reverse = hard exit
-    RATE_REENTRY_CROSSBACK_ENABLED: bool = True  # cross-back of exit price = full reentry
     DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5

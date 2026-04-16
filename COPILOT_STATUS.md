@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-16 23:05:37 UTC
+# Copilot Status — 2026-04-16 23:21:13 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,14 +6,15 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:00:29
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:00:30
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:01:32
-- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:02:33
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:02:35
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:03:41
-- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:04:42
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:04:46
+- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:16:08
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-16T23:16:08
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:16:09
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:17:14
+- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:18:16
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:18:17
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:19:19
+- **STALE_INDICATORS** [tradier]  — 2026-04-16T23:20:21
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-16T23:20:22
 
 ## Missed Trades (trader comparison)
 
@@ -33,5 +34,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 1
-- [HIGH] ez_market_data.py is NOT running
+**Issues (last 1h):** 3
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running

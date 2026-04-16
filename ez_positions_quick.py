@@ -1705,50 +1705,6 @@ class AdvancedSignalRater:
         _delta_entry_penalty = getattr(config, 'DELTA_ENTRY_SCORE_PENALTY', -25)
         _delta_exit_bonus = getattr(config, 'DELTA_EXIT_SCORE_BONUS', 20)
         _delta_min_tf = getattr(config, 'DELTA_MIN_TF_FOR_ACTION', 2)
-        # ═══ CASCADE + RZ FAST-PATH (user directive 2026-04-16) ═══════════════
-        # TF drill-down: k_3m>=T → k_15m → k_1h → k_4h → k_D (mirror for SHORT).
-        # More TFs aligned = MORE bullish. Exit only on 3m delta slowdown or WT reverse.
-        # RZ inside = exit, RZ breakout = entry. Delta/wt_dc fully integrated here.
-        _cas_total = 0
-        _cas_bonus = 0.0
-        if getattr(config, 'RATE_CASCADE_ENABLED', True):
-            try:
-                from rate_cascade import (cascade_k_depth, cascade_wt_depth, cascade_dc_depth, cascade_composite, compute_3m_delta_exit)
-                _cas_thresh = getattr(config, 'CASCADE_K_THRESHOLD', 80.0)
-                _k_dep = cascade_k_depth(is_long, k_3m, k_15m, k_1h, k_4h, k_D, threshold=_cas_thresh)
-                _wt_dep = cascade_wt_depth(is_long, wt1_3m, wt2_3m, wt1_15m, wt2_15m, wt1_1h, wt2_1h, wt1_4h, wt2_4h, wt1_D, wt2_D)
-                _dc_dep = cascade_dc_depth(is_long, current_price, dc_basis_3m, dc_basis_15m, dc_basis_1h, dc_basis_4h, dc_basis_D)
-                _cas_total = cascade_composite(_k_dep, _wt_dep, _dc_dep)
-                _cas_bonus = _cas_total * getattr(config, 'CASCADE_SCORE_PER_DEPTH', 1.5)
-                if _cas_total > 0:
-                    score += _cas_bonus
-                    reasons.append(f"CASCADE(k={_k_dep},wt={_wt_dep},dc={_dc_dep},+{_cas_bonus:.1f})")
-                # --- RZ HARD EXIT — inside zone AND delta says exit ---
-                if is_exit and _delta_sig is not None:
-                    _rz_hard_exit = (is_long and getattr(_delta_sig, 'exit_long', False)) or ((not is_long) and getattr(_delta_sig, 'exit_short', False))
-                    if _rz_hard_exit:
-                        _rz = getattr(_delta_sig, 'zone', '?')
-                        _rzr = str(getattr(_delta_sig, 'zone_reason', ''))[:60]
-                        return -15.0, "STRONG_REDUCE", f"RZ_HARD_EXIT_{_rz}_{_rzr}"
-                # --- 3M DELTA SLOWDOWN / WT REVERSE = HARD EXIT ---
-                if is_exit and getattr(config, 'RATE_DELTA_3M_EXIT_ENABLED', True):
-                    _wv3 = safe_fetch_float(ind.get('wt_velocity_3m'), 0.0)
-                    _wv3p = safe_fetch_float(ind.get('wt_velocity_3m_prev'), _wv3)
-                    _w1_3p = safe_fetch_float(ind.get('wt1_3m_prev'), wt1_3m)
-                    _w2_3p = safe_fetch_float(ind.get('wt2_3m_prev'), wt2_3m)
-                    if compute_3m_delta_exit(is_long, _wv3, _wv3p, wt1_3m, wt2_3m, _w1_3p, _w2_3p):
-                        return -12.0, "STRONG_REDUCE", f"3M_DELTA_SLOWDOWN(v3m={_wv3:.2f},prev={_wv3p:.2f},w1-w2={wt1_3m-wt2_3m:.1f})"
-                # --- RZ BREAKOUT ENTRY — pos closed + delta entry + cascade confirms ---
-                if (not is_exit) and positionAmt <= 0 and _delta_sig is not None:
-                    _rz_entry = (is_long and getattr(_delta_sig, 'entry_long', False)) or ((not is_long) and getattr(_delta_sig, 'entry_short', False))
-                    _min_dep = int(getattr(config, 'CASCADE_RZ_ENTRY_MIN_DEPTH', 3))
-                    if _rz_entry and _cas_total >= _min_dep:
-                        _rz = getattr(_delta_sig, 'zone', '?')
-                        _rzr = str(getattr(_delta_sig, 'zone_reason', ''))[:50]
-                        return 30.0 + _cas_bonus, ("STRONG_BUY" if is_long else "STRONG_SELL"), f"RZ_BREAKOUT_{_rz}_cas={_cas_total}_{_rzr}"
-            except Exception as _cas_err:
-                logger.debug(f"[CASCADE_RZ] {position_key}: {type(_cas_err).__name__}: {_cas_err}")
-        # ═════════════════════════════════════════════════════════════════════
         # --- WT COMPOSITE HTF GATE (replaces HTF_STRICT when enabled) ---
         _wt_comp_enabled = getattr(config, "WT_COMPOSITE_SCORING_ENABLED", False)
         _wt_htf_gate = getattr(config, "WT_COMPOSITE_HTF_GATE", False) and _wt_comp_enabled
@@ -11354,6 +11310,35 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         else:
                             current_price = _fresh_price
                             current_gain = _fresh_gain
+                # ═══ NOLOSS DC_4H GATE — never close at a loss while still inside the 4h Donchian channel ═══
+                # Rule: CLOSE BEFORE LOSING — if not possible, HEDGE. Applies to ALL accounts, every close path.
+                # Inside dc_4h: LONG if price > dc_low_4h (still has room down before structural break).
+                #                SHORT if price < dc_high_4h (still has room up before structural break).
+                # Technical exits tagged with tokens in LOSS_EXIT_TECHNICAL_BYPASS still close — reversal signals.
+                if hard_exit_reason and not is_hedge and bool(getattr(config, 'NOLOSS_DC4H_GATE_ENABLED', True)) and current_gain < 0:
+                    _nl_dc_high_4h = safe_fetch_float(indicators.get('dc_high_4h', 0), 0)
+                    _nl_dc_low_4h = safe_fetch_float(indicators.get('dc_low_4h', 0), 0)
+                    _nl_inside_dc4h = False
+                    if _nl_dc_high_4h > 0 and _nl_dc_low_4h > 0 and current_price > 0:
+                        if is_long:
+                            _nl_inside_dc4h = current_price > _nl_dc_low_4h
+                        else:
+                            _nl_inside_dc4h = current_price < _nl_dc_high_4h
+                    _nl_bypass_tokens = tuple(getattr(config, 'LOSS_EXIT_TECHNICAL_BYPASS', ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')))
+                    _nl_is_bypass = any(_tok in str(hard_exit_reason) for _tok in _nl_bypass_tokens)
+                    if _nl_inside_dc4h and not _nl_is_bypass:
+                        _nl_losing_val = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * current_price
+                        try:
+                            if hedge_engine and _nl_losing_val > 0:
+                                asyncio.create_task(hedge_engine.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_nl_losing_val, dry_run=False))
+                                logger.critical(f"🛡️[NOLOSS_DC4H_HEDGE] {position_key}: BLOCKED close '{str(hard_exit_reason)[:60]}' — gain={current_gain:.2f}% INSIDE dc4h [{_nl_dc_low_4h:.4f}..{_nl_dc_high_4h:.4f}] px={current_price:.4f} — HEDGE QUEUED instead of close")
+                            else:
+                                logger.critical(f"🚨[NOLOSS_DC4H_HOLD] {position_key}: BLOCKED close '{str(hard_exit_reason)[:60]}' — inside dc4h, gain={current_gain:.2f}% — no hedge_engine; HOLDING until structural break")
+                        except Exception as _nl_e:
+                            logger.error(f"[NOLOSS_DC4H_ERROR] {position_key}: {_nl_e}")
+                        hard_exit_reason = None
+                        await tracker_manager.clear_processing(position_key)
+                        return "NOLOSS_DC4H_HEDGED"
                 if hard_exit_reason:
                     logger.warning(f"🛑 [STRONG_EXIT] {symbol} {hard_exit_reason}. Executing REDUCE/CLOSE.")
                     side='SELL' if is_long else 'BUY'
