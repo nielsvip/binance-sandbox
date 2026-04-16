@@ -11010,13 +11010,25 @@ class MultiAccountTradeManager:
             _htf_bull = max(0, _htf_score_eta); _htf_bear = max(0, -_htf_score_eta)
             # HTF VETO for augments — block adding to positions against dominant HTF trend
             # 2026-04-09 EXCEPTION: bypass for winner / pullback augments (per user directive)
+            # 2026-04-16 EXCEPTION: bypass for breakout/RZ/mandatory entries that have their own HTF validation.
+            #   Without this, wt_dc_delta._run_redzone fires entry_long/entry_short correctly but the open gets
+            #   blocked here because the broader HTF is still trending opposite — which is the whole point of
+            #   an RZ bounce or a compression breakout. See HTF_TREND_VETO_BYPASS_REASONS in config.
             if is_augment and 'HEDGE' not in action and 'QUICK' not in action and 'REENTRY' not in action:
                 _htf_min_gain = safe_fetch_float(getattr(config, 'MIN_GAIN', 3.0), 3.0)
                 _htf_pos_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                 _htf_pos_max = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
                 _htf_winner = _htf_pos_gain >= _htf_min_gain
                 _htf_pullback = _htf_pos_gain >= 0.5 * _htf_min_gain and (_htf_pos_max - _htf_pos_gain) >= 1.0
-                if not (_htf_winner or _htf_pullback):
+                _htf_reason_bypass = False
+                if bool(getattr(config, 'HTF_TREND_VETO_BYPASS_ENABLED', True)):
+                    _htf_reason_upper = (reason or '').upper()
+                    for _htf_brk in (getattr(config, 'HTF_TREND_VETO_BYPASS_REASONS', []) or []):
+                        if _htf_brk and _htf_brk.upper() in _htf_reason_upper:
+                            _htf_reason_bypass = True
+                            logger.info(f"✅ [HTF_TREND_VETO_BYPASS] {position_key}: '{_htf_brk}' matched — allowing entry against HTF (reason={reason[:80]})")
+                            break
+                if not (_htf_winner or _htf_pullback or _htf_reason_bypass):
                     if is_long and _htf_dir_eta == 'BEAR' and _htf_score_eta <= -5:
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_LONG_htfScore={_htf_score_eta}"
                     if not is_long and _htf_dir_eta == 'BULL' and _htf_score_eta >= 5:

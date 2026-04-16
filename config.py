@@ -571,8 +571,29 @@ class Config:
     # 2026-04-16 per user directive: NO _LONG tradeable_keys can be without a position while price > dc_high_3m and rising. vv for _SHORT.
     # Extends existing _process_single_override_check to also OPEN from zero (it currently skips zero positions at line 18061).
     # Respects tradeable_keys (hand-picked), HTF_GATE via queue_trade_action gates downstream, and ratio gates.
-    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = False  # 2026-04-16: user chose option 3 — rely on existing RZ/compression-breakout detectors instead. Conflicted with existing HTF_TREND_VETO on counter-trend shorts.
+    TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED: bool = True  # 2026-04-16: re-enabled. The HTF_TREND_VETO block is fixed separately via HTF_TREND_VETO_BYPASS_REASONS.
     TRADEABLE_KEYS_MANDATORY_SIZE_USD: float = 9.0  # uses START_POSITION_SIZE if <=0
+    # 2026-04-16: HTF_TREND_VETO at ez_manage.py:11013-11023 blocks all non-REDUCE non-HEDGE non-REENTRY non-QUICK
+    # entries when HTF is opposite. It has no RZ/breakout exemption. That's why breakouts through red zones,
+    # DC levels, compression expansions don't actually open — they bypass MY new gate but hit this old one.
+    # These reasons already pass their own internal HTF validation (RZ in wt_dc_delta._run_redzone) or are
+    # mandated regardless (TRADEABLE_KEYS_MANDATORY). Substrings matched uppercased against the reason.
+    HTF_TREND_VETO_BYPASS_ENABLED: bool = True
+    HTF_TREND_VETO_BYPASS_REASONS: list = field(default_factory=lambda: [
+        "TRADEABLE_KEYS_MANDATORY",
+        "RZ_",
+        "RED_ZONE",
+        "BASELINE_BOUNCE",
+        "BREAKDOWN_TRUCK",
+        "BOTTOM_HUGE",
+        "TRUCK_LOAD",
+        "REJECTION_OLD_REDZONE",
+        "COMPRESSION_BREAKOUT",
+        "DC_BREAKOUT",
+        "BB_SQUEEZE_BREAKOUT",
+        "OVERRIDE_DC_PRICE_MOVE",   # existing enforcement at ez_manage.py:18113
+        "STDEV_BREAKOUT",
+    ])
     HTF_GATE_BYPASS_RZ: bool = True  # preserve RZ bounce bypass (bounce logic HTF-validates internally)
     # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
     WT_CROSS_EXIT_ENABLED: bool = True

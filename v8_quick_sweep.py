@@ -84,10 +84,49 @@ def build_param_grid_full():
     return grid
 
 
+def build_param_grid_v3_core():
+    """V3-core grid: sweeps the knobs that moved V8Q v3 from 0.5 to Sharpe 1.93 on TOP3.
+    STRENGTH_MIN_SCORE, MIN_HOLD_BARS, PROFIT_TARGET_PCT, WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED."""
+    grid = {
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0, 10.0, 13.0],
+        "MIN_HOLD_BARS": [5, 10, 15, 20, 30],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.2, 1.4, 1.6, 1.8, 2.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "D_TREND_REQUIRED": [True, False],
+        "COOLDOWN_BARS": [3, 6, 12],
+        "ENTRY_SCORE_THRESHOLD": [15.0, 18.0, 24.0],
+    }
+    return grid
+
+
+def build_param_grid_tradier_core():
+    """Tradier-specific grid. Tradier defaults set ENTRY_SCORE=24, stricter gates.
+    Sweep lower thresholds to unlock trades, also test PT_PCT since tradier needs wider."""
+    grid = {
+        "STRENGTH_FILTER_ENABLED": [True, False],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 8.0],
+        "MIN_HOLD_BARS": [10, 20, 40, 80],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.8, 1.5, 2.5, 5.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "D_TREND_REQUIRED": [True, False],
+        "ENTRY_SCORE_THRESHOLD": [12.0, 18.0, 24.0],
+        "K3M_FLOOR": [20.0, 30.0, 40.0],
+        "TRADIER_MFI_ENTRY_LONG_ENABLED": [True, False],
+    }
+    return grid
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
     "full": build_param_grid_full,
+    "v3_core": build_param_grid_v3_core,
+    "tradier_core": build_param_grid_tradier_core,
 }
 
 
