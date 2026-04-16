@@ -16,7 +16,7 @@ import numpy as np
 
 CRYPTO_SYMS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT"]
 TRADIER_SYMS = ["AAPL", "MSFT", "NVDA", "AMZN", "SPY", "XOM", "GLD", "TSLA"]
-HORIZONS = [4, 8, 16, 32, 64]
+HORIZONS = [4, 8, 16, 32, 64, 128, 256]
 
 
 def detect_npz_dir(mode):
@@ -110,12 +110,13 @@ def build_crypto_conditions(loaded):
     dcx_15 = stack_bool(loaded, "dc_basis_crossover_15m")
     dcx_1h = stack_bool(loaded, "dc_basis_crossover_1h")
 
-    # LONG conditions
+    # LONG — mean reversion
     C["L_k5_lt30"] = k5 < 30
     C["L_k15_lt30"] = k15 < 30
     C["L_k15_lt40"] = k15 < 40
     C["L_k1h_lt40"] = k1h < 40
     C["L_mfi15_lt30"] = mfi15 < 30
+    C["L_mfi15_lt40"] = mfi15 < 40
     C["L_mfi1h_lt40"] = mfi1h < 40
     C["L_rsi15_lt35"] = rsi15 < 35
     C["L_stoch_x5"] = stc_5
@@ -129,6 +130,11 @@ def build_crypto_conditions(loaded):
     C["L_dc_x1h"] = dcx_1h
     C["L_dcpos_lt30"] = dc_pos15 < 0.3
     C["L_sma200up"] = (sma200D > 0) & (close > sma200D)
+    # LONG — momentum continuation
+    C["L_mom_wt_all3"] = wtb_1h & wtb_4h & wtb_D
+    C["L_mom_mfi_gt50"] = mfi15 > 50
+    C["L_mom_dcpos_gt50"] = dc_pos15 > 0.5
+    C["L_mom_dcpos_gt70"] = dc_pos15 > 0.7
     # SHORT mirrors
     C["S_k5_gt70"] = k5 > 70
     C["S_k15_gt70"] = k15 > 70
@@ -140,6 +146,7 @@ def build_crypto_conditions(loaded):
     C["S_wt_notD"] = ~wtb_D
     C["S_dcpos_gt70"] = dc_pos15 > 0.7
     C["S_sma200dn"] = (sma200D > 0) & (close < sma200D)
+    C["S_mom_wt_none"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
     return C, close
 
 
@@ -165,14 +172,22 @@ def build_tradier_conditions(loaded):
     wtc_15 = stack_bool(loaded, "wt_cross_bull_15m")
     stc_5 = stack_bool(loaded, "stoch_crossover_5m")
 
-    # LONG conditions — stock mean-reversion + trend-continuation
+    dc_high_D = stack_field(loaded, "dc_high4_D", 0)
+    dc_low_D = stack_field(loaded, "dc_low4_D", 0)
+    dcb_5 = stack_bool(loaded, "dc_basis_crossover_5m")
+    dcb_15 = stack_bool(loaded, "dc_basis_crossover_15m")
+    dcb_1h = stack_bool(loaded, "dc_basis_crossover_1h")
+    # LONG — mean-reversion
     C["L_mfi15_lt30"] = mfi15 < 30
     C["L_mfi15_lt40"] = mfi15 < 40
     C["L_mfi5_lt30"] = mfi5 < 30
     C["L_rsi15_lt30"] = rsi15 < 30
+    C["L_rsi15_lt35"] = rsi15 < 35
     C["L_rsi15_lt40"] = rsi15 < 40
     C["L_rsi5_lt30"] = rsi5 < 30
+    C["L_k5_lt40"] = k5 < 40
     C["L_k5_lt60"] = k5 < 60
+    C["L_k15_lt30"] = k15 < 30
     C["L_k15_lt40"] = k15 < 40
     C["L_wt_x5"] = wtc_5
     C["L_wt_x15"] = wtc_15
@@ -183,17 +198,28 @@ def build_tradier_conditions(loaded):
     C["L_dcpos_lt30"] = dc_pos15 < 0.3
     C["L_sma200up_D"] = (sma200D > 0) & (close > sma200D)
     C["L_sma200up_1h"] = (sma200_1h > 0) & (close > sma200_1h)
-    C["L_near_sma200"] = (sma200D > 0) & ((close - sma200D) / sma200D > -0.05) & ((close - sma200D) / sma200D < 0.05)
-    # SHORT
+    # LONG — momentum-continuation (for longer holds 128/256 where 3%+ moves live)
+    C["L_mom_mfi_gt50"] = mfi15 > 50
+    C["L_mom_k15_gt50"] = k15 > 50
+    C["L_mom_dcpos_gt50"] = dc_pos15 > 0.5
+    C["L_mom_dc_x1h"] = dcb_1h
+    C["L_mom_wt_all3"] = wtb_1h & wtb_4h & wtb_D
+    C["L_mom_above_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D > 0.05)
+    # SHORT — mean reversion
     C["S_mfi15_gt70"] = mfi15 > 70
     C["S_rsi15_gt70"] = rsi15 > 70
-    C["S_k5_gt40"] = k5 > 40
+    C["S_rsi15_gt65"] = rsi15 > 65
+    C["S_k5_gt60"] = k5 > 60
+    C["S_k5_gt70"] = k5 > 70
     C["S_k15_gt60"] = k15 > 60
+    C["S_k15_gt70"] = k15 > 70
     C["S_wt_not1h"] = ~wtb_1h
     C["S_wt_not4h"] = ~wtb_4h
     C["S_wt_notD"] = ~wtb_D
     C["S_dcpos_gt70"] = dc_pos15 > 0.7
     C["S_sma200dn"] = (sma200D > 0) & (close < sma200D)
+    C["S_mom_wt_none"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
+    C["S_mom_below_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D < -0.05)
     return C, close
 
 
