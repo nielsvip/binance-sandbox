@@ -69,16 +69,27 @@ def _load_py_sources() -> dict[str, str]:
     return _PY_FILE_CACHE
 
 
-def grep_references(name: str) -> list[tuple[str, int]]:
-    """Pure-Python word-boundary grep across cached .py sources."""
+_ALL_HITS: dict[str, list[tuple[str, int]]] = {}
+
+
+def _build_all_hits(attr_names: set[str]):
+    """Single-pass: scan every .py file once, record which attrs appear."""
+    if _ALL_HITS:
+        return
     files = _load_py_sources()
-    pat = re.compile(r"\b" + re.escape(name) + r"\b")
-    hits = []
+    word_re = re.compile(r"\b([A-Z_][A-Z0-9_]+)\b")
+    for attr in attr_names:
+        _ALL_HITS[attr] = []
     for path, src in files.items():
         for i, line in enumerate(src.splitlines(), 1):
-            if pat.search(line):
-                hits.append((path, i))
-    return hits
+            for m in word_re.finditer(line):
+                w = m.group(1)
+                if w in attr_names:
+                    _ALL_HITS.setdefault(w, []).append((path, i))
+
+
+def grep_references(name: str) -> list[tuple[str, int]]:
+    return _ALL_HITS.get(name, [])
 
 
 def bucket(hits: list[tuple[str, int]]) -> str:
@@ -99,6 +110,16 @@ def main():
     ap.add_argument("--only", choices=["dead", "config_only", "live", "doc_only", "all"], default="all")
     ap.add_argument("--limit", type=int, default=0, help="limit N attrs (debug)")
     args = ap.parse_args()
+
+    all_attr_names: set[str] = set()
+    for cf in CONFIG_FILES:
+        path = BASE / cf
+        if path.exists():
+            for name, _, _ in extract_config_attrs(path):
+                all_attr_names.add(name)
+    print(f"Building single-pass index for {len(all_attr_names)} attrs across {len(_load_py_sources())} source files...", flush=True)
+    _build_all_hits(all_attr_names)
+    print(f"Index built. Scanning...", flush=True)
 
     rows = []
     for cf in CONFIG_FILES:

@@ -73,32 +73,34 @@ class Config:
     # MANAGE_REDUCE=                          True
     # HEDGE_MODE:bool =                       False
 
-    SCALP_ACCOUNTS = ["ang", "men"]  # Live restriction: only these accounts can ever scalp. New SCALP_MODE (V2) reads this list.
+    SCALP_ACCOUNTS = ["inf"]  # 2026-04-16: inf = spike-fade momentum, needs fast scalp. ang/men hold long-term — wrong fit.
     # ───────────────────────────────────────────────────────────────────────────
-    # SCALP_MODE — HTF Breakout Scalper (replaces legacy scalping behavior 2026-04-09)
-    # New mechanism: only fires when price is above dc_high_15m AND dc_high_1h
-    # (LONG) or below dc_low_15m AND dc_low_1h (SHORT). 8 exit variants tested
-    # in backtest, winner promoted to live. ALL DEFAULTS OFF — flipping SCALP_MODE
-    # is the only knob; everything else is variant-tunable.
+    # SCALP_MODE — HTF Breakout Scalper V2 (2026-04-09)
+    # Entry: price > dc_high_15m_prev AND dc_high_1h_prev (LONG), mirror SHORT.
+    # Exit: configurable variant (V1_WT_CONFIRM is sweep winner).
     #
-    # NOTE: This is the SAME flag name as the legacy SCALP_MODE for seamless
-    # transition. Legacy SCALP_MODE-gated code paths (SCALP_MOMENTUM_BOYCOTT,
-    # quick_scalp_monitor_loop, AdvancedSignalRater scalping_mode) have been
-    # neutralized — flipping SCALP_MODE=True now activates V2 only.
+    # SWEEP RESULTS (2026-04-16, 48 sym, 30d, post-commission):
+    #   V1_WT_CONFIRM  hold=15m  N=4506  net=+634%  mean=+0.141%  WR=66.8%  Sharpe=107
+    #   REDZONE_K90    hold=15m  N=4416  net=+553%  mean=+0.125%  WR=60.9%  Sharpe=97
+    #   LH_LL_15m      hold=15m  N=4414  net=+493%  mean=+0.112%  WR=64.7%  Sharpe=68
+    #   hold=60m universally worse — inf needs rapid exits, not holding.
+    #   WT_DC_SCORER underperforms — multi-TF consensus too slow for spike-fade.
     # ───────────────────────────────────────────────────────────────────────────
     SCALP_MODE: bool = False
-    SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # one of htf_breakout_scalper.VARIANTS
-    SCALP_V2_DC_HTF_LIST: list = field(default_factory=lambda: ["15m", "1h"])  # TFs to check for breakout
-    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # all TFs in list must agree, vs any
+    SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"
+    SCALP_V2_DC_HTF_LIST: list = field(default_factory=lambda: ["15m", "1h"])
+    SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True
     SCALP_V2_MAX_CONCURRENT: int = 5
-    SCALP_V2_MAX_HOLD_MINUTES: float = 30.0
+    SCALP_V2_MAX_HOLD_MINUTES: float = 15.0  # 2026-04-16: sweep winner = 15m, NOT 30m
     SCALP_V2_REENTRY_COOLDOWN_S: int = 300
-    # SCALP_V2_ISOLATE: BACKTEST-ONLY. When True, the V2 entry/exit hooks are
-    # the ONLY entry/exit logic that runs for SCALP_ACCOUNTS — other strategies
-    # (technical, leaderboard, ranking, reentry, augment, delta) are bypassed
-    # so the breakout strategy is tested in isolation. Live trading should
-    # ALWAYS leave this False (the existing strategies coexist with V2 in live).
     SCALP_V2_ISOLATE: bool = False
+    # SCALP_V2 SECONDARY EXIT LAYERS — tested in expanded sweep (2026-04-16)
+    # These fire IN ADDITION to the primary variant if enabled, catching exits
+    # the primary variant misses. Each is independently toggleable.
+    SCALP_V2_REDZONE_EXIT: bool = False       # K90 reversal exit (Sharpe 97, #2 in sweep)
+    SCALP_V2_REDZONE_K_THRESHOLD: int = 90    # stoch K threshold for overbought/oversold reversal
+    SCALP_V2_LH_LL_EXIT: bool = False         # lower-high/higher-low 15m exit (Sharpe 68, #4)
+    SCALP_V2_LH_LL_TF: str = "15m"            # TF for LH/LL structure break
     HEDGE_ACCOUNTS = ["ang", "inf", "fin", "men", "flz"]  # Hedge accounts — ALL accounts get hedge protection
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False

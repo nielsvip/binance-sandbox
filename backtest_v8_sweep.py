@@ -918,6 +918,49 @@ TRADIER_TIER26 = {
 # 3 × 3 = 9 configs
 
 # ═══════════════════════════════════════════════════════════════
+# TRADIER Tier 27 — SAFETY SWITCH SWEEP (2026-04-16)
+# Tests the 5 proposed safety gates identified in tradier risk audit:
+#   1. Tradeable-key entry gate (should be Sharpe-neutral if only tradeable symbols are in data)
+#   2. Ratio sizing requires min gain (block 1.5x boost on losers)
+#   3. 48h reentry-overdue bypass (stoch gate bypassed after 48h)
+#   4. Bounce reentry K-only gate (K<35/>65 only, no WT confirmation)
+#   5. SRS reason-string NOLOSS bypass
+# Each is tested independently + a combined "all safety on" config.
+# Run with: --tier 27 --mode tradier --start 2024-06-01 --workers 2 --symbols fast
+# ═══════════════════════════════════════════════════════════════
+_SAFETY_BASE = {
+    "TRADIER_REQUIRE_TRADEABLE_KEY": True,        # gate entry at execute_now if not in tradeable_keys
+    "TRADIER_RATIO_REQUIRE_MIN_GAIN": False,      # block RATIO_BOOST on positions with gain < RATIO_BOOST_MIN_GAIN
+    "TRADIER_RATIO_BOOST_MIN_GAIN_PCT": 1.0,
+    "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED": True,  # True = legacy (bypass after 48h); False = always enforce stoch gate
+    "BOUNCE_REENTRY_ENABLED_TRADIER": True,       # True = K-only gate; False = disabled
+    "TRADIER_NOLOSS_SRS_BYPASS": True,            # True = SRS reason bypasses NOLOSS; False = no reason bypass
+}
+
+def _build_tradier_safety_configs():
+    configs = []
+    configs.append(dict(_SAFETY_BASE))  # BASELINE = all legacy defaults
+    configs.append({**_SAFETY_BASE, "TRADIER_REQUIRE_TRADEABLE_KEY": True})  # already True, confirms no impact
+    configs.append({**_SAFETY_BASE, "TRADIER_RATIO_REQUIRE_MIN_GAIN": True, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT": 1.0})
+    configs.append({**_SAFETY_BASE, "TRADIER_RATIO_REQUIRE_MIN_GAIN": True, "TRADIER_RATIO_BOOST_MIN_GAIN_PCT": 0.5})
+    configs.append({**_SAFETY_BASE, "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED": False})
+    configs.append({**_SAFETY_BASE, "BOUNCE_REENTRY_ENABLED_TRADIER": False})
+    configs.append({**_SAFETY_BASE, "TRADIER_NOLOSS_SRS_BYPASS": False})
+    # ALL safety gates ON (tightest config)
+    configs.append({
+        "TRADIER_REQUIRE_TRADEABLE_KEY": True,
+        "TRADIER_RATIO_REQUIRE_MIN_GAIN": True,
+        "TRADIER_RATIO_BOOST_MIN_GAIN_PCT": 1.0,
+        "TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED": False,
+        "BOUNCE_REENTRY_ENABLED_TRADIER": False,
+        "TRADIER_NOLOSS_SRS_BYPASS": False,
+    })
+    return configs
+
+TRADIER_TIER27_CONFIGS = _build_tradier_safety_configs()
+# 8 configs
+
+# ═══════════════════════════════════════════════════════════════
 # CRYPTO Tier 26 — Reentry Rally Gate Sweep (mirrors TRADIER_TIER26)
 # Same knobs applied to crypto evaluate_reentry WT_2of3 block.
 # Crypto uses 3m/15m/1h for _wt_fav, then 1h/4h/D for HTF count.
@@ -1216,6 +1259,7 @@ def main():
         elif args.tier == 20: param_grid = TRADIER_TIER20
         elif args.tier == 25: param_grid = TRADIER_TIER25
         elif args.tier == 26: param_grid = TRADIER_TIER26  # reentry rally gate sweep (k15m cap + HTF min)
+        elif args.tier == 27: param_grid = None  # Tier 27 uses fixed configs (safety switch sweep)
         else: param_grid = TRADIER_TIER1
 
     if args.tier == 17 and args.mode == "crypto":
@@ -1232,6 +1276,8 @@ def main():
         configs = TRADIER_TIER7_CONFIGS
     elif args.tier == 5 and args.mode == "tradier":
         configs = TRADIER_TIER5_CONFIGS
+    elif args.tier == 27 and args.mode == "tradier":
+        configs = TRADIER_TIER27_CONFIGS
     else:
         configs = build_configs(param_grid)
     total = len(configs)

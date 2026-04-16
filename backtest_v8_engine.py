@@ -476,6 +476,33 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
                     await asyncio.sleep(10.0)
             ez_positions_service.PositionService._cold_data_loop = _noop_cold_path
 
+    # --- ABLATION PATCHES: disable individual evaluate functions via env vars ---
+    # V8_DISABLE_EVALUATE_REENTRY=1 → evaluate_reentry returns None (no reentries)
+    # V8_DISABLE_EVALUATE_AUGMENTATION=1 → evaluate_augmentation returns None
+    # V8_DISABLE_EVALUATE_REENTRY_2=1 → evaluate_reentry_2 is no-op
+    # V8_DISABLE_PROCESS_POSITION=1 → process_position is no-op (no exits/reentries via pp)
+    if os.environ.get("V8_DISABLE_EVALUATE_REENTRY", "0") == "1":
+        async def _noop_reentry(ctx):
+            return None
+        ez_manage.evaluate_reentry = _noop_reentry
+        v8_logger.info("[V8_ABLATION] evaluate_reentry DISABLED (stubbed to None)")
+    if os.environ.get("V8_DISABLE_EVALUATE_AUGMENTATION", "0") == "1":
+        async def _noop_augmentation(ctx):
+            return None
+        ez_manage.evaluate_augmentation = _noop_augmentation
+        v8_logger.info("[V8_ABLATION] evaluate_augmentation DISABLED (stubbed to None)")
+    if os.environ.get("V8_DISABLE_EVALUATE_REENTRY_2", "0") == "1":
+        async def _noop_reentry_2(tm):
+            pass
+        ez_manage.evaluate_reentry_2 = _noop_reentry_2
+        v8_logger.info("[V8_ABLATION] evaluate_reentry_2 DISABLED (stubbed to no-op)")
+    if os.environ.get("V8_DISABLE_PROCESS_POSITION", "0") == "1":
+        _orig_pp = ez_manage.process_position
+        async def _noop_pp(**kw):
+            pass
+        ez_manage.process_position = _noop_pp
+        v8_logger.info("[V8_ABLATION] process_position DISABLED (stubbed to no-op)")
+
     # --- Return refs for the simulation loop ---
     return _indicator_cache, _price_cache, _executed_trades
 
