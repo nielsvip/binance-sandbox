@@ -207,8 +207,61 @@ def compute_entry_signals(npz: dict, n: int, is_long: bool, cfg: QuickConfig) ->
         wt_fav = (wt1_3m < wt2_3m).astype(int) + (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int)
     wt_2of3 = wt_fav >= 2
 
+    # === SATOSHIT 3-of-5 voting entry (ez_satoshit.py:115-161) ===
+    satoshit_entry = np.zeros(n, dtype=bool)
+    if cfg.SATOSHIT_ENABLED:
+        rsi_15m = _safe(npz, 'rsi_15m', n, 50)
+        bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+        mfi_15m = _safe(npz, 'mfi_15m', n, 50)
+        mfi_D = _safe(npz, 'mfi_D', n, 50)
+        rel_vol_1h = _safe(npz, 'relative_volume_1h', n, 1.0)
+        ha_15m = npz.get('ha_15m')
+        if ha_15m is not None and isinstance(ha_15m, np.ndarray) and len(ha_15m) == n:
+            ha_green_15m = (ha_15m == 1) if ha_15m.dtype in (np.int8, np.int16, np.int32, np.int64) else np.zeros(n, dtype=bool)
+            ha_red_15m = (ha_15m == -1) if ha_15m.dtype in (np.int8, np.int16, np.int32, np.int64) else np.zeros(n, dtype=bool)
+        else:
+            ha_green_15m = _safeb(npz, 'ha_green_15m', n)
+            ha_red_15m = _safeb(npz, 'ha_red_15m', n)
+        if is_long:
+            v_rsi = (rsi_15m < 50).astype(int)
+            v_bb = (bb_pctb_1h < 0.50).astype(int)
+            v_ha = ha_red_15m.astype(int)
+            v_k = (k_15m < 60).astype(int)
+            v_mfi = (mfi_15m < 60).astype(int)
+        else:
+            v_rsi = (rsi_15m > 55).astype(int)
+            v_bb = (bb_pctb_1h > 0.55).astype(int)
+            v_ha = ha_green_15m.astype(int)
+            v_k = (k_15m > 50).astype(int)
+            v_mfi = (mfi_15m > 50).astype(int)
+        sat_votes = v_rsi + v_bb + v_ha + v_k + v_mfi
+        htf_ok = (mfi_D >= 30) & (rel_vol_1h >= 0.3)
+        satoshit_entry = (sat_votes >= 3) & htf_ok
+
+    # === Delta/RZ vectorized approximation (wt_dc_delta zone detection) ===
+    # Full DeltaTracker is stateful (tracks zone transitions, legs, etc.)
+    # Vectorized approx: detect zone extremes + velocity reversals as entry signals
+    delta_entry = np.zeros(n, dtype=bool)
+    if cfg.DELTA_ENGINE_ENABLED and cfg.DELTA_ENTRY_ENABLED:
+        wt_vel_3m = _safe(npz, 'wt_velocity_3m', n)
+        wt_vel_15m = _safe(npz, 'wt_velocity_15m', n)
+        wt_vel_1h = _safe(npz, 'wt_velocity_1h', n)
+        bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+        dc_pos_1h_hi = _safe(npz, 'dc_high_1h', n)
+        dc_pos_1h_lo = _safe(npz, 'dc_low_1h', n)
+        dc_pos_1h = np.where((dc_pos_1h_hi - dc_pos_1h_lo) > 0,
+                             (close - dc_pos_1h_lo) / (dc_pos_1h_hi - dc_pos_1h_lo), 0.5)
+        if is_long:
+            at_bottom = (bb_pctb_1h < 0.25) | (dc_pos_1h < 0.20)
+            vel_turning_up = (wt_vel_3m > 0) & (wt_vel_15m > -1.0)
+            delta_entry = at_bottom & vel_turning_up & (wt1_1h > wt2_1h)
+        else:
+            at_top = (bb_pctb_1h > 0.75) | (dc_pos_1h > 0.80)
+            vel_turning_down = (wt_vel_3m < 0) & (wt_vel_15m < 1.0)
+            delta_entry = at_top & vel_turning_down & (wt1_1h < wt2_1h)
+
     # === Combine: any valid entry signal passes all gates ===
-    entry_signal = (dc_entry | wt_2of3) & k3m_ok & ct_vel_ok & ct_dc_ok
+    entry_signal = (dc_entry | wt_2of3 | satoshit_entry | delta_entry) & k3m_ok & ct_vel_ok & ct_dc_ok
     return entry_signal
 
 
@@ -261,7 +314,39 @@ def compute_exit_signals(npz: dict, n: int, is_long: bool, cfg: QuickConfig) -> 
             stoch_turn = (k_1h <= 25) & (k_1h > k_1h_prev)
             srs_exit = prox & stoch_turn
 
-    exit_signal = delta_exit | vel_exit | srs_exit
+    # === SATOSHIT exit: stoch cross from overbought/oversold + MFI declining ===
+    sat_exit = np.zeros(n, dtype=bool)
+    if cfg.SATOSHIT_ENABLED:
+        k_3m_prev = np.roll(k_3m, 1); k_3m_prev[0] = k_3m[0]
+        d_3m = _safe(npz, 'stoch_d_3m', n, 50)
+        mfi_3m = _safe(npz, 'mfi_3m', n, 50)
+        mfi_3m_prev = np.roll(mfi_3m, 1); mfi_3m_prev[0] = mfi_3m[0]
+        if is_long:
+            was_ob = k_3m_prev >= 80
+            k_cross_down = (k_3m_prev >= d_3m) & (k_3m < d_3m)
+            mfi_dec = mfi_3m < mfi_3m_prev
+            sat_exit = was_ob & k_cross_down & mfi_dec
+        else:
+            was_os = k_3m_prev <= 20
+            k_cross_up = (k_3m_prev <= d_3m) & (k_3m > d_3m)
+            mfi_inc = mfi_3m > mfi_3m_prev
+            sat_exit = was_os & k_cross_up & mfi_inc
+
+    # === RZ exit: zone reversal signals (approximation of DeltaTracker exits) ===
+    rz_exit = np.zeros(n, dtype=bool)
+    if cfg.RZ_EXIT_ENABLED:
+        bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+        wt_vel_3m = _safe(npz, 'wt_velocity_3m', n)
+        if is_long:
+            at_top = (bb_pctb_1h > 0.85) | (k_1h >= 80)
+            vel_reversing = wt_vel_3m < -1.0
+            rz_exit = at_top & vel_reversing
+        else:
+            at_bottom = (bb_pctb_1h < 0.15) | (k_1h <= 20)
+            vel_reversing = wt_vel_3m > 1.0
+            rz_exit = at_bottom & vel_reversing
+
+    exit_signal = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit
     return exit_signal
 
 
@@ -336,6 +421,7 @@ def simulate(stores: Dict[str, dict], cfg: QuickConfig, capital: float = 10000.0
 
 
 FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT"
+FAST_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD"
 
 
 def main():
@@ -353,7 +439,7 @@ def main():
 
     symbols = None
     if args.symbols == "fast":
-        symbols = FAST_SYMBOLS_CRYPTO.split(",")
+        symbols = (FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO).split(",")
     elif args.symbols:
         symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
@@ -362,6 +448,8 @@ def main():
         print("No data loaded")
         return
 
+    if args.mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
+        cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
     result = simulate(stores, cfg, args.capital)
     elapsed = time.time() - t0
 

@@ -15,18 +15,36 @@ from htf_breakout_scalper import check_scalp_v2_entry, check_scalp_v2_exit, _exi
 
 NPZ = Path("backtest_v5/indicators_3m/CHRUSDT.npz")
 
-def load_bar(d, ts, idx):
-    """Build indicator dict for a single bar from NPZ arrays."""
-    out = {}
-    for k in d.keys():
-        if k == "timestamps": continue
-        try:
-            v = d[k][idx]
-            out[k] = v.item() if hasattr(v, "item") else v
-        except Exception:
-            pass
-    out["_ts"] = int(ts[idx])
-    return out
+NEEDED_KEYS = [
+    "close_3m", "close", "wt1_3m", "wt2_3m", "wt1_3m_prev", "wt2_3m_prev",
+    "ha_3m", "ha_15m", "high_3m", "high_3m_prev", "low_3m", "low_3m_prev",
+    "high_15m", "high_15m_prev", "low_15m", "low_15m_prev",
+    "high_1h", "high_1h_prev", "low_1h", "low_1h_prev",
+    "stoch_k_3m", "k_3m_prev", "stoch_k_15m", "stoch_k_1h", "stoch_k_4h",
+    "dc_high_15m", "dc_low_15m", "dc_high_15m_prev", "dc_low_15m_prev",
+    "dc_high_1h", "dc_low_1h", "dc_high_1h_prev", "dc_low_1h_prev",
+    "dc_position_1h", "dc_position_4h",
+    "wt_cross_1h", "wt_cross_bear_1h", "wt_cross_bull_1h",
+    "wt1_4h", "wt2_4h", "wt1_D", "wt2_D",
+]
+
+def preload(d, ts, indices):
+    """Pre-extract only needed keys into list of dicts — much faster than per-bar full scan."""
+    arrays = {}
+    for k in NEEDED_KEYS:
+        if k in d:
+            arrays[k] = d[k]
+    bars = []
+    for idx in indices:
+        out = {"_ts": int(ts[idx])}
+        for k, arr in arrays.items():
+            try:
+                v = arr[idx]
+                out[k] = v.item() if hasattr(v, "item") else v
+            except Exception:
+                pass
+        bars.append((idx, out))
+    return bars
 
 def make_config(**overrides):
     defaults = {
@@ -76,7 +94,7 @@ def main():
     # Pick 200 evenly spaced bars from last 30 days
     start = max(0, n - 14400)  # ~30 days of 3m bars
     indices = list(range(start, n, max(1, (n - start) // 200)))[:200]
-    bars = [(i, load_bar(d, ts, i)) for i in indices]
+    bars = preload(d, ts, indices)
     pos = make_position(is_v2=True, opened_minutes_ago=5)
 
     # ═══ TEST 1: SCALP_MODE=False → all None ═══
