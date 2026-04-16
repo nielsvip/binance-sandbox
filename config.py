@@ -303,6 +303,16 @@ class Config:
     # Exceptions: hedges (is_hedge=True), STRUCTURAL_RANGE_SHIFT_EXIT, LIQUIDATION
     # This replaces Finandy's external NO_LOSS so it can be turned off safely.
     UNIVERSAL_NOLOSS_GATE: bool = True
+    # 2026-04-16: bypass for technical-exit reasons so WT/DC/structure reversals can close losers.
+    # Without this, UNIVERSAL_NOLOSS_GATE turns all technical exits into no-ops on losing positions,
+    # which is the exact pattern that kept ATOMUSDT SHORT bleeding from 0 to -2.78%.
+    UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL: bool = True
+    UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(default_factory=lambda: [
+        "WT_CROSS_EXIT",
+        "WT_CROSS_BULLISH",
+        "WT_CROSS_BEARISH",
+        "RATIO_CLOSE_LOSING_OVERWEIGHT",
+    ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,
@@ -524,6 +534,57 @@ class Config:
         0.60  # Was 0.35 — rebalance kicks in earlier to prevent short-heavy drift
     )
     LS_RATIO_LOG_INTERVAL: int = 60  # Seconds between ratio warning logs
+    # === HTF DIRECTION GATE — entries must align with D/4h/1h WT + price vs SMA200D ===
+    # Added 2026-04-16 after audit: shorts opened against bullish 4h/1h/D caused 1:10 short-heavy PnL trap
+    HTF_DIRECTION_GATE_ENABLED: bool = True
+    HTF_GATE_MIN_CONFIRMATIONS: int = 3  # 2 or 3 of 4 signals (wt_D, wt_4h, wt_1h, price_vs_sma200_D)
+    HTF_GATE_D_MANDATORY: bool = True  # wt_D must align with trade direction (else block)
+    HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
+    HTF_GATE_APPLY_TO_OPEN: bool = True  # gate applies to OPEN actions
+    HTF_GATE_APPLY_TO_AUGMENT: bool = False  # AUGMENT still uses existing 3m+15m gate
+    HTF_GATE_BYPASS_RZ: bool = True  # preserve RZ bounce bypass (bounce logic HTF-validates internally)
+    # === WT CROSS EXIT — fires when WT flips against direction on 1h (+ 15m confirm) ===
+    WT_CROSS_EXIT_ENABLED: bool = True
+    WT_CROSS_EXIT_REQUIRE_15M_CONFIRM: bool = True
+    WT_CROSS_EXIT_MIN_AGE_MINUTES: float = 2.0  # grace to avoid same-bar whipsaw on entry
+    WT_CROSS_EXIT_APPLIES_TO_LOSERS: bool = True  # fire on losing positions (the whole point)
+    WT_CROSS_EXIT_APPLIES_TO_WINNERS: bool = True
+    BREAKEVEN_GRACE_MINUTES: float = 5.0  # was 15.0 — cut losers faster on gain erosion
+    LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK: bool = True  # stale-price abort skipped for technical (non-%) exits
+    SHORT_ABOVE_EMA20_IS_PENALTY: bool = True  # flip BC_104 bonus → penalty (shorts above EMA20 are counter-trend)
+    # === RATIO PNL-WEIGHTED TARGET OVERRIDE ===
+    # Breadth-only target clamps to [25,75]. When per-side PnL diverges, shift target toward winning side up to [10,90].
+    RATIO_PNL_WEIGHT_ENABLED: bool = True
+    RATIO_PNL_WEIGHT: float = 0.5  # 0 = pure breadth, 1 = pure PnL signal
+    RATIO_PNL_DELTA_THRESHOLD: float = 3.0  # min |long_avg_gain - short_avg_gain| % to engage override
+    RATIO_PNL_ACCELERATION: float = 2.5  # target_long shift per 1% pnl delta (pnl_signal = 0.5 + delta*accel/100)
+    RATIO_PNL_TARGET_LONG_MIN: float = 10.0  # clamp min target% when PnL divergent
+    RATIO_PNL_TARGET_LONG_MAX: float = 90.0  # clamp max target% when PnL divergent
+    RATIO_REBALANCE_COOLDOWN_NORMAL: float = 3600.0
+    RATIO_REBALANCE_COOLDOWN_CRASH: float = 300.0
+    RATIO_REBALANCE_COOLDOWN_EXTREME: float = 600.0
+    RATIO_REBALANCE_COOLDOWN_PNL_DIVERGENT: float = 120.0
+    RATIO_REBALANCE_SIZE_MULT: float = 4.0  # base mult vs START_POSITION_SIZE
+    RATIO_REBALANCE_SIZE_SKEW_BOOST: float = 0.05  # extra mult per 1pp of skew above dead zone (0.05 = 5% per pp)
+    RATIO_REBALANCE_SIZE_MAX_MULT: float = 10.0  # absolute cap on size mult
+    RATIO_REBALANCE_MAX_OPENS_NORMAL: int = 8
+    RATIO_REBALANCE_MAX_OPENS_STUCK: int = 10
+    RATIO_REBALANCE_MAX_OPENS_EXTREME: int = 12
+    RATIO_REBALANCE_APPLY_HTF_GATE: bool = True  # re-check per-symbol HTF before each open
+    # PnL-tightened entry ratio gates
+    RATIO_PNL_DYNAMIC_GATES_ENABLED: bool = True
+    RATIO_PNL_GATE_SOFT_MIN: float = 0.5  # tighten soft_min (block more shorts) when longs winning
+    RATIO_PNL_GATE_SOFT_MAX: float = 2.0  # tighten soft_max (block more longs) when shorts winning
+    # === RATIO CLOSE LOSING OVERWEIGHT — opt-in; defaults OFF ===
+    # Historically closing losers to fix ratio destroyed Sharpe (19 vs ratio-only 357).
+    # Enable only after monitoring one cycle of logs. Closes worst losers on overweight side when:
+    # (skew > MIN_SKEW_PP) AND (|PnL delta| > MIN_PNL_DELTA_PCT) AND (position gain < MIN_LOSS_PCT).
+    RATIO_CLOSE_LOSING_OVERWEIGHT: bool = False
+    RATIO_CLOSE_LOSING_MIN_LOSS_PCT: float = -5.0
+    RATIO_CLOSE_LOSING_MIN_SKEW_PP: float = 40.0
+    RATIO_CLOSE_LOSING_MIN_PNL_DELTA_PCT: float = 10.0
+    RATIO_CLOSE_LOSING_MAX_PER_CYCLE: int = 2
+    RATIO_CLOSE_LOSING_COOLDOWN_SECONDS: float = 900.0
     STORM_REDUCE_ENABLED: bool = (
         True  # Allow reducing losing position when HTF confirms storm
     )

@@ -1928,11 +1928,19 @@ class AdvancedSignalRater:
             elif rsi_1h > 70: score += 10; reasons.append("RSI_OB_1H(+10)")
             if rsi_4h < 20: score -= 20; reasons.append("RSI_EXTREME_OS_4H_ANTI_SHORT(-20)")
             # BACKTEST_CHANGE_104: SHORT above EMA20 bonus — master trader winners short from +3.15% above SMA20, losers from +0.10%
+            # 2026-04-16 FLIP: SHORT_ABOVE_EMA20_IS_PENALTY=True reverses the sign. Shorting above EMA20 in a bullish
+            # market is the exact trap that caused the 1:10 short-heavy PnL disaster. The bonus only applied in
+            # established down-trends — use HTF gate for that, not a blind bonus.
             _short_sma20_bonus = getattr(config, "SHORT_ABOVE_SMA20_BONUS", 0)
+            _short_flip = bool(getattr(config, "SHORT_ABOVE_EMA20_IS_PENALTY", True))
             if _short_sma20_bonus > 0 and ema_20_1h > 0:
                 _ema20_dist_1h = (current_price - ema_20_1h) / ema_20_1h * 100
-                if _ema20_dist_1h > 2.0: score += _short_sma20_bonus; reasons.append(f"SHORT_ABOVE_EMA20({_ema20_dist_1h:.1f}%,+{_short_sma20_bonus})_master100")
-                elif _ema20_dist_1h < -1.0: score -= _short_sma20_bonus; reasons.append(f"SHORT_BELOW_EMA20({_ema20_dist_1h:.1f}%,-{_short_sma20_bonus})_master100")
+                if _short_flip:
+                    if _ema20_dist_1h > 2.0: score -= _short_sma20_bonus; reasons.append(f"SHORT_ABOVE_EMA20_PENALTY({_ema20_dist_1h:.1f}%,-{_short_sma20_bonus})_flip")
+                    elif _ema20_dist_1h < -1.0: score += int(_short_sma20_bonus * 0.5); reasons.append(f"SHORT_BELOW_EMA20_OK({_ema20_dist_1h:.1f}%,+{int(_short_sma20_bonus*0.5)})_flip")
+                else:
+                    if _ema20_dist_1h > 2.0: score += _short_sma20_bonus; reasons.append(f"SHORT_ABOVE_EMA20({_ema20_dist_1h:.1f}%,+{_short_sma20_bonus})_master100")
+                    elif _ema20_dist_1h < -1.0: score -= _short_sma20_bonus; reasons.append(f"SHORT_BELOW_EMA20({_ema20_dist_1h:.1f}%,-{_short_sma20_bonus})_master100")
 
         # BC_155: TRADER RESEARCH HARD GATES — OOS-validated entry filters (2026-03-30)
         # 1615 trades, 70/30 split. Only gates with IS lift>5pp AND OOS lift>2pp.
@@ -9682,23 +9690,105 @@ def check_stdev_breakout_exit(symbol: str, is_long: bool, indicators: dict) -> O
 
 
 async def get_ls_ratio(tracker_manager, account_key: str) -> tuple:
-    """Returns (ratio, long_val, short_val) for account. ratio=long/short."""
+    """Returns (ratio, long_val, short_val) for account. ratio=long/short.
+    Prefers live positions_service (fresh positionAmt/mark_price). Falls back to exit_candidates
+    when positions_service is unavailable or empty."""
     long_val = 0.0
     short_val = 0.0
-    async with tracker_manager._exit_candidates_lock:
-        for k, v in tracker_manager.exit_candidates.items():
-            if v.get("status") != "active": continue
-            ak, sym, ps = parse_position_key(k)
-            if ak != account_key: continue
-            amt = safe_fetch_float(v.get("positionAmt", 0))
-            price = safe_fetch_float(v.get("mark_price", 0))
-            val = abs(amt * price)
-            if ps == "LONG" and amt > 0:
-                long_val += val
-            elif ps == "SHORT" and amt > 0:
-                short_val += val
+    _svc = getattr(tracker_manager, 'positions_service', None)
+    _live_positions = None
+    if _svc is not None:
+        _live_positions = getattr(_svc, 'positions_by_account', {}).get(account_key, {}) or None
+    if _live_positions:
+        for _pk, _pos in _live_positions.items():
+            _amt = abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0))
+            if _amt < 0.0001: continue
+            _price = safe_fetch_float(getattr(_pos, 'mark_price', 0) or getattr(_pos, 'entry_price', 0), 0)
+            _val = _amt * _price
+            if _pk.endswith("_LONG"):
+                long_val += _val
+            elif _pk.endswith("_SHORT"):
+                short_val += _val
+    else:
+        async with tracker_manager._exit_candidates_lock:
+            for k, v in tracker_manager.exit_candidates.items():
+                if v.get("status") != "active": continue
+                ak, sym, ps = parse_position_key(k)
+                if ak != account_key: continue
+                amt = safe_fetch_float(v.get("positionAmt", 0))
+                price = safe_fetch_float(v.get("mark_price", 0))
+                val = abs(amt * price)
+                if ps == "LONG" and amt > 0:
+                    long_val += val
+                elif ps == "SHORT" and amt > 0:
+                    short_val += val
     ratio = long_val / short_val if short_val > 0 else (999.0 if long_val > 0 else 1.0)
     return ratio, long_val, short_val
+
+
+def compute_side_pnl(tracker_manager, account_key: str) -> tuple:
+    """Returns (long_avg_gain_pct, short_avg_gain_pct, long_count, short_count, pnl_delta).
+    pnl_delta = long_avg - short_avg (positive means longs winning). Uses live positions_service."""
+    _lg = 0.0; _lc = 0
+    _sg = 0.0; _sc = 0
+    _svc = getattr(tracker_manager, 'positions_service', None)
+    if _svc is None:
+        return 0.0, 0.0, 0, 0, 0.0
+    _positions = getattr(_svc, 'positions_by_account', {}).get(account_key, {}) or {}
+    for _pk, _pos in _positions.items():
+        _amt = abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0))
+        if _amt < 0.0001: continue
+        _gain = safe_fetch_float(getattr(_pos, 'gain', 0), 0)
+        if _pk.endswith("_LONG"):
+            _lg += _gain; _lc += 1
+        elif _pk.endswith("_SHORT"):
+            _sg += _gain; _sc += 1
+    _long_avg = (_lg / _lc) if _lc else 0.0
+    _short_avg = (_sg / _sc) if _sc else 0.0
+    return _long_avg, _short_avg, _lc, _sc, (_long_avg - _short_avg)
+
+
+def check_htf_direction_gate(indicators: dict, is_long: bool, current_price: float) -> tuple:
+    """Returns (passes, signals_met, total_signals, reason_str).
+    Counts how many of the four HTF signals (wt_D, wt_4h, wt_1h, price_vs_sma200_D) align with trade direction.
+    Respects HTF_GATE_D_MANDATORY and HTF_GATE_MIN_CONFIRMATIONS from config."""
+    if not isinstance(indicators, dict):
+        return False, 0, 4, "HTF_GATE_NO_INDICATORS"
+    _wt1_d = safe_fetch_float(indicators.get('wt1_D'), 0)
+    _wt2_d = safe_fetch_float(indicators.get('wt2_D'), 0)
+    _wt1_4h = safe_fetch_float(indicators.get('wt1_4h'), 0)
+    _wt2_4h = safe_fetch_float(indicators.get('wt2_4h'), 0)
+    _wt1_1h = safe_fetch_float(indicators.get('wt1_1h'), 0)
+    _wt2_1h = safe_fetch_float(indicators.get('wt2_1h'), 0)
+    _sma_d = safe_fetch_float(indicators.get('sma_200_D'), 0)
+    _include_sma = bool(getattr(config, 'HTF_GATE_SIGNALS_SMA200D', True))
+    if is_long:
+        _d_ok = (_wt1_d > _wt2_d) and _wt1_d != 0 and _wt2_d != 0
+        _4h_ok = (_wt1_4h > _wt2_4h) and _wt1_4h != 0 and _wt2_4h != 0
+        _1h_ok = (_wt1_1h > _wt2_1h) and _wt1_1h != 0 and _wt2_1h != 0
+        _sma_ok = (current_price > _sma_d) if (_include_sma and _sma_d > 0) else None
+    else:
+        _d_ok = (_wt1_d < _wt2_d) and _wt1_d != 0 and _wt2_d != 0
+        _4h_ok = (_wt1_4h < _wt2_4h) and _wt1_4h != 0 and _wt2_4h != 0
+        _1h_ok = (_wt1_1h < _wt2_1h) and _wt1_1h != 0 and _wt2_1h != 0
+        _sma_ok = (current_price < _sma_d) if (_include_sma and _sma_d > 0) else None
+    _signals = [_d_ok, _4h_ok, _1h_ok]
+    _total = 3
+    if _sma_ok is not None:
+        _signals.append(_sma_ok)
+        _total = 4
+    _met = sum(1 for s in _signals if s)
+    _min_conf = int(getattr(config, 'HTF_GATE_MIN_CONFIRMATIONS', 3))
+    _d_required = bool(getattr(config, 'HTF_GATE_D_MANDATORY', True))
+    _reason = f"HTF[D={'✓' if _d_ok else '✗'}({_wt1_d:.0f}/{_wt2_d:.0f}) 4h={'✓' if _4h_ok else '✗'}({_wt1_4h:.0f}/{_wt2_4h:.0f}) 1h={'✓' if _1h_ok else '✗'}({_wt1_1h:.0f}/{_wt2_1h:.0f})"
+    if _sma_ok is not None:
+        _reason += f" SMA={'✓' if _sma_ok else '✗'}(px={current_price:.4f} sma={_sma_d:.4f})"
+    _reason += f" met={_met}/{_total} need={_min_conf} dReq={_d_required}]"
+    if _d_required and not _d_ok:
+        return False, _met, _total, f"HTF_D_FAIL_{_reason}"
+    if _met < _min_conf:
+        return False, _met, _total, f"HTF_CONF_FAIL_{_reason}"
+    return True, _met, _total, f"HTF_PASS_{_reason}"
 
 
 _realloc_cooldowns = {}
@@ -9936,6 +10026,23 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                     qty = qty * _wt_discount
                     if override_qty: override_qty = override_qty * _wt_discount
                     logger.info(f"📉 [WT_HTF_DISCOUNT] {position_key}: {_gwt_htf}/2 HTF WT aligned → qty x{_wt_discount} (ltf={_gwt_ltf}/3). {_gwt_d}. action={action}")
+            # ═══ HTF DIRECTION GATE (D + 4h + 1h + price-vs-SMA200D) ═══
+            # Blocks entries against the higher-TF direction. Configurable via HTF_GATE_* switches.
+            # Whitelist: RZ bounces (own HTF logic) and winner/pullback augments (own 3m+15m gate).
+            if bool(getattr(config, 'HTF_DIRECTION_GATE_ENABLED', True)):
+                _htf_apply_open = bool(getattr(config, 'HTF_GATE_APPLY_TO_OPEN', True))
+                _htf_apply_aug = bool(getattr(config, 'HTF_GATE_APPLY_TO_AUGMENT', False))
+                _htf_bypass_rz = bool(getattr(config, 'HTF_GATE_BYPASS_RZ', True))
+                _is_aug_target = bool(_is_winner_aug or _is_pullback_aug)
+                _is_open_target = not _is_aug_target
+                _should_gate = (_is_open_target and _htf_apply_open) or (_is_aug_target and _htf_apply_aug)
+                if _should_gate and not (_htf_bypass_rz and _is_rz_entry) and 'RATIO_RECOVERY' not in str(reason or '').upper():
+                    _htf_pass, _htf_met, _htf_total, _htf_reason = check_htf_direction_gate(_gate_ind, _gate_is_long, current_price)
+                    if not _htf_pass:
+                        logger.warning(f"🚫 [HTF_DIRECTION_GATE] {position_key}: BLOCKED {action} ({reason[:60] if reason else ''}) — {_htf_reason}")
+                        return False, f"HTF_DIRECTION_GATE_{_htf_met}/{_htf_total}"
+                    else:
+                        logger.info(f"✅ [HTF_DIRECTION_GATE] {position_key}: {_htf_reason}")
     if _is_aug_action and not is_hedge:
         _last_trade_ts = _hard_trade_guard.get(position_key, 0)
         _since = time.time() - _last_trade_ts
@@ -10012,6 +10119,21 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             hard_max = getattr(config, "LS_RATIO_HARD_MAX", 4.0)
             soft_min = getattr(config, "LS_RATIO_MIN", 0.40)
             soft_max = getattr(config, "LS_RATIO_MAX", 2.50)
+            # PnL-tightened dynamic gates: when per-side PnL diverges, compress the soft limits
+            # so new entries on the losing side are blocked earlier. Added 2026-04-16.
+            if bool(getattr(config, "RATIO_PNL_DYNAMIC_GATES_ENABLED", True)):
+                _lavg, _savg, _lc_g, _sc_g, _pnl_d = compute_side_pnl(tracker_manager, account_key)
+                _pnl_thr = float(getattr(config, "RATIO_PNL_DELTA_THRESHOLD", 3.0))
+                if abs(_pnl_d) >= _pnl_thr and _lc_g > 0 and _sc_g > 0:
+                    _tight_min = float(getattr(config, "RATIO_PNL_GATE_SOFT_MIN", 0.5))
+                    _tight_max = float(getattr(config, "RATIO_PNL_GATE_SOFT_MAX", 2.0))
+                    if _pnl_d > 0:
+                        # Longs winning → tighten soft_min upward (block more shorts), widen soft_max (allow more longs)
+                        soft_min = max(soft_min, _tight_min)
+                    else:
+                        # Shorts winning → tighten soft_max downward (block more longs), widen soft_min (allow more shorts)
+                        soft_max = min(soft_max, _tight_max)
+                    logger.debug(f"[LS_RATIO_PNL_TIGHTEN] {position_key}: pnl_d={_pnl_d:.2f}% (L_avg={_lavg:.2f}% S_avg={_savg:.2f}%) → soft=[{soft_min:.2f},{soft_max:.2f}]")
             _bear_mode = getattr(config, "BEAR_MARKET_MODE", False)
             _bull_mode = not _bear_mode and ratio < 0.5
             _noloss = account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', [])
@@ -11079,6 +11201,33 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     elif not is_long and _be_dc_high4 > 0 and current_price > 0 and current_price > _be_dc_high4:
                         hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
                         logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
+                # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
+                # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
+                # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'WT_CROSS_EXIT_ENABLED', True)):
+                    _wtx_min_age = float(getattr(config, 'WT_CROSS_EXIT_MIN_AGE_MINUTES', 2.0))
+                    _wtx_losers_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_LOSERS', True))
+                    _wtx_winners_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_WINNERS', True))
+                    _wtx_age_ok = _pos_age_min >= _wtx_min_age
+                    _wtx_pnl_ok = (_wtx_losers_ok and current_gain < 0) or (_wtx_winners_ok and current_gain >= 0)
+                    if _wtx_age_ok and _wtx_pnl_ok:
+                        _wtx_w1_1h = safe_fetch_float(indicators.get('wt1_1h'), 0)
+                        _wtx_w2_1h = safe_fetch_float(indicators.get('wt2_1h'), 0)
+                        _wtx_w1_15m = safe_fetch_float(indicators.get('wt1_15m'), 0)
+                        _wtx_w2_15m = safe_fetch_float(indicators.get('wt2_15m'), 0)
+                        _wtx_have_1h = (_wtx_w1_1h != 0 or _wtx_w2_1h != 0)
+                        _wtx_have_15m = (_wtx_w1_15m != 0 or _wtx_w2_15m != 0)
+                        if _wtx_have_1h:
+                            if is_long:
+                                _wtx_1h_flipped = _wtx_w1_1h < _wtx_w2_1h
+                                _wtx_15m_confirm = (_wtx_w1_15m < _wtx_w2_15m) if _wtx_have_15m else True
+                            else:
+                                _wtx_1h_flipped = _wtx_w1_1h > _wtx_w2_1h
+                                _wtx_15m_confirm = (_wtx_w1_15m > _wtx_w2_15m) if _wtx_have_15m else True
+                            _wtx_req_15m = bool(getattr(config, 'WT_CROSS_EXIT_REQUIRE_15M_CONFIRM', True))
+                            if _wtx_1h_flipped and (not _wtx_req_15m or _wtx_15m_confirm):
+                                hard_exit_reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}_wt1={_wtx_w1_1h:.1f}_wt2={_wtx_w2_1h:.1f}_15m{_wtx_w1_15m:.1f}/{_wtx_w2_15m:.1f}_g{current_gain:.2f}%"
+                                logger.critical(f"🔥[WT_CROSS_EXIT] {position_key}: 1h WT flipped against {'LONG' if is_long else 'SHORT'} (wt1={_wtx_w1_1h:.1f} vs wt2={_wtx_w2_1h:.1f}) + 15m confirm={_wtx_15m_confirm} age={_pos_age_min:.0f}m gain={current_gain:.2f}% — technical exit")
                 # ═══ STDEV BREAKOUT FAILURE EXIT: HTF pctb retreated back inside bands ═══
                 if not hard_exit_reason and not is_hedge and getattr(config, "STDEV_BREAKOUT_ENABLED", False):
                     _sbe_reason = check_stdev_breakout_exit(symbol, is_long, indicators)
@@ -11140,7 +11289,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _spa_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
                         _spa_allow_near_be = getattr(config, 'LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED', False) and _spa_max_g >= 0.5 and _fresh_gain > -0.5
                         _spa_is_breakeven = hard_exit_reason and ('BREAKEVEN' in hard_exit_reason or 'DC_LOW4_3M' in hard_exit_reason or 'DC_HIGH4_3M' in hard_exit_reason)
-                        if _fresh_gain < -0.01 and not is_hedge and not _spa_allow_near_be and not _spa_is_breakeven:
+                        # 2026-04-16: technical exits (WT_CROSS_EXIT, WT_CROSS_BULLISH, DC, structure, stoch) must
+                        # survive stale-price abort — they're not %-stops, they're reversal signals.
+                        _spa_no_stale_block = bool(getattr(config, 'LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK', True))
+                        _spa_is_technical = hard_exit_reason and any(_tk in hard_exit_reason for _tk in ('WT_CROSS_EXIT', 'WT_CROSS_BULLISH', 'WT_CROSS_BEARISH', 'STDEV_BREAKOUT', 'STRUCTURAL_RANGE_SHIFT', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT'))
+                        if _fresh_gain < -0.01 and not is_hedge and not _spa_allow_near_be and not _spa_is_breakeven and not (_spa_no_stale_block and _spa_is_technical):
                             logger.critical(f"🛑 [STALE_PRICE_ABORT] {position_key}: {hard_exit_reason} triggered at {current_gain:.2f}% but FRESH gain={_fresh_gain:.2f}% (entry={_fresh_entry:.6f} fresh_px={_fresh_price:.6f}). ABORTING — would close at loss.")
                             hard_exit_reason = None
                         elif _spa_allow_near_be and _fresh_gain < -0.01:

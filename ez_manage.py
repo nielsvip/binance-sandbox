@@ -13175,6 +13175,15 @@ class MultiAccountTradeManager:
         _ung_strict = is_strict_no_loss_account(config, account_key)
         if (_ung_active or _ung_strict) and _is_reduce:
             _ung_bypass = is_hedge or 'LIQUIDATION' in reason_upper
+            # 2026-04-16: bypass for technical-exit reasons (WT cross, ratio-close-losing).
+            # Default list covers the exits I added today. User controls via config.
+            if not _ung_bypass and bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_TECHNICAL', True)):
+                _ung_bypass_reasons = getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
+                for _brk in _ung_bypass_reasons:
+                    if _brk and _brk.upper() in reason_upper:
+                        _ung_bypass = True
+                        logger.warning(f"⚠️ [UNIVERSAL_NOLOSS_TECHNICAL_BYPASS][{account_key}] {position_key}: technical exit '{_brk}' allowed to close at loss (reason={reason[:60]})")
+                        break
             _ung_srs = 'STRUCTURAL_RANGE_SHIFT' in reason_upper
             if not _ung_bypass:
                 pos = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None
@@ -15083,12 +15092,13 @@ class MultiAccountTradeManager:
     async def ratio_rebalance_loop(self):
         """Every 30s, check L/S ratio per account. Market-crash-aware: targets 90% short / 10% long in CRASH mode.
         On k_1h cross, immediately triggers rebalance regardless of cooldown."""
-        logger.info("[RATIO_REBALANCE] Active ratio rebalance loop started (30s check, crash-aware)")
+        logger.info("[RATIO_REBALANCE] Active ratio rebalance loop started (30s check, crash+PnL-aware)")
         _last_rebalance = {acct: 0.0 for acct in config.ACCOUNT_KEYS}
+        _last_close_losing = {acct: 0.0 for acct in config.ACCOUNT_KEYS}
         _prev_k1h = {}
-        REBALANCE_COOLDOWN_NORMAL = 3600.0  # Hourly — breadth-based target adjusts to reality, no need to spam
-        REBALANCE_COOLDOWN_CRASH = 300.0  # 5min in crash
-        REBALANCE_COOLDOWN_EXTREME = 600.0  # 10min for extreme ratio
+        # Cooldowns/sizes read per-iteration from config so they can be tuned live
+        def _cfg_f(key, default): return float(getattr(config, key, default))
+        def _cfg_i(key, default): return int(getattr(config, key, default))
         while True:
             try:
                 await asyncio.sleep(30.0)
@@ -15112,7 +15122,27 @@ class MultiAccountTradeManager:
                     _pre_sv = _pre_ratio.get('short_value', 0)
                     _pre_r = _pre_lv / max(_pre_sv, 1.0)
                     _ratio_extreme = _pre_r > 3.0 or _pre_r < 0.33
-                    cooldown = REBALANCE_COOLDOWN_EXTREME if _ratio_extreme else (REBALANCE_COOLDOWN_CRASH if _htf_aligned else REBALANCE_COOLDOWN_NORMAL)
+                    # Per-side PnL for cooldown selection + PnL-weighted target
+                    _pnl_long_avg = 0.0; _pnl_short_avg = 0.0; _pnl_lc = 0; _pnl_sc = 0
+                    for _ppk, _ppos in self.positions_by_account.get(account_key, {}).items():
+                        _pamt = abs(safe_fetch_float(getattr(_ppos, 'positionAmt', 0), 0))
+                        if _pamt < 0.0001: continue
+                        _pg = safe_fetch_float(getattr(_ppos, 'gain', 0), 0)
+                        if _ppk.endswith('_LONG'): _pnl_long_avg += _pg; _pnl_lc += 1
+                        elif _ppk.endswith('_SHORT'): _pnl_short_avg += _pg; _pnl_sc += 1
+                    _pnl_long_avg = (_pnl_long_avg / _pnl_lc) if _pnl_lc else 0.0
+                    _pnl_short_avg = (_pnl_short_avg / _pnl_sc) if _pnl_sc else 0.0
+                    _pnl_delta = _pnl_long_avg - _pnl_short_avg
+                    _pnl_thr = _cfg_f('RATIO_PNL_DELTA_THRESHOLD', 3.0)
+                    _pnl_divergent = bool(getattr(config, 'RATIO_PNL_WEIGHT_ENABLED', True)) and abs(_pnl_delta) >= _pnl_thr and _pnl_lc > 0 and _pnl_sc > 0
+                    _cd_normal = _cfg_f('RATIO_REBALANCE_COOLDOWN_NORMAL', 3600.0)
+                    _cd_crash = _cfg_f('RATIO_REBALANCE_COOLDOWN_CRASH', 300.0)
+                    _cd_extreme = _cfg_f('RATIO_REBALANCE_COOLDOWN_EXTREME', 600.0)
+                    _cd_pnl = _cfg_f('RATIO_REBALANCE_COOLDOWN_PNL_DIVERGENT', 120.0)
+                    if _pnl_divergent: cooldown = _cd_pnl
+                    elif _ratio_extreme: cooldown = _cd_extreme
+                    elif _htf_aligned: cooldown = _cd_crash
+                    else: cooldown = _cd_normal
                     if k1h_crossed:
                         logger.warning(f"[RATIO_REBALANCE] {account_key}: k_1h cross detected (k={k_1h:.1f}, d={d_1h:.1f}) — forcing immediate rebalance")
                         cooldown = 0
@@ -15157,7 +15187,21 @@ class MultiAccountTradeManager:
                     # RATIO_MULTIPLIER amplifies the breadth signal — backtest BC_253: 3.0x=Sharpe 357
                     _ratio_mult = getattr(config, 'RATIO_MULTIPLIER', 3.0)
                     _amplified = 0.5 + (_base_ratio - 0.5) * _ratio_mult  # e.g. breadth=0.65 → 0.5+(0.15*3)=0.95 → clamped
-                    target_long = max(25.0, min(75.0, _amplified * 100.0))
+                    # PnL-weighted target override (2026-04-16): when per-side PnL diverges,
+                    # shift target toward the winning side. Clamp widens from [25,75] to
+                    # [RATIO_PNL_TARGET_LONG_MIN, RATIO_PNL_TARGET_LONG_MAX] (default [10,90]).
+                    _pnl_min = _cfg_f('RATIO_PNL_TARGET_LONG_MIN', 10.0)
+                    _pnl_max = _cfg_f('RATIO_PNL_TARGET_LONG_MAX', 90.0)
+                    _pnl_weight = _cfg_f('RATIO_PNL_WEIGHT', 0.5)
+                    _pnl_accel = _cfg_f('RATIO_PNL_ACCELERATION', 2.5)
+                    if _pnl_divergent:
+                        _pnl_signal = 0.5 + (_pnl_delta * _pnl_accel / 100.0)
+                        _pnl_signal = max(_pnl_min / 100.0, min(_pnl_max / 100.0, _pnl_signal))
+                        _final = _pnl_signal * _pnl_weight + _amplified * (1.0 - _pnl_weight)
+                        target_long = max(_pnl_min, min(_pnl_max, _final * 100.0))
+                        logger.info(f"[RATIO_REBALANCE_PNL] {account_key}: pnl_delta={_pnl_delta:.2f}% (L_avg={_pnl_long_avg:.2f}% S_avg={_pnl_short_avg:.2f}%) → pnl_signal={_pnl_signal*100:.1f}% blended with breadth={_amplified*100:.1f}% (w={_pnl_weight}) → target_long={target_long:.1f}%")
+                    else:
+                        target_long = max(25.0, min(75.0, _amplified * 100.0))
                     target_short = 100.0 - target_long
                     _regime = check_market_regime(safe_fetch_float(btc_ind.get('0market_sentiment_score'), 50.0), btc_ind)
                     _htf_dir, _htf_score = check_htf_trend(btc_ind, safe_fetch_float(btc_ind.get('current_price'), 0))
@@ -15230,8 +15274,11 @@ class MultiAccountTradeManager:
                                 if _cr and ('QUEUED' in str(_cr) or 'SUCCESS' in str(_cr)): _closed += 1
                             except Exception as _ce: logger.error(f"[RATIO_REBALANCE] Close error: {_ce}")
                     # Normal path: open underweight side WITH the flow
-                    max_opens = min(12 if _ratio_extreme else (10 if _stuck_losers >= 5 else 8), max(2, int(skew / 3)))
-                    logger.warning(f"[RATIO_REBALANCE] {account_key}: L={long_pct:.0f}%/S={short_pct:.0f}% vs target L={target_long:.0f}%/S={target_short:.0f}% (breadth={_breadth_bias:.0%} regime={_regime} htf={_htf_dir}/{_htf_score} k1h={k_1h:.0f}/d{d_1h:.0f}). {overweight_side} overweight by {skew:.0f}pp. Opening {max_opens} {open_side} WITH flow.")
+                    _max_normal = _cfg_i('RATIO_REBALANCE_MAX_OPENS_NORMAL', 8)
+                    _max_stuck = _cfg_i('RATIO_REBALANCE_MAX_OPENS_STUCK', 10)
+                    _max_extreme = _cfg_i('RATIO_REBALANCE_MAX_OPENS_EXTREME', 12)
+                    max_opens = min(_max_extreme if _ratio_extreme else (_max_stuck if _stuck_losers >= 5 else _max_normal), max(2, int(skew / 3)))
+                    logger.warning(f"[RATIO_REBALANCE] {account_key}: L={long_pct:.0f}%/S={short_pct:.0f}% vs target L={target_long:.0f}%/S={target_short:.0f}% (breadth={_breadth_bias:.0%} regime={_regime} htf={_htf_dir}/{_htf_score} k1h={k_1h:.0f}/d{d_1h:.0f} pnlΔ={_pnl_delta:.2f}%). {overweight_side} overweight by {skew:.0f}pp. Opening {max_opens} {open_side} WITH flow.")
                     if not _reg:
                         logger.warning(f"[RATIO_REBALANCE] No registry available, cannot find candidates.")
                         _last_rebalance[account_key] = time.time()
@@ -15246,13 +15293,53 @@ class MultiAccountTradeManager:
                             _side_match = _pk.endswith(f"_{open_side}")
                             if _side_match and abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0)) > 0.0001:
                                 _already_open[_sym] = _pk
-                    # 4x normal size for ratio rebalance — this MUST move the needle
-                    _rebal_size = config.START_POSITION_SIZE * 4.0
+                    # Size scales with skew + base multiplier, both config-tunable (2026-04-16)
+                    _base_mult = _cfg_f('RATIO_REBALANCE_SIZE_MULT', 4.0)
+                    _skew_boost = _cfg_f('RATIO_REBALANCE_SIZE_SKEW_BOOST', 0.05)
+                    _max_mult = _cfg_f('RATIO_REBALANCE_SIZE_MAX_MULT', 10.0)
+                    _effective_mult = min(_max_mult, _base_mult + skew * _skew_boost)
+                    _rebal_size = config.START_POSITION_SIZE * _effective_mult
+                    logger.info(f"[RATIO_REBALANCE_SIZE] {account_key}: base×{_base_mult} + skew×boost({skew:.0f}×{_skew_boost})={_effective_mult:.2f}×START = ${_rebal_size:.0f}/open")
+                    _htf_gate_on = bool(getattr(config, 'RATIO_REBALANCE_APPLY_HTF_GATE', True))
                     for sym, score, _cprice in candidates:
                         if opened >= max_opens: break
                         if score < (1 if _ratio_extreme or _regime in ('CRASH', 'JUMP') or skew > 20 else 5): continue
                         _override_qty = _rebal_size / _cprice if _cprice > 0 else 0
                         if _override_qty <= 0: continue
+                        # HTF direction re-check per symbol (use cached snapshot, no API call)
+                        if _htf_gate_on:
+                            _cand_ind = _snap.get(sym) if isinstance(_snap, dict) else None
+                            if isinstance(_cand_ind, dict):
+                                _c_wt1_d = safe_fetch_float(_cand_ind.get('wt1_D'), 0)
+                                _c_wt2_d = safe_fetch_float(_cand_ind.get('wt2_D'), 0)
+                                _c_wt1_4h = safe_fetch_float(_cand_ind.get('wt1_4h'), 0)
+                                _c_wt2_4h = safe_fetch_float(_cand_ind.get('wt2_4h'), 0)
+                                _c_wt1_1h = safe_fetch_float(_cand_ind.get('wt1_1h'), 0)
+                                _c_wt2_1h = safe_fetch_float(_cand_ind.get('wt2_1h'), 0)
+                                _c_sma_d = safe_fetch_float(_cand_ind.get('sma_200_D'), 0)
+                                _c_px = safe_fetch_float(_cand_ind.get('current_price') or _cand_ind.get('price'), _cprice)
+                                _c_include_sma = bool(getattr(config, 'HTF_GATE_SIGNALS_SMA200D', True))
+                                _c_d_req = bool(getattr(config, 'HTF_GATE_D_MANDATORY', True))
+                                _c_min = _cfg_i('HTF_GATE_MIN_CONFIRMATIONS', 3)
+                                if open_side == 'LONG':
+                                    _c_d_ok = (_c_wt1_d > _c_wt2_d) and (_c_wt1_d != 0 or _c_wt2_d != 0)
+                                    _c_4h_ok = (_c_wt1_4h > _c_wt2_4h) and (_c_wt1_4h != 0 or _c_wt2_4h != 0)
+                                    _c_1h_ok = (_c_wt1_1h > _c_wt2_1h) and (_c_wt1_1h != 0 or _c_wt2_1h != 0)
+                                    _c_sma_ok = (_c_px > _c_sma_d) if (_c_include_sma and _c_sma_d > 0) else None
+                                else:
+                                    _c_d_ok = (_c_wt1_d < _c_wt2_d) and (_c_wt1_d != 0 or _c_wt2_d != 0)
+                                    _c_4h_ok = (_c_wt1_4h < _c_wt2_4h) and (_c_wt1_4h != 0 or _c_wt2_4h != 0)
+                                    _c_1h_ok = (_c_wt1_1h < _c_wt2_1h) and (_c_wt1_1h != 0 or _c_wt2_1h != 0)
+                                    _c_sma_ok = (_c_px < _c_sma_d) if (_c_include_sma and _c_sma_d > 0) else None
+                                _c_sigs = [_c_d_ok, _c_4h_ok, _c_1h_ok]
+                                if _c_sma_ok is not None: _c_sigs.append(_c_sma_ok)
+                                _c_met = sum(1 for s in _c_sigs if s)
+                                if _c_d_req and not _c_d_ok:
+                                    logger.warning(f"[RATIO_REBALANCE_HTF_GATE] {sym} {open_side}: BLOCKED — D not aligned (wt1_D={_c_wt1_d:.1f} wt2_D={_c_wt2_d:.1f})")
+                                    continue
+                                if _c_met < _c_min:
+                                    logger.warning(f"[RATIO_REBALANCE_HTF_GATE] {sym} {open_side}: BLOCKED — {_c_met}/{len(_c_sigs)} HTF confirmations (need {_c_min}). wt_D={_c_wt1_d:.0f}/{_c_wt2_d:.0f} wt_4h={_c_wt1_4h:.0f}/{_c_wt2_4h:.0f} wt_1h={_c_wt1_1h:.0f}/{_c_wt2_1h:.0f}")
+                                    continue
                         if sym in _already_open:
                             # AUGMENT existing position at 4x size
                             _aug_pk = _already_open[sym]
@@ -15278,7 +15365,46 @@ class MultiAccountTradeManager:
                                     _already_open[sym] = position_key
                             except Exception as qe: logger.error(f"[RATIO_REBALANCE] Queue error: {qe}")
                     if opened > 0:
-                        logger.info(f"[RATIO_REBALANCE] {account_key}: Queued {opened} {open_side} opens/augments at 4x WITH flow (target L{target_long:.0f}/S{target_short:.0f}, breadth={_breadth_bias:.0%})")
+                        logger.info(f"[RATIO_REBALANCE] {account_key}: Queued {opened} {open_side} opens/augments at {_effective_mult:.1f}x WITH flow (target L{target_long:.0f}/S{target_short:.0f}, breadth={_breadth_bias:.0%} pnlΔ={_pnl_delta:.2f}%)")
+                    # ═══ RATIO CLOSE LOSING OVERWEIGHT (opt-in) ═══
+                    # Closes worst losers on overweight side when skew + PnL divergence are extreme.
+                    # DANGER: historically disabled because closing losers destroyed Sharpe (19 vs 357).
+                    # Requires RATIO_CLOSE_LOSING_OVERWEIGHT=True AND all guard thresholds met.
+                    if bool(getattr(config, 'RATIO_CLOSE_LOSING_OVERWEIGHT', False)):
+                        _rcl_min_loss = _cfg_f('RATIO_CLOSE_LOSING_MIN_LOSS_PCT', -5.0)
+                        _rcl_min_skew = _cfg_f('RATIO_CLOSE_LOSING_MIN_SKEW_PP', 40.0)
+                        _rcl_min_delta = _cfg_f('RATIO_CLOSE_LOSING_MIN_PNL_DELTA_PCT', 10.0)
+                        _rcl_max_per = _cfg_i('RATIO_CLOSE_LOSING_MAX_PER_CYCLE', 2)
+                        _rcl_cd = _cfg_f('RATIO_CLOSE_LOSING_COOLDOWN_SECONDS', 900.0)
+                        _rcl_delta_ok = (overweight_side == 'SHORT' and _pnl_delta > _rcl_min_delta) or (overweight_side == 'LONG' and _pnl_delta < -_rcl_min_delta)
+                        _rcl_skew_ok = skew >= _rcl_min_skew
+                        _rcl_cd_ok = (time.time() - _last_close_losing.get(account_key, 0)) >= _rcl_cd
+                        if _rcl_delta_ok and _rcl_skew_ok and _rcl_cd_ok:
+                            _rcl_cands = []
+                            for _rcpk, _rcpos in self.positions_by_account.get(account_key, {}).items():
+                                if not _rcpk.endswith(f"_{overweight_side}"): continue
+                                _rcamt = abs(safe_fetch_float(getattr(_rcpos, 'positionAmt', 0), 0))
+                                if _rcamt < 0.0001: continue
+                                _rcgain = safe_fetch_float(getattr(_rcpos, 'gain', 0), 0)
+                                if _rcgain <= _rcl_min_loss:
+                                    _rcval = _rcamt * safe_fetch_float(getattr(_rcpos, 'mark_price', 0) or getattr(_rcpos, 'entry_price', 0), 0)
+                                    _rcl_cands.append((_rcpk, _rcpos, _rcgain, _rcval))
+                            _rcl_cands.sort(key=lambda x: x[2])  # worst losers first
+                            _rcl_closed = 0
+                            for _rcpk, _rcpos, _rcgain, _rcval in _rcl_cands[:_rcl_max_per]:
+                                _reason = f"RATIO_CLOSE_LOSING_OVERWEIGHT_{overweight_side}_skew{skew:.0f}pp_pnlΔ{_pnl_delta:.1f}%_gain{_rcgain:.2f}%"
+                                logger.critical(f"🚨[RATIO_CLOSE_LOSING] {account_key} {_rcpk}: CLOSING LOSER — gain={_rcgain:.2f}% val=${_rcval:.2f}. {overweight_side} overweight {skew:.0f}pp + PnL delta {_pnl_delta:.1f}%. OPT-IN SWITCH ACTIVE.")
+                                try:
+                                    _rcr = await queue_trade_action(self.order_queue, self, _rcpk, 'REDUCE', _reason, 90.0)
+                                    if _rcr and ('QUEUED' in str(_rcr) or 'SUCCESS' in str(_rcr)): _rcl_closed += 1
+                                except Exception as _rce: logger.error(f"[RATIO_CLOSE_LOSING] queue error: {_rce}")
+                            if _rcl_closed > 0:
+                                _last_close_losing[account_key] = time.time()
+                                logger.critical(f"🚨[RATIO_CLOSE_LOSING] {account_key}: closed {_rcl_closed} losing {overweight_side} positions to rebalance")
+                            else:
+                                logger.info(f"[RATIO_CLOSE_LOSING] {account_key}: no {overweight_side} candidates meet loss threshold ({_rcl_min_loss}%)")
+                        else:
+                            logger.debug(f"[RATIO_CLOSE_LOSING_GATE] {account_key}: delta_ok={_rcl_delta_ok}(Δ={_pnl_delta:.1f}% need>{_rcl_min_delta}) skew_ok={_rcl_skew_ok}({skew:.0f}>={_rcl_min_skew}) cd_ok={_rcl_cd_ok}")
                     # === RATIO EMERGENCY EXIT — close worst longs when ratio dangerously high ===
                     _ree_enabled = False  # KILLED 2026-03-30: NEVER close losers to fix ratio. Fix ratio by OPENING underweight side. Closing losers = Sharpe 19 vs ratio-only 357.
                     _ree_threshold = getattr(config, 'RATIO_EMERGENCY_EXIT_THRESHOLD', 2.50)
