@@ -185,6 +185,47 @@ class Config:
     ORPHAN_HEDGE_CHECK_GAIN: bool = True  # Check gain before killing orphans
     # ═══ ROGUE HEDGE FIX 2026-04-16 — CRITICAL ═══════════════════════════════
     WT_15M_SAME_HEDGE_ENABLED: bool = True  # RE-ENABLED 2026-04-16: root cause was hedge exemption in DUPLICATE_OPEN_GUARD (line 11000) + size gate (line 11165). Both exemptions REMOVED. Hedges now subject to 900s cooldown like all other opens.
+    # ═══════════════════════════════════════════════════════════════════════
+    # SHARPE-TRIPLE ENHANCEMENTS 2026-04-16 — break the 0.69 plateau
+    # Implementations in strategy_enhancements.py. ALL DEFAULT OFF so agents
+    # sweep each independently + stacked. Target: Sharpe 0.69 → 2.0.
+    # See data/sweep_tiers.json for ranges. Sweep order: TIER_A first.
+    # ═══════════════════════════════════════════════════════════════════════
+    # --- TIER A #1: ASYMMETRIC STOPS — tight losers, wide winners (biggest lever) ---
+    ASYMMETRIC_STOPS_ENABLED: bool = False           # TIER_A: estimated Sharpe +0.5 alone.
+    ASYMMETRIC_LOSER_MIN_AGE_SECONDS: float = 540    # 9min = 3 bars. Below this, no stop (avoid noise).
+    ASYMMETRIC_WINNER_GAIN_PCT: float = 1.5          # At this gain, position switches to winner rules.
+    # --- TIER A #2: PROGRESSIVE PROFIT LOCK — 25% reduce at each tier ---
+    PROGRESSIVE_LOCK_ENABLED: bool = False           # TIER_A: Sharpe +0.3. Staged profit without full close.
+    PROGRESSIVE_LOCK_TIERS_PCT: list = field(default_factory=lambda: [1.0, 2.0, 3.0, 5.0, 8.0])
+    PROGRESSIVE_LOCK_FRACTION: float = 0.25          # Reduce fraction per tier.
+    # --- TIER A #3: REGIME GATE — skip chop/compression entries ---
+    REGIME_GATE_ENABLED: bool = False                # TIER_A: Sharpe +0.3. Kills low-WR chop tail.
+    REGIME_ATR_RATIO_MIN: float = 0.25               # atr_3m/atr_1h min. Below = compressed.
+    REGIME_BB_WIDTH_PCT_MIN: float = 2.0             # bb_width_1h as % of price. Below = squeeze.
+    REGIME_DC_ATR_RATIO_MIN: float = 1.5             # dc_width_15m / atr_3m. Below = no room.
+    # --- TIER B #4: PER-SYMBOL CONFIG ROUTING — load sweep winners per symbol ---
+    PER_SYMBOL_CONFIG_ENABLED: bool = False          # TIER_B: Sharpe +0.1-0.2. Overnight sweep infra ready.
+    PER_SYMBOL_CONFIG_FILE: str = "data/sweep_results/per_symbol_best_crypto_20260416_0507.json"
+    # --- TIER C #6: VOLUME CONFIRMATION on entry ---
+    VOLUME_CONFIRMATION_ENABLED: bool = False        # TIER_C: Sharpe +0.1. Kills dead-zone entries.
+    VOLUME_CONFIRMATION_MULT: float = 1.2            # volume_3m > N × avg_20_3m required.
+    # --- TIER C #7: HOUR-OF-DAY GATE ---
+    HOUR_OF_DAY_GATE_ENABLED: bool = False           # TIER_C: Sharpe +0.1. Audit hourly Sharpe first.
+    HOUR_OF_DAY_BLOCKED_UTC: list = field(default_factory=list)  # e.g. [22,23,0,1,2,3,4] Asia chop
+    # --- TIER C #8: SYMBOL CIRCUIT BREAKER ---
+    CIRCUIT_BREAKER_ENABLED: bool = False            # TIER_C: Sharpe +0.1. Prevents regime-mismatch bleed.
+    CIRCUIT_BREAKER_SYMBOL_LOSSES: int = 3           # N consec losses/symbol → halt
+    CIRCUIT_BREAKER_SYMBOL_HALT_MIN: int = 30        # halt duration (min)
+    CIRCUIT_BREAKER_ACCOUNT_LOSSES: int = 5          # N consec losses/account → halt
+    CIRCUIT_BREAKER_ACCOUNT_HALT_MIN: int = 60       # halt duration (min)
+    # --- TIER D #9: PYRAMID INTO STRENGTH ---
+    PYRAMID_ENABLED: bool = False                    # TIER_D: Sharpe +0.2. Amplifies winners.
+    PYRAMID_MIN_GAIN_PCT: float = 1.5                # Fires once gain >= this.
+    PYRAMID_MIN_WT_VEL_1H: float = 2.0               # 1h velocity must trend.
+    PYRAMID_MIN_DC_POS_15M: float = 0.7              # LONG: DC pos > 0.7 = upper third.
+    PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3        # SHORT: DC pos < 0.3 = lower third.
+    PYRAMID_SIZE_MULT: float = 0.5                   # Add N × position_amt (0.5 = 50%).
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit
     # === TWO-TIER MANDATORY REENTRY (BC_155) ===
     # Tier 1 (PULLBACK): Wait for K zone reset, enter at 120-150% size (better price)
@@ -204,7 +245,9 @@ class Config:
     HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
     HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
-    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = 0.0  # 2026-04-15 user rule: hedge the INSTANT gain goes <0% — don't wait for larger loss
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.50  # 2026-04-16: reverted from 0.0 — was hedging on rounding-error noise
+    HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
+    HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.

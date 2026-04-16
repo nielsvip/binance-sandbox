@@ -13254,14 +13254,56 @@ class MultiAccountTradeManager:
             if position_key not in self.tradeable_keys:
                 logger.critical(f"🚫🚫🚫 [NON_TRADEABLE_HARD_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED. action={action} reason={reason} is_hedge={is_hedge}")
                 return f"BLOCKED_NON_TRADEABLE_{position_key}"
+            # ═══ 2026-04-16 CHANGE 3: block repeated-flagged origins ═══
+            try:
+                import json as _fjmod
+                _flag_path = config.BASE_PATH / 'data' / 'flagged_origins.json'
+                if _flag_path.exists():
+                    with open(_flag_path) as _ff: _flags_map = _fjmod.load(_ff)
+                    _flag_entry = _flags_map.get(position_key, {})
+                    _flag_count = int(_flag_entry.get('count', 0) or 0)
+                    if _flag_count >= 3:
+                        logger.critical(f"🚫 [FLAGGED_ORIGIN_BLOCK] {position_key}: flagged {_flag_count}× — entry BLOCKED. reasons={_flag_entry.get('reasons',[])[:3]}")
+                        return f"BLOCKED_FLAGGED_ORIGIN_{_flag_count}x"
+            except Exception: pass
             _pos_check = await self.get_position(position_key)
             _pos_amt_check = abs(safe_fetch_float(getattr(_pos_check, 'positionAmt', 0), 0.0)) if _pos_check else 0.0
             _pos_val_check = _pos_amt_check * (old_price if old_price > 0 else safe_fetch_float(getattr(_pos_check, 'mark_price', 0), 0.0) if _pos_check else 0)
             _pos_gain_check = safe_fetch_float(getattr(_pos_check, 'gain', 0), 0.0) if _pos_check else 0.0
             _min_pos_val_check = safe_fetch_float(getattr(config, 'MIN_POSITION_SIZE', 45.0), 45.0)
             if _pos_val_check > _min_pos_val_check and _pos_gain_check < safe_fetch_float(getattr(config, 'MIN_GAIN', 1.2), 1.2):
-                logger.critical(f"🚫🚫🚫 [POSITION_EXISTS_BLOCK] {position_key}: Position ${_pos_val_check:.1f} exists with gain={_pos_gain_check:.2f}% < MIN_GAIN. NO further opens/augments/reentries until profitable. action={action} reason={reason}")
+                logger.critical(f"🚫🚫🚫 [POSITION_EXISTS_BLOCK] {position_key}: Position ${_pos_val_check:.1f} exists with gain={_pos_gain_check:.2f}% < MIN_GAIN. NO further opens/augents/reentries until profitable. action={action} reason={reason}")
                 return f"BLOCKED_POSITION_EXISTS_gain{_pos_gain_check:.2f}pct"
+            # ═══ SHARPE-TRIPLE ENTRY GATES 2026-04-16 — regime / volume / circuit / hour ═══
+            # All default OFF, switch-gated. Applied ONLY to fresh opens (not augments of winners).
+            try:
+                import strategy_enhancements as _sxe
+                _is_fresh_open = _pos_amt_check == 0  # truly empty position
+                if _is_fresh_open and _pos_check is not None:
+                    _sxe_ind = self.indicators_snapshot.get(symbol, {}) if hasattr(self, 'indicators_snapshot') else {}
+                    _sxe_px = old_price if old_price > 0 else safe_fetch_float(getattr(_pos_check, 'mark_price', 0), 0.0)
+                    # TIER C #8: symbol/account circuit breaker
+                    _cb_ok, _cb_reason = _sxe.check_circuit_breaker(config, symbol, account_key or '')
+                    if not _cb_ok:
+                        logger.warning(f"[CIRCUIT_BREAKER_BLOCK] {position_key}: {_cb_reason}")
+                        return f"BLOCKED_CIRCUIT_BREAKER_{_cb_reason[:40]}"
+                    # TIER C #7: hour-of-day
+                    _hr_ok, _hr_reason = _sxe.check_hour_allow_entry(config)
+                    if not _hr_ok:
+                        logger.info(f"[HOUR_BLOCK] {position_key}: {_hr_reason}")
+                        return f"BLOCKED_HOUR_OF_DAY_{_hr_reason[:40]}"
+                    # TIER A #3: regime gate (skip chop)
+                    _rg_ok, _rg_reason = _sxe.check_regime_allow_entry(config, _sxe_ind, _sxe_px)
+                    if not _rg_ok:
+                        logger.info(f"[REGIME_BLOCK] {position_key}: {_rg_reason}")
+                        return f"BLOCKED_REGIME_{_rg_reason[:40]}"
+                    # TIER C #6: volume confirmation
+                    _vol_ok, _vol_reason = _sxe.check_volume_confirmation(config, _sxe_ind)
+                    if not _vol_ok:
+                        logger.info(f"[VOLUME_BLOCK] {position_key}: {_vol_reason}")
+                        return f"BLOCKED_VOLUME_{_vol_reason[:40]}"
+            except Exception as _sxe_err:
+                logger.debug(f"[STRATEGY_ENHANCEMENTS_ENTRY] {position_key}: {_sxe_err}")
         # ═══ ABSOLUTE RULE: NEVER OPEN AN ALREADY-OPEN POSITION ═══
         # If position has ANY qty > 0 and action says OPEN, reclassify to AUGMENT.
         # This catches every single case where positionAmt was temporarily zero/stale.
@@ -19170,6 +19212,43 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             if _v2_reason.startswith('SCALP_V2_OPEN_'):
                 trade_manager.processing_keys.discard(position_key)
                 return f"{EvalStatus.NO_ACTION}:SCALP_V2_ISOLATED"
+        # ==================================================================
+        # SHARPE-TRIPLE 2026-04-16 — TIER A+D ENHANCEMENTS (all switch-gated, default OFF)
+        # Implementations: strategy_enhancements.py. See data/sweep_tiers.json.
+        # Order matters: asymmetric stop (fastest exit) → progressive lock → pyramid.
+        # ==================================================================
+        if is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            try:
+                import strategy_enhancements as _sx
+                _pg = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _oa = safe_datetime(getattr(position, 'opened_at', None))
+                _age = (now - _oa).total_seconds() if isinstance(_oa, datetime) and isinstance(now, datetime) else 9999
+                # TIER A #1: Asymmetric stops (tight losers, wide winners)
+                _asym_exit, _asym_reason = _sx.check_asymmetric_stop(config, i, current_price, _pg, _age, is_long)
+                if _asym_exit:
+                    logger.warning(f"[ASYMMETRIC_STOP] {position_key}: {_asym_reason}")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", _asym_reason, 0.93)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        _sx.clear_progressive_lock(position_key); _sx.clear_pyramid_state(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:ASYMMETRIC_STOP"
+                # TIER A #2: Progressive profit lock (25% reduce at each tier)
+                _plock, _frac, _plock_reason = _sx.check_progressive_lock(config, position_key, _pg)
+                if _plock and _frac > 0:
+                    _plock_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * _frac
+                    logger.warning(f"[PROGRESSIVE_LOCK] {position_key}: {_plock_reason}")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", _plock_reason, 0.85, override_qty=_plock_qty)
+                    if result: return f"{EvalStatus.ACTION_TAKEN}:PROGRESSIVE_LOCK"
+                # TIER D #9: Pyramid into structural strength (once per position)
+                _pyr, _pyr_mult, _pyr_reason = _sx.check_pyramid_signal(config, position_key, i, _pg, is_long)
+                if _pyr and _pyr_mult > 0:
+                    _pyr_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * _pyr_mult
+                    logger.warning(f"[PYRAMID] {position_key}: {_pyr_reason}")
+                    _pyr_side = "BUY" if is_long else "SELL"
+                    result = await trade_manager.execute_now(position_key, account_key, symbol, abs(position.positionAmt), _pyr_side, position_side, _pyr_qty, current_price, f"PYR_{int(time.time())}", _pyr_reason, False, "AUGMENT")
+                    if result and "SUCCESS" in str(result): return f"{EvalStatus.ACTION_TAKEN}:PYRAMID"
+            except Exception as _sx_err:
+                logger.debug(f"[STRATEGY_ENHANCEMENTS] {position_key}: {_sx_err}")
         # ==================================================================
         # #1 RULE: EXIT ON 4H WT VELOCITY SLOWDOWN — MANDATORY REENTRY
         # V5 WT Pure backtest 2026-03-31: 4h velocity = +$10,074 (WINNER)

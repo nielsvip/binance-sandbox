@@ -4029,6 +4029,38 @@ class HedgeEngine:
             # Gate: must be losing (or HEDGE_ALL_POSITIONS for all positions)
             if not _hedge_all and pnl_pct >= _oh_min_loss: continue
             symbol = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
+            # ═══ 2026-04-16: NEWBORN GRACE — don't hedge positions < N min old ═══
+            # Exception: if price has breached DC support (long) / resistance (short), break grace
+            _grace_min = float(getattr(self.config, 'HEDGE_NEWBORN_GRACE_MINUTES', 10.0))
+            if _grace_min > 0:
+                _opened_at = getattr(pos, 'opened_at', None) or getattr(pos, 'last_augmentation_time', None)
+                _age_s = 999999.0
+                if _opened_at:
+                    try:
+                        if isinstance(_opened_at, (int, float)):
+                            _age_s = time.time() - float(_opened_at)
+                        else:
+                            from datetime import datetime as _dt, timezone as _tz
+                            _dt_parsed = _dt.fromisoformat(str(_opened_at).replace('Z','+00:00')) if not isinstance(_opened_at, _dt) else _opened_at
+                            if _dt_parsed.tzinfo is None: _dt_parsed = _dt_parsed.replace(tzinfo=_tz.utc)
+                            _age_s = (_dt.now(_tz.utc) - _dt_parsed).total_seconds()
+                    except Exception: _age_s = 999999.0
+                if _age_s < _grace_min * 60.0:
+                    # Grace period active — check DC breach exception
+                    _breach_ok = getattr(self.config, 'HEDGE_NEWBORN_DC_BREACH_ALLOWED', True)
+                    _dc_breached = False
+                    if _breach_ok:
+                        _ind_early = self.data_manager._cold_data.get(symbol, {}) if self.data_manager else {}
+                        _dc_low_3m = safe_fetch_float(_ind_early.get('dc_low_3m', 0), 0)
+                        _dc_high_3m = safe_fetch_float(_ind_early.get('dc_high_3m', 0), 0)
+                        if is_long and _dc_low_3m > 0 and mark_price < _dc_low_3m:
+                            _dc_breached = True
+                        elif (not is_long) and _dc_high_3m > 0 and mark_price > _dc_high_3m:
+                            _dc_breached = True
+                    if not _dc_breached:
+                        logger.info(f"[HEDGE_NEWBORN_GRACE] {position_key}: age={_age_s:.0f}s < {_grace_min*60:.0f}s, no DC breach — skipping hedge")
+                        continue
+                    logger.warning(f"[HEDGE_NEWBORN_DC_BREACH] {position_key}: age={_age_s:.0f}s but price breached DC {'low' if is_long else 'high'}_3m — hedge allowed")
             # Get 15m WT indicators
             _ind = {}
             if self.data_manager:
@@ -5281,8 +5313,27 @@ class HedgeEngine:
                                 results['actual_symbol'] = {'status': 'dry_run', 'symbol': losing_symbol}
                             else:
                                 _is_last_resort = (effective_ratio >= 1.0 and not elected_success)
-                                _reason_tag = "HEDGE_SAME_SYM_LAST_RESORT" if _is_last_resort else f"HEDGE_ACTUAL_OPEN_{losing_symbol}_{hedge_side}"
-                                success, failure_reason = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action=action_type, current_price=current_price, qty=quantity, reason=_reason_tag, override_qty=quantity, already_locked=False, is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
+                                # ═══ 2026-04-16 CHANGE 2+4: LAST_RESORT gates ═══
+                                _lr_block = None
+                                if _is_last_resort:
+                                    _ind_lr = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
+                                    _k_3m_lr = safe_fetch_float(_ind_lr.get('stoch_k_3m', 50), 50)
+                                    _k_wrong_way = (hedge_side == 'SHORT' and _k_3m_lr < 50) or (hedge_side == 'LONG' and _k_3m_lr > 50)
+                                    if _k_wrong_way:
+                                        logger.critical(f"🚫 [LAST_RESORT_K_BLOCK] {hedge_position_key}: k_3m={_k_3m_lr:.1f} wrong zone for {hedge_side} — BLOCKED")
+                                        results['actual_symbol'] = {'status': 'blocked_k_zone', 'reason': f'k_3m={_k_3m_lr:.1f}_wrong_for_{hedge_side}'}
+                                        _lr_block = 'k_zone'
+                                    else:
+                                        _candidates_searched = len(candidates or []) if 'candidates' in locals() else 0
+                                        if _candidates_searched < 3:
+                                            logger.critical(f"🚫 [LAST_RESORT_SKIP_PIPELINE] {losing_position_key}: only {_candidates_searched} candidates — NOT firing last-resort")
+                                            results['actual_symbol'] = {'status': 'blocked_no_pipeline', 'reason': f'candidates_only_{_candidates_searched}'}
+                                            _lr_block = 'no_pipeline'
+                                if _lr_block:
+                                    success, failure_reason = False, f'LAST_RESORT_BLOCKED_{_lr_block}'
+                                else:
+                                    _reason_tag = "HEDGE_SAME_SYM_LAST_RESORT" if _is_last_resort else f"HEDGE_ACTUAL_OPEN_{losing_symbol}_{hedge_side}"
+                                    success, failure_reason = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action=action_type, current_price=current_price, qty=quantity, reason=_reason_tag, override_qty=quantity, already_locked=False, is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
                                 if success:
                                     hedge_record = {'type': 'HEDGE_SAME_SYMBOL_OPEN', 'status': 'executed', 'account': account_key, 'position_key': hedge_position_key, 'target_symbol': losing_symbol, 'symbol': losing_symbol, 'losing_symbol': losing_symbol, 'losing_position_key': losing_position_key, 'losing_side': losing_side, 'position_side': hedge_side, 'quantity': quantity, 'price': current_price, 'notional_usd': hedge_notional_actual, 'candidate_score': 0, 'ratio': effective_ratio, 'timestamp': time.time(), 'is_hedge': True, 'hedge_id': f"hedge_act_{int(time.time() * 1000)}"}
                                     await self.persist_hedge_record(account_key, hedge_record)

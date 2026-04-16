@@ -1070,7 +1070,11 @@ def _sector_gate_would_violate(expo: dict, symbol: str, opt_type: str, new_cost:
     max_sym = getattr(config, "OPTIONS_MAX_PER_SYMBOL", 0.25)
     max_sec = getattr(config, "OPTIONS_MAX_PER_SECTOR", 0.40)
     max_grp = getattr(config, "OPTIONS_MAX_PER_GROUP", 0.60)
-    if new_total > 0:
+    # Concentration caps only kick in once the book is established. A fresh/empty
+    # book is allowed to make its first position without hitting 100% per-symbol.
+    # Floor matches OPTIONS_BASE_CAP so caps apply once the book is actively sized.
+    caps_floor = float(getattr(config, "OPTIONS_BASE_CAP", 5000.0)) * 0.2  # 20% of base = $1000
+    if new_total >= caps_floor:
         if new_sym / new_total > max_sym:
             return True, f"{symbol}: {new_sym/new_total*100:.0f}% > {max_sym*100:.0f}% per-symbol cap"
         if new_sec / new_total > max_sec:
