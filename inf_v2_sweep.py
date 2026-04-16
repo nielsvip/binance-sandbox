@@ -25,10 +25,10 @@ NPZ_DIR = Path("backtest_v5/indicators_3m")
 LOOKBACK_DAYS = 30
 REENTRY_COOLDOWN_S = 300
 
-VARIANTS = ["V1_WT_CONFIRM","V2_LH_LL_3M","V3_LH_LL_1M","V4_HA_FLIP","V5_BREAK_HIGH_REENTRY","V6_COMBINED_WT_HA","V7_TIGHT_TRAILING","V8_HTF_RECLAIM"]
-MAX_HOLDS = [15, 30, 60, 120]
+VARIANTS = ["V1_WT_CONFIRM","V2_LH_LL_3M","V4_HA_FLIP","V6_COMBINED_WT_HA","V7_TIGHT_TRAILING","V8_HTF_RECLAIM"]
+MAX_HOLDS = [15, 60]
 REQUIRE_ALL_OPTS = [True, False]
-DC_HTF_OPTS = [("15m","1h"), ("15m","1h","4h")]
+DC_HTF_OPTS = [("15m","1h")]
 
 def load_npz(fp):
     d = np.load(fp, allow_pickle=True)
@@ -208,11 +208,16 @@ def main():
     print(f"window: {datetime.fromtimestamp(start_ts, tz=timezone.utc)} -> {datetime.fromtimestamp(end_ts, tz=timezone.utc)}  symbols={len(syms)}")
 
     results = []  # list of dict per (variant, require_all, max_hold, tfs_label)
+    n_combos = len(VARIANTS)*len(REQUIRE_ALL_OPTS)*len(MAX_HOLDS)*len(DC_HTF_OPTS)
+    print(f"sweeping {n_combos} configs * {len(syms)} symbols")
+    combo_idx = 0
     for variant in VARIANTS:
         for req in REQUIRE_ALL_OPTS:
             for hold in MAX_HOLDS:
                 for tfs in DC_HTF_OPTS:
+                    combo_idx += 1
                     cfg_label = f"{variant}|req={req}|hold={hold}m|tfs={'+'.join(tfs)}"
+                    print(f"  [{combo_idx}/{n_combos}] {cfg_label}", flush=True)
                     all_trades = []
                     for sym, d, ts in syms:
                         i_start = int(np.searchsorted(ts, start_ts))

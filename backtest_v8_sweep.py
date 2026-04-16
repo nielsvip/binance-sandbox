@@ -1049,14 +1049,15 @@ def run_config(args_tuple) -> Dict:
     #   Engine prints V8_INIT_HEARTBEAT during loading phase to avoid false kills.
     # ZERO_TRADES_TIMEOUT: if V8_RESULT_LIVE shows closes=0 for N secs → filters too strict → kill
     HEARTBEAT_TIMEOUT = 600   # seconds with no heartbeat/result → kill (OOM or crash)
-    ZERO_TRADES_TIMEOUT = 60  # seconds closes=0 persists after first V8_RESULT_LIVE → kill
-    MAX_RUNTIME = 1800        # 30 min hard cap per config — prevents infinite runs
+    ZERO_TRADES_TIMEOUT = int(os.environ.get("V8_ZERO_TRADES_TIMEOUT", "300"))
+    MAX_RUNTIME = int(os.environ.get("V8_MAX_RUNTIME", "3600"))
     kill_reason = [None]
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=str(SCRIPTS_DIR))
         output_lines = []
         first_live_t = [None]       # wall-clock time when first V8_RESULT_LIVE seen
         last_live_closes = [None]   # closes= value from most recent V8_RESULT_LIVE
+        last_closes_changed_t = [None]  # wall-clock time when closes last increased
         last_alive_t = [time.time()]  # tracks last heartbeat or result line
         def _reader():
             for line in iter(proc.stdout.readline, ''):
@@ -1069,24 +1070,24 @@ def run_config(args_tuple) -> Dict:
                         n = int(mc.group(1))
                         if first_live_t[0] is None:
                             first_live_t[0] = time.time()
+                        if last_live_closes[0] is None or n > last_live_closes[0]:
+                            last_closes_changed_t[0] = time.time()
                         last_live_closes[0] = n
         t_reader = threading.Thread(target=_reader, daemon=True)
         t_reader.start()
         while proc.poll() is None:
             now = time.time()
             elapsed_now = now - t0
-            # Kill if no heartbeat/result in HEARTBEAT_TIMEOUT seconds (OOM or crash)
             if now - last_alive_t[0] > HEARTBEAT_TIMEOUT and first_live_t[0] is None:
                 proc.kill()
                 kill_reason[0] = f"no_heartbeat_after_{HEARTBEAT_TIMEOUT}s"
                 break
-            # Kill if zero closes persist after first report
-            if first_live_t[0] is not None and last_live_closes[0] == 0:
-                if now - first_live_t[0] > ZERO_TRADES_TIMEOUT:
+            if first_live_t[0] is not None and (last_live_closes[0] is None or last_live_closes[0] == 0):
+                _ref_t = last_closes_changed_t[0] or first_live_t[0]
+                if now - _ref_t > ZERO_TRADES_TIMEOUT:
                     proc.kill()
                     kill_reason[0] = f"zero_trades_for_{ZERO_TRADES_TIMEOUT}s"
                     break
-            # Hard cap: kill if running longer than MAX_RUNTIME regardless
             if elapsed_now > MAX_RUNTIME:
                 proc.kill()
                 kill_reason[0] = f"max_runtime_{MAX_RUNTIME}s_exceeded"
