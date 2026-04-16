@@ -29,28 +29,30 @@ CHECK_INTERVAL = 60
 SSH_TIMEOUT = 15
 MIN_FREE_MB = 4000
 
-# SECTOR SWEEP DEFINITIONS — each produces uniquely-named CSV via md5 suffix
-# NEVER change to 20-sym mega-sweep (2026-04-14 forbidden pattern)
-SWEEPS = {
-    "sweep_tech":    {"mode": "tradier", "account": "trb", "start": "2025-10-01", "capital": 2000, "workers": 2, "tier": 25, "symbols": "AAPL,NVDA,META,AMD",  "log": "/tmp/v8_tech.log"},
-    "sweep_commod":  {"mode": "tradier", "account": "trb", "start": "2025-10-01", "capital": 2000, "workers": 2, "tier": 25, "symbols": "USO,NEM,GLD",         "log": "/tmp/v8_commod.log"},
-    "sweep_broad":   {"mode": "tradier", "account": "trb", "start": "2025-10-01", "capital": 2000, "workers": 2, "tier": 25, "symbols": "MSTR,SPY,LLY",        "log": "/tmp/v8_broad.log"},
-    "sweep_crypto":  {"mode": "crypto",  "account": "inf", "start": "2024-01-01", "capital": 1000, "workers": 2, "tier": 30, "symbols": None,                  "log": "/tmp/v8_crypto.log"},
-}
+# 2026-04-16: SWEEPS replaced by AUTOCHAIN per server.
+# Each server runs ONE master screen (`autochain_sN`) which handles all
+# phase chaining + resume internally via sweep_autochain.sh. Respawning
+# the autochain screen is sufficient to recover the entire sweep pipeline.
+# Old 4-sector sweep dict retired.
+AUTOCHAIN_SCRIPT = "sweep_autochain.sh"
 
 SERVERS = {
     "S2": {
         "host": "s2-int",
         "user": "niels",
+        "base": "/home/niels/binance-sandbox",
         "python": "/home/niels/miniconda3/envs/binance_env/bin/python",
-        "sweeps": list(SWEEPS.keys()),
+        "autochain_screen": "autochain_s2",
+        "autochain_arg": "s2",
         "run_sentinel": True,
     },
     "S1": {
         "host": "s1-int",
         "user": "niels",
+        "base": "/home/niels/binance-sandbox",
         "python": "/home/niels/.conda/envs/binance_env/bin/python",
-        "sweeps": [],
+        "autochain_screen": "autochain_s1",
+        "autochain_arg": "s1",
         "run_sentinel": True,
     },
 }
@@ -182,20 +184,24 @@ def check_server(name, cfg, state):
         rc2, out2 = ssh(host, user, setup, timeout=30)
         log(f"{name}: sentinel spawn rc={rc2} result={out2.strip()[-80:]}")
 
-    for sweep_name in cfg["sweeps"]:
-        if sweep_name in existing_screens:
-            continue
-        sweep_cfg = SWEEPS[sweep_name]
-        inner = build_sweep_cmd(cfg, sweep_cfg, cfg["python"])
-        setup = (
-            f"cat > /tmp/launch_{sweep_name}.sh <<'EOF'\n#!/bin/bash\n{inner}\nEOF\n"
-            f"chmod +x /tmp/launch_{sweep_name}.sh && "
-            f"screen -dmS {sweep_name} bash /tmp/launch_{sweep_name}.sh && "
-            f"sleep 1 && screen -ls | grep -q {sweep_name} && echo {sweep_name}_UP || echo {sweep_name}_FAIL"
+    # 2026-04-16: spawn autochain master screen if missing. Autochain handles the
+    # rest of the pipeline internally (--resume-aware, idempotent, never-ending).
+    ac_screen = cfg["autochain_screen"]
+    if ac_screen not in existing_screens:
+        log(f"{name}: {ac_screen} missing — spawning")
+        inner = (
+            f"cd {cfg['base']} && "
+            f"bash {cfg['base']}/{AUTOCHAIN_SCRIPT} {cfg['autochain_arg']} "
+            f"> /tmp/sweep_autochain_{cfg['autochain_arg']}.log 2>&1"
         )
-        log(f"{name}: {sweep_name} missing — spawning")
+        setup = (
+            f"cat > /tmp/launch_{ac_screen}.sh <<'EOF'\n#!/bin/bash\n{inner}\nEOF\n"
+            f"chmod +x /tmp/launch_{ac_screen}.sh && "
+            f"screen -dmS {ac_screen} bash /tmp/launch_{ac_screen}.sh && "
+            f"sleep 1 && screen -ls | grep -q {ac_screen} && echo AUTOCHAIN_UP || echo AUTOCHAIN_FAIL"
+        )
         rc2, out2 = ssh(host, user, setup, timeout=30)
-        log(f"{name}: {sweep_name} spawn rc={rc2} result={out2.strip()[-80:]}")
+        log(f"{name}: {ac_screen} spawn rc={rc2} result={out2.strip()[-80:]}")
 
     log(f"{name}: OK free={free_mb}MB procs={sweep_procs} screens={sorted(existing_screens)}")
 

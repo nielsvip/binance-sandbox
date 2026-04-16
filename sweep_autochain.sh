@@ -1,13 +1,15 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# SWEEP AUTO-CHAIN — monitors Phase 1, auto-launches follow-ups
+# SWEEP AUTO-CHAIN v2 — RESUME-AWARE + IDEMPOTENT
 # Run on each server: screen -dmS autochain bash sweep_autochain.sh [s1|s2]
 #
-# Monitors entry_gates completion → launches:
-#   Phase 1b: reentry block combos (512 cfgs)
-#   Phase 2:  top-50 on full symbols
-#   Phase 3:  exit tuning
-#   ...continuous
+# Design:
+# - Each phase checks if its CSV exists + is "done" BEFORE running
+# - Each screen is launched only if not already running (idempotent)
+# - All python sweeps use --resume so they pick up where they left off
+# - Phase completion defined per-phase: CSV line count OR presence of marker file
+# - If killed and restarted, skips completed phases instantly
+# - Keeps running forever, looping phase 5+6 (full combinatorial + mutation)
 # ═══════════════════════════════════════════════════════════════
 set -uo pipefail
 
@@ -34,86 +36,235 @@ else
 fi
 
 SWEEP_DIR="$BASE/data/sweep_results"
+mkdir -p "$SWEEP_DIR"
 cd "$BASE"
 
-# ═══ Wait for Phase 1 entry_gates to finish ═══
-log "Waiting for Phase 1 entry_gates to complete on $MACHINE..."
-while true; do
-    # Check if any quick_sweep screen is still running
-    SCREENS=$(screen -ls 2>/dev/null | grep -c "quick_" || true)
-    if [[ $SCREENS -eq 0 ]]; then
-        log "No quick_sweep screens running — Phase 1 likely complete"
-        break
-    fi
-    # Also check if CSV has all 3072 results
-    for csv in "$SWEEP_DIR"/v8_quick_*_entry_gates_*.csv; do
-        if [[ -f "$csv" ]]; then
-            LINES=$(wc -l < "$csv" 2>/dev/null || echo 0)
-            if [[ $LINES -gt 3070 ]]; then
-                log "CSV $csv has $LINES lines — Phase 1 complete for this mode"
-            fi
+# ═══ HELPERS ═══
+screen_running() {
+    screen -ls 2>/dev/null | grep -qE "[0-9]+\.${1}\b"
+}
+
+# Returns 0 if a phase is "complete" (CSV exists with enough lines).
+# $1 = glob pattern, $2 = min lines required
+phase_done() {
+    local pattern="$1" min_lines="$2"
+    for csv in $SWEEP_DIR/$pattern; do
+        [[ -f "$csv" ]] || continue
+        local lines=$(wc -l < "$csv" 2>/dev/null || echo 0)
+        if [[ $lines -ge $min_lines ]]; then
+            return 0
         fi
     done
-    sleep 60
-done
+    return 1
+}
 
-log "═══ PHASE 1 COMPLETE — launching Phase 1b + Phase 2 ═══"
+# Launch a screen idempotently — if already running, skip
+launch_screen() {
+    local name="$1" cmd="$2"
+    if screen_running "$name"; then
+        log "  [SKIP] $name already running"
+        return 0
+    fi
+    log "  [LAUNCH] $name"
+    screen -dmS "$name" bash -c "$cmd"
+    sleep 1
+    if screen_running "$name"; then
+        log "  [OK] $name launched"
+    else
+        log "  [FAIL] $name did not start"
+    fi
+}
 
-# ═══ Phase 1b: Reentry block combos (512 configs) ═══
-if [[ $W_CRYPTO -gt 0 ]]; then
-    log "Launching Phase 1b: reentry blocks (crypto, 512 cfgs, $W_CRYPTO workers)"
-    screen -dmS rb_crypto bash -c "cd $BASE && $PY -u sweep_reentry_blocks.py --mode crypto --symbols fast --start 2022-01-01 --workers $W_CRYPTO --resume 2>&1 | tee /tmp/reentry_blocks_crypto.log"
-fi
-
-if [[ $W_TRADIER -gt 0 ]]; then
-    log "Launching Phase 1b: reentry blocks (tradier, 512 cfgs, $W_TRADIER workers)"
-    screen -dmS rb_tradier bash -c "cd $BASE && $PY -u sweep_reentry_blocks.py --mode tradier --symbols fast --start 2024-01-01 --workers $W_TRADIER --resume 2>&1 | tee /tmp/reentry_blocks_tradier.log"
-fi
-
-# Wait for reentry blocks to finish
-log "Waiting for Phase 1b reentry blocks to complete..."
-while screen -ls 2>/dev/null | grep -q "rb_"; do
-    sleep 30
-done
-log "═══ PHASE 1b COMPLETE ═══"
-
-# ═══ Phase 2: Exit tuning on fast symbols ═══
-log "Launching Phase 3: exit tuning"
-if [[ $W_CRYPTO -gt 0 ]]; then
-    screen -dmS exit_crypto bash -c "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier exit_tuning --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_exit_crypto.log"
-fi
-if [[ $W_TRADIER -gt 0 ]]; then
-    screen -dmS exit_tradier bash -c "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier exit_tuning --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_exit_tradier.log"
-fi
-
-log "Waiting for exit tuning to complete..."
-while screen -ls 2>/dev/null | grep -q "exit_"; do
-    sleep 60
-done
-log "═══ PHASE 3 COMPLETE ═══"
-
-# ═══ Phase 5+: Full combinatorial (runs forever) ═══
-log "Launching Phase 5: full combinatorial (continuous)"
-if [[ $W_CRYPTO -gt 0 ]]; then
-    screen -dmS full_crypto bash -c "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier full --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_full_crypto.log"
-fi
-if [[ $W_TRADIER -gt 0 ]]; then
-    screen -dmS full_tradier bash -c "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier full --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_full_tradier.log"
-fi
-
-log "═══ ALL PHASES LAUNCHED — full combinatorial running indefinitely ═══"
-log "Results accumulate in $SWEEP_DIR/*.csv"
-log "Monitor: tail -f /tmp/v8_full_*.log"
-
-# Keep alive and log hourly progress
-while true; do
-    sleep 3600
-    log "--- HOURLY STATUS ---"
-    for csv in "$SWEEP_DIR"/*.csv; do
-        if [[ -f "$csv" ]]; then
-            LINES=$(wc -l < "$csv")
-            BEST=$(head -2 "$csv" | tail -1 | cut -d, -f3 2>/dev/null || echo "?")
-            log "  $(basename $csv): ${LINES} results, best_sharpe=$BEST"
+# Wait until all screens matching a pattern have exited
+wait_screens_gone() {
+    local pattern="$1" timeout="${2:-86400}"
+    local start=$(date +%s)
+    while screen -ls 2>/dev/null | grep -qE "[0-9]+\.${pattern}"; do
+        local elapsed=$(( $(date +%s) - start ))
+        if [[ $elapsed -gt $timeout ]]; then
+            log "  [TIMEOUT] waiting for $pattern after ${elapsed}s"
+            return 1
         fi
+        sleep 60
+    done
+    return 0
+}
+
+log "═══════════════════════════════════════════════════════════"
+log "AUTOCHAIN v2 START on $MACHINE (resume-aware)"
+log "SWEEP_DIR=$SWEEP_DIR  W_CRYPTO=$W_CRYPTO  W_TRADIER=$W_TRADIER"
+log "═══════════════════════════════════════════════════════════"
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 1: entry_gates (3072 configs, fast symbols)
+# ═══════════════════════════════════════════════════════════════
+phase1() {
+    log "--- PHASE 1: entry_gates ---"
+
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        if phase_done "v8_quick_crypto_entry_gates_*.csv" 3000; then
+            log "  [DONE] crypto entry_gates already has 3000+ results"
+        else
+            launch_screen "quick_crypto" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier entry_gates --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_quick_crypto.log"
+        fi
+    fi
+
+    if [[ $W_TRADIER -gt 0 ]]; then
+        if phase_done "v8_quick_tradier_entry_gates_*.csv" 3000; then
+            log "  [DONE] tradier entry_gates already has 3000+ results"
+        else
+            launch_screen "quick_tradier" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier entry_gates --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_quick_tradier.log"
+        fi
+    fi
+
+    # Wait for all quick_* screens to finish
+    wait_screens_gone "quick_(crypto|tradier)\b"
+    log "--- PHASE 1 COMPLETE ---"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 1b: reentry block combos (2^9 = 512 per mode)
+# ═══════════════════════════════════════════════════════════════
+phase1b() {
+    log "--- PHASE 1b: reentry_blocks ---"
+
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        if phase_done "reentry_blocks_crypto_*.csv" 500; then
+            log "  [DONE] reentry_blocks crypto"
+        else
+            launch_screen "rb_crypto" \
+                "cd $BASE && $PY -u sweep_reentry_blocks.py --mode crypto --symbols fast --start 2022-01-01 --workers $W_CRYPTO --resume 2>&1 | tee /tmp/rb_crypto.log"
+        fi
+    fi
+
+    if [[ $W_TRADIER -gt 0 ]]; then
+        if phase_done "reentry_blocks_tradier_*.csv" 500; then
+            log "  [DONE] reentry_blocks tradier"
+        else
+            launch_screen "rb_tradier" \
+                "cd $BASE && $PY -u sweep_reentry_blocks.py --mode tradier --symbols fast --start 2024-01-01 --workers $W_TRADIER --resume 2>&1 | tee /tmp/rb_tradier.log"
+        fi
+    fi
+
+    wait_screens_gone "rb_(crypto|tradier)\b"
+    log "--- PHASE 1b COMPLETE ---"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 2: exit_tuning
+# ═══════════════════════════════════════════════════════════════
+phase2() {
+    log "--- PHASE 2: exit_tuning ---"
+
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        if phase_done "v8_quick_crypto_exit_tuning_*.csv" 1000; then
+            log "  [DONE] exit_tuning crypto"
+        else
+            launch_screen "exit_crypto" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier exit_tuning --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_exit_crypto.log"
+        fi
+    fi
+
+    if [[ $W_TRADIER -gt 0 ]]; then
+        if phase_done "v8_quick_tradier_exit_tuning_*.csv" 1000; then
+            log "  [DONE] exit_tuning tradier"
+        else
+            launch_screen "exit_tradier" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier exit_tuning --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_exit_tradier.log"
+        fi
+    fi
+
+    wait_screens_gone "exit_(crypto|tradier)\b"
+    log "--- PHASE 2 COMPLETE ---"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 3: quality_sniper (reentry block stacks + selectivity)
+# ═══════════════════════════════════════════════════════════════
+phase3() {
+    log "--- PHASE 3: quality_sniper ---"
+
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        if phase_done "quality_sniper_crypto_*.csv" 380; then
+            log "  [DONE] quality_sniper crypto"
+        else
+            launch_screen "qs_crypto" \
+                "cd $BASE && $PY -u sweep_quality_sniper.py --mode crypto --symbols fast --start 2022-01-01 --workers $W_CRYPTO --resume 2>&1 | tee /tmp/qs_crypto.log"
+        fi
+    fi
+
+    if [[ $W_TRADIER -gt 0 ]]; then
+        if phase_done "quality_sniper_tradier_*.csv" 380; then
+            log "  [DONE] quality_sniper tradier"
+        else
+            launch_screen "qs_tradier" \
+                "cd $BASE && $PY -u sweep_quality_sniper.py --mode tradier --symbols fast --start 2024-01-01 --workers $W_TRADIER --resume 2>&1 | tee /tmp/qs_tradier.log"
+        fi
+    fi
+
+    wait_screens_gone "qs_(crypto|tradier)\b"
+    log "--- PHASE 3 COMPLETE ---"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# PHASE 5: full combinatorial (never-ending, --resume picks up)
+# ═══════════════════════════════════════════════════════════════
+phase5() {
+    log "--- PHASE 5: full combinatorial (continuous) ---"
+
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        launch_screen "full_crypto" \
+            "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier full --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_full_crypto.log"
+    fi
+    if [[ $W_TRADIER -gt 0 ]]; then
+        launch_screen "full_tradier" \
+            "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier full --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_full_tradier.log"
+    fi
+    log "--- PHASE 5 running in background (continuous) ---"
+}
+
+# ═══════════════════════════════════════════════════════════════
+# MAIN — run phases in order, each skipped if already complete.
+# Phase 5 keeps running indefinitely; autochain enters status-loop after launch.
+# ═══════════════════════════════════════════════════════════════
+phase1
+phase1b
+phase2
+phase3
+phase5
+
+# ═══════════════════════════════════════════════════════════════
+# STATUS LOOP — every 10 min, relaunch any dead phase-5 screens, log best Sharpe.
+# This is the "forever" loop that keeps resuming after crashes.
+# ═══════════════════════════════════════════════════════════════
+log "═══ MAIN CHAIN LAUNCHED — entering supervisor status loop ═══"
+while true; do
+    sleep 600  # 10 min
+
+    # Re-launch phase-5 sweeps if they died (idempotent — skips if running)
+    if [[ $W_CRYPTO -gt 0 ]]; then
+        if ! screen_running "full_crypto"; then
+            log "  [RESPAWN] full_crypto died → relaunching (will --resume from CSV)"
+            launch_screen "full_crypto" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier full --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_full_crypto.log"
+        fi
+    fi
+    if [[ $W_TRADIER -gt 0 ]]; then
+        if ! screen_running "full_tradier"; then
+            log "  [RESPAWN] full_tradier died → relaunching"
+            launch_screen "full_tradier" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier full --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_full_tradier.log"
+        fi
+    fi
+
+    # Log best-Sharpe summary
+    log "--- STATUS ---"
+    for csv in "$SWEEP_DIR"/*.csv; do
+        [[ -f "$csv" ]] || continue
+        local_lines=$(wc -l < "$csv" 2>/dev/null || echo 0)
+        # Best Sharpe = max value in "sharpe" column (column 3 by convention for these CSVs)
+        log "  $(basename $csv): ${local_lines} rows"
     done
 done

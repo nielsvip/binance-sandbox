@@ -369,9 +369,35 @@ def check_cpu_idle(name, probe_result, state):
 
 
 def launch_cpu_refill(name):
-    """PLACEHOLDER: when a sector-sweep batch launcher exists, invoke it here.
-    For now: log only. server_watchdog.py already handles sector-sweep spawns."""
-    log.warning(f"CPU_IDLE on {name} — would launch new sweep batch. TODO: wire batch launcher.")
+    """2026-04-16: CPU idle = autochain died or phase-5 crashed. Respawn autochain
+    via SSH (server_watchdog would also catch it, but supervisor acts faster on CPU signal)."""
+    cfg = SERVERS.get(name)
+    if not cfg:
+        log.warning(f"CPU_IDLE on {name} — no SERVERS config, skipping")
+        return
+    host = cfg["host"]
+    user = cfg["user"]
+    ac_screen = f"autochain_{name.lower()}"
+    base = "/home/niels/binance-sandbox"
+    # Same as server_watchdog: only spawn if not already running
+    check_cmd = f"screen -ls 2>/dev/null | grep -q '\\.{ac_screen}\\b' && echo RUNNING || echo MISSING"
+    rc, out = ssh_read(host, user, check_cmd, timeout=SSH_TIMEOUT)
+    if "RUNNING" in out:
+        log.info(f"CPU_IDLE on {name} — {ac_screen} already running, no action")
+        return
+    # Missing: spawn it
+    inner = (
+        f"cd {base} && bash {base}/sweep_autochain.sh {name.lower()} "
+        f"> /tmp/sweep_autochain_{name.lower()}.log 2>&1"
+    )
+    setup = (
+        f"cat > /tmp/launch_{ac_screen}.sh <<'EOF'\n#!/bin/bash\n{inner}\nEOF\n"
+        f"chmod +x /tmp/launch_{ac_screen}.sh && "
+        f"screen -dmS {ac_screen} bash /tmp/launch_{ac_screen}.sh && "
+        f"sleep 1 && (screen -ls | grep -q {ac_screen} && echo OK || echo FAIL)"
+    )
+    rc, out = ssh_read(host, user, setup, timeout=SSH_TIMEOUT)
+    log.warning(f"CPU_IDLE on {name} — spawned {ac_screen} rc={rc} result={out.strip()[-80:]}")
 
 
 def save_state(state):
