@@ -4622,7 +4622,27 @@ class HedgeEngine:
                         # Check 3: update tracker fields on hedge record
                         losing_gain = safe_fetch_float(getattr(losing_pos, 'gain', 0), 0)
                         h_gain = safe_fetch_float(getattr(h_pos, 'gain', 0), 0) if h_pos else 0
-                        hedge.update({'losing_gain': round(losing_gain, 4), 'hedge_gain': round(h_gain, 4), 'losing_amt': losing_amt, 'hedge_amt': h_amt, 'last_monitored': time.time()})
+                        # 2026-04-16: also update canonical hedge fields so tracker.json reflects mark-to-market
+                        _prev_max_gain = safe_fetch_float(hedge.get('max_gain', 0.0), 0.0)
+                        _new_max_gain = max(_prev_max_gain, h_gain)
+                        _h_entry = safe_fetch_float(hedge.get('price', 0.0), 0.0) or safe_fetch_float(getattr(h_pos, 'entry_price', 0.0), 0.0)
+                        _unrealized_pnl_usd = (h_mark - _h_entry) * h_amt * (1 if h_pk.endswith('_LONG') else -1) if _h_entry > 0 and h_amt > 0 else 0.0
+                        _hedge_pct = (h_value / losing_value * 100.0) if losing_value > 0 else 0.0
+                        hedge.update({
+                            'losing_gain': round(losing_gain, 4),
+                            'hedge_gain': round(h_gain, 4),
+                            'gain': round(h_gain, 4),
+                            'max_gain': round(_new_max_gain, 4),
+                            'mark_price': h_mark,
+                            'hedge_pct_of_losing': round(_hedge_pct, 2),
+                            'total_hedge_pnl_usd': round(_unrealized_pnl_usd, 4),
+                            'losing_amt': losing_amt,
+                            'hedge_amt': h_amt,
+                            'last_monitored': time.time(),
+                        })
+                        # Mark the account dirty so save_tracker actually persists these updates
+                        # (otherwise save gates on dirty flag and changes sit in-memory for 5 min).
+                        self.tracker_manager._exit_candidates_dirty[account_key] = True
                     # ═══ PHASE 1.5: PREEMPTIVE CLOSE — DISABLED 2026-03-29 ═══
                     # FIX 2026-03-29: This is a disguised stop-loss that closes positions at breakeven.
                     # STRICT_NO_LOSS means we NEVER close preemptively — the hedge IS the protection.
@@ -6963,6 +6983,114 @@ class TrackerManager:
         except Exception as e:
             logger.error(f"[LOAD_ERROR] {account_key}: {e}")
 
+    async def reconcile_hedges_from_positions(self, account_key: str) -> int:
+        """2026-04-16 — startup reconciler. Scans live positions; for every symbol that has BOTH a
+        LONG and a SHORT position with non-zero qty, ensures active_hedges has a record. The later-
+        opened side is treated as the hedge; the earlier as the main loser. Fixes the state where
+        tracker.json has 0 active_hedges despite real hedge positions existing (e.g. inf BAT/DOT/ATOM
+        SHORT were hedges of LONG losers but tracker didn't know).
+        Returns the number of hedge records added.
+        """
+        if not getattr(self, 'positions_service', None): return 0
+        positions = (self.positions_service.positions_by_account or {}).get(account_key, {})
+        if not positions: return 0
+        pairs = {}
+        for pk, pos in positions.items():
+            try:
+                amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
+                if amt <= 0: continue
+                if ':' not in pk: continue
+                sym_and_side = pk.split(':', 1)[1]
+                if sym_and_side.endswith('_LONG'):
+                    sym = sym_and_side[:-5]; side = 'LONG'
+                elif sym_and_side.endswith('_SHORT'):
+                    sym = sym_and_side[:-6]; side = 'SHORT'
+                else:
+                    continue
+                pairs.setdefault(sym, {})[side] = pos
+            except Exception: continue
+        added = 0
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for sym, sides in pairs.items():
+            if 'LONG' not in sides or 'SHORT' not in sides: continue
+            long_pos = sides['LONG']; short_pos = sides['SHORT']
+            long_pk = f"{account_key}:{sym}_LONG"; short_pk = f"{account_key}:{sym}_SHORT"
+            # Check if tracker already has a hedge record involving either pk
+            async with self._hedges_lock:
+                if any(h.get('position_key') in (long_pk, short_pk) or h.get('losing_position_key') in (long_pk, short_pk) or h.get('hedge_for') in (long_pk, short_pk) for h in self.active_hedges):
+                    continue
+            def _opened_ts(p):
+                t = getattr(p, 'opened_at', None)
+                if isinstance(t, datetime): return t.timestamp()
+                if isinstance(t, str):
+                    try: return datetime.fromisoformat(t.replace('Z','+00:00')).timestamp()
+                    except Exception: return 0
+                return 0
+            long_ts = _opened_ts(long_pos); short_ts = _opened_ts(short_pos)
+            # Later-opened side = hedge; earlier = main
+            if long_ts == 0 and short_ts == 0:
+                hedge_pk, main_pk, hedge_pos = short_pk, long_pk, short_pos
+            elif short_ts >= long_ts:
+                hedge_pk, main_pk, hedge_pos = short_pk, long_pk, short_pos
+            else:
+                hedge_pk, main_pk, hedge_pos = long_pk, short_pk, long_pos
+            h_qty = abs(safe_fetch_float(getattr(hedge_pos, 'positionAmt', 0.0), 0.0))
+            h_entry = safe_fetch_float(getattr(hedge_pos, 'entry_price', 0.0), 0.0)
+            h_mark = safe_fetch_float(getattr(hedge_pos, 'mark_price', 0.0), 0.0) or h_entry
+            rec = {
+                'type': 'RECONCILED',
+                'position_key': hedge_pk,
+                'losing_position_key': main_pk,
+                'hedge_for': main_pk,
+                'symbol': sym,
+                'target_symbol': sym,
+                'position_side': 'SHORT' if hedge_pk.endswith('_SHORT') else 'LONG',
+                'quantity': h_qty,
+                'initial_quantity': h_qty,
+                'notional_usd': h_qty * h_mark,
+                'initial_notional_usd': h_qty * h_mark,
+                'price': h_entry,
+                'mark_price': h_mark,
+                'account': account_key,
+                'is_hedge': True,
+                'hedge_id': f"reconciled_{int(time.time()*1000)}_{sym}",
+                'opened_at': (getattr(hedge_pos, 'opened_at', None).isoformat() if isinstance(getattr(hedge_pos, 'opened_at', None), datetime) else (getattr(hedge_pos, 'opened_at', None) if isinstance(getattr(hedge_pos, 'opened_at', None), str) else now_iso)),
+                'hedge_open_count': 1,
+                'total_hedge_cost_usd': h_qty * h_entry,
+                'total_hedge_pnl_usd': 0.0,
+                'gain': safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0),
+                'max_gain': 0.0,
+                'losing_entry_price': safe_fetch_float(getattr(sides['LONG' if hedge_pk.endswith('_SHORT') else 'SHORT'], 'entry_price', 0.0), 0.0),
+                'status': 'reconciled',
+            }
+            async with self._hedges_lock:
+                self.active_hedges.append(rec)
+            # Cross-reference the losing main position in exit_candidates
+            async with self._exit_candidates_lock:
+                if main_pk not in self.exit_candidates:
+                    self.exit_candidates[main_pk] = self._exit_template()
+                mec = self.exit_candidates[main_pk]
+                mec['is_hedged'] = True
+                _hbs_raw = mec.get('hedged_by_symbols', '') or ''
+                _hbs = [s.strip() for s in _hbs_raw.split(',') if s.strip()] if _hbs_raw else []
+                if hedge_pk not in _hbs: _hbs.append(hedge_pk)
+                mec['hedged_by_symbols'] = ','.join(_hbs)
+                mec['hedged_for_total_$'] = safe_fetch_float(mec.get('hedged_for_total_$', 0.0), 0.0) + (h_qty * h_mark)
+                # Also mark the hedge side's exit_candidate
+                if hedge_pk not in self.exit_candidates:
+                    self.exit_candidates[hedge_pk] = self._exit_template()
+                hec = self.exit_candidates[hedge_pk]
+                hec['is_hedge'] = True
+                hec['hedge_for'] = main_pk
+                hec['losing_position_key'] = main_pk
+                self._exit_candidates_dirty[account_key] = True
+            added += 1
+            logger.warning(f"[RECONCILE_HEDGE] {account_key}: {hedge_pk} → hedge_for {main_pk} (qty={h_qty:.6f} notional=${h_qty*h_mark:.2f})")
+        if added > 0:
+            try: await self.save_tracker(account_key, force=True)
+            except Exception as _e: logger.debug(f"[reconcile_hedges.save] {account_key}: {_e}")
+        return added
+
     async def save_tracker(self, account_key: str, force: bool = False, min_interval: int = 30, trade_manager=None) -> None:
         if not account_key: return
         now_ts = time.time()
@@ -8145,6 +8273,186 @@ class TrackerManager:
                 data['last_exit_reentry_ready'] = False
                 self._entry_candidates_dirty[account_key] = True
 
+    async def on_trade_event(self, account_key: str, position_key: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> None:
+        """Canonical tracker update helper — 2026-04-16 audit fix.
+        Every trade execution MUST call this exactly once post-fill so tracker.json stays consistent.
+        Previously 11 of 52 exit_candidate fields (is_hedged, hedged_by_symbols, hedged_for_total_$,
+        gain_list, gain_dollar_list, trade_log, win_rate_%, consecutive_wins/losses, winning/losing/total_trades,
+        augment_reason, reduction_reason) were never written live — only by offline recalculate_candidate_stats.
+        event_type: OPEN | AUGMENT | REDUCE | CLOSE | REENTRY | HEDGE_OPEN | HEDGE_AUGMENT | HEDGE_CLOSE
+        payload keys (optional): qty, price, notional_usd, reason, pnl_usd, is_hedge, hedge_for, hedge_id, symbol
+        """
+        payload = payload or {}
+        event_type = (event_type or '').upper()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        now_ts = time.time()
+        qty = safe_fetch_float(payload.get('qty', 0.0), 0.0)
+        price = safe_fetch_float(payload.get('price', 0.0), 0.0)
+        notional_usd = safe_fetch_float(payload.get('notional_usd', qty * price), qty * price)
+        pnl_usd = safe_fetch_float(payload.get('pnl_usd', 0.0), 0.0)
+        reason = str(payload.get('reason', '') or '')
+        is_hedge = bool(payload.get('is_hedge', False))
+        hedge_for = payload.get('hedge_for') or None
+        hedge_id = payload.get('hedge_id') or None
+        symbol = payload.get('symbol') or (position_key.split(':', 1)[1].rsplit('_', 1)[0] if ':' in position_key else '')
+        # ═══ 1) exit_candidates update for the position_key itself ═══
+        async with self._exit_candidates_lock:
+            if position_key not in self.exit_candidates:
+                self.exit_candidates[position_key] = self._exit_template()
+            ec = self.exit_candidates[position_key]
+            ec['last_updated'] = now_iso
+            ec['timestamp'] = now_iso
+            ec['last_action'] = event_type.lower()
+            ec['last_reason'] = reason[:200]
+            if event_type in ('OPEN', 'REENTRY'):
+                ec['status'] = 'active'
+                ec['opened_at'] = ec.get('opened_at') or now_iso
+                ec['was_reduced'] = False if event_type == 'OPEN' else ec.get('was_reduced', False)
+                ec['is_reduced'] = False
+                if event_type == 'REENTRY':
+                    ec['was_reentered'] = True
+                ec.setdefault('trade_log', [])
+                ec['trade_log'].append({'ts': now_iso, 'action': event_type, 'price': price, 'qty': qty, 'notional_usd': notional_usd, 'reason': reason[:120]})
+                if len(ec['trade_log']) > 200: ec['trade_log'] = ec['trade_log'][-200:]
+            elif event_type in ('AUGMENT', 'HEDGE_AUGMENT'):
+                ec['last_augmentation_time'] = now_iso
+                ec['last_augmentation_price'] = price
+                ec['last_augmentation_amount'] = qty
+                ec['augment_reason'] = reason[:200]
+                ec['status'] = 'active'
+                ec.setdefault('trade_log', [])
+                ec['trade_log'].append({'ts': now_iso, 'action': event_type, 'price': price, 'qty': qty, 'notional_usd': notional_usd, 'reason': reason[:120]})
+                if len(ec['trade_log']) > 200: ec['trade_log'] = ec['trade_log'][-200:]
+            elif event_type in ('REDUCE', 'CLOSE', 'HEDGE_CLOSE'):
+                ec['last_reduction_time'] = now_iso
+                ec['last_reduction_price'] = price
+                ec['last_reduction_amount'] = qty
+                ec['exit_price'] = price
+                ec['reduction_reason'] = reason[:200]
+                ec['last_exit_timestamp'] = now_iso
+                ec['last_exit_reentry_ready'] = True
+                ec['is_reduced'] = True
+                ec['was_reduced'] = True
+                if event_type == 'CLOSE' or event_type == 'HEDGE_CLOSE':
+                    ec['status'] = 'closed'
+                    ec['reduced_at'] = now_iso
+                ec['total_realized_pnl_$'] = safe_fetch_float(ec.get('total_realized_pnl_$', 0.0), 0.0) + pnl_usd
+                ec['total_pnl_$'] = safe_fetch_float(ec.get('total_pnl_$', 0.0), 0.0) + pnl_usd
+                ec.setdefault('gain_list', [])
+                ec.setdefault('gain_dollar_list', [])
+                if ec.get('entry_price') and price > 0:
+                    is_long = position_key.endswith('_LONG')
+                    _g_pct = ((price - ec['entry_price']) / ec['entry_price'] * 100.0) * (1 if is_long else -1)
+                    ec['gain_list'].append(_g_pct)
+                    if len(ec['gain_list']) > 500: ec['gain_list'] = ec['gain_list'][-500:]
+                ec['gain_dollar_list'].append(pnl_usd)
+                if len(ec['gain_dollar_list']) > 500: ec['gain_dollar_list'] = ec['gain_dollar_list'][-500:]
+                ec.setdefault('trade_log', [])
+                ec['trade_log'].append({'ts': now_iso, 'action': event_type, 'price': price, 'qty': qty, 'notional_usd': notional_usd, 'pnl_usd': pnl_usd, 'reason': reason[:120]})
+                if len(ec['trade_log']) > 200: ec['trade_log'] = ec['trade_log'][-200:]
+                ec['total_trades'] = int(ec.get('total_trades', 0) or 0) + 1
+                if pnl_usd > 0:
+                    ec['winning_trades'] = int(ec.get('winning_trades', 0) or 0) + 1
+                    ec['consecutive_wins'] = int(ec.get('consecutive_wins', 0) or 0) + 1
+                    ec['consecutive_losses'] = 0
+                elif pnl_usd < 0:
+                    ec['losing_trades'] = int(ec.get('losing_trades', 0) or 0) + 1
+                    ec['consecutive_losses'] = int(ec.get('consecutive_losses', 0) or 0) + 1
+                    ec['consecutive_wins'] = 0
+                _tot = int(ec.get('total_trades', 0) or 0)
+                _win = int(ec.get('winning_trades', 0) or 0)
+                ec['win_rate_%'] = (100.0 * _win / _tot) if _tot > 0 else 0.0
+            elif event_type == 'HEDGE_OPEN':
+                ec['is_hedge'] = True
+                ec['status'] = 'active'
+                ec['opened_at'] = ec.get('opened_at') or now_iso
+                ec['entry_price'] = price if price > 0 else ec.get('entry_price', 0.0)
+                ec['average_entry_price'] = price if price > 0 else ec.get('average_entry_price', 0.0)
+                ec['positionAmt'] = qty
+                ec['mark_price'] = price
+                if hedge_id: ec['hedge_id'] = hedge_id
+                if hedge_for: ec['hedge_for'] = hedge_for; ec['losing_position_key'] = hedge_for
+                ec.setdefault('trade_log', [])
+                ec['trade_log'].append({'ts': now_iso, 'action': 'HEDGE_OPEN', 'price': price, 'qty': qty, 'notional_usd': notional_usd, 'reason': reason[:120]})
+                if len(ec['trade_log']) > 200: ec['trade_log'] = ec['trade_log'][-200:]
+            self._exit_candidates_dirty[account_key] = True
+        # ═══ 2) cross-reference: update the LOSING main position for HEDGE_OPEN / HEDGE_CLOSE ═══
+        if event_type in ('HEDGE_OPEN', 'HEDGE_CLOSE') and hedge_for:
+            async with self._exit_candidates_lock:
+                if hedge_for not in self.exit_candidates:
+                    self.exit_candidates[hedge_for] = self._exit_template()
+                mec = self.exit_candidates[hedge_for]
+                _hbs_raw = mec.get('hedged_by_symbols', '') or ''
+                _hbs = [s.strip() for s in _hbs_raw.split(',') if s.strip()] if _hbs_raw else []
+                if event_type == 'HEDGE_OPEN':
+                    mec['is_hedged'] = True
+                    if position_key not in _hbs: _hbs.append(position_key)
+                    mec['hedged_for_total_$'] = safe_fetch_float(mec.get('hedged_for_total_$', 0.0), 0.0) + notional_usd
+                else:  # HEDGE_CLOSE
+                    if position_key in _hbs: _hbs.remove(position_key)
+                    mec['is_hedged'] = len(_hbs) > 0
+                    _remaining = safe_fetch_float(mec.get('hedged_for_total_$', 0.0), 0.0) - notional_usd
+                    mec['hedged_for_total_$'] = max(0.0, _remaining)
+                mec['hedged_by_symbols'] = ','.join(_hbs)
+                mec['last_updated'] = now_iso
+                self._exit_candidates_dirty[account_key] = True
+        # ═══ 3) active_hedges list maintenance for HEDGE events ═══
+        if event_type == 'HEDGE_OPEN':
+            async with self._hedges_lock:
+                # Remove any stale entry for this hedge pk, then append fresh
+                self.active_hedges = [h for h in self.active_hedges if h.get('position_key') != position_key]
+                rec = {
+                    'type': payload.get('type', 'HEDGE'),
+                    'position_key': position_key,
+                    'losing_position_key': hedge_for,
+                    'hedge_for': hedge_for,
+                    'symbol': symbol,
+                    'target_symbol': symbol,
+                    'position_side': 'SHORT' if position_key.endswith('_SHORT') else 'LONG',
+                    'quantity': qty,
+                    'initial_quantity': qty,
+                    'notional_usd': notional_usd,
+                    'initial_notional_usd': notional_usd,
+                    'price': price,
+                    'mark_price': price,
+                    'account': account_key,
+                    'is_hedge': True,
+                    'hedge_id': hedge_id or f"hedge_{int(now_ts * 1000)}",
+                    'opened_at': now_iso,
+                    'hedge_open_count': 1,
+                    'total_hedge_cost_usd': notional_usd,
+                    'total_hedge_pnl_usd': 0.0,
+                    'gain': 0.0,
+                    'max_gain': 0.0,
+                    'status': payload.get('status', 'filled'),
+                }
+                self.active_hedges.append(rec)
+        elif event_type == 'HEDGE_AUGMENT':
+            async with self._hedges_lock:
+                for h in self.active_hedges:
+                    if h.get('position_key') == position_key:
+                        h['quantity'] = safe_fetch_float(h.get('quantity', 0.0), 0.0) + qty
+                        h['total_hedge_cost_usd'] = safe_fetch_float(h.get('total_hedge_cost_usd', 0.0), 0.0) + notional_usd
+                        h['hedge_open_count'] = int(h.get('hedge_open_count', 1) or 1) + 1
+                        h['mark_price'] = price
+                        break
+        elif event_type == 'HEDGE_CLOSE':
+            async with self._hedges_lock:
+                for h in self.active_hedges:
+                    if h.get('position_key') == position_key:
+                        h['total_hedge_pnl_usd'] = safe_fetch_float(h.get('total_hedge_pnl_usd', 0.0), 0.0) + pnl_usd
+                        h['status'] = 'closed'
+                        h['closed_at'] = now_iso
+                        h['close_pnl_usd'] = pnl_usd
+                        break
+                # Purge closed hedges from active list (keep recent history elsewhere if needed)
+                self.active_hedges = [h for h in self.active_hedges if not (h.get('position_key') == position_key and h.get('status') == 'closed')]
+        self._exit_candidates_dirty[account_key] = True
+        try:
+            await self.save_tracker(account_key, force=False)
+        except Exception as _e:
+            logger.debug(f"[on_trade_event.save_tracker] {position_key} {event_type}: {_e}")
+
     def get_tracker_file(self, account_key: str) -> Path:
         """Get the tracker file path for an account"""
         return self.base_path / account_key / "tracker.json"
@@ -8152,6 +8460,7 @@ class TrackerManager:
     async def periodic_field_refresh(self, stop_event: asyncio.Event, all_accounts: list = None):
         """Background task to refresh field calculations periodically."""
         logger.info("[FIELD_REFRESH] Starting periodic field refresh task")
+        _reconcile_tick = 0
         while not stop_event.is_set():
             try:
                 for account_key in (all_accounts or []):
@@ -8166,8 +8475,16 @@ class TrackerManager:
                                 if position_key.startswith(f"{account_key}:"):
                                     self.entry_candidates[position_key]['_fields_fresh'] = False
                                     self._entry_candidates_dirty[account_key] = True
+                        # 2026-04-16: run hedge reconciler every 5 refresh cycles (~5min if interval=60s)
+                        if _reconcile_tick % 5 == 0:
+                            try:
+                                _added = await self.reconcile_hedges_from_positions(account_key)
+                                if _added > 0:
+                                    logger.warning(f"[FIELD_REFRESH] {account_key}: reconciler added {_added} hedge record(s)")
+                            except Exception as _re: logger.debug(f"[FIELD_REFRESH.reconcile] {account_key}: {_re}")
                     except Exception as e:
                         logger.error(f"[FIELD_REFRESH] Error refreshing {account_key}: {e}")
+                _reconcile_tick += 1
                 await asyncio.sleep(self._calculation_interval)
             except asyncio.CancelledError: break
             except Exception as e:

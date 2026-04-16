@@ -4694,8 +4694,21 @@ class MultiAccountTradeManager:
     def get_account_positions(self, account_key: Optional[str], side: Optional[str] = None):
         return self.get_positions_by_account(account_key, side)
 
-    async def get_position(self, position_key: str) -> Optional[Position]:
-        """Read from the dict. That's it. No Redis, no disk, no fallbacks. The dict IS the truth."""
+    async def get_position(self, position_key: str, max_age_s: Optional[float] = None) -> Optional[Position]:
+        """Read the authoritative Position object.
+        2026-04-16: positions_service.positions is the WS-fresh source of truth; self.positions
+        is a local mirror that drifts 1-3s during fill propagation. When max_age_s is provided,
+        always re-read from positions_service (ignoring stale local cache) so race-sensitive
+        callers (execute_now preflight, hedge existence checks) see the freshest state.
+        Dead code paths (disk fallback, Redis read) removed — were unreachable + "KILLED" noted in comments.
+        """
+        # Freshness-sensitive path: always go to the service dict first.
+        if max_age_s is not None and self.positions_service:
+            svc_pos = self.positions_service.positions.get(position_key)
+            if svc_pos is not None:
+                self.positions[position_key] = svc_pos
+                return svc_pos
+            # If service has no record, fall through to local cache (legacy behavior).
         pos = self.positions.get(position_key)
         if pos:
             return pos
@@ -4704,22 +4717,6 @@ class MultiAccountTradeManager:
             if pos:
                 self.positions[position_key] = pos
                 return pos
-        return None
-        try:
-            acc, sym, side = parse_position_key(position_key)
-            file_path = self.base_path / acc / f"{side.lower()}_positions.json"
-            if file_path.exists():
-                async with aiofiles.open(file_path, "rb") as f:
-                    content = await f.read()
-                    data = safe_json_loads(content)
-                    positions_dict = data.get("positions", data)
-                    if position_key in positions_dict:
-                        disk_pos = Position.from_dict(positions_dict[position_key])
-                        self._position_memory[position_key] = disk_pos # Cache this too
-                        return disk_pos
-        except Exception as e:
-             logger.error(f"[{position_key}] get_position Disk fallback failed: {e}")
-        logger.critical(f'🚨 [POSITION_NOT_FOUND] {position_key}: NOT in memory, NOT in Redis, NOT on disk. Returning None — REFUSING to create empty position. This is a data integrity safeguard.')
         return None
 
     async def _recover_position_safe(self, position_key: str, account_key: str = None, symbol: str = None, position_side: str = None) -> Optional[Position]:
@@ -5124,100 +5121,6 @@ class MultiAccountTradeManager:
     async def _load_positions_quick_from_files(self, account_key: Optional[str] = None) -> Dict[str, Position]:
         """KILLED — never read positions from disk after startup. Dict is sole source."""
         return {}
-        if account_key not in self._allowed_accounts:
-            logger.warning(f"[_load_positions_quick_from_files] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
-            return {}
-        if account_key not in config.ACCOUNT_KEYS: return {}
-        bucket: Dict[str, Position] = {}
-        base_dir = Path(self.config.BASE_PATH)
-        candidates = [account_key, account_key.lower(), account_key.upper()]
-        selected_dir: Optional[Path] = None
-        for candidate in candidates:
-            candidate_dir = base_dir / candidate
-            if candidate_dir.exists():
-                selected_dir = candidate_dir
-                break
-        if not selected_dir:
-            return bucket
-        for side in ("LONG", "SHORT"):
-            update_file = selected_dir / f"position_updates_{side.lower()}.json"
-            if await aio_os.path.exists(str(update_file)):
-                try:
-                    update_data = await load_json_safe(update_file, account_key)
-                    if isinstance(update_data, dict):
-                        for position_key, pos_dict in update_data.items():
-                            if position_key == "_last_update" or not isinstance(pos_dict, dict):
-                                continue
-                            if not isinstance(position_key, str) or not position_key.startswith(f"{account_key}:"):
-                                continue
-                            try:
-                                pos_obj = Position.from_dict(pos_dict)
-                                existing_pos = bucket.get(position_key)
-                                existing_ts = self._extract_position_timestamp(existing_pos) if existing_pos else None
-                                new_ts = self._extract_position_timestamp(pos_obj)
-                                if existing_ts and new_ts and existing_ts > new_ts:
-                                    continue
-                                bucket[position_key] = self.ensure_position_floats(pos_obj)
-                            except Exception as e:
-                                logger.debug(f"[load_positions:updates] Failed to parse position {position_key} from update file: {e}")
-                except Exception as e:
-                    logger.debug(f"[load_positions:updates] Failed to load update file {update_file}: {e}")
-        for filename, side in (("long_positions.json", "LONG"), ("short_positions.json", "SHORT")):
-            file_path = selected_dir / filename
-            main_file_exists = await aio_os.path.exists(str(file_path))
-            main_file_fresh = False
-            main_file_age = 999999.0
-            if main_file_exists:
-                try:
-                    main_file_mtime = file_path.stat().st_mtime
-                    main_file_age = time.time() - main_file_mtime
-                    main_file_fresh = main_file_age <= 10.0
-                except Exception:
-                    pass
-            best_file = file_path if main_file_exists and main_file_fresh else None
-            best_age = main_file_age if main_file_exists and main_file_fresh else 999999.0
-            if best_file:
-                if best_file != file_path:
-                    logger.warning(f"[load_positions:quick][{account_key}:{side}] Main file {filename} is {'missing' if not main_file_exists else f'stale ({main_file_age:.1f}s old)'}, using {best_file.name} (age: {best_age:.1f}s)")
-                else:
-                    logger.debug(f"[load_positions:quick][{account_key}:{side}] Using main file {filename} (age: {main_file_age:.1f}s)")
-                data = await load_json_safe(best_file, account_key)
-                if not isinstance(data, dict):
-                    continue
-                for raw_key, payload in data.items():
-                    if not isinstance(payload, dict):
-                        continue
-                    symbol = payload.get('symbol') or ''
-                    if not symbol:
-                        symbol = str(raw_key).split(':', 1)[-1] if ':' in str(raw_key) else str(raw_key)
-                        symbol = symbol.replace(f"_{side}", "").replace("_LONG", "").replace("_SHORT", "")
-                        symbol = symbol.replace(":LONG", "").replace(":SHORT", "")
-                    symbol = str(symbol).strip().upper()
-                    if not symbol:
-                        continue
-                    symbol = clean_and_repair_symbol(symbol) if symbol else ""
-                    symbol = symbol.strip().upper()
-                    if not symbol:
-                        continue
-                    try:
-                        position_key = construct_position_key(account_key, symbol, side)
-                    except Exception:
-                        position_key = f"{account_key}:{symbol}_{side}"
-                    payload_copy = dict(payload)
-                    payload_copy["symbol"] = symbol
-                    payload_copy["position_side"] = side
-                    try:
-                        pos_obj = Position.from_dict(payload_copy)
-                    except Exception as exc:
-                        logger.debug(f"[load_positions:quick] Parse failed for {position_key}: {exc}")
-                        continue
-                    existing_pos = bucket.get(position_key)
-                    existing_ts = self._extract_position_timestamp(existing_pos) if existing_pos else None
-                    new_ts = self._extract_position_timestamp(pos_obj)
-                    if existing_ts and new_ts and existing_ts > new_ts:
-                        continue
-                    bucket[position_key] = self.ensure_position_floats(pos_obj)
-        return bucket
 
     def _normalize_redis_payload(self, payload: Any) -> Any:
         if isinstance(payload, (bytes, bytearray, memoryview, str)):
@@ -5278,136 +5181,6 @@ class MultiAccountTradeManager:
     async def _load_positions_from_redis(self, account_key: Optional[str] = None) -> Dict[str, Position]:
         """KILLED — never read positions from Redis after startup. Dict is sole source."""
         return {}
-        if account_key not in self._allowed_accounts:
-            logger.warning(f"[_load_positions_from_redis] BLOCKED: Account '{account_key}' not in allowed accounts {self._allowed_accounts}")
-            return {}
-        if account_key not in config.ACCOUNT_KEYS: return {}
-        if not self.redis_manager or not hasattr(self.redis_manager, "get"):
-            return {}
-
-        async def fetch_redis():
-            try:
-                return await self.redis_manager.get(f"positions:{account_key}"), None
-            except Exception as exc:
-                logger.debug(f"[redis_position_fallback] Redis get failed for {account_key}: {exc}")
-                return None, str(exc)
-
-        async def fetch_json():
-            try:
-                return await self._load_positions_quick_from_files(account_key), None
-            except Exception as exc:
-                return None, str(exc)
-        start_time = time.time()
-        redis_task = asyncio.create_task(fetch_redis())
-        json_task = asyncio.create_task(fetch_json())
-        done, pending = await asyncio.wait([redis_task, json_task], return_when=asyncio.FIRST_COMPLETED)
-        first_result, first_source, first_time = None, None, time.time() - start_time
-        for task in done:
-            result, err = await task
-            if task == redis_task:first_result, first_source = result, "redis"
-            else:first_result, first_source = result, "json"
-        if pending:
-            await asyncio.wait(pending, timeout=0.3)
-            for task in pending:
-                if task.done():
-                    result, err = await task
-                    if task == redis_task and result:first_result, first_source = result, "redis"
-                    elif result and not first_result:first_result, first_source = result, "json"
-                else:
-                    try:
-                        result, err = await asyncio.wait_for(task, timeout=0.3)
-                        if task == redis_task and result:first_result, first_source = result, "redis"
-                        elif result and not first_result:first_result, first_source = result, "json"
-                    except Exception: pass
-        redis_result, redis_err = await redis_task
-        json_result, json_err = await json_task
-        if not redis_result and not json_result:
-            return {}
-        raw_payload = None
-        if redis_result:
-            raw_payload = self._normalize_redis_payload(redis_result)
-        json_bucket = None
-        if json_result and isinstance(json_result, dict) and len(json_result) > 0:
-            json_bucket = json_result
-            if raw_payload:
-                meta_source = raw_payload if isinstance(raw_payload, dict) else {}
-                redis_ts = None
-                if isinstance(meta_source, dict):
-                    timestamp_candidate = meta_source.get("timestamp")
-                    if not timestamp_candidate:
-                        meta_section = meta_source.get("meta")
-                        if isinstance(meta_section, dict):
-                            timestamp_candidate = meta_section.get("positions_last_sync") or meta_section.get("timestamp")
-                    redis_ts = safe_datetime(timestamp_candidate)
-                base_dir = Path(self.config.BASE_PATH)
-                keys = [account_key] if account_key else []
-                if account_key:
-                    keys.extend([account_key.lower(), account_key.upper()])
-                candidates = list(set(keys))
-                json_ts = None
-                for candidate in candidates:
-                    candidate_dir = base_dir / candidate
-                    if candidate_dir.exists():
-                        for side in ("LONG", "SHORT"):
-                            update_file = candidate_dir / f"position_updates_{side.lower()}.json"
-                            if update_file.exists():
-                                json_ts = datetime.fromtimestamp(update_file.stat().st_mtime, tz=timezone.utc)
-                                break
-                        if json_ts:break
-                if redis_ts and json_ts and json_ts > redis_ts:
-                    return json_bucket
-            else:
-                return json_bucket
-        if not raw_payload:
-            if json_bucket:return json_bucket
-            return {}
-        meta_source = raw_payload if isinstance(raw_payload, dict) else {}
-        raw_positions = raw_payload
-        if isinstance(raw_payload, dict):
-            if "positions_by_account" in raw_payload:
-                per_account = raw_payload.get("positions_by_account") or {}
-                raw_positions = per_account.get(account_key, {}) if isinstance(per_account, dict) else {}
-            elif "positions" in raw_payload:
-                raw_positions = raw_payload.get("positions") or {}
-            elif "data" in raw_payload and isinstance(raw_payload.get("data"), dict):
-                raw_positions = raw_payload["data"]
-        raw_positions = self._normalize_redis_payload(raw_positions)
-        if not isinstance(raw_positions, dict):
-            return {}
-        now = datetime.now(timezone.utc)
-        timestamp_candidate = None
-        if isinstance(meta_source, dict):
-            timestamp_candidate = meta_source.get("timestamp")
-            if not timestamp_candidate:
-                meta_section = meta_source.get("meta")
-                if isinstance(meta_section, dict):
-                    timestamp_candidate = meta_section.get("positions_last_sync") or meta_section.get("timestamp")
-        ts_dt = safe_datetime(timestamp_candidate)
-        age = (now - ts_dt).total_seconds() if isinstance(ts_dt, datetime) else None
-        bucket: Dict[str, Position] = {}
-        metadata_keys = {"positions", "meta", "timestamp", "data", "positions_by_account"}
-        for position_key, payload in raw_positions.items():
-            if not isinstance(payload, dict):
-                continue
-            if not isinstance(position_key, str):
-                continue
-            if position_key in metadata_keys:
-                continue
-            if not position_key.startswith(f"{account_key}:"):
-                continue
-            try:
-                pos_obj = Position.from_dict(payload)
-            except Exception as exc:
-                logger.debug(f"[redis_position_fallback] parse error for {position_key}: {exc}")
-                continue
-            bucket[position_key] = self.ensure_position_floats(pos_obj)
-        if not bucket:
-            return {}
-        if age is not None and age > SNAPSHOT_MAX_AGE:
-            logger.debug(f"[redis_position_fallback] Redis data for {account_key} is stale ({age:.2f}s old), falling back to files")
-            return {}
-        logger.debug(f"[redis_position_fallback] Loaded {len(bucket)} positions for {account_key} from Redis")
-        return bucket
 
     def _positions_from_snapshot_payload(self, account_key: str, snapshot_payload: Dict[str, Any]) -> Dict[str, Position]:
         if not isinstance(snapshot_payload, dict):
@@ -8569,32 +8342,6 @@ class MultiAccountTradeManager:
     async def load_all_positions(self):
         """KILLED — positions loaded once at bootstrap from disk. After that, API/WS only."""
         return
-        master_symbols_list = []
-        try:
-            async with aiofiles.open(self.config.SYMBOLS_FILE, 'r') as f:
-                content = await f.read()
-                data = json.loads(content)
-                if isinstance(data, dict) and 'symbols' in data:
-                    master_symbols_list = data['symbols']
-                elif isinstance(data, list):
-                    master_symbols_list = data
-                else:
-                    logger.error(f"Could not parse master symbol list from {self.config.SYMBOLS_FILE}. Format is unexpected.")
-        except FileNotFoundError:
-            logger.error(f"CRITICAL: Master symbol file not found at {self.config.SYMBOLS_FILE}. Cannot filter positions.")
-            return 
-        except Exception as e:
-            logger.error(f"Error loading master symbol file: {e}")
-            return
-        master_allowed_symbols = set(master_symbols_list)
-        if not master_allowed_symbols:
-            logger.error("Master symbol list is empty. No positions will be loaded.")
-            return
-        if self._lock:
-            async with self._lock:
-                await self._load_positions_with_lock(master_allowed_symbols)
-        else:
-            await self._load_positions_with_lock(master_allowed_symbols)
 
     async def _load_positions_with_lock(self, master_allowed_symbols):
         # positions_service bailout removed — refresh from Redis/files is backup
@@ -10244,108 +9991,10 @@ class MultiAccountTradeManager:
     async def refresh_from_files_once(self, account_keys: Optional[Iterable[str]] = None):
         """KILLED — positions come from API/WS only. Disk/Redis are write-only backups. Never read back."""
         return
-        keys = list(account_keys or self._allowed_accounts)
-        for account_key in keys:
-            loaders = [ (self.load_stop_levels, "stop levels"), (self.load_reentry_data, "reentry levels"), (self.load_ladder_levels, "ladder levels"), (self.load_reversed_positions, "reversed positions"), (self.load_direct_high_gain, "direct high gain"), ]
-            for loader, label in loaders:
-                try:
-                    await loader(account_key)
-                except Exception as exc:
-                    logger.error(f"[refresh_from_files] Failed to load {label} for {account_key}: {exc}")
 
     async def sync_positions_from_redis_once(self, account_keys: List[str]) -> None:
         """KILLED — never read positions from Redis. API/WS is sole source."""
         return
-        if not self.redis_manager:
-            logger.warning("[sync_positions_from_redis] No Redis manager available, skipping sync")
-            return
-        monitored_account_keys = set(self.accounts.keys())
-        for account_key in account_keys:
-            if account_key not in monitored_account_keys:
-                continue
-            try:
-                redis_key = f"positions:{account_key}"
-                raw_data = await self.redis_manager.get(redis_key)
-                if not raw_data:
-                    logger.debug(f"[sync_positions_from_redis] No data in Redis for {account_key}, will use file fallback")
-                    continue
-                data = self._normalize_redis_payload(raw_data)
-                if not isinstance(data, dict):
-                    logger.debug(f"[sync_positions_from_redis] Invalid data type for {account_key}: {type(data)}")
-                    continue
-                meta = data.get("meta", {})
-                timestamp_str = meta.get("timestamp")
-                if timestamp_str:
-                    try:
-                        data_time = isoparse(timestamp_str)
-                        age_seconds = (datetime.now(timezone.utc) - data_time).total_seconds()
-                        if age_seconds > self._redis_positions_max_age:
-                            logger.debug(f"[sync_positions_from_redis] Redis data for {account_key} is stale ({age_seconds:.1f}s old), using file fallback")
-                            continue
-                    except Exception:
-                        pass
-                positions_dict = data.get("positions", {})
-                if not isinstance(positions_dict, dict) or not positions_dict:
-                    logger.debug(f"[sync_positions_from_redis] No positions dict found for {account_key} (keys: {list(data.keys())})")
-                    continue
-                if account_key not in self.positions_by_account:
-                    self.positions_by_account[account_key] = {}
-                existing_position_keys = set(self.positions_by_account.get(account_key, {}).keys())
-                updated_count = 0
-                metadata_keys = {"positions", "meta", "timestamp", "data", "positions_by_account"}
-                account_positions = self.positions_by_account[account_key]
-                cleaned_metadata = [key for key in account_positions.keys() if key in metadata_keys]
-                if cleaned_metadata:
-                    logger.warning(f"[sync_positions_from_redis] {account_key} - Found {len(cleaned_metadata)} metadata keys in positions dict (NOT DELETED - positions never deleted): {cleaned_metadata}")
-                existing_position_keys = {key for key in account_positions.keys() if isinstance(key, str) and key not in metadata_keys and ":" in key}
-                updated_count = 0
-                incoming_position_keys = set()
-                filtered_count = 0
-                skipped_older_count = 0
-                parse_failed_count = 0
-                for position_key, pos_data in positions_dict.items():
-                    if not isinstance(position_key, str) or position_key in metadata_keys or ":" not in position_key:
-                        filtered_count += 1
-                        continue
-                    incoming_position_keys.add(position_key)
-                    if isinstance(pos_data, dict):
-                        try:
-                            position = Position.from_dict(pos_data)
-                            position_last_updated = getattr(position, "last_updated", None)
-                            existing_position = self.positions_by_account.get(account_key, {}).get(position_key)
-                            if existing_position:
-                                existing_last_updated = getattr(existing_position, "last_updated", None)
-                                if existing_last_updated and position_last_updated:
-                                    if existing_last_updated > position_last_updated:
-                                        skipped_older_count += 1
-                                        logger.debug(f"[sync_positions_from_redis] ⚠️ {position_key} - Redis data is OLDER (Redis: {position_last_updated}, existing: {existing_last_updated}) - NOT overwriting! (ez_positions_service.py should update Redis)")
-                                        continue
-                            self.positions_by_account[account_key][position_key] = position
-                            if account_key in monitored_account_keys:
-                                self.positions[position_key] = position
-                            updated_count += 1
-                        except Exception as e:
-                            parse_failed_count += 1
-                            logger.debug(f"[sync_positions_from_redis] Failed to parse position {position_key}: {e}")
-                    else:
-                        filtered_count += 1
-                missing_from_redis = existing_position_keys - incoming_position_keys
-                if missing_from_redis:
-                    logger.critical(f"🚨 [sync_positions_from_redis] {account_key} - {len(missing_from_redis)} positions MISSING from Redis (will be lost if not in files!): {list(missing_from_redis)[:5]}")
-                if updated_count > 0:
-                    logger.info(f"[sync_positions_from_redis] Synced {updated_count} positions for {account_key} from Redis ({len(incoming_position_keys)} total in Redis, {len(existing_position_keys)} existing in memory)")
-                else:
-                    reason_parts = []
-                    if filtered_count > 0:
-                        reason_parts.append(f"{filtered_count} filtered (invalid format)")
-                    if skipped_older_count > 0:
-                        reason_parts.append(f"{skipped_older_count} skipped (existing newer)")
-                    if parse_failed_count > 0:
-                        reason_parts.append(f"{parse_failed_count} parse failed")
-                    reason = ", ".join(reason_parts) if reason_parts else "unknown"
-                    logger.debug(f"[sync_positions_from_redis] No positions synced for {account_key} from Redis (positions_dict had {len(positions_dict)} entries: {reason}) - ez_manage is read-only, this is normal if existing positions are newer")
-            except Exception as e:
-                logger.error(f"[sync_positions_from_redis] Failed to sync {account_key} from Redis: {e}", exc_info=True)
 
     async def sync_positions_from_redis_loop(self) -> None:
         if self.positions_service:
@@ -10370,65 +10019,6 @@ class MultiAccountTradeManager:
     async def refresh_from_files_loop(self, interval: Optional[float] = None):
         """KILLED — positions_service with enable_auto_fetch=True is the sole source of truth via WS+API. Reading from files would overwrite live data with stale disk data."""
         return
-        await asyncio.sleep(3.0)
-        refresh_interval = float(interval or 4.0)
-        while True:
-            try:
-                account_keys = list(self.accounts.keys())
-                await self.refresh_from_files_once(account_keys)
-                if self.redis_manager:
-                    for account_key in account_keys:
-                        try:
-                            redis_key = f"positions:{account_key}"
-                            raw_data = await self.redis_manager.get(redis_key)
-                            if raw_data:
-                                data = json.loads(raw_data)
-                                meta = data.get("meta", {})
-                                timestamp_str = meta.get("timestamp")
-                                if timestamp_str:
-                                    try:
-                                        from dateutil.parser import isoparse
-                                        data_time = isoparse(timestamp_str)
-                                        age_seconds = (datetime.now(timezone.utc) - data_time).total_seconds()
-                                        if age_seconds <= self._redis_positions_max_age:
-                                            await self.sync_positions_from_redis_once([account_key])
-                                            continue
-                                    except Exception:
-                                        pass
-                            logger.debug(f"[refresh_from_files_loop] Redis data stale/unavailable for {account_key}, loading positions from files")
-                            bucket = await self._load_positions_quick_from_files(account_key)
-                            if bucket:
-                                self.positions_by_account.setdefault(account_key, {}).update(bucket)
-                                for position_key, pos_obj in bucket.items():
-                                    self.positions[position_key] = pos_obj
-                        except Exception as e:
-                            logger.debug(f"[refresh_from_files_loop] Redis check failed for {account_key}: {e}, loading positions from files")
-                            bucket = await self._load_positions_quick_from_files(account_key)
-                            if bucket:
-                                self.positions_by_account.setdefault(account_key, {}).update(bucket)
-                                for position_key, pos_obj in bucket.items():
-                                    self.positions[position_key] = pos_obj
-                                else:
-                                    existing_count = len(self.positions_by_account[account_key])
-                                    self.positions_by_account[account_key].update(bucket)
-                                    monitored_account_keys = set(self.accounts.keys())
-                                    for position_key, pos_obj in bucket.items():
-                                        if account_key in monitored_account_keys:
-                                            self.positions[position_key] = pos_obj
-                                    if len(self.positions_by_account[account_key]) < existing_count:
-                                        logger.critical(f"[refresh_from_files_loop] {account_key} - POSITION COUNT DECREASED from {existing_count} to {len(self.positions_by_account[account_key])} - THIS SHOULD NEVER HAPPEN!")
-                else:
-                    for account_key in account_keys:
-                        bucket = await self._load_positions_quick_from_files(account_key)
-                        if bucket:
-                            self.positions_by_account.setdefault(account_key, {}).update(bucket)
-                            for position_key, pos_obj in bucket.items():
-                                self.positions[position_key] = pos_obj
-                                if len(self.positions_by_account[account_key]) < existing_count:
-                                    logger.critical(f"[refresh_from_files_loop] {account_key} - POSITION COUNT DECREASED from {existing_count} to {len(self.positions_by_account[account_key])} - THIS SHOULD NEVER HAPPEN!")
-            except Exception as exc:
-                logger.error(f"[refresh_from_files_loop] Error refreshing state: {exc}")
-            await asyncio.sleep(refresh_interval)
 
     async def enforce_data_sync_loop(self, interval: float = 4.0):
         await asyncio.sleep(max(2, interval))
@@ -14021,6 +13611,33 @@ class MultiAccountTradeManager:
                                 if position_key in self.service.reduced_positions:
                                     self.service.reduced_positions.pop(position_key, None)
                                     asyncio.create_task(self.service.save_reduced_positions(account_key, min_interval=0))
+                        # ═══ 2026-04-16 CANONICAL TRACKER UPDATE ═══
+                        # Single source of truth for tracker.json post-fill. Writes ALL 52 exit_candidate
+                        # fields + hedges[] fields that scattered writers previously skipped.
+                        try:
+                            _tm = getattr(self, 'tracker_manager', None) or (getattr(self.service, 'tracker_manager', None) if getattr(self, 'service', None) else None) or (getattr(self.positions_service, 'tracker_manager', None) if getattr(self, 'positions_service', None) else None)
+                            if _tm and hasattr(_tm, 'on_trade_event'):
+                                _act_u = (action or '').upper()
+                                if _act_u in ('OPEN','QUICK_OPEN'): _event = 'HEDGE_OPEN' if is_hedge else 'OPEN'
+                                elif _act_u in ('AUGMENT','QUICK_AUGMENT'): _event = 'HEDGE_AUGMENT' if is_hedge else 'AUGMENT'
+                                elif _act_u == 'REENTRY': _event = 'REENTRY'
+                                elif _act_u in ('REDUCE',): _event = 'REDUCE'
+                                elif _act_u in ('CLOSE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE'): _event = 'HEDGE_CLOSE' if is_hedge else 'CLOSE'
+                                elif _act_u in ('HEDGE_OPEN','QUICK_HEDGE_OPEN'): _event = 'HEDGE_OPEN'
+                                elif _act_u in ('QUICK_HEDGE_AUGMENT',): _event = 'HEDGE_AUGMENT'
+                                else: _event = None
+                                if _event:
+                                    _filled_qty = executed_qty if executed_qty and executed_qty > 0 else quantity
+                                    _pnl_usd = 0.0
+                                    if _event in ('REDUCE','CLOSE','HEDGE_CLOSE') and position and getattr(position, 'entry_price', 0):
+                                        _ep = safe_fetch_float(getattr(position, 'entry_price', 0), 0.0)
+                                        if _ep > 0:
+                                            _is_long_post = position_key.endswith('_LONG')
+                                            _pnl_usd = (current_price - _ep) * _filled_qty * (1 if _is_long_post else -1)
+                                    _payload = {'qty': _filled_qty, 'price': current_price, 'notional_usd': _filled_qty * current_price, 'reason': reason, 'pnl_usd': _pnl_usd, 'is_hedge': is_hedge, 'hedge_for': hedge_for, 'symbol': symbol}
+                                    asyncio.create_task(_tm.on_trade_event(account_key, position_key, _event, _payload))
+                        except Exception as _tm_e:
+                            logger.debug(f"[on_trade_event_call] {position_key} {action}: {_tm_e}")
                         if action.upper() in ['REDUCE', 'CLOSE', 'QUICK_CLOSE'] and getattr(config, 'REENTRY_MANDATORY', True):
                             pos_after = await self.get_position(position_key)
                             remaining_value = 0.0
@@ -19429,8 +19046,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 _hedge_pk = f"{account_key}:{symbol}_{_hedge_side}"
                 _skip_hedge = False
                 _skip_reason = ""
-                # (a) hedge position already exists (cache + fresh pos if available)
-                _hedge_pos_pre = await trade_manager.get_position(_hedge_pk)
+                # (a) hedge position already exists (force-fresh read, positions_service is WS source of truth)
+                _hedge_pos_pre = await trade_manager.get_position(_hedge_pk, max_age_s=5.0)
                 _hedge_existing_pre = abs(safe_fetch_float(getattr(_hedge_pos_pre, 'positionAmt', 0), 0)) if _hedge_pos_pre else 0
                 if _hedge_existing_pre > 0:
                     _skip_hedge = True
@@ -22593,6 +22210,14 @@ async def main():
                 try:
                     await tracker_manager.load_tracker(account_key)
                     await tracker_manager.sync_universe(account_key)
+                    # 2026-04-16: after tracker load + universe sync, scan positions and backfill
+                    # any LONG/SHORT pairs that aren't recorded as hedges in tracker.json.
+                    try:
+                        _added_hedges = await tracker_manager.reconcile_hedges_from_positions(account_key)
+                        if _added_hedges > 0:
+                            logger.warning(f"[STARTUP_RECONCILE] {account_key}: backfilled {_added_hedges} hedge record(s) into active_hedges from existing positions")
+                    except Exception as _rec_e:
+                        logger.warning(f"[STARTUP_RECONCILE] {account_key}: {_rec_e}")
                 except Exception as tracker_err:
                     logger.warning(f"[ez_manage] Failed to load tracker for {account_key}: {tracker_err}")
             data_manager = FastDataManager(redis_manager, data_path, trade_manager=trade_manager)

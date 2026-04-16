@@ -44,12 +44,20 @@ LOG_FILE = LOG_DIR / "supervisor.log"
 STATE_FILE = LOG_DIR / "supervisor_state.json"
 PID_FILE = Path("/tmp/binance_supervisor.pid")
 
-CHECK_INTERVAL = 60
-SSH_TIMEOUT = 15
+CHECK_INTERVAL = 60  # 2026-04-16: back to 60s — 30s too tight with slow SSH handshake
+SSH_TIMEOUT = 35  # 2026-04-16: SSH handshake on this link can take 16-32s — must tolerate
 SWEEP_STALE_SECONDS = 120
 IDLE_LOAD_THRESHOLD = 2.0
 IDLE_WINDOW_SECONDS = 180
 V8_VERIFY_INTERVAL_SECONDS = 86400
+
+# 2026-04-16 Phase 1 alerting thresholds
+SSH_DEAD_ALERT_SECONDS = 300    # 5min: loud alert
+SSH_DEAD_RESET_SECONDS = 600    # 10min: attempt Hetzner hw reset (if creds)
+SSH_DEAD_SECOND_RESET_SECONDS = 900  # 15min: second reset attempt
+HETZNER_ENV_FILE = Path.home() / ".config" / "hetzner.env"
+ALERT_LOG = Path.home() / "SERVER_DOWN_ALERT.log"
+ALERT_DIR = BASE / "data" / "alerts"
 
 # Hard upper bounds — NEVER exceed regardless of env vars
 MAX_OPUS_SPAWNS_PER_HOUR = 1
@@ -108,21 +116,160 @@ def ssh_read(host, user, cmd, timeout=SSH_TIMEOUT):
         log.warning(f"SSH rate-limit hit ({MAX_SSH_CALLS_PER_MINUTE}/min) — skipping {host} {cmd[:40]}")
         return 1, "RATE_LIMITED"
     try:
+        # 2026-04-16: link has slow handshake (16-32s observed), allow full window
         r = subprocess.run(
             ["ssh",
-             "-o", f"ConnectTimeout={min(timeout - 2, 8)}",
+             "-o", f"ConnectTimeout={min(timeout - 5, 20)}",
              "-o", "BatchMode=yes",
              "-o", "StrictHostKeyChecking=no",
-             "-o", "ServerAliveInterval=5",
-             "-o", "ServerAliveCountMax=2",
+             "-o", "ServerAliveInterval=10",
+             "-o", "ServerAliveCountMax=3",
              f"{user}@{host}", cmd],
-            capture_output=True, text=True, timeout=timeout + 5, env=_SSH_ENV,
+            capture_output=True, text=True, timeout=timeout + 10, env=_SSH_ENV,
         )
         return r.returncode, (r.stdout or "") + (r.stderr or "")
     except subprocess.TimeoutExpired:
         return 124, "TIMEOUT"
     except Exception as e:
         return 255, str(e)
+
+
+# ═══ 2026-04-16 Phase 1: loud alert + optional Hetzner hw reset ═══
+_LAST_ALERT_TS = {}  # server_name -> epoch of last alert (dedup spam)
+
+def loud_alert(msg: str, server_name: str = "UNKNOWN", severity: str = "CRITICAL"):
+    """Visible/audible alert that a server is dead. No creds required.
+
+    Triggers:
+    - macOS Notification Center banner + Sosumi sound
+    - Funk warning sound via afplay
+    - Append to ~/SERVER_DOWN_ALERT.log
+    - JSON record in data/alerts/ for any dashboard watcher
+    - supervisor.log CRITICAL line
+    """
+    # Rate-limit same-server alerts to 1/60s so we don't spam notifications
+    now = time.time()
+    last = _LAST_ALERT_TS.get(server_name, 0)
+    if now - last < 60:
+        return
+    _LAST_ALERT_TS[server_name] = now
+    ts = datetime.now(timezone.utc).isoformat()
+    full = f"[{severity}] [{server_name}] {msg}"
+    log.critical(f"🚨 {full}")
+    try:
+        ALERT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(ALERT_LOG, "a") as f:
+            f.write(f"[{ts}] {full}\n")
+    except Exception as e:
+        log.error(f"alert_log write failed: {e}")
+    try:
+        ALERT_DIR.mkdir(parents=True, exist_ok=True)
+        alert_json = ALERT_DIR / f"server_down_{server_name}_{int(now)}.json"
+        alert_json.write_text(json.dumps({"ts": ts, "server": server_name, "severity": severity, "msg": msg}))
+    except Exception as e:
+        log.error(f"alert_json write failed: {e}")
+    # macOS notification banner (non-blocking, ignore failures)
+    try:
+        safe_msg = msg.replace('"', "'")[:200]
+        subprocess.Popen(
+            ["osascript", "-e",
+             f'display notification "{safe_msg}" with title "🚨 {server_name} DOWN" sound name "Sosumi"'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+    try:
+        subprocess.Popen(
+            ["afplay", "/System/Library/Sounds/Funk.aiff"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def hetzner_hw_reset(server_name: str) -> tuple[bool, str]:
+    """Attempt Hetzner CLOUD API reset. Gated on ~/.config/hetzner.env presence.
+
+    Creds file format:
+      HETZNER_CLOUD_TOKEN=<api-token-from-console.hetzner.cloud>
+      HETZNER_S1_ID=<numeric server id>
+      HETZNER_S2_ID=<numeric server id>
+
+    Get API token: https://console.hetzner.cloud/ → Security → API Tokens → Generate new (Read+Write)
+    Get server ID: same console → Servers → click server → URL ends in /servers/<ID>,
+                   OR list via `curl -H "Authorization: Bearer <token>" https://api.hetzner.cloud/v1/servers`
+    """
+    if not HETZNER_ENV_FILE.exists():
+        return False, "no_creds_file"
+    try:
+        creds = {}
+        for line in HETZNER_ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            creds[k.strip()] = v.strip().strip('"').strip("'")
+        token = creds.get("HETZNER_CLOUD_TOKEN")
+        sid = creds.get(f"HETZNER_{server_name}_ID")
+        if not (token and sid):
+            return False, f"missing_fields token={bool(token)} id_{server_name}={bool(sid)}"
+        import requests  # lazy import
+        r = requests.post(
+            f"https://api.hetzner.cloud/v1/servers/{sid}/actions/reset",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=30,
+        )
+        # 201 Created is the success code for Cloud actions
+        ok = r.status_code in (200, 201)
+        return ok, f"status={r.status_code} body={(r.text or '')[:120]}"
+    except Exception as e:
+        return False, f"exc={type(e).__name__}:{str(e)[:80]}"
+
+
+def handle_ssh_dead(name: str, dead_s: int, state: dict):
+    """Called when a server has been SSH-dead for dead_s seconds.
+
+    Fires exactly ONCE per down-episode at each threshold crossing:
+      >= 5min: first-alert (loud)
+      >= 10min: attempt Hetzner hw reset
+      >= 15min: second reset + critical alert
+    State flags cleared on recovery so next episode re-arms all thresholds.
+    """
+    key_alert = f"{name}_alert_fired"
+    key_reset1 = f"{name}_reset1_ts"
+    key_reset2 = f"{name}_reset2_ts"
+
+    if dead_s >= SSH_DEAD_ALERT_SECONDS and not state.get(key_alert):
+        loud_alert(f"SSH dead {dead_s}s — investigating", name)
+        state[key_alert] = time.time()
+
+    if dead_s >= SSH_DEAD_RESET_SECONDS and not state.get(key_reset1):
+        ok, info = hetzner_hw_reset(name)
+        state[key_reset1] = time.time()
+        if ok:
+            log.critical(f"🔌 {name} Hetzner hw reset FIRED: {info}")
+            loud_alert(f"Hetzner hw reset fired — waiting for reboot", name)
+        else:
+            log.error(f"🚨 {name} Hetzner reset FAILED: {info}")
+            if info == "no_creds_file":
+                loud_alert(f"SSH dead {dead_s}s — NO HETZNER CREDS — MANUAL REBOOT NEEDED", name)
+            else:
+                loud_alert(f"Hetzner reset failed ({info}) — MANUAL REBOOT NEEDED", name)
+
+    # 2nd attempt only if first attempt was ≥2min ago (give reboot time to take effect)
+    reset1_ts = state.get(key_reset1, 0)
+    if (
+        dead_s >= SSH_DEAD_SECOND_RESET_SECONDS
+        and not state.get(key_reset2)
+        and time.time() - reset1_ts >= 120
+    ):
+        ok, info = hetzner_hw_reset(name)
+        state[key_reset2] = time.time()
+        if ok:
+            log.critical(f"🔌🔌 {name} Hetzner hw reset 2nd attempt FIRED: {info}")
+        else:
+            log.error(f"🚨🚨 {name} 2nd reset failed: {info}")
+            loud_alert(f"2nd Hetzner reset failed — SERVER NEEDS MANUAL INTERVENTION (down {dead_s}s)", name)
 
 
 def acquire_lock():
@@ -346,8 +493,13 @@ def supervisor_loop():
                         if check_cpu_idle(name, probe, state):
                             launch_cpu_refill(name)
                     ssh_fail_since = state.get(f"{name}_ssh_fail_since")
-                    if ssh_fail_since and time.time() - ssh_fail_since > 600:
-                        log.error(f"{name} SSH_DEAD_>10m — manual reboot required (Hetzner API blocked, see HETZNER_REBOOT_PLAN.md)")
+                    if ssh_fail_since:
+                        dead_s = int(time.time() - ssh_fail_since)
+                        handle_ssh_dead(name, dead_s, state)
+                    else:
+                        # Clear reset flags on recovery
+                        state.pop(f"{name}_reset1_ts", None)
+                        state.pop(f"{name}_reset2_ts", None)
                 except Exception as e:
                     log.exception(f"probe {name} crashed: {e}")
             try:
