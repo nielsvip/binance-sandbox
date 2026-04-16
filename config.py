@@ -271,6 +271,28 @@ class Config:
     LOSS_EXIT_STOP_FUNCTIONS_KILL_ENABLED: bool = False  # ez_manage.py:20621 STOP_FUNCTIONS_KILL @ gain<-5%
     LOSS_EXIT_HEDGE_MODE_BLOCK_ESCAPE_ENABLED: bool = False  # ez_manage.py:20647 hedge-failed escape @ gain<-15% & 30min unhedged
     LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED: bool = False  # ez_positions_quick.py:10778 allow exit when max_gain≥0.5% & fresh_gain>-0.5
+    # === REENTRY BLOCKS (2026-04-16) — ABLATION RESULTS, 11sym crypto + 12sym tradier ===
+    # 7 KEEP (default True), 2 CUT (default False, switch kept for sweep re-test)
+    REENTRY_B01_WT_2of3_ENABLED: bool = False  # ABLATION: Sharpe 0.033/0.036 = noise. 256K/177K trades. CUT.
+    REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True  # ABLATION: Sharpe 0.31/0.32, 22K/14K trades, 62.5% WR. Best balance.
+    REENTRY_B04_DC_RETEST_ENABLED: bool = True  # ABLATION: Sharpe 0.39/0.31, 579/335 trades. High quality.
+    REENTRY_B09_SNAPBACK_ENABLED: bool = False  # ABLATION: Sharpe 0.022/0.024 = weak. CUT.
+    REENTRY_B10_STOCH_REV_ENABLED: bool = True  # ABLATION: Sharpe 0.07/0.12, 69-75% WR. Keep for WR.
+    REENTRY_B11_DC_BREAK_ENABLED: bool = True  # ABLATION: Sharpe 0.34/0.31, 94-97% WR. Top quality.
+    REENTRY_B12_WT_MOM_ENABLED: bool = True  # ABLATION: Sharpe 0.15/0.17, 112K/73K trades. Volume king.
+    REENTRY_B14_HA_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.11/0.13. Moderate.
+    REENTRY_B15_STRONG_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.89/0.72, 94-97% WR. Sniper.
+    # === AUGMENT BLOCKS (2026-04-16) — 4 blocks switch-gated for sweep ===
+    AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
+    AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
+    AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
+    AUGMENT_HTF_TREND_ENABLED: bool = True  # HTF trend only, conviction 65. Most frequent.
+    # === EVALUATE_REENTRY_2 (2026-04-16) — periodic reentry pass switches ===
+    REENTRY_2_ENABLED: bool = True  # Master switch. ~$420 PnL per ablation.
+    REENTRY2_DIR_FAV_ENABLED: bool = True  # BC_152 direction-favorable immediate reentry
+    REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
+    REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
+    REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable
     # Entry: mtf=3, ez=2.5, ea=0.0, tz=1.5, htf=4h_D, cd=120, tw=3m-dominant
