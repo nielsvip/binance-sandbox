@@ -107,9 +107,9 @@ class QuickConfig:
     STRENGTH_MIN_SCORE: float = 5.0
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 10
-    # Profit target exit (sweep-only — boosts Sharpe by locking gains)
-    PROFIT_TARGET_ENABLED: bool = False
-    PROFIT_TARGET_PCT: float = 1.5  # Exit at this gain % even without technical signal
+    # Profit target exit — v2 winner (2026-04-16): Sharpe 0.94 → 1.39 on 11-sym (+48%)
+    PROFIT_TARGET_ENABLED: bool = True
+    PROFIT_TARGET_PCT: float = 1.5  # Peak Sharpe at 1.5% target (11-sym); 1.0 also strong
     # Stop loss exit (sweep-only — cap max loss)
     STOP_LOSS_ENABLED: bool = False
     STOP_LOSS_PCT: float = 2.0  # Exit at this loss %

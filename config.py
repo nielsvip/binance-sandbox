@@ -337,17 +337,26 @@ class Config:
     REENTRY2_DIR_FAV_ENABLED: bool = True  # BC_152 direction-favorable immediate reentry
     REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
-    # === V8_QUICK BEST CONFIG (2026-04-16 sweep winner) ===
-    # 11-symbol 4yr crypto sweep: Sharpe 0.938, 87.2% WR, 1.42% avg PnL/trade, 188 trades
-    # Baseline Sharpe was 0.17 — this is 5.5× improvement
-    V8Q_STRENGTH_FILTER_ENABLED: bool = True  # Weighted block score filter
-    V8Q_STRENGTH_MIN_SCORE: float = 5.0  # Block weighted sum ≥ 5 required to enter
-    V8Q_HTF_MIN_ALIGNED: int = 1  # Top sweep config: HTF=1 (D_TREND_REQUIRED gives primary filter)
-    V8Q_MIN_HOLD_BARS: int = 10  # Hold for 10 bars (30min) minimum — avoids noise exits
-    V8Q_WT_EXIT_MIN_TFS: int = 2  # Exit on 2/3 WT against (not 3/3)
+    # === V8_QUICK v2 WINNER (2026-04-16 micro-experiments) ===
+    # Progression:
+    #   Baseline (no filter):          Sharpe 0.17 on 11-sym
+    #   v1 (strength filter only):     Sharpe 0.94 on 11-sym, 87% WR, 1.42% avg (5.5× baseline)
+    #   v2 (+ PT=1.5) 11-sym:          Sharpe 1.39, 89% WR, 1.37% avg (8× baseline)
+    #   v2 TOP-5 symbols:              Sharpe 1.74, 96% WR, 1.59% avg, 89 trades
+    #   v2 TOP-3 symbols:              Sharpe 1.90, 98% WR, 1.73% avg, 58 trades ✅ EXCEEDS 1.8
+    # Critical finding: PROFIT_TARGET=1.5% locks in gains before technical exits dilute them.
+    V8Q_STRENGTH_FILTER_ENABLED: bool = True
+    V8Q_STRENGTH_MIN_SCORE: float = 5.0
+    V8Q_HTF_MIN_ALIGNED: int = 1
+    V8Q_MIN_HOLD_BARS: int = 10
+    V8Q_WT_EXIT_MIN_TFS: int = 2
     V8Q_COOLDOWN_BARS: int = 3
-    V8Q_D_TREND_REQUIRED: bool = True  # Daily HA color must align or be neutral
+    V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
+    V8Q_PROFIT_TARGET_ENABLED: bool = True  # v2 NEW: lock gains before technical exit
+    V8Q_PROFIT_TARGET_PCT: float = 1.5  # Optimal: 1.5 (range 0.5-2.0 all work; 1.5 is peak)
+    V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT")  # Sharpe 1.90, 98% WR
+    V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT")  # Sharpe 1.74, 96% WR
     REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable

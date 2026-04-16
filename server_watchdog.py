@@ -131,7 +131,7 @@ def check_server(name, cfg, state):
     host = cfg["host"]
     user = cfg["user"]
 
-    probe_cmd = "free -m | awk '/^Mem:/{print \"FREE=\"$7}'; pgrep -cf backtest_v8_sweep.py | awk '{print \"SWEEP_PROCS=\"$0}'; screen -ls 2>/dev/null | grep -oE '[0-9]+\\.[a-zA-Z_]+' | awk '{print \"SCREEN=\"$0}'"
+    probe_cmd = "free -m | awk '/^Mem:/{print \"FREE=\"$7}'; pgrep -cf backtest_v8_sweep.py | awk '{print \"SWEEP_PROCS=\"$0}'; screen -ls 2>/dev/null | grep -oE '[0-9]+\\.[a-zA-Z0-9_]+' | awk '{print \"SCREEN=\"$0}'"
     rc, out = ssh(host, user, probe_cmd, timeout=30)
     if rc != 0:
         state[name]["reachable"] = False
