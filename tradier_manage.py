@@ -3224,7 +3224,7 @@ class StockStrategy:
         _ga_mult = 1.0
         _ga_parts = []
         _dc_pos = float(i.get('dc_position_1h', 0.5) or 0.5)
-        _dc_width = float(i.get('dc_width_1h', 5) or 5)
+        _dc_width = float(i.get('dc_width_1h', 5) or 4)
         _wt_score = float(i.get('wt1_4h', 0) or 0) - float(i.get('wt2_4h', 0) or 0)
         _wt_vel = float(i.get('wt_velocity_1h', 0) or 0)
         # DC position depth: deeper in the channel = larger size (more mean-reversion potential)
@@ -3749,7 +3749,7 @@ class StockStrategy:
         # WT cross-vote across configured TFs — if min TFs flipped against position, force exit.
         try:
             _wt_tfs_str = getattr(config, 'TRADIER_WT_EXIT_TFS_TRADIER', getattr(config, 'WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D'))
-            _wt_min_tfs = int(getattr(config, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER', getattr(config, 'WT_EXIT_MIN_TFS_TRADIER', 5)))
+            _wt_min_tfs = int(getattr(config, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER', getattr(config, 'WT_EXIT_MIN_TFS_TRADIER', 4)))
             _wt_tfs = [t.strip() for t in _wt_tfs_str.replace('+', ',').split(',') if t.strip()]
             _wt_against = 0
             _wt_against_tfs = []
@@ -4039,7 +4039,7 @@ class StockStrategy:
             if getattr(config, 'WT_EXIT_VETO_ENABLED_TRADIER', False):
                 try:
                     _vf_wt_tfs_str = _cfg('WT_EXIT_TFS_TRADIER', '5m+15m+1h+4h+D', _vf_acct, symbol, _vf_exit_side)
-                    _vf_wt_min_tfs = int(_cfg('WT_EXIT_MIN_TFS_TRADIER', 5, _vf_acct, symbol, _vf_exit_side) or 5)
+                    _vf_wt_min_tfs = int(_cfg('WT_EXIT_MIN_TFS_TRADIER', 4, _vf_acct, symbol, _vf_exit_side) or 4)
                     _vf_wt_tfs = [t.strip() for t in str(_vf_wt_tfs_str).replace('+', ',').split(',') if t.strip()]
                     _vf_wt_against = 0
                     _vf_against_tfs = []

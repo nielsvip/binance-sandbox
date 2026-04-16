@@ -66,7 +66,7 @@ def main():
         "HTF_MIN_ALIGNED": [1, 2, 3],
         "D_TREND_REQUIRED": [True],
         "K3M_FLOOR": [20, 30],
-        "WT_EXIT_MIN_TFS": [2, 3],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],  # MEMORY RULE: valid [2,3,4]. 5 banned, 1 too loose.
     }
     keys = sorted(grid.keys())
     values = [grid[k] for k in keys]

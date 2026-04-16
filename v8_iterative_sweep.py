@@ -65,7 +65,7 @@ def sweep_P1A_pt_sl_wtexit():
     exps = []
     for pt in [1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9]:
         for sl_enable, sl_pct in [(False, 0), (True, 0.3), (True, 0.5), (True, 0.7), (True, 1.0), (True, 1.5)]:
-            for wt_exit in [1, 2, 3]:
+            for wt_exit in [2, 3, 4]:  # MEMORY RULE: valid range only. 1 too loose, 5 banned (Sharpe 0.001).
                 cfg = {"PROFIT_TARGET_PCT": pt, "WT_EXIT_MIN_TFS": wt_exit}
                 if sl_enable:
                     cfg["STOP_LOSS_ENABLED"] = True

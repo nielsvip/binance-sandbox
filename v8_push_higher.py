@@ -93,7 +93,7 @@ def main():
             experiments.append((f"PT{pt}_SL{sl}_TOP5", {"PROFIT_TARGET_PCT": float(pt), "STOP_LOSS_ENABLED": True, "STOP_LOSS_PCT": float(sl)}, TOP5))
 
     # 7. WT exit strictness
-    for wt_tfs in [1, 2, 3]:
+    for wt_tfs in [2, 3, 4]:  # MEMORY RULE: 5-of-5 banned (Sharpe 0.001). 1 too loose.
         experiments.append((f"WT_EXIT_{wt_tfs}_TOP5", {"WT_EXIT_MIN_TFS": wt_tfs}, TOP5))
 
     # 8. Trailing stop (exit at partial profit decay)
