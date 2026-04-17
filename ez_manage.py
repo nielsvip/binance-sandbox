@@ -17700,58 +17700,63 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - conditions not met")
             elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - minutes_since_reduction {minutes_since_reduction:.1f}m >= 60.0m")
         elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - last_reduction_time={last_reduction_time}, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}")
-        # === 2026-04-17 WT-15M-CROSS REENTRY (user rule C) ===
-        # Trigger: 15m WT crossover in position direction (wt1_15m crosses above wt2_15m for LONG, below for SHORT)
-        # AND HTF still favorable (wt1_1h > wt2_1h OR wt1_4h > wt2_4h for LONG; inverse for SHORT)
-        # Size: 1.5x by default (REENTRY_WT15M_SIZE_MULT)
-        # K-partial (D): if k_15m in extreme zone, multiply size by REENTRY_K15M_PARTIAL_MULT
-        # Post-consolidation (E): if atr_rank <0.15 on N+ TFs, apply REENTRY_POST_CONSOL_MULT
+        # ═══ 2026-04-17 REENTRY OVERHAUL — helper: size-mult composition (E + D applied on top of base) ═══
+        def _compose_reentry_mult(base_mult: float, tag: str) -> (float, list):
+            _fm = float(base_mult); _tags = [f"{tag}×{base_mult:.2f}"]
+            if getattr(config, 'REENTRY_POST_CONSOL_ENABLED', True):
+                _atr_thr = float(getattr(config, 'REENTRY_POST_CONSOL_ATR_THRESHOLD', 0.15))
+                _tfs_req = int(getattr(config, 'REENTRY_POST_CONSOL_TFS_REQUIRED', 2))
+                _ar_1h = float(i.get('bar_atr_rank_1h', 0.5) or 0.5); _ar_4h = float(i.get('bar_atr_rank_4h', 0.5) or 0.5); _ar_D = float(i.get('bar_atr_rank_D', 0.5) or 0.5)
+                _compressed = int(_ar_1h < _atr_thr) + int(_ar_4h < _atr_thr) + int(_ar_D < _atr_thr)
+                if _compressed >= _tfs_req:
+                    _pc = float(getattr(config, 'REENTRY_POST_CONSOL_MULT', 1.5)); _fm *= _pc; _tags.append(f"POST_CONSOL({_compressed}/3)×{_pc:.2f}")
+            return _fm, _tags
+        # === C: WT-15M-CROSS REENTRY ===
+        # Trigger: 15m WT crossover in position direction + HTF favorable (wt1_1h>wt2_1h OR wt1_4h>wt2_4h for LONG; inverse SHORT)
+        # Size: REENTRY_WT15M_SIZE_MULT (default 1.5), stacks with E post-consolidation boost
         if getattr(config, 'REENTRY_WT15M_CROSS_ENABLED', True) and price_ready:
             _wt1_1h = safe_fetch_float(i.get('wt1_1h', 0), 0.0); _wt2_1h = safe_fetch_float(i.get('wt2_1h', 0), 0.0)
             _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0.0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0.0)
             _wt1_15m_prev = safe_fetch_float(i.get('wt1_15m_prev', 0), 0.0); _wt2_15m_prev = safe_fetch_float(i.get('wt2_15m_prev', 0), 0.0)
-            _wt15m_cross_long = is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev
-            _wt15m_cross_short = (not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev
-            _wt15m_just_crossed = _wt15m_cross_long or _wt15m_cross_short
-            _htf_fav_long = is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)
-            _htf_fav_short = (not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h)
-            _htf_fav = _htf_fav_long or _htf_fav_short
+            _wt15m_just_crossed = (is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev) or ((not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev)
+            _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or ((not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h))
             _htf_required = bool(getattr(config, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
             if _wt15m_just_crossed and (_htf_fav or not _htf_required):
                 _wt_re_delta_ok, _wt_re_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _wt_re_delta_ok:
                     logger.info(f"[WT15M_REENTRY_DELTA_BLOCK] {position_key}: {_wt_re_delta_reason}")
                     return
-                _base_mult = float(getattr(config, 'REENTRY_WT15M_SIZE_MULT', 1.5))
-                _final_mult = _base_mult
-                _mult_reasons = [f"WT15M_CROSS×{_base_mult:.1f}"]
-                # E: post-consolidation boost
-                if getattr(config, 'REENTRY_POST_CONSOL_ENABLED', True):
-                    _atr_thr = float(getattr(config, 'REENTRY_POST_CONSOL_ATR_THRESHOLD', 0.15))
-                    _tfs_req = int(getattr(config, 'REENTRY_POST_CONSOL_TFS_REQUIRED', 2))
-                    _ar_1h = float(i.get('bar_atr_rank_1h', 0.5) or 0.5)
-                    _ar_4h = float(i.get('bar_atr_rank_4h', 0.5) or 0.5)
-                    _ar_D = float(i.get('bar_atr_rank_D', 0.5) or 0.5)
-                    _compressed = int(_ar_1h < _atr_thr) + int(_ar_4h < _atr_thr) + int(_ar_D < _atr_thr)
-                    if _compressed >= _tfs_req:
-                        _pc_mult = float(getattr(config, 'REENTRY_POST_CONSOL_MULT', 1.5))
-                        _final_mult *= _pc_mult
-                        _mult_reasons.append(f"POST_CONSOL({_compressed}/3)×{_pc_mult:.1f}")
-                # D: k_15m-based partial sizing
-                if getattr(config, 'REENTRY_K15M_PARTIAL_ENABLED', True):
-                    _k_thr = float(getattr(config, 'REENTRY_K15M_PARTIAL_THRESHOLD', 80.0))
-                    _k_partial_mult = float(getattr(config, 'REENTRY_K15M_PARTIAL_MULT', 0.5))
-                    _k_in_extreme = (is_long and k_15m > _k_thr) or ((not is_long) and k_15m < (100 - _k_thr))
-                    if _k_in_extreme:
-                        _final_mult *= _k_partial_mult
-                        _mult_reasons.append(f"K15M_PARTIAL(k={k_15m:.0f})×{_k_partial_mult:.2f}")
-                _wt_re_amt = min(reentry_amount, _final_mult * config.START_POSITION_SIZE / current_price)
-                _wt_re_reason = f"WT15M_CROSS_REENTRY_{'_'.join(_mult_reasons)}_wt15m={wt1_15m:.1f}/{wt2_15m:.1f}_wt1h={_wt1_1h:.1f}/{_wt2_1h:.1f}_wt4h={_wt1_4h:.1f}/{_wt2_4h:.1f}_k15m={k_15m:.0f}_mult={_final_mult:.2f}"
-                logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} 15m WT cross + HTF fav={_htf_fav} mult={_final_mult:.2f}. Queuing reentry.")
+                _fm, _tags = _compose_reentry_mult(float(getattr(config, 'REENTRY_WT15M_SIZE_MULT', 1.5)), "WT15M_CROSS")
+                _wt_re_reason = f"WT15M_CROSS_REENTRY_{'_'.join(_tags)}_wt15m={wt1_15m:.1f}/{wt2_15m:.1f}_wt1h={_wt1_1h:.1f}/{_wt2_1h:.1f}_wt4h={_wt1_4h:.1f}/{_wt2_4h:.1f}_k15m={k_15m:.0f}_mult={_fm:.2f}"
+                logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} 15m WT cross + HTF fav={_htf_fav} mult={_fm:.2f}. Queuing reentry.")
                 result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _wt_re_reason, 85.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
-                    logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_final_mult:.2f}")
+                    logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_fm:.2f}")
                 return
+        # === D: PRICE-CROSSES-EXIT + K_15M REENTRY ===
+        # User rule: price crosses back through exit price AND k_15m < 90 → reenter at 100%.
+        # k_15m >= 90 → apply partial multiplier (REENTRY_K15M_PARTIAL_MULT, default 0.5) instead of full skip.
+        # Base multiplier 1.0 (100% of original positionAmt approximated via START_POSITION_SIZE notional cap).
+        if getattr(config, 'REENTRY_K15M_PARTIAL_ENABLED', True) and price_ready and min_since_exit < 999:
+            _k_thr = float(getattr(config, 'REENTRY_K15M_PARTIAL_THRESHOLD', 90.0))
+            _k_ok_long = is_long and k_15m < _k_thr
+            _k_ok_short = (not is_long) and k_15m > (100.0 - _k_thr)
+            _k_ok = _k_ok_long or _k_ok_short
+            if _k_ok:
+                _base = 1.0; _tag = f"PRICE_CROSS_K15M_OK(k={k_15m:.0f}<{_k_thr:.0f})"
+            else:
+                _base = float(getattr(config, 'REENTRY_K15M_PARTIAL_MULT', 0.5)); _tag = f"PRICE_CROSS_K15M_PARTIAL(k={k_15m:.0f}≥{_k_thr:.0f})"
+            _d_delta_ok, _d_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+            if not _d_delta_ok:
+                logger.info(f"[PRICE_CROSS_REENTRY_DELTA_BLOCK] {position_key}: {_d_delta_reason}")
+                return
+            _fm, _tags = _compose_reentry_mult(_base, _tag)
+            _d_reason = f"PRICE_CROSS_REENTRY_{'_'.join(_tags)}_exit_level={reentry_level:.6f}_cur={current_price:.6f}_k15m={k_15m:.0f}_mult={_fm:.2f}"
+            logger.warning(f"[PRICE_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} price crossed exit_level={reentry_level:.6f} k_15m={k_15m:.0f} mult={_fm:.2f}. Queuing.")
+            result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _d_reason, 80.0)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[PRICE_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_fm:.2f}")
+            return
         # LEGACY STOCH CROSSOVER PATH — default OFF 2026-04-17 (user rule: WT only, not stoch)
         if not getattr(config, 'REENTRY2_STOCH_CROSS_ENABLED', False): return
         invalidated_state = trade_manager.reentry_invalidated.get(position_key, {}); is_invalidated = invalidated_state.get('invalidated', False); stoch_crossover_3m = (is_long and k_3m > d_3m and k_3m_prev <= d_3m_prev) or (not is_long and k_3m <= d_3m and k_3m_prev > d_3m_prev); stoch_crossover_15m = (is_long and k_15m >= d_15m and k_15m_prev < d_15m_prev) or (not is_long and k_15m <= d_15m and k_15m_prev > d_15m_prev); dc_basis_crossover_3m = i.get('dc_basis_crossover_3m', False) if is_long else i.get('dc_basis_crossunder_3m', False)

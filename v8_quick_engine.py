@@ -575,6 +575,35 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["B15"] = (dc_high_4h > 0) & (close > dc_high_4h) & (wt_vel_1h > 2.0) & (k_1h < 85)
         else:
             blocks["B15"] = (dc_low_4h > 0) & (close < dc_low_4h) & (wt_vel_1h < -2.0) & (k_1h > 15)
+    # === 2026-04-17 REENTRY OVERHAUL BLOCKS (C + D) ===
+    # B_WT15M_CROSS (C): 15m WT crossover in position direction + HTF favorable (1h or 4h) + k_15m gate
+    # B_PRICE_CROSS_K90 (D): proxy — k_15m in favorable zone. "Price crosses exit" requires per-trade state
+    # handled in simulate() loop, so the vectorized block emits candidates and simulate() gates on exit-price cross.
+    if getattr(cfg, 'REENTRY_WT15M_CROSS_ENABLED', True):
+        wt1_15m_prev = np.roll(wt1_15m, 1); wt1_15m_prev[0] = wt1_15m[0]
+        wt2_15m_prev = np.roll(wt2_15m, 1); wt2_15m_prev[0] = wt2_15m[0]
+        wt1_4h = _safe(npz, 'wt1_4h', n); wt2_4h = _safe(npz, 'wt2_4h', n)
+        _k_max = float(getattr(cfg, 'REENTRY_WT15M_K_MAX', 50.0))
+        _htf_req = bool(getattr(cfg, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
+        if is_long:
+            _just_crossed = (wt1_15m > wt2_15m) & (wt1_15m_prev <= wt2_15m_prev)
+            _htf_fav = (wt1_1h > wt2_1h) | (wt1_4h > wt2_4h)
+            _gate = _just_crossed & (_htf_fav | (not _htf_req)) & (k_15m < _k_max)
+            blocks["B_WT15M_CROSS"] = _gate
+        else:
+            _just_crossed = (wt1_15m < wt2_15m) & (wt1_15m_prev >= wt2_15m_prev)
+            _htf_fav = (wt1_1h < wt2_1h) | (wt1_4h < wt2_4h)
+            _gate = _just_crossed & (_htf_fav | (not _htf_req)) & (k_15m > (100.0 - _k_max))
+            blocks["B_WT15M_CROSS"] = _gate
+    if getattr(cfg, 'REENTRY_K15M_PARTIAL_ENABLED', True):
+        # D is a sizing-adjusted variant — the signal is "any bar with favorable k_15m".
+        # The "price crosses exit" gate and 100%-vs-partial multiplier happen in simulate()
+        # using the bar's prev-exit price. Block emits the candidate window.
+        _k_thr = float(getattr(cfg, 'REENTRY_K15M_PARTIAL_THRESHOLD', 90.0))
+        if is_long:
+            blocks["B_PRICE_CROSS_K90"] = (k_15m < _k_thr) & (wt1_15m > wt2_15m)
+        else:
+            blocks["B_PRICE_CROSS_K90"] = (k_15m > (100.0 - _k_thr)) & (wt1_15m < wt2_15m)
 
     # ═══════════════════════════════════════════════════════════════
     # PULLBACK-IN-TREND BLOCKS — enter EARLY, not at end of move

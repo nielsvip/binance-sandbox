@@ -418,7 +418,7 @@ class Config:
     REENTRY_WT15M_HTF_FAVOR_REQUIRED: bool = True  # Require wt1_1h>wt2_1h OR wt1_4h>wt2_4h (LONG) — vv for SHORT
     # D: k_15m-based partial reentry (high K = smaller size, not skipped)
     REENTRY_K15M_PARTIAL_ENABLED: bool = True
-    REENTRY_K15M_PARTIAL_THRESHOLD: float = 80.0  # LONG: k_15m > 80 → partial. SHORT: k_15m < 20.
+    REENTRY_K15M_PARTIAL_THRESHOLD: float = 90.0  # User 2026-04-17: LONG k_15m<90 → 100%, >=90 → partial. SHORT mirrors at 10.
     REENTRY_K15M_PARTIAL_MULT: float = 0.5  # Multiplier applied to reentry qty when K is in partial zone
     # E: Post-consolidation boost reentry (easier gate than entry — 1 TF momentum confirm)
     REENTRY_POST_CONSOL_ENABLED: bool = True
