@@ -5050,6 +5050,26 @@ class HedgeEngine:
                         continue
                     async with self.tracker_manager._hedges_lock:
                         if not any(h.get('position_key') == pk for h in self.tracker_manager.active_hedges): logger.warning(f"🛡️ [HEDGE_DISCOVERY] Recovered hedge {pk} (gain={_rg:.2f}%). Restoring."); cand['is_hedge'] = True; self.tracker_manager.active_hedges.append(cand)
+        # ═══ HEDGE DISCOVERY (2026-04-17) — diff-symbol hedges via open_reason ═══
+        # Find positions opened with hedge reasons but NOT in active_hedges (tracker desync).
+        # Without this, HEDGE_WT_KILL never processes them → they stay open for days.
+        async with self.tracker_manager._hedges_lock:
+            _tracked_hedge_pks = {h.get('position_key') for h in self.tracker_manager.active_hedges if h.get('account') == account_key}
+        for pk, pos in positions.items():
+            if pk in _tracked_hedge_pks: continue
+            if abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0)) < 0.0001: continue
+            _open_reason = str(getattr(pos, 'open_reason', '') or '').upper()
+            _last_reason = str(getattr(pos, 'last_reason', '') or '').upper()
+            _is_hedge_attr = bool(getattr(pos, 'is_hedge', False))
+            if _is_hedge_attr or 'HEDGE_PROTECT' in _open_reason or 'HEDGE_SAME' in _open_reason or 'HEDGE_ACTUAL' in _open_reason or 'HEDGE_PROTECT' in _last_reason:
+                _g = safe_fetch_float(getattr(pos, 'gain', 0), 0)
+                _loser_pk = getattr(pos, 'hedge_for', None)
+                async with self.tracker_manager._hedges_lock:
+                    if not any(h.get('position_key') == pk for h in self.tracker_manager.active_hedges):
+                        logger.warning(f"🛡️ [HEDGE_DISCOVERY_ORPHAN] {pk}: hedge by reason '{_open_reason or _last_reason}' not tracked — restoring. gain={_g:.2f}%")
+                        _synth = self.tracker_manager._exit_template() if hasattr(self.tracker_manager, '_exit_template') else {}
+                        _synth.update({'position_key': pk, 'account': account_key, 'symbol': pk.split(':')[1].replace('_LONG','').replace('_SHORT',''), 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
+                        self.tracker_manager.active_hedges.append(_synth)
         async with self.tracker_manager._hedges_lock: active_hedges = [h.copy() for h in self.tracker_manager.active_hedges if h.get('account') == account_key]
         for record in active_hedges:
             try:
@@ -5076,6 +5096,30 @@ class HedgeEngine:
                 if current_price <= 0: current_price = safe_fetch_float(indicators.get('current_price', 0))
                 if current_price <= 0: continue
                 hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0); hedge_max_gain = safe_fetch_float(getattr(hedge_pos, 'max_gain', 0.0), 0.0); hedge_prev_gain = safe_fetch_float(getattr(hedge_pos, 'prev_gain', 0.0), 0.0); is_hedge_long = (hedge_pos.position_side == 'LONG'); now_ts = time.time(); exact_tick_ts = metrics.get('_tick_ts', 0); true_lag = now_ts - exact_tick_ts
+                # ═══ HEDGE MAX-AGE KILL (2026-04-17) — user rule: "minutes max hours never days" ═══
+                # Closes any hedge older than HEDGE_MAX_AGE_HOURS regardless of WT state. The WT-flip
+                # kill (below) handles the common case; this is the safety net for stuck hedges.
+                _hedge_max_age_h = float(getattr(self.config, 'HEDGE_MAX_AGE_HOURS', 6.0))
+                if _hedge_max_age_h > 0:
+                    _h_opened_ts = 0.0
+                    _h_opened_raw = record.get('opened_at') or record.get('timestamp') or 0
+                    if isinstance(_h_opened_raw, (int, float)):
+                        _h_opened_ts = float(_h_opened_raw)
+                    elif isinstance(_h_opened_raw, str) and _h_opened_raw:
+                        try: _h_opened_ts = datetime.fromisoformat(_h_opened_raw.replace('Z','+00:00')).timestamp()
+                        except Exception: _h_opened_ts = 0.0
+                    if _h_opened_ts > 0:
+                        _h_age_h = (now_ts - _h_opened_ts) / 3600.0
+                        if _h_age_h >= _hedge_max_age_h:
+                            logger.critical(f"⏰ [HEDGE_MAX_AGE_KILL] {hedge_key}: open {_h_age_h:.1f}h >= {_hedge_max_age_h}h cap — CLOSING regardless of WT state. gain={hedge_gain:.2f}%")
+                            await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_MAX_AGE_KILL_{_h_age_h:.1f}h_g{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
+                            await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                            if original_key:
+                                self._hedge_completed.pop(original_key, None)
+                                self._hedge_cooldowns.pop(symbol, None)
+                                self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
+                                self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
+                            continue
                 # ═══ HEDGE KILL: LOSING-POSITION WT_3M RECOVERS → KILL HEDGE IMMEDIATELY ═══
                 # USER RULE 2026-04-15: A hedge dies the moment the LOSING position it protects starts to recover.
                 # Recovery = wt1_3m crossing in favor of the losing position's own direction (NOT hedge symbol).

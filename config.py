@@ -546,6 +546,10 @@ class Config:
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2            # count of enabled TFs against pos
+    # ═══ HEDGE MAX AGE (2026-04-17) — user rule: "minutes max hours never days" ═══
+    # Every open hedge must close by this age cap regardless of WT state. Safety net for
+    # stuck hedges when WT-flip close rule fails to fire (e.g., loser's wt flat for hours).
+    HEDGE_MAX_AGE_HOURS: float = 6.0                     # close any hedge older than this
     # ═══ DC_RECOVERY_EXIT per-account disable (2026-04-17) ═══
     # "entry_price outside dc_4h range close" rule = the only legitimate close-at-loss path.
     # Temporarily disabled for inf while bleeding shorts (-4% to -26%) can't absorb the realized
