@@ -164,16 +164,20 @@ async def _fetch_underlying_price(client: TradierAPIClient, symbol: str) -> floa
         return 0.0
 
 
-async def _evaluate_position(client: TradierAPIClient, pos: dict, config: TradierConfig, indicators: dict, state: dict, dry_run: bool) -> dict:
+async def _evaluate_position(client: TradierAPIClient, pos: dict, config: TradierConfig, indicators: dict, state: dict, dry_run: bool, account_value: float = 0.0) -> dict:
     """Evaluate one sold position with layered defense. Returns action dict.
     Action = 'skip' | 'watch' | 'close_technical' | 'close_hard_premium' |
-             'close_strike_breach' | 'close_entry_gap'.
+             'close_strike_breach' | 'close_entry_gap' |
+             'close_profit_target' | 'close_max_hold' | 'audit_notional_breach'.
 
     Priority order (top fires first, bypasses everything below):
+      0. NOTIONAL_AUDIT — log EMERGENCY if position's notional > 3% account (defensive; agent should prevent)
       1. STRIKE_BREACH — underlying moves N% past strike (deep ITM) → wipeout guard
       2. ENTRY_GAP    — underlying moves N% from entry spot → gap/crash guard
       3. HARD_PREMIUM — premium pnl <= hard cut (catastrophic only)
-      4. TECHNICAL    — premium pnl <= soft trigger AND wt_D turn against"""
+      4. PROFIT_TARGET — premium pnl >= +50% (take profit, free capital)
+      5. MAX_HOLD     — position open > 21 days (force close to avoid late-cycle gamma)
+      6. TECHNICAL    — premium pnl <= soft trigger AND wt_D turn against"""
     occ = pos.get("symbol") or pos.get("occ_symbol") or ""
     qty = abs(int(float(pos.get("quantity", 0) or 0)))
     if not occ or qty == 0:
@@ -204,6 +208,14 @@ async def _evaluate_position(client: TradierAPIClient, pos: dict, config: Tradie
     log_entry = {"occ": occ, "underlying": underlying, "spot": round(spot, 2), "entry_spot": round(entry_spot, 2), "strike": strike, "qty": qty, "premium_collected": round(premium_collected, 2), "current_cost": round(current_cost, 2), "pnl_pct": round(pnl_pct, 4), "mid": round(mid, 2), "is_put": is_put}
     if getattr(config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", True):
         audit(json.dumps(log_entry))
+    # ── GUARD 0: NOTIONAL_AUDIT (defensive; agent should prevent) ──
+    if account_value > 0 and strike > 0:
+        notional = strike * 100.0 * qty
+        cap = account_value * getattr(config, "OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT", 0.03)
+        if notional > cap:
+            msg = f"NOTIONAL_BREACH {occ} notional=${notional:,.0f} > cap=${cap:,.0f} ({getattr(config, 'OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT', 0.03):.1%} of ${account_value:,.0f})"
+            logger.error(msg)
+            audit(f"EMERGENCY\t{msg}")
     # ── GUARD 1: STRIKE_BREACH (wipeout prevention) ──
     # SHORT PUT: spot dropping N% below strike → put is deep ITM → assignment loss grows
     # SHORT CALL: spot rising N% above strike → unlimited loss territory
@@ -229,6 +241,21 @@ async def _evaluate_position(client: TradierAPIClient, pos: dict, config: Tradie
     # ── GUARD 3: HARD_PREMIUM (catastrophic premium loss only) ──
     if pnl_pct <= config.OPTIONS_CSP_MONITOR_MAX_LOSS_PCT:
         return {"action": "close_hard_premium", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"HARD_PREMIUM pnl_pct={pnl_pct:.1%} <= {config.OPTIONS_CSP_MONITOR_MAX_LOSS_PCT:.1%}"}
+    # ── GUARD 4: PROFIT_TARGET (take profit to free capital) ──
+    profit_target = getattr(config, "OPTIONS_CSP_PROFIT_TARGET_PCT", 0.50)
+    if pnl_pct >= profit_target:
+        return {"action": "close_profit_target", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"PROFIT_TARGET pnl_pct={pnl_pct:.1%} >= {profit_target:.0%}"}
+    # ── GUARD 5: MAX_HOLD (force close after N days) ──
+    max_hold = getattr(config, "OPTIONS_CSP_MAX_HOLD_DAYS", 21)
+    first_seen_str = pos_state.get("first_seen")
+    if first_seen_str:
+        try:
+            first_seen = datetime.fromisoformat(first_seen_str)
+            days_held = (datetime.now() - first_seen).total_seconds() / 86400.0
+            if days_held >= max_hold:
+                return {"action": "close_max_hold", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"MAX_HOLD days_held={days_held:.1f} >= {max_hold}"}
+        except Exception:
+            pass
     # ── SOFT GATE: premium drawdown + technical turn ──
     if pnl_pct > config.OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT:
         return {"action": "watch", "reason": f"pnl_pct={pnl_pct:.2%} above soft trigger"}
@@ -266,6 +293,17 @@ async def _close_short_option(client: TradierAPIClient, occ: str, qty: int, bid:
         return {"status": "error", "error": str(e)}
 
 
+async def _fetch_account_value(client: TradierAPIClient) -> float:
+    try:
+        bal_res = await client.get_account_balances()
+        if bal_res and isinstance(bal_res, dict):
+            bals = bal_res.get("balances", bal_res)
+            return float(bals.get("total_equity", 0) or bals.get("market_value", 0) or bals.get("total_cash", 0) or 0)
+    except Exception:
+        pass
+    return 0.0
+
+
 async def run_once(client: TradierAPIClient, config: TradierConfig, dry_run: bool = False) -> dict:
     """One pass over all sold positions. Returns summary dict."""
     state = load_state()
@@ -278,12 +316,15 @@ async def run_once(client: TradierAPIClient, config: TradierConfig, dry_run: boo
         audit(f"FETCH_ERROR\t{e}")
         return {"error": str(e), "positions_checked": 0}
     sold = [p for p in (positions or []) if _is_sold_position(p)]
-    summary = {"ts": datetime.now().isoformat(), "sold_count": len(sold), "actions": []}
-    close_actions = ("close_technical", "close_hard_premium", "close_strike_breach", "close_entry_gap")
+    account_value = 0.0
+    if sold:
+        account_value = await _fetch_account_value(client)
+    summary = {"ts": datetime.now().isoformat(), "sold_count": len(sold), "account_value": account_value, "actions": []}
+    close_actions = ("close_technical", "close_hard_premium", "close_strike_breach", "close_entry_gap", "close_profit_target", "close_max_hold")
     absolute_guards = ("close_strike_breach", "close_entry_gap", "close_hard_premium")
     absolute_breaches = []
     for pos in sold:
-        action = await _evaluate_position(client, pos, config, indicators, state, dry_run)
+        action = await _evaluate_position(client, pos, config, indicators, state, dry_run, account_value=account_value)
         summary["actions"].append({"occ": action.get("occ", pos.get("symbol")), "action": action["action"], "reason": action.get("reason")})
         if action["action"] in close_actions:
             if action["action"] in absolute_guards:

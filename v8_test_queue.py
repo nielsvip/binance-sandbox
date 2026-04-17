@@ -24,7 +24,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-PYTHON = "/opt/anaconda3/envs/binance_env/bin/python"
+PYTHON = os.environ.get("V8_PYTHON", sys.executable)  # 2026-04-17: default to current interpreter — portable MB/S1/S2 without hardcoded paths
 BASE = Path(__file__).resolve().parent
 ENGINE = BASE / "backtest_v8_engine.py"
 QUEUE_PATH = Path("/tmp/v8_test_queue.json")
@@ -163,11 +163,13 @@ def run_item(item: dict, args) -> dict:
     inferred = infer_mode(config_file)
     if args.mode and args.mode != inferred:
         print(f"\n{'='*60}\n❌ MODE_CONFIG_MISMATCH_SKIP: {param}\n  config={config_file} inferred={inferred}  but --mode={args.mode}\n  Refusing to run — route this test to a {inferred} machine.\n{'='*60}")
-        return {
-            "param": param, "config": config_file, "mode": args.mode,
-            "error": f"MODE_CONFIG_MISMATCH: config={config_file} implies mode={inferred}, caller passed --mode={args.mode}",
-            "status_hint": "mode_skip",  # v8_test_queue.py main loop can mark this so it's not re-tried on same machine
-        }
+        # Preserve all original queue fields (value_a/b/notes) and add skip status so the main loop
+        # marks it correctly. Queue stays navigable; item will be picked up on the right machine.
+        skipped = dict(item)
+        skipped["status"] = "mode_skip"
+        skipped["mode_skip_reason"] = f"config={config_file} implies mode={inferred}, caller passed --mode={args.mode}"
+        skipped["mode_skip_at"] = datetime.now(timezone.utc).isoformat()
+        return skipped
     mode = args.mode or inferred
     account = infer_account(mode)
     symbols = args.symbols or (DEFAULT_SYMBOLS_TRADIER if mode == "tradier" else DEFAULT_SYMBOLS_CRYPTO)

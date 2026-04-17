@@ -233,11 +233,19 @@ class TradierConfig:
     OPTIONS_CSP_MIN_IV_RANK: float = 40.0        # Only sell premium when IV rank >= 40 (rich premium)
     OPTIONS_CSP_MAX_DELTA: float = 0.30          # Max |delta| on the put sold (30Δ ≈ 70% win rate empirically)
     OPTIONS_CSP_MIN_DELTA: float = 0.15          # Min |delta| — don't sell puts too far OTM (premium too thin)
-    OPTIONS_CSP_DTE_MIN: int = 14                # Min days-to-expiry
-    OPTIONS_CSP_DTE_MAX: int = 45                # Max DTE (sweet spot for theta decay)
+    OPTIONS_CSP_DTE_MIN: int = 60                # Min days-to-expiry — at least 2 months ahead (time-premium strategy)
+    OPTIONS_CSP_DTE_MAX: int = 90                # Max DTE (3 months — keeps liquidity + balances theta capture)
+    # Time-decay capture: open long-dated (60-90 DTE), close on profit target or max hold days
+    OPTIONS_CSP_PROFIT_TARGET_PCT: float = 0.50  # Close at 50% of premium collected (≈ 2-week avg hold on 60-DTE position)
+    OPTIONS_CSP_MAX_HOLD_DAYS: int = 21          # Force close after 21 days open regardless (~50% through a 60-DTE window)
     OPTIONS_CSP_MAX_CAPITAL_PCT: float = 0.30    # Max fraction of available cash tied up in CSPs at once
     OPTIONS_CSP_MIN_EXTRINSIC_PCT: float = 0.015 # Min extrinsic value as % of strike (1.5%) — premium must be worth it
     OPTIONS_CSP_EDGE_MARGIN: float = 1.15        # Sell-structure must beat buy-structure edge by 15% to be picked
+    # ── HARD ACCOUNT-WIPEOUT CAP ──
+    # Per-CSP worst-case exposure (strike × 100 × qty, i.e. full assignment if stock → 0)
+    # MUST NOT exceed this fraction of total_equity. Enforced at 3 layers: analyzer filter,
+    # agent pre-trade gate, monitor audit alarm. On a $70k account, 0.03 = $2,100 notional cap.
+    OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT: float = 0.03
     # === NON-SKIPPABLE RISK MONITOR — SOLD POSITIONS ===
     # Background daemon (launchd) runs every N seconds. NO config flag disables it.
     # Layered defense: soft close on (P&L down + technicals) + ABSOLUTE cuts that bypass

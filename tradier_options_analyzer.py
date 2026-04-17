@@ -700,9 +700,10 @@ def analyze_chain_for_outliers(signal: DirectionalSignal, chain: List[Dict], exp
 
 # ── CSP (Cash-Secured Put) Scoring ───────────────────────────────────────────
 
-def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration: str, cfg, risk_free_rate: float = 0.043) -> List[CSPCandidate]:
+def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration: str, cfg, risk_free_rate: float = 0.043, account_value: float = 0.0) -> List[CSPCandidate]:
     """Score put-selling opportunities for LONG-thesis candidates. Returns ranked CSPCandidates.
-    Only called when cfg.OPTIONS_CSP_ENABLED. SHORT signals return empty (naked calls disabled)."""
+    Only called when cfg.OPTIONS_CSP_ENABLED. SHORT signals return empty (naked calls disabled).
+    account_value: if > 0, filters out strikes whose (strike × 100) > OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT × account_value."""
     if signal.direction != "LONG":
         return []
     candidates: List[CSPCandidate] = []
@@ -712,6 +713,10 @@ def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration:
     if dte < cfg.OPTIONS_CSP_DTE_MIN or dte > cfg.OPTIONS_CSP_DTE_MAX:
         return []
     T = dte / 365.0
+    # Hard account-notional cap: worst-case strike × 100 ≤ MAX_POS_PCT × account_value
+    strike_notional_cap = 0.0
+    if account_value > 0:
+        strike_notional_cap = cfg.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT * account_value
     puts = []
     for opt in chain:
         if not opt or opt.get("option_type") != "put":
@@ -727,6 +732,9 @@ def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration:
         moneyness = strike / S
         if moneyness < 0.75 or moneyness > 0.99:
             continue  # sweet band: 1-25% OTM puts
+        # Hard account-notional cap (wipeout guard) — reject any strike that would exceed per-position cap
+        if strike_notional_cap > 0 and (strike * 100.0) > strike_notional_cap:
+            continue
         iv_c = implied_vol(mid, S, strike, T, risk_free_rate, False)
         if not iv_c or iv_c < 0.05 or iv_c > 3.0:
             continue
@@ -756,10 +764,10 @@ def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration:
             score += 25
         elif 0.15 <= p["delta_mag"] <= 0.30:
             score += 15
-        # DTE sweet spot: 21-35 DTE
-        if 21 <= dte <= 35:
+        # DTE sweet spot: 60-75 DTE — long-dated for 2-week avg hold, captures linear theta decay
+        if 60 <= dte <= 75:
             score += 15
-        elif 14 <= dte <= 45:
+        elif 55 <= dte <= 90:
             score += 8
         # IV rank bonus (rich premium = better sale)
         if p["iv_chain_rank"] >= 70:
@@ -792,10 +800,11 @@ def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration:
     return candidates
 
 
-def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier], csp_candidates: List[CSPCandidate], cfg, available_cash: float = 0.0) -> Optional[StructureChoice]:
+def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier], csp_candidates: List[CSPCandidate], cfg, available_cash: float = 0.0, account_value: float = 0.0) -> Optional[StructureChoice]:
     """Compare buy-call/buy-put vs sell-put CSP and return the winning structure.
     Edge metric = score / capital_required (normalized; higher = better capital efficiency).
-    CSP must beat buy-side edge by cfg.OPTIONS_CSP_EDGE_MARGIN to be chosen."""
+    CSP must beat buy-side edge by cfg.OPTIONS_CSP_EDGE_MARGIN to be chosen.
+    account_value: enforces per-position worst-case notional cap (OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT)."""
     is_long = signal.direction == "LONG"
     # ── Pick best buy-side outlier for this direction ──
     buy_side_rec_prefix = "BUY_CHEAP_CALL" if is_long else "BUY_CHEAP_PUT"
@@ -812,6 +821,11 @@ def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier]
     if best_csp and available_cash > 0:
         cap_budget = available_cash * cfg.OPTIONS_CSP_MAX_CAPITAL_PCT
         if best_csp.capital_required > cap_budget:
+            best_csp = None
+    # HARD account-notional cap (wipeout guard) — per-position worst case ≤ 3% of account value
+    if best_csp and account_value > 0:
+        pos_cap = cfg.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT * account_value
+        if best_csp.capital_required > pos_cap:
             best_csp = None
     # ── No structures available ──
     if not best_buy and not best_csp:

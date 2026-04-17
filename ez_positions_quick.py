@@ -4879,21 +4879,16 @@ class HedgeEngine:
         wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
         if (is_long and wt1_3m <= wt2_3m) or (not is_long and wt1_3m >= wt2_3m):
             return False, f"WT3M_WRONG_wt1={wt1_3m:.1f}_wt2={wt2_3m:.1f}"
-        # ── EXTREME ZONE BLOCK: do NOT open LONG into k_15m≥80 (top zone) or SHORT into k_15m≤20 (bottom zone)
-        _k_15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50)
-        if is_long and _k_15m >= 80:
-            return False, f"OVERBOUGHT_15m_NO_LONG_HEDGE_k15m={_k_15m:.0f}"
-        if (not is_long) and _k_15m <= 20:
-            return False, f"OVERSOLD_15m_NO_SHORT_HEDGE_k15m={_k_15m:.0f}"
-        # ── HTF WT AGREEMENT: at least 2 of {15m, 1h, 4h} must agree with hedge direction
-        _htf_agree = 0
-        for _htf_tf in ('15m', '1h', '4h'):
-            _htf_w1 = safe_fetch_float(indicators.get(f'wt1_{_htf_tf}', 0), 0)
-            _htf_w2 = safe_fetch_float(indicators.get(f'wt2_{_htf_tf}', 0), 0)
-            if (is_long and _htf_w1 > _htf_w2) or ((not is_long) and _htf_w1 < _htf_w2):
-                _htf_agree += 1
-        if _htf_agree < 2:
-            return False, f"HTF_WT_DISAGREE_{_htf_agree}/3"
+        # ═══ 2026-04-17 USER RULE — wt_3m AND wt_1h MUST BOTH AGREE with hedge direction ═══
+        # Was "2 of 3 HTFs {15m,1h,4h}" which let wt_1h disagreement slip through if 15m+4h agreed.
+        # Now: wt_1h is MANDATORY. Same as wt_3m above — both hard required.
+        wt1_1h = safe_fetch_float(indicators.get('wt1_1h', 0), 0)
+        wt2_1h = safe_fetch_float(indicators.get('wt2_1h', 0), 0)
+        if (is_long and wt1_1h <= wt2_1h) or (not is_long and wt1_1h >= wt2_1h):
+            return False, f"WT1H_WRONG_wt1={wt1_1h:.1f}_wt2={wt2_1h:.1f} (hedge needs wt3m+wt1h BOTH)"
+        # 2026-04-17 USER RULE: hedge gate = wt_3m AND wt_1h ONLY. NOT 15m, NOT 4h, NOT D, NOT W.
+        # k_15m extreme-zone block removed (different indicator but user said only 3m+1h).
+        # No other WT/stoch/zone checks at this gate.
         # ── DC basis side check: don't LONG below dc_basis_1h, don't SHORT above
         _dc_basis_1h = safe_fetch_float(indicators.get('dc_basis_1h', 0), 0)
         _cur_px = safe_fetch_float(indicators.get('current_price', 0), 0)
@@ -4902,11 +4897,11 @@ class HedgeEngine:
                 return False, f"BELOW_DC_BASIS_1h_NO_LONG_HEDGE"
             if (not is_long) and _cur_px > _dc_basis_1h:
                 return False, f"ABOVE_DC_BASIS_1h_NO_SHORT_HEDGE"
-        # ── DC basis crossover side check: don't open SHORT on a fresh bullish basis cross, don't open LONG on bearish
-        if (not is_long) and (indicators.get('dc_basis_crossover_15m') or indicators.get('dc_basis_crossover_1h')):
-            return False, "DC_BASIS_BULL_CROSS_NO_SHORT"
-        if is_long and (indicators.get('dc_basis_crossunder_15m') or indicators.get('dc_basis_crossunder_1h')):
-            return False, "DC_BASIS_BEAR_CROSS_NO_LONG"
+        # ── DC basis crossover side check (1h only per user "NOT 15M" rule)
+        if (not is_long) and indicators.get('dc_basis_crossover_1h'):
+            return False, "DC_BASIS_BULL_CROSS_1h_NO_SHORT"
+        if is_long and indicators.get('dc_basis_crossunder_1h'):
+            return False, "DC_BASIS_BEAR_CROSS_1h_NO_LONG"
         if hasattr(self.data_manager, 'delta_tracker') and self.data_manager.delta_tracker:
             try:
                 sig = self.data_manager.delta_tracker.update(symbol, indicators, position_state=None)
@@ -5669,9 +5664,10 @@ class HedgeEngine:
     async def execute_same_symbol_hedge(self, account_key, origin_position, symbol, origin_side, qty, current_price):
         # FIX 2026-04-07: GLOBAL HEDGE-COMPLETED LOCKOUT — ONE hedge per position, period.
         origin_key = f"{account_key}:{symbol}_{origin_side}"
+        logger.warning(f"🔎 [HEDGE_SAME_CALL] origin={origin_key} qty={qty} px={current_price}")
         _hc_ts = self._hedge_completed.get(origin_key, 0)
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
-            logger.debug(f"[HEDGE_COMPLETED_LOCK] {origin_key}: hedge already opened {int(time.time() - _hc_ts)}s ago. Blocked.")
+            logger.warning(f"🚫 [HEDGE_COMPLETED_LOCK] {origin_key}: hedge opened {int(time.time() - _hc_ts)}s ago, lockout={self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s — BLOCKED")
             return False
         hedge_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
         # 2026-04-17 USER RULE: if origin is USDT AND USDC sibling exists → use USDC as hedge vehicle.
@@ -5692,11 +5688,17 @@ class HedgeEngine:
                 logger.warning(f"💱 [HEDGE_USDC_REDIRECT] origin={symbol} USDT in loss → hedging via {_usdc_sibling} (zero commission)")
         hedge_key = f"{account_key}:{hedge_symbol}_{hedge_side}"
         if origin_key in self._hedge_same_in_flight:
-            logger.debug(f"[HEDGE_SAME_IN_FLIGHT] {origin_key}: hedge placement already in progress. Skipping duplicate.")
+            logger.warning(f"🚫 [HEDGE_SAME_IN_FLIGHT] {origin_key}: already in progress (set size={len(self._hedge_same_in_flight)}) — BLOCKED")
             return False
         self._hedge_same_in_flight.add(origin_key)
+        logger.warning(f"🔍 [HEDGE_SAME_START] origin={origin_key} hedge={hedge_key} hedge_symbol={hedge_symbol} side={hedge_side}")
         try:
-         return await self._execute_same_symbol_hedge_inner(account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol)
+            _result = await self._execute_same_symbol_hedge_inner(account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol)
+            logger.warning(f"🔍 [HEDGE_SAME_END] {hedge_key}: result={_result}")
+            return _result
+        except Exception as _hse:
+            logger.critical(f"💥 [HEDGE_SAME_CRASH] {hedge_key}: {type(_hse).__name__}: {_hse}", exc_info=True)
+            return False
         finally:
             self._hedge_same_in_flight.discard(origin_key)
 

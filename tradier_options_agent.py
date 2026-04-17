@@ -1285,18 +1285,22 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
         positions_for_expo = []
     gtc_for_expo = _load_gtc_orders(config)
     running_expo = _build_live_exposure_map(positions_for_expo, gtc_for_expo, config)
-    # ── CSP cash preflight: fetch available cash once for capital-reserve gating ──
+    # ── CSP preflight: fetch available cash + total equity for capital + notional-cap gating ──
     csp_available_cash = 0.0
+    csp_account_value = 0.0
     if getattr(config, "OPTIONS_CSP_ENABLED", False):
         try:
             bal_res = await client.get_account_balances()
             if bal_res and isinstance(bal_res, dict):
                 bals = bal_res.get("balances", bal_res)
                 csp_available_cash = float(bals.get("total_cash", 0) or bals.get("cash", {}).get("cash_available", 0) or 0)
-            logger.info(f"CSP_PREFLIGHT available_cash=${csp_available_cash:,.0f} max_csp_capital=${csp_available_cash * config.OPTIONS_CSP_MAX_CAPITAL_PCT:,.0f}")
+                csp_account_value = float(bals.get("total_equity", 0) or bals.get("market_value", 0) or csp_available_cash)
+            pos_cap = csp_account_value * config.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT
+            logger.info(f"CSP_PREFLIGHT available_cash=${csp_available_cash:,.0f} total_equity=${csp_account_value:,.0f} per_pos_cap=${pos_cap:,.0f} ({config.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT:.0%} of equity)")
         except Exception as e:
             logger.warning(f"CSP_PREFLIGHT balance fetch failed: {e} — CSP disabled for this cycle")
             csp_available_cash = 0.0
+            csp_account_value = 0.0
     # ── CALLS: only trb_long symbols (with CSP alternative when enabled) ──
     if limits["can_buy_calls"]:
         call_signals = [s for s in signals if s.direction == "LONG" and s.conviction >= 50 and s.symbol in call_allowed]
@@ -1321,9 +1325,9 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
             csp_choice = None
             if getattr(config, "OPTIONS_CSP_ENABLED", False) and csp_available_cash > 0:
                 try:
-                    csps = score_sell_put_csp(sig, chain, exp, config)
+                    csps = score_sell_put_csp(sig, chain, exp, config, account_value=csp_account_value)
                     if csps:
-                        csp_choice = pick_best_structure(sig, outliers, csps, config, available_cash=csp_available_cash)
+                        csp_choice = pick_best_structure(sig, outliers, csps, config, available_cash=csp_available_cash, account_value=csp_account_value)
                 except Exception as e:
                     logger.warning(f"CSP scoring failed for {sig.symbol}: {e}")
                     csp_choice = None

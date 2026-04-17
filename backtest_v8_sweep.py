@@ -182,10 +182,46 @@ def grid_hedge_full():
     return variants
 
 
+def grid_reentry_killed_rerun():
+    """Re-run the 12 variants that died with rc=-9 (OOM) at end of reentry_wide v3 on S1.
+    Use lower worker count + maybe narrower symbols to avoid memory pressure."""
+    return [
+        ("baseline", {}),
+        ("REENTRY2_MASTER_OFF", {"REENTRY_2_ENABLED": False}),
+        ("REENTRY2_DIR_FAV_OFF", {"REENTRY2_DIR_FAV_ENABLED": False}),
+        ("REENTRY2_DC_BREAK_OFF", {"REENTRY2_DC_BREAK_ENABLED": False}),
+        ("REENTRY2_QUICK_RECOVERY_OFF", {"REENTRY2_QUICK_RECOVERY_ENABLED": False}),
+        ("REENTRY_B02_OFF", {"REENTRY_B02_BC156_BOTTOM_ENABLED": False}),
+        ("REENTRY_B10_OFF", {"REENTRY_B10_STOCH_REV_ENABLED": False}),
+        ("REENTRY_B11_OFF", {"REENTRY_B11_DC_BREAK_ENABLED": False}),
+        ("REENTRY_B12_OFF", {"REENTRY_B12_WT_MOM_ENABLED": False}),
+        ("REENTRY_B14_OFF", {"REENTRY_B14_HA_TREND_ENABLED": False}),
+        ("REENTRY_B15_OFF", {"REENTRY_B15_STRONG_TREND_ENABLED": False}),
+        ("ALL_NEW_REENTRIES_OFF", {
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        ("ALL_REENTRIES_OFF", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False,
+            "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False,
+            "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+    ]
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
+    "reentry_killed_rerun": grid_reentry_killed_rerun,
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
 }

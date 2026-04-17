@@ -91,6 +91,48 @@ Anything NOT in that legitimate-differ list must bit-match. If you find a drift,
 
 ---
 
+## 🚫 CRYPTO vs TRADIER CONFIGS — NEVER CONFUSE MODES
+
+**Historical cost:** weeks of backtest time wasted because `v8_test_queue.py --mode crypto` silently ran tradier-config tests producing 0-trade "results" that looked green. This is now prohibited at the runner.
+
+### Routing rules (hard-enforced)
+
+| Config file | Machine | Mode | Python |
+|---|---|---|---|
+| `config.py` | **S1** | `crypto` | `/home/niels/.conda/envs/binance_env/bin/python` |
+| `config_tradier.py` | **S2** | `tradier` | `/home/niels/miniconda3/envs/binance_env/bin/python` |
+| `wt_dc_delta.py:DEFAULT_CFG` | S1 (crypto) | `crypto` | — |
+
+### Guards in place
+
+1. **`v8_test_queue.py run_item()`** — if `--mode X` but the entry's `config` file infers a different mode, it returns `status="mode_skip"` (not "done", not silent 0-trade). The item stays in the queue, gets picked up on the correct machine.
+2. **`sweep_cockpit.py`** — two separate Flask routes (`/param/<name>/queue_test` hardcodes `config_tradier.py`; `/param/crypto/<name>/queue_test` hardcodes `config.py`). The UI cannot produce a wrong-config entry.
+3. **Env var `V8_PYTHON`** overrides the hardcoded MacBook Python path. Set it on servers when launching the runner. Already handled by launcher scripts.
+
+### When launching a runner
+
+```bash
+# On S1 (crypto)
+export V8_PYTHON=/home/niels/.conda/envs/binance_env/bin/python
+cd /home/niels/binance-sandbox
+nohup "$V8_PYTHON" -u v8_test_queue.py --mode crypto > ~/logs/v8_test_queue_crypto_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+
+# On S2 (tradier)
+export V8_PYTHON=/home/niels/miniconda3/envs/binance_env/bin/python
+cd /home/niels/binance-sandbox
+nohup "$V8_PYTHON" -u v8_test_queue.py --mode tradier > ~/logs/v8_test_queue_tradier_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+```
+
+### Monitoring
+
+- Result files land in `data/test_queue_results/abtest_<param>_<ts>.json` on the runner's machine.
+- If you see `WINNER=<X>  Δ=0.000` with both arms at `sharpe=0.000 trades=0`, that's still a sign of either mode mismatch OR baseline being too weak to generate trades — investigate, don't trust the winner field.
+- Per `feedback_sharpe_2_baseline.md`: a result with baseline Sharpe < 2 is trash. Re-run on stronger baseline.
+
+**If this rule gets violated again:** the guard in `v8_test_queue.py` will log `MODE_CONFIG_MISMATCH_SKIP` loudly. That's the signal — do not ignore it.
+
+---
+
 ## ⚠️ NO LYING / NO GUESSING — REAL MONEY
 
 - **NEVER** claim something works without log/exchange proof.

@@ -7877,25 +7877,24 @@ class TradierTradeManager:
                         _p0_rescue = _was_5m_exit and _1h_still_trending and _5m_entry_fires
                         if _p0_rescue:
                             logger.warning(f"🟢 [REENTRY_P0_5M_RESCUE] {pk}: exit_reason='{_er_str[:40]}' 1h_trending={_1h_still_trending} 5m_entry=TRUE — BYPASS FILTERS")
-                        # STOCH GATE — 4 tiers based on hours since exit (skipped if P0 rescue fires):
-                        # Tier 0 (0–5min): AGGRESSIVE — within 1 bar (5m base TF) of exit clearing, just need dc_basis_crossover_1h
-                        #   or stoch_crossover_15m fresh trigger. No stoch gate, no HTF stack required.
-                        #   Evidence 2026-04-17 reentry sweep: delay=1 bar best Sharpe 0.898 WR 78.3% (stocks).
-                        # Tier 1 (5min–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
-                        # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone — the worst place to reenter)
+                        # ═══ AGGRESSIVE FAST-PATH (2026-04-17) — bypass tier gates if fresh dc_x1h or stoch_x15m
+                        # fires within the aggressive window. NEVER delays — only ACCELERATES when signal is there.
+                        # If window triggers absent, logic falls through to the normal Tier 1/2/3 gates below. ═══
+                        _t0_window_min = float(getattr(config, 'REENTRY_AGGRESSIVE_WINDOW_MIN', 5.0))
+                        _dc_x1h_now = (i.get("dc_basis_crossover_1h", False) if side == "LONG" else i.get("dc_basis_crossunder_1h", False))
+                        _stoch_15m_now = (i.get("stoch_crossover_15m", False) if side == "LONG" else i.get("stoch_crossunder_15m", False))
+                        _aggr_fired = (
+                            not _p0_rescue
+                            and hours_since * 60.0 < _t0_window_min
+                            and (_dc_x1h_now or _stoch_15m_now)
+                        )
+                        if _aggr_fired:
+                            logger.warning(f"[REENTRY_MONITOR] {pk}: 🎯 AGGRESSIVE fast-path (0-{_t0_window_min:.0f}m) — dc_x1h={_dc_x1h_now} stoch_x15m={_stoch_15m_now} @ {hours_since*60:.0f}m post-exit. Skipping tier gates.")
+                        # STOCH GATE — 3 tiers based on hours since exit (skipped if P0 rescue OR aggressive fast-path fires):
+                        # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
+                        # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone)
                         # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
-                        _t0_aggressive_max_min = float(getattr(config, 'REENTRY_AGGRESSIVE_WINDOW_MIN', 5.0))
-                        _t0_aggressive_hours = _t0_aggressive_max_min / 60.0
-                        if not _p0_rescue and hours_since < _t0_aggressive_hours:
-                            # Aggressive 0-5m tier: stocks 5m base = 1 bar, crypto 3m base = 1-2 bars.
-                            # Fires on fresh DC_1h crossover in-direction OR fresh stoch_15m crossover in-direction.
-                            _dc_x1h_now = (i.get("dc_basis_crossover_1h", False) if side == "LONG" else i.get("dc_basis_crossunder_1h", False))
-                            _stoch_15m_now = (i.get("stoch_crossover_15m", False) if side == "LONG" else i.get("stoch_crossunder_15m", False))
-                            if not (_dc_x1h_now or _stoch_15m_now):
-                                logger.info(f"[REENTRY_MONITOR] {pk}: AGGRESSIVE 0-{_t0_aggressive_max_min:.0f}m tier — waiting for fresh dc_x1h or stoch_x15m trigger ({hours_since*60:.0f}m since exit)")
-                                continue
-                            logger.warning(f"[REENTRY_MONITOR] {pk}: 🎯 AGGRESSIVE 0-{_t0_aggressive_max_min:.0f}m tier fired — dc_x1h={_dc_x1h_now} stoch_x15m={_stoch_15m_now} @ {hours_since*60:.0f}m after exit")
-                        elif not _p0_rescue and hours_since < 3.0:
+                        if not _p0_rescue and not _aggr_fired and hours_since < 3.0:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))
@@ -7911,7 +7910,7 @@ class TradierTradeManager:
                                 if not (k_5m < k_5m_prev and k_15m < k_15m_prev and _k15m_lvl_ok and _htf_wt_fav >= _rally_htf_min):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
                                     continue
-                        elif not _p0_rescue and hours_since < 48.0:
+                        elif not _p0_rescue and not _aggr_fired and hours_since < 48.0:
                             # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16) ═══
                             _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)
                             if _bounce_enabled:
@@ -7927,14 +7926,14 @@ class TradierTradeManager:
                                 if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
                                     continue
-                        elif not _p0_rescue:
+                        elif not _p0_rescue and not _aggr_fired:
                             # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) ═══
                             if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
                                 logger.info(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue BUT TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED=False — stoch gate still applies")
                                 continue
                             logger.warning(f"[REENTRY_MONITOR] {pk}: {hours_since:.1f}h overdue — stoch gate BYPASSED, relying on exit score + WT alignment")
-                        # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or P0 rescue fired)
-                        if _p0_rescue:
+                        # The exit signal has cleared. Now check that the TRADE-DIRECTION WT is aligned (or P0 rescue / aggressive fast-path fired)
+                        if _p0_rescue or _aggr_fired:
                             wt_support = 3  # for logging
                             reenter = True
                         else:
