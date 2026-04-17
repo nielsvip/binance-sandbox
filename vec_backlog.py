@@ -43,7 +43,9 @@ from vec_mass_scan import (
 CRYPTO_15 = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,ATOMUSDT,BCHUSDT,ETCUSDT,FILUSDT".split(",")
 TRADIER_15 = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,META,TSLA,SPY,QQQ,XLF,XLE,GLD,USO,IWM".split(",")
 
-HORIZONS = [4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512]
+# Focused matrix 2026-04-17: winning clusters are at h=192-512 (validated full-data).
+# Added finer grid in that range + extensions beyond to 1024 to probe position-trade horizons.
+HORIZONS = [4, 8, 16, 32, 64, 96, 128, 192, 224, 256, 288, 320, 384, 448, 512, 640, 768, 1024]
 PICK_SIZES = [3, 4, 5, 6, 7]
 
 

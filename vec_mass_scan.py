@@ -265,17 +265,17 @@ def build_tradier_conditions(loaded):
     wtcr_15 = stack_bool(loaded, "wt_cross_bear_15m")
     stcu_5 = stack_bool(loaded, "stoch_crossunder_5m")
     stcu_15 = stack_bool(loaded, "stoch_crossunder_15m")
-    # LONG — stoch threshold sweep
+    # LONG — stoch threshold sweep (refined 2026-04-17: tighter range around winning cluster k_lt_20-30)
     for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h)]:
-        for thr in (20, 30, 40, 50, 60):
+        for thr in (15, 20, 25, 30, 35, 40, 50, 60):
             C[f"L_k{tf}_lt{thr}"] = ka < thr
     # LONG — MFI threshold sweep
     for tf, ma in [("5", mfi5), ("15", mfi15)]:
-        for thr in (20, 30, 40, 50):
+        for thr in (20, 25, 30, 35, 40, 50):
             C[f"L_mfi{tf}_lt{thr}"] = ma < thr
-    # LONG — RSI threshold sweep
+    # LONG — RSI threshold sweep (tighter: winning cluster = rsi_lt_25-35)
     for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
-        for thr in (25, 30, 35, 40, 45):
+        for thr in (20, 22, 25, 28, 30, 32, 35, 38, 40, 45):
             C[f"L_rsi{tf}_lt{thr}"] = ra < thr
     # LONG — DC position
     for thr in (10, 20, 30, 40, 50):
@@ -305,29 +305,33 @@ def build_tradier_conditions(loaded):
     C["L_sma200up_1h"] = (sma200_1h > 0) & (close > sma200_1h)
     C["L_sma200up_5m"] = (sma200_5m > 0) & (close > sma200_5m)
     C["L_above_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D > 0.05)
-    # LONG — momentum-continuation
+    # LONG — momentum-continuation (refined 2026-04-17: +mom_dcpos_gt60, +mom_dcpos_gt80 bracketing winners)
     C["L_mom_mfi_gt50"] = mfi15 > 50
+    C["L_mom_mfi_gt60"] = mfi15 > 60
     C["L_mom_dcpos_gt50"] = dc_pos15 > 0.5
+    C["L_mom_dcpos_gt60"] = dc_pos15 > 0.6
     C["L_mom_dcpos_gt70"] = dc_pos15 > 0.7
+    C["L_mom_dcpos_gt80"] = dc_pos15 > 0.8
     C["L_mom_bb15_gt70"] = bb_15m > 0.7
+    C["L_mom_bb15_gt80"] = bb_15m > 0.8
     C["L_atr_gt1"] = atr_15m > 1.0
-    # SHORT — stoch upper
+    # SHORT — stoch upper (tighter around winning cluster k_gt_80-90)
     for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h)]:
-        for thr in (40, 50, 60, 70, 80):
+        for thr in (40, 50, 60, 70, 75, 80, 85, 90):
             C[f"S_k{tf}_gt{thr}"] = ka > thr
     # SHORT — MFI upper
     for tf, ma in [("5", mfi5), ("15", mfi15)]:
-        for thr in (50, 60, 70, 80):
+        for thr in (50, 60, 65, 70, 75, 80):
             C[f"S_mfi{tf}_gt{thr}"] = ma > thr
-    # SHORT — RSI upper
+    # SHORT — RSI upper (tighter: winning cluster rsi_gt_60-75)
     for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
-        for thr in (55, 60, 65, 70, 75):
+        for thr in (55, 60, 62, 65, 68, 70, 72, 75, 78, 80):
             C[f"S_rsi{tf}_gt{thr}"] = ra > thr
     # SHORT — DC position upper
-    for thr in (50, 60, 70, 80, 90):
+    for thr in (50, 60, 70, 75, 80, 85, 90):
         C[f"S_dcpos_gt{thr}"] = dc_pos15 > (thr / 100.0)
     # SHORT — BB upper
-    for thr in (70, 80, 90, 100):
+    for thr in (70, 75, 80, 85, 90, 95, 100):
         C[f"S_bb15_gt{thr}"] = bb_15m > (thr / 100.0)
         C[f"S_bb1h_gt{thr}"] = bb_1h > (thr / 100.0)
     # SHORT — WT not bullish
