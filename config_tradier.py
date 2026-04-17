@@ -1436,6 +1436,13 @@ class TradierConfig:
     # Aggressive tier window (2026-04-17 reentry sweep: stocks peak at delay=1 bar = 5min on 5m).
     # Stocks reward URGENCY after stoch/DC exit clears. Crypto uses 30min in config.py.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 5.0  # 5 min on stocks (5m base = 1 bar — matches Sharpe peak)
+    # PATHWAY F — FAVORABLE MOVE force-reentry (2026-04-17, matches crypto config.py)
+    REENTRY_FAVORABLE_MOVE_PCT: float = 1.0          # reenter if price moved ≥1% in our direction since exit
+    REENTRY_FAVORABLE_HTF_MIN: int = 2                # require ≥2 of (1h,4h,D) WT aligned
+    REENTRY_FAVORABLE_QTY_MULT: float = 1.0           # base size when rally continues (100%)
+    REENTRY_K15M_PARTIAL_ENABLED: bool = True         # enforce size-down in overheat zone
+    REENTRY_K15M_PARTIAL_THRESHOLD: float = 90.0      # LONG k_15m ≥ 90 (SHORT ≤ 10) = overheat
+    REENTRY_K15M_PARTIAL_MULT: float = 0.5            # reenter at 50% in overheat zone (rally may be ending)
     REENTRY_SYMGATE_ENABLED: bool = True   # Symmetric gate: block reentry if DELTA/score/speed says exit for the proposed side
     REENTRY_SYMGATE_SPEED_MIN: float = 1.0  # Min bull_speed (LONG) / bear_speed (SHORT). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = True     # Apply same guard to fresh entries, not just reentries

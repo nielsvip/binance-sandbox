@@ -13312,7 +13312,15 @@ class MultiAccountTradeManager:
                                             _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                                             _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
                                             logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m+1h) — SAME-SYMBOL hedge via execute_now")
-                                            asyncio.create_task(_he.execute_same_symbol_hedge(account_key, pos, symbol, 'LONG' if _is_long else 'SHORT', _oh_pos_amt, _oh_mark))
+                                            # 2026-04-17: wrap with exception logger — bare create_task swallows errors silently.
+                                            async def _oh_hedge_wrapper(_he_ref=_he, _pk=position_key, _sym=symbol, _il=_is_long, _pa=_oh_pos_amt, _px=_oh_mark, _ak=account_key, _pos=pos):
+                                                try:
+                                                    logger.warning(f"🎬 [OBLIGATORY_HEDGE_TASK_START] {_pk}: calling execute_same_symbol_hedge")
+                                                    _r = await _he_ref.execute_same_symbol_hedge(_ak, _pos, _sym, 'LONG' if _il else 'SHORT', _pa, _px)
+                                                    logger.warning(f"🏁 [OBLIGATORY_HEDGE_TASK_END] {_pk}: result={_r}")
+                                                except Exception as _e:
+                                                    logger.critical(f"💥 [OBLIGATORY_HEDGE_TASK_CRASH] {_pk}: {type(_e).__name__}: {_e}", exc_info=True)
+                                            asyncio.create_task(_oh_hedge_wrapper())
                                         else:
                                             logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} < {_oh_req} — WT not yet confirming reversal")
                             if self.tracker_manager:
@@ -15174,11 +15182,18 @@ class MultiAccountTradeManager:
                     # PATHWAY F (FIX B 2026-04-17): FAVORABLE-MOVE — price moved ≥ REENTRY_FAVORABLE_MOVE_PCT
                     # in OUR direction since exit. The exit was WRONG — market proved it by continuing.
                     # Bypasses _delta_rising/_clear_of_red (the drop IS the signal). Requires HTF alignment only.
+                    # User rule 2026-04-17: k_15m >90 (LONG) / <10 (SHORT) → reenter at 50% (rally may be ending).
                     if not should_reenter and _price_favorable and _favorable_htf_ok:
                         should_reenter = True
-                        _qty_mult = float(getattr(config, 'REENTRY_FAVORABLE_QTY_MULT', 1.0))
-                        _reason_tag = f"PF_FAVORABLE_{'DROP' if not is_long else 'SPIKE'}_htf{_htf_count}_move{(current_price/exit_price - 1)*100:.2f}%"
-                        logger.critical(f"🚀 [REENTRY_FAVORABLE_MOVE] {position_key}: exit={exit_price:.6f} cur={current_price:.6f} move={(current_price/exit_price-1)*100:+.2f}% htf={_htf_count}/3 — DROP/SPIKE recognized, FORCING REENTRY")
+                        _k15m_now = float(indicators.get('stoch_k_15m', 50) or 50)
+                        _k15m_thr = float(getattr(config, 'REENTRY_K15M_PARTIAL_THRESHOLD', 90.0))
+                        _k15m_partial_mult = float(getattr(config, 'REENTRY_K15M_PARTIAL_MULT', 0.5))
+                        _k_overheat = (is_long and _k15m_now >= _k15m_thr) or ((not is_long) and _k15m_now <= (100.0 - _k15m_thr))
+                        _fav_base = float(getattr(config, 'REENTRY_FAVORABLE_QTY_MULT', 1.0))
+                        _qty_mult = _fav_base * _k15m_partial_mult if _k_overheat else _fav_base
+                        _overheat_tag = f"_K15M_OVERHEAT_{_k15m_partial_mult:.2f}x(k15={_k15m_now:.0f})" if _k_overheat else ""
+                        _reason_tag = f"PF_FAVORABLE_{'DROP' if not is_long else 'SPIKE'}_htf{_htf_count}_move{(current_price/exit_price - 1)*100:.2f}%{_overheat_tag}"
+                        logger.critical(f"🚀 [REENTRY_FAVORABLE_MOVE] {position_key}: exit={exit_price:.6f} cur={current_price:.6f} move={(current_price/exit_price-1)*100:+.2f}% htf={_htf_count}/3 k15m={_k15m_now:.0f} mult={_qty_mult:.2f}{' (PARTIAL — rally maturing)' if _k_overheat else ''} — FORCING REENTRY")
                     # PATHWAY AGGR (FIX 2026-04-17): AGGRESSIVE 0-5min tier — crypto 3m base = 1-2 bars.
                     # Evidence from reentry sweep: delay=1 bar gives peak Sharpe on LONG after stoch/DC exit clears.
                     # Bypasses safety gates when fresh dc_basis_crossover_3m or stoch_crossover_3m fires within 5min of exit.
