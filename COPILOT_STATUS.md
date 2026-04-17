@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-17 13:37:20 UTC
+# Copilot Status — 2026-04-17 13:52:32 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:35:52
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-17T13:35:52
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T13:35:55
-- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:36:26
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:36:26
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-17T13:36:26
-- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:36:56
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:36:56
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-17T13:36:56
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T13:36:59
+- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:50:36
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:50:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T13:50:38
+- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:51:09
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:51:09
+- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:51:39
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:51:39
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T13:51:41
+- **STALE_INDICATORS** [tradier]  — 2026-04-17T13:52:12
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T13:52:12
 
 ## Missed Trades (trader comparison)
 
@@ -27,11 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 2 | **Reentered:** 0
-
-- HELD: **SLV** LONG (tradier) peak +9.3%, now +4.0%
-- HELD: **CVX** SHORT (tradier) peak +3.9%, now +3.9%
-- HELD: **XOM** SHORT (tradier) peak +3.3%, now +3.3%
+**Held:** 0 | **Watching for reentry:** 2 | **Reentered:** 0
 
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.1%, exited 1m ago
 - WATCHING: **1000BONKUSDC** SHORT (crypto) peaked +3.1%, exited 1m ago
