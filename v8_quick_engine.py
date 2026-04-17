@@ -838,6 +838,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
         for name, arr in blocks.items():
             score = score + arr.astype(np.float32) * weights.get(name, 1)
         raw = raw & (score >= cfg.STRENGTH_MIN_SCORE)
+        # ENTRY_SCORE_THRESHOLD — 2026-04-17 wiring. Previously declared but never read in crypto.
+        # Acts as a SECOND score floor stacked on STRENGTH_MIN_SCORE so it can be swept independently.
+        # Default 18.0 from QuickConfig; 0 disables.
+        _est = float(getattr(cfg, 'ENTRY_SCORE_THRESHOLD', 0.0) or 0.0)
+        if _est > 0:
+            raw = raw & (score >= _est)
 
     # ===== Auto-hooked entry gates (Group B switches) =====
     # Each adds a simple filter; when flipped, impacts entry signal density.

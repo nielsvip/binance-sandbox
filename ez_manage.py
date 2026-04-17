@@ -13196,6 +13196,37 @@ class MultiAccountTradeManager:
                         _ung_bypass = True
                         logger.warning(f"⚠️ [UNIVERSAL_NOLOSS_TECHNICAL_BYPASS][{account_key}] {position_key}: technical exit '{_brk}' allowed to close at loss (reason={reason[:60]})")
                         break
+            # ═══ DEEP_LOSS_PROTECTION (2026-04-17) — prevent liquidation cascade ═══
+            # If a bypass reason granted close-at-loss but the loss is deeper than the floor,
+            # REVOKE the bypass AND trigger an oversize hedge (up to 1.5x the losing position).
+            # Rationale: closing a -26% short at market = that loss realized now. An oversize
+            # hedge caps the loss AND profits if price continues against us (making hedge > loss).
+            # Only LIQUIDATION and explicit hedge calls can pass this floor.
+            _dlp_threshold = float(getattr(config, 'DEEP_LOSS_PROTECTION_PCT', -5.0))
+            if _ung_bypass and not is_hedge and 'LIQUIDATION' not in reason_upper:
+                _dlp_pos = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None
+                if _dlp_pos:
+                    _dlp_entry = safe_fetch_float(getattr(_dlp_pos, 'entry_price', 0), 0)
+                    _dlp_is_long = position_side == 'LONG'
+                    if _dlp_entry > 0 and old_price > 0:
+                        _dlp_gain = ((old_price - _dlp_entry) / _dlp_entry * 100) if _dlp_is_long else ((_dlp_entry - old_price) / _dlp_entry * 100)
+                    else:
+                        _dlp_gain = safe_fetch_float(getattr(_dlp_pos, 'gain', 0), 0.0)
+                    if _dlp_gain < _dlp_threshold:
+                        _ung_bypass = False
+                        # Scale hedge size by loss depth: deeper loss → larger hedge (up to cap).
+                        _dlp_mult_base = float(getattr(config, 'DEEP_LOSS_HEDGE_MULT_BASE', 1.0))
+                        _dlp_mult_per_5pct = float(getattr(config, 'DEEP_LOSS_HEDGE_MULT_PER_5PCT', 0.1))
+                        _dlp_mult_cap = float(getattr(config, 'DEEP_LOSS_HEDGE_MULT_CAP', 1.5))
+                        _dlp_steps = max(0, int((_dlp_threshold - _dlp_gain) / 5.0))  # each 5% deeper = +step
+                        _dlp_mult = min(_dlp_mult_cap, _dlp_mult_base + _dlp_steps * _dlp_mult_per_5pct)
+                        _dlp_pos_amt = abs(safe_fetch_float(getattr(_dlp_pos, 'positionAmt', 0), 0))
+                        _dlp_mark = safe_fetch_float(getattr(_dlp_pos, 'mark_price', 0), 0) or old_price
+                        _dlp_val = _dlp_pos_amt * _dlp_mark * _dlp_mult
+                        logger.critical(f"🚧 [DEEP_LOSS_PROTECTION][{account_key}] {position_key}: gain={_dlp_gain:.2f}% < floor {_dlp_threshold:.1f}% — REVOKING bypass '{reason[:40]}', TRIGGERING {_dlp_mult:.2f}x hedge (${_dlp_val:.1f})")
+                        _dlp_he = getattr(self, 'hedge_engine', None)
+                        if _dlp_he and _dlp_val > 1.0:
+                            asyncio.create_task(_dlp_he.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if _dlp_is_long else 'SHORT', losing_value_usd=_dlp_val, dry_run=False))
             _ung_srs = 'STRUCTURAL_RANGE_SHIFT' in reason_upper
             if not _ung_bypass:
                 pos = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None
@@ -13205,8 +13236,14 @@ class MultiAccountTradeManager:
                     _real_gain = ((old_price - _entry_px) / _entry_px * 100) if _entry_px > 0 and old_price > 0 and _is_long else (((_entry_px - old_price) / _entry_px * 100) if _entry_px > 0 and old_price > 0 else safe_fetch_float(getattr(pos, 'gain', 0), 0.0))
                     if _real_gain < -0.01:
                         # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, default OFF) ===
+                        # 2026-04-17: per-account disable — inf bleeding shorts sit below dc_low_4h,
+                        # if price rises to entry with 3m green bar this rule would close at massive loss.
+                        # DISABLED FOR INF temporarily until account recovers.
                         _dc_recov_bypass = False
-                        if getattr(config, 'DC_RECOVERY_EXIT_ENABLED', False):
+                        _dc_recov_disabled_accts = getattr(config, 'DC_RECOVERY_EXIT_DISABLED_ACCOUNTS', ['inf']) or []
+                        if account_key in _dc_recov_disabled_accts:
+                            pass  # account-level disable
+                        elif getattr(config, 'DC_RECOVERY_EXIT_ENABLED', False):
                             _ind = None
                             try:
                                 if getattr(self, 'data_manager', None) is not None:

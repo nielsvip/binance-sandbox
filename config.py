@@ -557,6 +557,20 @@ class Config:
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2            # count of enabled TFs against pos
+    # ═══ DEEP_LOSS_PROTECTION (2026-04-17) — liquidation-cascade brake ═══
+    # When a bypass reason (WT_CROSS_EXIT, DC_BREAK, etc.) grants close-at-loss BUT loss is
+    # deeper than this floor, REVOKE bypass AND trigger oversize hedge (up to 1.5x).
+    # Rationale: closing a -26% short realizes that loss; an oversize hedge caps it AND
+    # profits on continuation. Scaling: base 1.0x + 0.1x per 5% deeper, capped at 1.5x.
+    # Only LIQUIDATION (exchange-forced) and is_hedge calls can pass this floor.
+    DEEP_LOSS_PROTECTION_PCT: float = -5.0               # closes blocked below this gain
+    DEEP_LOSS_HEDGE_MULT_BASE: float = 1.0               # starting hedge multiplier
+    DEEP_LOSS_HEDGE_MULT_PER_5PCT: float = 0.1           # added per 5% deeper than floor
+    DEEP_LOSS_HEDGE_MULT_CAP: float = 1.5                # max hedge size (150% of pos value)
+    # ═══ DC_RECOVERY_EXIT per-account disable (2026-04-17) ═══
+    # "entry_price outside dc_4h range close" rule can liquidate inf's bleeding shorts
+    # when price recovers to entry. Temporarily disabled for inf until account recovers.
+    DC_RECOVERY_EXIT_DISABLED_ACCOUNTS: list = field(default_factory=lambda: ['inf'])
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
     LEGACY_GUARANTEED_REENTRY: bool = True     # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
