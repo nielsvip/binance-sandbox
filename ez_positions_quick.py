@@ -5034,9 +5034,14 @@ class HedgeEngine:
                     if not any(h.get('position_key') == _winner_pk for h in self.tracker_manager.active_hedges):
                         logger.warning(f"🛡️ [HEDGE_DISCOVERY] {symbol}: winner={_winner_pk}(gain={_gains[-1][2]:.2f}%) is hedge for loser={_loser_pk}(gain={_gains[0][2]:.2f}%)")
                         cand = await self.tracker_manager.get_exit_candidate(_winner_pk)
-                        if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _winner_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active'})
-                        else: cand['is_hedge'] = True; cand['losing_position_key'] = _loser_pk
+                        if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _winner_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
+                        else: cand['is_hedge'] = True; cand['losing_position_key'] = _loser_pk; cand.setdefault('opened_at', datetime.now(timezone.utc).isoformat()); cand.setdefault('timestamp', time.time())
                         self.tracker_manager.active_hedges.append(cand)
+                        _discovery_made_change = True
+                try:
+                    if '_discovery_made_change' in dir() and locals().get('_discovery_made_change'):
+                        await self.tracker_manager.save_tracker(account_key, force=True)
+                except Exception: pass
         async with self.tracker_manager._exit_candidates_lock:
             for pk, cand in list(self.tracker_manager.exit_candidates.items()):
                 if not pk.startswith(f"{account_key}:"): continue
@@ -7393,19 +7398,16 @@ class TrackerManager:
                 self.trade_manager.direct_high_gain.pop(position_key, None)
         async with self._hedges_lock:
             self.active_hedges = [h for h in self.active_hedges if h.get('position_key') != position_key]
-        # Remove from tradeable_keys UNLESS symbol is in winners/losers ranking lists
-        _sym_from_pk = position_key.split(":")[1].replace("_LONG", "").replace("_SHORT", "") if ":" in position_key else ""
-        _in_rankings = False
-        if hasattr(self, "registry") and self.registry:
-            _in_rankings = any(s == _sym_from_pk for s, _, _ in (self.registry.top_longs or [])) or any(s == _sym_from_pk for s, _, _ in (self.registry.top_shorts or []))
-        if not _in_rankings:
-            if position_key in self.tradeable_keys:
-                self.tradeable_keys.discard(position_key)
-                logger.info(f" - Removed {position_key} from tradeable_keys (not in rankings)")
-            if hasattr(self, "tradeable_keys_cache") and position_key in self.tradeable_keys_cache:
-                self.tradeable_keys_cache.discard(position_key)
-        else:
-            logger.info(f" - Keeping {position_key} in tradeable_keys (symbol {_sym_from_pk} in rankings)")
+        # 2026-04-17 USER RULE: "Hedges are temporarily added as tradeable_keys so they exist and
+        # then get erased IMMEDIATELY after the hedge gets closed." Rankings check was blocking this.
+        # Hedge keys always come out of tradeable on nuke — they were only there to allow the open.
+        if position_key in self.tradeable_keys:
+            self.tradeable_keys.discard(position_key)
+            logger.info(f" - Removed {position_key} from tradeable_keys (hedge close, rankings ignored)")
+        if hasattr(self, "tradeable_keys_cache") and position_key in self.tradeable_keys_cache:
+            self.tradeable_keys_cache.discard(position_key)
+        if position_key in account_keys_set:
+            account_keys_set.discard(position_key)
         await self.save_tracker(account_key, force=True)
 
     def _compress_list(self, data_list: List[float], tolerance: float = 1e-6) -> List[float]:
@@ -10019,6 +10021,30 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if _gate_sym and _master_symbols and _gate_sym not in _master_symbols:
         logger.critical(f"🚫🚫🚫 [SYMBOL_NOT_IN_MASTER] {position_key}: symbol {_gate_sym} is NOT in symbols.json. TRADE BLOCKED. This symbol does not exist in our universe.")
         return False, f"BLOCKED_SYMBOL_NOT_IN_SYMBOLS_JSON_{_gate_sym}"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # USDC PREFERENCE GATE (2026-04-17) — USDT blocked when USDC version exists.
+    # User rule: "ALWAYS prefer usdc NO COMMISSIONS over usdt WITH COMMISSIONS".
+    # Fires on OPEN/AUGMENT only (existing positions can CLOSE/REDUCE as USDT).
+    # Not applied to is_hedge (hedge must match origin symbol) or explicit close actions.
+    # ═══════════════════════════════════════════════════════════════════════════
+    _action_u = (action or '').upper()
+    _is_open_like = ('OPEN' in _action_u or 'AUGMENT' in _action_u or 'ENTRY' in _action_u or 'REENTRY' in _action_u) and not is_hedge
+    if _is_open_like and _gate_sym and _gate_sym.endswith('USDT'):
+        _usdc_candidate = _gate_sym[:-4] + 'USDC'
+        _live_usdc = getattr(trade_manager, 'live_usdc_pairs', None)
+        if _live_usdc is None:
+            _live_usdc = getattr(trade_manager, 'available_usdc_pairs', set()) or set()
+        # Also check the cached JSON file as fallback
+        if not _live_usdc:
+            try:
+                import json as _j
+                with open(config.LIVE_USDC_PAIRS_FILE) as _f:
+                    _live_usdc = set(_j.load(_f))
+            except Exception:
+                _live_usdc = set()
+        if _usdc_candidate in _live_usdc:
+            logger.critical(f"🚫 [USDC_PREFERENCE_BLOCK] {position_key}: {_gate_sym} USDT open blocked — USDC version {_usdc_candidate} exists (zero commissions). Use {_usdc_candidate} instead.")
+            return False, f"BLOCKED_USDT_WITH_USDC_AVAIL_{_usdc_candidate}"
     # ═══════════════════════════════════════════════════════════════════════════
     # TRADEABLE_KEYS GATE — position MUST be in tradeable_keys.json. NO BYPASS.
     # Same-symbol hedges are exempt (the losing position IS tradeable).

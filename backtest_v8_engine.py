@@ -1318,6 +1318,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_HEDGE_SCAN_ERR] step={step} err={_hs_err}")
 
+        # REENTRY PIPELINE — 2026-04-17: wire evaluate_reentry_2 into backtest.
+        # Live calls this via SYMBOL_WATCHDOG + AUGMENT_MONITOR + periodic_evaluate_reentry_loop,
+        # which are async loops spawned at startup and not present in backtest. Without this call,
+        # the entire process_single_reentry_evaluation path (DIRECTION_FAVORABLE, DC_BREAKOUT,
+        # QUICK_RECOVERY, WT15M_CROSS, K15M_PARTIAL, POST_CONSOL) is unreachable and all
+        # REENTRY2_*/REENTRY_WT15M_*/REENTRY_K15M_*/REENTRY_POST_CONSOL_* switches show 0 variance.
+        if getattr(config, 'REENTRY_2_ENABLED', True):
+            try:
+                await ez_manage.evaluate_reentry_2(trade_manager)
+            except Exception as _re_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_REENTRY2_ERR] step={step} err={_re_err}")
+
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()
                       if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
