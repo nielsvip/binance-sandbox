@@ -515,7 +515,8 @@ class Config:
     HTF_EXIT_VETO_MIN_ALIGNED: int = 2           # of {1h, 4h, D} WT
     HTF_EXIT_VETO_MAX_LOSS_PCT: float = 2.0      # only veto when abs(gain) ≤ 2% (don't hold big bleeders)
     # B: Favorable-move reentry — force reentry when price moved ≥ X% in our favor after exit
-    REENTRY_FAVORABLE_MOVE_PCT: float = 0.5      # 0.5% drop for short / rise for long triggers reentry
+    # VALIDATED 2026-04-17: queue test 0.5%=lost 0.016, 1.0%=won +0.410 Sharpe +$102 PnL
+    REENTRY_FAVORABLE_MOVE_PCT: float = 1.0      # 1.0% favorable move required (0.5% too noisy)
     REENTRY_FAVORABLE_HTF_MIN: int = 2           # at least 2 HTFs must still be aligned
     REENTRY_FAVORABLE_QTY_MULT: float = 1.0
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
