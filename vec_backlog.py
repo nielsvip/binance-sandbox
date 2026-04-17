@@ -60,6 +60,18 @@ def db_init(db_path):
         config_hash TEXT PRIMARY KEY, sharpe REAL, created_at REAL)""")
     con.execute("""CREATE TABLE IF NOT EXISTS meta (
         key TEXT PRIMARY KEY, value TEXT)""")
+    # Priority queue — workers process these FIRST, regardless of Sharpe floor.
+    # Insert via vec_priority.py.
+    con.execute("""CREATE TABLE IF NOT EXISTS priority_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        combo TEXT NOT NULL, side TEXT NOT NULL, horizon INT NOT NULL,
+        note TEXT DEFAULT '', inserted_at REAL,
+        processed_at REAL DEFAULT NULL,
+        result_sharpe REAL DEFAULT NULL,
+        result_wr REAL DEFAULT NULL,
+        result_mean REAL DEFAULT NULL,
+        result_n INT DEFAULT NULL)""")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_pq_pending ON priority_queue(processed_at)")
     con.commit()
     return con
 
@@ -157,6 +169,63 @@ def run(args):
     signal.signal(signal.SIGINT, _sigterm)
 
     last_print = time.time()
+    last_priority_check = 0.0
+    n_priority = 0
+
+    def _process_priority():
+        """Drain the priority queue — score every pending entry, regardless of Sharpe floor."""
+        nonlocal n_priority
+        rows = list(con.execute(
+            "SELECT id, combo, side, horizon FROM priority_queue WHERE processed_at IS NULL"
+        ))
+        if not rows:
+            return 0
+        print(f"[vec_backlog] PRIORITY: {len(rows)} pending entries", flush=True)
+        for pq_id, combo_str, p_side, p_horizon in rows:
+            if p_horizon not in fwd:
+                con.execute(
+                    "UPDATE priority_queue SET processed_at=?, result_sharpe=? WHERE id=?",
+                    (time.time(), -98.0, pq_id),
+                )
+                continue
+            keys = combo_str.split("+")
+            # Allow user to pass keys without side prefix; auto-prefix if needed
+            keys = [k if (k.startswith("L_") or k.startswith("S_")) else f"{p_side}_{k}" for k in keys]
+            if not all(k in C for k in keys):
+                con.execute(
+                    "UPDATE priority_queue SET processed_at=?, result_sharpe=? WHERE id=?",
+                    (time.time(), -97.0, pq_id),
+                )
+                continue
+            mask = np.ones_like(C[keys[0]])
+            for k in keys:
+                mask &= C[k]
+            m = score(mask, fwd[p_horizon], 1)  # any trade count for priority
+            if m is None:
+                con.execute(
+                    "UPDATE priority_queue SET processed_at=?, result_sharpe=? WHERE id=?",
+                    (time.time(), -96.0, pq_id),
+                )
+                continue
+            ch = config_hash(p_side, keys, p_horizon)
+            comp = composite_score(m["sharpe"], m["wr"], m["mean"])
+            con.execute(
+                "INSERT OR REPLACE INTO survivors VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (ch, "+".join(k[2:] if k.startswith(p_side + "_") else k for k in keys),
+                 p_side, p_horizon, m["sharpe"], m["wr"], m["mean"],
+                 m["std"], m["pf"], m["n"], comp, time.time()),
+            )
+            con.execute(
+                "UPDATE priority_queue SET processed_at=?, result_sharpe=?, result_wr=?, result_mean=?, result_n=? WHERE id=?",
+                (time.time(), m["sharpe"], m["wr"], m["mean"], m["n"], pq_id),
+            )
+            n_priority += 1
+            print(f"[vec_backlog] PRIORITY done: {p_side} h={p_horizon} sharpe={m['sharpe']:.3f} wr={m['wr']:.1f} n={m['n']} combo={combo_str[:60]}", flush=True)
+        con.commit()
+        return len(rows)
+
+    # Drain priority on startup
+    _process_priority()
 
     for pick in PICK_SIZES:
         for side, keys in [("L", long_keys), ("S", short_keys)]:
@@ -207,6 +276,11 @@ def run(args):
                     done_hashes.add(ch)
                     if len(batch_survivors) + len(batch_dead) >= BATCH:
                         _flush()
+                    # Check priority queue every 60s
+                    if time.time() - last_priority_check > 60.0:
+                        _flush()
+                        _process_priority()
+                        last_priority_check = time.time()
                     if time.time() - last_print > 30.0:
                         elapsed = time.time() - t0
                         rate = n_processed / max(elapsed, 1)

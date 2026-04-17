@@ -15051,6 +15051,17 @@ class MultiAccountTradeManager:
                     else:
                         _off_red_count = int(k_3m > 30) + int(_k_15m_r > 30) + int(_k_1h_r > 30)
                     _clear_of_red = _off_red_count >= 2
+                    # FIX B (2026-04-17): FAVORABLE-MOVE pathway — if since exit, price moved ≥ threshold in
+                    # OUR favor (short: price dropped below exit, long: price rose above exit), FORCE reentry.
+                    # This catches the "exited SHORT then market dumped further, we stayed out" bug seen on
+                    # ang:ALGOUSDT 2026-04-16. Requires at least HTF alignment; bypasses _clear_of_red /
+                    # _delta_rising (drop IS the signal — k_3m will be extreme low on shorts, extreme high on longs).
+                    _favorable_pct = float(getattr(config, 'REENTRY_FAVORABLE_MOVE_PCT', 0.5)) / 100.0
+                    if is_long:
+                        _price_favorable = exit_price > 0 and current_price >= exit_price * (1.0 + _favorable_pct)
+                    else:
+                        _price_favorable = exit_price > 0 and current_price <= exit_price * (1.0 - _favorable_pct)
+                    _favorable_htf_ok = _htf_count >= int(getattr(config, 'REENTRY_FAVORABLE_HTF_MIN', 2))
                     # PATHWAY 0: 3m-exit rescue — bypass filters if exit was 3m-level AND 1h still trending AND 3m entry fires
                     _exit_reason_str = str(data.get('exit_reason', '')).upper()
                     _was_3m_exit = any(t in _exit_reason_str for t in ('3M', 'DELTA_EXIT', 'STOCH_CROSSUNDER', 'STOCH_CROSSOVER', 'WT_3M'))
@@ -15060,6 +15071,14 @@ class MultiAccountTradeManager:
                         _qty_mult = 1.0
                         _reason_tag = "P0_3M_RESCUE_1H_OK"
                         logger.warning(f"🟢 [REENTRY_P0_3M_RESCUE] {position_key}: exit_reason='{_exit_reason_str[:40]}' wt1h_ok={_wt1h_ok} 3m_entry=TRUE — BYPASS FILTERS")
+                    # PATHWAY F (FIX B 2026-04-17): FAVORABLE-MOVE — price moved ≥ REENTRY_FAVORABLE_MOVE_PCT
+                    # in OUR direction since exit. The exit was WRONG — market proved it by continuing.
+                    # Bypasses _delta_rising/_clear_of_red (the drop IS the signal). Requires HTF alignment only.
+                    if not should_reenter and _price_favorable and _favorable_htf_ok:
+                        should_reenter = True
+                        _qty_mult = float(getattr(config, 'REENTRY_FAVORABLE_QTY_MULT', 1.0))
+                        _reason_tag = f"PF_FAVORABLE_{'DROP' if not is_long else 'SPIKE'}_htf{_htf_count}_move{(current_price/exit_price - 1)*100:.2f}%"
+                        logger.critical(f"🚀 [REENTRY_FAVORABLE_MOVE] {position_key}: exit={exit_price:.6f} cur={current_price:.6f} move={(current_price/exit_price-1)*100:+.2f}% htf={_htf_count}/3 — DROP/SPIKE recognized, FORCING REENTRY")
                     if not should_reenter:
                         _safety_ok = _delta_rising and _clear_of_red
                         if _price_crossed:
@@ -19211,6 +19230,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 } if _de_pos_amt > 0 else None
                 _d_sig = trade_manager.delta_tracker.update(symbol, i, _de_pos_state)
                 if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
+                    # DELTA_EXIT is sacred (user rule) — HTF slowdown gate lives IN wt_dc_delta.py
+                    # and vetoes _d_sig.exit_long/short if only LTF noise fires. If exit reaches
+                    # here, HTF has confirmed the slowdown → fire exit.
                     _d_reason = f"DELTA_EXIT_speed_decay_tfs_lost={getattr(_d_sig, 'tf_lost', '?')}_gain={_pp_gain:.2f}%"
                     logger.warning(f"[DELTA_EXIT] {position_key}: {_d_reason}")
                     _d_side = "SELL" if is_long else "BUY"

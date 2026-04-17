@@ -11258,20 +11258,45 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # Delta slowdown (wt_dc_delta) remains the primary TECHNICAL exit — this is the
                 # SAFETY NET that catches anything delta misses. Include "GAIN_EROSION" in reason
                 # so it passes through STRICT_NO_LOSS and stale-price bypass gates.
+                # ═══ HTF VETO (2026-04-17) — block BREAKEVEN / DC4 3m-exits when HTF still with us ═══
+                # ALGOUSDT 2026-04-16: SHORT closed at -0.74% via BREAKEVEN right before big drop.
+                # Root cause: 3m structural stops fire on pullback-in-trend while 1h+4h+D still bearish.
+                # Rule: if 2+ of {1h,4h,D} WT aligned with position AND abs(gain) <= HTF_VETO_MAX_LOSS, skip.
+                _htf_veto_active = False
+                if bool(getattr(config, 'HTF_EXIT_VETO_ENABLED', True)) and not is_hedge:
+                    _hv_max_loss = float(getattr(config, 'HTF_EXIT_VETO_MAX_LOSS_PCT', 2.0))
+                    if abs(current_gain) <= _hv_max_loss:
+                        _hv_w1_1h = safe_fetch_float(indicators.get('wt1_1h'), 0); _hv_w2_1h = safe_fetch_float(indicators.get('wt2_1h'), 0)
+                        _hv_w1_4h = safe_fetch_float(indicators.get('wt1_4h'), 0); _hv_w2_4h = safe_fetch_float(indicators.get('wt2_4h'), 0)
+                        _hv_w1_D = safe_fetch_float(indicators.get('wt1_D'), 0); _hv_w2_D = safe_fetch_float(indicators.get('wt2_D'), 0)
+                        if is_long:
+                            _hv_aligned = int(_hv_w1_1h > _hv_w2_1h) + int(_hv_w1_4h > _hv_w2_4h) + int(_hv_w1_D > _hv_w2_D)
+                        else:
+                            _hv_aligned = int(_hv_w1_1h < _hv_w2_1h) + int(_hv_w1_4h < _hv_w2_4h) + int(_hv_w1_D < _hv_w2_D)
+                        _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
                 if not hard_exit_reason and not is_hedge:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
                     if _pos_age_min >= _be_grace and current_gain < 0:
-                        hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
-                        logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED")
+                        if _htf_veto_active:
+                            logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
+                        else:
+                            hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
+                            logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED")
                 if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
                     _be_dc_low4 = safe_fetch_float(indicators.get('dc_low4_3m', 0), 0)
                     _be_dc_high4 = safe_fetch_float(indicators.get('dc_high4_3m', 0), 0)
                     if is_long and _be_dc_low4 > 0 and current_price > 0 and current_price < _be_dc_low4:
-                        hard_exit_reason = f"DC_LOW4_3M_GAIN_EROSION_STOP_p{current_price:.6f}<dc4{_be_dc_low4:.6f}_g{current_gain:.2f}%"
-                        logger.critical(f"🚫[DC_LOW4_BREAK] {position_key}: price {current_price:.6f} < dc_low4_3m {_be_dc_low4:.6f} — structural stop")
+                        if _htf_veto_active:
+                            logger.info(f"🛡️[HTF_VETO_DC_LOW4] {position_key}: DC_LOW4 break but HTF still bullish ({_hv_aligned}/3) — holding through pullback")
+                        else:
+                            hard_exit_reason = f"DC_LOW4_3M_GAIN_EROSION_STOP_p{current_price:.6f}<dc4{_be_dc_low4:.6f}_g{current_gain:.2f}%"
+                            logger.critical(f"🚫[DC_LOW4_BREAK] {position_key}: price {current_price:.6f} < dc_low4_3m {_be_dc_low4:.6f} — structural stop")
                     elif not is_long and _be_dc_high4 > 0 and current_price > 0 and current_price > _be_dc_high4:
-                        hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
-                        logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
+                        if _htf_veto_active:
+                            logger.info(f"🛡️[HTF_VETO_DC_HIGH4] {position_key}: DC_HIGH4 break but HTF still bearish ({_hv_aligned}/3) — holding through pullback")
+                        else:
+                            hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
+                            logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
                 # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
                 # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
                 # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).

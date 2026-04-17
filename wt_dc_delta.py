@@ -39,6 +39,10 @@ DEFAULT_CFG = {
     "exit_speed_decay_pct": 50.0,
     "exit_min_tf_lost": 2,
     "exit_min_hold": 4,
+    # 2026-04-17: HTF slowdown gate. DELTA_EXIT is sacred but must focus on HTF —
+    # if 2+ of {1h,4h,D} WT still aligned with position, veto the exit (LTF noise only).
+    "exit_require_htf_slowdown": True,
+    "exit_htf_veto_min_aligned": 2,
     # Pyramid
     "pyramid_min_tf": 4,
     "pyramid_price_tolerance": 0.02,
@@ -438,6 +442,18 @@ class DeltaTracker:
                     ])
                     _strong_directional = (wt1_15m_falling and wt1_3m_falling) or (dc_pos_15m_falling and wt1_15m_falling)
                     sig.exit_long = (_weakness_count >= 2) or _strong_directional
+                    # ═══ HTF SLOWDOWN GATE (2026-04-17) — rule is sacred, focus on HTF ═══
+                    # User rule: DELTA_EXIT fires when HTF (1h/4h/D) slow down, not on 3m noise.
+                    # If exit_long fired but 2+ of {1h,4h,D} still trending with us, VETO the exit.
+                    if sig.exit_long and cfg.get("exit_require_htf_slowdown", True):
+                        _w1_1h = _safe_float(indicators.get('wt1_1h', 0)); _w2_1h = _safe_float(indicators.get('wt2_1h', 0))
+                        _w1_4h = _safe_float(indicators.get('wt1_4h', 0)); _w2_4h = _safe_float(indicators.get('wt2_4h', 0))
+                        _w1_D = _safe_float(indicators.get('wt1_D', 0)); _w2_D = _safe_float(indicators.get('wt2_D', 0))
+                        _htf_still_bull = int(_w1_1h > _w2_1h) + int(_w1_4h > _w2_4h) + int(_w1_D > _w2_D)
+                        _htf_veto_thr = int(cfg.get("exit_htf_veto_min_aligned", 2))
+                        if _htf_still_bull >= _htf_veto_thr:
+                            sig.exit_long = False
+                            sig.tf_lost = f"HTF_SLOWDOWN_VETO_LONG_htf{_htf_still_bull}/3_bull_ltf_noise_only"
                 if sig.exit_long:
                     _triggers = []
                     if speed_dead: _triggers.append("DEAD")
@@ -513,6 +529,18 @@ class DeltaTracker:
                     ])
                     _strong_directional = (wt1_15m_rising and wt1_3m_rising) or (dc_pos_15m_rising and wt1_15m_rising)
                     sig.exit_short = (_weakness_count >= 2) or _strong_directional
+                    # ═══ HTF SLOWDOWN GATE (2026-04-17) — rule is sacred, focus on HTF ═══
+                    # User rule: DELTA_EXIT fires when HTF (1h/4h/D) slow down, not on 3m noise.
+                    # If exit_short fired but 2+ of {1h,4h,D} still trending bearish, VETO the exit.
+                    if sig.exit_short and cfg.get("exit_require_htf_slowdown", True):
+                        _w1_1h = _safe_float(indicators.get('wt1_1h', 0)); _w2_1h = _safe_float(indicators.get('wt2_1h', 0))
+                        _w1_4h = _safe_float(indicators.get('wt1_4h', 0)); _w2_4h = _safe_float(indicators.get('wt2_4h', 0))
+                        _w1_D = _safe_float(indicators.get('wt1_D', 0)); _w2_D = _safe_float(indicators.get('wt2_D', 0))
+                        _htf_still_bear = int(_w1_1h < _w2_1h) + int(_w1_4h < _w2_4h) + int(_w1_D < _w2_D)
+                        _htf_veto_thr = int(cfg.get("exit_htf_veto_min_aligned", 2))
+                        if _htf_still_bear >= _htf_veto_thr:
+                            sig.exit_short = False
+                            sig.tf_lost = f"HTF_SLOWDOWN_VETO_SHORT_htf{_htf_still_bear}/3_bear_ltf_noise_only"
                 if sig.exit_short:
                     _triggers = []
                     if speed_dead: _triggers.append("DEAD")

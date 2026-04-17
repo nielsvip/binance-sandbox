@@ -508,6 +508,16 @@ class Config:
     DELTA_ENTRY_SCORE_BONUS: int = 15      # Score bonus when delta confirms entry
     DELTA_ENTRY_SCORE_PENALTY: int = -25   # Score penalty when delta opposes entry
     DELTA_EXIT_SCORE_BONUS: int = 20       # Score bonus when delta confirms exit
+    # STRUCTURAL FIX 2026-04-17 — A+B+C (ez_manage.py / ez_positions_quick.py)
+    # Context: ALGOUSDT SHORT killed at -0.74% (BREAKEVEN) right before big drop, no reentry.
+    # A: HTF-trending exit veto — block 3m structural stops when HTF still with us
+    HTF_EXIT_VETO_ENABLED: bool = True
+    HTF_EXIT_VETO_MIN_ALIGNED: int = 2           # of {1h, 4h, D} WT
+    HTF_EXIT_VETO_MAX_LOSS_PCT: float = 2.0      # only veto when abs(gain) ≤ 2% (don't hold big bleeders)
+    # B: Favorable-move reentry — force reentry when price moved ≥ X% in our favor after exit
+    REENTRY_FAVORABLE_MOVE_PCT: float = 0.5      # 0.5% drop for short / rise for long triggers reentry
+    REENTRY_FAVORABLE_HTF_MIN: int = 2           # at least 2 HTFs must still be aligned
+    REENTRY_FAVORABLE_QTY_MULT: float = 1.0
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
     LEGACY_GUARANTEED_REENTRY: bool = True     # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)
