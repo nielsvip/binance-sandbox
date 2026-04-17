@@ -13241,6 +13241,50 @@ class MultiAccountTradeManager:
                             pass
                         else:
                             logger.critical(f"🛑 [UNIVERSAL_NOLOSS_GATE][{account_key}] {position_key}: Blocking {action} ({reason[:80]}) at REAL loss ({_real_gain:.2f}%). Wait for recovery to 0% or structural shift.")
+                            # ═══ OBLIGATORY HEDGE — sacred rule (2026-04-17) ═══
+                            # User: "Every short (or long v.v.) with wt1_3m>wt2_3m HAS TO HEDGE. Forever."
+                            # Triggered here because UNIVERSAL_NOLOSS_GATE just blocked the close at loss.
+                            # Multi-TF WT gate: 3m+1h both against (tested 60d → 47% precision, +359% PnL).
+                            # Tracker-consultation guards live in execute_dual_hedge:5244-5261.
+                            if bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)):
+                                _oh_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+                                if _real_gain <= _oh_min_loss:
+                                    _he = getattr(self, 'hedge_engine', None)
+                                    if _he:
+                                        try:
+                                            _oh_ind = None
+                                            if getattr(self, 'data_manager', None) is not None:
+                                                _oh_hs = await self.data_manager.get_hot_state(symbol)
+                                                _oh_ind = _oh_hs[1] if isinstance(_oh_hs, tuple) and len(_oh_hs) > 1 else None
+                                            _oh_ind = _oh_ind or {}
+                                        except Exception:
+                                            _oh_ind = {}
+                                        _oh_use = {
+                                            '1m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1M', False)),
+                                            '3m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True)),
+                                            '15m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False)),
+                                            '1h': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True)),
+                                        }
+                                        _oh_wt_against = 0
+                                        _oh_tfs_enabled = 0
+                                        for _tf in ('1m', '3m', '15m', '1h'):
+                                            if not _oh_use[_tf]: continue
+                                            _oh_tfs_enabled += 1
+                                            _w1 = safe_fetch_float(_oh_ind.get(f'wt1_{_tf}'), 0)
+                                            _w2 = safe_fetch_float(_oh_ind.get(f'wt2_{_tf}'), 0)
+                                            if _is_long: _oh_wt_against += int(_w1 < _w2)
+                                            else: _oh_wt_against += int(_w1 > _w2)
+                                        _oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+                                        if _oh_tfs_enabled > 0 and _oh_wt_against >= _oh_req:
+                                            _oh_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
+                                            _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
+                                            _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
+                                            _oh_val = _oh_pos_amt * _oh_mark * _oh_pct
+                                            if _oh_val > 1.0:
+                                                logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m+1h default) — triggering hedge ${_oh_val:.1f}")
+                                                asyncio.create_task(_he.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if _is_long else 'SHORT', losing_value_usd=_oh_val, dry_run=False))
+                                        else:
+                                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} < {_oh_req} — WT not yet confirming reversal")
                             if self.tracker_manager:
                                 await self.tracker_manager.set_trade_cooldown(position_key, duration=300)
                             return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE"

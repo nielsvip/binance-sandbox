@@ -512,10 +512,17 @@ def supervisor_loop():
                     if probe["rc"] != 0:
                         log.warning(f"{name} probe failed rc={probe['rc']} out={probe['out'][:200]}")
                         state.setdefault(f"{name}_ssh_fail_since", time.time())
+                        state[f"{name}_ssh_success_streak"] = 0
                     else:
-                        state.pop(f"{name}_ssh_fail_since", None)
+                        _streak = int(state.get(f"{name}_ssh_success_streak", 0)) + 1
+                        state[f"{name}_ssh_success_streak"] = _streak
+                        # Hysteresis: require 3 consecutive successes (~6min at 120s tick) before
+                        # clearing ssh_fail_since. Prevents flap — single success between failures
+                        # was previously resetting the dead-timer so 600s reset threshold never fired.
+                        if _streak >= 3:
+                            state.pop(f"{name}_ssh_fail_since", None)
                         load_1m = parse_load(probe["out"])
-                        log.info(f"{name} load1m={load_1m}")
+                        log.info(f"{name} load1m={load_1m} streak={_streak}")
                         if check_cpu_idle(name, probe, state):
                             launch_cpu_refill(name)
                     ssh_fail_since = state.get(f"{name}_ssh_fail_since")
@@ -523,9 +530,10 @@ def supervisor_loop():
                         dead_s = int(time.time() - ssh_fail_since)
                         handle_ssh_dead(name, dead_s, state)
                     else:
-                        # Clear reset flags on recovery
+                        # Clear reset flags on stable recovery (streak already >=3 to reach here)
                         state.pop(f"{name}_reset1_ts", None)
                         state.pop(f"{name}_reset2_ts", None)
+                        state.pop(f"{name}_alert_fired", None)
                 except Exception as e:
                     log.exception(f"probe {name} crashed: {e}")
             try:
