@@ -1373,9 +1373,61 @@ def pk_symbol(position_key: str) -> str:
 
 
 async def get_live_usdc_pairs(session: Optional[aiohttp.ClientSession] = None) -> set:
-    fallback_pairs = get_fallback_usdc_pairs()
-    logger.info(f"Using fallback USDC pairs: {len(fallback_pairs)} symbols")
-    return fallback_pairs
+    """Hit Binance futures exchangeInfo for live USDC perpetuals. Cache 15min on disk.
+    Fallback to hardcoded set only on API failure. Previous version was gutted and returned
+    only the stale fallback — caused inf to open USDT positions for symbols that now have
+    USDC versions (no-commission preferred)."""
+    import os, time as _t
+    cache_file = None
+    try:
+        import config as _cfg
+        cache_file = _cfg.Config.LIVE_USDC_PAIRS_FILE if hasattr(_cfg, 'Config') and hasattr(_cfg.Config, 'LIVE_USDC_PAIRS_FILE') else None
+    except Exception:
+        cache_file = None
+    # Try cache if fresh (< 15 min)
+    if cache_file and os.path.exists(cache_file):
+        try:
+            age = _t.time() - os.path.getmtime(cache_file)
+            if age < 900:
+                with open(cache_file) as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and data:
+                        return set(data)
+        except Exception:
+            pass
+    # Fetch live
+    close_session = False
+    if session is None:
+        session = aiohttp.ClientSession()
+        close_session = True
+    try:
+        url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=10.0)) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"exchangeInfo HTTP {resp.status}")
+            data = await resp.json()
+        pairs = set()
+        for s in data.get("symbols", []):
+            if (s.get("quoteAsset") == "USDC" and s.get("contractType") == "PERPETUAL" and s.get("status") == "TRADING"):
+                pairs.add(s.get("symbol"))
+        if len(pairs) < 10:
+            raise RuntimeError(f"only {len(pairs)} USDC pairs returned — suspicious")
+        logger.info(f"[USDC_PAIRS_FETCHED] {len(pairs)} live USDC perpetuals from Binance exchangeInfo")
+        # Persist cache
+        if cache_file:
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump(sorted(pairs), f)
+            except Exception as e:
+                logger.warning(f"[USDC_PAIRS] cache write failed: {e}")
+        return pairs
+    except Exception as e:
+        logger.error(f"[USDC_PAIRS_FETCH_FAIL] {e} — using fallback (may be stale)")
+        return get_fallback_usdc_pairs()
+    finally:
+        if close_session:
+            try: await session.close()
+            except Exception: pass
 
 def get_fallback_usdc_pairs() -> set:
     fallback_pairs = { "1000BONKUSDC","1000PEPEUSDC", "1000SHIBUSDC","AAVEUSDC","ADAUSDC","ARBUSDC","AVAXUSDC","BCHUSDC","BNBUSDC","BOMEUSDC","BTCUSDC","CRVUSDC","DOGEUSDC","ENAUSDC","ETHFIUSDC","ETHUSDC","FILUSDC","HBARUSDC","IPUSDT","KAITOUSDT","LINKUSDC","LTCUSDC","NEARUSDC","NEOUSDC","ORDIUSDC","PENGUUSDC","PNUTUSDT","SOLUSDC","SUIUSDC","TIAUSDC","TRUMPUSDC","UNIUSDC","WIFUSDC","WLDUSDC","XRPUSDC" }
