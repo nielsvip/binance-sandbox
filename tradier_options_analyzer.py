@@ -985,6 +985,21 @@ def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier]
         pos_cap = cfg.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT * account_value
         if best_csp.capital_required > pos_cap:
             best_csp = None
+    # ── Pick best SPREAD (Tier 1 primary — if enabled) ──
+    best_spread = None
+    if is_long and getattr(cfg, "OPTIONS_SPREAD_ENABLED", False) and spread_candidates:
+        best_spread = spread_candidates[0]
+        # Universe whitelist check
+        universe = getattr(cfg, "OPTIONS_SPREAD_UNIVERSE", ())
+        if universe and signal.symbol not in universe:
+            best_spread = None
+    # ── SPREAD takes precedence when enabled + whitelisted + passes all gates ──
+    # Backtest shows spreads have 80% WR + crisis-resistance. Prefer them over buy/CSP when available.
+    if best_spread:
+        edge = best_spread.score / max(best_spread.max_loss, 1.0)
+        # Limit price = accept mid of the spread for GTC (walk toward better fill)
+        limit_price = round(best_spread.net_credit / 100.0, 2)  # per-share net credit
+        return StructureChoice(symbol=signal.symbol, direction=signal.direction, option_side="bull_put_spread", occ_symbol=build_occ_symbol(signal.symbol, best_spread.expiration, "put", best_spread.short_strike), strike=best_spread.short_strike, expiration=best_spread.expiration, price=limit_price, qty=1, capital_required=best_spread.max_loss, edge_score=edge, raw_score=best_spread.score, rationale=f"SPREAD ({best_spread.recommendation}) {best_spread.short_strike}/{best_spread.long_strike} credit=${best_spread.net_credit:.0f} max_loss=${best_spread.max_loss:.0f} iv_rank={best_spread.chain_iv_rank:.0f}", long_leg_occ=build_occ_symbol(signal.symbol, best_spread.expiration, "put", best_spread.long_strike), long_leg_strike=best_spread.long_strike, net_credit=best_spread.net_credit, max_loss=best_spread.max_loss)
     # ── No structures available ──
     if not best_buy and not best_csp:
         return None

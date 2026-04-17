@@ -48,6 +48,7 @@ from tradier_options_analyzer import (
     SpreadOpportunity, ExitSignal, _load_gtc_orders, _save_gtc_orders,
     _load_wt_history, _save_wt_history,
     score_sell_put_csp, pick_best_structure, CSPCandidate, StructureChoice,
+    score_bull_put_spread, SpreadCandidate,
 )
 
 logger = logging.getLogger("options_agent")
@@ -1321,16 +1322,40 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
                 continue
             outliers, _ = analyze_chain_for_outliers(sig, chain, exp)
             calls = [o for o in outliers if o.option_type == "call" and o.score >= 55 and o.open_interest >= 500]
-            # ── CSP comparison (gated by config, LONG only) ──
+            # ── Structure comparison: SPREAD (Tier 1 primary) > CSP > buy_call ──
             csp_choice = None
-            if getattr(config, "OPTIONS_CSP_ENABLED", False) and csp_available_cash > 0:
+            if (getattr(config, "OPTIONS_CSP_ENABLED", False) or getattr(config, "OPTIONS_SPREAD_ENABLED", False)) and csp_available_cash > 0:
                 try:
-                    csps = score_sell_put_csp(sig, chain, exp, config, account_value=csp_account_value)
-                    if csps:
-                        csp_choice = pick_best_structure(sig, outliers, csps, config, available_cash=csp_available_cash, account_value=csp_account_value)
+                    csps = []
+                    spreads = []
+                    if getattr(config, "OPTIONS_CSP_ENABLED", False):
+                        csps = score_sell_put_csp(sig, chain, exp, config, account_value=csp_account_value)
+                    if getattr(config, "OPTIONS_SPREAD_ENABLED", False):
+                        spreads = score_bull_put_spread(sig, chain, exp, config, account_value=csp_account_value)
+                    if csps or spreads:
+                        csp_choice = pick_best_structure(sig, outliers, csps, config, available_cash=csp_available_cash, account_value=csp_account_value, spread_candidates=spreads)
                 except Exception as e:
-                    logger.warning(f"CSP scoring failed for {sig.symbol}: {e}")
+                    logger.warning(f"Structure scoring failed for {sig.symbol}: {e}")
                     csp_choice = None
+            # ── SPREAD won: emit bull_put_spread opportunity (2-leg credit spread) ──
+            if csp_choice and csp_choice.option_side == "bull_put_spread":
+                contract_cost = csp_choice.max_loss  # max-loss = capital at risk for spread
+                if _ratio_would_violate(running_call, running_put, "call", contract_cost):
+                    logger.info(f"RATIO_GATE skip SPREAD {sig.symbol} — over call cap")
+                    await asyncio.sleep(0.3)
+                    continue
+                _sec_blocked, _sec_reason = _sector_gate_would_violate(running_expo, sig.symbol, "call", contract_cost, config)
+                if _sec_blocked:
+                    logger.info(f"SECTOR_GATE skip SPREAD {sig.symbol} — {_sec_reason}")
+                    await asyncio.sleep(0.3)
+                    continue
+                opportunities.append({"symbol": sig.symbol, "type": "spread", "side": "sell_to_open", "strike": csp_choice.strike, "long_strike": csp_choice.long_leg_strike, "expiration": csp_choice.expiration, "dte": (datetime.strptime(csp_choice.expiration, "%Y-%m-%d") - datetime.now()).days, "gtc_price": csp_choice.price, "net_credit": csp_choice.net_credit, "max_loss": csp_choice.max_loss, "capital_required": csp_choice.capital_required, "score": csp_choice.raw_score, "edge_score": csp_choice.edge_score, "conviction": sig.conviction, "reason": csp_choice.rationale, "priority": "HIGH" if sig.conviction >= 70 else "MEDIUM", "qty": 1, "occ_symbol": csp_choice.occ_symbol, "long_leg_occ": csp_choice.long_leg_occ})
+                running_call += contract_cost
+                running_expo = _build_live_exposure_map(positions_for_expo, {**gtc_for_expo, f"_plan_{sig.symbol}_SP{csp_choice.strike}": {"side": "sell_to_open", "symbol": sig.symbol, "type": "put", "target_price": csp_choice.price, "qty": 1}}, config)
+                gtc_for_expo = {**gtc_for_expo, f"_plan_{sig.symbol}_SP{csp_choice.strike}": {"side": "sell_to_open", "symbol": sig.symbol, "type": "put", "target_price": csp_choice.price, "qty": 1}}
+                logger.info(f"SPREAD_PICKED {sig.symbol} {csp_choice.strike}/{csp_choice.long_leg_strike} exp={csp_choice.expiration} credit=${csp_choice.net_credit:.0f} max_loss=${csp_choice.max_loss:.0f}")
+                await asyncio.sleep(0.3)
+                continue
             # ── CSP won: emit sell_to_open opportunity (cash-secured put) ──
             if csp_choice and csp_choice.option_side == "sell_put_csp":
                 contract_cost = csp_choice.capital_required  # cash-secured amount
@@ -1441,11 +1466,42 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
 
 
 async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], dry_run: bool = False) -> List[Dict]:
-    """Place GTC buy_to_open orders. CSP orders (type='csp') are placed as sell_to_open on the put side."""
+    """Place GTC orders: buy_to_open, sell_to_open (CSP), or multileg credit spread."""
     gtc_orders = _load_gtc_orders(config)
     results = []
     for order in orders:
-        is_csp = order.get("type") == "csp" or order.get("side") == "sell_to_open"
+        is_spread = order.get("type") == "spread"
+        is_csp = (order.get("type") == "csp") or (order.get("side") == "sell_to_open" and not is_spread)
+        if is_spread:
+            short_occ = order.get("occ_symbol") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["strike"])
+            long_occ = order.get("long_leg_occ") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["long_strike"])
+            occ = short_occ  # key by short leg
+            tradier_type = "put"
+            if occ in gtc_orders:
+                print(f"  SKIP {occ} — existing GTC")
+                results.append({**order, "status": "skipped"})
+                continue
+            qty = order.get("qty", 1)
+            net_credit_per_share = order["gtc_price"]
+            max_loss = order.get("max_loss", 0)
+            print(f"  {'[DRY] ' if dry_run else ''}GTC SPREAD {order['symbol']} {order['strike']}P/{order['long_strike']}P x{qty} @ net_credit ${net_credit_per_share:.2f}/share — max_loss ${max_loss:.0f}  {order['reason']}")
+            if dry_run:
+                results.append({**order, "status": "dry_run", "occ": occ})
+                continue
+            legs = [{"option_symbol": short_occ, "side": "sell_to_open", "quantity": qty}, {"option_symbol": long_occ, "side": "buy_to_open", "quantity": qty}]
+            res = await client.place_multileg_option_order(order["symbol"], legs, order_type="credit", price=net_credit_per_share, duration="gtc")
+            if "order" in res:
+                order_id = res["order"].get("id")
+                status = res["order"].get("status", "")
+                print(f"    PLACED MULTILEG — ID: {order_id} ({status})")
+                logger.info(f"GTC SPREAD {order['symbol']} {short_occ}/{long_occ} credit=${net_credit_per_share:.2f} ID={order_id}")
+                gtc_orders[occ] = {"order_id": order_id, "target_price": net_credit_per_share, "placed_at": datetime.now().isoformat(), "symbol": order["symbol"], "type": "put", "strike": order["strike"], "expiration": order["expiration"], "reason": order["reason"], "side": "sell_to_open", "structure": "bull_put_spread", "short_leg_occ": short_occ, "long_leg_occ": long_occ, "long_strike": order["long_strike"], "net_credit": order.get("net_credit"), "max_loss": max_loss}
+                results.append({**order, "status": "placed", "order_id": order_id, "occ": occ})
+            elif "errors" in res:
+                print(f"    FAILED: {res['errors']}")
+                results.append({**order, "status": "failed", "occ": occ})
+            await asyncio.sleep(0.3)
+            continue
         if is_csp:
             occ = order.get("occ_symbol") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["strike"])
             side = "sell_to_open"

@@ -4915,7 +4915,7 @@ class HedgeEngine:
                         return False, f"DELTA_SAYS_LONG_zone={sig.zone}"
             except Exception as _e:
                 logger.debug(f"[HEDGE_GATE] {symbol} delta check skipped: {_e}")
-        return True, f"OK_wt3m={wt1_3m:.1f}/{wt2_3m:.1f}_k15m={_k_15m:.0f}_htf={_htf_agree}/3"
+        return True, f"OK_wt3m={wt1_3m:.1f}/{wt2_3m:.1f}_wt1h={wt1_1h:.1f}/{wt2_1h:.1f}_dcb1h={_dc_basis_1h:.4f}"
 
     def _hedge_should_exit(self, symbol, hedge_side, indicators):
         """Hedge EXIT trigger: wt1_3m against hedge OR delta decelerating in hedge direction.

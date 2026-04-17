@@ -481,6 +481,15 @@ class QuickConfig:
         self.REENTRY_SYMGATE_ENABLED = False
         # D4: default tier STOCK for tradier mode when enabled
         self.BREAKOUT_MULTI_LUNG_TIER = "STOCK"
+        # 2026-04-17: RESET crypto-winner class defaults for stocks (crypto got VEL=6, RALLY=40, RANK=3, WP=1).
+        # Stocks need looser values — they trend more slowly and have different signal densities.
+        self.CT_WT_VELOCITY_1H_MIN = 2.0   # stocks relaxed from crypto's 6.0
+        self.REENTRY_RALLY_K15M_MAX = 100.0  # stocks disabled (let entry zones gate instead)
+        self.RANK_CONVICTION_MIN = 2       # stocks need 2-of-3 HTF agreement (crypto=3)
+        self.WINNER_PROTECT_GAIN_PCT = 2.0 # stocks gain slower, allow bigger winner-protect band
+        self.RANK_CONVICTION_ENABLED = False  # disable by default, let chapters flip on
+        self.DC_MOMENT_ENABLED = False
+        self.WINNER_PROTECT_ENABLED = False
 
 
 def load_npz(mode, symbols, start_date, npz_dir=""):
