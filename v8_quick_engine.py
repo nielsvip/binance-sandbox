@@ -467,7 +467,10 @@ class QuickConfig:
         # WT cross alignment — stocks need 3 (per CLAUDE.md)
         self.WT_EXIT_MIN_TFS = 3
         self.MI_EXIT_ENABLED = True
-        self.ENTRY_SCORE_THRESHOLD = 24.0  # stocks: 24 (crypto: 18) — per CLAUDE.md OPPOSITE params
+        # 2026-04-17: ENTRY_SCORE_THRESHOLD=24 was mathematically unreachable after score-gate wiring
+        # (max achievable score ~21 from B15+B04+B11+B02+B_KZONE+B_FH_MOM+B_MFI_D_OVERSOLD weights).
+        # Set to 0 (disabled). Sweeps can raise it; 24 blocks ALL entries.
+        self.ENTRY_SCORE_THRESHOLD = 0.0
         self.K3M_FLOOR = 30.0
         # Entry zone gates — stocks use explicit zones (crypto relies on reentry blocks)
         # Default off (LONG=0, SHORT=100) until swept — see live config_tradier ENTRY_ZONE_LONG=35, ENTRY_ZONE_SHORT=65

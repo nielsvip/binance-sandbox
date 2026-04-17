@@ -13797,22 +13797,38 @@ async def bulk_entry_scan_loop(trade_manager, account_key: str, stop_event: asyn
         try:
             await tracker_manager.sync_universe(account_key)
             await tracker_manager.sync_position_keys(account_key)
-            universe = list(tracker_manager.get_tradeable_position_keys_for(account_key))
-            universe.sort() 
+            # Universe = tradeable_position_keys ∪ reentry-file keys ∪ tracker positions (amt=0 still watched).
+            # User directive 2026-04-17: manually-closed positions must stay under reentry watch as long
+            # as their key remains in tradeable_keys — reentry.json / tracker are the memory that survives
+            # a close; without this union they vanished from the scan once positionAmt hit 0.
+            universe = set(tracker_manager.get_tradeable_position_keys_for(account_key))
+            _prefix = f"{account_key}:"
+            _reentry_data = getattr(tracker_manager, 'reentry_data', None) or {}
+            for _rk in _reentry_data.keys():
+                if isinstance(_rk, str) and _rk.startswith(_prefix): universe.add(_rk)
+            async with tracker_manager._entry_candidates_lock:
+                for _ek in tracker_manager.entry_candidates.keys():
+                    if isinstance(_ek, str) and _ek.startswith(_prefix): universe.add(_ek)
+            try:
+                _tk_global = getattr(tracker_manager, 'tradeable_keys', None) or set()
+                for _gk in _tk_global:
+                    if isinstance(_gk, str) and _gk.startswith(_prefix): universe.add(_gk)
+            except Exception: pass
+            universe = sorted(universe)
             count = 0
             for key in universe:
                 async with tracker_manager._exit_candidates_lock:
                     if key in tracker_manager.exit_candidates: continue
                 last_check = tracker_manager.get_last_check_time(key)
                 if (time.time() - last_check) < 30.0: continue
-                if key not in tracker_manager.tradeable_keys: 
+                if key not in tracker_manager.tradeable_keys:
                     continue
                 else:
                     await check_entry_candidates_for_account( trade_manager, account_key, redis_manager, tracker_manager, order_queue, data_manager, hedge_engine, position_keys=[key] )
                 count += 1
-                await asyncio.sleep(0.1) 
+                await asyncio.sleep(0.1)
             if count > 0:
-                logger.info(f"🚜 [ENTRY_BULK][{account_key}] Sweep complete. Checked {count} keys.")
+                logger.info(f"🚜 [ENTRY_BULK][{account_key}] Sweep complete. Checked {count} keys (universe={len(universe)}, includes reentry+tradeable).")
             await asyncio.sleep(40.0)
         except Exception as e:
             logger.error(f"❌ [ENTRY_BULK] Error: {e}", exc_info=True)

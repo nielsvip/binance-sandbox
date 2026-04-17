@@ -187,6 +187,41 @@ def build_param_grid_hedge_reentry_overhaul():
     return grid
 
 
+def build_param_grid_reentry_sharpe_push():
+    """2026-04-17 directive: push Sharpe above 2.25 baseline (48-sym × 4yr, 500 trades, 92.8% WR).
+    Cartesian over every reentry tunable. 144 variants × ~8s = ~20 min on v8_quick vectorized engine.
+    Only reentry-relevant params — hedge params omitted (no hedge sim in v8_quick)."""
+    grid = {
+        "REENTRY_WT15M_CROSS_ENABLED": [True],
+        "REENTRY_WT15M_SIZE_MULT": [1.0, 1.5, 2.0],
+        "REENTRY_WT15M_K_MAX": [30.0, 50.0, 70.0],
+        "REENTRY_WT15M_HTF_FAVOR_REQUIRED": [True, False],
+        "REENTRY_K15M_PARTIAL_ENABLED": [True],
+        "REENTRY_K15M_PARTIAL_THRESHOLD": [80.0, 90.0],
+        "REENTRY_K15M_PARTIAL_MULT": [0.5, 1.0],
+        "REENTRY_POST_CONSOL_ENABLED": [True],
+        "REENTRY_POST_CONSOL_MULT": [1.5, 2.0],
+        "REENTRY_POST_CONSOL_TFS_REQUIRED": [2, 3],
+    }
+    return grid
+
+
+def build_param_grid_reentry_sharpe_push_wide():
+    """Even wider — includes ON/OFF for each block + timing knobs. ~500 variants ~70 min."""
+    grid = {
+        "REENTRY_WT15M_CROSS_ENABLED": [True, False],
+        "REENTRY_WT15M_SIZE_MULT": [1.0, 1.5, 2.0],
+        "REENTRY_WT15M_K_MAX": [30.0, 50.0, 70.0, 100.0],
+        "REENTRY_K15M_PARTIAL_ENABLED": [True, False],
+        "REENTRY_K15M_PARTIAL_THRESHOLD": [70.0, 90.0],
+        "REENTRY_K15M_PARTIAL_MULT": [0.3, 0.5, 1.0],
+        "REENTRY_POST_CONSOL_ENABLED": [True, False],
+        "REENTRY_POST_CONSOL_MULT": [1.2, 1.5, 2.0, 2.5],
+        "REENTRY_POST_CONSOL_TFS_REQUIRED": [1, 2, 3],
+    }
+    return grid
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -196,6 +231,8 @@ TIER_MAP = {
     "breakout_multi_lung": build_param_grid_breakout_multi_lung,
     "breakout_multi_lung_tradier": build_param_grid_breakout_multi_lung_tradier,
     "hedge_reentry_overhaul": build_param_grid_hedge_reentry_overhaul,
+    "reentry_sharpe_push": build_param_grid_reentry_sharpe_push,
+    "reentry_sharpe_push_wide": build_param_grid_reentry_sharpe_push_wide,
 }
 
 
