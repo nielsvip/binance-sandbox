@@ -1301,6 +1301,23 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     if step < 10 or step % 1000 == 0:
                         v8_logger.error(f"[V8_PP_ERROR] step={step} pk={pk} err={_pp_err}")
 
+        # HEDGE LIFECYCLE — 2026-04-17: wire real hedge engine into backtest.
+        # Live main loop calls these periodically; backtest must too or HEDGE_* switches
+        # never exercise and all hedge sweeps show zero variance.
+        # monitor_and_manage_hedges: handles HEDGE_WT_KILL, orphan cleanup, profit protect, decay.
+        # scan_and_hedge_losers: opens new same-symbol hedges when position in loss + wt15m against.
+        if getattr(config, 'HEDGE_MODE', False) and account_key in getattr(config, 'HEDGE_ACCOUNTS', []):
+            try:
+                await hedge_engine.monitor_and_manage_hedges(account_key)
+            except Exception as _hm_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_HEDGE_MON_ERR] step={step} err={_hm_err}")
+            try:
+                await hedge_engine.scan_and_hedge_losers(account_key)
+            except Exception as _hs_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_HEDGE_SCAN_ERR] step={step} err={_hs_err}")
+
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()
                       if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
