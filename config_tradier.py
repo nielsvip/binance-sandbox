@@ -482,7 +482,7 @@ class TradierConfig:
     MOMENTUM_FADE_SCORE_BONUS_TRADIER: int = 5  # BACKTEST_CHANGE_T55b: Score bonus (stock score capped at 30, so smaller bonus than crypto)
     # === ABLATION BACKTEST RESULTS (2026-03-21 — 2453 configs × 121 sym, D bars, P1+P2 OOS-validated) ===
     RSI_ENTRY_PERIOD_TRADIER: int = 10  # BACKTEST_CHANGE_T55: was 2. RSI(10) = OOS champion. Deeper mean-reversion captures bigger moves. Sharpe 6.43, WR 73.9%, PF 8.18
-    RSI_ENTRY_LONG_TRADIER: float = 42.0  # BACKTEST_CHANGE_T64: was 30. RSI<42 = Sharpe 33.6, +18.6% return, 142 trades. Wider = more trades on stocks.
+    RSI_ENTRY_LONG_TRADIER: float = 40.0  # A/B 2026-04-17 full 109-sym × 3yr: rsi15<40 Sharpe=0.477 beats <42 and <35. Was 42. Evidence: MOM_rsi15_lt40_rsi1h_lt22 peak.
     RSI_ENTRY_SHORT_TRADIER: float = 58.0  # BACKTEST_CHANGE_T64: was 70. RSI>58 for shorts.
     RSI_EXIT_LONG_TRADIER: float = 85.0  # BACKTEST_CHANGE_T56: was 70. Exit at RSI>85 = let winners run longer. +311% PnL over 4.8yr
     RSI_EXIT_SHORT_TRADIER: float = 15.0  # BACKTEST_CHANGE_T56: exit when RSI < 15
@@ -888,8 +888,24 @@ class TradierConfig:
     # RSI Entry — SHORTS ONLY (2026-04-14 rule). Longs use MFI only.
     # Short side: RSI + relative volume gate (high short volume distorts MFI).
     TRADIER_RSI_ENTRY_LONG_TRADIER: float = -1.0        # SENTINEL: <0 => DISABLED (long uses MFI)
-    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0       # RSI > this to consider short
+    TRADIER_RSI_ENTRY_SHORT_TRADIER: float = 70.0       # RSI > this to consider short (LEGACY: single-TF default)
     TRADIER_RSI_SHORT_REL_VOLUME_MIN: float = 1.2       # relative vol > 1.2× avg required
+    # --- per-TF RSI entry thresholds (2026-04-17) — long<= / short>=, tuned from A/B on full 109-sym × 3yr ---
+    # LONG (mean-reversion): tighter RSI = better signal. A/B winner: rsi15<40 paired with rsi1h<22.
+    TRADIER_RSI_LONG_5M: float = 35.0
+    TRADIER_RSI_LONG_15M: float = 40.0                  # A/B 2026-04-17 winner (was 42 single-threshold)
+    TRADIER_RSI_LONG_1H: float = 22.0                   # A/B 2026-04-17 REAL LEVER (was not per-TF)
+    TRADIER_RSI_LONG_4H: float = 35.0
+    TRADIER_RSI_LONG_D: float = 40.0
+    # SHORT (continuation/overbought reversal): per-TF mirrors validated on full data.
+    TRADIER_RSI_SHORT_5M: float = 65.0
+    TRADIER_RSI_SHORT_15M: float = 65.0                 # validated top short cluster rsi15_gt_65
+    TRADIER_RSI_SHORT_1H: float = 65.0                  # validated top short cluster rsi1h_gt_65
+    TRADIER_RSI_SHORT_4H: float = 60.0
+    TRADIER_RSI_SHORT_D: float = 55.0
+    # rel_vol gate per TF — only activated on SHORT side (MFI already captures volume for LONG)
+    TRADIER_RSI_SHORT_RVOL_15M: float = 1.0
+    TRADIER_RSI_SHORT_RVOL_1H: float = 1.0
 
     # MFI Entry — LONGS ONLY (2026-04-14 rule, companion to RSI-shorts rule)
     TRADIER_MFI_ENTRY_LONG_TRADIER: float = 60.0        # MFI > this for long entry
