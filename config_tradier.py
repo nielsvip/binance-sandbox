@@ -1390,6 +1390,9 @@ class TradierConfig:
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.89/0.72, 94-97% WR. Sniper.
     REENTRY_COOLDOWN_S: float = 0.0  # Was 15s; zero for instant reentry
     REENTRY_MIN_GAP_MINUTES: float = 15.0  # Absolute floor between exit and reentry (stocks). Fires before any tier gate.
+    # Aggressive tier window (2026-04-17 reentry sweep: stocks peak at delay=1 bar = 5min on 5m).
+    # Stocks reward URGENCY after stoch/DC exit clears. Crypto uses 30min in config.py.
+    REENTRY_AGGRESSIVE_WINDOW_MIN: float = 5.0  # 5 min on stocks (5m base = 1 bar — matches Sharpe peak)
     REENTRY_SYMGATE_ENABLED: bool = True   # Symmetric gate: block reentry if DELTA/score/speed says exit for the proposed side
     REENTRY_SYMGATE_SPEED_MIN: float = 1.0  # Min bull_speed (LONG) / bear_speed (SHORT). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = True     # Apply same guard to fresh entries, not just reentries

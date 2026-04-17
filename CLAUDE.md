@@ -103,6 +103,32 @@ Anything NOT in that legitimate-differ list must bit-match. If you find a drift,
 
 ---
 
+## 📊 BACKTEST REPORTING RULES — AVERAGES, NOT OUTLIERS
+
+**Every sweep/baseline/backtest summary MUST show**:
+
+1. **Sharpe and mean-gain = AVERAGE across all symbols in the test**, never the single best outlier.
+   - A "Sharpe 5.2" number because one symbol had a lucky run is useless. The number that matters is the per-symbol mean.
+   - Also report the range (min, p25, median, p75, max) so spread is visible.
+   - If a pool aggregate is shown instead of per-symbol avg, label it clearly as `pool` not `avg`.
+
+2. **Max drawdown % over the full 4-year sequence is MANDATORY** in every summary.
+   - Max peak-to-trough equity drawdown as % of starting capital across the ENTIRE tested window.
+   - Not per-trade, not per-year — the worst the account ever looked from its high-water mark.
+   - If drawdown isn't computed, the summary is INCOMPLETE — flag it.
+
+3. **Labels must specify base timeframe and sample scope**:
+   - Crypto base TF = **3m** (so "delay=1 bar" = 3 min).
+   - Stocks base TF = **5m** (so "delay=1 bar" = 5 min).
+   - Always state: `N symbols × N bars × N years × base-TF`.
+   - Never collapse a 15-symbol test into the same row as a 109-symbol test without labeling.
+
+4. **Number of trades required**: Sharpe on <30 trades per symbol is noise. Prefer samples with ≥200 trades/symbol over pool Sharpe on rare combos.
+
+Violations = the 15-sym-40-Sharpe lie that collapsed to 0.35 on full data. This rule prevents reliving that.
+
+---
+
 ## ⚠️ ALL CLOCKS = UTC. MARKETS = ET (UTC−4 now)
 
 | Event | ET | UTC |

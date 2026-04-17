@@ -513,6 +513,9 @@ class Config:
     RZ_ZSCORE_EXIT_ENABLED: bool = True
     # ═══ REENTRY — user directive "reenter ASAP" ═══
     REENTRY_COOLDOWN_S: float = 0.0          # Was 15s; zero for instant reentry
+    # Aggressive tier window (2026-04-17 reentry sweep: crypto peak at 8-12 bars = 24-36min on 3m).
+    # Within this window, a fresh dc_x3m or stoch_x3m with 1h still trending bypasses safety gates.
+    REENTRY_AGGRESSIVE_WINDOW_MIN: float = 30.0  # 30 min on crypto (3m base = 10 bars — matches Sharpe peak)
     # Scoring integration
     DELTA_SCORE_WEIGHT: float = 30.0       # Weight of delta signal in AdvancedSignalRater (0-100)
     DELTA_ENTRY_SCORE_BONUS: int = 15      # Score bonus when delta confirms entry

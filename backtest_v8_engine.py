@@ -1320,10 +1320,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
         # REENTRY PIPELINE — 2026-04-17: wire evaluate_reentry_2 into backtest.
         # Live calls this via SYMBOL_WATCHDOG + AUGMENT_MONITOR + periodic_evaluate_reentry_loop,
-        # which are async loops spawned at startup and not present in backtest. Without this call,
-        # the entire process_single_reentry_evaluation path (DIRECTION_FAVORABLE, DC_BREAKOUT,
-        # QUICK_RECOVERY, WT15M_CROSS, K15M_PARTIAL, POST_CONSOL) is unreachable and all
-        # REENTRY2_*/REENTRY_WT15M_*/REENTRY_K15M_*/REENTRY_POST_CONSOL_* switches show 0 variance.
+        # async loops spawned at startup but not present in backtest. Without this, the entire
+        # process_single_reentry_evaluation path (DIR_FAVORABLE, DC_BREAKOUT, QUICK_RECOVERY,
+        # WT15M_CROSS, K15M_PARTIAL, POST_CONSOL) is unreachable and every REENTRY2_*/WT15M/
+        # K15M/POST_CONSOL switch shows zero variance.
         if getattr(config, 'REENTRY_2_ENABLED', True):
             try:
                 await ez_manage.evaluate_reentry_2(trade_manager)

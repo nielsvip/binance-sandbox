@@ -5017,31 +5017,74 @@ class HedgeEngine:
             if abs(safe_fetch_float(pos.positionAmt, 0)) > 0.0001:
                 try: parts = pk.split(':'); sym = parts[1].replace('_LONG','').replace('_SHORT',''); side = 'LONG' if pk.endswith('_LONG') else 'SHORT'; symbol_sides.setdefault(sym, []).append((pk, side))
                 except Exception: pass
+        # 2026-04-17 USER RULE: hedge direction is determined by the CANONICAL list
+        # (symbols_ang_long/short, symbols_inf_long/short, or WINNERS_20/LOSERS_20 for men/fin/flz).
+        # NOT by gain. If symbol is in LONG-list, LONG is canonical → SHORT is the hedge.
+        # If in SHORT-list, SHORT is canonical → LONG is the hedge. Gain is IRRELEVANT for direction.
+        tm = self.trade_manager
+        _winners = set()
+        _losers = set()
+        try:
+            if hasattr(tm, 'winners_20') and hasattr(tm, 'losers_20'):
+                _winners = tm.winners_20 or set()
+                _losers = tm.losers_20 or set()
+            elif hasattr(self.registry, 'top_longs') and hasattr(self.registry, 'top_shorts'):
+                _winners = {s for s, _, _ in (self.registry.top_longs or [])}
+                _losers = {s for s, _, _ in (self.registry.top_shorts or [])}
+        except Exception: pass
+        def _canonical_hedge_side(sym: str, acct: str) -> Optional[str]:
+            if acct == 'ang':
+                if sym in getattr(tm, 'symbols_ang_long', set()): return 'SHORT'  # LONG canonical → SHORT is hedge
+                if sym in getattr(tm, 'symbols_ang_short', set()): return 'LONG'  # SHORT canonical → LONG is hedge
+            elif acct == 'inf':
+                if sym in getattr(tm, 'symbols_inf_long', set()): return 'SHORT'
+                if sym in getattr(tm, 'symbols_inf_short', set()): return 'LONG'
+            elif acct in ('men', 'fin', 'flz'):
+                if sym in _winners: return 'SHORT'
+                if sym in _losers: return 'LONG'
+            return None
+        _discovery_made_change = False
         for symbol, entries in symbol_sides.items():
             if len(entries) >= 2:
-                # FIX 2026-03-28: Only treat the MORE PROFITABLE side as the hedge (it was opened to protect the loser).
-                # Previously both sides were marked as hedges → neither got hedged → RSR -15% with no protection.
-                _gains = []
-                for pk, side in entries:
-                    _p = positions.get(pk)
-                    _g = safe_fetch_float(getattr(_p, 'gain', 0), 0) if _p else 0
-                    _gains.append((pk, side, _g))
-                _gains.sort(key=lambda x: x[2])  # lowest gain first
-                _loser_pk = _gains[0][0]
-                _winner_pk = _gains[-1][0]
-                # The winner is the hedge (it was opened to protect the loser)
-                async with self.tracker_manager._hedges_lock:
-                    if not any(h.get('position_key') == _winner_pk for h in self.tracker_manager.active_hedges):
-                        logger.warning(f"🛡️ [HEDGE_DISCOVERY] {symbol}: winner={_winner_pk}(gain={_gains[-1][2]:.2f}%) is hedge for loser={_loser_pk}(gain={_gains[0][2]:.2f}%)")
-                        cand = await self.tracker_manager.get_exit_candidate(_winner_pk)
-                        if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _winner_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
-                        else: cand['is_hedge'] = True; cand['losing_position_key'] = _loser_pk; cand.setdefault('opened_at', datetime.now(timezone.utc).isoformat()); cand.setdefault('timestamp', time.time())
-                        self.tracker_manager.active_hedges.append(cand)
-                        _discovery_made_change = True
-                try:
-                    if '_discovery_made_change' in dir() and locals().get('_discovery_made_change'):
-                        await self.tracker_manager.save_tracker(account_key, force=True)
-                except Exception: pass
+                _hedge_side = _canonical_hedge_side(symbol, account_key)
+                # Pick hedge vs origin by canonical side. Fallback to gain-based only if canonical unknown.
+                if _hedge_side:
+                    _hedge_pk = next((pk for pk, side in entries if side == _hedge_side), None)
+                    _origin_pk = next((pk for pk, side in entries if side != _hedge_side), None)
+                    if not _hedge_pk or not _origin_pk:
+                        continue
+                    _hp = positions.get(_hedge_pk); _op = positions.get(_origin_pk)
+                    _hg = safe_fetch_float(getattr(_hp, 'gain', 0), 0) if _hp else 0
+                    _og = safe_fetch_float(getattr(_op, 'gain', 0), 0) if _op else 0
+                    async with self.tracker_manager._hedges_lock:
+                        if not any(h.get('position_key') == _hedge_pk for h in self.tracker_manager.active_hedges):
+                            logger.warning(f"🛡️ [HEDGE_DISCOVERY_CANONICAL] {symbol}: canonical={account_key}_{_hedge_side}_side_is_hedge. hedge={_hedge_pk}(g={_hg:.2f}%) origin={_origin_pk}(g={_og:.2f}%)")
+                            cand = await self.tracker_manager.get_exit_candidate(_hedge_pk)
+                            if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _hedge_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _origin_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
+                            else: cand['is_hedge'] = True; cand['losing_position_key'] = _origin_pk; cand.setdefault('opened_at', datetime.now(timezone.utc).isoformat()); cand.setdefault('timestamp', time.time())
+                            self.tracker_manager.active_hedges.append(cand)
+                            _discovery_made_change = True
+                else:
+                    # No canonical match — fall back to gain-based (legacy behaviour, winner is hedge).
+                    _gains = []
+                    for pk, side in entries:
+                        _p = positions.get(pk)
+                        _g = safe_fetch_float(getattr(_p, 'gain', 0), 0) if _p else 0
+                        _gains.append((pk, side, _g))
+                    _gains.sort(key=lambda x: x[2])
+                    _loser_pk = _gains[0][0]; _winner_pk = _gains[-1][0]
+                    async with self.tracker_manager._hedges_lock:
+                        if not any(h.get('position_key') == _winner_pk for h in self.tracker_manager.active_hedges):
+                            logger.warning(f"🛡️ [HEDGE_DISCOVERY_FALLBACK] {symbol}: no canonical side — winner={_winner_pk}(g={_gains[-1][2]:.2f}%) treated as hedge for loser={_loser_pk}(g={_gains[0][2]:.2f}%)")
+                            cand = await self.tracker_manager.get_exit_candidate(_winner_pk)
+                            if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _winner_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
+                            else: cand['is_hedge'] = True; cand['losing_position_key'] = _loser_pk; cand.setdefault('opened_at', datetime.now(timezone.utc).isoformat()); cand.setdefault('timestamp', time.time())
+                            self.tracker_manager.active_hedges.append(cand)
+                            _discovery_made_change = True
+        try:
+            if _discovery_made_change:
+                await self.tracker_manager.save_tracker(account_key, force=True)
+        except Exception: pass
         async with self.tracker_manager._exit_candidates_lock:
             for pk, cand in list(self.tracker_manager.exit_candidates.items()):
                 if not pk.startswith(f"{account_key}:"): continue
@@ -5631,17 +5674,35 @@ class HedgeEngine:
             logger.debug(f"[HEDGE_COMPLETED_LOCK] {origin_key}: hedge already opened {int(time.time() - _hc_ts)}s ago. Blocked.")
             return False
         hedge_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
-        hedge_key = f"{account_key}:{symbol}_{hedge_side}"
+        # 2026-04-17 USER RULE: if origin is USDT AND USDC sibling exists → use USDC as hedge vehicle.
+        # Zero commissions on USDC pairs. Hedge is temporary, so USDC savings compound quickly.
+        hedge_symbol = symbol
+        if symbol.endswith('USDT'):
+            _usdc_sibling = symbol[:-4] + 'USDC'
+            _live_usdc = getattr(self.trade_manager, 'live_usdc_pairs', None) or getattr(self.trade_manager, 'available_usdc_pairs', None) or set()
+            if not _live_usdc:
+                try:
+                    import json as _j
+                    with open(self.config.LIVE_USDC_PAIRS_FILE) as _f:
+                        _live_usdc = set(_j.load(_f))
+                except Exception:
+                    _live_usdc = set()
+            if _usdc_sibling in _live_usdc:
+                hedge_symbol = _usdc_sibling
+                logger.warning(f"💱 [HEDGE_USDC_REDIRECT] origin={symbol} USDT in loss → hedging via {_usdc_sibling} (zero commission)")
+        hedge_key = f"{account_key}:{hedge_symbol}_{hedge_side}"
         if origin_key in self._hedge_same_in_flight:
             logger.debug(f"[HEDGE_SAME_IN_FLIGHT] {origin_key}: hedge placement already in progress. Skipping duplicate.")
             return False
         self._hedge_same_in_flight.add(origin_key)
         try:
-         return await self._execute_same_symbol_hedge_inner(account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key)
+         return await self._execute_same_symbol_hedge_inner(account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol)
         finally:
             self._hedge_same_in_flight.discard(origin_key)
 
-    async def _execute_same_symbol_hedge_inner(self, account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key):
+    async def _execute_same_symbol_hedge_inner(self, account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol=None):
+        # 2026-04-17: hedge_symbol may differ from symbol when origin was USDT and USDC sibling exists.
+        if hedge_symbol is None: hedge_symbol = symbol
         # ═══ MANDATORY TRACKER CHECK (2026-03-29) — consult tracker BEFORE doing anything ═══
         # 1. Is the ORIGIN itself a hedge? If so, do NOT hedge-the-hedge.
         async with self.tracker_manager._hedges_lock:
@@ -5667,25 +5728,32 @@ class HedgeEngine:
             logger.info(f"[HEDGE_SAME_EXISTS] {hedge_key}: already open (amt={positionAmt:.6f}). ONE HEDGE ONLY — no resize/augment.")
             return True
         # ── ENTRY GATE ── hedges must clear wt_3m + delta-accel before opening
-        _hgate_ok, _hgate_reason = await self._hedge_entry_is_valid(symbol, hedge_side)
+        # Use hedge_symbol (USDC sibling if redirected) for gate check — price/WT data is there.
+        _hgate_ok, _hgate_reason = await self._hedge_entry_is_valid(hedge_symbol, hedge_side)
         if not _hgate_ok:
             logger.warning(f"🛡️ [HEDGE_SAME_GATE_BLOCK] {hedge_key}: {_hgate_reason} — not opening against wt3m/delta policy")
             return False
-        # SIZE MATCH: hedge = 100% of origin position DOLLAR VALUE (same-sym is pest control)
+        # Use HEDGE symbol's current price if we redirected (USDC has own price)
+        if hedge_symbol != symbol:
+            try:
+                _hp, _ = await self.data_manager.get_fresh_price(hedge_symbol)
+                if _hp > 0: current_price = _hp
+            except Exception: pass
+        # SIZE MATCH: hedge = 150% of origin position DOLLAR VALUE (deep-loss hedge must fully cover + buffer)
         _origin_val = abs(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0)) * current_price
         if _origin_val < 1.0: return True
-        _target_val = _origin_val * 1.5  # 150% (was 130%; deep-loss hedge must fully cover + buffer)
+        _target_val = _origin_val * 1.5
         qty = _target_val / current_price if current_price > 0 else qty
         logger.info(f"[HEDGE_SAME_SIZED] {hedge_key}: origin_val=${_origin_val:.1f} → hedge_val=${_target_val:.1f} qty={qty:.6f}")
         if qty * current_price < 5.0: return True
         # FIX 2026-04-08: Route through execute_trade_wrapper — NEVER bypass _pos_is_open + _open_in_flight guards
-        logger.critical(f"[HEDGE_SAME] Opening {hedge_side} {symbol} ({qty:.6f} = ${qty*current_price:.2f}) to cover {origin_side}")
+        logger.critical(f"[HEDGE_SAME] Opening {hedge_side} {hedge_symbol} ({qty:.6f} = ${qty*current_price:.2f}) to cover {origin_side} {symbol}")
         success, failure_reason = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=positionAmt, action='OPEN', current_price=current_price, qty=qty, reason=f"HEDGE_PROTECT_{origin_side}_LOSS", override_qty=qty, already_locked=False, is_hedge=True, hedge_for=f"{account_key}:{symbol}_{origin_side}", data_manager=self.data_manager)
         if not success:
             logger.warning(f"[HEDGE_SAME_BLOCKED] {hedge_key}: execute_trade_wrapper rejected: {failure_reason}")
         success = bool(success)
         if success:
-            hedge_record = { 'type': 'HEDGE_SAME_SYMBOL', 'status': 'executed', 'account': account_key, 'position_key': hedge_key, 'target_symbol': symbol, 'symbol': symbol, 'losing_symbol': symbol, 'losing_position_key': f"{account_key}:{symbol}_{origin_side}", 'hedge_for': f"{account_key}:{symbol}_{origin_side}", 'losing_side': origin_side, 'position_side': hedge_side, 'quantity': qty, 'initial_quantity': qty, 'price': current_price, 'entry_price': current_price, 'notional_usd': qty * current_price, 'timestamp': time.time(), 'is_hedge': True, 'hedge_id': f"hedge_{int(time.time() * 1000)}", 'reason': f"HEDGE_PROTECT_{origin_side}_LOSS" }
+            hedge_record = { 'type': 'HEDGE_SAME_SYMBOL', 'status': 'executed', 'account': account_key, 'position_key': hedge_key, 'target_symbol': hedge_symbol, 'symbol': hedge_symbol, 'losing_symbol': symbol, 'losing_position_key': f"{account_key}:{symbol}_{origin_side}", 'hedge_for': f"{account_key}:{symbol}_{origin_side}", 'losing_side': origin_side, 'position_side': hedge_side, 'quantity': qty, 'initial_quantity': qty, 'price': current_price, 'entry_price': current_price, 'notional_usd': qty * current_price, 'timestamp': time.time(), 'is_hedge': True, 'hedge_id': f"hedge_{int(time.time() * 1000)}", 'reason': f"HEDGE_PROTECT_{origin_side}_LOSS{'_USDC_REDIRECT' if hedge_symbol != symbol else ''}" }
             await self.persist_hedge_record(account_key, hedge_record)
             self._hedge_cooldowns[symbol] = time.time()
             # FIX 2026-04-07: Mark hedge as COMPLETED — blocks ALL future hedge attempts for this origin
@@ -10063,6 +10131,17 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 _hedge_origin_sym = _hedge_sym_parsed[1] if _hedge_sym_parsed else ""
                 if _hedge_origin_sym == _gate_sym:
                     _exempt = True
+                else:
+                    # 2026-04-17: USDT/USDC sibling hedge exemption. Origin USDT→hedge USDC (or vice
+                    # versa) on same base asset is treated as same-symbol hedge (locked 1:1 price).
+                    _origin_base = _hedge_origin_sym[:-4] if _hedge_origin_sym.endswith(('USDT','USDC')) else _hedge_origin_sym
+                    _gate_base = _gate_sym[:-4] if _gate_sym.endswith(('USDT','USDC')) else _gate_sym
+                    if _origin_base and _origin_base == _gate_base:
+                        _exempt = True
+                        logger.warning(f"⚠️ [TRADEABLE_KEYS_GATE_USDC_SIBLING_EXEMPT] {position_key}: hedge for {hedge_for} via sibling {_gate_sym} — allowing")
+                        # Temporarily add to tradeable_keys so subsequent gates + tracker see it
+                        if hasattr(tracker_manager, 'tradeable_keys') and isinstance(tracker_manager.tradeable_keys, set):
+                            tracker_manager.tradeable_keys.add(position_key)
             if not _exempt:
                 logger.critical(f"🚫 [TRADEABLE_KEYS_GATE] {position_key}: NOT in tradeable_keys ({len(_tk)} keys). BLOCKED. action={action} reason={reason[:60]}")
                 return False, f"BLOCKED_NOT_TRADEABLE_{position_key}"

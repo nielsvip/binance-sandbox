@@ -7877,11 +7877,25 @@ class TradierTradeManager:
                         _p0_rescue = _was_5m_exit and _1h_still_trending and _5m_entry_fires
                         if _p0_rescue:
                             logger.warning(f"🟢 [REENTRY_P0_5M_RESCUE] {pk}: exit_reason='{_er_str[:40]}' 1h_trending={_1h_still_trending} 5m_entry=TRUE — BYPASS FILTERS")
-                        # STOCH GATE — 3 tiers based on hours since exit (skipped if P0 rescue fires):
-                        # Tier 1 (0–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
-                        # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering
+                        # STOCH GATE — 4 tiers based on hours since exit (skipped if P0 rescue fires):
+                        # Tier 0 (0–5min): AGGRESSIVE — within 1 bar (5m base TF) of exit clearing, just need dc_basis_crossover_1h
+                        #   or stoch_crossover_15m fresh trigger. No stoch gate, no HTF stack required.
+                        #   Evidence 2026-04-17 reentry sweep: delay=1 bar best Sharpe 0.898 WR 78.3% (stocks).
+                        # Tier 1 (5min–3h): rally reentry — skip k5m<50, need k5m rising + k15m rising + 2/3 HTF (1h/4h/D) WT aligned
+                        # Tier 2 (3–48h): strict — k5m MUST drop below 50 before reentering (whipsaw zone — the worst place to reenter)
                         # Tier 3 (48h+): bypass stoch gate entirely, rely on exit score + WT alignment only
-                        if not _p0_rescue and hours_since < 3.0:
+                        _t0_aggressive_max_min = float(getattr(config, 'REENTRY_AGGRESSIVE_WINDOW_MIN', 5.0))
+                        _t0_aggressive_hours = _t0_aggressive_max_min / 60.0
+                        if not _p0_rescue and hours_since < _t0_aggressive_hours:
+                            # Aggressive 0-5m tier: stocks 5m base = 1 bar, crypto 3m base = 1-2 bars.
+                            # Fires on fresh DC_1h crossover in-direction OR fresh stoch_15m crossover in-direction.
+                            _dc_x1h_now = (i.get("dc_basis_crossover_1h", False) if side == "LONG" else i.get("dc_basis_crossunder_1h", False))
+                            _stoch_15m_now = (i.get("stoch_crossover_15m", False) if side == "LONG" else i.get("stoch_crossunder_15m", False))
+                            if not (_dc_x1h_now or _stoch_15m_now):
+                                logger.info(f"[REENTRY_MONITOR] {pk}: AGGRESSIVE 0-{_t0_aggressive_max_min:.0f}m tier — waiting for fresh dc_x1h or stoch_x15m trigger ({hours_since*60:.0f}m since exit)")
+                                continue
+                            logger.warning(f"[REENTRY_MONITOR] {pk}: 🎯 AGGRESSIVE 0-{_t0_aggressive_max_min:.0f}m tier fired — dc_x1h={_dc_x1h_now} stoch_x15m={_stoch_15m_now} @ {hours_since*60:.0f}m after exit")
+                        elif not _p0_rescue and hours_since < 3.0:
                             _k5m_rising = k_5m > k_5m_prev
                             _k15m_rising = k_15m > k_15m_prev
                             _htf_wt_fav = sum(1 for w1, w2 in [(wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D)] if (w1 > w2 if side == "LONG" else w1 < w2))

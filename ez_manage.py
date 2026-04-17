@@ -15131,6 +15131,16 @@ class MultiAccountTradeManager:
                         _qty_mult = float(getattr(config, 'REENTRY_FAVORABLE_QTY_MULT', 1.0))
                         _reason_tag = f"PF_FAVORABLE_{'DROP' if not is_long else 'SPIKE'}_htf{_htf_count}_move{(current_price/exit_price - 1)*100:.2f}%"
                         logger.critical(f"🚀 [REENTRY_FAVORABLE_MOVE] {position_key}: exit={exit_price:.6f} cur={current_price:.6f} move={(current_price/exit_price-1)*100:+.2f}% htf={_htf_count}/3 — DROP/SPIKE recognized, FORCING REENTRY")
+                    # PATHWAY AGGR (FIX 2026-04-17): AGGRESSIVE 0-5min tier — crypto 3m base = 1-2 bars.
+                    # Evidence from reentry sweep: delay=1 bar gives peak Sharpe on LONG after stoch/DC exit clears.
+                    # Bypasses safety gates when fresh dc_basis_crossover_3m or stoch_crossover_3m fires within 5min of exit.
+                    _aggr_window_s = float(getattr(config, 'REENTRY_AGGRESSIVE_WINDOW_MIN', 5.0)) * 60.0
+                    if not should_reenter and _elapsed_s < _aggr_window_s:
+                        _dcx3_now = (indicators.get('dc_basis_crossover_3m', False) if is_long else indicators.get('dc_basis_crossunder_3m', False))
+                        _stx3_now = (indicators.get('stoch_crossover_3m', False) if is_long else indicators.get('stoch_crossunder_3m', False))
+                        if (_dcx3_now or _stx3_now) and _wt1h_ok:
+                            should_reenter = True; _qty_mult = 1.0; _reason_tag = f"AGGR_0_{int(_aggr_window_s/60)}m_{'DCx3' if _dcx3_now else 'STx3'}"
+                            logger.warning(f"🎯 [REENTRY_AGGRESSIVE] {position_key}: {int(_elapsed_s)}s since exit + dc_x3m={_dcx3_now} stoch_x3m={_stx3_now} + 1h trending — AGGRESSIVE REENTRY")
                     if not should_reenter:
                         _safety_ok = _delta_rising and _clear_of_red
                         if _price_crossed:
