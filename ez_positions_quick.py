@@ -5727,6 +5727,19 @@ class HedgeEngine:
             # FIX 2026-04-07: Hedge exists = DONE. NO resize. NO augment. ONE entry only.
             logger.info(f"[HEDGE_SAME_EXISTS] {hedge_key}: already open (amt={positionAmt:.6f}). ONE HEDGE ONLY — no resize/augment.")
             return True
+        # 2026-04-17 USER RULE: hedge keys are temporarily added to tradeable_keys so they can
+        # be opened, then erased on close (nuke_hedge_key). Add to BOTH trade_manager + tracker.
+        try:
+            if hasattr(self.trade_manager, 'tradeable_keys') and isinstance(self.trade_manager.tradeable_keys, set):
+                self.trade_manager.tradeable_keys.add(hedge_key)
+            if hasattr(self.tracker_manager, 'tradeable_keys') and isinstance(self.tracker_manager.tradeable_keys, set):
+                self.tracker_manager.tradeable_keys.add(hedge_key)
+            # Also add to per-account tradeable_position_keys (used by REENTRY_PURGE)
+            _tpk = getattr(self.tracker_manager, 'tradeable_position_keys', {}) or {}
+            if account_key not in _tpk: _tpk[account_key] = set()
+            if isinstance(_tpk.get(account_key), set): _tpk[account_key].add(hedge_key)
+        except Exception as _tk_e:
+            logger.warning(f"[HEDGE_TRADEABLE_ADD_WARN] {hedge_key}: {_tk_e}")
         # ── ENTRY GATE ── hedges must clear wt_3m + delta-accel before opening
         # Use hedge_symbol (USDC sibling if redirected) for gate check — price/WT data is there.
         _hgate_ok, _hgate_reason = await self._hedge_entry_is_valid(hedge_symbol, hedge_side)

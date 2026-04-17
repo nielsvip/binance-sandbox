@@ -178,7 +178,7 @@ class CallTrade:
     days_held: int
 
 
-def simulate_csp_strategy(symbol: str, bars: List[Dict], target_delta: float, dte: int, r: float, iv_markup: float, loss_trigger: float, hard_cut: float, require_technical: bool, vol_window: int = 60, static_iv: bool = False) -> Dict:
+def simulate_csp_strategy(symbol: str, bars: List[Dict], target_delta: float, dte: int, r: float, iv_markup: float, loss_trigger: float, hard_cut: float, require_technical: bool, vol_window: int = 60, static_iv: bool = False, strike_breach_pct: float = 0.05, gap_from_entry_pct: float = 0.15) -> Dict:
     """Sell 25Δ cash-secured put every cycle_days, hold to expiry or risk-monitor close.
     static_iv: if True, reprice using entry-time IV throughout (removes vol-dynamics noise).
     vol_window: realized vol lookback window in days (20 = noisy, 60 = smoother)."""
@@ -221,13 +221,25 @@ def simulate_csp_strategy(symbol: str, bars: List[Dict], target_delta: float, dt
                 sigma_t = max(0.08, rvols[i + j] * iv_markup)
             current_cost = bs_put_price(S_t, K, T_rem, r, sigma_t)
             pnl_pct = (premium - current_cost) / premium if premium > 0.01 else 0.0
-            # ── Hard loss cut (bypasses technicals) ──
-            if pnl_pct <= hard_cut:
+            # ── GUARD 1: STRIKE_BREACH — spot N% below strike (wipeout guard) ──
+            if S_t <= K * (1.0 - strike_breach_pct):
                 exit_idx = i + j
-                exit_reason = f"hard_cut({pnl_pct:.1%})"
+                exit_reason = f"strike_breach(S={S_t:.2f}<={K*(1.0-strike_breach_pct):.2f})"
                 exit_cost = current_cost * 100.0
                 break
-            # ── Technical-gated close ──
+            # ── GUARD 2: ENTRY_GAP — spot N% below entry spot (gap/crash guard) ──
+            if S_t <= S0 * (1.0 - gap_from_entry_pct):
+                exit_idx = i + j
+                exit_reason = f"entry_gap({(S_t-S0)/S0:.1%})"
+                exit_cost = current_cost * 100.0
+                break
+            # ── GUARD 3: HARD_PREMIUM — catastrophic premium loss ──
+            if pnl_pct <= hard_cut:
+                exit_idx = i + j
+                exit_reason = f"hard_premium({pnl_pct:.1%})"
+                exit_cost = current_cost * 100.0
+                break
+            # ── SOFT: Technical-gated close ──
             if pnl_pct <= loss_trigger:
                 if (not require_technical) or tech_against(i + j):
                     exit_idx = i + j
@@ -325,6 +337,8 @@ def main():
     ap.add_argument("--no-technical", action="store_true", help="Disable technical-turn gate (pure P&L exit)")
     ap.add_argument("--vol-window", type=int, default=60, help="Realized vol lookback days (20=noisy, 60=smoother)")
     ap.add_argument("--static-iv", action="store_true", help="Use entry-time IV throughout (no vol-dynamics repricing)")
+    ap.add_argument("--strike-breach-pct", type=float, default=0.05, help="Wipeout guard: close if spot drops N%% below strike (put ITM)")
+    ap.add_argument("--gap-from-entry-pct", type=float, default=0.15, help="Wipeout guard: close if spot drops N%% below entry spot")
     ap.add_argument("--out", default="/tmp/csp_test/csp_backtest_results.json")
     args = ap.parse_args()
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
@@ -344,7 +358,7 @@ def main():
             continue
         total_bars += len(bars)
         date_ranges.append((bars[0].get("timestamp", "")[:10], bars[-1].get("timestamp", "")[:10]))
-        csp_res = simulate_csp_strategy(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup, args.loss_trigger, args.hard_cut, require_technical=not args.no_technical, vol_window=args.vol_window, static_iv=args.static_iv)
+        csp_res = simulate_csp_strategy(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup, args.loss_trigger, args.hard_cut, require_technical=not args.no_technical, vol_window=args.vol_window, static_iv=args.static_iv, strike_breach_pct=args.strike_breach_pct, gap_from_entry_pct=args.gap_from_entry_pct)
         call_res = simulate_buy_call_strategy(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup)
         csp_summary = summarize(csp_res.get("trades", []), "SELL_PUT_CSP", sym)
         call_summary = summarize(call_res.get("trades", []), "BUY_CALL", sym)

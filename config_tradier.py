@@ -240,13 +240,25 @@ class TradierConfig:
     OPTIONS_CSP_EDGE_MARGIN: float = 1.15        # Sell-structure must beat buy-structure edge by 15% to be picked
     # === NON-SKIPPABLE RISK MONITOR — SOLD POSITIONS ===
     # Background daemon (launchd) runs every N seconds. NO config flag disables it.
-    # Closes sold options on (P&L negative) AND (technicals against position).
+    # Layered defense: soft close on (P&L down + technicals) + ABSOLUTE cuts that bypass
+    # everything when an underlying move threatens account-wipeout (deep ITM, gap crash).
     # Matches btc_crash_safety_net.py pattern — state machine, state file, auto-restart.
-    OPTIONS_CSP_MONITOR_POLL_SEC: int = 60          # Poll interval in seconds
-    OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT: float = -0.05  # P&L must be <= -5% to arm close-gate (premium-based)
-    OPTIONS_CSP_MONITOR_MAX_LOSS_PCT: float = -0.50      # Hard cut: pnl <= -50% forces close regardless of technicals
-    OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN: bool = True   # Require wt_D turn against position to confirm technical exit
-    OPTIONS_CSP_MONITOR_LOG_EVERY_TICK: bool = True      # Log every poll for audit trail (required for non-skippable)
+    OPTIONS_CSP_MONITOR_POLL_SEC: int = 60                # Poll interval in seconds
+    # Soft gate — lets positions breathe through IV/price noise
+    OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT: float = -0.20   # Arm close gate only on 20%+ premium drawdown (was -5%)
+    OPTIONS_CSP_MONITOR_MAX_LOSS_PCT: float = -1.50       # Hard premium cut: pnl <= -150% (buy-back costs 2.5x premium) — catastrophic only
+    OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN: bool = True    # Require wt_D turn against position to confirm soft close
+    OPTIONS_CSP_MONITOR_LOG_EVERY_TICK: bool = True       # Log every poll for audit trail (required for non-skippable)
+    # ── ABSOLUTE WIPEOUT GUARDS — BYPASS ALL OTHER GATES ──
+    # Fire unconditionally (no technical filter) to prevent account wipeout from catastrophic underlying moves.
+    # For SHORT PUT: underlying dropping ITM + through strike = assignment loss grows linearly with further drop.
+    # For SHORT CALL (disabled v1): underlying rising above strike = unlimited upside loss.
+    OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT: float = 0.05   # SHORT PUT: close if underlying drops 5%+ BELOW strike (put is 5% ITM)
+    OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT: float = 0.15  # SHORT PUT: close if underlying drops 15%+ from entry spot (catches gap-down / earnings crash)
+    OPTIONS_CSP_MONITOR_CALL_BREACH_PCT: float = 0.05     # SHORT CALL: close if underlying rises 5%+ ABOVE strike (disabled v1 but gate wired)
+    OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT: float = 0.15  # SHORT CALL: close on 15%+ upside gap from entry
+    # Correlated-event emergency: if N+ positions all breach absolute guards in same tick, escalate alert
+    OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N: int = 3      # N positions breaching simultaneously triggers emergency log/alert
     # === BEAR_SCENARIO_SYMBOLS — symbols that go UP when markets go DOWN ===
     # A CALL on a bear_scenario symbol = bearish market bet (like a PUT on SPY).
     # A PUT on a bear_scenario symbol = bullish market bet (like a CALL on SPY).

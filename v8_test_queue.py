@@ -157,7 +157,18 @@ def run_item(item: dict, args) -> dict:
     config_file = item.get("config", "config_tradier.py")
     value_a_raw = item["value_a"]
     value_b_raw = item["value_b"]
-    mode = args.mode or infer_mode(config_file)
+    # 2026-04-17 HARD GUARD: crypto/tradier configs must never be confused.
+    # When --mode is explicit and doesn't match the config file's inferred mode, REFUSE to run.
+    # Silent 0-trade results from mode/config mismatch have cost weeks of test time.
+    inferred = infer_mode(config_file)
+    if args.mode and args.mode != inferred:
+        print(f"\n{'='*60}\n❌ MODE_CONFIG_MISMATCH_SKIP: {param}\n  config={config_file} inferred={inferred}  but --mode={args.mode}\n  Refusing to run — route this test to a {inferred} machine.\n{'='*60}")
+        return {
+            "param": param, "config": config_file, "mode": args.mode,
+            "error": f"MODE_CONFIG_MISMATCH: config={config_file} implies mode={inferred}, caller passed --mode={args.mode}",
+            "status_hint": "mode_skip",  # v8_test_queue.py main loop can mark this so it's not re-tried on same machine
+        }
+    mode = args.mode or inferred
     account = infer_account(mode)
     symbols = args.symbols or (DEFAULT_SYMBOLS_TRADIER if mode == "tradier" else DEFAULT_SYMBOLS_CRYPTO)
     start = DEFAULT_START_TRADIER if mode == "tradier" else DEFAULT_START_CRYPTO

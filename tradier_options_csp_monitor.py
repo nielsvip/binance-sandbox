@@ -148,50 +148,100 @@ def _load_indicators(config: TradierConfig) -> dict:
         return {}
 
 
+async def _fetch_underlying_price(client: TradierAPIClient, symbol: str) -> float:
+    """Fetch current underlying spot price. Returns 0 on failure."""
+    if not symbol:
+        return 0.0
+    try:
+        res = await client._request("GET", "/markets/quotes", params={"symbols": symbol}, use_data_context=True)
+        if not res or "quotes" not in res:
+            return 0.0
+        q = res["quotes"].get("quote", {})
+        if isinstance(q, list):
+            q = q[0] if q else {}
+        return float(q.get("last", 0) or q.get("close", 0) or 0)
+    except Exception:
+        return 0.0
+
+
 async def _evaluate_position(client: TradierAPIClient, pos: dict, config: TradierConfig, indicators: dict, state: dict, dry_run: bool) -> dict:
-    """Evaluate one sold position. Returns action dict.
-    Action = 'skip' | 'close_technical' | 'close_hard_loss' | 'watch'."""
+    """Evaluate one sold position with layered defense. Returns action dict.
+    Action = 'skip' | 'watch' | 'close_technical' | 'close_hard_premium' |
+             'close_strike_breach' | 'close_entry_gap'.
+
+    Priority order (top fires first, bypasses everything below):
+      1. STRIKE_BREACH — underlying moves N% past strike (deep ITM) → wipeout guard
+      2. ENTRY_GAP    — underlying moves N% from entry spot → gap/crash guard
+      3. HARD_PREMIUM — premium pnl <= hard cut (catastrophic only)
+      4. TECHNICAL    — premium pnl <= soft trigger AND wt_D turn against"""
     occ = pos.get("symbol") or pos.get("occ_symbol") or ""
     qty = abs(int(float(pos.get("quantity", 0) or 0)))
     if not occ or qty == 0:
         return {"action": "skip", "reason": "no_occ_or_qty"}
     cost_basis = float(pos.get("cost_basis", 0) or 0)
-    # For a sold position, cost_basis is negative (credit received) in Tradier's convention.
-    # Premium collected per contract = |cost_basis| / qty / 100
     premium_collected = abs(cost_basis) / (qty * 100.0) if qty > 0 else 0.0
     bid, ask, mid = await _fetch_option_mid(client, occ)
     if mid <= 0:
         return {"action": "skip", "reason": "no_quote", "occ": occ}
-    # Buy-back cost = ask (worst case) or mid
     current_cost = mid
-    # P&L per contract (sell perspective): premium_collected - current_cost
     pnl_per_contract = premium_collected - current_cost
     pnl_pct = pnl_per_contract / premium_collected if premium_collected > 0 else 0.0
     parsed = parse_occ_symbol(occ) or {}
     underlying = parsed.get("symbol") or pos.get("underlying") or ""
-    log_entry = {"occ": occ, "underlying": underlying, "qty": qty, "premium_collected": round(premium_collected, 2), "current_cost": round(current_cost, 2), "pnl_pct": round(pnl_pct, 4), "mid": round(mid, 2)}
+    strike = float(parsed.get("strike", 0) or 0)
+    is_put = parsed.get("option_type", "").lower() == "p"
+    # Fetch underlying spot for absolute guards
+    spot = await _fetch_underlying_price(client, underlying)
+    # Entry spot: pull from state cache (set on first observation) or fallback to strike
+    pos_state = state.setdefault("positions", {}).setdefault(occ, {})
+    entry_spot = pos_state.get("entry_spot")
+    if entry_spot is None and spot > 0:
+        # First time seeing this position — record current spot as entry-spot baseline
+        pos_state["entry_spot"] = spot
+        pos_state["first_seen"] = datetime.now().isoformat()
+        entry_spot = spot
+    entry_spot = float(entry_spot or 0)
+    log_entry = {"occ": occ, "underlying": underlying, "spot": round(spot, 2), "entry_spot": round(entry_spot, 2), "strike": strike, "qty": qty, "premium_collected": round(premium_collected, 2), "current_cost": round(current_cost, 2), "pnl_pct": round(pnl_pct, 4), "mid": round(mid, 2), "is_put": is_put}
     if getattr(config, "OPTIONS_CSP_MONITOR_LOG_EVERY_TICK", True):
         audit(json.dumps(log_entry))
-    # ── HARD LOSS CUT — bypasses technicals ──
+    # ── GUARD 1: STRIKE_BREACH (wipeout prevention) ──
+    # SHORT PUT: spot dropping N% below strike → put is deep ITM → assignment loss grows
+    # SHORT CALL: spot rising N% above strike → unlimited loss territory
+    if spot > 0 and strike > 0:
+        if is_put:
+            breach_thresh = strike * (1.0 - config.OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT)
+            if spot <= breach_thresh:
+                pct = (strike - spot) / strike
+                return {"action": "close_strike_breach", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"STRIKE_BREACH short_put spot={spot:.2f} <= {breach_thresh:.2f} (strike={strike:.2f} − {config.OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT:.0%} = {pct:.1%} ITM)"}
+        else:
+            # short call (naked — disabled v1 but guard wired defensively)
+            breach_thresh = strike * (1.0 + config.OPTIONS_CSP_MONITOR_CALL_BREACH_PCT)
+            if spot >= breach_thresh:
+                pct = (spot - strike) / strike
+                return {"action": "close_strike_breach", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"STRIKE_BREACH short_call spot={spot:.2f} >= {breach_thresh:.2f} (strike={strike:.2f} + {config.OPTIONS_CSP_MONITOR_CALL_BREACH_PCT:.0%} = {pct:.1%} ITM)"}
+    # ── GUARD 2: ENTRY_GAP (catches pre-market gaps / earnings / fraud events) ──
+    if spot > 0 and entry_spot > 0:
+        gap = (spot - entry_spot) / entry_spot
+        if is_put and gap <= -config.OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT:
+            return {"action": "close_entry_gap", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"ENTRY_GAP short_put gap={gap:.1%} <= -{config.OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT:.0%} (spot={spot:.2f} vs entry={entry_spot:.2f})"}
+        if (not is_put) and gap >= config.OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT:
+            return {"action": "close_entry_gap", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"ENTRY_GAP short_call gap={gap:.1%} >= +{config.OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT:.0%} (spot={spot:.2f} vs entry={entry_spot:.2f})"}
+    # ── GUARD 3: HARD_PREMIUM (catastrophic premium loss only) ──
     if pnl_pct <= config.OPTIONS_CSP_MONITOR_MAX_LOSS_PCT:
-        return {"action": "close_hard_loss", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"pnl_pct={pnl_pct:.1%} <= hard_cut={config.OPTIONS_CSP_MONITOR_MAX_LOSS_PCT:.1%}"}
-    # ── LOSS TRIGGER — arms the gate ──
+        return {"action": "close_hard_premium", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"HARD_PREMIUM pnl_pct={pnl_pct:.1%} <= {config.OPTIONS_CSP_MONITOR_MAX_LOSS_PCT:.1%}"}
+    # ── SOFT GATE: premium drawdown + technical turn ──
     if pnl_pct > config.OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT:
-        return {"action": "watch", "reason": f"pnl_pct={pnl_pct:.2%} above trigger"}
-    # ── Technical check (only reached when pnl <= trigger) ──
-    is_put = parsed.get("option_type", "").lower() == "p" or "P" in occ[-9:]
+        return {"action": "watch", "reason": f"pnl_pct={pnl_pct:.2%} above soft trigger"}
     if is_put:
         against, tech_reason = _technical_turn_against_short_put(indicators, underlying)
     else:
-        # Short call = bearish thesis; turn-against = bullish (not applicable v1 — naked calls disabled)
-        # If somehow a short call exists, treat any bull signal as turn-against
         ind = indicators.get(underlying, {}) if indicators else {}
         wt_cross_D = ind.get("wt_cross_D", "")
         against = wt_cross_D == "BULL"
         tech_reason = f"wt_D_{wt_cross_D}"
     if config.OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN and not against:
         return {"action": "watch", "reason": f"pnl_armed={pnl_pct:.2%} but tech_ok ({tech_reason})"}
-    return {"action": "close_technical", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"pnl={pnl_pct:.2%} AND {tech_reason}"}
+    return {"action": "close_technical", "occ": occ, "underlying": underlying, "qty": qty, "pnl_pct": pnl_pct, "mid": mid, "bid": bid, "ask": ask, "reason": f"TECHNICAL pnl={pnl_pct:.2%} AND {tech_reason}"}
 
 
 async def _close_short_option(client: TradierAPIClient, occ: str, qty: int, bid: float, ask: float, reason: str, dry_run: bool) -> dict:
@@ -229,12 +279,25 @@ async def run_once(client: TradierAPIClient, config: TradierConfig, dry_run: boo
         return {"error": str(e), "positions_checked": 0}
     sold = [p for p in (positions or []) if _is_sold_position(p)]
     summary = {"ts": datetime.now().isoformat(), "sold_count": len(sold), "actions": []}
+    close_actions = ("close_technical", "close_hard_premium", "close_strike_breach", "close_entry_gap")
+    absolute_guards = ("close_strike_breach", "close_entry_gap", "close_hard_premium")
+    absolute_breaches = []
     for pos in sold:
         action = await _evaluate_position(client, pos, config, indicators, state, dry_run)
         summary["actions"].append({"occ": action.get("occ", pos.get("symbol")), "action": action["action"], "reason": action.get("reason")})
-        if action["action"] in ("close_technical", "close_hard_loss"):
+        if action["action"] in close_actions:
+            if action["action"] in absolute_guards:
+                absolute_breaches.append(action)
             res = await _close_short_option(client, action["occ"], action["qty"], action["bid"], action["ask"], action["reason"], dry_run)
-            state["positions"][action["occ"]] = {"last_action": action["action"], "closed_at": datetime.now().isoformat(), "reason": action["reason"], "close_result": res}
+            pos_state = state["positions"].setdefault(action["occ"], {})
+            pos_state.update({"last_action": action["action"], "closed_at": datetime.now().isoformat(), "reason": action["reason"], "close_result": res})
+    # Correlated-breach emergency escalation
+    corr_n = getattr(config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", 3)
+    if len(absolute_breaches) >= corr_n:
+        msg = f"CORRELATED_BREACH n={len(absolute_breaches)} (threshold={corr_n}) — positions: {[a.get('occ') for a in absolute_breaches]}"
+        logger.error(msg)
+        audit(f"EMERGENCY\t{msg}")
+        summary["emergency"] = msg
     save_state(state)
     return summary
 
