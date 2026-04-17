@@ -82,6 +82,16 @@ class QuickConfig:
     HTF_ALIGNMENT_ENABLED: bool = True
     HTF_MIN_ALIGNED: int = 1
     D_TREND_REQUIRED: bool = True
+    # Chapter-E conviction scoring — vectorized proxies (live cross-symbol rank not available in NPZ).
+    # rank_proxy = HTF agreement count (0-3 from 1h/4h/D WT), scaled to 0-99.
+    # dc_moment_proxy = sum of dc_position across 1h/4h/D, scaled to 0-100.
+    # winner_protect = block exit_sig when gain in [0, win_protect_gain_pct) AND all 3 HTF agree.
+    RANK_CONVICTION_ENABLED: bool = False      # Block entries if rank_proxy disagrees with side
+    RANK_CONVICTION_MIN: int = 2              # min HTF-agreement count (out of 3) to allow entry
+    DC_MOMENT_ENABLED: bool = False           # Block entries if dc_moment_proxy opposes side by margin
+    DC_MOMENT_OPPOSE_THRESHOLD: float = 40.0  # dc_moment_proxy delta against side = veto
+    WINNER_PROTECT_ENABLED: bool = False      # Skip exit_sig for rank-aligned small winners in protect band
+    WINNER_PROTECT_GAIN_PCT: float = 2.0      # Block exits while gain ∈ [0, this)
     K_ZONE_ENTRY_ENABLED: bool = False
     K_ZONE_LONG_THRESHOLD: int = 35
     K_ZONE_SHORT_THRESHOLD: int = 65
@@ -906,6 +916,29 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & (k_15m < _rally_cap)
         else:
             extra_ok = extra_ok & (k_15m > (100.0 - _rally_cap))
+    # ═══ Chapter-E RANK_CONVICTION (vectorized proxy) ═══
+    # Live uses 0ranking_points_global (cross-symbol). NPZ has no cross-symbol data, so proxy
+    # rank_proxy via HTF agreement count (0-3). Side-agreement ≥ RANK_CONVICTION_MIN to allow.
+    if bool(getattr(cfg, 'RANK_CONVICTION_ENABLED', False)):
+        _rc_min = int(getattr(cfg, 'RANK_CONVICTION_MIN', 2))
+        if is_long:
+            _rc_cnt = (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int)
+        else:
+            _rc_cnt = (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        extra_ok = extra_ok & (_rc_cnt >= _rc_min)
+    # ═══ Chapter-E DC_MOMENT (vectorized proxy) ═══
+    # Live uses 0dc_moment (precomputed composite). Proxy via sum of dc_position on 1h/4h/D.
+    # Blocks entry when dc_position opposes side by margin.
+    if bool(getattr(cfg, 'DC_MOMENT_ENABLED', False)):
+        _dcp_1h = _safe(npz, 'dc_position_1h', n, 0.5)
+        _dcp_4h = _safe(npz, 'dc_position_4h', n, 0.5)
+        _dcp_D = _safe(npz, 'dc_position_D', n, 0.5)
+        _dcm_proxy = (_dcp_1h + _dcp_4h + _dcp_D) / 3.0 * 100.0  # 0-100
+        _dcm_thr = float(getattr(cfg, 'DC_MOMENT_OPPOSE_THRESHOLD', 40.0))
+        if is_long:
+            extra_ok = extra_ok & (_dcm_proxy >= (50.0 - _dcm_thr))
+        else:
+            extra_ok = extra_ok & (_dcm_proxy <= (50.0 + _dcm_thr))
     base_sig = raw & k3m_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
     # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
@@ -1099,6 +1132,17 @@ def simulate(stores, cfg, capital=10000.0):
             # (no separate reentry path here) — either flag turns it on.
             if bool(getattr(cfg, 'ENTRY_SYMGATE_ENABLED', False)) or bool(getattr(cfg, 'REENTRY_SYMGATE_ENABLED', False)):
                 entry_sig = entry_sig & ~exit_sig
+            # Chapter-E WINNER_PROTECT proxy — precompute per-bar "HTF-aligned" mask for use inside loop.
+            wp_enabled = bool(getattr(cfg, 'WINNER_PROTECT_ENABLED', False))
+            wp_gain_pct = float(getattr(cfg, 'WINNER_PROTECT_GAIN_PCT', 2.0))
+            if wp_enabled:
+                _wp_wt1_1h = _safe(npz, 'wt1_1h', n); _wp_wt2_1h = _safe(npz, 'wt2_1h', n)
+                _wp_wt1_4h = _safe(npz, 'wt1_4h', n); _wp_wt2_4h = _safe(npz, 'wt2_4h', n)
+                _wp_wt1_D = _safe(npz, 'wt1_D', n); _wp_wt2_D = _safe(npz, 'wt2_D', n)
+                if is_long:
+                    _wp_aligned = (_wp_wt1_1h > _wp_wt2_1h) & (_wp_wt1_4h > _wp_wt2_4h) & (_wp_wt1_D > _wp_wt2_D)
+                else:
+                    _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
             pt_pct = cfg.PROFIT_TARGET_PCT
@@ -1123,6 +1167,9 @@ def simulate(stores, cfg, capital=10000.0):
                         all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                 if in_pos and exit_sig[i] and (i - eb) >= min_hold:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # WINNER_PROTECT: skip exit when gain ∈ [0, gain_pct) AND all 3 HTF aligned with position.
+                    if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
+                        continue
                     if cfg.NOLOSS_ENABLED and pnl < 0:
                         if cfg.DC_RECOVERY_EXIT_ENABLED:
                             if is_long:

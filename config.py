@@ -252,12 +252,12 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20 — k15m level cap on WT_2of3 reentry gate
+    REENTRY_RALLY_K15M_MAX: float = 60.0    # 2026-04-17 Chapter-C 48-sym sweep: 60 wins bundle (+0.38 Sharpe, WR 79→88%). Was 100 (off).
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
-    REENTRY_MIN_GAP_MINUTES: float = 3.0    # Crypto: 3 min floor between exit and reentry (stocks=15). Fires before any tier gate.
-    REENTRY_SYMGATE_ENABLED: bool = False# Block reentry if DELTA/score/speed says exit for the proposed side (same as stocks)
+    REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
+    REENTRY_SYMGATE_ENABLED: bool = True    # 2026-04-17 Chapter-C winner on 48-sym (+0.38 Sharpe). Was False after noisy 10-sym test.
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
-    ENTRY_SYMGATE_ENABLED: bool = False# Same guard on fresh entries, not just reentries
+    ENTRY_SYMGATE_ENABLED: bool = True      # 2026-04-17 Chapter-C winner on 48-sym. Was False after noisy 10-sym test.
     NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside dc_4h channel — hedge instead.
     LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS_DC4H
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
@@ -1032,7 +1032,7 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    CT_WT_VELOCITY_1H_MIN: float = 0.0  # BC_170: min wt_velocity_1h (0=must be directional)
+    CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-17 Chapter-B sweep: 2.0 lifts Sharpe +0.05 (0.79→0.85) on 48-sym. Was 0.0.
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)

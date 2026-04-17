@@ -11899,7 +11899,19 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                     logger.info(f"[SYMGATE] {position_key}: reentry blocked — delta says EXIT (zone={_sg_sig.zone} bs={_bs:.1f} es={_es:.1f})")
                         except Exception:
                             pass
-                    if _reentry_px > 0 and (now - _exit_tm) < 72000 and _gap_ok and not _symgate_blocked:
+                    # 2026-04-17: REENTRY_RALLY_K15M_MAX live wiring (was sweep-only / live-dormant).
+                    # Chapter-C 48-sym sweep validated 60.0 as bundle winner. Blocks reentry when k_15m extreme.
+                    _rally_cap = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0) or 100.0)
+                    _rally_blocked = False
+                    if _rally_cap < 100.0:
+                        _rally_k15m = safe_fetch_float(indicators.get('stoch_k_15m', 50), 50.0)
+                        if is_long and _rally_k15m >= _rally_cap:
+                            _rally_blocked = True
+                            logger.info(f"[RALLY_K15M_BLOCK] {position_key}: LONG reentry blocked — k_15m={_rally_k15m:.0f} >= cap={_rally_cap:.0f}")
+                        elif (not is_long) and _rally_k15m <= (100.0 - _rally_cap):
+                            _rally_blocked = True
+                            logger.info(f"[RALLY_K15M_BLOCK] {position_key}: SHORT reentry blocked — k_15m={_rally_k15m:.0f} <= floor={100.0 - _rally_cap:.0f}")
+                    if _reentry_px > 0 and (now - _exit_tm) < 72000 and _gap_ok and not _symgate_blocked and not _rally_blocked:
                         _px_cross_pct = 0.001
                         _t2_price_pct = getattr(config, 'REENTRY_TIER2_PRICE_PCT', 0.003)
                         _t2_min_min = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', 10.0)
