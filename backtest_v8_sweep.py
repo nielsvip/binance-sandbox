@@ -202,6 +202,13 @@ def _config_hash(cfg: dict) -> str:
 def run_one_variant(args_tuple):
     """Worker: writes override JSON, runs engine subprocess, parses V8_RESULT."""
     (label, overrides, mode, account, start, symbols, capital, npz_dir, timeout_s) = args_tuple
+    # MERGE BASE OVERRIDES applied to every variant (including baseline):
+    # - USDC_PREFERENCE_BLOCK_ENABLED=False: NPZ data is USDT-only, so the live USDC-preference
+    #   gate would block 100% of USDT opens. Turn it off for backtest so entries are evaluated.
+    #   This is a DATA shape concern, not a research variable.
+    merged = {"USDC_PREFERENCE_BLOCK_ENABLED": False}
+    merged.update(overrides)
+    overrides = merged
     cfg_hash = _config_hash(overrides)
     override_path = OVERRIDE_DIR / f"v8sweep_{label}_{cfg_hash}.json"
     override_path.write_text(json.dumps(overrides, indent=2))

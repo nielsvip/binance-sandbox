@@ -177,6 +177,46 @@ class SpreadOpportunity:
     dte: int
 
 
+@dataclass
+class CSPCandidate:
+    symbol: str
+    expiration: str
+    strike: float
+    bid: float
+    ask: float
+    mid: float
+    delta: float  # stored as positive magnitude for puts (|delta|)
+    iv_computed: Optional[float]
+    iv_chain_rank: float  # 0-100 percentile of this put's IV within chain's put IV distribution
+    volume: int
+    open_interest: int
+    dte: int
+    extrinsic_pct: float  # mid / strike * 100 — premium collected as % of locked capital
+    premium_collected: float  # mid * 100 per contract
+    capital_required: float  # strike * 100 per contract (cash-secured)
+    moneyness: float  # strike / stock_price
+    score: float
+    recommendation: str  # "SELL_PUT_CSP" / "SELL_PUT_CSP_RICH" etc
+
+
+@dataclass
+class StructureChoice:
+    """Best structure picked per candidate: compares buy-call vs sell-put CSP (LONG thesis)
+    or buy-put vs (future) sell-call (SHORT thesis; CSP-naked-call is disabled in v1)."""
+    symbol: str
+    direction: str
+    option_side: str  # "buy_call" | "buy_put" | "sell_put_csp"
+    occ_symbol: str
+    strike: float
+    expiration: str
+    price: float  # limit price (buy: 85% of ask; sell: 85% of bid or similar)
+    qty: int
+    capital_required: float  # for buys: price*100*qty ; for CSP sells: strike*100*qty
+    edge_score: float  # score / capital_required (normalized)
+    raw_score: float
+    rationale: str  # why this structure was picked
+
+
 # ── Signal Detection ─────────────────────────────────────────────────────────
 
 def detect_directional_signals(indicators: Dict[str, Dict], rankings: Dict) -> List[DirectionalSignal]:
@@ -656,6 +696,147 @@ def analyze_chain_for_outliers(signal: DirectionalSignal, chain: List[Dict], exp
     outliers.sort(key=lambda x: x.score, reverse=True)
     spreads.sort(key=lambda x: x.score, reverse=True)
     return outliers, spreads
+
+
+# ── CSP (Cash-Secured Put) Scoring ───────────────────────────────────────────
+
+def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration: str, cfg, risk_free_rate: float = 0.043) -> List[CSPCandidate]:
+    """Score put-selling opportunities for LONG-thesis candidates. Returns ranked CSPCandidates.
+    Only called when cfg.OPTIONS_CSP_ENABLED. SHORT signals return empty (naked calls disabled)."""
+    if signal.direction != "LONG":
+        return []
+    candidates: List[CSPCandidate] = []
+    S = signal.price
+    exp_date = datetime.strptime(expiration, "%Y-%m-%d")
+    dte = max(1, (exp_date - datetime.now()).days)
+    if dte < cfg.OPTIONS_CSP_DTE_MIN or dte > cfg.OPTIONS_CSP_DTE_MAX:
+        return []
+    T = dte / 365.0
+    puts = []
+    for opt in chain:
+        if not opt or opt.get("option_type") != "put":
+            continue
+        strike = opt.get("strike", 0)
+        if strike <= 0 or strike >= S:
+            continue  # CSP = OTM put (strike below spot)
+        bid = opt.get("bid", 0) or 0
+        ask = opt.get("ask", 0) or 0
+        if bid <= 0.05 or ask <= 0:
+            continue  # illiquid or too thin to collect meaningful premium
+        mid = (bid + ask) / 2.0
+        moneyness = strike / S
+        if moneyness < 0.75 or moneyness > 0.99:
+            continue  # sweet band: 1-25% OTM puts
+        iv_c = implied_vol(mid, S, strike, T, risk_free_rate, False)
+        if not iv_c or iv_c < 0.05 or iv_c > 3.0:
+            continue
+        greeks = bs_greeks(S, strike, T, risk_free_rate, iv_c, False)
+        delta_mag = abs(greeks.get("delta", 0.5))
+        if delta_mag < cfg.OPTIONS_CSP_MIN_DELTA or delta_mag > cfg.OPTIONS_CSP_MAX_DELTA:
+            continue
+        extrinsic_pct = (mid / strike) * 100.0
+        if extrinsic_pct < cfg.OPTIONS_CSP_MIN_EXTRINSIC_PCT * 100.0:
+            continue
+        puts.append({"strike": strike, "bid": bid, "ask": ask, "mid": mid, "iv_c": iv_c, "delta_mag": delta_mag, "greeks": greeks, "moneyness": moneyness, "extrinsic_pct": extrinsic_pct, "volume": opt.get("volume", 0) or 0, "open_interest": opt.get("open_interest", 0) or 0})
+    if not puts:
+        return []
+    # Chain-relative IV rank — percentile of each put's IV within chain distribution
+    ivs_sorted = sorted(p["iv_c"] for p in puts)
+    n = len(ivs_sorted)
+    for p in puts:
+        rank_idx = sum(1 for v in ivs_sorted if v <= p["iv_c"])
+        p["iv_chain_rank"] = (rank_idx / n) * 100.0 if n > 0 else 50.0
+    # Score each put
+    for p in puts:
+        if p["iv_chain_rank"] < cfg.OPTIONS_CSP_MIN_IV_RANK:
+            continue  # only sell when premium is richer than peers in this chain
+        score = 0.0
+        # Delta sweet spot: 20-25Δ optimal (empirical)
+        if 0.18 <= p["delta_mag"] <= 0.26:
+            score += 25
+        elif 0.15 <= p["delta_mag"] <= 0.30:
+            score += 15
+        # DTE sweet spot: 21-35 DTE
+        if 21 <= dte <= 35:
+            score += 15
+        elif 14 <= dte <= 45:
+            score += 8
+        # IV rank bonus (rich premium = better sale)
+        if p["iv_chain_rank"] >= 70:
+            score += 20
+        elif p["iv_chain_rank"] >= 50:
+            score += 10
+        # Extrinsic % bonus — more premium per $ of locked capital
+        if p["extrinsic_pct"] >= 3.0:
+            score += 15
+        elif p["extrinsic_pct"] >= 2.0:
+            score += 8
+        elif p["extrinsic_pct"] >= 1.5:
+            score += 3
+        # Liquidity
+        if p["volume"] > 100:
+            score += 5
+        if p["open_interest"] > 500:
+            score += 5
+        if p["open_interest"] > 2000:
+            score += 5
+        # Tight spread
+        spread_w = p["ask"] - p["bid"]
+        if p["mid"] > 0 and spread_w / p["mid"] < 0.10:
+            score += 5
+        # Signal conviction
+        score += signal.conviction * 0.2
+        rec = "SELL_PUT_CSP_RICH" if p["iv_chain_rank"] >= 70 else "SELL_PUT_CSP"
+        candidates.append(CSPCandidate(symbol=signal.symbol, expiration=expiration, strike=p["strike"], bid=p["bid"], ask=p["ask"], mid=round(p["mid"], 2), delta=round(p["delta_mag"], 4), iv_computed=round(p["iv_c"], 4), iv_chain_rank=round(p["iv_chain_rank"], 1), volume=p["volume"], open_interest=p["open_interest"], dte=dte, extrinsic_pct=round(p["extrinsic_pct"], 3), premium_collected=round(p["mid"] * 100.0, 2), capital_required=round(p["strike"] * 100.0, 2), moneyness=round(p["moneyness"], 4), score=round(score, 2), recommendation=rec))
+    candidates.sort(key=lambda x: x.score, reverse=True)
+    return candidates
+
+
+def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier], csp_candidates: List[CSPCandidate], cfg, available_cash: float = 0.0) -> Optional[StructureChoice]:
+    """Compare buy-call/buy-put vs sell-put CSP and return the winning structure.
+    Edge metric = score / capital_required (normalized; higher = better capital efficiency).
+    CSP must beat buy-side edge by cfg.OPTIONS_CSP_EDGE_MARGIN to be chosen."""
+    is_long = signal.direction == "LONG"
+    # ── Pick best buy-side outlier for this direction ──
+    buy_side_rec_prefix = "BUY_CHEAP_CALL" if is_long else "BUY_CHEAP_PUT"
+    buy_side_fallback = "BUY_UNDERPRICED_CALL" if is_long else "BUY_UNDERPRICED_PUT"
+    buy_candidates = [o for o in outliers if o.recommendation in (buy_side_rec_prefix, buy_side_fallback)]
+    # Also allow the other buy rec if specific one missing
+    if not buy_candidates:
+        buy_candidates = [o for o in outliers if o.recommendation.startswith("BUY_")]
+    buy_candidates.sort(key=lambda x: x.score, reverse=True)
+    best_buy = buy_candidates[0] if buy_candidates else None
+    # ── Pick best CSP (LONG only; SHORT = naked call = disabled) ──
+    best_csp = csp_candidates[0] if (is_long and cfg.OPTIONS_CSP_ENABLED and csp_candidates) else None
+    # Cash-reserve gate: CSP requires capital_required <= available_cash * MAX_CAPITAL_PCT
+    if best_csp and available_cash > 0:
+        cap_budget = available_cash * cfg.OPTIONS_CSP_MAX_CAPITAL_PCT
+        if best_csp.capital_required > cap_budget:
+            best_csp = None
+    # ── No structures available ──
+    if not best_buy and not best_csp:
+        return None
+    # ── Only CSP available (LONG + no buy outlier) ──
+    if not best_buy and best_csp:
+        limit_price = round(max(best_csp.bid, best_csp.mid * 0.95), 2)  # 5% below mid floor
+        return StructureChoice(symbol=signal.symbol, direction=signal.direction, option_side="sell_put_csp", occ_symbol=build_occ_symbol(signal.symbol, best_csp.expiration, "put", best_csp.strike), strike=best_csp.strike, expiration=best_csp.expiration, price=limit_price, qty=1, capital_required=best_csp.capital_required, edge_score=best_csp.score / max(best_csp.capital_required, 1.0), raw_score=best_csp.score, rationale=f"CSP-only ({best_csp.recommendation}) — no buy-side outlier available")
+    # ── Only buy available ──
+    if best_buy and not best_csp:
+        price = best_buy.ask * 0.85 if best_buy.ask > 0 else best_buy.mid
+        cost = price * 100.0
+        option_side = "buy_call" if best_buy.option_type == "call" else "buy_put"
+        return StructureChoice(symbol=signal.symbol, direction=signal.direction, option_side=option_side, occ_symbol=build_occ_symbol(signal.symbol, best_buy.expiration, best_buy.option_type, best_buy.strike), strike=best_buy.strike, expiration=best_buy.expiration, price=round(price, 2), qty=1, capital_required=cost, edge_score=best_buy.score / max(cost, 1.0), raw_score=best_buy.score, rationale=f"Buy-only ({best_buy.recommendation}) — CSP disabled or no candidate")
+    # ── Both available: compare edge ──
+    buy_price = best_buy.ask * 0.85 if best_buy.ask > 0 else best_buy.mid
+    buy_cost = buy_price * 100.0
+    buy_edge = best_buy.score / max(buy_cost, 1.0)
+    csp_edge = best_csp.score / max(best_csp.capital_required, 1.0)
+    # CSP wins only if it beats buy by EDGE_MARGIN multiple (default 1.15x)
+    if csp_edge >= buy_edge * cfg.OPTIONS_CSP_EDGE_MARGIN:
+        limit_price = round(max(best_csp.bid, best_csp.mid * 0.95), 2)
+        return StructureChoice(symbol=signal.symbol, direction=signal.direction, option_side="sell_put_csp", occ_symbol=build_occ_symbol(signal.symbol, best_csp.expiration, "put", best_csp.strike), strike=best_csp.strike, expiration=best_csp.expiration, price=limit_price, qty=1, capital_required=best_csp.capital_required, edge_score=csp_edge, raw_score=best_csp.score, rationale=f"CSP won: csp_edge={csp_edge:.4f} vs buy_edge={buy_edge:.4f} (×{cfg.OPTIONS_CSP_EDGE_MARGIN})")
+    option_side = "buy_call" if best_buy.option_type == "call" else "buy_put"
+    return StructureChoice(symbol=signal.symbol, direction=signal.direction, option_side=option_side, occ_symbol=build_occ_symbol(signal.symbol, best_buy.expiration, best_buy.option_type, best_buy.strike), strike=best_buy.strike, expiration=best_buy.expiration, price=round(buy_price, 2), qty=1, capital_required=buy_cost, edge_score=buy_edge, raw_score=best_buy.score, rationale=f"Buy won: buy_edge={buy_edge:.4f} vs csp_edge={csp_edge:.4f}")
 
 
 # ── OCC Symbol Builder ────────────────────────────────────────────────────────

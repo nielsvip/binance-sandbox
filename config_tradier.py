@@ -224,6 +224,29 @@ class TradierConfig:
     # Continuous sector/put-call enforcement (applied in daily + premarket cycles)
     OPTIONS_CONTINUOUS_SECTOR_GATE: bool = True  # Block new buys that widen existing sector/group/symbol violation
     OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours
+    # === CASH-SECURED PUT (CSP) STRATEGY — SELL SIDE ===
+    # For LONG-thesis candidates, compare buying a call vs selling a cash-secured put.
+    # Seller collects premium (theta-positive), wins in flat/up tape; assigned stock at strike if ITM.
+    # Naked calls disabled at config level — CSP only in v1.
+    OPTIONS_CSP_ENABLED: bool = False            # Master switch — keep False until backtest + forward-test proven
+    OPTIONS_CSP_NAKED_CALL_ENABLED: bool = False # HARD-disabled. Unlimited upside risk. Never flip without Level-4 margin + explicit approval.
+    OPTIONS_CSP_MIN_IV_RANK: float = 40.0        # Only sell premium when IV rank >= 40 (rich premium)
+    OPTIONS_CSP_MAX_DELTA: float = 0.30          # Max |delta| on the put sold (30Δ ≈ 70% win rate empirically)
+    OPTIONS_CSP_MIN_DELTA: float = 0.15          # Min |delta| — don't sell puts too far OTM (premium too thin)
+    OPTIONS_CSP_DTE_MIN: int = 14                # Min days-to-expiry
+    OPTIONS_CSP_DTE_MAX: int = 45                # Max DTE (sweet spot for theta decay)
+    OPTIONS_CSP_MAX_CAPITAL_PCT: float = 0.30    # Max fraction of available cash tied up in CSPs at once
+    OPTIONS_CSP_MIN_EXTRINSIC_PCT: float = 0.015 # Min extrinsic value as % of strike (1.5%) — premium must be worth it
+    OPTIONS_CSP_EDGE_MARGIN: float = 1.15        # Sell-structure must beat buy-structure edge by 15% to be picked
+    # === NON-SKIPPABLE RISK MONITOR — SOLD POSITIONS ===
+    # Background daemon (launchd) runs every N seconds. NO config flag disables it.
+    # Closes sold options on (P&L negative) AND (technicals against position).
+    # Matches btc_crash_safety_net.py pattern — state machine, state file, auto-restart.
+    OPTIONS_CSP_MONITOR_POLL_SEC: int = 60          # Poll interval in seconds
+    OPTIONS_CSP_MONITOR_LOSS_TRIGGER_PCT: float = -0.05  # P&L must be <= -5% to arm close-gate (premium-based)
+    OPTIONS_CSP_MONITOR_MAX_LOSS_PCT: float = -0.50      # Hard cut: pnl <= -50% forces close regardless of technicals
+    OPTIONS_CSP_MONITOR_REQUIRE_WT_D_TURN: bool = True   # Require wt_D turn against position to confirm technical exit
+    OPTIONS_CSP_MONITOR_LOG_EVERY_TICK: bool = True      # Log every poll for audit trail (required for non-skippable)
     # === BEAR_SCENARIO_SYMBOLS — symbols that go UP when markets go DOWN ===
     # A CALL on a bear_scenario symbol = bearish market bet (like a PUT on SPY).
     # A PUT on a bear_scenario symbol = bullish market bet (like a CALL on SPY).

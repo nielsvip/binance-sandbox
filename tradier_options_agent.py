@@ -46,7 +46,8 @@ from tradier_options_analyzer import (
     smart_fill_option, place_option_order, build_occ_symbol, parse_occ_symbol,
     implied_vol, bs_price, bs_greeks, DirectionalSignal, OptionOutlier,
     SpreadOpportunity, ExitSignal, _load_gtc_orders, _save_gtc_orders,
-    _load_wt_history, _save_wt_history
+    _load_wt_history, _save_wt_history,
+    score_sell_put_csp, pick_best_structure, CSPCandidate, StructureChoice,
 )
 
 logger = logging.getLogger("options_agent")
@@ -1284,7 +1285,19 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
         positions_for_expo = []
     gtc_for_expo = _load_gtc_orders(config)
     running_expo = _build_live_exposure_map(positions_for_expo, gtc_for_expo, config)
-    # ── CALLS: only trb_long symbols ──
+    # ── CSP cash preflight: fetch available cash once for capital-reserve gating ──
+    csp_available_cash = 0.0
+    if getattr(config, "OPTIONS_CSP_ENABLED", False):
+        try:
+            bal_res = await client.get_account_balances()
+            if bal_res and isinstance(bal_res, dict):
+                bals = bal_res.get("balances", bal_res)
+                csp_available_cash = float(bals.get("total_cash", 0) or bals.get("cash", {}).get("cash_available", 0) or 0)
+            logger.info(f"CSP_PREFLIGHT available_cash=${csp_available_cash:,.0f} max_csp_capital=${csp_available_cash * config.OPTIONS_CSP_MAX_CAPITAL_PCT:,.0f}")
+        except Exception as e:
+            logger.warning(f"CSP_PREFLIGHT balance fetch failed: {e} — CSP disabled for this cycle")
+            csp_available_cash = 0.0
+    # ── CALLS: only trb_long symbols (with CSP alternative when enabled) ──
     if limits["can_buy_calls"]:
         call_signals = [s for s in signals if s.direction == "LONG" and s.conviction >= 50 and s.symbol in call_allowed]
         call_signals.sort(key=lambda s: s.conviction, reverse=True)
@@ -1304,6 +1317,35 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
                 continue
             outliers, _ = analyze_chain_for_outliers(sig, chain, exp)
             calls = [o for o in outliers if o.option_type == "call" and o.score >= 55 and o.open_interest >= 500]
+            # ── CSP comparison (gated by config, LONG only) ──
+            csp_choice = None
+            if getattr(config, "OPTIONS_CSP_ENABLED", False) and csp_available_cash > 0:
+                try:
+                    csps = score_sell_put_csp(sig, chain, exp, config)
+                    if csps:
+                        csp_choice = pick_best_structure(sig, outliers, csps, config, available_cash=csp_available_cash)
+                except Exception as e:
+                    logger.warning(f"CSP scoring failed for {sig.symbol}: {e}")
+                    csp_choice = None
+            # ── CSP won: emit sell_to_open opportunity (cash-secured put) ──
+            if csp_choice and csp_choice.option_side == "sell_put_csp":
+                contract_cost = csp_choice.capital_required  # cash-secured amount
+                if _ratio_would_violate(running_call, running_put, "call", contract_cost):
+                    logger.info(f"RATIO_GATE skip CSP {sig.symbol} — would push long-exposure past cap (CSP counted as long-equiv)")
+                    await asyncio.sleep(0.3)
+                    continue
+                _sec_blocked, _sec_reason = _sector_gate_would_violate(running_expo, sig.symbol, "call", contract_cost, config)
+                if _sec_blocked:
+                    logger.info(f"SECTOR_GATE skip CSP {sig.symbol} — {_sec_reason}")
+                    await asyncio.sleep(0.3)
+                    continue
+                opportunities.append({"symbol": sig.symbol, "type": "csp", "side": "sell_to_open", "strike": csp_choice.strike, "expiration": csp_choice.expiration, "dte": (datetime.strptime(csp_choice.expiration, "%Y-%m-%d") - datetime.now()).days, "gtc_price": csp_choice.price, "capital_required": csp_choice.capital_required, "score": csp_choice.raw_score, "edge_score": csp_choice.edge_score, "conviction": sig.conviction, "reason": f"CSP {sig.symbol} — {csp_choice.rationale}", "priority": "HIGH" if sig.conviction >= 70 else "MEDIUM", "qty": 1, "occ_symbol": csp_choice.occ_symbol})
+                running_call += contract_cost
+                running_expo = _build_live_exposure_map(positions_for_expo, {**gtc_for_expo, f"_plan_{sig.symbol}_CSP{csp_choice.strike}": {"side": "sell_to_open", "symbol": sig.symbol, "type": "put", "target_price": csp_choice.price, "qty": 1}}, config)
+                gtc_for_expo = {**gtc_for_expo, f"_plan_{sig.symbol}_CSP{csp_choice.strike}": {"side": "sell_to_open", "symbol": sig.symbol, "type": "put", "target_price": csp_choice.price, "qty": 1}}
+                logger.info(f"CSP_PICKED {sig.symbol} strike={csp_choice.strike} exp={csp_choice.expiration} price=${csp_choice.price:.2f} capital=${contract_cost:,.0f} {csp_choice.rationale}")
+                await asyncio.sleep(0.3)
+                continue
             if calls:
                 best = calls[0]
                 discount = GTC_DISCOUNT_HIGH if sig.conviction >= 70 else GTC_DISCOUNT_NORMAL
@@ -1395,30 +1437,42 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
 
 
 async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], dry_run: bool = False) -> List[Dict]:
-    """Place GTC buy_to_open orders."""
+    """Place GTC buy_to_open orders. CSP orders (type='csp') are placed as sell_to_open on the put side."""
     gtc_orders = _load_gtc_orders(config)
     results = []
     for order in orders:
-        occ = build_occ_symbol(order["symbol"], order["expiration"], order["type"], order["strike"])
+        is_csp = order.get("type") == "csp" or order.get("side") == "sell_to_open"
+        if is_csp:
+            occ = order.get("occ_symbol") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["strike"])
+            side = "sell_to_open"
+            tradier_type = "put"
+        else:
+            occ = build_occ_symbol(order["symbol"], order["expiration"], order["type"], order["strike"])
+            side = "buy_to_open"
+            tradier_type = order["type"]
         if occ in gtc_orders:
             print(f"  SKIP {occ} — existing GTC")
             results.append({**order, "status": "skipped"})
             continue
         qty = order.get("qty", 1)
         price = order["gtc_price"]
-        cost = price * qty * 100
-        discount_pct = price / order["ask"] * 100 if order["ask"] > 0 else 0
-        print(f"  {'[DRY] ' if dry_run else ''}GTC BUY {occ} x{qty} @ ${price:.2f} ({discount_pct:.0f}% of ask=${order['ask']:.2f}) Cost: ${cost:.0f}  {order['reason']}")
+        if is_csp:
+            capital = order.get("capital_required", price * qty * 100)
+            print(f"  {'[DRY] ' if dry_run else ''}GTC SELL_TO_OPEN (CSP) {occ} x{qty} @ ${price:.2f} — capital_locked=${capital:,.0f}  {order['reason']}")
+        else:
+            cost = price * qty * 100
+            discount_pct = price / order["ask"] * 100 if order["ask"] > 0 else 0
+            print(f"  {'[DRY] ' if dry_run else ''}GTC BUY {occ} x{qty} @ ${price:.2f} ({discount_pct:.0f}% of ask=${order['ask']:.2f}) Cost: ${cost:.0f}  {order['reason']}")
         if dry_run:
             results.append({**order, "status": "dry_run", "occ": occ})
             continue
-        res = await place_option_order(client, order["symbol"], occ, "buy_to_open", qty, "limit", price, duration="gtc")
+        res = await place_option_order(client, order["symbol"], occ, side, qty, "limit", price, duration="gtc")
         if "order" in res:
             order_id = res["order"].get("id")
             status = res["order"].get("status", "")
             print(f"    PLACED — ID: {order_id} ({status})")
-            logger.info(f"GTC buy {occ} x{qty} @ ${price:.2f} ID={order_id}")
-            gtc_orders[occ] = {"order_id": order_id, "target_price": price, "placed_at": datetime.now().isoformat(), "symbol": order["symbol"], "type": order["type"], "strike": order["strike"], "expiration": order["expiration"], "reason": order["reason"], "side": "buy_to_open"}
+            logger.info(f"GTC {side} {occ} x{qty} @ ${price:.2f} ID={order_id}")
+            gtc_orders[occ] = {"order_id": order_id, "target_price": price, "placed_at": datetime.now().isoformat(), "symbol": order["symbol"], "type": tradier_type, "strike": order["strike"], "expiration": order["expiration"], "reason": order["reason"], "side": side, "capital_required": order.get("capital_required")}
             results.append({**order, "status": "placed", "order_id": order_id, "occ": occ})
         elif "errors" in res:
             print(f"    FAILED: {res['errors']}")

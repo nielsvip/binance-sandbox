@@ -10097,7 +10097,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # ═══════════════════════════════════════════════════════════════════════════
     _action_u = (action or '').upper()
     _is_open_like = ('OPEN' in _action_u or 'AUGMENT' in _action_u or 'ENTRY' in _action_u or 'REENTRY' in _action_u) and not is_hedge
-    if _is_open_like and _gate_sym and _gate_sym.endswith('USDT'):
+    if _is_open_like and _gate_sym and _gate_sym.endswith('USDT') and getattr(config, 'USDC_PREFERENCE_BLOCK_ENABLED', True):
         _usdc_candidate = _gate_sym[:-4] + 'USDC'
         _live_usdc = getattr(trade_manager, 'live_usdc_pairs', None)
         if _live_usdc is None:
