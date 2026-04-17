@@ -13282,13 +13282,12 @@ class MultiAccountTradeManager:
                                             else: _oh_wt_against += int(_w1 > _w2)
                                         _oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
                                         if _oh_tfs_enabled > 0 and _oh_wt_against >= _oh_req:
-                                            _oh_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
                                             _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                                             _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
-                                            _oh_val = _oh_pos_amt * _oh_mark * _oh_pct
-                                            if _oh_val > 1.0:
-                                                logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m+1h default) — triggering hedge ${_oh_val:.1f}")
-                                                asyncio.create_task(_he.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if _is_long else 'SHORT', losing_value_usd=_oh_val, dry_run=False))
+                                            # 2026-04-17: SAME-SYMBOL hedge directly. Open opposite side
+                                            # on same symbol. Size: 1.5x origin (baked into execute_same_symbol_hedge).
+                                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m+1h default) — triggering SAME-SYMBOL hedge")
+                                            asyncio.create_task(_he.execute_same_symbol_hedge(account_key, pos, symbol, 'LONG' if _is_long else 'SHORT', _oh_pos_amt, _oh_mark))
                                         else:
                                             logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} < {_oh_req} — WT not yet confirming reversal")
                             if self.tracker_manager:
@@ -14267,8 +14266,11 @@ class MultiAccountTradeManager:
                                     _val = pos_amt * _mark if _mark > 0 else 0
                                     if _val > 1.0:
                                         self._hedge_trigger_ts[_htk] = time.time()
-                                        logger.warning(f"[DC_BREACH_HEDGE_TRIGGER] {position_key}: STRICT_NO_LOSS — triggering hedge (gain={pos_gain:.2f}%, val=${_val:.1f})")
-                                        asyncio.create_task(_he.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_val, dry_run=False))
+                                        # 2026-04-17: SAME-SYMBOL hedge directly (not execute_dual_hedge).
+                                        # Sacred rule = open opposite side on SAME symbol. No tradeable-keys
+                                        # dependency on hedge target, no candidate-pool filter, no race.
+                                        logger.warning(f"[DC_BREACH_HEDGE_TRIGGER] {position_key}: STRICT_NO_LOSS — triggering SAME-SYMBOL hedge (gain={pos_gain:.2f}%, val=${_val:.1f})")
+                                        asyncio.create_task(_he.execute_same_symbol_hedge(account_key, pos, symbol, pos_side, pos_amt, _mark))
                             continue
                         indicators = await ii(self, symbol)
                         if not indicators: continue

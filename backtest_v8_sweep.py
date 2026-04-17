@@ -106,6 +106,66 @@ def grid_hedge_reentry_ablation():
     return grid_hedge_one_by_one() + grid_reentry_one_by_one()[1:]  # drop dup baseline
 
 
+def grid_reentry_wide():
+    """Extended reentry ablation — new overhaul switches at multiple values +
+    all existing REENTRY2_* + REENTRY_B* block toggles. Use with 10-12 symbols
+    over 2+ months for statistical power. User priority 2026-04-17: make
+    reentries fire again."""
+    return [
+        ("baseline", {}),
+        # ── NEW OVERHAUL SWITCHES (C/D/E) — multiple values each ──
+        ("WT15M_CROSS_OFF", {"REENTRY_WT15M_CROSS_ENABLED": False}),
+        ("WT15M_SIZE_1.0", {"REENTRY_WT15M_SIZE_MULT": 1.0}),
+        ("WT15M_SIZE_1.3", {"REENTRY_WT15M_SIZE_MULT": 1.3}),
+        ("WT15M_SIZE_2.0", {"REENTRY_WT15M_SIZE_MULT": 2.0}),
+        ("WT15M_K_MAX_30", {"REENTRY_WT15M_K_MAX": 30.0}),
+        ("WT15M_K_MAX_70", {"REENTRY_WT15M_K_MAX": 70.0}),
+        ("WT15M_K_MAX_100", {"REENTRY_WT15M_K_MAX": 100.0}),
+        ("WT15M_HTF_NOT_REQUIRED", {"REENTRY_WT15M_HTF_FAVOR_REQUIRED": False}),
+        ("K15M_PARTIAL_OFF", {"REENTRY_K15M_PARTIAL_ENABLED": False}),
+        ("K15M_THRESHOLD_70", {"REENTRY_K15M_PARTIAL_THRESHOLD": 70.0}),
+        ("K15M_THRESHOLD_80", {"REENTRY_K15M_PARTIAL_THRESHOLD": 80.0}),
+        ("K15M_THRESHOLD_100", {"REENTRY_K15M_PARTIAL_THRESHOLD": 100.0}),
+        ("K15M_MULT_0.3", {"REENTRY_K15M_PARTIAL_MULT": 0.3}),
+        ("K15M_MULT_0.7", {"REENTRY_K15M_PARTIAL_MULT": 0.7}),
+        ("POST_CONSOL_OFF", {"REENTRY_POST_CONSOL_ENABLED": False}),
+        ("POST_CONSOL_MULT_1.3", {"REENTRY_POST_CONSOL_MULT": 1.3}),
+        ("POST_CONSOL_MULT_2.0", {"REENTRY_POST_CONSOL_MULT": 2.0}),
+        ("POST_CONSOL_TFS_1", {"REENTRY_POST_CONSOL_TFS_REQUIRED": 1}),
+        ("POST_CONSOL_TFS_3", {"REENTRY_POST_CONSOL_TFS_REQUIRED": 3}),
+        # ── EXISTING REENTRY2_* BLOCKS (ablation) ──
+        ("REENTRY2_MASTER_OFF", {"REENTRY_2_ENABLED": False}),
+        ("REENTRY2_DIR_FAV_OFF", {"REENTRY2_DIR_FAV_ENABLED": False}),
+        ("REENTRY2_DC_BREAK_OFF", {"REENTRY2_DC_BREAK_ENABLED": False}),
+        ("REENTRY2_QUICK_RECOVERY_OFF", {"REENTRY2_QUICK_RECOVERY_ENABLED": False}),
+        # ── EXISTING REENTRY_B* BLOCKS (ablation) ──
+        ("REENTRY_B02_OFF", {"REENTRY_B02_BC156_BOTTOM_ENABLED": False}),
+        ("REENTRY_B10_OFF", {"REENTRY_B10_STOCH_REV_ENABLED": False}),
+        ("REENTRY_B11_OFF", {"REENTRY_B11_DC_BREAK_ENABLED": False}),
+        ("REENTRY_B12_OFF", {"REENTRY_B12_WT_MOM_ENABLED": False}),
+        ("REENTRY_B14_OFF", {"REENTRY_B14_HA_TREND_ENABLED": False}),
+        ("REENTRY_B15_OFF", {"REENTRY_B15_STRONG_TREND_ENABLED": False}),
+        # ── COMBINED: turn everything off to see marginal value of ALL reentries ──
+        ("ALL_NEW_REENTRIES_OFF", {
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        ("ALL_REENTRIES_OFF", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+            "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False,
+            "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False,
+            "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+        }),
+    ]
+
+
 def grid_hedge_full():
     keys = {
         "HEDGE_EXIT_BYPASS_NOLOSS": [True, False],
@@ -125,6 +185,7 @@ def grid_hedge_full():
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
+    "reentry_wide": grid_reentry_wide,
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
 }

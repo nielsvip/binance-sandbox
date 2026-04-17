@@ -5249,13 +5249,21 @@ class HedgeEngine:
             logger.info(f"[HEDGE_FALLBACK_DYN] {fb[0]} hedge_score={fb[1]:.3f} side={target_side}")
 
     async def execute_dual_hedge(self, account_key: str, losing_position_key: str, losing_symbol: str, losing_side: str, losing_value_usd: float, dry_run: bool = False) -> Dict[str, Any]:
+        # 2026-04-17: upgraded DEBUG→INFO logs on silent early-returns so we can SEE which gate blocks.
+        logger.info(f"🔍 [HEDGE_ENTRY] {losing_position_key}: execute_dual_hedge called, val=${losing_value_usd:.2f} side={losing_side}")
         # FIX 2026-04-07: GLOBAL HEDGE-COMPLETED LOCKOUT — ONE hedge per position, period.
         _hc_ts = self._hedge_completed.get(losing_position_key, 0)
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
-            logger.debug(f"[HEDGE_COMPLETED_LOCK] {losing_position_key}: hedge already opened {int(time.time() - _hc_ts)}s ago. Blocked for {self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s.")
+            logger.info(f"[HEDGE_COMPLETED_LOCK] {losing_position_key}: hedge already opened {int(time.time() - _hc_ts)}s ago. Blocked for {self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s.")
             return {'overall_status': 'blocked_completed_lock'}
         # ═══ MANDATORY TRACKER CHECK (2026-03-29) — consult tracker BEFORE doing anything ═══
-        async with self.tracker_manager._hedges_lock:
+        # 2026-04-17: wait_for on lock acquire so a stuck holder doesn't deadlock all callers.
+        try:
+            await asyncio.wait_for(self.tracker_manager._hedges_lock.acquire(), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.error(f"🔴 [HEDGE_LOCK_TIMEOUT] {losing_position_key}: _hedges_lock held >5s — another caller stuck. Skipping this cycle.")
+            return {'overall_status': 'lock_timeout'}
+        try:
             # 1. Is the losing position ITSELF a hedge? Do NOT hedge-the-hedge.
             _loser_is_hedge = any(h.get('position_key') == losing_position_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
             if _loser_is_hedge:
@@ -5264,8 +5272,11 @@ class HedgeEngine:
             # 2. Does the losing position already HAVE a hedge?
             for h in self.tracker_manager.active_hedges:
                 if h.get('losing_position_key') == losing_position_key and h.get('account') == account_key:
-                    logger.debug(f"[HEDGE_EXISTS] {losing_position_key} already hedged by {h.get('position_key')}. Skipping.")
+                    logger.info(f"[HEDGE_EXISTS] {losing_position_key} already hedged by {h.get('position_key')}. Skipping.")
                     return {'overall_status': 'already_hedged', 'elected_symbol': {'status': 'already_hedged'}, 'actual_symbol': {'status': 'already_hedged'}}
+        finally:
+            try: self.tracker_manager._hedges_lock.release()
+            except RuntimeError: pass
         # 3. Also check exit_candidates
         async with self.tracker_manager._exit_candidates_lock:
             _loser_td = self.tracker_manager.exit_candidates.get(losing_position_key, {})
@@ -5273,13 +5284,22 @@ class HedgeEngine:
             logger.info(f"[HEDGE_OF_HEDGE_BLOCK_EC] {losing_position_key}: is hedge in exit_candidates. Not hedging a hedge.")
             return {'overall_status': 'blocked_hedge_of_hedge'}
         if losing_position_key in self._hedge_in_flight:
-            logger.debug(f"[HEDGE_IN_FLIGHT] {losing_position_key} hedge already in progress. Skipping.")
+            logger.info(f"[HEDGE_IN_FLIGHT] {losing_position_key} hedge already in progress (in_flight set size={len(self._hedge_in_flight)}). Skipping.")
             return {'overall_status': 'in_flight', 'elected_symbol': {'status': 'in_flight'}, 'actual_symbol': {'status': 'in_flight'}}
         self._hedge_in_flight.add(losing_position_key)
+        logger.info(f"✅ [HEDGE_GATES_PASSED] {losing_position_key}: all gates cleared, calling find_hedge_candidates...")
         try:
-          async with self._get_account_lock(account_key): 
+          async with self._get_account_lock(account_key):
             results = { 'elected_symbol': {'status': 'pending'}, 'actual_symbol': {'status': 'pending'}, 'overall_status': 'pending' }
-            candidates = await self.find_hedge_candidates(account_key=account_key, losing_symbol=losing_symbol, losing_side=losing_side)
+            try:
+                candidates = await asyncio.wait_for(
+                    self.find_hedge_candidates(account_key=account_key, losing_symbol=losing_symbol, losing_side=losing_side),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"🔴 [HEDGE_FIND_TIMEOUT] {losing_position_key}: find_hedge_candidates took >30s — aborting this cycle")
+                return {'overall_status': 'find_timeout', 'elected_symbol': {'status': 'failed', 'reason': 'FIND_TIMEOUT'}}
+            logger.info(f"📋 [HEDGE_CANDIDATES_RESULT] {losing_position_key}: {len(candidates) if candidates else 0} candidates returned")
             target_symbol = None
             candidate_score = 0
             elected_success = False
@@ -5431,19 +5451,19 @@ class HedgeEngine:
                                 # ═══ 2026-04-16 CHANGE 2+4: LAST_RESORT gates ═══
                                 _lr_block = None
                                 if _is_last_resort:
+                                    # 2026-04-17: K-zone gate kept but can be overridden for OBLIGATORY hedge.
+                                    # "candidates_searched < 3" pipeline gate REMOVED — inverted logic (fewer
+                                    # alt candidates = more need for same-symbol last resort, not less).
                                     _ind_lr = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
                                     _k_3m_lr = safe_fetch_float(_ind_lr.get('stoch_k_3m', 50), 50)
                                     _k_wrong_way = (hedge_side == 'SHORT' and _k_3m_lr < 50) or (hedge_side == 'LONG' and _k_3m_lr > 50)
-                                    if _k_wrong_way:
-                                        logger.critical(f"🚫 [LAST_RESORT_K_BLOCK] {hedge_position_key}: k_3m={_k_3m_lr:.1f} wrong zone for {hedge_side} — BLOCKED")
+                                    _lr_k_bypass = bool(getattr(self.config, 'LAST_RESORT_K_BYPASS_ENABLED', False))
+                                    if _k_wrong_way and not _lr_k_bypass:
+                                        logger.critical(f"🚫 [LAST_RESORT_K_BLOCK] {hedge_position_key}: k_3m={_k_3m_lr:.1f} wrong zone for {hedge_side} — BLOCKED (set LAST_RESORT_K_BYPASS_ENABLED=True to override)")
                                         results['actual_symbol'] = {'status': 'blocked_k_zone', 'reason': f'k_3m={_k_3m_lr:.1f}_wrong_for_{hedge_side}'}
                                         _lr_block = 'k_zone'
-                                    else:
-                                        _candidates_searched = len(candidates or []) if 'candidates' in locals() else 0
-                                        if _candidates_searched < 3:
-                                            logger.critical(f"🚫 [LAST_RESORT_SKIP_PIPELINE] {losing_position_key}: only {_candidates_searched} candidates — NOT firing last-resort")
-                                            results['actual_symbol'] = {'status': 'blocked_no_pipeline', 'reason': f'candidates_only_{_candidates_searched}'}
-                                            _lr_block = 'no_pipeline'
+                                    elif _k_wrong_way and _lr_k_bypass:
+                                        logger.warning(f"⚠️ [LAST_RESORT_K_BYPASS] {hedge_position_key}: k_3m={_k_3m_lr:.1f} wrong zone but bypass enabled — proceeding")
                                 if _lr_block:
                                     success, failure_reason = False, f'LAST_RESORT_BLOCKED_{_lr_block}'
                                 else:
