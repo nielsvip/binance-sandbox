@@ -43,8 +43,8 @@ from vec_mass_scan import (
 CRYPTO_15 = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,ATOMUSDT,BCHUSDT,ETCUSDT,FILUSDT".split(",")
 TRADIER_15 = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,META,TSLA,SPY,QQQ,XLF,XLE,GLD,USO,IWM".split(",")
 
-HORIZONS = [4, 8, 16, 32, 64, 128, 256]
-PICK_SIZES = [3, 4, 5, 6]
+HORIZONS = [4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512]
+PICK_SIZES = [3, 4, 5, 6, 7]
 
 
 def db_init(db_path):
@@ -317,8 +317,14 @@ def main():
     ap.add_argument("--total-workers", type=int, default=1)
     ap.add_argument("--cpu-cap", type=float, default=95.0)
     ap.add_argument("--mem-cap", type=float, default=90.0)
+    ap.add_argument("--sleep-when-empty", type=float, default=120.0,
+                    help="Seconds to sleep when grid exhausted before re-checking priority queue")
     args = ap.parse_args()
-    run(args)
+    # Wrap run() in forever-loop: when grid exhausted, sleep + drain priority queue + retry
+    while True:
+        run(args)
+        print(f"[vec_backlog] Grid pass complete — sleeping {args.sleep_when_empty:.0f}s before re-check (priority queue still drained every 60s if grid resumes)", flush=True)
+        time.sleep(args.sleep_when_empty)
 
 
 if __name__ == "__main__":

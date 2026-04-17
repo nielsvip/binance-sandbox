@@ -91,12 +91,25 @@ def build_crypto_conditions(loaded):
     k5 = stack_field(loaded, "stoch_k_5m", 50)
     k15 = stack_field(loaded, "stoch_k_15m", 50)
     k1h = stack_field(loaded, "stoch_k_1h", 50)
+    k4h = stack_field(loaded, "stoch_k_4h", 50)
+    kD = stack_field(loaded, "stoch_k_D", 50)
+    mfi5 = stack_field(loaded, "mfi_5m", 50)
     mfi15 = stack_field(loaded, "mfi_15m", 50)
     mfi1h = stack_field(loaded, "mfi_1h", 50)
+    mfi4h = stack_field(loaded, "mfi_4h", 50)
+    rsi5 = stack_field(loaded, "rsi_5m", 50)
     rsi15 = stack_field(loaded, "rsi_15m", 50)
+    rsi1h = stack_field(loaded, "rsi_1h", 50)
     close = stack_field(loaded, "close", 0)
     sma200D = stack_field(loaded, "sma_200_D", 0)
+    sma200_1h = stack_field(loaded, "sma_200_1h", 0)
+    sma200_15m = stack_field(loaded, "sma_200_15m", 0)
     dc_pos15 = stack_field(loaded, "dc_position_15m", 0.5)
+    dc_pos1h = stack_field(loaded, "dc_position_1h", 0.5)
+    bb_pct_15m = stack_field(loaded, "bb_pct_b_15m", 0.5)
+    bb_pct_1h = stack_field(loaded, "bb_pct_b_1h", 0.5)
+    bb_pct_4h = stack_field(loaded, "bb_pct_b_4h", 0.5)
+    atr_pct_15m = stack_field(loaded, "atr_pct_15m", 0)
 
     wtb_5 = stack_bool(loaded, "wt_bullish_5m")
     wtb_15 = stack_bool(loaded, "wt_bullish_15m")
@@ -105,48 +118,111 @@ def build_crypto_conditions(loaded):
     wtb_D = stack_bool(loaded, "wt_bullish_D")
     wtc_5 = stack_bool(loaded, "wt_cross_bull_5m")
     wtc_15 = stack_bool(loaded, "wt_cross_bull_15m")
+    wtc_1h = stack_bool(loaded, "wt_cross_bull_1h")
+    wtcr_5 = stack_bool(loaded, "wt_cross_bear_5m")
+    wtcr_15 = stack_bool(loaded, "wt_cross_bear_15m")
     stc_5 = stack_bool(loaded, "stoch_crossover_5m")
     stc_15 = stack_bool(loaded, "stoch_crossover_15m")
+    stc_1h = stack_bool(loaded, "stoch_crossover_1h")
+    stcu_5 = stack_bool(loaded, "stoch_crossunder_5m")
+    stcu_15 = stack_bool(loaded, "stoch_crossunder_15m")
+    dcx_5 = stack_bool(loaded, "dc_basis_crossover_5m")
     dcx_15 = stack_bool(loaded, "dc_basis_crossover_15m")
     dcx_1h = stack_bool(loaded, "dc_basis_crossover_1h")
+    dcx_4h = stack_bool(loaded, "dc_basis_crossover_4h")
+    dcxu_15 = stack_bool(loaded, "dc_basis_crossunder_15m")
+    dcxu_1h = stack_bool(loaded, "dc_basis_crossunder_1h")
 
-    # LONG — mean reversion
-    C["L_k5_lt30"] = k5 < 30
-    C["L_k15_lt30"] = k15 < 30
-    C["L_k15_lt40"] = k15 < 40
-    C["L_k1h_lt40"] = k1h < 40
-    C["L_mfi15_lt30"] = mfi15 < 30
-    C["L_mfi15_lt40"] = mfi15 < 40
-    C["L_mfi1h_lt40"] = mfi1h < 40
-    C["L_rsi15_lt35"] = rsi15 < 35
-    C["L_stoch_x5"] = stc_5
-    C["L_stoch_x15"] = stc_15
-    C["L_wt_x5"] = wtc_5
-    C["L_wt_x15"] = wtc_15
+    # LONG — stoch thresholds × TFs (many variants)
+    for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h), ("D", kD)]:
+        for thr in (20, 30, 40, 50, 60):
+            C[f"L_k{tf}_lt{thr}"] = ka < thr
+    # LONG — MFI thresholds × TFs
+    for tf, ma in [("5", mfi5), ("15", mfi15), ("1h", mfi1h), ("4h", mfi4h)]:
+        for thr in (20, 30, 40, 50):
+            C[f"L_mfi{tf}_lt{thr}"] = ma < thr
+    # LONG — RSI thresholds × TFs
+    for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
+        for thr in (25, 30, 35, 40, 45):
+            C[f"L_rsi{tf}_lt{thr}"] = ra < thr
+    # LONG — DC position
+    for thr in (10, 20, 30, 40, 50):
+        C[f"L_dcpos15_lt{thr}"] = dc_pos15 < (thr / 100.0)
+        C[f"L_dcpos1h_lt{thr}"] = dc_pos1h < (thr / 100.0)
+    # LONG — BB percent B
+    for thr in (0, 10, 20, 30):
+        C[f"L_bb15_lt{thr}"] = bb_pct_15m < (thr / 100.0)
+        C[f"L_bb1h_lt{thr}"] = bb_pct_1h < (thr / 100.0)
+    # LONG — WT bullish flags
+    C["L_wt_5m"] = wtb_5
+    C["L_wt_15m"] = wtb_15
     C["L_wt_1h"] = wtb_1h
     C["L_wt_4h"] = wtb_4h
     C["L_wt_D"] = wtb_D
+    C["L_wt_all3"] = wtb_1h & wtb_4h & wtb_D
+    C["L_wt_2of3"] = (wtb_1h.astype(int) + wtb_4h.astype(int) + wtb_D.astype(int)) >= 2
+    C["L_wt_ltf_both"] = wtb_5 & wtb_15
+    # LONG — WT/stoch/DC crosses (triggers)
+    C["L_wt_x5"] = wtc_5
+    C["L_wt_x15"] = wtc_15
+    C["L_wt_x1h"] = wtc_1h
+    C["L_stoch_x5"] = stc_5
+    C["L_stoch_x15"] = stc_15
+    C["L_stoch_x1h"] = stc_1h
+    C["L_dc_x5"] = dcx_5
     C["L_dc_x15"] = dcx_15
     C["L_dc_x1h"] = dcx_1h
-    C["L_dcpos_lt30"] = dc_pos15 < 0.3
-    C["L_sma200up"] = (sma200D > 0) & (close > sma200D)
+    C["L_dc_x4h"] = dcx_4h
+    # LONG — trend context
+    C["L_sma200up_D"] = (sma200D > 0) & (close > sma200D)
+    C["L_sma200up_1h"] = (sma200_1h > 0) & (close > sma200_1h)
+    C["L_sma200up_15m"] = (sma200_15m > 0) & (close > sma200_15m)
     # LONG — momentum continuation
-    C["L_mom_wt_all3"] = wtb_1h & wtb_4h & wtb_D
-    C["L_mom_mfi_gt50"] = mfi15 > 50
-    C["L_mom_dcpos_gt50"] = dc_pos15 > 0.5
-    C["L_mom_dcpos_gt70"] = dc_pos15 > 0.7
-    # SHORT mirrors
-    C["S_k5_gt70"] = k5 > 70
-    C["S_k15_gt70"] = k15 > 70
-    C["S_k1h_gt60"] = k1h > 60
-    C["S_mfi15_gt70"] = mfi15 > 70
-    C["S_rsi15_gt65"] = rsi15 > 65
-    C["S_wt_not1h"] = ~wtb_1h
-    C["S_wt_not4h"] = ~wtb_4h
-    C["S_wt_notD"] = ~wtb_D
-    C["S_dcpos_gt70"] = dc_pos15 > 0.7
-    C["S_sma200dn"] = (sma200D > 0) & (close < sma200D)
-    C["S_mom_wt_none"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
+    C["L_mom_mfi15_gt50"] = mfi15 > 50
+    C["L_mom_mfi1h_gt60"] = mfi1h > 60
+    C["L_mom_dcpos15_gt50"] = dc_pos15 > 0.5
+    C["L_mom_dcpos15_gt70"] = dc_pos15 > 0.7
+    C["L_mom_bb15_gt70"] = bb_pct_15m > 0.7
+    C["L_atr_gt1"] = atr_pct_15m > 1.0
+    C["L_atr_lt2"] = (atr_pct_15m < 2.0) & (atr_pct_15m > 0)
+
+    # SHORT mirrors — stoch thresholds
+    for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h), ("D", kD)]:
+        for thr in (40, 50, 60, 70, 80):
+            C[f"S_k{tf}_gt{thr}"] = ka > thr
+    # SHORT — MFI thresholds
+    for tf, ma in [("5", mfi5), ("15", mfi15), ("1h", mfi1h), ("4h", mfi4h)]:
+        for thr in (50, 60, 70, 80):
+            C[f"S_mfi{tf}_gt{thr}"] = ma > thr
+    # SHORT — RSI thresholds
+    for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
+        for thr in (55, 60, 65, 70, 75):
+            C[f"S_rsi{tf}_gt{thr}"] = ra > thr
+    # SHORT — DC position upper
+    for thr in (50, 60, 70, 80, 90):
+        C[f"S_dcpos15_gt{thr}"] = dc_pos15 > (thr / 100.0)
+    # SHORT — BB percent B upper
+    for thr in (70, 80, 90, 100):
+        C[f"S_bb15_gt{thr}"] = bb_pct_15m > (thr / 100.0)
+        C[f"S_bb1h_gt{thr}"] = bb_pct_1h > (thr / 100.0)
+    # SHORT — WT not bullish
+    C["S_not_wt_5m"] = ~wtb_5
+    C["S_not_wt_15m"] = ~wtb_15
+    C["S_not_wt_1h"] = ~wtb_1h
+    C["S_not_wt_4h"] = ~wtb_4h
+    C["S_not_wt_D"] = ~wtb_D
+    C["S_not_wt_all3"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
+    C["S_not_wt_2of3"] = ((~wtb_1h).astype(int) + (~wtb_4h).astype(int) + (~wtb_D).astype(int)) >= 2
+    # SHORT — bearish crosses
+    C["S_wt_xr5"] = wtcr_5
+    C["S_wt_xr15"] = wtcr_15
+    C["S_stoch_xu5"] = stcu_5
+    C["S_stoch_xu15"] = stcu_15
+    C["S_dc_xu15"] = dcxu_15
+    C["S_dc_xu1h"] = dcxu_1h
+    # SHORT — trend context
+    C["S_sma200dn_D"] = (sma200D > 0) & (close < sma200D)
+    C["S_sma200dn_1h"] = (sma200_1h > 0) & (close < sma200_1h)
     return C, close
 
 
@@ -172,54 +248,107 @@ def build_tradier_conditions(loaded):
     wtc_15 = stack_bool(loaded, "wt_cross_bull_15m")
     stc_5 = stack_bool(loaded, "stoch_crossover_5m")
 
-    dc_high_D = stack_field(loaded, "dc_high4_D", 0)
-    dc_low_D = stack_field(loaded, "dc_low4_D", 0)
+    k1h = stack_field(loaded, "stoch_k_1h", 50)
+    k4h = stack_field(loaded, "stoch_k_4h", 50)
+    rsi1h = stack_field(loaded, "rsi_1h", 50)
+    bb_15m = stack_field(loaded, "bb_pct_b_15m", 0.5)
+    bb_1h = stack_field(loaded, "bb_pct_b_1h", 0.5)
+    atr_15m = stack_field(loaded, "atr_pct_15m", 0)
+    sma200_5m = stack_field(loaded, "sma_200_5m", 0)
     dcb_5 = stack_bool(loaded, "dc_basis_crossover_5m")
     dcb_15 = stack_bool(loaded, "dc_basis_crossover_15m")
     dcb_1h = stack_bool(loaded, "dc_basis_crossover_1h")
-    # LONG — mean-reversion
-    C["L_mfi15_lt30"] = mfi15 < 30
-    C["L_mfi15_lt40"] = mfi15 < 40
-    C["L_mfi5_lt30"] = mfi5 < 30
-    C["L_rsi15_lt30"] = rsi15 < 30
-    C["L_rsi15_lt35"] = rsi15 < 35
-    C["L_rsi15_lt40"] = rsi15 < 40
-    C["L_rsi5_lt30"] = rsi5 < 30
-    C["L_k5_lt40"] = k5 < 40
-    C["L_k5_lt60"] = k5 < 60
-    C["L_k15_lt30"] = k15 < 30
-    C["L_k15_lt40"] = k15 < 40
-    C["L_wt_x5"] = wtc_5
-    C["L_wt_x15"] = wtc_15
+    dcbu_15 = stack_bool(loaded, "dc_basis_crossunder_15m")
+    dcbu_1h = stack_bool(loaded, "dc_basis_crossunder_1h")
+    wtc_1h = stack_bool(loaded, "wt_cross_bull_1h")
+    wtcr_5 = stack_bool(loaded, "wt_cross_bear_5m")
+    wtcr_15 = stack_bool(loaded, "wt_cross_bear_15m")
+    stcu_5 = stack_bool(loaded, "stoch_crossunder_5m")
+    stcu_15 = stack_bool(loaded, "stoch_crossunder_15m")
+    # LONG — stoch threshold sweep
+    for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h)]:
+        for thr in (20, 30, 40, 50, 60):
+            C[f"L_k{tf}_lt{thr}"] = ka < thr
+    # LONG — MFI threshold sweep
+    for tf, ma in [("5", mfi5), ("15", mfi15)]:
+        for thr in (20, 30, 40, 50):
+            C[f"L_mfi{tf}_lt{thr}"] = ma < thr
+    # LONG — RSI threshold sweep
+    for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
+        for thr in (25, 30, 35, 40, 45):
+            C[f"L_rsi{tf}_lt{thr}"] = ra < thr
+    # LONG — DC position
+    for thr in (10, 20, 30, 40, 50):
+        C[f"L_dcpos_lt{thr}"] = dc_pos15 < (thr / 100.0)
+    # LONG — BB lower
+    for thr in (0, 10, 20, 30):
+        C[f"L_bb15_lt{thr}"] = bb_15m < (thr / 100.0)
+        C[f"L_bb1h_lt{thr}"] = bb_1h < (thr / 100.0)
+    # LONG — WT bullish flags
+    C["L_wt_5m"] = wtb_5
+    C["L_wt_15m"] = wtb_15
     C["L_wt_1h"] = wtb_1h
     C["L_wt_4h"] = wtb_4h
     C["L_wt_D"] = wtb_D
+    C["L_wt_all3"] = wtb_1h & wtb_4h & wtb_D
+    C["L_wt_2of3"] = (wtb_1h.astype(int) + wtb_4h.astype(int) + wtb_D.astype(int)) >= 2
+    # LONG — crosses
+    C["L_wt_x5"] = wtc_5
+    C["L_wt_x15"] = wtc_15
+    C["L_wt_x1h"] = wtc_1h
     C["L_stoch_x5"] = stc_5
-    C["L_dcpos_lt30"] = dc_pos15 < 0.3
+    C["L_dc_x5"] = dcb_5
+    C["L_dc_x15"] = dcb_15
+    C["L_dc_x1h"] = dcb_1h
+    # LONG — trend
     C["L_sma200up_D"] = (sma200D > 0) & (close > sma200D)
     C["L_sma200up_1h"] = (sma200_1h > 0) & (close > sma200_1h)
-    # LONG — momentum-continuation (for longer holds 128/256 where 3%+ moves live)
+    C["L_sma200up_5m"] = (sma200_5m > 0) & (close > sma200_5m)
+    C["L_above_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D > 0.05)
+    # LONG — momentum-continuation
     C["L_mom_mfi_gt50"] = mfi15 > 50
-    C["L_mom_k15_gt50"] = k15 > 50
     C["L_mom_dcpos_gt50"] = dc_pos15 > 0.5
-    C["L_mom_dc_x1h"] = dcb_1h
-    C["L_mom_wt_all3"] = wtb_1h & wtb_4h & wtb_D
-    C["L_mom_above_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D > 0.05)
-    # SHORT — mean reversion
-    C["S_mfi15_gt70"] = mfi15 > 70
-    C["S_rsi15_gt70"] = rsi15 > 70
-    C["S_rsi15_gt65"] = rsi15 > 65
-    C["S_k5_gt60"] = k5 > 60
-    C["S_k5_gt70"] = k5 > 70
-    C["S_k15_gt60"] = k15 > 60
-    C["S_k15_gt70"] = k15 > 70
-    C["S_wt_not1h"] = ~wtb_1h
-    C["S_wt_not4h"] = ~wtb_4h
-    C["S_wt_notD"] = ~wtb_D
-    C["S_dcpos_gt70"] = dc_pos15 > 0.7
-    C["S_sma200dn"] = (sma200D > 0) & (close < sma200D)
-    C["S_mom_wt_none"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
-    C["S_mom_below_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D < -0.05)
+    C["L_mom_dcpos_gt70"] = dc_pos15 > 0.7
+    C["L_mom_bb15_gt70"] = bb_15m > 0.7
+    C["L_atr_gt1"] = atr_15m > 1.0
+    # SHORT — stoch upper
+    for tf, ka in [("5", k5), ("15", k15), ("1h", k1h), ("4h", k4h)]:
+        for thr in (40, 50, 60, 70, 80):
+            C[f"S_k{tf}_gt{thr}"] = ka > thr
+    # SHORT — MFI upper
+    for tf, ma in [("5", mfi5), ("15", mfi15)]:
+        for thr in (50, 60, 70, 80):
+            C[f"S_mfi{tf}_gt{thr}"] = ma > thr
+    # SHORT — RSI upper
+    for tf, ra in [("5", rsi5), ("15", rsi15), ("1h", rsi1h)]:
+        for thr in (55, 60, 65, 70, 75):
+            C[f"S_rsi{tf}_gt{thr}"] = ra > thr
+    # SHORT — DC position upper
+    for thr in (50, 60, 70, 80, 90):
+        C[f"S_dcpos_gt{thr}"] = dc_pos15 > (thr / 100.0)
+    # SHORT — BB upper
+    for thr in (70, 80, 90, 100):
+        C[f"S_bb15_gt{thr}"] = bb_15m > (thr / 100.0)
+        C[f"S_bb1h_gt{thr}"] = bb_1h > (thr / 100.0)
+    # SHORT — WT not bullish
+    C["S_not_wt_5m"] = ~wtb_5
+    C["S_not_wt_15m"] = ~wtb_15
+    C["S_not_wt_1h"] = ~wtb_1h
+    C["S_not_wt_4h"] = ~wtb_4h
+    C["S_not_wt_D"] = ~wtb_D
+    C["S_not_wt_all3"] = (~wtb_1h) & (~wtb_4h) & (~wtb_D)
+    C["S_not_wt_2of3"] = ((~wtb_1h).astype(int) + (~wtb_4h).astype(int) + (~wtb_D).astype(int)) >= 2
+    # SHORT — bear crosses
+    C["S_wt_xr5"] = wtcr_5
+    C["S_wt_xr15"] = wtcr_15
+    C["S_stoch_xu5"] = stcu_5
+    C["S_stoch_xu15"] = stcu_15
+    C["S_dc_xu15"] = dcbu_15
+    C["S_dc_xu1h"] = dcbu_1h
+    # SHORT — trend
+    C["S_sma200dn_D"] = (sma200D > 0) & (close < sma200D)
+    C["S_sma200dn_1h"] = (sma200_1h > 0) & (close < sma200_1h)
+    C["S_below_sma5pct"] = (sma200D > 0) & ((close - sma200D) / sma200D < -0.05)
     return C, close
 
 
