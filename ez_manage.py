@@ -257,6 +257,14 @@ _ls_ratio_1h_adj: Dict[str, Any] = {"adj": 0.0, "last_cross_ts": 0.0, "prev_k_1h
 _tiered_tp_hit: Dict[str, Set[int]] = {}  # BACKTEST_CHANGE_12: tracks which tiered TP levels have been hit per position_key
 # ═══ CRITICAL FIX: DUPLICATE OPEN GUARD — NEVER open same symbol+side twice ═══
 _recent_opens: Dict[str, float] = {}  # position_key → timestamp of last OPEN/AUGMENT execution
+# ═══ 2026-04-17 EMERGENCY — ABSOLUTE ATOMIC OPEN/WEBHOOK LOCK ═══
+# Triggered by BNBUSDT hedge cascade: 80+ SELL orders in 45 min via WT_15M_SAME_HEDGE webhook.
+# Unconditional per-(account,symbol,side) lock with 60s TTL. Cannot be bypassed by any reason,
+# action, or is_hedge flag. Every OPEN/AUGMENT/HEDGE/ENTRY fails if prior fire was <60s ago.
+_ABSOLUTE_OPEN_LOCK: Dict[str, float] = {}  # (account:symbol_side) → expiry ts
+_ABSOLUTE_OPEN_LOCK_TTL: float = 60.0
+_ABSOLUTE_WEBHOOK_LOCK: Dict[str, float] = {}  # (account:symbol_side:orderside) → expiry
+_ABSOLUTE_WEBHOOK_TTL: float = 30.0
 _DUPLICATE_OPEN_COOLDOWN = 900.0  # seconds — HARD block on re-opening within this window (matches _AUGMENT_LOCK)
 # ═══ CRITICAL FIX: DUPLICATE REDUCE GUARD — NEVER reduce same position twice in quick succession ═══
 _recent_reduces: Dict[str, float] = {}  # position_key → timestamp of last REDUCE execution
@@ -12847,12 +12855,31 @@ class MultiAccountTradeManager:
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
     async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None) -> str:
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
-        global _AUGMENT_LOCK
-        # ═══ FIX 2026-04-08: ATOMIC OPEN-IN-FLIGHT GUARD — if another execute_now is opening this key, HARD BLOCK ═══
+        global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🔒🔒🔒 ABSOLUTE OPEN LOCK (2026-04-17) — TOP OF execute_now, NO BYPASS 🔒🔒🔒
+        # Unconditional 60s rate limit on OPEN/AUGMENT/HEDGE/ENTRY per position_key.
+        # Cannot be disabled by config. Cannot be exempted by reason, action, is_hedge.
+        # Triggered by BNBUSDT cascade: 80 SELL orders in 45min via WT_15M_SAME_HEDGE.
+        # ═══════════════════════════════════════════════════════════════════════════
         _act_upper_early = (action or '').upper()
         _ENTRY_ACTIONS = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
+        # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
+        if _is_open_action and position_key:
+            _now_abs = time.time()
+            _abs_expiry = _ABSOLUTE_OPEN_LOCK.get(position_key, 0)
+            if _abs_expiry > _now_abs:
+                _remaining = _abs_expiry - _now_abs
+                logger.critical(f"🔒🔒🔒 [ABSOLUTE_OPEN_LOCK] {position_key}: BLOCKED — another open happened {_ABSOLUTE_OPEN_LOCK_TTL - _remaining:.1f}s ago, lock active for {_remaining:.1f}s more. action={action} reason={(reason or '')[:60]} is_hedge={is_hedge}")
+                return f"BLOCKED_ABSOLUTE_OPEN_LOCK_{_remaining:.0f}s"
+            _ABSOLUTE_OPEN_LOCK[position_key] = _now_abs + _ABSOLUTE_OPEN_LOCK_TTL
+            # Cleanup expired entries (cheap: scan once per open, not per call)
+            if len(_ABSOLUTE_OPEN_LOCK) > 500:
+                for _k in list(_ABSOLUTE_OPEN_LOCK.keys()):
+                    if _ABSOLUTE_OPEN_LOCK[_k] < _now_abs:
+                        _ABSOLUTE_OPEN_LOCK.pop(_k, None)
         # ═══ 2026-04-16 PREFLIGHT INTENT LOCK — closes the fill-propagation race window ═══
         # Root cause of BEAT 7× BUY at 10:18:24-34: every augment lock (HARD_AUGMENT_LOCK, augmented_positions,
         # augmentation_cooldown_map, recent_augmentations, _last_augment_save_time) is gated on
@@ -14010,8 +14037,34 @@ class MultiAccountTradeManager:
                 logger.error(f"[{position_key}] {reason} FOOTHOLD_WEBHO OK_ERROR: {e}")
             return False
 
-    async def send_webhook(self, position_key: str, account_key: str, symbol: str, positionAmt: float, amount: float, current_price: float, side: str, position_side: str, unique_id: str, is_full_close: bool, reason: str, level: float | None = None, stoch_required: bool = False, order_ids_to_cancel: list = None) -> bool: 
+    async def send_webhook(self, position_key: str, account_key: str, symbol: str, positionAmt: float, amount: float, current_price: float, side: str, position_side: str, unique_id: str, is_full_close: bool, reason: str, level: float | None = None, stoch_required: bool = False, order_ids_to_cancel: list = None) -> bool:
         if is_sandbox_account(config, account_key): return True
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🔒🔒🔒 ABSOLUTE WEBHOOK LOCK (2026-04-17) — NO BYPASS 🔒🔒🔒
+        # Last line of defense before Finandy. 30s rate limit on ANY webhook for the
+        # same (account:symbol:side:orderside). Triggered by BNBUSDT cascade where
+        # 80 SELL-Limit-Virtual-3m orders hit Finandy bypassing execute_now's preflight.
+        # Blocks OPEN/AUGMENT-style webhooks only; reduces/closes are exempt for exit safety.
+        # ═══════════════════════════════════════════════════════════════════════════
+        global _ABSOLUTE_WEBHOOK_LOCK
+        _reason_wl = (reason or '').upper()
+        _side_wl = (side or '').upper()
+        _pside_wl = (position_side or '').upper()
+        _is_open_like_wh = ((_side_wl == 'BUY' and _pside_wl == 'LONG') or (_side_wl == 'SELL' and _pside_wl == 'SHORT')) and not is_full_close
+        _is_close_like_wh = 'CLOSE' in _reason_wl or 'REDUCE' in _reason_wl or 'KILL' in _reason_wl or 'EXIT' in _reason_wl or 'LIQUIDATION' in _reason_wl or is_full_close
+        if _is_open_like_wh and not _is_close_like_wh:
+            _wh_key = f"{account_key}:{symbol}_{_pside_wl}:{_side_wl}"
+            _now_wh = time.time()
+            _wh_expiry = _ABSOLUTE_WEBHOOK_LOCK.get(_wh_key, 0)
+            if _wh_expiry > _now_wh:
+                _rem_wh = _wh_expiry - _now_wh
+                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ABSOLUTE_WEBHOOK_TTL - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more. reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
+                return False
+            _ABSOLUTE_WEBHOOK_LOCK[_wh_key] = _now_wh + _ABSOLUTE_WEBHOOK_TTL
+            if len(_ABSOLUTE_WEBHOOK_LOCK) > 500:
+                for _k in list(_ABSOLUTE_WEBHOOK_LOCK.keys()):
+                    if _ABSOLUTE_WEBHOOK_LOCK[_k] < _now_wh:
+                        _ABSOLUTE_WEBHOOK_LOCK.pop(_k, None)
         # if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and 'QUICK' not in reason and account_key!='flz':
         #     logger.warning(f"[SERVER_HEARTBEAT_BLOCK] {position_key}: Server active, blocking webhook.")
         #     return False 

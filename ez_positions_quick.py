@@ -6943,6 +6943,33 @@ class TrackerManager:
         try:
             account_key, symbol, position_side = parse_position_key(position_key)
             account_key = account_key.lower()
+            # ═══════════════════════════════════════════════════════════════════════════
+            # 🔒🔒🔒 ABSOLUTE WEBHOOK LOCK (2026-04-17) — bypass-proof rate limiter 🔒🔒🔒
+            # This method is the path that caused the BNBUSDT 80-SELL cascade (bypassed
+            # execute_now and its preflight locks). Unconditional 30s cap on same
+            # (account:symbol:side:orderside) for OPEN-direction webhooks. NO EXEMPTIONS.
+            # CLOSE webhooks pass through (exit safety).
+            # ═══════════════════════════════════════════════════════════════════════════
+            import sys as _sys_al
+            _ezmod = _sys_al.modules.get('ez_manage')
+            if _ezmod is not None:
+                _side_up = (side or '').upper()
+                _pside_up = (position_side or '').upper()
+                _reason_up = (reason or '').upper()
+                _is_open_like = ((_side_up == 'BUY' and _pside_up == 'LONG') or (_side_up == 'SELL' and _pside_up == 'SHORT')) and not is_full_close
+                _is_close_like = 'CLOSE' in _reason_up or 'REDUCE' in _reason_up or 'KILL' in _reason_up or 'EXIT' in _reason_up or 'LIQUIDATION' in _reason_up or is_full_close
+                if _is_open_like and not _is_close_like:
+                    _wh_lock = getattr(_ezmod, '_ABSOLUTE_WEBHOOK_LOCK', None)
+                    _wh_ttl = getattr(_ezmod, '_ABSOLUTE_WEBHOOK_TTL', 30.0)
+                    if _wh_lock is not None:
+                        _wh_key_pq = f"{account_key}:{symbol}_{_pside_up}:{_side_up}"
+                        _now_pq = time.time()
+                        _wh_exp = _wh_lock.get(_wh_key_pq, 0)
+                        if _wh_exp > _now_pq:
+                            _rem_pq = _wh_exp - _now_pq
+                            logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK_PQ] {_wh_key_pq}: BLOCKED — prior open-webhook {_wh_ttl - _rem_pq:.1f}s ago, lock active for {_rem_pq:.1f}s more. reason={(reason or '')[:60]}")
+                            return False
+                        _wh_lock[_wh_key_pq] = _now_pq + _wh_ttl
             if account_key not in self.accounts:
                 self.accounts = load_accounts(self.config)
                 if account_key not in self.accounts:
