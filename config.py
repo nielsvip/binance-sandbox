@@ -330,20 +330,21 @@ class Config:
     # allows the close at a loss. These are technical (reversal) exits only — no %-based stops.
     # Per CLAUDE.md: "NO % Stops — Technical Exits ONLY. Only WT turn, volume die, DC reversal, stoch cross."
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(default_factory=lambda: [
+        # 2026-04-17 EMERGENCY TRIM: user lost 10% in 1h via DELTA_EXIT_speed_decay + BREAKEVEN_GAIN_EROSION
+        # bypass. Rule is "NO % stops — Technical Exits ONLY" but the list had 5 %-like entries
+        # (DELTA_EXIT, BREAKEVEN_GAIN_EROSION, QUICK_BREAKEVEN_GAIN_EROSION, DC_LOW4_3M, DC_HIGH4_3M).
+        # Restored strict: only WT cross, 1h+DC breach, stdev breakout, parabolic, structural-range-shift,
+        # and opt-in ratio rebalance can close at a loss. Everything else waits for recovery or dc_4h break.
         "WT_CROSS_EXIT",
         "WT_CROSS_BULLISH",
         "WT_CROSS_BEARISH",
-        "DELTA_EXIT",                      # existing wt_dc_delta engine reversal signal
-        "BREAKEVEN_GAIN_EROSION",          # age-based structural exit (BE grace + technical turn)
-        "QUICK_BREAKEVEN_GAIN_EROSION",
-        "DC_LOW4_3M",                      # 3m 4-bar Donchian break
-        "DC_HIGH4_3M",
-        "DC_BREAK",                        # generic DC structure break
-        "EMERGENCY_DC1H_BREACH",           # 1h DC breach
+        "DC_BREAK",                        # generic DC structure break (dc_4h / dc_1h level)
+        "EMERGENCY_DC1H_BREACH",           # 1h DC breach — structural, wider than 3m
         "STDEV_BREAKOUT",                  # HTF pctb retreat (sweep-enabled only)
         "PARABOLIC_EXIT",                  # stoch-extreme + structural + 3m opposite
-        "STRUCTURAL_RANGE_SHIFT",          # kept — already bypassed in existing code
+        "STRUCTURAL_RANGE_SHIFT",          # structural range shift
         "RATIO_CLOSE_LOSING_OVERWEIGHT",   # opt-in ratio close (user-flipped)
+        "LIQUIDATION",                     # forced liquidation
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
