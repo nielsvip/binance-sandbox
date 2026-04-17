@@ -32,12 +32,14 @@ mkdir -p "$LOGDIR"
 echo "[$(date -u +%H:%M:%S) supervisor] mode=$MODE workers=$WORKERS cpu_cap=$CPU_CAP mem_cap=$MEM_CAP"
 
 PIDS=()
+STARTUP_STAGGER="${STARTUP_STAGGER:-15}"  # seconds between worker starts (prevents OOM on concurrent NPZ load)
 for i in $(seq 0 $((WORKERS-1))); do
     LOG="$LOGDIR/vec_backlog_${MODE}_w${i}.log"
     $PY -u vec_backlog.py --mode "$MODE" --worker-id "$i" --total-workers "$WORKERS" \
         --cpu-cap "$CPU_CAP" --mem-cap "$MEM_CAP" > "$LOG" 2>&1 &
     PIDS+=($!)
     echo "[supervisor] Started worker $i PID=${PIDS[-1]} → $LOG"
+    [ "$i" -lt "$((WORKERS-1))" ] && sleep "$STARTUP_STAGGER"
 done
 
 cleanup() {

@@ -106,6 +106,11 @@ def run(args):
     else:
         C, close = build_tradier_conditions(loaded)
     fwd = fwd_returns(close, HORIZONS)
+    # CRITICAL: drop the raw NPZ dict — C + close + fwd is all we need. Saves GBs/worker.
+    del loaded
+    import gc
+    gc.collect()
+    print(f"[vec_backlog] Dropped raw NPZ dict — memory freed", flush=True)
     long_keys = sorted([k for k in C if k.startswith("L_")])
     short_keys = sorted([k for k in C if k.startswith("S_")])
     print(f"[vec_backlog] Built {len(C)} conditions (L={len(long_keys)}, S={len(short_keys)})", flush=True)
