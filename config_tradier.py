@@ -267,6 +267,26 @@ class TradierConfig:
     OPTIONS_CSP_MONITOR_CALL_GAP_FROM_ENTRY_PCT: float = 0.15  # SHORT CALL: close on 15%+ upside gap from entry
     # Correlated-event emergency: if N+ positions all breach absolute guards in same tick, escalate alert
     OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N: int = 3      # N positions breaching simultaneously triggers emergency log/alert
+    # === BULL PUT CREDIT SPREAD STRATEGY (Tier 1 — primary bullish structure) ===
+    # 7yr backtest (2019-2026, 15 syms daily): Sharpe 0.62, Win 80%, worst year (2022) -$1.3k.
+    # Defined-risk, crisis-resistant, scales to 10-15 concurrent positions.
+    OPTIONS_SPREAD_ENABLED: bool = False           # Master gate — flip when ready
+    OPTIONS_SPREAD_WIDTH: float = 10.0             # $ between short and long strike
+    OPTIONS_SPREAD_SHORT_DELTA: float = 0.25       # Short-put target delta
+    OPTIONS_SPREAD_IV_RANK_MIN: float = 75.0       # Chain-relative IV rank gate (biggest backtest edge)
+    OPTIONS_SPREAD_DTE_MIN: int = 55               # Min DTE (~2 months out)
+    OPTIONS_SPREAD_DTE_MAX: int = 75               # Max DTE (~10 weeks)
+    OPTIONS_SPREAD_PROFIT_TARGET_PCT: float = 0.50 # Close at 50% of credit captured
+    OPTIONS_SPREAD_MAX_HOLD_DAYS: int = 21         # Force close after 21 days
+    OPTIONS_SPREAD_MAX_CONCURRENT: int = 15        # Max simultaneous spread positions
+    # Universe whitelist — backtest-positive names only (CLF/FIVN/XLE excluded: negative 7yr Sharpe)
+    OPTIONS_SPREAD_UNIVERSE: tuple = ("SPY", "QQQ", "AAPL", "AMD", "AMZN", "META", "NVDA", "JPM", "CAT", "XLK", "XLF", "GLD")
+    # === TIER 2: STOCK+CSP combo (high-capital, optional) ===
+    # Buy 100 shares + sell 25Δ put. Capital-heavy ($30-70k per position). Use on 1-2 top names.
+    OPTIONS_STOCK_CSP_ENABLED: bool = False        # Disabled by default; enable explicitly
+    OPTIONS_STOCK_CSP_IV_RANK_MIN: float = 85.0    # Stricter than spreads
+    OPTIONS_STOCK_CSP_MIN_CASH: float = 30000.0    # Only proceed if cash available >= this
+    OPTIONS_STOCK_CSP_MAX_CONCURRENT: int = 2      # Hard cap on concurrent positions
     # === BEAR_SCENARIO_SYMBOLS — symbols that go UP when markets go DOWN ===
     # A CALL on a bear_scenario symbol = bearish market bet (like a PUT on SPY).
     # A PUT on a bear_scenario symbol = bullish market bet (like a CALL on SPY).

@@ -355,6 +355,27 @@ class TradierAPIClient:
             return {"status": "error", "reason": "Gateway Rejected / Bad Request"}
         return res
 
+    async def place_multileg_option_order(self, symbol: str, legs: List[Dict], order_type: str = "credit", price: float = None, duration: str = "day") -> Dict:
+        """Place a multi-leg option order (e.g. bull put credit spread).
+        legs = [{'option_symbol': OCC, 'side': 'sell_to_open', 'quantity': 1}, ...]
+        order_type: 'credit' (receive net credit, price > 0), 'debit' (pay), 'even', 'market'.
+        For a bull put credit spread: order_type='credit', price = net credit amount (positive)."""
+        if not self._current_id:
+            return {"error": "Missing Account ID"}
+        if not legs or len(legs) < 2:
+            return {"error": "Multileg requires >=2 legs"}
+        data = {"class": "multileg", "symbol": symbol.upper(), "type": order_type.lower(), "duration": duration.lower()}
+        if price is not None:
+            data["price"] = f"{float(price):.2f}"
+        for i, leg in enumerate(legs):
+            data[f"option_symbol[{i}]"] = leg["option_symbol"]
+            data[f"side[{i}]"] = leg["side"].lower()
+            data[f"quantity[{i}]"] = str(int(leg.get("quantity", 1)))
+        res = await self._request("POST", f"/accounts/{self._current_id}/orders", data=data, use_data_context=False)
+        if not res:
+            return {"status": "error", "reason": "Gateway Rejected / Bad Request"}
+        return res
+
     async def get_option_expirations(self, symbol: str) -> List[str]:
         """Get all available expiration dates for a symbol's options."""
         res = await self._request("GET", "/markets/options/expirations", params={"symbol": symbol, "includeAllRoots": "true", "strikes": "false"}, use_data_context=True)

@@ -200,21 +200,53 @@ class CSPCandidate:
 
 
 @dataclass
+class SpreadCandidate:
+    """Bull put credit spread candidate — sell higher-strike put + buy lower-strike put."""
+    symbol: str
+    expiration: str
+    short_strike: float
+    long_strike: float
+    width: float
+    short_bid: float
+    short_ask: float
+    short_mid: float
+    long_bid: float
+    long_ask: float
+    long_mid: float
+    net_credit: float              # (short_mid - long_mid) × 100
+    max_loss: float                # (width × 100) − net_credit
+    short_delta: float             # |delta| of short put
+    short_iv: Optional[float]
+    chain_iv_rank: float           # percentile of short strike's IV within chain
+    dte: int
+    moneyness: float               # short_strike / spot
+    volume: int
+    open_interest: int
+    score: float
+    recommendation: str            # "BULL_PUT_SPREAD_RICH_IV" / "BULL_PUT_SPREAD"
+
+
+@dataclass
 class StructureChoice:
-    """Best structure picked per candidate: compares buy-call vs sell-put CSP (LONG thesis)
-    or buy-put vs (future) sell-call (SHORT thesis; CSP-naked-call is disabled in v1)."""
+    """Best structure picked per candidate: compares buy-call vs sell-put CSP vs bull-put-spread.
+    For SHORT thesis: buy_put only (naked-call is disabled in v1)."""
     symbol: str
     direction: str
-    option_side: str  # "buy_call" | "buy_put" | "sell_put_csp"
-    occ_symbol: str
+    option_side: str  # "buy_call" | "buy_put" | "sell_put_csp" | "bull_put_spread" | "stock_plus_csp"
+    occ_symbol: str   # primary leg OCC (short leg for spreads)
     strike: float
     expiration: str
-    price: float  # limit price (buy: 85% of ask; sell: 85% of bid or similar)
+    price: float  # limit price for primary leg / net price for spreads
     qty: int
-    capital_required: float  # for buys: price*100*qty ; for CSP sells: strike*100*qty
-    edge_score: float  # score / capital_required (normalized)
+    capital_required: float  # buys: price*100*qty; CSP: strike*100*qty; spread: max_loss
+    edge_score: float  # score / capital_required
     raw_score: float
-    rationale: str  # why this structure was picked
+    rationale: str
+    # spread-specific (optional, populated when option_side == "bull_put_spread")
+    long_leg_occ: Optional[str] = None
+    long_leg_strike: Optional[float] = None
+    net_credit: Optional[float] = None
+    max_loss: Optional[float] = None
 
 
 # ── Signal Detection ─────────────────────────────────────────────────────────
@@ -800,7 +832,133 @@ def score_sell_put_csp(signal: DirectionalSignal, chain: List[Dict], expiration:
     return candidates
 
 
-def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier], csp_candidates: List[CSPCandidate], cfg, available_cash: float = 0.0, account_value: float = 0.0) -> Optional[StructureChoice]:
+def score_bull_put_spread(signal: DirectionalSignal, chain: List[Dict], expiration: str, cfg, risk_free_rate: float = 0.043, account_value: float = 0.0) -> List[SpreadCandidate]:
+    """Score bull put credit spreads for LONG-thesis candidates.
+    Structure: sell target-delta put + buy lower-strike put (width = cfg.OPTIONS_SPREAD_WIDTH).
+    Defined-risk, max_loss = (width × 100) − net_credit. Enforces 3% account-notional cap."""
+    if signal.direction != "LONG":
+        return []
+    candidates: List[SpreadCandidate] = []
+    S = signal.price
+    exp_date = datetime.strptime(expiration, "%Y-%m-%d")
+    dte = max(1, (exp_date - datetime.now()).days)
+    if dte < cfg.OPTIONS_SPREAD_DTE_MIN or dte > cfg.OPTIONS_SPREAD_DTE_MAX:
+        return []
+    T = dte / 365.0
+    width = cfg.OPTIONS_SPREAD_WIDTH
+    max_loss_cap = account_value * cfg.OPTIONS_CSP_MAX_POS_PCT_OF_ACCOUNT if account_value > 0 else 0.0
+    # Index puts by strike for fast lookup
+    puts_by_strike = {}
+    for opt in chain:
+        if not opt or opt.get("option_type") != "put":
+            continue
+        strike = opt.get("strike", 0)
+        bid = opt.get("bid", 0) or 0
+        ask = opt.get("ask", 0) or 0
+        if strike <= 0 or (bid <= 0 and ask <= 0):
+            continue
+        mid = (bid + ask) / 2.0
+        puts_by_strike[strike] = {"strike": strike, "bid": bid, "ask": ask, "mid": mid, "greeks": opt.get("greeks", {}) or {}, "volume": opt.get("volume", 0) or 0, "open_interest": opt.get("open_interest", 0) or 0}
+    if len(puts_by_strike) < 2:
+        return []
+    # Compute IV for each put for chain-relative rank
+    for s, p in puts_by_strike.items():
+        iv = implied_vol(p["mid"], S, s, T, risk_free_rate, False)
+        p["iv_computed"] = iv
+    ivs_list = sorted(p["iv_computed"] for p in puts_by_strike.values() if p.get("iv_computed") and 0.05 < p["iv_computed"] < 3.0)
+    n_iv = len(ivs_list)
+    for p in puts_by_strike.values():
+        iv_c = p.get("iv_computed")
+        if iv_c and n_iv > 0:
+            rank_idx = sum(1 for v in ivs_list if v <= iv_c)
+            p["iv_chain_rank"] = (rank_idx / n_iv) * 100.0
+        else:
+            p["iv_chain_rank"] = 0.0
+    strikes_sorted = sorted(puts_by_strike.keys())
+    # Find best short strike — OTM, target delta around 25Δ
+    for short_k in strikes_sorted:
+        if short_k >= S * 0.99:
+            continue  # must be OTM
+        if short_k < S * 0.75:
+            continue  # too far OTM
+        short = puts_by_strike[short_k]
+        iv_c = short.get("iv_computed")
+        if not iv_c or iv_c < 0.05:
+            continue
+        # IV rank gate (biggest backtest edge)
+        if short["iv_chain_rank"] < cfg.OPTIONS_SPREAD_IV_RANK_MIN:
+            continue
+        greeks = short.get("greeks", {})
+        delta_mag = abs(greeks.get("delta", 0)) if greeks.get("delta") else None
+        if delta_mag is None:
+            delta_mag = abs(bs_greeks(S, short_k, T, risk_free_rate, iv_c, False).get("delta", 0.5))
+        # Delta sweet spot: ~25Δ ± 10
+        if not (cfg.OPTIONS_SPREAD_SHORT_DELTA - 0.10 <= delta_mag <= cfg.OPTIONS_SPREAD_SHORT_DELTA + 0.10):
+            continue
+        # Find matching long strike at width below
+        long_k_target = short_k - width
+        long_k = min(strikes_sorted, key=lambda k: abs(k - long_k_target)) if strikes_sorted else None
+        if long_k is None or long_k >= short_k or abs(long_k - long_k_target) > width * 0.5:
+            continue
+        long = puts_by_strike[long_k]
+        actual_width = short_k - long_k
+        net_credit = (short["mid"] - long["mid"]) * 100.0
+        max_loss = (actual_width * 100.0) - net_credit
+        if net_credit <= 0 or max_loss <= 0:
+            continue
+        # 3% account cap
+        if max_loss_cap > 0 and max_loss > max_loss_cap:
+            continue
+        # ── Scoring ──
+        score = 0.0
+        # Credit/width ratio (higher is better)
+        cw_ratio = net_credit / (actual_width * 100.0)
+        if cw_ratio >= 0.35:
+            score += 25
+        elif cw_ratio >= 0.25:
+            score += 15
+        elif cw_ratio >= 0.18:
+            score += 8
+        # IV rank bonus
+        if short["iv_chain_rank"] >= 85:
+            score += 25
+        elif short["iv_chain_rank"] >= 75:
+            score += 15
+        # Delta sweet spot
+        if 0.20 <= delta_mag <= 0.30:
+            score += 15
+        elif 0.18 <= delta_mag <= 0.32:
+            score += 8
+        # DTE sweet spot
+        if 55 <= dte <= 70:
+            score += 10
+        elif cfg.OPTIONS_SPREAD_DTE_MIN <= dte <= cfg.OPTIONS_SPREAD_DTE_MAX:
+            score += 5
+        # Liquidity
+        min_vol = min(short["volume"], long["volume"])
+        min_oi = min(short["open_interest"], long["open_interest"])
+        if min_vol > 100:
+            score += 5
+        if min_oi > 500:
+            score += 5
+        if min_oi > 2000:
+            score += 5
+        # Spread-tightness on both legs
+        short_spread = short["ask"] - short["bid"]
+        long_spread = long["ask"] - long["bid"]
+        if short["mid"] > 0 and short_spread / short["mid"] < 0.10:
+            score += 3
+        if long["mid"] > 0 and long_spread / long["mid"] < 0.15:
+            score += 3
+        # Signal conviction
+        score += signal.conviction * 0.2
+        rec = "BULL_PUT_SPREAD_RICH_IV" if short["iv_chain_rank"] >= 85 else "BULL_PUT_SPREAD"
+        candidates.append(SpreadCandidate(symbol=signal.symbol, expiration=expiration, short_strike=short_k, long_strike=long_k, width=actual_width, short_bid=short["bid"], short_ask=short["ask"], short_mid=round(short["mid"], 2), long_bid=long["bid"], long_ask=long["ask"], long_mid=round(long["mid"], 2), net_credit=round(net_credit, 2), max_loss=round(max_loss, 2), short_delta=round(delta_mag, 4), short_iv=round(iv_c, 4), chain_iv_rank=round(short["iv_chain_rank"], 1), dte=dte, moneyness=round(short_k / S, 4), volume=min_vol, open_interest=min_oi, score=round(score, 2), recommendation=rec))
+    candidates.sort(key=lambda x: x.score, reverse=True)
+    return candidates
+
+
+def pick_best_structure(signal: DirectionalSignal, outliers: List[OptionOutlier], csp_candidates: List[CSPCandidate], cfg, available_cash: float = 0.0, account_value: float = 0.0, spread_candidates: Optional[List[SpreadCandidate]] = None) -> Optional[StructureChoice]:
     """Compare buy-call/buy-put vs sell-put CSP and return the winning structure.
     Edge metric = score / capital_required (normalized; higher = better capital efficiency).
     CSP must beat buy-side edge by cfg.OPTIONS_CSP_EDGE_MARGIN to be chosen.

@@ -10727,7 +10727,9 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         reduce_qty=fresh_position.positionAmt - pos_min_qty if 'REDUCE' in action else fresh_position.positionAmt
         result = await trade_manager.execute_now(position_key, account_key, symbol, real_amt, side, position_side, reduce_qty, current_price, unique_id, f"QUICK_{reason}_REDUCE", False, action, is_hedge=is_hedge, hedge_for=hedge_for)
         if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
-            success = await tracker_manager.send_webhook(position_key, real_amt, side, current_price, reduce_qty, True, reason)
+            # [WEBHOOK_BYPASS_KILLED 2026-04-17] execute_now result is authoritative — no direct webhook fallback.
+            logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: execute_now={str(result)[:60]} — NOT firing direct webhook (bypass path closed by user directive 2026-04-17 inf:CELRUSDT_LONG triple-open incident).")
+            success = False
         if success:
             tracker_manager.registry.release_hedge_slot(account_key, symbol)
         if override_qty is None or not override_qty:
@@ -10761,10 +10763,8 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if not success:
             success = await verify_trade_via_websocket(trade_manager, account_key, position_key, qty, is_long, timeout_seconds=9, action=action)
             if result and not success and 'BLOCK' not in result:
-                if 'AUGMENT' not in action.upper() and 'OPEN' not in action.upper():
-                    success = await tracker_manager.send_webhook(position_key, real_amt, side, current_price, qty, False, reason)
-                else:
-                    logger.info(f"[AUG_WEBHOOK_DISABLED] {position_key}: Augment webhook suppressed in _quick.")
+                # [WEBHOOK_BYPASS_KILLED 2026-04-17] ALL webhook fallbacks removed — execute_now() is the sole authority.
+                logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: action={action} result={str(result)[:60]} — NOT firing direct webhook fallback.")
         if not success:
             _open_in_flight.pop(position_key, None)
         if success:
@@ -11739,7 +11739,8 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if result and 'FAILED' in str(result):
                         _reduce_fail_cooldowns[position_key] = time.time()
                     elif result and 'SUCCESS' not in result and 'BLOCK' not in str(result) and account_key != 'ang':
-                        await tracker_manager.send_webhook(position_key, position.positionAmt, side, current_price, reduce_q, is_full_close, hard_exit_reason)
+                        # [WEBHOOK_BYPASS_KILLED 2026-04-17] PROACTIVE reduce — no direct webhook fallback. execute_now result is final.
+                        logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: PROACTIVE {action_name} execute_now={str(result)[:60]} — NOT firing direct webhook.")
                     await tracker_manager.clear_processing(position_key)
                     return f"PROACTIVE_{action_name}D"
                 
@@ -11847,8 +11848,10 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if 'WAIT' in full_reason:
                         return f'{position_key} WAIT MEANS WAIT'
                     result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduction_qty, current_price, f"QUICK_{full_reason}_REDUCE", f"QUICK_{full_reason}_REDUCE", False, rec_exit, is_hedge=is_hedge, hedge_for=hedge_for)
-                    if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang': 
-                        result = await tracker_manager.send_webhook(position_key, positionAmt, side, current_price, reduction_qty, True, full_reason)
+                    if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
+                        # [WEBHOOK_BYPASS_KILLED 2026-04-17] REDUCE fallback removed. execute_now is the sole authority.
+                        logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: REDUCE execute_now={str(result)[:60]} — NOT firing direct webhook.")
+                        result = None
                     if result and 'SUCCESS' in result:
                         tracker_manager.registry.release_hedge_slot(account_key, symbol)
                         await tracker_manager.clear_processing(position_key)
@@ -12623,10 +12626,11 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     full_reason = f"{'OPEN' if curr_amt == 0 else 'AUGMENT'}_{rec}_{k_str}_@{current_price:.4f}_{reason}"
                     action_type = 'OPEN' if curr_amt == 0 else 'AUGMENT' 
                     success, msg = await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine, account_key, position_key, pos_amt, action_type, current_price, qty, full_reason, already_locked=True, data_manager=data_manager)
-                    if not success and 'BLOCK' not in str(msg) and 'AUGMENT' not in action_type and 'OPEN' not in action_type:
-                        await tracker_manager.send_webhook(position_key, pos_amt, 'BUY' if is_long else 'SELL', current_price, qty, False, full_reason)
-                    elif not success and 'BLOCK' not in str(msg) and ('AUGMENT' in action_type or 'OPEN' in action_type):
-                        logger.warning(f"[AUG_WEBHOOK_BLOCKED] {position_key}: Suppressing webhook fallback for {action_type} — msg={msg}")
+                    if not success and 'BLOCK' not in str(msg):
+                        # [WEBHOOK_BYPASS_KILLED 2026-04-17] entry fallback webhook closed — execute_trade_wrapper/execute_now is final.
+                        # User incident: inf:CELRUSDT_LONG triple-open (21:39:17, 21:39:35, 22:35:54) caused by webhook-fallback
+                        # routing around execute_now's OPEN-on-OPEN guards at lines 10580/10605/10971/12968/13145.
+                        logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: entry action_type={action_type} execute_trade_wrapper={str(msg)[:80]} — NOT firing direct webhook.")
                     if success: 
                         logger.info(f"🚀 {position_key} {action_type} SUCCESS {msg}")
                         async with tracker_manager._entry_candidates_lock:

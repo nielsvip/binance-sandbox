@@ -38,17 +38,25 @@ CRYPTO_BASELINE = [
 
 
 def compute_drawdown(trade_returns: np.ndarray):
-    """Given an array of per-trade returns (in percent), compute peak-to-trough max drawdown."""
+    """Given an array of per-trade returns (in percent, chronological), compute peak-to-trough max drawdown."""
     if len(trade_returns) == 0:
         return 0.0
-    equity = np.cumsum(trade_returns)  # cumulative percent (simplification — real compound uses log-returns)
+    equity = np.cumsum(trade_returns)
     peak = np.maximum.accumulate(equity)
     drawdown = peak - equity
     return float(drawdown.max())
 
 
-def evaluate_combo(C, fwd, side, combo_keys, horizon, min_trades=100):
-    """Return (sharpe, wr, mean, std, pf, n_trades, max_drawdown_pct, total_pnl_pct)."""
+def evaluate_combo(C, fwd, side, combo_keys, horizon, min_trades_per_symbol=30, n_symbols_hint=None):
+    """Per-CLAUDE.md rule: metrics are AVG across symbols (not pool), with range + max DD.
+
+    Returns dict:
+      avg_sharpe, avg_wr, avg_mean (across symbols)
+      sharpe_range (min, p25, median, p75, max), wr_range, mean_range
+      avg_dd, max_dd_per_sym (worst single symbol drawdown)
+      portfolio_dd (pool-level as secondary reference)
+      n_syms_passing, total_trades, avg_trades_per_sym
+    """
     if horizon not in fwd:
         return None
     keys = [f"{side}_{k}" for k in combo_keys]
@@ -58,22 +66,57 @@ def evaluate_combo(C, fwd, side, combo_keys, horizon, min_trades=100):
     mask = np.ones_like(C[keys[0]])
     for k in keys:
         mask &= C[k]
-    m = score(mask, fwd[horizon], min_trades)
-    if m is None:
+    ret = fwd[horizon]  # shape (bars, n_symbols)
+    n_syms = ret.shape[1]
+
+    per_sym = []
+    for s in range(n_syms):
+        col_mask = mask[:, s]
+        col_rets = ret[:, s][col_mask]
+        if len(col_rets) < min_trades_per_symbol:
+            continue
+        rets_pct = col_rets * 100.0
+        sh = float(rets_pct.mean() / max(rets_pct.std(), 1e-10))
+        wr = float((rets_pct > 0).mean() * 100)
+        mn = float(rets_pct.mean())
+        dd = compute_drawdown(rets_pct)
+        per_sym.append({"sym_idx": s, "n": len(col_rets), "sharpe": sh, "wr": wr, "mean": mn, "dd": dd})
+    if not per_sym:
         return None
-    # Extract per-trade returns in time order to compute drawdown
-    # fwd[horizon] shape = (bars, n_symbols). mask shape same. Flatten in time order.
-    ret = fwd[horizon]
-    # Convert to per-symbol, per-bar; drawdown computed on pooled chronological stream
-    # (crude but directional — real portfolio sim would require per-symbol position tracking)
-    rets_flat = ret[mask]  # 1-D array in mask-iteration order (row-major: by bar then symbol)
-    rets_pct = rets_flat * 100  # convert to percent
-    max_dd = compute_drawdown(rets_pct)
-    total_pnl = float(rets_pct.sum())
+    sharpes = np.array([x["sharpe"] for x in per_sym])
+    wrs = np.array([x["wr"] for x in per_sym])
+    means = np.array([x["mean"] for x in per_sym])
+    dds = np.array([x["dd"] for x in per_sym])
+    ns = np.array([x["n"] for x in per_sym])
+
+    def pct(arr, p):
+        return float(np.percentile(arr, p))
+
+    # Pool-level drawdown for reference (concat all symbols' trade streams, chronological within each)
+    # Proper portfolio DD would need a real equity curve with concurrent positions — out of scope here.
+    pool_rets = ret[mask] * 100.0
+    pool_dd = compute_drawdown(pool_rets)
+
     return {
-        **m,
-        "max_dd_pct": max_dd,
-        "total_pnl_pct": total_pnl,
+        "n_syms_passing": len(per_sym),
+        "n_syms_tested": n_syms,
+        "total_trades": int(ns.sum()),
+        "avg_trades_per_sym": float(ns.mean()),
+        "avg_sharpe": float(sharpes.mean()),
+        "sharpe_min": float(sharpes.min()),
+        "sharpe_p25": pct(sharpes, 25),
+        "sharpe_median": pct(sharpes, 50),
+        "sharpe_p75": pct(sharpes, 75),
+        "sharpe_max": float(sharpes.max()),
+        "avg_wr": float(wrs.mean()),
+        "wr_min": float(wrs.min()),
+        "wr_max": float(wrs.max()),
+        "avg_mean": float(means.mean()),
+        "mean_min": float(means.min()),
+        "mean_max": float(means.max()),
+        "avg_dd": float(dds.mean()),
+        "max_dd_per_sym": float(dds.max()),
+        "pool_dd": pool_dd,
     }
 
 
@@ -105,17 +148,21 @@ def main():
         fwd = fwd_returns(close, horizons_needed)
         print(f"[{time.time()-t0:.1f}s] Built {len(C)} conditions, fwd for {list(fwd.keys())}", flush=True)
 
-        print(f"\n{'Name':<22} {'H':>5} {'N':>6} {'Sharpe':>7} {'WR%':>6} {'Mean%':>7} {'PF':>6} {'MaxDD%':>7} {'TotPnL%':>8}", flush=True)
-        print("─" * 100, flush=True)
+        bar_min = "3m" if mode == "crypto" else "5m"
+        yrs = n_bars * (3 if mode == "crypto" else 5) / 60 / 24 / 365.25
+        print(f"\n{mode.upper()}: {len(loaded)} symbols × {n_bars} bars × {bar_min} base = ~{yrs:.1f} years  |  min_trades/sym={args.min_trades}", flush=True)
+        print(f"\n{'Name':<24} {'H':>4} {'Syms':>6} {'AvgN':>6} {'AvgSh':>6} {'ShR':>14} {'AvgWR':>6} {'AvgM%':>6} {'MxDD':>6} {'PoolDD':>6}", flush=True)
+        print("─" * 110, flush=True)
         for name, side, keys, h in baseline:
-            r = evaluate_combo(C, fwd, side, keys, h, args.min_trades)
+            r = evaluate_combo(C, fwd, side, keys, h, min_trades_per_symbol=args.min_trades)
             if r is None:
-                print(f"{name:<22} {h:>5d} — no trades (<{args.min_trades})", flush=True)
+                print(f"{name:<24} {h:>4d} — <{args.min_trades} trades/sym on any symbol", flush=True)
                 continue
             if "error" in r:
-                print(f"{name:<22} {h:>5d} — {r['error']}", flush=True)
+                print(f"{name:<24} {h:>4d} — {r['error']}", flush=True)
                 continue
-            print(f"{name:<22} {h:>5d} {r['n']:>6d} {r['sharpe']:>7.3f} {r['wr']:>6.1f} {r['mean']*100:>7.3f} {r['pf']:>6.2f} {r['max_dd_pct']:>7.2f} {r['total_pnl_pct']:>8.1f}", flush=True)
+            sh_range = f"[{r['sharpe_min']:.2f}..{r['sharpe_max']:.2f}]"
+            print(f"{name:<24} {h:>4d} {r['n_syms_passing']:>3d}/{r['n_syms_tested']:<2d} {r['avg_trades_per_sym']:>6.0f} {r['avg_sharpe']:>6.3f} {sh_range:>14} {r['avg_wr']:>6.1f} {r['avg_mean']:>6.2f} {r['max_dd_per_sym']:>6.1f} {r['pool_dd']:>6.1f}", flush=True)
 
     if args.mode in ("crypto", "both"):
         run_mode("crypto", CRYPTO_BASELINE)

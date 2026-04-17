@@ -182,6 +182,130 @@ def grid_hedge_full():
     return variants
 
 
+def grid_reentry_optimize():
+    """2026-04-17 user directive: 'reentries are the key to doubling sharpe'.
+    Wide sweep across every reentry tunable + high-signal combos. Run on tight 4-sym
+    base so it fits alongside vec_backlog on S1 (~2hrs for ~60 variants workers=1)."""
+    return [
+        ("baseline", {}),
+        # ── C: WT15M_CROSS ──
+        ("WT15M_SIZE_1.0", {"REENTRY_WT15M_SIZE_MULT": 1.0}),
+        ("WT15M_SIZE_1.3", {"REENTRY_WT15M_SIZE_MULT": 1.3}),
+        ("WT15M_SIZE_1.8", {"REENTRY_WT15M_SIZE_MULT": 1.8}),
+        ("WT15M_SIZE_2.5", {"REENTRY_WT15M_SIZE_MULT": 2.5}),
+        ("WT15M_K_MAX_30", {"REENTRY_WT15M_K_MAX": 30.0}),
+        ("WT15M_K_MAX_70", {"REENTRY_WT15M_K_MAX": 70.0}),
+        ("WT15M_K_MAX_100", {"REENTRY_WT15M_K_MAX": 100.0}),
+        ("WT15M_HTF_NOT_REQUIRED", {"REENTRY_WT15M_HTF_FAVOR_REQUIRED": False}),
+        # ── D: K15M_PARTIAL ──
+        ("K15M_T_70", {"REENTRY_K15M_PARTIAL_THRESHOLD": 70.0}),
+        ("K15M_T_80", {"REENTRY_K15M_PARTIAL_THRESHOLD": 80.0}),
+        ("K15M_T_95", {"REENTRY_K15M_PARTIAL_THRESHOLD": 95.0}),
+        ("K15M_MULT_0.3", {"REENTRY_K15M_PARTIAL_MULT": 0.3}),
+        ("K15M_MULT_0.7", {"REENTRY_K15M_PARTIAL_MULT": 0.7}),
+        ("K15M_MULT_1.0", {"REENTRY_K15M_PARTIAL_MULT": 1.0}),
+        # ── E: POST_CONSOL ──
+        ("POST_C_MULT_1.2", {"REENTRY_POST_CONSOL_MULT": 1.2}),
+        ("POST_C_MULT_1.8", {"REENTRY_POST_CONSOL_MULT": 1.8}),
+        ("POST_C_MULT_2.5", {"REENTRY_POST_CONSOL_MULT": 2.5}),
+        ("POST_C_TFS_1", {"REENTRY_POST_CONSOL_TFS_REQUIRED": 1}),
+        ("POST_C_TFS_3", {"REENTRY_POST_CONSOL_TFS_REQUIRED": 3}),
+        ("POST_C_ATR_0.10", {"REENTRY_POST_CONSOL_ATR_THRESHOLD": 0.10}),
+        ("POST_C_ATR_0.20", {"REENTRY_POST_CONSOL_ATR_THRESHOLD": 0.20}),
+        # ── Timing knobs (per user live config) ──
+        ("MIN_GAP_3", {"REENTRY_MIN_GAP_MINUTES": 3.0}),
+        ("MIN_GAP_5", {"REENTRY_MIN_GAP_MINUTES": 5.0}),
+        ("MIN_GAP_30", {"REENTRY_MIN_GAP_MINUTES": 30.0}),
+        ("AGGR_WIN_20", {"REENTRY_AGGRESSIVE_WINDOW_MIN": 20.0}),
+        ("AGGR_WIN_60", {"REENTRY_AGGRESSIVE_WINDOW_MIN": 60.0}),
+        ("RALLY_K_40", {"REENTRY_RALLY_K15M_MAX": 40.0}),
+        ("RALLY_K_80", {"REENTRY_RALLY_K15M_MAX": 80.0}),
+        ("RALLY_K_100", {"REENTRY_RALLY_K15M_MAX": 100.0}),
+        # ── SYMGATE — bundled with Chapter-C per user config, test OFF ──
+        ("REENTRY_SYMGATE_OFF", {"REENTRY_SYMGATE_ENABLED": False}),
+        ("ENTRY_SYMGATE_OFF", {"ENTRY_SYMGATE_ENABLED": False}),
+        ("BOTH_SYMGATE_OFF", {"REENTRY_SYMGATE_ENABLED": False, "ENTRY_SYMGATE_ENABLED": False}),
+        # ── CT velocity gate knob ──
+        ("CT_VEL_0.0", {"CT_WT_VELOCITY_1H_MIN": 0.0}),
+        ("CT_VEL_1.0", {"CT_WT_VELOCITY_1H_MIN": 1.0}),
+        ("CT_VEL_3.0", {"CT_WT_VELOCITY_1H_MIN": 3.0}),
+        # ── BUNDLE: AGGRESSIVE reentry (big sizes, loose gates) ──
+        ("AGGRESSIVE_BUNDLE", {
+            "REENTRY_WT15M_SIZE_MULT": 2.0,
+            "REENTRY_WT15M_K_MAX": 70.0,
+            "REENTRY_WT15M_HTF_FAVOR_REQUIRED": False,
+            "REENTRY_K15M_PARTIAL_MULT": 1.0,
+            "REENTRY_POST_CONSOL_MULT": 2.0,
+            "REENTRY_POST_CONSOL_TFS_REQUIRED": 1,
+            "REENTRY_MIN_GAP_MINUTES": 3.0,
+            "REENTRY_RALLY_K15M_MAX": 100.0,
+        }),
+        # ── BUNDLE: CONSERVATIVE reentry (small sizes, tight gates) ──
+        ("CONSERVATIVE_BUNDLE", {
+            "REENTRY_WT15M_SIZE_MULT": 1.0,
+            "REENTRY_WT15M_K_MAX": 30.0,
+            "REENTRY_WT15M_HTF_FAVOR_REQUIRED": True,
+            "REENTRY_K15M_PARTIAL_MULT": 0.3,
+            "REENTRY_POST_CONSOL_MULT": 1.2,
+            "REENTRY_POST_CONSOL_TFS_REQUIRED": 3,
+            "REENTRY_MIN_GAP_MINUTES": 30.0,
+            "REENTRY_RALLY_K15M_MAX": 40.0,
+        }),
+        # ── BUNDLE: Synergize with proven B-blocks (B10 + B12 + B15 all alive) ──
+        ("SYNERGY_ALL_ALIVE", {
+            "REENTRY_B02_BC156_BOTTOM_ENABLED": True,
+            "REENTRY_B10_STOCH_REV_ENABLED": True,
+            "REENTRY_B11_DC_BREAK_ENABLED": True,
+            "REENTRY_B12_WT_MOM_ENABLED": True,
+            "REENTRY_B14_HA_TREND_ENABLED": True,
+            "REENTRY_B15_STRONG_TREND_ENABLED": True,
+            "REENTRY_WT15M_CROSS_ENABLED": True,
+            "REENTRY_K15M_PARTIAL_ENABLED": True,
+            "REENTRY_POST_CONSOL_ENABLED": True,
+        }),
+        # ── BUNDLE: Kill B-blocks, keep REENTRY2 only ──
+        ("REENTRY2_ONLY", {
+            "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False,
+            "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False,
+            "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+        }),
+        # ── BUNDLE: B-blocks only, kill REENTRY2 ──
+        ("B_BLOCKS_ONLY", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        # ── BUNDLE: B-blocks with B12 removed (B12 was dragging pre-patch) ──
+        ("B_BLOCKS_NO_B12", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        # ── BUNDLE: user's Chapter-C config ──
+        ("CHAPTER_C_STRICT", {
+            "REENTRY_SYMGATE_ENABLED": True,
+            "ENTRY_SYMGATE_ENABLED": True,
+            "REENTRY_MIN_GAP_MINUTES": 15.0,
+            "REENTRY_RALLY_K15M_MAX": 60.0,
+            "CT_WT_VELOCITY_1H_MIN": 2.0,
+        }),
+        # ── BUNDLE: Chapter-C relaxed ──
+        ("CHAPTER_C_LOOSE", {
+            "REENTRY_SYMGATE_ENABLED": False,
+            "ENTRY_SYMGATE_ENABLED": False,
+            "REENTRY_MIN_GAP_MINUTES": 3.0,
+            "REENTRY_RALLY_K15M_MAX": 100.0,
+            "CT_WT_VELOCITY_1H_MIN": 0.0,
+        }),
+    ]
+
+
 def grid_reentry_killed_rerun():
     """Re-run the 12 variants that died with rc=-9 (OOM) at end of reentry_wide v3 on S1.
     Use lower worker count + maybe narrower symbols to avoid memory pressure."""
@@ -221,6 +345,7 @@ TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
+    "reentry_optimize": grid_reentry_optimize,
     "reentry_killed_rerun": grid_reentry_killed_rerun,
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
