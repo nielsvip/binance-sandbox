@@ -63,18 +63,53 @@ def infer_account(mode: str) -> str:
 
 
 def parse_v8_result(output: str) -> dict | None:
-    m = re.search(r"V8_RESULT: sharpe=([0-9.-]+) pnl=([0-9.-]+) trades=(\d+) wins=(\d+) losses=(\d+) total_pnl_dollars=([0-9.-]+) avg_pnl=([0-9.-]+)", output)
-    if not m:
-        return None
-    return {
-        "sharpe": float(m.group(1)),
-        "pnl": float(m.group(2)),
-        "trades": int(m.group(3)),
-        "wins": int(m.group(4)),
-        "losses": int(m.group(5)),
-        "total_pnl_dollars": float(m.group(6)),
-        "avg_pnl": float(m.group(7)),
-    }
+    """Parse V8_RESULT line. Supports two formats:
+
+    NEW (2026-04+): `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
+    OLD (legacy):   `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
+
+    Returns normalized dict with 'sharpe' = sharpe_pt (per-trade, per memory `feedback_sharpe_per_trade_always`).
+    """
+    # NEW format (search LAST match so V8_RESULT_LIVE interim lines are skipped — final summary comes last)
+    matches = list(re.finditer(
+        r"V8_RESULT:\s+sharpe_w=([0-9.-]+)\s+sharpe_pt=([0-9.-]+)\s+sharpe_ann=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
+        output,
+    ))
+    if matches:
+        m = matches[-1]
+        trades = int(m.group(5))
+        wins = int(m.group(6))
+        losses = int(m.group(7))
+        return {
+            "sharpe": float(m.group(2)),            # sharpe_pt — per-trade (primary)
+            "sharpe_w": float(m.group(1)),
+            "sharpe_pt": float(m.group(2)),
+            "sharpe_ann": float(m.group(3)),
+            "pnl": float(m.group(4)),               # gain_pct as %
+            "trades": trades,
+            "wins": wins,
+            "losses": losses,
+            "total_pnl_dollars": None,              # not in new format
+            "avg_pnl": None,
+            "_format": "new",
+        }
+    # OLD fallback
+    m = re.search(
+        r"V8_RESULT:\s+sharpe=([0-9.-]+)\s+pnl=([0-9.-]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)\s+total_pnl_dollars=([0-9.-]+)\s+avg_pnl=([0-9.-]+)",
+        output,
+    )
+    if m:
+        return {
+            "sharpe": float(m.group(1)),
+            "pnl": float(m.group(2)),
+            "trades": int(m.group(3)),
+            "wins": int(m.group(4)),
+            "losses": int(m.group(5)),
+            "total_pnl_dollars": float(m.group(6)),
+            "avg_pnl": float(m.group(7)),
+            "_format": "old",
+        }
+    return None
 
 
 def run_single(param: str, value, mode: str, account: str, symbols: str, start: str, capital: float, label: str) -> dict:
@@ -93,7 +128,10 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
         "--symbols", symbols,
     ]
     print(f"  [{label}] {param}={value!r}  running ...", flush=True)
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=600)
+    # 2026-04-17: bumped 600→1800 (30 min) — RANK_CONVICTION over 4 symbols × 15 months × 3m bars needed >10 min.
+    # Per-test ceiling governed by V8_BACKTEST_TIMEOUT env var (default 1800).
+    _bt_timeout = int(os.environ.get("V8_BACKTEST_TIMEOUT", "1800"))
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=_bt_timeout)
     os.unlink(override_path)
     output = result.stdout + result.stderr
     parsed = parse_v8_result(output)
