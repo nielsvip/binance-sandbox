@@ -420,7 +420,7 @@ class TradierConfig:
     HOLD_BARS_MID: int = 500  # BACKTEST_CHANGE_T25 max hold bars during mid zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 121 sym × D/4h/1h, 9192 combos) ===
-    NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # 2026-04-08: LET WT/DC SCORER EXIT AT ANY GAIN. Scorer fires on velocity death — that IS the cut signal. 3.0% was BLOCKING technical exits on losers. Test: Sharpe 6.36 at 0% vs 1.43 at 3%.
+    NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 3.0  # REVERTED 2026-04-17: 0% caused exits at 0.3% gain (avg gain dropped, lost $1k/day). MAR-30 baseline = 3.0 = was making 10%/week. The Sharpe-6.36-at-0% claim was bogus.
     # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, stocks) ===
     # When True: if entry_price > bb_high_1h (LONG) or < bb_low_1h (SHORT),
     # AND current 3m close has recovered within tolerance of entry_price,
@@ -570,7 +570,7 @@ class TradierConfig:
     TF_MACRO: str = "D"     # Same as HTF3 for stocks (no weekly in live) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7133 entry eval
     # === BACKTEST-VALIDATED GATES (121 stocks, train/test confirmed) ===
     BACKTEST_VALIDATED_GATES_TRADIER: bool = True  # Block entries on signals confirmed -EV on both train+test
-    DC_POSITION_ENTRY_THRESHOLD: float = 0.15  # S1_SWEEP_2026-04-15: 0.15 top S1 config Sharpe=4.23 on 20605 trades (was 0.25)
+    DC_POSITION_ENTRY_THRESHOLD: float = 0.25  # REVERTED 2026-04-17: 0.15 was too tight. Mar-30 baseline 0.25 = Sharpe 18.57 on 61 stocks.
     MFI_FLIP_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_148: Exit when MFI exhausts (+3.91% avg vs +1.09% fixed TP, 44 trades)
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0  # Exit LONG when MFI_1h > 70 (overbought = sell)
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0  # Exit SHORT when MFI_1h < 30 (oversold = cover)
@@ -666,7 +666,7 @@ class TradierConfig:
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
     # === MOMENTUM INTERCEPTION (MI) — Early exit/entry via slowing deltas, LH/LL structure, divergence ===
-    MI_EXIT_ENABLED_TRADIER: bool = True  # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades
+    MI_EXIT_ENABLED_TRADIER: bool = False  # REVERTED 2026-04-17: MI_EXIT was triggering early exits at 0.3%. Mar-30 baseline OFF.
     MI_ENTRY_ENABLED_TRADIER: bool = False  # Entry scoring bonus for favorable MI signals
     MI_STRUCT_EXIT_ENABLED_TRADIER: bool = True  # WT peak LH / trough HL = structural weakening
     MI_EXHAUST_EXIT_ENABLED_TRADIER: bool = True  # EXHAUST_UP/DOWN on 1h/4h
@@ -791,7 +791,7 @@ class TradierConfig:
     DELTA_OPTIONS_GIVEBACK_PCT: float = 30.0  # Close when 30% of max gain given back ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     # Legacy (superseded by scorers but kept for V8 sweep compatibility)
     WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"
-    WT_EXIT_MIN_TFS_TRADIER: int = 4  # S1_SWEEP_2026-04-15: 4 top S1 cfg Sharpe=4.23 on 20605 trades (was 5)
+    WT_EXIT_MIN_TFS_TRADIER: int = 5  # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5. Patient exits.
     WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
     MIN_HOLD_BARS_TRADIER: int = 32  # Grace period only (160min). Actual avg hold = 239 bars (20hrs) — WT exit rides the full wave.
     COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
@@ -864,7 +864,7 @@ class TradierConfig:
 
     # Momentum Interception (MI) — 5 sub-signal momentum degradation detector
     TRADIER_MI_ENTRY_ENABLED_TRADIER: bool = False      # wait for MI reset before entry
-    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = True        # S1_SWEEP_2026-04-15: ON in top S1 cfg Sharpe=4.23 on 20605 trades
+    TRADIER_MI_EXIT_ENABLED_TRADIER: bool = False       # REVERTED 2026-04-17: see MI_EXIT_ENABLED_TRADIER above.
     TRADIER_MI_SUBSIGNAL_MIN_COUNT: int = 3             # N of 5 sub-signals must fire
 
     # DC Daytrade — buy DC upper-quarter breakouts on 5m/15m with 1h expansion
@@ -873,7 +873,7 @@ class TradierConfig:
     TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True
     TRADIER_DC_DAYTRADE_STOP_PCT: float = 0.005         # 0.5% hard stop
     TRADIER_DC_DAYTRADE_TARGET_PCT: float = 0.005       # 0.5% target (winner per 100.md:1352)
-    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.15   # S1_SWEEP_2026-04-15: 0.15 top S1 cfg Sharpe=4.23 on 20605 trades (was 0.25)
+    TRADIER_DC_POSITION_ENTRY_THRESHOLD: float = 0.25   # REVERTED 2026-04-17: see DC_POSITION_ENTRY_THRESHOLD above.
 
     # K-Zone — stochastic K-zone entry filter
     TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER: int = 35     # S1_SWEEP_2026-04-15: 35 top S1 cfg Sharpe=4.23 on 20605 trades (was 80)
@@ -904,7 +904,7 @@ class TradierConfig:
     # WaveTrend composite scoring + exit TF config
     TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER: bool = True
     TRADIER_WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"  # T4 sweep: 5m+15m+1h+4h+D avg=5.961 best tested (was "3m,15m,1h")
-    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 4             # S1_SWEEP_2026-04-15 confirms: 4 top S1 cfg Sharpe=4.23 on 20605 trades (unchanged)
+    TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5             # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5 (require ALL 5 TFs against). Patient exits.
 
     # Entry score aggregate threshold
     TRADIER_ENTRY_SCORE_THRESHOLD: int = 24             # min aggregate signal score for entry

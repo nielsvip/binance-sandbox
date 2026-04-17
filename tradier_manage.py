@@ -3881,6 +3881,20 @@ class StockStrategy:
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
 
+        # ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) ═══
+        # trb/trc were bleeding because DELTA_EXIT/RZ_EXIT/WT_DC_EXIT/MI_EXIT
+        # paths fired on technicals REGARDLESS of gain — closing GLD at -0.09%,
+        # COPX at -1.09%, XOM at -3.34%, TTD at -9.96%. L/S ratio is the hedge;
+        # realized losses are the enemy. This gate stops ALL subsequent exit
+        # paths when gain < NOLOSS_MIN_PROFIT_PCT_TRADIER (3.0% = Mar-30 baseline).
+        # Intended scope: live strict-no-loss accounts (trb, trc).
+        _noloss_min_ts = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
+        _strict_acct_list = set(getattr(config, 'STRICT_NO_LOSS_ACCOUNTS_TRADIER', ('trb', 'trc')))
+        if _exit_acct_top in _strict_acct_list and _noloss_min_ts > 0 and gain < _noloss_min_ts:
+            if gain < 0 or gain % 1 < 0.05:  # only log occasionally to avoid spam
+                logger.info(f"[NOLOSS_HOLD_{_exit_acct_top}] {symbol} {'L' if is_long else 'S'}: g={gain:.2f}% < noloss={_noloss_min_ts:.2f}% — holding (ratio is the hedge)")
+            return False, f"NOLOSS_HOLD_{_exit_acct_top}(g={gain:.2f}%<{_noloss_min_ts:.1f}%)", 0
+
         # ==================================================================
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py
@@ -3948,10 +3962,17 @@ class StockStrategy:
             _d_pos_state = {"side": "LONG" if is_long else "SHORT"} if qty > 0 else None
             _d_sig = self.trade_manager.delta_tracker.update(symbol, _d_ind, _d_pos_state)
             if _d_sig and ((is_long and _d_sig.exit_long) or (not is_long and _d_sig.exit_short)):
-                _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
-                _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
-                logger.warning(f"[DELTA_EXIT] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} {_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
-                return True, f"{_reason}_g={gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                # STRICT_NO_LOSS gate (2026-04-17): delta can signal exit but we REFUSE to close at a loss.
+                # System was closing GLD -0.09%, COPX -1.09%, XOM -3.34%, TTD -9.96% on "delta exit" signals.
+                # L/S ratio is the hedge — don't realize losses. Wait for gain >= NOLOSS floor.
+                _noloss_min = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
+                if _noloss_min > 0 and gain < _noloss_min:
+                    logger.info(f"[DELTA_EXIT_BLOCKED_NOLOSS] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} gain={gain:.2f}% < NOLOSS={_noloss_min:.2f}% — HOLDING (ratio hedges, no realized loss)")
+                else:
+                    _zr = _d_sig.zone_reason or f"bs={_d_sig.bull_speed:.1f}_es={_d_sig.bear_speed:.1f}_btf={_d_sig.bull_tf_count}_etf={_d_sig.bear_tf_count}"
+                    _reason = f"DELTA_EXIT_{_d_sig.zone}_{_zr}"
+                    logger.warning(f"[DELTA_EXIT] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} {_zr} gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                    return True, f"{_reason}_g={gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
             # ═══ WT CROSSUNDER FINAL RESORT ═══ (user: "if delta fucked up")
             # RULE: LTF (5m for stocks / 3m for crypto) must be going down
             #   PLUS 15m must be going down OR be above 95 (overbought)
