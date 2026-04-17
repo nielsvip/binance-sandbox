@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-17 17:10:53 UTC
+# Copilot Status — 2026-04-17 17:24:02 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,11 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T17:09:46
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-17T17:09:46
-- **STALE_INDICATORS** [tradier]  — 2026-04-17T17:09:58
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T17:09:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-17T17:09:58
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T17:10:42
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-17T17:10:42
-- **STALE_INDICATORS** [tradier]  — 2026-04-17T17:10:53
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T17:10:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-17T17:10:53
+- **STALE_INDICATORS** [tradier]  — 2026-04-17T17:23:26
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-17T17:23:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-17T17:23:26
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-17T17:24:00
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-17T17:24:00
 
 ## Missed Trades (trader comparison)
 
@@ -29,8 +24,8 @@ _None_
 
 **Held:** 0 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.1%, exited 1m ago
-- WATCHING: **1000BONKUSDC** SHORT (crypto) peaked +3.1%, exited 1m ago
+- WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.4%, exited 0m ago
+- WATCHING: **1000BONKUSDC** SHORT (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor
 

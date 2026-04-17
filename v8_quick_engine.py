@@ -117,6 +117,27 @@ class QuickConfig:
     REENTRY_B_KZONE_ENABLED: bool = False  # tradier auto-enables via apply_tradier_defaults
     REENTRY_B_FH_MOM_ENABLED: bool = False
     REENTRY_B_MFI_D_OVERSOLD_ENABLED: bool = False
+    # === 2026-04-17 HEDGE + REENTRY OVERHAUL SWITCHES ===
+    # Hedge: LIVE-ONLY (vectorized engine does not simulate hedges). Switches present so setattr() from sweep works cleanly.
+    HEDGE_EXIT_BYPASS_NOLOSS: bool = True
+    HEDGE_EXIT_WT_TF: str = "3m"
+    HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
+    HEDGE_SAME_SYMBOL_PCT: float = 1.0
+    HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True
+    # Reentry WT-15m-cross + HTF-aligned (C) — wired in vectorized block REENTRY_B_WT15M_CROSS below
+    REENTRY_WT15M_CROSS_ENABLED: bool = True
+    REENTRY_WT15M_SIZE_MULT: float = 1.5
+    REENTRY_WT15M_K_MAX: float = 50.0
+    REENTRY_WT15M_HTF_FAVOR_REQUIRED: bool = True
+    # Reentry k_15m partial sizing (D) — affects sizing for any reentry block when K in extreme zone
+    REENTRY_K15M_PARTIAL_ENABLED: bool = True
+    REENTRY_K15M_PARTIAL_THRESHOLD: float = 80.0
+    REENTRY_K15M_PARTIAL_MULT: float = 0.5
+    # Reentry post-consolidation boost (E) — sizing mult when ATR compressed on 2+ TFs
+    REENTRY_POST_CONSOL_ENABLED: bool = True
+    REENTRY_POST_CONSOL_MULT: float = 1.5
+    REENTRY_POST_CONSOL_ATR_THRESHOLD: float = 0.15
+    REENTRY_POST_CONSOL_TFS_REQUIRED: int = 2
     FH_MOMENTUM_MIN_MOVE_PCT: float = 0.5  # % move in first hour
     FH_MOMENTUM_WINDOW_SEC: int = 3600  # 60 min window after open
     MFI_LONG_THRESHOLD_D: float = 20.0  # mfi_D < 20 for long

@@ -17700,7 +17700,60 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - conditions not met")
             elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - minutes_since_reduction {minutes_since_reduction:.1f}m >= 60.0m")
         elif config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY NOT_ALLOWED - last_reduction_time={last_reduction_time}, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}")
-        if not getattr(config, 'REENTRY2_STOCH_CROSS_ENABLED', True): return
+        # === 2026-04-17 WT-15M-CROSS REENTRY (user rule C) ===
+        # Trigger: 15m WT crossover in position direction (wt1_15m crosses above wt2_15m for LONG, below for SHORT)
+        # AND HTF still favorable (wt1_1h > wt2_1h OR wt1_4h > wt2_4h for LONG; inverse for SHORT)
+        # Size: 1.5x by default (REENTRY_WT15M_SIZE_MULT)
+        # K-partial (D): if k_15m in extreme zone, multiply size by REENTRY_K15M_PARTIAL_MULT
+        # Post-consolidation (E): if atr_rank <0.15 on N+ TFs, apply REENTRY_POST_CONSOL_MULT
+        if getattr(config, 'REENTRY_WT15M_CROSS_ENABLED', True) and price_ready:
+            _wt1_1h = safe_fetch_float(i.get('wt1_1h', 0), 0.0); _wt2_1h = safe_fetch_float(i.get('wt2_1h', 0), 0.0)
+            _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0.0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0.0)
+            _wt1_15m_prev = safe_fetch_float(i.get('wt1_15m_prev', 0), 0.0); _wt2_15m_prev = safe_fetch_float(i.get('wt2_15m_prev', 0), 0.0)
+            _wt15m_cross_long = is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev
+            _wt15m_cross_short = (not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev
+            _wt15m_just_crossed = _wt15m_cross_long or _wt15m_cross_short
+            _htf_fav_long = is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)
+            _htf_fav_short = (not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h)
+            _htf_fav = _htf_fav_long or _htf_fav_short
+            _htf_required = bool(getattr(config, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
+            if _wt15m_just_crossed and (_htf_fav or not _htf_required):
+                _wt_re_delta_ok, _wt_re_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
+                if not _wt_re_delta_ok:
+                    logger.info(f"[WT15M_REENTRY_DELTA_BLOCK] {position_key}: {_wt_re_delta_reason}")
+                    return
+                _base_mult = float(getattr(config, 'REENTRY_WT15M_SIZE_MULT', 1.5))
+                _final_mult = _base_mult
+                _mult_reasons = [f"WT15M_CROSS×{_base_mult:.1f}"]
+                # E: post-consolidation boost
+                if getattr(config, 'REENTRY_POST_CONSOL_ENABLED', True):
+                    _atr_thr = float(getattr(config, 'REENTRY_POST_CONSOL_ATR_THRESHOLD', 0.15))
+                    _tfs_req = int(getattr(config, 'REENTRY_POST_CONSOL_TFS_REQUIRED', 2))
+                    _ar_1h = float(i.get('bar_atr_rank_1h', 0.5) or 0.5)
+                    _ar_4h = float(i.get('bar_atr_rank_4h', 0.5) or 0.5)
+                    _ar_D = float(i.get('bar_atr_rank_D', 0.5) or 0.5)
+                    _compressed = int(_ar_1h < _atr_thr) + int(_ar_4h < _atr_thr) + int(_ar_D < _atr_thr)
+                    if _compressed >= _tfs_req:
+                        _pc_mult = float(getattr(config, 'REENTRY_POST_CONSOL_MULT', 1.5))
+                        _final_mult *= _pc_mult
+                        _mult_reasons.append(f"POST_CONSOL({_compressed}/3)×{_pc_mult:.1f}")
+                # D: k_15m-based partial sizing
+                if getattr(config, 'REENTRY_K15M_PARTIAL_ENABLED', True):
+                    _k_thr = float(getattr(config, 'REENTRY_K15M_PARTIAL_THRESHOLD', 80.0))
+                    _k_partial_mult = float(getattr(config, 'REENTRY_K15M_PARTIAL_MULT', 0.5))
+                    _k_in_extreme = (is_long and k_15m > _k_thr) or ((not is_long) and k_15m < (100 - _k_thr))
+                    if _k_in_extreme:
+                        _final_mult *= _k_partial_mult
+                        _mult_reasons.append(f"K15M_PARTIAL(k={k_15m:.0f})×{_k_partial_mult:.2f}")
+                _wt_re_amt = min(reentry_amount, _final_mult * config.START_POSITION_SIZE / current_price)
+                _wt_re_reason = f"WT15M_CROSS_REENTRY_{'_'.join(_mult_reasons)}_wt15m={wt1_15m:.1f}/{wt2_15m:.1f}_wt1h={_wt1_1h:.1f}/{_wt2_1h:.1f}_wt4h={_wt1_4h:.1f}/{_wt2_4h:.1f}_k15m={k_15m:.0f}_mult={_final_mult:.2f}"
+                logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} 15m WT cross + HTF fav={_htf_fav} mult={_final_mult:.2f}. Queuing reentry.")
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _wt_re_reason, 85.0)
+                if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                    logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_final_mult:.2f}")
+                return
+        # LEGACY STOCH CROSSOVER PATH — default OFF 2026-04-17 (user rule: WT only, not stoch)
+        if not getattr(config, 'REENTRY2_STOCH_CROSS_ENABLED', False): return
         invalidated_state = trade_manager.reentry_invalidated.get(position_key, {}); is_invalidated = invalidated_state.get('invalidated', False); stoch_crossover_3m = (is_long and k_3m > d_3m and k_3m_prev <= d_3m_prev) or (not is_long and k_3m <= d_3m and k_3m_prev > d_3m_prev); stoch_crossover_15m = (is_long and k_15m >= d_15m and k_15m_prev < d_15m_prev) or (not is_long and k_15m <= d_15m and k_15m_prev > d_15m_prev); dc_basis_crossover_3m = i.get('dc_basis_crossover_3m', False) if is_long else i.get('dc_basis_crossunder_3m', False)
         if is_long:
             price_below_dc_low_3m = dc_low_3m > 0 and current_price <= dc_low_3m; price_below_dc_low_15m = dc_low_15m > 0 and current_price <= dc_low_15m; k_3mm_crossover_above_dc_low_3m = stoch_crossover_3m and dc_low_3m > 0 and i.get('prev_price') <= dc_low_3m and current_price > dc_low_3m; k_15mm_crossover_above_dc_low_15m = stoch_crossover_15m and dc_low_15m > 0 and current_price > dc_low_15m
@@ -19168,12 +19221,11 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if result:
                         trade_manager.processing_keys.discard(position_key)
                         return f"{EvalStatus.ACTION_TAKEN}:HARD_MAX_LOSS_CAP"
-            # RULE #6: HEDGE CLEANUP — FIX 2026-04-03
-            # CLOSE hedge only when: hedge is IN GAIN (STRICT_NO_LOSS: never close at loss) AND
-            #   (a) main position recovered (gain >= 0%), OR
-            #   (b) WT on 3m+15m+1h all switched to MAIN direction (= hedge direction losing momentum)
-            # KEEP hedge when: hedge in gain AND WT still agrees with hedge on multiple TFs
-            # LOCKED: hedge at loss → cannot close, just log
+            # RULE #6: HEDGE CLEANUP — 2026-04-17 OVERHAUL
+            # User rule: hedges close on wt1_3m flip REGARDLESS of P/L (STRICT_NO_LOSS does not apply to hedges).
+            # On close, position_key is removed from tradeable_keys so nothing reopens it automatically.
+            # Reopen is handled by scan_and_hedge_losers when the loser is still in loss AND wt1_15m flips against again.
+            # Switches: HEDGE_EXIT_BYPASS_NOLOSS (default True), HEDGE_CLOSE_REMOVE_FROM_TRADEABLE (default True).
             if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
                 _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
                 if _r6_is_hedge:
@@ -19187,19 +19239,19 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_wt_wrong_15m = (is_long and _r6_wt1_15m < _r6_wt2_15m) or (not is_long and _r6_wt1_15m > _r6_wt2_15m)
                     _r6_wt_wrong_1h = (is_long and _r6_wt1_1h < _r6_wt2_1h) or (not is_long and _r6_wt1_1h > _r6_wt2_1h)
                     _r6_wt_all_wrong = _r6_wt_wrong_3m and _r6_wt_wrong_15m and _r6_wt_wrong_1h
-                    _r6_wt_with_hedge = not _r6_wt_wrong_3m and not _r6_wt_wrong_15m
                     _r6_main_pk = next((h.get('losing_position_key', '') for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') == position_key), None)
                     _r6_main_pos = trade_manager.positions.get(_r6_main_pk) if _r6_main_pk else None
                     _r6_main_gone = not _r6_main_pos or abs(safe_fetch_float(getattr(_r6_main_pos, 'positionAmt', 0), 0)) < 0.0001
                     _r6_main_gain = safe_fetch_float(getattr(_r6_main_pos, 'gain', 0), 0) if _r6_main_pos and not _r6_main_gone else None
                     _r6_main_recovered = _r6_main_gone or (_r6_main_gain is not None and _r6_main_gain >= 0.0)
                     _r6_main_gain_str = f"{_r6_main_gain:.2f}" if _r6_main_gain is not None else "gone"
-                    if _pp_gain <= 0.0:
-                        logger.debug(f"[HEDGE_CLEANUP_R6_LOCKED] {position_key}: hedge at loss {_pp_gain:.2f}% — STRICT_NO_LOSS, cannot close. main={_r6_main_gain_str}%")
-                    elif _r6_main_recovered or _r6_wt_all_wrong:
+                    _r6_bypass = bool(getattr(config, 'HEDGE_EXIT_BYPASS_NOLOSS', True))
+                    _r6_wt_flip_trigger = _r6_wt_wrong_3m if _r6_bypass else _r6_wt_all_wrong
+                    _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
+                    if _r6_should_close:
                         _r6_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                         if _r6_amt > pos_min_qty:
-                            _r6_close_reason = "main_recovered" if _r6_main_recovered else "all_tf_wt_against_hedge"
+                            _r6_close_reason = "main_recovered" if _r6_main_recovered else ("wt3m_flip_bypass_noloss" if _r6_bypass else "all_tf_wt_against_hedge")
                             _r6_reason = f"HEDGE_CLEANUP_R6_{_r6_close_reason}_gain={_pp_gain:.2f}_main={_r6_main_gain_str}_wt3m={_r6_wt1_3m:.1f}/{_r6_wt2_3m:.1f}_wt15m={_r6_wt1_15m:.1f}/{_r6_wt2_15m:.1f}"
                             logger.warning(f"[HEDGE_CLEANUP_R6] {position_key}: hedge gain={_pp_gain:.2f}% {_r6_close_reason} → CLOSING HEDGE")
                             _r6_side = "SELL" if is_long else "BUY"
@@ -19207,11 +19259,16 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _r6_res = await trade_manager.execute_now(position_key, account_key, symbol, _r6_amt, _r6_side, position_side, _r6_amt, current_price, _r6_uid, _r6_reason, True, "QUICK_CLOSE", is_hedge=True, hedge_for=position_key)
                             if _r6_res and "SUCCESS" in str(_r6_res):
                                 logger.warning(f"[HEDGE_CLEANUP_R6_OK] {position_key}: Hedge closed. {_r6_res}")
+                                if getattr(config, 'HEDGE_CLOSE_REMOVE_FROM_TRADEABLE', True):
+                                    try:
+                                        if hasattr(trade_manager, 'tradeable_keys') and position_key in trade_manager.tradeable_keys:
+                                            trade_manager.tradeable_keys.discard(position_key)
+                                            logger.warning(f"[HEDGE_CLEANUP_R6_TRADEABLE] {position_key}: removed from tradeable_keys after hedge close")
+                                    except Exception as _tk_e:
+                                        logger.debug(f"[HEDGE_CLEANUP_R6_TRADEABLE_ERR] {position_key}: {_tk_e}")
                                 return f"{EvalStatus.ACTION_TAKEN}:HEDGE_CLEANUP_R6"
-                    elif _r6_wt_with_hedge:
-                        logger.debug(f"[HEDGE_CLEANUP_R6_HOLD] {position_key}: hedge gain={_pp_gain:.2f}% WT with hedge (3m+15m). main={_r6_main_gain_str}% still losing. Keeping.")
                     else:
-                        logger.debug(f"[HEDGE_CLEANUP_R6_MIXED] {position_key}: hedge gain={_pp_gain:.2f}% WT mixed signals. Holding.")
+                        logger.debug(f"[HEDGE_CLEANUP_R6_HOLD] {position_key}: hedge gain={_pp_gain:.2f}% wt3m_wrong={_r6_wt_wrong_3m} main={_r6_main_gain_str}%. Holding.")
             # DELTA EXIT — speed decay / combined_wt_stoch (V2 sweep: Sharpe 0.575, WR 78.5%)
             # 2026-04-10 BUGFIX: was passing (symbol, i) WITHOUT position_state, so the
             # entire exit block in wt_dc_delta.py was SKIPPED (gated on `if position_state`).

@@ -78,7 +78,7 @@ class Config:
     # MANAGE_REDUCE=                          True
     # HEDGE_MODE:bool =                       False
 
-    SCALP_ACCOUNTS = ["inf"]  # 2026-04-16: inf = spike-fade momentum, needs fast scalp. ang/men hold long-term — wrong fit.
+    SCALP_ACCOUNTS = []  # 2026-04-16: inf = spike-fade momentum, needs fast scalp. ang/men hold long-term — wrong fit.
     # ───────────────────────────────────────────────────────────────────────────
     # SCALP_MODE — HTF Breakout Scalper V2 (2026-04-09)
     # Entry: price > dc_high_15m_prev AND dc_high_1h_prev (LONG), mirror SHORT.
@@ -274,6 +274,12 @@ class Config:
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
     HEDGE_ALL_POSITIONS: bool = False  # BC_988: NEW. If True, hedge ALL positions when wt15m against (not just losers). Test pending.
+    # === 2026-04-17 HEDGE OVERHAUL — user directive: hedges close on wt_3m flip no matter the P/L ===
+    HEDGE_EXIT_BYPASS_NOLOSS: bool = True  # Hedge closes on wt1_3m flip regardless of gain. Bypasses STRICT_NO_LOSS lock.
+    HEDGE_EXIT_WT_TF: str = "3m"  # Which TF's WT flip triggers hedge close ("3m" per user rule).
+    HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True  # On hedge close, drop position_key from tradeable_keys.
+    HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
+    HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
     RATIO_MULTIPLIER: float = 4.0  # BC_160: 4x = +2052% vs 3x = +1593% on WT exit/reentry backtest (12 sym, 2025). 60/40 → 90/10. DD 0.7%.
     # === V4 BACKTEST-PROVEN EXIT TUNING (2026-03-27) ===
     # Crypto sweep: vel-6/frac15 = Sharpe 0.457 vs baseline 0.404 (+13%), DD 9.67% vs 10.93%
@@ -403,7 +409,22 @@ class Config:
     V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT")  # Sharpe 1.88, 78 trades, 96.2% WR (best balance)
     V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT")  # Sharpe 1.74, 89 trades, 95.5% WR
     V8Q_SYMBOL_TIER_TOP6: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT", "SOLUSDT")  # Sharpe 1.78, 126 trades, 95.2% WR
-    REENTRY2_STOCH_CROSS_ENABLED: bool = True  # stoch crossover + DC level bounce
+    REENTRY2_STOCH_CROSS_ENABLED: bool = False  # 2026-04-17: user said stoch crossovers not used anymore — replaced by WT-15m-cross reentry below.
+    # === 2026-04-17 REENTRY OVERHAUL — user directive: WT crossovers, not stoch ===
+    # C: 15m WT cross after exit + HTF still favorable (1h or 4h wt1 > wt2 for long, vv short) → 1.5x reentry
+    REENTRY_WT15M_CROSS_ENABLED: bool = True  # Master switch for WT-15m-cross reentry path
+    REENTRY_WT15M_SIZE_MULT: float = 1.5  # Size multiplier when HTF favorable on WT-15m cross reentry
+    REENTRY_WT15M_K_MAX: float = 50.0  # k_15m must be below this (LONG) / above (100-val, SHORT) for low-K entry bonus
+    REENTRY_WT15M_HTF_FAVOR_REQUIRED: bool = True  # Require wt1_1h>wt2_1h OR wt1_4h>wt2_4h (LONG) — vv for SHORT
+    # D: k_15m-based partial reentry (high K = smaller size, not skipped)
+    REENTRY_K15M_PARTIAL_ENABLED: bool = True
+    REENTRY_K15M_PARTIAL_THRESHOLD: float = 80.0  # LONG: k_15m > 80 → partial. SHORT: k_15m < 20.
+    REENTRY_K15M_PARTIAL_MULT: float = 0.5  # Multiplier applied to reentry qty when K is in partial zone
+    # E: Post-consolidation boost reentry (easier gate than entry — 1 TF momentum confirm)
+    REENTRY_POST_CONSOL_ENABLED: bool = True
+    REENTRY_POST_CONSOL_MULT: float = 1.5  # Size boost after consolidation breakout
+    REENTRY_POST_CONSOL_ATR_THRESHOLD: float = 0.15  # bar_atr_rank below = compressed
+    REENTRY_POST_CONSOL_TFS_REQUIRED: int = 2  # How many TFs (of 1h/4h/D) must be compressed
     # === DELTA ENGINE — FINAL WINNERS (2026-04-09, 48 sym × 4yr, Phase 2 sweep) ===
     # Crypto ST WINNER: Sharpe 0.806, ATR Sharpe 0.857, WR 84.5%, 97.9% profitable
     # Entry: mtf=3, ez=2.5, ea=0.0, tz=1.5, htf=4h_D, cd=120, tw=3m-dominant

@@ -4153,10 +4153,24 @@ class HedgeEngine:
             _same_already = _same_pos and abs(safe_fetch_float(getattr(_same_pos, 'positionAmt', 0))) > 0
             if _same_already: continue
             # FIX 2026-04-07: ONE hedge only. Open same-symbol hedge. NO dual on top.
-            hedge_qty = qty * _oh_pct
+            # 2026-04-17 OVERHAUL: sizing switch HEDGE_SAME_SYMBOL_PCT (default 1.0 = 100% of loser qty).
+            # OBLIGATORY_HEDGE_PCT=0.0 kept disabled (caused cascade 2026-03-29); this replaces it for same-symbol only.
+            # BYPASS_TRADEABLE: mark hedge_key as tradeable_position_keys so execute_now's tradeable gate accepts it.
+            _hss_pct = float(getattr(self.config, 'HEDGE_SAME_SYMBOL_PCT', 1.0))
+            hedge_qty = qty * _hss_pct
             hedge_qty = await self.trade_manager.round_quantity_to_lot(symbol, hedge_qty)
             if hedge_qty > 0 and hedge_qty * mark_price >= 5.0:
-                logger.warning(f"🛡️[HEDGE_OPEN] {position_key}: pnl={pnl_pct:.2f}% wt15m against (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f}) — SAME-SYMBOL {_oh_pct*100:.0f}% hedge ({hedge_qty} {symbol})")
+                if bool(getattr(self.config, 'HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE', True)):
+                    try:
+                        if not hasattr(self.tracker_manager, 'tradeable_position_keys'):
+                            self.tracker_manager.tradeable_position_keys = {}
+                        if account_key not in self.tracker_manager.tradeable_position_keys:
+                            self.tracker_manager.tradeable_position_keys[account_key] = set()
+                        self.tracker_manager.tradeable_position_keys[account_key].add(_same_hedge_key)
+                        logger.info(f"[HEDGE_TRADEABLE_BYPASS] {_same_hedge_key}: added to tradeable_position_keys for same-symbol hedge open")
+                    except Exception as _tk_e:
+                        logger.debug(f"[HEDGE_TRADEABLE_BYPASS_ERR] {_same_hedge_key}: {_tk_e}")
+                logger.warning(f"🛡️[HEDGE_OPEN] {position_key}: pnl={pnl_pct:.2f}% wt15m against (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f}) — SAME-SYMBOL {_hss_pct*100:.0f}% hedge ({hedge_qty} {symbol})")
                 await self.execute_same_symbol_hedge(account_key, pos, symbol, losing_side, hedge_qty, mark_price)
             # KILLED 2026-04-07: Was opening BOTH same-symbol AND cross-symbol = double hedge. ONE only.
 

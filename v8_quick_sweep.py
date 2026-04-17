@@ -164,6 +164,29 @@ def build_param_grid_tradier_core():
     return grid
 
 
+def build_param_grid_hedge_reentry_overhaul():
+    """2026-04-17 user directive — sweep the hedge + reentry overhaul switches.
+    Hedge switches live-only (vectorized engine has no hedge simulation); reentry switches sweep.
+    Pairs with backtest_v8_engine hedge-capable simulation when available."""
+    grid = {
+        "HEDGE_EXIT_BYPASS_NOLOSS": [True, False],
+        "HEDGE_SAME_SYMBOL_PCT": [0.5, 1.0, 1.5],
+        "HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE": [True, False],
+        "REENTRY_WT15M_CROSS_ENABLED": [True, False],
+        "REENTRY_WT15M_SIZE_MULT": [1.0, 1.5, 2.0],
+        "REENTRY_WT15M_K_MAX": [30.0, 50.0, 70.0],
+        "REENTRY_WT15M_HTF_FAVOR_REQUIRED": [True, False],
+        "REENTRY_K15M_PARTIAL_ENABLED": [True, False],
+        "REENTRY_K15M_PARTIAL_THRESHOLD": [70.0, 80.0, 90.0],
+        "REENTRY_K15M_PARTIAL_MULT": [0.3, 0.5, 0.7],
+        "REENTRY_POST_CONSOL_ENABLED": [True, False],
+        "REENTRY_POST_CONSOL_MULT": [1.3, 1.5, 2.0],
+        "REENTRY_POST_CONSOL_TFS_REQUIRED": [1, 2, 3],
+        "REENTRY2_STOCH_CROSS_ENABLED": [False],
+    }
+    return grid
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -172,6 +195,7 @@ TIER_MAP = {
     "tradier_core": build_param_grid_tradier_core,
     "breakout_multi_lung": build_param_grid_breakout_multi_lung,
     "breakout_multi_lung_tradier": build_param_grid_breakout_multi_lung_tradier,
+    "hedge_reentry_overhaul": build_param_grid_hedge_reentry_overhaul,
 }
 
 
