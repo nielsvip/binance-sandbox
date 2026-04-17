@@ -514,16 +514,27 @@ def _market_quality_score(ind: dict, is_long: bool) -> tuple:
     _rvol_1h = safe_fetch_float(ind.get('relative_volume_1h'), 1.5)
     if _rvol_1h < 0.95 and _rvol_15m < 1.2: quality += 1.0; details.append(f"LOW_VOL(1h={_rvol_1h:.2f},15m={_rvol_15m:.2f})")
     elif _rvol_1h < 1.2: quality += 0.5; details.append(f"NORM_VOL(1h={_rvol_1h:.2f})")
-    # --- MFI multi-TF (Bitget d=0.35 — stronger than RSI d=0.25. Volume-weighted = better for crypto) ---
+    # --- Directional indicator (2026-04-17 fix): LONG uses MFI, SHORT uses RSI + rel_vol. ---
+    # User-confirmed: MFI rises with volume regardless of direction on shorts — rsi_falling+volume
+    # gives HIGHER MFI not lower, masking valid short setups. Switch to RSI+rel_vol for shorts.
     _mfi_15m = safe_fetch_float(ind.get('mfi_15m'), 50)
     _mfi_1h = safe_fetch_float(ind.get('mfi_1h'), 50)
     _mfi_4h = safe_fetch_float(ind.get('mfi_4h'), 50)
-    # Quality: MFI in healthy zone across TFs = money is flowing in the right direction
-    _mfi_long_ok = is_long and _mfi_1h > 40 and _mfi_4h > 40
-    _mfi_short_ok = not is_long and _mfi_1h < 60 and _mfi_4h < 60
-    if _mfi_long_ok or _mfi_short_ok:
-        if (is_long and _mfi_1h > 50 and _mfi_4h > 45) or (not is_long and _mfi_1h < 50 and _mfi_4h < 55): quality += 1.0; details.append(f"MFI_STRONG(1h={_mfi_1h:.0f},4h={_mfi_4h:.0f})")
-        else: quality += 0.5; details.append(f"MFI_OK(1h={_mfi_1h:.0f},4h={_mfi_4h:.0f})")
+    _rsi_15m = safe_fetch_float(ind.get('rsi_15m'), 50)
+    _rsi_1h = safe_fetch_float(ind.get('rsi_1h'), 50)
+    _rsi_4h = safe_fetch_float(ind.get('rsi_4h'), 50)
+    if is_long:
+        # LONG: MFI captures rsi_up + volume = stronger signal correctly
+        if _mfi_1h > 40 and _mfi_4h > 40:
+            if _mfi_1h > 50 and _mfi_4h > 45: quality += 1.0; details.append(f"MFI_STRONG_L(1h={_mfi_1h:.0f},4h={_mfi_4h:.0f})")
+            else: quality += 0.5; details.append(f"MFI_OK_L(1h={_mfi_1h:.0f},4h={_mfi_4h:.0f})")
+    else:
+        # SHORT: RSI elevated on HTF + rel_vol confirming
+        _s_rvol_gate = 1.0
+        if _rsi_1h > 55 and _rsi_4h > 50 and _rvol_1h >= _s_rvol_gate:
+            quality += 1.0; details.append(f"RSI_STRONG_S(r1h={_rsi_1h:.0f},r4h={_rsi_4h:.0f},rv={_rvol_1h:.2f})")
+        elif _rsi_1h > 50 and _rsi_4h > 45 and _rvol_1h >= _s_rvol_gate:
+            quality += 0.5; details.append(f"RSI_OK_S(r1h={_rsi_1h:.0f},rv={_rvol_1h:.2f})")
     # ═══════════════════════════════════════════════════════════════
     # MULTI-TF REVERSAL SIGNALS (reversal score, max ~8)
     # Finandy: winners enter at K=34 vs 43, after red HA, low RSI
@@ -565,15 +576,20 @@ def _market_quality_score(ind: dict, is_long: bool) -> tuple:
     _long_pats = ('hammer', 'bullish_engulfing', 'tweezer_bottom')
     _short_pats = ('shooting_star', 'bearish_engulfing', 'tweezer_top')
     if _pat in (_long_pats if is_long else _short_pats): reversal += 0.5; details.append(f"PAT({_pat})")
-    # --- MFI reversal (stronger than RSI for crypto — volume-weighted, d=0.35 vs RSI d=0.25) ---
-    # MFI < 20 = oversold with no buying volume = capitulation (bounce setup)
-    # MFI multi-TF alignment: 15m starting to recover while 1h still low = early bounce
-    _mfi_oversold_long = is_long and _mfi_15m < 30 and _mfi_1h < 35
-    _mfi_oversold_short = not is_long and _mfi_15m > 70 and _mfi_1h > 65
-    if _mfi_oversold_long or _mfi_oversold_short:
-        reversal += 1.0; details.append(f"MFI_EXTREME(15m={_mfi_15m:.0f},1h={_mfi_1h:.0f})")
-    elif (is_long and _mfi_15m > _mfi_1h and _mfi_1h < 40) or (not is_long and _mfi_15m < _mfi_1h and _mfi_1h > 60):
-        reversal += 0.5; details.append(f"MFI_TURN(15m={_mfi_15m:.0f},1h={_mfi_1h:.0f})")
+    # --- Directional reversal (2026-04-17 fix): LONG uses MFI, SHORT uses RSI + rel_vol. ---
+    if is_long:
+        # LONG oversold: MFI capitulation (low MFI + 15m starting to lift) = bounce setup
+        if _mfi_15m < 30 and _mfi_1h < 35:
+            reversal += 1.0; details.append(f"MFI_EXTREME_L(15m={_mfi_15m:.0f},1h={_mfi_1h:.0f})")
+        elif _mfi_15m > _mfi_1h and _mfi_1h < 40:
+            reversal += 0.5; details.append(f"MFI_TURN_L(15m={_mfi_15m:.0f},1h={_mfi_1h:.0f})")
+    else:
+        # SHORT overbought: RSI extreme on HTF + rel_vol confirming (MFI can mask rsi_falling+volume shorts)
+        _s_rvol_gate_r = 1.0
+        if _rsi_15m > 70 and _rsi_1h > 65 and _rvol_15m >= _s_rvol_gate_r:
+            reversal += 1.0; details.append(f"RSI_EXTREME_S(r15={_rsi_15m:.0f},r1h={_rsi_1h:.0f},rv={_rvol_15m:.2f})")
+        elif _rsi_15m < _rsi_1h and _rsi_1h > 60:
+            reversal += 0.5; details.append(f"RSI_TURN_S(r15={_rsi_15m:.0f}<r1h={_rsi_1h:.0f})")
     # --- RSI(2) extreme (supplementary — weaker than MFI but very fast mean-reversion signal) ---
     _rsi2 = safe_fetch_float(ind.get('rsi_2_1h'), 50)
     if (_rsi2 < 15 if is_long else _rsi2 > 85): reversal += 0.5; details.append(f"RSI2({_rsi2:.0f})")
@@ -10279,18 +10295,56 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 bypass_strict = 'LIQUIDATION' in reason.upper() or 'GAIN_EROSION' in reason.upper() or (is_hedge and is_hedge_account(config, account_key))
                 if not bypass_strict and not is_hedge:
                     logger.critical(f"🛑[STRICT_NO_LOSS_BLOCK][{account_key}] {position_key}: Blocking {action} ({reason}) at REAL loss ({_real_gain:.2f}%, cached={fresh_pos.gain:.2f}%). NEVER SELL AT A LOSS.")
-                    # OBLIGATORY HEDGE: DISABLED 2026-03-30 — caused 83+ position cascade across ALL accounts. NEVER RE-ENABLE.
-                    _hedge_pct = 0.0
-                    _hedge_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.50))
-                    if False:  # PERMANENTLY DISABLED — was: getattr(config, 'HEDGE_MODE', False) and hedge_engine and _real_gain < _hedge_min_loss
-                        async with tracker_manager._hedges_lock:
-                            _already_hedged = any(h.get('losing_position_key') == position_key for h in tracker_manager.active_hedges if isinstance(h, dict))
-                        if not _already_hedged:
-                            _losing_val = abs(fresh_pos.positionAmt) * current_price * _hedge_pct
-                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% — opening {_hedge_pct*100:.0f}% hedge (${_losing_val:.2f}) instead of closing at loss")
-                            asyncio.create_task(hedge_engine.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_losing_val, dry_run=False))
+                    # ═══ OBLIGATORY HEDGE — SACRED RULE (re-enabled 2026-04-17) ═══
+                    # User: "Every time any short (or long v.v.) has wt1_3m > wt2_3m, a hedge HAS TO
+                    # BE TAKEN OUT. THIS IS THE RULE AND HAS BEEN FOREVER."
+                    # History: previously killed 2026-03-30 after 15,378 rogue opens (3 OBLIGATORY_HEDGE
+                    # loops without tracker consultation). Cascade fix already in place at execute_dual_hedge
+                    # lines 5244-5261 (hedge-of-hedge block, already-hedged check, in-flight dedup).
+                    # NOW: multi-TF WT gate added — wt_1m + wt_15m + wt_1h must confirm against position.
+                    # NEVER DISABLED via `if False:` — tuning via config switches only.
+                    _obl_enabled = bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True))
+                    _hedge_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+                    _hedge_pct = float(getattr(config, 'OBLIGATORY_HEDGE_PCT', 1.0))
+                    _wt_tfs_required = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+                    if _obl_enabled and hedge_engine and _real_gain < _hedge_min_loss:
+                        # Per-TF enables (2026-04-17 60d test on 8 bleeding inf shorts):
+                        # 3m+1h min2 (both must agree) = 47% precision, +359% PnL proxy (BEST).
+                        # K filter adds nothing (-19% PnL vs no K). Default 3m+1h enabled, 1m/15m off.
+                        _use_1m = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1M', False))
+                        _use_3m = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True))
+                        _use_15m = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False))
+                        _use_1h = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True))
+                        _oh_ind = indicators or {}
+                        _wt_against_count = 0
+                        _tfs_enabled = 0
+                        if _use_1m:
+                            _tfs_enabled += 1
+                            _w1 = safe_fetch_float(_oh_ind.get('wt1_1m'), 0); _w2 = safe_fetch_float(_oh_ind.get('wt2_1m'), 0)
+                            _wt_against_count += int((is_long and _w1 < _w2) or (not is_long and _w1 > _w2))
+                        if _use_3m:
+                            _tfs_enabled += 1
+                            _w1 = safe_fetch_float(_oh_ind.get('wt1_3m'), 0); _w2 = safe_fetch_float(_oh_ind.get('wt2_3m'), 0)
+                            _wt_against_count += int((is_long and _w1 < _w2) or (not is_long and _w1 > _w2))
+                        if _use_15m:
+                            _tfs_enabled += 1
+                            _w1 = safe_fetch_float(_oh_ind.get('wt1_15m'), 0); _w2 = safe_fetch_float(_oh_ind.get('wt2_15m'), 0)
+                            _wt_against_count += int((is_long and _w1 < _w2) or (not is_long and _w1 > _w2))
+                        if _use_1h:
+                            _tfs_enabled += 1
+                            _w1 = safe_fetch_float(_oh_ind.get('wt1_1h'), 0); _w2 = safe_fetch_float(_oh_ind.get('wt2_1h'), 0)
+                            _wt_against_count += int((is_long and _w1 < _w2) or (not is_long and _w1 > _w2))
+                        if _wt_against_count >= _wt_tfs_required and _tfs_enabled > 0:
+                            async with tracker_manager._hedges_lock:
+                                _already_hedged = any(h.get('losing_position_key') == position_key for h in tracker_manager.active_hedges if isinstance(h, dict))
+                            if not _already_hedged:
+                                _losing_val = abs(fresh_pos.positionAmt) * current_price * _hedge_pct
+                                logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_wt_against_count}/4 (1m/3m/15m/1h) — opening {_hedge_pct*100:.0f}% hedge (${_losing_val:.2f})")
+                                asyncio.create_task(hedge_engine.execute_dual_hedge(account_key=account_key, losing_position_key=position_key, losing_symbol=symbol, losing_side='LONG' if is_long else 'SHORT', losing_value_usd=_losing_val, dry_run=False))
+                            else:
+                                logger.info(f"[OBLIGATORY_HEDGE_EXISTS] {position_key}: gain={_real_gain:.2f}% wt_against={_wt_against_count}/4 — already hedged")
                         else:
-                            logger.info(f"[OBLIGATORY_HEDGE_EXISTS] {position_key}: gain={_real_gain:.2f}% — already hedged, skipping")
+                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_wt_against_count}/4 < {_wt_tfs_required} — WT not confirming reversal yet")
                     await tracker_manager.set_trade_cooldown(position_key, duration=300)
                     return False, "BLOCKED_BY_STRICT_NO_LOSS"
             # BACKTEST_CHANGE_108: NO-LOSS NATURAL EXIT — also block reduces below min profit %

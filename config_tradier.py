@@ -575,7 +575,7 @@ class TradierConfig:
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0  # Exit LONG when MFI_1h > 70 (overbought = sell)
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0  # Exit SHORT when MFI_1h < 30 (oversold = cover)
     # === MARKET QUALITY + SBA + EOD (BACKTEST_CHANGE_146/147) — 11K-trade validated ===
-    MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_146: Market quality scorer for stock entries
+    MARKET_QUALITY_SCORE_ENABLED_TRADIER: bool = True   # ENABLED 2026-04-17: activates MFI-for-LONG / RSI+rel_vol-for-SHORT directional scorer + BB/ADX bonuses.
     EOD_RATIO_ENFORCE_TRADIER: bool = False  # BACKTEST_CHANGE_147: Scale down entries 30min before close, block at 5min
     SBA_ENABLED_TRADIER: bool = False  # BACKTEST_CHANGE_145: Strategic Bounce Averaging for stock hold positions ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     SBA_MIN_LOSS_PCT_TRADIER: float = -3.0  # Stocks are less volatile, wider threshold than crypto -2% ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416

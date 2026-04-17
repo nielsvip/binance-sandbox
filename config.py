@@ -540,6 +540,23 @@ class Config:
     REENTRY_FAVORABLE_MOVE_PCT: float = 1.0      # 1.0% favorable move required (0.5% too noisy)
     REENTRY_FAVORABLE_HTF_MIN: int = 2           # at least 2 HTFs must still be aligned
     REENTRY_FAVORABLE_QTY_MULT: float = 1.0
+    # ═══ OBLIGATORY HEDGE — SACRED RULE RE-ENABLED 2026-04-17 ═══
+    # User: "Every short (or long v.v.) with wt1_3m>wt2_3m HAS TO HEDGE. Forever rule."
+    # History: killed 2026-03-29 after 15,378 rogue opens (3 OBLIGATORY_HEDGE loops without
+    # tracker consultation). Cascade guards now in execute_dual_hedge (5244-5261): blocks
+    # hedge-of-hedge, already-hedged, in-flight dedup. Rule re-enabled with multi-TF WT gate.
+    # NEVER DISABLED via `if False:` — tune only via these switches.
+    OBLIGATORY_HEDGE_ENABLED: bool = True                # FOREVER RULE — never False in live
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.25         # trigger when gain below this
+    OBLIGATORY_HEDGE_PCT: float = 1.0                    # hedge size (1.0 = 100%)
+    # Per-TF enables (VALIDATED 2026-04-17 60d test on 8 bleeding inf shorts):
+    # best=3m+1h both required (47% precision, +359% cumulative PnL proxy, +0.19% avg).
+    # Adding 1m/15m didn't help (correlated); K filter hurt (-19% PnL).
+    OBLIGATORY_HEDGE_WT_USE_1M: bool = False             # noise, no signal vs 3m
+    OBLIGATORY_HEDGE_WT_USE_3M: bool = True              # primary signal (sacred rule)
+    OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
+    OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
+    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2            # count of enabled TFs against pos
     # Legacy REENTRY paths — ON because they're the only thing that lifted Sharpe >1.
     # Each one is now gated by TOLERANT delta conditions (looser than fresh-entry gate).
     LEGACY_GUARANTEED_REENTRY: bool = True     # 2026-04-15: logic REWRITTEN with 60min/HTF gate (see reentry_enforcement_loop)

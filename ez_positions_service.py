@@ -8943,10 +8943,10 @@ class PositionService:
                 if not k.startswith(account_prefix): continue
                 amt = abs(float(getattr(v, 'positionAmt', 0.0)))
                 if amt > 0:
+                    # 2026-04-17 USER RULE: "Open positions are tradeable_keys by default."
+                    # Symbols.json guard REMOVED — any position with amt>0 MUST be tradeable so it
+                    # can be closed / hedged. Previously skipped positions would bleed unhedged.
                     _sym = getattr(v, 'symbol', '')
-                    if _master_symbols and _sym and _sym not in _master_symbols:
-                        self.logger.warning(f"[SYMBOL_GUARD] {k}: {_sym} not in symbols.json — skipping orphaned position")
-                        continue
                     if k not in valid_keys_for_this_account: stats[account_key]['pos'] += 1
                     valid_keys_for_this_account.add(k)  # Always tradeable (must be closeable)
                     _is_hedge_key = k in global_known_hedges_history or k in current_active_hedges
