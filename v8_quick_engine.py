@@ -56,7 +56,7 @@ class QuickConfig:
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
-    CT_WT_VELOCITY_1H_MIN: float = 2.0   # 2026-04-17 Chapter-B sweep winner (+0.05 Sharpe). Was 0.0.
+    CT_WT_VELOCITY_1H_MIN: float = 6.0   # 2026-04-17 coord descent: Sharpe 2.25 / 500 trades / 92.8% WR.
     CT_DC_CROSSOVER_SKIP_ENABLED: bool = True
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False
     CT_CHOP_4H_GATE_ENABLED: bool = False
@@ -68,7 +68,7 @@ class QuickConfig:
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
-    REENTRY_RALLY_K15M_MAX: float = 60.0  # 2026-04-17 Chapter-C winner (+0.38 Sharpe on 48-sym). Was 100 (off).
+    REENTRY_RALLY_K15M_MAX: float = 40.0  # 2026-04-17 final coord descent: 40 sweet spot (Sharpe 1.84 @ 725 trades vs 50=+1.74).
     REENTRY_RALLY_HTF_MIN: int = 1
     # Symmetric exit-would-fire gate — when True, strip entry bars that are simultaneously exit bars.
     ENTRY_SYMGATE_ENABLED: bool = True    # 2026-04-17 Chapter-C winner on 48-sym.
@@ -87,11 +87,11 @@ class QuickConfig:
     # dc_moment_proxy = sum of dc_position across 1h/4h/D, scaled to 0-100.
     # winner_protect = block exit_sig when gain in [0, win_protect_gain_pct) AND all 3 HTF agree.
     RANK_CONVICTION_ENABLED: bool = True      # 2026-04-17 Chapter-E winner on 48-sym.
-    RANK_CONVICTION_MIN: int = 2              # min HTF-agreement count (out of 3) to allow entry
+    RANK_CONVICTION_MIN: int = 3              # 2026-04-17 coord descent: 3 beats 1/2 by +0.11 Sharpe.
     DC_MOMENT_ENABLED: bool = True           # 2026-04-17 Chapter-E winner on 48-sym.
     DC_MOMENT_OPPOSE_THRESHOLD: float = 40.0  # dc_moment_proxy delta against side = veto
     WINNER_PROTECT_ENABLED: bool = True      # 2026-04-17 Chapter-E winner on 48-sym.
-    WINNER_PROTECT_GAIN_PCT: float = 2.0      # Block exits while gain ∈ [0, this)
+    WINNER_PROTECT_GAIN_PCT: float = 1.0      # 2026-04-17 coord descent: 1.0 beats 1.5/2.0 (+0.07 Sharpe).
     K_ZONE_ENTRY_ENABLED: bool = False
     K_ZONE_LONG_THRESHOLD: int = 35
     K_ZONE_SHORT_THRESHOLD: int = 65

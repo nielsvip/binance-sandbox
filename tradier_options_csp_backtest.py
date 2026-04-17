@@ -648,23 +648,37 @@ def main():
         total_bars += len(bars)
         date_ranges.append((bars[0].get("timestamp", "")[:10], bars[-1].get("timestamp", "")[:10]))
         per_sym_data = {}
-        if args.strategy in ("csp", "both"):
+        if args.strategy in ("csp", "both", "all"):
             csp_res = simulate_csp_strategy(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup, args.loss_trigger, args.hard_cut, require_technical=not args.no_technical, vol_window=args.vol_window, static_iv=args.static_iv, strike_breach_pct=args.strike_breach_pct, gap_from_entry_pct=args.gap_from_entry_pct)
             csp_summary = summarize(csp_res.get("trades", []), "SELL_PUT_CSP", sym)
             csp_summaries.append(csp_summary)
             per_sym_data["csp"] = csp_summary
             per_sym_data["csp_trades"] = csp_res.get("trades", [])[:5]
-        if args.strategy in ("spread", "both"):
+        if args.strategy in ("spread", "both", "all"):
             spread_res = simulate_bull_put_spread(sym, bars, args.spread_short_delta, args.dte, args.spread_width, args.risk_free, args.iv_markup, args.profit_target, args.max_hold_days, args.strike_breach_pct, args.gap_from_entry_pct, args.iv_rank_min, vol_window=args.vol_window, static_iv=args.static_iv, account_value=args.account_value, max_pos_pct=args.max_pos_pct)
             spread_summary = summarize(spread_res.get("trades", []), "BULL_PUT_SPREAD", sym)
             spread_summaries.append(spread_summary)
             per_sym_data["spread"] = spread_summary
             per_sym_data["spread_trades"] = spread_res.get("trades", [])[:5]
+            per_sym_data["spread_all_trades"] = spread_res.get("trades", [])
         call_res = simulate_buy_call_strategy(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup)
         call_summary = summarize(call_res.get("trades", []), "BUY_CALL", sym)
         call_summaries.append(call_summary)
         per_sym_data["buy_call"] = call_summary
         per_sym_data["buy_call_trades"] = call_res.get("trades", [])[:5]
+        if args.strategy == "all":
+            stock_res = simulate_buy_stock_strategy(sym, bars, hold_days=args.dte)
+            stock_summary = summarize(stock_res.get("trades", []), "BUY_STOCK", sym)
+            stock_summaries.append(stock_summary)
+            per_sym_data["buy_stock"] = stock_summary
+            per_sym_data["buy_stock_trades"] = stock_res.get("trades", [])[:5]
+            per_sym_data["buy_stock_all_trades"] = stock_res.get("trades", [])
+            spc_res = simulate_stock_plus_csp(sym, bars, args.target_delta, args.dte, args.risk_free, args.iv_markup, args.profit_target, args.max_hold_days, args.strike_breach_pct, args.gap_from_entry_pct, args.iv_rank_min, vol_window=args.vol_window, static_iv=args.static_iv)
+            spc_summary = summarize(spc_res.get("trades", []), "STOCK_PLUS_CSP", sym)
+            stock_csp_summaries.append(spc_summary)
+            per_sym_data["stock_plus_csp"] = spc_summary
+            per_sym_data["stock_plus_csp_trades"] = spc_res.get("trades", [])[:5]
+            per_sym_data["stock_plus_csp_all_trades"] = spc_res.get("trades", [])
         results["per_symbol"][sym] = per_sym_data
     # Per-symbol aggregation (CLAUDE.md mandate — not pool)
     def agg(summaries, key):
@@ -695,6 +709,20 @@ def main():
     results["summary"]["BUY_CALL_per_symbol_win_rate"] = agg(call_summaries, "win_rate_pct")
     results["summary"]["BUY_CALL_per_symbol_max_dd_pct"] = agg(call_summaries, "max_dd_pct_of_capital")
     results["summary"]["BUY_CALL_total_trades"] = total_trades(call_summaries)
+    if stock_summaries:
+        results["summary"]["BUY_STOCK_per_symbol_sharpe"] = agg(stock_summaries, "sharpe_per_trade")
+        results["summary"]["BUY_STOCK_per_symbol_mean_ret"] = agg(stock_summaries, "mean_ret")
+        results["summary"]["BUY_STOCK_per_symbol_win_rate"] = agg(stock_summaries, "win_rate_pct")
+        results["summary"]["BUY_STOCK_per_symbol_max_dd_pct"] = agg(stock_summaries, "max_dd_pct_of_capital")
+        results["summary"]["BUY_STOCK_per_symbol_total_pnl"] = agg(stock_summaries, "total_pnl")
+        results["summary"]["BUY_STOCK_total_trades"] = total_trades(stock_summaries)
+    if stock_csp_summaries:
+        results["summary"]["STOCK_CSP_per_symbol_sharpe"] = agg(stock_csp_summaries, "sharpe_per_trade")
+        results["summary"]["STOCK_CSP_per_symbol_mean_ret"] = agg(stock_csp_summaries, "mean_ret")
+        results["summary"]["STOCK_CSP_per_symbol_win_rate"] = agg(stock_csp_summaries, "win_rate_pct")
+        results["summary"]["STOCK_CSP_per_symbol_max_dd_pct"] = agg(stock_csp_summaries, "max_dd_pct_of_capital")
+        results["summary"]["STOCK_CSP_per_symbol_total_pnl"] = agg(stock_csp_summaries, "total_pnl")
+        results["summary"]["STOCK_CSP_total_trades"] = total_trades(stock_csp_summaries)
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
@@ -723,6 +751,20 @@ def main():
         print(row("Total $ PnL", results["summary"]["SPREAD_per_symbol_total_pnl"]))
         print(row("Max DD % of max-loss", results["summary"]["SPREAD_per_symbol_max_dd_pct"]))
         print(f"  Total trades across all symbols: {results['summary']['SPREAD_total_trades']}")
+    if stock_summaries:
+        print(f"\n[BUY_STOCK hold={args.dte}d, 100 shares]")
+        print(row("Sharpe (per-trade)", results["summary"]["BUY_STOCK_per_symbol_sharpe"]))
+        print(row("Mean return/trade", results["summary"]["BUY_STOCK_per_symbol_mean_ret"]))
+        print(row("Win rate %", results["summary"]["BUY_STOCK_per_symbol_win_rate"]))
+        print(row("Total $ PnL", results["summary"]["BUY_STOCK_per_symbol_total_pnl"]))
+        print(row("Max DD % of capital", results["summary"]["BUY_STOCK_per_symbol_max_dd_pct"]))
+    if stock_csp_summaries:
+        print(f"\n[STOCK+CSP 100 shares + 1 short put, IVR>={args.iv_rank_min} PT={args.profit_target:.0%}]")
+        print(row("Sharpe (per-trade)", results["summary"]["STOCK_CSP_per_symbol_sharpe"]))
+        print(row("Mean return/trade", results["summary"]["STOCK_CSP_per_symbol_mean_ret"]))
+        print(row("Win rate %", results["summary"]["STOCK_CSP_per_symbol_win_rate"]))
+        print(row("Total $ PnL", results["summary"]["STOCK_CSP_per_symbol_total_pnl"]))
+        print(row("Max DD % of capital", results["summary"]["STOCK_CSP_per_symbol_max_dd_pct"]))
     print("\n[BUY_CALL baseline]")
     print(row("Sharpe (per-trade)", results["summary"]["BUY_CALL_per_symbol_sharpe"]))
     print(row("Mean return/trade", results["summary"]["BUY_CALL_per_symbol_mean_ret"]))

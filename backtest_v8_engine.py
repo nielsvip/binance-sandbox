@@ -1976,6 +1976,28 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             pos.was_reduced = True
             pos.last_reduction_time = _sim_now_t(timezone.utc)
             pos.last_reduction_price = px
+            # 2026-04-17 REENTRY SYNC FIX — mirror ez_manage.py:13588-13633 live reduce path.
+            # Live populates trade_manager.reduced_positions + reentry_data inside reduce_position()
+            # so evaluate_reentry_2 can iterate. _v8_execute_trade_action bypasses that, leaving
+            # the dicts empty — all REENTRY2_*/WT15M/K15M/POST_CONSOL switches ran as dead code
+            # (verified 2026-04-17 sweep: closes=380 identical across every flip).
+            try:
+                _now_dt = _sim_now_t(timezone.utc)
+                _tm = manager  # trade_manager in this scope
+                if hasattr(_tm, 'reduced_positions') and _tm.reduced_positions is not None:
+                    _tm.reduced_positions[position_key] = _now_dt
+                if hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None and not (is_full_close or new_amt < 0.0001):
+                    _max_q = float(getattr(pos, 'max_quantity', 0) or old_amt or 0)
+                    _tm.reentry_data[position_key] = {
+                        "reentry_level": float(px),
+                        "reentry_amount": _max_q,
+                        "timestamp": _now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if hasattr(_now_dt, 'strftime') else str(_now_dt),
+                        "reason": f"REDUCED_{reason[:60]}",
+                    }
+                elif hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None and (is_full_close or new_amt < 0.0001):
+                    _tm.reentry_data.pop(position_key, None)  # full close = no reentry
+            except Exception as _resync_e:
+                v8_logger.debug(f"[V8_REENTRY_SYNC_ERR] {position_key}: {_resync_e}")
         elif not is_reduce:
             if pos:
                 old_amt = abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0)))

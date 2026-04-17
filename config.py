@@ -252,7 +252,7 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 60.0    # 2026-04-17 Chapter-C 48-sym sweep: 60 wins bundle (+0.38 Sharpe, WR 79→88%). Was 100 (off).
+    REENTRY_RALLY_K15M_MAX: float = 40.0    # 2026-04-17 final coord descent: 40 is sweet spot (+1.84 vs 50=+1.74 on 48-sym). Was 60.
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
     REENTRY_SYMGATE_ENABLED: bool = True    # 2026-04-17 Chapter-C winner on 48-sym (+0.38 Sharpe). Was False after noisy 10-sym test.
@@ -665,7 +665,7 @@ class Config:
     # Technical exits (WT_CROSS_EXIT, DC_LOW4_3M, DELTA_EXIT, HEDGE paths, STRUCTURAL_RANGE_SHIFT) still fire.
     WINNER_PROTECT_ENABLED: bool = True
     RP_PROTECT_THRESHOLD: float = 70.0  # ranking_points_global matches direction AND >= this → protect
-    RP_PROTECT_MIN_GAIN: float = 2.0    # below this gain, skip poll-based soft exits (not technical exits)
+    RP_PROTECT_MIN_GAIN: float = 1.0    # 2026-04-17 coord descent: 1.0 beats 1.5/2.0 (+1.618 vs 1.547). Was 2.0.
     # --- Feature 4: ST vs LT outperformer split in ez_rankings ---
     # Populates top_100_long_term (currently unused) and keeps top_longs/top_shorts biased to ST momentum.
     # Ratio_rebalance_loop + RZ augment priority can then prefer LT winners for augments, ST for fresh opens.
@@ -1036,7 +1036,7 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-17 Chapter-B sweep: 2.0 lifts Sharpe +0.05 (0.79→0.85) on 48-sym. Was 0.0.
+    CT_WT_VELOCITY_1H_MIN: float = 6.0  # 2026-04-17 coord descent: monotonic; 6.0 gives Sharpe 2.25 / 500 trades / 92.8% WR / 1.35% avg. Was 2.0.
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
