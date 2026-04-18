@@ -13034,15 +13034,23 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if not isinstance(rd, dict): continue
                 _re_amt = safe_fetch_float(rd.get('reentry_amount', 0), 0.0)
                 if _re_amt <= 0: continue
-                if pk not in trade_manager.pending_reentries or trade_manager.pending_reentries[pk].get('status') in ('filled',):
+                _rd_ts = str(rd.get('timestamp', ''))
+                _existing_pr = trade_manager.pending_reentries.get(pk)
+                _existing_ts = _existing_pr.get('_rd_ts', '') if _existing_pr else ''
+                _existing_status = _existing_pr.get('status', '') if _existing_pr else ''
+                _ts_changed = bool(_rd_ts and _rd_ts != _existing_ts)
+                if pk not in trade_manager.pending_reentries or _existing_status in ('filled',) or _ts_changed:
+                    if _ts_changed and _existing_pr:
+                        logger.critical(f"🔄 [REENTRY_RESET] {pk}: reentry_data timestamp changed ({_existing_ts!r} → {_rd_ts!r}) status={_existing_status} — resetting to pending. Position was killed and re-closed.")
                     trade_manager.pending_reentries[pk] = {
                         'exit_price': safe_fetch_float(rd.get('reentry_level', rd.get('exit_price', 0)), 0.0),
-                        'exit_time': str(rd.get('timestamp', '')),
+                        'exit_time': _rd_ts,
                         'exit_reason': str(rd.get('reason', '')),
                         'original_qty': _re_amt,
                         'attempts': 0,
                         'stoch_wait_cycles': 0,
                         'status': 'pending',
+                        '_rd_ts': _rd_ts,
                     }
             for position_key, data in list(trade_manager.pending_reentries.items()):
                 if data.get('status') in ('filled', 'queued'): continue
@@ -13053,14 +13061,6 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 is_long = pos_side == 'LONG'
                 indicators = await _ez_ii(trade_manager, symbol)
                 if not indicators: continue
-                # === NEW GUARDS (MIN_GAP + SYMGATE + RALLY_K15M) — fail OPEN ===
-                if _epq_min_gap_blocked(data.get('exit_time', ''), config, position_key):
-                    continue
-                if _epq_reentry_symgate_blocked(data_manager, config, symbol, indicators, is_long, position_key):
-                    continue
-                if _epq_rally_k15m_blocked(indicators, is_long, config, position_key):
-                    continue
-                # === END NEW GUARDS ===
                 k_3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
                 d_3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
                 k_1m = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50.0)
@@ -13070,6 +13070,16 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
                 if exit_price <= 0: continue
                 _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                # === GUARDS — BYPASSED entirely when price already crossed exit level ===
+                # T1 (price_crossed) = MANDATORY reentry. Guards may only run when price has NOT yet crossed.
+                if not _price_crossed:
+                    if _epq_min_gap_blocked(data.get('exit_time', ''), config, position_key):
+                        continue
+                    if _epq_reentry_symgate_blocked(data_manager, config, symbol, indicators, is_long, position_key):
+                        continue
+                    if _epq_rally_k15m_blocked(indicators, is_long, config, position_key):
+                        continue
+                # === END GUARDS ===
                 _elapsed_s = 999999.0
                 _exit_ts_raw = data.get('exit_time', '')
                 if _exit_ts_raw:
@@ -13099,12 +13109,12 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 _wt1_15m_prev_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_gr), _wt1_15m_gr)
                 _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
                 _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
-                # TIER 1: Price crosses exit level → 50%
+                # TIER 1: Price crosses exit level → MANDATORY 100% reentry (no gates can block this)
                 if _price_crossed:
                     if position_key not in _price_crossed_since:
                         _price_crossed_since[position_key] = time.time()
-                        logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s — T1 TRIGGER")
-                    should_reenter = True; _qty_mult = 0.5; _reason_tag = "T1_PRICE_CROSS_50pct"
+                        logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s — T1 MANDATORY REENTRY")
+                    should_reenter = True; _qty_mult = 1.0; _reason_tag = "T1_PRICE_CROSS_MANDATORY"
                 else:
                     _price_crossed_since.pop(position_key, None)
                 # TIER 2: All TF WT + k values < 30 (long) or > 70 (short) AND wt1_3m rising → 150%
@@ -13122,14 +13132,18 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if _wt15m_cross_gr:
                     should_reenter = True; _qty_mult = 1.0; _reason_tag = f"T3_WT15M_CROSS_100pct_wt15m={_wt1_15m_gr:.1f}/prev={_wt1_15m_prev_gr:.1f}"
                     logger.warning(f"🟢 [REENTRY_T3_WT15M_CROSS] {position_key}: wt1_15m crossed wt2_15m ({'bullish' if is_long else 'bearish'}) prev={_wt1_15m_prev_gr:.1f} now={_wt1_15m_gr:.1f} — 100% reentry")
-                if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
+                if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True) and not _price_crossed:
                     should_reenter = False
-                    logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")
+                    logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config (T1 price_crossed bypasses this)")
                 if should_reenter:
                     _gr_ok, _gr_reason = _ez_check_reentry_delta_tolerant(indicators, is_long, trade_manager, symbol)
                     if not _gr_ok:
-                        should_reenter = False
-                        logger.info(f"[GUARANTEED_REENTRY_DELTA_BLOCK] {position_key}: {_gr_reason}")
+                        if _price_crossed:
+                            _qty_mult = max(0.5, _qty_mult * 0.5)
+                            logger.warning(f"[REENTRY_DELTA_REDUCE] {position_key}: Delta unfavorable ({_gr_reason}) but T1 price_crossed — REENTRY IS MANDATORY, halving qty to {_qty_mult:.2f}x")
+                        else:
+                            should_reenter = False
+                            logger.info(f"[GUARANTEED_REENTRY_DELTA_BLOCK] {position_key}: {_gr_reason}")
                 if should_reenter:
                     data['attempts'] = data.get('attempts', 0) + 1
                     reason = f"GUARANTEED_REENTRY_{_reason_tag}_k3m{k_3m:.0f}_exit{exit_price:.4f}_px{current_price:.4f}_mult{_qty_mult:.2f}_elapsed{_elapsed_s:.0f}s_attempt{data['attempts']}"

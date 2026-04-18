@@ -189,6 +189,14 @@ class QuickConfig:
     STOP_LOSS_ENABLED: bool = False
     STOP_LOSS_PCT: float = 2.0  # Exit at this loss %
 
+    # ===== 2026-04-18 INDICATOR-AUDIT EXPERIMENTAL SWITCHES (all default OFF) =====
+    # R-G2: MTF WT velocity alignment gate — wt_velocity_up_count/down_count in NPZ (5-TF count)
+    WT_MTF_VEL_GATE_ENABLED: bool = False
+    WT_MTF_VEL_MIN: int = 3          # how many of 5 TFs must show aligned velocity
+    # RE-1: cross freshness gate — only reenter when a WT cross fired < N bars ago on any LTF
+    REENTRY_CROSS_FRESHNESS_ENABLED: bool = False
+    REENTRY_CROSS_MAX_BARS_AGO: int = 5   # bars; fresh cross required on 3m, 15m, or 1h
+
     # ===== D4 BREAKOUT MULTI-LUNG (2026-04-16, default OFF, awaiting Sharpe>2 sweep proof) =====
     # Origin: ez_breakout_agent.py (70 KB orphaned). See DIAMOND_DIFF_2026-04-16.md verdict D4=EXTRACT.
     # NEVER flip ENABLED=True in live config before 48-crypto × 4yr + 128-tradier × 2yr sweep > 2 Sharpe.
@@ -1013,7 +1021,25 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & (_dcm_proxy >= (50.0 - _dcm_thr))
         else:
             extra_ok = extra_ok & (_dcm_proxy <= (50.0 + _dcm_thr))
-    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
+    # R-G2: MTF WT velocity alignment gate (2026-04-18 indicator audit)
+    mtf_vel_ok = np.ones(n, dtype=bool)
+    if bool(getattr(cfg, 'WT_MTF_VEL_GATE_ENABLED', False)):
+        _vel_min_tfs = int(getattr(cfg, 'WT_MTF_VEL_MIN', 3))
+        if is_long:
+            _vel_cnt = _safe(npz, 'wt_velocity_up_count', n, 0).astype(np.int8)
+            mtf_vel_ok = _vel_cnt >= _vel_min_tfs
+        else:
+            _vel_cnt = _safe(npz, 'wt_velocity_down_count', n, 0).astype(np.int8)
+            mtf_vel_ok = _vel_cnt >= _vel_min_tfs
+    # RE-1: cross freshness gate (2026-04-18 indicator audit)
+    cross_fresh_ok = np.ones(n, dtype=bool)
+    if bool(getattr(cfg, 'REENTRY_CROSS_FRESHNESS_ENABLED', False)):
+        _max_bars = int(getattr(cfg, 'REENTRY_CROSS_MAX_BARS_AGO', 5))
+        _b3 = _safe(npz, 'wt_cross_bars_ago_3m', n, 999.0)
+        _b15 = _safe(npz, 'wt_cross_bars_ago_15m', n, 999.0)
+        _b1h = _safe(npz, 'wt_cross_bars_ago_1h', n, 999.0)
+        cross_fresh_ok = (_b3 < _max_bars) | (_b15 < _max_bars) | (_b1h < _max_bars)
+    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok
     # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:

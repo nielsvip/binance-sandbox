@@ -221,6 +221,28 @@ def build_param_grid_reentry_sharpe_push_wide():
     return grid
 
 
+def build_param_grid_indicator_audit():
+    """2026-04-18 indicator-audit experimental switches — A/B test each independently.
+    Fields in NPZ confirmed: wt_velocity_up_count, wt_velocity_down_count, wt_cross_bars_ago_*.
+    Baseline: all switches OFF. Each row tests one switch on its own."""
+    grid = {
+        # Keep proven v3_core baseline values fixed
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [10],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.6],
+        "WT_EXIT_MIN_TFS": [3],
+        # R-G2: MTF WT velocity alignment gate
+        "WT_MTF_VEL_GATE_ENABLED": [False, True],
+        "WT_MTF_VEL_MIN": [2, 3, 4],
+        # RE-1: cross freshness gate
+        "REENTRY_CROSS_FRESHNESS_ENABLED": [False, True],
+        "REENTRY_CROSS_MAX_BARS_AGO": [3, 5, 8, 12],
+    }
+    return grid
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -232,6 +254,7 @@ TIER_MAP = {
     "hedge_reentry_overhaul": build_param_grid_hedge_reentry_overhaul,
     "reentry_sharpe_push": build_param_grid_reentry_sharpe_push,
     "reentry_sharpe_push_wide": build_param_grid_reentry_sharpe_push_wide,
+    "indicator_audit": build_param_grid_indicator_audit,
 }
 
 
