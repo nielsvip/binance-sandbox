@@ -486,15 +486,23 @@ class QuickConfig:
         self.REENTRY_SYMGATE_ENABLED = False
         # D4: default tier STOCK for tradier mode when enabled
         self.BREAKOUT_MULTI_LUNG_TIER = "STOCK"
-        # 2026-04-17: RESET crypto-winner class defaults for stocks (crypto got VEL=6, RALLY=40, RANK=3, WP=1).
-        # Stocks need looser values — they trend more slowly and have different signal densities.
-        self.CT_WT_VELOCITY_1H_MIN = 2.0   # stocks relaxed from crypto's 6.0
-        self.REENTRY_RALLY_K15M_MAX = 100.0  # stocks disabled (let entry zones gate instead)
-        self.RANK_CONVICTION_MIN = 2       # stocks need 2-of-3 HTF agreement (crypto=3)
-        self.WINNER_PROTECT_GAIN_PCT = 2.0 # stocks gain slower, allow bigger winner-protect band
-        self.RANK_CONVICTION_ENABLED = False  # disable by default, let chapters flip on
-        self.DC_MOMENT_ENABLED = False
-        self.WINNER_PROTECT_ENABLED = False
+        # 2026-04-18: STOCKS BASELINE = S_H + S_E winner (Sharpe 0.95-0.99 on 104-sym matrix).
+        # This is the PRODUCTION config — every sector sweep delta should be measured from HERE,
+        # not from the bare-bones reset below. Sweeps can still flip these off to test impact.
+        self.CT_WT_VELOCITY_1H_MIN = 2.0    # stocks tuned (crypto 6.0 too tight)
+        self.REENTRY_RALLY_K15M_MAX = 100.0 # disabled — stocks use ENTRY_ZONE instead
+        # S_H (HTF entry zones — the breakthrough for stocks):
+        self.ENTRY_ZONE_K_TF = "1h"         # 1h K-zone filters better than 15m for stocks
+        self.ENTRY_ZONE_LONG = 30.0         # LONG requires k_1h < 30 (deeply oversold)
+        self.ENTRY_ZONE_SHORT = 70.0        # SHORT requires k_1h > 70
+        self.HTF_MIN_ALIGNED = 2
+        # S_E (conviction scoring — HTF-proxied in backtest):
+        self.RANK_CONVICTION_ENABLED = True
+        self.RANK_CONVICTION_MIN = 3        # all 3 of 1h/4h/D agree
+        self.DC_MOMENT_ENABLED = True
+        self.DC_MOMENT_OPPOSE_THRESHOLD = 40.0
+        self.WINNER_PROTECT_ENABLED = True
+        self.WINNER_PROTECT_GAIN_PCT = 1.5
 
 
 def load_npz(mode, symbols, start_date, npz_dir=""):

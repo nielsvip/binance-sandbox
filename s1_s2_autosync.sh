@@ -1,47 +1,78 @@
 #!/usr/bin/env bash
-# s1_s2_autosync.sh — Keeps S1 + S2 sandboxes bit-identical to MacBook.
-# Probes via SSH md5sum (Hetzner filters ICMP — ping-based probing gives false "down").
-# On drift, rsyncs the 6 critical files (CLAUDE.md rules) + deletes rate_cascade.py remnant.
+# s1_s2_autosync.sh — MacBook → S1 + S2 one-way script sync, checksum-based.
 #
-# Runs forever under launchd (com.niels.s1-s2-autosync, KeepAlive=true).
-# Idempotent — safe to run multiple instances (pkill before start).
+# User directive 2026-04-18: "ANY CHANGE HAPPENS ON ALL 3 MACHINES SIMULTANEOUSLY.
+# Sandboxes run ACTUAL scripts but change switches in config. ONLY config files differ."
+#
+# MacBook `/Users/niels/Documents/binance` is the AUTHORITY for every script.
+# S1 `s1-int:/home/niels/binance-sandbox/` and S2 `s2-int:/home/niels/binance-sandbox/`
+# must be bit-identical for every ez_*, tradier_*, wt_*, v8_*, backtest_v8_*, utils.py,
+# symbols.json, breakout_multi_lung.py.
+#
+# EXCLUDED from sync (divergent by design):
+#   - config.py, config_tradier.py  (the only files allowed to differ)
+#   - *.pyc, __pycache__             (compiled junk)
+#   - any .log / .json / .csv data files (not in the script globs anyway)
+#
+# Push semantics:
+#   rsync --checksum  → MacBook version wins on any md5 mismatch (regardless of mtime,
+#                       so a stray server-side edit can't block the push by being newer).
+#   rsync --existing  → don't CREATE new files on sandbox (prevents re-adding archived
+#                       MacBook files per CLAUDE.md rule). New MacBook scripts need a
+#                       one-time manual push to seed.
+#
+# Runs under launchd (com.niels.s1-s2-autosync, KeepAlive=true, 60s tick).
 # Logs: /tmp/s1_s2_autosync.log. Kill via: pkill -f s1_s2_autosync
 set -u
 
 BASE=/Users/niels/Documents/binance
 LOG=/tmp/s1_s2_autosync.log
-FILES=(ez_positions_quick.py config.py ez_manage.py tradier_manage.py config_tradier.py ez_positions_service.py)
-SSH_OPTS="-o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+# ControlMaster=no + ControlPath=none → bypass interactive-session sockets that launchd can't reach.
+SSH_OPTS="-o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=no -o ControlPath=none"
+DEST_PATH=/home/niels/binance-sandbox/
+SLEEP_SEC=2  # user directive 2026-04-18: "rsync should probably take place at least every second"
 
-try_sync() {
+cd "$BASE" || { echo "$(date -u +%FT%TZ) CANNOT_CD $BASE" >>"$LOG"; exit 1; }
+shopt -s nullglob
+
+push_to() {
     local host="$1" label="$2"
     cd "$BASE" || return 1
-    local local_md5 remote_md5
-    local_md5=$(md5 -q ez_positions_quick.py)
-    remote_md5=$(ssh $SSH_OPTS "${host}" "md5sum /home/niels/binance-sandbox/ez_positions_quick.py 2>/dev/null | awk '{print \$1}'" 2>>"$LOG")
-    if [[ -z "$remote_md5" ]]; then
-        # SSH itself failed — host truly down (binance_supervisor.py handles hetzner reset)
-        echo "$(date -u +%FT%TZ) ${label} SSH_UNREACHABLE (supervisor handles hw reset)" >>"$LOG"
+    # bash 3.2 compatible (macOS default) — no mapfile. Expand globs inline.
+    local files=()
+    for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py; do
+        for f in $pat; do
+            [[ -f "$f" ]] && files+=("$f")
+        done
+    done
+    if [[ ${#files[@]:-0} -eq 0 ]]; then
+        echo "$(date -u +%FT%TZ) ${label} NO_FILES_TO_SYNC" >>"$LOG"
         return 1
     fi
-    if [[ "$local_md5" == "$remote_md5" ]]; then
-        return 0
+    local out
+    out=$(rsync -a --checksum --existing --itemize-changes \
+        -e "ssh $SSH_OPTS" \
+        "${files[@]}" "${host}:${DEST_PATH}" 2>>"$LOG")
+    local rc=$?
+    if [[ $rc -ne 0 ]]; then
+        echo "$(date -u +%FT%TZ) ${label} RSYNC_FAIL rc=$rc" >>"$LOG"
+        return 1
     fi
-    echo "$(date -u +%FT%TZ) ${label} DRIFT_DETECTED local=$local_md5 remote=$remote_md5 — syncing" >>"$LOG"
-    ssh $SSH_OPTS "${host}" "rm -f /home/niels/binance-sandbox/rate_cascade.py" 2>>"$LOG"
-    rsync -az --timeout=30 --existing --update "${FILES[@]}" "${host}:/home/niels/binance-sandbox/" 2>>"$LOG" || return 1
-    remote_md5=$(ssh $SSH_OPTS "${host}" "md5sum /home/niels/binance-sandbox/ez_positions_quick.py 2>/dev/null | awk '{print \$1}'" 2>>"$LOG")
-    if [[ "$local_md5" == "$remote_md5" ]]; then
-        echo "$(date -u +%FT%TZ) ${label} SYNC_OK md5=$local_md5" >>"$LOG"
-        return 0
+    # Filter rsync's itemize output for actual file updates (lines starting with ">" = sent).
+    local changed
+    changed=$(echo "$out" | grep -E '^>' || true)
+    if [[ -n "$changed" ]]; then
+        local n
+        n=$(echo "$changed" | wc -l | tr -d ' ')
+        echo "$(date -u +%FT%TZ) ${label} PUSHED ${n} file(s) (checksum drift corrected — MacBook wins):" >>"$LOG"
+        echo "$changed" | head -20 >>"$LOG"
     fi
-    echo "$(date -u +%FT%TZ) ${label} SYNC_FAILED post_md5=$remote_md5" >>"$LOG"
-    return 1
+    return 0
 }
 
-echo "$(date -u +%FT%TZ) autosync_start pid=$$ via gateway (s1-int/s2-int per CLAUDE.md rule)" >>"$LOG"
+echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritative interval=${SLEEP_SEC}s" >>"$LOG"
 while true; do
-    try_sync s1-int S1
-    try_sync s2-int S2
-    sleep 60
+    push_to s1-int S1
+    push_to s2-int S2
+    sleep "$SLEEP_SEC"
 done
