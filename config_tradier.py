@@ -520,7 +520,7 @@ class TradierConfig:
     # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
     REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
-    REENTRY_RALLY_HTF_MIN: int = 2          # sweep: 1 / 2 / 3
+    REENTRY_RALLY_HTF_MIN: int = 3          # 2026-04-18: sqlite reentry analysis — wt_all3 avg_sharpe 0.1036 vs wt_2of3 -0.0468. Was 2.
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
     MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
