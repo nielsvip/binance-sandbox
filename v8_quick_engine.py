@@ -643,7 +643,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     ha_D_arr = _ha_int(npz, 'ha_D', n)
     ha_4h_arr = _ha_int(npz, 'ha_4h', n)
     sma200_1h = _safe(npz, 'sma_200_1h', n)
-    k_3m_prev2 = np.roll(k_3m, 2); k_3m_prev2[:2] = k_3m[:2]
+    k_ltf_prev2 = np.roll(k_ltf, 2); k_ltf_prev2[:2] = k_ltf[:2]
     # Higher TF WT not declared in this scope — pull from npz
     wt1_4h = _safe(npz, 'wt1_4h', n); wt2_4h = _safe(npz, 'wt2_4h', n)
     wt1_D = _safe(npz, 'wt1_D', n); wt2_D = _safe(npz, 'wt2_D', n)
@@ -652,18 +652,18 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     # Principle: only enter when BOTH (1) long-term trend is CLEARLY in our direction
     # AND (2) temporary pullback gives us a better price. Skip neutral/sideways.
 
-    # B_PULL1: ALL HTFs aligned + 3m DEEP oversold + stoch+vel both turning up
+    # B_PULL1: ALL HTFs aligned + LTF DEEP oversold + stoch+vel both turning up
     if getattr(cfg, 'REENTRY_PULL1_ENABLED', True):
         if is_long:
             # STRICT: D green, 1h+4h trend up, 1h NOT overbought
             htf_uptrend = (wt1_1h > wt2_1h) & (wt1_4h > wt2_4h) & (wt1_D > wt2_D) & (ha_D_arr == 1) & (k_1h < 70)
-            deep_pullback = (k_3m < 20) & (wt1_3m < -35)  # TIGHTER: deep oversold
-            reversing = (k_3m > k_3m_prev) & (wt_vel_3m > 0) & (k_3m_prev < k_3m_prev2)  # actively turning
+            deep_pullback = (k_ltf < 20) & (wt1_ltf < -35)  # TIGHTER: deep oversold
+            reversing = (k_ltf > k_ltf_prev) & (wt_vel_ltf > 0) & (k_ltf_prev < k_ltf_prev2)  # actively turning
             blocks["B_PULL1"] = htf_uptrend & deep_pullback & reversing
         else:
             htf_downtrend = (wt1_1h < wt2_1h) & (wt1_4h < wt2_4h) & (wt1_D < wt2_D) & (ha_D_arr == -1) & (k_1h > 30)
-            deep_rally = (k_3m > 80) & (wt1_3m > 35)
-            reversing = (k_3m < k_3m_prev) & (wt_vel_3m < 0) & (k_3m_prev > k_3m_prev2)
+            deep_rally = (k_ltf > 80) & (wt1_ltf > 35)
+            reversing = (k_ltf < k_ltf_prev) & (wt_vel_ltf < 0) & (k_ltf_prev > k_ltf_prev2)
             blocks["B_PULL1"] = htf_downtrend & deep_rally & reversing
 
     # B_PULL2: D rising strongly (wt_vel_D > 1) + price PULLED BACK to SMA200_1h
@@ -671,12 +671,12 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         if is_long:
             rising_fundamentals = (wt_vel_D_arr > 1.0) & (wt_vel_4h_arr > 0) & (ha_D_arr == 1) & (ha_4h_arr >= 0)
             pullback_near_sma = (sma200_1h > 0) & (close < sma200_1h * 1.01) & (close > sma200_1h * 0.98)
-            momentum_returning = (k_3m > d_3m) & (k_3m < 35) & (wt_vel_3m > 0)
+            momentum_returning = (k_ltf > d_ltf) & (k_ltf < 35) & (wt_vel_ltf > 0)
             blocks["B_PULL2"] = rising_fundamentals & pullback_near_sma & momentum_returning
         else:
             falling_fundamentals = (wt_vel_D_arr < -1.0) & (wt_vel_4h_arr < 0) & (ha_D_arr == -1) & (ha_4h_arr <= 0)
             rally_near_sma = (sma200_1h > 0) & (close > sma200_1h * 0.99) & (close < sma200_1h * 1.02)
-            momentum_weakening = (k_3m < d_3m) & (k_3m > 65) & (wt_vel_3m < 0)
+            momentum_weakening = (k_ltf < d_ltf) & (k_ltf > 65) & (wt_vel_ltf < 0)
             blocks["B_PULL2"] = falling_fundamentals & rally_near_sma & momentum_weakening
 
     # B_PULL3: BB EXTREME lower band (pctb < 0.15) in strict uptrend + stoch cross
@@ -684,26 +684,26 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         if is_long:
             trend_up = (wt1_1h > wt2_1h) & (wt1_4h > wt2_4h) & (ha_D_arr == 1)
             at_extreme_band = bb_pctb_1h_arr < 0.15
-            stoch_turning_up = (k_3m_prev <= d_3m) & (k_3m > d_3m) & (k_3m < 30)
+            stoch_turning_up = (k_ltf_prev <= d_ltf) & (k_ltf > d_ltf) & (k_ltf < 30)
             blocks["B_PULL3"] = trend_up & at_extreme_band & stoch_turning_up
         else:
             trend_down = (wt1_1h < wt2_1h) & (wt1_4h < wt2_4h) & (ha_D_arr == -1)
             at_extreme_band = bb_pctb_1h_arr > 0.85
-            stoch_turning_down = (k_3m_prev >= d_3m) & (k_3m < d_3m) & (k_3m > 70)
+            stoch_turning_down = (k_ltf_prev >= d_ltf) & (k_ltf < d_ltf) & (k_ltf > 70)
             blocks["B_PULL3"] = trend_down & at_extreme_band & stoch_turning_down
 
-    # B_PULL4: RSI extreme pullback in trend + 3m WT turning from zero line
+    # B_PULL4: RSI extreme pullback in trend + LTF WT turning from zero line
     if getattr(cfg, 'REENTRY_PULL4_ENABLED', True):
         if is_long:
             pullback_rsi = rsi_1h_arr < 35  # TIGHTER: deeper RSI pullback
             htf_healthy = (ha_4h_arr == 1) & (ha_D_arr == 1)  # STRICT both TF green
-            wt_bouncing_3m = (wt_vel_3m > 0) & (wt1_3m < -15) & (wt1_3m > wt1_15m * 0.7)  # bouncing from below
-            blocks["B_PULL4"] = pullback_rsi & htf_healthy & wt_bouncing_3m
+            wt_bouncing_ltf = (wt_vel_ltf > 0) & (wt1_ltf < -15) & (wt1_ltf > wt1_15m * 0.7)  # bouncing from below
+            blocks["B_PULL4"] = pullback_rsi & htf_healthy & wt_bouncing_ltf
         else:
             rally_rsi = rsi_1h_arr > 65
             htf_bearish = (ha_4h_arr == -1) & (ha_D_arr == -1)
-            wt_rolling_3m = (wt_vel_3m < 0) & (wt1_3m > 15) & (wt1_3m < wt1_15m * 1.3)
-            blocks["B_PULL4"] = rally_rsi & htf_bearish & wt_rolling_3m
+            wt_rolling_ltf = (wt_vel_ltf < 0) & (wt1_ltf > 15) & (wt1_ltf < wt1_15m * 1.3)
+            blocks["B_PULL4"] = rally_rsi & htf_bearish & wt_rolling_ltf
 
     # ═══════════════════════════════════════════════════════════════
     # TRADIER ALPHA BLOCKS (2026-04-16) — ported from tradier_manage.py
@@ -764,13 +764,14 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
 
 
 def compute_entry_signals(npz, n, is_long, cfg):
-    close = _safe(npz, 'close_3m', n)
+    _ltf = getattr(cfg, 'LTF', '3m')
+    close = _safe(npz, f'close_{_ltf}', n)
     if close.sum() == 0: close = _safe(npz, 'close_5m', n)
-    k_3m = _safe(npz, 'stoch_k_3m', n, 50)
+    k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50)
     k_1h = _safe(npz, 'stoch_k_1h', n, 50)
-    d_3m = _safe(npz, 'stoch_d_3m', n, 50)
-    wt1_3m = _safe(npz, 'wt1_3m', n); wt2_3m = _safe(npz, 'wt2_3m', n)
+    d_ltf = _safe(npz, f'stoch_d_{_ltf}', n, 50)
+    wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
     wt1_15m = _safe(npz, 'wt1_15m', n); wt2_15m = _safe(npz, 'wt2_15m', n)
     wt1_1h = _safe(npz, 'wt1_1h', n); wt2_1h = _safe(npz, 'wt2_1h', n)
     wt1_4h = _safe(npz, 'wt1_4h', n); wt2_4h = _safe(npz, 'wt2_4h', n)
@@ -781,8 +782,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
     ha_D = _ha_int(npz, 'ha_D', n); ha_1h = _ha_int(npz, 'ha_1h', n)
     dc_high_4h = _safe(npz, 'dc_high_4h', n); dc_low_4h = _safe(npz, 'dc_low_4h', n)
 
-    # Gate filters
-    k3m_ok = (k_3m < (100 - cfg.K3M_FLOOR)) if is_long else (k_3m > cfg.K3M_FLOOR)
+    # Gate filters — K3M_FLOOR name retained for config compat; gate applies to LTF stoch K.
+    kltf_ok = (k_ltf < (100 - cfg.K3M_FLOOR)) if is_long else (k_ltf > cfg.K3M_FLOOR)
     ct_vel_ok = np.ones(n, dtype=bool)
     if cfg.CT_WT_VELOCITY_GATE_ENABLED:
         m = cfg.CT_WT_VELOCITY_1H_MIN
@@ -874,15 +875,15 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & (rsi_1h < getattr(cfg, 'RSI_ENTRY_MAX_LONG', 37.0))
         else:
             extra_ok = extra_ok & (rsi_1h > getattr(cfg, 'RSI_ENTRY_MIN_SHORT', 63.0))
-    # Stoch cross entry tradier
+    # Stoch cross entry tradier — LTF-parameterized
     if getattr(cfg, 'STOCH_CROSS_ENTRY_TRADIER', False):
-        k_3m_arr = _safe(npz, 'stoch_k_3m', n, 50)
-        d_3m_arr = _safe(npz, 'stoch_d_3m', n, 50)
-        k_3m_prev = np.roll(k_3m_arr, 1); k_3m_prev[0] = k_3m_arr[0]
+        k_ltf_arr = _safe(npz, f'stoch_k_{_ltf}', n, 50)
+        d_ltf_arr = _safe(npz, f'stoch_d_{_ltf}', n, 50)
+        k_ltf_arr_prev = np.roll(k_ltf_arr, 1); k_ltf_arr_prev[0] = k_ltf_arr[0]
         if is_long:
-            extra_ok = extra_ok & ((k_3m_prev <= d_3m_arr) & (k_3m_arr > d_3m_arr))
+            extra_ok = extra_ok & ((k_ltf_arr_prev <= d_ltf_arr) & (k_ltf_arr > d_ltf_arr))
         else:
-            extra_ok = extra_ok & ((k_3m_prev >= d_3m_arr) & (k_3m_arr < d_3m_arr))
+            extra_ok = extra_ok & ((k_ltf_arr_prev >= d_ltf_arr) & (k_ltf_arr < d_ltf_arr))
     # TF alignment min total (tradier-only; regression if applied to crypto per 2026-04-16 test)
     if getattr(cfg, 'BACKTEST_VALIDATED_GATES_TRADIER', False) and getattr(cfg, 'MODE', 'crypto') == 'tradier':
         wt1_4h_arr = _safe(npz, 'wt1_4h', n); wt2_4h_arr = _safe(npz, 'wt2_4h', n)
@@ -915,13 +916,13 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else: extra_ok = extra_ok & (mfi_D_arr <= 60)
     # ENTRY_ZONE gate — LONG requires k_TF < ENTRY_ZONE_LONG ceiling (oversold); SHORT requires > ENTRY_ZONE_SHORT floor (overbought).
     # Disabled defaults (LONG=0 / SHORT=100) trivially pass. When set (e.g. LONG=35, SHORT=65) they become real gates.
-    _zone_tf = str(getattr(cfg, 'ENTRY_ZONE_K_TF', '3m') or '3m')
+    _zone_tf = str(getattr(cfg, 'ENTRY_ZONE_K_TF', _ltf) or _ltf)
     if _zone_tf == '15m':
         _zone_k_arr = k_15m
     elif _zone_tf == '1h':
         _zone_k_arr = k_1h
     else:
-        _zone_k_arr = k_3m
+        _zone_k_arr = k_ltf
     if is_long:
         _zl = float(getattr(cfg, 'ENTRY_ZONE_LONG', 0.0) or 0.0)
         if _zl > 0.0:
@@ -960,7 +961,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & (_dcm_proxy >= (50.0 - _dcm_thr))
         else:
             extra_ok = extra_ok & (_dcm_proxy <= (50.0 + _dcm_thr))
-    base_sig = raw & k3m_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
+    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok
     # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -976,22 +977,23 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 
 def compute_exit_signals(npz, n, is_long, cfg):
-    close = _safe(npz, 'close_3m', n)
+    _ltf = getattr(cfg, 'LTF', '3m')
+    close = _safe(npz, f'close_{_ltf}', n)
     if close.sum() == 0: close = _safe(npz, 'close_5m', n)
-    wt1_3m = _safe(npz, 'wt1_3m', n); wt2_3m = _safe(npz, 'wt2_3m', n)
+    wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
     wt1_15m = _safe(npz, 'wt1_15m', n); wt2_15m = _safe(npz, 'wt2_15m', n)
     wt1_1h = _safe(npz, 'wt1_1h', n); wt2_1h = _safe(npz, 'wt2_1h', n)
     wt_vel_4h = _safe(npz, 'wt_velocity_4h', n)
-    wt_vel_3m = _safe(npz, 'wt_velocity_3m', n)
-    k_3m = _safe(npz, 'stoch_k_3m', n, 50); d_3m = _safe(npz, 'stoch_d_3m', n, 50)
+    wt_vel_ltf = _safe(npz, f'wt_velocity_{_ltf}', n)
+    k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50); d_ltf = _safe(npz, f'stoch_d_{_ltf}', n, 50)
     k_1h = _safe(npz, 'stoch_k_1h', n, 50); d_1h = _safe(npz, 'stoch_d_1h', n, 50)
-    mfi_1h = _safe(npz, 'mfi_1h', n, 50); mfi_3m = _safe(npz, 'mfi_3m', n, 50)
+    mfi_1h = _safe(npz, 'mfi_1h', n, 50); mfi_ltf = _safe(npz, f'mfi_{_ltf}', n, 50)
     bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
 
     if is_long:
-        wt_against = (wt1_3m < wt2_3m).astype(int) + (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int)
+        wt_against = (wt1_ltf < wt2_ltf).astype(int) + (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int)
     else:
-        wt_against = (wt1_3m > wt2_3m).astype(int) + (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int)
+        wt_against = (wt1_ltf > wt2_ltf).astype(int) + (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int)
     delta_exit = wt_against >= cfg.WT_EXIT_MIN_TFS
     vel_exit = (wt_vel_4h < -2.0) if is_long else (wt_vel_4h > 2.0)
 
@@ -1003,14 +1005,14 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'WT_VEL_DECAY_EXIT_ENABLED', True):
         decay_threshold = float(getattr(cfg, 'WT_VEL_DECAY_THRESHOLD', 1.0))
         if is_long:
-            # Was strong positive momentum, now decayed below threshold AND 3m vel also dropping
+            # Was strong positive momentum, now decayed below threshold AND LTF vel also dropping
             was_strong = wt_vel_1h_prev > decay_threshold * 2
             now_decayed = wt_vel_1h_exit < decay_threshold
-            vel_decay_exit = was_strong & now_decayed & (wt_vel_3m < wt_vel_1h_prev * 0.5)
+            vel_decay_exit = was_strong & now_decayed & (wt_vel_ltf < wt_vel_1h_prev * 0.5)
         else:
             was_strong = wt_vel_1h_prev < -decay_threshold * 2
             now_decayed = wt_vel_1h_exit > -decay_threshold
-            vel_decay_exit = was_strong & now_decayed & (wt_vel_3m > wt_vel_1h_prev * 0.5)
+            vel_decay_exit = was_strong & now_decayed & (wt_vel_ltf > wt_vel_1h_prev * 0.5)
     srs_exit = np.zeros(n, dtype=bool)
     if cfg.STRUCTURAL_RANGE_SHIFT_EXIT:
         tf_map = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'),
@@ -1026,18 +1028,18 @@ def compute_exit_signals(npz, n, is_long, cfg):
             srs_exit = prox & (k_1h <= 25) & (k_1h > k_1h_prev)
     sat_exit = np.zeros(n, dtype=bool)
     if cfg.SATOSHIT_ENABLED:
-        k_3m_prev = np.roll(k_3m, 1); k_3m_prev[0] = k_3m[0]
-        mfi_3m_prev = np.roll(mfi_3m, 1); mfi_3m_prev[0] = mfi_3m[0]
+        k_ltf_prev = np.roll(k_ltf, 1); k_ltf_prev[0] = k_ltf[0]
+        mfi_ltf_prev = np.roll(mfi_ltf, 1); mfi_ltf_prev[0] = mfi_ltf[0]
         if is_long:
-            sat_exit = (k_3m_prev >= 80) & (k_3m_prev >= d_3m) & (k_3m < d_3m) & (mfi_3m < mfi_3m_prev)
+            sat_exit = (k_ltf_prev >= 80) & (k_ltf_prev >= d_ltf) & (k_ltf < d_ltf) & (mfi_ltf < mfi_ltf_prev)
         else:
-            sat_exit = (k_3m_prev <= 20) & (k_3m_prev <= d_3m) & (k_3m > d_3m) & (mfi_3m > mfi_3m_prev)
+            sat_exit = (k_ltf_prev <= 20) & (k_ltf_prev <= d_ltf) & (k_ltf > d_ltf) & (mfi_ltf > mfi_ltf_prev)
     rz_exit = np.zeros(n, dtype=bool)
     if cfg.RZ_EXIT_ENABLED:
         if is_long:
-            rz_exit = ((bb_pctb_1h > 0.85) | (k_1h >= 80)) & (wt_vel_3m < -1.0)
+            rz_exit = ((bb_pctb_1h > 0.85) | (k_1h >= 80)) & (wt_vel_ltf < -1.0)
         else:
-            rz_exit = ((bb_pctb_1h < 0.15) | (k_1h <= 20)) & (wt_vel_3m > 1.0)
+            rz_exit = ((bb_pctb_1h < 0.15) | (k_1h <= 20)) & (wt_vel_ltf > 1.0)
     stoch_1h_exit = np.zeros(n, dtype=bool)
     if cfg.STOCH_CROSS_1H_EXIT_ENABLED:
         k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
@@ -1051,11 +1053,11 @@ def compute_exit_signals(npz, n, is_long, cfg):
         else: mfi_flip_exit = mfi_1h < cfg.MFI_FLIP_EXIT_SHORT_THRESHOLD
     wt_cu_exit = np.zeros(n, dtype=bool)
     if cfg.WT_CROSSUNDER_FINAL_ENABLED:
-        wt1_3m_prev = np.roll(wt1_3m, 1); wt1_3m_prev[0] = wt1_3m[0]
+        wt1_ltf_prev = np.roll(wt1_ltf, 1); wt1_ltf_prev[0] = wt1_ltf[0]
         if is_long:
-            wt_cu_exit = (wt1_3m_prev >= wt2_3m) & (wt1_3m < wt2_3m) & (k_3m >= 70)
+            wt_cu_exit = (wt1_ltf_prev >= wt2_ltf) & (wt1_ltf < wt2_ltf) & (k_ltf >= 70)
         else:
-            wt_cu_exit = (wt1_3m_prev <= wt2_3m) & (wt1_3m > wt2_3m) & (k_3m <= 30)
+            wt_cu_exit = (wt1_ltf_prev <= wt2_ltf) & (wt1_ltf > wt2_ltf) & (k_ltf <= 30)
     mi_exit = np.zeros(n, dtype=bool)
     if cfg.MI_EXIT_ENABLED:
         mfi_1h_prev = np.roll(mfi_1h, 1); mfi_1h_prev[0] = mfi_1h[0]
@@ -1072,38 +1074,38 @@ def compute_exit_signals(npz, n, is_long, cfg):
         extra_exit = extra_exit | (rsi_1h_arr >= getattr(cfg, 'RSI_EXIT_LONG_TRADIER', 85.0))
     if getattr(cfg, 'RSI_EXIT_SHORT_TRADIER', 100) < 100 and not is_long:
         extra_exit = extra_exit | (rsi_1h_arr <= getattr(cfg, 'RSI_EXIT_SHORT_TRADIER', 15.0))
-    # RSI2 exit tradier (Connors-style)
+    # RSI2 exit tradier (Connors-style) — LTF-parameterized
     if getattr(cfg, 'TRADIER_RSI2_ENABLED', False):
-        rsi2_3m = _safe(npz, 'rsi2_3m', n, 50)
-        if rsi2_3m.sum() > 0:
+        rsi2_ltf = _safe(npz, f'rsi2_{_ltf}', n, 50)
+        if rsi2_ltf.sum() > 0:
             if is_long:
-                extra_exit = extra_exit | (rsi2_3m >= getattr(cfg, 'TRADIER_RSI2_EXIT_THRESHOLD_LONG', 90.0))
+                extra_exit = extra_exit | (rsi2_ltf >= getattr(cfg, 'TRADIER_RSI2_EXIT_THRESHOLD_LONG', 90.0))
             else:
-                extra_exit = extra_exit | (rsi2_3m <= getattr(cfg, 'TRADIER_RSI2_EXIT_THRESHOLD_SHORT', 10.0))
-    # Satoshit exit (simplified — RSI+Stoch votes)
+                extra_exit = extra_exit | (rsi2_ltf <= getattr(cfg, 'TRADIER_RSI2_EXIT_THRESHOLD_SHORT', 10.0))
+    # Satoshit exit (simplified — RSI+Stoch votes) — LTF-parameterized
     if getattr(cfg, 'SATOSHIT_EXIT_ENABLED', False):
-        k_3m_arr2 = _safe(npz, 'stoch_k_3m', n, 50)
+        k_ltf_arr2 = _safe(npz, f'stoch_k_{_ltf}', n, 50)
         if is_long:
             rsi_hit = rsi_1h_arr >= getattr(cfg, 'SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER', 55.0)
-            stoch_hit = k_3m_arr2 >= getattr(cfg, 'SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER', 60.0)
+            stoch_hit = k_ltf_arr2 >= getattr(cfg, 'SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER', 60.0)
         else:
             rsi_hit = rsi_1h_arr <= getattr(cfg, 'SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER', 42.0)
-            stoch_hit = k_3m_arr2 <= getattr(cfg, 'SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER', 50.0)
+            stoch_hit = k_ltf_arr2 <= getattr(cfg, 'SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER', 50.0)
         votes_needed = getattr(cfg, 'SATOSHIT_MIN_VOTES_TRADIER', 3)
         # 2 visible + 1 latent (bb_pctb would be 3rd) — simpler: require 2 of 2 if votes >= 3
         if votes_needed >= 3:
             extra_exit = extra_exit | (rsi_hit & stoch_hit)
         else:
             extra_exit = extra_exit | (rsi_hit | stoch_hit)
-    # Stoch cross 3m exit
+    # Stoch cross LTF exit — LTF-parameterized (config key name retained)
     if getattr(cfg, 'STOCH_CROSS_3M_EXIT_ENABLED', False):
-        k_3m_arr2 = _safe(npz, 'stoch_k_3m', n, 50)
-        d_3m_arr2 = _safe(npz, 'stoch_d_3m', n, 50)
-        k_3m_prev2 = np.roll(k_3m_arr2, 1); k_3m_prev2[0] = k_3m_arr2[0]
+        k_ltf_arr2 = _safe(npz, f'stoch_k_{_ltf}', n, 50)
+        d_ltf_arr2 = _safe(npz, f'stoch_d_{_ltf}', n, 50)
+        k_ltf_arr2_prev = np.roll(k_ltf_arr2, 1); k_ltf_arr2_prev[0] = k_ltf_arr2[0]
         if is_long:
-            extra_exit = extra_exit | ((k_3m_prev2 >= d_3m_arr2) & (k_3m_arr2 < d_3m_arr2) & (k_3m_arr2 > 60))
+            extra_exit = extra_exit | ((k_ltf_arr2_prev >= d_ltf_arr2) & (k_ltf_arr2 < d_ltf_arr2) & (k_ltf_arr2 > 60))
         else:
-            extra_exit = extra_exit | ((k_3m_prev2 <= d_3m_arr2) & (k_3m_arr2 > d_3m_arr2) & (k_3m_arr2 < 40))
+            extra_exit = extra_exit | ((k_ltf_arr2_prev <= d_ltf_arr2) & (k_ltf_arr2 > d_ltf_arr2) & (k_ltf_arr2 < 40))
     # Ablation: disable quick exit path
     if getattr(cfg, 'ABLATION_DISABLE_QUICK_EXIT', False):
         return np.zeros(n, dtype=bool)
@@ -1137,11 +1139,19 @@ def simulate(stores, cfg, capital=10000.0):
     ea_floor = float(getattr(cfg, 'EARLY_ABORT_SHARPE_FLOOR', 1.0))
     symbols_processed = 0
     early_abort = False
+    _ltf = getattr(cfg, 'LTF', '3m')
     for sym, npz in stores.items():
-        ts = npz.get('timestamps', npz.get('timestamp_3m', np.array([])))
+        # Derive n from LTF close (stocks may not have timestamps/timestamp_3m fields at all).
+        ts = npz.get('timestamps', npz.get(f'timestamp_{_ltf}', npz.get('timestamp_3m', np.array([]))))
         n = len(ts)
-        if n < 100: continue
-        close = _safe(npz, 'close_3m', n)
+        if n < 100:
+            # Fallback: use LTF close length (stock NPZ has close_5m but no timestamp array)
+            _close_ltf = npz.get(f'close_{_ltf}')
+            if _close_ltf is not None and hasattr(_close_ltf, '__len__') and len(_close_ltf) >= 100:
+                n = len(_close_ltf)
+            else:
+                continue
+        close = _safe(npz, f'close_{_ltf}', n)
         if close.sum() == 0: close = _safe(npz, 'close_5m', n)
         dc_high_4h = _safe(npz, 'dc_high_4h', n)
         dc_low_4h = _safe(npz, 'dc_low_4h', n)

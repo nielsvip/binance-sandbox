@@ -1330,6 +1330,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             except Exception as _re_err:
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_REENTRY2_ERR] step={step} err={_re_err}")
+            # LIVE ALSO calls evaluate_reentry_2_epq (ez_positions_quick.py:14472 periodic loop).
+            # Mirror that here so backtest runs both paths — they share reentry_data dict.
+            try:
+                await ez_positions_quick.evaluate_reentry_2_epq(trade_manager, data_manager=data_manager)
+            except Exception as _re_epq_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_REENTRY2_EPQ_ERR] step={step} err={_re_epq_err}")
 
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()

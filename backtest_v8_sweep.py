@@ -182,6 +182,128 @@ def grid_hedge_full():
     return variants
 
 
+def grid_reentry_all_real():
+    """2026-04-18: user directive — test EVERY reentry condition actually in code, not just a subset.
+    Covers:
+      evaluate_reentry (ez_manage.py:16154, ez_positions_quick.py:13020):
+        B01_WT_2of3 (OFF default, ablation Sharpe 0.033)
+        B02_BC156_BOTTOM (Sharpe 0.31 both)
+        B04_DC_RETEST (Sharpe 0.39 crypto, 0.31 tradier)
+        B09_SNAPBACK (OFF default, ablation Sharpe 0.022)
+        B10_STOCH_REV (Sharpe 0.07-0.12, 69-75% WR)
+        B11_DC_BREAK (Sharpe 0.34)
+        B12_WT_MOM (Sharpe 0.15-0.17, 112K/73K trades volume king)
+        B14_HA_TREND (Sharpe 0.11-0.13)
+        B15_STRONG_TREND (Sharpe 0.89 crypto, 94-97% WR, top performer)
+      evaluate_reentry_2 sub-blocks (process_single_reentry_evaluation):
+        REENTRY2_DIR_FAV (BC_152 direction-favorable 2h window)
+        REENTRY2_DC_BREAK (DC breakout fast-path)
+        REENTRY2_TREND (strong trend/pullback)
+        REENTRY2_QUICK_RECOVERY (quick recovery + momentum)
+        REENTRY2_STOCH_CROSS (legacy, default OFF)
+      Overhaul (2026-04-17): WT15M_CROSS, K15M_PARTIAL, POST_CONSOL
+    Plus master switches and pairwise combos."""
+    return [
+        ("baseline", {}),
+        # ── evaluate_reentry (B blocks) — each one off ──
+        ("B01_ON", {"REENTRY_B01_WT_2of3_ENABLED": True}),  # default OFF, test ON
+        ("B02_OFF", {"REENTRY_B02_BC156_BOTTOM_ENABLED": False}),
+        ("B04_OFF", {"REENTRY_B04_DC_RETEST_ENABLED": False}),
+        ("B09_ON", {"REENTRY_B09_SNAPBACK_ENABLED": True}),  # default OFF, test ON
+        ("B10_OFF", {"REENTRY_B10_STOCH_REV_ENABLED": False}),
+        ("B11_OFF", {"REENTRY_B11_DC_BREAK_ENABLED": False}),
+        ("B12_OFF", {"REENTRY_B12_WT_MOM_ENABLED": False}),
+        ("B14_OFF", {"REENTRY_B14_HA_TREND_ENABLED": False}),
+        ("B15_OFF", {"REENTRY_B15_STRONG_TREND_ENABLED": False}),
+        # ── evaluate_reentry_2 sub-blocks — each off ──
+        ("R2_DIR_FAV_OFF", {"REENTRY2_DIR_FAV_ENABLED": False}),
+        ("R2_DC_BREAK_OFF", {"REENTRY2_DC_BREAK_ENABLED": False}),
+        ("R2_TREND_OFF", {"REENTRY2_TREND_ENABLED": False}),
+        ("R2_QUICK_RECOVERY_OFF", {"REENTRY2_QUICK_RECOVERY_ENABLED": False}),
+        ("R2_STOCH_CROSS_ON", {"REENTRY2_STOCH_CROSS_ENABLED": True}),  # default OFF
+        ("R2_MASTER_OFF", {"REENTRY_2_ENABLED": False}),
+        # ── 2026-04-17 overhaul blocks — each at key values ──
+        ("WT15M_OFF", {"REENTRY_WT15M_CROSS_ENABLED": False}),
+        ("WT15M_SIZE_2.0", {"REENTRY_WT15M_SIZE_MULT": 2.0}),
+        ("WT15M_HTF_NOT_REQUIRED", {"REENTRY_WT15M_HTF_FAVOR_REQUIRED": False}),
+        ("K15M_OFF", {"REENTRY_K15M_PARTIAL_ENABLED": False}),
+        ("POST_CONSOL_OFF", {"REENTRY_POST_CONSOL_ENABLED": False}),
+        ("POST_CONSOL_TFS_1", {"REENTRY_POST_CONSOL_TFS_REQUIRED": 1}),
+        # ── timing / gating knobs ──
+        ("MIN_GAP_3", {"REENTRY_MIN_GAP_MINUTES": 3.0}),
+        ("MIN_GAP_30", {"REENTRY_MIN_GAP_MINUTES": 30.0}),
+        ("REENTRY_SYMGATE_OFF", {"REENTRY_SYMGATE_ENABLED": False}),
+        ("CT_VEL_3.0", {"CT_WT_VELOCITY_1H_MIN": 3.0}),
+        ("CT_VEL_9.0", {"CT_WT_VELOCITY_1H_MIN": 9.0}),
+        # ── COMBOS: turn off proven-weak blocks ──
+        ("KILL_NOISE_B01_B09", {"REENTRY_B01_WT_2of3_ENABLED": False, "REENTRY_B09_SNAPBACK_ENABLED": False}),
+        ("ENABLE_NOISE_B01_B09", {"REENTRY_B01_WT_2of3_ENABLED": True, "REENTRY_B09_SNAPBACK_ENABLED": True}),
+        # ── COMBO: top-sharpe blocks only (B15+B04+B11+B02) ──
+        ("TOP_BLOCKS_ONLY", {
+            "REENTRY_B10_STOCH_REV_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False,
+            "REENTRY_B14_HA_TREND_ENABLED": False,
+        }),
+        # ── COMBO: disable all volume-king B12 + strong-B15 conflicts ──
+        ("NO_B12_NO_B14", {"REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False}),
+        # ── COMBO: R2 paths only (kill B-blocks) ──
+        ("R2_ONLY", {
+            "REENTRY_B01_WT_2of3_ENABLED": False, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B04_DC_RETEST_ENABLED": False, "REENTRY_B09_SNAPBACK_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False, "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+        }),
+        # ── COMBO: B-blocks only (kill R2) ──
+        ("B_BLOCKS_ONLY", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        # ── COMBO: Overhaul only (kill B + R2) ──
+        ("OVERHAUL_ONLY", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_B01_WT_2of3_ENABLED": False, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B04_DC_RETEST_ENABLED": False, "REENTRY_B09_SNAPBACK_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False, "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+        }),
+        # ── COMBO: kill ALL reentries ──
+        ("ALL_REENTRIES_OFF", {
+            "REENTRY_2_ENABLED": False,
+            "REENTRY_B01_WT_2of3_ENABLED": False, "REENTRY_B02_BC156_BOTTOM_ENABLED": False,
+            "REENTRY_B04_DC_RETEST_ENABLED": False, "REENTRY_B09_SNAPBACK_ENABLED": False,
+            "REENTRY_B10_STOCH_REV_ENABLED": False, "REENTRY_B11_DC_BREAK_ENABLED": False,
+            "REENTRY_B12_WT_MOM_ENABLED": False, "REENTRY_B14_HA_TREND_ENABLED": False,
+            "REENTRY_B15_STRONG_TREND_ENABLED": False,
+            "REENTRY_WT15M_CROSS_ENABLED": False,
+            "REENTRY_K15M_PARTIAL_ENABLED": False,
+            "REENTRY_POST_CONSOL_ENABLED": False,
+        }),
+        # ── AGGRESSIVE bundle (all on, big sizes, loose gates) ──
+        ("AGGRESSIVE_FULL", {
+            "REENTRY_B01_WT_2of3_ENABLED": True,
+            "REENTRY_B09_SNAPBACK_ENABLED": True,
+            "REENTRY2_STOCH_CROSS_ENABLED": True,
+            "REENTRY_WT15M_SIZE_MULT": 2.0,
+            "REENTRY_K15M_PARTIAL_MULT": 1.0,
+            "REENTRY_POST_CONSOL_MULT": 2.0,
+            "REENTRY_MIN_GAP_MINUTES": 3.0,
+            "REENTRY_SYMGATE_ENABLED": False,
+        }),
+        # ── CHAPTER-C variant: current live strict config ──
+        ("CHAPTER_C_STRICT", {
+            "REENTRY_SYMGATE_ENABLED": True,
+            "ENTRY_SYMGATE_ENABLED": True,
+            "REENTRY_MIN_GAP_MINUTES": 15.0,
+            "REENTRY_RALLY_K15M_MAX": 40.0,
+            "CT_WT_VELOCITY_1H_MIN": 6.0,
+        }),
+    ]
+
+
 def grid_reentry_optimize():
     """2026-04-17 user directive: 'reentries are the key to doubling sharpe'.
     Wide sweep across every reentry tunable + high-signal combos. Run on tight 4-sym
@@ -346,6 +468,7 @@ TIER_MAP = {
     "reentry_one_by_one": grid_reentry_one_by_one,
     "reentry_wide": grid_reentry_wide,
     "reentry_optimize": grid_reentry_optimize,
+    "reentry_all_real": grid_reentry_all_real,
     "reentry_killed_rerun": grid_reentry_killed_rerun,
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
