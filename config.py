@@ -836,6 +836,30 @@ class Config:
     STDEV_BREAKOUT_MAX_AGE_BARS: int = 50  # Breakout state expires after this many bars (no follow-through)
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75  # Exit if HTF pctb falls below this (breakout failed, back inside 1σ)
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True  # Also exit on WT turn against on 1h
+    # === HLR_RALLY: Higher Low Rally / Lower High Breakdown detector ===
+    # Detects price making higher lows (LONG) or lower highs (SHORT) while pulling back toward 200 SMA.
+    # Each confirmed TF earns escalating score bonus + forces oversized entry qty.
+    # Near-SMA = price within HLR_SMA_BAND_PCT of sma_200 on that TF (full points).
+    # Off-SMA = structure confirmed but no pullback touch (half points, 70% size mult).
+    HLR_RALLY_ENABLED: bool = True
+    HLR_SMA_BAND_PCT: float = 0.03  # within 3% of SMA200 to qualify as "near-SMA" (full points)
+    HLR_PTS_3M: int = 15    # score bonus for higher-low on 3m TF
+    HLR_PTS_15M: int = 25   # score bonus for higher-low on 15m TF
+    HLR_PTS_1H: int = 40    # score bonus for higher-low on 1h TF
+    HLR_PTS_4H: int = 60    # score bonus for higher-low on 4h TF
+    HLR_PTS_D: int = 90     # score bonus for higher-low on Daily TF
+    HLR_PTS_W: int = 130    # score bonus for higher-low on Weekly TF
+    HLR_SZ_3M: float = 1.2    # entry qty multiplier when 3m TF fires
+    HLR_SZ_15M: float = 1.5   # entry qty multiplier when 15m TF fires
+    HLR_SZ_1H: float = 2.0    # entry qty multiplier when 1h TF fires
+    HLR_SZ_4H: float = 3.5    # entry qty multiplier when 4h TF fires
+    HLR_SZ_D: float = 6.0     # entry qty multiplier when Daily TF fires
+    HLR_SZ_W: float = 10.0    # entry qty multiplier when Weekly TF fires (max cap 10x)
+    HLR_SZ_MAX: float = 10.0  # absolute cap on HLR size multiplier regardless of stacking
+    HLR_OFF_SMA_PTS_FRAC: float = 0.5   # fraction of pts when structure fires but price not near SMA
+    HLR_OFF_SMA_SZ_FRAC: float = 0.7    # fraction of size mult when structure fires but price not near SMA
+    HLR_MIN_TFS_FOR_BYPASS: int = 1     # min TF count needed to bypass SHIT_IDEA gate (1 = any TF ≥ 15m)
+    HLR_BYPASS_MIN_TF_WEIGHT: int = 25  # min HLR points from a single TF to bypass SHIT_IDEA gate (25 = 15m tier)
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)

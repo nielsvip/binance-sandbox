@@ -2102,8 +2102,43 @@ class AdvancedSignalRater:
             if is_short_stoch_ok: score += 5; reasons.append("ShortStoch_OK")
             if ltf_aligned: score += 3; reasons.append("LTF_Aligned")
             if htf_aligned: score += 5; reasons.append("HTF_Aligned")
+        # HLR_RALLY: Higher Low (LONG) / Lower High (SHORT) rally detector — escalating per TF.
+        # Near-SMA = within HLR_SMA_BAND_PCT of sma_200 on that TF → full points + full size mult.
+        # Structure only (no SMA touch) → HLR_OFF_SMA_PTS_FRAC pts + HLR_OFF_SMA_SZ_FRAC size.
+        _hlr_rally_score = 0.0; _hlr_rally_tfs = []; _hlr_size_mult = 1.0; _hlr_bypass = False
+        if getattr(config, 'HLR_RALLY_ENABLED', True) and not is_exit:
+            _hlr_band = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)
+            _hlr_off_pts_f = getattr(config, 'HLR_OFF_SMA_PTS_FRAC', 0.5)
+            _hlr_off_sz_f = getattr(config, 'HLR_OFF_SMA_SZ_FRAC', 0.7)
+            _hlr_bypass_min_pts = getattr(config, 'HLR_BYPASS_MIN_TF_WEIGHT', 25)
+            _hlr_tf_defs = [
+                ('3m',  low_3m,  low_3m_prev,  high_3m,  high_3m_prev,  safe_fetch_float(i.get('sma_200_1m', 0), 0),    getattr(config, 'HLR_PTS_3M', 15),  getattr(config, 'HLR_SZ_3M', 1.2)),
+                ('15m', safe_fetch_float(i.get('low_15m', 0), 0),  safe_fetch_float(i.get('low_15m_prev', 0), 0),  safe_fetch_float(i.get('high_15m', 0), 0),  safe_fetch_float(i.get('high_15m_prev', 0), 0),  sma_200_15m, getattr(config, 'HLR_PTS_15M', 25), getattr(config, 'HLR_SZ_15M', 1.5)),
+                ('1h',  low_1h,  low_1h_prev,  high_1h,  high_1h_prev,  sma_200_1h,  getattr(config, 'HLR_PTS_1H', 40),  getattr(config, 'HLR_SZ_1H', 2.0)),
+                ('4h',  low_4h,  low_4h_prev,  high_4h,  high_4h_prev,  sma_200_4h,  getattr(config, 'HLR_PTS_4H', 60),  getattr(config, 'HLR_SZ_4H', 3.5)),
+                ('D',   low_D,   safe_fetch_float(i.get('low_D_prev', 0), 0),   high_D,   safe_fetch_float(i.get('high_D_prev', 0), 0),   sma_200_D,   getattr(config, 'HLR_PTS_D', 90),   getattr(config, 'HLR_SZ_D', 6.0)),
+                ('W',   safe_fetch_float(i.get('low_W', 0), 0),   safe_fetch_float(i.get('low_W_prev', 0), 0),   safe_fetch_float(i.get('high_W', 0), 0),   safe_fetch_float(i.get('high_W_prev', 0), 0),   safe_fetch_float(i.get('sma_200_W', 0), 0),   getattr(config, 'HLR_PTS_W', 130),  getattr(config, 'HLR_SZ_W', 10.0)),
+            ]
+            for _htf, _lo, _lo_prev, _hi, _hi_prev, _sma, _pts, _sz in _hlr_tf_defs:
+                _struct_ok = False
+                if is_long and _lo > 0 and _lo_prev > 0 and _lo > _lo_prev: _struct_ok = True
+                elif not is_long and _hi > 0 and _hi_prev > 0 and _hi < _hi_prev: _struct_ok = True
+                if not _struct_ok: continue
+                _near_sma = _sma > 0 and (abs(current_price - _sma) / _sma) <= _hlr_band
+                _pts_add = _pts if _near_sma else int(_pts * _hlr_off_pts_f)
+                _sz_add = _sz if _near_sma else _sz * _hlr_off_sz_f
+                _hlr_rally_score += _pts_add
+                _hlr_size_mult = max(_hlr_size_mult, _sz_add)
+                _hlr_rally_tfs.append(f"{_htf}{'@SMA' if _near_sma else ''}(+{_pts_add})")
+                if _pts_add >= _hlr_bypass_min_pts: _hlr_bypass = True
+            if _hlr_rally_score > 0:
+                _hlr_sz_cap = getattr(config, 'HLR_SZ_MAX', 10.0)
+                _hlr_size_mult = min(_hlr_size_mult, _hlr_sz_cap)
+                score += _hlr_rally_score
+                reasons.append(f"HLR_RALLY({'|'.join(_hlr_rally_tfs)},+{_hlr_rally_score:.0f},sz={_hlr_size_mult:.1f}x)")
+                logger.warning(f"[HLR_RALLY] {position_key}: tfs={_hlr_rally_tfs} score+{_hlr_rally_score:.0f} sz={_hlr_size_mult:.1f}x is_long={is_long}")
         _15m_os_bypass = (is_long and k_15m < 30) or (not is_long and k_15m > 70)  # 15m deeply oversold/overbought = pullback entry
-        if (is_long and not is_exit and not c1_long and not c3_long and not _15m_os_bypass) or (not is_long and not is_exit and not c1_short and not c3_short and not _15m_os_bypass) : return score, 'WAIT', 'SHIT IDEA'
+        if (is_long and not is_exit and not c1_long and not c3_long and not _15m_os_bypass and not _hlr_bypass) or (not is_long and not is_exit and not c1_short and not c3_short and not _15m_os_bypass and not _hlr_bypass) : return score, 'WAIT', 'SHIT IDEA'
         if (is_long and not is_exit and not c3_long) or (not is_long and not is_exit and not c3_short) : score -= 2
         if (is_long and is_exit and not c3_short) or (not is_long and is_exit and not c3_long) : score += 2
         if (is_long and not is_exit and c1_long and c3_long) or (not is_long and not is_exit and c1_short and c3_short) : score += 3
@@ -12637,6 +12672,33 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     if _sb_size_mult > 1.0:
                         qty = qty * _sb_size_mult
                         logger.info(f"[STDEV_SIZE_BOOST] {position_key}: qty *= {_sb_size_mult:.1f}x")
+                    # Apply HLR_RALLY size multiplier — recompute from indicators so it's always fresh
+                    if getattr(config, 'HLR_RALLY_ENABLED', True) and current_price > 0:
+                        _hlr_band_e = getattr(config, 'HLR_SMA_BAND_PCT', 0.03)
+                        _hlr_off_sz_e = getattr(config, 'HLR_OFF_SMA_SZ_FRAC', 0.7)
+                        _hlr_sz_cap_e = getattr(config, 'HLR_SZ_MAX', 10.0)
+                        _hlr_mult_e = 1.0; _hlr_tfs_e = []
+                        _hlr_entry_defs = [
+                            ('3m',  safe_fetch_float(indicators.get('low_3m', 0), 0),  safe_fetch_float(indicators.get('low_3m_prev', 0), 0),  safe_fetch_float(indicators.get('high_3m', 0), 0),  safe_fetch_float(indicators.get('high_3m_prev', 0), 0),  safe_fetch_float(indicators.get('sma_200_1m', 0), 0),    getattr(config, 'HLR_SZ_3M', 1.2)),
+                            ('15m', safe_fetch_float(indicators.get('low_15m', 0), 0), safe_fetch_float(indicators.get('low_15m_prev', 0), 0), safe_fetch_float(indicators.get('high_15m', 0), 0), safe_fetch_float(indicators.get('high_15m_prev', 0), 0), safe_fetch_float(indicators.get('sma_200_15m', 0), 0), getattr(config, 'HLR_SZ_15M', 1.5)),
+                            ('1h',  safe_fetch_float(indicators.get('low_1h', 0), 0),  safe_fetch_float(indicators.get('low_1h_prev', 0), 0),  safe_fetch_float(indicators.get('high_1h', 0), 0),  safe_fetch_float(indicators.get('high_1h_prev', 0), 0),  safe_fetch_float(indicators.get('sma_200_1h', 0), 0),  getattr(config, 'HLR_SZ_1H', 2.0)),
+                            ('4h',  safe_fetch_float(indicators.get('low_4h', 0), 0),  safe_fetch_float(indicators.get('low_4h_prev', 0), 0),  safe_fetch_float(indicators.get('high_4h', 0), 0),  safe_fetch_float(indicators.get('high_4h_prev', 0), 0),  safe_fetch_float(indicators.get('sma_200_4h', 0), 0),  getattr(config, 'HLR_SZ_4H', 3.5)),
+                            ('D',   safe_fetch_float(indicators.get('low_D', 0), 0),   safe_fetch_float(indicators.get('low_D_prev', 0), 0),   safe_fetch_float(indicators.get('high_D', 0), 0),   safe_fetch_float(indicators.get('high_D_prev', 0), 0),   safe_fetch_float(indicators.get('sma_200_D', 0), 0),   getattr(config, 'HLR_SZ_D', 6.0)),
+                            ('W',   safe_fetch_float(indicators.get('low_W', 0), 0),   safe_fetch_float(indicators.get('low_W_prev', 0), 0),   safe_fetch_float(indicators.get('high_W', 0), 0),   safe_fetch_float(indicators.get('high_W_prev', 0), 0),   safe_fetch_float(indicators.get('sma_200_W', 0), 0),   getattr(config, 'HLR_SZ_W', 10.0)),
+                        ]
+                        for _htf_e, _lo_e, _lo_prev_e, _hi_e, _hi_prev_e, _sma_e, _sz_e in _hlr_entry_defs:
+                            _struct_e = (is_long and _lo_e > 0 and _lo_prev_e > 0 and _lo_e > _lo_prev_e) or (not is_long and _hi_e > 0 and _hi_prev_e > 0 and _hi_e < _hi_prev_e)
+                            if not _struct_e: continue
+                            _near_e = _sma_e > 0 and (abs(current_price - _sma_e) / _sma_e) <= _hlr_band_e
+                            _sz_actual_e = _sz_e if _near_e else _sz_e * _hlr_off_sz_e
+                            _hlr_mult_e = max(_hlr_mult_e, _sz_actual_e)
+                            _hlr_tfs_e.append(f"{_htf_e}{'@SMA' if _near_e else ''}x{_sz_actual_e:.1f}")
+                        _hlr_mult_e = min(_hlr_mult_e, _hlr_sz_cap_e)
+                        if _hlr_mult_e > 1.0:
+                            _hlr_max_qty = float(config.START_POSITION_SIZE) * _hlr_sz_cap_e / current_price
+                            qty_before = qty
+                            qty = min(qty * _hlr_mult_e, _hlr_max_qty)
+                            logger.warning(f"[HLR_SIZE_BOOST] {position_key}: qty {qty_before:.4f}→{qty:.4f} ({_hlr_mult_e:.1f}x, tfs={_hlr_tfs_e}, cap=${_hlr_max_qty*current_price:.0f})")
                     if _reentry_tier == 'TIER1':
                         _t1_mult = getattr(config, 'REENTRY_TIER1_SIZE_MULT', 1.5)
                         qty = max(qty, config.START_POSITION_SIZE / current_price * _t1_mult) if current_price > 0 else qty

@@ -862,12 +862,18 @@ def compute_entry_signals(npz, n, is_long, cfg):
         for name, arr in blocks.items():
             score = score + arr.astype(np.float32) * weights.get(name, 1)
         raw = raw & (score >= cfg.STRENGTH_MIN_SCORE)
-        # ENTRY_SCORE_THRESHOLD — 2026-04-17 wiring. Previously declared but never read in crypto.
-        # Acts as a SECOND score floor stacked on STRENGTH_MIN_SCORE so it can be swept independently.
-        # Default 18.0 from QuickConfig; 0 disables.
+        # ENTRY_SCORE_THRESHOLD — second score floor swept independently.
+        # DELTA_ENTRY_ENABLED proxy: live delta_tracker fires on velocity zone transitions,
+        # bypassing the scorer. Proxy: velocity-strong bars skip ENTRY_SCORE_THRESHOLD (not STRENGTH_MIN_SCORE).
         _est = float(getattr(cfg, 'ENTRY_SCORE_THRESHOLD', 0.0) or 0.0)
         if _est > 0:
-            raw = raw & (score >= _est)
+            _delta_en = bool(getattr(cfg, 'DELTA_ENTRY_ENABLED', True))
+            if _delta_en and cfg.CT_WT_VELOCITY_GATE_ENABLED:
+                _vel_min = float(getattr(cfg, 'CT_WT_VELOCITY_1H_MIN', 0.0))
+                _vel_bypass = (wt_vel_1h >= _vel_min) if is_long else (wt_vel_1h <= -_vel_min)
+                raw = raw & ((score >= _est) | _vel_bypass)
+            else:
+                raw = raw & (score >= _est)
 
     # ===== Auto-hooked entry gates (Group B switches) =====
     # Each adds a simple filter; when flipped, impacts entry signal density.
@@ -946,6 +952,14 @@ def compute_entry_signals(npz, n, is_long, cfg):
             extra_ok = extra_ok & (k_15m < _rally_cap)
         else:
             extra_ok = extra_ok & (k_15m > (100.0 - _rally_cap))
+    # REENTRY_RALLY_HTF_MIN — require N of 3 HTF channels (1h/4h/D) aligned. 1=disabled (any 1 of 3 ok).
+    _re_htf_min = int(getattr(cfg, 'REENTRY_RALLY_HTF_MIN', 1))
+    if _re_htf_min > 1:
+        if is_long:
+            _re_htf_cnt = (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int)
+        else:
+            _re_htf_cnt = (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        extra_ok = extra_ok & (_re_htf_cnt >= _re_htf_min)
     # ═══ Chapter-E RANK_CONVICTION (vectorized proxy) ═══
     # Live uses 0ranking_points_global (cross-symbol). NPZ has no cross-symbol data, so proxy
     # rank_proxy via HTF agreement count (0-3). Side-agreement ≥ RANK_CONVICTION_MIN to allow.

@@ -41,7 +41,6 @@ def build_param_grid_entry_gates():
         "CT_WT_VELOCITY_1H_MIN": [0.0, 0.5, 1.0],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "SATOSHIT_ENABLED": [True, False],
-        "DELTA_ENGINE_ENABLED": [True],
         "DELTA_ENTRY_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
