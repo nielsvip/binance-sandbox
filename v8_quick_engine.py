@@ -47,6 +47,7 @@ def _ha_int(npz: dict, key: str, n: int):
 @dataclass
 class QuickConfig:
     MODE: str = "crypto"
+    LTF: str = "3m"   # crypto default — lowest timeframe for entry/exit signals. Stocks: set to "5m" in apply_tradier_defaults.
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
     COOLDOWN_BARS: int = 3
@@ -449,6 +450,7 @@ class QuickConfig:
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"
+        self.LTF = "5m"   # stocks: 5m LTF (crypto default 3m). NEVER swap — stock NPZ only has _5m fields.
         self.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"  # stocks: bb_1h (crypto: dc_4h) — NEVER swap
         self.K_ZONE_ENTRY_ENABLED = True
         self.MFI_ENTRY_ENABLED = True
@@ -534,30 +536,31 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
 
 def compute_reentry_blocks(npz, n, is_long, cfg):
     """Returns dict of block_name -> boolean array (True = block fires)."""
-    close = _safe(npz, 'close_3m', n)
+    _ltf = getattr(cfg, 'LTF', '3m')
+    close = _safe(npz, f'close_{_ltf}', n)
     if close.sum() == 0: close = _safe(npz, 'close_5m', n)
-    k_3m = _safe(npz, 'stoch_k_3m', n, 50); d_3m = _safe(npz, 'stoch_d_3m', n, 50)
+    k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50); d_ltf = _safe(npz, f'stoch_d_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50); k_1h = _safe(npz, 'stoch_k_1h', n, 50)
-    k_3m_prev = np.roll(k_3m, 1); k_3m_prev[0] = k_3m[0]
-    wt1_3m = _safe(npz, 'wt1_3m', n); wt2_3m = _safe(npz, 'wt2_3m', n)
+    k_ltf_prev = np.roll(k_ltf, 1); k_ltf_prev[0] = k_ltf[0]
+    wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
     wt1_15m = _safe(npz, 'wt1_15m', n); wt2_15m = _safe(npz, 'wt2_15m', n)
     wt1_1h = _safe(npz, 'wt1_1h', n); wt2_1h = _safe(npz, 'wt2_1h', n)
-    wt_vel_3m = _safe(npz, 'wt_velocity_3m', n); wt_vel_15m = _safe(npz, 'wt_velocity_15m', n)
+    wt_vel_ltf = _safe(npz, f'wt_velocity_{_ltf}', n); wt_vel_15m = _safe(npz, 'wt_velocity_15m', n)
     wt_vel_1h = _safe(npz, 'wt_velocity_1h', n)
-    wt_bull_3m = _safeb(npz, 'wt_bullish_3m', n); wt_bull_15m = _safeb(npz, 'wt_bullish_15m', n)
+    wt_bull_ltf = _safeb(npz, f'wt_bullish_{_ltf}', n); wt_bull_15m = _safeb(npz, 'wt_bullish_15m', n)
     wt_bull_1h = _safeb(npz, 'wt_bullish_1h', n); wt_bull_4h = _safeb(npz, 'wt_bullish_4h', n)
     dc_high_4h = _safe(npz, 'dc_high_4h', n); dc_low_4h = _safe(npz, 'dc_low_4h', n)
     dc_high_1h = _safe(npz, 'dc_high_1h', n); dc_low_1h = _safe(npz, 'dc_low_1h', n)
     dc_high_15m = _safe(npz, 'dc_high_15m', n); dc_low_15m = _safe(npz, 'dc_low_15m', n)
-    ha_3m = _ha_int(npz, 'ha_3m', n); ha_15m = _ha_int(npz, 'ha_15m', n); ha_1h = _ha_int(npz, 'ha_1h', n)
+    ha_ltf = _ha_int(npz, f'ha_{_ltf}', n); ha_15m = _ha_int(npz, 'ha_15m', n); ha_1h = _ha_int(npz, 'ha_1h', n)
 
     blocks = {}
     if cfg.REENTRY_B02_BC156_BOTTOM_ENABLED:
         if is_long:
-            wt_bull_cnt = wt_bull_3m.astype(int) + wt_bull_15m.astype(int) + wt_bull_1h.astype(int) + wt_bull_4h.astype(int)
+            wt_bull_cnt = wt_bull_ltf.astype(int) + wt_bull_15m.astype(int) + wt_bull_1h.astype(int) + wt_bull_4h.astype(int)
             blocks["B02"] = (wt1_15m < -20) & (wt_vel_15m > 0) & (wt1_1h > wt2_1h) & (wt_bull_cnt >= 2)
         else:
-            wt_bear_cnt = (~wt_bull_3m).astype(int) + (~wt_bull_15m).astype(int) + (~wt_bull_1h).astype(int) + (~wt_bull_4h).astype(int)
+            wt_bear_cnt = (~wt_bull_ltf).astype(int) + (~wt_bull_15m).astype(int) + (~wt_bull_1h).astype(int) + (~wt_bull_4h).astype(int)
             blocks["B02"] = (wt1_15m > 20) & (wt_vel_15m < 0) & (wt1_1h < wt2_1h) & (wt_bear_cnt >= 2)
     if cfg.REENTRY_B04_DC_RETEST_ENABLED:
         dc_high_4h_prev = np.roll(dc_high_4h, 5); dc_high_4h_prev[:5] = dc_high_4h[:5]
@@ -565,16 +568,16 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         if is_long:
             exp = (dc_high_4h > dc_high_4h_prev * 1.015) & (dc_high_4h_prev > 0)
             pb = (close < dc_high_4h_prev * 1.005) & (close > dc_high_4h_prev * 0.99)
-            blocks["B04"] = exp & pb & (k_3m > d_3m) & (k_3m < 50)
+            blocks["B04"] = exp & pb & (k_ltf > d_ltf) & (k_ltf < 50)
         else:
             exp = (dc_low_4h < dc_low_4h_prev * 0.985) & (dc_low_4h_prev > 0)
             pb = (close > dc_low_4h_prev * 0.995) & (close < dc_low_4h_prev * 1.01)
-            blocks["B04"] = exp & pb & (k_3m < d_3m) & (k_3m > 50)
+            blocks["B04"] = exp & pb & (k_ltf < d_ltf) & (k_ltf > 50)
     if cfg.REENTRY_B10_STOCH_REV_ENABLED:
         if is_long:
-            blocks["B10"] = (k_3m_prev <= d_3m) & (k_3m > d_3m) & (k_3m < 25) & (k_15m < 40)
+            blocks["B10"] = (k_ltf_prev <= d_ltf) & (k_ltf > d_ltf) & (k_ltf < 25) & (k_15m < 40)
         else:
-            blocks["B10"] = (k_3m_prev >= d_3m) & (k_3m < d_3m) & (k_3m > 75) & (k_15m > 60)
+            blocks["B10"] = (k_ltf_prev >= d_ltf) & (k_ltf < d_ltf) & (k_ltf > 75) & (k_15m > 60)
     if cfg.REENTRY_B11_DC_BREAK_ENABLED:
         if is_long:
             blocks["B11"] = (dc_high_1h > 0) & (close > dc_high_1h * 1.001) & (wt1_15m > wt2_15m)
@@ -582,16 +585,16 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["B11"] = (dc_low_1h > 0) & (close < dc_low_1h * 0.999) & (wt1_15m < wt2_15m)
     if cfg.REENTRY_B12_WT_MOM_ENABLED:
         if is_long:
-            aligned = (wt1_3m > wt2_3m) & (wt1_15m > wt2_15m) & (wt1_1h > wt2_1h)
-            blocks["B12"] = aligned & (wt_vel_3m > 1.0)
+            aligned = (wt1_ltf > wt2_ltf) & (wt1_15m > wt2_15m) & (wt1_1h > wt2_1h)
+            blocks["B12"] = aligned & (wt_vel_ltf > 1.0)
         else:
-            aligned = (wt1_3m < wt2_3m) & (wt1_15m < wt2_15m) & (wt1_1h < wt2_1h)
-            blocks["B12"] = aligned & (wt_vel_3m < -1.0)
+            aligned = (wt1_ltf < wt2_ltf) & (wt1_15m < wt2_15m) & (wt1_1h < wt2_1h)
+            blocks["B12"] = aligned & (wt_vel_ltf < -1.0)
     if cfg.REENTRY_B14_HA_TREND_ENABLED:
         if is_long:
-            blocks["B14"] = (ha_3m == 1) & (ha_15m == 1) & (ha_1h == 1) & (k_3m < 60)
+            blocks["B14"] = (ha_ltf == 1) & (ha_15m == 1) & (ha_1h == 1) & (k_ltf < 60)
         else:
-            blocks["B14"] = (ha_3m == -1) & (ha_15m == -1) & (ha_1h == -1) & (k_3m > 40)
+            blocks["B14"] = (ha_ltf == -1) & (ha_15m == -1) & (ha_1h == -1) & (k_ltf > 40)
     if cfg.REENTRY_B15_STRONG_TREND_ENABLED:
         if is_long:
             blocks["B15"] = (dc_high_4h > 0) & (close > dc_high_4h) & (wt_vel_1h > 2.0) & (k_1h < 85)
