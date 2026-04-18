@@ -104,7 +104,7 @@ def check_reentry_delta_tolerant(indicators: dict, is_long: bool, trade_manager=
         if _htf in ('4h', '4h_D'):
             _wt1_4h = _sf(indicators.get('wt1_4h', 0), 0)
             _wt2_4h = _sf(indicators.get('wt2_4h', 0), 0)
-            _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
+            _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt_vel_4h < -2.0)
             if not _4h_ok:
                 return False, f"DELTA_REENTRY_BLOCKED_4h_against_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}"
         if _htf == '4h_D':
@@ -11178,7 +11178,7 @@ class MultiAccountTradeManager:
                     _wt1_D = _sf(i.get("wt1_D", 0), 0)
                     _wt2_D = _sf(i.get("wt2_D", 0), 0)
                     if _htf_gate in ("4h", "4h_D", "4h_D_strict"):
-                        _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
+                        _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt_vel_4h < -2.0)
                         if not _4h_ok:
                             return f"{position_key}_BLOCKED_DELTA_HTF_4h_AGAINST"
                     if _htf_gate in ("4h_D", "4h_D_strict"):
@@ -17928,7 +17928,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0.0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0.0)
             _wt1_15m_prev = safe_fetch_float(i.get('wt1_15m_prev', 0), 0.0); _wt2_15m_prev = safe_fetch_float(i.get('wt2_15m_prev', 0), 0.0)
             _wt15m_just_crossed = (is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev) or ((not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev)
-            _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or ((not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h))
+            _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or ((not is_long) and (_wt1_1h < _wt2_1h or _wt_vel_4h < -2.0))
             _htf_required = bool(getattr(config, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
             if _wt15m_just_crossed and (_htf_fav or not _htf_required):
                 _wt_re_delta_ok, _wt_re_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
@@ -19403,11 +19403,11 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _wt_vel_1h = safe_fetch_float(i.get('wt_velocity_1h', 0), 0)
             _4h_against = False
             if is_long:
-                # EXHAUST_UP: WT still rising but decelerating (peak detection). IMPULSE_DOWN: already rolling over.
-                _4h_against = _wt_mom_4h in ('EXHAUST_UP', 'IMPULSE_DOWN') or (_wt_vel_4h < 0 and _wt_accel_4h < 0)
+                # wt1_4h < wt2_4h = 4h WT confirmed bearish (bear cross). No fixed speed threshold.
+                _4h_against = _wt_vel_4h < -2.0
             else:
-                # EXHAUST_DOWN: WT still falling but decelerating (trough detection). IMPULSE_UP: already reversing.
-                _4h_against = _wt_mom_4h in ('EXHAUST_DOWN', 'IMPULSE_UP') or (_wt_vel_4h > 0 and _wt_accel_4h > 0)
+                # wt1_4h > wt2_4h = 4h WT confirmed bullish (bull cross). No fixed speed threshold.
+                _4h_against = _wt1_4h > _wt2_4h
             _oa_raw = getattr(position, 'opened_at', None)
             if isinstance(_oa_raw, (int, float)):
                 _oa_raw = datetime.fromtimestamp(_oa_raw, tz=timezone.utc) if _oa_raw > 0 else None

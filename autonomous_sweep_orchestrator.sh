@@ -54,8 +54,11 @@ check_deadline() {
   fi
 }
 
+STUCK_TIMEOUT=1800  # 30 min — kill any engine/sweep process running longer than this
+
 wait_for_quiet() {
   # Wait until no backtest_v8_engine / v8_quick_sweep processes remain.
+  # If any process has been running >STUCK_TIMEOUT seconds with no new CSV output, kill it.
   local waited=0
   while pgrep -f "backtest_v8_engine.py" > /dev/null 2>&1 \
         || pgrep -f "backtest_v8_sweep.py" > /dev/null 2>&1 \
@@ -63,12 +66,54 @@ wait_for_quiet() {
     check_deadline
     sleep 30
     waited=$((waited + 30))
-    if [ $((waited % 600)) -eq 0 ]; then
-      log "[WAIT] still waiting for quiet, ${waited}s so far"
+    if [ $((waited % 300)) -eq 0 ]; then
+      log "[WAIT] still waiting for quiet, ${waited}s elapsed"
+    fi
+    # Kill any stuck processes: running >STUCK_TIMEOUT with no recent CSV output
+    local last_csv_age=9999
+    local newest_csv
+    newest_csv=$(ls -t "${RESULTS_DIR}"/*.csv 2>/dev/null | head -1)
+    if [ -n "${newest_csv}" ]; then
+      local csv_mtime now
+      csv_mtime=$(stat -c %Y "${newest_csv}" 2>/dev/null || echo 0)
+      now=$(date +%s)
+      last_csv_age=$(( now - csv_mtime ))
+    fi
+    if [ "${last_csv_age}" -gt "${STUCK_TIMEOUT}" ]; then
+      # Find processes running longer than STUCK_TIMEOUT
+      local stuck_pids
+      stuck_pids=$(ps -eo pid,etimes,cmd | awk -v t="${STUCK_TIMEOUT}" '
+        /backtest_v8_engine\.py|backtest_v8_sweep\.py|v8_quick_sweep\.py/ &&
+        !/awk/ { if ($2 > t) print $1 }')
+      if [ -n "${stuck_pids}" ]; then
+        log "[STUCK] no CSV output for ${last_csv_age}s, killing PIDs: ${stuck_pids}"
+        echo "${stuck_pids}" | xargs kill -9 2>/dev/null
+        sleep 5
+        waited=0  # reset wait counter after kill
+      fi
     fi
   done
   rm -f /home/niels/SWEEP_RUNNING
   log "[QUIET] no backtest processes running"
+}
+
+check_resources() {
+  # Block sweep launch if CPU or memory > 80%
+  local mem_pct cpu_pct
+  mem_pct=$(free | awk '/Mem:/ {printf "%.0f", $3*100/$2}')
+  cpu_pct=$(top -bn1 | grep '%Cpu' | awk '{print int(100-$8)}' 2>/dev/null || echo 0)
+  local waited=0
+  while [ "${mem_pct}" -gt 80 ] || [ "${cpu_pct}" -gt 80 ]; do
+    log "[RESOURCE] mem=${mem_pct}% cpu=${cpu_pct}% — waiting before next sweep launch"
+    sleep 60
+    waited=$((waited + 60))
+    mem_pct=$(free | awk '/Mem:/ {printf "%.0f", $3*100/$2}')
+    cpu_pct=$(top -bn1 | grep '%Cpu' | awk '{print int(100-$8)}' 2>/dev/null || echo 0)
+    if [ "${waited}" -gt 3600 ]; then
+      log "[RESOURCE] waited 60min for resources, proceeding anyway"
+      break
+    fi
+  done
 }
 
 append_top5() {
@@ -105,6 +150,7 @@ run_sweep() {
 
   check_deadline
   wait_for_quiet
+  check_resources
 
   local stamp
   stamp=$(date -u +%Y%m%d_%H%M%S)
@@ -120,10 +166,18 @@ run_sweep() {
   local pid=$!
   log "[LAUNCH] pid=${pid} log=${run_log}"
 
-  # Poll until process exits or deadline
+  # Poll until process exits, deadline, or sweep-level stuck timeout (2× STUCK_TIMEOUT)
+  local sweep_waited=0
+  local sweep_timeout=$(( STUCK_TIMEOUT * 2 ))
   while kill -0 "${pid}" 2>/dev/null; do
     check_deadline
     sleep 60
+    sweep_waited=$(( sweep_waited + 60 ))
+    if [ "${sweep_waited}" -ge "${sweep_timeout}" ]; then
+      log "[SWEEP_TIMEOUT] tier=${tier} pid=${pid} ran ${sweep_waited}s — killing"
+      kill -9 "${pid}" 2>/dev/null
+      break
+    fi
   done
 
   wait "${pid}" 2>/dev/null

@@ -355,7 +355,7 @@ def render_page(body, title="Sweep Cockpit", active_nav="Home"):
 <style>{STYLE}</style>
 </head><body>
 <div class="refresh-bar"></div>
-<div class="navbar">{nav_html} &nbsp;|&nbsp; <a href="/results">🏆 Results</a> &nbsp;|&nbsp; <a href="/alerts">🚨 Alerts</a> &nbsp;|&nbsp; <a href="/switches">🔌 Switches</a> &nbsp;|&nbsp; <a href="/live_vs_sandbox">🟢 Live vs 🧪 Sandbox</a></div>
+<div class="navbar">{nav_html} &nbsp;|&nbsp; <a href="/results">🏆 Results</a> &nbsp;|&nbsp; <a href="/alerts">🚨 Alerts</a> &nbsp;|&nbsp; <a href="/switches">🔌 Switches</a> &nbsp;|&nbsp; <a href="/live_vs_sandbox">🟢 Live vs 🧪 Sandbox</a> &nbsp;|&nbsp; <a href="/live_vs_frozen">🧊 Live vs Frozen</a></div>
 <h1>V8 Sweep Cockpit</h1>
 <div class="subtitle">Auto-refresh 30s | {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
 {alert_banner}
@@ -1566,6 +1566,157 @@ def live_vs_sandbox():
     <table style="width:100%"><tr><th>Machine</th><th>OK</th><th>Fail</th><th>Total Rows</th><th>Elapsed</th></tr>{''.join(sb_rows) or '<tr><td colspan=5>No data yet.</td></tr>'}</table>
     """
     return render_page(body, title="Live vs Sandbox", active_nav="Home")
+
+
+# ---------------------------------------------------------------------------
+# /live_vs_frozen — drift vs READONLY_LATEST (carved-in-stone proven baseline)
+# ---------------------------------------------------------------------------
+_DIFF_JSON = os.path.join(BASE_DIR, "data", "diff_live_vs_frozen.json")
+_DIFF_TOOL = os.path.join(BASE_DIR, "tools", "diff_live_vs_frozen.py")
+
+
+def _run_diff_tool() -> str:
+    """Re-run diff_live_vs_frozen.py, return stderr+stdout snippet."""
+    try:
+        res = subprocess.run(
+            ["python3", _DIFF_TOOL], capture_output=True, text=True, timeout=60
+        )
+        return (res.stdout or "") + (res.stderr or "")
+    except Exception as exc:
+        return f"diff tool failed: {exc}"
+
+
+def _load_diff_report() -> dict:
+    if not os.path.isfile(_DIFF_JSON):
+        _run_diff_tool()
+    try:
+        with open(_DIFF_JSON) as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
+
+
+def _fmt(v):
+    s = repr(v)
+    if len(s) > 100:
+        s = s[:97] + "..."
+    return s
+
+
+@app.route("/live_vs_frozen/refresh", methods=["POST"])
+def live_vs_frozen_refresh():
+    _run_diff_tool()
+    return redirect("/live_vs_frozen")
+
+
+@app.route("/live_vs_frozen")
+def live_vs_frozen():
+    """Diff live config/code vs READONLY_LATEST frozen snapshot.
+
+    The frozen snapshot at backups/READONLY_LATEST/ is the carved-in-stone
+    proven baseline (Apr 4 2026). Any drift below is a place where live
+    behavior may diverge from the proven run.
+    """
+    report = _load_diff_report()
+    files = report.get("files", {})
+    cfg_diffs = report.get("config_diffs", {})
+    mtime = "—"
+    if os.path.isfile(_DIFF_JSON):
+        mtime = datetime.fromtimestamp(
+            os.path.getmtime(_DIFF_JSON), tz=timezone.utc
+        ).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    # File-level drift table
+    file_rows = []
+    drift_count = 0
+    for rel, meta in files.items():
+        lm = meta.get("live", {})
+        fm = meta.get("frozen", {})
+        drift = meta.get("drift")
+        if drift:
+            drift_count += 1
+        marker = (
+            '<span style="color:#ff4444">🔴 DRIFT</span>'
+            if drift
+            else '<span style="color:#4caf50">✅ OK</span>'
+        )
+        file_rows.append(
+            f"<tr><td>{rel}</td><td>{marker}</td>"
+            f"<td><code>{lm.get('md5','-')[:10]}</code></td>"
+            f"<td><code>{fm.get('md5','-')[:10]}</code></td>"
+            f"<td>{lm.get('size','-')}</td>"
+            f"<td>{fm.get('size','-')}</td></tr>"
+        )
+
+    # Constant-level tables per config file
+    cfg_sections = []
+    for rel, cd in cfg_diffs.items():
+        changed = cd.get("changed", [])
+        removed = cd.get("removed", [])
+        added = cd.get("added", [])
+        rows_changed = "".join(
+            f'<tr><td><code>{c["name"]}</code></td>'
+            f'<td style="color:#ff8844"><code>{_fmt(c["live"])}</code></td>'
+            f'<td style="color:#888"><code>{_fmt(c["frozen"])}</code></td></tr>'
+            for c in changed
+        ) or '<tr><td colspan=3 style="color:#888">None</td></tr>'
+        rows_removed = "".join(
+            f'<tr><td><code>{c["name"]}</code></td>'
+            f'<td style="color:#888">(gone)</td>'
+            f'<td><code>{_fmt(c["frozen"])}</code></td></tr>'
+            for c in removed
+        ) or '<tr><td colspan=3 style="color:#888">None</td></tr>'
+        added_preview = "".join(
+            f"<li><code>{c['name']}</code> = <code>{_fmt(c['live'])}</code></li>"
+            for c in added[:40]
+        )
+        added_more = (
+            f"<p style='color:#888'>… and {len(added) - 40} more</p>"
+            if len(added) > 40
+            else ""
+        )
+        cfg_sections.append(
+            f"""
+<h3 style="margin-top:28px">{rel}</h3>
+<p>Live defines <b>{cd.get('live_count', 0)}</b> constants, frozen defines
+<b>{cd.get('frozen_count', 0)}</b>. Changed: <b style="color:#ff8844">{len(changed)}</b> ·
+Removed: <b style="color:#ff4444">{len(removed)}</b> · Added: <b style="color:#44aaff">{len(added)}</b>.</p>
+
+<h4>CHANGED (value differs live vs frozen — most likely drift source)</h4>
+<table style="width:100%">
+<tr><th>Name</th><th>Live</th><th>Frozen (proven)</th></tr>
+{rows_changed}
+</table>
+
+<h4>REMOVED (present in frozen, gone from live)</h4>
+<table style="width:100%">
+<tr><th>Name</th><th>Live</th><th>Frozen (proven)</th></tr>
+{rows_removed}
+</table>
+
+<details style="margin-top:10px"><summary>ADDED since frozen ({len(added)} new names)</summary>
+<ul>{added_preview}</ul>{added_more}</details>
+"""
+        )
+
+    body = f"""
+<h2>🧊 Live vs Frozen (READONLY_LATEST)</h2>
+<p>Frozen snapshot: <code>backups/READONLY_LATEST/</code> (Apr 4 2026, permissions <code>r--r--r--</code>).
+This is the carved-in-stone proven baseline. Any constant CHANGED or REMOVED below is a place where live
+behavior may diverge from the proven run.</p>
+<p>Report generated: <b>{mtime}</b> ·
+<form method="post" action="/live_vs_frozen/refresh" style="display:inline">
+<button type="submit">🔄 Re-run diff now</button>
+</form></p>
+
+<h3>File-level drift ({drift_count}/{len(files)} files drift from frozen)</h3>
+<table style="width:100%">
+<tr><th>File</th><th>Status</th><th>Live md5</th><th>Frozen md5</th><th>Live size</th><th>Frozen size</th></tr>
+{''.join(file_rows)}
+</table>
+{''.join(cfg_sections)}
+"""
+    return render_page(body, title="Live vs Frozen", active_nav="Home")
 
 
 # ---------------------------------------------------------------------------
