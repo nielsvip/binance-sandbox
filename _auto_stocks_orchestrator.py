@@ -225,21 +225,41 @@ def main():
     while remaining_hours() > 0.1:
         iteration += 1
         if not state["queue"]:
-            log.info("[QUEUE] empty — all known sweeps done. Seeding new round with fresh neighborhoods around running best.")
+            log.info("[QUEUE] empty — all known sweeps done. Seeding new round with diverse neighborhoods.")
+            # Seed around: running_best + top-3 robustness leaders (different configs = different search paths)
+            import math
+            def _robust(r): return r.get("best_sharpe", 0) * math.sqrt(max(r.get("best_trades", 0), 1) / 10.0)
+            # Get top configs by robustness, dedup
+            cs = state["completed_sweeps"]
+            seen_cfg_keys = set()
+            seeds = []
             rb = state["running_best"]
-            if rb["cfg"]:
-                nbrs = build_neighborhood_overrides(rb["cfg"])
+            if rb.get("cfg"):
+                seeds.append(("running_best", rb["sector"] or "mix_12", rb["cfg"]))
+                seen_cfg_keys.add(tuple(sorted(rb["cfg"].items())))
+            for r in sorted(cs, key=lambda x: -_robust(x))[:8]:
+                cfg = r.get("best_cfg")
+                if not cfg: continue
+                k = tuple(sorted(cfg.items()))
+                if k in seen_cfg_keys: continue
+                seen_cfg_keys.add(k)
+                seeds.append(("robust", r["sector"], cfg))
+                if len(seeds) >= 4: break
+            log.info(f"[QUEUE] seeding {len(seeds)} diverse exploration paths")
+            for tag_prefix, sector, cfg in seeds:
+                nbrs = build_neighborhood_overrides(cfg)
                 if nbrs:
-                    state["queue"].append({"sector": rb["sector"] or "mix_12", "grid_tag": f"refine_r{iteration}", "overrides": nbrs})
+                    state["queue"].append({"sector": sector, "grid_tag": f"{tag_prefix}_r{iteration}",
+                                           "overrides": nbrs})
+            if not state["queue"]:
+                if not state["running_best"].get("cfg"):
+                    log.info("[QUEUE] no running best yet; sleeping 300s")
+                    heartbeat("idle — no winner yet")
+                    time.sleep(300)
                 else:
                     log.info("[QUEUE] no neighborhoods to generate; sleeping 600s")
                     heartbeat("idle — waiting for time")
                     time.sleep(600)
-                    continue
-            else:
-                log.info("[QUEUE] no running best yet; sleeping 300s")
-                heartbeat("idle — no winner yet")
-                time.sleep(300)
                 continue
 
         task = state["queue"].pop(0)
