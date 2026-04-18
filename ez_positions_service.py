@@ -6323,13 +6323,12 @@ class PositionService:
                     skipped_count += 1
                     continue
                 logger.debug(f"[_process_account_update_impl][{account_key}] 🔍 Processing API position: {position_key} amt={amt_abs:.6f} symbol={symbol} position_side={position_side}")
-                updated_keys_in_api.add(position_key)
                 existing_position = account_positions.get(position_key)
                 if not existing_position:
                     logger.warning(f"[_process_account_update_impl][{account_key}] ⚠️ Position {position_key} not in memory - attempting to restore from backup")
                     existing_position = await self.restore_position_from_backups(account_key, symbol, position_side)
                     if not existing_position:
-                        logger.critical(f"🚨 [POSITION_CREATION_BLOCKED][{account_key}] {position_key}: NOT in memory, NOT in backups. REFUSING to create empty position. Skipping this API update.")
+                        logger.critical(f"🚨 [ORPHAN_EXCHANGE_POSITION][POSITION_CREATION_BLOCKED][{account_key}] {position_key}: NOT in memory, NOT in backups — exchange has open position we cannot manage (amt={amt_abs:.6f}, ep={api_entry_price}). MANUAL INTERVENTION REQUIRED. Skipping without poisoning updated_keys_in_api.")
                         skipped_count += 1
                         continue
                     account_positions[position_key] = existing_position

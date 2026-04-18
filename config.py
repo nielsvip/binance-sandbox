@@ -1266,6 +1266,36 @@ class Config:
     #         'EXTREME_VOLATILITY': 2.5,
     #         'HIGH_VOLATILITY': 1.5,
     #         'LOW_VOLATILITY': -1.5 } })
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # 2026-04-18 INDICATOR-AUDIT EXPERIMENTAL SWITCHES (ALL DEFAULT OFF)
+    # Wired into ez_positions_quick.rate() + evaluate_reentry_epq behind these
+    # flags. Parameters are editable; lock the values once sweep-validated.
+    # Source: analysis/indicator_audit_2026-04-18.xlsx (Sheet 5 — Suggestions)
+    # ═══════════════════════════════════════════════════════════════════════
+    # R-G1: cross-symbol sentiment rank boycott (only LONG top-N / SHORT bottom-N)
+    SENTIMENT_TOP_N_GATE_ENABLED: bool = False
+    SENTIMENT_TOP_N: int = 20                    # universe size threshold; sweep [10,20,30,40]
+    # R-G2: multi-TF WT velocity alignment gate
+    WT_MTF_VEL_GATE_ENABLED: bool = False
+    WT_MTF_VEL_MIN: int = 3                      # TF count in [2,3,4]
+    # R-G3: chop boycott via wt_cross_count_{dir}_{tf} in last 50 bars
+    WT_CHOP_GATE_ENABLED: bool = False
+    WT_CHOP_MAX: int = 8                         # per-TF cross count >= this → boycott; sweep [6,8,10,12]
+    # R-Z1: wire rankings.json order_multiplier into sizing chain
+    RANKING_MULT_ENABLED: bool = False
+    RANKING_MULT_MIN: float = 0.3
+    RANKING_MULT_MAX: float = 2.5
+    # R-Z4: continuous crash_mult gradient scaled by 0sentiment_strength
+    CRASH_MULT_GRADIENT_ENABLED: bool = False
+    CRASH_MULT_GRADIENT_MAX: float = 2.5         # upper clamp
+    # RE-1: reentry cross-freshness gate (wt_cross_bars_ago_{tf} < N)
+    REENTRY_CROSS_FRESHNESS_ENABLED: bool = False
+    REENTRY_CROSS_MAX_BARS_AGO: int = 5           # sweep [3,5,8,12]
+    # ═══════════════════════════════════════════════════════════════════════
+    # END INDICATOR-AUDIT SWITCHES
+    # ═══════════════════════════════════════════════════════════════════════
+
     def __post_init__(self):
         self._INSTANCES.add(self)
         if self.DELTA_TF_WEIGHTS is None:

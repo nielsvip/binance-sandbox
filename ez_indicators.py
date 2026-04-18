@@ -2140,15 +2140,12 @@ class IndicatorCalculator:
             if tcu is not None:
                 result["tcu_3m"] = tcu
         if timeframe == "15m":
-            t_up, tco, tcu = hull_trend_indicators(close_series, length_short=9, length_long=21)
-            if t_up is not None:
-                result["t_up_15m"] = t_up
-            if tco is not None:
-                result["tco_15m"] = tco
-            if tcu is not None:
-                result["tcu_15m"] = tcu
-        # Hull 1h REMOVED — only 3m/15m used in rankings. Saves ~20-50ms/symbol.
-        # Duplicate 3m Hull computation REMOVED — already computed above.
+            # I-1 fix (2026-04-18): duplicate Hull 15m writer DELETED.
+            # The block at L~2162 below overwrites t_up_15m/tco_15m/tcu_15m using EMA9/EMA21 — that is the
+            # authoritative source. The THMA hull_trend_indicators write here was redundant and caused
+            # a two-writer drift (different algorithm, same key). Keeping the sma_1m stub only.
+            # Hull 1h REMOVED — only 3m/15m used in rankings. Saves ~20-50ms/symbol.
+            # Duplicate 3m Hull computation REMOVED — already computed above.
             sma_1m_curr, sma_1m_prev = sma_pair(close_series, 70)
             if sma_1m_curr is not None:
                 result["sma_200_1m"] = sma_1m_curr

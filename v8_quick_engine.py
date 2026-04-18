@@ -20,11 +20,25 @@ import numpy as np
 
 BASE_PATH = Path(__file__).resolve().parent
 
+# B-5: warn once per missing field so sweep winners on dead switches get surfaced.
+# Set V8_WARN_MISSING=0 to silence. Emitted to stderr only the first time we see a miss.
+_V8_MISSING_WARNED = set()
+
+
+def _v8_warn_missing(key: str, got_len, want_len: int, reason: str = ""):
+    if key in _V8_MISSING_WARNED:
+        return
+    _V8_MISSING_WARNED.add(key)
+    if os.environ.get('V8_WARN_MISSING', '1') != '1':
+        return
+    print(f"[V8_ENGINE] MISSING_FIELD key={key!r} got_len={got_len} want_len={want_len} {reason} -> zero-fill", file=sys.stderr)
+
 
 def _safe(npz: dict, key: str, n: int, default: float = 0.0) -> np.ndarray:
     v = npz.get(key)
     if v is not None and isinstance(v, np.ndarray) and len(v) == n:
         return v.astype(np.float64)
+    _v8_warn_missing(key, (len(v) if v is not None and hasattr(v, '__len__') else None), n, f"default={default}")
     return np.full(n, default, dtype=np.float64)
 
 
@@ -32,15 +46,18 @@ def _safeb(npz: dict, key: str, n: int) -> np.ndarray:
     v = npz.get(key)
     if v is not None and isinstance(v, np.ndarray) and len(v) == n:
         return v.astype(bool)
+    _v8_warn_missing(key, (len(v) if v is not None and hasattr(v, '__len__') else None), n, "bool")
     return np.zeros(n, dtype=bool)
 
 
 def _ha_int(npz: dict, key: str, n: int):
     v = npz.get(key)
     if v is None or not isinstance(v, np.ndarray) or len(v) != n:
+        _v8_warn_missing(key, (len(v) if v is not None and hasattr(v, '__len__') else None), n, "ha_int")
         return np.zeros(n, dtype=np.int8)
     if v.dtype in (np.int8, np.int16, np.int32, np.int64):
         return v.astype(np.int8)
+    _v8_warn_missing(key, len(v), n, f"wrong-dtype={v.dtype}")
     return np.zeros(n, dtype=np.int8)
 
 
@@ -542,11 +559,25 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
     return stores
 
 
+def _close_with_mode_check(npz, n, cfg, call_site: str) -> np.ndarray:
+    """B-7: mode-aware close loader. Falls back to close_5m for stock NPZ (tradier LTF=5m)
+    but warns when mode/LTF mismatch so a tradier NPZ running with LTF=3m is not silent."""
+    _ltf = getattr(cfg, 'LTF', '3m')
+    _mode = getattr(cfg, 'MODE', 'crypto')
+    close = _safe(npz, f'close_{_ltf}', n)
+    if close.sum() == 0:
+        _expected = 'close_5m' if _mode == 'tradier' else 'close_3m'
+        if f'close_{_ltf}' != _expected and f"{call_site}:{_ltf}:{_mode}" not in _V8_MISSING_WARNED:
+            _V8_MISSING_WARNED.add(f"{call_site}:{_ltf}:{_mode}")
+            print(f"[V8_ENGINE] CLOSE_FALLBACK mode={_mode} LTF={_ltf} -> close_5m at {call_site}. Check LTF config matches NPZ.", file=sys.stderr)
+        close = _safe(npz, 'close_5m', n)
+    return close
+
+
 def compute_reentry_blocks(npz, n, is_long, cfg):
     """Returns dict of block_name -> boolean array (True = block fires)."""
     _ltf = getattr(cfg, 'LTF', '3m')
-    close = _safe(npz, f'close_{_ltf}', n)
-    if close.sum() == 0: close = _safe(npz, 'close_5m', n)
+    close = _close_with_mode_check(npz, n, cfg, 'compute_reentry_blocks')
     k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50); d_ltf = _safe(npz, f'stoch_d_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50); k_1h = _safe(npz, 'stoch_k_1h', n, 50)
     k_ltf_prev = np.roll(k_ltf, 1); k_ltf_prev[0] = k_ltf[0]
@@ -773,8 +804,7 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
 
 def compute_entry_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
-    close = _safe(npz, f'close_{_ltf}', n)
-    if close.sum() == 0: close = _safe(npz, 'close_5m', n)
+    close = _close_with_mode_check(npz, n, cfg, 'compute_entry_signals')
     k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50)
     k_1h = _safe(npz, 'stoch_k_1h', n, 50)
@@ -1000,8 +1030,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 def compute_exit_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
-    close = _safe(npz, f'close_{_ltf}', n)
-    if close.sum() == 0: close = _safe(npz, 'close_5m', n)
+    close = _close_with_mode_check(npz, n, cfg, 'compute_exit_signals')
     wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
     wt1_15m = _safe(npz, 'wt1_15m', n); wt2_15m = _safe(npz, 'wt2_15m', n)
     wt1_1h = _safe(npz, 'wt1_1h', n); wt2_1h = _safe(npz, 'wt2_1h', n)
@@ -1173,8 +1202,7 @@ def simulate(stores, cfg, capital=10000.0):
                 n = len(_close_ltf)
             else:
                 continue
-        close = _safe(npz, f'close_{_ltf}', n)
-        if close.sum() == 0: close = _safe(npz, 'close_5m', n)
+        close = _close_with_mode_check(npz, n, cfg, 'simulate')
         dc_high_4h = _safe(npz, 'dc_high_4h', n)
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
         for is_long in [True, False]:

@@ -235,6 +235,12 @@ def cpu_bound_calculation(closes_1m, closes_3m, last_price, last_tick_ts):
 
         # 4. WaveTrend 3m — FULL intelligence
         # Fallback: if insufficient 3m bars, resample 1m→3m (every 3rd close)
+        # I-2 DESIGN NOTE (2026-04-18): this hot-tick writer intentionally OVERWRITES the bar-close
+        # wt1_3m / wt2_3m / wt_cross_3m / wt_velocity_3m values produced by ez_indicators.py. Hot is
+        # authoritative in live trading. NPZ/sandbox has no tick data — backtests therefore read
+        # bar-close values computed with WT_TF_PARAMS['3m'] (esa=6,chan=10,sig=12) rather than the
+        # numpy defaults (n1=10,n2=21,smooth=3) used here. Known drift; sandbox WT values are
+        # bar-close-pessimistic vs live.
         _c3m = closes_3m if len(closes_3m) >= 29 else ([closes_1m[i] for i in range(2, len(closes_1m), 3)] if len(closes_1m) >= 87 else closes_3m)
         wt3m = wavetrend_numpy(_c3m, _c3m, _c3m)
         if wt3m:

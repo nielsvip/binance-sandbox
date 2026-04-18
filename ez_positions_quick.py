@@ -1105,9 +1105,21 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
     global_sentiment = safe_fetch_float(indicators.get('0market_sentiment_score'), 0.0)
     local_sentiment = safe_fetch_float(indicators.get('0market_sentiment_local'), 0.0)
     crash_mult = 1.0
-    if not is_long and local_sentiment < -20: crash_mult = 2.5
-    elif is_long and global_sentiment < -40: crash_mult = 1.5
-    elif is_long and local_sentiment > 40: crash_mult = 2.0
+    # R-Z4 (2026-04-18, default OFF): continuous gradient scaled by sentiment_strength.
+    # Removes the step at -40 (cliff edge). Clamped by CRASH_MULT_GRADIENT_MAX.
+    if getattr(config, 'CRASH_MULT_GRADIENT_ENABLED', False):
+        _cm_max = float(getattr(config, 'CRASH_MULT_GRADIENT_MAX', 2.5))
+        _strength = safe_fetch_float(indicators.get('0sentiment_strength'), 0.0)
+        if not is_long and local_sentiment < 0:
+            crash_mult = min(_cm_max, 1.0 + _strength / 40.0)
+        elif is_long and global_sentiment < 0:
+            crash_mult = min(_cm_max, 1.0 + abs(global_sentiment) / 40.0)
+        elif is_long and local_sentiment > 0:
+            crash_mult = min(_cm_max, 1.0 + local_sentiment / 40.0)
+    else:
+        if not is_long and local_sentiment < -20: crash_mult = 2.5
+        elif is_long and global_sentiment < -40: crash_mult = 1.5
+        elif is_long and local_sentiment > 40: crash_mult = 2.0
     # === RATIO_MULT: direction via WT bullish + velocity (replaces K/D direction) ===
     _is_scalp_acct_r = account_key in getattr(config, 'SCALP_ACCOUNTS', [])
     if _is_scalp_acct_r:
@@ -1224,7 +1236,19 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
             if _mts_conv_mult > 1.0: logger.info(f"[BTB_SIZING] {symbol}: conv={_mts_q.get('convergence_count',0)}TF btb={_mts_conv_mult:.1f}x through={_mts_q.get('price_through_extreme',False)} | {_mts_q.get('details','')[:120]}")
         except Exception: pass
     _sat_mult = float(indicators.get('_satoshit_qty_mult', 1.0)) if indicators else 1.0
-    target_notional = base_usdc_size * mode_mult * ratio_mult * alpha_mult * score_mult * history_mult * crash_mult * value_mult * dc_mult * knife_penalty * level_mult * perf_mult * _mts_conv_mult * _sat_mult
+    # R-Z1 (2026-04-18, default OFF): wire rankings.json order_multiplier into sizing chain.
+    # order_multiplier is a pre-blended cross-symbol composite (lt + st + band + proximity) clamped 0.3-2.5x.
+    rank_mult = 1.0
+    if getattr(config, 'RANKING_MULT_ENABLED', False):
+        try:
+            from ez_rankings import get_ranking_multiplier
+            _rm = get_ranking_multiplier(symbol, default=1.0)
+            _min = float(getattr(config, 'RANKING_MULT_MIN', 0.3))
+            _max = float(getattr(config, 'RANKING_MULT_MAX', 2.5))
+            rank_mult = max(_min, min(_max, float(_rm)))
+        except Exception:
+            rank_mult = 1.0
+    target_notional = base_usdc_size * mode_mult * ratio_mult * alpha_mult * score_mult * history_mult * crash_mult * value_mult * dc_mult * knife_penalty * level_mult * perf_mult * _mts_conv_mult * _sat_mult * rank_mult
     max_notional = base_usdc_size * (15.0 if army_deployed else (8.0 if _mts_conv_mult >= 2.0 else 6.0)) * min(perf_mult, 3.0)
     target_notional = min(target_notional, max_notional)
     raw_qty = target_notional / current_price
@@ -1594,6 +1618,48 @@ class AdvancedSignalRater:
                     return -100.0, "BOYCOTT", "SCALP_1M_DIR_WRONG_LONG"
                 elif not is_long and k1 > k1p:
                     return -100.0, "BOYCOTT", "SCALP_1M_DIR_WRONG_SHORT"
+        # ═══════════════════════════════════════════════════════════════════
+        # 2026-04-18 INDICATOR-AUDIT EXPERIMENTAL GATES (ALL DEFAULT OFF)
+        # R-G1 / R-G2 / R-G3 — see config.py SENTIMENT_TOP_N_GATE_ENABLED,
+        # WT_MTF_VEL_GATE_ENABLED, WT_CHOP_GATE_ENABLED. Entries only (skip on
+        # is_exit). Fail-OPEN on missing data so broken sentiment feed does
+        # not lock trading.
+        # ═══════════════════════════════════════════════════════════════════
+        if not is_exit and not is_hedge:
+            # R-G1: cross-symbol sentiment rank boycott
+            if getattr(config, 'SENTIMENT_TOP_N_GATE_ENABLED', False):
+                _rank = int(safe_fetch_float(ind.get('0sentiment_rank'), 0) or 0)
+                _rp = safe_fetch_float(ind.get('0ranking_points'), -1.0)
+                _top_n = int(getattr(config, 'SENTIMENT_TOP_N', 20))
+                if _rank > 0:
+                    if is_long and _rank > _top_n:
+                        return -100.0, "BOYCOTT", f"SENT_RANK_LONG_{_rank}>{_top_n}"
+                    # SHORT: approximate bottom-N via ranking_points (0..100 linear from rank).
+                    # For top_n=20 on ~350-universe: bottom-20 ≈ rp<=5.7. Threshold scales with top_n.
+                    if (not is_long) and _rp >= 0:
+                        _rp_thr = _top_n * 100.0 / 350.0
+                        if _rp > _rp_thr:
+                            return -100.0, "BOYCOTT", f"SENT_RANK_SHORT_RP={_rp:.0f}>{_rp_thr:.0f}"
+            # R-G2: MTF WT velocity alignment gate
+            if getattr(config, 'WT_MTF_VEL_GATE_ENABLED', False):
+                _min_tf = int(getattr(config, 'WT_MTF_VEL_MIN', 3))
+                _up_ct = int(safe_fetch_float(ind.get('wt_velocity_up_count'), -1) or -1)
+                _dn_ct = int(safe_fetch_float(ind.get('wt_velocity_down_count'), -1) or -1)
+                if is_long and 0 <= _up_ct < _min_tf:
+                    return -100.0, "BOYCOTT", f"WT_MTF_VEL_LONG_{_up_ct}<{_min_tf}"
+                if (not is_long) and 0 <= _dn_ct < _min_tf:
+                    return -100.0, "BOYCOTT", f"WT_MTF_VEL_SHORT_{_dn_ct}<{_min_tf}"
+            # R-G3: chop boycott via wt_cross_count on LTFs
+            if getattr(config, 'WT_CHOP_GATE_ENABLED', False):
+                _chop_max = int(getattr(config, 'WT_CHOP_MAX', 8))
+                _chop_key = 'wt_cross_count_bull_' if is_long else 'wt_cross_count_bear_'
+                _chop_tfs = 0
+                for _tf in ('3m', '15m', '1h'):
+                    _cnt = int(safe_fetch_float(ind.get(f'{_chop_key}{_tf}'), 0) or 0)
+                    if _cnt >= _chop_max:
+                        _chop_tfs += 1
+                if _chop_tfs >= 2:
+                    return -100.0, "BOYCOTT", f"WT_CHOP_{_chop_tfs}TF_dir={'L' if is_long else 'S'}"
         if not is_hedge:
             if cand.get('is_hedge') is True: is_hedge = True
             elif "HEDGE" in str(cand.get('last_reason', '')).upper(): is_hedge = True
@@ -13146,6 +13212,18 @@ async def evaluate_reentry_epq(ctx: dict):
         return None
     if _epq_rally_k15m_blocked(i, is_long, cfg, position_key):
         return None
+    # RE-1 (2026-04-18, default OFF): cross-freshness gate — block reentry if no recent WT cross on any LTF.
+    # Prevents late entries on stale crosses (> N bars ago). Fail-OPEN on missing fields.
+    if getattr(cfg, 'REENTRY_CROSS_FRESHNESS_ENABLED', False):
+        _max_bars = int(getattr(cfg, 'REENTRY_CROSS_MAX_BARS_AGO', 5))
+        _fresh = False
+        for _tf in ('3m', '15m', '1h'):
+            _bars = safe_fetch_float(i.get(f'wt_cross_bars_ago_{_tf}'), -1.0)
+            if _bars is not None and 0 <= _bars < _max_bars:
+                _fresh = True
+                break
+        if not _fresh:
+            return None
     # === END NEW GUARDS ===
     _sf = safe_fetch_float
     re_qty = cfg.START_POSITION_SIZE / max(current_price, 1e-9)
