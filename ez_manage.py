@@ -19358,6 +19358,29 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # Switches: HEDGE_EXIT_BYPASS_NOLOSS (default True), HEDGE_CLOSE_REMOVE_FROM_TRADEABLE (default True).
             if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
                 _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
+                # 2026-04-18 USER RULE: wt1_3m hedge-close MUST fire even if tracker is empty
+                # after restart. Detect hedge via multiple markers — position attr, exit_candidates
+                # flags, HEDGE reason-string markers, and opposite-side-same-symbol-better-gain.
+                if not _r6_is_hedge:
+                    try:
+                        if bool(getattr(position, 'is_hedge', False)): _r6_is_hedge = True
+                    except Exception: pass
+                if not _r6_is_hedge:
+                    try:
+                        _r6_ec = trade_manager.tracker_manager.exit_candidates.get(position_key, {}) or {}
+                        if _r6_ec.get('is_hedge') or _r6_ec.get('hedge_for') or 'HEDGE' in str(_r6_ec.get('last_reason', '')).upper():
+                            _r6_is_hedge = True
+                    except Exception: pass
+                if not _r6_is_hedge:
+                    try:
+                        _r6_opp_side = 'SHORT' if is_long else 'LONG'
+                        _r6_opp_pk = f"{account_key}:{symbol}_{_r6_opp_side}"
+                        _r6_opp_pos = trade_manager.positions.get(_r6_opp_pk)
+                        if _r6_opp_pos and abs(safe_fetch_float(getattr(_r6_opp_pos, 'positionAmt', 0), 0)) > 0.0001:
+                            _r6_opp_gain = safe_fetch_float(getattr(_r6_opp_pos, 'gain', 0), 0)
+                            if _pp_gain > _r6_opp_gain:
+                                _r6_is_hedge = True
+                    except Exception: pass
                 if _r6_is_hedge:
                     _r6_wt1_3m = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
                     _r6_wt2_3m = safe_fetch_float(i.get('wt2_3m', 0), 0.0)

@@ -4368,6 +4368,24 @@ class HedgeEngine:
                             losing_value = losing_amt * l_price
                             hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0)
                             hedge_prev_gain = safe_fetch_float(getattr(hedge_pos, 'prev_gain', hedge_gain), hedge_gain)
+                            # ═══ 2026-04-18 USER ABSOLUTE RULE ═══
+                            # Hedges close on wt1_3m flip. NO P/L GATE. NO EXCEPTIONS.
+                            # Hedge LONG → close when wt1_3m < wt2_3m (bearish 3m).
+                            # Hedge SHORT → close when wt1_3m > wt2_3m (bullish 3m).
+                            # This runs BEFORE any other gate and ignores hedge_gain entirely.
+                            _abs_h_is_long = hedge_key.endswith('_LONG')
+                            _abs_wt1_3m = safe_fetch_float(h_ind.get('wt1_3m'), 0)
+                            _abs_wt2_3m = safe_fetch_float(h_ind.get('wt2_3m'), 0)
+                            _abs_wt3m_against = (_abs_h_is_long and _abs_wt1_3m < _abs_wt2_3m) or ((not _abs_h_is_long) and _abs_wt1_3m > _abs_wt2_3m)
+                            if _abs_wt3m_against and hedge_amt > 0.001 and (_abs_wt1_3m != 0 or _abs_wt2_3m != 0):
+                                logger.critical(f"🛑 [HEDGE_CLOSE_WT3M_ABS] {hedge_key}: wt1_3m={_abs_wt1_3m:.1f} wt2_3m={_abs_wt2_3m:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING regardless of P/L (hedge_gain={hedge_gain:.2f}%)")
+                                try:
+                                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_WT3M_ABS_wt1={_abs_wt1_3m:.1f}_wt2={_abs_wt2_3m:.1f}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                    await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                                    self._hedge_completed.pop(losing_key, None)
+                                except Exception as _abs_e:
+                                    logger.error(f"[HEDGE_CLOSE_WT3M_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
+                                continue
                             # ═══ BC_BANDAID: 15m WT cross drives hedge lifecycle ═══
                             # CLOSE hedge BEFORE it starts losing: when 15m WT flips in FAVOR of origin.
                             # Origin LONG → hedge SHORT → close when wt1_15m > wt2_15m (bullish = hedge about to lose)
@@ -4391,7 +4409,7 @@ class HedgeEngine:
                             _wt_favors_origin = (_losing_is_long and _wt1_15m > _wt2_15m) or (not _losing_is_long and _wt1_15m < _wt2_15m)
                             # ═══ FIX 2026-03-30: HEDGE LIFECYCLE — exist as SHORT as possible, NEVER close at a loss ═══
                             # Rule 1: WT flips to favor origin → NUKE hedge (if hedge not at loss)
-                            if _wt_favors_origin and hedge_amt > 0.001 and hedge_gain >= 0.1:
+                            if _wt_favors_origin and hedge_amt > 0.001:
                                 logger.warning(f"🩹 [BANDAID_OFF] {hedge_key}: 15m WT favors origin {losing_key} (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f} {'BULL' if _losing_is_long else 'BEAR'}). Hedge gain={hedge_gain:.2f}%. NUKING.")
                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"BANDAID_OFF_wt15m_{_wt1_15m:.1f}>{_wt2_15m:.1f}_hgain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -4411,7 +4429,7 @@ class HedgeEngine:
                             _trend_max_sec = getattr(self.config, 'TREND_HEDGE_MAX_SEC', 0)
                             if _trend_max_sec > 0 and account_key in getattr(self.config, 'TREND_ACCOUNTS', []):
                                 _hedge_age = time.time() - _safe_ts_epoch(record.get('timestamp', time.time()), time.time())
-                                if _hedge_age > _trend_max_sec and hedge_gain >= 0.1:
+                                if _hedge_age > _trend_max_sec:
                                     logger.warning(f"[TREND_HEDGE_EXPIRY] {hedge_key} age={_hedge_age:.0f}s > {_trend_max_sec}s, gain={hedge_gain:.2f}%. NUKING expired hedge.")
                                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"TREND_HEDGE_EXPIRY_{_hedge_age:.0f}s_gain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -4429,10 +4447,10 @@ class HedgeEngine:
                             # Rule 3: Origin LOSING LESS (recovering) → NUKE hedge immediately (if hedge not at loss)
                             _prev_losing_gain = safe_fetch_float(record.get('losing_gain', -999), -999)
                             _origin_improving = (_prev_losing_gain < -900) or (losing_pnl > _prev_losing_gain + 0.3)
-                            if _origin_improving and hedge_gain >= 0.1:
+                            if _origin_improving:
                                 logger.info(f"⚡ [HEDGE_ORIGIN_RECOVERING] {losing_key} improving: {_prev_losing_gain:.2f}%→{losing_pnl:.2f}%. NUKING hedge {hedge_key} at {hedge_gain:.2f}%.")
                                 target_ratio = 0.0
-                            elif losing_pnl > 0.0 and hedge_gain >= 0.1:
+                            elif losing_pnl > 0.0:
                                 logger.info(f"[HEDGE_PROFIT_COORD] Origin {losing_key}={losing_pnl:.2f}% recovered. NUKING hedge {hedge_key} at {hedge_gain:.2f}%.")
                                 target_ratio = 0.0
                             else:
@@ -4470,16 +4488,13 @@ class HedgeEngine:
                                 elif diff_usd < 0:
                                     if abs(diff_pct) > 0.25:
                                         is_kill = (target_ratio == 0.0)
-                                        # FIX 2026-03-30: NEVER close/reduce a hedge at a loss. Hedge gain must be >= 0.1%.
-                                        if hedge_gain < 0.1:
-                                            logger.debug(f"[HEDGE_BAL_BLOCK] {hedge_key}: gain={hedge_gain:.2f}% < 0.1% — refusing to close hedge at a loss")
+                                        # 2026-04-18 USER RULE: no P/L gate on hedge close. Kills fire regardless.
+                                        allowed = True if is_kill else (can_adjust_short(h_ind, hedge_pos) if is_hedge_long else can_adjust_long(h_ind, hedge_pos))
+                                        if allowed:
+                                            action = "CLOSE" if is_kill else "REDUCE"
+                                            qty_to_trade = hedge_amt if is_kill else abs(diff_usd) / h_price
                                         else:
-                                            allowed = True if is_kill else (can_adjust_short(h_ind, hedge_pos) if is_hedge_long else can_adjust_long(h_ind, hedge_pos))
-                                            if allowed:
-                                                action = "CLOSE" if is_kill else "REDUCE"
-                                                qty_to_trade = hedge_amt if is_kill else abs(diff_usd) / h_price
-                                            else:
-                                                logger.debug(f"[HEDGE_SKIP] {hedge_key} wants REDUCE but indicators forbid.")
+                                            logger.debug(f"[HEDGE_SKIP] {hedge_key} wants REDUCE but indicators forbid.")
                             # FORTIFY disabled — was causing infinite hedge growth on losing hedges
                             if action and qty_to_trade > 0:
                                 logger.info(f"⚖️ [HEDGE_BALANCER] {hedge_key} ({action}) to match {losing_key}. " f"Sent:{sentiment:.0f} TargetRatio:{target_ratio:.2f} Diff:${diff_usd:.2f}")
@@ -4673,8 +4688,8 @@ class HedgeEngine:
                             # FIX 2026-03-30v2: Origin improving OR profitable → NUKE hedge. Hedge must not be at loss (>0.1%).
                             _orig_prev = safe_fetch_float(getattr(losing_pos, 'prev_gain', _orig_gain), _orig_gain)
                             _origin_improving = _orig_gain > _orig_prev + 0.2  # Origin gaining 0.2%+ since last check
-                            _hedge_not_at_loss = h_gain_pct >= 0.1
-                            if (_origin_improving or _orig_gain > 0.0) and _hedge_not_at_loss:
+                            # 2026-04-18 USER RULE: no P/L gate on hedge close
+                            if _origin_improving or _orig_gain > 0.0:
                                 logger.warning(f"[HEDGE_RECOVERY_CLOSE] {h_pk}: Origin {losing_pk} {'improving' if _origin_improving else 'profitable'} ({_orig_prev:.2f}%→{_orig_gain:.2f}%). Hedge at {h_gain_pct:.2f}%. NUKING.")
                                 try:
                                     h_price_now, _ = await self.data_manager.get_fresh_price(hedge.get('symbol', ''))
