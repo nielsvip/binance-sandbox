@@ -2689,6 +2689,49 @@ class AdvancedSignalRater:
                 _wt_div_exit = (is_long and _wt_div_1h == 'BEAR') or (not is_long and _wt_div_1h == 'BULL')
                 if _wt_exit_signal and _wt_div_exit and pnl_pct >= _noloss_min:
                     return -8, "STRONG_REDUCE", f"WT_EXHAUST+DIV_EXIT(gain={pnl_pct:.2f}%,mom={_wt_mom_1h},div={_wt_div_1h})"
+            # HLR_TOP_EXIT: WT delta slowdown at HTFs → sell the top → tag for 1.5-3x reentry.
+            # Checks wt_velocity + momentum exhaustion + divergence + peak structure per TF.
+            # Requires HLR_TOP_MIN_TFS TFs confirming AND at least one must be 4h or higher.
+            if getattr(config, 'HLR_TOP_EXIT_ENABLED', True) and pnl_pct >= _noloss_min:
+                _hte_vel_4h = safe_fetch_float(ind.get('wt_velocity_4h', metrics.get('wt_velocity_4h')), 0)
+                _hte_vel_D = safe_fetch_float(ind.get('wt_velocity_D'), 0)
+                _hte_vel_W = safe_fetch_float(ind.get('wt_velocity_W'), 0)
+                _hte_mom_4h = ind.get('wt_momentum_state_4h', '')
+                _hte_mom_D = ind.get('wt_momentum_state_D', '')
+                _hte_mom_W = ind.get('wt_momentum_state_W', '')
+                _hte_div_4h = ind.get('wt_divergence_4h', '')
+                _hte_div_D = ind.get('wt_divergence_D', '')
+                _hte_peak_4h = ind.get('wt_peak_structure_4h', '')
+                _hte_peak_D = ind.get('wt_peak_structure_D', '')
+                _hte_exh_tag = 'EXHAUST_UP' if is_long else 'EXHAUST_DOWN'
+                _hte_div_tag = 'BEAR' if is_long else 'BULL'
+                _hte_pk_bad = 'LH' if is_long else 'HH'
+                _hte_tfs = []; _hte_mult = 1.0
+                _hte_v1h_thr = getattr(config, 'HLR_TOP_VEL_1H_THRESH', -1.0)
+                _hte_v4h_thr = getattr(config, 'HLR_TOP_VEL_4H_THRESH', 0.0)
+                _hte_vD_thr = getattr(config, 'HLR_TOP_VEL_D_THRESH', 0.0)
+                if (is_long and _wt_velocity_1h < _hte_v1h_thr) or (not is_long and _wt_velocity_1h > abs(_hte_v1h_thr)):
+                    _hte_tfs.append(f"1h(vel={_wt_velocity_1h:.1f})")
+                    _hte_mult = max(_hte_mult, getattr(config, 'HLR_REENTRY_MULT_1H', 1.5))
+                _hte_4h_ok = ((is_long and _hte_vel_4h < _hte_v4h_thr) or (not is_long and _hte_vel_4h > 0)) or _hte_mom_4h == _hte_exh_tag or _hte_div_4h == _hte_div_tag or _hte_peak_4h == _hte_pk_bad
+                if _hte_4h_ok:
+                    _hte_tfs.append(f"4h(vel={_hte_vel_4h:.1f},exh={_hte_mom_4h == _hte_exh_tag},div={_hte_div_4h == _hte_div_tag})")
+                    _hte_mult = max(_hte_mult, getattr(config, 'HLR_REENTRY_MULT_4H', 2.0))
+                _hte_D_ok = ((is_long and _hte_vel_D < _hte_vD_thr) or (not is_long and _hte_vel_D > 0)) or _hte_mom_D == _hte_exh_tag or _hte_div_D == _hte_div_tag
+                if _hte_D_ok:
+                    _hte_tfs.append(f"D(vel={_hte_vel_D:.1f},exh={_hte_mom_D == _hte_exh_tag})")
+                    _hte_mult = max(_hte_mult, getattr(config, 'HLR_REENTRY_MULT_D', 2.5))
+                _hte_W_ok = ((is_long and _hte_vel_W < 0) or (not is_long and _hte_vel_W > 0)) or _hte_mom_W == _hte_exh_tag
+                if _hte_W_ok:
+                    _hte_tfs.append(f"W(vel={_hte_vel_W:.1f})")
+                    _hte_mult = max(_hte_mult, getattr(config, 'HLR_REENTRY_MULT_W', 3.0))
+                _hte_min = getattr(config, 'HLR_TOP_MIN_TFS', 2)
+                _hte_htf_ok = any(tf for tf in _hte_tfs if any(h in tf for h in ('4h', 'D', 'W')))
+                if len(_hte_tfs) >= _hte_min and _hte_htf_ok:
+                    _hte_pos_qty = abs(positionAmt) if positionAmt else 0.0
+                    _hlr_top_exit_registry[position_key] = {'qty': _hte_pos_qty, 'mult': _hte_mult, 'ts': time.time(), 'tfs': '|'.join(_hte_tfs)}
+                    logger.warning(f"[HLR_TOP_EXIT] {position_key}: top confirmed tfs={_hte_tfs} mult={_hte_mult:.1f}x gain={pnl_pct:.2f}%")
+                    return -10, "STRONG_REDUCE", f"HLR_TOP_EXIT_{'|'.join(t.split('(')[0] for t in _hte_tfs)}_g={pnl_pct:.2f}%_REENTER_{_hte_mult:.1f}x"
             # ═══════════════════════════════════════════════════════════════
             # MOMENTUM INTERCEPTION EXIT — detect slowing deltas, LH/LL structure,
             # divergence, exhaustion BEFORE D/W flip. 5 sub-signals vote.
@@ -9811,6 +9854,7 @@ _bb_squeeze_last: dict = {}  # "account_key:symbol" -> timestamp of last BB sque
 _vol_spike_last: dict = {}  # "account_key:symbol" -> timestamp of last vol spike entry
 _stdev_breakout_state: dict = {}  # {symbol: {'active': bool, 'direction': str, 'breakout_time': float, 'breakout_pctb': float, 'htf': str, 'retest_count': int, 'bars_since': int}}
 _stdev_breakout_last: dict = {}  # "account_key:symbol" -> timestamp of last stdev breakout entry
+_hlr_top_exit_registry: dict = {}  # position_key -> {'qty': float, 'mult': float, 'ts': float, 'tfs': str} — set on HLR_TOP_EXIT, read by reentry sizing
 _stdev_bb_history: dict = {}  # {symbol_tf: deque(maxlen=20)} — rolling close prices for BB computation when NPZ lacks bb_pct_b
 _open_fail_counts: dict = {}  # position_key -> consecutive RealAmt=0 fail count
 _open_fail_cooldowns: dict = {}  # position_key -> cooldown expiry timestamp
@@ -10334,6 +10378,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _min_gain_cfg = safe_fetch_float(getattr(config, 'MIN_GAIN', 3.0), 3.0)
             _is_winner_aug = action in ('AUGMENT', 'QUICK_AUGMENT') and _gate_gain >= _min_gain_cfg
             _is_pullback_aug = action in ('AUGMENT', 'QUICK_AUGMENT') and _gate_gain >= 0.5 * _min_gain_cfg and (_gate_max - _gate_gain) >= 1.0
+            _is_rz_entry = False
             # WAVETREND ALIGNMENT: require LTF (3m+15m+1h), use 4h/D as sizing discount not gate
             _gw1_3m = safe_fetch_float(_gate_ind.get('wt1_3m'), 0); _gw2_3m = safe_fetch_float(_gate_ind.get('wt2_3m'), 0)
             _gw1_15m = safe_fetch_float(_gate_ind.get('wt1_15m'), 0); _gw2_15m = safe_fetch_float(_gate_ind.get('wt2_15m'), 0)
@@ -12699,6 +12744,18 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             qty_before = qty
                             qty = min(qty * _hlr_mult_e, _hlr_max_qty)
                             logger.warning(f"[HLR_SIZE_BOOST] {position_key}: qty {qty_before:.4f}→{qty:.4f} ({_hlr_mult_e:.1f}x, tfs={_hlr_tfs_e}, cap=${_hlr_max_qty*current_price:.0f})")
+                    # HLR_TOP_EXIT reentry: if last exit was an HLR top, reenter at prev_qty * mult
+                    _hte_rec = _hlr_top_exit_registry.get(position_key)
+                    _hte_max_age = getattr(config, 'HLR_REENTRY_MAX_AGE_S', 14400.0)
+                    if _hte_rec and (time.time() - _hte_rec.get('ts', 0)) < _hte_max_age and _hte_rec.get('qty', 0) > 0 and current_price > 0:
+                        _hte_prev_qty = _hte_rec['qty']
+                        _hte_re_mult = _hte_rec['mult']
+                        _hte_target_qty = _hte_prev_qty * _hte_re_mult
+                        _hte_hard_cap = float(config.START_POSITION_SIZE) * getattr(config, 'HLR_SZ_MAX', 10.0) / current_price
+                        qty_before_hte = qty
+                        qty = min(max(qty, _hte_target_qty), _hte_hard_cap)
+                        logger.warning(f"[HLR_REENTRY_SIZE] {position_key}: prev_qty={_hte_prev_qty:.4f}×{_hte_re_mult:.1f}={_hte_target_qty:.4f} → qty {qty_before_hte:.4f}→{qty:.4f} (tfs={_hte_rec.get('tfs', '?')})")
+                        del _hlr_top_exit_registry[position_key]
                     if _reentry_tier == 'TIER1':
                         _t1_mult = getattr(config, 'REENTRY_TIER1_SIZE_MULT', 1.5)
                         qty = max(qty, config.START_POSITION_SIZE / current_price * _t1_mult) if current_price > 0 else qty

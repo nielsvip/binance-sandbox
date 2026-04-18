@@ -860,6 +860,17 @@ class Config:
     HLR_OFF_SMA_SZ_FRAC: float = 0.7    # fraction of size mult when structure fires but price not near SMA
     HLR_MIN_TFS_FOR_BYPASS: int = 1     # min TF count needed to bypass SHIT_IDEA gate (1 = any TF ≥ 15m)
     HLR_BYPASS_MIN_TF_WEIGHT: int = 25  # min HLR points from a single TF to bypass SHIT_IDEA gate (25 = 15m tier)
+    # HLR_TOP_EXIT: sell at WT delta slowdown across HTFs, then reenter at 1.5-3x previous positionAmt
+    HLR_TOP_EXIT_ENABLED: bool = True
+    HLR_TOP_MIN_TFS: int = 2             # min TFs confirming top (must include at least one ≥ 4h)
+    HLR_TOP_VEL_1H_THRESH: float = -1.0  # wt_velocity_1h must be < this to count as 1h top signal
+    HLR_TOP_VEL_4H_THRESH: float = 0.0   # wt_velocity_4h < this counts (0 = any negative)
+    HLR_TOP_VEL_D_THRESH: float = 0.0    # wt_velocity_D < this counts
+    HLR_REENTRY_MULT_1H: float = 1.5     # reentry qty = prev_positionAmt * this when 1h fires top
+    HLR_REENTRY_MULT_4H: float = 2.0     # reentry qty multiplier when 4h fires top
+    HLR_REENTRY_MULT_D: float = 2.5      # reentry qty multiplier when D fires top
+    HLR_REENTRY_MULT_W: float = 3.0      # reentry qty multiplier when W fires top (max)
+    HLR_REENTRY_MAX_AGE_S: float = 14400.0  # max seconds since HLR_TOP_EXIT to still use the mult (4h)
     # === BACKTEST SWEEP WINNERS (2026-03-16) ===
     K3M_CAP: int = 80  # BACKTEST_CHANGE_105: REVERTED to 80. Tournament (10 rounds, 3042 combos) winner uses 80. BACKTEST_CHANGE_8 (70) reversed.
     K3M_FLOOR: int = 30  # BACKTEST_CHANGE_9: NEW. Block SHORT when k_3m <= 30 (mirror of K3M_CAP)
