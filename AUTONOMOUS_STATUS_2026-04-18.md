@@ -125,3 +125,15 @@ pkill -f "ez_manage.py --account inf" && sleep 2 && ps -ef | grep "ez_manage.*in
 ```
 
 Other accounts (ang, flz, men, fin) likely need same treatment — they were restarted at same 00:15 timestamp so also missed the 00:26 fix. Do a rolling restart one-at-a-time to avoid a gap with no account live.
+
+## Added 2026-04-18 03:27 UTC — EMERGENCY_OVERSIZE stuck in loop
+
+4 consecutive fires (33s apart — matches 30s cooldown) on `inf:BATUSDT_LONG` ($43.63) and `inf:ATOMUSDT_LONG` ($34.72) — both 2x+ over `max_usd=$20`. Notional unchanged each fire → reduce is being silently rejected.
+
+Root cause (best guess, unverified): reducer at ez_manage.py:20588 passes reason `FORCE_REDUCE_OVERSIZE_...` which is NOT in `LOSS_EXIT_TECHNICAL_BYPASS` tokens (`LIQUIDATION`, `EMERGENCY_DC1H_BREACH`, `PARABOLIC_EXIT`). If these positions are underwater (likely — CRASH regime, LONGs losing), the NOLOSS gate at ez_manage.py:10720 blocks the reduce. `STRICT_NO_LOSS_ACCOUNTS=[]` in current config *should* disable this path, but something in the chain is still rejecting.
+
+**Monday fix (one-liner):** add `'EMERGENCY_OVERSIZE'` or `'FORCE_REDUCE_OVERSIZE'` to `config.LOSS_EXIT_TECHNICAL_BYPASS`, OR instrument the reducer at line 20588 to log execute_now's actual return string so we know the reject reason.
+
+**Manual workaround now (if wanted):** user reduces BATUSDT_LONG and ATOMUSDT_LONG manually on the exchange UI. These are safe to size down — EMERGENCY_OVERSIZE is system-defined "too big", not strategy-defined.
+
+**Blast radius so far:** none. Positions are just oversized. No capital loss. The loop will keep firing until either price moves them to profit or a restart / manual close.
