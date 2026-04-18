@@ -19570,12 +19570,13 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # WT_3M_EXIT KILLED 2026-03-30: Single-TF exit bypassed the 2/3 system. The 2/3 WT exit at line ~19463 handles this correctly.
             _wt1_3m_exit = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
             _wt2_3m_exit = safe_fetch_float(i.get('wt2_3m', 0), 0.0)
+            _wt1_1h_exit = safe_fetch_float(i.get('wt1_1h', 0), 0.0)
+            _wt2_1h_exit = safe_fetch_float(i.get('wt2_1h', 0), 0.0)
             _wt3m_against = (is_long and _wt1_3m_exit < _wt2_3m_exit) or (not is_long and _wt1_3m_exit > _wt2_3m_exit)
-            # RULE #3: WT_15M_SAME_HEDGE — DISABLED 2026-04-16: caused rogue unlimited hedge opens on inf (BTCDOMUSDT cascade).
-            # Root cause: each hedge becomes a losing position → triggers reverse hedge → cascade.
-            # 5-min cooldown resets on restart. Re-enable only after adding per-symbol daily hedge cap.
-            # Config gate: WT_15M_SAME_HEDGE_ENABLED (default False)
-            if getattr(config, 'WT_15M_SAME_HEDGE_ENABLED', False) and _wt3m_against and _pp_gain <= 0.0:
+            _wt1h_against_sh = (is_long and _wt1_1h_exit < _wt2_1h_exit) or (not is_long and _wt1_1h_exit > _wt2_1h_exit)
+            # RULE #3: WT_15M_SAME_HEDGE
+            # Requires: 3m AND 1h WT against, gain < -0.5% (genuine loser only — not momentary dips to 0)
+            if getattr(config, 'WT_15M_SAME_HEDGE_ENABLED', False) and _wt3m_against and _wt1h_against_sh and _pp_gain < -0.5:
                 # ═══ 2026-04-16 EXISTENCE GATES RUN FIRST ═══
                 # Before reading any indicator or checking any cooldown, refuse to do ANYTHING
                 # if (a) a hedge position already exists, (b) an open order for the hedge is
@@ -19627,9 +19628,14 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _wt2_15m_h = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
                     _wt15_against = (is_long and _wt1_15m_h < _wt2_15m_h) or (not is_long and _wt1_15m_h > _wt2_15m_h)
                     if _wt15_against:
-                        _wt_cross_prev_15m = safe_fetch_float(i.get('wt_cross_prev_value_15m', 0), 0.0)
-                        _wt15_near_cross = abs(_wt1_15m_h - _wt_cross_prev_15m) <= abs(_wt_cross_prev_15m) * 0.25 if _wt_cross_prev_15m != 0 else False
-                        if _wt15_near_cross:
+                        # Fresh cross gate: 15m WT cross must have happened within last 5 bars (75 min).
+                        # Replaced broken wt_cross_prev_value heuristic (compared current wt to penultimate
+                        # cross level — fired across nearly entire WT range, useless as a recency gate).
+                        _wt15_cross_bars_ago = int(safe_fetch_float(i.get('wt_cross_bars_ago_15m', 999), 999))
+                        _wt15_cross_dir = str(i.get('wt_cross_15m', '')).upper()
+                        _expected_cross = "BEAR" if is_long else "BULL"
+                        _wt15_fresh_cross = _wt15_cross_bars_ago <= 5 and _wt15_cross_dir == _expected_cross
+                        if _wt15_fresh_cross:
                             _he_wt = getattr(trade_manager, 'hedge_engine', None)
                             # ═══ 2026-04-16 REDIS-BACKED COOLDOWN + DAILY CAP ═══
                             # In-memory _hedge_completed is wiped on every ez_manage restart → 300s cooldown
@@ -19660,7 +19666,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.debug(f"[WT_15M_SAME_HEDGE_COOLDOWN] {position_key}: hedge opened {int(time.time()-_hc_ts_final)}s ago (<{_rds_cooldown}s, Redis-backed), skipping duplicate")
                             else:
                                 _h_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
-                                logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} near_cross={_wt_cross_prev_15m:.1f} gain={_pp_gain:.2f}% → HEDGING via hedge_engine.execute_same_symbol_hedge")
+                                logger.warning(f"[WT_15M_SAME_HEDGE] {position_key}: wt1_15m={_wt1_15m_h:.1f} {'<' if is_long else '>'} wt2_15m={_wt2_15m_h:.1f} fresh_cross={_wt15_cross_bars_ago}bars/{_wt15_cross_dir} wt1h={_wt1_1h_exit:.1f}/wt2h={_wt2_1h_exit:.1f} gain={_pp_gain:.2f}% → HEDGING via hedge_engine.execute_same_symbol_hedge")
                                 _now_ts_h = time.time()
                                 if _he_wt: _he_wt._hedge_completed[position_key] = _now_ts_h
                                 try:

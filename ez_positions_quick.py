@@ -12907,36 +12907,32 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 _qty_mult = 0.0
                 _reason_tag = ""
                 _wt1_3m_prev_gr = safe_fetch_float(indicators.get('wt1_3m_prev', _wt1_3m_gr), _wt1_3m_gr)
-                _delta_rising = (is_long and _wt1_3m_gr > _wt2_3m_gr and _wt1_3m_gr > _wt1_3m_prev_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr and _wt1_3m_gr < _wt1_3m_prev_gr)
+                _wt1_15m_prev_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_gr), _wt1_15m_gr)
                 _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
                 _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
-                if is_long:
-                    _off_red_count = int(k_3m < 70) + int(_k_15m_r < 70) + int(_k_1h_r < 70)
+                # TIER 1: Price crosses exit level → 50%
+                if _price_crossed:
+                    if position_key not in _price_crossed_since:
+                        _price_crossed_since[position_key] = time.time()
+                        logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s — T1 TRIGGER")
+                    should_reenter = True; _qty_mult = 0.5; _reason_tag = "T1_PRICE_CROSS_50pct"
                 else:
-                    _off_red_count = int(k_3m > 30) + int(_k_15m_r > 30) + int(_k_1h_r > 30)
-                _clear_of_red = _off_red_count >= 2
-                _exit_reason_str = str(data.get('exit_reason', '')).upper()
-                _was_3m_exit = any(t in _exit_reason_str for t in ('3M', 'DELTA_EXIT', 'STOCH_CROSSUNDER', 'STOCH_CROSSOVER', 'WT_3M'))
-                _3m_entry_fires = (is_long and _wt3m_ok and k_3m > d_3m) or (not is_long and _wt3m_ok and k_3m < d_3m)
-                if _was_3m_exit and _wt1h_ok and _3m_entry_fires:
-                    should_reenter = True
-                    _qty_mult = 1.0
-                    _reason_tag = "P0_3M_RESCUE_1H_OK"
-                    logger.warning(f"🟢 [REENTRY_P0_3M_RESCUE] {position_key}: exit_reason='{_exit_reason_str[:40]}' wt1h_ok={_wt1h_ok} 3m_entry=TRUE — BYPASS FILTERS")
-                if not should_reenter:
-                    _safety_ok = _delta_rising and _clear_of_red
-                    if _price_crossed:
-                        if _under_60 and _k3m_bias_ok and _safety_ok:
-                            should_reenter = True; _qty_mult = 1.0; _reason_tag = "CROSSED_u60_kbias_SAFE"
-                        elif (not _under_60) and _full_stack and _safety_ok:
-                            should_reenter = True; _qty_mult = 1.0; _reason_tag = f"CROSSED_o60_FULLSTACK_htf{_htf_count}_SAFE"
-                        if position_key not in _price_crossed_since:
-                            _price_crossed_since[position_key] = time.time()
-                            logger.critical(f"🚨 [REENTRY_PRICE_CROSSED] {position_key}: Price {current_price:.6f} {'>' if is_long else '<'}= exit {exit_price:.6f} elapsed={_elapsed_s:.0f}s u60={_under_60} k3m_bias={_k3m_bias_ok} full_stack={_full_stack} delta_rising={_delta_rising} clear_red={_clear_of_red}(off={_off_red_count}/3)")
-                    else:
-                        _price_crossed_since.pop(position_key, None)
-                        if _full_stack and _safety_ok:
-                            should_reenter = True; _qty_mult = 1.35; _reason_tag = f"NOCROSS_FULLSTACK_htf{_htf_count}{'_u60' if _under_60 else '_o60'}_SAFE"
+                    _price_crossed_since.pop(position_key, None)
+                # TIER 2: All TF WT + k values < 30 (long) or > 70 (short) AND wt1_3m rising → 150%
+                if is_long:
+                    _all_tf_oversold = (_wt1_3m_gr < 30 and _wt1_15m_gr < 30 and _wt1_1h_gr < 30 and k_3m < 30 and _k_15m_r < 30 and _k_1h_r < 30)
+                    _wt1_3m_rising_gr = _wt1_3m_gr > _wt1_3m_prev_gr
+                else:
+                    _all_tf_oversold = (_wt1_3m_gr > -30 and _wt1_15m_gr > -30 and _wt1_1h_gr > -30 and k_3m > 70 and _k_15m_r > 70 and _k_1h_r > 70)
+                    _wt1_3m_rising_gr = _wt1_3m_gr < _wt1_3m_prev_gr
+                if _all_tf_oversold and _wt1_3m_rising_gr:
+                    should_reenter = True; _qty_mult = 1.5; _reason_tag = f"T2_ALL_TF_OVERSOLD_RISING_150pct_wt3m={_wt1_3m_gr:.1f}_wt15m={_wt1_15m_gr:.1f}_k3m={k_3m:.0f}_k15m={_k_15m_r:.0f}"
+                    logger.warning(f"🟢 [REENTRY_T2_OVERSOLD] {position_key}: All TF WT+k oversold+rising — 150% reentry wt3m={_wt1_3m_gr:.1f}/{_wt1_3m_prev_gr:.1f}")
+                # TIER 3: wt1_15m crosses wt2_15m → 100%
+                _wt15m_cross_gr = ((is_long and _wt1_15m_prev_gr <= _wt2_15m_gr and _wt1_15m_gr > _wt2_15m_gr) or (not is_long and _wt1_15m_prev_gr >= _wt2_15m_gr and _wt1_15m_gr < _wt2_15m_gr))
+                if _wt15m_cross_gr:
+                    should_reenter = True; _qty_mult = 1.0; _reason_tag = f"T3_WT15M_CROSS_100pct_wt15m={_wt1_15m_gr:.1f}/prev={_wt1_15m_prev_gr:.1f}"
+                    logger.warning(f"🟢 [REENTRY_T3_WT15M_CROSS] {position_key}: wt1_15m crossed wt2_15m ({'bullish' if is_long else 'bearish'}) prev={_wt1_15m_prev_gr:.1f} now={_wt1_15m_gr:.1f} — 100% reentry")
                 if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
                     should_reenter = False
                     logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")
