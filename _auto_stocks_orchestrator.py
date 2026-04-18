@@ -132,16 +132,18 @@ def run_sweep(sector, grid_tag="base", grid_overrides=None, workers=8):
     heartbeat(f"sweep {sector} {grid_tag}")
     cmd = [PY, "-u", str(BASE / "_ab_sector_sweep.py"),
            "--sector", sector, "--workers", str(workers)]
+    # Build subprocess env — DO NOT leak AUTO_GRID_OVERRIDES into unrelated sweeps.
+    sub_env = os.environ.copy()
+    sub_env.pop("AUTO_GRID_OVERRIDES", None)
     if grid_overrides:
-        # Write custom grid to temp file and pass via env
         gpath = Path(f"/tmp/auto_grid_{sector}_{grid_tag}_{int(time.time())}.json")
         gpath.write_text(json.dumps(grid_overrides))
-        os.environ["AUTO_GRID_OVERRIDES"] = str(gpath)
+        sub_env["AUTO_GRID_OVERRIDES"] = str(gpath)
     log_path = Path(f"/tmp/auto_sweep_{sector}_{grid_tag}.log")
     t0 = time.time()
     try:
         with open(log_path, "w") as out:
-            proc = subprocess.run(cmd, stdout=out, stderr=subprocess.STDOUT, timeout=3600, cwd=str(BASE))
+            proc = subprocess.run(cmd, stdout=out, stderr=subprocess.STDOUT, timeout=3600, cwd=str(BASE), env=sub_env)
     except subprocess.TimeoutExpired:
         log.warning(f"[SWEEP] {sector} {grid_tag} TIMEOUT after 3600s")
         return None
