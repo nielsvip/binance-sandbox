@@ -38,9 +38,9 @@ shopt -s nullglob
 push_to() {
     local host="$1" label="$2"
     cd "$BASE" || return 1
-    # bash 3.2 compatible (macOS default) — no mapfile. Expand globs inline.
+    # Build file list once per tick (bash 3.2 compatible, no mapfile).
     local files=()
-    # Skip these: per-account realtime stubs (328B, MacBook-only, not on sandboxes, trigger rsync 3.4.1 abort under --existing).
+    # Skip per-account realtime stubs (MacBook-only, not on sandboxes).
     local skip_list=" ez_positions_realtime_ang.py ez_positions_realtime_fin.py ez_positions_realtime_flz.py ez_positions_realtime_inf.py ez_positions_realtime_men.py "
     for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py; do
         for f in $pat; do
@@ -49,28 +49,38 @@ push_to() {
             files+=("$f")
         done
     done
-    if [[ ${#files[@]:-0} -eq 0 ]]; then
-        echo "$(date -u +%FT%TZ) ${label} NO_FILES_TO_SYNC" >>"$LOG"
+    [[ ${#files[@]:-0} -eq 0 ]] && return 1
+    # Fetch all remote md5s in ONE ssh call (cheap).
+    local remote_md5s
+    remote_md5s=$(ssh $SSH_OPTS "${host}" "cd ${DEST_PATH} 2>/dev/null && md5sum ${files[*]} 2>/dev/null" 2>>"$LOG")
+    if [[ -z "$remote_md5s" ]]; then
+        echo "$(date -u +%FT%TZ) ${label} SSH_MD5_FETCH_FAIL — skipping tick" >>"$LOG"
         return 1
     fi
-    local out
-    out=$(rsync -a --checksum --existing --itemize-changes \
+    # Diff: any file where local md5 != remote md5 goes to push list.
+    local push_list=()
+    local f local_md5 remote_md5
+    for f in "${files[@]}"; do
+        local_md5=$(md5 -q "$f" 2>/dev/null)
+        [[ -z "$local_md5" ]] && continue
+        remote_md5=$(echo "$remote_md5s" | awk -v f="$f" '$NF==f {print $1; exit}')
+        # If remote md5 empty → file doesn't exist on sandbox → respect --existing semantic, skip.
+        [[ -z "$remote_md5" ]] && continue
+        [[ "$local_md5" != "$remote_md5" ]] && push_list+=("$f")
+    done
+    [[ ${#push_list[@]:-0} -eq 0 ]] && return 0  # no drift
+    # Push only the drifted files, one rsync call (short arg list, no 3.4.1 abort).
+    local n=${#push_list[@]}
+    echo "$(date -u +%FT%TZ) ${label} DRIFT_PUSH ${n} file(s): ${push_list[*]:0:8}$([ $n -gt 8 ] && echo ' ...' )" >>"$LOG"
+    rsync -a --checksum --existing \
         -e "ssh $SSH_OPTS" \
-        "${files[@]}" "${host}:${DEST_PATH}" 2>>"$LOG")
+        "${push_list[@]}" "${host}:${DEST_PATH}" 2>>"$LOG"
     local rc=$?
     if [[ $rc -ne 0 ]]; then
-        echo "$(date -u +%FT%TZ) ${label} RSYNC_FAIL rc=$rc" >>"$LOG"
+        echo "$(date -u +%FT%TZ) ${label} RSYNC_FAIL rc=$rc files=${push_list[*]:0:4}" >>"$LOG"
         return 1
     fi
-    # Filter rsync's itemize output for actual file updates (lines starting with ">" = sent).
-    local changed
-    changed=$(echo "$out" | grep -E '^>' || true)
-    if [[ -n "$changed" ]]; then
-        local n
-        n=$(echo "$changed" | wc -l | tr -d ' ')
-        echo "$(date -u +%FT%TZ) ${label} PUSHED ${n} file(s) (checksum drift corrected — MacBook wins):" >>"$LOG"
-        echo "$changed" | head -20 >>"$LOG"
-    fi
+    echo "$(date -u +%FT%TZ) ${label} PUSHED_OK ${n} file(s)" >>"$LOG"
     return 0
 }
 

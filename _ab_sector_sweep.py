@@ -44,7 +44,14 @@ _STORES = None  # inherited by fork workers
 
 
 def build_configs():
-    """Build a ~1000-config grid with pruning to avoid combinatorial explosion."""
+    """Build a ~1000-config grid with pruning to avoid combinatorial explosion.
+    If AUTO_GRID_OVERRIDES env var points to a JSON file of config dicts, use that list directly."""
+    # Orchestrator-supplied override list
+    auto_grid = os.environ.get("AUTO_GRID_OVERRIDES", "")
+    if auto_grid and Path(auto_grid).exists():
+        override_list = json.load(open(auto_grid))
+        print(f"[OVERRIDE] using {len(override_list)} configs from {auto_grid}", flush=True)
+        return override_list
     keys = list(GRID.keys())
     out = []
     seen = set()

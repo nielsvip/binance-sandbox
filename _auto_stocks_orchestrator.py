@@ -166,11 +166,42 @@ def main():
     log.info(f"    remaining: {remaining_hours():.1f} hours")
     state = load_state()
 
+    # Ingest existing recent result files — treat as already-done
+    for sec in BASE_SECTORS:
+        existing = sorted(RESULTS_DIR.glob(f"sector_sweep_{sec}_*.json"), key=lambda p: -p.stat().st_mtime)
+        if existing and sec not in state["base_sectors_done"]:
+            try:
+                data = json.loads(existing[0].read_text())
+                best = data.get("best", {}) or {}
+                if best.get("sharpe", 0) > state["running_best"]["sharpe"] and best.get("trades", 0) >= 20:
+                    state["running_best"] = {"sharpe": best.get("sharpe", 0), "cfg": best.get("cfg"),
+                                             "sector": sec, "trades": best.get("trades", 0),
+                                             "wr": best.get("wr", 0), "avg": best.get("avg", 0),
+                                             "found_at": now_utc().isoformat()}
+                state["base_sectors_done"].append(sec)
+                state["completed_sweeps"].append({
+                    "sector": sec, "grid_tag": "base_ingested",
+                    "best_sharpe": best.get("sharpe", 0), "best_cfg": best.get("cfg"),
+                    "best_trades": best.get("trades", 0),
+                    "baseline_sharpe": (data.get("baseline", {}) or {}).get("sharpe", 0),
+                    "path": str(existing[0]), "timestamp": now_utc().isoformat(),
+                })
+                log.info(f"[INGEST] {sec} existing result: best_sharpe={best.get('sharpe', 0):.4f}")
+            except Exception as e:
+                log.warning(f"[INGEST] {sec} failed: {e}")
+
     # Seed queue with base sectors not yet done
     if not state["queue"]:
         for sec in BASE_SECTORS:
             if sec not in state["base_sectors_done"]:
                 state["queue"].append({"sector": sec, "grid_tag": "base", "overrides": None})
+        # If we have a running best from ingest, also queue a neighborhood refinement
+        if state["running_best"]["cfg"]:
+            nbrs = build_neighborhood_overrides(state["running_best"]["cfg"])
+            if nbrs:
+                state["queue"].append({"sector": state["running_best"]["sector"] or "mix_12",
+                                       "grid_tag": "refine_initial", "overrides": nbrs})
+                log.info(f"[QUEUE] seeded initial {len(nbrs)}-config refinement around ingested best")
 
     iteration = 0
     while remaining_hours() > 0.1:
