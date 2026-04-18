@@ -38,6 +38,16 @@ mkdir -p "$LOGDIR"
 
 echo "[$(date -u +%H:%M:%S) supervisor] mode=$MODE workers=$WORKERS cpu_cap=$CPU_CAP mem_cap=$MEM_CAP mem_guard_spawn=$MEM_GUARD_SPAWN"
 
+# Startup memory check: if system is already memory-constrained, reduce workers
+if command -v free > /dev/null; then
+    STARTUP_MEM=$(free | awk '/Mem:/ {printf "%.0f", $3*100/$2}')
+    if [ "${STARTUP_MEM}" -gt 60 ]; then
+        SAFE_WORKERS=$(( WORKERS > 2 ? 2 : WORKERS ))
+        echo "[supervisor] STARTUP MEM=${STARTUP_MEM}% > 60% — reducing workers ${WORKERS}→${SAFE_WORKERS}"
+        WORKERS=${SAFE_WORKERS}
+    fi
+fi
+
 PIDS=()
 STARTUP_STAGGER="${STARTUP_STAGGER:-30}"  # seconds between worker starts (prevents OOM on concurrent NPZ load)
 for i in $(seq 0 $((WORKERS-1))); do

@@ -21,13 +21,13 @@ log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*" | tee -a "$LOGFILE"; }
 if [[ "$MACHINE" == "s1" ]]; then
     PY="/home/niels/.conda/envs/binance_env/bin/python"
     BASE="/home/niels/binance-sandbox"
-    W_CRYPTO=4
-    W_TRADIER=4
+    W_CRYPTO=3  # was 4 — stay inside safe mem envelope alongside backtest_v8_engine
+    W_TRADIER=0  # S1=crypto only; tradier workers on S1 are wrong-machine errors
 elif [[ "$MACHINE" == "s2" ]]; then
     PY="/home/niels/miniconda3/envs/binance_env/bin/python"
     BASE="/home/niels/binance-sandbox"
     W_CRYPTO=0
-    W_TRADIER=6
+    W_TRADIER=3  # was 6 — 6×3.6GB=21.6GB → OOM on 31GB box; 3×3.6GB=10.8GB safe
 else
     PY="/opt/anaconda3/envs/binance_env/bin/python"
     BASE="/Users/niels/Documents/binance"

@@ -27,7 +27,7 @@ STATUS_FILE = Path.home() / "server_watchdog.status"
 LOG_FILE = Path.home() / "server_watchdog.log"
 CHECK_INTERVAL = 60
 SSH_TIMEOUT = 120  # 2026-04-16: SSH can take 3min under remote CPU load
-MIN_FREE_MB = 4000
+MIN_FREE_MB = 12000   # was 4000 — 3 workers×3.6GB+orchestrator+system=~14GB used on 31GB box; need 12GB headroom before spawning
 
 # 2026-04-16: SWEEPS replaced by AUTOCHAIN per server.
 # Each server runs ONE master screen (`autochain_sN`) which handles all
@@ -161,6 +161,20 @@ def check_server(name, cfg, state):
         "sweep_procs": sweep_procs,
         "screens": sorted(existing_screens),
     })
+
+    # Kill excess vec_backlog workers BEFORE memory check.
+    # Death spiral: vec_supervisor respawns dead workers → OOM → repeat.
+    # Fix: proactively kill any supervisor with >3 workers every cycle.
+    MAX_WORKERS = 3
+    kill_cmd = (
+        f"N=$(ps aux | grep vec_backlog | grep -v grep | wc -l); "
+        f"if [ \"$N\" -gt {MAX_WORKERS} ]; then "
+        f"echo EXCESS_WORKERS_$N; pkill -9 -f vec_backlog.py; pkill -f vec_supervisor.sh; "
+        f"else echo WORKERS_OK_$N; fi"
+    )
+    rc_k, out_k = ssh(host, user, kill_cmd, timeout=20)
+    if "EXCESS_WORKERS" in out_k:
+        log(f"{name}: killed excess workers ({out_k.strip()}) — mem was {free_mb}MB")
 
     if free_mb < MIN_FREE_MB:
         log(f"{name}: LOW RAM {free_mb}MB — skipping spawn this cycle")

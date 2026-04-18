@@ -5725,14 +5725,9 @@ class HedgeEngine:
         hedge_symbol = symbol
         if symbol.endswith('USDT'):
             _usdc_sibling = symbol[:-4] + 'USDC'
+            # Only redirect when live_usdc_pairs is explicitly populated (exchange init). No file fallback —
+            # backtest/sandbox has live_usdc_pairs empty, so USDT hedge stays USDT (no NPZ for USDC pairs).
             _live_usdc = getattr(self.trade_manager, 'live_usdc_pairs', None) or getattr(self.trade_manager, 'available_usdc_pairs', None) or set()
-            if not _live_usdc:
-                try:
-                    import json as _j
-                    with open(self.config.LIVE_USDC_PAIRS_FILE) as _f:
-                        _live_usdc = set(_j.load(_f))
-                except Exception:
-                    _live_usdc = set()
             if _usdc_sibling in _live_usdc:
                 hedge_symbol = _usdc_sibling
                 logger.warning(f"💱 [HEDGE_USDC_REDIRECT] origin={symbol} USDT in loss → hedging via {_usdc_sibling} (zero commission)")
@@ -10189,13 +10184,6 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if _is_open_like and _gate_sym and _gate_sym.endswith('USDT'):
         _usdc_candidate = _gate_sym[:-4] + 'USDC'
         _live_usdc = getattr(trade_manager, 'live_usdc_pairs', None) or getattr(trade_manager, 'available_usdc_pairs', set()) or set()
-        if not _live_usdc:
-            try:
-                import json as _j
-                with open(config.LIVE_USDC_PAIRS_FILE) as _f:
-                    _live_usdc = set(_j.load(_f))
-            except Exception:
-                _live_usdc = set()
         if _usdc_candidate in _live_usdc:
             logger.warning(f"[USDC_GATE_ANOMALY] {position_key}: USDT reached gate despite upgrade — {_usdc_candidate} available. Proceeding on USDT.")
     # ═══════════════════════════════════════════════════════════════════════════

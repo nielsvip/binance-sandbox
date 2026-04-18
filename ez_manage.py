@@ -12872,19 +12872,12 @@ class MultiAccountTradeManager:
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
         # USDC UPGRADE — transparently redirect USDT→USDC for opens when USDC pair is available.
-        # Not a switch. Always active for live (live_usdc_pairs populated). Irrelevant for sandbox
-        # (live_usdc_pairs empty → redirect never fires → USDT proceeds normally for backtest).
-        # Happens before ALL locks so every subsequent check sees the correct USDC key.
+        # Not a switch. Only fires when live_usdc_pairs is explicitly populated from the exchange.
+        # Backtests/sandbox: live_usdc_pairs is empty → file fallback DISABLED → USDT stays as USDT.
+        # Live: live_usdc_pairs is set by exchange init → redirect fires transparently.
         if _is_open_action and not is_hedge and symbol and symbol.endswith('USDT'):
             _usdc_sym_en = symbol[:-4] + 'USDC'
             _live_usdc_en = getattr(self, 'live_usdc_pairs', None) or getattr(self, 'available_usdc_pairs', set()) or set()
-            if not _live_usdc_en:
-                try:
-                    import json as _ju
-                    _uf = getattr(config, 'LIVE_USDC_PAIRS_FILE', None)
-                    if _uf:
-                        with open(_uf) as _ufd: _live_usdc_en = set(_ju.load(_ufd))
-                except Exception: pass
             if _usdc_sym_en in _live_usdc_en:
                 _old_pk_en = position_key
                 symbol = _usdc_sym_en
@@ -19403,7 +19396,6 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _wt_vel_1h = safe_fetch_float(i.get('wt_velocity_1h', 0), 0)
             _4h_against = False
             if is_long:
-                # wt1_4h < wt2_4h = 4h WT confirmed bearish (bear cross). No fixed speed threshold.
                 _4h_against = _wt_vel_4h < -2.0
             else:
                 # wt1_4h > wt2_4h = 4h WT confirmed bullish (bull cross). No fixed speed threshold.
