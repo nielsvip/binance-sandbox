@@ -79,7 +79,7 @@ def build_param_grid_full():
         "K3M_FLOOR": [20.0, 25.0, 30.0, 35.0],
         "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 20.0, 24.0],
         "REENTRY_RALLY_K15M_MAX": [60.0, 80.0, 100.0],
-        "REENTRY_RALLY_HTF_MIN": [1, 2],
+        "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
     }
     return grid
 
