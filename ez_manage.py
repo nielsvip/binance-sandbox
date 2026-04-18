@@ -19397,13 +19397,17 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         # ==================================================================
         if is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
             _wt_vel_4h = safe_fetch_float(i.get('wt_velocity_4h', 0), 0)
+            _wt_accel_4h = safe_fetch_float(i.get('wt_acceleration_4h', 0), 0)
+            _wt_mom_4h = str(i.get('wt_momentum_state_4h', '')).upper()
             _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0)
             _wt_vel_1h = safe_fetch_float(i.get('wt_velocity_1h', 0), 0)
             _4h_against = False
             if is_long:
-                _4h_against = _wt_vel_4h < -2.0  # 4h momentum decelerating for longs
+                # EXHAUST_UP: WT still rising but decelerating (peak detection). IMPULSE_DOWN: already rolling over.
+                _4h_against = _wt_mom_4h in ('EXHAUST_UP', 'IMPULSE_DOWN') or (_wt_vel_4h < 0 and _wt_accel_4h < 0)
             else:
-                _4h_against = _wt_vel_4h > 2.0  # 4h momentum decelerating for shorts
+                # EXHAUST_DOWN: WT still falling but decelerating (trough detection). IMPULSE_UP: already reversing.
+                _4h_against = _wt_mom_4h in ('EXHAUST_DOWN', 'IMPULSE_UP') or (_wt_vel_4h > 0 and _wt_accel_4h > 0)
             _oa_raw = getattr(position, 'opened_at', None)
             if isinstance(_oa_raw, (int, float)):
                 _oa_raw = datetime.fromtimestamp(_oa_raw, tz=timezone.utc) if _oa_raw > 0 else None
