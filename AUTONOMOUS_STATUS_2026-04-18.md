@@ -109,3 +109,19 @@ Cockpit top 10 all `Sharpe 14.75 / 2 trades / $0.01` (clear sampling noise — t
 3. Sweep test definitions (which switches are flipped) aren't actually affecting entry rate.
 
 First thing Monday: pick one config from the cockpit leaderboard, re-run it standalone with `backtest_v8_sweep.py`, verify trade count > 100.
+
+## Added 2026-04-18 01:59 UTC — inf needs a second restart
+
+Timeline mismatch: user restarted all ez_manage processes at ~00:15, but the WT_15M_SAME_HEDGE → `hedge_engine.execute_same_symbol_hedge` rewire landed at **00:26** (11 min later). Inf is still running the pre-fix WT_15M code in memory. Evidence: at 01:59:50 UTC inf logged `[NON_TRADEABLE_HARD_BLOCK] ... reason=WT_15M_SAME_HEDGE_FOR_inf:1000FLOKIUSDT_SHORT_wt1-6.8` — that reason string only comes from the OLD code path (the new path routes through hedge_engine and uses a different reason format).
+
+**All other fixes from today ARE live** (webhook-bypass kills, reentry-monitor union, zone_action wiring, delta pos_state, hedge gate NameError, WT_COMPOSITE=True) — those landed before the 00:15 restart.
+
+**Action Monday**: restart `ez_manage.py --account inf` (watchdog will respawn) to pick up WT_15M fix. After restart, `[NON_TRADEABLE_HARD_BLOCK] ... WT_15M_SAME_HEDGE_FOR` should stop appearing; `[HEDGE_SAME_CALL]` + `OK_wt3m=...` should appear instead.
+
+One-liner to force the restart:
+```bash
+pkill -f "ez_manage.py --account inf" && sleep 2 && ps -ef | grep "ez_manage.*inf" | grep -v grep
+# run_with_watchdog.sh respawns it within ~5s
+```
+
+Other accounts (ang, flz, men, fin) likely need same treatment — they were restarted at same 00:15 timestamp so also missed the 00:26 fix. Do a rolling restart one-at-a-time to avoid a gap with no account live.
