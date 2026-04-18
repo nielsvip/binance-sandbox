@@ -122,19 +122,18 @@ def check_reentry_delta_tolerant(indicators: dict, is_long: bool, trade_manager=
 # ═══════════════════════════════════════════════════════════════════════════════
 def compute_applied_ratio(calculated_long_pct: float, calculated_short_pct: float, indicators: Dict[str, Any], is_for_long: bool) -> Tuple[float, float, bool]:
     """Returns (applied_long_pct, applied_short_pct, ratio_active).
-    Ratio is ONLY applied when 2 of 3 k_1m/k_3m/k_15m agree with the direction.
-    Formula: applied_long = 50 + (calculated_long - 50) * 2, clamped 10-90."""
-    k_1m, d_1m = _sf(indicators.get('stoch_k_1m')), _sf(indicators.get('stoch_d_1m'))
-    k_3m, d_3m = _sf(indicators.get('stoch_k_3m')), _sf(indicators.get('stoch_d_3m'))
-    k_15m, d_15m = _sf(indicators.get('stoch_k_15m')), _sf(indicators.get('stoch_d_15m'))
-    if is_for_long:
-        ltf_agree = int(k_1m > d_1m) + int(k_3m > d_3m) + int(k_15m > d_15m)
-    else:
-        ltf_agree = int(k_1m < d_1m) + int(k_3m < d_3m) + int(k_15m < d_15m)
-    if ltf_agree < 2:
-        return calculated_long_pct, calculated_short_pct, False
-    _ratio_mult = getattr(config, 'RATIO_MULTIPLIER', 3.0)  # BACKTEST_CHANGE_253: 3.0x = Sharpe 357 vs 4.0x = 332
-    raw_applied = 50.0 + (calculated_long_pct - 50.0) * _ratio_mult
+    2026-04-18 USER ABSOLUTE RULE: long/short ratio ALWAYS reflects 0market_sentiment_score.
+    Previously amplified the account's CURRENT L/S breadth (no sentiment input) — that let the
+    ratio drift anywhere regardless of market regime. Now the TARGET long% is driven directly
+    by sentiment, amplified around 50 by RATIO_MULTIPLIER, clamped 10-90.
+      sentiment 50 → target 50/50 (neutral)
+      sentiment 75, mult=3 → target 100→clamp→90/10 (heavy long)
+      sentiment 25, mult=3 → target 0→clamp→10/90 (heavy short)
+    ratio_active is ALWAYS True — no LTF activation gate. User rule: ALWAYS.
+    """
+    market_score = _sf(indicators.get('0market_sentiment_score'), 50.0)
+    _ratio_mult = getattr(config, 'RATIO_MULTIPLIER', 3.0)
+    raw_applied = 50.0 + (market_score - 50.0) * _ratio_mult
     applied_long = max(10.0, min(90.0, raw_applied))
     applied_short = 100.0 - applied_long
     return applied_long, applied_short, True

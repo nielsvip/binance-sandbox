@@ -103,21 +103,37 @@ def save_state(state):
 
 
 def build_neighborhood_overrides(winner_cfg):
-    """Generate ~200-400 configs around winner: vary each knob by one step while others at winner.
-    Plus a few 2-knob perturbations."""
+    """Generate ~300-500 configs around winner, three modes:
+    1. Single-knob coord descent (original)
+    2. Two-knob simultaneous perturbations (escape local max by exploring diagonals)
+    3. Random samples from full knob space (injected diversity)
+    """
     if not winner_cfg: return None
+    import random
     overrides_list = []
-    # Single-knob perturbations (coord descent)
+    # 1. Single-knob perturbations (coord descent)
     for k, v in winner_cfg.items():
         if k not in KNOB_NEIGHBORS: continue
-        neighbors = KNOB_NEIGHBORS[k]
-        for nv in neighbors:
+        for nv in KNOB_NEIGHBORS[k]:
             cfg = dict(winner_cfg)
             cfg[k] = nv
             overrides_list.append(cfg)
+    # 2. Two-knob simultaneous perturbations — pick knob pairs, vary both
+    knob_keys = [k for k in winner_cfg if k in KNOB_NEIGHBORS]
+    for _ in range(150):
+        k1, k2 = random.sample(knob_keys, 2) if len(knob_keys) >= 2 else (knob_keys[0], knob_keys[0])
+        cfg = dict(winner_cfg)
+        cfg[k1] = random.choice(list(KNOB_NEIGHBORS[k1]))
+        cfg[k2] = random.choice(list(KNOB_NEIGHBORS[k2]))
+        overrides_list.append(cfg)
+    # 3. Random samples — inject full-space diversity (~80 random cfgs)
+    for _ in range(80):
+        cfg = dict(winner_cfg)
+        for k in knob_keys:
+            cfg[k] = random.choice(list(KNOB_NEIGHBORS[k]))
+        overrides_list.append(cfg)
     # Deduplicate
-    seen = set()
-    unique = []
+    seen, unique = set(), []
     for cfg in overrides_list:
         key = tuple(sorted((k, v) for k, v in cfg.items()))
         if key not in seen:
