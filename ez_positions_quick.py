@@ -4901,6 +4901,18 @@ class HedgeEngine:
         wt2_1h = safe_fetch_float(indicators.get('wt2_1h', 0), 0)
         if (is_long and wt1_1h <= wt2_1h) or (not is_long and wt1_1h >= wt2_1h):
             return False, f"WT1H_WRONG_wt1={wt1_1h:.1f}_wt2={wt2_1h:.1f} (hedge needs wt3m+wt1h BOTH)"
+        # ═══ 2026-04-18 USER RULE — k AND wt BOTH must agree on 3m AND 1h (hedge open) ═══
+        # "Hedges only when both k and wt 3m 1h agree. Going COMPLETELY against any curve = SUICIDE."
+        # LONG hedge: k_3m > d_3m AND k_1h > d_1h (plus wt checks above)
+        # SHORT hedge: k_3m < d_3m AND k_1h < d_1h
+        _k3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
+        _d3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
+        _k1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50.0)
+        _d1h = safe_fetch_float(indicators.get('stoch_d_1h', 50), 50.0)
+        if (is_long and _k3m <= _d3m) or ((not is_long) and _k3m >= _d3m):
+            return False, f"K3M_WRONG_k={_k3m:.1f}_d={_d3m:.1f} (hedge needs k3m+k1h BOTH agree)"
+        if (is_long and _k1h <= _d1h) or ((not is_long) and _k1h >= _d1h):
+            return False, f"K1H_WRONG_k={_k1h:.1f}_d={_d1h:.1f} (hedge needs k3m+k1h BOTH agree)"
         # 2026-04-17 USER RULE: hedge gate = wt_3m AND wt_1h ONLY. NOT 15m, NOT 4h, NOT D, NOT W.
         # k_15m extreme-zone block removed (different indicator but user said only 3m+1h).
         # No other WT/stoch/zone checks at this gate.

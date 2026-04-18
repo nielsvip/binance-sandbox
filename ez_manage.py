@@ -15322,6 +15322,66 @@ class MultiAccountTradeManager:
                     if k1h_crossed:
                         logger.warning(f"[RATIO_REBALANCE] {account_key}: k_1h cross detected (k={k_1h:.1f}, d={d_1h:.1f}) — forcing immediate rebalance")
                         cooldown = 0
+                    # ═══ 2026-04-18 USER RULE — STALL_SUB ═══
+                    # Close stalled positions to free capital for high-delta symbols. Runs BEFORE
+                    # the rebalance cooldown gate so freed capital can be used by the open path
+                    # on the same cycle (registry top_longs/top_shorts is already delta-ranked).
+                    # Stalled = age > STALL_AGE_MIN_MIN AND |gain| < STALL_GAIN_ABS_MAX AND delta flat.
+                    # Bypasses STRICT_NO_LOSS per user directive — the whole point is "free flat, not at profit".
+                    if getattr(config, 'STALL_SUB_ENABLED', True):
+                        _ss_age_min = float(getattr(config, 'STALL_AGE_MIN_MIN', 180.0))
+                        _ss_gain_abs = float(getattr(config, 'STALL_GAIN_ABS_MAX', 0.5))
+                        _ss_delta_flat_max = float(getattr(config, 'STALL_DELTA_SPEED_MAX', 1.0))
+                        _ss_max_closes = int(getattr(config, 'STALL_MAX_CLOSES_PER_CYCLE', 2))
+                        _ss_positions = self.positions_by_account.get(account_key, {})
+                        _ss_stalled = []
+                        _ss_now = time.time()
+                        for _spk, _spos in _ss_positions.items():
+                            try:
+                                _spa = abs(safe_fetch_float(getattr(_spos, 'positionAmt', 0), 0))
+                                if _spa < 0.0001: continue
+                                # Skip hedges — HEDGE_CLEANUP_R6 owns them
+                                _s_is_hedge = bool(getattr(_spos, 'is_hedge', False))
+                                if not _s_is_hedge:
+                                    _s_is_hedge = any(h.get('position_key') == _spk for h in self.tracker_manager.active_hedges) if self.tracker_manager else False
+                                if _s_is_hedge: continue
+                                _sg = safe_fetch_float(getattr(_spos, 'gain', 0), 0)
+                                if abs(_sg) >= _ss_gain_abs: continue  # not stalled — has real P/L
+                                _s_opened = getattr(_spos, 'opened_at', None) or getattr(_spos, 'last_augmentation_time', None)
+                                _s_age_min = 999999.0
+                                if _s_opened:
+                                    try:
+                                        if isinstance(_s_opened, (int, float)):
+                                            _s_age_min = (_ss_now - float(_s_opened)) / 60.0
+                                        else:
+                                            _s_dt = isoparse(str(_s_opened)) if not isinstance(_s_opened, datetime) else _s_opened
+                                            if _s_dt.tzinfo is None: _s_dt = _s_dt.replace(tzinfo=timezone.utc)
+                                            _s_age_min = (datetime.now(timezone.utc) - _s_dt).total_seconds() / 60.0
+                                    except Exception: _s_age_min = 999999.0
+                                if _s_age_min < _ss_age_min: continue  # too young to be "stalled"
+                                _s_sym = getattr(_spos, 'symbol', _spk.split(':')[-1].replace('_LONG','').replace('_SHORT',''))
+                                _s_snap = (self.indicators_snapshot.get(_s_sym) if hasattr(self, 'indicators_snapshot') else None) or {}
+                                _s_bull_speed = abs(safe_fetch_float(_s_snap.get('delta_bull_speed'), 0))
+                                _s_bear_speed = abs(safe_fetch_float(_s_snap.get('delta_bear_speed'), 0))
+                                _s_max_speed = max(_s_bull_speed, _s_bear_speed)
+                                if _s_max_speed > _ss_delta_flat_max: continue  # delta still alive — not stalled
+                                _ss_stalled.append((_spk, _spos, _sg, _s_age_min, _s_max_speed))
+                            except Exception as _sse:
+                                logger.debug(f"[STALL_SUB_SCAN_ERR] {_spk}: {_sse}")
+                        _ss_stalled.sort(key=lambda x: x[3], reverse=True)  # oldest first
+                        _ss_closed = 0
+                        for _spk, _spos, _sg, _sage, _sspd in _ss_stalled:
+                            if _ss_closed >= _ss_max_closes: break
+                            _ss_reason = f"STALL_SUB_age={_sage:.0f}min_gain={_sg:.2f}%_deltaspd={_sspd:.2f}"
+                            logger.warning(f"💤 [STALL_SUB] {_spk}: stalled {_sage:.0f}min at {_sg:.2f}% with delta flat ({_sspd:.2f}). Closing to free capital for high-delta entry.")
+                            try:
+                                _ss_res = await queue_trade_action(self.order_queue, self, _spk, 'QUICK_CLOSE', _ss_reason, 0.85)
+                                if _ss_res and ('QUEUED' in str(_ss_res) or 'SUCCESS' in str(_ss_res)):
+                                    _ss_closed += 1
+                            except Exception as _scq:
+                                logger.error(f"[STALL_SUB_QUEUE_ERR] {_spk}: {_scq}")
+                        if _ss_closed > 0:
+                            logger.info(f"[STALL_SUB] {account_key}: closed {_ss_closed} stalled position(s); rebalance open path will deploy freed capital to top-delta candidates.")
                     if time.time() - _last_rebalance.get(account_key, 0) < cooldown: continue
                     ratio_data = self.positions_service.get_long_short_ratio(account_key)
                     _lv = ratio_data.get('long_value', 0)
@@ -19421,6 +19481,58 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 return f"{EvalStatus.ACTION_TAKEN}:HEDGE_CLEANUP_R6"
                     else:
                         logger.debug(f"[HEDGE_CLEANUP_R6_HOLD] {position_key}: hedge gain={_pp_gain:.2f}% wt3m_wrong={_r6_wt_wrong_3m} main={_r6_main_gain_str}%. Holding.")
+            # ═══ 2026-04-18 USER RULE — WRONG_SIDE_ABS_KILL ═══
+            # "Going COMPLETELY against any curve = SUICIDE mission. Kill completely."
+            # Closes position when ALL of the following are against the position side:
+            #   wt1_3m, wt1_15m, wt1_1h, wt1_4h, wt1_D (5 WT TFs) AND stoch_k_3m/15m/1h (3 stoch TFs)
+            # That's 8-of-8 simultaneous against-signals — rare, decisive, bypasses STRICT_NO_LOSS.
+            # Grace period: position must be older than WRONG_SIDE_MIN_AGE_MIN (default 30 min).
+            # Skip hedges — HEDGE_CLEANUP_R6 above handles them with its own wt1_3m rule.
+            if getattr(config, 'WRONG_SIDE_ABS_KILL_ENABLED', True):
+                _ws_is_hedge = False
+                try:
+                    _ws_is_hedge = bool(getattr(position, 'is_hedge', False))
+                    if not _ws_is_hedge and hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
+                        _ws_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
+                except Exception: pass
+                if not _ws_is_hedge:
+                    _ws_age_min = 999999.0
+                    try:
+                        _ws_opened = getattr(position, 'opened_at', None) or getattr(position, 'last_augmentation_time', None)
+                        if _ws_opened:
+                            if isinstance(_ws_opened, (int, float)):
+                                _ws_age_min = (time.time() - float(_ws_opened)) / 60.0
+                            else:
+                                _ws_dt = isoparse(str(_ws_opened)) if not isinstance(_ws_opened, datetime) else _ws_opened
+                                if _ws_dt.tzinfo is None: _ws_dt = _ws_dt.replace(tzinfo=timezone.utc)
+                                _ws_age_min = (datetime.now(timezone.utc) - _ws_dt).total_seconds() / 60.0
+                    except Exception: _ws_age_min = 999999.0
+                    _ws_min_age = float(getattr(config, 'WRONG_SIDE_MIN_AGE_MIN', 30.0))
+                    if _ws_age_min >= _ws_min_age:
+                        _ws_wt_against = 0
+                        for _wtf in ('3m', '15m', '1h', '4h', 'D'):
+                            _wt1 = safe_fetch_float(i.get(f'wt1_{_wtf}'), 0)
+                            _wt2 = safe_fetch_float(i.get(f'wt2_{_wtf}'), 0)
+                            if _wt1 == 0 and _wt2 == 0: continue
+                            if (is_long and _wt1 < _wt2) or ((not is_long) and _wt1 > _wt2):
+                                _ws_wt_against += 1
+                        _ws_k_against = 0
+                        for _ktf in ('3m', '15m', '1h'):
+                            _k = safe_fetch_float(i.get(f'stoch_k_{_ktf}'), 50)
+                            _d = safe_fetch_float(i.get(f'stoch_d_{_ktf}'), 50)
+                            if (is_long and _k < _d) or ((not is_long) and _k > _d):
+                                _ws_k_against += 1
+                        _ws_wt_req = int(getattr(config, 'WRONG_SIDE_WT_TFS_REQUIRED', 5))
+                        _ws_k_req = int(getattr(config, 'WRONG_SIDE_K_TFS_REQUIRED', 3))
+                        if _ws_wt_against >= _ws_wt_req and _ws_k_against >= _ws_k_req:
+                            _ws_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                            if _ws_amt > pos_min_qty:
+                                _ws_reason = f"WRONG_SIDE_ABS_KILL_wt={_ws_wt_against}/{_ws_wt_req}_k={_ws_k_against}/{_ws_k_req}_age={_ws_age_min:.0f}min_gain={_pp_gain:.2f}%"
+                                logger.critical(f"🗡️ [WRONG_SIDE_ABS_KILL] {position_key}: {'LONG' if is_long else 'SHORT'} completely against curve — {_ws_wt_against}/{len(('3m','15m','1h','4h','D'))} WT + {_ws_k_against}/3 K against, age={_ws_age_min:.0f}min, gain={_pp_gain:.2f}%. Bypassing STRICT_NO_LOSS per user rule.")
+                                _ws_res = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", _ws_reason, 0.98)
+                                if _ws_res:
+                                    trade_manager.processing_keys.discard(position_key)
+                                    return f"{EvalStatus.ACTION_TAKEN}:WRONG_SIDE_ABS_KILL"
             # DELTA EXIT — speed decay / combined_wt_stoch (V2 sweep: Sharpe 0.575, WR 78.5%)
             # 2026-04-10 BUGFIX: was passing (symbol, i) WITHOUT position_state, so the
             # entire exit block in wt_dc_delta.py was SKIPPED (gated on `if position_state`).
