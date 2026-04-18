@@ -40,9 +40,13 @@ push_to() {
     cd "$BASE" || return 1
     # bash 3.2 compatible (macOS default) — no mapfile. Expand globs inline.
     local files=()
+    # Skip these: per-account realtime stubs (328B, MacBook-only, not on sandboxes, trigger rsync 3.4.1 abort under --existing).
+    local skip_list=" ez_positions_realtime_ang.py ez_positions_realtime_fin.py ez_positions_realtime_flz.py ez_positions_realtime_inf.py ez_positions_realtime_men.py "
     for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py; do
         for f in $pat; do
-            [[ -f "$f" ]] && files+=("$f")
+            [[ -f "$f" ]] || continue
+            [[ "$skip_list" == *" $f "* ]] && continue
+            files+=("$f")
         done
     done
     if [[ ${#files[@]:-0} -eq 0 ]]; then
