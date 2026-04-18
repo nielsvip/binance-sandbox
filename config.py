@@ -118,7 +118,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-16: REMOVED inf — hedging is counterproductive for scalp accounts. Scalp entries get hedged immediately → cascade.
+    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz", "inf"]  # 2026-04-18: Re-added inf. Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
@@ -266,7 +266,7 @@ class Config:
     HEDGE_MAX_RATIO: float = 2.0  # Hard cap 200% of losing position value.
     HEDGE_TRIGGER_LOSS_PCT_ENTRY: float = -2.0  # Cross-symbol trigger (HEDGE_MODE only, not obligatory).
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
-    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.50  # 2026-04-16: reverted from 0.0 — was hedging on rounding-error noise
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = 0.0  # 2026-04-18: hedge when gain hits 0% — if system failed to sell at a gain this is the fallback
     HEDGE_NEWBORN_GRACE_MINUTES: float = 10.0  # 2026-04-16: hedges blocked for N min after open, unless DC breach
     HEDGE_NEWBORN_DC_BREACH_ALLOWED: bool = True  # allow hedge during grace if price breaches dc_low_3m (LONG) / dc_high_3m (SHORT)
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
@@ -845,7 +845,7 @@ class Config:
     CYCLE_TP_PCT: float = 0.60  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior.
     ACCOUNT_TP_PCT: Dict[str, float] = field(default_factory=dict)  # DISABLED 2026-03-29: NO fixed TP — ride winners until technicals turn. Exits via CYCLE_TP_STOCH_AGAINST, DC_BASIS_PROFIT_EXIT, IN_GAIN_TREND_EXIT only.
-    TREND_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz"])
+    TREND_ACCOUNTS: List[str] = field(default_factory=lambda: [])  # 2026-04-18: removed flz — TREND_ACCOUNTS blocks ALL gain-harvest exits, flz:BTCUSDC_LONG held through 7.6% gain into -155% loss
     TREND_HTF_MIN_BULL: int = 7
     TREND_HTF_MIN_BEAR: int = 7
     TREND_EXIT_SCORE_FLIP: int = 0

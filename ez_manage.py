@@ -445,9 +445,11 @@ def check_entry_trigger(indicators: Dict[str, Any], is_long: bool) -> Tuple[bool
 # ═══════════════════════════════════════════════════════════════════════════════
 def check_winner_momentum(indicators: Dict[str, Any], is_long: bool, true_lag: float = 0.0) -> Tuple[bool, str]:
     """Returns (should_hold, reason). True = momentum still favorable — HOLD the winner.
-    Only allows exit when stoch_15m is exhausted (>70 long / <30 short)
-    AND 3m structure is declining (high_3m < high_3m_prev for long)."""
+    Allows exit when: (1) stoch_15m exhausted + 3m structure breaking, OR
+    (2) wt1_15m crossed below wt2_15m + 3m structure breaking."""
     k_15m = _sf(indicators.get('stoch_k_15m'))
+    wt1_15m = _sf(indicators.get('wt1_15m'), 0.0)
+    wt2_15m = _sf(indicators.get('wt2_15m'), 0.0)
     high_3m = _sf(indicators.get('high_3m'), 0)
     high_3m_prev = _sf(indicators.get('high_3m_prev'), 0)
     low_3m = _sf(indicators.get('low_3m'), 0)
@@ -456,12 +458,16 @@ def check_winner_momentum(indicators: Dict[str, Any], is_long: bool, true_lag: f
         return True, "1M_DATA_LAG_HOLD"
     if is_long:
         exhausted = k_15m > 80.0
+        wt_against = wt1_15m < wt2_15m
         structure_breaking = high_3m > 0 and high_3m_prev > 0 and high_3m < high_3m_prev
     else:
         exhausted = k_15m < 20.0
+        wt_against = wt1_15m > wt2_15m
         structure_breaking = low_3m > 0 and low_3m_prev > 0 and low_3m > low_3m_prev
     if exhausted and structure_breaking:
         return False, f"EXHAUSTED_k15m={k_15m:.0f}_STRUCT_BREAK"
+    if wt_against and structure_breaking:
+        return False, f"WT_AGAINST_STRUCT_BREAK_wt={wt1_15m:.1f}/{wt2_15m:.1f}"
     return True, f"HOLD_k15m={k_15m:.0f}_struct={'BREAKING' if structure_breaking else 'OK'}"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -19395,21 +19401,6 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _pp_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
             _pp_prev_gain = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)
             _pp_entry = safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0)
-            # ═══ HARD MAX LOSS CAP — 2026-04-10 ═══════════════════════════════════
-            # User rule: NO trading system should ever allow >5% losses. This is a
-            # SAFETY NET of last resort. DELTA/WT/DC exits should normally fire WAY
-            # before this. If this fires often, the upstream technicals need work.
-            # Threshold is config.HARD_MAX_LOSS_PCT (default -5.0). Set to -9999 to
-            # disable for ablation testing only — never disable in live.
-            _hard_loss_cap = float(getattr(config, 'HARD_MAX_LOSS_PCT', -5.0))
-            if _pp_gain <= _hard_loss_cap and getattr(config, 'EXIT_HARD_MAX_LOSS_CAP_ENABLED', True):
-                _hlc_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
-                if _hlc_amt > pos_min_qty:
-                    logger.critical(f"🛑 [HARD_MAX_LOSS_CAP] {position_key}: gain={_pp_gain:.2f}% <= {_hard_loss_cap:.2f}% — FORCED CLOSE. DELTA/WT/DC failed to catch this. Investigate upstream.")
-                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"HARD_MAX_LOSS_CAP_{_pp_gain:.2f}pct_threshold{_hard_loss_cap:.1f}", 0.99)
-                    if result:
-                        trade_manager.processing_keys.discard(position_key)
-                        return f"{EvalStatus.ACTION_TAKEN}:HARD_MAX_LOSS_CAP"
             # RULE #6: HEDGE CLEANUP — 2026-04-17 OVERHAUL
             # User rule: hedges close on wt1_3m flip REGARDLESS of P/L (STRICT_NO_LOSS does not apply to hedges).
             # On close, position_key is removed from tradeable_keys so nothing reopens it automatically.
@@ -19430,16 +19421,6 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         if _r6_ec.get('is_hedge') or _r6_ec.get('hedge_for') or 'HEDGE' in str(_r6_ec.get('last_reason', '')).upper():
                             _r6_is_hedge = True
                     except Exception: pass
-                if not _r6_is_hedge:
-                    try:
-                        _r6_opp_side = 'SHORT' if is_long else 'LONG'
-                        _r6_opp_pk = f"{account_key}:{symbol}_{_r6_opp_side}"
-                        _r6_opp_pos = trade_manager.positions.get(_r6_opp_pk)
-                        if _r6_opp_pos and abs(safe_fetch_float(getattr(_r6_opp_pos, 'positionAmt', 0), 0)) > 0.0001:
-                            _r6_opp_gain = safe_fetch_float(getattr(_r6_opp_pos, 'gain', 0), 0)
-                            if _pp_gain > _r6_opp_gain:
-                                _r6_is_hedge = True
-                    except Exception: pass
                 if _r6_is_hedge:
                     _r6_wt1_3m = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
                     _r6_wt2_3m = safe_fetch_float(i.get('wt2_3m', 0), 0.0)
@@ -19458,12 +19439,12 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_main_recovered = _r6_main_gone or (_r6_main_gain is not None and _r6_main_gain >= 0.0)
                     _r6_main_gain_str = f"{_r6_main_gain:.2f}" if _r6_main_gain is not None else "gone"
                     _r6_bypass = bool(getattr(config, 'HEDGE_EXIT_BYPASS_NOLOSS', True))
-                    _r6_wt_flip_trigger = _r6_wt_wrong_3m if _r6_bypass else _r6_wt_all_wrong
+                    _r6_wt_flip_trigger = (_r6_wt_wrong_3m and _r6_wt_wrong_1h) if _r6_bypass else _r6_wt_all_wrong
                     _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
                     if _r6_should_close:
                         _r6_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                         if _r6_amt > pos_min_qty:
-                            _r6_close_reason = "main_recovered" if _r6_main_recovered else ("wt3m_flip_bypass_noloss" if _r6_bypass else "all_tf_wt_against_hedge")
+                            _r6_close_reason = "main_recovered" if _r6_main_recovered else ("wt3m_and_1h_flip_bypass_noloss" if _r6_bypass else "all_tf_wt_against_hedge")
                             _r6_reason = f"HEDGE_CLEANUP_R6_{_r6_close_reason}_gain={_pp_gain:.2f}_main={_r6_main_gain_str}_wt3m={_r6_wt1_3m:.1f}/{_r6_wt2_3m:.1f}_wt15m={_r6_wt1_15m:.1f}/{_r6_wt2_15m:.1f}"
                             logger.warning(f"[HEDGE_CLEANUP_R6] {position_key}: hedge gain={_pp_gain:.2f}% {_r6_close_reason} → CLOSING HEDGE")
                             _r6_side = "SELL" if is_long else "BUY"
@@ -19478,6 +19459,16 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                             logger.warning(f"[HEDGE_CLEANUP_R6_TRADEABLE] {position_key}: removed from tradeable_keys after hedge close")
                                     except Exception as _tk_e:
                                         logger.debug(f"[HEDGE_CLEANUP_R6_TRADEABLE_ERR] {position_key}: {_tk_e}")
+                                if _r6_close_reason != "main_recovered":
+                                    _r6_loser_pk = _r6_main_pk or position_key
+                                    _rds_cd_key = f"wt_same_hedge_cd:{_r6_loser_pk}"
+                                    _rds_day_key = f"wt_same_hedge_daily:{account_key}:{symbol}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+                                    try:
+                                        if trade_manager.redis_manager:
+                                            await trade_manager.redis_manager.delete(_rds_cd_key)
+                                            await trade_manager.redis_manager.delete(_rds_day_key)
+                                            logger.warning(f"[HEDGE_CLEANUP_R6_RESET_CAP] {position_key}: wt_flip close — cleared daily cap + cooldown so loser {_r6_loser_pk} can re-hedge on next WT flip")
+                                    except Exception: pass
                                 return f"{EvalStatus.ACTION_TAKEN}:HEDGE_CLEANUP_R6"
                     else:
                         logger.debug(f"[HEDGE_CLEANUP_R6_HOLD] {position_key}: hedge gain={_pp_gain:.2f}% wt3m_wrong={_r6_wt_wrong_3m} main={_r6_main_gain_str}%. Holding.")

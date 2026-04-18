@@ -14506,13 +14506,13 @@ async def main(account_key_filter: Optional[str] = None) -> None:
         # OBLIGATORY HEDGE SCANNER — PERMANENTLY DISABLED 2026-03-30
         # Caused 83+ position cascade across ALL accounts. NEVER RE-ENABLE.
         async def obligatory_hedge_loop():
-            logger.warning(f"[OBLIGATORY_HEDGE_LOOP] PERMANENTLY DISABLED 2026-03-30 — caused position cascade")
-            return  # DEAD CODE — DO NOT REMOVE THIS RETURN
+            logger.warning(f"[OBLIGATORY_HEDGE_LOOP] RE-ENABLED 2026-04-18: R6 gain-heuristic bug fixed + inf back in HEDGE_ACCOUNTS + daily cap resets on wt_flip close. Cascade guards: tracker_consultation + _already_has_hedge + HEDGE_NEWBORN_GRACE prevent re-hedging hedges.")
             while not stop_event.is_set():
                 try:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(90)
                     for ak in allowed_accounts:
-                        await hedge_engine.scan_and_hedge_losers(ak)
+                        if ak in getattr(config, 'HEDGE_ACCOUNTS', []):
+                            await hedge_engine.scan_and_hedge_losers(ak)
                 except asyncio.CancelledError: break
                 except Exception as e:
                     logger.error(f"[OBLIGATORY_HEDGE_LOOP] Error: {e}")
