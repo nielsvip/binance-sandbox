@@ -89,3 +89,23 @@ ssh s2-int "pgrep -fa _ab_sector_sweep"
 
 - **S2 orchestrator**: the `_ab_sector_sweep mix_12` job was the only sweep running on S2 when you logged off. No auto-chain detected. If it completes before Monday, S2 goes idle until a new sweep is queued. Not destructive, just a gap in stocks backtest data.
 - **Claude session monitor** (task `b8mrdpwzt`): persistent within this session only. Dies on logout. Intended — the real autonomy is the launchd watchers + run_with_watchdog + orchestrators above.
+
+## Added 2026-04-18 01:35 UTC
+
+### Dashboards (now under launchd)
+
+| Port | Service | Plist | Reads from |
+|---|---|---|---|
+| 5050 | Trade Analytics | `com.niels.trade-analytics` | `data/history/<acct>/*.jsonl` + `data/tradier/history/<acct>/*.jsonl` |
+| 5051 | V8 Sweep Cockpit | `com.niels.sweep-cockpit` | `data/sweep_results/*.json`, cross-machine dupe DB |
+
+Both `KeepAlive=true`. Check: `curl -sf http://127.0.0.1:5050/; curl -sf http://127.0.0.1:5051/`
+
+### ⚠️ Sweep results look broken (Monday priority)
+
+Cockpit top 10 all `Sharpe 14.75 / 2 trades / $0.01` (clear sampling noise — tests barely generate entries). Bottom rows also only 2 trades. Most rows are `0 trades`. Either:
+1. Entry gates in V8 engine too strict post-recent-changes (check WT_COMPOSITE_SCORING_ENABLED=True impact on crypto), OR
+2. Data pipeline issue (NPZ symbol coverage), OR
+3. Sweep test definitions (which switches are flipped) aren't actually affecting entry rate.
+
+First thing Monday: pick one config from the cockpit leaderboard, re-run it standalone with `backtest_v8_sweep.py`, verify trade count > 100.
