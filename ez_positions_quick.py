@@ -4308,22 +4308,36 @@ class HedgeEngine:
                             _long_pos = _positions.get(_long_pk)
                             _short_pos = _positions.get(_short_pk)
                             if not _long_pos or not _short_pos: continue
-                            # Determine hedge direction from symbol direction lists — NEVER from gain comparison.
-                            # Gain comparison is wrong: when a real position temporarily lags its own hedge in gain,
-                            # the real position gets misclassified as a hedge → HEDGE_CLEANUP_R6 then closes it. (2026-04-18 flz:btcusdc_long incident)
+                            # HEDGE DETECTION RULE (2026-04-18):
+                            # tradeable_keys = source of truth for main positions. If BOTH sides are in
+                            # tradeable_keys, neither is a hedge — skip (both are legitimate positions, e.g. flz BTC long+short).
+                            # If only one side is in tradeable_keys, the OTHER side is the hedge.
+                            # Never use gain comparison — causes misclassification when hedge temporarily outperforms origin.
                             _tm = self.trade_manager
-                            _in_long_list = bool(
-                                _sym in (getattr(_tm, f'symbols_{_ak}_long', None) or set()) or
-                                (_ak in ('flz', 'men', 'fin') and _sym in (getattr(_tm, f'symbols_{_ak}', None) or set()))
-                            )
-                            _in_short_list = bool(_sym in (getattr(_tm, f'symbols_{_ak}_short', None) or set()))
-                            if _in_long_list:
+                            _tk = getattr(_tm, 'tradeable_keys', set()) or set()
+                            _long_is_tradeable = _long_pk in _tk
+                            _short_is_tradeable = _short_pk in _tk
+                            if _long_is_tradeable and _short_is_tradeable:
+                                logger.debug(f"[HEDGE_DETECT_SKIP] {_sym}/{_ak}: LONG+SHORT both in tradeable_keys — neither is a hedge")
+                                continue
+                            elif _long_is_tradeable and not _short_is_tradeable:
                                 _hedge_pk, _losing_pk = _short_pk, _long_pk
-                            elif _in_short_list:
+                            elif _short_is_tradeable and not _long_is_tradeable:
                                 _hedge_pk, _losing_pk = _long_pk, _short_pk
                             else:
-                                logger.warning(f"[HEDGE_DETECT_SKIP] {_sym} has LONG+SHORT on {_ak} but not in any direction list — skipping")
-                                continue
+                                # Neither in tradeable_keys — fall back to direction lists
+                                _in_long_list = bool(
+                                    _sym in (getattr(_tm, f'symbols_{_ak}_long', None) or set()) or
+                                    (_ak in ('flz', 'men', 'fin') and _sym in (getattr(_tm, f'symbols_{_ak}', None) or set()))
+                                )
+                                _in_short_list = bool(_sym in (getattr(_tm, f'symbols_{_ak}_short', None) or set()))
+                                if _in_long_list:
+                                    _hedge_pk, _losing_pk = _short_pk, _long_pk
+                                elif _in_short_list:
+                                    _hedge_pk, _losing_pk = _long_pk, _short_pk
+                                else:
+                                    logger.warning(f"[HEDGE_DETECT_SKIP] {_sym}/{_ak}: LONG+SHORT both off tradeable_keys and not in direction lists — skipping")
+                                    continue
                             if _hedge_pk not in _detected_hedge_keys:
                                 _h_entry = safe_fetch_float(getattr(_positions.get(_hedge_pk), 'entry_price', 0), 0)
                                 _h_amt = abs(safe_fetch_float(getattr(_positions.get(_hedge_pk), 'positionAmt', 0), 0))

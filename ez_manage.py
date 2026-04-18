@@ -19431,9 +19431,26 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # Switches: HEDGE_EXIT_BYPASS_NOLOSS (default True), HEDGE_CLOSE_REMOVE_FROM_TRADEABLE (default True).
             if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
                 _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
-                # 2026-04-18 USER RULE: wt1_3m hedge-close MUST fire even if tracker is empty
-                # after restart. Detect hedge via multiple markers — position attr, exit_candidates
-                # flags, HEDGE reason-string markers, and opposite-side-same-symbol-better-gain.
+                # TRADEABLE_KEYS VETO: if this position_key is in tradeable_keys, it is a MAIN position — never a hedge.
+                # Also removes stale gain-comparison HEDGE_DETECT records (2026-04-18 flz:btcusdc_long incident).
+                if _r6_is_hedge:
+                    _r6_tk = getattr(trade_manager, 'tradeable_keys', set()) or set()
+                    _r6_is_main = position_key in _r6_tk
+                    if not _r6_is_main:
+                        # Secondary check: direction list confirms it's a main position
+                        _r6_long_syms = getattr(trade_manager, f'symbols_{account_key}_long', None) or set()
+                        _r6_flat_syms = getattr(trade_manager, f'symbols_{account_key}', None) or set()
+                        _r6_short_syms = getattr(trade_manager, f'symbols_{account_key}_short', None) or set()
+                        if account_key in ('flz', 'men', 'fin'):
+                            _r6_long_syms = _r6_long_syms | _r6_flat_syms
+                        _r6_is_main = (is_long and symbol in _r6_long_syms) or (not is_long and symbol in _r6_short_syms)
+                    if _r6_is_main:
+                        logger.warning(f"[HEDGE_CLEANUP_R6_VETO] {position_key}: in active_hedges but is a main position (tradeable_keys/direction-list) — removing stale record, skipping R6")
+                        try:
+                            async with trade_manager.tracker_manager._hedges_lock:
+                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                        except Exception: pass
+                        _r6_is_hedge = False
                 if not _r6_is_hedge:
                     try:
                         if bool(getattr(position, 'is_hedge', False)): _r6_is_hedge = True
@@ -19475,6 +19492,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _r6_res = await trade_manager.execute_now(position_key, account_key, symbol, _r6_amt, _r6_side, position_side, _r6_amt, current_price, _r6_uid, _r6_reason, True, "QUICK_CLOSE", is_hedge=True, hedge_for=position_key)
                             if _r6_res and "SUCCESS" in str(_r6_res):
                                 logger.warning(f"[HEDGE_CLEANUP_R6_OK] {position_key}: Hedge closed. {_r6_res}")
+                                try:
+                                    async with trade_manager.tracker_manager._hedges_lock:
+                                        trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                                except Exception: pass
                                 if getattr(config, 'HEDGE_CLOSE_REMOVE_FROM_TRADEABLE', True):
                                     try:
                                         if hasattr(trade_manager, 'tradeable_keys') and position_key in trade_manager.tradeable_keys:
