@@ -10158,20 +10158,14 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if _gate_sym and _master_symbols and _gate_sym not in _master_symbols:
         logger.critical(f"🚫🚫🚫 [SYMBOL_NOT_IN_MASTER] {position_key}: symbol {_gate_sym} is NOT in symbols.json. TRADE BLOCKED. This symbol does not exist in our universe.")
         return False, f"BLOCKED_SYMBOL_NOT_IN_SYMBOLS_JSON_{_gate_sym}"
-    # ═══════════════════════════════════════════════════════════════════════════
-    # USDC PREFERENCE GATE (2026-04-17) — USDT blocked when USDC version exists.
-    # User rule: "ALWAYS prefer usdc NO COMMISSIONS over usdt WITH COMMISSIONS".
-    # Fires on OPEN/AUGMENT only (existing positions can CLOSE/REDUCE as USDT).
-    # Not applied to is_hedge (hedge must match origin symbol) or explicit close actions.
-    # ═══════════════════════════════════════════════════════════════════════════
+    # USDC PREFERENCE — redirect happens at execute_now level (before any lock).
+    # By this point, USDT has already been upgraded to USDC when available.
+    # This gate is kept only as a secondary anomaly detector (should never fire in normal flow).
     _action_u = (action or '').upper()
     _is_open_like = ('OPEN' in _action_u or 'AUGMENT' in _action_u or 'ENTRY' in _action_u or 'REENTRY' in _action_u) and not is_hedge
-    if _is_open_like and _gate_sym and _gate_sym.endswith('USDT') and getattr(config, 'USDC_PREFERENCE_BLOCK_ENABLED', True):
+    if _is_open_like and _gate_sym and _gate_sym.endswith('USDT'):
         _usdc_candidate = _gate_sym[:-4] + 'USDC'
-        _live_usdc = getattr(trade_manager, 'live_usdc_pairs', None)
-        if _live_usdc is None:
-            _live_usdc = getattr(trade_manager, 'available_usdc_pairs', set()) or set()
-        # Also check the cached JSON file as fallback
+        _live_usdc = getattr(trade_manager, 'live_usdc_pairs', None) or getattr(trade_manager, 'available_usdc_pairs', set()) or set()
         if not _live_usdc:
             try:
                 import json as _j
@@ -10180,8 +10174,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             except Exception:
                 _live_usdc = set()
         if _usdc_candidate in _live_usdc:
-            logger.critical(f"🚫 [USDC_PREFERENCE_BLOCK] {position_key}: {_gate_sym} USDT open blocked — USDC version {_usdc_candidate} exists (zero commissions). Use {_usdc_candidate} instead.")
-            return False, f"BLOCKED_USDT_WITH_USDC_AVAIL_{_usdc_candidate}"
+            logger.warning(f"[USDC_GATE_ANOMALY] {position_key}: USDT reached gate despite upgrade — {_usdc_candidate} available. Proceeding on USDT.")
     # ═══════════════════════════════════════════════════════════════════════════
     # TRADEABLE_KEYS GATE — position MUST be in tradeable_keys.json. NO BYPASS.
     # Same-symbol hedges are exempt (the losing position IS tradeable).

@@ -280,9 +280,6 @@ class Config:
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True  # On hedge close, drop position_key from tradeable_keys.
     HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
-    # USDC_PREFERENCE_BLOCK: live gate blocks USDT opens when USDC version exists (zero commissions).
-    # Default True = live behavior. Backtests on USDT-only NPZ must override to False.
-    USDC_PREFERENCE_BLOCK_ENABLED: bool = True
     RATIO_MULTIPLIER: float = 4.0  # BC_160: 4x = +2052% vs 3x = +1593% on WT exit/reentry backtest (12 sym, 2025). 60/40 → 90/10. DD 0.7%.
     # === V4 BACKTEST-PROVEN EXIT TUNING (2026-03-27) ===
     # Crypto sweep: vel-6/frac15 = Sharpe 0.457 vs baseline 0.404 (+13%), DD 9.67% vs 10.93%

@@ -12871,6 +12871,25 @@ class MultiAccountTradeManager:
         _ENTRY_ACTIONS = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
+        # USDC UPGRADE — transparently redirect USDT→USDC for opens when USDC pair is available.
+        # Not a switch. Always active for live (live_usdc_pairs populated). Irrelevant for sandbox
+        # (live_usdc_pairs empty → redirect never fires → USDT proceeds normally for backtest).
+        # Happens before ALL locks so every subsequent check sees the correct USDC key.
+        if _is_open_action and not is_hedge and symbol and symbol.endswith('USDT'):
+            _usdc_sym_en = symbol[:-4] + 'USDC'
+            _live_usdc_en = getattr(self, 'live_usdc_pairs', None) or getattr(self, 'available_usdc_pairs', set()) or set()
+            if not _live_usdc_en:
+                try:
+                    import json as _ju
+                    _uf = getattr(config, 'LIVE_USDC_PAIRS_FILE', None)
+                    if _uf:
+                        with open(_uf) as _ufd: _live_usdc_en = set(_ju.load(_ufd))
+                except Exception: pass
+            if _usdc_sym_en in _live_usdc_en:
+                _old_pk_en = position_key
+                symbol = _usdc_sym_en
+                position_key = f"{account_key}:{_usdc_sym_en}_{position_side}"
+                logger.info(f"[USDC_UPGRADE] {_old_pk_en} → {position_key}: auto-redirected USDT→USDC (zero commissions)")
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
         if _is_open_action and position_key:
             _now_abs = time.time()
