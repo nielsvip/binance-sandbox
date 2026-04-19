@@ -164,6 +164,27 @@ def build_param_grid_tradier_core():
 
 
 
+def build_param_grid_sharpe3_tradier():
+    """Focused 504-config tradier sweep targeting >3 Sharpe.
+    Combines exit_tuning winner flags (100% WR) with PROFIT_TARGET_PCT + entry selectivity.
+    Runs in ~30-45 min on 121 symbols vectorized."""
+    grid = {
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "RZ_EXIT_ENABLED": [True],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "REENTRY_RALLY_K15M_MAX": [75.0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.3, 1.6, 2.0, 3.0],
+        "ENTRY_SCORE_THRESHOLD": [0.0, 12.0, 18.0, 24.0],
+        "K3M_FLOOR": [20.0, 25.0, 30.0],
+        "MIN_HOLD_BARS": [10, 20],
+        "DELTA_ENTRY_ENABLED": [True],
+        "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
+    }
+    return grid
+
+
 def build_param_grid_reentry_sharpe_push():
     """2026-04-17 directive: push Sharpe above 2.25 baseline (48-sym × 4yr, 500 trades, 92.8% WR).
     Cartesian over every reentry tunable. 144 variants × ~8s = ~20 min on v8_quick vectorized engine.
@@ -229,6 +250,7 @@ TIER_MAP = {
     "tradier_core": build_param_grid_tradier_core,
     "breakout_multi_lung": build_param_grid_breakout_multi_lung,
     "breakout_multi_lung_tradier": build_param_grid_breakout_multi_lung_tradier,
+    "sharpe3_tradier": build_param_grid_sharpe3_tradier,
     "reentry_sharpe_push": build_param_grid_reentry_sharpe_push,
     "reentry_sharpe_push_wide": build_param_grid_reentry_sharpe_push_wide,
     "indicator_audit": build_param_grid_indicator_audit,

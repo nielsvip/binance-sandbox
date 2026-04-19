@@ -19607,28 +19607,16 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
                     # ⚠️ NOLOSS GATE — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
                     # A hedge closing at a loss is only allowed when entry_price is OUTSIDE the dc_4h
-                    # channel (structurally broken entry — close to cut the loss).
-                    # If entry is INSIDE dc_4h, position has structural support — do NOT close at a loss.
-                    # If main=gone AND gain < 0 AND entry outside channel → close (stop the bleed).
-                    # If main=gone AND gain < 0 AND entry inside channel → purge stale record only.
+                    # UNCONDITIONAL NOLOSS GATE — R6 NEVER closes at a loss. NO EXCEPTIONS.
+                    # If gain < 0: purge stale active_hedges record and skip. Use MANDATORY_HEDGE instead.
                     if _r6_should_close and _pp_gain < 0:
                         _r6_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
-                        _r6_dc_high_4h = safe_fetch_float(i.get('dc_high_4h', 0), 0)
-                        _r6_dc_low_4h = safe_fetch_float(i.get('dc_low_4h', 0), 0)
-                        _r6_inside_dc4h = False
-                        if _r6_dc_high_4h > 0 and _r6_dc_low_4h > 0 and _r6_entry > 0:
-                            _r6_inside_dc4h = _r6_dc_low_4h <= _r6_entry <= _r6_dc_high_4h
-                        if _r6_inside_dc4h or _r6_dc_high_4h == 0:
-                            # Entry inside channel (or no DC data) — structural support exists, do NOT close at loss
-                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: gain={_pp_gain:.2f}% < 0, entry={_r6_entry:.4f} inside dc4h[{_r6_dc_low_4h:.4f}..{_r6_dc_high_4h:.4f}] — BLOCKED, purging stale record ⚠️ DO NOT DISABLE")
-                            try:
-                                async with trade_manager.tracker_manager._hedges_lock:
-                                    trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
-                            except Exception: pass
-                            _r6_should_close = False
-                        else:
-                            # Entry OUTSIDE dc_4h channel — structurally broken, allow close at loss
-                            logger.critical(f"[HEDGE_CLEANUP_R6_OUTSIDE_DC4H_CLOSE] {position_key}: gain={_pp_gain:.2f}%, entry={_r6_entry:.4f} OUTSIDE dc4h[{_r6_dc_low_4h:.4f}..{_r6_dc_high_4h:.4f}] — closing at loss (structurally broken entry)")
+                        logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: gain={_pp_gain:.2f}% < 0 — UNCONDITIONAL BLOCK, purging stale active_hedges record. R6 NEVER closes at a loss. ⚠️ DO NOT REMOVE")
+                        try:
+                            async with trade_manager.tracker_manager._hedges_lock:
+                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                        except Exception: pass
+                        _r6_should_close = False
                     if _r6_should_close:
                         _r6_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                         if _r6_amt > pos_min_qty:
