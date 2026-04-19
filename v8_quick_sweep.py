@@ -451,6 +451,44 @@ def build_param_grid_stock_validate2():
     }
 
 
+def build_param_grid_stock_mega():
+    """Wide stock sweep with aggressive early abort (2026-04-19 champion findings):
+    VEL_GATE=False and VWAP=False confirmed best for stocks.
+    PT=0.15-1.0, HOLD=20-80. Abort configs if avg Sharpe < 4 after 3 symbols (~15s).
+    Run on all 262 symbols via --symbols all. ~192 configs per batch."""
+    return {
+        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+        "MIN_HOLD_BARS": [20, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_mega_v6():
+    """Crypto champion variations (2026-04-19 confirmed winner: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3
+    → 2741 trades Sharpe 8.99 PnL +$1360). Now probe ENTRY_SCORE + K3M_FLOOR space.
+    Early abort at 4 symbols (floor=4.0). ~1152 configs."""
+    return {
+        "REENTRY_RALLY_K15M_MAX": [50.0, 55.0],
+        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.20],
+        "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "MIN_HOLD_BARS": [20, 50],
+        "ENTRY_SCORE_THRESHOLD": [16.0, 18.0, 20.0],
+        "K3M_FLOOR": [20.0, 25.0],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [4],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
 def build_param_grid_stock_validate():
     """Scale validation on all 262 stock symbols (2026-04-19): PT=0.02 gave negative PnL at scale.
     Test PT=0.1-1.5 range that showed positive PnL on 12 symbols to find best real-world winner.
@@ -557,42 +595,43 @@ def build_param_grid_mega_v4():
 
 
 def build_param_grid_hunt_crypto():
-    """Small-sample hunt — honest engine (hedge simulated, COOLDOWN=0).
-    Goal: 10,000+ Sharpe>4 results on fast 11 symbols, 1yr data.
-    Wide grid ~92k configs. Run --kill-sharpe 4.0 so CSV only accumulates winners.
-    EARLY_ABORT floor=2.0 kills garbage fast. ~4-5h on 14 workers."""
+    """Massive crypto hunt — honest engine (hedge + COOLDOWN=0).
+    Goal: 10,000+ Sharpe>4 results. Run with --min-csv-sharpe 4.0 --kill-sharpe 2.5 --kill-secs 60.
+    EARLY_ABORT floor=2.5 kills bad configs after 5 symbols. ~725k configs, effective ~200k with abort.
+    Shuffle so good combos surface early. ~8-10h on 14 workers."""
     return {
-        "MIN_HOLD_BARS": [1, 5, 10, 20, 50],
-        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 100.0],
-        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0],
+        "MIN_HOLD_BARS": [1, 2, 5, 10, 20, 30, 50],
+        "REENTRY_RALLY_K15M_MAX": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
+        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
         "EARLY_ABORT_MIN_SYMBOLS": [5],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
     }
 
 
 def build_param_grid_hunt_stock():
-    """Small-sample stock hunt — honest engine (hedge simulated, COOLDOWN=0).
-    Goal: 10,000+ Sharpe>4 results on fast 12 symbols, 1yr data.
-    ~92k configs. Run --kill-sharpe 4.0 --mode tradier --start 2024-01-01.
-    EARLY_ABORT floor=2.0. ~4-5h on 18 workers."""
+    """Massive stock hunt — honest engine (hedge + COOLDOWN=0).
+    Goal: 10,000+ Sharpe>4 results. Run with --min-csv-sharpe 4.0 --kill-sharpe 2.5 --kill-secs 60.
+    EARLY_ABORT floor=2.5. ~725k configs effective ~200k with abort. ~8-10h on 18 workers."""
     return {
-        "MIN_HOLD_BARS": [1, 5, 10, 20, 40, 80],
-        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5],
-        "REENTRY_RALLY_K15M_MAX": [30.0, 50.0, 70.0, 100.0],
-        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
+        "MIN_HOLD_BARS": [1, 2, 5, 10, 20, 40, 80],
+        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
+        "REENTRY_RALLY_K15M_MAX": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
         "EARLY_ABORT_MIN_SYMBOLS": [5],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
     }
 
 
@@ -623,7 +662,8 @@ TIER_MAP = {
     "stock_validate": build_param_grid_stock_validate,
     "stock_validate2": build_param_grid_stock_validate2,
     "mega_v5": build_param_grid_mega_v5,
-    "mega_v4": build_param_grid_mega_v4,
+    "mega_v6": build_param_grid_mega_v6,
+    "stock_mega": build_param_grid_stock_mega,
     "hunt_crypto": build_param_grid_hunt_crypto,
     "hunt_stock": build_param_grid_hunt_stock,
 }
@@ -694,9 +734,13 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max configs to run (0=all)")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--kill-sharpe", type=float, default=2.5,
-                        help="Abort sweep if best Sharpe stays below this after --kill-warmup configs (default 2.5)")
-    parser.add_argument("--kill-warmup", type=int, default=50,
-                        help="Configs to run before kill-rule applies (default 50)")
+                        help="Abort sweep if best Sharpe stays below this after --kill-secs seconds (default 2.5)")
+    parser.add_argument("--kill-warmup", type=int, default=999999,
+                        help="Legacy count-based kill warmup (default 999999 = disabled; use --kill-secs instead)")
+    parser.add_argument("--kill-secs", type=float, default=60.0,
+                        help="Abort sweep if best Sharpe < kill-sharpe after this many wall-clock seconds (default 60)")
+    parser.add_argument("--min-csv-sharpe", type=float, default=0.0,
+                        help="Only write rows to CSV if sharpe >= this (default 0.0 = write all)")
     parser.add_argument("--shuffle", action="store_true",
                         help="Randomize config order before running (avoids dead zones in grid)")
     args = parser.parse_args()
@@ -704,7 +748,8 @@ def main():
     symbols_list = None
     if args.symbols == "fast":
         symbols_list = (FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO).split(",")
-    elif args.symbols:
+    elif args.symbols and args.symbols != "all":
+        # "all" → symbols_list stays None → iter_npz/load_npz auto-filters by mode
         symbols_list = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
     npz_dir = args.npz_dir
@@ -797,11 +842,13 @@ def main():
             }
             for k in cfg_keys:
                 row[f"cfg_{k}"] = cfg_dict.get(k, "")
-            writer.writerow(row)
-            csvfile.flush()
             s = result.get("sharpe", 0)
             if s > best_sharpe:
                 best_sharpe = s
+            # Only write to CSV if meets minimum Sharpe threshold
+            if s >= args.min_csv_sharpe:
+                writer.writerow(row)
+                csvfile.flush()
             elapsed_total = time.time() - t_start
             rate = completed / elapsed_total if elapsed_total > 0 else 0
             eta = (len(todo) - completed) / rate / 3600 if rate > 0 else 0
@@ -824,8 +871,8 @@ def main():
                 except Exception as e:
                     print(f"  ERROR: {e}"); continue
                 _process_result(result)
-                if completed >= args.kill_warmup and best_sharpe < args.kill_sharpe:
-                    print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
+                if (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
+                    print(f"  KILL-RULE (60s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
                     break
         else:
             # Streaming mode (--stream): each worker loads NPZ symbols one at a time per config.
@@ -851,10 +898,9 @@ def main():
                         print(f"  ERROR: {e}")
                         continue
                     _process_result(result)
-                    # KILL RULE: abort if best_sharpe stays below threshold after warmup
-                    if completed >= args.kill_warmup and best_sharpe < args.kill_sharpe:
-                        print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
-                        print(f"  Aborting sweep — grid likely missing the right alpha knobs")
+                    # Time-based kill: if 60s elapsed and no config has beaten kill_sharpe, abort
+                    if (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
+                        print(f"  KILL-RULE (60s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
                         for f in futures:
                             f.cancel()
                         break
