@@ -165,9 +165,8 @@ def build_param_grid_tradier_core():
 
 
 def build_param_grid_sharpe3_tradier():
-    """Focused 504-config tradier sweep targeting >3 Sharpe.
-    Combines exit_tuning winner flags (100% WR) with PROFIT_TARGET_PCT + entry selectivity.
-    Runs in ~30-45 min on 121 symbols vectorized."""
+    """504-config tradier sweep: TP capped at exact target (limit-order semantics) → low std → high Sharpe.
+    Param order: ESThresh/TP vary fastest so kill-sharpe sees all combos in first 28 configs."""
     grid = {
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -175,14 +174,14 @@ def build_param_grid_sharpe3_tradier():
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
         "REENTRY_RALLY_K15M_MAX": [75.0],
         "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.3, 1.6, 2.0, 3.0],
-        "ENTRY_SCORE_THRESHOLD": [0.0, 12.0, 18.0, 24.0],
-        "K3M_FLOOR": [20.0, 25.0, 30.0],
-        "MIN_HOLD_BARS": [10, 20],
         "DELTA_ENTRY_ENABLED": [True],
         "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
-        "EARLY_ABORT_MIN_SYMBOLS": [15],
+        "MIN_HOLD_BARS": [10, 20],
+        "K3M_FLOOR": [20.0, 25.0, 30.0],
+        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.3, 1.6, 2.0, 3.0],
+        "ENTRY_SCORE_THRESHOLD": [0.0, 12.0, 18.0, 21.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.2],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
     }
     return grid
 

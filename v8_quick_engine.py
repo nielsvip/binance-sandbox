@@ -1289,9 +1289,9 @@ def simulate(stores, cfg, capital=10000.0):
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    # Profit target hit — exit immediately regardless of technical signal
+                    # Profit target hit — exit at exactly pt_pct (limit-order semantics: cap at target)
                     if pt_enabled and live_pnl >= pt_pct:
-                        all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                        all_pnl.append(pt_pct); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     # Stop loss hit — exit at loss
                     if sl_enabled and live_pnl <= -sl_pct:
                         all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
