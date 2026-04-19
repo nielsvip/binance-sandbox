@@ -17,6 +17,7 @@ import hashlib
 import itertools
 import json
 import os
+import random
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -428,6 +429,8 @@ def main():
                         help="Abort sweep if best Sharpe stays below this after --kill-warmup configs (default 2.5)")
     parser.add_argument("--kill-warmup", type=int, default=50,
                         help="Configs to run before kill-rule applies (default 50)")
+    parser.add_argument("--shuffle", action="store_true",
+                        help="Randomize config order before running (avoids dead zones in grid)")
     args = parser.parse_args()
 
     symbols_list = None
@@ -470,6 +473,9 @@ def main():
         if h in done_hashes:
             continue
         todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
+
+    if args.shuffle:
+        random.shuffle(todo)
 
     total = len(configs)
     skip = total - len(todo)
