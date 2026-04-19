@@ -296,20 +296,20 @@ def build_param_grid_mega():
 
 
 def build_param_grid_mega_v2():
-    """Mega V2 — correct baseline locked 2026-04-19 ablation.
-    Key discovery: PROFIT_TARGET_PCT=0.5 + NOLOSS=True + MIN_HOLD=50 + VEL=8
-      → Sharpe=9.71 on 11-sym 4yr, min per-sym=4.39. This is the lever for 4+ Sharpe.
-    Dead params removed: CYCLE_TP, ENTRY_SYMGATE, RANK_CONVICTION, DC_MOMENT (no trade impact).
-    EARLY_ABORT_SHARPE_FLOOR=2.0 kills bad configs fast; survivors are 4+ territory.
-    ~73k configs × 11 syms × 4yr ≈ 2s/config → ~3h for 14 workers."""
+    """Mega V2 — final correct baseline 2026-04-19 ablation.
+    Critical finding: REENTRY_RALLY_K15M_MAX is the key lever. Default=100 (no gate) → Sharpe 0.01.
+      K15M=40 + PROFIT_TARGET_PCT=0.5 + HOLD=50 + VEL=8 → Sharpe=6.18 on 11-sym 4yr.
+    Dead params removed: CYCLE_TP, ENTRY_SYMGATE, RANK_CONVICTION, DC_MOMENT.
+    EARLY_ABORT_SHARPE_FLOOR=2.0 kills bad configs fast.
+    ~98k configs × 11 syms × 4yr ≈ 2s/config → ~4h for 14 workers."""
     return {
         "MIN_HOLD_BARS": [5, 10, 20, 50],
+        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 60.0],
         "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.6],
-        "STRENGTH_MIN_SCORE": [3.0, 5.0, 8.0],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0],
         "WT_EXIT_MIN_TFS": [2, 3],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
-        "SATOSHIT_ENABLED": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
