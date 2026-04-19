@@ -1356,6 +1356,18 @@ class Config:
     R_S3_DIV_STACK_ENABLED: bool = False
     R_S3_HIDDEN_BONUS: float = 25.0      # bonus for HIDDEN_BULL (LONG) / HIDDEN_BEAR (SHORT) on ≥2 TFs
     R_S3_MAIN_PENALTY: float = -20.0     # penalty for main divergence against position
+    # R-S3 HTF WEIGHTING (2026-04-19): BEAR/BULL main divergences on 4h & D are currently
+    # IGNORED entirely (old code only checked 15m/1h). Under-representing HTF is dangerous:
+    # a 4h bear div is a much bigger signal than a 15m one. With this switch ON, R-S3 applies
+    # MAIN_PENALTY weighted by TF — each hit contributes (TF_WEIGHT × MAIN_PENALTY) to score.
+    # Sweep weights loosely-geometric to bias HTF heavily. Expected: cuts bad entries at major tops.
+    R_S3_HTF_WEIGHT_ENABLED: bool = False
+    R_S3_TF_WEIGHT_3M: float = 0.25      # 3m divergence — very noisy, low weight
+    R_S3_TF_WEIGHT_15M: float = 0.5
+    R_S3_TF_WEIGHT_1H: float = 1.0
+    R_S3_TF_WEIGHT_4H: float = 2.5       # 4h = real HTF signal
+    R_S3_TF_WEIGHT_D: float = 4.0        # D = strongest divergence signal
+    # Same TF weights drive the HIDDEN (continuation) bonus side when enabled.
     # R-S4 MED. HA streak bonus: 5 * min(ha_streak_{tf}, 5). Replaces single-bar
     # ha=='green'/'red' check. Sweep WEIGHT in [3, 5, 7, 10]. Expected: +5-10% score
     # granularity for trend-continuation entries.
@@ -1372,6 +1384,23 @@ class Config:
     # Modes: 0=OFF, 1=block_any_LTF_EXHAUST, 2=block_any_TF_EXHAUST, 3=warn_only.
     # Expected: avoids chasing exhausted pumps. Similar to existing R-G5 but more TFs.
     R_S6_WT_MSTATE_GATE_MODE: int = 0
+    # R-S7 HIGH. HH/LL multi-indicator multi-TF stacking bonus. For each TF in R_S7_HHLL_TFS,
+    # count indicators confirming HH (for LONG) or LL (for SHORT): price high/low_{tf} vs _prev,
+    # wt_structure_{tf} (HH/LL label), stoch_k_{tf} vs stoch_k_{tf}_prev. If ≥ MIN indicators
+    # confirm on that TF, the TF counts. Bonus = confirmed_TFs × BONUS_PER_TF. Expected: stacks
+    # the "indicators all agree across TFs" structural signal that decision core currently ignores.
+    R_S7_HHLL_STACK_ENABLED: bool = False
+    R_S7_HHLL_TFS: str = "15m,1h,4h,D"    # which TFs to check (comma-separated)
+    R_S7_HHLL_MIN_INDICATORS: int = 2      # min indicators confirming per TF (of 3: price, WT, stoch)
+    R_S7_HHLL_BONUS_PER_TF: float = 3.0    # score points per confirmed TF
+    R_S7_HHLL_MIN_TFS_FOR_BONUS: int = 2   # requires ≥ this many TFs confirming before any bonus fires
+    # R-G10 HIGH. HTF-ONLY divergence hard gate. When a wt_divergence_{tf} for tf in R_G10_TFS
+    # reports main divergence AGAINST the entry direction (BEAR on LONG / BULL on SHORT),
+    # BOYCOTT the entry outright. R-G7 already does this for the "any TF" case; R-G10 is stricter,
+    # specifically targeting 4h and D where divergence = top/bottom of cycle. Expected: prevents
+    # buying-into-tops / selling-into-bottoms at cycle extremes.
+    R_G10_HTF_DIV_GATE_ENABLED: bool = False
+    R_G10_HTF_DIV_TFS: str = "4h,D"        # which HTFs to check (comma-separated)
     # ───────────────────────────────────────────────────────────────────────
     # R-Z SIZING ENHANCEMENTS
     # All multiplicative on top of existing target_notional. Default 1.0 = no effect.

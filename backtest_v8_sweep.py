@@ -538,6 +538,20 @@ def grid_indicator_audit_v2():
         ("E_1_delta_exit80", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 80.0}),
         ("E_3_struct_shadow", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 1}),
         ("E_3_struct_on", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 2}),
+        # ── R-S3 HTF-weighted divergences (under-representation fix) ──
+        ("R_S3_htf_weighted", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True}),
+        ("R_S3_htf_weighted_heavy", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True, "R_S3_TF_WEIGHT_4H": 3.5, "R_S3_TF_WEIGHT_D": 6.0}),
+        # ── R-G10 HTF-only divergence hard gate ──
+        ("R_G10_htf_div_4h_D", {"R_G10_HTF_DIV_GATE_ENABLED": True, "R_G10_HTF_DIV_TFS": "4h,D"}),
+        ("R_G10_htf_div_D_only", {"R_G10_HTF_DIV_GATE_ENABLED": True, "R_G10_HTF_DIV_TFS": "D"}),
+        ("R_G10_htf_div_1h_4h_D", {"R_G10_HTF_DIV_GATE_ENABLED": True, "R_G10_HTF_DIV_TFS": "1h,4h,D"}),
+        # ── R-S7 HH/LL multi-indicator stacking ──
+        ("R_S7_hhll_stack", {"R_S7_HHLL_STACK_ENABLED": True}),
+        ("R_S7_hhll_strict", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_MIN_INDICATORS": 3, "R_S7_HHLL_MIN_TFS_FOR_BONUS": 3}),
+        ("R_S7_hhll_htf_only", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_TFS": "1h,4h,D"}),
+        ("R_S7_hhll_big_bonus", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_BONUS_PER_TF": 6.0}),
+        # ── COMBOS ──
+        ("STRUCT_COMBO_all_on", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True, "R_G10_HTF_DIV_GATE_ENABLED": True, "R_S7_HHLL_STACK_ENABLED": True}),
     ]
 
 

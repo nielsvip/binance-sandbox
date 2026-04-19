@@ -1724,6 +1724,22 @@ class AdvancedSignalRater:
                     return -100.0, "BOYCOTT", "WT_BEAR_DIV_BLOCKS_LONG"
                 if (not is_long) and bool(ind.get('wt_any_bull_div', False)):
                     return -100.0, "BOYCOTT", "WT_BULL_DIV_BLOCKS_SHORT"
+            # R-G10: HTF-only divergence hard gate. Bear div on 4h or D blocks LONG; mirror for SHORT.
+            # Stricter than R-G7 which checks wt_any_bear_div (any TF). R-G10 explicitly targets cycle tops/bottoms.
+            if bool(getattr(config, 'R_G10_HTF_DIV_GATE_ENABLED', False)):
+                _htf_tfs_str = str(getattr(config, 'R_G10_HTF_DIV_TFS', '4h,D') or '')
+                _htf_tfs = [t.strip() for t in _htf_tfs_str.split(',') if t.strip()]
+                _htf_against = None
+                for _htf in _htf_tfs:
+                    _hd = str(ind.get(f'wt_divergence_{_htf}', '') or '').upper()
+                    if is_long and _hd == 'BEAR':
+                        _htf_against = f"BEAR_{_htf}"
+                        break
+                    elif (not is_long) and _hd == 'BULL':
+                        _htf_against = f"BULL_{_htf}"
+                        break
+                if _htf_against:
+                    return -100.0, "BOYCOTT", f"R_G10_HTF_DIV_{_htf_against}"
             # R-G8 / R-S6: multi-TF wt_momentum_state gate.
             # mode 0=OFF, 1=block_any_LTF_EXHAUST (3m/15m), 2=block_any_TF_EXHAUST (all 5), 3=warn_only.
             _mstate_mode = int(getattr(config, 'R_S6_WT_MSTATE_GATE_MODE', 0))
@@ -1974,20 +1990,80 @@ class AdvancedSignalRater:
         if bool(getattr(config, 'R_S3_DIV_STACK_ENABLED', False)) and not is_exit:
             _hid_bonus = float(getattr(config, 'R_S3_HIDDEN_BONUS', 25.0))
             _main_pen = float(getattr(config, 'R_S3_MAIN_PENALTY', -20.0))
+            _htf_weighted = bool(getattr(config, 'R_S3_HTF_WEIGHT_ENABLED', False))
+            _tf_weights = {
+                '3m':  float(getattr(config, 'R_S3_TF_WEIGHT_3M',  0.25)),
+                '15m': float(getattr(config, 'R_S3_TF_WEIGHT_15M', 0.5)),
+                '1h':  float(getattr(config, 'R_S3_TF_WEIGHT_1H',  1.0)),
+                '4h':  float(getattr(config, 'R_S3_TF_WEIGHT_4H',  2.5)),
+                'D':   float(getattr(config, 'R_S3_TF_WEIGHT_D',   4.0)),
+            }
             _hid_cnt = 0
+            _hid_w_sum = 0.0
             _main_against = 0
+            _main_w_sum = 0.0
+            _main_tfs_hit = []
             for _tf in ('3m', '15m', '1h', '4h', 'D'):
                 _div = str(ind.get(f'wt_divergence_{_tf}', '') or '').upper()
+                _w = _tf_weights.get(_tf, 1.0)
                 if is_long:
-                    if _div == 'HIDDEN_BULL': _hid_cnt += 1
-                    elif _div == 'BEAR' and _tf in ('15m', '1h'): _main_against += 1
+                    if _div == 'HIDDEN_BULL':
+                        _hid_cnt += 1; _hid_w_sum += _w
+                    elif _div == 'BEAR':
+                        # HTF weighted mode: count ALL TFs; legacy mode: only 15m/1h
+                        if _htf_weighted or _tf in ('15m', '1h'):
+                            _main_against += 1; _main_w_sum += _w; _main_tfs_hit.append(_tf)
                 else:
-                    if _div == 'HIDDEN_BEAR': _hid_cnt += 1
-                    elif _div == 'BULL' and _tf in ('15m', '1h'): _main_against += 1
+                    if _div == 'HIDDEN_BEAR':
+                        _hid_cnt += 1; _hid_w_sum += _w
+                    elif _div == 'BULL':
+                        if _htf_weighted or _tf in ('15m', '1h'):
+                            _main_against += 1; _main_w_sum += _w; _main_tfs_hit.append(_tf)
             if _hid_cnt >= 2:
-                score += _hid_bonus; reasons.append(f"R_S3_HIDDEN_DIV({_hid_cnt}TF,+{_hid_bonus:.0f})")
+                _bonus = _hid_bonus * (_hid_w_sum / max(_hid_cnt, 1) if _htf_weighted else 1.0)
+                score += _bonus; reasons.append(f"R_S3_HIDDEN_DIV({_hid_cnt}TF,w={_hid_w_sum:.1f},+{_bonus:.0f})")
             if _main_against >= 1:
-                score += _main_pen; reasons.append(f"R_S3_MAIN_DIV_AGAINST({_main_against}TF,{_main_pen:.0f})")
+                _pen = _main_pen * _main_w_sum if _htf_weighted else _main_pen
+                score += _pen; reasons.append(f"R_S3_MAIN_DIV_AGAINST({_main_tfs_hit},w={_main_w_sum:.1f},{_pen:.0f})")
+        # === R-S7 HH/LL MULTI-INDICATOR STACKING ===
+        # Confirms structural trend by requiring ≥ MIN indicators (price/WT/stoch) to show HH (LONG)
+        # or LL (SHORT) per TF, then counts TFs with confirmation. HTF stacks more reliably than LTF.
+        if bool(getattr(config, 'R_S7_HHLL_STACK_ENABLED', False)) and not is_exit:
+            _s7_tfs_str = str(getattr(config, 'R_S7_HHLL_TFS', '15m,1h,4h,D') or '')
+            _s7_tfs = [t.strip() for t in _s7_tfs_str.split(',') if t.strip()]
+            _s7_min_ind = int(getattr(config, 'R_S7_HHLL_MIN_INDICATORS', 2))
+            _s7_bonus_pt = float(getattr(config, 'R_S7_HHLL_BONUS_PER_TF', 3.0))
+            _s7_min_tfs = int(getattr(config, 'R_S7_HHLL_MIN_TFS_FOR_BONUS', 2))
+            _s7_confirmed_tfs = []
+            for _tf in _s7_tfs:
+                _h_cur = safe_fetch_float(ind.get(f'high_{_tf}'), 0)
+                _h_prev = safe_fetch_float(ind.get(f'high_{_tf}_prev'), 0)
+                _l_cur = safe_fetch_float(ind.get(f'low_{_tf}'), 0)
+                _l_prev = safe_fetch_float(ind.get(f'low_{_tf}_prev'), 0)
+                _wt_st = str(ind.get(f'wt_structure_{_tf}', '') or '').upper()
+                _k_cur = safe_fetch_float(ind.get(f'stoch_k_{_tf}'), None)
+                _k_prev = safe_fetch_float(ind.get(f'stoch_k_{_tf}_prev'), None)
+                _count = 0
+                if is_long:
+                    if _h_cur > 0 and _h_prev > 0 and _l_cur > 0 and _l_prev > 0 and _h_cur > _h_prev and _l_cur > _l_prev:
+                        _count += 1   # price HH+HL structural
+                    if _wt_st == 'HH':
+                        _count += 1   # WT HH label
+                    if _k_cur is not None and _k_prev is not None and _k_cur > _k_prev:
+                        _count += 1   # stoch K making HH
+                else:
+                    if _h_cur > 0 and _h_prev > 0 and _l_cur > 0 and _l_prev > 0 and _h_cur < _h_prev and _l_cur < _l_prev:
+                        _count += 1   # price LL+LH structural
+                    if _wt_st == 'LL':
+                        _count += 1
+                    if _k_cur is not None and _k_prev is not None and _k_cur < _k_prev:
+                        _count += 1
+                if _count >= _s7_min_ind:
+                    _s7_confirmed_tfs.append(_tf)
+            if len(_s7_confirmed_tfs) >= _s7_min_tfs:
+                _s7_bonus = _s7_bonus_pt * len(_s7_confirmed_tfs)
+                score += _s7_bonus
+                reasons.append(f"R_S7_HHLL({_s7_confirmed_tfs},+{_s7_bonus:.0f})")
         # === R-S4 HA_STREAK — bonus scales by consecutive HA color streak ===
         if bool(getattr(config, 'R_S4_HA_STREAK_ENABLED', False)) and not is_exit:
             _ha_tf = str(getattr(config, 'R_S4_HA_STREAK_TF', '1h'))
