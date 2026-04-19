@@ -15154,11 +15154,13 @@ class MultiAccountTradeManager:
                             pass
                     _under_60 = _elapsed_s < 3600.0
                     # WT stack
+                    _wt1_1m_gr = safe_fetch_float(indicators.get('wt1_1m', 0), 0.0); _wt2_1m_gr = safe_fetch_float(indicators.get('wt2_1m', 0), 0.0)
                     _wt1_3m_gr = safe_fetch_float(indicators.get('wt1_3m', 0), 0.0); _wt2_3m_gr = safe_fetch_float(indicators.get('wt2_3m', 0), 0.0)
                     _wt1_15m_gr = safe_fetch_float(indicators.get('wt1_15m', 0), 0.0); _wt2_15m_gr = safe_fetch_float(indicators.get('wt2_15m', 0), 0.0)
                     _wt1_1h_gr = safe_fetch_float(indicators.get('wt1_1h', 0), 0.0); _wt2_1h_gr = safe_fetch_float(indicators.get('wt2_1h', 0), 0.0)
                     _wt1_4h_gr = safe_fetch_float(indicators.get('wt1_4h', 0), 0.0); _wt2_4h_gr = safe_fetch_float(indicators.get('wt2_4h', 0), 0.0)
                     _wt1_D_gr = safe_fetch_float(indicators.get('wt1_D', 0), 0.0); _wt2_D_gr = safe_fetch_float(indicators.get('wt2_D', 0), 0.0)
+                    _wt1m_ok = (is_long and _wt1_1m_gr > _wt2_1m_gr) or (not is_long and _wt1_1m_gr < _wt2_1m_gr)
                     _wt3m_ok = (is_long and _wt1_3m_gr > _wt2_3m_gr) or (not is_long and _wt1_3m_gr < _wt2_3m_gr)
                     _wt15m_ok = (is_long and _wt1_15m_gr > _wt2_15m_gr) or (not is_long and _wt1_15m_gr < _wt2_15m_gr)
                     _wt1h_ok = (is_long and _wt1_1h_gr > _wt2_1h_gr) or (not is_long and _wt1_1h_gr < _wt2_1h_gr)
@@ -15226,6 +15228,18 @@ class MultiAccountTradeManager:
                         if (_dcx3_now or _stx3_now) and _wt1h_ok:
                             should_reenter = True; _qty_mult = 1.0; _reason_tag = f"AGGR_0_{int(_aggr_window_s/60)}m_{'DCx3' if _dcx3_now else 'STx3'}"
                             logger.warning(f"🎯 [REENTRY_AGGRESSIVE] {position_key}: {int(_elapsed_s)}s since exit + dc_x3m={_dcx3_now} stoch_x3m={_stx3_now} + 1h trending — AGGRESSIVE REENTRY")
+                    # PATHWAY P1 (2026-04-19): BOTTOM_BOUNCE — WT 1m+3m both BULL from oversold, no HTF wait.
+                    # Bottoms form BEFORE HTF alignment. Enter the moment 1m+3m cross and prev wt3m was oversold.
+                    # For LONG: wt3m was < -15 (real dip), now wt1_3m > wt2_3m + wt1_1m > wt2_1m + delta rising.
+                    # For SHORT: mirror (wt3m was > +15, now bear on 1m+3m + delta falling).
+                    if not should_reenter:
+                        _wt3m_prev_oversold = (is_long and _wt1_3m_prev_gr < -15.0) or (not is_long and _wt1_3m_prev_gr > 15.0)
+                        _p1_fire = _wt3m_ok and _wt1m_ok and _delta_rising and _wt3m_prev_oversold
+                        if _p1_fire:
+                            should_reenter = True
+                            _qty_mult = 1.0
+                            _reason_tag = f"P1_BOTTOM_BOUNCE_1m_3m_BULL_prev{_wt1_3m_prev_gr:.1f}_htf{_htf_count}"
+                            logger.warning(f"🟢 [REENTRY_P1_BOTTOM_BOUNCE] {position_key}: wt3m={_wt1_3m_gr:.1f}/{_wt2_3m_gr:.1f} wt1m={_wt1_1m_gr:.1f}/{_wt2_1m_gr:.1f} prev_wt3m={_wt1_3m_prev_gr:.1f} delta_rising={_delta_rising} elapsed={_elapsed_s:.0f}s — BOTTOM BOUNCE ENTRY NOW")
                     if not should_reenter:
                         _safety_ok = _delta_rising and _clear_of_red
                         if _price_crossed:

@@ -279,6 +279,11 @@ def run_one_config(args_tuple):
     stores = load_npz(mode, symbols_list, start_date, npz_dir)
     if not stores:
         return {"run_id": run_id, "sharpe": 0, "pnl": 0, "trades": 0, "wins": 0, "losses": 0, "status": "no_data", "config": cfg_dict}
+    return _run_config_with_stores(stores, mode, cfg_dict, run_id)
+
+
+def _run_config_with_stores(stores, mode, cfg_dict, run_id):
+    """Inner: run one config given already-loaded NPZ stores (avoids reload per config)."""
     cfg = QuickConfig()
     cfg.MODE = mode
     if mode == "tradier":
@@ -384,51 +389,74 @@ def main():
         best_sharpe = -999
         t_start = time.time()
 
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            futures = {executor.submit(run_one_config, t): t for t in todo}
-            for future in as_completed(futures):
+        def _process_result(result):
+            nonlocal completed, best_sharpe
+            completed += 1
+            cfg_dict = result.get("config", {})
+            row = {
+                "run_id": result["run_id"],
+                "config_hash": config_hash(cfg_dict),
+                "sharpe": result.get("sharpe", 0),
+                "pnl": result.get("pnl", 0),
+                "trades": result.get("trades", 0),
+                "wins": result.get("wins", 0),
+                "losses": result.get("losses", 0),
+                "wr": result.get("wr", 0),
+                "avg_pnl_pct": result.get("avg_pnl_pct", 0),
+                "elapsed": result.get("elapsed", 0),
+                "status": result.get("status", "error"),
+                "early_abort": 1 if result.get("early_abort") else 0,
+                "symbols_used": result.get("symbols_used", 0),
+            }
+            for k in cfg_keys:
+                row[f"cfg_{k}"] = cfg_dict.get(k, "")
+            writer.writerow(row)
+            csvfile.flush()
+            s = result.get("sharpe", 0)
+            if s > best_sharpe:
+                best_sharpe = s
+            elapsed_total = time.time() - t_start
+            rate = completed / elapsed_total if elapsed_total > 0 else 0
+            eta = (len(todo) - completed) / rate / 3600 if rate > 0 else 0
+            if completed % 10 == 0 or completed <= 5:
+                print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} trades={result.get('trades', 0)} "
+                      f"best={best_sharpe:.4f} rate={rate:.1f}/s ETA={eta:.1f}h")
+            return s
+
+        if args.workers == 1:
+            # Single-worker fast path: pre-load NPZ once, run all configs in-process.
+            print(f"Loading NPZ data once (workers=1 fast path)...")
+            stores = load_npz(args.mode, symbols_list, args.start, npz_dir)
+            if not stores:
+                print("ERROR: no NPZ data loaded"); return
+            print(f"Loaded {len(stores)} symbols. Running {len(todo)} configs in-process...")
+            for t in todo:
+                _, mode_t, _, _, cfg_dict, run_id = t
                 try:
-                    result = future.result()
+                    result = _run_config_with_stores(stores, mode_t, cfg_dict, run_id)
                 except Exception as e:
-                    print(f"  ERROR: {e}")
-                    continue
-                completed += 1
-                cfg_dict = result.get("config", {})
-                row = {
-                    "run_id": result["run_id"],
-                    "config_hash": config_hash(cfg_dict),
-                    "sharpe": result.get("sharpe", 0),
-                    "pnl": result.get("pnl", 0),
-                    "trades": result.get("trades", 0),
-                    "wins": result.get("wins", 0),
-                    "losses": result.get("losses", 0),
-                    "wr": result.get("wr", 0),
-                    "avg_pnl_pct": result.get("avg_pnl_pct", 0),
-                    "elapsed": result.get("elapsed", 0),
-                    "status": result.get("status", "error"),
-                    "early_abort": 1 if result.get("early_abort") else 0,
-                    "symbols_used": result.get("symbols_used", 0),
-                }
-                for k in cfg_keys:
-                    row[f"cfg_{k}"] = cfg_dict.get(k, "")
-                writer.writerow(row)
-                csvfile.flush()
-                s = result.get("sharpe", 0)
-                if s > best_sharpe:
-                    best_sharpe = s
-                elapsed_total = time.time() - t_start
-                rate = completed / elapsed_total if elapsed_total > 0 else 0
-                eta = (len(todo) - completed) / rate / 3600 if rate > 0 else 0
-                if completed % 10 == 0 or completed <= 5:
-                    print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} trades={result.get('trades', 0)} "
-                          f"best={best_sharpe:.4f} rate={rate:.1f}/s ETA={eta:.1f}h")
-                # KILL RULE: abort if best_sharpe stays below threshold after warmup
+                    print(f"  ERROR: {e}"); continue
+                _process_result(result)
                 if completed >= args.kill_warmup and best_sharpe < args.kill_sharpe:
                     print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
-                    print(f"  Aborting sweep — grid likely missing the right alpha knobs")
-                    for f in futures:
-                        f.cancel()
                     break
+        else:
+            with ProcessPoolExecutor(max_workers=args.workers) as executor:
+                futures = {executor.submit(run_one_config, t): t for t in todo}
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                    except Exception as e:
+                        print(f"  ERROR: {e}")
+                        continue
+                    _process_result(result)
+                    # KILL RULE: abort if best_sharpe stays below threshold after warmup
+                    if completed >= args.kill_warmup and best_sharpe < args.kill_sharpe:
+                        print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
+                        print(f"  Aborting sweep — grid likely missing the right alpha knobs")
+                        for f in futures:
+                            f.cancel()
+                        break
 
     print(f"\n{'='*70}")
     print(f"  SWEEP COMPLETE — {completed} configs in {time.time()-t_start:.0f}s")
