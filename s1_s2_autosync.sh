@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # s1_s2_autosync.sh — MacBook → S1 + S2 one-way script sync, checksum-based.
 #
-# User directive 2026-04-18: "ANY CHANGE HAPPENS ON ALL 3 MACHINES SIMULTANEOUSLY.
-# Sandboxes run ACTUAL scripts but change switches in config. ONLY config files differ."
+# User directive 2026-04-18: "ANY CHANGE HAPPENS ON ALL 3 MACHINES SIMULTANEOUSLY."
+# 2026-04-19 update: "Trading scripts AND config should be auto-synced continuously
+# (like market data). Monitors should focus on test progress, not code version."
 #
-# MacBook `/Users/niels/Documents/binance` is the AUTHORITY for every script.
+# MacBook `/Users/niels/Documents/binance` is the AUTHORITY for every file.
 # S1 `s1-int:/home/niels/binance-sandbox/` and S2 `s2-int:/home/niels/binance-sandbox/`
-# must be bit-identical for every ez_*, tradier_*, wt_*, v8_*, backtest_v8_*, utils.py,
-# symbols.json, breakout_multi_lung.py.
+# must be bit-identical for every ez_*, tradier_*, wt_*, v8_*, backtest_v8_*,
+# utils.py, symbols.json, breakout_multi_lung.py, config.py, config_tradier.py.
 #
-# EXCLUDED from sync (divergent by design):
-#   - config.py, config_tradier.py  (the only files allowed to differ)
+# Sweeps use V8_OVERRIDE_FILE overlays — they NEVER mutate config.py on sandboxes,
+# so there's no reason for configs to diverge. Auto-syncing them eliminates the
+# entire "sweep ran on stale config" bug class.
+#
+# EXCLUDED from sync (by design):
 #   - *.pyc, __pycache__             (compiled junk)
 #   - any .log / .json / .csv data files (not in the script globs anyway)
+#   - per-account realtime stubs (MacBook-only)
 #
 # Push semantics:
 #   rsync --checksum  → MacBook version wins on any md5 mismatch (regardless of mtime,
@@ -42,7 +47,7 @@ push_to() {
     local files=()
     # Skip per-account realtime stubs (MacBook-only, not on sandboxes).
     local skip_list=" ez_positions_realtime_ang.py ez_positions_realtime_fin.py ez_positions_realtime_flz.py ez_positions_realtime_inf.py ez_positions_realtime_men.py "
-    for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py; do
+    for pat in ez_*.py tradier_*.py wt_*.py v8_*.py backtest_v8_*.py utils.py symbols.json breakout_multi_lung.py config.py config_tradier.py; do
         for f in $pat; do
             [[ -f "$f" ]] || continue
             [[ "$skip_list" == *" $f "* ]] && continue

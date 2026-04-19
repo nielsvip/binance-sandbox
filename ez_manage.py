@@ -19588,6 +19588,22 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_bypass = bool(getattr(config, 'HEDGE_EXIT_BYPASS_NOLOSS', True))
                     _r6_wt_flip_trigger = (_r6_wt_wrong_3m and _r6_wt_wrong_1h) if _r6_bypass else _r6_wt_all_wrong
                     _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
+                    # ⚠️ HARD NOLOSS GATE — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+                    # HEDGE_CLEANUP_R6 has NO right to close ANY position at a loss. EVER.
+                    # History: 6 incidents of main positions misidentified as hedges closed at loss.
+                    # Incident pattern: main=gone (stale active_hedges record) + real main LONG at -0.34%
+                    # → killed the real position. Fix: if gain < 0, ONLY purge the stale tracker record.
+                    # Never execute a close when position is losing — hedge cleanup is not a stop loss.
+                    if _r6_should_close and _pp_gain < 0:
+                        if _r6_main_gone:
+                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_PURGE] {position_key}: main=gone but gain={_pp_gain:.2f}% < 0 — PURGING stale active_hedges record only, NOT closing ⚠️ DO NOT DISABLE")
+                        else:
+                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: would close but gain={_pp_gain:.2f}% < 0 — BLOCKED ⚠️ DO NOT DISABLE")
+                        try:
+                            async with trade_manager.tracker_manager._hedges_lock:
+                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                        except Exception: pass
+                        _r6_should_close = False
                     if _r6_should_close:
                         _r6_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                         if _r6_amt > pos_min_qty:
