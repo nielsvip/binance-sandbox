@@ -9,7 +9,7 @@
 # - All python sweeps use --resume so they pick up where they left off
 # - Phase completion defined per-phase: CSV line count OR presence of marker file
 # - If killed and restarted, skips completed phases instantly
-# - Keeps running forever, looping phase 5+6 (full combinatorial + mutation)
+# - Keeps running forever, looping phase 5 (mega_v2 crypto / stock_v2 tradier — NOT full, lacks K15M)
 # ═══════════════════════════════════════════════════════════════
 set -uo pipefail
 
@@ -209,18 +209,18 @@ phase3() {
 }
 
 # ═══════════════════════════════════════════════════════════════
-# PHASE 5: full combinatorial (never-ending, --resume picks up)
+# PHASE 5: mega_v2 / stock_v2 (continuous — replaces 'full' which lacks K15M)
 # ═══════════════════════════════════════════════════════════════
 phase5() {
-    log "--- PHASE 5: full combinatorial (continuous) ---"
+    log "--- PHASE 5: mega_v2/stock_v2 continuous sweep ---"
 
     if [[ $W_CRYPTO -gt 0 ]]; then
-        launch_screen "full_crypto" \
-            "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier full --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_full_crypto.log"
+        launch_screen "mega_crypto" \
+            "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier mega_v2 --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_mega_crypto.log"
     fi
     if [[ $W_TRADIER -gt 0 ]]; then
-        launch_screen "full_tradier" \
-            "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier full --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_full_tradier.log"
+        launch_screen "stock_v2_tradier" \
+            "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier stock_v2 --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_stock_v2_tradier.log"
     fi
     log "--- PHASE 5 running in background (continuous) ---"
 }
@@ -245,17 +245,17 @@ while true; do
 
     # Re-launch phase-5 sweeps if they died (idempotent — skips if running)
     if [[ $W_CRYPTO -gt 0 ]]; then
-        if ! screen_running "full_crypto"; then
-            log "  [RESPAWN] full_crypto died → relaunching (will --resume from CSV)"
-            launch_screen "full_crypto" \
-                "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier full --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_full_crypto.log"
+        if ! screen_running "mega_crypto"; then
+            log "  [RESPAWN] mega_crypto died → relaunching (will --resume from CSV)"
+            launch_screen "mega_crypto" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode crypto --symbols fast --start 2022-01-01 --tier mega_v2 --workers $W_CRYPTO --resume 2>&1 | tee /tmp/v8_mega_crypto.log"
         fi
     fi
     if [[ $W_TRADIER -gt 0 ]]; then
-        if ! screen_running "full_tradier"; then
-            log "  [RESPAWN] full_tradier died → relaunching"
-            launch_screen "full_tradier" \
-                "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier full --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_full_tradier.log"
+        if ! screen_running "stock_v2_tradier"; then
+            log "  [RESPAWN] stock_v2_tradier died → relaunching"
+            launch_screen "stock_v2_tradier" \
+                "cd $BASE && $PY -u v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier stock_v2 --workers $W_TRADIER --resume 2>&1 | tee /tmp/v8_stock_v2_tradier.log"
         fi
     fi
 

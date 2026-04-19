@@ -341,6 +341,42 @@ def build_param_grid_mega_stock():
     }
 
 
+def build_param_grid_mega_v3():
+    """Crypto best-vs-best tournament (2026-04-19 findings).
+    Tournament results: K15M=40 → 8 syms 1251 trades Sharpe 7. VEL=4 → 480 trades Sharpe 9.
+    Sweet spot for MAX TRADES + HIGH SHARPE: K15M=35-40, VEL=4-6, PT=0.2-0.3, HOLD=20-75.
+    ~6k configs. Kill floor=4.0 — only real >4 results kept."""
+    return {
+        "REENTRY_RALLY_K15M_MAX": [30.0, 35.0, 40.0, 45.0, 50.0],
+        "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.35, 0.4],
+        "MIN_HOLD_BARS": [20, 50, 75],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_stock_v3():
+    """Stock best-vs-best tournament (2026-04-19 findings).
+    Tournament: PT=0.15 → Sharpe 17.25! PT=0.2 → 11.55 (5 syms 359 trades).
+    VEL_GATE=False confirmed better for stocks. HOLD=20-80 all viable.
+    ~960 configs, kill floor=4.0. Run --mode tradier --start 2024-01-01."""
+    return {
+        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.35],
+        "MIN_HOLD_BARS": [10, 20, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [4],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
 def build_param_grid_stock_v2():
     """Stock V2 — 2026-04-19 ablation baseline.
     Key: HOLD=40 + PT=0.5 + NOLOSS=True → Sharpe 3.22 on 12-sym 1yr (apply_tradier_defaults).
@@ -374,8 +410,10 @@ TIER_MAP = {
     "indicator_audit": build_param_grid_indicator_audit,
     "mega": build_param_grid_mega,
     "mega_v2": build_param_grid_mega_v2,
+    "mega_v3": build_param_grid_mega_v3,
     "mega_stock": build_param_grid_mega_stock,
     "stock_v2": build_param_grid_stock_v2,
+    "stock_v3": build_param_grid_stock_v3,
 }
 
 
