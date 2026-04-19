@@ -520,9 +520,9 @@ class QuickConfig:
         self.REENTRY_SYMGATE_ENABLED = False
         # D4: default tier STOCK for tradier mode when enabled
         self.BREAKOUT_MULTI_LUNG_TIER = "STOCK"
-        # 2026-04-18: STOCKS BASELINE = S_H + S_E winner (Sharpe 0.95-0.99 on 104-sym matrix).
-        # This is the PRODUCTION config — every sector sweep delta should be measured from HERE,
-        # not from the bare-bones reset below. Sweeps can still flip these off to test impact.
+        # 2026-04-18: STOCKS BASELINE = S_H + S_E winner.
+        # S_E with RANK_CONVICTION_MIN=3 selects high-quality entries (avg Sharpe 2.47 on 15/114 syms).
+        # B15/B11 NPZ bug only affected CRYPTO blocks — tradier WT-based conviction is unaffected.
         self.CT_WT_VELOCITY_1H_MIN = 2.0    # stocks tuned (crypto 6.0 too tight)
         self.REENTRY_RALLY_K15M_MAX = 100.0 # disabled — stocks use ENTRY_ZONE instead
         # S_H (HTF entry zones — the breakthrough for stocks):
@@ -537,6 +537,10 @@ class QuickConfig:
         self.DC_MOMENT_OPPOSE_THRESHOLD = 40.0
         self.WINNER_PROTECT_ENABLED = True
         self.WINNER_PROTECT_GAIN_PCT = 1.5
+        # 2026-04-19 FIX: Tradier has fewer trading symbols per run (15-20 of 114 trade with S_E).
+        # 2.5 floor caused early_abort at exactly 15 symbols when avg was 2.4755. Use 1.5 so full
+        # 114-sym set evaluates and we get the real baseline Sharpe. Sweeps set their own floors.
+        self.EARLY_ABORT_SHARPE_FLOOR = 1.5
         # 2026-04-19 FIX: MIN_HOLD_BARS defaults to 250 (crypto 12.5h). For tradier "exit at
         # slowdown" model, that equals 62.5h hold on 15m base — blocks ALL exits → WR=39%.
         # Tradier has no hedge engine and exits whenever momentum slows (in gain). Reset to 4

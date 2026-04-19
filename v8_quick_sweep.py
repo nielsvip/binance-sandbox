@@ -470,19 +470,18 @@ def build_param_grid_stock_mega():
 
 
 def build_param_grid_mega_v6():
-    """Crypto champion variations (2026-04-19 confirmed winner: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3
-    → 2741 trades Sharpe 8.99 PnL +$1360). Now probe ENTRY_SCORE + K3M_FLOOR space.
-    Early abort at 4 symbols (floor=4.0). ~1152 configs."""
+    """Crypto champion fine-tuning (2026-04-19 confirmed: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3
+    → 2741 trades Sharpe 8.99 PnL +$1360). Fine-scan PT and HOLD around champion.
+    Run with --shuffle to avoid bad zones. Early abort 4 syms, floor=4.0. ~1920 configs."""
     return {
         "REENTRY_RALLY_K15M_MAX": [50.0, 55.0],
-        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.20],
+        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.18, 0.20, 0.25],
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "MIN_HOLD_BARS": [20, 50],
-        "ENTRY_SCORE_THRESHOLD": [16.0, 18.0, 20.0],
-        "K3M_FLOOR": [20.0, 25.0],
+        "MIN_HOLD_BARS": [10, 20, 30, 50, 75],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [4],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
