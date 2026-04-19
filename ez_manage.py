@@ -19646,13 +19646,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                     async with trade_manager.tracker_manager._hedges_lock:
                                         trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
                                 except Exception: pass
-                                if getattr(config, 'HEDGE_CLOSE_REMOVE_FROM_TRADEABLE', True):
-                                    try:
-                                        if hasattr(trade_manager, 'tradeable_keys') and position_key in trade_manager.tradeable_keys:
-                                            trade_manager.tradeable_keys.discard(position_key)
-                                            logger.warning(f"[HEDGE_CLEANUP_R6_TRADEABLE] {position_key}: removed from tradeable_keys after hedge close")
-                                    except Exception as _tk_e:
-                                        logger.debug(f"[HEDGE_CLEANUP_R6_TRADEABLE_ERR] {position_key}: {_tk_e}")
+                                # NEVER discard from tradeable_keys here — R6 can only close real hedges
+                                # (position.is_hedge=True) and real hedges are temp-added at hedge-open time.
+                                # Discarding here was the root cause of ang:BTCUSDC_LONG disappearing from
+                                # tradeable_keys and blocking reentry permanently. Removed 2026-04-19.
                                 if _r6_close_reason != "main_recovered":
                                     _r6_loser_pk = _r6_main_pk or position_key
                                     _rds_cd_key = f"wt_same_hedge_cd:{_r6_loser_pk}"
