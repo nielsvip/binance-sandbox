@@ -413,6 +413,44 @@ def build_param_grid_stock_v4():
     }
 
 
+def build_param_grid_mega_v5():
+    """Crypto max-trades zone with positive PnL (2026-04-19 findings):
+    K15M=55+VEL=6: 2,787 trades, Sharpe 8.64, PnL+1702. K15M=40+VEL=6: 1,284 trades, Sharpe 13.12, PnL+3470.
+    Push K15M to [55-70] with VEL=5-6 to find max-trades positive-PnL ceiling.
+    ~720 configs, kill floor=4.0."""
+    return {
+        "REENTRY_RALLY_K15M_MAX": [50.0, 55.0, 60.0, 65.0, 70.0],
+        "PROFIT_TARGET_PCT": [0.15, 0.2],
+        "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "MIN_HOLD_BARS": [20, 50],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_stock_validate2():
+    """Stock scale validation v2 (2026-04-19): fill PT gap between 0.2 (+$1.2k) and 0.3 (+$6.6k).
+    Run on all 262 symbols to find exact breakeven threshold and sweet spot.
+    Also test STRUCTURAL=True/False and DC_CROSSOVER to see secondary param impact.
+    30 configs × 262 syms, streaming, ~50min."""
+    return {
+        "PROFIT_TARGET_PCT": [0.2, 0.22, 0.25, 0.27, 0.3],
+        "MIN_HOLD_BARS": [40, 60],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [False],
+        "RZ_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.0],
+    }
+
+
 def build_param_grid_stock_validate():
     """Scale validation on all 262 stock symbols (2026-04-19): PT=0.02 gave negative PnL at scale.
     Test PT=0.1-1.5 range that showed positive PnL on 12 symbols to find best real-world winner.
@@ -543,6 +581,8 @@ TIER_MAP = {
     "stock_v7": build_param_grid_stock_v7,
     "stock_champion": build_param_grid_stock_champion,
     "stock_validate": build_param_grid_stock_validate,
+    "stock_validate2": build_param_grid_stock_validate2,
+    "mega_v5": build_param_grid_mega_v5,
     "mega_v4": build_param_grid_mega_v4,
 }
 

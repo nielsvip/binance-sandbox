@@ -112,6 +112,51 @@ Run on 16 crypto-symbol groups + 16 tradier-symbol groups = **64,800 × 32 = 2,0
 
 ## EVIDENCE LOG (append below, most recent first)
 
+### 2026-04-19 21:40 UTC — VERIFIED WINNERS (positive PnL, real Sharpe)
+
+**CRITICAL FINDING: Ultra-low PT (≤0.1%) games Sharpe via metric artifacts.**
+PT=0.02% → Sharpe 18.5, 450 trades (12 syms), but **PnL -$13k on $10k at 262-sym scale**.
+Root cause: NOLOSS + tiny PT → most trades win 0.02% (low std → high Sharpe), but stuck positions bleed at sim end.
+
+#### CRYPTO WINNERS (11 symbols, 4yr, positive PnL guaranteed)
+| Config | Trades | Syms | Sharpe | PnL on $10k | Notes |
+|--------|--------|------|--------|------------|-------|
+| K15M=40, PT=0.15, VEL=6, HOLD=50 | 1,284 | 8 | 13.12 | +$3,469 | High Sharpe |
+| K15M=45, PT=0.15, VEL=6, HOLD=50 | 1,670 | 11 | 12.83 | +$2,397 | All syms |
+| K15M=55, PT=0.15, VEL=6, HOLD=20 | 2,787 | 11 | 8.64 | +$1,702 | Max trades |
+| K15M=55, PT=0.15, VEL=5, HOLD=10 | 3,274 | 11 | 4.27 | +$1,439 | Absolute max |
+| K15M=60+ | any | <8 | <2 | **NEGATIVE** | FAILED |
+
+#### STOCK WINNERS (262 symbols, 2yr, positive PnL at scale)
+| PT | HOLD | Trades | Syms | Sharpe | PnL | Notes |
+|----|------|--------|------|--------|-----|-------|
+| 0.1 | any | 7,600 | 96 | 17.6 | **-$13k** | METRIC GAMING |
+| 0.2 | 40 | 7,005 | 90 | 13.95 | +$1,218 | Max trades w/ +PnL |
+| 0.2 | 80 | 6,985 | 90 | 15.80 | +$1,268 | Max Sharpe w/ +PnL |
+| 0.3 | 40 | 6,640 | 82 | 11.30 | +$6,572 | **SWEET SPOT** |
+| 0.5 | 40 | 6,127 | 75 | 6.98 | +$17,046 | Max return |
+| 1.0 | 40 | 5,626 | 59 | 3.46 | +$40k | Highest PnL |
+
+**KEY RULES FROM TODAY:**
+1. VEL_GATE=True required for crypto. VEL_GATE=False for stocks.
+2. VWAP filter HURTS stocks (kills 50 trades, -0.5 Sharpe) — keep OFF.
+3. K15M gate HURTS stocks (kills all trades) — no K15M for stocks.
+4. Any PT below the "PnL threshold" is metric gaming — report PnL always.
+5. vwap_D now patched into all NPZ (MacBook + S1 + S2) via patch_npz_add_vwap_d.py.
+
+#### SWEEPS COMPLETED TODAY
+- stock_v2 (1,600 configs): 392 >4 Sharpe. COMPLETE.
+- stock_v3 (240 configs): 225 >4 Sharpe. COMPLETE. 
+- stock_v4 (160 configs): 160 >4 Sharpe. COMPLETE (all gaming with low PT).
+- stock_v5 (192 configs): 192 >4 Sharpe. COMPLETE.
+- stock_v6 (80 configs): 80 >4 Sharpe. COMPLETE.
+- stock_v7 (144 configs): VEL VWAP test. COMPLETE.
+- stock_validate (30 configs, 262 syms): definitive PnL truth table. COMPLETE.
+- mega_v2 (25,600 configs): KILLED (1% yield, mega_v3 superior).
+- mega_v3 (2,400 configs): 1,416 >4 (59%). COMPLETE. Top: K15M=50, VEL=4, PT=0.2, Sharpe 17.94 (but check PnL).
+- mega_v4 (2,160 configs): ~2,100/2,160. Top positive-PnL: K15M=55, VEL=5-6, Sharpe 4-13.
+- mega_v5 (720 configs): running on S2. K15M=50-70, VEL=5-6.
+
 ### 2026-04-19 06:40 UTC — MD created
 - User rebooted S1+S2. Previous kill attempts (stop/disable systemd) did not survive reboot because I forgot to `mask` + remove drop-in configs + check rc scripts.
 - S1 post-reboot: 0 sweep procs (kill held so far).
