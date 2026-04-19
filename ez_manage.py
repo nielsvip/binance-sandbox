@@ -19537,37 +19537,54 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # Reopen is handled by scan_and_hedge_losers when the loser is still in loss AND wt1_15m flips against again.
             # Switches: HEDGE_EXIT_BYPASS_NOLOSS (default True), HEDGE_CLOSE_REMOVE_FROM_TRADEABLE (default True).
             if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
-                _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
-                # TRADEABLE_KEYS VETO: if this position_key is in tradeable_keys, it is a MAIN position — never a hedge.
-                # Also removes stale gain-comparison HEDGE_DETECT records (2026-04-18 flz:btcusdc_long incident).
-                if _r6_is_hedge:
-                    _r6_tk = getattr(trade_manager, 'tradeable_keys', set()) or set()
-                    _r6_is_main = position_key in _r6_tk
-                    if not _r6_is_main:
-                        # Secondary check: direction list confirms it's a main position
+                # ⚠️ GROUND TRUTH CHECK FIRST — position.is_hedge is the authoritative source.
+                # If position.is_hedge is explicitly False, this is a MAIN position.
+                # active_hedges records are stale data and CANNOT override the position's own attribute.
+                # History: 7 incidents of main positions closed at loss because stale active_hedges
+                # record survived the VETO (tradeable_keys missing the position_key).
+                # Fix: check position.is_hedge BEFORE touching active_hedges at all.
+                _r6_pos_is_hedge_attr = False
+                _r6_pos_hedge_for_attr = None
+                try:
+                    _r6_pos_is_hedge_attr = bool(getattr(position, 'is_hedge', False))
+                    _r6_pos_hedge_for_attr = getattr(position, 'hedge_for', None)
+                except Exception: pass
+                if not _r6_pos_is_hedge_attr:
+                    # Position object says NOT a hedge — purge any stale active_hedges record and skip R6
+                    _r6_stale = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
+                    if _r6_stale:
+                        logger.critical(f"[HEDGE_CLEANUP_R6_GROUND_TRUTH_VETO] {position_key}: position.is_hedge=False but found in active_hedges — PURGING stale record, skipping R6. This is a MAIN position, not a hedge.")
+                        try:
+                            async with trade_manager.tracker_manager._hedges_lock:
+                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                        except Exception: pass
+                    _r6_is_hedge = False
+                else:
+                    _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
+                    # SYMBOLS DIRECTION LIST VETO — primary source of truth for main positions.
+                    # tradeable_keys is NOT used here: it is polluted with temp hedge keys added
+                    # at hedge-open time and removed at close. symbols_{acct}_long/short are
+                    # the hand-curated lists that define what is a real main position.
+                    if _r6_is_hedge:
                         _r6_long_syms = getattr(trade_manager, f'symbols_{account_key}_long', None) or set()
                         _r6_flat_syms = getattr(trade_manager, f'symbols_{account_key}', None) or set()
                         _r6_short_syms = getattr(trade_manager, f'symbols_{account_key}_short', None) or set()
                         if account_key in ('flz', 'men', 'fin'):
                             _r6_long_syms = _r6_long_syms | _r6_flat_syms
                         _r6_is_main = (is_long and symbol in _r6_long_syms) or (not is_long and symbol in _r6_short_syms)
-                    if _r6_is_main:
-                        logger.warning(f"[HEDGE_CLEANUP_R6_VETO] {position_key}: in active_hedges but is a main position (tradeable_keys/direction-list) — removing stale record, skipping R6")
+                        if _r6_is_main:
+                            logger.warning(f"[HEDGE_CLEANUP_R6_VETO] {position_key}: symbol in direction list (symbols_{account_key}_{'long' if is_long else 'short'}) — main position, purging stale active_hedges record, skipping R6")
+                            try:
+                                async with trade_manager.tracker_manager._hedges_lock:
+                                    trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                            except Exception: pass
+                            _r6_is_hedge = False
+                    if not _r6_is_hedge:
                         try:
-                            async with trade_manager.tracker_manager._hedges_lock:
-                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                            _r6_ec = trade_manager.tracker_manager.exit_candidates.get(position_key, {}) or {}
+                            if _r6_ec.get('is_hedge') or _r6_ec.get('hedge_for') or 'HEDGE' in str(_r6_ec.get('last_reason', '')).upper():
+                                _r6_is_hedge = True
                         except Exception: pass
-                        _r6_is_hedge = False
-                if not _r6_is_hedge:
-                    try:
-                        if bool(getattr(position, 'is_hedge', False)): _r6_is_hedge = True
-                    except Exception: pass
-                if not _r6_is_hedge:
-                    try:
-                        _r6_ec = trade_manager.tracker_manager.exit_candidates.get(position_key, {}) or {}
-                        if _r6_ec.get('is_hedge') or _r6_ec.get('hedge_for') or 'HEDGE' in str(_r6_ec.get('last_reason', '')).upper():
-                            _r6_is_hedge = True
-                    except Exception: pass
                 if _r6_is_hedge:
                     _r6_wt1_3m = safe_fetch_float(i.get('wt1_3m', 0), 0.0)
                     _r6_wt2_3m = safe_fetch_float(i.get('wt2_3m', 0), 0.0)
@@ -19588,22 +19605,30 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_bypass = bool(getattr(config, 'HEDGE_EXIT_BYPASS_NOLOSS', True))
                     _r6_wt_flip_trigger = (_r6_wt_wrong_3m and _r6_wt_wrong_1h) if _r6_bypass else _r6_wt_all_wrong
                     _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
-                    # ⚠️ HARD NOLOSS GATE — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
-                    # HEDGE_CLEANUP_R6 has NO right to close ANY position at a loss. EVER.
-                    # History: 6 incidents of main positions misidentified as hedges closed at loss.
-                    # Incident pattern: main=gone (stale active_hedges record) + real main LONG at -0.34%
-                    # → killed the real position. Fix: if gain < 0, ONLY purge the stale tracker record.
-                    # Never execute a close when position is losing — hedge cleanup is not a stop loss.
+                    # ⚠️ NOLOSS GATE — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+                    # A hedge closing at a loss is only allowed when entry_price is OUTSIDE the dc_4h
+                    # channel (structurally broken entry — close to cut the loss).
+                    # If entry is INSIDE dc_4h, position has structural support — do NOT close at a loss.
+                    # If main=gone AND gain < 0 AND entry outside channel → close (stop the bleed).
+                    # If main=gone AND gain < 0 AND entry inside channel → purge stale record only.
                     if _r6_should_close and _pp_gain < 0:
-                        if _r6_main_gone:
-                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_PURGE] {position_key}: main=gone but gain={_pp_gain:.2f}% < 0 — PURGING stale active_hedges record only, NOT closing ⚠️ DO NOT DISABLE")
+                        _r6_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
+                        _r6_dc_high_4h = safe_fetch_float(i.get('dc_high_4h', 0), 0)
+                        _r6_dc_low_4h = safe_fetch_float(i.get('dc_low_4h', 0), 0)
+                        _r6_inside_dc4h = False
+                        if _r6_dc_high_4h > 0 and _r6_dc_low_4h > 0 and _r6_entry > 0:
+                            _r6_inside_dc4h = _r6_dc_low_4h <= _r6_entry <= _r6_dc_high_4h
+                        if _r6_inside_dc4h or _r6_dc_high_4h == 0:
+                            # Entry inside channel (or no DC data) — structural support exists, do NOT close at loss
+                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: gain={_pp_gain:.2f}% < 0, entry={_r6_entry:.4f} inside dc4h[{_r6_dc_low_4h:.4f}..{_r6_dc_high_4h:.4f}] — BLOCKED, purging stale record ⚠️ DO NOT DISABLE")
+                            try:
+                                async with trade_manager.tracker_manager._hedges_lock:
+                                    trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
+                            except Exception: pass
+                            _r6_should_close = False
                         else:
-                            logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: would close but gain={_pp_gain:.2f}% < 0 — BLOCKED ⚠️ DO NOT DISABLE")
-                        try:
-                            async with trade_manager.tracker_manager._hedges_lock:
-                                trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
-                        except Exception: pass
-                        _r6_should_close = False
+                            # Entry OUTSIDE dc_4h channel — structurally broken, allow close at loss
+                            logger.critical(f"[HEDGE_CLEANUP_R6_OUTSIDE_DC4H_CLOSE] {position_key}: gain={_pp_gain:.2f}%, entry={_r6_entry:.4f} OUTSIDE dc4h[{_r6_dc_low_4h:.4f}..{_r6_dc_high_4h:.4f}] — closing at loss (structurally broken entry)")
                     if _r6_should_close:
                         _r6_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
                         if _r6_amt > pos_min_qty:

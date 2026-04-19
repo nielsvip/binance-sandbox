@@ -5416,18 +5416,33 @@ class HedgeEngine:
                 if sym in _losers: return 'LONG'
             return None
         _discovery_made_change = False
+        # ⚠️ TRADEABLE_KEYS = MAIN POSITIONS — these can NEVER be a hedge under any circumstances.
+        # HEDGE_DISCOVERY must check this FIRST before classifying anything as a hedge.
+        _disc_tradeable = getattr(self.trade_manager, 'tradeable_keys', set()) or set()
         for symbol, entries in symbol_sides.items():
             if len(entries) >= 2:
                 _hedge_side = _canonical_hedge_side(symbol, account_key)
-                # Pick hedge vs origin by canonical side. Fallback to gain-based only if canonical unknown.
+                # Pick hedge vs origin by canonical side. Fallback DISABLED — gain-based classification
+                # is WRONG: it marks main positions as hedges when they happen to be winning.
+                # A position is only a hedge if it was EXPLICITLY opened as one via execute_same_symbol_hedge
+                # or execute_dual_hedge. Discovery must use canonical side or skip.
                 if _hedge_side:
                     _hedge_pk = next((pk for pk, side in entries if side == _hedge_side), None)
                     _origin_pk = next((pk for pk, side in entries if side != _hedge_side), None)
                     if not _hedge_pk or not _origin_pk:
                         continue
+                    # TRADEABLE_KEYS VETO: if the candidate hedge_pk is a main tradeable position, NEVER mark it as hedge
+                    if _hedge_pk in _disc_tradeable:
+                        logger.warning(f"[HEDGE_DISCOVERY_TK_VETO] {_hedge_pk}: is in tradeable_keys — cannot be a hedge. Skipping canonical discovery for {symbol}.")
+                        continue
                     _hp = positions.get(_hedge_pk); _op = positions.get(_origin_pk)
                     _hg = safe_fetch_float(getattr(_hp, 'gain', 0), 0) if _hp else 0
                     _og = safe_fetch_float(getattr(_op, 'gain', 0), 0) if _op else 0
+                    # POSITION ATTRIBUTE VETO: position.is_hedge must be True (set when opened as hedge)
+                    _hp_is_hedge = bool(getattr(_hp, 'is_hedge', False)) if _hp else False
+                    if not _hp_is_hedge:
+                        logger.debug(f"[HEDGE_DISCOVERY_ATTR_VETO] {_hedge_pk}: position.is_hedge=False — not tagging as hedge (was not opened as one)")
+                        continue
                     async with self.tracker_manager._hedges_lock:
                         if not any(h.get('position_key') == _hedge_pk for h in self.tracker_manager.active_hedges):
                             logger.warning(f"🛡️ [HEDGE_DISCOVERY_CANONICAL] {symbol}: canonical={account_key}_{_hedge_side}_side_is_hedge. hedge={_hedge_pk}(g={_hg:.2f}%) origin={_origin_pk}(g={_og:.2f}%)")
@@ -5437,22 +5452,11 @@ class HedgeEngine:
                             self.tracker_manager.active_hedges.append(cand)
                             _discovery_made_change = True
                 else:
-                    # No canonical match — fall back to gain-based (legacy behaviour, winner is hedge).
-                    _gains = []
-                    for pk, side in entries:
-                        _p = positions.get(pk)
-                        _g = safe_fetch_float(getattr(_p, 'gain', 0), 0) if _p else 0
-                        _gains.append((pk, side, _g))
-                    _gains.sort(key=lambda x: x[2])
-                    _loser_pk = _gains[0][0]; _winner_pk = _gains[-1][0]
-                    async with self.tracker_manager._hedges_lock:
-                        if not any(h.get('position_key') == _winner_pk for h in self.tracker_manager.active_hedges):
-                            logger.warning(f"🛡️ [HEDGE_DISCOVERY_FALLBACK] {symbol}: no canonical side — winner={_winner_pk}(g={_gains[-1][2]:.2f}%) treated as hedge for loser={_loser_pk}(g={_gains[0][2]:.2f}%)")
-                            cand = await self.tracker_manager.get_exit_candidate(_winner_pk)
-                            if not cand: cand = self.tracker_manager._exit_template(); cand.update({'position_key': _winner_pk, 'account': account_key, 'symbol': symbol, 'is_hedge': True, 'losing_position_key': _loser_pk, 'status': 'active', 'opened_at': datetime.now(timezone.utc).isoformat(), 'timestamp': time.time()})
-                            else: cand['is_hedge'] = True; cand['losing_position_key'] = _loser_pk; cand.setdefault('opened_at', datetime.now(timezone.utc).isoformat()); cand.setdefault('timestamp', time.time())
-                            self.tracker_manager.active_hedges.append(cand)
-                            _discovery_made_change = True
+                    # No canonical side — GAIN-BASED FALLBACK IS PERMANENTLY DISABLED.
+                    # ⚠️ DO NOT RE-ENABLE. Gain-based classification marks main positions as hedges.
+                    # History: BTCUSDC LONG at -0.34% killed because fallback tagged it as hedge for SHORT.
+                    # If canonical side is unknown, positions coexist without hedge tagging.
+                    logger.debug(f"[HEDGE_DISCOVERY_FALLBACK_DISABLED] {symbol}: no canonical side, gain-based fallback disabled — positions coexist without hedge tagging")
         try:
             if _discovery_made_change:
                 await self.tracker_manager.save_tracker(account_key, force=True)
@@ -5461,6 +5465,11 @@ class HedgeEngine:
             for pk, cand in list(self.tracker_manager.exit_candidates.items()):
                 if not pk.startswith(f"{account_key}:"): continue
                 if cand.get('is_hedge') or "HEDGE" in str(cand.get('last_reason', '')).upper():
+                    # TRADEABLE_KEYS VETO — tradeable = main position, NEVER a hedge
+                    if pk in _disc_tradeable:
+                        logger.warning(f"[HEDGE_DISCOVERY_TK_VETO_EC] {pk}: in tradeable_keys — clearing stale is_hedge flag, skipping recovery.")
+                        cand['is_hedge'] = False
+                        continue
                     # FIX 2026-03-28: Only restore as hedge if position is WINNING (gain > 0). Losers are NOT hedges.
                     _rp = positions.get(pk)
                     _rg = safe_fetch_float(getattr(_rp, 'gain', 0), 0) if _rp else 0
@@ -5481,6 +5490,8 @@ class HedgeEngine:
             _open_reason = str(getattr(pos, 'open_reason', '') or '').upper()
             _last_reason = str(getattr(pos, 'last_reason', '') or '').upper()
             _is_hedge_attr = bool(getattr(pos, 'is_hedge', False))
+            if pk in _disc_tradeable:
+                continue  # tradeable = main position, NEVER classify as hedge regardless of open_reason
             if _is_hedge_attr or 'HEDGE_PROTECT' in _open_reason or 'HEDGE_SAME' in _open_reason or 'HEDGE_ACTUAL' in _open_reason or 'HEDGE_PROTECT' in _last_reason:
                 _g = safe_fetch_float(getattr(pos, 'gain', 0), 0)
                 _loser_pk = getattr(pos, 'hedge_for', None)
