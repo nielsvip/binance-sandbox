@@ -1660,6 +1660,36 @@ class AdvancedSignalRater:
                         _chop_tfs += 1
                 if _chop_tfs >= 2:
                     return -100.0, "BOYCOTT", f"WT_CHOP_{_chop_tfs}TF_dir={'L' if is_long else 'S'}"
+            # R-G4: composite WT delta gate — blocks when ALL TFs trending against entry direction
+            if getattr(config, 'WT_COMPOSITE_DELTA_GATE_ENABLED', True):
+                _cd = safe_fetch_float(ind.get('wt_composite_delta'), None)
+                if _cd is not None:
+                    if is_long and _cd < getattr(config, 'WT_COMPOSITE_DELTA_LONG_MIN', -100.0):
+                        return -100.0, "BOYCOTT", f"WT_CDELTA_LONG_{_cd:.0f}<{getattr(config,'WT_COMPOSITE_DELTA_LONG_MIN',-100.0):.0f}"
+                    if (not is_long) and _cd > getattr(config, 'WT_COMPOSITE_DELTA_SHORT_MAX', 100.0):
+                        return -100.0, "BOYCOTT", f"WT_CDELTA_SHORT_{_cd:.0f}>{getattr(config,'WT_COMPOSITE_DELTA_SHORT_MAX',100.0):.0f}"
+            # R-G5: exhaust entry gate — blocks entering into an exhausted move (3m + 15m both exhausted in entry dir)
+            if getattr(config, 'WT_EXHAUST_ENTRY_GATE_ENABLED', True):
+                _ex_3m = str(ind.get('wt_momentum_state_3m', '') or '').upper()
+                _ex_15m = str(ind.get('wt_momentum_state_15m', '') or '').upper()
+                if is_long and _ex_3m == 'EXHAUST_UP' and _ex_15m == 'EXHAUST_UP':
+                    return -100.0, "BOYCOTT", "WT_EXHAUST_LONG_3m+15m"
+                if (not is_long) and _ex_3m == 'EXHAUST_DOWN' and _ex_15m == 'EXHAUST_DOWN':
+                    return -100.0, "BOYCOTT", "WT_EXHAUST_SHORT_3m+15m"
+            # R-G6: D-level percentile gate — blocks entries at daily extremes
+            if getattr(config, 'WT_PERCENTILE_ENTRY_GATE_ENABLED', True):
+                _pct_D_e = safe_fetch_float(ind.get('wt_percentile_D'), None)
+                if _pct_D_e is not None:
+                    if is_long and _pct_D_e > getattr(config, 'WT_PERCENTILE_ENTRY_OB_D', 90.0):
+                        return -100.0, "BOYCOTT", f"WT_PCT_LONG_OB_D={_pct_D_e:.0f}"
+                    if (not is_long) and _pct_D_e < getattr(config, 'WT_PERCENTILE_ENTRY_OS_D', 10.0):
+                        return -100.0, "BOYCOTT", f"WT_PCT_SHORT_OS_D={_pct_D_e:.0f}"
+            # R-G7: divergence entry gate — wt_any_bear_div blocks LONG; wt_any_bull_div blocks SHORT
+            if getattr(config, 'WT_DIV_ENTRY_GATE_ENABLED', True):
+                if is_long and bool(ind.get('wt_any_bear_div', False)):
+                    return -100.0, "BOYCOTT", "WT_BEAR_DIV_BLOCKS_LONG"
+                if (not is_long) and bool(ind.get('wt_any_bull_div', False)):
+                    return -100.0, "BOYCOTT", "WT_BULL_DIV_BLOCKS_SHORT"
         if not is_hedge:
             if cand.get('is_hedge') is True: is_hedge = True
             elif "HEDGE" in str(cand.get('last_reason', '')).upper(): is_hedge = True
@@ -1854,6 +1884,16 @@ class AdvancedSignalRater:
                 score += _dcm_pen; reasons.append(f"DC_MOMENT_OPPOSITE_L({_dcm:.0f},{_dcm_pen:.0f})")
             elif not is_long and _dcm > _dcm_strong:
                 score += _dcm_pen; reasons.append(f"DC_MOMENT_OPPOSITE_S({_dcm:.0f},{_dcm_pen:.0f})")
+        # === WT_COMPOSITE_DELTA SCORE BONUS (2026-04-19: indicator audit) ===
+        if bool(getattr(config, 'WT_COMPOSITE_DELTA_SCORE_ENABLED', True)) and not is_exit:
+            _cd_s = safe_fetch_float(ind.get('wt_composite_delta'), None)
+            if _cd_s is not None:
+                _cd_thresh = float(getattr(config, 'WT_COMPOSITE_DELTA_SCORE_THRESHOLD', 50.0))
+                _cd_bonus = float(getattr(config, 'WT_COMPOSITE_DELTA_SCORE_BONUS', 3.0))
+                if is_long and _cd_s > _cd_thresh:
+                    score += _cd_bonus; reasons.append(f"WT_CD_BULL({_cd_s:.0f},+{_cd_bonus:.0f})")
+                elif not is_long and _cd_s < -_cd_thresh:
+                    score += _cd_bonus; reasons.append(f"WT_CD_BEAR({_cd_s:.0f},+{_cd_bonus:.0f})")
         # === MARKET REGIME DETECTION (replaces old ADX_REGIME_FILTER) ===
         _regime_info = None
         _regime_params = None

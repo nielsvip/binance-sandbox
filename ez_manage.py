@@ -19440,6 +19440,50 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if result:
                         trade_manager.processing_keys.discard(position_key)
                         return f"{EvalStatus.ACTION_TAKEN}:DC_HOPELESS_EXIT"
+        # ==================================================================
+        # WT_EXHAUST_EXIT — close when 4h WT momentum exhausted against position
+        # EXHAUST_UP on 4h + (1h or 15m) = top confirmed → close LONG
+        # EXHAUST_DOWN on 4h + (1h or 15m) = bottom confirmed → close SHORT
+        # 2026-04-19: wt_momentum_state_* decoded to string by IndicatorStore in backtest
+        # ==================================================================
+        if getattr(config, 'WT_EXHAUST_EXIT_ENABLED', True) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _mom_4h = str(i.get('wt_momentum_state_4h', '') or '').upper()
+            _mom_1h = str(i.get('wt_momentum_state_1h', '') or '').upper()
+            _mom_15m = str(i.get('wt_momentum_state_15m', '') or '').upper()
+            _ex_exit = False
+            if is_long and _mom_4h == 'EXHAUST_UP' and (_mom_1h == 'EXHAUST_UP' or _mom_15m == 'EXHAUST_UP'):
+                _ex_exit = True
+            elif not is_long and _mom_4h == 'EXHAUST_DOWN' and (_mom_1h == 'EXHAUST_DOWN' or _mom_15m == 'EXHAUST_DOWN'):
+                _ex_exit = True
+            if _ex_exit:
+                _ex_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _req_gain = getattr(config, 'WT_EXHAUST_EXIT_REQUIRE_GAIN', False)
+                if not _req_gain or _ex_g > 0:
+                    logger.warning(f"[WT_EXHAUST_EXIT] {position_key}: 4h={_mom_4h} 1h={_mom_1h} 15m={_mom_15m} g={_ex_g:.2f}%")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"WT_EXHAUST_mom4h={_mom_4h}_1h={_mom_1h}_g={_ex_g:.2f}%", 0.95)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:WT_EXHAUST_EXIT"
+        # ==================================================================
+        # WT_PERCENTILE_EXIT — close when D + 4h both overbought (LONG) or oversold (SHORT)
+        # wt_percentile_D=97 in example = daily WT at 97th percentile = extreme OB
+        # 2026-04-19: percentile fields confirmed float32 in NPZ
+        # ==================================================================
+        if getattr(config, 'WT_PERCENTILE_EXIT_ENABLED', True) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _pct_D = safe_fetch_float(i.get('wt_percentile_D', 50), 50)
+            _pct_4h = safe_fetch_float(i.get('wt_percentile_4h', 50), 50)
+            _pct_exit = False
+            if is_long and _pct_D > getattr(config, 'WT_PERCENTILE_EXIT_OB_D', 90) and _pct_4h > getattr(config, 'WT_PERCENTILE_EXIT_OB_4H', 75):
+                _pct_exit = True
+            elif not is_long and _pct_D < getattr(config, 'WT_PERCENTILE_EXIT_OS_D', 10) and _pct_4h < getattr(config, 'WT_PERCENTILE_EXIT_OS_4H', 25):
+                _pct_exit = True
+            if _pct_exit:
+                _pct_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                logger.warning(f"[WT_PERCENTILE_EXIT] {position_key}: pct_D={_pct_D:.0f} pct_4h={_pct_4h:.0f} g={_pct_g:.2f}%")
+                result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"WT_PERCENTILE_pctD={_pct_D:.0f}_4h={_pct_4h:.0f}_g={_pct_g:.2f}%", 0.95)
+                if result:
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:WT_PERCENTILE_EXIT"
         if is_active_position and position and config.MANAGE_REDUCE:
             _pp_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
             _pp_prev_gain = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)

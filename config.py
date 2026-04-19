@@ -1306,6 +1306,36 @@ class Config:
     DC_HOPELESS_EXIT_ENABLED: bool = True
     DC_HOPELESS_EXIT_MIN_AGE_S: int = 900         # only fire after 15min (avoid newborn noise)
     # ═══════════════════════════════════════════════════════════════════════
+    # 2026-04-19 FULL INDICATOR WIRE-IN — 51 fields confirmed in NPZ + live
+    # All exits default ON (proven exit signals); all entry gates default ON
+    # ═══════════════════════════════════════════════════════════════════════
+    # EXIT: EXHAUST — close when 4h momentum exhausted in direction against position
+    # Requires 4h EXHAUST confirmed by 1h or 15m (prevents premature exit on single TF)
+    WT_EXHAUST_EXIT_ENABLED: bool = True
+    WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False     # True = only exit on EXHAUST if gain > 0
+    # EXIT: PERCENTILE OB/OS — close LONG when D+4h both overbought, SHORT when oversold
+    WT_PERCENTILE_EXIT_ENABLED: bool = False        # OFF: in strong rally D WT stays elevated, exits too early
+    WT_PERCENTILE_EXIT_OB_D: float = 90.0          # D percentile > this → exit LONG
+    WT_PERCENTILE_EXIT_OB_4H: float = 75.0         # 4h percentile > this → confirm exit LONG
+    WT_PERCENTILE_EXIT_OS_D: float = 10.0          # D percentile < this → exit SHORT
+    WT_PERCENTILE_EXIT_OS_4H: float = 25.0         # 4h percentile < this → confirm exit SHORT
+    # ENTRY: wt_composite_delta gate — block entries when MTF bias strongly opposes
+    WT_COMPOSITE_DELTA_GATE_ENABLED: bool = True
+    WT_COMPOSITE_DELTA_LONG_MIN: float = -100.0    # block LONG when delta < this (all TFs bearish)
+    WT_COMPOSITE_DELTA_SHORT_MAX: float = 100.0    # block SHORT when delta > this (all TFs bullish)
+    # ENTRY: exhaust gate — OFF: exhaust mid-rally still valid entry, blocks too aggressively
+    WT_EXHAUST_ENTRY_GATE_ENABLED: bool = False
+    # ENTRY: percentile daily OB/OS gate — OFF: never block longs in a rally at high percentile
+    WT_PERCENTILE_ENTRY_GATE_ENABLED: bool = False
+    WT_PERCENTILE_ENTRY_OB_D: float = 90.0         # block LONG when daily WT > 90th percentile
+    WT_PERCENTILE_ENTRY_OS_D: float = 10.0         # block SHORT when daily WT < 10th percentile
+    # ENTRY: divergence gate — bear div blocks LONG, bull div blocks SHORT (price vs WT tops/bottoms)
+    WT_DIV_ENTRY_GATE_ENABLED: bool = True         # wt_any_bear_div blocks LONG; wt_any_bull_div blocks SHORT
+    # SCORING: wt_composite_delta bonus in rate() scoring
+    WT_COMPOSITE_DELTA_SCORE_ENABLED: bool = True
+    WT_COMPOSITE_DELTA_SCORE_THRESHOLD: float = 50.0  # delta > this adds bonus score
+    WT_COMPOSITE_DELTA_SCORE_BONUS: float = 3.0       # bonus score points per threshold crossed
+    # ═══════════════════════════════════════════════════════════════════════
     # END INDICATOR-AUDIT SWITCHES
     # ═══════════════════════════════════════════════════════════════════════
 

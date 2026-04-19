@@ -5077,26 +5077,27 @@ class StockStrategy:
         _wt1_15m = float(i.get('wt1_15m', 0) or 0); _wt2_15m = float(i.get('wt2_15m', 0) or 0)
         _wt1_1h = float(i.get('wt1_1h', 0) or 0); _wt2_1h = float(i.get('wt2_1h', 0) or 0)
         _wt1_4h = float(i.get('wt1_4h', 0) or 0); _wt2_4h = float(i.get('wt2_4h', 0) or 0); _wt1_D_re = float(i.get('wt1_D', 0) or 0); _wt2_D_re = float(i.get('wt2_D', 0) or 0)
-        # 4h must be aligned — 5m dip within a 4h bearish trend is a dead-cat bounce, not a reentry
-        if is_long and _wt1_4h <= _wt2_4h:
-            return "NO_ACTION", f"4H_WT_BEARISH_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}_no_reentry", 0.0, 0.0
-        if not is_long and _wt1_4h >= _wt2_4h:
-            return "NO_ACTION", f"4H_WT_BULLISH_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}_no_reentry", 0.0, 0.0
         _wt_fav = 0
         if is_long:
             if _wt1_5m > _wt2_5m: _wt_fav += 1
             if _wt1_15m > _wt2_15m: _wt_fav += 1
             if _wt1_1h > _wt2_1h: _wt_fav += 1
+            if _wt1_4h > _wt2_4h: _wt_fav += 1
         else:
             if _wt1_5m < _wt2_5m: _wt_fav += 1
             if _wt1_15m < _wt2_15m: _wt_fav += 1
             if _wt1_1h < _wt2_1h: _wt_fav += 1
+            if _wt1_4h < _wt2_4h: _wt_fav += 1
+        logger.info(f"[REENTRY_GATE] {symbol} {'L' if is_long else 'S'}: wt_fav={_wt_fav}/4 5m={_wt1_5m:.0f}/{_wt2_5m:.0f} 15m={_wt1_15m:.0f}/{_wt2_15m:.0f} 1h={_wt1_1h:.0f}/{_wt2_1h:.0f} 4h={_wt1_4h:.0f}/{_wt2_4h:.0f} k5m={k_5m_t2:.0f}/prev={k_5m_prev_t2:.0f}")
         if _wt_fav >= 2:
             # STOCH GATE: k_5m < 50 AND rising (LONG) or > 50 AND falling (SHORT)
-            # Same rule as REENTRY_MONITOR — prevents immediate DELTA_EXIT after reentry
-            if is_long and not (k_5m_t2 < 50.0 and k_5m_t2 > k_5m_prev_t2):
+            # Bypass if position has been waiting >2h (k_5m may be stuck at a low/high during flat market)
+            _stoch_overdue = last_red_age_min >= 120.0
+            if is_long and not (k_5m_t2 < 50.0 and (k_5m_t2 > k_5m_prev_t2 or _stoch_overdue)):
+                logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
                 return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_lt50_rising", 0.0, 0.0
-            if not is_long and not (k_5m_t2 > 50.0 and k_5m_t2 < k_5m_prev_t2):
+            if not is_long and not (k_5m_t2 > 50.0 and (k_5m_t2 < k_5m_prev_t2 or _stoch_overdue)):
+                logger.info(f"[REENTRY_GATE] {symbol}: STOCH_GATE_FAIL k5m={k_5m_t2:.0f} prev={k_5m_prev_t2:.0f} overdue={_stoch_overdue}")
                 return "NO_ACTION", f"STOCH_GATE_k5m={k_5m_t2:.0f}_prev={k_5m_prev_t2:.0f}_need_gt50_falling", 0.0, 0.0
             # RALLY GATE: optional k15m level cap + HTF WT count (sweep knobs)
             _rally_k15m_max = float(getattr(config, 'REENTRY_RALLY_K15M_MAX', 100.0))
