@@ -278,52 +278,50 @@ def build_param_grid_mega():
 
 
 def build_param_grid_mega_v2():
-    """Mega V2 — 17M configs locked on proven baseline (hold=250, PT=1.6, score=5).
-    Sweeps winner_protect, velocity, entry gates, exits, new indicators.
-    EARLY_ABORT_MIN_SYMBOLS=3 / floor=2.5 prunes bad configs after 3 symbols."""
+    """Mega V2 — ~124k configs locked on proven baseline (hold=250, PT=1.6, score=5).
+    Sweeps winner_protect, velocity, entry gates, exits, structural.
+    No per-config early abort (EARLY_ABORT_MIN_SYMBOLS=11 = run all fast symbols).
+    Run with --kill-sharpe 0.0 to collect ALL results and sort by Sharpe afterward.
+    Rate: ~1.0 config/s per worker × 4 workers = 8.6h for full grid."""
     return {
-        "MIN_HOLD_BARS": [150, 200, 250, 300, 350],
-        "PROFIT_TARGET_PCT": [1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5],
-        "STRENGTH_MIN_SCORE": [2.0, 3.0, 5.0, 7.0, 10.0],
+        "MIN_HOLD_BARS": [150, 250, 350],
+        "PROFIT_TARGET_PCT": [1.2, 1.6, 2.0, 2.5],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 8.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "WINNER_PROTECT_ENABLED": [True, False],
-        "WINNER_PROTECT_GAIN_PCT": [0.5, 1.0, 1.5, 2.0],
+        "WINNER_PROTECT_GAIN_PCT": [0.5, 1.0, 2.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
-        "CT_WT_VELOCITY_1H_MIN": [0.0, 3.0, 6.0, 10.0],
-        "K3M_FLOOR": [15.0, 20.0, 25.0, 30.0],
-        "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 21.0],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 3.0, 8.0],
         "SATOSHIT_ENABLED": [True, False],
         "DELTA_ENTRY_ENABLED": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [3],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
+        "EARLY_ABORT_MIN_SYMBOLS": [11],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
     }
 
 
 def build_param_grid_mega_stock():
-    """Mega stock — ~8M configs built around tradier apply_tradier_defaults baseline.
-    Sweeps all stock knobs: hold, PT, zones, conviction, velocity, exits.
+    """Mega stock — ~140k configs around tradier apply_tradier_defaults baseline.
     Tight PT (0.3-1.0%) can push Sharpe >4 via low-variance precision exits.
-    EARLY_ABORT_MIN_SYMBOLS=3 / floor=2.5 prunes bad configs fast."""
+    No per-config early abort (EARLY_ABORT_MIN_SYMBOLS=12 = run all fast symbols).
+    Run with --kill-sharpe 0.0 to collect ALL results, sort by Sharpe afterward.
+    Stock NPZ tiny (~650MB) → workers=7 safe. Rate ~3 configs/s → 12h for 130k configs."""
     return {
-        "MIN_HOLD_BARS": [10, 20, 30, 40, 60, 80],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0],
-        "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0, 6.0, 8.0],
+        "MIN_HOLD_BARS": [10, 20, 40, 60],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.5, 2.0],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "HTF_MIN_ALIGNED": [1, 2, 3],
         "D_TREND_REQUIRED": [True, False],
-        "ENTRY_ZONE_LONG": [0.0, 20.0, 30.0, 40.0],
+        "ENTRY_ZONE_LONG": [0.0, 20.0, 40.0],
         "RANK_CONVICTION_MIN": [1, 2, 3],
-        "FH_MOMENTUM_MIN_MOVE_PCT": [0.3, 0.5, 0.7, 1.0],
-        "MFI_LONG_THRESHOLD_D": [15.0, 20.0, 25.0, 30.0],
-        "CT_WT_VELOCITY_1H_MIN": [0.0, 1.0, 2.0, 4.0],
+        "FH_MOMENTUM_MIN_MOVE_PCT": [0.3, 0.7],
+        "MFI_LONG_THRESHOLD_D": [15.0, 20.0, 30.0],
         "WINNER_PROTECT_ENABLED": [True, False],
-        "WINNER_PROTECT_GAIN_PCT": [0.5, 1.0, 1.5, 2.0],
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [3],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
+        "EARLY_ABORT_MIN_SYMBOLS": [12],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
     }
 
 
