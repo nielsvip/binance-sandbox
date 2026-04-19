@@ -564,6 +564,27 @@ class Config:
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2            # count of enabled TFs against pos
+    # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
+    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
+    # MOVEUSDT bled from +1.26% peak to -13% because HTF_EXIT_VETO blocked breakeven exit.
+    # Fires when position was profitable and gains have been given back. Bypasses HTF_EXIT_VETO.
+    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5          # must have reached >= 0.5% gain to activate
+    PEAK_GIVEBACK_DROP_PCT: float = 1.0              # exit if current_gain dropped >= 1.0% from peak
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True     # also exit if ANY negative gain after profitable peak
+    # ═══ HARD_BREAKEVEN_FLOOR (2026-04-19) ═══
+    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
+    # Overrides HTF_EXIT_VETO for breakeven stop when position was genuinely profitable.
+    # Winner-became-loser = IMPOSSIBLE rule. HTF alignment irrelevant once gain was positive.
+    HARD_BREAKEVEN_FLOOR_ENABLED: bool = True        # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    HARD_BREAKEVEN_MIN_PEAK_PCT: float = 0.5         # if max_gain >= 0.5%, HTF veto bypassed for breakeven
+    # ═══ MANDATORY_HEDGE_ON_NEGATIVE (2026-04-19) ═══
+    # ⚠️ DEATH PENALTY — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    # Unconditional same-symbol hedge when gain < threshold regardless of WT direction.
+    # Catches positions where HTF is still aligned (so OBLIGATORY_HEDGE WT gate never fires)
+    # but price has been bleeding for a long time (MOVEUSDT: -13%, no hedge, 1 month open).
+    MANDATORY_HEDGE_ON_NEGATIVE_ENABLED: bool = True   # ⚠️ DEATH PENALTY — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    MANDATORY_HEDGE_HARD_THRESHOLD_PCT: float = -2.0   # unconditional hedge at -2% (WT-gated fires at -0.25%)
     # ═══ HEDGE MAX AGE (2026-04-17) — user rule: "minutes max hours never days" ═══
     # Every open hedge must close by this age cap regardless of WT state. Safety net for
     # stuck hedges when WT-flip close rule fails to fire (e.g., loser's wt flat for hours).

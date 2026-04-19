@@ -11855,6 +11855,33 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _ah_origin_side = 'LONG' if is_long else 'SHORT'
                         logger.warning(f"🛡️[SAME_HEDGE_150] {position_key}: gain={current_gain:.2f}% wt_against={_ah_wt_against_count}/4 → opening 150% {_ah_hedge_pk} (flag set)")
                         asyncio.create_task(hedge_engine.execute_same_symbol_hedge(account_key, position, symbol, _ah_origin_side, 0, current_price))
+                # ═══ MANDATORY_HEDGE_ON_NEGATIVE (2026-04-19) ═══
+                # ⚠️ DEATH PENALTY — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+                # MOVEUSDT: -13% for 1 month with NO hedge because WT was still "bullish" (HTF aligned).
+                # SAME_HEDGE_150 + OBLIGATORY_HEDGE both require WT against position — they BOTH FAILED.
+                # This fires UNCONDITIONALLY at hard threshold regardless of WT direction.
+                if (not hard_exit_reason and not is_hedge and hedge_engine
+                        and bool(getattr(config, 'MANDATORY_HEDGE_ON_NEGATIVE_ENABLED', True))
+                        and abs(position.positionAmt) > 0):
+                    _mhn_threshold = float(getattr(config, 'MANDATORY_HEDGE_HARD_THRESHOLD_PCT', -2.0))
+                    if current_gain < _mhn_threshold:
+                        if not hasattr(trade_manager, '_mandatory_hedge_cd'):
+                            trade_manager._mandatory_hedge_cd = {}
+                        _mhn_last = trade_manager._mandatory_hedge_cd.get(position_key, 0)
+                        if (time.time() - _mhn_last) > 300:
+                            _mhn_hedge_side = "SHORT" if is_long else "LONG"
+                            _mhn_hedge_pk = f"{account_key}:{symbol}_{_mhn_hedge_side}"
+                            _mhn_existing = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(_mhn_hedge_pk)
+                            _mhn_existing_amt = abs(safe_fetch_float(getattr(_mhn_existing, 'positionAmt', 0), 0)) if _mhn_existing else 0
+                            _mhn_live = _mhn_existing_amt >= trade_manager.min_qty.get(symbol, 0.001)
+                            if not _mhn_live:
+                                async with tracker_manager._hedges_lock:
+                                    _mhn_tracked = any(h.get('losing_position_key') == position_key for h in tracker_manager.active_hedges if isinstance(h, dict))
+                                if not _mhn_tracked:
+                                    trade_manager._mandatory_hedge_cd[position_key] = time.time()
+                                    _mhn_origin_side = 'LONG' if is_long else 'SHORT'
+                                    logger.critical(f"🚨[MANDATORY_HEDGE_NEG] {position_key}: gain={current_gain:.2f}% < threshold={_mhn_threshold:.1f}% UNCONDITIONAL HEDGE (WT ignored) ⚠️ DO NOT DISABLE")
+                                    asyncio.create_task(hedge_engine.execute_same_symbol_hedge(account_key, position, symbol, _mhn_origin_side, 0, current_price))
                 _min_profit = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.5)
                 if not hard_exit_reason and not is_hedge and not _in_grace_period and current_gain >= _min_profit:
                     # Check if opposite side is in loss — if so, THIS is acting as hedge, skip exit
@@ -11916,9 +11943,15 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 if not hard_exit_reason and not is_hedge:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
                     if _pos_age_min >= _be_grace and current_gain < 0:
-                        if _htf_veto_active:
+                        _hbf_enabled = bool(getattr(config, 'HARD_BREAKEVEN_FLOOR_ENABLED', True))
+                        _hbf_min_peak = float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5))
+                        _pos_max_g_be = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
+                        _hbf_override = _hbf_enabled and _pos_max_g_be >= _hbf_min_peak
+                        if _htf_veto_active and not _hbf_override:
                             logger.info(f"🛡️[HTF_VETO_BREAKEVEN] {position_key}: gain {current_gain:.2f}% but HTF still aligned ({_hv_aligned}/3) — skipping breakeven exit")
                         else:
+                            if _hbf_override and _htf_veto_active:
+                                logger.critical(f"🔥[HARD_BREAKEVEN_FLOOR] {position_key}: max_gain={_pos_max_g_be:.2f}% ≥ {_hbf_min_peak:.1f}% — OVERRIDING HTF veto, gain={current_gain:.2f}% ⚠️ DO NOT DISABLE")
                             hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
                             logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED")
                 if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
@@ -11936,6 +11969,23 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         else:
                             hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
                             logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
+                # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
+                # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
+                # MOVEUSDT: was +1.26% then bled to -13% because HTF_EXIT_VETO blocked breakeven exit.
+                # Bypasses HTF_EXIT_VETO intentionally — once position was profitable, protecting that
+                # profit takes precedence over HTF trend alignment.
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+                    _pgp_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
+                    _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.5))
+                    if _pgp_max_g >= _pgp_min_peak:
+                        _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
+                        _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 1.0))
+                        if _pgp_hard_zero and current_gain < 0:
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% NOW NEGATIVE cur={current_gain:.2f}% — EXITING (HTF veto bypassed) ⚠️ DO NOT DISABLE")
+                        elif current_gain < _pgp_max_g - _pgp_drop:
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%"
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING ⚠️ DO NOT DISABLE")
                 # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
                 # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
                 # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).
@@ -12023,7 +12073,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _fresh_gain = ((_fresh_price - _fresh_entry) / _fresh_entry * 100) if _fresh_entry > 0 and is_long else (((_fresh_entry - _fresh_price) / _fresh_entry * 100) if _fresh_entry > 0 else current_gain)
                         _spa_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
                         _spa_allow_near_be = getattr(config, 'LOSS_EXIT_STALE_PRICE_ALLOW_NEAR_BE_ENABLED', False) and _spa_max_g >= 0.5 and _fresh_gain > -0.5
-                        _spa_is_breakeven = hard_exit_reason and ('BREAKEVEN' in hard_exit_reason or 'DC_LOW4_3M' in hard_exit_reason or 'DC_HIGH4_3M' in hard_exit_reason)
+                        _spa_is_breakeven = hard_exit_reason and ('BREAKEVEN' in hard_exit_reason or 'DC_LOW4_3M' in hard_exit_reason or 'DC_HIGH4_3M' in hard_exit_reason or 'PEAK_GIVEBACK' in hard_exit_reason)
                         # 2026-04-16: technical exits (WT_CROSS_EXIT, WT_CROSS_BULLISH, DC, structure, stoch) must
                         # survive stale-price abort — they're not %-stops, they're reversal signals.
                         _spa_no_stale_block = bool(getattr(config, 'LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK', True))

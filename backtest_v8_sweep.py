@@ -555,6 +555,183 @@ def grid_indicator_audit_v2():
     ]
 
 
+def grid_indicator_audit_v3_full():
+    """2026-04-19 FULL indicator-audit matrix — every new switch gets systematic coverage.
+    Four sections: (A) single-switch ablations, (B) value sweeps for numeric params,
+    (C) category stacks (all R-S together, etc.), (D) full stack.
+    Baseline = current live config (what's already ON stays on). Each variant flips
+    ONLY the listed overrides vs baseline.
+    Total variants: ~70. Recommended symbols: BTCUSDT,ETHUSDT,SOLUSDT,DOTUSDT,LINKUSDT."""
+    return [
+        # ══════════════════════════════════════════════════════════════════════
+        # (A) BASELINE + SINGLE-SWITCH ABLATIONS
+        # ══════════════════════════════════════════════════════════════════════
+        ("baseline", {}),
+        # ── Entry gates (R-G*) ─────────────────────────────────────────────
+        ("R_G1_sent_top20", {"SENTIMENT_TOP_N_GATE_ENABLED": True, "SENTIMENT_TOP_N": 20}),
+        ("R_G2_mtf_vel_min2", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 2}),
+        ("R_G3_chop_max8", {"WT_CHOP_GATE_ENABLED": True, "WT_CHOP_MAX": 8}),
+        ("R_G4_cdelta_off", {"WT_COMPOSITE_DELTA_GATE_ENABLED": False}),  # test turning OFF current default
+        ("R_G5_exhaust_entry", {"WT_EXHAUST_ENTRY_GATE_ENABLED": True}),
+        ("R_G7_div_entry_off", {"WT_DIV_ENTRY_GATE_ENABLED": False}),  # test turning OFF current default
+        ("R_G8_mstate_LTF", {"R_S6_WT_MSTATE_GATE_MODE": 1}),
+        ("R_G8_mstate_ALL", {"R_S6_WT_MSTATE_GATE_MODE": 2}),
+        ("R_G10_htf_div", {"R_G10_HTF_DIV_GATE_ENABLED": True}),
+        # ── Scoring (R-S*) ──────────────────────────────────────────────────
+        ("R_S1_cdelta_score", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True}),
+        ("R_S2_adaptive_os", {"R_S2_WT_ADAPTIVE_OS_ENABLED": True}),
+        ("R_S3_div_stack", {"R_S3_DIV_STACK_ENABLED": True}),
+        ("R_S3_div_stack_htf_w", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True}),
+        ("R_S4_ha_streak", {"R_S4_HA_STREAK_ENABLED": True}),
+        ("R_S5_sent_vel", {"R_S5_SENT_VEL_ENABLED": True}),
+        ("R_S7_hhll_stack", {"R_S7_HHLL_STACK_ENABLED": True}),
+        # ── Sizing (R-Z*) ──────────────────────────────────────────────────
+        ("R_Z1_ranking_mult", {"RANKING_MULT_ENABLED": True}),
+        ("R_Z2_pct_scaler", {"R_Z2_PERCENTILE_SCALER_ENABLED": True}),
+        ("R_Z3_wt_comp_size", {"R_Z3_WT_COMPOSITE_SIZE_ENABLED": True}),
+        ("R_Z4_crash_gradient", {"CRASH_MULT_GRADIENT_ENABLED": True}),
+        ("R_Z5_dc_pullback", {"R_Z5_DC_PULLBACK_SIZING_ENABLED": True}),
+        # ── Reentry (RE-*) ─────────────────────────────────────────────────
+        ("RE_1_cross_fresh", {"REENTRY_CROSS_FRESHNESS_ENABLED": True}),
+        ("RE_2_use_pct", {"RE_2_USE_PERCENTILE_ENABLED": True}),
+        ("RE_3_b12_rising", {"RE_3_B12_RISING_BONUS_ENABLED": True}),
+        ("RE_4_b14_streak", {"RE_4_B14_HA_STREAK_CONV_ENABLED": True}),
+        ("RE_5_b04_compression", {"RE_5_B04_COMPRESSION_BONUS_ENABLED": True}),
+        ("RE_6_wave_phase", {"RE_6_WAVE_PHASE_GATE_ENABLED": True}),
+        ("REENTRY_exhausted_off", {"REENTRY_EXHAUSTED_PARTIAL_ENABLED": False}),
+        ("REENTRY_B16_off", {"REENTRY_B16_SMA200_PULLBACK_ENABLED": False}),
+        # ── Exits (E-*) ────────────────────────────────────────────────────
+        ("E_1_delta_exit", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True}),
+        ("E_3_struct_shadow", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 1}),
+        ("E_3_struct_live", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 2}),
+        ("WT_4H_VEL_EXIT_off", {"WT_4H_VEL_EXIT_ENABLED": False}),
+        ("DC_HOPELESS_off", {"DC_HOPELESS_EXIT_ENABLED": False}),
+        ("WT_EXHAUST_EXIT_off", {"WT_EXHAUST_EXIT_ENABLED": False}),
+        # ══════════════════════════════════════════════════════════════════════
+        # (B) VALUE SWEEPS (numeric params for the most impactful switches)
+        # ══════════════════════════════════════════════════════════════════════
+        # R-G1 sentiment top-N sweep
+        ("R_G1_top10", {"SENTIMENT_TOP_N_GATE_ENABLED": True, "SENTIMENT_TOP_N": 10}),
+        ("R_G1_top30", {"SENTIMENT_TOP_N_GATE_ENABLED": True, "SENTIMENT_TOP_N": 30}),
+        # R-G2 MTF-vel min sweep
+        ("R_G2_vel_min3", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 3}),
+        ("R_G2_vel_min4", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 4}),
+        # R-G3 chop max sweep
+        ("R_G3_chop_max6", {"WT_CHOP_GATE_ENABLED": True, "WT_CHOP_MAX": 6}),
+        ("R_G3_chop_max12", {"WT_CHOP_GATE_ENABLED": True, "WT_CHOP_MAX": 12}),
+        # R-G10 HTF-div scope sweep
+        ("R_G10_D_only", {"R_G10_HTF_DIV_GATE_ENABLED": True, "R_G10_HTF_DIV_TFS": "D"}),
+        ("R_G10_1h_4h_D", {"R_G10_HTF_DIV_GATE_ENABLED": True, "R_G10_HTF_DIV_TFS": "1h,4h,D"}),
+        # R-S1 delta threshold sweep
+        ("R_S1_thr30", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S1_WT_COMPOSITE_DELTA_THR": 30.0}),
+        ("R_S1_thr80", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S1_WT_COMPOSITE_DELTA_THR": 80.0}),
+        # R-S2 percentile sweep
+        ("R_S2_os5", {"R_S2_WT_ADAPTIVE_OS_ENABLED": True, "R_S2_WT_PCT_OS_LONG": 5.0, "R_S2_WT_PCT_OB_SHORT": 95.0}),
+        ("R_S2_os15", {"R_S2_WT_ADAPTIVE_OS_ENABLED": True, "R_S2_WT_PCT_OS_LONG": 15.0, "R_S2_WT_PCT_OB_SHORT": 85.0}),
+        # R-S3 HTF weight magnitude sweep (how heavy to make HTF divergences)
+        ("R_S3_htf_w_moderate", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True, "R_S3_TF_WEIGHT_4H": 2.0, "R_S3_TF_WEIGHT_D": 3.0}),
+        ("R_S3_htf_w_heavy", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True, "R_S3_TF_WEIGHT_4H": 3.5, "R_S3_TF_WEIGHT_D": 6.0}),
+        # R-S7 HH/LL configuration sweep
+        ("R_S7_strict", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_MIN_INDICATORS": 3, "R_S7_HHLL_MIN_TFS_FOR_BONUS": 3}),
+        ("R_S7_htf_only", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_TFS": "1h,4h,D"}),
+        ("R_S7_big_bonus", {"R_S7_HHLL_STACK_ENABLED": True, "R_S7_HHLL_BONUS_PER_TF": 6.0}),
+        # R-Z1 ranking mult MAX sweep
+        ("R_Z1_max1_5", {"RANKING_MULT_ENABLED": True, "RANKING_MULT_MAX": 1.5}),
+        ("R_Z1_max3_0", {"RANKING_MULT_ENABLED": True, "RANKING_MULT_MAX": 3.0}),
+        # R-Z3 WT composite size threshold sweep
+        ("R_Z3_aggressive", {"R_Z3_WT_COMPOSITE_SIZE_ENABLED": True, "R_Z3_T1_THR": 30.0, "R_Z3_T2_THR": 60.0, "R_Z3_T3_THR": 90.0}),
+        # E-1 delta exit threshold sweep
+        ("E_1_thr30", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 30.0}),
+        ("E_1_thr80", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 80.0}),
+        # ══════════════════════════════════════════════════════════════════════
+        # (C) CATEGORY STACKS — all switches in a category ON together
+        # ══════════════════════════════════════════════════════════════════════
+        ("STACK_all_gates_on", {
+            "SENTIMENT_TOP_N_GATE_ENABLED": True, "WT_MTF_VEL_GATE_ENABLED": True,
+            "WT_CHOP_GATE_ENABLED": True, "R_G10_HTF_DIV_GATE_ENABLED": True,
+            "R_S6_WT_MSTATE_GATE_MODE": 1,
+        }),
+        ("STACK_all_scoring_on", {
+            "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S2_WT_ADAPTIVE_OS_ENABLED": True,
+            "R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True,
+            "R_S4_HA_STREAK_ENABLED": True, "R_S5_SENT_VEL_ENABLED": True,
+            "R_S7_HHLL_STACK_ENABLED": True,
+        }),
+        ("STACK_all_sizing_on", {
+            "RANKING_MULT_ENABLED": True, "R_Z2_PERCENTILE_SCALER_ENABLED": True,
+            "R_Z3_WT_COMPOSITE_SIZE_ENABLED": True, "CRASH_MULT_GRADIENT_ENABLED": True,
+            "R_Z5_DC_PULLBACK_SIZING_ENABLED": True,
+        }),
+        ("STACK_all_reentry_on", {
+            "REENTRY_CROSS_FRESHNESS_ENABLED": True, "RE_2_USE_PERCENTILE_ENABLED": True,
+            "RE_3_B12_RISING_BONUS_ENABLED": True, "RE_4_B14_HA_STREAK_CONV_ENABLED": True,
+            "RE_5_B04_COMPRESSION_BONUS_ENABLED": True, "RE_6_WAVE_PHASE_GATE_ENABLED": True,
+        }),
+        ("STACK_all_exits_on", {
+            "E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_3_USE_WT_STRUCTURE_EXIT_MODE": 2,
+        }),
+        ("STACK_structural_on", {  # everything HH/LL + HTF divergence related
+            "R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True,
+            "R_G10_HTF_DIV_GATE_ENABLED": True, "R_S7_HHLL_STACK_ENABLED": True,
+            "E_3_USE_WT_STRUCTURE_EXIT_MODE": 1,  # shadow — observe before firing
+        }),
+        # ══════════════════════════════════════════════════════════════════════
+        # (D) FULL STACK — every new switch ON (stress test)
+        # ══════════════════════════════════════════════════════════════════════
+        ("FULL_STACK_all_on", {
+            # Gates
+            "SENTIMENT_TOP_N_GATE_ENABLED": True, "WT_MTF_VEL_GATE_ENABLED": True,
+            "WT_CHOP_GATE_ENABLED": True, "R_G10_HTF_DIV_GATE_ENABLED": True,
+            "R_S6_WT_MSTATE_GATE_MODE": 1,
+            # Scoring
+            "R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S2_WT_ADAPTIVE_OS_ENABLED": True,
+            "R_S3_DIV_STACK_ENABLED": True, "R_S3_HTF_WEIGHT_ENABLED": True,
+            "R_S4_HA_STREAK_ENABLED": True, "R_S5_SENT_VEL_ENABLED": True,
+            "R_S7_HHLL_STACK_ENABLED": True,
+            # Sizing
+            "RANKING_MULT_ENABLED": True, "R_Z2_PERCENTILE_SCALER_ENABLED": True,
+            "R_Z3_WT_COMPOSITE_SIZE_ENABLED": True, "CRASH_MULT_GRADIENT_ENABLED": True,
+            "R_Z5_DC_PULLBACK_SIZING_ENABLED": True,
+            # Reentry
+            "REENTRY_CROSS_FRESHNESS_ENABLED": True, "RE_2_USE_PERCENTILE_ENABLED": True,
+            "RE_3_B12_RISING_BONUS_ENABLED": True, "RE_4_B14_HA_STREAK_CONV_ENABLED": True,
+            "RE_5_B04_COMPRESSION_BONUS_ENABLED": True, "RE_6_WAVE_PHASE_GATE_ENABLED": True,
+            # Exits (delta exit ON, structure shadow only to observe)
+            "E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_3_USE_WT_STRUCTURE_EXIT_MODE": 1,
+        }),
+    ]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VERSION GUARD — fingerprint critical engine files at sweep launch
+# ══════════════════════════════════════════════════════════════════════════════
+
+_CRITICAL_ENGINE_FILES = [
+    "backtest_v8_engine.py", "backtest_v8_harness.py", "backtest_v8_precompute.py",
+    "ez_positions_quick.py", "ez_manage.py", "config.py",
+    "wt_dc_delta.py", "wt_dc_entry_scorer.py", "wt_dc_exit_scorer.py",
+]
+
+
+def _engine_fingerprint() -> dict:
+    """Compute MD5 of every critical engine file. Result embedded in CSV + sidecar JSON.
+    Any post-hoc review can verify which code version produced which results."""
+    from pathlib import Path as _P
+    base = _P(__file__).resolve().parent
+    out = {}
+    for fname in _CRITICAL_ENGINE_FILES:
+        fp = base / fname
+        if not fp.exists():
+            out[fname] = "MISSING"
+            continue
+        h = hashlib.md5()
+        with fp.open("rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        out[fname] = h.hexdigest()
+    return out
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -566,6 +743,7 @@ TIER_MAP = {
     "hedge_full": grid_hedge_full,
     "indicator_audit": grid_indicator_audit,
     "indicator_audit_v2": grid_indicator_audit_v2,
+    "indicator_audit_v3_full": grid_indicator_audit_v3_full,
 }
 
 
@@ -720,10 +898,42 @@ def main():
     grid = TIER_MAP[args.tier]()
     print(f"[sweep] tier={args.tier}  variants={len(grid)}  mode={args.mode}  account={args.account}  start={args.start}  symbols={args.symbols or 'ALL'}  workers={args.workers}")
 
+    # VERSION FINGERPRINT — print MD5 of every critical engine file so the sweep run
+    # is self-describing. Any downstream CSV consumer can verify which code version
+    # produced the results.
+    fp = _engine_fingerprint()
+    print("[sweep] engine fingerprint:")
+    for _f, _h in fp.items():
+        short = _h[:10] if _h != "MISSING" else _h
+        print(f"[sweep]   {_f:40s} {short}")
+    missing = [f for f, h in fp.items() if h == "MISSING"]
+    if missing:
+        print(f"[sweep] ❌ CRITICAL: {len(missing)} engine file(s) missing: {missing}. Refusing to run.")
+        return 2
+
     out_path = Path(args.output) if args.output else (
         RESULTS_DIR / f"backtest_v8_sweep_{args.tier}_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}.csv"
     )
     print(f"[sweep] output -> {out_path}")
+
+    # Write sidecar .version.json next to the CSV so fingerprints are never lost.
+    import socket as _sock
+    version_path = out_path.with_suffix(".version.json")
+    version_meta = {
+        "tier": args.tier,
+        "mode": args.mode,
+        "account": args.account,
+        "start": args.start,
+        "symbols": args.symbols or "ALL",
+        "host": _sock.gethostname(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "engine_fingerprint": fp,
+        "variant_count": len(grid),
+    }
+    version_path.parent.mkdir(parents=True, exist_ok=True)
+    with version_path.open("w") as _vf:
+        json.dump(version_meta, _vf, indent=2, sort_keys=True)
+    print(f"[sweep] version sidecar -> {version_path}")
 
     tasks = [
         (label, overrides, args.mode, args.account, args.start, args.symbols, args.capital, args.npz_dir, args.timeout)
