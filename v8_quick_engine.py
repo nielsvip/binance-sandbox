@@ -68,20 +68,20 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
     COOLDOWN_BARS: int = 3
-    NOLOSS_ENABLED: bool = False
+    NOLOSS_ENABLED: bool = True
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
-    CT_WT_VELOCITY_1H_MIN: float = 6.0   # 2026-04-17 coord descent: Sharpe 2.25 / 500 trades / 92.8% WR.
+    CT_WT_VELOCITY_1H_MIN: float = 8.0   # 2026-04-19 sweep: vel=8 gives sharpe=2.554 (vs 2.495 at vel=6, vs 0.46 at NOLOSS=False).
     CT_DC_CROSSOVER_SKIP_ENABLED: bool = True
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False
     CT_CHOP_4H_GATE_ENABLED: bool = False
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False
     DELTA_ENGINE_ENABLED: bool = True
     DELTA_ENTRY_ENABLED: bool = True
-    RZ_EXIT_ENABLED: bool = True
+    RZ_EXIT_ENABLED: bool = False  # 2026-04-19: disabled — premature exits lower Sharpe from 2.5 to 1.25
     SATOSHIT_ENABLED: bool = True
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
@@ -114,7 +114,7 @@ class QuickConfig:
     DC_MOMENT_ENABLED: bool = False
     DC_MOMENT_OPPOSE_THRESHOLD: float = 40.0  # dc_moment_proxy delta against side = veto
     # 2026-04-19: Chapter-E winner tested on broken data — re-sweep needed. Default OFF.
-    WINNER_PROTECT_ENABLED: bool = False
+    WINNER_PROTECT_ENABLED: bool = True  # 2026-04-19: blocks exit when gain<1% + all HTF aligned → sharpe +0.25
     WINNER_PROTECT_GAIN_PCT: float = 1.0
     K_ZONE_ENTRY_ENABLED: bool = False
     K_ZONE_LONG_THRESHOLD: int = 35
@@ -131,7 +131,7 @@ class QuickConfig:
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0
     WT_CROSSUNDER_FINAL_ENABLED: bool = False
-    WT_EXIT_MIN_TFS: int = 2
+    WT_EXIT_MIN_TFS: int = 3  # 2026-04-19: require all 3 TFs against (was 2) → sharpe 1.065→1.508 before hold boost
     MI_EXIT_ENABLED: bool = False
     # Reentry block switches (ablation-validated)
     REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True
@@ -188,9 +188,9 @@ class QuickConfig:
     # B_PRICE_CROSS_K90 and B_WT15M_CROSS now weighted=4 (primary live triggers); score=3
     # allows B_PRICE_CROSS_K90 alone (w=4≥3) or B_WT15M_CROSS alone (w=4≥3). Sweep can raise.
     STRENGTH_FILTER_ENABLED: bool = True
-    STRENGTH_MIN_SCORE: float = 3.0
+    STRENGTH_MIN_SCORE: float = 5.0  # 2026-04-19 sweep: score=5 filters to high-quality entries
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
-    MIN_HOLD_BARS: int = 10
+    MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold — prevents premature exits at small gains. Sharpe 1.508→2.554.
     # Profit target exit — v3 peak: Sharpe 1.93 on TOP3 (2026-04-16 precision sweep)
     PROFIT_TARGET_ENABLED: bool = True
     PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK (1.6 > 1.5). Range 1.2-1.8 all give Sharpe ~1.9

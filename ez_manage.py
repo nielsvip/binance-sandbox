@@ -21689,6 +21689,122 @@ async def symbol_monitoring_watchdog(trade_manager: MultiAccountTradeManager, ac
             await asyncio.sleep(15)
 
 
+_reentry_monitor_fired = {}
+
+async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) -> None:
+    """Polls all reentry data sources (long/short_reentry.json, long/short_ladder.json,
+    reduced_positions.json) every REENTRY_LIVE_MONITOR_INTERVAL_S seconds and fires a
+    guaranteed partial REENTRY via execute_now when price crosses any uncrossed level.
+    No stoch gate — partial is always guaranteed. Zero-amount entries fall back to
+    START_POSITION_SIZE. Deduplicates via _reentry_monitor_fired cache."""
+    cfg = getattr(trade_manager, 'config', config)
+    if not getattr(cfg, 'REENTRY_LIVE_MONITOR_ENABLED', True):
+        return
+    base_path = Path(getattr(cfg, 'BASE_PATH', '/Users/niels/Documents/binance'))
+    partial_pct = float(getattr(cfg, 'REENTRY_LIVE_MONITOR_PARTIAL_PCT', 0.5))
+    min_qty_usd = float(getattr(cfg, 'START_POSITION_SIZE', 55.0))
+    account_keys = set(getattr(cfg, 'ACCOUNT_KEYS', []))
+    now_ts = time.time()
+    for account_key in account_keys:
+        acc_dir = base_path / account_key
+        if not acc_dir.exists():
+            continue
+        # Collect all price levels from all sources
+        levels_to_check: list[tuple[str, float, float, str]] = []
+        for side in ('long', 'short'):
+            is_long = (side == 'long')
+            # --- reentry JSON ---
+            reentry_file = acc_dir / f'{side}_reentry.json'
+            if reentry_file.exists():
+                try:
+                    async with aiofiles.open(reentry_file, 'r') as f:
+                        rdata = json.loads(await f.read())
+                    for pk, rd in rdata.items() if isinstance(rdata, dict) else []:
+                        lvl = float(rd.get('reentry_level', 0) or 0)
+                        amt = float(rd.get('reentry_amount', 0) or 0)
+                        if lvl > 0:
+                            fire_amt = amt if amt > 0 else min_qty_usd
+                            fire_qty_usd = fire_amt * partial_pct
+                            levels_to_check.append((pk, lvl, fire_qty_usd, f'FILE_{side.upper()}_REENTRY'))
+                except Exception as _e:
+                    logger.debug(f"[REENTRY_MONITOR] {account_key}/{side}_reentry.json read error: {_e}")
+            # --- ladder JSON ---
+            ladder_file = acc_dir / f'{side}_ladder.json'
+            if ladder_file.exists():
+                try:
+                    async with aiofiles.open(ladder_file, 'r') as f:
+                        ldata = json.loads(await f.read())
+                    for pk, plan in ldata.items() if isinstance(ldata, dict) else []:
+                        levels = plan.get('levels', []) if isinstance(plan, dict) else []
+                        for entry in levels:
+                            if entry.get('crossed', False):
+                                continue
+                            lvl = float(entry.get('level', 0) or 0)
+                            qty = float(entry.get('quantity', 0) or 0)
+                            if lvl > 0:
+                                fire_qty = max(qty, min_qty_usd / max(lvl, 1e-9)) * partial_pct
+                                levels_to_check.append((pk, lvl, fire_qty * lvl, f'LADDER_{side.upper()}'))
+                except Exception as _e:
+                    logger.debug(f"[REENTRY_MONITOR] {account_key}/{side}_ladder.json read error: {_e}")
+        # --- evaluate each level ---
+        for position_key, level_price, fire_usd, source in levels_to_check:
+            try:
+                _parts = position_key.split(':')
+                if len(_parts) < 2:
+                    continue
+                _acc = _parts[0]
+                _sym_side = _parts[1]
+                _is_long = _sym_side.endswith('_LONG')
+                _sym = _sym_side.rsplit('_', 1)[0]
+                _cur_price = 0.0
+                _pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
+                if _pos:
+                    _cur_price = float(getattr(_pos, 'mark_price', 0) or 0)
+                if _cur_price <= 0:
+                    try:
+                        _cur_price, _ = await get_current_price(_sym)
+                    except Exception:
+                        continue
+                if _cur_price <= 0:
+                    continue
+                _crossed = (_is_long and _cur_price >= level_price) or (not _is_long and _cur_price <= level_price)
+                if not _crossed:
+                    continue
+                # Dedup: don't re-fire the same level within 15min
+                _cache_key = f"{position_key}:{level_price:.8f}"
+                _last_fired = _reentry_monitor_fired.get(_cache_key, 0)
+                if now_ts - _last_fired < 900:
+                    continue
+                # Position size guard — don't add if already at full size
+                if _pos and hasattr(_pos, 'max_quantity') and hasattr(_pos, 'positionAmt'):
+                    _amt = abs(float(getattr(_pos, 'positionAmt', 0) or 0))
+                    _max_q = float(getattr(_pos, 'max_quantity', 0) or 0)
+                    if _max_q > 0 and _amt >= _max_q:
+                        continue
+                fire_qty = max(fire_usd / max(_cur_price, 1e-9), min_qty_usd / max(_cur_price, 1e-9) * partial_pct)
+                _reentry_monitor_fired[_cache_key] = now_ts
+                _uid = f"LEVEL_REENTRY_{int(now_ts)}"
+                logger.warning(f"[REENTRY_MONITOR] {position_key}: {source} level={level_price:.6f} cur={_cur_price:.6f} → partial qty={fire_qty:.4f} (${fire_usd:.1f})")
+                await execute_now(trade_manager.order_queue, trade_manager, position_key, _acc, _sym, 0.0, 'BUY' if _is_long else 'SELL', 'LONG' if _is_long else 'SHORT', fire_qty, _cur_price, _uid, f"{source}_LEVEL={level_price:.6f}", False, "AUGMENT")
+            except Exception as _e:
+                logger.debug(f"[REENTRY_MONITOR] {position_key} error: {_e}")
+    # Purge old cache entries > 2h
+    cutoff = now_ts - 7200
+    for k in [k for k, v in list(_reentry_monitor_fired.items()) if v < cutoff]:
+        _reentry_monitor_fired.pop(k, None)
+
+async def _price_level_reentry_monitor_loop(trade_manager: MultiAccountTradeManager) -> None:
+    """Wrapper loop — runs _price_level_reentry_monitor every REENTRY_LIVE_MONITOR_INTERVAL_S seconds."""
+    cfg = getattr(trade_manager, 'config', config)
+    interval = int(getattr(cfg, 'REENTRY_LIVE_MONITOR_INTERVAL_S', 30))
+    logger.info(f"[REENTRY_MONITOR_LOOP] started — interval={interval}s")
+    while True:
+        try:
+            await _price_level_reentry_monitor(trade_manager)
+        except Exception as _e:
+            logger.error(f"[REENTRY_MONITOR_LOOP] error: {_e}", exc_info=True)
+        await asyncio.sleep(interval)
+
 @timed_function("periodic_evaluate_reentry_loop")
 async def periodic_evaluate_reentry_loop(trade_manager: MultiAccountTradeManager):
     try:
@@ -22932,6 +23048,7 @@ async def main():
             background_tasks.append(asyncio.create_task(order_queue.process_orders())) 
             background_tasks.append(asyncio.create_task(periodic_tasks(order_queue, trade_manager)))
             background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager)))
+            background_tasks.append(asyncio.create_task(_price_level_reentry_monitor_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(symbol_monitoring_watchdog(trade_manager, list(trade_manager._allowed_accounts))))
             background_tasks.append(asyncio.create_task(performance_report_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(outlier_scan_loop(trade_manager)))
