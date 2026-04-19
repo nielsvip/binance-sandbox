@@ -19484,6 +19484,44 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 if result:
                     trade_manager.processing_keys.discard(position_key)
                     return f"{EvalStatus.ACTION_TAKEN}:WT_PERCENTILE_EXIT"
+        # E-1 WT_EXIT_USE_DELTA (2026-04-19 default OFF) — exit when wt_composite_delta crosses threshold against position.
+        # Fires alongside existing exits. LONG exits when delta < -THR, SHORT when delta > +THR.
+        if bool(getattr(config, 'E_1_WT_EXIT_USE_DELTA_ENABLED', False)) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _e1_delta = safe_fetch_float(i.get('wt_composite_delta'), None)
+            _e1_thr = float(getattr(config, 'E_1_EXIT_DELTA_THR', 50.0))
+            if _e1_delta is not None:
+                _e1_fire = (is_long and _e1_delta < -_e1_thr) or ((not is_long) and _e1_delta > _e1_thr)
+                if _e1_fire:
+                    _e1_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    logger.warning(f"[E_1_WT_DELTA_EXIT] {position_key}: delta={_e1_delta:+.0f} thr={_e1_thr:.0f} g={_e1_g:.2f}%")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"E_1_WT_DELTA_EXIT_delta={_e1_delta:+.0f}_thr={_e1_thr:.0f}_g={_e1_g:.2f}%", 0.95)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:E_1_WT_DELTA_EXIT"
+        # E-3 USE_WT_STRUCTURE_EXIT (2026-04-19 default OFF, mode=0) — exit on wt_structure HH/HL label reversal.
+        # Modes: 0=off, 1=shadow (log only, no action), 2=on (live exit). LONG exits on LH/LL on ≥2 HTFs.
+        _e3_mode = int(getattr(config, 'E_3_USE_WT_STRUCTURE_EXIT_MODE', 0))
+        if _e3_mode > 0 and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _e3_against = 0
+            _e3_tfs = []
+            for _tf in ('15m', '1h', '4h'):
+                _struct = str(i.get(f'wt_structure_{_tf}', '') or '').upper()
+                if is_long and _struct in ('LH', 'LL'):
+                    _e3_against += 1
+                    _e3_tfs.append(f"{_tf}={_struct}")
+                elif (not is_long) and _struct in ('HH', 'HL'):
+                    _e3_against += 1
+                    _e3_tfs.append(f"{_tf}={_struct}")
+            if _e3_against >= 2:
+                _e3_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                if _e3_mode == 1:
+                    logger.info(f"[E_3_STRUCTURE_EXIT_SHADOW] {position_key}: {_e3_against}TF against {_e3_tfs} g={_e3_g:.2f}% — would exit (shadow mode)")
+                elif _e3_mode == 2:
+                    logger.warning(f"[E_3_STRUCTURE_EXIT] {position_key}: {_e3_against}TF against {_e3_tfs} g={_e3_g:.2f}%")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"E_3_STRUCTURE_EXIT_{_e3_against}TF_g={_e3_g:.2f}%", 0.95)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:E_3_STRUCTURE_EXIT"
         if is_active_position and position and config.MANAGE_REDUCE:
             _pp_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
             _pp_prev_gain = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)

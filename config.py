@@ -1395,11 +1395,8 @@ class Config:
     R_Z3_T1_MULT: float = 1.0
     R_Z3_T2_MULT: float = 1.5
     R_Z3_T3_MULT: float = 2.0
-    # R-Z4 MED. Replace crash_mult step at -40 with continuous gradient. When switch
-    # ON: mult = 1.0 + strength_scale * abs(sentiment_score) / 100 (clamped to MAX).
-    # Sweep MAX_CLAMP in [2.0, 2.5, 3.0]. Expected: removes cliff-edge at -40.
-    R_Z4_CRASH_MULT_GRADIENT_ENABLED: bool = False
-    R_Z4_CRASH_MAX_CLAMP: float = 2.5
+    # R-Z4 DONE — already wired at ez_positions_quick.py:1107-1122 (switch:
+    # CRASH_MULT_GRADIENT_ENABLED at line 1290 above). Sweep CRASH_MULT_GRADIENT_MAX in [2.0, 2.5, 3.0].
     # R-Z5 MED. Pullback-in-uptrend sizing: dc_position_15m < LOW_THR AND
     # dc_position_4h > HTF_MIN → MULT. Sweep HTF_MIN in [0.5, 0.6, 0.7].
     # Expected: classic pullback-buy setup, already 100% pre-computed.

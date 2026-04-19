@@ -498,6 +498,49 @@ def grid_indicator_audit():
     ]
 
 
+def grid_indicator_audit_v2():
+    """2026-04-19 indicator-audit v2 FULL — tests each R-S*/R-Z*/RE-*/E-* switch in isolation.
+    Each variant flips exactly ONE switch vs baseline. Sweep on BTCUSDT+ETHUSDT+SOLUSDT+DOTUSDT+LINKUSDT
+    for stat power. Baseline = all new switches OFF (current live behavior).
+    Goal: rank each switch by Sharpe delta vs baseline; top performers go to full 48-sym sweep."""
+    return [
+        ("baseline", {}),  # all new switches OFF
+        # ── R-S SCORING ──
+        ("R_S1_delta_thr50", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S1_WT_COMPOSITE_DELTA_THR": 50.0}),
+        ("R_S1_delta_thr30", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S1_WT_COMPOSITE_DELTA_THR": 30.0}),
+        ("R_S1_delta_thr80", {"R_S1_WT_COMPOSITE_DELTA_USE_ENABLED": True, "R_S1_WT_COMPOSITE_DELTA_THR": 80.0}),
+        ("R_S2_adaptive_os10", {"R_S2_WT_ADAPTIVE_OS_ENABLED": True, "R_S2_WT_PCT_OS_LONG": 10.0, "R_S2_WT_PCT_OB_SHORT": 90.0}),
+        ("R_S2_adaptive_os5", {"R_S2_WT_ADAPTIVE_OS_ENABLED": True, "R_S2_WT_PCT_OS_LONG": 5.0, "R_S2_WT_PCT_OB_SHORT": 95.0}),
+        ("R_S3_div_stack", {"R_S3_DIV_STACK_ENABLED": True}),
+        ("R_S3_div_stack_heavy", {"R_S3_DIV_STACK_ENABLED": True, "R_S3_HIDDEN_BONUS": 35.0, "R_S3_MAIN_PENALTY": -30.0}),
+        ("R_S4_ha_streak", {"R_S4_HA_STREAK_ENABLED": True}),
+        ("R_S4_ha_streak_w7", {"R_S4_HA_STREAK_ENABLED": True, "R_S4_HA_STREAK_WEIGHT": 7.0}),
+        ("R_S5_sent_vel", {"R_S5_SENT_VEL_ENABLED": True}),
+        ("R_S6_mstate_LTF", {"R_S6_WT_MSTATE_GATE_MODE": 1}),
+        ("R_S6_mstate_ALL", {"R_S6_WT_MSTATE_GATE_MODE": 2}),
+        # ── R-Z SIZING ──
+        ("R_Z1_rank_mult", {"RANKING_MULT_ENABLED": True}),
+        ("R_Z2_pct_scaler", {"R_Z2_PERCENTILE_SCALER_ENABLED": True}),
+        ("R_Z3_wt_comp_size", {"R_Z3_WT_COMPOSITE_SIZE_ENABLED": True}),
+        ("R_Z3_wt_comp_agg", {"R_Z3_WT_COMPOSITE_SIZE_ENABLED": True, "R_Z3_T1_THR": 30.0, "R_Z3_T2_THR": 60.0, "R_Z3_T3_THR": 90.0}),
+        ("R_Z4_crash_gradient", {"CRASH_MULT_GRADIENT_ENABLED": True}),
+        ("R_Z5_dc_pullback", {"R_Z5_DC_PULLBACK_SIZING_ENABLED": True}),
+        # ── RE REENTRY ──
+        ("RE_2_use_pct", {"RE_2_USE_PERCENTILE_ENABLED": True}),
+        ("RE_3_b12_rising", {"RE_3_B12_RISING_BONUS_ENABLED": True}),
+        ("RE_4_b14_streak", {"RE_4_B14_HA_STREAK_CONV_ENABLED": True}),
+        ("RE_5_b04_compression", {"RE_5_B04_COMPRESSION_BONUS_ENABLED": True}),
+        ("RE_6_wave_phase1", {"RE_6_WAVE_PHASE_GATE_ENABLED": True, "RE_6_MIN_EXPANDING_TFS": 1}),
+        ("RE_6_wave_phase2", {"RE_6_WAVE_PHASE_GATE_ENABLED": True, "RE_6_MIN_EXPANDING_TFS": 2}),
+        # ── E EXITS ──
+        ("E_1_delta_exit50", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 50.0}),
+        ("E_1_delta_exit30", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 30.0}),
+        ("E_1_delta_exit80", {"E_1_WT_EXIT_USE_DELTA_ENABLED": True, "E_1_EXIT_DELTA_THR": 80.0}),
+        ("E_3_struct_shadow", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 1}),
+        ("E_3_struct_on", {"E_3_USE_WT_STRUCTURE_EXIT_MODE": 2}),
+    ]
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -508,6 +551,7 @@ TIER_MAP = {
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
     "indicator_audit": grid_indicator_audit,
+    "indicator_audit_v2": grid_indicator_audit_v2,
 }
 
 

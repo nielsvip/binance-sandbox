@@ -1724,6 +1724,26 @@ class AdvancedSignalRater:
                     return -100.0, "BOYCOTT", "WT_BEAR_DIV_BLOCKS_LONG"
                 if (not is_long) and bool(ind.get('wt_any_bull_div', False)):
                     return -100.0, "BOYCOTT", "WT_BULL_DIV_BLOCKS_SHORT"
+            # R-G8 / R-S6: multi-TF wt_momentum_state gate.
+            # mode 0=OFF, 1=block_any_LTF_EXHAUST (3m/15m), 2=block_any_TF_EXHAUST (all 5), 3=warn_only.
+            _mstate_mode = int(getattr(config, 'R_S6_WT_MSTATE_GATE_MODE', 0))
+            if _mstate_mode > 0:
+                _mstate_tfs = ('3m', '15m') if _mstate_mode == 1 else (('3m', '15m', '1h', '4h', 'D') if _mstate_mode in (2, 3) else ())
+                _exhaust_target = 'EXHAUST_UP' if is_long else 'EXHAUST_DOWN'
+                _hits = []
+                for _tf in _mstate_tfs:
+                    _st = str(ind.get(f'wt_momentum_state_{_tf}', '') or '').upper()
+                    if _st == _exhaust_target:
+                        _hits.append(_tf)
+                if _hits:
+                    if _mstate_mode == 3:
+                        # warn-only — do not block
+                        try:
+                            logger.info(f"[R_S6_MSTATE_WARN] {position_key}: {_hits} in {_exhaust_target} — would block (mode=3)")
+                        except Exception:
+                            pass
+                    else:
+                        return -100.0, "BOYCOTT", f"R_S6_MSTATE_{'-'.join(_hits)}_{_exhaust_target}"
         if not is_hedge:
             if cand.get('is_hedge') is True: is_hedge = True
             elif "HEDGE" in str(cand.get('last_reason', '')).upper(): is_hedge = True
@@ -1898,6 +1918,28 @@ class AdvancedSignalRater:
             elif not is_long and _wt_ob_count >= 2: score += 5; reasons.append(f"WT_MULTI_OB({_wt_ob_count:.0f}TF,+5)")
             if is_long and _wt_hl_count >= 2: score += 5; reasons.append(f"WT_HL_STRUCT({_wt_hl_count:.0f},+5)")
             elif not is_long and _wt_lh_count >= 2: score += 5; reasons.append(f"WT_LH_STRUCT({_wt_lh_count:.0f},+5)")
+            # R-S1 (2026-04-19 default OFF): wt_composite_delta magnitude bonus.
+            # Pre-computed TF-weighted bias. When delta confirms side AND |delta| > THR → bonus.
+            # Complements the existing side-comp bonuses rather than replacing them.
+            if bool(getattr(config, 'R_S1_WT_COMPOSITE_DELTA_USE_ENABLED', False)):
+                _r_s1_d = safe_fetch_float(ind.get('wt_composite_delta'), None)
+                _r_s1_thr = float(getattr(config, 'R_S1_WT_COMPOSITE_DELTA_THR', 50.0))
+                if _r_s1_d is not None:
+                    if is_long and _r_s1_d > _r_s1_thr:
+                        score += 6; reasons.append(f"R_S1_CDELTA_BULL({_r_s1_d:.0f}>{_r_s1_thr:.0f},+6)")
+                    elif (not is_long) and _r_s1_d < -_r_s1_thr:
+                        score += 6; reasons.append(f"R_S1_CDELTA_BEAR({_r_s1_d:.0f}<-{_r_s1_thr:.0f},+6)")
+            # R-S2 (2026-04-19 default OFF): adaptive OB/OS using wt_percentile_15m.
+            # Replaces fixed wt1 thresholds with 200-bar percentile (self-calibrating per symbol).
+            if bool(getattr(config, 'R_S2_WT_ADAPTIVE_OS_ENABLED', False)):
+                _r_s2_pct = safe_fetch_float(ind.get('wt_percentile_15m'), -1.0)
+                if _r_s2_pct >= 0:
+                    _r_s2_os = float(getattr(config, 'R_S2_WT_PCT_OS_LONG', 10.0))
+                    _r_s2_ob = float(getattr(config, 'R_S2_WT_PCT_OB_SHORT', 90.0))
+                    if is_long and _r_s2_pct < _r_s2_os:
+                        score += 7; reasons.append(f"R_S2_PCT_OS_L({_r_s2_pct:.0f}<{_r_s2_os:.0f},+7)")
+                    elif (not is_long) and _r_s2_pct > _r_s2_ob:
+                        score += 7; reasons.append(f"R_S2_PCT_OB_S({_r_s2_pct:.0f}>{_r_s2_ob:.0f},+7)")
             if ind.get("wt_any_bull_div") and is_long: score += 10; reasons.append(f"WT_BULL_DIV({ind.get('wt_strongest_bull_div_tf')},+10)")
             elif ind.get("wt_any_bear_div") and not is_long: score += 10; reasons.append(f"WT_BEAR_DIV({ind.get('wt_strongest_bear_div_tf')},+10)")
             if is_long and _wt_bull_cross_n >= 2: score += 3; reasons.append(f"WT_MULTI_BULL_X({_wt_bull_cross_n:.0f},+3)")
@@ -13326,8 +13368,19 @@ async def evaluate_reentry_epq(ctx: dict):
     dc_high_1h = _sf(i.get('dc_high_1h'), 0); dc_high_15m = _sf(i.get('dc_high_15m'), 0)
     dc_low_1h = _sf(i.get('dc_low_1h'), 0); dc_low_15m = _sf(i.get('dc_low_15m'), 0)
     ha_3m = i.get('ha_3m', 'neutral'); ha_15m = i.get('ha_15m', 'neutral'); ha_1h = i.get('ha_1h', 'neutral')
+    # === RE-6 WAVE_PHASE precondition helper (used by B11/B15) ===
+    def _re6_wave_phase_ok() -> bool:
+        if not bool(getattr(cfg, 'RE_6_WAVE_PHASE_GATE_ENABLED', False)):
+            return True
+        _min_exp = int(getattr(cfg, 'RE_6_MIN_EXPANDING_TFS', 2))
+        _exp_cnt = 0
+        for _tf in ('15m', '1h', '4h', 'D'):
+            _ph = str(i.get(f'wt_wave_phase_{_tf}', '') or '').upper()
+            if _ph == 'EXPANDING':
+                _exp_cnt += 1
+        return _exp_cnt >= _min_exp
     # B15: STRONG TREND CONTINUATION
-    if getattr(cfg, 'REENTRY_B15_STRONG_TREND_ENABLED', True):
+    if getattr(cfg, 'REENTRY_B15_STRONG_TREND_ENABLED', True) and _re6_wave_phase_ok():
         if is_long and dc_high_4h > 0 and current_price > dc_high_4h and wt_vel_1h > 2.0 and k_1h < 85:
             log_.warning(f"[REENTRY_B15_EPQ] {position_key}: STRONG_TREND_LONG dc4h={dc_high_4h:.4f} vel1h={wt_vel_1h:.1f}")
             return _EM_Signal(action='REENTRY', reason=f'B15_STRONG_TREND_LONG_dc4h={dc_high_4h:.4f}_vel1h={wt_vel_1h:.1f}', conviction=95.0, quantity=re_qty)
@@ -13339,42 +13392,68 @@ async def evaluate_reentry_epq(ctx: dict):
         _dcbr_ok, _dcbr_reason, _dcbr_mult = _ez_check_dc_high_break_retest(i, current_price, is_long)
         if _dcbr_ok:
             _dcbr_qty = cfg.START_POSITION_SIZE * _dcbr_mult / current_price
-            log_.warning(f"[REENTRY_B04_EPQ] {position_key}: DC_RETEST {_dcbr_reason}")
-            return _EM_Signal(action='REENTRY', reason=f'B04_DC_RETEST_{_dcbr_reason}', conviction=88.0, quantity=_dcbr_qty)
+            _b04_conv = 88.0
+            # RE-5: compression bonus when bar_inside_count_15m >= threshold (coiled spring)
+            if bool(getattr(cfg, 'RE_5_B04_COMPRESSION_BONUS_ENABLED', False)):
+                _ic_thr = int(getattr(cfg, 'RE_5_INSIDE_COUNT_THR', 3))
+                _ic = _sf(i.get('bar_inside_count_15m'), 0.0)
+                if _ic >= _ic_thr:
+                    _b04_conv += float(getattr(cfg, 'RE_5_COMPRESSION_BONUS', 10.0))
+            log_.warning(f"[REENTRY_B04_EPQ] {position_key}: DC_RETEST {_dcbr_reason} conv={_b04_conv:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B04_DC_RETEST_{_dcbr_reason}', conviction=_b04_conv, quantity=_dcbr_qty)
     # B11: DC CHANNEL BREAKOUT
-    if getattr(cfg, 'REENTRY_B11_DC_BREAK_ENABLED', True):
+    if getattr(cfg, 'REENTRY_B11_DC_BREAK_ENABLED', True) and _re6_wave_phase_ok():
         if is_long and dc_high_1h > 0 and current_price > dc_high_1h * 1.001 and wt1_15m > wt2_15m:
             log_.warning(f"[REENTRY_B11_EPQ] {position_key}: DC_BREAK_LONG dc1h={dc_high_1h:.4f}")
             return _EM_Signal(action='REENTRY', reason=f'B11_DC_BREAK_LONG_dc1h={dc_high_1h:.4f}', conviction=88.0, quantity=re_qty)
         if not is_long and dc_low_1h > 0 and current_price < dc_low_1h * 0.999 and wt1_15m < wt2_15m:
             log_.warning(f"[REENTRY_B11_EPQ] {position_key}: DC_BREAK_SHORT dc1h={dc_low_1h:.4f}")
             return _EM_Signal(action='REENTRY', reason=f'B11_DC_BREAK_SHORT_dc1h={dc_low_1h:.4f}', conviction=88.0, quantity=re_qty)
-    # B02: BC156 BOTTOM BOUNCE
+    # B02: BC156 BOTTOM BOUNCE — RE-2 replaces fixed wt1_15m<-20 with wt_percentile_15m<THR
     if getattr(cfg, 'REENTRY_B02_BC156_BOTTOM_ENABLED', True):
         wt_bull_count = sum(1 for tf in ['3m','15m','1h','4h'] if (bool(i.get(f'wt_bullish_{tf}', False)) == is_long) or (not bool(i.get(f'wt_bullish_{tf}', False)) == (not is_long)))
-        if is_long and wt1_15m < -20 and wt_vel_15m > 0 and wt1_1h > wt2_1h and wt_bull_count >= 2:
-            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_LONG wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+        _b02_use_pct = bool(getattr(cfg, 'RE_2_USE_PERCENTILE_ENABLED', False))
+        _pct_os = float(getattr(cfg, 'RE_2_PCT_OS', 5.0))
+        _pct_ob = float(getattr(cfg, 'RE_2_PCT_OB', 95.0))
+        _pct_15m = _sf(i.get('wt_percentile_15m'), -1.0)
+        _long_cond = (_pct_15m < _pct_os) if (_b02_use_pct and _pct_15m >= 0) else (wt1_15m < -20)
+        _short_cond = (_pct_15m > _pct_ob) if (_b02_use_pct and _pct_15m >= 0) else (wt1_15m > 20)
+        if is_long and _long_cond and wt_vel_15m > 0 and wt1_1h > wt2_1h and wt_bull_count >= 2:
+            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_LONG wt15m={wt1_15m:.0f} pct15m={_pct_15m:.0f} vel={wt_vel_15m:.1f}")
             return _EM_Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_LONG_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
-        if not is_long and wt1_15m > 20 and wt_vel_15m < 0 and wt1_1h < wt2_1h and wt_bull_count >= 2:
-            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_SHORT wt15m={wt1_15m:.0f} vel={wt_vel_15m:.1f}")
+        if not is_long and _short_cond and wt_vel_15m < 0 and wt1_1h < wt2_1h and wt_bull_count >= 2:
+            log_.warning(f"[REENTRY_B02_EPQ] {position_key}: BC156_BOTTOM_SHORT wt15m={wt1_15m:.0f} pct15m={_pct_15m:.0f} vel={wt_vel_15m:.1f}")
             return _EM_Signal(action='REENTRY', reason=f'B02_BC156_BOTTOM_SHORT_wt15m={wt1_15m:.0f}_vel15m={wt_vel_15m:.1f}', conviction=85.0, quantity=re_qty * 1.5)
-    # B12: WT MOMENTUM
+    # B12: WT MOMENTUM — RE-3 adds conviction bonus when wt_rising_cross_count ≥ THR
     if getattr(cfg, 'REENTRY_B12_WT_MOM_ENABLED', True):
+        _b12_conv = 75.0
+        if bool(getattr(cfg, 'RE_3_B12_RISING_BONUS_ENABLED', False)):
+            _rc_thr = int(getattr(cfg, 'RE_3_RISING_COUNT_THR', 3))
+            _rc_field = 'wt_rising_cross_count' if is_long else 'wt_falling_cross_count'
+            _rc = _sf(i.get(_rc_field), 0.0)
+            if _rc >= _rc_thr:
+                _b12_conv += float(getattr(cfg, 'RE_3_CONVICTION_BONUS', 10.0))
         if is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m and wt1_1h > wt2_1h and wt_vel_3m > 1.0:
-            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_LONG vel3m={wt_vel_3m:.1f}")
-            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
+            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_LONG vel3m={wt_vel_3m:.1f} conv={_b12_conv:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_LONG_vel3m={wt_vel_3m:.1f}', conviction=_b12_conv, quantity=re_qty)
         if not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m and wt1_1h < wt2_1h and wt_vel_3m < -1.0:
-            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_SHORT vel3m={wt_vel_3m:.1f}")
-            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}', conviction=75.0, quantity=re_qty)
-    # B14: HA TREND CONFIRMATION
+            log_.info(f"[REENTRY_B12_EPQ] {position_key}: WT_MOM_SHORT vel3m={wt_vel_3m:.1f} conv={_b12_conv:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B12_WT_MOM_SHORT_vel3m={wt_vel_3m:.1f}', conviction=_b12_conv, quantity=re_qty)
+    # B14: HA TREND CONFIRMATION — RE-4 scales conviction by min(ha_streak_1h, CAP)
     if getattr(cfg, 'REENTRY_B14_HA_TREND_ENABLED', True):
         _ha_val = lambda h: 1 if h == 'green' or h == 1 else (-1 if h == 'red' or h == -1 else 0)
+        _b14_conv = 70.0
+        if bool(getattr(cfg, 'RE_4_B14_HA_STREAK_CONV_ENABLED', False)):
+            _hs_w = float(getattr(cfg, 'RE_4_HA_STREAK_WEIGHT', 5.0))
+            _hs_cap = int(getattr(cfg, 'RE_4_HA_STREAK_CAP', 5))
+            _hs = _sf(i.get('ha_streak_1h'), 0.0)
+            _b14_conv = _b14_conv + _hs_w * min(float(_hs), float(_hs_cap))
         if is_long and _ha_val(ha_3m) == 1 and _ha_val(ha_15m) == 1 and _ha_val(ha_1h) == 1 and k_3m < 60:
-            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_LONG k3m={k_3m:.0f}")
-            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_LONG_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_LONG k3m={k_3m:.0f} conv={_b14_conv:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_LONG_k3m={k_3m:.0f}', conviction=_b14_conv, quantity=re_qty)
         if not is_long and _ha_val(ha_3m) == -1 and _ha_val(ha_15m) == -1 and _ha_val(ha_1h) == -1 and k_3m > 40:
-            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_SHORT k3m={k_3m:.0f}")
-            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_SHORT_k3m={k_3m:.0f}', conviction=70.0, quantity=re_qty)
+            log_.info(f"[REENTRY_B14_EPQ] {position_key}: HA_TREND_SHORT k3m={k_3m:.0f} conv={_b14_conv:.0f}")
+            return _EM_Signal(action='REENTRY', reason=f'B14_HA_TREND_SHORT_k3m={k_3m:.0f}', conviction=_b14_conv, quantity=re_qty)
     # B10: STOCHASTIC REVERSAL
     if getattr(cfg, 'REENTRY_B10_STOCH_REV_ENABLED', True):
         if is_long and k_3m_prev <= d_3m and k_3m > d_3m and k_3m < 25 and k_15m < 40:
