@@ -396,6 +396,75 @@ def build_param_grid_stock_v2():
     }
 
 
+def build_param_grid_stock_v4():
+    """Stock max-trades sweep (2026-04-19): PT=0.1 → Sharpe 17.85 (5 syms, 400 trades).
+    Push lower PT to get more symbols qualifying and more trades.
+    VEL_GATE=False confirmed. Use start=2023-01-01 for 2yr data.
+    ~160 configs, kill floor=4.0, done in minutes."""
+    return {
+        "PROFIT_TARGET_PCT": [0.05, 0.08, 0.1, 0.12, 0.15],
+        "MIN_HOLD_BARS": [5, 10, 20, 40],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_stock_v6():
+    """Stock ultra-low PT (2026-04-19): PT=0.02 → 448 trades, Sharpe 18.53 (7 syms).
+    Push to 0.01-0.02 to see if more symbols qualify. HOLD=30-50 around proven sweet spot.
+    Use start=2023-01-01. ~96 configs, kill floor=4.0."""
+    return {
+        "PROFIT_TARGET_PCT": [0.01, 0.015, 0.02, 0.025, 0.03],
+        "MIN_HOLD_BARS": [20, 30, 40, 60],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_stock_v5():
+    """Stock max-trades phase 2 (2026-04-19): HOLD=40 best (Sharpe 17.43 vs HOLD=5 at 13.58).
+    Push PT even lower (0.02-0.05) to get more symbols qualifying.
+    VEL_GATE=False, HOLD=30-60 range around 40 sweet spot.
+    Use start=2023-01-01 for 2yr data. ~192 configs, kill floor=4.0."""
+    return {
+        "PROFIT_TARGET_PCT": [0.02, 0.03, 0.04, 0.05, 0.06, 0.08],
+        "MIN_HOLD_BARS": [20, 30, 40, 60],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
+def build_param_grid_mega_v4():
+    """Crypto max-trades regime (2026-04-19): K15M=50 + PT=0.2 + VEL=5-6 → 2,300 trades, Sharpe 7.3.
+    Tournament winner: max trades while Sharpe >4. All 11 symbols qualify.
+    Kill floor=4.0. Use start=2022-01-01 (4yr crypto data). ~4,320 configs."""
+    return {
+        "REENTRY_RALLY_K15M_MAX": [40.0, 45.0, 50.0, 55.0, 60.0],
+        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25],
+        "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "MIN_HOLD_BARS": [10, 20, 50],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.5],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -411,9 +480,14 @@ TIER_MAP = {
     "mega": build_param_grid_mega,
     "mega_v2": build_param_grid_mega_v2,
     "mega_v3": build_param_grid_mega_v3,
+    "mega_v4": build_param_grid_mega_v4,
     "mega_stock": build_param_grid_mega_stock,
     "stock_v2": build_param_grid_stock_v2,
     "stock_v3": build_param_grid_stock_v3,
+    "stock_v4": build_param_grid_stock_v4,
+    "stock_v5": build_param_grid_stock_v5,
+    "stock_v6": build_param_grid_stock_v6,
+    "mega_v4": build_param_grid_mega_v4,
 }
 
 
