@@ -15036,20 +15036,20 @@ async def main(account_key_filter: Optional[str] = None) -> None:
             all_background_tasks['hedge_monitoring'] = asyncio.create_task(hedge_monitoring_loop())
         # OBLIGATORY HEDGE SCANNER — PERMANENTLY DISABLED 2026-03-30
         # Caused 83+ position cascade across ALL accounts. NEVER RE-ENABLE.
-        async def obligatory_hedge_loop():
-            logger.warning(f"[OBLIGATORY_HEDGE_LOOP] RE-ENABLED 2026-04-18: R6 gain-heuristic bug fixed + inf back in HEDGE_ACCOUNTS + daily cap resets on wt_flip close. Cascade guards: tracker_consultation + _already_has_hedge + HEDGE_NEWBORN_GRACE prevent re-hedging hedges.")
-            while not stop_event.is_set():
-                try:
-                    await asyncio.sleep(90)
-                    for ak in allowed_accounts:
-                        if ak in getattr(config, 'HEDGE_ACCOUNTS', []):
-                            await hedge_engine.scan_and_hedge_losers(ak)
-                except asyncio.CancelledError: break
-                except Exception as e:
-                    logger.error(f"[OBLIGATORY_HEDGE_LOOP] Error: {e}")
-                    import traceback; logger.error(traceback.format_exc())
-                    await asyncio.sleep(30)
-        all_background_tasks['obligatory_hedge'] = asyncio.create_task(obligatory_hedge_loop())
+        # async def obligatory_hedge_loop():
+        #     logger.warning(f"[OBLIGATORY_HEDGE_LOOP] RE-ENABLED 2026-04-18: R6 gain-heuristic bug fixed + inf back in HEDGE_ACCOUNTS + daily cap resets on wt_flip close. Cascade guards: tracker_consultation + _already_has_hedge + HEDGE_NEWBORN_GRACE prevent re-hedging hedges.")
+        #     while not stop_event.is_set():
+        #         try:
+        #             await asyncio.sleep(90)
+        #             for ak in allowed_accounts:
+        #                 if ak in getattr(config, 'HEDGE_ACCOUNTS', []):
+        #                     await hedge_engine.scan_and_hedge_losers(ak)
+        #         except asyncio.CancelledError: break
+        #         except Exception as e:
+        #             logger.error(f"[OBLIGATORY_HEDGE_LOOP] Error: {e}")
+        #             import traceback; logger.error(traceback.format_exc())
+        #             await asyncio.sleep(30)
+        # all_background_tasks['obligatory_hedge'] = asyncio.create_task(obligatory_hedge_loop())
         if not getattr(config, 'HEDGE_MODE', False):
             logger.info("[HEDGE] HEDGE_MODE=False — full hedge engine DISABLED. Obligatory hedge scanner is ACTIVE.")
         all_background_tasks['sentiment_manager'] = asyncio.create_task(sentiment_manager.run_loop(stop_event)) 
