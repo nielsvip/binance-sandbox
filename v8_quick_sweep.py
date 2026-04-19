@@ -413,6 +413,24 @@ def build_param_grid_stock_v4():
     }
 
 
+def build_param_grid_stock_validate():
+    """Scale validation on all 262 stock symbols (2026-04-19): PT=0.02 gave negative PnL at scale.
+    Test PT=0.1-1.5 range that showed positive PnL on 12 symbols to find best real-world winner.
+    30 configs only, EARLY_ABORT=50 syms needed.
+    Run with --symbols all_stocks --stream."""
+    return {
+        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.5, 1.0],
+        "MIN_HOLD_BARS": [40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [False],
+        "RZ_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.0],
+    }
+
+
 def build_param_grid_stock_champion():
     """Single-config champion validation (2026-04-19 winner): PT=0.02, HOLD=60, VEL=False, VWAP=False.
     Run against all 259 stock symbols to validate robustness.
@@ -524,6 +542,7 @@ TIER_MAP = {
     "stock_v6": build_param_grid_stock_v6,
     "stock_v7": build_param_grid_stock_v7,
     "stock_champion": build_param_grid_stock_champion,
+    "stock_validate": build_param_grid_stock_validate,
     "mega_v4": build_param_grid_mega_v4,
 }
 

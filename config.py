@@ -252,12 +252,12 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 40.0    # 2026-04-17 final coord descent: 40 is sweet spot (+1.84 vs 50=+1.74 on 48-sym). Was 60.
+    REENTRY_RALLY_K15M_MAX: float = 100.0   # 2026-04-19 FIX: 40 was calibrated on broken B15/B11 data (DC-band NPZ bug). 100=disabled. Re-sweep pending.
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
-    REENTRY_SYMGATE_ENABLED: bool = True    # 2026-04-17 Chapter-C winner on 48-sym (+0.38 Sharpe). Was False after noisy 10-sym test.
+    REENTRY_SYMGATE_ENABLED: bool = False   # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
-    ENTRY_SYMGATE_ENABLED: bool = True      # 2026-04-17 Chapter-C winner on 48-sym. Was False after noisy 10-sym test.
+    ENTRY_SYMGATE_ENABLED: bool = False     # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
     NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside dc_4h channel — hedge instead.
     LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS_DC4H
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
@@ -398,8 +398,8 @@ class Config:
     V8Q_STRENGTH_FILTER_ENABLED: bool = True
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_HTF_MIN_ALIGNED: int = 1
-    V8Q_MIN_HOLD_BARS: int = 10
-    V8Q_WT_EXIT_MIN_TFS: int = 2
+    V8Q_MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold. Sharpe 1.508→2.554 on 48-sym crypto. Was 10.
+    V8Q_WT_EXIT_MIN_TFS: int = 3  # 2026-04-19: require all 3 TFs against. Sharpe 1.065→1.508 before hold boost. Was 2.
     V8Q_COOLDOWN_BARS: int = 3
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
@@ -618,7 +618,7 @@ class Config:
     DELTA_REENTRY_REQUIRE_NOT_EXITING: bool = True  # Delta must not be in exit state
     # === RED ZONE — structural level entry/exit using BB stdev + DC position + WT structure ===
     RZ_ENTRY_ENABLED: bool = True  # Use RED ZONE for entries (BASELINE cross, TOP breakout, BOTTOM rejection)
-    RZ_EXIT_ENABLED: bool = True  # Use RED ZONE for exits (TOP exhausted/rejection, BOTTOM failed breakdown)
+    RZ_EXIT_ENABLED: bool = False  # 2026-04-19: premature exits dropped Sharpe 2.5→1.25 on 48-sym sweep. Was True.
     RZ_TOP_BB_THRESHOLD: float = 0.85  # bb_pct_b above this = TOP zone (sweep: 0.85/0.92/0.97)
     RZ_BOT_BB_THRESHOLD: float = 0.15  # bb_pct_b below this = BOTTOM zone (sweep: 0.15/0.08/0.03)
     RZ_LEGS_MIN: float = 20.0  # Minimum legs remaining for entry (sweep: 10/20/35)
@@ -682,14 +682,14 @@ class Config:
     # Zero new strategy logic — only routes already-computed fields (0dc_moment, 0ranking_points_global, etc.) into
     # existing scoring and exit paths. All switchable so a sweep can disable individually.
     # --- Feature 1: Rank-driven conviction boost (uses 0ranking_points_global) ---
-    RANK_CONVICTION_ENABLED: bool = True
+    RANK_CONVICTION_ENABLED: bool = False  # 2026-04-19 FIX: hard block in engine ≠ score bonus in live; tested on broken data. Re-sweep pending.
     RP_STRONG_THRESHOLD: float = 70.0  # |ranking_points_global| >= this, direction matches → bonus
     RP_STRONG_BONUS: float = 15.0
     RP_WEAK_THRESHOLD: float = 30.0    # |ranking_points_global| < this → penalty (low quality symbol)
     RP_WEAK_PENALTY: float = -10.0
     RP_OPPOSITE_PENALTY: float = -20.0  # ranking_points opposite to direction + strong → heavy penalty
     # --- Feature 2: DC-moment strength gate (uses 0dc_moment) ---
-    DC_MOMENT_ENABLED: bool = True
+    DC_MOMENT_ENABLED: bool = False  # 2026-04-19 FIX: tested on broken B15/B11 data. Re-sweep pending.
     DC_MOMENT_STRONG_THRESHOLD: float = 40.0  # |dc_moment| >= this, sign matches direction → bonus
     DC_MOMENT_STRONG_BONUS: float = 10.0
     DC_MOMENT_OPPOSITE_PENALTY: float = -15.0  # dc_moment opposite to direction + strong → penalty
@@ -1104,7 +1104,7 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    CT_WT_VELOCITY_1H_MIN: float = 6.0  # 2026-04-17 coord descent: monotonic; 6.0 gives Sharpe 2.25 / 500 trades / 92.8% WR / 1.35% avg. Was 2.0.
+    CT_WT_VELOCITY_1H_MIN: float = 8.0  # 2026-04-19: clean sweep (B15/B11 DC-band fix) → vel=8 Sharpe 2.554. Was 6.0 (broken-data winner).
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
