@@ -1335,6 +1335,120 @@ class Config:
     WT_COMPOSITE_DELTA_SCORE_ENABLED: bool = True
     WT_COMPOSITE_DELTA_SCORE_THRESHOLD: float = 50.0  # delta > this adds bonus score
     WT_COMPOSITE_DELTA_SCORE_BONUS: float = 3.0       # bonus score points per threshold crossed
+    # ───────────────────────────────────────────────────────────────────────
+    # R-S SCORING ENHANCEMENTS (from indicator_audit_2026-04-18.xlsx sheet 4+5)
+    # Each default OFF. Flip one at a time and sweep the value parameter.
+    # ───────────────────────────────────────────────────────────────────────
+    # R-S1 HIGH impact. Replace per-TF wt_bullish bool counting (rate L1791-1795)
+    # with single wt_composite_delta read. Removes 5 redundant compares, exposes
+    # true magnitude. Sweep THRESHOLD in [30, 50, 80, 120]. Expected: 1.3-1.5x Sharpe.
+    R_S1_WT_COMPOSITE_DELTA_USE_ENABLED: bool = False
+    R_S1_WT_COMPOSITE_DELTA_THR: float = 50.0
+    # R-S2 HIGH. Adaptive OB/OS via wt_percentile instead of fixed wt1 thresholds.
+    # 200-bar percentile self-calibrates per symbol. Sweep WT_PCT_OS in [5,10,15,20].
+    # Expected: recovers edge on low-vol coins where fixed thresholds miss.
+    R_S2_WT_ADAPTIVE_OS_ENABLED: bool = False
+    R_S2_WT_PCT_OS_LONG: float = 10.0    # LONG triggers when wt_percentile_15m < this
+    R_S2_WT_PCT_OB_SHORT: float = 90.0   # SHORT triggers when wt_percentile_15m > this
+    # R-S3 HIGH. Divergence stacking: ≥2 HIDDEN_BULL TFs → +bonus (continuation);
+    # BEAR div on 15m+1h → -penalty. Expected: best "reversal vs continuation" signal.
+    # Sweep BONUS in [15, 25, 35], PENALTY in [-10, -20, -30].
+    R_S3_DIV_STACK_ENABLED: bool = False
+    R_S3_HIDDEN_BONUS: float = 25.0      # bonus for HIDDEN_BULL (LONG) / HIDDEN_BEAR (SHORT) on ≥2 TFs
+    R_S3_MAIN_PENALTY: float = -20.0     # penalty for main divergence against position
+    # R-S4 MED. HA streak bonus: 5 * min(ha_streak_{tf}, 5). Replaces single-bar
+    # ha=='green'/'red' check. Sweep WEIGHT in [3, 5, 7, 10]. Expected: +5-10% score
+    # granularity for trend-continuation entries.
+    R_S4_HA_STREAK_ENABLED: bool = False
+    R_S4_HA_STREAK_WEIGHT: float = 5.0
+    R_S4_HA_STREAK_TF: str = "1h"        # which TF to read ha_streak from
+    # R-S5 MED. Sentiment velocity accelerator: bonus when sign(velocity)=side AND
+    # |velocity| > Pxx. Sweep PCT in [60, 75, 90]. Expected: catches acceleration
+    # before it's reflected in ranks.
+    R_S5_SENT_VEL_ENABLED: bool = False
+    R_S5_SENT_VEL_PCT_THR: float = 75.0  # |velocity| threshold (75th percentile)
+    R_S5_SENT_VEL_BONUS: float = 5.0
+    # R-S6 MED. wt_momentum_state entry filter. Block LONG when ANY LTF in EXHAUST_UP.
+    # Modes: 0=OFF, 1=block_any_LTF_EXHAUST, 2=block_any_TF_EXHAUST, 3=warn_only.
+    # Expected: avoids chasing exhausted pumps. Similar to existing R-G5 but more TFs.
+    R_S6_WT_MSTATE_GATE_MODE: int = 0
+    # ───────────────────────────────────────────────────────────────────────
+    # R-Z SIZING ENHANCEMENTS
+    # All multiplicative on top of existing target_notional. Default 1.0 = no effect.
+    # ───────────────────────────────────────────────────────────────────────
+    # R-Z1 DONE — already wired at ez_positions_quick.py:1239-1251 (switch: RANKING_MULT_ENABLED
+    # at line 1286 above). Sweep RANKING_MULT_MAX in [1.5, 2.0, 2.5, 3.0] with MIN=0.3-0.5.
+    # R-Z2 MED. combined_percentile 3-tier size scaler. Top 10% → 1.5x, bottom 30% → 0.5x.
+    # Sweep 3 or 5 tier configs. Expected: prioritize capital on highest-quality setups.
+    R_Z2_PERCENTILE_SCALER_ENABLED: bool = False
+    R_Z2_PCT_TOP_THR: float = 90.0       # combined_percentile > this → TOP tier
+    R_Z2_PCT_BOT_THR: float = 30.0       # combined_percentile < this → BOT tier
+    R_Z2_TOP_MULT: float = 1.5
+    R_Z2_BOT_MULT: float = 0.5
+    # R-Z3 HIGH. wt_composite_long/short graduated sizing: >50 → 1x, >100 → 1.5x, >150 → 2x.
+    # Sweep TIER_THR in {[30,60,90], [50,100,150]}. Expected: replaces multi-signal
+    # voting stack (MTS/SATOSHIT) with single pre-computed number.
+    R_Z3_WT_COMPOSITE_SIZE_ENABLED: bool = False
+    R_Z3_T1_THR: float = 50.0
+    R_Z3_T2_THR: float = 100.0
+    R_Z3_T3_THR: float = 150.0
+    R_Z3_T1_MULT: float = 1.0
+    R_Z3_T2_MULT: float = 1.5
+    R_Z3_T3_MULT: float = 2.0
+    # R-Z4 MED. Replace crash_mult step at -40 with continuous gradient. When switch
+    # ON: mult = 1.0 + strength_scale * abs(sentiment_score) / 100 (clamped to MAX).
+    # Sweep MAX_CLAMP in [2.0, 2.5, 3.0]. Expected: removes cliff-edge at -40.
+    R_Z4_CRASH_MULT_GRADIENT_ENABLED: bool = False
+    R_Z4_CRASH_MAX_CLAMP: float = 2.5
+    # R-Z5 MED. Pullback-in-uptrend sizing: dc_position_15m < LOW_THR AND
+    # dc_position_4h > HTF_MIN → MULT. Sweep HTF_MIN in [0.5, 0.6, 0.7].
+    # Expected: classic pullback-buy setup, already 100% pre-computed.
+    R_Z5_DC_PULLBACK_SIZING_ENABLED: bool = False
+    R_Z5_DC_LTF_LOW_THR: float = 0.2     # LTF must be < 0.2 (near channel floor for LONG)
+    R_Z5_DC_HTF_MIN: float = 0.6         # HTF must be > 0.6 (in channel top half for LONG)
+    R_Z5_DC_PULLBACK_MULT: float = 1.5
+    # ───────────────────────────────────────────────────────────────────────
+    # RE REENTRY ENHANCEMENTS (additive inside existing blocks)
+    # Default OFF preserves original block behavior exactly.
+    # ───────────────────────────────────────────────────────────────────────
+    # RE-2 MED. B02/B09 use wt_percentile_15m < PCT_OS instead of wt1_15m < -20.
+    # Sweep PCT_OS in [3, 5, 10, 15]. Expected: adaptive OB/OS bottom detection.
+    RE_2_USE_PERCENTILE_ENABLED: bool = False
+    RE_2_PCT_OS: float = 5.0             # B02 LONG fires when wt_percentile_15m < this
+    RE_2_PCT_OB: float = 95.0            # B02 SHORT fires when wt_percentile_15m > this
+    # RE-3 MED. B12 conviction += BONUS when wt_rising_cross_count ≥ THR.
+    # Sweep BONUS in [5, 10, 15]. Expected: continuation confidence ramp.
+    RE_3_B12_RISING_BONUS_ENABLED: bool = False
+    RE_3_RISING_COUNT_THR: int = 3
+    RE_3_CONVICTION_BONUS: float = 10.0
+    # RE-4 MED. B14 conviction scaled by min(ha_streak_{tf}, CAP). Replaces flat 70.
+    # Sweep WEIGHT in [3, 5, 7]. Expected: 6-bar streak → higher conviction.
+    RE_4_B14_HA_STREAK_CONV_ENABLED: bool = False
+    RE_4_HA_STREAK_WEIGHT: float = 5.0
+    RE_4_HA_STREAK_CAP: int = 5
+    # RE-5 MED. B04 DC_RETEST bonus when bar_inside_count_15m ≥ THR (coiled spring).
+    # Sweep BONUS in [5, 10, 15]. Expected: tight ranges breaking out = backbone of momentum.
+    RE_5_B04_COMPRESSION_BONUS_ENABLED: bool = False
+    RE_5_INSIDE_COUNT_THR: int = 3
+    RE_5_COMPRESSION_BONUS: float = 10.0
+    # RE-6 MED. B11/B15 require ≥ MIN_EXPANDING TFs in wt_wave_phase=EXPANDING.
+    # Sweep MIN_EXPANDING in [1, 2, 3]. Expected: filters breakouts from chop phase.
+    # Caution: default MIN=1 (least restrictive); NPZ coverage of wt_wave_phase varies.
+    RE_6_WAVE_PHASE_GATE_ENABLED: bool = False
+    RE_6_MIN_EXPANDING_TFS: int = 2
+    # ───────────────────────────────────────────────────────────────────────
+    # E EXIT ENHANCEMENTS
+    # REPLACE existing logic — null-guard to existing path when switch OFF.
+    # ───────────────────────────────────────────────────────────────────────
+    # E-1 MED. Replace 5-TF WT_EXIT_MIN_TFS vote with wt_composite_delta threshold.
+    # LONG exits when delta < -THR (strong cross-TF bear). Sweep THR in [30, 50, 80].
+    # Expected: continuous signal better than 5-of-5 boolean vote (that produces Sharpe ≈ 0).
+    E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False
+    E_1_EXIT_DELTA_THR: float = 50.0
+    # E-3 MED. Use wt_structure_{tf} HH/HL labels in exit. Modes: 0=off, 1=shadow
+    # (log only, no action), 2=on (live exits). Expected: single source of truth for
+    # structure break; eliminates reimplementation bugs in high/low lookups.
+    E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0
     # ═══════════════════════════════════════════════════════════════════════
     # END INDICATOR-AUDIT SWITCHES
     # ═══════════════════════════════════════════════════════════════════════

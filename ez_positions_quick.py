@@ -1248,7 +1248,41 @@ def calculate_dynamic_quantity(symbol: str, current_price: float, score: int, co
             rank_mult = max(_min, min(_max, float(_rm)))
         except Exception:
             rank_mult = 1.0
-    target_notional = base_usdc_size * mode_mult * ratio_mult * alpha_mult * score_mult * history_mult * crash_mult * value_mult * dc_mult * knife_penalty * level_mult * perf_mult * _mts_conv_mult * _sat_mult * rank_mult
+    # R-Z2 PERCENTILE_SCALER — combined_percentile 3-tier size scaler
+    r_z2_mult = 1.0
+    if bool(getattr(config, 'R_Z2_PERCENTILE_SCALER_ENABLED', False)):
+        _cp = safe_fetch_float(indicators.get('combined_percentile'), -1.0) if indicators else -1.0
+        if _cp >= 0:
+            _top_thr = float(getattr(config, 'R_Z2_PCT_TOP_THR', 90.0))
+            _bot_thr = float(getattr(config, 'R_Z2_PCT_BOT_THR', 30.0))
+            if _cp >= _top_thr: r_z2_mult = float(getattr(config, 'R_Z2_TOP_MULT', 1.5))
+            elif _cp <= _bot_thr: r_z2_mult = float(getattr(config, 'R_Z2_BOT_MULT', 0.5))
+    # R-Z3 WT_COMPOSITE_SIZE — graduated sizing from wt_composite_long/short
+    r_z3_mult = 1.0
+    if bool(getattr(config, 'R_Z3_WT_COMPOSITE_SIZE_ENABLED', False)) and indicators:
+        _cl_field = 'wt_composite_long' if is_long else 'wt_composite_short'
+        _cl = safe_fetch_float(indicators.get(_cl_field), 0.0)
+        _t1 = float(getattr(config, 'R_Z3_T1_THR', 50.0))
+        _t2 = float(getattr(config, 'R_Z3_T2_THR', 100.0))
+        _t3 = float(getattr(config, 'R_Z3_T3_THR', 150.0))
+        if _cl >= _t3: r_z3_mult = float(getattr(config, 'R_Z3_T3_MULT', 2.0))
+        elif _cl >= _t2: r_z3_mult = float(getattr(config, 'R_Z3_T2_MULT', 1.5))
+        elif _cl >= _t1: r_z3_mult = float(getattr(config, 'R_Z3_T1_MULT', 1.0))
+    # R-Z5 DC_PULLBACK — pullback-in-uptrend sizing
+    r_z5_mult = 1.0
+    if bool(getattr(config, 'R_Z5_DC_PULLBACK_SIZING_ENABLED', False)) and indicators:
+        _ltf = safe_fetch_float(indicators.get('dc_position_15m'), -1.0)
+        _htf = safe_fetch_float(indicators.get('dc_position_4h'), -1.0)
+        _ltf_lo = float(getattr(config, 'R_Z5_DC_LTF_LOW_THR', 0.2))
+        _htf_min = float(getattr(config, 'R_Z5_DC_HTF_MIN', 0.6))
+        if _ltf >= 0 and _htf >= 0:
+            # LONG: LTF near channel floor (pullback) + HTF in upper half (uptrend)
+            if is_long and _ltf < _ltf_lo and _htf > _htf_min:
+                r_z5_mult = float(getattr(config, 'R_Z5_DC_PULLBACK_MULT', 1.5))
+            # SHORT mirror: LTF near ceiling + HTF in lower half
+            elif (not is_long) and _ltf > (1.0 - _ltf_lo) and _htf < (1.0 - _htf_min):
+                r_z5_mult = float(getattr(config, 'R_Z5_DC_PULLBACK_MULT', 1.5))
+    target_notional = base_usdc_size * mode_mult * ratio_mult * alpha_mult * score_mult * history_mult * crash_mult * value_mult * dc_mult * knife_penalty * level_mult * perf_mult * _mts_conv_mult * _sat_mult * rank_mult * r_z2_mult * r_z3_mult * r_z5_mult
     max_notional = base_usdc_size * (15.0 if army_deployed else (8.0 if _mts_conv_mult >= 2.0 else 6.0)) * min(perf_mult, 3.0)
     target_notional = min(target_notional, max_notional)
     raw_qty = target_notional / current_price
@@ -1894,6 +1928,42 @@ class AdvancedSignalRater:
                     score += _cd_bonus; reasons.append(f"WT_CD_BULL({_cd_s:.0f},+{_cd_bonus:.0f})")
                 elif not is_long and _cd_s < -_cd_thresh:
                     score += _cd_bonus; reasons.append(f"WT_CD_BEAR({_cd_s:.0f},+{_cd_bonus:.0f})")
+        # === R-S3 DIV_STACK — divergence stacking bonus/penalty ===
+        if bool(getattr(config, 'R_S3_DIV_STACK_ENABLED', False)) and not is_exit:
+            _hid_bonus = float(getattr(config, 'R_S3_HIDDEN_BONUS', 25.0))
+            _main_pen = float(getattr(config, 'R_S3_MAIN_PENALTY', -20.0))
+            _hid_cnt = 0
+            _main_against = 0
+            for _tf in ('3m', '15m', '1h', '4h', 'D'):
+                _div = str(ind.get(f'wt_divergence_{_tf}', '') or '').upper()
+                if is_long:
+                    if _div == 'HIDDEN_BULL': _hid_cnt += 1
+                    elif _div == 'BEAR' and _tf in ('15m', '1h'): _main_against += 1
+                else:
+                    if _div == 'HIDDEN_BEAR': _hid_cnt += 1
+                    elif _div == 'BULL' and _tf in ('15m', '1h'): _main_against += 1
+            if _hid_cnt >= 2:
+                score += _hid_bonus; reasons.append(f"R_S3_HIDDEN_DIV({_hid_cnt}TF,+{_hid_bonus:.0f})")
+            if _main_against >= 1:
+                score += _main_pen; reasons.append(f"R_S3_MAIN_DIV_AGAINST({_main_against}TF,{_main_pen:.0f})")
+        # === R-S4 HA_STREAK — bonus scales by consecutive HA color streak ===
+        if bool(getattr(config, 'R_S4_HA_STREAK_ENABLED', False)) and not is_exit:
+            _ha_tf = str(getattr(config, 'R_S4_HA_STREAK_TF', '1h'))
+            _ha_w = float(getattr(config, 'R_S4_HA_STREAK_WEIGHT', 5.0))
+            _ha_streak = safe_fetch_float(ind.get(f'ha_streak_{_ha_tf}'), 0.0)
+            _ha_color = str(ind.get(f'ha_{_ha_tf}', '') or '').lower()
+            _ha_aligned = (is_long and _ha_color == 'green') or ((not is_long) and _ha_color == 'red')
+            if _ha_aligned and _ha_streak > 0:
+                _bonus = _ha_w * min(float(_ha_streak), 5.0)
+                score += _bonus; reasons.append(f"R_S4_HA_STREAK({_ha_tf}={_ha_streak:.0f},+{_bonus:.0f})")
+        # === R-S5 SENT_VEL — sentiment velocity accelerator ===
+        if bool(getattr(config, 'R_S5_SENT_VEL_ENABLED', False)) and not is_exit:
+            _sv = safe_fetch_float(ind.get('0sentiment_velocity', ind.get('velocity', 0)), 0.0)
+            _sv_thr = float(getattr(config, 'R_S5_SENT_VEL_PCT_THR', 75.0))
+            _sv_bonus = float(getattr(config, 'R_S5_SENT_VEL_BONUS', 5.0))
+            _sv_align = (is_long and _sv > 0) or ((not is_long) and _sv < 0)
+            if _sv_align and abs(_sv) >= _sv_thr:
+                score += _sv_bonus; reasons.append(f"R_S5_SENT_VEL({_sv:+.0f},+{_sv_bonus:.0f})")
         # === MARKET REGIME DETECTION (replaces old ADX_REGIME_FILTER) ===
         _regime_info = None
         _regime_params = None
