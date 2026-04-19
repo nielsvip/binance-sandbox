@@ -413,6 +413,41 @@ def build_param_grid_stock_v4():
     }
 
 
+def build_param_grid_stock_champion():
+    """Single-config champion validation (2026-04-19 winner): PT=0.02, HOLD=60, VEL=False, VWAP=False.
+    Run against all 259 stock symbols to validate robustness.
+    1 config only — fast champion verification."""
+    return {
+        "PROFIT_TARGET_PCT": [0.02],
+        "MIN_HOLD_BARS": [60],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [False],
+        "RZ_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+    }
+
+
+def build_param_grid_stock_v7():
+    """Stock 4yr data + VWAP filter test (2026-04-19): vwap_D now in NPZ.
+    PT=0.02 confirmed winner. Use start=2021-01-01 for 4yr data → more trades + more qualifying symbols.
+    Test VWAP_FILTER_ENABLED=True now that vwap_D is populated.
+    ~144 configs, kill floor=4.0, done in minutes."""
+    return {
+        "PROFIT_TARGET_PCT": [0.015, 0.02, 0.025],
+        "MIN_HOLD_BARS": [40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
 def build_param_grid_stock_v6():
     """Stock ultra-low PT (2026-04-19): PT=0.02 → 448 trades, Sharpe 18.53 (7 syms).
     Push to 0.01-0.02 to see if more symbols qualify. HOLD=30-50 around proven sweet spot.
@@ -487,6 +522,8 @@ TIER_MAP = {
     "stock_v4": build_param_grid_stock_v4,
     "stock_v5": build_param_grid_stock_v5,
     "stock_v6": build_param_grid_stock_v6,
+    "stock_v7": build_param_grid_stock_v7,
+    "stock_champion": build_param_grid_stock_champion,
     "mega_v4": build_param_grid_mega_v4,
 }
 
