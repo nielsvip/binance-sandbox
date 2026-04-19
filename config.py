@@ -1338,6 +1338,23 @@ class Config:
     # ═══════════════════════════════════════════════════════════════════════
     # END INDICATOR-AUDIT SWITCHES
     # ═══════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════════
+    # REENTRY GUARANTEE SWITCHES (2026-04-19)
+    # ═══════════════════════════════════════════════════════════════════════
+    # TIER1: always fire partial when price crosses exit level, even when k_3m > 95 (exhausted)
+    REENTRY_EXHAUSTED_PARTIAL_ENABLED: bool = True
+    # B16: 200 SMA pullback — price returns to 200SMA after exit, HTF still trending → 150-300%
+    REENTRY_B16_SMA200_PULLBACK_ENABLED: bool = True
+    REENTRY_B16_SMA200_PROX_PCT: float = 0.005        # within 0.5% of sma_200_1h triggers
+    REENTRY_B16_SIZE_MULT_STRONG: float = 3.0          # 300% when wt_vel_1h confirms trend still on
+    REENTRY_B16_SIZE_MULT_WEAK: float = 1.5            # 150% when vel weak / move fading
+    # LIVE MONITOR: poll all reentry JSON sources every N seconds
+    REENTRY_LIVE_MONITOR_ENABLED: bool = True
+    REENTRY_LIVE_MONITOR_INTERVAL_S: int = 30          # check ladder + reentry files every 30s
+    REENTRY_LIVE_MONITOR_PARTIAL_PCT: float = 0.5      # ladder level fires 50% of normal size
+    # ═══════════════════════════════════════════════════════════════════════
+    # END REENTRY GUARANTEE SWITCHES
+    # ═══════════════════════════════════════════════════════════════════════
 
     def __post_init__(self):
         self._INSTANCES.add(self)

@@ -12310,14 +12310,21 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _px_d1m = safe_fetch_float(indicators.get('stoch_d_1m', 50), 50)
                         _px_exhausted = (is_long and _px_k3m > 95) or (not is_long and _px_k3m < 5)
                         _px_momentum = (is_long and (_px_k3m > _px_k3m_prev or _px_k1m > _px_d1m)) or (not is_long and (_px_k3m < _px_k3m_prev or _px_k1m < _px_d1m))
-                        if _px_crossed and not _px_exhausted:
+                        if _px_crossed:
                             should_trade = True
                             _dc_breakout_entry = True
-                            _reentry_tier = 'TIER1'
-                            score = max(score, 20.0)
-                            reason = f"TIER1_PRICE_CROSS_REENTRY_exit{_reentry_px:.4f}_cur{current_price:.4f}_k3m{_px_k3m:.0f}"
-                            rec = "STRONG_BUY" if is_long else "STRONG_SELL"
-                            logger.warning(f"[TIER1_REENTRY] {position_key}: Price {current_price:.6f} crossed exit {_reentry_px:.6f} by >{_px_cross_pct*100:.1f}% — FORCED ENTRY (k3m={_px_k3m:.0f})")
+                            if _px_exhausted and getattr(config, 'REENTRY_EXHAUSTED_PARTIAL_ENABLED', True):
+                                _reentry_tier = 'TIER1_PARTIAL'
+                                score = max(score, 12.0)
+                                reason = f"TIER1_PARTIAL_EXHAUSTED_exit{_reentry_px:.4f}_cur{current_price:.4f}_k3m{_px_k3m:.0f}"
+                                rec = "BUY" if is_long else "SELL"
+                                logger.warning(f"[TIER1_PARTIAL] {position_key}: Price crossed exit {_reentry_px:.6f}→{current_price:.6f} EXHAUSTED(k3m={_px_k3m:.0f}) — guaranteed partial")
+                            elif not _px_exhausted:
+                                _reentry_tier = 'TIER1'
+                                score = max(score, 20.0)
+                                reason = f"TIER1_PRICE_CROSS_REENTRY_exit{_reentry_px:.4f}_cur{current_price:.4f}_k3m{_px_k3m:.0f}"
+                                rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                                logger.warning(f"[TIER1_REENTRY] {position_key}: Price {current_price:.6f} crossed exit {_reentry_px:.6f} by >{_px_cross_pct*100:.1f}% — FORCED ENTRY (k3m={_px_k3m:.0f})")
                         elif _trend_past_exit and _px_momentum and not _px_exhausted and _min_since_exit_epq >= _t2_min_min:
                             should_trade = True
                             _dc_breakout_entry = True
@@ -13306,6 +13313,22 @@ async def evaluate_reentry_epq(ctx: dict):
         if not is_long and k_3m_prev >= d_3m and k_3m < d_3m and k_3m > 75 and k_15m > 60:
             log_.info(f"[REENTRY_B10_EPQ] {position_key}: STOCH_REV_SHORT k3m={k_3m:.0f}")
             return _EM_Signal(action='REENTRY', reason=f'B10_STOCH_REV_SHORT_k3m={k_3m:.0f}_k15m={k_15m:.0f}', conviction=72.0, quantity=re_qty)
+    # B16: 200 SMA PULLBACK — price returns to 200SMA after exit, HTF trend intact → 150-300%
+    if getattr(cfg, 'REENTRY_B16_SMA200_PULLBACK_ENABLED', True):
+        _sma1h = _sf(i.get('sma_200_1h', 0), 0.0)
+        _k4h_b16 = _sf(i.get('stoch_k_4h', 50), 50.0)
+        if _sma1h > 0 and current_price > 0:
+            _prox = abs(current_price - _sma1h) / _sma1h
+            _prox_max = float(getattr(cfg, 'REENTRY_B16_SMA200_PROX_PCT', 0.005))
+            if _prox <= _prox_max:
+                _wt1h_ok = (is_long and wt1_1h > wt2_1h) or (not is_long and wt1_1h < wt2_1h)
+                _htf_k_ok = (is_long and k_1h > 35 and _k4h_b16 > 35) or (not is_long and k_1h < 65 and _k4h_b16 < 65)
+                if _wt1h_ok and _htf_k_ok:
+                    _vel_strong = (is_long and wt_vel_1h > 1.0) or (not is_long and wt_vel_1h < -1.0)
+                    _mult = float(getattr(cfg, 'REENTRY_B16_SIZE_MULT_STRONG', 3.0)) if _vel_strong else float(getattr(cfg, 'REENTRY_B16_SIZE_MULT_WEAK', 1.5))
+                    _sma_qty = re_qty * _mult
+                    log_.warning(f"[REENTRY_B16_EPQ] {position_key}: SMA200_PULLBACK sma1h={_sma1h:.4f} prox={_prox*100:.2f}% mult={_mult:.1f}x vel1h={wt_vel_1h:.1f}")
+                    return _EM_Signal(action='REENTRY', reason=f'B16_SMA200_PULLBACK_prox={_prox*100:.2f}%_mult={_mult:.1f}x_vel={wt_vel_1h:.1f}', conviction=88.0, quantity=_sma_qty)
     # B01: WT 2/3 IN FAVOR — default OFF (ablation noise), switch kept for sweep
     if getattr(cfg, 'REENTRY_B01_WT_2of3_ENABLED', False):
         if is_long:
