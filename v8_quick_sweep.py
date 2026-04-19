@@ -27,14 +27,16 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 from v8_quick_engine import (
-    QuickConfig, load_npz, simulate,
+    QuickConfig, load_npz, iter_npz, simulate,
     FAST_SYMBOLS_CRYPTO, FAST_SYMBOLS_TRADIER
 )
 
 _WORKER_STORES = None
 _WORKER_MODE = None
+_WORKER_NPZ_PARAMS = None
 
 def _worker_init_shared(npz_dir, mode, symbols_list, start_date):
+    """Pre-load all NPZ into worker heap. Fast per config, but uses full NPZ RAM."""
     global _WORKER_STORES, _WORKER_MODE
     _WORKER_MODE = mode
     _WORKER_STORES = load_npz(mode, symbols_list, start_date, npz_dir)
@@ -42,6 +44,21 @@ def _worker_init_shared(npz_dir, mode, symbols_list, start_date):
 def run_one_config_shared(payload):
     cfg_dict, run_id = payload
     return _run_config_with_stores(_WORKER_STORES, _WORKER_MODE, cfg_dict, run_id)
+
+def _worker_init_streaming(npz_dir, mode, symbols_list, start_date):
+    """Streaming init: store params only. NPZ loaded one symbol at a time per config.
+    Peak RAM per worker = 1 symbol NPZ, not all symbols. Allows many more workers."""
+    global _WORKER_NPZ_PARAMS, _WORKER_MODE
+    _WORKER_MODE = mode
+    _WORKER_NPZ_PARAMS = (npz_dir, mode, symbols_list, start_date)
+
+def run_one_config_streaming(payload):
+    """Streaming worker: loads NPZ symbols one at a time via iter_npz generator.
+    OS page cache deduplicates repeated reads across concurrent workers."""
+    cfg_dict, run_id = payload
+    npz_dir, mode, symbols_list, start_date = _WORKER_NPZ_PARAMS
+    stores = iter_npz(mode, symbols_list, start_date, npz_dir)
+    return _run_config_with_stores(stores, mode, cfg_dict, run_id)
 
 BASE_PATH = Path(__file__).resolve().parent
 
@@ -297,8 +314,8 @@ def build_param_grid_mega_v2():
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [11],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.05],
     }
 
 
@@ -401,6 +418,8 @@ def main():
     parser.add_argument("--symbols", type=str, default="fast")
     parser.add_argument("--start", type=str, default="2022-01-01")
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--stream", action="store_true",
+                        help="Stream NPZ one symbol at a time per config (low RAM, allows many workers)")
     parser.add_argument("--tier", type=str, default="entry_gates", choices=list(TIER_MAP.keys()))
     parser.add_argument("--npz-dir", type=str, default="")
     parser.add_argument("--limit", type=int, default=0, help="Max configs to run (0=all)")
@@ -533,14 +552,22 @@ def main():
                     print(f"  KILL-RULE TRIGGERED: best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} after {completed} configs")
                     break
         else:
-            # Shared-stores fast path: each worker loads NPZ once at init,
-            # then processes configs without reloading. ~10x faster than per-config load.
+            # Streaming mode (--stream): each worker loads NPZ symbols one at a time per config.
+            # Peak RAM per worker = 1 symbol NPZ. OS page cache shared across workers.
+            # Allows workers=14 on 30GB machines (vs workers=2 for pre-loaded approach).
+            # Shared mode (default): each worker pre-loads all NPZ at init (~full NPZ RAM per worker).
+            if args.stream:
+                init_fn = _worker_init_streaming
+                worker_fn = run_one_config_streaming
+            else:
+                init_fn = _worker_init_shared
+                worker_fn = run_one_config_shared
             with ProcessPoolExecutor(
                 max_workers=args.workers,
-                initializer=_worker_init_shared,
+                initializer=init_fn,
                 initargs=(npz_dir, args.mode, symbols_list, args.start)
             ) as executor:
-                futures = {executor.submit(run_one_config_shared, (t[4], t[5])): t for t in todo}
+                futures = {executor.submit(worker_fn, (t[4], t[5])): t for t in todo}
                 for future in as_completed(futures):
                     try:
                         result = future.result()
