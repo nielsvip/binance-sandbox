@@ -67,7 +67,7 @@ class QuickConfig:
     LTF: str = "3m"   # crypto default — lowest timeframe for entry/exit signals. Stocks: set to "5m" in apply_tradier_defaults.
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
-    COOLDOWN_BARS: int = 3
+    COOLDOWN_BARS: int = 0
     NOLOSS_ENABLED: bool = True  # match live STRICT_NO_LOSS; mark-to-market at sim end handles honesty
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
@@ -93,7 +93,7 @@ class QuickConfig:
     ENTRY_SYMGATE_ENABLED: bool = False
     REENTRY_SYMGATE_ENABLED: bool = False
     # Min-gap cooldown in bars between exit and next entry. 0 = disabled (use COOLDOWN_BARS only).
-    REENTRY_MIN_GAP_BARS: int = 5  # 2026-04-17 Chapter-D bundle value (~15min on 3m). Was 0.
+    REENTRY_MIN_GAP_BARS: int = 0  # reenter ASAP — no gap between exit and next entry signal
     # Stoch-K zone gate — disabled by default (LONG=0 always passes, SHORT=100 always passes).
     ENTRY_ZONE_LONG: float = 0.0
     ENTRY_ZONE_SHORT: float = 100.0
@@ -537,6 +537,13 @@ class QuickConfig:
         self.DC_MOMENT_OPPOSE_THRESHOLD = 40.0
         self.WINNER_PROTECT_ENABLED = True
         self.WINNER_PROTECT_GAIN_PCT = 1.5
+        # 2026-04-19 FIX: MIN_HOLD_BARS defaults to 250 (crypto 12.5h). For tradier "exit at
+        # slowdown" model, that equals 62.5h hold on 15m base — blocks ALL exits → WR=39%.
+        # Tradier has no hedge engine and exits whenever momentum slows (in gain). Reset to 4
+        # bars (60min on 15m base) so exits fire promptly. Sweepable.
+        self.MIN_HOLD_BARS = 4
+        # Tradier has no simulated hedge — disable so counter-positions don't contaminate P&L.
+        self.HEDGE_ENABLED = False
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -1318,17 +1325,17 @@ def simulate(stores, cfg, capital=10000.0):
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    # Continuous hedge condition — true every bar gain<0 AND LTF+1h WT bearish (LONG main).
-                    # Hedge opens/closes/reopens purely on this condition, no NOLOSS event needed.
-                    if is_long:
-                        hc = live_pnl < 0 and _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
-                    else:
-                        hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
-                    if hc and not hedge_in_pos:
-                        hedge_in_pos = True; hedge_ep = px
-                    elif not hc and hedge_in_pos and hedge_ep > 0:
-                        h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
-                        all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                    # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
+                    if getattr(cfg, 'HEDGE_ENABLED', True):
+                        if is_long:
+                            hc = live_pnl < 0 and _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                        else:
+                            hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
+                        if hc and not hedge_in_pos:
+                            hedge_in_pos = True; hedge_ep = px
+                        elif not hc and hedge_in_pos and hedge_ep > 0:
+                            h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                            all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     # Profit target (live_pnl>=pt_pct is mutually exclusive with hc, so hedge is already closed)
                     if pt_enabled and live_pnl >= pt_pct:
                         all_pnl.append(pt_pct); sym_pnl.append(pt_pct)

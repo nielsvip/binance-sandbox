@@ -556,6 +556,46 @@ def build_param_grid_mega_v4():
     }
 
 
+def build_param_grid_hunt_crypto():
+    """Small-sample hunt — honest engine (hedge simulated, COOLDOWN=0).
+    Goal: 10,000+ Sharpe>4 results on fast 11 symbols, 1yr data.
+    Wide grid ~92k configs. Run --kill-sharpe 4.0 so CSV only accumulates winners.
+    EARLY_ABORT floor=2.0 kills garbage fast. ~4-5h on 14 workers."""
+    return {
+        "MIN_HOLD_BARS": [1, 5, 10, 20, 50],
+        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 100.0],
+        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5, 2.0],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "RZ_EXIT_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+    }
+
+
+def build_param_grid_hunt_stock():
+    """Small-sample stock hunt — honest engine (hedge simulated, COOLDOWN=0).
+    Goal: 10,000+ Sharpe>4 results on fast 12 symbols, 1yr data.
+    ~92k configs. Run --kill-sharpe 4.0 --mode tradier --start 2024-01-01.
+    EARLY_ABORT floor=2.0. ~4-5h on 18 workers."""
+    return {
+        "MIN_HOLD_BARS": [1, 5, 10, 20, 40, 80],
+        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1.0, 1.5],
+        "REENTRY_RALLY_K15M_MAX": [30.0, 50.0, 70.0, 100.0],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "RZ_EXIT_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [5],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -584,6 +624,8 @@ TIER_MAP = {
     "stock_validate2": build_param_grid_stock_validate2,
     "mega_v5": build_param_grid_mega_v5,
     "mega_v4": build_param_grid_mega_v4,
+    "hunt_crypto": build_param_grid_hunt_crypto,
+    "hunt_stock": build_param_grid_hunt_stock,
 }
 
 
