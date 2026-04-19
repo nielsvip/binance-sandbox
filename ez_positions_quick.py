@@ -22,35 +22,49 @@ import aiofiles.os as aio_os
 import aiohttp
 import numpy as np
 import pandas as pd
-from dateutil.parser import isoparse
-from requests.adapters import HTTPAdapter
-
 from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
+from dateutil.parser import isoparse
+from requests.adapters import HTTPAdapter
+
 from config import Config
-from wt_dc_delta import DeltaTracker
-from ez_manage import MultiAccountTradeManager, OrderQueue
-from ez_manage import TradingPolicy as trading_policy
-from ez_manage import (_last_events_cache_time, generate_unique_id,
-                       load_accounts, minutes_since,
-                       verify_trade_via_websocket)
+
 # Helpers needed by the ported reentry loops (ez_positions_quick.py OWNS these loops now).
 # We still import the small leaf helpers — they are not zombie logic; they are stateless
 # helpers that live in ez_manage for historical reasons.
+from ez_manage import (
+    MultiAccountTradeManager,
+    OrderQueue,
+    _last_events_cache_time,
+    generate_unique_id,
+    load_accounts,
+    minutes_since,
+    verify_trade_via_websocket,
+)
 from ez_manage import Signal as _EM_Signal
+from ez_manage import TradingPolicy as trading_policy
+from ez_manage import check_dc_high_break_retest as _ez_check_dc_high_break_retest
+from ez_manage import check_reentry_delta_tolerant as _ez_check_reentry_delta_tolerant
 from ez_manage import ii as _ez_ii
 from ez_manage import price as _ez_price
 from ez_manage import queue_trade_action as _ez_queue_trade_action
-from ez_manage import check_reentry_delta_tolerant as _ez_check_reentry_delta_tolerant
-from ez_manage import check_dc_high_break_retest as _ez_check_dc_high_break_retest
 from ez_positions_service import bootstrap_position_service
 from ez_share_ind import get_shared_memory_client
-from utils import (SimpleRedisManager, construct_position_key,
-                   force_usdc_in_list, get_current_environment,
-                   get_current_price, is_hedge_account,
-                   is_strict_no_loss_account, load_environment_from_gpg,
-                   parse_position_key, safe_datetime, safe_fetch_float)
+from utils import (
+    SimpleRedisManager,
+    construct_position_key,
+    force_usdc_in_list,
+    get_current_environment,
+    get_current_price,
+    is_hedge_account,
+    is_strict_no_loss_account,
+    load_environment_from_gpg,
+    parse_position_key,
+    safe_datetime,
+    safe_fetch_float,
+)
+from wt_dc_delta import DeltaTracker
 
 try:
     import resource
@@ -2087,7 +2101,7 @@ class AdvancedSignalRater:
         _regime_params = None
         if getattr(config, 'REGIME_DETECTION_ENABLED', False) and not is_exit:
             try:
-                from ez_regime import get_symbol_regime, get_regime_params
+                from ez_regime import get_regime_params, get_symbol_regime
                 _regime_info = get_symbol_regime(ind, symbol, config)
                 _regime_params = get_regime_params(_regime_info['mode'], account_key, config)
                 score += _regime_params.get('k_zone_bonus', 0) - 25  # adjust K-zone bonus relative to default 25
@@ -2924,7 +2938,7 @@ class AdvancedSignalRater:
             # Regime detection for exits (separate from entry path above)
             if getattr(config, 'REGIME_DETECTION_ENABLED', False) and _regime_info is None:
                 try:
-                    from ez_regime import get_symbol_regime, get_regime_params
+                    from ez_regime import get_regime_params, get_symbol_regime
                     _regime_info = get_symbol_regime(ind, symbol, config)
                     _regime_params = get_regime_params(_regime_info['mode'], account_key, config)
                 except Exception:
@@ -4493,7 +4507,8 @@ class HedgeEngine:
                         if isinstance(_opened_at, (int, float)):
                             _age_s = time.time() - float(_opened_at)
                         else:
-                            from datetime import datetime as _dt, timezone as _tz
+                            from datetime import datetime as _dt
+                            from datetime import timezone as _tz
                             _dt_parsed = _dt.fromisoformat(str(_opened_at).replace('Z','+00:00')) if not isinstance(_opened_at, _dt) else _opened_at
                             if _dt_parsed.tzinfo is None: _dt_parsed = _dt_parsed.replace(tzinfo=_tz.utc)
                             _age_s = (_dt.now(_tz.utc) - _dt_parsed).total_seconds()
@@ -6146,6 +6161,7 @@ class HedgeEngine:
         if qty * current_price < 5.0: return True
         # FIX 2026-04-08: Route through execute_trade_wrapper — NEVER bypass _pos_is_open + _open_in_flight guards
         logger.critical(f"[HEDGE_SAME] Opening {hedge_side} {hedge_symbol} ({qty:.6f} = ${qty*current_price:.2f}) to cover {origin_side} {symbol}")
+        if self.positions_service.positions_by_account.get(account_key, {})[hedge_key].positionAmt > 0 : return
         success, failure_reason = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=positionAmt, action='OPEN', current_price=current_price, qty=qty, reason=f"HEDGE_PROTECT_{origin_side}_LOSS", override_qty=qty, already_locked=False, is_hedge=True, hedge_for=f"{account_key}:{symbol}_{origin_side}", data_manager=self.data_manager)
         if not success:
             logger.warning(f"[HEDGE_SAME_BLOCKED] {hedge_key}: execute_trade_wrapper rejected: {failure_reason}")
