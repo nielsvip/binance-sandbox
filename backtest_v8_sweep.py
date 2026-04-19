@@ -463,6 +463,45 @@ def grid_reentry_killed_rerun():
     ]
 
 
+def grid_indicator_audit():
+    """2026-04-18 indicator-audit — A/B ablation for the 6 new entry switches.
+    Each variant flips ONE switch vs baseline. Baseline has all new switches OFF (default).
+    Run on BTCUSDT,ETHUSDT,SOLUSDT,DOTUSDT,LINKUSDT for stat power (real trades/minute).
+    Switches verified present in config.py + ez_positions_quick.py rate() / evaluate_reentry_epq().
+    Fields in NPZ confirmed: wt_velocity_up_count, wt_cross_bars_ago_3m/15m/1h.
+    Fields NOT in NPZ (mock-only): 0sentiment_rank, wt_cross_count_bull/bear_*, 0sentiment_strength."""
+    return [
+        ("baseline", {}),
+        # R-G1: sentiment rank gate (field 0sentiment_rank in live indicators, not NPZ)
+        # Will show no effect in backtest — included so we can confirm zero-effect + log V8_MISSING_FIELD
+        ("SENT_GATE_TOP20", {"SENTIMENT_TOP_N_GATE_ENABLED": True, "SENTIMENT_TOP_N": 20}),
+        ("SENT_GATE_TOP30", {"SENTIMENT_TOP_N_GATE_ENABLED": True, "SENTIMENT_TOP_N": 30}),
+        # R-G2: MTF WT velocity alignment gate (wt_velocity_up_count IS in NPZ)
+        ("WT_MTF_VEL_min2", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 2}),
+        ("WT_MTF_VEL_min3", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 3}),
+        ("WT_MTF_VEL_min4", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 4}),
+        # R-G3: chop boycott (wt_cross_count_bull/bear_* NOT in NPZ — confirm zero-effect)
+        ("WT_CHOP_max6", {"WT_CHOP_GATE_ENABLED": True, "WT_CHOP_MAX": 6}),
+        ("WT_CHOP_max10", {"WT_CHOP_GATE_ENABLED": True, "WT_CHOP_MAX": 10}),
+        # R-Z1: ranking multiplier on sizing (calls ez_rankings — returns 1.0 in backtest; confirm zero-effect)
+        ("RANK_MULT_ON", {"RANKING_MULT_ENABLED": True, "RANKING_MULT_MIN": 0.3, "RANKING_MULT_MAX": 2.5}),
+        # R-Z4: crash mult gradient (0sentiment_strength NOT in NPZ — confirm zero-effect)
+        ("CRASH_GRAD_ON", {"CRASH_MULT_GRADIENT_ENABLED": True, "CRASH_MULT_GRADIENT_MAX": 2.5}),
+        # RE-1: cross freshness gate (wt_cross_bars_ago_3m/15m/1h IS in NPZ)
+        ("CROSS_FRESH_bars3", {"REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 3}),
+        ("CROSS_FRESH_bars5", {"REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 5}),
+        ("CROSS_FRESH_bars8", {"REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 8}),
+        ("CROSS_FRESH_bars12", {"REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 12}),
+        # COMBO: both confirmed-NPZ switches together
+        ("VEL3_FRESH5", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 3,
+                         "REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 5}),
+        ("VEL3_FRESH8", {"WT_MTF_VEL_GATE_ENABLED": True, "WT_MTF_VEL_MIN": 3,
+                         "REENTRY_CROSS_FRESHNESS_ENABLED": True, "REENTRY_CROSS_MAX_BARS_AGO": 8}),
+        # NOTE: WT_4H_VEL_EXIT is hardcoded in ez_manage.py (no config switch).
+        # Real baseline showed it causing 409 closes at 14% WR (-4.69% total) — needs separate investigation.
+    ]
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -472,6 +511,7 @@ TIER_MAP = {
     "reentry_killed_rerun": grid_reentry_killed_rerun,
     "hedge_reentry_ablation": grid_hedge_reentry_ablation,
     "hedge_full": grid_hedge_full,
+    "indicator_audit": grid_indicator_audit,
 }
 
 

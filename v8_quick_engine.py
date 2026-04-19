@@ -86,11 +86,12 @@ class QuickConfig:
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
-    REENTRY_RALLY_K15M_MAX: float = 40.0  # 2026-04-17 final coord descent: 40 sweet spot (Sharpe 1.84 @ 725 trades vs 50=+1.74).
+    REENTRY_RALLY_K15M_MAX: float = 100.0  # 2026-04-19 FIX: was 40 from coord-descent on broken data (B15/B11=0 bars → ~0 trades → gates look good). 100=disabled. Sweep to find real optimum.
     REENTRY_RALLY_HTF_MIN: int = 1
     # Symmetric exit-would-fire gate — when True, strip entry bars that are simultaneously exit bars.
-    ENTRY_SYMGATE_ENABLED: bool = True    # 2026-04-17 Chapter-C winner on 48-sym.
-    REENTRY_SYMGATE_ENABLED: bool = True   # 2026-04-17 Chapter-C winner on 48-sym.
+    # 2026-04-19: Chapter-C winner tested on broken data — re-sweep needed. Default OFF.
+    ENTRY_SYMGATE_ENABLED: bool = False
+    REENTRY_SYMGATE_ENABLED: bool = False
     # Min-gap cooldown in bars between exit and next entry. 0 = disabled (use COOLDOWN_BARS only).
     REENTRY_MIN_GAP_BARS: int = 5  # 2026-04-17 Chapter-D bundle value (~15min on 3m). Was 0.
     # Stoch-K zone gate — disabled by default (LONG=0 always passes, SHORT=100 always passes).
@@ -104,12 +105,17 @@ class QuickConfig:
     # rank_proxy = HTF agreement count (0-3 from 1h/4h/D WT), scaled to 0-99.
     # dc_moment_proxy = sum of dc_position across 1h/4h/D, scaled to 0-100.
     # winner_protect = block exit_sig when gain in [0, win_protect_gain_pct) AND all 3 HTF agree.
-    RANK_CONVICTION_ENABLED: bool = True      # 2026-04-17 Chapter-E winner on 48-sym.
-    RANK_CONVICTION_MIN: int = 3              # 2026-04-17 coord descent: 3 beats 1/2 by +0.11 Sharpe.
-    DC_MOMENT_ENABLED: bool = True           # 2026-04-17 Chapter-E winner on 48-sym.
+    # 2026-04-19 FIX: RANK_CONVICTION and DC_MOMENT were flagged "Chapter-E winners" on broken
+    # data (B15/B11=0 bars → ~0 base trades → any gate looks neutral/good). They are HARD BLOCKS
+    # in the vectorized engine but are SCORE BONUSES in live rate() — fundamentally different.
+    # Both default OFF. Sweep to re-validate on properly populated trade counts.
+    RANK_CONVICTION_ENABLED: bool = False
+    RANK_CONVICTION_MIN: int = 1
+    DC_MOMENT_ENABLED: bool = False
     DC_MOMENT_OPPOSE_THRESHOLD: float = 40.0  # dc_moment_proxy delta against side = veto
-    WINNER_PROTECT_ENABLED: bool = True      # 2026-04-17 Chapter-E winner on 48-sym.
-    WINNER_PROTECT_GAIN_PCT: float = 1.0      # 2026-04-17 coord descent: 1.0 beats 1.5/2.0 (+0.07 Sharpe).
+    # 2026-04-19: Chapter-E winner tested on broken data — re-sweep needed. Default OFF.
+    WINNER_PROTECT_ENABLED: bool = False
+    WINNER_PROTECT_GAIN_PCT: float = 1.0
     K_ZONE_ENTRY_ENABLED: bool = False
     K_ZONE_LONG_THRESHOLD: int = 35
     K_ZONE_SHORT_THRESHOLD: int = 65
@@ -177,9 +183,12 @@ class QuickConfig:
     CONFLUENCE_MODE_ENABLED: bool = False
     CONFLUENCE_MIN_BLOCKS: int = 2  # How many blocks must agree simultaneously
     # NEW: Signal strength filter — only take top-percentile setups
-    # WINNER 2026-04-16: score=5 gave Sharpe 0.94, 87.2% WR, 1.42% avg on 11-sym 4yr
+    # 2026-04-19 FIX: was 5.0, calibrated when B15(w=4)+B11(w=3) were live but NPZ DC-band bug
+    # made them permanently 0 bars → max achievable score was 5 on ~0 bars → 0 trades.
+    # B_PRICE_CROSS_K90 and B_WT15M_CROSS now weighted=4 (primary live triggers); score=3
+    # allows B_PRICE_CROSS_K90 alone (w=4≥3) or B_WT15M_CROSS alone (w=4≥3). Sweep can raise.
     STRENGTH_FILTER_ENABLED: bool = True
-    STRENGTH_MIN_SCORE: float = 5.0
+    STRENGTH_MIN_SCORE: float = 3.0
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 10
     # Profit target exit — v3 peak: Sharpe 1.93 on TOP3 (2026-04-16 precision sweep)
@@ -626,10 +635,14 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         else:
             blocks["B10"] = (k_ltf_prev >= d_ltf) & (k_ltf < d_ltf) & (k_ltf > 75) & (k_15m > 60)
     if cfg.REENTRY_B11_DC_BREAK_ENABLED:
+        # B11 uses PREVIOUS 1h bar's DC band — dc_high_1h in NPZ includes current bar's high so
+        # close > dc_high_1h is mathematically impossible. Shift by 20 3m bars (1 1h bar).
+        _dc1h_prev = np.roll(dc_high_1h, 20); _dc1h_prev[:20] = 0
+        _dc1l_prev = np.roll(dc_low_1h, 20); _dc1l_prev[:20] = 0
         if is_long:
-            blocks["B11"] = (dc_high_1h > 0) & (close > dc_high_1h * 1.001) & (wt1_15m > wt2_15m)
+            blocks["B11"] = (_dc1h_prev > 0) & (close > _dc1h_prev * 1.001) & (wt1_15m > wt2_15m)
         else:
-            blocks["B11"] = (dc_low_1h > 0) & (close < dc_low_1h * 0.999) & (wt1_15m < wt2_15m)
+            blocks["B11"] = (_dc1l_prev > 0) & (close < _dc1l_prev * 0.999) & (wt1_15m < wt2_15m)
     if cfg.REENTRY_B12_WT_MOM_ENABLED:
         if is_long:
             aligned = (wt1_ltf > wt2_ltf) & (wt1_15m > wt2_15m) & (wt1_1h > wt2_1h)
@@ -643,10 +656,14 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
         else:
             blocks["B14"] = (ha_ltf == -1) & (ha_15m == -1) & (ha_1h == -1) & (k_ltf > 40)
     if cfg.REENTRY_B15_STRONG_TREND_ENABLED:
+        # B15 uses PREVIOUS 4h bar's DC band — dc_high_4h in NPZ includes current bar so
+        # close > dc_high_4h is mathematically impossible. Shift by 80 3m bars (1 4h bar).
+        _dc4h_prev = np.roll(dc_high_4h, 80); _dc4h_prev[:80] = 0
+        _dc4l_prev = np.roll(dc_low_4h, 80); _dc4l_prev[:80] = 0
         if is_long:
-            blocks["B15"] = (dc_high_4h > 0) & (close > dc_high_4h) & (wt_vel_1h > 2.0) & (k_1h < 85)
+            blocks["B15"] = (_dc4h_prev > 0) & (close > _dc4h_prev) & (wt_vel_1h > 2.0) & (k_1h < 85)
         else:
-            blocks["B15"] = (dc_low_4h > 0) & (close < dc_low_4h) & (wt_vel_1h < -2.0) & (k_1h > 15)
+            blocks["B15"] = (_dc4l_prev > 0) & (close < _dc4l_prev) & (wt_vel_1h < -2.0) & (k_1h > 15)
     # === 2026-04-17 REENTRY OVERHAUL BLOCKS (C + D) ===
     # B_WT15M_CROSS (C): 15m WT crossover in position direction + HTF favorable (1h or 4h) + k_15m gate
     # B_PRICE_CROSS_K90 (D): proxy — k_15m in favorable zone. "Price crosses exit" requires per-trade state
@@ -884,11 +901,17 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if cfg.STRENGTH_FILTER_ENABLED:
         weights = {
             # ORIGINAL V8Q v3 weights — proven Sharpe 1.93 on TOP3
-            "B15": 4,       # Strong trend continuation (#1 single block, Sharpe 0.89)
+            "B15": 4,       # Strong trend continuation (DC breakout above prev 4h band)
             "B04": 3,       # DC retest (Sharpe 0.39)
-            "B11": 3,       # DC break (Sharpe 0.34, 94% WR)
+            "B11": 3,       # DC break above prev 1h band (Sharpe 0.34, 94% WR)
             "B02": 2,       # BC156 bottom bounce (Sharpe 0.31)
             "B10": 1, "B12": 1, "B14": 1,
+            # 2026-04-19 FIX: B_PRICE_CROSS_K90 and B_WT15M_CROSS are primary live reentry
+            # triggers but had weight=1 (default). With B15/B11 dead (0 bars due to NPZ DC bug),
+            # max achievable score was 5 on near-zero bars → backtest traded 1000x less than live.
+            # Weight=4 matches B15 (same importance: price above DC structure = mandatory reentry).
+            "B_PRICE_CROSS_K90": 4,  # live mandatory: price crossed exit level proxy
+            "B_WT15M_CROSS": 4,      # live primary reentry: 15m WT cross aligned with HTF
             # Pullback blocks (2026-04-16 experiment — tested, kept at low weight)
             "B_PULL1": 1, "B_PULL2": 1, "B_PULL3": 1, "B_PULL4": 1,
             # Tradier alpha blocks (2026-04-16) — weights match historical Sharpe

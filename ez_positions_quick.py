@@ -4535,23 +4535,28 @@ class HedgeEngine:
                             losing_value = losing_amt * l_price
                             hedge_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0.0), 0.0)
                             hedge_prev_gain = safe_fetch_float(getattr(hedge_pos, 'prev_gain', hedge_gain), hedge_gain)
-                            # ═══ 2026-04-18 USER ABSOLUTE RULE ═══
-                            # Hedges close on wt1_3m flip. NO P/L GATE. NO EXCEPTIONS.
-                            # Hedge LONG → close when wt1_3m < wt2_3m (bearish 3m).
-                            # Hedge SHORT → close when wt1_3m > wt2_3m (bullish 3m).
-                            # This runs BEFORE any other gate and ignores hedge_gain entirely.
+                            # ═══ 2026-04-19 USER ABSOLUTE RULE ═══
+                            # Hedge EXIT = wt on 3m AND wt on 1h against hedge side. NOT k. NOT 15m/4h/D.
+                            # NO P/L GATE. NO EXCEPTIONS. Both wt_3m AND wt_1h must be against.
+                            # Hedge LONG → close when wt1_3m < wt2_3m AND wt1_1h < wt2_1h.
+                            # Hedge SHORT → close when wt1_3m > wt2_3m AND wt1_1h > wt2_1h.
                             _abs_h_is_long = hedge_key.endswith('_LONG')
                             _abs_wt1_3m = safe_fetch_float(h_ind.get('wt1_3m'), 0)
                             _abs_wt2_3m = safe_fetch_float(h_ind.get('wt2_3m'), 0)
+                            _abs_wt1_1h = safe_fetch_float(h_ind.get('wt1_1h'), 0)
+                            _abs_wt2_1h = safe_fetch_float(h_ind.get('wt2_1h'), 0)
+                            _abs_wt3m_ok = (_abs_wt1_3m != 0 or _abs_wt2_3m != 0)
+                            _abs_wt1h_ok = (_abs_wt1_1h != 0 or _abs_wt2_1h != 0)
                             _abs_wt3m_against = (_abs_h_is_long and _abs_wt1_3m < _abs_wt2_3m) or ((not _abs_h_is_long) and _abs_wt1_3m > _abs_wt2_3m)
-                            if _abs_wt3m_against and hedge_amt > 0.001 and (_abs_wt1_3m != 0 or _abs_wt2_3m != 0):
-                                logger.critical(f"🛑 [HEDGE_CLOSE_WT3M_ABS] {hedge_key}: wt1_3m={_abs_wt1_3m:.1f} wt2_3m={_abs_wt2_3m:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING regardless of P/L (hedge_gain={hedge_gain:.2f}%)")
+                            _abs_wt1h_against = (_abs_h_is_long and _abs_wt1_1h < _abs_wt2_1h) or ((not _abs_h_is_long) and _abs_wt1_1h > _abs_wt2_1h)
+                            if _abs_wt3m_ok and _abs_wt1h_ok and _abs_wt3m_against and _abs_wt1h_against and hedge_amt > 0.001:
+                                logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_ABS] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING regardless of P/L (hedge_gain={hedge_gain:.2f}%)")
                                 try:
-                                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_WT3M_ABS_wt1={_abs_wt1_3m:.1f}_wt2={_abs_wt2_3m:.1f}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_WT3M1H_ABS_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f}_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                                     self._hedge_completed.pop(losing_key, None)
                                 except Exception as _abs_e:
-                                    logger.error(f"[HEDGE_CLOSE_WT3M_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
+                                    logger.error(f"[HEDGE_CLOSE_WT3M1H_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
                                 continue
                             # ═══ BC_BANDAID: 15m WT cross drives hedge lifecycle ═══
                             # CLOSE hedge BEFORE it starts losing: when 15m WT flips in FAVOR of origin.
@@ -5045,83 +5050,33 @@ class HedgeEngine:
                 logger.error(f"[BREATHING_HEDGE_P2_OUTER] Error: {e}", exc_info=True)
 
     async def _hedge_entry_is_valid(self, symbol, hedge_side, indicators=None):
-        """Hedge ENTRY gate: wt1_3m must agree AND delta must still be accelerating in the hedge direction
-        AND HTF wt_dc must not contradict. Looser than regular entries — hedges protect losers and every
-        minute unhedged bleeds more — but blocks shorting bottoms / longing tops / shorting on bullish DC
-        breakout / longing on bearish DC breakdown. Returns (ok, reason)."""
-        is_long = (hedge_side == 'LONG')
-        if indicators is None:
-            try:
-                _, indicators, _, _, _, _, _ = await self.data_manager.get_hot_state(symbol)
-            except Exception:
-                indicators = None
-        if not indicators:
-            return False, "NO_INDICATORS"
-        wt1_3m = safe_fetch_float(indicators.get('wt1_3m', 0), 0)
-        wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
-        if (is_long and wt1_3m <= wt2_3m) or (not is_long and wt1_3m >= wt2_3m):
-            return False, f"WT3M_WRONG_wt1={wt1_3m:.1f}_wt2={wt2_3m:.1f}"
-        # ═══ 2026-04-17 USER RULE — wt_3m AND wt_1h MUST BOTH AGREE with hedge direction ═══
-        # Was "2 of 3 HTFs {15m,1h,4h}" which let wt_1h disagreement slip through if 15m+4h agreed.
-        # Now: wt_1h is MANDATORY. Same as wt_3m above — both hard required.
-        wt1_1h = safe_fetch_float(indicators.get('wt1_1h', 0), 0)
-        wt2_1h = safe_fetch_float(indicators.get('wt2_1h', 0), 0)
-        if (is_long and wt1_1h <= wt2_1h) or (not is_long and wt1_1h >= wt2_1h):
-            return False, f"WT1H_WRONG_wt1={wt1_1h:.1f}_wt2={wt2_1h:.1f} (hedge needs wt3m+wt1h BOTH)"
-        # ═══ 2026-04-18 USER RULE — k AND wt BOTH must agree on 3m AND 1h (hedge open) ═══
-        # "Hedges only when both k and wt 3m 1h agree. Going COMPLETELY against any curve = SUICIDE."
-        # LONG hedge: k_3m > d_3m AND k_1h > d_1h (plus wt checks above)
-        # SHORT hedge: k_3m < d_3m AND k_1h < d_1h
-        _k3m = safe_fetch_float(indicators.get('stoch_k_3m', 50), 50.0)
-        _d3m = safe_fetch_float(indicators.get('stoch_d_3m', 50), 50.0)
-        _k1h = safe_fetch_float(indicators.get('stoch_k_1h', 50), 50.0)
-        _d1h = safe_fetch_float(indicators.get('stoch_d_1h', 50), 50.0)
-        if (is_long and _k3m <= _d3m) or ((not is_long) and _k3m >= _d3m):
-            return False, f"K3M_WRONG_k={_k3m:.1f}_d={_d3m:.1f} (hedge needs k3m+k1h BOTH agree)"
-        if (is_long and _k1h <= _d1h) or ((not is_long) and _k1h >= _d1h):
-            return False, f"K1H_WRONG_k={_k1h:.1f}_d={_d1h:.1f} (hedge needs k3m+k1h BOTH agree)"
-        # 2026-04-17 USER RULE: hedge gate = wt_3m AND wt_1h ONLY. NOT 15m, NOT 4h, NOT D, NOT W.
-        # k_15m extreme-zone block removed (different indicator but user said only 3m+1h).
-        # No other WT/stoch/zone checks at this gate.
-        # ── DC basis side check: don't LONG below dc_basis_1h, don't SHORT above
-        _dc_basis_1h = safe_fetch_float(indicators.get('dc_basis_1h', 0), 0)
-        _cur_px = safe_fetch_float(indicators.get('current_price', 0), 0)
-        if _dc_basis_1h > 0 and _cur_px > 0:
-            if is_long and _cur_px < _dc_basis_1h:
-                return False, f"BELOW_DC_BASIS_1h_NO_LONG_HEDGE"
-            if (not is_long) and _cur_px > _dc_basis_1h:
-                return False, f"ABOVE_DC_BASIS_1h_NO_SHORT_HEDGE"
-        # ── DC basis crossover side check (1h only per user "NOT 15M" rule)
-        if (not is_long) and indicators.get('dc_basis_crossover_1h'):
-            return False, "DC_BASIS_BULL_CROSS_1h_NO_SHORT"
-        if is_long and indicators.get('dc_basis_crossunder_1h'):
-            return False, "DC_BASIS_BEAR_CROSS_1h_NO_LONG"
-        if hasattr(self.data_manager, 'delta_tracker') and self.data_manager.delta_tracker:
-            try:
-                sig = self.data_manager.delta_tracker.update(symbol, indicators, position_state=None)
-                if sig is not None:
-                    _accel_ok = sig.bull_accel if is_long else sig.bear_accel
-                    if not _accel_ok:
-                        return False, f"DELTA_DECEL_bull={sig.bull_speed:.1f}_bear={sig.bear_speed:.1f}_zone={sig.zone}"
-                    if is_long and sig.entry_short:
-                        return False, f"DELTA_SAYS_SHORT_zone={sig.zone}"
-                    if not is_long and sig.entry_long:
-                        return False, f"DELTA_SAYS_LONG_zone={sig.zone}"
-            except Exception as _e:
-                logger.debug(f"[HEDGE_GATE] {symbol} delta check skipped: {_e}")
-        return True, f"OK_wt3m={wt1_3m:.1f}/{wt2_3m:.1f}_wt1h={wt1_1h:.1f}/{wt2_1h:.1f}_dcb1h={_dc_basis_1h:.4f}"
+        """Hedge ENTRY gate — 2026-04-19 USER RULE: ONLY needs origin gain<0.
+        Callers (scan_and_hedge_losers, execute_same_symbol_hedge, breathing_hedge_scan) already
+        verify the ORIGIN position is in loss before reaching this gate. No indicator checks.
+        No k checks, no wt checks, no DC/delta checks at entry. Exit is the technical gate."""
+        return True, "ENTRY_OK_user_rule_gain_lt_0_only"
 
     def _hedge_should_exit(self, symbol, hedge_side, indicators):
-        """Hedge EXIT trigger: wt1_3m against hedge OR delta decelerating in hedge direction.
-        Mirror of _hedge_entry_is_valid. Returns (should_exit, reason)."""
+        """Hedge EXIT trigger — 2026-04-19 USER RULE: wt on 3m AND 1h, NOT k.
+        LONG hedge closes when wt1_3m < wt2_3m AND wt1_1h < wt2_1h (both bearish).
+        SHORT hedge closes when wt1_3m > wt2_3m AND wt1_1h > wt2_1h (both bullish).
+        No k. No 15m. No 4h. No D. No delta. Just wt on 3m + 1h."""
         is_long = (hedge_side == 'LONG')
         if not indicators:
             return False, "NO_INDICATORS"
         wt1_3m = safe_fetch_float(indicators.get('wt1_3m', 0), 0)
         wt2_3m = safe_fetch_float(indicators.get('wt2_3m', 0), 0)
-        if (is_long and wt1_3m < wt2_3m) or (not is_long and wt1_3m > wt2_3m):
-            return True, f"WT3M_AGAINST_wt1={wt1_3m:.1f}_wt2={wt2_3m:.1f}"
-        if hasattr(self.data_manager, 'delta_tracker') and self.data_manager.delta_tracker:
+        wt1_1h = safe_fetch_float(indicators.get('wt1_1h', 0), 0)
+        wt2_1h = safe_fetch_float(indicators.get('wt2_1h', 0), 0)
+        if wt1_3m == 0 and wt2_3m == 0: return False, "WT3M_MISSING"
+        if wt1_1h == 0 and wt2_1h == 0: return False, "WT1H_MISSING"
+        _wt3m_against = (is_long and wt1_3m < wt2_3m) or ((not is_long) and wt1_3m > wt2_3m)
+        _wt1h_against = (is_long and wt1_1h < wt2_1h) or ((not is_long) and wt1_1h > wt2_1h)
+        if _wt3m_against and _wt1h_against:
+            return True, f"WT3M+WT1H_AGAINST_3m={wt1_3m:.1f}/{wt2_3m:.1f}_1h={wt1_1h:.1f}/{wt2_1h:.1f}"
+        # LEGACY DELTA CHECK KEPT BEHIND A SWITCH ONLY — user rule says wt only.
+        # Preserved for safety net when wt alone is indecisive; default DISABLED.
+        if getattr(self.config, 'HEDGE_EXIT_DELTA_CHECK_ENABLED', False) and hasattr(self.data_manager, 'delta_tracker') and self.data_manager.delta_tracker:
             try:
                 sig = self.data_manager.delta_tracker.update(symbol, indicators, position_state=None)
                 if sig is not None:
