@@ -539,7 +539,7 @@ class QuickConfig:
         self.WINNER_PROTECT_GAIN_PCT = 1.5
 
 
-def load_npz(mode, symbols, start_date, npz_dir=""):
+def _resolve_npz_dir(npz_dir=""):
     if npz_dir:
         d = Path(npz_dir)
     else:
@@ -547,13 +547,21 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
             d = BASE_PATH / prefix / "indicators"
             if d.exists() and any(d.glob("*.npz")):
                 break
+    return d
+
+
+def iter_npz(mode, symbols, start_date, npz_dir=""):
+    """Yield (sym, data_dict) one symbol at a time. Caller must discard
+    the data_dict after each iteration to release memory. Required for
+    large symbol sets that would OOM if preloaded."""
+    d = _resolve_npz_dir(npz_dir)
     if not d.exists():
         print(f"NPZ dir not found: {d}")
-        return {}
+        return
     CRYPTO_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
     from datetime import datetime, timezone
     start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if start_date else 0
-    stores = {}
+    count = 0
     for npz_path in sorted(d.glob("*.npz")):
         sym = npz_path.stem
         if symbols and sym not in symbols:
@@ -568,12 +576,22 @@ def load_npz(mode, symbols, start_date, npz_dir=""):
             print(f"[WARN] {sym}: {e}")
             continue
         ts = data.get('timestamps', data.get('timestamp_3m', np.array([])))
-        if len(ts) == 0: continue
-        if start_ts and ts[-1] < start_ts: continue
+        if len(ts) == 0:
+            continue
+        if start_ts and ts[-1] < start_ts:
+            continue
         start_idx = np.searchsorted(ts, start_ts) if start_ts else 0
-        stores[sym] = {k: v[start_idx:] if isinstance(v, np.ndarray) and len(v) > start_idx else v for k, v in data.items()}
-    print(f"Loaded {len(stores)} symbols from {d}")
-    return stores
+        trimmed = {k: v[start_idx:] if isinstance(v, np.ndarray) and len(v) > start_idx else v for k, v in data.items()}
+        count += 1
+        yield sym, trimmed
+    print(f"Streamed {count} symbols from {d}")
+
+
+def load_npz(mode, symbols, start_date, npz_dir=""):
+    """Backward-compat wrapper: collects iter_npz into a dict. Only use
+    for small symbol sets (<15). Large sets must use iter_npz directly
+    or the streaming simulate_streaming path."""
+    return dict(iter_npz(mode, symbols, start_date, npz_dir))
 
 
 def _close_with_mode_check(npz, n, cfg, call_site: str) -> np.ndarray:
@@ -1229,6 +1247,8 @@ def compute_exit_signals(npz, n, is_long, cfg):
 
 
 def simulate(stores, cfg, capital=10000.0):
+    """stores can be a dict {sym: data} (preloaded) or an iterable of
+    (sym, data) tuples (streaming). Streaming releases memory per symbol."""
     all_pnl = []
     per_symbol_pnl = {}
     start_size = cfg.START_POSITION_SIZE
@@ -1240,7 +1260,8 @@ def simulate(stores, cfg, capital=10000.0):
     symbols_processed = 0
     early_abort = False
     _ltf = getattr(cfg, 'LTF', '3m')
-    for sym, npz in stores.items():
+    _iter = stores.items() if isinstance(stores, dict) else stores
+    for sym, npz in _iter:
         sym_pnl = []
         # Derive n from LTF close (stocks may not have timestamps/timestamp_3m fields at all).
         ts = npz.get('timestamps', npz.get(f'timestamp_{_ltf}', npz.get('timestamp_3m', np.array([]))))
@@ -1402,14 +1423,21 @@ def main():
         syms = (FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO).split(",")
     elif args.symbols:
         syms = [s.strip() for s in args.symbols.split(",") if s.strip()]
-    stores = load_npz(args.mode, syms, args.start, args.npz_dir)
-    if not stores:
-        print("No data"); return
+    if syms and len(syms) > 15:
+        stores = iter_npz(args.mode, syms, args.start, args.npz_dir)
+    else:
+        stores = load_npz(args.mode, syms, args.start, args.npz_dir)
+        if not stores:
+            print("No data"); return
     r = simulate(stores, cfg, args.capital)
     el = time.time() - t0
-    print(f"V8_QUICK_RESULT: sharpe={r['sharpe']} pnl={r['pnl']:.2f} trades={r['trades']} "
-          f"wins={r['wins']} losses={r['losses']} wr={r['wr']}% "
-          f"avg_pnl={r['avg_pnl_pct']:.4f}% elapsed={el:.1f}s")
+    print(f"V8_QUICK_RESULT: sharpe={r['sharpe']} "
+          f"(syms={r.get('syms_with_sharpe',0)} min={r.get('sharpe_min',0)} "
+          f"p25={r.get('sharpe_p25',0)} med={r.get('sharpe_med',0)} "
+          f"p75={r.get('sharpe_p75',0)} max={r.get('sharpe_max',0)}) "
+          f"pnl={r['pnl']:.2f} trades={r['trades']} wins={r['wins']} "
+          f"losses={r['losses']} wr={r['wr']}% avg_pnl={r['avg_pnl_pct']:.4f}% "
+          f"early_abort={r.get('early_abort',False)} elapsed={el:.1f}s")
 
 
 if __name__ == "__main__":

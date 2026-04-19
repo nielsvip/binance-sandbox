@@ -243,6 +243,28 @@ def build_param_grid_indicator_audit():
     return grid
 
 
+def build_param_grid_mega():
+    """Mega grid: ~500k configs. Early-abort-at-3-syms keeps mean runtime ~5s.
+    Covers entry gates + exits + profit targets + holds + velocity + reentry."""
+    return {
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "SATOSHIT_ENABLED": [True, False],
+        "DELTA_ENTRY_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "K3M_FLOOR": [15.0, 20.0, 25.0, 30.0, 35.0],
+        "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 20.0, 24.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.2],
+        "MIN_HOLD_BARS": [3, 5, 8],
+        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -255,6 +277,7 @@ TIER_MAP = {
     "reentry_sharpe_push": build_param_grid_reentry_sharpe_push,
     "reentry_sharpe_push_wide": build_param_grid_reentry_sharpe_push_wide,
     "indicator_audit": build_param_grid_indicator_audit,
+    "mega": build_param_grid_mega,
 }
 
 
