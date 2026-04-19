@@ -614,6 +614,26 @@ def build_param_grid_hunt_crypto():
     }
 
 
+def build_param_grid_mega_v7():
+    """Crypto champion cluster (2026-04-19): tight scan around confirmed winners.
+    K15=[40-55] PT=[0.14-0.18] VEL=[5-6] HOLD=[20-50] all produced Sharpe>4 in mega_v4/v5.
+    Early abort 4 syms floor=4.0 — any config averaging <4 after 12s is garbage, skip it.
+    ~768 configs. Expected 40-60% pass early abort. ETA ~50min on 6 workers."""
+    return {
+        "REENTRY_RALLY_K15M_MAX": [40.0, 45.0, 50.0, 55.0],
+        "PROFIT_TARGET_PCT": [0.14, 0.15, 0.16, 0.18],
+        "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "MIN_HOLD_BARS": [20, 30, 50],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [4],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+    }
+
+
 def build_param_grid_hunt_stock():
     """Massive stock hunt — honest engine (hedge + COOLDOWN=0).
     Goal: 10,000+ Sharpe>4 results. Run with --min-csv-sharpe 4.0 --kill-sharpe 2.5 --kill-secs 60.
@@ -665,6 +685,7 @@ TIER_MAP = {
     "stock_mega": build_param_grid_stock_mega,
     "hunt_crypto": build_param_grid_hunt_crypto,
     "hunt_stock": build_param_grid_hunt_stock,
+    "mega_v7": build_param_grid_mega_v7,
 }
 
 
@@ -742,6 +763,8 @@ def main():
                         help="Only write rows to CSV if sharpe >= this (default 0.0 = write all)")
     parser.add_argument("--shuffle", action="store_true",
                         help="Randomize config order before running (avoids dead zones in grid)")
+    parser.add_argument("--max-configs", type=int, default=0,
+                        help="Stop after testing this many configs (0 = unlimited). Use with --shuffle for random sampling.")
     args = parser.parse_args()
 
     symbols_list = None
@@ -788,6 +811,9 @@ def main():
 
     if args.shuffle:
         random.shuffle(todo)
+
+    if args.max_configs > 0 and len(todo) > args.max_configs:
+        todo = todo[:args.max_configs]
 
     total = len(configs)
     skip = total - len(todo)

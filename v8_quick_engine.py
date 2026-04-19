@@ -541,6 +541,11 @@ class QuickConfig:
         # 2.5 floor caused early_abort at exactly 15 symbols when avg was 2.4755. Use 1.5 so full
         # 114-sym set evaluates and we get the real baseline Sharpe. Sweeps set their own floors.
         self.EARLY_ABORT_SHARPE_FLOOR = 1.5
+        # 2026-04-19 FIX: PROFIT_TARGET_ENABLED=True (crypto default 1.6%) bleeds into tradier.
+        # Tradier uses "exit at slowdown" (pure technical exits). PT creates fake Sharpe (low variance
+        # from fixed TP) while masking real exit quality. Disable for honest tradier baselines.
+        # Sweeps can test PT explicitly via PROFIT_TARGET_ENABLED: [True, False] in the grid.
+        self.PROFIT_TARGET_ENABLED = False
         # 2026-04-19 FIX: MIN_HOLD_BARS defaults to 250 (crypto 12.5h). For tradier "exit at
         # slowdown" model, that equals 62.5h hold on 15m base — blocks ALL exits → WR=39%.
         # Tradier has no hedge engine and exits whenever momentum slows (in gain). Reset to 4
