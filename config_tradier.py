@@ -1463,9 +1463,25 @@ class TradierConfig:
     REENTRY_K15M_PARTIAL_ENABLED: bool = True         # enforce size-down in overheat zone
     REENTRY_K15M_PARTIAL_THRESHOLD: float = 90.0      # LONG k_15m ≥ 90 (SHORT ≤ 10) = overheat
     REENTRY_K15M_PARTIAL_MULT: float = 0.5            # reenter at 50% in overheat zone (rally may be ending)
-    REENTRY_SYMGATE_ENABLED: bool = True   # Symmetric gate: block reentry if DELTA/score/speed says exit for the proposed side
+    REENTRY_SYMGATE_ENABLED: bool = False  # 2026-04-19 FIX: engine default=False; t4 sweeps (Apr-16) all 0-trade pre-DC-band-fix — no clean tradier evidence.
     REENTRY_SYMGATE_SPEED_MIN: float = 1.0  # Min bull_speed (LONG) / bear_speed (SHORT). Below = momentum slowing -> block.
-    ENTRY_SYMGATE_ENABLED: bool = True     # Apply same guard to fresh entries, not just reentries
+    ENTRY_SYMGATE_ENABLED: bool = False    # 2026-04-19 FIX: same — no clean sweep proof for tradier.
+    # --- Rank-conviction / DC-moment / winner-protect (mirrors config.py Feature 1-3) ---
+    # All default OFF — crypto proof exists (Sharpe 2.554) but tradier sweeps all 0-trade pre-DC-band-fix.
+    # Re-sweep on tradier with clean engine before enabling any of these.
+    RANK_CONVICTION_ENABLED: bool = False
+    RP_STRONG_THRESHOLD: float = 70.0
+    RP_STRONG_BONUS: float = 15.0
+    RP_WEAK_THRESHOLD: float = 30.0
+    RP_WEAK_PENALTY: float = -10.0
+    RP_OPPOSITE_PENALTY: float = -20.0
+    DC_MOMENT_ENABLED: bool = False
+    DC_MOMENT_STRONG_THRESHOLD: float = 40.0
+    DC_MOMENT_STRONG_BONUS: float = 10.0
+    DC_MOMENT_OPPOSITE_PENALTY: float = -15.0
+    WINNER_PROTECT_ENABLED: bool = False
+    RP_PROTECT_THRESHOLD: float = 70.0
+    RP_PROTECT_MIN_GAIN: float = 1.0
     NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside bb_1h (stocks) / dc_4h (crypto) — hedge instead.
     LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS gate
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min

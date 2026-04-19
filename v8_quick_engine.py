@@ -152,7 +152,7 @@ class QuickConfig:
     REENTRY_B_FH_MOM_ENABLED: bool = False
     REENTRY_B_MFI_D_OVERSOLD_ENABLED: bool = False
     # === 2026-04-17 HEDGE + REENTRY OVERHAUL SWITCHES ===
-    # Hedge: LIVE-ONLY (vectorized engine does not simulate hedges). Switches present so setattr() from sweep works cleanly.
+    # Hedge: simulated in engine — counter-position opens when NOLOSS blocks a loss exit, closes with main position.
     HEDGE_EXIT_BYPASS_NOLOSS: bool = True
     HEDGE_EXIT_WT_TF: str = "3m"
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
@@ -1276,6 +1276,12 @@ def simulate(stores, cfg, capital=10000.0):
         close = _close_with_mode_check(npz, n, cfg, 'simulate')
         dc_high_4h = _safe(npz, 'dc_high_4h', n)
         dc_low_4h = _safe(npz, 'dc_low_4h', n)
+        # Hedge engine: continuous per-bar condition. No event needed.
+        # LONG main → SHORT hedge active whenever: gain<0 AND wt1_LTF<wt2_LTF AND wt1_1h<wt2_1h
+        # SHORT main → LONG hedge: gain<0 AND wt1_LTF>wt2_LTF AND wt1_1h>wt2_1h
+        # Hedge closes the instant condition is false, reopens the instant it's true again.
+        _wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); _wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
+        _wt1_1h = _safe(npz, 'wt1_1h', n); _wt2_1h = _safe(npz, 'wt2_1h', n)
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
@@ -1296,6 +1302,7 @@ def simulate(stores, cfg, capital=10000.0):
                 else:
                     _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
+            hedge_in_pos = False; hedge_ep = 0.0
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
             pt_pct = cfg.PROFIT_TARGET_PCT
             sl_enabled = cfg.STOP_LOSS_ENABLED
@@ -1311,11 +1318,27 @@ def simulate(stores, cfg, capital=10000.0):
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    # Profit target hit — exit at exactly pt_pct (limit-order semantics: cap at target)
+                    # Continuous hedge condition — true every bar gain<0 AND LTF+1h WT bearish (LONG main).
+                    # Hedge opens/closes/reopens purely on this condition, no NOLOSS event needed.
+                    if is_long:
+                        hc = live_pnl < 0 and _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                    else:
+                        hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
+                    if hc and not hedge_in_pos:
+                        hedge_in_pos = True; hedge_ep = px
+                    elif not hc and hedge_in_pos and hedge_ep > 0:
+                        h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                        all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                    # Profit target (live_pnl>=pt_pct is mutually exclusive with hc, so hedge is already closed)
                     if pt_enabled and live_pnl >= pt_pct:
-                        all_pnl.append(pt_pct); sym_pnl.append(pt_pct); in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                        all_pnl.append(pt_pct); sym_pnl.append(pt_pct)
+                        in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
-                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                        if hedge_in_pos and hedge_ep > 0:
+                            h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                            all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                        in_pos = False; cd = max(cooldown, min_gap_bars); continue
                 if in_pos and exit_sig[i] and (i - eb) >= min_hold:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
@@ -1332,13 +1355,19 @@ def simulate(stores, cfg, capital=10000.0):
                         else:
                             continue
                     all_pnl.append(pnl); sym_pnl.append(pnl)
+                    if hedge_in_pos and hedge_ep > 0:
+                        h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                        all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     in_pos = False; cd = max(cooldown, min_gap_bars)
             if in_pos:
                 final_px = close[n - 1]
                 if final_px > 0 and ep > 0:
                     final_pnl = ((final_px - ep) / ep * 100) if is_long else ((ep - final_px) / ep * 100)
                     all_pnl.append(final_pnl); sym_pnl.append(final_pnl)
-                in_pos = False
+                if hedge_in_pos and final_px > 0 and hedge_ep > 0:
+                    h_pnl = ((hedge_ep - final_px) / hedge_ep * 100) if is_long else ((final_px - hedge_ep) / hedge_ep * 100)
+                    all_pnl.append(h_pnl); sym_pnl.append(h_pnl)
+                in_pos = False; hedge_in_pos = False; hedge_ep = 0.0
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
         if ea_enabled and symbols_processed >= ea_min_syms:
@@ -1363,15 +1392,29 @@ def _per_symbol_sharpes(per_symbol_pnl, min_trades=30, std_floor=1e-3, cap=20.0)
     return out
 
 
+def _pool_sharpe(all_pnl, std_floor=1e-3, cap=20.0):
+    if len(all_pnl) < 2:
+        return 0.0
+    p = np.array(all_pnl)
+    m = p.mean(); s = max(p.std(), std_floor)
+    return round(float(max(min(m / s, cap), -cap)), 4)
+
+
 def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort):
     per_sym_sharpes = _per_symbol_sharpes(per_symbol_pnl)
     n_trades = len(all_pnl)
+    ps = _pool_sharpe(all_pnl)
+    syms_excluded = symbols_processed - len(per_sym_sharpes)
     if not per_sym_sharpes:
+        p = np.array(all_pnl) if all_pnl else np.array([0.0])
+        w = int((p > 0).sum()); l = int((p <= 0).sum())
         return {"sharpe": 0, "sharpe_min": 0, "sharpe_p25": 0, "sharpe_med": 0,
                 "sharpe_p75": 0, "sharpe_max": 0, "syms_with_sharpe": 0,
-                "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0,
-                "avg_pnl_pct": 0, "wr": 0, "early_abort": early_abort,
-                "symbols_used": symbols_processed}
+                "pool_sharpe": ps, "syms_excluded": syms_excluded,
+                "pnl": round(p.sum() / 100 * start_size, 2), "trades": n_trades,
+                "wins": w, "losses": l, "avg_pnl_pct": round(float(p.mean()), 4) if n_trades else 0,
+                "wr": round(w / n_trades * 100, 1) if n_trades > 0 else 0,
+                "early_abort": early_abort, "symbols_used": symbols_processed}
     arr = np.array(per_sym_sharpes)
     p = np.array(all_pnl) if all_pnl else np.array([0.0])
     w = int((p > 0).sum()); l = int((p <= 0).sum())
@@ -1383,6 +1426,8 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
         "sharpe_p75": round(float(np.percentile(arr, 75)), 4),
         "sharpe_max": round(float(arr.max()), 4),
         "syms_with_sharpe": len(per_sym_sharpes),
+        "pool_sharpe": ps,
+        "syms_excluded": syms_excluded,
         "pnl": round(p.sum() / 100 * start_size, 2),
         "trades": n_trades, "wins": w, "losses": l,
         "avg_pnl_pct": round(float(p.mean()), 4),
@@ -1431,10 +1476,10 @@ def main():
             print("No data"); return
     r = simulate(stores, cfg, args.capital)
     el = time.time() - t0
-    print(f"V8_QUICK_RESULT: sharpe={r['sharpe']} "
-          f"(syms={r.get('syms_with_sharpe',0)} min={r.get('sharpe_min',0)} "
-          f"p25={r.get('sharpe_p25',0)} med={r.get('sharpe_med',0)} "
-          f"p75={r.get('sharpe_p75',0)} max={r.get('sharpe_max',0)}) "
+    print(f"V8_QUICK_RESULT: sharpe={r['sharpe']} pool_sharpe={r.get('pool_sharpe',0)} "
+          f"(syms={r.get('syms_with_sharpe',0)} excl={r.get('syms_excluded',0)} "
+          f"min={r.get('sharpe_min',0)} p25={r.get('sharpe_p25',0)} "
+          f"med={r.get('sharpe_med',0)} p75={r.get('sharpe_p75',0)} max={r.get('sharpe_max',0)}) "
           f"pnl={r['pnl']:.2f} trades={r['trades']} wins={r['wins']} "
           f"losses={r['losses']} wr={r['wr']}% avg_pnl={r['avg_pnl_pct']:.4f}% "
           f"early_abort={r.get('early_abort',False)} elapsed={el:.1f}s")
