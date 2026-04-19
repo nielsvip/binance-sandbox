@@ -229,6 +229,9 @@ def compute_tf_indicators_stock(df, tf):
         out[f"bb_lower_{tf}"] = bb_l
         out[f"bb_pct_b_{tf}"] = bb_pctb
         out[f"bb_width_{tf}"] = bb_w
+        if tf == "D":
+            vwap_d = ((high.values + low.values + close.values) / 3.0).astype(np.float32)
+            out["vwap_D"] = vwap_d
     out[f"lr_trend_{tf}"] = compute_linreg_slope(close, 50)
     if tf in ("5m", "15m"):
         t_up, tco, tcu = compute_hull_trend(close)
