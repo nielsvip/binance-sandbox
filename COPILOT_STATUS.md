@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-19 11:53:21 UTC
+# Copilot Status — 2026-04-19 12:11:09 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T11:50:34
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T11:51:05
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T11:51:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T11:52:08
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T11:52:08
-- **STALE_INDICATORS** [tradier]  — 2026-04-19T11:52:39
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T11:52:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T11:52:39
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T11:53:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T11:53:10
+- **STALE_INDICATORS** [tradier]  — 2026-04-19T12:07:09
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T12:07:09
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T12:07:09
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T12:07:35
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T12:08:39
+- **STALE_INDICATORS** [tradier]  — 2026-04-19T12:09:10
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T12:09:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T12:09:10
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T12:09:42
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T12:10:48
 
 ## Missed Trades (trader comparison)
 
@@ -27,17 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
+
+- HELD: **GTCUSDT** LONG (crypto) peak +4.9%, now +3.3%
 
 - WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
-
-**Issues (last 1h):** 50
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
-- [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] tradier_manage.py for trc is NOT running
