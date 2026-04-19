@@ -181,6 +181,8 @@ def build_param_grid_sharpe3_tradier():
         "MIN_HOLD_BARS": [10, 20],
         "DELTA_ENTRY_ENABLED": [True],
         "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
+        "EARLY_ABORT_MIN_SYMBOLS": [15],
     }
     return grid
 
