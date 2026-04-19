@@ -396,7 +396,7 @@ def _run_config_with_stores(stores, mode, cfg_dict, run_id):
             setattr(cfg, k, v)
     if mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
         cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
-    cfg.NOLOSS_ENABLED = False  # artifact fix: NOLOSS inflates Sharpe by holding losers; force honest eval
+    # NOLOSS_ENABLED uses QuickConfig default (True) — matches live STRICT_NO_LOSS, mark-to-market handles honesty
     t0 = time.time()
     result = simulate(stores, cfg, 10000.0)
     elapsed = time.time() - t0

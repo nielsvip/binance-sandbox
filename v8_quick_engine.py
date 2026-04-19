@@ -68,7 +68,7 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
     COOLDOWN_BARS: int = 3
-    NOLOSS_ENABLED: bool = False
+    NOLOSS_ENABLED: bool = True  # match live STRICT_NO_LOSS; mark-to-market at sim end handles honesty
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
     START_POSITION_SIZE: float = 2000.0
