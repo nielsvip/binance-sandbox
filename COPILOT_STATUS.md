@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-19 05:17:08 UTC
+# Copilot Status — 2026-04-19 05:32:30 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:14:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:14:01
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:15:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:15:10
-- **STALE_INDICATORS** [tradier]  — 2026-04-19T05:15:21
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T05:15:21
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T05:15:21
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:16:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-19T05:16:17
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:16:17
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:29:09
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:30:16
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:30:16
+- **STALE_INDICATORS** [tradier]  — 2026-04-19T05:30:27
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T05:30:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T05:30:27
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:31:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:31:23
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T05:32:29
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T05:32:29
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,9 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 2 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 2 | **Reentered:** 0
+
+- HELD: **GTCUSDT** LONG (crypto) peak +5.6%, now +-3.1%
 
 - WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 0m ago
 - WATCHING: **1000BONKUSDC** SHORT (crypto) peaked +3.1%, exited 0m ago
@@ -36,7 +38,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 12
+**Issues (last 1h):** 7
 - [HIGH] ez_manage.py for men is NOT running
 - [HIGH] ez_manage.py for fin is NOT running
 - [HIGH] ez_manage.py for flz is NOT running
