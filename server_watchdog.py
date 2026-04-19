@@ -28,6 +28,7 @@ LOG_FILE = Path.home() / "server_watchdog.log"
 CHECK_INTERVAL = 60
 SSH_TIMEOUT = 120  # 2026-04-16: SSH can take 3min under remote CPU load
 MIN_FREE_MB = 12000   # was 4000 — 3 workers×3.6GB+orchestrator+system=~14GB used on 31GB box; need 12GB headroom before spawning
+STUCK_REBOOT_CONSECUTIVE = 5   # reboot after this many consecutive unreachable checks (~5 min)
 
 # 2026-04-16: SWEEPS replaced by AUTOCHAIN per server.
 # Each server runs ONE master screen (`autochain_sN`) which handles all
@@ -133,13 +134,21 @@ def check_server(name, cfg, state):
         state[name]["reachable"] = False
         if state[name]["down_since"] is None:
             state[name]["down_since"] = time.time()
-        log(f"{name} ({host}): UNREACHABLE rc={rc}")
+        state[name]["consecutive_failures"] = state[name].get("consecutive_failures", 0) + 1
+        fails = state[name]["consecutive_failures"]
+        log(f"{name} ({host}): UNREACHABLE rc={rc} consecutive={fails}")
+        if fails >= STUCK_REBOOT_CONSECUTIVE:
+            log(f"{name}: {fails} consecutive failures — issuing remote reboot")
+            rc_r, out_r = ssh(host, user, "sudo reboot", timeout=15)
+            log(f"{name}: reboot cmd rc={rc_r} out={out_r.strip()[:80]}")
+            state[name]["consecutive_failures"] = 0
         return
 
     if not state[name]["reachable"]:
         log(f"{name} ({host}): RECOVERED")
     state[name]["reachable"] = True
     state[name]["down_since"] = None
+    state[name]["consecutive_failures"] = 0
 
     free_mb = 0
     sweep_procs = 0
@@ -233,7 +242,7 @@ def main():
     acquire_lock()
     try:
         state = {name: {"reachable": True, "down_since": None, "free_mb": 0,
-                        "sweep_procs": 0, "screens": []} for name in SERVERS}
+                        "sweep_procs": 0, "screens": [], "consecutive_failures": 0} for name in SERVERS}
         log(f"server_watchdog up — managing {list(SERVERS.keys())} via autochain per-server")
         while True:
             try:

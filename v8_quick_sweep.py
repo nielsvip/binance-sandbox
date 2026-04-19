@@ -470,21 +470,21 @@ def build_param_grid_stock_mega():
 
 
 def build_param_grid_mega_v6():
-    """Crypto champion fine-tuning (2026-04-19 confirmed: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3
-    → 2741 trades Sharpe 8.99 PnL +$1360). Fine-scan PT and HOLD around champion.
-    Run with --shuffle to avoid bad zones. Early abort 4 syms, floor=4.0. ~1920 configs."""
+    """Crypto champion space (2026-04-19 confirmed: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3
+    → 2741 trades Sharpe 8.99 PnL +$1360). Fine-scan PT 0.15-0.25 and HOLD 20-75.
+    Early abort 8 syms floor=3.5 (matches mega_v5 which found 8.99). ~1024 configs."""
     return {
         "REENTRY_RALLY_K15M_MAX": [50.0, 55.0],
-        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.18, 0.20, 0.25],
+        "PROFIT_TARGET_PCT": [0.15, 0.18, 0.20, 0.25],
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "MIN_HOLD_BARS": [10, 20, 30, 50, 75],
+        "MIN_HOLD_BARS": [20, 30, 50, 75],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "WT_EXIT_MIN_TFS": [2, 3],
-        "EARLY_ABORT_MIN_SYMBOLS": [4],
-        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.5],
     }
 
 
@@ -842,17 +842,18 @@ def main():
             for k in cfg_keys:
                 row[f"cfg_{k}"] = cfg_dict.get(k, "")
             s = result.get("sharpe", 0)
-            if s > best_sharpe:
-                best_sharpe = s
-            # Only write to CSV if meets minimum Sharpe threshold
-            if s >= args.min_csv_sharpe:
+            ps = result.get("pool_sharpe", 0)
+            if ps > best_sharpe:
+                best_sharpe = ps
+            # Filter on pool_sharpe (honest: no min_trades bias, all symbols included)
+            if ps >= args.min_csv_sharpe:
                 writer.writerow(row)
                 csvfile.flush()
             elapsed_total = time.time() - t_start
             rate = completed / elapsed_total if elapsed_total > 0 else 0
             eta = (len(todo) - completed) / rate / 3600 if rate > 0 else 0
             if completed % 10 == 0 or completed <= 5:
-                print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} trades={result.get('trades', 0)} "
+                print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} pool={ps:.4f} trades={result.get('trades', 0)} "
                       f"best={best_sharpe:.4f} rate={rate:.1f}/s ETA={eta:.1f}h")
             return s
 

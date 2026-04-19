@@ -155,7 +155,16 @@ Root cause: NOLOSS + tiny PT → most trades win 0.02% (low std → high Sharpe)
 - mega_v2 (25,600 configs): KILLED (1% yield, mega_v3 superior).
 - mega_v3 (2,400 configs): 1,416 >4 (59%). COMPLETE. Top: K15M=50, VEL=4, PT=0.2, Sharpe 17.94 (but check PnL).
 - mega_v4 (2,160 configs): ~2,100/2,160. Top positive-PnL: K15M=55, VEL=5-6, Sharpe 4-13.
-- mega_v5 (720 configs): running on S2. K15M=50-70, VEL=5-6.
+- mega_v5 (640 configs): COMPLETE. **CRYPTO CHAMPION: K15=55 VEL=6 PT=0.15 HOLD=50 WT=3 → 2741 trades Sharpe 8.99 PnL +$1360**
+
+#### RUNNING NOW
+- mega_v6 (1024 configs, S2): K15=[50,55] VEL=[5,6] PT=[0.15-0.25] HOLD=[20-75]. ETA 30 min.
+- stock_mega (192 configs, S1): all 262 symbols, PT=[0.15-0.5] HOLD=[20-80]. Early abort 3 syms. ETA 30-60 min.
+
+#### INFRASTRUCTURE FIXED
+- sweep_autochain.sh on S1 permanently disabled (exit 0 at line 2) — was OOM-killing stock sweeps
+- S1 RAM: 27GB free after killing autochain crypto sweeps
+- "--symbols all" flag now supported (sets symbols_list=None → iter_npz auto-filters by mode)
 
 ### 2026-04-19 06:40 UTC — MD created
 - User rebooted S1+S2. Previous kill attempts (stop/disable systemd) did not survive reboot because I forgot to `mask` + remove drop-in configs + check rc scripts.

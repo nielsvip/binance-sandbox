@@ -1403,11 +1403,13 @@ def _per_symbol_sharpes(per_symbol_pnl, min_trades=30, std_floor=1e-3, cap=20.0)
     return out
 
 
-def _pool_sharpe(all_pnl, std_floor=1e-3, cap=20.0):
-    if len(all_pnl) < 2:
+def _pool_sharpe(all_pnl, min_trades=30, cap=20.0):
+    if len(all_pnl) < min_trades:
         return 0.0
     p = np.array(all_pnl)
-    m = p.mean(); s = max(p.std(), std_floor)
+    m = p.mean(); s = p.std()
+    if s < 1e-6:
+        return 0.0
     return round(float(max(min(m / s, cap), -cap)), 4)
 
 
