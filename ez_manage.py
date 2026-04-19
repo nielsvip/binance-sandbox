@@ -19387,19 +19387,17 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         # V5 WT Pure backtest 2026-03-31: 4h velocity = +$10,074 (WINNER)
         # 1h cross = -$15k (too fast), D = breakeven (too slow), 4h = sweet spot
         # Old 3m/15m/1h cross was -$9,133 (30% WR) — REPLACED
+        # 2026-04-19 FIX: SHORT condition was wt1_4h>wt2_4h (cross-only, no velocity threshold)
+        # → caused 409 closes at 14% WR in backtest. Now uses velocity symmetry with LONG.
         # ==================================================================
-        if is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+        if getattr(config, 'WT_4H_VEL_EXIT_ENABLED', True) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
             _wt_vel_4h = safe_fetch_float(i.get('wt_velocity_4h', 0), 0)
-            _wt_accel_4h = safe_fetch_float(i.get('wt_acceleration_4h', 0), 0)
-            _wt_mom_4h = str(i.get('wt_momentum_state_4h', '')).upper()
             _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0)
-            _wt_vel_1h = safe_fetch_float(i.get('wt_velocity_1h', 0), 0)
             _4h_against = False
             if is_long:
-                _4h_against = _wt_vel_4h < -2.0
+                _4h_against = _wt_vel_4h < getattr(config, 'WT_4H_VEL_EXIT_LONG_VEL_MIN', -2.0)
             else:
-                # wt1_4h > wt2_4h = 4h WT confirmed bullish (bull cross). No fixed speed threshold.
-                _4h_against = _wt1_4h > _wt2_4h
+                _4h_against = _wt_vel_4h > getattr(config, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN', 2.0)
             _oa_raw = getattr(position, 'opened_at', None)
             if isinstance(_oa_raw, (int, float)):
                 _oa_raw = datetime.fromtimestamp(_oa_raw, tz=timezone.utc) if _oa_raw > 0 else None
@@ -19412,6 +19410,36 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 if result:
                     trade_manager.processing_keys.discard(position_key)
                     return f"{EvalStatus.ACTION_TAKEN}:WT_4H_VEL_EXIT"
+        # ==================================================================
+        # DC_HOPELESS_EXIT — close if entry_price is now outside dc_4h channel
+        # LONG: entry_price > dc_high_4h → bought above the channel ceiling, structure failed
+        # SHORT: entry_price < dc_low_4h → sold below the channel floor, structure failed
+        # Technical structure break exit — not a % stop. Bypasses NOLOSS gate intentionally.
+        # 2026-04-19: approved by user as part of indicator-audit exit framework
+        # ==================================================================
+        if getattr(config, 'DC_HOPELESS_EXIT_ENABLED', True) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _dc_high_4h = safe_fetch_float(i.get('dc_high_4h', 0), 0)
+            _dc_low_4h = safe_fetch_float(i.get('dc_low_4h', 0), 0)
+            _entry_px = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
+            if _dc_high_4h > 0 and _dc_low_4h > 0 and _entry_px > 0:
+                _oa_raw2 = getattr(position, 'opened_at', None)
+                if isinstance(_oa_raw2, (int, float)):
+                    _oa_raw2 = datetime.fromtimestamp(_oa_raw2, tz=timezone.utc) if _oa_raw2 > 0 else None
+                _oa_dt2 = safe_datetime(_oa_raw2) if _oa_raw2 else None
+                _age2 = (now - _oa_dt2).total_seconds() if isinstance(_oa_dt2, datetime) and isinstance(now, datetime) else 0
+                _min_age = getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 900)
+                _hopeless = False
+                if is_long and _entry_px > _dc_high_4h:
+                    _hopeless = True
+                elif not is_long and _entry_px < _dc_low_4h:
+                    _hopeless = True
+                if _hopeless and _age2 > _min_age:
+                    _pp_g2 = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    logger.warning(f"[DC_HOPELESS_EXIT] {position_key}: entry={_entry_px:.4f} dc=[{_dc_low_4h:.4f},{_dc_high_4h:.4f}] g={_pp_g2:.2f}% age={_age2:.0f}s → CLOSE")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"DC_HOPELESS_entry={_entry_px:.4f}_dc=[{_dc_low_4h:.4f},{_dc_high_4h:.4f}]", 0.95)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:DC_HOPELESS_EXIT"
         if is_active_position and position and config.MANAGE_REDUCE:
             _pp_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
             _pp_prev_gain = safe_fetch_float(getattr(position, 'prev_gain', 0.0), 0.0)

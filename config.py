@@ -1276,9 +1276,9 @@ class Config:
     # R-G1: cross-symbol sentiment rank boycott (only LONG top-N / SHORT bottom-N)
     SENTIMENT_TOP_N_GATE_ENABLED: bool = False
     SENTIMENT_TOP_N: int = 20                    # universe size threshold; sweep [10,20,30,40]
-    # R-G2: multi-TF WT velocity alignment gate
-    WT_MTF_VEL_GATE_ENABLED: bool = False
-    WT_MTF_VEL_MIN: int = 3                      # TF count in [2,3,4]
+    # R-G2: multi-TF WT velocity alignment gate — VALIDATED 2026-04-19 (+20% Sharpe at vel_min=2)
+    WT_MTF_VEL_GATE_ENABLED: bool = True
+    WT_MTF_VEL_MIN: int = 2                      # TF count in [2,3,4]; sweet spot=2 (vel_min=3 is loser)
     # R-G3: chop boycott via wt_cross_count_{dir}_{tf} in last 50 bars
     WT_CHOP_GATE_ENABLED: bool = False
     WT_CHOP_MAX: int = 8                         # per-TF cross count >= this → boycott; sweep [6,8,10,12]
@@ -1292,6 +1292,19 @@ class Config:
     # RE-1: reentry cross-freshness gate (wt_cross_bars_ago_{tf} < N)
     REENTRY_CROSS_FRESHNESS_ENABLED: bool = False
     REENTRY_CROSS_MAX_BARS_AGO: int = 5           # sweep [3,5,8,12]
+    # WT_4H_VEL_EXIT switches — 2026-04-19: add kill switch + fix broken SHORT condition
+    # OLD SHORT: _wt1_4h > _wt2_4h (any bullish cross → exit short — no velocity threshold, too aggressive)
+    # NEW SHORT: wt_velocity_4h > WT_4H_VEL_EXIT_SHORT_VEL_MIN (symmetric with LONG side)
+    # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDT
+    WT_4H_VEL_EXIT_ENABLED: bool = True
+    WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
+    WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
+    # DC_HOPELESS_EXIT — close if entry_price is now outside the dc_4h channel entirely
+    # LONG: entry_price > dc_high_4h → bought above channel ceiling, channel moved below us
+    # SHORT: entry_price < dc_low_4h → sold below channel floor, channel moved above us
+    # Exits at market structure break, not at %. Technical exit, not stop-loss.
+    DC_HOPELESS_EXIT_ENABLED: bool = True
+    DC_HOPELESS_EXIT_MIN_AGE_S: int = 900         # only fire after 15min (avoid newborn noise)
     # ═══════════════════════════════════════════════════════════════════════
     # END INDICATOR-AUDIT SWITCHES
     # ═══════════════════════════════════════════════════════════════════════
