@@ -293,6 +293,7 @@ def _run_config_with_stores(stores, mode, cfg_dict, run_id):
             setattr(cfg, k, v)
     if mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
         cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
+    cfg.NOLOSS_ENABLED = False
     t0 = time.time()
     result = simulate(stores, cfg, 10000.0)
     elapsed = time.time() - t0
@@ -377,7 +378,7 @@ def main():
 
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     with open(csv_path, "a", newline="") as csvfile:
-        fieldnames = ["run_id", "config_hash", "sharpe", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
+        fieldnames = ["run_id", "config_hash", "sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
         cfg_keys = sorted(configs[0].keys())
         for k in cfg_keys:
             fieldnames.append(f"cfg_{k}")
@@ -397,6 +398,12 @@ def main():
                 "run_id": result["run_id"],
                 "config_hash": config_hash(cfg_dict),
                 "sharpe": result.get("sharpe", 0),
+                "sharpe_min": result.get("sharpe_min", 0),
+                "sharpe_p25": result.get("sharpe_p25", 0),
+                "sharpe_med": result.get("sharpe_med", 0),
+                "sharpe_p75": result.get("sharpe_p75", 0),
+                "sharpe_max": result.get("sharpe_max", 0),
+                "syms_with_sharpe": result.get("syms_with_sharpe", 0),
                 "pnl": result.get("pnl", 0),
                 "trades": result.get("trades", 0),
                 "wins": result.get("wins", 0),

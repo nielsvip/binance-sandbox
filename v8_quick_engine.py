@@ -68,7 +68,7 @@ class QuickConfig:
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
     COOLDOWN_BARS: int = 3
-    NOLOSS_ENABLED: bool = True
+    NOLOSS_ENABLED: bool = False
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
     START_POSITION_SIZE: float = 2000.0
@@ -223,7 +223,7 @@ class QuickConfig:
     # >= EARLY_ABORT_MIN_SYMBOLS, so small fast sweeps (11/12 syms) run to completion.
     EARLY_ABORT_ENABLED: bool = True
     EARLY_ABORT_MIN_SYMBOLS: int = 15
-    EARLY_ABORT_SHARPE_FLOOR: float = 1.0
+    EARLY_ABORT_SHARPE_FLOOR: float = 2.5
 
     # ===== Auto-hooked Group B switches (2026-04-16) =====
     # 229 switches from config_tradier.py/config.py, defaults preserved.
@@ -1230,10 +1230,10 @@ def compute_exit_signals(npz, n, is_long, cfg):
 
 def simulate(stores, cfg, capital=10000.0):
     all_pnl = []
+    per_symbol_pnl = {}
     start_size = cfg.START_POSITION_SIZE
     cooldown = cfg.COOLDOWN_BARS
     min_hold = cfg.MIN_HOLD_BARS
-    # Early-abort (user directive 2026-04-16): stop a config if after N symbols Sharpe < floor.
     ea_enabled = bool(getattr(cfg, 'EARLY_ABORT_ENABLED', True))
     ea_min_syms = int(getattr(cfg, 'EARLY_ABORT_MIN_SYMBOLS', 15))
     ea_floor = float(getattr(cfg, 'EARLY_ABORT_SHARPE_FLOOR', 1.0))
@@ -1241,6 +1241,7 @@ def simulate(stores, cfg, capital=10000.0):
     early_abort = False
     _ltf = getattr(cfg, 'LTF', '3m')
     for sym, npz in stores.items():
+        sym_pnl = []
         # Derive n from LTF close (stocks may not have timestamps/timestamp_3m fields at all).
         ts = npz.get('timestamps', npz.get(f'timestamp_{_ltf}', npz.get('timestamp_3m', np.array([]))))
         n = len(ts)
@@ -1291,13 +1292,11 @@ def simulate(stores, cfg, capital=10000.0):
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     # Profit target hit — exit at exactly pt_pct (limit-order semantics: cap at target)
                     if pt_enabled and live_pnl >= pt_pct:
-                        all_pnl.append(pt_pct); in_pos = False; cd = max(cooldown, min_gap_bars); continue
-                    # Stop loss hit — exit at loss
+                        all_pnl.append(pt_pct); sym_pnl.append(pt_pct); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
-                        all_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl); in_pos = False; cd = max(cooldown, min_gap_bars); continue
                 if in_pos and exit_sig[i] and (i - eb) >= min_hold:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    # WINNER_PROTECT: skip exit when gain ∈ [0, gain_pct) AND all 3 HTF aligned with position.
                     if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
                         continue
                     if cfg.NOLOSS_ENABLED and pnl < 0:
@@ -1311,30 +1310,61 @@ def simulate(stores, cfg, capital=10000.0):
                                 continue
                         else:
                             continue
-                    all_pnl.append(pnl)
+                    all_pnl.append(pnl); sym_pnl.append(pnl)
                     in_pos = False; cd = max(cooldown, min_gap_bars)
+            if in_pos:
+                final_px = close[n - 1]
+                if final_px > 0 and ep > 0:
+                    final_pnl = ((final_px - ep) / ep * 100) if is_long else ((ep - final_px) / ep * 100)
+                    all_pnl.append(final_pnl); sym_pnl.append(final_pnl)
+                in_pos = False
+        per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
-        # Early-abort: after both directions for this symbol, check cumulative Sharpe
-        if ea_enabled and symbols_processed >= ea_min_syms and len(all_pnl) >= 2:
-            p_chk = np.array(all_pnl)
-            s_chk = p_chk.std()
-            cur_sharpe = (p_chk.mean() / s_chk) if s_chk > 0 else 0.0
-            if cur_sharpe < ea_floor:
-                early_abort = True
-                break
+        if ea_enabled and symbols_processed >= ea_min_syms:
+            per_sym_sharpes_chk = _per_symbol_sharpes(per_symbol_pnl)
+            if per_sym_sharpes_chk:
+                avg_chk = float(np.mean(per_sym_sharpes_chk))
+                if avg_chk < ea_floor:
+                    early_abort = True
+                    break
+    return _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort)
+
+
+def _per_symbol_sharpes(per_symbol_pnl, min_trades=30, std_floor=1e-3, cap=20.0):
+    out = []
+    for sym, plist in per_symbol_pnl.items():
+        if len(plist) < min_trades:
+            continue
+        arr = np.array(plist)
+        m = arr.mean(); s = max(arr.std(), std_floor)
+        sh = max(min(m / s, cap), -cap)
+        out.append(sh)
+    return out
+
+
+def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort):
+    per_sym_sharpes = _per_symbol_sharpes(per_symbol_pnl)
     n_trades = len(all_pnl)
-    if n_trades < 2:
-        return {"sharpe": 0, "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0,
+    if not per_sym_sharpes:
+        return {"sharpe": 0, "sharpe_min": 0, "sharpe_p25": 0, "sharpe_med": 0,
+                "sharpe_p75": 0, "sharpe_max": 0, "syms_with_sharpe": 0,
+                "pnl": 0, "trades": n_trades, "wins": 0, "losses": 0,
                 "avg_pnl_pct": 0, "wr": 0, "early_abort": early_abort,
                 "symbols_used": symbols_processed}
-    p = np.array(all_pnl)
+    arr = np.array(per_sym_sharpes)
+    p = np.array(all_pnl) if all_pnl else np.array([0.0])
     w = int((p > 0).sum()); l = int((p <= 0).sum())
-    m = p.mean(); s = p.std()
     return {
-        "sharpe": round(m / s if s > 0 else 0, 4),
+        "sharpe": round(float(arr.mean()), 4),
+        "sharpe_min": round(float(arr.min()), 4),
+        "sharpe_p25": round(float(np.percentile(arr, 25)), 4),
+        "sharpe_med": round(float(np.median(arr)), 4),
+        "sharpe_p75": round(float(np.percentile(arr, 75)), 4),
+        "sharpe_max": round(float(arr.max()), 4),
+        "syms_with_sharpe": len(per_sym_sharpes),
         "pnl": round(p.sum() / 100 * start_size, 2),
         "trades": n_trades, "wins": w, "losses": l,
-        "avg_pnl_pct": round(m, 4),
+        "avg_pnl_pct": round(float(p.mean()), 4),
         "wr": round(w / n_trades * 100, 1) if n_trades > 0 else 0,
         "early_abort": early_abort,
         "symbols_used": symbols_processed,
