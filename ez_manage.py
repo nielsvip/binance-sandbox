@@ -10802,22 +10802,6 @@ class MultiAccountTradeManager:
                     logger.warning(f"🚫 [15M_GATE_WT_3m15m] {position_key}: BLOCKED {_aug_tag} aug — wt_3m_ok={_eta_3m_ok} wt_15m_ok={_eta_15m_ok} (need both, no falling knife). gain={_eta_pos_gain:.2f}%")
                     return f"BLOCKED_15M_WT_3m15m_3m={_eta_3m_ok}_15m={_eta_15m_ok}"
                 logger.info(f"✅ [15M_GATE_WT_PASS] {position_key}: {('WINNER' if _eta_winner else 'PULLBACK')} aug — wt_3m+wt_15m aligned, gain={_eta_pos_gain:.2f}% max={_eta_pos_max:.2f}%")
-            else:
-                _k15 = safe_fetch_float(i.get('stoch_k_15m'), 50)
-                _k15p = safe_fetch_float(i.get('stoch_k_15m_prev', i.get('stoch_k_15m_prv')), _k15)
-                _d15 = safe_fetch_float(i.get('stoch_d_15m'), 50)
-                _wt1_15 = safe_fetch_float(i.get('wt1_15m'), 0)
-                _wt2_15 = safe_fetch_float(i.get('wt2_15m'), 0)
-                _k15_rising = _k15 > _k15p and _k15 > _d15
-                _k15_falling = _k15 < _k15p and _k15 < _d15
-                _wt15_bull = _wt1_15 > _wt2_15
-                _wt15_bear = _wt1_15 < _wt2_15
-                if _is_long_pos and (_k15_falling or _wt15_bear):
-                    logger.warning(f"🚫 [15M_AGAINST_LONG] {position_key}: BLOCKED {action} — 15m moving DOWN (k={_k15:.1f}>{_k15p:.1f}={_k15_falling} wt1={_wt1_15:.1f}<wt2={_wt2_15:.1f}={_wt15_bear}). Wait for 15m to turn.")
-                    return f"BLOCKED_15M_AGAINST_LONG_k{_k15:.0f}"
-                if not _is_long_pos and (_k15_rising or _wt15_bull):
-                    logger.warning(f"🚫 [15M_AGAINST_SHORT] {position_key}: BLOCKED {action} — 15m moving UP (k={_k15:.1f}>{_k15p:.1f}={_k15_rising} wt1={_wt1_15:.1f}>wt2={_wt2_15:.1f}={_wt15_bull}). Wait for 15m to turn.")
-                    return f"BLOCKED_15M_AGAINST_SHORT_k{_k15:.0f}"
         account_key, parsed_symbol, parsed_position_side = parse_position_key(position_key)
         current_account.set(account_key)
         if account_key not in self.accounts:

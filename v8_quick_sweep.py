@@ -655,6 +655,48 @@ def build_param_grid_hunt_stock():
     }
 
 
+def build_param_grid_stock_dc_hunt():
+    """DC-recovery-aware stock hunt (2026-04-20). DC_RECOVERY_EXIT now enabled in tradier defaults
+    (bb_1h stranded exit). Previous hunt_stock had PROFIT_TARGET_PCT without PT_ENABLED toggle — dead configs.
+    This tier properly tests PT_ENABLED as a boolean lever alongside key exit/entry gates.
+    ~50k configs, 12 fast symbols from 2024, EARLY_ABORT floor=0.8 on 4 qualifying symbols.
+    Run on S2: --mode tradier --symbols fast --start 2024-01-01 --tier stock_dc_hunt --workers 6
+    --kill-secs 30 --kill-sharpe 0.5 --min-csv-sharpe 1.5"""
+    return {
+        "PROFIT_TARGET_ENABLED": [True, False],
+        "PROFIT_TARGET_PCT": [0.2, 0.4, 0.7, 1.0, 1.5, 2.0],
+        "MIN_HOLD_BARS": [2, 5, 10, 20, 40, 80],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 8.0, 12.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "REENTRY_RALLY_K15M_MAX": [40.0, 60.0, 80.0, 100.0],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [4],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.8],
+    }
+
+
+def build_param_grid_stock_dc_wide():
+    """Wide validation of DC-recovery baseline on all 262 symbols (2026-04-20).
+    PT toggle + key exit gates. ~128 configs on all 262 symbols via --symbols all --stream.
+    EARLY_ABORT: 30 qualifying symbols (≥30 trades) with floor=0.5 — kills truly dead configs
+    while letting valid ones through. Run on S1:
+    --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_wide --workers 6 --stream
+    --min-csv-sharpe 0.8 --kill-secs 999999 --kill-sharpe 0"""
+    return {
+        "PROFIT_TARGET_ENABLED": [True, False],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0, 1.5],
+        "MIN_HOLD_BARS": [4, 20, 40, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+    }
+
+
 def build_param_grid_stock_sweep_v1():
     """Stock sweep v1 (2026-04-19): expand around proven PT=0.3 HOLD=40-80 winner (262 syms).
     Add WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED, D_TREND_REQUIRED, STRENGTH_MIN_SCORE.
@@ -707,6 +749,8 @@ TIER_MAP = {
     "stock_mega": build_param_grid_stock_mega,
     "hunt_crypto": build_param_grid_hunt_crypto,
     "hunt_stock": build_param_grid_hunt_stock,
+    "stock_dc_hunt": build_param_grid_stock_dc_hunt,
+    "stock_dc_wide": build_param_grid_stock_dc_wide,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
 }

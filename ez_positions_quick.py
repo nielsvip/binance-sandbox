@@ -2000,6 +2000,19 @@ class AdvancedSignalRater:
                     score += _cd_bonus; reasons.append(f"WT_CD_BULL({_cd_s:.0f},+{_cd_bonus:.0f})")
                 elif not is_long and _cd_s < -_cd_thresh:
                     score += _cd_bonus; reasons.append(f"WT_CD_BEAR({_cd_s:.0f},+{_cd_bonus:.0f})")
+        # === 15M MOMENTUM GATE — penalise entries where 15m WT is declining (LONG) or rising (SHORT) ===
+        # Quicker than wt1<wt2 crossover: compares wt1_15m vs its own previous value.
+        # Bypass: if 3m WT is making higher highs (bull cross + rising) for LONG, or lower lows for SHORT.
+        if not is_exit:
+            _wt1_15m_prev_r = safe_fetch_float(i.get('wt1_15m_prev', wt1_15m), wt1_15m)
+            _wt1_3m_prev_r = safe_fetch_float(i.get('wt1_3m_prev', wt1_3m), wt1_3m)
+            _15m_pen = float(getattr(config, 'WT15M_AGAINST_PENALTY', -5.0))
+            _3m_hh_bypass = is_long and wt_cross_bull_3m and wt1_3m > _wt1_3m_prev_r
+            _3m_ll_bypass = not is_long and wt_cross_bear_3m and wt1_3m < _wt1_3m_prev_r
+            if is_long and wt1_15m < _wt1_15m_prev_r and not _3m_hh_bypass:
+                score += _15m_pen; reasons.append(f"15M_AGAINST_L(wt15={wt1_15m:.1f}<prev={_wt1_15m_prev_r:.1f},{_15m_pen:.0f})")
+            elif not is_long and wt1_15m > _wt1_15m_prev_r and not _3m_ll_bypass:
+                score += _15m_pen; reasons.append(f"15M_AGAINST_S(wt15={wt1_15m:.1f}>prev={_wt1_15m_prev_r:.1f},{_15m_pen:.0f})")
         # === R-S3 DIV_STACK — divergence stacking bonus/penalty ===
         if bool(getattr(config, 'R_S3_DIV_STACK_ENABLED', False)) and not is_exit:
             _hid_bonus = float(getattr(config, 'R_S3_HIDDEN_BONUS', 25.0))
