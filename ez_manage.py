@@ -77,6 +77,11 @@ def check_reentry_delta_tolerant(indicators: dict, is_long: bool, trade_manager=
       4. Speed z-score >= DELTA_REENTRY_Z_THRESHOLD (default 1.0)
     Returns (allowed, reason)."""
     try:
+        # TODO URGENT RETEST 2026-04-19: delta must be a sizing ADDITION, NOT a filter.
+        # Was blocking ALL reentries with z=0.0<1.0 (speed_z absent from NPZ/hot_metrics).
+        # Re-enable DELTA_REENTRY_FILTER_ENABLED after NPZ speed_z fields validated + sweep done.
+        if not getattr(config, 'DELTA_REENTRY_FILTER_ENABLED', False):
+            return True, "DELTA_REENTRY_FILTER_OFF_RETEST_PENDING"
         _dt = getattr(trade_manager, 'delta_tracker', None) if trade_manager else None
         if _dt is None or not getattr(config, 'DELTA_ENGINE_ENABLED', False):
             return True, "DELTA_OFF_ALLOW"

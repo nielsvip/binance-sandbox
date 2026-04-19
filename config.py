@@ -280,6 +280,18 @@ class Config:
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True  # On hedge close, drop position_key from tradeable_keys.
     HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
+    # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
+    # Kill switches — flip any to False to disable the corresponding live behavior.
+    HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = True  # Kill non-hedge positions when ALL WT+K TFs against side.
+    WRONG_SIDE_MIN_AGE_MIN: float = 30.0  # Grace period — won't fire on newborn positions.
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 5  # Of 5 WT TFs (3m/15m/1h/4h/D), how many must be against.
+    WRONG_SIDE_K_TFS_REQUIRED: int = 3  # Of 3 stoch K TFs (3m/15m/1h), how many must be against.
+    STALL_SUB_ENABLED: bool = True  # Close flat-delta stalled positions to free capital for high-delta entries.
+    STALL_AGE_MIN_MIN: float = 180.0  # Position must be at least N minutes old to count as "stalled".
+    STALL_GAIN_ABS_MAX: float = 0.5  # |gain| must be below this % to count as stalled.
+    STALL_DELTA_SPEED_MAX: float = 1.0  # max(bull_speed, bear_speed) must be below this for "delta dead".
+    STALL_MAX_CLOSES_PER_CYCLE: int = 2  # Max stall-closes per account per 30s cycle.
     RATIO_MULTIPLIER: float = 4.0  # BC_160: 4x = +2052% vs 3x = +1593% on WT exit/reentry backtest (12 sym, 2025). 60/40 → 90/10. DD 0.7%.
     # === V4 BACKTEST-PROVEN EXIT TUNING (2026-03-27) ===
     # Crypto sweep: vel-6/frac15 = Sharpe 0.457 vs baseline 0.404 (+13%), DD 9.67% vs 10.93%
@@ -422,6 +434,9 @@ class Config:
     DELTA_ENGINE_ENABLED: bool = True  # Master switch
     DELTA_ENTRY_ENABLED: bool = True
     DELTA_EXIT_ENABLED: bool = True
+    # TODO URGENT RETEST 2026-04-19: delta was hard-blocking ALL reentries (z=0.0<1.0 for entire market).
+    # Delta = sizing ADDITION, NOT a filter. Set False until NPZ speed_z fields are validated + retest sweep done.
+    DELTA_REENTRY_FILTER_ENABLED: bool = False
     WT_COMPOSITE_SCORING_ENABLED: bool = True  # reach existing bonus block at ez_positions_quick.py:1715-1751 (stocks already on via WT_COMPOSITE_SCORING_ENABLED_TRADIER)
     DELTA_PYRAMID_ENABLED: bool = True  # Disabled until sweep validates
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5

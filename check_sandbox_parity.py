@@ -33,6 +33,7 @@ CRITICAL_FILES = [
     # Backtest engine (sweep results depend on this)
     "v8_quick_engine.py", "v8_quick_sweep.py", "breakout_multi_lung.py",
     "backtest_v8_engine.py", "backtest_v8_precompute.py", "backtest_v8_harness.py",
+    "backtest_v8_sweep.py",
 ]
 
 
