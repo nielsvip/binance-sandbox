@@ -452,20 +452,21 @@ def build_param_grid_stock_validate2():
 
 
 def build_param_grid_stock_mega():
-    """Wide stock sweep with aggressive early abort (2026-04-19 champion findings):
+    """Wide stock sweep (2026-04-19 champion: PT=0.3 HOLD=40 → Sharpe 11.3 PnL +$6.5k at 262 syms).
     VEL_GATE=False and VWAP=False confirmed best for stocks.
-    PT=0.15-1.0, HOLD=20-80. Abort configs if avg Sharpe < 4 after 3 symbols (~15s).
-    Run on all 262 symbols via --symbols all. ~192 configs per batch."""
+    PT=0.2-1.0, HOLD=20-80. Early abort: 15 qualifying symbols (≥30 trades) with floor=2.5.
+    Low floor because only ~82/262 syms qualify → first 15 qualifiers avg ≈ 3.5 for champion.
+    Run on all 262 symbols via --symbols all --stream. ~192 configs per batch."""
     return {
-        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.4, 0.5, 1.0],
         "MIN_HOLD_BARS": [20, 40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [3],
-        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [100],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.5],
     }
 
 
@@ -654,6 +655,27 @@ def build_param_grid_hunt_stock():
     }
 
 
+def build_param_grid_stock_sweep_v1():
+    """Stock sweep v1 (2026-04-19): expand around proven PT=0.3 HOLD=40-80 winner (262 syms).
+    Add WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED, D_TREND_REQUIRED, STRENGTH_MIN_SCORE.
+    VEL_GATE=False confirmed best for stocks. EARLY_ABORT=50 syms floor=2.0 kills dead configs fast.
+    ~864 configs × 262 syms streaming → ~3h on 18 workers."""
+    return {
+        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
+        "MIN_HOLD_BARS": [20, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "VWAP_FILTER_ENABLED": [False],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "HTF_MIN_ALIGNED": [1, 2, 3],
+        "D_TREND_REQUIRED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [False],
+        "RZ_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -686,6 +708,7 @@ TIER_MAP = {
     "hunt_crypto": build_param_grid_hunt_crypto,
     "hunt_stock": build_param_grid_hunt_stock,
     "mega_v7": build_param_grid_mega_v7,
+    "stock_sweep_v1": build_param_grid_stock_sweep_v1,
 }
 
 

@@ -70,6 +70,7 @@ class QuickConfig:
     COOLDOWN_BARS: int = 0
     NOLOSS_ENABLED: bool = True  # match live STRICT_NO_LOSS; mark-to-market at sim end handles honesty
     DC_RECOVERY_EXIT_ENABLED: bool = False
+    DC_RECOVERY_EXIT_TF: str = "dc_4h"   # crypto: dc_4h. tradier: bb_1h (set in apply_tradier_defaults)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
@@ -553,6 +554,11 @@ class QuickConfig:
         self.MIN_HOLD_BARS = 4
         # Tradier has no simulated hedge — disable so counter-positions don't contaminate P&L.
         self.HEDGE_ENABLED = False
+        # 2026-04-20 FIX: DC_RECOVERY_EXIT rescues NOLOSS-stuck positions. Disabled by default (crypto
+        # uses hedge instead). For tradier, this is the ONLY escape valve — without it, positions stranded
+        # below entry hold forever and block all reentries. Use bb_1h range (stocks: bb_1h, not dc_4h).
+        self.DC_RECOVERY_EXIT_ENABLED = True
+        self.DC_RECOVERY_EXIT_TF = "bb_1h"
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -1290,8 +1296,11 @@ def simulate(stores, cfg, capital=10000.0):
             else:
                 continue
         close = _close_with_mode_check(npz, n, cfg, 'simulate')
-        dc_high_4h = _safe(npz, 'dc_high_4h', n)
-        dc_low_4h = _safe(npz, 'dc_low_4h', n)
+        _dc_tf_map = {'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_1h': ('dc_high_1h', 'dc_low_1h'),
+                      'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h')}
+        _dc_hk, _dc_lk = _dc_tf_map.get(getattr(cfg, 'DC_RECOVERY_EXIT_TF', 'dc_4h'), ('dc_high_4h', 'dc_low_4h'))
+        dc_high_4h = _safe(npz, _dc_hk, n)
+        dc_low_4h = _safe(npz, _dc_lk, n)
         # Hedge engine: continuous per-bar condition. No event needed.
         # LONG main → SHORT hedge active whenever: gain<0 AND wt1_LTF<wt2_LTF AND wt1_1h<wt2_1h
         # SHORT main → LONG hedge: gain<0 AND wt1_LTF>wt2_LTF AND wt1_1h>wt2_1h
@@ -1365,8 +1374,7 @@ def simulate(stores, cfg, capital=10000.0):
                                 stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
                             else:
                                 stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
-                            near = abs(px - ep) / ep * 100 < cfg.DC_RECOVERY_EXIT_TOLERANCE_PCT
-                            if not (stranded and near):
+                            if not stranded:
                                 continue
                         else:
                             continue

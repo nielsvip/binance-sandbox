@@ -555,6 +555,45 @@ def grid_indicator_audit_v2():
     ]
 
 
+def grid_tradier_param_hunt():
+    """2026-04-19: hunt best tradier params using the REAL backtest_v8_engine.
+    Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
+
+    54-combo cartesian of 4 core params + ablation of score/hold/vel-gate.
+    Total: ~63 variants. ETA ~60s each / 4 workers ≈ ~16 min.
+
+    Launch on S2:
+      python3 backtest_v8_sweep.py --mode tradier --account trb --start 2024-01-01 \\
+          --symbols AAPL,MSFT,NVDA,XOM,GLD,SPY,AMZN,GOOGL \\
+          --tier tradier_param_hunt --workers 4 --timeout 900
+    """
+    from itertools import product as _product
+    combos = [("baseline", {})]
+    # ── CARTESIAN: 4 core real tradier params ── (3×3×3×2 = 54)
+    for wt_exit, k_max, vel_min, htf_min in _product(
+        [2, 3, 4],            # WT_EXIT_MIN_TFS_TRADIER default=5 (5=zero-trades, banned)
+        [40.0, 80.0, 100.0],  # REENTRY_RALLY_K15M_MAX default=100
+        [0.0, 3.0, 6.0],      # CT_WT_VELOCITY_1H_MIN default=0.0
+        [2, 3],               # REENTRY_RALLY_HTF_MIN default=3
+    ):
+        label = f"wt{wt_exit}_k{int(k_max)}_vel{vel_min}_htf{htf_min}"
+        combos.append((label, {
+            "WT_EXIT_MIN_TFS_TRADIER": wt_exit,
+            "REENTRY_RALLY_K15M_MAX": k_max,
+            "CT_WT_VELOCITY_1H_MIN": vel_min,
+            "REENTRY_RALLY_HTF_MIN": htf_min,
+        }))
+    # ── ABLATION: entry score threshold (default=24) ──
+    for score in [20, 22, 26, 28]:
+        combos.append((f"score{score}", {"TRADIER_ENTRY_SCORE_THRESHOLD": score}))
+    # ── ABLATION: min hold bars (default=32) ──
+    for hold in [16, 24, 48]:
+        combos.append((f"hold{hold}", {"MIN_HOLD_BARS_TRADIER": hold}))
+    # ── ABLATION: velocity gate toggle ──
+    combos.append(("vel_gate_off", {"CT_WT_VELOCITY_GATE_ENABLED": False}))
+    return combos
+
+
 def grid_indicator_audit_v3_full():
     """2026-04-19 FULL indicator-audit matrix — every new switch gets systematic coverage.
     Four sections: (A) single-switch ablations, (B) value sweeps for numeric params,
@@ -744,6 +783,7 @@ TIER_MAP = {
     "indicator_audit": grid_indicator_audit,
     "indicator_audit_v2": grid_indicator_audit_v2,
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
+    "tradier_param_hunt": grid_tradier_param_hunt,
 }
 
 
