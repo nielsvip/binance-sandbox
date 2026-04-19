@@ -341,6 +341,25 @@ def build_param_grid_mega_stock():
     }
 
 
+def build_param_grid_stock_v2():
+    """Stock V2 — 2026-04-19 ablation baseline.
+    Key: HOLD=40 + PT=0.5 + NOLOSS=True → Sharpe 3.22 on 12-sym 1yr (apply_tradier_defaults).
+    K15M gate HURTS stocks (kills trades). Sweep HOLD+PT+VEL+exits around the proven baseline.
+    No early abort — only ~1k configs, fast completion.
+    Run with --mode tradier --start 2024-01-01 --workers 18."""
+    return {
+        "MIN_HOLD_BARS": [10, 20, 30, 40, 60],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.5],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
+        "RZ_EXIT_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.5],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -356,6 +375,7 @@ TIER_MAP = {
     "mega": build_param_grid_mega,
     "mega_v2": build_param_grid_mega_v2,
     "mega_stock": build_param_grid_mega_stock,
+    "stock_v2": build_param_grid_stock_v2,
 }
 
 
