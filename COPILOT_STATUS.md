@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-19 08:40:43 UTC
+# Copilot Status — 2026-04-19 08:55:52 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T08:38:38
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-19T08:38:50
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T08:38:50
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T08:38:50
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-19T08:39:51
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T08:39:51
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T08:39:51
-- **STALE_INDICATORS** [tradier]  — 2026-04-19T08:40:43
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T08:40:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T08:40:43
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T08:53:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T08:53:23
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-19T08:54:25
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T08:54:25
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T08:54:25
+- **STALE_INDICATORS** [tradier]  — 2026-04-19T08:55:16
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-04-19T08:55:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-19T08:55:16
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-19T08:55:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-19T08:55:30
 
 ## Missed Trades (trader comparison)
 
@@ -27,9 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
-
-- HELD: **GTCUSDT** LONG (crypto) peak +5.5%, now +-3.4%
+**Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 0m ago
 
