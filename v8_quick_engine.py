@@ -75,6 +75,7 @@ class QuickConfig:
     DC_LOW4_BYPASS_NOLOSS_ENABLED: bool = False   # 2026-04-20: price breaks 4-bar DC low → exit bypassing NOLOSS. Test for paper-cuts.
     DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
     DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
+    DC_LOW4_BYPASS_TF: str = ""                   # '' = use LTF (5m tradier / 3m crypto), '15m' = 15m channel (wider stop)
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
@@ -85,7 +86,15 @@ class QuickConfig:
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False
     DELTA_ENGINE_ENABLED: bool = True
     DELTA_ENTRY_ENABLED: bool = True
-    RZ_EXIT_ENABLED: bool = False  # 2026-04-19: disabled — premature exits lower Sharpe from 2.5 to 1.25
+    RZ_EXIT_ENABLED: bool = True  # re-enabled 2026-04-20: old failure used hardcoded 0.85/80/1.0 — now reads cfg thresholds. TEST_PRIORITY: sweep with RZ_K_EXIT + RZ_TOP_BB_THRESHOLD.
+    RZ_K_EXIT: float = 80.0          # TEST_PRIORITY: K extreme threshold for RZ exit. Crypto live=95, stocks live=80. Sweep 65-95.
+    RZ_MFI_EXIT: float = 85.0        # TEST_PRIORITY: MFI extreme threshold for RZ exit. Sweep 70-95.
+    RZ_TOP_BB_THRESHOLD: float = 0.85  # TEST_PRIORITY: BB %B top-zone gate. Crypto=0.85, stocks=0.85. Sweep 0.75-0.95.
+    RZ_BOT_BB_THRESHOLD: float = 0.15  # TEST_PRIORITY: BB %B bottom-zone gate. Sweep 0.05-0.25.
+    EXIT_SCORER_ENABLED: bool = False  # TEST_PRIORITY: N-of-5 exit scorer (mirror of wt_dc_exit_scorer). Validated +25.3% in tradier. Sweep True/False.
+    EXIT_SCORER_MIN_CONDITIONS: int = 3  # TEST_PRIORITY: how many of 5 exit conditions required. Sweep 2-5.
+    EXIT_SCORER_K_EXTREME: float = 75.0  # K extreme threshold for scorer. Sweep 65-85.
+    EXIT_SCORER_DC_EXTREME: float = 0.80  # DC position extreme threshold. Sweep 0.70-0.90.
     SATOSHIT_ENABLED: bool = True
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
@@ -552,6 +561,9 @@ class QuickConfig:
     PARTIAL_TRAIL_ARM_PCT: float = 0.7             # arm the floor once gain reaches this
     PARTIAL_TRAIL_FLOOR_PCT: float = 0.5           # remainder floor price (matched to first target)
     PARTIAL_REMAINDER_EXIT_TFS: int = 2            # looser WT TFS for the remaining half
+    RATIO_SENTIMENT_FILTER_ENABLED: bool = False
+    RATIO_SENTIMENT_LONG_MIN: float = 40.0
+    RATIO_SENTIMENT_SHORT_MAX: float = 60.0
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -657,6 +669,16 @@ class QuickConfig:
         self.K_LOWER_HIGH_EXIT_ENABLED = True  # exit if k peaks below extreme and turns down
         self.K_LOWER_HIGH_LTF_THRESHOLD = 65.0  # k_ltf must be >= 65 (lower bound of failed rally)
         self.K_LOWER_HIGH_EXTREME = 95.0   # only fires if k_prev < 95 (didn't reach true extreme)
+        # RZ_EXIT tradier defaults (mirror config_tradier.py live values):
+        self.RZ_EXIT_ENABLED = True         # T25 sweep validated: RZ_EXIT True=0.492 vs False=0.229 (+115%)
+        self.RZ_K_EXIT = 80.0              # stocks use 80 (crypto live=95)
+        self.RZ_TOP_BB_THRESHOLD = 0.85
+        self.RZ_BOT_BB_THRESHOLD = 0.15
+        # EXIT_SCORER tradier defaults (wt_dc_exit_scorer validated +25.3%):
+        self.EXIT_SCORER_ENABLED = True    # tradier: scorer is the validated exit gate
+        self.EXIT_SCORER_MIN_CONDITIONS = 3
+        self.EXIT_SCORER_K_EXTREME = 75.0
+        self.EXIT_SCORER_DC_EXTREME = 0.80
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -1348,6 +1370,9 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _le_min = float(getattr(cfg, 'LOCAL_EXTREMES_MIN_SCORE', 30.0))
         le_ok = _le_score >= _le_min
     base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok & le_ok
+    if getattr(cfg, 'RATIO_SENTIMENT_FILTER_ENABLED', False):
+        mkt_s = _safe(npz, 'market_sentiment_score', n, 50.0)
+        base_sig = base_sig & ((mkt_s >= cfg.RATIO_SENTIMENT_LONG_MIN) if is_long else (mkt_s <= cfg.RATIO_SENTIMENT_SHORT_MAX))
     # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -1445,10 +1470,38 @@ def compute_exit_signals(npz, n, is_long, cfg):
             sat_exit = (k_ltf_prev <= 20) & (k_ltf_prev <= d_ltf) & (k_ltf > d_ltf) & (mfi_ltf > mfi_ltf_prev)
     rz_exit = np.zeros(n, dtype=bool)
     if cfg.RZ_EXIT_ENABLED:
+        _rz_k_exit = float(getattr(cfg, 'RZ_K_EXIT', 80.0))
+        _rz_mfi_exit = float(getattr(cfg, 'RZ_MFI_EXIT', 85.0))
+        _rz_top_bb = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
+        _rz_bot_bb = float(getattr(cfg, 'RZ_BOT_BB_THRESHOLD', 0.15))
         if is_long:
-            rz_exit = ((bb_pctb_1h > 0.85) | (k_1h >= 80)) & (wt_vel_ltf < -1.0)
+            rz_exit = (bb_pctb_1h >= _rz_top_bb) & (k_1h >= _rz_k_exit) & (wt_vel_ltf < -1.0)
+            if _rz_mfi_exit > 0:
+                rz_exit = rz_exit | ((bb_pctb_1h >= _rz_top_bb) & (mfi_1h >= _rz_mfi_exit) & (wt_vel_ltf < -1.0))
         else:
-            rz_exit = ((bb_pctb_1h < 0.15) | (k_1h <= 20)) & (wt_vel_ltf > 1.0)
+            rz_exit = (bb_pctb_1h <= _rz_bot_bb) & (k_1h <= (100.0 - _rz_k_exit)) & (wt_vel_ltf > 1.0)
+            if _rz_mfi_exit > 0:
+                rz_exit = rz_exit | ((bb_pctb_1h <= _rz_bot_bb) & (mfi_1h <= (100.0 - _rz_mfi_exit)) & (wt_vel_ltf > 1.0))
+    exit_scorer_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'EXIT_SCORER_ENABLED', False):
+        _es_min = int(getattr(cfg, 'EXIT_SCORER_MIN_CONDITIONS', 3))
+        _es_k = float(getattr(cfg, 'EXIT_SCORER_K_EXTREME', 75.0))
+        _es_dc = float(getattr(cfg, 'EXIT_SCORER_DC_EXTREME', 0.80))
+        dc_pos_1h = _safe(npz, 'dc_position_1h', n)
+        _wt1_4h_es = _safe(npz, 'wt1_4h', n); _wt2_4h_es = _safe(npz, 'wt2_4h', n)
+        if is_long:
+            _cond1 = wt1_1h < wt2_1h
+            _cond2 = _wt1_4h_es < _wt2_4h_es
+            _cond3 = k_1h >= _es_k
+            _cond4 = dc_pos_1h >= _es_dc
+            _cond5 = wt_vel_1h_exit < -1.0
+        else:
+            _cond1 = wt1_1h > wt2_1h
+            _cond2 = _wt1_4h_es > _wt2_4h_es
+            _cond3 = k_1h <= (100.0 - _es_k)
+            _cond4 = dc_pos_1h <= (1.0 - _es_dc)
+            _cond5 = wt_vel_1h_exit > 1.0
+        exit_scorer_exit = (_cond1.astype(int) + _cond2.astype(int) + _cond3.astype(int) + _cond4.astype(int) + _cond5.astype(int)) >= _es_min
     stoch_1h_exit = np.zeros(n, dtype=bool)
     if cfg.STOCH_CROSS_1H_EXIT_ENABLED:
         k_1h_prev = np.roll(k_1h, _bph_1h); k_1h_prev[:_bph_1h] = k_1h[:_bph_1h]
@@ -1621,7 +1674,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
             k_lower_high_exit = (k_ltf_prev_lh >= _klh_thr) & (k_ltf < k_ltf_prev_lh) & (k_ltf_prev_lh < _klh_extreme)
         else:
             k_lower_high_exit = (k_ltf_prev_lh <= (100.0 - _klh_thr)) & (k_ltf > k_ltf_prev_lh) & (k_ltf_prev_lh > (100.0 - _klh_extreme))
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -1679,10 +1732,20 @@ def simulate(stores, cfg, capital=10000.0):
         _dc4_bypass_enabled = bool(getattr(cfg, 'DC_LOW4_BYPASS_NOLOSS_ENABLED', False))
         _dc4_max_bars = int(getattr(cfg, 'DC_LOW4_BYPASS_MAX_BARS', 0))
         _dc4_std = bool(getattr(cfg, 'DC_LOW4_BYPASS_USE_STANDARD', False))
-        _dc4_low_key = f'dc_low_{_ltf}' if _dc4_std else f'dc_low4_{_ltf}'
-        _dc4_high_key = f'dc_high_{_ltf}' if _dc4_std else f'dc_high4_{_ltf}'
-        _dc4_low = _safe(npz, _dc4_low_key, n) if _dc4_bypass_enabled else None
-        _dc4_high = _safe(npz, _dc4_high_key, n) if _dc4_bypass_enabled else None
+        _dc4_tf_override = str(getattr(cfg, 'DC_LOW4_BYPASS_TF', ''))  # '' = use LTF, '15m' etc = explicit TF
+        _dc4_tf = _dc4_tf_override if _dc4_tf_override else _ltf
+        _dc4_low_key = f'dc_low_{_dc4_tf}' if _dc4_std else f'dc_low4_{_dc4_tf}'
+        _dc4_high_key = f'dc_high_{_dc4_tf}' if _dc4_std else f'dc_high4_{_dc4_tf}'
+        # Shift by 1 bar: dc_low4 includes the current bar's low, so close[i] < dc_low4[i] is
+        # mathematically impossible. Live code compares current_price to PREVIOUS bar's dc_low4.
+        _dc4_raw_low = _safe(npz, _dc4_low_key, n) if _dc4_bypass_enabled else None
+        _dc4_raw_high = _safe(npz, _dc4_high_key, n) if _dc4_bypass_enabled else None
+        if _dc4_bypass_enabled and _dc4_raw_low is not None:
+            import numpy as _np_dc4
+            _dc4_low = _np_dc4.roll(_dc4_raw_low, 1); _dc4_low[0] = _dc4_raw_low[0]
+            _dc4_high = _np_dc4.roll(_dc4_raw_high, 1); _dc4_high[0] = _dc4_raw_high[0]
+        else:
+            _dc4_low = None; _dc4_high = None
         # Hedge engine: continuous per-bar condition. No event needed.
         # LONG main → SHORT hedge active whenever: gain<0 AND wt1_LTF<wt2_LTF AND wt1_1h<wt2_1h
         # SHORT main → LONG hedge: gain<0 AND wt1_LTF>wt2_LTF AND wt1_1h>wt2_1h

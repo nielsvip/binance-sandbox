@@ -1040,8 +1040,8 @@ def build_param_grid_mega_crypto_v8():
     """DC_RECOVERY_EXIT=True (correct NOLOSS: close stranded positions above dc_high_4h).
     VEL_GATE defaults True in engine (required for entries — False kills all trades).
     Wider MIN_HOLD (20-300) + lower STRENGTH (1-5) to find entries that survive DC recovery.
-    ~20k combos. Kill <3 Sharpe after 15s on 6 symbols. Save >=3.5.
-    Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 3.5 --workers 12
+    TEST_PRIORITY switches added: RZ_EXIT_ENABLED, RZ_K_EXIT, EXIT_SCORER_ENABLED.
+    Run: --symbols fast --start 2022-01-01 --min-csv-sharpe 2.0 --workers 6 --stream --shuffle
     """
     return {
         "MIN_HOLD_BARS": [20, 50, 100, 150, 200, 300],
@@ -1055,18 +1055,23 @@ def build_param_grid_mega_crypto_v8():
         "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True],
         "NOLOSS_ENABLED": [True],
+        # TEST_PRIORITY: RZ and exit-scorer gates (rewired 2026-04-20)
+        "RZ_EXIT_ENABLED": [True, False],
+        "RZ_K_EXIT": [80.0, 90.0, 95.0],
+        "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
+        "EXIT_SCORER_ENABLED": [True, False],
+        "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [3.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
 def build_param_grid_mega_tradier_v8():
-    """Tradier pre-screen: 12-symbol fast filter. Kill <0.3 Sharpe after 30s. Save >=3.5.
-    PROFIT_TARGET_ENABLED=True so PT actually fires (apply_tradier_defaults sets it False).
-    Target 10k winners on 12 symbols then promote to full validation.
-    Engine peaks ~0.5 Sharpe currently — keep EARLY_ABORT_SHARPE_FLOOR low so configs run.
-    Run: --mode tradier --symbols fast --start 2024-01-01 --target-winners 10000 --min-csv-sharpe 3.5 --kill-sharpe 0.3 --workers 8
+    """Tradier pre-screen: 12-symbol fast filter. Kill <0.3 Sharpe after 60s. Save >=2.0.
+    TEST_PRIORITY switches added: RZ_EXIT_ENABLED (T25 +115%), EXIT_SCORER_ENABLED (+25.3%).
+    apply_tradier_defaults sets RZ_EXIT=True + EXIT_SCORER=True; sweep tests disabling them too.
+    Run: --mode tradier --symbols fast --start 2024-01-01 --min-csv-sharpe 2.0 --kill-sharpe 0.3 --workers 6 --stream --shuffle
     """
     return {
         "PROFIT_TARGET_ENABLED": [True],
@@ -1082,6 +1087,11 @@ def build_param_grid_mega_tradier_v8():
         "D_TREND_REQUIRED": [True, False],
         "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        # TEST_PRIORITY: RZ_EXIT validated +115% in T25 sweep; EXIT_SCORER validated +25.3%
+        "RZ_EXIT_ENABLED": [True, False],
+        "RZ_K_EXIT": [70.0, 80.0, 85.0],
+        "EXIT_SCORER_ENABLED": [True, False],
+        "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [0.3],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
@@ -1112,6 +1122,26 @@ def build_param_grid_mega_tradier_v8_focused():
         "EARLY_ABORT_MIN_SYMBOLS": [20],
         "EARLY_ABORT_SHARPE_FLOOR": [0.5],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
+def build_param_grid_rz_exit_sweep():
+    """TEST_PRIORITY: Isolate RZ_EXIT and EXIT_SCORER impact across both modes.
+    Run crypto: --mode crypto --symbols fast --start 2022-01-01 --min-csv-sharpe 2.0 --workers 6 --stream
+    Run tradier: --mode tradier --symbols fast --start 2024-01-01 --min-csv-sharpe 2.0 --kill-sharpe 0.3 --workers 6 --stream
+    432 combos (crypto), 432 (tradier).
+    """
+    return {
+        "RZ_EXIT_ENABLED": [True, False],
+        "RZ_K_EXIT": [70.0, 75.0, 80.0, 85.0, 90.0, 95.0],
+        "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
+        "RZ_MFI_EXIT": [75.0, 85.0, 95.0],
+        "EXIT_SCORER_ENABLED": [True, False],
+        "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
+        "EXIT_SCORER_K_EXTREME": [65.0, 75.0, 85.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
 
 
@@ -1207,6 +1237,57 @@ def build_param_grid_dc_low4_bypass_crypto():
         "EARLY_ABORT_MIN_SYMBOLS": [15],
         "EARLY_ABORT_SHARPE_FLOOR": [0.5],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
+def build_param_grid_dc_low_tf_tradier():
+    """2026-04-20: Test dc_low_5m vs dc_low_15m as stop-loss (bypass NOLOSS) on tradier.
+    User request: find if any DC-low TF improves vs current. Baseline = bypass disabled.
+    dc_low_15m is much wider channel — fires only on big structural breaks.
+    9 configs × 262 symbols. Run: --mode tradier --symbols all --start 2024-01-01 --tier dc_low_tf_tradier --workers 6
+    """
+    return {
+        "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
+        "DC_LOW4_BYPASS_TF": ["5m", "15m", ""],
+        "DC_LOW4_BYPASS_USE_STANDARD": [True],
+        "DC_LOW4_BYPASS_MAX_BARS": [0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.7],
+        "MIN_HOLD_BARS": [20],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [90.0],
+    }
+
+
+def build_param_grid_dc_low_tf_crypto():
+    """2026-04-20: Test dc_low_3m vs dc_low_15m as stop-loss (bypass NOLOSS) on crypto.
+    9 configs × 48 symbols.
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier dc_low_tf_crypto --workers 6
+    """
+    return {
+        "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
+        "DC_LOW4_BYPASS_TF": ["3m", "15m", ""],
+        "DC_LOW4_BYPASS_USE_STANDARD": [True],
+        "DC_LOW4_BYPASS_MAX_BARS": [0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.0],
+        "MIN_HOLD_BARS": [300],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "STRENGTH_MIN_SCORE": [4.0],
+        "WT_EXIT_MIN_TFS": [2],
+        "EARLY_ABORT_MIN_SYMBOLS": [15],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [90.0],
     }
 
 
@@ -1932,12 +2013,15 @@ TIER_MAP = {
     "mega_crypto_v8": build_param_grid_mega_crypto_v8,
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
     "mega_tradier_v8_focused": build_param_grid_mega_tradier_v8_focused,
+    "rz_exit_sweep": build_param_grid_rz_exit_sweep,
     "crypto_validate_top": build_param_grid_crypto_validate_top,
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
     "dc_low4_bypass_tradier": build_param_grid_dc_low4_bypass_tradier,
     "dc_low4_bypass_crypto": build_param_grid_dc_low4_bypass_crypto,
+    "dc_low_tf_tradier": build_param_grid_dc_low_tf_tradier,
+    "dc_low_tf_crypto": build_param_grid_dc_low_tf_crypto,
     "le_dynamic_tradier": build_param_grid_le_dynamic_tradier,
     "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
     "le_dynamic_tradier_v2": build_param_grid_le_dynamic_tradier_v2,

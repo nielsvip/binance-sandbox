@@ -1964,6 +1964,26 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
                 if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
                     return "BLOCKED_DELTA_ENTRY_DISABLED"
+            _cfg_pt = getattr(tm_mod, 'config', None)
+            if _cfg_pt and getattr(_cfg_pt, 'LS_RATIO_ENFORCE_TRADIER', False):
+                _lv_pt = _sv_pt = 0.0
+                _pos_src_pt = (manager.position_manager.positions if manager.position_manager else {})
+                for _ppk, _pp in _pos_src_pt.items():
+                    if not _ppk.startswith(f"{account_key}:"): continue
+                    _pamt = abs(float(getattr(_pp, 'positionAmt', getattr(_pp, 'quantity', 0))))
+                    if _pamt <= 0: continue
+                    _ppx = float(getattr(_pp, 'mark_price', 0) or getattr(_pp, 'entry_price', 0))
+                    if _ppx <= 0: continue
+                    _pval = _pamt * _ppx
+                    if _ppk.endswith('_LONG'): _lv_pt += _pval
+                    elif _ppk.endswith('_SHORT'): _sv_pt += _pval
+                _ratio_pt = _lv_pt / max(_sv_pt, 1.0)
+                _ls_max_pt = float(getattr(_cfg_pt, 'LS_RATIO_MAX_TRADIER', 2.0))
+                _ls_min_pt = float(getattr(_cfg_pt, 'LS_RATIO_MIN_TRADIER', 0.5))
+                if position_side == 'LONG' and _ratio_pt > _ls_max_pt:
+                    return f"BLOCKED_LS_RATIO_LONG_{_ratio_pt:.2f}gt{_ls_max_pt}"
+                if position_side == 'SHORT' and _ratio_pt < _ls_min_pt:
+                    return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
         v8_logger.warning(f"[V8_ETA] {position_key} {side} qty={qty:.4f} px={px:.4f} {act} {reason[:60]}")
         await _place(symbol=symbol, side=side, quantity=qty, price=px, action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
         # Update position (check both dicts — tradier uses position_manager.positions)
@@ -2088,6 +2108,26 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                             return f"BLOCKED_SRS_ENTRY_SHORT_AT_BOTTOM_pctb={_srs_e_pctb:.2f}"
                     except Exception as _srs_e_err:
                         v8_logger.warning(f"[V8_SRS_ENTRY_ERR] {position_key}: {_srs_e_err}")
+                _cfg_r = getattr(tm_mod, 'config', None)
+                if _cfg_r and getattr(_cfg_r, 'LS_RATIO_ENFORCE_TRADIER', False):
+                    _lv_r = _sv_r = 0.0
+                    _pos_src = (manager.position_manager.positions if manager.position_manager else {})
+                    for _rpk, _rp in _pos_src.items():
+                        if not _rpk.startswith(f"{account_key}:"): continue
+                        _ramt = abs(float(getattr(_rp, 'positionAmt', getattr(_rp, 'quantity', 0))))
+                        if _ramt <= 0: continue
+                        _rpx = float(getattr(_rp, 'mark_price', 0) or getattr(_rp, 'entry_price', 0))
+                        if _rpx <= 0: continue
+                        _rval = _ramt * _rpx
+                        if _rpk.endswith('_LONG'): _lv_r += _rval
+                        elif _rpk.endswith('_SHORT'): _sv_r += _rval
+                    _ratio_r = _lv_r / max(_sv_r, 1.0)
+                    _ls_max_r = float(getattr(_cfg_r, 'LS_RATIO_MAX_TRADIER', 2.0))
+                    _ls_min_r = float(getattr(_cfg_r, 'LS_RATIO_MIN_TRADIER', 0.5))
+                    if str(position_side) == 'LONG' and _ratio_r > _ls_max_r:
+                        return f"BLOCKED_LS_RATIO_LONG_{_ratio_r:.2f}gt{_ls_max_r}"
+                    if str(position_side) == 'SHORT' and _ratio_r < _ls_min_r:
+                        return f"BLOCKED_LS_RATIO_SHORT_{_ratio_r:.2f}lt{_ls_min_r}"
             # Pre-create empty position if OPEN so real ETA's ensure_position_present finds it
             if _act in ('OPEN', 'QUICK_OPEN', 'REENTRY') and manager.position_manager and _pk not in manager.position_manager.positions:
                 class _EmptyPos:

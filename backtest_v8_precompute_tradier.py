@@ -581,6 +581,9 @@ def main():
     log.info(f"\nOutput: {OUT_DIR}")
     log.info(f"  Database: {DB_PATH}")
     log.info(f"  Indicators: {INDICATORS_DIR}/ ({ok} NPZ files)")
+    if ok > 1:
+        ok_syms_inj = [sym for sym, _, s in results if s in ("ok", "skipped")]
+        _inject_market_sentiment(INDICATORS_DIR, ok_syms_inj)
 
 if __name__ == "__main__":
     main()
