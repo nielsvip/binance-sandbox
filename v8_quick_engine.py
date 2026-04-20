@@ -175,6 +175,7 @@ class QuickConfig:
     # Hedge: snapshot 2026-04-19 had hedge as LIVE-ONLY (no simulation). Simulation defaults OFF to match baseline.
     HEDGE_ENABLED: bool = False  # snapshot baseline: no hedge sim. True inflated trades 1209→84K due to no min-hold. Fixed: HEDGE_MIN_HOLD_BARS prevents micro-hedges.
     HEDGE_MIN_HOLD_BARS: int = 10  # min bars before closing a hedge (prevents 3m micro-hedge churn). 10 bars = 30 min.
+    HEDGE_WT_KILL_CONFIRM_TF: str = '1h'  # TF confirmation for WT-based hedge kill: 'none'=LTF only, '15m'=LTF+15m, '1h'=LTF+1h
     HEDGE_EXIT_BYPASS_NOLOSS: bool = True
     HEDGE_EXIT_WT_TF: str = "3m"
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True

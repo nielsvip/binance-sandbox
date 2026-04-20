@@ -1766,9 +1766,11 @@ def build_param_grid_le_dynamic_tradier_v2_validate_ea():
 
 def build_param_grid_ratio_sentiment_tradier():
     """2026-04-20: Does cross-symbol market_sentiment_score improve entries?
-    Tests RATIO_SENTIMENT_FILTER_ENABLED against le_dynamic_v2_baseline_20260420_2156
-    (Sharpe 6.577, 262 symbols, 2yr). Baseline config locked: score=45, ce=55, hold=20, PT=0.5%.
+    Tests RATIO_SENTIMENT_FILTER_ENABLED against FULL le_dynamic_v2_baseline_20260420_2156
+    (Sharpe 6.577, 262 symbols, 2yr). All 12 canonical baseline params included.
     LONG blocked when mss < LONG_MIN; SHORT blocked when mss > SHORT_MAX.
+    v2: Added D_TREND_REQUIRED, HTF_MIN_ALIGNED, STRENGTH_MIN_SCORE, STRUCTURAL_RANGE_SHIFT_EXIT,
+        CT_WT_VELOCITY params to match full 6.577-Sharpe baseline (v1 was missing these).
     Run: --mode tradier --symbols all --start 2024-01-01 --tier ratio_sentiment_tradier --workers 8 --kill-sharpe 0 --kill-secs 999999
     """
     base = {
@@ -1781,6 +1783,12 @@ def build_param_grid_ratio_sentiment_tradier():
         "PROFIT_TARGET_PCT": 0.5,
         "MIN_HOLD_BARS": 20,
         "WT_EXIT_MIN_TFS": 3,
+        "D_TREND_REQUIRED": True,
+        "HTF_MIN_ALIGNED": 1,
+        "STRENGTH_MIN_SCORE": 6.0,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": True,
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 10.0,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
@@ -2174,6 +2182,28 @@ def build_param_grid_le_partial_exit_crypto_validate():
     return configs
 
 
+def build_param_grid_hedge_wt_kill():
+    """2026-04-20: Test HEDGE_WT_KILL confirmation TF: none (3m only) vs 15m vs 1h.
+    Rule: kill hedge when loser's WT recovers. This sweep asks: which TF confirmation is best?
+    3 configs × 48 symbols × 4yr — very fast. Run on S1.
+    Run: python v8_quick_sweep.py --mode crypto --symbols all --start 2021-01-01 --tier hedge_wt_kill --workers 6 --stream"""
+    base = {
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 9.0,
+        "REENTRY_RALLY_K15M_MAX": 30.0,
+        "MIN_HOLD_BARS": 250,
+        "WT_EXIT_MIN_TFS": 3,
+        "HEDGE_ENABLED": True,
+        "HEDGE_MIN_HOLD_BARS": 10,
+        "EARLY_ABORT_MIN_SYMBOLS": 12,
+        "EARLY_ABORT_SHARPE_FLOOR": 1.5,
+    }
+    configs = []
+    for tf in ['none', '15m', '1h']:
+        configs.append({**base, "HEDGE_WT_KILL_CONFIRM_TF": tf})
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -2256,6 +2286,7 @@ TIER_MAP = {
     "all_tf_brake_crypto": build_param_grid_all_tf_brake_crypto,
     "ratio_sentiment_tradier": build_param_grid_ratio_sentiment_tradier,
     "ratio_sentiment_crypto": build_param_grid_ratio_sentiment_crypto,
+    "hedge_wt_kill": build_param_grid_hedge_wt_kill,
 }
 
 
