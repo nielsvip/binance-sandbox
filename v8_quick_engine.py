@@ -254,6 +254,7 @@ class QuickConfig:
     EARLY_ABORT_ENABLED: bool = True
     EARLY_ABORT_MIN_SYMBOLS: int = 15
     EARLY_ABORT_SHARPE_FLOOR: float = 2.5
+    EARLY_ABORT_TIME_LIMIT_SEC: float = 60.0  # kill config if wall-time > this AND sharpe < floor
 
     # ===== Auto-hooked Group B switches (2026-04-16) =====
     # 229 switches from config_tradier.py/config.py, defaults preserved.
@@ -1387,6 +1388,8 @@ def simulate(stores, cfg, capital=10000.0):
     ea_enabled = bool(getattr(cfg, 'EARLY_ABORT_ENABLED', True))
     ea_min_syms = int(getattr(cfg, 'EARLY_ABORT_MIN_SYMBOLS', 15))
     ea_floor = float(getattr(cfg, 'EARLY_ABORT_SHARPE_FLOOR', 1.0))
+    ea_time_limit = float(getattr(cfg, 'EARLY_ABORT_TIME_LIMIT_SEC', 999.0))
+    t_sim_start = time.time()
     symbols_processed = 0
     early_abort = False
     _ltf = getattr(cfg, 'LTF', '3m')
@@ -1514,13 +1517,16 @@ def simulate(stores, cfg, capital=10000.0):
                 in_pos = False; hedge_in_pos = False; hedge_ep = 0.0
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
-        if ea_enabled and symbols_processed >= ea_min_syms:
-            per_sym_sharpes_chk = _per_symbol_sharpes(per_symbol_pnl)
-            if per_sym_sharpes_chk:
-                avg_chk = float(np.mean(per_sym_sharpes_chk))
-                if avg_chk < ea_floor:
-                    early_abort = True
-                    break
+        if ea_enabled:
+            elapsed = time.time() - t_sim_start
+            _time_abort = elapsed > ea_time_limit
+            if symbols_processed >= ea_min_syms or _time_abort:
+                per_sym_sharpes_chk = _per_symbol_sharpes(per_symbol_pnl)
+                if per_sym_sharpes_chk:
+                    avg_chk = float(np.mean(per_sym_sharpes_chk))
+                    if avg_chk < ea_floor:
+                        early_abort = True
+                        break
     return _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort)
 
 

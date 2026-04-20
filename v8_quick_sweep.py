@@ -844,6 +844,112 @@ def build_param_grid_exit_wt_48sym():
     }
 
 
+def build_param_grid_mega_crypto_v8():
+    """Single 4D mega grid: ALL confirmed entry knobs + ALL Phase-1 exit winners.
+    Goal: collect 10,000 configs with pool_sharpe >= 4 via partial random sweeps.
+    EARLY_ABORT_TIME_LIMIT_SEC=60 kills slow configs. EARLY_ABORT_SHARPE_FLOOR=4.0
+    kills weak configs after 3 symbols. Shuffle every pass so the space is sampled broadly.
+    Run with: --shuffle --target-winners 10000 --min-csv-sharpe 4.0 --workers 6 --stream
+
+    Param count (raw cartesian): ~3.2B combos — never run full, always partial+shuffle.
+    CONFIRMED winners from previous sweeps anchor the baseline ranges:
+      K15M=40-55 VEL=6 PT=0.15-0.20 HOLD=20-50 → Sharpe 8-13 on 11 symbols.
+    """
+    return {
+        # ── Entry knobs (confirmed ranges from mega_v3/v4/v5/v6/v7) ──────────────
+        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 55.0, 60.0, 70.0],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 5.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+        "MIN_HOLD_BARS": [5, 10, 20, 30, 50, 75],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
+        "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 24.0],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "SATOSHIT_ENABLED": [True, False],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "D_TREND_REQUIRED": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        # ── Phase-1 exit signal winners (audit 2026-04-20) ───────────────────────
+        # #1 WT_ACCEL +0.092: exit when 4h wt_acceleration turns negative
+        "WT_ACCEL_EXIT_ENABLED": [True, False],
+        "WT_ACCEL_EXIT_TF": ["4h", "1h"],
+        # #2 WT_MOMENTUM +0.054: exit when 1h momentum state drops below 0
+        "WT_MOMENTUM_EXIT_ENABLED": [True, False],
+        "WT_MOMENTUM_EXIT_TF": ["1h", "4h"],
+        "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
+        # #3 WT_VEL_MTF +0.053: exit when N TFs show negative velocity
+        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
+        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-0.5, -1.0, -2.0],
+        # #4 WT_WAVE_PHASE +0.049: exit when wave phase contracts on 1h
+        "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
+        "WT_WAVE_PHASE_EXIT_TF": ["1h", "4h"],
+        # #5 WT_SCORE_FLIP +0.027: exit when score flips at LTF
+        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
+        "WT_SCORE_FLIP_EXIT_TF": ["3m", "15m"],
+        # #6 WT_PERCENTILE +0.020: exit when WT percentile crosses extreme
+        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
+        "WT_PERCENTILE_EXIT_TF": ["1h"],
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0, 85.0],
+        # ── Early abort: kill bad configs fast ──────────────────────────────────
+        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
+def build_param_grid_mega_tradier_v8():
+    """Single 4D mega grid for TRADIER/stocks: ALL confirmed entry knobs + Phase-1 exit winners.
+    Goal: collect 10,000 configs with pool_sharpe >= 4 via partial random sweeps.
+    VEL_GATE=False confirmed best for stocks. Tight PT (0.1-0.5%) drives high Sharpe.
+    EARLY_ABORT_TIME_LIMIT_SEC=60 + floor=4.0 kills losers fast.
+    Run with: --mode tradier --start 2022-01-01 --symbols fast --shuffle
+              --target-winners 10000 --min-csv-sharpe 4.0 --workers 6 --stream
+
+    Confirmed winner from stock sweeps: PT=0.3 HOLD=40 → Sharpe 11.3 PnL +$6.5k (262 syms).
+    """
+    return {
+        # ── Entry knobs (confirmed for stocks) ─────────────────────────────────
+        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
+        "MIN_HOLD_BARS": [5, 10, 20, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
+        "ENTRY_SCORE_THRESHOLD": [18.0, 24.0],
+        "HTF_MIN_ALIGNED": [1, 2, 3],
+        "D_TREND_REQUIRED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "VWAP_FILTER_ENABLED": [False, True],
+        # ── Phase-1 exit winners ────────────────────────────────────────────────
+        "WT_ACCEL_EXIT_ENABLED": [True, False],
+        "WT_ACCEL_EXIT_TF": ["1h", "4h"],
+        "WT_MOMENTUM_EXIT_ENABLED": [True, False],
+        "WT_MOMENTUM_EXIT_TF": ["1h", "4h"],
+        "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
+        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
+        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-0.5, -1.0, -2.0],
+        "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
+        "WT_WAVE_PHASE_EXIT_TF": ["1h", "4h"],
+        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
+        "WT_SCORE_FLIP_EXIT_TF": ["3m", "15m"],
+        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
+        "WT_PERCENTILE_EXIT_TF": ["1h"],
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0, 85.0],
+        # ── Early abort ─────────────────────────────────────────────────────────
+        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -882,6 +988,8 @@ TIER_MAP = {
     "exit_wt_audit": build_param_grid_exit_wt_audit,
     "exit_wt_phase2": build_param_grid_exit_wt_phase2,
     "exit_wt_48sym": build_param_grid_exit_wt_48sym,
+    "mega_crypto_v8": build_param_grid_mega_crypto_v8,
+    "mega_tradier_v8": build_param_grid_mega_tradier_v8,
 }
 
 
@@ -963,6 +1071,10 @@ def main():
                         help="Randomize config order before running (avoids dead zones in grid)")
     parser.add_argument("--max-configs", type=int, default=0,
                         help="Stop after testing this many configs (0 = unlimited). Use with --shuffle for random sampling.")
+    parser.add_argument("--target-winners", type=int, default=0,
+                        help="Keep sampling (re-shuffling) until N configs with pool_sharpe >= --min-csv-sharpe are saved. 0 = disabled.")
+    parser.add_argument("--winner-floor", type=float, default=0.0,
+                        help="pool_sharpe threshold to count as a winner for --target-winners (default: same as --min-csv-sharpe).")
     args = parser.parse_args()
 
     symbols_list = None
@@ -976,6 +1088,7 @@ def main():
     if not npz_dir:
         if args.mode == "tradier":
             tradier_candidates = [
+                BASE_PATH / "backtest_v8" / "indicators",
                 BASE_PATH / "backtest_v8" / "indicators_tradier",
                 BASE_PATH / "backtest_v5" / "indicators_5m_tradier",
                 BASE_PATH / "backtest_v4_tradier" / "indicators",
@@ -1001,54 +1114,58 @@ def main():
     csv_path = BASE_PATH / "data" / "sweep_results" / csv_name
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
+    target_winners = args.target_winners
+    winner_floor = args.winner_floor if args.winner_floor > 0 else args.min_csv_sharpe
+    # If target_winners active but winner_floor=0, default to a meaningful minimum
+    if target_winners > 0 and winner_floor <= 0:
+        winner_floor = 4.0
+
     done_hashes = set()
     if args.resume and csv_path.exists():
         with open(csv_path) as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # resume skips anything with a terminal status: ok, useless, no_trades
-                # (prior runs with blank/error status will re-run)
                 if row.get("status") in ("ok", "useless", "no_trades"):
                     done_hashes.add(row.get("config_hash", ""))
 
-    todo = []
-    for i, cfg_dict in enumerate(configs):
-        h = config_hash(cfg_dict)
-        if h in done_hashes:
-            continue
-        todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
-
-    if args.shuffle:
-        random.shuffle(todo)
-
-    if args.max_configs > 0 and len(todo) > args.max_configs:
-        todo = todo[:args.max_configs]
-
     total = len(configs)
-    skip = total - len(todo)
-    print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {total} configs ({skip} done, {len(todo)} todo) | workers={args.workers}")
+    print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {total} configs | workers={args.workers}")
+    if target_winners > 0:
+        print(f"TARGET-WINNERS mode: collect {target_winners} results with pool_sharpe >= {winner_floor:.2f}")
     print(f"CSV: {csv_path}\n")
 
-    if not todo:
-        print("All configs done.")
-        return
-
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
+    cfg_keys = sorted(configs[0].keys()) if configs else []
+    fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
+    for k in cfg_keys:
+        fieldnames.append(f"cfg_{k}")
+
+    completed = 0
+    winners_found = 0
+    best_sharpe = -999
+    t_start = time.time()
+    pass_num = 0
+
+    # Count existing winners from a resumed CSV
+    if args.resume and csv_path.exists():
+        with open(csv_path) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    if float(row.get("pool_sharpe", 0)) >= winner_floor:
+                        winners_found += 1
+                except (TypeError, ValueError):
+                    pass
+        if winners_found > 0:
+            print(f"  Resume: {winners_found} winners already in CSV")
+
     with open(csv_path, "a", newline="") as csvfile:
-        fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
-        cfg_keys = sorted(configs[0].keys())
-        for k in cfg_keys:
-            fieldnames.append(f"cfg_{k}")
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
             writer.writeheader()
 
-        completed = 0
-        best_sharpe = -999
-        t_start = time.time()
-
-        def _process_result(result):
-            nonlocal completed, best_sharpe
+        def _process_result(result, todo_len):
+            nonlocal completed, best_sharpe, winners_found
             completed += 1
             cfg_dict = result.get("config", {})
             row = {
@@ -1080,72 +1197,128 @@ def main():
             ps = result.get("pool_sharpe", 0)
             if ps > best_sharpe:
                 best_sharpe = ps
-            # Filter on pool_sharpe (honest: no min_trades bias, all symbols included)
             if ps >= args.min_csv_sharpe:
                 writer.writerow(row)
                 csvfile.flush()
+            if ps >= winner_floor:
+                winners_found += 1
             elapsed_total = time.time() - t_start
             rate = completed / elapsed_total if elapsed_total > 0 else 0
-            eta = (len(todo) - completed) / rate / 3600 if rate > 0 else 0
+            eta = (todo_len - completed) / rate / 3600 if rate > 0 else 0
+            winner_str = f" winners={winners_found}" if target_winners > 0 else ""
             if completed % 10 == 0 or completed <= 5:
-                print(f"  [{completed}/{len(todo)}] sharpe={s:.4f} pool={ps:.4f} trades={result.get('trades', 0)} "
-                      f"best={best_sharpe:.4f} rate={rate:.1f}/s ETA={eta:.1f}h")
+                print(f"  [{completed}/{todo_len}] sharpe={s:.4f} pool={ps:.4f} trades={result.get('trades', 0)} "
+                      f"best={best_sharpe:.4f}{winner_str} rate={rate:.1f}/s ETA={eta:.1f}h")
             return s
 
-        if args.workers == 1:
-            # Single-worker fast path: pre-load NPZ once, run all configs in-process.
-            print(f"Loading NPZ data once (workers=1 fast path)...")
-            stores = load_npz(args.mode, symbols_list, args.start, npz_dir)
-            if not stores:
-                print("ERROR: no NPZ data loaded"); return
-            print(f"Loaded {len(stores)} symbols. Running {len(todo)} configs in-process...")
-            for t in todo:
-                _, mode_t, _, _, cfg_dict, run_id = t
-                try:
-                    result = _run_config_with_stores(stores, mode_t, cfg_dict, run_id)
-                except Exception as e:
-                    print(f"  ERROR: {e}"); continue
-                _process_result(result)
-                if (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
-                    print(f"  KILL-RULE (60s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
+        def _run_pass(todo):
+            if not todo:
+                return
+            if args.workers == 1:
+                print(f"Loading NPZ data once (workers=1 fast path)...")
+                stores = load_npz(args.mode, symbols_list, args.start, npz_dir)
+                if not stores:
+                    print("ERROR: no NPZ data loaded"); return
+                print(f"Loaded {len(stores)} symbols. Running {len(todo)} configs in-process...")
+                for t in todo:
+                    _, mode_t, _, _, cfg_dict, run_id = t
+                    try:
+                        result = _run_config_with_stores(stores, mode_t, cfg_dict, run_id)
+                    except Exception as e:
+                        print(f"  ERROR: {e}"); continue
+                    _process_result(result, len(todo))
+                    if target_winners > 0 and winners_found >= target_winners:
+                        break
+                    if (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe and target_winners == 0:
+                        print(f"  KILL-RULE ({args.kill_secs:.0f}s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
+                        break
+            else:
+                if args.stream:
+                    init_fn = _worker_init_streaming
+                    worker_fn = run_one_config_streaming
+                else:
+                    init_fn = _worker_init_shared
+                    worker_fn = run_one_config_shared
+                with ProcessPoolExecutor(
+                    max_workers=args.workers,
+                    initializer=init_fn,
+                    initargs=(npz_dir, args.mode, symbols_list, args.start)
+                ) as executor:
+                    futures = {executor.submit(worker_fn, (t[4], t[5])): t for t in todo}
+                    for future in as_completed(futures):
+                        try:
+                            result = future.result()
+                        except Exception as e:
+                            print(f"  ERROR: {e}")
+                            continue
+                        _process_result(result, len(todo))
+                        if target_winners > 0 and winners_found >= target_winners:
+                            for f in futures:
+                                f.cancel()
+                            break
+                        if target_winners == 0 and (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
+                            print(f"  KILL-RULE ({args.kill_secs:.0f}s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
+                            for f in futures:
+                                f.cancel()
+                            break
+
+        if target_winners > 0:
+            # TARGET-WINNERS mode: re-shuffle and re-sample the grid in passes until we hit the target.
+            # Each pass takes up to --max-configs configs (default: all). Skip already-seen hashes.
+            seen_hashes = set(done_hashes)
+            batch_size = args.max_configs if args.max_configs > 0 else max(500, min(5000, len(configs) // 4))
+            print(f"  Batch size per pass: {batch_size} configs. Grid size: {len(configs)}")
+            while winners_found < target_winners:
+                pass_num += 1
+                shuffled = list(configs)
+                random.shuffle(shuffled)
+                batch = []
+                for i, cfg_dict in enumerate(shuffled):
+                    h = config_hash(cfg_dict)
+                    if h in seen_hashes:
+                        continue
+                    seen_hashes.add(h)
+                    batch.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_p{pass_num}_{i:05d}"))
+                    if len(batch) >= batch_size:
+                        break
+                if not batch:
+                    # Exhausted all unique configs — reset seen set to allow re-testing
+                    seen_hashes = set()
+                    print(f"  Pass {pass_num}: grid exhausted ({len(configs)} unique configs tested). Resetting for next pass.")
+                    continue
+                print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {len(batch)} configs (pass {pass_num}) | workers={args.workers}")
+                print(f"  Progress: {winners_found}/{target_winners} winners found so far")
+                _run_pass(batch)
+                if winners_found >= target_winners:
                     break
         else:
-            # Streaming mode (--stream): each worker loads NPZ symbols one at a time per config.
-            # Peak RAM per worker = 1 symbol NPZ. OS page cache shared across workers.
-            # Allows workers=14 on 30GB machines (vs workers=2 for pre-loaded approach).
-            # Shared mode (default): each worker pre-loads all NPZ at init (~full NPZ RAM per worker).
-            if args.stream:
-                init_fn = _worker_init_streaming
-                worker_fn = run_one_config_streaming
-            else:
-                init_fn = _worker_init_shared
-                worker_fn = run_one_config_shared
-            with ProcessPoolExecutor(
-                max_workers=args.workers,
-                initializer=init_fn,
-                initargs=(npz_dir, args.mode, symbols_list, args.start)
-            ) as executor:
-                futures = {executor.submit(worker_fn, (t[4], t[5])): t for t in todo}
-                for future in as_completed(futures):
-                    try:
-                        result = future.result()
-                    except Exception as e:
-                        print(f"  ERROR: {e}")
-                        continue
-                    _process_result(result)
-                    # Time-based kill: if 60s elapsed and no config has beaten kill_sharpe, abort
-                    if (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
-                        print(f"  KILL-RULE (60s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
-                        for f in futures:
-                            f.cancel()
-                        break
+            # Standard mode: build todo from configs, run once
+            todo = []
+            for i, cfg_dict in enumerate(configs):
+                h = config_hash(cfg_dict)
+                if h in done_hashes:
+                    continue
+                todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
 
+            if args.shuffle:
+                random.shuffle(todo)
+            if args.max_configs > 0 and len(todo) > args.max_configs:
+                todo = todo[:args.max_configs]
+
+            skip = total - len(todo)
+            print(f"  {total} configs ({skip} done, {len(todo)} todo)")
+            if not todo:
+                print("All configs done.")
+                return
+            _run_pass(todo)
+
+    winner_str = f"  Winners (sharpe>={winner_floor:.2f}): {winners_found}/{target_winners}\n" if target_winners > 0 else ""
     print(f"\n{'='*70}")
     print(f"  SWEEP COMPLETE — {completed} configs in {time.time()-t_start:.0f}s")
     print(f"  Best Sharpe: {best_sharpe:.4f}")
-    print(f"  Results: {csv_path}")
+    print(f"{winner_str}  Results: {csv_path}")
     print(f"{'='*70}")
-    print(f"\nV8_QUICK_SWEEP_DONE: configs={completed} best_sharpe={best_sharpe:.4f} csv={csv_path}")
+    print(f"\nV8_QUICK_SWEEP_DONE: configs={completed} best_sharpe={best_sharpe:.4f} winners={winners_found} csv={csv_path}")
 
 
 if __name__ == "__main__":

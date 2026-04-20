@@ -45,6 +45,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -68,6 +69,19 @@ V8_RESULT_RE = re.compile(
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
+V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*sharpe_w=(?P<sharpe_w>[-\d.]+)")
+# Tradier engine emits a simpler final format (from _v8_result_from_trades):
+# V8_RESULT: sharpe=X pnl=X trades=X wins=X losses=X ...
+V8_RESULT_TRADIER_RE = re.compile(
+    r"V8_RESULT:\s*"
+    r"sharpe=(?P<sharpe>[-\d.]+)\s+"
+    r"pnl=(?P<pnl>[-+\d.]+)\s+"
+    r"trades=(?P<trades>\d+)\s+"
+    r"wins=(?P<wins>\d+)\s+"
+    r"losses=(?P<losses>\d+)"
+)
+# Tradier sweep-mode live format: V8_RESULT_LIVE: step=X/Y closes=X elapsed=Xs
+V8_RESULT_LIVE_SIMPLE_RE = re.compile(r"V8_RESULT_LIVE:.*closes=(?P<closes>\d+)")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -797,7 +811,7 @@ def _config_hash(cfg: dict) -> str:
 
 def run_one_variant(args_tuple):
     """Worker: writes override JSON, runs engine subprocess, parses V8_RESULT."""
-    (label, overrides, mode, account, start, symbols, capital, npz_dir, timeout_s) = args_tuple
+    (label, overrides, mode, account, start, symbols, capital, npz_dir, timeout_s, kill_sharpe, kill_secs) = args_tuple
     # MERGE BASE OVERRIDES applied to every variant (including baseline):
     # - USDC_PREFERENCE_BLOCK_ENABLED=False: NPZ data is USDT-only, so the live USDC-preference
     #   gate would block 100% of USDT opens. Turn it off for backtest so entries are evaluated.
@@ -827,19 +841,79 @@ def run_one_variant(args_tuple):
 
     t0 = time.time()
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             cmd, env=env,
-            capture_output=True, text=True,
-            timeout=timeout_s,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )
-        elapsed = time.time() - t0
-        stdout = proc.stdout or ""
-        stderr = proc.stderr or ""
+        stderr_lines = []
+        def _read_stderr():
+            try:
+                for ln in proc.stderr:
+                    stderr_lines.append(ln.rstrip())
+            except Exception:
+                pass
+        t_err = threading.Thread(target=_read_stderr, daemon=True)
+        t_err.start()
         match = None
-        for line in stdout.splitlines():
-            m = V8_RESULT_RE.search(line)
-            if m:
-                match = m  # keep last V8_RESULT line (LIVE lines appear earlier)
+        match_tradier = None
+        live_sharpe = None
+        live_closes = 0
+        killed = False
+        stdout_tail = []
+        try:
+            for line in proc.stdout:
+                line = line.rstrip()
+                stdout_tail.append(line)
+                if len(stdout_tail) > 20:
+                    stdout_tail.pop(0)
+                m_live = V8_RESULT_LIVE_RE.search(line)
+                if m_live:
+                    try:
+                        live_sharpe = float(m_live["sharpe_w"])
+                    except Exception:
+                        pass
+                m_live_simple = V8_RESULT_LIVE_SIMPLE_RE.search(line)
+                if m_live_simple:
+                    try:
+                        live_closes = int(m_live_simple["closes"])
+                    except Exception:
+                        pass
+                m_final = V8_RESULT_RE.search(line)
+                if m_final:
+                    match = m_final
+                m_tradier = V8_RESULT_TRADIER_RE.search(line)
+                if m_tradier:
+                    match_tradier = m_tradier
+                elapsed = time.time() - t0
+                if elapsed > timeout_s:
+                    proc.kill()
+                    killed = True
+                    break
+                if kill_sharpe > 0 and elapsed >= kill_secs:
+                    if live_sharpe is not None and live_sharpe < kill_sharpe:
+                        proc.kill()
+                        killed = True
+                        break
+                    if live_sharpe is None and live_closes == 0:
+                        proc.kill()
+                        killed = True
+                        break
+        except Exception:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+        t_err.join(timeout=2)
+        elapsed = time.time() - t0
+        if killed and not match and not match_tradier:
+            status = "timeout" if elapsed > timeout_s else "killed_low_sharpe"
+            return {
+                "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
+                "status": status, "elapsed_s": round(elapsed, 1),
+                "live_sharpe": live_sharpe, "live_closes": live_closes, "rc": proc.returncode,
+                "stderr_tail": stderr_lines[-5:],
+            }
         if match:
             return {
                 "label": label,
@@ -855,18 +929,31 @@ def run_one_variant(args_tuple):
                 "losses": int(match["losses"]),
                 "elapsed_s": round(elapsed, 1),
                 "rc": proc.returncode,
-                "stderr_tail": stderr.splitlines()[-5:] if stderr else [],
+                "stderr_tail": stderr_lines[-5:],
+            }
+        if match_tradier:
+            _sharpe = float(match_tradier["sharpe"])
+            return {
+                "label": label,
+                "overrides": overrides,
+                "cfg_hash": cfg_hash,
+                "status": "ok",
+                "sharpe_w": _sharpe,
+                "sharpe_pt": _sharpe,
+                "sharpe_ann": _sharpe,
+                "gain_pct": float(match_tradier["pnl"]),
+                "closes": int(match_tradier["trades"]),
+                "wins": int(match_tradier["wins"]),
+                "losses": int(match_tradier["losses"]),
+                "elapsed_s": round(elapsed, 1),
+                "rc": proc.returncode,
+                "stderr_tail": stderr_lines[-5:],
             }
         return {
             "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
             "status": "no_result", "elapsed_s": round(elapsed, 1), "rc": proc.returncode,
-            "stderr_tail": stderr.splitlines()[-5:] if stderr else [],
-            "stdout_tail": stdout.splitlines()[-5:] if stdout else [],
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
-            "status": "timeout", "elapsed_s": timeout_s, "rc": -1,
+            "stderr_tail": stderr_lines[-5:],
+            "stdout_tail": stdout_tail[-5:],
         }
     except Exception as e:
         return {
@@ -932,11 +1019,14 @@ def main():
     ap.add_argument("--tier", default="hedge_one_by_one", choices=sorted(TIER_MAP.keys()))
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--timeout", type=int, default=600, help="Per-variant subprocess timeout (s)")
+    ap.add_argument("--kill-sharpe", type=float, default=0.0, help="Kill variant if live sharpe < this after --kill-secs (0=disabled)")
+    ap.add_argument("--kill-secs", type=int, default=60, help="Seconds elapsed before early-kill is checked")
     ap.add_argument("--output", default="", help="CSV output path (default: auto-dated)")
     args = ap.parse_args()
 
     grid = TIER_MAP[args.tier]()
-    print(f"[sweep] tier={args.tier}  variants={len(grid)}  mode={args.mode}  account={args.account}  start={args.start}  symbols={args.symbols or 'ALL'}  workers={args.workers}")
+    kill_info = f"  kill_sharpe={args.kill_sharpe} kill_secs={args.kill_secs}" if args.kill_sharpe > 0 else ""
+    print(f"[sweep] tier={args.tier}  variants={len(grid)}  mode={args.mode}  account={args.account}  start={args.start}  symbols={args.symbols or 'ALL'}  workers={args.workers}{kill_info}")
 
     # VERSION FINGERPRINT — print MD5 of every critical engine file so the sweep run
     # is self-describing. Any downstream CSV consumer can verify which code version
@@ -976,7 +1066,7 @@ def main():
     print(f"[sweep] version sidecar -> {version_path}")
 
     tasks = [
-        (label, overrides, args.mode, args.account, args.start, args.symbols, args.capital, args.npz_dir, args.timeout)
+        (label, overrides, args.mode, args.account, args.start, args.symbols, args.capital, args.npz_dir, args.timeout, args.kill_sharpe, args.kill_secs)
         for (label, overrides) in grid
     ]
 
@@ -1005,6 +1095,8 @@ def main():
                 elif baseline_sharpe is not None:
                     delta_s = f" Δ={s_w - baseline_sharpe:+.3f}"
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} sharpe_w={res['sharpe_w']:+.3f}{delta_s} gain={res['gain_pct']:+.2f}% closes={res['closes']} wr={row['win_rate']}% {res['elapsed_s']:.0f}s")
+            elif res.get("status") == "killed_low_sharpe":
+                print(f"[{completed:3d}/{len(tasks)}] {label:50s} KILLED live_sharpe={res.get('live_sharpe')} after {res.get('elapsed_s'):.0f}s")
             else:
                 print(f"[{completed:3d}/{len(tasks)}] {label:50s} STATUS={res.get('status')} rc={res.get('rc')} {res.get('stderr_tail', [])}")
 
