@@ -930,57 +930,53 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """Crypto entry-param hunt: ONLY proven K15M/PT/VEL winner zone, NO exit signal noise.
-    Confirmed winners: K15M=[40-55] PT=[0.14-0.25] VEL=[5-6] HOLD=[20-50] → Sharpe 8-13 (4yr).
-    Exit signals are all OFF (defaults) — adding exit signal dims reduces Sharpe by cutting trades early.
-    ~17K raw combos. With EARLY_ABORT_MIN_SYMBOLS=3 floor=4.0, completes in ~1h on 12 workers.
-    Use --target-winners 10000 --min-csv-sharpe 4.0 to keep running until 10K winners found.
-
-    Run with: --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12 --stream
+    """Crypto hunt centered on Sharpe-2.55 baseline (VEL=8 HOLD=250 PT=1.6% STRENGTH=5).
+    Trillion-combo random sampling with EARLY_ABORT at 4 symbols floor=4.0.
+    NOLOSS=True (default, never override). DC_RECOVERY_EXIT tests the stranded-position unlock.
+    ~5M raw combos — use grid_sample_random, never grid_to_configs.
+    Run: --start 2022-01-01 --target-winners 1000 --min-csv-sharpe 4.0 --workers 12 --max-configs 500
     """
     return {
-        # ── Entry/hold/PT params only (proven winner zone) ─────────────────────
-        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0],
-        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 5.0, 6.0, 8.0, 10.0],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
-        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.12, 0.15, 0.18, 0.20, 0.25, 0.30, 0.4, 0.5],
-        "MIN_HOLD_BARS": [1, 5, 10, 20, 30, 50],
+        "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 14.0],
+        "MIN_HOLD_BARS": [100, 150, 200, 250, 300, 400, 500],
+        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5],
+        "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        "REENTRY_RALLY_K15M_MAX": [40.0, 50.0, 60.0, 70.0, 80.0, 100.0],
         "WT_EXIT_MIN_TFS": [2, 3],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "RZ_EXIT_ENABLED": [True, False],
-        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
-        # ── Early abort: 3 symbols, floor=4.0 ────────────────────────────────
-        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "D_TREND_REQUIRED": [True, False],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [12],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
-        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
 def build_param_grid_mega_tradier_v8():
-    """Tradier/stocks entry-param hunt: NO exit signal noise.
-    Confirmed winners: PT=0.3 HOLD=40 → Sharpe 11.3 (262 syms). VEL_GATE=False confirmed best.
-    Sweep wide PT/HOLD/VEL range. Exit signals all OFF (defaults).
-    ~17K raw combos. Early abort at 3 syms floor=4.0.
-
-    Run with: --mode tradier --start 2022-01-01 --target-winners 10000
-              --min-csv-sharpe 4.0 --workers 12 --stream
+    """Tradier hunt centered on confirmed winner zone (PT=0.3 HOLD=40 → Sharpe 11.3 on 262 syms).
+    VEL_GATE=False confirmed best for stocks. NOLOSS=True (default).
+    ~3M raw combos — use grid_sample_random.
+    Run: --mode tradier --start 2022-01-01 --target-winners 1000 --min-csv-sharpe 4.0 --workers 12 --max-configs 500
     """
     return {
-        # ── Entry/hold/PT params only ────────────────────────────────────────────
-        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
-        "MIN_HOLD_BARS": [2, 5, 10, 20, 30, 40, 60, 80],
+        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
+        "MIN_HOLD_BARS": [10, 20, 30, 40, 60, 80, 120],
         "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
-        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0, 10.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "RZ_EXIT_ENABLED": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
         "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
-        # ── Kill bad configs fast ─────────────────────────────────────────────────
-        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "D_TREND_REQUIRED": [True, False],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [12],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
-        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
