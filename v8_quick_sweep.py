@@ -714,6 +714,29 @@ def build_param_grid_stock_phase2():
     }
 
 
+def build_param_grid_stock_phase5():
+    """Phase 5: Entry quality gate sweep (2026-04-20).
+    apply_tradier_defaults() sets RANK_CONVICTION_MIN=3 + ENTRY_ZONE_LONG=30 + HTF_MIN_ALIGNED=2.
+    These haven't been swept — relaxing them should push trade count higher.
+    Baseline lock: HOLD=12, VEL=2.0, WT_EXIT=4, PT=False, CD=0, SRS=True.
+    ~180 configs. EARLY_ABORT: 50 syms, floor=0.25."""
+    return {
+        "PROFIT_TARGET_ENABLED": [False],
+        "MIN_HOLD_BARS": [12],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "COOLDOWN_BARS": [0],
+        "RANK_CONVICTION_MIN": [1, 2, 3],
+        "ENTRY_ZONE_LONG": [20.0, 30.0, 40.0, 50.0],
+        "ENTRY_ZONE_SHORT": [50.0, 60.0, 70.0, 80.0],
+        "HTF_MIN_ALIGNED": [1, 2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.25],
+    }
+
+
 def build_param_grid_stock_phase4():
     """Phase 4: Max-trades hunt at proven NOLOSS=False params (2026-04-20).
     Phase3 winner: HOLD=10, VEL=1.0-6.0, WT_EXIT=4, No-PT.
@@ -1080,6 +1103,7 @@ TIER_MAP = {
     "stock_phase2": build_param_grid_stock_phase2,
     "stock_phase3": build_param_grid_stock_phase3,
     "stock_phase4": build_param_grid_stock_phase4,
+    "stock_phase5": build_param_grid_stock_phase5,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
