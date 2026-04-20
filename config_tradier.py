@@ -583,8 +583,8 @@ class TradierConfig:
     TRC_SCALP_LONG_BUDGET: float = 5000.0  # 5x trb ($1000)
     TRC_SCALP_SHORT_BUDGET: float = 5000.0  # 5x trb ($1000)
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
-    TRC_ENTRY_ZONE_LONG: float = 30.0  # Wider than trb (25)
-    TRC_ENTRY_ZONE_SHORT: float = 70.0  # Wider than trb (75)
+    TRC_ENTRY_ZONE_LONG: float = 25.0  # Local extremes: deeper oversold bottom (was 30)
+    TRC_ENTRY_ZONE_SHORT: float = 75.0  # Local extremes: deeper overbought top (was 70)
     TRC_ENTRY_MIN_ALIGNMENT: int = 6  # Looser than trb (8)
     TRC_LS_RATIO_MIN: float = 0.30  # Wider than trb (0.50)
     TRC_LS_RATIO_MAX: float = 3.00  # Wider than trb (2.00)
