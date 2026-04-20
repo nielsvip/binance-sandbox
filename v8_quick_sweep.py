@@ -1088,6 +1088,33 @@ def build_param_grid_mega_tradier_v8():
     }
 
 
+def build_param_grid_mega_tradier_v8_focused():
+    """2026-04-20: Focused follow-up to mega_tradier_v8. Fixed winner params from 3-winner cluster:
+    PT=0.7%, hold=80, D_TREND=True, VELOCITY_GATE+MIN=10, STRENGTH=6.0, HTF=1.
+    Sweeps only the 5 open questions: WT_EXIT, SRS, WINNER_PROTECT, DC_RECOVERY, DC_CROSSOVER_SKIP.
+    48 configs. Run on full 128-symbol set for proper validation.
+    Run: --mode tradier --symbols 128 --start 2024-01-01 --tier mega_tradier_v8_focused --workers 6
+    """
+    return {
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.7],
+        "MIN_HOLD_BARS": [80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [20],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
 def build_param_grid_local_extremes_tradier():
     """2026-04-20: Local bottom/top swing strategy for tradier stocks — Phase 1: K-gate only.
     LONG: enter when k_1h < ENTRY_ZONE_LONG (oversold = local bottom).
@@ -1855,6 +1882,7 @@ TIER_MAP = {
     "exit_wt_48sym": build_param_grid_exit_wt_48sym,
     "mega_crypto_v8": build_param_grid_mega_crypto_v8,
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
+    "mega_tradier_v8_focused": build_param_grid_mega_tradier_v8_focused,
     "crypto_validate_top": build_param_grid_crypto_validate_top,
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
