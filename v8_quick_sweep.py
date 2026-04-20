@@ -1618,6 +1618,86 @@ def build_param_grid_le_k1h_rising():
     return configs
 
 
+def build_param_grid_le_partial_exit_tradier():
+    """2026-04-20: Scale-out model — take 50% at +0.5%, arm floor at +0.7%, let remainder run on WT cross.
+    Winner basis: score=45, CE_thr=40, hold=20, PT=0.5% (Sharpe 3.73 on 12 syms).
+    New dimension: PARTIAL_EXIT sweeps first-take %, trail arm %, remainder TFS.
+    Run: --mode tradier --symbols fast --start 2024-01-01 --tier le_partial_exit_tradier --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 45.0,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 40.0,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
+        "MIN_HOLD_BARS": 20,
+        "WT_EXIT_MIN_TFS": 3,
+        "PARTIAL_EXIT_ENABLED": True,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = []
+    # Baseline: no partial exit (the v2 winner for comparison)
+    configs.append({**base, "PARTIAL_EXIT_ENABLED": False})
+    # Partial exit variants
+    for pe_pct in [0.3, 0.5, 0.7]:
+        for trail_arm in [0.5, 0.7, 1.0]:
+            if trail_arm < pe_pct:
+                continue  # trail must arm after first take
+            for trail_floor in [pe_pct * 0.8, pe_pct]:  # floor at or just below first take
+                for rem_tfs in [1, 2, 3]:
+                    configs.append({**base,
+                        "PARTIAL_EXIT_ENABLED": True,
+                        "PARTIAL_EXIT_FRAC": 0.5,
+                        "PARTIAL_EXIT_PCT": pe_pct,
+                        "PARTIAL_TRAIL_ARM_PCT": trail_arm,
+                        "PARTIAL_TRAIL_FLOOR_PCT": trail_floor,
+                        "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
+                    })
+    return configs
+
+
+def build_param_grid_le_partial_exit_tradier_validate():
+    """2026-04-20: Full 128-symbol validation of partial exit winners.
+    Update with top configs from fast sweep before running.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier le_partial_exit_tradier_validate --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 45.0,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 40.0,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
+        "MIN_HOLD_BARS": 20,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 999,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [
+        {**base, "PARTIAL_EXIT_ENABLED": False},  # v2 winner baseline
+    ]
+    # Top candidates — update after fast sweep
+    for pe_pct in [0.3, 0.5]:
+        for trail_arm in [0.5, 0.7]:
+            for trail_floor in [pe_pct]:
+                for rem_tfs in [1, 2]:
+                    configs.append({**base,
+                        "PARTIAL_EXIT_ENABLED": True,
+                        "PARTIAL_EXIT_FRAC": 0.5,
+                        "PARTIAL_EXIT_PCT": pe_pct,
+                        "PARTIAL_TRAIL_ARM_PCT": trail_arm,
+                        "PARTIAL_TRAIL_FLOOR_PCT": trail_floor,
+                        "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
+                    })
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1673,6 +1753,8 @@ TIER_MAP = {
     "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
     "le_dynamic_tradier_v2": build_param_grid_le_dynamic_tradier_v2,
     "le_dynamic_tradier_v2_validate": build_param_grid_le_dynamic_tradier_v2_validate,
+    "le_partial_exit_tradier": build_param_grid_le_partial_exit_tradier,
+    "le_partial_exit_tradier_validate": build_param_grid_le_partial_exit_tradier_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
     "stock_60min_reentry": build_param_grid_stock_60min_reentry,

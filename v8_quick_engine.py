@@ -542,6 +542,12 @@ class QuickConfig:
     DYNAMIC_SCORE_AUGMENT_ENABLED: bool = False
     DYNAMIC_SCORE_AUGMENT_MIN_JUMP: float = 25.0   # score must improve by this much to trigger augment
     DYNAMIC_SCORE_AUGMENT_INTERVAL: int = 5        # bars between re-scores (5 bars = 25 min at 5m base)
+    PARTIAL_EXIT_ENABLED: bool = False             # 2026-04-20: scale-out model
+    PARTIAL_EXIT_FRAC: float = 0.5                 # fraction closed at first target
+    PARTIAL_EXIT_PCT: float = 0.5                  # first target gain %
+    PARTIAL_TRAIL_ARM_PCT: float = 0.7             # arm the floor once gain reaches this
+    PARTIAL_TRAIL_FLOOR_PCT: float = 0.5           # remainder floor price (matched to first target)
+    PARTIAL_REMAINDER_EXIT_TFS: int = 2            # looser WT TFS for the remaining half
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1622,6 +1628,11 @@ def simulate(stores, cfg, capital=10000.0):
     symbols_processed = 0
     early_abort = False
     _ltf = getattr(cfg, 'LTF', '3m')
+    _ltf_mins = 3 if _ltf == '3m' else 5
+    _bph_15m = 15 // _ltf_mins   # bars per 15m period: 5 (crypto/3m) or 3 (tradier/5m)
+    _bph_1h = 60 // _ltf_mins    # bars per 1h: 20 (crypto) or 12 (tradier)
+    _bph_4h = 4 * _bph_1h        # bars per 4h: 80 (crypto) or 48 (tradier)
+    _bph_D = 480 if _ltf == '3m' else 78   # bars per day: 24h×20 (crypto) or 6.5h×12 (tradier)
     _iter = stores.items() if isinstance(stores, dict) else stores
     for sym, npz in _iter:
         sym_pnl = []
@@ -1675,6 +1686,24 @@ def simulate(stores, cfg, capital=10000.0):
                     _a_cnt = (_aw1l > _aw2l).astype(int) + (_aw115 > _aw215).astype(int) + (_aw11h > _aw21h).astype(int)
                 _loose_tfs = max(1, cfg.WT_EXIT_MIN_TFS - 1)
                 exit_sig_extra = (_a_cnt >= _loose_tfs) & ~exit_sig
+            # PARTIAL_EXIT: precompute remainder exit signal (looser WT TFS for the second half)
+            _pe_enabled = bool(getattr(cfg, 'PARTIAL_EXIT_ENABLED', False))
+            _pe_frac = float(getattr(cfg, 'PARTIAL_EXIT_FRAC', 0.5))
+            _pe_pct = float(getattr(cfg, 'PARTIAL_EXIT_PCT', 0.5))
+            _pe_trail_arm = float(getattr(cfg, 'PARTIAL_TRAIL_ARM_PCT', 0.7))
+            _pe_trail_floor = float(getattr(cfg, 'PARTIAL_TRAIL_FLOOR_PCT', 0.5))
+            _pe_rem_tfs = int(getattr(cfg, 'PARTIAL_REMAINDER_EXIT_TFS', 2) or 2)
+            exit_sig_rem = exit_sig
+            if _pe_enabled and _pe_rem_tfs != cfg.WT_EXIT_MIN_TFS:
+                _ltf_pe = getattr(cfg, 'LTF', '3m')
+                _pe_w1l = _safe(npz, f'wt1_{_ltf_pe}', n); _pe_w2l = _safe(npz, f'wt2_{_ltf_pe}', n)
+                _pe_w115 = _safe(npz, 'wt1_15m', n); _pe_w215 = _safe(npz, 'wt2_15m', n)
+                _pe_w11h = _safe(npz, 'wt1_1h', n); _pe_w21h = _safe(npz, 'wt2_1h', n)
+                if is_long:
+                    _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + (_pe_w115 < _pe_w215).astype(int) + (_pe_w11h < _pe_w21h).astype(int)
+                else:
+                    _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + (_pe_w115 > _pe_w215).astype(int) + (_pe_w11h > _pe_w21h).astype(int)
+                exit_sig_rem = _pe_wt_ag >= _pe_rem_tfs
             # SYMGATE: strip entries that coincide with exit signals — mirror exit rubric applied to entries.
             # ENTRY_SYMGATE_ENABLED covers fresh entries; REENTRY_SYMGATE_ENABLED mirrors it in the vectorized loop
             # (no separate reentry path here) — either flag turns it on.
@@ -1710,6 +1739,7 @@ def simulate(stores, cfg, capital=10000.0):
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
             _dyn_aug_done = False; _dyn_entry_score = 0.0; _cur_sz_mult = 1.0
+            _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
             _qr_enabled = bool(getattr(cfg, 'QUICK_REENTRY_60MIN_ENABLED', False))
             _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
             _qr_min_pct = float(getattr(cfg, 'QUICK_REENTRY_60MIN_MIN_PCT', 0.3)) / 100.0
@@ -1743,14 +1773,29 @@ def simulate(stores, cfg, capital=10000.0):
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _dyn_aug_done = False
+                    _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # Partial exit: lock first half at _pe_pct, let remainder run
+                    if _pe_enabled and not _pe_partial_done and live_pnl >= _pe_pct:
+                        _pe_realized = _pe_frac * live_pnl
+                        _pe_partial_done = True
+                        continue
+                    if _pe_enabled and _pe_partial_done and not _pe_trail_armed and live_pnl >= _pe_trail_arm:
+                        _pe_trail_armed = True
+                    if _pe_enabled and _pe_partial_done and _pe_trail_armed and live_pnl <= _pe_trail_floor:
+                        total_pnl = _pe_realized + (1.0 - _pe_frac) * live_pnl
+                        _wa = total_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                        in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                        cd = max(cooldown, min_gap_bars); continue
                     # Dynamic counter-exit: cut position when opposite direction scores strongly
                     if _dyn_counter_enabled and (i - eb) >= min_hold and _dyn_counter_score is not None:
                         if _dyn_counter_score[i] >= _dyn_counter_thr:
-                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
-                            in_pos = False; cd = cooldown + min_gap_bars; continue
+                            _wa = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                            all_pnl.append(_wa); sym_pnl.append(_wa)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            cd = cooldown + min_gap_bars; continue
                     # Dynamic augment: re-score every N bars — if score jumped, average in at current price
                     if _dyn_aug_enabled and not _dyn_aug_done and (i - eb) >= _dyn_aug_interval and (i - eb) % _dyn_aug_interval == 0 and _dyn_same_score is not None:
                         _cur_score = float(_dyn_same_score[i])
@@ -1759,8 +1804,8 @@ def simulate(stores, cfg, capital=10000.0):
                             live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                             _dyn_aug_done = True
                     # wt_D bounce augment — add to losing position when daily WT turns with higher bounce
-                    if _aug_enabled and not _aug_done and live_pnl < 0 and i > 0:
-                        _wt1d_cur = _wt1_D_aug[i]; _wt1d_prev = _wt1_D_aug[i - 1]
+                    if _aug_enabled and not _aug_done and live_pnl < 0 and i >= _bph_D:
+                        _wt1d_cur = _wt1_D_aug[i]; _wt1d_prev = _wt1_D_aug[i - _bph_D]
                         if is_long:
                             _bounce = _wt1d_cur > _wt1d_prev
                             _ok = _bounce and (not _aug_req_hwt or _wt1d_cur > _aug_wt_d_last) and (not _aug_req_hpx or px > _aug_px_last)
@@ -1772,8 +1817,8 @@ def simulate(stores, cfg, capital=10000.0):
                             live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                             _aug_done = True; _aug_wt_d_last = _wt1d_cur; _aug_px_last = px
                     # wt_4h bounce augment — fires ~6x more often than wt_D; independent flag allows both to fire once each
-                    if _aug_4h_enabled and not _aug_4h_done and live_pnl < 0 and i > 0:
-                        _wt1_4h_cur = _wt1_4H_aug[i]; _wt1_4h_prev = _wt1_4H_aug[i - 1]
+                    if _aug_4h_enabled and not _aug_4h_done and live_pnl < 0 and i >= _bph_4h:
+                        _wt1_4h_cur = _wt1_4H_aug[i]; _wt1_4h_prev = _wt1_4H_aug[i - _bph_4h]
                         if is_long:
                             _bounce_4h = _wt1_4h_cur > _wt1_4h_prev
                             _ok_4h = _bounce_4h and (not _aug_4h_req_hwt or _wt1_4h_cur > _aug_4h_wt_last) and (not _aug_4h_req_hpx or px > _aug_4h_px_last)
@@ -1799,8 +1844,8 @@ def simulate(stores, cfg, capital=10000.0):
                         elif not hc and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
-                    # Profit target (live_pnl>=pt_pct is mutually exclusive with hc, so hedge is already closed)
-                    if pt_enabled and live_pnl >= pt_pct:
+                    # Profit target — skip when partial exit is active (partial handles the take-profit role)
+                    if pt_enabled and not _pe_enabled and live_pnl >= pt_pct:
                         _wa = pt_pct * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if cfg.DC_RECOVERY_EXIT_ENABLED and cfg.NOLOSS_ENABLED and (i - eb) >= min_hold and live_pnl < 0:
@@ -1818,32 +1863,38 @@ def simulate(stores, cfg, capital=10000.0):
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
-                if in_pos and (i - eb) >= min_hold and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i])):
+                _wt_exit_now = (not _pe_partial_done and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i]))) or (_pe_partial_done and exit_sig_rem[i])
+                if in_pos and (i - eb) >= min_hold and _wt_exit_now:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    if _adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i] and not exit_sig[i] and pnl <= _adaptive_gain_pct:
-                        continue
-                    if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
-                        continue
-                    if cfg.NOLOSS_ENABLED and pnl < 0:
-                        if cfg.DC_RECOVERY_EXIT_ENABLED:
-                            if is_long:
-                                stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
-                            else:
-                                stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
-                            if not stranded:
-                                continue
-                        else:
+                    if not _pe_partial_done:
+                        if _adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i] and not exit_sig[i] and pnl <= _adaptive_gain_pct:
                             continue
+                        if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
+                            continue
+                        if cfg.NOLOSS_ENABLED and pnl < 0:
+                            if cfg.DC_RECOVERY_EXIT_ENABLED:
+                                if is_long:
+                                    stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
+                                else:
+                                    stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
+                                if not stranded:
+                                    continue
+                            else:
+                                continue
+                    else:
+                        pnl = _pe_realized + (1.0 - _pe_frac) * pnl
                     _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                     if hedge_in_pos and hedge_ep > 0:
                         h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                         all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
-                    in_pos = False; cd = max(cooldown, min_gap_bars)
+                    in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; cd = max(cooldown, min_gap_bars)
             if in_pos:
                 final_px = close[n - 1]
                 if final_px > 0 and ep > 0:
                     final_pnl = ((final_px - ep) / ep * 100) if is_long else ((ep - final_px) / ep * 100)
+                    if _pe_partial_done:
+                        final_pnl = _pe_realized + (1.0 - _pe_frac) * final_pnl
                     _wa = final_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                 if hedge_in_pos and final_px > 0 and hedge_ep > 0:
                     h_pnl = ((hedge_ep - final_px) / hedge_ep * 100) if is_long else ((final_px - hedge_ep) / hedge_ep * 100)
