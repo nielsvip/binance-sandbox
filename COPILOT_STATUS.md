@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-20 21:55:54 UTC
+# Copilot Status — 2026-04-20 22:11:18 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-20T21:52:24
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-20T21:53:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T21:53:17
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-20T21:54:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T21:54:32
-- **STALE_INDICATORS** [tradier]  — 2026-04-20T21:54:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T21:54:43
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-20T21:54:43
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-20T21:55:33
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T21:55:33
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T22:07:29
+- **STALE_INDICATORS** [tradier]  — 2026-04-20T22:07:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T22:07:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-20T22:07:40
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T22:08:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T22:09:42
+- **STALE_INDICATORS** [tradier]  — 2026-04-20T22:09:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T22:09:53
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-20T22:09:53
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T22:10:47
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 0m ago
+- HELD: **MSTR** LONG (tradier) peak +16.9%, now +3.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
-
-**Issues (last 1h):** 1
-- [HIGH] ez_manage.py for men is NOT running

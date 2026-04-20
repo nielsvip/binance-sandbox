@@ -23,7 +23,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-HOSTS = ["gateway-internal", "s1-int", "s2-int"]
+HOSTS = ["gateway-internal", "s1-int", "s2-int", "s1-sftp", "s2-sftp"]
 CHECK_INTERVAL = 30  # seconds
 LOG_FILE = Path.home() / "ssh_tunnel_keeper.log"
 STATUS_FILE = Path.home() / "ssh_tunnel_keeper.status"

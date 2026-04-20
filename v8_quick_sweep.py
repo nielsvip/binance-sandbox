@@ -1037,63 +1037,78 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """DC_RECOVERY_EXIT=True (correct NOLOSS: close stranded positions above dc_high_4h).
-    VEL_GATE defaults True in engine (required for entries — False kills all trades).
-    Wider MIN_HOLD (20-300) + lower STRENGTH (1-5) to find entries that survive DC recovery.
-    TEST_PRIORITY switches added: RZ_EXIT_ENABLED, RZ_K_EXIT, EXIT_SCORER_ENABLED.
-    Run: --symbols fast --start 2022-01-01 --min-csv-sharpe 2.0 --workers 6 --stream --shuffle
+    """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 8.007 on 49 sym).
+    Crypto baseline params FIXED. Sweeping unknowns: RZ, EXIT_SCORER, DC_RECOVERY, SRS, PARTIAL.
+    EARLY_ABORT floor raised to 3.0 (was 0.5 — far below 8.007 baseline).
+    Run: --mode crypto --symbols fast --start 2022-01-01 --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90 --workers 4 --stream --shuffle
     """
     return {
-        "MIN_HOLD_BARS": [20, 50, 100, 150, 200, 300],
-        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.2, 1.6, 2.0],
-        "STRENGTH_MIN_SCORE": [1.0, 2.0, 3.0, 4.0, 5.0],
-        "REENTRY_RALLY_K15M_MAX": [40.0, 60.0, 80.0, 100.0],
-        "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "D_TREND_REQUIRED": [True, False],
-        "HTF_MIN_ALIGNED": [1, 2],
+        # ── FIXED: crypto snapshot baseline ───────────────────────────────────────
         "DC_RECOVERY_EXIT_ENABLED": [True],
         "NOLOSS_ENABLED": [True],
-        # TEST_PRIORITY: RZ and exit-scorer gates (rewired 2026-04-20)
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [9.0],
+        "D_TREND_REQUIRED": [True],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.0],
+        "MIN_HOLD_BARS": [300],
+        "STRENGTH_MIN_SCORE": [4.0],
+        "WT_EXIT_MIN_TFS": [2],
+        "HTF_MIN_ALIGNED": [1],
+        # ── UNKNOWNS TO SWEEP (improvements above 8.007 baseline) ────────────────
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "RZ_K_EXIT": [80.0, 90.0, 95.0],
         "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
         "EXIT_SCORER_ENABLED": [True, False],
         "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
+        "REENTRY_RALLY_K15M_MAX": [60.0, 80.0, 100.0],
+        "DC_RECOVERY_EXIT_TOLERANCE_PCT": [0.15, 0.25, 0.35],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "PARTIAL_EXIT_ENABLED": [True, False],
+        # ── FLOOR: kill configs below 3.0 Sharpe (was 0.5 — far below baseline) ──
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
 def build_param_grid_mega_tradier_v8():
-    """Tradier pre-screen: 12-symbol fast filter. Kill <0.3 Sharpe after 60s. Save >=2.0.
-    TEST_PRIORITY switches added: RZ_EXIT_ENABLED (T25 +115%), EXIT_SCORER_ENABLED (+25.3%).
-    apply_tradier_defaults sets RZ_EXIT=True + EXIT_SCORER=True; sweep tests disabling them too.
-    Run: --mode tradier --symbols fast --start 2024-01-01 --min-csv-sharpe 2.0 --kill-sharpe 0.3 --workers 6 --stream --shuffle
+    """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 6.577 on 262 sym).
+    All le_dynamic_v2 winner params FIXED. Only sweeping the unknowns: RZ_EXIT, EXIT_SCORER,
+    SRS, WINNER_PROTECT, DC_RECOVERY, PARTIAL_EXIT, LE_TIER_SIZING.
+    EARLY_ABORT floor raised to 3.0 (was 0.3). Run with --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90.
+    Run: --mode tradier --symbols fast --start 2024-01-01 --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90 --workers 6 --shuffle
     """
     return {
+        # ── FIXED: le_dynamic_v2 winner (DO NOT SWEEP THESE) ──────────────────────
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [45.0],
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
         "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
-        "MIN_HOLD_BARS": [4, 10, 20, 30, 40, 60, 80],
-        "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
-        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0, 10.0],
-        "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "WINNER_PROTECT_ENABLED": [True, False],
-        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
-        "D_TREND_REQUIRED": [True, False],
-        "HTF_MIN_ALIGNED": [1, 2],
-        "DC_RECOVERY_EXIT_ENABLED": [True, False],
-        # TEST_PRIORITY: RZ_EXIT validated +115% in T25 sweep; EXIT_SCORER validated +25.3%
+        "PROFIT_TARGET_PCT": [0.5],
+        "MIN_HOLD_BARS": [20],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "WT_EXIT_MIN_TFS": [3],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        # ── UNKNOWNS TO SWEEP (improvements above 6.577 baseline) ────────────────
         "RZ_EXIT_ENABLED": [True, False],
-        "RZ_K_EXIT": [70.0, 80.0, 85.0],
         "EXIT_SCORER_ENABLED": [True, False],
         "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "WINNER_PROTECT_GAIN_PCT": [1.0, 2.0],
+        "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        "LE_TIER_SIZING_ENABLED": [True, False],
+        "PARTIAL_EXIT_ENABLED": [True, False],
+        # ── FLOOR: kill configs below 3.0 Sharpe (was 0.3 — far below baseline) ──
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
 
@@ -1725,6 +1740,71 @@ def build_param_grid_le_dynamic_tradier_v2_validate_ea():
     return configs
 
 
+def build_param_grid_ratio_sentiment_tradier():
+    """2026-04-20: Does cross-symbol market_sentiment_score improve entries?
+    Tests RATIO_SENTIMENT_FILTER_ENABLED against le_dynamic_v2_baseline_20260420_2156
+    (Sharpe 6.577, 262 symbols, 2yr). Baseline config locked: score=45, ce=55, hold=20, PT=0.5%.
+    LONG blocked when mss < LONG_MIN; SHORT blocked when mss > SHORT_MAX.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier ratio_sentiment_tradier --workers 8 --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 45.0,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 55.0,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
+        "MIN_HOLD_BARS": 20,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 999,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [
+        {**base, "RATIO_SENTIMENT_FILTER_ENABLED": False,
+         "RATIO_SENTIMENT_LONG_MIN": 40.0, "RATIO_SENTIMENT_SHORT_MAX": 60.0},
+    ]
+    for long_min, short_max in [(40.0, 60.0), (45.0, 55.0), (50.0, 50.0), (55.0, 45.0)]:
+        configs.append({**base,
+            "RATIO_SENTIMENT_FILTER_ENABLED": True,
+            "RATIO_SENTIMENT_LONG_MIN": long_min,
+            "RATIO_SENTIMENT_SHORT_MAX": short_max,
+        })
+    return configs
+
+
+def build_param_grid_ratio_sentiment_crypto():
+    """2026-04-20: Same test on crypto baseline (Sharpe 8.007, 49 symbols).
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier ratio_sentiment_crypto --workers 8 --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 45.0,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 55.0,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
+        "MIN_HOLD_BARS": 20,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 999,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [
+        {**base, "RATIO_SENTIMENT_FILTER_ENABLED": False,
+         "RATIO_SENTIMENT_LONG_MIN": 40.0, "RATIO_SENTIMENT_SHORT_MAX": 60.0},
+    ]
+    for long_min, short_max in [(40.0, 60.0), (45.0, 55.0), (50.0, 50.0), (55.0, 45.0)]:
+        configs.append({**base,
+            "RATIO_SENTIMENT_FILTER_ENABLED": True,
+            "RATIO_SENTIMENT_LONG_MIN": long_min,
+            "RATIO_SENTIMENT_SHORT_MAX": short_max,
+        })
+    return configs
+
+
 def build_param_grid_stock_exit_v1():
     """2026-04-20: Technical exit sweep for tradier stocks targeting Sharpe>2.5.
     Tests 3 new exits (vel_floor, kd_wt1h, adaptive_tfs) + 2 existing untested exits
@@ -2147,6 +2227,8 @@ TIER_MAP = {
     "dc_breakout_failed_crypto": build_param_grid_dc_breakout_failed_crypto,
     "all_tf_brake_tradier": build_param_grid_all_tf_brake_tradier,
     "all_tf_brake_crypto": build_param_grid_all_tf_brake_crypto,
+    "ratio_sentiment_tradier": build_param_grid_ratio_sentiment_tradier,
+    "ratio_sentiment_crypto": build_param_grid_ratio_sentiment_crypto,
 }
 
 
