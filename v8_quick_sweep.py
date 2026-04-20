@@ -1543,6 +1543,40 @@ def build_param_grid_crypto_exit_v1():
     return configs
 
 
+def build_param_grid_le_full_tradier():
+    """2026-04-20: LE full system sweep — tests the new tradier defaults where LOCAL_EXTREMES_SCORER_ENABLED=True
+    and LE_TIER_SIZING_ENABLED=True are both on by default. This tier validates whether the score gate (15-pt
+    minimum = 25 distinct indicator checks across Stoch/WT/DC/BB/MFI/HA/LR/VOL) and dollar-weighted position
+    sizing (score>=75→8.33x, >=60→4.17x, >=45→1.67x, >=30→0.42x, >=15→0.083x vs $600 base) move Sharpe
+    from the 0.41 baseline toward 2.5. Config 0 = baseline (all defaults, tier sizing on, score>=15).
+    Run on S2: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01 --tier le_full_tradier --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 15.0,
+        "LE_TIER_SIZING_ENABLED": True,
+        "PROFIT_TARGET_ENABLED": False,
+        "MIN_HOLD_BARS": 4,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [dict(base)]  # config 0 = new-default baseline
+    configs.append({**base, "LE_TIER_SIZING_ENABLED": False})  # gate only, no weighting
+    configs.append({**base, "LOCAL_EXTREMES_SCORER_ENABLED": False, "LE_TIER_SIZING_ENABLED": False})  # old baseline
+    for min_score in [20.0, 25.0, 30.0, 40.0, 50.0]:
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score})
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "LE_TIER_SIZING_ENABLED": False})
+    for min_score in [15.0, 25.0, 30.0]:
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 1.0})
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 2.0})
+    for min_score in [20.0, 30.0]:
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "WINNER_PROTECT_ENABLED": True, "WINNER_PROTECT_GAIN_PCT": 1.5})
+    for min_hold in [4, 8, 16]:
+        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": 25.0, "MIN_HOLD_BARS": min_hold})
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1605,6 +1639,7 @@ TIER_MAP = {
     "crypto_vel_sweep": build_param_grid_crypto_vel_sweep,
     "stock_exit_v1": build_param_grid_stock_exit_v1,
     "crypto_exit_v1": build_param_grid_crypto_exit_v1,
+    "le_full_tradier": build_param_grid_le_full_tradier,
 }
 
 

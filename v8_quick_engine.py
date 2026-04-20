@@ -530,6 +530,7 @@ class QuickConfig:
     # Default OFF — sweep local_extremes_tradier tier to find best MIN_SCORE threshold.
     LOCAL_EXTREMES_SCORER_ENABLED: bool = False
     LOCAL_EXTREMES_MIN_SCORE: float = 30.0
+    LE_TIER_SIZING_ENABLED: bool = False
     # ===== 2026-04-20 DYNAMIC SCORING — 5-min interval intervention =====
     # Counter-exit: while in LONG, if SHORT-direction LE score >= threshold → exit early (cut losers).
     # Augment: every DYNAMIC_SCORE_AUGMENT_INTERVAL bars, if same-direction score jumped by MIN_JUMP → augment.
@@ -635,6 +636,9 @@ class QuickConfig:
         # below entry hold forever and block all reentries. Use bb_1h range (stocks: bb_1h, not dc_4h).
         self.DC_RECOVERY_EXIT_ENABLED = True
         self.DC_RECOVERY_EXIT_TF = "bb_1h"
+        self.LOCAL_EXTREMES_SCORER_ENABLED = True
+        self.LOCAL_EXTREMES_MIN_SCORE = 15.0
+        self.LE_TIER_SIZING_ENABLED = True
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -1367,12 +1371,14 @@ def compute_exit_signals(npz, n, is_long, cfg):
         hk, lk = tf_map.get(cfg.STRUCTURAL_RANGE_SHIFT_TF, ('dc_high_4h', 'dc_low_4h'))
         hi = _safe(npz, hk, n); lo = _safe(npz, lk, n)
         k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
+        _srs_k_hi = float(getattr(cfg, 'SRS_K_EXIT_1H', 75.0))
+        _srs_k_lo = 100.0 - _srs_k_hi
         if is_long:
             prox = (hi > 0) & (np.abs(close - hi) / np.maximum(hi, 1e-9) <= 0.01)
-            srs_exit = prox & (k_1h >= 75) & (k_1h < k_1h_prev)
+            srs_exit = prox & (k_1h >= _srs_k_hi) & (k_1h < k_1h_prev)
         else:
             prox = (lo > 0) & (np.abs(close - lo) / np.maximum(lo, 1e-9) <= 0.01)
-            srs_exit = prox & (k_1h <= 25) & (k_1h > k_1h_prev)
+            srs_exit = prox & (k_1h <= _srs_k_lo) & (k_1h > k_1h_prev)
     sat_exit = np.zeros(n, dtype=bool)
     if cfg.SATOSHIT_ENABLED:
         k_ltf_prev = np.roll(k_ltf, 1); k_ltf_prev[0] = k_ltf[0]
@@ -1390,10 +1396,11 @@ def compute_exit_signals(npz, n, is_long, cfg):
     stoch_1h_exit = np.zeros(n, dtype=bool)
     if cfg.STOCH_CROSS_1H_EXIT_ENABLED:
         k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
+        _s1h_k_min = float(getattr(cfg, 'STOCH_1H_EXIT_K_MIN', 70.0))
         if is_long:
-            stoch_1h_exit = (k_1h_prev >= d_1h) & (k_1h < d_1h) & (k_1h_prev >= 70)
+            stoch_1h_exit = (k_1h_prev >= d_1h) & (k_1h < d_1h) & (k_1h_prev >= _s1h_k_min)
         else:
-            stoch_1h_exit = (k_1h_prev <= d_1h) & (k_1h > d_1h) & (k_1h_prev <= 30)
+            stoch_1h_exit = (k_1h_prev <= d_1h) & (k_1h > d_1h) & (k_1h_prev <= (100.0 - _s1h_k_min))
     mfi_flip_exit = np.zeros(n, dtype=bool)
     if cfg.MFI_FLIP_EXIT_ENABLED:
         if is_long: mfi_flip_exit = mfi_1h > cfg.MFI_FLIP_EXIT_LONG_THRESHOLD
@@ -1659,10 +1666,15 @@ def simulate(stores, cfg, capital=10000.0):
             if _dyn_counter_enabled or _dyn_aug_enabled:
                 _dyn_same_score = _compute_le_score_arr(npz, n, is_long, cfg)
                 _dyn_counter_score = _compute_le_score_arr(npz, n, not is_long, cfg)
+            _le_tier_sizing = bool(getattr(cfg, 'LE_TIER_SIZING_ENABLED', False)) and bool(getattr(cfg, 'LOCAL_EXTREMES_SCORER_ENABLED', False))
+            _le_sz_mult_arr = None
+            if _le_tier_sizing:
+                _le_s_pre = _dyn_same_score if _dyn_same_score is not None else _compute_le_score_arr(npz, n, is_long, cfg)
+                _le_sz_mult_arr = np.where(_le_s_pre >= 75, 8.33, np.where(_le_s_pre >= 60, 4.17, np.where(_le_s_pre >= 45, 1.67, np.where(_le_s_pre >= 30, 0.42, np.where(_le_s_pre >= 15, 0.083, 1.0)))))
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
-            _dyn_aug_done = False; _dyn_entry_score = 0.0
+            _dyn_aug_done = False; _dyn_entry_score = 0.0; _cur_sz_mult = 1.0
             _qr_enabled = bool(getattr(cfg, 'QUICK_REENTRY_60MIN_ENABLED', False))
             _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
             _qr_min_pct = float(getattr(cfg, 'QUICK_REENTRY_60MIN_MIN_PCT', 0.3)) / 100.0
@@ -1685,6 +1697,7 @@ def simulate(stores, cfg, capital=10000.0):
                             in_pos = True; ep = px; eb = i
                             _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
                             _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
+                            _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                             _qr_exit_px = 0.0; cd = 0
                             continue
                 if cd > 0: cd -= 1; continue
@@ -1693,6 +1706,7 @@ def simulate(stores, cfg, capital=10000.0):
                 if not in_pos and entry_sig[i]:
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
+                    _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _dyn_aug_done = False
                     continue
                 if in_pos:
@@ -1700,7 +1714,7 @@ def simulate(stores, cfg, capital=10000.0):
                     # Dynamic counter-exit: cut position when opposite direction scores strongly
                     if _dyn_counter_enabled and (i - eb) >= min_hold and _dyn_counter_score is not None:
                         if _dyn_counter_score[i] >= _dyn_counter_thr:
-                            all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; cd = cooldown + min_gap_bars; continue
                     # Dynamic augment: re-score every N bars — if score jumped, average in at current price
                     if _dyn_aug_enabled and not _dyn_aug_done and (i - eb) >= _dyn_aug_interval and (i - eb) % _dyn_aug_interval == 0 and _dyn_same_score is not None:
@@ -1737,7 +1751,7 @@ def simulate(stores, cfg, capital=10000.0):
                             _aug_4h_done = True; _aug_4h_wt_last = _wt1_4h_cur; _aug_4h_px_last = px
                     # Augmented position profit target — fires after any augment (wt_D or wt_4h)
                     if _aug_pt_enabled and (_aug_done or _aug_4h_done) and live_pnl >= _aug_pt_pct:
-                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                        _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; _aug_done = False; cd = max(cooldown, min_gap_bars); continue
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
                     if getattr(cfg, 'HEDGE_ENABLED', True):
@@ -1752,23 +1766,19 @@ def simulate(stores, cfg, capital=10000.0):
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     # Profit target (live_pnl>=pt_pct is mutually exclusive with hc, so hedge is already closed)
                     if pt_enabled and live_pnl >= pt_pct:
-                        all_pnl.append(pt_pct); sym_pnl.append(pt_pct)
+                        _wa = pt_pct * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
-                    # 2026-04-20: Continuous DC recovery — close stranded losing positions immediately
-                    # without waiting for exit_sig. Prevents orphaned positions from blocking reentries
-                    # for months. Fires after min_hold to avoid exiting on transient BB compressions.
-                    # Uses same cfg.DC_RECOVERY_EXIT_TF as the exit_sig-gated check (set per mode).
                     if cfg.DC_RECOVERY_EXIT_ENABLED and cfg.NOLOSS_ENABLED and (i - eb) >= min_hold and live_pnl < 0:
                         if is_long:
                             _dc_stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
                         else:
                             _dc_stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
                         if _dc_stranded:
-                            all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
                             in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
-                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                        _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         if hedge_in_pos and hedge_ep > 0:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
@@ -1789,7 +1799,7 @@ def simulate(stores, cfg, capital=10000.0):
                                 continue
                         else:
                             continue
-                    all_pnl.append(pnl); sym_pnl.append(pnl)
+                    _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                     if hedge_in_pos and hedge_ep > 0:
                         h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                         all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
@@ -1799,7 +1809,7 @@ def simulate(stores, cfg, capital=10000.0):
                 final_px = close[n - 1]
                 if final_px > 0 and ep > 0:
                     final_pnl = ((final_px - ep) / ep * 100) if is_long else ((ep - final_px) / ep * 100)
-                    all_pnl.append(final_pnl); sym_pnl.append(final_pnl)
+                    _wa = final_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                 if hedge_in_pos and final_px > 0 and hedge_ep > 0:
                     h_pnl = ((hedge_ep - final_px) / hedge_ep * 100) if is_long else ((final_px - hedge_ep) / hedge_ep * 100)
                     all_pnl.append(h_pnl); sym_pnl.append(h_pnl)

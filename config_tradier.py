@@ -1465,7 +1465,7 @@ class TradierConfig:
     # Stocks reward URGENCY after stoch/DC exit clears. Crypto uses 30min in config.py.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 5.0  # 5 min on stocks (5m base = 1 bar — matches Sharpe peak)
     # PATHWAY F — FAVORABLE MOVE force-reentry (2026-04-17, matches crypto config.py)
-    REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = True  # Pathway G: reenter at 50% if price continued ≥MIN_PCT within 60min, no other gates
+    REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = False  # Pathway G: DISABLED — sweep shows -22% Sharpe (0.38→0.30); catches tops not pullbacks
     REENTRY_60MIN_WINDOW_MIN: float = 60.0            # window after exit in minutes
     REENTRY_60MIN_MIN_PCT: float = 0.3                # price must move ≥0.3% in trade direction from exit to trigger
     REENTRY_FAVORABLE_MOVE_PCT: float = 1.0          # reenter if price moved ≥1% in our direction since exit
