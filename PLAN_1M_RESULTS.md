@@ -139,6 +139,22 @@ Run on 16 crypto-symbol groups + 16 tradier-symbol groups = **64,800 × 32 = 2,0
 
 **PHASE4 NEXT:** Test VEL=0.5 and VEL=0.0 (no gate), HOLD=5-10, CD=0 to push trades to max while holding pool>0.35. Also try ENTRY_SCORE gate combinations.
 
+### 2026-04-20 12:45 UTC — PHASE5 DISCOVERY: ENTRY_ZONE_LONG/SHORT IS THE #1 LEVER
+
+**ENTRY_ZONE gate was default ZL=30, ZS=70 from apply_tradier_defaults() — never swept before.**
+Relaxing it to ZL=50, ZS=50 causes 22× more trades and 14× more PnL:
+
+| ZL | ZS | Trades | Pool Sharpe | PnL | HTF |
+|----|-----|--------|------------|-----|-----|
+| 20 | 80 | 522 | **0.4940** | $8,951 | 3 |
+| 30 | 80 | 2,076 | 0.4218 | $25,971 | any |
+| 50 | 50 | **11,753** | 0.3541 | **$131,592** | any |
+
+- **ZL=50, ZS=50**: all trades in correct K_1h half. CONV/HTF irrelevant.
+- **Phase6 now running**: ZL=[30,40,50,60,70,80], ZS=[20,30,40,50,60,70], HTF=[1,2] → full frontier map.
+
+**Phase3/Phase4 confirmed** (all NOLOSS=False, honest): pool ceiling without zone relaxation = ~0.41.
+
 **NOLOSS PATCH STATUS:** Conditional patch in `_run_config_with_stores`: `if mode=="tradier" and "NOLOSS_ENABLED" not in cfg_dict: cfg.NOLOSS_ENABLED=False`. MD5=cd0d5c833e0ebe27d54783fd886ba7d7 on all 3 machines.
 
 ### 2026-04-20 00:45 UTC — HONEST NOLOSS=False BASELINES (NOLOSS artifact fully audited)

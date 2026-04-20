@@ -714,6 +714,29 @@ def build_param_grid_stock_phase2():
     }
 
 
+def build_param_grid_stock_phase6():
+    """Phase 6: Zone gate frontier map (2026-04-20).
+    Phase5 discovery: ZL=50,ZS=50 → 11,753 trades, pool=0.35, PnL=$131k vs ZL=30,ZS=70 → 2,076 trades.
+    Zone gate is the #1 lever. Map the full frontier to find max-trades vs Sharpe tradeoff.
+    Fix: HOLD=12, VEL=2.0, WT_EXIT=4, PT=False, CD=0, CONV=2.
+    ~150 configs. EARLY_ABORT: 50 syms, floor=0.2."""
+    return {
+        "PROFIT_TARGET_ENABLED": [False],
+        "MIN_HOLD_BARS": [12],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "COOLDOWN_BARS": [0],
+        "RANK_CONVICTION_MIN": [2],
+        "ENTRY_ZONE_LONG": [30.0, 40.0, 50.0, 60.0, 70.0, 80.0],
+        "ENTRY_ZONE_SHORT": [20.0, 30.0, 40.0, 50.0, 60.0, 70.0],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.2],
+    }
+
+
 def build_param_grid_stock_phase5():
     """Phase 5: Entry quality gate sweep (2026-04-20).
     apply_tradier_defaults() sets RANK_CONVICTION_MIN=3 + ENTRY_ZONE_LONG=30 + HTF_MIN_ALIGNED=2.
@@ -1104,6 +1127,7 @@ TIER_MAP = {
     "stock_phase3": build_param_grid_stock_phase3,
     "stock_phase4": build_param_grid_stock_phase4,
     "stock_phase5": build_param_grid_stock_phase5,
+    "stock_phase6": build_param_grid_stock_phase6,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
