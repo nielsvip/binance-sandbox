@@ -5929,14 +5929,19 @@ class HedgeEngine:
                                 if existing_gain < -0.01:
                                     logger.critical(f"[HEDGE_ACTUAL_BLOCK] {hedge_position_key} already exists and LOSING {existing_gain:.2f}%! Not augmenting a losing hedge.")
                                     results['actual_symbol'] = {'status': 'blocked_losing', 'reason': f'hedge_losing_{existing_gain:.2f}%'}
-                                    # Only kill hedge when gain is DECLINING (was recovering, now reversing again)
-                                    _prev_gain = safe_fetch_float(getattr(position, 'prev_gain', existing_gain) if not isinstance(position, dict) else position.get('prev_gain', existing_gain), existing_gain)
-                                    if existing_gain < _prev_gain:
-                                        logger.critical(f"[HEDGE_KILL_REVERSING] {hedge_position_key} gain={existing_gain:.2f}% < prev={_prev_gain:.2f}% — recovery FAILED, killing")
-                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action='CLOSE', current_price=current_price, qty=positionAmt_abs, reason=f"HEDGE_KILL_REVERSING_{existing_gain:.2f}%<prev{_prev_gain:.2f}%", is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
-                                        await self.tracker_manager.nuke_hedge_key(account_key, hedge_position_key)
+                                    # HEDGE_KILL_REVERSING: only kill confirmed hedge positions (is_hedge=True).
+                                    # Main positions (is_hedge=False) are NEVER killed here — only profit-taking/technical exits can close them.
+                                    _pos_is_hedge = bool(getattr(position, 'is_hedge', False) if not isinstance(position, dict) else position.get('is_hedge', False))
+                                    if not _pos_is_hedge:
+                                        logger.warning(f"[HEDGE_KILL_REVERSING_SKIPPED] {hedge_position_key}: position.is_hedge=False — main position, NOT killing via hedge engine")
                                     else:
-                                        logger.info(f"[HEDGE_RECOVERING] {hedge_position_key} gain={existing_gain:.2f}% >= prev={_prev_gain:.2f}% — LET IT RUN")
+                                        _prev_gain = safe_fetch_float(getattr(position, 'prev_gain', existing_gain) if not isinstance(position, dict) else position.get('prev_gain', existing_gain), existing_gain)
+                                        if existing_gain < _prev_gain:
+                                            logger.critical(f"[HEDGE_KILL_REVERSING] {hedge_position_key} gain={existing_gain:.2f}% < prev={_prev_gain:.2f}% — recovery FAILED, killing confirmed hedge")
+                                            await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action='CLOSE', current_price=current_price, qty=positionAmt_abs, reason=f"HEDGE_KILL_REVERSING_{existing_gain:.2f}%<prev{_prev_gain:.2f}%", is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
+                                            await self.tracker_manager.nuke_hedge_key(account_key, hedge_position_key)
+                                        else:
+                                            logger.info(f"[HEDGE_RECOVERING] {hedge_position_key} gain={existing_gain:.2f}% >= prev={_prev_gain:.2f}% — LET IT RUN")
                                     quantity = 0
                             if positionAmt_abs > 0 and quantity > 0:
                                 logger.warning(f"[HEDGE_ACTUAL_ALREADY_EXISTS] {hedge_position_key} already open (amt={positionAmt_abs:.4f}). Hedge = ONE entry only. Skipping.")

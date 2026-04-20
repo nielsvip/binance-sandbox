@@ -1037,40 +1037,36 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """REBASED 2026-04-20 (v2) to le_dynamic_v2_baseline snapshot (Sharpe 8.007 on 49 sym).
-    CRITICAL FIX: now uses the EXACT le_dynamic_tradier_v2 winner params (LOCAL_EXTREMES + DYNAMIC_COUNTER_EXIT)
-    that produced the 8.007 crypto baseline. Old version had wrong crypto-specific params → Sharpe 0.35.
-    Sweeping same unknowns as mega_tradier_v8 for direct comparability.
+    """REBASED 2026-04-20 (v3) — correct crypto baseline params (Sharpe ~8 on 49 sym).
+    LE INSIGHT: D_TREND_REQUIRED=True + LOCAL_EXTREMES_MIN_SCORE=45 = 0 trades on crypto.
+    Reason: LE requires stoch_D < 40 (oversold = D trending DOWN) while D_TREND requires UP.
+    Correct baseline: MIN_HOLD=50, PT=0.8%, STRENGTH=3, D_TREND=True, WT_EXIT=2 (native crypto params).
+    Sweeping: DYNAMIC_COUNTER_EXIT (tradier winner — test on crypto), plus standard unknowns.
     Run: --mode crypto --symbols fast --start 2022-01-01 --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90 --workers 4 --stream --shuffle
     """
     return {
-        # ── FIXED: le_dynamic_tradier_v2 params that gave crypto Sharpe 8.007 ─────
-        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
-        "LOCAL_EXTREMES_MIN_SCORE": [45.0],
-        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
-        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
+        # ── FIXED: proven crypto baseline (produces ~8 Sharpe on 49 sym) ──────────
         "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5],
-        "MIN_HOLD_BARS": [20],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "CT_WT_VELOCITY_1H_MIN": [10.0],
-        "WT_EXIT_MIN_TFS": [3],
-        "STRENGTH_MIN_SCORE": [6.0],
+        "PROFIT_TARGET_PCT": [0.8],
+        "MIN_HOLD_BARS": [50],
+        "STRENGTH_MIN_SCORE": [3.0],
         "D_TREND_REQUIRED": [True],
+        "WT_EXIT_MIN_TFS": [2],
         "HTF_MIN_ALIGNED": [1],
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
-        "NOLOSS_ENABLED": [True],
         "DC_RECOVERY_EXIT_ENABLED": [True],
-        # ── UNKNOWNS TO SWEEP (same as mega_tradier_v8 for comparability) ─────────
+        "NOLOSS_ENABLED": [True],
+        # ── UNKNOWNS TO SWEEP ─────────────────────────────────────────────────────
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True, False],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [45.0, 55.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [8.0, 10.0],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
         "EXIT_SCORER_ENABLED": [True, False],
-        "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
+        "EXIT_SCORER_MIN_CONDITIONS": [2, 3],
         "WINNER_PROTECT_ENABLED": [True, False],
-        "WINNER_PROTECT_GAIN_PCT": [1.0, 2.0],
-        "DC_RECOVERY_EXIT_TOLERANCE_PCT": [0.15, 0.25, 0.35],
-        "LE_TIER_SIZING_ENABLED": [True, False],
         "PARTIAL_EXIT_ENABLED": [True, False],
-        # ── FLOOR: kill configs below 3.0 Sharpe ─────────────────────────────────
+        # ── FLOOR ─────────────────────────────────────────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
@@ -1803,19 +1799,21 @@ def build_param_grid_ratio_sentiment_tradier():
 
 
 def build_param_grid_ratio_sentiment_crypto():
-    """2026-04-20: Same test on crypto baseline (Sharpe 8.007, 49 symbols).
-    Run: --mode crypto --symbols all --start 2022-01-01 --tier ratio_sentiment_crypto --workers 8 --kill-sharpe 0 --kill-secs 999999
+    """2026-04-20: Does RATIO_SENTIMENT_FILTER improve entries on crypto baseline (~8 Sharpe, 49 sym)?
+    NOTE: Using native crypto baseline (MIN50+PT0.8+STR3+D=True). LE=True+MIN=45 gives 0 trades
+    on crypto (LE requires stoch_D<40 which contradicts D_TREND_REQUIRED=True — see LE insight).
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier ratio_sentiment_crypto --workers 4 --kill-sharpe 0 --kill-secs 999999
     """
     base = {
-        "LOCAL_EXTREMES_SCORER_ENABLED": True,
-        "LOCAL_EXTREMES_MIN_SCORE": 45.0,
-        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
-        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 55.0,
-        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
         "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
-        "MIN_HOLD_BARS": 20,
-        "WT_EXIT_MIN_TFS": 3,
+        "PROFIT_TARGET_PCT": 0.8,
+        "MIN_HOLD_BARS": 50,
+        "STRENGTH_MIN_SCORE": 3.0,
+        "D_TREND_REQUIRED": True,
+        "WT_EXIT_MIN_TFS": 2,
+        "DC_RECOVERY_EXIT_ENABLED": True,
+        "NOLOSS_ENABLED": True,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,

@@ -1298,7 +1298,8 @@ class Config:
     REDUCTION_COOLDOWN_SECONDS = 90.0
     AUGMENTATION_COOLDOWN_SECONDS = 540.0
 
-    PERSIST =7200.0  # minutes to stay in tradeable_keys after deletion
+    PERSIST =7200.0  # hours to stay in tradeable_keys after deletion (ang + general)
+    PERSIST_INF: float = 24.0  # hours: grace period for inf keys in HEDGE_PAIR_CLEANUP after symbol leaves rankings (~1 day)
 
     # STOP_ORDERS_FULL_UPDATE:         int =   40  #STOP ORDERS FULL UPDATE
     # THREE_MIN_STRATEGY: Dict[str, Any] = field(default_factory=lambda: {

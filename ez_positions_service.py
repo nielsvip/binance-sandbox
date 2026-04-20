@@ -8996,13 +8996,25 @@ class PositionService:
                                 final_local_persistence[short_key] = now_ts
                             self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — both closed. Keep={'LONG' if _sym in all_winners else 'SHORT' if _sym in all_losers else 'NONE'}")
                         elif not long_open:
-                            valid_keys_for_this_account.discard(long_key)
-                            final_local_persistence.pop(long_key, None)
-                            self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — LONG closed, SHORT still open")
+                            _long_is_hedge = long_key in global_known_hedges_history or long_key in current_active_hedges
+                            _lk_ts = old_persistence.get(long_key, 0)
+                            _inf_grace_s = float(getattr(self.config, 'PERSIST_INF', 4.0)) * 3600.0
+                            if account_key == 'inf' and not _long_is_hedge and (now_ts - _lk_ts) < _inf_grace_s:
+                                self.logger.info(f"[HEDGE_CLEANUP_GRACE] inf:{_sym} — LONG closed (original, not hedge), {(now_ts-_lk_ts)/3600:.1f}h < {_inf_grace_s/3600:.0f}h grace, keeping LONG for reentry")
+                            else:
+                                valid_keys_for_this_account.discard(long_key)
+                                final_local_persistence.pop(long_key, None)
+                                self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — LONG closed{'(hedge→instant discard)' if _long_is_hedge else ''}, SHORT still open")
                         elif not short_open:
-                            valid_keys_for_this_account.discard(short_key)
-                            final_local_persistence.pop(short_key, None)
-                            self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — SHORT closed, LONG still open")
+                            _short_is_hedge = short_key in global_known_hedges_history or short_key in current_active_hedges
+                            _sk_ts = old_persistence.get(short_key, 0)
+                            _inf_grace_s = float(getattr(self.config, 'PERSIST_INF', 4.0)) * 3600.0
+                            if account_key == 'inf' and not _short_is_hedge and (now_ts - _sk_ts) < _inf_grace_s:
+                                self.logger.info(f"[HEDGE_CLEANUP_GRACE] inf:{_sym} — SHORT closed (original, not hedge), {(now_ts-_sk_ts)/3600:.1f}h < {_inf_grace_s/3600:.0f}h grace, keeping SHORT for reentry")
+                            else:
+                                valid_keys_for_this_account.discard(short_key)
+                                final_local_persistence.pop(short_key, None)
+                                self.logger.info(f"[HEDGE_CLEANUP] {account_key}:{_sym} — SHORT closed{'(hedge→instant discard)' if _short_is_hedge else ''}, LONG still open")
 
             final_keys_set.update(valid_keys_for_this_account)
         external_keys = set()
