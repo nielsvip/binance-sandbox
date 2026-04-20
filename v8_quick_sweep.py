@@ -1109,6 +1109,11 @@ def _run_config_with_stores(stores, mode, cfg_dict, run_id):
             setattr(cfg, k, v)
     if mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
         cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
+    # Force honest exits unless the tier grid explicitly tests NOLOSS=True.
+    # QuickConfig defaults NOLOSS_ENABLED=True (matches live), but sweeps must be honest:
+    # with NOLOSS=True, losing positions never close → WR=95%+ artifact, Sharpe inflated.
+    if mode == "tradier" and "NOLOSS_ENABLED" not in cfg_dict:
+        cfg.NOLOSS_ENABLED = False
     t0 = time.time()
     result = simulate(stores, cfg, 10000.0)
     elapsed = time.time() - t0
