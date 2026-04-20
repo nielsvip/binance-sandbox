@@ -930,25 +930,25 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """Crypto focused sweep: winner zone from 12-sym pre-screen analysis.
-    Winners cluster: VEL=12-14, K_MAX=40, D_TREND=True, DC_RECOVERY=False, HTF=2, HOLD=200-500, PT=0.8-1.6.
-    Floor raised 2.0→3.5: kills 2-3.4 Sharpe configs fast, hits ~40% win rate.
-    ~21k combos — exhaustive (no sampling). Goal: 10k winners in <2hrs.
+    """DC_RECOVERY_EXIT=True (correct NOLOSS: close stranded positions above dc_high_4h).
+    VEL_GATE=False matches live default (CT_WT_VELOCITY_GATE_ENABLED=False in ez_manage line 194).
+    Wider MIN_HOLD (20-300) + lower STRENGTH (1-5) to find entries that survive DC recovery.
+    ~20k combos. Kill <3 Sharpe after 15s on 6 symbols. Save >=4.
     Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12
     """
     return {
-        "CT_WT_VELOCITY_1H_MIN": [10.0, 12.0, 14.0],
-        "MIN_HOLD_BARS": [150, 200, 250, 300, 400, 500],
-        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2, 1.4, 1.6, 1.8],
-        "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
-        "REENTRY_RALLY_K15M_MAX": [40.0, 50.0],
-        "WT_EXIT_MIN_TFS": [2, 3],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "MIN_HOLD_BARS": [20, 50, 100, 150, 200, 300],
+        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.2, 1.6, 2.0],
+        "STRENGTH_MIN_SCORE": [1.0, 2.0, 3.0, 4.0, 5.0],
+        "REENTRY_RALLY_K15M_MAX": [40.0, 60.0, 80.0, 100.0],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "WINNER_PROTECT_ENABLED": [True, False],
-        "D_TREND_REQUIRED": [True],
-        "HTF_MIN_ALIGNED": [2],
+        "D_TREND_REQUIRED": [True, False],
+        "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True],
+        "NOLOSS_ENABLED": [True],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],

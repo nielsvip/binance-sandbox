@@ -27,7 +27,8 @@ for p in (str(BASE), "/home/niels/binance-sandbox", "/Users/niels/Documents/bina
 
 from vec_stock_mega import (
     build_conditions, precompute_exit_indices, score_realistic,
-    detect_npz_dir, stack_bool, LONG_EXIT_FIELD, SHORT_EXIT_FIELD,
+    detect_npz_dir, stack_bool, stack_field, build_session_masks,
+    LONG_EXIT_FIELD, SHORT_EXIT_FIELD,
 )
 import vec_stock_mega as vsm
 
@@ -96,11 +97,18 @@ def main():
 
     C, close = build_conditions(loaded, syms)
     print(f"[{time.time()-t0:.1f}s] Built {len(C)} conditions")
-    long_exit_mask = stack_bool(loaded, LONG_EXIT_FIELD, syms)
-    short_exit_mask = stack_bool(loaded, SHORT_EXIT_FIELD, syms)
+    # Intraday session filter + force-close at session end (matches vec_stock_mega.py)
+    entry_allowed_mask, force_close_mask = build_session_masks(loaded, syms)
+    # Use wt_state_15m_1h exit rule (tournament winner)
+    wtb_15 = stack_bool(loaded, "wt_bullish_15m", syms)
+    wtb_1h = stack_bool(loaded, "wt_bullish_1h", syms)
+    long_exit_mask = (~wtb_15) & (~wtb_1h)
+    short_exit_mask = wtb_15 & wtb_1h
+    long_exit_mask = long_exit_mask | force_close_mask
+    short_exit_mask = short_exit_mask | force_close_mask
     exit_idx_L = precompute_exit_indices(long_exit_mask, args.max_hold)
     exit_idx_S = precompute_exit_indices(short_exit_mask, args.max_hold)
-    print(f"[{time.time()-t0:.1f}s] Precomputed exit indices")
+    print(f"[{time.time()-t0:.1f}s] Precomputed exit indices (wt_state_15m_1h + session-end force-close)")
 
     # Uptrend ranking: top 60% for LONG, bottom 60% for SHORT
     scores = []
@@ -146,6 +154,8 @@ def main():
         for rank, (rowid, side, combo, sample_rob) in enumerate(rows, 1):
             m = build_mask(C, side, combo)
             if m is None or not m.any(): continue
+            m = m & entry_allowed_mask  # intraday session filter
+            if not m.any(): continue
             exit_idx = exit_idx_L if side == "L" else exit_idx_S
             sym_sel = long_syms if side == "L" else short_syms
             r = score_realistic(m, close, exit_idx, side, sym_select=sym_sel)
@@ -183,6 +193,8 @@ def main():
             m = C[merged_names[0]].copy()
             for n in merged_names[1:]:
                 m &= C[n]
+            if not m.any(): continue
+            m = m & entry_allowed_mask  # intraday session filter
             if not m.any(): continue
             exit_idx = exit_idx_L if side == "L" else exit_idx_S
             sym_sel = long_syms if side == "L" else short_syms

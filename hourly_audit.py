@@ -50,15 +50,15 @@ def sector_top_row(db_path, source, n=5):
     try:
         c = sqlite3.connect(str(db_path))
         if source == "sample":
-            rows = c.execute("SELECT side, combo, horizon, sharpe_robust, sharpe_avg, sharpe_pool, syms_included, n_trades_total, wr_avg FROM results ORDER BY sharpe_robust DESC LIMIT ?", (n,)).fetchall()
+            rows = c.execute("SELECT side, combo, sharpe_robust, sharpe_avg, sharpe_pool, syms_included, n_trades_total, wr_avg FROM results ORDER BY sharpe_robust DESC LIMIT ?", (n,)).fetchall()
         elif source == "validated":
             try:
-                rows = c.execute("SELECT side, combo, horizon, full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_pos_syms, full_syms, full_trades, full_wr, dropoff_pct FROM validated_full ORDER BY full_sharpe_robust DESC LIMIT ?", (n,)).fetchall()
+                rows = c.execute("SELECT side, combo, full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_syms, full_trades, full_wr, dropoff_pct FROM validated_full ORDER BY full_sharpe_robust DESC LIMIT ?", (n,)).fetchall()
             except sqlite3.OperationalError:
                 rows = []
         elif source == "combined":
             try:
-                rows = c.execute("SELECT side, combo_merged, horizon, full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_pos_syms, full_syms, full_trades, full_wr FROM combined_results ORDER BY full_sharpe_robust DESC LIMIT ?", (n,)).fetchall()
+                rows = c.execute("SELECT side, combo_merged, full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_syms, full_trades, full_wr FROM combined_results ORDER BY full_sharpe_robust DESC LIMIT ?", (n,)).fetchall()
             except sqlite3.OperationalError:
                 rows = []
         c.close()
@@ -101,26 +101,33 @@ def main():
                     continue
                 all_hits.append((src, sec, r))
 
-    # Sort by robust (r[3])
-    all_hits.sort(key=lambda x: x[2][3] or 0, reverse=True)
-    print(f"{'Rk':>3} {'Src':<9} {'Sector':<16} {'Sd':<2} {'Rob':>5} {'Avg':>5} {'Pool':>5} {'h':>4} {'N':>7} {'WR':>5} Combo")
+    # Sort by robust (sample: r[2]; validated/combined: r[2])
+    all_hits.sort(key=lambda x: x[2][2] or 0, reverse=True)
+    print(f"{'Rk':>3} {'Src':<9} {'Sector':<16} {'Sd':<2} {'Rob':>5} {'Avg':>5} {'Pool':>5} {'N':>7} {'T/day':>6} {'WR':>5} Combo")
+    # 504 = ~trading days in 2yr
     for rank, (src, sec, r) in enumerate(all_hits[:40], 1):
-        side, combo, h, rob, avg, pool = r[0], r[1], r[2], r[3], r[4], r[5]
+        side, combo, rob, avg, pool = r[0], r[1], r[2], r[3], r[4]
         if src == "sample":
-            n = r[7]; wr = r[8]
+            n = r[6]; wr = r[7]
         elif src == "validated":
-            n = r[8]; wr = r[9]
+            n = r[6]; wr = r[7]
         else:
-            n = r[8]; wr = r[9]
-        print(f"{rank:>3} {src:<9} {sec:<16} {side:<2} {rob:>5.2f} {avg:>5.2f} {pool:>5.2f} {h:>4} {n:>7} {wr:>4.1f}% {combo[:80]}")
+            n = r[6]; wr = r[7]
+        tpd = n / 504.0  # trades per day (across all syms in sector)
+        print(f"{rank:>3} {src:<9} {sec:<16} {side:<2} {rob:>5.2f} {avg:>5.2f} {pool:>5.2f} {n:>7} {tpd:>5.1f} {wr:>4.1f}% {combo[:80]}")
 
     # Elite check: robust >= 3
-    elite = [h for h in all_hits if (h[2][3] or 0) >= 3.0]
+    elite = [h for h in all_hits if (h[2][2] or 0) >= 3.0]
     print(f"\n=== ELITE (robust >= 3.0): {len(elite)} ===")
     if elite:
         for src, sec, r in elite[:10]:
-            side, combo, h, rob = r[0], r[1], r[2], r[3]
-            print(f"  [{src}|{sec}|{side}|h={h}] rob={rob:.3f} {combo}")
+            print(f"  [{src}|{sec}|{r[0]}] rob={r[2]:.3f} n={r[6]} {r[1]}")
+    # Scalping check: ≥200/day, robust>=1
+    scalp = [h for h in all_hits if (h[2][6] or 0) / 504.0 >= 200 and (h[2][2] or 0) >= 1.0]
+    print(f"\n=== SCALP (>=200 trades/day & robust>=1): {len(scalp)} ===")
+    if scalp:
+        for src, sec, r in scalp[:10]:
+            print(f"  [{src}|{sec}|{r[0]}] rob={r[2]:.3f} n={r[6]} t/day={r[6]/504.0:.0f} {r[1]}")
 
 
 if __name__ == "__main__":
