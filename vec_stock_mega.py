@@ -272,25 +272,7 @@ def score_realistic(entry_mask, close, exit_idx, side, sym_select=None):
         if side == "S":
             raw_ret = -raw_ret
 
-        # MAE & TUW — per-signal scan of close within hold window [t, exit_bar]
-        # Vectorized: at most max-hold long windows. Loop per signal but window size is small.
-        mae_list = np.zeros(len(signal_bars))
-        tuw_list = np.zeros(len(signal_bars))
-        col = close[:, s]
-        for i, (t0, t1) in enumerate(zip(signal_bars, exit_bars)):
-            window = col[t0:t1 + 1]
-            if len(window) < 2:
-                continue
-            ep = entry_price[i]
-            if side == "L":
-                # worst drop below entry
-                mae_list[i] = float(window.min() / ep - 1.0)
-                tuw_list[i] = float((window < ep).mean())
-            else:
-                # SHORT: worst rise above entry (we lose when price goes up)
-                mae_list[i] = float(-(window.max() / ep - 1.0))
-                tuw_list[i] = float((window > ep).mean())
-
+        # MAE/TUW skipped in hot path for speed — computed in validation pass on top-N
         std = float(raw_ret.std())
         if std <= 0:
             continue
@@ -299,8 +281,6 @@ def score_realistic(entry_mask, close, exit_idx, side, sym_select=None):
         per_sym_sharpe.append(sh)
         per_sym_mean.append(mean)
         per_sym_wr.append(float((raw_ret > 0).mean() * 100))
-        per_sym_mae.append(float(np.mean(mae_list)))
-        per_sym_tuw.append(float(np.mean(tuw_list)))
         n_trades_total += len(signal_bars)
         pooled_rets.append(raw_ret)
 
@@ -327,8 +307,8 @@ def score_realistic(entry_mask, close, exit_idx, side, sym_select=None):
         "n_trades_total": n_trades_total,
         "wr_avg": float(np.mean(per_sym_wr)),
         "mean_ret_avg": float(np.mean(per_sym_mean)),
-        "mae_avg": float(np.mean(per_sym_mae)),
-        "tuw_avg": float(np.mean(per_sym_tuw)),
+        "mae_avg": 0.0,  # skipped in hot path
+        "tuw_avg": 0.0,
     }
 
 

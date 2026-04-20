@@ -76,7 +76,7 @@ def sweep_sector(sector, bars, pick, workers, time_budget_s, python_bin):
             pass
     cmd = (f"{python_bin} -u /home/niels/binance-sandbox/vec_stock_mega.py "
            f"--sector {sector} --bars {bars} --pick {pick} --workers {workers} "
-           f"--time-budget-s {time_budget_s} --floor-sharpe 0.3 --elite-sharpe 3.0 "
+           f"--time-budget-s {time_budget_s} --floor-robust 0.1 --elite-robust 1.0 "
            f"--out-db {db}")
     log(f"  [{sector}] RUN: {cmd}")
     rc, out, err = run_cmd(cmd, timeout=time_budget_s + 120)
@@ -121,44 +121,44 @@ def audit_snapshot(iteration, bars, pick):
             continue
         try:
             c = sqlite3.connect(str(db))
-            sample = c.execute("SELECT sharpe_robust, sharpe_avg, sharpe_pool, syms_included, n_trades_total, wr_avg, horizon, side, combo FROM results ORDER BY sharpe_robust DESC LIMIT 5").fetchall()
-            full = c.execute("SELECT full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_pos_syms, full_syms, full_trades, full_wr, dropoff_pct, horizon, side, combo FROM validated_full ORDER BY full_sharpe_robust DESC LIMIT 5").fetchall() if _table_exists(c, "validated_full") else []
-            merged = c.execute("SELECT full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_pos_syms, full_syms, full_trades, full_wr, horizon, side, combo_merged FROM combined_results ORDER BY full_sharpe_robust DESC LIMIT 5").fetchall() if _table_exists(c, "combined_results") else []
+            sample = c.execute("SELECT sharpe_robust, sharpe_avg, sharpe_pool, syms_included, n_trades_total, wr_avg, side, combo FROM results ORDER BY sharpe_robust DESC LIMIT 5").fetchall()
+            full = c.execute("SELECT full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_syms, full_trades, full_wr, dropoff_pct, side, combo FROM validated_full ORDER BY full_sharpe_robust DESC LIMIT 5").fetchall() if _table_exists(c, "validated_full") else []
+            merged = c.execute("SELECT full_sharpe_robust, full_sharpe_avg, full_sharpe_pool, full_syms, full_trades, full_wr, side, combo_merged FROM combined_results ORDER BY full_sharpe_robust DESC LIMIT 5").fetchall() if _table_exists(c, "combined_results") else []
             c.close()
         except Exception as e:
             lines.append(f"## {sec} — DB ERROR {e}"); lines.append(""); continue
         lines.append(f"## {sec}")
-        lines.append(f"### Sample (2yr × 12 sector syms) top-5 by robust")
-        lines.append("| Robust | Avg | Pool | Syms | Trades | WR | h | Side | Combo |")
-        lines.append("|--|--|--|--|--|--|--|--|--|")
+        lines.append(f"### Sample (2yr × 12 sector syms) top-5 by robust — REAL exits (technical)")
+        lines.append("| Robust | Avg | Pool | Syms | Trades | WR | Side | Combo |")
+        lines.append("|--|--|--|--|--|--|--|--|")
         for r in sample:
-            lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[6]} | {r[7]} | {r[8]} |")
+            lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[6]} | {r[7]} |")
         if full:
             lines.append(f"### Validated full (128 syms × 2yr) top-5 by robust")
-            lines.append("| Robust | Avg | Pool | Pos/Tot | Trades | WR | Drop% | h | Side | Combo |")
-            lines.append("|--|--|--|--|--|--|--|--|--|--|")
+            lines.append("| Robust | Avg | Pool | Syms | Trades | WR | Drop% | Side | Combo |")
+            lines.append("|--|--|--|--|--|--|--|--|--|")
             for r in full:
-                lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]}/{r[4]} | {r[5]} | {r[6]:.1f}% | {r[7]:.0f}% | {r[8]} | {r[9]} | {r[10]} |")
+                lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[6]:.0f}% | {r[7]} | {r[8]} |")
                 global_best.append(("validated_full", sec, r))
         if merged:
             lines.append(f"### Winners-with-Winners merged top-5 by robust")
-            lines.append("| Robust | Avg | Pool | Pos/Tot | Trades | WR | h | Side | Merged |")
-            lines.append("|--|--|--|--|--|--|--|--|--|")
+            lines.append("| Robust | Avg | Pool | Syms | Trades | WR | Side | Merged |")
+            lines.append("|--|--|--|--|--|--|--|--|")
             for r in merged:
-                lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]}/{r[4]} | {r[5]} | {r[6]:.1f}% | {r[7]} | {r[8]} | {r[9]} |")
+                lines.append(f"| {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[6]} | {r[7]} |")
                 global_best.append(("combined", sec, r))
         lines.append("")
 
     # Global ranking
     lines.append("## GLOBAL TOP 20 (across sectors, all sources, by robust)")
-    lines.append("| Source | Sector | Robust | Avg | Pool | Pos/Tot | N | WR | h | Side | Combo |")
-    lines.append("|--|--|--|--|--|--|--|--|--|--|--|")
+    lines.append("| Source | Sector | Robust | Avg | Pool | Syms | N | WR | Side | Combo |")
+    lines.append("|--|--|--|--|--|--|--|--|--|--|")
     global_best.sort(key=lambda x: x[2][0], reverse=True)
     for src, sec, r in global_best[:20]:
         if src == "validated_full":
-            lines.append(f"| val | {sec} | {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]}/{r[4]} | {r[5]} | {r[6]:.1f}% | {r[8]} | {r[9]} | {r[10]} |")
+            lines.append(f"| val | {sec} | {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[7]} | {r[8]} |")
         else:
-            lines.append(f"| merge | {sec} | {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]}/{r[4]} | {r[5]} | {r[6]:.1f}% | {r[7]} | {r[8]} | {r[9]} |")
+            lines.append(f"| merge | {sec} | {r[0]:.3f} | {r[1]:.3f} | {r[2]:.3f} | {r[3]} | {r[4]} | {r[5]:.1f}% | {r[6]} | {r[7]} |")
 
     with open(out_md, "w") as f:
         f.write("\n".join(lines))
