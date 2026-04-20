@@ -489,7 +489,7 @@ class TradierConfig:
     # AND current 3m close has recovered within tolerance of entry_price,
     # AND current 3m bar shows reversal, ALLOW close at loss (bypass NOLOSS gate).
     # Defaults OFF — sweep first.
-    BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = False
+    BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = True  # 2026-04-20 sweep: unlocks stranded positions stuck above bb_1h
     BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30  # stock pct tolerance around entry_price
     BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0  # if >0, uses N * atr_3m instead of pct
     K_ZONE_ENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T52: K-zone entry — K in zone + turning + candle confirms. No crossover wait.
@@ -650,7 +650,7 @@ class TradierConfig:
     # === YOUTUBE CONSENSUS STRATEGIES (2026-03-27 — research: 16 verified profitable traders) ===
     # === STRATEGY ALLOCATION: trb=PROVEN only, trc=EXPERIMENTAL (paper) ===
     # --- VWAP Filter — PROVEN, on trb+trc ---
-    VWAP_FILTER_ENABLED: bool = True  # LONG only above VWAP, SHORT only below
+    VWAP_FILTER_ENABLED: bool = False  # 2026-04-20 sweep: VWAP filter suppresses valid trades — top 20 mega configs all False
     VWAP_BOUNCE_ENTRY_ENABLED: bool = True  # Enter on VWAP bounce (pullback to VWAP + reversal) ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     VWAP_BOUNCE_DIST_PCT: float = 0.3  # Price must be within 0.3% of VWAP for bounce entry ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
     VWAP_SCORE_BONUS: int = 10  # Score bonus when price is on correct side of VWAP ; DEAD_CONFIRMED (priority 85/100) — no plausible wiring site found 20260416
@@ -856,7 +856,7 @@ class TradierConfig:
     WT_EXIT_TFS_TRADIER: str = "5m+15m+1h+4h+D"
     WT_EXIT_MIN_TFS_TRADIER: int = 5  # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5. Patient exits.
     WT_EXIT_VELOCITY_TRADIER: bool = False  # SWEEP: velocity makes zero difference. Cross is simpler. ; DEAD_CONFIRMED (priority 55/100) — no plausible wiring site found 20260416
-    MIN_HOLD_BARS_TRADIER: int = 32  # Grace period only (160min). Actual avg hold = 239 bars (20hrs) — WT exit rides the full wave.
+    MIN_HOLD_BARS_TRADIER: int = 40  # 2026-04-20 sweep: 40 (200min) consistently wins over 32 (160min)
     COOLDOWN_BARS_TRADIER: int = 8  # 2026-04-08 SWEEP: 8 bars (40min) → Sharpe 8.22 (+1.30 vs 0 cooldown). Was 16 (80min). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === YOUTUBE STRATEGIES (2026-03-27) — DISABLED on trb 2026-03-30 ===
     # These were implemented from YouTube research with FAKE backtests (reimplemented logic, not real functions).
@@ -1170,7 +1170,7 @@ class TradierConfig:
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
-    CT_WT_VELOCITY_1H_MIN: float = 0.0  # BC_170: min wt_velocity_1h (0=must be directional)
+    CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-20 sweep: every top result had 2.0 — filters no-momentum entries
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.

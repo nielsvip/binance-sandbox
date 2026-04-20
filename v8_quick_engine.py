@@ -161,6 +161,11 @@ class QuickConfig:
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
     HEDGE_SAME_SYMBOL_PCT: float = 1.0
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True
+    # wt_D bounce augment — add to losing position when daily WT bounces with higher WT and/or higher price
+    AUGMENT_WT_D_BOUNCE_ENABLED: bool = False
+    AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
+    AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = True   # bounce wt1_D > prev bounce level
+    AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = True  # price at bounce > prev bounce price (LONG), < (SHORT)
     # Reentry WT-15m-cross + HTF-aligned (C) — wired in vectorized block REENTRY_B_WT15M_CROSS below
     REENTRY_WT15M_CROSS_ENABLED: bool = True
     REENTRY_WT15M_SIZE_MULT: float = 1.5
@@ -1558,6 +1563,11 @@ def simulate(stores, cfg, capital=10000.0):
         # Hedge closes the instant condition is false, reopens the instant it's true again.
         _wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); _wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
         _wt1_1h = _safe(npz, 'wt1_1h', n); _wt2_1h = _safe(npz, 'wt2_1h', n)
+        _wt1_D_aug = _safe(npz, 'wt1_D', n)
+        _aug_enabled = bool(getattr(cfg, 'AUGMENT_WT_D_BOUNCE_ENABLED', False))
+        _aug_mult = float(getattr(cfg, 'AUGMENT_WT_D_MULTIPLIER', 2.0))
+        _aug_req_hwt = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_WT', True))
+        _aug_req_hpx = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_PRICE', True))
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
@@ -1578,6 +1588,7 @@ def simulate(stores, cfg, capital=10000.0):
                 else:
                     _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
+            _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
@@ -1591,10 +1602,23 @@ def simulate(stores, cfg, capital=10000.0):
                 px = close[i]
                 if px <= 0: continue
                 if not in_pos and entry_sig[i]:
-                    in_pos = True; ep = px; eb = i
+                    in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # wt_D bounce augment — add to losing position when daily WT turns with higher bounce
+                    if _aug_enabled and not _aug_done and live_pnl < 0 and i > 0:
+                        _wt1d_cur = _wt1_D_aug[i]; _wt1d_prev = _wt1_D_aug[i - 1]
+                        if is_long:
+                            _bounce = _wt1d_cur > _wt1d_prev
+                            _ok = _bounce and (not _aug_req_hwt or _wt1d_cur > _aug_wt_d_last) and (not _aug_req_hpx or px > _aug_px_last)
+                        else:
+                            _bounce = _wt1d_cur < _wt1d_prev
+                            _ok = _bounce and (not _aug_req_hwt or _wt1d_cur < _aug_wt_d_last) and (not _aug_req_hpx or px < _aug_px_last)
+                        if _ok:
+                            ep = (ep + px * (_aug_mult - 1.0)) / _aug_mult
+                            live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                            _aug_done = True; _aug_wt_d_last = _wt1d_cur; _aug_px_last = px
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
                     if getattr(cfg, 'HEDGE_ENABLED', True):
                         if is_long:

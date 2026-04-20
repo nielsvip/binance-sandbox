@@ -1178,6 +1178,26 @@ def build_param_grid_crypto_validate_top():
     }
 
 
+def build_param_grid_stock_wt_d_aug():
+    """wt_D bounce augment — double-down on losing positions when daily WT turns higher.
+    Tests: AUGMENT_MULTIPLIER [1.5,2,3,4] × REQUIRE_HIGHER_WT [T/F] × REQUIRE_HIGHER_PRICE [T/F] vs baseline.
+    32 configs × 262 symbols, 2022-01-01. ~5min on S2 with 6 workers.
+    EXIT STRATEGY FOCUS: does averaging down on wt_D bounce improve Sharpe > 2.5 baseline?
+    Run on S2: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01 --tier stock_wt_d_aug --workers 6 --stream --min-csv-sharpe 0.5 --kill-secs 999999 --kill-sharpe 0"""
+    return {
+        "AUGMENT_WT_D_BOUNCE_ENABLED": [False, True],
+        "AUGMENT_WT_D_MULTIPLIER": [1.5, 2.0, 3.0, 4.0],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_WT": [True, False],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_PRICE": [True, False],
+        "MIN_HOLD_BARS": [40],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0],
+        "WT_EXIT_MIN_TFS": [3],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1229,6 +1249,7 @@ TIER_MAP = {
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
+    "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
 }
 
 
