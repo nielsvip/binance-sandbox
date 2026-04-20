@@ -7421,7 +7421,7 @@ class TradierTradeManager:
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
             if is_reduce and not is_hedge:
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
-                _en_srs = _srs_bypass_allowed and 'STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper()
+                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper())
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)

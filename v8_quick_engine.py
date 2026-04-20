@@ -242,6 +242,18 @@ class QuickConfig:
     WT_COMP_DELTA_EXIT_THRESHOLD: float = 0.0
     DC_POS_EXIT_ENABLED: bool = False
     DC_POS_EXIT_THRESHOLD: float = 0.7
+    # WT velocity floor — exit when wt_velocity_1h crosses below zero (LONG) / above zero (SHORT)
+    # Fires 2-4 bars earlier than full WT cross. Threshold=0.0 = pure zero-crossing.
+    WT_VEL_FLOOR_EXIT_ENABLED: bool = False
+    WT_VEL_FLOOR_EXIT_LONG_MAX: float = 0.0   # exit LONG when wt_velocity_1h < this (0=zero-crossing)
+    # k_D overbought + wt_1h bear — daily stoch exhausted AND 1h WT confirms turn
+    # Filters out mid-cycle corrections that satisfy wt_1h alone
+    KD_WT1H_EXIT_ENABLED: bool = False
+    KD_WT1H_EXIT_OVERBOUGHT: float = 80.0     # k_D >= this for LONG, <= (100-this) for SHORT
+    # Adaptive WT_EXIT_MIN_TFS — protect deep winners with looser exit gate
+    # When pnl > GAIN_PCT: accept WT_EXIT_MIN_TFS-1 TFs against (faster exit, bank profits)
+    ADAPTIVE_EXIT_TFS_ENABLED: bool = False
+    ADAPTIVE_EXIT_TFS_GAIN_PCT: float = 2.0   # pnl % above which looser gate activates
     # ===== 2026-04-18 INDICATOR-AUDIT EXPERIMENTAL SWITCHES (all default OFF) =====
     # R-G2: MTF WT velocity alignment gate — wt_velocity_up_count/down_count in NPZ (5-TF count)
     WT_MTF_VEL_GATE_ENABLED: bool = False
@@ -1523,7 +1535,17 @@ def compute_exit_signals(npz, n, is_long, cfg):
         _dc_avg = (_dcp_1h + _dcp_4h + _dcp_D) / 3.0
         _dc_thr = float(getattr(cfg, 'DC_POS_EXIT_THRESHOLD', 0.7))
         dc_pos_exit = (_dc_avg >= _dc_thr) if is_long else (_dc_avg <= (1.0 - _dc_thr))
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit
+    vel_floor_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_VEL_FLOOR_EXIT_ENABLED', False):
+        _vf = _safe(npz, 'wt_velocity_1h', n)
+        _vf_thr = float(getattr(cfg, 'WT_VEL_FLOOR_EXIT_LONG_MAX', 0.0))
+        vel_floor_exit = (_vf < _vf_thr) if is_long else (_vf > -_vf_thr)
+    kd_wt1h_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'KD_WT1H_EXIT_ENABLED', False):
+        k_D_arr = _safe(npz, 'stoch_k_D', n, 50.0)
+        _kd_thr = float(getattr(cfg, 'KD_WT1H_EXIT_OVERBOUGHT', 80.0))
+        kd_wt1h_exit = ((k_D_arr >= _kd_thr) & (wt1_1h < wt2_1h)) if is_long else ((k_D_arr <= (100.0 - _kd_thr)) & (wt1_1h > wt2_1h))
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -1592,6 +1614,21 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # Adaptive exit: precompute the extra bars that TFS-1 adds vs normal exit_sig
+            _adaptive_exit_enabled = bool(getattr(cfg, 'ADAPTIVE_EXIT_TFS_ENABLED', False))
+            _adaptive_gain_pct = float(getattr(cfg, 'ADAPTIVE_EXIT_TFS_GAIN_PCT', 2.0))
+            exit_sig_extra = None
+            if _adaptive_exit_enabled:
+                _a_ltf = getattr(cfg, 'LTF', '3m')
+                _aw1l = _safe(npz, f'wt1_{_a_ltf}', n); _aw2l = _safe(npz, f'wt2_{_a_ltf}', n)
+                _aw115 = _safe(npz, 'wt1_15m', n); _aw215 = _safe(npz, 'wt2_15m', n)
+                _aw11h = _safe(npz, 'wt1_1h', n); _aw21h = _safe(npz, 'wt2_1h', n)
+                if is_long:
+                    _a_cnt = (_aw1l < _aw2l).astype(int) + (_aw115 < _aw215).astype(int) + (_aw11h < _aw21h).astype(int)
+                else:
+                    _a_cnt = (_aw1l > _aw2l).astype(int) + (_aw115 > _aw215).astype(int) + (_aw11h > _aw21h).astype(int)
+                _loose_tfs = max(1, cfg.WT_EXIT_MIN_TFS - 1)
+                exit_sig_extra = (_a_cnt >= _loose_tfs) & ~exit_sig
             # SYMGATE: strip entries that coincide with exit signals — mirror exit rubric applied to entries.
             # ENTRY_SYMGATE_ENABLED covers fresh entries; REENTRY_SYMGATE_ENABLED mirrors it in the vectorized loop
             # (no separate reentry path here) — either flag turns it on.
@@ -1718,8 +1755,10 @@ def simulate(stores, cfg, capital=10000.0):
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
-                if in_pos and exit_sig[i] and (i - eb) >= min_hold:
+                if in_pos and (i - eb) >= min_hold and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i])):
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    if _adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i] and not exit_sig[i] and pnl <= _adaptive_gain_pct:
+                        continue
                     if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
                         continue
                     if cfg.NOLOSS_ENABLED and pnl < 0:

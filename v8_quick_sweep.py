@@ -1336,6 +1336,113 @@ def build_param_grid_le_dynamic_tradier_validate():
     }
 
 
+def build_param_grid_stock_exit_v1():
+    """2026-04-20: Technical exit sweep for tradier stocks targeting Sharpe>2.5.
+    Tests 3 new exits (vel_floor, kd_wt1h, adaptive_tfs) + 2 existing untested exits
+    (WT_ALIGN, WT_VEL_MTF) against the tradier fast baseline.
+    Each feature swept independently vs baseline, then top combos combined.
+    ~56 configs × 12 fast symbols first, promote winners to --symbols all.
+    Run on S2: python v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier stock_exit_v1 --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    base = {
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 1.0,
+        "MIN_HOLD_BARS": 10,
+        "WT_EXIT_MIN_TFS": 3,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": True,
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 2.0,
+        "WINNER_PROTECT_ENABLED": True,
+        "WINNER_PROTECT_GAIN_PCT": 1.0,
+        "WT_VEL_FLOOR_EXIT_ENABLED": False,
+        "KD_WT1H_EXIT_ENABLED": False,
+        "ADAPTIVE_EXIT_TFS_ENABLED": False,
+        "WT_ALIGN_EXIT_ENABLED": False,
+        "WT_VEL_MTF_EXIT_ENABLED": False,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [dict(base)]  # config 0 = baseline
+    # WT velocity floor: exit when wt_velocity_1h crosses below threshold
+    for thr in [0.0, 0.5, 1.0]:
+        configs.append({**base, "WT_VEL_FLOOR_EXIT_ENABLED": True, "WT_VEL_FLOOR_EXIT_LONG_MAX": thr})
+    # k_D overbought + wt_1h bear: daily exhaustion confirmed by 1h turn
+    for kd_thr in [70.0, 75.0, 80.0]:
+        configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr})
+    # Adaptive TFS: faster exit when deep in profit
+    for gain_pct in [1.0, 1.5, 2.0, 3.0]:
+        configs.append({**base, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    # WT alignment exit (existing, untested on stocks)
+    for al_min in [1, 2]:
+        configs.append({**base, "WT_ALIGN_EXIT_ENABLED": True, "WT_ALIGN_EXIT_MIN": al_min})
+    # WT velocity MTF (existing, untested on stocks)
+    for v_tfs in [2, 3]:
+        for v_thr in [-0.5, -1.0]:
+            configs.append({**base, "WT_VEL_MTF_EXIT_ENABLED": True, "WT_VEL_MTF_EXIT_MIN_TFS": v_tfs, "WT_VEL_MTF_EXIT_THRESHOLD": v_thr})
+    # Combinations of top candidates
+    for kd_thr in [70.0, 75.0]:
+        for gain_pct in [1.5, 2.0]:
+            configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    for thr in [0.0, 0.5]:
+        for gain_pct in [1.5, 2.0]:
+            configs.append({**base, "WT_VEL_FLOOR_EXIT_ENABLED": True, "WT_VEL_FLOOR_EXIT_LONG_MAX": thr, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    for kd_thr in [70.0, 75.0]:
+        configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr, "WT_ALIGN_EXIT_ENABLED": True, "WT_ALIGN_EXIT_MIN": 1})
+    return configs
+
+
+def build_param_grid_crypto_exit_v1():
+    """2026-04-20: Technical exit sweep for crypto targeting Sharpe>2.5.
+    Same 3 new exits + 2 existing untested exits against the vel=9/rally=30 crypto baseline.
+    ~46 configs × 48 symbols, 4yr. ~15min on S1 with 6 workers.
+    Run on S1: python v8_quick_sweep.py --mode crypto --symbols all --start 2021-01-01 --tier crypto_exit_v1 --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    base = {
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 9.0,
+        "REENTRY_RALLY_K15M_MAX": 30.0,
+        "MIN_HOLD_BARS": 250,
+        "WT_EXIT_MIN_TFS": 3,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 1.6,
+        "WINNER_PROTECT_ENABLED": True,
+        "WINNER_PROTECT_GAIN_PCT": 1.0,
+        "WT_VEL_FLOOR_EXIT_ENABLED": False,
+        "KD_WT1H_EXIT_ENABLED": False,
+        "ADAPTIVE_EXIT_TFS_ENABLED": False,
+        "WT_ALIGN_EXIT_ENABLED": False,
+        "WT_VEL_MTF_EXIT_ENABLED": False,
+        "EARLY_ABORT_MIN_SYMBOLS": 12,
+        "EARLY_ABORT_SHARPE_FLOOR": 1.5,
+    }
+    configs = [dict(base)]  # config 0 = baseline
+    # WT velocity floor
+    for thr in [0.0, 0.5, 1.0]:
+        configs.append({**base, "WT_VEL_FLOOR_EXIT_ENABLED": True, "WT_VEL_FLOOR_EXIT_LONG_MAX": thr})
+    # k_D overbought + wt_1h bear
+    for kd_thr in [70.0, 75.0, 80.0]:
+        configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr})
+    # Adaptive TFS
+    for gain_pct in [1.0, 1.5, 2.0, 3.0]:
+        configs.append({**base, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    # WT alignment exit
+    for al_min in [1, 2]:
+        configs.append({**base, "WT_ALIGN_EXIT_ENABLED": True, "WT_ALIGN_EXIT_MIN": al_min})
+    # WT velocity MTF
+    for v_tfs in [2, 3]:
+        for v_thr in [-0.5, -1.0]:
+            configs.append({**base, "WT_VEL_MTF_EXIT_ENABLED": True, "WT_VEL_MTF_EXIT_MIN_TFS": v_tfs, "WT_VEL_MTF_EXIT_THRESHOLD": v_thr})
+    # Combinations of top candidates
+    for kd_thr in [70.0, 75.0]:
+        for gain_pct in [1.5, 2.0]:
+            configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    for thr in [0.0, 0.5]:
+        for gain_pct in [1.5, 2.0]:
+            configs.append({**base, "WT_VEL_FLOOR_EXIT_ENABLED": True, "WT_VEL_FLOOR_EXIT_LONG_MAX": thr, "ADAPTIVE_EXIT_TFS_ENABLED": True, "ADAPTIVE_EXIT_TFS_GAIN_PCT": gain_pct})
+    for kd_thr in [70.0, 75.0]:
+        configs.append({**base, "KD_WT1H_EXIT_ENABLED": True, "KD_WT1H_EXIT_OVERBOUGHT": kd_thr, "WT_ALIGN_EXIT_ENABLED": True, "WT_ALIGN_EXIT_MIN": 1})
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1393,6 +1500,8 @@ TIER_MAP = {
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
     "crypto_wt_d_4h_aug": build_param_grid_crypto_wt_d_4h_aug,
     "crypto_vel_sweep": build_param_grid_crypto_vel_sweep,
+    "stock_exit_v1": build_param_grid_stock_exit_v1,
+    "crypto_exit_v1": build_param_grid_crypto_exit_v1,
 }
 
 
