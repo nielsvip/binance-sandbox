@@ -112,6 +112,35 @@ Run on 16 crypto-symbol groups + 16 tradier-symbol groups = **64,800 × 32 = 2,0
 
 ## EVIDENCE LOG (append below, most recent first)
 
+### 2026-04-20 12:00 UTC — PHASE3 RESULTS: HONEST STOCK CEILING = pool_sharpe ~0.41
+
+**PHASE2 honest sweep (576 configs, 262 stocks, 2022-2026, NOLOSS=False):**
+- Best pool: 0.3792 → No-PT + HOLD=20 + VEL=4.0 + WT_EXIT=4 + SRS=True → 3,671 trades, WR=58.1%, PnL=$49,615
+- Best PnL:  pool=0.3720 → No-PT + HOLD=20 + VEL=2.0 + WT_EXIT=4 → 4,390 trades, WR=57.6%, PnL=$57,525
+- Key: HOLD=20 wins over HOLD=80 (earlier 12-sym proxy was wrong — scale reverses ranking)
+- PT=False universally dominates. SRS=True slightly better. WT_EXIT=4 confirmed best.
+
+**PHASE3 fine-tune (360 configs, 262 stocks, 2022-2026, NOLOSS=False):**
+- New best: pool=**0.4072** → No-PT + HOLD=10 + VEL=6.0 + WT_EXIT=4 → 3,025 trades, WR=58.1%, PnL=$40,350
+- VEL/Trade tradeoff at HOLD=10 + WT_EXIT=4:
+
+| VEL | Pool Sharpe | Trades | PnL |
+|-----|------------|--------|-----|
+| 6.0 | **0.4072** | 3,025  | $40,350 |
+| 4.0 | 0.3915     | 3,729  | $46,977 |
+| 3.0 | 0.3883     | 4,103  | $51,132 |
+| 2.0 | 0.3826     | 4,475  | $54,121 |
+| 1.0 | 0.3807     | **4,785**  | **$57,047** |
+
+- COOLDOWN=0/3/6 → negligible effect on Sharpe, use CD=0 for max trades
+- HOLD=10 (50 min) beats HOLD=15-40; but VEL=1.0+HOLD=10 has more trades at only slightly lower Sharpe
+
+**HONEST STOCK CEILING (NOLOSS=False):** pool_sharpe ~0.41. All "Sharpe >4" results from earlier were NOLOSS=True artifact (WR=87-99%).
+
+**PHASE4 NEXT:** Test VEL=0.5 and VEL=0.0 (no gate), HOLD=5-10, CD=0 to push trades to max while holding pool>0.35. Also try ENTRY_SCORE gate combinations.
+
+**NOLOSS PATCH STATUS:** Conditional patch in `_run_config_with_stores`: `if mode=="tradier" and "NOLOSS_ENABLED" not in cfg_dict: cfg.NOLOSS_ENABLED=False`. MD5=cd0d5c833e0ebe27d54783fd886ba7d7 on all 3 machines.
+
 ### 2026-04-20 00:45 UTC — HONEST NOLOSS=False BASELINES (NOLOSS artifact fully audited)
 
 **ROOT CAUSE CONFIRMED: ALL "Sharpe >4" results from mega_v2 through mega_v5 were NOLOSS=True artifacts.**

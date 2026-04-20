@@ -714,6 +714,26 @@ def build_param_grid_stock_phase2():
     }
 
 
+def build_param_grid_stock_phase4():
+    """Phase 4: Max-trades hunt at proven NOLOSS=False params (2026-04-20).
+    Phase3 winner: HOLD=10, VEL=1.0-6.0, WT_EXIT=4, No-PT.
+    VEL=1.0 → 4,785 trades, pool=0.38, PnL=$57k.
+    Push VEL lower (0.0-0.5) and HOLD to 5-10, CD=0 for max trade count.
+    Also add ENTRY_SCORE gate to test quality filter.
+    ~180 configs. EARLY_ABORT: 50 syms, floor=0.2."""
+    return {
+        "PROFIT_TARGET_ENABLED": [False],
+        "MIN_HOLD_BARS": [5, 8, 10, 12, 15],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 0.5, 1.0, 2.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "COOLDOWN_BARS": [0],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.2],
+    }
+
+
 def build_param_grid_stock_phase3():
     """Phase 3: Fine-tune around NOLOSS=False winner (2026-04-20).
     Phase2 honest result: No-PT + HOLD=20 + VEL=2.0-4.0 + WT_EXIT=4
@@ -1059,6 +1079,7 @@ TIER_MAP = {
     "stock_dc_wide": build_param_grid_stock_dc_wide,
     "stock_phase2": build_param_grid_stock_phase2,
     "stock_phase3": build_param_grid_stock_phase3,
+    "stock_phase4": build_param_grid_stock_phase4,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
