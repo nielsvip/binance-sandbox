@@ -1404,7 +1404,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
     # WT-VELOCITY-DECAY exit (user priority: "sell when wt delta slows down")
     # Exit when 1h velocity magnitude drops below threshold after being strong
     wt_vel_1h_exit = _safe(npz, 'wt_velocity_1h', n)
-    wt_vel_1h_prev = np.roll(wt_vel_1h_exit, _bph_1h); wt_vel_1h_prev[:_bph_1h] = wt_vel_1h_exit[:_bph_1h]
+    wt_vel_1h_prev = np.roll(wt_vel_1h_exit, 1); wt_vel_1h_prev[0] = wt_vel_1h_exit[0]
     vel_decay_exit = np.zeros(n, dtype=bool)
     if getattr(cfg, 'WT_VEL_DECAY_EXIT_ENABLED', True):
         decay_threshold = float(getattr(cfg, 'WT_VEL_DECAY_THRESHOLD', 1.0))

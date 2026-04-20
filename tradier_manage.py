@@ -3948,8 +3948,8 @@ class StockStrategy:
             _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
             _pgp_ind = indicators if indicators else i
             if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace:
-                if _pgp_hard_zero and gain < 0:
-                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% NOW NEGATIVE gain={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
+                if _pgp_hard_zero and gain < 0.08:
+                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% near-zero gain={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
                     return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{gain:.2f}%", qty
                 if gain < _pgp_max_g - _pgp_drop:
                     logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")

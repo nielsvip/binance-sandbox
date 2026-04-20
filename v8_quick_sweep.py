@@ -1449,8 +1449,8 @@ def build_param_grid_le_dynamic_tradier_v2_validate_ea():
         "PROFIT_TARGET_ENABLED": True,
         "PROFIT_TARGET_PCT": 0.5,
         "WT_EXIT_MIN_TFS": 3,
-        "EARLY_ABORT_MIN_SYMBOLS": 20,
-        "EARLY_ABORT_SHARPE_FLOOR": 2.0,
+        "EARLY_ABORT_MIN_SYMBOLS": 60,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.8,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
     }
     configs = []
