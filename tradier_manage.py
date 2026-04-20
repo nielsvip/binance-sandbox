@@ -3963,6 +3963,23 @@ class StockStrategy:
                 if not is_long and _be_dc_high4 > 0 and current_price > 0 and current_price > _be_dc_high4:
                     logger.critical(f"🚫[DC_HIGH4_5M_BREAK] {symbol} S: price {current_price:.4f} > dc_high4_5m {_be_dc_high4:.4f} was_profitable={_pgp_max_g:.2f}% — structural stop")
                     return True, f"DC_HIGH4_5M_GAIN_EROSION_STOP_p{current_price:.4f}>dc4{_be_dc_high4:.4f}_g{gain:.2f}%", qty
+        # ═══ NOLOSS_BB1H_GATE (stocks structural break — 2026-04-20) ═══
+        # Stock equivalent of crypto NOLOSS_DC4H_GATE. When price breaks OUTSIDE the 1h
+        # Bollinger Band in the wrong direction while at a loss, the original thesis is
+        # structurally invalidated — override NO_LOSS and close. If still inside the band,
+        # it is a pullback within structure — hold (STOCK_MIN_HOLD + UNIVERSAL_NOLOSS_GATE handle it).
+        # Bypasses STOCK_MIN_HOLD and UNIVERSAL_NOLOSS_GATE intentionally.
+        if not _is_opts_check and gain < 0 and bool(getattr(config, 'NOLOSS_BB1H_GATE_ENABLED', True)):
+            _bb1h_ind = indicators if indicators else i
+            _bb1h_upper = float((_bb1h_ind).get('bb_upper_1h', 0) or 0)
+            _bb1h_lower = float((_bb1h_ind).get('bb_lower_1h', 0) or 0)
+            if _bb1h_upper > 0 and _bb1h_lower > 0 and current_price > 0:
+                if is_long and current_price < _bb1h_lower:
+                    logger.critical(f"🏗️[NOLOSS_BB1H_GATE] {symbol} L: price {current_price:.4f} < bb_lower_1h {_bb1h_lower:.4f} — structural breakdown, NO_LOSS overridden, gain={gain:.2f}%")
+                    return True, f"NOLOSS_BB1H_BREAKDOWN_LONG_px{current_price:.4f}<bb_low{_bb1h_lower:.4f}_g{gain:.2f}%", qty
+                elif not is_long and current_price > _bb1h_upper:
+                    logger.critical(f"🏗️[NOLOSS_BB1H_GATE] {symbol} S: price {current_price:.4f} > bb_upper_1h {_bb1h_upper:.4f} — structural breakout against, NO_LOSS overridden, gain={gain:.2f}%")
+                    return True, f"NOLOSS_BB1H_BREAKDOWN_SHORT_px{current_price:.4f}>bb_up{_bb1h_upper:.4f}_g{gain:.2f}%", qty
         # ==================================================================
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py

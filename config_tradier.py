@@ -1505,7 +1505,8 @@ class TradierConfig:
     RP_PROTECT_THRESHOLD: float = 70.0
     RP_PROTECT_MIN_GAIN: float = 1.0
     NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside bb_1h (stocks) / dc_4h (crypto) — hedge instead.
-    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS gate
+    NOLOSS_BB1H_GATE_ENABLED: bool = True   # Stock structural break: price outside bb_1h in wrong direction → override NO_LOSS and close at loss
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit

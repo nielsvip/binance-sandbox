@@ -259,7 +259,7 @@ class Config:
     REENTRY_SYMGATE_SPEED_MIN: float = 0.5  # Crypto: 0.5 bull/bear speed min (stocks=1.0). Below = momentum slowing -> block.
     ENTRY_SYMGATE_ENABLED: bool = False     # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
     NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside dc_4h channel — hedge instead.
-    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT')  # close reasons that bypass NOLOSS_DC4H
+    LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION')  # close reasons that bypass NOLOSS_DC4H; GAIN_EROSION added 2026-04-20 so DC_LOW4_3M closes instead of hedging
     LOSS_EXIT_REQUIRES_HEDGE: bool = True  # Master: can only exit at loss if hedge >= losing value
     HEDGE_OVERSIZE_RATIO: float = 2.0  # Max 200% of losing position. Tiered: 50% at -0.6%, 100% at -1%, 150% at -1%, 200% at -2%
     HEDGE_MOMENTUM_GATE: bool = False  # BACKTEST_CHANGE_119: No momentum gate — 15m WT is the sole gate.
@@ -349,9 +349,10 @@ class Config:
     # Per CLAUDE.md: "NO % Stops — Technical Exits ONLY. Only WT turn, volume die, DC reversal, stoch cross."
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(default_factory=lambda: [
         # 2026-04-17 CLEARED per user: "WT_CROSS_EXIT, DC_BREAK etc are NOT bypass reasons at all ever."
-        # The only legitimate close-at-loss path is the dc_4h range rule (DC_RECOVERY_EXIT):
-        # entry outside dc_4h range + recovery to entry + 3m reversal. Everything else = hedge or hold.
-        # is_hedge=True and 'LIQUIDATION' remain hardcoded bypasses in execute_now.
+        # 2026-04-20 RE-ADDED: GAIN_EROSION — DC_LOW4_3M/DC_HIGH4_3M structural stops fire when price
+        # breaks 4-bar Donchian on 3m after position was profitable. This is a structural reversal,
+        # not a % stop. Closing at a small loss is better than holding through a continued breakdown.
+        'GAIN_EROSION',
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
