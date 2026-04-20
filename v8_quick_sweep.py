@@ -1178,6 +1178,29 @@ def build_param_grid_crypto_validate_top():
     }
 
 
+def build_param_grid_stock_wt_d_aug_pt():
+    """wt_D augment + profit target on recovery — sweep AUGMENT_PT_PCT × MULTIPLIER.
+    Sweep finding: REQUIRE_HIGHER_PRICE=True never fires (price still below entry at wt_D bounce).
+    REQUIRE_HIGHER_WT=False wins. Now testing: does exiting the augmented position fast (at +0.3-1.0%)
+    improve Sharpe vs holding until regular WT exit signal?
+    32 configs. Run on S2: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01
+    --tier stock_wt_d_aug_pt --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    return {
+        "AUGMENT_WT_D_BOUNCE_ENABLED": [False, True],
+        "AUGMENT_WT_D_MULTIPLIER": [2.0, 3.0, 4.0],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_WT": [False],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_PRICE": [False],
+        "AUGMENT_PT_ENABLED": [False, True],
+        "AUGMENT_PT_PCT": [0.3, 0.5, 0.8, 1.0],
+        "MIN_HOLD_BARS": [40],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0],
+        "WT_EXIT_MIN_TFS": [3],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+    }
+
+
 def build_param_grid_stock_wt_d_aug():
     """wt_D bounce augment — double-down on losing positions when daily WT turns higher.
     Tests: AUGMENT_MULTIPLIER [1.5,2,3,4] × REQUIRE_HIGHER_WT [T/F] × REQUIRE_HIGHER_PRICE [T/F] vs baseline.
@@ -1250,6 +1273,7 @@ TIER_MAP = {
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
+    "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
 }
 
 

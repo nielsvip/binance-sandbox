@@ -164,8 +164,10 @@ class QuickConfig:
     # wt_D bounce augment — add to losing position when daily WT bounces with higher WT and/or higher price
     AUGMENT_WT_D_BOUNCE_ENABLED: bool = False
     AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
-    AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = True   # bounce wt1_D > prev bounce level
-    AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = True  # price at bounce > prev bounce price (LONG), < (SHORT)
+    AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = False   # bounce wt1_D > prev bounce level (sweep showed False wins)
+    AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = False  # sweep showed True never fires — price still below entry when wt_D bounces
+    AUGMENT_PT_ENABLED: bool = False  # take profit on augmented positions as soon as they recover
+    AUGMENT_PT_PCT: float = 0.5  # exit augmented position once live_pnl >= this %
     # Reentry WT-15m-cross + HTF-aligned (C) — wired in vectorized block REENTRY_B_WT15M_CROSS below
     REENTRY_WT15M_CROSS_ENABLED: bool = True
     REENTRY_WT15M_SIZE_MULT: float = 1.5
@@ -1595,6 +1597,8 @@ def simulate(stores, cfg, capital=10000.0):
             pt_pct = cfg.PROFIT_TARGET_PCT
             sl_enabled = cfg.STOP_LOSS_ENABLED
             sl_pct = cfg.STOP_LOSS_PCT
+            _aug_pt_enabled = bool(getattr(cfg, 'AUGMENT_PT_ENABLED', False))
+            _aug_pt_pct = float(getattr(cfg, 'AUGMENT_PT_PCT', 0.5))
             # REENTRY_MIN_GAP_BARS — extra cooldown after exit before next entry. 0 = use COOLDOWN_BARS only.
             min_gap_bars = int(getattr(cfg, 'REENTRY_MIN_GAP_BARS', 0) or 0)
             for i in range(n):
@@ -1619,6 +1623,10 @@ def simulate(stores, cfg, capital=10000.0):
                             ep = (ep + px * (_aug_mult - 1.0)) / _aug_mult
                             live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                             _aug_done = True; _aug_wt_d_last = _wt1d_cur; _aug_px_last = px
+                    # Augmented position profit target — exit fast once recovery confirmed
+                    if _aug_pt_enabled and _aug_done and live_pnl >= _aug_pt_pct:
+                        all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                        in_pos = False; _aug_done = False; cd = max(cooldown, min_gap_bars); continue
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
                     if getattr(cfg, 'HEDGE_ENABLED', True):
                         if is_long:

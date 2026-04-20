@@ -566,20 +566,20 @@ class TradierConfig:
     HEDGE_MODE_TRADIER: bool = False  # BACKTEST_CHANGE_T31 hedge mode disabled for stocks
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
-    TRC_START_POSITION_SIZE: float = 1980.0  # 3.3x trb ($600)
-    TRC_MAX_ORDER_VALUE: float = 5000.0  # 2.5x trb ($2000)
-    TRC_MAX_POSITION_SIZE: float = 15000.0  # 3x trb ($5000)
-    TRC_SCALP_START_SIZE: float = 1980.0  # 3.3x trb ($600)
-    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 12  # 2x trb (6)
-    TRC_MAX_CONCURRENT_POSITIONS: int = 32  # ~2x trb (16)
+    TRC_START_POSITION_SIZE: float = 1000.0  # Local extremes: base size — scorer overrides per trade ($50-$5000)
+    TRC_MAX_ORDER_VALUE: float = 5000.0  # Max single order (cap at $5000)
+    TRC_MAX_POSITION_SIZE: float = 5000.0  # Max per position = $5000 (was 15000)
+    TRC_SCALP_START_SIZE: float = 1000.0  # Scalp base size
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 20  # 20 long + 20 short = 40 total (was 12)
+    TRC_MAX_CONCURRENT_POSITIONS: int = 40  # 40 total = 20 per side (was 32)
     TRC_ROTATION_POSITION_SIZE: float = 3000.0  # 2.5x trb ($1200)
     TRC_RSI2_POSITION_SIZE: float = 1980.0  # 3.3x trb ($600)
     TRC_GAP_FILL_POSITION_SIZE: float = 1980.0  # 3.3x trb ($600)
     TRC_DC_DAYTRADE_START_SIZE: float = 1980.0  # 3.3x trb ($600)
     TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0  # 3.3x trb ($3000)
     TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0  # 3.3x trb ($3000)
-    TRC_SWING_LONG_BUDGET: float = 8000.0  # 4x trb ($2000)
-    TRC_SWING_SHORT_BUDGET: float = 8000.0  # 4x trb ($2000)
+    TRC_SWING_LONG_BUDGET: float = 100000.0  # Local extremes: unlimited paper budget for 20 longs at $5000 (was 8000)
+    TRC_SWING_SHORT_BUDGET: float = 100000.0  # Local extremes: unlimited paper budget for 20 shorts at $5000 (was 8000)
     TRC_SCALP_LONG_BUDGET: float = 5000.0  # 5x trb ($1000)
     TRC_SCALP_SHORT_BUDGET: float = 5000.0  # 5x trb ($1000)
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
@@ -594,7 +594,8 @@ class TradierConfig:
     TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY.
     # === CONCENTRATION CAP — prevent single-symbol overexposure ===
     MAX_SYMBOL_VALUE_TRADIER: float = 15000.0  # Max $ value per symbol. USO hit $352K, IBIT $119K — caused disaster losses.
-    TRC_MAX_SYMBOL_VALUE: float = 15000.0  # trc cap (was uncapped — USO grew to $352K)
+    TRC_MAX_SYMBOL_VALUE: float = 5000.0  # Local extremes: cap per symbol at $5000 (was 15000)
+    TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
     TRB_MAX_SYMBOL_VALUE: float = 10000.0  # trb cap (smaller account)
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies

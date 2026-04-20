@@ -32,6 +32,7 @@ import redis.asyncio as redis
 from dateutil.parser import isoparse
 
 from config_tradier import TradierConfig
+from local_extremes_scorer import score_local_extremes as _le_score_entry
 from tradier_indicators import analyze_multi_tf_state_tradier
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
@@ -1422,6 +1423,20 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if action_type == "OPEN" and trade_manager.strategy.circuit_breaker.is_blocked(reason):
                     logger.critical(f"🛑 [CIRCUIT_BREAKER] {account_key}:{symbol}_{position_side}: BLOCKED entry '{reason}' — path auto-disabled after repeated collapses")
                     return "CIRCUIT_BREAKER_BLOCKED"
+                if action_type == "OPEN" and account_key == 'trc' and getattr(config, 'TRC_LOCAL_EXTREMES_SCORER_ENABLED', False):
+                    _le_ind = indicators_raw if indicators_raw else i
+                    try:
+                        _le_sc, _le_sz, _le_rsn = _le_score_entry(_le_ind, is_long)
+                        if _le_sz > 0 and current_price > 0:
+                            qty = int(max(1, _le_sz / current_price))
+                            reason = f"LE_{_le_rsn}_{reason}"
+                            logger.info(f"[trc] LE_SCORER {symbol} {'L' if is_long else 'S'}: {_le_rsn} qty={qty} (${_le_sz:.0f})")
+                        else:
+                            action_type = "NO_ACTION"
+                            reason = f"LE_SCORE_SKIP({_le_rsn})"
+                            logger.debug(f"[trc] LE_SCORER skip {symbol}: {_le_rsn}")
+                    except Exception as _le_err:
+                        logger.warning(f"[trc] LE_SCORER error {symbol}: {_le_err}")
                 if action_type == "OPEN":
                     # Determine intended direction from strategy return
                     signal_is_long = "LONG" in reason.upper()
