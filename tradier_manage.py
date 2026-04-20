@@ -4943,6 +4943,34 @@ class StockStrategy:
             else:
                 gain = 0.0
 
+            # wt_D bounce augment — fires BEFORE the gain gate, explicitly bypasses it for this signal
+            if getattr(config, 'WT_D_BOUNCE_AUG_ENABLED', False) and gain < 0:
+                wt1_d = float(i.get('wt1_D', 0) or 0)
+                if not hasattr(self, '_wt_d_aug_state'):
+                    self._wt_d_aug_state = {}
+                _wds = self._wt_d_aug_state.get(symbol, {})
+                prev_wt1_d = _wds.get('prev_wt1_d', wt1_d)
+                last_aug_wt1_d = _wds.get('last_aug_wt1_d', (-999.0 if is_long else 999.0))
+                last_aug_ts = _wds.get('last_aug_ts', 0.0)
+                self._wt_d_aug_state[symbol] = {**_wds, 'prev_wt1_d': wt1_d}
+                bounce = (wt1_d > prev_wt1_d) if is_long else (wt1_d < prev_wt1_d)
+                req_hwt = getattr(config, 'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT', False)
+                higher_ok = (not req_hwt) or ((wt1_d > last_aug_wt1_d) if is_long else (wt1_d < last_aug_wt1_d))
+                cooldown_ok = (time.time() - last_aug_ts) >= float(getattr(config, 'WT_D_BOUNCE_AUG_COOLDOWN_HOURS', 1.0)) * 3600
+                if bounce and higher_ok and cooldown_ok:
+                    mult = float(getattr(config, 'WT_D_BOUNCE_AUG_MULTIPLIER', 4.0))
+                    aug_qty_raw = current_qty * (mult - 1.0)
+                    pk = getattr(position, 'position_key', '') or f"{getattr(position, 'account_key', 'trb')}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+                    _acct_key = pk.split(':')[0].upper() if ':' in pk else 'TRB'
+                    _max_val = getattr(config, f'{_acct_key}_MAX_SYMBOL_VALUE', getattr(config, 'MAX_SYMBOL_VALUE_TRADIER', 15000))
+                    if current_value < _max_val:
+                        aug_qty_raw = min(aug_qty_raw, (_max_val - current_value) / max(current_price, 0.01))
+                        if aug_qty_raw >= 0.5:
+                            direction = "LONG" if is_long else "SHORT"
+                            qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, aug_qty_raw, indicators, position, market_context)
+                            if qty > 0:
+                                self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_ts': time.time()}
+                                return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
             # MUST be in profit before augmenting — 3% gate matches crypto (MIN_GAIN)
             if gain < getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0):
                 return False, "", 0.0, 0.0
@@ -7234,23 +7262,24 @@ class TradierTradeManager:
                 logger.error(f"[TRADE] {position_key}: Position not found in memory or disk — cannot execute trade without position data")
                 return "POSITION_NOT_FOUND"
 
-        # 4. Entry/Augment Blockers — REENTRY is EXEMPT (rebuilding reduced position, not augmenting)
-        if action == "AUGMENT" and not _is_reentry and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
+        # 4. Entry/Augment Blockers — REENTRY and WT_D_BOUNCE_AUG are EXEMPT
+        _is_wt_d_aug = "WT_D_BOUNCE_AUG" in str(reason)
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER', True) and position.gain < 0:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED — losing position (gain={position.gain:.2f}%)")
             return "BLOCKED_NO_GAIN"
-        if action == "AUGMENT" and not _is_reentry and position.gain <= 0:
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain <= 0:
             logger.warning(f"[{account_key}] BLOCKED AUGMENT {symbol}: Gain is {position.gain:.2f}% (Must be > 0%)")
             return "BLOCKED_NO_GAIN"
         # MIN GAIN AUGMENT GUARD — parity with crypto. NEVER augment a position below MIN_GAIN%.
         _min_aug_gain = getattr(config, 'MIN_GAIN', 3.0)
-        if action == "AUGMENT" and not _is_reentry and position.gain < _min_aug_gain:
+        if action == "AUGMENT" and not _is_reentry and not _is_wt_d_aug and position.gain < _min_aug_gain:
             logger.warning(f"[AUGMENT_MIN_GAIN_BLOCK] {position_key}: gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED")
             return f"BLOCKED_MIN_GAIN_{position.gain:.2f}pct<{_min_aug_gain}pct"
         # HARD WALL: position already open (positionAmt > 0) → NO buy of any kind without MIN_GAIN.
         # Applies to ALL action labels (AUGMENT, REENTRY, OPEN, etc.) — no _is_reentry bypass.
-        # Only exemption: exit actions (CLOSE, REDUCE, PROFIT_TAKE).
+        # Only exemption: exit actions (CLOSE, REDUCE, PROFIT_TAKE) and WT_D_BOUNCE_AUG.
         _pos_qty_hw = abs(float(getattr(position, 'positionAmt', 0) or 0))
-        if not is_exit_action and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
+        if not is_exit_action and not _is_wt_d_aug and _pos_qty_hw > 0 and position.gain < _min_aug_gain:
             logger.warning(f"[HARD_MIN_GAIN_WALL] {position_key}: positionAmt={_pos_qty_hw} gain={position.gain:.2f}% < {_min_aug_gain}% — BLOCKED action={action}")
             return f"BLOCKED_MIN_GAIN_WALL_{position.gain:.2f}pct<{_min_aug_gain}pct"
 

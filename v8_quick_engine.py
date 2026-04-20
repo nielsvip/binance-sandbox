@@ -166,6 +166,11 @@ class QuickConfig:
     AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
     AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = False   # bounce wt1_D > prev bounce level (sweep showed False wins)
     AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = False  # sweep showed True never fires — price still below entry when wt_D bounces
+    # wt_4h bounce augment — fires ~6x more often than wt_D; independent _aug_4h_done flag allows both to fire once each
+    AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False
+    AUGMENT_WT_4H_MULTIPLIER: float = 2.0
+    AUGMENT_WT_4H_REQUIRE_HIGHER_WT: bool = False
+    AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE: bool = False
     AUGMENT_PT_ENABLED: bool = False  # take profit on augmented positions as soon as they recover
     AUGMENT_PT_PCT: float = 0.5  # exit augmented position once live_pnl >= this %
     # Reentry WT-15m-cross + HTF-aligned (C) — wired in vectorized block REENTRY_B_WT15M_CROSS below
@@ -1570,6 +1575,11 @@ def simulate(stores, cfg, capital=10000.0):
         _aug_mult = float(getattr(cfg, 'AUGMENT_WT_D_MULTIPLIER', 2.0))
         _aug_req_hwt = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_WT', True))
         _aug_req_hpx = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_PRICE', True))
+        _wt1_4H_aug = _safe(npz, 'wt1_4h', n)
+        _aug_4h_enabled = bool(getattr(cfg, 'AUGMENT_WT_4H_BOUNCE_ENABLED', False))
+        _aug_4h_mult = float(getattr(cfg, 'AUGMENT_WT_4H_MULTIPLIER', 2.0))
+        _aug_4h_req_hwt = bool(getattr(cfg, 'AUGMENT_WT_4H_REQUIRE_HIGHER_WT', False))
+        _aug_4h_req_hpx = bool(getattr(cfg, 'AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE', False))
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
@@ -1591,6 +1601,7 @@ def simulate(stores, cfg, capital=10000.0):
                     _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
+            _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
@@ -1606,7 +1617,7 @@ def simulate(stores, cfg, capital=10000.0):
                 px = close[i]
                 if px <= 0: continue
                 if not in_pos and entry_sig[i]:
-                    in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
+                    in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
@@ -1623,8 +1634,21 @@ def simulate(stores, cfg, capital=10000.0):
                             ep = (ep + px * (_aug_mult - 1.0)) / _aug_mult
                             live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                             _aug_done = True; _aug_wt_d_last = _wt1d_cur; _aug_px_last = px
-                    # Augmented position profit target — exit fast once recovery confirmed
-                    if _aug_pt_enabled and _aug_done and live_pnl >= _aug_pt_pct:
+                    # wt_4h bounce augment — fires ~6x more often than wt_D; independent flag allows both to fire once each
+                    if _aug_4h_enabled and not _aug_4h_done and live_pnl < 0 and i > 0:
+                        _wt1_4h_cur = _wt1_4H_aug[i]; _wt1_4h_prev = _wt1_4H_aug[i - 1]
+                        if is_long:
+                            _bounce_4h = _wt1_4h_cur > _wt1_4h_prev
+                            _ok_4h = _bounce_4h and (not _aug_4h_req_hwt or _wt1_4h_cur > _aug_4h_wt_last) and (not _aug_4h_req_hpx or px > _aug_4h_px_last)
+                        else:
+                            _bounce_4h = _wt1_4h_cur < _wt1_4h_prev
+                            _ok_4h = _bounce_4h and (not _aug_4h_req_hwt or _wt1_4h_cur < _aug_4h_wt_last) and (not _aug_4h_req_hpx or px < _aug_4h_px_last)
+                        if _ok_4h:
+                            ep = (ep + px * (_aug_4h_mult - 1.0)) / _aug_4h_mult
+                            live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                            _aug_4h_done = True; _aug_4h_wt_last = _wt1_4h_cur; _aug_4h_px_last = px
+                    # Augmented position profit target — fires after any augment (wt_D or wt_4h)
+                    if _aug_pt_enabled and (_aug_done or _aug_4h_done) and live_pnl >= _aug_pt_pct:
                         all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
                         in_pos = False; _aug_done = False; cd = max(cooldown, min_gap_bars); continue
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).

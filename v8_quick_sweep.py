@@ -1221,6 +1221,63 @@ def build_param_grid_stock_wt_d_aug():
     }
 
 
+def build_param_grid_crypto_wt_d_4h_aug():
+    """Crypto double-down sweep: wt_D and wt_4h bounce augments tested independently and combined.
+    wt_4h fires ~6x more frequently than wt_D. Both use independent _aug_done flags (can both fire once).
+    Tests: D-only vs 4h-only vs both-enabled × multiplier [2,3,4] × PT enabled [F,T].
+    36 configs × 48 symbols, 4yr. ~8min on S1 with 6 workers.
+    Run on S1: python v8_quick_sweep.py --mode crypto --symbols all --start 2021-01-01 --tier crypto_wt_d_4h_aug --workers 6 --stream --min-csv-sharpe 0.5 --kill-secs 999999 --kill-sharpe 0"""
+    configs = []
+    for aug_d in [False, True]:
+        for aug_4h in [False, True]:
+            if not aug_d and not aug_4h:
+                continue
+            for mult in [2.0, 3.0, 4.0]:
+                for pt_enabled in [False, True]:
+                    configs.append({
+                        "AUGMENT_WT_D_BOUNCE_ENABLED": aug_d,
+                        "AUGMENT_WT_D_MULTIPLIER": mult,
+                        "AUGMENT_WT_D_REQUIRE_HIGHER_WT": False,
+                        "AUGMENT_WT_D_REQUIRE_HIGHER_PRICE": False,
+                        "AUGMENT_WT_4H_BOUNCE_ENABLED": aug_4h,
+                        "AUGMENT_WT_4H_MULTIPLIER": mult,
+                        "AUGMENT_WT_4H_REQUIRE_HIGHER_WT": False,
+                        "AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE": False,
+                        "AUGMENT_PT_ENABLED": pt_enabled,
+                        "AUGMENT_PT_PCT": 0.5,
+                        "MIN_HOLD_BARS": 40,
+                        "CT_WT_VELOCITY_GATE_ENABLED": True,
+                        "CT_WT_VELOCITY_1H_MIN": 8.0,
+                        "WT_EXIT_MIN_TFS": 3,
+                        "EARLY_ABORT_MIN_SYMBOLS": 12,
+                        "EARLY_ABORT_SHARPE_FLOOR": 1.5,
+                    })
+    return configs
+
+
+def build_param_grid_crypto_vel_sweep():
+    """Crypto velocity × reentry sweep to find Sharpe>2.5 on non-broken data.
+    Coord descent (Apr-17) found vel=6→2.249. vel=8 comment was on broken data (B15/B11=0).
+    Tests: CT_WT_VELOCITY_1H_MIN [5,6,7,8,9] × REENTRY_RALLY_K15M_MAX [30,50,80,100] × HTF_MIN_ALIGNED [1,2].
+    40 configs × 48 symbols, 4yr. ~12min on S1 with 6 workers.
+    Run on S1: python v8_quick_sweep.py --mode crypto --symbols 48 --start 2021-01-01 --tier crypto_vel_sweep --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
+    configs = []
+    for vel in [5.0, 6.0, 7.0, 8.0, 9.0]:
+        for rally in [30.0, 50.0, 80.0, 100.0]:
+            for htf in [1, 2]:
+                configs.append({
+                    "CT_WT_VELOCITY_1H_MIN": vel,
+                    "CT_WT_VELOCITY_GATE_ENABLED": True,
+                    "REENTRY_RALLY_K15M_MAX": rally,
+                    "HTF_MIN_ALIGNED": htf,
+                    "MIN_HOLD_BARS": 40,
+                    "WT_EXIT_MIN_TFS": 3,
+                    "EARLY_ABORT_MIN_SYMBOLS": 12,
+                    "EARLY_ABORT_SHARPE_FLOOR": 1.5,
+                })
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1274,6 +1331,8 @@ TIER_MAP = {
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
+    "crypto_wt_d_4h_aug": build_param_grid_crypto_wt_d_4h_aug,
+    "crypto_vel_sweep": build_param_grid_crypto_vel_sweep,
 }
 
 

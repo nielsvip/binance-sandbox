@@ -492,6 +492,11 @@ class TradierConfig:
     BB_RECOVERY_EXIT_ENABLED_TRADIER: bool = True  # 2026-04-20 sweep: unlocks stranded positions stuck above bb_1h
     BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30  # stock pct tolerance around entry_price
     BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0  # if >0, uses N * atr_3m instead of pct
+    # wt_D bounce augment — add to losing position when daily WT turns, bypasses gain gates
+    WT_D_BOUNCE_AUG_ENABLED: bool = True   # 2026-04-20: applied live per user directive
+    WT_D_BOUNCE_AUG_MULTIPLIER: float = 4.0  # sweep winner: 4x is best (Sharpe 0.476 vs 0.412 baseline)
+    WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT: bool = False  # sweep showed False wins — any wt_D turn suffices
+    WT_D_BOUNCE_AUG_COOLDOWN_HOURS: float = 1.0  # min hours between wt_D augments per position
     K_ZONE_ENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T52: K-zone entry — K in zone + turning + candle confirms. No crossover wait.
     K_ZONE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, K_ZONE_LONG/SHORT_THRESHOLD veto entries on wt_dc path (proves switch gates trades). Default False = live unchanged.
     WT_COMPOSITE_VETO_ENABLED_TRADIER: bool = False  # VARIANCE_FIX 2026-04-14: when True, WT_COMPOSITE_SCORING_ENABLED vetoes wt_dc entries lacking composite alignment. Default False = live unchanged.
