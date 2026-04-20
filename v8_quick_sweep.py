@@ -1701,6 +1701,83 @@ def build_param_grid_le_partial_exit_tradier_validate():
     return configs
 
 
+def build_param_grid_le_partial_exit_crypto():
+    """2026-04-20: Partial scale-out sweep for crypto using velocity-gate baseline (Sharpe ~2.55).
+    Cross events expanded to full candle (5 bars at 15m, 20 bars at 1h for 3m base TF).
+    NOTE: LOCAL_EXTREMES_SCORER uses 5m fields — incompatible with crypto 3m NPZ.
+    Uses velocity gate instead: CT_WT_VELOCITY_1H_MIN=8.0, MIN_HOLD_BARS=250.
+    Run on S1: --mode crypto --symbols fast --start 2022-01-01 --tier le_partial_exit_crypto --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 8.0,
+        "REENTRY_RALLY_K15M_MAX": 100.0,
+        "MIN_HOLD_BARS": 250,
+        "WT_EXIT_MIN_TFS": 3,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 1.0,
+        "WINNER_PROTECT_ENABLED": False,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = []
+    configs.append({**base, "PARTIAL_EXIT_ENABLED": False, "WT_EXIT_USE_CROSS_EVENTS": False})
+    configs.append({**base, "PARTIAL_EXIT_ENABLED": False, "WT_EXIT_USE_CROSS_EVENTS": True})
+    for use_cross in [True, False]:
+        for pe_pct in [0.5, 0.7, 1.0]:
+            for trail_arm in [0.7, 1.0, 1.3]:
+                if trail_arm < pe_pct:
+                    continue
+                for trail_floor in [pe_pct * 0.8, pe_pct]:
+                    for rem_tfs in [2, 3]:
+                        configs.append({**base,
+                            "PARTIAL_EXIT_ENABLED": True,
+                            "PARTIAL_EXIT_FRAC": 0.5,
+                            "PARTIAL_EXIT_PCT": pe_pct,
+                            "PARTIAL_TRAIL_ARM_PCT": trail_arm,
+                            "PARTIAL_TRAIL_FLOOR_PCT": trail_floor,
+                            "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
+                            "WT_EXIT_USE_CROSS_EVENTS": use_cross,
+                        })
+    return configs
+
+
+def build_param_grid_le_partial_exit_crypto_validate():
+    """2026-04-20: Full 48-symbol validation of crypto partial exit winners.
+    Run on S1: --mode crypto --symbols all --start 2021-01-01 --tier le_partial_exit_crypto_validate --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "CT_WT_VELOCITY_GATE_ENABLED": True,
+        "CT_WT_VELOCITY_1H_MIN": 8.0,
+        "REENTRY_RALLY_K15M_MAX": 100.0,
+        "MIN_HOLD_BARS": 250,
+        "WT_EXIT_MIN_TFS": 3,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 1.0,
+        "WINNER_PROTECT_ENABLED": False,
+        "EARLY_ABORT_MIN_SYMBOLS": 999,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [{**base, "PARTIAL_EXIT_ENABLED": False}]
+    for pe_pct in [0.7, 1.0]:
+        for trail_arm in [1.0, 1.3]:
+            if trail_arm < pe_pct:
+                continue
+            for rem_tfs in [2, 3]:
+                configs.append({**base,
+                    "PARTIAL_EXIT_ENABLED": True,
+                    "PARTIAL_EXIT_FRAC": 0.5,
+                    "PARTIAL_EXIT_PCT": pe_pct,
+                    "PARTIAL_TRAIL_ARM_PCT": trail_arm,
+                    "PARTIAL_TRAIL_FLOOR_PCT": pe_pct,
+                    "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
+                    "WT_EXIT_USE_CROSS_EVENTS": True,
+                })
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1758,6 +1835,8 @@ TIER_MAP = {
     "le_dynamic_tradier_v2_validate": build_param_grid_le_dynamic_tradier_v2_validate,
     "le_partial_exit_tradier": build_param_grid_le_partial_exit_tradier,
     "le_partial_exit_tradier_validate": build_param_grid_le_partial_exit_tradier_validate,
+    "le_partial_exit_crypto": build_param_grid_le_partial_exit_crypto,
+    "le_partial_exit_crypto_validate": build_param_grid_le_partial_exit_crypto_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
     "stock_60min_reentry": build_param_grid_stock_60min_reentry,

@@ -1374,16 +1374,26 @@ def compute_exit_signals(npz, n, is_long, cfg):
     mfi_1h = _safe(npz, 'mfi_1h', n, 50); mfi_ltf = _safe(npz, f'mfi_{_ltf}', n, 50)
     bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
 
+    _bph_15m = 15 // _ltf_mins   # bars per 15m candle: 5 (crypto/3m) or 3 (tradier/5m)
     _use_cross = bool(getattr(cfg, 'WT_EXIT_USE_CROSS_EVENTS', False))
     if _use_cross:
-        # Cross events: fire only on 5m bars within the candle where WT first crossed at that TF.
-        # NPZ precomputes wt_cross_bear/bull_* by comparing each TF's WT vs previous closed bar of that TF.
-        # This matches live behavior: alert triggers at the turn, not during every bearish bar.
-        # LTF (5m): state still fine (fast enough); 15m and above: use precomputed cross events.
+        # NPZ cross events fire only at the first bar of the candle where the cross happened.
+        # Expand each single-bar event to cover the full candle duration so exit fires for the
+        # entire candle (12 bars for 1h/tradier, 20 for 1h/crypto; 3 for 15m/tradier, 5 for 15m/crypto).
+        _raw_c15b = _safe(npz, 'wt_cross_bear_15m', n).astype(bool)
+        _raw_c1hb = _safe(npz, 'wt_cross_bear_1h', n).astype(bool)
+        _raw_c15u = _safe(npz, 'wt_cross_bull_15m', n).astype(bool)
+        _raw_c1hu = _safe(npz, 'wt_cross_bull_1h', n).astype(bool)
+        _exp_c15b = np.zeros(n, dtype=bool); _exp_c1hb = np.zeros(n, dtype=bool)
+        _exp_c15u = np.zeros(n, dtype=bool); _exp_c1hu = np.zeros(n, dtype=bool)
+        for _k in range(_bph_15m):
+            _exp_c15b[_k:] |= _raw_c15b[:n - _k]; _exp_c15u[_k:] |= _raw_c15u[:n - _k]
+        for _k in range(_bph_1h):
+            _exp_c1hb[_k:] |= _raw_c1hb[:n - _k]; _exp_c1hu[_k:] |= _raw_c1hu[:n - _k]
         if is_long:
-            wt_against = (wt1_ltf < wt2_ltf).astype(int) + _safe(npz, 'wt_cross_bear_15m', n).astype(int) + _safe(npz, 'wt_cross_bear_1h', n).astype(int)
+            wt_against = (wt1_ltf < wt2_ltf).astype(int) + _exp_c15b.astype(int) + _exp_c1hb.astype(int)
         else:
-            wt_against = (wt1_ltf > wt2_ltf).astype(int) + _safe(npz, 'wt_cross_bull_15m', n).astype(int) + _safe(npz, 'wt_cross_bull_1h', n).astype(int)
+            wt_against = (wt1_ltf > wt2_ltf).astype(int) + _exp_c15u.astype(int) + _exp_c1hu.astype(int)
     elif is_long:
         wt_against = (wt1_ltf < wt2_ltf).astype(int) + (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int)
     else:
@@ -1710,10 +1720,20 @@ def simulate(stores, cfg, capital=10000.0):
                 _ltf_pe = getattr(cfg, 'LTF', '3m')
                 _pe_w1l = _safe(npz, f'wt1_{_ltf_pe}', n); _pe_w2l = _safe(npz, f'wt2_{_ltf_pe}', n)
                 if _use_cross:
+                    _pe_raw_c15b = _safe(npz, 'wt_cross_bear_15m', n).astype(bool)
+                    _pe_raw_c1hb = _safe(npz, 'wt_cross_bear_1h', n).astype(bool)
+                    _pe_raw_c15u = _safe(npz, 'wt_cross_bull_15m', n).astype(bool)
+                    _pe_raw_c1hu = _safe(npz, 'wt_cross_bull_1h', n).astype(bool)
+                    _pe_exp_c15b = np.zeros(n, dtype=bool); _pe_exp_c1hb = np.zeros(n, dtype=bool)
+                    _pe_exp_c15u = np.zeros(n, dtype=bool); _pe_exp_c1hu = np.zeros(n, dtype=bool)
+                    for _k in range(_bph_15m):
+                        _pe_exp_c15b[_k:] |= _pe_raw_c15b[:n - _k]; _pe_exp_c15u[_k:] |= _pe_raw_c15u[:n - _k]
+                    for _k in range(_bph_1h):
+                        _pe_exp_c1hb[_k:] |= _pe_raw_c1hb[:n - _k]; _pe_exp_c1hu[_k:] |= _pe_raw_c1hu[:n - _k]
                     if is_long:
-                        _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + _safe(npz, 'wt_cross_bear_15m', n).astype(int) + _safe(npz, 'wt_cross_bear_1h', n).astype(int)
+                        _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + _pe_exp_c15b.astype(int) + _pe_exp_c1hb.astype(int)
                     else:
-                        _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + _safe(npz, 'wt_cross_bull_15m', n).astype(int) + _safe(npz, 'wt_cross_bull_1h', n).astype(int)
+                        _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + _pe_exp_c15u.astype(int) + _pe_exp_c1hu.astype(int)
                 else:
                     _pe_w115 = _safe(npz, 'wt1_15m', n); _pe_w215 = _safe(npz, 'wt2_15m', n)
                     _pe_w11h = _safe(npz, 'wt1_1h', n); _pe_w21h = _safe(npz, 'wt2_1h', n)
