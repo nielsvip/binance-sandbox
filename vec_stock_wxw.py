@@ -140,6 +140,7 @@ def main():
     ap.add_argument("--min-bars-per-sym", type=int, default=35000)
     ap.add_argument("--min-trades-per-sym", type=int, default=50)
     ap.add_argument("--min-syms", type=int, default=40, help="of the full-loaded stocks, how many must qualify")
+    ap.add_argument("--max-syms", type=int, default=128, help="cap total stocks loaded at this")
     args = ap.parse_args()
 
     t0 = time.time()
