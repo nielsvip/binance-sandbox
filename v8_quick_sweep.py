@@ -930,39 +930,41 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """Crypto pre-screen: 12-symbol fast filter. Kill <2.0 Sharpe after 15s. Save >=4.0.
-    Target 10k winners on 12 symbols then promote to full 48-symbol validation.
-    NOLOSS=True (default). ~2M combos — random sampling.
+    """Crypto focused sweep: winner zone from 12-sym pre-screen analysis.
+    Winners cluster: VEL=12-14, K_MAX=40, D_TREND=True, DC_RECOVERY=False, HTF=2, HOLD=200-500, PT=0.8-1.6.
+    Floor raised 2.0→3.5: kills 2-3.4 Sharpe configs fast, hits ~40% win rate.
+    ~21k combos — exhaustive (no sampling). Goal: 10k winners in <2hrs.
     Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12
     """
     return {
-        "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 14.0],
-        "MIN_HOLD_BARS": [100, 150, 200, 250, 300, 400, 500],
-        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.5],
+        "CT_WT_VELOCITY_1H_MIN": [10.0, 12.0, 14.0],
+        "MIN_HOLD_BARS": [150, 200, 250, 300, 400, 500],
+        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2, 1.4, 1.6, 1.8],
         "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
-        "REENTRY_RALLY_K15M_MAX": [40.0, 50.0, 60.0, 70.0, 80.0, 100.0],
+        "REENTRY_RALLY_K15M_MAX": [40.0, 50.0],
         "WT_EXIT_MIN_TFS": [2, 3],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "WINNER_PROTECT_ENABLED": [True, False],
-        "D_TREND_REQUIRED": [True, False],
-        "HTF_MIN_ALIGNED": [1, 2],
-        "DC_RECOVERY_EXIT_ENABLED": [True, False],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [2],
+        "DC_RECOVERY_EXIT_ENABLED": [False],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.5],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
 def build_param_grid_mega_tradier_v8():
     """Tradier pre-screen: 12-symbol fast filter. Kill <2.0 Sharpe after 15s. Save >=4.0.
+    PROFIT_TARGET_ENABLED=True so PT actually fires (apply_tradier_defaults sets it False).
     Target 10k winners on 12 symbols then promote to full validation.
-    NOLOSS=True (default).
     Run: --mode tradier --symbols fast --start 2024-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 8
     """
     return {
+        "PROFIT_TARGET_ENABLED": [True],
         "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
-        "MIN_HOLD_BARS": [10, 20, 30, 40, 60, 80, 120],
+        "MIN_HOLD_BARS": [4, 10, 20, 30, 40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
         "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0, 10.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],

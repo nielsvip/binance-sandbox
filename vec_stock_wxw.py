@@ -27,19 +27,36 @@ from vec_stock_mega import build_conditions, fwd_returns, score_per_symbol, dete
 import vec_stock_mega as vsm
 
 
-def load_all_stocks(n_bars, min_bars_per_sym):
+import re
+_CRYPTO_RE = re.compile(r"(USDT|USDC|BUSD)$|^BTC$|^ETH$|^BNB$|^SOL$|^XRP$|^ADA$|^DOGE$|^LINK$|^DOT$|^MATIC$|^AVAX$|^LTC$|^TRX$")
+
+
+def load_stocks(n_bars, min_bars_per_sym, max_syms=128):
     npz_dir = detect_npz_dir()
-    loaded = {}
+    # Collect stock symbols (filter crypto) with bar count
+    candidates = []
     for p in sorted(npz_dir.glob("*.npz")):
         sym = p.stem
+        if _CRYPTO_RE.search(sym):
+            continue
         try:
-            z = dict(np.load(str(p), allow_pickle=True))
+            z = np.load(str(p), allow_pickle=True)
         except Exception:
             continue
-        if len(z.get("close", [])) < min_bars_per_sym:
+        L = len(z.get("close", []))
+        if L < min_bars_per_sym:
             continue
+        candidates.append((sym, L, str(p)))
+    # Sort by bar count desc, take top max_syms
+    candidates.sort(key=lambda x: -x[1])
+    candidates = candidates[:max_syms]
+    loaded = {}
+    for sym, L, path in candidates:
+        z = dict(np.load(path, allow_pickle=True))
         loaded[sym] = z
-    min_len = min(len(z["close"]) for z in loaded.values()) if loaded else 0
+    if not loaded:
+        raise RuntimeError(f"No stocks met min_bars_per_sym={min_bars_per_sym}")
+    min_len = min(len(z["close"]) for z in loaded.values())
     use = min(n_bars, min_len)
     for s in list(loaded.keys()):
         z = loaded[s]
@@ -127,7 +144,7 @@ def main():
 
     t0 = time.time()
     print(f"[{time.time()-t0:.1f}s] Loading full stock dataset...")
-    loaded, n_bars, npz_dir = load_all_stocks(args.bars, args.min_bars_per_sym)
+    loaded, n_bars, npz_dir = load_stocks(args.bars, args.min_bars_per_sym, args.max_syms)
     syms = list(loaded.keys())
     print(f"[{time.time()-t0:.1f}s] Loaded {len(syms)} syms × {n_bars} bars from {npz_dir}")
 
