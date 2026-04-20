@@ -714,6 +714,28 @@ def build_param_grid_stock_phase2():
     }
 
 
+def build_param_grid_stock_phase7():
+    """Phase 7: High-quality zone cross (2026-04-20).
+    Phase3: VEL=6.0, HOLD=10 → pool=0.4072, 3k trades (best Sharpe). Phase6: VEL=2.0 + wide zone → 17k trades, pool=0.24.
+    Hypothesis: VEL=4-6 + permissive zone → HIGH Sharpe AND HIGH trades. Cross VEL × ZL × ZS × CONV × HTF.
+    ~128 configs. EARLY_ABORT: 50 syms, floor=0.25."""
+    return {
+        "PROFIT_TARGET_ENABLED": [False],
+        "MIN_HOLD_BARS": [10],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [4.0, 6.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "COOLDOWN_BARS": [0],
+        "RANK_CONVICTION_MIN": [2, 3],
+        "ENTRY_ZONE_LONG": [30.0, 40.0, 50.0, 60.0],
+        "ENTRY_ZONE_SHORT": [30.0, 40.0, 50.0, 60.0],
+        "HTF_MIN_ALIGNED": [1, 2],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.25],
+    }
+
+
 def build_param_grid_stock_phase6():
     """Phase 6: Zone gate frontier map (2026-04-20).
     Phase5 discovery: ZL=50,ZS=50 → 11,753 trades, pool=0.35, PnL=$131k vs ZL=30,ZS=70 → 2,076 trades.
@@ -1128,6 +1150,7 @@ TIER_MAP = {
     "stock_phase4": build_param_grid_stock_phase4,
     "stock_phase5": build_param_grid_stock_phase5,
     "stock_phase6": build_param_grid_stock_phase6,
+    "stock_phase7": build_param_grid_stock_phase7,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
