@@ -1979,6 +1979,8 @@ def main():
                         help="Abort sweep if best Sharpe < kill-sharpe after this many wall-clock seconds (default 60)")
     parser.add_argument("--min-csv-sharpe", type=float, default=0.0,
                         help="Only write rows to CSV if sharpe >= this (default 0.0 = write all)")
+    parser.add_argument("--dead-log-path", type=str, default="",
+                        help="Path to dead-log CSV for configs below --min-csv-sharpe. Use 'auto' to auto-name beside main CSV.")
     parser.add_argument("--shuffle", action="store_true",
                         help="Randomize config order before running (avoids dead zones in grid)")
     parser.add_argument("--max-configs", type=int, default=0,
@@ -2051,6 +2053,15 @@ def main():
     csv_path = BASE_PATH / "data" / "sweep_results" / csv_name
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
+    dead_log_path = None
+    if args.dead_log_path:
+        if args.dead_log_path == "auto":
+            dead_name = csv_name.replace("v8_quick_", "v8_dead_")
+            dead_log_path = BASE_PATH / "data" / "sweep_results" / dead_name
+        else:
+            dead_log_path = Path(args.dead_log_path)
+        dead_log_path.parent.mkdir(parents=True, exist_ok=True)
+
     done_hashes = set()
     if args.resume and csv_path.exists():
         with open(csv_path) as f:
@@ -2090,6 +2101,12 @@ def main():
                     pass
         if winners_found > 0:
             print(f"  Resume: {winners_found} winners already in CSV")
+
+    dead_write_header = dead_log_path is not None and (not dead_log_path.exists() or dead_log_path.stat().st_size == 0)
+    dead_csvfile = open(dead_log_path, "a", newline="") if dead_log_path else None
+    dead_writer = csv.DictWriter(dead_csvfile, fieldnames=fieldnames) if dead_csvfile else None
+    if dead_write_header and dead_writer:
+        dead_writer.writeheader()
 
     with open(csv_path, "a", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -2132,6 +2149,9 @@ def main():
             if max(s, ps) >= args.min_csv_sharpe:  # save if EITHER per-sym avg OR pool exceeds threshold
                 writer.writerow(row)
                 csvfile.flush()
+            elif dead_writer and result.get("status") not in ("error", "mode_skip"):
+                dead_writer.writerow(row)
+                dead_csvfile.flush()
             if ps >= winner_floor:
                 winners_found += 1
             elapsed_total = time.time() - t_start
@@ -2255,11 +2275,15 @@ def main():
                 return
             _run_pass(todo)
 
+    if dead_csvfile:
+        dead_csvfile.close()
+
     winner_str = f"  Winners (sharpe>={winner_floor:.2f}): {winners_found}/{target_winners}\n" if target_winners > 0 else ""
+    dead_str = f"  Dead log: {dead_log_path}\n" if dead_log_path else ""
     print(f"\n{'='*70}")
     print(f"  SWEEP COMPLETE — {completed} configs in {time.time()-t_start:.0f}s")
     print(f"  Best Sharpe: {best_sharpe:.4f}")
-    print(f"{winner_str}  Results: {csv_path}")
+    print(f"{winner_str}{dead_str}  Results: {csv_path}")
     print(f"{'='*70}")
     print(f"\nV8_QUICK_SWEEP_DONE: configs={completed} best_sharpe={best_sharpe:.4f} winners={winners_found} csv={csv_path}")
 
