@@ -929,24 +929,61 @@ class KlineManager:
             return None
 
     async def _calculate_15m_from_3m(self, symbol: str) -> Optional[pd.DataFrame]:
+        # Gap-fill: load native 15m (4-year source of truth), then only fill individual
+        # missing bars from 3m. Never synthesize 15m from scratch — 3m covers only a few days.
         try:
+            file_name = f"{symbol}_15m.json"
+            native_df = None
+            for directory in self.directories:
+                path = directory / file_name
+                if not path.exists():
+                    continue
+                candidate = await self._load_file(path)
+                if candidate is not None and not candidate.empty and "timestamp_dt" in candidate.columns:
+                    native_df = candidate
+                    break
+            if native_df is None:
+                # No native 15m file — synthesize entirely from 3m (synthetic fragment better than None)
+                df_3m, _, _ = await self.get_latest(symbol, "3m")
+                if df_3m is None or df_3m.empty or "timestamp_dt" not in df_3m.columns:
+                    return None
+                df_3m = df_3m.sort_values("timestamp_dt").dropna(subset=["timestamp_dt"])
+                if len(df_3m) < 5:
+                    return None
+                df_3m = df_3m.set_index("timestamp_dt")
+                for col in ["open", "high", "low", "close", "volume"]:
+                    if col in df_3m.columns:
+                        df_3m[col] = pd.to_numeric(df_3m[col], errors="coerce")
+                df_15m = df_3m.resample("15min", label="right", closed="right").agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}).dropna()
+                if df_15m.empty:
+                    return None
+                df_15m = df_15m.reset_index()
+                df_15m["timestamp"] = df_15m["timestamp_dt"].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                return df_15m
+            native_df = native_df.sort_values("timestamp_dt").copy()
+            native_idx = native_df.set_index("timestamp_dt")
+            last_ts = native_idx.index[-1]
+            check_from = last_ts - pd.Timedelta(hours=2)
+            expected = pd.date_range(check_from.ceil("15min"), last_ts + pd.Timedelta(minutes=15), freq="15min", tz=last_ts.tzinfo)
+            missing_ts = expected.difference(native_idx.index)
+            if missing_ts.empty:
+                return native_df
             df_3m, _, _ = await self.get_latest(symbol, "3m")
             if df_3m is None or df_3m.empty or "timestamp_dt" not in df_3m.columns:
-                return None
-            df_3m = df_3m.copy()
-            df_3m = df_3m.sort_values("timestamp_dt").dropna(subset=["timestamp_dt"])
-            if df_3m.empty or len(df_3m) < 5:
-                return None
-            df_3m = df_3m.set_index("timestamp_dt")
+                return native_df
+            df_3m = df_3m.sort_values("timestamp_dt").set_index("timestamp_dt")
             for col in ["open", "high", "low", "close", "volume"]:
                 if col in df_3m.columns:
                     df_3m[col] = pd.to_numeric(df_3m[col], errors="coerce")
-            df_15m = df_3m.resample("15min", label="right", closed="right").agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}).dropna()
-            if df_15m.empty:
-                return None
-            df_15m = df_15m.reset_index()
-            df_15m["timestamp"] = df_15m["timestamp_dt"].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-            return df_15m
+            new_rows = []
+            for ts in missing_ts:
+                window = df_3m.loc[ts - pd.Timedelta(minutes=15):ts - pd.Timedelta(seconds=1)]
+                if len(window) >= 3:
+                    new_rows.append({"timestamp_dt": ts, "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"), "open": float(window["open"].iloc[0]), "high": float(window["high"].max()), "low": float(window["low"].min()), "close": float(window["close"].iloc[-1]), "volume": float(window["volume"].sum())})
+            if not new_rows:
+                return native_df
+            result = pd.concat([native_df, pd.DataFrame(new_rows)], ignore_index=True).sort_values("timestamp_dt").drop_duplicates(subset=["timestamp_dt"]).reset_index(drop=True)
+            return result
         except Exception:
             return None
 

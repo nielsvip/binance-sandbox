@@ -17,7 +17,7 @@
 | `ez_mem_watchdog.py` | 2026-03-25 | DISABLED — was causing 14k+ restarts/day by killing "duplicates" without stopping parent watchdog. LaunchAgent removed. DO NOT re-enable or re-launch. | user |
 | `ez_prices.py` | 2026-03-13 | WebSocket price feeds stable, no issues reported | user |
 | ~~`ez_klines.py`~~ | RELOCKED 2026-03-27 | See entry below | user |
-| `ez_indicators.py` | RELOCKED 2026-04-08 | Re-locked per user request. Indicator pipeline stable. CWD fallback removed 2026-04-08. | user |
+| `ez_indicators.py` | RELOCKED 2026-04-20 19:50 | Prior: CWD fallback removed 2026-04-08. **2026-04-20 NEW**: `_calculate_15m_from_3m()` two-path logic: (1) native 15m exists → load from disk + per-bar gap-fill for missing last-2h bars from 3m only; (2) no native file → wholesale resample from 3m (synthetic fragment, always better than None). Backup: before_15m_gapfill_fix_202604201750.py. DO NOT remove synthetic fallback. DO NOT revert to wholesale replacement when native exists. | user |
 | `ez_indicators_merger.py` | 2026-03-14 | Indicator merging pipeline — infrastructure | user |
 | `ez_market_data.py` | 2026-03-26 | WT 1m/3m hot_metrics + klines_cache_writeback (60s cycle, merges composed candles to disk). DO NOT revert. | user |
 | `ez_positions.py` | 2026-03-13 | Core position data structures — fundamental, only touch if data model changes. Log path fixed to ~/logs 2026-04-08. | user |

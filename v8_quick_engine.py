@@ -133,6 +133,7 @@ class QuickConfig:
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0
     WT_CROSSUNDER_FINAL_ENABLED: bool = False
     WT_EXIT_MIN_TFS: int = 3  # 2026-04-19: require all 3 TFs against (was 2) → sharpe 1.065→1.508 before hold boost
+    WT_EXIT_USE_CROSS_EVENTS: bool = False  # 2026-04-20: use wt_cross_bear/bull_*m fields for 15m+ (fires at turn only, not all bearish bars)
     MI_EXIT_ENABLED: bool = False
     # Reentry block switches (ablation-validated)
     REENTRY_B02_BC156_BOTTOM_ENABLED: bool = True
@@ -1373,7 +1374,17 @@ def compute_exit_signals(npz, n, is_long, cfg):
     mfi_1h = _safe(npz, 'mfi_1h', n, 50); mfi_ltf = _safe(npz, f'mfi_{_ltf}', n, 50)
     bb_pctb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
 
-    if is_long:
+    _use_cross = bool(getattr(cfg, 'WT_EXIT_USE_CROSS_EVENTS', False))
+    if _use_cross:
+        # Cross events: fire only on 5m bars within the candle where WT first crossed at that TF.
+        # NPZ precomputes wt_cross_bear/bull_* by comparing each TF's WT vs previous closed bar of that TF.
+        # This matches live behavior: alert triggers at the turn, not during every bearish bar.
+        # LTF (5m): state still fine (fast enough); 15m and above: use precomputed cross events.
+        if is_long:
+            wt_against = (wt1_ltf < wt2_ltf).astype(int) + _safe(npz, 'wt_cross_bear_15m', n).astype(int) + _safe(npz, 'wt_cross_bear_1h', n).astype(int)
+        else:
+            wt_against = (wt1_ltf > wt2_ltf).astype(int) + _safe(npz, 'wt_cross_bull_15m', n).astype(int) + _safe(npz, 'wt_cross_bull_1h', n).astype(int)
+    elif is_long:
         wt_against = (wt1_ltf < wt2_ltf).astype(int) + (wt1_15m < wt2_15m).astype(int) + (wt1_1h < wt2_1h).astype(int)
     else:
         wt_against = (wt1_ltf > wt2_ltf).astype(int) + (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int)
@@ -1693,16 +1704,23 @@ def simulate(stores, cfg, capital=10000.0):
             _pe_trail_arm = float(getattr(cfg, 'PARTIAL_TRAIL_ARM_PCT', 0.7))
             _pe_trail_floor = float(getattr(cfg, 'PARTIAL_TRAIL_FLOOR_PCT', 0.5))
             _pe_rem_tfs = int(getattr(cfg, 'PARTIAL_REMAINDER_EXIT_TFS', 2) or 2)
+            _use_cross = bool(getattr(cfg, 'WT_EXIT_USE_CROSS_EVENTS', False))
             exit_sig_rem = exit_sig
-            if _pe_enabled and _pe_rem_tfs != cfg.WT_EXIT_MIN_TFS:
+            if _pe_enabled and (_pe_rem_tfs != cfg.WT_EXIT_MIN_TFS or _use_cross):
                 _ltf_pe = getattr(cfg, 'LTF', '3m')
                 _pe_w1l = _safe(npz, f'wt1_{_ltf_pe}', n); _pe_w2l = _safe(npz, f'wt2_{_ltf_pe}', n)
-                _pe_w115 = _safe(npz, 'wt1_15m', n); _pe_w215 = _safe(npz, 'wt2_15m', n)
-                _pe_w11h = _safe(npz, 'wt1_1h', n); _pe_w21h = _safe(npz, 'wt2_1h', n)
-                if is_long:
-                    _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + (_pe_w115 < _pe_w215).astype(int) + (_pe_w11h < _pe_w21h).astype(int)
+                if _use_cross:
+                    if is_long:
+                        _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + _safe(npz, 'wt_cross_bear_15m', n).astype(int) + _safe(npz, 'wt_cross_bear_1h', n).astype(int)
+                    else:
+                        _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + _safe(npz, 'wt_cross_bull_15m', n).astype(int) + _safe(npz, 'wt_cross_bull_1h', n).astype(int)
                 else:
-                    _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + (_pe_w115 > _pe_w215).astype(int) + (_pe_w11h > _pe_w21h).astype(int)
+                    _pe_w115 = _safe(npz, 'wt1_15m', n); _pe_w215 = _safe(npz, 'wt2_15m', n)
+                    _pe_w11h = _safe(npz, 'wt1_1h', n); _pe_w21h = _safe(npz, 'wt2_1h', n)
+                    if is_long:
+                        _pe_wt_ag = (_pe_w1l < _pe_w2l).astype(int) + (_pe_w115 < _pe_w215).astype(int) + (_pe_w11h < _pe_w21h).astype(int)
+                    else:
+                        _pe_wt_ag = (_pe_w1l > _pe_w2l).astype(int) + (_pe_w115 > _pe_w215).astype(int) + (_pe_w11h > _pe_w21h).astype(int)
                 exit_sig_rem = _pe_wt_ag >= _pe_rem_tfs
             # SYMGATE: strip entries that coincide with exit signals — mirror exit rubric applied to entries.
             # ENTRY_SYMGATE_ENABLED covers fresh entries; REENTRY_SYMGATE_ENABLED mirrors it in the vectorized loop

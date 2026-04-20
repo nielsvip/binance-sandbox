@@ -1619,9 +1619,10 @@ def build_param_grid_le_k1h_rising():
 
 
 def build_param_grid_le_partial_exit_tradier():
-    """2026-04-20: Scale-out model — take 50% at +0.5%, arm floor at +0.7%, let remainder run on WT cross.
-    Winner basis: score=45, CE_thr=40, hold=20, PT=0.5% (Sharpe 3.73 on 12 syms).
-    New dimension: PARTIAL_EXIT sweeps first-take %, trail arm %, remainder TFS.
+    """2026-04-20: Scale-out model with proper WT cross events for 15m+ TFs.
+    WT_EXIT_USE_CROSS_EVENTS=True: use wt_cross_bear/bull_15m/1h fields (fires at turn only,
+    for all 5m bars within the cross candle — 3 bars at 15m, 12 bars at 1h for stocks).
+    Also sweeps: first-take %, trail arm %, remainder TFS, cross_events on/off.
     Run: --mode tradier --symbols fast --start 2024-01-01 --tier le_partial_exit_tradier --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
     """
     base = {
@@ -1634,29 +1635,31 @@ def build_param_grid_le_partial_exit_tradier():
         "PROFIT_TARGET_PCT": 0.5,
         "MIN_HOLD_BARS": 20,
         "WT_EXIT_MIN_TFS": 3,
-        "PARTIAL_EXIT_ENABLED": True,
         "EARLY_ABORT_MIN_SYMBOLS": 6,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
     }
     configs = []
-    # Baseline: no partial exit (the v2 winner for comparison)
-    configs.append({**base, "PARTIAL_EXIT_ENABLED": False})
-    # Partial exit variants
-    for pe_pct in [0.3, 0.5, 0.7]:
-        for trail_arm in [0.5, 0.7, 1.0]:
-            if trail_arm < pe_pct:
-                continue  # trail must arm after first take
-            for trail_floor in [pe_pct * 0.8, pe_pct]:  # floor at or just below first take
-                for rem_tfs in [1, 2, 3]:
-                    configs.append({**base,
-                        "PARTIAL_EXIT_ENABLED": True,
-                        "PARTIAL_EXIT_FRAC": 0.5,
-                        "PARTIAL_EXIT_PCT": pe_pct,
-                        "PARTIAL_TRAIL_ARM_PCT": trail_arm,
-                        "PARTIAL_TRAIL_FLOOR_PCT": trail_floor,
-                        "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
-                    })
+    # Baselines: no partial exit, both cross_events on and off for comparison
+    configs.append({**base, "PARTIAL_EXIT_ENABLED": False, "WT_EXIT_USE_CROSS_EVENTS": False})
+    configs.append({**base, "PARTIAL_EXIT_ENABLED": False, "WT_EXIT_USE_CROSS_EVENTS": True})
+    # Partial exit variants — cross_events=True (the correct version)
+    for use_cross in [True, False]:
+        for pe_pct in [0.3, 0.5, 0.7]:
+            for trail_arm in [0.5, 0.7, 1.0]:
+                if trail_arm < pe_pct:
+                    continue
+                for trail_floor in [pe_pct * 0.8, pe_pct]:
+                    for rem_tfs in [1, 2, 3]:
+                        configs.append({**base,
+                            "PARTIAL_EXIT_ENABLED": True,
+                            "PARTIAL_EXIT_FRAC": 0.5,
+                            "PARTIAL_EXIT_PCT": pe_pct,
+                            "PARTIAL_TRAIL_ARM_PCT": trail_arm,
+                            "PARTIAL_TRAIL_FLOOR_PCT": trail_floor,
+                            "PARTIAL_REMAINDER_EXIT_TFS": rem_tfs,
+                            "WT_EXIT_USE_CROSS_EVENTS": use_cross,
+                        })
     return configs
 
 
