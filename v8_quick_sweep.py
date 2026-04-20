@@ -1038,13 +1038,12 @@ def build_param_grid_exit_wt_48sym():
 
 def build_param_grid_mega_crypto_v8():
     """DC_RECOVERY_EXIT=True (correct NOLOSS: close stranded positions above dc_high_4h).
-    VEL_GATE=False matches live default (CT_WT_VELOCITY_GATE_ENABLED=False in ez_manage line 194).
+    VEL_GATE defaults True in engine (required for entries — False kills all trades).
     Wider MIN_HOLD (20-300) + lower STRENGTH (1-5) to find entries that survive DC recovery.
-    ~20k combos. Kill <3 Sharpe after 15s on 6 symbols. Save >=4.
-    Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12
+    ~20k combos. Kill <3 Sharpe after 15s on 6 symbols. Save >=3.5.
+    Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 3.5 --workers 12
     """
     return {
-        "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "MIN_HOLD_BARS": [20, 50, 100, 150, 200, 300],
         "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.2, 1.6, 2.0],
         "STRENGTH_MIN_SCORE": [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -1063,10 +1062,11 @@ def build_param_grid_mega_crypto_v8():
 
 
 def build_param_grid_mega_tradier_v8():
-    """Tradier pre-screen: 12-symbol fast filter. Kill <2.0 Sharpe after 15s. Save >=4.0.
+    """Tradier pre-screen: 12-symbol fast filter. Kill <0.3 Sharpe after 30s. Save >=3.5.
     PROFIT_TARGET_ENABLED=True so PT actually fires (apply_tradier_defaults sets it False).
     Target 10k winners on 12 symbols then promote to full validation.
-    Run: --mode tradier --symbols fast --start 2024-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 8
+    Engine peaks ~0.5 Sharpe currently — keep EARLY_ABORT_SHARPE_FLOOR low so configs run.
+    Run: --mode tradier --symbols fast --start 2024-01-01 --target-winners 10000 --min-csv-sharpe 3.5 --kill-sharpe 0.3 --workers 8
     """
     return {
         "PROFIT_TARGET_ENABLED": [True],
@@ -1083,8 +1083,8 @@ def build_param_grid_mega_tradier_v8():
         "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
-        "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
 
 
