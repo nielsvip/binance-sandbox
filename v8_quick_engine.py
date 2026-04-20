@@ -67,7 +67,7 @@ class QuickConfig:
     LTF: str = "3m"   # crypto default — lowest timeframe for entry/exit signals. Stocks: set to "5m" in apply_tradier_defaults.
     ENTRY_SCORE_THRESHOLD: float = 18.0
     K3M_FLOOR: float = 30.0
-    COOLDOWN_BARS: int = 0
+    COOLDOWN_BARS: int = 3  # snapshot 2026-04-19: 3-bar cooldown (9min at 3m). Was set to 0, inflated trades 1209→87K, destroyed Sharpe.
     NOLOSS_ENABLED: bool = True  # match live STRICT_NO_LOSS; mark-to-market at sim end handles honesty
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TF: str = "dc_4h"   # crypto: dc_4h. tradier: bb_1h (set in apply_tradier_defaults)
@@ -94,7 +94,7 @@ class QuickConfig:
     ENTRY_SYMGATE_ENABLED: bool = False
     REENTRY_SYMGATE_ENABLED: bool = False
     # Min-gap cooldown in bars between exit and next entry. 0 = disabled (use COOLDOWN_BARS only).
-    REENTRY_MIN_GAP_BARS: int = 0  # reenter ASAP — no gap between exit and next entry signal
+    REENTRY_MIN_GAP_BARS: int = 5  # snapshot 2026-04-19: 5-bar gap (~15min at 3m). Was set to 0, combined with COOLDOWN=0 → 87K trades vs 1209.
     # Stoch-K zone gate — disabled by default (LONG=0 always passes, SHORT=100 always passes).
     ENTRY_ZONE_LONG: float = 0.0
     ENTRY_ZONE_SHORT: float = 100.0
@@ -153,7 +153,8 @@ class QuickConfig:
     REENTRY_B_FH_MOM_ENABLED: bool = False
     REENTRY_B_MFI_D_OVERSOLD_ENABLED: bool = False
     # === 2026-04-17 HEDGE + REENTRY OVERHAUL SWITCHES ===
-    # Hedge: simulated in engine — counter-position opens when NOLOSS blocks a loss exit, closes with main position.
+    # Hedge: snapshot 2026-04-19 had hedge as LIVE-ONLY (no simulation). Simulation defaults OFF to match baseline.
+    HEDGE_ENABLED: bool = False  # snapshot baseline: no hedge sim. True inflated trades 1209→84K, destroyed Sharpe 2.55→0.08.
     HEDGE_EXIT_BYPASS_NOLOSS: bool = True
     HEDGE_EXIT_WT_TF: str = "3m"
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
