@@ -201,6 +201,8 @@ _daily_loss_tracker = {"date": "", "realized_pnl": 0.0, "halted": False}
 # Congress conviction cache (loaded from stock_trader_scanner conviction JSON)
 _congress_conviction_cache = {}
 _congress_conviction_ts = 0.0
+_trc_5m_price_prev: Dict[str, float] = {}
+_trc_5m_return_buffer: Dict[str, deque] = defaultdict(lambda: deque(maxlen=20))
 def _get_congress_conviction_boost(symbol: str) -> float:
     """Return sizing multiplier if symbol has multi-source conviction from stock_trader_scanner."""
     global _congress_conviction_cache, _congress_conviction_ts
@@ -1860,7 +1862,91 @@ async def process_symbols_periodically(order_queue: OrderQueue, trade_manager, a
             logger.error(f"[{account_key}] 💥 CRASH in loop: {e}", exc_info=True)
             await asyncio.sleep(10)
 
-            
+
+async def trc_5m_sweep_loop(order_queue, trade_manager):
+    """5-min portfolio sweep for trc. Ranks all trb symbol-list candidates by relative
+    momentum (z-score 70% + raw delta vs SPY 30%) × news conviction, then fires
+    process_position on the top N each side. Runs in parallel with the existing 30s/90s
+    reactive loop which continues to manage open positions independently."""
+    SWEEP_INTERVAL = 300
+    while trade_manager.running:
+        try:
+            if not getattr(config, 'TRC_5M_SWEEP_ENABLED', True) or not is_regular_trading_hours():
+                await asyncio.sleep(60)
+                continue
+            current_account.set('trc')
+            TOP_N = getattr(config, 'TRC_5M_SWEEP_TOP_N', 8)
+            Z_W = getattr(config, 'TRC_5M_SWEEP_Z_WEIGHT', 0.7)
+            D_W = getattr(config, 'TRC_5M_SWEEP_DELTA_WEIGHT', 0.3)
+            BENCHMARK = getattr(config, 'TRC_5M_SWEEP_BENCHMARK', 'SPY')
+            spy_price, _ = await trade_manager.get_current_price(BENCHMARK)
+            spy_prev = _trc_5m_price_prev.get(BENCHMARK)
+            spy_ret = (spy_price / spy_prev - 1.0) if (spy_prev and spy_prev > 0 and spy_price) else 0.0
+            if spy_price:
+                _trc_5m_price_prev[BENCHMARK] = spy_price
+            news_conv: Dict[str, float] = {}
+            try:
+                inj_file = config.BASE_PATH / "data" / "news_injections.json"
+                if inj_file.exists():
+                    with open(inj_file, 'r') as _f:
+                        inj_data = json.load(_f)
+                    for inj in inj_data.get('active', []):
+                        sym = inj.get('symbol', '').upper()
+                        side = inj.get('side', '')
+                        conv = float(inj.get('conviction', 1))
+                        if sym:
+                            news_conv[sym] = conv if side == 'LONG' else -conv
+            except Exception:
+                pass
+            longs = list(getattr(trade_manager, 'symbols_long_trb', []))
+            shorts = list(getattr(trade_manager, 'symbols_short_trb', []))
+            async def _score(symbol: str, is_long: bool) -> float:
+                try:
+                    price, _ = await trade_manager.get_current_price(symbol)
+                    if not price or price <= 0:
+                        return -999.0
+                    prev = _trc_5m_price_prev.get(symbol)
+                    ret = (price / prev - 1.0) if (prev and prev > 0) else 0.0
+                    _trc_5m_price_prev[symbol] = price
+                    buf = _trc_5m_return_buffer[symbol]
+                    buf.append(ret)
+                    rel = ret - spy_ret
+                    if len(buf) >= 3:
+                        arr = np.array(buf)
+                        std = float(arr.std())
+                        z = float((ret - arr.mean()) / std) if std > 1e-8 else 0.0
+                    else:
+                        z = 0.0
+                    z_norm = float(np.clip(z, -3.0, 3.0)) / 3.0
+                    rel_norm = float(np.clip(rel * 100.0, -3.0, 3.0)) / 3.0
+                    raw = Z_W * z_norm + D_W * rel_norm
+                    nc = news_conv.get(symbol, 0.0)
+                    news_mult = 1.0 + (max(0.0, nc) if is_long else max(0.0, -nc)) * 0.2
+                    score = raw * news_mult
+                    return score if is_long else -score
+                except Exception:
+                    return -999.0
+            scores_long = await asyncio.gather(*[_score(s, True) for s in longs], return_exceptions=True)
+            scores_short = await asyncio.gather(*[_score(s, False) for s in shorts], return_exceptions=True)
+            ranked_longs = sorted([(s, sc) for s, sc in zip(longs, scores_long) if isinstance(sc, float) and sc > -999], key=lambda x: x[1], reverse=True)
+            ranked_shorts = sorted([(s, sc) for s, sc in zip(shorts, scores_short) if isinstance(sc, float) and sc > -999], key=lambda x: x[1], reverse=True)
+            top_longs = [s for s, _ in ranked_longs[:TOP_N]]
+            top_shorts = [s for s, _ in ranked_shorts[:TOP_N]]
+            logger.info(f"[TRC_5M_SWEEP] spy_ret={spy_ret:.4%} | Top longs: {top_longs[:5]} | Top shorts: {top_shorts[:5]}")
+            keys = [f"trc:{s}_LONG" for s in top_longs] + [f"trc:{s}_SHORT" for s in top_shorts]
+            results = await asyncio.gather(*[
+                process_position('trc', pk, order_queue, trade_manager, event_type="trc_5m_sweep", force=True)
+                for pk in keys
+            ], return_exceptions=True)
+            errs = [r for r in results if isinstance(r, Exception)]
+            if errs:
+                print(f"[TRC_5M_SWEEP] {len(errs)}/{len(keys)} errors: {errs[0]}", flush=True)
+            await asyncio.sleep(SWEEP_INTERVAL)
+        except Exception as e:
+            logger.error(f"[TRC_5M_SWEEP] Crash: {e}", exc_info=True)
+            await asyncio.sleep(30)
+
+
 async def continuous_queue_processor(order_queue: OrderQueue, trade_manager, account_key: str):
     current_account.set(account_key)
     logger.info(f"[continuous_queue_processor] Task started for {account_key}", extra={'account_key': account_key})
@@ -11440,6 +11526,8 @@ class TradierTradeManager:
             self.background_tasks.append(asyncio.create_task(continuous_queue_processor(self.order_queue, self, acc)))
             self.background_tasks.append(asyncio.create_task(process_symbols_periodically(self.order_queue, self, acc)))
             self.background_tasks.append(asyncio.create_task(periodic_override_check(self, acc)))
+        if 'trc' in self.target_accounts and getattr(config, 'TRC_5M_SWEEP_ENABLED', True):
+            self.background_tasks.append(asyncio.create_task(trc_5m_sweep_loop(self.order_queue, self)))
         self.background_tasks.append(asyncio.create_task(tradier_performance_report_loop(self)))
         self.background_tasks.append(asyncio.create_task(tradier_outlier_scan_loop(self)))
         self.background_tasks.append(asyncio.create_task(tradier_capital_reallocation_loop(self)))

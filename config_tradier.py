@@ -604,6 +604,9 @@ class TradierConfig:
     TRC_MAX_SYMBOL_VALUE: float = 5000.0  # Local extremes: cap per symbol at $5000 (was 15000)
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
     TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = True  # LE scorer for ALL tradier accounts (trb+trc): 25-indicator gate + $50-$5000 tier sizing
+    LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # 2026-04-20 le_dynamic winner: min LE score to allow entry (262sym Sharpe 3.5479). Wire in tradier_manage.py entry gate.
+    DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # 2026-04-20 le_dynamic winner: exit when opposite-direction LE score >= threshold
+    DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # 2026-04-20 le_dynamic winner: counter-exit trigger threshold (score=55 validated)
     TRB_MAX_SYMBOL_VALUE: float = 10000.0  # trb cap (smaller account)
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
@@ -708,6 +711,13 @@ class TradierConfig:
     TRC_EP_POSITION_SIZE: float = 2640.0
     TRC_ORB_LONG_BUDGET: float = 6600.0
     TRC_ORB_SHORT_BUDGET: float = 6600.0
+    # === TRC 5-MIN RELATIVE SWEEP ===
+    TRC_5M_SWEEP_ENABLED: bool = True
+    TRC_5M_SWEEP_TOP_N: int = 8
+    TRC_5M_SWEEP_Z_WEIGHT: float = 0.7
+    TRC_5M_SWEEP_DELTA_WEIGHT: float = 0.3
+    TRC_5M_SWEEP_BUFFER_N: int = 20
+    TRC_5M_SWEEP_BENCHMARK: str = "SPY"
     # === CONTRARIAN SPIKE FADE (BC_161 — 2026-03-30, 24 stocks × 2yr, +480%, 67% WR, 4.69 W/L) ===
     # SHORT big spikers (>2% in 30min + K>70), LONG big fallers (<-2% in 30min + K<30)
     # 2/3 WT must confirm fade direction. Exit on 2/3 WT against + mandatory reentry.
@@ -853,7 +863,7 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    TRADIER_MIN_HOLD_MINUTES: float = 240.0  # 4 hours minimum hold
+    TRADIER_MIN_HOLD_MINUTES: float = 100.0  # 2026-04-20: le_dynamic winner MIN_HOLD_BARS=20 (20×5min=100min). Was 240 (4h). 262sym Sharpe 3.5479.
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.
