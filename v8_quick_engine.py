@@ -1792,9 +1792,11 @@ def simulate(stores, cfg, capital=10000.0):
         # Hedge engine: continuous per-bar condition. No event needed.
         # LONG main → SHORT hedge active whenever: gain<0 AND wt1_LTF<wt2_LTF AND wt1_1h<wt2_1h
         # SHORT main → LONG hedge: gain<0 AND wt1_LTF>wt2_LTF AND wt1_1h>wt2_1h
-        # Hedge closes the instant condition is false, reopens the instant it's true again.
+        # Hedge WT kill TF: 'none'=LTF only, '15m'=LTF+15m, '1h'=LTF+1h (default)
         _wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); _wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
         _wt1_1h = _safe(npz, 'wt1_1h', n); _wt2_1h = _safe(npz, 'wt2_1h', n)
+        _wt1_15m_h = _safe(npz, 'wt1_15m', n); _wt2_15m_h = _safe(npz, 'wt2_15m', n)
+        _hedge_wt_kill_tf = str(getattr(cfg, 'HEDGE_WT_KILL_CONFIRM_TF', '1h'))
         _wt1_D_aug = _safe(npz, 'wt1_D', n)
         _aug_enabled = bool(getattr(cfg, 'AUGMENT_WT_D_BOUNCE_ENABLED', False))
         _aug_mult = float(getattr(cfg, 'AUGMENT_WT_D_MULTIPLIER', 2.0))
@@ -2013,11 +2015,24 @@ def simulate(stores, cfg, capital=10000.0):
                     if getattr(cfg, 'HEDGE_ENABLED', True):
                         if is_long:
                             hc = live_pnl < 0 and _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                            if _hedge_wt_kill_tf == 'none':
+                                _wt_kill = _wt1_ltf[i] > _wt2_ltf[i]
+                            elif _hedge_wt_kill_tf == '15m':
+                                _wt_kill = _wt1_ltf[i] > _wt2_ltf[i] and _wt1_15m_h[i] > _wt2_15m_h[i]
+                            else:
+                                _wt_kill = _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
                         else:
                             hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
+                            if _hedge_wt_kill_tf == 'none':
+                                _wt_kill = _wt1_ltf[i] < _wt2_ltf[i]
+                            elif _hedge_wt_kill_tf == '15m':
+                                _wt_kill = _wt1_ltf[i] < _wt2_ltf[i] and _wt1_15m_h[i] < _wt2_15m_h[i]
+                            else:
+                                _wt_kill = _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                        _hedge_should_close = live_pnl >= 0 or _wt_kill
                         if hc and not hedge_in_pos:
                             hedge_in_pos = True; hedge_ep = px; hedge_eb = i
-                        elif not hc and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
+                        elif _hedge_should_close and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     # Profit target — skip when partial exit is active (partial handles the take-profit role)

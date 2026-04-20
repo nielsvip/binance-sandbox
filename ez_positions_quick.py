@@ -4837,7 +4837,7 @@ class HedgeEngine:
                             _wt_favors_origin = (_losing_is_long and _wt1_15m > _wt2_15m) or (not _losing_is_long and _wt1_15m < _wt2_15m)
                             # ═══ FIX 2026-03-30: HEDGE LIFECYCLE — exist as SHORT as possible, NEVER close at a loss ═══
                             # Rule 1: WT flips to favor origin → NUKE hedge (if hedge not at loss)
-                            if _wt_favors_origin and hedge_amt > 0.001:
+                            if getattr(self.config, 'HEDGE_BANDAID_OFF_ENABLED', False) and _wt_favors_origin and hedge_amt > 0.001:
                                 logger.warning(f"🩹 [BANDAID_OFF] {hedge_key}: 15m WT favors origin {losing_key} (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f} {'BULL' if _losing_is_long else 'BEAR'}). Hedge gain={hedge_gain:.2f}%. NUKING.")
                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"BANDAID_OFF_wt15m_{_wt1_15m:.1f}>{_wt2_15m:.1f}_hgain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -4847,7 +4847,7 @@ class HedgeEngine:
                             _hedge_max_gain = safe_fetch_float(record.get('hedge_max_gain', hedge_gain), hedge_gain)
                             if hedge_gain > _hedge_max_gain: _hedge_max_gain = hedge_gain
                             record['hedge_max_gain'] = _hedge_max_gain
-                            if _hedge_max_gain > 1.0 and hedge_gain <= 0.5 and hedge_gain > 0:
+                            if getattr(self.config, 'HEDGE_DECAY_NUKE_ENABLED', False) and _hedge_max_gain > 1.0 and hedge_gain <= 0.5 and hedge_gain > 0:
                                 logger.critical(f"🔥 [HEDGE_DECAY_NUKE] {hedge_key}: peaked at {_hedge_max_gain:.2f}% now at {hedge_gain:.2f}% — NUKING before it goes negative.")
                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_DECAY_NUKE_peak{_hedge_max_gain:.2f}%_cur{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -5089,7 +5089,7 @@ class HedgeEngine:
                             _h_max = safe_fetch_float(hedge.get('hedge_max_gain', _h_gain), _h_gain)
                             if _h_gain > _h_max: _h_max = _h_gain
                             hedge['hedge_max_gain'] = _h_max
-                            if _h_max > 1.0 and _h_gain <= 0.5 and _h_gain > 0:
+                            if getattr(self.config, 'HEDGE_DECAY_NUKE_ENABLED', False) and _h_max > 1.0 and _h_gain <= 0.5 and _h_gain > 0:
                                 h_sym = hedge.get('symbol', '') or h_pk.split(':')[-1].replace('_LONG','').replace('_SHORT','')
                                 h_price_now, _ = await self.data_manager.get_fresh_price(h_sym)
                                 if h_price_now <= 0: h_price_now = h_mark
@@ -5117,7 +5117,7 @@ class HedgeEngine:
                             _orig_prev = safe_fetch_float(getattr(losing_pos, 'prev_gain', _orig_gain), _orig_gain)
                             _origin_improving = _orig_gain > _orig_prev + 0.2  # Origin gaining 0.2%+ since last check
                             # 2026-04-18 USER RULE: no P/L gate on hedge close
-                            if _origin_improving or _orig_gain > 0.0:
+                            if getattr(self.config, 'HEDGE_RECOVERY_CLOSE_ENABLED', False) and (_origin_improving or _orig_gain > 0.0):
                                 logger.warning(f"[HEDGE_RECOVERY_CLOSE] {h_pk}: Origin {losing_pk} {'improving' if _origin_improving else 'profitable'} ({_orig_prev:.2f}%→{_orig_gain:.2f}%). Hedge at {h_gain_pct:.2f}%. NUKING.")
                                 try:
                                     h_price_now, _ = await self.data_manager.get_fresh_price(hedge.get('symbol', ''))
@@ -5558,7 +5558,7 @@ class HedgeEngine:
                 # ═══ HEDGE MAX-AGE KILL (2026-04-17) — user rule: "minutes max hours never days" ═══
                 # Closes any hedge older than HEDGE_MAX_AGE_HOURS regardless of WT state. The WT-flip
                 # kill (below) handles the common case; this is the safety net for stuck hedges.
-                _hedge_max_age_h = float(getattr(self.config, 'HEDGE_MAX_AGE_HOURS', 6.0))
+                _hedge_max_age_h = float(getattr(self.config, 'HEDGE_MAX_AGE_HOURS', 0.0))
                 if _hedge_max_age_h > 0:
                     _h_opened_ts = 0.0
                     _h_opened_raw = record.get('opened_at') or record.get('timestamp') or 0
@@ -5586,6 +5586,7 @@ class HedgeEngine:
                 #   loser SHORT → kill when wt1_3m <  wt2_3m on LOSING symbol
                 # Profit/loss/DC ignored. Hedges re-open automatically when losses augment again.
                 _loser_is_long = None; _loser_sym = None; _loser_wt1_3m = 0.0; _loser_wt2_3m = 0.0
+                _loser_wt1_cf = 0.0; _loser_wt2_cf = 0.0
                 if original_key:
                     try:
                         _, _loser_sym, _loser_side = parse_position_key(original_key)
@@ -5595,14 +5596,27 @@ class HedgeEngine:
                             _loser_ind = dict(self.data_manager.shared_proxy.get_symbol(_loser_sym) or {})
                         _loser_wt1_3m = safe_fetch_float(_loser_ind.get('wt1_3m', 0), 0.0)
                         _loser_wt2_3m = safe_fetch_float(_loser_ind.get('wt2_3m', 0), 0.0)
+                        _hwtk_tf = str(getattr(self.config, 'HEDGE_WT_KILL_CONFIRM_TF', '1h'))
+                        if _hwtk_tf == '15m':
+                            _loser_wt1_cf = safe_fetch_float(_loser_ind.get('wt1_15m', 0), 0.0)
+                            _loser_wt2_cf = safe_fetch_float(_loser_ind.get('wt2_15m', 0), 0.0)
+                        elif _hwtk_tf == '1h':
+                            _loser_wt1_cf = safe_fetch_float(_loser_ind.get('wt1_1h', 0), 0.0)
+                            _loser_wt2_cf = safe_fetch_float(_loser_ind.get('wt2_1h', 0), 0.0)
                     except Exception as _lk_e:
                         logger.debug(f"[HEDGE_WT_KILL] {hedge_key} loser-WT fetch failed: {_lk_e}")
                 _loser_recovering = False
                 if _loser_is_long is not None and _loser_wt1_3m != 0 and _loser_wt2_3m != 0:
-                    _loser_recovering = (_loser_is_long and _loser_wt1_3m > _loser_wt2_3m) or (not _loser_is_long and _loser_wt1_3m < _loser_wt2_3m)
+                    _ltf_recovered = (_loser_is_long and _loser_wt1_3m > _loser_wt2_3m) or (not _loser_is_long and _loser_wt1_3m < _loser_wt2_3m)
+                    _hwtk_tf = str(getattr(self.config, 'HEDGE_WT_KILL_CONFIRM_TF', '1h'))
+                    if _hwtk_tf == 'none' or _loser_wt1_cf == 0:
+                        _loser_recovering = _ltf_recovered
+                    else:
+                        _cf_recovered = (_loser_is_long and _loser_wt1_cf > _loser_wt2_cf) or (not _loser_is_long and _loser_wt1_cf < _loser_wt2_cf)
+                        _loser_recovering = _ltf_recovered and _cf_recovered
                 if _loser_recovering:
-                    logger.critical(f"🚨 [HEDGE_WT_KILL] {hedge_key} (hedges loser {original_key}): loser {_loser_sym} {'LONG' if _loser_is_long else 'SHORT'} RECOVERING wt1_3m={_loser_wt1_3m:.1f} {'>' if _loser_is_long else '<'} wt2_3m={_loser_wt2_3m:.1f} — KILLING hedge regardless of gain/DC. hedge_gain={hedge_gain:.2f}%")
-                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_LOSER_RECOVER_{_loser_sym}_wt3m={_loser_wt1_3m:.1f}/{_loser_wt2_3m:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
+                    logger.critical(f"🚨 [HEDGE_WT_KILL] {hedge_key} (hedges loser {original_key}): loser {_loser_sym} {'LONG' if _loser_is_long else 'SHORT'} RECOVERING wt1_3m={_loser_wt1_3m:.1f} {'>' if _loser_is_long else '<'} wt2_3m={_loser_wt2_3m:.1f} confirm_tf={getattr(self.config,'HEDGE_WT_KILL_CONFIRM_TF','1h')} cf={_loser_wt1_cf:.1f}/{_loser_wt2_cf:.1f} — KILLING hedge. hedge_gain={hedge_gain:.2f}%")
+                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_LOSER_RECOVER_{_loser_sym}_wt3m={_loser_wt1_3m:.1f}/{_loser_wt2_3m:.1f}_cf{getattr(self.config,'HEDGE_WT_KILL_CONFIRM_TF','1h')}={_loser_wt1_cf:.1f}/{_loser_wt2_cf:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                     # CLEAR completed lockout so next loss augmentation re-opens hedge immediately
                     if original_key:
@@ -5612,7 +5626,7 @@ class HedgeEngine:
                         self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
                     continue
                 # ═══ HEDGE PROFIT PROTECT (USER RULE 2026-04-10): close on decay BEFORE commission floor ═══
-                if hedge_max_gain >= 0.30 and 0.15 <= hedge_gain <= 0.20:
+                if getattr(self.config, 'HEDGE_PROFIT_PROTECT_ENABLED', False) and hedge_max_gain >= 0.30 and 0.15 <= hedge_gain <= 0.20:
                     logger.critical(f"🛡️ [HEDGE_PROFIT_PROTECT] {hedge_key}: peak={hedge_max_gain:.2f}% now={hedge_gain:.2f}% — closing before it goes negative")
                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_PROFIT_PROTECT_peak{hedge_max_gain:.2f}_cur{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -11807,7 +11821,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     logger.info(f"[EMERGENCY_DEEP_LOSS_BLOCKED_NO_LOSS] {position_key}: loss={current_gain:.2f}% but NO_LOSS — NEVER closing at a loss")
                 # HEDGE_LOSS_KILL: hedge open >12min with gain<0.15% → it failed, close it.
                 # Grace period: 12 min for hedge to reach breakeven. After that: profit or die.
-                if not hard_exit_reason and is_hedge and current_gain < 0.15:
+                if getattr(config, 'HEDGE_LOSS_KILL_ENABLED', False) and not hard_exit_reason and is_hedge and current_gain < 0.15:
                     _hlk_opened = getattr(position, 'opened_at', None)
                     _hlk_age_s = 0
                     if _hlk_opened:
