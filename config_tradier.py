@@ -691,10 +691,10 @@ class TradierConfig:
     # --- Bounce-Top Exit — EXPERIMENTAL, trc only (exits losers = risky) ---
     # Note: BOUNCE_TOP_EXIT_ENABLED above applies to trb. TRC override below.
     # --- TRC Overrides: enable ALL experimental strategies on paper account ---
-    TRC_ORB_ENABLED: bool = True  # ORB on paper only
-    TRC_EPISODIC_PIVOT_ENABLED: bool = True  # EP on paper only
-    TRC_SQUEEZE_ENABLED: bool = True  # Squeeze on paper only
-    TRC_MOMENTUM_FADE_ENABLED: bool = True  # Re-enable momentum fade on paper
+    TRC_ORB_ENABLED: bool = False  # Disabled — trc now runs local extremes only
+    TRC_EPISODIC_PIVOT_ENABLED: bool = False  # Disabled — trc now runs local extremes only
+    TRC_SQUEEZE_ENABLED: bool = False  # Disabled — trc now runs local extremes only
+    TRC_MOMENTUM_FADE_ENABLED: bool = False  # Disabled — trc now runs local extremes only
     TRC_ORB_POSITION_SIZE: float = 1980.0
     TRC_EP_POSITION_SIZE: float = 2640.0
     TRC_ORB_LONG_BUDGET: float = 6600.0
