@@ -1204,30 +1204,42 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 log_rec = "HOLD"
                 log_reason = f"TRA_HOLD g={getattr(position, 'gain', 0):.2f}%"
             elif position_age_minutes > 6.0:
+                # DD BOUNCE STOP — cut extra leg if price continues below aug entry price
+                _wds = getattr(trade_manager.strategy, '_wt_d_aug_state', {}).get(symbol, {})
+                _dd_qty = float(_wds.get('dd_qty', 0.0))
+                _dd_aug_price = float(_wds.get('last_aug_price', 0.0))
+                _is_long_pos = getattr(position, 'position_side', 'LONG') == 'LONG'
+                _dd_stop_hit = (_dd_qty >= 0.5 and _dd_aug_price > 0 and market_open and getattr(config, 'WT_D_BOUNCE_DD_STOP_ENABLED', True) and (current_price < _dd_aug_price if _is_long_pos else current_price > _dd_aug_price))
+                if _dd_stop_hit:
+                    _dd_reason = f"DD_BOUNCE_STOP px={current_price:.2f} aug_px={_dd_aug_price:.2f} qty={_dd_qty:.2f}"
+                    logger.info(f"[{account_key}] ✂️ DD_STOP {symbol}: {_dd_reason}")
+                    await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", _dd_reason, 80.0, override_qty=_dd_qty)
+                    action_taken = True
+                    trade_manager.strategy._wt_d_aug_state.setdefault(symbol, {})['dd_qty'] = 0.0
                 # Add a cooldown check for consecutive augmentations (15 mins)
                 aug_at = getattr(position, 'last_augmentation_time', None)
                 aug_dt = safe_datetime(aug_at) if aug_at else None
                 aug_age = (time.time() - aug_dt.timestamp()) / 60.0 if aug_dt else 999.0
-
-                if aug_age < 15.0:
-                    log_rec = "HOLD"
-                    log_reason = f"AugCD:{15.0-aug_age:.1f}m"
-                elif m1_stale or is_stale:
-                    log_rec = "HOLD"
-                    log_reason = f"Stale ({freshness_reason})"
-                else:
-                    should_aug, aug_reason, aug_conf, aug_qty = await trade_manager.strategy.evaluate_augment(
-                        symbol, position, indicators_raw, market_context  )
-                    if should_aug:
-                        log_rec = "🚀AUGMENT"
-                        log_reason = aug_reason
-                        logger.info(f"[{account_key}] 🟢 REVIEWING AUGMENT {symbol}: {aug_reason} Qty: {aug_qty}")
-                        if market_open:
-                            await queue_trade_action( order_queue, trade_manager, position_key, "AUGMENT",   aug_reason, aug_conf, override_qty=aug_qty )
-                            action_taken = True
-                    else:
+                if not action_taken:
+                    if aug_age < 15.0:
                         log_rec = "HOLD"
-                        log_reason = f"PnL:{getattr(position, 'gain', 0):.2f}% Sc:{int(tech_score)}"
+                        log_reason = f"AugCD:{15.0-aug_age:.1f}m"
+                    elif m1_stale or is_stale:
+                        log_rec = "HOLD"
+                        log_reason = f"Stale ({freshness_reason})"
+                    else:
+                        should_aug, aug_reason, aug_conf, aug_qty = await trade_manager.strategy.evaluate_augment(
+                            symbol, position, indicators_raw, market_context  )
+                        if should_aug:
+                            log_rec = "🚀AUGMENT"
+                            log_reason = aug_reason
+                            logger.info(f"[{account_key}] 🟢 REVIEWING AUGMENT {symbol}: {aug_reason} Qty: {aug_qty}")
+                            if market_open:
+                                await queue_trade_action( order_queue, trade_manager, position_key, "AUGMENT",   aug_reason, aug_conf, override_qty=aug_qty )
+                                action_taken = True
+                        else:
+                            log_rec = "HOLD"
+                            log_reason = f"PnL:{getattr(position, 'gain', 0):.2f}% Sc:{int(tech_score)}"
             else:
                 log_rec = "HOLD"
                 log_reason = f"Grace:{10.0-position_age_minutes:.1f}m Sc:{int(tech_score)}"
@@ -4951,14 +4963,17 @@ class StockStrategy:
                 _wds = self._wt_d_aug_state.get(symbol, {})
                 prev_wt1_d = _wds.get('prev_wt1_d', wt1_d)
                 last_aug_wt1_d = _wds.get('last_aug_wt1_d', (-999.0 if is_long else 999.0))
+                last_aug_price = _wds.get('last_aug_price', (0.0 if is_long else float('inf')))
                 last_aug_ts = _wds.get('last_aug_ts', 0.0)
                 self._wt_d_aug_state[symbol] = {**_wds, 'prev_wt1_d': wt1_d}
                 bounce = (wt1_d > prev_wt1_d) if is_long else (wt1_d < prev_wt1_d)
-                req_hwt = getattr(config, 'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT', False)
-                higher_ok = (not req_hwt) or ((wt1_d > last_aug_wt1_d) if is_long else (wt1_d < last_aug_wt1_d))
+                req_hwt = getattr(config, 'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT', True)
+                req_hpx = getattr(config, 'WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE', True)
+                higher_wt_ok = (not req_hwt) or ((wt1_d > last_aug_wt1_d) if is_long else (wt1_d < last_aug_wt1_d))
+                higher_px_ok = (not req_hpx) or ((current_price > last_aug_price) if is_long else (current_price < last_aug_price))
                 cooldown_ok = (time.time() - last_aug_ts) >= float(getattr(config, 'WT_D_BOUNCE_AUG_COOLDOWN_HOURS', 1.0)) * 3600
-                if bounce and higher_ok and cooldown_ok:
-                    mult = float(getattr(config, 'WT_D_BOUNCE_AUG_MULTIPLIER', 4.0))
+                if bounce and higher_wt_ok and higher_px_ok and cooldown_ok:
+                    mult = float(getattr(config, 'WT_D_BOUNCE_AUG_MULTIPLIER', 2.0))
                     aug_qty_raw = current_qty * (mult - 1.0)
                     pk = getattr(position, 'position_key', '') or f"{getattr(position, 'account_key', 'trb')}:{symbol}_{'LONG' if is_long else 'SHORT'}"
                     _acct_key = pk.split(':')[0].upper() if ':' in pk else 'TRB'
@@ -4969,8 +4984,8 @@ class StockStrategy:
                             direction = "LONG" if is_long else "SHORT"
                             qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, aug_qty_raw, indicators, position, market_context)
                             if qty > 0:
-                                self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_ts': time.time()}
-                                return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
+                                self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_price': current_price, 'last_aug_ts': time.time(), 'dd_qty': qty}
+                                return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} px={current_price:.2f}>prev_aug={last_aug_price:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
             # MUST be in profit before augmenting — 3% gate matches crypto (MIN_GAIN)
             if gain < getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0):
                 return False, "", 0.0, 0.0

@@ -1278,6 +1278,64 @@ def build_param_grid_crypto_vel_sweep():
     return configs
 
 
+def build_param_grid_le_dynamic_tradier():
+    """2026-04-20: Dynamic LE scoring on top of REAL tradier_manage entry logic.
+
+    Uses the full tradier baseline (wt_dc_score_entry + K_ZONE + WT velocity + canonical veto gates)
+    with two new 5-min bar-level interventions:
+      1. COUNTER-EXIT: while in position, if opposite-direction LE score >= threshold → exit (cuts losers fast)
+      2. DYNAMIC AUGMENT: every N bars, if same-direction score jumped by MIN_JUMP → average in (improves entry)
+
+    apply_tradier_defaults() auto-applied: LTF=5m, K_ZONE=True, HTF_MIN_ALIGNED=2, ENTRY_ZONE_LONG=25, SHORT=75.
+    Sharpe lift comes from: fewer losers (counter-exit) + better avg entry on winners (augment).
+
+    Run: --mode tradier --symbols fast --start 2024-01-01 --tier le_dynamic_tradier --workers 6 --stream --min-csv-sharpe 0.0
+    """
+    return {
+        # LE score gate on entry — only trade when multi-indicator confluence >= threshold
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [15.0, 25.0, 35.0, 45.0],
+        # Counter-exit: cut position when opposite LE score fires (0=disabled via threshold=999)
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True, False],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [40.0, 55.0, 70.0],
+        # Dynamic augment: every 5 bars, if score jumped → avg in
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": [True, False],
+        "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": [20.0, 35.0],
+        "DYNAMIC_SCORE_AUGMENT_INTERVAL": [5],
+        # Exits: short PT to capture local-extreme bounces
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
+        "MIN_HOLD_BARS": [4, 10],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [25.0],
+    }
+
+
+def build_param_grid_le_dynamic_tradier_validate():
+    """2026-04-20: Full 128-symbol 2yr validation of le_dynamic_tradier winners.
+    Paste winning params from Phase 1 before running.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier le_dynamic_tradier_validate --workers 8 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [25.0, 35.0],
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [40.0, 55.0],
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": [True, False],
+        "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": [20.0],
+        "DYNAMIC_SCORE_AUGMENT_INTERVAL": [5],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5, 1.0],
+        "MIN_HOLD_BARS": [4, 10],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1329,6 +1387,8 @@ TIER_MAP = {
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
+    "le_dynamic_tradier": build_param_grid_le_dynamic_tradier,
+    "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
     "crypto_wt_d_4h_aug": build_param_grid_crypto_wt_d_4h_aug,

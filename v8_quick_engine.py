@@ -514,6 +514,15 @@ class QuickConfig:
     # Default OFF — sweep local_extremes_tradier tier to find best MIN_SCORE threshold.
     LOCAL_EXTREMES_SCORER_ENABLED: bool = False
     LOCAL_EXTREMES_MIN_SCORE: float = 30.0
+    # ===== 2026-04-20 DYNAMIC SCORING — 5-min interval intervention =====
+    # Counter-exit: while in LONG, if SHORT-direction LE score >= threshold → exit early (cut losers).
+    # Augment: every DYNAMIC_SCORE_AUGMENT_INTERVAL bars, if same-direction score jumped by MIN_JUMP → augment.
+    # Both work on % returns directly — counter-exit removes losers, augment improves avg entry on winners.
+    DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = False
+    DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0
+    DYNAMIC_SCORE_AUGMENT_ENABLED: bool = False
+    DYNAMIC_SCORE_AUGMENT_MIN_JUMP: float = 25.0   # score must improve by this much to trigger augment
+    DYNAMIC_SCORE_AUGMENT_INTERVAL: int = 5        # bars between re-scores (5 bars = 25 min at 5m base)
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1599,9 +1608,20 @@ def simulate(stores, cfg, capital=10000.0):
                     _wp_aligned = (_wp_wt1_1h > _wp_wt2_1h) & (_wp_wt1_4h > _wp_wt2_4h) & (_wp_wt1_D > _wp_wt2_D)
                 else:
                     _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
+            # 2026-04-20: Dynamic scoring precompute — counter-exit + interval augment.
+            _dyn_counter_enabled = bool(getattr(cfg, 'DYNAMIC_SCORE_COUNTER_EXIT_ENABLED', False))
+            _dyn_counter_thr = float(getattr(cfg, 'DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD', 55.0))
+            _dyn_aug_enabled = bool(getattr(cfg, 'DYNAMIC_SCORE_AUGMENT_ENABLED', False))
+            _dyn_aug_jump = float(getattr(cfg, 'DYNAMIC_SCORE_AUGMENT_MIN_JUMP', 25.0))
+            _dyn_aug_interval = int(getattr(cfg, 'DYNAMIC_SCORE_AUGMENT_INTERVAL', 5) or 5)
+            _dyn_same_score = None; _dyn_counter_score = None
+            if _dyn_counter_enabled or _dyn_aug_enabled:
+                _dyn_same_score = _compute_le_score_arr(npz, n, is_long, cfg)
+                _dyn_counter_score = _compute_le_score_arr(npz, n, not is_long, cfg)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
+            _dyn_aug_done = False; _dyn_entry_score = 0.0
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
@@ -1618,9 +1638,23 @@ def simulate(stores, cfg, capital=10000.0):
                 if px <= 0: continue
                 if not in_pos and entry_sig[i]:
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
+                    _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
+                    _dyn_aug_done = False
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # Dynamic counter-exit: cut position when opposite direction scores strongly
+                    if _dyn_counter_enabled and (i - eb) >= min_hold and _dyn_counter_score is not None:
+                        if _dyn_counter_score[i] >= _dyn_counter_thr:
+                            all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                            in_pos = False; cd = cooldown + min_gap_bars; continue
+                    # Dynamic augment: re-score every N bars — if score jumped, average in at current price
+                    if _dyn_aug_enabled and not _dyn_aug_done and (i - eb) >= _dyn_aug_interval and (i - eb) % _dyn_aug_interval == 0 and _dyn_same_score is not None:
+                        _cur_score = float(_dyn_same_score[i])
+                        if _cur_score - _dyn_entry_score >= _dyn_aug_jump:
+                            ep = (ep + px) / 2.0
+                            live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                            _dyn_aug_done = True
                     # wt_D bounce augment — add to losing position when daily WT turns with higher bounce
                     if _aug_enabled and not _aug_done and live_pnl < 0 and i > 0:
                         _wt1d_cur = _wt1_D_aug[i]; _wt1d_prev = _wt1_D_aug[i - 1]

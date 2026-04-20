@@ -16357,6 +16357,38 @@ async def evaluate_augmentation(ctx: dict) -> Optional[Signal]:
     gain = ctx.get('gain', safe_fetch_float(getattr(position, 'gain', 0), 0))
     pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0))
     position_value = pos_amt * current_price
+    # DD BOUNCE: augment losing position on wt_D or wt_4h bounce with higher price + wt — fires before gain gate
+    if pos_amt > 0 and gain < 0 and getattr(config, 'DD_BOUNCE_ENABLED', False):
+        if not hasattr(trade_manager, '_dd_bounce_state'):
+            trade_manager._dd_bounce_state = {}
+        _dbs = trade_manager._dd_bounce_state.get(symbol, {})
+        _dd_cool_s = float(getattr(config, 'DD_BOUNCE_COOLDOWN_HOURS', 4.0)) * 3600
+        _dd_last_ts = float(_dbs.get('last_aug_ts', 0.0))
+        if (time.time() - _dd_last_ts) >= _dd_cool_s:
+            _req_hwt = getattr(config, 'DD_BOUNCE_REQUIRE_HIGHER_WT', True)
+            _req_hpx = getattr(config, 'DD_BOUNCE_REQUIRE_HIGHER_PRICE', True)
+            _last_wt = _dbs.get('last_aug_wt', (-999.0 if is_long else 999.0))
+            _last_px = _dbs.get('last_aug_price', (0.0 if is_long else float('inf')))
+            _triggered_tf = None
+            _trigger_wt = 0.0
+            if getattr(config, 'DD_BOUNCE_WT_D_ENABLED', True):
+                wt1_D = safe_fetch_float(i.get('wt1_D'), 0); wt1_D_prev = safe_fetch_float(i.get('wt1_D_prev', wt1_D), wt1_D)
+                _bounce_D = (wt1_D > wt1_D_prev) if is_long else (wt1_D < wt1_D_prev)
+                _hwt_D = (not _req_hwt) or ((wt1_D > _last_wt) if is_long else (wt1_D < _last_wt))
+                _hpx_D = (not _req_hpx) or ((current_price > _last_px) if is_long else (current_price < _last_px))
+                if _bounce_D and _hwt_D and _hpx_D:
+                    _triggered_tf = 'D'; _trigger_wt = wt1_D
+            if _triggered_tf is None and getattr(config, 'DD_BOUNCE_WT_4H_ENABLED', True):
+                wt1_4h = safe_fetch_float(i.get('wt1_4h'), 0); wt1_4h_prev = safe_fetch_float(i.get('wt1_4h_prev', wt1_4h), wt1_4h)
+                _bounce_4h = (wt1_4h > wt1_4h_prev) if is_long else (wt1_4h < wt1_4h_prev)
+                _hwt_4h = (not _req_hwt) or ((wt1_4h > _last_wt) if is_long else (wt1_4h < _last_wt))
+                _hpx_4h = (not _req_hpx) or ((current_price > _last_px) if is_long else (current_price < _last_px))
+                if _bounce_4h and _hwt_4h and _hpx_4h:
+                    _triggered_tf = '4h'; _trigger_wt = wt1_4h
+            if _triggered_tf is not None:
+                dd_qty = pos_amt  # add 1x to existing 1x → total 2x
+                trade_manager._dd_bounce_state[symbol] = {'last_aug_ts': time.time(), 'last_aug_wt': _trigger_wt, 'last_aug_price': current_price, 'dd_qty': dd_qty}
+                return Signal(action='AUGMENT', reason=f'DD_BOUNCE_AUG_{_triggered_tf} wt={_trigger_wt:.1f} px={current_price:.4f}>prev={_last_px:.4f} g={gain:.2f}%', conviction=70.0, quantity=dd_qty)
     if pos_amt <= 0 or gain < 0.3: return None
     now = datetime.now(timezone.utc)
     aug_seconds = (now - position.last_augmentation_time).total_seconds() if getattr(position, 'last_augmentation_time', None) else float('inf')
@@ -20395,6 +20427,18 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         if _recently_reduced and not should_consider_reentry:
             should_consider_reentry = True
             logger.info(f"[REENTRY_FORCE] {position_key}: Forcing reentry consideration — recently reduced, overriding momentum gate")
+        # DD BOUNCE STOP — cut extra leg if price continued below aug price after double-down
+        if getattr(config, 'DD_BOUNCE_ENABLED', False) and getattr(config, 'DD_BOUNCE_DD_STOP_ENABLED', True):
+            _dbs = getattr(trade_manager, '_dd_bounce_state', {}).get(symbol, {})
+            _dd_qty = float(_dbs.get('dd_qty', 0.0))
+            _dd_aug_price = float(_dbs.get('last_aug_price', 0.0))
+            _dd_stop_hit = _dd_qty > pos_min_qty and _dd_aug_price > 0 and ((current_price < _dd_aug_price) if is_long else (current_price > _dd_aug_price))
+            if _dd_stop_hit:
+                _dd_reason = f"DD_BOUNCE_STOP px={current_price:.6f} aug_px={_dd_aug_price:.6f} qty={_dd_qty:.6f}"
+                logger.info(f"[{account_key}] ✂️ DD_STOP {position_key}: {_dd_reason}")
+                result = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", _dd_reason, 80.0, override_qty=_dd_qty)
+                getattr(trade_manager, '_dd_bounce_state', {}).setdefault(symbol, {})['dd_qty'] = 0.0
+                return f"{EvalStatus.ACTION_TAKEN}:DD_BOUNCE_STOP"
         if not getattr(config, 'ABLATION_DISABLE_ENTRY_TECHNICAL', False):
             eval_funcs.append(evaluate_technical_indicator_signals)
         if not getattr(config, 'ABLATION_DISABLE_ENTRY_LEADERBOARD', False):
@@ -20640,7 +20684,8 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager: "MultiAccou
         if action in ('AUGMENT', 'QUICK_AUGMENT') and position and current_price > 0:
             _pos_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
             _pos_notional = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) * current_price
-            if _pos_notional > 0 and _pos_gain < config.MIN_GAIN:
+            _dd_bypass = 'DD_BOUNCE_AUG' in (reason or '').upper()
+            if _pos_notional > 0 and _pos_gain < config.MIN_GAIN and not _dd_bypass:
                 logger.warning(f"[AUGMENT_GATE_QUEUE] {position_key}: Blocked {action} at gain={_pos_gain:.3f}% < {config.MIN_GAIN:.3f}% before queuing. reason={reason} — NO BYPASS")
                 return f"BLOCKED_AUGMENT_QUEUE_LOW_GAIN_{_pos_gain:.3f}%"
         pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, 1.2 * trade_manager.min_qty.get(symbol, 0.0001))

@@ -1105,6 +1105,13 @@ class Config:
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
+    DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
+    DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger
+    DD_BOUNCE_WT_4H_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_4h trigger
+    DD_BOUNCE_REQUIRE_HIGHER_WT: bool = True  # bounce WT must be > previous bounce WT (lower for SHORT)
+    DD_BOUNCE_REQUIRE_HIGHER_PRICE: bool = True  # bounce price must be > previous aug price (higher low for LONG)
+    DD_BOUNCE_COOLDOWN_HOURS: float = 4.0  # min hours between DD augments per symbol
+    DD_BOUNCE_DD_STOP_ENABLED: bool = True  # cut extra DD leg if price drops below aug entry price
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
