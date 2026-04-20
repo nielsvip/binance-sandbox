@@ -714,6 +714,25 @@ def build_param_grid_stock_phase2():
     }
 
 
+def build_param_grid_stock_phase3():
+    """Phase 3: Fine-tune around NOLOSS=False winner (2026-04-20).
+    Phase2 honest result: No-PT + HOLD=20 + VEL=2.0-4.0 + WT_EXIT=4
+    → pool=0.38, trades=3671-4390, WR=58%, PnL=$49-57k on 262 symbols.
+    Fine-scan HOLD=10-40, VEL=1.0-6.0, WT_EXIT=[3,4], add COOLDOWN.
+    ~288 configs. EARLY_ABORT: 50 syms, floor=0.25."""
+    return {
+        "PROFIT_TARGET_ENABLED": [False],
+        "MIN_HOLD_BARS": [10, 15, 20, 25, 30, 40],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [1.0, 2.0, 3.0, 4.0, 6.0],
+        "WT_EXIT_MIN_TFS": [3, 4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "COOLDOWN_BARS": [0, 3, 6],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.25],
+    }
+
+
 def build_param_grid_stock_sweep_v1():
     """Stock sweep v1 (2026-04-19): expand around proven PT=0.3 HOLD=40-80 winner (262 syms).
     Add WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED, D_TREND_REQUIRED, STRENGTH_MIN_SCORE.
@@ -1039,6 +1058,7 @@ TIER_MAP = {
     "stock_dc_hunt": build_param_grid_stock_dc_hunt,
     "stock_dc_wide": build_param_grid_stock_dc_wide,
     "stock_phase2": build_param_grid_stock_phase2,
+    "stock_phase3": build_param_grid_stock_phase3,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
