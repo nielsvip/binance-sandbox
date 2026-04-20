@@ -716,6 +716,72 @@ def build_param_grid_stock_sweep_v1():
     }
 
 
+def build_param_grid_baseline255_ablation():
+    """Ablation against the Sharpe 2.55 baseline (VEL=8 HOLD=250 PT=1.6 WT_EXIT=3).
+    One config per new param being tested — identifies offenders (hurt Sharpe) vs helpers.
+    Run on FAST_SYMBOLS 4yr: python v8_quick_sweep.py --mode crypto --symbols fast
+      --start 2022-01-01 --tier baseline255_ablation --workers 1 --kill-sharpe 0 --kill-secs 999999
+
+    Config 0 = pure baseline (should reproduce Sharpe ~2.55 on 11 symbols).
+    Each subsequent config flips ONE param ON/OFF vs baseline.
+    Offenders = configs with sharpe < baseline-0.1. Helpers = configs with sharpe > baseline+0.1.
+    """
+    baseline = {
+        # ── Sharpe 2.55 config (from 2026-04-19 sweep) ────────────────────────
+        "CT_WT_VELOCITY_GATE_ENABLED": True, "CT_WT_VELOCITY_1H_MIN": 8.0,
+        "MIN_HOLD_BARS": 250, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 1.6,
+        "WT_EXIT_MIN_TFS": 3, "REENTRY_RALLY_K15M_MAX": 100.0,
+        "WINNER_PROTECT_ENABLED": True, "WINNER_PROTECT_GAIN_PCT": 1.0,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": True, "CT_DC_CROSSOVER_SKIP_ENABLED": True,
+        "RZ_EXIT_ENABLED": False, "SATOSHIT_ENABLED": True,
+        "HTF_MIN_ALIGNED": 1, "D_TREND_REQUIRED": True, "STRENGTH_MIN_SCORE": 5.0,
+        # ── All new exit signals OFF (baseline must reproduce 2.55 without them) ─
+        "WT_MOMENTUM_EXIT_ENABLED": False, "WT_STRUCT_EXIT_ENABLED": False,
+        "WT_DIV_EXIT_ENABLED": False, "WT_PERCENTILE_EXIT_ENABLED": False,
+        "WT_ZSCORE_EXIT_ENABLED": False, "WT_ACCEL_EXIT_ENABLED": False,
+        "WT_WAVE_PHASE_EXIT_ENABLED": False, "WT_SCORE_FLIP_EXIT_ENABLED": False,
+        "WT_VEL_MTF_EXIT_ENABLED": False, "WT_ALIGN_EXIT_ENABLED": False,
+        "WT_COMP_DELTA_EXIT_ENABLED": False, "DC_POS_EXIT_ENABLED": False,
+    }
+    configs = [dict(baseline)]  # config 0 = pure 2.55 baseline
+    # ── Test each new exit signal against the baseline ──────────────────────────
+    for tf in ("1h", "4h"):
+        for thr in (0, -1):
+            configs.append({**baseline, "WT_MOMENTUM_EXIT_ENABLED": True, "WT_MOMENTUM_EXIT_TF": tf, "WT_MOMENTUM_EXIT_THRESHOLD": thr})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_ACCEL_EXIT_ENABLED": True, "WT_ACCEL_EXIT_TF": tf})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_WAVE_PHASE_EXIT_ENABLED": True, "WT_WAVE_PHASE_EXIT_TF": tf})
+    for tf in ("3m", "15m"):
+        configs.append({**baseline, "WT_SCORE_FLIP_EXIT_ENABLED": True, "WT_SCORE_FLIP_EXIT_TF": tf})
+    for min_tfs in (2, 3):
+        for thr in (-0.5, -1.0, -2.0):
+            configs.append({**baseline, "WT_VEL_MTF_EXIT_ENABLED": True, "WT_VEL_MTF_EXIT_MIN_TFS": min_tfs, "WT_VEL_MTF_EXIT_THRESHOLD": thr})
+    for tf in ("1h", "4h"):
+        for thr in (75.0, 80.0, 85.0):
+            configs.append({**baseline, "WT_PERCENTILE_EXIT_ENABLED": True, "WT_PERCENTILE_EXIT_TF": tf, "WT_PERCENTILE_EXIT_THRESHOLD": thr})
+    # ── Test key entry param variants vs baseline ─────────────────────────────
+    for vel in (4.0, 6.0, 10.0, 12.0):
+        configs.append({**baseline, "CT_WT_VELOCITY_1H_MIN": vel})
+    for hold in (50, 100, 150, 200, 300):
+        configs.append({**baseline, "MIN_HOLD_BARS": hold})
+    for pt in (0.8, 1.0, 1.2, 1.4, 1.8, 2.0, 2.5):
+        configs.append({**baseline, "PROFIT_TARGET_PCT": pt})
+    for wt_min in (2, 4):
+        configs.append({**baseline, "WT_EXIT_MIN_TFS": wt_min})
+    for k15m in (30.0, 40.0, 50.0, 60.0, 70.0, 80.0):
+        configs.append({**baseline, "REENTRY_RALLY_K15M_MAX": k15m})
+    configs.append({**baseline, "WINNER_PROTECT_ENABLED": False})
+    configs.append({**baseline, "STRUCTURAL_RANGE_SHIFT_EXIT": False})
+    configs.append({**baseline, "CT_DC_CROSSOVER_SKIP_ENABLED": False})
+    configs.append({**baseline, "RZ_EXIT_ENABLED": True})
+    configs.append({**baseline, "SATOSHIT_ENABLED": False})
+    configs.append({**baseline, "D_TREND_REQUIRED": False})
+    configs.append({**baseline, "HTF_MIN_ALIGNED": 2})
+    configs.append({**baseline, "HTF_MIN_ALIGNED": 3})
+    return configs
+
+
 def build_param_grid_exit_wt_audit():
     """Ablation: test each wt/0dc exit metric independently over the proven v3_core baseline.
     Returns a pre-built list (not cartesian product) — one config per signal × threshold.
@@ -845,42 +911,27 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """FOCUSED crypto mega grid: ONLY proven K15M/PT/VEL winner zone + Phase-1 exit signals.
-    Based on confirmed winners: K15M=[40-55] PT=[0.14-0.25] VEL=[5-6] HOLD=[20-50] → Sharpe 8-13.
-    Exit signals added on top as extra dimensions.
-    ~294K cartesian combos. With EARLY_ABORT_MIN_SYMBOLS=3 floor=4.0 and 1yr data, most abort
-    in <2s. Expected ~40% pass rate → 10K winners in ~30min on 12 workers.
+    """Crypto entry-param hunt: ONLY proven K15M/PT/VEL winner zone, NO exit signal noise.
+    Confirmed winners: K15M=[40-55] PT=[0.14-0.25] VEL=[5-6] HOLD=[20-50] → Sharpe 8-13 (4yr).
+    Exit signals are all OFF (defaults) — adding exit signal dims reduces Sharpe by cutting trades early.
+    ~17K raw combos. With EARLY_ABORT_MIN_SYMBOLS=3 floor=4.0, completes in ~1h on 12 workers.
+    Use --target-winners 10000 --min-csv-sharpe 4.0 to keep running until 10K winners found.
 
-    Run with: --start 2025-04-20 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12 --stream
+    Run with: --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12 --stream
     """
     return {
-        # ── Proven winner zone (from mega_v3/v4/v5/v6/v7) ─────────────────────
-        "REENTRY_RALLY_K15M_MAX": [35.0, 40.0, 45.0, 50.0, 55.0, 60.0],
-        "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0, 8.0],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.18, 0.20, 0.25, 0.30],
-        "MIN_HOLD_BARS": [10, 20, 30, 50],
+        # ── Entry/hold/PT params only (proven winner zone) ─────────────────────
+        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0, 60.0, 70.0, 80.0],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 5.0, 6.0, 8.0, 10.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.12, 0.15, 0.18, 0.20, 0.25, 0.30, 0.4, 0.5],
+        "MIN_HOLD_BARS": [1, 5, 10, 20, 30, 50],
         "WT_EXIT_MIN_TFS": [2, 3],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
-        # ── Phase-1 exit signal winners ────────────────────────────────────────
-        "WT_ACCEL_EXIT_ENABLED": [True, False],
-        "WT_ACCEL_EXIT_TF": ["4h", "1h"],
-        "WT_MOMENTUM_EXIT_ENABLED": [True, False],
-        "WT_MOMENTUM_EXIT_TF": ["1h"],
-        "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
-        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
-        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
-        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
-        "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
-        "WT_WAVE_PHASE_EXIT_TF": ["1h"],
-        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
-        "WT_SCORE_FLIP_EXIT_TF": ["3m"],
-        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
-        "WT_PERCENTILE_EXIT_TF": ["1h"],
-        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
-        # ── Kill bad configs after 3 symbols / 60s ─────────────────────────────
+        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
+        # ── Early abort: 3 symbols, floor=4.0 ────────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [3],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
@@ -888,40 +939,26 @@ def build_param_grid_mega_crypto_v8():
 
 
 def build_param_grid_mega_tradier_v8():
-    """FOCUSED tradier/stocks mega grid: proven winner zone (PT=0.2-0.5 HOLD=20-80) + exit signals.
+    """Tradier/stocks entry-param hunt: NO exit signal noise.
     Confirmed winners: PT=0.3 HOLD=40 → Sharpe 11.3 (262 syms). VEL_GATE=False confirmed best.
-    Exit signals added as extra dimensions to find optimal combo.
+    Sweep wide PT/HOLD/VEL range. Exit signals all OFF (defaults).
+    ~17K raw combos. Early abort at 3 syms floor=4.0.
 
-    Run with: --mode tradier --start 2025-04-20 --symbols fast --target-winners 10000
+    Run with: --mode tradier --start 2022-01-01 --target-winners 10000
               --min-csv-sharpe 4.0 --workers 12 --stream
     """
     return {
-        # ── Proven winner zone for stocks ───────────────────────────────────────
-        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
-        "MIN_HOLD_BARS": [10, 20, 30, 40, 60, 80],
-        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        # ── Entry/hold/PT params only ────────────────────────────────────────────
+        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
+        "MIN_HOLD_BARS": [2, 5, 10, 20, 30, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
-        "VWAP_FILTER_ENABLED": [False],
-        # ── Phase-1 exit winners ────────────────────────────────────────────────
-        "WT_ACCEL_EXIT_ENABLED": [True, False],
-        "WT_ACCEL_EXIT_TF": ["1h", "4h"],
-        "WT_MOMENTUM_EXIT_ENABLED": [True, False],
-        "WT_MOMENTUM_EXIT_TF": ["1h"],
-        "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
-        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
-        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
-        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
-        "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
-        "WT_WAVE_PHASE_EXIT_TF": ["1h"],
-        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
-        "WT_SCORE_FLIP_EXIT_TF": ["3m"],
-        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
-        "WT_PERCENTILE_EXIT_TF": ["1h"],
-        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
-        # ── Kill bad configs fast ────────────────────────────────────────────────
+        "STRENGTH_MIN_SCORE": [2.0, 4.0, 6.0],
+        # ── Kill bad configs fast ─────────────────────────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [3],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
@@ -963,6 +1000,7 @@ TIER_MAP = {
     "stock_dc_wide": build_param_grid_stock_dc_wide,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
+    "baseline255_ablation": build_param_grid_baseline255_ablation,
     "exit_wt_audit": build_param_grid_exit_wt_audit,
     "exit_wt_phase2": build_param_grid_exit_wt_phase2,
     "exit_wt_48sym": build_param_grid_exit_wt_48sym,
