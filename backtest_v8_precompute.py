@@ -570,6 +570,49 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     return True
 
 
+def _inject_market_sentiment(out_dir, symbols):
+    """Post-pass: compute cross-symbol WT breadth per bar and inject market_sentiment_score
+    into every NPZ. score = 50 + (bull_count - bear_count) / total * 50, range [0, 100].
+    Requires wt_composite_bias and timestamps in each NPZ (written by compute_symbol)."""
+    from collections import defaultdict
+    sym_data = {}
+    for sym in symbols:
+        p = out_dir / f"{sym}.npz"
+        if not p.exists():
+            continue
+        try:
+            z = dict(np.load(str(p), allow_pickle=True))
+            ts = z.get('timestamps')
+            bias = z.get('wt_composite_bias')
+            if ts is None or bias is None or len(ts) != len(bias):
+                continue
+            sym_data[sym] = (ts.astype(np.int64), bias.astype(np.int8), z)
+        except Exception as e:
+            logger.warning(f"[SENTIMENT_INJECT] load failed {sym}: {e}")
+    if not sym_data:
+        logger.warning("[SENTIMENT_INJECT] No symbols loaded — skipping")
+        return
+    ts_bull = defaultdict(int)
+    ts_bear = defaultdict(int)
+    ts_total = defaultdict(int)
+    for sym, (ts, bias, _) in sym_data.items():
+        for t, b in zip(ts.tolist(), bias.tolist()):
+            ts_total[t] += 1
+            if b == 1:
+                ts_bull[t] += 1
+            elif b == -1:
+                ts_bear[t] += 1
+    ts_score = {t: float(50.0 + (ts_bull[t] - ts_bear[t]) / ts_total[t] * 50.0) for t in ts_total}
+    updated = 0
+    for sym, (ts, _, z) in sym_data.items():
+        p = out_dir / f"{sym}.npz"
+        mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
+        z['market_sentiment_score'] = mss
+        np.savez_compressed(str(p), **z)
+        updated += 1
+    logger.info(f"[SENTIMENT_INJECT] {updated} NPZs updated, {len(ts_score)} unique timestamps")
+
+
 def main():
     parser = argparse.ArgumentParser(description="V7 Precompute")
     parser.add_argument("--symbol", type=str, default="")
@@ -601,6 +644,8 @@ def main():
             if compute_symbol(sym, args.mode):
                 done += 1
     logger.info(f"DONE: {done}/{len(symbols)}")
+    if done > 1 and not args.symbol:
+        _inject_market_sentiment(OUT_DIR, symbols)
 
 
 if __name__ == "__main__":

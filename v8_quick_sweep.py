@@ -1161,6 +1161,55 @@ def build_param_grid_local_extremes_tradier_scorer():
     }
 
 
+def build_param_grid_dc_low4_bypass_tradier():
+    """2026-04-20: Test DC_LOW4_5M fast exit that bypasses NOLOSS gate.
+    Risk: death by 1000 paper cuts. Sweep: enabled=[T/F], max_bars=[0,4,8,12], use_standard=[T/F].
+    48 configs × 262 symbols. Baseline (enabled=False) must have Sharpe > winner or it's a paper-cut killer.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier dc_low4_bypass_tradier --workers 6
+    """
+    return {
+        "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
+        "DC_LOW4_BYPASS_MAX_BARS": [0, 4, 8, 12],
+        "DC_LOW4_BYPASS_USE_STANDARD": [True, False],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.7],
+        "MIN_HOLD_BARS": [20],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "WT_EXIT_MIN_TFS": [4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "EARLY_ABORT_MIN_SYMBOLS": [20],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
+def build_param_grid_dc_low4_bypass_crypto():
+    """2026-04-20: Test DC_LOW4_3M fast exit that bypasses NOLOSS gate (crypto).
+    Same paper-cut safety check as tradier version but for 3m base TF.
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier dc_low4_bypass_crypto --workers 6
+    """
+    return {
+        "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
+        "DC_LOW4_BYPASS_MAX_BARS": [0, 4, 8, 12],
+        "DC_LOW4_BYPASS_USE_STANDARD": [True, False],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.0],
+        "MIN_HOLD_BARS": [300],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "STRENGTH_MIN_SCORE": [4.0],
+        "WT_EXIT_MIN_TFS": [2],
+        "EARLY_ABORT_MIN_SYMBOLS": [15],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
+    }
+
+
 def build_param_grid_local_extremes_tradier_validate():
     """2026-04-20: Full-symbol validation of local_extremes_tradier Phase 1/2 winners.
     Run top configs from Phase 1 or 2 on all 128 tradier symbols over 2yr with no early abort.
@@ -1887,6 +1936,8 @@ TIER_MAP = {
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
+    "dc_low4_bypass_tradier": build_param_grid_dc_low4_bypass_tradier,
+    "dc_low4_bypass_crypto": build_param_grid_dc_low4_bypass_crypto,
     "le_dynamic_tradier": build_param_grid_le_dynamic_tradier,
     "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
     "le_dynamic_tradier_v2": build_param_grid_le_dynamic_tradier_v2,

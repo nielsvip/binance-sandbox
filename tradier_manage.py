@@ -1441,10 +1441,15 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     _le_ind = indicators_raw if indicators_raw else i
                     try:
                         _le_sc, _le_sz, _le_rsn = _le_score_entry(_le_ind, is_long)
-                        if _le_sz > 0 and current_price > 0:
+                        _le_min_sc = float(getattr(config, 'LOCAL_EXTREMES_MIN_SCORE', 0.0))
+                        if _le_sz > 0 and current_price > 0 and _le_sc >= _le_min_sc:
                             qty = int(max(1, _le_sz / current_price))
                             reason = f"LE_{_le_rsn}_{reason}"
-                            logger.info(f"[{account_key}] LE_SCORER {symbol} {'L' if is_long else 'S'}: {_le_rsn} qty={qty} (${_le_sz:.0f})")
+                            logger.info(f"[{account_key}] LE_SCORER {symbol} {'L' if is_long else 'S'}: {_le_rsn} score={_le_sc:.0f} qty={qty} (${_le_sz:.0f})")
+                        elif _le_sz > 0 and _le_sc < _le_min_sc:
+                            action_type = "NO_ACTION"
+                            reason = f"LE_MIN_SCORE_SKIP({_le_sc:.0f}<{_le_min_sc:.0f})"
+                            logger.debug(f"[{account_key}] LE_SCORER min-score skip {symbol}: score={_le_sc:.0f} < min={_le_min_sc:.0f}")
                         else:
                             action_type = "NO_ACTION"
                             reason = f"LE_SCORE_SKIP({_le_rsn})"
@@ -4076,6 +4081,20 @@ class StockStrategy:
         _stock_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
         if not _is_opts_check and hold_time_min < _stock_min_hold:
             return False, f"STOCK_MIN_HOLD({hold_time_min:.0f}m<{_stock_min_hold:.0f}m)", 0
+        # ═══ DYNAMIC_SCORE_COUNTER_EXIT (2026-04-20) — le_dynamic winner ═══
+        # Exit when opposite-direction LE score >= threshold — the entry setup has reversed.
+        # Fires after STOCK_MIN_HOLD, before NOLOSS gate (technical exit like SRS).
+        # Validated: le_dynamic_tradier_v2, 262sym Sharpe 3.5479, threshold=55.
+        if not _is_opts_check and bool(getattr(config, 'DYNAMIC_SCORE_COUNTER_EXIT_ENABLED', False)):
+            _ce_threshold = float(getattr(config, 'DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD', 55.0))
+            try:
+                _ce_ind = indicators if indicators else i
+                _ce_sc, _ce_sz, _ce_rsn = _le_score_entry(_ce_ind, not is_long)
+                if _ce_sc >= _ce_threshold:
+                    logger.critical(f"📊[DYNAMIC_COUNTER_EXIT] {symbol} {'L' if is_long else 'S'}: counter_score={_ce_sc:.0f}>={_ce_threshold:.0f} ({_ce_rsn}) gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                    return True, f"DYNAMIC_SCORE_COUNTER_EXIT_score{_ce_sc:.0f}>={_ce_threshold:.0f}_g{gain:.2f}%", qty
+            except Exception as _ce_err:
+                logger.warning(f"[DYNAMIC_COUNTER_EXIT] {symbol}: error {_ce_err}")
         # ═══ RANGE TOP/BOTTOM EXIT (stocks) — USER 2026-04-14 ═══
         # LONG: entry_price > bb_upper_1h (entered above the range). When price comes back to the top of
         #   the range AND k_1h > 80 AND k_15m > 80 AND k_5m turning down → exit (sells into the retest).

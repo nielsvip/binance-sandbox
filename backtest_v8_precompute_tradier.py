@@ -387,6 +387,50 @@ def process_symbol(args):
     log.info(f"  {symbol}: {n_bars} bars, {n_ind} indicators, {elapsed:.1f}s -> {npz_path.name}")
     return symbol, n_bars, "ok"
 
+
+def _inject_market_sentiment(indicators_dir, symbols):
+    """Post-pass: compute cross-symbol WT breadth per bar, inject market_sentiment_score
+    into every NPZ. score = 50 + (bull_count - bear_count) / total * 50, range [0, 100]."""
+    from collections import defaultdict
+    indicators_dir = Path(indicators_dir)
+    sym_data = {}
+    for sym in symbols:
+        p = indicators_dir / f"{sym}.npz"
+        if not p.exists():
+            continue
+        try:
+            z = dict(np.load(str(p), allow_pickle=True))
+            ts = z.get('timestamps')
+            bias = z.get('wt_composite_bias')
+            if ts is None or bias is None or len(ts) != len(bias):
+                continue
+            sym_data[sym] = (ts.astype(np.int64), bias.astype(np.int8), z)
+        except Exception as e:
+            log.warning(f"[SENTIMENT_INJECT] load failed {sym}: {e}")
+    if not sym_data:
+        log.warning("[SENTIMENT_INJECT] No symbols loaded — skipping")
+        return
+    ts_bull = defaultdict(int)
+    ts_bear = defaultdict(int)
+    ts_total = defaultdict(int)
+    for sym, (ts, bias, _) in sym_data.items():
+        for t, b in zip(ts.tolist(), bias.tolist()):
+            ts_total[t] += 1
+            if b == 1:
+                ts_bull[t] += 1
+            elif b == -1:
+                ts_bear[t] += 1
+    ts_score = {t: float(50.0 + (ts_bull[t] - ts_bear[t]) / ts_total[t] * 50.0) for t in ts_total}
+    updated = 0
+    for sym, (ts, _, z) in sym_data.items():
+        p = indicators_dir / f"{sym}.npz"
+        mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
+        z['market_sentiment_score'] = mss
+        np.savez_compressed(str(p), **z)
+        updated += 1
+    log.info(f"[SENTIMENT_INJECT] {updated} NPZs updated, {len(ts_score)} unique timestamps")
+
+
 # ---------------------------------------------------------------------------
 # Get stock symbol list
 # ---------------------------------------------------------------------------

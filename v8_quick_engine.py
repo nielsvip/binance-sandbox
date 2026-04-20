@@ -72,6 +72,9 @@ class QuickConfig:
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TF: str = "dc_4h"   # crypto: dc_4h. tradier: bb_1h (set in apply_tradier_defaults)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
+    DC_LOW4_BYPASS_NOLOSS_ENABLED: bool = False   # 2026-04-20: price breaks 4-bar DC low → exit bypassing NOLOSS. Test for paper-cuts.
+    DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
+    DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
@@ -1673,6 +1676,13 @@ def simulate(stores, cfg, capital=10000.0):
         _dc_hk, _dc_lk = _dc_tf_map.get(getattr(cfg, 'DC_RECOVERY_EXIT_TF', 'dc_4h'), ('dc_high_4h', 'dc_low_4h'))
         dc_high_4h = _safe(npz, _dc_hk, n)
         dc_low_4h = _safe(npz, _dc_lk, n)
+        _dc4_bypass_enabled = bool(getattr(cfg, 'DC_LOW4_BYPASS_NOLOSS_ENABLED', False))
+        _dc4_max_bars = int(getattr(cfg, 'DC_LOW4_BYPASS_MAX_BARS', 0))
+        _dc4_std = bool(getattr(cfg, 'DC_LOW4_BYPASS_USE_STANDARD', False))
+        _dc4_low_key = f'dc_low_{_ltf}' if _dc4_std else f'dc_low4_{_ltf}'
+        _dc4_high_key = f'dc_high_{_ltf}' if _dc4_std else f'dc_high4_{_ltf}'
+        _dc4_low = _safe(npz, _dc4_low_key, n) if _dc4_bypass_enabled else None
+        _dc4_high = _safe(npz, _dc4_high_key, n) if _dc4_bypass_enabled else None
         # Hedge engine: continuous per-bar condition. No event needed.
         # LONG main → SHORT hedge active whenever: gain<0 AND wt1_LTF<wt2_LTF AND wt1_1h<wt2_1h
         # SHORT main → LONG hedge: gain<0 AND wt1_LTF>wt2_LTF AND wt1_1h>wt2_1h
@@ -1886,6 +1896,11 @@ def simulate(stores, cfg, capital=10000.0):
                     if pt_enabled and not _pe_enabled and live_pnl >= pt_pct:
                         _wa = pt_pct * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                    if _dc4_bypass_enabled and (_dc4_max_bars == 0 or (i - eb) <= _dc4_max_bars):
+                        _dc4_hit = (is_long and _dc4_low is not None and _dc4_low[i] > 0 and px < _dc4_low[i]) or (not is_long and _dc4_high is not None and _dc4_high[i] > 0 and px > _dc4_high[i])
+                        if _dc4_hit:
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                            in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if cfg.DC_RECOVERY_EXIT_ENABLED and cfg.NOLOSS_ENABLED and (i - eb) >= min_hold and live_pnl < 0:
                         if is_long:
                             _dc_stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
