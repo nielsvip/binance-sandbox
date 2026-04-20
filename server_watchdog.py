@@ -28,7 +28,10 @@ LOG_FILE = Path.home() / "server_watchdog.log"
 CHECK_INTERVAL = 60
 SSH_TIMEOUT = 120  # 2026-04-16: SSH can take 3min under remote CPU load
 MIN_FREE_MB = 12000   # was 4000 — 3 workers×3.6GB+orchestrator+system=~14GB used on 31GB box; need 12GB headroom before spawning
-STUCK_REBOOT_CONSECUTIVE = 5   # reboot after this many consecutive unreachable checks (~5 min)
+STUCK_REBOOT_CONSECUTIVE = 3   # reboot after this many CONSECUTIVE unreachable checks (~3 min)
+STUCK_REBOOT_ROLLING_WINDOW = 600  # also reboot if >= STUCK_REBOOT_ROLLING_MIN failures in this window (seconds)
+STUCK_REBOOT_ROLLING_MIN = 4       # failures in rolling window that trigger reboot
+PROBE_CONNECT_TIMEOUT = 20  # was 8 — heavy-CPU servers need more time to accept SSH
 
 # 2026-04-16: SWEEPS replaced by AUTOCHAIN per server.
 # Each server runs ONE master screen (`autochain_sN`) which handles all
@@ -96,7 +99,7 @@ def ssh(host, user, cmd, timeout=SSH_TIMEOUT):
     try:
         result = subprocess.run(
             ["ssh",
-             "-o", f"ConnectTimeout={min(timeout-2, 8)}",
+             "-o", f"ConnectTimeout={min(timeout-2, PROBE_CONNECT_TIMEOUT)}",
              "-o", "BatchMode=yes",
              "-o", "StrictHostKeyChecking=no",
              "-o", "ControlMaster=no",
@@ -130,18 +133,25 @@ def check_server(name, cfg, state):
 
     probe_cmd = "free -m | awk '/^Mem:/{print \"FREE=\"$7}'; pgrep -cf backtest_v8_sweep.py | awk '{print \"SWEEP_PROCS=\"$0}'; screen -ls 2>/dev/null | grep -oE '[0-9]+\\.[a-zA-Z0-9_]+' | awk '{print \"SCREEN=\"$0}'"
     rc, out = ssh(host, user, probe_cmd, timeout=30)
+    now_t = time.time()
     if rc != 0:
         state[name]["reachable"] = False
         if state[name]["down_since"] is None:
-            state[name]["down_since"] = time.time()
+            state[name]["down_since"] = now_t
         state[name]["consecutive_failures"] = state[name].get("consecutive_failures", 0) + 1
+        state[name].setdefault("failure_times", []).append(now_t)
+        # Trim rolling window
+        state[name]["failure_times"] = [t for t in state[name]["failure_times"] if now_t - t <= STUCK_REBOOT_ROLLING_WINDOW]
         fails = state[name]["consecutive_failures"]
-        log(f"{name} ({host}): UNREACHABLE rc={rc} consecutive={fails}")
-        if fails >= STUCK_REBOOT_CONSECUTIVE:
-            log(f"{name}: {fails} consecutive failures — issuing remote reboot")
+        rolling = len(state[name]["failure_times"])
+        log(f"{name} ({host}): UNREACHABLE rc={rc} consecutive={fails} rolling={rolling}")
+        need_reboot = fails >= STUCK_REBOOT_CONSECUTIVE or rolling >= STUCK_REBOOT_ROLLING_MIN
+        if need_reboot:
+            log(f"{name}: triggering reboot (consecutive={fails} rolling={rolling})")
             rc_r, out_r = ssh(host, user, "sudo reboot", timeout=15)
             log(f"{name}: reboot cmd rc={rc_r} out={out_r.strip()[:80]}")
             state[name]["consecutive_failures"] = 0
+            state[name]["failure_times"] = []
         return
 
     if not state[name]["reachable"]:
@@ -149,6 +159,7 @@ def check_server(name, cfg, state):
     state[name]["reachable"] = True
     state[name]["down_since"] = None
     state[name]["consecutive_failures"] = 0
+    # Keep failure_times — rolling window still counts recent blips
 
     free_mb = 0
     sweep_procs = 0
@@ -242,7 +253,8 @@ def main():
     acquire_lock()
     try:
         state = {name: {"reachable": True, "down_since": None, "free_mb": 0,
-                        "sweep_procs": 0, "screens": [], "consecutive_failures": 0} for name in SERVERS}
+                        "sweep_procs": 0, "screens": [], "consecutive_failures": 0,
+                        "failure_times": []} for name in SERVERS}
         log(f"server_watchdog up — managing {list(SERVERS.keys())} via autochain per-server")
         last_loop_time = time.time()
         while True:

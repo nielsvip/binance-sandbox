@@ -76,8 +76,8 @@ class QuickConfig:
     DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
     DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
     DC_LOW4_BYPASS_TF: str = ""                   # '' = use LTF (5m tradier / 3m crypto), '15m' = 15m channel (wider stop)
-    DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # SWEPT 2026-04-20. v1 bug: crypto used same-bar Donchian (impossible). Fixed: now uses prev-bar roll. Re-sweep needed for valid crypto result. Tradier v1 (bb_upper_1h): -0.003 Sharpe, minimal fires. VERDICT PENDING full re-sweep.
-    ALL_TF_BRAKE_ENABLED: bool = False            # SWEPT 2026-04-20. Crypto: min_tfs=4 → -32% Sharpe, min_tfs=7 → 0 effect. Tradier: never fires (no W/M TF data, 5 real TFs rarely all against in-position). VERDICT: REDUNDANT with WT_EXIT_MIN_TFS.
+    DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # SWEPT 2026-04-20 (262 tradier / 49 crypto full-sym). VERDICT: DO NOT ENABLE. Crypto: zero fires (entry filters already prevent breakout-bar entries). Tradier: -15% Sharpe, -3pp WR (positions above BB1h do recover; cutting early = paper-cut). NOTE: v1 had same-bar Donchian bug (close≤high always) — fixed with prev-bar roll; results above are post-fix.
+    ALL_TF_BRAKE_ENABLED: bool = False            # SWEPT 2026-04-20 (262 tradier / 49 crypto full-sym). VERDICT: DO NOT ENABLE. Tradier: never fires (no W/M TFs, 5 real TFs don't all flip against before WT exit fires). Crypto: min_tfs≤5 → -36% to -58% Sharpe; min_tfs≥6 → zero effect. Redundant with WT_EXIT_MIN_TFS.
     ALL_TF_BRAKE_MIN_TFS: int = 5                 # minimum TFs (out of LTF/15m/1h/4h/D/W/M) that must be against to trigger brake
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
