@@ -1531,10 +1531,13 @@ def simulate(stores, cfg, capital=10000.0):
     return _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort)
 
 
-def _per_symbol_sharpes(per_symbol_pnl, min_trades=30, std_floor=1e-3, cap=20.0):
+def _per_symbol_sharpes(per_symbol_pnl, min_trades=1, std_floor=1e-3, cap=20.0):
+    """Include ALL symbols — no cherry-picking. Symbols with 0 trades = Sharpe 0.
+    min_trades=1: any symbol that traded is included. 0-trade symbols added as 0 by _finalize_result."""
     out = []
     for sym, plist in per_symbol_pnl.items():
         if len(plist) < min_trades:
+            out.append(0.0)
             continue
         arr = np.array(plist)
         m = arr.mean(); s = max(arr.std(), std_floor)
@@ -1555,9 +1558,13 @@ def _pool_sharpe(all_pnl, min_trades=30, cap=20.0):
 
 def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort):
     per_sym_sharpes = _per_symbol_sharpes(per_symbol_pnl)
+    # Pad with 0s for any symbols_processed that never appeared in per_symbol_pnl (0 trades)
+    zero_pad = symbols_processed - len(per_symbol_pnl)
+    if zero_pad > 0:
+        per_sym_sharpes.extend([0.0] * zero_pad)
     n_trades = len(all_pnl)
     ps = _pool_sharpe(all_pnl)
-    syms_excluded = symbols_processed - len(per_sym_sharpes)
+    syms_excluded = 0  # nothing excluded — all symbols included as 0 if no trades
     if not per_sym_sharpes:
         p = np.array(all_pnl) if all_pnl else np.array([0.0])
         w = int((p > 0).sum()); l = int((p <= 0).sum())

@@ -68,17 +68,19 @@ def load_stocks(n_bars, min_bars_per_sym, max_syms=128):
     return loaded, use, npz_dir
 
 
-def score_verbose(mask, ret, side, min_trades_per_sym, min_syms):
+def score_verbose(mask, ret, side, min_trades_per_sym, min_syms, sym_select=None):
+    """Honest avg: include negative sharpe syms. Only skip for stat-noise (<min_trades) or zero-variance."""
     if side == "S":
         ret = -ret
     n_syms = mask.shape[1]
+    sym_range = sym_select if sym_select is not None else range(n_syms)
     per_sym = []
     per_sym_dd = []
     per_sym_wr = []
     per_sym_mean = []
     n_trades_total = 0
     pooled_rets = []
-    for s in range(n_syms):
+    for s in sym_range:
         m = mask[:, s]
         r = ret[:, s][m]
         n = len(r)
@@ -89,7 +91,7 @@ def score_verbose(mask, ret, side, min_trades_per_sym, min_syms):
         if std <= 0:
             continue
         mean = float(r.mean())
-        sh = mean / std
+        sh = mean / std  # NEGATIVES KEPT
         per_sym.append(sh)
         per_sym_mean.append(mean)
         wr = float((r > 0).mean() * 100)
@@ -153,6 +155,18 @@ def main():
     print(f"[{time.time()-t0:.1f}s] Built {len(C)} conditions on full")
     fwd = fwd_returns(close, [8, 16, 32, 64, 128, 256])
 
+    # Uptrend ranking for long/short candidate selection (user rule 2026-04-20).
+    # Select top half for LONG, bottom half for SHORT. Includes negatives — no post-hoc drops.
+    scores = []
+    for i, s in enumerate(syms):
+        cl = np.asarray(loaded[s].get("close"), dtype=np.float64)
+        scores.append((i, float(np.log(cl[-1] / cl[0])) if cl[0] > 0 and cl[-1] > 0 else 0.0))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    keep = max(int(len(syms) * 0.6), args.min_syms)  # 60% for each side to ensure coverage
+    long_syms = sorted(idx for idx, _ in scores[:keep])
+    short_syms = sorted(idx for idx, _ in scores[-keep:])
+    print(f"[{time.time()-t0:.1f}s] Long candidates: {keep}/{len(syms)}, Short candidates: {keep}/{len(syms)}")
+
     con = sqlite3.connect(args.src_db, timeout=60.0)
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("""CREATE TABLE IF NOT EXISTS validated_full (
@@ -182,7 +196,7 @@ def main():
             if m is None or not m.any():
                 continue
             ret = fwd[horizon]
-            r = score_verbose(m, ret, side, args.min_trades_per_sym, args.min_syms)
+            r = score_verbose(m, ret, side, args.min_trades_per_sym, args.min_syms, sym_select=(long_syms if side == "L" else short_syms))
             if r is None:
                 continue
             drop = (sample_sh - r["sharpe_avg"]) / max(abs(sample_sh), 1e-6) * 100
@@ -229,7 +243,7 @@ def main():
             # Prefer horizon of higher-Sharpe side
             horizon = ha
             ret = fwd[horizon]
-            r = score_verbose(m, ret, side, args.min_trades_per_sym // 2, max(args.min_syms // 2, 15))
+            r = score_verbose(m, ret, side, max(args.min_trades_per_sym // 2, 5), max(args.min_syms // 2, 10), sym_select=(long_syms if side == "L" else short_syms))
             if r is None:
                 continue
             merged_combo = "+".join(sorted(set([*ca.split("+"), *cb.split("+")])))

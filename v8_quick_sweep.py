@@ -981,6 +981,30 @@ def build_param_grid_mega_tradier_v8():
     }
 
 
+def build_param_grid_crypto_validate_top():
+    """48-symbol 4yr REAL validation of consensus winners from 12-sym pre-screen.
+    K_MAX=40 (83% of robust winners), VEL=12/14, PT=0.8/1.0, STR=3/4/5.
+    No early abort — run all 48 symbols to get genuine Sharpe.
+    Run: --symbols all --start 2022-01-01 --tier crypto_validate_top --workers 12 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "CT_WT_VELOCITY_1H_MIN": [12.0, 14.0],
+        "MIN_HOLD_BARS": [250, 300, 400, 500],
+        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2],
+        "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0],
+        "REENTRY_RALLY_K15M_MAX": [40.0],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "WINNER_PROTECT_ENABLED": [True],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [2],
+        "DC_RECOVERY_EXIT_ENABLED": [False],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1023,6 +1047,7 @@ TIER_MAP = {
     "exit_wt_48sym": build_param_grid_exit_wt_48sym,
     "mega_crypto_v8": build_param_grid_mega_crypto_v8,
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
+    "crypto_validate_top": build_param_grid_crypto_validate_top,
 }
 
 

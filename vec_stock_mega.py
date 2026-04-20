@@ -31,10 +31,14 @@ import numpy as np
 
 MIX_12 = ["AAPL", "NVDA", "PLTR", "NEM", "XOM", "CAT", "SPY", "QQQ", "GLD", "META", "AMD", "AVGO"]
 HORIZONS = [8, 16, 32, 64, 128, 256]
-MIN_TRADES_PER_SYM = 30
-MIN_SYMS_INCLUDED = 10
-REQUIRE_POSITIVE_MIN_SYM = True  # sharpe_min of included syms must be > 0 (no dragging outliers)
-MIN_POOL_SHARPE = 0.3            # pool-level edge floor (no per-sym outlier inflation)
+# Honest averaging: low trade floor (5 = noise but usable), most syms must trigger, NO exclusion of negatives.
+MIN_TRADES_PER_SYM = 30           # CLAUDE.md: <30 = statistical noise, not strategy signal
+MIN_SYMS_PCT = 0.75               # fraction of SELECTED candidate syms that must trigger (post pre-ranking)
+REQUIRE_POSITIVE_MIN_SYM = False  # user 2026-04-20: do NOT drop configs for negative worst-sym
+MIN_POOL_SHARPE = 0.0             # save anything — honest floor
+# Pre-ranking: LONG runs on top-ranked uptrend syms, SHORT on bottom-ranked — but within each side the avg is across ALL selected (no post-hoc drops).
+SIDE_RANK_ENABLED = True
+SIDE_RANK_KEEP = 8                # of the 12, keep this many for each side (top-N for LONG, bottom-N for SHORT)
 
 BASE = Path(__file__).resolve().parent
 SYS_PATHS = [str(BASE), "/home/niels/binance-sandbox", "/Users/niels/Documents/binance"]
@@ -237,58 +241,67 @@ def fwd_returns(close, horizons):
     return out
 
 
-def score_per_symbol(mask, ret, side):
+def score_per_symbol(mask, ret, side, sym_select=None):
     """Per-symbol Sharpe aggregation. Mask shape (bars, syms), ret same.
     For SHORT: negate returns (profit when price drops).
-    Returns: sharpe_avg, sharpe_pool, sharpe_stats(min,p25,med,p75,max),
-             syms_included, n_trades_total, wr_avg, mean_ret_avg, dd_avg, dd_max
+    sym_select: optional list of column indices to restrict evaluation to
+                (e.g., top-ranked for LONG, bottom-ranked for SHORT).
+    Averages across ALL selected syms that have >= MIN_TRADES_PER_SYM — INCLUDING negative Sharpes.
+    No exclusion of bad performers — honest avg per user directive 2026-04-20.
     """
     if side == "S":
         ret = -ret
     n_syms = mask.shape[1]
+    sym_range = sym_select if sym_select is not None else range(n_syms)
     per_sym = []
     per_sym_dd = []
     per_sym_wr = []
     per_sym_mean = []
     n_trades_total = 0
     pooled_rets = []
-    for s in range(n_syms):
+    excluded_noise = 0  # syms with too-few trades (stat-noise, not performance exclusion)
+    for s in sym_range:
         m = mask[:, s]
         r = ret[:, s][m]
         n = len(r)
         n_trades_total += n
         if n < MIN_TRADES_PER_SYM:
+            excluded_noise += 1
             continue
         std = float(r.std())
         if std <= 0:
+            excluded_noise += 1
             continue
         mean = float(r.mean())
-        sh = mean / std
+        sh = mean / std  # NEGATIVES KEPT — honest avg
         per_sym.append(sh)
         per_sym_mean.append(mean)
         wr = float((r > 0).mean() * 100)
         per_sym_wr.append(wr)
-        # Log-equity to avoid overflow on long series; fractional DD = 1 - exp(log_eq - peak_log_eq)
         r_clip = np.clip(r, -0.99, None)
         log_eq = np.cumsum(np.log1p(r_clip))
         peak = np.maximum.accumulate(log_eq)
         dd = float(1.0 - np.exp(log_eq - peak).min()) if log_eq.size else 0.0
         per_sym_dd.append(dd * 100)
         pooled_rets.append(r)
-    if len(per_sym) < MIN_SYMS_INCLUDED:
+    total_eligible = len(list(sym_range)) if hasattr(sym_range, "__len__") else n_syms
+    min_included = max(int(total_eligible * MIN_SYMS_PCT), 3)
+    if len(per_sym) < min_included:
         return None
     per_sym_arr = np.asarray(per_sym)
-    if REQUIRE_POSITIVE_MIN_SYM and per_sym_arr.min() <= 0:
-        return None
     pool = np.concatenate(pooled_rets) if pooled_rets else np.asarray([])
     if pool.size == 0 or pool.std() <= 0:
         return None
     pool_sh = float(pool.mean() / pool.std())
     if pool_sh < MIN_POOL_SHARPE:
         return None
+    sh_avg = float(per_sym_arr.mean())
+    # Robust score: the min of avg and pool. Kills outlier-inflated averages (single-sym lucky run).
+    sh_robust = min(sh_avg, pool_sh)
     return {
-        "sharpe_avg": float(per_sym_arr.mean()),
+        "sharpe_avg": sh_avg,
         "sharpe_pool": pool_sh,
+        "sharpe_robust": sh_robust,
         "sharpe_min": float(per_sym_arr.min()),
         "sharpe_p25": float(np.percentile(per_sym_arr, 25)),
         "sharpe_med": float(np.median(per_sym_arr)),
@@ -308,22 +321,26 @@ _C = None
 _FWD = None
 _KEYS_L = None
 _KEYS_S = None
+_LONG_SYMS = None   # indices of long-candidate syms (top-ranked by uptrend)
+_SHORT_SYMS = None  # indices of short-candidate syms (bottom-ranked)
 
 
 def init_worker(shared_state_path):
-    global _C, _FWD, _KEYS_L, _KEYS_S
+    global _C, _FWD, _KEYS_L, _KEYS_S, _LONG_SYMS, _SHORT_SYMS
     state = np.load(shared_state_path, allow_pickle=True).item()
     _C = state["C"]
     _FWD = state["FWD"]
     _KEYS_L = state["KEYS_L"]
     _KEYS_S = state["KEYS_S"]
+    _LONG_SYMS = state.get("LONG_SYMS")
+    _SHORT_SYMS = state.get("SHORT_SYMS")
 
 
 def run_chunk(args):
-    """args: (side, combos_list). Returns list of result dicts."""
     side, combos = args
     results = []
     keys = _KEYS_L if side == "L" else _KEYS_S
+    sym_sel = _LONG_SYMS if side == "L" else _SHORT_SYMS
     for combo in combos:
         names = tuple(keys[i] for i in combo)
         mask = _C[names[0]].copy()
@@ -332,10 +349,8 @@ def run_chunk(args):
         if not mask.any():
             continue
         for h, ret in _FWD.items():
-            m = score_per_symbol(mask, ret, side)
+            m = score_per_symbol(mask, ret, side, sym_select=sym_sel)
             if m is None:
-                continue
-            if m["sharpe_avg"] < 0.1 and m["sharpe_pool"] < 0.1:
                 continue
             results.append({
                 "side": side,
@@ -344,6 +359,24 @@ def run_chunk(args):
                 **m,
             })
     return results
+
+
+def rank_syms_by_uptrend(loaded, syms):
+    """Return (long_idx, short_idx) — lists of column indices.
+    Uptrend score = total log return over window. Highest = long candidate, lowest = short candidate.
+    """
+    scores = []
+    for i, s in enumerate(syms):
+        close = np.asarray(loaded[s].get("close"), dtype=np.float64)
+        if close is None or len(close) < 2 or close[0] <= 0 or close[-1] <= 0:
+            scores.append((i, 0.0))
+            continue
+        scores.append((i, float(np.log(close[-1] / close[0]))))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    keep = min(SIDE_RANK_KEEP, len(syms))
+    long_idx = sorted(idx for idx, _ in scores[:keep])
+    short_idx = sorted(idx for idx, _ in scores[-keep:])
+    return long_idx, short_idx, scores
 
 
 def chunker(iterable, size):
@@ -368,9 +401,27 @@ def main():
     ap.add_argument("--elite-sharpe", type=float, default=3.0, help="flag as elite if >= this")
     ap.add_argument("--out-db", type=str, default="")
     ap.add_argument("--time-budget-s", type=int, default=3600, help="hard stop after this many seconds")
+    ap.add_argument("--sector", type=str, default="", help="Sector name from stocks_sectors.json — overrides MIX_12")
+    ap.add_argument("--syms", type=str, default="", help="Comma-separated symbol list — overrides MIX_12 and --sector")
+    ap.add_argument("--sectors-json", type=str, default="/home/niels/binance-sandbox/stocks_sectors.json")
     args = ap.parse_args()
 
     syms = [s for s in MIX_12]
+    if args.syms:
+        syms = [s.strip() for s in args.syms.split(",") if s.strip()]
+    elif args.sector:
+        try:
+            with open(args.sectors_json) as f:
+                secmap = json.load(f)
+            if args.sector not in secmap:
+                raise SystemExit(f"Sector '{args.sector}' not in {args.sectors_json}. Options: {list(secmap.keys())}")
+            syms = [s for s in secmap[args.sector] if isinstance(s, str)]
+        except FileNotFoundError:
+            # Fallback to macbook path
+            with open("/Users/niels/Documents/binance/stocks_sectors.json") as f:
+                secmap = json.load(f)
+            syms = [s for s in secmap[args.sector] if isinstance(s, str)]
+    print(f"Using {len(syms)} symbols: {syms}")
     t0 = time.time()
     loaded, n_bars, npz_dir = load_slice(syms, args.bars)
     syms_used = list(loaded.keys())
@@ -385,6 +436,16 @@ def main():
     keys_L = sorted([k for k in C if k.startswith("L_")])
     keys_S = sorted([k for k in C if k.startswith("S_")])
 
+    # Pre-rank syms for long-candidate / short-candidate sides (user rule 2026-04-20)
+    if SIDE_RANK_ENABLED and len(syms_used) > SIDE_RANK_KEEP:
+        long_syms, short_syms, rank_scores = rank_syms_by_uptrend(loaded, syms_used)
+        print(f"[{time.time()-t0:.1f}s] Uptrend ranking ({SIDE_RANK_KEEP}/{len(syms_used)}):")
+        print(f"  LONG candidates:  {[syms_used[i] for i in long_syms]}")
+        print(f"  SHORT candidates: {[syms_used[i] for i in short_syms]}")
+    else:
+        long_syms = short_syms = None
+        print(f"[{time.time()-t0:.1f}s] No side-ranking (disabled or too few syms)")
+
     # Persist shared state to disk for fork-free worker init
     state_path = Path(f"/tmp/vec_stock_mega_state_{os.getpid()}.npy")
     np.save(str(state_path), {
@@ -392,6 +453,8 @@ def main():
         "FWD": fwd,
         "KEYS_L": keys_L,
         "KEYS_S": keys_S,
+        "LONG_SYMS": long_syms,
+        "SHORT_SYMS": short_syms,
     })
     print(f"[{time.time()-t0:.1f}s] Saved shared state to {state_path}")
 
@@ -407,13 +470,14 @@ def main():
     conn = sqlite3.connect(str(out_db))
     conn.execute("""CREATE TABLE IF NOT EXISTS results (
         side TEXT, combo TEXT, horizon INTEGER,
-        sharpe_avg REAL, sharpe_pool REAL, sharpe_min REAL, sharpe_p25 REAL,
-        sharpe_med REAL, sharpe_p75 REAL, sharpe_max REAL,
+        sharpe_avg REAL, sharpe_pool REAL, sharpe_robust REAL,
+        sharpe_min REAL, sharpe_p25 REAL, sharpe_med REAL, sharpe_p75 REAL, sharpe_max REAL,
         syms_included INTEGER, n_trades_total INTEGER,
         wr_avg REAL, mean_ret_avg REAL, dd_pct_avg REAL, dd_pct_max REAL,
         is_elite INTEGER DEFAULT 0)""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_robust ON results(sharpe_robust DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sh ON results(sharpe_avg DESC)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_elite ON results(is_elite DESC, sharpe_avg DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_elite ON results(is_elite DESC, sharpe_robust DESC)")
     conn.commit()
 
     # Build work items (combo-index lists per side)
@@ -431,12 +495,12 @@ def main():
         tasks = itertools.chain(make_tasks("L", keys_L), make_tasks("S", keys_S))
         for batch in pool.imap_unordered(run_chunk, tasks, chunksize=1):
             for r in batch:
-                if r["sharpe_avg"] >= args.floor_sharpe:
-                    is_elite = 1 if r["sharpe_avg"] >= args.elite_sharpe else 0
-                    conn.execute("""INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                if r["sharpe_robust"] >= args.floor_sharpe:
+                    is_elite = 1 if r["sharpe_robust"] >= args.elite_sharpe else 0
+                    conn.execute("""INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
                         r["side"], r["combo"], r["horizon"],
-                        r["sharpe_avg"], r["sharpe_pool"], r["sharpe_min"], r["sharpe_p25"],
-                        r["sharpe_med"], r["sharpe_p75"], r["sharpe_max"],
+                        r["sharpe_avg"], r["sharpe_pool"], r["sharpe_robust"],
+                        r["sharpe_min"], r["sharpe_p25"], r["sharpe_med"], r["sharpe_p75"], r["sharpe_max"],
                         r["syms_included"], r["n_trades_total"],
                         r["wr_avg"], r["mean_ret_avg"], r["dd_pct_avg"], r["dd_pct_max"],
                         is_elite,
@@ -449,10 +513,10 @@ def main():
                 conn.commit()
                 elapsed = time.time() - t0
                 rate = done_tests / max(1, elapsed)
-                top = conn.execute("SELECT sharpe_avg, sharpe_pool, combo, horizon, syms_included, n_trades_total FROM results ORDER BY sharpe_avg DESC LIMIT 5").fetchall()
-                print(f"[{elapsed:6.0f}s] kept={kept} elite={elite} rate={rate:,.0f}t/s  top5:")
+                top = conn.execute("SELECT sharpe_robust, sharpe_avg, sharpe_pool, combo, horizon, syms_included, n_trades_total FROM results ORDER BY sharpe_robust DESC LIMIT 5").fetchall()
+                print(f"[{elapsed:6.0f}s] kept={kept} elite={elite} rate={rate:,.0f}t/s  top5(by robust):")
                 for row in top:
-                    print(f"          sh={row[0]:.3f} pool={row[1]:.3f} syms={row[4]} n={row[5]} h={row[3]:<3} {row[2][:80]}")
+                    print(f"          robust={row[0]:.3f} avg={row[1]:.3f} pool={row[2]:.3f} syms={row[5]} n={row[6]} h={row[4]:<3} {row[3][:80]}")
                 report_t = time.time()
                 if elapsed > args.time_budget_s:
                     print(f"[{elapsed:.0f}s] HARD STOP — time budget reached")
@@ -467,13 +531,13 @@ def main():
     elite_rows = conn.execute("SELECT COUNT(*) FROM results WHERE is_elite=1").fetchone()[0]
     print(f"\n=== DONE [{elapsed:.0f}s] total kept={total_rows}, elite={elite_rows}, db={out_db} ===\n")
 
-    top_report = conn.execute("""SELECT side, combo, horizon, sharpe_avg, sharpe_pool, sharpe_min, sharpe_max, wr_avg, mean_ret_avg, dd_pct_avg, n_trades_total, syms_included
-        FROM results ORDER BY sharpe_avg DESC LIMIT 30""").fetchall()
-    print("TOP 30 by sharpe_avg:")
-    print(f"{'Side':<4} {'Sh':>6} {'Pool':>6} {'Min':>6} {'Max':>6} {'WR%':>5} {'Mean%':>7} {'DD%':>6} {'N':>7} {'syms':>4} {'h':>4}  Combo")
+    top_report = conn.execute("""SELECT side, combo, horizon, sharpe_robust, sharpe_avg, sharpe_pool, sharpe_min, sharpe_max, wr_avg, mean_ret_avg, dd_pct_avg, n_trades_total, syms_included
+        FROM results ORDER BY sharpe_robust DESC LIMIT 30""").fetchall()
+    print("TOP 30 by sharpe_robust (min of avg/pool — honest, outlier-resistant):")
+    print(f"{'Side':<4} {'Rob':>6} {'Avg':>6} {'Pool':>6} {'Min':>6} {'Max':>6} {'WR%':>5} {'Mean%':>7} {'DD%':>6} {'N':>7} {'syms':>4} {'h':>4}  Combo")
     for row in top_report:
-        side, combo, h, sh, pool, mi, mx, wr, mr, dd, n, ns = row
-        print(f"{side:<4} {sh:>6.3f} {pool:>6.3f} {mi:>6.3f} {mx:>6.3f} {wr:>5.1f} {mr*100:>7.3f} {dd:>6.2f} {n:>7d} {ns:>4d} {h:>4d}  {combo[:100]}")
+        side, combo, h, rob, sh, pool, mi, mx, wr, mr, dd, n, ns = row
+        print(f"{side:<4} {rob:>6.3f} {sh:>6.3f} {pool:>6.3f} {mi:>6.3f} {mx:>6.3f} {wr:>5.1f} {mr*100:>7.3f} {dd:>6.2f} {n:>7d} {ns:>4d} {h:>4d}  {combo[:100]}")
     conn.close()
     try:
         state_path.unlink()
