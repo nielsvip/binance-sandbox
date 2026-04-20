@@ -270,7 +270,7 @@ class TradierConfig:
     # === BULL PUT CREDIT SPREAD STRATEGY (Tier 1 — primary bullish structure) ===
     # 7yr backtest (2019-2026, 15 syms daily): Sharpe 0.62, Win 80%, worst year (2022) -$1.3k.
     # Defined-risk, crisis-resistant, scales to 10-15 concurrent positions.
-    OPTIONS_SPREAD_ENABLED: bool = False           # Master gate — flip when ready
+    OPTIONS_SPREAD_ENABLED: bool = True           # Master gate — flip when ready
     OPTIONS_SPREAD_WIDTH: float = 10.0             # $ between short and long strike
     OPTIONS_SPREAD_SHORT_DELTA: float = 0.25       # Short-put target delta
     OPTIONS_SPREAD_IV_RANK_MIN: float = 75.0       # Chain-relative IV rank gate (biggest backtest edge)
