@@ -2556,7 +2556,8 @@ def main():
             ps = result.get("pool_sharpe", 0)
             if ps > best_sharpe:
                 best_sharpe = ps
-            if max(s, ps) >= args.min_csv_sharpe:  # save if EITHER per-sym avg OR pool exceeds threshold
+            _min_trades_per_sym = int(result.get("symbols_used", 1) or 1) * 30
+            if ps >= args.min_csv_sharpe and result.get("trades", 0) >= _min_trades_per_sym:  # pool_sharpe only, min 30 trades/symbol
                 writer.writerow(row)
                 csvfile.flush()
             elif dead_writer and result.get("status") not in ("error", "mode_skip"):
@@ -2569,7 +2570,7 @@ def main():
             eta = (todo_len - completed) / rate / 3600 if rate > 0 else 0
             winner_str = f" winners={winners_found}" if target_winners > 0 else ""
             if completed % 10 == 0 or completed <= 5:
-                print(f"  [{completed}/{todo_len}] sharpe={s:.4f} pool={ps:.4f} trades={result.get('trades', 0)} "
+                print(f"  [{completed}/{todo_len}] sym_avg={s:.4f} pool={ps:.4f} trades={result.get('trades', 0)} "
                       f"best={best_sharpe:.4f}{winner_str} rate={rate:.1f}/s ETA={eta:.1f}h")
             return s
 
