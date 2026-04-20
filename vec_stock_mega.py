@@ -48,7 +48,18 @@ MIN_SYMS_PCT = 0.75
 SIDE_RANK_ENABLED = True
 SIDE_RANK_KEEP = 8
 
-# Exit rule fields: change here to test different exit logic.
+# Exit rule presets — selectable via --exit-rule
+EXIT_RULES = {
+    "wt15":   ("wt_cross_bear_15m", "wt_cross_bull_15m"),
+    "wt5":    ("wt_cross_bear_5m",  "wt_cross_bull_5m"),
+    "dc15":   ("dc_basis_crossunder_15m", "dc_basis_crossover_15m"),
+    "dc5":    ("dc_basis_crossunder_5m",  "dc_basis_crossover_5m"),
+    "stoch15": ("stoch_crossunder_15m", "stoch_crossover_15m"),
+    # Combined: LONG exits on (wt_cross_bear_15m OR dc_basis_crossunder_15m)
+    "wt15_or_dc15": None,  # built dynamically below
+    "wt5_or_dc5":   None,
+}
+# Default exit rule
 LONG_EXIT_FIELD = "wt_cross_bear_15m"
 SHORT_EXIT_FIELD = "wt_cross_bull_15m"
 
@@ -384,6 +395,9 @@ def main():
     ap.add_argument("--syms", type=str, default="")
     ap.add_argument("--sectors-json", type=str, default="/home/niels/binance-sandbox/stocks_sectors.json")
     ap.add_argument("--max-hold", type=int, default=MAX_HOLD_BARS)
+    ap.add_argument("--exit-rule", type=str, default="wt15", help="wt15, wt5, dc15, dc5, stoch15, wt15_or_dc15, wt5_or_dc5")
+    ap.add_argument("--bail-after-s", type=int, default=0, help="If >0: after this many seconds, if no config robust>=bail-min-robust, abort")
+    ap.add_argument("--bail-min-robust", type=float, default=2.0)
     args = ap.parse_args()
 
     syms = [s for s in MIX_12]
@@ -408,15 +422,91 @@ def main():
     C, close = build_conditions(loaded, syms_used)
     print(f"[{time.time()-t0:.1f}s] Built {len(C)} conditions")
 
-    # Exit-bar precomputation per side
-    long_exit_mask = stack_bool(loaded, LONG_EXIT_FIELD, syms_used)
-    short_exit_mask = stack_bool(loaded, SHORT_EXIT_FIELD, syms_used)
+    # Build exit masks per --exit-rule — based on feedback_exit_tf_hierarchy.md + feedback_no_fixed_exits_only_delta.md
+    sb = lambda f: stack_bool(loaded, f, syms_used)
+    sf = lambda f, d=50.0: stack_field(loaded, f, d, syms_used)
+    wtv_5 = sf("wt_velocity_5m", 0); wta_5 = sf("wt_acceleration_5m", 0)
+    wtv_15 = sf("wt_velocity_15m", 0); wta_15 = sf("wt_acceleration_15m", 0)
+    k5 = sf("stoch_k_5m"); k15 = sf("stoch_k_15m"); k1h = sf("stoch_k_1h")
+    wt1_5 = sf("wt1_5m", 0); wt2_5 = sf("wt2_5m", 0)
+    wt1_15 = sf("wt1_15m", 0); wt2_15 = sf("wt2_15m", 0)
+    ha_15 = sf("ha_15m", 0)
+    wtb_5 = sb("wt_bullish_5m"); wtb_15 = sb("wt_bullish_15m"); wtb_1h = sb("wt_bullish_1h")
+    wtb_4h = sb("wt_bullish_4h"); wtb_D = sb("wt_bullish_D")
+    wtxr_5 = sb("wt_cross_bear_5m"); wtxr_15 = sb("wt_cross_bear_15m")
+    wtxb_5 = sb("wt_cross_bull_5m"); wtxb_15 = sb("wt_cross_bull_15m")
+    dcxu_5 = sb("dc_basis_crossunder_5m"); dcxu_15 = sb("dc_basis_crossunder_15m")
+    dcxo_5 = sb("dc_basis_crossover_5m"); dcxo_15 = sb("dc_basis_crossover_15m")
+    stxu_15 = sb("stoch_crossunder_15m"); stxo_15 = sb("stoch_crossover_15m")
+
+    er = args.exit_rule
+    if er == "wt15":
+        long_exit_mask, short_exit_mask = wtxr_15, wtxb_15
+        exit_desc = "wt_cross_15m"
+    elif er == "wt5":
+        long_exit_mask, short_exit_mask = wtxr_5, wtxb_5
+        exit_desc = "wt_cross_5m"
+    elif er == "dc15":
+        long_exit_mask, short_exit_mask = dcxu_15, dcxo_15
+        exit_desc = "dc_basis_crossunder_15m"
+    elif er == "dc5":
+        long_exit_mask, short_exit_mask = dcxu_5, dcxo_5
+        exit_desc = "dc_basis_crossunder_5m"
+    elif er == "late_safety":
+        long_exit_mask = (wt1_5 < wt2_5) & (k15 > 80)
+        short_exit_mask = (wt1_5 > wt2_5) & (k15 < 20)
+        exit_desc = "wt1<wt2_5m + stoch_k_15m extreme (feedback late-safety)"
+    elif er == "delta_slow":
+        long_exit_mask = (wtv_5 < 0) & (wta_5 < 0)
+        short_exit_mask = (wtv_5 > 0) & (wta_5 > 0)
+        exit_desc = "wt_vel+accel decel (delta slowdown)"
+    elif er == "delta_slow_15m":
+        long_exit_mask = (wtv_15 < 0) & (wta_15 < 0)
+        short_exit_mask = (wtv_15 > 0) & (wta_15 > 0)
+        exit_desc = "wt_vel+accel decel on 15m"
+    elif er == "multi_tf_wt":
+        ltf = (~wtb_5) & (~wtb_15)
+        htf = (~wtb_1h) | (~wtb_4h) | (~wtb_D)
+        long_exit_mask = ltf & htf
+        short_exit_mask = (wtb_5 & wtb_15) & (wtb_1h | wtb_4h | wtb_D)
+        exit_desc = "(!wtb_5m AND !wtb_15m) AND (!wtb_1h OR !wtb_4h OR !wtb_D) — TF hierarchy"
+    elif er == "wt_state_15m_1h":
+        long_exit_mask = (~wtb_15) & (~wtb_1h)
+        short_exit_mask = wtb_15 & wtb_1h
+        exit_desc = "!wtb_15m AND !wtb_1h"
+    elif er == "stoch_ob_cross":
+        long_exit_mask = (k15 > 80) & stxu_15
+        short_exit_mask = (k15 < 20) & stxo_15
+        exit_desc = "stoch extreme + cross"
+    elif er == "ha_flip":
+        long_exit_mask = ha_15 < 0
+        short_exit_mask = ha_15 > 0
+        exit_desc = "heikin-ashi 15m color"
+    elif er == "combined_primary":
+        long_exit_mask = ((wtv_5 < 0) & (wta_5 < 0)) | ((wt1_5 < wt2_5) & (k15 > 80))
+        short_exit_mask = ((wtv_5 > 0) & (wta_5 > 0)) | ((wt1_5 > wt2_5) & (k15 < 20))
+        exit_desc = "delta_slow OR late_safety (feedback PRIMARY)"
+    elif er == "combined_all":
+        ltf = (~wtb_5) & (~wtb_15); htf = (~wtb_1h) | (~wtb_4h) | (~wtb_D)
+        long_exit_mask = ((wtv_5 < 0) & (wta_5 < 0)) | ((wt1_5 < wt2_5) & (k15 > 80)) | (ltf & htf) | wtxr_15
+        short_exit_mask = ((wtv_5 > 0) & (wta_5 > 0)) | ((wt1_5 > wt2_5) & (k15 < 20)) | ((wtb_5 & wtb_15) & (wtb_1h | wtb_4h | wtb_D)) | wtxb_15
+        exit_desc = "primary OR multi_tf_wt OR wt_cross_15m"
+    elif er == "fast_wt_dc_5m":
+        long_exit_mask = wtxr_5 | dcxu_5
+        short_exit_mask = wtxb_5 | dcxo_5
+        exit_desc = "wt_cross_5m OR dc_basis_5m"
+    elif er == "fast_wt_dc_15m":
+        long_exit_mask = wtxr_15 | dcxu_15
+        short_exit_mask = wtxb_15 | dcxo_15
+        exit_desc = "wt_cross_15m OR dc_basis_15m"
+    else:
+        raise SystemExit(f"Unknown --exit-rule: {er}")
     exit_idx_L = precompute_exit_indices(long_exit_mask, args.max_hold)
     exit_idx_S = precompute_exit_indices(short_exit_mask, args.max_hold)
-    # Sanity: how many signals have technical exit within max_hold vs forced to max_hold?
     forced_L = np.mean(exit_idx_L - np.arange(n_bars).reshape(-1, 1) >= args.max_hold)
     forced_S = np.mean(exit_idx_S - np.arange(n_bars).reshape(-1, 1) >= args.max_hold)
-    print(f"[{time.time()-t0:.1f}s] Exit rules: LONG={LONG_EXIT_FIELD} (forced @max_hold: {forced_L*100:.1f}%), SHORT={SHORT_EXIT_FIELD} (forced: {forced_S*100:.1f}%)")
+    print(f"[{time.time()-t0:.1f}s] Exit rule [{args.exit_rule}]: {exit_desc}")
+    print(f"[{time.time()-t0:.1f}s] Forced @max_hold: LONG={forced_L*100:.1f}% SHORT={forced_S*100:.1f}%")
 
     if SIDE_RANK_ENABLED and len(syms_used) > SIDE_RANK_KEEP:
         long_syms, short_syms, _ = rank_syms_by_uptrend(loaded, syms_used)
@@ -460,11 +550,17 @@ def main():
 
     kept = 0; elite = 0; done_combos = 0
     report_t = time.time()
+    best_robust_so_far = -1e9
+    bail_checked = False
+    bailed = False
+    sweep_start = time.time()
     with Pool(args.workers, initializer=init_worker, initargs=(str(state_path),)) as pool:
         tasks = itertools.chain(make_tasks("L", keys_L), make_tasks("S", keys_S))
         for batch in pool.imap_unordered(run_chunk, tasks, chunksize=1):
-            done_combos += args.chunk  # approx
+            done_combos += args.chunk
             for r in batch:
+                if r["sharpe_robust"] > best_robust_so_far:
+                    best_robust_so_far = r["sharpe_robust"]
                 if r["sharpe_robust"] >= args.floor_robust:
                     is_elite = 1 if r["sharpe_robust"] >= args.elite_robust else 0
                     conn.execute("""INSERT INTO results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
@@ -478,16 +574,28 @@ def main():
                     kept += 1
                     if is_elite:
                         elite += 1
-            if time.time() - report_t > 20:
+            # Early-abort: if after bail-after-s no robust >= bail-min-robust, kill the whole sweep
+            now = time.time()
+            elapsed_sweep = now - sweep_start
+            if args.bail_after_s > 0 and not bail_checked and elapsed_sweep >= args.bail_after_s:
+                bail_checked = True
+                if best_robust_so_far < args.bail_min_robust:
+                    print(f"[{elapsed_sweep:.0f}s] EARLY ABORT — best_robust={best_robust_so_far:.3f} < bail-min={args.bail_min_robust} after {args.bail_after_s}s. Moving on.")
+                    bailed = True
+                    pool.terminate()
+                    break
+                else:
+                    print(f"[{elapsed_sweep:.0f}s] bail check OK — best_robust={best_robust_so_far:.3f} >= {args.bail_min_robust}, continuing")
+            if now - report_t > 20:
                 conn.commit()
-                elapsed = time.time() - t0
+                elapsed = now - t0
                 rate = done_combos / max(1, elapsed)
                 top = conn.execute("""SELECT side, combo, sharpe_robust, sharpe_avg, sharpe_pool, wr_avg, mean_ret_avg, mae_avg, tuw_avg, n_trades_total, syms_included
                     FROM results ORDER BY sharpe_robust DESC LIMIT 5""").fetchall()
-                print(f"[{elapsed:6.0f}s] done~{done_combos}/{total} kept={kept} elite={elite} rate={rate:,.0f}c/s  top5:")
+                print(f"[{elapsed:6.0f}s] done~{done_combos}/{total} kept={kept} elite={elite} rate={rate:,.0f}c/s best={best_robust_so_far:.3f}  top5:")
                 for row in top:
-                    print(f"    {row[0]} rob={row[2]:.3f} avg={row[3]:.3f} pool={row[4]:.3f} WR={row[5]:.1f}% mean={row[6]*100:.2f}% MAE={row[7]*100:.2f}% TUW={row[8]*100:.0f}% n={row[9]} syms={row[10]} {row[1][:65]}")
-                report_t = time.time()
+                    print(f"    {row[0]} rob={row[2]:.3f} avg={row[3]:.3f} pool={row[4]:.3f} WR={row[5]:.1f}% mean={row[6]*100:.2f}% n={row[9]} syms={row[10]} {row[1][:65]}")
+                report_t = now
                 if elapsed > args.time_budget_s:
                     print(f"[{elapsed:.0f}s] HARD STOP — time budget reached"); pool.terminate(); break
     conn.commit()

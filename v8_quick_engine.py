@@ -154,7 +154,8 @@ class QuickConfig:
     REENTRY_B_MFI_D_OVERSOLD_ENABLED: bool = False
     # === 2026-04-17 HEDGE + REENTRY OVERHAUL SWITCHES ===
     # Hedge: snapshot 2026-04-19 had hedge as LIVE-ONLY (no simulation). Simulation defaults OFF to match baseline.
-    HEDGE_ENABLED: bool = False  # snapshot baseline: no hedge sim. True inflated trades 1209→84K, destroyed Sharpe 2.55→0.08.
+    HEDGE_ENABLED: bool = False  # snapshot baseline: no hedge sim. True inflated trades 1209→84K due to no min-hold. Fixed: HEDGE_MIN_HOLD_BARS prevents micro-hedges.
+    HEDGE_MIN_HOLD_BARS: int = 10  # min bars before closing a hedge (prevents 3m micro-hedge churn). 10 bars = 30 min.
     HEDGE_EXIT_BYPASS_NOLOSS: bool = True
     HEDGE_EXIT_WT_TF: str = "3m"
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
@@ -1439,7 +1440,8 @@ def simulate(stores, cfg, capital=10000.0):
                 else:
                     _wp_aligned = (_wp_wt1_1h < _wp_wt2_1h) & (_wp_wt1_4h < _wp_wt2_4h) & (_wp_wt1_D < _wp_wt2_D)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
-            hedge_in_pos = False; hedge_ep = 0.0
+            hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
+            hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
             pt_pct = cfg.PROFIT_TARGET_PCT
             sl_enabled = cfg.STOP_LOSS_ENABLED
@@ -1462,8 +1464,8 @@ def simulate(stores, cfg, capital=10000.0):
                         else:
                             hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
                         if hc and not hedge_in_pos:
-                            hedge_in_pos = True; hedge_ep = px
-                        elif not hc and hedge_in_pos and hedge_ep > 0:
+                            hedge_in_pos = True; hedge_ep = px; hedge_eb = i
+                        elif not hc and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     # Profit target (live_pnl>=pt_pct is mutually exclusive with hc, so hedge is already closed)
