@@ -930,11 +930,10 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """Crypto hunt centered on Sharpe-2.55 baseline (VEL=8 HOLD=250 PT=1.6% STRENGTH=5).
-    Trillion-combo random sampling with EARLY_ABORT at 4 symbols floor=4.0.
-    NOLOSS=True (default, never override). DC_RECOVERY_EXIT tests the stranded-position unlock.
-    ~5M raw combos — use grid_sample_random, never grid_to_configs.
-    Run: --start 2022-01-01 --target-winners 1000 --min-csv-sharpe 4.0 --workers 12 --max-configs 500
+    """Crypto pre-screen: 12-symbol fast filter. Kill <2.0 Sharpe after 15s. Save >=4.0.
+    Target 10k winners on 12 symbols then promote to full 48-symbol validation.
+    NOLOSS=True (default). ~2M combos — random sampling.
+    Run: --symbols fast --start 2022-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12
     """
     return {
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0, 14.0],
@@ -949,17 +948,17 @@ def build_param_grid_mega_crypto_v8():
         "D_TREND_REQUIRED": [True, False],
         "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [12],
-        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
 def build_param_grid_mega_tradier_v8():
-    """Tradier hunt centered on confirmed winner zone (PT=0.3 HOLD=40 → Sharpe 11.3 on 262 syms).
-    VEL_GATE=False confirmed best for stocks. NOLOSS=True (default).
-    ~3M raw combos — use grid_sample_random.
-    Run: --mode tradier --start 2022-01-01 --target-winners 1000 --min-csv-sharpe 4.0 --workers 12 --max-configs 500
+    """Tradier pre-screen: 12-symbol fast filter. Kill <2.0 Sharpe after 15s. Save >=4.0.
+    Target 10k winners on 12 symbols then promote to full validation.
+    NOLOSS=True (default).
+    Run: --mode tradier --symbols fast --start 2024-01-01 --target-winners 10000 --min-csv-sharpe 4.0 --workers 8
     """
     return {
         "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
@@ -974,8 +973,8 @@ def build_param_grid_mega_tradier_v8():
         "D_TREND_REQUIRED": [True, False],
         "HTF_MIN_ALIGNED": [1, 2],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [12],
-        "EARLY_ABORT_SHARPE_FLOOR": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
