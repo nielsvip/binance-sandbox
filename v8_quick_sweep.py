@@ -1435,6 +1435,36 @@ def build_param_grid_le_dynamic_tradier_v2_validate():
     return configs
 
 
+def build_param_grid_le_dynamic_tradier_v2_validate_ea():
+    """2026-04-20: Same as v2_validate but with early abort (floor=2.0 after 20 symbols).
+    Configs that score below Sharpe 2.0 on first 20 symbols are killed and flagged as culprits.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier le_dynamic_tradier_v2_validate_ea --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    """
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
+        "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 20,
+        "EARLY_ABORT_SHARPE_FLOOR": 2.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = []
+    for score in [35.0, 45.0, 55.0]:
+        for ce_thr in [30.0, 40.0, 55.0]:
+            for hold in [4, 10, 20]:
+                configs.append({**base,
+                    "LOCAL_EXTREMES_MIN_SCORE": score,
+                    "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
+                    "MIN_HOLD_BARS": hold,
+                })
+    return configs
+
+
 def build_param_grid_stock_exit_v1():
     """2026-04-20: Technical exit sweep for tradier stocks targeting Sharpe>2.5.
     Tests 3 new exits (vel_floor, kd_wt1h, adaptive_tfs) + 2 existing untested exits
@@ -1833,6 +1863,7 @@ TIER_MAP = {
     "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
     "le_dynamic_tradier_v2": build_param_grid_le_dynamic_tradier_v2,
     "le_dynamic_tradier_v2_validate": build_param_grid_le_dynamic_tradier_v2_validate,
+    "le_dynamic_tradier_v2_validate_ea": build_param_grid_le_dynamic_tradier_v2_validate_ea,
     "le_partial_exit_tradier": build_param_grid_le_partial_exit_tradier,
     "le_partial_exit_tradier_validate": build_param_grid_le_partial_exit_tradier_validate,
     "le_partial_exit_crypto": build_param_grid_le_partial_exit_crypto,

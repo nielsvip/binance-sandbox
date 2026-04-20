@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-20 18:06:35 UTC
+# Copilot Status — 2026-04-20 18:22:05 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-20T18:04:38
-- **STALE_INDICATORS** [tradier]  — 2026-04-20T18:05:09
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:05:09
-- **STALE_INDICATORS** [tradier]  — 2026-04-20T18:05:40
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:05:40
-- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T18:05:44
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-20T18:05:44
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-20T18:05:44
-- **STALE_INDICATORS** [tradier]  — 2026-04-20T18:06:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:06:15
+- **STALE_INDICATORS** [tradier]  — 2026-04-20T18:20:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:20:27
+- **STALE_INDICATORS** [tradier]  — 2026-04-20T18:20:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:20:57
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T18:21:00
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-20T18:21:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:21:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-20T18:22:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-04-20T18:22:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-20T18:22:04
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,16 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 1m ago
+- HELD: **MSTR** LONG (tradier) peak +16.9%, now +2.1%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 3
-- [MEDIUM] tradier_rankings.py running but log stale (10min)
+**Issues (last 1h):** 4
 - [HIGH] ez_indicators.py is NOT running
 - [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [MEDIUM] ez_prices.py running but log stale (10min)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)

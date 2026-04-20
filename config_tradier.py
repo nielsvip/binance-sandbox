@@ -1150,8 +1150,12 @@ class TradierConfig:
     BOUNCE_AUGMENT_K_D_THRESHOLD: float = 20.0  # k_D must be below this (oversold on daily)
     BOUNCE_AUGMENT_MIN_LOSS_PCT: float = -0.5  # ANY loss triggers evaluation (user: "not -10%, ANY loss")
     BOUNCE_AUGMENT_PAPER: bool = True  # Paper mode — log only, no real orders
-    BREAKEVEN_DC_LOW4_ENABLED: bool = True  # DC_LOW4_3M structural stop
-    BREAKEVEN_GRACE_MINUTES: float = 15.0  # Grace period before no-loss kicks in
+    BREAKEVEN_DC_LOW4_ENABLED: bool = True  # DC_LOW4_5M structural stop — fires any time position was profitable
+    BREAKEVEN_GRACE_MINUTES: float = 15.0  # Grace period (bars pardon) before no-loss kicks in
+    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True  # Close positions that were profitable and fell back below 0
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.3  # must have reached >= 0.3% gain to activate (stocks move slower)
+    PEAK_GIVEBACK_DROP_PCT: float = 2.0  # also exit if gave back >= 2.0% from peak (even if still positive)
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True  # exit immediately when gain turns negative after profitable peak
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

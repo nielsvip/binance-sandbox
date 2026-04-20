@@ -3933,6 +3933,36 @@ class StockStrategy:
                 logger.warning(f"[TRA_STRICT_EXIT] {symbol} L: STRICT 5-of-5 gate fired score={_tra_score:.0f} g={gain:.2f}% — exiting in profit only")
                 return True, f"TRA_STRICT_EXIT_g={gain:.2f}%_{_tra_reason[:60]}", qty
 
+        # ═══ PEAK_GIVEBACK_PROTECTION + DC_LOW4_5M (2026-04-20) ═══
+        # "Positions that were in gain and fall back below 0 must close."
+        # Bypasses STOCK_MIN_HOLD and UNIVERSAL_NOLOSS_GATE intentionally — protecting
+        # realised peak gain takes precedence over hold-time rules.
+        # Grace period (BREAKEVEN_GRACE_MINUTES) provides initial pardon for pullbacks.
+        # DC_LOW4_5M structural stop fires any time the position was ever profitable.
+        _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
+        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+            _pgp_max_g = float(getattr(position, 'max_gain', 0) or 0)
+            _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.3))
+            _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
+            _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 2.0))
+            _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
+            _pgp_ind = indicators if indicators else i
+            if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace:
+                if _pgp_hard_zero and gain < 0:
+                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% NOW NEGATIVE gain={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
+                    return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{gain:.2f}%", qty
+                if gain < _pgp_max_g - _pgp_drop:
+                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
+                    return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
+            if _pgp_max_g > 0 and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
+                _be_dc_low4 = float((_pgp_ind).get('dc_low4_5m', 0) or 0)
+                _be_dc_high4 = float((_pgp_ind).get('dc_high4_5m', 0) or 0)
+                if is_long and _be_dc_low4 > 0 and current_price > 0 and current_price < _be_dc_low4:
+                    logger.critical(f"🚫[DC_LOW4_5M_BREAK] {symbol} L: price {current_price:.4f} < dc_low4_5m {_be_dc_low4:.4f} was_profitable={_pgp_max_g:.2f}% — structural stop")
+                    return True, f"DC_LOW4_5M_GAIN_EROSION_STOP_p{current_price:.4f}<dc4{_be_dc_low4:.4f}_g{gain:.2f}%", qty
+                if not is_long and _be_dc_high4 > 0 and current_price > 0 and current_price > _be_dc_high4:
+                    logger.critical(f"🚫[DC_HIGH4_5M_BREAK] {symbol} S: price {current_price:.4f} > dc_high4_5m {_be_dc_high4:.4f} was_profitable={_pgp_max_g:.2f}% — structural stop")
+                    return True, f"DC_HIGH4_5M_GAIN_EROSION_STOP_p{current_price:.4f}>dc4{_be_dc_high4:.4f}_g{gain:.2f}%", qty
         # ==================================================================
         # #1 RULE: DELTA ENGINE EXIT (Sharpe 63.44) + WT/DC SCORER FALLBACK (Sharpe 11.46)
         # DEPLOYED 2026-04-08. 48h monitoring. ROLLBACK: backups/before_scorer_wire_202604080100.py
@@ -3941,8 +3971,6 @@ class StockStrategy:
         # crypto — they are swing/position trades, not scalps. The 1h/4h/D slowdown
         # is what signals a reversal; LTF noise must not close a position.
         _stock_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
-        # Options held separately (D reversal only — handled below)
-        _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if not _is_opts_check and hold_time_min < _stock_min_hold:
             return False, f"STOCK_MIN_HOLD({hold_time_min:.0f}m<{_stock_min_hold:.0f}m)", 0
         # ═══ RANGE TOP/BOTTOM EXIT (stocks) — USER 2026-04-14 ═══
