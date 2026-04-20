@@ -20,7 +20,7 @@ import os
 import random
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, BrokenExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -1337,28 +1337,34 @@ def main():
                 else:
                     init_fn = _worker_init_shared
                     worker_fn = run_one_config_shared
-                with ProcessPoolExecutor(
-                    max_workers=args.workers,
-                    initializer=init_fn,
-                    initargs=(npz_dir, args.mode, symbols_list, args.start)
-                ) as executor:
-                    futures = {executor.submit(worker_fn, (t[4], t[5])): t for t in todo}
-                    for future in as_completed(futures):
-                        try:
-                            result = future.result()
-                        except Exception as e:
-                            print(f"  ERROR: {e}")
-                            continue
-                        _process_result(result, len(todo))
-                        if target_winners > 0 and winners_found >= target_winners:
-                            for f in futures:
-                                f.cancel()
-                            break
-                        if target_winners == 0 and (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
-                            print(f"  KILL-RULE ({args.kill_secs:.0f}s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
-                            for f in futures:
-                                f.cancel()
-                            break
+                try:
+                    with ProcessPoolExecutor(
+                        max_workers=args.workers,
+                        initializer=init_fn,
+                        initargs=(npz_dir, args.mode, symbols_list, args.start)
+                    ) as executor:
+                        futures = {executor.submit(worker_fn, (t[4], t[5])): t for t in todo}
+                        for future in as_completed(futures):
+                            try:
+                                result = future.result()
+                            except BrokenExecutor as e:
+                                print(f"  BROKEN_POOL: {e} — restarting next pass")
+                                break
+                            except Exception as e:
+                                print(f"  ERROR: {e}")
+                                continue
+                            _process_result(result, len(todo))
+                            if target_winners > 0 and winners_found >= target_winners:
+                                for f in futures:
+                                    f.cancel()
+                                break
+                            if target_winners == 0 and (time.time() - t_start) >= args.kill_secs and best_sharpe < args.kill_sharpe:
+                                print(f"  KILL-RULE ({args.kill_secs:.0f}s): best_sharpe={best_sharpe:.4f} < {args.kill_sharpe} — moving on")
+                                for f in futures:
+                                    f.cancel()
+                                break
+                except (BrokenExecutor, OSError) as e:
+                    print(f"  POOL_CRASH: {e} — will retry next pass")
 
         if target_winners > 0:
             # TARGET-WINNERS mode: sample random batches until we hit the target.

@@ -637,7 +637,7 @@ def iter_npz(mode, symbols, start_date, npz_dir=""):
         trimmed = {k: v[start_idx:] if isinstance(v, np.ndarray) and len(v) > start_idx else v for k, v in data.items()}
         count += 1
         yield sym, trimmed
-    print(f"Streamed {count} symbols from {d}")
+    print(f"Streamed {count} symbols from {d}", file=sys.stderr)
 
 
 def load_npz(mode, symbols, start_date, npz_dir=""):
