@@ -603,6 +603,7 @@ class TradierConfig:
     MAX_SYMBOL_VALUE_TRADIER: float = 15000.0  # Max $ value per symbol. USO hit $352K, IBIT $119K — caused disaster losses.
     TRC_MAX_SYMBOL_VALUE: float = 5000.0  # Local extremes: cap per symbol at $5000 (was 15000)
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
+    TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = True  # LE scorer for ALL tradier accounts (trb+trc): 25-indicator gate + $50-$5000 tier sizing
     TRB_MAX_SYMBOL_VALUE: float = 10000.0  # trb cap (smaller account)
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
@@ -815,8 +816,14 @@ class TradierConfig:
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True  # bb_4h Apr-13 DISASTER avg -0.95% 16%WR. bb_1h is correct for stocks (user directive). dc_4h is for crypto only.
     STRUCTURAL_RANGE_SHIFT_TF: str = "bb_1h"  # STOCKS: bb_1h (user directive — bb_upper_1h/bb_lower_1h). CRYPTO: dc_4h. bb_4h was wrong and caused April-13 losses.
     # Cascade params (stocks) — same knobs as crypto unless overridden
-    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 75.0  # T25 sweep: 75.0 best tested (was 80.0 user directive)
-    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 25.0   # T25 sweep: 25.0 best tested (was 20.0 user directive)
+    STRUCTURAL_RANGE_SHIFT_K_HIGH: float = 85.0  # 2026-04-20: tightened from 75 — only exit at extreme overbought
+    STRUCTURAL_RANGE_SHIFT_K_LOW: float = 15.0   # 2026-04-20: tightened from 25 — only exit at extreme oversold
+    SRS_K_EXIT_1H: float = 85.0                  # v8 engine: SRS exit k_1h threshold (matches K_HIGH above)
+    STOCH_1H_EXIT_K_MIN: float = 85.0            # v8 engine: stoch cross exit requires k_1h >= 85
+    EXIT_SCORER_K_EXTREME: float = 85.0          # wt_dc_exit_scorer: extreme k threshold (was hardcoded 75)
+    K_LOWER_HIGH_EXIT_ENABLED: bool = True        # v8 engine: exit if k peaks below extreme and turns down
+    K_LOWER_HIGH_LTF_THRESHOLD: float = 65.0     # k_5m must reach >= 65 to qualify as failed rally
+    K_LOWER_HIGH_EXTREME: float = 95.0           # only fires if k_prev < 95 (didn't reach true extreme)
     STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS: float = 100.0
     # ═══ D4 BREAKOUT MULTI-LUNG (stocks, 2026-04-16) — extracted from ez_breakout_agent.py ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung_tradier delivers Sharpe > 2 on 128-stock × 2yr.

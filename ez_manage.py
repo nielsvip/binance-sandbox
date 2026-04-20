@@ -20301,19 +20301,19 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         # --- MANDATORY PROFIT TAKE (MOMENTUM EXHAUSTION) ---
         if current_gain > 0.5 and not _recently_reduced:
             tp_reason = ""; tp_price = current_price
-            if is_long and k_15m > 90 and k_15m < k_15m_prev:
+            if is_long and k_15m > 95 and k_15m < k_15m_prev:
                 tp_reason = f"PROFIT_TP_EXHAUSTION_k15:{k_15m:.1f}"
-            elif not is_long and k_15m < 10 and k_15m > k_15m_prev:
+            elif not is_long and k_15m < 5 and k_15m > k_15m_prev:
                 tp_reason = f"PROFIT_TP_EXHAUSTION_k15:{k_15m:.1f}"
-            elif is_long and k_15m > 90 and low_3m > 0 and low_3m_prev > 0 and low_3m < low_3m_prev:
+            elif is_long and k_15m > 95 and low_3m > 0 and low_3m_prev > 0 and low_3m < low_3m_prev:
                 tp_reason = f"OB_LOWER_LOW_k15:{k_15m:.1f}_lo3:{low_3m:.2f}<prev:{low_3m_prev:.2f}"; tp_price = close_3m_prev if close_3m_prev > 0 else current_price
-            elif is_long and k_3m > 60 and k_3m < k_3m_prev and (k_15m > 80 or k_1h > 80) and low_3m > 0 and low_3m_prev > 0 and low_3m < low_3m_prev:
+            elif is_long and k_3m > 60 and k_3m < k_3m_prev and (k_15m > 95 or k_1h > 85) and low_3m > 0 and low_3m_prev > 0 and low_3m < low_3m_prev:
                 tp_reason = f"K3M_BOUNCE_TURN_L_k3:{k_3m:.1f}<prev:{k_3m_prev:.1f}_k15:{k_15m:.1f}_k1h:{k_1h:.1f}_lo3:{low_3m:.2f}<prev:{low_3m_prev:.2f}"; tp_price = close_3m_prev if close_3m_prev > 0 else current_price
             elif is_long and low_3m_prev > 0 and current_price < low_3m_prev:
                 cliff = dc_low_3m > 0 and current_price < dc_low_3m and k_3m < 30; tp_price = current_price if cliff else (close_3m_prev if close_3m_prev > 0 else current_price); tp_reason = f"HARD_DROP_BELOW_PREV_LOW:{current_price:.2f}<lo3prev:{low_3m_prev:.2f}{'_CLIFF_dc' if cliff else '_BOUNCE_WAIT'}"
-            elif not is_long and k_15m < 10 and low_3m > 0 and low_3m_prev > 0 and low_3m > low_3m_prev:
+            elif not is_long and k_15m < 5 and low_3m > 0 and low_3m_prev > 0 and low_3m > low_3m_prev:
                 tp_reason = f"OS_HIGHER_LOW_k15:{k_15m:.1f}_lo3:{low_3m:.2f}>prev:{low_3m_prev:.2f}"; tp_price = close_3m_prev if close_3m_prev > 0 else current_price
-            elif not is_long and k_3m < 40 and k_3m > k_3m_prev and (k_15m < 20 or k_1h < 20) and high_3m > 0 and high_3m_prev > 0 and high_3m > high_3m_prev:
+            elif not is_long and k_3m < 40 and k_3m > k_3m_prev and (k_15m < 5 or k_1h < 15) and high_3m > 0 and high_3m_prev > 0 and high_3m > high_3m_prev:
                 tp_reason = f"K3M_BOUNCE_TURN_S_k3:{k_3m:.1f}>prev:{k_3m_prev:.1f}_k15:{k_15m:.1f}_k1h:{k_1h:.1f}_hi3:{high_3m:.2f}>prev:{high_3m_prev:.2f}"; tp_price = close_3m_prev if close_3m_prev > 0 else current_price
             elif not is_long and high_3m_prev > 0 and current_price > high_3m_prev:
                 cliff = dc_high_3m > 0 and current_price > dc_high_3m and k_3m > 70; tp_price = current_price if cliff else (close_3m_prev if close_3m_prev > 0 else current_price); tp_reason = f"HARD_RISE_ABOVE_PREV_HIGH:{current_price:.2f}>hi3prev:{high_3m_prev:.2f}{'_CLIFF_dc' if cliff else '_BOUNCE_WAIT'}"

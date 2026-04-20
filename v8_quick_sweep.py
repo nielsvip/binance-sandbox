@@ -1406,33 +1406,32 @@ def build_param_grid_le_dynamic_tradier_v2():
 
 def build_param_grid_le_dynamic_tradier_v2_validate():
     """2026-04-20: Full 128-symbol validation of le_dynamic_v2 winners.
-    Paste best configs from v2 fast run before launching.
-    Run: --mode tradier --symbols all --start 2023-05-01 --tier le_dynamic_tradier_v2_validate --workers 8 --kill-sharpe 0 --kill-secs 999999
+    Winners from fast 12-sym sweep: score=45 + PT=0.5% dominates (Sharpe 3.73).
+    PT=False = 0.54 max -> dead. Also test score=35/55 neighbors to confirm.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier le_dynamic_tradier_v2_validate --workers 8 --kill-sharpe 0 --kill-secs 999999
     """
-    configs = []
     base = {
         "LOCAL_EXTREMES_SCORER_ENABLED": True,
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
         "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
         "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
+        "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 0.5,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
     }
-    # Winners from v2 fast run — will be updated after fast sweep
+    configs = []
     for score in [35.0, 45.0, 55.0]:
-        for ce_thr in [30.0, 40.0]:
-            for hold in [10, 20]:
-                for pt_enabled, pt_pct in [(True, 0.5), (True, 1.0), (False, 1.0)]:
-                    configs.append({**base,
-                        "LOCAL_EXTREMES_MIN_SCORE": score,
-                        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
-                        "MIN_HOLD_BARS": hold,
-                        "PROFIT_TARGET_ENABLED": pt_enabled,
-                        "PROFIT_TARGET_PCT": pt_pct,
-                    })
+        for ce_thr in [30.0, 40.0, 55.0]:
+            for hold in [4, 10, 20]:
+                configs.append({**base,
+                    "LOCAL_EXTREMES_MIN_SCORE": score,
+                    "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
+                    "MIN_HOLD_BARS": hold,
+                })
     return configs
 
 
@@ -1577,6 +1576,48 @@ def build_param_grid_le_full_tradier():
     return configs
 
 
+def build_param_grid_le_k1h_rising():
+    """2026-04-20: K1H_RISING_GATE sweep — tests whether requiring k_1h < threshold AND rising
+    (bouncing from oversold rather than mid-collapse) improves Sharpe over flat LE baseline.
+    Config 0 = LE+tier baseline (no k1h gate). Configs 1-4: rising gate at thresholds 30/35/40/45.
+    Configs 5-8: zone-only (no rising requirement, isolates threshold effect).
+    Configs 9-14: rising gate + varied score minimums at thresholds 30/35/40.
+    Configs 15-18: rising gate + profit targets at thresholds 30/35.
+    Run on S2: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01 --tier le_k1h_rising --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "LOCAL_EXTREMES_MIN_SCORE": 15.0,
+        "LE_TIER_SIZING_ENABLED": True,
+        "K1H_RISING_GATE_ENABLED": False,
+        "K1H_RISING_LONG_MAX": 35.0,
+        "PROFIT_TARGET_ENABLED": False,
+        "MIN_HOLD_BARS": 4,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    configs = [dict(base)]  # config 0 = LE+tier baseline, no k1h gate
+    # Rising gate at various thresholds (LONG: k_1h < thresh AND rising; SHORT: mirror)
+    for thresh in [30.0, 35.0, 40.0, 45.0]:
+        configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh})
+    # Zone-only (threshold but no rising requirement) — isolates threshold vs rising benefit
+    for thresh in [30.0, 35.0, 40.0, 45.0]:
+        configs.append({**base, "K1H_RISING_GATE_ENABLED": False, "LOCAL_EXTREMES_MIN_SCORE": 15.0,
+                        "K1H_RISING_LONG_MAX": thresh})
+    # Rising gate + varied score minimums
+    for thresh in [30.0, 35.0, 40.0]:
+        for min_score in [20.0, 30.0]:
+            configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
+                            "LOCAL_EXTREMES_MIN_SCORE": min_score})
+    # Rising gate + profit targets
+    for thresh in [30.0, 35.0]:
+        for pt_pct in [1.0, 2.0]:
+            configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
+                            "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": pt_pct})
+    return configs
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -1640,6 +1681,7 @@ TIER_MAP = {
     "stock_exit_v1": build_param_grid_stock_exit_v1,
     "crypto_exit_v1": build_param_grid_crypto_exit_v1,
     "le_full_tradier": build_param_grid_le_full_tradier,
+    "le_k1h_rising": build_param_grid_le_k1h_rising,
 }
 
 

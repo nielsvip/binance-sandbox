@@ -531,6 +531,8 @@ class QuickConfig:
     LOCAL_EXTREMES_SCORER_ENABLED: bool = False
     LOCAL_EXTREMES_MIN_SCORE: float = 30.0
     LE_TIER_SIZING_ENABLED: bool = False
+    K1H_RISING_GATE_ENABLED: bool = False
+    K1H_RISING_LONG_MAX: float = 35.0
     # ===== 2026-04-20 DYNAMIC SCORING — 5-min interval intervention =====
     # Counter-exit: while in LONG, if SHORT-direction LE score >= threshold → exit early (cut losers).
     # Augment: every DYNAMIC_SCORE_AUGMENT_INTERVAL bars, if same-direction score jumped by MIN_JUMP → augment.
@@ -639,6 +641,12 @@ class QuickConfig:
         self.LOCAL_EXTREMES_SCORER_ENABLED = True
         self.LOCAL_EXTREMES_MIN_SCORE = 15.0
         self.LE_TIER_SIZING_ENABLED = True
+        # k-threshold exits: require extreme overbought before exiting — tighter than crypto defaults
+        self.SRS_K_EXIT_1H = 85.0          # SRS exit requires k_1h >= 85 (default 75)
+        self.STOCH_1H_EXIT_K_MIN = 85.0    # stoch cross exit requires k_1h prev >= 85 (default 70)
+        self.K_LOWER_HIGH_EXIT_ENABLED = True  # exit if k peaks below extreme and turns down
+        self.K_LOWER_HIGH_LTF_THRESHOLD = 65.0  # k_ltf must be >= 65 (lower bound of failed rally)
+        self.K_LOWER_HIGH_EXTREME = 95.0   # only fires if k_prev < 95 (didn't reach true extreme)
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -1252,6 +1260,15 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _zs = float(getattr(cfg, 'ENTRY_ZONE_SHORT', 100.0) or 100.0)
         if _zs < 100.0:
             extra_ok = extra_ok & (_zone_k_arr > _zs)
+    # K1H_RISING_GATE — LONG: k_1h < threshold AND rising vs prev bar (bouncing from oversold, not still falling).
+    # SHORT: k_1h > (100-threshold) AND falling. Prevents chasing entries mid-collapse.
+    if bool(getattr(cfg, 'K1H_RISING_GATE_ENABLED', False)):
+        _k1h_max = float(getattr(cfg, 'K1H_RISING_LONG_MAX', 35.0))
+        _k1h_prev = np.roll(k_1h, 1); _k1h_prev[0] = k_1h[0]
+        if is_long:
+            extra_ok = extra_ok & (k_1h < _k1h_max) & (k_1h > _k1h_prev)
+        else:
+            extra_ok = extra_ok & (k_1h > (100.0 - _k1h_max)) & (k_1h < _k1h_prev)
     # REENTRY_RALLY_K15M_MAX — cap on k_15m for entries during rally. 100=disabled.
     _rally_cap = float(getattr(cfg, 'REENTRY_RALLY_K15M_MAX', 100.0) or 100.0)
     if _rally_cap < 100.0:
@@ -1556,7 +1573,16 @@ def compute_exit_signals(npz, n, is_long, cfg):
         k_D_arr = _safe(npz, 'stoch_k_D', n, 50.0)
         _kd_thr = float(getattr(cfg, 'KD_WT1H_EXIT_OVERBOUGHT', 80.0))
         kd_wt1h_exit = ((k_D_arr >= _kd_thr) & (wt1_1h < wt2_1h)) if is_long else ((k_D_arr <= (100.0 - _kd_thr)) & (wt1_1h > wt2_1h))
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit
+    k_lower_high_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'K_LOWER_HIGH_EXIT_ENABLED', False):
+        _klh_thr = float(getattr(cfg, 'K_LOWER_HIGH_LTF_THRESHOLD', 65.0))
+        _klh_extreme = float(getattr(cfg, 'K_LOWER_HIGH_EXTREME', 95.0))
+        k_ltf_prev_lh = np.roll(k_ltf, 1); k_ltf_prev_lh[0] = k_ltf[0]
+        if is_long:
+            k_lower_high_exit = (k_ltf_prev_lh >= _klh_thr) & (k_ltf < k_ltf_prev_lh) & (k_ltf_prev_lh < _klh_extreme)
+        else:
+            k_lower_high_exit = (k_ltf_prev_lh <= (100.0 - _klh_thr)) & (k_ltf > k_ltf_prev_lh) & (k_ltf_prev_lh > (100.0 - _klh_extreme))
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
