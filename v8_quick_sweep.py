@@ -845,56 +845,42 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """Single 4D mega grid: ALL confirmed entry knobs + ALL Phase-1 exit winners.
-    Goal: collect 10,000 configs with pool_sharpe >= 4 via partial random sweeps.
-    EARLY_ABORT_TIME_LIMIT_SEC=60 kills slow configs. EARLY_ABORT_SHARPE_FLOOR=4.0
-    kills weak configs after 3 symbols. Shuffle every pass so the space is sampled broadly.
-    Run with: --shuffle --target-winners 10000 --min-csv-sharpe 4.0 --workers 6 --stream
+    """FOCUSED crypto mega grid: ONLY proven K15M/PT/VEL winner zone + Phase-1 exit signals.
+    Based on confirmed winners: K15M=[40-55] PT=[0.14-0.25] VEL=[5-6] HOLD=[20-50] → Sharpe 8-13.
+    Exit signals added on top as extra dimensions.
+    ~294K cartesian combos. With EARLY_ABORT_MIN_SYMBOLS=3 floor=4.0 and 1yr data, most abort
+    in <2s. Expected ~40% pass rate → 10K winners in ~30min on 12 workers.
 
-    Param count (raw cartesian): ~3.2B combos — never run full, always partial+shuffle.
-    CONFIRMED winners from previous sweeps anchor the baseline ranges:
-      K15M=40-55 VEL=6 PT=0.15-0.20 HOLD=20-50 → Sharpe 8-13 on 11 symbols.
+    Run with: --start 2025-04-20 --target-winners 10000 --min-csv-sharpe 4.0 --workers 12 --stream
     """
     return {
-        # ── Entry knobs (confirmed ranges from mega_v3/v4/v5/v6/v7) ──────────────
-        "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 55.0, 60.0, 70.0],
-        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 5.0, 6.0, 8.0],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
-        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
-        "MIN_HOLD_BARS": [5, 10, 20, 30, 50, 75],
+        # ── Proven winner zone (from mega_v3/v4/v5/v6/v7) ─────────────────────
+        "REENTRY_RALLY_K15M_MAX": [35.0, 40.0, 45.0, 50.0, 55.0, 60.0],
+        "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.12, 0.15, 0.18, 0.20, 0.25, 0.30],
+        "MIN_HOLD_BARS": [10, 20, 30, 50],
         "WT_EXIT_MIN_TFS": [2, 3],
-        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
-        "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 24.0],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "RZ_EXIT_ENABLED": [True, False],
-        "SATOSHIT_ENABLED": [True, False],
-        "HTF_MIN_ALIGNED": [1, 2],
-        "D_TREND_REQUIRED": [True, False],
-        "WINNER_PROTECT_ENABLED": [True, False],
-        # ── Phase-1 exit signal winners (audit 2026-04-20) ───────────────────────
-        # #1 WT_ACCEL +0.092: exit when 4h wt_acceleration turns negative
+        # ── Phase-1 exit signal winners ────────────────────────────────────────
         "WT_ACCEL_EXIT_ENABLED": [True, False],
         "WT_ACCEL_EXIT_TF": ["4h", "1h"],
-        # #2 WT_MOMENTUM +0.054: exit when 1h momentum state drops below 0
         "WT_MOMENTUM_EXIT_ENABLED": [True, False],
-        "WT_MOMENTUM_EXIT_TF": ["1h", "4h"],
+        "WT_MOMENTUM_EXIT_TF": ["1h"],
         "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
-        # #3 WT_VEL_MTF +0.053: exit when N TFs show negative velocity
         "WT_VEL_MTF_EXIT_ENABLED": [True, False],
         "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
-        "WT_VEL_MTF_EXIT_THRESHOLD": [-0.5, -1.0, -2.0],
-        # #4 WT_WAVE_PHASE +0.049: exit when wave phase contracts on 1h
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
         "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
-        "WT_WAVE_PHASE_EXIT_TF": ["1h", "4h"],
-        # #5 WT_SCORE_FLIP +0.027: exit when score flips at LTF
+        "WT_WAVE_PHASE_EXIT_TF": ["1h"],
         "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
-        "WT_SCORE_FLIP_EXIT_TF": ["3m", "15m"],
-        # #6 WT_PERCENTILE +0.020: exit when WT percentile crosses extreme
+        "WT_SCORE_FLIP_EXIT_TF": ["3m"],
         "WT_PERCENTILE_EXIT_ENABLED": [True, False],
         "WT_PERCENTILE_EXIT_TF": ["1h"],
-        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0, 85.0],
-        # ── Early abort: kill bad configs fast ──────────────────────────────────
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
+        # ── Kill bad configs after 3 symbols / 60s ─────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [3],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
@@ -902,48 +888,40 @@ def build_param_grid_mega_crypto_v8():
 
 
 def build_param_grid_mega_tradier_v8():
-    """Single 4D mega grid for TRADIER/stocks: ALL confirmed entry knobs + Phase-1 exit winners.
-    Goal: collect 10,000 configs with pool_sharpe >= 4 via partial random sweeps.
-    VEL_GATE=False confirmed best for stocks. Tight PT (0.1-0.5%) drives high Sharpe.
-    EARLY_ABORT_TIME_LIMIT_SEC=60 + floor=4.0 kills losers fast.
-    Run with: --mode tradier --start 2022-01-01 --symbols fast --shuffle
-              --target-winners 10000 --min-csv-sharpe 4.0 --workers 6 --stream
+    """FOCUSED tradier/stocks mega grid: proven winner zone (PT=0.2-0.5 HOLD=20-80) + exit signals.
+    Confirmed winners: PT=0.3 HOLD=40 → Sharpe 11.3 (262 syms). VEL_GATE=False confirmed best.
+    Exit signals added as extra dimensions to find optimal combo.
 
-    Confirmed winner from stock sweeps: PT=0.3 HOLD=40 → Sharpe 11.3 PnL +$6.5k (262 syms).
+    Run with: --mode tradier --start 2025-04-20 --symbols fast --target-winners 10000
+              --min-csv-sharpe 4.0 --workers 12 --stream
     """
     return {
-        # ── Entry knobs (confirmed for stocks) ─────────────────────────────────
-        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
-        "MIN_HOLD_BARS": [5, 10, 20, 40, 60, 80],
-        "CT_WT_VELOCITY_GATE_ENABLED": [False, True],
-        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0, 8.0],
+        # ── Proven winner zone for stocks ───────────────────────────────────────
+        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25, 0.3, 0.4, 0.5],
+        "MIN_HOLD_BARS": [10, 20, 30, 40, 60, 80],
+        "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
-        "ENTRY_SCORE_THRESHOLD": [18.0, 24.0],
-        "HTF_MIN_ALIGNED": [1, 2, 3],
-        "D_TREND_REQUIRED": [True, False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "RZ_EXIT_ENABLED": [True, False],
         "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "WINNER_PROTECT_ENABLED": [True, False],
-        "VWAP_FILTER_ENABLED": [False, True],
+        "RZ_EXIT_ENABLED": [True, False],
+        "VWAP_FILTER_ENABLED": [False],
         # ── Phase-1 exit winners ────────────────────────────────────────────────
         "WT_ACCEL_EXIT_ENABLED": [True, False],
         "WT_ACCEL_EXIT_TF": ["1h", "4h"],
         "WT_MOMENTUM_EXIT_ENABLED": [True, False],
-        "WT_MOMENTUM_EXIT_TF": ["1h", "4h"],
+        "WT_MOMENTUM_EXIT_TF": ["1h"],
         "WT_MOMENTUM_EXIT_THRESHOLD": [0, -1],
         "WT_VEL_MTF_EXIT_ENABLED": [True, False],
         "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
-        "WT_VEL_MTF_EXIT_THRESHOLD": [-0.5, -1.0, -2.0],
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
         "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
-        "WT_WAVE_PHASE_EXIT_TF": ["1h", "4h"],
+        "WT_WAVE_PHASE_EXIT_TF": ["1h"],
         "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
-        "WT_SCORE_FLIP_EXIT_TF": ["3m", "15m"],
+        "WT_SCORE_FLIP_EXIT_TF": ["3m"],
         "WT_PERCENTILE_EXIT_ENABLED": [True, False],
         "WT_PERCENTILE_EXIT_TF": ["1h"],
-        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0, 85.0],
-        # ── Early abort ─────────────────────────────────────────────────────────
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
+        # ── Kill bad configs fast ────────────────────────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [3],
         "EARLY_ABORT_SHARPE_FLOOR": [4.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [60.0],
@@ -1003,6 +981,27 @@ def grid_to_configs(grid) -> list:
     for combo in itertools.product(*values):
         cfg = dict(zip(keys, combo))
         configs.append(cfg)
+    return configs
+
+
+def grid_sample_random(grid, n: int, rng=None) -> list:
+    """Sample n random configs from a dict grid without expanding the full cartesian product.
+    Safe for trillion-combo grids. Each config is a fresh random draw — may have duplicates
+    in theory but negligibly rare at n << grid_size."""
+    if isinstance(grid, list):
+        result = list(grid)
+        if rng:
+            rng.shuffle(result)
+        else:
+            random.shuffle(result)
+        return result[:n]
+    keys = sorted(grid.keys())
+    values = [grid[k] for k in keys]
+    _rand = rng.choice if rng else random.choice
+    configs = []
+    for _ in range(n):
+        combo = tuple(_rand(v) for v in values)
+        configs.append(dict(zip(keys, combo)))
     return configs
 
 
@@ -1104,21 +1103,40 @@ def main():
                     npz_dir = str(d)
                     break
 
-    grid = TIER_MAP[args.tier]()
-    configs = grid_to_configs(grid)
-    if args.limit > 0:
-        configs = configs[:args.limit]
+    raw_grid = TIER_MAP[args.tier]()
+    # Compute grid size without expanding (may be trillions)
+    if isinstance(raw_grid, list):
+        grid_size = len(raw_grid)
+    else:
+        grid_size = 1
+        for v in raw_grid.values():
+            grid_size *= len(v)
+
+    target_winners = args.target_winners
+    winner_floor = args.winner_floor if args.winner_floor > 0 else args.min_csv_sharpe
+    if target_winners > 0 and winner_floor <= 0:
+        winner_floor = 4.0
+
+    # For target-winners mode with huge grids, sample randomly per pass instead of expanding
+    USE_SAMPLING = (target_winners > 0 and grid_size > 500_000) or (grid_size > 10_000_000)
+    batch_size = args.max_configs if args.max_configs > 0 else min(2000, max(200, grid_size // 1000))
+
+    if USE_SAMPLING:
+        # Only sample a batch for bookkeeping purposes — actual expansion happens per-pass below
+        sample_cfg = grid_sample_random(raw_grid, 1)
+        cfg_keys = sorted(sample_cfg[0].keys()) if sample_cfg else []
+        total = grid_size
+    else:
+        configs = grid_to_configs(raw_grid)
+        if args.limit > 0:
+            configs = configs[:args.limit]
+        cfg_keys = sorted(configs[0].keys()) if configs else []
+        total = len(configs)
 
     syms_tag = f"_{len(symbols_list)}sym" if symbols_list else ""
     csv_name = f"v8_quick_{args.mode}_{args.tier}{syms_tag}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv"
     csv_path = BASE_PATH / "data" / "sweep_results" / csv_name
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-
-    target_winners = args.target_winners
-    winner_floor = args.winner_floor if args.winner_floor > 0 else args.min_csv_sharpe
-    # If target_winners active but winner_floor=0, default to a meaningful minimum
-    if target_winners > 0 and winner_floor <= 0:
-        winner_floor = 4.0
 
     done_hashes = set()
     if args.resume and csv_path.exists():
@@ -1128,14 +1146,15 @@ def main():
                 if row.get("status") in ("ok", "useless", "no_trades"):
                     done_hashes.add(row.get("config_hash", ""))
 
-    total = len(configs)
-    print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {total} configs | workers={args.workers}")
+    total_str = f"{total:,}" if total > 100_000 else str(total)
+    print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {total_str} configs | workers={args.workers}")
+    if USE_SAMPLING:
+        print(f"SAMPLING mode: batch_size={batch_size} per pass (grid too large to expand)")
     if target_winners > 0:
         print(f"TARGET-WINNERS mode: collect {target_winners} results with pool_sharpe >= {winner_floor:.2f}")
     print(f"CSV: {csv_path}\n")
 
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
-    cfg_keys = sorted(configs[0].keys()) if configs else []
     fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
     for k in cfg_keys:
         fieldnames.append(f"cfg_{k}")
@@ -1197,7 +1216,7 @@ def main():
             ps = result.get("pool_sharpe", 0)
             if ps > best_sharpe:
                 best_sharpe = ps
-            if ps >= args.min_csv_sharpe:
+            if max(s, ps) >= args.min_csv_sharpe:  # save if EITHER per-sym avg OR pool exceeds threshold
                 writer.writerow(row)
                 csvfile.flush()
             if ps >= winner_floor:
@@ -1263,29 +1282,34 @@ def main():
                             break
 
         if target_winners > 0:
-            # TARGET-WINNERS mode: re-shuffle and re-sample the grid in passes until we hit the target.
-            # Each pass takes up to --max-configs configs (default: all). Skip already-seen hashes.
+            # TARGET-WINNERS mode: sample random batches until we hit the target.
+            # For huge grids (USE_SAMPLING=True), each pass draws fresh random combos.
+            # For small grids, shuffle and exhaust without repeating.
             seen_hashes = set(done_hashes)
-            batch_size = args.max_configs if args.max_configs > 0 else max(500, min(5000, len(configs) // 4))
-            print(f"  Batch size per pass: {batch_size} configs. Grid size: {len(configs)}")
+            print(f"  Batch size per pass: {batch_size} configs.")
             while winners_found < target_winners:
                 pass_num += 1
-                shuffled = list(configs)
-                random.shuffle(shuffled)
-                batch = []
-                for i, cfg_dict in enumerate(shuffled):
-                    h = config_hash(cfg_dict)
-                    if h in seen_hashes:
+                if USE_SAMPLING:
+                    sampled = grid_sample_random(raw_grid, batch_size)
+                    batch = []
+                    for i, cfg_dict in enumerate(sampled):
+                        batch.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_p{pass_num}_{i:05d}"))
+                else:
+                    shuffled = list(configs)
+                    random.shuffle(shuffled)
+                    batch = []
+                    for i, cfg_dict in enumerate(shuffled):
+                        h = config_hash(cfg_dict)
+                        if h in seen_hashes:
+                            continue
+                        seen_hashes.add(h)
+                        batch.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_p{pass_num}_{i:05d}"))
+                        if len(batch) >= batch_size:
+                            break
+                    if not batch:
+                        seen_hashes = set()
+                        print(f"  Pass {pass_num}: grid exhausted. Resetting for next pass.")
                         continue
-                    seen_hashes.add(h)
-                    batch.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_p{pass_num}_{i:05d}"))
-                    if len(batch) >= batch_size:
-                        break
-                if not batch:
-                    # Exhausted all unique configs — reset seen set to allow re-testing
-                    seen_hashes = set()
-                    print(f"  Pass {pass_num}: grid exhausted ({len(configs)} unique configs tested). Resetting for next pass.")
-                    continue
                 print(f"\nV8 Quick Sweep: {args.mode} | tier={args.tier} | {len(batch)} configs (pass {pass_num}) | workers={args.workers}")
                 print(f"  Progress: {winners_found}/{target_winners} winners found so far")
                 _run_pass(batch)

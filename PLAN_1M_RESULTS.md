@@ -112,6 +112,42 @@ Run on 16 crypto-symbol groups + 16 tradier-symbol groups = **64,800 × 32 = 2,0
 
 ## EVIDENCE LOG (append below, most recent first)
 
+### 2026-04-20 00:45 UTC — HONEST NOLOSS=False BASELINES (NOLOSS artifact fully audited)
+
+**ROOT CAUSE CONFIRMED: ALL "Sharpe >4" results from mega_v2 through mega_v5 were NOLOSS=True artifacts.**
+- mega_v4 "champion" K15M=55, PT=0.15, VEL=6, HOLD=50: WR=99.7%, Sharpe=8.8. With NOLOSS=False: WR=79%, Sharpe=0.14.
+- The NOLOSS=True artifact: losing trades never close during sim → only winners contribute to Sharpe → inflated metric.
+- NOLOSS=False patch restored in `_run_config_with_stores()`. MD5 verified on all 3 machines.
+
+**PATCHES APPLIED (this session, 2026-04-20):**
+1. `cfg.NOLOSS_ENABLED = False` restored in `_run_config_with_stores()` — PLAN task 6 was accidentally reverted.
+2. Tradier NPZ auto-detection extended to check `backtest_v4_tradier/indicators/` (S2 has 121 files there; S1 uses mixed backtest_v8/indicators/).
+3. CSV filter changed from `pool_sharpe >= threshold` to `max(per_sym_avg, pool_sharpe) >= threshold` — was silently dropping high per-sym-avg configs.
+4. KILL-RULE: lowered --kill-sharpe to 0.1 and --kill-secs to 1800 — old 0.5/120s was killing sweeps before finding honest peaks.
+
+**HONEST STOCK RESULTS (NOLOSS=False, 262 symbols, 2022-2026, ~450 configs tested):**
+| PT | HOLD | VEL_GATE | WT_EXIT | Trades | WR | pool_sharpe | per_sym_sharpe | PnL |
+|----|------|----------|---------|--------|----|-------------|----------------|-----|
+| 1.0% | 40 | False | 4 | 674 | 64.1% | 0.43 | 0.61 | **+$12,321** |
+| 1.5% | 40 | False | 4 | 674 | 64.1% | 0.43 | 0.80 | +$6,999 |
+| 1.0% | 40 | True | 4 | 580 | 63.8% | 0.43 | 0.62 | +$11,110 |
+| 1.0% | 20 | False | 4 | 654 | 60.2% | 0.43 | 0.64 | +$10,855 |
+Note: per_sym_avg only from symbols with ≥30 trades (typically 7-9 of 262). pool_sharpe covers all 674 trades.
+
+**HONEST CRYPTO RESULTS (NOLOSS=False, 11 fast symbols, 4yr):**
+- Best per-sym avg: 0.33, best pool_sharpe: 0.17. Ceiling is ~0.35.
+- The "Sharpe 8.99 crypto champion" = NOLOSS=True artifact with WR=99.7%.
+
+**RUNNING NOW (honest sweeps, NOLOSS=False):**
+- S1: stock_dc_wide (1152 configs, 262 symbols) — ETA ~45min
+- S2: stock_mega (192 configs, 262 symbols) — ETA ~20min
+- MacBook: stock_mega (192 configs, 121 symbols) — ETA ~15min
+
+**NEXT TARGETS:**
+- Confirm whether per-sym avg > 1.4 configs are real or noise (few qualifying symbols → noisy avg)
+- Determine if PnL > $12k is reproducible with tighter entry filtering
+- Design Phase 2 sweep: PT=1.0-2.0%, HOLD=30-60, WT_EXIT=4, zero VEL gate (proved best)
+
 ### 2026-04-19 21:40 UTC — VERIFIED WINNERS (positive PnL, real Sharpe)
 
 **CRITICAL FINDING: Ultra-low PT (≤0.1%) games Sharpe via metric artifacts.**
