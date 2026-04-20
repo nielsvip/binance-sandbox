@@ -1253,7 +1253,86 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'CYCLE_TP_TIERED_ENABLED', False):
         # Engine has PROFIT_TARGET_PCT; CYCLE_TP_PCT acts as upper cap
         pass  # handled in simulate() via PROFIT_TARGET_PCT
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit
+    # ═══ WT/0DC AUDIT EXIT SIGNALS (ablation sweep — all OFF by default) ═══
+    # wt_momentum_state encoding: 2=bull_trend, 1=bull_weak, -1=bear_weak, -2=bear_trend
+    # wt_peak_structure: 1=HH, -1=LH | wt_trough_structure: 1=HL, -1=LL
+    # wt_divergence: -1=BEAR, 1=BULL | wt_wave_phase: 1=expanding, -1=contracting
+    wt_mom_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_MOMENTUM_EXIT_ENABLED', False):
+        _tfs_m = str(getattr(cfg, 'WT_MOMENTUM_EXIT_TF', '1h'))
+        _mom = _safe(npz, f'wt_momentum_state_{_tfs_m}', n, 0).astype(np.int8)
+        _mom_thr = int(getattr(cfg, 'WT_MOMENTUM_EXIT_THRESHOLD', 0))
+        wt_mom_exit = (_mom <= _mom_thr) if is_long else (_mom >= -_mom_thr)
+    wt_struct_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_STRUCT_EXIT_ENABLED', False):
+        _tfs_s = str(getattr(cfg, 'WT_STRUCT_EXIT_TF', '1h'))
+        _pk = _safe(npz, f'wt_peak_structure_{_tfs_s}', n, 0).astype(np.int8)
+        _tr = _safe(npz, f'wt_trough_structure_{_tfs_s}', n, 0).astype(np.int8)
+        wt_struct_exit = (_pk == -1) if is_long else (_tr == -1)
+    wt_div_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_DIV_EXIT_ENABLED', False):
+        _tfs_d = str(getattr(cfg, 'WT_DIV_EXIT_TF', '1h'))
+        _div = _safe(npz, f'wt_divergence_{_tfs_d}', n, 0).astype(np.int8)
+        wt_div_exit = (_div == -1) if is_long else (_div == 1)
+    wt_pct_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_PERCENTILE_EXIT_ENABLED', False):
+        _tfs_p = str(getattr(cfg, 'WT_PERCENTILE_EXIT_TF', '1h'))
+        _pct = _safe(npz, f'wt_percentile_{_tfs_p}', n, 50.0)
+        _pct_thr = float(getattr(cfg, 'WT_PERCENTILE_EXIT_THRESHOLD', 80.0))
+        wt_pct_exit = (_pct >= _pct_thr) if is_long else (_pct <= (100.0 - _pct_thr))
+    wt_zscore_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_ZSCORE_EXIT_ENABLED', False):
+        _tfs_z = str(getattr(cfg, 'WT_ZSCORE_EXIT_TF', '1h'))
+        _zs = _safe(npz, f'wt_zscore_{_tfs_z}', n, 0.0)
+        _z_thr = float(getattr(cfg, 'WT_ZSCORE_EXIT_THRESHOLD', 2.0))
+        wt_zscore_exit = (_zs >= _z_thr) if is_long else (_zs <= -_z_thr)
+    wt_accel_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_ACCEL_EXIT_ENABLED', False):
+        _tfs_a = str(getattr(cfg, 'WT_ACCEL_EXIT_TF', '1h'))
+        _acc = _safe(npz, f'wt_acceleration_{_tfs_a}', n, 0.0)
+        wt_accel_exit = (_acc < 0) if is_long else (_acc > 0)
+    wt_wave_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_WAVE_PHASE_EXIT_ENABLED', False):
+        _tfs_w = str(getattr(cfg, 'WT_WAVE_PHASE_EXIT_TF', '1h'))
+        _wp = _safe(npz, f'wt_wave_phase_{_tfs_w}', n, 0).astype(np.int8)
+        wt_wave_exit = _wp == -1
+    wt_score_flip_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_SCORE_FLIP_EXIT_ENABLED', False):
+        _tfs_sf = str(getattr(cfg, 'WT_SCORE_FLIP_EXIT_TF', '3m'))
+        _sc = _safe(npz, f'wt_score_{_tfs_sf}', n, 0.0)
+        wt_score_flip_exit = (_sc < 0) if is_long else (_sc > 0)
+    wt_vel_mtf_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_VEL_MTF_EXIT_ENABLED', False):
+        _v3 = _safe(npz, 'wt_velocity_3m', n, 0.0); _v15 = _safe(npz, 'wt_velocity_15m', n, 0.0)
+        _v1h = _safe(npz, 'wt_velocity_1h', n, 0.0); _v4h = _safe(npz, 'wt_velocity_4h', n, 0.0)
+        _v_thr = float(getattr(cfg, 'WT_VEL_MTF_EXIT_THRESHOLD', -1.0))
+        _v_min_tfs = int(getattr(cfg, 'WT_VEL_MTF_EXIT_MIN_TFS', 3))
+        if is_long:
+            _vcnt = (_v3 < _v_thr).astype(int) + (_v15 < _v_thr).astype(int) + (_v1h < _v_thr).astype(int) + (_v4h < _v_thr / 2).astype(int)
+        else:
+            _vcnt = (_v3 > -_v_thr).astype(int) + (_v15 > -_v_thr).astype(int) + (_v1h > -_v_thr).astype(int) + (_v4h > _v_thr / 2).astype(int)
+        wt_vel_mtf_exit = _vcnt >= _v_min_tfs
+    wt_align_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_ALIGN_EXIT_ENABLED', False):
+        _al_thr = int(getattr(cfg, 'WT_ALIGN_EXIT_MIN', 2))
+        if is_long:
+            _al = _safe(npz, 'wt_bull_alignment', n, 3).astype(np.int8)
+            wt_align_exit = _al < _al_thr
+        else:
+            _al = _safe(npz, 'wt_bear_alignment', n, 3).astype(np.int8)
+            wt_align_exit = _al < _al_thr
+    wt_comp_delta_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'WT_COMP_DELTA_EXIT_ENABLED', False):
+        _cd = _safe(npz, 'wt_composite_delta', n, 0.0)
+        _cd_thr = float(getattr(cfg, 'WT_COMP_DELTA_EXIT_THRESHOLD', 0.0))
+        wt_comp_delta_exit = (_cd < _cd_thr) if is_long else (_cd > -_cd_thr)
+    dc_pos_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'DC_POS_EXIT_ENABLED', False):
+        _dcp_1h = _safe(npz, 'dc_position_1h', n, 0.5); _dcp_4h = _safe(npz, 'dc_position_4h', n, 0.5); _dcp_D = _safe(npz, 'dc_position_D', n, 0.5)
+        _dc_avg = (_dcp_1h + _dcp_4h + _dcp_D) / 3.0
+        _dc_thr = float(getattr(cfg, 'DC_POS_EXIT_THRESHOLD', 0.7))
+        dc_pos_exit = (_dc_avg >= _dc_thr) if is_long else (_dc_avg <= (1.0 - _dc_thr))
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -1358,6 +1437,18 @@ def simulate(stores, cfg, capital=10000.0):
                     if pt_enabled and live_pnl >= pt_pct:
                         all_pnl.append(pt_pct); sym_pnl.append(pt_pct)
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                    # 2026-04-20: Continuous DC recovery — close stranded losing positions immediately
+                    # without waiting for exit_sig. Prevents orphaned positions from blocking reentries
+                    # for months. Fires after min_hold to avoid exiting on transient BB compressions.
+                    # Uses same cfg.DC_RECOVERY_EXIT_TF as the exit_sig-gated check (set per mode).
+                    if cfg.DC_RECOVERY_EXIT_ENABLED and cfg.NOLOSS_ENABLED and (i - eb) >= min_hold and live_pnl < 0:
+                        if is_long:
+                            _dc_stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
+                        else:
+                            _dc_stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
+                        if _dc_stranded:
+                            all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                            in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
                         all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
                         if hedge_in_pos and hedge_ep > 0:

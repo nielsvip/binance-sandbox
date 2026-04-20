@@ -678,22 +678,23 @@ def build_param_grid_stock_dc_hunt():
 
 
 def build_param_grid_stock_dc_wide():
-    """Wide validation of DC-recovery baseline on all 262 symbols (2026-04-20).
-    PT toggle + key exit gates. ~128 configs on all 262 symbols via --symbols all --stream.
-    EARLY_ABORT: 30 qualifying symbols (≥30 trades) with floor=0.5 — kills truly dead configs
-    while letting valid ones through. Run on S1:
-    --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_wide --workers 6 --stream
-    --min-csv-sharpe 0.8 --kill-secs 999999 --kill-sharpe 0"""
+    """Wide validation of DC-recovery + continuous-stranded-exit baseline (2026-04-20).
+    Continuous DC recovery now enabled — positions orphaned below BB_1H exit after min_hold
+    without waiting for exit_sig. VEL=4.0 confirmed best from manual test (Sharpe 2.0-2.7).
+    ~1,152 configs on all 262 symbols via --symbols all --stream.
+    EARLY_ABORT: 30 qualifying symbols floor=1.5 — drops dead configs fast.
+    Run on S1: --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_wide
+    --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
     return {
         "PROFIT_TARGET_ENABLED": [True, False],
         "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0, 1.5],
         "MIN_HOLD_BARS": [4, 20, 40, 80],
-        "CT_WT_VELOCITY_GATE_ENABLED": [False],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 8.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
         "EARLY_ABORT_MIN_SYMBOLS": [30],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.5],
     }
 
 
@@ -716,6 +717,59 @@ def build_param_grid_stock_sweep_v1():
         "EARLY_ABORT_MIN_SYMBOLS": [50],
         "EARLY_ABORT_SHARPE_FLOOR": [2.0],
     }
+
+
+def build_param_grid_exit_wt_audit():
+    """Ablation: test each wt/0dc exit metric independently over the proven v3_core baseline.
+    Returns a pre-built list (not cartesian product) — one config per signal × threshold.
+    Run on FAST_SYMBOLS first (~11 syms × 40 configs = fast). Winners go to full 48-sym sweep.
+
+    Signal encoding in NPZ (all int8 or float32):
+      wt_momentum_state: 2=bull_trend 1=bull_weak -1=bear_weak -2=bear_trend
+      wt_peak_structure: 1=HH -1=LH | wt_trough_structure: 1=HL -1=LL
+      wt_divergence: -1=BEAR 1=BULL | wt_wave_phase: 1=expanding -1=contracting
+    """
+    baseline = {
+        "STRENGTH_FILTER_ENABLED": True, "STRENGTH_MIN_SCORE": 5.0,
+        "MIN_HOLD_BARS": 10, "PROFIT_TARGET_ENABLED": True,
+        "PROFIT_TARGET_PCT": 1.6, "WT_EXIT_MIN_TFS": 3,
+        "WT_MOMENTUM_EXIT_ENABLED": False, "WT_STRUCT_EXIT_ENABLED": False,
+        "WT_DIV_EXIT_ENABLED": False, "WT_PERCENTILE_EXIT_ENABLED": False,
+        "WT_ZSCORE_EXIT_ENABLED": False, "WT_ACCEL_EXIT_ENABLED": False,
+        "WT_WAVE_PHASE_EXIT_ENABLED": False, "WT_SCORE_FLIP_EXIT_ENABLED": False,
+        "WT_VEL_MTF_EXIT_ENABLED": False, "WT_ALIGN_EXIT_ENABLED": False,
+        "WT_COMP_DELTA_EXIT_ENABLED": False, "DC_POS_EXIT_ENABLED": False,
+    }
+    configs = [dict(baseline)]  # config 0 = pure baseline
+    for tf in ("1h", "4h"):
+        for thr in (0, -1):
+            configs.append({**baseline, "WT_MOMENTUM_EXIT_ENABLED": True, "WT_MOMENTUM_EXIT_TF": tf, "WT_MOMENTUM_EXIT_THRESHOLD": thr})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_STRUCT_EXIT_ENABLED": True, "WT_STRUCT_EXIT_TF": tf})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_DIV_EXIT_ENABLED": True, "WT_DIV_EXIT_TF": tf})
+    for tf in ("1h", "4h"):
+        for thr in (75.0, 80.0, 85.0, 90.0):
+            configs.append({**baseline, "WT_PERCENTILE_EXIT_ENABLED": True, "WT_PERCENTILE_EXIT_TF": tf, "WT_PERCENTILE_EXIT_THRESHOLD": thr})
+    for tf in ("1h", "4h"):
+        for thr in (1.5, 2.0, 2.5):
+            configs.append({**baseline, "WT_ZSCORE_EXIT_ENABLED": True, "WT_ZSCORE_EXIT_TF": tf, "WT_ZSCORE_EXIT_THRESHOLD": thr})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_ACCEL_EXIT_ENABLED": True, "WT_ACCEL_EXIT_TF": tf})
+    for tf in ("1h", "4h"):
+        configs.append({**baseline, "WT_WAVE_PHASE_EXIT_ENABLED": True, "WT_WAVE_PHASE_EXIT_TF": tf})
+    for tf in ("3m", "15m"):
+        configs.append({**baseline, "WT_SCORE_FLIP_EXIT_ENABLED": True, "WT_SCORE_FLIP_EXIT_TF": tf})
+    for min_tfs in (2, 3):
+        for thr in (-0.5, -1.0, -2.0):
+            configs.append({**baseline, "WT_VEL_MTF_EXIT_ENABLED": True, "WT_VEL_MTF_EXIT_MIN_TFS": min_tfs, "WT_VEL_MTF_EXIT_THRESHOLD": thr})
+    for min_al in (1, 2):
+        configs.append({**baseline, "WT_ALIGN_EXIT_ENABLED": True, "WT_ALIGN_EXIT_MIN": min_al})
+    for thr in (0.0, -10.0, -20.0):
+        configs.append({**baseline, "WT_COMP_DELTA_EXIT_ENABLED": True, "WT_COMP_DELTA_EXIT_THRESHOLD": thr})
+    for thr in (0.65, 0.70, 0.75, 0.80):
+        configs.append({**baseline, "DC_POS_EXIT_ENABLED": True, "DC_POS_EXIT_THRESHOLD": thr})
+    return configs
 
 
 TIER_MAP = {
@@ -753,6 +807,7 @@ TIER_MAP = {
     "stock_dc_wide": build_param_grid_stock_dc_wide,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
+    "exit_wt_audit": build_param_grid_exit_wt_audit,
 }
 
 
@@ -791,7 +846,7 @@ def _run_config_with_stores(stores, mode, cfg_dict, run_id):
             setattr(cfg, k, v)
     if mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
         cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
-    # NOLOSS_ENABLED uses QuickConfig default (True) — matches live STRICT_NO_LOSS, mark-to-market handles honesty
+    cfg.NOLOSS_ENABLED = False  # sweep context: force honest exits; mark-to-market handles open positions at end
     t0 = time.time()
     result = simulate(stores, cfg, 10000.0)
     elapsed = time.time() - t0
@@ -843,11 +898,22 @@ def main():
 
     npz_dir = args.npz_dir
     if not npz_dir:
-        for prefix in ["backtest_v8", "backtest_v7"]:
-            d = BASE_PATH / prefix / "indicators"
-            if d.exists() and any(d.glob("*.npz")):
-                npz_dir = str(d)
-                break
+        if args.mode == "tradier":
+            tradier_candidates = [
+                BASE_PATH / "backtest_v8" / "indicators_tradier",
+                BASE_PATH / "backtest_v5" / "indicators_5m_tradier",
+                BASE_PATH / "backtest_v4_tradier" / "indicators",
+            ]
+            for d in tradier_candidates:
+                if d.exists() and any(d.glob("*.npz")):
+                    npz_dir = str(d)
+                    break
+        if not npz_dir:
+            for prefix in ["backtest_v8", "backtest_v7"]:
+                d = BASE_PATH / prefix / "indicators"
+                if d.exists() and any(d.glob("*.npz")):
+                    npz_dir = str(d)
+                    break
 
     grid = TIER_MAP[args.tier]()
     configs = grid_to_configs(grid)
