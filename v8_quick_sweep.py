@@ -1291,6 +1291,109 @@ def build_param_grid_dc_low_tf_crypto():
     }
 
 
+def build_param_grid_dc_breakout_failed_tradier():
+    """2026-04-20: Breakout-entry-specific DC stop: if entry_price > bb_upper_1h at entry bar,
+    exit when price falls back below bb_upper_1h (breakout failed). Only applies to breakout entries.
+    Tests True/False × le_dynamic winner baseline. 2 configs × 262 symbols.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier dc_breakout_failed_tradier --workers 6 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "DC_BREAKOUT_FAILED_STOP_ENABLED": [True, False],
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [45.0],
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5],
+        "MIN_HOLD_BARS": [20],
+        "WT_EXIT_MIN_TFS": [3],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
+def build_param_grid_dc_breakout_failed_crypto():
+    """2026-04-20: Breakout-entry-specific DC stop for crypto (3m base).
+    If entry_price > dc_high_4h at entry bar, exit when price falls back below dc_high_4h.
+    2 configs × 48 symbols.
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier dc_breakout_failed_crypto --workers 6 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "DC_BREAKOUT_FAILED_STOP_ENABLED": [True, False],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.0],
+        "MIN_HOLD_BARS": [300],
+        "WT_EXIT_MIN_TFS": [2],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "STRENGTH_MIN_SCORE": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
+def build_param_grid_all_tf_brake_tradier():
+    """2026-04-20: Emergency brake: if ALL (or N of 7) TFs flip against position, bypass NOLOSS and exit.
+    TFs checked: 5m, 15m, 1h, 4h, D, W, M (W/M may be zero for stocks → effectively ignored).
+    Sweep min_tfs=[3,4,5] to find where signal is specific enough to not paper-cut.
+    6 configs × 262 symbols.
+    Run: --mode tradier --symbols all --start 2024-01-01 --tier all_tf_brake_tradier --workers 6 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "ALL_TF_BRAKE_ENABLED": [True, False],
+        "ALL_TF_BRAKE_MIN_TFS": [3, 4, 5],
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [45.0],
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5],
+        "MIN_HOLD_BARS": [20],
+        "WT_EXIT_MIN_TFS": [3],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "HTF_MIN_ALIGNED": [1],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
+def build_param_grid_all_tf_brake_crypto():
+    """2026-04-20: Emergency brake for crypto (3m base). Sweep min_tfs=[4,5,6,7].
+    Crypto has W and M TFs so more options available.
+    8 configs × 48 symbols.
+    Run: --mode crypto --symbols all --start 2022-01-01 --tier all_tf_brake_crypto --workers 6 --kill-sharpe 0 --kill-secs 999999
+    """
+    return {
+        "ALL_TF_BRAKE_ENABLED": [True, False],
+        "ALL_TF_BRAKE_MIN_TFS": [4, 5, 6, 7],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.0],
+        "MIN_HOLD_BARS": [300],
+        "WT_EXIT_MIN_TFS": [2],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "D_TREND_REQUIRED": [True],
+        "STRENGTH_MIN_SCORE": [4.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
+    }
+
+
 def build_param_grid_local_extremes_tradier_validate():
     """2026-04-20: Full-symbol validation of local_extremes_tradier Phase 1/2 winners.
     Run top configs from Phase 1 or 2 on all 128 tradier symbols over 2yr with no early abort.
@@ -2040,6 +2143,10 @@ TIER_MAP = {
     "crypto_exit_v1": build_param_grid_crypto_exit_v1,
     "le_full_tradier": build_param_grid_le_full_tradier,
     "le_k1h_rising": build_param_grid_le_k1h_rising,
+    "dc_breakout_failed_tradier": build_param_grid_dc_breakout_failed_tradier,
+    "dc_breakout_failed_crypto": build_param_grid_dc_breakout_failed_crypto,
+    "all_tf_brake_tradier": build_param_grid_all_tf_brake_tradier,
+    "all_tf_brake_crypto": build_param_grid_all_tf_brake_crypto,
 }
 
 
@@ -2420,19 +2527,26 @@ def main():
         else:
             # Standard mode: build todo from configs, run once
             todo = []
-            for i, cfg_dict in enumerate(configs):
-                h = config_hash(cfg_dict)
-                if h in done_hashes:
-                    continue
-                todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
+            if USE_SAMPLING:
+                # Grid too large to expand in-memory; sample a random batch instead
+                sampled = grid_sample_random(raw_grid, batch_size)
+                for i, cfg_dict in enumerate(sampled):
+                    todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
+            else:
+                for i, cfg_dict in enumerate(configs):
+                    h = config_hash(cfg_dict)
+                    if h in done_hashes:
+                        continue
+                    todo.append((npz_dir, args.mode, symbols_list, args.start, cfg_dict, f"q_{args.tier}_{i:05d}"))
 
             if args.shuffle:
                 random.shuffle(todo)
             if args.max_configs > 0 and len(todo) > args.max_configs:
                 todo = todo[:args.max_configs]
 
-            skip = total - len(todo)
-            print(f"  {total} configs ({skip} done, {len(todo)} todo)")
+            skip = 0 if USE_SAMPLING else (total - len(todo))
+            sample_str = f" (sampling {len(todo)}/{total:,} random)" if USE_SAMPLING else f" ({skip} done, {len(todo)} todo)"
+            print(f"  {total:,} configs{sample_str}")
             if not todo:
                 print("All configs done.")
                 return

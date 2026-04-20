@@ -76,6 +76,9 @@ class QuickConfig:
     DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
     DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
     DC_LOW4_BYPASS_TF: str = ""                   # '' = use LTF (5m tradier / 3m crypto), '15m' = 15m channel (wider stop)
+    DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # 2026-04-20: if entry_price > dc_high at entry bar, exit when price falls back below dc_high
+    ALL_TF_BRAKE_ENABLED: bool = False            # 2026-04-20: if ALL TFs (up to W) flip against position → bypass NOLOSS and exit
+    ALL_TF_BRAKE_MIN_TFS: int = 5                 # minimum TFs that must be against to trigger brake
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
@@ -1846,10 +1849,28 @@ def simulate(stores, cfg, capital=10000.0):
             if _le_tier_sizing:
                 _le_s_pre = _dyn_same_score if _dyn_same_score is not None else _compute_le_score_arr(npz, n, is_long, cfg)
                 _le_sz_mult_arr = np.where(_le_s_pre >= 75, 8.33, np.where(_le_s_pre >= 60, 4.17, np.where(_le_s_pre >= 45, 1.67, np.where(_le_s_pre >= 30, 0.42, np.where(_le_s_pre >= 15, 0.083, 1.0)))))
+            _bfs_enabled = bool(getattr(cfg, 'DC_BREAKOUT_FAILED_STOP_ENABLED', False))
+            # ALL_TF_BRAKE: count of TFs (LTF, 15m, 1h, 4h, D, W, M) against position direction
+            _atb_enabled = bool(getattr(cfg, 'ALL_TF_BRAKE_ENABLED', False))
+            _atb_min_tfs = int(getattr(cfg, 'ALL_TF_BRAKE_MIN_TFS', 5))
+            _atb_against = None
+            if _atb_enabled:
+                _atb_tfs = [(_safe(npz, f'wt1_{_ltf}', n), _safe(npz, f'wt2_{_ltf}', n)),
+                            (_safe(npz, 'wt1_15m', n), _safe(npz, 'wt2_15m', n)),
+                            (_safe(npz, 'wt1_1h', n), _safe(npz, 'wt2_1h', n)),
+                            (_safe(npz, 'wt1_4h', n), _safe(npz, 'wt2_4h', n)),
+                            (_safe(npz, 'wt1_D', n), _safe(npz, 'wt2_D', n)),
+                            (_safe(npz, 'wt1_W', n), _safe(npz, 'wt2_W', n)),
+                            (_safe(npz, 'wt1_M', n), _safe(npz, 'wt2_M', n))]
+                if is_long:
+                    _atb_against = sum((w1 < w2).astype(int) for w1, w2 in _atb_tfs)
+                else:
+                    _atb_against = sum((w1 > w2).astype(int) for w1, w2 in _atb_tfs)
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
             _dyn_aug_done = False; _dyn_entry_score = 0.0; _cur_sz_mult = 1.0
+            _entry_was_breakout = False
             _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
             _qr_enabled = bool(getattr(cfg, 'QUICK_REENTRY_60MIN_ENABLED', False))
             _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
@@ -1885,6 +1906,7 @@ def simulate(stores, cfg, capital=10000.0):
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                    _entry_was_breakout = _bfs_enabled and ((ep > dc_high_4h[i] and dc_high_4h[i] > 0) if is_long else (ep < dc_low_4h[i] and dc_low_4h[i] > 0))
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
@@ -1959,6 +1981,17 @@ def simulate(stores, cfg, capital=10000.0):
                     if pt_enabled and not _pe_enabled and live_pnl >= pt_pct:
                         _wa = pt_pct * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                    # ALL_TF_BRAKE: all TFs (incl. W/M when available) flip against → bypass NOLOSS
+                    if _atb_enabled and _atb_against is not None and (i - eb) >= min_hold:
+                        if _atb_against[i] >= _atb_min_tfs:
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                            in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
+                    # DC_BREAKOUT_FAILED_STOP: entered above 4h DC high → exit when price falls back below it
+                    if _bfs_enabled and _entry_was_breakout:
+                        _bfs_hit = (is_long and dc_high_4h[i] > 0 and px < dc_high_4h[i]) or (not is_long and dc_low_4h[i] > 0 and px > dc_low_4h[i])
+                        if _bfs_hit:
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                            in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
                     if _dc4_bypass_enabled and (_dc4_max_bars == 0 or (i - eb) <= _dc4_max_bars):
                         _dc4_hit = (is_long and _dc4_low is not None and _dc4_low[i] > 0 and px < _dc4_low[i]) or (not is_long and _dc4_high is not None and _dc4_high[i] > 0 and px > _dc4_high[i])
                         if _dc4_hit:

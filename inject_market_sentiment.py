@@ -16,6 +16,7 @@ Usage:
     python3 inject_market_sentiment.py /path/to/indicators/ --tradier-only
 """
 import argparse
+import gc
 import sys
 import time
 from collections import defaultdict
@@ -106,10 +107,12 @@ def inject(npz_dir: Path, filter_fn=None, dry_run=False) -> int:
             z = dict(np.load(str(p), allow_pickle=True))
             ts = z.get("timestamps")
             if ts is None:
+                del z; gc.collect()
                 continue
             ts = np.asarray(ts, dtype=np.int64)
             n = len(ts)
             if _get_bias(z, n) is None:
+                del z; gc.collect()
                 continue
             mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
             if dry_run:
@@ -118,8 +121,10 @@ def inject(npz_dir: Path, filter_fn=None, dry_run=False) -> int:
                 z["market_sentiment_score"] = mss
                 np.savez_compressed(str(p), **z)
                 updated += 1
+            del z, mss; gc.collect()
         except Exception as e:
             print(f"  WRITE_ERR {sym}: {e}", flush=True)
+            gc.collect()
     label = "would update" if dry_run else "updated"
     print(f"  Pass 2: {label} {updated} NPZs in {time.time()-t0:.1f}s", flush=True)
     return updated

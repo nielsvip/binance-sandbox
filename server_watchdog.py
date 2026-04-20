@@ -244,8 +244,19 @@ def main():
         state = {name: {"reachable": True, "down_since": None, "free_mb": 0,
                         "sweep_procs": 0, "screens": [], "consecutive_failures": 0} for name in SERVERS}
         log(f"server_watchdog up — managing {list(SERVERS.keys())} via autochain per-server")
+        last_loop_time = time.time()
         while True:
             try:
+                now = time.time()
+                gap = now - last_loop_time
+                if gap > CHECK_INTERVAL * 2:
+                    # MacBook was sleeping — servers may have crashed while we were suspended.
+                    # Pre-load consecutive_failures so ONE more failure triggers immediate reboot.
+                    log(f"WAKE detected (gap={gap:.0f}s) — pre-arming reboot counters")
+                    for name in SERVERS:
+                        if state[name]["consecutive_failures"] == 0:
+                            state[name]["consecutive_failures"] = STUCK_REBOOT_CONSECUTIVE - 1
+                last_loop_time = now
                 for name, cfg in SERVERS.items():
                     check_server(name, cfg, state)
                 write_status(state)
