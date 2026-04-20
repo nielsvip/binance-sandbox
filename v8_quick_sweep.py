@@ -1201,6 +1201,30 @@ def build_param_grid_stock_wt_d_aug_pt():
     }
 
 
+def build_param_grid_stock_60min_reentry():
+    """60-min unconditional reentry — after WT exit, if price continues ≥MIN_PCT within 60min, reenter at 50%.
+    Tests: ENABLED T/F × MIN_PCT [0.2,0.3,0.5,0.75,1.0] × WINDOW_BARS [6,12,24] (30/60/120min at 5m).
+    Also cross with wt_D augment (best config 4x, no conditions) to measure interaction.
+    Baseline: DC_RECOVERY=True, MIN_HOLD=40, VEL=2.0.
+    Run: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01
+    --tier stock_60min_reentry --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
+    return {
+        "QUICK_REENTRY_60MIN_ENABLED": [False, True],
+        "QUICK_REENTRY_60MIN_WINDOW_BARS": [6, 12, 24],
+        "QUICK_REENTRY_60MIN_MIN_PCT": [0.2, 0.3, 0.5, 0.75, 1.0],
+        "AUGMENT_WT_D_BOUNCE_ENABLED": [False, True],
+        "AUGMENT_WT_D_MULTIPLIER": [4.0],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_WT": [False],
+        "AUGMENT_WT_D_REQUIRE_HIGHER_PRICE": [False],
+        "MIN_HOLD_BARS": [40],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [2.0],
+        "WT_EXIT_MIN_TFS": [3],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+    }
+
+
 def build_param_grid_stock_wt_d_aug():
     """wt_D bounce augment — double-down on losing positions when daily WT turns higher.
     Tests: AUGMENT_MULTIPLIER [1.5,2,3,4] × REQUIRE_HIGHER_WT [T/F] × REQUIRE_HIGHER_PRICE [T/F] vs baseline.
@@ -1334,6 +1358,82 @@ def build_param_grid_le_dynamic_tradier_validate():
         "EARLY_ABORT_SHARPE_FLOOR": [0.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
     }
+
+
+def build_param_grid_le_dynamic_tradier_v2():
+    """2026-04-20: Push le_dynamic toward Sharpe>2.0.
+    Winner from validate: MIN_SCORE=35, CE_THR=40, PT=0.5%, HOLD=10, WT_TFS=3.
+    KEY new dimension: PROFIT_TARGET_ENABLED=False (technical exits, never tested).
+    Also: tighter MIN_SCORE (45,55,65), 3yr window (2023-05-01), CE thresholds tighter.
+    Run: --mode tradier --symbols fast --start 2023-05-01 --tier le_dynamic_tradier_v2 --workers 6 --stream --kill-sharpe 0 --kill-secs 999999
+    Then validate winners: --symbols all --start 2023-05-01 --tier le_dynamic_tradier_v2_validate
+    """
+    configs = []
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
+        "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 6,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    for score in [25.0, 35.0, 45.0, 55.0, 65.0]:
+        for ce_thr in [30.0, 40.0, 55.0]:
+            for hold in [4, 10, 20]:
+                for pt_enabled in [True, False]:
+                    if pt_enabled:
+                        for pt_pct in [0.5, 1.0, 2.0]:
+                            configs.append({**base,
+                                "LOCAL_EXTREMES_MIN_SCORE": score,
+                                "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
+                                "MIN_HOLD_BARS": hold,
+                                "PROFIT_TARGET_ENABLED": True,
+                                "PROFIT_TARGET_PCT": pt_pct,
+                            })
+                    else:
+                        configs.append({**base,
+                            "LOCAL_EXTREMES_MIN_SCORE": score,
+                            "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
+                            "MIN_HOLD_BARS": hold,
+                            "PROFIT_TARGET_ENABLED": False,
+                            "PROFIT_TARGET_PCT": 1.0,
+                        })
+    return configs
+
+
+def build_param_grid_le_dynamic_tradier_v2_validate():
+    """2026-04-20: Full 128-symbol validation of le_dynamic_v2 winners.
+    Paste best configs from v2 fast run before launching.
+    Run: --mode tradier --symbols all --start 2023-05-01 --tier le_dynamic_tradier_v2_validate --workers 8 --kill-sharpe 0 --kill-secs 999999
+    """
+    configs = []
+    base = {
+        "LOCAL_EXTREMES_SCORER_ENABLED": True,
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
+        "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
+        "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
+        "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
+        "WT_EXIT_MIN_TFS": 3,
+        "EARLY_ABORT_MIN_SYMBOLS": 999,
+        "EARLY_ABORT_SHARPE_FLOOR": 0.0,
+        "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
+    }
+    # Winners from v2 fast run — will be updated after fast sweep
+    for score in [35.0, 45.0, 55.0]:
+        for ce_thr in [30.0, 40.0]:
+            for hold in [10, 20]:
+                for pt_enabled, pt_pct in [(True, 0.5), (True, 1.0), (False, 1.0)]:
+                    configs.append({**base,
+                        "LOCAL_EXTREMES_MIN_SCORE": score,
+                        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
+                        "MIN_HOLD_BARS": hold,
+                        "PROFIT_TARGET_ENABLED": pt_enabled,
+                        "PROFIT_TARGET_PCT": pt_pct,
+                    })
+    return configs
 
 
 def build_param_grid_stock_exit_v1():
@@ -1496,8 +1596,11 @@ TIER_MAP = {
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
     "le_dynamic_tradier": build_param_grid_le_dynamic_tradier,
     "le_dynamic_tradier_validate": build_param_grid_le_dynamic_tradier_validate,
+    "le_dynamic_tradier_v2": build_param_grid_le_dynamic_tradier_v2,
+    "le_dynamic_tradier_v2_validate": build_param_grid_le_dynamic_tradier_v2_validate,
     "stock_wt_d_aug": build_param_grid_stock_wt_d_aug,
     "stock_wt_d_aug_pt": build_param_grid_stock_wt_d_aug_pt,
+    "stock_60min_reentry": build_param_grid_stock_60min_reentry,
     "crypto_wt_d_4h_aug": build_param_grid_crypto_wt_d_4h_aug,
     "crypto_vel_sweep": build_param_grid_crypto_vel_sweep,
     "stock_exit_v1": build_param_grid_stock_exit_v1,

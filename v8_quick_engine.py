@@ -173,6 +173,10 @@ class QuickConfig:
     AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE: bool = False
     AUGMENT_PT_ENABLED: bool = False  # take profit on augmented positions as soon as they recover
     AUGMENT_PT_PCT: float = 0.5  # exit augmented position once live_pnl >= this %
+    # 60-min unconditional reentry — if price continued ≥MIN_PCT in trade direction within WINDOW_BARS, reenter at 50% size
+    QUICK_REENTRY_60MIN_ENABLED: bool = False
+    QUICK_REENTRY_60MIN_WINDOW_BARS: int = 12   # 12 bars × 5m = 60min
+    QUICK_REENTRY_60MIN_MIN_PCT: float = 0.3    # price must move ≥0.3% from exit price in trade direction
     # Reentry WT-15m-cross + HTF-aligned (C) — wired in vectorized block REENTRY_B_WT15M_CROSS below
     REENTRY_WT15M_CROSS_ENABLED: bool = True
     REENTRY_WT15M_SIZE_MULT: float = 1.5
@@ -1659,6 +1663,10 @@ def simulate(stores, cfg, capital=10000.0):
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
             _dyn_aug_done = False; _dyn_entry_score = 0.0
+            _qr_enabled = bool(getattr(cfg, 'QUICK_REENTRY_60MIN_ENABLED', False))
+            _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
+            _qr_min_pct = float(getattr(cfg, 'QUICK_REENTRY_60MIN_MIN_PCT', 0.3)) / 100.0
+            _qr_exit_px = 0.0; _qr_exit_bar = -9999
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
@@ -1670,6 +1678,15 @@ def simulate(stores, cfg, capital=10000.0):
             # REENTRY_MIN_GAP_BARS — extra cooldown after exit before next entry. 0 = use COOLDOWN_BARS only.
             min_gap_bars = int(getattr(cfg, 'REENTRY_MIN_GAP_BARS', 0) or 0)
             for i in range(n):
+                if _qr_enabled and not in_pos and _qr_exit_px > 0 and (i - _qr_exit_bar) <= _qr_window:
+                    px = close[i]
+                    if px > 0:
+                        if (is_long and px >= _qr_exit_px * (1.0 + _qr_min_pct)) or (not is_long and px <= _qr_exit_px * (1.0 - _qr_min_pct)):
+                            in_pos = True; ep = px; eb = i
+                            _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
+                            _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
+                            _qr_exit_px = 0.0; cd = 0
+                            continue
                 if cd > 0: cd -= 1; continue
                 px = close[i]
                 if px <= 0: continue
@@ -1748,6 +1765,7 @@ def simulate(stores, cfg, capital=10000.0):
                             _dc_stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
                         if _dc_stranded:
                             all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
+                            if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
                             in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
                         all_pnl.append(live_pnl); sym_pnl.append(live_pnl)
@@ -1775,6 +1793,7 @@ def simulate(stores, cfg, capital=10000.0):
                     if hedge_in_pos and hedge_ep > 0:
                         h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                         all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                    if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
                     in_pos = False; cd = max(cooldown, min_gap_bars)
             if in_pos:
                 final_px = close[n - 1]
