@@ -496,6 +496,13 @@ class QuickConfig:
     BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0
     BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.3
 
+    # ===== 2026-04-20 LOCAL EXTREMES SCORER =====
+    # Vectorized proxy for local_extremes_scorer.py — used when K_ZONE gate alone is too narrow.
+    # Gates entry when 100-pt multi-indicator score (stoch+WT+DC+MFI+HA+vol) >= LOCAL_EXTREMES_MIN_SCORE.
+    # Default OFF — sweep local_extremes_tradier tier to find best MIN_SCORE threshold.
+    LOCAL_EXTREMES_SCORER_ENABLED: bool = False
+    LOCAL_EXTREMES_MIN_SCORE: float = 30.0
+
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
         cfg = cls()
@@ -899,6 +906,132 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     return blocks
 
 
+def _compute_le_score_arr(npz: dict, n: int, is_long: bool, cfg) -> np.ndarray:
+    """Vectorized proxy of local_extremes_scorer for the V8 engine.
+
+    Returns float64 array (0-100) — one score per bar. Used as entry gate when
+    LOCAL_EXTREMES_SCORER_ENABLED=True: only bars with score >= LOCAL_EXTREMES_MIN_SCORE pass.
+    Missing NPZ fields zero-fill gracefully (same as live scorer's neutral defaults).
+    """
+    score = np.zeros(n, dtype=np.float64)
+
+    k5  = _safe(npz, 'stoch_k_5m',  n, 50.0)
+    k15 = _safe(npz, 'stoch_k_15m', n, 50.0)
+    k1h = _safe(npz, 'stoch_k_1h',  n, 50.0)
+    k4h = _safe(npz, 'stoch_k_4h',  n, 50.0)
+    kD  = _safe(npz, 'stoch_k_D',   n, 50.0)
+    if is_long:
+        score += np.where(k5  < 20, 5.0, 0.0)
+        score += np.where(k15 < 20, 6.0, 0.0)
+        score += np.where(k1h < 25, 7.0, 0.0)
+        score += np.where(k4h < 35, 4.0, 0.0)
+        score += np.where(kD  < 40, 3.0, 0.0)
+    else:
+        score += np.where(k5  > 80, 5.0, 0.0)
+        score += np.where(k15 > 80, 6.0, 0.0)
+        score += np.where(k1h > 75, 7.0, 0.0)
+        score += np.where(k4h > 65, 4.0, 0.0)
+        score += np.where(kD  > 60, 3.0, 0.0)
+
+    wt1_5m  = _safe(npz, 'wt1_5m',  n, 0.0)
+    wt2_5m  = _safe(npz, 'wt2_5m',  n, 0.0)
+    wt1_15m = _safe(npz, 'wt1_15m', n, 0.0)
+    wt2_15m = _safe(npz, 'wt2_15m', n, 0.0)
+    wt1_1h  = _safe(npz, 'wt1_1h',  n, 0.0)
+    wt2_1h  = _safe(npz, 'wt2_1h',  n, 0.0)
+    wt1_4h  = _safe(npz, 'wt1_4h',  n, 0.0)
+    wt2_4h  = _safe(npz, 'wt2_4h',  n, 0.0)
+    vel_1h  = _safe(npz, 'wt_velocity_1h', n, 0.0)
+    vel_D   = _safe(npz, 'wt_velocity_D',  n, 0.0)
+    wt_pts = np.zeros(n, dtype=np.float64)
+    if is_long:
+        wt_pts += np.where(wt1_5m  > wt2_5m,  3.0, 0.0)
+        wt_pts += np.where(wt1_15m > wt2_15m, 4.0, 0.0)
+        wt_pts += np.where(wt1_1h  > wt2_1h,  5.0, 0.0)
+        wt_pts += np.where(wt1_4h  > wt2_4h,  4.0, 0.0)
+        wt_pts += np.where(vel_1h  > 0, 2.0, 0.0)
+        wt_pts += np.where(vel_D   > 0, 2.0, 0.0)
+    else:
+        wt_pts += np.where(wt1_5m  < wt2_5m,  3.0, 0.0)
+        wt_pts += np.where(wt1_15m < wt2_15m, 4.0, 0.0)
+        wt_pts += np.where(wt1_1h  < wt2_1h,  5.0, 0.0)
+        wt_pts += np.where(wt1_4h  < wt2_4h,  4.0, 0.0)
+        wt_pts += np.where(vel_1h  < 0, 2.0, 0.0)
+        wt_pts += np.where(vel_D   < 0, 2.0, 0.0)
+    score += np.minimum(wt_pts, 20.0)
+
+    dc1h = _safe(npz, 'dc_position_1h', n, 0.5)
+    dc4h = _safe(npz, 'dc_position_4h', n, 0.5)
+    dcD  = _safe(npz, 'dc_position_D',  n, 0.5)
+    bb1h = _safe(npz, 'bb_pct_b_1h',   n, 0.5)
+    bb4h = _safe(npz, 'bb_pct_b_4h',   n, 0.5)
+    dc_pts = np.zeros(n, dtype=np.float64)
+    if is_long:
+        dc_pts += np.where(dc1h < 0.20, 7.0, np.where(dc1h < 0.35, 3.0, 0.0))
+        dc_pts += np.where(dc4h < 0.30, 5.0, np.where(dc4h < 0.45, 2.0, 0.0))
+        dc_pts += np.where(dcD  < 0.40, 4.0, 0.0)
+        dc_pts += np.where(bb1h < 0.20, 2.0, 0.0)
+        dc_pts += np.where(bb4h < 0.30, 2.0, 0.0)
+    else:
+        dc_pts += np.where(dc1h > 0.80, 7.0, np.where(dc1h > 0.65, 3.0, 0.0))
+        dc_pts += np.where(dc4h > 0.70, 5.0, np.where(dc4h > 0.55, 2.0, 0.0))
+        dc_pts += np.where(dcD  > 0.60, 4.0, 0.0)
+        dc_pts += np.where(bb1h > 0.80, 2.0, 0.0)
+        dc_pts += np.where(bb4h > 0.70, 2.0, 0.0)
+    score += np.minimum(dc_pts, 20.0)
+
+    mfi5  = _safe(npz, 'mfi_5m',  n, 50.0)
+    mfi15 = _safe(npz, 'mfi_15m', n, 50.0)
+    mfi1h = _safe(npz, 'mfi_1h',  n, 50.0)
+    mfi4h = _safe(npz, 'mfi_4h',  n, 50.0)
+    mfiD  = _safe(npz, 'mfi_D',   n, 50.0)
+    if is_long:
+        score += np.where(mfi5  < 30, 2.0, 0.0)
+        score += np.where(mfi15 < 30, 3.0, 0.0)
+        score += np.where(mfi1h < 30, 5.0, 0.0)
+        score += np.where(mfi4h < 35, 3.0, 0.0)
+        score += np.where(mfiD  < 40, 2.0, 0.0)
+    else:
+        score += np.where(mfi5  > 70, 2.0, 0.0)
+        score += np.where(mfi15 > 70, 3.0, 0.0)
+        score += np.where(mfi1h > 70, 5.0, 0.0)
+        score += np.where(mfi4h > 65, 3.0, 0.0)
+        score += np.where(mfiD  > 60, 2.0, 0.0)
+
+    ha5m  = _ha_int(npz, 'ha_5m',  n).astype(np.float64)
+    ha15m = _ha_int(npz, 'ha_15m', n).astype(np.float64)
+    ha1h  = _ha_int(npz, 'ha_1h',  n).astype(np.float64)
+    lr1h  = _safe(npz, 'lr_trend_1h', n, 0.0)
+    wt_ts_1h = _safe(npz, 'wt_trough_structure_1h', n, 0.0)
+    wt_ms_1h = _safe(npz, 'wt_momentum_state_1h', n, 0.0)
+    mom_pts = np.zeros(n, dtype=np.float64)
+    if is_long:
+        mom_pts += np.where(ha5m  == 1, 2.0, 0.0)
+        mom_pts += np.where(ha15m == 1, 2.0, 0.0)
+        mom_pts += np.where(ha1h  == 1, 4.0, 0.0)
+        mom_pts += np.where(lr1h  >  0, 3.0, 0.0)
+        mom_pts += np.where(wt_ts_1h == 1,  2.0, 0.0)
+        mom_pts += np.where(wt_ms_1h >= 1,  2.0, 0.0)
+    else:
+        mom_pts += np.where(ha5m  == -1, 2.0, 0.0)
+        mom_pts += np.where(ha15m == -1, 2.0, 0.0)
+        mom_pts += np.where(ha1h  == -1, 4.0, 0.0)
+        mom_pts += np.where(lr1h  <  0,  3.0, 0.0)
+        mom_pts += np.where(wt_ts_1h == -1, 2.0, 0.0)
+        mom_pts += np.where(wt_ms_1h <= -1, 2.0, 0.0)
+    score += np.minimum(mom_pts, 15.0)
+
+    rvol5  = _safe(npz, 'relative_volume_5m',  n, 1.0)
+    rvol15 = _safe(npz, 'relative_volume_15m', n, 1.0)
+    rvol1h = _safe(npz, 'relative_volume_1h',  n, 1.0)
+    vol_pts = (np.where(rvol5  > 1.5, 2.0, 0.0)
+               + np.where(rvol15 > 1.2, 2.0, 0.0)
+               + np.where(rvol1h > 1.2, 1.0, 0.0))
+    score += np.minimum(vol_pts, 5.0)
+
+    return np.minimum(score, 100.0)
+
+
 def compute_entry_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
     close = _close_with_mode_check(npz, n, cfg, 'compute_entry_signals')
@@ -1134,7 +1267,12 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _b15 = _safe(npz, 'wt_cross_bars_ago_15m', n, 999.0)
         _b1h = _safe(npz, 'wt_cross_bars_ago_1h', n, 999.0)
         cross_fresh_ok = (_b3 < _max_bars) | (_b15 < _max_bars) | (_b1h < _max_bars)
-    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok
+    le_ok = np.ones(n, dtype=bool)
+    if bool(getattr(cfg, 'LOCAL_EXTREMES_SCORER_ENABLED', False)):
+        _le_score = _compute_le_score_arr(npz, n, is_long, cfg)
+        _le_min = float(getattr(cfg, 'LOCAL_EXTREMES_MIN_SCORE', 30.0))
+        le_ok = _le_score >= _le_min
+    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok & le_ok
     # D4: BREAKOUT MULTI-LUNG entry augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:

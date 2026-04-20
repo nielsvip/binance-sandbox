@@ -1089,45 +1089,60 @@ def build_param_grid_mega_tradier_v8():
 
 
 def build_param_grid_local_extremes_tradier():
-    """2026-04-20: Local bottom/top swing strategy for tradier stocks.
+    """2026-04-20: Local bottom/top swing strategy for tradier stocks — Phase 1: K-gate only.
     LONG: enter when k_1h < ENTRY_ZONE_LONG (oversold = local bottom).
     SHORT: enter when k_1h > ENTRY_ZONE_SHORT (overbought = local top).
-    EXIT: profit target fires when price reaches the "other extreme" + WT technical confirmation.
-    Phase 1: find optimal oversold/overbought thresholds + position size tiers.
-    Phase 2 (after winners): validate on full 128 symbols, then wire score-based $50-$5000 dynamic sizing.
+    EXIT: profit target fires when price recovers + WT technical confirmation.
+    Phase 1: find optimal K threshold + PT + hold period on 12 fast symbols.
+    Phase 2: add LOCAL_EXTREMES_SCORER_ENABLED to confirm WT/DC/MFI alignment.
     Tradier defaults auto-applied: K_ZONE_ENTRY_ENABLED=True, ENTRY_ZONE_K_TF=1h, HTF_MIN_ALIGNED=2.
     Run: --mode tradier --symbols fast --start 2024-01-01 --tier local_extremes_tradier --workers 8
     """
     return {
-        # THE LOCAL BOTTOM/TOP GATE — how deep/high before entry fires
-        "ENTRY_ZONE_LONG": [15.0, 25.0, 35.0, 45.0],    # k_1h < X for longs (local bottom depth)
-        "ENTRY_ZONE_SHORT": [55.0, 65.0, 75.0, 85.0],   # k_1h > X for shorts (local top height)
-        # SIZING: $500-$5000 tiers (Phase 2 will make this score-dynamic)
+        "ENTRY_ZONE_LONG": [10.0, 20.0, 30.0, 40.0],
+        "ENTRY_ZONE_SHORT": [60.0, 70.0, 80.0, 90.0],
         "START_POSITION_SIZE": [500.0, 1000.0, 2000.0, 5000.0],
-        # EXIT: profit target captures the "opposite extreme" for longs → tops, for shorts → bottoms
         "PROFIT_TARGET_ENABLED": [True],
         "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0, 3.0],
-        # HOLD: minimum bars before exits fire (4=~20min, 10=~50min, 20=~100min on 5m base)
         "MIN_HOLD_BARS": [4, 10, 20],
-        # WT TECHNICAL EXIT: TFs required to confirm reversal (never 5 = 0 trades rule)
         "WT_EXIT_MIN_TFS": [2, 3],
-        # EARLY ABORT: kill bad configs fast on 6 fast symbols
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [2.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
 
+def build_param_grid_local_extremes_tradier_scorer():
+    """2026-04-20: Local extremes Phase 2 — add 100-pt multi-indicator scorer gate.
+    LOCAL_EXTREMES_SCORER_ENABLED=True adds WT+DC+MFI+HA+VOL confirmation on top of K-gate.
+    Start from best Phase 1 ENTRY_ZONE winners. Sweep LOCAL_EXTREMES_MIN_SCORE thresholds.
+    Run: --mode tradier --symbols fast --start 2024-01-01 --tier local_extremes_tradier_scorer --workers 8
+    """
+    return {
+        "ENTRY_ZONE_LONG": [20.0, 30.0],
+        "ENTRY_ZONE_SHORT": [70.0, 80.0],
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [20.0, 30.0, 40.0, 50.0, 60.0],
+        "START_POSITION_SIZE": [1000.0, 2000.0, 5000.0],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
+        "MIN_HOLD_BARS": [4, 10, 20],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [20.0],
+    }
+
+
 def build_param_grid_local_extremes_tradier_validate():
-    """2026-04-20: Full-symbol validation of local_extremes_tradier Phase 1 winners.
-    Run top configs from Phase 1 on all 128 tradier symbols over 2yr with no early abort.
-    Paste winning params from Phase 1 CSV into ENTRY_ZONE_LONG/SHORT, SIZE, PT_PCT.
+    """2026-04-20: Full-symbol validation of local_extremes_tradier Phase 1/2 winners.
+    Run top configs from Phase 1 or 2 on all 128 tradier symbols over 2yr with no early abort.
+    Paste winning params from Phase 1/2 CSV into ENTRY_ZONE_LONG/SHORT, SIZE, PT_PCT.
     Run: --mode tradier --symbols all --start 2024-01-01 --tier local_extremes_tradier_validate --workers 8 --kill-sharpe 0 --kill-secs 999999
     """
     return {
-        # Fill from Phase 1 winners — placeholder ranges below
-        "ENTRY_ZONE_LONG": [15.0, 25.0],
-        "ENTRY_ZONE_SHORT": [75.0, 85.0],
+        "ENTRY_ZONE_LONG": [20.0, 30.0],
+        "ENTRY_ZONE_SHORT": [70.0, 80.0],
         "START_POSITION_SIZE": [1000.0, 2000.0, 5000.0],
         "PROFIT_TARGET_ENABLED": [True],
         "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
@@ -1212,6 +1227,7 @@ TIER_MAP = {
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
     "crypto_validate_top": build_param_grid_crypto_validate_top,
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
+    "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
     "local_extremes_tradier_validate": build_param_grid_local_extremes_tradier_validate,
 }
 
