@@ -72,13 +72,13 @@ class QuickConfig:
     DC_RECOVERY_EXIT_ENABLED: bool = False
     DC_RECOVERY_EXIT_TF: str = "dc_4h"   # crypto: dc_4h. tradier: bb_1h (set in apply_tradier_defaults)
     DC_RECOVERY_EXIT_TOLERANCE_PCT: float = 0.25
-    DC_LOW4_BYPASS_NOLOSS_ENABLED: bool = False   # 2026-04-20: price breaks 4-bar DC low → exit bypassing NOLOSS. Test for paper-cuts.
+    DC_LOW4_BYPASS_NOLOSS_ENABLED: bool = False   # SWEPT 2026-04-20. VERDICT: PAPER-CUTS. Tradier -14% Sharpe, crypto -94%. DO NOT ENABLE.
     DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
     DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
     DC_LOW4_BYPASS_TF: str = ""                   # '' = use LTF (5m tradier / 3m crypto), '15m' = 15m channel (wider stop)
-    DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # 2026-04-20: if entry_price > dc_high at entry bar, exit when price falls back below dc_high
-    ALL_TF_BRAKE_ENABLED: bool = False            # 2026-04-20: if ALL TFs (up to W) flip against position → bypass NOLOSS and exit
-    ALL_TF_BRAKE_MIN_TFS: int = 5                 # minimum TFs that must be against to trigger brake
+    DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # SWEPT 2026-04-20. v1 bug: crypto used same-bar Donchian (impossible). Fixed: now uses prev-bar roll. Re-sweep needed for valid crypto result. Tradier v1 (bb_upper_1h): -0.003 Sharpe, minimal fires. VERDICT PENDING full re-sweep.
+    ALL_TF_BRAKE_ENABLED: bool = False            # SWEPT 2026-04-20. Crypto: min_tfs=4 → -32% Sharpe, min_tfs=7 → 0 effect. Tradier: never fires (no W/M TF data, 5 real TFs rarely all against in-position). VERDICT: REDUNDANT with WT_EXIT_MIN_TFS.
+    ALL_TF_BRAKE_MIN_TFS: int = 5                 # minimum TFs (out of LTF/15m/1h/4h/D/W/M) that must be against to trigger brake
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
@@ -1732,6 +1732,11 @@ def simulate(stores, cfg, capital=10000.0):
         _dc_hk, _dc_lk = _dc_tf_map.get(getattr(cfg, 'DC_RECOVERY_EXIT_TF', 'dc_4h'), ('dc_high_4h', 'dc_low_4h'))
         dc_high_4h = _safe(npz, _dc_hk, n)
         dc_low_4h = _safe(npz, _dc_lk, n)
+        # Rolled versions for DC_BREAKOUT_FAILED_STOP: Donchian channels include the current bar's high,
+        # so close[i] > dc_high_4h[i] is impossible (close ≤ high ≤ max_high). Must compare to prev bar.
+        # BB (tradier bb_1h) CAN be exceeded by close — roll is a no-op loss there but keeps code uniform.
+        _dc_h4_prev = np.roll(dc_high_4h, 1); _dc_h4_prev[0] = dc_high_4h[0]
+        _dc_l4_prev = np.roll(dc_low_4h, 1); _dc_l4_prev[0] = dc_low_4h[0]
         _dc4_bypass_enabled = bool(getattr(cfg, 'DC_LOW4_BYPASS_NOLOSS_ENABLED', False))
         _dc4_max_bars = int(getattr(cfg, 'DC_LOW4_BYPASS_MAX_BARS', 0))
         _dc4_std = bool(getattr(cfg, 'DC_LOW4_BYPASS_USE_STANDARD', False))
@@ -1906,7 +1911,7 @@ def simulate(stores, cfg, capital=10000.0):
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
-                    _entry_was_breakout = _bfs_enabled and ((ep > dc_high_4h[i] and dc_high_4h[i] > 0) if is_long else (ep < dc_low_4h[i] and dc_low_4h[i] > 0))
+                    _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
@@ -1986,9 +1991,9 @@ def simulate(stores, cfg, capital=10000.0):
                         if _atb_against[i] >= _atb_min_tfs:
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
-                    # DC_BREAKOUT_FAILED_STOP: entered above 4h DC high → exit when price falls back below it
+                    # DC_BREAKOUT_FAILED_STOP: entered above prev-bar DC high → exit when price falls back below prev-bar DC high
                     if _bfs_enabled and _entry_was_breakout:
-                        _bfs_hit = (is_long and dc_high_4h[i] > 0 and px < dc_high_4h[i]) or (not is_long and dc_low_4h[i] > 0 and px > dc_low_4h[i])
+                        _bfs_hit = (is_long and _dc_h4_prev[i] > 0 and px < _dc_h4_prev[i]) or (not is_long and _dc_l4_prev[i] > 0 and px > _dc_l4_prev[i])
                         if _bfs_hit:
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
