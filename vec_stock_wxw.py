@@ -105,12 +105,15 @@ def score_verbose(mask, ret, side, min_trades_per_sym, min_syms, sym_select=None
     if len(per_sym) < min_syms:
         return None
     per_sym_arr = np.asarray(per_sym)
-    pool = np.concatenate(pooled_rets) if pooled_rets else np.asarray([])
-    if pool.size == 0 or pool.std() <= 0:
+    pool = np.concatenate(pooled_rets)
+    if pool.std() <= 0:
         return None
+    pool_sh = float(pool.mean() / pool.std())
+    sh_avg = float(per_sym_arr.mean())
     return {
-        "sharpe_avg": float(per_sym_arr.mean()),
-        "sharpe_pool": float(pool.mean() / pool.std()),
+        "sharpe_avg": sh_avg,
+        "sharpe_pool": pool_sh,
+        "sharpe_robust": min(sh_avg, pool_sh),
         "sharpe_min": float(per_sym_arr.min()),
         "sharpe_max": float(per_sym_arr.max()),
         "syms_included": len(per_sym),
@@ -171,14 +174,15 @@ def main():
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("""CREATE TABLE IF NOT EXISTS validated_full (
         src_rowid INTEGER PRIMARY KEY, side TEXT, combo TEXT, horizon INT,
-        sample_sharpe REAL, full_sharpe_avg REAL, full_sharpe_pool REAL,
+        sample_sharpe REAL, full_sharpe_avg REAL, full_sharpe_pool REAL, full_sharpe_robust REAL,
         full_sharpe_min REAL, full_sharpe_max REAL, full_syms INT, full_pos_syms INT,
         full_trades INT, full_wr REAL, full_mean REAL, full_dd_avg REAL,
         dropoff_pct REAL, created_at REAL)""")
     con.execute("""CREATE TABLE IF NOT EXISTS combined_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         side TEXT, combo_a TEXT, combo_b TEXT, combo_merged TEXT, horizon INT,
-        full_sharpe_avg REAL, full_sharpe_pool REAL, full_sharpe_min REAL, full_sharpe_max REAL,
+        full_sharpe_avg REAL, full_sharpe_pool REAL, full_sharpe_robust REAL,
+        full_sharpe_min REAL, full_sharpe_max REAL,
         full_syms INT, full_pos_syms INT, full_trades INT, full_wr REAL,
         full_mean REAL, full_dd_avg REAL, created_at REAL)""")
     con.commit()
@@ -201,8 +205,8 @@ def main():
                 continue
             drop = (sample_sh - r["sharpe_avg"]) / max(abs(sample_sh), 1e-6) * 100
             print(f"{rank:>3} {side:<2} {sample_sh:>6.2f} {r['sharpe_avg']:>6.2f} {r['sharpe_pool']:>6.2f} {r['sharpe_min']:>6.2f} {r['sharpe_max']:>6.2f} {r['syms_included']:>4} {r['pos_syms']:>3} {r['n_trades_total']:>6} {r['wr_avg']:>5.1f} {drop:>5.0f}% {horizon:>4}  {combo[:80]}")
-            con.execute("INSERT OR REPLACE INTO validated_full VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (rowid, side, combo, horizon, sample_sh, r["sharpe_avg"], r["sharpe_pool"],
+            con.execute("INSERT OR REPLACE INTO validated_full VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (rowid, side, combo, horizon, sample_sh, r["sharpe_avg"], r["sharpe_pool"], r["sharpe_robust"],
                  r["sharpe_min"], r["sharpe_max"], r["syms_included"], r["pos_syms"],
                  r["n_trades_total"], r["wr_avg"], r["mean_ret_avg"], r["dd_pct_avg"],
                  drop, time.time()))
@@ -248,8 +252,8 @@ def main():
                 continue
             merged_combo = "+".join(sorted(set([*ca.split("+"), *cb.split("+")])))
             combined_results.append({"side": side, "ca": ca, "cb": cb, "merged": merged_combo, "h": horizon, **r})
-            con.execute("INSERT INTO combined_results VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (side, ca, cb, merged_combo, horizon, r["sharpe_avg"], r["sharpe_pool"],
+            con.execute("INSERT INTO combined_results VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (side, ca, cb, merged_combo, horizon, r["sharpe_avg"], r["sharpe_pool"], r["sharpe_robust"],
                  r["sharpe_min"], r["sharpe_max"], r["syms_included"], r["pos_syms"],
                  r["n_trades_total"], r["wr_avg"], r["mean_ret_avg"], r["dd_pct_avg"], time.time()))
         con.commit()
