@@ -17146,6 +17146,22 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
         current_price = await price(ctx['symbol'], position)
     if not current_price or current_price <= 0:
         return None
+    # RZ_BREAKOUT early path: bb_pct_b_1h in band just outside extreme zone → entry without alignment gates.
+    # Band: LONG fires when bb_pctb in [rz_bot, rz_bot+band] (just exited oversold zone).
+    # SHORT fires when bb_pctb in [rz_top-band, rz_top]. Defaults False — enable via config.py once sweep validates.
+    if getattr(trade_manager.config, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
+        _rz_bb = float(i.get('bb_pct_b_1h', 0.5) or 0.5)
+        _rz_top = float(getattr(trade_manager.config, 'RZ_TOP_BB_THRESHOLD', 0.85))
+        _rz_bot = float(getattr(trade_manager.config, 'RZ_BOT_BB_THRESHOLD', 0.15))
+        _rz_band = float(getattr(trade_manager.config, 'RZ_BREAKOUT_BAND', 0.05))
+        _rz_break_fire = (is_long and _rz_bot <= _rz_bb <= _rz_bot + _rz_band) or (not is_long and _rz_top - _rz_band <= _rz_bb <= _rz_top)
+        if _rz_break_fire:
+            _rz_sym = ctx.get('symbol')
+            _rz_min_qty = float((trade_manager.min_qty or {}).get(_rz_sym, 0.0)) if hasattr(trade_manager, 'min_qty') and isinstance(getattr(trade_manager, 'min_qty', None), dict) else 0.0
+            _rz_pos_amt = float(getattr(position, 'positionAmt', 0.0) or 0.0)
+            _rz_action = _decide_action(_rz_pos_amt, _rz_min_qty)
+            logger.info(f"[RZ_BREAKOUT] {ctx['position_key']}: bb_pctb_1h={_rz_bb:.2f} action={_rz_action}")
+            return Signal(action=_rz_action, reason=f"RZ_BREAKOUT_{'L' if is_long else 'S'}_bb={_rz_bb:.2f}", conviction=70.0)
     k_1m = float(i.get('stoch_k_1m', 50)); d_1m = float(i.get('stoch_d_1m', 50))
     k_3m = float(i.get('stoch_k_3m', 50)); d_3m = float(i.get('stoch_d_3m', 50))
     k_15m = float(i.get('stoch_k_15m', 50)); d_15m = float(i.get('stoch_d_15m', 50))

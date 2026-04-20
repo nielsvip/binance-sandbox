@@ -1365,6 +1365,24 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         qty = int(max(1, _base_qty))
                         conf = _entry_score
                         reason = f"WT_DC_ENTRY_{_entry_score:.0f}_{_entry_reason[:60]}"
+                # RZ_BREAKOUT: third entry path — fires when bb_pct_b_1h just exited extreme zone.
+                # Band approach: LONG fires when bb_pctb is in [rz_bot, rz_bot+band] (just broke up from oversold).
+                # SHORT fires when bb_pctb is in [rz_top-band, rz_top] (just broke down from overbought).
+                # RZ_BREAKOUT_ENTRY_ENABLED defaults False — enable via config_tradier.py once sweep validates.
+                if action_type != "OPEN" and getattr(config, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
+                    _rz_ind = indicators_raw if indicators_raw else i
+                    _rz_bb_1h = float((_rz_ind or {}).get('bb_pct_b_1h', 0.5) or 0.5)
+                    _rz_top_b = float(getattr(config, 'RZ_TOP_BB_THRESHOLD', 0.85))
+                    _rz_bot_b = float(getattr(config, 'RZ_BOT_BB_THRESHOLD', 0.15))
+                    _rz_band_b = float(getattr(config, 'RZ_BREAKOUT_BAND', 0.05))
+                    _rz_fire = (is_long and _rz_bot_b <= _rz_bb_1h <= _rz_bot_b + _rz_band_b) or (not is_long and _rz_top_b - _rz_band_b <= _rz_bb_1h <= _rz_top_b)
+                    if _rz_fire:
+                        _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
+                        action_type = "OPEN"
+                        qty = int(max(1, _base_qty))
+                        conf = 70.0
+                        reason = f"RZ_BREAKOUT_{'L' if is_long else 'S'}_bb={_rz_bb_1h:.2f}"
+                        logger.info(f"[RZ_BREAKOUT] {account_key}:{symbol} {'L' if is_long else 'S'}: bb_pctb_1h={_rz_bb_1h:.2f} band=[{_rz_bot_b if is_long else _rz_top_b - _rz_band_b:.2f},{(_rz_bot_b + _rz_band_b) if is_long else _rz_top_b:.2f}]")
                 # VARIANCE_FIX 2026-04-14 — canonical-switch gate application on PRIMARY entry path.
                 # The 8 previously-DEAD switches (K_ZONE_LONG/SHORT_THRESHOLD, MI_ENTRY_ENABLED,
                 # MI_EXIT_ENABLED, WT_COMPOSITE_SCORING_ENABLED, WT_EXIT_TFS, WT_EXIT_MIN_TFS,

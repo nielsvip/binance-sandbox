@@ -1037,37 +1037,40 @@ def build_param_grid_exit_wt_48sym():
 
 
 def build_param_grid_mega_crypto_v8():
-    """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 8.007 on 49 sym).
-    Crypto baseline params FIXED. Sweeping unknowns: RZ, EXIT_SCORER, DC_RECOVERY, SRS, PARTIAL.
-    EARLY_ABORT floor raised to 3.0 (was 0.5 — far below 8.007 baseline).
+    """REBASED 2026-04-20 (v2) to le_dynamic_v2_baseline snapshot (Sharpe 8.007 on 49 sym).
+    CRITICAL FIX: now uses the EXACT le_dynamic_tradier_v2 winner params (LOCAL_EXTREMES + DYNAMIC_COUNTER_EXIT)
+    that produced the 8.007 crypto baseline. Old version had wrong crypto-specific params → Sharpe 0.35.
+    Sweeping same unknowns as mega_tradier_v8 for direct comparability.
     Run: --mode crypto --symbols fast --start 2022-01-01 --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90 --workers 4 --stream --shuffle
     """
     return {
-        # ── FIXED: crypto snapshot baseline ───────────────────────────────────────
-        "DC_RECOVERY_EXIT_ENABLED": [True],
-        "NOLOSS_ENABLED": [True],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "CT_WT_VELOCITY_1H_MIN": [9.0],
-        "D_TREND_REQUIRED": [True],
+        # ── FIXED: le_dynamic_tradier_v2 params that gave crypto Sharpe 8.007 ─────
+        "LOCAL_EXTREMES_SCORER_ENABLED": [True],
+        "LOCAL_EXTREMES_MIN_SCORE": [45.0],
+        "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
+        "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
         "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0],
-        "MIN_HOLD_BARS": [300],
-        "STRENGTH_MIN_SCORE": [4.0],
-        "WT_EXIT_MIN_TFS": [2],
+        "PROFIT_TARGET_PCT": [0.5],
+        "MIN_HOLD_BARS": [20],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "CT_WT_VELOCITY_1H_MIN": [10.0],
+        "WT_EXIT_MIN_TFS": [3],
+        "STRENGTH_MIN_SCORE": [6.0],
+        "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [1],
-        # ── UNKNOWNS TO SWEEP (improvements above 8.007 baseline) ────────────────
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "NOLOSS_ENABLED": [True],
+        "DC_RECOVERY_EXIT_ENABLED": [True],
+        # ── UNKNOWNS TO SWEEP (same as mega_tradier_v8 for comparability) ─────────
         "RZ_EXIT_ENABLED": [True, False],
-        "RZ_K_EXIT": [80.0, 90.0, 95.0],
-        "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
         "EXIT_SCORER_ENABLED": [True, False],
         "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
-        "REENTRY_RALLY_K15M_MAX": [60.0, 80.0, 100.0],
-        "DC_RECOVERY_EXIT_TOLERANCE_PCT": [0.15, 0.25, 0.35],
         "WINNER_PROTECT_ENABLED": [True, False],
+        "WINNER_PROTECT_GAIN_PCT": [1.0, 2.0],
+        "DC_RECOVERY_EXIT_TOLERANCE_PCT": [0.15, 0.25, 0.35],
+        "LE_TIER_SIZING_ENABLED": [True, False],
         "PARTIAL_EXIT_ENABLED": [True, False],
-        # ── FLOOR: kill configs below 3.0 Sharpe (was 0.5 — far below baseline) ──
+        # ── FLOOR: kill configs below 3.0 Sharpe ─────────────────────────────────
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
@@ -1154,6 +1157,31 @@ def build_param_grid_rz_exit_sweep():
         "EXIT_SCORER_ENABLED": [True, False],
         "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
         "EXIT_SCORER_K_EXTREME": [65.0, 75.0, 85.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
+    }
+
+
+def build_param_grid_rz_breakout_tradier():
+    """2026-04-20: RZ breakout entry — price exits extreme BB zone as entry signal.
+    LONG: bb_pct_b_1h was <= RZ_BOT_BB_THRESHOLD, now above it.
+    SHORT: bb_pct_b_1h was >= RZ_TOP_BB_THRESHOLD, now below it.
+    HIGH RISK of falling back in → paired with NO_LOSS guard (dc_low_15m / dc_low_1h).
+    Run tradier: --mode tradier --symbols fast --start 2024-01-01 --tier rz_breakout_tradier --workers 6 --min-csv-sharpe 2.0
+    Run crypto:  --mode crypto  --symbols fast --start 2022-01-01 --tier rz_breakout_tradier --workers 6 --min-csv-sharpe 2.0
+    288 configs (tradier), same for crypto.
+    """
+    return {
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "RZ_BREAKOUT_NOLOSS_GUARD_ENABLED": [True, False],
+        "RZ_BREAKOUT_NOLOSS_GUARD_TF": ["15m", "1h"],
+        "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
+        "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],
+        "MIN_HOLD_BARS": [4, 10, 20],
+        "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [0.3],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
@@ -2197,6 +2225,7 @@ TIER_MAP = {
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
     "mega_tradier_v8_focused": build_param_grid_mega_tradier_v8_focused,
     "rz_exit_sweep": build_param_grid_rz_exit_sweep,
+    "rz_breakout_tradier": build_param_grid_rz_breakout_tradier,
     "crypto_validate_top": build_param_grid_crypto_validate_top,
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
