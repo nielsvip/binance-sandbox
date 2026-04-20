@@ -1260,7 +1260,7 @@ def build_param_grid_crypto_vel_sweep():
     Coord descent (Apr-17) found vel=6→2.249. vel=8 comment was on broken data (B15/B11=0).
     Tests: CT_WT_VELOCITY_1H_MIN [5,6,7,8,9] × REENTRY_RALLY_K15M_MAX [30,50,80,100] × HTF_MIN_ALIGNED [1,2].
     40 configs × 48 symbols, 4yr. ~12min on S1 with 6 workers.
-    Run on S1: python v8_quick_sweep.py --mode crypto --symbols 48 --start 2021-01-01 --tier crypto_vel_sweep --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
+    Run on S1: python v8_quick_sweep.py --mode crypto --symbols all --start 2021-01-01 --tier crypto_vel_sweep --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
     configs = []
     for vel in [5.0, 6.0, 7.0, 8.0, 9.0]:
         for rally in [30.0, 50.0, 80.0, 100.0]:

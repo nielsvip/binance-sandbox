@@ -75,7 +75,7 @@ class QuickConfig:
     START_POSITION_SIZE: float = 2000.0
     MIN_POSITION_SIZE: float = 55.0
     CT_WT_VELOCITY_GATE_ENABLED: bool = True
-    CT_WT_VELOCITY_1H_MIN: float = 8.0   # 2026-04-19 sweep: vel=8 gives sharpe=2.554 (vs 2.495 at vel=6, vs 0.46 at NOLOSS=False).
+    CT_WT_VELOCITY_1H_MIN: float = 9.0   # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598. Was 8.0.
     CT_DC_CROSSOVER_SKIP_ENABLED: bool = True
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False
     CT_CHOP_4H_GATE_ENABLED: bool = False
@@ -87,7 +87,7 @@ class QuickConfig:
     SATOSHIT_MIN_VOTES: int = 3
     STRUCTURAL_RANGE_SHIFT_EXIT: bool = True
     STRUCTURAL_RANGE_SHIFT_TF: str = "dc_4h"
-    REENTRY_RALLY_K15M_MAX: float = 100.0  # 2026-04-19 FIX: was 40 from coord-descent on broken data (B15/B11=0 bars → ~0 trades → gates look good). 100=disabled. Sweep to find real optimum.
+    REENTRY_RALLY_K15M_MAX: float = 30.0   # 2026-04-20 sweep: rally=30 wins with vel=9. Sharpe 2.598. Was 100 (disabled after broken-data fix).
     REENTRY_RALLY_HTF_MIN: int = 1
     # Symmetric exit-would-fire gate — when True, strip entry bars that are simultaneously exit bars.
     # 2026-04-19: Chapter-C winner tested on broken data — re-sweep needed. Default OFF.

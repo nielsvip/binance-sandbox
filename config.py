@@ -252,7 +252,7 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 100.0   # 2026-04-19 FIX: 40 was calibrated on broken B15/B11 data (DC-band NPZ bug). 100=disabled. Re-sweep pending.
+    REENTRY_RALLY_K15M_MAX: float = 30.0    # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target 2.5 met). Was 100 (disabled). Only reenter when k15m<30 (deep pullback).
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
     REENTRY_SYMGATE_ENABLED: bool = False   # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
@@ -1104,7 +1104,7 @@ class Config:
     # === BC_170-174: COPY TRADER NPZ GATES (50k+ trades, 110+ traders, 426 NPZ indicators) ===
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
-    CT_WT_VELOCITY_1H_MIN: float = 8.0  # 2026-04-19: clean sweep (B15/B11 DC-band fix) → vel=8 Sharpe 2.554. Was 6.0 (broken-data winner).
+    CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     CT_15M_MOMENTUM_GATE_ENABLED: bool = False  # BC_171: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym 4yr crypto + 12sym tradier. OFF forever.
     CT_STOCH_K_15M_LONG_MIN: float = 45.0  # BC_171: (disabled)
     CT_STOCH_K_15M_SHORT_MAX: float = 55.0  # BC_171: (disabled)
