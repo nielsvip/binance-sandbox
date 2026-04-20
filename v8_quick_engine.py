@@ -199,6 +199,35 @@ class QuickConfig:
     STOP_LOSS_ENABLED: bool = False
     STOP_LOSS_PCT: float = 2.0  # Exit at this loss %
 
+    # ===== 2026-04-20 EXIT WT/DC AUDIT SWITCHES (all default OFF) =====
+    WT_MOMENTUM_EXIT_ENABLED: bool = False
+    WT_MOMENTUM_EXIT_TF: str = "1h"
+    WT_MOMENTUM_EXIT_THRESHOLD: int = 0
+    WT_STRUCT_EXIT_ENABLED: bool = False
+    WT_STRUCT_EXIT_TF: str = "1h"
+    WT_DIV_EXIT_ENABLED: bool = False
+    WT_DIV_EXIT_TF: str = "1h"
+    WT_PERCENTILE_EXIT_ENABLED: bool = False
+    WT_PERCENTILE_EXIT_TF: str = "1h"
+    WT_PERCENTILE_EXIT_THRESHOLD: float = 80.0
+    WT_ZSCORE_EXIT_ENABLED: bool = False
+    WT_ZSCORE_EXIT_TF: str = "1h"
+    WT_ZSCORE_EXIT_THRESHOLD: float = 2.0
+    WT_ACCEL_EXIT_ENABLED: bool = False
+    WT_ACCEL_EXIT_TF: str = "1h"
+    WT_WAVE_PHASE_EXIT_ENABLED: bool = False
+    WT_WAVE_PHASE_EXIT_TF: str = "1h"
+    WT_SCORE_FLIP_EXIT_ENABLED: bool = False
+    WT_SCORE_FLIP_EXIT_TF: str = "3m"
+    WT_VEL_MTF_EXIT_ENABLED: bool = False
+    WT_VEL_MTF_EXIT_MIN_TFS: int = 3
+    WT_VEL_MTF_EXIT_THRESHOLD: float = -1.0
+    WT_ALIGN_EXIT_ENABLED: bool = False
+    WT_ALIGN_EXIT_MIN: int = 2
+    WT_COMP_DELTA_EXIT_ENABLED: bool = False
+    WT_COMP_DELTA_EXIT_THRESHOLD: float = 0.0
+    DC_POS_EXIT_ENABLED: bool = False
+    DC_POS_EXIT_THRESHOLD: float = 0.7
     # ===== 2026-04-18 INDICATOR-AUDIT EXPERIMENTAL SWITCHES (all default OFF) =====
     # R-G2: MTF WT velocity alignment gate — wt_velocity_up_count/down_count in NPZ (5-TF count)
     WT_MTF_VEL_GATE_ENABLED: bool = False

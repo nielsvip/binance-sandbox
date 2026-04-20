@@ -656,24 +656,21 @@ def build_param_grid_hunt_stock():
 
 
 def build_param_grid_stock_dc_hunt():
-    """DC-recovery-aware stock hunt (2026-04-20). DC_RECOVERY_EXIT now enabled in tradier defaults
-    (bb_1h stranded exit). Previous hunt_stock had PROFIT_TARGET_PCT without PT_ENABLED toggle — dead configs.
-    This tier properly tests PT_ENABLED as a boolean lever alongside key exit/entry gates.
-    ~50k configs, 12 fast symbols from 2024, EARLY_ABORT floor=0.8 on 4 qualifying symbols.
-    Run on S2: --mode tradier --symbols fast --start 2024-01-01 --tier stock_dc_hunt --workers 6
-    --kill-secs 30 --kill-sharpe 0.5 --min-csv-sharpe 1.5"""
+    """Focused search around proven winner (2026-04-20): VEL=4.0 + PT=0.5% + HOLD=20 → Sharpe=2.0
+    on 262 symbols. Fine-scan around this to push above 2.5. All 262 symbols, full 4yr data.
+    ~192 configs. EARLY_ABORT: 30 syms floor=1.5 — fast kill on bad configs.
+    Run on S2: --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_hunt
+    --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
     return {
-        "PROFIT_TARGET_ENABLED": [True, False],
-        "PROFIT_TARGET_PCT": [0.2, 0.4, 0.7, 1.0, 1.5, 2.0],
-        "MIN_HOLD_BARS": [2, 5, 10, 20, 40, 80],
-        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 8.0, 12.0],
-        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
-        "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "REENTRY_RALLY_K15M_MAX": [40.0, 60.0, 80.0, 100.0],
-        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
-        "CT_DC_CROSSOVER_SKIP_ENABLED": [True, False],
-        "EARLY_ABORT_MIN_SYMBOLS": [4],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.8],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.4, 0.5, 0.6, 0.7],
+        "MIN_HOLD_BARS": [15, 20, 25, 30],
+        "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "DC_RECOVERY_EXIT_TF": ["bb_1h", "dc_4h"],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [1.5],
     }
 
 
@@ -729,10 +726,15 @@ def build_param_grid_exit_wt_audit():
       wt_peak_structure: 1=HH -1=LH | wt_trough_structure: 1=HL -1=LL
       wt_divergence: -1=BEAR 1=BULL | wt_wave_phase: 1=expanding -1=contracting
     """
+    # Disable all named exits — only vel_exit (4h vel<-2, hardcoded) remains as safety net.
+    # WT_EXIT_MIN_TFS=4 kills delta_exit (max wt_against=3, so 3>=4 never fires).
+    # This isolates each new signal's pure contribution.
     baseline = {
         "STRENGTH_FILTER_ENABLED": True, "STRENGTH_MIN_SCORE": 5.0,
-        "MIN_HOLD_BARS": 10, "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 1.6, "WT_EXIT_MIN_TFS": 3,
+        "MIN_HOLD_BARS": 10, "PROFIT_TARGET_ENABLED": False,
+        "PROFIT_TARGET_PCT": 10.0, "WT_EXIT_MIN_TFS": 4,
+        "SATOSHIT_ENABLED": False, "RZ_EXIT_ENABLED": False,
+        "STRUCTURAL_RANGE_SHIFT_EXIT": False, "WT_VEL_DECAY_EXIT_ENABLED": False,
         "WT_MOMENTUM_EXIT_ENABLED": False, "WT_STRUCT_EXIT_ENABLED": False,
         "WT_DIV_EXIT_ENABLED": False, "WT_PERCENTILE_EXIT_ENABLED": False,
         "WT_ZSCORE_EXIT_ENABLED": False, "WT_ACCEL_EXIT_ENABLED": False,
@@ -772,6 +774,76 @@ def build_param_grid_exit_wt_audit():
     return configs
 
 
+def build_param_grid_exit_wt_phase2():
+    """Phase 2: combine Phase-1 exit winners in cartesian product.
+    Phase 1 ranking (exit_wt_audit on 11 crypto symbols):
+      #1 WT_ACCEL_EXIT (4h) +0.092  #2 WT_MOMENTUM_EXIT (1h thr=0) +0.054
+      #3 WT_VEL_MTF_EXIT +0.053     #4 WT_WAVE_PHASE_EXIT (1h) +0.049
+      #5 WT_SCORE_FLIP_EXIT +0.027  #6 WT_PERCENTILE_EXIT (>=75) +0.020
+    Losers (excluded): DC_POS_EXIT, WT_DIV_EXIT, WT_ZSCORE_EXIT, WT_COMP_DELTA_EXIT.
+    Run on FAST_SYMBOLS to find best combination, then promote winners to 48-sym sweep."""
+    return {
+        # ── proven entry baseline (fixed) ──────────────────────────────────────────
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [10],
+        "PROFIT_TARGET_ENABLED": [False],
+        "PROFIT_TARGET_PCT": [10.0],
+        "WT_EXIT_MIN_TFS": [4],  # delta_exit disabled — winners only
+        "SATOSHIT_ENABLED": [False], "RZ_EXIT_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [False], "WT_VEL_DECAY_EXIT_ENABLED": [False],
+        # ── Phase-1 winners ─────────────────────────────────────────────────────────
+        "WT_ACCEL_EXIT_ENABLED": [True, False],
+        "WT_ACCEL_EXIT_TF": ["4h", "1h"],
+        "WT_MOMENTUM_EXIT_ENABLED": [True, False],
+        "WT_MOMENTUM_EXIT_TF": ["1h"],
+        "WT_MOMENTUM_EXIT_THRESHOLD": [0],
+        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
+        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
+        "WT_WAVE_PHASE_EXIT_ENABLED": [True, False],
+        "WT_WAVE_PHASE_EXIT_TF": ["1h", "4h"],
+        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
+        "WT_SCORE_FLIP_EXIT_TF": ["3m", "15m"],
+        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
+        "WT_PERCENTILE_EXIT_TF": ["1h"],
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
+    }
+
+
+def build_param_grid_exit_wt_48sym():
+    """Full 48-sym validation for best exit combination found in phase2.
+    Replace the [True,False] with [True] for confirmed winners before running.
+    Run on S1 with all 48 crypto symbols × 4yr to validate vs READONLY_LATEST baseline."""
+    return {
+        # ── entry baseline (proven v3_core best) ──
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [10, 20, 30],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [1.4, 1.6, 1.8],
+        "WT_EXIT_MIN_TFS": [3],
+        "SATOSHIT_ENABLED": [False], "RZ_EXIT_ENABLED": [False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [False],
+        # ── confirmed Phase-1 winners (fill in after phase2 picks top combo) ──
+        "WT_ACCEL_EXIT_ENABLED": [True],
+        "WT_ACCEL_EXIT_TF": ["4h"],
+        "WT_MOMENTUM_EXIT_ENABLED": [True],
+        "WT_MOMENTUM_EXIT_TF": ["1h"],
+        "WT_MOMENTUM_EXIT_THRESHOLD": [0],
+        "WT_WAVE_PHASE_EXIT_ENABLED": [True],
+        "WT_WAVE_PHASE_EXIT_TF": ["1h"],
+        "WT_VEL_MTF_EXIT_ENABLED": [True, False],
+        "WT_VEL_MTF_EXIT_MIN_TFS": [2, 3],
+        "WT_VEL_MTF_EXIT_THRESHOLD": [-1.0, -2.0],
+        "WT_SCORE_FLIP_EXIT_ENABLED": [True, False],
+        "WT_SCORE_FLIP_EXIT_TF": ["3m"],
+        "WT_PERCENTILE_EXIT_ENABLED": [True, False],
+        "WT_PERCENTILE_EXIT_TF": ["1h"],
+        "WT_PERCENTILE_EXIT_THRESHOLD": [75.0, 80.0],
+    }
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
@@ -808,11 +880,15 @@ TIER_MAP = {
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "exit_wt_audit": build_param_grid_exit_wt_audit,
+    "exit_wt_phase2": build_param_grid_exit_wt_phase2,
+    "exit_wt_48sym": build_param_grid_exit_wt_48sym,
 }
 
 
-def grid_to_configs(grid: dict) -> list:
-    """Expand parameter grid to list of config dicts."""
+def grid_to_configs(grid) -> list:
+    """Expand parameter grid to list of config dicts. Accepts pre-built list of dicts too."""
+    if isinstance(grid, list):
+        return grid
     keys = sorted(grid.keys())
     values = [grid[k] for k in keys]
     configs = []
