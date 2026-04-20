@@ -246,6 +246,60 @@ def precompute_exit_indices(exit_mask, max_hold):
     return exit_at
 
 
+def build_session_masks(loaded, syms):
+    """Build intraday-session enforcement masks.
+    Regular US stock session = 13:30 UTC (09:30 ET) to 20:00 UTC (16:00 ET).
+    Returns:
+      entry_allowed: bool (bars, syms) — True if within 13:30-19:30 UTC (allows 30min to exit before close)
+      force_close_mask: bool (bars, syms) — True at bar that is last-bar-before-session-end (20:00 UTC)
+                                              OR last bar before a >30min data gap
+    This enforces NO overnight holds and NO entries in last 30min of session.
+    """
+    n_bars = len(loaded[syms[0]]["close"])
+    # Use SPY (or first sym) timestamps as reference — all syms should share the same bar timestamps
+    ts = np.asarray(loaded[syms[0]].get("timestamps"), dtype=np.int64)
+    if len(ts) != n_bars:
+        # Fallback: no timestamps available — disable session enforcement (pure indicator run)
+        print(f"  WARN: timestamps missing/mismatched, session enforcement DISABLED")
+        entry_ok = np.ones((n_bars, len(syms)), dtype=bool)
+        force_close = np.zeros((n_bars, len(syms)), dtype=bool)
+        return entry_ok, force_close
+
+    # Timestamp in seconds (as confirmed in data). Compute UTC hour+minute and weekday.
+    seconds_in_day = ts % 86400
+    utc_hour = (seconds_in_day // 3600).astype(np.int32)
+    utc_min = ((seconds_in_day % 3600) // 60).astype(np.int32)
+    hm = utc_hour * 100 + utc_min  # e.g., 1330, 1955
+    # Day-of-week: Monday=0..Sunday=6
+    day_idx = ts // 86400
+    dow = ((day_idx + 4) % 7).astype(np.int32)  # 1970-01-01 was a Thursday; +4 makes 1970-01-01 a Monday? Actually 1970-01-01 was Thursday so (0 + 4) % 7 = 4, which means Friday. Hmm.
+    # Simpler: convert ts to datetime.weekday() per bar via numpy datetime64
+    ts_dt64 = ts.astype("datetime64[s]")
+    # dow as int: Monday=0..Sunday=6 (numpy datetime has weekday: (dt - epoch).days % 7 gives 0=Thu)
+    days_since_epoch = ts // 86400
+    dow = ((days_since_epoch + 3) % 7).astype(np.int32)  # 1970-01-01 was Thu → adjust: (days+3)%7 → Mon=0
+    weekday_ok = dow < 5  # Mon-Fri only
+
+    # Regular session entry allowed: 13:30 <= hm < 19:30 AND weekday
+    entry_ok_1d = (hm >= 1330) & (hm < 1930) & weekday_ok  # (bars,)
+
+    # Force-close: last 5m bar of regular session (hm == 1955) OR last bar before any >30min gap (overnight / weekend)
+    session_end_1d = (hm == 1955) & weekday_ok
+    # Bar N is "last before gap" if ts[N+1] - ts[N] > 30min AND N < n_bars-1
+    time_gaps = np.concatenate([np.diff(ts), [0]])  # pad last
+    last_before_gap_1d = time_gaps > (30 * 60)  # 30min threshold
+    force_close_1d = session_end_1d | last_before_gap_1d | ~weekday_ok  # also force-close if we somehow landed on weekend
+
+    n_syms = len(syms)
+    entry_ok = np.broadcast_to(entry_ok_1d[:, None], (n_bars, n_syms)).copy()
+    force_close = np.broadcast_to(force_close_1d[:, None], (n_bars, n_syms)).copy()
+    intraday_bar_pct = float(entry_ok_1d.mean() * 100)
+    force_pct = float(force_close_1d.mean() * 100)
+    print(f"  [session] entry-allowed bars: {intraday_bar_pct:.1f}% of total (regular session 13:30-19:30 UTC weekdays)")
+    print(f"  [session] force-close bars: {force_pct:.1f}% of total (session-end 19:55 UTC + pre/post market + weekend)")
+    return entry_ok, force_close
+
+
 def score_realistic(entry_mask, close, exit_idx, side, sym_select=None):
     """Compute returns at technical exit, not forward horizon.
     entry_mask: (bars, syms) bool
@@ -340,15 +394,17 @@ def rank_syms_by_uptrend(loaded, syms):
 # Worker-shared
 _C = None; _CLOSE = None; _EXIT_IDX_L = None; _EXIT_IDX_S = None
 _KEYS_L = None; _KEYS_S = None; _LONG_SYMS = None; _SHORT_SYMS = None
+_ENTRY_ALLOWED = None  # (bars, syms) — intraday-session filter
 
 
 def init_worker(state_path):
-    global _C, _CLOSE, _EXIT_IDX_L, _EXIT_IDX_S, _KEYS_L, _KEYS_S, _LONG_SYMS, _SHORT_SYMS
+    global _C, _CLOSE, _EXIT_IDX_L, _EXIT_IDX_S, _KEYS_L, _KEYS_S, _LONG_SYMS, _SHORT_SYMS, _ENTRY_ALLOWED
     st = np.load(state_path, allow_pickle=True).item()
     _C = st["C"]; _CLOSE = st["CLOSE"]
     _EXIT_IDX_L = st["EXIT_IDX_L"]; _EXIT_IDX_S = st["EXIT_IDX_S"]
     _KEYS_L = st["KEYS_L"]; _KEYS_S = st["KEYS_S"]
     _LONG_SYMS = st.get("LONG_SYMS"); _SHORT_SYMS = st.get("SHORT_SYMS")
+    _ENTRY_ALLOWED = st.get("ENTRY_ALLOWED")
 
 
 def run_chunk(args):
@@ -362,6 +418,9 @@ def run_chunk(args):
         mask = _C[names[0]].copy()
         for n in names[1:]:
             mask &= _C[n]
+        # Apply intraday session filter (block entries outside 13:30-19:30 UTC weekdays)
+        if _ENTRY_ALLOWED is not None:
+            mask = mask & _ENTRY_ALLOWED
         if not mask.any():
             continue
         m = score_realistic(mask, _CLOSE, exit_idx, side, sym_select=sym_sel)
@@ -501,11 +560,17 @@ def main():
         exit_desc = "wt_cross_15m OR dc_basis_15m"
     else:
         raise SystemExit(f"Unknown --exit-rule: {er}")
+    # Session enforcement: block non-regular-session entries + force-close at session end
+    entry_allowed_mask, force_close_mask = build_session_masks(loaded, syms_used)
+    # Bake into exit masks: session end always triggers close, regardless of technical exit
+    long_exit_mask = long_exit_mask | force_close_mask
+    short_exit_mask = short_exit_mask | force_close_mask
+
     exit_idx_L = precompute_exit_indices(long_exit_mask, args.max_hold)
     exit_idx_S = precompute_exit_indices(short_exit_mask, args.max_hold)
     forced_L = np.mean(exit_idx_L - np.arange(n_bars).reshape(-1, 1) >= args.max_hold)
     forced_S = np.mean(exit_idx_S - np.arange(n_bars).reshape(-1, 1) >= args.max_hold)
-    print(f"[{time.time()-t0:.1f}s] Exit rule [{args.exit_rule}]: {exit_desc}")
+    print(f"[{time.time()-t0:.1f}s] Exit rule [{args.exit_rule}]: {exit_desc} (INTRADAY ONLY — force-close at session end/gap)")
     print(f"[{time.time()-t0:.1f}s] Forced @max_hold: LONG={forced_L*100:.1f}% SHORT={forced_S*100:.1f}%")
 
     if SIDE_RANK_ENABLED and len(syms_used) > SIDE_RANK_KEEP:
@@ -523,6 +588,7 @@ def main():
         "KEYS_L": sorted([k for k in C if k.startswith("L_")]),
         "KEYS_S": sorted([k for k in C if k.startswith("S_")]),
         "LONG_SYMS": long_syms, "SHORT_SYMS": short_syms,
+        "ENTRY_ALLOWED": entry_allowed_mask,
     })
     keys_L = sorted([k for k in C if k.startswith("L_")])
     keys_S = sorted([k for k in C if k.startswith("S_")])

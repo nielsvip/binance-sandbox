@@ -76,7 +76,8 @@ def sweep_sector(sector, bars, pick, workers, time_budget_s, python_bin):
             pass
     cmd = (f"{python_bin} -u /home/niels/binance-sandbox/vec_stock_mega.py "
            f"--sector {sector} --bars {bars} --pick {pick} --workers {workers} "
-           f"--time-budget-s {time_budget_s} --floor-robust 0.1 --elite-robust 1.0 "
+           f"--time-budget-s {time_budget_s} --floor-robust 0.3 --elite-robust 2.0 "
+           f"--exit-rule wt_state_15m_1h "
            f"--out-db {db}")
     log(f"  [{sector}] RUN: {cmd}")
     rc, out, err = run_cmd(cmd, timeout=time_budget_s + 120)

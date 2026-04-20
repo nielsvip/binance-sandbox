@@ -948,9 +948,9 @@ def build_param_grid_mega_crypto_v8():
         "WINNER_PROTECT_ENABLED": [True, False],
         "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [2],
-        "DC_RECOVERY_EXIT_ENABLED": [False],
+        "DC_RECOVERY_EXIT_ENABLED": [True],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [3.5],
+        "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
     }
 
@@ -998,7 +998,7 @@ def build_param_grid_crypto_validate_top():
         "WINNER_PROTECT_ENABLED": [True],
         "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [2],
-        "DC_RECOVERY_EXIT_ENABLED": [False],
+        "DC_RECOVERY_EXIT_ENABLED": [True],
         "EARLY_ABORT_MIN_SYMBOLS": [999],
         "EARLY_ABORT_SHARPE_FLOOR": [0.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [999999.0],
