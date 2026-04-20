@@ -532,7 +532,7 @@ class QuickConfig:
     LOCAL_EXTREMES_MIN_SCORE: float = 30.0
     LE_TIER_SIZING_ENABLED: bool = False
     K1H_RISING_GATE_ENABLED: bool = False
-    K1H_RISING_LONG_MAX: float = 35.0
+    K1H_RISING_LONG_MAX: float = 60.0  # k_1h < this AND higher than 12 bars ago (1 full 1h period back)
     # ===== 2026-04-20 DYNAMIC SCORING — 5-min interval intervention =====
     # Counter-exit: while in LONG, if SHORT-direction LE score >= threshold → exit early (cut losers).
     # Augment: every DYNAMIC_SCORE_AUGMENT_INTERVAL bars, if same-direction score jumped by MIN_JUMP → augment.
@@ -722,6 +722,10 @@ def _close_with_mode_check(npz, n, cfg, call_site: str) -> np.ndarray:
 def compute_reentry_blocks(npz, n, is_long, cfg):
     """Returns dict of block_name -> boolean array (True = block fires)."""
     _ltf = getattr(cfg, 'LTF', '3m')
+    _ltf_mins = 3 if _ltf == '3m' else 5
+    _bph_15m = 15 // _ltf_mins   # bars per 1h period: 5 (3m/crypto) or 3 (5m/tradier)
+    _bph_1h = 60 // _ltf_mins    # bars per 1h period: 20 (crypto) or 12 (tradier)
+    _bph_4h = 240 // _ltf_mins   # bars per 4h period: 80 (crypto) or 48 (tradier)
     close = _close_with_mode_check(npz, n, cfg, 'compute_reentry_blocks')
     k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50); d_ltf = _safe(npz, f'stoch_d_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50); k_1h = _safe(npz, 'stoch_k_1h', n, 50)
@@ -764,9 +768,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["B10"] = (k_ltf_prev >= d_ltf) & (k_ltf < d_ltf) & (k_ltf > 75) & (k_15m > 60)
     if cfg.REENTRY_B11_DC_BREAK_ENABLED:
         # B11 uses PREVIOUS 1h bar's DC band — dc_high_1h in NPZ includes current bar's high so
-        # close > dc_high_1h is mathematically impossible. Shift by 20 3m bars (1 1h bar).
-        _dc1h_prev = np.roll(dc_high_1h, 20); _dc1h_prev[:20] = 0
-        _dc1l_prev = np.roll(dc_low_1h, 20); _dc1l_prev[:20] = 0
+        # close > dc_high_1h is mathematically impossible. Shift by _bph_1h bars (1 full 1h period).
+        _dc1h_prev = np.roll(dc_high_1h, _bph_1h); _dc1h_prev[:_bph_1h] = 0
+        _dc1l_prev = np.roll(dc_low_1h, _bph_1h); _dc1l_prev[:_bph_1h] = 0
         if is_long:
             blocks["B11"] = (_dc1h_prev > 0) & (close > _dc1h_prev * 1.001) & (wt1_15m > wt2_15m)
         else:
@@ -785,9 +789,9 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             blocks["B14"] = (ha_ltf == -1) & (ha_15m == -1) & (ha_1h == -1) & (k_ltf > 40)
     if cfg.REENTRY_B15_STRONG_TREND_ENABLED:
         # B15 uses PREVIOUS 4h bar's DC band — dc_high_4h in NPZ includes current bar so
-        # close > dc_high_4h is mathematically impossible. Shift by 80 3m bars (1 4h bar).
-        _dc4h_prev = np.roll(dc_high_4h, 80); _dc4h_prev[:80] = 0
-        _dc4l_prev = np.roll(dc_low_4h, 80); _dc4l_prev[:80] = 0
+        # close > dc_high_4h is mathematically impossible. Shift by _bph_4h bars (1 full 4h period).
+        _dc4h_prev = np.roll(dc_high_4h, _bph_4h); _dc4h_prev[:_bph_4h] = 0
+        _dc4l_prev = np.roll(dc_low_4h, _bph_4h); _dc4l_prev[:_bph_4h] = 0
         if is_long:
             blocks["B15"] = (_dc4h_prev > 0) & (close > _dc4h_prev) & (wt_vel_1h > 2.0) & (k_1h < 85)
         else:
@@ -797,8 +801,8 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
     # B_PRICE_CROSS_K90 (D): proxy — k_15m in favorable zone. "Price crosses exit" requires per-trade state
     # handled in simulate() loop, so the vectorized block emits candidates and simulate() gates on exit-price cross.
     if getattr(cfg, 'REENTRY_WT15M_CROSS_ENABLED', True):
-        wt1_15m_prev = np.roll(wt1_15m, 1); wt1_15m_prev[0] = wt1_15m[0]
-        wt2_15m_prev = np.roll(wt2_15m, 1); wt2_15m_prev[0] = wt2_15m[0]
+        wt1_15m_prev = np.roll(wt1_15m, _bph_15m); wt1_15m_prev[:_bph_15m] = wt1_15m[:_bph_15m]
+        wt2_15m_prev = np.roll(wt2_15m, _bph_15m); wt2_15m_prev[:_bph_15m] = wt2_15m[:_bph_15m]
         wt1_4h = _safe(npz, 'wt1_4h', n); wt2_4h = _safe(npz, 'wt2_4h', n)
         _k_max = float(getattr(cfg, 'REENTRY_WT15M_K_MAX', 50.0))
         _htf_req = bool(getattr(cfg, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
@@ -1083,6 +1087,8 @@ def _compute_le_score_arr(npz: dict, n: int, is_long: bool, cfg) -> np.ndarray:
 
 def compute_entry_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
+    _ltf_mins = 3 if _ltf == '3m' else 5
+    _bph_1h = 60 // _ltf_mins    # bars per 1h: 20 (crypto/3m) or 12 (tradier/5m)
     close = _close_with_mode_check(npz, n, cfg, 'compute_entry_signals')
     k_ltf = _safe(npz, f'stoch_k_{_ltf}', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50)
@@ -1260,15 +1266,16 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _zs = float(getattr(cfg, 'ENTRY_ZONE_SHORT', 100.0) or 100.0)
         if _zs < 100.0:
             extra_ok = extra_ok & (_zone_k_arr > _zs)
-    # K1H_RISING_GATE — LONG: k_1h < threshold AND rising vs prev bar (bouncing from oversold, not still falling).
-    # SHORT: k_1h > (100-threshold) AND falling. Prevents chasing entries mid-collapse.
+    # K1H_RISING_GATE — LONG: k_1h < threshold AND higher than 12 bars ago (1 full 1h period back on 5m data).
+    # Roll by 12 not 1: k_1h only changes once per 12 bars on 5m data; roll(1) gives same value 11/12 times.
+    # SHORT: k_1h > (100-threshold) AND lower than 12 bars ago.
     if bool(getattr(cfg, 'K1H_RISING_GATE_ENABLED', False)):
-        _k1h_max = float(getattr(cfg, 'K1H_RISING_LONG_MAX', 35.0))
-        _k1h_prev = np.roll(k_1h, 1); _k1h_prev[0] = k_1h[0]
+        _k1h_max = float(getattr(cfg, 'K1H_RISING_LONG_MAX', 60.0))
+        _k1h_prev_1h = np.roll(k_1h, _bph_1h); _k1h_prev_1h[:_bph_1h] = k_1h[:_bph_1h]
         if is_long:
-            extra_ok = extra_ok & (k_1h < _k1h_max) & (k_1h > _k1h_prev)
+            extra_ok = extra_ok & (k_1h < _k1h_max) & (k_1h > _k1h_prev_1h)
         else:
-            extra_ok = extra_ok & (k_1h > (100.0 - _k1h_max)) & (k_1h < _k1h_prev)
+            extra_ok = extra_ok & (k_1h > (100.0 - _k1h_max)) & (k_1h < _k1h_prev_1h)
     # REENTRY_RALLY_K15M_MAX — cap on k_15m for entries during rally. 100=disabled.
     _rally_cap = float(getattr(cfg, 'REENTRY_RALLY_K15M_MAX', 100.0) or 100.0)
     if _rally_cap < 100.0:
@@ -1347,6 +1354,8 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 def compute_exit_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
+    _ltf_mins = 3 if _ltf == '3m' else 5
+    _bph_1h = 60 // _ltf_mins    # bars per 1h: 20 (crypto/3m) or 12 (tradier/5m)
     close = _close_with_mode_check(npz, n, cfg, 'compute_exit_signals')
     wt1_ltf = _safe(npz, f'wt1_{_ltf}', n); wt2_ltf = _safe(npz, f'wt2_{_ltf}', n)
     wt1_15m = _safe(npz, 'wt1_15m', n); wt2_15m = _safe(npz, 'wt2_15m', n)
@@ -1368,7 +1377,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
     # WT-VELOCITY-DECAY exit (user priority: "sell when wt delta slows down")
     # Exit when 1h velocity magnitude drops below threshold after being strong
     wt_vel_1h_exit = _safe(npz, 'wt_velocity_1h', n)
-    wt_vel_1h_prev = np.roll(wt_vel_1h_exit, 1); wt_vel_1h_prev[0] = wt_vel_1h_exit[0]
+    wt_vel_1h_prev = np.roll(wt_vel_1h_exit, _bph_1h); wt_vel_1h_prev[:_bph_1h] = wt_vel_1h_exit[:_bph_1h]
     vel_decay_exit = np.zeros(n, dtype=bool)
     if getattr(cfg, 'WT_VEL_DECAY_EXIT_ENABLED', True):
         decay_threshold = float(getattr(cfg, 'WT_VEL_DECAY_THRESHOLD', 1.0))
@@ -1387,7 +1396,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
                   'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h')}
         hk, lk = tf_map.get(cfg.STRUCTURAL_RANGE_SHIFT_TF, ('dc_high_4h', 'dc_low_4h'))
         hi = _safe(npz, hk, n); lo = _safe(npz, lk, n)
-        k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
+        k_1h_prev = np.roll(k_1h, _bph_1h); k_1h_prev[:_bph_1h] = k_1h[:_bph_1h]
         _srs_k_hi = float(getattr(cfg, 'SRS_K_EXIT_1H', 75.0))
         _srs_k_lo = 100.0 - _srs_k_hi
         if is_long:
@@ -1412,7 +1421,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
             rz_exit = ((bb_pctb_1h < 0.15) | (k_1h <= 20)) & (wt_vel_ltf > 1.0)
     stoch_1h_exit = np.zeros(n, dtype=bool)
     if cfg.STOCH_CROSS_1H_EXIT_ENABLED:
-        k_1h_prev = np.roll(k_1h, 1); k_1h_prev[0] = k_1h[0]
+        k_1h_prev = np.roll(k_1h, _bph_1h); k_1h_prev[:_bph_1h] = k_1h[:_bph_1h]
         _s1h_k_min = float(getattr(cfg, 'STOCH_1H_EXIT_K_MIN', 70.0))
         if is_long:
             stoch_1h_exit = (k_1h_prev >= d_1h) & (k_1h < d_1h) & (k_1h_prev >= _s1h_k_min)
@@ -1431,7 +1440,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
             wt_cu_exit = (wt1_ltf_prev <= wt2_ltf) & (wt1_ltf > wt2_ltf) & (k_ltf <= 30)
     mi_exit = np.zeros(n, dtype=bool)
     if cfg.MI_EXIT_ENABLED:
-        mfi_1h_prev = np.roll(mfi_1h, 1); mfi_1h_prev[0] = mfi_1h[0]
+        mfi_1h_prev = np.roll(mfi_1h, _bph_1h); mfi_1h_prev[:_bph_1h] = mfi_1h[:_bph_1h]
         if is_long:
             mi_exit = (mfi_1h_prev > 70) & (mfi_1h < mfi_1h_prev) & (k_1h > 70)
         else:

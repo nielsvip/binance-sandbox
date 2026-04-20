@@ -1577,19 +1577,20 @@ def build_param_grid_le_full_tradier():
 
 
 def build_param_grid_le_k1h_rising():
-    """2026-04-20: K1H_RISING_GATE sweep — tests whether requiring k_1h < threshold AND rising
-    (bouncing from oversold rather than mid-collapse) improves Sharpe over flat LE baseline.
-    Config 0 = LE+tier baseline (no k1h gate). Configs 1-4: rising gate at thresholds 30/35/40/45.
-    Configs 5-8: zone-only (no rising requirement, isolates threshold effect).
-    Configs 9-14: rising gate + varied score minimums at thresholds 30/35/40.
-    Configs 15-18: rising gate + profit targets at thresholds 30/35.
+    """2026-04-20 v2: K1H_RISING_GATE sweep — FIX: roll by 12 bars (1 full 1h period on 5m data).
+    Previous version used roll(1) which compared to the same value 11/12 times since k_1h only
+    changes once per 12 bars → killed 98% of trades. Now correctly checks k_1h vs 12 bars ago.
+    Config 0 = LE baseline (no gate). Configs 1-5: rising gate at k_1h < 60/50/45/40/35.
+    Configs 6-10: zone-only at same thresholds (isolates rising vs zone contribution).
+    Configs 11-16: rising gate at 60/50/45 + varied score mins 15/25.
+    Configs 17-20: rising gate at 60/50 + profit targets 1%/2%.
     Run on S2: python v8_quick_sweep.py --mode tradier --symbols all --start 2022-01-01 --tier le_k1h_rising --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
     base = {
         "LOCAL_EXTREMES_SCORER_ENABLED": True,
         "LOCAL_EXTREMES_MIN_SCORE": 15.0,
-        "LE_TIER_SIZING_ENABLED": True,
+        "LE_TIER_SIZING_ENABLED": False,
         "K1H_RISING_GATE_ENABLED": False,
-        "K1H_RISING_LONG_MAX": 35.0,
+        "K1H_RISING_LONG_MAX": 60.0,
         "PROFIT_TARGET_ENABLED": False,
         "MIN_HOLD_BARS": 4,
         "WT_EXIT_MIN_TFS": 3,
@@ -1597,21 +1598,20 @@ def build_param_grid_le_k1h_rising():
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
         "EARLY_ABORT_TIME_LIMIT_SEC": 999999.0,
     }
-    configs = [dict(base)]  # config 0 = LE+tier baseline, no k1h gate
-    # Rising gate at various thresholds (LONG: k_1h < thresh AND rising; SHORT: mirror)
-    for thresh in [30.0, 35.0, 40.0, 45.0]:
+    configs = [dict(base)]  # config 0 = LE gate-only baseline (no k1h gate, no tier sizing)
+    # Rising gate (k_1h < thresh AND higher than 12 bars ago)
+    for thresh in [60.0, 50.0, 45.0, 40.0, 35.0]:
         configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh})
-    # Zone-only (threshold but no rising requirement) — isolates threshold vs rising benefit
-    for thresh in [30.0, 35.0, 40.0, 45.0]:
-        configs.append({**base, "K1H_RISING_GATE_ENABLED": False, "LOCAL_EXTREMES_MIN_SCORE": 15.0,
-                        "K1H_RISING_LONG_MAX": thresh})
+    # Zone-only (threshold but no rising requirement) — isolates rising benefit
+    for thresh in [60.0, 50.0, 45.0, 40.0, 35.0]:
+        configs.append({**base, "K1H_RISING_GATE_ENABLED": False, "K1H_RISING_LONG_MAX": thresh})
     # Rising gate + varied score minimums
-    for thresh in [30.0, 35.0, 40.0]:
-        for min_score in [20.0, 30.0]:
+    for thresh in [60.0, 50.0, 45.0]:
+        for min_score in [15.0, 25.0]:
             configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
                             "LOCAL_EXTREMES_MIN_SCORE": min_score})
     # Rising gate + profit targets
-    for thresh in [30.0, 35.0]:
+    for thresh in [60.0, 50.0]:
         for pt_pct in [1.0, 2.0]:
             configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
                             "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": pt_pct})
