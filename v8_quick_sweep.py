@@ -695,6 +695,25 @@ def build_param_grid_stock_dc_wide():
     }
 
 
+def build_param_grid_stock_phase2():
+    """Phase 2: No-PT + WT_EXIT=4 discovery (2026-04-20).
+    Finding: PROFIT_TARGET disabled (tradier default) + HOLD=80 + VEL=2.0 + WT_EXIT=4
+    → Sharpe 0.51, PnL +$65,862 on 262 symbols (honest NOLOSS=False).
+    This is the highest-PnL honest result found so far. Sweep to confirm and extend.
+    ~192 configs. Early abort: 50 qualifying syms, floor=0.3."""
+    return {
+        "PROFIT_TARGET_ENABLED": [True, False],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],     # only matters when PT=True
+        "MIN_HOLD_BARS": [20, 40, 80, 120],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0],  # only matters when VEL_GATE=True
+        "WT_EXIT_MIN_TFS": [3, 4],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+    }
+
+
 def build_param_grid_stock_sweep_v1():
     """Stock sweep v1 (2026-04-19): expand around proven PT=0.3 HOLD=40-80 winner (262 syms).
     Add WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED, D_TREND_REQUIRED, STRENGTH_MIN_SCORE.
@@ -998,6 +1017,7 @@ TIER_MAP = {
     "hunt_stock": build_param_grid_hunt_stock,
     "stock_dc_hunt": build_param_grid_stock_dc_hunt,
     "stock_dc_wide": build_param_grid_stock_dc_wide,
+    "stock_phase2": build_param_grid_stock_phase2,
     "mega_v7": build_param_grid_mega_v7,
     "stock_sweep_v1": build_param_grid_stock_sweep_v1,
     "baseline255_ablation": build_param_grid_baseline255_ablation,
@@ -1067,7 +1087,6 @@ def _run_config_with_stores(stores, mode, cfg_dict, run_id):
             setattr(cfg, k, v)
     if mode == "tradier" and cfg.STRUCTURAL_RANGE_SHIFT_TF == "dc_4h":
         cfg.STRUCTURAL_RANGE_SHIFT_TF = "bb_1h"
-    cfg.NOLOSS_ENABLED = False  # sweep context: force honest exits; mark-to-market handles open positions at end
     t0 = time.time()
     result = simulate(stores, cfg, 10000.0)
     elapsed = time.time() - t0
