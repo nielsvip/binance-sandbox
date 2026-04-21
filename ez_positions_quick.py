@@ -14117,6 +14117,16 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             elif _age_gate == 'extreme':
                 if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align and _ag_k4h_align): return
         # STANDARD GATES
+        _price_above_red_epq = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
+        if _price_above_red_epq:
+            _epq_force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
+            _epq_force_qty = max(reentry_amount * _epq_force_mult, getattr(config_obj, 'START_POSITION_SIZE', 45.0) / current_price)
+            _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.1f}"
+            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})")
+            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _epq_force_reason, 99.0, override_qty=_epq_force_qty)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[MANDATORY_PRICE_CROSS_EPQ] {position_key}: QUEUED qty={_epq_force_qty:.4f} at ${current_price:.4f}")
+            return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
             if _strong_trend:

@@ -10948,7 +10948,7 @@ class MultiAccountTradeManager:
         is_long = position_side == "LONG"
         pos_min_qty = max(5.50 / current_price, self.min_qty.get(symbol, 0.0001) * 1.2)
         if 'OPEN' in reason.upper() and position.positionAmt > pos_min_qty: return f'BLOCK_YOUFUCKINGPIECEOFSHIT_OPEN IS FOR ZERO YOU FUCKING DISGRACEFUL MOTHER FUCKER SICK MOTHER FUCKING BITCH'
-        if not override_qty or 'REENTRY' in action: #await calc_qty
+        if not override_qty or 'REENTRY' in action or _original_action_was_reentry: #await calc_qty
             if position and position.gain < -0.3 and is_entry_action and position.positionAmt > config.START_POSITION_SIZE / current_price:
                 if 'quick' not in reason.lower() and 'QUICK' not in action:
                     is_exit_action = is_reduce
@@ -17907,6 +17907,16 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     return
                 logger.debug(f"[AGE_GATE_EXTREME] {position_key}: passed 4/4 stoch levels (3m+15m+1h+4h), continuing to standard gates")
         # == STANDARD REENTRY GATES ==
+        price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
+        if price_above_reduction:
+            _force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
+            _force_qty = max(reentry_amount * _force_mult, getattr(config, 'START_POSITION_SIZE', 45.0) / current_price)
+            _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}"
+            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_REENTRY] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})")
+            result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _force_reason, 99.0, override_qty=_force_qty)
+            if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
+                logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: QUEUED qty={_force_qty:.4f} at ${current_price:.4f}")
+            return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
             if _strong_trend:
@@ -17928,7 +17938,6 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 logger.info(f"[PULLBACK_REENTRY] {position_key}: HTF confirmed (k_1h={k_1h:.1f}, k_4h={k_4h:.1f}) + bounce (k_3m={k_3m:.1f})")
         if k_3m is None or d_3m is None or k_15m is None or d_15m is None:
             return
-        price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         stoch_ready = (is_long and (k_3m > d_3m or t_up_3m) and (k_15m > d_15m or t_up_15m)) or (not is_long and (k_3m < d_3m or not t_up_3m) and (k_15m < d_15m or not t_up_15m))
         if not stoch_ready:
             return

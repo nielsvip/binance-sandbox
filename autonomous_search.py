@@ -10,14 +10,9 @@ from pathlib import Path
 
 FORBIDDEN_FLIPS = {
     # Quick-engine profit-target artifacts NOT in real live code — cause 99%+ WR lie.
+    # PROFIT_TARGET_PCT/ENABLED were the fake fixed-% exit (now purged from v8_quick_engine.py).
+    # AUGMENT_PT is separate TP logic also not in live code.
     "AUGMENT_PT_ENABLED", "AUGMENT_PT_PCT",
-    "PARTIAL_EXIT_ENABLED", "PARTIAL_EXIT_PCT", "PARTIAL_EXIT_FRAC",
-    "PARTIAL_TRAIL_ARM_PCT", "PARTIAL_TRAIL_FLOOR_PCT",
-    "PARTIAL_PROFIT_LOCK_ENABLED", "PARTIAL_PROFIT_LOCK_GAIN_PCT",
-    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", "PARTIAL_PROFIT_LOCK_FRAC",
-    "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER",
-    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
-    "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
     # CYCLE_TP is also a profit target not in live.
     "CYCLE_TP_TIERED_ENABLED", "CYCLE_TP_PCT", "CYCLE_TP_TIERED_FRAC",
     "CYCLE_TP_CONDITIONAL_EXIT",
@@ -25,6 +20,9 @@ FORBIDDEN_FLIPS = {
     "ACCOUNT_TP_PCT",
     # AUGMENT_PT ride-along
     "AUGMENT_WT_D_AUTO_CLOSE_ENABLED", "AUGMENT_WT_4H_AUTO_CLOSE_ENABLED",
+    # NOTE: PARTIAL_PROFIT_LOCK_* and PARTIAL_EXIT_* are NOT forbidden.
+    # PPL is a REAL live mechanism (50% close at +0.5% via maker/webhook_url_2).
+    # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
 }
 
 def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):

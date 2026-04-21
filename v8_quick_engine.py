@@ -2271,12 +2271,14 @@ def simulate(stores, cfg, capital=10000.0):
             _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
             _qr_min_pct = float(getattr(cfg, 'QUICK_REENTRY_60MIN_MIN_PCT', 0.3)) / 100.0
             _qr_exit_px = 0.0; _qr_exit_bar = -9999
-            # TIER1_PRICE_CROSS_REENTRY — mirrors live check_entry_candidates_for_account:
-            # when price crosses back above exit price (LONG) / below (SHORT) within 20h window
-            # and 15m WT is aligned, reenter immediately without score/cooldown gating.
+            # TIER1_PRICE_CROSS_REENTRY — mirrors MANDATORY_PRICE_CROSS live behavior:
+            # within 1h (20 bars @ 3m): price >= exit → enter at 50% SIZE, NO WT GATE, bypass cooldown.
+            # after 1h: price >= exit + WT 15m aligned → enter at 50-100% based on k_15m.
+            # Models live: reentry_enforcement_loop_epq T1_PRICE_CROSS_MANDATORY path.
             _t1pc_enabled = bool(getattr(cfg, 'REENTRY_K15M_PARTIAL_ENABLED', True))
             _t1pc_window = int(getattr(cfg, 'TIER1_PRICE_CROSS_WINDOW_BARS', 400) or 400)
-            _t1pc_pct = float(getattr(cfg, 'TIER1_PRICE_CROSS_MIN_PCT', 0.1)) / 100.0
+            _t1pc_pct = float(getattr(cfg, 'TIER1_PRICE_CROSS_MIN_PCT', 0.0)) / 100.0
+            _t1pc_1h_bars = 20  # 20 bars × 3m = 60min first-hour window — no-questions-asked zone
             _t1pc_exit_px = 0.0; _t1pc_exit_bar = -9999
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
@@ -2309,21 +2311,27 @@ def simulate(stores, cfg, capital=10000.0):
                             _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                             _qr_exit_px = 0.0; cd = 0
                             continue
-                if _t1pc_enabled and not in_pos and _t1pc_exit_px > 0 and (i - _t1pc_exit_bar) <= _t1pc_window and cd <= 0:
+                if _t1pc_enabled and not in_pos and _t1pc_exit_px > 0 and (i - _t1pc_exit_bar) <= _t1pc_window:
                     px = close[i]
-                    if px > 0 and ((is_long and px > _t1pc_exit_px * (1.0 + _t1pc_pct)) or (not is_long and px < _t1pc_exit_px * (1.0 - _t1pc_pct))):
-                        if (is_long and _wt1_15m_h[i] > _wt2_15m_h[i]) or (not is_long and _wt1_15m_h[i] < _wt2_15m_h[i]):
-                            in_pos = True; ep = px; eb = i
-                            _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
-                            _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
-                            _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0)
-                            _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
-                            _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
-                            _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
-                            _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
-                            if _entry_was_rz_break: _rz_entry_bar = i
-                            _t1pc_exit_px = 0.0; cd = 0
-                            continue
+                    _t1pc_bars_since = i - _t1pc_exit_bar
+                    _t1pc_crossed = px > 0 and ((is_long and px >= _t1pc_exit_px * (1.0 + _t1pc_pct)) or (not is_long and px <= _t1pc_exit_px * (1.0 - _t1pc_pct)))
+                    _t1pc_1h_window = _t1pc_bars_since <= _t1pc_1h_bars
+                    _t1pc_wt_ok = (is_long and _wt1_15m_h[i] > _wt2_15m_h[i]) or (not is_long and _wt1_15m_h[i] < _wt2_15m_h[i])
+                    _k15m_arr_t1 = _safe(npz, 'stoch_k_15m', n, 50.0)
+                    _t1pc_k15m = float(_k15m_arr_t1[i]) if _k15m_arr_t1 is not None else 50.0
+                    _t1pc_sz = 0.5 if (_t1pc_1h_window or _t1pc_k15m > 70 or _t1pc_k15m < 30) else 1.0
+                    if _t1pc_crossed and (_t1pc_1h_window or (cd <= 0 and _t1pc_wt_ok)):
+                        in_pos = True; ep = px; eb = i
+                        _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
+                        _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
+                        _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0) * _t1pc_sz
+                        _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
+                        _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                        _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
+                        _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
+                        if _entry_was_rz_break: _rz_entry_bar = i
+                        _t1pc_exit_px = 0.0; cd = 0
+                        continue
                 # REENTRY_IF_MOMENTUM bypass: if cooldown is active but we're within reentry
                 # window and K still in favorable direction, let the entry check below fire.
                 _reentry_mom_bypass = False
