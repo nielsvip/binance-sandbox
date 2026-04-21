@@ -1288,15 +1288,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if hasattr(ez_manage, '_recent_reduces'):
             ez_manage._recent_reduces.clear()
 
-        # === PARTIAL_PROFIT_LOCK inline (2026-04-21) — fires regardless of V8_SKIP_PROCESS_POSITION
-        # so sweeps model the 50%-at-0.5% + SL-arm-at-0.7% behavior. Mirrors the state machines
-        # in ez_manage.process_position and tradier_manage.evaluate_stop.
+        # === PARTIAL_PROFIT_LOCK v2 inline (2026-04-21) — fires regardless of V8_SKIP_PROCESS_POSITION.
+        # Step 1 (+0.5%): TP 50% REDUCE; stop_level = entry × (1 ± BE_buffer%). Close before BE.
+        # Step 2 (+0.75%): upgrade stop_level → first_exit_price (locks +0.5% scalp).
+        # Step 3 (price hits stop): full CLOSE of remainder.
         _ppl_bt_on = bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
         if _ppl_bt_on:
             _ppl_bt_accts = set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS', []) or []) | set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', []) or [])
             if account_key in _ppl_bt_accts:
                 _ppl_bt_min = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5)))
-                _ppl_bt_arm = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7)))
+                _ppl_bt_arm = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.75)))
+                _ppl_bt_buf = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER', 0.02)))
                 _ppl_bt_frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5)))
                 if not hasattr(trade_manager, 'partial_profit_lock_state'):
                     trade_manager.partial_profit_lock_state = {}
@@ -1320,26 +1322,28 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _ppl_bt_state = trade_manager.partial_profit_lock_state.get(_ppl_bt_pk, {})
                     _ppl_bt_fired = _ppl_bt_state.get('fired', False)
                     _ppl_bt_fep = float(_ppl_bt_state.get('first_exit_price', 0.0))
-                    _ppl_bt_armed = _ppl_bt_state.get('sl_armed', False)
+                    _ppl_bt_stop = float(_ppl_bt_state.get('stop_level', 0.0))
+                    _ppl_bt_upg = _ppl_bt_state.get('stop_upgraded', False)
                     _ppl_bt_side = "SELL" if _ppl_bt_is_long else "BUY"
                     _ppl_bt_pside = "LONG" if _ppl_bt_is_long else "SHORT"
                     if not _ppl_bt_fired and _ppl_bt_gain >= _ppl_bt_min:
                         _ppl_bt_red = _ppl_bt_qty * _ppl_bt_frac
                         _ppl_bt_keep = _ppl_bt_qty - _ppl_bt_red
                         if _ppl_bt_red > 0 and _ppl_bt_keep > 0:
+                            _ppl_bt_be = _ppl_bt_ep * (1.0 + _ppl_bt_buf / 100.0) if _ppl_bt_is_long else _ppl_bt_ep * (1.0 - _ppl_bt_buf / 100.0)
                             try:
-                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_red, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='REDUCE', reason=f"PPL_PARTIAL_gain{_ppl_bt_gain:.2f}_{int(_ppl_bt_frac*100)}pct", is_full_close=False, is_hedge=False)
-                                trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {'fired': True, 'first_exit_price': _ppl_bt_px, 'sl_armed': False}
+                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_red, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='REDUCE', reason=f"PPL_TP_gain{_ppl_bt_gain:.2f}_50pct", is_full_close=False, is_hedge=False)
+                                trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {'fired': True, 'first_exit_price': _ppl_bt_px, 'stop_level': _ppl_bt_be, 'stop_upgraded': False}
                             except Exception as _ppl_bt_e:
                                 if step < 10 or step % 1000 == 0:
                                     v8_logger.error(f"[V8_PPL_ERR] {_ppl_bt_pk}: {_ppl_bt_e}")
-                    elif _ppl_bt_fired and not _ppl_bt_armed and _ppl_bt_gain >= _ppl_bt_arm and _ppl_bt_fep > 0:
-                        trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {**_ppl_bt_state, 'sl_armed': True}
-                    elif _ppl_bt_armed and _ppl_bt_fep > 0:
-                        _ppl_bt_hit = (_ppl_bt_is_long and _ppl_bt_px <= _ppl_bt_fep) or (not _ppl_bt_is_long and _ppl_bt_px >= _ppl_bt_fep)
+                    elif _ppl_bt_fired and not _ppl_bt_upg and _ppl_bt_gain >= _ppl_bt_arm and _ppl_bt_fep > 0:
+                        trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {**_ppl_bt_state, 'stop_level': _ppl_bt_fep, 'stop_upgraded': True}
+                    elif _ppl_bt_fired and _ppl_bt_stop > 0:
+                        _ppl_bt_hit = (_ppl_bt_is_long and _ppl_bt_px <= _ppl_bt_stop) or (not _ppl_bt_is_long and _ppl_bt_px >= _ppl_bt_stop)
                         if _ppl_bt_hit:
                             try:
-                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_qty, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='CLOSE', reason=f"PPL_SL_CLOSE_px{_ppl_bt_px:.4f}_fep{_ppl_bt_fep:.4f}", is_full_close=True, is_hedge=False)
+                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_qty, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='CLOSE', reason=f"PPL_SL_{'upg' if _ppl_bt_upg else 'BE'}_px{_ppl_bt_px:.4f}_stop{_ppl_bt_stop:.4f}", is_full_close=True, is_hedge=False)
                                 trade_manager.partial_profit_lock_state.pop(_ppl_bt_pk, None)
                             except Exception as _ppl_bt_sl_e:
                                 if step < 10 or step % 1000 == 0:
@@ -2075,9 +2079,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _tm.reduced_positions[position_key] = _now_dt
                 if hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None and not (is_full_close or new_amt < 0.0001):
                     _max_q = float(getattr(pos, 'max_quantity', 0) or old_amt or 0)
+                    _existing_re_amt = float((_tm.reentry_data.get(position_key) or {}).get('reentry_amount', 0) or 0)
+                    _accum_re_amt = min(_max_q, _existing_re_amt + abs(qty))
                     _tm.reentry_data[position_key] = {
                         "reentry_level": float(px),
-                        "reentry_amount": _max_q,
+                        "reentry_amount": _accum_re_amt,
                         "timestamp": _now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if hasattr(_now_dt, 'strftime') else str(_now_dt),
                         "reason": f"REDUCED_{reason[:60]}",
                     }

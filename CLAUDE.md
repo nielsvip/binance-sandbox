@@ -183,7 +183,22 @@ Violating any of these = the number is a LIE and the decision it supports is inv
 
 2d. **Ratio in NPZ — it is NOT there**: prior agents claimed NPZ files contain ratio rebalance fields since 2022. FALSE. Only `0market_sentiment_score` (global exchange-wide L/S breadth) is precomputed. Portfolio-level L/S ratio (account balance of longs vs shorts) is computed at runtime in `ez_positions_quick.py:1170` and enforced via LS_RATIO gates in execute_trade_action during backtest_v8_engine runs. v8_quick_engine cannot access this without breaking vectorization.
 
-2e. **PARTIAL_PROFIT_LOCK (2026-04-21) — replaces SATOSHIT_PARTIAL_EXIT**: At +0.5% gain, closes 50% via `place_maker_order` (maker fees); falls back to `send_webhook(url_variant="2")` → webhook_url_2 Finandy endpoint. At +0.7% gain, arms trailing stop at first-exit price. When price returns to first-exit price, closes remainder (maker → webhook_url_2 fallback). Config: `PARTIAL_PROFIT_LOCK_ENABLED/ACCOUNTS/GAIN_PCT/ARM_GAIN_PCT/FRAC/USE_MAKER`. State tracked per position_key on `trade_manager.partial_profit_lock_state`. Wired in `ez_manage.process_position` only (not yet in tradier_manage or backtest engines). `send_webhook` gained `url_variant=""` parameter — set to "2" or "3" to route to webhook_url_2/3.
+2e. **PARTIAL_PROFIT_LOCK v2 (2026-04-21) — 3-step TP with break-even→0.5% trailing stop**:
+   - **Webhook routing**: `{account.lower()}_WEBHOOK_URL2` is ALWAYS 50% close (Finandy config); `{account.lower()}_WEBHOOK_URL` is 100% close. Env vars: `inf_WEBHOOK_URL2`, `inf_WEBHOOK_SECRET2`, etc.
+   - **Step 1 — TP at +0.5% gain**: fire `place_maker_order` (maker fees preferred) → fallback `send_webhook(url_variant="2")` → Finandy closes 50%. Set `stop_level = entry_price × (1 ± PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT/100)` — this is break-even plus tiny buffer so the remainder always closes BEFORE gain returns to 0%.
+   - **Step 2 — stop upgrade at +0.75% gain**: `stop_level → first_exit_price` (the price at which Step 1 fired, ≈ 0.5%-gain level). Locks in a guaranteed +0.5% scalp on the remaining 50%.
+   - **Step 3 — stop hit**: if price drops to `stop_level` (before upgrade = BE+buffer; after upgrade = 0.5%-gain price), close remainder via maker → webhook_url (100% of remaining).
+   - **Config (crypto)**: `PARTIAL_PROFIT_LOCK_ENABLED/ACCOUNTS/GAIN_PCT=0.5/ARM_GAIN_PCT=0.75/BE_BUFFER_PCT=0.02/FRAC=0.5/USE_MAKER=True`.
+   - **Config (tradier)**: same keys + `_TRADIER` suffix. `PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER=["trb","trc"]`.
+   - **State** on `trade_manager.partial_profit_lock_state[position_key] = {fired, first_exit_price, stop_level, stop_upgraded}`.
+   - **Wired in**: `ez_manage.process_position` (crypto live), `tradier_manage.evaluate_stop` (stocks live, inserted BEFORE UNIVERSAL_NOLOSS_GATE), `backtest_v8_engine.py` inline (fires even with `V8_SKIP_PROCESS_POSITION=1`), `v8_quick_engine.py` vectorized (`_pe_*` state machine remapped from `PARTIAL_PROFIT_LOCK_*` keys).
+   - **`send_webhook`** gained `url_variant=""` parameter (ez_manage.py:14053) — set to `"2"` or `"3"` to route to webhook_url_2/3.
+
+2f. **NOLOSS_BYPASS_WT_5OF5 (2026-04-21, sweep-ready, default OFF)**:
+   - Exception to STRICT_NO_LOSS / UNIVERSAL_NOLOSS_GATE: if all 5 WT TFs (crypto: 3m/15m/1h/4h/D; stocks: 5m/15m/1h/4h/D) flip against position side, allow exit even at a loss.
+   - Config: `NOLOSS_BYPASS_WT_5OF5_ENABLED=False` (both config.py + config_tradier.py), `NOLOSS_BYPASS_WT_5OF5_MIN_TFS=5`.
+   - Wired: `tradier_manage.evaluate_stop` UNIVERSAL_NOLOSS_GATE check; `v8_quick_engine` NOLOSS loop precomputes `_nlb_5of5_mask` boolean per-bar. NOT wired in `ez_manage` (crypto live NOLOSS is spread across many exit paths — requires per-path edit when sweep validates the exception).
+   - Purpose: retest hypothesis that "5/5 TFs against = we are definitely wrong; take the loss and free capital for better trade". Sweep `NOLOSS_BYPASS_WT_5OF5_ENABLED={True,False}` alongside PPL to validate.
    - If drawdown isn't computed, the summary is INCOMPLETE — flag it.
 
 3. **Labels must specify base timeframe and sample scope**:

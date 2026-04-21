@@ -12787,10 +12787,12 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         if not _re_data: _re_data = getattr(trade_manager, 'reentry_data', {}).get(_pk_v2) or {}
                     if not _rx: _rx = _sfx(_re_data.get('reentry_level') or _re_data.get('last_reduction_price') or 0)
                     if not _rt: _rt = _ts_to_epoch(_re_data.get('timestamp') or _re_data.get('last_reduction_time'))
+                    _re_amount = _sfx(_re_data.get('reentry_amount', 0))
                     # S8-S15: disk JSON files (loaded fresh every account cycle — all 7 files + tracker sections)
                     _disk_info = next((disk_exit_cache[_pk] for _pk in _pk_variants if _pk in disk_exit_cache), None)
                     if not _rx: _rx = _sfx(_disk_info['exit_px'] if _disk_info else 0)
                     if not _rt: _rt = _sfx(_disk_info['exit_tm'] if _disk_info else 0)
+                    if not _re_amount: _re_amount = _sfx(getattr(position, 'max_quantity', 0))
                     _reentry_px = _rx
                     _exit_tm = _rt
                     _exit_px = _reentry_px
@@ -13362,13 +13364,15 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         del _hlr_top_exit_registry[position_key]
                     if _reentry_tier == 'TIER1':
                         _t1_mult = getattr(config, 'REENTRY_TIER1_SIZE_MULT', 1.5)
-                        qty = max(qty, config.START_POSITION_SIZE / current_price * _t1_mult) if current_price > 0 else qty
-                        logger.info(f"[TIER1_SIZE] {position_key}: qty boosted to {qty:.4f} ({_t1_mult}x START_POSITION_SIZE)")
+                        _t1_floor = config.START_POSITION_SIZE / current_price * _t1_mult if current_price > 0 else qty
+                        qty = max(qty, _t1_floor, _re_amount if _re_amount > 0 else 0)
+                        logger.info(f"[TIER1_SIZE] {position_key}: qty={qty:.4f} ({_t1_mult}x SPS re_amt={_re_amount:.4f})")
                     elif _reentry_tier in ('TIER2', 'TIER2_FORCED'):
                         _t2_mult = getattr(config, 'REENTRY_TIER2_SIZE_MULT', 0.8)
                         if _reentry_tier == 'TIER2_FORCED': _t2_mult = 0.5
-                        qty = max(config.START_POSITION_SIZE / current_price * _t2_mult, _min_qty_sym) if current_price > 0 else qty
-                        logger.info(f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} ({_t2_mult}x START_POSITION_SIZE)")                    
+                        _t2_floor = config.START_POSITION_SIZE / current_price if current_price > 0 else qty
+                        qty = max(_t2_floor, _min_qty_sym, _re_amount if _re_amount > 0 else 0)
+                        logger.info(f"[{_reentry_tier}_SIZE] {position_key}: qty={qty:.4f} (SPS floor re_amt={_re_amount:.4f})")                    
                     await tracker_manager.set_processing(position_key)
                     await tracker_manager.transition_to_exit(account_key, position_key, current_price, qty, status='PENDING_OPEN')
                     if "BREAKOUT_PLAY" in reason or "MOMENTUM_SCALP" in reason:
@@ -13689,6 +13693,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     _base_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
                     if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
                     override_qty = _base_qty * _qty_mult
+                    if current_price > 0: override_qty = max(override_qty, config.START_POSITION_SIZE / current_price)
                     result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 99.0, override_qty=override_qty)
                     if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                         data['status'] = 'queued'

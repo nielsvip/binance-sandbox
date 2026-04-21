@@ -4220,9 +4220,26 @@ class StockStrategy:
         _noloss_min_ts = float(getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0))
         _strict_acct_list = set(getattr(config, 'STRICT_NO_LOSS_ACCOUNTS_TRADIER', ('trb', 'trc')))
         if _exit_acct_top in _strict_acct_list and _noloss_min_ts > 0 and gain < _noloss_min_ts:
-            if gain < 0 or gain % 1 < 0.05:  # only log occasionally to avoid spam
-                logger.info(f"[NOLOSS_HOLD_{_exit_acct_top}] {symbol} {'L' if is_long else 'S'}: g={gain:.2f}% < noloss={_noloss_min_ts:.2f}% — holding (ratio is the hedge; SRS would have fired above)")
-            return False, f"NOLOSS_HOLD_{_exit_acct_top}(g={gain:.2f}%<{_noloss_min_ts:.1f}%)", 0
+            # NOLOSS_BYPASS_WT_5OF5 (2026-04-21): 5/5 WT TFs against → allow close at loss.
+            # Stocks: 5m/15m/1h/4h/D TFs. Default OFF, sweep-only.
+            _nlb_on = bool(getattr(config, 'NOLOSS_BYPASS_WT_5OF5_ENABLED', False))
+            _nlb_pass = False
+            if _nlb_on:
+                _nlb_min = int(getattr(config, 'NOLOSS_BYPASS_WT_5OF5_MIN_TFS', 5))
+                _nlb_src = indicators or i
+                _nlb_against = 0
+                for _tf in ('5m', '15m', '1h', '4h', 'D'):
+                    _w1 = float(_nlb_src.get(f'wt1_{_tf}', 0) or 0)
+                    _w2 = float(_nlb_src.get(f'wt2_{_tf}', 0) or 0)
+                    if (is_long and _w1 < _w2) or (not is_long and _w1 > _w2):
+                        _nlb_against += 1
+                if _nlb_against >= _nlb_min:
+                    _nlb_pass = True
+                    logger.warning(f"[NOLOSS_BYPASS_WT_5OF5] {symbol} {'L' if is_long else 'S'}: {_nlb_against}/5 WT TFs against + gain={gain:.2f}% — BYPASSING NOLOSS, allowing subsequent exit paths")
+            if not _nlb_pass:
+                if gain < 0 or gain % 1 < 0.05:  # only log occasionally to avoid spam
+                    logger.info(f"[NOLOSS_HOLD_{_exit_acct_top}] {symbol} {'L' if is_long else 'S'}: g={gain:.2f}% < noloss={_noloss_min_ts:.2f}% — holding (ratio is the hedge; SRS would have fired above)")
+                return False, f"NOLOSS_HOLD_{_exit_acct_top}(g={gain:.2f}%<{_noloss_min_ts:.1f}%)", 0
         # NO PERCENTAGE GATES. Technicals decide exits. Period.
         # User directive 2026-04-10: NO trailing stops. Stocks exit ONLY when 1h/4h/D
         # delta slows down. Configure DeltaTracker tf_weights so LTF (5m/15m) don't

@@ -1076,10 +1076,11 @@ def build_param_grid_mega_crypto_v8():
 
 def build_param_grid_mega_tradier_v8():
     """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 6.577 on 262 sym).
-    All le_dynamic_v2 winner params FIXED. Only sweeping the unknowns: RZ_EXIT, EXIT_SCORER,
-    SRS, WINNER_PROTECT, DC_RECOVERY, PARTIAL_EXIT, LE_TIER_SIZING.
-    EARLY_ABORT floor raised to 3.0 (was 0.3). Run with --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90.
-    Run: --mode tradier --symbols fast --start 2024-01-01 --min-csv-sharpe 3.0 --kill-sharpe 3.0 --kill-secs 90 --workers 6 --shuffle
+    All le_dynamic_v2 winner params FIXED. Sweeping: RZ_EXIT, EXIT_SCORER, SRS, WINNER_PROTECT,
+    DC_RECOVERY, PARTIAL_EXIT, LE_TIER_SIZING, and RZ_BREAKOUT_ENTRY (supplemental to LE scorer).
+    RZ_BREAKOUT best params fixed at bot=0.20, top=0.85 (from rz_noloss_mode sweep 2026-04-21).
+    EARLY_ABORT floor 3.0 — configs below baseline (6.577 sym_avg) die in first 30s on 6 symbols.
+    Run: --mode tradier --symbols medium --start 2024-01-01 --min-csv-sharpe 1.5 --kill-sharpe 0.5 --kill-secs 300 --workers 4 --stream --shuffle
     """
     return {
         # ── FIXED: le_dynamic_v2 winner (DO NOT SWEEP THESE) ──────────────────────
@@ -1097,6 +1098,11 @@ def build_param_grid_mega_tradier_v8():
         "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [1],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        # ── RZ BREAKOUT SUPPLEMENTAL ENTRY (best params from rz_noloss_mode sweep) ─
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True, False],
+        "RZ_BOT_BB_THRESHOLD": [0.20],
+        "RZ_TOP_BB_THRESHOLD": [0.85],
+        "RZ_BREAKOUT_NOLOSS_MODE": ["dc_low4_15m"],
         # ── UNKNOWNS TO SWEEP (improvements above 6.577 baseline) ────────────────
         "RZ_EXIT_ENABLED": [True, False],
         "EXIT_SCORER_ENABLED": [True, False],
@@ -1106,8 +1112,8 @@ def build_param_grid_mega_tradier_v8():
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
         "LE_TIER_SIZING_ENABLED": [True, False],
         "PARTIAL_EXIT_ENABLED": [True, False],
-        # ── FLOOR: kill configs below 3.0 Sharpe (was 0.3 — far below baseline) ──
-        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        # ── FLOOR: kill configs below baseline ────────────────────────────────────
+        "EARLY_ABORT_MIN_SYMBOLS": [20],
         "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
@@ -1186,25 +1192,23 @@ def build_param_grid_rz_breakout_tradier():
 
 
 def build_param_grid_rz_noloss_mode():
-    """2026-04-21: RZ breakout entry ALWAYS ON — sweep NOLOSS bypass mode.
+    """2026-04-21: RZ breakout entry — sweep NOLOSS bypass mode with WT exits ONLY (no PT).
     4 bypass modes: bar_structure (lower-high+lower-low on base TF within first N bars),
     dc_low4_base (4-bar DC low on base TF: 5m tradier / 3m crypto),
     dc_low_base (20-bar DC low on base TF), dc_low4_15m (4-bar DC low on 15m).
-    Also sweeps RZ_BREAKOUT_NOLOSS_BAR_WINDOW for bar_structure mode.
-    Run tradier: --mode tradier --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 1.0 --kill-sharpe 0 --kill-secs 999999
-    Run crypto:  --mode crypto  --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 1.0 --kill-sharpe 0 --kill-secs 999999
-    ~288 configs (4 modes × 3 bot × 3 top × 3 pt × 2 hold × 2 bar_window).
+    EXIT: WT turn only (HTF WT slows / LTF crosses) — NO profit target.
+    Run tradier: --mode tradier --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.5 --kill-sharpe 0 --kill-secs 999999
+    Run crypto:  --mode crypto  --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.5 --kill-sharpe 0 --kill-secs 999999
+    144 configs (4 modes × 3 bot × 3 top × 2 bar_window × 2 wt_exit_min).
     """
     return {
         "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "PROFIT_TARGET_ENABLED": [False],
         "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
         "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
         "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
         "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],
-        "MIN_HOLD_BARS": [4, 10],
-        "WT_EXIT_MIN_TFS": [2],
+        "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
         "EARLY_ABORT_SHARPE_FLOOR": [0.3],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],

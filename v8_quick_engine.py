@@ -1839,6 +1839,22 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # NOLOSS_BYPASS_WT_5OF5 precompute: 5/5 WT TFs (LTF/15m/1h/4h/D) against pos → allow loss exit.
+            # Default OFF; sweep-only flag. Mirror of ez_manage/tradier exception.
+            _nlb_5of5_mask = None
+            if bool(getattr(cfg, 'NOLOSS_BYPASS_WT_5OF5_ENABLED', False)):
+                _nlb_min = int(getattr(cfg, 'NOLOSS_BYPASS_WT_5OF5_MIN_TFS', 5))
+                _nlb_ltf = getattr(cfg, 'LTF', '3m')
+                _nlb_w1l = _safe(npz, f'wt1_{_nlb_ltf}', n); _nlb_w2l = _safe(npz, f'wt2_{_nlb_ltf}', n)
+                _nlb_w115 = _safe(npz, 'wt1_15m', n); _nlb_w215 = _safe(npz, 'wt2_15m', n)
+                _nlb_w11h = _safe(npz, 'wt1_1h', n); _nlb_w21h = _safe(npz, 'wt2_1h', n)
+                _nlb_w14h = _safe(npz, 'wt1_4h', n); _nlb_w24h = _safe(npz, 'wt2_4h', n)
+                _nlb_w1D = _safe(npz, 'wt1_D', n); _nlb_w2D = _safe(npz, 'wt2_D', n)
+                if is_long:
+                    _nlb_cnt = (_nlb_w1l < _nlb_w2l).astype(int) + (_nlb_w115 < _nlb_w215).astype(int) + (_nlb_w11h < _nlb_w21h).astype(int) + (_nlb_w14h < _nlb_w24h).astype(int) + (_nlb_w1D < _nlb_w2D).astype(int)
+                else:
+                    _nlb_cnt = (_nlb_w1l > _nlb_w2l).astype(int) + (_nlb_w115 > _nlb_w215).astype(int) + (_nlb_w11h > _nlb_w21h).astype(int) + (_nlb_w14h > _nlb_w24h).astype(int) + (_nlb_w1D > _nlb_w2D).astype(int)
+                _nlb_5of5_mask = _nlb_cnt >= _nlb_min
             _rz_break_arr = (_rz_break_long if is_long else _rz_break_short) if _rz_break_enabled else None
             # Adaptive exit: precompute the extra bars that TFS-1 adds vs normal exit_sig
             _adaptive_exit_enabled = bool(getattr(cfg, 'ADAPTIVE_EXIT_TFS_ENABLED', False))
@@ -1996,7 +2012,7 @@ def simulate(stores, cfg, capital=10000.0):
                             in_pos = True; ep = px; eb = i
                             _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
                             _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
-                            _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
+                            _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0)
                             _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                             _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                             _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
@@ -2019,11 +2035,16 @@ def simulate(stores, cfg, capital=10000.0):
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
-                    # Partial exit: lock first half at _pe_pct, let remainder run
+                    # Partial exit v2 (PPL): TP at _pe_pct → stop BE+buffer → upgrade stop to _pe_trail_floor at _pe_trail_arm.
                     if _pe_enabled and not _pe_partial_done and live_pnl >= _pe_pct:
                         _pe_realized = _pe_frac * live_pnl
                         _pe_partial_done = True
                         continue
+                    if _pe_enabled and _pe_partial_done and not _pe_trail_armed and live_pnl <= _pe_be_buffer:
+                        total_pnl = _pe_realized + (1.0 - _pe_frac) * live_pnl
+                        _wa = total_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                        in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                        cd = max(cooldown, min_gap_bars); continue
                     if _pe_enabled and _pe_partial_done and not _pe_trail_armed and live_pnl >= _pe_trail_arm:
                         _pe_trail_armed = True
                     if _pe_enabled and _pe_partial_done and _pe_trail_armed and live_pnl <= _pe_trail_floor:
@@ -2144,6 +2165,8 @@ def simulate(stores, cfg, capital=10000.0):
                         if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
                             continue
                         if cfg.NOLOSS_ENABLED and pnl < 0:
+                            # NOLOSS_BYPASS_WT_5OF5: 5/5 WT TFs against → allow close at loss.
+                            _nlb_5of5_hit = bool(_nlb_5of5_mask is not None and _nlb_5of5_mask[i])
                             _rz_nl_bypass = False
                             if _entry_was_rz_break and _rz_nl_mode != 'none':
                                 if _rz_nl_mode == 'bar_structure':
@@ -2159,7 +2182,7 @@ def simulate(stores, cfg, capital=10000.0):
                                         (is_long and _rz_nl_guard_low[i] > 0 and px < _rz_nl_guard_low[i]) or
                                         (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
                                     ))
-                            if not _rz_nl_bypass:
+                            if not _rz_nl_bypass and not _nlb_5of5_hit:
                                 if cfg.DC_RECOVERY_EXIT_ENABLED:
                                     if is_long:
                                         stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0
