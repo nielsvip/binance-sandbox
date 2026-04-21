@@ -344,7 +344,7 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-21 sweep: PPL v2 underperforms baseline on tradier (gain -10%, Sharpe flat, DD identical). 108-config grid on 128sym. DO NOT re-enable without fresh tradier sweep.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
