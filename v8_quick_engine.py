@@ -591,6 +591,22 @@ class QuickConfig:
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
+    # === SIMPLE_WT15M_EXIT_ONLY (2026-04-21 user directive) — strip all complex exits ===
+    # All prior exits (PEAK_GIVEBACK, BREAKEVEN_GAIN_EROSION, HEDGE_TRIGGER, HLR_TOP_EXIT, DELTA_EXIT,
+    # RZ_EXIT, SRS_EXIT, WT multi-TF etc.) have been the worst offenders destroying winning trades.
+    # When this flag is True, exit is the DUMB SIMPLE rule: wt1_15m vs wt2_15m on position side.
+    # NO other exit fires. Gates the prior exit_sig computation in compute_exit_signals.
+    SIMPLE_WT15M_EXIT_ONLY_ENABLED: bool = True
+    # === HIER_SIGNAL_MODE (2026-04-21) — TF-hierarchy engine (wt_dc_hierarchy.py) ===
+    # "off"=use existing signals, "entry"=hier for entry only, "exit"=hier for exit only, "both"=hier for both.
+    # Hierarchy: per-TF at_upper/at_lower from dc+bb, delta_bull/bear from wt+velocity; cascade LTF→HTF.
+    HIER_SIGNAL_MODE: str = "off"
+    HIER_RZ_TOP_BB: float = 0.85
+    HIER_RZ_BOT_BB: float = 0.15
+    HIER_DC_BAND_PCT: float = 0.2
+    HIER_WT_DELTA_MIN: float = 0.0
+    HIER_WT_VEL_MIN: float = 0.0
+    HIER_USE_W_M: bool = False
     # === REENTRY_IF_MOMENTUM (2026-04-21) — port from wt_dc_delta.py:1048 ===
     # After exit, if K_15m still in favorable direction (K>D for LONG, K<D for SHORT), skip
     # cooldown and allow next entry signal to fire. Fixes "reentries not respected" per user.
@@ -1582,6 +1598,16 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'RATIO_SENTIMENT_FILTER_ENABLED', False):
         mkt_s = _safe(npz, 'market_sentiment_score', n, 50.0)
         base_sig = base_sig & ((mkt_s >= cfg.RATIO_SENTIMENT_LONG_MIN) if is_long else (mkt_s <= cfg.RATIO_SENTIMENT_SHORT_MAX))
+    # HIER entry (2026-04-21) — TF-hierarchy: LTF at lower_rz + bullish delta + no HTF overhead resistance.
+    _hier_mode_e = str(getattr(cfg, 'HIER_SIGNAL_MODE', 'off'))
+    if _hier_mode_e in ('entry', 'both'):
+        try:
+            from wt_dc_hierarchy import compute_hierarchy_signals
+            _hier_entry, _ = compute_hierarchy_signals(npz, n, is_long, cfg)
+            # OR combine with base_sig so hierarchy ADDS entries rather than replacing
+            base_sig = base_sig | _hier_entry
+        except Exception as _e:
+            print(f"[V8] HIER entry fallback: {_e}", file=__import__('sys').stderr)
     # RZ_CASCADE (2026-04-21) — replaces old shitty RZ_BREAKOUT_ENTRY.
     # Per user: each TF has RZs at dc_high/dc_low; breakout→open, reverse→close; cascade LTF→15m→1h→4h→D(/W/M).
     if getattr(cfg, 'RZ_CASCADE_ENABLED', False):
@@ -1613,6 +1639,18 @@ def compute_entry_signals(npz, n, is_long, cfg):
 
 
 def compute_exit_signals(npz, n, is_long, cfg):
+    _hier_mode = str(getattr(cfg, 'HIER_SIGNAL_MODE', 'off'))
+    if _hier_mode in ('exit', 'both'):
+        try:
+            from wt_dc_hierarchy import compute_hierarchy_signals
+            _, _hier_exit = compute_hierarchy_signals(npz, n, is_long, cfg)
+            return _hier_exit
+        except Exception as _e:
+            print(f"[V8] HIER exit fallback: {_e}", file=__import__('sys').stderr)
+    if bool(getattr(cfg, 'SIMPLE_WT15M_EXIT_ONLY_ENABLED', False)):
+        _w1 = _safe(npz, 'wt1_15m', n)
+        _w2 = _safe(npz, 'wt2_15m', n)
+        return (_w1 < _w2) if is_long else (_w1 > _w2)
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
     _bph_1h = 60 // _ltf_mins    # bars per 1h: 20 (crypto/3m) or 12 (tradier/5m)
