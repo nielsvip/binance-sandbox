@@ -1448,7 +1448,8 @@ def compute_exit_signals(npz, n, is_long, cfg):
     else:
         wt_against = (wt1_ltf > wt2_ltf).astype(int) + (wt1_15m > wt2_15m).astype(int) + (wt1_1h > wt2_1h).astype(int)
     delta_exit = wt_against >= cfg.WT_EXIT_MIN_TFS
-    vel_exit = (wt_vel_4h < -2.0) if is_long else (wt_vel_4h > 2.0)
+    _vel_exit_thr = float(getattr(cfg, 'DELTA_EXIT_VEL_MIN_DECAY', 2.0))
+    vel_exit = (wt_vel_4h < -_vel_exit_thr) if is_long else (wt_vel_4h > _vel_exit_thr)
 
     # WT-VELOCITY-DECAY exit (user priority: "sell when wt delta slows down")
     # Exit when 1h velocity magnitude drops below threshold after being strong

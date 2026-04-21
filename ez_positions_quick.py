@@ -11247,6 +11247,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             elif action in ['REDUCE', 'PROFIT_TAKE', 'CLOSE', 'QUICK_CLOSE', 'QUICK_REDUCE', 'HAIKU_REDUCE', 'FULL_CLOSE', 'HEDGE_CLOSE'] or 'CLOSE' in action or 'REDUCE' in action:
                 tracker_manager.last_exit_prices[position_key] = current_price
                 tracker_manager.last_exit_times[position_key] = time.time()
+                _write_exit_to_disk(account_key, position_key, symbol, position_side, current_price, reason[:100] if reason else action)
                 tracker_manager.registry.release_hedge_slot(account_key, symbol)
                 await tracker_manager.transition_to_entry(account_key, position_key, current_price, qty, is_long, status='WAS_CLOSED')
                 await tracker_manager.set_trade_cooldown(position_key)
@@ -12254,6 +12255,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduce_q, current_price, f"QUICK_{hard_exit_reason}", f"QUICK_{hard_exit_reason}", is_full_close, action_name, is_hedge)
                     tracker_manager.last_exit_prices[position_key] = current_price
                     tracker_manager.last_exit_times[position_key] = time.time()
+                    _write_exit_to_disk(account_key, position_key, symbol, position_side, current_price, f"QUICK_{hard_exit_reason}")
                     if result and 'FAILED' in str(result):
                         _reduce_fail_cooldowns[position_key] = time.time()
                     elif result and 'SUCCESS' not in result and 'BLOCK' not in str(result) and account_key != 'ang':
@@ -12452,11 +12454,152 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 except Exception: pass
     await asyncio.gather(*(process_single_exit(k) for k in position_keys))
 
+def _load_disk_exit_cache(account_key: str) -> dict:
+    """Read EVERY account JSON file every cycle. Called once per account per scan (~60s).
+    Covers: long/short_positions, long/short_reentry, long/short_ladder,
+            long/short_stop_levels, reduced_positions, augmented_positions,
+            direct_high_gain_augmented, tracker.json (entry+exit candidates).
+    """
+    import json as _jmod
+    cache = {}
+    _acct_short = account_key.split(':')[-1] if ':' in account_key else account_key
+    _base = getattr(config, 'BASE_PATH', None)
+    _dirs = []
+    if _base: _dirs.append(_base / _acct_short)
+    _dirs.append(Path(f"/Users/niels/Documents/binance/{_acct_short}"))
+
+    def _try_ep(d, *keys):
+        for k in keys:
+            try:
+                v = d.get(k)
+                if v: f = float(v); return f if f > 0 else 0.0
+            except Exception: pass
+        return 0.0
+
+    def _try_et(d, *keys):
+        for k in keys:
+            v = d.get(k)
+            if v:
+                try: return datetime.fromisoformat(str(v).replace('Z', '+00:00')).timestamp()
+                except Exception: pass
+        return 0.0
+
+    def _put(pk, ep, et):
+        if ep > 0 and pk not in cache:
+            cache[pk] = {'exit_px': ep, 'exit_tm': et}
+
+    for _d in _dirs:
+        if not _d or not _d.exists(): continue
+
+        # ── flat dicts: {pk: {last_reduction_price, reentry_level, exit_price, ...}} ──
+        for _fname in ['long_positions.json', 'short_positions.json',
+                       'long_reentry.json', 'short_reentry.json',
+                       'reduced_positions.json', 'augmented_positions.json',
+                       'direct_high_gain_augmented.json']:
+            try:
+                _fp = _d / _fname
+                if not _fp.exists(): continue
+                _fdata = _jmod.loads(_fp.read_text())
+                if not isinstance(_fdata, dict): continue
+                for _pk, _pd in _fdata.items():
+                    if not isinstance(_pd, dict): continue
+                    _ep = _try_ep(_pd, 'last_reduction_price', 'reentry_level', 'exit_price', 'mark_price')
+                    _et = _try_et(_pd, 'last_reduction_time', 'reduced_at', 'timestamp', 'last_exit_timestamp', 'last_updated')
+                    _put(_pk, _ep, _et)
+            except Exception: pass
+
+        # ── long_ladder.json / short_ladder.json: {pk: {levels: [{level, created_at, crossed}]}} ──
+        for _fname in ['long_ladder.json', 'short_ladder.json']:
+            try:
+                _fp = _d / _fname
+                if not _fp.exists(): continue
+                _fdata = _jmod.loads(_fp.read_text())
+                if not isinstance(_fdata, dict): continue
+                for _pk, _pd in _fdata.items():
+                    if not isinstance(_pd, dict): continue
+                    _levels = _pd.get('levels', [])
+                    _uncrossed = [l for l in _levels if isinstance(l, dict) and not l.get('crossed', False)]
+                    _src = _uncrossed[0] if _uncrossed else (_levels[0] if _levels else None)
+                    if _src:
+                        _ep = _try_ep(_src, 'level')
+                        _et = _try_et(_src, 'created_at') or _try_et(_pd, 'created_at', 'last_updated')
+                        _put(_pk, _ep, _et)
+            except Exception: pass
+
+        # ── long_stop_levels.json / short_stop_levels.json: {pk: {stop_levels: [{level}], last_updated}} ──
+        for _fname in ['long_stop_levels.json', 'short_stop_levels.json']:
+            try:
+                _fp = _d / _fname
+                if not _fp.exists(): continue
+                _fdata = _jmod.loads(_fp.read_text())
+                if not isinstance(_fdata, dict): continue
+                for _pk, _pd in _fdata.items():
+                    if not isinstance(_pd, dict): continue
+                    _sl = _pd.get('stop_levels', [])
+                    if _sl and isinstance(_sl[0], dict):
+                        _ep = _try_ep(_sl[0], 'level')
+                        _et = _try_et(_pd, 'last_updated') or _try_et(_sl[0], 'created_at')
+                        _put(_pk, _ep, _et)
+            except Exception: pass
+
+        # ── tracker.json: entry_candidates + exit_candidates sections ──
+        try:
+            _fp = _d / 'tracker.json'
+            if _fp.exists():
+                _fdata = _jmod.loads(_fp.read_text())
+                for _section in ('entry_candidates', 'exit_candidates'):
+                    _sec = _fdata.get(_section)
+                    if not isinstance(_sec, dict): continue
+                    for _pk, _pd in _sec.items():
+                        if not isinstance(_pd, dict): continue
+                        _ep = _try_ep(_pd, 'last_reduction_price', 'exit_price', 'reentry_level')
+                        _et = _try_et(_pd, 'last_exit_timestamp', 'last_reduction_time', 'reduced_at', 'timestamp')
+                        _put(_pk, _ep, _et)
+        except Exception: pass
+
+    return cache
+
+
+def _write_exit_to_disk(account_key: str, position_key: str, symbol: str, position_side: str, exit_price: float, reason: str) -> None:
+    """Write exit price to disk JSON files immediately after any close. Never silently skips."""
+    import json as _jmod
+    _acct_short = account_key.split(':')[-1] if ':' in account_key else account_key
+    _base = getattr(config, 'BASE_PATH', None)
+    _dirs = []
+    if _base: _dirs.append(_base / _acct_short)
+    _dirs.append(Path(f"/Users/niels/Documents/binance/{_acct_short}"))
+    _ps = 'long' if position_side == 'LONG' else 'short'
+    _now_iso = datetime.now(timezone.utc).isoformat()
+    _pk_variants = [position_key, f"{account_key}:{symbol}_{position_side}"]
+    for _d in _dirs:
+        if not _d or not _d.exists(): continue
+        for _fname in [f'{_ps}_positions.json', f'{_ps}_reentry.json', 'reduced_positions.json']:
+            try:
+                _fp = _d / _fname
+                _fdata = {}
+                if _fp.exists(): _fdata = _jmod.loads(_fp.read_text())
+                if not isinstance(_fdata, dict): continue
+                _pk_match = next((_pk for _pk in _pk_variants if _pk in _fdata), None)
+                if not _pk_match and _fname == f'{_ps}_reentry.json': _pk_match = _pk_variants[0]
+                if _pk_match:
+                    if _pk_match not in _fdata: _fdata[_pk_match] = {}
+                    _fdata[_pk_match]['last_reduction_price'] = exit_price
+                    _fdata[_pk_match]['exit_price'] = exit_price
+                    _fdata[_pk_match]['last_reduction_time'] = _now_iso
+                    _fdata[_pk_match]['reduced_at'] = _now_iso
+                    _fdata[_pk_match]['reentry_level'] = exit_price
+                    _fdata[_pk_match]['timestamp'] = _now_iso
+                    _fdata[_pk_match]['reduction_reason'] = reason[:100]
+                    _fp.write_text(_jmod.dumps(_fdata, indent=2))
+            except Exception: pass
+
+
 async def check_entry_candidates_for_account(trade_manager, account_key: str, redis_manager, tracker_manager: TrackerManager, order_queue, data_manager: FastDataManager, hedge_engine: HedgeEngine=None, position_keys: List[str] = None, force: bool = False) -> None:
     if getattr(config, 'ABLATION_DISABLE_QUICK_ENTRY', False): return
     if not position_keys:
         logger.info(f"🔍 {position_keys} no pos keys sent")
         return
+    disk_exit_cache = _load_disk_exit_cache(account_key)
     sem = asyncio.Semaphore(50)
 
     async def worker(position_key):
@@ -12606,46 +12749,58 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                 # Tier 2: Trend continues past exit without pullback → chase at 80% size
                 _reentry_tier = None
                 if pos_amt <= _pos_min_qty_entry:
-                    _exit_px = tracker_manager.last_exit_prices.get(position_key, 0.0)
-                    _exit_tm = tracker_manager.last_exit_times.get(position_key, 0.0)
-                    _entry_lrp = safe_fetch_float(entry_meta.get('last_reduction_price', 0.0), 0.0)
-                    _reentry_px = _exit_px if _exit_px > 0 else _entry_lrp
-                    # SOURCE EXHAUSTION: load exit price + time from EVERY available source
-                    # so reentry NEVER silently fails from a missing dict entry.
-                    if _reentry_px <= 0 or _exit_tm <= 0:
-                        _pk_variants = [position_key, f"{account_key}:{symbol}_{position_side}"]
-                        _pos_side_str = 'long' if is_long else 'short'
-                        _acct_short = account_key.split(':')[-1] if ':' in account_key else account_key
-                        _base = getattr(config, 'BASE_PATH', None)
-                        for _acct_dir_try in [_base / _acct_short if _base else None, Path(f"/Users/niels/Documents/binance/{_acct_short}")]:
-                            if not _acct_dir_try: continue
-                            for _fname in [f"{_pos_side_str}_positions.json", f"{_pos_side_str}_reentry.json"]:
-                                try:
-                                    _fpath = _acct_dir_try / _fname
-                                    if not _fpath.exists(): continue
-                                    import json as _jmod
-                                    _fdata = _jmod.loads(_fpath.read_text())
-                                    for _pk_v in _pk_variants:
-                                        if _pk_v not in _fdata: continue
-                                        _fd = _fdata[_pk_v]
-                                        if _reentry_px <= 0:
-                                            _reentry_px = safe_fetch_float(_fd.get('last_reduction_price') or _fd.get('reentry_level') or _fd.get('exit_price') or 0, 0)
-                                        if _exit_tm <= 0:
-                                            _ts_r = _fd.get('last_reduction_time') or _fd.get('reduced_at') or _fd.get('timestamp')
-                                            if _ts_r:
-                                                try: _exit_tm = datetime.fromisoformat(str(_ts_r).replace('Z', '+00:00')).timestamp()
-                                                except Exception: pass
-                                        break
-                                except Exception: pass
-                        if _exit_tm <= 0:
-                            _ts_r = entry_meta.get('last_exit_timestamp') or entry_meta.get('last_reduction_time')
-                            if _ts_r:
-                                try: _exit_tm = datetime.fromisoformat(str(_ts_r).replace('Z', '+00:00')).timestamp()
-                                except Exception: pass
-                        if _reentry_px > 0 and _exit_px <= 0:
-                            tracker_manager.last_exit_prices[position_key] = _reentry_px
-                        if _exit_tm > 0 and tracker_manager.last_exit_times.get(position_key, 0) <= 0:
-                            tracker_manager.last_exit_times[position_key] = _exit_tm
+                    _pk_variants = [position_key, f"{account_key}:{symbol}_{position_side}"]
+                    def _ts_to_epoch(v):
+                        if not v: return 0.0
+                        if isinstance(v, (int, float)): return float(v)
+                        try: return datetime.fromisoformat(str(v).replace('Z', '+00:00')).timestamp()
+                        except Exception: return 0.0
+                    def _sfx(v):
+                        try: f=float(v); return f if f>0 else 0.0
+                        except Exception: return 0.0
+                    _rx, _rt = 0.0, 0.0
+                    # S1: position object (live)
+                    if not _rx: _rx = _sfx(getattr(position, 'last_reduction_price', 0))
+                    if not _rt: _rt = _ts_to_epoch(getattr(position, 'last_reduction_time', None))
+                    # S2: positions_by_account live dict
+                    _pba_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
+                    if _pba_pos:
+                        if not _rx: _rx = _sfx(getattr(_pba_pos, 'last_reduction_price', 0))
+                        if not _rt: _rt = _ts_to_epoch(getattr(_pba_pos, 'last_reduction_time', None))
+                    # S3: tracker_manager.last_exit_prices / last_exit_times
+                    if not _rx: _rx = _sfx(tracker_manager.last_exit_prices.get(position_key, 0))
+                    if not _rt: _rt = _sfx(tracker_manager.last_exit_times.get(position_key, 0))
+                    # S4: entry_meta (entry_candidates in-memory)
+                    if not _rx: _rx = _sfx(entry_meta.get('last_reduction_price') or entry_meta.get('exit_price') or 0)
+                    if not _rt: _rt = _ts_to_epoch(entry_meta.get('last_exit_timestamp') or entry_meta.get('last_reduction_time'))
+                    # S5: tracker_manager.entry_candidates direct
+                    _tm_ec = tracker_manager.entry_candidates.get(position_key) or {}
+                    if not _rx: _rx = _sfx(_tm_ec.get('last_reduction_price') or _tm_ec.get('exit_price') or 0)
+                    if not _rt: _rt = _ts_to_epoch(_tm_ec.get('last_exit_timestamp') or _tm_ec.get('last_reduction_time'))
+                    # S6: tracker_manager.exit_candidates direct
+                    _tm_xc = tracker_manager.exit_candidates.get(position_key) or {}
+                    if not _rx: _rx = _sfx(_tm_xc.get('last_reduction_price') or _tm_xc.get('exit_price') or 0)
+                    if not _rt: _rt = _ts_to_epoch(_tm_xc.get('last_exit_timestamp') or _tm_xc.get('last_reduction_time'))
+                    # S7: trade_manager.reentry_data (set by TRACKER_REDUCTION path)
+                    _re_data = getattr(trade_manager, 'reentry_data', {}).get(position_key) or {}
+                    for _pk_v2 in _pk_variants:
+                        if not _re_data: _re_data = getattr(trade_manager, 'reentry_data', {}).get(_pk_v2) or {}
+                    if not _rx: _rx = _sfx(_re_data.get('reentry_level') or _re_data.get('last_reduction_price') or 0)
+                    if not _rt: _rt = _ts_to_epoch(_re_data.get('timestamp') or _re_data.get('last_reduction_time'))
+                    # S8-S15: disk JSON files (loaded fresh every account cycle — all 7 files + tracker sections)
+                    _disk_info = next((disk_exit_cache[_pk] for _pk in _pk_variants if _pk in disk_exit_cache), None)
+                    if not _rx: _rx = _sfx(_disk_info['exit_px'] if _disk_info else 0)
+                    if not _rt: _rt = _sfx(_disk_info['exit_tm'] if _disk_info else 0)
+                    _reentry_px = _rx
+                    _exit_tm = _rt
+                    _exit_px = _reentry_px
+                    # Write back to every memory dict so no future cycle repeats this work
+                    if _reentry_px > 0:
+                        tracker_manager.last_exit_prices[position_key] = _reentry_px
+                        entry_meta['last_reduction_price'] = _reentry_px
+                        entry_meta['exit_price'] = _reentry_px
+                    if _exit_tm > 0:
+                        tracker_manager.last_exit_times[position_key] = _exit_tm
                     _min_since_exit_epq = (now - _exit_tm) / 60.0 if _exit_tm > 0 else 0.0
                     _reentry_min_gap = float(getattr(config, 'REENTRY_MIN_GAP_MINUTES', 3.0))
                     _gap_ok = _min_since_exit_epq >= _reentry_min_gap

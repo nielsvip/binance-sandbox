@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-21 00:44:10 UTC
+# Copilot Status — 2026-04-21 01:00:06 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T00:43:17
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T00:43:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T00:43:17
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T00:55:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T00:55:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T00:55:04
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T00:57:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T00:57:11
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T00:57:11
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T00:59:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T00:59:11
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T00:59:11
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T00:59:24
 
 ## Missed Trades (trader comparison)
 
@@ -20,17 +27,14 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 1 | **Reentered:** 0
+**Held:** 0 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 1m ago
+- WATCHING: **MSTR** LONG (tradier) peaked +16.9%, exited 0m ago
+- WATCHING: **EDUUSDT** LONG (crypto) peaked +11.2%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 5
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+**Issues (last 1h):** 1
 - [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running

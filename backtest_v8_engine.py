@@ -1290,16 +1290,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
         # Run ONE cycle of all trading loops for this bar
         # process_position on ALL active positions
-        for pk in list(trade_manager.positions.keys()):
-            pos = trade_manager.positions.get(pk)
-            if pos and abs(getattr(pos, 'positionAmt', 0)) > 0.0001:
-                try:
-                    await ez_manage.process_position(
-                        account_key=account_key, position_key=pk,
-                        order_queue=order_queue, trade_manager=trade_manager, force=True)
-                except Exception as _pp_err:
-                    if step < 10 or step % 1000 == 0:
-                        v8_logger.error(f"[V8_PP_ERROR] step={step} pk={pk} err={_pp_err}")
+        # 2026-04-21: V8_SKIP_PROCESS_POSITION=1 stubs the call per user directive —
+        # process_position is slow and does not measurably affect Sharpe/WR (exits still flow
+        # through check_exit_candidates_for_account below). Live code path unchanged.
+        if os.environ.get("V8_SKIP_PROCESS_POSITION", "0") != "1":
+            for pk in list(trade_manager.positions.keys()):
+                pos = trade_manager.positions.get(pk)
+                if pos and abs(getattr(pos, 'positionAmt', 0)) > 0.0001:
+                    try:
+                        await ez_manage.process_position(
+                            account_key=account_key, position_key=pk,
+                            order_queue=order_queue, trade_manager=trade_manager, force=True)
+                    except Exception as _pp_err:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[V8_PP_ERROR] step={step} pk={pk} err={_pp_err}")
 
         # HEDGE LIFECYCLE — 2026-04-17: wire real hedge engine into backtest.
         # Live main loop calls these periodically; backtest must too or HEDGE_* switches
