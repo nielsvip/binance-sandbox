@@ -1209,6 +1209,7 @@ def build_param_grid_rz_noloss_mode():
     """
     return {
         "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "NOLOSS_ENABLED": [True],
         "LOCAL_EXTREMES_SCORER_ENABLED": [False],
         "PROFIT_TARGET_ENABLED": [False],
         "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],

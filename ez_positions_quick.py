@@ -4569,12 +4569,20 @@ class HedgeEngine:
                     if _shm: _ind = dict(_shm)
                 except Exception:
                     pass
-            # BC_988: 15m WT is the SOLE trigger. wt1_15m < wt2_15m = bearish (bad for longs, good for shorts)
+            # BC_988 updated: 15m OR (3m+1h both against) triggers hedge.
             _wt1_15m = safe_fetch_float(_ind.get('wt1_15m'), 0)
             _wt2_15m = safe_fetch_float(_ind.get('wt2_15m'), 0)
-            _wt_against_origin = (is_long and _wt1_15m < _wt2_15m) or (not is_long and _wt1_15m > _wt2_15m)
+            _wt1_3m = safe_fetch_float(_ind.get('wt1_3m'), 0)
+            _wt2_3m = safe_fetch_float(_ind.get('wt2_3m'), 0)
+            _wt1_1h = safe_fetch_float(_ind.get('wt1_1h'), 0)
+            _wt2_1h = safe_fetch_float(_ind.get('wt2_1h'), 0)
+            _15m_against = (is_long and _wt1_15m < _wt2_15m) or (not is_long and _wt1_15m > _wt2_15m)
+            _3m_against = (is_long and _wt1_3m < _wt2_3m) or (not is_long and _wt1_3m > _wt2_3m)
+            _1h_against = (is_long and _wt1_1h < _wt2_1h) or (not is_long and _wt1_1h > _wt2_1h)
+            _wt_against_origin = _15m_against or (_3m_against and _1h_against)
             if not _wt_against_origin:
                 continue
+            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} → hedge trigger")
             # Check if already hedged (same-symbol position exists)
             losing_side = 'LONG' if is_long else 'SHORT'
             hedge_side = 'SHORT' if is_long else 'LONG'

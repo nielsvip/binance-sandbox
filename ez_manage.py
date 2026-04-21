@@ -10625,26 +10625,10 @@ class MultiAccountTradeManager:
             if _pos_val <= _min_pos_val and _is_reentry:
                 logger.info(f"[REENTRY_ALLOWED] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — rebuild allowed")
             elif _pos_val > _min_pos_val and _gain < 3.0 and not _original_action_was_reentry:
-                # ═══ LOSING POSITION AUGMENT: require 5/5 WT + 3/5 DC confirm ═══
-                # 2026-04-04: Augmenting a LOSING position = doubling down on wrong direction.
-                # Only allowed at the BOTTOM of the daily chart with ALL TFs confirming reversal.
+                # ABSOLUTE: NO augments on losing positions. No exceptions.
                 if _gain < 0.0:
-                    _i = await ii(self, symbol)
-                    _aug_wt_ok = 0
-                    _aug_dc_ok = 0
-                    _is_long_pos = position_key.endswith("_LONG") if position_key else True
-                    for _aug_tf in ['3m', '15m', '1h', '4h', 'D']:
-                        _aw1 = safe_fetch_float(_i.get(f'wt1_{_aug_tf}'), 0)
-                        _aw2 = safe_fetch_float(_i.get(f'wt2_{_aug_tf}'), 0)
-                        if (_is_long_pos and _aw1 > _aw2) or (not _is_long_pos and _aw1 < _aw2):
-                            _aug_wt_ok += 1
-                        _adc = safe_fetch_float(_i.get(f'dc_position_{_aug_tf}'), 0.5)
-                        if (_is_long_pos and _adc < 0.3) or (not _is_long_pos and _adc > 0.7):
-                            _aug_dc_ok += 1
-                    if _aug_wt_ok < 5 or _aug_dc_ok < 3:
-                        logger.warning(f"[AUGMENT_LOSER_BLOCKED] {position_key}: gain={_gain:.2f}% LOSING — need 5/5 WT + 3/5 DC, got wt={_aug_wt_ok}/5 dc={_aug_dc_ok}/5")
-                        return f"BLOCKED_AUGMENT_LOSER_WT{_aug_wt_ok}_DC{_aug_dc_ok}"
-                    logger.info(f"[AUGMENT_LOSER_ALLOWED] {position_key}: gain={_gain:.2f}% but 5/5 WT + {_aug_dc_ok}/5 DC confirm reversal")
+                    logger.critical(f"🚫 [AUGMENT_LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. NEVER augment a losing position. action={action} reason={reason[:80]}")
+                    return f"BLOCKED_AUGMENT_NEGATIVE_GAIN_{_gain:.2f}%"
                 else:
                     logger.warning(f"[AUGMENT_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < 3.0%. action={action} is_hedge={is_hedge} reentry={_is_reentry}.")
                     return f"BLOCKED_AUGMENT_{_gain:.2f}%_pos${_pos_val:.0f}"
@@ -22486,6 +22470,8 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                     continue
                 for pk, pos in positions.items():
                     gain = safe_fetch_float(pos.get("gain", 0), 0)
+                    if gain <= 0:
+                        continue
                     pos_amt = abs(safe_fetch_float(pos.get("positionAmt", 0), 0))
                     entry_price = safe_fetch_float(pos.get("entryPrice") or pos.get("entry_price", 0), 0)
                     mark_price = safe_fetch_float(pos.get("markPrice") or pos.get("mark_price", 0), 0)
