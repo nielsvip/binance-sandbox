@@ -1,21 +1,21 @@
-# Copilot Status — 2026-04-21 11:50:39 UTC
+# Copilot Status — 2026-04-21 12:06:12 UTC
 
-**Market Hours:** NO | **Tradier Priority:** NO
+**Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
 **New opens this hour:** 0 / 3
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T11:48:19
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T11:48:19
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T11:48:19
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T11:49:11
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-21T11:49:11
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T11:50:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-21T11:50:17
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T11:50:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T11:50:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T11:50:28
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T12:03:12
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T12:03:25
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-21T12:03:25
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T12:04:27
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-21T12:04:27
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T12:05:18
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-21T12:05:18
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-21T12:05:18
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T12:05:31
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-21T12:05:31
 
 ## Missed Trades (trader comparison)
 
@@ -37,9 +37,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 6
+- [MEDIUM] tradier_manage.py for trc is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
