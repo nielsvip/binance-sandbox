@@ -1882,12 +1882,14 @@ def simulate(stores, cfg, capital=10000.0):
                 _pe_pct = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5)))
                 _pe_trail_arm = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7)))
                 _pe_trail_floor = _pe_pct
+                _pe_be_buffer = float(getattr(cfg, 'PARTIAL_BE_BUFFER_PCT', 0.0))
             else:
                 _pe_enabled = bool(getattr(cfg, 'PARTIAL_EXIT_ENABLED', False))
                 _pe_frac = float(getattr(cfg, 'PARTIAL_EXIT_FRAC', 0.5))
                 _pe_pct = float(getattr(cfg, 'PARTIAL_EXIT_PCT', 0.5))
                 _pe_trail_arm = float(getattr(cfg, 'PARTIAL_TRAIL_ARM_PCT', 0.7))
                 _pe_trail_floor = float(getattr(cfg, 'PARTIAL_TRAIL_FLOOR_PCT', 0.5))
+                _pe_be_buffer = float(getattr(cfg, 'PARTIAL_BE_BUFFER_PCT', 0.0))
             _pe_rem_tfs = int(getattr(cfg, 'PARTIAL_REMAINDER_EXIT_TFS', 2) or 2)
             _use_cross = bool(getattr(cfg, 'WT_EXIT_USE_CROSS_EVENTS', False))
             exit_sig_rem = exit_sig

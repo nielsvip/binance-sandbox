@@ -1076,14 +1076,20 @@ def build_param_grid_mega_crypto_v8():
 
 def build_param_grid_mega_tradier_v8():
     """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 6.577 on 262 sym).
-    All le_dynamic_v2 winner params FIXED. Sweeping: RZ_EXIT, EXIT_SCORER, SRS, WINNER_PROTECT,
-    DC_RECOVERY, PARTIAL_EXIT, LE_TIER_SIZING, and RZ_BREAKOUT_ENTRY (supplemental to LE scorer).
-    RZ_BREAKOUT best params fixed at bot=0.20, top=0.85 (from rz_noloss_mode sweep 2026-04-21).
-    EARLY_ABORT floor 3.0 — configs below baseline (6.577 sym_avg) die in first 30s on 6 symbols.
-    Run: --mode tradier --symbols medium --start 2024-01-01 --min-csv-sharpe 1.5 --kill-sharpe 0.5 --kill-secs 300 --workers 4 --stream --shuffle
+    All le_dynamic_v2 winner params FIXED. RZ_BREAKOUT_ENTRY always ON (it's a fact).
+    PRIMARY SWEEP: which NOLOSS bypass mode keeps losing RZ-breakout entries alive correctly?
+    bar_structure = lower-high+lower-low on base-TF bar vs prev (within RZ_BREAKOUT_NOLOSS_BAR_WINDOW bars)
+    dc_low4_base  = 4-bar DC low on base TF (5m stocks / 3m crypto)
+    dc_low_base   = 20-bar DC low on base TF
+    dc_low4_15m   = 4-bar DC low on 15m
+    Also sweeps exit features on top: RZ_EXIT, EXIT_SCORER, DC_RECOVERY (most impactful).
+    192 configs. Run tradier: --mode tradier --symbols medium --start 2024-01-01
+      --min-csv-sharpe 1.5 --kill-sharpe 0.5 --kill-secs 300 --workers 4 --stream --shuffle
+    Run crypto:   --mode crypto  --symbols medium --start 2022-01-01
+      --min-csv-sharpe 1.5 --kill-sharpe 0.5 --kill-secs 300 --workers 4 --stream --shuffle
     """
     return {
-        # ── FIXED: le_dynamic_v2 winner (DO NOT SWEEP THESE) ──────────────────────
+        # ── FIXED: le_dynamic_v2 winner ───────────────────────────────────────────
         "LOCAL_EXTREMES_SCORER_ENABLED": [True],
         "LOCAL_EXTREMES_MIN_SCORE": [45.0],
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
@@ -1098,21 +1104,18 @@ def build_param_grid_mega_tradier_v8():
         "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [1],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
-        # ── RZ BREAKOUT SUPPLEMENTAL ENTRY (best params from rz_noloss_mode sweep) ─
-        "RZ_BREAKOUT_ENTRY_ENABLED": [True, False],
+        # ── RZ BREAKOUT: always ON, sweep NOLOSS bypass mode ─────────────────────
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
         "RZ_BOT_BB_THRESHOLD": [0.20],
         "RZ_TOP_BB_THRESHOLD": [0.85],
-        "RZ_BREAKOUT_NOLOSS_MODE": ["dc_low4_15m"],
-        # ── UNKNOWNS TO SWEEP (improvements above 6.577 baseline) ────────────────
+        "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
+        "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
+        # ── EXIT FEATURE UNKNOWNS (most impactful — others fixed at default) ──────
         "RZ_EXIT_ENABLED": [True, False],
         "EXIT_SCORER_ENABLED": [True, False],
-        "EXIT_SCORER_MIN_CONDITIONS": [2, 3, 4],
-        "WINNER_PROTECT_ENABLED": [True, False],
-        "WINNER_PROTECT_GAIN_PCT": [1.0, 2.0],
+        "EXIT_SCORER_MIN_CONDITIONS": [2, 3],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
-        "LE_TIER_SIZING_ENABLED": [True, False],
-        "PARTIAL_EXIT_ENABLED": [True, False],
-        # ── FLOOR: kill configs below baseline ────────────────────────────────────
+        # ── FLOOR: early-abort configs below 3.0 sym_avg in first 30s/20sym ──────
         "EARLY_ABORT_MIN_SYMBOLS": [20],
         "EARLY_ABORT_SHARPE_FLOOR": [3.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
