@@ -19952,15 +19952,21 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             # STOCH_CROSS_3M_EXIT REMOVED 2026-04-10 — stoch is way lagging vs DELTA/WT.
             # DELTA→WT priority means stoch should NEVER reach the position. If DELTA fires
             # properly, this function returns earlier. Code path eliminated to remove noise.
-            # === PARTIAL_PROFIT_LOCK (2026-04-21) — replaces SATOSHIT_PARTIAL_EXIT 70%.
-            # Step 1 (+0.5%): close 50% via place_maker_order; fallback send_webhook url_variant="2".
-            # Step 2 (+0.7%): arm trailing stop at first-exit price.
-            # Step 3 (price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
+            # === PARTIAL_PROFIT_LOCK v2 (2026-04-21) — replaces SATOSHIT_PARTIAL_EXIT 70%.
+            # Webhook routing: URL2 is ALWAYS 50% close (Finandy config); URL is 100% close.
+            # Step 1 (+0.5%): fire url_2 webhook (Finandy closes 50%); stop_level = entry × (1 ± BE_buffer%).
+            #                 maker-first preferred. After this: stop is at break-even + tiny buffer so
+            #                 position always closes BEFORE hitting breakeven.
+            # Step 2 (+0.75%): upgrade stop_level up to first_exit_price (0.5%-gain level) — locks 0.5%
+            #                  scalp gain on the remaining 50%.
+            # Step 3 (price ≤ stop_level for long / ≥ for short): close remainder via url (100% of
+            #                                                     remaining = 50% of original).
             if (getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)
                 and account_key in getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS', [])
                 and not _sat_skip_standard_exits):
                 _ppl_min_gain = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))
-                _ppl_arm_gain = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.7))
+                _ppl_arm_gain = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.75))
+                _ppl_be_buffer = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.02))
                 _ppl_frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
                 _ppl_use_maker = bool(getattr(config, 'PARTIAL_PROFIT_LOCK_USE_MAKER', True))
                 if not hasattr(trade_manager, 'partial_profit_lock_state'):
@@ -19968,23 +19974,26 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 _ppl_state = trade_manager.partial_profit_lock_state.get(position_key, {})
                 _ppl_fired = _ppl_state.get('fired', False)
                 _ppl_first_exit_px = float(_ppl_state.get('first_exit_price', 0.0))
-                _ppl_sl_armed = _ppl_state.get('sl_armed', False)
+                _ppl_stop_level = float(_ppl_state.get('stop_level', 0.0))
+                _ppl_stop_upgraded = _ppl_state.get('stop_upgraded', False)
                 _ppl_pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                _ppl_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0.0), 0.0)
                 _ppl_close_side = "SELL" if is_long else "BUY"
-                if not _ppl_fired and _pp_gain >= _ppl_min_gain and _ppl_pos_amt > pos_min_qty:
+                if not _ppl_fired and _pp_gain >= _ppl_min_gain and _ppl_pos_amt > pos_min_qty and _ppl_entry_px > 0:
                     _ppl_reduce_qty = _ppl_pos_amt * _ppl_frac
                     _ppl_keep_qty = _ppl_pos_amt - _ppl_reduce_qty
                     if _ppl_reduce_qty > pos_min_qty and _ppl_keep_qty > pos_min_qty:
-                        _ppl_uid = f"PPL_PARTIAL_{position_key}_{int(time.time())}"
-                        _ppl_reason = f"PPL_PARTIAL_gain{_pp_gain:.2f}_50pct"
-                        logger.warning(f"[PARTIAL_PROFIT_LOCK] {position_key}: gain={_pp_gain:.2f}% >= {_ppl_min_gain}% — closing {_ppl_frac*100:.0f}% ({_ppl_reduce_qty:.6f}/{_ppl_pos_amt:.6f}) {'MAKER→WH2' if _ppl_use_maker else 'WH2'}")
+                        _ppl_be_stop = _ppl_entry_px * (1.0 + _ppl_be_buffer / 100.0) if is_long else _ppl_entry_px * (1.0 - _ppl_be_buffer / 100.0)
+                        _ppl_uid = f"PPL_TP_{position_key}_{int(time.time())}"
+                        _ppl_reason = f"PPL_TP_gain{_pp_gain:.2f}_URL2_50pct"
+                        logger.warning(f"[PARTIAL_PROFIT_LOCK_TP] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_min_gain}% — firing URL2 (Finandy 50%) + BE stop @ {_ppl_be_stop:.6f} (entry={_ppl_entry_px:.6f}, buffer={_ppl_be_buffer}%)")
                         _ppl_ok = False
                         if _ppl_use_maker:
                             try:
                                 _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ppl_pos_amt, current_price, _ppl_reduce_qty, _ppl_close_side, position_side, _ppl_uid, _ppl_reason)
                                 _ppl_ok = bool(_m_ok)
                             except Exception as _m_e:
-                                logger.warning(f"[PPL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to webhook_url_2")
+                                logger.warning(f"[PPL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to url_2 webhook")
                                 _ppl_ok = False
                         if not _ppl_ok:
                             try:
@@ -19993,30 +20002,30 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.error(f"[PPL_WEBHOOK2_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
                                 _ppl_ok = False
                         if _ppl_ok:
-                            trade_manager.partial_profit_lock_state[position_key] = {'fired': True, 'first_exit_price': current_price, 'sl_armed': False}
-                            return f"{EvalStatus.ACTION_TAKEN}:PPL_PARTIAL_EXIT"
-                if _ppl_fired and not _ppl_sl_armed and _pp_gain >= _ppl_arm_gain and _ppl_first_exit_px > 0:
-                    trade_manager.partial_profit_lock_state[position_key] = {**_ppl_state, 'sl_armed': True}
-                    logger.warning(f"[PPL_SL_ARMED] {position_key}: gain={_pp_gain:.2f}% >= {_ppl_arm_gain}% — SL armed @ {_ppl_first_exit_px:.6f} (first-exit price)")
-                if _ppl_sl_armed and _ppl_first_exit_px > 0 and _ppl_pos_amt > pos_min_qty:
-                    _sl_hit = (is_long and current_price <= _ppl_first_exit_px) or (not is_long and current_price >= _ppl_first_exit_px)
+                            trade_manager.partial_profit_lock_state[position_key] = {'fired': True, 'first_exit_price': current_price, 'stop_level': _ppl_be_stop, 'stop_upgraded': False}
+                            return f"{EvalStatus.ACTION_TAKEN}:PPL_TP_URL2"
+                if _ppl_fired and not _ppl_stop_upgraded and _pp_gain >= _ppl_arm_gain and _ppl_first_exit_px > 0:
+                    trade_manager.partial_profit_lock_state[position_key] = {**_ppl_state, 'stop_level': _ppl_first_exit_px, 'stop_upgraded': True}
+                    logger.warning(f"[PPL_STOP_UPGRADED] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_arm_gain}% — stop upgraded BE→first_exit {_ppl_first_exit_px:.6f} (locks +0.5% scalp)")
+                if _ppl_fired and _ppl_stop_level > 0 and _ppl_pos_amt > pos_min_qty:
+                    _sl_hit = (is_long and current_price <= _ppl_stop_level) or (not is_long and current_price >= _ppl_stop_level)
                     if _sl_hit:
                         _ppl_sl_uid = f"PPL_SL_{position_key}_{int(time.time())}"
-                        _ppl_sl_reason = f"PPL_SL_HIT_px{current_price:.6f}_fep{_ppl_first_exit_px:.6f}"
-                        logger.warning(f"[PARTIAL_PROFIT_LOCK_SL_HIT] {position_key}: price={current_price:.6f} crossed first-exit-price={_ppl_first_exit_px:.6f} — closing remaining {_ppl_pos_amt:.6f}")
+                        _ppl_sl_reason = f"PPL_SL_{'upgraded' if _ppl_stop_upgraded else 'BE'}_px{current_price:.6f}_stop{_ppl_stop_level:.6f}"
+                        logger.warning(f"[PARTIAL_PROFIT_LOCK_SL_HIT] {position_key}: price={current_price:.6f} hit stop={_ppl_stop_level:.6f} ({'upgraded-0.5pct' if _ppl_stop_upgraded else 'BE+buffer'}) — firing URL (100% remainder)")
                         _sl_ok = False
                         if _ppl_use_maker:
                             try:
                                 _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ppl_pos_amt, current_price, _ppl_pos_amt, _ppl_close_side, position_side, _ppl_sl_uid, _ppl_sl_reason)
                                 _sl_ok = bool(_m_ok)
                             except Exception as _m_e:
-                                logger.warning(f"[PPL_SL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to webhook_url_2")
+                                logger.warning(f"[PPL_SL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to url (100%)")
                                 _sl_ok = False
                         if not _sl_ok:
                             try:
-                                _sl_ok = await trade_manager.send_webhook(position_key, account_key, symbol, _ppl_pos_amt, _ppl_pos_amt, current_price, _ppl_close_side, position_side, _ppl_sl_uid, True, _ppl_sl_reason, url_variant="2")
+                                _sl_ok = await trade_manager.send_webhook(position_key, account_key, symbol, _ppl_pos_amt, _ppl_pos_amt, current_price, _ppl_close_side, position_side, _ppl_sl_uid, True, _ppl_sl_reason)
                             except Exception as _w_e:
-                                logger.error(f"[PPL_SL_WEBHOOK2_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
+                                logger.error(f"[PPL_SL_WEBHOOK_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
                                 _sl_ok = False
                         if _sl_ok:
                             trade_manager.partial_profit_lock_state.pop(position_key, None)

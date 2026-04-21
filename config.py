@@ -1023,10 +1023,14 @@ class Config:
     # Step 3 (SL hit: price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.7
-    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger: close 50% via webhook_url_2 (Finandy always closes 50% on URL2)
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75     # At this gain, upgrade stop from BE+buffer to first_exit_price (0.5% level)
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02    # After TP fires, initial stop = entry × (1 ± buffer). Ensures close fires BEFORE gain reaches 0%.
+    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5              # Semantic only — URL2 handles actual 50% on Finandy side
     PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
+    # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss.
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     SATOSHIT_MIN_VOTES: int = 3  # 3-of-5 entry indicators must agree
     SATOSHIT_SCORE_BONUS: int = 30  # Score bonus when Satoshit fires (below mover=40)
     SATOSHIT_QTY_MULT: float = 3.0  # 3x position size for satoshit entries — 100% WR, avg +5.58% gain

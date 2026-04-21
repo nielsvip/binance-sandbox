@@ -29,7 +29,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 from v8_quick_engine import (
     QuickConfig, load_npz, iter_npz, simulate,
-    FAST_SYMBOLS_CRYPTO, FAST_SYMBOLS_TRADIER
+    FAST_SYMBOLS_CRYPTO, FAST_SYMBOLS_TRADIER,
+    MEDIUM_SYMBOLS_CRYPTO, MEDIUM_SYMBOLS_TRADIER
 )
 
 _WORKER_STORES = None
@@ -1184,6 +1185,32 @@ def build_param_grid_rz_breakout_tradier():
     }
 
 
+def build_param_grid_rz_noloss_mode():
+    """2026-04-21: RZ breakout entry ALWAYS ON — sweep NOLOSS bypass mode.
+    4 bypass modes: bar_structure (lower-high+lower-low on base TF within first N bars),
+    dc_low4_base (4-bar DC low on base TF: 5m tradier / 3m crypto),
+    dc_low_base (20-bar DC low on base TF), dc_low4_15m (4-bar DC low on 15m).
+    Also sweeps RZ_BREAKOUT_NOLOSS_BAR_WINDOW for bar_structure mode.
+    Run tradier: --mode tradier --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 1.0 --kill-sharpe 0 --kill-secs 999999
+    Run crypto:  --mode crypto  --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 1.0 --kill-sharpe 0 --kill-secs 999999
+    ~288 configs (4 modes × 3 bot × 3 top × 3 pt × 2 hold × 2 bar_window).
+    """
+    return {
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
+        "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
+        "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
+        "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
+        "PROFIT_TARGET_ENABLED": [True],
+        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],
+        "MIN_HOLD_BARS": [4, 10],
+        "WT_EXIT_MIN_TFS": [2],
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
+    }
+
+
 def build_param_grid_local_extremes_tradier():
     """2026-04-20: Local bottom/top swing strategy for tradier stocks — Phase 1: K-gate only.
     LONG: enter when k_1h < ENTRY_ZONE_LONG (oversold = local bottom).
@@ -2254,6 +2281,7 @@ TIER_MAP = {
     "mega_tradier_v8_focused": build_param_grid_mega_tradier_v8_focused,
     "rz_exit_sweep": build_param_grid_rz_exit_sweep,
     "rz_breakout_tradier": build_param_grid_rz_breakout_tradier,
+    "rz_noloss_mode": build_param_grid_rz_noloss_mode,
     "crypto_validate_top": build_param_grid_crypto_validate_top,
     "local_extremes_tradier": build_param_grid_local_extremes_tradier,
     "local_extremes_tradier_scorer": build_param_grid_local_extremes_tradier_scorer,
@@ -2404,6 +2432,8 @@ def main():
     symbols_list = None
     if args.symbols == "fast":
         symbols_list = (FAST_SYMBOLS_TRADIER if args.mode == "tradier" else FAST_SYMBOLS_CRYPTO).split(",")
+    elif args.symbols == "medium":
+        symbols_list = (MEDIUM_SYMBOLS_TRADIER if args.mode == "tradier" else MEDIUM_SYMBOLS_CRYPTO).split(",")
     elif args.symbols and args.symbols != "all":
         # "all" → symbols_list stays None → iter_npz/load_npz auto-filters by mode
         symbols_list = [s.strip() for s in args.symbols.split(",") if s.strip()]

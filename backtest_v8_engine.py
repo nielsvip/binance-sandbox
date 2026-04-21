@@ -2085,6 +2085,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _tm.reentry_data.pop(position_key, None)  # full close = no reentry
             except Exception as _resync_e:
                 v8_logger.debug(f"[V8_REENTRY_SYNC_ERR] {position_key}: {_resync_e}")
+            # TIER1_PRICE_CROSS_REENTRY fix: populate tracker_manager exit cache so
+            # check_entry_candidates_for_account sees _reentry_px > 0 on next step.
+            try:
+                if hasattr(tracker_manager, 'last_exit_prices'):
+                    tracker_manager.last_exit_prices[position_key] = px
+                if hasattr(tracker_manager, 'last_exit_times'):
+                    tracker_manager.last_exit_times[position_key] = _sim_now_t(timezone.utc).timestamp()
+            except Exception:
+                pass
         elif not is_reduce:
             if pos:
                 old_amt = abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0)))

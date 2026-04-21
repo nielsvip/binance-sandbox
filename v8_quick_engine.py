@@ -95,8 +95,10 @@ class QuickConfig:
     RZ_TOP_BB_THRESHOLD: float = 0.85  # TEST_PRIORITY: BB %B top-zone gate. Crypto=0.85, stocks=0.85. Sweep 0.75-0.95.
     RZ_BOT_BB_THRESHOLD: float = 0.15  # TEST_PRIORITY: BB %B bottom-zone gate. Sweep 0.05-0.25.
     RZ_BREAKOUT_ENTRY_ENABLED: bool = False  # TEST_PRIORITY: entry when price breaks out of extreme BB zone (oversold→normal for LONG). Sweep True/False.
-    RZ_BREAKOUT_NOLOSS_GUARD_ENABLED: bool = True  # bypass NOLOSS if guard level (dc_low_15m etc) breaks after RZ-breakout entry
-    RZ_BREAKOUT_NOLOSS_GUARD_TF: str = "15m"  # TF for guard level: "15m"→dc_low_15m / dc_high_15m. Sweep: 1h, 15m.
+    RZ_BREAKOUT_NOLOSS_GUARD_ENABLED: bool = True  # legacy — use RZ_BREAKOUT_NOLOSS_MODE instead
+    RZ_BREAKOUT_NOLOSS_GUARD_TF: str = "15m"  # legacy — use RZ_BREAKOUT_NOLOSS_MODE instead
+    RZ_BREAKOUT_NOLOSS_MODE: str = "dc_low4_15m"  # how to bypass NOLOSS on RZ-breakout entries: bar_structure / dc_low4_base / dc_low_base / dc_low4_15m / dc_low_15m / dc_low_1h / none
+    RZ_BREAKOUT_NOLOSS_BAR_WINDOW: int = 4  # for bar_structure mode: how many base-TF bars after entry to watch for lower-high+lower-low
     EXIT_SCORER_ENABLED: bool = False  # TEST_PRIORITY: N-of-5 exit scorer (mirror of wt_dc_exit_scorer). Validated +25.3% in tradier. Sweep True/False.
     EXIT_SCORER_MIN_CONDITIONS: int = 3  # TEST_PRIORITY: how many of 5 exit conditions required. Sweep 2-5.
     EXIT_SCORER_K_EXTREME: float = 75.0  # K extreme threshold for scorer. Sweep 65-85.
@@ -684,6 +686,8 @@ class QuickConfig:
         self.RZ_BREAKOUT_ENTRY_ENABLED = False  # default OFF — needs sweep to validate
         self.RZ_BREAKOUT_NOLOSS_GUARD_ENABLED = True
         self.RZ_BREAKOUT_NOLOSS_GUARD_TF = "15m"
+        self.RZ_BREAKOUT_NOLOSS_MODE = "dc_low4_15m"
+        self.RZ_BREAKOUT_NOLOSS_BAR_WINDOW = 4
         # EXIT_SCORER tradier defaults (wt_dc_exit_scorer validated +25.3%):
         self.EXIT_SCORER_ENABLED = True    # tradier: scorer is the validated exit gate
         self.EXIT_SCORER_MIN_CONDITIONS = 3
@@ -1777,18 +1781,41 @@ def simulate(stores, cfg, capital=10000.0):
         _rz_break_enabled = getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False)
         _rz_break_arr = None
         _rz_nl_guard_low = None; _rz_nl_guard_high = None
+        _rz_nl_bar_high = None; _rz_nl_bar_low = None
+        _rz_nl_bar_high_prev = None; _rz_nl_bar_low_prev = None
+        _rz_nl_mode = "none"
+        _rz_nl_bar_window = int(getattr(cfg, 'RZ_BREAKOUT_NOLOSS_BAR_WINDOW', 4) or 4)
+        _rz_base_tf = '5m' if getattr(cfg, 'MODE', 'crypto') == 'tradier' else '3m'
         if _rz_break_enabled:
             _bb_pb_sim = _safe(npz, 'bb_pct_b_1h', n, 0.5)
             _bb_pb_sim_prev = np.roll(_bb_pb_sim, 1); _bb_pb_sim_prev[0] = _bb_pb_sim[0]
             _rz_top_sim = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
             _rz_bot_sim = float(getattr(cfg, 'RZ_BOT_BB_THRESHOLD', 0.15))
-            # is_long set per loop iteration — compute both and select inside loop
             _rz_break_long = (_bb_pb_sim_prev <= _rz_bot_sim) & (_bb_pb_sim > _rz_bot_sim)
             _rz_break_short = (_bb_pb_sim_prev >= _rz_top_sim) & (_bb_pb_sim < _rz_top_sim)
-            if getattr(cfg, 'RZ_BREAKOUT_NOLOSS_GUARD_ENABLED', True):
-                _rz_guard_tf = str(getattr(cfg, 'RZ_BREAKOUT_NOLOSS_GUARD_TF', '15m'))
-                _rz_nl_raw_low = _safe(npz, f'dc_low_{_rz_guard_tf}', n)
-                _rz_nl_raw_high = _safe(npz, f'dc_high_{_rz_guard_tf}', n)
+            # NOLOSS bypass mode — determine from RZ_BREAKOUT_NOLOSS_MODE or legacy fields
+            _rz_nl_mode_raw = str(getattr(cfg, 'RZ_BREAKOUT_NOLOSS_MODE', ''))
+            if not _rz_nl_mode_raw:
+                _guard_en = getattr(cfg, 'RZ_BREAKOUT_NOLOSS_GUARD_ENABLED', True)
+                _rz_nl_mode_raw = 'none' if not _guard_en else f'dc_low_{getattr(cfg, "RZ_BREAKOUT_NOLOSS_GUARD_TF", "15m")}'
+            _rz_nl_mode = _rz_nl_mode_raw
+            if _rz_nl_mode == 'bar_structure':
+                _rz_nl_bar_high = _safe(npz, f'high_{_rz_base_tf}', n)
+                _rz_nl_bar_low = _safe(npz, f'low_{_rz_base_tf}', n)
+                _rz_nl_bar_high_prev = _safe(npz, f'high_{_rz_base_tf}_prev', n)
+                _rz_nl_bar_low_prev = _safe(npz, f'low_{_rz_base_tf}_prev', n)
+            elif _rz_nl_mode != 'none':
+                _dc_field_map = {
+                    'dc_low4_base': (f'dc_low4_{_rz_base_tf}', f'dc_high4_{_rz_base_tf}'),
+                    'dc_low_base':  (f'dc_low_{_rz_base_tf}',  f'dc_high_{_rz_base_tf}'),
+                    'dc_low4_15m':  ('dc_low4_15m',  'dc_high4_15m'),
+                    'dc_low_15m':   ('dc_low_15m',   'dc_high_15m'),
+                    'dc_low_1h':    ('dc_low_1h',    'dc_high_1h'),
+                    'dc_low4_1h':   ('dc_low4_1h',   'dc_high4_1h'),
+                }
+                _dc_fl, _dc_fh = _dc_field_map.get(_rz_nl_mode, ('dc_low4_15m', 'dc_high4_15m'))
+                _rz_nl_raw_low = _safe(npz, _dc_fl, n)
+                _rz_nl_raw_high = _safe(npz, _dc_fh, n)
                 _rz_nl_guard_low = np.roll(_rz_nl_raw_low, 1); _rz_nl_guard_low[0] = _rz_nl_raw_low[0]
                 _rz_nl_guard_high = np.roll(_rz_nl_raw_high, 1); _rz_nl_guard_high[0] = _rz_nl_raw_high[0]
         # Hedge engine: continuous per-bar condition. No event needed.
@@ -1928,11 +1955,19 @@ def simulate(stores, cfg, capital=10000.0):
             _dyn_aug_done = False; _dyn_entry_score = 0.0; _cur_sz_mult = 1.0
             _entry_was_breakout = False
             _entry_was_rz_break = False
+            _rz_entry_bar = -1
             _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
             _qr_enabled = bool(getattr(cfg, 'QUICK_REENTRY_60MIN_ENABLED', False))
             _qr_window = int(getattr(cfg, 'QUICK_REENTRY_60MIN_WINDOW_BARS', 12) or 12)
             _qr_min_pct = float(getattr(cfg, 'QUICK_REENTRY_60MIN_MIN_PCT', 0.3)) / 100.0
             _qr_exit_px = 0.0; _qr_exit_bar = -9999
+            # TIER1_PRICE_CROSS_REENTRY — mirrors live check_entry_candidates_for_account:
+            # when price crosses back above exit price (LONG) / below (SHORT) within 20h window
+            # and 15m WT is aligned, reenter immediately without score/cooldown gating.
+            _t1pc_enabled = bool(getattr(cfg, 'REENTRY_K15M_PARTIAL_ENABLED', True))
+            _t1pc_window = int(getattr(cfg, 'TIER1_PRICE_CROSS_WINDOW_BARS', 400) or 400)
+            _t1pc_pct = float(getattr(cfg, 'TIER1_PRICE_CROSS_MIN_PCT', 0.1)) / 100.0
+            _t1pc_exit_px = 0.0; _t1pc_exit_bar = -9999
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
             pt_enabled = cfg.PROFIT_TARGET_ENABLED
@@ -1954,6 +1989,21 @@ def simulate(stores, cfg, capital=10000.0):
                             _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                             _qr_exit_px = 0.0; cd = 0
                             continue
+                if _t1pc_enabled and not in_pos and _t1pc_exit_px > 0 and (i - _t1pc_exit_bar) <= _t1pc_window and cd <= 0:
+                    px = close[i]
+                    if px > 0 and ((is_long and px > _t1pc_exit_px * (1.0 + _t1pc_pct)) or (not is_long and px < _t1pc_exit_px * (1.0 - _t1pc_pct))):
+                        if (is_long and _wt1_15m_h[i] > _wt2_15m_h[i]) or (not is_long and _wt1_15m_h[i] < _wt2_15m_h[i]):
+                            in_pos = True; ep = px; eb = i
+                            _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
+                            _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
+                            _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
+                            _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
+                            _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
+                            _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
+                            if _entry_was_rz_break: _rz_entry_bar = i
+                            _t1pc_exit_px = 0.0; cd = 0
+                            continue
                 if cd > 0: cd -= 1; continue
                 px = close[i]
                 if px <= 0: continue
@@ -1965,6 +2015,7 @@ def simulate(stores, cfg, capital=10000.0):
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
                     _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
+                    if _entry_was_rz_break: _rz_entry_bar = i
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
@@ -2076,6 +2127,7 @@ def simulate(stores, cfg, capital=10000.0):
                         if _dc_stranded:
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
+                            if _t1pc_enabled: _t1pc_exit_px = px; _t1pc_exit_bar = i
                             in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
                         _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
@@ -2092,10 +2144,21 @@ def simulate(stores, cfg, capital=10000.0):
                         if wp_enabled and 0.0 <= pnl < wp_gain_pct and _wp_aligned[i]:
                             continue
                         if cfg.NOLOSS_ENABLED and pnl < 0:
-                            _rz_nl_bypass = _entry_was_rz_break and _rz_nl_guard_low is not None and (
-                                (is_long and _rz_nl_guard_low[i] > 0 and px < _rz_nl_guard_low[i]) or
-                                (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
-                            )
+                            _rz_nl_bypass = False
+                            if _entry_was_rz_break and _rz_nl_mode != 'none':
+                                if _rz_nl_mode == 'bar_structure':
+                                    _bars_since = i - _rz_entry_bar
+                                    if (_bars_since <= _rz_nl_bar_window and
+                                            _rz_nl_bar_high is not None and _rz_nl_bar_low is not None):
+                                        if is_long:
+                                            _rz_nl_bypass = bool(_rz_nl_bar_high[i] < _rz_nl_bar_high_prev[i] and _rz_nl_bar_low[i] < _rz_nl_bar_low_prev[i])
+                                        else:
+                                            _rz_nl_bypass = bool(_rz_nl_bar_high[i] > _rz_nl_bar_high_prev[i] and _rz_nl_bar_low[i] > _rz_nl_bar_low_prev[i])
+                                else:
+                                    _rz_nl_bypass = bool(_rz_nl_guard_low is not None and (
+                                        (is_long and _rz_nl_guard_low[i] > 0 and px < _rz_nl_guard_low[i]) or
+                                        (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
+                                    ))
                             if not _rz_nl_bypass:
                                 if cfg.DC_RECOVERY_EXIT_ENABLED:
                                     if is_long:
@@ -2113,6 +2176,7 @@ def simulate(stores, cfg, capital=10000.0):
                         h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                         all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                     if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
+                    if _t1pc_enabled: _t1pc_exit_px = px; _t1pc_exit_bar = i
                     in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; cd = max(cooldown, min_gap_bars)
             if in_pos:
                 final_px = close[n - 1]
@@ -2226,6 +2290,8 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
 
 FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT"
 FAST_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD"
+MEDIUM_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD,GOOGL,AMD,INTC,V,PFE,JNJ,WMT,CME,CVX,UNH,CAT,HD"
+MEDIUM_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT,ATOMUSDT,ALGOUSDT,XLMUSDT,VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"
 
 
 def main():

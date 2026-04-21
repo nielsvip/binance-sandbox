@@ -346,10 +346,14 @@ class TradierConfig:
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.7
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
+    # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     # === NEWS SENTIMENT ===
     NEWS_SENTIMENT_ENABLED: bool =         True
     NEWS_SENTIMENT_WEIGHT: float =         0.10
