@@ -334,12 +334,380 @@
 | `WRONG_SIDE_MIN_AGE_MIN_TRADIER` | 30.0 | 30min position age before kill fires |
 | `WRONG_SIDE_K_TFS_REQUIRED_TRADIER` | 0 | K gate disabled (same as crypto) |
 
-### LOCAL_EXTREMES_SCORER (PPL + entry filter)
+### LOCAL_EXTREMES_SCORER (entry filter)
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
-| `LOCAL_EXTREMES_SCORER_ENABLED` | True | Only enter at local extremes (high-conviction setups) |
-| `LOCAL_EXTREMES_MIN_SCORE` | 45.0 | Min score to qualify as local extreme |
+| `TRADIER_LOCAL_EXTREMES_SCORING_ENABLED` | True | Gate entries through 25-indicator LE scorer, $50-$5000 tier sizing |
+| `LOCAL_EXTREMES_MIN_SCORE` | 45.0 | Min LE score to allow entry (262sym validated Sharpe 3.5479) |
+| `TRC_LOCAL_EXTREMES_SCORER_ENABLED` | True | LE scorer on trc (paper) account |
+| `DYNAMIC_SCORE_COUNTER_EXIT_ENABLED` | True | Exit when opposite-direction LE score ≥ threshold |
+| `DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD` | 55.0 | Counter-exit trigger (score=55 le_dynamic winner) |
+
+---
+
+### Entry Gates (Stock-Specific Levels)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `ENTRY_ZONE_LONG` | 35.0 | WT entry zone — only long when wt ≤ 35 (V8 ablation winner, was 25) |
+| `ENTRY_ZONE_SHORT` | 100.0 | WT short zone (100−35=65 mirror) |
+| `ENTRY_MIN_ALIGNMENT` | 10 | Min alignment score (V8 ablation: Sharpe 1.0, WR 53.9%) |
+| `ENTRY_PRIMARY_TF` | "4h" | Primary TF for entry direction (was 1h, slower = better for stocks) |
+| `ENTRY_TRIGGER_TF` | "15m" | Trigger TF for crossover confirmation |
+| `ALIGNMENT_GATE_MIN` | 4 | Min indicators aligned |
+| `ALIGNMENT_GATE_TOTAL` | 12 | Total alignment score required |
+| `TRADIER_ENTRY_SCORE_THRESHOLD` | 24 | Min aggregate signal score for entry (stocks need 24 vs crypto 18) |
+| `DC_POSITION_ENTRY_THRESHOLD` | 0.25 | DC channel position for entry (0.25 = lower quarter / upper quarter) |
+| `SMA200_DIST_ENTRY_ENABLED` | True | SMA200 distance gate: only long within −10% of SMA200 |
+| `SMA200_DIST_LONG_THRESHOLD_4H` | -10.0 | Max distance below SMA200 for longs |
+| `MFI_ENTRY_ENABLED` | True | Daily MFI gate: only long when MFI_D < 20 (oversold) |
+| `MFI_LONG_THRESHOLD_D` | 20.0 | Daily MFI threshold for longs |
+| `TRADIER_MFI_ENTRY_LONG_TRADIER` | 60.0 | MFI > 60 for long entry (LONGS ONLY — RSI for shorts) |
+| `TRADIER_MFI_ENTRY_LONG_ENABLED` | True | MFI gate is active for longs |
+| `TRADIER_RSI_ENTRY_LONG_TRADIER` | -1.0 | SENTINEL: <0 = DISABLED (longs use MFI, not RSI) |
+| `TRADIER_RSI_ENTRY_SHORT_TRADIER` | 70.0 | RSI > 70 for short entry (SHORTS ONLY) |
+| `TRADIER_RSI_SHORT_REL_VOLUME_MIN` | 1.2 | Relative volume > 1.2× required for short RSI entry |
+| `TRADIER_RSI_LONG_15M` | 40.0 | 15m RSI < 40 for long (A/B winner 2026-04-17) |
+| `TRADIER_RSI_LONG_1H` | 22.0 | 1h RSI < 22 for long — REAL LEVER (was not per-TF) |
+| `HTF1_CONF` | True | BC_154: HTF2 stocks Sharpe 0.600 vs default -0.177. ON. |
+| `HTF4_CONF` | False | htf1 alone sufficient; htf4 too restrictive |
+| `BACKTEST_VALIDATED_GATES_TRADIER` | True | Block entries confirmed −EV on both train+test |
+
+---
+
+### Stoch / K-Zone Entry
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `K_ZONE_LONG_THRESHOLD_TRADIER` | 35 | K < 35 = oversold zone for longs (S1 sweep: Sharpe 4.23) |
+| `K_ZONE_SHORT_THRESHOLD_TRADIER` | 65 | K > 65 = overbought zone for shorts |
+| `K_ZONE_ENTRY_BONUS_TRADIER` | 20 | Score bonus in K-zone (2026-04-08: Sharpe 11.12 at 20 vs 25→6.92) |
+| `TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER` | 35 | Reconnected mirror of K_ZONE_LONG (same value) |
+| `TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER` | 65 | Reconnected mirror of K_ZONE_SHORT |
+| `TRADIER_STOCH_ENTRY_LONG_TRADIER` | 30 | K < 30 for normal long entry |
+| `TRADIER_STOCH_ENTRY_SHORT_TRADIER` | 70 | K > 70 for normal short entry |
+| `TRADIER_STOCH_EXTREME_LONG_TRADIER` | 15 | K < 15 for high-conviction long |
+| `TRADIER_STOCH_EXTREME_SHORT_TRADIER` | 85 | K > 85 for high-conviction short |
+
+---
+
+### RSI Per-TF Thresholds (2026-04-17)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `TRADIER_RSI_LONG_5M` | 35.0 | 5m RSI < this for long |
+| `TRADIER_RSI_LONG_15M` | 40.0 | 15m RSI < this for long (A/B winner) |
+| `TRADIER_RSI_LONG_1H` | 22.0 | 1h RSI < this for long (KEY lever) |
+| `TRADIER_RSI_LONG_4H` | 35.0 | 4h RSI < this for long |
+| `TRADIER_RSI_LONG_D` | 40.0 | Daily RSI < this for long |
+| `TRADIER_RSI_SHORT_5M` | 65.0 | 5m RSI > this for short |
+| `TRADIER_RSI_SHORT_15M` | 65.0 | 15m RSI > this for short |
+| `TRADIER_RSI_SHORT_1H` | 65.0 | 1h RSI > this for short |
+| `TRADIER_RSI_SHORT_4H` | 60.0 | 4h RSI > this for short |
+| `TRADIER_RSI_SHORT_D` | 55.0 | Daily RSI > this for short |
+
+---
+
+### CT Gates (BC_170/172 for Stocks)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `CT_WT_VELOCITY_GATE_ENABLED` | True | Block against 1h WT velocity (same as crypto — validated) |
+| `CT_WT_VELOCITY_1H_MIN` | 2.0 | Min wt_velocity_1h (stocks: 2.0 vs crypto: 9.0 — stocks move slower) |
+| `CT_DC_CROSSOVER_SKIP_ENABLED` | True | Skip SHORT when DC basis crosses over |
+| `CT_REL_VOL_MIN` | 1.3 | Min relative volume for entry |
+| `CT_15M_MOMENTUM_GATE_ENABLED` | False | DEAD — 0.0000 ΔSharpe. Off forever. |
+| `CT_CHOP_4H_GATE_ENABLED` | False | DEAD — no choppiness_4h. Off forever. |
+| `CT_VOLUME_SURGE_GATE_ENABLED` | False | DEAD — 0.0000 ΔSharpe. Off forever. |
+
+---
+
+### Exit Gates (Stocks)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `WT_EXIT_MIN_TFS_TRADIER` | 5 | 5/5 TFs against = exit. Patient exits (Mar-30 baseline). |
+| `MIN_HOLD_BARS_TRADIER` | 40 | 40 bars × 5m = 200min min hold (2026-04-20 sweep winner) |
+| `TRADIER_MIN_HOLD_MINUTES` | 100.0 | Min hold 100min (le_dynamic winner, was 240=4h) |
+| `MIN_HOLD_MINUTES_TRADIER` | 30.0 | No exits before 30min (bypassed only if loss > −5%) |
+| `MIN_EXIT_TF_AGAINST_TRADIER` | 2 | Need 2+ TFs (of 5m/15m/1h/4h) with WT against before exit |
+| `STOCH_CROSS_1H_EXIT_ENABLED` | True | Stoch cross on 1h triggers exit |
+| `WT_CROSSUNDER_FINAL_ENABLED` | True | WT crossunder on 15m for short exits |
+| `ATR_TRAIL_ENABLED_TRADIER` | False | **DISABLED: #1 stock PnL destroyer (−2557%). NEVER enable.** |
+| `STRUCTURAL_RANGE_SHIFT_EXIT` | True | Exit at bb_1h boundary when range shifts (NOT dc_4h — April-13 disaster) |
+| `STRUCTURAL_RANGE_SHIFT_TF` | "bb_1h" | STOCKS: bb_1h MANDATORY. CRYPTO: dc_4h. bb_4h = disaster. |
+| `STRUCTURAL_RANGE_SHIFT_K_HIGH` | 85.0 | Only exit at extreme overbought (tightened from 75) |
+| `STRUCTURAL_RANGE_SHIFT_K_LOW` | 15.0 | Only exit at extreme oversold (tightened from 25) |
+| `MFI_FLIP_EXIT_ENABLED` | True | Exit when MFI exhausts (BACKTEST_CHANGE_148: +3.91% avg vs +1.09% fixed TP) |
+| `MFI_FLIP_EXIT_LONG_THRESHOLD` | 70.0 | Exit LONG when MFI_1h > 70 (overbought) |
+| `MFI_FLIP_EXIT_SHORT_THRESHOLD` | 30.0 | Exit SHORT when MFI_1h < 30 (oversold = cover) |
+| `TRADIER_WT_EXIT_MIN_TFS_TRADIER` | 5 | Reconnected: same as WT_EXIT_MIN_TFS (all 5 TFs must agree) |
+| `WT_DC_EXIT_THRESHOLD` | 30 | WT/DC scorer exit threshold |
+| `COOLDOWN_BARS_TRADIER` | 8 | 40min cooldown between entries (sweep: Sharpe 8.22 at 8 vs 0) |
+
+---
+
+### Exit Path ON/OFF Switches
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `EXIT_HTF_QUICK_TP_ENABLED` | True | Keep: 1h exhausted + LTFs turning + 4h intact |
+| `EXIT_STRUCT_DC_BREAK_ENABLED` | True | Keep: DC structural break (multi-TF) |
+| `EXIT_K5M_BOUNCE_ENABLED` | False | OFF: 5m noise kills positions |
+| `EXIT_HARD_DROP_5M_ENABLED` | False | OFF: too aggressive on minor dips |
+| `EXIT_ALGO_SCORE_ENABLED` | False | OFF: old scorer, bypassed current system |
+| `EXIT_STRUCT_BREAK_5M_ENABLED` | False | OFF: too noisy for swing/options |
+| `EXIT_IBS_EXHAUSTION_ENABLED` | False | OFF: minor signal, not standalone |
+| `EXIT_SENTIMENT_ENABLED` | False | OFF: unreliable source |
+| `EXIT_MI_ENABLED` | False | OFF: marginal value |
+| `EXIT_CONV_FAIL_ENABLED` | False | OFF: closed at tiny gains |
+| `EXIT_BOUNCE_TOP_ENABLED` | False | OFF: percentage stop in disguise |
+| `EXIT_MAX_HOLD_ENABLED` | False | OFF: technicals decide, not clocks |
+
+---
+
+### NOLOSS for Stocks
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `NOLOSS_MIN_PROFIT_PCT_TRADIER` | 3.0 | Min profit % before close allowed (REVERTED from 0%: 0% caused exits at 0.3%) |
+| `UNIVERSAL_NOLOSS_GATE` | True | Function-top gate in evaluate_stop() — fires before ALL other exit logic |
+| `TRADIER_NOLOSS_SRS_BYPASS` | True | SRS reason bypasses NOLOSS gate |
+| `NOLOSS_BYPASS_WT_5OF5_ENABLED` | False | Exception: 5/5 TFs against → allow exit at loss |
+| `NOLOSS_BYPASS_WT_5OF5_MIN_TFS` | 5 | Min TFs required for bypass |
+| `BB_RECOVERY_EXIT_ENABLED_TRADIER` | True | Allow loss exit when price recovers into entry zone (unlocks stranded positions) |
+| `BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER` | 0.30 | Price must return within 0.30% of entry_price |
+| `WT_D_BOUNCE_AUG_ENABLED` | True | Add to losing position when daily WT bounces (2026-04-20 live) |
+| `WT_D_BOUNCE_AUG_MULTIPLIER` | 2.0 | 2x add (add 1x to existing — was 4x) |
+| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT` | True | Bounce WT must be > last aug WT |
+| `WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE` | True | Bounce price must be > last aug price (higher low for LONG) |
+
+---
+
+### PPL for Stocks (2026-04-21)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `PARTIAL_PROFIT_LOCK_ENABLED` | False | **OFF**: 2026-04-21 sweep: PPL underperforms on tradier (gain −10%, Sharpe flat). 108-config grid. DO NOT re-enable without fresh sweep. |
+| `PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER` | ["trb","trc"] | Accounts for stock PPL |
+| `PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER` | 0.5 | Trigger: close 50% at +0.5% |
+| `PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER` | 0.75 | Upgrade stop at +0.75% |
+| `PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER` | 0.02 | Breakeven buffer |
+| `PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER` | True | Maker order for lower fees |
+
+---
+
+### WRONG_SIDE_ABS_KILL for Stocks
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `WRONG_SIDE_ABS_KILL_ENABLED` | True | Close when 5/5 WT TFs against, age ≥30min (dominant lever) |
+| `WRONG_SIDE_WT_TFS_REQUIRED` | 5 | All 5 TFs (5m/15m/1h/4h/D) must be against |
+| `WRONG_SIDE_WT_TFS_REDUCED` | 3 | Divergence path: 3/5 TFs against + divergence |
+| `WRONG_SIDE_MIN_AGE_MIN` | 30.0 | Min position age in minutes |
+| `WRONG_SIDE_K_TFS_REQUIRED` | 0 | K gate disabled for stocks |
+
+---
+
+### Trading Strategies
+
+#### Rotation Strategy (5yr: +71.2%, Sharpe 0.60)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `ROTATION_ENABLED` | True | Momentum rotation across symbols |
+| `ROTATION_TOP_N` | 3 | Buy top 3 momentum symbols |
+| `ROTATION_BOTTOM_N` | 8 | Short bottom 8 (more short candidates in bear) |
+| `ROTATION_HOLD_DAYS` | 7 | Hold 7 days (was 5, raised to 7 for longer holds) |
+| `ROTATION_LOOKBACK_DAYS` | 10 | 10-day return lookback (5yr optimal) |
+| `ROTATION_POSITION_SIZE` | 1200.0 | Base size per rotation trade (was 800) |
+
+#### RSI(2) Mean Reversion (Sharpe 2.05, 60.8% WR)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `RSI2_ENABLED` | True | 2-period RSI mean reversion strategy |
+| `RSI2_ENTRY_THRESHOLD` | 3.0 | Buy when RSI2 < 3 (was 5 — stricter) |
+| `RSI2_EXIT_THRESHOLD_LONG` | 70.0 | Exit long when RSI2 > 70 (hold longer, was 65) |
+| `RSI2_EXIT_THRESHOLD_SHORT` | 30.0 | Exit short when RSI2 < 30 (hold longer, was 35) |
+| `TRADIER_RSI2_ENABLED` | True | Reconnected mirror (same behavior) |
+| `TRADIER_RSI2_EXIT_THRESHOLD_LONG` | 90.0 | Reconnected: exit long at RSI2 > 90 |
+
+#### Gap Fill Strategy (OOS Sharpe 9.05, 66.1% WR)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `GAP_FILL_ENABLED` | True | Fill overnight gaps |
+| `GAP_FILL_MIN_GAP_PCT` | 0.5 | Min gap size (T6 sweep: 0.5% > 1.0% fills more reliably) |
+| `GAP_FILL_MAX_GAP_PCT` | 5.0 | Max gap (gaps > 5% are news events, skip) |
+| `GAP_FILL_TP_FILL_PCT` | 0.7 | Close at 70% of gap filled (was 0.5, capture more) |
+| `GAP_FILL_STOP_MULT` | 0.3 | Stop at 0.3× gap size |
+
+#### First-Hour Momentum (FH) — Sharpe 1.36-1.54, 25/25 profitable
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `FH_MOMENTUM_ENABLED` | True | First-30min range breakout detection |
+| `FH_MOMENTUM_MIN_MOVE_PCT` | 0.5 | Min gap move to qualify (82% day-follows at 0.5%) |
+| `FH_MOMENTUM_EVAL_MINUTES` | 30 | Eval window after market open |
+| `FH_MOMENTUM_DC_CONFIRM` | True | DC retest logic for smart filtering |
+| `FH_MOMENTUM_MFI_CONFIRM` | False | MFI barely matters (1.314 vs 1.313 Sharpe) |
+| `TRADIER_FH_MOMENTUM_ENABLED` | True | Reconnected master switch (same as FH_MOMENTUM_ENABLED) |
+| `TRADIER_FH_MOMENTUM_MIN_MOVE_PCT` | 0.5 | Reconnected: same as FH_MOMENTUM_MIN_MOVE_PCT |
+| `TRADIER_FH_MOMENTUM_WINDOW_MINUTES` | 60 | Extended FH window to 60min for reconnected switch |
+| `TRADIER_FH_MOMENTUM_MFI_MIN` | 55.0 | MFI > 55 for FH long (when MFI_CONFIRM=True) |
+
+#### DC Daytrade (open AM, flatten before close)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `DC_DAYTRADE_ENABLED` | True | DC breakout daytrade system |
+| `DC_DAYTRADE_LONG_BUDGET` | 3000.0 | Max $ in daytrade longs |
+| `DC_DAYTRADE_SHORT_BUDGET` | 3000.0 | Max $ in daytrade shorts |
+| `DC_DAYTRADE_START_SIZE` | 600.0 | Base order size |
+| `DC_DAYTRADE_REQUIRE_1H_EXPANSION` | True | Only trade DC breaks when 1h channel expanding |
+| `DC_DAYTRADE_STOP_PCT` | 0.015 | 1.5% hard stop |
+| `DC_DAYTRADE_TARGET_PCT` | 0.01 | 1% profit target |
+| `DC_DAYTRADE_MAX_HOLD_MINUTES` | 240.0 | 4h max hold (flatten before close) |
+| `DC_DAYTRADE_PRE_CLOSE_MINUTES` | 120 | Flatten 2h before close (14:00 ET = 18:00 UTC) |
+| `TRADIER_DC_DAYTRADE_ENABLED` | True | Reconnected mirror |
+| `TRADIER_DC_DAYTRADE_TARGET_PCT` | 0.005 | Reconnected: 0.5% target (sweep winner) |
+
+#### Spike Fade (BC_161 — +480%, 67% WR, W/L 4.69)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `SPIKE_FADE_ENABLED` | True | SHORT big spikers / LONG big fallers |
+| `SPIKE_FADE_THRESHOLD_PCT` | 2.0 | Min move in lookback to qualify as spike |
+| `SPIKE_FADE_LOOKBACK_BARS` | 6 | 6 bars × 5m = 30min lookback |
+| `SPIKE_FADE_K_EXHAUSTION` | 70.0 | K5m > 70 (spike up) or < 30 (spike down) |
+| `SPIKE_FADE_MAX_POSITIONS` | 10 | Max concurrent spike fade positions |
+
+---
+
+### Delta Engine (Stocks — Different from Crypto)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `DELTA_ENGINE_ENABLED` | True | 121sym/2yr: Sharpe 0.038→0.485 (T25: keeping True) |
+| `DELTA_ENTRY_ENABLED` | False | T25 sweep: False avg=0.527 vs True=0.507. Best OFF. |
+| `DELTA_EXIT_ENABLED` | True | Re-enabled with REENTRY_MONITOR fix |
+| `DELTA_ENTRY_Z_THRESHOLD` | 2.5 | Z-score for entry (stocks ST winner: ez=2.5) |
+| `DELTA_ENTRY_MIN_TF` | 3 | Min TFs for fresh entry (ST: 3, LT: 2) |
+| `DELTA_HTF_GATE` | "4h" | Stocks: 4h must confirm (LT: 4h+D) |
+| `DELTA_EXIT_TF` | "15m" | Exit TF (ST winner: 15m) |
+| `DELTA_EXIT_DECAY_RATIO` | 0.30 | Speed decay from peak (0.30 = stocks ST #1) |
+| `DELTA_TF_WEIGHTS_STOCK` | {set in __post_init__} | HTF-only weights: 5m/15m = 0, 1h/4h/D get weight |
+| `DELTA_COOLDOWN_BARS` | 60 | 60 bars = 5h (ST winner) |
+| `DELTA_MAX_HOLD_BARS` | 0 | DISABLED — ride winners, no fixed time exits |
+
+---
+
+### SATOSHIT2024 — Stocks
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `SATOSHIT_ENTRY_FILTER` | False | T25: True=0.388 vs False=0.328 (+18%). Marginal — leaving False. |
+| `SATOSHIT_MIN_VOTES_TRADIER` | 3 | 3 of 5 sub-signals must agree |
+| `SATOSHIT_LONG_RSI_MAX_TRADIER` | 50.0 | Long entry: RSI < 50 |
+| `SATOSHIT_LONG_STOCH_K_MAX_TRADIER` | 60.0 | Long entry: K < 60 |
+| `SATOSHIT_LONG_MFI_MAX_TRADIER` | 60.0 | Long entry: MFI < 60 |
+| `SATOSHIT_EXIT_LONG_RSI_MIN_TRADIER` | 55.0 | Exit long: RSI > 55 |
+| `SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER` | 60.0 | Exit long: K > 60 |
+
+---
+
+### Reentry (Stocks)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `REENTRY_RALLY_K15M_MAX` | 100.0 | 100 = OFF (sweep: 100/40/20 grid) |
+| `REENTRY_RALLY_HTF_MIN` | 3 | 2026-04-18: wt_all3 avg 0.1036 vs wt_2of3 −0.0468. Was 2. |
+| `TRADIER_REOPEN_WAIT_S` | 0.0 | Zero = instant reentry (was 300s) |
+| `REENTRY_TIER1_SIZE_MULT_TRADIER` | 1.5 | Tier 1: 150% of closed qty |
+| `REENTRY_TIER2_SIZE_MULT_TRADIER` | 0.8 | Tier 2: 80% of closed qty (later pullback) |
+| `REENTRY_TIER2_PRICE_PCT_TRADIER` | 0.003 | 0.3% price move triggers Tier 2 |
+| `REENTRY_TIER2_MAX_MINUTES_TRADIER` | 120.0 | Force Tier 2 entry after 120min |
+
+---
+
+### L/S Ratio, Position Limits, Account Settings
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `LS_RATIO_ENFORCE_TRADIER` | True | Enforce L/S ratio |
+| `LS_RATIO_MIN_TRADIER` | 0.50 | Min L/S (stocks more balanced than crypto) |
+| `LS_RATIO_MAX_TRADIER` | 2.00 | Max L/S |
+| `MAX_CONCURRENT_POSITIONS` | 16 | Total max positions across all strategies |
+| `MAX_SYMBOL_VALUE_TRADIER` | 15000.0 | Max $ per symbol (USO hit $352k — disaster) |
+| `RATIO_MULTIPLIER_TRADIER` | 3.5 | Ratio rebalance sizing (sweep: 3.5x = Sharpe 260) |
+| `BEAR_MARKET_MODE_TRADIER` | True | Favor shorts in current bear market |
+| `AUGMENT_ONLY_WHEN_PROFITABLE_TRADIER` | True | Never augment losing positions |
+| `MAX_DAILY_LOSS_PCT` | 3.0 | Halt trading at 3% daily loss |
+| `MIN_GAIN` | 3.0 | Same 3% augment rule as crypto |
+
+---
+
+### TRC Sandbox Account Overrides (Paper Money)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `TRC_START_POSITION_SIZE` | 1000.0 | 1.67× trb base ($600) |
+| `TRC_MAX_POSITION_SIZE` | 5000.0 | Hard cap at $5000 per trc position |
+| `TRC_MAX_CONCURRENT_POSITIONS` | 40 | 20 long + 20 short |
+| `TRC_SWING_LONG_BUDGET` | 100000.0 | Unlimited paper budget for local extremes |
+| `TRC_LOCAL_EXTREMES_SCORER_ENABLED` | True | LE scorer on trc |
+| `TRC_BEAR_MARKET_MODE` | False | Test both directions equally on paper |
+| `TRC_ENTRY_ZONE_LONG` | 25.0 | Deeper oversold threshold vs trb (35) |
+| `TRC_MAX_SYMBOL_VALUE` | 5000.0 | Per-symbol cap on paper |
+| `TRC_NOLOSS_MIN_PROFIT_PCT` | 0.0 | Technical exits only on paper |
+
+---
+
+### Options Strategies (trb_long/trb_short)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `OPTIONS_ENABLED` | True | Master switch for options strategies |
+| `OPTIONS_POSITION_SIZE` | 1000.0 | Base option purchase size |
+| `OPTIONS_MAX_CONCURRENT` | 20 | Max concurrent option positions |
+| `OPTIONS_MAX_TOTAL_VALUE` | 15000.0 | Max total option portfolio $ |
+| `OPTIONS_LONG_BUDGET` | 7500.0 | Max in longs (65%) |
+| `OPTIONS_SHORT_BUDGET` | 7500.0 | Max in shorts (65%) |
+| `OPTIONS_SPREAD_ENABLED` | True | Bull Put Credit Spread (7yr: Sharpe 0.62, 80% WR) |
+| `OPTIONS_SPREAD_SHORT_DELTA` | 0.25 | Short-put target delta |
+| `OPTIONS_SPREAD_IV_RANK_MIN` | 75.0 | Chain IV rank gate (biggest backtest edge) |
+| `OPTIONS_SPREAD_DTE_MIN` | 55 | Min 2-month DTE |
+| `OPTIONS_SPREAD_DTE_MAX` | 75 | Max ~10 week DTE |
+| `OPTIONS_SPREAD_PROFIT_TARGET_PCT` | 0.50 | Close at 50% of credit captured |
+| `OPTIONS_CSP_MONITOR_ENABLED` | True | Non-skippable background CSP risk monitor |
+| `OPTIONS_CSP_MONITOR_STRIKE_BREACH_PCT` | 0.05 | Close if underlying drops 5%+ below strike |
+| `OPTIONS_CSP_MONITOR_GAP_FROM_ENTRY_PCT` | 0.15 | Close on 15%+ gap crash from entry |
+
+---
+
+### Congress Conviction Sizing
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `CONGRESS_CONVICTION_SIZING_BOOST` | 1.3 | 1.3× sizing boost for backtest-proven politicians (55%+ WR at 30d) |
+| `CONGRESS_CONVICTION_MIN_SOURCES` | 2 | Min disclosure sources to qualify |
+
+---
+
+### Disabled Strategies (NEVER enable without V5 backtest proof)
+
+| Strategy | Switch | Status | Reason |
+|----------|--------|--------|--------|
+| Clenow Exp Regression | `CLENOW_ENABLED` | False | Fake backtest. Real $ loss risk. |
+| Smart Money Flow Index | `SMFI_ENABLED` | False | Fake backtest. |
+| Minervini SEPA | `MINERVINI_ENABLED` | False | Fake backtest. |
+| Connors RSI | `CONNORS_RSI_ENABLED` | False | Augmented MRVL at −6.74% on real $. |
+| Momentum Fade | `MOMENTUM_FADE_ENABLED_TRADIER` | False | Zero impact (0.00 Sharpe delta). |
+| ATR Trail | `ATR_TRAIL_ENABLED_TRADIER` | False | #1 stock PnL destroyer (−2557% cumulative). NEVER re-enable. |
+| Bounce Top Exit | `BOUNCE_TOP_EXIT_ENABLED` | False | Percentage stop in disguise. KILLED 2026-03-30. |
+| SBA (stock averaging) | `SBA_ENABLED_TRADIER` | False | DEAD (no wiring found 20260416). |
 
 ---
 
