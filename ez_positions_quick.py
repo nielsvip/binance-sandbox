@@ -10054,6 +10054,11 @@ def is_open_pending(position_key):
 _hard_trade_guard = {}  # position_key -> timestamp of last successful trade
 _HARD_TRADE_GUARD_COOLDOWN = 120.0  # 2 min cooldown between trades on same position — 900s was killing augmentation after opens
 _open_in_flight = {}  # position_key -> timestamp — ATOMIC lock to prevent double opens
+# 2026-04-21 — entry-only tracker: OPEN/AUGMENT/QUICK_OPEN/QUICK_AUGMENT/HEDGE_OPEN successful fires.
+# Separate from _hard_trade_guard (which includes CLOSE/REDUCE) so a legit CLOSE doesn't block reentry,
+# but TWO entries within 900s on same key IS blocked — fixes BIGTIME hedge 8-opens bug.
+_recent_entries: dict = {}
+_RECENT_ENTRIES_COOLDOWN = 900.0
 _ratio_recovery_last: dict = {}  # account_key -> timestamp of last RATIO_RECOVERY fire
 # DC Breakout hedge tracker: {position_key: {"hedge_pk": str, "hedge_qty": float, "opened_at": float, "peak_gain": float, "rehedge_count": int}}
 _dc_breakout_hedges: dict = {}
@@ -10829,6 +10834,34 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 logger.critical(f"🚫🚫 [DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — another OPEN is in-flight (started {time.time() - _inflight_ts:.0f}s ago). RACE CONDITION PREVENTED.")
                 return False, f"BLOCKED_DOUBLE_OPEN_IN_FLIGHT"
             _open_in_flight[position_key] = time.time()
+        # ═══ 2026-04-21 ABSOLUTE DUPLICATE-OPEN BLOCK — HEDGE + NON-HEDGE, 900s ═══
+        # User report 2026-04-21: BIGTIME LONG hedge opened 8× via QUICK_HEDGE_PROTECT_SHORT_LOSS
+        # path bypassing execute_trade_action's 900s guard (execute_trade_wrapper calls
+        # execute_now directly at line 11204). This duplicate-entry guard runs HERE regardless
+        # of path. NO BYPASS — not is_hedge, not HEDGE_SAME_SYM_LAST_RESORT.
+        # Only true REENTRY action bypasses (rebuild near-zero position).
+        # _recent_entries only records successful entry actions (OPEN/AUGMENT), NOT CLOSE/REDUCE,
+        # so a legit close+reentry is allowed; but entry→entry within 900s is blocked.
+        if _is_entry and _action_upper != 'REENTRY':
+            _dup_ts = _recent_entries.get(position_key, 0)
+            _dup_age = time.time() - _dup_ts if _dup_ts > 0 else float('inf')
+            if _dup_age < _RECENT_ENTRIES_COOLDOWN:
+                logger.critical(f"🚫🚫🚫 [WRAPPER_DUP_ENTRY_BLOCK_900s] {position_key}: BLOCKED {action} — last entry {_dup_age:.0f}s ago (900s absolute cooldown). is_hedge={is_hedge} reason={(reason or '')[:80]}. NO BYPASS.")
+                return False, f"BLOCKED_WRAPPER_DUP_ENTRY_{_dup_age:.0f}s"
+        # ═══ 2026-04-21 HEDGE ONE-ENTRY RULE — absolute ═══
+        # User rule: "A position can ONLY be opened ONCE unless it is an AUGMENT then it has to have gain>MIN_GAIN."
+        # For hedges specifically: ONE entry only. If position exists (any amt > 0 — NOT just > min_qty), no further entries.
+        if is_hedge and _is_entry:
+            if _fresh_amt > 0 and _action_upper != 'AUGMENT' and _action_upper != 'QUICK_AUGMENT':
+                logger.critical(f"🚫🚫 [HEDGE_ONE_ENTRY_ONLY] {position_key}: BLOCKED {action} — hedge already has positionAmt={_fresh_amt:.6f} > 0. Hedges = ONE entry only. reason={(reason or '')[:80]}")
+                return False, f"BLOCKED_HEDGE_ONE_ENTRY_{_fresh_amt:.4f}"
+            # Hedge AUGMENT must clear gain > MIN_GAIN like any other augment
+            if _fresh_amt > 0 and (_action_upper == 'AUGMENT' or _action_upper == 'QUICK_AUGMENT'):
+                _fp_gain = safe_fetch_float(getattr(_fresh_pos, 'gain', 0), 0.0) if _fresh_pos else 0.0
+                _min_gain_aug = safe_fetch_float(getattr(config, 'MIN_GAIN', 3.0), 3.0)
+                if _fp_gain < _min_gain_aug:
+                    logger.critical(f"🚫🚫 [HEDGE_AUGMENT_MIN_GAIN] {position_key}: BLOCKED {action} — hedge gain={_fp_gain:.2f}% < MIN_GAIN={_min_gain_aug:.2f}%. Augments require profit. reason={(reason or '')[:80]}")
+                    return False, f"BLOCKED_HEDGE_AUG_GAIN_{_fp_gain:.2f}%"
         # HARD BLOCK: No augments beyond max position value
         # TEMPORARY SAFETY CAP — remove once multiple-opens bug is confirmed fixed
         if not is_hedge and _fresh_val > _max_pos_val:
@@ -11224,6 +11257,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _open_in_flight.pop(position_key, None)
         if success:
             _hard_trade_guard[position_key] = time.time()  # CRITICAL FIX: record successful trade for duplicate guard
+            # 2026-04-21 — record entry-action successes separately from close/reduce
+            _ok_up = (action or '').upper()
+            _is_entry_ok = ('OPEN' in _ok_up or 'AUGMENT' in _ok_up or 'ENTRY' in _ok_up) and 'CLOSE' not in _ok_up and 'REDUCE' not in _ok_up and 'KILL' not in _ok_up
+            if _is_entry_ok:
+                _recent_entries[position_key] = time.time()
             # TEMP KEY CLEANUP: if this was a close/reduce on a temp key position, mark it closed
             if ('CLOSE' in action.upper() or 'REDUCE' in action.upper()) and data_manager and hasattr(data_manager, 'delta_tracker') and data_manager.delta_tracker:
                 data_manager.delta_tracker.temp_keys.on_position_closed(position_key)

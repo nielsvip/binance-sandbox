@@ -19371,6 +19371,39 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         if not is_active_position:
             pass  # Entry gates moved to rate() and evaluate functions — process_position must reach ALL evaluators
         logger.info(f'👂👂{position_key} {current_price}: k_1m:{stoch_k_1m}, d_1m:{stoch_d_1m}, k_3m:{stoch_k_3m}, d_3m:{stoch_d_3m}, k_15m:{stoch_k_15m}, d_15m:{stoch_d_15m}, age_1m:{age_1m}, age_3m:{age_3m},age_15m:{age_15m}, age_pr:{age_pr}')
+        # ═══ 2026-04-21 HEDGE_CLOSE_WT3M1H_ABS SAFETY NET IN process_position ═══
+        # User rule (feedback_hedge_wt3m_close_absolute.md + 2026-04-21 complaint): hedge MUST close
+        # when wt_3m AND wt_1h BOTH go against. NO P/L gate. Primary path lives in ez_positions_quick
+        # monitor_hedge_health_loop (line ~4837) scanning active_hedges. If a hedge is orphaned/missing
+        # from active_hedges, that primary path never fires. This redundant check runs per-position via
+        # process_position on ANY position flagged is_hedge=True — guarantees the close fires even
+        # when tracker state is corrupted.
+        try:
+            _pp_is_hedge = bool(getattr(position, 'is_hedge', False)) if position else False
+            if _pp_is_hedge and is_active_position:
+                _pp_long = position_key.endswith("_LONG")
+                _pp_w13 = safe_fetch_float(i.get('wt1_3m'), 0.0)
+                _pp_w23 = safe_fetch_float(i.get('wt2_3m'), 0.0)
+                _pp_w11 = safe_fetch_float(i.get('wt1_1h'), 0.0)
+                _pp_w21 = safe_fetch_float(i.get('wt2_1h'), 0.0)
+                _pp_3ok = (_pp_w13 != 0 or _pp_w23 != 0)
+                _pp_1ok = (_pp_w11 != 0 or _pp_w21 != 0)
+                _pp_3ag = (_pp_long and _pp_w13 < _pp_w23) or ((not _pp_long) and _pp_w13 > _pp_w23)
+                _pp_1ag = (_pp_long and _pp_w11 < _pp_w21) or ((not _pp_long) and _pp_w11 > _pp_w21)
+                if _pp_3ok and _pp_1ok and _pp_3ag and _pp_1ag:
+                    _pp_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0))
+                    _pp_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    _pp_ord_side = 'SELL' if _pp_long else 'BUY'
+                    _pp_pos_side = 'LONG' if _pp_long else 'SHORT'
+                    _pp_hedge_for = getattr(position, 'hedge_for', None) or position_key
+                    logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PP_ABS] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge — safety-net close (gain={_pp_gain:.2f}%). NO P/L gate.")
+                    try:
+                        await trade_manager.execute_now(position_key, account_key, symbol, _pp_amt, _pp_ord_side, _pp_pos_side, _pp_amt, current_price, f"HEDGE_WT3M1H_PP_{int(time.time())}", f"HEDGE_CLOSE_WT3M1H_PP_ABS_3m={_pp_w13:.1f}/{_pp_w23:.1f}_1h={_pp_w11:.1f}/{_pp_w21:.1f}_gain={_pp_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_pp_hedge_for)
+                    finally:
+                        trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PP_ABS"
+        except Exception as _pphe:
+            logger.debug(f"[HEDGE_CLOSE_WT3M1H_PP_ABS] {position_key}: check failed: {_pphe}")
         base_ctx = {'trade_manager': trade_manager, 'symbol': symbol, 'logger': logger, 'position_key': position_key}
         snapshot = trade_manager.indicators_snapshot.get(symbol, {})
         is_data_fresh, freshness_reason, data_fresh_for_augment = await _validate_indicator_data_freshness(i, symbol, position_key, logger, trade_manager)

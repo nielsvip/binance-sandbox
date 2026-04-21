@@ -591,6 +591,12 @@ class QuickConfig:
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
+    # === REENTRY_IF_MOMENTUM (2026-04-21) — port from wt_dc_delta.py:1048 ===
+    # After exit, if K_15m still in favorable direction (K>D for LONG, K<D for SHORT), skip
+    # cooldown and allow next entry signal to fire. Fixes "reentries not respected" per user.
+    REENTRY_IF_MOMENTUM_ENABLED: bool = True
+    REENTRY_IF_MOMENTUM_WINDOW_BARS: int = 5         # within this many bars after exit
+    REENTRY_IF_MOMENTUM_TF: str = "15m"              # "15m" or "3m" — which K/D to check
     # === RZ_CASCADE (2026-04-21) — user directive: not optional, replaces old shitty RZ_BREAKOUT ===
     # Each TF has red zones at dc_high/dc_low. At RZ: reverse OR breakout. Breakout→open, reverse→close.
     # Cascades hierarchically through LTF→15m→1h→4h→D (W/M when NPZ has them).
@@ -2253,7 +2259,19 @@ def simulate(stores, cfg, capital=10000.0):
             _aug_pt_pct = float(getattr(cfg, 'AUGMENT_PT_PCT', 0.5))
             # REENTRY_MIN_GAP_BARS — extra cooldown after exit before next entry. 0 = use COOLDOWN_BARS only.
             min_gap_bars = int(getattr(cfg, 'REENTRY_MIN_GAP_BARS', 0) or 0)
+            # REENTRY_IF_MOMENTUM (wt_dc_delta.py:1048 port) — skip cooldown if K on selected TF still favorable
+            _reentry_mom_enabled = bool(getattr(cfg, 'REENTRY_IF_MOMENTUM_ENABLED', True))
+            _reentry_mom_window = int(getattr(cfg, 'REENTRY_IF_MOMENTUM_WINDOW_BARS', 5))
+            _reentry_mom_tf = str(getattr(cfg, 'REENTRY_IF_MOMENTUM_TF', '15m'))
+            _rm_k_arr = _safe(npz, f'stoch_k_{_reentry_mom_tf}', n, 50.0)
+            _rm_d_arr = _safe(npz, f'stoch_d_{_reentry_mom_tf}', n, 50.0)
+            _last_exit_bar = -9999
+            _prev_in_pos = False
             for i in range(n):
+                # Track exit transitions — used by REENTRY_IF_MOMENTUM bypass below.
+                if _prev_in_pos and not in_pos:
+                    _last_exit_bar = i - 1
+                _prev_in_pos = in_pos
                 if _qr_enabled and not in_pos and _qr_exit_px > 0 and (i - _qr_exit_bar) <= _qr_window:
                     px = close[i]
                     if px > 0:
@@ -2279,7 +2297,19 @@ def simulate(stores, cfg, capital=10000.0):
                             if _entry_was_rz_break: _rz_entry_bar = i
                             _t1pc_exit_px = 0.0; cd = 0
                             continue
-                if cd > 0: cd -= 1; continue
+                # REENTRY_IF_MOMENTUM bypass: if cooldown is active but we're within reentry
+                # window and K still in favorable direction, let the entry check below fire.
+                _reentry_mom_bypass = False
+                if (_reentry_mom_enabled and not in_pos and _last_exit_bar >= 0
+                        and (i - _last_exit_bar) <= _reentry_mom_window):
+                    if is_long and _rm_k_arr[i] > _rm_d_arr[i]:
+                        _reentry_mom_bypass = True
+                    elif (not is_long) and _rm_k_arr[i] < _rm_d_arr[i]:
+                        _reentry_mom_bypass = True
+                if cd > 0:
+                    cd -= 1
+                    if not _reentry_mom_bypass:
+                        continue
                 px = close[i]
                 if px <= 0: continue
                 _rz_fires_here = _rz_break_arr is not None and bool(_rz_break_arr[i])
