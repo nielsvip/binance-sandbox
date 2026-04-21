@@ -2639,6 +2639,20 @@ class AdvancedSignalRater:
             if _br_has_reset:
                 _tier1_forced = True
                 score += 15; reasons.append(f"TIER1_PULLBACK_REENTRY(k_reset,+15,min={min_since_red:.0f})")
+            elif not _br_has_reset and actual_last_red_price > 0 and ((is_long and current_price >= actual_last_red_price) or (not is_long and current_price <= actual_last_red_price)):
+                # MANDATORY_REENTRY_PRICE_CROSS: exit price crossed — NO TIMER GATE. REENTRY IS A RIGHT.
+                _mr_wt = 0
+                for _tf in ['3m', '15m', '1h']:
+                    _wb = bool(indicators.get(f'wt_bullish_{_tf}', False))
+                    if (is_long and _wb) or (not is_long and not _wb): _mr_wt += 1
+                if _mr_wt >= 1:
+                    _tier1_forced = True
+                    score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_WT{_mr_wt}(+30,exit_crossed_no_timer,exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY] {position_key}: price {current_price:.6f} >= exit {actual_last_red_price:.6f} + WT{_mr_wt}/3 — FORCING REENTRY (NO TIMER, REENTRY IS A RIGHT)")
+                elif abs(current_price / actual_last_red_price - 1.0) > 0.003:
+                    _tier1_forced = True
+                    score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_WT0(+20,0.3pct_above_exit,exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct above exit {actual_last_red_price:.6f} WT=0 — FORCING REENTRY (0 WT ok, strong cross)")
             elif not _br_has_reset and actual_last_red_price > 0 and min_since_red >= _tier2_min_min:
                 _trend_continues = (is_long and current_price > actual_last_red_price * (1.0 + _tier2_price_pct)) or (not is_long and current_price < actual_last_red_price * (1.0 - _tier2_price_pct))
                 _momentum_ok = (is_long and k_3m > k_3m_prev and k_1m > d_1m) or (not is_long and k_3m < k_3m_prev and k_1m < d_1m)
@@ -12094,8 +12108,16 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                 _wtx_15m_confirm = (_wtx_w1_15m > _wtx_w2_15m) if _wtx_have_15m else True
                             _wtx_req_15m = bool(getattr(config, 'WT_CROSS_EXIT_REQUIRE_15M_CONFIRM', True))
                             if _wtx_1h_flipped and (not _wtx_req_15m or _wtx_15m_confirm):
-                                hard_exit_reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}_wt1={_wtx_w1_1h:.1f}_wt2={_wtx_w2_1h:.1f}_15m{_wtx_w1_15m:.1f}/{_wtx_w2_15m:.1f}_g{current_gain:.2f}%"
-                                logger.critical(f"🔥[WT_CROSS_EXIT] {position_key}: 1h WT flipped against {'LONG' if is_long else 'SHORT'} (wt1={_wtx_w1_1h:.1f} vs wt2={_wtx_w2_1h:.1f}) + 15m confirm={_wtx_15m_confirm} age={_pos_age_min:.0f}m gain={current_gain:.2f}% — technical exit")
+                                _wtx_w1_3m = safe_fetch_float(indicators.get('wt1_3m'), 0)
+                                _wtx_w2_3m = safe_fetch_float(indicators.get('wt2_3m'), 0)
+                                _wtx_have_3m = (_wtx_w1_3m != 0 or _wtx_w2_3m != 0)
+                                _wtx_3m_veto_age = float(getattr(config, 'WT_CROSS_EXIT_3M_VETO_MAX_AGE', 30.0))
+                                _wtx_3m_with_pos = _wtx_have_3m and ((is_long and _wtx_w1_3m > _wtx_w2_3m) or (not is_long and _wtx_w1_3m < _wtx_w2_3m))
+                                if _wtx_3m_with_pos and _pos_age_min < _wtx_3m_veto_age:
+                                    logger.info(f"🛡️[WT_CROSS_EXIT_3M_VETO] {position_key}: 1h+15m against BUT 3m WT still with {'LONG' if is_long else 'SHORT'} (wt1_3m={_wtx_w1_3m:.1f}>wt2={_wtx_w2_3m:.1f}) age={_pos_age_min:.0f}m<{_wtx_3m_veto_age:.0f}m — HOLDING, price flying on 3m")
+                                else:
+                                    hard_exit_reason = f"WT_CROSS_EXIT_1h_{'bear' if is_long else 'bull'}_wt1={_wtx_w1_1h:.1f}_wt2={_wtx_w2_1h:.1f}_15m{_wtx_w1_15m:.1f}/{_wtx_w2_15m:.1f}_g{current_gain:.2f}%"
+                                    logger.critical(f"🔥[WT_CROSS_EXIT] {position_key}: 1h WT flipped against {'LONG' if is_long else 'SHORT'} (wt1={_wtx_w1_1h:.1f} vs wt2={_wtx_w2_1h:.1f}) + 15m confirm={_wtx_15m_confirm} age={_pos_age_min:.0f}m gain={current_gain:.2f}% 3m={'with' if _wtx_3m_with_pos else 'against'} — technical exit")
                 # ═══ STDEV BREAKOUT FAILURE EXIT: HTF pctb retreated back inside bands ═══
                 if not hard_exit_reason and not is_hedge and getattr(config, "STDEV_BREAKOUT_ENABLED", False):
                     _sbe_reason = check_stdev_breakout_exit(symbol, is_long, indicators)

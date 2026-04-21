@@ -147,7 +147,21 @@ nohup "$V8_PYTHON" -u v8_test_queue.py --mode tradier > ~/logs/v8_test_queue_tra
 
 ## 📊 BACKTEST REPORTING RULES — AVERAGES, NOT OUTLIERS
 
-**Every sweep/baseline/backtest summary MUST show**:
+### ⚠️ SHARPE DEFINITION IS NON-NEGOTIABLE (repeated 13+ times; keeps getting violated)
+
+**Sharpe for any symbol over any time window MUST be computed as follows. NO EXCEPTIONS:**
+
+1. **Per-trade returns only.** Sharpe = `mean(trade_returns) / std(trade_returns)`. `mean()` divides by N. NEVER sum. NEVER accumulate. NEVER skip the division.
+2. **Open losing positions at end-of-test MUST be subtracted.** Any position still open at the final bar must be marked-to-market at the closing price and its (negative) unrealized P&L appended to the trade-return distribution BEFORE computing mean/std. Holding losers forever without counting their paper loss = fraudulent Sharpe. `v8_quick_engine.py:2105-2115` does this correctly — any other engine MUST do the same. `NOLOSS_ENABLED` blocks premature exits during simulation; it does NOT and MUST NOT filter negatives out of the Sharpe denominator.
+3. **NEVER annualize Sharpe by sqrt(trades_per_year) or sqrt(N).** `backtest_v8_engine.py:732` emits `sharpe_annual = sharpe_per_trade * sqrt(trades_per_year)` — that column is BANNED in any user-facing report, baseline claim, or sweep ranking. It is mathematical frequency-gaming. The "frozen 2.52 baseline" was `sharpe_annual` (0.14 per-trade × √324) and is therefore invalid. `sharpe_per_trade` is the only Sharpe that may be reported as "Sharpe".
+4. **Per-symbol average, NOT pool.** Compute Sharpe once per symbol with rules 1-3, then average across all symbols in the test. Pool Sharpe (`mean(all_trades) / std(all_trades)` across concatenated symbols) may be a diagnostic column but MUST NOT be the ranking metric. Sweep ranking must switch to per-symbol-avg Sharpe.
+5. **Cap the per-symbol Sharpe low enough to prevent single-symbol domination.** Current cap = ±20.0 in `v8_quick_engine.py:2141`; a lucky symbol with tight-std few-trade run hits 20.0 and poisons the mean. Lower to ±5.0 and exclude symbols with <30 trades from the per-symbol average (they're the ones that cap).
+6. **Per-symbol-avg Sharpe < 1.0 = trash.** Risk-to-reward is unacceptable. Before ranking variants or proposing a live change, the baseline must clear 1.0 per-trade per-symbol-avg on ≥48 crypto / ≥100 stock symbols with ≥30 trades each. If it doesn't, stop ranking and redesign.
+7. **Separately track `total_gain_pct` and `avg_gain_per_trade_pct`.** These are useful complementary metrics — not substitutes for Sharpe. Must be labeled distinctly, never called "Sharpe".
+
+Violating any of these = the number is a LIE and the decision it supports is invalid.
+
+### Required columns in every sweep CSV / report
 
 1. **Sharpe and mean-gain = AVERAGE across all symbols in the test**, never the single best outlier.
    - A "Sharpe 5.2" number because one symbol had a lucky run is useless. The number that matters is the per-symbol mean.
