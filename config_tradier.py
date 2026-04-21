@@ -339,6 +339,17 @@ class TradierConfig:
     SATOSHIT_EXIT_LONG_STOCH_K_MIN_TRADIER: float = 60.0
     SATOSHIT_EXIT_SHORT_RSI_MAX_TRADIER: float = 42.0
     SATOSHIT_EXIT_SHORT_STOCH_K_MAX_TRADIER: float = 50.0
+    # === PARTIAL_PROFIT_LOCK (2026-04-21) — mirror of crypto PPL, stock-tuned defaults ===
+    # Step 1 (gain >= PPL_GAIN_PCT_TRADIER): close 50% via execute_trade_action(action='REDUCE').
+    # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
+    # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
+    # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
+    PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.7
+    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
+    PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
     # === NEWS SENTIMENT ===
     NEWS_SENTIMENT_ENABLED: bool =         True
     NEWS_SENTIMENT_WEIGHT: float =         0.10

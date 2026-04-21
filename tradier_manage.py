@@ -4156,6 +4156,52 @@ class StockStrategy:
                     if _srs_prox and _srs_1h and _srs_15m and _srs_5m_up:
                         logger.critical(f"🏗️ [RANGE_BOTTOM_EXIT] {symbol} SHORT {_srs_tf}: entry={_srs_entry:.4f}<{_srs_low_key}={_srs_low:.4f} price={current_price:.4f} k1h={_srs_k1h:.0f} k15m={_srs_k15m:.0f} k5m={_srs_k5m:.0f}↑{_srs_k5m_prev:.0f}")
                         return True, f"STRUCTURAL_RANGE_SHIFT_SHORT_{_srs_tf}_bot={_srs_low:.4f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}_k5m={_srs_k5m:.0f}", qty
+        # === PARTIAL_PROFIT_LOCK (2026-04-21) — mirror of crypto PPL in ez_manage.process_position.
+        # Fires BEFORE UNIVERSAL_NOLOSS_GATE so it's not blocked by 3% NOLOSS floor — PPL is a
+        # staged partial-exit + trailing-stop system, not a STRICT_NO_LOSS trigger. Locks in
+        # ~0.25% guaranteed gain on total position when SL path fires.
+        _ppl_acct_list_t = getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', ['trb', 'trc'])
+        if (getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)
+            and _exit_acct_top in _ppl_acct_list_t):
+            _ppl_min_gain_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5))
+            _ppl_arm_gain_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7))
+            _ppl_frac_t = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5))
+            _ppl_pk_t = f"{_exit_acct_top}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+            _tm_t = self.trade_manager if hasattr(self, 'trade_manager') else self
+            if not hasattr(_tm_t, 'partial_profit_lock_state'):
+                _tm_t.partial_profit_lock_state = {}
+            _ppl_state_t = _tm_t.partial_profit_lock_state.get(_ppl_pk_t, {})
+            _ppl_fired_t = _ppl_state_t.get('fired', False)
+            _ppl_first_exit_px_t = float(_ppl_state_t.get('first_exit_price', 0.0))
+            _ppl_sl_armed_t = _ppl_state_t.get('sl_armed', False)
+            _ppl_min_qty_t = self.min_qty.get(symbol, 1.0) if hasattr(self, 'min_qty') else 1.0
+            _ppl_close_side_t = "SELL" if is_long else "BUY"
+            _ppl_pos_side_t = "LONG" if is_long else "SHORT"
+            if not _ppl_fired_t and gain >= _ppl_min_gain_t and qty > _ppl_min_qty_t:
+                _ppl_reduce_qty_t = qty * _ppl_frac_t
+                _ppl_keep_qty_t = qty - _ppl_reduce_qty_t
+                if _ppl_reduce_qty_t >= _ppl_min_qty_t and _ppl_keep_qty_t >= _ppl_min_qty_t:
+                    _ppl_uid_t = f"PPL_PARTIAL_{_ppl_pk_t}_{int(time.time())}"
+                    _ppl_reason_t = f"PPL_PARTIAL_gain{gain:.2f}_{int(_ppl_frac_t*100)}pct"
+                    logger.warning(f"[PARTIAL_PROFIT_LOCK_TRADIER] {_ppl_pk_t}: gain={gain:.2f}% >= {_ppl_min_gain_t}% — closing {_ppl_frac_t*100:.0f}% ({_ppl_reduce_qty_t:.4f}/{qty:.4f})")
+                    try:
+                        _ppl_res_t = await self.execute_trade_action(account_key=_exit_acct_top, position_key=_ppl_pk_t, symbol=symbol, quantity=_ppl_reduce_qty_t, current_price=current_price, side=_ppl_close_side_t, position_side=_ppl_pos_side_t, unique_id=_ppl_uid_t, is_full_close=False, action='REDUCE', reason=_ppl_reason_t, override_qty=_ppl_reduce_qty_t)
+                        _ppl_ok_t = _ppl_res_t and "BLOCK" not in str(_ppl_res_t).upper() and "FAIL" not in str(_ppl_res_t).upper() and "MARKET_CLOSED" not in str(_ppl_res_t).upper()
+                    except Exception as _ppl_e_t:
+                        logger.error(f"[PPL_TRADIER_PARTIAL_ERR] {_ppl_pk_t}: {type(_ppl_e_t).__name__}: {_ppl_e_t}")
+                        _ppl_ok_t = False
+                    if _ppl_ok_t:
+                        _tm_t.partial_profit_lock_state[_ppl_pk_t] = {'fired': True, 'first_exit_price': current_price, 'sl_armed': False}
+                        return False, f"PPL_PARTIAL_EXIT_gain{gain:.2f}_fep{current_price:.4f}", 0
+            if _ppl_fired_t and not _ppl_sl_armed_t and gain >= _ppl_arm_gain_t and _ppl_first_exit_px_t > 0:
+                _tm_t.partial_profit_lock_state[_ppl_pk_t] = {**_ppl_state_t, 'sl_armed': True}
+                logger.warning(f"[PPL_TRADIER_SL_ARMED] {_ppl_pk_t}: gain={gain:.2f}% >= {_ppl_arm_gain_t}% — SL armed @ {_ppl_first_exit_px_t:.4f}")
+            if _ppl_sl_armed_t and _ppl_first_exit_px_t > 0 and qty > _ppl_min_qty_t:
+                _sl_hit_t = (is_long and current_price <= _ppl_first_exit_px_t) or (not is_long and current_price >= _ppl_first_exit_px_t)
+                if _sl_hit_t:
+                    _tm_t.partial_profit_lock_state.pop(_ppl_pk_t, None)
+                    logger.warning(f"[PARTIAL_PROFIT_LOCK_TRADIER_SL_HIT] {_ppl_pk_t}: price={current_price:.4f} crossed first-exit-price={_ppl_first_exit_px_t:.4f} — closing remaining {qty:.4f}")
+                    return True, f"PPL_SL_CLOSE_px{current_price:.4f}_fep{_ppl_first_exit_px_t:.4f}", qty
         # ═══ UNIVERSAL_NOLOSS_GATE (2026-04-17) — AFTER SRS so SRS can exit at a loss ═══
         # trb/trc were bleeding because DELTA_EXIT/RZ_EXIT/WT_DC_EXIT/MI_EXIT
         # paths fired on technicals REGARDLESS of gain — closing GLD at -0.09%,
@@ -5706,6 +5752,7 @@ class TradierTradeManager:
         }) if config.DELTA_ENGINE_ENABLED else None
         self.running = False
         self.background_tasks = []
+        self.partial_profit_lock_state = {}
         self.account_position_queues = defaultdict(lambda: {'queue': deque(), 'set': set()})
         self.recently_processed_signals: Dict[str, float] = {}
         self.order_deduplication: Dict[str, float] = {}

@@ -1829,11 +1829,22 @@ def simulate(stores, cfg, capital=10000.0):
                 _loose_tfs = max(1, cfg.WT_EXIT_MIN_TFS - 1)
                 exit_sig_extra = (_a_cnt >= _loose_tfs) & ~exit_sig
             # PARTIAL_EXIT: precompute remainder exit signal (looser WT TFS for the second half)
-            _pe_enabled = bool(getattr(cfg, 'PARTIAL_EXIT_ENABLED', False))
-            _pe_frac = float(getattr(cfg, 'PARTIAL_EXIT_FRAC', 0.5))
-            _pe_pct = float(getattr(cfg, 'PARTIAL_EXIT_PCT', 0.5))
-            _pe_trail_arm = float(getattr(cfg, 'PARTIAL_TRAIL_ARM_PCT', 0.7))
-            _pe_trail_floor = float(getattr(cfg, 'PARTIAL_TRAIL_FLOOR_PCT', 0.5))
+            # 2026-04-21: PARTIAL_PROFIT_LOCK overrides PARTIAL_EXIT_* when enabled. Same state
+            # machine (50% at gain_pct, arm at arm_pct, close remainder when price returns to
+            # first-exit price ≡ gain_pct). Maps PPL keys to internal _pe_* vars.
+            _ppl_enabled_q = bool(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
+            if _ppl_enabled_q:
+                _pe_enabled = True
+                _pe_frac = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC', getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5)))
+                _pe_pct = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5)))
+                _pe_trail_arm = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7)))
+                _pe_trail_floor = _pe_pct
+            else:
+                _pe_enabled = bool(getattr(cfg, 'PARTIAL_EXIT_ENABLED', False))
+                _pe_frac = float(getattr(cfg, 'PARTIAL_EXIT_FRAC', 0.5))
+                _pe_pct = float(getattr(cfg, 'PARTIAL_EXIT_PCT', 0.5))
+                _pe_trail_arm = float(getattr(cfg, 'PARTIAL_TRAIL_ARM_PCT', 0.7))
+                _pe_trail_floor = float(getattr(cfg, 'PARTIAL_TRAIL_FLOOR_PCT', 0.5))
             _pe_rem_tfs = int(getattr(cfg, 'PARTIAL_REMAINDER_EXIT_TFS', 2) or 2)
             _use_cross = bool(getattr(cfg, 'WT_EXIT_USE_CROSS_EVENTS', False))
             exit_sig_rem = exit_sig

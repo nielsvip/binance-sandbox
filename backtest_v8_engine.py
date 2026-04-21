@@ -1288,6 +1288,62 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if hasattr(ez_manage, '_recent_reduces'):
             ez_manage._recent_reduces.clear()
 
+        # === PARTIAL_PROFIT_LOCK inline (2026-04-21) — fires regardless of V8_SKIP_PROCESS_POSITION
+        # so sweeps model the 50%-at-0.5% + SL-arm-at-0.7% behavior. Mirrors the state machines
+        # in ez_manage.process_position and tradier_manage.evaluate_stop.
+        _ppl_bt_on = bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
+        if _ppl_bt_on:
+            _ppl_bt_accts = set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS', []) or []) | set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', []) or [])
+            if account_key in _ppl_bt_accts:
+                _ppl_bt_min = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5)))
+                _ppl_bt_arm = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7)))
+                _ppl_bt_frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5)))
+                if not hasattr(trade_manager, 'partial_profit_lock_state'):
+                    trade_manager.partial_profit_lock_state = {}
+                for _ppl_bt_pk in list(trade_manager.positions.keys()):
+                    _ppl_bt_pos = trade_manager.positions.get(_ppl_bt_pk)
+                    if not _ppl_bt_pos:
+                        continue
+                    _ppl_bt_qty = abs(float(getattr(_ppl_bt_pos, 'positionAmt', 0) or 0))
+                    if _ppl_bt_qty < 0.0001:
+                        continue
+                    _ppl_bt_is_long = _ppl_bt_pk.endswith('_LONG')
+                    _ppl_bt_ep = float(getattr(_ppl_bt_pos, 'entry_price', 0) or 0)
+                    if _ppl_bt_ep <= 0:
+                        continue
+                    _ppl_bt_sym = _ppl_bt_pk.split(":", 1)[-1].rsplit("_", 1)[0] if ":" in _ppl_bt_pk else (_ppl_bt_pk[:-5] if _ppl_bt_pk.endswith("_LONG") else _ppl_bt_pk[:-6])
+                    _ppl_bt_ind = indicator_cache.get(_ppl_bt_sym, {}) if isinstance(indicator_cache, dict) else {}
+                    _ppl_bt_px = float(_ppl_bt_ind.get('current_price', 0) or 0)
+                    if _ppl_bt_px <= 0:
+                        continue
+                    _ppl_bt_gain = ((_ppl_bt_px - _ppl_bt_ep) / _ppl_bt_ep * 100.0) if _ppl_bt_is_long else ((_ppl_bt_ep - _ppl_bt_px) / _ppl_bt_ep * 100.0)
+                    _ppl_bt_state = trade_manager.partial_profit_lock_state.get(_ppl_bt_pk, {})
+                    _ppl_bt_fired = _ppl_bt_state.get('fired', False)
+                    _ppl_bt_fep = float(_ppl_bt_state.get('first_exit_price', 0.0))
+                    _ppl_bt_armed = _ppl_bt_state.get('sl_armed', False)
+                    _ppl_bt_side = "SELL" if _ppl_bt_is_long else "BUY"
+                    _ppl_bt_pside = "LONG" if _ppl_bt_is_long else "SHORT"
+                    if not _ppl_bt_fired and _ppl_bt_gain >= _ppl_bt_min:
+                        _ppl_bt_red = _ppl_bt_qty * _ppl_bt_frac
+                        _ppl_bt_keep = _ppl_bt_qty - _ppl_bt_red
+                        if _ppl_bt_red > 0 and _ppl_bt_keep > 0:
+                            try:
+                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_red, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='REDUCE', reason=f"PPL_PARTIAL_gain{_ppl_bt_gain:.2f}_{int(_ppl_bt_frac*100)}pct", is_full_close=False, is_hedge=False)
+                                trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {'fired': True, 'first_exit_price': _ppl_bt_px, 'sl_armed': False}
+                            except Exception as _ppl_bt_e:
+                                if step < 10 or step % 1000 == 0:
+                                    v8_logger.error(f"[V8_PPL_ERR] {_ppl_bt_pk}: {_ppl_bt_e}")
+                    elif _ppl_bt_fired and not _ppl_bt_armed and _ppl_bt_gain >= _ppl_bt_arm and _ppl_bt_fep > 0:
+                        trade_manager.partial_profit_lock_state[_ppl_bt_pk] = {**_ppl_bt_state, 'sl_armed': True}
+                    elif _ppl_bt_armed and _ppl_bt_fep > 0:
+                        _ppl_bt_hit = (_ppl_bt_is_long and _ppl_bt_px <= _ppl_bt_fep) or (not _ppl_bt_is_long and _ppl_bt_px >= _ppl_bt_fep)
+                        if _ppl_bt_hit:
+                            try:
+                                await trade_manager.execute_trade_action(account_key=account_key, position_key=_ppl_bt_pk, symbol=_ppl_bt_sym, quantity=_ppl_bt_qty, current_price=_ppl_bt_px, side=_ppl_bt_side, position_side=_ppl_bt_pside, action='CLOSE', reason=f"PPL_SL_CLOSE_px{_ppl_bt_px:.4f}_fep{_ppl_bt_fep:.4f}", is_full_close=True, is_hedge=False)
+                                trade_manager.partial_profit_lock_state.pop(_ppl_bt_pk, None)
+                            except Exception as _ppl_bt_sl_e:
+                                if step < 10 or step % 1000 == 0:
+                                    v8_logger.error(f"[V8_PPL_SL_ERR] {_ppl_bt_pk}: {_ppl_bt_sl_e}")
         # Run ONE cycle of all trading loops for this bar
         # process_position on ALL active positions
         # 2026-04-21: V8_SKIP_PROCESS_POSITION=1 stubs the call per user directive —
