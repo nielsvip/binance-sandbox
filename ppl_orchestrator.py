@@ -282,7 +282,18 @@ def main():
 
     out_dir = Path(args.out_dir) if args.out_dir else Path("data/orchestrator") / f"{args.mode}_{time.strftime('%Y%m%d_%H%M%S')}"
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[PPL_ORCH] output dir: {out_dir}", flush=True)
+    _live_log = out_dir / "run.log"
+    _orig_print = print
+    def _p(*a, **kw):
+        kw["flush"] = True
+        _orig_print(*a, **kw)
+        try:
+            with open(_live_log, "a") as _f:
+                _orig_print(*a, file=_f)
+        except Exception: pass
+    globals()["print"] = _p
+    print(f"[PPL_ORCH] output dir: {out_dir}")
+    print(f"[PPL_ORCH] live log: {_live_log}")
 
     npz_dir = args.npz_dir
     if not npz_dir:

@@ -570,6 +570,27 @@ class QuickConfig:
     PARTIAL_TRAIL_ARM_PCT: float = 0.7             # arm the floor once gain reaches this
     PARTIAL_TRAIL_FLOOR_PCT: float = 0.5           # remainder floor price (matched to first target)
     PARTIAL_REMAINDER_EXIT_TFS: int = 2            # looser WT TFS for the remaining half
+    PARTIAL_BE_BUFFER_PCT: float = 0.02            # 2026-04-21 PPL v2: break-even buffer
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02
+    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
+    PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False
+    WRONG_SIDE_MIN_AGE_MIN: float = 30.0
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 5
+    WRONG_SIDE_WT_TFS_REDUCED: int = 3
+    WRONG_SIDE_DIV_TFS_REQUIRED: int = 2
+    WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20
+    WRONG_SIDE_K_TFS_REQUIRED: int = 0
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
+    HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
     RATIO_SENTIMENT_FILTER_ENABLED: bool = False
     RATIO_SENTIMENT_LONG_MIN: float = 40.0
     RATIO_SENTIMENT_SHORT_MAX: float = 60.0
@@ -2084,18 +2105,40 @@ def simulate(stores, cfg, capital=10000.0):
                 if cd > 0: cd -= 1; continue
                 px = close[i]
                 if px <= 0: continue
-                if not in_pos and entry_sig[i]:
+                _rz_fires_here = _rz_break_arr is not None and bool(_rz_break_arr[i])
+                if not in_pos and (entry_sig[i] or _rz_fires_here):
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
-                    _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
+                    _entry_was_rz_break = _rz_fires_here
                     if _entry_was_rz_break: _rz_entry_bar = i
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # RZ NOLOSS BYPASS (independent): fires immediately on condition, no WT exit needed.
+                    # Only for RZ-tagged entries. Bypass conditions checked every bar while in losing trade.
+                    if _entry_was_rz_break and _rz_nl_mode != 'none' and cfg.NOLOSS_ENABLED and live_pnl < 0:
+                        _rz_bypass_now = False
+                        if _rz_nl_mode == 'bar_structure':
+                            _bs_since = i - _rz_entry_bar
+                            if _bs_since <= _rz_nl_bar_window and _rz_nl_bar_high is not None and _rz_nl_bar_low is not None:
+                                if is_long:
+                                    _rz_bypass_now = bool(_rz_nl_bar_high[i] < _rz_nl_bar_high_prev[i] and _rz_nl_bar_low[i] < _rz_nl_bar_low_prev[i])
+                                else:
+                                    _rz_bypass_now = bool(_rz_nl_bar_high[i] > _rz_nl_bar_high_prev[i] and _rz_nl_bar_low[i] > _rz_nl_bar_low_prev[i])
+                        else:
+                            _rz_bypass_now = bool(_rz_nl_guard_low is not None and (
+                                (is_long and _rz_nl_guard_low[i] > 0 and px < _rz_nl_guard_low[i]) or
+                                (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
+                            ))
+                        if _rz_bypass_now:
+                            _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            _entry_was_rz_break = False; _rz_entry_bar = -1
+                            cd = max(cooldown, min_gap_bars); continue
                     # WRONG_SIDE_ABS_KILL v2: (WT N-of-5 full) OR (WT M-of-5 reduced AND div M-of-5) + age.
                     # K deferred (irrelevant per user). Divergence lets us exit on 3/4 TFs if price-WT divergence confirms.
                     # Runs BEFORE PPL/WT-exit/NOLOSS so it fires even when STRICT_NO_LOSS would otherwise hold.

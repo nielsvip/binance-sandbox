@@ -6222,7 +6222,6 @@ class HedgeEngine:
         if qty * current_price < 5.0: return True
         # FIX 2026-04-08: Route through execute_trade_wrapper — NEVER bypass _pos_is_open + _open_in_flight guards
         logger.critical(f"[HEDGE_SAME] Opening {hedge_side} {hedge_symbol} ({qty:.6f} = ${qty*current_price:.2f}) to cover {origin_side} {symbol}")
-        if self.positions_service.positions_by_account.get(account_key, {})[hedge_key].positionAmt > 0 : return
         success, failure_reason = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=positionAmt, action='OPEN', current_price=current_price, qty=qty, reason=f"HEDGE_PROTECT_{origin_side}_LOSS", override_qty=qty, already_locked=False, is_hedge=True, hedge_for=f"{account_key}:{symbol}_{origin_side}", data_manager=self.data_manager)
         if not success:
             logger.warning(f"[HEDGE_SAME_BLOCKED] {hedge_key}: execute_trade_wrapper rejected: {failure_reason}")

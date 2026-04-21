@@ -1200,20 +1200,24 @@ def build_param_grid_rz_noloss_mode():
     dc_low4_base (4-bar DC low on base TF: 5m tradier / 3m crypto),
     dc_low_base (20-bar DC low on base TF), dc_low4_15m (4-bar DC low on 15m).
     EXIT: WT turn only (HTF WT slows / LTF crosses) — NO profit target.
-    Run tradier: --mode tradier --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.5 --kill-sharpe 0 --kill-secs 999999
-    Run crypto:  --mode crypto  --symbols medium --start 2025-04-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.5 --kill-sharpe 0 --kill-secs 999999
+    LE disabled (LOCAL_EXTREMES_SCORER_ENABLED=False) so RZ is the ONLY entry — this is required to
+    isolate which NOLOSS bypass mode protects failing RZ entries. With LE active (tradier default=True),
+    LE fires 1000+/yr swamping the ~40 standalone RZ entries, making mode differences invisible.
+    Run tradier: --mode tradier --symbols medium --start 2024-01-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.05 --kill-sharpe 0 --kill-secs 999999
+    Run crypto:  --mode crypto  --symbols medium --start 2022-01-01 --tier rz_noloss_mode --workers 4 --stream --min-csv-sharpe 0.05 --kill-sharpe 0 --kill-secs 999999
     144 configs (4 modes × 3 bot × 3 top × 2 bar_window × 2 wt_exit_min).
     """
     return {
         "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "LOCAL_EXTREMES_SCORER_ENABLED": [False],
         "PROFIT_TARGET_ENABLED": [False],
         "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
         "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
         "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
         "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
         "WT_EXIT_MIN_TFS": [2, 3],
-        "EARLY_ABORT_MIN_SYMBOLS": [6],
-        "EARLY_ABORT_SHARPE_FLOOR": [0.3],
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
 
