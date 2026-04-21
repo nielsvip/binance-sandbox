@@ -4291,6 +4291,7 @@ class MultiAccountTradeManager:
         else:
             logger.info(f"[DELTA_ENGINE] Disabled (DELTA_ENGINE_ENABLED={getattr(config, 'DELTA_ENGINE_ENABLED', False)}, DeltaTracker={'OK' if DeltaTracker else 'MISSING'})")
         self.direct_high_gain_augmented = getattr(positions_service, "direct_high_gain_augmented", {})
+        self.partial_profit_lock_state = {}
         self._snapshot_lock = DummyLock() # Indicators Snapshot
         self._price_cache_lock = DummyLock() # Price Cache
         self._positions_lock = DummyLock() # Position Updates

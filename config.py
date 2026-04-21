@@ -1012,10 +1012,21 @@ class Config:
     # Backtest: 100% WR on 48 symbols (8k trades), 97.8% WR on 5yr data. Derived from 180 ETH trades.
     SATOSHIT_ENABLED: bool = True
     SATOSHIT_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
-    SATOSHIT_EXIT_ENABLED: bool = True  # Fixed 2026-04-07 — now exits at 1m/3m TOP (stoch cross down from OB), never at higher low
+    SATOSHIT_EXIT_ENABLED: bool = False  # DISABLED 2026-04-21 — replaced by PARTIAL_PROFIT_LOCK mechanism (50% at 0.5%, SL-arm at 0.7%). Config retained for sweep compatibility.
     SATOSHIT_PROTECT_TRADES: bool = True  # ON — only Satoshit exit can close Satoshit-opened positions
     SATOSHIT_EXIT_USE_MAKER: bool = True  # Use maker order for partial close (bypasses Finandy full close)
     SATOSHIT_EXIT_PARTIAL_PCT: float = 0.70  # Close 70% of position, keep 30% as runner
+    # === PARTIAL_PROFIT_LOCK — 50% close at +0.5% via webhook_url_2/maker, arm SL at first-exit price when +0.7% ===
+    # 2026-04-21: Replaces SATOSHIT_PARTIAL_EXIT 70% with deterministic gain-triggered 50% lock.
+    # Step 1 (gain >= PPL_GAIN_PCT): close PPL_FRAC via place_maker_order; fallback send_webhook url_variant="2".
+    # Step 2 (gain >= PPL_ARM_GAIN_PCT): arm trailing stop at first-exit price.
+    # Step 3 (SL hit: price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = True
+    PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.7
+    PARTIAL_PROFIT_LOCK_FRAC: float = 0.5
+    PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
     SATOSHIT_MIN_VOTES: int = 3  # 3-of-5 entry indicators must agree
     SATOSHIT_SCORE_BONUS: int = 30  # Score bonus when Satoshit fires (below mover=40)
     SATOSHIT_QTY_MULT: float = 3.0  # 3x position size for satoshit entries — 100% WR, avg +5.58% gain

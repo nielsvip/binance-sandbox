@@ -12252,10 +12252,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     
                     action_name = 'CLOSE' if is_full_close else 'REDUCE'
                     result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduce_q, current_price, f"QUICK_{hard_exit_reason}", f"QUICK_{hard_exit_reason}", is_full_close, action_name, is_hedge)
+                    tracker_manager.last_exit_prices[position_key] = current_price
+                    tracker_manager.last_exit_times[position_key] = time.time()
                     if result and 'FAILED' in str(result):
                         _reduce_fail_cooldowns[position_key] = time.time()
                     elif result and 'SUCCESS' not in result and 'BLOCK' not in str(result) and account_key != 'ang':
-                        # [WEBHOOK_BYPASS_KILLED 2026-04-17] PROACTIVE reduce — no direct webhook fallback. execute_now result is final.
                         logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: PROACTIVE {action_name} execute_now={str(result)[:60]} — NOT firing direct webhook.")
                     await tracker_manager.clear_processing(position_key)
                     return f"PROACTIVE_{action_name}D"
@@ -12609,7 +12610,43 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     _exit_tm = tracker_manager.last_exit_times.get(position_key, 0.0)
                     _entry_lrp = safe_fetch_float(entry_meta.get('last_reduction_price', 0.0), 0.0)
                     _reentry_px = _exit_px if _exit_px > 0 else _entry_lrp
-                    _min_since_exit_epq = (now - _exit_tm) / 60.0 if _exit_tm > 0 else 99999.0
+                    # SOURCE EXHAUSTION: load exit price + time from EVERY available source
+                    # so reentry NEVER silently fails from a missing dict entry.
+                    if _reentry_px <= 0 or _exit_tm <= 0:
+                        _pk_variants = [position_key, f"{account_key}:{symbol}_{position_side}"]
+                        _pos_side_str = 'long' if is_long else 'short'
+                        _acct_short = account_key.split(':')[-1] if ':' in account_key else account_key
+                        _base = getattr(config, 'BASE_PATH', None)
+                        for _acct_dir_try in [_base / _acct_short if _base else None, Path(f"/Users/niels/Documents/binance/{_acct_short}")]:
+                            if not _acct_dir_try: continue
+                            for _fname in [f"{_pos_side_str}_positions.json", f"{_pos_side_str}_reentry.json"]:
+                                try:
+                                    _fpath = _acct_dir_try / _fname
+                                    if not _fpath.exists(): continue
+                                    import json as _jmod
+                                    _fdata = _jmod.loads(_fpath.read_text())
+                                    for _pk_v in _pk_variants:
+                                        if _pk_v not in _fdata: continue
+                                        _fd = _fdata[_pk_v]
+                                        if _reentry_px <= 0:
+                                            _reentry_px = safe_fetch_float(_fd.get('last_reduction_price') or _fd.get('reentry_level') or _fd.get('exit_price') or 0, 0)
+                                        if _exit_tm <= 0:
+                                            _ts_r = _fd.get('last_reduction_time') or _fd.get('reduced_at') or _fd.get('timestamp')
+                                            if _ts_r:
+                                                try: _exit_tm = datetime.fromisoformat(str(_ts_r).replace('Z', '+00:00')).timestamp()
+                                                except Exception: pass
+                                        break
+                                except Exception: pass
+                        if _exit_tm <= 0:
+                            _ts_r = entry_meta.get('last_exit_timestamp') or entry_meta.get('last_reduction_time')
+                            if _ts_r:
+                                try: _exit_tm = datetime.fromisoformat(str(_ts_r).replace('Z', '+00:00')).timestamp()
+                                except Exception: pass
+                        if _reentry_px > 0 and _exit_px <= 0:
+                            tracker_manager.last_exit_prices[position_key] = _reentry_px
+                        if _exit_tm > 0 and tracker_manager.last_exit_times.get(position_key, 0) <= 0:
+                            tracker_manager.last_exit_times[position_key] = _exit_tm
+                    _min_since_exit_epq = (now - _exit_tm) / 60.0 if _exit_tm > 0 else 0.0
                     _reentry_min_gap = float(getattr(config, 'REENTRY_MIN_GAP_MINUTES', 3.0))
                     _gap_ok = _min_since_exit_epq >= _reentry_min_gap
                     _symgate_on = bool(getattr(config, 'REENTRY_SYMGATE_ENABLED', True))
@@ -12641,7 +12678,7 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         elif (not is_long) and _rally_k15m <= (100.0 - _rally_cap):
                             _rally_blocked = True
                             logger.info(f"[RALLY_K15M_BLOCK] {position_key}: SHORT reentry blocked — k_15m={_rally_k15m:.0f} <= floor={100.0 - _rally_cap:.0f}")
-                    if _reentry_px > 0 and (now - _exit_tm) < 72000 and _gap_ok and not _symgate_blocked and not _rally_blocked:
+                    if _reentry_px > 0 and (_exit_tm <= 0 or (now - _exit_tm) < 72000) and _gap_ok and not _symgate_blocked and not _rally_blocked:
                         _px_cross_pct = 0.001
                         _t2_price_pct = getattr(config, 'REENTRY_TIER2_PRICE_PCT', 0.003)
                         _t2_min_min = getattr(config, 'REENTRY_TIER2_MIN_MINUTES', 10.0)
