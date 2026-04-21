@@ -1140,6 +1140,44 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     sorted_ts = sorted(all_ts)
     v8_logger.info(f"Simulation: {len(sorted_ts)} bars, {len(stores)} symbols")
 
+    # ── SIGNAL GATE: pre-compute per-symbol entry-signal timestamps ──────────
+    # Union of wt/stoch/dc crossover event arrays (binary flags in NPZ).
+    # Dilated ±2 bars so entry fires right after a cross. Skips ~90% of bars
+    # where no signal can possibly trigger check_entry_candidates.
+    # sym -> set[int] of timestamps where an entry signal fires.
+    # None means "no gate" (always include) — used as fallback if arrays missing.
+    _entry_signal_sets = {}
+    _GATE_KEYS = [
+        'wt_cross_bull_15m', 'wt_cross_bear_15m',
+        'wt_cross_bull_3m', 'wt_cross_bear_3m',
+        'wt_cross_bull_1h', 'wt_cross_bear_1h',
+        'stoch_crossover_3m', 'stoch_crossunder_3m',
+        'stoch_crossover_15m', 'stoch_crossunder_15m',
+        'dc_high_crossover_3m', 'dc_low_crossunder_3m',
+    ]
+    for _g_sym, _g_store in stores.items():
+        try:
+            _g_n = len(_g_store.timestamps)
+            _g_mask = np.zeros(_g_n, dtype=bool)
+            for _g_key in _GATE_KEYS:
+                if _g_key in _g_store.arrays:
+                    _g_mask |= _g_store.arrays[_g_key].astype(bool)
+            if _g_mask.any():
+                _g_dil = _g_mask.copy()
+                for _g_d in range(1, 4):
+                    if _g_d < _g_n:
+                        _g_dil[_g_d:] |= _g_mask[:-_g_d]
+                        _g_dil[:-_g_d] |= _g_mask[_g_d:]
+                _g_mask = _g_dil
+            _entry_signal_sets[_g_sym] = set(int(_g_store.timestamps[i]) for i in np.where(_g_mask)[0])
+        except Exception:
+            _entry_signal_sets[_g_sym] = None
+    _gate_filtered = 0
+    _gate_total_checks = 0
+    _gate_pct_logged = False
+    v8_logger.info(f"[SIGNAL_GATE] Built for {len(_entry_signal_sets)} symbols. Sample: {list(_entry_signal_sets.keys())[:3]}")
+    # ─────────────────────────────────────────────────────────────────────────
+
     # Start the OrderQueue processor (REAL)
     queue_task = asyncio.create_task(order_queue.process_orders())
 
@@ -1482,10 +1520,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 tracker_manager._processing[pk] = False
             if hasattr(tracker_manager, 'last_check_times'):
                 tracker_manager.last_check_times[pk] = 0.0
-        entry_pks = [pk for pk in all_position_keys
-                     if abs(getattr(trade_manager.positions.get(pk), 'positionAmt', 0) if trade_manager.positions.get(pk) else 0) < 0.001]
+        _ts_int = int(ts)
+        _gate_total_checks += len(all_position_keys)
+        entry_pks = []
+        for _epk in all_position_keys:
+            _epos = trade_manager.positions.get(_epk)
+            if _epos and abs(getattr(_epos, 'positionAmt', 0)) >= 0.001:
+                continue
+            _esym = (getattr(_epos, 'symbol', '') if _epos else '') or (_epk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _epk else _epk.rsplit('_', 1)[0])
+            _egate = _entry_signal_sets.get(_esym)
+            if _egate is not None and _ts_int not in _egate:
+                _gate_filtered += 1
+                continue
+            entry_pks.append(_epk)
         if step < 3:
-            v8_logger.info(f"[DBG] entry_pks={len(entry_pks)} all_position_keys={len(all_position_keys)} positions={len(trade_manager.positions)}")
+            v8_logger.info(f"[DBG] entry_pks={len(entry_pks)} all_position_keys={len(all_position_keys)} positions={len(trade_manager.positions)} gate_filtered={_gate_filtered}")
         if entry_pks:
             try:
                 await ez_positions_quick.check_entry_candidates_for_account(
@@ -1507,7 +1556,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             elapsed = _real_time_module.time() - t0
             _sharpe_w, _gain_pct, _gain_dol, _sum_pct, _sharpe_pt, _sharpe_ann, _tpy = _compute_sharpe_and_gain()
             _wr = _live_pnl['n_wins'] * 100.0 / max(1, _live_pnl['n_closes'])
-            v8_logger.info(f"[PROGRESS] {step}/{len(sorted_ts)} ({step*100//len(sorted_ts)}%) | trades={n_trades} | active={n_active} | {elapsed:.0f}s")
+            _gate_pct = _gate_filtered * 100 // max(1, _gate_total_checks)
+            v8_logger.info(f"[PROGRESS] {step}/{len(sorted_ts)} ({step*100//len(sorted_ts)}%) | trades={n_trades} | active={n_active} | {elapsed:.0f}s | gate_skip={_gate_pct}%")
             v8_logger.info(f"[V8_RESULT_LIVE] sharpe_weekly={_sharpe_w:.3f} sharpe_per_trade={_sharpe_pt:.3f} sharpe_annual={_sharpe_ann:.2f} (trades/yr={_tpy:.0f}) gain_pct={_gain_pct:+.2f}% gain_dollars={_gain_dol:+.2f} sum_trade_pcts={_sum_pct:+.2f}% closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} WR={_wr:.1f}%")
             print(f"V8_RESULT_LIVE: sharpe_w={_sharpe_w:.3f} sharpe_pt={_sharpe_pt:.3f} sharpe_ann={_sharpe_ann:.2f} gain_pct={_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']} wr={_wr:.1f}", flush=True)
             # Live PnL breakdown by close reason — every report interval
