@@ -67,11 +67,19 @@ def main():
     csv_path = Path(args.out_dir) / f"autonomous_{args.mode}.csv"
     winners_path = Path(args.out_dir) / f"autonomous_{args.mode}_winners.jsonl"
 
-    stores = load_npz(args.mode, None, args.start, args.npz_dir)
-    syms = sorted(stores.keys())[:args.symbols]
-    subset = {s: stores[s] for s in syms}
-    for s in list(stores.keys()):
-        if s not in subset: del stores[s]
+    # Pre-select symbols to avoid loading the full corpus into RAM (OOM on small servers)
+    from pathlib import Path as _P
+    CRYPTO_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
+    all_files = sorted(_P(args.npz_dir).glob("*.npz"))
+    candidates = []
+    for p in all_files:
+        sym = p.stem
+        is_crypto = any(sym.endswith(s) for s in CRYPTO_SUFFIXES)
+        if args.mode == "crypto" and not is_crypto: continue
+        if args.mode == "tradier" and is_crypto: continue
+        candidates.append(sym)
+    syms = candidates[:args.symbols]
+    subset = load_npz(args.mode, syms, args.start, args.npz_dir)
     gc.collect()
 
     base = QuickConfig()
