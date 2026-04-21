@@ -591,6 +591,18 @@ class QuickConfig:
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
+    # === RZ_CASCADE (2026-04-21) — user directive: not optional, replaces old shitty RZ_BREAKOUT ===
+    # Each TF has red zones at dc_high/dc_low. At RZ: reverse OR breakout. Breakout→open, reverse→close.
+    # Cascades hierarchically through LTF→15m→1h→4h→D (W/M when NPZ has them).
+    # Signal ingredients per TF: dc_high/low (the RZ boundaries), wt_delta (wt1-wt2), wt_velocity,
+    # rolling price high/low (new-high/new-low confirmation).
+    RZ_CASCADE_ENABLED: bool = True                  # default ON — user: "not optional"
+    RZ_CASCADE_WT_DELTA_MIN: float = 0.5             # min |wt_delta| for breakout confirm
+    RZ_CASCADE_VEL_MIN: float = 0.5                  # min |wt_velocity| for breakout confirm
+    RZ_CASCADE_HIGH_LOOKBACK: int = 20               # bars for new-high/low confirmation
+    RZ_CASCADE_MIN_TF_ALIGN: int = 2                 # min TFs agreeing for entry
+    RZ_CASCADE_EXIT_ANY_TF: bool = True              # exit if ANY TF reverses (True) or only LTF (False)
+    RZ_CASCADE_USE_W_M: bool = False                 # include W/M TFs when fields exist in NPZ
     RATIO_SENTIMENT_FILTER_ENABLED: bool = False
     RATIO_SENTIMENT_LONG_MIN: float = 40.0
     RATIO_SENTIMENT_SHORT_MAX: float = 60.0
@@ -1152,6 +1164,148 @@ def _compute_le_score_arr(npz: dict, n: int, is_long: bool, cfg) -> np.ndarray:
     return np.minimum(score, 100.0)
 
 
+def _rolling_max(arr: np.ndarray, w: int) -> np.ndarray:
+    """Right-aligned rolling max over window w. O(n) using numpy stride tricks."""
+    n = len(arr)
+    if n == 0 or w <= 1:
+        return arr.copy()
+    try:
+        from numpy.lib.stride_tricks import sliding_window_view
+        if n < w:
+            return np.maximum.accumulate(arr)
+        sw = sliding_window_view(arr, w).max(axis=1)
+        out = np.empty(n, dtype=arr.dtype)
+        out[:w - 1] = np.maximum.accumulate(arr[:w - 1]) if w > 1 else arr[:w - 1]
+        out[w - 1:] = sw
+        return out
+    except Exception:
+        out = np.empty(n, dtype=arr.dtype)
+        for i in range(n):
+            lo = max(0, i - w + 1)
+            out[i] = arr[lo:i + 1].max()
+        return out
+
+
+def _rolling_min(arr: np.ndarray, w: int) -> np.ndarray:
+    n = len(arr)
+    if n == 0 or w <= 1:
+        return arr.copy()
+    try:
+        from numpy.lib.stride_tricks import sliding_window_view
+        if n < w:
+            return np.minimum.accumulate(arr)
+        sw = sliding_window_view(arr, w).min(axis=1)
+        out = np.empty(n, dtype=arr.dtype)
+        out[:w - 1] = np.minimum.accumulate(arr[:w - 1]) if w > 1 else arr[:w - 1]
+        out[w - 1:] = sw
+        return out
+    except Exception:
+        out = np.empty(n, dtype=arr.dtype)
+        for i in range(n):
+            lo = max(0, i - w + 1)
+            out[i] = arr[lo:i + 1].min()
+        return out
+
+
+def compute_rz_cascade_signals(npz, n, is_long, cfg):
+    """RZ cascade (2026-04-21 user directive). Per-TF signals → hierarchical entry/exit.
+
+    At each TF, detect:
+      - at_upper: price at dc_high (resistance RZ)
+      - at_lower: price at dc_low (support RZ)
+      - breakout_up: close > dc_high_prev AND wt_delta > 0 AND wt_velocity > 0 AND new K-bar high
+      - breakout_down: close < dc_low_prev AND wt_delta < 0 AND wt_velocity < 0 AND new K-bar low
+      - reverse_down: was at upper, now dropping, wt_delta < 0, wt_velocity < 0 (bearish reversal)
+      - reverse_up: was at lower, now rising, wt_delta > 0, wt_velocity > 0 (bullish reversal)
+
+    Entry signal (LONG): breakout_up on LTF AND ≥MIN_TF_ALIGN other TFs bullish (breakout OR reverse_up).
+    Exit signal (LONG): any TF reverse_down fires (hard exit on rejection at resistance).
+    Mirror for SHORT.
+    """
+    _ltf = getattr(cfg, 'LTF', '3m')
+    tf_fields = {
+        'LTF': _ltf, '15m': '15m', '1h': '1h', '4h': '4h', 'D': 'D',
+    }
+    if bool(getattr(cfg, 'RZ_CASCADE_USE_W_M', False)):
+        tf_fields['W'] = 'W'; tf_fields['M'] = 'M'
+
+    _wt_delta_min = float(getattr(cfg, 'RZ_CASCADE_WT_DELTA_MIN', 0.5))
+    _vel_min = float(getattr(cfg, 'RZ_CASCADE_VEL_MIN', 0.5))
+    _high_lb = int(getattr(cfg, 'RZ_CASCADE_HIGH_LOOKBACK', 20))
+
+    per_tf = {}
+    for tf_label, tf in tf_fields.items():
+        close = _safe(npz, f'close_{tf}', n)
+        dc_hi = _safe(npz, f'dc_high_{tf}', n)
+        dc_lo = _safe(npz, f'dc_low_{tf}', n)
+        wt1 = _safe(npz, f'wt1_{tf}', n); wt2 = _safe(npz, f'wt2_{tf}', n)
+        wt_vel = _safe(npz, f'wt_velocity_{tf}', n)
+        # Skip TF if key fields are all zero (not precomputed)
+        if (wt1.sum() == 0 and wt2.sum() == 0) or (dc_hi.sum() == 0 and dc_lo.sum() == 0):
+            continue
+        wt_delta = wt1 - wt2
+        dc_hi_prev = np.roll(dc_hi, 1); dc_hi_prev[0] = dc_hi[0]
+        dc_lo_prev = np.roll(dc_lo, 1); dc_lo_prev[0] = dc_lo[0]
+        px_max_lb = _rolling_max(close, _high_lb)
+        px_min_lb = _rolling_min(close, _high_lb)
+        px_max_prev = np.roll(px_max_lb, 1); px_max_prev[0] = px_max_lb[0]
+        px_min_prev = np.roll(px_min_lb, 1); px_min_prev[0] = px_min_lb[0]
+        # At RZ (within 0.1% of band)
+        at_upper = (dc_hi_prev > 0) & (close >= dc_hi_prev * 0.999)
+        at_lower = (dc_lo_prev > 0) & (close <= dc_lo_prev * 1.001)
+        # Breakout — confirmed new-high/low + wt direction + velocity
+        breakout_up = (dc_hi_prev > 0) & (close > dc_hi_prev) & (wt_delta > _wt_delta_min) & (wt_vel > _vel_min) & (close > px_max_prev)
+        breakout_down = (dc_lo_prev > 0) & (close < dc_lo_prev) & (wt_delta < -_wt_delta_min) & (wt_vel < -_vel_min) & (close < px_min_prev)
+        # Reversal — was at RZ, now rejecting with wt turn
+        close_prev = np.roll(close, 1); close_prev[0] = close[0]
+        at_upper_prev = np.roll(at_upper, 1); at_upper_prev[0] = at_upper[0]
+        at_lower_prev = np.roll(at_lower, 1); at_lower_prev[0] = at_lower[0]
+        reverse_down = at_upper_prev & (close < close_prev) & (wt_delta < 0) & (wt_vel < 0)
+        reverse_up = at_lower_prev & (close > close_prev) & (wt_delta > 0) & (wt_vel > 0)
+        per_tf[tf_label] = {
+            'at_upper': at_upper, 'at_lower': at_lower,
+            'breakout_up': breakout_up, 'breakout_down': breakout_down,
+            'reverse_up': reverse_up, 'reverse_down': reverse_down,
+        }
+
+    if not per_tf or 'LTF' not in per_tf:
+        return np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
+
+    min_align = int(getattr(cfg, 'RZ_CASCADE_MIN_TF_ALIGN', 2))
+    exit_any_tf = bool(getattr(cfg, 'RZ_CASCADE_EXIT_ANY_TF', True))
+
+    # Entry: LTF breakout + alignment across other TFs
+    if is_long:
+        ltf_break = per_tf['LTF']['breakout_up']
+        align_count = np.zeros(n, dtype=int)
+        for tf_label, sigs in per_tf.items():
+            if tf_label == 'LTF': continue
+            align_count = align_count + (sigs['breakout_up'] | sigs['reverse_up']).astype(int)
+        entry_sig = ltf_break & (align_count >= min_align)
+        # Exit: any TF reverse_down (if exit_any_tf) or just LTF
+        if exit_any_tf:
+            exit_sig = np.zeros(n, dtype=bool)
+            for tf_label, sigs in per_tf.items():
+                exit_sig = exit_sig | sigs['reverse_down']
+        else:
+            exit_sig = per_tf['LTF']['reverse_down']
+    else:
+        ltf_break = per_tf['LTF']['breakout_down']
+        align_count = np.zeros(n, dtype=int)
+        for tf_label, sigs in per_tf.items():
+            if tf_label == 'LTF': continue
+            align_count = align_count + (sigs['breakout_down'] | sigs['reverse_down']).astype(int)
+        entry_sig = ltf_break & (align_count >= min_align)
+        if exit_any_tf:
+            exit_sig = np.zeros(n, dtype=bool)
+            for tf_label, sigs in per_tf.items():
+                exit_sig = exit_sig | sigs['reverse_up']
+        else:
+            exit_sig = per_tf['LTF']['reverse_up']
+
+    return entry_sig, exit_sig
+
+
 def compute_entry_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
@@ -1408,8 +1562,13 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'RATIO_SENTIMENT_FILTER_ENABLED', False):
         mkt_s = _safe(npz, 'market_sentiment_score', n, 50.0)
         base_sig = base_sig & ((mkt_s >= cfg.RATIO_SENTIMENT_LONG_MIN) if is_long else (mkt_s <= cfg.RATIO_SENTIMENT_SHORT_MAX))
-    # RZ_BREAKOUT: entry when price exits extreme BB zone (oversold→normal for LONG, overbought→normal for SHORT)
-    if getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
+    # RZ_CASCADE (2026-04-21) — replaces old shitty RZ_BREAKOUT_ENTRY.
+    # Per user: each TF has RZs at dc_high/dc_low; breakout→open, reverse→close; cascade LTF→15m→1h→4h→D(/W/M).
+    if getattr(cfg, 'RZ_CASCADE_ENABLED', False):
+        rz_entry_sig, _ = compute_rz_cascade_signals(npz, n, is_long, cfg)
+        base_sig = base_sig | rz_entry_sig
+    # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
+    elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
         _rz_bot_e = float(getattr(cfg, 'RZ_BOT_BB_THRESHOLD', 0.15))
         _bb_pb = _safe(npz, 'bb_pct_b_1h', n, 0.5)
@@ -1721,7 +1880,11 @@ def compute_exit_signals(npz, n, is_long, cfg):
             k_lower_high_exit = (k_ltf_prev_lh >= _klh_thr) & (k_ltf < k_ltf_prev_lh) & (k_ltf_prev_lh < _klh_extreme)
         else:
             k_lower_high_exit = (k_ltf_prev_lh <= (100.0 - _klh_thr)) & (k_ltf > k_ltf_prev_lh) & (k_ltf_prev_lh > (100.0 - _klh_extreme))
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
+    # RZ_CASCADE exit (2026-04-21): any TF reverse fires close. Mirrors compute_rz_cascade_signals exit path.
+    rz_cascade_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'RZ_CASCADE_ENABLED', False):
+        _, rz_cascade_exit = compute_rz_cascade_signals(npz, n, is_long, cfg)
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -2390,6 +2553,7 @@ def _per_symbol_max_dd_pct(plist):
 
 
 def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort):
+    _return_raw = os.environ.get("V8_RETURN_RAW_PNL", "0") == "1"
     per_sym_sharpes = _per_symbol_sharpes(per_symbol_pnl)
     zero_pad = symbols_processed - len(per_symbol_pnl)
     if zero_pad > 0:
@@ -2417,7 +2581,7 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
     arr = np.array(per_sym_sharpes)
     p = np.array(all_pnl) if all_pnl else np.array([0.0])
     w = int((p > 0).sum()); l = int((p <= 0).sum())
-    return {
+    out = {
         "sharpe": round(float(arr.mean()), 4),
         "sharpe_min": round(float(arr.min()), 4),
         "sharpe_p25": round(float(np.percentile(arr, 25)), 4),
@@ -2437,6 +2601,10 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
         "early_abort": early_abort,
         "symbols_used": symbols_processed,
     }
+    if _return_raw:
+        out["all_pnl"] = list(all_pnl)
+        out["per_symbol_pnl"] = {k: list(v) for k, v in per_symbol_pnl.items()}
+    return out
 
 
 FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT"

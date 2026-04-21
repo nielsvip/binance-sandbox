@@ -38,7 +38,9 @@ from v8_quick_engine import QuickConfig, load_npz, simulate
 
 
 def combined_score(r: Dict[str, Any]) -> float:
-    s = float(r.get("sharpe", 0) or 0)
+    """Uses POOL sharpe (mean/std of ALL trade returns across ALL symbols) per user 2026-04-21.
+    Per-symbol-avg sharpe is diagnostic only — it lies when trade counts vary across symbols."""
+    s = float(r.get("pool_sharpe", 0) or 0)
     g = float(r.get("accumulated_gain_pct", 0) or 0)
     d = float(r.get("max_dd_pct", 0) or 0)
     t = int(r.get("trades", 0) or 0)
@@ -231,10 +233,12 @@ def main():
                 "new_score": round(new_score, 4),
                 "delta": round(delta, 4),
                 "delta_pct": round(delta_pct, 2),
-                "sharpe": round(float(r.get("sharpe", 0) or 0), 4),
+                "pool_sharpe": round(float(r.get("pool_sharpe", 0) or 0), 4),
+                "per_sym_sharpe": round(float(r.get("sharpe", 0) or 0), 4),
                 "gain_pct": round(float(r.get("accumulated_gain_pct", 0) or 0), 4),
                 "max_dd_pct": round(float(r.get("max_dd_pct", 0) or 0), 4),
                 "trades": int(r.get("trades", 0) or 0),
+                "symbols_used": int(r.get("symbols_used", 0) or 0),
                 "elapsed_s": round(elapsed, 2),
             }
             all_rows.append(row)

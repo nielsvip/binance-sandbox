@@ -58,8 +58,9 @@ TRADIER_48 = [
 
 
 def combined_score(r: Dict[str, Any]) -> float:
-    """Higher = better. Per-sym-avg Sharpe * accumulated_gain_pct / max_dd_pct (>=1.0 floor)."""
-    s = float(r.get("sharpe", 0) or 0)
+    """Uses POOL sharpe per user 2026-04-21: sharpe = mean(all_trade_returns) / std(all_trade_returns)
+    across ALL symbols pooled. Per-symbol-avg lies when trade counts vary wildly across symbols."""
+    s = float(r.get("pool_sharpe", 0) or 0)
     g = float(r.get("accumulated_gain_pct", 0) or 0)
     d = float(r.get("max_dd_pct", 0) or 0)
     t = int(r.get("trades", 0) or 0)
