@@ -123,6 +123,10 @@ This is not a bug per se — if price never crossed and no oversold bounce occur
   - Fix: pre-compute wt1_15m cross; if T3 fires, bypass RALLY_K15M gate
 - [x] Fix Bug 4 (v8): T1_PRICE_CROSS vectorized block (previous session) ✓
 - [x] Sync S1 + S2 ✓
+- [x] CRITICAL: backtest_v8_engine reentry_data pop bug fixed — reentry now fires after full closes (MANDATORY_PRICE_CROSS_REENTRY confirmed in 2000-bar test) ✓
+- [x] Signal gate added to backtest_v8_engine — pre-computes per-symbol entry-signal timestamps from NPZ crossover arrays, skips ~90% of check_entry_candidates calls ✓
+- [x] v8_parallel_run.py built — splits symbols across N workers, aggregates results ✓
+- [x] backtest_v8_engine.py synced to S1 + S2 (MD5 matched all 3 machines) ✓
 - [ ] 4-year backtest run + confirm (S1/S2 locked with running sweeps, run when clear)
 - [x] G1: tracker.json + position.last_reduction_price as 2 new sources in reentry_enforcement_loop_epq (60s scan, every 4 cycles) ✓
 - [x] G2: RALLY_K15M bypass for T3 bounce signals in enforcement loop ✓ (previous session)

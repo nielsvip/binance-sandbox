@@ -81,6 +81,37 @@ Best known levers for real Sharpe:
 - **10x B&H targets**: Crypto >3,623% gain + sharpe >1.5: NOT MET. Tradier >77,205%: NOT MET.
 - **Root cause of ceiling**: Without PT, exits are honest but mean ≈ 0.5%, std ≈ 2.3%. Sharpe ≈ 0.22. Need either longer holds (raise mean) OR tighter entry filter (reduce std).
 
+### ~22:00 UTC Update (Stage-2 results)
+
+**MAJOR PROGRESS: New bests found via Stage-1 → Stage-2 funnel**
+
+#### Crypto (48-sym, 2022-2026 — VALID):
+| Rank | pool_sharpe | gain% | DD% | trades/sym | 10x B&H? |
+|------|------------|-------|-----|-----------|----------|
+| 0 | **0.7574** | 4,394% | 1.2% | 93.7 | ✅ YES |
+| 1 | 0.6974 | 3,389% | 1.6% | 82.9 | ❌ NO |
+| 3 | 0.5851 | 26,434% | 7.2% | 739 | ✅ YES |
+| 4 | 0.5734 | 36,231% | 6.9% | 1059 | ✅ YES |
+| 6 | 0.5645 | 41,352% | 6.2% | 1196 | ✅ YES |
+
+**4/5 valid configs beat 10x B&H crypto target (>3,623% gain)**
+Best Sharpe: **0.7574** (down from 1.5 target, but nearly 3× improvement over morning's 0.2203)
+
+#### Tradier (114-sym, 2024-2026 — VALID, unchanged):
+- Best: **0.5823** (8,078 trades, DD=9.65%)
+
+**Snapshots created:**
+- S2: `snapshots/tradier_stage2_sharpe0p5823_20260421_2130/`
+- S1+MacBook: `snapshots/crypto_stage2_sharpe0p7574_20260421_2130/`
+- Winner overrides: `data/orchestrator/winner_overrides/tradier_baseline_0p5823_20260421.json` and `crypto_baseline_0p7574_20260421.json`
+- `autonomous_search.py` updated with `--base-overrides-json` flag — new swarms can start from validated baselines
+
+**Active sweeps (22:30 UTC):**
+- MacBook: Stage-2 crypto (43 candidates, ranks 8-42 pending — slow high-trade config)
+- S2: Stage-2 tradier v2 (170 candidates from tradier_swarm 16 workers)
+- S2: 4 new tradier baseline-seeded workers (`tradier_from_baseline/w1-w4`)
+- S1: 11 crypto workers (RAM full)
+
 ### 09:00 UTC Report
 - [fill]
 
