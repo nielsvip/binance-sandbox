@@ -47,18 +47,20 @@ Best known levers for real Sharpe:
 - Min save Sharpe: 1.5
 - Output: data/sweep_results/
 
-## BUY-AND-HOLD BASELINE (to compute 10x target)
-- Crypto (50 sym, 2022-2026): ~TBD from measure_bh.py
-- Tradier (114 sym, 2024-2026): ~TBD from measure_bh.py
-- **10x target = accumulated_gain_pct > 10 × B&H accumulated_gain_pct**
+## BUY-AND-HOLD BASELINE (measured 2026-04-21)
+- Crypto (50 sym, 2022-2026): accumulated = **-3,623%** (avg -72.46%/sym). 10x target = +3,623% gain.
+- Tradier (114 sym, 2024-2026): accumulated = **+7,720.55%** (avg +67.72%/sym). 10x target = **+77,205%** gain.
+- **10x target = accumulated_gain_pct > 10 × |B&H accumulated_gain_pct|**
 
 ## REPORT TEMPLATE (fill at each deadline)
 
 ### 20:00 UTC Report
-- Crypto: X configs tested, Y with Sharpe > 1.5, best = Z
-- Tradier: X configs tested, Y with Sharpe > 1.5, best = Z
-- Top-3 crypto configs: [list]
-- Top-3 tradier configs: [list]
+- **Crypto**: ~120+ configs tested, **0** with pool_sharpe > 1.5. Best = 0.21 (1-sym only, not valid). C08 snapshot claims 0.59 on 50-sym — needs retest.
+- **Tradier**: 192 configs tested on 114-sym, **0** with pool_sharpe > 1.5. Best valid = **0.5823**.
+- **Root cause**: PROFIT_TARGET_PCT removal (19:04 UTC) was correct. Honest exits cap around 0.58 Sharpe currently.
+- **Top-3 tradier configs**: See RESULTS_SPREADSHEET.md — WSAK + multiple exit mechanisms
+- **Sweeps running**: hunt_crypto + le_partial_exit_crypto + mega_crypto_v8 (S1), le_partial_exit_tradier + mega_tradier_v8_focused + le_full_tradier + autonomous_v2 (S2)
+- **Action needed**: Test LOCAL_EXTREMES + MIN_HOLD_BARS + PPL combo to push Sharpe > 1.0
 
 ### 00:00 UTC Report
 - [fill]
