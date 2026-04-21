@@ -13623,6 +13623,7 @@ class MultiAccountTradeManager:
                 if hasattr(self, 'service') and self.service and hasattr(self.service, 'reentry_data'):
                     self.service.reentry_data[position_key] = self.reentry_data[position_key]
                     asyncio.create_task(self.service.save_reentry_data(position_key, force=True))
+                asyncio.create_task(self._write_ladder_levels_on_exit(account_key, position_key, current_price, float(position.max_quantity or quantity), is_long))
                 logger.info(f"[REENTRY_DATA_SET] {position_key}: level={current_price:.6f} amount={float(position.max_quantity or quantity):.6f} reason={'REDUCED' if is_reduce else 'CLOSED'}_{reason}")
                 position.last_reduction_price = current_price
                 position.last_reduction_time = now_dt
@@ -13962,6 +13963,46 @@ class MultiAccountTradeManager:
             logger.error(f"[HEDGE_GUARD] Crash: {e}")
             if self.redis_manager: await self.redis_manager.delete(lock_key)
             return None
+
+    async def _write_ladder_levels_on_exit(self, account_key: str, position_key: str, exit_price: float, max_qty: float, is_long: bool) -> None:
+        """Write bounce + break-above ladder levels to long/short_ladder.json after CLOSE/REDUCE.
+        Levels: exit_price (break-above 100%), exit×0.995 (near-bounce 50%), exit×0.98 (deep-bounce 50%).
+        _price_level_reentry_monitor reads these and fires AUGMENT orders when price crosses each level."""
+        try:
+            if exit_price <= 0 or max_qty <= 0:
+                return
+            now_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            base = Path(config.BASE_PATH) / account_key
+            side = 'long' if is_long else 'short'
+            ladder_file = base / f'{side}_ladder.json'
+            try:
+                async with aiofiles.open(str(ladder_file), 'r') as _lf:
+                    ladder_data = json.loads(await _lf.read())
+            except Exception:
+                ladder_data = {}
+            if not isinstance(ladder_data, dict):
+                ladder_data = {}
+            if is_long:
+                new_levels = [
+                    {"level": exit_price, "quantity": max_qty, "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                    {"level": round(exit_price * 0.995, 10), "quantity": round(max_qty * 0.5, 8), "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                    {"level": round(exit_price * 0.98, 10), "quantity": round(max_qty * 0.5, 8), "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                ]
+            else:
+                new_levels = [
+                    {"level": exit_price, "quantity": max_qty, "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                    {"level": round(exit_price * 1.005, 10), "quantity": round(max_qty * 0.5, 8), "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                    {"level": round(exit_price * 1.02, 10), "quantity": round(max_qty * 0.5, 8), "created_at": now_str, "crossed": False, "stoch_reversed": False},
+                ]
+            _sym = position_key.split(':')[1].rsplit('_', 1)[0] if ':' in position_key else ''
+            ladder_data[position_key] = {"levels": new_levels, "created_at": now_str, "is_long": is_long, "symbol": _sym, "account_key": account_key}
+            temp_file = ladder_file.with_suffix('.tmp')
+            async with aiofiles.open(str(temp_file), 'w') as _lf:
+                await _lf.write(json.dumps(ladder_data, indent=2))
+            temp_file.rename(ladder_file)
+            logger.info(f"[LADDER_WRITE] {position_key}: 3 levels written at exit_price={exit_price:.6f} max_qty={max_qty:.4f}")
+        except Exception as _e:
+            logger.warning(f"[LADDER_WRITE_ERR] {position_key}: {_e}")
 
     async def _close_associated_hedge(self, account_key, symbol, closed_position_side, current_price):
         closed_position_key = construct_position_key(account_key, symbol, closed_position_side)

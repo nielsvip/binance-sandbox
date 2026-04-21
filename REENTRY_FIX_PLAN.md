@@ -124,9 +124,11 @@ This is not a bug per se — if price never crossed and no oversold bounce occur
 - [x] Fix Bug 4 (v8): T1_PRICE_CROSS vectorized block (previous session) ✓
 - [x] Sync S1 + S2 ✓
 - [ ] 4-year backtest run + confirm (S1/S2 locked with running sweeps, run when clear)
-- [ ] G1: Hook tracker.json/reentry_candidates into reentry_enforcement_loop_epq
-- [ ] G3: Wire long/short_ladder.json writes from live system
-- [ ] G7: Flush reentry_data synchronously before os._exit(1) crash
+- [x] G1: tracker.json + position.last_reduction_price as 2 new sources in reentry_enforcement_loop_epq (60s scan, every 4 cycles) ✓
+- [x] G2: RALLY_K15M bypass for T3 bounce signals in enforcement loop ✓ (previous session)
+- [x] G3: Wire long/short_ladder.json writes via _write_ladder_levels_on_exit on every CLOSE/REDUCE in execute_now ✓ (3 levels: exit_price, ×0.995, ×0.98)
+- [x] G7: Sync flush reentry_data to disk before os._exit(1) in REENTRY_CRASH_EPQ ✓
+- [x] G8: T3 bypass also added to evaluate_reentry_epq (order_formation path) ✓
 
 ## Full Audit
 See: data/REENTRY_FUNCTION_AUDIT.xlsx (4 sheets: Function Map, Data Sources, Last Fired, Gaps+Fixes)

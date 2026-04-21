@@ -13607,6 +13607,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
     _price_crossed_since = {}
     REENTRY_COOLDOWN = float(getattr(config, 'REENTRY_COOLDOWN_S', 0.0))
     REENTRY_CRASH_TIMEOUT_SEC = 300.0
+    _src_refresh_ctr = 0
     while not stop_event.is_set():
         try:
             await asyncio.sleep(15.0)
@@ -13639,6 +13640,51 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                         'status': 'pending',
                         '_rd_ts': _rd_ts,
                     }
+            # === MULTI-SOURCE SCAN (every 4 cycles = 60s) ===
+            # Pulls reentry candidates from tracker.json + position.last_reduction_price
+            # to catch any exit that didn't make it into service.reentry_data
+            _src_refresh_ctr = (_src_refresh_ctr + 1) % 4
+            if _src_refresh_ctr == 0:
+                _base_path = Path(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance'))
+                _tradeable = set(getattr(config, 'TRADEABLE_KEYS', []))
+                _account_keys = list(getattr(config, 'ACCOUNT_KEYS', []))
+                for _acc_key in _account_keys:
+                    _tracker_file = _base_path / _acc_key / 'tracker.json'
+                    try:
+                        if _tracker_file.exists():
+                            async with aiofiles.open(str(_tracker_file), 'r') as _tf:
+                                _tracker_raw = await _tf.read()
+                            _tracker_data = json.loads(_tracker_raw)
+                            _reentry_cands = _tracker_data.get('reentry_candidates', {})
+                            for _pk, _rd in _reentry_cands.items():
+                                if not isinstance(_rd, dict): continue
+                                if not _rd.get('last_exit_reentry_ready', False): continue
+                                if _rd.get('was_reentered', True): continue
+                                if _tradeable and _pk not in _tradeable: continue
+                                _ep = float(_rd.get('exit_price', 0) or 0)
+                                if _ep <= 0: _ep = float(_rd.get('last_reduction_price', 0) or 0)
+                                if _ep <= 0: continue
+                                _amt = float(_rd.get('last_reduction_amount', 0) or 0)
+                                _ts = str(_rd.get('last_exit_timestamp', '') or _rd.get('timestamp', '') or '')
+                                if _pk not in trade_manager.pending_reentries or trade_manager.pending_reentries[_pk].get('status') == 'filled':
+                                    trade_manager.pending_reentries[_pk] = {'exit_price': _ep, 'exit_time': _ts, 'exit_reason': 'TRACKER_REENTRY_CANDIDATE', 'original_qty': _amt, 'attempts': 0, 'stoch_wait_cycles': 0, 'status': 'pending', '_rd_ts': _ts}
+                                    logger.info(f"[REENTRY_SRC_TRACKER] {_pk}: Added exit_price={_ep:.6f} amt={_amt:.4f}")
+                    except Exception as _te:
+                        logger.debug(f"[REENTRY_SRC_TRACKER_ERR] {_acc_key}: {_te}")
+                _positions = getattr(trade_manager, 'positions', {})
+                for _pk, _pos in list(_positions.items()):
+                    _lrp = float(getattr(_pos, 'last_reduction_price', 0) or 0)
+                    if _lrp <= 0: continue
+                    if _tradeable and _pk not in _tradeable: continue
+                    _pos_amt = abs(float(getattr(_pos, 'positionAmt', 0) or 0))
+                    _max_q = float(getattr(_pos, 'max_quantity', 0) or 0)
+                    if _max_q > 0 and _pos_amt >= _max_q * 0.9: continue
+                    if _pk not in trade_manager.pending_reentries or trade_manager.pending_reentries[_pk].get('status') == 'filled':
+                        _lrt = getattr(_pos, 'last_reduction_time', None)
+                        _ts_str = _lrt.isoformat() if hasattr(_lrt, 'isoformat') else str(_lrt or '')
+                        trade_manager.pending_reentries[_pk] = {'exit_price': _lrp, 'exit_time': _ts_str, 'exit_reason': 'POSITION_LAST_REDUCTION_PRICE', 'original_qty': _max_q if _max_q > 0 else _pos_amt, 'attempts': 0, 'stoch_wait_cycles': 0, 'status': 'pending', '_rd_ts': _ts_str}
+                        logger.info(f"[REENTRY_SRC_POS] {_pk}: Added last_reduction_price={_lrp:.6f} posAmt={_pos_amt:.4f} maxQ={_max_q:.4f}")
+            # === END MULTI-SOURCE SCAN ===
             for position_key, data in list(trade_manager.pending_reentries.items()):
                 if data.get('status') in ('filled', 'queued'): continue
                 _last = _reentry_last_fire.get(position_key, 0)
@@ -13758,6 +13804,24 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                         _sec_since_cross = time.time() - _crossed_at
                         if _sec_since_cross > REENTRY_CRASH_TIMEOUT_SEC:
                             logger.critical(f"💀💀💀 [REENTRY_CRASH_EPQ] {position_key}: Price crossed exit {exit_price:.6f} {_sec_since_cross:.0f}s ago, reentry FAILED {data['attempts']} times. result={result}. CRASHING SCRIPT — REENTRY IS MANDATORY.")
+                            try:
+                                _svc = getattr(trade_manager, 'service', None)
+                                if _svc and hasattr(_svc, 'reentry_data'):
+                                    _base_p = Path(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance'))
+                                    _acc_c, _, _side_c = parse_position_key(position_key)
+                                    _side_lc = 'long' if _side_c == 'LONG' else 'short'
+                                    _rf = _base_p / _acc_c / f'{_side_lc}_reentry.json'
+                                    _existing = {}
+                                    try:
+                                        if _rf.exists():
+                                            _existing = json.loads(_rf.read_text())
+                                    except Exception:
+                                        pass
+                                    _existing.update({k: v for k, v in _svc.reentry_data.items() if k.startswith(f'{_acc_c}:')})
+                                    _rf.write_text(json.dumps(_existing, indent=2))
+                                    logger.critical(f"[REENTRY_CRASH_FLUSH] Synced reentry_data to {_rf} before exit")
+                            except Exception as _fe:
+                                logger.error(f"[REENTRY_CRASH_FLUSH_ERR] {_fe}")
                             os._exit(1)
                         else:
                             logger.critical(f"🚨 [REENTRY_RETRY_EPQ] {position_key}: Price crossed exit but order failed (result={result}). {_sec_since_cross:.0f}s/{REENTRY_CRASH_TIMEOUT_SEC:.0f}s until CRASH. Retrying...")
@@ -13819,7 +13883,11 @@ async def evaluate_reentry_epq(ctx: dict):
     _dm = ctx.get('data_manager')
     if _epq_reentry_symgate_blocked(_dm, cfg, symbol, i, is_long, position_key):
         return None
-    if _epq_rally_k15m_blocked(i, is_long, cfg, position_key):
+    _wt1_15m_epq = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
+    _wt2_15m_epq = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
+    _wt1_15m_prev_epq = safe_fetch_float(i.get('wt1_15m_prev', _wt1_15m_epq), _wt1_15m_epq)
+    _t3_epq = ((is_long and _wt1_15m_prev_epq <= _wt2_15m_epq and _wt1_15m_epq > _wt2_15m_epq) or (not is_long and _wt1_15m_prev_epq >= _wt2_15m_epq and _wt1_15m_epq < _wt2_15m_epq))
+    if not _t3_epq and _epq_rally_k15m_blocked(i, is_long, cfg, position_key):
         return None
     # RE-1 (2026-04-18, default OFF): cross-freshness gate — block reentry if no recent WT cross on any LTF.
     # Prevents late entries on stale crosses (> N bars ago). Fail-OPEN on missing fields.
