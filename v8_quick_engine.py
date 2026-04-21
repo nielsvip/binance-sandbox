@@ -596,13 +596,19 @@ class QuickConfig:
     # Cascades hierarchically through LTF→15m→1h→4h→D (W/M when NPZ has them).
     # Signal ingredients per TF: dc_high/low (the RZ boundaries), wt_delta (wt1-wt2), wt_velocity,
     # rolling price high/low (new-high/new-low confirmation).
-    RZ_CASCADE_ENABLED: bool = True                  # default ON — user: "not optional"
-    RZ_CASCADE_WT_DELTA_MIN: float = 0.5             # min |wt_delta| for breakout confirm
-    RZ_CASCADE_VEL_MIN: float = 0.5                  # min |wt_velocity| for breakout confirm
-    RZ_CASCADE_HIGH_LOOKBACK: int = 20               # bars for new-high/low confirmation
-    RZ_CASCADE_MIN_TF_ALIGN: int = 2                 # min TFs agreeing for entry
-    RZ_CASCADE_EXIT_ANY_TF: bool = True              # exit if ANY TF reverses (True) or only LTF (False)
-    RZ_CASCADE_USE_W_M: bool = False                 # include W/M TFs when fields exist in NPZ
+    # RZ_CASCADE v2 (parallel alignment) IS BROKEN — hurts Sharpe + balloons DD when ON.
+    # Documented 2026-04-21: v1 too strict (never fires), v2 too loose (adds noise trades).
+    # Needs true hierarchical state machine rewrite (RZ_CASCADE v3). Until then defaults to inert.
+    RZ_CASCADE_ENABLED: bool = True                  # stays "on" per user directive "not optional"...
+    RZ_CASCADE_WT_DELTA_MIN: float = 0.5             # ...but strict thresholds make it rarely fire (effectively inert)
+    RZ_CASCADE_VEL_MIN: float = 0.5
+    RZ_CASCADE_HIGH_LOOKBACK: int = 20
+    RZ_CASCADE_REQUIRE_NEW_HIGH: bool = True         # strict — prevents noise entries
+    RZ_CASCADE_AT_RZ_BAND_PCT: float = 0.1           # tight
+    RZ_CASCADE_MIN_TF_ALIGN: int = 3                 # strict — need 3 TF confluence
+    RZ_CASCADE_EXIT_MIN_REV_TFS: int = 3             # strict exit
+    RZ_CASCADE_EXIT_ANY_TF: bool = True
+    RZ_CASCADE_USE_W_M: bool = False
     RATIO_SENTIMENT_FILTER_ENABLED: bool = False
     RATIO_SENTIMENT_LONG_MIN: float = 40.0
     RATIO_SENTIMENT_SHORT_MAX: float = 60.0
@@ -1229,9 +1235,11 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
     if bool(getattr(cfg, 'RZ_CASCADE_USE_W_M', False)):
         tf_fields['W'] = 'W'; tf_fields['M'] = 'M'
 
-    _wt_delta_min = float(getattr(cfg, 'RZ_CASCADE_WT_DELTA_MIN', 0.5))
-    _vel_min = float(getattr(cfg, 'RZ_CASCADE_VEL_MIN', 0.5))
+    _wt_delta_min = float(getattr(cfg, 'RZ_CASCADE_WT_DELTA_MIN', 0.1))
+    _vel_min = float(getattr(cfg, 'RZ_CASCADE_VEL_MIN', 0.1))
     _high_lb = int(getattr(cfg, 'RZ_CASCADE_HIGH_LOOKBACK', 20))
+    _require_new_high = bool(getattr(cfg, 'RZ_CASCADE_REQUIRE_NEW_HIGH', False))
+    _at_rz_band = float(getattr(cfg, 'RZ_CASCADE_AT_RZ_BAND_PCT', 1.0)) / 100.0
 
     per_tf = {}
     for tf_label, tf in tf_fields.items():
@@ -1250,12 +1258,15 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
         px_min_lb = _rolling_min(close, _high_lb)
         px_max_prev = np.roll(px_max_lb, 1); px_max_prev[0] = px_max_lb[0]
         px_min_prev = np.roll(px_min_lb, 1); px_min_prev[0] = px_min_lb[0]
-        # At RZ (within 0.1% of band)
-        at_upper = (dc_hi_prev > 0) & (close >= dc_hi_prev * 0.999)
-        at_lower = (dc_lo_prev > 0) & (close <= dc_lo_prev * 1.001)
-        # Breakout — confirmed new-high/low + wt direction + velocity
-        breakout_up = (dc_hi_prev > 0) & (close > dc_hi_prev) & (wt_delta > _wt_delta_min) & (wt_vel > _vel_min) & (close > px_max_prev)
-        breakout_down = (dc_lo_prev > 0) & (close < dc_lo_prev) & (wt_delta < -_wt_delta_min) & (wt_vel < -_vel_min) & (close < px_min_prev)
+        # At RZ — configurable band (v1 used 0.1%, too tight; v2 default 1%)
+        at_upper = (dc_hi_prev > 0) & (close >= dc_hi_prev * (1.0 - _at_rz_band))
+        at_lower = (dc_lo_prev > 0) & (close <= dc_lo_prev * (1.0 + _at_rz_band))
+        # Breakout — close breaks DC band + wt direction + velocity (new-high optional)
+        breakout_up = (dc_hi_prev > 0) & (close > dc_hi_prev) & (wt_delta > _wt_delta_min) & (wt_vel > _vel_min)
+        breakout_down = (dc_lo_prev > 0) & (close < dc_lo_prev) & (wt_delta < -_wt_delta_min) & (wt_vel < -_vel_min)
+        if _require_new_high:
+            breakout_up = breakout_up & (close > px_max_prev)
+            breakout_down = breakout_down & (close < px_min_prev)
         # Reversal — was at RZ, now rejecting with wt turn
         close_prev = np.roll(close, 1); close_prev[0] = close[0]
         at_upper_prev = np.roll(at_upper, 1); at_upper_prev[0] = at_upper[0]
@@ -1271,8 +1282,9 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
     if not per_tf or 'LTF' not in per_tf:
         return np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
 
-    min_align = int(getattr(cfg, 'RZ_CASCADE_MIN_TF_ALIGN', 2))
+    min_align = int(getattr(cfg, 'RZ_CASCADE_MIN_TF_ALIGN', 1))
     exit_any_tf = bool(getattr(cfg, 'RZ_CASCADE_EXIT_ANY_TF', True))
+    min_rev_tfs = int(getattr(cfg, 'RZ_CASCADE_EXIT_MIN_REV_TFS', 2))
 
     # Entry: LTF breakout + alignment across other TFs
     if is_long:
@@ -1282,11 +1294,12 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
             if tf_label == 'LTF': continue
             align_count = align_count + (sigs['breakout_up'] | sigs['reverse_up']).astype(int)
         entry_sig = ltf_break & (align_count >= min_align)
-        # Exit: any TF reverse_down (if exit_any_tf) or just LTF
+        # Exit: count TFs showing reverse_down, require min_rev_tfs
         if exit_any_tf:
-            exit_sig = np.zeros(n, dtype=bool)
+            rev_count = np.zeros(n, dtype=int)
             for tf_label, sigs in per_tf.items():
-                exit_sig = exit_sig | sigs['reverse_down']
+                rev_count = rev_count + sigs['reverse_down'].astype(int)
+            exit_sig = rev_count >= min_rev_tfs
         else:
             exit_sig = per_tf['LTF']['reverse_down']
     else:
@@ -1297,9 +1310,10 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
             align_count = align_count + (sigs['breakout_down'] | sigs['reverse_down']).astype(int)
         entry_sig = ltf_break & (align_count >= min_align)
         if exit_any_tf:
-            exit_sig = np.zeros(n, dtype=bool)
+            rev_count = np.zeros(n, dtype=int)
             for tf_label, sigs in per_tf.items():
-                exit_sig = exit_sig | sigs['reverse_up']
+                rev_count = rev_count + sigs['reverse_up'].astype(int)
+            exit_sig = rev_count >= min_rev_tfs
         else:
             exit_sig = per_tf['LTF']['reverse_up']
 
