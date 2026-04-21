@@ -1603,7 +1603,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if _hier_mode_e in ('entry', 'both'):
         try:
             from wt_dc_hierarchy import compute_hierarchy_signals
-            _hier_entry, _ = compute_hierarchy_signals(npz, n, is_long, cfg)
+            _hier_entry, _, _ = compute_hierarchy_signals(npz, n, is_long, cfg)
             # OR combine with base_sig so hierarchy ADDS entries rather than replacing
             base_sig = base_sig | _hier_entry
         except Exception as _e:
@@ -1643,7 +1643,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if _hier_mode in ('exit', 'both'):
         try:
             from wt_dc_hierarchy import compute_hierarchy_signals
-            _, _hier_exit = compute_hierarchy_signals(npz, n, is_long, cfg)
+            _, _hier_exit, _ = compute_hierarchy_signals(npz, n, is_long, cfg)
             return _hier_exit
         except Exception as _e:
             print(f"[V8] HIER exit fallback: {_e}", file=__import__('sys').stderr)
