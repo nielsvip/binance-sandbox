@@ -85,7 +85,7 @@ def compute_per_tf_signals(npz: dict, n: int, cfg) -> Tuple[List[str], Dict[str,
         wt1 = _safe(npz, f"wt1_{tf}", n)
         wt2 = _safe(npz, f"wt2_{tf}", n)
         wt_vel = _safe(npz, f"wt_velocity_{tf}", n)
-        bb_pctb = _safe(npz, f"bb_pctb_{tf}", n, 0.5)
+        bb_pctb = _safe(npz, f"bb_pct_b_{tf}", n, 0.5)
         if wt1.sum() == 0 and wt2.sum() == 0 and dc_hi.sum() == 0 and dc_lo.sum() == 0:
             continue
         dc_hi_prev = np.roll(dc_hi, 1); dc_hi_prev[0] = dc_hi[0]
