@@ -247,7 +247,7 @@ class AccountConfig:
         self.api_secret = os.getenv(f"{self.prefix.lower()}_API_SECRET")
         self.webhook_url = os.getenv(f"{self.prefix.lower()}_WEBHOOK_URL")
         self.webhook_secret = os.getenv(f"{self.prefix.lower()}_WEBHOOK_SECRET")
-        self.webhook_url_2 = os.getenv(f"{self.prefix.lower()}2_WEBHOOK_URL2")
+        self.webhook_url_2 = os.getenv(f"{self.prefix.lower()}_WEBHOOK_URL2")
         self.webhook_secret_2 = os.getenv(f"{self.prefix.lower()}_WEBHOOK_SECRET2")
         self.webhook_url_3 = os.getenv(f"{self.prefix.lower()}_WEBHOOK_URL3")
         self.webhook_secret_3 = os.getenv(f"{self.prefix.lower()}_WEBHOOK_SECRET3")
@@ -11620,10 +11620,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 if not is_hedge:
                     cand = await tracker_manager.get_exit_candidate(position_key)
                     if cand:
-                        _cand_is_hedge = cand.get('is_hedge', False) or 'HEDGE' in str(cand.get('last_reason', '')).upper() or 'HEDGE' in str(cand.get('hedge_for', '')).upper()
+                        _cand_hedge_for = cand.get('hedge_for') or cand.get('losing_position_key')
+                        _cand_is_hedge = cand.get('is_hedge', False) or bool(_cand_hedge_for)
                         if _cand_is_hedge:
                             is_hedge = True
-                            hedge_for = cand.get('losing_position_key') or cand.get('hedge_for')
+                            hedge_for = _cand_hedge_for
 
                 hard_exit_reason = ""
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══

@@ -2489,7 +2489,7 @@ def main():
     print(f"CSV: {csv_path}\n")
 
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
-    fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
+    fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "accumulated_gain_pct", "max_dd_pct", "avg_dd_pct", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
     for k in cfg_keys:
         fieldnames.append(f"cfg_{k}")
 
@@ -2540,6 +2540,9 @@ def main():
                 "syms_with_sharpe": result.get("syms_with_sharpe", 0),
                 "syms_excluded": result.get("syms_excluded", 0),
                 "pnl": result.get("pnl", 0),
+                "accumulated_gain_pct": result.get("accumulated_gain_pct", 0),
+                "max_dd_pct": result.get("max_dd_pct", 0),
+                "avg_dd_pct": result.get("avg_dd_pct", 0),
                 "trades": result.get("trades", 0),
                 "wins": result.get("wins", 0),
                 "losses": result.get("losses", 0),

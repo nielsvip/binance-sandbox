@@ -2153,15 +2153,27 @@ def _pool_sharpe(all_pnl, min_trades=30, cap=20.0):
     return round(float(max(min(m / s, cap), -cap)), 4)
 
 
+def _per_symbol_max_dd_pct(plist):
+    if not plist:
+        return 0.0
+    cum = np.cumsum(np.array(plist, dtype=np.float64))
+    running_max = np.maximum.accumulate(cum)
+    dd = running_max - cum
+    return float(dd.max()) if len(dd) > 0 else 0.0
+
+
 def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort):
     per_sym_sharpes = _per_symbol_sharpes(per_symbol_pnl)
-    # Pad with 0s for any symbols_processed that never appeared in per_symbol_pnl (0 trades)
     zero_pad = symbols_processed - len(per_symbol_pnl)
     if zero_pad > 0:
         per_sym_sharpes.extend([0.0] * zero_pad)
     n_trades = len(all_pnl)
     ps = _pool_sharpe(all_pnl)
-    syms_excluded = 0  # nothing excluded — all symbols included as 0 if no trades
+    syms_excluded = 0
+    per_sym_dds = [_per_symbol_max_dd_pct(plist) for plist in per_symbol_pnl.values() if plist]
+    worst_sym_dd_pct = round(float(max(per_sym_dds)), 4) if per_sym_dds else 0.0
+    avg_sym_dd_pct = round(float(sum(per_sym_dds) / len(per_sym_dds)), 4) if per_sym_dds else 0.0
+    accumulated_gain_pct = round(float(np.array(all_pnl).sum()), 4) if all_pnl else 0.0
     if not per_sym_sharpes:
         p = np.array(all_pnl) if all_pnl else np.array([0.0])
         w = int((p > 0).sum()); l = int((p <= 0).sum())
@@ -2171,6 +2183,9 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
                 "pnl": round(p.sum() / 100 * start_size, 2), "trades": n_trades,
                 "wins": w, "losses": l, "avg_pnl_pct": round(float(p.mean()), 4) if n_trades else 0,
                 "wr": round(w / n_trades * 100, 1) if n_trades > 0 else 0,
+                "accumulated_gain_pct": accumulated_gain_pct,
+                "max_dd_pct": worst_sym_dd_pct,
+                "avg_dd_pct": avg_sym_dd_pct,
                 "early_abort": early_abort, "symbols_used": symbols_processed}
     arr = np.array(per_sym_sharpes)
     p = np.array(all_pnl) if all_pnl else np.array([0.0])
@@ -2189,6 +2204,9 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
         "trades": n_trades, "wins": w, "losses": l,
         "avg_pnl_pct": round(float(p.mean()), 4),
         "wr": round(w / n_trades * 100, 1) if n_trades > 0 else 0,
+        "accumulated_gain_pct": accumulated_gain_pct,
+        "max_dd_pct": worst_sym_dd_pct,
+        "avg_dd_pct": avg_sym_dd_pct,
         "early_abort": early_abort,
         "symbols_used": symbols_processed,
     }

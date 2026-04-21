@@ -171,6 +171,11 @@ Violating any of these = the number is a LIE and the decision it supports is inv
 2. **Max drawdown % over the full 4-year sequence is MANDATORY** in every summary.
    - Max peak-to-trough equity drawdown as % of starting capital across the ENTIRE tested window.
    - Not per-trade, not per-year — the worst the account ever looked from its high-water mark.
+   - CSV column name: `max_dd_pct` (worst-single-symbol DD) + `avg_dd_pct` (mean across syms). Both required.
+
+2b. **Accumulated gain % is MANDATORY** in every summary. CSV column: `accumulated_gain_pct` = sum of all per-trade %-returns across all symbols in the test. Rationale: a 1.2M-trade system at per-trade Sharpe 0.6 can outperform a 10-trade system at per-trade Sharpe 2 by raw return. Sharpe alone is insufficient — must be paired with accumulated gain AND drawdown.
+
+2c. **Live-parity warning**: `v8_quick_engine.py` is a VECTORIZED SIGNAL GENERATOR, not a live replica. It does NOT call `ez_manage.process_position()`, `check_entry_candidates()`, `check_exit_candidates()`, or `execute_now()`. It does NOT use real `Position` objects, hedge_engine, or ratio_rebalance_loop. Many canonical switches (K_ZONE, MFI, FH_MOMENTUM, DC_DAYTRADE, RSI2) default FALSE in the quick engine while they FIRE in live. Parity ≈ 35%. For any decision that affects live capital, run via `backtest_v8_engine.py` (imports real ez_manage, uses real MultiAccountTradeManager, V8_SWEEP_MODE=1 for speed). Quick-engine results are only valid for directional A/B comparisons of gates that exist in both paths.
    - If drawdown isn't computed, the summary is INCOMPLETE — flag it.
 
 3. **Labels must specify base timeframe and sample scope**:
