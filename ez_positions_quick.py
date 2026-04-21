@@ -13657,6 +13657,13 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 exit_price = safe_fetch_float(data.get('exit_price', 0), 0.0)
                 if exit_price <= 0: continue
                 _price_crossed = (is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price)
+                # Pre-check T3 (wt15m cross) — a bullish/bearish crossover is a confirmed bounce signal.
+                # When T3 fires, bypass RALLY_K15M so a mandatory post-reduction reentry is not blocked
+                # just because k_15m is elevated or stale. T1 (price_crossed) still bypasses ALL guards.
+                _wt1_15m_pre_gr = safe_fetch_float(indicators.get('wt1_15m', 0), 0.0)
+                _wt2_15m_pre_gr = safe_fetch_float(indicators.get('wt2_15m', 0), 0.0)
+                _wt1_15m_prev_pre_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_pre_gr), _wt1_15m_pre_gr)
+                _t3_bounce_pre = ((is_long and _wt1_15m_prev_pre_gr <= _wt2_15m_pre_gr and _wt1_15m_pre_gr > _wt2_15m_pre_gr) or (not is_long and _wt1_15m_prev_pre_gr >= _wt2_15m_pre_gr and _wt1_15m_pre_gr < _wt2_15m_pre_gr))
                 # === GUARDS — BYPASSED entirely when price already crossed exit level ===
                 # T1 (price_crossed) = MANDATORY reentry. Guards may only run when price has NOT yet crossed.
                 if not _price_crossed:
@@ -13664,7 +13671,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                         continue
                     if _epq_reentry_symgate_blocked(data_manager, config, symbol, indicators, is_long, position_key):
                         continue
-                    if _epq_rally_k15m_blocked(indicators, is_long, config, position_key):
+                    if not _t3_bounce_pre and _epq_rally_k15m_blocked(indicators, is_long, config, position_key):
                         continue
                 # === END GUARDS ===
                 _elapsed_s = 999999.0
