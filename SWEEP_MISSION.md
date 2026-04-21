@@ -62,8 +62,16 @@ Best known levers for real Sharpe:
 - **Sweeps running**: hunt_crypto + le_partial_exit_crypto + mega_crypto_v8 (S1), le_partial_exit_tradier + mega_tradier_v8_focused + le_full_tradier + autonomous_v2 (S2)
 - **Action needed**: Test LOCAL_EXTREMES + MIN_HOLD_BARS + PPL combo to push Sharpe > 1.0
 
-### 00:00 UTC Report
-- [fill]
+### 00:00 UTC Report (filled at ~21:00 UTC — preliminary, updating through midnight)
+- **Crypto**: 789 structured-sweep configs tested (max 24-sym, all invalid). Autonomous 50-sym (crypto_swarm_v2/w1): 4 valid rows, best pool_sharpe = **0.2203** (gain=3,580%, dd=117%, trades=6,727). ZERO configs with pool_sharpe > 1.5 on valid ≥48-sym runs.
+- **Crypto 6-sym sub-swarm** (crypto_swarm, 6 sym × 2024-2026, 7 workers): 8 rows, best = **0.6335** (gain=5,510%, dd=2.84%, trades=7,189). NOT VALID per ≥48-sym rule — diagnostic only.
+- **10x B&H Crypto target (>3,623% gain)**: iter=0 hit **5,358%** gain BUT sharpe=0.1371, dd=90.87% — terrible risk. iter=3 hit 3,580% (just under target). No config with both gain>3,623% AND sharpe>1.5.
+- **Tradier**: 37,408 structured configs + 292 autonomous configs tested on 114+ symbols. Best valid pool_sharpe = **0.5823** (gain=4,181%, dd=9.65%, trades=8,078). ZERO configs with pool_sharpe > 1.5.
+- **10x B&H Tradier target (>77,205% gain)**: Not in sight. Best honest gain = 4,614% (16× below target).
+- **Status**: Ceiling is ~0.58 tradier / ~0.22 crypto (50-sym, 4yr). 6-sym shows 0.63 — may improve on larger sample. No architectural breakthrough yet.
+- **Sweeps still running**: S1 — 7 autonomous workers (6-sym crypto) + 1 autonomous (50-sym) + structured. S2 — 4 autonomous workers (114-sym tradier) + 37 structured-sweep processes.
+- **Rate**: S2 tradier autonomous: ~40s/config → ~90 configs/hour per worker (4 workers = 360/hr). S1 crypto: ~40s/config (6-sym much faster than 50-sym, multiple workers).
+- **Action needed**: The 6-sym crypto 0.63 result uses different symbol set/period. Need to validate those overrides on 50-sym 4yr. Run c08 winner config without PT on 50-sym.
 
 ### 09:00 UTC Report
 - [fill]
