@@ -395,7 +395,6 @@ class Config:
     #   v2 (+ PT=1.5) 11-sym:          Sharpe 1.39, 89% WR, 1.37% avg (8× baseline)
     #   v2 TOP-5 symbols:              Sharpe 1.74, 96% WR, 1.59% avg, 89 trades
     #   v2 TOP-3 symbols:              Sharpe 1.90, 98% WR, 1.73% avg, 58 trades ✅ EXCEEDS 1.8
-    # Critical finding: PROFIT_TARGET=1.5% locks in gains before technical exits dilute them.
     V8Q_STRENGTH_FILTER_ENABLED: bool = True
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_HTF_MIN_ALIGNED: int = 1
@@ -404,8 +403,6 @@ class Config:
     V8Q_COOLDOWN_BARS: int = 3
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
-    V8Q_PROFIT_TARGET_ENABLED: bool = True
-    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90)
     # Symbol tiers — sorted by per-symbol Sharpe descending
     V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT")  # Sharpe 1.93, 58 trades, 98.3% WR
     V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT")  # Sharpe 1.88, 78 trades, 96.2% WR (best balance)

@@ -232,9 +232,6 @@ class QuickConfig:
     STRENGTH_MIN_SCORE: float = 5.0  # 2026-04-19 sweep: score=5 filters to high-quality entries
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold — prevents premature exits at small gains. Sharpe 1.508→2.554.
-    # Profit target exit — v3 peak: Sharpe 1.93 on TOP3 (2026-04-16 precision sweep)
-    PROFIT_TARGET_ENABLED: bool = True
-    PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK (1.6 > 1.5). Range 1.2-1.8 all give Sharpe ~1.9
     # Stop loss exit (sweep-only — cap max loss)
     STOP_LOSS_ENABLED: bool = False
     STOP_LOSS_PCT: float = 2.0  # Exit at this loss %
@@ -713,11 +710,6 @@ class QuickConfig:
         # 2.5 floor caused early_abort at exactly 15 symbols when avg was 2.4755. Use 1.5 so full
         # 114-sym set evaluates and we get the real baseline Sharpe. Sweeps set their own floors.
         self.EARLY_ABORT_SHARPE_FLOOR = 1.5
-        # 2026-04-19 FIX: PROFIT_TARGET_ENABLED=True (crypto default 1.6%) bleeds into tradier.
-        # Tradier uses "exit at slowdown" (pure technical exits). PT creates fake Sharpe (low variance
-        # from fixed TP) while masking real exit quality. Disable for honest tradier baselines.
-        # Sweeps can test PT explicitly via PROFIT_TARGET_ENABLED: [True, False] in the grid.
-        self.PROFIT_TARGET_ENABLED = False
         # 2026-04-19 FIX: MIN_HOLD_BARS defaults to 250 (crypto 12.5h). For tradier "exit at
         # slowdown" model, that equals 62.5h hold on 15m base — blocks ALL exits → WR=39%.
         # Tradier has no hedge engine and exits whenever momentum slows (in gain). Reset to 4
@@ -1838,8 +1830,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
         return np.zeros(n, dtype=bool)
     # Cycle TP early cap
     if getattr(cfg, 'CYCLE_TP_TIERED_ENABLED', False):
-        # Engine has PROFIT_TARGET_PCT; CYCLE_TP_PCT acts as upper cap
-        pass  # handled in simulate() via PROFIT_TARGET_PCT
+        pass
     # ═══ WT/0DC AUDIT EXIT SIGNALS (ablation sweep — all OFF by default) ═══
     # wt_momentum_state encoding: 2=bull_trend, 1=bull_weak, -1=bear_weak, -2=bear_trend
     # wt_peak_structure: 1=HH, -1=LH | wt_trough_structure: 1=HL, -1=LL
@@ -2289,8 +2280,6 @@ def simulate(stores, cfg, capital=10000.0):
             _t1pc_exit_px = 0.0; _t1pc_exit_bar = -9999
             hedge_in_pos = False; hedge_ep = 0.0; hedge_eb = 0
             hedge_min_hold = int(getattr(cfg, 'HEDGE_MIN_HOLD_BARS', 10) or 10)
-            pt_enabled = cfg.PROFIT_TARGET_ENABLED
-            pt_pct = cfg.PROFIT_TARGET_PCT
             sl_enabled = cfg.STOP_LOSS_ENABLED
             sl_pct = cfg.STOP_LOSS_PCT
             _aug_pt_enabled = bool(getattr(cfg, 'AUGMENT_PT_ENABLED', False))
@@ -2493,10 +2482,6 @@ def simulate(stores, cfg, capital=10000.0):
                         elif _hedge_should_close and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
-                    # Profit target — skip when partial exit is active (partial handles the take-profit role)
-                    if pt_enabled and not _pe_enabled and live_pnl >= pt_pct:
-                        _wa = pt_pct * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
-                        in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     # ALL_TF_BRAKE: all TFs (incl. W/M when available) flip against → bypass NOLOSS
                     if _atb_enabled and _atb_against is not None and (i - eb) >= min_hold:
                         if _atb_against[i] >= _atb_min_tfs:

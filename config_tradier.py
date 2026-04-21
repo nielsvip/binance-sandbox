@@ -1706,8 +1706,6 @@ class TradierConfig:
     V8Q_HTF_MIN_ALIGNED: int = 1  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_K3M_FLOOR: int = 30  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_MIN_HOLD_BARS: int = 10  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_PROFIT_TARGET_ENABLED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_PROFIT_TARGET_PCT: float = 1.6  # v3 PEAK: 1.6 = Sharpe 1.93 on TOP3 (was 1.5 = 1.90) ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_STRENGTH_FILTER_ENABLED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_STRENGTH_MIN_SCORE: float = 5.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

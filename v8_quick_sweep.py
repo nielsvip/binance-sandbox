@@ -116,13 +116,11 @@ def build_param_grid_full():
 
 def build_param_grid_v3_core():
     """V3-core grid: sweeps the knobs that moved V8Q v3 from 0.5 to Sharpe 1.93 on TOP3.
-    STRENGTH_MIN_SCORE, MIN_HOLD_BARS, PROFIT_TARGET_PCT, WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED."""
+    STRENGTH_MIN_SCORE, MIN_HOLD_BARS, WT_EXIT_MIN_TFS, HTF_MIN_ALIGNED."""
     grid = {
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0, 10.0, 13.0],
         "MIN_HOLD_BARS": [5, 10, 15, 20, 30],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.2, 1.4, 1.6, 1.8, 2.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "HTF_MIN_ALIGNED": [1, 2],
         "D_TREND_REQUIRED": [True, False],
@@ -148,8 +146,6 @@ def build_param_grid_breakout_multi_lung():
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [5.0],
         "MIN_HOLD_BARS": [10],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.6],
         "WT_EXIT_MIN_TFS": [3],
     }
     return grid
@@ -167,8 +163,6 @@ def build_param_grid_breakout_multi_lung_tradier():
         "BREAKOUT_MULTI_LUNG_COOLDOWN_BARS": [4, 8, 16],
         "STRENGTH_FILTER_ENABLED": [True],
         "MIN_HOLD_BARS": [20, 40],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.5, 2.5],
         "WT_EXIT_MIN_TFS": [3],
         "ENTRY_SCORE_THRESHOLD": [24.0],
     }
@@ -182,8 +176,6 @@ def build_param_grid_tradier_core():
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [4.0, 5.0, 6.0, 7.0, 8.0],
         "MIN_HOLD_BARS": [10, 20, 30, 40],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0, 1.5, 2.0, 2.5, 3.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "HTF_MIN_ALIGNED": [2, 3],
         "D_TREND_REQUIRED": [True, False],
@@ -204,12 +196,10 @@ def build_param_grid_sharpe3_tradier():
         "RZ_EXIT_ENABLED": [True],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
         "REENTRY_RALLY_K15M_MAX": [75.0],
-        "PROFIT_TARGET_ENABLED": [True],
         "DELTA_ENTRY_ENABLED": [True],
         "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
         "MIN_HOLD_BARS": [10, 20],
         "K3M_FLOOR": [20.0, 25.0, 30.0],
-        "PROFIT_TARGET_PCT": [0.5, 0.8, 1.0, 1.3, 1.6, 2.0, 3.0],
         "ENTRY_SCORE_THRESHOLD": [0.0, 12.0, 18.0, 21.0],
         "EARLY_ABORT_SHARPE_FLOOR": [1.2],
         "EARLY_ABORT_MIN_SYMBOLS": [30],
@@ -261,8 +251,6 @@ def build_param_grid_indicator_audit():
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [5.0],
         "MIN_HOLD_BARS": [10],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.6],
         "WT_EXIT_MIN_TFS": [3],
         # R-G2: MTF WT velocity alignment gate
         "WT_MTF_VEL_GATE_ENABLED": [False, True],
@@ -289,7 +277,6 @@ def build_param_grid_mega():
         "K3M_FLOOR": [15.0, 20.0, 25.0, 30.0, 35.0],
         "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 20.0, 24.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.2],
         "MIN_HOLD_BARS": [3, 5, 8],
         "EARLY_ABORT_MIN_SYMBOLS": [3],
         "EARLY_ABORT_SHARPE_FLOOR": [2.5],
@@ -306,7 +293,6 @@ def build_param_grid_mega_v2():
     return {
         "MIN_HOLD_BARS": [5, 10, 20, 50],
         "REENTRY_RALLY_K15M_MAX": [20.0, 30.0, 40.0, 50.0, 60.0],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.6],
         "STRENGTH_MIN_SCORE": [3.0, 5.0],
         "WT_EXIT_MIN_TFS": [2, 3],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
@@ -327,7 +313,6 @@ def build_param_grid_mega_stock():
     Stock NPZ tiny (~650MB) → workers=7 safe. Rate ~3 configs/s → 12h for 130k configs."""
     return {
         "MIN_HOLD_BARS": [10, 20, 40, 60],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.5, 2.0],
         "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "HTF_MIN_ALIGNED": [1, 2, 3],
@@ -351,7 +336,6 @@ def build_param_grid_mega_v3():
         "REENTRY_RALLY_K15M_MAX": [30.0, 35.0, 40.0, 45.0, 50.0],
         "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0, 8.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.35, 0.4],
         "MIN_HOLD_BARS": [20, 50, 75],
         "WT_EXIT_MIN_TFS": [2, 3],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
@@ -367,7 +351,6 @@ def build_param_grid_stock_v3():
     VEL_GATE=False confirmed better for stocks. HOLD=20-80 all viable.
     ~960 configs, kill floor=4.0. Run --mode tradier --start 2024-01-01."""
     return {
-        "PROFIT_TARGET_PCT": [0.1, 0.15, 0.2, 0.25, 0.3, 0.35],
         "MIN_HOLD_BARS": [10, 20, 40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
@@ -386,7 +369,6 @@ def build_param_grid_stock_v2():
     Run with --mode tradier --start 2024-01-01 --workers 18."""
     return {
         "MIN_HOLD_BARS": [10, 20, 30, 40, 60],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 0.8, 1.0, 1.5],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
         "RZ_EXIT_ENABLED": [True, False],
@@ -403,7 +385,6 @@ def build_param_grid_stock_v4():
     VEL_GATE=False confirmed. Use start=2023-01-01 for 2yr data.
     ~160 configs, kill floor=4.0, done in minutes."""
     return {
-        "PROFIT_TARGET_PCT": [0.05, 0.08, 0.1, 0.12, 0.15],
         "MIN_HOLD_BARS": [5, 10, 20, 40],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
@@ -421,7 +402,6 @@ def build_param_grid_mega_v5():
     ~720 configs, kill floor=4.0."""
     return {
         "REENTRY_RALLY_K15M_MAX": [50.0, 55.0, 60.0, 65.0, 70.0],
-        "PROFIT_TARGET_PCT": [0.15, 0.2],
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "MIN_HOLD_BARS": [20, 50],
@@ -440,7 +420,6 @@ def build_param_grid_stock_validate2():
     Also test STRUCTURAL=True/False and DC_CROSSOVER to see secondary param impact.
     30 configs × 262 syms, streaming, ~50min."""
     return {
-        "PROFIT_TARGET_PCT": [0.2, 0.22, 0.25, 0.27, 0.3],
         "MIN_HOLD_BARS": [40, 60],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
@@ -459,7 +438,6 @@ def build_param_grid_stock_mega():
     Low floor because only ~82/262 syms qualify → first 15 qualifiers avg ≈ 3.5 for champion.
     Run on all 262 symbols via --symbols all --stream. ~192 configs per batch."""
     return {
-        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.4, 0.5, 1.0],
         "MIN_HOLD_BARS": [20, 40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
@@ -477,7 +455,6 @@ def build_param_grid_mega_v6():
     Early abort 8 syms floor=3.5 (matches mega_v5 which found 8.99). ~1024 configs."""
     return {
         "REENTRY_RALLY_K15M_MAX": [50.0, 55.0],
-        "PROFIT_TARGET_PCT": [0.15, 0.18, 0.20, 0.25],
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "MIN_HOLD_BARS": [20, 30, 50, 75],
@@ -496,7 +473,6 @@ def build_param_grid_stock_validate():
     30 configs only, EARLY_ABORT=50 syms needed.
     Run with --symbols all_stocks --stream."""
     return {
-        "PROFIT_TARGET_PCT": [0.1, 0.2, 0.3, 0.5, 1.0],
         "MIN_HOLD_BARS": [40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
@@ -513,7 +489,6 @@ def build_param_grid_stock_champion():
     Run against all 259 stock symbols to validate robustness.
     1 config only — fast champion verification."""
     return {
-        "PROFIT_TARGET_PCT": [0.02],
         "MIN_HOLD_BARS": [60],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
@@ -531,7 +506,6 @@ def build_param_grid_stock_v7():
     Test VWAP_FILTER_ENABLED=True now that vwap_D is populated.
     ~144 configs, kill floor=4.0, done in minutes."""
     return {
-        "PROFIT_TARGET_PCT": [0.015, 0.02, 0.025],
         "MIN_HOLD_BARS": [40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [True, False],
@@ -548,7 +522,6 @@ def build_param_grid_stock_v6():
     Push to 0.01-0.02 to see if more symbols qualify. HOLD=30-50 around proven sweet spot.
     Use start=2023-01-01. ~96 configs, kill floor=4.0."""
     return {
-        "PROFIT_TARGET_PCT": [0.01, 0.015, 0.02, 0.025, 0.03],
         "MIN_HOLD_BARS": [20, 30, 40, 60],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
@@ -565,7 +538,6 @@ def build_param_grid_stock_v5():
     VEL_GATE=False, HOLD=30-60 range around 40 sweet spot.
     Use start=2023-01-01 for 2yr data. ~192 configs, kill floor=4.0."""
     return {
-        "PROFIT_TARGET_PCT": [0.02, 0.03, 0.04, 0.05, 0.06, 0.08],
         "MIN_HOLD_BARS": [20, 30, 40, 60],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
@@ -582,7 +554,6 @@ def build_param_grid_mega_v4():
     Kill floor=4.0. Use start=2022-01-01 (4yr crypto data). ~4,320 configs."""
     return {
         "REENTRY_RALLY_K15M_MAX": [40.0, 45.0, 50.0, 55.0, 60.0],
-        "PROFIT_TARGET_PCT": [0.15, 0.2, 0.25],
         "CT_WT_VELOCITY_1H_MIN": [4.0, 5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "MIN_HOLD_BARS": [10, 20, 50],
@@ -603,7 +574,6 @@ def build_param_grid_hunt_crypto():
     return {
         "MIN_HOLD_BARS": [1, 2, 5, 10, 20, 30, 50],
         "REENTRY_RALLY_K15M_MAX": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
-        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
@@ -623,7 +593,6 @@ def build_param_grid_mega_v7():
     ~768 configs. Expected 40-60% pass early abort. ETA ~50min on 6 workers."""
     return {
         "REENTRY_RALLY_K15M_MAX": [40.0, 45.0, 50.0, 55.0],
-        "PROFIT_TARGET_PCT": [0.14, 0.15, 0.16, 0.18],
         "CT_WT_VELOCITY_1H_MIN": [5.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "MIN_HOLD_BARS": [20, 30, 50],
@@ -642,7 +611,6 @@ def build_param_grid_hunt_stock():
     EARLY_ABORT floor=2.5. ~725k configs effective ~200k with abort. ~8-10h on 18 workers."""
     return {
         "MIN_HOLD_BARS": [1, 2, 5, 10, 20, 40, 80],
-        "PROFIT_TARGET_PCT": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0, 1.5, 2.0],
         "REENTRY_RALLY_K15M_MAX": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
@@ -663,8 +631,6 @@ def build_param_grid_stock_dc_hunt():
     Run on S2: --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_hunt
     --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
     return {
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.4, 0.5, 0.6, 0.7],
         "MIN_HOLD_BARS": [15, 20, 25, 30],
         "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 6.0],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -684,8 +650,6 @@ def build_param_grid_stock_dc_wide():
     Run on S1: --mode tradier --symbols all --start 2022-01-01 --tier stock_dc_wide
     --workers 6 --stream --min-csv-sharpe 1.5 --kill-secs 999999 --kill-sharpe 0"""
     return {
-        "PROFIT_TARGET_ENABLED": [True, False],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0, 1.5],
         "MIN_HOLD_BARS": [4, 20, 40, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "CT_WT_VELOCITY_1H_MIN": [2.0, 4.0, 8.0],
@@ -703,8 +667,6 @@ def build_param_grid_stock_phase2():
     This is the highest-PnL honest result found so far. Sweep to confirm and extend.
     ~192 configs. Early abort: 50 qualifying syms, floor=0.3."""
     return {
-        "PROFIT_TARGET_ENABLED": [True, False],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],     # only matters when PT=True
         "MIN_HOLD_BARS": [20, 40, 80, 120],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 2.0, 4.0],  # only matters when VEL_GATE=True
@@ -721,7 +683,6 @@ def build_param_grid_stock_phase7():
     Hypothesis: VEL=4-6 + permissive zone → HIGH Sharpe AND HIGH trades. Cross VEL × ZL × ZS × CONV × HTF.
     ~128 configs. EARLY_ABORT: 50 syms, floor=0.25."""
     return {
-        "PROFIT_TARGET_ENABLED": [False],
         "MIN_HOLD_BARS": [10],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [4.0, 6.0],
@@ -744,7 +705,6 @@ def build_param_grid_stock_phase6():
     Fix: HOLD=12, VEL=2.0, WT_EXIT=4, PT=False, CD=0, CONV=2.
     ~150 configs. EARLY_ABORT: 50 syms, floor=0.2."""
     return {
-        "PROFIT_TARGET_ENABLED": [False],
         "MIN_HOLD_BARS": [12],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [2.0],
@@ -767,7 +727,6 @@ def build_param_grid_stock_phase5():
     Baseline lock: HOLD=12, VEL=2.0, WT_EXIT=4, PT=False, CD=0, SRS=True.
     ~180 configs. EARLY_ABORT: 50 syms, floor=0.25."""
     return {
-        "PROFIT_TARGET_ENABLED": [False],
         "MIN_HOLD_BARS": [12],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [2.0],
@@ -791,7 +750,6 @@ def build_param_grid_stock_phase4():
     Also add ENTRY_SCORE gate to test quality filter.
     ~180 configs. EARLY_ABORT: 50 syms, floor=0.2."""
     return {
-        "PROFIT_TARGET_ENABLED": [False],
         "MIN_HOLD_BARS": [5, 8, 10, 12, 15],
         "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
         "CT_WT_VELOCITY_1H_MIN": [0.0, 0.5, 1.0, 2.0],
@@ -810,7 +768,6 @@ def build_param_grid_stock_phase3():
     Fine-scan HOLD=10-40, VEL=1.0-6.0, WT_EXIT=[3,4], add COOLDOWN.
     ~288 configs. EARLY_ABORT: 50 syms, floor=0.25."""
     return {
-        "PROFIT_TARGET_ENABLED": [False],
         "MIN_HOLD_BARS": [10, 15, 20, 25, 30, 40],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [1.0, 2.0, 3.0, 4.0, 6.0],
@@ -828,7 +785,6 @@ def build_param_grid_stock_sweep_v1():
     VEL_GATE=False confirmed best for stocks. EARLY_ABORT=50 syms floor=2.0 kills dead configs fast.
     ~864 configs × 262 syms streaming → ~3h on 18 workers."""
     return {
-        "PROFIT_TARGET_PCT": [0.2, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0],
         "MIN_HOLD_BARS": [20, 40, 60, 80],
         "CT_WT_VELOCITY_GATE_ENABLED": [False],
         "VWAP_FILTER_ENABLED": [False],
@@ -856,7 +812,7 @@ def build_param_grid_baseline255_ablation():
     baseline = {
         # ── Sharpe 2.55 config (from 2026-04-19 sweep) ────────────────────────
         "CT_WT_VELOCITY_GATE_ENABLED": True, "CT_WT_VELOCITY_1H_MIN": 8.0,
-        "MIN_HOLD_BARS": 250, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 1.6,
+        "MIN_HOLD_BARS": 250,
         "WT_EXIT_MIN_TFS": 3, "REENTRY_RALLY_K15M_MAX": 100.0,
         "WINNER_PROTECT_ENABLED": True, "WINNER_PROTECT_GAIN_PCT": 1.0,
         "STRUCTURAL_RANGE_SHIFT_EXIT": True, "CT_DC_CROSSOVER_SKIP_ENABLED": True,
@@ -892,8 +848,6 @@ def build_param_grid_baseline255_ablation():
         configs.append({**baseline, "CT_WT_VELOCITY_1H_MIN": vel})
     for hold in (50, 100, 150, 200, 300):
         configs.append({**baseline, "MIN_HOLD_BARS": hold})
-    for pt in (0.8, 1.0, 1.2, 1.4, 1.8, 2.0, 2.5):
-        configs.append({**baseline, "PROFIT_TARGET_PCT": pt})
     for wt_min in (2, 4):
         configs.append({**baseline, "WT_EXIT_MIN_TFS": wt_min})
     for k15m in (30.0, 40.0, 50.0, 60.0, 70.0, 80.0):
@@ -924,8 +878,7 @@ def build_param_grid_exit_wt_audit():
     # This isolates each new signal's pure contribution.
     baseline = {
         "STRENGTH_FILTER_ENABLED": True, "STRENGTH_MIN_SCORE": 5.0,
-        "MIN_HOLD_BARS": 10, "PROFIT_TARGET_ENABLED": False,
-        "PROFIT_TARGET_PCT": 10.0, "WT_EXIT_MIN_TFS": 4,
+        "MIN_HOLD_BARS": 10,
         "SATOSHIT_ENABLED": False, "RZ_EXIT_ENABLED": False,
         "STRUCTURAL_RANGE_SHIFT_EXIT": False, "WT_VEL_DECAY_EXIT_ENABLED": False,
         "WT_MOMENTUM_EXIT_ENABLED": False, "WT_STRUCT_EXIT_ENABLED": False,
@@ -980,8 +933,6 @@ def build_param_grid_exit_wt_phase2():
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [5.0],
         "MIN_HOLD_BARS": [10],
-        "PROFIT_TARGET_ENABLED": [False],
-        "PROFIT_TARGET_PCT": [10.0],
         "WT_EXIT_MIN_TFS": [4],  # delta_exit disabled — winners only
         "SATOSHIT_ENABLED": [False], "RZ_EXIT_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [False], "WT_VEL_DECAY_EXIT_ENABLED": [False],
@@ -1013,8 +964,6 @@ def build_param_grid_exit_wt_48sym():
         "STRENGTH_FILTER_ENABLED": [True],
         "STRENGTH_MIN_SCORE": [5.0],
         "MIN_HOLD_BARS": [10, 20, 30],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.4, 1.6, 1.8],
         "WT_EXIT_MIN_TFS": [3],
         "SATOSHIT_ENABLED": [False], "RZ_EXIT_ENABLED": [False],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [False],
@@ -1047,8 +996,6 @@ def build_param_grid_mega_crypto_v8():
     """
     return {
         # ── FIXED: proven crypto baseline (produces ~8 Sharpe on 49 sym) ──────────
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.8],
         "MIN_HOLD_BARS": [50],
         "STRENGTH_MIN_SCORE": [3.0],
         "D_TREND_REQUIRED": [True],
@@ -1097,8 +1044,6 @@ def build_param_grid_mega_tradier_v8():
         "LOCAL_EXTREMES_MIN_SCORE": [45.0],
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5],
         "MIN_HOLD_BARS": [20],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1132,8 +1077,6 @@ def build_param_grid_mega_tradier_v8_focused():
     Run: --mode tradier --symbols 128 --start 2024-01-01 --tier mega_tradier_v8_focused --workers 6
     """
     return {
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.7],
         "MIN_HOLD_BARS": [80],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1186,8 +1129,6 @@ def build_param_grid_rz_breakout_tradier():
         "RZ_BREAKOUT_NOLOSS_GUARD_TF": ["15m", "1h"],
         "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
         "RZ_TOP_BB_THRESHOLD": [0.80, 0.85, 0.90],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.3, 0.5, 1.0],
         "MIN_HOLD_BARS": [4, 10, 20],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
@@ -1213,7 +1154,6 @@ def build_param_grid_rz_noloss_mode():
         "RZ_BREAKOUT_ENTRY_ENABLED": [True],
         "NOLOSS_ENABLED": [True],
         "LOCAL_EXTREMES_SCORER_ENABLED": [False],
-        "PROFIT_TARGET_ENABLED": [False],
         "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
         "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
         "RZ_BOT_BB_THRESHOLD": [0.10, 0.15, 0.20],
@@ -1239,8 +1179,6 @@ def build_param_grid_local_extremes_tradier():
         "ENTRY_ZONE_LONG": [10.0, 20.0, 30.0, 40.0],
         "ENTRY_ZONE_SHORT": [60.0, 70.0, 80.0, 90.0],
         "START_POSITION_SIZE": [500.0, 1000.0, 2000.0, 5000.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0, 3.0],
         "MIN_HOLD_BARS": [4, 10, 20],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
@@ -1261,8 +1199,6 @@ def build_param_grid_local_extremes_tradier_scorer():
         "LOCAL_EXTREMES_SCORER_ENABLED": [True],
         "LOCAL_EXTREMES_MIN_SCORE": [20.0, 30.0, 40.0, 50.0, 60.0],
         "START_POSITION_SIZE": [1000.0, 2000.0, 5000.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
         "MIN_HOLD_BARS": [4, 10, 20],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
@@ -1281,8 +1217,6 @@ def build_param_grid_dc_low4_bypass_tradier():
         "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
         "DC_LOW4_BYPASS_MAX_BARS": [0, 4, 8, 12],
         "DC_LOW4_BYPASS_USE_STANDARD": [True, False],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.7],
         "MIN_HOLD_BARS": [20],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1306,8 +1240,6 @@ def build_param_grid_dc_low4_bypass_crypto():
         "DC_LOW4_BYPASS_NOLOSS_ENABLED": [True, False],
         "DC_LOW4_BYPASS_MAX_BARS": [0, 4, 8, 12],
         "DC_LOW4_BYPASS_USE_STANDARD": [True, False],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0],
         "MIN_HOLD_BARS": [300],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1331,8 +1263,6 @@ def build_param_grid_dc_low_tf_tradier():
         "DC_LOW4_BYPASS_TF": ["5m", "15m", ""],
         "DC_LOW4_BYPASS_USE_STANDARD": [True],
         "DC_LOW4_BYPASS_MAX_BARS": [0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.7],
         "MIN_HOLD_BARS": [20],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1357,8 +1287,6 @@ def build_param_grid_dc_low_tf_crypto():
         "DC_LOW4_BYPASS_TF": ["3m", "15m", ""],
         "DC_LOW4_BYPASS_USE_STANDARD": [True],
         "DC_LOW4_BYPASS_MAX_BARS": [0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0],
         "MIN_HOLD_BARS": [300],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
         "CT_WT_VELOCITY_1H_MIN": [10.0],
@@ -1383,8 +1311,6 @@ def build_param_grid_dc_breakout_failed_tradier():
         "LOCAL_EXTREMES_MIN_SCORE": [45.0],
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5],
         "MIN_HOLD_BARS": [20],
         "WT_EXIT_MIN_TFS": [3],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -1407,8 +1333,6 @@ def build_param_grid_dc_breakout_failed_crypto():
     """
     return {
         "DC_BREAKOUT_FAILED_STOP_ENABLED": [True, False],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0],
         "MIN_HOLD_BARS": [300],
         "WT_EXIT_MIN_TFS": [2],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -1435,8 +1359,6 @@ def build_param_grid_all_tf_brake_tradier():
         "LOCAL_EXTREMES_MIN_SCORE": [45.0],
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True],
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [55.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5],
         "MIN_HOLD_BARS": [20],
         "WT_EXIT_MIN_TFS": [3],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -1460,8 +1382,6 @@ def build_param_grid_all_tf_brake_crypto():
     return {
         "ALL_TF_BRAKE_ENABLED": [True, False],
         "ALL_TF_BRAKE_MIN_TFS": [4, 5, 6, 7],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [1.0],
         "MIN_HOLD_BARS": [300],
         "WT_EXIT_MIN_TFS": [2],
         "CT_WT_VELOCITY_GATE_ENABLED": [True],
@@ -1484,8 +1404,6 @@ def build_param_grid_local_extremes_tradier_validate():
         "ENTRY_ZONE_LONG": [20.0, 30.0],
         "ENTRY_ZONE_SHORT": [70.0, 80.0],
         "START_POSITION_SIZE": [1000.0, 2000.0, 5000.0],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
         "MIN_HOLD_BARS": [4, 10],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [999],
@@ -1503,7 +1421,6 @@ def build_param_grid_crypto_validate_top():
     return {
         "CT_WT_VELOCITY_1H_MIN": [12.0, 14.0],
         "MIN_HOLD_BARS": [250, 300, 400, 500],
-        "PROFIT_TARGET_PCT": [0.8, 1.0, 1.2],
         "STRENGTH_MIN_SCORE": [3.0, 4.0, 5.0],
         "REENTRY_RALLY_K15M_MAX": [40.0],
         "WT_EXIT_MIN_TFS": [2, 3],
@@ -1667,8 +1584,6 @@ def build_param_grid_le_dynamic_tradier():
         "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": [20.0, 35.0],
         "DYNAMIC_SCORE_AUGMENT_INTERVAL": [5],
         # Exits: short PT to capture local-extreme bounces
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 1.0, 2.0],
         "MIN_HOLD_BARS": [4, 10],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [6],
@@ -1690,8 +1605,6 @@ def build_param_grid_le_dynamic_tradier_validate():
         "DYNAMIC_SCORE_AUGMENT_ENABLED": [True, False],
         "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": [20.0],
         "DYNAMIC_SCORE_AUGMENT_INTERVAL": [5],
-        "PROFIT_TARGET_ENABLED": [True],
-        "PROFIT_TARGET_PCT": [0.5, 1.0],
         "MIN_HOLD_BARS": [4, 10],
         "WT_EXIT_MIN_TFS": [2, 3],
         "EARLY_ABORT_MIN_SYMBOLS": [999],
@@ -1730,16 +1643,12 @@ def build_param_grid_le_dynamic_tradier_v2():
                                 "LOCAL_EXTREMES_MIN_SCORE": score,
                                 "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
                                 "MIN_HOLD_BARS": hold,
-                                "PROFIT_TARGET_ENABLED": True,
-                                "PROFIT_TARGET_PCT": pt_pct,
                             })
                     else:
                         configs.append({**base,
                             "LOCAL_EXTREMES_MIN_SCORE": score,
                             "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": ce_thr,
                             "MIN_HOLD_BARS": hold,
-                            "PROFIT_TARGET_ENABLED": False,
-                            "PROFIT_TARGET_PCT": 1.0,
                         })
     return configs
 
@@ -1756,8 +1665,6 @@ def build_param_grid_le_dynamic_tradier_v2_validate():
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
         "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
         "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
@@ -1786,8 +1693,6 @@ def build_param_grid_le_dynamic_tradier_v2_validate_ea():
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
         "DYNAMIC_SCORE_AUGMENT_MIN_JUMP": 20.0,
         "DYNAMIC_SCORE_AUGMENT_INTERVAL": 5,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 60,
         "EARLY_ABORT_SHARPE_FLOOR": 0.8,
@@ -1820,8 +1725,6 @@ def build_param_grid_ratio_sentiment_tradier():
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 55.0,
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
         "MIN_HOLD_BARS": 20,
         "WT_EXIT_MIN_TFS": 3,
         "D_TREND_REQUIRED": True,
@@ -1854,8 +1757,6 @@ def build_param_grid_ratio_sentiment_crypto():
     Run: --mode crypto --symbols all --start 2022-01-01 --tier ratio_sentiment_crypto --workers 4 --kill-sharpe 0 --kill-secs 999999
     """
     base = {
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.8,
         "MIN_HOLD_BARS": 50,
         "STRENGTH_MIN_SCORE": 3.0,
         "D_TREND_REQUIRED": True,
@@ -1888,8 +1789,6 @@ def build_param_grid_stock_exit_v1():
     ~56 configs × 12 fast symbols first, promote winners to --symbols all.
     Run on S2: python v8_quick_sweep.py --mode tradier --symbols fast --start 2024-01-01 --tier stock_exit_v1 --workers 6 --stream --min-csv-sharpe 0.0 --kill-secs 999999 --kill-sharpe 0"""
     base = {
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 1.0,
         "MIN_HOLD_BARS": 10,
         "WT_EXIT_MIN_TFS": 3,
         "STRUCTURAL_RANGE_SHIFT_EXIT": True,
@@ -1946,8 +1845,6 @@ def build_param_grid_crypto_exit_v1():
         "REENTRY_RALLY_K15M_MAX": 30.0,
         "MIN_HOLD_BARS": 250,
         "WT_EXIT_MIN_TFS": 3,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 1.6,
         "WINNER_PROTECT_ENABLED": True,
         "WINNER_PROTECT_GAIN_PCT": 1.0,
         "WT_VEL_FLOOR_EXIT_ENABLED": False,
@@ -1998,7 +1895,6 @@ def build_param_grid_le_full_tradier():
         "LOCAL_EXTREMES_SCORER_ENABLED": True,
         "LOCAL_EXTREMES_MIN_SCORE": 15.0,
         "LE_TIER_SIZING_ENABLED": True,
-        "PROFIT_TARGET_ENABLED": False,
         "MIN_HOLD_BARS": 4,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 6,
@@ -2011,9 +1907,6 @@ def build_param_grid_le_full_tradier():
     for min_score in [20.0, 25.0, 30.0, 40.0, 50.0]:
         configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score})
         configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "LE_TIER_SIZING_ENABLED": False})
-    for min_score in [15.0, 25.0, 30.0]:
-        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 1.0})
-        configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": 2.0})
     for min_score in [20.0, 30.0]:
         configs.append({**base, "LOCAL_EXTREMES_MIN_SCORE": min_score, "WINNER_PROTECT_ENABLED": True, "WINNER_PROTECT_GAIN_PCT": 1.5})
     for min_hold in [4, 8, 16]:
@@ -2036,7 +1929,6 @@ def build_param_grid_le_k1h_rising():
         "LE_TIER_SIZING_ENABLED": False,
         "K1H_RISING_GATE_ENABLED": False,
         "K1H_RISING_LONG_MAX": 60.0,
-        "PROFIT_TARGET_ENABLED": False,
         "MIN_HOLD_BARS": 4,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 6,
@@ -2055,11 +1947,6 @@ def build_param_grid_le_k1h_rising():
         for min_score in [15.0, 25.0]:
             configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
                             "LOCAL_EXTREMES_MIN_SCORE": min_score})
-    # Rising gate + profit targets
-    for thresh in [60.0, 50.0]:
-        for pt_pct in [1.0, 2.0]:
-            configs.append({**base, "K1H_RISING_GATE_ENABLED": True, "K1H_RISING_LONG_MAX": thresh,
-                            "PROFIT_TARGET_ENABLED": True, "PROFIT_TARGET_PCT": pt_pct})
     return configs
 
 
@@ -2076,8 +1963,6 @@ def build_param_grid_le_partial_exit_tradier():
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 40.0,
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
         "MIN_HOLD_BARS": 20,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 6,
@@ -2119,8 +2004,6 @@ def build_param_grid_le_partial_exit_tradier_validate():
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": True,
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": 40.0,
         "DYNAMIC_SCORE_AUGMENT_ENABLED": False,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 0.5,
         "MIN_HOLD_BARS": 20,
         "WT_EXIT_MIN_TFS": 3,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
@@ -2159,8 +2042,6 @@ def build_param_grid_le_partial_exit_crypto():
         "REENTRY_RALLY_K15M_MAX": 100.0,
         "MIN_HOLD_BARS": 250,
         "WT_EXIT_MIN_TFS": 3,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 1.0,
         "WINNER_PROTECT_ENABLED": False,
         "EARLY_ABORT_MIN_SYMBOLS": 6,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,
@@ -2198,8 +2079,6 @@ def build_param_grid_le_partial_exit_crypto_validate():
         "REENTRY_RALLY_K15M_MAX": 100.0,
         "MIN_HOLD_BARS": 250,
         "WT_EXIT_MIN_TFS": 3,
-        "PROFIT_TARGET_ENABLED": True,
-        "PROFIT_TARGET_PCT": 1.0,
         "WINNER_PROTECT_ENABLED": False,
         "EARLY_ABORT_MIN_SYMBOLS": 999,
         "EARLY_ABORT_SHARPE_FLOOR": 0.0,

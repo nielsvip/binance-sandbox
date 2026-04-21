@@ -73,8 +73,6 @@ def build_grid():
                                     "D_TREND_REQUIRED": True,
                                     "MIN_HOLD_BARS": hold,
                                     "WT_EXIT_MIN_TFS": wt_exit,
-                                    "PROFIT_TARGET_ENABLED": True,
-                                    "PROFIT_TARGET_PCT": pt,
                                     **blocks,
                                 }
                                 if sl is not None:

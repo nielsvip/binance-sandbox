@@ -8,12 +8,32 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 
 
+FORBIDDEN_FLIPS = {
+    # Quick-engine profit-target artifacts NOT in real live code — cause 99%+ WR lie.
+    "AUGMENT_PT_ENABLED", "AUGMENT_PT_PCT",
+    "PARTIAL_EXIT_ENABLED", "PARTIAL_EXIT_PCT", "PARTIAL_EXIT_FRAC",
+    "PARTIAL_TRAIL_ARM_PCT", "PARTIAL_TRAIL_FLOOR_PCT",
+    "PARTIAL_PROFIT_LOCK_ENABLED", "PARTIAL_PROFIT_LOCK_GAIN_PCT",
+    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", "PARTIAL_PROFIT_LOCK_FRAC",
+    "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER",
+    "PARTIAL_PROFIT_LOCK_FRAC_TRADIER",
+    # CYCLE_TP is also a profit target not in live.
+    "CYCLE_TP_TIERED_ENABLED", "CYCLE_TP_PCT", "CYCLE_TP_TIERED_FRAC",
+    "CYCLE_TP_CONDITIONAL_EXIT",
+    # Any flag with PT / TAKE_PROFIT / TP_PCT semantics
+    "ACCOUNT_TP_PCT",
+    # AUGMENT_PT ride-along
+    "AUGMENT_WT_D_AUTO_CLOSE_ENABLED", "AUGMENT_WT_4H_AUTO_CLOSE_ENABLED",
+}
+
 def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
-    """Return a dict of overrides sampled randomly from knob space."""
+    """Return a dict of overrides sampled randomly from knob space, skipping FORBIDDEN_FLIPS."""
     ovr = {}
     for fld in fields(base_cfg):
         nm = fld.name
         if nm in ("MODE", "LTF", "_loaded_from"): continue
+        if nm in FORBIDDEN_FLIPS: continue
         val = getattr(base_cfg, nm)
         if isinstance(val, bool):
             if random.random() < bool_flip_prob:
@@ -85,6 +105,12 @@ def main():
     base = QuickConfig()
     base.MODE = args.mode
     base.LTF = "3m" if args.mode == "crypto" else "5m"
+    # Force FORBIDDEN_FLIPS defaults to safe-off on the base config so no sampled config accidentally carries them on
+    for nm in FORBIDDEN_FLIPS:
+        if hasattr(base, nm):
+            val = getattr(base, nm)
+            if isinstance(val, bool):
+                setattr(base, nm, False)
 
     print(f"[AUTO_SEARCH] mode={args.mode} syms={len(subset)} start={args.start} "
           f"BH_gain={args.bh_accumulated_gain_pct:.1f}% TARGET>{target_gain:.1f}% "

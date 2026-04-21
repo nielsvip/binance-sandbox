@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-21 18:43:31 UTC
+# Copilot Status — 2026-04-21 18:58:13 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:40:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:40:18
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:40:49
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:41:19
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:41:22
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:41:53
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:42:23
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:42:26
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:42:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:43:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:54:34
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:54:55
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:55:25
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:55:41
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:56:03
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:56:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:56:52
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:57:13
+- **STALE_INDICATORS** [tradier]  — 2026-04-21T18:57:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T18:58:02
 
 ## Missed Trades (trader comparison)
 
@@ -29,15 +29,15 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 0 | **Reentered:** 0
 
-- HELD: **OLED** SHORT (tradier) peak +23.6%, now +-2.7%
+- HELD: **OLED** SHORT (tradier) peak +23.6%, now +-3.0%
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 5
+**Issues (last 1h):** 9
+- [HIGH] ez_manage.py for flz is NOT running
 - [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_prices.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_prices.py is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
