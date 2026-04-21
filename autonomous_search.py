@@ -72,6 +72,10 @@ def main():
     ap.add_argument("--numeric-perturb-prob", type=float, default=0.10)
     ap.add_argument("--workers", type=int, default=4,
                     help="How many configs to run in parallel (multiprocessing).")
+    ap.add_argument("--min-trades-for-record", type=int, default=0,
+                    help="Reject configs with trades < this from CSV output (garbage-filter).")
+    ap.add_argument("--min-trades-per-sym", type=int, default=30,
+                    help="Reject configs with trades/symbols < this (per-sym reliability floor).")
     args = ap.parse_args()
 
     sys.path.insert(0, str(Path(__file__).parent))
@@ -143,6 +147,14 @@ def main():
             dd = r.get("max_dd_pct", 0.0)
             tr = r.get("trades", 0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
+            # Garbage-filter: reject configs that don't meet minimum-trades floor
+            n_syms = len(subset)
+            floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
+            if tr < floor_total:
+                # Do not write to CSV — garbage result. Print reject every 50 rejects.
+                if i % 50 == 0:
+                    print(f"[AUTO_SEARCH] iter={i} REJECT tr={tr}<{floor_total} (need {args.min_trades_per_sym}/sym × {n_syms}={floor_total})", flush=True)
+                continue
             w.writerow([i, round(sharpe, 4), round(gain, 2), round(dd, 2), tr,
                         round(gvb, 3), round(el, 1), len(ovr), json.dumps(ovr)])
             csv_f.flush()

@@ -113,12 +113,20 @@ This is not a bug per se — if price never crossed and no oversold bounce occur
 ---
 
 ## Status
-- [x] Root causes identified (3 bugs)
-- [ ] WAITING FOR UNLOCK: ez_manage.py, ez_positions_quick.py
-- [ ] Fix Bug 1: ez_manage.py line 10951
-- [ ] Fix Bug 2: ez_manage.py lines 17908-17918
-- [ ] Fix Bug 2: ez_positions_quick.py lines 14119-14131
-- [ ] Fix Bug 3: REENTRY_MONITOR → populate trade_manager.reentry_data
-- [ ] Fix Bug 4 (v8): T1_PRICE_CROSS vectorized block
-- [ ] 4-year backtest run + confirm
-- [ ] Sync S1 + S2
+- [x] Root causes identified (3 bugs → expanded to 4)
+- [x] Fix Bug 1: ez_manage.py line 10951 — `_original_action_was_reentry` added ✓
+- [x] Fix Bug 2 (price_above_reduction): ez_manage.py lines 17909+ ✓ (harmless enhancement, not the primary blocker)
+- [x] Fix Bug 2 (price_above_reduction): ez_positions_quick.py lines 14119+ ✓
+- [x] Fix REAL Bug 2: DELTA_REENTRY_FILTER_ENABLED = False (disabled April 19, before this session) ✓
+- [x] Fix REAL Bug 3: RALLY_K15M bypass for T3 (wt15m cross) added at ez_positions_quick.py:13674 ✓
+  - Was: REENTRY_RALLY_K15M_MAX=30 blocked ALL bounce reentry when k_15m >= 30
+  - Fix: pre-compute wt1_15m cross; if T3 fires, bypass RALLY_K15M gate
+- [x] Fix Bug 4 (v8): T1_PRICE_CROSS vectorized block (previous session) ✓
+- [x] Sync S1 + S2 ✓
+- [ ] 4-year backtest run + confirm (S1/S2 locked with running sweeps, run when clear)
+- [ ] G1: Hook tracker.json/reentry_candidates into reentry_enforcement_loop_epq
+- [ ] G3: Wire long/short_ladder.json writes from live system
+- [ ] G7: Flush reentry_data synchronously before os._exit(1) crash
+
+## Full Audit
+See: data/REENTRY_FUNCTION_AUDIT.xlsx (4 sheets: Function Map, Data Sources, Last Fired, Gaps+Fixes)
