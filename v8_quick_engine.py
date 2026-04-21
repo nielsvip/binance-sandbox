@@ -1816,6 +1816,12 @@ def simulate(stores, cfg, capital=10000.0):
                 _dc_fl, _dc_fh = _dc_field_map.get(_rz_nl_mode, ('dc_low4_15m', 'dc_high4_15m'))
                 _rz_nl_raw_low = _safe(npz, _dc_fl, n)
                 _rz_nl_raw_high = _safe(npz, _dc_fh, n)
+                # dc_low4 fields absent from tradier NPZ — compute rolling 4-bar min/max of close as fallback
+                if 'dc_low4' in _dc_fl and not np.any(_rz_nl_raw_low):
+                    from numpy.lib.stride_tricks import sliding_window_view as _swv
+                    _cl_p = np.concatenate([np.full(3, close[0]), close])
+                    _rz_nl_raw_low = _swv(_cl_p, 4).min(axis=1)[:n]
+                    _rz_nl_raw_high = _swv(_cl_p, 4).max(axis=1)[:n]
                 _rz_nl_guard_low = np.roll(_rz_nl_raw_low, 1); _rz_nl_guard_low[0] = _rz_nl_raw_low[0]
                 _rz_nl_guard_high = np.roll(_rz_nl_raw_high, 1); _rz_nl_guard_high[0] = _rz_nl_raw_high[0]
         # Hedge engine: continuous per-bar condition. No event needed.
@@ -1855,6 +1861,59 @@ def simulate(stores, cfg, capital=10000.0):
                 else:
                     _nlb_cnt = (_nlb_w1l > _nlb_w2l).astype(int) + (_nlb_w115 > _nlb_w215).astype(int) + (_nlb_w11h > _nlb_w21h).astype(int) + (_nlb_w14h > _nlb_w24h).astype(int) + (_nlb_w1D > _nlb_w2D).astype(int)
                 _nlb_5of5_mask = _nlb_cnt >= _nlb_min
+            # WRONG_SIDE_ABS_KILL precompute v2 (2026-04-21): K irrelevant, WT + divergence.
+            # Kill when: (WT_against >= WT_TFS_REQUIRED) OR (WT_against >= WT_TFS_REDUCED AND divergence_count >= DIV_TFS_REQUIRED).
+            # Divergence per TF (LONG): price now > price K ago AND wt1 now < wt1 K ago (bearish divergence).
+            # Mirror for SHORT. DIV_LOOKBACK_BARS controls the HH/LH horizon.
+            _ws_kill_enabled = bool(getattr(cfg, 'WRONG_SIDE_ABS_KILL_ENABLED', False))
+            _ws_wt_mask_full = None; _ws_wt_mask_reduced = None; _ws_div_mask = None; _ws_min_age_bars = 0
+            if _ws_kill_enabled:
+                _ws_wt_req = int(getattr(cfg, 'WRONG_SIDE_WT_TFS_REQUIRED', 5))
+                _ws_wt_red = int(getattr(cfg, 'WRONG_SIDE_WT_TFS_REDUCED', 3))
+                _ws_div_req = int(getattr(cfg, 'WRONG_SIDE_DIV_TFS_REQUIRED', 2))
+                _ws_div_lb = int(getattr(cfg, 'WRONG_SIDE_DIV_LOOKBACK_BARS', 20))
+                _ws_min_age_min = float(getattr(cfg, 'WRONG_SIDE_MIN_AGE_MIN', 30))
+                _ltf_min_map = {'1m': 1, '3m': 3, '5m': 5, '15m': 15, '1h': 60}
+                _ws_ltf = getattr(cfg, 'LTF', '3m')
+                _ws_min_age_bars = max(1, int(_ws_min_age_min / _ltf_min_map.get(_ws_ltf, 3)))
+                # 5-WT-TF against mask
+                _ws_w1l = _safe(npz, f'wt1_{_ws_ltf}', n); _ws_w2l = _safe(npz, f'wt2_{_ws_ltf}', n)
+                _ws_w115 = _safe(npz, 'wt1_15m', n); _ws_w215 = _safe(npz, 'wt2_15m', n)
+                _ws_w11h = _safe(npz, 'wt1_1h', n); _ws_w21h = _safe(npz, 'wt2_1h', n)
+                _ws_w14h = _safe(npz, 'wt1_4h', n); _ws_w24h = _safe(npz, 'wt2_4h', n)
+                _ws_w1D = _safe(npz, 'wt1_D', n); _ws_w2D = _safe(npz, 'wt2_D', n)
+                if is_long:
+                    _ws_wt_cnt = (_ws_w1l < _ws_w2l).astype(int) + (_ws_w115 < _ws_w215).astype(int) + (_ws_w11h < _ws_w21h).astype(int) + (_ws_w14h < _ws_w24h).astype(int) + (_ws_w1D < _ws_w2D).astype(int)
+                else:
+                    _ws_wt_cnt = (_ws_w1l > _ws_w2l).astype(int) + (_ws_w115 > _ws_w215).astype(int) + (_ws_w11h > _ws_w21h).astype(int) + (_ws_w14h > _ws_w24h).astype(int) + (_ws_w1D > _ws_w2D).astype(int)
+                _ws_wt_mask_full = _ws_wt_cnt >= _ws_wt_req
+                _ws_wt_mask_reduced = _ws_wt_cnt >= _ws_wt_red
+                # Divergence per TF: rolled-back K bars for price and WT1. Bearish div = price HH + wt LH.
+                def _roll_back(arr, k):
+                    out = np.roll(arr, k)
+                    if k > 0: out[:k] = arr[0] if len(arr) > 0 else 0
+                    return out
+                _cx = close
+                _cx_back = _roll_back(_cx, _ws_div_lb)
+                _w1l_back = _roll_back(_ws_w1l, _ws_div_lb)
+                _w115_back = _roll_back(_ws_w115, _ws_div_lb)
+                _w11h_back = _roll_back(_ws_w11h, _ws_div_lb)
+                _w14h_back = _roll_back(_ws_w14h, _ws_div_lb)
+                _w1D_back = _roll_back(_ws_w1D, _ws_div_lb)
+                if is_long:
+                    _div_ltf = (_cx > _cx_back) & (_ws_w1l < _w1l_back)
+                    _div_15 = (_cx > _cx_back) & (_ws_w115 < _w115_back)
+                    _div_1h = (_cx > _cx_back) & (_ws_w11h < _w11h_back)
+                    _div_4h = (_cx > _cx_back) & (_ws_w14h < _w14h_back)
+                    _div_D = (_cx > _cx_back) & (_ws_w1D < _w1D_back)
+                else:
+                    _div_ltf = (_cx < _cx_back) & (_ws_w1l > _w1l_back)
+                    _div_15 = (_cx < _cx_back) & (_ws_w115 > _w115_back)
+                    _div_1h = (_cx < _cx_back) & (_ws_w11h > _w11h_back)
+                    _div_4h = (_cx < _cx_back) & (_ws_w14h > _w14h_back)
+                    _div_D = (_cx < _cx_back) & (_ws_w1D > _w1D_back)
+                _ws_div_cnt = _div_ltf.astype(int) + _div_15.astype(int) + _div_1h.astype(int) + _div_4h.astype(int) + _div_D.astype(int)
+                _ws_div_mask = _ws_div_cnt >= _ws_div_req
             _rz_break_arr = (_rz_break_long if is_long else _rz_break_short) if _rz_break_enabled else None
             # Adaptive exit: precompute the extra bars that TFS-1 adds vs normal exit_sig
             _adaptive_exit_enabled = bool(getattr(cfg, 'ADAPTIVE_EXIT_TFS_ENABLED', False))
@@ -2037,6 +2096,16 @@ def simulate(stores, cfg, capital=10000.0):
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # WRONG_SIDE_ABS_KILL v2: (WT N-of-5 full) OR (WT M-of-5 reduced AND div M-of-5) + age.
+                    # K deferred (irrelevant per user). Divergence lets us exit on 3/4 TFs if price-WT divergence confirms.
+                    # Runs BEFORE PPL/WT-exit/NOLOSS so it fires even when STRICT_NO_LOSS would otherwise hold.
+                    if _ws_kill_enabled and _ws_wt_mask_full is not None and (i - eb) >= _ws_min_age_bars:
+                        _ws_fire = bool(_ws_wt_mask_full[i]) or (_ws_wt_mask_reduced is not None and _ws_div_mask is not None and bool(_ws_wt_mask_reduced[i]) and bool(_ws_div_mask[i]))
+                        if _ws_fire:
+                            _wa_ws = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                            all_pnl.append(_wa_ws); sym_pnl.append(_wa_ws)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            cd = max(cooldown, min_gap_bars); continue
                     # Partial exit v2 (PPL): TP at _pe_pct → stop BE+buffer → upgrade stop to _pe_trail_floor at _pe_trail_arm.
                     if _pe_enabled and not _pe_partial_done and live_pnl >= _pe_pct:
                         _pe_realized = _pe_frac * live_pnl
@@ -2100,8 +2169,16 @@ def simulate(stores, cfg, capital=10000.0):
                         in_pos = False; _aug_done = False; cd = max(cooldown, min_gap_bars); continue
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
                     if getattr(cfg, 'HEDGE_ENABLED', True):
+                        # HEDGE_ENTRY_MODE (2026-04-21 sweep): 'LOSS_ONLY' / 'LOSS_AND_WT' / 'LOSS_OR_WT'
+                        _he_mode = str(getattr(cfg, 'HEDGE_ENTRY_MODE', 'LOSS_AND_WT'))
                         if is_long:
-                            hc = live_pnl < 0 and _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                            _wt_against_h = _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
+                            if _he_mode == 'LOSS_ONLY':
+                                hc = live_pnl < 0
+                            elif _he_mode == 'LOSS_OR_WT':
+                                hc = live_pnl < 0 or _wt_against_h
+                            else:
+                                hc = live_pnl < 0 and _wt_against_h
                             if _hedge_wt_kill_tf == 'none':
                                 _wt_kill = _wt1_ltf[i] > _wt2_ltf[i]
                             elif _hedge_wt_kill_tf == '15m':
@@ -2109,7 +2186,13 @@ def simulate(stores, cfg, capital=10000.0):
                             else:
                                 _wt_kill = _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
                         else:
-                            hc = live_pnl < 0 and _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
+                            _wt_against_h = _wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i]
+                            if _he_mode == 'LOSS_ONLY':
+                                hc = live_pnl < 0
+                            elif _he_mode == 'LOSS_OR_WT':
+                                hc = live_pnl < 0 or _wt_against_h
+                            else:
+                                hc = live_pnl < 0 and _wt_against_h
                             if _hedge_wt_kill_tf == 'none':
                                 _wt_kill = _wt1_ltf[i] < _wt2_ltf[i]
                             elif _hedge_wt_kill_tf == '15m':

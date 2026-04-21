@@ -354,6 +354,16 @@ class TradierConfig:
     # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
+    # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
+    WRONG_SIDE_MIN_AGE_MIN: float = 30.0
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 5
+    WRONG_SIDE_WT_TFS_REDUCED: int = 3
+    WRONG_SIDE_DIV_TFS_REQUIRED: int = 2
+    WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20
+    WRONG_SIDE_K_TFS_REQUIRED: int = 0
+    # HEDGE_ENTRY_MODE (shared semantics with crypto).
+    HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
     # === NEWS SENTIMENT ===
     NEWS_SENTIMENT_ENABLED: bool =         True
     NEWS_SENTIMENT_WEIGHT: float =         0.10

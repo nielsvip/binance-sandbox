@@ -1031,6 +1031,20 @@ class Config:
     # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
+    # WRONG_SIDE_ABS_KILL — kill when N-of-5 WT TFs against + (optionally) divergence confirms.
+    # K (stoch) requirement DEFERRED (irrelevant per user 2026-04-21). Divergence detection active.
+    # If M TFs show divergence (price HH + WT LH for LONG, mirror for SHORT, over DIV_LOOKBACK_BARS),
+    # reduce WT requirement from TFS_REQUIRED to TFS_REDUCED. Sweep N=[3,4,5], REDUCED=[2,3,4], age=[15,30,60,120], div_lookback=[10,20,40].
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
+    WRONG_SIDE_MIN_AGE_MIN: float = 30.0
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 5
+    WRONG_SIDE_WT_TFS_REDUCED: int = 3              # when divergence confirms, this threshold applies
+    WRONG_SIDE_DIV_TFS_REQUIRED: int = 2            # min TFs with divergence to reduce threshold
+    WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20          # K-bars back for HH/LH comparison
+    WRONG_SIDE_K_TFS_REQUIRED: int = 0              # DEFERRED — set to 0 (disabled)
+    # HEDGE_ENTRY_MODE — 'LOSS_ONLY' (gain<0), 'LOSS_AND_WT' (current: gain<0 AND wt_3m+1h against),
+    # 'LOSS_OR_WT' (user proposal: gain<0 OR (wt_3m AND wt_1h against)). Sweep all 3.
+    HEDGE_ENTRY_MODE: str = "LOSS_AND_WT"
     SATOSHIT_MIN_VOTES: int = 3  # 3-of-5 entry indicators must agree
     SATOSHIT_SCORE_BONUS: int = 30  # Score bonus when Satoshit fires (below mover=40)
     SATOSHIT_QTY_MULT: float = 3.0  # 3x position size for satoshit entries — 100% WR, avg +5.58% gain

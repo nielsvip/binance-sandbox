@@ -1115,9 +1115,9 @@ def build_param_grid_mega_tradier_v8():
         "EXIT_SCORER_ENABLED": [True, False],
         "EXIT_SCORER_MIN_CONDITIONS": [2, 3],
         "DC_RECOVERY_EXIT_ENABLED": [True, False],
-        # ── FLOOR: early-abort configs below 3.0 sym_avg in first 30s/20sym ──────
-        "EARLY_ABORT_MIN_SYMBOLS": [20],
-        "EARLY_ABORT_SHARPE_FLOOR": [3.0],
+        # ── FLOOR: disabled — medium tradier symbols (large caps) have lower Sharpe than full 128-set ──
+        "EARLY_ABORT_MIN_SYMBOLS": [999],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
         "EARLY_ABORT_TIME_LIMIT_SEC": [30.0],
     }
 
