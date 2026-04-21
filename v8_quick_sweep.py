@@ -1056,6 +1056,9 @@ def build_param_grid_mega_crypto_v8():
         "HTF_MIN_ALIGNED": [1],
         "DC_RECOVERY_EXIT_ENABLED": [True],
         "NOLOSS_ENABLED": [True],
+        # ── RZ BREAKOUT: always ON, winner mode fixed (dc_low4_15m swept 2026-04-21, tied dc_low4_base by 0.0003) ──
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "RZ_BREAKOUT_NOLOSS_MODE": ["dc_low4_15m"],
         # ── UNKNOWNS TO SWEEP ─────────────────────────────────────────────────────
         "DYNAMIC_SCORE_COUNTER_EXIT_ENABLED": [True, False],
         "DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD": [45.0, 55.0],
@@ -1104,12 +1107,11 @@ def build_param_grid_mega_tradier_v8():
         "D_TREND_REQUIRED": [True],
         "HTF_MIN_ALIGNED": [1],
         "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
-        # ── RZ BREAKOUT: always ON, sweep NOLOSS bypass mode ─────────────────────
+        # ── RZ BREAKOUT: always ON, winner mode fixed (dc_low4_15m swept 2026-04-21) ──
         "RZ_BREAKOUT_ENTRY_ENABLED": [True],
         "RZ_BOT_BB_THRESHOLD": [0.20],
         "RZ_TOP_BB_THRESHOLD": [0.85],
-        "RZ_BREAKOUT_NOLOSS_MODE": ["bar_structure", "dc_low4_base", "dc_low_base", "dc_low4_15m"],
-        "RZ_BREAKOUT_NOLOSS_BAR_WINDOW": [2, 4],
+        "RZ_BREAKOUT_NOLOSS_MODE": ["dc_low4_15m"],
         # ── EXIT FEATURE UNKNOWNS (most impactful — others fixed at default) ──────
         "RZ_EXIT_ENABLED": [True, False],
         "EXIT_SCORER_ENABLED": [True, False],
