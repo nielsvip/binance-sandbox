@@ -2077,18 +2077,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _tm = manager  # trade_manager in this scope
                 if hasattr(_tm, 'reduced_positions') and _tm.reduced_positions is not None:
                     _tm.reduced_positions[position_key] = _now_dt
-                if hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None and not (is_full_close or new_amt < 0.0001):
+                if hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None:
                     _max_q = float(getattr(pos, 'max_quantity', 0) or old_amt or 0)
                     _existing_re_amt = float((_tm.reentry_data.get(position_key) or {}).get('reentry_amount', 0) or 0)
-                    _accum_re_amt = min(_max_q, _existing_re_amt + abs(qty))
+                    _accum_re_amt = _max_q if (is_full_close or new_amt < 0.0001) else min(_max_q, _existing_re_amt + abs(qty))
+                    _re_reason = f"{'CLOSED' if (is_full_close or new_amt < 0.0001) else 'REDUCED'}_{reason[:60]}"
                     _tm.reentry_data[position_key] = {
                         "reentry_level": float(px),
-                        "reentry_amount": _accum_re_amt,
+                        "reentry_amount": max(_accum_re_amt, float(getattr(config, 'START_POSITION_SIZE', 55.0)) / max(px, 1e-9)),
                         "timestamp": _now_dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if hasattr(_now_dt, 'strftime') else str(_now_dt),
-                        "reason": f"REDUCED_{reason[:60]}",
+                        "reason": _re_reason,
                     }
-                elif hasattr(_tm, 'reentry_data') and _tm.reentry_data is not None and (is_full_close or new_amt < 0.0001):
-                    _tm.reentry_data.pop(position_key, None)  # full close = no reentry
             except Exception as _resync_e:
                 v8_logger.debug(f"[V8_REENTRY_SYNC_ERR] {position_key}: {_resync_e}")
             # TIER1_PRICE_CROSS_REENTRY fix: populate tracker_manager exit cache so

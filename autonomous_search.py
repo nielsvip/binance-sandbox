@@ -68,6 +68,8 @@ def main():
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--n-max", type=int, default=100000)
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--base-overrides-json", default=None,
+                    help="JSON file with overrides to apply to QuickConfig before perturbation starts.")
     ap.add_argument("--bool-flip-prob", type=float, default=0.15)
     ap.add_argument("--numeric-perturb-prob", type=float, default=0.10)
     ap.add_argument("--workers", type=int, default=4,
@@ -76,6 +78,8 @@ def main():
                     help="Reject configs with trades < this from CSV output (garbage-filter).")
     ap.add_argument("--min-trades-per-sym", type=int, default=30,
                     help="Reject configs with trades/symbols < this (per-sym reliability floor).")
+    ap.add_argument("--symbol-list", default=None,
+                    help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
     args = ap.parse_args()
 
     sys.path.insert(0, str(Path(__file__).parent))
@@ -89,24 +93,35 @@ def main():
     csv_path = Path(args.out_dir) / f"autonomous_{args.mode}.csv"
     winners_path = Path(args.out_dir) / f"autonomous_{args.mode}_winners.jsonl"
 
-    # Pre-select symbols to avoid loading the full corpus into RAM (OOM on small servers)
+    # Pre-select symbols to avoid loading the full corpus into RAM
     from pathlib import Path as _P
     CRYPTO_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
-    all_files = sorted(_P(args.npz_dir).glob("*.npz"))
-    candidates = []
-    for p in all_files:
-        sym = p.stem
-        is_crypto = any(sym.endswith(s) for s in CRYPTO_SUFFIXES)
-        if args.mode == "crypto" and not is_crypto: continue
-        if args.mode == "tradier" and is_crypto: continue
-        candidates.append(sym)
-    syms = candidates[:args.symbols]
+    if args.symbol_list:
+        syms = [s.strip() for s in args.symbol_list.split(",") if s.strip()]
+    else:
+        all_files = sorted(_P(args.npz_dir).glob("*.npz"))
+        candidates = []
+        for p in all_files:
+            sym = p.stem
+            is_crypto = any(sym.endswith(s) for s in CRYPTO_SUFFIXES)
+            if args.mode == "crypto" and not is_crypto: continue
+            if args.mode == "tradier" and is_crypto: continue
+            candidates.append(sym)
+        syms = candidates[:args.symbols]
     subset = load_npz(args.mode, syms, args.start, args.npz_dir)
     gc.collect()
 
     base = QuickConfig()
     base.MODE = args.mode
     base.LTF = "3m" if args.mode == "crypto" else "5m"
+    if args.base_overrides_json:
+        with open(args.base_overrides_json) as _f:
+            _base_ovr = json.load(_f)
+        _base_ovr.pop("_meta", None)
+        for k, v in _base_ovr.items():
+            if k not in FORBIDDEN_FLIPS and hasattr(base, k):
+                setattr(base, k, v)
+        print(f"[AUTO_SEARCH] Base overrides applied from {args.base_overrides_json}: {len(_base_ovr)} keys", flush=True)
     # Force FORBIDDEN_FLIPS defaults to safe-off on the base config so no sampled config accidentally carries them on
     for nm in FORBIDDEN_FLIPS:
         if hasattr(base, nm):
@@ -124,7 +139,7 @@ def main():
         if not csv_exists:
             w.writerow(["iter", "pool_sharpe", "acc_gain_pct", "max_dd_pct",
                         "trades", "gain_vs_bh", "elapsed_s", "overrides_count",
-                        "overrides_json"])
+                        "reliable", "overrides_json"])
         best_gain = -1e9
         best_sharpe = -1e9
         for i in range(args.n_max):
@@ -147,16 +162,13 @@ def main():
             dd = r.get("max_dd_pct", 0.0)
             tr = r.get("trades", 0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
-            # Garbage-filter: reject configs that don't meet minimum-trades floor
+            # Keep ALL results — tag reliable=1 if meets min-trades floor, else reliable=0.
+            # Per user 2026-04-21: weaker configs still data for combining/evolution.
             n_syms = len(subset)
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
-            if tr < floor_total:
-                # Do not write to CSV — garbage result. Print reject every 50 rejects.
-                if i % 50 == 0:
-                    print(f"[AUTO_SEARCH] iter={i} REJECT tr={tr}<{floor_total} (need {args.min_trades_per_sym}/sym × {n_syms}={floor_total})", flush=True)
-                continue
+            reliable = 1 if tr >= floor_total else 0
             w.writerow([i, round(sharpe, 4), round(gain, 2), round(dd, 2), tr,
-                        round(gvb, 3), round(el, 1), len(ovr), json.dumps(ovr)])
+                        round(gvb, 3), round(el, 1), len(ovr), reliable, json.dumps(ovr)])
             csv_f.flush()
             if gain > best_gain:
                 best_gain = gain
@@ -164,11 +176,12 @@ def main():
                 print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN sharpe={sharpe:.3f} "
                       f"gain={gain:.1f}% ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
                       f"ovr={len(ovr)} el={el:.1f}s", flush=True)
-            if gain >= target_gain and sharpe >= target_sharpe:
+            # Only call it a "WINNER" if reliable AND meets targets.
+            if reliable and gain >= target_gain and sharpe >= target_sharpe:
                 win = {"iter": i, "pool_sharpe": round(sharpe, 4),
                        "acc_gain_pct": round(gain, 2), "max_dd_pct": round(dd, 2),
                        "trades": tr, "gain_vs_bh": round(gvb, 3),
-                       "overrides": ovr}
+                       "reliable": reliable, "overrides": ovr}
                 with open(winners_path, "a") as wf:
                     wf.write(json.dumps(win) + "\n")
                 print(f"[AUTO_SEARCH] *** WINNER iter={i} gain={gain:.0f}% "
