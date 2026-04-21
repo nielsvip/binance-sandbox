@@ -4762,19 +4762,25 @@ class HedgeEngine:
                             hedge_pos = positions.get(hedge_key)
                             losing_pos = positions.get(losing_key)
                             if not hedge_pos: continue
-                            if not losing_pos:
-                                # FIX 2026-04-07: Original position GONE → close orphaned hedge immediately
+                            _losing_amt_chk = abs(safe_fetch_float(getattr(losing_pos, 'positionAmt', 0), 0)) if losing_pos else 0
+                            if not losing_pos or _losing_amt_chk < 0.0001:
+                                # Original position GONE or CLOSED (positionAmt=0) → orphan kill
                                 _orphan_amt = abs(safe_fetch_float(getattr(hedge_pos, 'positionAmt', 0), 0))
                                 if _orphan_amt > 0:
                                     _orphan_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0), 0)
                                     _orphan_sym = getattr(hedge_pos, 'symbol', hedge_key.split(':')[-1].replace('_LONG', '').replace('_SHORT', ''))
                                     _orphan_price, _ = await self.data_manager.get_fresh_price(_orphan_sym)
                                     if _orphan_price > 0:
-                                        logger.critical(f"💀[HEDGE_ORPHAN_HEALTH_KILL] {hedge_key}: original {losing_key} no longer exists. gain={_orphan_gain:.2f}%. Closing orphaned hedge.")
+                                        logger.critical(f"💀[HEDGE_ORPHAN_HEALTH_KILL] {hedge_key}: original {losing_key} no longer exists (positionAmt={_losing_amt_chk:.6f}). gain={_orphan_gain:.2f}%. Closing orphaned hedge.")
                                         await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=_orphan_amt, action='CLOSE', current_price=_orphan_price, qty=_orphan_amt, reason=f"HEDGE_ORPHAN_HEALTH_KILL_no_original_gain{_orphan_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                # Clear completed lock so position can be re-hedged if it reopens
+                                # Clear ALL entry locks so original direction can re-enter immediately
+                                _orig_sym = (losing_key or '').split(':')[-1].replace('_LONG','').replace('_SHORT','')
                                 self._hedge_completed.pop(losing_key, None)
+                                self._hedge_cooldowns.pop(_orig_sym, None)
+                                self.tracker_manager.hedge_liability_cooldowns.pop(losing_key, None)
+                                self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
+                                logger.critical(f"[ORPHAN_REENTRY_UNLOCK] {losing_key}: all hedge locks cleared — original direction free to re-enter on next signal")
                                 continue
                             hedge_sym = hedge_pos.symbol
                             losing_sym = losing_pos.symbol
@@ -5636,11 +5642,20 @@ class HedgeEngine:
                         self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                         self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
                     continue
-                # ORPHAN check
+                # ORPHAN check — fires when original position is gone OR positionAmt=0
                 original_pos = positions.get(original_key) if original_key else None; is_orphan = not original_pos or abs(safe_fetch_float(original_pos.positionAmt, 0)) < 0.0001
                 if is_orphan:
-                    logger.info(f"⚖️ [HEDGE_CLEANUP] {hedge_key} is ORPHANED. Closing."); success, _ = await execute_trade_wrapper( self.trade_manager, self.tracker_manager, self, account_key, hedge_key, hedge_amt, 'QUICK_CLOSE', current_price, hedge_amt, "HEDGE_CLEANUP_ORPHAN", is_hedge=True, data_manager=self.data_manager )
-                    if success: await self.tracker_manager.nuke_hedge_key(account_key, hedge_key); continue
+                    logger.critical(f"💀[HEDGE_CLEANUP_ORPHAN] {hedge_key}: original {original_key} closed/gone. Closing orphaned hedge at gain={hedge_gain:.2f}%. NO P/L GATE.")
+                    success, _ = await execute_trade_wrapper(self.trade_manager, self.tracker_manager, self, account_key, hedge_key, hedge_amt, 'CLOSE', current_price, hedge_amt, f"HEDGE_CLEANUP_ORPHAN_orig{original_key}_g{hedge_gain:.2f}", is_hedge=True, data_manager=self.data_manager)
+                    if success:
+                        await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                        _orphan_sym2 = (original_key or '').split(':')[-1].replace('_LONG','').replace('_SHORT','')
+                        self._hedge_completed.pop(original_key, None)
+                        self._hedge_cooldowns.pop(_orphan_sym2, None)
+                        self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
+                        self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
+                        logger.critical(f"[ORPHAN_REENTRY_UNLOCK] {original_key}: all locks cleared — original direction free to re-enter")
+                    continue
             except Exception as e: logger.error(f"[HEDGE_MON] Error managing hedge {record.get('id')}: {e}", exc_info=True)
         return actions_taken
 
@@ -11590,9 +11605,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             break
                 if not is_hedge:
                     cand = await tracker_manager.get_exit_candidate(position_key)
-                    if cand and cand.get('is_hedge', False) and cand.get('hedge_for'):
-                        is_hedge = True
-                        hedge_for = cand.get('losing_position_key') or cand.get('hedge_for')
+                    if cand:
+                        _cand_is_hedge = cand.get('is_hedge', False) or 'HEDGE' in str(cand.get('last_reason', '')).upper() or 'HEDGE' in str(cand.get('hedge_for', '')).upper()
+                        if _cand_is_hedge:
+                            is_hedge = True
+                            hedge_for = cand.get('losing_position_key') or cand.get('hedge_for')
 
                 hard_exit_reason = ""
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
@@ -11846,7 +11863,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         if hedge_engine:
                             hedge_engine._hedge_completed.pop(_hlk_orig_pk, None)
                             logger.info(f"[HEDGE_COMPLETED_LOCK_CLEARED] {_hlk_orig_pk}: hedge killed — lock cleared for ONE re-hedge")
-                # HEDGE_ORPHAN_KILL: hedge with no original position to protect → close immediately.
+                # HEDGE_ORPHAN_KILL: hedge with no original position to protect → close immediately. NO P/L GATE.
                 if not hard_exit_reason and is_hedge:
                     _orphan_side = 'SHORT' if is_long else 'LONG'
                     _orphan_pk_full = f"{account_key}:{symbol}_{_orphan_side}"
@@ -11861,9 +11878,16 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     _has_original = _orig_pos and abs(safe_fetch_float(getattr(_orig_pos, 'positionAmt', 0), 0)) > 0
                     if not _has_original:
                         hard_exit_reason = f"HEDGE_ORPHAN_KILL_no_original"
-                        logger.critical(f"💀[HEDGE_ORPHAN_KILL] {position_key}: is_hedge=True but original {_orphan_pk_full} doesn't exist — hedge is protecting nothing. Closing.")
+                        logger.critical(f"💀[HEDGE_ORPHAN_KILL] {position_key}: is_hedge=True, original {_orphan_pk_full} absent/closed — hedge protecting nothing. Closing. gain={current_gain:.2f}%")
                         if hedge_engine:
                             hedge_engine._hedge_completed.pop(_orphan_pk_full, None)
+                            hedge_engine._hedge_cooldowns.pop(symbol, None)
+                            hedge_engine.tracker_manager.hedge_liability_cooldowns.pop(_orphan_pk_full, None)
+                            try:
+                                _htpk = getattr(hedge_engine.tracker_manager, 'tradeable_position_keys', {})
+                                _htpk.get(account_key, set()).discard(position_key)
+                            except Exception: pass
+                            logger.critical(f"[ORPHAN_REENTRY_UNLOCK] {_orphan_pk_full}: locks cleared, tradeable_position_keys cleaned — LONG free to re-enter")
                 # ═══ CROSS-SYMBOL HEDGE TRIGGER (re-enabled 2026-04-01: inline only, no loops) ═══
                 # Hedge = opening OPPOSITE side to offset losses. Uses normal entry criteria.
                 # This is NOT augmenting a loser — it's protection.
