@@ -54,6 +54,36 @@ def load_stage1_candidates(glob_pattern, min_sharpe=0.3, top_n=100):
 
 
 def apply_overrides(cfg, row_dict):
+    import json as _json
+    # Try overrides_json column first (primary storage format in autonomous CSVs)
+    ovr_json = row_dict.get("overrides_json")
+    if ovr_json and ovr_json not in ("", "1", "0"):
+        try:
+            ovr = _json.loads(ovr_json)
+            for k, v in ovr.items():
+                if k is None or k in FORBIDDEN_KEYS or k.startswith("_"):
+                    continue
+                if not hasattr(cfg, k):
+                    continue
+                try:
+                    cur = getattr(cfg, k)
+                    if isinstance(cur, bool):
+                        if isinstance(v, bool):
+                            setattr(cfg, k, v)
+                        else:
+                            setattr(cfg, k, str(v).lower() in ("true", "1", "yes"))
+                    elif isinstance(cur, int):
+                        setattr(cfg, k, int(float(v)))
+                    elif isinstance(cur, float):
+                        setattr(cfg, k, float(v))
+                    elif isinstance(cur, str):
+                        setattr(cfg, k, str(v))
+                except (ValueError, TypeError):
+                    continue
+            return
+        except (_json.JSONDecodeError, TypeError):
+            pass
+    # Fallback: treat each CSV column as a direct override key
     for k, v in row_dict.items():
         if k is None or v is None:
             continue
