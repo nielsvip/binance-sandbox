@@ -20,6 +20,9 @@ FORBIDDEN_FLIPS = {
     "ACCOUNT_TP_PCT",
     # AUGMENT_PT ride-along
     "AUGMENT_WT_D_AUTO_CLOSE_ENABLED", "AUGMENT_WT_4H_AUTO_CLOSE_ENABLED",
+    # EARLY_ABORT_SHARPE_FLOOR inflates Sharpe by cherry-picking good runs (found 2026-04-22).
+    # Setting it high causes simulation to skip bad runs, raising measured Sharpe artificially.
+    "EARLY_ABORT_SHARPE_FLOOR",
     # NOTE: PARTIAL_PROFIT_LOCK_* and PARTIAL_EXIT_* are NOT forbidden.
     # PPL is a REAL live mechanism (50% close at +0.5% via maker/webhook_url_2).
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
