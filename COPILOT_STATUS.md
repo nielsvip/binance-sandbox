@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-21 23:50:53 UTC
+# Copilot Status — 2026-04-22 00:06:16 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T23:46:45
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T23:46:57
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T23:47:51
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T23:47:51
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T23:48:54
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T23:48:54
-- **STALE_INDICATORS** [tradier]  — 2026-04-21T23:49:06
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-21T23:50:01
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-21T23:50:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-21T23:50:01
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-22T00:02:51
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T00:02:51
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-22T00:03:56
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T00:03:56
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T00:04:07
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-22T00:05:00
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T00:05:00
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-22T00:06:04
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T00:06:04
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T00:06:16
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 2 | **Watching for reentry:** 0 | **Reentered:** 0
 
 - HELD: **OLED** SHORT (tradier) peak +23.6%, now +-2.6%
-- HELD: **AAVEUSDC** SHORT (crypto) peak +3.6%, now +1.3%
+- HELD: **AAVEUSDC** SHORT (crypto) peak +3.6%, now +1.4%
 
 ## Supervisor
 
