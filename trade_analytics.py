@@ -627,9 +627,10 @@ def parse_tradier_confirmed_fills(n=2000):
     return deduped
 
 
-def load_stock_decisions(accounts=None):
+def load_stock_decisions(accounts=None, days_back=14):
     """Load stock trade events from data/decisions/ JSONL files.
-    Only includes records with trade details (qty/price). Falls back to log parsing for old data."""
+    Only includes records with trade details (qty/price). Falls back to log parsing for old data.
+    Limits to the most recent days_back days to keep response time under 5s."""
     if accounts is None:
         accounts = STOCK_ACCOUNTS
     decisions_dir = BASE_DIR / "data" / "decisions"
@@ -638,9 +639,15 @@ def load_stock_decisions(accounts=None):
     seen_decisions = set()
     if not decisions_dir.exists():
         return events, fills
-    for jsonl_file in sorted(decisions_dir.glob("decisions_*.jsonl")):
-        acct = jsonl_file.stem.split("_")[1] if "_" in jsonl_file.stem else ""
+    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y%m%d")
+    all_files = sorted(decisions_dir.glob("decisions_*.jsonl"))
+    for jsonl_file in all_files:
+        stem = jsonl_file.stem
+        acct = stem.split("_")[1] if "_" in stem else ""
+        file_date = stem.split("_")[-1] if "_" in stem else ""
         if acct not in accounts:
+            continue
+        if file_date < cutoff_date:
             continue
         try:
             with open(jsonl_file, "r") as f:
@@ -664,20 +671,22 @@ def load_stock_decisions(accounts=None):
                     position_amt = trade.get("position_amt", 0)
                     effective_qty = float(qty) if qty > 0 else float(position_amt)
                     action_type = trade.get("action_type", "")
-                    if not action_type:
+                    # Strip emojis — action_type in trade sub-obj can be "💥CLOSE" or "🚀AUGMENT"
+                    action_clean = action_type.upper().replace("💥", "").replace("🚀", "").replace("🟢", "").strip()
+                    if not action_clean:
                         a = action_raw.upper().replace("🚀", "").replace("💥", "").replace("🟢", "").strip()
                         if "CLOSE" in a:
-                            action_type = "CLOSE"
+                            action_clean = "CLOSE"
                         elif "AUGMENT" in a or "BUY" in a:
-                            action_type = "AUGMENT"
+                            action_clean = "AUGMENT"
                         elif "REDUCE" in a or "SELL" in a:
-                            action_type = "REDUCE"
+                            action_clean = "REDUCE"
                         else:
                             continue
-                    if action_type.upper() in ("OPEN", "AUGMENT", "REENTRY"):
-                        ev_type = "AUGMENT"
-                    elif action_type.upper() in ("CLOSE", "REDUCE", "QUICK_CLOSE"):
+                    if "CLOSE" in action_clean or action_clean in ("REDUCE", "QUICK_CLOSE"):
                         ev_type = "REDUCE"
+                    elif action_clean in ("OPEN", "AUGMENT", "REENTRY", "LONG BUY", "SHORT SELL") or "BUY" in action_clean or "AUGMENT" in action_clean:
+                        ev_type = "AUGMENT"
                     else:
                         continue
                     if effective_qty > 0 and price > 0:
@@ -787,17 +796,22 @@ def build_stock_monitor():
 
 
 _stock_cache = {"data": None, "ts": 0}
-STOCK_TTL = 15
+STOCK_TTL = 30
 _last_stock_fill_ts = {"ts": ""}
+import threading as _threading
+_stock_cache_lock = _threading.Lock()
 
 
 def get_stock_monitor():
     now = datetime.now(timezone.utc).timestamp()
     if _stock_cache["data"] and now - _stock_cache["ts"] < STOCK_TTL:
         return _stock_cache["data"]
-    result = build_stock_monitor()
-    _stock_cache["data"] = result
-    _stock_cache["ts"] = now
+    with _stock_cache_lock:
+        if _stock_cache["data"] and now - _stock_cache["ts"] < STOCK_TTL:
+            return _stock_cache["data"]
+        result = build_stock_monitor()
+        _stock_cache["data"] = result
+        _stock_cache["ts"] = now
     return result
 
 
