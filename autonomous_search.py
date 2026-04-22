@@ -25,6 +25,10 @@ FORBIDDEN_FLIPS = {
     # TIME_LIMIT_SEC reduction also causes premature stop, same effect.
     "EARLY_ABORT_SHARPE_FLOOR", "EARLY_ABORT_ENABLED", "EARLY_ABORT_MIN_SYMBOLS",
     "EARLY_ABORT_TIME_LIMIT_SEC",
+    # STOP_LOSS_ENABLED inflates backtest Sharpe by cutting losses while live system has it OFF.
+    # Activating it in backtest but not live = false signal. Lock to False in all searches.
+    # HARD_STOP_LOSS_MAX_PAIN caused $500+ losses on 2026-03-24 — NEVER re-enable in any search.
+    "STOP_LOSS_ENABLED",
     # NOTE: PARTIAL_PROFIT_LOCK_* and PARTIAL_EXIT_* are NOT forbidden.
     # PPL is a REAL live mechanism (50% close at +0.5% via maker/webhook_url_2).
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
