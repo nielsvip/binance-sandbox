@@ -661,6 +661,8 @@ def load_stock_decisions(accounts=None):
                     side = parts[1] if len(parts) == 2 else "LONG"
                     price = trade.get("price") or rec.get("indicators", {}).get("current_price", 0)
                     qty = trade.get("qty", 0)
+                    position_amt = trade.get("position_amt", 0)
+                    effective_qty = float(qty) if qty > 0 else float(position_amt)
                     action_type = trade.get("action_type", "")
                     if not action_type:
                         a = action_raw.upper().replace("🚀", "").replace("💥", "").replace("🟢", "").strip()
@@ -678,18 +680,19 @@ def load_stock_decisions(accounts=None):
                         ev_type = "REDUCE"
                     else:
                         continue
-                    if qty > 0 and price > 0:
-                        dedup_k = (ts[:16], pk, ev_type, round(float(qty)))
+                    if effective_qty > 0 and price > 0:
+                        dedup_k = (ts[:16], pk, ev_type, round(effective_qty))
                         if dedup_k in seen_decisions:
                             continue
                         seen_decisions.add(dedup_k)
                         entry_price = trade.get("entry_price", 0)
                         gain_pct = trade.get("gain_pct", 0)
                         is_exit = ev_type == "REDUCE"
-                        gain_dollar = round(gain_pct / 100.0 * qty * price, 2) if (is_exit and gain_pct) else 0.0
-                        events.append({"ts": ts, "type": ev_type, "symbol": sym_part, "side": side, "account": acct, "qty": float(qty), "price": float(price), "value": round(float(qty) * float(price), 2), "reason": rec.get("reason_text", ""), "is_stock": True})
+                        cost_basis_price = float(entry_price) if entry_price and float(entry_price) > 0 else float(price)
+                        gain_dollar = round(gain_pct / 100.0 * effective_qty * cost_basis_price, 2) if (is_exit and gain_pct) else 0.0
+                        events.append({"ts": ts, "type": ev_type, "symbol": sym_part, "side": side, "account": acct, "qty": effective_qty, "price": float(price), "value": round(effective_qty * float(price), 2), "reason": rec.get("reason_text", ""), "is_stock": True})
                         fill_side = trade.get("side", "BUY" if ev_type == "AUGMENT" else "SELL")
-                        fills.append({"ts": ts, "account": acct, "key": pk, "symbol": sym_part, "action": action_type, "side": fill_side, "qty": int(qty), "price": float(price), "value": round(float(qty) * float(price), 2), "gain_pct": round(gain_pct, 2) if is_exit else 0.0, "gain_dollar": gain_dollar if is_exit else 0.0, "entry_price": float(entry_price), "reason": rec.get("reason_text", "")[:60]})
+                        fills.append({"ts": ts, "account": acct, "key": pk, "symbol": sym_part, "action": action_type, "side": fill_side, "qty": int(effective_qty), "price": float(price), "value": round(effective_qty * float(price), 2), "gain_pct": round(gain_pct, 2) if is_exit else 0.0, "gain_dollar": gain_dollar if is_exit else 0.0, "entry_price": float(entry_price), "reason": rec.get("reason_text", "")[:60]})
         except Exception:
             continue
     events.sort(key=lambda e: e.get("ts", ""))

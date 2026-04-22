@@ -2004,5 +2004,19 @@ def swarm_page():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    import subprocess, os as _os, time as _time
+    def _kill_port(port):
+        try:
+            result = subprocess.run(["lsof", "-t", f"-i:{port}"], capture_output=True, text=True)
+            for pid_str in result.stdout.strip().split("\n"):
+                pid_str = pid_str.strip()
+                if pid_str and pid_str.isdigit() and int(pid_str) != _os.getpid():
+                    _os.kill(int(pid_str), 9)
+            _time.sleep(0.5)
+        except Exception:
+            pass
+    _kill_port(5051)
+    from werkzeug.serving import BaseWSGIServer
+    BaseWSGIServer.allow_reuse_address = True
     print("Sweep Cockpit starting on http://localhost:5051")
     app.run(host="0.0.0.0", port=5051, debug=False)
