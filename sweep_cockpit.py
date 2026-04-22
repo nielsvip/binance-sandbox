@@ -494,46 +494,132 @@ def dashboard():
 
     histogram = compute_histogram(sharpe_vals) if sharpe_vals else "(no data)"
 
-    # If no sweep data, show notice with links to active pages
-    no_sweep_notice = ""
-    if total_done == 0:
-        no_sweep_notice = """
-        <div style="background:#1a3a5c; border:1px solid #00d4ff; border-radius:8px; padding:20px; margin-bottom:20px; text-align:center">
-            <h3 style="color:#00d4ff; margin:0 0 10px 0">No active sweeps — running single confirmation runs</h3>
-            <p style="color:#aaa">Use the tabs above to monitor current runs:</p>
-            <p>
-                <a href="/live" style="font-size:16px; margin:0 10px">Live Stocks</a>
-                <a href="/live/crypto" style="font-size:16px; margin:0 10px">Live Crypto</a>
-                <a href="/symbols" style="font-size:16px; margin:0 10px">Per-Symbol Results</a>
-                <a href="/history" style="font-size:16px; margin:0 10px">History</a>
-                <a href="/monitor" style="font-size:16px; margin:0 10px; color:#ff9800">Monitor Agent</a>
-            </p>
+    # --- Live swarm summary (replaces stale v8_sweep_* aggregate) ---
+    import pandas as _pd2, io as _io2
+    swarm_rows_html = ""
+    swarm_bests = []
+    swarm_dirs = [
+        ("Local", os.path.join(BASE_DIR, "data", "autonomous", "*", "w*", "autonomous_*.csv")),
+        ("S1 cache", os.path.join(BASE_DIR, "data", "swarm_cache", "s1", "data", "autonomous", "*", "w*", "autonomous_*.csv")),
+        ("S2 cache", os.path.join(BASE_DIR, "data", "swarm_cache", "s2", "data", "autonomous", "*", "w*", "autonomous_*.csv")),
+    ]
+    validated_dirs = [
+        ("Local S2-validated", os.path.join(BASE_DIR, "data", "stage2_validated", "**", "*.csv")),
+        ("Local funnel", os.path.join(BASE_DIR, "data", "funnel_validated", "**", "*.csv")),
+        ("S2 cache S2-validated", os.path.join(BASE_DIR, "data", "swarm_cache", "s2", "data", "stage2_validated", "**", "*.csv")),
+    ]
+    for label, pat in swarm_dirs:
+        files = sorted(glob.glob(pat))
+        if not files:
+            continue
+        pieces = []
+        for f in files:
+            try:
+                df = _pd2.read_csv(f, usecols=lambda c: c in ["pool_sharpe", "acc_gain_pct", "max_dd_pct", "trades"])
+                pieces.append(df)
+            except Exception:
+                pass
+        if not pieces:
+            continue
+        combined = _pd2.concat(pieces, ignore_index=True)
+        combined["pool_sharpe"] = _pd2.to_numeric(combined["pool_sharpe"], errors="coerce")
+        combined = combined.dropna(subset=["pool_sharpe"])
+        combined = combined[combined["pool_sharpe"] > 0]
+        if combined.empty:
+            continue
+        best = combined.nlargest(3, "pool_sharpe")
+        age_s = int(time.time() - min(os.path.getmtime(f) for f in files))
+        age_str = f"{age_s//60}m ago"
+        ac = "#4caf50" if age_s < 600 else ("#ffaa00" if age_s < 3600 else "#f44336")
+        n = len(combined)
+        top_sharpe = combined["pool_sharpe"].max()
+        swarm_bests.append(top_sharpe)
+        rows_h = "".join(
+            f'<tr><td style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
+            f'<td>{r.get("acc_gain_pct",0):.0f}%</td>'
+            f'<td>{r.get("max_dd_pct",0):.1f}%</td>'
+            f'<td>{int(r.get("trades",0))}</td></tr>'
+            for _, r in best.iterrows()
+        )
+        swarm_rows_html += (
+            f'<div style="margin-bottom:8px">'
+            f'<b>{label}</b> — {n} configs, best=<span style="color:#4caf50">{top_sharpe:.4f}</span> '
+            f'<span style="color:{ac}">({age_str})</span>'
+            f'<table style="font-size:11px;margin-top:3px"><tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th></tr>{rows_h}</table>'
+            f'</div>'
+        )
+    for label, pat in validated_dirs:
+        files = sorted(glob.glob(pat, recursive=True))
+        if not files:
+            continue
+        pieces = []
+        for f in files:
+            try:
+                df = _pd2.read_csv(f, usecols=lambda c: c in ["pool_sharpe", "acc_gain_pct", "max_dd_pct", "trades", "symbols_used"])
+                pieces.append(df)
+            except Exception:
+                pass
+        if not pieces:
+            continue
+        combined = _pd2.concat(pieces, ignore_index=True)
+        combined["pool_sharpe"] = _pd2.to_numeric(combined["pool_sharpe"], errors="coerce")
+        combined = combined.dropna(subset=["pool_sharpe"])
+        combined = combined[combined["pool_sharpe"] > 0]
+        if "symbols_used" in combined.columns:
+            combined["symbols_used"] = _pd2.to_numeric(combined["symbols_used"], errors="coerce")
+            combined = combined[combined["symbols_used"] >= 12]
+        if combined.empty:
+            continue
+        best = combined.nlargest(3, "pool_sharpe")
+        top_sharpe = combined["pool_sharpe"].max()
+        swarm_bests.append(top_sharpe)
+        rows_h = "".join(
+            f'<tr><td style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
+            f'<td>{r.get("acc_gain_pct",0):.0f}%</td>'
+            f'<td>{r.get("max_dd_pct",0):.1f}%</td>'
+            f'<td>{int(r.get("trades",0))}</td>'
+            f'<td>{int(r.get("symbols_used",0))}</td></tr>'
+            for _, r in best.iterrows()
+        )
+        swarm_rows_html += (
+            f'<div style="margin-bottom:8px">'
+            f'<b>✅ {label}</b> — best=<span style="color:#4caf50">{top_sharpe:.4f}</span>'
+            f'<table style="font-size:11px;margin-top:3px"><tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th><th>Syms</th></tr>{rows_h}</table>'
+            f'</div>'
+        )
+
+    overall_best = max(swarm_bests) if swarm_bests else 0
+    swarm_block = f"""
+    <div style="background:#0d1f12; border:2px solid #4caf50; border-radius:8px; padding:16px; margin-bottom:20px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+            <h2 style="margin:0; color:#4caf50">🔬 Live Swarm Results — Best Sharpe: {overall_best:.4f}</h2>
+            <a href="/swarm" style="background:#4caf50; color:#000; padding:6px 14px; border-radius:4px; text-decoration:none; font-weight:bold">Full Swarm View →</a>
         </div>
-        """
+        <p style="color:#888; margin:0 0 10px 0; font-size:11px">Stage-1 (small sym): screening only. ✅ = validated (≥12 sym). Run <code>./sync_swarm_cache.sh</code> to refresh S1/S2 cache.</p>
+        {swarm_rows_html or '<div style="color:#888">No swarm data found — check data/autonomous/ and data/swarm_cache/</div>'}
+    </div>
+    """
 
     body = f"""
-    {no_sweep_notice}
+    {swarm_block}
     <div class="grid">
         {''.join(server_sections)}
     </div>
 
-    <h2>Aggregate ({total_done} configs total)</h2>
-    <div style="margin-bottom:15px">
-        <span class="metric"><span class="metric-label">Total Configs</span><br><span class="metric-value">{total_done}</span></span>
-        <span class="metric"><span class="metric-label">Sharpe Range</span><br><span class="metric-value">{s_min:.3f} — {s_max:.3f}</span></span>
-        <span class="metric"><span class="metric-label">Sharpe Mean</span><br><span class="metric-value">{s_mean:.3f}</span></span>
-        <span class="metric"><span class="metric-label">Sharpe StDev</span><br><span class="metric-value">{s_stdev:.3f}</span></span>
-        <span class="metric"><span class="metric-label">Differentiation</span><br><span class="metric-value" style="color:{diff_color}">{diff_verdict}</span></span>
-    </div>
-
-    <h3>TOP 10 by Sharpe</h3>
-    {render_ranked_table(top10, "top")}
-
-    <h3>BOTTOM 5 by Sharpe</h3>
-    {render_ranked_table(bottom5, "bottom")}
-
-    <h3>Sharpe Distribution</h3>
-    <div class="hist-box">{histogram}</div>
+    <details style="margin-top:20px">
+        <summary style="color:#888; cursor:pointer">Legacy v8_test_queue results ({total_done} configs — stale, no new data)</summary>
+        <div style="margin-top:10px">
+        <div style="margin-bottom:15px">
+            <span class="metric"><span class="metric-label">Sharpe Range</span><br><span class="metric-value">{s_min:.3f} — {s_max:.3f}</span></span>
+            <span class="metric"><span class="metric-label">Sharpe Mean</span><br><span class="metric-value">{s_mean:.3f}</span></span>
+            <span class="metric"><span class="metric-label">Sharpe StDev</span><br><span class="metric-value">{s_stdev:.3f}</span></span>
+        </div>
+        <h3>TOP 10 by Sharpe</h3>
+        {render_ranked_table(top10, "top")}
+        <h3>Sharpe Distribution</h3>
+        <div class="hist-box">{histogram}</div>
+        </div>
+    </details>
     """
 
     return render_page(body, active_nav="Home")
@@ -1445,6 +1531,11 @@ def switches_page():
 
 @app.route("/results")
 def results_page():
+    return redirect("/swarm")
+
+
+@app.route("/results_legacy")
+def results_page_legacy():
     """2026-04-14: The HONEST results view. Not claim-based. Reads latest sweep CSVs
     from all 3 machines, shows Sharpe/PnL breakdown + per-switch variance test.
 
@@ -1725,10 +1816,18 @@ def swarm_page():
     """Live view of autonomous swarm + funnel results from all 3 machines."""
     import pandas as _pd
 
+    # S1 local cache dir — populated by periodic rsync (server is SSH-session-limited when busy).
+    # Falls back to live SSH if cache doesn't exist.
+    S1_CACHE = os.path.join(BASE_DIR, "data", "swarm_cache", "s1")
+    S2_CACHE = os.path.join(BASE_DIR, "data", "swarm_cache", "s2")
     MACHINES = [
         {"name": "Local (MacBook)", "host": None, "base": BASE_DIR},
-        {"name": "S1 (Crypto)", "host": "s1-int", "base": "/home/niels/binance-sandbox"},
-        {"name": "S2 (Tradier)", "host": "s2-int", "base": "/home/niels/binance-sandbox"},
+        {"name": "S1 (Crypto)", "host": "s1-int",
+         "base": S1_CACHE if os.path.isdir(S1_CACHE) else None,
+         "remote_base": "/home/niels/binance-sandbox"},
+        {"name": "S2 (Tradier)", "host": "s2-int",
+         "base": S2_CACHE if os.path.isdir(S2_CACHE) else None,
+         "remote_base": "/home/niels/binance-sandbox"},
     ]
 
     def _read_csvs_local(pattern):
@@ -1777,11 +1876,16 @@ def swarm_page():
         host = m["host"]
         base = m["base"]
 
-        auto_pat = f"{base}/data/autonomous/*/w*/autonomous_*.csv"
-        funnel_pat = f"{base}/data/funnel_validated/**/*.csv"
-        stage2_pat = f"{base}/data/stage2_validated/**/*.csv"
+        # If base is a local cache dir (for busy servers), read locally.
+        # If base is None (remote, no cache), fall back to SSH.
+        use_local = (host is None) or (base is not None and os.path.isdir(base))
+        eff_base = base if use_local else m.get("remote_base", base)
 
-        if host is None:
+        auto_pat = f"{eff_base}/data/autonomous/*/w*/autonomous_*.csv"
+        funnel_pat = f"{eff_base}/data/funnel_validated/**/*.csv"
+        stage2_pat = f"{eff_base}/data/stage2_validated/**/*.csv"
+
+        if use_local:
             auto_df = _read_csvs_local(auto_pat)
             funnel_df = _read_csvs_local(funnel_pat)
             s2_df = _read_csvs_local(stage2_pat)
