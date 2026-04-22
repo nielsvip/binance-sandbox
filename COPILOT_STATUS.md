@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-22 17:16:24 UTC
+# Copilot Status — 2026-04-22 17:31:31 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:14:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:14:28
-- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:14:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:14:58
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T17:14:59
-- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:15:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:15:31
-- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:16:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:16:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T17:16:02
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:29:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:29:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T17:29:37
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:30:08
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:30:08
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:30:39
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:30:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-22T17:30:40
+- **STALE_INDICATORS** [tradier]  — 2026-04-22T17:31:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-22T17:31:11
 
 ## Missed Trades (trader comparison)
 
@@ -27,20 +27,19 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 2 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 1 | **Reentered:** 0
 
 - HELD: **OLED** SHORT (tradier) peak +23.6%, now +-3.0%
 
-- WATCHING: **MSTR** LONG (tradier) peaked +8.8%, exited 0m ago
-- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
+- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 10
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
+**Issues (last 1h):** 14
 - [HIGH] ez_manage.py for flz is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_indicators.py is NOT running
+- [HIGH] ez_klines.py is NOT running

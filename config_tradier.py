@@ -213,11 +213,14 @@ class TradierConfig:
     OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1244 (audit miss)
     OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1245 (audit miss)
     OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1246 (audit miss)
-    # WT-velocity (NOT greeks delta) acceleration exit:
-    # CALL exits if wt_velocity_D flips negative AND |velocity| grows bar-over-bar.
-    # PUT exits if wt_velocity_D flips positive AND velocity grows bar-over-bar.
-    OPTIONS_WT_ACCEL_MIN_ABS: float = 10.0       # min |wt_velocity_D| to count as "accelerating"
-    OPTIONS_WT_ACCEL_GROWTH_PCT: float = 25.0    # velocity must grow at least 25% bar-over-bar
+    # WT-velocity (NOT greeks delta) SLOWDOWN exit — rewritten 2026-04-22.
+    # OLD (pre-fix) logic: sell when ADVERSE velocity accelerates → sold NEM at -40.6% bottom.
+    # NEW logic per user rule: sell when FAVORABLE velocity slows down = momentum peak in.
+    # CALL fires if wt_velocity_D was > OPTIONS_WT_ACCEL_MIN_ABS and current value shrunk by ≥ OPTIONS_WT_SLOWDOWN_PCT.
+    # PUT fires symmetrically on |velocity| shrinking toward 0.
+    OPTIONS_WT_ACCEL_MIN_ABS: float = 10.0       # min |wt_velocity_D_prev| for slowdown to count (ignore noise)
+    OPTIONS_WT_ACCEL_GROWTH_PCT: float = 25.0    # LEGACY alias — reused as slowdown % if OPTIONS_WT_SLOWDOWN_PCT unset
+    OPTIONS_WT_SLOWDOWN_PCT: float = 25.0        # velocity must shrink by ≥25% bar-over-bar for slowdown to fire
     # Support/resistance break exit — symmetric to DC-High Reversal rule on stocks side
     OPTIONS_LEVEL_BREAK_BUFFER: float = 0.01     # 1% buffer past dc_low_D (call) / dc_high_D (put)
     OPTIONS_LEVEL_BREAK_MIN_DTE: int = 14        # Don't fire on sub-14-DTE (noise dominates)

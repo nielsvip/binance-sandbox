@@ -1548,31 +1548,48 @@ async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicator
             sell_threshold = 70 if dte > 14 else 50
             if reversal_score >= sell_threshold:
                 exit_signals.append(ExitSignal(position=opt_pos, reason="BULLISH_REVERSAL", urgency="HIGH" if reversal_score >= 80 else "MEDIUM", action="SELL_NOW" if reversal_score >= 80 else "WATCH", detail=f"Bullish reversal signals ({reversal_score}): {', '.join(reversal_parts)}", score=reversal_score))
-    # 3b. WT_DELTA_ACCEL — WaveTrend velocity (NOT greeks delta) accelerating against position.
-    # User rule: "sell when decline accelerates (delta going up)". In this system
-    # "delta" = wt_velocity (bar-over-bar change of the WT oscillator). A CALL dies
-    # when wt_velocity_D flips negative AND its magnitude grows on successive bars;
-    # a PUT dies when wt_velocity_D flips positive AND grows.
+    # 3b. WT_DELTA_SLOWDOWN — FAVORABLE WaveTrend velocity is decelerating = momentum peak = SELL.
+    # User rule 2026-04-22 (replaces inverted WT_DELTA_ACCEL): BUY on favorable accel,
+    # SELL on favorable slowdown. Selling on ADVERSE-side acceleration was the bug —
+    # by then you're past the bottom (NEM 2026-04-22 sold at -40.6%). Exits must fire
+    # when the FAVORABLE move exhausts, not after the reversal is already in motion.
+    # CALL: favorable = wt_velocity_D > 0. Peak = velocity still positive but shrinking by ≥ OPTIONS_WT_SLOWDOWN_PCT.
+    # PUT:  favorable = wt_velocity_D < 0. Peak = |velocity| shrinking toward 0 by same threshold.
     if ind and wt_history is not None and config is not None:
         wt_vel_D_now = ind.get("wt_velocity_D", 0) or 0
         wt_vel_4h_now = ind.get("wt_velocity_4h", 0) or 0
         prev_entry = wt_history.get(occ, {}) if isinstance(wt_history, dict) else {}
         wt_vel_D_prev = prev_entry.get("wt_velocity_D", wt_vel_D_now)
-        min_abs = getattr(config, "OPTIONS_WT_ACCEL_MIN_ABS", 10.0)
-        growth_pct = getattr(config, "OPTIONS_WT_ACCEL_GROWTH_PCT", 25.0)
-        accel_detected = False
-        accel_detail = ""
-        # Direction: adverse = negative velocity for calls, positive for puts
-        if is_call and wt_vel_D_now < 0 and wt_vel_4h_now < 0:
-            if abs(wt_vel_D_now) >= min_abs and abs(wt_vel_D_now) > abs(wt_vel_D_prev) * (1 + growth_pct / 100.0):
-                accel_detected = True
-                accel_detail = f"CALL WT_vel_D={wt_vel_D_now:.1f} (prev {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — decline accelerating"
-        elif (not is_call) and wt_vel_D_now > 0 and wt_vel_4h_now > 0:
-            if abs(wt_vel_D_now) >= min_abs and abs(wt_vel_D_now) > abs(wt_vel_D_prev) * (1 + growth_pct / 100.0):
-                accel_detected = True
-                accel_detail = f"PUT WT_vel_D={wt_vel_D_now:.1f} (prev {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — rally accelerating"
-        if accel_detected:
-            exit_signals.append(ExitSignal(position=opt_pos, reason="WT_DELTA_ACCEL", urgency="HIGH", action="SELL_NOW", detail=accel_detail, score=85))
+        min_abs = float(getattr(config, "OPTIONS_WT_ACCEL_MIN_ABS", 10.0) or 10.0)
+        # Backward-compat: reuse OPTIONS_WT_ACCEL_GROWTH_PCT as slowdown threshold so existing
+        # config value (25.0) means "sell when favorable vel shrinks by ≥25% bar-over-bar".
+        slowdown_pct = float(getattr(config, "OPTIONS_WT_SLOWDOWN_PCT", getattr(config, "OPTIONS_WT_ACCEL_GROWTH_PCT", 25.0)) or 25.0)
+        slowdown_factor = 1.0 - (slowdown_pct / 100.0)
+        slowdown_detected = False
+        slowdown_detail = ""
+        # CALL: previous favorable vel must have been meaningful (|prev| >= min_abs) and now shrinking
+        if is_call and wt_vel_D_prev > min_abs and wt_vel_D_now > 0 and wt_vel_D_now < wt_vel_D_prev * slowdown_factor:
+            shrink_pct = (1.0 - wt_vel_D_now / wt_vel_D_prev) * 100.0 if wt_vel_D_prev > 0 else 0.0
+            slowdown_detected = True
+            slowdown_detail = f"CALL WT_vel_D peaked: now {wt_vel_D_now:.1f} (was {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — favorable momentum shrinking {shrink_pct:.0f}% ≥ {slowdown_pct:.0f}%"
+        elif (not is_call) and wt_vel_D_prev < -min_abs and wt_vel_D_now < 0 and abs(wt_vel_D_now) < abs(wt_vel_D_prev) * slowdown_factor:
+            shrink_pct = (1.0 - abs(wt_vel_D_now) / abs(wt_vel_D_prev)) * 100.0 if wt_vel_D_prev < 0 else 0.0
+            slowdown_detected = True
+            slowdown_detail = f"PUT WT_vel_D peaked: now {wt_vel_D_now:.1f} (was {wt_vel_D_prev:.1f}), 4h={wt_vel_4h_now:.1f} — favorable momentum shrinking {shrink_pct:.0f}% ≥ {slowdown_pct:.0f}%"
+        if slowdown_detected:
+            exit_signals.append(ExitSignal(position=opt_pos, reason="WT_DELTA_SLOWDOWN", urgency="HIGH", action="SELL_NOW", detail=slowdown_detail, score=85))
+    # 3b-ii. HTF_WT_CROSS_AGAINST — 1h/4h WT cross flipped against the favorable side.
+    # Safety net per user 2026-04-22: "delta slowdown OR 1h/4h wt crossdown should have
+    # already sold it by then". If the higher timeframes confirm a cross against, exit.
+    if ind:
+        _wt_x_1h = str(ind.get("wt_cross_1h", "") or "")
+        _wt_x_4h = str(ind.get("wt_cross_4h", "") or "")
+        if is_call and (_wt_x_1h == "BEAR" or _wt_x_4h == "BEAR"):
+            _detail = f"CALL htf wt cross turned BEAR: 1h={_wt_x_1h} 4h={_wt_x_4h}"
+            exit_signals.append(ExitSignal(position=opt_pos, reason="HTF_WT_CROSS_AGAINST", urgency="HIGH", action="SELL_NOW", detail=_detail, score=82))
+        elif (not is_call) and (_wt_x_1h == "BULL" or _wt_x_4h == "BULL"):
+            _detail = f"PUT htf wt cross turned BULL: 1h={_wt_x_1h} 4h={_wt_x_4h}"
+            exit_signals.append(ExitSignal(position=opt_pos, reason="HTF_WT_CROSS_AGAINST", urgency="HIGH", action="SELL_NOW", detail=_detail, score=82))
     # 3c. LEVEL_BREAK — support (calls) or resistance (puts) broken beyond buffer.
     # User rule: "sell when key levels are broken (fall through red zones)".
     # Only fire on dte > OPTIONS_LEVEL_BREAK_MIN_DTE — sub-14-DTE is noise-dominated
