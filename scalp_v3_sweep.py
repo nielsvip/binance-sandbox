@@ -531,13 +531,18 @@ def main():
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))
     ap.add_argument("--max-symbols", type=int, default=0)
     ap.add_argument("--symbols", type=str, default="")
+    ap.add_argument("--symbols-file", type=str, default="", help="JSON file with {top: [{symbol: X}, ...]}")
     ap.add_argument("--deadline-hours", type=float, default=30.0)
     ap.add_argument("--deadline-iso", type=str, default="")
     ap.add_argument("--fee", type=float, default=FEE_PCT)
     ap.add_argument("--out-tag", type=str, default="")
     ap.add_argument("--force-precomp", action="store_true")
     args = ap.parse_args()
-    if args.symbols:
+    if args.symbols_file:
+        with open(args.symbols_file) as f:
+            d = json.load(f)
+        symbols = [r["symbol"] for r in d.get("top", d)]
+    elif args.symbols:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     else:
         symbols = sorted({Path(p).stem.replace("_1m", "") for p in glob.glob(str(KLINES_DIR / "*_1m.json"))})
