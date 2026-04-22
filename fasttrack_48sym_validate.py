@@ -53,36 +53,69 @@ def load_stage1_candidates(glob_pattern, min_sharpe=0.3, top_n=100):
     return rows[:top_n]
 
 
+def _find_overrides_json(row_dict):
+    """Handle both CSV formats:
+    - New: overrides_json column has the actual JSON dict
+    - Old (w1): overrides_json is a flag (0/1), real JSON is in the None-key overflow column
+    """
+    import json as _json
+    # Try overrides_json column first
+    ovr = row_dict.get("overrides_json", "")
+    if ovr and str(ovr).startswith("{"):
+        try:
+            return _json.loads(ovr)
+        except Exception:
+            pass
+    # Old format: real JSON is in the None key (trailing comma overflow)
+    # Value looks like: ['{"K3M_FLOOR": 90.0, ...}'] — a Python list repr with one JSON string
+    none_val = row_dict.get(None, "")
+    if none_val:
+        try:
+            v = str(none_val).strip()
+            # Try ast.literal_eval to get the list, then parse the inner string
+            import ast
+            lst = ast.literal_eval(v)
+            if isinstance(lst, list) and lst:
+                return _json.loads(lst[0])
+            elif isinstance(lst, dict):
+                return lst
+        except Exception:
+            pass
+        try:
+            # Fallback: try direct JSON parse
+            return _json.loads(none_val)
+        except Exception:
+            pass
+    return None
+
+
 def apply_overrides(cfg, row_dict):
     import json as _json
     # Try overrides_json column first (primary storage format in autonomous CSVs)
-    ovr_json = row_dict.get("overrides_json")
-    if ovr_json and ovr_json not in ("", "1", "0"):
-        try:
-            ovr = _json.loads(ovr_json)
-            for k, v in ovr.items():
-                if k is None or k in FORBIDDEN_KEYS or k.startswith("_"):
-                    continue
-                if not hasattr(cfg, k):
-                    continue
-                try:
-                    cur = getattr(cfg, k)
-                    if isinstance(cur, bool):
-                        if isinstance(v, bool):
-                            setattr(cfg, k, v)
-                        else:
-                            setattr(cfg, k, str(v).lower() in ("true", "1", "yes"))
-                    elif isinstance(cur, int):
-                        setattr(cfg, k, int(float(v)))
-                    elif isinstance(cur, float):
-                        setattr(cfg, k, float(v))
-                    elif isinstance(cur, str):
-                        setattr(cfg, k, str(v))
-                except (ValueError, TypeError):
-                    continue
-            return
-        except (_json.JSONDecodeError, TypeError):
-            pass
+    ovr_json = _find_overrides_json(row_dict)
+    if ovr_json is not None:
+        ovr = ovr_json
+        for k, v in ovr.items():
+            if k is None or k in FORBIDDEN_KEYS or k.startswith("_"):
+                continue
+            if not hasattr(cfg, k):
+                continue
+            try:
+                cur = getattr(cfg, k)
+                if isinstance(cur, bool):
+                    if isinstance(v, bool):
+                        setattr(cfg, k, v)
+                    else:
+                        setattr(cfg, k, str(v).lower() in ("true", "1", "yes"))
+                elif isinstance(cur, int):
+                    setattr(cfg, k, int(float(v)))
+                elif isinstance(cur, float):
+                    setattr(cfg, k, float(v))
+                elif isinstance(cur, str):
+                    setattr(cfg, k, str(v))
+            except (ValueError, TypeError):
+                continue
+        return
     # Fallback: treat each CSV column as a direct override key
     for k, v in row_dict.items():
         if k is None or v is None:
