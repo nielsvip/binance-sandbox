@@ -28,8 +28,7 @@ from config import Config
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
 from tradier_indicators import TradierBarManager, TradierPriceCacheManager, _to_utc
-from utils import (get_simple_redis_manager, load_environment_from_gpg,
-                   orjson_default)
+from utils import get_simple_redis_manager, load_environment_from_gpg, orjson_default
 
 _NYSE_CAL = mcal.get_calendar("XNYS")
 NY_TZ = "America/New_York"
@@ -97,24 +96,39 @@ def json_safe(obj):
     return str(obj)
 load_environment_from_gpg(None)
 client = TradierAPIClient()
-from ez_rankings import DAYS_PLOT  # Ranking functions; Utility functions
-from ez_rankings import (add_gradient, add_stochrsi_zones,
-                         assign_points_proximity_3m, build_ranking_info,
-                         calculate_3min_returns_for_symbols,
-                         calculate_15min_returns_for_symbols, calculate_atr,
-                         calculate_min_max,
-                         calculate_multi_timeframe_band_score,
-                         calculate_regression_band,
-                         calculate_regression_slope_line,
-                         calculate_relative_volume, calculate_weighted_gains,
-                         cleanup_old_plots, detect_stoch_crossovers,
-                         detect_tops_bottoms, find_rank_in_list,
-                         get_legend_handles_labels, get_proximity_range,
-                         get_ranking_data, get_ranking_multiplier,
-                         initialize_caches, load_cache, load_signals,
-                         merge_htf_band_into_ltf, normalize_log_signed,
-                         parse_timestamp, save_cache, save_rankings_json,
-                         to_json_safe)
+from ez_rankings import (
+    DAYS_PLOT,  # Ranking functions; Utility functions
+    add_gradient,
+    add_stochrsi_zones,
+    assign_points_proximity_3m,
+    build_ranking_info,
+    calculate_3min_returns_for_symbols,
+    calculate_15min_returns_for_symbols,
+    calculate_atr,
+    calculate_min_max,
+    calculate_multi_timeframe_band_score,
+    calculate_regression_band,
+    calculate_regression_slope_line,
+    calculate_relative_volume,
+    calculate_weighted_gains,
+    cleanup_old_plots,
+    detect_stoch_crossovers,
+    detect_tops_bottoms,
+    find_rank_in_list,
+    get_legend_handles_labels,
+    get_proximity_range,
+    get_ranking_data,
+    get_ranking_multiplier,
+    initialize_caches,
+    load_cache,
+    load_signals,
+    merge_htf_band_into_ltf,
+    normalize_log_signed,
+    parse_timestamp,
+    save_cache,
+    save_rankings_json,
+    to_json_safe,
+)
 
 _global_file_write_semaphore = asyncio.Semaphore(40)
 config = TradierConfig()
@@ -950,8 +964,10 @@ async def plot_dfs_subplots(
                         ax_plot.plot(t_idx, y_pos, marker=marker_style, color=color_style, ms=marker_size, linestyle='None', zorder=7)
         if len(df_tf) > 2 and 'close' in df_tf.columns:
             try:
-                from ez_rankings import (calculate_regression_band,
-                                         calculate_regression_slope_line)
+                from ez_rankings import (
+                    calculate_regression_band,
+                    calculate_regression_slope_line,
+                )
                 slope_pct_local, rvv_local, yhat_abs_local = calculate_regression_slope_line(df_tf[['close_time','close']].copy())
                 if len(yhat_abs_local) == len(df_tf):
                     slope_str_local_title = f"Slope={fmt_f(slope_pct_local)}%, R={fmt_f(rvv_local)}"
@@ -996,8 +1012,10 @@ async def plot_dfs_subplots(
                 df_btf_data = dfs[btf_overlay].copy()
                 if 'close_time' in df_btf_data.columns and 'close' in df_btf_data.columns:
                     try:
-                        from ez_rankings import (calculate_regression_band,
-                                                 merge_htf_band_into_ltf)
+                        from ez_rankings import (
+                            calculate_regression_band,
+                            merge_htf_band_into_ltf,
+                        )
                         band_htf_overlay = calculate_regression_band(df_btf_data)
                         if not band_htf_overlay.empty:
                             df_tf_merged_htf_band = merge_htf_band_into_ltf(df_tf.copy(), band_htf_overlay)
@@ -2240,14 +2258,14 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     top_losers_lt = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_norm", 0.0))
     top_winners_st = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_recent_norm", 0.0), reverse=True)
     top_losers_st = sorted(final_ranking_data_scalars, key=lambda x: x.get("final_score_recent_norm", 0.0))
-    to_save_top20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:25]]
-    to_save_bottom20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:25]]
+    to_save_top20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:20]]
+    to_save_bottom20 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:20]]
     to_save_top30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_winners_lt[:50]]
     to_save_bottom30 = [{"symbol": e["symbol"], "score": e["final_score_norm"]} for e in top_losers_lt[:50]]
     to_save_top30_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:30]]
     to_save_bottom30_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:30]]
-    to_save_top15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:10]]
-    to_save_bottom15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:10]]
+    to_save_top15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_winners_st[:5]]
+    to_save_bottom15_r = [{"symbol": e["symbol"], "score": e["final_score_recent_norm"]} for e in top_losers_st[:5]]
     # Calculate returns for 15m filtering (similar to ez_rankings)
     all_dfs_for_returns = {item["symbol"]: item.get("dfs_for_calc", {}) for item in final_ranking_data_scalars}
     returns_15m = await calculate_15min_returns_for_symbols(all_dfs_for_returns)

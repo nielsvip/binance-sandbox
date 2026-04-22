@@ -67,9 +67,10 @@ if not logger.handlers:
 # ── Budget & Risk Constants ──────────────────────────────────────────────────
 MAX_PER_ORDER = 2000.0
 PREFERRED_PER_ORDER = 1000.0
-MAX_TOTAL_OPTIONS = 7000.0        # Hard ceiling — NO new positions above this
-MAX_TOTAL_CALLS = 5000.0          # Max $ in calls
-MAX_TOTAL_PUTS = 5000.0           # Max $ in puts
+# 2026-04-22 user rule: $3k calls / $3k puts / $6k total (down from $5k/$5k/$7k)
+MAX_TOTAL_OPTIONS = 6000.0        # Hard ceiling — NO new positions above this (= sum of per-side caps)
+MAX_TOTAL_CALLS = 3000.0          # Max $ in calls
+MAX_TOTAL_PUTS = 3000.0           # Max $ in puts
 MAX_POSITIONS = 15                # Max open option positions
 MAX_CALL_RATIO = 0.65             # Max calls as fraction of total (65%)
 MAX_PUT_RATIO = 0.65              # Max puts as fraction of total (65%)

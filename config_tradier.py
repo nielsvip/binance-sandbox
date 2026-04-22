@@ -209,10 +209,23 @@ class TradierConfig:
     # Market direction ratio: bull_exposure / (bull + bear). Too high = over-long market.
     OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets
     OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets
-    # === OPTIONS EXIT THRESHOLDS (was -80/-60/-40 — too lenient; losers bled Apr 13-16) ===
-    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -40.0   # DTE > 30: exit when down 40%+ (was -80) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1244 (audit miss)
-    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -30.0   # 14 < DTE <= 30: exit when down 30%+ (was -60) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1245 (audit miss)
-    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -20.0  # DTE <= 14: exit when down 20%+ (was -40) ; WIRED 2026-04-16 (priority 85/100) — tradier_options_analyzer.py:1246 (audit miss)
+    # === OPTIONS EXIT THRESHOLDS ===
+    # 2026-04-22 user directive: DISABLE MAX_LOSS_GUARD entirely. It sold NEM at -40.6% bottom.
+    # WT_DELTA_SLOWDOWN / HTF_WT_CROSS_AGAINST / PEAK_GIVEBACK are the legitimate exits.
+    # MAX_LOSS thresholds kept for if ever re-enabled — only checked when _ENABLED=True.
+    OPTIONS_MAX_LOSS_GUARD_ENABLED: bool = False # 2026-04-22 disabled per user — bottom-seller
+    OPTIONS_MAX_LOSS_PCT_DTE_30: float = -80.0   # (inactive unless re-enabled) DTE > 30
+    OPTIONS_MAX_LOSS_PCT_DTE_14: float = -60.0   # (inactive unless re-enabled) 14 < DTE <= 30
+    OPTIONS_MAX_LOSS_PCT_DTE_LOW: float = -40.0  # (inactive unless re-enabled) DTE <= 14
+    # === OPTIONS EQUITY-HEDGE (2026-04-22 user directive) ===
+    # Replaces MAX_LOSS_GUARD. When an option is losing AND can't be sold at better
+    # than OPTIONS_EQUITY_HEDGE_TRIGGER_PCT (i.e. best bid would realize worse than
+    # -10% loss), open a stock hedge of equal-and-opposite delta so directional
+    # exposure is neutralized while premium decays. Unwind hedge when the option
+    # is sellable again (bid recovers past the threshold).
+    # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
+    OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
+    OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
     # WT-velocity (NOT greeks delta) SLOWDOWN exit — rewritten 2026-04-22.
     # OLD (pre-fix) logic: sell when ADVERSE velocity accelerates → sold NEM at -40.6% bottom.
     # NEW logic per user rule: sell when FAVORABLE velocity slows down = momentum peak in.

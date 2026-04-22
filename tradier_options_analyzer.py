@@ -1368,6 +1368,83 @@ async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
     return option_positions
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# EQUITY HEDGE STATE MANAGEMENT (2026-04-22 user directive)
+# When an option becomes unsellable at a loss, the watchdog places a stock
+# hedge of equal-and-opposite delta. When the option becomes sellable again,
+# the hedge is unwound. State lives in data/tradier/options_equity_hedges.json.
+# ══════════════════════════════════════════════════════════════════════════════
+_EQ_HEDGE_FILE = "options_equity_hedges.json"
+
+def _load_equity_hedges(config) -> Dict:
+    try:
+        path = config.DATA_DIR / _EQ_HEDGE_FILE
+        if path.exists():
+            with open(path) as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"_load_equity_hedges error: {e}")
+    return {}
+
+
+def _save_equity_hedges(config, state: Dict) -> None:
+    try:
+        path = config.DATA_DIR / _EQ_HEDGE_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(state, f, indent=2, default=str)
+    except Exception as e:
+        logger.error(f"_save_equity_hedges error: {e}")
+
+
+async def _get_stock_position(client: TradierAPIClient, symbol: str) -> Dict:
+    """Return existing equity position on `symbol` from the current account, or {} if none.
+    Used to AVOID double-hedging when the user has already opened a manual stock hedge."""
+    try:
+        positions = await client.get_positions() if hasattr(client, "get_positions") else []
+        for p in positions or []:
+            if not isinstance(p, dict):
+                continue
+            psym = str(p.get("symbol", "") or "").upper()
+            if psym != symbol.upper():
+                continue
+            qty = float(p.get("quantity", 0) or 0)
+            if qty == 0:
+                continue
+            # Must be equity (exclude option positions which also land in /positions)
+            if len(psym) > 5 or any(ch.isdigit() for ch in psym):
+                continue
+            return {"symbol": psym, "quantity": qty, "cost_basis": float(p.get("cost_basis", 0) or 0)}
+    except Exception as e:
+        logger.warning(f"_get_stock_position({symbol}) error: {e}")
+    return {}
+
+
+async def _place_equity_hedge(client: TradierAPIClient, account_key: str, symbol: str, hedge_qty: int, hedge_side: str, reason: str) -> Dict:
+    """Place a MARKET equity hedge order. hedge_side: 'sell_short' or 'buy'."""
+    if hedge_qty <= 0:
+        return {"skipped": "qty<=0"}
+    try:
+        res = await client.place_order(account_key=account_key, symbol=symbol, side=hedge_side, quantity=hedge_qty, order_type="market", duration="day")
+        logger.critical(f"[EQUITY_HEDGE_OPEN] {symbol} {hedge_side} x{hedge_qty} — {reason} — resp={str(res)[:200]}")
+        return res
+    except Exception as e:
+        logger.error(f"_place_equity_hedge({symbol},{hedge_side},{hedge_qty}) error: {e}")
+        return {"error": str(e)}
+
+
+async def _unwind_equity_hedge(client: TradierAPIClient, account_key: str, symbol: str, hedge_qty: int, opened_side: str, reason: str) -> Dict:
+    """Close out a hedge — opposite side at market."""
+    close_side = "buy_to_cover" if opened_side == "sell_short" else "sell"
+    try:
+        res = await client.place_order(account_key=account_key, symbol=symbol, side=close_side, quantity=hedge_qty, order_type="market", duration="day")
+        logger.critical(f"[EQUITY_HEDGE_CLOSE] {symbol} {close_side} x{hedge_qty} — {reason} — resp={str(res)[:200]}")
+        return res
+    except Exception as e:
+        logger.error(f"_unwind_equity_hedge({symbol}) error: {e}")
+        return {"error": str(e)}
+
+
 async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicators: Dict, risk_free_rate: float = 0.043, portfolio_over_limit: bool = False, allowed_call_symbols: set = None, allowed_put_symbols: set = None, wt_history: Dict = None, config=None) -> Tuple[OptionPosition, List[ExitSignal]]:
     """Analyze a single option position for exit signals."""
     symbol = pos["symbol"]
@@ -1616,9 +1693,9 @@ async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicator
         exit_signals.append(ExitSignal(position=opt_pos, reason="DEEP_OTM_CALL", urgency="HIGH", action="SELL_NOW", detail=f"Call {(moneyness-1)*100:.1f}% OTM with only {dte} DTE. Low probability of profit.", score=75))
     elif not is_call and moneyness < 0.85 and dte < 10:
         exit_signals.append(ExitSignal(position=opt_pos, reason="DEEP_OTM_PUT", urgency="HIGH", action="SELL_NOW", detail=f"Put {(1-moneyness)*100:.1f}% OTM with only {dte} DTE. Low probability of profit.", score=75))
-    # 6. MAX LOSS GUARD — DTE-aware. With 60+ DTE there's plenty of time to recover,
-    # but bleeding to -80% is not "recovery" — it's capitulation-minus-slippage.
-    # Thresholds pulled from config_tradier.OPTIONS_MAX_LOSS_PCT_DTE_* so they are tunable.
+    # 6. MAX LOSS GUARD — DISABLED 2026-04-22 per user directive (sold NEM at bottom).
+    # Only fires if OPTIONS_MAX_LOSS_GUARD_ENABLED=True in config_tradier.
+    # WT_DELTA_SLOWDOWN + HTF_WT_CROSS_AGAINST + PEAK_GIVEBACK are the legitimate exits.
     _cfg_loss = config
     if _cfg_loss is None:
         try:
@@ -1626,13 +1703,14 @@ async def analyze_option_position(client: TradierAPIClient, pos: Dict, indicator
             _cfg_loss = _TC()
         except Exception:
             _cfg_loss = None
+    _max_loss_enabled = bool(getattr(_cfg_loss, "OPTIONS_MAX_LOSS_GUARD_ENABLED", False)) if _cfg_loss else False
     _t30 = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_30", -40.0) if _cfg_loss else -40.0
     _t14 = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_14", -30.0) if _cfg_loss else -30.0
     _tlo = getattr(_cfg_loss, "OPTIONS_MAX_LOSS_PCT_DTE_LOW", -20.0) if _cfg_loss else -20.0
     loss_threshold = _t30 if dte > 30 else (_t14 if dte > 14 else _tlo)
-    if unrealized_pct <= loss_threshold:
+    if _max_loss_enabled and unrealized_pct <= loss_threshold:
         exit_signals.append(ExitSignal(position=opt_pos, reason="MAX_LOSS_GUARD", urgency="HIGH", action="SELL_NOW", detail=f"Position down {unrealized_pct:.1f}% (threshold {loss_threshold}% for {dte} DTE). Salvage remaining ${current_price*abs(quantity)*100:.2f} premium.", score=80))
-    elif unrealized_pct <= loss_threshold + 15:
+    elif _max_loss_enabled and unrealized_pct <= loss_threshold + 15:
         exit_signals.append(ExitSignal(position=opt_pos, reason="LOSS_WARNING", urgency="LOW", action="WATCH", detail=f"Position down {unrealized_pct:.1f}%. {dte} DTE remaining — monitoring.", score=35))
     # 7. PORTFOLIO REDUCTION — close rogue positions when over ceiling
     # OIL SPREAD (USO/BNO) positions are EXCLUDED — they have their own budget/strategy
@@ -2083,6 +2161,106 @@ async def run_watch(args):
                     await asyncio.sleep(0.3)
             elif not auto_sell and all_sell_now:
                 print(f"\n  \033[93m{len(all_sell_now)} position(s) have SELL_NOW signals. Run with --auto-sell to execute.\033[0m")
+            # ══════════════════════════════════════════════════════════════════
+            # EQUITY HEDGE — open on unsellable loss, unwind on recovery.
+            # 2026-04-22 user rule: replaces MAX_LOSS_GUARD. Unsellable means bid
+            # would realize a loss ≤ OPTIONS_EQUITY_HEDGE_TRIGGER_PCT (default -10%).
+            # Sized to |delta| × qty × 100 shares. Short for losing CALL, long for
+            # losing PUT. Unwind when bid recovers past the trigger threshold.
+            # Skips if user already has an opposite-side stock position on the symbol.
+            # ══════════════════════════════════════════════════════════════════
+            if auto_sell and bool(getattr(config, "OPTIONS_EQUITY_HEDGE_ENABLED", True)):
+                eq_hedges = _load_equity_hedges(config)
+                eq_trigger = float(getattr(config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", -10.0) or -10.0)
+                # Build a quick OCC → (opt_pos, pos_data) map from this cycle's analysis
+                # by re-using positions already fetched above
+                for pos_data in positions:
+                    _occ = pos_data.get("occ_symbol", "") or pos_data.get("symbol", "")
+                    if not _occ:
+                        continue
+                    # Skip if we just sold this OCC in auto_sell — it's closing
+                    if _occ in sold_occs if 'sold_occs' in dir() else False:
+                        # If there was a hedge on it, record it for cascade-close next turn
+                        continue
+                    # Re-derive the position metrics (lightweight — avoid re-analyzing)
+                    _cb = abs(float(pos_data.get("cost_basis", 0) or 0))
+                    _q = abs(float(pos_data.get("quantity", 0) or 0))
+                    if _q <= 0 or _cb <= 0:
+                        continue
+                    _cps = _cb / (_q * 100.0)  # cost per share
+                    # Get fresh bid
+                    try:
+                        _q_res = await client._request("GET", "/markets/quotes", params={"symbols": _occ}, use_data_context=True)
+                        _qq = _q_res.get("quotes", {}).get("quote", {}) if _q_res else {}
+                        if isinstance(_qq, list):
+                            _qq = _qq[0] if _qq else {}
+                        _bid = float(_qq.get("bid", 0) or 0)
+                        _ask = float(_qq.get("ask", 0) or 0)
+                    except Exception:
+                        _bid = 0.0
+                        _ask = 0.0
+                    # Parse underlying + option_type + get current delta from position (Tradier)
+                    _parsed = parse_occ_symbol(_occ) if _occ else {}
+                    _und_sym = _parsed.get("symbol", "") if _parsed else ""
+                    _otype = (_parsed.get("option_type", "") or "").lower() if _parsed else ""
+                    if not _und_sym or _otype not in ("call", "put"):
+                        continue
+                    # Compute sellable P&L if we exited at current bid
+                    _sellable_pct = ((_bid - _cps) / _cps * 100.0) if _cps > 0 else 0.0
+                    _existing_hedge = eq_hedges.get(_occ)
+                    # ── UNWIND: hedge exists and option is sellable again ──
+                    if _existing_hedge and _sellable_pct > eq_trigger:
+                        _h_qty = int(_existing_hedge.get("hedge_qty", 0) or 0)
+                        _h_side = _existing_hedge.get("hedge_side", "")
+                        if _h_qty > 0 and _h_side:
+                            print(f"  \033[92m[EQ_HEDGE_UNWIND]\033[0m {_und_sym} — option sellable again ({_sellable_pct:+.1f}% > {eq_trigger:+.1f}%). Closing {_h_side} {_h_qty}.")
+                            _unwind_res = await _unwind_equity_hedge(client, account_key, _und_sym, _h_qty, _h_side, reason=f"opt {_occ} sellable at {_sellable_pct:+.1f}%")
+                            if "error" not in _unwind_res:
+                                eq_hedges.pop(_occ, None)
+                                _save_equity_hedges(config, eq_hedges)
+                        continue
+                    # ── OPEN: no hedge and option is unsellable ──
+                    if _existing_hedge is None and _sellable_pct <= eq_trigger and _bid > 0:
+                        # Fetch fresh delta from quote greeks
+                        try:
+                            _g_res = await client._request("GET", "/markets/options/chains", params={"symbol": _und_sym, "expiration": _parsed.get("expiration", ""), "greeks": "true"}, use_data_context=True)
+                            _ch_opts = _g_res.get("options", {}).get("option", []) if _g_res else []
+                            if isinstance(_ch_opts, dict):
+                                _ch_opts = [_ch_opts]
+                            _delta = 0.0
+                            for _co in _ch_opts:
+                                if _co.get("symbol") == _occ:
+                                    _delta = float((_co.get("greeks") or {}).get("delta", 0) or 0)
+                                    break
+                        except Exception:
+                            _delta = 0.0
+                        if _delta == 0.0:
+                            logger.warning(f"[EQ_HEDGE] no delta for {_occ} — skip hedge")
+                            continue
+                        _hedge_qty = int(round(abs(_delta) * _q * 100))
+                        if _hedge_qty <= 0:
+                            continue
+                        _hedge_side = "sell_short" if _otype == "call" else "buy"
+                        # Don't double-hedge: check existing equity on this symbol
+                        _existing_stock = await _get_stock_position(client, _und_sym)
+                        _pre_hedged = False
+                        if _existing_stock:
+                            _existing_qty = _existing_stock.get("quantity", 0)
+                            if _hedge_side == "sell_short" and _existing_qty < 0:
+                                _pre_hedged = True  # already short
+                            elif _hedge_side == "buy" and _existing_qty > 0:
+                                _pre_hedged = True  # already long
+                        if _pre_hedged:
+                            # Record that this option is considered hedged by a pre-existing position
+                            eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"pre_existing_stock_{_existing_stock.get('quantity')}", "pre_existing": True}
+                            _save_equity_hedges(config, eq_hedges)
+                            print(f"  \033[93m[EQ_HEDGE_SKIP]\033[0m {_und_sym} — user already holds {_existing_stock.get('quantity')} shares ({_hedge_side} side). Marking {_occ} as pre-hedged.")
+                            continue
+                        print(f"  \033[91m[EQ_HEDGE_OPEN]\033[0m {_und_sym} {_otype.upper()} {_occ} bid=${_bid:.2f} cps=${_cps:.2f} sellable={_sellable_pct:+.1f}% — hedging {_hedge_side} x{_hedge_qty} (|delta|={abs(_delta):.2f} × {int(_q)} × 100)")
+                        _open_res = await _place_equity_hedge(client, account_key, _und_sym, _hedge_qty, _hedge_side, reason=f"opt {_occ} unsellable at {_sellable_pct:+.1f}%")
+                        if "error" not in _open_res:
+                            eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"sellable_{_sellable_pct:+.1f}%", "order_resp": str(_open_res)[:200]}
+                            _save_equity_hedges(config, eq_hedges)
             # Save watchdog state
             watch_file = config.DATA_DIR / "options_watchdog_latest.json"
             watch_data = {"timestamp": datetime.now().isoformat(), "account": account_key, "positions": len(positions), "sell_signals": len(all_sell_now), "auto_sell": auto_sell, "gtc_orders": len(gtc_orders)}
