@@ -55,9 +55,13 @@ class CfgOverride:
 
 
 def load_inf_universe(limit: int = 0) -> List[str]:
+    """Read inf:SYM_SIDE keys from tradeable_keys.json. Dynamic — ez_rankings updates this file."""
     if not TRADEABLE_FILE.exists(): return []
-    with open(TRADEABLE_FILE) as f:
-        keys = json.load(f)
+    try:
+        with open(TRADEABLE_FILE) as f:
+            keys = json.load(f)
+    except Exception:
+        return []
     syms = sorted({k.split(":", 1)[1].rsplit("_", 1)[0] for k in keys if k.startswith("inf:")})
     return syms[:limit] if limit else syms
 
@@ -235,17 +239,27 @@ def print_summary(state: dict, counters: dict):
 
 async def main_async(args):
     base_cfg = Config()
+    # Apply sweep-winning defaults as CfgOverride — beats the base config defaults for V3.
     cfg = CfgOverride(base_cfg,
                       SCALP_V3_ENTRY_TF_MODE=args.tf_mode,
-                      SCALP_V3_EXIT_TF_MODE=args.exit_mode)
-    if args.symbols:
-        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+                      SCALP_V3_EXIT_TF_MODE=args.exit_mode,
+                      SCALP_V3_ENTRY_K_1M_MAX=args.k_1m_max,
+                      SCALP_V3_EXIT_1M_K_MIN=args.exit_k_1m_min,
+                      SCALP_V3_ENTRY_VOL_SPIKE_MULT=args.vol_mult,
+                      SCALP_V3_MAX_HOLD_MIN=args.max_hold_min,
+                      SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain)
+    symbols_fixed = args.symbols.strip()
+    if symbols_fixed:
+        symbols = [s.strip().upper() for s in symbols_fixed.split(",") if s.strip()]
+        dynamic_universe = False
     else:
         symbols = load_inf_universe(limit=args.max_symbols)
+        dynamic_universe = True
     if not symbols:
         print("No symbols — check tradeable_keys.json for inf entries.")
         return
-    print(f"[paper] universe={len(symbols)} tf_mode={args.tf_mode} exit_mode={args.exit_mode} poll={args.poll_sec}s")
+    print(f"[paper] universe={len(symbols)} tf_mode={args.tf_mode} exit_mode={args.exit_mode} poll={args.poll_sec}s dynamic={dynamic_universe}")
+    print(f"[paper] sweep_winner_params: k1m_max={args.k_1m_max} ek1m={args.exit_k_1m_min} vol={args.vol_mult} hold={args.max_hold_min}min stall={args.stall_gain}")
     print(f"[paper] first 5: {symbols[:5]}")
     state = load_state()
     counters = {"cycles": 0, "entries": 0, "exits": 0, "realized_pct": 0.0}
@@ -256,9 +270,20 @@ async def main_async(args):
     for s in (signal.SIGINT, signal.SIGTERM):
         signal.signal(s, _sig)
     client = await AsyncClient.create()
+    last_universe_reload = time.time()
     try:
         while not stop:
             t0 = time.time()
+            if dynamic_universe and (t0 - last_universe_reload) >= args.reload_sec:
+                new_syms = load_inf_universe(limit=args.max_symbols)
+                if new_syms and set(new_syms) != set(symbols):
+                    added = set(new_syms) - set(symbols)
+                    removed = set(symbols) - set(new_syms)
+                    symbols = new_syms
+                    print(f"[paper] universe reload: {len(symbols)} syms (+{len(added)} -{len(removed)})")
+                    if added: print(f"  +added: {sorted(added)[:10]}")
+                    if removed: print(f"  -removed: {sorted(removed)[:10]}")
+                last_universe_reload = t0
             try:
                 events = await poll_cycle(client, symbols, state, cfg, concurrency=args.concurrency)
             except Exception as e:
@@ -291,11 +316,20 @@ async def main_async(args):
 
 def main():
     ap = argparse.ArgumentParser()
+    # Defaults = 200k-variant sweep winners (2026-04-22):
+    #   tf=1M_ONLY exit=15M_ONLY vol=1.0 k1m=40 ek1m=90 hold=30 stall=-0.1
+    # Side kept BOTH (user directive: don't discard shorts even though sweep window was a rally).
     ap.add_argument("--tf-mode", type=str, default="1M_ONLY", choices=["1M_ONLY", "3M_ONLY", "1M_AND_3M", "3M_CONFIRMS_1M"])
-    ap.add_argument("--exit-mode", type=str, default="1M_ONLY", choices=["ANY", "1M_ONLY", "3M_ONLY", "15M_ONLY"])
-    ap.add_argument("--symbols", type=str, default="")
+    ap.add_argument("--exit-mode", type=str, default="15M_ONLY", choices=["ANY", "1M_ONLY", "3M_ONLY", "15M_ONLY"])
+    ap.add_argument("--vol-mult", type=float, default=1.0)
+    ap.add_argument("--k-1m-max", type=int, default=40)
+    ap.add_argument("--exit-k-1m-min", type=int, default=90)
+    ap.add_argument("--max-hold-min", type=float, default=30.0)
+    ap.add_argument("--stall-gain", type=float, default=-0.1)
+    ap.add_argument("--symbols", type=str, default="", help="Fixed comma list (disables dynamic reload)")
     ap.add_argument("--max-symbols", type=int, default=0)
     ap.add_argument("--poll-sec", type=int, default=60)
+    ap.add_argument("--reload-sec", type=int, default=300, help="Reload tradeable_keys.json every N sec (0 disables)")
     ap.add_argument("--concurrency", type=int, default=10)
     args = ap.parse_args()
     asyncio.run(main_async(args))

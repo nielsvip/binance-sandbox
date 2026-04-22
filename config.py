@@ -153,10 +153,18 @@ class Config:
     SCALP_V3_REENTRY_BOUNCE_K_15M_MAX: int = 25
     SCALP_V3_REENTRY_COOLDOWN_S: int = 0
     # --- RANKING BOOST (ez_rankings.py; feeds final_score_raw_st → symbols_inf_*) ---
-    SCALP_V3_BOOST_ENABLED: bool = False
-    SCALP_V3_BOOST_WEIGHT: float = 0.0
+    # 2026-04-22 user-authorized: enabled with small weight — paper test observability.
+    SCALP_V3_BOOST_ENABLED: bool = True
+    SCALP_V3_BOOST_WEIGHT: float = 0.2
     SCALP_V3_BOOST_LOOKBACK_BARS_3M: int = 5
     SCALP_V3_BOOST_VOL_Z_MIN: float = 1.5
+    # --- SHORT-specific entry gate: "fall off cliff then bounce to dc_basis then fail" pattern ---
+    # Reference: wt_dc_delta.py:876-894 BASELINE_BOUNCE_SHORT (live on ang). Cruder here:
+    # require that last N minutes showed ≥X% drop — meaning price has already fallen hard
+    # and current elevated-K bar+structure = bounce-fail entry.
+    SCALP_V3_SHORT_REQUIRE_RECENT_DUMP: bool = True
+    SCALP_V3_SHORT_RECENT_DUMP_PCT: float = 3.0
+    SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN: int = 60
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

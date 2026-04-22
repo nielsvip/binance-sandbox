@@ -104,6 +104,15 @@ def check_scalp_v3_entry(inp: V3Input, cfg) -> Tuple[bool, str]:
     side = inp.side
     if len(inp.bars_1m) < 2 or len(inp.bars_3m) < 2:
         return False, "INSUFFICIENT_BARS"
+    # SHORT-specific: require price has recently dumped ≥X% (bounce-to-midline-then-fail pattern).
+    # Cruder version of wt_dc_delta.py:876-894 BASELINE_BOUNCE_SHORT; skip if dump history absent.
+    if side == "SHORT" and getattr(cfg, 'SCALP_V3_SHORT_REQUIRE_RECENT_DUMP', False):
+        lookback = int(getattr(cfg, 'SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN', 60))
+        drop_pct = float(getattr(cfg, 'SCALP_V3_SHORT_RECENT_DUMP_PCT', 3.0))
+        if len(inp.bars_1m) >= lookback:
+            min_close = min(b[4] for b in inp.bars_1m[-lookback:])
+            if min_close > inp.current_price * (1.0 - drop_pct / 100.0):
+                return False, "SHORT_NO_RECENT_DUMP"
     # HTF runway — ALWAYS required regardless of TF mode
     if _k_overbought(inp.k_1h, cfg.SCALP_V3_ENTRY_K_1H_MAX, side):
         return False, "K_1H_CAPPED"
