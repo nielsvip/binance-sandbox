@@ -2129,6 +2129,22 @@ async def run_watch(args):
                         print(f"    SKIP {occ} — position already closed")
                         sold_occs.add(occ)
                         continue
+                    # HEDGE_PAIR_GUARD — 2026-04-22 after NEM disaster: never auto-sell an option
+                    # while user holds an opposite-side stock hedge on the same underlying.
+                    # Call hedged by short stock; put hedged by long stock. Blocking here prevents
+                    # the watchdog from closing one leg of a delta-neutral pair and leaving the
+                    # other leg naked directional. User must close both legs manually.
+                    if bool(getattr(config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", True)):
+                        _hg_under = (opt_pos.symbol or "").upper()
+                        _hg_is_call = (opt_pos.option_type or "").lower() == "call"
+                        _hg_stock = await _get_stock_position(client, _hg_under) if _hg_under else {}
+                        _hg_qty = float(_hg_stock.get("quantity", 0) or 0) if _hg_stock else 0.0
+                        _hg_blocked = (_hg_is_call and _hg_qty < 0) or ((not _hg_is_call) and _hg_qty > 0)
+                        if _hg_blocked:
+                            print(f"    \033[93mHEDGE_PAIR_BLOCK\033[0m {occ} — paired with {int(_hg_qty)} {_hg_under} shares. Auto-sell SKIPPED — close legs manually.")
+                            logger.critical(f"[HEDGE_PAIR_BLOCK] {occ} auto-sell skipped — {_hg_under} stock qty={_hg_qty} forms hedge pair. Reason={sig.reason}")
+                            sold_occs.add(occ)
+                            continue
                     qty = abs(opt_pos.quantity)
                     bid = opt_pos.current_bid
                     ask = opt_pos.current_ask

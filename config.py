@@ -113,8 +113,11 @@ class Config:
     # Exit: latest bar LL/LH + K overextension context (NO crossunders — bar IS signal).
     # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
     # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
-    SCALP_V3_ENABLED: bool = False
+    # 2026-04-22 user-authorized live flip with pos_min_qty cap
+    SCALP_V3_ENABLED: bool = True
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
+    SCALP_V3_MAX_CONCURRENT: int = 3              # max open V3 positions per account
+    SCALP_V3_POSITION_CAP_USD: float = 10.0       # hard notional cap per V3 entry
     # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
     SCALP_V3_ENTRY_K_1M_MAX: int = 25
     SCALP_V3_ENTRY_K_3M_MAX: int = 40

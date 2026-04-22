@@ -5305,6 +5305,20 @@ class StockStrategy:
         current_price = float(current_price)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         positionAmt = abs(float(getattr(position, 'positionAmt', 0) or 0))
+        # ── ALLOWLIST GATE (user rule 2026-04-22) ──
+        # Only reenter symbols still in symbols_trb_long (for LONG) / symbols_trb_short (for SHORT).
+        # If the user removed the symbol from the hand-picked list, don't chase it back in.
+        try:
+            _base_path = Path(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance'))
+            _allow_file = _base_path / ("symbols_trb_long.json" if is_long else "symbols_trb_short.json")
+            if _allow_file.exists():
+                with open(_allow_file) as _f:
+                    _allow_data = json.load(_f)
+                _allow_set = set(_allow_data) if isinstance(_allow_data, list) else set(_allow_data.keys())
+                if symbol not in _allow_set:
+                    return "NO_ACTION", f"ALLOWLIST_BLOCK_{symbol}_not_in_{'trb_long' if is_long else 'trb_short'}", 0.0, 0.0
+        except Exception as _allow_err:
+            logger.warning(f"[REENTRY_ALLOWLIST] {symbol}: allowlist check failed ({_allow_err}) — proceeding")
         logger.info(f"[REENTRY_EVAL] {symbol}: positionAmt={positionAmt} gain={getattr(position, 'gain', 'N/A')} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_positionSize', 0) or positionAmt)
@@ -5366,6 +5380,31 @@ class StockStrategy:
                 logger.warning(f"⚠️ [REENTRY_OVERDUE] {symbol}: {last_red_age_min:.0f}min since exit at {_last_red_px:.2f}, waiting! k5m={k_5m_t2:.0f}")
             elif last_red_age_min >= 30.0:
                 logger.info(f"[REENTRY_PENDING] {symbol}: {last_red_age_min:.0f}min since exit at {_last_red_px:.2f}, waiting. k5m={k_5m_t2:.0f}")
+        # === EMA200_1H_BOUNCE REENTRY (user rule 2026-04-22) ===
+        # Reenter when price bounces above ema_200_1h (longs) or below (shorts).
+        # This is the "macro structure intact" trigger — if we exited mid-trend and
+        # the 1h 200-EMA was never lost, a recovery back through it is a valid re-entry
+        # without needing micro-stoch confirmation.
+        _ema200_1h = float(i.get('ema_200_1h', 0) or 0)
+        _ema200_1h_prev = float(i.get('ema_200_1h_prev', _ema200_1h) or _ema200_1h)
+        _last_price_prev = float(i.get('current_price_prev', 0) or 0)
+        if _ema200_1h > 0 and current_price > 0:
+            # LONG: price was ≤ ema_200_1h last bar, now above → bounce back over the line
+            if is_long:
+                _below_prev = (_last_price_prev > 0 and _last_price_prev <= _ema200_1h_prev) or current_price <= _ema200_1h * 1.002  # small tolerance
+                _above_now = current_price > _ema200_1h
+                if _above_now and _below_prev:
+                    _emaq = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.8
+                    logger.warning(f"[EMA200_1H_BOUNCE] LONG {symbol}: price {current_price:.2f} crossed back above ema_200_1h {_ema200_1h:.2f} — REENTER qty={_emaq:.2f}")
+                    return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_LONG_px{current_price:.2f}>ema{_ema200_1h:.2f}", 80.0, _emaq
+            # SHORT: mirror — price was ≥ ema_200_1h, now below
+            else:
+                _above_prev = (_last_price_prev > 0 and _last_price_prev >= _ema200_1h_prev) or current_price >= _ema200_1h * 0.998
+                _below_now = current_price < _ema200_1h
+                if _below_now and _above_prev:
+                    _emaq = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.8
+                    logger.warning(f"[EMA200_1H_BOUNCE] SHORT {symbol}: price {current_price:.2f} crossed back below ema_200_1h {_ema200_1h:.2f} — REENTER qty={_emaq:.2f}")
+                    return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_SHORT_px{current_price:.2f}<ema{_ema200_1h:.2f}", 80.0, _emaq
         # === 2/3 WT IN FAVOR = REENTER NOW (matches exit signal mirror) ===
         # Backtest: 198,264/198,321 reentries (99.97%), median 55min wait
         _wt1_5m = float(i.get('wt1_5m', 0) or 0); _wt2_5m = float(i.get('wt2_5m', 0) or 0)

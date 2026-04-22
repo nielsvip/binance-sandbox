@@ -11525,6 +11525,41 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     except Exception as _v2x_err:
                         logger.debug(f"[SCALP_V2_EXIT] {position_key}: error {_v2x_err}")
                 # ═══════════════════════════════════════════════════════════════
+                # ═══ SCALP_V3 EXIT HOOK (2026-04-22) ═══════════════════════════
+                # Fires ONLY for V3-tagged positions (augment_reason starts with
+                # SCALP_V3_OPEN_). Runs variant exit (bar + K context + stall-out),
+                # then returns so V3 positions don't hit the normal exit pipeline.
+                if getattr(config, 'SCALP_V3_ENABLED', False) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                    try:
+                        from scalp_v3_live import check_scalp_v3_live_exit
+                        _v3x_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
+                        _v3x_is_v3 = _v3x_pos and str(getattr(_v3x_pos, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
+                        if _v3x_is_v3:
+                            _v3x_sym = parse_position_key(position_key)[1]
+                            _v3x_metrics, _v3x_ind, _, _, _, _, _v3x_fresh = await data_manager.get_hot_state(_v3x_sym)
+                            _v3x_px = safe_fetch_float(_v3x_ind.get('current_price', 0), 0) if _v3x_ind else 0
+                            if _v3x_px <= 0:
+                                _v3x_px, _ = await get_current_price(_v3x_sym)
+                            if _v3x_px > 0:
+                                _v3x_decision = check_scalp_v3_live_exit(position_key, _v3x_ind, _v3x_px, _v3x_pos, config)
+                                if _v3x_decision:
+                                    _v3x_amt = abs(safe_fetch_float(getattr(_v3x_pos, 'positionAmt', 0), 0))
+                                    if _v3x_amt > 0:
+                                        logger.warning(f"⚡ [SCALP_V3_EXIT] {position_key}: {_v3x_decision['reason']}")
+                                        await execute_trade_wrapper(
+                                            trade_manager, tracker_manager, hedge_engine,
+                                            account_key, position_key, _v3x_amt, 'QUICK_CLOSE',
+                                            _v3x_px, _v3x_amt, _v3x_decision['reason'],
+                                            is_hedge=False, data_manager=data_manager
+                                        )
+                                        tracker_manager.last_check_times[position_key] = time.time()
+                                        return
+                            # Isolation: V3 positions NEVER touch normal exit pipeline (safer during live validation)
+                            tracker_manager.last_check_times[position_key] = time.time()
+                            return
+                    except Exception as _v3x_err:
+                        logger.debug(f"[SCALP_V3_EXIT] {position_key}: error {_v3x_err}")
+                # ═══════════════════════════════════════════════════════════════
                 last_check = tracker_manager.get_last_check_time(position_key)
                 if last_check > 0:
                     _pos_quick = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key)
@@ -12709,6 +12744,46 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     # Backtest isolation: SCALP_V2 is the ONLY entry path on SCALP accounts
                     if _v2_isolate:
                         return
+                # ═══════════════════════════════════════════════════════════════
+                # ═══ SCALP_V3 ENTRY HOOK (2026-04-22) ══════════════════════════
+                # Ultra-short bar-based scalper. Default OFF. Position capped at
+                # SCALP_V3_POSITION_CAP_USD. Tagged with SCALP_V3_OPEN_* so the
+                # exit hook below can isolate V3 positions.
+                if getattr(config, 'SCALP_V3_ENABLED', False) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                    try:
+                        from scalp_v3_live import check_scalp_v3_live_entry
+                        _v3_pos = await tracker_manager.get_position(position_key)
+                        if not _v3_pos and hasattr(tracker_manager, 'positions_service'):
+                            _v3_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key)
+                        _v3_amt = abs(safe_fetch_float(getattr(_v3_pos, 'positionAmt', 0), 0)) if _v3_pos else 0.0
+                        if _v3_amt <= 0:
+                            _v3_sym = parse_position_key(position_key)[1]
+                            _v3_metrics, _v3_ind, _, _, _, _, _v3_fresh = await data_manager.get_hot_state(_v3_sym)
+                            _v3_px = safe_fetch_float(_v3_ind.get('current_price', 0), 0) if _v3_ind else 0
+                            if _v3_px <= 0:
+                                _v3_px, _ = await get_current_price(_v3_sym)
+                            if _v3_px > 0 and _v3_fresh:
+                                _v3_max = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
+                                _v3_active = sum(1 for _pk, _p in (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).items() if str(getattr(_p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_') and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0)
+                                if _v3_active < _v3_max:
+                                    _v3_decision = check_scalp_v3_live_entry(_v3_sym, position_key, _v3_ind, _v3_px, _v3_pos, account_key, config)
+                                    if _v3_decision:
+                                        # Hard cap: pos_min_qty or SCALP_V3_POSITION_CAP_USD, whichever is larger
+                                        _v3_cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
+                                        _v3_min_qty = trade_manager.min_qty.get(_v3_sym, 0.0001) * 1.2
+                                        _v3_cap_qty = _v3_cap_usd / _v3_px if _v3_px > 0 else 0
+                                        _v3_qty = max(_v3_min_qty, _v3_cap_qty)
+                                        if _v3_qty > 0:
+                                            logger.warning(f"⚡ [SCALP_V3_ENTRY] {position_key}: {_v3_decision['reason']} qty={_v3_qty:.6f} cap_usd=${_v3_cap_usd}")
+                                            await execute_trade_wrapper(
+                                                trade_manager, tracker_manager, hedge_engine,
+                                                account_key, position_key, 0.0, 'OPEN',
+                                                _v3_px, _v3_qty, _v3_decision['reason'],
+                                                is_hedge=False, data_manager=data_manager
+                                            )
+                                            return
+                    except Exception as _v3_err:
+                        logger.debug(f"[SCALP_V3_ENTRY] {position_key}: error {_v3_err}")
                 # ═══════════════════════════════════════════════════════════════
                 acc_logger = get_account_logger(account_key)
                 dummy_state = {}; dummy_lock = DummyLock()

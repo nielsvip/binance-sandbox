@@ -226,6 +226,13 @@ class TradierConfig:
     # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
     OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
     OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
+    # === HEDGE PAIR GUARD (2026-04-22 — NEM naked-short incident) ===
+    # When an option is hedged by an opposite-side stock position on the same underlying
+    # (call paired with short shares, or put paired with long shares), auto-sell MUST NOT
+    # close the option alone — doing so leaves the stock leg naked directional. The NEM
+    # incident on 2026-04-22 cost $1,500 (calls sold) + ongoing $500 loss on naked -200 NEM short.
+    # Auto-sell is blocked; exit signals still surface so user can close both legs manually.
+    OPTIONS_HEDGE_PAIR_GUARD_ENABLED: bool = True
     # WT-velocity (NOT greeks delta) SLOWDOWN exit — rewritten 2026-04-22.
     # OLD (pre-fix) logic: sell when ADVERSE velocity accelerates → sold NEM at -40.6% bottom.
     # NEW logic per user rule: sell when FAVORABLE velocity slows down = momentum peak in.

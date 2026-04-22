@@ -126,8 +126,14 @@ async def fetch_1m(client, symbol: str, limit: int = 60) -> Optional[np.ndarray]
     try:
         raw = await client.futures_klines(symbol=symbol, interval="1m", limit=limit)
     except Exception as e:
+        msg = str(e)
+        if "-1003" in msg or "banned" in msg.lower():
+            # Silently skip banned periods — live ez_manage may have hit the limit
+            return None
         print(f"[fetch] {symbol}: {e}")
         return None
+    # Polite delay to reduce ban risk when running alongside live ez_manage
+    await asyncio.sleep(0.15)
     if not raw or len(raw) < 30: return None
     out = np.zeros((len(raw), 6), dtype=np.float64)
     for i, b in enumerate(raw):
@@ -328,9 +334,9 @@ def main():
     ap.add_argument("--stall-gain", type=float, default=-0.1)
     ap.add_argument("--symbols", type=str, default="", help="Fixed comma list (disables dynamic reload)")
     ap.add_argument("--max-symbols", type=int, default=0)
-    ap.add_argument("--poll-sec", type=int, default=60)
+    ap.add_argument("--poll-sec", type=int, default=120, help="Poll frequency (default 120s to stay under Binance weight)")
     ap.add_argument("--reload-sec", type=int, default=300, help="Reload tradeable_keys.json every N sec (0 disables)")
-    ap.add_argument("--concurrency", type=int, default=10)
+    ap.add_argument("--concurrency", type=int, default=3, help="Concurrent klines fetches (default 3 to avoid bans — live ez_manage already hits Binance)")
     args = ap.parse_args()
     asyncio.run(main_async(args))
 
