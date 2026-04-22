@@ -12172,7 +12172,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
                 # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
                 # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'WT_CROSS_EXIT_ENABLED', True)):
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'WT_CROSS_EXIT_ENABLED', True)) and position.gain>0.015:
                     _wtx_min_age = float(getattr(config, 'WT_CROSS_EXIT_MIN_AGE_MINUTES', 2.0))
                     _wtx_losers_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_LOSERS', True))
                     _wtx_winners_ok = bool(getattr(config, 'WT_CROSS_EXIT_APPLIES_TO_WINNERS', True))
