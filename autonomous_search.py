@@ -3,7 +3,7 @@
 Writes winners immediately to winners JSONL, all results to CSV, runs forever
 until killed or N_MAX reached.
 """
-import argparse, csv, json, os, random, sys, time, gc
+import argparse, copy, csv, json, os, random, sys, time, gc
 from dataclasses import fields, is_dataclass
 from pathlib import Path
 
@@ -143,9 +143,7 @@ def main():
         best_gain = -1e9
         best_sharpe = -1e9
         for i in range(args.n_max):
-            cfg = QuickConfig()
-            cfg.MODE = args.mode
-            cfg.LTF = base.LTF
+            cfg = copy.deepcopy(base)
             ovr = _sample_cfg(base, args.bool_flip_prob, args.numeric_perturb_prob)
             for k, v in ovr.items():
                 if hasattr(cfg, k):
