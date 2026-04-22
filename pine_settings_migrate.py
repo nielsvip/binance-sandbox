@@ -24,50 +24,32 @@ Usage:
   python3 pine_settings_migrate.py --copy "Nielsbot(v1.50)" /tmp/v150.pine "Nielsbot(v1.64)" /tmp/v164.pine
 """
 
-import re, sys, json, argparse, urllib.request, urllib.error
+import re, sys, json, argparse, urllib.request, urllib.error, subprocess, os
 from pathlib import Path
 
-# ── CDP plumbing ──────────────────────────────────────────────────────────────
+# ── CDP plumbing (via Node.js bridge — avoids Python websocket Origin header restriction) ──
 
-CDP_HOST = "localhost"
-CDP_PORT = 9222
-
-def cdp_targets():
-    with urllib.request.urlopen(f"http://{CDP_HOST}:{CDP_PORT}/json/list", timeout=5) as r:
-        return json.loads(r.read())
-
-def find_chart_target():
-    targets = cdp_targets()
-    return (
-        next((t for t in targets if t["type"] == "page" and re.search(r"tradingview\.com/chart", t.get("url",""), re.I)), None)
-        or next((t for t in targets if t["type"] == "page" and re.search(r"tradingview", t.get("url",""), re.I)), None)
-    )
+_BRIDGE = Path(__file__).parent.parent / "tradingview-mcp-jackson" / "pine_cdp_bridge.js"
+if not _BRIDGE.exists():
+    _BRIDGE = Path("/Users/niels/tradingview-mcp-jackson/pine_cdp_bridge.js")
 
 def cdp_eval(ws_url: str, js: str):
-    """Send a Runtime.evaluate to a CDP target via websocket."""
-    import websocket, uuid
-    ws = websocket.create_connection(ws_url, timeout=10)
-    msg_id = 1
-    ws.send(json.dumps({"id": msg_id, "method": "Runtime.evaluate",
-                        "params": {"expression": js, "returnByValue": True, "awaitPromise": False}}))
-    while True:
-        resp = json.loads(ws.recv())
-        if resp.get("id") == msg_id:
-            break
-    ws.close()
-    if "exceptionDetails" in resp.get("result", {}):
-        raise RuntimeError(f"JS error: {resp['result']['exceptionDetails']}")
-    return resp["result"]["result"].get("value")
+    """Evaluate JS in TradingView via Node.js CDP bridge (Node WS doesn't send Origin)."""
+    cmd = json.dumps({"cmd": "eval", "js": js})
+    result = subprocess.run(
+        ["node", str(_BRIDGE)],
+        input=cmd, capture_output=True, text=True, timeout=15,
+        cwd=str(_BRIDGE.parent),
+    )
+    if result.returncode != 0 and not result.stdout:
+        raise RuntimeError(f"Bridge error: {result.stderr.strip()}")
+    resp = json.loads(result.stdout.strip())
+    if not resp.get("ok"):
+        raise RuntimeError(f"JS error: {resp.get('error', 'unknown')}")
+    return resp["value"]
 
 def get_ws_url():
-    target = find_chart_target()
-    if not target:
-        raise RuntimeError("No TradingView chart target found. Is TradingView open?")
-    ws_url = target.get("webSocketDebuggerUrl")
-    if not ws_url:
-        # Build it manually
-        ws_url = f"ws://{CDP_HOST}:{CDP_PORT}/devtools/page/{target['id']}"
-    return ws_url
+    return "unused"  # bridge handles target discovery internally
 
 # ── Pine source parsing ───────────────────────────────────────────────────────
 
