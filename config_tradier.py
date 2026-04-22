@@ -224,6 +224,15 @@ class TradierConfig:
     # Continuous sector/put-call enforcement (applied in daily + premarket cycles)
     OPTIONS_CONTINUOUS_SECTOR_GATE: bool = True  # Block new buys that widen existing sector/group/symbol violation
     OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours
+    # === OPTIONS BUY SANITY GATES (2026-04-22 — blocks JNJ/ABT-style misbuys) ===
+    # Background: 2026-04-22 14:05 UTC cron bypass bought 2 OTM calls on downtrending,
+    # non-allowlisted stocks (JNJ 6.7% OTM delta 0.14, ABT 6% OTM). -$500 same-day loss.
+    # These gates apply in make_decisions() (run_agent path).
+    OPTIONS_BUY_MIN_ABS_DELTA: float = 0.35      # Reject lottery tickets — min |delta| for any new buy
+    OPTIONS_BUY_MAX_OTM_PCT: float = 3.0         # Reject strikes >3% OTM (calls) / <3% ITM for puts relative to underlying
+    OPTIONS_BUY_REQUIRE_D_ALIGN: bool = True     # CALL needs wt_cross_D != BEAR; PUT needs wt_cross_D != BULL
+    OPTIONS_BUY_MIN_DTE: int = 60                # User rule 2026-04-22: never open options <2 months out (JNJ bought at 22 DTE = theta trap)
+    OPTIONS_BUY_PREFERRED_DTE: int = 90          # Prefer 3+ months out — score bonus applied when dte >= this
     # === CASH-SECURED PUT (CSP) STRATEGY — SELL SIDE ===
     # For LONG-thesis candidates, compare buying a call vs selling a cash-secured put.
     # Seller collects premium (theta-positive), wins in flat/up tape; assigned stock at strike if ITM.

@@ -454,6 +454,25 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
         max_total = max(max_total, effective_cap)  # use whichever is higher
     div_guidance = get_diversification_guidance(diversification, config) if diversification and config else {}
     available_budget = max_total - current_exposure
+    # ── ALLOWLIST + SANITY GATES (added 2026-04-22 after JNJ/ABT bypass) ──
+    # This path (run_agent → make_decisions) previously did NOT check the trb_long/short
+    # allowlist, so the 14:05 UTC cron bought calls on non-allowlisted downtrending
+    # stocks. These loads mirror what _daily_find_opportunities has always done.
+    _ma_call_allowed, _ma_put_allowed = _load_allowed_symbols(config) if config else (set(), set())
+    _ma_ind_map = {}
+    if config is not None:
+        try:
+            _ma_ind_path = config.DATA_DIR / "tradier_indicators_latest.json"
+            if _ma_ind_path.exists():
+                with open(_ma_ind_path) as _f:
+                    _ma_ind_map = json.load(_f)
+        except Exception:
+            _ma_ind_map = {}
+    _ma_min_abs_delta = float(getattr(config, "OPTIONS_BUY_MIN_ABS_DELTA", 0.35) or 0.35) if config else 0.35
+    _ma_max_otm_pct = float(getattr(config, "OPTIONS_BUY_MAX_OTM_PCT", 3.0) or 3.0) if config else 3.0
+    _ma_require_d_align = bool(getattr(config, "OPTIONS_BUY_REQUIRE_D_ALIGN", True)) if config else True
+    _ma_min_dte = int(getattr(config, "OPTIONS_BUY_MIN_DTE", 60) or 60) if config else 60
+    _ma_pref_dte = int(getattr(config, "OPTIONS_BUY_PREFERRED_DTE", 90) or 90) if config else 90
     # ── Market direction ratio (bull/bear scenario awareness) ──
     _mdr_min = getattr(config, "OPTIONS_MARKET_RATIO_MIN", 0.25) if config else 0.25
     _mdr_max = getattr(config, "OPTIONS_MARKET_RATIO_MAX", 0.75) if config else 0.75
@@ -527,6 +546,46 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
         # Only buy recommendations
         if "BUY" not in rec:
             continue
+        # ── Allowlist enforcement: calls only on trb_long, puts only on trb_short ──
+        if otype == "call" and _ma_call_allowed and symbol not in _ma_call_allowed:
+            logger.info(f"ALLOWLIST skip CALL {symbol} — not in symbols_trb_long.json")
+            continue
+        if otype == "put" and _ma_put_allowed and symbol not in _ma_put_allowed:
+            logger.info(f"ALLOWLIST skip PUT {symbol} — not in symbols_trb_short.json")
+            continue
+        # ── DTE floor: ≥2 months out, prefer 3+ months (user rule 2026-04-22) ──
+        _o_dte = int(o.get("dte", 0) or 0)
+        if _o_dte < _ma_min_dte:
+            logger.info(f"DTE_FLOOR skip {otype.upper()} {symbol} — dte={_o_dte}<{_ma_min_dte}")
+            continue
+        if _o_dte >= _ma_pref_dte:
+            score += 15  # bonus for 3+ months out
+        # ── Delta floor: no lottery tickets ──
+        _o_delta = float(o.get("delta", 0) or 0)
+        if abs(_o_delta) < _ma_min_abs_delta:
+            logger.info(f"DELTA_FLOOR skip {otype.upper()} {symbol} — |delta|={abs(_o_delta):.2f}<{_ma_min_abs_delta:.2f}")
+            continue
+        # ── Moneyness cap: keep strikes close to money ──
+        _o_strike = float(o.get("strike", 0) or 0)
+        _ind_sym = _ma_ind_map.get(symbol, {}) if _ma_ind_map else {}
+        _o_und = float(_ind_sym.get("current_price", 0) or _ind_sym.get("mark_price", 0) or 0)
+        if _o_und > 0 and _o_strike > 0:
+            if otype == "call" and _o_strike > _o_und * (1 + _ma_max_otm_pct / 100.0):
+                logger.info(f"OTM_CAP skip CALL {symbol} strike={_o_strike:.2f} > underlying={_o_und:.2f}*(1+{_ma_max_otm_pct:.1f}%)")
+                continue
+            if otype == "put" and _o_strike < _o_und * (1 - _ma_max_otm_pct / 100.0):
+                logger.info(f"OTM_CAP skip PUT {symbol} strike={_o_strike:.2f} < underlying={_o_und:.2f}*(1-{_ma_max_otm_pct:.1f}%)")
+                continue
+        # ── Daily-trend alignment: no calls into bear D, no puts into bull D ──
+        if _ma_require_d_align and _ind_sym:
+            _wt_d = str(_ind_sym.get("wt_cross_D", "") or "")
+            _mom_d = str(_ind_sym.get("wt_momentum_state_D", "") or "")
+            if otype == "call" and (_wt_d == "BEAR" or _mom_d in ("IMPULSE_DOWN", "EXHAUST_DOWN")):
+                logger.info(f"D_TREND_BLOCK skip CALL {symbol} — wt_D={_wt_d} mom_D={_mom_d}")
+                continue
+            if otype == "put" and (_wt_d == "BULL" or _mom_d in ("IMPULSE_UP", "EXHAUST_UP")):
+                logger.info(f"D_TREND_BLOCK skip PUT {symbol} — wt_D={_wt_d} mom_D={_mom_d}")
+                continue
         # Don't trade blocked symbols/sectors (concentration limits)
         if symbol in blocked_symbols:
             continue
