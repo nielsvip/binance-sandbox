@@ -46,9 +46,9 @@ SERVERS = {
         "user": "niels",
         "base": "/home/niels/binance-sandbox",
         "python": "/home/niels/miniconda3/envs/binance_env/bin/python",
-        "autochain_screen": "autochain_s2",
+        "autochain_screen": None,  # disabled 2026-04-22: autonomous search workers own S2 resources
         "autochain_arg": "s2",
-        "run_sentinel": True,
+        "run_sentinel": False,
     },
     "S1": {
         "host": "s1-int",
@@ -217,7 +217,7 @@ def check_server(name, cfg, state):
     # 2026-04-16: spawn autochain master screen if missing. Autochain handles the
     # rest of the pipeline internally (--resume-aware, idempotent, never-ending).
     ac_screen = cfg["autochain_screen"]
-    if ac_screen not in existing_screens:
+    if ac_screen and ac_screen not in existing_screens:
         log(f"{name}: {ac_screen} missing — spawning")
         inner = (
             f"cd {cfg['base']} && "
