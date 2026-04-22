@@ -304,6 +304,7 @@ NAV_ITEMS = [
     ("History", "/history"),
     ("Trades", "http://localhost:5050/feed"),
     ("Monitor", "/monitor"),
+    ("🔬 Swarm", "/swarm"),
 ]
 
 
@@ -1717,6 +1718,182 @@ behavior may diverge from the proven run.</p>
 {''.join(cfg_sections)}
 """
     return render_page(body, title="Live vs Frozen", active_nav="Home")
+
+
+@app.route("/swarm")
+def swarm_page():
+    """Live view of autonomous swarm + funnel results from all 3 machines."""
+    import pandas as _pd
+
+    MACHINES = [
+        {"name": "Local (MacBook)", "host": None, "base": BASE_DIR},
+        {"name": "S1 (Crypto)", "host": "s1-int", "base": "/home/niels/binance-sandbox"},
+        {"name": "S2 (Tradier)", "host": "s2-int", "base": "/home/niels/binance-sandbox"},
+    ]
+
+    def _read_csvs_local(pattern):
+        rows = []
+        for f in sorted(glob.glob(pattern)):
+            try:
+                age_s = int(time.time() - os.path.getmtime(f))
+                df = _pd.read_csv(f)
+                df["_source_file"] = os.path.basename(os.path.dirname(f)) + "/" + os.path.basename(f)
+                df["_age_s"] = age_s
+                rows.append(df)
+            except Exception:
+                pass
+        return _pd.concat(rows, ignore_index=True) if rows else _pd.DataFrame()
+
+    def _read_csvs_remote(host, pattern):
+        try:
+            import io as _io, tempfile as _tf, os as _os
+            script = "\n".join([
+                "import glob,pandas as pd",
+                "COLS=['pool_sharpe','acc_gain_pct','max_dd_pct','trades','symbols_used','stage1_sharpe']",
+                "pieces=[]",
+                f"for f in sorted(glob.glob('{pattern}'))[:50]:",
+                "    try:",
+                "        df=pd.read_csv(f,usecols=lambda c:c in COLS)",
+                "        df['_source_file']='/'.join(f.split('/')[-2:])",
+                "        pieces.append(df)",
+                "    except: pass",
+                "if pieces:",
+                "    print(pd.concat(pieces,ignore_index=True).to_csv(index=False))",
+            ])
+            script_file = f"/tmp/_swarm_fetch_{host}.py"
+            _ssh_run(host, None, f"cat > {script_file} << 'PYEOF'\n{script}\nPYEOF", timeout=5)
+            raw = _ssh_run(host, None, f"python3 {script_file} 2>/dev/null", timeout=20)
+            if raw.strip():
+                return _pd.read_csv(_io.StringIO(raw))
+        except Exception:
+            pass
+        return _pd.DataFrame()
+
+    sections = []
+    all_autonomous = []
+    all_funnel = []
+
+    for m in MACHINES:
+        host = m["host"]
+        base = m["base"]
+
+        auto_pat = f"{base}/data/autonomous/*/w*/autonomous_*.csv"
+        funnel_pat = f"{base}/data/funnel_validated/**/*.csv"
+        stage2_pat = f"{base}/data/stage2_validated/**/*.csv"
+
+        if host is None:
+            auto_df = _read_csvs_local(auto_pat)
+            funnel_df = _read_csvs_local(funnel_pat)
+            s2_df = _read_csvs_local(stage2_pat)
+        else:
+            auto_df = _cached(f"swarm_auto_{host}", lambda h=host, p=auto_pat: _read_csvs_remote(h, p))
+            funnel_df = _cached(f"swarm_funnel_{host}", lambda h=host, p=funnel_pat: _read_csvs_remote(h, p))
+            s2_df = _cached(f"swarm_s2_{host}", lambda h=host, p=stage2_pat: _read_csvs_remote(h, p))
+            if isinstance(auto_df, dict): auto_df = _pd.DataFrame()
+            if isinstance(funnel_df, dict): funnel_df = _pd.DataFrame()
+            if isinstance(s2_df, dict): s2_df = _pd.DataFrame()
+
+        def _fmt_df(df, label, valid_floor_syms=None):
+            if df is None or (isinstance(df, _pd.DataFrame) and df.empty):
+                return f'<div style="color:#888">{label}: no data</div>'
+            df = df.copy()
+            for col in ["pool_sharpe", "acc_gain_pct", "max_dd_pct", "trades", "symbols_used"]:
+                if col in df.columns:
+                    df[col] = _pd.to_numeric(df[col], errors="coerce")
+            if "pool_sharpe" not in df.columns:
+                return f'<div style="color:#888">{label}: no pool_sharpe column</div>'
+            df = df.dropna(subset=["pool_sharpe"])
+            df = df[df["pool_sharpe"] > 0]
+            if valid_floor_syms and "symbols_used" in df.columns:
+                valid = df[df["symbols_used"] >= valid_floor_syms]
+                invalid = df[df["symbols_used"] < valid_floor_syms]
+                valid_note = f' ({len(valid)} valid ≥{valid_floor_syms} syms, {len(invalid)} stage-1 screening only)'
+                df_show = valid if not valid.empty else df
+            else:
+                valid_note = ""
+                df_show = df
+            if df_show.empty:
+                return f'<div style="color:#888">{label}: 0 qualifying rows{valid_note}</div>'
+            df_show = df_show.sort_values("pool_sharpe", ascending=False)
+            top = df_show.head(10)
+            age_s = int(df["_age_s"].min()) if "_age_s" in df.columns else -1
+            age_str = f"{age_s//60}m{age_s%60}s ago" if age_s >= 0 else "?"
+            color = "#4caf50" if age_s < 300 else ("#ffaa00" if age_s < 1800 else "#f44336")
+            rows_html = ""
+            for _, r in top.iterrows():
+                sharpe = r.get("pool_sharpe", 0)
+                gain = r.get("acc_gain_pct", r.get("stage1_gain", 0)) or 0
+                dd = r.get("max_dd_pct", 0) or 0
+                tr = int(r.get("trades", 0) or 0)
+                syms = int(r.get("symbols_used", r.get("symbols", 0)) or 0)
+                src = r.get("_source_file", "")
+                s1s = r.get("stage1_sharpe", "")
+                s1_str = f' (s1={float(s1s):.3f})' if s1s and str(s1s) != "nan" else ""
+                sc = "#4caf50" if sharpe >= 0.5 else ("#ffaa00" if sharpe >= 0.25 else "#e0e0e0")
+                rows_html += (f'<tr><td style="color:{sc}">{sharpe:.4f}{s1_str}</td>'
+                              f'<td>{gain:.0f}%</td><td>{dd:.1f}%</td><td>{tr}</td>'
+                              f'<td>{syms}</td><td style="font-size:10px;color:#888">{src}</td></tr>')
+            return (f'<div style="margin-bottom:12px">'
+                    f'<b>{label}</b> — {len(df_show)} rows, best={df_show["pool_sharpe"].max():.4f} '
+                    f'<span style="color:{color}">updated {age_str}</span>{valid_note}'
+                    f'<table style="width:100%;font-size:12px;margin-top:4px">'
+                    f'<tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th><th>Syms</th><th>Source</th></tr>'
+                    f'{rows_html}</table></div>')
+
+        auto_section = _fmt_df(auto_df, "Stage-1 autonomous")
+        funnel_section = _fmt_df(funnel_df, "Funnel validated", valid_floor_syms=12)
+        s2_section = _fmt_df(s2_df, "Stage-2 validated", valid_floor_syms=48)
+
+        sections.append(f'<div class="card"><div class="card-header"><span class="card-title">{m["name"]}</span></div>'
+                        f'{auto_section}{funnel_section}{s2_section}</div>')
+
+        if not auto_df.empty and "pool_sharpe" in auto_df.columns:
+            auto_df["_machine"] = m["name"]
+            all_autonomous.append(auto_df)
+        if not funnel_df.empty and "pool_sharpe" in funnel_df.columns:
+            funnel_df["_machine"] = m["name"]
+            all_funnel.append(funnel_df)
+
+    # Global best across all machines
+    summary_html = ""
+    for label, frames, floor in [("Stage-1 (all machines)", all_autonomous, None),
+                                   ("Funnel validated (all machines)", all_funnel, 12)]:
+        if not frames:
+            continue
+        combined = _pd.concat(frames, ignore_index=True)
+        combined["pool_sharpe"] = _pd.to_numeric(combined["pool_sharpe"], errors="coerce")
+        combined = combined.dropna(subset=["pool_sharpe"])
+        if floor and "symbols_used" in combined.columns:
+            combined["symbols_used"] = _pd.to_numeric(combined["symbols_used"], errors="coerce")
+            combined = combined[combined["symbols_used"] >= floor]
+        combined = combined.sort_values("pool_sharpe", ascending=False)
+        if combined.empty:
+            continue
+        top5 = combined.head(5)
+        rows_h = ""
+        for _, r in top5.iterrows():
+            sharpe = r.get("pool_sharpe", 0)
+            gain = r.get("acc_gain_pct", 0) or 0
+            dd = r.get("max_dd_pct", 0) or 0
+            tr = int(r.get("trades", 0) or 0)
+            syms = int(r.get("symbols_used", 0) or 0)
+            mch = r.get("_machine", "?")
+            sc = "#4caf50" if sharpe >= 0.5 else ("#ffaa00" if sharpe >= 0.25 else "#e0e0e0")
+            rows_h += (f'<tr><td style="color:{sc}">{sharpe:.4f}</td><td>{gain:.0f}%</td>'
+                       f'<td>{dd:.1f}%</td><td>{tr}</td><td>{syms}</td><td>{mch}</td></tr>')
+        summary_html += (f'<h3>{label} — Top 5</h3>'
+                         f'<table style="width:100%;font-size:12px">'
+                         f'<tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th><th>Syms</th><th>Machine</th></tr>'
+                         f'{rows_h}</table>')
+
+    body = f"""
+<h2>🔬 Swarm + Funnel — Live Results</h2>
+<p style="color:#888">Reads <code>data/autonomous/*/w*/autonomous_*.csv</code> + <code>data/funnel_validated/**/*.csv</code> + <code>data/stage2_validated/**/*.csv</code> from all machines. Auto-refresh 30s.</p>
+<p style="color:#ff9800">⚠️ Stage-1 results (small sym count) are screening only — NOT valid per floor rules. Funnel/Stage-2 ≥48 crypto / ≥100 tradier are the real numbers.</p>
+{summary_html}
+<div class="grid">{''.join(sections)}</div>
+"""
+    return render_page(body, title="Swarm Results", active_nav="🔬 Swarm")
 
 
 # ---------------------------------------------------------------------------
