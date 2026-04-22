@@ -12125,7 +12125,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
                 if not hard_exit_reason and not is_hedge:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
-                    if _pos_age_min >= _be_grace and current_gain < 0:
+                    if _pos_age_min >= _be_grace and current_gain < 0.02:
                         _hbf_enabled = bool(getattr(config, 'HARD_BREAKEVEN_FLOOR_ENABLED', True))
                         _hbf_min_peak = float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5))
                         _pos_max_g_be = safe_fetch_float(getattr(position, 'max_gain', 0), 0)

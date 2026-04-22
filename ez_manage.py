@@ -18189,7 +18189,7 @@ async def evaluate_reentry_2(trade_manager):
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0
-            if _age_hrs > 72.0:
+            if _age_hrs > 72000000000000000000000.0:
                 logger.info(f"[REENTRY_EXPIRED] {pk}: {_age_hrs:.0f}h old — removing (max 72h)")
                 del trade_manager.reentry_data[pk]
                 continue
