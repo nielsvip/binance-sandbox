@@ -55,9 +55,9 @@ SERVERS = {
         "user": "niels",
         "base": "/home/niels/binance-sandbox",
         "python": "/home/niels/.conda/envs/binance_env/bin/python",
-        "autochain_screen": "autochain_s1",
+        "autochain_screen": None,  # disabled 2026-04-22: autonomous search owns S1 resources
         "autochain_arg": "s1",
-        "run_sentinel": True,
+        "run_sentinel": False,
     },
 }
 
