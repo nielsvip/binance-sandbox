@@ -901,7 +901,7 @@ def get_monitor():
 # ---------------------------------------------------------------------------
 
 _cache = {"data": None, "ts": 0}
-CACHE_TTL = 60
+CACHE_TTL = 120
 
 
 def get_analytics():
@@ -940,7 +940,8 @@ def get_analytics():
 # ---------------------------------------------------------------------------
 
 _unified_cache = {"data": None, "ts": 0}
-UNIFIED_TTL = 30
+UNIFIED_TTL = 120
+_unified_cache_lock = _threading.Lock()
 
 
 def build_open_positions():
@@ -1034,6 +1035,9 @@ def get_unified_dashboard():
     now = datetime.now(timezone.utc).timestamp()
     if _unified_cache["data"] and now - _unified_cache["ts"] < UNIFIED_TTL:
         return _unified_cache["data"]
+    with _unified_cache_lock:
+        if _unified_cache["data"] and now - _unified_cache["ts"] < UNIFIED_TTL:
+            return _unified_cache["data"]
     # Crypto trades
     crypto_events = [e for e in load_and_merge() if not e.get("is_stock")]
     crypto_trades = reconstruct_trades(crypto_events)
@@ -1119,7 +1123,7 @@ def get_unified_dashboard():
     cumulative_by_acc = compute_cumulative_by_account(real_trades)
     # Strategy stats
     strat_stats = compute_strategy_stats(all_trades)
-    result = {"summary": {"total_realized": round(total_realized, 2), "total_unrealized": round(total_unrealized, 2), "total_combined": round(total_realized + total_unrealized, 2), "today_pnl": round(today_pnl, 2), "week_pnl": round(week_pnl, 2), "total_trades": total_trades_count, "win_rate": round(win_rate, 1), "today_trades": len(today_trades), "crypto_realized": round(crypto_realized, 2), "crypto_unrealized": round(crypto_unrealized, 2), "stock_realized": round(stock_realized, 2), "stock_unrealized": round(stock_unrealized, 2), "active_positions": len(open_pos), "crypto_positions": len([p for p in open_pos if not p["is_stock"]]), "stock_positions": len([p for p in open_pos if p["is_stock"]])}, "positions": sorted(open_pos, key=lambda p: p["pnl"], reverse=True), "closed_positions": closed_pos, "trades": all_trades[:300], "symbols": sym_stats, "accounts": acc_stats, "daily_pnl": daily_pnl, "cumulative_by_account": cumulative_by_acc, "strategies": strat_stats, "tips": generate_tips(strat_stats, sym_stats, acc_stats, all_trades), "monitor": get_monitor(), "stock_monitor": get_stock_monitor(), "total_events": len(crypto_events) + len(stock_events)}
+    result = {"summary": {"total_realized": round(total_realized, 2), "total_unrealized": round(total_unrealized, 2), "total_combined": round(total_realized + total_unrealized, 2), "today_pnl": round(today_pnl, 2), "week_pnl": round(week_pnl, 2), "total_trades": total_trades_count, "win_rate": round(win_rate, 1), "today_trades": len(today_trades), "crypto_realized": round(crypto_realized, 2), "crypto_unrealized": round(crypto_unrealized, 2), "stock_realized": round(stock_realized, 2), "stock_unrealized": round(stock_unrealized, 2), "active_positions": len(open_pos), "crypto_positions": len([p for p in open_pos if not p["is_stock"]]), "stock_positions": len([p for p in open_pos if p["is_stock"]])}, "positions": sorted(open_pos, key=lambda p: p["pnl"], reverse=True), "closed_positions": closed_pos, "trades": all_trades[:300], "symbols": sym_stats, "accounts": acc_stats, "daily_pnl": daily_pnl, "cumulative_by_account": cumulative_by_acc, "strategies": strat_stats, "tips": generate_tips(strat_stats, sym_stats, acc_stats, all_trades), "monitor": get_monitor(), "stock_monitor": _stock_cache.get("data") or {}, "total_events": len(crypto_events) + len(stock_events)}
     _unified_cache["data"] = result
     _unified_cache["ts"] = now
     return result
@@ -1991,6 +1995,20 @@ if __name__ == "__main__":
     print(f"History dir: {HISTORY_DIR}")
     print(f"Logs dir: {LOGS_DIR}")
     print(f"Accounts: {ALL_ACCOUNTS}")
+    # Pre-warm caches in background so first browser request is instant
+    import threading as _wt
+    def _warm_caches():
+        import time as _wtime
+        _wtime.sleep(1.5)
+        try:
+            print("[warmup] building stock monitor...", flush=True)
+            get_stock_monitor()
+            print("[warmup] building unified dashboard...", flush=True)
+            get_unified_dashboard()
+            print("[warmup] done — caches ready", flush=True)
+        except Exception as _we:
+            print(f"[warmup] error: {_we}", flush=True)
+    _wt.Thread(target=_warm_caches, daemon=True).start()
     # Allow port reuse to prevent "Address already in use" after restart
     from werkzeug.serving import WSGIRequestHandler
     import werkzeug.serving
