@@ -4841,7 +4841,7 @@ class HedgeEngine:
                                 try:
                                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_WT3M1H_ABS_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f}_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                    self._hedge_completed.pop(losing_key, None)
+                                    # NO POP — losing position still exists; 1h lockout prevents immediate re-hedge cycle
                                 except Exception as _abs_e:
                                     logger.error(f"[HEDGE_CLOSE_WT3M1H_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
                                 continue
@@ -4872,7 +4872,7 @@ class HedgeEngine:
                                 logger.warning(f"🩹 [BANDAID_OFF] {hedge_key}: 15m WT favors origin {losing_key} (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f} {'BULL' if _losing_is_long else 'BEAR'}). Hedge gain={hedge_gain:.2f}%. NUKING.")
                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"BANDAID_OFF_wt15m_{_wt1_15m:.1f}>{_wt2_15m:.1f}_hgain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                self._hedge_completed.pop(losing_key, None)
+                                # NO POP — losing position still exists; 1h lockout prevents re-hedge cycle
                                 continue
                             # Rule 2: Hedge PEAKED and dropping back toward 0 → NUKE at 0.5% before it goes negative
                             _hedge_max_gain = safe_fetch_float(record.get('hedge_max_gain', hedge_gain), hedge_gain)
@@ -4882,7 +4882,7 @@ class HedgeEngine:
                                 logger.critical(f"🔥 [HEDGE_DECAY_NUKE] {hedge_key}: peaked at {_hedge_max_gain:.2f}% now at {hedge_gain:.2f}% — NUKING before it goes negative.")
                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_DECAY_NUKE_peak{_hedge_max_gain:.2f}%_cur{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                self._hedge_completed.pop(losing_key, None)
+                                # NO POP — losing position still exists; 1h lockout prevents re-hedge cycle
                                 continue
                             # TREND_HEDGE_EXPIRY: auto-close hedges after max time for trend accounts
                             _trend_max_sec = getattr(self.config, 'TREND_HEDGE_MAX_SEC', 0)
@@ -4892,7 +4892,7 @@ class HedgeEngine:
                                     logger.warning(f"[TREND_HEDGE_EXPIRY] {hedge_key} age={_hedge_age:.0f}s > {_trend_max_sec}s, gain={hedge_gain:.2f}%. NUKING expired hedge.")
                                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"TREND_HEDGE_EXPIRY_{_hedge_age:.0f}s_gain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                    self._hedge_completed.pop(losing_key, None)
+                                    # NO POP — losing position still exists; 1h lockout prevents re-hedge cycle
                                     continue
                             sentiment = float(h_ind.get('0market_sentiment_score', 0.0))
                             losing_entry = safe_fetch_float(getattr(losing_pos, 'entry_price', 0.0), 0.0)
@@ -5605,7 +5605,7 @@ class HedgeEngine:
                             await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_MAX_AGE_KILL_{_h_age_h:.1f}h_g{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                             await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                             if original_key:
-                                self._hedge_completed.pop(original_key, None)
+                                # NO POP of _hedge_completed — losing position still exists; 1h lockout prevents re-hedge cycle
                                 self._hedge_cooldowns.pop(symbol, None)
                                 self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                                 self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
@@ -5649,9 +5649,8 @@ class HedgeEngine:
                     logger.critical(f"🚨 [HEDGE_WT_KILL] {hedge_key} (hedges loser {original_key}): loser {_loser_sym} {'LONG' if _loser_is_long else 'SHORT'} RECOVERING wt1_3m={_loser_wt1_3m:.1f} {'>' if _loser_is_long else '<'} wt2_3m={_loser_wt2_3m:.1f} confirm_tf={getattr(self.config,'HEDGE_WT_KILL_CONFIRM_TF','1h')} cf={_loser_wt1_cf:.1f}/{_loser_wt2_cf:.1f} — KILLING hedge. hedge_gain={hedge_gain:.2f}%")
                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_WT_KILL_LOSER_RECOVER_{_loser_sym}_wt3m={_loser_wt1_3m:.1f}/{_loser_wt2_3m:.1f}_cf{getattr(self.config,'HEDGE_WT_KILL_CONFIRM_TF','1h')}={_loser_wt1_cf:.1f}/{_loser_wt2_cf:.1f}_g{hedge_gain:.1f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                    # CLEAR completed lockout so next loss augmentation re-opens hedge immediately
                     if original_key:
-                        self._hedge_completed.pop(original_key, None)
+                        # NO POP of _hedge_completed — losing position still exists; 1h lockout prevents re-hedge cycle
                         self._hedge_cooldowns.pop(symbol, None)
                         self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                         self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
@@ -5662,7 +5661,7 @@ class HedgeEngine:
                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_PROFIT_PROTECT_peak{hedge_max_gain:.2f}_cur{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                     if original_key:
-                        self._hedge_completed.pop(original_key, None)
+                        # NO POP of _hedge_completed — losing position still exists; 1h lockout prevents re-hedge cycle
                         self._hedge_cooldowns.pop(symbol, None)
                         self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                         self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
@@ -11926,10 +11925,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _hlk_orig_pk = f"{account_key}:{symbol}_{'LONG' if is_long else 'SHORT'}"
                         if hasattr(trade_manager, '_hedge_open_flag'):
                             trade_manager._hedge_open_flag[_hlk_orig_pk] = False
-                        # FIX 2026-04-07: Clear hedge-completed lock so position CAN re-hedge (ONE more time)
+                        # NO POP of _hedge_completed — losing position still exists; 1h lockout prevents re-hedge cycle
                         if hedge_engine:
-                            hedge_engine._hedge_completed.pop(_hlk_orig_pk, None)
-                            logger.info(f"[HEDGE_COMPLETED_LOCK_CLEARED] {_hlk_orig_pk}: hedge killed — lock cleared for ONE re-hedge")
+                            logger.info(f"[HEDGE_LOSS_KILL_NO_REOPEN] {_hlk_orig_pk}: hedge failed in 12min — 1h lockout remains, NO immediate re-hedge")
                 # HEDGE_ORPHAN_KILL: hedge with no original position to protect → close immediately. NO P/L GATE.
                 if not hard_exit_reason and is_hedge:
                     _orphan_side = 'SHORT' if is_long else 'LONG'

@@ -4188,6 +4188,30 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                 final_score_raw_st *= _ns_mult
         final_score_raw_lt += 0.2 * min(BACKTEST_SHARPE.get(sym, 0) / 1000, 5.0)  # BACKTEST_CHANGE_49: backtest Sharpe bonus
         final_score_raw_st += 0.2 * min(BACKTEST_SHARPE.get(sym, 0) / 1000, 5.0)  # BACKTEST_CHANGE_49: backtest Sharpe bonus
+        # === SCALP_V3 ULTRA-SHORT BOOST (2026-04-22) — undoable by SCALP_V3_BOOST_ENABLED=False ===
+        # Boosts final_score_raw_st on last N × 3m bars of outperformance + volume spike.
+        # Signed: positive return → pushes into top_winners_st → symbols_inf_long_list;
+        #         negative return → pushes into top_losers_st → symbols_inf_short_list.
+        # These lists are already saved to symbols_inf_long/short.json and picked up by
+        # ez_positions_service which flows them into tradeable_keys automatically.
+        if getattr(config, 'SCALP_V3_BOOST_ENABLED', False) and df_3m is not None and not df_3m.empty:
+            try:
+                _n = int(getattr(config, 'SCALP_V3_BOOST_LOOKBACK_BARS_3M', 5))
+                _wt = float(getattr(config, 'SCALP_V3_BOOST_WEIGHT', 0.0))
+                _vol_z_min = float(getattr(config, 'SCALP_V3_BOOST_VOL_Z_MIN', 1.5))
+                if len(df_3m) >= 20 and _wt != 0.0 and 'close' in df_3m.columns and 'volume' in df_3m.columns:
+                    _closes = df_3m['close'].values
+                    _vols = df_3m['volume'].values
+                    if _closes[-_n - 1] > 0:
+                        _ret = (_closes[-1] / _closes[-_n - 1] - 1.0) * 100.0
+                        _vol_recent = _vols[-_n:].mean() if _n > 0 else 0.0
+                        _vol_baseline = _vols[-20:-_n].mean() if (_n < 20 and _n > 0) else _vols[-20:].mean()
+                        _vol_ratio = _vol_recent / _vol_baseline if _vol_baseline > 0 else 1.0
+                        if _vol_ratio >= _vol_z_min and abs(_ret) > 0.5:
+                            final_score_raw_st += _wt * _ret
+            except Exception:
+                pass
+        # === END SCALP_V3 BOOST ===
         # Add linearity metadata for filtering/ranking
         avg_linearity = abs_lin_val_raw
         linearity_category = (

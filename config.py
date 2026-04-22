@@ -108,6 +108,55 @@ class Config:
     SCALP_V2_REDZONE_K_THRESHOLD: int = 90 # P1: sweep winner=90. Try 80 only after 90 tested.
     SCALP_V2_LH_LL_EXIT: bool = True       # P2: #4 in sweep (Sharpe 68). +23 extra exits in smoke test. 15m structure break.
     SCALP_V2_LH_LL_TF: str = "15m"        # P2: sweep winner=15m. 1h too slow, 3m too noisy.
+    # ═══ SCALP_V3 — ULTRA-SHORT BAR-BASED SCALPER (2026-04-22) ══════════════════
+    # Entry: latest 1m bar HH AND HL + K oversold context + HTF runway + volume spike.
+    # Exit: latest bar LL/LH + K overextension context (NO crossunders — bar IS signal).
+    # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
+    # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
+    SCALP_V3_ENABLED: bool = False
+    SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
+    # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
+    SCALP_V3_ENTRY_K_1M_MAX: int = 25
+    SCALP_V3_ENTRY_K_3M_MAX: int = 40
+    SCALP_V3_ENTRY_K_15M_MAX: int = 65
+    SCALP_V3_ENTRY_K_1H_MAX: int = 80
+    SCALP_V3_ENTRY_K_4H_MAX: int = 85
+    SCALP_V3_ENTRY_REQUIRE_K_TURNUP: bool = False
+    SCALP_V3_ENTRY_BAR_1M_REQUIRE: str = "HH_AND_HL"
+    SCALP_V3_ENTRY_BAR_3M_REQUIRE: str = "HH"
+    SCALP_V3_ENTRY_VOL_SPIKE_MULT: float = 1.5
+    # TF mode — SWEEP KNOB. Which TF bar(s) required:
+    #   "1M_ONLY"        — 1m bar + 1m K only (no 3m bar needed)
+    #   "3M_ONLY"        — 3m bar + 3m K only (no 1m bar needed) — backtest-friendly
+    #   "1M_AND_3M"      — both must fire (strictest; default)
+    #   "3M_CONFIRMS_1M" — 1m fires, 3m must also confirm
+    SCALP_V3_ENTRY_TF_MODE: str = "1M_AND_3M"
+    SCALP_V3_EXIT_TF_MODE: str = "ANY"  # "ANY" fires on first of 1m/3m/15m trigger; also "1M_ONLY","3M_ONLY","15M_ONLY"
+    # --- EXIT (bar + K-as-context; NO crossunders) ---
+    SCALP_V3_EXIT_1M_K_MIN: int = 98
+    SCALP_V3_EXIT_1M_BAR: str = "LL_AND_LH"
+    SCALP_V3_EXIT_3M_K_MIN: int = 95
+    SCALP_V3_EXIT_3M_BAR: str = "LL_OR_LH"
+    SCALP_V3_EXIT_15M_K_MIN: int = 95
+    SCALP_V3_EXIT_15M_BAR: str = "LL_OR_LH"
+    SCALP_V3_MAX_HOLD_MIN: float = 5.0
+    SCALP_V3_STALL_GAIN_MAX_PCT: float = 0.0
+    # --- REENTRY ---
+    SCALP_V3_REENTRY_REQUIRE_BOUNCE_IF_15M_FALLING: bool = True
+    # Reentry bounce definition — SWEEP KNOB:
+    #   "3M_BAR_ONLY"       — only 3m HH+HL (LONG) / LL+LH (SHORT) clears the block
+    #   "K15M_ONLY"         — only k_15m oversold+turnup clears
+    #   "3M_BAR_OR_K15M"    — either clears (default, most permissive)
+    #   "3M_BAR_AND_K15M"   — both required (strictest)
+    SCALP_V3_REENTRY_BOUNCE_MODE: str = "3M_BAR_OR_K15M"
+    SCALP_V3_REENTRY_BOUNCE_BAR_3M: str = "HH_AND_HL"  # LONG convention; SHORT mirrors
+    SCALP_V3_REENTRY_BOUNCE_K_15M_MAX: int = 25
+    SCALP_V3_REENTRY_COOLDOWN_S: int = 0
+    # --- RANKING BOOST (ez_rankings.py; feeds final_score_raw_st → symbols_inf_*) ---
+    SCALP_V3_BOOST_ENABLED: bool = False
+    SCALP_V3_BOOST_WEIGHT: float = 0.0
+    SCALP_V3_BOOST_LOOKBACK_BARS_3M: int = 5
+    SCALP_V3_BOOST_VOL_Z_MIN: float = 1.5
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
