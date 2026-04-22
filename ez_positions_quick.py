@@ -6179,7 +6179,7 @@ class HedgeEngine:
         async with self.tracker_manager._hedges_lock:
             _origin_is_hedge = any(h.get('position_key') == origin_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
             _already_tracked = any(h.get('losing_position_key') == origin_key for h in self.tracker_manager.active_hedges if isinstance(h, dict))
-        if _origin_is_hedge:
+        if _origin_is_hedge or origin_key not in config.HEDGE_ACCOUNTS:
             logger.info(f"[HEDGE_OF_HEDGE_BLOCK] {origin_key}: origin IS a hedge position in tracker. Not hedging a hedge.")
             return False
         if _already_tracked:
