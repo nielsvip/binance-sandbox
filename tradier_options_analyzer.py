@@ -1369,6 +1369,157 @@ async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# OPTIONS REENTRY QUEUE (2026-04-22 user directive)
+# Every option closed by the watchdog is recorded here with its exit context.
+# Each watchdog cycle the queue is scanned: if underlying crosses back above
+# exit price (call) / below (put), OR bounces over ema_200_1h, AND underlying
+# is in symbols_trb_long (calls) / symbols_trb_short (puts), a buy_to_open is
+# placed (persistent LIMIT, not market). Entries expire after 24h or on fill.
+# ══════════════════════════════════════════════════════════════════════════════
+_OPT_REENTRY_QUEUE_FILE = "options_reentry_queue.json"
+_OPT_REENTRY_MAX_AGE_H = 24.0
+
+
+def _load_options_reentry_queue(config) -> Dict:
+    try:
+        path = config.DATA_DIR / _OPT_REENTRY_QUEUE_FILE
+        if path.exists():
+            with open(path) as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"_load_options_reentry_queue error: {e}")
+    return {}
+
+
+def _save_options_reentry_queue(config, state: Dict) -> None:
+    try:
+        path = config.DATA_DIR / _OPT_REENTRY_QUEUE_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(state, f, indent=2, default=str)
+    except Exception as e:
+        logger.error(f"_save_options_reentry_queue error: {e}")
+
+
+def _queue_options_reentry(config, occ: str, underlying: str, option_type: str, strike: float, expiration: str, exit_underlying_price: float, exit_option_price: float, qty: int, reason: str) -> None:
+    """Record a closed option in the reentry queue. Called right after any auto-sell."""
+    try:
+        q = _load_options_reentry_queue(config)
+        q[occ] = {"underlying": underlying, "option_type": option_type, "strike": strike, "expiration": expiration, "exit_underlying_price": float(exit_underlying_price), "exit_option_price": float(exit_option_price), "qty": int(qty), "exit_reason": reason, "queued_at": datetime.utcnow().isoformat()}
+        _save_options_reentry_queue(config, q)
+        logger.critical(f"[OPT_REENTRY_QUEUE] +{occ} underlying={underlying} exit_px={exit_underlying_price:.2f} reason={reason}")
+    except Exception as e:
+        logger.error(f"_queue_options_reentry error: {e}")
+
+
+def _load_trb_allowlists(config) -> Tuple[set, set]:
+    try:
+        base = Path(str(config.DATA_DIR).replace("/data/tradier", ""))
+        long_set = set()
+        short_set = set()
+        lp = base / "symbols_trb_long.json"
+        sp = base / "symbols_trb_short.json"
+        if lp.exists():
+            with open(lp) as f:
+                d = json.load(f)
+            long_set = set(d) if isinstance(d, list) else set(d.keys())
+        if sp.exists():
+            with open(sp) as f:
+                d = json.load(f)
+            short_set = set(d) if isinstance(d, list) else set(d.keys())
+        return long_set, short_set
+    except Exception as e:
+        logger.warning(f"_load_trb_allowlists error: {e}")
+        return set(), set()
+
+
+async def _check_options_reentry_queue(client: TradierAPIClient, config, account_key: str, indicators: Dict) -> int:
+    """Iterate the reentry queue. For each entry, check triggers. Place buy_to_open
+    (persistent LIMIT) if fire. Returns count placed."""
+    q = _load_options_reentry_queue(config)
+    if not q:
+        return 0
+    long_allow, short_allow = _load_trb_allowlists(config)
+    now = datetime.utcnow()
+    placed = 0
+    to_remove = []
+    for occ, entry in list(q.items()):
+        try:
+            queued_at_s = entry.get("queued_at", "")
+            if queued_at_s:
+                try:
+                    age_h = (now - datetime.fromisoformat(queued_at_s.replace("Z", ""))).total_seconds() / 3600.0
+                except Exception:
+                    age_h = 0.0
+                if age_h > _OPT_REENTRY_MAX_AGE_H:
+                    logger.info(f"[OPT_REENTRY] expire {occ} — aged {age_h:.1f}h")
+                    to_remove.append(occ)
+                    continue
+            und = str(entry.get("underlying", "") or "").upper()
+            otype = str(entry.get("option_type", "") or "").lower()
+            exit_und_px = float(entry.get("exit_underlying_price", 0) or 0)
+            if not und or otype not in ("call", "put") or exit_und_px <= 0:
+                to_remove.append(occ)
+                continue
+            if otype == "call" and und not in long_allow:
+                logger.info(f"[OPT_REENTRY] {occ} underlying {und} not in trb_long — skip")
+                continue
+            if otype == "put" and und not in short_allow:
+                logger.info(f"[OPT_REENTRY] {occ} underlying {und} not in trb_short — skip")
+                continue
+            ind = indicators.get(und, {}) if indicators else {}
+            cur_und = float(ind.get("current_price", 0) or ind.get("mark_price", 0) or 0)
+            ema200_1h = float(ind.get("ema_200_1h", 0) or 0)
+            if cur_und <= 0:
+                try:
+                    qr = await client._request("GET", "/markets/quotes", params={"symbols": und}, use_data_context=True)
+                    qq = qr.get("quotes", {}).get("quote", {}) if qr else {}
+                    if isinstance(qq, list):
+                        qq = qq[0] if qq else {}
+                    cur_und = float(qq.get("last", 0) or 0)
+                except Exception:
+                    cur_und = 0.0
+            if cur_und <= 0:
+                continue
+            trig_cross = (otype == "call" and cur_und > exit_und_px) or (otype == "put" and cur_und < exit_und_px)
+            trig_ema = False
+            if ema200_1h > 0:
+                if otype == "call" and cur_und > ema200_1h:
+                    trig_ema = True
+                if otype == "put" and cur_und < ema200_1h:
+                    trig_ema = True
+            if not (trig_cross or trig_ema):
+                continue
+            opt_q_res = await client._request("GET", "/markets/quotes", params={"symbols": occ}, use_data_context=True)
+            oq = opt_q_res.get("quotes", {}).get("quote", {}) if opt_q_res else {}
+            if isinstance(oq, list):
+                oq = oq[0] if oq else {}
+            bid = float(oq.get("bid", 0) or 0)
+            ask = float(oq.get("ask", 0) or 0)
+            if ask <= 0:
+                logger.warning(f"[OPT_REENTRY] {occ} — no ask, skip this cycle")
+                continue
+            limit_px = round((bid + ask) / 2.0, 2) if bid > 0 else round(ask * 0.95, 2)
+            trig_tag = "CROSS_EXIT" if trig_cross else "EMA200_1H_BOUNCE"
+            logger.critical(f"[OPT_REENTRY_FIRE] {occ} {und} {otype.upper()} — cur_und={cur_und:.2f} exit_und={exit_und_px:.2f} ema200_1h={ema200_1h:.2f} trigger={trig_tag} → buy_to_open LIMIT ${limit_px:.2f}")
+            res = await smart_fill_option(client, und, occ, "buy_to_open", 1, limit_px, bid, ask, max_walk_steps=3, walk_interval=60)
+            if "order" in res or res.get("status") == "pending":
+                placed += 1
+                to_remove.append(occ)
+                logger.critical(f"[OPT_REENTRY_PLACED] {occ} — {trig_tag}")
+            else:
+                logger.warning(f"[OPT_REENTRY] {occ} fill failed: {str(res)[:200]}")
+        except Exception as e:
+            logger.error(f"[OPT_REENTRY] {occ} error: {e}")
+    if to_remove:
+        q2 = _load_options_reentry_queue(config)
+        for occ in to_remove:
+            q2.pop(occ, None)
+        _save_options_reentry_queue(config, q2)
+    return placed
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # EQUITY HEDGE STATE MANAGEMENT (2026-04-22 user directive)
 # When an option becomes unsellable at a loss, the watchdog places a stock
 # hedge of equal-and-opposite delta. When the option becomes sellable again,
@@ -2062,6 +2213,18 @@ async def run_watch(args):
             gtc_orders = await _manage_gtc_orders(client, config, positions, indicators)
             if gtc_orders:
                 print(f"\n  \033[96m{len(gtc_orders)} GTC sell order(s) active — waiting for fills\033[0m")
+            # ── OPTIONS REENTRY QUEUE SCAN (user rule 2026-04-22) ──
+            # For every option closed on a previous cycle: check if the underlying
+            # has crossed back above exit price (calls) / below (puts), or bounced
+            # over ema_200_1h. If yes + underlying is in trb_long/trb_short, place
+            # a new buy_to_open LIMIT. Runs every cycle (~5min) during market hours.
+            if auto_sell:
+                try:
+                    _n_re = await _check_options_reentry_queue(client, config, account_key, indicators)
+                    if _n_re > 0:
+                        print(f"  \033[92m[OPT_REENTRY] Placed {_n_re} reentry order(s) this cycle\033[0m")
+                except Exception as _re_err:
+                    logger.error(f"[OPT_REENTRY] scan error: {_re_err}")
             # Load prior WT velocity snapshots so WT_DELTA_ACCEL can compare bar-over-bar
             wt_history = _load_wt_history(config)
             wt_history_updated = {}
@@ -2160,9 +2323,18 @@ async def run_watch(args):
                         print(f"    \033[92mSOLD\033[0m  Order ID: {order_info.get('id')}  Status: {order_info.get('status')}  Fill: ${fill_price}")
                         logger.info(f"Auto-sold {occ} x{qty} fill=${fill_price} — {sig.reason}")
                         sold_occs.add(occ)
+                        # Queue for reentry monitoring (user rule 2026-04-22)
+                        try:
+                            _queue_options_reentry(config, occ=occ, underlying=opt_pos.symbol, option_type=opt_pos.option_type.lower(), strike=float(opt_pos.strike), expiration=opt_pos.expiration, exit_underlying_price=float(opt_pos.underlying_price or 0), exit_option_price=float(opt_pos.current_price or 0), qty=int(qty), reason=sig.reason)
+                        except Exception as _qe:
+                            logger.warning(f"_queue_options_reentry fail for {occ}: {_qe}")
                     elif res.get("status") == "pending":
                         print(f"    \033[93mPENDING\033[0m — order {res.get('order_id')} still working @ ${res.get('final_price'):.2f}")
                         sold_occs.add(occ)
+                        try:
+                            _queue_options_reentry(config, occ=occ, underlying=opt_pos.symbol, option_type=opt_pos.option_type.lower(), strike=float(opt_pos.strike), expiration=opt_pos.expiration, exit_underlying_price=float(opt_pos.underlying_price or 0), exit_option_price=float(opt_pos.current_price or 0), qty=int(qty), reason=sig.reason)
+                        except Exception as _qe:
+                            logger.warning(f"_queue_options_reentry fail for {occ}: {_qe}")
                     elif "errors" in res:
                         err_str = str(res["errors"])
                         if "no position" in err_str.lower() or "quantity" in err_str.lower() or "rejected" in err_str.lower():
