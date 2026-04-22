@@ -92,7 +92,7 @@ class Config:
     #   WT_DC_SCORER underperforms — multi-TF consensus too slow for spike-fade.
     # ───────────────────────────────────────────────────────────────────────────
     # ═══ SCALP_V2 — PRIORITY P0 (test first, week 1) ═══════════════════════════
-    SCALP_MODE: bool = True               # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
+    SCALP_MODE: bool = False               # P0: ON for inf. V8 showed -0.30 Sharpe BUT that was with ISOLATE=False (main exits interfered). Now ISOLATE=True + inf excluded from hedging.
     SCALP_V2_VARIANT: str = "V1_WT_CONFIRM"  # P0: sweep winner Sharpe=107. DO NOT change until V8 validates
     SCALP_V2_DC_HTF_REQUIRE_ALL: bool = True  # P0: quality gate. True = fewer but better. Keep True.
     SCALP_V2_MAX_HOLD_MINUTES: float = 15.0   # P0: sweep-proven, 60m universally worse for inf
@@ -116,7 +116,7 @@ class Config:
     # 2026-04-22 user-authorized live flip with pos_min_qty cap
     SCALP_V3_ENABLED: bool = True
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
-    SCALP_V3_MAX_CONCURRENT: int = 3              # max open V3 positions per account
+    SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 10.0       # hard notional cap per V3 entry
     # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
     SCALP_V3_ENTRY_K_1M_MAX: int = 25
@@ -178,7 +178,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz", "inf"]  # 2026-04-18: Re-added inf. Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
+    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-18: Re-added inf. Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
     STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
