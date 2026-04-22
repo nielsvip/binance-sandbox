@@ -631,6 +631,34 @@ class QuickConfig:
     RATIO_SENTIMENT_FILTER_ENABLED: bool = False
     RATIO_SENTIMENT_LONG_MIN: float = 40.0
     RATIO_SENTIMENT_SHORT_MAX: float = 60.0
+    # === NPZ-FIELD SIGNALS (2026-04-22) — precomputed indicators not yet tested ===
+    # MACD histogram exit: exit long when macd_hist crosses below zero (and vice versa)
+    MACD_HIST_EXIT_ENABLED: bool = False
+    MACD_HIST_EXIT_TF: str = "1h"         # which TF: "1h", "4h", "D"
+    # MACD crossover entry: add entries when precomputed macd_crossover fires
+    MACD_CROSS_ENTRY_ENABLED: bool = False
+    MACD_CROSS_ENTRY_TF: str = "1h"
+    MACD_CROSS_ENTRY_SCORE: int = 15
+    # ADX entry gate: only enter when market is trending (ADX >= threshold)
+    ADX_ENTRY_GATE_ENABLED: bool = False
+    ADX_ENTRY_TF: str = "1h"              # "1h" or "4h"
+    ADX_ENTRY_MIN: float = 20.0
+    # Stoch crossover NPZ-based entry: use precomputed stoch_crossover_* fields
+    STOCH_CROSS_NPZ_ENTRY_ENABLED: bool = False
+    STOCH_CROSS_NPZ_ENTRY_TF: str = "1h"  # "15m", "1h", "4h"
+    STOCH_CROSS_NPZ_ENTRY_SCORE: int = 10
+    # WT composite bias entry: require wt_composite_bias direction match
+    WT_COMPOSITE_BIAS_ENTRY_ENABLED: bool = False
+    # EMA20 slope entry: price above rising EMA20 for longs, below falling for shorts
+    EMA20_SLOPE_GATE_ENABLED: bool = False
+    EMA20_SLOPE_TF: str = "1h"            # "1h" or "4h"
+    # WT any divergence entry confirmation
+    WT_ANY_DIV_ENTRY_ENABLED: bool = False  # require wt_any_bull_div/bear_div at entry
+    # Precomputed tradeable gate: require tradeable_long/short == 1 at entry
+    TRADEABLE_PRECOMPUTED_GATE_ENABLED: bool = False
+    # WT bull/bear cross count: require N recent crosses for entry momentum
+    WT_CROSS_COUNT_ENTRY_ENABLED: bool = False
+    WT_CROSS_COUNT_MIN: int = 1            # min wt_bull_cross_count (long) or wt_bear_cross_count (short)
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1605,6 +1633,54 @@ def compute_entry_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'RZ_CASCADE_ENABLED', False):
         rz_entry_sig, _ = compute_rz_cascade_signals(npz, n, is_long, cfg)
         base_sig = base_sig | rz_entry_sig
+    # NPZ-FIELD ENTRY SIGNALS (2026-04-22)
+    if getattr(cfg, 'ADX_ENTRY_GATE_ENABLED', False):
+        _adx_tf = str(getattr(cfg, 'ADX_ENTRY_TF', '1h'))
+        _adx_arr = _safe(npz, f'adx_{_adx_tf}', n, 0.0)
+        if _adx_arr.max() > 0:
+            base_sig = base_sig & (_adx_arr >= float(getattr(cfg, 'ADX_ENTRY_MIN', 20.0)))
+    if getattr(cfg, 'MACD_CROSS_ENTRY_ENABLED', False):
+        _mc_tf = str(getattr(cfg, 'MACD_CROSS_ENTRY_TF', '1h'))
+        _mc_cross = _safe(npz, f'macd_crossover_{_mc_tf}', n, 0.0).astype(bool)
+        _mc_crossunder = _safe(npz, f'macd_crossunder_{_mc_tf}', n, 0.0).astype(bool)
+        if _mc_cross.any() or _mc_crossunder.any():
+            _mc_sig = _mc_cross if is_long else _mc_crossunder
+            base_sig = base_sig | _mc_sig
+    if getattr(cfg, 'STOCH_CROSS_NPZ_ENTRY_ENABLED', False):
+        _sc_tf = str(getattr(cfg, 'STOCH_CROSS_NPZ_ENTRY_TF', '1h'))
+        _sc_over = _safe(npz, f'stoch_crossover_{_sc_tf}', n, 0.0).astype(bool)
+        _sc_under = _safe(npz, f'stoch_crossunder_{_sc_tf}', n, 0.0).astype(bool)
+        if is_long: base_sig = base_sig | _sc_over
+        else: base_sig = base_sig | _sc_under
+    if getattr(cfg, 'WT_COMPOSITE_BIAS_ENTRY_ENABLED', False):
+        _wt_cb = _safe(npz, 'wt_composite_bias', n, 0.0)
+        if _wt_cb.any():
+            if is_long: base_sig = base_sig & (_wt_cb > 0)
+            else: base_sig = base_sig & (_wt_cb < 0)
+    if getattr(cfg, 'EMA20_SLOPE_GATE_ENABLED', False):
+        _es_tf = str(getattr(cfg, 'EMA20_SLOPE_TF', '1h'))
+        _ema20 = _safe(npz, f'ema_20_{_es_tf}', n, 0.0)
+        _ema20_prev = _safe(npz, f'ema_20_{_es_tf}_prev', n, 0.0)
+        if _ema20.max() > 0 and _ema20_prev.max() > 0:
+            if is_long: base_sig = base_sig & (_ema20 > _ema20_prev)
+            else: base_sig = base_sig & (_ema20 < _ema20_prev)
+    if getattr(cfg, 'WT_ANY_DIV_ENTRY_ENABLED', False):
+        _wt_bd = _safeb(npz, 'wt_any_bull_div', n)
+        _wt_bd2 = _safeb(npz, 'wt_any_bear_div', n)
+        if _wt_bd.any() or _wt_bd2.any():
+            if is_long: base_sig = base_sig & _wt_bd
+            else: base_sig = base_sig & _wt_bd2
+    if getattr(cfg, 'TRADEABLE_PRECOMPUTED_GATE_ENABLED', False):
+        _trad_k = 'tradeable_long' if is_long else 'tradeable_short'
+        _trad_arr = _safe(npz, _trad_k, n, 1.0).astype(bool)
+        if _trad_arr.any():
+            base_sig = base_sig & _trad_arr
+    if getattr(cfg, 'WT_CROSS_COUNT_ENTRY_ENABLED', False):
+        _cc_k = 'wt_bull_cross_count' if is_long else 'wt_bear_cross_count'
+        _cc_arr = _safe(npz, _cc_k, n, 0).astype(np.int8)
+        _cc_min = int(getattr(cfg, 'WT_CROSS_COUNT_MIN', 1))
+        if _cc_arr.any():
+            base_sig = base_sig & (_cc_arr >= _cc_min)
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
     elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
@@ -1933,7 +2009,16 @@ def compute_exit_signals(npz, n, is_long, cfg):
     rz_cascade_exit = np.zeros(n, dtype=bool)
     if getattr(cfg, 'RZ_CASCADE_ENABLED', False):
         _, rz_cascade_exit = compute_rz_cascade_signals(npz, n, is_long, cfg)
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit
+    # NPZ-FIELD EXIT SIGNALS (2026-04-22)
+    macd_hist_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'MACD_HIST_EXIT_ENABLED', False):
+        _mh_tf = str(getattr(cfg, 'MACD_HIST_EXIT_TF', '1h'))
+        _mh = _safe(npz, f'macd_hist_{_mh_tf}', n, 0.0)
+        if _mh.any():
+            _mh_prev = np.roll(_mh, 1); _mh_prev[0] = _mh[0]
+            if is_long: macd_hist_exit = (_mh_prev > 0) & (_mh <= 0)
+            else: macd_hist_exit = (_mh_prev < 0) & (_mh >= 0)
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:

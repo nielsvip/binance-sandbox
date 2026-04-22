@@ -14029,15 +14029,12 @@ class MultiAccountTradeManager:
             h_amt = abs(float(getattr(h_pos, 'positionAmt', 0.0))) if h_pos else 0.0
             if h_amt > 0:
                 h_gain = safe_fetch_float(getattr(h_pos, 'gain', 0.0), 0.0)
-                if h_gain > 0.0:
-                    promoted = await self.tracker_manager.promote_hedge_to_independent(account_key, h_key, reason=f"PARENT_REDUCED_{closed_position_key}_gain_{h_gain:.2f}%")
-                    if promoted:
-                        logger.info(f"[HEDGE_PROMOTED] {h_key}: Hedge in profit ({h_gain:.2f}%) promoted to independent — will keep growing.")
-                        continue
-                logger.critical(f"💀 [HEDGE_KILL] Parent position {closed_position_key} closed! NUKING ORPHANED HEDGE {h_key} (gain={h_gain:.2f}%)")
+                # NO PROMOTION — hedge ALWAYS dies with parent. Promoting creates hedge-of-hedge loops.
+                # Parent closed (TP or otherwise) → hedge closes unconditionally, regardless of gain.
+                logger.critical(f"💀 [HEDGE_KILL] Parent {closed_position_key} closed → NUKING hedge {h_key} (gain={h_gain:.2f}%) — NO_PROMOTION")
                 h_side = 'BUY' if h_key.endswith('_SHORT') else 'SELL'
                 h_pos_side = 'SHORT' if h_key.endswith('_SHORT') else 'LONG'
-                asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_INSTANT_KILL", True, "QUICK_CLOSE"))
+                asyncio.create_task(self.execute_now(h_key, account_key, symbol, h_amt, h_side, h_pos_side, h_amt, current_price, f"kill_orphan_{time.time()}", "ORPHANED_HEDGE_PARENT_CLOSED", True, "QUICK_CLOSE"))
                 await self.tracker_manager.nuke_hedge_key(account_key, h_key)
 
     def _should_bypass_post_fill_lock(self, position_key, account_key, side):
@@ -14334,8 +14331,9 @@ class MultiAccountTradeManager:
                         if not rh_key: continue
                         rh_pos = await self.get_position(rh_key)
                         rh_gain = safe_fetch_float(getattr(rh_pos, 'gain', 0.0), 0.0) if rh_pos else -999
-                        if rh_gain >= 0.0:
-                            await self.tracker_manager.promote_hedge_to_independent(acct, rh_key, reason=f"DC_BREACH_PROMOTE_{losing_key}_hgain_{rh_gain:.2f}%")
+                        # NO PROMOTION on DC breach — hedge lives until wt_3m+wt_1h flip against it.
+                        # Promotion creates hedge-of-hedge loops. Let monitor_hedge_health_loop handle exit.
+                        logger.warning(f"[DC_BREACH_HEDGE_NO_PROMOTE] {rh_key}: keeping as hedge for {losing_key} (gain={rh_gain:.2f}%) — promotion removed")
                     pos_min_qty = max(config.MIN_POSITION_SIZE / current_price, self.min_qty.get(symbol, 0.001))
                     reduce_to = pos_min_qty
                     reduce_qty = losing_amt - reduce_to

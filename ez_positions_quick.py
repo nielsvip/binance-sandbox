@@ -4504,6 +4504,9 @@ class HedgeEngine:
                 if not isinstance(tracker_data, dict): tracker_data = None
             if tracker_data and (tracker_data.get('is_hedge', False) or tracker_data.get('hedge_for')):
                 continue
+            if tracker_data and tracker_data.get('promoted_from_hedge', False):
+                logger.critical(f"[SCAN_HEDGE_PROMOTED_BLOCK] {position_key}: promoted_from_hedge=True — NEVER hedge a promoted hedge. BLOCKED.")
+                continue
             # Also check active_hedges — position might be a hedge even if exit_candidates missed it
             async with self.tracker_manager._hedges_lock:
                 _is_hedge_in_tracker = any(h.get('position_key') == position_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
@@ -6188,6 +6191,9 @@ class HedgeEngine:
             _origin_td = self.tracker_manager.exit_candidates.get(origin_key, {})
         if _origin_td and (_origin_td.get('is_hedge', False) or _origin_td.get('hedge_for')):
             logger.info(f"[HEDGE_OF_HEDGE_BLOCK_EC] {origin_key}: origin is hedge in exit_candidates. Not hedging a hedge.")
+            return False
+        if _origin_td and _origin_td.get('promoted_from_hedge', False):
+            logger.critical(f"[HEDGE_OF_PROMOTED_BLOCK] {origin_key}: was previously a hedge (promoted_from_hedge=True). NEVER hedge a promoted hedge. BLOCKED.")
             return False
         existing_hedge = await self.tracker_manager.get_position(hedge_key)
         if not existing_hedge: existing_hedge = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key)
