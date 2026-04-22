@@ -178,8 +178,8 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-18: Re-added inf. Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
-    STRICT_NO_LOSS_ACCOUNTS = ['ang', 'inf', 'flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
+    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-18:  Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
+    STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
     # ALL_GATES: Sharpe 2.62L/-15.69S, 58/31 trades → BROKEN
