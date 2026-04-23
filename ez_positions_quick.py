@@ -12701,7 +12701,11 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     return
                 _acct_tradeable = tracker_manager.tradeable_position_keys.get(account_key, set())
                 if position_key not in _acct_tradeable and position_key not in (tracker_manager.tradeable_keys or set()):
+                    if getattr(config, 'SCALP_V3_DIAG_LOG', True) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                        logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — not_in_tradeable (acct={len(_acct_tradeable)} glob={len(tracker_manager.tradeable_keys or set())})")
                     return
+                if getattr(config, 'SCALP_V3_DIAG_LOG', True) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                    logger.info(f"[SCALP_V3_DIAG] {position_key}: worker reached, tradeable_ok")
                 # ═══ SCALP_V2 ENTRY HOOK ═══════════════════════════════════════
                 # New HTF Breakout Scalper. Default OFF. When enabled for this
                 # account, checks the HTF DC breakout condition and dispatches a
