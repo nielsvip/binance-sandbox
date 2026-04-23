@@ -2455,6 +2455,11 @@ async def run_watch(args):
                     _existing_hedge = eq_hedges.get(_occ)
                     # ── UNWIND: hedge exists and option is sellable again ──
                     if _existing_hedge and _sellable_pct > eq_trigger:
+                        if _existing_hedge.get("cross_hedge"):
+                            print(f"  \033[93m[EQ_HEDGE_UNWIND_SKIP]\033[0m {_und_sym} — cross-symbol hedge (hedge_symbol={_existing_hedge.get('hedge_symbol','?')}), option recovered to {_sellable_pct:+.1f}%. Unwind manually.")
+                            eq_hedges.pop(_occ, None)
+                            _save_equity_hedges(config, eq_hedges)
+                            continue
                         _h_qty = int(_existing_hedge.get("hedge_qty", 0) or 0)
                         _h_side = _existing_hedge.get("hedge_side", "")
                         if _h_qty > 0 and _h_side:
