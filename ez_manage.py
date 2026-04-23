@@ -15572,7 +15572,7 @@ class MultiAccountTradeManager:
                     max_opens = min(_max_extreme if _ratio_extreme else (_max_stuck if _stuck_losers >= 5 else _max_normal), max(2, int(skew / 3)))
                     logger.warning(f"[RATIO_REBALANCE] {account_key}: L={long_pct:.0f}%/S={short_pct:.0f}% vs target L={target_long:.0f}%/S={target_short:.0f}% (breadth={_breadth_bias:.0%} regime={_regime} htf={_htf_dir}/{_htf_score} k1h={k_1h:.0f}/d{d_1h:.0f} pnlΔ={_pnl_delta:.2f}%). {overweight_side} overweight by {skew:.0f}pp. Opening {max_opens} {open_side} WITH flow.")
                     if not _reg:
-                        logger.warning(f"[RATIO_REBALANCE] No registry available, cannot find candidates.")
+                        logger.warning("[RATIO_REBALANCE] No registry available, cannot find candidates.")
                         _last_rebalance[account_key] = time.time()
                         continue
                     candidates = list(_reg.top_longs[:30]) if open_side == 'LONG' else list(_reg.top_shorts[:30])
