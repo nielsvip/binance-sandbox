@@ -1169,7 +1169,11 @@ async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, sid
                         print(f"    \033[92mFILLED @ ${fill_price}\033[0m after {step} walk steps")
                         logger.info(f"Smart fill {occ} FILLED @ ${fill_price} after {step} steps")
                         return order_status
-                    elif st in ("canceled", "rejected", "expired"):
+                    elif st == "canceled":
+                        print(f"    \033[93mOrder {active_order_id} CANCELED by user — stopping walk, applying 4h cooldown\033[0m")
+                        logger.warning(f"Smart fill {occ}: order {active_order_id} was externally canceled — treating as user cancel, stopping walk")
+                        return {"status": "user_canceled", "occ": occ, "order_id": active_order_id}
+                    elif st in ("rejected", "expired"):
                         print(f"    Order {active_order_id} status: {st}")
                         active_order_id = None
                 # Cancel and replace with better price
@@ -1945,6 +1949,47 @@ def _save_gtc_orders(config, gtc_orders: Dict):
         json.dump(gtc_orders, f, indent=2, default=str)
 
 
+def _load_sell_cooldown(config) -> Dict:
+    """Load OCCs the user manually canceled — skip auto-sell for OPTIONS_USER_CANCEL_COOLDOWN_HOURS."""
+    p = config.DATA_DIR / "options_sell_cooldown.json"
+    if p.exists():
+        try:
+            with open(p) as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_sell_cooldown(config, state: Dict):
+    p = config.DATA_DIR / "options_sell_cooldown.json"
+    with open(p, "w") as f:
+        json.dump(state, f, indent=2, default=str)
+
+
+def _mark_sell_cooldown(config, occ: str, cooldown_hours: float = 4.0):
+    """Mark an OCC as user-canceled; blocks auto-sell retries for cooldown_hours."""
+    state = _load_sell_cooldown(config)
+    state[occ] = {"canceled_at": datetime.utcnow().isoformat(), "cooldown_hours": cooldown_hours}
+    _save_sell_cooldown(config, state)
+    logger.warning(f"SELL_COOLDOWN set for {occ} — no auto-sell retries for {cooldown_hours:.0f}h")
+
+
+def _is_sell_cooldown_active(config, occ: str) -> bool:
+    """Return True if this OCC is within the user-cancel cooldown window."""
+    state = _load_sell_cooldown(config)
+    entry = state.get(occ)
+    if not entry:
+        return False
+    try:
+        canceled_at = datetime.fromisoformat(entry["canceled_at"])
+        cooldown_h = float(entry.get("cooldown_hours", 4.0))
+        elapsed_h = (datetime.utcnow() - canceled_at).total_seconds() / 3600.0
+        return elapsed_h < cooldown_h
+    except Exception:
+        return False
+
+
 def _wt_history_path(config) -> Path:
     return config.DATA_DIR / "options_wt_history.json"
 
@@ -2285,6 +2330,13 @@ async def run_watch(args):
                     if occ in sold_occs:
                         print(f"    SKIP {occ} — already sold this cycle")
                         continue
+                    # User-cancel cooldown — skip if user manually canceled a sell on this OCC recently
+                    _sc_cooldown_h = float(getattr(config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 4.0))
+                    if _is_sell_cooldown_active(config, occ):
+                        print(f"    SELL_COOLDOWN {occ} — user canceled sell recently (< {_sc_cooldown_h:.0f}h), skipping")
+                        logger.info(f"SELL_COOLDOWN skip {occ} — user-cancel cooldown active")
+                        sold_occs.add(occ)
+                        continue
                     # Re-check position still exists before selling
                     current_positions = await get_option_positions(client)
                     still_held = any(p.get("occ_symbol", p.get("symbol", "")) == occ for p in current_positions)
@@ -2328,6 +2380,11 @@ async def run_watch(args):
                             _queue_options_reentry(config, occ=occ, underlying=opt_pos.symbol, option_type=opt_pos.option_type.lower(), strike=float(opt_pos.strike), expiration=opt_pos.expiration, exit_underlying_price=float(opt_pos.underlying_price or 0), exit_option_price=float(opt_pos.current_price or 0), qty=int(qty), reason=sig.reason)
                         except Exception as _qe:
                             logger.warning(f"_queue_options_reentry fail for {occ}: {_qe}")
+                    elif res.get("status") == "user_canceled":
+                        _cooldown_h = float(getattr(config, "OPTIONS_USER_CANCEL_COOLDOWN_HOURS", 4.0))
+                        print(f"    \033[93mUSER_CANCELED\033[0m {occ} — applying {_cooldown_h:.0f}h sell cooldown")
+                        _mark_sell_cooldown(config, occ, _cooldown_h)
+                        sold_occs.add(occ)
                     elif res.get("status") == "pending":
                         print(f"    \033[93mPENDING\033[0m — order {res.get('order_id')} still working @ ${res.get('final_price'):.2f}")
                         sold_occs.add(occ)
@@ -2408,6 +2465,13 @@ async def run_watch(args):
                                 _save_equity_hedges(config, eq_hedges)
                         continue
                     # ── OPEN: no hedge and option is unsellable ──
+                    # ALLOWLIST GATE: only hedge symbols in the trb_long/short allowlist — prevents
+                    # ABT/JNJ-style rogue equity orders on non-sanctioned symbols.
+                    _eh_call_allowed, _eh_put_allowed = _load_allowed_symbols(config) if config else (set(), set())
+                    _eh_allowed = _eh_call_allowed if _otype == "call" else _eh_put_allowed
+                    if _eh_allowed and _und_sym not in _eh_allowed:
+                        logger.warning(f"[EQ_HEDGE_ALLOWLIST_BLOCK] {_und_sym} ({_otype}) not in trb_{'long' if _otype == 'call' else 'short'} allowlist — hedge BLOCKED")
+                        continue
                     if _existing_hedge is None and _sellable_pct <= eq_trigger and _bid > 0:
                         # Fetch fresh delta from quote greeks
                         try:

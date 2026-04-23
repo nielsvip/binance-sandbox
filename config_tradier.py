@@ -13,7 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional
 from weakref import WeakSet
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 @dataclass
@@ -90,8 +92,8 @@ class TradierConfig:
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
     TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    BLACKLIST = []#'PLTR' ,'MSTR', 'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview
-    ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX"]
+    BLACKLIST = ["ABT","JNJ"]#'PLTR' ,'MSTR', 'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview
+    ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX","SNDK","MU"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
     # === SECTOR CLASSIFICATION — for options diversification engine ===
@@ -224,7 +226,7 @@ class TradierConfig:
     # exposure is neutralized while premium decays. Unwind hedge when the option
     # is sellable again (bid recovers past the threshold).
     # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
-    OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
+    OPTIONS_EQUITY_HEDGE_ENABLED: bool = False  # DISABLED 2026-04-23: shorted 170 ABT shares without approval. Re-enable only after explicit user review.
     OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
     # === HEDGE PAIR GUARD (2026-04-22 — NEM naked-short incident) ===
     # When an option is hedged by an opposite-side stock position on the same underlying
@@ -1816,8 +1818,9 @@ class TradierConfig:
         if cached and now - cached.get("_cache_ts", 0) < 5.0:
             return cached
         try:
-            import redis as _redis
             import json as _json
+
+            import redis as _redis
             r = _redis.Redis(host="localhost", port=6379, db=0, socket_connect_timeout=1)
             raw = r.get(f"regime_cfg:{full_key}")
             if raw:
