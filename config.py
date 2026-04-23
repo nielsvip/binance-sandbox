@@ -178,7 +178,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "fin", "men", "flz"]  # 2026-04-18:  Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
+    HEDGE_ACCOUNTS = ["ang"]  # 2026-04-18:  Cascade was caused by R6 gain-heuristic bug (now fixed) + missing daily cap reset on wt_flip close.
     STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin']  # RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
@@ -347,7 +347,7 @@ class Config:
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0  # Grace period — won't fire on newborn positions.
     WRONG_SIDE_WT_TFS_REQUIRED: int = 5  # Of 5 WT TFs (3m/15m/1h/4h/D), how many must be against.
     WRONG_SIDE_K_TFS_REQUIRED: int = 3  # Of 3 stoch K TFs (3m/15m/1h), how many must be against.
-    STALL_SUB_ENABLED: bool = True  # Close flat-delta stalled positions to free capital for high-delta entries.
+    STALL_SUB_ENABLED: bool = False  # Close flat-delta stalled positions to free capital for high-delta entries.
     STALL_AGE_MIN_MIN: float = 180.0  # Position must be at least N minutes old to count as "stalled".
     STALL_GAIN_ABS_MAX: float = 0.5  # |gain| must be below this % to count as stalled.
     STALL_DELTA_SPEED_MAX: float = 1.0  # max(bull_speed, bear_speed) must be below this for "delta dead".

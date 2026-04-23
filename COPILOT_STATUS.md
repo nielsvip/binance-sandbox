@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-23 03:25:43 UTC
+# Copilot Status — 2026-04-23 03:43:30 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-23T03:17:50
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:17:50
-- **STALE_INDICATORS** [tradier]  — 2026-04-23T03:19:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:19:53
-- **STALE_INDICATORS** [tradier]  — 2026-04-23T03:21:56
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:21:56
-- **STALE_INDICATORS** [tradier]  — 2026-04-23T03:23:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:23:59
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-23T03:24:00
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-23T03:25:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:40:33
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-23T03:40:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-23T03:40:33
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-23T03:41:35
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-23T03:41:35
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-23T03:41:35
+- **STALE_INDICATORS** [tradier]  — 2026-04-23T03:42:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-23T03:42:37
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-23T03:42:39
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-23T03:42:39
 
 ## Missed Trades (trader comparison)
 
@@ -37,7 +37,7 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
+**Issues (last 1h):** 35
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
