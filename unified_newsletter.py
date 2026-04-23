@@ -200,55 +200,78 @@ def get_server_sweep_status(server: str, label: str) -> dict:
     screens = _ssh_cmd(server, "screen -ls 2>/dev/null | grep -E '\\.(sweep|t[0-9]|crypto|fh_)' | head -5")
     if screens:
         result["screen_sessions"] = [s.strip() for s in screens.splitlines() if s.strip()]
-    # Get running sweep processes
-    procs = _ssh_cmd(server, "ps aux | grep 'backtest_v8_sweep\\|backtest_v5_sweep' | grep -v grep | head -5")
+    # Get running sweep processes (legacy v8_sweep + autonomous_search)
+    procs = _ssh_cmd(server, "ps aux | grep -E 'backtest_v8_sweep|backtest_v5_sweep|autonomous_search\\.py' | grep -v grep | head -5")
     for line in procs.splitlines():
         if not line.strip():
             continue
-        # Extract key info from process command line
         parts = line.split()
         cmd = " ".join(parts[10:]) if len(parts) > 10 else line
-        # Parse mode, tier, symbols from command
         sweep_info = {"cmd_short": cmd[-120:], "running": True}
-        for part in parts:
-            if "--mode" in part or part in ("tradier", "crypto"):
-                pass
-            if "--tier" in part:
-                pass
-        # Try to get the progress from the log file
-        for log_pattern in ["/tmp/v8_*.log", "/tmp/sweep_*.log"]:
-            log_tail = _ssh_cmd(server, f"for f in {log_pattern}; do tail -3 \"$f\" 2>/dev/null; done | grep -E 'Progress:|\\[.*/' | tail -1")
-            if log_tail:
-                sweep_info["progress"] = log_tail.strip()
-                break
+        # Extract --mode and --symbols for autonomous_search
+        for i, part in enumerate(parts):
+            if part == "--mode" and i + 1 < len(parts):
+                sweep_info["mode"] = parts[i + 1]
+            if part == "--symbols" and i + 1 < len(parts):
+                sweep_info["n_syms"] = parts[i + 1]
+            if part == "--out-dir" and i + 1 < len(parts):
+                sweep_info["out_dir"] = parts[i + 1].split("/")[-2] if "/" in parts[i + 1] else parts[i + 1]
         result["active_sweeps"].append(sweep_info)
-    # Get latest sweep CSV results (top 3 configs from most recent)
-    csv_info = _ssh_cmd(server, """
-        f=$(ls -t /home/niels/binance-sandbox/backtest_v8/sweeps/v8_sweep_*.csv 2>/dev/null | head -1);
-        if [ -n "$f" ]; then
-            echo "FILE:$(basename $f)";
-            head -1 "$f";
-            tail -n +2 "$f" | sort -t, -k3 -rn | head -5;
+    # Get latest results — first try autonomous_search dirs, fall back to legacy v8_sweep CSVs
+    csv_info = _ssh_cmd(server, r"""
+        latest_run=$(ls -dt /home/niels/binance-sandbox/data/autonomous/*/  2>/dev/null | head -1)
+        if [ -n "$latest_run" ]; then
+            run_name=$(basename "$latest_run")
+            echo "FILE:autonomous/$run_name"
+            # Aggregate all worker CSVs, filter header rows, sort by pool_sharpe (col 2) desc, top 5
+            cat "$latest_run"/w*/autonomous_*.csv 2>/dev/null \
+              | grep -v '^iter' \
+              | awk -F',' 'NF>=5 && $2+0>0 && $5+0>=10' \
+              | sort -t, -k2 -rn \
+              | head -5
+        else
+            f=$(ls -t /home/niels/binance-sandbox/backtest_v8/sweeps/v8_sweep_*.csv 2>/dev/null | head -1)
+            if [ -n "$f" ]; then
+                echo "FILE:$(basename $f)"
+                tail -n +2 "$f" | sort -t, -k3 -rn | head -5
+            fi
         fi
     """)
     if csv_info:
         lines = csv_info.splitlines()
         filename = ""
+        is_autonomous = False
         for line in lines:
             if line.startswith("FILE:"):
                 filename = line[5:]
-                continue
-            if "run_id" in line:
+                is_autonomous = filename.startswith("autonomous/")
                 continue
             parts = line.split(",")
-            if len(parts) >= 6:
+            if is_autonomous:
+                # autonomous CSV: iter,pool_sharpe,acc_gain_pct,max_dd_pct,trades,avg_gain,wr_pct,n_syms,is_best,...,config_json
+                if len(parts) < 5:
+                    continue
                 try:
+                    sharpe = float(parts[1]) if parts[1] else 0
+                    acc_gain = float(parts[2]) if parts[2] else 0
                     trades_n = int(parts[4]) if parts[4] else 0
-                    wins_n = int(parts[5]) if len(parts) > 5 and parts[5] else 0
-                    wr = f"{wins_n/max(trades_n,1)*100:.0f}%" if trades_n else "?"
-                    result["latest_results"].append({"file": filename, "name": parts[1] if len(parts) > 1 else "", "sharpe": float(parts[2]) if parts[2] else 0, "pnl_pct": float(parts[3]) if parts[3] else 0, "trades": trades_n, "wr": wr})
+                    wr_pct = float(parts[6]) if len(parts) > 6 and parts[6] else 0
+                    wr = f"{wr_pct:.0f}%" if wr_pct else "?"
+                    result["latest_results"].append({"file": filename, "name": f"iter{parts[0]}", "sharpe": sharpe, "pnl_pct": acc_gain, "trades": trades_n, "wr": wr})
                 except (ValueError, IndexError):
                     pass
+            else:
+                # legacy v8_sweep CSV: run_id,name,sharpe,pnl_pct,trades,wins,...
+                if "run_id" in line:
+                    continue
+                if len(parts) >= 6:
+                    try:
+                        trades_n = int(parts[4]) if parts[4] else 0
+                        wins_n = int(parts[5]) if len(parts) > 5 and parts[5] else 0
+                        wr = f"{wins_n/max(trades_n,1)*100:.0f}%" if trades_n else "?"
+                        result["latest_results"].append({"file": filename, "name": parts[1] if len(parts) > 1 else "", "sharpe": float(parts[2]) if parts[2] else 0, "pnl_pct": float(parts[3]) if parts[3] else 0, "trades": trades_n, "wr": wr})
+                    except (ValueError, IndexError):
+                        pass
     # Get latest log tail for active sweep progress
     log_tail = _ssh_cmd(server, """
         for f in /tmp/v8_*.log; do
@@ -398,23 +421,39 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-size: 11p
         if status.get("screen_sessions"):
             parts.append(f"<p>Screens: {', '.join(s.split('(')[0].strip() for s in status['screen_sessions'])}</p>")
         # Active sweeps with progress
-        if status.get("log_snippets"):
+        if is_active:
+            for sw in status.get("active_sweeps", []):
+                mode = sw.get("mode", "")
+                n_syms = sw.get("n_syms", "")
+                out_dir = sw.get("out_dir", "")
+                label_parts = []
+                if mode:
+                    label_parts.append(f"mode={mode}")
+                if n_syms:
+                    label_parts.append(f"{n_syms} syms")
+                if out_dir:
+                    label_parts.append(out_dir)
+                desc = " &bull; ".join(label_parts) if label_parts else sw.get("cmd_short", "")[-80:]
+                parts.append(f"<p class='g'>&#9654; autonomous_search running: <code>{desc}</code></p>")
+        elif status.get("log_snippets"):
             parts.append("<p><b>Active progress:</b></p><pre style='font-size:11px;background:#f0f0f0;padding:6px;overflow-x:auto;'>")
             for snippet in status["log_snippets"]:
                 parts.append(f"{snippet}\n")
             parts.append("</pre>")
-        elif not is_active:
+        else:
             parts.append("<p class='unchanged'>No active sweeps</p>")
         # Latest results
         if status.get("latest_results"):
-            parts.append("<p><b>Top configs (latest sweep):</b></p>")
-            parts.append("<table><tr><th>#</th><th>Config</th><th>Sharpe</th><th>PnL%</th><th>Trades</th><th>WR</th></tr>")
+            src = status["latest_results"][0].get("file", "")
+            src_label = "autonomous_search" if "autonomous" in src else "v8_sweep"
+            parts.append(f"<p><b>Top configs ({src_label} — {src}):</b></p>")
+            parts.append("<table><tr><th>#</th><th>Iter</th><th>Sharpe</th><th>AccGain%</th><th>Trades</th><th>WR</th></tr>")
             for i, r in enumerate(status["latest_results"][:5]):
-                sharpe_cls = "g" if r["sharpe"] > 0 else "r"
+                sharpe_cls = "g" if r["sharpe"] >= 2.0 else "o" if r["sharpe"] >= 1.0 else "r"
                 pnl_pct = r.get("pnl_pct", 0)
                 pnl_cls = "g" if pnl_pct > 0 else "r"
-                name_short = r["name"][:60] if r["name"] else "?"
-                parts.append(f"<tr><td>{i+1}</td><td><code>{name_short}</code></td><td class='{sharpe_cls}'>{r['sharpe']:.3f}</td><td class='{pnl_cls}'>{pnl_pct:+.1f}%</td><td>{r['trades']}</td><td>{r.get('wr','?')}</td></tr>")
+                name_short = r["name"][:20] if r["name"] else "?"
+                parts.append(f"<tr><td>{i+1}</td><td><code>{name_short}</code></td><td class='{sharpe_cls} b'>{r['sharpe']:.4f}</td><td class='{pnl_cls}'>{pnl_pct:+.1f}%</td><td>{r['trades']}</td><td>{r.get('wr','?')}</td></tr>")
             parts.append("</table>")
         parts.append("</div>")
     # Local MacBook
