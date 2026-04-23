@@ -10874,10 +10874,14 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             logger.warning(f"🚫 [MAX_SIZE_BLOCK_TEMP] {position_key}: BLOCKED {action} — position ${_fresh_val:.0f} exceeds TEMPORARY max ${_max_pos_val:.0f}. Remove cap once multiple-opens confirmed fixed.")
             return False, f"BLOCKED_MAX_SIZE_TEMP_{_fresh_val:.0f}"
     if 'OPEN' in action:
-        if not is_hedge and is_open_pending(position_key):
+        # 2026-04-23: SCALP_V3 divergence-scanner fires every 10s on strong outliers.
+        # The 300s cooldown is for swing-entries, counterproductive for scalpers.
+        _is_scalp_v3 = str(reason or '').upper().startswith('SCALP_V3_OPEN_')
+        if not is_hedge and not _is_scalp_v3 and is_open_pending(position_key):
             logger.warning(f"🛑 [OPEN_PENDING_BLOCK] {position_key}: Open already pending (cooldown {PENDING_OPEN_COOLDOWN}s). Rejecting duplicate.")
             return False, "BLOCKED_OPEN_PENDING"
-        mark_open_pending(position_key)
+        if not _is_scalp_v3:
+            mark_open_pending(position_key)
     if 'WAIT' in reason and "FORCE" not in reason and "REENTRY" not in reason and "DC_BREAKOUT" not in reason and "RATIO_RECOVERY" not in reason and "BB_SQUEEZE_BREAKOUT" not in reason and not is_hedge:
         logger.warning(f"[WAIT_BLOCK] {position_key} {reason}: Strategy is in WAIT state.")
         return False, "BLOCKED_STRATEGY_WAIT"
@@ -11246,10 +11250,15 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         else:
             _in_tradeable = position_key in tracker_manager.tradeable_position_keys.get(account_key, set())
             _in_tradeable_flat = position_key in (tracker_manager.tradeable_keys or set()) or position_key in (tracker_manager.tradeable_keys_cache or set())
-            if _in_tradeable or _in_tradeable_flat or account_key=='flz' or 'HEDGE' in reason.upper():
+            # 2026-04-23 evening: SCALP_V3 scanner picks outliers from full snapshot, not
+            # tradeable_keys. Those symbols flow into tradeable_keys via ez_rankings outlier
+            # injection on next cycle, but V3 fires can land mid-cycle. Allow V3 through.
+            _is_scalp_v3_reason = 'SCALP_V3_OPEN' in str(reason).upper()
+            if _in_tradeable or _in_tradeable_flat or account_key=='flz' or 'HEDGE' in reason.upper() or _is_scalp_v3_reason:
                 result = await trade_manager.execute_trade_action(account_key, position_key, symbol, qty, current_price, side, position_side, unique_id, False, action, reason, override_qty=None, is_hedge=is_hedge, hedge_for=hedge_for)
             else:
                 logger.warning(f"🚫 [NOT_TRADEABLE] {position_key}: BLOCKED {action} — not in tradeable_keys for {account_key}. Reason: {reason}")
+                _open_in_flight.pop(position_key, None)  # clear atomic flag on early return
                 return False, "BLOCKED_NOT_TRADEABLE"
         success = 'SUCCESS' in str(result).upper()
         if result and 'BLOCK' in result: 

@@ -206,16 +206,15 @@ def get_market_headlines():
 
 
 def get_relevant_symbols():
-    """Get symbols we care about: open positions + symbols_tradier watchlist."""
+    """Get tradeable symbols from symbols_trb_long.json + symbols_trb_short.json."""
     syms = set()
-    try:
-        symbols_file = BASE / "symbols_tradier.json"
-        if symbols_file.exists():
-            d = json.loads(symbols_file.read_text())
+    for fname in ("symbols_trb_long.json", "symbols_trb_short.json"):
+        try:
+            d = json.loads((BASE / fname).read_text())
             if isinstance(d, list):
-                syms.update(s.upper() for s in d if isinstance(s, str) and len(s) <= 5)
-    except Exception:
-        pass
+                syms.update(s.upper() for s in d if isinstance(s, str))
+        except Exception:
+            pass
     return syms
 
 
@@ -645,6 +644,47 @@ def build_sync_health(tra_data, trb_data):
             html += f'<tr><td>{r["acct"]}</td><td><b>{r["sym"]}</b></td><td>{r["side"]}</td><td><span class="pill {sc}">{r["status"]}</span></td><td style="text-align:right">{r["api_qty"]:.0f}</td><td style="text-align:right">{r["file_qty"]:.0f}</td><td style="text-align:right">${r["api_price"]:.2f}</td><td style="text-align:right">${r["file_mark"]:.2f}</td><td style="text-align:right">${r["api_avg"]:.2f}</td><td style="text-align:right">${r["file_entry"]:.2f}</td><td style="font-size:10px" class="r">{r["issues"]}</td></tr>'
         html += "</table></div>"
     return html, is_synced
+
+
+def build_tv_bias_section():
+    """WaveTrend bias snapshot from data/tv_morning_brief.json (written by scheduled Claude agent at 9:25 AM ET)."""
+    brief_path = DATA_DIR / "tv_morning_brief.json"
+    if not brief_path.exists():
+        return '<p class="gr">TV bias snapshot not available — scheduled agent writes this at 9:25 AM ET.</p>'
+    try:
+        brief = json.loads(brief_path.read_text())
+        gen_at = brief.get("generated_at", "")
+        try:
+            dt = datetime.fromisoformat(gen_at.replace("Z", "+00:00"))
+            age_min = int((datetime.now(timezone.utc) - dt).total_seconds() // 60)
+        except Exception:
+            age_min = 999
+        if age_min > 180:
+            return f'<p class="o">TV bias snapshot is {age_min}m old — agent may not have run today.</p>'
+        summary = brief.get("summary", "")
+        html = f'<p class="gr" style="font-size:11px">Generated {gen_at[:16]} UTC &bull; {summary}</p>'
+        mkt = brief.get("market_bias", "")
+        if mkt:
+            cls = "pg" if mkt == "LONG" else "pr" if mkt == "SHORT" else "po"
+            html += f'<p>Market bias: <span class="pill {cls}">{mkt}</span></p>'
+        bias = brief.get("bias", {})
+        for label, syms_key, pill_cls in (("Long Setups", "top_longs", "pg"), ("Short Setups", "top_shorts", "pr")):
+            top = brief.get(syms_key, [])
+            if not top:
+                continue
+            html += f'<p class="b">Top {label} (WT-aligned, pre-open):</p><table>'
+            html += '<tr><th>Symbol</th><th>Signal</th><th>Strength</th><th>TFs</th><th>Note</th></tr>'
+            for sym in top[:12]:
+                b = bias.get(sym, {})
+                bar = "&#9608;" * b.get("strength", 0) + "&#9617;" * (5 - b.get("strength", 0))
+                tfs = b.get("wt_tfs_aligned", "?")
+                note = b.get("note", "")
+                sig = b.get("signal", label[:4].upper())
+                html += f'<tr><td><b>{sym}</b></td><td><span class="pill {pill_cls}">{sig}</span></td><td style="font-family:monospace;letter-spacing:1px">{bar}</td><td style="text-align:center">{tfs}/4</td><td class="gr" style="font-size:11px">{note}</td></tr>'
+            html += "</table>"
+        return html if html else '<p class="gr">No bias data in snapshot.</p>'
+    except Exception as e:
+        return f'<p class="r">TV bias section error: {e}</p>'
 
 
 def build_premarket_section():
@@ -1164,6 +1204,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 <h2>Market Overview</h2>
 {build_market_section(market_quotes)}
 
+<h2>TradingView WT Bias (trb universe)</h2>
+{build_tv_bias_section()}
+
 <h2>News Scanner Intelligence</h2>
 {build_news_scanner_section()}
 
@@ -1339,6 +1382,9 @@ def build_public_email_html(market_quotes, tra_data, trb_data):
 
 <h2>Market Overview</h2>
 {build_market_section(market_quotes)}
+
+<h2>TradingView WT Bias</h2>
+{build_tv_bias_section()}
 
 <h2>News Sentiment</h2>
 {build_public_news_section()}

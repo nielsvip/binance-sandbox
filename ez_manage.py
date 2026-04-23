@@ -11139,7 +11139,10 @@ class MultiAccountTradeManager:
             if not _tp_entry_ok and 'HEDGE' not in action and 'QUICK' not in action and 'REENTRY' not in reason.upper():
                 return f"{position_key}_BLOCKED_ENTRY_VET_{_tp_entry_reason}"
             # DELTA ENGINE GATE — V2 sweep validated on 48 symbols / 4 years
-            if self.delta_tracker and action in ('OPEN', 'QUICK_OPEN', 'REENTRY') and 'HEDGE' not in action:
+            # 2026-04-23: bypass for SCALP_V3 — scanner uses divergence+velocity as its own
+            # signal; delta_tracker requires aligned entries which blocks scalp outliers.
+            _is_scalp_v3 = 'SCALP_V3_OPEN' in str(reason).upper()
+            if self.delta_tracker and action in ('OPEN', 'QUICK_OPEN', 'REENTRY') and 'HEDGE' not in action and not _is_scalp_v3:
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and ((is_long and _d_sig.entry_long) or (not is_long and _d_sig.entry_short))
                 if not _delta_ok:
