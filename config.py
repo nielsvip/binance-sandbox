@@ -119,7 +119,7 @@ class Config:
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 10.0       # hard notional cap per V3 entry
     # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
-    SCALP_V3_ENTRY_K_1M_MAX: int = 25
+    SCALP_V3_ENTRY_K_1M_MAX: int = 20       # 2026-04-23 20k sweep best: 15-40 varies, 20 median of top 20
     SCALP_V3_ENTRY_K_3M_MAX: int = 40
     SCALP_V3_ENTRY_K_15M_MAX: int = 65
     SCALP_V3_ENTRY_K_1H_MAX: int = 80
@@ -136,14 +136,14 @@ class Config:
     SCALP_V3_ENTRY_TF_MODE: str = "1M_AND_3M"
     SCALP_V3_EXIT_TF_MODE: str = "ANY"  # "ANY" fires on first of 1m/3m/15m trigger; also "1M_ONLY","3M_ONLY","15M_ONLY"
     # --- EXIT (bar + K-as-context; NO crossunders) ---
-    SCALP_V3_EXIT_1M_K_MIN: int = 98
+    SCALP_V3_EXIT_1M_K_MIN: int = 90        # 2026-04-23 20k sweep: top variants 85-98, 90 dominant
     SCALP_V3_EXIT_1M_BAR: str = "LL_AND_LH"
     SCALP_V3_EXIT_3M_K_MIN: int = 95
     SCALP_V3_EXIT_3M_BAR: str = "LL_OR_LH"
     SCALP_V3_EXIT_15M_K_MIN: int = 95
     SCALP_V3_EXIT_15M_BAR: str = "LL_OR_LH"
-    SCALP_V3_MAX_HOLD_MIN: float = 5.0
-    SCALP_V3_STALL_GAIN_MAX_PCT: float = 0.0
+    SCALP_V3_MAX_HOLD_MIN: float = 10.0      # 2026-04-23 20k sweep: top 20 all 10-15min; 10 most common
+    SCALP_V3_STALL_GAIN_MAX_PCT: float = -0.1  # 2026-04-23 20k sweep: -0.1 in 100% of top 20
     # --- REENTRY ---
     SCALP_V3_REENTRY_REQUIRE_BOUNCE_IF_15M_FALLING: bool = True
     # Reentry bounce definition — SWEEP KNOB:
@@ -171,10 +171,10 @@ class Config:
     # Dedicated V3 scan loop (2026-04-23): ranks tradeable symbols by sentiment
     # divergence vs global market score. Fastest risers → LONG, fastest fallers → SHORT.
     SCALP_V3_SCAN_INTERVAL_SEC: float = 10.0
-    SCALP_V3_SCAN_TOP_N: int = 5                 # top N per side evaluated each cycle
-    SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # |local - global| must exceed this
+    SCALP_V3_SCAN_TOP_N: int = 15                # 2026-04-23 evening: bumped 5→15 for wider coverage
+    SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.05   # 2026-04-23 evening: bumped 0.3→0.05 so more candidates per cycle
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
-    SCALP_V3_SIDE_MODE: str = "LONG_ONLY"        # LONG_ONLY | SHORT_ONLY | BOTH (200k sweep: LONG=+1833%, SHORT=-7019%)
+    SCALP_V3_SIDE_MODE: str = "BOTH"             # BOTH for now (2026-04-23 evening): only 7 LONG vs 54 SHORT inf keys; sweep's SHORT disaster was rally-window bias. Paper A/B will reveal which side works forward.
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
