@@ -12750,25 +12750,37 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                 # SCALP_V3_POSITION_CAP_USD. Tagged with SCALP_V3_OPEN_* so the
                 # exit hook below can isolate V3 positions.
                 if getattr(config, 'SCALP_V3_ENABLED', False) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                    _v3_probe = bool(getattr(config, 'SCALP_V3_DIAG_LOG', True))
                     try:
                         from scalp_v3_live import check_scalp_v3_live_entry
                         _v3_pos = await tracker_manager.get_position(position_key)
                         if not _v3_pos and hasattr(tracker_manager, 'positions_service'):
                             _v3_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key)
                         _v3_amt = abs(safe_fetch_float(getattr(_v3_pos, 'positionAmt', 0), 0)) if _v3_pos else 0.0
-                        if _v3_amt <= 0:
+                        if _v3_amt > 0:
+                            if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — has_position amt={_v3_amt}")
+                        else:
                             _v3_sym = parse_position_key(position_key)[1]
                             _v3_metrics, _v3_ind, _, _, _, _, _v3_fresh = await data_manager.get_hot_state(_v3_sym)
                             _v3_px = safe_fetch_float(_v3_ind.get('current_price', 0), 0) if _v3_ind else 0
                             if _v3_px <= 0:
                                 _v3_px, _ = await get_current_price(_v3_sym)
-                            if _v3_px > 0 and _v3_fresh:
+                            if _v3_px <= 0:
+                                if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — no_price")
+                            elif not _v3_fresh:
+                                if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — stale_data px={_v3_px}")
+                            else:
                                 _v3_max = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
                                 _v3_active = sum(1 for _pk, _p in (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).items() if str(getattr(_p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_') and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0)
-                                if _v3_active < _v3_max:
+                                if _v3_active >= _v3_max:
+                                    if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — max_concurrent active={_v3_active}/{_v3_max}")
+                                else:
                                     _v3_decision = check_scalp_v3_live_entry(_v3_sym, position_key, _v3_ind, _v3_px, _v3_pos, account_key, config)
-                                    if _v3_decision:
-                                        # Hard cap: pos_min_qty or SCALP_V3_POSITION_CAP_USD, whichever is larger
+                                    if not _v3_decision:
+                                        if _v3_probe:
+                                            _dk = lambda k: _v3_ind.get(k, '?')
+                                            logger.info(f"[SCALP_V3_DIAG] {position_key}: no_fire k1m={_dk('stoch_k_1m')} k3m={_dk('stoch_k_3m')} k15m={_dk('stoch_k_15m')} k1h={_dk('stoch_k_1h')} k4h={_dk('stoch_k_4h')} h3m={_dk('high_3m')} l3m={_dk('low_3m')} h3m_prev={_dk('high_3m_prev')} l3m_prev={_dk('low_3m_prev')}")
+                                    else:
                                         _v3_cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
                                         _v3_min_qty = trade_manager.min_qty.get(_v3_sym, 0.0001) * 1.2
                                         _v3_cap_qty = _v3_cap_usd / _v3_px if _v3_px > 0 else 0
@@ -12783,7 +12795,7 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                             )
                                             return
                     except Exception as _v3_err:
-                        logger.debug(f"[SCALP_V3_ENTRY] {position_key}: error {_v3_err}")
+                        logger.warning(f"[SCALP_V3_ENTRY] {position_key}: error {_v3_err}")
                 # ═══════════════════════════════════════════════════════════════
                 acc_logger = get_account_logger(account_key)
                 dummy_state = {}; dummy_lock = DummyLock()
