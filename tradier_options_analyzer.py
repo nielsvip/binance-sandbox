@@ -15,19 +15,19 @@ Usage:
     python tradier_options_analyzer.py watch --daemon               # Continuous monitoring (every 60s)
     python tradier_options_analyzer.py watch --auto-sell             # Auto sell_to_close on exit signals
 """
-import asyncio FUCK YOU
+import argparse
+import asyncio
 import json
 import logging
 import math
 import os
 import platform
 import sys
-import argparse
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 BASE_PATH = Path("/Users/niels/Documents/binance") if platform.system() == "Darwin" else Path("/home/niels/binance")
 sys.path.insert(0, str(BASE_PATH))
