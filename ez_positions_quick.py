@@ -15216,7 +15216,7 @@ async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asynci
                 summary_stats["candidates"] += cands
                 summary_stats["fires"] += fires
             if time.time() - last_summary > 60:
-                logger.info(f"⚡ [SCALP_V3_SCAN][{account_key}] 60s: cycles={summary_stats['cycles']} cands={summary_stats['candidates']} fires={summary_stats['fires']}")
+                logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] 60s: cycles={summary_stats['cycles']} cands={summary_stats['candidates']} fires={summary_stats['fires']}")
                 summary_stats = {"cycles": 0, "candidates": 0, "fires": 0}
                 last_summary = time.time()
         except asyncio.CancelledError:
