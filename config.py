@@ -117,7 +117,7 @@ class Config:
     SCALP_V3_ENABLED: bool = True
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
-    SCALP_V3_POSITION_CAP_USD: float = 10.0       # hard notional cap per V3 entry
+    SCALP_V3_POSITION_CAP_USD: float = 20.0       # 2026-04-23: bumped 10→20 (Binance min $5, want >$10 after any residual cuts)
     # --- ENTRY (LONG; SHORT mirror auto-inverted in scalp_v3.py) ---
     SCALP_V3_ENTRY_K_1M_MAX: int = 20       # 2026-04-23 20k sweep best: 15-40 varies, 20 median of top 20
     SCALP_V3_ENTRY_K_3M_MAX: int = 40

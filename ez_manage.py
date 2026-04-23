@@ -10720,7 +10720,9 @@ class MultiAccountTradeManager:
                     quantity = quantity * _shrink; reason += f"|RATIO_REDUCE_SHORT(R={_r:.2f})"
             # override_qty corruption FIX 2026-03-30: NEVER overwrite caller's override_qty with ratio-adjusted qty. Partial closes, satoshit exits etc need their exact qty.
         # ═══ MANIPULATION FLAG — diminish entry for flagged symbols ═══
-        if is_augment and not is_hedge:
+        # 2026-04-23: bypass for SCALP_V3 — $10-$30 cap is the safety, don't shrink further.
+        _reason_is_scalp_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
+        if is_augment and not is_hedge and not _reason_is_scalp_v3:
             try:
                 _manip_flags_file = Path(config.BASE_PATH) / "data" / "manipulation_flags.json"
                 if _manip_flags_file.exists():
@@ -11150,6 +11152,9 @@ class MultiAccountTradeManager:
                 reduction_factor *= 0.85
             if not dc1_ok or not stoch1_ok:
                 reduction_factor *= 0.8
+            # 2026-04-23: SCALP_V3 uses fixed small cap — don't compound reductions
+            if 'SCALP_V3_OPEN' in str(reason or '').upper():
+                reduction_factor = 1.0
             quantity = reduction_factor * float(quantity)
             _tp_dc_mult = trading_policy.compute_dc_position_multiplier(i, current_price, is_long)
             quantity = float(quantity) * _tp_dc_mult
@@ -11230,7 +11235,10 @@ class MultiAccountTradeManager:
             SP = config.START_POSITION_SIZE / current_price
             logger.info(f'{position_key} fff execute_ begin $ {quantity*current_price}')
             quantity_before_quantizing = float(quantity)
-            if account_key in ['ang', 'inf', 'men', 'flz', 'fin']:
+            # 2026-04-23 SCALP_V3 CAP IS SACRED: skip all the 0.3×SP/0.8×SP add-ons
+            # that would inflate a $20 scalp into a $55 swing. V3 cap locks size.
+            _skip_size_adds_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
+            if account_key in ['ang', 'inf', 'men', 'flz', 'fin'] and not _skip_size_adds_v3:
                 if dc_high_3m - dc_low_3m > 5 * float(atr_15m):
                     quantity += 0.8 * SP
                 if (position_side == "LONG" and current_price > dc_high_1h ) or (position_side == "SHORT" and current_price < dc_low_1h ):
@@ -12637,15 +12645,22 @@ class MultiAccountTradeManager:
                 return True, qty_abs
             remaining = qty_abs - executed_qty
             _is_hedge_order = 'HEDGE' in reason_upper
+            _is_scalp_v3_order = 'SCALP_V3' in reason_upper
             if ta == "OPEN" and not _is_hedge_order:
                 # 2026-04-15: maker could still fill after timeout. A webhook fallback now would double-order.
                 # Cancel tracked orders, suppress outer webhook via -1.0 sentinel.
-                logger.warning(f"[MAKER_AUG_TIMEOUT] {position_key}: Augment timed out — cancelling tracked orders, suppressing webhook fallback (sentinel -1.0) to avoid double-fill.")
+                # 2026-04-23 V3 exception: small scalp ($20 cap), accept webhook fallback since
+                # fast movers (what V3 targets) will outrun maker-chase and suppress = no trade.
+                # Worst case: 2× $20 = $40 double-open on a single symbol.
+                logger.warning(f"[MAKER_AUG_TIMEOUT] {position_key}: Augment timed out — cancelling tracked orders (v3_fallback={_is_scalp_v3_order})")
                 if tracked_order_ids:
                     for _tid in tracked_order_ids:
                         try: await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=_tid)
                         except Exception: pass
                 await release_locks()
+                if _is_scalp_v3_order:
+                    # Return False with executed_qty > -1 so outer path fires webhook fallback
+                    return False, 0.0
                 return False, -1.0
             elif ta == "OPEN" and _is_hedge_order:
                 # 2026-04-16 DOUBLE-OPEN FIX: user reported QUICK_HEDGE_SAME_SYM_LAST_RESORT_TIMEOUT
@@ -13683,7 +13698,7 @@ class MultiAccountTradeManager:
                 
 
 
-                if account_key in ['inf','fin','men'] and not is_hedge:
+                if account_key in ['inf','fin','men'] and not is_hedge and not _is_scalp_v3_reason:
                     quantity = min(0.15 * quantity, 2 * config.START_POSITION_SIZE) / current_price
 
 

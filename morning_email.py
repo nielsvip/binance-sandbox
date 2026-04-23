@@ -786,9 +786,9 @@ def _parse_occ_simple(sym: str):
 def build_options_positions_section():
     """Open options positions from local position files + sector hedge analysis."""
     html = ""
-    # ── Collect options from all account position files ──────────────────────
-    positions = []  # list of dicts
     accts = ["tra", "trb", "trc"]
+    # ── Collect options with P/L from local position files ────────────────────
+    positions = []
     for acct in accts:
         for side in ["long", "short"]:
             path = BASE / acct / f"{side}_positions.json"
@@ -808,7 +808,6 @@ def build_options_positions_section():
                     continue
                 entry_price = float(pos.get("entry_price", 0) or 0)
                 mark_price = float(pos.get("mark_price", 0) or 0)
-                # entry_price in position files = total cost per contract (already × 100)
                 cost_per_contract = entry_price
                 current_per_contract = mark_price * 100
                 total_cost = cost_per_contract * amt
@@ -830,50 +829,88 @@ def build_options_positions_section():
                     "pnl": pnl,
                     "pnl_pct": pnl_pct,
                     "sector": _SECTOR_MAP.get(parsed["symbol"], "Other"),
-                    "opened_at": pos.get("opened_at", ""),
                 })
-    # ── Also load from watchdog cache if fresher ─────────────────────────────
-    cache_file = TRADIER_DIR / "options_positions_cache.json"
-    cache_ts = None
-    if cache_file.exists():
+    # ── Known hedged options (from equity hedges file — no live P/L) ──────────
+    hedges_file = TRADIER_DIR / "options_equity_hedges.json"
+    hedged_occs: dict = {}
+    if hedges_file.exists():
         try:
-            cache_data = json.load(open(cache_file))
-            cache_ts = cache_data.get("timestamp", "")
+            hedged_occs = json.load(open(hedges_file))
         except Exception:
             pass
-    if not positions:
-        if cache_ts:
-            html += f'<p class="gr">No active options in local position files. Watchdog cache from {cache_ts[:16]}.</p>'
-        else:
-            html += '<p class="gr">No open option positions found locally. Run: <code>python tradier_options_analyzer.py watch --daemon</code></p>'
-        return html
-    # ── Positions table ───────────────────────────────────────────────────────
-    total_pnl = sum(p["pnl"] for p in positions)
-    total_cost = sum(p["total_cost"] for p in positions)
-    pnl_cls = "g" if total_pnl >= 0 else "r"
-    html += f'<p class="b">{len(positions)} open option position(s) &mdash; Total cost: ${total_cost:,.0f} &mdash; Open P/L: <span class="{pnl_cls} b">${total_pnl:+,.0f}</span></p>'
-    html += '<table><tr><th>Acct</th><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Cost/Ct</th><th>Mark</th><th>Total Cost</th><th>P/L $</th><th>P/L %</th><th>Sector</th></tr>'
-    for p in sorted(positions, key=lambda x: x["pnl_pct"], reverse=True):
-        pc = "g" if p["pnl_pct"] >= 0 else "r"
-        otype_pill = "pg" if p["option_type"] == "call" else "pr"
-        exp_short = p["expiration"][5:] if p["expiration"] else ""
-        html += (
-            f'<tr><td class="b">{p["account"]}</td>'
-            f'<td><b>{p["underlying"]}</b> <span class="gr" style="font-size:10px">{p["occ"]}</span></td>'
-            f'<td><span class="pill {otype_pill}">{p["option_type"].upper()}</span></td>'
-            f'<td style="text-align:right">${p["strike"]:.0f}</td>'
-            f'<td>{exp_short}</td>'
-            f'<td style="text-align:center">{p["qty"]}</td>'
-            f'<td style="text-align:right">${p["cost_per_contract"]:.0f}</td>'
-            f'<td style="text-align:right">${p["mark_price"]:.2f}</td>'
-            f'<td style="text-align:right">${p["total_cost"]:,.0f}</td>'
-            f'<td style="text-align:right" class="{pc} b">${p["pnl"]:+,.0f}</td>'
-            f'<td style="text-align:right" class="{pc} b">{p["pnl_pct"]:+.1f}%</td>'
-            f'<td style="font-size:11px">{p["sector"]}</td></tr>'
-        )
-    html += "</table>"
-    # ── Sector hedge analysis ─────────────────────────────────────────────────
-    # Combine options + equity positions for net sector exposure
+    # Track which OCCs are already in positions (with P/L data)
+    local_occs = {p["occ"] for p in positions}
+    # Add hedged options not already tracked (these have no live P/L)
+    untracked_hedged = []
+    for occ, hdata in hedged_occs.items():
+        if occ in local_occs:
+            continue
+        parsed = _parse_occ_simple(occ)
+        if not parsed:
+            continue
+        untracked_hedged.append({
+            "occ": occ,
+            "underlying": parsed["symbol"],
+            "option_type": parsed["option_type"],
+            "strike": parsed["strike"],
+            "expiration": parsed["expiration"],
+            "qty": int(hdata.get("opt_qty", 1)),
+            "hedge_side": hdata.get("hedge_side", ""),
+            "hedge_qty": hdata.get("hedge_qty", 0),
+            "hedge_symbol": hdata.get("hedge_symbol", parsed["symbol"]),
+            "placed_at": hdata.get("placed_at", "")[:10],
+            "note": hdata.get("note", ""),
+            "sector": _SECTOR_MAP.get(parsed["symbol"], "Other"),
+        })
+    # ── Positions table (local tracked with P/L) ──────────────────────────────
+    if positions:
+        total_pnl = sum(p["pnl"] for p in positions)
+        total_cost = sum(p["total_cost"] for p in positions)
+        pnl_cls = "g" if total_pnl >= 0 else "r"
+        html += f'<p class="b">{len(positions)} tracked option(s) &mdash; Cost: ${total_cost:,.0f} &mdash; Open P/L: <span class="{pnl_cls} b">${total_pnl:+,.0f}</span></p>'
+        html += '<table><tr><th>Acct</th><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Cost/Ct</th><th>Mark</th><th>Total Cost</th><th>P/L $</th><th>P/L %</th><th>Sector</th></tr>'
+        for p in sorted(positions, key=lambda x: x["pnl_pct"], reverse=True):
+            pc = "g" if p["pnl_pct"] >= 0 else "r"
+            otype_pill = "pg" if p["option_type"] == "call" else "pr"
+            exp_short = p["expiration"][5:] if p["expiration"] else ""
+            html += (
+                f'<tr><td class="b">{p["account"]}</td>'
+                f'<td><b>{p["underlying"]}</b> <span class="gr" style="font-size:10px">{p["occ"]}</span></td>'
+                f'<td><span class="pill {otype_pill}">{p["option_type"].upper()}</span></td>'
+                f'<td style="text-align:right">${p["strike"]:.0f}</td>'
+                f'<td>{exp_short}</td>'
+                f'<td style="text-align:center">{p["qty"]}</td>'
+                f'<td style="text-align:right">${p["cost_per_contract"]:.0f}</td>'
+                f'<td style="text-align:right">${p["mark_price"]:.2f}</td>'
+                f'<td style="text-align:right">${p["total_cost"]:,.0f}</td>'
+                f'<td style="text-align:right" class="{pc} b">${p["pnl"]:+,.0f}</td>'
+                f'<td style="text-align:right" class="{pc} b">{p["pnl_pct"]:+.1f}%</td>'
+                f'<td style="font-size:11px">{p["sector"]}</td></tr>'
+            )
+        html += "</table>"
+    else:
+        html += '<p class="gr" style="font-size:11px">No options with qty&gt;0 in local position files. Manually-entered options tracked below via equity hedges.</p>'
+    # ── Hedged options reference (no live P/L, but known open) ───────────────
+    if untracked_hedged:
+        html += f'<h3>Known Hedged Options ({len(untracked_hedged)}) &mdash; <span class="gr" style="font-size:11px">no live P/L — run watchdog for current marks</span></h3>'
+        html += '<table><tr><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Equity Hedge</th><th>Hedge Placed</th><th>Note</th></tr>'
+        for h in untracked_hedged:
+            otype_pill = "pg" if h["option_type"] == "call" else "pr"
+            exp_short = h["expiration"][5:] if h["expiration"] else ""
+            hedge_desc = f'{h["hedge_qty"]} {h["hedge_symbol"]} {h["hedge_side"].replace("sell_short","short").replace("buy","long")}'
+            note = (h["note"] or "")[:50]
+            html += (
+                f'<tr><td><b>{h["underlying"]}</b> <span class="gr" style="font-size:10px">{h["occ"]}</span></td>'
+                f'<td><span class="pill {otype_pill}">{h["option_type"].upper()}</span></td>'
+                f'<td style="text-align:right">${h["strike"]:.1f}</td>'
+                f'<td>{exp_short}</td>'
+                f'<td style="text-align:center">{h["qty"]}</td>'
+                f'<td style="font-size:11px">{hedge_desc}</td>'
+                f'<td style="font-size:11px">{h["placed_at"]}</td>'
+                f'<td style="font-size:11px" class="gr">{note}</td></tr>'
+            )
+        html += "</table>"
+    # ── Sector hedge analysis — always show based on equity + known options ───
     sector_exposure: dict = {}
     def _add(sector, delta, label):
         if sector not in sector_exposure:
@@ -883,14 +920,22 @@ def build_options_positions_section():
         else:
             sector_exposure[sector]["short_usd"] += abs(delta)
         sector_exposure[sector]["items"].append(label)
-    # Options positions
+    # Tracked options (with real notional)
     for p in positions:
-        notional = p["total_value"]
+        notional = p["total_value"] if p["total_value"] else p["total_cost"]
         if p["option_type"] == "call":
             _add(p["sector"], notional, f'{p["underlying"]} {p["qty"]}C')
         else:
             _add(p["sector"], -notional, f'{p["underlying"]} {p["qty"]}P')
-    # Equity positions (long = bullish, short equity = bearish)
+    # Hedged options (use rough notional estimate from strike × qty × 100)
+    for h in untracked_hedged:
+        notional_est = h["strike"] * h["qty"] * 100 * 0.1  # rough delta-adjusted notional
+        sec = h["sector"]
+        if h["option_type"] == "call":
+            _add(sec, notional_est, f'{h["underlying"]} {h["qty"]}C*')
+        else:
+            _add(sec, -notional_est, f'{h["underlying"]} {h["qty"]}P*')
+    # Equity positions (long = bullish, short = bearish)
     for acct in accts:
         for side, sign in [("long", 1), ("short", -1)]:
             path = BASE / acct / f"{side}_positions.json"
@@ -903,7 +948,7 @@ def build_options_positions_section():
             for key, pos in data.items():
                 sym = pos.get("symbol", "")
                 if _parse_occ_simple(sym):
-                    continue  # skip options already counted
+                    continue
                 amt = float(pos.get("positionAmt", 0) or 0)
                 if amt <= 0:
                     continue
@@ -914,7 +959,7 @@ def build_options_positions_section():
                 _add(sec, notional, label)
     if not sector_exposure:
         return html
-    html += "<h3>Sector Hedge Analysis</h3>"
+    html += "<h3>Sector Exposure (equity + options)</h3>"
     html += '<table><tr><th>Sector</th><th>Long $</th><th>Short $</th><th>Net $</th><th>Bias</th><th>Positions</th><th>Recommendation</th></tr>'
     for sector, exp in sorted(sector_exposure.items(), key=lambda x: abs(x[1]["long_usd"] - x[1]["short_usd"]), reverse=True):
         lv = exp["long_usd"]
@@ -926,13 +971,12 @@ def build_options_positions_section():
         net_cls = "g" if net > 0 else "r"
         bias = "LONG" if net > 0 else "SHORT"
         bias_pill = "pg" if net > 0 else "pr"
-        # Recommendation
         skew = abs(net) / total if total else 0
         if skew < 0.2:
             rec = '<span class="g">Balanced — no action</span>'
         elif skew < 0.5:
             side_str = "calls/longs" if net > 0 else "puts/shorts"
-            rec = f'<span class="o">Mildly {bias} skewed — consider small hedge via {side_str}</span>'
+            rec = f'<span class="o">Mildly {bias} — consider small hedge via {side_str}</span>'
         else:
             hedge_str = "puts or short equity" if net > 0 else "calls or long equity"
             rec = f'<span class="r b">{bias} heavy ({skew:.0%}) — hedge with {hedge_str}</span>'
