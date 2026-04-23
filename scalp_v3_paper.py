@@ -35,6 +35,7 @@ from scalp_v3 import (
 )
 
 BASE = Path(__file__).resolve().parent
+KLINES_CACHE = BASE / "klines_cache"
 OUT_DIR = BASE / "data" / "scalp_v3_paper"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 STATE_FILE = OUT_DIR / "state.json"
@@ -42,6 +43,43 @@ TRADEABLE_FILE = BASE / "tradeable_keys.json"
 
 STOCH_PERIOD = 14
 FEE_PCT = 0.04  # round-trip
+
+# Per-process cache: {symbol: {tf_min: np.ndarray}}. Loaded once per symbol on first use.
+_HTF_CACHE: dict = {}
+
+
+def _iso_to_epoch_s(s: str) -> float:
+    return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+
+
+def load_cached_klines(symbol: str, tf_str: str) -> Optional[np.ndarray]:
+    """Load klines_cache/<SYM>_<tf>.json — we have years of 15m/1h/4h data."""
+    path = KLINES_CACHE / f"{symbol}_{tf_str}.json"
+    if not path.exists(): return None
+    try:
+        with open(path) as f:
+            raw = json.load(f)
+    except Exception:
+        return None
+    if not raw: return None
+    out = np.zeros((len(raw), 6), dtype=np.float64)
+    for i, b in enumerate(raw):
+        out[i, 0] = _iso_to_epoch_s(b["timestamp"])
+        out[i, 1] = b["open"]; out[i, 2] = b["high"]; out[i, 3] = b["low"]
+        out[i, 4] = b["close"]; out[i, 5] = b["volume"]
+    return out
+
+
+def get_htf_bars(symbol: str) -> dict:
+    """Returns {'3m', '15m', '1h', '4h'} np.ndarrays from cache. Cached per-process."""
+    if symbol not in _HTF_CACHE:
+        _HTF_CACHE[symbol] = {
+            "3m":  load_cached_klines(symbol, "3m"),
+            "15m": load_cached_klines(symbol, "15m"),
+            "1h":  load_cached_klines(symbol, "1h"),
+            "4h":  load_cached_klines(symbol, "4h"),
+        }
+    return _HTF_CACHE[symbol]
 
 
 class CfgOverride:
@@ -145,10 +183,13 @@ async def fetch_1m(client, symbol: str, limit: int = 60) -> Optional[np.ndarray]
 
 def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[dict]:
     events = []
-    bars_3m = resample(bars_1m, 3)
-    bars_15m = resample(bars_1m, 15)
-    bars_1h = resample(bars_1m, 60)
-    bars_4h = resample(bars_1m, 240)
+    # HTF bars from klines_cache (years of data) — only 1m comes from live fetch.
+    # 3m preferred from cache if present; fall back to live-1m resample.
+    htf = get_htf_bars(symbol)
+    bars_3m = htf["3m"] if htf["3m"] is not None and len(htf["3m"]) >= 20 else resample(bars_1m, 3)
+    bars_15m = htf["15m"] if htf["15m"] is not None and len(htf["15m"]) >= STOCH_PERIOD else resample(bars_1m, 15)
+    bars_1h = htf["1h"] if htf["1h"] is not None and len(htf["1h"]) >= STOCH_PERIOD else resample(bars_1m, 60)
+    bars_4h = htf["4h"] if htf["4h"] is not None and len(htf["4h"]) >= STOCH_PERIOD else resample(bars_1m, 240)
     if len(bars_3m) < 3 or len(bars_15m) < 3: return events
     k_1m = stoch_k(bars_1m)
     k_3m = stoch_k(bars_3m)
