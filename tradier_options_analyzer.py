@@ -2162,6 +2162,9 @@ async def _manage_gtc_orders(client: TradierAPIClient, config, positions: list, 
         target = _compute_gtc_target(tmp_pos, ind)
         if not target or target <= current_ask:
             continue
+        if target < cost_per_share:
+            logger.info(f"GTC target ${target:.2f} < cost/share ${cost_per_share:.2f} for {occ} — skipping, would fill at a loss")
+            continue
         # Place GTC sell_to_close
         print(f"    \033[96m★ PLACING GTC SELL\033[0m  {occ} x{quantity} @ ${target:.2f}  (current bid=${current_bid:.2f} ask=${current_ask:.2f} mid=${current_mid:.2f})")
         print(f"      D momentum={momentum_D}, delta={greeks['delta']:+.3f}, target is {((target - current_mid) / current_mid * 100):.1f}% above mid")
@@ -2353,22 +2356,63 @@ async def run_watch(args):
                         print(f"    SKIP {occ} — position already closed")
                         sold_occs.add(occ)
                         continue
-                    # HEDGE_PAIR_GUARD — 2026-04-22 after NEM disaster: never auto-sell an option
-                    # while user holds an opposite-side stock hedge on the same underlying.
-                    # Call hedged by short stock; put hedged by long stock. Blocking here prevents
-                    # the watchdog from closing one leg of a delta-neutral pair and leaving the
-                    # other leg naked directional. User must close both legs manually.
+                    # HEDGE_PAIR_GUARD — 2026-04-23 rewrite:
+                    # Profitable option + direct hedge → block (close both manually).
+                    # Losing option: ONLY allowed to auto-sell if there is a GAINING equity hedge
+                    # (same-symbol or cross-symbol via equity_hedges.json cross_hedge entry).
+                    # When conditions met: sell option AND close hedge simultaneously (coordinated exit).
+                    # Losing option with no hedge, or hedge also losing → always blocked.
+                    _coordinated_hedge_close = None
                     if bool(getattr(config, "OPTIONS_HEDGE_PAIR_GUARD_ENABLED", True)):
                         _hg_under = (opt_pos.symbol or "").upper()
                         _hg_is_call = (opt_pos.option_type or "").lower() == "call"
                         _hg_stock = await _get_stock_position(client, _hg_under) if _hg_under else {}
                         _hg_qty = float(_hg_stock.get("quantity", 0) or 0) if _hg_stock else 0.0
-                        _hg_blocked = (_hg_is_call and _hg_qty < 0) or ((not _hg_is_call) and _hg_qty > 0)
-                        if _hg_blocked:
-                            print(f"    \033[93mHEDGE_PAIR_BLOCK\033[0m {occ} — paired with {int(_hg_qty)} {_hg_under} shares. Auto-sell SKIPPED — close legs manually.")
-                            logger.critical(f"[HEDGE_PAIR_BLOCK] {occ} auto-sell skipped — {_hg_under} stock qty={_hg_qty} forms hedge pair. Reason={sig.reason}")
-                            sold_occs.add(occ)
-                            continue
+                        _hg_direct = (_hg_is_call and _hg_qty < 0) or ((not _hg_is_call) and _hg_qty > 0)
+                        _hg_eq_h = _load_equity_hedges(config)
+                        _hg_cross_entry = _hg_eq_h.get(occ)
+                        _hg_cross = bool(_hg_cross_entry and _hg_cross_entry.get("cross_hedge"))
+                        _hg_any = _hg_direct or _hg_cross
+                        if opt_pos.unrealized_pct >= 0:
+                            if _hg_direct:
+                                print(f"    \033[93mHEDGE_PAIR_BLOCK\033[0m {occ} — option +{opt_pos.unrealized_pct:.1f}% with {int(_hg_qty)} {_hg_under} hedge. Close legs manually.")
+                                logger.critical(f"[HEDGE_PAIR_BLOCK] {occ} profit={opt_pos.unrealized_pct:+.1f}% — {_hg_under} qty={_hg_qty} forms hedge pair. Manual only.")
+                                sold_occs.add(occ)
+                                continue
+                        else:
+                            if not _hg_any:
+                                print(f"    \033[91mLOSS_NO_HEDGE_BLOCK\033[0m {occ} — option {opt_pos.unrealized_pct:+.1f}% with no equity hedge. Auto-sell blocked.")
+                                logger.warning(f"[LOSS_NO_HEDGE_BLOCK] {occ} at {opt_pos.unrealized_pct:+.1f}% — no equity hedge. Not auto-selling at a loss.")
+                                sold_occs.add(occ)
+                                continue
+                            _hg_check_sym = (_hg_cross_entry.get("hedge_symbol", "") if _hg_cross else _hg_under) or _hg_under
+                            _hg_check_stock = await _get_stock_position(client, _hg_check_sym) if _hg_check_sym else {}
+                            _hg_check_qty = float(_hg_check_stock.get("quantity", 0) or 0) if _hg_check_stock else 0.0
+                            _hg_check_cb = float(_hg_check_stock.get("cost_basis", 0) or 0) if _hg_check_stock else 0.0
+                            if abs(_hg_check_qty) > 0 and _hg_check_cb > 0:
+                                _hg_entry_px = _hg_check_cb / abs(_hg_check_qty)
+                                _hg_cur_q = await client.get_quote(_hg_check_sym)
+                                _hg_cur_px = float(_hg_cur_q.get("last", 0) or 0)
+                                if _hg_cur_px > 0:
+                                    _hg_gain_pct = (_hg_entry_px - _hg_cur_px) / _hg_entry_px * 100 if _hg_check_qty < 0 else (_hg_cur_px - _hg_entry_px) / _hg_entry_px * 100
+                                    if _hg_gain_pct > 0:
+                                        _hg_close_side = "buy_to_cover" if _hg_check_qty < 0 else "sell"
+                                        _coordinated_hedge_close = {"sym": _hg_check_sym, "side": _hg_close_side, "qty": int(abs(_hg_check_qty)), "gain_pct": _hg_gain_pct, "occ": occ}
+                                        print(f"    \033[92mCOORDINATED_EXIT\033[0m {occ} {opt_pos.unrealized_pct:+.1f}% + {_hg_check_sym} hedge {_hg_gain_pct:+.1f}% — selling option then closing hedge")
+                                        logger.critical(f"[COORDINATED_EXIT] {occ} opt={opt_pos.unrealized_pct:+.1f}% hedge={_hg_check_sym} {_hg_gain_pct:+.1f}% — proceeding with paired close")
+                                    else:
+                                        print(f"    \033[91mHEDGE_ALSO_LOSING_BLOCK\033[0m {occ} — option {opt_pos.unrealized_pct:+.1f}% and {_hg_check_sym} hedge {_hg_gain_pct:+.1f}%. Both losing — manual only.")
+                                        logger.warning(f"[HEDGE_ALSO_LOSING_BLOCK] {occ} opt={opt_pos.unrealized_pct:+.1f}% hedge={_hg_check_sym} {_hg_gain_pct:+.1f}% — both losing. Not auto-selling.")
+                                        sold_occs.add(occ)
+                                        continue
+                                else:
+                                    print(f"    \033[91mHEDGE_QUOTE_FAIL_BLOCK\033[0m {occ} — could not quote {_hg_check_sym}. Blocking loss-sell.")
+                                    sold_occs.add(occ)
+                                    continue
+                            else:
+                                print(f"    \033[91mHEDGE_NO_POSITION_BLOCK\033[0m {occ} — hedge entry exists for {_hg_check_sym} but no live position found. Blocking loss-sell.")
+                                sold_occs.add(occ)
+                                continue
                     qty = abs(opt_pos.quantity)
                     bid = opt_pos.current_bid
                     ask = opt_pos.current_ask
@@ -2384,6 +2428,19 @@ async def run_watch(args):
                         print(f"    \033[92mSOLD\033[0m  Order ID: {order_info.get('id')}  Status: {order_info.get('status')}  Fill: ${fill_price}")
                         logger.info(f"Auto-sold {occ} x{qty} fill=${fill_price} — {sig.reason}")
                         sold_occs.add(occ)
+                        if _coordinated_hedge_close:
+                            _chc = _coordinated_hedge_close
+                            print(f"    \033[92m[COORD_HEDGE_CLOSE]\033[0m {_chc['side']} x{_chc['qty']} {_chc['sym']} (hedge was +{_chc['gain_pct']:.1f}%)")
+                            logger.critical(f"[COORD_HEDGE_CLOSE] {_chc['side']} x{_chc['qty']} {_chc['sym']} — coordinated exit after {occ} sell")
+                            try:
+                                _chc_res = await client.place_order(account_key=account_key, symbol=_chc['sym'], side=_chc['side'], quantity=_chc['qty'], order_type="market", duration="day")
+                                logger.critical(f"[COORD_HEDGE_CLOSE] resp: {str(_chc_res)[:200]}")
+                                _chc_hedges = _load_equity_hedges(config)
+                                _chc_hedges.pop(occ, None)
+                                _save_equity_hedges(config, _chc_hedges)
+                            except Exception as _chc_err:
+                                logger.error(f"[COORD_HEDGE_CLOSE] error closing {_chc['sym']}: {_chc_err}")
+                            _coordinated_hedge_close = None
                         # Queue for reentry monitoring (user rule 2026-04-22)
                         try:
                             _queue_options_reentry(config, occ=occ, underlying=opt_pos.symbol, option_type=opt_pos.option_type.lower(), strike=float(opt_pos.strike), expiration=opt_pos.expiration, exit_underlying_price=float(opt_pos.underlying_price or 0), exit_option_price=float(opt_pos.current_price or 0), qty=int(qty), reason=sig.reason)

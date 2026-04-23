@@ -395,7 +395,7 @@ class TradierConfig:
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = True
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled. 2.8155 validated winner has this False. On 114-sym it HURTS (-6%). Bypassing NOLOSS was causing losses.
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
     WRONG_SIDE_WT_TFS_REQUIRED: int = 5
     WRONG_SIDE_WT_TFS_REDUCED: int = 3
@@ -558,7 +558,7 @@ class TradierConfig:
     BB_RECOVERY_EXIT_TOLERANCE_PCT_TRADIER: float = 0.30  # stock pct tolerance around entry_price
     BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER: float = 0.0  # if >0, uses N * atr_3m instead of pct
     # wt_D bounce augment — add to losing position when daily WT turns, bypasses gain gates
-    WT_D_BOUNCE_AUG_ENABLED: bool = True   # 2026-04-20: applied live per user directive
+    WT_D_BOUNCE_AUG_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled — was augmenting losers at gain<0. Best 2.8155 config has this False.
     WT_D_BOUNCE_AUG_MULTIPLIER: float = 2.0  # 2026-04-20: 2x (add 1x to existing) per user directive. Was 4x.
     WT_D_BOUNCE_AUG_REQUIRE_HIGHER_WT: bool = True  # 2026-04-20: require bounce WT > last aug WT (was False)
     WT_D_BOUNCE_AUG_REQUIRE_HIGHER_PRICE: bool = True  # 2026-04-20: require bounce price > last aug price (higher low for LONG)
@@ -1076,7 +1076,7 @@ class TradierConfig:
     TRADIER_WT_EXIT_MIN_TFS_TRADIER: int = 5             # REVERTED 2026-04-17: 4 = exits too eagerly. Mar-30 baseline = 5 (require ALL 5 TFs against). Patient exits.
 
     # Entry score aggregate threshold
-    TRADIER_ENTRY_SCORE_THRESHOLD: int = 24             # min aggregate signal score for entry
+    TRADIER_ENTRY_SCORE_THRESHOLD: int = 30             # 2026-04-23 EMERGENCY: raised 24→30. 2.8155 validated winner uses 30. Reduces bad entries.
     # ========================================================================
     # --- END RECONNECTED SWITCHES ---
     # ========================================================================
