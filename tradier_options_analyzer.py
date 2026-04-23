@@ -258,7 +258,22 @@ def detect_directional_signals(indicators: Dict[str, Dict], rankings: Dict) -> L
     if "rankings" in rankings:
         for r in rankings["rankings"]:
             ranking_scores[r["symbol"]] = r.get("final_score_norm", 50)
+    # Build tradeable universe — only scan symbols we actually trade
+    _tradeable: set = set()
+    for _fname in [
+        "symbols_tra_long.json", "symbols_tra_short.json",
+        "symbols_trb_long.json", "symbols_trb_short.json",
+        "symbols_trc_long.json", "symbols_trc_short.json",
+    ]:
+        _p = BASE_PATH / _fname
+        if _p.exists():
+            try:
+                _tradeable.update(s for s in json.load(open(_p)) if isinstance(s, str))
+            except Exception:
+                pass
     for symbol, ind in indicators.items():
+        if _tradeable and symbol not in _tradeable:
+            continue
         if not ind:
             continue
         price = ind.get("current_price") or ind.get("mark_price") or ind.get("close_D_prev") or ind.get("close_1h_prev")
@@ -2608,6 +2623,26 @@ async def run_watch(args):
             watch_data = {"timestamp": datetime.now().isoformat(), "account": account_key, "positions": len(positions), "sell_signals": len(all_sell_now), "auto_sell": auto_sell, "gtc_orders": len(gtc_orders)}
             with open(watch_file, "w") as f:
                 json.dump(watch_data, f, indent=2)
+            # Save detailed positions cache for newsletter/dashboard (no API call needed)
+            _pos_cache = []
+            for _p in positions:
+                _parsed = parse_occ_symbol(_p.get("occ_symbol", "") or _p.get("symbol", ""))
+                _cache_entry = {
+                    "occ_symbol": _p.get("occ_symbol", "") or _p.get("symbol", ""),
+                    "symbol": (_parsed or {}).get("symbol", ""),
+                    "option_type": (_parsed or {}).get("option_type", ""),
+                    "strike": (_parsed or {}).get("strike", 0),
+                    "expiration": (_parsed or {}).get("expiration", ""),
+                    "quantity": float(_p.get("quantity", 0) or 0),
+                    "cost_basis": float(_p.get("cost_basis", 0) or 0),
+                    "current_value": float(_p.get("current_value", 0) or 0),
+                }
+                _cache_entry["unrealized_pnl"] = _cache_entry["current_value"] - _cache_entry["cost_basis"]
+                _cache_entry["unrealized_pct"] = (_cache_entry["unrealized_pnl"] / abs(_cache_entry["cost_basis"]) * 100) if _cache_entry["cost_basis"] else 0
+                _pos_cache.append(_cache_entry)
+            _pos_cache_file = config.DATA_DIR / "options_positions_cache.json"
+            with open(_pos_cache_file, "w") as f:
+                json.dump({"timestamp": datetime.now().isoformat(), "account": account_key, "positions": _pos_cache}, f, indent=2, default=str)
             # Persist WT velocity snapshots for next bar's acceleration comparison
             if wt_history_updated:
                 _save_wt_history(config, wt_history_updated)

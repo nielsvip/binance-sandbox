@@ -730,6 +730,226 @@ def build_premarket_section():
     return html
 
 
+# Symbol → sector grouping for hedge analysis
+_SECTOR_MAP = {
+    # Gold / Precious Metals
+    "GLD": "Gold/Metals", "GDX": "Gold/Metals", "IAU": "Gold/Metals",
+    "NEM": "Gold/Metals", "AEM": "Gold/Metals", "RGLD": "Gold/Metals",
+    "WPM": "Gold/Metals", "FNV": "Gold/Metals",
+    # Base Metals / Mining
+    "COPX": "Base Metals", "FCX": "Base Metals", "X": "Base Metals",
+    "CLF": "Base Metals", "NUE": "Base Metals",
+    # Energy / Oil
+    "USO": "Energy/Oil", "BNO": "Energy/Oil", "XOM": "Energy/Oil",
+    "CVX": "Energy/Oil", "UNG": "Energy/Gas", "XLE": "Energy/Oil",
+    "OXY": "Energy/Oil",
+    # Crypto / Bitcoin
+    "IBIT": "Crypto", "MSTR": "Crypto", "COIN": "Crypto",
+    "MARA": "Crypto", "CLSK": "Crypto", "BITO": "Crypto", "RIOT": "Crypto",
+    # Big Tech
+    "AAPL": "Tech", "MSFT": "Tech", "NVDA": "Tech", "AMD": "Tech",
+    "AVGO": "Tech", "META": "Tech", "GOOGL": "Tech", "AMZN": "Tech",
+    "TSLA": "Tech", "ORCL": "Tech", "CRM": "Tech",
+    # Growth Tech / Software
+    "PLTR": "Growth Tech", "SNDK": "Growth Tech", "WDAY": "Growth Tech",
+    "NOW": "Growth Tech", "SNOW": "Growth Tech", "DDOG": "Growth Tech",
+    "ZS": "Growth Tech", "CRWD": "Growth Tech", "PANW": "Growth Tech",
+    "TTD": "Growth Tech", "FIVN": "Growth Tech",
+    # Fintech / Payments
+    "PYPL": "Fintech", "SQ": "Fintech", "V": "Fintech", "MA": "Fintech",
+    "SOFI": "Fintech", "AFRM": "Fintech",
+    # Consumer / Retail
+    "NKE": "Consumer", "LULU": "Consumer", "ASTS": "Consumer",
+    # Healthcare / Biotech
+    "LLY": "Healthcare", "UNH": "Healthcare", "MRNA": "Healthcare",
+    "ABBV": "Healthcare", "JNJ": "Healthcare",
+    # ETFs / Broad
+    "SPY": "Broad Market", "QQQ": "Broad Market", "IWM": "Broad Market",
+    "XLK": "Broad Market", "XLF": "Financials", "XLV": "Healthcare",
+}
+
+
+def _parse_occ_simple(sym: str):
+    """Minimal OCC parser: returns dict with symbol/option_type/strike/expiration or None."""
+    import re
+    m = re.match(r'^([A-Z]+)(\d{6})([CP])(\d{8})$', sym)
+    if not m:
+        return None
+    underlying = m.group(1)
+    exp_raw = m.group(2)
+    otype = "call" if m.group(3) == "C" else "put"
+    strike = int(m.group(4)) / 1000.0
+    exp_str = f"20{exp_raw[:2]}-{exp_raw[2:4]}-{exp_raw[4:]}"
+    return {"symbol": underlying, "option_type": otype, "strike": strike, "expiration": exp_str}
+
+
+def build_options_positions_section():
+    """Open options positions from local position files + sector hedge analysis."""
+    html = ""
+    # ── Collect options from all account position files ──────────────────────
+    positions = []  # list of dicts
+    accts = ["tra", "trb", "trc"]
+    for acct in accts:
+        for side in ["long", "short"]:
+            path = BASE / acct / f"{side}_positions.json"
+            if not path.exists():
+                continue
+            try:
+                data = json.load(open(path))
+            except Exception:
+                continue
+            for key, pos in data.items():
+                sym = pos.get("symbol", "")
+                parsed = _parse_occ_simple(sym)
+                if not parsed:
+                    continue
+                amt = float(pos.get("positionAmt", 0) or 0)
+                if amt <= 0:
+                    continue
+                entry_price = float(pos.get("entry_price", 0) or 0)
+                mark_price = float(pos.get("mark_price", 0) or 0)
+                # entry_price in position files = total cost per contract (already × 100)
+                cost_per_contract = entry_price
+                current_per_contract = mark_price * 100
+                total_cost = cost_per_contract * amt
+                total_value = current_per_contract * amt
+                pnl = total_value - total_cost
+                pnl_pct = (pnl / total_cost * 100) if total_cost else 0
+                positions.append({
+                    "account": acct,
+                    "occ": sym,
+                    "underlying": parsed["symbol"],
+                    "option_type": parsed["option_type"],
+                    "strike": parsed["strike"],
+                    "expiration": parsed["expiration"],
+                    "qty": int(amt),
+                    "cost_per_contract": cost_per_contract,
+                    "mark_price": mark_price,
+                    "total_cost": total_cost,
+                    "total_value": total_value,
+                    "pnl": pnl,
+                    "pnl_pct": pnl_pct,
+                    "sector": _SECTOR_MAP.get(parsed["symbol"], "Other"),
+                    "opened_at": pos.get("opened_at", ""),
+                })
+    # ── Also load from watchdog cache if fresher ─────────────────────────────
+    cache_file = TRADIER_DIR / "options_positions_cache.json"
+    cache_ts = None
+    if cache_file.exists():
+        try:
+            cache_data = json.load(open(cache_file))
+            cache_ts = cache_data.get("timestamp", "")
+        except Exception:
+            pass
+    if not positions:
+        if cache_ts:
+            html += f'<p class="gr">No active options in local position files. Watchdog cache from {cache_ts[:16]}.</p>'
+        else:
+            html += '<p class="gr">No open option positions found locally. Run: <code>python tradier_options_analyzer.py watch --daemon</code></p>'
+        return html
+    # ── Positions table ───────────────────────────────────────────────────────
+    total_pnl = sum(p["pnl"] for p in positions)
+    total_cost = sum(p["total_cost"] for p in positions)
+    pnl_cls = "g" if total_pnl >= 0 else "r"
+    html += f'<p class="b">{len(positions)} open option position(s) &mdash; Total cost: ${total_cost:,.0f} &mdash; Open P/L: <span class="{pnl_cls} b">${total_pnl:+,.0f}</span></p>'
+    html += '<table><tr><th>Acct</th><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Cost/Ct</th><th>Mark</th><th>Total Cost</th><th>P/L $</th><th>P/L %</th><th>Sector</th></tr>'
+    for p in sorted(positions, key=lambda x: x["pnl_pct"], reverse=True):
+        pc = "g" if p["pnl_pct"] >= 0 else "r"
+        otype_pill = "pg" if p["option_type"] == "call" else "pr"
+        exp_short = p["expiration"][5:] if p["expiration"] else ""
+        html += (
+            f'<tr><td class="b">{p["account"]}</td>'
+            f'<td><b>{p["underlying"]}</b> <span class="gr" style="font-size:10px">{p["occ"]}</span></td>'
+            f'<td><span class="pill {otype_pill}">{p["option_type"].upper()}</span></td>'
+            f'<td style="text-align:right">${p["strike"]:.0f}</td>'
+            f'<td>{exp_short}</td>'
+            f'<td style="text-align:center">{p["qty"]}</td>'
+            f'<td style="text-align:right">${p["cost_per_contract"]:.0f}</td>'
+            f'<td style="text-align:right">${p["mark_price"]:.2f}</td>'
+            f'<td style="text-align:right">${p["total_cost"]:,.0f}</td>'
+            f'<td style="text-align:right" class="{pc} b">${p["pnl"]:+,.0f}</td>'
+            f'<td style="text-align:right" class="{pc} b">{p["pnl_pct"]:+.1f}%</td>'
+            f'<td style="font-size:11px">{p["sector"]}</td></tr>'
+        )
+    html += "</table>"
+    # ── Sector hedge analysis ─────────────────────────────────────────────────
+    # Combine options + equity positions for net sector exposure
+    sector_exposure: dict = {}
+    def _add(sector, delta, label):
+        if sector not in sector_exposure:
+            sector_exposure[sector] = {"long_usd": 0, "short_usd": 0, "items": []}
+        if delta >= 0:
+            sector_exposure[sector]["long_usd"] += delta
+        else:
+            sector_exposure[sector]["short_usd"] += abs(delta)
+        sector_exposure[sector]["items"].append(label)
+    # Options positions
+    for p in positions:
+        notional = p["total_value"]
+        if p["option_type"] == "call":
+            _add(p["sector"], notional, f'{p["underlying"]} {p["qty"]}C')
+        else:
+            _add(p["sector"], -notional, f'{p["underlying"]} {p["qty"]}P')
+    # Equity positions (long = bullish, short equity = bearish)
+    for acct in accts:
+        for side, sign in [("long", 1), ("short", -1)]:
+            path = BASE / acct / f"{side}_positions.json"
+            if not path.exists():
+                continue
+            try:
+                data = json.load(open(path))
+            except Exception:
+                continue
+            for key, pos in data.items():
+                sym = pos.get("symbol", "")
+                if _parse_occ_simple(sym):
+                    continue  # skip options already counted
+                amt = float(pos.get("positionAmt", 0) or 0)
+                if amt <= 0:
+                    continue
+                mark = float(pos.get("mark_price", 0) or 0)
+                notional = amt * mark * sign
+                sec = _SECTOR_MAP.get(sym, "Other")
+                label = f'{sym} {int(amt)}{"L" if sign > 0 else "S"}'
+                _add(sec, notional, label)
+    if not sector_exposure:
+        return html
+    html += "<h3>Sector Hedge Analysis</h3>"
+    html += '<table><tr><th>Sector</th><th>Long $</th><th>Short $</th><th>Net $</th><th>Bias</th><th>Positions</th><th>Recommendation</th></tr>'
+    for sector, exp in sorted(sector_exposure.items(), key=lambda x: abs(x[1]["long_usd"] - x[1]["short_usd"]), reverse=True):
+        lv = exp["long_usd"]
+        sv = exp["short_usd"]
+        net = lv - sv
+        total = lv + sv
+        if total < 50:
+            continue
+        net_cls = "g" if net > 0 else "r"
+        bias = "LONG" if net > 0 else "SHORT"
+        bias_pill = "pg" if net > 0 else "pr"
+        # Recommendation
+        skew = abs(net) / total if total else 0
+        if skew < 0.2:
+            rec = '<span class="g">Balanced — no action</span>'
+        elif skew < 0.5:
+            side_str = "calls/longs" if net > 0 else "puts/shorts"
+            rec = f'<span class="o">Mildly {bias} skewed — consider small hedge via {side_str}</span>'
+        else:
+            hedge_str = "puts or short equity" if net > 0 else "calls or long equity"
+            rec = f'<span class="r b">{bias} heavy ({skew:.0%}) — hedge with {hedge_str}</span>'
+        items_str = ", ".join(exp["items"][:6])
+        html += (
+            f'<tr><td class="b">{sector}</td>'
+            f'<td style="text-align:right" class="g">${lv:,.0f}</td>'
+            f'<td style="text-align:right" class="r">${sv:,.0f}</td>'
+            f'<td style="text-align:right" class="{net_cls} b">${net:+,.0f}</td>'
+            f'<td><span class="pill {bias_pill}">{bias}</span></td>'
+            f'<td style="font-size:11px">{items_str}</td>'
+            f'<td style="font-size:11px">{rec}</td></tr>'
+        )
+    html += "</table>"
+    return html
+
+
 def build_options_section():
     data = load_options_data()
     if not data:
@@ -1017,26 +1237,6 @@ def build_congress_section():
                     size_str = f"${size:,.0f}" if size > 0 else "-"
                     html += f'<tr><td><b>{t.get("trader_name","?")}</b> <span class="gr">({t.get("trader_title","")})</span></td><td><b>{t.get("symbol","")}</b></td><td class="{side_cls} b">{side_label}</td><td>{price_str}</td><td>{size_str}</td><td>{t.get("entry_time","")}</td></tr>'
                 html += '</table>'
-            congress_trades = other_congress
-            if congress_trades:
-                html += f'<h3>Other Congressional Trades ({len(congress_trades)} recent)</h3>'
-                html += '<table><tr><th>Politician</th><th>Symbol</th><th>Action</th><th>Price</th><th>Size</th><th>Date</th></tr>'
-                seen = set()
-                for t in congress_trades[:30]:
-                    key = f"{t.get('trader_name','')}_{t.get('symbol','')}_{t.get('side','')}"
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    side_cls = "g" if t.get("side") == "LONG" else "r"
-                    side_label = "BUY" if t.get("side") == "LONG" else "SELL"
-                    price = float(t.get("entry_price", 0) or 0)
-                    price_str = f"${price:.2f}" if price > 0 else "-"
-                    size = float(t.get("position_size_usd", 0) or 0)
-                    size_str = f"${size:,.0f}" if size > 0 else "-"
-                    title = t.get("trader_title", "")
-                    name = t.get("trader_name", "?")
-                    html += f'<tr><td>{name} <span class="gr">({title})</span></td><td><b>{t.get("symbol","")}</b></td><td class="{side_cls} b">{side_label}</td><td>{price_str}</td><td>{size_str}</td><td>{t.get("entry_time","")}</td></tr>'
-                html += '</table>'
             if insider_trades:
                 html += f'<h3>Insider Trades ({len(insider_trades)})</h3>'
                 html += '<table><tr><th>Insider</th><th>Symbol</th><th>Action</th><th>Price</th><th>Value</th><th>Title</th></tr>'
@@ -1198,6 +1398,9 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 <h2>Pre-Market Analysis</h2>
 {build_premarket_section()}
 
+<h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
+{build_options_positions_section()}
+
 <h2>Options Scanner</h2>
 {build_options_section()}
 
@@ -1208,7 +1411,7 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 {build_congress_section()}
 
 <hr style="margin-top:30px;border:none;border-top:1px solid #ccc">
-<p style="font-size:10px;color:#aaa">Generated {now_utc.strftime('%Y-%m-%d %H:%M')} UTC &mdash; positions and prices from Tradier API (live) &mdash; news from Yahoo Finance + CNBC RSS</p>
+<p style="font-size:10px;color:#aaa">Generated {now_utc.strftime('%Y-%m-%d %H:%M')} UTC &mdash; positions and prices from local files &mdash; news from Yahoo Finance + CNBC RSS</p>
 </body></html>"""
     return html
 
@@ -1382,6 +1585,9 @@ def build_public_email_html(market_quotes, tra_data, trb_data):
     html += f"""
 <h2>Pre-Market Candidates</h2>
 {build_premarket_section()}
+
+<h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
+{build_options_positions_section()}
 
 <h2>Options Scanner</h2>
 {build_options_section()}
