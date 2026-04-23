@@ -20,10 +20,13 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, getcontext
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+
 import aiofiles
 import pandas as pd
 import redis.asyncio as redis
 from dateutil.parser import isoparse
+
+d
 
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
