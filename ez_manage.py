@@ -10764,6 +10764,13 @@ class MultiAccountTradeManager:
             logger.warning(f"⚠️ [execute_trade_action] SCALP_V3 bypass NOT_TRADEABLE {position_key} — auto-adding")
             try:
                 tradeable_keys.add(position_key)
+                # Persist across tradeable_keys.json reloads
+                if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                    if not hasattr(self.tracker_manager, '_v3_dynamic_keys'):
+                        self.tracker_manager._v3_dynamic_keys = set()
+                    self.tracker_manager._v3_dynamic_keys.add(position_key)
+                if isinstance(getattr(self, 'tradeable_keys', None), set):
+                    self.tradeable_keys.add(position_key)
             except Exception:
                 pass
         # 2026-04-16 FIX: REMOVED hedge exemption — was allowing hedge opens to bypass size gate
@@ -12908,6 +12915,23 @@ class MultiAccountTradeManager:
             _recent_opens[position_key] = time.time()
             _AUGMENT_LOCK[position_key] = time.time()
         if _is_open_action and position_key:
+            # 2026-04-23 USER: SCALP_V3 scanner picks outliers from full L2 book.
+            # V3 symbols may not yet be in tradeable_keys (ez_rankings is slower than
+            # the live orderbook signal). Auto-add + bypass.
+            _v3_hard_bypass = 'SCALP_V3_OPEN' in str(reason or '').upper()
+            if _v3_hard_bypass and position_key not in self.tradeable_keys:
+                logger.warning(f"⚠️ [NON_TRADEABLE_HARD_BLOCK_V3_BYPASS] {position_key}: SCALP_V3 outlier open — auto-adding to tradeable_keys")
+                try:
+                    self.tradeable_keys.add(position_key)
+                    # Persist across tradeable_keys.json reloads
+                    if hasattr(self, 'tracker_manager') and self.tracker_manager:
+                        if not hasattr(self.tracker_manager, '_v3_dynamic_keys'):
+                            self.tracker_manager._v3_dynamic_keys = set()
+                        self.tracker_manager._v3_dynamic_keys.add(position_key)
+                        if isinstance(self.tracker_manager.tradeable_keys, set):
+                            self.tracker_manager.tradeable_keys.add(position_key)
+                except Exception:
+                    pass
             if position_key not in self.tradeable_keys:
                 logger.critical(f"🚫🚫🚫 [NON_TRADEABLE_HARD_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED. action={action} reason={reason} is_hedge={is_hedge}")
                 return f"BLOCKED_NON_TRADEABLE_{position_key}"

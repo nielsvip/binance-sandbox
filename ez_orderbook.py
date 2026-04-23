@@ -71,13 +71,20 @@ REST_BASE = "https://fapi.binance.com/fapi/v1/depth"
 WRITE_INTERVAL_SEC = 0.25
 HEARTBEAT_SEC = 30.0
 RELOAD_SEC = 300.0
-SNAPSHOT_LIMIT = 1000        # 20 weight per request
-SNAPSHOT_STAGGER_MS = 250    # between REST calls to avoid -1003
-BUCKET_PCT = 0.5             # 0.5% steps
-RANGE_PCT = 10.0             # ±10% from mid
-N_BUCKETS = int(RANGE_PCT / BUCKET_PCT)  # 20
-HISTORY_LEN = 100            # top-of-book snapshots for OFI
-EMA_ALPHA = 1.0 / 600.0      # ~60 s on 100 ms updates
+# 2026-04-23 late: `@depth20@100ms` is a PARTIAL-book stream — gives top 20 levels
+# snapshot every 100ms, NO REST snapshot needed, NO IP-ban risk. We lose the 10%
+# bucket depth, but compute top-of-book imbalance + close-in walls/voids anyway.
+# For ±10% bucketing we'd need the diff stream + REST seed which hits -1003.
+USE_PARTIAL_STREAM = True    # False → diff-stream+REST (burns IP weight)
+PARTIAL_DEPTH = 20
+STREAM_SUFFIX = f"@depth{PARTIAL_DEPTH}@100ms" if USE_PARTIAL_STREAM else "@depth@100ms"
+SNAPSHOT_LIMIT = 1000
+SNAPSHOT_STAGGER_MS = 250
+BUCKET_PCT = 0.25             # 0.25% steps (20 levels usually covers ~0.5-3%)
+RANGE_PCT = 5.0              # ±5% from mid (top-20 rarely reaches 10% anyway)
+N_BUCKETS = int(RANGE_PCT / BUCKET_PCT)
+HISTORY_LEN = 100
+EMA_ALPHA = 1.0 / 600.0
 
 logger = logging.getLogger("ez_orderbook")
 _h = logging.StreamHandler(sys.stdout)
@@ -141,6 +148,28 @@ class DeepBook:
         logger.info(f"seeded {self.symbol}: {len(self.bids)} bids, {len(self.asks)} asks, drained {drained} buffered diffs")
 
     def apply_update(self, u: dict):
+        if USE_PARTIAL_STREAM:
+            # @depth20@100ms = full partial-book snapshot each tick (NOT a diff).
+            # Replace book entirely with the top 20 levels.
+            try:
+                self.bids = {float(p): float(q) for p, q in u.get("b", []) if float(q) > 0}
+                self.asks = {float(p): float(q) for p, q in u.get("a", []) if float(q) > 0}
+            except (ValueError, TypeError):
+                return
+            self.last_event_ts_ms = int(u.get("E", u.get("T", 0)) or 0)
+            self.snapshot_applied = True   # no REST needed on partial stream
+            if self.bids and self.asks:
+                best_bid = max(self.bids.keys())
+                best_ask = min(self.asks.keys())
+                top_bid_q = self.bids.get(best_bid, 0.0)
+                top_ask_q = self.asks.get(best_ask, 0.0)
+                prev_b = self.ema_bid_qty or top_bid_q
+                prev_a = self.ema_ask_qty or top_ask_q
+                self.ema_bid_qty = EMA_ALPHA * top_bid_q + (1.0 - EMA_ALPHA) * prev_b
+                self.ema_ask_qty = EMA_ALPHA * top_ask_q + (1.0 - EMA_ALPHA) * prev_a
+                self.tob_history.append((self.last_event_ts_ms, best_bid, top_bid_q, best_ask, top_ask_q))
+            return
+        # Diff-stream path (needs REST seed)
         if not self.snapshot_applied:
             self.buffered_updates.append(u)
             if len(self.buffered_updates) > 1000:
@@ -364,8 +393,8 @@ async def seed_book(session: aiohttp.ClientSession, book: DeepBook):
 
 
 async def stream_chunk(symbols: List[str], books: Dict[str, DeepBook], stop: asyncio.Event):
-    """One websocket connection carrying <symbol>@depth@100ms diff streams."""
-    streams = "/".join(f"{s.lower()}@depth@100ms" for s in symbols)
+    """One websocket connection carrying partial-book or diff streams per symbol."""
+    streams = "/".join(f"{s.lower()}{STREAM_SUFFIX}" for s in symbols)
     url = f"{WS_BASE}?streams={streams}"
     backoff = 1.0
     while not stop.is_set():
@@ -519,10 +548,15 @@ async def main():
         if new_only:
             asyncio.create_task(seed_all(new_only))
 
-    # Start WS first so diffs are buffered while snapshots fetch
+    # Start WS first — partial-stream mode needs NO REST seeding.
     spawn_ws_for(active_syms)
-    # Seed all symbols via REST (takes ~len×250ms = ~25-30s for 100 syms)
-    asyncio.create_task(seed_all(active_syms))
+    if not USE_PARTIAL_STREAM:
+        # Diff-stream path needs a REST snapshot per symbol (weight 20 each).
+        # CAUTION: ~27s stagger × 100 syms on /fapi/v1/depth hits -1003 unless
+        # the IP has public-endpoint weight (Surfshark whitelist doesn't cover public).
+        asyncio.create_task(seed_all(active_syms))
+    else:
+        logger.info(f"PARTIAL STREAM mode (@depth{PARTIAL_DEPTH}@100ms) — no REST seeding needed")
 
     writer = asyncio.create_task(write_loop(books, redis, lambda: list(active_syms), stop))
     reloader = asyncio.create_task(symbol_reload_loop(lambda: list(active_syms), on_universe_change, stop))

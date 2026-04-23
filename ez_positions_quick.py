@@ -7346,11 +7346,16 @@ class TrackerManager:
                 if not keys_loaded:
                     logger.error("[KEYS] CRITICAL: Could not load keys from Redis, Main File, or Backup!")
         if keys_loaded:
-            self.tradeable_keys = {} 
+            self.tradeable_keys = {}
             self.tradeable_keys_cache = new_keys
-            self.tradeable_keys = new_keys 
+            self.tradeable_keys = new_keys
+            # 2026-04-23 USER: SCALP_V3 scanner adds keys dynamically when orderbook
+            # signals fire. Preserve those across file reloads — ez_rankings can
+            # catch up later without stomping V3 entries mid-scan-cycle.
+            if hasattr(self, '_v3_dynamic_keys') and self._v3_dynamic_keys:
+                self.tradeable_keys |= self._v3_dynamic_keys
             self._tradeable_keys_mtime = current_time
-            return new_keys
+            return self.tradeable_keys
         return self.tradeable_keys_cache if self.tradeable_keys_cache else set()
 
     def get_tradeable_position_keys_for(self, account_key: str):
@@ -10640,6 +10645,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 logger.warning(f"⚠️ [TRADEABLE_KEYS_GATE_V3_BYPASS] {position_key}: SCALP_V3 scanner open — auto-adding to tradeable_keys")
                 if hasattr(tracker_manager, 'tradeable_keys') and isinstance(tracker_manager.tradeable_keys, set):
                     tracker_manager.tradeable_keys.add(position_key)
+                # Persist across file-reload wipes
+                if not hasattr(tracker_manager, '_v3_dynamic_keys'):
+                    tracker_manager._v3_dynamic_keys = set()
+                tracker_manager._v3_dynamic_keys.add(position_key)
             elif _is_same_sym_hedge:
                 _hedge_sym_parsed = parse_position_key(hedge_for)
                 _hedge_origin_sym = _hedge_sym_parsed[1] if _hedge_sym_parsed else ""
