@@ -30,10 +30,16 @@ import pandas as pd
 import redis.asyncio as redis
 
 from config import Config
+
 # wt_composite logic inlined into _inject_wt_composite() — no external dependency
 PositionsServiceClient = None  # lazy import — avoid circular dep with ez_positions_service
-from utils import (REDIS_CHANNELS, clean_nans, default_serializer,
-                   get_current_environment, orjson_default)
+from utils import (
+    REDIS_CHANNELS,
+    clean_nans,
+    default_serializer,
+    get_current_environment,
+    orjson_default,
+)
 
 config = Config()
 try:
@@ -2340,9 +2346,9 @@ class IndicatorOrchestrator:
                 # We need to copy the data to avoid modifying the internal state dictionary references
                 # improperly, although for a push this is usually fine.
                 payload = data.copy()
-                payload['_hot_ts'] = now_ts
-                payload['_tick_ts'] = now_ts
-                payload['_hot_source'] = 'ez_indicators'
+                # payload['_hot_ts'] = now_ts
+                # payload['_tick_ts'] = now_ts
+                # payload['_hot_source'] = 'ez_indicators'
                 
 
                 self.shared_proxy.update_symbol(symbol, payload)
