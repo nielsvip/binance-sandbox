@@ -15298,11 +15298,8 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
     _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
     if not ind: return False
     price = safe_fetch_float(ind.get('current_price', 0), 0)
-    if price <= 0:
-        try:
-            price, _ = await get_current_price(sym)
-        except Exception:
-            price = 0
+    # 2026-04-23: NO API fallback — rely on cached indicator price only. API calls
+    # from scanner caused Binance -1003 IP-ban.
     if price <= 0 or not fresh:
         return False
     # 2026-04-23: SCAN_BYPASS_GATES (default True) — divergence-ranking IS the direction

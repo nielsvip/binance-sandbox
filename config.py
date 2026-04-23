@@ -170,9 +170,9 @@ class Config:
     SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN: int = 60
     # Dedicated V3 scan loop (2026-04-23): ranks tradeable symbols by sentiment
     # divergence vs global market score. Fastest risers → LONG, fastest fallers → SHORT.
-    SCALP_V3_SCAN_INTERVAL_SEC: float = 10.0
-    SCALP_V3_SCAN_TOP_N: int = 15                # 2026-04-23 evening: bumped 5→15 for wider coverage
-    SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.05   # 2026-04-23 evening: bumped 0.3→0.05 so more candidates per cycle
+    SCALP_V3_SCAN_INTERVAL_SEC: float = 30.0     # 2026-04-23 evening: bumped 10→30 to avoid Binance -1003 IP-ban
+    SCALP_V3_SCAN_TOP_N: int = 8                 # 2026-04-23 evening: 5→15→8 (15 caused weight overrun)
+    SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
     SCALP_V3_SIDE_MODE: str = "BOTH"             # BOTH for now (2026-04-23 evening): only 7 LONG vs 54 SHORT inf keys; sweep's SHORT disaster was rally-window bias. Paper A/B will reveal which side works forward.
     SCALP_V3_SCAN_BYPASS_GATES: bool = True      # 2026-04-23 evening: scanner opens on divergence sign directly; K-gates blocked 100% of user's high-conviction picks (THETA +1.66, ZEC +2.5, MOVR +7.6)
