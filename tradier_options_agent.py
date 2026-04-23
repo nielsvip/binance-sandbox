@@ -10,11 +10,13 @@ Workflow:
   5. Execute via smart fill (best price → walk to mid)
 
 Budget rules:
-  - Max per order: $2000 (prefer <$1000)
-  - Max total options portfolio: $5000
+  - Max per order: $800. Exception: if ONE contract costs >$800, buy exactly 1 contract.
+  - If option price >$9/share (>$900/contract): max 1 contract, no exceptions.
+  - Max calls: $3000 total. Max puts: $3000 total. Both sides must stay balanced.
+  - Never add to a position already held on that underlying symbol.
   - Never buy into extreme fear without strong reversal signal
   - Never buy calls into a gap-down that hasn't corrected
-  - Prefer 14-60 DTE for directional plays
+  - Prefer 60-120 DTE for directional plays
 
 Usage:
     python tradier_options_agent.py                     # Full autonomous run
@@ -65,8 +67,8 @@ if not logger.handlers:
     logger.addHandler(sh)
 
 # ── Budget & Risk Constants ──────────────────────────────────────────────────
-MAX_PER_ORDER = 2000.0
-PREFERRED_PER_ORDER = 1000.0
+MAX_PER_ORDER = 800.0
+PREFERRED_PER_ORDER = 800.0
 # 2026-04-22 user rule: $3k calls / $3k puts / $6k total (down from $5k/$5k/$7k)
 MAX_TOTAL_OPTIONS = 6000.0        # Hard ceiling — NO new positions above this (= sum of per-side caps)
 MAX_TOTAL_CALLS = 3000.0          # Max $ in calls
@@ -692,13 +694,23 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
             order_budget = min(order_budget * 1.3, max_per_order)
             _ratio_tag = f"|RATIO_BOOST_BEAR(frac={_bull_frac:.0%})"
         contract_cost = mid * 100
-        if contract_cost <= 0 or contract_cost > order_budget:
-            if contract_cost > order_budget:
-                continue
-        qty = min(_max_contracts, max(1, int(order_budget / contract_cost)))
+        if contract_cost <= 0:
+            continue
+        # ── Budget + qty rules (2026-04-23) ──
+        # Rule 1: if price/share > $9 ($900/contract) → max 1 contract, no exceptions.
+        # Rule 2: per-order budget = $800. Exception: if 1 contract > $800 you still buy
+        #         that 1 contract (no doubling up with cheap multi-contract spending).
+        _max_single_price = float(getattr(config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", 9.0)) if config else 9.0
+        _max_order_budget = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 800.0)) if config else 800.0
+        if mid > _max_single_price:
+            qty = 1
+        else:
+            qty = min(_max_contracts, max(1, int(_max_order_budget / contract_cost)))
         total_cost = qty * contract_cost
         if total_cost > budget_remaining:
-            qty = min(_max_contracts, max(1, int(budget_remaining / contract_cost)))
+            qty = max(1, int(budget_remaining / contract_cost))
+            if mid > _max_single_price:
+                qty = 1
             total_cost = qty * contract_cost
         if total_cost > budget_remaining or total_cost < MIN_ORDER_SIZE:
             continue

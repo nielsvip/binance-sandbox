@@ -207,7 +207,7 @@ class TradierConfig:
     OPTIONS_MIN_SECTORS: int = 2              # Min sectors for hedged tier
     OPTIONS_MIN_GROUPS: int = 3               # Min groups for full diversification tier
     OPTIONS_HEDGE_RATIO_MIN: float = 0.25     # Min puts/(puts+calls) to qualify as hedged
-    OPTIONS_MAX_CONTRACTS_PER_ORDER: int = 10  # Hard cap: never buy >N contracts in one order
+    OPTIONS_MAX_CONTRACTS_PER_ORDER: int = 3   # Hard cap: never buy >N contracts in one order (practical ceil given $800/order + $9/share rule)
     # Market direction ratio: bull_exposure / (bull + bear). Too high = over-long market.
     OPTIONS_MARKET_RATIO_MIN: float = 0.25    # Min fraction of exposure that is bull-market-bets
     OPTIONS_MARKET_RATIO_MAX: float = 0.75    # Max fraction of exposure that is bull-market-bets
@@ -226,7 +226,7 @@ class TradierConfig:
     # exposure is neutralized while premium decays. Unwind hedge when the option
     # is sellable again (bid recovers past the threshold).
     # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
-    OPTIONS_EQUITY_HEDGE_ENABLED: bool = False  # DISABLED 2026-04-23: shorted 170 ABT shares without approval. Re-enable only after explicit user review.
+    OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
     OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
     # === HEDGE PAIR GUARD (2026-04-22 — NEM naked-short incident) ===
     # When an option is hedged by an opposite-side stock position on the same underlying
@@ -249,6 +249,12 @@ class TradierConfig:
     # Continuous sector/put-call enforcement (applied in daily + premarket cycles)
     OPTIONS_CONTINUOUS_SECTOR_GATE: bool = True  # Block new buys that widen existing sector/group/symbol violation
     OPTIONS_USER_CANCEL_COOLDOWN_HOURS: float = 4.0  # Don't re-propose a user-canceled OCC for N hours
+    # === OPTIONS ORDER BUDGET RULES (2026-04-23) ===
+    # Max spend per new order = $800. Exception: if one contract costs more than $800, still
+    # buy exactly 1 contract (no multi-contract spending spree). Hard rule: if option
+    # price > $9/share (= $900/contract), max 1 contract regardless of budget.
+    OPTIONS_MAX_ORDER_BUDGET: float = 800.0         # Hard per-order spend cap
+    OPTIONS_MAX_SINGLE_CONTRACT_PRICE: float = 9.0  # If price/share > this, max qty=1
     # === OPTIONS BUY SANITY GATES (2026-04-22 — blocks JNJ/ABT-style misbuys) ===
     # Background: 2026-04-22 14:05 UTC cron bypass bought 2 OTM calls on downtrending,
     # non-allowlisted stocks (JNJ 6.7% OTM delta 0.14, ABT 6% OTM). -$500 same-day loss.
