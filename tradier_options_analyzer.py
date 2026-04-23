@@ -2465,13 +2465,10 @@ async def run_watch(args):
                                 _save_equity_hedges(config, eq_hedges)
                         continue
                     # ── OPEN: no hedge and option is unsellable ──
-                    # ALLOWLIST GATE: only hedge symbols in the trb_long/short allowlist — prevents
-                    # ABT/JNJ-style rogue equity orders on non-sanctioned symbols.
-                    _eh_call_allowed, _eh_put_allowed = _load_allowed_symbols(config) if config else (set(), set())
-                    _eh_allowed = _eh_call_allowed if _otype == "call" else _eh_put_allowed
-                    if _eh_allowed and _und_sym not in _eh_allowed:
-                        logger.warning(f"[EQ_HEDGE_ALLOWLIST_BLOCK] {_und_sym} ({_otype}) not in trb_{'long' if _otype == 'call' else 'short'} allowlist — hedge BLOCKED")
-                        continue
+                    # NOTE: no allowlist gate here. The equity hedge hedges positions you ALREADY
+                    # HOLD — you can't buy new options on blocked symbols but you can hedge existing
+                    # ones (UNG, ABT, etc.). The buy allowlist in make_decisions/find_opportunities
+                    # is the right place to prevent new entries on bad symbols.
                     if _existing_hedge is None and _sellable_pct <= eq_trigger and _bid > 0:
                         # Fetch fresh delta from quote greeks
                         try:
