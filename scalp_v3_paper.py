@@ -47,6 +47,43 @@ FEE_PCT = 0.04  # round-trip
 # Per-process cache: {symbol: {tf_min: np.ndarray}}. Loaded once per symbol on first use.
 _HTF_CACHE: dict = {}
 
+# Orderbook filter — read from Redis `orderbook:<SYM>` populated by ez_orderbook.py.
+# When --ob-* thresholds are set, entries only fire if live orderbook agrees with side.
+_OB_REDIS = None
+_OB_CFG: dict = {"enabled": False, "imb5_long_min": 0.55, "imb5_short_max": 0.45, "max_age_ms": 5000, "max_spread_bps": 20.0}
+
+
+def ob_check(symbol: str, side: str) -> tuple[bool, str]:
+    """Return (passes, reason). If OB filter disabled → always passes."""
+    if not _OB_CFG.get("enabled") or _OB_REDIS is None:
+        return True, "OB_DISABLED"
+    try:
+        raw = _OB_REDIS.get(f"orderbook:{symbol}")
+    except Exception:
+        return False, "OB_REDIS_ERROR"
+    if not raw:
+        return False, "OB_NO_SNAPSHOT"
+    try:
+        d = json.loads(raw)
+    except Exception:
+        return False, "OB_PARSE_ERROR"
+    import time as _t
+    age = (_t.time() * 1000.0) - float(d.get("ob_ts_ms", 0))
+    if age > _OB_CFG["max_age_ms"]:
+        return False, f"OB_STALE_{int(age)}ms"
+    spread = float(d.get("ob_spread_bps", 9999))
+    if spread > _OB_CFG["max_spread_bps"]:
+        return False, f"OB_WIDE_SPREAD_{spread:.1f}bps"
+    imb5 = float(d.get("ob_bid_ask_imb_5", 0.5))
+    if side == "LONG":
+        if imb5 >= _OB_CFG["imb5_long_min"]:
+            return True, f"OB_LONG_OK_imb5={imb5:.3f}"
+        return False, f"OB_LONG_NO_BID_imb5={imb5:.3f}"
+    else:  # SHORT
+        if imb5 <= _OB_CFG["imb5_short_max"]:
+            return True, f"OB_SHORT_OK_imb5={imb5:.3f}"
+        return False, f"OB_SHORT_NO_ASK_imb5={imb5:.3f}"
+
 
 def _iso_to_epoch_s(s: str) -> float:
     return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
@@ -241,12 +278,21 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
                     continue
             ok, reason = check_scalp_v3_entry(inp, cfg)
             if ok:
+                ob_ok, ob_reason = ob_check(symbol, side)
+                if not ob_ok:
+                    events.append({
+                        "type": "PAPER_ENTRY_BLOCKED_OB", "symbol": symbol, "side": side,
+                        "would_price": price, "would_ts": now_ts,
+                        "k_1m": round(inp.k_1m, 1), "k_3m": round(inp.k_3m, 1),
+                        "k_15m": round(inp.k_15m, 1), "reason": reason, "ob_reason": ob_reason,
+                    })
+                    continue
                 events.append({
                     "type": "PAPER_ENTRY", "symbol": symbol, "side": side,
                     "entry_price": price, "entry_ts": now_ts,
                     "k_1m": round(inp.k_1m, 1), "k_3m": round(inp.k_3m, 1),
                     "k_15m": round(inp.k_15m, 1), "k_1h": round(inp.k_1h, 1), "k_4h": round(inp.k_4h, 1),
-                    "reason": reason,
+                    "reason": reason, "ob_reason": ob_reason,
                 })
                 state["positions"][key] = {
                     "side": side, "entry_price": price, "entry_ts": now_ts,
@@ -295,6 +341,38 @@ async def main_async(args):
                       SCALP_V3_ENTRY_VOL_SPIKE_MULT=args.vol_mult,
                       SCALP_V3_MAX_HOLD_MIN=args.max_hold_min,
                       SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain)
+    # Orderbook filter init
+    global _OB_REDIS, _OB_CFG, STATE_FILE
+    if args.orderbook_filter:
+        import redis as _redis
+        _OB_REDIS = _redis.Redis(host="localhost", port=6379, decode_responses=True)
+        try:
+            _OB_REDIS.ping()
+        except Exception as e:
+            print(f"[paper] ERROR: --orderbook-filter set but Redis ping failed: {e}")
+            return
+        hb = _OB_REDIS.get("orderbook:_heartbeat")
+        if not hb:
+            print("[paper] ERROR: --orderbook-filter set but no ez_orderbook heartbeat in Redis. Start ez_orderbook.py first.")
+            return
+        _OB_CFG.update({
+            "enabled": True,
+            "imb5_long_min": args.ob_imb5_long_min,
+            "imb5_short_max": args.ob_imb5_short_max,
+            "max_age_ms": args.ob_max_age_ms,
+            "max_spread_bps": args.ob_max_spread_bps,
+        })
+        # Redirect output files so A/B runs don't stomp each other
+        suf = args.ob_out_suffix or "_ob"
+        global today_trades_file
+        _orig_tf = today_trades_file
+        def _ob_trades_file():
+            return OUT_DIR / f"trades{suf}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.jsonl"
+        today_trades_file = _ob_trades_file
+        STATE_FILE = OUT_DIR / f"state{suf}.json"
+        print(f"[paper] ORDERBOOK FILTER ENABLED: imb5_long>={args.ob_imb5_long_min} imb5_short<={args.ob_imb5_short_max} max_age={args.ob_max_age_ms}ms max_spread={args.ob_max_spread_bps}bps")
+        print(f"[paper] OB state file: {STATE_FILE}")
+        print(f"[paper] OB heartbeat: {hb}")
     symbols_fixed = args.symbols.strip()
     if symbols_fixed:
         symbols = [s.strip().upper() for s in symbols_fixed.split(",") if s.strip()]
@@ -378,6 +456,12 @@ def main():
     ap.add_argument("--poll-sec", type=int, default=120, help="Poll frequency (default 120s to stay under Binance weight)")
     ap.add_argument("--reload-sec", type=int, default=300, help="Reload tradeable_keys.json every N sec (0 disables)")
     ap.add_argument("--concurrency", type=int, default=3, help="Concurrent klines fetches (default 3 to avoid bans — live ez_manage already hits Binance)")
+    ap.add_argument("--orderbook-filter", action="store_true", help="Gate entries on live orderbook imbalance (reads Redis `orderbook:<SYM>` populated by ez_orderbook.py)")
+    ap.add_argument("--ob-imb5-long-min", type=float, default=0.55, help="Min top-5 bid/(bid+ask) for LONG entry")
+    ap.add_argument("--ob-imb5-short-max", type=float, default=0.45, help="Max top-5 bid/(bid+ask) for SHORT entry")
+    ap.add_argument("--ob-max-age-ms", type=int, default=5000, help="Max orderbook snapshot age (ms)")
+    ap.add_argument("--ob-max-spread-bps", type=float, default=20.0, help="Reject entries with spread wider than this (bps)")
+    ap.add_argument("--ob-out-suffix", type=str, default="_ob", help="Filename suffix for OB-filtered output")
     args = ap.parse_args()
     asyncio.run(main_async(args))
 
