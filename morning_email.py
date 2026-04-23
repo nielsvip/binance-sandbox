@@ -84,80 +84,101 @@ def get_gmail_password():
 
 # ── Tradier API helpers ──────────────────────────────────────────────────────
 
-async def get_weekly_closed(account_key):
-    """Get closed positions this week from Tradier gainloss API."""
-    from config_tradier import TradierConfig
-    from tradier_api import TradierAPIClient
-    cfg = TradierConfig()
-    client = TradierAPIClient(config=cfg, account_key=account_key)
-    try:
-        gl = await client._request("GET", f"/accounts/{client._current_id}/gainloss", params={"page": 1, "limit": 100, "sortBy": "closeDate", "sort": "desc"}, use_data_context=False)
-        if not gl or "gainloss" not in gl:
-            return []
-        positions = gl["gainloss"].get("closed_position", [])
-        if isinstance(positions, dict):
-            positions = [positions]
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
-        return [{"symbol": p.get("symbol", "?"), "gain_loss": float(p.get("gain_loss", 0)), "gain_pct": float(p.get("gain_loss_percent", 0)), "close_date": p.get("close_date", "")[:10]} for p in positions if p.get("close_date", "")[:10] >= cutoff]
-    except Exception:
+def get_weekly_closed_local(account_key):
+    """Get trades closed this week from local JSONL history files — no API."""
+    history_dir = BASE / "data" / "tradier" / "history" / account_key
+    if not history_dir.exists():
         return []
-
-
-async def get_account_data(account_key):
-    """Get REAL positions + balances + live quotes from Tradier API."""
-    from config_tradier import TradierConfig
-    from tradier_api import TradierAPIClient
-    cfg = TradierConfig()
-    client = TradierAPIClient(config=cfg, account_key=account_key)
-    result = {"positions": [], "balance": {}, "quotes": {}, "account_key": account_key}
-    try:
-        raw_positions = await client.get_account_positions(account_key) or []
-        if not isinstance(raw_positions, list):
-            logger.warning(f"get_account_positions({account_key}) returned {type(raw_positions).__name__}, expected list")
-            raw_positions = []
-        stock_positions = [p for p in raw_positions if isinstance(p, dict) and len(p.get("symbol", "")) <= 5]
-        option_positions = [p for p in raw_positions if len(p.get("symbol", "")) > 5]
-        symbols = list(set(p["symbol"] for p in stock_positions if p.get("symbol")))
-        quotes = await client.get_quotes(symbols) if symbols else {}
-        positions = []
-        for p in stock_positions:
-            sym = p["symbol"]
-            qty = float(p.get("quantity", 0))
-            cost = float(p.get("cost_basis", 0))
-            q = quotes.get(sym, {})
-            last = q.get("last") or q.get("close", 0) or 0
-            prev_close = q.get("prevclose") or q.get("previous_close", 0) or last
-            mkt_val = qty * last
-            pnl = mkt_val - cost
-            avg_cost = abs(cost / qty) if qty != 0 else 0
-            gain_pct = (pnl / abs(cost) * 100) if cost != 0 else 0
-            day_chg = ((last - prev_close) / prev_close * 100) if prev_close else 0
-            side = "LONG" if qty > 0 else "SHORT"
-            positions.append({"symbol": sym, "side": side, "qty": abs(qty), "avg_cost": avg_cost, "last": last, "prev_close": prev_close, "day_chg": round(day_chg, 2), "mkt_val": round(abs(mkt_val), 2), "cost_basis": round(abs(cost), 2), "pnl": round(pnl, 2), "gain_pct": round(gain_pct, 2), "date_acquired": p.get("date_acquired", "")})
-        result["positions"] = sorted(positions, key=lambda x: x["mkt_val"], reverse=True)
-        result["option_positions"] = option_positions
-        bal = await client._request("GET", f"/accounts/{client._current_id}/balances", use_data_context=False)
-        if bal and "balances" in bal:
-            result["balance"] = bal["balances"]
-        result["quotes"] = quotes
-        orders = await client._request("GET", f"/accounts/{client._current_id}/orders", use_data_context=False)
-        if orders and "orders" in orders:
-            order_list = orders["orders"].get("order", [])
-            if isinstance(order_list, dict):
-                order_list = [order_list]
-            pending = []
-            for o in order_list:
-                if o.get("status") not in ("pending", "open", "partially_filled"):
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+    events = []
+    for jf in sorted(history_dir.glob("*.jsonl")):
+        stem = jf.stem
+        parts = stem.rsplit("_", 1)
+        symbol = parts[0] if len(parts) == 2 else stem
+        side = parts[1] if len(parts) == 2 else "UNKNOWN"
+        try:
+            for line in jf.read_text().splitlines():
+                if not line.strip():
                     continue
-                leg = o.get("leg", [{}])
-                if isinstance(leg, dict):
-                    leg = [leg]
-                for l in leg:
-                    sym = l.get("option_symbol", l.get("symbol", "?"))
-                    pending.append({"id": o.get("id"), "type": o.get("type", "?"), "side": o.get("side", l.get("side", "?")), "symbol": sym, "qty": l.get("quantity", 0), "price": o.get("price", 0), "status": o.get("status")})
-            result["pending_orders"] = pending
-    except Exception as e:
-        logger.error(f"Failed to get {account_key} data: {e}")
+                try:
+                    rec = json.loads(line)
+                    events.append({"ts": rec.get("ts", ""), "type": rec.get("type", ""), "symbol": symbol, "side": side, "account": account_key, "qty": float(rec.get("qty", 0)), "price": float(rec.get("price", 0)), "value": float(rec.get("value", 0)), "reason": rec.get("reason", ""), "is_stock": True})
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        except Exception:
+            continue
+    events.sort(key=lambda e: e.get("ts", ""))
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for e in events:
+        grouped[f"{e['symbol']}_{e['side']}"].append(e)
+    closed = []
+    for key, evts in grouped.items():
+        evts.sort(key=lambda x: x.get("ts", ""))
+        sym, side = key.rsplit("_", 1)
+        open_qty, open_cost = 0.0, 0.0
+        for ev in evts:
+            t = ev["type"].upper()
+            qty, price, ts = ev["qty"], ev["price"], ev["ts"]
+            if t in ("AUGMENT", "OPEN", "QUICK_OPEN", "REENTRY"):
+                open_cost += qty * price
+                open_qty += qty
+            elif t in ("REDUCE", "CLOSE", "QUICK_CLOSE") and open_qty > 0:
+                reduce_qty = min(qty, open_qty)
+                entry_avg = open_cost / open_qty
+                pnl = (price - entry_avg) * reduce_qty if side == "LONG" else (entry_avg - price) * reduce_qty
+                pnl_pct = ((price - entry_avg) / entry_avg * 100) * (1 if side == "LONG" else -1)
+                if ts[:10] >= cutoff:
+                    closed.append({"symbol": sym, "gain_loss": round(pnl, 2), "gain_pct": round(pnl_pct, 2), "close_date": ts[:10], "side": side})
+                remaining = open_qty - reduce_qty
+                open_cost = entry_avg * remaining if remaining > 0 else 0.0
+                open_qty = remaining
+    closed.sort(key=lambda x: x["close_date"], reverse=True)
+    return closed
+
+
+def get_account_data_local(account_key):
+    """Load positions from local files — no API calls. Source of truth is binance/{account_key}/."""
+    _OPT_RE = __import__("re").compile(r"^[A-Z]{1,6}\d{6}[CP]\d{4,}$")
+    result = {"positions": [], "balance": {}, "quotes": {}, "account_key": account_key, "option_positions": [], "pending_orders": []}
+    prices_path = DATA_DIR / "tradier" / "tradier_prices_latest.json"
+    prices = {}
+    try:
+        raw = json.loads(prices_path.read_text())
+        prices = raw.get("data", raw) if isinstance(raw, dict) and "data" in raw else raw
+    except Exception:
+        pass
+    positions = []
+    for side_label, fname in [("LONG", "long_positions.json"), ("SHORT", "short_positions.json")]:
+        pos_path = BASE / account_key / fname
+        if not pos_path.exists():
+            continue
+        try:
+            data = json.loads(pos_path.read_text())
+        except Exception:
+            continue
+        for key, pos in data.items():
+            sym = pos.get("symbol", "")
+            if not sym:
+                continue
+            amt = float(pos.get("positionAmt", 0) or 0)
+            if amt == 0:
+                continue
+            if _OPT_RE.match(sym):
+                cost_per_unit = float(pos.get("entry_price", 0) or 0)
+                result["option_positions"].append({"symbol": sym, "quantity": amt, "cost_basis": round(cost_per_unit * amt * 100, 2)})
+                continue
+            entry_price = float(pos.get("entry_price", 0) or 0)
+            mark = float(pos.get("mark_price") or 0) or float((prices.get(sym) or {}).get("last", 0) or 0)
+            pnl = float(pos.get("unrealized_pnl", 0) or 0)
+            gain_pct = float(pos.get("gain", 0) or 0)
+            mkt_val = mark * amt if mark else entry_price * amt
+            positions.append({"symbol": sym, "side": side_label, "qty": amt, "avg_cost": round(entry_price, 4), "last": round(mark, 4), "prev_close": 0, "day_chg": 0.0, "mkt_val": round(mkt_val, 2), "cost_basis": round(entry_price * amt, 2), "pnl": round(pnl, 2), "gain_pct": round(gain_pct, 2), "date_acquired": (pos.get("opened_at") or "")[:10], "last_updated": (pos.get("mark_price_last_updated") or pos.get("last_updated") or "")})
+    result["positions"] = sorted(positions, key=lambda x: abs(x["mkt_val"]), reverse=True)
+    open_pl = sum(p["pnl"] for p in positions)
+    long_val = sum(p["mkt_val"] for p in positions if p["side"] == "LONG")
+    short_val = sum(p["mkt_val"] for p in positions if p["side"] == "SHORT")
+    result["balance"] = {"total_equity": 0, "total_cash": 0, "open_pl": round(open_pl, 2), "close_pl": 0, "stock_long_value": round(long_val, 2), "short_market_value": round(-short_val, 2), "option_long_value": 0}
     return result
 
 
@@ -490,10 +511,8 @@ def build_account_section(data):
     opt_long = balance.get("option_long_value", 0)
     pl_color = "g" if open_pl >= 0 else "r"
     html += '<div class="box">'
-    html += f'<b>Equity:</b> ${total_equity:,.0f} &nbsp; <b>Cash:</b> ${total_cash:,.0f} &nbsp; '
     html += f'<b>Open P/L:</b> <span class="{pl_color} b">${open_pl:+,.0f}</span> &nbsp; '
-    html += f'<b>Day P/L:</b> <span class="{"g" if close_pl >= 0 else "r"}">${close_pl:+,.0f}</span><br>'
-    html += f'Long: ${stock_long:,.0f} &nbsp; Short: ${stock_short:,.0f} &nbsp; Options: ${opt_long:,.0f} &nbsp; '
+    html += f'Long exposure: ${stock_long:,.0f} &nbsp; Short exposure: ${stock_short:,.0f} &nbsp; '
     html += f'<b>Positions:</b> {len(positions)} stocks'
     if option_positions:
         html += f' + {len(option_positions)} options'
@@ -563,86 +582,43 @@ def build_account_section(data):
 
 
 def build_sync_health(tra_data, trb_data):
-    """Full side-by-side audit: API (truth) vs position files (what we trade on). Returns (html, is_synced)."""
-    all_issues = []
-    all_rows = []
+    """Position file health check — mark price freshness and position counts. No API calls."""
+    now_utc = datetime.now(timezone.utc)
+    all_stale = []
+    rows = []
     for data in [tra_data, trb_data]:
         acct = data["account_key"]
-        api_by_key = {}
         for p in data.get("positions", []):
-            key = f"{p['symbol']}_{p['side']}"
-            api_by_key[key] = p
-        file_by_key = {}
-        for side in ["long", "short"]:
-            fpath = BASE / acct / f"{side}_positions.json"
-            if not fpath.exists():
-                continue
-            try:
-                with open(fpath) as f:
-                    d = json.load(f)
-                for k, v in d.items():
-                    amt = abs(float(v.get("positionAmt", 0) or 0))
-                    if amt == 0:
-                        continue
-                    sym = v.get("symbol", k.split(":")[-1].replace("_LONG", "").replace("_SHORT", ""))
-                    file_side = "LONG" if k.endswith("_LONG") else "SHORT"
-                    key = f"{sym}_{file_side}"
-                    file_by_key[key] = {"qty": amt, "mark": float(v.get("mark_price", 0) or 0), "entry": float(v.get("entry_price", 0) or 0), "gain": float(v.get("gain", 0) or 0)}
-            except Exception:
-                pass
-        all_keys = sorted(set(list(api_by_key.keys()) + list(file_by_key.keys())))
-        for key in all_keys:
-            api = api_by_key.get(key)
-            fil = file_by_key.get(key)
-            sym = key.replace("_LONG", "").replace("_SHORT", "")
-            side = "LONG" if key.endswith("_LONG") else "SHORT"
-            status = "OK"
-            issues = []
-            if api and not fil:
-                status = "MISSING"
-                issues.append("Not in position files")
-            elif fil and not api:
-                status = "PHANTOM"
-                issues.append("Not in Tradier API")
-            elif api and fil:
-                api_qty = api.get("qty", 0)
-                file_qty = fil.get("qty", 0)
-                if abs(api_qty - file_qty) > 0.5:
-                    status = "QTY"
-                    issues.append(f"qty: API={api_qty:.0f} file={file_qty:.0f}")
-                api_price = api.get("last", 0)
-                file_mark = fil.get("mark", 0)
-                if api_price > 0 and file_mark > 0:
-                    drift = abs(api_price - file_mark) / api_price * 100
-                    if drift > 1.0:
-                        status = "PRICE" if status == "OK" else status
-                        issues.append(f"price: API=${api_price:.2f} file=${file_mark:.2f} ({drift:.1f}%)")
-                api_avg = api.get("avg_cost", 0)
-                file_entry = fil.get("entry", 0)
-                if api_avg > 0 and file_entry > 0:
-                    entry_drift = abs(api_avg - file_entry) / api_avg * 100
-                    if entry_drift > 1.0:
-                        if status == "OK":
-                            status = "ENTRY"
-                        issues.append(f"entry: API=${api_avg:.2f} file=${file_entry:.2f} ({entry_drift:.1f}%)")
-                if not issues:
-                    status = "OK"
-            if status != "OK":
-                all_issues.append(f"{acct}:{key} — {'; '.join(issues)}")
-            all_rows.append({"acct": acct, "sym": sym, "side": side, "status": status, "api_qty": api.get("qty", 0) if api else 0, "file_qty": fil.get("qty", 0) if fil else 0, "api_price": api.get("last", 0) if api else 0, "file_mark": fil.get("mark", 0) if fil else 0, "api_avg": api.get("avg_cost", 0) if api else 0, "file_entry": fil.get("entry", 0) if fil else 0, "issues": "; ".join(issues)})
-    is_synced = len(all_issues) == 0
-    html = ""
+            lu = p.get("last_updated", "")
+            age_min = None
+            if lu:
+                try:
+                    dt = datetime.fromisoformat(lu.replace("Z", "+00:00"))
+                    age_min = int((now_utc - dt).total_seconds() // 60)
+                except Exception:
+                    pass
+            stale = age_min is not None and age_min > 60
+            if stale:
+                all_stale.append(f"{acct}:{p['symbol']} mark {age_min}m old")
+            rows.append({"acct": acct, "sym": p["symbol"], "side": p["side"], "qty": p["qty"], "entry": p["avg_cost"], "mark": p["last"], "gain_pct": p["gain_pct"], "pnl": p["pnl"], "age_min": age_min, "stale": stale})
+    is_synced = len(all_stale) == 0
+    total = len(rows)
+    stale_count = len(all_stale)
     if is_synced:
-        html += f'<div class="box" style="border-left:4px solid #2e7d32"><span class="pill pg">SYNC OK</span> All {len(all_rows)} positions match between Tradier API and position files.</div>'
+        html = f'<div class="box" style="border-left:4px solid #2e7d32"><span class="pill pg">FILES OK</span> {total} positions loaded from local files. Mark prices current. <span class="gr" style="font-size:11px">(API sync disabled — avoids ban risk; wrong data visible here = tradier_manage.py is wrong too)</span></div>'
     else:
-        html += f'<div class="box" style="border-left:4px solid #c62828;background:#fff5f5"><span class="pill pr" style="font-size:13px">SYNC BROKEN — {len(all_issues)} issues</span><p style="margin:8px 0 4px 0">Position files (what tradier_manage.py trades on) do NOT match the Tradier API (reality). <b>Trading decisions may be based on wrong data.</b></p>'
-        html += '<table style="font-size:11px"><tr><th>Acct</th><th>Symbol</th><th>Side</th><th>Status</th><th>API Qty</th><th>File Qty</th><th>API Price</th><th>File Mark</th><th>API Avg</th><th>File Entry</th><th>Issues</th></tr>'
-        for r in all_rows:
-            if r["status"] == "OK":
-                continue
-            sc = "pr" if r["status"] in ("PHANTOM", "MISSING") else "po"
-            html += f'<tr><td>{r["acct"]}</td><td><b>{r["sym"]}</b></td><td>{r["side"]}</td><td><span class="pill {sc}">{r["status"]}</span></td><td style="text-align:right">{r["api_qty"]:.0f}</td><td style="text-align:right">{r["file_qty"]:.0f}</td><td style="text-align:right">${r["api_price"]:.2f}</td><td style="text-align:right">${r["file_mark"]:.2f}</td><td style="text-align:right">${r["api_avg"]:.2f}</td><td style="text-align:right">${r["file_entry"]:.2f}</td><td style="font-size:10px" class="r">{r["issues"]}</td></tr>'
-        html += "</table></div>"
+        html = f'<div class="box" style="border-left:4px solid #ef6c00;background:#fff8e1"><span class="pill po">STALE MARKS — {stale_count} positions</span> Mark prices &gt;60min old — tradier_manage.py may be trading on stale prices.<br>'
+        for s in all_stale[:5]:
+            html += f'<span class="r" style="font-size:11px">{s}</span><br>'
+        html += '</div>'
+    html += '<table style="font-size:11px"><tr><th>Acct</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry $</th><th>Mark $</th><th>Gain %</th><th>P/L $</th><th>Mark Age</th></tr>'
+    for r in sorted(rows, key=lambda x: abs(x["pnl"]), reverse=True):
+        gc = "g" if r["gain_pct"] > 0 else "r" if r["gain_pct"] < -1 else "o"
+        sp = "pg" if r["side"] == "LONG" else "pr"
+        age_str = f'{r["age_min"]}m' if r["age_min"] is not None else "?"
+        age_cls = "r" if r.get("stale") else "gr"
+        html += f'<tr><td>{r["acct"]}</td><td><b>{r["sym"]}</b></td><td><span class="pill {sp}">{r["side"]}</span></td><td style="text-align:right">{r["qty"]:.0f}</td><td style="text-align:right">${r["entry"]:.2f}</td><td style="text-align:right">${r["mark"]:.2f}</td><td style="text-align:right" class="{gc} b">{r["gain_pct"]:+.2f}%</td><td style="text-align:right" class="{gc}">${r["pnl"]:+,.0f}</td><td style="text-align:right" class="{age_cls}">{age_str}</td></tr>'
+    html += "</table>"
     return html, is_synced
 
 
@@ -1210,10 +1186,10 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 <h2>News Scanner Intelligence</h2>
 {build_news_scanner_section()}
 
-<h2>tra — Non-Margin HODL</h2>
+<h2>tra — Non-Margin HODL ({len(tra_data.get('positions',[]))} positions, open P/L ${tra_data['balance'].get('open_pl',0):+,.0f})</h2>
 {build_account_section(tra_data)}
 
-<h2>trb — Live (${trb_data['balance'].get('total_equity',0):,.0f} equity)</h2>
+<h2>trb — Live ({len(trb_data.get('positions',[]))} positions, open P/L ${trb_data['balance'].get('open_pl',0):+,.0f})</h2>
 {build_account_section(trb_data)}
 
 <h2>Position Sync Health — API vs Files</h2>
@@ -1328,15 +1304,20 @@ async def gather_options_history():
 
 
 async def gather_data():
-    from config_tradier import TradierConfig
-    from tradier_api import TradierAPIClient
-    cfg = TradierConfig()
-    client = TradierAPIClient(config=cfg, account_key="trb")
-    market_quotes = await client.get_quotes(["SPY", "QQQ", "DIA", "IWM", "VIX"])
-    tra_data = await get_account_data("tra")
-    trb_data = await get_account_data("trb")
-    tra_closed = await get_weekly_closed("tra")
-    trb_closed = await get_weekly_closed("trb")
+    tra_data = get_account_data_local("tra")
+    trb_data = get_account_data_local("trb")
+    tra_closed = get_weekly_closed_local("tra")
+    trb_closed = get_weekly_closed_local("trb")
+    prices_path = DATA_DIR / "tradier" / "tradier_prices_latest.json"
+    market_quotes = {}
+    try:
+        raw = json.loads(prices_path.read_text())
+        prices = raw.get("data", raw) if isinstance(raw, dict) and "data" in raw else raw
+        for sym in ["SPY", "QQQ", "DIA", "IWM", "VIX"]:
+            if sym in prices:
+                market_quotes[sym] = {"last": prices[sym].get("last", 0), "prevclose": 0, "change_percentage": 0}
+    except Exception:
+        pass
     await gather_options_history()
     return tra_data, trb_data, market_quotes, tra_closed, trb_closed
 
