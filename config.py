@@ -186,6 +186,11 @@ class Config:
     SCALP_V3_OUTLIER_MIN_Z_LONG: float = 1.5     # min z-score (vs median) for a LONG outlier inject
     SCALP_V3_OUTLIER_MIN_Z_SHORT: float = -1.5   # max z-score for a SHORT outlier inject
     SCALP_V3_OUTLIER_MAX_INJECT: int = 15        # cap how many get appended per side
+    # Orderbook-primary entry signals (2026-04-23 late): ez_orderbook.py writes
+    # ob_long_score / ob_short_score (0..100). Scanner opens on OB score instead of
+    # waiting for K/candle confirmation.
+    SCALP_V3_OB_REQUIRED: bool = True            # if True, orderbook signal is required (no pure-divergence opens)
+    SCALP_V3_OB_MIN_SCORE: float = 45.0          # min ob_long_score or ob_short_score to consider entry
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

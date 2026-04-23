@@ -1,27 +1,48 @@
 """
-ez_orderbook.py — Live L2 orderbook feature service (Binance futures).
+ez_orderbook.py — DEEP L2 orderbook service (Binance futures).
 
-Subscribes to @depth20@100ms for the union of tradeable symbols across all
-crypto accounts (inf/ang/flz/men/fin). Maintains in-memory top-20 books.
-Computes features every 250ms and writes to Redis `orderbook:<SYM>` (ex=10s):
+Maintains full order books via REST snapshot + `@depth@100ms` diff stream per
+symbol. Buckets volumes at 0.5% steps from mid out to ±10%. Writes per-symbol
+features to Redis `orderbook:<SYM>` every 250 ms:
 
-  ob_ts_ms            event time (ms)
-  ob_mid              (best_bid + best_ask) / 2
-  ob_microprice       size-weighted equilibrium
-  ob_spread_bps       (best_ask - best_bid) / mid * 10000
-  ob_bid_ask_imb_5    sum(bid_qty[:5]) / (sum(bid_qty[:5]) + sum(ask_qty[:5]))   (0..1, >0.5 bid-heavy)
-  ob_bid_ask_imb_10   same for top 10
-  ob_bid_ask_imb_20   same for top 20
-  ob_top_bid_qty      qty at best bid
-  ob_top_ask_qty      qty at best ask
-  ob_ofi_1s           signed top-of-book size delta over last 1s
-  ob_bid_surge_60s    top_bid_qty / ema60s(top_bid_qty)
-  ob_ask_surge_60s    top_ask_qty / ema60s(top_ask_qty)
+  # Best levels / mid
+  ob_ts_ms          event time
+  ob_mid            (best_bid + best_ask) / 2
+  ob_microprice     size-weighted equilibrium at top-of-book
+  ob_spread_bps     (best_ask − best_bid) / mid × 10000
+  ob_bid_levels     # of bid price levels currently held
+  ob_ask_levels     # of ask price levels currently held
 
-Reloads symbol universe every 5 min (tradeable_keys.json). Reconnects with
-backoff on WS drop. Heartbeat to Redis `orderbook:_heartbeat` every 30s.
+  # Top-of-book + short-window imbalance
+  ob_bid_ask_imb_5  bid_notional[:5 lvls] / total   (0..1, >0.5 bid-heavy)
+  ob_bid_ask_imb_10 same top 10
+  ob_bid_ask_imb_20 same top 20
+  ob_top_bid_qty
+  ob_top_ask_qty
+  ob_ofi_1s         signed top-of-book size delta over last 1 s
 
-No live-trading side-effects. Readers opt-in by reading `orderbook:<SYM>`.
+  # Deep microstructure (±10% range, 0.5% buckets = 40 rows)
+  ob_imb_5pct         bid_notional / total inside ±5%
+  ob_imb_10pct        bid_notional / total inside ±10%
+  ob_bid_wall_pct     distance % to nearest bid bucket with >3× mean bid-bucket vol (support floor)
+  ob_bid_wall_size    notional in that wall
+  ob_ask_wall_pct     distance % to nearest ask bucket with >3× mean ask-bucket vol (resistance)
+  ob_ask_wall_size    notional in that wall
+  ob_bid_void_pct     distance % to nearest bid bucket with <0.2× mean within 5% (gap-down zone)
+  ob_ask_void_pct     distance % to nearest ask bucket with <0.2× mean within 5% (gap-up zone)
+  ob_bid_vol_buckets  list of 20 bid-side notional values (first 10% in 0.5% slices)
+  ob_ask_vol_buckets  list of 20 ask-side notional values
+
+  # Composite entry signals (0..100)
+  ob_long_score     = wall_below_close (30) + void_above_close (30) + top-imb_bid_lean (0..40)
+  ob_short_score    = wall_above_close (30) + void_below_close (30) + top-imb_ask_lean (0..40)
+
+Designed for SCALP_V3 scanner: high long_score / high short_score is the
+entry signal INSTEAD OF waiting for stoch K / candle confirmation.
+
+Runs standalone (no Redis rate-limit risk, websocket only after one-time
+snapshot fetch per symbol with 250 ms stagger). Reloads symbol universe
+every 5 min from tradeable_keys.json (crypto accounts union).
 """
 from __future__ import annotations
 
@@ -36,6 +57,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import aiohttp
 import orjson
 import redis.asyncio as aioredis
 import websockets
@@ -45,13 +67,17 @@ TRADEABLE_FILE = BASE / "tradeable_keys.json"
 CRYPTO_ACCOUNTS = ("inf", "ang", "flz", "men", "fin")
 
 WS_BASE = "wss://fstream.binance.com/stream"
-STREAM_SUFFIX = "@depth20@100ms"
+REST_BASE = "https://fapi.binance.com/fapi/v1/depth"
 WRITE_INTERVAL_SEC = 0.25
 HEARTBEAT_SEC = 30.0
 RELOAD_SEC = 300.0
-HISTORY_LEN = 100            # top-of-book snapshots per symbol (10s at 100ms)
-EMA_ALPHA = 1.0 / 600.0      # 60s half-life over 100ms updates
-MAX_SYMS_PER_WS = 200        # combined stream safe chunk size
+SNAPSHOT_LIMIT = 1000        # 20 weight per request
+SNAPSHOT_STAGGER_MS = 250    # between REST calls to avoid -1003
+BUCKET_PCT = 0.5             # 0.5% steps
+RANGE_PCT = 10.0             # ±10% from mid
+N_BUCKETS = int(RANGE_PCT / BUCKET_PCT)  # 20
+HISTORY_LEN = 100            # top-of-book snapshots for OFI
+EMA_ALPHA = 1.0 / 600.0      # ~60 s on 100 ms updates
 
 logger = logging.getLogger("ez_orderbook")
 _h = logging.StreamHandler(sys.stdout)
@@ -61,7 +87,6 @@ logger.setLevel(logging.INFO)
 
 
 def load_symbols() -> List[str]:
-    """Union of symbols across all crypto account keys in tradeable_keys.json."""
     try:
         with open(TRADEABLE_FILE) as f:
             keys = json.load(f)
@@ -82,55 +107,174 @@ def load_symbols() -> List[str]:
     return sorted(syms)
 
 
-class OrderbookTracker:
-    def __init__(self):
-        self.books: Dict[str, dict] = {}
-        self.tob_history: Dict[str, deque] = {}
-        self.ema_bid: Dict[str, float] = {}
-        self.ema_ask: Dict[str, float] = {}
+class DeepBook:
+    """Full L2 book for one symbol. Seeded via REST then maintained via diff stream."""
+    __slots__ = ("symbol", "bids", "asks", "last_update_id", "snapshot_applied",
+                 "buffered_updates", "tob_history", "ema_bid_qty", "ema_ask_qty",
+                 "last_event_ts_ms")
 
-    def update(self, sym: str, bids: List[Tuple[float, float]], asks: List[Tuple[float, float]], ts_ms: int):
-        self.books[sym] = {"bids": bids, "asks": asks, "ts_ms": ts_ms}
-        tb = bids[0][1] if bids else 0.0
-        ta = asks[0][1] if asks else 0.0
-        prev_b = self.ema_bid.get(sym, tb)
-        prev_a = self.ema_ask.get(sym, ta)
-        self.ema_bid[sym] = EMA_ALPHA * tb + (1.0 - EMA_ALPHA) * prev_b
-        self.ema_ask[sym] = EMA_ALPHA * ta + (1.0 - EMA_ALPHA) * prev_a
-        hist = self.tob_history.setdefault(sym, deque(maxlen=HISTORY_LEN))
-        hist.append((ts_ms,
-                     bids[0][0] if bids else 0.0, bids[0][1] if bids else 0.0,
-                     asks[0][0] if asks else 0.0, asks[0][1] if asks else 0.0))
+    def __init__(self, symbol: str):
+        self.symbol = symbol
+        self.bids: Dict[float, float] = {}
+        self.asks: Dict[float, float] = {}
+        self.last_update_id: int = 0
+        self.snapshot_applied: bool = False
+        self.buffered_updates: List[dict] = []
+        self.tob_history: deque = deque(maxlen=HISTORY_LEN)
+        self.ema_bid_qty: float = 0.0
+        self.ema_ask_qty: float = 0.0
+        self.last_event_ts_ms: int = 0
 
-    def compute(self, sym: str) -> Optional[dict]:
-        book = self.books.get(sym)
-        if not book:
-            return None
-        bids = book["bids"]; asks = book["asks"]
-        if not bids or not asks:
-            return None
-        top_bp, top_bq = bids[0]
-        top_ap, top_aq = asks[0]
-        if top_bp <= 0 or top_ap <= 0:
-            return None
-        mid = (top_bp + top_ap) / 2.0
-        denom = top_bq + top_aq
-        microprice = (top_bq * top_ap + top_aq * top_bp) / denom if denom > 0 else mid
-        spread_bps = (top_ap - top_bp) / mid * 10000.0
+    def apply_snapshot(self, data: dict):
+        self.last_update_id = int(data["lastUpdateId"])
+        self.bids = {float(p): float(q) for p, q in data.get("bids", []) if float(q) > 0}
+        self.asks = {float(p): float(q) for p, q in data.get("asks", []) if float(q) > 0}
+        # Replay buffered diffs that came in while snapshot was in flight
+        drained = 0
+        for u in self.buffered_updates:
+            if int(u.get("u", 0)) < self.last_update_id:
+                continue
+            self._apply_diff(u)
+            drained += 1
+        self.buffered_updates.clear()
+        self.snapshot_applied = True
+        logger.info(f"seeded {self.symbol}: {len(self.bids)} bids, {len(self.asks)} asks, drained {drained} buffered diffs")
 
-        def imb(n: int) -> float:
-            sb = sum(q for _, q in bids[:n])
-            sa = sum(q for _, q in asks[:n])
+    def apply_update(self, u: dict):
+        if not self.snapshot_applied:
+            self.buffered_updates.append(u)
+            if len(self.buffered_updates) > 1000:
+                self.buffered_updates = self.buffered_updates[-500:]
+            return
+        self._apply_diff(u)
+
+    def _apply_diff(self, u: dict):
+        # Standard Binance futures depth diff — {b: [[p,q]...], a: [...], U, u, E, T}
+        for p, q in u.get("b", []):
+            try:
+                p_f = float(p); q_f = float(q)
+            except (ValueError, TypeError):
+                continue
+            if q_f == 0:
+                self.bids.pop(p_f, None)
+            else:
+                self.bids[p_f] = q_f
+        for p, q in u.get("a", []):
+            try:
+                p_f = float(p); q_f = float(q)
+            except (ValueError, TypeError):
+                continue
+            if q_f == 0:
+                self.asks.pop(p_f, None)
+            else:
+                self.asks[p_f] = q_f
+        self.last_update_id = int(u.get("u", self.last_update_id))
+        self.last_event_ts_ms = int(u.get("E", u.get("T", 0)) or 0)
+        # Update top-of-book EMA and history for OFI
+        if self.bids and self.asks:
+            best_bid = max(self.bids.keys())
+            best_ask = min(self.asks.keys())
+            top_bid_q = self.bids.get(best_bid, 0.0)
+            top_ask_q = self.asks.get(best_ask, 0.0)
+            prev_b = self.ema_bid_qty or top_bid_q
+            prev_a = self.ema_ask_qty or top_ask_q
+            self.ema_bid_qty = EMA_ALPHA * top_bid_q + (1.0 - EMA_ALPHA) * prev_b
+            self.ema_ask_qty = EMA_ALPHA * top_ask_q + (1.0 - EMA_ALPHA) * prev_a
+            self.tob_history.append((self.last_event_ts_ms, best_bid, top_bid_q, best_ask, top_ask_q))
+
+    def compute_features(self) -> Optional[dict]:
+        if not self.snapshot_applied or not self.bids or not self.asks:
+            return None
+        best_bid = max(self.bids.keys())
+        best_ask = min(self.asks.keys())
+        if best_bid <= 0 or best_ask <= 0 or best_ask <= best_bid:
+            return None
+        mid = (best_bid + best_ask) / 2.0
+        spread_bps = (best_ask - best_bid) / mid * 10000.0
+        top_bid_q = self.bids[best_bid]
+        top_ask_q = self.asks[best_ask]
+        denom = top_bid_q + top_ask_q
+        microprice = (top_bid_q * best_ask + top_ask_q * best_bid) / denom if denom > 0 else mid
+
+        # Sort level lists ONCE for bucketing + top-N imbalance
+        bid_items = sorted(self.bids.items(), key=lambda x: -x[0])   # highest price first
+        ask_items = sorted(self.asks.items(), key=lambda x: x[0])    # lowest price first
+
+        # Top-N notional imbalance
+        def top_imb(n: int) -> float:
+            sb = sum(p * q for p, q in bid_items[:n])
+            sa = sum(p * q for p, q in ask_items[:n])
             return sb / (sb + sa) if (sb + sa) > 0 else 0.5
 
+        # Bucket NOTIONAL (qty × price) by distance from mid
+        bid_vol = [0.0] * N_BUCKETS
+        ask_vol = [0.0] * N_BUCKETS
+        for p, q in bid_items:
+            d = (mid - p) / mid * 100.0
+            if d <= 0 or d > RANGE_PCT:
+                if d > RANGE_PCT: break  # sorted descending, further prices only get worse
+                continue
+            idx = min(int(d / BUCKET_PCT), N_BUCKETS - 1)
+            bid_vol[idx] += q * p
+        for p, q in ask_items:
+            d = (p - mid) / mid * 100.0
+            if d <= 0 or d > RANGE_PCT:
+                if d > RANGE_PCT: break
+                continue
+            idx = min(int(d / BUCKET_PCT), N_BUCKETS - 1)
+            ask_vol[idx] += q * p
+
+        # Wall/void detection: EXCLUDE bucket 0 (top-of-book concentration naturally
+        # dominates; counts as a wall for everything if included). Use mean of the
+        # *rest* of the buckets as the baseline. Threshold 4× (was 3×) for stronger
+        # walls. Skip first bucket when scanning too.
+        bid_rest = bid_vol[1:]
+        ask_rest = ask_vol[1:]
+        mean_bid_rest = (sum(bid_rest) / len(bid_rest)) if bid_rest else 0.0
+        mean_ask_rest = (sum(ask_rest) / len(ask_rest)) if ask_rest else 0.0
+
+        bid_wall_pct = None; bid_wall_size = 0.0
+        for i in range(1, N_BUCKETS):
+            v = bid_vol[i]
+            if v > 4.0 * mean_bid_rest and v > 0:
+                bid_wall_pct = (i + 0.5) * BUCKET_PCT
+                bid_wall_size = v
+                break
+        ask_wall_pct = None; ask_wall_size = 0.0
+        for i in range(1, N_BUCKETS):
+            v = ask_vol[i]
+            if v > 4.0 * mean_ask_rest and v > 0:
+                ask_wall_pct = (i + 0.5) * BUCKET_PCT
+                ask_wall_size = v
+                break
+
+        # Voids (<0.15× mean_rest) within buckets 1..10 (0.5% to 5%). Skip first bucket.
+        n_short = int(5.0 / BUCKET_PCT)
+        bid_void_pct = None
+        for i in range(1, n_short):
+            if bid_vol[i] < 0.15 * mean_bid_rest and mean_bid_rest > 0:
+                bid_void_pct = (i + 0.5) * BUCKET_PCT
+                break
+        ask_void_pct = None
+        for i in range(1, n_short):
+            if ask_vol[i] < 0.15 * mean_ask_rest and mean_ask_rest > 0:
+                ask_void_pct = (i + 0.5) * BUCKET_PCT
+                break
+
+        # ±5% and ±10% composite imbalances (notional based)
+        bid_sum_5 = sum(bid_vol[:n_short]); ask_sum_5 = sum(ask_vol[:n_short])
+        bid_sum_10 = sum(bid_vol); ask_sum_10 = sum(ask_vol)
+        imb_5pct = bid_sum_5 / (bid_sum_5 + ask_sum_5) if (bid_sum_5 + ask_sum_5) > 0 else 0.5
+        imb_10pct = bid_sum_10 / (bid_sum_10 + ask_sum_10) if (bid_sum_10 + ask_sum_10) > 0 else 0.5
+
+        # OFI over last 1 s from TOB history
         ofi_1s = 0.0
-        hist = self.tob_history.get(sym)
-        if hist and len(hist) >= 2:
-            cutoff = book["ts_ms"] - 1000
-            slice_ = [h for h in hist if h[0] >= cutoff]
-            for i in range(1, len(slice_)):
-                _, bp0, bq0, ap0, aq0 = slice_[i - 1]
-                _, bp1, bq1, ap1, aq1 = slice_[i]
+        if len(self.tob_history) >= 2:
+            cutoff = self.last_event_ts_ms - 1000
+            recent = [h for h in self.tob_history if h[0] >= cutoff]
+            for i in range(1, len(recent)):
+                _, bp0, bq0, ap0, aq0 = recent[i - 1]
+                _, bp1, bq1, ap1, aq1 = recent[i]
                 if bp1 > bp0: dbid = bq1
                 elif bp1 < bp0: dbid = -bq0
                 else: dbid = bq1 - bq0
@@ -139,51 +283,116 @@ class OrderbookTracker:
                 else: dask = aq1 - aq0
                 ofi_1s += dbid - dask
 
-        ema_b = self.ema_bid.get(sym, top_bq) or top_bq or 1e-9
-        ema_a = self.ema_ask.get(sym, top_aq) or top_aq or 1e-9
+        bid_surge = top_bid_q / self.ema_bid_qty if self.ema_bid_qty > 0 else 1.0
+        ask_surge = top_ask_q / self.ema_ask_qty if self.ema_ask_qty > 0 else 1.0
+
+        # Composite entry signals (each 0..100)
+        long_score = 0.0; short_score = 0.0
+        # A close bid-wall means price has a floor here — good for LONG
+        if bid_wall_pct is not None and bid_wall_pct <= 2.0:
+            long_score += max(0, 30.0 * (2.0 - bid_wall_pct) / 2.0 + 15)
+        # A close ask-void means thin liquidity above — price likely to jet through
+        if ask_void_pct is not None and ask_void_pct <= 2.0:
+            long_score += max(0, 30.0 * (2.0 - ask_void_pct) / 2.0 + 15)
+        # Bid-heavy top-of-book adds 0..40
+        imb5 = top_imb(5)
+        if imb5 > 0.55:
+            long_score += min(40.0, (imb5 - 0.5) * 200.0)
+        # Symmetric SHORT
+        if ask_wall_pct is not None and ask_wall_pct <= 2.0:
+            short_score += max(0, 30.0 * (2.0 - ask_wall_pct) / 2.0 + 15)
+        if bid_void_pct is not None and bid_void_pct <= 2.0:
+            short_score += max(0, 30.0 * (2.0 - bid_void_pct) / 2.0 + 15)
+        if imb5 < 0.45:
+            short_score += min(40.0, (0.5 - imb5) * 200.0)
+
         return {
-            "ob_ts_ms": book["ts_ms"],
+            "ob_ts_ms": self.last_event_ts_ms,
             "ob_mid": round(mid, 8),
             "ob_microprice": round(microprice, 8),
             "ob_spread_bps": round(spread_bps, 4),
-            "ob_bid_ask_imb_5": round(imb(5), 4),
-            "ob_bid_ask_imb_10": round(imb(10), 4),
-            "ob_bid_ask_imb_20": round(imb(20), 4),
-            "ob_top_bid_qty": round(top_bq, 6),
-            "ob_top_ask_qty": round(top_aq, 6),
+            "ob_bid_levels": len(self.bids),
+            "ob_ask_levels": len(self.asks),
+            "ob_bid_ask_imb_5": round(top_imb(5), 4),
+            "ob_bid_ask_imb_10": round(top_imb(10), 4),
+            "ob_bid_ask_imb_20": round(top_imb(20), 4),
+            "ob_top_bid_qty": round(top_bid_q, 6),
+            "ob_top_ask_qty": round(top_ask_q, 6),
             "ob_ofi_1s": round(ofi_1s, 4),
-            "ob_bid_surge_60s": round(top_bq / ema_b, 3),
-            "ob_ask_surge_60s": round(top_aq / ema_a, 3),
+            "ob_bid_surge_60s": round(bid_surge, 3),
+            "ob_ask_surge_60s": round(ask_surge, 3),
+            "ob_imb_5pct": round(imb_5pct, 4),
+            "ob_imb_10pct": round(imb_10pct, 4),
+            "ob_bid_wall_pct": None if bid_wall_pct is None else round(bid_wall_pct, 2),
+            "ob_bid_wall_size": round(bid_wall_size, 2),
+            "ob_ask_wall_pct": None if ask_wall_pct is None else round(ask_wall_pct, 2),
+            "ob_ask_wall_size": round(ask_wall_size, 2),
+            "ob_bid_void_pct": None if bid_void_pct is None else round(bid_void_pct, 2),
+            "ob_ask_void_pct": None if ask_void_pct is None else round(ask_void_pct, 2),
+            "ob_bid_vol_buckets": [round(v, 2) for v in bid_vol],
+            "ob_ask_vol_buckets": [round(v, 2) for v in ask_vol],
+            "ob_long_score": round(long_score, 2),
+            "ob_short_score": round(short_score, 2),
         }
 
 
-async def stream_chunk(symbols: List[str], tracker: OrderbookTracker, stop: asyncio.Event):
-    streams = "/".join(f"{s.lower()}{STREAM_SUFFIX}" for s in symbols)
+async def fetch_snapshot(session: aiohttp.ClientSession, symbol: str, limit: int = SNAPSHOT_LIMIT) -> Optional[dict]:
+    try:
+        async with session.get(REST_BASE, params={"symbol": symbol, "limit": limit}, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status != 200:
+                body = await resp.text()
+                logger.warning(f"snapshot {symbol} HTTP {resp.status}: {body[:200]}")
+                return None
+            return await resp.json()
+    except Exception as e:
+        logger.warning(f"snapshot {symbol} error: {type(e).__name__} {e}")
+        return None
+
+
+async def seed_book(session: aiohttp.ClientSession, book: DeepBook):
+    # Retry with exponential backoff if IP-banned or rate-limited
+    backoff = 5.0
+    for attempt in range(6):
+        snap = await fetch_snapshot(session, book.symbol, SNAPSHOT_LIMIT)
+        if snap:
+            book.apply_snapshot(snap)
+            return True
+        await asyncio.sleep(backoff)
+        backoff = min(120.0, backoff * 2.0)
+    logger.warning(f"seed_book gave up on {book.symbol}")
+    return False
+
+
+async def stream_chunk(symbols: List[str], books: Dict[str, DeepBook], stop: asyncio.Event):
+    """One websocket connection carrying <symbol>@depth@100ms diff streams."""
+    streams = "/".join(f"{s.lower()}@depth@100ms" for s in symbols)
     url = f"{WS_BASE}?streams={streams}"
     backoff = 1.0
     while not stop.is_set():
         try:
-            async with websockets.connect(url, ping_interval=20, ping_timeout=10, max_size=10_000_000) as ws:
+            async with websockets.connect(url, ping_interval=20, ping_timeout=10, max_size=50_000_000) as ws:
                 logger.info(f"WS connected chunk={len(symbols)}syms first={symbols[0]} last={symbols[-1]}")
                 backoff = 1.0
                 while not stop.is_set():
                     try:
-                        raw = await asyncio.wait_for(ws.recv(), timeout=30.0)
+                        raw = await asyncio.wait_for(ws.recv(), timeout=45.0)
                     except asyncio.TimeoutError:
-                        logger.warning(f"WS idle 30s chunk={symbols[0]}.. reconnecting")
+                        logger.warning(f"WS idle 45s first={symbols[0]} — reconnecting")
                         break
-                    msg = orjson.loads(raw)
-                    data = msg.get("data", {})
+                    try:
+                        msg = orjson.loads(raw)
+                    except Exception:
+                        continue
+                    data = msg.get("data")
+                    if not data:
+                        continue
                     sym = data.get("s")
                     if not sym:
                         continue
-                    try:
-                        bids = [(float(p), float(q)) for p, q in data.get("b", [])]
-                        asks = [(float(p), float(q)) for p, q in data.get("a", [])]
-                    except Exception:
+                    book = books.get(sym)
+                    if book is None:
                         continue
-                    ts_ms = int(data.get("E") or data.get("T") or (time.time() * 1000))
-                    tracker.update(sym, bids, asks, ts_ms)
+                    book.apply_update(data)
         except Exception as e:
             if stop.is_set():
                 break
@@ -195,30 +404,39 @@ async def stream_chunk(symbols: List[str], tracker: OrderbookTracker, stop: asyn
             backoff = min(60.0, backoff * 2.0)
 
 
-async def write_loop(tracker: OrderbookTracker, redis: aioredis.Redis, get_symbols, stop: asyncio.Event):
+async def write_loop(books: Dict[str, DeepBook], redis: aioredis.Redis, get_symbols, stop: asyncio.Event):
     last_heartbeat = 0.0
     updates_written = 0
     cycle = 0
     while not stop.is_set():
         t0 = time.time()
         syms = get_symbols()
+        wrote_this_cycle = 0
         for sym in syms:
-            feat = tracker.compute(sym)
+            book = books.get(sym)
+            if book is None:
+                continue
+            feat = book.compute_features()
             if feat is None:
                 continue
             try:
                 await redis.set(f"orderbook:{sym}", orjson.dumps(feat), ex=10)
                 updates_written += 1
+                wrote_this_cycle += 1
             except Exception as e:
-                logger.debug(f"redis write failed {sym}: {e}")
+                logger.debug(f"redis write {sym}: {e}")
         cycle += 1
         if t0 - last_heartbeat >= HEARTBEAT_SEC:
-            active = sum(1 for s in syms if s in tracker.books)
+            seeded = sum(1 for s in syms if (books.get(s) and books[s].snapshot_applied))
             try:
-                await redis.set("orderbook:_heartbeat", orjson.dumps({"ts": int(t0), "active_syms": active, "tracked_syms": len(syms), "writes_total": updates_written, "cycles": cycle}), ex=120)
+                await redis.set("orderbook:_heartbeat", orjson.dumps({
+                    "ts": int(t0), "seeded": seeded, "tracked": len(syms),
+                    "writes_total": updates_written, "cycles": cycle,
+                    "last_cycle_wrote": wrote_this_cycle,
+                }), ex=120)
             except Exception:
                 pass
-            logger.info(f"heartbeat cycles={cycle} active={active}/{len(syms)} writes={updates_written}")
+            logger.info(f"heartbeat cycles={cycle} seeded={seeded}/{len(syms)} writes_cum={updates_written} last_cycle={wrote_this_cycle}")
             last_heartbeat = t0
         elapsed = time.time() - t0
         sleep = max(0.05, WRITE_INTERVAL_SEC - elapsed)
@@ -228,7 +446,7 @@ async def write_loop(tracker: OrderbookTracker, redis: aioredis.Redis, get_symbo
             pass
 
 
-async def symbol_reload_loop(get_active: callable, on_change: callable, stop: asyncio.Event):
+async def symbol_reload_loop(get_active, on_change, stop: asyncio.Event):
     while not stop.is_set():
         try:
             await asyncio.wait_for(stop.wait(), timeout=RELOAD_SEC)
@@ -238,18 +456,18 @@ async def symbol_reload_loop(get_active: callable, on_change: callable, stop: as
             if set(new_syms) != set(cur):
                 added = set(new_syms) - set(cur)
                 removed = set(cur) - set(new_syms)
-                logger.info(f"universe reload: {len(new_syms)} (+{len(added)} -{len(removed)}) added={sorted(added)[:10]}")
-                on_change(new_syms)
+                logger.info(f"universe reload: {len(new_syms)} (+{len(added)} -{len(removed)})")
+                await on_change(new_syms)
 
 
 async def main():
     syms = load_symbols()
     if not syms:
-        logger.error("no symbols from tradeable_keys.json for crypto accounts — exiting")
+        logger.error("no symbols from tradeable_keys.json — exiting")
         return
-    logger.info(f"starting ez_orderbook: universe={len(syms)} first={syms[0]} last={syms[-1]}")
+    logger.info(f"starting ez_orderbook DEEP: universe={len(syms)} first={syms[0]} last={syms[-1]}")
 
-    tracker = OrderbookTracker()
+    books: Dict[str, DeepBook] = {s: DeepBook(s) for s in syms}
     redis = aioredis.from_url("redis://localhost:6379/0", decode_responses=False)
     await redis.ping()
 
@@ -265,24 +483,48 @@ async def main():
 
     active_syms: List[str] = list(syms)
     ws_tasks: List[asyncio.Task] = []
+    http_session = aiohttp.ClientSession()
 
-    def spawn_ws():
+    MAX_SYMS_PER_WS = 100    # be conservative — diff stream is chattier than partial
+
+    def spawn_ws_for(symbols: List[str]):
         for t in ws_tasks:
             t.cancel()
         ws_tasks.clear()
-        chunks = [active_syms[i:i + MAX_SYMS_PER_WS] for i in range(0, len(active_syms), MAX_SYMS_PER_WS)]
+        chunks = [symbols[i:i + MAX_SYMS_PER_WS] for i in range(0, len(symbols), MAX_SYMS_PER_WS)]
         for chunk in chunks:
-            ws_tasks.append(asyncio.create_task(stream_chunk(chunk, tracker, stop)))
-        logger.info(f"spawned {len(ws_tasks)} ws tasks ({len(active_syms)} syms)")
+            ws_tasks.append(asyncio.create_task(stream_chunk(chunk, books, stop)))
+        logger.info(f"spawned {len(ws_tasks)} ws tasks over {len(symbols)} syms")
 
-    def on_universe_change(new_syms: List[str]):
+    async def seed_all(symbols: List[str]):
+        # Stagger snapshot REST calls to avoid weight burst (-1003)
+        for i, s in enumerate(symbols):
+            if stop.is_set(): return
+            if books[s].snapshot_applied: continue
+            await seed_book(http_session, books[s])
+            await asyncio.sleep(SNAPSHOT_STAGGER_MS / 1000.0)
+        done = sum(1 for s in symbols if books[s].snapshot_applied)
+        logger.info(f"initial snapshot seeding complete: {done}/{len(symbols)} seeded")
+
+    async def on_universe_change(new_syms: List[str]):
         nonlocal active_syms
+        # Create books for new symbols; keep old ones (maybe still in flight)
+        for s in new_syms:
+            if s not in books:
+                books[s] = DeepBook(s)
         active_syms = list(new_syms)
-        spawn_ws()
+        spawn_ws_for(active_syms)
+        # Seed any new ones in background
+        new_only = [s for s in new_syms if not books[s].snapshot_applied]
+        if new_only:
+            asyncio.create_task(seed_all(new_only))
 
-    spawn_ws()
+    # Start WS first so diffs are buffered while snapshots fetch
+    spawn_ws_for(active_syms)
+    # Seed all symbols via REST (takes ~len×250ms = ~25-30s for 100 syms)
+    asyncio.create_task(seed_all(active_syms))
 
-    writer = asyncio.create_task(write_loop(tracker, redis, lambda: list(active_syms), stop))
+    writer = asyncio.create_task(write_loop(books, redis, lambda: list(active_syms), stop))
     reloader = asyncio.create_task(symbol_reload_loop(lambda: list(active_syms), on_universe_change, stop))
 
     try:
@@ -293,6 +535,10 @@ async def main():
         for t in ws_tasks:
             t.cancel()
         await asyncio.gather(*ws_tasks, writer, reloader, return_exceptions=True)
+        try:
+            await http_session.close()
+        except Exception:
+            pass
         try:
             await redis.close()
         except Exception:

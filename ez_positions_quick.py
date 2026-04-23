@@ -15246,29 +15246,52 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     top_n = int(getattr(config, 'SCALP_V3_SCAN_TOP_N', 5))
     min_div = float(getattr(config, 'SCALP_V3_SCAN_MIN_DIVERGENCE', 0.3))
     max_conc = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
-    # 2026-04-23 evening: scanner iterates ALL symbols in snapshot, NOT just tradeable_keys.
-    # Rationale: tradeable_keys gets rewritten by ez_rankings every few seconds and may omit
-    # user's high-conviction picks (THETA, ZEC, COMP etc). Scanner needs to trade any symbol
-    # that shows strong divergence regardless of ez_rankings state.
+    ob_min_score = float(getattr(config, 'SCALP_V3_OB_MIN_SCORE', 45.0))
+    ob_required = bool(getattr(config, 'SCALP_V3_OB_REQUIRED', True))
+    # 2026-04-23 evening rewrite: rank by ORDERBOOK SIGNAL (wall/void/imb) primarily,
+    # divergence as secondary. Scanner iterates ALL symbols in snapshot. Orderbook
+    # features come from Redis `orderbook:<SYM>` (populated by ez_orderbook.py).
+    try:
+        import redis as _redis_sync
+        _r = _redis_sync.Redis(host='localhost', port=6379, decode_responses=True)
+    except Exception:
+        _r = None
     candidates = []
     for sym, data in snapshot.items():
         if not isinstance(data, dict): continue
-        loc_raw = data.get('0market_sentiment_local')
-        glob_raw = data.get('0market_sentiment_score')
-        if loc_raw is None or glob_raw is None: continue
-        loc = safe_fetch_float(loc_raw, 0.0)
-        glob = safe_fetch_float(glob_raw, 0.0)
-        vel = safe_fetch_float(data.get('velocity'), 0.0)
-        div = loc - glob
-        if abs(div) < min_div: continue
-        # Skip obvious non-tradeable (stablecoins, dead coins, zero price)
         px = safe_fetch_float(data.get('current_price'), 0.0)
         if px <= 0: continue
-        if 'USDC' in sym[-4:] or 'USDT' in sym[-4:] or 'USD' in sym[-3:]:
-            pass  # futures pair
-        candidates.append((sym, div, vel))
-    longs = sorted([c for c in candidates if c[1] > 0], key=lambda x: x[1], reverse=True)
-    shorts = sorted([c for c in candidates if c[1] < 0], key=lambda x: x[1])
+        # Sentiment divergence (secondary signal, for filtering direction)
+        loc_raw = data.get('0market_sentiment_local')
+        glob_raw = data.get('0market_sentiment_score')
+        div = 0.0
+        if loc_raw is not None and glob_raw is not None:
+            div = safe_fetch_float(loc_raw, 0.0) - safe_fetch_float(glob_raw, 0.0)
+        vel = safe_fetch_float(data.get('velocity'), 0.0)
+        # Orderbook signal (primary)
+        ob_long = 0.0; ob_short = 0.0
+        if _r is not None:
+            try:
+                raw = _r.get(f"orderbook:{sym}")
+                if raw:
+                    ob = json.loads(raw) if isinstance(raw, str) else orjson.loads(raw)
+                    ob_long = float(ob.get('ob_long_score', 0) or 0)
+                    ob_short = float(ob.get('ob_short_score', 0) or 0)
+            except Exception:
+                pass
+        # Keep a candidate only if it has a meaningful signal on EITHER direction
+        if ob_long < ob_min_score and ob_short < ob_min_score and abs(div) < min_div:
+            continue
+        candidates.append((sym, div, vel, ob_long, ob_short))
+    # Rank LONGS by ob_long_score (primary), with divergence tiebreak; SHORTS by ob_short
+    longs = sorted(
+        [c for c in candidates if c[3] >= ob_min_score or (not ob_required and c[1] > 0)],
+        key=lambda x: (x[3], x[1]), reverse=True
+    )
+    shorts = sorted(
+        [c for c in candidates if c[4] >= ob_min_score or (not ob_required and c[1] < 0)],
+        key=lambda x: (x[4], -x[1]), reverse=True
+    )
     by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
     active = sum(1 for pk, p in by_acct.items()
                  if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
@@ -15277,12 +15300,15 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         return len(longs) + len(shorts), 0
     slots = max_conc - active
     fires = 0
-    for sym, div, vel in (longs[:top_n] + shorts[:top_n]):
+    for sym, div, vel, ob_long, ob_short in (longs[:top_n] + shorts[:top_n]):
         if fires >= slots: break
+        # Determine direction: orderbook score wins; divergence only when OB tied
+        side = 'LONG' if ob_long >= ob_short else 'SHORT'
         try:
             opened = await _scalp_v3_attempt_open(sym, account_key, trade_manager,
                                                    tracker_manager, data_manager,
-                                                   hedge_engine, div, vel)
+                                                   hedge_engine, div, vel,
+                                                   ob_long=ob_long, ob_short=ob_short, forced_side=side)
             if opened:
                 fires += 1
         except Exception as e:
@@ -15294,7 +15320,9 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
                                    tracker_manager: "TrackerManager",
                                    data_manager: "FastDataManager",
                                    hedge_engine: "HedgeEngine",
-                                   div: float, vel: float) -> bool:
+                                   div: float, vel: float,
+                                   ob_long: float = 0.0, ob_short: float = 0.0,
+                                   forced_side: Optional[str] = None) -> bool:
     _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
     if not ind: return False
     price = safe_fetch_float(ind.get('current_price', 0), 0)
@@ -15302,29 +15330,33 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
     # from scanner caused Binance -1003 IP-ban.
     if price <= 0 or not fresh:
         return False
-    # 2026-04-23: SCAN_BYPASS_GATES (default True) — divergence-ranking IS the direction
-    # signal. The old check_scalp_v3_live_entry K-gate + 3M HH_HL confirmation filtered
-    # 100% of user's high-conviction picks (THETA div+1.66, ZEC +2.5, MOVR +7.6 all blocked
-    # by K thresholds). Now the scanner opens directly on divergence sign.
+    # 2026-04-23 orderbook rewrite: scanner now primarily uses orderbook signals
+    # (wall/void/imb) from ez_orderbook.py. Side comes from forced_side (set by
+    # scanner based on max(ob_long, ob_short)). Divergence used only when OB tied.
+    # No more K-gate / 3M_HH_HL confirmation — orderbook IS the trigger.
     side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'BOTH')).upper()
-    if getattr(config, 'SCALP_V3_SCAN_BYPASS_GATES', True):
+    if forced_side in ('LONG', 'SHORT'):
+        side = forced_side
+    elif getattr(config, 'SCALP_V3_SCAN_BYPASS_GATES', True):
         side = 'LONG' if div > 0 else 'SHORT'
-        if side == 'LONG' and side_mode not in ('LONG_ONLY', 'BOTH'): return False
-        if side == 'SHORT' and side_mode not in ('SHORT_ONLY', 'BOTH'): return False
-        decision = {'side': side, 'reason': f"SCALP_V3_OPEN_{side}_DIV_div{div:+.2f}_vel{vel:+.2f}"}
     else:
         from scalp_v3_live import check_scalp_v3_live_entry
         decision = check_scalp_v3_live_entry(sym, None, ind, price, None, account_key, config)
-        if not decision:
-            return False
+        if not decision: return False
         side = decision.get('side')
-        if side not in ('LONG', 'SHORT'):
-            return False
+        if side not in ('LONG', 'SHORT'): return False
         if side == 'LONG' and div <= 0: return False
         if side == 'SHORT' and div >= 0: return False
+    if side == 'LONG' and side_mode not in ('LONG_ONLY', 'BOTH'): return False
+    if side == 'SHORT' and side_mode not in ('SHORT_ONLY', 'BOTH'): return False
+    # Build reason string with orderbook + divergence evidence
+    decision = {
+        'side': side,
+        'reason': f"SCALP_V3_OPEN_{side}_OB_l{ob_long:.0f}_s{ob_short:.0f}_div{div:+.2f}_vel{vel:+.2f}"
+    }
     real_key = f"{account_key}:{sym}_{side}"
-    if real_key not in (tracker_manager.tradeable_keys or set()):
-        return False
+    # Scanner bypasses tradeable_keys check — execute_trade_wrapper has SCALP_V3 bypass downstream
+    # (so we can open any symbol the orderbook says is about to move)
     by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
     real_pos = by_acct.get(real_key)
     real_amt = abs(safe_fetch_float(getattr(real_pos, 'positionAmt', 0), 0)) if real_pos else 0
