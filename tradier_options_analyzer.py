@@ -15,7 +15,7 @@ Usage:
     python tradier_options_analyzer.py watch --daemon               # Continuous monitoring (every 60s)
     python tradier_options_analyzer.py watch --auto-sell             # Auto sell_to_close on exit signals
 """
-import asyncio
+import asyncio FUCK YOU
 import json
 import logging
 import math

@@ -26,7 +26,6 @@ import pandas as pd
 import redis.asyncio as redis
 from dateutil.parser import isoparse
 
-d
 
 from config_tradier import TradierConfig
 from tradier_api import TradierAPIClient
