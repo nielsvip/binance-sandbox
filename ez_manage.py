@@ -109,7 +109,7 @@ def check_reentry_delta_tolerant(indicators: dict, is_long: bool, trade_manager=
         if _htf in ('4h', '4h_D'):
             _wt1_4h = _sf(indicators.get('wt1_4h', 0), 0)
             _wt2_4h = _sf(indicators.get('wt2_4h', 0), 0)
-            _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt_vel_4h < -2.0)
+            _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
             if not _4h_ok:
                 return False, f"DELTA_REENTRY_BLOCKED_4h_against_wt1={_wt1_4h:.1f}_wt2={_wt2_4h:.1f}"
         if _htf == '4h_D':
@@ -11152,7 +11152,7 @@ class MultiAccountTradeManager:
                     _wt1_D = _sf(i.get("wt1_D", 0), 0)
                     _wt2_D = _sf(i.get("wt2_D", 0), 0)
                     if _htf_gate in ("4h", "4h_D", "4h_D_strict"):
-                        _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt_vel_4h < -2.0)
+                        _4h_ok = (_wt1_4h > _wt2_4h) if is_long else (_wt1_4h < _wt2_4h)
                         if not _4h_ok:
                             return f"{position_key}_BLOCKED_DELTA_HTF_4h_AGAINST"
                     if _htf_gate in ("4h_D", "4h_D_strict"):
@@ -18016,7 +18016,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0.0); _wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0.0)
             _wt1_15m_prev = safe_fetch_float(i.get('wt1_15m_prev', 0), 0.0); _wt2_15m_prev = safe_fetch_float(i.get('wt2_15m_prev', 0), 0.0)
             _wt15m_just_crossed = (is_long and wt1_15m > wt2_15m and _wt1_15m_prev <= _wt2_15m_prev) or ((not is_long) and wt1_15m < wt2_15m and _wt1_15m_prev >= _wt2_15m_prev)
-            _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or ((not is_long) and (_wt1_1h < _wt2_1h or _wt_vel_4h < -2.0))
+            _htf_fav = (is_long and (_wt1_1h > _wt2_1h or _wt1_4h > _wt2_4h)) or ((not is_long) and (_wt1_1h < _wt2_1h or _wt1_4h < _wt2_4h))
             _htf_required = bool(getattr(config, 'REENTRY_WT15M_HTF_FAVOR_REQUIRED', True))
             if _wt15m_just_crossed and (_htf_fav or not _htf_required):
                 _wt_re_delta_ok, _wt_re_delta_reason = check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
@@ -23444,6 +23444,9 @@ async def main():
                     background_tasks.append(asyncio.create_task(_qm.quick_scalp_monitor_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
                     background_tasks.append(asyncio.create_task(_qm.sla_miss_enforcer_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
                     background_tasks.append(asyncio.create_task(_qm.position_watchdog_loop(tracker_manager, trade_manager, [_ak], quick_stop_event, redis_manager, _order_q, data_manager, hedge_engine)))
+                    # SCALP_V3 dedicated scan loop — sentiment-divergence-ranked entries (2026-04-23)
+                    if _ak in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+                        background_tasks.append(asyncio.create_task(_qm.scalp_v3_scan_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
                 # dc_breakout_hedge_manager KILLED 2026-03-30: Part of the 15,378 rogue hedge cascade. Hedges only via HEDGE_MODE in ez_positions_quick.
                 # OBLIGATORY_HEDGE_LOOP KILLED 2026-03-30: Second instance of the same cascade loop. DEAD.
                 logger.info(f"✅ [QUICK_EMBED] All quick monitor loops + DC hedge + OBLIGATORY HEDGE started INSIDE ez_manage ({len(_allowed)} accounts)")

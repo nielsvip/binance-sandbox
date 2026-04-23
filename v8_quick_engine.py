@@ -188,6 +188,7 @@ class QuickConfig:
     AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
     AUGMENT_WT_D_REQUIRE_HIGHER_WT: bool = False   # bounce wt1_D > prev bounce level (sweep showed False wins)
     AUGMENT_WT_D_REQUIRE_HIGHER_PRICE: bool = False  # sweep showed True never fires — price still below entry when wt_D bounces
+    AUGMENT_WT_D_CONTINUE_EXIT_ENABLED: bool = False  # NOLOSS bypass: exit full pos if price continues below aug entry after D-bounce
     # wt_4h bounce augment — fires ~6x more often than wt_D; independent _aug_4h_done flag allows both to fire once each
     AUGMENT_WT_4H_BOUNCE_ENABLED: bool = False
     AUGMENT_WT_4H_MULTIPLIER: float = 2.0
@@ -2155,6 +2156,7 @@ def simulate(stores, cfg, capital=10000.0):
         _aug_mult = float(getattr(cfg, 'AUGMENT_WT_D_MULTIPLIER', 2.0))
         _aug_req_hwt = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_WT', True))
         _aug_req_hpx = bool(getattr(cfg, 'AUGMENT_WT_D_REQUIRE_HIGHER_PRICE', True))
+        _aug_ce_enabled = bool(getattr(cfg, 'AUGMENT_WT_D_CONTINUE_EXIT_ENABLED', False))
         _wt1_4H_aug = _safe(npz, 'wt1_4h', n)
         _aug_4h_enabled = bool(getattr(cfg, 'AUGMENT_WT_4H_BOUNCE_ENABLED', False))
         _aug_4h_mult = float(getattr(cfg, 'AUGMENT_WT_4H_MULTIPLIER', 2.0))
@@ -2633,7 +2635,8 @@ def simulate(stores, cfg, capital=10000.0):
                                         (is_long and _rz_nl_guard_low[i] > 0 and px < _rz_nl_guard_low[i]) or
                                         (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
                                     ))
-                            if not _rz_nl_bypass and not _nlb_5of5_hit:
+                            _aug_ce_bypass = (_aug_ce_enabled and _aug_done and _aug_px_last > 0 and ((is_long and px < _aug_px_last) or (not is_long and px > _aug_px_last)))
+                            if not _rz_nl_bypass and not _nlb_5of5_hit and not _aug_ce_bypass:
                                 if cfg.DC_RECOVERY_EXIT_ENABLED:
                                     if is_long:
                                         stranded = ep > dc_high_4h[i] and dc_high_4h[i] > 0

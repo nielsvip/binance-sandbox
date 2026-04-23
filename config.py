@@ -168,6 +168,13 @@ class Config:
     SCALP_V3_SHORT_REQUIRE_RECENT_DUMP: bool = True
     SCALP_V3_SHORT_RECENT_DUMP_PCT: float = 3.0
     SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN: int = 60
+    # Dedicated V3 scan loop (2026-04-23): ranks tradeable symbols by sentiment
+    # divergence vs global market score. Fastest risers → LONG, fastest fallers → SHORT.
+    SCALP_V3_SCAN_INTERVAL_SEC: float = 10.0
+    SCALP_V3_SCAN_TOP_N: int = 5                 # top N per side evaluated each cycle
+    SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # |local - global| must exceed this
+    SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
+    SCALP_V3_SIDE_MODE: str = "LONG_ONLY"        # LONG_ONLY | SHORT_ONLY | BOTH (200k sweep: LONG=+1833%, SHORT=-7019%)
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

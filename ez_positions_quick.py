@@ -10778,6 +10778,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                     or "BOTTOM_HUGE" in _reason_str
                     or "REJECTION_OLD_REDZONE" in _reason_str
                     or "TRUCK_LOAD" in _reason_str
+                    or _reason_str.startswith("SCALP_V3_OPEN_")  # V3 scalper: mean-rev bounce, HTF gate counterproductive
                 )
                 if _is_rz_entry:
                     logger.info(f"✅ [WT_GATE_BYPASS_RZ] {position_key}: RZ entry ({_reason_str[:40]}) — bypassing LTF gate (bounce logic already validated HTF+LTF velocity). {_gwt_d}")
@@ -12683,6 +12684,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
     if not position_keys:
         logger.info(f"🔍 {position_keys} no pos keys sent")
         return
+    if getattr(config, 'SCALP_V3_DIAG_LOG', True) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+        logger.info(f"[SCALP_V3_DIAG] check_entry_candidates_for_account({account_key}) called with {len(position_keys)} keys: first3={position_keys[:3]}")
     disk_exit_cache = _load_disk_exit_cache(account_key)
     sem = asyncio.Semaphore(50)
 
@@ -12785,15 +12788,29 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                             _dk = lambda k: _v3_ind.get(k, '?')
                                             logger.info(f"[SCALP_V3_DIAG] {position_key}: no_fire k1m={_dk('stoch_k_1m')} k3m={_dk('stoch_k_3m')} k15m={_dk('stoch_k_15m')} k1h={_dk('stoch_k_1h')} k4h={_dk('stoch_k_4h')} h3m={_dk('high_3m')} l3m={_dk('low_3m')} h3m_prev={_dk('high_3m_prev')} l3m_prev={_dk('low_3m_prev')}")
                                     else:
+                                        # FIX 2026-04-23: build real position_key from DECISION side,
+                                        # not the incoming position_key's suffix. Prior bug: LONG decision
+                                        # on _SHORT key → downstream gates blocked it.
+                                        _v3_real_side = _v3_decision.get('side', '')
+                                        if _v3_real_side not in ('LONG', 'SHORT'):
+                                            return
+                                        _v3_real_key = f"{account_key}:{_v3_sym}_{_v3_real_side}"
+                                        if _v3_real_key not in (tracker_manager.tradeable_keys or set()):
+                                            if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: decision={_v3_real_side} but {_v3_real_key} not tradeable")
+                                            return
+                                        _v3_by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
+                                        _v3_real_pos = _v3_by_acct.get(_v3_real_key)
+                                        _v3_real_amt = abs(safe_fetch_float(getattr(_v3_real_pos, 'positionAmt', 0), 0)) if _v3_real_pos else 0
+                                        if _v3_real_amt > 0: return
                                         _v3_cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
                                         _v3_min_qty = trade_manager.min_qty.get(_v3_sym, 0.0001) * 1.2
                                         _v3_cap_qty = _v3_cap_usd / _v3_px if _v3_px > 0 else 0
                                         _v3_qty = max(_v3_min_qty, _v3_cap_qty)
                                         if _v3_qty > 0:
-                                            logger.warning(f"⚡ [SCALP_V3_ENTRY] {position_key}: {_v3_decision['reason']} qty={_v3_qty:.6f} cap_usd=${_v3_cap_usd}")
+                                            logger.warning(f"⚡ [SCALP_V3_ENTRY] {_v3_real_key}: {_v3_decision['reason']} qty={_v3_qty:.6f} cap_usd=${_v3_cap_usd}")
                                             await execute_trade_wrapper(
                                                 trade_manager, tracker_manager, hedge_engine,
-                                                account_key, position_key, 0.0, 'OPEN',
+                                                account_key, _v3_real_key, 0.0, 'OPEN',
                                                 _v3_px, _v3_qty, _v3_decision['reason'],
                                                 is_hedge=False, data_manager=data_manager
                                             )
@@ -15166,6 +15183,146 @@ async def position_watchdog_loop(tracker_manager, trade_manager, account_keys: l
         except Exception as e:
             logger.error(f"[WATCHDOG] Critical Error: {e}", exc_info=True)
             await asyncio.sleep(10.0)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SCALP_V3 dedicated scan loop (2026-04-23): ranks tradeable inf symbols by
+# sentiment divergence vs global market score (from ez_indicators — updates
+# every ~5s via compute_all_indicators). Fastest risers vs index = LONG
+# candidates; fastest fallers = SHORT. Calls check_scalp_v3_live_entry with
+# the CORRECT position_key built from the decision side — avoids the
+# LONG-on-_SHORT-key mismatch that blocked the old hook path.
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asyncio.Event,
+                             redis_manager, tracker_manager: "TrackerManager", order_queue,
+                             data_manager: "FastDataManager", hedge_engine: "HedgeEngine"):
+    if account_key not in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+        return
+    interval = float(getattr(config, 'SCALP_V3_SCAN_INTERVAL_SEC', 10.0))
+    logger.info(f"⚡ [SCALP_V3_SCAN][{account_key}] STARTED interval={interval}s")
+    last_summary = time.time()
+    summary_stats = {"cycles": 0, "candidates": 0, "fires": 0}
+    while not stop_event.is_set():
+        try:
+            if getattr(config, 'SCALP_V3_ENABLED', False):
+                cands, fires = await _scalp_v3_scan_once(trade_manager, account_key,
+                                                         tracker_manager, data_manager,
+                                                         hedge_engine)
+                summary_stats["cycles"] += 1
+                summary_stats["candidates"] += cands
+                summary_stats["fires"] += fires
+            if time.time() - last_summary > 60:
+                logger.info(f"⚡ [SCALP_V3_SCAN][{account_key}] 60s: cycles={summary_stats['cycles']} cands={summary_stats['candidates']} fires={summary_stats['fires']}")
+                summary_stats = {"cycles": 0, "candidates": 0, "fires": 0}
+                last_summary = time.time()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] error: {e}")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass
+
+
+async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: "TrackerManager",
+                               data_manager: "FastDataManager", hedge_engine: "HedgeEngine"):
+    snapshot = data_manager._cold_data or {}
+    if not snapshot:
+        return 0, 0
+    top_n = int(getattr(config, 'SCALP_V3_SCAN_TOP_N', 5))
+    min_div = float(getattr(config, 'SCALP_V3_SCAN_MIN_DIVERGENCE', 0.3))
+    max_conc = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
+    tk = tracker_manager.tradeable_keys or set()
+    prefix = f"{account_key}:"
+    sym_sides: Dict[str, set] = {}
+    for k in tk:
+        if not k.startswith(prefix): continue
+        rest = k[len(prefix):]
+        if rest.endswith('_LONG'):
+            sym_sides.setdefault(rest[:-5], set()).add('LONG')
+        elif rest.endswith('_SHORT'):
+            sym_sides.setdefault(rest[:-6], set()).add('SHORT')
+    candidates = []
+    for sym, sides in sym_sides.items():
+        data = snapshot.get(sym)
+        if not isinstance(data, dict): continue
+        loc = safe_fetch_float(data.get('0market_sentiment_local'), 0.0)
+        glob = safe_fetch_float(data.get('0market_sentiment_score'), 0.0)
+        vel = safe_fetch_float(data.get('velocity'), 0.0)
+        div = loc - glob
+        if abs(div) < min_div: continue
+        candidates.append((sym, div, vel, sides))
+    longs = sorted([c for c in candidates if c[1] > 0 and 'LONG' in c[3]], key=lambda x: x[1], reverse=True)
+    shorts = sorted([c for c in candidates if c[1] < 0 and 'SHORT' in c[3]], key=lambda x: x[1])
+    by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
+    active = sum(1 for pk, p in by_acct.items()
+                 if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
+                 and abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0)
+    if active >= max_conc:
+        return len(longs) + len(shorts), 0
+    slots = max_conc - active
+    fires = 0
+    for sym, div, vel, sides in (longs[:top_n] + shorts[:top_n]):
+        if fires >= slots: break
+        try:
+            opened = await _scalp_v3_attempt_open(sym, account_key, trade_manager,
+                                                   tracker_manager, data_manager,
+                                                   hedge_engine, div, vel)
+            if opened:
+                fires += 1
+        except Exception as e:
+            logger.debug(f"[SCALP_V3_SCAN] {sym}: {e}")
+    return len(longs) + len(shorts), fires
+
+
+async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
+                                   tracker_manager: "TrackerManager",
+                                   data_manager: "FastDataManager",
+                                   hedge_engine: "HedgeEngine",
+                                   div: float, vel: float) -> bool:
+    from scalp_v3_live import check_scalp_v3_live_entry
+    _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
+    if not ind: return False
+    price = safe_fetch_float(ind.get('current_price', 0), 0)
+    if price <= 0:
+        try:
+            price, _ = await get_current_price(sym)
+        except Exception:
+            price = 0
+    if price <= 0 or not fresh:
+        return False
+    decision = check_scalp_v3_live_entry(sym, None, ind, price, None, account_key, config)
+    if not decision:
+        return False
+    side = decision.get('side')
+    if side not in ('LONG', 'SHORT'):
+        return False
+    if side == 'LONG' and div <= 0: return False
+    if side == 'SHORT' and div >= 0: return False
+    real_key = f"{account_key}:{sym}_{side}"
+    if real_key not in (tracker_manager.tradeable_keys or set()):
+        return False
+    by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
+    real_pos = by_acct.get(real_key)
+    real_amt = abs(safe_fetch_float(getattr(real_pos, 'positionAmt', 0), 0)) if real_pos else 0
+    if real_amt > 0: return False
+    cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
+    min_qty = trade_manager.min_qty.get(sym, 0.0001) * 1.2
+    cap_qty = cap_usd / price if price > 0 else 0
+    qty = max(min_qty, cap_qty)
+    if qty <= 0: return False
+    logger.warning(f"⚡ [SCALP_V3_SCAN_FIRE] {real_key}: div={div:+.3f} vel={vel:+.3f} px={price:.6g} {decision['reason']} qty={qty:.6f} cap=${cap_usd}")
+    try:
+        await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                     account_key, real_key, 0.0, 'OPEN',
+                                     price, qty, decision['reason'],
+                                     is_hedge=False, data_manager=data_manager)
+        return True
+    except Exception as e:
+        logger.warning(f"⚡ [SCALP_V3_SCAN_FIRE_ERR] {real_key}: {e}")
+        return False
+
 
 # DEAD_CODE_START — global_system_watchdog: defined but never called — commented out 2026-03-31
 # async def global_system_watchdog(tracker_manager, stop_event):

@@ -86,9 +86,14 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
         if price > dc_high_15m * (1.0 - dump_pct / 100.0):
             short_ok = False; short_reason = f"NOT_BELOW_15M_HIGH_by{dump_pct}pct"
     # ---- Return the firing decision (LONG preferred if both fire — rare) ----
-    if long_ok:
+    # 2026-04-23: SCALP_V3_SIDE_MODE gates which sides may fire. 200k-variant backtest
+    # showed SHORT=-7019% best vs LONG=+1833%. Default LONG_ONLY until SHORT is re-proven.
+    side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'LONG_ONLY')).upper()
+    allow_long = side_mode in ('LONG_ONLY', 'BOTH')
+    allow_short = side_mode in ('SHORT_ONLY', 'BOTH')
+    if long_ok and allow_long:
         return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_3MBAR_k1m{k_1m:.0f}_k3m{k_3m:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}"}
-    if short_ok:
+    if short_ok and allow_short:
         return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_3MBAR_k1m{k_1m:.0f}_k3m{k_3m:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}"}
     return None
 
