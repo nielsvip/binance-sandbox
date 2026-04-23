@@ -175,6 +175,17 @@ class Config:
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.05   # 2026-04-23 evening: bumped 0.3→0.05 so more candidates per cycle
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
     SCALP_V3_SIDE_MODE: str = "BOTH"             # BOTH for now (2026-04-23 evening): only 7 LONG vs 54 SHORT inf keys; sweep's SHORT disaster was rally-window bias. Paper A/B will reveal which side works forward.
+    SCALP_V3_SCAN_BYPASS_GATES: bool = True      # 2026-04-23 evening: scanner opens on divergence sign directly; K-gates blocked 100% of user's high-conviction picks (THETA +1.66, ZEC +2.5, MOVR +7.6)
+    # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
+    # the market median. Positive z-score → top_winners_st → symbols_inf_long_list
+    # (auto-added to tradeable_keys). Negative → symbols_inf_short_list. This is
+    # what routes user's chart-visible outliers (THETA, ZEC, COMP, DOT, CRV etc) into
+    # the live pipeline automatically, without manual tradeable_keys edits.
+    SCALP_V3_OUTLIER_ENABLED: bool = True
+    SCALP_V3_OUTLIER_WEIGHT: float = 3.0         # legacy; unused after 2026-04-23 rewrite to pure injection
+    SCALP_V3_OUTLIER_MIN_Z_LONG: float = 1.5     # min z-score (vs median) for a LONG outlier inject
+    SCALP_V3_OUTLIER_MIN_Z_SHORT: float = -1.5   # max z-score for a SHORT outlier inject
+    SCALP_V3_OUTLIER_MAX_INJECT: int = 15        # cap how many get appended per side
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

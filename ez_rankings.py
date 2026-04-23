@@ -4194,21 +4194,31 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         #         negative return → pushes into top_losers_st → symbols_inf_short_list.
         # These lists are already saved to symbols_inf_long/short.json and picked up by
         # ez_positions_service which flows them into tradeable_keys automatically.
+        # 2026-04-23 evening: also compute _ret_15m unconditionally so the post-loop
+        # outlier detector can re-boost for "RECENT WINNERS / LOSERS vs market median"
+        # — this is what routes THETA/ZEC/COMP-style divergers into symbols_inf_long
+        # regardless of volume spike.
+        _v3_ret_15m = 0.0
+        if df_3m is not None and not df_3m.empty and len(df_3m) >= 6 and 'close' in df_3m.columns:
+            try:
+                _closes_v3 = df_3m['close'].values
+                _n_v3 = 5   # 5 bars × 3m = 15 min
+                if len(_closes_v3) > _n_v3 and _closes_v3[-_n_v3 - 1] > 0:
+                    _v3_ret_15m = (_closes_v3[-1] / _closes_v3[-_n_v3 - 1] - 1.0) * 100.0
+            except Exception:
+                pass
         if getattr(config, 'SCALP_V3_BOOST_ENABLED', False) and df_3m is not None and not df_3m.empty:
             try:
                 _n = int(getattr(config, 'SCALP_V3_BOOST_LOOKBACK_BARS_3M', 5))
                 _wt = float(getattr(config, 'SCALP_V3_BOOST_WEIGHT', 0.0))
                 _vol_z_min = float(getattr(config, 'SCALP_V3_BOOST_VOL_Z_MIN', 1.5))
                 if len(df_3m) >= 20 and _wt != 0.0 and 'close' in df_3m.columns and 'volume' in df_3m.columns:
-                    _closes = df_3m['close'].values
                     _vols = df_3m['volume'].values
-                    if _closes[-_n - 1] > 0:
-                        _ret = (_closes[-1] / _closes[-_n - 1] - 1.0) * 100.0
-                        _vol_recent = _vols[-_n:].mean() if _n > 0 else 0.0
-                        _vol_baseline = _vols[-20:-_n].mean() if (_n < 20 and _n > 0) else _vols[-20:].mean()
-                        _vol_ratio = _vol_recent / _vol_baseline if _vol_baseline > 0 else 1.0
-                        if _vol_ratio >= _vol_z_min and abs(_ret) > 0.5:
-                            final_score_raw_st += _wt * _ret
+                    _vol_recent = _vols[-_n:].mean() if _n > 0 else 0.0
+                    _vol_baseline = _vols[-20:-_n].mean() if (_n < 20 and _n > 0) else _vols[-20:].mean()
+                    _vol_ratio = _vol_recent / _vol_baseline if _vol_baseline > 0 else 1.0
+                    if _vol_ratio >= _vol_z_min and abs(_v3_ret_15m) > 0.5:
+                        final_score_raw_st += _wt * _v3_ret_15m
             except Exception:
                 pass
         # === END SCALP_V3 BOOST ===
@@ -4239,11 +4249,33 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
             "band_score": band_score,
             "weighted_gains_lt": weighted_gains_lt,
             "weighted_gains_st": weighted_gains_st,
+            "_v3_ret_15m": _v3_ret_15m,
             "dfs_for_calc": dfs_calc
         })
 
     if not final_ranking_data_scalars:
         return [], {}
+
+    # === SCALP_V3 OUTLIER SCORING (2026-04-23 evening) =============================
+    # User directive: "add outliers vs avg index at the end" — DON'T change the
+    # regular calculate_final_scores calc. Compute per-symbol z-score on 15-min
+    # price return vs market median and ATTACH it to the entry. The injection into
+    # symbols_inf_long/short_list happens AT THE END (after lists are built).
+    try:
+        if getattr(config, 'SCALP_V3_OUTLIER_ENABLED', True):
+            import statistics as _stats
+            _rets = [e.get("_v3_ret_15m", 0.0) for e in final_ranking_data_scalars if e.get("_v3_ret_15m") is not None]
+            if len(_rets) >= 10:
+                _median_ret = _stats.median(_rets)
+                _abs_devs = sorted(abs(r - _median_ret) for r in _rets)
+                _mad = _abs_devs[len(_abs_devs) // 2] if _abs_devs else 0.0
+                _mad = max(_mad, 0.05)
+                for _e in final_ranking_data_scalars:
+                    _ret = _e.get("_v3_ret_15m", 0.0) or 0.0
+                    _e["_v3_outlier_z"] = (_ret - _median_ret) / _mad
+    except Exception as _v3ol_err:
+        logger.warning(f"[SCALP_V3_OUTLIER] scoring error: {_v3ol_err}")
+    # === END SCALP_V3 OUTLIER SCORING ==============================================
 
     # Normalize final scores
     all_scores_combined = [entry["final_score_raw_lt"] for entry in final_ranking_data_scalars] + [entry["final_score_raw_st"] for entry in final_ranking_data_scalars]
@@ -4426,6 +4458,39 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                             [item["symbol"] for item in to_save_top30_r if item["symbol"] not in _bearish_syms]
     symbols_inf_short_list = [item["symbol"] for item in to_save_bottom15_15m if item["symbol"] not in _bullish_syms] + \
                              [item["symbol"] for item in to_save_bottom30_r if item["symbol"] not in _bullish_syms]
+
+    # === SCALP_V3 OUTLIER INJECTION (2026-04-23 evening) ===========================
+    # User directive: inject RECENT winners/losers (vs market-wide 15-min median return)
+    # into symbols_inf_long/short_list so ez_positions_service auto-adds them to
+    # tradeable_keys. This captures chart-visible outliers (THETA, ZEC, COMP, DOT, CRV
+    # style) regardless of whether the regular ranking picks them up. Does NOT modify
+    # the existing calculate_final_scores path — pure append.
+    try:
+        if getattr(config, 'SCALP_V3_OUTLIER_ENABLED', True):
+            _min_z_long = float(getattr(config, 'SCALP_V3_OUTLIER_MIN_Z_LONG', 1.5))
+            _min_z_short = float(getattr(config, 'SCALP_V3_OUTLIER_MIN_Z_SHORT', -1.5))
+            _max_inject = int(getattr(config, 'SCALP_V3_OUTLIER_MAX_INJECT', 15))
+            _long_outliers = sorted(
+                [e for e in final_ranking_data_scalars if e.get("_v3_outlier_z", 0) >= _min_z_long],
+                key=lambda x: x.get("_v3_outlier_z", 0), reverse=True
+            )[:_max_inject]
+            _short_outliers = sorted(
+                [e for e in final_ranking_data_scalars if e.get("_v3_outlier_z", 0) <= _min_z_short],
+                key=lambda x: x.get("_v3_outlier_z", 0)
+            )[:_max_inject]
+            _lo_syms = [e["symbol"] for e in _long_outliers if e["symbol"] not in _bearish_syms]
+            _so_syms = [e["symbol"] for e in _short_outliers if e["symbol"] not in _bullish_syms]
+            for _s in _lo_syms:
+                if _s not in symbols_inf_long_list:
+                    symbols_inf_long_list.append(_s)
+            for _s in _so_syms:
+                if _s not in symbols_inf_short_list:
+                    symbols_inf_short_list.append(_s)
+            if _lo_syms or _so_syms:
+                logger.info(f"🎯 [SCALP_V3_OUTLIER_INJECT] +LONG {len(_lo_syms)}: {_lo_syms[:8]} | +SHORT {len(_so_syms)}: {_so_syms[:8]}")
+    except Exception as _v3inj_err:
+        logger.warning(f"[SCALP_V3_OUTLIER_INJECT] error: {_v3inj_err}")
+    # === END SCALP_V3 OUTLIER INJECTION ============================================
 
     # Save scores to files
     save_scores(fs, FINAL_SCORE_FILE)

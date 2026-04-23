@@ -15237,28 +15237,29 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     top_n = int(getattr(config, 'SCALP_V3_SCAN_TOP_N', 5))
     min_div = float(getattr(config, 'SCALP_V3_SCAN_MIN_DIVERGENCE', 0.3))
     max_conc = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
-    tk = tracker_manager.tradeable_keys or set()
-    prefix = f"{account_key}:"
-    sym_sides: Dict[str, set] = {}
-    for k in tk:
-        if not k.startswith(prefix): continue
-        rest = k[len(prefix):]
-        if rest.endswith('_LONG'):
-            sym_sides.setdefault(rest[:-5], set()).add('LONG')
-        elif rest.endswith('_SHORT'):
-            sym_sides.setdefault(rest[:-6], set()).add('SHORT')
+    # 2026-04-23 evening: scanner iterates ALL symbols in snapshot, NOT just tradeable_keys.
+    # Rationale: tradeable_keys gets rewritten by ez_rankings every few seconds and may omit
+    # user's high-conviction picks (THETA, ZEC, COMP etc). Scanner needs to trade any symbol
+    # that shows strong divergence regardless of ez_rankings state.
     candidates = []
-    for sym, sides in sym_sides.items():
-        data = snapshot.get(sym)
+    for sym, data in snapshot.items():
         if not isinstance(data, dict): continue
-        loc = safe_fetch_float(data.get('0market_sentiment_local'), 0.0)
-        glob = safe_fetch_float(data.get('0market_sentiment_score'), 0.0)
+        loc_raw = data.get('0market_sentiment_local')
+        glob_raw = data.get('0market_sentiment_score')
+        if loc_raw is None or glob_raw is None: continue
+        loc = safe_fetch_float(loc_raw, 0.0)
+        glob = safe_fetch_float(glob_raw, 0.0)
         vel = safe_fetch_float(data.get('velocity'), 0.0)
         div = loc - glob
         if abs(div) < min_div: continue
-        candidates.append((sym, div, vel, sides))
-    longs = sorted([c for c in candidates if c[1] > 0 and 'LONG' in c[3]], key=lambda x: x[1], reverse=True)
-    shorts = sorted([c for c in candidates if c[1] < 0 and 'SHORT' in c[3]], key=lambda x: x[1])
+        # Skip obvious non-tradeable (stablecoins, dead coins, zero price)
+        px = safe_fetch_float(data.get('current_price'), 0.0)
+        if px <= 0: continue
+        if 'USDC' in sym[-4:] or 'USDT' in sym[-4:] or 'USD' in sym[-3:]:
+            pass  # futures pair
+        candidates.append((sym, div, vel))
+    longs = sorted([c for c in candidates if c[1] > 0], key=lambda x: x[1], reverse=True)
+    shorts = sorted([c for c in candidates if c[1] < 0], key=lambda x: x[1])
     by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
     active = sum(1 for pk, p in by_acct.items()
                  if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
@@ -15267,7 +15268,7 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         return len(longs) + len(shorts), 0
     slots = max_conc - active
     fires = 0
-    for sym, div, vel, sides in (longs[:top_n] + shorts[:top_n]):
+    for sym, div, vel in (longs[:top_n] + shorts[:top_n]):
         if fires >= slots: break
         try:
             opened = await _scalp_v3_attempt_open(sym, account_key, trade_manager,
@@ -15285,7 +15286,6 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
                                    data_manager: "FastDataManager",
                                    hedge_engine: "HedgeEngine",
                                    div: float, vel: float) -> bool:
-    from scalp_v3_live import check_scalp_v3_live_entry
     _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
     if not ind: return False
     price = safe_fetch_float(ind.get('current_price', 0), 0)
@@ -15296,14 +15296,26 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
             price = 0
     if price <= 0 or not fresh:
         return False
-    decision = check_scalp_v3_live_entry(sym, None, ind, price, None, account_key, config)
-    if not decision:
-        return False
-    side = decision.get('side')
-    if side not in ('LONG', 'SHORT'):
-        return False
-    if side == 'LONG' and div <= 0: return False
-    if side == 'SHORT' and div >= 0: return False
+    # 2026-04-23: SCAN_BYPASS_GATES (default True) — divergence-ranking IS the direction
+    # signal. The old check_scalp_v3_live_entry K-gate + 3M HH_HL confirmation filtered
+    # 100% of user's high-conviction picks (THETA div+1.66, ZEC +2.5, MOVR +7.6 all blocked
+    # by K thresholds). Now the scanner opens directly on divergence sign.
+    side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'BOTH')).upper()
+    if getattr(config, 'SCALP_V3_SCAN_BYPASS_GATES', True):
+        side = 'LONG' if div > 0 else 'SHORT'
+        if side == 'LONG' and side_mode not in ('LONG_ONLY', 'BOTH'): return False
+        if side == 'SHORT' and side_mode not in ('SHORT_ONLY', 'BOTH'): return False
+        decision = {'side': side, 'reason': f"SCALP_V3_OPEN_{side}_DIV_div{div:+.2f}_vel{vel:+.2f}"}
+    else:
+        from scalp_v3_live import check_scalp_v3_live_entry
+        decision = check_scalp_v3_live_entry(sym, None, ind, price, None, account_key, config)
+        if not decision:
+            return False
+        side = decision.get('side')
+        if side not in ('LONG', 'SHORT'):
+            return False
+        if side == 'LONG' and div <= 0: return False
+        if side == 'SHORT' and div >= 0: return False
     real_key = f"{account_key}:{sym}_{side}"
     if real_key not in (tracker_manager.tradeable_keys or set()):
         return False
