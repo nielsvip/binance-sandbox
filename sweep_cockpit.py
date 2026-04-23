@@ -136,13 +136,13 @@ def fetch_is_running(server):
     def _fetch():
         if server["is_local"]:
             try:
-                r = subprocess.run(["bash", "-c", "ps aux | grep backtest_v8_sweep | grep -v grep | wc -l"], capture_output=True, text=True, timeout=5)
+                r = subprocess.run(["bash", "-c", "ps aux | grep -E 'backtest_v8_sweep|autonomous_search\\.py' | grep -v grep | wc -l"], capture_output=True, text=True, timeout=5)
                 return int(r.stdout.strip()) > 0
             except Exception:
                 return False
         else:
             try:
-                out = _ssh_run(server["host"], server["user"], "ps aux | grep backtest_v8_sweep | grep -v grep | wc -l")
+                out = _ssh_run(server["host"], server["user"], "ps aux | grep -E 'backtest_v8_sweep|autonomous_search\\.py' | grep -v grep | wc -l")
                 return int(out.strip()) > 0
             except Exception:
                 return False

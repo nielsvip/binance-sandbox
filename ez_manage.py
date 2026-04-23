@@ -10752,9 +10752,20 @@ class MultiAccountTradeManager:
             logger.info(f"🛡️ [execute_trade_action] BLOCKED WEAK SHIT SUSPENDED)")
             return "BLOCKED WEAK SHIT SUSPENDED"
         tradeable_keys = await self.load_tradeable()
-        if position_key not in tradeable_keys and account_key != 'flz' and not is_reduce:
+        # 2026-04-23 USER: SCALP_V3 scanner picks outliers from full L2 book (not
+        # tradeable_keys). Allow V3-reason opens through and auto-add the key so
+        # downstream tracker + exit pathways see it. ez_rankings outlier injector
+        # catches up on next ranking cycle for persistence.
+        _is_scalp_v3_entry = 'SCALP_V3_OPEN' in str(reason or '').upper()
+        if position_key not in tradeable_keys and account_key != 'flz' and not is_reduce and not _is_scalp_v3_entry:
             logger.error(f"🛡️ [execute_trade_action] BLOCKED NOT TRADEABLE {position_key} (no hedge auto-add) is_hedge={is_hedge} action={action} reason={reason}")
             return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
+        if _is_scalp_v3_entry and position_key not in tradeable_keys:
+            logger.warning(f"⚠️ [execute_trade_action] SCALP_V3 bypass NOT_TRADEABLE {position_key} — auto-adding")
+            try:
+                tradeable_keys.add(position_key)
+            except Exception:
+                pass
         # 2026-04-16 FIX: REMOVED hedge exemption — was allowing hedge opens to bypass size gate
         if ('OPEN' in action or 'OPEN' in reason) and position.positionAmt > 2 * config.MIN_POSITION_SIZE / current_price:
             return f'ex_tr BLOCKED: {position_key} ${position.positionAmt*current_price} over MIN QTY NO *OPEN* ORDER POSSIBLE'

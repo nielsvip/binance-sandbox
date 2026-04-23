@@ -31,7 +31,9 @@ CORS(app)
 # ---------------------------------------------------------------------------
 
 def load_all_history():
-    """Scan data/history/*/*.jsonl and return list of trade events, deduplicating near-duplicates."""
+    """Scan data/history/{crypto_account}/*.jsonl for crypto trade events.
+    Stock accounts (trb/trc/tra) are intentionally excluded — their fills live in
+    data/tradier/history/ and are loaded by load_tradier_history()."""
     events = []
     if not HISTORY_DIR.exists():
         return events
@@ -39,7 +41,9 @@ def load_all_history():
         if not account_dir.is_dir():
             continue
         account = account_dir.name
-        is_stock = account in STOCK_ACCOUNTS
+        if account in STOCK_ACCOUNTS:
+            continue
+        is_stock = False
         for jsonl_file in sorted(account_dir.glob("*.jsonl")):
             stem = jsonl_file.stem  # e.g. BTCUSDC_LONG
             parts = stem.rsplit("_", 1)
@@ -152,12 +156,14 @@ def load_positions():
 def load_and_merge():
     """Merge all data sources into a unified event list, sorted by time."""
     events = load_all_history()
+    tradier_events = load_tradier_history()
     log_events = parse_tradier_logs()
     seen_keys = {(e["ts"], e["account"], e["symbol"], e["side"], e["type"]) for e in events}
-    for le in log_events:
+    for le in tradier_events + log_events:
         k = (le["ts"], le["account"], le["symbol"], le["side"], le["type"])
         if k not in seen_keys:
             events.append(le)
+            seen_keys.add(k)
     events.sort(key=lambda e: e.get("ts", ""))
     return events
 
