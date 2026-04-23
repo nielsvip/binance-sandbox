@@ -2232,6 +2232,8 @@ async def run_watch(args):
             print(f"  {len(positions)} position(s) | ${total_cost:,.0f}/$7,000 ceiling | {'OVER LIMIT — reducing rogues' if portfolio_over else 'within limits'}")
             print(f"{'='*90}")
             all_sell_now = []
+            _gd_protect_short: Dict[str, str] = {}  # underlying → OCC label (losing calls → protect SHORT equity)
+            _gd_protect_long: Dict[str, str] = {}   # underlying → OCC label (losing puts → protect LONG equity)
             # SAFETY: No auto-sells in last 30min of market (19:30+ UTC) — illiquid, wide spreads
             now_utc = datetime.utcnow()
             market_closing_soon = now_utc.hour == 19 and now_utc.minute >= 30
@@ -2311,6 +2313,13 @@ async def run_watch(args):
                                 print(f"  \033[92m★ WINDFALL {_und_sym}: {_und_move:+.1f}% vs market {_bench_ref:+.1f}% — IN our favor\033[0m")
                     await asyncio.sleep(0.1)
                 print(f"\n{format_option_position(opt_pos)}")
+                if opt_pos.unrealized_pct < 0:
+                    _gd_sym = opt_pos.symbol
+                    _gd_label = f"{opt_pos.option_symbol} x{abs(int(opt_pos.quantity))} ({opt_pos.unrealized_pct:+.1f}%)"
+                    if opt_pos.option_type.lower() == "call":
+                        _gd_protect_short[_gd_sym] = (_gd_protect_short.get(_gd_sym, "") + "; " + _gd_label).lstrip("; ")
+                    else:
+                        _gd_protect_long[_gd_sym] = (_gd_protect_long.get(_gd_sym, "") + "; " + _gd_label).lstrip("; ")
                 if exit_signals:
                     for sig in exit_signals:
                         print(format_exit_signal(sig))
@@ -2515,6 +2524,28 @@ async def run_watch(args):
                         if "error" not in _open_res:
                             eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"sellable_{_sellable_pct:+.1f}%", "order_resp": str(_open_res)[:200]}
                             _save_equity_hedges(config, eq_hedges)
+            # ── Write equity hedge guard so tradier_manage won't close hedging equity positions ──
+            try:
+                _gd_cross_short: Dict[str, str] = {}
+                _gd_cross_long: Dict[str, str] = {}
+                for _gh_occ, _gh_entry in _load_equity_hedges(config).items():
+                    if _gh_entry.get("cross_hedge"):
+                        _gh_hsym = _gh_entry.get("hedge_symbol", "")
+                        _gh_hside = _gh_entry.get("hedge_side", "")
+                        if _gh_hsym:
+                            _gh_label = f"cross-hedge for {_gh_occ}"
+                            if _gh_hside == "sell_short":
+                                _gd_cross_short[_gh_hsym] = _gh_label
+                            else:
+                                _gd_cross_long[_gh_hsym] = _gh_label
+                _guard_payload = {"updated_at": datetime.utcnow().isoformat(), "account": account_key, "protect_short": _gd_protect_short, "protect_long": _gd_protect_long, "cross_protect_short": _gd_cross_short, "cross_protect_long": _gd_cross_long}
+                with open(config.DATA_DIR / "options_equity_hedge_guard.json", "w") as _gf:
+                    json.dump(_guard_payload, _gf, indent=2)
+                _all_protected = list(_gd_protect_short) + list(_gd_protect_long) + list(_gd_cross_short) + list(_gd_cross_long)
+                if _all_protected:
+                    print(f"  \033[93m[EQ_GUARD]\033[0m Blocking closes on: {_all_protected}")
+            except Exception as _gde:
+                logger.warning(f"[EQ_GUARD] write error: {_gde}")
             # Save watchdog state
             watch_file = config.DATA_DIR / "options_watchdog_latest.json"
             watch_data = {"timestamp": datetime.now().isoformat(), "account": account_key, "positions": len(positions), "sell_signals": len(all_sell_now), "auto_sell": auto_sell, "gtc_orders": len(gtc_orders)}

@@ -4013,6 +4013,28 @@ class StockStrategy:
             if in_grace_period:
                 hold_time_min = 5.0 # fallback
 
+        # ── OPTIONS EQUITY HEDGE GUARD ─────────────────────────────────────────
+        # If this equity position is hedging a losing option, block the close.
+        # Guard file is written every cycle by tradier_options_analyzer watch loop.
+        # Stale > 10 minutes = ignored (watchdog probably stopped).
+        try:
+            _eq_guard_path = Path(str(config.DATA_DIR)) / "options_equity_hedge_guard.json"
+            if _eq_guard_path.exists() and time.time() - _eq_guard_path.stat().st_mtime < 600:
+                with open(_eq_guard_path) as _egf:
+                    _eg = json.load(_egf)
+                if _eg.get("account", "trb") == current_account.get(""):
+                    _eg_ps = _eg.get("protect_short", {})
+                    _eg_pl = _eg.get("protect_long", {})
+                    _eg_xs = _eg.get("cross_protect_short", {})
+                    _eg_xl = _eg.get("cross_protect_long", {})
+                    if not is_long and (symbol in _eg_ps or symbol in _eg_xs):
+                        _eg_why = (_eg_ps.get(symbol) or _eg_xs.get(symbol, symbol))[:80]
+                        return False, f"OPT_HEDGE_GUARD_SHORT({_eg_why})", 0
+                    if is_long and (symbol in _eg_pl or symbol in _eg_xl):
+                        _eg_why = (_eg_pl.get(symbol) or _eg_xl.get(symbol, symbol))[:80]
+                        return False, f"OPT_HEDGE_GUARD_LONG({_eg_why})", 0
+        except Exception as _ege:
+            logger.warning(f"[OPT_HEDGE_GUARD] read error: {_ege}")
         # ==================================================================
         # tra LONG-TERM HOLD GATES (rewritten 2026-04-09)
         #
