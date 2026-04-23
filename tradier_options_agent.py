@@ -67,9 +67,15 @@ if not logger.handlers:
     logger.addHandler(sh)
 
 # ── Budget & Risk Constants ──────────────────────────────────────────────────
-MAX_PER_ORDER = 800.0
-PREFERRED_PER_ORDER = 800.0
-# 2026-04-22 user rule: $3k calls / $3k puts / $6k total (down from $5k/$5k/$7k)
+# Per-order sizing rules (2026-04-23):
+#   • Option price ≤ $9/share  → buy floor($800 / contract_cost) contracts, total ≤ $800
+#   • Option price  > $9/share → buy exactly 1 contract at full cost (e.g. $20 = $2,000 order)
+# MAX_CHEAP_ORDER_BUDGET is the $800 cap that applies ONLY to cheap options.
+# It is NOT a global per-order spend limit — expensive single contracts pay their full price.
+MAX_CHEAP_ORDER_BUDGET = 800.0    # Max spend when option price ≤ $9/share (multiple contracts OK)
+MAX_PER_ORDER = MAX_CHEAP_ORDER_BUDGET  # alias kept for legacy arg plumbing
+PREFERRED_PER_ORDER = MAX_CHEAP_ORDER_BUDGET
+# 2026-04-22 user rule: $3k calls / $3k puts / $6k total
 MAX_TOTAL_OPTIONS = 6000.0        # Hard ceiling — NO new positions above this (= sum of per-side caps)
 MAX_TOTAL_CALLS = 3000.0          # Max $ in calls
 MAX_TOTAL_PUTS = 3000.0           # Max $ in puts
@@ -80,7 +86,7 @@ MIN_ORDER_SIZE = 50.0
 GTC_DISCOUNT_NORMAL = 0.85        # 85% of ask — harder to fill
 GTC_DISCOUNT_HIGH = 0.88          # 88% of ask for high conviction
 GTC_DISCOUNT_LOWBALL = 0.60       # 60% for lottery tickets
-MAX_CONTRACTS_PER_ORDER = 10  # Hard cap — never buy >10 contracts in one order
+MAX_CONTRACTS_PER_ORDER = 3   # Hard cap — never buy >3 contracts in one order
 
 
 # ── Diversification Engine ───────────────────────────────────────────────────
@@ -697,20 +703,17 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
         if contract_cost <= 0:
             continue
         # ── Budget + qty rules (2026-04-23) ──
-        # Rule 1: if price/share > $9 ($900/contract) → max 1 contract, no exceptions.
-        # Rule 2: per-order budget = $800. Exception: if 1 contract > $800 you still buy
-        #         that 1 contract (no doubling up with cheap multi-contract spending).
+        # Expensive (>$9/share = >$900/contract): ALWAYS exactly 1 contract.
+        #   → Order can be $2,000+ for a $20 option. That's intentional.
+        # Cheap (≤$9/share): buy floor($800 / contract_cost) contracts, capped at $800 total.
+        #   → A $3 option gets qty=2 ($600), a $8 option gets qty=1 ($800).
         _max_single_price = float(getattr(config, "OPTIONS_MAX_SINGLE_CONTRACT_PRICE", 9.0)) if config else 9.0
-        _max_order_budget = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 800.0)) if config else 800.0
+        _cheap_budget = float(getattr(config, "OPTIONS_MAX_ORDER_BUDGET", 800.0)) if config else 800.0
         if mid > _max_single_price:
             qty = 1
+            total_cost = contract_cost  # full contract cost — may exceed $800, that's fine
         else:
-            qty = min(_max_contracts, max(1, int(_max_order_budget / contract_cost)))
-        total_cost = qty * contract_cost
-        if total_cost > budget_remaining:
-            qty = max(1, int(budget_remaining / contract_cost))
-            if mid > _max_single_price:
-                qty = 1
+            qty = min(_max_contracts, max(1, int(_cheap_budget / contract_cost)))
             total_cost = qty * contract_cost
         if total_cost > budget_remaining or total_cost < MIN_ORDER_SIZE:
             continue
