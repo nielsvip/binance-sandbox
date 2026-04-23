@@ -13557,6 +13557,8 @@ class MultiAccountTradeManager:
                 logger.info(f"🧪 [SANDBOX_FILL] {position_key}: {action} {side} {quantity:.6f} @ ${sandbox_fill_price:.4f} → amt={position.positionAmt:.6f}")
                 return 'SUCCESS_SANDBOX'
             verifier = TradeVerifier(self.position_callback_manager, self.positions_by_account, self.positions_service,self.active_maker_orders, self.managed_maker_order_registry, self.accounts)
+            # Scoped scalp-v3 flag — visible to BOTH reduce and entry branches below.
+            _is_scalp_v3_reason = 'SCALP_V3' in str(reason or '').upper()
             if is_reduce:
                 if current_real_amt == 0: return "BLOCK_POS_ALREADY_CLOSED"
                 _pos_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
@@ -13568,7 +13570,12 @@ class MultiAccountTradeManager:
                 # PROFITABLE EXIT: FORCE WEBHOOK (Finandy) for ALL reduces — maker bypasses Finandy's no-loss protection
                 # Maker orders are only for OPENS/AUGMENTS. Reduces MUST go through Finandy.
                 _force_webhook_reduces = True  # EMERGENCY: until maker reduces are proven safe, ALL reduces via Finandy
-                if _is_profitable_exit and not is_hedge and not _force_webhook_reduces:
+                # 2026-04-23 USER: SCALP_V3 scalps MUST use maker for entries AND exits (USDC limit = free).
+                # Finandy's 70%+ taker close is wrong economics for scalping. Bypass the force-webhook flag
+                # AND the profitability check (accept small taker fee only if maker fails).
+                if _is_scalp_v3_reason:
+                    _force_webhook_reduces = False
+                if ((_is_profitable_exit or _is_scalp_v3_reason) and not is_hedge and not _force_webhook_reduces):
                     logger.info(f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) — using maker order for cheaper exit")
                     maker_success, executed_qty = await self.place_maker_order(account_key, position_key, symbol, current_real_amt, current_price, quantity, side, position_side, unique_id, f"MAKER_PROFIT_EXIT_{reason}")
                     if maker_success:
@@ -13655,14 +13662,21 @@ class MultiAccountTradeManager:
                 # string is visible on Binance side. Previous `if quantity > foothold_qty` branch let
                 # small orders bypass the foothold, producing naked maker orders with no visible origin.
                 # For this branch (is_augment else-path), action is always an entry — unconditional.
-                foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
-                await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
-                if quantity > foothold_qty:
-                    quantity = quantity - foothold_qty
+                # 2026-04-23 USER: SCALP_V3 scalps bypass the foothold — orders are min-qty ($10 cap)
+                # so splitting off $7 foothold leaves almost nothing for the maker leg. Scalps go
+                # 100% maker (limit on USDC is free; USDT tiny maker fee). Finandy visibility is fine
+                # via the SCALP_V3_OPEN reason string captured in webhook fallback.
+                if _is_scalp_v3_reason:
+                    logger.info(f"[FOOTHOLD_BYPASS_V3] {position_key}: SCALP_V3 entry — skipping foothold, whole order via maker. qty={quantity:.6f}")
                 else:
-                    # Entire order is foothold-sized → foothold webhook IS the order.
-                    logger.info(f"[FOOTHOLD_ONLY] {position_key}: quantity {quantity:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker")
-                    return 'SUCCESS'
+                    foothold_qty = max(7 / current_price, self.min_qty.get(symbol, 0.001) * 1.3)
+                    await self.send_foothold_webhook(position_key, account_key, symbol, foothold_qty, current_price, side, position_side, f"{reason}__")
+                    if quantity > foothold_qty:
+                        quantity = quantity - foothold_qty
+                    else:
+                        # Entire order is foothold-sized → foothold webhook IS the order.
+                        logger.info(f"[FOOTHOLD_ONLY] {position_key}: quantity {quantity:.6f} <= foothold {foothold_qty:.6f} — order sent via foothold webhook, no separate maker")
+                        return 'SUCCESS'
 
 
                 # EMERGENCY: if this is a REDUCE, skip maker and use webhook (Finandy protects)

@@ -10632,7 +10632,15 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if _tk and position_key not in _tk:
             _is_same_sym_hedge = is_hedge and hedge_for
             _exempt = False
-            if _is_same_sym_hedge:
+            # 2026-04-23: SCALP_V3 scanner picks outliers from full snapshot — not bound
+            # to tradeable_keys. Auto-add to tradeable_keys so subsequent gates + tracker
+            # see the key. ez_rankings outlier injector catches up on next cycle.
+            if 'SCALP_V3_OPEN' in str(reason or '').upper():
+                _exempt = True
+                logger.warning(f"⚠️ [TRADEABLE_KEYS_GATE_V3_BYPASS] {position_key}: SCALP_V3 scanner open — auto-adding to tradeable_keys")
+                if hasattr(tracker_manager, 'tradeable_keys') and isinstance(tracker_manager.tradeable_keys, set):
+                    tracker_manager.tradeable_keys.add(position_key)
+            elif _is_same_sym_hedge:
                 _hedge_sym_parsed = parse_position_key(hedge_for)
                 _hedge_origin_sym = _hedge_sym_parsed[1] if _hedge_sym_parsed else ""
                 if _hedge_origin_sym == _gate_sym:
@@ -15283,14 +15291,17 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         if ob_long < ob_min_score and ob_short < ob_min_score and abs(div) < min_div:
             continue
         candidates.append((sym, div, vel, ob_long, ob_short))
-    # Rank LONGS by ob_long_score (primary), with divergence tiebreak; SHORTS by ob_short
+    # Rank: primary = orderbook score; secondary = USDC pair preference (free limit orders!);
+    # tiebreak = divergence. Applied to LONGS and SHORTS.
+    def _usdc_bonus(sym_name: str) -> int:
+        return 1 if sym_name.endswith('USDC') else 0
     longs = sorted(
         [c for c in candidates if c[3] >= ob_min_score or (not ob_required and c[1] > 0)],
-        key=lambda x: (x[3], x[1]), reverse=True
+        key=lambda x: (x[3], _usdc_bonus(x[0]), x[1]), reverse=True
     )
     shorts = sorted(
         [c for c in candidates if c[4] >= ob_min_score or (not ob_required and c[1] < 0)],
-        key=lambda x: (x[4], -x[1]), reverse=True
+        key=lambda x: (x[4], _usdc_bonus(x[0]), -x[1]), reverse=True
     )
     by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
     active = sum(1 for pk, p in by_acct.items()

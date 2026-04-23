@@ -148,6 +148,14 @@ class QuickConfig:
     DC_DAYTRADE_ENABLED: bool = False
     DC_POSITION_ENTRY_THRESHOLD: float = 0.15
     STOCH_CROSS_1H_EXIT_ENABLED: bool = False
+    # Mid-zone stochastic cross: K×D while both between LOW and HIGH on 15m/1h/4h/D.
+    # Signal: expected swing got interrupted before reaching extreme → stronger direction change.
+    MID_ZONE_STOCH_EXIT_ENABLED: bool = False   # exit when K×D against position in [LOW,HIGH]
+    MID_ZONE_STOCH_ENTRY_ENABLED: bool = False  # entry when K×D with position in [LOW,HIGH]
+    MID_ZONE_K_LOW: float = 30.0               # lower bound of mid-zone
+    MID_ZONE_K_HIGH: float = 70.0              # upper bound of mid-zone
+    MID_ZONE_STOCH_EXIT_MIN_TFS: int = 1       # min TFs (15m/1h/4h/D) firing to trigger exit
+    MID_ZONE_STOCH_ENTRY_MIN_TFS: int = 1      # min TFs firing to add entry
     MFI_FLIP_EXIT_ENABLED: bool = False
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0
@@ -1653,6 +1661,27 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _sc_under = _safe(npz, f'stoch_crossunder_{_sc_tf}', n, 0.0).astype(bool)
         if is_long: base_sig = base_sig | _sc_over
         else: base_sig = base_sig | _sc_under
+    if getattr(cfg, 'MID_ZONE_STOCH_ENTRY_ENABLED', False):
+        _mz_lo_e = float(getattr(cfg, 'MID_ZONE_K_LOW', 30.0))
+        _mz_hi_e = float(getattr(cfg, 'MID_ZONE_K_HIGH', 70.0))
+        _mz_min_e = int(getattr(cfg, 'MID_ZONE_STOCH_ENTRY_MIN_TFS', 1))
+        _mz_bph_15m_e = 15 // _ltf_mins
+        _mz_bph_1h_e = 60 // _ltf_mins
+        _mz_bph_4h_e = 4 * _mz_bph_1h_e
+        _mz_bph_D_e = 480 if _ltf == '3m' else 78
+        _mz_cnt_e = np.zeros(n, dtype=np.int32)
+        for _mz_tf_e, _mz_bph_e in [('15m', _mz_bph_15m_e), ('1h', _mz_bph_1h_e), ('4h', _mz_bph_4h_e), ('D', _mz_bph_D_e)]:
+            _mk_e = _safe(npz, f'stoch_k_{_mz_tf_e}', n, 50.0)
+            _md_e = _safe(npz, f'stoch_d_{_mz_tf_e}', n, 50.0)
+            _mk_e_p = np.roll(_mk_e, _mz_bph_e); _mk_e_p[:_mz_bph_e] = _mk_e[:_mz_bph_e]
+            _in_zone_e = (_mk_e >= _mz_lo_e) & (_mk_e <= _mz_hi_e) & (_md_e >= _mz_lo_e) & (_md_e <= _mz_hi_e)
+            if is_long:
+                _mz_cnt_e += ((_mk_e_p <= _md_e) & (_mk_e > _md_e) & _in_zone_e).astype(np.int32)
+            else:
+                _mz_cnt_e += ((_mk_e_p >= _md_e) & (_mk_e < _md_e) & _in_zone_e).astype(np.int32)
+        _mz_sig_e = _mz_cnt_e >= _mz_min_e
+        if _mz_sig_e.any():
+            base_sig = base_sig | _mz_sig_e
     if getattr(cfg, 'WT_COMPOSITE_BIAS_ENTRY_ENABLED', False):
         _wt_cb = _safe(npz, 'wt_composite_bias', n, 0.0)
         if _wt_cb.any():
@@ -1843,6 +1872,24 @@ def compute_exit_signals(npz, n, is_long, cfg):
             stoch_1h_exit = (k_1h_prev >= d_1h) & (k_1h < d_1h) & (k_1h_prev >= _s1h_k_min)
         else:
             stoch_1h_exit = (k_1h_prev <= d_1h) & (k_1h > d_1h) & (k_1h_prev <= (100.0 - _s1h_k_min))
+    mz_stoch_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'MID_ZONE_STOCH_EXIT_ENABLED', False):
+        _mz_lo = float(getattr(cfg, 'MID_ZONE_K_LOW', 30.0))
+        _mz_hi = float(getattr(cfg, 'MID_ZONE_K_HIGH', 70.0))
+        _mz_min = int(getattr(cfg, 'MID_ZONE_STOCH_EXIT_MIN_TFS', 1))
+        _mz_bph_4h = 4 * _bph_1h
+        _mz_bph_D = 480 if _ltf == '3m' else 78
+        _mz_cnt = np.zeros(n, dtype=np.int32)
+        for _mz_tf, _mz_bph in [('15m', _bph_15m), ('1h', _bph_1h), ('4h', _mz_bph_4h), ('D', _mz_bph_D)]:
+            _mk = _safe(npz, f'stoch_k_{_mz_tf}', n, 50.0)
+            _md = _safe(npz, f'stoch_d_{_mz_tf}', n, 50.0)
+            _mk_p = np.roll(_mk, _mz_bph); _mk_p[:_mz_bph] = _mk[:_mz_bph]
+            _in_zone = (_mk >= _mz_lo) & (_mk <= _mz_hi) & (_md >= _mz_lo) & (_md <= _mz_hi)
+            if is_long:
+                _mz_cnt += ((_mk_p >= _md) & (_mk < _md) & _in_zone).astype(np.int32)
+            else:
+                _mz_cnt += ((_mk_p <= _md) & (_mk > _md) & _in_zone).astype(np.int32)
+        mz_stoch_exit = _mz_cnt >= _mz_min
     mfi_flip_exit = np.zeros(n, dtype=bool)
     if cfg.MFI_FLIP_EXIT_ENABLED:
         if is_long: mfi_flip_exit = mfi_1h > cfg.MFI_FLIP_EXIT_LONG_THRESHOLD
@@ -2019,7 +2066,7 @@ def compute_exit_signals(npz, n, is_long, cfg):
             _mh_prev = np.roll(_mh, 1); _mh_prev[0] = _mh[0]
             if is_long: macd_hist_exit = (_mh_prev > 0) & (_mh <= 0)
             else: macd_hist_exit = (_mh_prev < 0) & (_mh >= 0)
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mz_stoch_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
