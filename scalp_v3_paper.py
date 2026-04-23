@@ -419,7 +419,10 @@ async def main_async(args):
                 if ev["type"] == "PAPER_ENTRY":
                     counters["entries"] += 1
                     print(f"  ENTRY {ev['side']:5s} {ev['symbol']:14s} @ {ev['entry_price']:.6g}  k1m={ev['k_1m']} k3m={ev['k_3m']} k15={ev['k_15m']}")
-                else:
+                elif ev["type"] == "PAPER_ENTRY_BLOCKED_OB":
+                    counters.setdefault("ob_blocked", 0)
+                    counters["ob_blocked"] += 1
+                elif ev["type"] == "PAPER_EXIT":
                     counters["exits"] += 1
                     counters["realized_pct"] += ev["gain_pct"]
                     print(f"  EXIT  {ev['side']:5s} {ev['symbol']:14s} @ {ev['exit_price']:.6g}  gain={ev['gain_pct']:+.3f}% hold={ev['hold_min']}m  [{ev['reason']}]")

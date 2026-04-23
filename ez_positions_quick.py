@@ -15196,10 +15196,14 @@ async def position_watchdog_loop(tracker_manager, trade_manager, account_keys: l
 async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asyncio.Event,
                              redis_manager, tracker_manager: "TrackerManager", order_queue,
                              data_manager: "FastDataManager", hedge_engine: "HedgeEngine"):
+    print(f"[SCALP_V3_SCAN_ENTRY] called for account={account_key} v3_accts={getattr(config, 'SCALP_V3_ACCOUNTS', [])}", flush=True)
     if account_key not in getattr(config, 'SCALP_V3_ACCOUNTS', []):
+        print(f"[SCALP_V3_SCAN_EXIT] {account_key} not in SCALP_V3_ACCOUNTS, returning", flush=True)
         return
     interval = float(getattr(config, 'SCALP_V3_SCAN_INTERVAL_SEC', 10.0))
+    print(f"[SCALP_V3_SCAN_STARTED] account={account_key} interval={interval}", flush=True)
     logger.info(f"⚡ [SCALP_V3_SCAN][{account_key}] STARTED interval={interval}s")
+    logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] STARTED interval={interval}s")
     last_summary = time.time()
     summary_stats = {"cycles": 0, "candidates": 0, "fires": 0}
     while not stop_event.is_set():
