@@ -659,58 +659,76 @@ def build_tv_bias_section():
                     icons.append(f'<span style="color:#888">{tf}?</span>')
             return "&nbsp;".join(icons)
 
+        def assessment_row(sym, a, pill_cls):
+            conf = a.get("confidence", "?")
+            conf_cls = "pg" if conf == "HIGH" else "po" if conf == "MEDIUM" else "pr"
+            tfs_html = tf_icons(a.get("tf_bias", {}))
+            note = a.get("note", "")
+            caution_str = a.get("cautions", [""])[0] if a.get("cautions") else ""
+            rec = a.get("recommendation", "?")
+            return (
+                f'<tr>'
+                f'<td><b>{sym}</b></td>'
+                f'<td><span class="pill {pill_cls}">{rec}</span></td>'
+                f'<td><span class="pill {conf_cls}">{conf}</span></td>'
+                f'<td style="white-space:nowrap">{tfs_html}</td>'
+                f'<td class="gr" style="font-size:11px">{note}</td>'
+                f'<td class="o" style="font-size:11px">{caution_str}</td>'
+                f'</tr>'
+            )
+
         assessments = brief.get("assessments", {})
 
-        for label, list_key, pill_cls, rec_label in (
-            ("BUY setups", "top_buys", "pg", "BUY"),
-            ("SHORT setups", "top_shorts", "pr", "SHORT"),
-        ):
-            top = brief.get(list_key, [])
-            if not top:
-                continue
-            html += f'<p class="b" style="margin-top:12px">Top {label}:</p><table>'
-            html += '<tr><th>Symbol</th><th>Confidence</th><th>TF Alignment</th><th>Assessment</th><th>Caution</th></tr>'
-            for item in top[:12]:
-                sym = item if isinstance(item, str) else item.get("symbol", "?")
-                a = assessments.get(sym, {})
-                conf = a.get("confidence") or (item.get("confidence") if isinstance(item, dict) else "?")
-                conf_cls = "pg" if conf == "HIGH" else "po" if conf == "MEDIUM" else "pr"
-                tfs_html = tf_icons(a.get("tf_bias", {}))
-                note = a.get("note") or (item.get("note") if isinstance(item, dict) else "")
-                cautions = a.get("cautions") or (item.get("cautions") if isinstance(item, dict) else [])
-                caution_str = cautions[0] if cautions else ""
-                html += (
-                    f'<tr>'
-                    f'<td><b>{sym}</b></td>'
-                    f'<td><span class="pill {conf_cls}">{conf}</span></td>'
-                    f'<td style="white-space:nowrap">{tfs_html}</td>'
-                    f'<td class="gr" style="font-size:11px">{note}</td>'
-                    f'<td class="o" style="font-size:11px">{caution_str}</td>'
-                    f'</tr>'
-                )
+        # Collect currently held symbols from trb position files + options
+        held_syms = set()
+        try:
+            for side in ("long", "short"):
+                pos_path = BASE / "trb" / f"{side}_positions.json"
+                if pos_path.exists():
+                    for key, v in json.loads(pos_path.read_text()).items():
+                        if float(v.get("positionAmt", 0) or 0) > 0:
+                            sym = v.get("symbol") or key.rsplit("_", 1)[0].split(":")[-1]
+                            if sym:
+                                held_syms.add(sym)
+            opts_path = BASE / "trb" / "options_positions.json"
+            if opts_path.exists():
+                for p in json.loads(opts_path.read_text()).get("positions", []):
+                    if p.get("qty", 0) > 0:
+                        held_syms.add(p["underlying"])
+        except Exception:
+            pass
+
+        tbl_header = '<tr><th>Symbol</th><th>Signal</th><th>Confidence</th><th>TF Alignment</th><th>Assessment</th><th>Caution</th></tr>'
+
+        # ── Section 1: Open positions first ──────────────────────────────
+        held_with_data = [(s, assessments[s]) for s in sorted(held_syms) if s in assessments]
+        if held_with_data:
+            html += '<p class="b" style="margin-top:12px">Open positions — WT bias:</p><table>' + tbl_header
+            for sym, a in held_with_data:
+                rec = a.get("recommendation", "?")
+                pill = "pg" if rec == "BUY" else "pr" if rec in ("SHORT", "AVOID") else "po"
+                html += assessment_row(sym, a, pill)
             html += "</table>"
 
-        # HOLD section — symbols with cautions worth watching
-        top_holds = brief.get("top_holds", [])
-        if top_holds:
-            html += '<p class="b" style="margin-top:12px">Notable HOLDs (wait for alignment):</p><table>'
-            html += '<tr><th>Symbol</th><th>Side</th><th>TF Alignment</th><th>Why waiting</th></tr>'
-            for item in top_holds[:8]:
-                sym = item if isinstance(item, str) else item.get("symbol", "?")
+        # ── Section 2: Top HIGH-confidence picks from the trb universe ───
+        for label, list_key, pill_cls in (
+            ("High-confidence BUY setups (trb long universe)", "top_buys", "pg"),
+            ("High-confidence SHORT setups (trb short universe)", "top_shorts", "pr"),
+        ):
+            top = brief.get(list_key, [])
+            high_conf = [
+                item for item in top
+                if (item.get("confidence") if isinstance(item, dict) else
+                    assessments.get(item, {}).get("confidence")) == "HIGH"
+                and (item.get("symbol") if isinstance(item, dict) else item) not in held_syms
+            ]
+            if not high_conf:
+                continue
+            html += f'<p class="b" style="margin-top:12px">{label}:</p><table>' + tbl_header
+            for item in high_conf[:8]:
+                sym = item.get("symbol", "?") if isinstance(item, dict) else item
                 a = assessments.get(sym, {})
-                side = a.get("side", "?")
-                side_cls = "pg" if side == "long" else "pr"
-                tfs_html = tf_icons(a.get("tf_bias", {}))
-                cautions = a.get("cautions") or (item.get("cautions") if isinstance(item, dict) else [])
-                reason = cautions[0] if cautions else a.get("note", "")
-                html += (
-                    f'<tr>'
-                    f'<td><b>{sym}</b></td>'
-                    f'<td><span class="pill {side_cls}">{side.upper()}</span></td>'
-                    f'<td style="white-space:nowrap">{tfs_html}</td>'
-                    f'<td class="gr" style="font-size:11px">{reason}</td>'
-                    f'</tr>'
-                )
+                html += assessment_row(sym, a, pill_cls)
             html += "</table>"
 
         return html
