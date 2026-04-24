@@ -132,6 +132,15 @@ def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
                     mode = getattr(base_cfg, "MODE", "crypto")
                     cap = HOLD_BAR_CAPS[nm].get(mode, HOLD_BAR_CAPS[nm]["crypto"])
                     new = min(new, cap)
+                # Stoch entry thresholds must stay in sensible trading ranges.
+                # LONG entry gate: k_5m < threshold — cap at 60 so it stays a real
+                # "not overbought" filter (90 = almost always true = useless/wrong).
+                # SHORT entry gate: k_5m > threshold — floor at 40 so it stays a real
+                # "not oversold" filter.
+                if nm == "TRADIER_STOCH_ENTRY_LONG_TRADIER":
+                    new = min(new, 60)
+                elif nm == "TRADIER_STOCH_ENTRY_SHORT_TRADIER":
+                    new = max(new, 40)
                 if new != val: ovr[nm] = new
         elif isinstance(val, float):
             if random.random() < numeric_perturb_prob:

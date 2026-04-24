@@ -14181,6 +14181,41 @@ class MultiAccountTradeManager:
         if account_key not in self.accounts:
             logger.error(f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}")
             return False
+        # 2026-04-24: TWT cascade — FOOTHOLD webhook path bypassed the ABSOLUTE_WEBHOOK_LOCK in
+        # send_webhook. Apply the SAME Redis-backed lock here. Hedge/aug reasons get 1h TTL,
+        # everything else 30s. Without this, foothold fires unlimited hedge webhooks.
+        global _ABSOLUTE_WEBHOOK_LOCK
+        _reason_fh = str(reason or '').upper()
+        _side_fh = (side or '').upper()
+        _pside_fh = (position_side or '').upper()
+        _is_open_like_fh = ((_side_fh == 'BUY' and _pside_fh == 'LONG') or (_side_fh == 'SELL' and _pside_fh == 'SHORT'))
+        _is_close_like_fh = 'CLOSE' in _reason_fh or 'REDUCE' in _reason_fh or 'KILL' in _reason_fh or 'EXIT' in _reason_fh
+        if _is_open_like_fh and not _is_close_like_fh:
+            _wh_key_fh = f"{account_key}:{symbol}_{_pside_fh}:{_side_fh}"
+            _now_fh = time.time()
+            _is_hedge_fh = 'HEDGE' in _reason_fh or 'PROTECT' in _reason_fh
+            _is_aug_fh = 'AUGMENT' in _reason_fh or 'WINNER' in _reason_fh or 'HAIKU' in _reason_fh or 'UNVERIFIED' in _reason_fh or 'SHADOW' in _reason_fh
+            _ttl_fh = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if (_is_hedge_fh or _is_aug_fh) else _ABSOLUTE_WEBHOOK_TTL
+            _redis_lock_key_fh = f"webhook_lock:{_wh_key_fh}"
+            _redis_expiry_fh = 0.0
+            try:
+                _redis_cli_fh = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
+                if _redis_cli_fh:
+                    _rv_fh = _redis_cli_fh.get(_redis_lock_key_fh)
+                    if _rv_fh: _redis_expiry_fh = float(_rv_fh)
+            except Exception: _redis_expiry_fh = 0.0
+            _wh_exp_fh = max(_ABSOLUTE_WEBHOOK_LOCK.get(_wh_key_fh, 0), _redis_expiry_fh)
+            if _wh_exp_fh > _now_fh:
+                _rem_fh = _wh_exp_fh - _now_fh
+                logger.critical(f"🔒🔒🔒 [FOOTHOLD_WEBHOOK_LOCK] {_wh_key_fh}: BLOCKED — prior open {_ttl_fh - _rem_fh:.1f}s ago, lock {_rem_fh:.1f}s more (ttl={_ttl_fh:.0f}s,hedge={_is_hedge_fh},aug={_is_aug_fh}). reason={(reason or '')[:60]}")
+                return False
+            _new_exp_fh = _now_fh + _ttl_fh
+            _ABSOLUTE_WEBHOOK_LOCK[_wh_key_fh] = _new_exp_fh
+            try:
+                _redis_cli_fh = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
+                if _redis_cli_fh:
+                    _redis_cli_fh.set(_redis_lock_key_fh, str(_new_exp_fh), ex=int(_ttl_fh) + 60)
+            except Exception: pass
         account = self.accounts[account_key]
         webhook_url = account.webhook_url
         webhook_secret = account.webhook_secret

@@ -13,6 +13,7 @@
 
 | File | Locked Since | Reason / What Is Working | Who Locked |
 |------|-------------|--------------------------|-----------|
+| `autonomous_search.py` | 2026-04-24 | Stoch entry threshold caps: TRADIER_STOCH_ENTRY_LONG_TRADIER capped at 60 (k_5m < threshold gate — 90 means "almost always", wrong for longs), TRADIER_STOCH_ENTRY_SHORT_TRADIER floored at 40. MD5: 9eb40a7d95220ffab4a94b57a5dcffcb on all 3 machines. | user |
 | `run_with_watchdog.sh` | 2026-04-03 | Singleton guard + SIGTERM restart + --accounts flag parsing. Fixed tra dying permanently after SIGTERM. | user |
 | `ez_mem_watchdog.py` | 2026-03-25 | DISABLED — was causing 14k+ restarts/day by killing "duplicates" without stopping parent watchdog. LaunchAgent removed. DO NOT re-enable or re-launch. | user |
 | `ez_prices.py` | 2026-03-13 | WebSocket price feeds stable, no issues reported | user |
