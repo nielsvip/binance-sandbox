@@ -72,8 +72,8 @@ MACHINES = {
         "out_dir_template": "/home/niels/binance-sandbox/data/autonomous/tradier_3p4361_114sym/w{seed}",
         "log_template": "/home/niels/logs/autonomous_tradier_w{seed}.log",
         "baseline_json": "/home/niels/binance-sandbox/data/baselines/tradier_3p4361_genuine.json",
-        "n_workers": 2,
-        "max_iter_seconds": 120,
+        "n_workers": 1,
+        "max_iter_seconds": 180,
         "extra_flags": "--min-trades-per-sym 1 --sharpe-useless-floor 3.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.04",
     },
 }
