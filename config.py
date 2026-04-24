@@ -488,11 +488,11 @@ class Config:
     # allows the close at a loss. These are technical (reversal) exits only — no %-based stops.
     # Per CLAUDE.md: "NO % Stops — Technical Exits ONLY. Only WT turn, volume die, DC reversal, stoch cross."
     UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS: list = field(default_factory=lambda: [
+        # 2026-04-24 CLEARED again: account draining via GAIN_EROSION bypass. MOVR closed at -13%, RLC at -0.22%,
+        # KSM at -0.59% — all via this bypass. User directive: NEVER close at loss, hedge instead.
+        # If the hedge mechanism can't keep up, fix the hedge side (faster close rule, better reopen), not the NOLOSS gate.
         # 2026-04-17 CLEARED per user: "WT_CROSS_EXIT, DC_BREAK etc are NOT bypass reasons at all ever."
-        # 2026-04-20 RE-ADDED: GAIN_EROSION — DC_LOW4_3M/DC_HIGH4_3M structural stops fire when price
-        # breaks 4-bar Donchian on 3m after position was profitable. This is a structural reversal,
-        # not a % stop. Closing at a small loss is better than holding through a continued breakdown.
-        'GAIN_EROSION',
+        # 2026-04-20 re-added GAIN_EROSION → REMOVED again 2026-04-24 (incident: account drain).
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
