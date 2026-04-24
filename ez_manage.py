@@ -13045,7 +13045,13 @@ class MultiAccountTradeManager:
         if _is_reduce and position_key and not _is_momentum_rider and not is_hedge:
             _last_red_ts = _recent_reduces.get(position_key, 0)
             _since_red = time.time() - _last_red_ts
-            if _since_red < _DUPLICATE_REDUCE_COOLDOWN:
+            # 2026-04-24: V3 MAX_LOSS_CUT / PROTECTIVE_EXIT / BE_STOP / AUG_BE_STOP bypass the
+            # 15s cooldown — they are urgent safety closes that must fire on the first attempt.
+            _reason_upper = str(reason or '').upper()
+            _v3_urgent_close = ('SCALP_V3_OPEN_MAX_LOSS_CUT' in _reason_upper or
+                                 'SCALP_V3_OPEN_PROTECTIVE_EXIT' in _reason_upper or
+                                 'SCALP_V3_OPEN_BE_STOP_AUG' in _reason_upper)
+            if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close:
                 logger.warning(f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}")
                 return f"BLOCKED_HARD_REDUCE_LOCK_{_since_red:.0f}s"
             _recent_reduces[position_key] = time.time()
