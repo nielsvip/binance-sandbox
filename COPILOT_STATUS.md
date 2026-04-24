@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-24 15:56:12 UTC
+# Copilot Status — 2026-04-24 16:11:28 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T15:54:56
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-24T15:54:58
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T15:54:58
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T15:55:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-24T15:55:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T15:55:29
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T15:56:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T15:56:00
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-24T15:56:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T15:56:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-24T16:10:00
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T16:10:00
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-24T16:10:02
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T16:10:02
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T16:10:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T16:10:33
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T16:11:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T16:11:03
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-24T16:11:06
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T16:11:06
 
 ## Missed Trades (trader comparison)
 
@@ -31,17 +31,17 @@ _None_
 
 - HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-13.7%
 
-- WATCHING: **MSTR** LONG (tradier) peaked +15.9%, exited 0m ago
-- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
-- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
-- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
+- WATCHING: **MSTR** LONG (tradier) peaked +15.9%, exited 1m ago
+- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 1m ago
+- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 1m ago
+- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 15
-- [HIGH] ez_manage.py for ang is NOT running
+**Issues (last 1h):** 12
+- [HIGH] ez_prices.py is NOT running
 - [HIGH] ez_prices.py is NOT running
 - [HIGH] ez_prices.py is NOT running
 - [HIGH] ez_prices.py is NOT running

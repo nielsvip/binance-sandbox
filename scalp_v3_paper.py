@@ -49,40 +49,116 @@ _HTF_CACHE: dict = {}
 
 # Orderbook filter — read from Redis `orderbook:<SYM>` populated by ez_orderbook.py.
 # When --ob-* thresholds are set, entries only fire if live orderbook agrees with side.
+# 2026-04-24: Expanded to use ob_long_score/ob_short_score composite (wall+void+imbalance)
+# and wall-proximity check (resistance too close = no entry on that side).
 _OB_REDIS = None
-_OB_CFG: dict = {"enabled": False, "imb5_long_min": 0.55, "imb5_short_max": 0.45, "max_age_ms": 5000, "max_spread_bps": 20.0}
+_OB_CFG: dict = {
+    "enabled": False,
+    "imb5_long_min": 0.55, "imb5_short_max": 0.45,
+    "max_age_ms": 5000, "max_spread_bps": 20.0,
+    # NEW: composite score (0..100). Paper uses this as primary gate. 0 = disabled.
+    "min_long_score": 0.0, "min_short_score": 0.0,
+    # NEW: wall proximity — if opposite-side wall too close, skip (resistance/support too near).
+    "wall_too_close_pct": 0.0,  # e.g. 0.5 → skip LONG when ask_wall < 0.5% above mid
+}
 
 
-def ob_check(symbol: str, side: str) -> tuple[bool, str]:
-    """Return (passes, reason). If OB filter disabled → always passes."""
+def ob_snapshot(symbol: str) -> tuple[Optional[dict], str]:
+    """Return (snapshot_dict_or_None, reason). Validates freshness + spread."""
     if not _OB_CFG.get("enabled") or _OB_REDIS is None:
-        return True, "OB_DISABLED"
+        return None, "OB_DISABLED"
     try:
         raw = _OB_REDIS.get(f"orderbook:{symbol}")
     except Exception:
-        return False, "OB_REDIS_ERROR"
+        return None, "OB_REDIS_ERROR"
     if not raw:
-        return False, "OB_NO_SNAPSHOT"
+        return None, "OB_NO_SNAPSHOT"
     try:
         d = json.loads(raw)
     except Exception:
-        return False, "OB_PARSE_ERROR"
+        return None, "OB_PARSE_ERROR"
     import time as _t
     age = (_t.time() * 1000.0) - float(d.get("ob_ts_ms", 0))
     if age > _OB_CFG["max_age_ms"]:
-        return False, f"OB_STALE_{int(age)}ms"
+        return None, f"OB_STALE_{int(age)}ms"
     spread = float(d.get("ob_spread_bps", 9999))
     if spread > _OB_CFG["max_spread_bps"]:
-        return False, f"OB_WIDE_SPREAD_{spread:.1f}bps"
+        return None, f"OB_WIDE_SPREAD_{spread:.1f}bps"
+    return d, "OB_FRESH"
+
+
+def ob_check(symbol: str, side: str) -> tuple[bool, str]:
+    """Return (passes, reason). If OB filter disabled → always passes.
+    Checks (in order):
+      1. Snapshot fresh + tight spread
+      2. Top-5 imbalance favours the side (imb5_long_min / imb5_short_max)
+      3. NEW composite score >= min_long_score / min_short_score (when set > 0)
+      4. NEW wall proximity: skip if opposite-side wall too close (wall_too_close_pct > 0)
+    """
+    if not _OB_CFG.get("enabled") or _OB_REDIS is None:
+        return True, "OB_DISABLED"
+    d, why = ob_snapshot(symbol)
+    if d is None:
+        return False, why
     imb5 = float(d.get("ob_bid_ask_imb_5", 0.5))
+    long_score = float(d.get("ob_long_score", 0) or 0)
+    short_score = float(d.get("ob_short_score", 0) or 0)
+    bid_wall_pct = d.get("ob_bid_wall_pct")
+    ask_wall_pct = d.get("ob_ask_wall_pct")
+    min_ls = float(_OB_CFG.get("min_long_score", 0) or 0)
+    min_ss = float(_OB_CFG.get("min_short_score", 0) or 0)
+    wall_tc = float(_OB_CFG.get("wall_too_close_pct", 0) or 0)
     if side == "LONG":
-        if imb5 >= _OB_CFG["imb5_long_min"]:
-            return True, f"OB_LONG_OK_imb5={imb5:.3f}"
-        return False, f"OB_LONG_NO_BID_imb5={imb5:.3f}"
+        if imb5 < _OB_CFG["imb5_long_min"]:
+            return False, f"OB_LONG_NO_BID_imb5={imb5:.3f}"
+        if min_ls > 0 and long_score < min_ls:
+            return False, f"OB_LONG_SCORE_LOW_{long_score:.0f}<{min_ls:.0f}"
+        # wall proximity: LONG blocked if ASK wall (resistance) is too close above
+        if wall_tc > 0 and ask_wall_pct is not None and float(ask_wall_pct) < wall_tc:
+            return False, f"OB_LONG_ASK_WALL_TOO_CLOSE_{float(ask_wall_pct):.2f}pct<{wall_tc:.2f}pct"
+        return True, f"OB_LONG_OK_imb5={imb5:.3f}_score={long_score:.0f}"
     else:  # SHORT
-        if imb5 <= _OB_CFG["imb5_short_max"]:
-            return True, f"OB_SHORT_OK_imb5={imb5:.3f}"
-        return False, f"OB_SHORT_NO_ASK_imb5={imb5:.3f}"
+        if imb5 > _OB_CFG["imb5_short_max"]:
+            return False, f"OB_SHORT_NO_ASK_imb5={imb5:.3f}"
+        if min_ss > 0 and short_score < min_ss:
+            return False, f"OB_SHORT_SCORE_LOW_{short_score:.0f}<{min_ss:.0f}"
+        if wall_tc > 0 and bid_wall_pct is not None and float(bid_wall_pct) < wall_tc:
+            return False, f"OB_SHORT_BID_WALL_TOO_CLOSE_{float(bid_wall_pct):.2f}pct<{wall_tc:.2f}pct"
+        return True, f"OB_SHORT_OK_imb5={imb5:.3f}_score={short_score:.0f}"
+
+
+def ob_void_above_close(symbol: str) -> tuple[bool, str]:
+    """Return (has_void, detail). True if a gap-up void exists above current price —
+    used to EXTEND hold on LONG (no resistance, likely to push higher).
+    Void is defined as ask bucket with <0.2× mean vol inside ±5%."""
+    if not _OB_CFG.get("enabled") or _OB_REDIS is None:
+        return False, "OB_DISABLED"
+    d, _ = ob_snapshot(symbol)
+    if d is None:
+        return False, "NO_SNAPSHOT"
+    void = d.get("ob_ask_void_pct")
+    if void is None:
+        return False, "NO_VOID_DATA"
+    try: v = float(void)
+    except Exception: return False, "VOID_PARSE_ERR"
+    # Negative/zero means void is AT or BELOW current price (useful for SHORT hold extension).
+    # Positive means void is above (bullish — LONG can extend).
+    return (v > 0, f"ask_void_pct={v:.2f}")
+
+
+def ob_void_below_close(symbol: str) -> tuple[bool, str]:
+    """Return (has_void, detail). True if gap-down void below → SHORT can extend hold."""
+    if not _OB_CFG.get("enabled") or _OB_REDIS is None:
+        return False, "OB_DISABLED"
+    d, _ = ob_snapshot(symbol)
+    if d is None:
+        return False, "NO_SNAPSHOT"
+    void = d.get("ob_bid_void_pct")
+    if void is None:
+        return False, "NO_VOID_DATA"
+    try: v = float(void)
+    except Exception: return False, "VOID_PARSE_ERR"
+    return (v > 0, f"bid_void_pct={v:.2f}")
 
 
 def _iso_to_epoch_s(s: str) -> float:
@@ -290,6 +366,22 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
                         last_exit_ts=now_ts, k_15m_at_exit=inp.k_15m, k_15m_prev_at_exit=inp.k_15m_prev))
                 continue   # skip regular exit check when in hedge
             ok, reason = check_scalp_v3_exit(pos, inp, cfg)
+            # 2026-04-24: VOID-AWARE HOLD EXTENSION. When a non-STALL exit fires but
+            # orderbook shows a gap-up void above (for LONG) or gap-down below (SHORT),
+            # the path to a better exit is clear — skip this exit cycle and let the
+            # move extend. STALL exits still fire (that's an age cap, not a signal).
+            if ok and _OB_CFG.get("enabled") and _OB_CFG.get("void_extend_hold") and "STALL" not in reason:
+                if pos.side == "LONG":
+                    has_void, vd = ob_void_above_close(symbol)
+                else:
+                    has_void, vd = ob_void_below_close(symbol)
+                if has_void:
+                    events.append({
+                        "type": "PAPER_EXIT_SKIP_VOID", "symbol": symbol, "side": pos.side,
+                        "reason": reason, "void": vd, "note": "void above/below — extending hold",
+                    })
+                    ok = False
+                    reason = f"{reason}_VOID_EXTEND"
             if ok:
                 gain = (price - pos.entry_price) / pos.entry_price * 100.0
                 if pos.side == "SHORT": gain = -gain
@@ -421,6 +513,10 @@ async def main_async(args):
             "imb5_short_max": args.ob_imb5_short_max,
             "max_age_ms": args.ob_max_age_ms,
             "max_spread_bps": args.ob_max_spread_bps,
+            "min_long_score": args.ob_min_long_score,
+            "min_short_score": args.ob_min_short_score,
+            "wall_too_close_pct": args.ob_wall_too_close_pct,
+            "void_extend_hold": args.ob_void_extend_hold,
         })
         # Redirect output files so A/B runs don't stomp each other
         suf = args.ob_out_suffix or "_ob"
@@ -525,6 +621,11 @@ def main():
     ap.add_argument("--ob-max-age-ms", type=int, default=5000, help="Max orderbook snapshot age (ms)")
     ap.add_argument("--ob-max-spread-bps", type=float, default=20.0, help="Reject entries with spread wider than this (bps)")
     ap.add_argument("--ob-out-suffix", type=str, default="_ob", help="Filename suffix for OB-filtered output")
+    # 2026-04-24 composite score + wall/void flags
+    ap.add_argument("--ob-min-long-score", type=float, default=0.0, help="Min ob_long_score (0..100) for LONG. 0=disabled. Recommend 70 for high-edge entries.")
+    ap.add_argument("--ob-min-short-score", type=float, default=0.0, help="Min ob_short_score (0..100) for SHORT. 0=disabled.")
+    ap.add_argument("--ob-wall-too-close-pct", type=float, default=0.0, help="Skip entry if opposite-side wall closer than this %% (resistance/support). 0=disabled. Recommend 0.5.")
+    ap.add_argument("--ob-void-extend-hold", action="store_true", help="When OB shows gap-up void above (LONG) or gap-down void below (SHORT), extend hold time — skip exit this cycle (stall exits still fire, but other technical exits skip once).")
     args = ap.parse_args()
     asyncio.run(main_async(args))
 

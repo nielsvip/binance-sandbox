@@ -616,6 +616,34 @@ def make_grid(grid_name: str) -> List[Dict]:
             "ha_1m": [False, True], "htf_align": [False, True],
             "side_mode": ["BOTH"],
         }
+    elif grid_name == "winners_refined":
+        # 2026-04-24 refined from top-10 winners of techniques_20260424_0410 sweep:
+        # fix tf=3M_ONLY, side=LONG_ONLY, max_hold=5, atr_sl=0, disable_stall=True.
+        # Sweep finer around the winning region of ATR_TP, VWAP_dev, BB_squeeze, PG.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["3M_ONLY", "ANY", "15M_ONLY"],
+            "side_mode":         ["LONG_ONLY", "BOTH"],
+            "max_hold_min":      [5],
+            "atr_sl_mult":       [0.0],  # confirmed winner: no % SL
+            "k_1m_max":          [20, 25, 30],
+            "k_3m_max":          [30, 40, 50],
+            "vol_mult":          [1.0, 1.5, 2.0, 2.5],
+            "exit_k_1m_min":     [90, 95, 98],
+            "exit_k_3m_min":     [90, 95, 98],
+            "ha_1m":             [False, True],
+            "ha_3m":             [False, True],
+            "htf_align":         [False, True],
+            "atr_tp_mult":       [0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0],
+            "pg_arm_pct":        [0.0, 0.3, 0.5, 0.7, 1.0, 1.5],
+            "pg_giveback_pct":   [0.0, 0.1, 0.15, 0.2, 0.3, 0.4],
+            "vwap_dev_min_pct":  [0.2, 0.3, 0.4, 0.5, 0.7, 1.0],
+            "bb_squeeze_max_pct":[0.0, 1.0, 1.5, 2.0, 3.0],
+            "pin_bar_ratio":     [0.0, 1.5, 2.0, 2.5, 3.0],
+            "reentry_bounce_mode": ["3M_BAR_ONLY", "K15M_ONLY", "3M_BAR_OR_K15M"],
+            "reentry_cooldown_s":[0, 60, 180],
+        }
     elif grid_name == "techniques":
         # 2026-04-24: NO-STALL grid focusing on new techniques (ATR TP/SL, peak-giveback,
         # VWAP-deviation, BB-squeeze, pin-bar). Disable_stall is ALWAYS True here.
