@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 NOW = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-LOG_STALE_SECS = 360      # 6 min without update = worker stuck (90s timeout × 4 consecutive allowed)
+LOG_STALE_SECS = 1200     # 20 min without update = worker stuck (300s timeout × 4 consecutive allowed)
 STARTUP_GRACE_SECS = 600  # 10 min grace for 0-byte logs while NPZ is loading
 
 STATE_FILE = Path("/Users/niels/Documents/binance/data/autonomous/watchdog_state.json")
@@ -35,7 +35,7 @@ MACHINES = {
         "log_template": "/Users/niels/logs/autonomous_tradier_macbook_w{seed}.log",
         "baseline_json": "/Users/niels/Documents/binance/data/baselines/tradier_3p4361_genuine.json",
         "n_workers": 2,
-        "max_iter_seconds": 90,
+        "max_iter_seconds": 300,
         "extra_flags": "--min-trades-per-sym 1 --sharpe-useless-floor 3.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.04",
     },
     "s1": {
