@@ -229,6 +229,12 @@ class Config:
     SCALP_V3_OB_MIN_SHORT_SCORE: float = 70.0    # min ob_short_score for SHORT.
     SCALP_V3_OB_WALL_TOO_CLOSE_PCT: float = 0.5  # skip entry if opposite-side wall within X% (resistance/support too close)
     SCALP_V3_OB_VOID_EXTEND_HOLD: bool = True    # when void above (LONG) or below (SHORT), extend hold — skip non-STALL exits once
+    # ═══ GLOBAL ORDERBOOK GATES (2026-04-24) — apply to any account listed. Enter at support, exit at resistance. ═══
+    # Per-account opt-in list. If empty, no impact. To enable for ang+men: OB_ENTRY_GATE_ACCOUNTS=["ang","men"].
+    OB_ENTRY_GATE_ACCOUNTS: list = field(default_factory=lambda: [])
+    OB_ENTRY_MIN_LONG_SCORE: float = 0.0         # 0=disabled. Recommend 60 for entry-at-support.
+    OB_ENTRY_MIN_SHORT_SCORE: float = 0.0        # 0=disabled. Recommend 60.
+    OB_ENTRY_WALL_TOO_CLOSE_PCT: float = 0.0     # 0=disabled. 0.5 skips LONG when ask wall <0.5% above.
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

@@ -14228,6 +14228,33 @@ class MultiAccountTradeManager:
                     async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=40, connect=20)) as resp:
                         await resp.text()
                     logger.debug(f"[{position_key}] {reason} FOOTHOLD_WEBHOOK_SENT")
+                    # 2026-04-24 UNIVERSAL HEDGE PERSIST (foothold path)
+                    try:
+                        _r_upper = str(reason or '').upper()
+                        _is_hedge_fh = (('HEDGE_ELECTED_' in _r_upper or 'HEDGE_PROTECT_' in _r_upper or 'HEDGE_SAME_' in _r_upper or 'QUICK_HEDGE_' in _r_upper)
+                                        and is_opening_or_augmenting)
+                        if _is_hedge_fh and hasattr(self, 'hedge_engine') and self.hedge_engine:
+                            import re as _re_fh
+                            _hedge_for_fh = None
+                            _m_fh = _re_fh.search(r'HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)', _r_upper)
+                            if _m_fh:
+                                _hedge_for_fh = f"{account_key}:{_m_fh.group(1)}_{_m_fh.group(2)}"
+                            elif _re_fh.search(r'HEDGE_PROTECT_(LONG|SHORT)_LOSS', _r_upper):
+                                _opp_fh = 'SHORT' if position_side == 'LONG' else 'LONG'
+                                _hedge_for_fh = f"{account_key}:{symbol}_{_opp_fh}"
+                            if _hedge_for_fh:
+                                _hr_fh = {
+                                    'position_key': position_key, 'hedge_for': _hedge_for_fh, 'losing_position_key': _hedge_for_fh,
+                                    'symbol': symbol, 'losing_side': _hedge_for_fh.split('_')[-1],
+                                    'position_side': position_side, 'quantity': abs(foothold_qty), 'price': current_price,
+                                    'entry_price': current_price, 'notional_usd': foothold_usd_value,
+                                    'timestamp': time.time(), 'is_hedge': True, 'reason': reason,
+                                    'opened_via': 'send_foothold_webhook',
+                                }
+                                asyncio.create_task(self.hedge_engine.persist_hedge_record(account_key, _hr_fh))
+                                logger.warning(f"🪪 [UNIVERSAL_HEDGE_PERSIST_FOOTHOLD] {position_key}: persist queued (hedge_for={_hedge_for_fh})")
+                    except Exception as _ehpf:
+                        logger.error(f"[UNIVERSAL_HEDGE_PERSIST_FOOTHOLD_ERR] {position_key}: {_ehpf}")
                 except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError, OSError) as e:
                     if "closing transport" in str(e).lower() or "cannot write" in str(e).lower():
                         logger.debug(f"[{position_key}] {reason} FOOTHOLD_WEBHO OK_ERROR: Connection closing during send: {e}")
@@ -14395,6 +14422,43 @@ class MultiAccountTradeManager:
                             logger.error(f"[{position_key}] WEBHOOK_FAIL: Status {resp.status} - {resp_text}")
                             return False
             logger.warning(f"👷 [{position_key}] WEBHOOK_SENT: {resolved_kind} order | resp={resp_text[:200]}")
+            # 2026-04-24 UNIVERSAL HEDGE PERSIST: if reason marks this as a hedge open, write
+            # a tracker.active_hedges record RIGHT NOW — don't rely on execute_trade_wrapper's
+            # return value propagation (which missed records in NMR + TWT cascades).
+            try:
+                _r_upper = str(reason or '').upper()
+                _is_hedge_webhook = (
+                    ('HEDGE_ELECTED_' in _r_upper or 'HEDGE_PROTECT_' in _r_upper or 'HEDGE_SAME_' in _r_upper or 'QUICK_HEDGE_' in _r_upper)
+                    and ((side == 'BUY' and position_side == 'LONG') or (side == 'SELL' and position_side == 'SHORT'))
+                    and not is_full_close
+                )
+                if _is_hedge_webhook:
+                    _hedge_for = None
+                    # Parse losing position key out of the reason when possible.
+                    # Patterns: QUICK_HEDGE_ELECTED_<SYM>_<SIDE>, QUICK_HEDGE_PROTECT_<SIDE>_LOSS
+                    import re as _re
+                    _m = _re.search(r'HEDGE_ELECTED_([A-Z0-9]+USD[TC]?)_(LONG|SHORT)', _r_upper)
+                    if _m:
+                        _hedge_for = f"{account_key}:{_m.group(1)}_{_m.group(2)}"
+                    else:
+                        _m2 = _re.search(r'HEDGE_PROTECT_(LONG|SHORT)_LOSS', _r_upper)
+                        if _m2:
+                            # opposite side of THIS symbol is the loser
+                            _opp = 'SHORT' if position_side == 'LONG' else 'LONG'
+                            _hedge_for = f"{account_key}:{symbol}_{_opp}"
+                    if hasattr(self, 'hedge_engine') and self.hedge_engine and _hedge_for:
+                        _hr = {
+                            'position_key': position_key, 'hedge_for': _hedge_for, 'losing_position_key': _hedge_for,
+                            'symbol': symbol, 'losing_side': _hedge_for.split('_')[-1],
+                            'position_side': position_side, 'quantity': abs(amount) / max(current_price, 1e-12) if current_price > 0 else 0,
+                            'price': current_price, 'entry_price': current_price, 'notional_usd': abs(amount),
+                            'timestamp': time.time(), 'is_hedge': True, 'reason': reason,
+                            'opened_via': 'send_webhook',
+                        }
+                        asyncio.create_task(self.hedge_engine.persist_hedge_record(account_key, _hr))
+                        logger.warning(f"🪪 [UNIVERSAL_HEDGE_PERSIST] {position_key}: persist queued via send_webhook (hedge_for={_hedge_for})")
+            except Exception as _ehp:
+                logger.error(f"[UNIVERSAL_HEDGE_PERSIST_ERR] {position_key}: {_ehp}")
             if hasattr(self, 'positions_service') and self.positions_service:
                 asyncio.create_task(self.positions_service.fetch_positions(account_key))
             # Position size watchdog: after webhook, verify position hasn't grown beyond MAX

@@ -10684,6 +10684,50 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # ═══════════════════════════════════════════════════════════════════════════
     _is_open_or_aug = action in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE') or 'OPEN' in (action or '') or 'AUGMENT' in (action or '') or 'REENTRY' in (action or '') or 'ENTRY' in (action or '')
     _is_close_action = 'CLOSE' in (action or '').upper() or 'REDUCE' in (action or '').upper() or 'KILL' in (action or '').upper()
+    # 2026-04-24 GLOBAL OB ENTRY GATE — applies to any account listed in OB_ENTRY_GATE_ACCOUNTS.
+    # "Enter at support, exit at resistance" principle. Reads orderbook:<SYM> from Redis.
+    # Config switches (default empty so no-op until user opts an account in):
+    #   OB_ENTRY_GATE_ACCOUNTS = ["ang","men",...]
+    #   OB_ENTRY_MIN_LONG_SCORE  (default 0 = disabled — set e.g. 60)
+    #   OB_ENTRY_MIN_SHORT_SCORE
+    #   OB_ENTRY_WALL_TOO_CLOSE_PCT (default 0 = disabled; e.g. 0.5 = skip LONG when ask wall <0.5% away)
+    if _is_open_or_aug and not _is_close_action and not is_hedge:
+        _ob_gate_accounts = set(getattr(config, 'OB_ENTRY_GATE_ACCOUNTS', []) or [])
+        if account_key in _ob_gate_accounts:
+            _is_long_entry = 'LONG' in str(position_key or '').upper().split('_')[-1:]
+            _pside_ob = 'LONG' if (position_key or '').endswith('_LONG') else 'SHORT'
+            _min_long = float(getattr(config, 'OB_ENTRY_MIN_LONG_SCORE', 0) or 0)
+            _min_short = float(getattr(config, 'OB_ENTRY_MIN_SHORT_SCORE', 0) or 0)
+            _wall_tc = float(getattr(config, 'OB_ENTRY_WALL_TOO_CLOSE_PCT', 0) or 0)
+            try:
+                import redis as _rs_ob
+                _rcli_ob = _rs_ob.Redis(host='localhost', port=6379, decode_responses=True)
+                _ob_raw = _rcli_ob.get(f"orderbook:{_gate_sym}")
+                if _ob_raw:
+                    import json as _json_ob
+                    _ob_d = _json_ob.loads(_ob_raw)
+                    _ob_age_ms = (time.time() * 1000.0) - float(_ob_d.get('ob_ts_ms', 0) or 0)
+                    if _ob_age_ms <= 5000:
+                        _ls = float(_ob_d.get('ob_long_score', 0) or 0)
+                        _ss = float(_ob_d.get('ob_short_score', 0) or 0)
+                        _bw = _ob_d.get('ob_bid_wall_pct')
+                        _aw = _ob_d.get('ob_ask_wall_pct')
+                        if _pside_ob == 'LONG':
+                            if _min_long > 0 and _ls < _min_long:
+                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: long_score={_ls:.0f} < min={_min_long:.0f} — BLOCKED")
+                                return False, f"BLOCKED_OB_LONG_SCORE_{_ls:.0f}<{_min_long:.0f}"
+                            if _wall_tc > 0 and _aw is not None and float(_aw) < _wall_tc:
+                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: ask_wall={float(_aw):.2f}% < {_wall_tc:.2f}% (resistance too close) — BLOCKED")
+                                return False, f"BLOCKED_OB_LONG_WALL_{float(_aw):.2f}pct"
+                        else:
+                            if _min_short > 0 and _ss < _min_short:
+                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: short_score={_ss:.0f} < min={_min_short:.0f} — BLOCKED")
+                                return False, f"BLOCKED_OB_SHORT_SCORE_{_ss:.0f}<{_min_short:.0f}"
+                            if _wall_tc > 0 and _bw is not None and float(_bw) < _wall_tc:
+                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: bid_wall={float(_bw):.2f}% < {_wall_tc:.2f}% (support too close) — BLOCKED")
+                                return False, f"BLOCKED_OB_SHORT_WALL_{float(_bw):.2f}pct"
+            except Exception as _oge:
+                logger.debug(f"[OB_ENTRY_GATE_ERR] {position_key}: {_oge}")
     if _is_open_or_aug and not _is_close_action:
         _tk = getattr(tracker_manager, 'tradeable_keys', None) or set()
         if _tk and position_key not in _tk:
@@ -15551,25 +15595,55 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
             l3 = safe_fetch_float(ind.get('low_3m', 0), 0)
             h3p = safe_fetch_float(ind.get('high_3m_prev', 0), 0)
             l3p = safe_fetch_float(ind.get('low_3m_prev', 0), 0)
+            # 2026-04-24 NOTUSDT fix: 1m structure is the fastest reliable signal. User
+            # "1m gave a PERFECT answer which was SELL" — we missed it. Add 1m LH/HH now.
+            h1 = safe_fetch_float(ind.get('high_1m', 0), 0)
+            l1 = safe_fetch_float(ind.get('low_1m', 0), 0)
+            h1p = safe_fetch_float(ind.get('high_1m_prev', 0), 0)
+            l1p = safe_fetch_float(ind.get('low_1m_prev', 0), 0)
             k_1m = safe_fetch_float(ind.get('stoch_k_1m', 50), 50)
             k_1m_prev = safe_fetch_float(ind.get('k_1m_prev', k_1m), k_1m)
             k_3m = safe_fetch_float(ind.get('stoch_k_3m', 50), 50)
             k_3m_prev = safe_fetch_float(ind.get('k_3m_prev', k_3m), k_3m)
             wt1_3m = safe_fetch_float(ind.get('wt1_3m', 0), 0)
             wt2_3m = safe_fetch_float(ind.get('wt2_3m', 0), 0)
+            # OB-based resistance/support proximity (2026-04-24): when LONG in gain AND
+            # ask wall is very close above → exit NOW (can't break through).
+            ob_ask_wall_pct = None; ob_bid_wall_pct = None
+            try:
+                import redis as _rs
+                _rcli = _rs.Redis(host='localhost', port=6379, decode_responses=True)
+                _ob_raw = _rcli.get(f"orderbook:{sym}")
+                if _ob_raw:
+                    _ob = json.loads(_ob_raw)
+                    ob_ask_wall_pct = _ob.get('ob_ask_wall_pct')
+                    ob_bid_wall_pct = _ob.get('ob_bid_wall_pct')
+            except Exception: pass
+            _wall_close_pct = float(getattr(config, 'SCALP_V3_OB_WALL_TOO_CLOSE_PCT', 0.5) or 0.5)
             triggers = []
             if side == 'LONG':
+                # 1m structural failure
+                if h1p > 0 and h1 < h1p: triggers.append(f"LH_1m_{h1:.6g}<{h1p:.6g}")
+                if l1p > 0 and l1 < l1p: triggers.append(f"LL_1m_{l1:.6g}<{l1p:.6g}")
+                # 3m structural failure
                 if h3p > 0 and h3 < h3p: triggers.append(f"LH_3m_{h3:.6g}<{h3p:.6g}")
                 if l3p > 0 and l3 < l3p: triggers.append(f"LL_3m_{l3:.6g}<{l3p:.6g}")
                 if k_1m < k_1m_prev - k_drop_min: triggers.append(f"K1m_dropped_{k_1m_prev:.0f}->{k_1m:.0f}")
                 if k_3m < k_3m_prev - k_drop_min: triggers.append(f"K3m_dropped_{k_3m_prev:.0f}->{k_3m:.0f}")
                 if wt1_3m and wt2_3m and wt1_3m < wt2_3m: triggers.append(f"WT3m_bear_{wt1_3m:.1f}<{wt2_3m:.1f}")
+                # OB resistance too close + position in gain → exit to lock profit
+                if ob_ask_wall_pct is not None and float(ob_ask_wall_pct) < _wall_close_pct and gain > 0:
+                    triggers.append(f"OB_ASK_WALL_{float(ob_ask_wall_pct):.2f}pct<{_wall_close_pct:.2f}pct_gain={gain:.2f}%")
             else:  # SHORT
+                if h1p > 0 and h1 > h1p: triggers.append(f"HH_1m_{h1:.6g}>{h1p:.6g}")
+                if l1p > 0 and l1 > l1p: triggers.append(f"HL_1m_{l1:.6g}>{l1p:.6g}")
                 if h3p > 0 and h3 > h3p: triggers.append(f"HH_3m_{h3:.6g}>{h3p:.6g}")
                 if l3p > 0 and l3 > l3p: triggers.append(f"HL_3m_{l3:.6g}>{l3p:.6g}")
                 if k_1m > k_1m_prev + k_drop_min: triggers.append(f"K1m_rose_{k_1m_prev:.0f}->{k_1m:.0f}")
                 if k_3m > k_3m_prev + k_drop_min: triggers.append(f"K3m_rose_{k_3m_prev:.0f}->{k_3m:.0f}")
                 if wt1_3m and wt2_3m and wt1_3m > wt2_3m: triggers.append(f"WT3m_bull_{wt1_3m:.1f}>{wt2_3m:.1f}")
+                if ob_bid_wall_pct is not None and float(ob_bid_wall_pct) < _wall_close_pct and gain > 0:
+                    triggers.append(f"OB_BID_WALL_{float(ob_bid_wall_pct):.2f}pct<{_wall_close_pct:.2f}pct_gain={gain:.2f}%")
             if not triggers:
                 continue
             # User 2026-04-24: NEVER close if at support (LONG) or resistance (SHORT) —
