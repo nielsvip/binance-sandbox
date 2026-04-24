@@ -6154,6 +6154,22 @@ class HedgeEngine:
                 return False
         except Exception as _tr_e:
             logger.warning(f"[HEDGE_TRACKER_CHECK_ERR] {origin_key}: {_tr_e}")
+        # 2026-04-24 NEVER-HEDGE-A-HEDGE early gate. Checks origin's augment_reason
+        # for hedge markers BEFORE any tracker lookup. Survives cleared/missing tracker state.
+        # Incident: ALT_LONG → QNT_SHORT (hedge, reason=QUICK_HEDGE_ELECTED_ALTUSDT_LONG) →
+        # QNT_SHORT went red → system tried to hedge QNT_SHORT with QNT_LONG. active_hedges
+        # was empty (persist failed), so tracker-authoritative didn't catch it.
+        try:
+            _op = await self.tracker_manager.get_position(origin_key)
+            if not _op and hasattr(self.tracker_manager, 'positions_service'):
+                _op = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(origin_key)
+            _ar = str(getattr(_op, 'augment_reason', '') or '').upper()
+            for _hm in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
+                if _hm in _ar:
+                    logger.critical(f"🚫 [HEDGE_OF_HEDGE_BLOCK_EARLY] {origin_key}: augment_reason has '{_hm}' → origin born as hedge. Refusing to hedge-the-hedge (reason={_ar[:80]})")
+                    return False
+        except Exception as _re:
+            logger.debug(f"[HEDGE_REASON_EARLY_CHECK_ERR] {origin_key}: {_re}")
         _hc_ts = self._hedge_completed.get(origin_key, 0)
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
             logger.warning(f"🚫 [HEDGE_COMPLETED_LOCK] {origin_key}: hedge opened {int(time.time() - _hc_ts)}s ago, lockout={self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s — BLOCKED")
@@ -6194,6 +6210,24 @@ class HedgeEngine:
         async with self.tracker_manager._hedges_lock:
             _origin_is_hedge = any(h.get('position_key') == origin_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
             _already_tracked = any(h.get('losing_position_key') == origin_key for h in self.tracker_manager.active_hedges if isinstance(h, dict))
+        # 2026-04-24 HARDENED: active_hedges can be empty (persist_hedge_record failed or tracker
+        # was cleared). Fall back to checking the origin's augment_reason — any HEDGE_ELECTED_ /
+        # HEDGE_PROTECT_ / QUICK_HEDGE_ marker means this position was born as a hedge. Incident:
+        # ALT_LONG → hedged by QNT_SHORT (reason=QUICK_HEDGE_ELECTED_ALTUSDT_LONG) → QNT_SHORT went
+        # red → system tried to hedge QNT_SHORT with QNT_LONG because active_hedges was empty.
+        if not _origin_is_hedge:
+            try:
+                _origin_pos = await self.tracker_manager.get_position(origin_key)
+                if not _origin_pos:
+                    _origin_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(origin_key)
+                _aug_reason = str(getattr(_origin_pos, 'augment_reason', '') or '').upper()
+                for _mark in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
+                    if _mark in _aug_reason:
+                        _origin_is_hedge = True
+                        logger.critical(f"[HEDGE_OF_HEDGE_BLOCK_BY_REASON] {origin_key}: augment_reason contains '{_mark}' → origin was born as a hedge. Refusing to hedge-the-hedge. reason={_aug_reason[:100]}")
+                        break
+            except Exception as _re:
+                logger.debug(f"[HEDGE_REASON_CHECK_ERR] {origin_key}: {_re}")
         if _origin_is_hedge:
             logger.warning(f"[HEDGE_OF_HEDGE_BLOCK] {origin_key}: origin IS a hedge position in tracker. Not hedging a hedge.")
             return False
