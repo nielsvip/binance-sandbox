@@ -15322,8 +15322,16 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     active = sum(1 for pk, p in by_acct.items()
                  if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
                  and abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0)
+    # AUGMENT PASS: add to open V3 positions on pullback when in profit.
+    # Runs BEFORE new-open pass so winners get priority when slots are tight.
+    aug_fires = 0
+    try:
+        aug_fires = await _scalp_v3_attempt_augments(trade_manager, account_key, tracker_manager,
+                                                      data_manager, hedge_engine, by_acct)
+    except Exception as e:
+        logger.debug(f"[SCALP_V3_AUG] err: {e}")
     if active >= max_conc:
-        return len(longs) + len(shorts), 0
+        return len(longs) + len(shorts), aug_fires
     slots = max_conc - active
     fires = 0
     for sym, div, vel, ob_long, ob_short in (longs[:top_n] + shorts[:top_n]):
@@ -15339,7 +15347,125 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
                 fires += 1
         except Exception as e:
             logger.debug(f"[SCALP_V3_SCAN] {sym}: {e}")
-    return len(longs) + len(shorts), fires
+    return len(longs) + len(shorts), fires + aug_fires
+
+
+async def _scalp_v3_attempt_augments(trade_manager, account_key: str,
+                                       tracker_manager: "TrackerManager",
+                                       data_manager: "FastDataManager",
+                                       hedge_engine: "HedgeEngine",
+                                       by_acct: dict) -> int:
+    """Pyramid into profitable V3 positions on a MOMENTUM-CONFIRMED pullback.
+    User feedback 2026-04-24: earlier version augmented too early + too big and
+    took a −1.5% loss on what was a +8% winner. Tightening:
+      - gain > SCALP_V3_AUG_MIN_GAIN (default 2.0% — enough cushion)
+      - REQUIRE confirmed direction bar (HH_HL for LONG, LL_LH for SHORT) + at least
+        one of [K oversold-turning, OB still aligned]
+      - K check is CROSSOVER (K > K_prev for LONG, K < K_prev for SHORT) — not just
+        low K. Low K that keeps falling = falling knife, which burned us on MOVR.
+      - Augment size capped at min(absolute_cap, SCALP_V3_AUG_MAX_FRAC_OF_POS × cur_notional)
+      - Cooldown 180s (was 60) to let each add breathe before next.
+    """
+    if not getattr(config, 'SCALP_V3_AUG_ENABLED', True):
+        return 0
+    min_gain = float(getattr(config, 'SCALP_V3_AUG_MIN_GAIN', 2.0))
+    aug_cooldown = float(getattr(config, 'SCALP_V3_AUG_COOLDOWN_SEC', 180.0))
+    abs_cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 20.0))
+    aug_max_frac = float(getattr(config, 'SCALP_V3_AUG_MAX_FRAC_OF_POS', 0.5))
+    ob_min_score = float(getattr(config, 'SCALP_V3_OB_MIN_SCORE', 45.0))
+    v3_positions = []
+    for pk, p in by_acct.items():
+        reason = str(getattr(p, 'augment_reason', '') or '')
+        if not reason.startswith('SCALP_V3_OPEN_'):
+            continue
+        amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
+        if amt <= 0: continue
+        gain = safe_fetch_float(getattr(p, 'gain', 0), 0)
+        if gain < min_gain: continue
+        last_aug_ts = getattr(p, 'last_augmentation_time', None)
+        if last_aug_ts:
+            try:
+                if isinstance(last_aug_ts, str):
+                    from dateutil.parser import isoparse
+                    last_aug_ts = isoparse(last_aug_ts)
+                if last_aug_ts.tzinfo is None:
+                    last_aug_ts = last_aug_ts.replace(tzinfo=timezone.utc)
+                age_s = (datetime.now(timezone.utc) - last_aug_ts).total_seconds()
+                if age_s < aug_cooldown: continue
+            except Exception: pass
+        v3_positions.append((pk, p, gain, amt))
+    if not v3_positions:
+        return 0
+    try:
+        import redis as _redis_sync
+        _r = _redis_sync.Redis(host='localhost', port=6379, decode_responses=True)
+    except Exception:
+        _r = None
+    fires = 0
+    for pk, pos, gain, amt in v3_positions:
+        try:
+            _, sym, side = parse_position_key(pk)
+            _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
+            if not ind or not fresh: continue
+            price = safe_fetch_float(ind.get('current_price', 0), 0)
+            if price <= 0: continue
+            # MANDATORY — 3M bar direction confirm. Without this, augmenting into
+            # a reversal (what killed the MOVR trade).
+            h3 = safe_fetch_float(ind.get('high_3m', 0), 0)
+            l3 = safe_fetch_float(ind.get('low_3m', 0), 0)
+            h3p = safe_fetch_float(ind.get('high_3m_prev', 0), 0)
+            l3p = safe_fetch_float(ind.get('low_3m_prev', 0), 0)
+            bar_ok = (h3 > h3p and l3 > l3p) if side == 'LONG' else (h3 < h3p and l3 < l3p)
+            if not bar_ok:
+                continue
+            signals = ["HH_HL_3m" if side == 'LONG' else "LL_LH_3m"]
+            # K CROSSOVER (rising from bottom for LONG, falling from top for SHORT)
+            k_1m = safe_fetch_float(ind.get('stoch_k_1m', 50), 50)
+            k_3m = safe_fetch_float(ind.get('stoch_k_3m', 50), 50)
+            k_1m_prev = safe_fetch_float(ind.get('k_1m_prev', k_1m), k_1m)
+            k_3m_prev = safe_fetch_float(ind.get('k_3m_prev', k_3m), k_3m)
+            if side == 'LONG':
+                # wants K low AND rising (oversold bounce)
+                if k_3m < 40 and k_3m > k_3m_prev: signals.append(f"K3m_cross_up_{k_3m_prev:.0f}->{k_3m:.0f}")
+                elif k_1m < 30 and k_1m > k_1m_prev: signals.append(f"K1m_cross_up_{k_1m_prev:.0f}->{k_1m:.0f}")
+            else:
+                if k_3m > 60 and k_3m < k_3m_prev: signals.append(f"K3m_cross_dn_{k_3m_prev:.0f}->{k_3m:.0f}")
+                elif k_1m > 70 and k_1m < k_1m_prev: signals.append(f"K1m_cross_dn_{k_1m_prev:.0f}->{k_1m:.0f}")
+            # Orderbook alignment — still showing the setup is valid
+            if _r is not None:
+                try:
+                    raw = _r.get(f"orderbook:{sym}")
+                    if raw:
+                        ob = json.loads(raw) if isinstance(raw, str) else orjson.loads(raw)
+                        ob_long = float(ob.get('ob_long_score', 0) or 0)
+                        ob_short = float(ob.get('ob_short_score', 0) or 0)
+                        if side == 'LONG' and ob_long >= ob_min_score: signals.append(f"OB_l{ob_long:.0f}")
+                        if side == 'SHORT' and ob_short >= ob_min_score: signals.append(f"OB_s{ob_short:.0f}")
+                except Exception: pass
+            # Need bar_ok (mandatory) + AT LEAST ONE of K-crossover / OB-aligned
+            if len(signals) < 2:
+                continue
+            # Size: capped at min(absolute, frac × current)
+            cur_notional = amt * price
+            size_usd = min(abs_cap_usd, aug_max_frac * cur_notional)
+            min_qty = trade_manager.min_qty.get(sym, 0.0001) * 1.2
+            aug_qty = max(min_qty, size_usd / price if price > 0 else 0)
+            if aug_qty <= 0: continue
+            # Guard: augment must respect Binance min-notional (~$5). If cur_pos is tiny
+            # ($8) and 0.5× = $4 is below min, skip rather than inflating above cap.
+            if aug_qty * price < 5.0:
+                logger.info(f"[SCALP_V3_AUG_SKIP] {pk}: would-be-$={aug_qty*price:.2f} below Binance min $5 (cur_notional=${cur_notional:.2f})")
+                continue
+            reason = f"SCALP_V3_OPEN_AUG_{side}_gain{gain:+.2f}_{'_'.join(signals)[:60]}"
+            logger.warning(f"⚡ [SCALP_V3_AUG_FIRE] {pk}: gain={gain:+.2f}% signals=[{','.join(signals)}] cur=${cur_notional:.2f} aug=${aug_qty*price:.2f}")
+            await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                         account_key, pk, amt, 'AUGMENT',
+                                         price, aug_qty, reason,
+                                         is_hedge=False, data_manager=data_manager)
+            fires += 1
+        except Exception as e:
+            logger.debug(f"[SCALP_V3_AUG] {pk}: {e}")
+    return fires
 
 
 async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,

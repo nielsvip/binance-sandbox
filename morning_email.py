@@ -830,38 +830,36 @@ def build_options_positions_section():
                     "pnl_pct": pnl_pct,
                     "sector": _SECTOR_MAP.get(parsed["symbol"], "Other"),
                 })
-    # ── Known hedged options (from equity hedges file — no live P/L) ──────────
-    hedges_file = TRADIER_DIR / "options_equity_hedges.json"
-    hedged_occs: dict = {}
-    if hedges_file.exists():
+    # ── Known open options from truth file (watchdog writes this each cycle) ────
+    # Do NOT use options_equity_hedges.json — it tracks hedge placements, not open
+    # positions, and goes stale when options close without coordinated hedge unwind.
+    truth_file = TRADIER_DIR / "options_open_positions.json"
+    truth_ts = ""
+    untracked_known = []
+    local_occs = {p["occ"] for p in positions}
+    if truth_file.exists():
         try:
-            hedged_occs = json.load(open(hedges_file))
+            truth_data = json.load(open(truth_file))
+            truth_ts = truth_data.get("last_updated", "")[:16]
+            for entry in truth_data.get("positions", []):
+                occ = entry.get("occ_symbol", "")
+                if not occ or occ in local_occs:
+                    continue
+                parsed = _parse_occ_simple(occ)
+                if not parsed:
+                    continue
+                untracked_known.append({
+                    "occ": occ,
+                    "underlying": entry.get("underlying", parsed["symbol"]),
+                    "option_type": entry.get("option_type", parsed["option_type"]),
+                    "strike": entry.get("strike", parsed["strike"]),
+                    "expiration": entry.get("expiration", parsed["expiration"]),
+                    "qty": int(entry.get("qty", 1)),
+                    "sector": _SECTOR_MAP.get(entry.get("underlying", parsed["symbol"]), "Other"),
+                })
         except Exception:
             pass
-    # Track which OCCs are already in positions (with P/L data)
-    local_occs = {p["occ"] for p in positions}
-    # Add hedged options not already tracked (these have no live P/L)
-    untracked_hedged = []
-    for occ, hdata in hedged_occs.items():
-        if occ in local_occs:
-            continue
-        parsed = _parse_occ_simple(occ)
-        if not parsed:
-            continue
-        untracked_hedged.append({
-            "occ": occ,
-            "underlying": parsed["symbol"],
-            "option_type": parsed["option_type"],
-            "strike": parsed["strike"],
-            "expiration": parsed["expiration"],
-            "qty": int(hdata.get("opt_qty", 1)),
-            "hedge_side": hdata.get("hedge_side", ""),
-            "hedge_qty": hdata.get("hedge_qty", 0),
-            "hedge_symbol": hdata.get("hedge_symbol", parsed["symbol"]),
-            "placed_at": hdata.get("placed_at", "")[:10],
-            "note": hdata.get("note", ""),
-            "sector": _SECTOR_MAP.get(parsed["symbol"], "Other"),
-        })
+    untracked_hedged = untracked_known  # keep variable name for rest of function
     # ── Positions table (local tracked with P/L) ──────────────────────────────
     if positions:
         total_pnl = sum(p["pnl"] for p in positions)
@@ -889,25 +887,22 @@ def build_options_positions_section():
             )
         html += "</table>"
     else:
-        html += '<p class="gr" style="font-size:11px">No options with qty&gt;0 in local position files. Manually-entered options tracked below via equity hedges.</p>'
-    # ── Hedged options reference (no live P/L, but known open) ───────────────
-    if untracked_hedged:
-        html += f'<h3>Known Hedged Options ({len(untracked_hedged)}) &mdash; <span class="gr" style="font-size:11px">no live P/L — run watchdog for current marks</span></h3>'
-        html += '<table><tr><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Equity Hedge</th><th>Hedge Placed</th><th>Note</th></tr>'
-        for h in untracked_hedged:
+        html += '<p class="gr" style="font-size:11px">No options with qty&gt;0 in local position files (tradier_manage.py may have zeroed them). Known open options from truth file shown below.</p>'
+    # ── Known open options from truth file (no live P/L until watchdog runs) ───
+    if untracked_known:
+        ts_note = f"as of {truth_ts} UTC" if truth_ts else "manually seeded"
+        html += f'<h3>Known Open Options ({len(untracked_known)}) &mdash; <span class="gr" style="font-size:11px">{ts_note} — no live P/L, run watchdog for marks</span></h3>'
+        html += '<table><tr><th>Contract</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Sector</th></tr>'
+        for h in untracked_known:
             otype_pill = "pg" if h["option_type"] == "call" else "pr"
             exp_short = h["expiration"][5:] if h["expiration"] else ""
-            hedge_desc = f'{h["hedge_qty"]} {h["hedge_symbol"]} {h["hedge_side"].replace("sell_short","short").replace("buy","long")}'
-            note = (h["note"] or "")[:50]
             html += (
                 f'<tr><td><b>{h["underlying"]}</b> <span class="gr" style="font-size:10px">{h["occ"]}</span></td>'
                 f'<td><span class="pill {otype_pill}">{h["option_type"].upper()}</span></td>'
-                f'<td style="text-align:right">${h["strike"]:.1f}</td>'
+                f'<td style="text-align:right">${h["strike"]:.0f}</td>'
                 f'<td>{exp_short}</td>'
                 f'<td style="text-align:center">{h["qty"]}</td>'
-                f'<td style="font-size:11px">{hedge_desc}</td>'
-                f'<td style="font-size:11px">{h["placed_at"]}</td>'
-                f'<td style="font-size:11px" class="gr">{note}</td></tr>'
+                f'<td style="font-size:11px">{h["sector"]}</td></tr>'
             )
         html += "</table>"
     # ── Sector hedge analysis — always show based on equity + known options ───

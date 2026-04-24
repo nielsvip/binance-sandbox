@@ -1599,17 +1599,57 @@ def _save_equity_hedges(config, state: Dict) -> None:
         logger.error(f"_save_equity_hedges error: {e}")
 
 
+_OPTIONS_TRUTH_FILE = "options_open_positions.json"
+
+
+def _load_options_truth(config) -> List[Dict]:
+    """Load the authoritative local options truth file.
+
+    Written by the watchdog each cycle from live API data.  Can also be manually
+    seeded.  This is the ONLY reliable local source for 'what options are open'.
+    Do NOT use options_equity_hedges.json for this — it tracks hedge placements,
+    not current open positions, and goes stale quickly.
+    """
+    path = config.DATA_DIR / _OPTIONS_TRUTH_FILE
+    if not path.exists():
+        return []
+    try:
+        data = json.load(open(path))
+        return data.get("positions", [])
+    except Exception as e:
+        logger.warning(f"_load_options_truth error: {e}")
+        return []
+
+
+def _save_options_truth(config, positions: List[Dict], account_key: str, source: str = "watchdog") -> None:
+    path = config.DATA_DIR / _OPTIONS_TRUTH_FILE
+    try:
+        with open(path, "w") as f:
+            json.dump({"last_updated": datetime.utcnow().isoformat(), "source": source, "account": account_key, "positions": positions}, f, indent=2, default=str)
+    except Exception as e:
+        logger.error(f"_save_options_truth error: {e}")
+
+
 def get_locally_known_option_occs(config, account_key: str = None) -> set:
     """Return set of OCC symbols we locally believe are currently open.
 
-    Two sources:
-    1. Local position files — OCC-format entries with positionAmt > 0 (definitive).
-    2. options_equity_hedges.json — OCCs for which we placed equity hedges (likely open).
+    Primary source: options_open_positions.json — written by the watchdog each cycle
+    from live Tradier API data and can be manually seeded.
 
-    Used as fallback when the Tradier API returns stale/empty data, and to prevent
-    phantom-sell blocks on positions that are genuinely held.
+    Fallback: local position files with positionAmt > 0.
+
+    Do NOT use options_equity_hedges.json — it tracks hedge placements, not open
+    positions, and stays stale after options close or new positions open without hedges.
     """
     known: set = set()
+    # Primary — watchdog truth file
+    for pos in _load_options_truth(config):
+        occ = pos.get("occ_symbol", "")
+        if occ and parse_occ_symbol(occ):
+            known.add(occ)
+    if known:
+        return known
+    # Fallback — local position files (positionAmt can be zeroed by tradier_manage.py, use with caution)
     base = Path(str(config.DATA_DIR).replace("/data/tradier", ""))
     accts = [account_key] if account_key else ["tra", "trb", "trc"]
     for acct in accts:
@@ -1626,10 +1666,6 @@ def get_locally_known_option_occs(config, account_key: str = None) -> set:
                         known.add(sym)
             except Exception:
                 pass
-    # Equity hedges — options for which we placed a hedge (likely still open)
-    for occ in _load_equity_hedges(config):
-        if parse_occ_symbol(occ):
-            known.add(occ)
     return known
 
 
@@ -2715,6 +2751,13 @@ async def run_watch(args):
             _pos_cache_file = config.DATA_DIR / "options_positions_cache.json"
             with open(_pos_cache_file, "w") as f:
                 json.dump({"timestamp": datetime.now().isoformat(), "account": account_key, "positions": _pos_cache}, f, indent=2, default=str)
+            # Update the authoritative truth file — the single local source of what is open
+            _truth_positions = [
+                {"occ_symbol": e["occ_symbol"], "underlying": e["symbol"], "option_type": e["option_type"],
+                 "strike": e["strike"], "expiration": e["expiration"], "qty": int(e["quantity"])}
+                for e in _pos_cache if int(e.get("quantity", 0)) > 0
+            ]
+            _save_options_truth(config, _truth_positions, account_key, source="watchdog")
             # Persist WT velocity snapshots for next bar's acceleration comparison
             if wt_history_updated:
                 _save_wt_history(config, wt_history_updated)

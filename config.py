@@ -191,6 +191,12 @@ class Config:
     # waiting for K/candle confirmation.
     SCALP_V3_OB_REQUIRED: bool = True            # if True, orderbook signal is required (no pure-divergence opens)
     SCALP_V3_OB_MIN_SCORE: float = 45.0          # min ob_long_score or ob_short_score to consider entry
+    # Augment-on-winner (2026-04-24 user directive): pyramid into V3 positions
+    # that are in profit > SCALP_V3_AUG_MIN_GAIN with pullback signals.
+    SCALP_V3_AUG_ENABLED: bool = True
+    SCALP_V3_AUG_MIN_GAIN: float = 2.0           # 2026-04-24: 0.5→2.0 — real cushion before adding
+    SCALP_V3_AUG_COOLDOWN_SEC: float = 180.0     # 2026-04-24: 60→180s — let adds breathe
+    SCALP_V3_AUG_MAX_FRAC_OF_POS: float = 0.5    # 2026-04-24: cap aug at half of current pos notional
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
