@@ -4435,8 +4435,20 @@ class HedgeEngine:
                 existing.update({'is_hedge': True, 'hedge_for': _lpk, 'losing_position_key': _lpk, 'hedge_id': hedge_record.get('hedge_id'), 'positionAmt': hedge_record.get('quantity', 0.0), 'entry_price': hedge_record.get('price', 0.0), 'status': 'active', 'position_key': position_key, 'account': account_key, 'hedge_open_count': hedge_record.get('hedge_open_count', 1), 'total_hedge_cost_usd': hedge_record.get('total_hedge_cost_usd', 0.0), 'losing_pnl_at_hedge': hedge_record.get('losing_pnl_at_hedge', 0.0), 'hedge_pct_of_losing': hedge_record.get('hedge_pct_of_losing', 0.0)})
                 self.tracker_manager.exit_candidates[position_key] = existing
                 self.tracker_manager._exit_candidates_dirty[account_key] = True
-        logger.info(f"[HEDGE_PERSISTED] {position_key} → hedge_for={_lpk} qty={hedge_record.get('quantity',0):.4f} ${hedge_record.get('notional_usd',0):.2f} open_count={hedge_record.get('hedge_open_count',1)} total_cost=${hedge_record.get('total_hedge_cost_usd',0):.2f} losing_pnl={hedge_record.get('losing_pnl_at_hedge',0):.2f}% hedge_pct={hedge_record.get('hedge_pct_of_losing',0):.0f}%")
+        logger.critical(f"🪪 [HEDGE_PERSISTED] {position_key} → hedge_for={_lpk} qty={hedge_record.get('quantity',0):.4f} ${hedge_record.get('notional_usd',0):.2f} open_count={hedge_record.get('hedge_open_count',1)} total_cost=${hedge_record.get('total_hedge_cost_usd',0):.2f} losing_pnl={hedge_record.get('losing_pnl_at_hedge',0):.2f}% hedge_pct={hedge_record.get('hedge_pct_of_losing',0):.0f}% [active_hedges_len_after={len(self.tracker_manager.active_hedges)}]")
         await self.tracker_manager.save_tracker(account_key, force=True)
+        # 2026-04-24 VERIFICATION: immediately after save, re-read and confirm the hedge is actually in the file.
+        # If not, log CRITICAL so we can chase the filter bug.
+        try:
+            import json as _jv
+            _fp = self.tracker_manager.get_tracker_file(account_key)
+            if _fp.exists():
+                with open(_fp) as _fh: _dv = _jv.load(_fh)
+                _hdict = _dv.get('hedges', {}) or {}
+                if position_key and position_key not in _hdict:
+                    logger.critical(f"🚨 [HEDGE_PERSIST_MISMATCH] {position_key}: in-memory active_hedges has record but file's hedges dict does NOT. File has keys: {list(_hdict.keys())[:5]}")
+        except Exception as _vfe:
+            logger.debug(f"[HEDGE_PERSIST_VERIFY_ERR] {position_key}: {_vfe}")
 
     async def should_close_original_position(self, account_key: str, position_key: str, current_price: float) -> bool:
         async with self.tracker_manager._hedges_lock:
