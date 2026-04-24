@@ -512,7 +512,10 @@ async def main():
 
     active_syms: List[str] = list(syms)
     ws_tasks: List[asyncio.Task] = []
-    http_session = aiohttp.ClientSession()
+    # 2026-04-24: WebSocket-only mode. NEVER open HTTP session in partial-stream mode
+    # to guarantee no possible REST call can ever be made by this service. User directive:
+    # "eliminate api calls, websocket streaming only if not we will keep getting killed".
+    http_session = None if USE_PARTIAL_STREAM else aiohttp.ClientSession()
 
     MAX_SYMS_PER_WS = 100    # be conservative — diff stream is chattier than partial
 
@@ -570,7 +573,8 @@ async def main():
             t.cancel()
         await asyncio.gather(*ws_tasks, writer, reloader, return_exceptions=True)
         try:
-            await http_session.close()
+            if http_session is not None:
+                await http_session.close()
         except Exception:
             pass
         try:
