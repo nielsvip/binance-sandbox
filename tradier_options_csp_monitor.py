@@ -396,7 +396,7 @@ async def run_once(client: TradierAPIClient, config: TradierConfig, dry_run: boo
     indicators = _load_indicators(config)
     positions = []
     try:
-        positions = await get_option_positions(client)
+        positions = await get_option_positions(client, config=config)
     except Exception as e:
         logger.error(f"position fetch failed: {e}")
         audit(f"FETCH_ERROR\t{e}")

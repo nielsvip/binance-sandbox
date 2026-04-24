@@ -426,9 +426,9 @@ async def assess_market(client: TradierAPIClient, config: TradierConfig) -> Mark
 
 # ── Position Exposure Calculator ─────────────────────────────────────────────
 
-async def get_options_exposure(client: TradierAPIClient) -> Tuple[float, List[Dict]]:
+async def get_options_exposure(client: TradierAPIClient, config=None) -> Tuple[float, List[Dict]]:
     """Calculate total options exposure (cost basis) and return positions."""
-    positions = await get_option_positions(client)
+    positions = await get_option_positions(client, config=config)
     total_exposure = 0.0
     for pos in positions:
         cost = abs(pos.get("cost_basis", 0) or 0)
@@ -928,7 +928,7 @@ async def run_agent(args):
         # Step 3: Current exposure
         print(f"\n  Step 3: Current Options Exposure & Diversification")
         print(f"  {'─'*86}")
-        exposure, positions = await get_options_exposure(client)
+        exposure, positions = await get_options_exposure(client, config=config)
         div = analyze_diversification(positions, config)
         _bull_e, _bear_e, _bull_f = compute_market_direction_ratio(positions, config)
         _mdr_min_disp = getattr(config, "OPTIONS_MARKET_RATIO_MIN", 0.25)

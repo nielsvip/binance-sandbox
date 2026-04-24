@@ -10955,6 +10955,12 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _market_override = (_bear_mode and is_opening_short and _losing_longs >= 3) or (_bull_mode and is_opening_long and _losing_shorts >= 3)
             if _market_override:
                 logger.info(f"📈 [MARKET_OVERRIDE] {position_key}: {'BEAR' if _bear_mode else 'BULL'} mode + {_losing_longs or _losing_shorts} stuck losers → ratio limits SUSPENDED for {'SHORT' if is_opening_short else 'LONG'} open (ratio={ratio:.2f})")
+            # 2026-04-23: SCALP_V3 scalps ($20 each) bypass L/S ratio hard limits —
+            # portfolio-level ratio is irrelevant for single-cap min-size scalps.
+            _ls_ratio_v3_bypass = 'SCALP_V3_OPEN' in str(reason or '').upper()
+            if _ls_ratio_v3_bypass:
+                logger.info(f"⚡ [LS_RATIO_V3_BYPASS] {position_key}: SCALP_V3 $20 scalp — ignoring portfolio ratio gate (ratio={ratio:.2f})")
+                _market_override = True
             blocked = False
             if not _market_override:
                 if is_opening_short and new_ratio < hard_min:
