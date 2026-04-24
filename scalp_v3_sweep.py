@@ -749,7 +749,7 @@ def parse_deadline(args) -> float:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random"], default="orthogonal")
+    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined"], default="orthogonal")
     ap.add_argument("--variants", type=int, default=0, help="Cap (0 = no cap)")
     ap.add_argument("--random-sample", type=int, default=0, help="Random-sample N from the grid (0 = use full grid)")
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))
