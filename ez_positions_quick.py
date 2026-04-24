@@ -10684,50 +10684,12 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # ═══════════════════════════════════════════════════════════════════════════
     _is_open_or_aug = action in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE') or 'OPEN' in (action or '') or 'AUGMENT' in (action or '') or 'REENTRY' in (action or '') or 'ENTRY' in (action or '')
     _is_close_action = 'CLOSE' in (action or '').upper() or 'REDUCE' in (action or '').upper() or 'KILL' in (action or '').upper()
-    # 2026-04-24 GLOBAL OB ENTRY GATE — applies to any account listed in OB_ENTRY_GATE_ACCOUNTS.
-    # "Enter at support, exit at resistance" principle. Reads orderbook:<SYM> from Redis.
-    # Config switches (default empty so no-op until user opts an account in):
-    #   OB_ENTRY_GATE_ACCOUNTS = ["ang","men",...]
-    #   OB_ENTRY_MIN_LONG_SCORE  (default 0 = disabled — set e.g. 60)
-    #   OB_ENTRY_MIN_SHORT_SCORE
-    #   OB_ENTRY_WALL_TOO_CLOSE_PCT (default 0 = disabled; e.g. 0.5 = skip LONG when ask wall <0.5% away)
-    if _is_open_or_aug and not _is_close_action and not is_hedge:
-        _ob_gate_accounts = set(getattr(config, 'OB_ENTRY_GATE_ACCOUNTS', []) or [])
-        if account_key in _ob_gate_accounts:
-            _is_long_entry = 'LONG' in str(position_key or '').upper().split('_')[-1:]
-            _pside_ob = 'LONG' if (position_key or '').endswith('_LONG') else 'SHORT'
-            _min_long = float(getattr(config, 'OB_ENTRY_MIN_LONG_SCORE', 0) or 0)
-            _min_short = float(getattr(config, 'OB_ENTRY_MIN_SHORT_SCORE', 0) or 0)
-            _wall_tc = float(getattr(config, 'OB_ENTRY_WALL_TOO_CLOSE_PCT', 0) or 0)
-            try:
-                import redis as _rs_ob
-                _rcli_ob = _rs_ob.Redis(host='localhost', port=6379, decode_responses=True)
-                _ob_raw = _rcli_ob.get(f"orderbook:{_gate_sym}")
-                if _ob_raw:
-                    import json as _json_ob
-                    _ob_d = _json_ob.loads(_ob_raw)
-                    _ob_age_ms = (time.time() * 1000.0) - float(_ob_d.get('ob_ts_ms', 0) or 0)
-                    if _ob_age_ms <= 5000:
-                        _ls = float(_ob_d.get('ob_long_score', 0) or 0)
-                        _ss = float(_ob_d.get('ob_short_score', 0) or 0)
-                        _bw = _ob_d.get('ob_bid_wall_pct')
-                        _aw = _ob_d.get('ob_ask_wall_pct')
-                        if _pside_ob == 'LONG':
-                            if _min_long > 0 and _ls < _min_long:
-                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: long_score={_ls:.0f} < min={_min_long:.0f} — BLOCKED")
-                                return False, f"BLOCKED_OB_LONG_SCORE_{_ls:.0f}<{_min_long:.0f}"
-                            if _wall_tc > 0 and _aw is not None and float(_aw) < _wall_tc:
-                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: ask_wall={float(_aw):.2f}% < {_wall_tc:.2f}% (resistance too close) — BLOCKED")
-                                return False, f"BLOCKED_OB_LONG_WALL_{float(_aw):.2f}pct"
-                        else:
-                            if _min_short > 0 and _ss < _min_short:
-                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: short_score={_ss:.0f} < min={_min_short:.0f} — BLOCKED")
-                                return False, f"BLOCKED_OB_SHORT_SCORE_{_ss:.0f}<{_min_short:.0f}"
-                            if _wall_tc > 0 and _bw is not None and float(_bw) < _wall_tc:
-                                logger.warning(f"🚫 [OB_ENTRY_GATE] {position_key}: bid_wall={float(_bw):.2f}% < {_wall_tc:.2f}% (support too close) — BLOCKED")
-                                return False, f"BLOCKED_OB_SHORT_WALL_{float(_bw):.2f}pct"
-            except Exception as _oge:
-                logger.debug(f"[OB_ENTRY_GATE_ERR] {position_key}: {_oge}")
+    # 2026-04-24 OB PRICE-IMPROVEMENT LAYER (was BLOCKING, now DEFERS).
+    # Function removed — replaced by ob_compute_limit_price() helper consulted inside
+    # maker order placement to override the limit price toward the nearest support/resistance
+    # when available. See ez_positions_quick.ob_compute_limit_price() + its usage in execute_now.
+    # This block intentionally left as no-op for structural compatibility.
+    pass
     if _is_open_or_aug and not _is_close_action:
         _tk = getattr(tracker_manager, 'tradeable_keys', None) or set()
         if _tk and position_key not in _tk:
