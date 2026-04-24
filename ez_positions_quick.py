@@ -10696,10 +10696,22 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # NOTE: No total hedge exposure cap — hedges must be free to protect the portfolio during market drops.
     # The 200% per-hedge cap above is sufficient to prevent runaway hedge monsters.
     _is_aug_action = action in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE') or 'OPEN' in action or 'AUGMENT' in action
+    # ═══ V3 POSITION LOCK (2026-04-24) ═══════════════════════════════════════════
+    # User: "hedge these OR never let positions slip into a loss". We chose to
+    # never-let-slip. To enforce: V3 positions can ONLY be augmented by V3's own
+    # scanner. All other systems (RED_ZONE, MANDATORY_PRICE_CROSS_REENTRY, HLR,
+    # reentry loops) are BLOCKED from adding. This prevents the $20 scalp from
+    # being turned into a $150 swing-sized loser by a well-meaning augment path.
+    if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'QUICK_REENTRY') and not is_hedge:
+        _lock_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
+        _lock_existing_reason = str(getattr(_lock_pos, 'augment_reason', '') or '') if _lock_pos else ''
+        _lock_incoming_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
+        if _lock_existing_reason.startswith('SCALP_V3_OPEN_') and not _lock_incoming_v3:
+            logger.critical(f"🛡️ [V3_POSITION_LOCKED] {position_key}: V3-tagged position only accepts V3-origin augments. BLOCKING incoming action={action} reason={(reason or '')[:60]}")
+            return False, f"BLOCKED_V3_POSITION_LOCKED"
     # ═══ V3 AUGMENT REVERSAL-BLOCK (2026-04-24) ═══════════════════════════════════
     # User: "if LH or LL appear ... buying in!!! This has to be impossible". Block
-    # ALL augments on V3 positions when 3m bar shows LH/LL (LONG) or HH/HL (SHORT).
-    # Applies to ANY code path trying to add to a V3 position, not just V3 scanner.
+    # ALL V3-origin augments when 3m bar shows LH/LL (LONG) or HH/HL (SHORT).
     if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT') and not is_hedge and current_price > 0 and data_manager:
         _v3_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
         _v3_reason_existing = str(getattr(_v3_pos, 'augment_reason', '') or '') if _v3_pos else ''
@@ -15262,6 +15274,22 @@ async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asynci
         print(f"[SCALP_V3_SCAN_EXIT] {account_key} not in SCALP_V3_ACCOUNTS, returning", flush=True)
         return
     interval = float(getattr(config, 'SCALP_V3_SCAN_INTERVAL_SEC', 10.0))
+    # Reclaim V3 ownership of existing positions (augment_reason contains SCALP_V3)
+    # so MAX_LOSS_CUT + protective-exits work even when reason was overwritten.
+    try:
+        if not hasattr(tracker_manager, '_v3_dynamic_keys'):
+            tracker_manager._v3_dynamic_keys = set()
+        _by = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
+        _reclaimed = 0
+        for _pk, _p in _by.items():
+            _r = str(getattr(_p, 'augment_reason', '') or '')
+            if 'SCALP_V3' in _r and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0:
+                tracker_manager._v3_dynamic_keys.add(_pk)
+                _reclaimed += 1
+        if _reclaimed:
+            logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] reclaimed {_reclaimed} V3 positions across restart")
+    except Exception as _rc_err:
+        logger.debug(f"[SCALP_V3_SCAN] reclaim err: {_rc_err}")
     print(f"[SCALP_V3_SCAN_STARTED] account={account_key} interval={interval}", flush=True)
     logger.info(f"⚡ [SCALP_V3_SCAN][{account_key}] STARTED interval={interval}s")
     logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] STARTED interval={interval}s")
@@ -15348,8 +15376,9 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         key=lambda x: (x[4], _usdc_bonus(x[0]), -x[1]), reverse=True
     )
     by_acct = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
+    _v3keys_count = getattr(tracker_manager, '_v3_dynamic_keys', set()) or set()
     active = sum(1 for pk, p in by_acct.items()
-                 if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
+                 if (pk in _v3keys_count or 'SCALP_V3' in str(getattr(p, 'augment_reason', '') or ''))
                  and abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0)
     # PROTECTIVE-EXIT PASS (2026-04-24): if V3 position is in gain and the 3m bar
     # flipped (LH or LL), or K_1m/K_3m dropped materially, close 100% NOW.
@@ -15413,7 +15442,9 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
     fires = 0
     for pk, p in by_acct.items():
         reason_str = str(getattr(p, 'augment_reason', '') or '')
-        if not reason_str.startswith('SCALP_V3_OPEN_'):
+        _v3keys = getattr(tracker_manager, '_v3_dynamic_keys', set()) or set()
+        _is_v3 = (pk in _v3keys) or ('SCALP_V3' in reason_str)
+        if not _is_v3:
             continue
         amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
         if amt <= 0: continue
@@ -15564,7 +15595,9 @@ async def _scalp_v3_attempt_augments(trade_manager, account_key: str,
     v3_positions = []
     for pk, p in by_acct.items():
         reason = str(getattr(p, 'augment_reason', '') or '')
-        if not reason.startswith('SCALP_V3_OPEN_'):
+        _v3keys_aug = getattr(tracker_manager, '_v3_dynamic_keys', set()) or set()
+        _is_v3_aug = (pk in _v3keys_aug) or ('SCALP_V3' in reason)
+        if not _is_v3_aug:
             continue
         amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
         if amt <= 0: continue
