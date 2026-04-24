@@ -6661,14 +6661,31 @@ class PositionService:
             return
         async with self._positions_lock:
             if current_price and current_price > 0:
-                position.mark_price = current_price
+                # 2026-04-24: SELF-REINFORCING STALENESS FIX. Previously this path refreshed
+                # mark_price_last_updated = now EVERY cycle regardless of whether the value
+                # actually changed. Downstream quick_price() sees age<2s and returns the stale
+                # value → next cycle feeds that stale value back in → timestamp refreshed again.
+                # Fix: ONLY advance timestamp when we have a genuinely NEW price (either
+                # price_ts is fresh, or current_price differs from stored value).
                 price_ts = None
                 try :
                     if hasattr(self, 'get_current_price'):
                         _, price_ts = await self.get_current_price(position.symbol)
                 except Exception:
                     pass
-                position.mark_price_last_updated = ensure_tz(price_ts) if price_ts else now
+                _old_mark = position.mark_price or 0
+                _value_changed = abs(current_price - _old_mark) / max(_old_mark, 1e-12) > 1e-6
+                _ts_is_fresh = False
+                if price_ts:
+                    try:
+                        _ts_age = (now - ensure_tz(price_ts)).total_seconds()
+                        _ts_is_fresh = _ts_age < 30
+                    except Exception:
+                        _ts_is_fresh = False
+                if _value_changed or _ts_is_fresh:
+                    position.mark_price = current_price
+                    position.mark_price_last_updated = ensure_tz(price_ts) if price_ts else now
+                # else: leave mark_price_last_updated AT ITS ORIGINAL — staleness will surface to callers
             current_price = position.mark_price or current_price
             if amt_abs == 0.0:
                 pass

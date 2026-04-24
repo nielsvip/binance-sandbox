@@ -14226,8 +14226,12 @@ class MultiAccountTradeManager:
             _now_wh = time.time()
             # 2026-04-24: HEDGE opens get a longer lock (1h) to match HEDGE_COMPLETED_LOCKOUT.
             # Root cause: 60× NMR hedge double-opens where each 5-min retry bypassed the 30s TTL.
+            # 2026-04-24 (2nd): HAIKU_WINNER_AUG + UNVERIFIED_SHADOW webhooks are also susceptible —
+            # NEIRO cascade had 15+ AUGMENT webhooks over ~3h despite individual maker timeouts.
+            # Any reason containing HEDGE/PROTECT/AUG/WINNER/HAIKU/UNVERIFIED gets the long lock.
             _is_hedge_wh = 'HEDGE' in _reason_wl or 'PROTECT' in _reason_wl
-            _ttl_use = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if _is_hedge_wh else _ABSOLUTE_WEBHOOK_TTL
+            _is_aug_wh = 'AUGMENT' in _reason_wl or 'WINNER' in _reason_wl or 'HAIKU' in _reason_wl or 'UNVERIFIED' in _reason_wl or 'SHADOW' in _reason_wl
+            _ttl_use = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if (_is_hedge_wh or _is_aug_wh) else _ABSOLUTE_WEBHOOK_TTL
             # Redis-backed lock (survives process restarts) — tries Redis first, falls back to in-memory.
             _redis_lock_key = f"webhook_lock:{_wh_key}"
             _redis_expiry = 0.0
@@ -14240,7 +14244,7 @@ class MultiAccountTradeManager:
             _wh_expiry = max(_ABSOLUTE_WEBHOOK_LOCK.get(_wh_key, 0), _redis_expiry)
             if _wh_expiry > _now_wh:
                 _rem_wh = _wh_expiry - _now_wh
-                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ttl_use - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more (ttl={_ttl_use:.0f}s,hedge={_is_hedge_wh}). reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
+                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ttl_use - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more (ttl={_ttl_use:.0f}s,hedge={_is_hedge_wh},aug={_is_aug_wh}). reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
                 return False
             _new_expiry = _now_wh + _ttl_use
             _ABSOLUTE_WEBHOOK_LOCK[_wh_key] = _new_expiry
@@ -22713,6 +22717,20 @@ Only say REVERSE if confidence >= 0.75. Otherwise say OK."""
                         continue
                     if pos_amt * mark_price < self.MIN_POSITION_VALUE:
                         continue
+                    # 2026-04-24: HAIKU STALE-GAIN GUARD (NO API CALLS — uses entry + mark already in
+                    # the file which ez_positions_service keeps current every 3s). If file's gain field
+                    # disagrees with (mark-entry)/entry by more than 0.5pp, the snapshot is stale and we
+                    # refuse to augment. NEIRO cascade: HAIKU augmented at "+3.5%" from stale disk when
+                    # real position had slipped negative. Root fix is in ez_positions*, this is belt+braces.
+                    _side_haiku = "LONG" if pk.endswith("_LONG") else "SHORT"
+                    _computed_gain = ((mark_price - entry_price) / entry_price * 100.0) if _side_haiku == "LONG" else ((entry_price - mark_price) / entry_price * 100.0)
+                    if abs(_computed_gain - gain) > 0.5:
+                        logger.warning(f"🛡️ [HAIKU_STALE_GAIN_BLOCK] {pk}: file_gain={gain:+.2f}% but (mark-entry)/entry={_computed_gain:+.2f}% (Δ={abs(_computed_gain-gain):.2f}pp). File snapshot stale — not augmenting.")
+                        continue
+                    if _computed_gain < self.AUGMENT_GAIN_THRESHOLD:
+                        logger.debug(f"[HAIKU_SKIP_BELOW_THRESHOLD] {pk}: gain={_computed_gain:+.2f}% < {self.AUGMENT_GAIN_THRESHOLD}%")
+                        continue
+                    gain = _computed_gain
                     managed = self._managed.get(pk)
                     if gain >= self.AUGMENT_GAIN_THRESHOLD and gain >= getattr(config, 'MIN_GAIN', 3.0):
                         if managed and managed.get("reduced"):

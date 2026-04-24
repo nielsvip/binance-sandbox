@@ -265,8 +265,16 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
                 if h["side"] == "SHORT": hedge_gain = -hedge_gain
                 combined = orig_gain + hedge_gain - (FEE_PCT * 2)  # 4 legs round-trip
                 hedge_age = now_ts - h["entry_ts"]
-                # Unwind conditions: combined back to BE, or 1h since hedge
-                if combined >= -0.05 or hedge_age > 3600:
+                # 2026-04-24 SCALP-CYCLE RULE: V3 cycles last 10-15min max. Hedge must close in
+                # minutes, not hours. Unwind triggers (ANY of):
+                #   1) combined ≥ -0.05 (breakeven)
+                #   2) orig bounce: orig_gain now > (gain_at_hedge + 0.3pp) — bounce detected
+                #   3) hedge 10min timeout (was 3600s=1h)
+                _gain_at_hedge = h.get("gain_at_hedge", 0.0)
+                _orig_bounced = orig_gain > _gain_at_hedge + 0.3
+                _hedge_timeout = hedge_age > 600  # 10 min max for scalp cycle
+                if combined >= -0.05 or _orig_bounced or _hedge_timeout:
+                    _reason_unwind = "HEDGE_UNWIND_BE" if combined >= -0.05 else ("HEDGE_UNWIND_BOUNCE" if _orig_bounced else "HEDGE_TIMEOUT_10M")
                     events.append({
                         "type": "PAPER_HEDGE_CLOSE", "symbol": symbol,
                         "orig_side": pos.side, "orig_entry": pos.entry_price,
@@ -274,7 +282,7 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
                         "exit_price": price, "age_min": round(hedge_age / 60, 1),
                         "orig_gain": round(orig_gain, 3), "hedge_gain": round(hedge_gain, 3),
                         "combined_gain": round(combined, 3),
-                        "reason": "HEDGE_UNWIND_BE" if combined >= -0.05 else "HEDGE_TIMEOUT_1H",
+                        "reason": _reason_unwind,
                     })
                     del state["positions"][key]
                     del hedges[key]
