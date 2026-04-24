@@ -266,7 +266,7 @@ _recent_opens: Dict[str, float] = {}  # position_key → timestamp of last OPEN/
 # Unconditional per-(account,symbol,side) lock with 60s TTL. Cannot be bypassed by any reason,
 # action, or is_hedge flag. Every OPEN/AUGMENT/HEDGE/ENTRY fails if prior fire was <60s ago.
 _ABSOLUTE_OPEN_LOCK: Dict[str, float] = {}  # (account:symbol_side) → expiry ts
-_ABSOLUTE_OPEN_LOCK_TTL: float = 60.0
+_ABSOLUTE_OPEN_LOCK_TTL: float = 300.0  # 2026-04-24 user directive: dedup at execute_now layer, not webhook. 5min = one open per (key:side) per 5min. Prevents NMR/TWT-style cascades where each cycle opens $5-10. Webhook lock removed; execute_now is the single gate.
 _ABSOLUTE_WEBHOOK_LOCK: Dict[str, float] = {}  # (account:symbol_side:orderside) → expiry
 _ABSOLUTE_WEBHOOK_TTL: float = 30.0
 _DUPLICATE_OPEN_COOLDOWN = 900.0  # seconds — HARD block on re-opening within this window (matches _AUGMENT_LOCK)
@@ -12976,14 +12976,32 @@ class MultiAccountTradeManager:
                 position_key = f"{account_key}:{_usdc_sym_en}_{position_side}"
                 logger.info(f"[USDC_UPGRADE] {_old_pk_en} → {position_key}: auto-redirected USDT→USDC (zero commissions)")
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
+        # 2026-04-24: Redis-backed so it survives process restarts. TTL 5min (user directive).
         if _is_open_action and position_key:
             _now_abs = time.time()
             _abs_expiry = _ABSOLUTE_OPEN_LOCK.get(position_key, 0)
-            if _abs_expiry > _now_abs:
-                _remaining = _abs_expiry - _now_abs
+            _redis_abs_expiry = 0.0
+            _redis_abs_key = f"open_lock:{position_key}"
+            try:
+                _r_abs = getattr(self, 'redis', None) or getattr(self, 'redis_client', None) or (self.redis_manager if hasattr(self, 'redis_manager') else None)
+                if _r_abs:
+                    _rv_abs = _r_abs.get(_redis_abs_key) if hasattr(_r_abs, 'get') else None
+                    if _rv_abs:
+                        try: _redis_abs_expiry = float(_rv_abs if isinstance(_rv_abs, (int,float,str)) else _rv_abs.decode())
+                        except Exception: _redis_abs_expiry = 0.0
+            except Exception: _redis_abs_expiry = 0.0
+            _effective_expiry = max(_abs_expiry, _redis_abs_expiry)
+            if _effective_expiry > _now_abs:
+                _remaining = _effective_expiry - _now_abs
                 logger.critical(f"🔒🔒🔒 [ABSOLUTE_OPEN_LOCK] {position_key}: BLOCKED — another open happened {_ABSOLUTE_OPEN_LOCK_TTL - _remaining:.1f}s ago, lock active for {_remaining:.1f}s more. action={action} reason={(reason or '')[:60]} is_hedge={is_hedge}")
                 return f"BLOCKED_ABSOLUTE_OPEN_LOCK_{_remaining:.0f}s"
-            _ABSOLUTE_OPEN_LOCK[position_key] = _now_abs + _ABSOLUTE_OPEN_LOCK_TTL
+            _new_exp_abs = _now_abs + _ABSOLUTE_OPEN_LOCK_TTL
+            _ABSOLUTE_OPEN_LOCK[position_key] = _new_exp_abs
+            try:
+                _r_abs = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
+                if _r_abs and hasattr(_r_abs, 'set'):
+                    _r_abs.set(_redis_abs_key, str(_new_exp_abs), ex=int(_ABSOLUTE_OPEN_LOCK_TTL) + 60)
+            except Exception: pass
             # Cleanup expired entries (cheap: scan once per open, not per call)
             if len(_ABSOLUTE_OPEN_LOCK) > 500:
                 for _k in list(_ABSOLUTE_OPEN_LOCK.keys()):
@@ -14234,41 +14252,9 @@ class MultiAccountTradeManager:
         if account_key not in self.accounts:
             logger.error(f"[s end_foothold_webhook] Account '{account_key}' not found in self.accounts for {position_key}")
             return False
-        # 2026-04-24: TWT cascade — FOOTHOLD webhook path bypassed the ABSOLUTE_WEBHOOK_LOCK in
-        # send_webhook. Apply the SAME Redis-backed lock here. Hedge/aug reasons get 1h TTL,
-        # everything else 30s. Without this, foothold fires unlimited hedge webhooks.
-        global _ABSOLUTE_WEBHOOK_LOCK
-        _reason_fh = str(reason or '').upper()
-        _side_fh = (side or '').upper()
-        _pside_fh = (position_side or '').upper()
-        _is_open_like_fh = ((_side_fh == 'BUY' and _pside_fh == 'LONG') or (_side_fh == 'SELL' and _pside_fh == 'SHORT'))
-        _is_close_like_fh = 'CLOSE' in _reason_fh or 'REDUCE' in _reason_fh or 'KILL' in _reason_fh or 'EXIT' in _reason_fh
-        if _is_open_like_fh and not _is_close_like_fh:
-            _wh_key_fh = f"{account_key}:{symbol}_{_pside_fh}:{_side_fh}"
-            _now_fh = time.time()
-            _is_hedge_fh = 'HEDGE' in _reason_fh or 'PROTECT' in _reason_fh
-            _is_aug_fh = 'AUGMENT' in _reason_fh or 'WINNER' in _reason_fh or 'HAIKU' in _reason_fh or 'UNVERIFIED' in _reason_fh or 'SHADOW' in _reason_fh
-            _ttl_fh = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if (_is_hedge_fh or _is_aug_fh) else _ABSOLUTE_WEBHOOK_TTL
-            _redis_lock_key_fh = f"webhook_lock:{_wh_key_fh}"
-            _redis_expiry_fh = 0.0
-            try:
-                _redis_cli_fh = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
-                if _redis_cli_fh:
-                    _rv_fh = _redis_cli_fh.get(_redis_lock_key_fh)
-                    if _rv_fh: _redis_expiry_fh = float(_rv_fh)
-            except Exception: _redis_expiry_fh = 0.0
-            _wh_exp_fh = max(_ABSOLUTE_WEBHOOK_LOCK.get(_wh_key_fh, 0), _redis_expiry_fh)
-            if _wh_exp_fh > _now_fh:
-                _rem_fh = _wh_exp_fh - _now_fh
-                logger.critical(f"🔒🔒🔒 [FOOTHOLD_WEBHOOK_LOCK] {_wh_key_fh}: BLOCKED — prior open {_ttl_fh - _rem_fh:.1f}s ago, lock {_rem_fh:.1f}s more (ttl={_ttl_fh:.0f}s,hedge={_is_hedge_fh},aug={_is_aug_fh}). reason={(reason or '')[:60]}")
-                return False
-            _new_exp_fh = _now_fh + _ttl_fh
-            _ABSOLUTE_WEBHOOK_LOCK[_wh_key_fh] = _new_exp_fh
-            try:
-                _redis_cli_fh = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
-                if _redis_cli_fh:
-                    _redis_cli_fh.set(_redis_lock_key_fh, str(_new_exp_fh), ex=int(_ttl_fh) + 60)
-            except Exception: pass
+        # 2026-04-24 USER DIRECTIVE: webhook layer does NOT block. Dedup is enforced
+        # at execute_now via _ABSOLUTE_OPEN_LOCK (5min TTL). Blocking here would break
+        # legitimate maker-fallback scenarios where the ORDER side wants to retry.
         account = self.accounts[account_key]
         webhook_url = account.webhook_url
         webhook_secret = account.webhook_secret
@@ -14323,55 +14309,10 @@ class MultiAccountTradeManager:
 
     async def send_webhook(self, position_key: str, account_key: str, symbol: str, positionAmt: float, amount: float, current_price: float, side: str, position_side: str, unique_id: str, is_full_close: bool, reason: str, level: float | None = None, stoch_required: bool = False, order_ids_to_cancel: list = None, url_variant: str = "") -> bool:
         if is_sandbox_account(config, account_key): return True
-        # ═══════════════════════════════════════════════════════════════════════════
-        # 🔒🔒🔒 ABSOLUTE WEBHOOK LOCK (2026-04-17) — NO BYPASS 🔒🔒🔒
-        # Last line of defense before Finandy. 30s rate limit on ANY webhook for the
-        # same (account:symbol:side:orderside). Triggered by BNBUSDT cascade where
-        # 80 SELL-Limit-Virtual-3m orders hit Finandy bypassing execute_now's preflight.
-        # Blocks OPEN/AUGMENT-style webhooks only; reduces/closes are exempt for exit safety.
-        # ═══════════════════════════════════════════════════════════════════════════
-        global _ABSOLUTE_WEBHOOK_LOCK
-        _reason_wl = (reason or '').upper()
-        _side_wl = (side or '').upper()
-        _pside_wl = (position_side or '').upper()
-        _is_open_like_wh = ((_side_wl == 'BUY' and _pside_wl == 'LONG') or (_side_wl == 'SELL' and _pside_wl == 'SHORT')) and not is_full_close
-        _is_close_like_wh = 'CLOSE' in _reason_wl or 'REDUCE' in _reason_wl or 'KILL' in _reason_wl or 'EXIT' in _reason_wl or 'LIQUIDATION' in _reason_wl or is_full_close
-        if _is_open_like_wh and not _is_close_like_wh:
-            _wh_key = f"{account_key}:{symbol}_{_pside_wl}:{_side_wl}"
-            _now_wh = time.time()
-            # 2026-04-24: HEDGE opens get a longer lock (1h) to match HEDGE_COMPLETED_LOCKOUT.
-            # Root cause: 60× NMR hedge double-opens where each 5-min retry bypassed the 30s TTL.
-            # 2026-04-24 (2nd): HAIKU_WINNER_AUG + UNVERIFIED_SHADOW webhooks are also susceptible —
-            # NEIRO cascade had 15+ AUGMENT webhooks over ~3h despite individual maker timeouts.
-            # Any reason containing HEDGE/PROTECT/AUG/WINNER/HAIKU/UNVERIFIED gets the long lock.
-            _is_hedge_wh = 'HEDGE' in _reason_wl or 'PROTECT' in _reason_wl
-            _is_aug_wh = 'AUGMENT' in _reason_wl or 'WINNER' in _reason_wl or 'HAIKU' in _reason_wl or 'UNVERIFIED' in _reason_wl or 'SHADOW' in _reason_wl
-            _ttl_use = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if (_is_hedge_wh or _is_aug_wh) else _ABSOLUTE_WEBHOOK_TTL
-            # Redis-backed lock (survives process restarts) — tries Redis first, falls back to in-memory.
-            _redis_lock_key = f"webhook_lock:{_wh_key}"
-            _redis_expiry = 0.0
-            try:
-                _redis_cli = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
-                if _redis_cli:
-                    _rv = _redis_cli.get(_redis_lock_key)
-                    if _rv: _redis_expiry = float(_rv)
-            except Exception: _redis_expiry = 0.0
-            _wh_expiry = max(_ABSOLUTE_WEBHOOK_LOCK.get(_wh_key, 0), _redis_expiry)
-            if _wh_expiry > _now_wh:
-                _rem_wh = _wh_expiry - _now_wh
-                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ttl_use - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more (ttl={_ttl_use:.0f}s,hedge={_is_hedge_wh},aug={_is_aug_wh}). reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
-                return False
-            _new_expiry = _now_wh + _ttl_use
-            _ABSOLUTE_WEBHOOK_LOCK[_wh_key] = _new_expiry
-            try:
-                _redis_cli = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
-                if _redis_cli:
-                    _redis_cli.set(_redis_lock_key, str(_new_expiry), ex=int(_ttl_use) + 60)
-            except Exception: pass
-            if len(_ABSOLUTE_WEBHOOK_LOCK) > 500:
-                for _k in list(_ABSOLUTE_WEBHOOK_LOCK.keys()):
-                    if _ABSOLUTE_WEBHOOK_LOCK[_k] < _now_wh:
-                        _ABSOLUTE_WEBHOOK_LOCK.pop(_k, None)
+        # 2026-04-24 USER DIRECTIVE: webhook layer does NOT block. Dedup enforced at
+        # execute_now via _ABSOLUTE_OPEN_LOCK (5min TTL). Blocking here would prevent
+        # legitimate maker-fallback from completing the very order we want to fire.
+        # The former ABSOLUTE_WEBHOOK_LOCK block lived here — removed.
         # if current_env['env'] != 'server' and await safe_check_server_heartbeat(account_key) and 'QUICK' not in reason and account_key!='flz':
         #     logger.warning(f"[SERVER_HEARTBEAT_BLOCK] {position_key}: Server active, blocking webhook.")
         #     return False 
