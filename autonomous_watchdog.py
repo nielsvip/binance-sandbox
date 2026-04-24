@@ -292,9 +292,9 @@ def check_and_fix_machine(machine_key, cfg, state):
 
     print(f"  procs={n_running} fresh_logs={fresh_count}/{n_wanted}", flush=True)
 
-    # Over-capacity: kill all (zombie survivors from old sessions)
-    if n_running > n_wanted + 1:
-        print(f"  Over-capacity ({n_running} procs > {n_wanted+1}) — killing all, restarting clean", flush=True)
+    # Over-capacity: kill all only if also stale (running processes but no fresh logs = zombie duplicates)
+    if n_running > n_wanted + 1 and fresh_count < n_wanted:
+        print(f"  Over-capacity ({n_running} procs > {n_wanted+1}) with stale logs — killing all, restarting clean", flush=True)
         if is_local:
             _run_local("pkill -9 -f autonomous_search.py 2>/dev/null")
         else:
