@@ -238,15 +238,20 @@ def check_scalp_v3_entry(inp: V3Input, cfg) -> Tuple[bool, str]:
 
 
 def check_scalp_v3_exit(pos: V3Position, inp: V3Input, cfg) -> Tuple[bool, str]:
+    """Technical-only exits (2026-04-24 user directive: no max_hold, always respect technicals,
+    exit at gain whenever possible). Priority order:
+      1. K+Bar technical (current behaviour — overbought K AND bar reversal)
+      2. GAIN-AWARE early exit: if gain > min_tp and ANY bar LH/LL pattern appears → lock profit
+      3. STALL (ONLY fires if SCALP_V3_STALL_ENABLED=True; default False)
+    max_hold_min is no longer a trigger — position holds until technical fires.
+    """
     side = pos.side
-    age_min = (inp.now_ts - pos.entry_ts) / 60.0
     gain_pct = _compute_gain_pct(pos, inp.current_price)
-    if getattr(cfg, 'SCALP_V3_STALL_ENABLED', False) and age_min > cfg.SCALP_V3_MAX_HOLD_MIN and gain_pct <= cfg.SCALP_V3_STALL_GAIN_MAX_PCT:
-        return True, f"SCALP_V3_EXIT_STALL_{side}"
     tf_mode = cfg.SCALP_V3_EXIT_TF_MODE
     check_1m = tf_mode in ("ANY", "1M_ONLY")
     check_3m = tf_mode in ("ANY", "3M_ONLY")
     check_15m = tf_mode in ("ANY", "15M_ONLY")
+    # 1) Full K+Bar technical exit (original)
     if check_1m and len(inp.bars_1m) >= 2:
         if _k_overbought(inp.k_1m, cfg.SCALP_V3_EXIT_1M_K_MIN, side):
             if _bar_pattern_match(inp.bars_1m[-2], inp.bars_1m[-1], cfg.SCALP_V3_EXIT_1M_BAR, side):
@@ -259,6 +264,21 @@ def check_scalp_v3_exit(pos: V3Position, inp: V3Input, cfg) -> Tuple[bool, str]:
         if _k_overbought(inp.k_15m, cfg.SCALP_V3_EXIT_15M_K_MIN, side):
             if _bar_pattern_match(inp.bars_15m[-2], inp.bars_15m[-1], cfg.SCALP_V3_EXIT_15M_BAR, side):
                 return True, f"SCALP_V3_EXIT_15M_BAR_{side}"
+    # 2) GAIN-AWARE EARLY EXIT (2026-04-24): when in gain ≥ SCALP_V3_MIN_TP_FOR_EARLY_EXIT (default 0.2%),
+    # any bar reversal pattern fires immediately — lock the profit before it slips away. K gate is bypassed
+    # because in-gain positions don't need overbought confirmation; the bar reversal IS the signal.
+    _min_tp = float(getattr(cfg, 'SCALP_V3_MIN_TP_FOR_EARLY_EXIT', 0.2) or 0.2)
+    if gain_pct >= _min_tp:
+        if check_1m and len(inp.bars_1m) >= 2:
+            if _bar_pattern_match(inp.bars_1m[-2], inp.bars_1m[-1], cfg.SCALP_V3_EXIT_1M_BAR, side):
+                return True, f"SCALP_V3_EXIT_EARLY_1M_BAR_{side}_gain={gain_pct:.2f}%"
+        if check_3m and len(inp.bars_3m) >= 2:
+            if _bar_pattern_match(inp.bars_3m[-2], inp.bars_3m[-1], cfg.SCALP_V3_EXIT_3M_BAR, side):
+                return True, f"SCALP_V3_EXIT_EARLY_3M_BAR_{side}_gain={gain_pct:.2f}%"
+    # 3) STALL — only if explicitly enabled. max_hold_min is no longer a trigger by itself.
+    age_min = (inp.now_ts - pos.entry_ts) / 60.0
+    if getattr(cfg, 'SCALP_V3_STALL_ENABLED', False) and age_min > cfg.SCALP_V3_MAX_HOLD_MIN and gain_pct <= cfg.SCALP_V3_STALL_GAIN_MAX_PCT:
+        return True, f"SCALP_V3_EXIT_STALL_{side}"
     return False, ""
 
 
