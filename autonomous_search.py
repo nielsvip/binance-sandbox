@@ -6,7 +6,7 @@ until killed or N_MAX reached.
 Timeout is enforced via multiprocessing.Process (fork) so numpy C code can
 actually be killed — signal.SIGALRM cannot interrupt numpy's C extensions.
 """
-import argparse, copy, csv, json, os, random, sys, time, gc
+import argparse, copy, csv, json, os, random, signal, sys, time, gc
 import multiprocessing as mp
 from dataclasses import fields
 from pathlib import Path
@@ -54,16 +54,30 @@ def _sim_worker_fn(cfg, conn):
         conn.close()
 
 
+def _worker_with_setsid(cfg, child_conn):
+    """Forked worker that creates its own process group so killpg kills it fully."""
+    try:
+        os.setsid()
+    except Exception:
+        pass
+    _sim_worker_fn(cfg, child_conn)
+
+
 def _run_simulate_timed(cfg, timeout_secs, mp_ctx):
     """Run simulate(cfg) in a child process; return (result, timed_out, error_str)."""
     parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
-    proc = mp_ctx.Process(target=_sim_worker_fn, args=(cfg, child_conn), daemon=True)
+    proc = mp_ctx.Process(target=_worker_with_setsid, args=(cfg, child_conn), daemon=False)
     proc.start()
     child_conn.close()
     proc.join(timeout=timeout_secs)
     if proc.is_alive():
-        proc.kill()
-        proc.join()
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception:
+            proc.kill()
+        proc.join(timeout=10)
+        if proc.is_alive():
+            proc.kill()
         parent_conn.close()
         return None, True, None
     # exitcode < 0 means killed by signal (e.g. SIGKILL from OOM killer)
