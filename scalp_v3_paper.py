@@ -255,11 +255,54 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
         )
         if pos_data:
             pos = V3Position(**pos_data)
+            # Check if position is already hedged — try to unwind combined trade first
+            hedges = state.setdefault("hedges", {})
+            h = hedges.get(key)
+            if h:
+                orig_gain = (price - pos.entry_price) / pos.entry_price * 100.0
+                if pos.side == "SHORT": orig_gain = -orig_gain
+                hedge_gain = (price - h["entry_price"]) / h["entry_price"] * 100.0
+                if h["side"] == "SHORT": hedge_gain = -hedge_gain
+                combined = orig_gain + hedge_gain - (FEE_PCT * 2)  # 4 legs round-trip
+                hedge_age = now_ts - h["entry_ts"]
+                # Unwind conditions: combined back to BE, or 1h since hedge
+                if combined >= -0.05 or hedge_age > 3600:
+                    events.append({
+                        "type": "PAPER_HEDGE_CLOSE", "symbol": symbol,
+                        "orig_side": pos.side, "orig_entry": pos.entry_price,
+                        "hedge_side": h["side"], "hedge_entry": h["entry_price"],
+                        "exit_price": price, "age_min": round(hedge_age / 60, 1),
+                        "orig_gain": round(orig_gain, 3), "hedge_gain": round(hedge_gain, 3),
+                        "combined_gain": round(combined, 3),
+                        "reason": "HEDGE_UNWIND_BE" if combined >= -0.05 else "HEDGE_TIMEOUT_1H",
+                    })
+                    del state["positions"][key]
+                    del hedges[key]
+                    state["exit_states"][key] = asdict_lite(V3ExitState(
+                        last_exit_ts=now_ts, k_15m_at_exit=inp.k_15m, k_15m_prev_at_exit=inp.k_15m_prev))
+                continue   # skip regular exit check when in hedge
             ok, reason = check_scalp_v3_exit(pos, inp, cfg)
             if ok:
                 gain = (price - pos.entry_price) / pos.entry_price * 100.0
                 if pos.side == "SHORT": gain = -gain
                 gain -= FEE_PCT
+                exit_strategy = getattr(cfg, '_exit_strategy', 'close')
+                if exit_strategy == 'hedge' and gain < -0.3:
+                    # Open hedge: opposite-side paper position at current price
+                    hedges[key] = {
+                        "side": "SHORT" if pos.side == "LONG" else "LONG",
+                        "entry_price": price,
+                        "entry_ts": now_ts,
+                        "gain_at_hedge": gain,
+                    }
+                    events.append({
+                        "type": "PAPER_HEDGE_OPEN", "symbol": symbol,
+                        "orig_side": pos.side, "orig_entry": pos.entry_price,
+                        "hedge_side": hedges[key]["side"], "hedge_entry": price,
+                        "gain_at_hedge": round(gain, 3), "reason": reason,
+                    })
+                    # Don't close — original + hedge both run until unwind
+                    continue
                 events.append({
                     "type": "PAPER_EXIT", "symbol": symbol, "side": side,
                     "entry_price": pos.entry_price, "exit_price": price,
@@ -340,9 +383,18 @@ async def main_async(args):
                       SCALP_V3_EXIT_1M_K_MIN=args.exit_k_1m_min,
                       SCALP_V3_ENTRY_VOL_SPIKE_MULT=args.vol_mult,
                       SCALP_V3_MAX_HOLD_MIN=args.max_hold_min,
-                      SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain)
+                      SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain,
+                      _exit_strategy=args.exit_strategy)
+    # All globals declared up-front (Python: global must precede first use)
+    global STATE_FILE, today_trades_file, _OB_REDIS, _OB_CFG
+    # Exit-strategy: route hedge-mode to separate files so A/B can compare
+    if args.exit_strategy == 'hedge':
+        def _hedge_trades_file():
+            return OUT_DIR / f"trades_hedge_{datetime.now(timezone.utc).strftime('%Y%m%d')}.jsonl"
+        today_trades_file = _hedge_trades_file
+        STATE_FILE = OUT_DIR / "state_hedge.json"
+        print(f"[paper] EXIT_STRATEGY=hedge → trades_hedge_*.jsonl, state_hedge.json")
     # Orderbook filter init
-    global _OB_REDIS, _OB_CFG, STATE_FILE
     if args.orderbook_filter:
         import redis as _redis
         _OB_REDIS = _redis.Redis(host="localhost", port=6379, decode_responses=True)
@@ -364,7 +416,6 @@ async def main_async(args):
         })
         # Redirect output files so A/B runs don't stomp each other
         suf = args.ob_out_suffix or "_ob"
-        global today_trades_file
         _orig_tf = today_trades_file
         def _ob_trades_file():
             return OUT_DIR / f"trades{suf}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.jsonl"
@@ -459,6 +510,7 @@ def main():
     ap.add_argument("--poll-sec", type=int, default=120, help="Poll frequency (default 120s to stay under Binance weight)")
     ap.add_argument("--reload-sec", type=int, default=300, help="Reload tradeable_keys.json every N sec (0 disables)")
     ap.add_argument("--concurrency", type=int, default=3, help="Concurrent klines fetches (default 3 to avoid bans — live ez_manage already hits Binance)")
+    ap.add_argument("--exit-strategy", type=str, default="close", choices=["close", "hedge"], help="close=exit on V3 signal; hedge=open opposite-side hedge when exit fires at loss>0.3%%")
     ap.add_argument("--orderbook-filter", action="store_true", help="Gate entries on live orderbook imbalance (reads Redis `orderbook:<SYM>` populated by ez_orderbook.py)")
     ap.add_argument("--ob-imb5-long-min", type=float, default=0.55, help="Min top-5 bid/(bid+ask) for LONG entry")
     ap.add_argument("--ob-imb5-short-max", type=float, default=0.45, help="Max top-5 bid/(bid+ask) for SHORT entry")
