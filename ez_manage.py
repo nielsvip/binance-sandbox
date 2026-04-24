@@ -14224,12 +14224,31 @@ class MultiAccountTradeManager:
         if _is_open_like_wh and not _is_close_like_wh:
             _wh_key = f"{account_key}:{symbol}_{_pside_wl}:{_side_wl}"
             _now_wh = time.time()
-            _wh_expiry = _ABSOLUTE_WEBHOOK_LOCK.get(_wh_key, 0)
+            # 2026-04-24: HEDGE opens get a longer lock (1h) to match HEDGE_COMPLETED_LOCKOUT.
+            # Root cause: 60× NMR hedge double-opens where each 5-min retry bypassed the 30s TTL.
+            _is_hedge_wh = 'HEDGE' in _reason_wl or 'PROTECT' in _reason_wl
+            _ttl_use = getattr(config, 'HEDGE_WEBHOOK_LOCK_TTL_SEC', 3600.0) if _is_hedge_wh else _ABSOLUTE_WEBHOOK_TTL
+            # Redis-backed lock (survives process restarts) — tries Redis first, falls back to in-memory.
+            _redis_lock_key = f"webhook_lock:{_wh_key}"
+            _redis_expiry = 0.0
+            try:
+                _redis_cli = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
+                if _redis_cli:
+                    _rv = _redis_cli.get(_redis_lock_key)
+                    if _rv: _redis_expiry = float(_rv)
+            except Exception: _redis_expiry = 0.0
+            _wh_expiry = max(_ABSOLUTE_WEBHOOK_LOCK.get(_wh_key, 0), _redis_expiry)
             if _wh_expiry > _now_wh:
                 _rem_wh = _wh_expiry - _now_wh
-                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ABSOLUTE_WEBHOOK_TTL - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more. reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
+                logger.critical(f"🔒🔒🔒 [ABSOLUTE_WEBHOOK_LOCK] {_wh_key}: BLOCKED — prior open-webhook {_ttl_use - _rem_wh:.1f}s ago, lock active for {_rem_wh:.1f}s more (ttl={_ttl_use:.0f}s,hedge={_is_hedge_wh}). reason={(reason or '')[:60]} uid={unique_id[:20] if unique_id else ''}")
                 return False
-            _ABSOLUTE_WEBHOOK_LOCK[_wh_key] = _now_wh + _ABSOLUTE_WEBHOOK_TTL
+            _new_expiry = _now_wh + _ttl_use
+            _ABSOLUTE_WEBHOOK_LOCK[_wh_key] = _new_expiry
+            try:
+                _redis_cli = getattr(self, 'redis', None) or getattr(self, 'redis_client', None)
+                if _redis_cli:
+                    _redis_cli.set(_redis_lock_key, str(_new_expiry), ex=int(_ttl_use) + 60)
+            except Exception: pass
             if len(_ABSOLUTE_WEBHOOK_LOCK) > 500:
                 for _k in list(_ABSOLUTE_WEBHOOK_LOCK.keys()):
                     if _ABSOLUTE_WEBHOOK_LOCK[_k] < _now_wh:
