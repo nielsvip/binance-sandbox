@@ -1695,10 +1695,28 @@ def build_public_email_html(market_quotes, tra_data, trb_data):
     return html
 
 
+def _already_sent_today(tag: str) -> bool:
+    """Return True if we already sent this email variant today (ET date)."""
+    stamp_file = DATA_DIR / f".morning_email_sent_{tag}"
+    if not stamp_file.exists():
+        return False
+    try:
+        sent_date = stamp_file.read_text().strip()
+        today_et = (datetime.now(timezone.utc) - timedelta(hours=4)).strftime("%Y-%m-%d")
+        return sent_date == today_et
+    except Exception:
+        return False
+
+def _mark_sent_today(tag: str) -> None:
+    today_et = (datetime.now(timezone.utc) - timedelta(hours=4)).strftime("%Y-%m-%d")
+    (DATA_DIR / f".morning_email_sent_{tag}").write_text(today_et)
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--public-only", action="store_true", help="Generate and send ONLY the public version")
+    parser.add_argument("--force", action="store_true", help="Force send even if already sent today")
+    parser.add_argument("--html-only", action="store_true", help="Write HTML but do not send email")
     args = parser.parse_args()
     logger.info("=== Morning Briefing Email ===")
     run_scanner_if_stale()
@@ -1709,15 +1727,25 @@ def main():
     if not args.public_only:
         html = build_email_html(tra_data, trb_data, market_quotes)
         (DATA_DIR / "morning_email_latest.html").write_text(html)
-        if send_email(html):
+        if args.html_only:
+            logger.info("HTML written (--html-only, not sending)")
+        elif not args.force and _already_sent_today("private"):
+            logger.info("Private version already sent today — skipping (use --force to override)")
+        elif send_email(html):
             logger.info("Private version sent")
+            _mark_sent_today("private")
     if PUBLIC_RECIPIENTS or args.public_only:
         pub_html = build_public_email_html(market_quotes, tra_data, trb_data)
         (DATA_DIR / "morning_email_public.html").write_text(pub_html)
         recipients = PUBLIC_RECIPIENTS if PUBLIC_RECIPIENTS else [TO_EMAIL]
         subject = f"Market Briefing — {now_et.strftime('%a %b %d')}"
-        if send_email(pub_html, to=recipients, subject=subject):
+        if args.html_only:
+            logger.info("Public HTML written (--html-only, not sending)")
+        elif not args.force and _already_sent_today("public"):
+            logger.info("Public version already sent today — skipping (use --force to override)")
+        elif send_email(pub_html, to=recipients, subject=subject):
             logger.info(f"Public version sent to {', '.join(recipients)}")
+            _mark_sent_today("public")
 
 
 if __name__ == "__main__":

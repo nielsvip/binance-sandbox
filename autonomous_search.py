@@ -79,8 +79,10 @@ def main():
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--base-overrides-json", default=None,
                     help="JSON file with overrides to apply to QuickConfig before perturbation starts.")
-    ap.add_argument("--bool-flip-prob", type=float, default=0.15)
-    ap.add_argument("--numeric-perturb-prob", type=float, default=0.10)
+    ap.add_argument("--bool-flip-prob", type=float, default=0.02)
+    ap.add_argument("--numeric-perturb-prob", type=float, default=0.02)
+    ap.add_argument("--sharpe-useless-floor", type=float, default=2.0,
+                    help="Tag reliable configs below this Sharpe as useless=1 in CSV.")
     ap.add_argument("--workers", type=int, default=4,
                     help="How many configs to run in parallel (multiprocessing).")
     ap.add_argument("--min-trades-for-record", type=int, default=0,
@@ -150,7 +152,28 @@ def main():
         if not csv_exists:
             w.writerow(["iter", "pool_sharpe", "acc_gain_pct", "max_dd_pct",
                         "trades", "gain_vs_bh", "elapsed_s", "overrides_count",
-                        "reliable", "overrides_json"])
+                        "reliable", "useless", "overrides_json"])
+
+        # iter=-1: evaluate the baseline itself (no perturbation) as the reference floor
+        if not csv_exists:
+            try:
+                signal.alarm(args.max_iter_seconds)
+                r0 = simulate(subset, base)
+                signal.alarm(0)
+                s0 = r0.get("pool_sharpe", 0.0)
+                g0 = r0.get("accumulated_gain_pct", 0.0)
+                tr0 = r0.get("trades", 0)
+                floor_total = len(subset) * args.min_trades_per_sym
+                rel0 = 1 if tr0 >= floor_total else 0
+                useless0 = 0  # baseline is never useless
+                w.writerow([-1, round(s0,4), round(g0,2), round(r0.get("max_dd_pct",0.0),2),
+                             tr0, round(g0/args.bh_accumulated_gain_pct,3) if args.bh_accumulated_gain_pct else 0,
+                             0.0, 0, rel0, useless0, json.dumps({})])
+                csv_f.flush()
+                print(f"[AUTO_SEARCH] BASELINE sharpe={s0:.4f} gain={g0:.1f}% trades={tr0} reliable={rel0}", flush=True)
+            except Exception as e:
+                signal.alarm(0)
+                print(f"[AUTO_SEARCH] BASELINE eval error: {e}", flush=True)
         def _alarm_handler(signum, frame):
             raise TimeoutError(f"iter exceeded {args.max_iter_seconds}s")
 
@@ -189,8 +212,9 @@ def main():
             n_syms = len(subset)
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
             reliable = 1 if tr >= floor_total else 0
+            useless = 1 if (reliable and sharpe < args.sharpe_useless_floor) else 0
             w.writerow([i, round(sharpe, 4), round(gain, 2), round(dd, 2), tr,
-                        round(gvb, 3), round(el, 1), len(ovr), reliable, json.dumps(ovr)])
+                        round(gvb, 3), round(el, 1), len(ovr), reliable, useless, json.dumps(ovr)])
             csv_f.flush()
             if gain > best_gain:
                 best_gain = gain
