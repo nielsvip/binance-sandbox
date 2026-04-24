@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-24 21:45:29 UTC
+# Copilot Status — 2026-04-24 22:00:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T21:41:21
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T21:41:21
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:42:11
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:43:14
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T21:43:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T21:43:25
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:44:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:45:18
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T21:45:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T21:45:29
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T21:55:56
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:56:47
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:57:48
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T21:57:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T21:57:59
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:58:49
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T21:59:52
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T22:00:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T22:00:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T22:00:54
 
 ## Missed Trades (trader comparison)
 
@@ -29,14 +29,14 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-13.9%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-13.8%
 
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 4m ago
-- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 4m ago
-- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 4m ago
-- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 4m ago
-- WATCHING: **PLTR** SHORT (tradier) peaked +3.7%, exited 4m ago
-- WATCHING: **NEIROUSDT** SHORT (crypto) peaked +3.1%, exited 4m ago
+- WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 5m ago
+- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 5m ago
+- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 5m ago
+- WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 5m ago
+- WATCHING: **PLTR** SHORT (tradier) peaked +3.7%, exited 5m ago
+- WATCHING: **NEIROUSDT** SHORT (crypto) peaked +3.1%, exited 5m ago
 
 ## Supervisor
 

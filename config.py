@@ -243,9 +243,9 @@ class Config:
     # too far, normal maker (best_bid+tick for BUY, best_ask-tick for SELL).
     OB_PRICE_DEFER_ENABLED: bool = False                   # master switch
     OB_PRICE_DEFER_ACCOUNTS: list = field(default_factory=lambda: [])  # empty = all accounts when enabled
-    OB_PRICE_DEFER_MAX_DISTANCE_PCT: float = 1.5           # max distance from mid to wall to consider deferring
-    OB_PRICE_DEFER_AT_LEVEL_TOL_PCT: float = 0.1           # within this % = use normal maker (already at level)
-    OB_PRICE_DEFER_TTL_SEC: float = 300.0                  # how long to hold the deferred limit before falling back
+    OB_PRICE_DEFER_MAX_DISTANCE_PCT: float = 0.5           # 2026-04-24: 1.5→0.5. Realistic: 5min avg alt move is 0.2-0.5%; 1.5% rarely fills in TTL window → was degenerating to near-full-TTL no-fills.
+    OB_PRICE_DEFER_AT_LEVEL_TOL_PCT: float = 0.05          # 2026-04-24: 0.1→0.05. Tighter "already at level" band — if wall within 0.05% it's effectively the current price.
+    OB_PRICE_DEFER_TTL_SEC: float = 300.0                  # 5min hold — paired with 0.5% distance cap this gives ~1x of normal alt volatility to fill.
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
@@ -258,6 +258,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
     HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin"]  # 2026-04-24 RE-ENABLED (user request). Cascade guards now multi-layered: (1) reason-based hedge-of-hedge block (outer+inner) using augment_reason markers, (2) foothold webhook lock (1h Redis TTL matches hedge lockout), (3) send_webhook lock (same TTL for hedge reasons), (4) universal persist hook on both webhook paths so active_hedges always reflects reality, (5) HEDGE_COMPLETED_LOCKOUT 3600s in-memory + Redis-backed. Keep hedging ON until sell-at-loss proven more profitable on paper.
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 3600.0  # 2026-04-24: 1-hour Redis-backed lock per (account:symbol:side) for HEDGE-reason webhooks. Matches HEDGE_COMPLETED_LOCKOUT_SECONDS. Non-hedge webhooks keep 30s TTL.
+    HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===

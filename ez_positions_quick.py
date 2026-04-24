@@ -4857,6 +4857,48 @@ class HedgeEngine:
                                 except Exception as _abs_e:
                                     logger.error(f"[HEDGE_CLOSE_WT3M1H_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
                                 continue
+                            # 2026-04-24 SCALP-MODE HEDGE CLOSE (user directive for fast scalp hedges):
+                            # Close hedge on ANY 1m OR 3m structure going against (LH/HH), not waiting
+                            # for wt_3m+wt_1h confirmation. Faster capital release for re-hedging cycles.
+                            # Reason: scalp hedges are minutes-scale — waiting for 1h wt confirms loses
+                            # the micro-reversal window where the original position is about to recover.
+                            if bool(getattr(config, 'HEDGE_CLOSE_SCALP_MODE', False)) and hedge_amt > 0.001:
+                                _h1 = safe_fetch_float(h_ind.get('high_1m', 0), 0)
+                                _l1 = safe_fetch_float(h_ind.get('low_1m', 0), 0)
+                                _h1p = safe_fetch_float(h_ind.get('high_1m_prev', 0), 0)
+                                _l1p = safe_fetch_float(h_ind.get('low_1m_prev', 0), 0)
+                                _h3 = safe_fetch_float(h_ind.get('high_3m', 0), 0)
+                                _l3 = safe_fetch_float(h_ind.get('low_3m', 0), 0)
+                                _h3p = safe_fetch_float(h_ind.get('high_3m_prev', 0), 0)
+                                _l3p = safe_fetch_float(h_ind.get('low_3m_prev', 0), 0)
+                                _struct_against = False; _reason = ""
+                                if _abs_h_is_long:
+                                    # LONG hedge closes when structure goes DOWN (LH or LL) — price
+                                    # reversing up (against the LONG hedge, which profits on DOWN).
+                                    # Wait — correction: LONG hedge protects SHORT loser → SHORT loser
+                                    # profits when price DOWN → LONG hedge is AGAINST us when price DOWN.
+                                    # So LONG hedge should close when price heads UP (HH/HL) = original
+                                    # SHORT is about to recover → don't need hedge.
+                                    if _h1p > 0 and _h1 > _h1p: _struct_against = True; _reason = f"HH_1m_{_h1:.6g}>{_h1p:.6g}"
+                                    elif _l1p > 0 and _l1 > _l1p: _struct_against = True; _reason = f"HL_1m_{_l1:.6g}>{_l1p:.6g}"
+                                    elif _h3p > 0 and _h3 > _h3p: _struct_against = True; _reason = f"HH_3m_{_h3:.6g}>{_h3p:.6g}"
+                                    elif _l3p > 0 and _l3 > _l3p: _struct_against = True; _reason = f"HL_3m_{_l3:.6g}>{_l3p:.6g}"
+                                else:
+                                    # SHORT hedge protects LONG loser → LONG loser profits when price UP
+                                    # → SHORT hedge is AGAINST us when price UP. Close when price heads
+                                    # DOWN (LH/LL) = original LONG about to recover.
+                                    if _h1p > 0 and _h1 < _h1p: _struct_against = True; _reason = f"LH_1m_{_h1:.6g}<{_h1p:.6g}"
+                                    elif _l1p > 0 and _l1 < _l1p: _struct_against = True; _reason = f"LL_1m_{_l1:.6g}<{_l1p:.6g}"
+                                    elif _h3p > 0 and _h3 < _h3p: _struct_against = True; _reason = f"LH_3m_{_h3:.6g}<{_h3p:.6g}"
+                                    elif _l3p > 0 and _l3 < _l3p: _struct_against = True; _reason = f"LL_3m_{_l3:.6g}<{_l3p:.6g}"
+                                if _struct_against:
+                                    logger.critical(f"🛑 [HEDGE_CLOSE_SCALP] {hedge_key}: {_reason} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING (scalp-mode, original about to recover, gain={hedge_gain:.2f}%)")
+                                    try:
+                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_SCALP_{_reason}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                        await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                                    except Exception as _scalp_e:
+                                        logger.error(f"[HEDGE_CLOSE_SCALP_FAIL] {hedge_key}: {_scalp_e}", exc_info=True)
+                                    continue
                             # ═══ BC_BANDAID: 15m WT cross drives hedge lifecycle ═══
                             # CLOSE hedge BEFORE it starts losing: when 15m WT flips in FAVOR of origin.
                             # Origin LONG → hedge SHORT → close when wt1_15m > wt2_15m (bullish = hedge about to lose)
