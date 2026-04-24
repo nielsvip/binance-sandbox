@@ -44,7 +44,7 @@ MACHINES = {
         "script": "/home/niels/binance-sandbox/autonomous_search.py",
         "cwd": "/home/niels/binance-sandbox",
         "mode": "crypto",
-        "symbols": 50,
+        "symbols": 30,
         "start": "2022-01-01",
         "npz_dir": "/home/niels/binance-sandbox/backtest_v8/indicators",
         "bh_pct": 3500,
@@ -55,7 +55,7 @@ MACHINES = {
         "baseline_json": "/home/niels/binance-sandbox/data/baselines/crypto_2p6365_genuine.json",
         "n_workers": 1,
         "max_iter_seconds": 120,
-        "extra_flags": "--min-trades-per-sym 30 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
+        "extra_flags": "--min-trades-per-sym 20 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
     },
     "s2": {
         "host": "s2-int",
@@ -72,7 +72,7 @@ MACHINES = {
         "out_dir_template": "/home/niels/binance-sandbox/data/autonomous/tradier_2p4860_114sym/w{seed}",
         "log_template": "/home/niels/logs/autonomous_tradier_w{seed}.log",
         "baseline_json": "/home/niels/binance-sandbox/data/baselines/tradier_2p4860_genuine.json",
-        "n_workers": 3,
+        "n_workers": 2,
         "max_iter_seconds": 120,
         "extra_flags": "--min-trades-per-sym 30 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
     },
@@ -258,36 +258,12 @@ def check_and_fix_machine(machine_key, cfg, state):
 
     print(f"\n[{NOW}] Checking {machine_key} (want {n_wanted} workers)...", flush=True)
 
-    # Count running workers
-    if is_local:
-        n_running = _count_running_local()
-    else:
-        try:
-            n_running = _count_running_remote(host)
-        except Exception as e:
-            print(f"  SSH ERROR checking {host}: {e}", flush=True)
-            return
-
-    print(f"  {n_running}/{n_wanted} workers running", flush=True)
-
-    # Kill all and restart if over-capacity (leftover workers from old sessions)
-    if n_running > n_wanted:
-        print(f"  Over-capacity ({n_running} > {n_wanted}) — killing all, restarting clean", flush=True)
-        if is_local:
-            _run_local("pkill -9 -f autonomous_search.py 2>/dev/null")
-        else:
-            try:
-                _kill_all_stale_remote(host)
-            except Exception as e:
-                print(f"  Kill error: {e}", flush=True)
-        time.sleep(2)
-        n_running = 0
-
-    # Check log staleness for each expected worker slot
+    # --- Log-based freshness check (primary — immune to process-counting races) ---
     used = state[machine_key].get("used_seeds", [])
     active_seeds = used[-n_wanted:] if len(used) >= n_wanted else used
 
-    stale_count = 0
+    fresh_count = 0
+    stale_seeds = []
     for seed in active_seeds:
         log_path = cfg["log_template"].format(seed=seed)
         if is_local:
@@ -297,12 +273,28 @@ def check_and_fix_machine(machine_key, cfg, state):
                 age = _log_age_remote(host, log_path)
             except Exception:
                 age = 9999
-        if age > LOG_STALE_SECS:
-            print(f"  STALE: seed={seed} log age={age:.0f}s (>{LOG_STALE_SECS}s threshold)", flush=True)
-            stale_count += 1
+        if age <= LOG_STALE_SECS:
+            fresh_count += 1
+        else:
+            if age < 9999:
+                print(f"  STALE: seed={seed} log age={age:.0f}s (>{LOG_STALE_SECS}s threshold)", flush=True)
+            stale_seeds.append(seed)
 
-    if stale_count > 0:
-        print(f"  {stale_count} stale worker(s) detected — killing all and restarting", flush=True)
+    # --- Process-count check (secondary — used only for over-capacity detection) ---
+    if is_local:
+        n_running = _count_running_local()
+    else:
+        try:
+            n_running = _count_running_remote(host)
+        except Exception as e:
+            print(f"  SSH ERROR checking {host}: {e}", flush=True)
+            n_running = fresh_count  # fall back to log-based count
+
+    print(f"  procs={n_running} fresh_logs={fresh_count}/{n_wanted}", flush=True)
+
+    # Over-capacity: kill all (zombie survivors from old sessions)
+    if n_running > n_wanted + 1:
+        print(f"  Over-capacity ({n_running} procs > {n_wanted+1}) — killing all, restarting clean", flush=True)
         if is_local:
             _run_local("pkill -9 -f autonomous_search.py 2>/dev/null")
         else:
@@ -312,22 +304,54 @@ def check_and_fix_machine(machine_key, cfg, state):
                 print(f"  Kill error: {e}", flush=True)
         time.sleep(2)
         n_running = 0
+        fresh_count = 0
+        stale_seeds = list(active_seeds)
 
-    if n_running < n_wanted:
-        deficit = n_wanted - n_running
-        print(f"  Starting {deficit} new worker(s)", flush=True)
+    # Stale logs: kill all and restart
+    if stale_seeds and fresh_count == 0:
+        print(f"  {len(stale_seeds)} stale worker(s) detected — killing all and restarting", flush=True)
         if is_local:
-            for _ in range(deficit):
-                seed = state[machine_key]["next_seed"]
-                _start_worker_local(cfg, seed, state, machine_key)
+            _run_local("pkill -9 -f autonomous_search.py 2>/dev/null")
         else:
-            seeds = [state[machine_key]["next_seed"] + i for i in range(deficit)]
             try:
-                _start_workers_remote_batch(host, cfg, seeds, state, machine_key)
+                _kill_all_stale_remote(host)
             except Exception as e:
-                print(f"  Batch start error on {host}: {e}", flush=True)
+                print(f"  Kill error: {e}", flush=True)
+        time.sleep(2)
+        n_running = 0
+        fresh_count = 0
+    elif stale_seeds:
+        print(f"  {len(stale_seeds)} stale + {fresh_count} fresh — restarting stale only", flush=True)
+        if is_local:
+            _run_local("pkill -9 -f autonomous_search.py 2>/dev/null")
+        else:
+            try:
+                _kill_all_stale_remote(host)
+            except Exception as e:
+                print(f"  Kill error: {e}", flush=True)
+        time.sleep(2)
+        n_running = 0
+        fresh_count = 0
+
+    # Use log-based count as authoritative (immune to bash-wrapper race)
+    effective = max(fresh_count, n_running)
+
+    if effective >= n_wanted:
+        print(f"  All {n_wanted} workers healthy", flush=True)
+        return
+
+    deficit = n_wanted - effective
+    print(f"  Starting {deficit} new worker(s)", flush=True)
+    if is_local:
+        for _ in range(deficit):
+            seed = state[machine_key]["next_seed"]
+            _start_worker_local(cfg, seed, state, machine_key)
     else:
-        print(f"  All {n_running} workers healthy", flush=True)
+        seeds = [state[machine_key]["next_seed"] + i for i in range(deficit)]
+        try:
+            _start_workers_remote_batch(host, cfg, seeds, state, machine_key)
+        except Exception as e:
+            print(f"  Batch start error on {host}: {e}", flush=True)
 
 
 def main():
