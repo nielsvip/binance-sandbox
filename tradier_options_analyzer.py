@@ -1068,7 +1068,7 @@ async def place_option_order(client: TradierAPIClient, symbol: str, option_symbo
     return res
 
 
-async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, side: str, qty: int, initial_price: float, bid: float, ask: float, max_walk_steps: int = 5, walk_interval: int = 120, account_key: str = "trb") -> Dict:
+async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, side: str, qty: int, initial_price: float, bid: float, ask: float, max_walk_steps: int = 5, walk_interval: int = 120, account_key: str = "trb", config=None) -> Dict:
     """Smart fill with price discipline.
     For buy_to_open: start at bid (best for us), walk UP toward mid. NEVER above mid.
     For sell_to_close: start ABOVE ask (best for us), walk DOWN toward mid. NEVER below mid.
@@ -1110,9 +1110,17 @@ async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, sid
                     if abs(p_qty) > 0:
                         held_occ.add(p.get("symbol", ""))
             if occ not in held_occ:
-                logger.critical(f"[PHANTOM_SELL_BLOCK] {occ}: sell_to_close BLOCKED — position not found in API. Held: {held_occ}")
-                print(f"    \033[91mBLOCKED sell_to_close {occ} — position does NOT exist in API\033[0m")
-                return {"errors": f"Position {occ} not held in API — phantom sell blocked"}
+                # Before blocking, check local knowledge — API can lag for manually-entered
+                # or recently-filled options. If we locally believe the position is open,
+                # allow the sell and let the exchange reject it if truly phantom.
+                _locally_known = config and occ in get_locally_known_option_occs(config)
+                if _locally_known:
+                    logger.warning(f"[PHANTOM_SELL_ALLOW] {occ}: not in API but in local knowledge (position files / equity hedges). Allowing sell — exchange will reject if phantom.")
+                    print(f"  \033[93m[PHANTOM_SELL_ALLOW]\033[0m {occ} missing from API but found in local files — proceeding (exchange will reject if phantom)")
+                else:
+                    logger.critical(f"[PHANTOM_SELL_BLOCK] {occ}: sell_to_close BLOCKED — position not found in API or local files. Held: {held_occ}")
+                    print(f"    \033[91mBLOCKED sell_to_close {occ} — position does NOT exist in API or local files\033[0m")
+                    return {"errors": f"Position {occ} not held in API or locally — phantom sell blocked"}
         except Exception as e:
             logger.warning(f"Smart fill {occ}: position verification failed: {e}")
     # SAFETY: For sell_to_close, cancel any existing open sell orders on this OCC first
@@ -1353,16 +1361,30 @@ def parse_occ_symbol(occ: str) -> Optional[Dict]:
     return {"symbol": symbol, "expiration": exp_date, "option_type": "call" if cp == "C" else "put", "strike": strike}
 
 
-async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
-    """Fetch current option positions from account."""
+async def get_option_positions(client: TradierAPIClient, config=None) -> List[Dict]:
+    """Fetch current option positions from account.
+
+    After fetching from the API, cross-references locally-known OCCs.  Any OCC
+    present in local position files or options_equity_hedges.json but missing
+    from the API result is logged as a discrepancy — this surfaces stale-API /
+    manually-entered position issues without blocking the caller.
+    """
     account_id = client._current_id
     if not account_id:
         return []
     res = await client._request("GET", f"/accounts/{account_id}/positions", use_data_context=False)
     if not res or "positions" not in res:
+        if config:
+            _local_occs = get_locally_known_option_occs(config, account_key=getattr(client, "_account_key", None))
+            if _local_occs:
+                logger.warning(f"[OPT_POSITIONS] API returned no positions but local knowledge has: {_local_occs}. Possible stale/incomplete API response.")
         return []
     inner = res["positions"]
     if inner == "null" or inner is None:
+        if config:
+            _local_occs = get_locally_known_option_occs(config, account_key=getattr(client, "_account_key", None))
+            if _local_occs:
+                logger.warning(f"[OPT_POSITIONS] API returned null positions but local knowledge has: {_local_occs}.")
         return []
     if isinstance(inner, dict) and "position" in inner:
         p = inner["position"]
@@ -1372,6 +1394,7 @@ async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
     else:
         return []
     option_positions = []
+    api_occs: set = set()
     for pos in positions:
         sym = pos.get("symbol", "")
         parsed = parse_occ_symbol(sym)
@@ -1383,7 +1406,16 @@ async def get_option_positions(client: TradierAPIClient) -> List[Dict]:
                 pass
             if qty <= 0:
                 continue
+            api_occs.add(sym)
             option_positions.append({**pos, **parsed, "occ_symbol": sym})
+    # Cross-reference with local knowledge — warn on any discrepancy
+    if config:
+        _local_occs = get_locally_known_option_occs(config, account_key=getattr(client, "_account_key", None))
+        _missing_from_api = _local_occs - api_occs
+        if _missing_from_api:
+            logger.warning(f"[OPT_POSITIONS] Locally-known OCCs not in API result: {_missing_from_api}. "
+                           "Either closed externally or API is lagging. Verify manually if unexpected.")
+            print(f"  \033[93m[OPT_WARN]\033[0m Local knowledge has {len(_missing_from_api)} OCC(s) not returned by API: {', '.join(sorted(_missing_from_api))}")
     return option_positions
 
 
@@ -1565,6 +1597,40 @@ def _save_equity_hedges(config, state: Dict) -> None:
             json.dump(state, f, indent=2, default=str)
     except Exception as e:
         logger.error(f"_save_equity_hedges error: {e}")
+
+
+def get_locally_known_option_occs(config, account_key: str = None) -> set:
+    """Return set of OCC symbols we locally believe are currently open.
+
+    Two sources:
+    1. Local position files — OCC-format entries with positionAmt > 0 (definitive).
+    2. options_equity_hedges.json — OCCs for which we placed equity hedges (likely open).
+
+    Used as fallback when the Tradier API returns stale/empty data, and to prevent
+    phantom-sell blocks on positions that are genuinely held.
+    """
+    known: set = set()
+    base = Path(str(config.DATA_DIR).replace("/data/tradier", ""))
+    accts = [account_key] if account_key else ["tra", "trb", "trc"]
+    for acct in accts:
+        for side in ("long", "short"):
+            path = base / acct / f"{side}_positions.json"
+            if not path.exists():
+                continue
+            try:
+                data = json.load(open(path))
+                for pos in data.values():
+                    sym = pos.get("symbol", "")
+                    amt = float(pos.get("positionAmt", 0) or 0)
+                    if amt > 0 and parse_occ_symbol(sym):
+                        known.add(sym)
+            except Exception:
+                pass
+    # Equity hedges — options for which we placed a hedge (likely still open)
+    for occ in _load_equity_hedges(config):
+        if parse_occ_symbol(occ):
+            known.add(occ)
+    return known
 
 
 async def _get_stock_position(client: TradierAPIClient, symbol: str) -> Dict:
@@ -2221,9 +2287,15 @@ async def run_watch(args):
             if ind_file.exists():
                 with open(ind_file) as f:
                     indicators = json.load(f)
-            positions = await get_option_positions(client)
+            positions = await get_option_positions(client, config=config)
             if not positions:
-                print(f"\n  [{datetime.now().strftime('%H:%M:%S')}] No option positions found in account {account_key}")
+                _locally_known = get_locally_known_option_occs(config, account_key=account_key)
+                if _locally_known:
+                    print(f"\n  \033[93m[OPT_WARN]\033[0m API returned 0 positions but local knowledge has {len(_locally_known)} OCC(s): {', '.join(sorted(_locally_known))}")
+                    print(f"  Possible causes: API lag, manual entry in different account, or positions were closed externally.")
+                    logger.warning(f"[OPT_WATCH] API empty but locally known: {_locally_known} — possible stale API")
+                else:
+                    print(f"\n  [{datetime.now().strftime('%H:%M:%S')}] No option positions found in account {account_key}")
                 if not daemon:
                     break
                 await asyncio.sleep(interval)
@@ -2436,7 +2508,7 @@ async def run_watch(args):
                     logger.info(f"Auto-sell triggered {occ} x{qty} — {sig.reason} (bid={bid}, ask={ask})")
                     steps = 3 if sig.score >= 80 else 5
                     walk_sec = 60 if sig.score >= 80 else 120
-                    res = await smart_fill_option(client, opt_pos.symbol, occ, "sell_to_close", qty, start_price, bid, ask, max_walk_steps=steps, walk_interval=walk_sec)
+                    res = await smart_fill_option(client, opt_pos.symbol, occ, "sell_to_close", qty, start_price, bid, ask, max_walk_steps=steps, walk_interval=walk_sec, config=config)
                     if "order" in res:
                         order_info = res["order"]
                         fill_price = order_info.get("avg_fill_price", "pending")

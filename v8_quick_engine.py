@@ -154,8 +154,9 @@ class QuickConfig:
     MID_ZONE_STOCH_ENTRY_ENABLED: bool = False  # entry when K×D with position in [LOW,HIGH]
     MID_ZONE_K_LOW: float = 30.0               # lower bound of mid-zone
     MID_ZONE_K_HIGH: float = 70.0              # upper bound of mid-zone
-    MID_ZONE_STOCH_EXIT_MIN_TFS: int = 1       # min TFs (15m/1h/4h/D) firing to trigger exit
+    MID_ZONE_STOCH_EXIT_MIN_TFS: int = 1       # min TFs firing to trigger exit
     MID_ZONE_STOCH_ENTRY_MIN_TFS: int = 1      # min TFs firing to add entry
+    MID_ZONE_STOCH_TFS: str = '15m,1h,4h,D'   # comma-separated TFs to check (e.g. '4h,D' for HTF-only)
     MFI_FLIP_EXIT_ENABLED: bool = False
     MFI_FLIP_EXIT_LONG_THRESHOLD: float = 70.0
     MFI_FLIP_EXIT_SHORT_THRESHOLD: float = 30.0
@@ -1665,12 +1666,11 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _mz_lo_e = float(getattr(cfg, 'MID_ZONE_K_LOW', 30.0))
         _mz_hi_e = float(getattr(cfg, 'MID_ZONE_K_HIGH', 70.0))
         _mz_min_e = int(getattr(cfg, 'MID_ZONE_STOCH_ENTRY_MIN_TFS', 1))
-        _mz_bph_15m_e = 15 // _ltf_mins
-        _mz_bph_1h_e = 60 // _ltf_mins
-        _mz_bph_4h_e = 4 * _mz_bph_1h_e
-        _mz_bph_D_e = 480 if _ltf == '3m' else 78
+        _mz_bph_map_e = {'15m': 15 // _ltf_mins, '1h': 60 // _ltf_mins, '4h': 240 // _ltf_mins, 'D': 480 if _ltf == '3m' else 78}
+        _mz_tfs_e = [t.strip() for t in str(getattr(cfg, 'MID_ZONE_STOCH_TFS', '15m,1h,4h,D')).split(',') if t.strip() in _mz_bph_map_e]
         _mz_cnt_e = np.zeros(n, dtype=np.int32)
-        for _mz_tf_e, _mz_bph_e in [('15m', _mz_bph_15m_e), ('1h', _mz_bph_1h_e), ('4h', _mz_bph_4h_e), ('D', _mz_bph_D_e)]:
+        for _mz_tf_e in _mz_tfs_e:
+            _mz_bph_e = _mz_bph_map_e[_mz_tf_e]
             _mk_e = _safe(npz, f'stoch_k_{_mz_tf_e}', n, 50.0)
             _md_e = _safe(npz, f'stoch_d_{_mz_tf_e}', n, 50.0)
             _mk_e_p = np.roll(_mk_e, _mz_bph_e); _mk_e_p[:_mz_bph_e] = _mk_e[:_mz_bph_e]
@@ -1877,10 +1877,11 @@ def compute_exit_signals(npz, n, is_long, cfg):
         _mz_lo = float(getattr(cfg, 'MID_ZONE_K_LOW', 30.0))
         _mz_hi = float(getattr(cfg, 'MID_ZONE_K_HIGH', 70.0))
         _mz_min = int(getattr(cfg, 'MID_ZONE_STOCH_EXIT_MIN_TFS', 1))
-        _mz_bph_4h = 4 * _bph_1h
-        _mz_bph_D = 480 if _ltf == '3m' else 78
+        _mz_bph_map = {'15m': _bph_15m, '1h': _bph_1h, '4h': 4 * _bph_1h, 'D': 480 if _ltf == '3m' else 78}
+        _mz_tfs = [t.strip() for t in str(getattr(cfg, 'MID_ZONE_STOCH_TFS', '15m,1h,4h,D')).split(',') if t.strip() in _mz_bph_map]
         _mz_cnt = np.zeros(n, dtype=np.int32)
-        for _mz_tf, _mz_bph in [('15m', _bph_15m), ('1h', _bph_1h), ('4h', _mz_bph_4h), ('D', _mz_bph_D)]:
+        for _mz_tf in _mz_tfs:
+            _mz_bph = _mz_bph_map[_mz_tf]
             _mk = _safe(npz, f'stoch_k_{_mz_tf}', n, 50.0)
             _md = _safe(npz, f'stoch_d_{_mz_tf}', n, 50.0)
             _mk_p = np.roll(_mk, _mz_bph); _mk_p[:_mz_bph] = _mk[:_mz_bph]

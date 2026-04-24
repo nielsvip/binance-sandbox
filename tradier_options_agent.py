@@ -766,7 +766,7 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
 
 # ── Execution ────────────────────────────────────────────────────────────────
 
-async def execute_decisions(client: TradierAPIClient, decisions: List[TradeDecision], dry_run: bool = False) -> List[Dict]:
+async def execute_decisions(client: TradierAPIClient, decisions: List[TradeDecision], dry_run: bool = False, config=None) -> List[Dict]:
     """Execute all trade decisions."""
     results = []
     for d in decisions:
@@ -813,7 +813,7 @@ async def execute_decisions(client: TradierAPIClient, decisions: List[TradeDecis
             print(f"\n  \033[91mSELLING\033[0m {d.qty}x {d.occ_symbol} (bid=${bid:.2f} ask=${ask:.2f})")
             print(f"    Reason: {d.reason}")
             logger.info(f"SELLING {d.qty}x {d.occ_symbol} — {d.reason}")
-            res = await smart_fill_option(client, d.symbol, d.occ_symbol, "sell_to_close", d.qty, ask, bid, ask, max_walk_steps=3, walk_interval=60)
+            res = await smart_fill_option(client, d.symbol, d.occ_symbol, "sell_to_close", d.qty, ask, bid, ask, max_walk_steps=3, walk_interval=60, config=config)
             results.append({"action": "SELL", "symbol": d.symbol, "occ": d.occ_symbol, "qty": d.qty, "result": res})
         await asyncio.sleep(1)
     return results
@@ -970,7 +970,7 @@ async def run_agent(args):
         if decisions and any(d.action in ("BUY", "SELL") for d in decisions):
             print(f"\n  Step 5: Execution")
             print(f"  {'─'*86}")
-            results = await execute_decisions(client, decisions, dry_run)
+            results = await execute_decisions(client, decisions, dry_run, config=config)
             # Save agent report
             report = {"timestamp": datetime.now().isoformat(), "market": {"fear_greed": market.fear_greed_value, "gap": f"{market.gap_direction} {market.gap_pct:+.2f}%", "first_30min": market.first_30min_trend, "overall_bias": market.overall_bias, "mode": market.market_mode}, "exposure_before": exposure, "decisions": [{"action": d.action, "symbol": d.symbol, "occ": d.occ_symbol, "qty": d.qty, "price": d.limit_price, "budget": d.budget_used, "reason": d.reason} for d in decisions], "results": results, "dry_run": dry_run}
             report_file = config.DATA_DIR / f"options_agent_report_{now.strftime('%Y%m%d_%H%M')}.json"
