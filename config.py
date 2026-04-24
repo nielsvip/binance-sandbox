@@ -221,7 +221,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin"]  # 2026-04-24: re-added inf/men/fin. MOVR (-13% on inf) was silently blocked because HEDGE_ACCOUNTS=["ang"] + typo in ez_positions_quick:6182 (origin_key instead of account_key) made every same-symbol hedge return False. Cascade guards (in-flight dedup + HEDGE_COMPLETED_LOCKOUT + tracker consult + HEDGE_NEWBORN_GRACE) prevent the 2026-04-18 cascade.
+    HEDGE_ACCOUNTS = ["ang"]  # 2026-04-24 EMERGENCY REVERT: inf/men/fin triggered 60× NMR hedge double-opens ($330 exposure). Root: ez_positions_service NOT tracking NMR_LONG in Redis → existing_hedge=0 check passed every 5min → maker timeout → webhook fallback added another $5.50 LONG. Cascade guards present but duplicate-open-via-webhook-fallback path bypasses them. Fix upstream before re-adding.
     STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
