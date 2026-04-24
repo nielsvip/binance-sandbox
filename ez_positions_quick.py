@@ -15423,6 +15423,46 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     return len(longs) + len(shorts), fires + aug_fires
 
 
+def _v3_at_support_or_resistance(ind: dict, price: float, side: str) -> tuple[bool, str]:
+    """Return (True, reason) if current price is near a DC support (LONG) or
+    resistance (SHORT) level. Never close a V3 position at these levels —
+    bounce is statistically likely and closing locks in the loss instead of
+    catching the rebound."""
+    if not ind or price <= 0: return False, ""
+    tol_pct = 1.5  # within 1.5% of level = "at" it
+    if side == 'LONG':
+        # Nearest SUPPORT below or just above price
+        levels = {
+            'dc_low_15m': safe_fetch_float(ind.get('dc_low_15m', 0), 0),
+            'dc_low_1h': safe_fetch_float(ind.get('dc_low_1h', 0), 0),
+            'dc_low_4h': safe_fetch_float(ind.get('dc_low_4h', 0), 0),
+            'dc_low_D': safe_fetch_float(ind.get('dc_low_D', 0), 0),
+            'bb_low_1h': safe_fetch_float(ind.get('bb_low_1h', 0), 0),
+            'sma_200_D': safe_fetch_float(ind.get('sma_200_D', 0), 0),
+        }
+        for name, L in levels.items():
+            if L <= 0: continue
+            # Price must be WITHIN tol% above (still holding support) OR just below (testing)
+            delta_pct = (price - L) / L * 100.0
+            if -0.3 <= delta_pct <= tol_pct:
+                return True, f"AT_SUPPORT_{name}={L:.6g}_delta{delta_pct:+.2f}%"
+    else:  # SHORT
+        levels = {
+            'dc_high_15m': safe_fetch_float(ind.get('dc_high_15m', 0), 0),
+            'dc_high_1h': safe_fetch_float(ind.get('dc_high_1h', 0), 0),
+            'dc_high_4h': safe_fetch_float(ind.get('dc_high_4h', 0), 0),
+            'dc_high_D': safe_fetch_float(ind.get('dc_high_D', 0), 0),
+            'bb_high_1h': safe_fetch_float(ind.get('bb_high_1h', 0), 0),
+            'sma_200_D': safe_fetch_float(ind.get('sma_200_D', 0), 0),
+        }
+        for name, L in levels.items():
+            if L <= 0: continue
+            delta_pct = (L - price) / price * 100.0
+            if -0.3 <= delta_pct <= tol_pct:
+                return True, f"AT_RESISTANCE_{name}={L:.6g}_delta{delta_pct:+.2f}%"
+    return False, ""
+
+
 async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                                        tracker_manager: "TrackerManager",
                                        data_manager: "FastDataManager",
@@ -15480,11 +15520,17 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                 if wt1_3m and wt2_3m and wt1_3m > wt2_3m: triggers.append(f"WT3m_bull_{wt1_3m:.1f}>{wt2_3m:.1f}")
             if not triggers:
                 continue
-            # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
+            # User 2026-04-24: NEVER close if at support (LONG) or resistance (SHORT) —
+            # bounce is statistically likely. Let the level hold or break cleanly first.
             mark_price = safe_fetch_float(getattr(p, 'mark_price', 0), 0)
             if mark_price <= 0:
                 mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
             if mark_price <= 0: continue
+            at_sr, sr_reason = _v3_at_support_or_resistance(ind, mark_price, side)
+            if at_sr:
+                logger.warning(f"🛡️ [SCALP_V3_CLOSE_SKIP_SR] {pk}: gain={gain:+.2f}% would-close reversal=[{','.join(triggers[:2])}] BUT {sr_reason} → HOLD, let level decide")
+                continue
+            # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
             close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_gain{gain:+.2f}_{'_'.join(triggers)[:80]}"
             logger.critical(f"🛡️ [SCALP_V3_PROTECTIVE_EXIT] {pk}: gain={gain:+.2f}% reversal [{','.join(triggers[:3])}] — CLOSING 100%")
             await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
@@ -15532,11 +15578,16 @@ async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
         # CLOSE 100% now
         try:
             _, sym, side = parse_position_key(pk)
+            _, ind, _, _, _, _, _ = await data_manager.get_hot_state(sym)
             mark_price = safe_fetch_float(getattr(p, 'mark_price', 0), 0)
-            if mark_price <= 0:
-                _, ind, _, _, _, _, _ = await data_manager.get_hot_state(sym)
-                mark_price = safe_fetch_float(ind.get('current_price', 0), 0) if ind else 0
+            if mark_price <= 0 and ind:
+                mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
             if mark_price <= 0: continue
+            # Skip close if at support/resistance — likely bounce
+            at_sr, sr_reason = _v3_at_support_or_resistance(ind or {}, mark_price, side)
+            if at_sr:
+                logger.warning(f"🛡️ [SCALP_V3_BE_STOP_SKIP_SR] {pk}: gain={gain:+.2f}% BE-stop would fire BUT {sr_reason} → HOLD")
+                continue
             close_reason = f"SCALP_V3_OPEN_BE_STOP_AUG_{side}_gain{gain:+.2f}_max{max_gain:+.2f}_be{be_stop}"
             logger.critical(f"🛡️ [SCALP_V3_AUG_BE_STOP] {pk}: augmented pos gain={gain:+.2f}% (peak {max_gain:+.2f}%) fell below BE stop {be_stop}% — closing 100%")
             await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
@@ -15707,6 +15758,12 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
         'side': side,
         'reason': f"SCALP_V3_OPEN_{side}_OB_l{ob_long:.0f}_s{ob_short:.0f}_div{div:+.2f}_vel{vel:+.2f}"
     }
+    # User 2026-04-24: prefer entries at support/resistance — that's where the
+    # bounce statistically fires. Skip if NOT near an S/R level (soft filter).
+    if getattr(config, 'SCALP_V3_REQUIRE_SR_ON_ENTRY', False):
+        at_sr, sr_reason = _v3_at_support_or_resistance(ind, price, side)
+        if not at_sr:
+            return False
     real_key = f"{account_key}:{sym}_{side}"
     # Scanner bypasses tradeable_keys check — execute_trade_wrapper has SCALP_V3 bypass downstream
     # (so we can open any symbol the orderbook says is about to move)

@@ -206,9 +206,10 @@ class Config:
     # any reversal signal while in gain — before the gain disappears.
     SCALP_V3_PROTECTIVE_EXIT_ENABLED: bool = True
     SCALP_V3_PROTECTIVE_K_DROP_MIN: float = 5.0  # K-point drop threshold (1m or 3m)
-    # Absolute loss cutoff (2026-04-24): user "never let positions slip into a loss".
-    # Any V3 pos with gain ≤ this closes 100% immediately regardless of signals.
-    SCALP_V3_MAX_LOSS_PCT: float = -0.5          # close at or below -0.5% gain
+    # Support/resistance check before closing (2026-04-24 user): never close a V3
+    # position when price is at DC support (LONG) / resistance (SHORT) — bounce likely.
+    # Entry-side flag: require S/R proximity on NEW V3 opens (soft filter, off by default).
+    SCALP_V3_REQUIRE_SR_ON_ENTRY: bool = False
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

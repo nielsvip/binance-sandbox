@@ -3,7 +3,7 @@
 Writes winners immediately to winners JSONL, all results to CSV, runs forever
 until killed or N_MAX reached.
 """
-import argparse, copy, csv, json, os, random, sys, time, gc
+import argparse, copy, csv, json, os, random, signal, sys, time, gc
 from dataclasses import fields, is_dataclass
 from pathlib import Path
 
@@ -87,6 +87,8 @@ def main():
                     help="Reject configs with trades < this from CSV output (garbage-filter).")
     ap.add_argument("--min-trades-per-sym", type=int, default=30,
                     help="Reject configs with trades/symbols < this (per-sym reliability floor).")
+    ap.add_argument("--max-iter-seconds", type=int, default=600,
+                    help="Kill any single iteration that takes longer than this (seconds). Prevents stalls on heavy configs.")
     ap.add_argument("--symbol-list", default=None,
                     help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
     args = ap.parse_args()
@@ -149,6 +151,11 @@ def main():
             w.writerow(["iter", "pool_sharpe", "acc_gain_pct", "max_dd_pct",
                         "trades", "gain_vs_bh", "elapsed_s", "overrides_count",
                         "reliable", "overrides_json"])
+        def _alarm_handler(signum, frame):
+            raise TimeoutError(f"iter exceeded {args.max_iter_seconds}s")
+
+        signal.signal(signal.SIGALRM, _alarm_handler)
+
         best_gain = -1e9
         best_sharpe = -1e9
         for i in range(args.n_max):
@@ -159,8 +166,16 @@ def main():
                     setattr(cfg, k, v)
             t0 = time.time()
             try:
+                signal.alarm(args.max_iter_seconds)
                 r = simulate(subset, cfg)
+                signal.alarm(0)
+            except TimeoutError as e:
+                signal.alarm(0)
+                el = time.time() - t0
+                print(f"[AUTO_SEARCH] iter={i} TIMEOUT ({el:.0f}s > {args.max_iter_seconds}s), skipping", flush=True)
+                continue
             except Exception as e:
+                signal.alarm(0)
                 print(f"[AUTO_SEARCH] iter={i} ERR: {e}", flush=True)
                 continue
             el = time.time() - t0

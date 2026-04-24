@@ -623,10 +623,10 @@ def build_sync_health(tra_data, trb_data):
 
 
 def build_tv_bias_section():
-    """WaveTrend bias snapshot from data/tv_morning_brief.json (written by scheduled Claude agent at 9:25 AM ET)."""
+    """WaveTrend bias assessment from data/tv_morning_brief.json (written by tv_morning_brief.py at 9:25 AM ET)."""
     brief_path = DATA_DIR / "tv_morning_brief.json"
     if not brief_path.exists():
-        return '<p class="gr">TV bias snapshot not available — scheduled agent writes this at 9:25 AM ET.</p>'
+        return '<p class="gr">TV bias snapshot not available — runs at 9:25 AM ET via launchd.</p>'
     try:
         brief = json.loads(brief_path.read_text())
         gen_at = brief.get("generated_at", "")
@@ -636,29 +636,84 @@ def build_tv_bias_section():
         except Exception:
             age_min = 999
         if age_min > 180:
-            return f'<p class="o">TV bias snapshot is {age_min}m old — agent may not have run today.</p>'
+            return f'<p class="o">TV bias snapshot is {age_min}m old (data_age={brief.get("data_age_minutes","?")}min) — script may not have run today.</p>'
+
         summary = brief.get("summary", "")
-        html = f'<p class="gr" style="font-size:11px">Generated {gen_at[:16]} UTC &bull; {summary}</p>'
+        data_age = brief.get("data_age_minutes", "?")
+        html = f'<p class="gr" style="font-size:11px">Generated {gen_at[:16]} UTC &bull; indicator data {data_age}min old &bull; {summary}</p>'
+
         mkt = brief.get("market_bias", "")
         if mkt:
             cls = "pg" if mkt == "LONG" else "pr" if mkt == "SHORT" else "po"
-            html += f'<p>Market bias: <span class="pill {cls}">{mkt}</span></p>'
-        bias = brief.get("bias", {})
-        for label, syms_key, pill_cls in (("Long Setups", "top_longs", "pg"), ("Short Setups", "top_shorts", "pr")):
-            top = brief.get(syms_key, [])
+            html += f'<span class="pill {cls}">{mkt} bias</span>&nbsp;&nbsp;'
+
+        def tf_icons(tf_bias):
+            icons = []
+            for tf in ["1h", "4h", "D"]:
+                v = tf_bias.get(tf, "?")
+                if v == "BULL":
+                    icons.append(f'<span style="color:#2e7d32;font-weight:700">{tf}&#9650;</span>')
+                elif v == "BEAR":
+                    icons.append(f'<span style="color:#c62828;font-weight:700">{tf}&#9660;</span>')
+                else:
+                    icons.append(f'<span style="color:#888">{tf}?</span>')
+            return "&nbsp;".join(icons)
+
+        assessments = brief.get("assessments", {})
+
+        for label, list_key, pill_cls, rec_label in (
+            ("BUY setups", "top_buys", "pg", "BUY"),
+            ("SHORT setups", "top_shorts", "pr", "SHORT"),
+        ):
+            top = brief.get(list_key, [])
             if not top:
                 continue
-            html += f'<p class="b">Top {label} (WT-aligned, pre-open):</p><table>'
-            html += '<tr><th>Symbol</th><th>Signal</th><th>Strength</th><th>TFs</th><th>Note</th></tr>'
-            for sym in top[:12]:
-                b = bias.get(sym, {})
-                bar = "&#9608;" * b.get("strength", 0) + "&#9617;" * (5 - b.get("strength", 0))
-                tfs = b.get("wt_tfs_aligned", "?")
-                note = b.get("note", "")
-                sig = b.get("signal", label[:4].upper())
-                html += f'<tr><td><b>{sym}</b></td><td><span class="pill {pill_cls}">{sig}</span></td><td style="font-family:monospace;letter-spacing:1px">{bar}</td><td style="text-align:center">{tfs}/4</td><td class="gr" style="font-size:11px">{note}</td></tr>'
+            html += f'<p class="b" style="margin-top:12px">Top {label}:</p><table>'
+            html += '<tr><th>Symbol</th><th>Confidence</th><th>TF Alignment</th><th>Assessment</th><th>Caution</th></tr>'
+            for item in top[:12]:
+                sym = item if isinstance(item, str) else item.get("symbol", "?")
+                a = assessments.get(sym, {})
+                conf = a.get("confidence") or (item.get("confidence") if isinstance(item, dict) else "?")
+                conf_cls = "pg" if conf == "HIGH" else "po" if conf == "MEDIUM" else "pr"
+                tfs_html = tf_icons(a.get("tf_bias", {}))
+                note = a.get("note") or (item.get("note") if isinstance(item, dict) else "")
+                cautions = a.get("cautions") or (item.get("cautions") if isinstance(item, dict) else [])
+                caution_str = cautions[0] if cautions else ""
+                html += (
+                    f'<tr>'
+                    f'<td><b>{sym}</b></td>'
+                    f'<td><span class="pill {conf_cls}">{conf}</span></td>'
+                    f'<td style="white-space:nowrap">{tfs_html}</td>'
+                    f'<td class="gr" style="font-size:11px">{note}</td>'
+                    f'<td class="o" style="font-size:11px">{caution_str}</td>'
+                    f'</tr>'
+                )
             html += "</table>"
-        return html if html else '<p class="gr">No bias data in snapshot.</p>'
+
+        # HOLD section — symbols with cautions worth watching
+        top_holds = brief.get("top_holds", [])
+        if top_holds:
+            html += '<p class="b" style="margin-top:12px">Notable HOLDs (wait for alignment):</p><table>'
+            html += '<tr><th>Symbol</th><th>Side</th><th>TF Alignment</th><th>Why waiting</th></tr>'
+            for item in top_holds[:8]:
+                sym = item if isinstance(item, str) else item.get("symbol", "?")
+                a = assessments.get(sym, {})
+                side = a.get("side", "?")
+                side_cls = "pg" if side == "long" else "pr"
+                tfs_html = tf_icons(a.get("tf_bias", {}))
+                cautions = a.get("cautions") or (item.get("cautions") if isinstance(item, dict) else [])
+                reason = cautions[0] if cautions else a.get("note", "")
+                html += (
+                    f'<tr>'
+                    f'<td><b>{sym}</b></td>'
+                    f'<td><span class="pill {side_cls}">{side.upper()}</span></td>'
+                    f'<td style="white-space:nowrap">{tfs_html}</td>'
+                    f'<td class="gr" style="font-size:11px">{reason}</td>'
+                    f'</tr>'
+                )
+            html += "</table>"
+
+        return html
     except Exception as e:
         return f'<p class="r">TV bias section error: {e}</p>'
 
