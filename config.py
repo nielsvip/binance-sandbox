@@ -236,6 +236,16 @@ class Config:
     OB_ENTRY_MIN_LONG_SCORE: float = 0.0         # 0=disabled. Recommend 60 for entry-at-support.
     OB_ENTRY_MIN_SHORT_SCORE: float = 0.0        # 0=disabled. Recommend 60.
     OB_ENTRY_WALL_TOO_CLOSE_PCT: float = 0.0     # 0=disabled. 0.5 skips LONG when ask wall <0.5% above.
+    # ═══ OB PRICE-DEFERRAL (2026-04-24) — overrides maker limit price toward OB walls. ═══
+    # "Enter at support, exit at resistance" — when signal fires, if a wall exists within
+    # MAX_DISTANCE_PCT, set the limit AT the wall and extend timeout so the limit has time to
+    # fill. If price already at level (within AT_LEVEL_TOL), use normal maker. If no wall or
+    # too far, normal maker (best_bid+tick for BUY, best_ask-tick for SELL).
+    OB_PRICE_DEFER_ENABLED: bool = False                   # master switch
+    OB_PRICE_DEFER_ACCOUNTS: list = field(default_factory=lambda: [])  # empty = all accounts when enabled
+    OB_PRICE_DEFER_MAX_DISTANCE_PCT: float = 1.5           # max distance from mid to wall to consider deferring
+    OB_PRICE_DEFER_AT_LEVEL_TOL_PCT: float = 0.1           # within this % = use normal maker (already at level)
+    OB_PRICE_DEFER_TTL_SEC: float = 300.0                  # how long to hold the deferred limit before falling back
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

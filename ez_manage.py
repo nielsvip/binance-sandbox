@@ -12608,13 +12608,66 @@ class MultiAccountTradeManager:
             filled = False
             async with self.dedupe_lock:
                 self.active_maker_orders[position_key] = {'status': 'placing', 'start_time': time.time(), 'order_id': 'chasing'}
+            # 2026-04-24 OB PRICE-DEFERRAL (user directive): when enabled for this account,
+            # consult ez_orderbook `orderbook:<SYM>` and override limit price to rest at
+            # nearest support (for buys) / resistance (for sells). If wall is within
+            # OB_PRICE_DEFER_AT_LEVEL_TOL_PCT (≈0.1%) we're already AT the level — fire normal
+            # maker. If within OB_PRICE_DEFER_MAX_DISTANCE_PCT (≈1.5%) set limit AT the wall and
+            # extend TIMEOUT so the limit has time to fill (OB_PRICE_DEFER_TTL_SEC, ~5 min).
+            _ob_defer_enabled = bool(getattr(config, 'OB_PRICE_DEFER_ENABLED', False))
+            _ob_defer_accounts = set(getattr(config, 'OB_PRICE_DEFER_ACCOUNTS', []) or [])
+            _ob_defer_active = _ob_defer_enabled and (not _ob_defer_accounts or account_key in _ob_defer_accounts)
+            _ob_target_override = None  # Decimal or None
+            _ob_defer_reason = ""
+            if _ob_defer_active:
+                try:
+                    import redis as _rs_d
+                    _rcli_d = _rs_d.Redis(host='localhost', port=6379, decode_responses=True)
+                    _raw_d = _rcli_d.get(f"orderbook:{symbol}")
+                    if _raw_d:
+                        import json as _j_d
+                        _ob_d = _j_d.loads(_raw_d)
+                        _age_ms = (time.time() * 1000.0) - float(_ob_d.get('ob_ts_ms', 0) or 0)
+                        if _age_ms <= 5000:
+                            _mid = float(_ob_d.get('ob_mid', 0) or 0)
+                            if _mid > 0:
+                                _max_dist = float(getattr(config, 'OB_PRICE_DEFER_MAX_DISTANCE_PCT', 1.5))
+                                _at_tol = float(getattr(config, 'OB_PRICE_DEFER_AT_LEVEL_TOL_PCT', 0.1))
+                                # BUY (LONG open or SHORT close) → target nearest BID wall below
+                                # SELL (SHORT open or LONG close) → target nearest ASK wall above
+                                if side == 'BUY':
+                                    _wall_pct = _ob_d.get('ob_bid_wall_pct')
+                                    if _wall_pct is not None:
+                                        _wp = float(_wall_pct)
+                                        if _at_tol < _wp <= _max_dist:
+                                            _target_f = _mid * (1.0 - _wp / 100.0)
+                                            _ob_target_override = Decimal(str(round(_target_f, 12)))
+                                            _ob_defer_reason = f"OB_BID_WALL_{_wp:.2f}pct"
+                                else:  # SELL
+                                    _wall_pct = _ob_d.get('ob_ask_wall_pct')
+                                    if _wall_pct is not None:
+                                        _wp = float(_wall_pct)
+                                        if _at_tol < _wp <= _max_dist:
+                                            _target_f = _mid * (1.0 + _wp / 100.0)
+                                            _ob_target_override = Decimal(str(round(_target_f, 12)))
+                                            _ob_defer_reason = f"OB_ASK_WALL_{_wp:.2f}pct"
+                except Exception as _oe:
+                    logger.debug(f"[OB_PRICE_DEFER_ERR] {position_key}: {_oe}")
+            if _ob_target_override is not None:
+                # Extend TIMEOUT to allow the deferred limit to fill
+                TIMEOUT = max(TIMEOUT, float(getattr(config, 'OB_PRICE_DEFER_TTL_SEC', 300.0)))
+                logger.warning(f"🎯 [OB_PRICE_DEFER] {position_key} {side}: limit deferred to {_ob_target_override} via {_ob_defer_reason} (TTL={TIMEOUT:.0f}s)")
             while time.time() - placement_start_time < TIMEOUT:
                 try:
                     await asyncio.to_thread(client.futures_countdown_cancel_all, symbol=symbol, countdownTime=5000)
                     ticker = await asyncio.to_thread(client.futures_symbol_ticker, symbol=symbol)
                     lp = Decimal(ticker['price'])
                     elapsed = time.time() - placement_start_time
-                    if elapsed < 5.0:
+                    # If OB deferral is active, quantize the wall-target to tick and use it.
+                    if _ob_target_override is not None:
+                        _quant = (_ob_target_override // tick) * tick
+                        target_price_str = str(_quant)
+                    elif elapsed < 5.0:
                         book = await asyncio.to_thread(client.futures_order_book, symbol=symbol, limit=5)
                         bb, ba = Decimal(book['bids'][0][0]), Decimal(book['asks'][0][0])
                         if side == 'BUY':
