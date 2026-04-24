@@ -15399,17 +15399,17 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                                        data_manager: "FastDataManager",
                                        hedge_engine: "HedgeEngine",
                                        by_acct: dict) -> int:
-    """Close V3 positions immediately on reversal signals.
-    User directive 2026-04-24 (after MOVR −4%): "if LH or LL appear or wt_1m/k_1m
-    go down while in gain CLOSE IMMEDIATELY and pick back up later".
-    Triggers (only when gain > 0):
-      - 3m bar shows LH or LL against position side
-      - K_1m or K_3m dropped > DROP_MIN points from prior reading (LONG), rose for SHORT
-      - wt1_3m crossed wt2_3m against position side
+    """Close V3 positions immediately on reversal signals OR any loss.
+    User directives:
+      2026-04-24 a) "if LH or LL appear or wt_1m/k_1m go down while in gain CLOSE IMMEDIATELY"
+      2026-04-24 b) "we need to hedge these OR never let positions slip into a loss"
+    Going with (b): ANY V3 position with gain <= SCALP_V3_MAX_LOSS_PCT closes 100% now.
+    In-gain triggers (fast exit on first reversal sign) remain as before.
     """
     if not getattr(config, 'SCALP_V3_PROTECTIVE_EXIT_ENABLED', True):
         return 0
     k_drop_min = float(getattr(config, 'SCALP_V3_PROTECTIVE_K_DROP_MIN', 5.0))
+    max_loss_pct = float(getattr(config, 'SCALP_V3_MAX_LOSS_PCT', -0.5))
     fires = 0
     for pk, p in by_acct.items():
         reason_str = str(getattr(p, 'augment_reason', '') or '')
@@ -15418,7 +15418,26 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
         amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
         if amt <= 0: continue
         gain = safe_fetch_float(getattr(p, 'gain', 0), 0)
-        # Only protective-exit while IN GAIN. In loss, other exits (PPL, BE-stop, stall) handle.
+        # ABSOLUTE LOSS CUT — if V3 position is down past threshold, close NOW. No signals required.
+        if gain <= max_loss_pct:
+            try:
+                _, sym, side = parse_position_key(pk)
+                _, ind, _, _, _, _, _ = await data_manager.get_hot_state(sym)
+                mark_price = safe_fetch_float(getattr(p, 'mark_price', 0), 0)
+                if mark_price <= 0 and ind:
+                    mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
+                if mark_price <= 0: continue
+                close_reason = f"SCALP_V3_OPEN_MAX_LOSS_CUT_{side}_gain{gain:+.2f}_max{max_loss_pct}"
+                logger.critical(f"🛡️ [SCALP_V3_MAX_LOSS_CUT] {pk}: gain={gain:+.2f}% hit max_loss {max_loss_pct}% — CLOSING 100% NOW")
+                await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                             account_key, pk, amt, 'CLOSE',
+                                             mark_price, amt, close_reason,
+                                             is_hedge=False, data_manager=data_manager)
+                fires += 1
+            except Exception as e:
+                logger.warning(f"[SCALP_V3_MAX_LOSS_CUT] {pk}: {e}")
+            continue
+        # Only reversal-exit while IN GAIN (nothing to protect if already negative — max-loss-cut handled above)
         if gain <= 0:
             continue
         try:
