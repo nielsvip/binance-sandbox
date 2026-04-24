@@ -38,6 +38,19 @@ FORBIDDEN_FLIPS = {
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
 }
 
+# Per-mode caps for hold-bar parameters — prevents multi-session overnight holds that inflate
+# Sharpe by forcing losers to recover before exit (gap risk not modeled in backtest).
+# 2026-04-24: 100% of Sharpe>3.0 tradier winners used MIN_HOLD_BARS >= 2×baseline (124 bars =
+# 620 min = overnight). Tradier cap = 78 bars (1 full session: 9:30am–4pm at 5m/bar).
+# Crypto 24/7 — no session boundary, but cap at 240 bars (12h at 3m/bar) to prevent
+# extreme cherry-picking from forcing all losers to be held until recovery.
+HOLD_BAR_CAPS = {
+    "MIN_HOLD_BARS":              {"tradier": 78, "crypto": 240},
+    "MIN_HOLD_BARS_BEFORE_EXIT":  {"tradier": 78, "crypto": 240},
+    "REGIME_TRENDING_MIN_HOLD_BARS": {"tradier": 78, "crypto": 240},
+    "REGIME_RANGING_MIN_HOLD_BARS":  {"tradier": 78, "crypto": 240},
+}
+
 # Fork-inherited globals — set in main() before any Process.start()
 _g_subset = None
 _g_simulate = None
@@ -109,6 +122,10 @@ def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
             if random.random() < numeric_perturb_prob:
                 mult = random.choice([0.5, 0.75, 1.25, 1.5, 2.0])
                 new = max(1, int(val * mult))
+                if nm in HOLD_BAR_CAPS:
+                    mode = getattr(base_cfg, "MODE", "crypto")
+                    cap = HOLD_BAR_CAPS[nm].get(mode, HOLD_BAR_CAPS[nm]["crypto"])
+                    new = min(new, cap)
                 if new != val: ovr[nm] = new
         elif isinstance(val, float):
             if random.random() < numeric_perturb_prob:
