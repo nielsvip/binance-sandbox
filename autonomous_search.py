@@ -33,6 +33,9 @@ FORBIDDEN_FLIPS = {
     # Activating it in backtest but not live = false signal. Lock to False in all searches.
     # HARD_STOP_LOSS_MAX_PAIN caused $500+ losses on 2026-03-24 — NEVER re-enable in any search.
     "STOP_LOSS_ENABLED",
+    # HEDGE_ENABLED=True in quick engine inflates trade count 177→25,610+ via micro-hedge churn.
+    # Engine comment: "True inflated trades 1209→84K due to no min-hold." Lock False in all searches.
+    "HEDGE_ENABLED",
     # NOTE: PARTIAL_PROFIT_LOCK_* and PARTIAL_EXIT_* are NOT forbidden.
     # PPL is a REAL live mechanism (50% close at +0.5% via maker/webhook_url_2).
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.

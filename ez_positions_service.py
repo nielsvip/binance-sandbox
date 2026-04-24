@@ -3652,7 +3652,7 @@ class PositionService:
         self._periodic_update_zero_positions_task: Optional[asyncio.Task] = None
         self._account_sessions: Dict[str, aiohttp.ClientSession] = {}
         self._account_monitor_stop = True
-        self._rest_poll_interval = float(getattr(self.config, "POSITION_POLL_INTERVAL", 15.0))  # Was 4.0 — WS is real-time, REST is fallback only
+        self._rest_poll_interval = float(getattr(self.config, "POSITION_POLL_INTERVAL", 6.0))  # 2026-04-24 USER DIRECTIVE: Keep REST at 6s — already hitting Binance -1003 bans. WS is the PRIMARY source. REST is for mark price freshness only. If WS is frozen → fix WS, don't hammer REST.
         self._enable_auto_fetch = True
         self._rest_poll_jitter = float(getattr(self.config, "POSITION_POLL_JITTER", 1.0)) 
         self._listen_key_refresh_seconds = float(getattr(self.config, "LISTEN_KEY_REFRESH_SECONDS", 25 * 60))
@@ -6380,15 +6380,31 @@ class PositionService:
                         logger.warning(f"[ENTRY_PRICE_FIX][{position_key}] Memory entry_price={_mem_ep:.8f} not credible vs API={api_entry_price:.8f}. Replacing with API value.")
                         existing_position.entry_price = api_entry_price
                 prev_amt = abs(existing_position.positionAmt) if existing_position.positionAmt else 0.0
+                # 2026-04-24: DISTINGUISH FRESH vs STALE price sources. Previously any price
+                # source could overwrite mark_price — including quick_price() returning the cached
+                # stale value from this same Position. That created a self-reinforcing staleness
+                # loop where mark_price_last_updated kept advancing but value never changed.
+                # Fix: track whether the source is genuinely fresh (from API payload or Redis
+                # mark_price:SYMBOL feed) vs a self-referencing cache. Only update timestamp
+                # when the source is fresh.
+                _api_mp = safe_fetch_float(pos_api_data.get("mp"), 0)
+                _api_markprice = safe_fetch_float(pos_api_data.get("markPrice"), 0)
+                _fresh_price = _api_mp if _api_mp > 0 else (_api_markprice if _api_markprice > 0 else 0)
                 price_from_getter = None
-                try :
-                    candidates = [safe_fetch_float(pos_api_data.get("mp")), safe_fetch_float(pos_api_data.get("markPrice"))]
-                    try : 
-                        candidates.append(await quick_price(symbol))
+                _price_is_fresh = False
+                if _fresh_price > 0:
+                    price_from_getter = _fresh_price
+                    _price_is_fresh = True
+                else:
+                    # fallback chain — cached or existing (NOT fresh)
+                    try:
+                        _qp = await quick_price(symbol)
+                        if _qp and _qp > 0:
+                            price_from_getter = _qp
                     except Exception: pass
-                    candidates.append(safe_fetch_float(existing_position.mark_price))
-                    price_from_getter = next((p for p in candidates if p is not None and p > 0), None)
-                except (ValueError, Exception): pass
+                    if price_from_getter is None:
+                        _ex_mp = safe_fetch_float(existing_position.mark_price, 0)
+                        if _ex_mp > 0: price_from_getter = _ex_mp
                 mt_price = safe_fetch_float(pos_api_data.get("mt"))
                 current_price = price_from_getter or mt_price or safe_fetch_float(existing_position.mark_price, 0.0)
                 tolerance = max(0.000001, prev_amt * 0.001)
@@ -6396,9 +6412,17 @@ class PositionService:
                 if unrealized_pnl_USD is not None:
                     existing_position.unrealized_pnl_USD = unrealized_pnl_USD
                 if current_price and current_price > 0:
+                    _prev_mp = existing_position.mark_price or 0
                     existing_position.mark_price = current_price
+                    # Only advance timestamp when the source is genuinely fresh OR value changed.
+                    # Prevents self-reinforcing stale loop where cached price keeps refreshing its
+                    # own timestamp, blocking ez_mark_prices / quick_price fall-through to a real
+                    # fresh Redis value.
+                    if _price_is_fresh or abs(current_price - _prev_mp) / max(_prev_mp, 1e-12) > 1e-6:
+                        existing_position.mark_price_last_updated = now
                 elif (not existing_position.mark_price or existing_position.mark_price <= 0) and current_price and current_price > 0:
                     existing_position.mark_price = current_price
+                    existing_position.mark_price_last_updated = now
                 trade_just_executed = False
                 last_trade_ts = self._position_update_timestamps.get(f"_trade_exec_{position_key}", 0)
                 if last_trade_ts and isinstance(last_trade_ts, (int, float)) and (time.time() - last_trade_ts) < 120:
