@@ -76,6 +76,8 @@ class QuickConfig:
     DC_LOW4_BYPASS_MAX_BARS: int = 0              # 0=always active, N=only within N bars of entry (fast-open protection)
     DC_LOW4_BYPASS_USE_STANDARD: bool = False     # True=use dc_low_LTF (standard), False=use dc_low4_LTF (4-bar restricted)
     DC_LOW4_BYPASS_TF: str = ""                   # '' = use LTF (5m tradier / 3m crypto), '15m' = 15m channel (wider stop)
+    MIN_HOLD_DC_LOW_BYPASS_ENABLED: bool = False  # When True: if price breaks dc_low_MIN_HOLD_DC_LOW_BYPASS_TF before min_hold bars, force early exit (structural breakdown safety valve)
+    MIN_HOLD_DC_LOW_BYPASS_TF: str = "15m"        # DC channel TF for MIN_HOLD early-exit bypass: '5m'/'3m'=tight, '15m'=medium, '1h'=wide
     DC_BREAKOUT_FAILED_STOP_ENABLED: bool = False # SWEPT 2026-04-20 (262 tradier / 49 crypto full-sym). VERDICT: DO NOT ENABLE. Crypto: zero fires (entry filters already prevent breakout-bar entries). Tradier: -15% Sharpe, -3pp WR (positions above BB1h do recover; cutting early = paper-cut). NOTE: v1 had same-bar Donchian bug (close≤high always) — fixed with prev-bar roll; results above are post-fix.
     ALL_TF_BRAKE_ENABLED: bool = False            # SWEPT 2026-04-20 (262 tradier / 49 crypto full-sym). VERDICT: DO NOT ENABLE. Tradier: never fires (no W/M TFs, 5 real TFs don't all flip against before WT exit fires). Crypto: min_tfs≤5 → -36% to -58% Sharpe; min_tfs≥6 → zero effect. Redundant with WT_EXIT_MIN_TFS.
     ALL_TF_BRAKE_MIN_TFS: int = 5                 # minimum TFs (out of LTF/15m/1h/4h/D/W/M) that must be against to trigger brake
@@ -2109,6 +2111,16 @@ def simulate(stores, cfg, capital=10000.0):
             _dc4_high = _np_dc4.roll(_dc4_raw_high, 1); _dc4_high[0] = _dc4_raw_high[0]
         else:
             _dc4_low = None; _dc4_high = None
+        # MIN_HOLD_DC_LOW_BYPASS: allow early exit before min_hold if DC channel breaks (structural safety)
+        _mh_dc_bypass_enabled = bool(getattr(cfg, 'MIN_HOLD_DC_LOW_BYPASS_ENABLED', False))
+        _mh_dc_bypass_tf = str(getattr(cfg, 'MIN_HOLD_DC_LOW_BYPASS_TF', '15m'))
+        if _mh_dc_bypass_enabled:
+            _mh_dc_raw_low = _safe(npz, f'dc_low_{_mh_dc_bypass_tf}', n)
+            _mh_dc_raw_high = _safe(npz, f'dc_high_{_mh_dc_bypass_tf}', n)
+            _mh_dc_low = np.roll(_mh_dc_raw_low, 1); _mh_dc_low[0] = _mh_dc_raw_low[0]
+            _mh_dc_high = np.roll(_mh_dc_raw_high, 1); _mh_dc_high[0] = _mh_dc_raw_high[0]
+        else:
+            _mh_dc_low = None; _mh_dc_high = None
         # RZ_BREAKOUT: precompute breakout detection arrays and guard level for noloss bypass
         _rz_break_enabled = getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False)
         _rz_break_arr = None
@@ -2633,6 +2645,16 @@ def simulate(stores, cfg, capital=10000.0):
                     if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
                     if _t1pc_enabled: _t1pc_exit_px = px; _t1pc_exit_bar = i
                     in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; _last_exit_bar = i; cd = max(cooldown, min_gap_bars); continue
+                if in_pos and (i - eb) < min_hold and _mh_dc_bypass_enabled and _mh_dc_low is not None:
+                    _mh_break = (is_long and _mh_dc_low[i] > 0 and px < _mh_dc_low[i]) or (not is_long and _mh_dc_high is not None and _mh_dc_high[i] > 0 and px > _mh_dc_high[i])
+                    if _mh_break:
+                        pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                        if _pe_partial_done: pnl = _pe_realized + (1.0 - _pe_frac) * pnl
+                        _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                        if hedge_in_pos and hedge_ep > 0:
+                            h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                            all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                        in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; _last_exit_bar = i; cd = max(cooldown, min_gap_bars); continue
                 _wt_exit_now = (not _pe_partial_done and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i]))) or (_pe_partial_done and exit_sig_rem[i])
                 if in_pos and (i - eb) >= min_hold and _wt_exit_now:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)

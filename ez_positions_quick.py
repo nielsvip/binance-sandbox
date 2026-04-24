@@ -15847,6 +15847,31 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
         if side == 'SHORT' and div >= 0: return False
     if side == 'LONG' and side_mode not in ('LONG_ONLY', 'BOTH'): return False
     if side == 'SHORT' and side_mode not in ('SHORT_ONLY', 'BOTH'): return False
+    # 2026-04-24 HTF TREND GUARD — NEVER enter counter to strong HTF trend.
+    # Root incident: NOTUSDT_SHORT opened while vel_4h=+15.3 (strong uptrend). Absolute no-no.
+    # Rejects: LONG when 4h vel strongly negative; SHORT when 4h vel strongly positive.
+    _vel_gate = float(getattr(config, 'SCALP_V3_HTF_TREND_VEL_GATE', 5.0) or 0)
+    if _vel_gate > 0:
+        _vel_4h = safe_fetch_float(ind.get('wt_velocity_4h', ind.get('velocity_4h', 0)), 0)
+        _vel_1h = safe_fetch_float(ind.get('wt_velocity_1h', ind.get('velocity_1h', 0)), 0)
+        if side == 'LONG' and _vel_4h <= -_vel_gate:
+            logger.warning(f"🚫 [V3_HTF_TREND_BLOCK] {sym} LONG rejected: vel_4h={_vel_4h:+.1f} <= -{_vel_gate} (HTF bearish, counter-trend entry forbidden)")
+            return False
+        if side == 'SHORT' and _vel_4h >= _vel_gate:
+            logger.warning(f"🚫 [V3_HTF_TREND_BLOCK] {sym} SHORT rejected: vel_4h={_vel_4h:+.1f} >= +{_vel_gate} (HTF bullish, counter-trend entry forbidden — NOTUSDT incident)")
+            return False
+        # Optional: also reject when 1h velocity strongly contradicts
+        if side == 'LONG' and _vel_1h <= -_vel_gate * 2:
+            logger.warning(f"🚫 [V3_HTF_TREND_BLOCK] {sym} LONG rejected: vel_1h={_vel_1h:+.1f} deeply bearish")
+            return False
+        if side == 'SHORT' and _vel_1h >= _vel_gate * 2:
+            logger.warning(f"🚫 [V3_HTF_TREND_BLOCK] {sym} SHORT rejected: vel_1h={_vel_1h:+.1f} deeply bullish")
+            return False
+    # 2026-04-24 OB DATA REQUIRED guard — if orderbook data missing for this symbol,
+    # don't enter blind. NOTUSDT wasn't in the OB universe → SHORT opened without OB validation.
+    if bool(getattr(config, 'SCALP_V3_OB_REQUIRED', True)) and ob_long <= 0 and ob_short <= 0:
+        logger.warning(f"🚫 [V3_OB_MISSING_BLOCK] {sym} {side} rejected: no OB data (ob_long={ob_long} ob_short={ob_short}). Add to orderbook universe first.")
+        return False
     # Build reason string with orderbook + divergence evidence
     decision = {
         'side': side,

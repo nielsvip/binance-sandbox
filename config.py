@@ -221,6 +221,7 @@ class Config:
     SCALP_V3_PG_ARM_PCT: float = 0.5         # peak-giveback arms when gain reaches this %
     SCALP_V3_PG_GIVEBACK_PCT: float = 0.2    # exit when gain drops by this % from peak (after arm)
     SCALP_V3_MIN_TP_FOR_EARLY_EXIT: float = 0.2  # 2026-04-24: when gain >= this, any bar LH/LL fires exit (lock profit early)
+    SCALP_V3_HTF_TREND_VEL_GATE: float = 5.0     # 2026-04-24 NOTUSDT fix: no V3 entry when |wt_velocity_4h| >= this and opposite side. Hard counter-trend block.
     SCALP_V3_USE_HA_3M: bool = True          # 2026-04-24 winners: 6/10 used Heikin-Ashi 3m bars for entry pattern
     SCALP_V3_USE_HA_1M: bool = False         # winners split; keep default off
     # ═══ ORDERBOOK COMPOSITE GATES (2026-04-24 NEW) ═══
