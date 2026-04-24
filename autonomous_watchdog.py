@@ -92,12 +92,16 @@ def _save_state(state):
 
 
 def _run_local(cmd, cwd=None):
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=15)
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, timeout=45)
 
 
-def _run_remote(host, cmd, timeout=15):
-    full = f'ssh -o ConnectTimeout=8 -o BatchMode=yes {host} "{cmd}"'
-    return subprocess.run(full, shell=True, capture_output=True, text=True, timeout=timeout)
+def _run_remote(host, cmd, timeout=45, capture=True):
+    full = f'ssh -o ConnectTimeout=10 -o BatchMode=yes {host} "{cmd}"'
+    if capture:
+        return subprocess.run(full, shell=True, capture_output=True, text=True,
+                              stdin=subprocess.DEVNULL, timeout=timeout)
+    return subprocess.run(full, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                          stdin=subprocess.DEVNULL, timeout=timeout)
 
 
 def _log_age_local(log_path):
@@ -119,28 +123,24 @@ def _log_age_remote(host, log_path):
 
 def _count_running_local():
     """Count only PARENT workers (exclude forked simulation children)."""
-    all_r = _run_local("ps aux | grep autonomous_search.py | grep -v grep | awk '{print $2}'")
-    search_pids = set(all_r.stdout.strip().split())
-    if not search_pids:
+    r = _run_local(
+        "ps ax -o pid= -o ppid= -o command= | "
+        "awk 'BEGIN{n=0} /autonomous_search\\.py/&&!/grep/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} "
+        "END{for(i in row){p=pid[i];ok=1;for(j in row){if(ppid[i]==pid[j]){ok=0;break}};if(ok)n++};print n}'"
+    )
+    try:
+        return int(r.stdout.strip())
+    except Exception:
         return 0
-    ppid_r = _run_local("ps ax -o pid=,ppid=")
-    pid_to_ppid = {}
-    for line in ppid_r.stdout.strip().split("\n"):
-        parts = line.split()
-        if len(parts) == 2:
-            pid_to_ppid[parts[0]] = parts[1]
-    return sum(1 for p in search_pids if pid_to_ppid.get(p, "0") not in search_pids)
 
 
 def _count_running_remote(host):
     """Count only PARENT workers on remote host (exclude forked simulation children)."""
+    # Single-pass awk: find autonomous PIDs, get all pid→ppid pairs, count pids whose ppid is not also a match
     r = _run_remote(host, (
-        'pids=$(ps aux | grep autonomous_search.py | grep -v grep | awk \'{print $2}\'); '
-        '[ -z "$pids" ] && echo 0 && exit 0; '
-        'n=0; for pid in $pids; do '
-        '  ppid=$(ps -o ppid= -p $pid 2>/dev/null | tr -d " "); '
-        '  echo " $pids " | grep -qw " $ppid " || n=$((n+1)); '
-        'done; echo $n'
+        'ps ax -o pid= -o ppid= -o command= | '
+        'awk \'BEGIN{n=0} /autonomous_search\\.py/&&!/grep/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} '
+        'END{for(i in row){p=pid[i];ok=1;for(j in row){if(ppid[i]==pid[j]){ok=0;break}};if(ok)n++};print n}\''
     ))
     try:
         return int(r.stdout.strip())
@@ -178,7 +178,7 @@ def _start_worker_local(cfg, seed, state, machine_key):
         f"--base-overrides-json {cfg['baseline_json']} "
         f"--seed {seed} "
         f"{cfg['extra_flags']} "
-        f"</dev/null >{log} 2>&1 &"
+        f"</dev/null >{log} 2>&1 & disown"
     )
     r = _run_local(cmd, cwd=cfg["cwd"])
     state[machine_key]["used_seeds"].append(seed)
@@ -190,12 +190,12 @@ def _start_worker_local(cfg, seed, state, machine_key):
 
 
 def _launch_one_remote(host, cfg, seed):
-    """Start a single worker via SSH; returns seed on success, raises on failure."""
+    """Start a single worker via SSH. SSH may time out waiting for Python to load (normal — process IS running)."""
     log = cfg["log_template"].format(seed=seed)
     out_dir = cfg["out_dir_template"].format(seed=seed)
     cmd = (
         f"cd {cfg['cwd']} && "
-        f"setsid nohup {cfg['python']} -u {cfg['script']} "
+        f"nohup {cfg['python']} -u {cfg['script']} "
         f"--mode {cfg['mode']} --symbols {cfg['symbols']} "
         f"--start {cfg['start']} --npz-dir {cfg['npz_dir']} "
         f"--bh-accumulated-gain-pct {cfg['bh_pct']} "
@@ -206,9 +206,14 @@ def _launch_one_remote(host, cfg, seed):
         f"--base-overrides-json {cfg['baseline_json']} "
         f"--seed {seed} "
         f"{cfg['extra_flags']} "
-        f"</dev/null >{log} 2>&1 &"
+        f"</dev/null >{log} 2>&1 & disown"
     )
-    _run_remote(host, cmd, timeout=30)
+    try:
+        _run_remote(host, cmd, timeout=20, capture=False)
+    except subprocess.TimeoutExpired:
+        # Python takes >15s to load NPZ data — SSH times out but the process IS running.
+        # Log a note and treat as probable success; next watchdog run verifies.
+        print(f"  (SSH timed out launching seed={seed} — process likely running, will verify next cycle)", flush=True)
     return seed
 
 
@@ -216,13 +221,17 @@ def _start_workers_remote_batch(host, cfg, seeds, state, machine_key):
     """Start multiple workers in parallel SSH sessions (one per worker)."""
     with ThreadPoolExecutor(max_workers=len(seeds)) as ex:
         futures = {ex.submit(_launch_one_remote, host, cfg, seed): seed for seed in seeds}
-        for fut in as_completed(futures, timeout=40):
+        for fut in as_completed(futures, timeout=60):
             seed = futures[fut]
             try:
                 fut.result()
                 state[machine_key]["used_seeds"].append(seed)
                 state[machine_key]["next_seed"] = max(state[machine_key]["next_seed"], seed + 1)
                 print(f"  Started remote {host} worker seed={seed}", flush=True)
+            except subprocess.TimeoutExpired:
+                # Already handled inside _launch_one_remote — still treat as launched
+                state[machine_key]["used_seeds"].append(seed)
+                state[machine_key]["next_seed"] = max(state[machine_key]["next_seed"], seed + 1)
             except Exception as e:
                 print(f"  Launch error seed={seed} on {host}: {e}", flush=True)
 

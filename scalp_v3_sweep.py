@@ -684,6 +684,26 @@ def make_grid(grid_name: str) -> List[Dict]:
         return out
     keys = list(axes.keys())
     values = [axes[k] for k in keys]
+    # Estimate cartesian size — if > 200K, use lazy per-axis random sampling instead.
+    total = 1
+    for vs in values:
+        total *= max(1, len(vs))
+    if total > 200_000:
+        # Lazy: sample 20000 unique variants by picking independently from each axis.
+        # Deduplicate via frozenset tuple. Cap at 20k to bound memory.
+        seen = set()
+        variants = []
+        target = 20000
+        attempts = 0
+        while len(variants) < target and attempts < target * 5:
+            attempts += 1
+            combo = tuple(random.choice(vs) for vs in values)
+            if combo in seen: continue
+            seen.add(combo)
+            v = base.copy()
+            for k, x in zip(keys, combo): v[k] = x
+            variants.append(v)
+        return variants
     variants = []
     for combo in itertools.product(*values):
         v = base.copy()
