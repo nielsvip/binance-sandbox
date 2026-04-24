@@ -1092,37 +1092,16 @@ async def smart_fill_option(client: TradierAPIClient, symbol: str, occ: str, sid
             current_price = round(ask * 1.05, 2)  # Start 5% above ask — aim high
     account_id = client._current_id
     active_order_id = None
-    # SAFETY: For sell_to_close, verify position actually exists in API before placing orders
-    if not is_buy and account_id:
-        try:
-            api_pos = await client._request("GET", f"/accounts/{account_id}/positions", use_data_context=False)
-            held_occ = set()
-            if api_pos and "positions" in api_pos:
-                inner = api_pos["positions"]
-                if isinstance(inner, dict) and "position" in inner:
-                    plist = inner["position"] if isinstance(inner["position"], list) else [inner["position"]]
-                elif isinstance(inner, list):
-                    plist = inner
-                else:
-                    plist = []
-                for p in plist:
-                    p_qty = float(p.get("quantity", 0) or 0)
-                    if abs(p_qty) > 0:
-                        held_occ.add(p.get("symbol", ""))
-            if occ not in held_occ:
-                # Before blocking, check local knowledge — API can lag for manually-entered
-                # or recently-filled options. If we locally believe the position is open,
-                # allow the sell and let the exchange reject it if truly phantom.
-                _locally_known = config and occ in get_locally_known_option_occs(config)
-                if _locally_known:
-                    logger.warning(f"[PHANTOM_SELL_ALLOW] {occ}: not in API but in local knowledge (position files / equity hedges). Allowing sell — exchange will reject if phantom.")
-                    print(f"  \033[93m[PHANTOM_SELL_ALLOW]\033[0m {occ} missing from API but found in local files — proceeding (exchange will reject if phantom)")
-                else:
-                    logger.critical(f"[PHANTOM_SELL_BLOCK] {occ}: sell_to_close BLOCKED — position not found in API or local files. Held: {held_occ}")
-                    print(f"    \033[91mBLOCKED sell_to_close {occ} — position does NOT exist in API or local files\033[0m")
-                    return {"errors": f"Position {occ} not held in API or locally — phantom sell blocked"}
-        except Exception as e:
-            logger.warning(f"Smart fill {occ}: position verification failed: {e}")
+    # SAFETY: For sell_to_close, verify position is locally known before placing orders.
+    # Use local truth file — no extra API call (we're at the Tradier rate limit).
+    # The watchdog already writes trb/options_positions.json each cycle from API data.
+    if not is_buy and config:
+        _locally_known = occ in get_locally_known_option_occs(config, account_key=account_key)
+        if not _locally_known:
+            logger.critical(f"[PHANTOM_SELL_BLOCK] {occ}: sell_to_close BLOCKED — not in local truth file ({account_key}/options_positions.json). Confirm position exists before retrying.")
+            print(f"    \033[91mBLOCKED sell_to_close {occ} — not in local truth file. Run watchdog to refresh.\033[0m")
+            return {"errors": f"Position {occ} not in local truth file — phantom sell blocked"}
+        logger.info(f"[PHANTOM_SELL_OK] {occ}: confirmed in local truth file — proceeding with sell_to_close")
     # SAFETY: For sell_to_close, cancel any existing open sell orders on this OCC first
     # Tradier rejects sells when open_sell_qty + new_qty > position_qty
     if not is_buy and account_id:
@@ -1599,18 +1578,23 @@ def _save_equity_hedges(config, state: Dict) -> None:
         logger.error(f"_save_equity_hedges error: {e}")
 
 
-_OPTIONS_TRUTH_FILE = "options_open_positions.json"
+_OPTIONS_POSITIONS_FILE = "options_positions.json"
 
 
-def _load_options_truth(config) -> List[Dict]:
-    """Load the authoritative local options truth file.
+def _options_truth_path(config, account_key: str) -> Path:
+    """Return path to the options truth file inside the account folder.
 
-    Written by the watchdog each cycle from live API data.  Can also be manually
-    seeded.  This is the ONLY reliable local source for 'what options are open'.
-    Do NOT use options_equity_hedges.json for this — it tracks hedge placements,
-    not current open positions, and goes stale quickly.
+    Lives at BASE/{account_key}/options_positions.json — same pattern as
+    long_positions.json / short_positions.json.  This is the ONLY file that
+    records what options are currently open.  Written by the watchdog as a
+    side-effect of its normal API fetch — no additional API calls needed anywhere.
     """
-    path = config.DATA_DIR / _OPTIONS_TRUTH_FILE
+    base = Path(str(config.DATA_DIR).replace("/data/tradier", ""))
+    return base / account_key / _OPTIONS_POSITIONS_FILE
+
+
+def _load_options_truth(config, account_key: str = "trb") -> List[Dict]:
+    path = _options_truth_path(config, account_key)
     if not path.exists():
         return []
     try:
@@ -1622,7 +1606,7 @@ def _load_options_truth(config) -> List[Dict]:
 
 
 def _save_options_truth(config, positions: List[Dict], account_key: str, source: str = "watchdog") -> None:
-    path = config.DATA_DIR / _OPTIONS_TRUTH_FILE
+    path = _options_truth_path(config, account_key)
     try:
         with open(path, "w") as f:
             json.dump({"last_updated": datetime.utcnow().isoformat(), "source": source, "account": account_key, "positions": positions}, f, indent=2, default=str)
@@ -1642,17 +1626,18 @@ def get_locally_known_option_occs(config, account_key: str = None) -> set:
     positions, and stays stale after options close or new positions open without hedges.
     """
     known: set = set()
-    # Primary — watchdog truth file
-    for pos in _load_options_truth(config):
-        occ = pos.get("occ_symbol", "")
-        if occ and parse_occ_symbol(occ):
-            known.add(occ)
+    # Primary — watchdog truth files in account folders (no API call needed)
+    accts_to_check = [account_key] if account_key else ["tra", "trb", "trc"]
+    for acct in accts_to_check:
+        for pos in _load_options_truth(config, acct):
+            occ = pos.get("occ_symbol", "")
+            if occ and parse_occ_symbol(occ):
+                known.add(occ)
     if known:
         return known
-    # Fallback — local position files (positionAmt can be zeroed by tradier_manage.py, use with caution)
+    # Fallback — local position files (positionAmt zeroed by tradier_manage.py, use with caution)
     base = Path(str(config.DATA_DIR).replace("/data/tradier", ""))
-    accts = [account_key] if account_key else ["tra", "trb", "trc"]
-    for acct in accts:
+    for acct in accts_to_check:
         for side in ("long", "short"):
             path = base / acct / f"{side}_positions.json"
             if not path.exists():
@@ -2472,11 +2457,10 @@ async def run_watch(args):
                         logger.info(f"SELL_COOLDOWN skip {occ} — user-cancel cooldown active")
                         sold_occs.add(occ)
                         continue
-                    # Re-check position still exists before selling
-                    current_positions = await get_option_positions(client)
-                    still_held = any(p.get("occ_symbol", p.get("symbol", "")) == occ for p in current_positions)
+                    # Re-check against this cycle's already-fetched positions — no extra API call
+                    still_held = any(p.get("occ_symbol", p.get("symbol", "")) == occ for p in positions if occ not in sold_occs)
                     if not still_held:
-                        print(f"    SKIP {occ} — position already closed")
+                        print(f"    SKIP {occ} — position already closed or sold this cycle")
                         sold_occs.add(occ)
                         continue
                     # HEDGE_PAIR_GUARD — 2026-04-23 rewrite:
@@ -2748,13 +2732,14 @@ async def run_watch(args):
                 _cache_entry["unrealized_pnl"] = _cache_entry["current_value"] - _cache_entry["cost_basis"]
                 _cache_entry["unrealized_pct"] = (_cache_entry["unrealized_pnl"] / abs(_cache_entry["cost_basis"]) * 100) if _cache_entry["cost_basis"] else 0
                 _pos_cache.append(_cache_entry)
-            _pos_cache_file = config.DATA_DIR / "options_positions_cache.json"
-            with open(_pos_cache_file, "w") as f:
-                json.dump({"timestamp": datetime.now().isoformat(), "account": account_key, "positions": _pos_cache}, f, indent=2, default=str)
-            # Update the authoritative truth file — the single local source of what is open
+            # Write authoritative truth to {account_key}/options_positions.json
+            # Same pattern as long_positions.json / short_positions.json.
+            # Newsletter, dashboard, and phantom-sell checks read from here — no API calls.
             _truth_positions = [
                 {"occ_symbol": e["occ_symbol"], "underlying": e["symbol"], "option_type": e["option_type"],
-                 "strike": e["strike"], "expiration": e["expiration"], "qty": int(e["quantity"])}
+                 "strike": e["strike"], "expiration": e["expiration"], "qty": int(e.get("quantity", 0)),
+                 "cost_basis": e.get("cost_basis", 0), "current_value": e.get("current_value", 0),
+                 "unrealized_pnl": e.get("unrealized_pnl", 0), "unrealized_pct": e.get("unrealized_pct", 0)}
                 for e in _pos_cache if int(e.get("quantity", 0)) > 0
             ]
             _save_options_truth(config, _truth_positions, account_key, source="watchdog")

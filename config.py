@@ -197,6 +197,11 @@ class Config:
     SCALP_V3_AUG_MIN_GAIN: float = 2.0           # 2026-04-24: 0.5→2.0 — real cushion before adding
     SCALP_V3_AUG_COOLDOWN_SEC: float = 180.0     # 2026-04-24: 60→180s — let adds breathe
     SCALP_V3_AUG_MAX_FRAC_OF_POS: float = 0.5    # 2026-04-24: cap aug at half of current pos notional
+    # Break-even protection for augmented positions (2026-04-24): if a V3 position
+    # was augmented (it peaked high enough to merit adding) and then gave back all
+    # the gains, close 100% at +0.1% before it slips into a loss.
+    SCALP_V3_AUG_BE_STOP_ENABLED: bool = True
+    SCALP_V3_AUG_BE_STOP_PCT: float = 0.1        # close when gain drops below this (% after-fee)
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

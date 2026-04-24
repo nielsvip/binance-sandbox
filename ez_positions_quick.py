@@ -15322,8 +15322,15 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     active = sum(1 for pk, p in by_acct.items()
                  if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
                  and abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0)
+    # BE-STOP PASS: close any augmented V3 position whose gain drops toward BE.
+    # User directive 2026-04-24: "make sure augmented positions close before slipping
+    # into a loss". Runs FIRST so a falling winner is closed before we try to add more.
+    try:
+        await _scalp_v3_attempt_be_stops(trade_manager, account_key, tracker_manager,
+                                          data_manager, hedge_engine, by_acct)
+    except Exception as e:
+        logger.debug(f"[SCALP_V3_BE_STOP] err: {e}")
     # AUGMENT PASS: add to open V3 positions on pullback when in profit.
-    # Runs BEFORE new-open pass so winners get priority when slots are tight.
     aug_fires = 0
     try:
         aug_fires = await _scalp_v3_attempt_augments(trade_manager, account_key, tracker_manager,
@@ -15348,6 +15355,58 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         except Exception as e:
             logger.debug(f"[SCALP_V3_SCAN] {sym}: {e}")
     return len(longs) + len(shorts), fires + aug_fires
+
+
+async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
+                                      tracker_manager: "TrackerManager",
+                                      data_manager: "FastDataManager",
+                                      hedge_engine: "HedgeEngine",
+                                      by_acct: dict) -> int:
+    """Close ANY augmented V3 position whose gain drops back toward BE.
+    User directive 2026-04-24: augmented positions MUST close before going negative.
+    Trigger: position was augmented (last_augmentation_time set) AND current gain
+    has fallen below SCALP_V3_AUG_BE_STOP_PCT (default +0.1% — a whisker above BE
+    after round-trip fees).
+    """
+    if not getattr(config, 'SCALP_V3_AUG_BE_STOP_ENABLED', True):
+        return 0
+    be_stop = float(getattr(config, 'SCALP_V3_AUG_BE_STOP_PCT', 0.1))
+    fires = 0
+    for pk, p in by_acct.items():
+        reason = str(getattr(p, 'augment_reason', '') or '')
+        if not reason.startswith('SCALP_V3_OPEN_'):
+            continue
+        amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
+        if amt <= 0: continue
+        last_aug = getattr(p, 'last_augmentation_time', None)
+        if not last_aug:
+            # Never augmented — PPL + V3 exit hooks handle it. Skip.
+            continue
+        gain = safe_fetch_float(getattr(p, 'gain', 0), 0)
+        max_gain = safe_fetch_float(getattr(p, 'max_gain', gain), gain)
+        # Only trigger after a real winner gave back gains
+        if max_gain < 1.0:
+            continue
+        if gain > be_stop:
+            continue
+        # CLOSE 100% now
+        try:
+            _, sym, side = parse_position_key(pk)
+            mark_price = safe_fetch_float(getattr(p, 'mark_price', 0), 0)
+            if mark_price <= 0:
+                _, ind, _, _, _, _, _ = await data_manager.get_hot_state(sym)
+                mark_price = safe_fetch_float(ind.get('current_price', 0), 0) if ind else 0
+            if mark_price <= 0: continue
+            close_reason = f"SCALP_V3_OPEN_BE_STOP_AUG_{side}_gain{gain:+.2f}_max{max_gain:+.2f}_be{be_stop}"
+            logger.critical(f"🛡️ [SCALP_V3_AUG_BE_STOP] {pk}: augmented pos gain={gain:+.2f}% (peak {max_gain:+.2f}%) fell below BE stop {be_stop}% — closing 100%")
+            await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                         account_key, pk, amt, 'CLOSE',
+                                         mark_price, amt, close_reason,
+                                         is_hedge=False, data_manager=data_manager)
+            fires += 1
+        except Exception as e:
+            logger.debug(f"[SCALP_V3_AUG_BE_STOP] {pk}: {e}")
+    return fires
 
 
 async def _scalp_v3_attempt_augments(trade_manager, account_key: str,

@@ -833,7 +833,7 @@ def build_options_positions_section():
     # ── Known open options from truth file (watchdog writes this each cycle) ────
     # Do NOT use options_equity_hedges.json — it tracks hedge placements, not open
     # positions, and goes stale when options close without coordinated hedge unwind.
-    truth_file = TRADIER_DIR / "options_open_positions.json"
+    truth_file = BASE / "trb" / "options_positions.json"
     truth_ts = ""
     untracked_known = []
     local_occs = {p["occ"] for p in positions}
