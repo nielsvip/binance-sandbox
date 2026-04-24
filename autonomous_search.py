@@ -66,6 +66,10 @@ def _run_simulate_timed(cfg, timeout_secs, mp_ctx):
         proc.join()
         parent_conn.close()
         return None, True, None
+    # exitcode < 0 means killed by signal (e.g. SIGKILL from OOM killer)
+    if proc.exitcode is not None and proc.exitcode < 0:
+        parent_conn.close()
+        return None, False, f"child killed by signal {-proc.exitcode} (OOM?)"
     try:
         r = parent_conn.recv()
     except EOFError:

@@ -13,7 +13,8 @@ from datetime import datetime
 from pathlib import Path
 
 NOW = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-LOG_STALE_SECS = 180  # 3 min without log update = worker stuck/dead
+LOG_STALE_SECS = 180      # 3 min without update on a non-empty log = worker stuck/dead
+STARTUP_GRACE_SECS = 600  # 10 min grace for 0-byte logs while NPZ is loading
 
 STATE_FILE = Path("/Users/niels/Documents/binance/data/autonomous/watchdog_state.json")
 
@@ -105,27 +106,38 @@ def _run_remote(host, cmd, timeout=45, capture=True):
 
 
 def _log_age_local(log_path):
-    """Return seconds since log was last modified, or 9999 if missing."""
+    """Return staleness in seconds. 0-byte logs get a 10-min startup grace."""
     try:
-        return time.time() - os.path.getmtime(log_path)
+        age = time.time() - os.path.getmtime(log_path)
+        size = os.path.getsize(log_path)
+        if size == 0:
+            return age if age > STARTUP_GRACE_SECS else 0
+        return age
     except OSError:
         return 9999
 
 
 def _log_age_remote(host, log_path):
-    r = _run_remote(host, f"stat -c %Y {log_path} 2>/dev/null || echo 0")
+    """Return staleness in seconds. 0-byte logs get a 10-min startup grace."""
+    r = _run_remote(host, f"stat -c '%Y %s' {log_path} 2>/dev/null || echo '0 0'")
     try:
-        mtime = int(r.stdout.strip())
-        return time.time() - mtime if mtime else 9999
+        parts = r.stdout.strip().split()
+        mtime, size = int(parts[0]), int(parts[1])
+        if not mtime:
+            return 9999
+        age = time.time() - mtime
+        if size == 0:
+            return age if age > STARTUP_GRACE_SECS else 0
+        return age
     except Exception:
         return 9999
 
 
 def _count_running_local():
-    """Count only PARENT workers (exclude forked simulation children)."""
+    """Count only PARENT python workers (exclude forked children and bash wrappers)."""
     r = _run_local(
         "ps ax -o pid= -o ppid= -o command= | "
-        "awk 'BEGIN{n=0} /autonomous_search\\.py/&&!/grep/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} "
+        "awk 'BEGIN{n=0} /autonomous_search\\.py/ && /python/ && !/grep/ && !/bash/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} "
         "END{for(i in row){p=pid[i];ok=1;for(j in row){if(ppid[i]==pid[j]){ok=0;break}};if(ok)n++};print n}'"
     )
     try:
@@ -135,11 +147,10 @@ def _count_running_local():
 
 
 def _count_running_remote(host):
-    """Count only PARENT workers on remote host (exclude forked simulation children)."""
-    # Single-pass awk: find autonomous PIDs, get all pid→ppid pairs, count pids whose ppid is not also a match
+    """Count only PARENT python workers on remote host (exclude forked children and bash wrappers)."""
     r = _run_remote(host, (
         'ps ax -o pid= -o ppid= -o command= | '
-        'awk \'BEGIN{n=0} /autonomous_search\\.py/&&!/grep/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} '
+        'awk \'BEGIN{n=0} /autonomous_search\\.py/ && /python/ && !/grep/ && !/bash/{pid[NR]=$1;ppid[NR]=$2;row[NR]=1} '
         'END{for(i in row){p=pid[i];ok=1;for(j in row){if(ppid[i]==pid[j]){ok=0;break}};if(ok)n++};print n}\''
     ))
     try:
