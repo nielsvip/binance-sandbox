@@ -36,7 +36,7 @@ MACHINES = {
         "baseline_json": "/Users/niels/Documents/binance/data/baselines/tradier_2p4860_genuine.json",
         "n_workers": 2,
         "max_iter_seconds": 120,
-        "extra_flags": "--min-trades-per-sym 30 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
+        "extra_flags": "--min-trades-per-sym 1 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
     },
     "s1": {
         "host": "s1-int",
@@ -55,7 +55,7 @@ MACHINES = {
         "baseline_json": "/home/niels/binance-sandbox/data/baselines/crypto_2p6365_genuine.json",
         "n_workers": 1,
         "max_iter_seconds": 120,
-        "extra_flags": "--min-trades-per-sym 3 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
+        "extra_flags": "--min-trades-per-sym 2 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
     },
     "s2": {
         "host": "s2-int",
@@ -74,7 +74,7 @@ MACHINES = {
         "baseline_json": "/home/niels/binance-sandbox/data/baselines/tradier_2p4860_genuine.json",
         "n_workers": 2,
         "max_iter_seconds": 120,
-        "extra_flags": "--min-trades-per-sym 30 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
+        "extra_flags": "--min-trades-per-sym 1 --sharpe-useless-floor 2.0 --bool-flip-prob 0.02 --numeric-perturb-prob 0.02",
     },
 }
 
