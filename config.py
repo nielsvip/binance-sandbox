@@ -170,7 +170,7 @@ class Config:
     SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN: int = 60
     # Dedicated V3 scan loop (2026-04-23): ranks tradeable symbols by sentiment
     # divergence vs global market score. Fastest risers → LONG, fastest fallers → SHORT.
-    SCALP_V3_SCAN_INTERVAL_SEC: float = 30.0     # 2026-04-23 evening: bumped 10→30 to avoid Binance -1003 IP-ban
+    SCALP_V3_SCAN_INTERVAL_SEC: float = 10.0     # 2026-04-24: 30→10 — protective exits need to fire fast on LH/LL
     SCALP_V3_SCAN_TOP_N: int = 8                 # 2026-04-23 evening: 5→15→8 (15 caused weight overrun)
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
@@ -202,6 +202,10 @@ class Config:
     # the gains, close 100% at +0.1% before it slips into a loss.
     SCALP_V3_AUG_BE_STOP_ENABLED: bool = True
     SCALP_V3_AUG_BE_STOP_PCT: float = 0.1        # close when gain drops below this (% after-fee)
+    # Protective exit (2026-04-24 MOVR incident): close V3 positions IMMEDIATELY on
+    # any reversal signal while in gain — before the gain disappears.
+    SCALP_V3_PROTECTIVE_EXIT_ENABLED: bool = True
+    SCALP_V3_PROTECTIVE_K_DROP_MIN: float = 5.0  # K-point drop threshold (1m or 3m)
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.

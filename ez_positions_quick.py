@@ -10696,6 +10696,35 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # NOTE: No total hedge exposure cap — hedges must be free to protect the portfolio during market drops.
     # The 200% per-hedge cap above is sufficient to prevent runaway hedge monsters.
     _is_aug_action = action in ('OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE') or 'OPEN' in action or 'AUGMENT' in action
+    # ═══ V3 AUGMENT REVERSAL-BLOCK (2026-04-24) ═══════════════════════════════════
+    # User: "if LH or LL appear ... buying in!!! This has to be impossible". Block
+    # ALL augments on V3 positions when 3m bar shows LH/LL (LONG) or HH/HL (SHORT).
+    # Applies to ANY code path trying to add to a V3 position, not just V3 scanner.
+    if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT') and not is_hedge and current_price > 0 and data_manager:
+        _v3_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
+        _v3_reason_existing = str(getattr(_v3_pos, 'augment_reason', '') or '') if _v3_pos else ''
+        if _v3_reason_existing.startswith('SCALP_V3_OPEN_'):
+            try:
+                _v3_sym = parse_position_key(position_key)[1] if parse_position_key(position_key) else ""
+                _, _v3_ind, _, _, _, _, _ = await data_manager.get_hot_state(_v3_sym)
+                if _v3_ind:
+                    _vh = safe_fetch_float(_v3_ind.get('high_3m', 0), 0)
+                    _vl = safe_fetch_float(_v3_ind.get('low_3m', 0), 0)
+                    _vhp = safe_fetch_float(_v3_ind.get('high_3m_prev', 0), 0)
+                    _vlp = safe_fetch_float(_v3_ind.get('low_3m_prev', 0), 0)
+                    _v3_is_long = position_key.endswith('_LONG')
+                    _v3_bad_bar = False; _v3_why = ""
+                    if _v3_is_long:
+                        if _vhp > 0 and _vh < _vhp: _v3_bad_bar = True; _v3_why = f"LH_3m"
+                        elif _vlp > 0 and _vl < _vlp: _v3_bad_bar = True; _v3_why = f"LL_3m"
+                    else:
+                        if _vhp > 0 and _vh > _vhp: _v3_bad_bar = True; _v3_why = f"HH_3m"
+                        elif _vlp > 0 and _vl > _vlp: _v3_bad_bar = True; _v3_why = f"HL_3m"
+                    if _v3_bad_bar:
+                        logger.critical(f"🛡️ [V3_AUG_REVERSAL_BLOCK] {position_key}: {_v3_why} detected — ALL AUGMENTS BLOCKED on this V3 position. action={action} incoming_reason={reason[:60]}")
+                        return False, f"BLOCKED_V3_AUG_REVERSAL_{_v3_why}"
+            except Exception as _v3e:
+                logger.debug(f"[V3_AUG_REVERSAL_BLOCK] {position_key}: {_v3e}")
     # ═══ ABSOLUTE HEDGE WT3M GATE — NO BYPASS, NO EXCEPTIONS ═══
     # LONG hedge CANNOT open/augment when wt1_3m <= wt2_3m.
     # SHORT hedge CANNOT open/augment when wt1_3m >= wt2_3m.
@@ -15322,9 +15351,17 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
     active = sum(1 for pk, p in by_acct.items()
                  if str(getattr(p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
                  and abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0)) > 0)
+    # PROTECTIVE-EXIT PASS (2026-04-24): if V3 position is in gain and the 3m bar
+    # flipped (LH or LL), or K_1m/K_3m dropped materially, close 100% NOW.
+    # User: "if lh or ll appear or wt_1m/k_1m go down while in gain CLOSE IMMEDIATELY".
+    try:
+        await _scalp_v3_protective_exits(trade_manager, account_key, tracker_manager,
+                                          data_manager, hedge_engine, by_acct)
+    except Exception as e:
+        logger.debug(f"[SCALP_V3_PROTECTIVE_EXIT] err: {e}")
     # BE-STOP PASS: close any augmented V3 position whose gain drops toward BE.
     # User directive 2026-04-24: "make sure augmented positions close before slipping
-    # into a loss". Runs FIRST so a falling winner is closed before we try to add more.
+    # into a loss". Runs after protective-exit so we catch the LH/LL before the slip.
     try:
         await _scalp_v3_attempt_be_stops(trade_manager, account_key, tracker_manager,
                                           data_manager, hedge_engine, by_acct)
@@ -15355,6 +15392,79 @@ async def _scalp_v3_scan_once(trade_manager, account_key: str, tracker_manager: 
         except Exception as e:
             logger.debug(f"[SCALP_V3_SCAN] {sym}: {e}")
     return len(longs) + len(shorts), fires + aug_fires
+
+
+async def _scalp_v3_protective_exits(trade_manager, account_key: str,
+                                       tracker_manager: "TrackerManager",
+                                       data_manager: "FastDataManager",
+                                       hedge_engine: "HedgeEngine",
+                                       by_acct: dict) -> int:
+    """Close V3 positions immediately on reversal signals.
+    User directive 2026-04-24 (after MOVR −4%): "if LH or LL appear or wt_1m/k_1m
+    go down while in gain CLOSE IMMEDIATELY and pick back up later".
+    Triggers (only when gain > 0):
+      - 3m bar shows LH or LL against position side
+      - K_1m or K_3m dropped > DROP_MIN points from prior reading (LONG), rose for SHORT
+      - wt1_3m crossed wt2_3m against position side
+    """
+    if not getattr(config, 'SCALP_V3_PROTECTIVE_EXIT_ENABLED', True):
+        return 0
+    k_drop_min = float(getattr(config, 'SCALP_V3_PROTECTIVE_K_DROP_MIN', 5.0))
+    fires = 0
+    for pk, p in by_acct.items():
+        reason_str = str(getattr(p, 'augment_reason', '') or '')
+        if not reason_str.startswith('SCALP_V3_OPEN_'):
+            continue
+        amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
+        if amt <= 0: continue
+        gain = safe_fetch_float(getattr(p, 'gain', 0), 0)
+        # Only protective-exit while IN GAIN. In loss, other exits (PPL, BE-stop, stall) handle.
+        if gain <= 0:
+            continue
+        try:
+            _, sym, side = parse_position_key(pk)
+            _, ind, _, _, _, _, fresh = await data_manager.get_hot_state(sym)
+            if not ind or not fresh: continue
+            h3 = safe_fetch_float(ind.get('high_3m', 0), 0)
+            l3 = safe_fetch_float(ind.get('low_3m', 0), 0)
+            h3p = safe_fetch_float(ind.get('high_3m_prev', 0), 0)
+            l3p = safe_fetch_float(ind.get('low_3m_prev', 0), 0)
+            k_1m = safe_fetch_float(ind.get('stoch_k_1m', 50), 50)
+            k_1m_prev = safe_fetch_float(ind.get('k_1m_prev', k_1m), k_1m)
+            k_3m = safe_fetch_float(ind.get('stoch_k_3m', 50), 50)
+            k_3m_prev = safe_fetch_float(ind.get('k_3m_prev', k_3m), k_3m)
+            wt1_3m = safe_fetch_float(ind.get('wt1_3m', 0), 0)
+            wt2_3m = safe_fetch_float(ind.get('wt2_3m', 0), 0)
+            triggers = []
+            if side == 'LONG':
+                if h3p > 0 and h3 < h3p: triggers.append(f"LH_3m_{h3:.6g}<{h3p:.6g}")
+                if l3p > 0 and l3 < l3p: triggers.append(f"LL_3m_{l3:.6g}<{l3p:.6g}")
+                if k_1m < k_1m_prev - k_drop_min: triggers.append(f"K1m_dropped_{k_1m_prev:.0f}->{k_1m:.0f}")
+                if k_3m < k_3m_prev - k_drop_min: triggers.append(f"K3m_dropped_{k_3m_prev:.0f}->{k_3m:.0f}")
+                if wt1_3m and wt2_3m and wt1_3m < wt2_3m: triggers.append(f"WT3m_bear_{wt1_3m:.1f}<{wt2_3m:.1f}")
+            else:  # SHORT
+                if h3p > 0 and h3 > h3p: triggers.append(f"HH_3m_{h3:.6g}>{h3p:.6g}")
+                if l3p > 0 and l3 > l3p: triggers.append(f"HL_3m_{l3:.6g}>{l3p:.6g}")
+                if k_1m > k_1m_prev + k_drop_min: triggers.append(f"K1m_rose_{k_1m_prev:.0f}->{k_1m:.0f}")
+                if k_3m > k_3m_prev + k_drop_min: triggers.append(f"K3m_rose_{k_3m_prev:.0f}->{k_3m:.0f}")
+                if wt1_3m and wt2_3m and wt1_3m > wt2_3m: triggers.append(f"WT3m_bull_{wt1_3m:.1f}>{wt2_3m:.1f}")
+            if not triggers:
+                continue
+            # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
+            mark_price = safe_fetch_float(getattr(p, 'mark_price', 0), 0)
+            if mark_price <= 0:
+                mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
+            if mark_price <= 0: continue
+            close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_gain{gain:+.2f}_{'_'.join(triggers)[:80]}"
+            logger.critical(f"🛡️ [SCALP_V3_PROTECTIVE_EXIT] {pk}: gain={gain:+.2f}% reversal [{','.join(triggers[:3])}] — CLOSING 100%")
+            await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                         account_key, pk, amt, 'CLOSE',
+                                         mark_price, amt, close_reason,
+                                         is_hedge=False, data_manager=data_manager)
+            fires += 1
+        except Exception as e:
+            logger.debug(f"[SCALP_V3_PROTECTIVE_EXIT] {pk}: {e}")
+    return fires
 
 
 async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
