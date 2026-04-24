@@ -2,9 +2,13 @@
 
 Writes winners immediately to winners JSONL, all results to CSV, runs forever
 until killed or N_MAX reached.
+
+Timeout is enforced via multiprocessing.Process (fork) so numpy C code can
+actually be killed — signal.SIGALRM cannot interrupt numpy's C extensions.
 """
-import argparse, copy, csv, json, os, random, signal, sys, time, gc
-from dataclasses import fields, is_dataclass
+import argparse, copy, csv, json, os, random, sys, time, gc
+import multiprocessing as mp
+from dataclasses import fields
 from pathlib import Path
 
 
@@ -34,6 +38,44 @@ FORBIDDEN_FLIPS = {
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
 }
 
+# Fork-inherited globals — set in main() before any Process.start()
+_g_subset = None
+_g_simulate = None
+
+
+def _sim_worker_fn(cfg, conn):
+    """Runs in forked child process. Inherits _g_subset/_g_simulate via COW fork."""
+    try:
+        r = _g_simulate(_g_subset, cfg)
+        conn.send(r)
+    except Exception as e:
+        conn.send({"_err": str(e)})
+    finally:
+        conn.close()
+
+
+def _run_simulate_timed(cfg, timeout_secs, mp_ctx):
+    """Run simulate(cfg) in a child process; return (result, timed_out, error_str)."""
+    parent_conn, child_conn = mp_ctx.Pipe(duplex=False)
+    proc = mp_ctx.Process(target=_sim_worker_fn, args=(cfg, child_conn), daemon=True)
+    proc.start()
+    child_conn.close()
+    proc.join(timeout=timeout_secs)
+    if proc.is_alive():
+        proc.kill()
+        proc.join()
+        parent_conn.close()
+        return None, True, None
+    try:
+        r = parent_conn.recv()
+    except EOFError:
+        r = {}
+    parent_conn.close()
+    if "_err" in r:
+        return None, False, r["_err"]
+    return r, False, None
+
+
 def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
     """Return a dict of overrides sampled randomly from knob space, skipping FORBIDDEN_FLIPS."""
     ovr = {}
@@ -47,7 +89,6 @@ def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
                 ovr[nm] = not val
         elif isinstance(val, int) and not isinstance(val, bool):
             if random.random() < numeric_perturb_prob:
-                # multiplicative perturbation within ±50%, min 1
                 mult = random.choice([0.5, 0.75, 1.25, 1.5, 2.0])
                 new = max(1, int(val * mult))
                 if new != val: ovr[nm] = new
@@ -57,7 +98,6 @@ def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
                 new = val * mult
                 if abs(new - val) > 1e-9: ovr[nm] = new
         elif isinstance(val, str):
-            # skip strings by default (unknown domain)
             pass
     return ovr
 
@@ -84,13 +124,13 @@ def main():
     ap.add_argument("--sharpe-useless-floor", type=float, default=2.0,
                     help="Tag reliable configs below this Sharpe as useless=1 in CSV.")
     ap.add_argument("--workers", type=int, default=4,
-                    help="How many configs to run in parallel (multiprocessing).")
+                    help="Unused — kept for CLI compatibility.")
     ap.add_argument("--min-trades-for-record", type=int, default=0,
                     help="Reject configs with trades < this from CSV output (garbage-filter).")
     ap.add_argument("--min-trades-per-sym", type=int, default=30,
                     help="Reject configs with trades/symbols < this (per-sym reliability floor).")
-    ap.add_argument("--max-iter-seconds", type=int, default=600,
-                    help="Kill any single iteration that takes longer than this (seconds). Prevents stalls on heavy configs.")
+    ap.add_argument("--max-iter-seconds", type=int, default=120,
+                    help="Kill any single iteration exceeding this (subprocess SIGKILL). Default 120s.")
     ap.add_argument("--symbol-list", default=None,
                     help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
     args = ap.parse_args()
@@ -106,13 +146,11 @@ def main():
     csv_path = Path(args.out_dir) / f"autonomous_{args.mode}.csv"
     winners_path = Path(args.out_dir) / f"autonomous_{args.mode}_winners.jsonl"
 
-    # Pre-select symbols to avoid loading the full corpus into RAM
-    from pathlib import Path as _P
     CRYPTO_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
     if args.symbol_list:
         syms = [s.strip() for s in args.symbol_list.split(",") if s.strip()]
     else:
-        all_files = sorted(_P(args.npz_dir).glob("*.npz"))
+        all_files = sorted(Path(args.npz_dir).glob("*.npz"))
         candidates = []
         for p in all_files:
             sym = p.stem
@@ -135,7 +173,6 @@ def main():
             if k not in FORBIDDEN_FLIPS and hasattr(base, k):
                 setattr(base, k, v)
         print(f"[AUTO_SEARCH] Base overrides applied from {args.base_overrides_json}: {len(_base_ovr)} keys", flush=True)
-    # Force FORBIDDEN_FLIPS defaults to safe-off on the base config so no sampled config accidentally carries them on
     for nm in FORBIDDEN_FLIPS:
         if hasattr(base, nm):
             val = getattr(base, nm)
@@ -144,7 +181,13 @@ def main():
 
     print(f"[AUTO_SEARCH] mode={args.mode} syms={len(subset)} start={args.start} "
           f"BH_gain={args.bh_accumulated_gain_pct:.1f}% TARGET>{target_gain:.1f}% "
-          f"out={args.out_dir}", flush=True)
+          f"timeout={args.max_iter_seconds}s out={args.out_dir}", flush=True)
+
+    # Expose subset/simulate to forked children via module globals (COW — no copy on read-only access)
+    global _g_subset, _g_simulate
+    _g_subset = subset
+    _g_simulate = simulate
+    _mp_ctx = mp.get_context("fork")
 
     csv_exists = csv_path.exists()
     with open(csv_path, "a", newline="") as csv_f:
@@ -154,33 +197,27 @@ def main():
                         "trades", "gain_vs_bh", "elapsed_s", "overrides_count",
                         "reliable", "useless", "overrides_json"])
 
-        # iter=-1: evaluate the baseline itself (no perturbation) as the reference floor
+        # iter=-1: evaluate baseline (no perturbation) as reference floor
         if not csv_exists:
-            try:
-                signal.alarm(args.max_iter_seconds)
-                r0 = simulate(subset, base)
-                signal.alarm(0)
+            t_bl = time.time()
+            r0, timed_out_bl, err_bl = _run_simulate_timed(base, args.max_iter_seconds, _mp_ctx)
+            if timed_out_bl:
+                print(f"[AUTO_SEARCH] BASELINE TIMEOUT after {args.max_iter_seconds}s", flush=True)
+            elif err_bl:
+                print(f"[AUTO_SEARCH] BASELINE ERR: {err_bl}", flush=True)
+            else:
                 s0 = r0.get("pool_sharpe", 0.0)
                 g0 = r0.get("accumulated_gain_pct", 0.0)
                 tr0 = r0.get("trades", 0)
                 floor_total = len(subset) * args.min_trades_per_sym
                 rel0 = 1 if tr0 >= floor_total else 0
-                useless0 = 0  # baseline is never useless
-                w.writerow([-1, round(s0,4), round(g0,2), round(r0.get("max_dd_pct",0.0),2),
-                             tr0, round(g0/args.bh_accumulated_gain_pct,3) if args.bh_accumulated_gain_pct else 0,
-                             0.0, 0, rel0, useless0, json.dumps({})])
+                w.writerow([-1, round(s0, 4), round(g0, 2), round(r0.get("max_dd_pct", 0.0), 2),
+                             tr0, round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
+                             round(time.time() - t_bl, 1), 0, rel0, 0, json.dumps({})])
                 csv_f.flush()
                 print(f"[AUTO_SEARCH] BASELINE sharpe={s0:.4f} gain={g0:.1f}% trades={tr0} reliable={rel0}", flush=True)
-            except Exception as e:
-                signal.alarm(0)
-                print(f"[AUTO_SEARCH] BASELINE eval error: {e}", flush=True)
-        def _alarm_handler(signum, frame):
-            raise TimeoutError(f"iter exceeded {args.max_iter_seconds}s")
-
-        signal.signal(signal.SIGALRM, _alarm_handler)
 
         best_gain = -1e9
-        best_sharpe = -1e9
         for i in range(args.n_max):
             cfg = copy.deepcopy(base)
             ovr = _sample_cfg(base, args.bool_flip_prob, args.numeric_perturb_prob)
@@ -188,27 +225,19 @@ def main():
                 if hasattr(cfg, k):
                     setattr(cfg, k, v)
             t0 = time.time()
-            try:
-                signal.alarm(args.max_iter_seconds)
-                r = simulate(subset, cfg)
-                signal.alarm(0)
-            except TimeoutError as e:
-                signal.alarm(0)
-                el = time.time() - t0
+            r, timed_out, err = _run_simulate_timed(cfg, args.max_iter_seconds, _mp_ctx)
+            el = time.time() - t0
+            if timed_out:
                 print(f"[AUTO_SEARCH] iter={i} TIMEOUT ({el:.0f}s > {args.max_iter_seconds}s), skipping", flush=True)
                 continue
-            except Exception as e:
-                signal.alarm(0)
-                print(f"[AUTO_SEARCH] iter={i} ERR: {e}", flush=True)
+            if err:
+                print(f"[AUTO_SEARCH] iter={i} ERR: {err}", flush=True)
                 continue
-            el = time.time() - t0
             gain = r.get("accumulated_gain_pct", 0.0)
             sharpe = r.get("pool_sharpe", 0.0)
             dd = r.get("max_dd_pct", 0.0)
             tr = r.get("trades", 0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
-            # Keep ALL results — tag reliable=1 if meets min-trades floor, else reliable=0.
-            # Per user 2026-04-21: weaker configs still data for combining/evolution.
             n_syms = len(subset)
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
             reliable = 1 if tr >= floor_total else 0
@@ -218,11 +247,9 @@ def main():
             csv_f.flush()
             if gain > best_gain:
                 best_gain = gain
-                best_sharpe = sharpe
                 print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN sharpe={sharpe:.3f} "
                       f"gain={gain:.1f}% ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
                       f"ovr={len(ovr)} el={el:.1f}s", flush=True)
-            # Only call it a "WINNER" if reliable AND meets targets.
             if reliable and gain >= target_gain and sharpe >= target_sharpe:
                 win = {"iter": i, "pool_sharpe": round(sharpe, 4),
                        "acc_gain_pct": round(gain, 2), "max_dd_pct": round(dd, 2),
@@ -234,5 +261,7 @@ def main():
                       f"({gvb:.1f}x BH) sharpe={sharpe:.3f} dd={dd:.1f}% tr={tr} ***",
                       flush=True)
 
+
 if __name__ == "__main__":
+    mp.set_start_method("fork", force=True)
     main()

@@ -6179,8 +6179,11 @@ class HedgeEngine:
         async with self.tracker_manager._hedges_lock:
             _origin_is_hedge = any(h.get('position_key') == origin_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
             _already_tracked = any(h.get('losing_position_key') == origin_key for h in self.tracker_manager.active_hedges if isinstance(h, dict))
-        if _origin_is_hedge or origin_key not in config.HEDGE_ACCOUNTS:
-            logger.info(f"[HEDGE_OF_HEDGE_BLOCK] {origin_key}: origin IS a hedge position in tracker. Not hedging a hedge.")
+        if _origin_is_hedge:
+            logger.warning(f"[HEDGE_OF_HEDGE_BLOCK] {origin_key}: origin IS a hedge position in tracker. Not hedging a hedge.")
+            return False
+        if account_key not in config.HEDGE_ACCOUNTS:
+            logger.warning(f"[HEDGE_ACCOUNT_NOT_ENABLED] {origin_key}: account '{account_key}' not in HEDGE_ACCOUNTS={config.HEDGE_ACCOUNTS}. Hedging disabled for this account.")
             return False
         if _already_tracked:
             logger.info(f"[HEDGE_ALREADY_TRACKED] {origin_key}: already has a hedge in active_hedges. Skipping.")
@@ -15528,7 +15531,13 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
             if mark_price <= 0: continue
             at_sr, sr_reason = _v3_at_support_or_resistance(ind, mark_price, side)
             if at_sr:
-                logger.warning(f"🛡️ [SCALP_V3_CLOSE_SKIP_SR] {pk}: gain={gain:+.2f}% would-close reversal=[{','.join(triggers[:2])}] BUT {sr_reason} → HOLD, let level decide")
+                logger.warning(f"🛡️ [SCALP_V3_CLOSE_SKIP_SR] {pk}: gain={gain:+.2f}% would-close reversal=[{','.join(triggers[:2])}] BUT {sr_reason} → HOLD+HEDGE")
+                try:
+                    if hedge_engine and gain < 0:
+                        asyncio.create_task(hedge_engine.execute_same_symbol_hedge(account_key, p, pk.split(':',1)[1].rsplit('_',1)[0], side, amt, mark_price))
+                        logger.warning(f"🛡️ [SCALP_V3_SR_HEDGE_TRIGGER] {pk}: dispatching same-symbol hedge at {sr_reason}")
+                except Exception as _e_sh:
+                    logger.debug(f"[SCALP_V3_SR_HEDGE_ERR] {pk}: {_e_sh}")
                 continue
             # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
             close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_gain{gain:+.2f}_{'_'.join(triggers)[:80]}"
