@@ -6328,11 +6328,43 @@ class PositionService:
                     logger.warning(f"[_process_account_update_impl][{account_key}] ⚠️ Position {position_key} not in memory - attempting to restore from backup")
                     existing_position = await self.restore_position_from_backups(account_key, symbol, position_side)
                     if not existing_position:
-                        logger.critical(f"🚨 [ORPHAN_EXCHANGE_POSITION][POSITION_CREATION_BLOCKED][{account_key}] {position_key}: NOT in memory, NOT in backups — exchange has open position we cannot manage (amt={amt_abs:.6f}, ep={api_entry_price}). MANUAL INTERVENTION REQUIRED. Skipping without poisoning updated_keys_in_api.")
-                        skipped_count += 1
-                        continue
-                    account_positions[position_key] = existing_position
-                    self.positions[position_key] = existing_position
+                        # 2026-04-24: UNIVERSAL API TRACKING — NEVER skip an API-returned position.
+                        # Previous behaviour dropped orphan positions silently, which caused the 60×
+                        # NMR hedge double-open cascade: ez_positions_service saw NMR_LONG=32 on API
+                        # but refused to track it → existing_hedge check returned 0 → every 5-min
+                        # hedge retry opened another webhook. Fix: create a minimal Position object
+                        # from the API payload. tradeable_keys filtering happens downstream, NOT here.
+                        if amt_abs > 0:
+                            try:
+                                _mk = safe_fetch_float(pos_api_data.get("mp"), 0) or safe_fetch_float(pos_api_data.get("markPrice"), 0) or api_entry_price
+                                _seed = {
+                                    "symbol": symbol,
+                                    "position_side": position_side,
+                                    "entry_price": api_entry_price or _mk,
+                                    "mark_price": _mk,
+                                    "positionAmt": amt_abs,
+                                    "initial_quantity": amt_abs,
+                                    "max_quantity": amt_abs,
+                                    "max_positionSize": amt_abs * (_mk or 0),
+                                    "opened_at": now,
+                                    "last_updated": now,
+                                    "augment_reason": "API_ORPHAN_ADOPTED",
+                                }
+                                existing_position = Position.from_dict(_seed)
+                                account_positions[position_key] = existing_position
+                                self.positions[position_key] = existing_position
+                                logger.critical(f"🧬 [ORPHAN_EXCHANGE_POSITION_ADOPTED][{account_key}] {position_key}: created tracker from API (amt={amt_abs:.6f}, ep={api_entry_price}, mk={_mk}). Will be managed from next cycle.")
+                            except Exception as _adopt_e:
+                                logger.critical(f"🚨 [ORPHAN_EXCHANGE_POSITION][ADOPT_FAILED][{account_key}] {position_key}: could not create Position from API data ({_adopt_e}). Skipping this cycle; retry next poll.")
+                                skipped_count += 1
+                                continue
+                        else:
+                            # zero-amt orphan = nothing to adopt, safe to skip
+                            skipped_count += 1
+                            continue
+                    else:
+                        account_positions[position_key] = existing_position
+                        self.positions[position_key] = existing_position
                 last_update_time = self._position_update_timestamps.get(position_key)
                 if last_update_time and amt_abs > 0:
                     time_since_last_update = (now - last_update_time).total_seconds()

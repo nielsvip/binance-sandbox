@@ -6139,6 +6139,21 @@ class HedgeEngine:
         # FIX 2026-04-07: GLOBAL HEDGE-COMPLETED LOCKOUT — ONE hedge per position, period.
         origin_key = f"{account_key}:{symbol}_{origin_side}"
         logger.warning(f"🔎 [HEDGE_SAME_CALL] origin={origin_key} qty={qty} px={current_price}")
+        # 2026-04-24: TRACKER-AUTHORITATIVE PREFLIGHT — even if positions_dict is stale, tracker.json
+        # is the single source of truth for active hedges. Block EARLIEST before any side effect.
+        # Root incident: 60× NMR hedge opens because positions_service dropped NMR_LONG from Redis.
+        # With this gate, tracker.active_hedges blocks repeats regardless of positions_dict state.
+        try:
+            async with self.tracker_manager._hedges_lock:
+                _tracker_has_hedge = any(
+                    isinstance(h, dict) and h.get('losing_position_key') == origin_key
+                    for h in self.tracker_manager.active_hedges
+                )
+            if _tracker_has_hedge:
+                logger.warning(f"🛡️ [HEDGE_TRACKER_BLOCK] {origin_key}: active_hedges already has a hedge for this origin — BLOCKED (tracker-authoritative, survives restarts)")
+                return False
+        except Exception as _tr_e:
+            logger.warning(f"[HEDGE_TRACKER_CHECK_ERR] {origin_key}: {_tr_e}")
         _hc_ts = self._hedge_completed.get(origin_key, 0)
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
             logger.warning(f"🚫 [HEDGE_COMPLETED_LOCK] {origin_key}: hedge opened {int(time.time() - _hc_ts)}s ago, lockout={self.HEDGE_COMPLETED_LOCKOUT_SECONDS}s — BLOCKED")
