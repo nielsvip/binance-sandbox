@@ -44,7 +44,7 @@ MACHINES = {
         "script": "/home/niels/binance-sandbox/autonomous_search.py",
         "cwd": "/home/niels/binance-sandbox",
         "mode": "crypto",
-        "symbols": 30,
+        "symbols": 50,
         "start": "2022-01-01",
         "npz_dir": "/home/niels/binance-sandbox/backtest_v8/indicators",
         "bh_pct": 3500,
