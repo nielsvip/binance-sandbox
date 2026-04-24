@@ -36,6 +36,9 @@ FORBIDDEN_FLIPS = {
     # HEDGE_ENABLED=True in quick engine inflates trade count 177→25,610+ via micro-hedge churn.
     # Engine comment: "True inflated trades 1209→84K due to no min-hold." Lock False in all searches.
     "HEDGE_ENABLED",
+    # ABLATION_DISABLE_QUICK_EXIT=True returns zeros from compute_exit_signals — disables ALL exits.
+    # Positions never close; trade count and gain inflate arbitrarily. Not in live code. Lock False.
+    "ABLATION_DISABLE_QUICK_EXIT",
     # NOTE: PARTIAL_PROFIT_LOCK_* and PARTIAL_EXIT_* are NOT forbidden.
     # PPL is a REAL live mechanism (50% close at +0.5% via maker/webhook_url_2).
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
