@@ -42,6 +42,7 @@ class V3Position:
     entry_price: float
     entry_ts: float
     entry_k_15m: float
+    peak_gain_pct: float = 0.0  # 2026-04-24 winners: tracks peak gain for peak-giveback exit
 
 
 @dataclass
@@ -98,6 +99,100 @@ def _compute_gain_pct(pos: V3Position, current_price: float) -> float:
     if pos.side == "LONG":
         return (current_price - pos.entry_price) / pos.entry_price * 100.0
     return (pos.entry_price - current_price) / pos.entry_price * 100.0
+
+
+# ═════ 2026-04-24 WINNER TECHNIQUES (ATR TP, VWAP dev, BB squeeze, pin-bar, peak-giveback) ═════
+# All optional — live/paper supply extra indicator data via `indicators` dict arg.
+# Each returns (pass_or_trigger, reason).
+
+def _vwap_deviation_filter(price: float, vwap: Optional[float], side: str, min_pct: float) -> Tuple[bool, str]:
+    """LONG requires price BELOW vwap by ≥min_pct (oversold). SHORT requires price ABOVE."""
+    if min_pct <= 0 or vwap is None or vwap <= 0 or price <= 0:
+        return True, "vwap_skip"
+    dev_pct = (price - vwap) / vwap * 100.0
+    if side == "LONG":
+        if dev_pct > -min_pct:
+            return False, f"VWAP_NOT_DEEP_ENOUGH_dev={dev_pct:+.2f}%_need<=-{min_pct:.2f}%"
+    else:
+        if dev_pct < min_pct:
+            return False, f"VWAP_NOT_HIGH_ENOUGH_dev={dev_pct:+.2f}%_need>=+{min_pct:.2f}%"
+    return True, f"vwap_dev={dev_pct:+.2f}%"
+
+
+def _bb_squeeze_filter(bbw_pct: Optional[float], max_pct: float) -> Tuple[bool, str]:
+    """Require BB width <= max_pct (compression). 0=disabled."""
+    if max_pct <= 0: return True, "bb_skip"
+    if bbw_pct is None: return True, "bb_no_data"
+    if bbw_pct > max_pct:
+        return False, f"BB_NOT_SQUEEZED_width={bbw_pct:.2f}%_max={max_pct:.2f}%"
+    return True, f"bb_squeezed={bbw_pct:.2f}%"
+
+
+def _pin_bar_filter(bar: Bar, side: str, min_ratio: float) -> Tuple[bool, str]:
+    """Require entry bar wick >= N× body (rejection). bar = (ts, o, h, l, c, v)."""
+    if min_ratio <= 0: return True, "pin_skip"
+    op, hi, lo, cl = bar[1], bar[2], bar[3], bar[4]
+    body = abs(cl - op)
+    if body <= 0: return False, "PIN_ZERO_BODY"
+    if side == "LONG":
+        lower_wick = min(op, cl) - lo
+        ratio = lower_wick / body
+        if ratio < min_ratio:
+            return False, f"PIN_LOWER_WICK_RATIO_{ratio:.1f}<{min_ratio:.1f}"
+    else:
+        upper_wick = hi - max(op, cl)
+        ratio = upper_wick / body
+        if ratio < min_ratio:
+            return False, f"PIN_UPPER_WICK_RATIO_{ratio:.1f}<{min_ratio:.1f}"
+    return True, f"pin_ratio={ratio:.1f}"
+
+
+def check_v3_winner_entry_filters(inp: V3Input, cfg, ind: Optional[dict] = None) -> Tuple[bool, str]:
+    """Check the three ADD-ON entry filters (VWAP deviation, BB squeeze, pin bar).
+    `ind` dict supplies vwap_3m, bbw_3m; bar comes from inp. All gated by cfg thresholds.
+    Returns (True, '') if all pass or disabled. (False, reason) on first failure."""
+    ind = ind or {}
+    vwap_min = float(getattr(cfg, 'SCALP_V3_VWAP_DEV_MIN_PCT', 0.0) or 0.0)
+    bb_max = float(getattr(cfg, 'SCALP_V3_BB_SQUEEZE_MAX_PCT', 0.0) or 0.0)
+    pin_min = float(getattr(cfg, 'SCALP_V3_PIN_BAR_RATIO', 0.0) or 0.0)
+    if vwap_min > 0:
+        ok, why = _vwap_deviation_filter(inp.current_price, ind.get('vwap_3m') or ind.get('vwap_dc_basis_3m'), inp.side, vwap_min)
+        if not ok: return False, why
+    if bb_max > 0:
+        ok, why = _bb_squeeze_filter(ind.get('bbw_3m') or ind.get('bb_width_3m_pct'), bb_max)
+        if not ok: return False, why
+    if pin_min > 0 and len(inp.bars_1m) >= 1:
+        ok, why = _pin_bar_filter(inp.bars_1m[-1], inp.side, pin_min)
+        if not ok: return False, why
+    return True, "V3_WINNER_FILTERS_OK"
+
+
+def check_v3_atr_take_profit(pos: V3Position, current_price: float, atr_3m_pct: Optional[float], cfg) -> Tuple[bool, str]:
+    """Exit when gain >= SCALP_V3_ATR_TP_MULT × current 3m-ATR%."""
+    mult = float(getattr(cfg, 'SCALP_V3_ATR_TP_MULT', 0.0) or 0.0)
+    if mult <= 0 or atr_3m_pct is None or atr_3m_pct <= 0:
+        return False, ""
+    gain = _compute_gain_pct(pos, current_price)
+    target = mult * atr_3m_pct
+    if gain >= target:
+        return True, f"SCALP_V3_EXIT_ATR_TP_{pos.side}_gain={gain:.2f}%_target={target:.2f}%"
+    return False, ""
+
+
+def check_v3_peak_giveback(pos: V3Position, current_price: float, cfg) -> Tuple[bool, str, float]:
+    """Exit when position gave back configured % from peak (after arming).
+    Returns (fire, reason, new_peak_gain). Caller must persist new_peak_gain back to pos."""
+    arm = float(getattr(cfg, 'SCALP_V3_PG_ARM_PCT', 0.0) or 0.0)
+    give = float(getattr(cfg, 'SCALP_V3_PG_GIVEBACK_PCT', 0.0) or 0.0)
+    peak = float(getattr(pos, 'peak_gain_pct', 0.0) or 0.0)
+    if arm <= 0 or give <= 0:
+        return False, "", peak
+    gain = _compute_gain_pct(pos, current_price)
+    if gain > peak:
+        peak = gain
+    if peak >= arm and gain <= peak - give:
+        return True, f"SCALP_V3_EXIT_PEAK_GIVEBACK_{pos.side}_peak={peak:.2f}%_cur={gain:.2f}%", peak
+    return False, "", peak
 
 
 def check_scalp_v3_entry(inp: V3Input, cfg) -> Tuple[bool, str]:

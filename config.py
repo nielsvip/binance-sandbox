@@ -133,8 +133,8 @@ class Config:
     #   "3M_ONLY"        — 3m bar + 3m K only (no 1m bar needed) — backtest-friendly
     #   "1M_AND_3M"      — both must fire (strictest; default)
     #   "3M_CONFIRMS_1M" — 1m fires, 3m must also confirm
-    SCALP_V3_ENTRY_TF_MODE: str = "1M_AND_3M"
-    SCALP_V3_EXIT_TF_MODE: str = "ANY"  # "ANY" fires on first of 1m/3m/15m trigger; also "1M_ONLY","3M_ONLY","15M_ONLY"
+    SCALP_V3_ENTRY_TF_MODE: str = "3M_ONLY"   # 2026-04-24 winners_refined sweep: 3M dominates top 10 (9/10); prior "1M_AND_3M" was pre-sweep
+    SCALP_V3_EXIT_TF_MODE: str = "15M_ONLY"   # 2026-04-24 winners: 9/10 top by Sharpe use 15M_ONLY; "ANY" is noisier
     # --- EXIT (bar + K-as-context; NO crossunders) ---
     SCALP_V3_EXIT_1M_K_MIN: int = 90        # 2026-04-23 20k sweep: top variants 85-98, 90 dominant
     SCALP_V3_EXIT_1M_BAR: str = "LL_AND_LH"
@@ -142,7 +142,7 @@ class Config:
     SCALP_V3_EXIT_3M_BAR: str = "LL_OR_LH"
     SCALP_V3_EXIT_15M_K_MIN: int = 95
     SCALP_V3_EXIT_15M_BAR: str = "LL_OR_LH"
-    SCALP_V3_MAX_HOLD_MIN: float = 10.0      # 2026-04-23 20k sweep: top 20 all 10-15min; 10 most common
+    SCALP_V3_MAX_HOLD_MIN: float = 5.0       # 2026-04-24 winners_refined: all top 10 by Sharpe used max_hold=5. Was 10.0.
     SCALP_V3_STALL_GAIN_MAX_PCT: float = -0.1  # 2026-04-23 20k sweep: -0.1 in 100% of top 20
     SCALP_V3_STALL_ENABLED: bool = False  # 2026-04-24: DISABLED — 177/180 paper exits hit STALL with 0% WR (-73.81% total). Only 15M_BAR exit wins. Set True only if future sweep finds a STALL variant that actually wins.
     # --- REENTRY ---
@@ -191,7 +191,7 @@ class Config:
     # ob_long_score / ob_short_score (0..100). Scanner opens on OB score instead of
     # waiting for K/candle confirmation.
     SCALP_V3_OB_REQUIRED: bool = True            # if True, orderbook signal is required (no pure-divergence opens)
-    SCALP_V3_OB_MIN_SCORE: float = 45.0          # min ob_long_score or ob_short_score to consider entry
+    SCALP_V3_OB_MIN_SCORE: float = 70.0          # 2026-04-24: 45→70. Winners_refined + paper OB-score use 70 threshold for composite gate.
     # Augment-on-winner (2026-04-24 user directive): pyramid into V3 positions
     # that are in profit > SCALP_V3_AUG_MIN_GAIN with pullback signals.
     SCALP_V3_AUG_ENABLED: bool = True
@@ -211,6 +211,23 @@ class Config:
     # position when price is at DC support (LONG) / resistance (SHORT) — bounce likely.
     # Entry-side flag: require S/R proximity on NEW V3 opens (soft filter, off by default).
     SCALP_V3_REQUIRE_SR_ON_ENTRY: bool = False
+    # ═══ WINNER TECHNIQUES from 2026-04-24 winners_refined sweep (Sharpe +1.298, WR 97.1%, DD 0.0%) ═══
+    # Apply equally to LONG and SHORT (SIDE_MODE=BOTH preserved — sweep's LONG_ONLY bias was bull-market window).
+    SCALP_V3_ATR_TP_MULT: float = 0.8        # exit when gain >= N × 3m-ATR%. 0.8 = winners median.
+    SCALP_V3_ATR_SL_MULT: float = 0.0        # % stop = 0 (user rule: NO % stops, technicals only)
+    SCALP_V3_VWAP_DEV_MIN_PCT: float = 0.3   # require price stretched ≥X% from 30-bar 3m-VWAP (mean-revert setup)
+    SCALP_V3_BB_SQUEEZE_MAX_PCT: float = 2.0 # require 3m BB width ≤X% (compression before breakout)
+    SCALP_V3_PIN_BAR_RATIO: float = 2.5      # require entry bar wick ≥N× body (rejection)
+    SCALP_V3_PG_ARM_PCT: float = 0.5         # peak-giveback arms when gain reaches this %
+    SCALP_V3_PG_GIVEBACK_PCT: float = 0.2    # exit when gain drops by this % from peak (after arm)
+    SCALP_V3_USE_HA_3M: bool = True          # 2026-04-24 winners: 6/10 used Heikin-Ashi 3m bars for entry pattern
+    SCALP_V3_USE_HA_1M: bool = False         # winners split; keep default off
+    # ═══ ORDERBOOK COMPOSITE GATES (2026-04-24 NEW) ═══
+    # Paper + live scanner both consult ez_orderbook.py `orderbook:<SYM>` for these.
+    SCALP_V3_OB_MIN_LONG_SCORE: float = 70.0     # min ob_long_score (0..100) for LONG. Was 45.
+    SCALP_V3_OB_MIN_SHORT_SCORE: float = 70.0    # min ob_short_score for SHORT.
+    SCALP_V3_OB_WALL_TOO_CLOSE_PCT: float = 0.5  # skip entry if opposite-side wall within X% (resistance/support too close)
+    SCALP_V3_OB_VOID_EXTEND_HOLD: bool = True    # when void above (LONG) or below (SHORT), extend hold — skip non-STALL exits once
     # ═══ D4 BREAKOUT MULTI-LUNG — extracted from ez_breakout_agent.py (2026-04-16) ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung delivers Sharpe > 2 on 48-crypto × 4yr.
     # Never flip ENABLED=True in live config without sweep proof — this switch is a validity-marker only.
