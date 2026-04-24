@@ -616,6 +616,27 @@ def make_grid(grid_name: str) -> List[Dict]:
             "ha_1m": [False, True], "htf_align": [False, True],
             "side_mode": ["BOTH"],
         }
+    elif grid_name == "winners_refined_v2":
+        # 2026-04-24 v2: unlocks max_hold_min axis (user question: does it matter at 3m TF?)
+        # + keeps BOTH in side_mode (prior sweep's LONG_ONLY bias was bull-window artifact)
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["3M_ONLY", "ANY", "15M_ONLY"],
+            "side_mode":         ["BOTH", "LONG_ONLY", "SHORT_ONLY"],
+            "max_hold_min":      [5, 10, 15, 30],
+            "atr_sl_mult":       [0.0],
+            "k_1m_max":          [20, 30],
+            "vol_mult":          [1.0, 1.5, 2.0],
+            "exit_k_1m_min":     [90, 95, 98],
+            "ha_3m":             [False, True],
+            "atr_tp_mult":       [0.8, 1.0, 1.5, 2.0, 3.0],
+            "pg_arm_pct":        [0.0, 0.3, 0.5, 1.0],
+            "pg_giveback_pct":   [0.0, 0.15, 0.2, 0.3],
+            "vwap_dev_min_pct":  [0.2, 0.3, 0.5, 0.7],
+            "bb_squeeze_max_pct":[0.0, 1.5, 3.0],
+            "pin_bar_ratio":     [0.0, 2.0, 2.5, 3.0],
+        }
     elif grid_name == "winners_refined":
         # 2026-04-24 refined from top-10 winners of techniques_20260424_0410 sweep:
         # fix tf=3M_ONLY, side=LONG_ONLY, max_hold=5, atr_sl=0, disable_stall=True.
@@ -749,7 +770,7 @@ def parse_deadline(args) -> float:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined"], default="orthogonal")
+    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined", "winners_refined_v2"], default="orthogonal")
     ap.add_argument("--variants", type=int, default=0, help="Cap (0 = no cap)")
     ap.add_argument("--random-sample", type=int, default=0, help="Random-sample N from the grid (0 = use full grid)")
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))

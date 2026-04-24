@@ -376,6 +376,9 @@ class QuickConfig:
     HA_3M_ENTRY_WEIGHT: float = -0.5
     HOLD_BARS_CLOSE: int = 50
     HOLD_BARS_MID: int = 500
+    INTRADAY_SESSION_EXIT_ENABLED: bool = False
+    INTRADAY_SESSION_ENTRY_CUTOFF_UTC: int = 57600
+    INTRADAY_SESSION_FORCE_EXIT_UTC: int = 70200
     HOLD_BARS_OPEN: int = 200
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20
     K_ZONE_LONG_THRESHOLD_TRADIER: int = 35
@@ -2070,6 +2073,14 @@ def simulate(stores, cfg, capital=10000.0):
                 n = len(_close_ltf)
             else:
                 continue
+        _intraday_enabled = bool(getattr(cfg, 'INTRADAY_SESSION_EXIT_ENABLED', False))
+        if _intraday_enabled and len(ts) >= n and n > 0:
+            _sec_of_day = (np.asarray(ts[:n], dtype=np.int64) % 86400).astype(np.int32)
+            _intraday_entry_cutoff = int(getattr(cfg, 'INTRADAY_SESSION_ENTRY_CUTOFF_UTC', 57600))
+            _intraday_force_exit_utc = int(getattr(cfg, 'INTRADAY_SESSION_FORCE_EXIT_UTC', 70200))
+        else:
+            _intraday_enabled = False; _sec_of_day = None
+            _intraday_entry_cutoff = 57600; _intraday_force_exit_utc = 70200
         close = _close_with_mode_check(npz, n, cfg, 'simulate')
         _dc_tf_map = {'dc_4h': ('dc_high_4h', 'dc_low_4h'), 'dc_1h': ('dc_high_1h', 'dc_low_1h'),
                       'bb_1h': ('bb_upper_1h', 'bb_lower_1h'), 'bb_4h': ('bb_upper_4h', 'bb_lower_4h')}
@@ -2437,7 +2448,7 @@ def simulate(stores, cfg, capital=10000.0):
                 px = close[i]
                 if px <= 0: continue
                 _rz_fires_here = _rz_break_arr is not None and bool(_rz_break_arr[i])
-                if not in_pos and (entry_sig[i] or _rz_fires_here):
+                if not in_pos and (entry_sig[i] or _rz_fires_here) and (not _intraday_enabled or _sec_of_day is None or _sec_of_day[i] < _intraday_entry_cutoff):
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
@@ -2611,6 +2622,17 @@ def simulate(stores, cfg, capital=10000.0):
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
+                if _intraday_enabled and in_pos and _sec_of_day is not None and _sec_of_day[i] >= _intraday_force_exit_utc:
+                    pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    if _pe_partial_done:
+                        pnl = _pe_realized + (1.0 - _pe_frac) * pnl
+                    _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                    if hedge_in_pos and hedge_ep > 0:
+                        h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                        all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                    if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
+                    if _t1pc_enabled: _t1pc_exit_px = px; _t1pc_exit_bar = i
+                    in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; _last_exit_bar = i; cd = max(cooldown, min_gap_bars); continue
                 _wt_exit_now = (not _pe_partial_done and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i]))) or (_pe_partial_done and exit_sig_rem[i])
                 if in_pos and (i - eb) >= min_hold and _wt_exit_now:
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
