@@ -97,6 +97,55 @@ def resample(bars_1m: np.ndarray, tf_min: int) -> np.ndarray:
     return out
 
 
+def atr(bars: np.ndarray, period: int = 14) -> np.ndarray:
+    """True Range ATR. Returns array of same length as bars."""
+    n = len(bars)
+    if n == 0: return np.array([])
+    out = np.zeros(n)
+    if n < 2: return out
+    hi = bars[:, 2]; lo = bars[:, 3]; cl = bars[:, 4]
+    prev_cl = np.concatenate([[cl[0]], cl[:-1]])
+    tr = np.maximum.reduce([hi - lo, np.abs(hi - prev_cl), np.abs(lo - prev_cl)])
+    if n < period: return out
+    for i in range(period - 1, n):
+        out[i] = tr[max(0, i - period + 1): i + 1].mean()
+    return out
+
+
+def vwap(bars: np.ndarray, period: int = 30) -> np.ndarray:
+    """Rolling N-bar VWAP. Returns array same length as bars."""
+    n = len(bars)
+    if n == 0: return np.array([])
+    out = np.zeros(n)
+    if n < period: return out
+    typ = (bars[:, 2] + bars[:, 3] + bars[:, 4]) / 3.0
+    vol = bars[:, 5]
+    tpv = typ * vol
+    for i in range(period - 1, n):
+        v_sum = vol[i - period + 1: i + 1].sum()
+        if v_sum > 0:
+            out[i] = tpv[i - period + 1: i + 1].sum() / v_sum
+        else:
+            out[i] = typ[i]
+    return out
+
+
+def bb_width(bars: np.ndarray, period: int = 20, std_mult: float = 2.0) -> np.ndarray:
+    """Bollinger Band width (upper - lower) / middle × 100. Returns array."""
+    n = len(bars)
+    if n == 0: return np.array([])
+    out = np.zeros(n)
+    if n < period: return out
+    cl = bars[:, 4]
+    for i in range(period - 1, n):
+        window = cl[i - period + 1: i + 1]
+        mid = window.mean()
+        sd = window.std()
+        if mid > 0:
+            out[i] = (std_mult * sd * 2) / mid * 100.0
+    return out
+
+
 def stoch_k(bars: np.ndarray, period: int = STOCH_PERIOD) -> np.ndarray:
     n = len(bars)
     if n == 0: return np.array([])
@@ -146,6 +195,12 @@ def precompute_symbol(symbol: str) -> Optional[Dict]:
     k_15m = stoch_k(bars_15m)
     k_1h = stoch_k(bars_1h)
     k_4h = stoch_k(bars_4h)
+    # --- 2026-04-24 new features: ATR, VWAP, BB-width ---
+    atr_1m = atr(bars_1m, 14)
+    atr_3m = atr(bars_3m, 14)
+    atr_15m = atr(bars_15m, 14)
+    vwap_3m = vwap(bars_3m, 30)  # 30 × 3m = 90min rolling VWAP
+    bbw_3m = bb_width(bars_3m, 20, 2.0)
     # TF bucket origin for 1m→TF index mapping
     bucket0 = {
         3: int(bars_3m[0, 0] // 180) if len(bars_3m) else 0,
@@ -159,6 +214,8 @@ def precompute_symbol(symbol: str) -> Optional[Dict]:
         "bars_1h": bars_1h, "bars_4h": bars_4h,
         "bars_1m_ha": bars_1m_ha, "bars_3m_ha": bars_3m_ha,
         "k_1m": k_1m, "k_3m": k_3m, "k_15m": k_15m, "k_1h": k_1h, "k_4h": k_4h,
+        "atr_1m": atr_1m, "atr_3m": atr_3m, "atr_15m": atr_15m,
+        "vwap_3m": vwap_3m, "bbw_3m": bbw_3m,
         "bucket0": bucket0,
     }
 
@@ -253,6 +310,7 @@ def walk_symbol(pc: Dict, variant: Dict, side: str, fee_pct: float) -> List[Dict
     len_1h = len(bars_1h); len_4h = len(bars_4h)
     trades = []
     pos_ts = -1.0; pos_price = 0.0
+    pos_peak = 0.0  # running peak gain for peak-giveback exit
     exit_ts = -1.0
     exit_k15 = 50.0; exit_k15_prev = 50.0
     for i in range(30, n):
@@ -272,14 +330,50 @@ def walk_symbol(pc: Dict, variant: Dict, side: str, fee_pct: float) -> List[Dict
                 gain = (price - pos_price) / pos_price * 100.0
             else:
                 gain = (pos_price - price) / pos_price * 100.0
-            if age > max_hold_sec and gain <= stall_gain:
-                trades.append({"side": side, "entry_price": pos_price, "exit_price": price,
-                               "entry_ts": pos_ts, "exit_ts": ts, "gain_pct": gain - fee_pct,
-                               "reason": "STALL"})
-                exit_ts = ts
-                exit_k15 = float(k_15m[bk_15m]); exit_k15_prev = float(k_15m[bk_15m - 1])
-                pos_ts = -1.0
-                continue
+            if not variant.get("disable_stall", False):
+                if age > max_hold_sec and gain <= stall_gain:
+                    trades.append({"side": side, "entry_price": pos_price, "exit_price": price,
+                                   "entry_ts": pos_ts, "exit_ts": ts, "gain_pct": gain - fee_pct,
+                                   "reason": "STALL"})
+                    exit_ts = ts
+                    exit_k15 = float(k_15m[bk_15m]); exit_k15_prev = float(k_15m[bk_15m - 1])
+                    pos_ts = -1.0
+                    continue
+            # === ATR-based take-profit / stop-loss (2026-04-24) ===
+            _atr_tp_mult = variant.get("atr_tp_mult", 0.0)
+            _atr_sl_mult = variant.get("atr_sl_mult", 0.0)
+            if _atr_tp_mult > 0 or _atr_sl_mult > 0:
+                atr_3m = pc.get("atr_3m")
+                if atr_3m is not None and bk_3m < len(atr_3m):
+                    atr_pct = atr_3m[bk_3m] / pos_price * 100.0 if pos_price > 0 else 0
+                    if _atr_tp_mult > 0 and gain >= _atr_tp_mult * atr_pct:
+                        trades.append({"side": side, "entry_price": pos_price, "exit_price": price,
+                                       "entry_ts": pos_ts, "exit_ts": ts, "gain_pct": gain - fee_pct,
+                                       "reason": "ATR_TP"})
+                        exit_ts = ts; pos_ts = -1.0
+                        exit_k15 = float(k_15m[bk_15m]); exit_k15_prev = float(k_15m[bk_15m - 1])
+                        continue
+                    if _atr_sl_mult > 0 and gain <= -_atr_sl_mult * atr_pct:
+                        trades.append({"side": side, "entry_price": pos_price, "exit_price": price,
+                                       "entry_ts": pos_ts, "exit_ts": ts, "gain_pct": gain - fee_pct,
+                                       "reason": "ATR_SL"})
+                        exit_ts = ts; pos_ts = -1.0
+                        exit_k15 = float(k_15m[bk_15m]); exit_k15_prev = float(k_15m[bk_15m - 1])
+                        continue
+            # === Peak-giveback trailing exit (2026-04-24) ===
+            _pg_arm = variant.get("pg_arm_pct", 0.0)
+            _pg_give = variant.get("pg_giveback_pct", 0.0)
+            if _pg_arm > 0 and _pg_give > 0:
+                if gain > pos_peak:
+                    pos_peak = gain
+                if pos_peak >= _pg_arm and gain <= pos_peak - _pg_give:
+                    trades.append({"side": side, "entry_price": pos_price, "exit_price": price,
+                                   "entry_ts": pos_ts, "exit_ts": ts, "gain_pct": gain - fee_pct,
+                                   "reason": "PEAK_GIVEBACK"})
+                    exit_ts = ts; pos_ts = -1.0
+                    pos_peak = 0.0
+                    exit_k15 = float(k_15m[bk_15m]); exit_k15_prev = float(k_15m[bk_15m - 1])
+                    continue
             triggered = False; reason = ""
             if check_1m_exit:
                 if (side == "LONG" and k_1m[i] > exit_k_1m_min) or (side == "SHORT" and k_1m[i] < 100 - exit_k_1m_min):
@@ -332,6 +426,35 @@ def walk_symbol(pc: Dict, variant: Dict, side: str, fee_pct: float) -> List[Dict
                 if k_1h[bk_1h] <= 100 - k_1h_max: continue
                 if k_4h[bk_4h] <= 100 - k_4h_max: continue
                 if k_15m[bk_15m] <= 100 - k_15m_max: continue
+            # === 2026-04-24 NEW FILTERS: VWAP deviation, BB squeeze, pin-bar ===
+            # VWAP-deviation entry: only enter when price is stretched >X% from VWAP
+            _vwap_dev_min = variant.get("vwap_dev_min_pct", 0.0)
+            if _vwap_dev_min > 0:
+                vwap_3m_arr = pc.get("vwap_3m")
+                if vwap_3m_arr is not None and bk_3m < len(vwap_3m_arr) and vwap_3m_arr[bk_3m] > 0:
+                    vwap_val = vwap_3m_arr[bk_3m]
+                    dev_pct = (price - vwap_val) / vwap_val * 100.0
+                    # LONG wants price BELOW VWAP (oversold), SHORT wants price ABOVE
+                    if side == "LONG" and dev_pct > -_vwap_dev_min: continue
+                    if side == "SHORT" and dev_pct < _vwap_dev_min: continue
+            # BB-squeeze entry: only enter when 3m BB width is at local minimum (compression)
+            _bb_squeeze_pct = variant.get("bb_squeeze_max_pct", 0.0)
+            if _bb_squeeze_pct > 0:
+                bbw_arr = pc.get("bbw_3m")
+                if bbw_arr is not None and bk_3m < len(bbw_arr) and bbw_arr[bk_3m] > 0:
+                    if bbw_arr[bk_3m] > _bb_squeeze_pct: continue
+            # Pin-bar entry (1m): upper/lower wick > N× body = rejection at extreme
+            _pin_ratio = variant.get("pin_bar_ratio", 0.0)
+            if _pin_ratio > 0:
+                op = raw_1m[i, 1]; hi = raw_1m[i, 2]; lo = raw_1m[i, 3]; cl = raw_1m[i, 4]
+                body = abs(cl - op)
+                if body > 0:
+                    if side == "LONG":
+                        lower_wick = min(op, cl) - lo
+                        if lower_wick < _pin_ratio * body: continue
+                    else:
+                        upper_wick = hi - max(op, cl)
+                        if upper_wick < _pin_ratio * body: continue
             # HTF K alignment (stricter — all HTF TFs in deep oversold)
             if htf_align:
                 if side == "LONG":
@@ -364,7 +487,7 @@ def walk_symbol(pc: Dict, variant: Dict, side: str, fee_pct: float) -> List[Dict
                     vol_recent_3m = bars_3m[bk_3m, 5]
                     vol_avg_3m = bars_3m[max(0, bk_3m - 20):bk_3m, 5].mean() if bk_3m >= 1 else 0.0
                     if vol_avg_3m > 0 and vol_recent_3m < vol_mult * vol_avg_3m: continue
-            pos_ts = float(ts); pos_price = float(price)
+            pos_ts = float(ts); pos_price = float(price); pos_peak = 0.0
     # EOT MTM
     if pos_ts > 0:
         final_price = float(raw_1m[-1, 4]); final_ts = float(raw_1m[-1, 0])
@@ -436,6 +559,7 @@ def make_grid(grid_name: str) -> List[Dict]:
         "entry_bar_1m": "HH_AND_HL", "entry_bar_3m": "HH",
         "exit_bar_1m": "LL_AND_LH", "exit_bar_3m": "LL_OR_LH", "exit_bar_15m": "LL_OR_LH",
         "max_hold_min": 5, "stall_gain": 0.0,
+        "disable_stall": True,  # 2026-04-24: STALL=0% WR across 177 trades → default OFF
         "ha_1m": False, "ha_3m": False,
         "htf_align": False, "htf_align_max": 50,
         "pair_align": False,
@@ -445,6 +569,14 @@ def make_grid(grid_name: str) -> List[Dict]:
         "reentry_bounce_k_15m_max": 25,
         "reentry_bounce_bar_3m": "HH_AND_HL",
         "reentry_cooldown_s": 0,
+        # --- 2026-04-24 NEW TECHNIQUES (all default OFF / zero) ---
+        "atr_tp_mult": 0.0,      # exit when gain >= N × 3m ATR%
+        "atr_sl_mult": 0.0,      # exit when gain <= -N × 3m ATR% (technical stop)
+        "pg_arm_pct": 0.0,       # peak-giveback arms when gain reaches this %
+        "pg_giveback_pct": 0.0,  # exit when gain drops by this % from peak
+        "vwap_dev_min_pct": 0.0, # require price ≥X% stretched from 3m-VWAP (mean-revert scalp)
+        "bb_squeeze_max_pct": 0.0,# require 3m BB width ≤X% (compression-breakout scalp)
+        "pin_bar_ratio": 0.0,    # require entry bar wick ≥X× body (rejection-based scalp)
     }
     if grid_name == "coarse":
         axes = {
@@ -483,6 +615,50 @@ def make_grid(grid_name: str) -> List[Dict]:
             "vol_mult": [1.5, 3.0], "k_1m_max": [20, 30],
             "ha_1m": [False, True], "htf_align": [False, True],
             "side_mode": ["BOTH"],
+        }
+    elif grid_name == "techniques":
+        # 2026-04-24: NO-STALL grid focusing on new techniques (ATR TP/SL, peak-giveback,
+        # VWAP-deviation, BB-squeeze, pin-bar). Disable_stall is ALWAYS True here.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["1M_ONLY", "3M_ONLY", "1M_AND_3M"],
+            "exit_mode":         ["ANY", "15M_ONLY", "3M_ONLY"],
+            "k_1m_max":          [20, 30],
+            "vol_mult":          [1.5, 2.5],
+            "side_mode":         ["LONG_ONLY", "SHORT_ONLY", "BOTH"],
+            "htf_align":         [False, True],
+            "atr_tp_mult":       [0.0, 1.5, 2.0, 3.0],
+            "atr_sl_mult":       [0.0, 2.0, 3.0],
+            "pg_arm_pct":        [0.0, 0.3, 0.5, 1.0],
+            "pg_giveback_pct":   [0.0, 0.2, 0.4],
+            "vwap_dev_min_pct":  [0.0, 0.3, 0.7, 1.5],
+            "bb_squeeze_max_pct":[0.0, 1.5, 3.0],
+            "pin_bar_ratio":     [0.0, 1.5, 2.5],
+        }
+    elif grid_name == "techniques_random":
+        # Random sample from the large Cartesian product of techniques axes
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["1M_ONLY", "3M_ONLY", "1M_AND_3M"],
+            "exit_mode":         ["ANY", "15M_ONLY", "3M_ONLY", "1M_ONLY"],
+            "k_1m_max":          [15, 20, 25, 30, 40],
+            "k_3m_max":          [30, 40, 50, 60],
+            "vol_mult":          [1.0, 1.5, 2.0, 2.5, 3.0, 4.0],
+            "exit_k_1m_min":     [85, 90, 95, 98],
+            "side_mode":         ["LONG_ONLY", "SHORT_ONLY", "BOTH"],
+            "htf_align":         [False, True],
+            "htf_align_max":     [25, 40, 50],
+            "ha_1m":             [False, True],
+            "ha_3m":             [False, True],
+            "atr_tp_mult":       [0.0, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0],
+            "atr_sl_mult":       [0.0, 1.5, 2.0, 2.5, 3.0, 4.0],
+            "pg_arm_pct":        [0.0, 0.2, 0.3, 0.5, 0.7, 1.0, 1.5],
+            "pg_giveback_pct":   [0.0, 0.15, 0.2, 0.3, 0.4, 0.5],
+            "vwap_dev_min_pct":  [0.0, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0],
+            "bb_squeeze_max_pct":[0.0, 1.0, 1.5, 2.0, 3.0, 5.0],
+            "pin_bar_ratio":     [0.0, 1.0, 1.5, 2.0, 2.5, 3.0],
+            "reentry_bounce_mode": ["3M_BAR_ONLY", "K15M_ONLY", "3M_BAR_OR_K15M", "3M_BAR_AND_K15M"],
+            "reentry_cooldown_s":[0, 60, 180, 300],
         }
     else:  # "orthogonal" — each axis varies alone around base
         out = [base.copy()]
@@ -525,7 +701,7 @@ def parse_deadline(args) -> float:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium"], default="orthogonal")
+    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random"], default="orthogonal")
     ap.add_argument("--variants", type=int, default=0, help="Cap (0 = no cap)")
     ap.add_argument("--random-sample", type=int, default=0, help="Random-sample N from the grid (0 = use full grid)")
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))

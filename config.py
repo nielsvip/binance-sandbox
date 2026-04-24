@@ -144,6 +144,7 @@ class Config:
     SCALP_V3_EXIT_15M_BAR: str = "LL_OR_LH"
     SCALP_V3_MAX_HOLD_MIN: float = 10.0      # 2026-04-23 20k sweep: top 20 all 10-15min; 10 most common
     SCALP_V3_STALL_GAIN_MAX_PCT: float = -0.1  # 2026-04-23 20k sweep: -0.1 in 100% of top 20
+    SCALP_V3_STALL_ENABLED: bool = False  # 2026-04-24: DISABLED — 177/180 paper exits hit STALL with 0% WR (-73.81% total). Only 15M_BAR exit wins. Set True only if future sweep finds a STALL variant that actually wins.
     # --- REENTRY ---
     SCALP_V3_REENTRY_REQUIRE_BOUNCE_IF_15M_FALLING: bool = True
     # Reentry bounce definition — SWEEP KNOB:

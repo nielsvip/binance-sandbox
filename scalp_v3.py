@@ -146,7 +146,7 @@ def check_scalp_v3_exit(pos: V3Position, inp: V3Input, cfg) -> Tuple[bool, str]:
     side = pos.side
     age_min = (inp.now_ts - pos.entry_ts) / 60.0
     gain_pct = _compute_gain_pct(pos, inp.current_price)
-    if age_min > cfg.SCALP_V3_MAX_HOLD_MIN and gain_pct <= cfg.SCALP_V3_STALL_GAIN_MAX_PCT:
+    if getattr(cfg, 'SCALP_V3_STALL_ENABLED', False) and age_min > cfg.SCALP_V3_MAX_HOLD_MIN and gain_pct <= cfg.SCALP_V3_STALL_GAIN_MAX_PCT:
         return True, f"SCALP_V3_EXIT_STALL_{side}"
     tf_mode = cfg.SCALP_V3_EXIT_TF_MODE
     check_1m = tf_mode in ("ANY", "1M_ONLY")
