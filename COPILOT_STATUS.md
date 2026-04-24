@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-24 07:55:28 UTC
+# Copilot Status — 2026-04-24 08:10:45 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T07:51:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T07:51:17
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T07:51:59
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T07:53:01
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T07:53:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T07:53:22
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T07:54:04
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T07:55:07
-- **STALE_INDICATORS** [tradier]  — 2026-04-24T07:55:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T07:55:28
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T08:05:50
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T08:05:50
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T08:06:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T08:07:36
+- **STALE_INDICATORS** [tradier]  — 2026-04-24T08:07:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T08:07:57
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T08:08:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T08:09:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-24T08:10:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-24T08:10:44
 
 ## Missed Trades (trader comparison)
 
@@ -27,12 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 2 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-11.1%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-12.2%
 
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
-- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 
 ## Supervisor
@@ -43,5 +42,5 @@ _None_
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
-- [HIGH] ez_prices.py is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
