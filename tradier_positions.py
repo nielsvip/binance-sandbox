@@ -1575,12 +1575,20 @@ class TradierPositionManager:
             self._api_absence_count[pk] = self._api_absence_count.get(pk, 0) + 1
             count = self._api_absence_count[pk]
             if count >= THRESHOLD:
+                _ghost_qty = float(getattr(pos, 'positionAmt', 0) or 0)
+                _ghost_price = float(getattr(pos, 'mark_price', 0) or getattr(pos, 'entry_price', 0) or 0)
+                _ghost_entry = float(getattr(pos, 'entry_price', 0) or 0)
+                _ghost_gain = float(getattr(pos, 'gain', 0) or 0)
                 logger.warning(f"[GHOST_ZERO] {pk}: absent {count}x from Tradier API — zeroing positionAmt (Tradier returns ALL held positions, absence = closed)")
                 pos.positionAmt = 0.0
                 pos.gain = 0.0
                 pos.unrealized_pnl = 0.0
                 pos.last_updated = now
                 self._api_absence_count.pop(pk, None)
+                try:
+                    await self.append_to_position_history_file(pk, "GHOST_CLOSE", abs(_ghost_qty), _ghost_price, rich_context={"reason": f"tradier_api_absence_{count}x_lastgain={_ghost_gain:.2f}%_entry={_ghost_entry:.2f}", "indicators": {}})
+                except Exception as _hist_err:
+                    logger.error(f"[GHOST_ZERO] {pk}: history write failed: {_hist_err}")
 
     async def _update_prices_for_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
         if not updated_keys_in_api: return
