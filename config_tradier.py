@@ -384,18 +384,18 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-21 sweep: PPL v2 underperforms baseline on tradier (gain -10%, Sharpe flat, DD identical). 108-config grid on 128sym. DO NOT re-enable without fresh tradier sweep.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-21: underperformed at 0.5%. 2026-04-25 rapid-grid CONFIRMED ESSENTIAL: removing PPL from 2p4860 baseline costs −1.36 pool_sharpe (2.44→1.08). Baseline uses PARTIAL_PROFIT_LOCK_GAIN_PCT≈0.9375. Higher thresholds (1.5–5%) not yet tested — pending 2026-04-25 extended sweep. Use PARTIAL_PROFIT_LOCK_GAIN_PCT (not _TRADIER key) for vectorized sweeps.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
-    # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
+    # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks. 2026-04-25 rapid-grid CONFIRMED DAMAGING: 5TF=−1.70 Sharpe (8.3% DD), 4TF=−1.34 Sharpe (2.8% DD). Stocks recover — forcing exits on full-WT-against destroys edge.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled. 2.8155 validated winner has this False. On 114-sym it HURTS (-6%). Bypassing NOLOSS was causing losses.
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled. 2026-04-25 rapid-grid CONFIRMED DAMAGING: −2.03 pool_sharpe on 114-sym (2.44→0.41). Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
     WRONG_SIDE_WT_TFS_REQUIRED: int = 5
     WRONG_SIDE_WT_TFS_REDUCED: int = 3
@@ -589,7 +589,7 @@ class TradierConfig:
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
     REENTRY_TIER2_MAX_MINUTES_TRADIER: float = 120.0  # Force entry after 120min
     # RALLY REENTRY GATE (0-3h after exit): k5m+k15m rising + HTF WT aligned
-    # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold
+    # REENTRY_RALLY_K15M_MAX: additional k15m level cap — 100=disabled, 40=moderate, 20=strict oversold. 2026-04-25 rapid-grid: K60+gap2 = +0.007 Sharpe +1 trade (marginal, not promoted). K40/50 neutral. K gate not the binding constraint for tradier trade count.
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
     REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 3          # 2026-04-18: sqlite reentry analysis — wt_all3 avg_sharpe 0.1036 vs wt_2of3 -0.0468. Was 2.

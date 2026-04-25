@@ -394,7 +394,7 @@ class Config:
     REENTRY_TIER2_MAX_MINUTES: float = 120.0  # After this, Tier 2 forces entry at 50% size
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
-    REENTRY_RALLY_K15M_MAX: float = 30.0    # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target 2.5 met). Was 100 (disabled). Only reenter when k15m<30 (deep pullback).
+    REENTRY_RALLY_K15M_MAX: float = 30.0    # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598. 2026-04-25 rapid-grid 50-sym: K40/50/60/60+gap3 all identical to K30 — reentry count not K-gated, binding constraint is entry score + cooldown.
     REENTRY_RALLY_HTF_MIN: int = 1          # sweep: 1 / 2 / 3 — min of (1h/4h/D) WT aligned at reentry
     REENTRY_MIN_GAP_MINUTES: float = 15.0   # 2026-04-17 Chapter-C winning bundle used BARS=5 (~15min on 3m). Was 3.0. Switchable.
     REENTRY_SYMGATE_ENABLED: bool = False   # 2026-04-19 FIX: Chapter-C tested on broken B15/B11 data. Re-sweep pending.
@@ -521,6 +521,7 @@ class Config:
     REENTRY_B14_HA_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.11/0.13. Moderate.
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True  # ABLATION: Sharpe 0.89/0.72, 94-97% WR. Sniper.
     # === AUGMENT BLOCKS (2026-04-16) — 4 blocks switch-gated for sweep ===
+    # 2026-04-25 rapid-grid finding: AUGMENT_WT_4H_BOUNCE (v8_quick_engine) → +0.029 pool_sharpe on crypto 50-sym. No live equivalent yet — wire as AUGMENT_WT_4H_BOUNCE_ENABLED when sweep validates on full 50-sym.
     AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
     AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
@@ -541,7 +542,7 @@ class Config:
     V8Q_STRENGTH_MIN_SCORE: float = 5.0
     V8Q_HTF_MIN_ALIGNED: int = 1
     V8Q_MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold. Sharpe 1.508→2.554 on 48-sym crypto. Was 10.
-    V8Q_WT_EXIT_MIN_TFS: int = 3  # 2026-04-19: require all 3 TFs against. Sharpe 1.065→1.508 before hold boost. Was 2.
+    V8Q_WT_EXIT_MIN_TFS: int = 3  # 2026-04-19: EXIT=3 → Sharpe 1.065→1.508. 2026-04-25 rapid-grid: EXIT=2 → +37 trades (+30%) BUT pool_sharpe 1.25 vs 2.66. Extra trades are 2-TF noise exits that reverse. NEVER drop below 3.
     V8Q_COOLDOWN_BARS: int = 3
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
@@ -1162,18 +1163,19 @@ class Config:
     # Step 3 (SL hit: price back to first-exit price): close remainder via maker → webhook_url_2 fallback.
     PARTIAL_PROFIT_LOCK_ENABLED: bool = True
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger: close 50% via webhook_url_2 (Finandy always closes 50% on URL2)
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger. 2026-04-25 rapid-grid: vectorized optimum 1.125%; 0.8%→2.02, 0.5%→1.52, 0.3%→1.25 pool_sharpe (vs 2.66 at 1.125%). Live stays 0.5% (Finandy latency limits); do not lower further.
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75     # At this gain, upgrade stop from BE+buffer to first_exit_price (0.5% level)
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02    # After TP fires, initial stop = entry × (1 ± buffer). Ensures close fires BEFORE gain reaches 0%.
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5              # Semantic only — URL2 handles actual 50% on Finandy side
     PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
-    # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss.
+    # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss. 2026-04-25 rapid-grid: neutral for crypto on both 4TF and 5TF — existing exit paths already cover confirmed reversals.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     # WRONG_SIDE_ABS_KILL — kill when N-of-5 WT TFs against + (optionally) divergence confirms.
     # K (stoch) requirement DEFERRED (irrelevant per user 2026-04-21). Divergence detection active.
     # If M TFs show divergence (price HH + WT LH for LONG, mirror for SHORT, over DIV_LOOKBACK_BARS),
     # reduce WT requirement from TFS_REQUIRED to TFS_REDUCED. Sweep N=[3,4,5], REDUCED=[2,3,4], age=[15,30,60,120], div_lookback=[10,20,40].
+    # 2026-04-25 rapid-grid: already True in crypto baseline; disabling costs −0.007 Sharpe. Confirmed correct.
     WRONG_SIDE_ABS_KILL_ENABLED: bool = True
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
     WRONG_SIDE_WT_TFS_REQUIRED: int = 5
