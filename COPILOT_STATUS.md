@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 11:56:26 UTC
+# Copilot Status — 2026-04-25 13:18:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,12 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:53:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:53:32
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T11:54:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T11:54:33
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:54:33
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:54:33
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:54:33
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:55:35
-- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:55:35
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:55:35
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T13:18:56
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T13:18:56
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T13:18:57
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T13:18:57
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T13:18:57
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T13:18:57
 
 ## Missed Trades (trader comparison)
 
@@ -27,11 +23,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-14.4%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-16.3%
 
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
@@ -40,10 +35,3 @@ _None_
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
-
-**Issues (last 1h):** 50
-- [LOW] tradier_positions.py is NOT running
-- [LOW] tradier_prices.py is NOT running
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_positions.py is NOT running
