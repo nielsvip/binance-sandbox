@@ -19918,20 +19918,41 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 # Fix: check position.is_hedge BEFORE touching active_hedges at all.
                 _r6_pos_is_hedge_attr = False
                 _r6_pos_hedge_for_attr = None
+                _r6_reason_says_hedge = False
                 try:
                     _r6_pos_is_hedge_attr = bool(getattr(position, 'is_hedge', False))
                     _r6_pos_hedge_for_attr = getattr(position, 'hedge_for', None)
+                    # 2026-04-25 FIX — account drain: R6 was purging REAL hedges because
+                    # position.is_hedge boolean was False while augment_reason clearly said HEDGE.
+                    # Hedges opened via execute_same_symbol_hedge → persist_hedge_record adds to
+                    # active_hedges but does NOT set position.is_hedge=True on the Position object.
+                    # Result: every monitor cycle purged the active_hedges entry → hedge-close loop
+                    # had empty list → hedges never closed → MOVR -$3, dozens of pairs dragging.
+                    # Fix: reason string is authoritative; trust it.
+                    _r6_reason = str(getattr(position, 'augment_reason', '') or '').upper()
+                    for _hm in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
+                        if _hm in _r6_reason:
+                            _r6_reason_says_hedge = True
+                            break
                 except Exception: pass
-                if not _r6_pos_is_hedge_attr:
-                    # Position object says NOT a hedge — purge any stale active_hedges record and skip R6
+                if not _r6_pos_is_hedge_attr and not _r6_reason_says_hedge:
+                    # Position object says NOT a hedge AND reason doesn't say hedge — safe to purge stale record
                     _r6_stale = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
                     if _r6_stale:
-                        logger.critical(f"[HEDGE_CLEANUP_R6_GROUND_TRUTH_VETO] {position_key}: position.is_hedge=False but found in active_hedges — PURGING stale record, skipping R6. This is a MAIN position, not a hedge.")
+                        logger.critical(f"[HEDGE_CLEANUP_R6_GROUND_TRUTH_VETO] {position_key}: position.is_hedge=False AND reason not hedge — PURGING stale active_hedges record, skipping R6. Main position.")
                         try:
                             async with trade_manager.tracker_manager._hedges_lock:
                                 trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
                         except Exception: pass
                     _r6_is_hedge = False
+                elif not _r6_pos_is_hedge_attr and _r6_reason_says_hedge:
+                    # Flag missing but reason says HEDGE — trust reason. DO NOT PURGE.
+                    # Heal the Position object so future cycles agree.
+                    try:
+                        position.is_hedge = True  # best-effort heal
+                    except Exception: pass
+                    logger.warning(f"🩹 [R6_HEDGE_FLAG_HEAL] {position_key}: reason says HEDGE but is_hedge flag was False — healed to True, keeping active_hedges record")
+                    _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
                 else:
                     _r6_is_hedge = any(h.get('position_key') == position_key for h in trade_manager.tracker_manager.active_hedges)
                     # SYMBOLS DIRECTION LIST VETO — primary source of truth for main positions.
