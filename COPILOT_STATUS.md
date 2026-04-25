@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 17:47:26 UTC
+# Copilot Status — 2026-04-25 18:02:39 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T17:43:55
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:43:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:43:57
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T17:44:59
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:44:59
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T17:46:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:46:00
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T17:46:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:46:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:47:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:56:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:56:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:57:33
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T17:58:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:58:34
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:58:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:59:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T18:00:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:00:46
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:01:48
 
 ## Missed Trades (trader comparison)
 
@@ -40,8 +40,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] ez_prices.py running but log stale (46min)
-- [MEDIUM] ez_prices.py running but log stale (47min)
-- [MEDIUM] ez_prices.py running but log stale (48min)
-- [MEDIUM] ez_prices.py running but log stale (49min)
-- [MEDIUM] ez_prices.py running but log stale (50min)
+- [MEDIUM] ez_prices.py running but log stale (61min)
+- [MEDIUM] ez_prices.py running but log stale (62min)
+- [MEDIUM] ez_prices.py running but log stale (63min)
+- [MEDIUM] ez_prices.py running but log stale (64min)
+- [MEDIUM] ez_prices.py running but log stale (65min)
