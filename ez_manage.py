@@ -10815,7 +10815,7 @@ class MultiAccountTradeManager:
         if is_augment and not _is_reentry and not is_hedge and i:
             _eta_min_gain = safe_fetch_float(getattr(config, 'MIN_GAIN', 3.0), 3.0)
             _eta_raw_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            _eta_ppl_st = getattr(trade_manager, 'partial_profit_lock_state', {}).get(position_key, {})
+            _eta_ppl_st = getattr(self, 'partial_profit_lock_state', {}).get(position_key, {})
             _eta_ppl_eff = float(_eta_ppl_st.get('effective_entry', 0.0))
             _eta_pos_gain = ((current_price - _eta_ppl_eff) / _eta_ppl_eff * 100.0 if position_key.endswith('_LONG') else (_eta_ppl_eff - current_price) / _eta_ppl_eff * 100.0) if (_eta_ppl_st.get('fired') and _eta_ppl_eff > 0 and current_price > 0) else _eta_raw_gain
             _eta_pos_max = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
@@ -11117,7 +11117,7 @@ class MultiAccountTradeManager:
                 # don't get killed by the downstream gain_since_last_augment check.
                 # PPL effective_gain: after partial close, use lowered cost basis so augment
                 # fires sooner on pullback (the captured partial profit reduces effective entry).
-                _aug_ppl_state = getattr(trade_manager, 'partial_profit_lock_state', {}).get(position_key, {})
+                _aug_ppl_state = getattr(self, 'partial_profit_lock_state', {}).get(position_key, {})
                 _aug_ppl_eff_entry = float(_aug_ppl_state.get('effective_entry', 0.0))
                 if _aug_ppl_state.get('fired') and _aug_ppl_eff_entry > 0 and current_price > 0:
                     _aug_pos_gain = (current_price - _aug_ppl_eff_entry) / _aug_ppl_eff_entry * 100.0 if is_long else (_aug_ppl_eff_entry - current_price) / _aug_ppl_eff_entry * 100.0

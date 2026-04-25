@@ -11432,10 +11432,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         else:
             _fnl_gain = real_gain
         _noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.5)
-        if not is_hedge and not _is_pair_flatten and _fnl_gain < -0.01 and account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', []):
+        _is_v3_loss_exit = ('SCALP_V3_OPEN_PROTECTIVE' in reason.upper() or 'SCALP_V3_CLOSE' in reason.upper())
+        if not is_hedge and not _is_pair_flatten and not _is_v3_loss_exit and _fnl_gain < -0.01 and account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', []):
             logger.critical(f"[FINAL_NOLOSS_GATE] {position_key}: BLOCKED reduce at FRESH gain={_fnl_gain:.2f}% (cached={real_gain:.2f}%, entry={_fnl_entry:.6f}, fresh_px={_fnl_fresh_px:.6f}). STRICT_NO_LOSS. Reason: {reason}")
             return False, f"BLOCKED_FINAL_NOLOSS_GATE_{_fnl_gain:.2f}pct"
-        if not is_hedge and not _is_pair_flatten and _fnl_gain < _noloss_min and account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', []):
+        if not is_hedge and not _is_pair_flatten and not _is_v3_loss_exit and _fnl_gain < _noloss_min and account_key in getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', []):
             logger.critical(f"[FINAL_NOLOSS_GATE] {position_key}: BLOCKED reduce at gain={_fnl_gain:.2f}% < {_noloss_min}%. STRICT_NO_LOSS. Reason: {reason}")
             return False, f"BLOCKED_FINAL_NOLOSS_GATE_{_fnl_gain:.2f}pct"
         if _is_pair_flatten and _fnl_gain < 0:
