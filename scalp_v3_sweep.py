@@ -720,6 +720,40 @@ def make_grid(grid_name: str) -> List[Dict]:
             "htf_align_max":     [40, 50, 60],
             "vol_mult":          [1.0, 1.5, 2.0],
         }
+    elif grid_name == "short_specific":
+        # 2026-04-25: User request — find optimal SHORT params INDEPENDENTLY from LONG.
+        # Key question: does requiring more-overbought K (k>70, k>80, k>90) improve SHORT Sharpe?
+        # _k_oversold mirrors: k_3m_max=20 → SHORT enters when k_3m > 80, k_3m_max=30 → k>70.
+        # Run on full 491-sym 4-year universe (no bull-run movers bias).
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["3M_ONLY", "15M_ONLY"],
+            "side_mode":         ["SHORT_ONLY"],
+            "k_3m_max":          [10, 15, 20, 25, 30, 40],   # SHORT k>60..90
+            "k_15m_max":         [30, 40, 50, 65],           # SHORT k15m>35..70
+            "k_1h_max":          [40, 55, 65],               # SHORT k1h>35..60
+            "vwap_dev_min_pct":  [0.0, 0.3, 0.5, 0.7],      # price % ABOVE VWAP for SHORT
+            "atr_tp_mult":       [0.5, 0.8, 1.0, 1.5],
+            "pin_bar_ratio":     [0.0, 2.5, 3.0],
+            "pg_arm_pct":        [0.0],                      # disabled (sensitivity: best)
+        }
+    elif grid_name == "long_specific":
+        # 2026-04-25: Unbiased LONG sweep on full 491-sym 4-year universe.
+        # The movers-based LONG sweep was biased by the recent 2-week 20% bull run.
+        # This runs on ALL symbols over 4 years to find the true LONG edge.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["3M_ONLY", "15M_ONLY"],
+            "side_mode":         ["LONG_ONLY"],
+            "k_3m_max":          [30, 40, 50, 60],
+            "k_15m_max":         [55, 65, 75, 80],
+            "vwap_dev_min_pct":  [0.0, 0.2, 0.3, 0.5, 0.7],
+            "atr_tp_mult":       [0.8, 1.0, 1.5],
+            "pin_bar_ratio":     [0.0, 2.5, 3.0],
+            "pg_arm_pct":        [0.0],
+        }
     elif grid_name == "techniques":
         # 2026-04-24: NO-STALL grid focusing on new techniques (ATR TP/SL, peak-giveback,
         # VWAP-deviation, BB-squeeze, pin-bar). Disable_stall is ALWAYS True here.
@@ -825,7 +859,7 @@ def parse_deadline(args) -> float:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined", "winners_refined_v2", "long_only_wide", "exit_finegrain", "entry_tight"], default="orthogonal")
+    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined", "winners_refined_v2", "long_only_wide", "exit_finegrain", "entry_tight", "short_specific", "long_specific"], default="orthogonal")
     ap.add_argument("--variants", type=int, default=0, help="Cap (0 = no cap)")
     ap.add_argument("--random-sample", type=int, default=0, help="Random-sample N from the grid (0 = use full grid)")
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))
