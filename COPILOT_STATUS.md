@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 11:15:18 UTC
+# Copilot Status — 2026-04-25 11:30:45 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T11:12:24
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:12:24
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T11:13:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T11:13:25
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:13:26
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T11:13:26
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:13:26
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:14:27
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T11:14:27
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:14:27
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:27:51
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:27:51
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:28:52
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:28:52
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:28:52
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T11:29:53
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T11:29:53
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-25T11:29:54
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-25T11:29:54
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T11:29:54
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-11.9%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-12.7%
 
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
@@ -46,4 +46,4 @@ _None_
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [MEDIUM] ez_prices.py running but log stale (67min)
+- [MEDIUM] ez_prices.py running but log stale (82min)
