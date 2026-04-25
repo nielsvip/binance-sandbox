@@ -1270,6 +1270,55 @@ def squeeze_features(close_series: pd.Series, high_series: pd.Series, low_series
     return is_squeezed_now, int(fire_dir)
 
 
+def find_pivots_arr(arr: np.ndarray, lookback: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    # Confirmed pivots only (lagged by `lookback` bars after — no repaint).
+    n = len(arr); ph = np.zeros(n, dtype=bool); pl = np.zeros(n, dtype=bool)
+    for i in range(lookback, n - lookback):
+        a = arr[i]; lwin = arr[i - lookback:i]; rwin = arr[i + 1:i + 1 + lookback]
+        if a > lwin.max() and a > rwin.max(): ph[i] = True
+        if a < lwin.min() and a < rwin.min(): pl[i] = True
+    return ph, pl
+
+
+def detect_divergence(price_arr: np.ndarray, ind_arr: np.ndarray, lookback: int = 5, decay: int = 10, match_window: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    # Pivot-based regular/hidden divergence. Returns (reg_bull, reg_bear, hid_bull, hid_bear) int8 arrays.
+    # reg_bull: price LL + indicator HL. reg_bear: price HH + indicator LH.
+    # hid_bull: price HL + indicator LL. hid_bear: price LH + indicator HH.
+    # Signal active for `decay` bars starting at confirmation bar (i_curr + lookback).
+    n = len(price_arr)
+    rb = np.zeros(n, dtype=np.int8); be = np.zeros(n, dtype=np.int8)
+    hb = np.zeros(n, dtype=np.int8); hbe = np.zeros(n, dtype=np.int8)
+    p_ph, p_pl = find_pivots_arr(price_arr, lookback)
+    i_ph, i_pl = find_pivots_arr(ind_arr, lookback)
+    p_lows = np.where(p_pl)[0]; p_highs = np.where(p_ph)[0]
+    i_lows = np.where(i_pl)[0]; i_highs = np.where(i_ph)[0]
+    for k in range(1, len(p_lows)):
+        ic = p_lows[k]; ip = p_lows[k - 1]
+        c_match = i_lows[(i_lows >= ic - match_window) & (i_lows <= ic + match_window)]
+        p_match = i_lows[(i_lows >= ip - match_window) & (i_lows <= ip + match_window)]
+        if len(c_match) == 0 or len(p_match) == 0: continue
+        ic_i = c_match[np.argmin(np.abs(c_match - ic))]
+        ip_i = p_match[np.argmin(np.abs(p_match - ip))]
+        confirm = ic + lookback
+        if confirm >= n: continue
+        end = min(n, confirm + decay)
+        if price_arr[ic] < price_arr[ip] and ind_arr[ic_i] > ind_arr[ip_i]: rb[confirm:end] = 1
+        if price_arr[ic] > price_arr[ip] and ind_arr[ic_i] < ind_arr[ip_i]: hb[confirm:end] = 1
+    for k in range(1, len(p_highs)):
+        ic = p_highs[k]; ip = p_highs[k - 1]
+        c_match = i_highs[(i_highs >= ic - match_window) & (i_highs <= ic + match_window)]
+        p_match = i_highs[(i_highs >= ip - match_window) & (i_highs <= ip + match_window)]
+        if len(c_match) == 0 or len(p_match) == 0: continue
+        ic_i = c_match[np.argmin(np.abs(c_match - ic))]
+        ip_i = p_match[np.argmin(np.abs(p_match - ip))]
+        confirm = ic + lookback
+        if confirm >= n: continue
+        end = min(n, confirm + decay)
+        if price_arr[ic] > price_arr[ip] and ind_arr[ic_i] < ind_arr[ip_i]: be[confirm:end] = 1
+        if price_arr[ic] < price_arr[ip] and ind_arr[ic_i] > ind_arr[ip_i]: hbe[confirm:end] = 1
+    return rb, be, hb, hbe
+
+
 def bb_auto_tune(high_series: pd.Series, low_series: pd.Series, close_series: pd.Series, length: int = 20, lookback: int = 100, touch_pct: float = 0.002) -> Tuple[float, float, float, float, int]:
     """Auto-tune BB σ multiplier to maximize upper+lower band touches.
     Sweeps σ from 1.5 to 3.5, counts bars where high touches upper or low touches lower.

@@ -399,8 +399,8 @@ class TradierConfig:
     #   3TF=0.880 Sharpe (-1.56 vs baseline, 3.76% DD) | 4TF=1.092 (-1.34, 2.79% DD) | 5TF=0.731 (-1.70, 8.3% DD).
     # VERDICT: HOLD wins. Stocks recover after WT reversal — closing on technicals at any threshold destroys edge.
     # COMBINED WS_KILL+4TF=1.071 Sharpe (-1.36) — combining kill+bypass does NOT help.
-    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
+    NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = True  # 2026-04-25: belt-and-suspenders — even if NOLOSS sneaks back on somewhere, allow WT-against bypass.
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # 2026-04-25: lowered from 5 (which never fires). 3-of-5 is the sweep target floor.
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
@@ -557,7 +557,7 @@ class TradierConfig:
     HOLD_BARS_MID: int = 500  # BACKTEST_CHANGE_T25 max hold bars during mid zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     HOLD_BARS_CLOSE: int = 50  # BACKTEST_CHANGE_T25 max hold bars during close zone ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === NO-LOSS NATURAL EXIT + K-ZONE ENTRY + BOUNCE REENTRY (2026-03-21 — 121 sym × D/4h/1h, 9192 combos) ===
-    NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 3.0  # REVERTED 2026-04-17: 0% caused exits at 0.3% gain (avg gain dropped, lost $1k/day). MAR-30 baseline = 3.0 = was making 10%/week. The Sharpe-6.36-at-0% claim was bogus.
+    NOLOSS_MIN_PROFIT_PCT_TRADIER: float = 0.0  # 2026-04-25 KILL: 3.0 held losers indefinitely; v8 backtest doesn't model this gate so prior sweep results were invalid for live behavior. Allow technical-flip exits at any gain.
     # === BB RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, stocks) ===
     # When True: if entry_price > bb_high_1h (LONG) or < bb_low_1h (SHORT),
     # AND current 3m close has recovered within tolerance of entry_price,
@@ -1339,7 +1339,7 @@ class TradierConfig:
     EMA_PULLBACK_ENABLED: bool = False  # BACKTEST_CHANGE_128: EMA pullback + StochRSI oversold in trend. Validated by academia + copy traders.
     EMA_PULLBACK_SCORE_BONUS: int = 35  # BACKTEST_CHANGE_128: Highest score — matches "retest-and-launch" core edge
     EMA_PULLBACK_TF: str = '15m'
-    ENABLE_LOSS_PROTECTION: bool = True  # Block closing positions with gain <= 0.12%
+    ENABLE_LOSS_PROTECTION: bool = False  # 2026-04-25 KILL: top-level loss-protection switch off. Technical exits + same-sector hedge replace it.
     ENTRY_ATR_PCT_MIN: float = 1.5  # BACKTEST_CHANGE_103: NEW. Min ATR% for entry — winners trade 1.97% ATR vs losers 1.22%
     ENTRY_VOL_MIN_RATIO: float = 1.3  # BACKTEST_CHANGE_100: was 1.0. Winners enter at 1.95x avg vol vs losers 1.27x — raise floor
     ERROR_RECOVERY_SLEEP_SECONDS: int = 60  # Sleep after errors
@@ -1588,8 +1588,8 @@ class TradierConfig:
     WINNER_PROTECT_ENABLED: bool = False
     RP_PROTECT_THRESHOLD: float = 70.0
     RP_PROTECT_MIN_GAIN: float = 1.0
-    NOLOSS_DC4H_GATE_ENABLED: bool = True   # HARD RULE: never close at a loss inside bb_1h (stocks) / dc_4h (crypto) — hedge instead.
-    NOLOSS_BB1H_GATE_ENABLED: bool = True   # Stock structural break: price outside bb_1h in wrong direction → override NO_LOSS and close at loss
+    NOLOSS_DC4H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: DC-based NOLOSS off. Same-sector hedge replaces it.
+    NOLOSS_BB1H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: BB-based NOLOSS off (technical exits handle this).
     LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
@@ -1608,7 +1608,7 @@ class TradierConfig:
     REGIME_RANGING_EXIT_GAIN_MIN: float = 0.15  # Exit at 0.15% gain
     REGIME_RANGING_K_ZONE_BONUS: int = 40  # Mean reversion K-zone bonus (was 25)
     REGIME_RANGING_MIN_HOLD_BARS: int = 8  # 2h at 15m — fast turnover
-    REGIME_RANGING_NOLOSS_MIN: float = 0.05  # Take ANY profit in ranging
+    REGIME_RANGING_NOLOSS_MIN: float = 0.0  # 2026-04-25 KILL: regime-based NOLOSS off.
     REGIME_RANGING_POSITION_SIZE_MULT: float = 0.5  # Half-size, more slots
     REGIME_RANGING_REENTRY_SIZE_MULT: float = 1.0  # Standard reentry
     REGIME_RANGING_SLOT_RESERVE_PCT: float = 0.6  # Reserve 60% slots for new entries
@@ -1622,7 +1622,7 @@ class TradierConfig:
     REGIME_TRENDING_K_RESET_THRESHOLD: float = 40.0  # Shallower pullback K reset ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     REGIME_TRENDING_K_ZONE_BONUS: int = 15  # K-zone less important
     REGIME_TRENDING_MIN_HOLD_BARS: int = 48  # 12h at 15m — hold longer
-    REGIME_TRENDING_NOLOSS_MIN: float = 0.5  # Let winners run in trends
+    REGIME_TRENDING_NOLOSS_MIN: float = 0.0  # 2026-04-25 KILL: regime-based NOLOSS off (technical exits handle).
     REGIME_TRENDING_POSITION_SIZE_MULT: float = 1.5  # Full-size, fewer trades
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0  # Aggressive reentry in trends
     REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.4  # Reserve 40% slots
@@ -1748,7 +1748,7 @@ class TradierConfig:
     TR_MFI4H_LONG_BOYCOTT_SCORE: int = -25  # BC_155d: Moderate penalty
     TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
     TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
-    UNIVERSAL_NOLOSS_GATE: bool = True
+    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-04-25 KILL: blocked 8804 PEAK_GIVEBACK closes/14d, drove 20% loss. Replaced by technical-flip exits + same-sector hedge.
     USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

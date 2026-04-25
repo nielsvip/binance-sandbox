@@ -248,6 +248,33 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
             out[f"wt_divergence_strength_{tf}"] = np.abs(div).astype(np.float32)
             sa = np.abs(w1 - w2); sp = np.roll(sa, 1)
             out[f"wt_wave_phase_{tf}"] = np.where(sa > sp, 1, -1).astype(np.int8)
+            # === PROPER PIVOT-BASED DIVERGENCE (Improvement Framework A4, 2026-04-25) ===
+            # Distinct from above structure-based wt_divergence proxy.
+            # 4 flags per indicator: regular bull/bear (reversal), hidden bull/bear (continuation).
+            # Pivot lookback=5, signal decay=10 bars after confirmation. No repaint.
+            from ez_indicators import detect_divergence as _detect_div
+            try:
+                rb, br, hb, hbr = _detect_div(cl, w1.astype(np.float64), lookback=5, decay=10)
+                out[f"div_reg_bull_wt_{tf}"] = rb
+                out[f"div_reg_bear_wt_{tf}"] = br
+                out[f"div_hid_bull_wt_{tf}"] = hb
+                out[f"div_hid_bear_wt_{tf}"] = hbr
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # MFI divergence (uses mfi computed earlier in this function — out[f"mfi_{tf}"] guaranteed populated)
+    try:
+        from ez_indicators import detect_divergence as _detect_div_mfi
+        mfi_arr = out.get(f"mfi_{tf}")
+        if mfi_arr is not None and len(mfi_arr) == n:
+            cl_arr = close.values.astype(np.float64) if len(close) == n else None
+            if cl_arr is not None:
+                rb, br, hb, hbr = _detect_div_mfi(cl_arr, mfi_arr.astype(np.float64), lookback=5, decay=10)
+                out[f"div_reg_bull_mfi_{tf}"] = rb
+                out[f"div_reg_bear_mfi_{tf}"] = br
+                out[f"div_hid_bull_mfi_{tf}"] = hb
+                out[f"div_hid_bear_mfi_{tf}"] = hbr
     except Exception:
         pass
     # Heikin Ashi
@@ -376,6 +403,58 @@ def fabricate_3m(df_15m):
             rows.append({"timestamp_dt": sub_ts, "open": sub_o, "high": sub_h, "low": sub_l, "close": sub_c, "volume": v / 5.0})
     df = pd.DataFrame(rows).set_index("timestamp_dt").sort_index()
     return df
+
+
+def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base_tf: str) -> None:
+    # Improvement Framework A1+A2 (2026-04-25): inject Binance Futures funding rate + open interest as NPZ fields.
+    # Cache populated by binance_funding_fetcher.py and binance_oi_fetcher.py.
+    # Forward-fill aligned to base_tf bar grid. Missing cache → zeros (caller can detect via key presence).
+    n = len(ts_epoch_sec)
+    funding_arr = np.zeros(n, dtype=np.float32)
+    funding_path = BASE_PATH / "data" / "funding_cache" / f"{symbol}.json"
+    if funding_path.exists():
+        try:
+            recs = json.loads(funding_path.read_text())
+            if recs:
+                ts_fr = np.array([int(r["fundingTime"]) // 1000 for r in recs], dtype=np.int64)
+                rates = np.array([float(r["fundingRate"]) for r in recs], dtype=np.float32)
+                idx = np.searchsorted(ts_fr, ts_epoch_sec, side="right") - 1
+                idx = np.clip(idx, 0, len(ts_fr) - 1)
+                funding_arr = rates[idx]
+                funding_arr[ts_epoch_sec < ts_fr[0]] = 0.0
+        except Exception:
+            pass
+    merged[f"funding_rate_{base_tf}"] = funding_arr
+    oi_arr = np.zeros(n, dtype=np.float32)
+    oi_value_arr = np.zeros(n, dtype=np.float32)
+    oi_change_15m_arr = np.zeros(n, dtype=np.float32)
+    oi_change_1h_arr = np.zeros(n, dtype=np.float32)
+    oi_path = BASE_PATH / "data" / "oi_cache" / f"{symbol}.json"
+    if oi_path.exists():
+        try:
+            recs = json.loads(oi_path.read_text())
+            if recs:
+                ts_oi = np.array([int(r["timestamp"]) // 1000 for r in recs], dtype=np.int64)
+                oi = np.array([float(r["sumOpenInterest"]) for r in recs], dtype=np.float32)
+                oiv = np.array([float(r["sumOpenInterestValue"]) for r in recs], dtype=np.float32)
+                idx = np.searchsorted(ts_oi, ts_epoch_sec, side="right") - 1
+                idx = np.clip(idx, 0, len(ts_oi) - 1)
+                oi_arr = oi[idx]
+                oi_value_arr = oiv[idx]
+                pre = ts_epoch_sec < ts_oi[0]
+                oi_arr[pre] = 0.0; oi_value_arr[pre] = 0.0
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    oi_prev = np.roll(oi_arr, 1); oi_prev[0] = oi_arr[0]
+                    oi_change_15m_arr = np.where(oi_prev > 0, (oi_arr - oi_prev) / oi_prev * 100.0, 0.0).astype(np.float32)
+                    lag_1h = {"3m": 20, "5m": 12, "15m": 4}.get(base_tf, 4)
+                    oi_lag = np.roll(oi_arr, lag_1h); oi_lag[:lag_1h] = oi_arr[:lag_1h]
+                    oi_change_1h_arr = np.where(oi_lag > 0, (oi_arr - oi_lag) / oi_lag * 100.0, 0.0).astype(np.float32)
+        except Exception:
+            pass
+    merged[f"oi_{base_tf}"] = oi_arr
+    merged[f"oi_value_{base_tf}"] = oi_value_arr
+    merged[f"oi_change_15m_{base_tf}"] = oi_change_15m_arr
+    merged[f"oi_change_1h_{base_tf}"] = oi_change_1h_arr
 
 
 def compute_symbol(symbol: str, mode: str) -> bool:
@@ -580,6 +659,12 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     merged["wt_composite_short"] = comp_short.astype(np.float32)
     merged["wt_composite_delta"] = (comp_long - comp_short).astype(np.float32)
     merged["wt_composite_bias"] = np.where(comp_long > comp_short, 1, np.where(comp_short > comp_long, -1, 0)).astype(np.int8)
+    # Inject funding rate + open interest from cache (Improvement Framework A1+A2, 2026-04-25)
+    if mode == "crypto":
+        try:
+            _inject_funding_oi(merged, symbol, ts_epoch, base_tf)
+        except Exception as _e:
+            logger.warning(f"[FUNDING_OI_INJECT] {symbol}: {_e}")
     # Save
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{symbol}.npz"

@@ -1364,6 +1364,8 @@ class Position:
     augment_reason: str = ""
     reduction_reason: str = ""
     mark_price_last_updated: Optional[datetime] = None
+    is_hedge: bool = False
+    hedge_for: Optional[str] = None
     @classmethod
 
     def from_dict(cls, data: Dict[str, Any]) -> "Position":
@@ -1394,7 +1396,7 @@ class Position:
                     try: return pd.to_datetime(x, utc=True).to_pydatetime()
                     except (ValueError, TypeError): return None
             return None
-        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=safe_float(data.get("positionAmt")), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=safe_float(data.get("realized_pnl")), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), )
+        return cls( symbol=str(data.get("symbol", "")), position_side=str(data.get("position_side", "")), entry_price=safe_float(data.get("entry_price")), mark_price=safe_float(data.get("mark_price")), positionAmt=safe_float(data.get("positionAmt")), initial_quantity=safe_float(data.get("initial_quantity")), gain=safe_float(data.get("gain")), max_gain=safe_float(data.get("max_gain")), prev_gain=safe_float(data.get("prev_gain")), max_quantity=safe_float(data.get("max_quantity")), last_augmentation_amount=safe_float(data.get("last_augmentation_amount")), last_augmentation_price=safe_float(data.get("last_augmentation_price")), last_augmentation_time=safe_time(data.get("last_augmentation_time")), last_reduction_amount=safe_float(data.get("last_reduction_amount")), last_reduction_price=safe_float(data.get("last_reduction_price")), last_reduction_time=safe_time(data.get("last_reduction_time")), max_positionSize=safe_float(data.get("max_positionSize")), opened_at=safe_time(data.get("opened_at")), last_updated=safe_time(data.get("last_updated")), last_signal=str(data.get("last_signal", "")), realized_pnl=safe_float(data.get("realized_pnl")), unrealized_pnl_USD=safe_float(data.get("unrealized_pnl_USD")), was_reentered=data.get("was_reentered", False), was_reduced=data.get("was_reduced", False), is_reduced=data.get("is_reduced", False), reduced_at=safe_time(data.get("reduced_at")), prev_gain_last_updated=safe_time(data.get("prev_gain_last_updated")), augment_reason=str(data.get("augment_reason", data.get("reason", ""))), reduction_reason=str(data.get("reduction_reason", data.get("reason", ""))), mark_price_last_updated=safe_time(data.get("mark_price_last_updated")), is_hedge=bool(data.get("is_hedge", False)), hedge_for=(str(data.get("hedge_for")) if data.get("hedge_for") else None), )
 
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
@@ -4427,6 +4429,16 @@ class HedgeEngine:
         async with self.tracker_manager._hedges_lock:
             self.tracker_manager.active_hedges = [h for h in self.tracker_manager.active_hedges if h.get('position_key') != position_key]
             self.tracker_manager.active_hedges.append(hedge_record)
+        # 2026-04-25: write is_hedge/hedge_for directly onto the Position object (now slot-permitted)
+        # so R6 ground-truth checks see authoritative is_hedge=True without needing the reason fallback.
+        if position_key:
+            try:
+                _hedge_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key)
+                if _hedge_pos is not None:
+                    _hedge_pos.is_hedge = True
+                    _hedge_pos.hedge_for = _lpk
+            except Exception as _hf_e:
+                logger.debug(f"[HEDGE_FLAG_MUTATE_ERR] {position_key}: {_hf_e}")
         if position_key:
             async with self.tracker_manager._exit_candidates_lock:
                 if position_key not in self.tracker_manager.exit_candidates:

@@ -19973,7 +19973,11 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     # tradeable_keys is NOT used here: it is polluted with temp hedge keys added
                     # at hedge-open time and removed at close. symbols_{acct}_long/short are
                     # the hand-curated lists that define what is a real main position.
-                    if _r6_is_hedge:
+                    # 2026-04-25 FIX — same-symbol hedges (e.g. ENJUSDT_SHORT hedging ENJUSDT_LONG)
+                    # were always purged because the hedge side IS in the symbols direction list
+                    # for normal trading. Only fire this veto when pos.is_hedge attr is False
+                    # (i.e., we got here via active_hedges-only fallback, not an authoritative flag).
+                    if _r6_is_hedge and not _r6_pos_is_hedge_attr:
                         _r6_long_syms = getattr(trade_manager, f'symbols_{account_key}_long', None) or set()
                         _r6_flat_syms = getattr(trade_manager, f'symbols_{account_key}', None) or set()
                         _r6_short_syms = getattr(trade_manager, f'symbols_{account_key}_short', None) or set()
@@ -19981,7 +19985,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _r6_long_syms = _r6_long_syms | _r6_flat_syms
                         _r6_is_main = (is_long and symbol in _r6_long_syms) or (not is_long and symbol in _r6_short_syms)
                         if _r6_is_main:
-                            logger.warning(f"[HEDGE_CLEANUP_R6_VETO] {position_key}: symbol in direction list (symbols_{account_key}_{'long' if is_long else 'short'}) — main position, purging stale active_hedges record, skipping R6")
+                            logger.warning(f"[HEDGE_CLEANUP_R6_VETO] {position_key}: symbol in direction list (symbols_{account_key}_{'long' if is_long else 'short'}) AND pos.is_hedge=False — main position, purging stale active_hedges record, skipping R6")
                             try:
                                 async with trade_manager.tracker_manager._hedges_lock:
                                     trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
