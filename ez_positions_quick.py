@@ -4874,10 +4874,13 @@ class HedgeEngine:
                                     _hr = next((h for h in self.tracker_manager.active_hedges if isinstance(h, dict) and h.get('position_key') == hedge_key), None)
                                     if _hr:
                                         _hr_ts = _hr.get('timestamp') or _hr.get('opened_at')
-                                        if isinstance(_hr_ts, (int, float)):
-                                            _hedge_opened_at = float(_hr_ts)
+                                        _hedge_opened_at = _safe_ts_epoch(_hr_ts, 0.0) or None
                                 except Exception: pass
-                                _age_min = ((time.time() - _hedge_opened_at) / 60.0) if _hedge_opened_at else 0
+                                if not _hedge_opened_at:
+                                    _hedge_pos_obj = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key) if hasattr(tracker_manager, 'positions_service') else None
+                                    _opo = getattr(_hedge_pos_obj, 'opened_at', None) or getattr(_hedge_pos_obj, 'timestamp', None)
+                                    if _opo: _hedge_opened_at = _safe_ts_epoch(_opo, 0.0) or None
+                                _age_min = ((time.time() - _hedge_opened_at) / 60.0) if _hedge_opened_at else 999.0
                                 _orig_gain = safe_fetch_float(getattr(losing_pos, 'gain', 0), 0)
                                 _orig_max_loss = safe_fetch_float(getattr(losing_pos, 'max_loss_since_hedge', 0), 0)
                                 if _orig_max_loss == 0 or _orig_gain < _orig_max_loss:
