@@ -247,8 +247,8 @@ def main():
         w = csv.writer(csv_f)
         if not csv_exists:
             w.writerow(["iter", "pool_sharpe", "sym_sharpe", "acc_gain_pct", "gain_sym_yr",
-                        "max_dd_pct", "trades", "gain_vs_bh", "elapsed_s", "overrides_count",
-                        "reliable", "useless", "overrides_json"])
+                        "avg_gain_trade", "gain_per_yr", "max_dd_pct", "trades", "gain_vs_bh",
+                        "elapsed_s", "overrides_count", "reliable", "useless", "overrides_json"])
 
         # iter=-1: evaluate baseline (no perturbation) as reference floor
         if not csv_exists:
@@ -266,11 +266,16 @@ def main():
                 rel0 = 1 if tr0 >= floor_total else 0
                 sym_s0 = r0.get("sharpe", 0.0)
                 gsy0 = round(g0 / len(subset) / n_years, 4)
-                w.writerow([-1, round(s0, 4), round(sym_s0, 4), round(g0, 2), gsy0, round(r0.get("max_dd_pct", 0.0), 2),
-                             tr0, round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
+                agt0 = round(g0 / tr0, 4) if tr0 else 0.0
+                gpy0 = round(g0 / n_years, 4)
+                w.writerow([-1, round(s0, 4), round(sym_s0, 4), round(g0, 2), gsy0, agt0, gpy0,
+                             round(r0.get("max_dd_pct", 0.0), 2), tr0,
+                             round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
                              round(time.time() - t_bl, 1), 0, rel0, 0, json.dumps({})])
                 csv_f.flush()
-                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} sym_sharpe={sym_s0:.4f} gain={g0:.1f}% gain_sym_yr={gsy0:.4f}%/sym/yr trades={tr0} reliable={rel0}", flush=True)
+                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} sym_sharpe={sym_s0:.4f} "
+                      f"gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade gain_per_yr={gpy0:.2f}%/yr "
+                      f"gain_sym_yr={gsy0:.4f}%/sym/yr trades={tr0} reliable={rel0}", flush=True)
 
         best_gain = -1e9
         for i in range(args.n_max):
@@ -296,26 +301,32 @@ def main():
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
             n_syms = len(subset)
             gain_sym_yr = round(gain / n_syms / n_years, 4)
+            avg_gain_trade = round(gain / tr, 4) if tr else 0.0
+            gain_per_yr = round(gain / n_years, 4)
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
             reliable = 1 if tr >= floor_total else 0
             useless = 1 if (reliable and sharpe < args.sharpe_useless_floor) else 0
-            w.writerow([i, round(sharpe, 4), round(sym_sharpe, 4), round(gain, 2), gain_sym_yr, round(dd, 2), tr,
+            w.writerow([i, round(sharpe, 4), round(sym_sharpe, 4), round(gain, 2), gain_sym_yr,
+                        avg_gain_trade, gain_per_yr, round(dd, 2), tr,
                         round(gvb, 3), round(el, 1), len(ovr), reliable, useless, json.dumps(ovr)])
             csv_f.flush()
             if gain > best_gain:
                 best_gain = gain
                 print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN pool_sharpe={sharpe:.3f} sym_sharpe={sym_sharpe:.3f} "
-                      f"gain={gain:.1f}% gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
+                      f"gain={gain:.1f}% avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
+                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
                       f"ovr={len(ovr)} el={el:.1f}s", flush=True)
             if reliable and gain >= target_gain and sharpe >= target_sharpe:
                 win = {"iter": i, "pool_sharpe": round(sharpe, 4), "sym_sharpe": round(sym_sharpe, 4),
                        "acc_gain_pct": round(gain, 2), "gain_sym_yr": gain_sym_yr,
+                       "avg_gain_trade": avg_gain_trade, "gain_per_yr": gain_per_yr,
                        "max_dd_pct": round(dd, 2), "trades": tr, "gain_vs_bh": round(gvb, 3),
                        "reliable": reliable, "overrides": ovr}
                 with open(winners_path, "a") as wf:
                     wf.write(json.dumps(win) + "\n")
-                print(f"[AUTO_SEARCH] *** WINNER iter={i} gain={gain:.0f}% gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
-                      f"({gvb:.1f}x BH) pool_sharpe={sharpe:.3f} sym_sharpe={sym_sharpe:.3f} dd={dd:.1f}% tr={tr} ***",
+                print(f"[AUTO_SEARCH] *** WINNER iter={i} pool_sharpe={sharpe:.3f} sym_sharpe={sym_sharpe:.3f} "
+                      f"gain={gain:.0f}% avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
+                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.1f}x BH) dd={dd:.1f}% tr={tr} ***",
                       flush=True)
 
 

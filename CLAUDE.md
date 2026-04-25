@@ -217,6 +217,33 @@ Violating any of these = the number is a LIE and the decision it supports is inv
 
 4. **Number of trades required**: Sharpe on <30 trades per symbol is noise. Prefer samples with ≥200 trades/symbol over pool Sharpe on rare combos.
 
+5. **STANDARD METRIC SET — ALL TESTS MUST REPORT ALL FIVE. NO EXCEPTIONS. (2026-04-25)**
+
+   Every "Best", winner, CSV row, and status report MUST include ALL of:
+
+   | Metric | Formula | Purpose |
+   |---|---|---|
+   | `pool_sharpe` | mean(trade_returns)/std(trade_returns) | Risk-adjusted per-trade quality |
+   | `sym_sharpe` | mean(per-symbol Sharpes) | Diagnostic; shows consistency |
+   | `avg_gain_trade` | acc_gain_pct / trades | Per-trade return — trade-count neutral |
+   | `gain_per_yr` | acc_gain_pct / n_years | Annual return — time-window neutral |
+   | `gain_sym_yr` | acc_gain_pct / n_syms / n_years | Cross-machine comparable unit |
+
+   **Why all five**: `acc_gain_pct` alone is meaningless (a config trading 1000× gets 1000× the raw sum vs one trading 10×). You MUST normalize by trade count (`avg_gain_trade`) AND time (`gain_per_yr`) AND symbols (`gain_sym_yr`) to compare apples to apples.
+
+   **"Translating" old results** (winners JSONL without these fields): compute on the fly:
+   - Tradier workers: n_syms=114, n_years=(current_date − 2022-01-01).days/365.25 ≈ 4.32
+   - Crypto workers: n_syms=50, n_years≈4.32
+   - Formula: avg_gain_trade = acc_gain_pct/trades, gain_per_yr = acc_gain_pct/n_years, gain_sym_yr = acc_gain_pct/n_syms/n_years
+
+   **When reporting "Best" anywhere** (status updates, summaries, CLAUDE.md, memory):
+   ```
+   pool_sharpe=X.XXXX | avg_gain_trade=X.XX%/trade | gain_per_yr=XX.X%/yr | gain_sym_yr=X.XXXX%/sym/yr | trades=NNN | dd=X.X%
+   ```
+
+   **autonomous_search.py CSV columns** (canonical order as of 2026-04-25):
+   `iter, pool_sharpe, sym_sharpe, acc_gain_pct, gain_sym_yr, avg_gain_trade, gain_per_yr, max_dd_pct, trades, gain_vs_bh, elapsed_s, overrides_count, reliable, useless, overrides_json`
+
 Violations = the 15-sym-40-Sharpe lie that collapsed to 0.35 on full data. This rule prevents reliving that.
 
 ---
