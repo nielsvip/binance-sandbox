@@ -4899,6 +4899,13 @@ class HedgeEngine:
                                 if hedge_gain < -0.3 and _age_min > _max_age:
                                     _scalp_close_fire = True
                                     _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%"
+                                # Rule D — 1m WT flipped against hedge direction: price reversed, close immediately
+                                if not _scalp_close_fire and _age_min >= 2.0:
+                                    _wt_bull_1m = h_ind.get('wt_bullish_1m')
+                                    if _wt_bull_1m is not None:
+                                        if (not _abs_h_is_long and _wt_bull_1m is True) or (_abs_h_is_long and _wt_bull_1m is False):
+                                            _scalp_close_fire = True
+                                            _scalp_reason = f"D_1m_{'bull' if _wt_bull_1m else 'bear'}_vs_{'SHORT' if not _abs_h_is_long else 'LONG'}_age={_age_min:.1f}m_h={hedge_gain:.2f}%"
                                 if _scalp_close_fire:
                                     logger.critical(f"🛑 [HEDGE_CLOSE_SCALP] {hedge_key}: {_scalp_reason} → CLOSING (hedge_gain={hedge_gain:.2f}% orig_gain={_orig_gain:.2f}% combined={_combined_pnl:.2f}%)")
                                     try:
