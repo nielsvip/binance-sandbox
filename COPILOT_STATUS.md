@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 02:01:47 UTC
+# Copilot Status — 2026-04-25 02:17:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T01:57:20
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T01:57:21
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T01:58:22
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T01:59:23
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T01:59:23
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T01:59:23
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:00:24
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T02:01:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T02:01:25
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:01:26
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:11:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:12:44
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T02:13:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T02:13:45
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:13:46
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:14:47
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T02:15:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T02:15:48
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:15:49
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T02:16:50
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,16 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-13.5%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-14.7%
 
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **FARTCOINUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
+- WATCHING: **API3USDT** LONG (crypto) peaked +3.3%, exited 0m ago
 
 ## Supervisor
 
