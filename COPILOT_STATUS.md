@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 06:33:30 UTC
+# Copilot Status — 2026-04-25 06:43:45 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:28:23
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:29:24
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T06:30:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T06:30:25
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:30:25
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:31:27
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T06:32:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T06:32:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:32:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:33:29
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T06:40:40
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:40:40
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T06:41:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:41:41
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T06:42:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T06:42:42
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T06:42:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:42:42
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-25T06:43:44
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T06:43:44
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 1 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-13.3%
+- HELD: **MOVRUSDT** LONG (crypto) peak +6.6%, now +-14.0%
 
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +14.3%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
@@ -47,4 +47,4 @@ _None_
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_positions.py is NOT running
-- [MEDIUM] ez_prices.py running but log stale (119min)
+- [MEDIUM] ez_prices.py running but log stale (129min)
