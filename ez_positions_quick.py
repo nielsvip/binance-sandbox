@@ -4857,44 +4857,52 @@ class HedgeEngine:
                                 except Exception as _abs_e:
                                     logger.error(f"[HEDGE_CLOSE_WT3M1H_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
                                 continue
-                            # 2026-04-24 SCALP-MODE HEDGE CLOSE (user directive for fast scalp hedges):
-                            # Close hedge on ANY 1m OR 3m structure going against (LH/HH), not waiting
-                            # for wt_3m+wt_1h confirmation. Faster capital release for re-hedging cycles.
-                            # Reason: scalp hedges are minutes-scale — waiting for 1h wt confirms loses
-                            # the micro-reversal window where the original position is about to recover.
+                            # 2026-04-25 SCALP HEDGE CLOSE v2 — gain-based, not structure-based.
+                            # WIFUSDC incident: SHORT opened -0.62%, hedge LONG opened late at -0.25%,
+                            # both stuck losing. Structure check wasn't firing because price just
+                            # oscillated. The REAL close signal is combined P&L recovery OR hedge-age.
+                            # Rules (any triggers close):
+                            #   A) hedge_gain >= +0.2% AND original's loss stopped deepening
+                            #      (take hedge profit, original can recover on its own)
+                            #   B) combined (hedge+original) P&L improved by ≥0.3pp from worst-point
+                            #      since hedge opened — the reversal is underway
+                            #   C) hedge_age > HEDGE_SCALP_MAX_AGE_MIN (default 15min) AND hedge_gain<0
+                            #      — stuck losing hedge, cut losses on the hedge leg
                             if bool(getattr(config, 'HEDGE_CLOSE_SCALP_MODE', False)) and hedge_amt > 0.001:
-                                _h1 = safe_fetch_float(h_ind.get('high_1m', 0), 0)
-                                _l1 = safe_fetch_float(h_ind.get('low_1m', 0), 0)
-                                _h1p = safe_fetch_float(h_ind.get('high_1m_prev', 0), 0)
-                                _l1p = safe_fetch_float(h_ind.get('low_1m_prev', 0), 0)
-                                _h3 = safe_fetch_float(h_ind.get('high_3m', 0), 0)
-                                _l3 = safe_fetch_float(h_ind.get('low_3m', 0), 0)
-                                _h3p = safe_fetch_float(h_ind.get('high_3m_prev', 0), 0)
-                                _l3p = safe_fetch_float(h_ind.get('low_3m_prev', 0), 0)
-                                _struct_against = False; _reason = ""
-                                if _abs_h_is_long:
-                                    # LONG hedge closes when structure goes DOWN (LH or LL) — price
-                                    # reversing up (against the LONG hedge, which profits on DOWN).
-                                    # Wait — correction: LONG hedge protects SHORT loser → SHORT loser
-                                    # profits when price DOWN → LONG hedge is AGAINST us when price DOWN.
-                                    # So LONG hedge should close when price heads UP (HH/HL) = original
-                                    # SHORT is about to recover → don't need hedge.
-                                    if _h1p > 0 and _h1 > _h1p: _struct_against = True; _reason = f"HH_1m_{_h1:.6g}>{_h1p:.6g}"
-                                    elif _l1p > 0 and _l1 > _l1p: _struct_against = True; _reason = f"HL_1m_{_l1:.6g}>{_l1p:.6g}"
-                                    elif _h3p > 0 and _h3 > _h3p: _struct_against = True; _reason = f"HH_3m_{_h3:.6g}>{_h3p:.6g}"
-                                    elif _l3p > 0 and _l3 > _l3p: _struct_against = True; _reason = f"HL_3m_{_l3:.6g}>{_l3p:.6g}"
-                                else:
-                                    # SHORT hedge protects LONG loser → LONG loser profits when price UP
-                                    # → SHORT hedge is AGAINST us when price UP. Close when price heads
-                                    # DOWN (LH/LL) = original LONG about to recover.
-                                    if _h1p > 0 and _h1 < _h1p: _struct_against = True; _reason = f"LH_1m_{_h1:.6g}<{_h1p:.6g}"
-                                    elif _l1p > 0 and _l1 < _l1p: _struct_against = True; _reason = f"LL_1m_{_l1:.6g}<{_l1p:.6g}"
-                                    elif _h3p > 0 and _h3 < _h3p: _struct_against = True; _reason = f"LH_3m_{_h3:.6g}<{_h3p:.6g}"
-                                    elif _l3p > 0 and _l3 < _l3p: _struct_against = True; _reason = f"LL_3m_{_l3:.6g}<{_l3p:.6g}"
-                                if _struct_against:
-                                    logger.critical(f"🛑 [HEDGE_CLOSE_SCALP] {hedge_key}: {_reason} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING (scalp-mode, original about to recover, gain={hedge_gain:.2f}%)")
+                                _hedge_opened_at = None
+                                try:
+                                    _hr = next((h for h in self.tracker_manager.active_hedges if isinstance(h, dict) and h.get('position_key') == hedge_key), None)
+                                    if _hr:
+                                        _hr_ts = _hr.get('timestamp') or _hr.get('opened_at')
+                                        if isinstance(_hr_ts, (int, float)):
+                                            _hedge_opened_at = float(_hr_ts)
+                                except Exception: pass
+                                _age_min = ((time.time() - _hedge_opened_at) / 60.0) if _hedge_opened_at else 0
+                                _orig_gain = safe_fetch_float(getattr(losing_pos, 'gain', 0), 0)
+                                _orig_max_loss = safe_fetch_float(getattr(losing_pos, 'max_loss_since_hedge', 0), 0)
+                                if _orig_max_loss == 0 or _orig_gain < _orig_max_loss:
+                                    try: losing_pos.max_loss_since_hedge = min(_orig_max_loss, _orig_gain) if _orig_max_loss else _orig_gain
+                                    except Exception: pass
+                                _orig_recovery_pp = _orig_gain - _orig_max_loss  # positive = recovering
+                                _combined_pnl = _orig_gain + hedge_gain
+                                _scalp_close_fire = False; _scalp_reason = ""
+                                # Rule A — hedge profitable enough, original stopped worsening
+                                if hedge_gain >= 0.2 and _orig_recovery_pp >= 0:
+                                    _scalp_close_fire = True
+                                    _scalp_reason = f"A_hedge_tp_h={hedge_gain:.2f}%_orig_recov={_orig_recovery_pp:.2f}pp"
+                                # Rule B — combined recovery of 0.3pp
+                                elif _orig_recovery_pp >= 0.3 and _orig_gain < 0:
+                                    _scalp_close_fire = True
+                                    _scalp_reason = f"B_combined_recov_orig={_orig_gain:.2f}%_max_loss={_orig_max_loss:.2f}%_recov={_orig_recovery_pp:.2f}pp"
+                                # Rule C — stuck losing hedge timeout
+                                _max_age = float(getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', 15.0) or 15.0)
+                                if hedge_gain < -0.3 and _age_min > _max_age:
+                                    _scalp_close_fire = True
+                                    _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%"
+                                if _scalp_close_fire:
+                                    logger.critical(f"🛑 [HEDGE_CLOSE_SCALP] {hedge_key}: {_scalp_reason} → CLOSING (hedge_gain={hedge_gain:.2f}% orig_gain={_orig_gain:.2f}% combined={_combined_pnl:.2f}%)")
                                     try:
-                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_SCALP_{_reason}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_SCALP_{_scalp_reason}", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                         await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                                     except Exception as _scalp_e:
                                         logger.error(f"[HEDGE_CLOSE_SCALP_FAIL] {hedge_key}: {_scalp_e}", exc_info=True)
