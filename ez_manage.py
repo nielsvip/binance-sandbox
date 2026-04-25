@@ -20340,7 +20340,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                 logger.error(f"[PPL_WEBHOOK2_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
                                 _ppl_ok = False
                         if _ppl_ok:
-                            trade_manager.partial_profit_lock_state[position_key] = {'fired': True, 'first_exit_price': current_price, 'stop_level': _ppl_be_stop, 'stop_upgraded': False}
+                            _ppl_eff_entry = _ppl_entry_px * (1.0 - _ppl_frac * (1.0 + _pp_gain / 100.0)) / (1.0 - _ppl_frac) if is_long else _ppl_entry_px * (1.0 - _ppl_frac * (1.0 - _pp_gain / 100.0)) / (1.0 - _ppl_frac)
+                            trade_manager.partial_profit_lock_state[position_key] = {'fired': True, 'first_exit_price': current_price, 'stop_level': _ppl_be_stop, 'stop_upgraded': False, 'effective_entry': _ppl_eff_entry}
+                            logger.info(f"[PPL_EFF_ENTRY] {position_key}: entry={_ppl_entry_px:.6f} → effective_entry={_ppl_eff_entry:.6f} (gain_locked={_pp_gain:.4f}%, frac={_ppl_frac})")
                             return f"{EvalStatus.ACTION_TAKEN}:PPL_TP_URL2"
                 if _ppl_fired and not _ppl_stop_upgraded and _pp_gain >= _ppl_arm_gain and _ppl_first_exit_px > 0:
                     trade_manager.partial_profit_lock_state[position_key] = {**_ppl_state, 'stop_level': _ppl_first_exit_px, 'stop_upgraded': True}

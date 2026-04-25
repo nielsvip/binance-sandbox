@@ -384,7 +384,7 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-21: underperformed at 0.5%. 2026-04-25 rapid-grid CONFIRMED ESSENTIAL: removing PPL from 2p4860 baseline costs −1.36 pool_sharpe (2.44→1.08). Baseline uses PARTIAL_PROFIT_LOCK_GAIN_PCT≈0.9375. Higher thresholds (1.5–5%) not yet tested — pending 2026-04-25 extended sweep. Use PARTIAL_PROFIT_LOCK_GAIN_PCT (not _TRADIER key) for vectorized sweeps.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-25 PPL SWEEP (114-sym, corrected key): 0.5%=2.83 Sharpe/114%gain | 0.9375%(baseline)=2.44/171% | 1.5%=1.78/206% | 2.0%=1.51/226% | 3.0%=1.25/244% | 5.0%=1.09/262% | disabled=1.08/247%. TRADEOFF: lower threshold → higher Sharpe, lower total gain. 0.5% optimal for risk-adjusted; 0.9375% optimal for raw returns. Use PARTIAL_PROFIT_LOCK_GAIN_PCT (not _TRADIER key) for vectorized sweeps.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
