@@ -4897,13 +4897,13 @@ class HedgeEngine:
                                 elif _orig_recovery_pp >= 0.3 and _orig_gain < 0:
                                     _scalp_close_fire = True
                                     _scalp_reason = f"B_combined_recov_orig={_orig_gain:.2f}%_max_loss={_orig_max_loss:.2f}%_recov={_orig_recovery_pp:.2f}pp"
-                                # Rule C — stuck losing hedge timeout
-                                _max_age = float(getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', 15.0) or 15.0)
+                                # Rule C — stuck losing hedge timeout (5 min, was 15)
+                                _max_age = float(getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', 5.0) or 5.0)
                                 if hedge_gain < -0.3 and _age_min > _max_age:
                                     _scalp_close_fire = True
                                     _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%"
-                                # Rule D — 1m WT flipped against hedge direction: price reversed, close immediately
-                                if not _scalp_close_fire and _age_min >= 2.0:
+                                # Rule D — 1m WT against hedge: close immediately, no age gate
+                                if not _scalp_close_fire:
                                     _wt_bull_1m = h_ind.get('wt_bullish_1m')
                                     if _wt_bull_1m is not None:
                                         if (not _abs_h_is_long and _wt_bull_1m is True) or (_abs_h_is_long and _wt_bull_1m is False):
