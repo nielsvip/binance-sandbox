@@ -1227,6 +1227,49 @@ def bb_features(series: pd.Series, length: int = 20, std_mult: float = 2.0) -> T
     return upper, lower, max(0.0, min(1.0, pct_b))
 
 
+def kc_features(close_series: pd.Series, high_series: pd.Series, low_series: pd.Series, length: int = 20, atr_mult: float = 1.5) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    # Keltner Channel: EMA(close, length) ± atr_mult × ATR(length). Used by Squeeze (BB-inside-KC compression).
+    if close_series is None or len(close_series) < length:
+        return None, None, None
+    ema_mid = close_series.ewm(span=length, adjust=False).mean()
+    df_atr = pd.DataFrame({"high": high_series, "low": low_series, "close": close_series})
+    atr = atr_series(df_atr, length)
+    if atr is None or atr.empty:
+        return None, None, None
+    mid = float(ema_mid.iloc[-1])
+    a = float(atr.iloc[-1])
+    if not (pd.notna(mid) and pd.notna(a) and a > 0):
+        return None, None, None
+    upper = mid + atr_mult * a
+    lower = mid - atr_mult * a
+    return upper, mid, lower
+
+
+def squeeze_features(close_series: pd.Series, high_series: pd.Series, low_series: pd.Series, length: int = 20, bb_mult: float = 2.0, kc_mult: float = 1.5) -> Tuple[Optional[bool], Optional[int]]:
+    # Squeeze (LazyBear / TTM): ON when BB is INSIDE KC (low volatility compression).
+    # Fire: when squeeze RELEASES (BB exits KC) — direction from close vs midline. Returns (is_squeezed, fire_dir)
+    # fire_dir: +1 = bull release (close > mid on release bar), -1 = bear release, 0 = no release this bar.
+    if close_series is None or len(close_series) < length + 1:
+        return None, None
+    bb_u, bb_l, _ = bb_features(close_series, length=length, std_mult=bb_mult)
+    kc_u, kc_m, kc_l = kc_features(close_series, high_series, low_series, length=length, atr_mult=kc_mult)
+    if any(v is None for v in (bb_u, bb_l, kc_u, kc_m, kc_l)):
+        return None, None
+    is_squeezed_now = bool(bb_u <= kc_u and bb_l >= kc_l)
+    # Prior bar squeeze state (need length+1 bars for prior eval)
+    prev_close = close_series.iloc[:-1]
+    prev_high = high_series.iloc[:-1] if high_series is not None else None
+    prev_low = low_series.iloc[:-1] if low_series is not None else None
+    bb_u_p, bb_l_p, _ = bb_features(prev_close, length=length, std_mult=bb_mult)
+    kc_u_p, kc_m_p, kc_l_p = kc_features(prev_close, prev_high, prev_low, length=length, atr_mult=kc_mult) if prev_high is not None and prev_low is not None else (None, None, None)
+    was_squeezed = bool(bb_u_p is not None and bb_l_p is not None and kc_u_p is not None and kc_l_p is not None and bb_u_p <= kc_u_p and bb_l_p >= kc_l_p)
+    fire_dir = 0
+    if was_squeezed and not is_squeezed_now:
+        last_close = float(close_series.iloc[-1])
+        fire_dir = 1 if last_close > kc_m else (-1 if last_close < kc_m else 0)
+    return is_squeezed_now, int(fire_dir)
+
+
 def bb_auto_tune(high_series: pd.Series, low_series: pd.Series, close_series: pd.Series, length: int = 20, lookback: int = 100, touch_pct: float = 0.002) -> Tuple[float, float, float, float, int]:
     """Auto-tune BB σ multiplier to maximize upper+lower band touches.
     Sweeps σ from 1.5 to 3.5, counts bars where high touches upper or low touches lower.

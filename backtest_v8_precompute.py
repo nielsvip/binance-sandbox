@@ -291,6 +291,26 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     out[f"bb_upper_{tf}"] = bb_upper.values.astype(np.float32)
     out[f"bb_lower_{tf}"] = bb_lower.values.astype(np.float32)
     out[f"bb_pct_b_{tf}"] = np.where(bb_width > 0, (close - bb_lower) / bb_width, 0.5).astype(np.float32)
+    # Keltner Channel + Squeeze (LazyBear/TTM): EMA(20) ± 1.5 × ATR(20). Squeeze ON when BB is inside KC.
+    # Squeeze release (fire) direction: close vs KC midline on release bar. +1 bull, -1 bear, 0 none.
+    # Added 2026-04-25 for Improvement Framework A3. NEEDS Tier 2 sweep before live.
+    kc_mid = close.ewm(span=20, adjust=False).mean()
+    tr1 = high - low
+    tr2 = (high - close.shift(1)).abs()
+    tr3 = (low - close.shift(1)).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1).fillna(0)
+    atr20 = tr.ewm(span=20, adjust=False, min_periods=20).mean()
+    kc_upper = kc_mid + 1.5 * atr20
+    kc_lower = kc_mid - 1.5 * atr20
+    out[f"kc_upper_{tf}"] = kc_upper.values.astype(np.float32)
+    out[f"kc_mid_{tf}"] = kc_mid.values.astype(np.float32)
+    out[f"kc_lower_{tf}"] = kc_lower.values.astype(np.float32)
+    is_squeezed = ((bb_upper <= kc_upper) & (bb_lower >= kc_lower)).fillna(False)
+    out[f"squeeze_{tf}"] = is_squeezed.values.astype(np.int8)
+    was_squeezed = is_squeezed.shift(1).fillna(False)
+    released = was_squeezed & (~is_squeezed)
+    fire = np.where(released & (close > kc_mid), 1, np.where(released & (close < kc_mid), -1, 0))
+    out[f"squeeze_fire_{tf}"] = fire.astype(np.int8)
     # MACD (1h, 4h, D only)
     if tf in ("1h", "4h", "D"):
         ema12 = close.ewm(span=12, adjust=False).mean()

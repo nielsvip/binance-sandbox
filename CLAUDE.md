@@ -32,13 +32,11 @@ cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
 # 2. Then edit
 ```
 
-**Additionally — autosave runs every 15 minutes via launchd:**
-- `autosave_15min.py` copies all critical files to `backups/autosave/<timestamp>/`
-- Auto-commits to git every 15 min as safety net
-- LaunchAgent: `~/Library/LaunchAgents/com.niels.autosave-15min.plist`
-- If autosave process dies, launchd restarts it. If missing, reload it.
+**Autosave runs every 15 min via launchd:**
+- `autosave_15min.py` → `backups/autosave/<timestamp>/`, auto-commits to git as safety net
+- LaunchAgent: `~/Library/LaunchAgents/com.niels.autosave-15min.plist`. If process dies, launchd restarts. If missing, reload it.
 
-**If you find yourself editing without a fresh backup STOP — create the backup first.** Losing an hour of work because rogue agent reverted something = unacceptable. The /backups/ folder is the ONLY reliable history — `.history/` is stale, git has 1 ancient commit.
+**Editing without a fresh backup = STOP, backup first.** /backups/ is the ONLY reliable history — `.history/` is stale, git has 1 ancient commit.
 
 ---
 
@@ -62,10 +60,10 @@ Plus the backtest infrastructure: `v8_quick_engine.py`, `v8_quick_sweep.py`, `ba
 5. **Never edit scripts on servers** (per "Current Operating Mode"). If an edit on a server is required, STOP and do it on MacBook first, then rsync.
 6. **Never use `push.py`**. Use `rsync --existing --update` — this preserves server-local files that never existed on MacBook and does not re-add files MacBook has archived to /old.
 
-### Past disasters caused by sandbox drift (to prevent, not to relive)
+### Past disasters from sandbox drift (prevent, not relive)
 
-- 2026-04-14: 33 canonical switches wiped by a revert — sandbox had older version that got copied back. See `data/sweep_alerts/FIX_REQUIRED_*.json`.
-- 2026-04-16 early: D4 breakout multi-lung sweep on S2 ran 5 configs with wrong engine (MacBook had newer `v8_quick_engine.py` with D4 logic, S2 had pre-D4 stub). Results were garbage. Caught before poisoning decision DB — only by explicit parity check.
+- 2026-04-14: 33 canonical switches wiped — sandbox had older version, got copied back. See `data/sweep_alerts/FIX_REQUIRED_*.json`.
+- 2026-04-16: D4 breakout sweep on S2 ran 5 configs with wrong engine (MacBook had newer `v8_quick_engine.py` D4 logic, S2 had pre-D4 stub). Garbage results, caught only by parity check before poisoning decision DB.
 
 ### The sync command (run anytime)
 
@@ -78,16 +76,16 @@ rsync -az --existing --update \
 # Then repeat with s2-int.
 ```
 
-### Files that LEGITIMATELY differ between machines
+### Files that LEGITIMATELY differ
 
-- `/old/inventory_*/` archives — each machine has its own history
+- `/old/inventory_*/` — per-machine history
 - `data/sweep_results/*.csv` — servers write, MacBook reads
 - `data/decisions/` JSONL — live-only on MacBook
 - `SWEEP_RUNNING` lock — server-specific
 - `backups/autosave/` — MacBook-only (15min launchd)
-- `klines_cache*/` — bidirectional rsync handled separately
+- `klines_cache*/` — bidirectional rsync separate
 
-Anything NOT in that legitimate-differ list must bit-match. If you find a drift, fix it IMMEDIATELY — don't queue it.
+Anything else must bit-match. Drift = fix IMMEDIATELY, don't queue.
 
 ---
 
@@ -125,11 +123,11 @@ nohup "$V8_PYTHON" -u v8_test_queue.py --mode tradier > ~/logs/v8_test_queue_tra
 
 ### Monitoring
 
-- Result files land in `data/test_queue_results/abtest_<param>_<ts>.json` on the runner's machine.
-- If you see `WINNER=<X>  Δ=0.000` with both arms at `sharpe=0.000 trades=0`, that's still a sign of either mode mismatch OR baseline being too weak to generate trades — investigate, don't trust the winner field.
-- Per `feedback_sharpe_2_baseline.md`: a result with baseline Sharpe < 2 is trash. Re-run on stronger baseline.
+- Results: `data/test_queue_results/abtest_<param>_<ts>.json` on runner machine.
+- `WINNER=<X> Δ=0.000` with both arms `sharpe=0.000 trades=0` = mode mismatch OR baseline too weak to generate trades — investigate, don't trust winner.
+- Per `feedback_sharpe_2_baseline.md`: baseline Sharpe < 2 = trash. Re-run on stronger baseline.
 
-**If this rule gets violated again:** the guard in `v8_test_queue.py` will log `MODE_CONFIG_MISMATCH_SKIP` loudly. That's the signal — do not ignore it.
+**Violation signal:** `v8_test_queue.py` logs `MODE_CONFIG_MISMATCH_SKIP` — do not ignore.
 
 ---
 
@@ -295,20 +293,20 @@ Violations = the 15-sym-40-Sharpe lie that collapsed to 0.35 on full data. This 
 
 ### 🔴 RULE: ANY LIVE EDIT → SANDBOX SYNC IS NOT OPTIONAL
 
-**If you edit a live file on MacBook and do NOT sync it to S1 + S2 in the same turn, the sandboxes are now testing OLD code and every backtest/sweep that runs on them is LYING.** This has cost real money before (2026-04-14 canonical-switch wipeout, 2026-04-16 D4 stub mismatch). It will keep costing money until the reflex is automatic.
+**Edit a live file on MacBook without rsyncing to S1+S2 in the same turn = sandboxes test OLD code, every backtest/sweep LIES.** Has cost real money before (2026-04-14 canonical-switch wipeout, 2026-04-16 D4 stub mismatch). Reflex must be automatic.
 
-**The reflex** — after EVERY edit to any live file in the 6-critical list (`ez_manage.py`, `ez_positions_quick.py`, `ez_positions_service.py`, `tradier_manage.py`, `config.py`, `config_tradier.py`) OR the backtest infra (`v8_quick_engine.py`, `v8_quick_sweep.py`, `backtest_v8_*.py`, `breakout_multi_lung.py`, any other `ez_*.py`/`tradier_*.py`/`wt_*.py`/`utils.py`/`symbols.json`):
+**Files requiring rsync after edit** — 6-critical list (`ez_manage.py`, `ez_positions_quick.py`, `ez_positions_service.py`, `tradier_manage.py`, `config.py`, `config_tradier.py`) OR backtest infra (`v8_quick_engine.py`, `v8_quick_sweep.py`, `backtest_v8_*.py`, `breakout_multi_lung.py`, any `ez_*.py`/`tradier_*.py`/`wt_*.py`/`utils.py`/`symbols.json`):
 
 ```bash
-# Run these in the same turn as the edit, no exceptions:
+# Same turn as the edit, no exceptions:
 rsync -az --existing --update <edited_files> niels@157.180.125.52:/home/niels/binance-sandbox/
 rsync -az --existing --update <edited_files> niels@204.168.181.211:/home/niels/binance-sandbox/
 # Verify md5 match across MacBook + S1 + S2.
 ```
 
-**If a sweep is currently running on S1 or S2** and you just synced new code, flag it: the running worker has the OLD code loaded in memory — only NEXT-spawned workers pick up the change. Either wait for the sweep to finish a batch naturally, or explicitly restart it with user approval.
+**If a sweep is running on S1/S2 when you sync**: running workers have OLD code in memory — only next-spawned workers pick up the change. Wait for natural batch end OR restart with user approval.
 
-**"I forgot to rsync"** is not an acceptable failure mode. Apply every live-file edit as a two-step atomic: edit + rsync-to-sandboxes. Missing the rsync = the edit didn't happen, because sweeps now test a ghost version of the file.
+Edit + rsync is atomic. Missing rsync = edit didn't happen — sweeps test a ghost file.
 
 ---
 

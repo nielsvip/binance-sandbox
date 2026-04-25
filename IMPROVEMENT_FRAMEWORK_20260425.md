@@ -200,8 +200,8 @@ Candidate doesn't ship unless it dominates or ties 2.6365 across all 5 metrics o
 | C5 | NOLOSS_BYPASS_WT_5OF5 + WRONG_SIDE_ABS_KILL co-sweep | blocked on 2.6365-verify | |
 | A1 | Funding rate ingest + score component | blocked on B+C complete | |
 | A2 | Open Interest ingest + score component | blocked on B+C complete | |
-| A3 | KC + Squeeze fire entry pathway | blocked on A1+A2 | |
-| A4 | WT/MFI divergence detector | blocked on A1+A2 | |
+| A3 | KC + Squeeze fire entry pathway | **DATA LANDED 2026-04-25** | NPZ fields `kc_upper/mid/lower_{tf}`, `squeeze_{tf}`, `squeeze_fire_{tf}` added to backtest_v8_precompute.py. Live helpers `kc_features()` + `squeeze_features()` in ez_indicators.py. Config switches: SQUEEZE_FIRE_ENABLED=False, SQUEEZE_FIRE_TFS=["1h","4h"], SQUEEZE_FIRE_SCORE_BONUS=20. NPZ MUST be regenerated before sweep. Live entry-score wiring still pending — sweep first. md5 parity verified MacBook+S1+S2. |
+| A4 | WT/MFI divergence detector | blocked on A1+A2 | Existing `wt_divergence_{tf}` in precompute is structure-based proxy (peak/trough vs price 20 bars ago); a true pivot-based regular/hidden detector is still missing. |
 | A5 | CVD spot-vs-perp | parking lot | |
 | A6 | Liquidation cascade fade | parking lot | |
 | A7 | ICT/SMC primitives | parking lot | |

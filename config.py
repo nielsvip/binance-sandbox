@@ -1230,6 +1230,14 @@ class Config:
     TR_DCWIDTH4H_SHORT_ENABLED: bool = True  # BC_155e: SHORT boycott in wide DC channel
     TR_DCWIDTH4H_SHORT_MAX: float = 15.0  # BC_155e: Conservative (winners median ~11)
     TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE: int = -25  # BC_155e: Moderate penalty
+    # === SQUEEZE FIRE — Improvement Framework A3 (2026-04-25, default OFF, NEEDS Tier 2 SWEEP) ===
+    # NPZ fields kc_upper/mid/lower_{tf}, squeeze_{tf} (1=BB inside KC), squeeze_fire_{tf} (+1 bull / -1 bear release / 0).
+    # Distinct from BC_150 (ATR-percentile sizing). Squeeze fire is the binary entry trigger BC_150 was approximating.
+    # BB(20, 2.0) inside KC(20, ATR×1.5). Release on the bar BB exits KC; direction = close vs kc_mid.
+    # Replaces dead BB_SQUEEZE_THRESHOLD_1H (no plausible wiring site found 20260416).
+    SQUEEZE_FIRE_ENABLED: bool = False  # default OFF — sweep on top of c08_crypto_winner baseline (pool_sharpe 2.6365)
+    SQUEEZE_FIRE_TFS: List[str] = field(default_factory=lambda: ["1h", "4h"])  # which TFs the fire counts on
+    SQUEEZE_FIRE_SCORE_BONUS: int = 20  # entry score boost when squeeze_fire matches direction
     # === MOMENTUM FADE — ALL ACCOUNTS (2026-03-23 — 117k combos × 207 sym, 99.5%+ WR across 186 sym) ===
     MOMENTUM_FADE_ENABLED: bool = False  # ABLATION_V3_REVERT: was True (BC_113b). Deep 15m test (3yr, 215 sym): +2.36 Sharpe by removing, 94% improved. Momentum fade DESTROYS edge.
     MOMENTUM_FADE_BODY_ATR_MIN: float = 2.0  # BACKTEST_CHANGE_113b: Candle range must be >= 2x ATR to qualify as "big move". 2.0x = sweet spot (WR 96-99%).
