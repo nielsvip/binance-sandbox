@@ -13701,10 +13701,10 @@ class MultiAccountTradeManager:
                 if ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action or 'SCALP' in action) and position.gain < 0.17 and position.gain > 0.04: 
                     action = 'CLOSE'
                 is_huge = abs(float(position.positionAmt)) * old_price > 5 * self.config.START_POSITION_SIZE
-                if not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
+                if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
                 dc_check = (is_long and i.get('dc_low4_3m', 0) > i.get('dc_low_3m', 0))
-                if dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
+                if not is_hedge and dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
                     return 'ABORT STOP draining'
                 if account_key in ['flz', 'men', 'fin'] and position.gain < 0.6 and 'HEDGE' not in action and 'CLOSE' not in action and 'SCALP' not in action and 'QUICK' not in action:
                     if (position.positionAmt < 4 * config.START_POSITION_SIZE/current_price and position.gain > 0.3):
@@ -13763,8 +13763,10 @@ class MultiAccountTradeManager:
                 # AND the profitability check (accept small taker fee only if maker fails).
                 if _is_scalp_v3_reason:
                     _force_webhook_reduces = False
-                if ((_is_profitable_exit or _is_scalp_v3_reason) and not is_hedge and not _force_webhook_reduces):
-                    logger.info(f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) — using maker order for cheaper exit")
+                if is_hedge:
+                    _force_webhook_reduces = False  # hedge closes MUST bypass Finandy no-loss protection
+                if ((_is_profitable_exit or _is_scalp_v3_reason or is_hedge) and not _force_webhook_reduces):
+                    logger.info(f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)")
                     maker_success, executed_qty = await self.place_maker_order(account_key, position_key, symbol, current_real_amt, current_price, quantity, side, position_side, unique_id, f"MAKER_PROFIT_EXIT_{reason}")
                     if maker_success:
                         reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
