@@ -259,6 +259,21 @@ def stoch_k(bars: np.ndarray, period: int = STOCH_PERIOD) -> np.ndarray:
     return k
 
 
+def atr_pct_3m(bars_3m: np.ndarray, period: int = 14) -> Optional[float]:
+    """ATR over last `period` 3m bars, expressed as % of last close. None if insufficient bars."""
+    if bars_3m is None or len(bars_3m) < period + 1: return None
+    tr_list = []
+    for i in range(1, len(bars_3m)):
+        h, l, prev_c = bars_3m[i, 2], bars_3m[i, 3], bars_3m[i - 1, 4]
+        tr = max(h - l, abs(h - prev_c), abs(l - prev_c))
+        tr_list.append(tr)
+    if len(tr_list) < period: return None
+    atr = sum(tr_list[-period:]) / period
+    last_close = bars_3m[-1, 4]
+    if last_close <= 0: return None
+    return atr / last_close * 100.0
+
+
 def load_state() -> dict:
     if not STATE_FILE.exists(): return {"positions": {}, "exit_states": {}}
     try:
@@ -365,7 +380,10 @@ def evaluate_symbol(symbol: str, bars_1m: np.ndarray, state: dict, cfg) -> List[
                     state["exit_states"][key] = asdict_lite(V3ExitState(
                         last_exit_ts=now_ts, k_15m_at_exit=inp.k_15m, k_15m_prev_at_exit=inp.k_15m_prev))
                 continue   # skip regular exit check when in hedge
-            ok, reason = check_scalp_v3_exit(pos, inp, cfg)
+            _atr_pct = atr_pct_3m(bars_3m)
+            ok, reason = check_scalp_v3_exit(pos, inp, cfg, ind={"atr_3m_pct": _atr_pct})
+            # Persist peak_gain_pct mutation back into state dict (V3Position is fresh each cycle)
+            pos_data['peak_gain_pct'] = pos.peak_gain_pct
             # 2026-04-24: VOID-AWARE HOLD EXTENSION. When a non-STALL exit fires but
             # orderbook shows a gap-up void above (for LONG) or gap-down below (SHORT),
             # the path to a better exit is clear — skip this exit cycle and let the

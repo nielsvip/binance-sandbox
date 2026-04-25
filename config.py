@@ -169,6 +169,9 @@ class Config:
     SCALP_V3_SHORT_REQUIRE_RECENT_DUMP: bool = True
     SCALP_V3_SHORT_RECENT_DUMP_PCT: float = 3.0
     SCALP_V3_SHORT_RECENT_DUMP_LOOKBACK_MIN: int = 60
+    SCALP_V3_SHORT_ENTRY_K_3M_MAX: int = 15   # 2026-04-25: SHORT fires when k_3m > 85 (sweep winner). Long uses shared ENTRY_K_3M_MAX=40 (k<40).
+    SCALP_V3_SHORT_ENTRY_K_15M_MAX: int = 30  # SHORT fires when k_15m > 70
+    SCALP_V3_SHORT_ENTRY_K_1H_MAX: int = 40   # SHORT fires when k_1h > 60
     # Dedicated V3 scan loop (2026-04-23): ranks tradeable symbols by sentiment
     # divergence vs global market score. Fastest risers → LONG, fastest fallers → SHORT.
     SCALP_V3_SCAN_INTERVAL_SEC: float = 10.0     # 2026-04-24: 30→10 — protective exits need to fire fast on LH/LL
@@ -207,6 +210,7 @@ class Config:
     # any reversal signal while in gain — before the gain disappears.
     SCALP_V3_PROTECTIVE_EXIT_ENABLED: bool = True
     SCALP_V3_PROTECTIVE_K_DROP_MIN: float = 5.0  # K-point drop threshold (1m or 3m)
+    SCALP_V3_MAX_LOSS_PCT: float = -1.5           # 2026-04-25: hard max loss cap (% gain). Bypasses S/R guard. Uses SCALP_V3_OPEN_PROTECTIVE bypass in UNIVERSAL_NOLOSS_GATE.
     # Support/resistance check before closing (2026-04-24 user): never close a V3
     # position when price is at DC support (LONG) / resistance (SHORT) — bounce likely.
     # Entry-side flag: require S/R proximity on NEW V3 opens (soft filter, off by default).
@@ -221,7 +225,7 @@ class Config:
     SCALP_V3_PG_ARM_PCT: float = 0.5         # peak-giveback arms when gain reaches this %
     SCALP_V3_PG_GIVEBACK_PCT: float = 0.2    # exit when gain drops by this % from peak (after arm)
     SCALP_V3_MIN_TP_FOR_EARLY_EXIT: float = 0.2  # 2026-04-24: when gain >= this, any bar LH/LL fires exit (lock profit early)
-    SCALP_V3_HTF_TREND_VEL_GATE: float = 5.0     # 2026-04-24 NOTUSDT fix: no V3 entry when |wt_velocity_4h| >= this and opposite side. Hard counter-trend block.
+    SCALP_V3_HTF_TREND_VEL_GATE: float = 3.0     # 2026-04-25: 5.0→3.0 (tighter bull-market guard; NOTUSDT incident was vel_4h=+15.3).
     SCALP_V3_USE_HA_3M: bool = True          # 2026-04-24 winners: 6/10 used Heikin-Ashi 3m bars for entry pattern
     SCALP_V3_USE_HA_1M: bool = False         # winners split; keep default off
     # ═══ ORDERBOOK COMPOSITE GATES (2026-04-24 NEW) ═══
@@ -229,6 +233,8 @@ class Config:
     SCALP_V3_OB_MIN_LONG_SCORE: float = 70.0     # min ob_long_score (0..100) for LONG. Was 45.
     SCALP_V3_OB_MIN_SHORT_SCORE: float = 70.0    # min ob_short_score for SHORT.
     SCALP_V3_OB_WALL_TOO_CLOSE_PCT: float = 0.5  # skip entry if opposite-side wall within X% (resistance/support too close)
+    SCALP_V3_OB_MIN_DIFF: float = 30.0           # 2026-04-25: require |ob_long - ob_short| >= this — no near-tied signals
+    SCALP_V3_OB_DIV_CONFLICT_MAX_NET: float = 50.0  # 2026-04-25: when OB says SHORT but div>0.3 (bullish), need |net|>=50 to override conflict
     SCALP_V3_OB_VOID_EXTEND_HOLD: bool = True    # when void above (LONG) or below (SHORT), extend hold — skip non-STALL exits once
     # ═══ GLOBAL ORDERBOOK GATES (2026-04-24) — apply to any account listed. Enter at support, exit at resistance. ═══
     # Per-account opt-in list. If empty, no impact. To enable for ang+men: OB_ENTRY_GATE_ACCOUNTS=["ang","men"].
@@ -495,6 +501,11 @@ class Config:
         # If the hedge mechanism can't keep up, fix the hedge side (faster close rule, better reopen), not the NOLOSS gate.
         # 2026-04-17 CLEARED per user: "WT_CROSS_EXIT, DC_BREAK etc are NOT bypass reasons at all ever."
         # 2026-04-20 re-added GAIN_EROSION → REMOVED again 2026-04-24 (incident: account drain).
+        # 2026-04-25 SCALP_V3: V3 scalper cuts losses via technicals + max-loss stop. Short-duration trades; holding losers is NOT the strategy.
+        # SCALP_V3_CLOSE = exits from scalp_v3_live.py (stall/bar/K signal exits)
+        # SCALP_V3_OPEN_PROTECTIVE = exits from _scalp_v3_protective_exits + max-loss stop
+        'SCALP_V3_CLOSE',
+        'SCALP_V3_OPEN_PROTECTIVE',
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

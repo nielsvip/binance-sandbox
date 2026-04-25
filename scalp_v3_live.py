@@ -70,11 +70,15 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     short_ok = True; short_reason = ""
     short_require_dump = bool(getattr(config, 'SCALP_V3_SHORT_REQUIRE_RECENT_DUMP', True))
     dump_pct = float(getattr(config, 'SCALP_V3_SHORT_RECENT_DUMP_PCT', 3.0))
-    # Mirror of LONG K checks but inverted (overbought zone)
-    k_1h_short_min = 100 - k_1h_max
+    # Per-side SHORT k thresholds (2026-04-25 sweep: k>85 on 3m wins vs k>60 for LONG).
+    # Fallback to shared LONG threshold if per-side not configured.
+    k_3m_short_cfg = int(getattr(config, 'SCALP_V3_SHORT_ENTRY_K_3M_MAX', k_3m_max))
+    k_15m_short_cfg = int(getattr(config, 'SCALP_V3_SHORT_ENTRY_K_15M_MAX', k_15m_max))
+    k_1h_short_cfg = int(getattr(config, 'SCALP_V3_SHORT_ENTRY_K_1H_MAX', k_1h_max))
+    k_1h_short_min = 100 - k_1h_short_cfg
     k_4h_short_min = 100 - k_4h_max
-    k_15m_short_min = 100 - k_15m_max
-    k_3m_short_min = 100 - k_3m_max
+    k_15m_short_min = 100 - k_15m_short_cfg
+    k_3m_short_min = 100 - k_3m_short_cfg
     if k_1h <= k_1h_short_min: short_ok = False; short_reason = f"K_1H={k_1h:.0f}_min={k_1h_short_min}"
     elif k_4h <= k_4h_short_min: short_ok = False; short_reason = f"K_4H={k_4h:.0f}_min={k_4h_short_min}"
     elif k_15m <= k_15m_short_min: short_ok = False; short_reason = f"K_15M={k_15m:.0f}_min={k_15m_short_min}"
@@ -106,7 +110,7 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     _amt = abs(_sf(getattr(position, 'positionAmt', 0), 0))
     if _amt <= 0: return None
     _reason = str(getattr(position, 'augment_reason', '') or '')
-    if not _reason.startswith('SCALP_V3_OPEN_'): return None  # not our position
+    if 'SCALP_V3_OPEN_' not in _reason: return None  # not our position (QUICK_ prefix added by execute_trade_wrapper)
     side = 'LONG' if _reason.find('_LONG_') >= 0 else 'SHORT' if _reason.find('_SHORT_') >= 0 else None
     if side is None: return None
     entry_price = _sf(getattr(position, 'entry_price', 0), 0)
@@ -116,6 +120,22 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     now_ts = time.time()
     age_sec = now_ts - opened_at if opened_at > 0 else 0
     gain_pct = ((price - entry_price) / entry_price * 100.0) if side == 'LONG' else ((entry_price - price) / entry_price * 100.0)
+    # ---- ATR_TP — exit when gain ≥ ATR_TP_MULT × atr_3m_pct ----
+    _atr_mult = float(getattr(config, 'SCALP_V3_ATR_TP_MULT', 0.0) or 0.0)
+    if _atr_mult > 0:
+        _atr_3m = _sf(indicators.get('atr_3m', 0), 0)
+        if _atr_3m > 0:
+            _atr_3m_pct = _atr_3m / price * 100.0
+            _atr_target = _atr_mult * _atr_3m_pct
+            if gain_pct >= _atr_target:
+                return {"reason": f"SCALP_V3_CLOSE_ATR_TP_{side}_g{gain_pct:+.2f}%_target{_atr_target:.2f}%"}
+    # ---- PEAK_GIVEBACK — exit when gave back configured %% from peak ----
+    _pg_arm = float(getattr(config, 'SCALP_V3_PG_ARM_PCT', 0.0) or 0.0)
+    _pg_give = float(getattr(config, 'SCALP_V3_PG_GIVEBACK_PCT', 0.0) or 0.0)
+    if _pg_arm > 0 and _pg_give > 0:
+        _peak = _sf(getattr(position, 'max_gain', 0), 0)
+        if _peak >= _pg_arm and gain_pct <= _peak - _pg_give:
+            return {"reason": f"SCALP_V3_CLOSE_PEAK_GIVEBACK_{side}_peak{_peak:.2f}%_cur{gain_pct:+.2f}%"}
     max_hold_min = float(getattr(config, 'SCALP_V3_MAX_HOLD_MIN', 15.0))
     stall_gain = float(getattr(config, 'SCALP_V3_STALL_GAIN_MAX_PCT', -0.1))
     if age_sec > max_hold_min * 60.0 and gain_pct <= stall_gain:

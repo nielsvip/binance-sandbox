@@ -11217,7 +11217,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 await tracker_manager.set_trade_cooldown(position_key, duration=300)
                 return False, "BLOCKED_NO_ENTRY_PRICE"
             if _real_gain < -0.01:
-                bypass_strict = 'LIQUIDATION' in reason.upper() or 'GAIN_EROSION' in reason.upper() or (is_hedge and is_hedge_account(config, account_key))
+                bypass_strict = ('LIQUIDATION' in reason.upper() or 'GAIN_EROSION' in reason.upper()
+                                 or (is_hedge and is_hedge_account(config, account_key))
+                                 or 'SCALP_V3_OPEN_PROTECTIVE' in reason.upper()
+                                 or 'SCALP_V3_CLOSE' in reason.upper())
                 if not bypass_strict and not is_hedge:
                     logger.critical(f"🛑[STRICT_NO_LOSS_BLOCK][{account_key}] {position_key}: Blocking {action} ({reason}) at REAL loss ({_real_gain:.2f}%, cached={fresh_pos.gain:.2f}%). NEVER SELL AT A LOSS.")
                     # ═══ OBLIGATORY HEDGE — SACRED RULE (re-enabled 2026-04-17) ═══
@@ -11363,10 +11366,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if not is_hedge:
             pass  # URGENT_FIX: Never augment a losing position (mirrors ez_manage.py check)
         _is_pure_augment = 'AUGMENT' in action.upper() and 'OPEN' not in action.upper() and 'REENTRY' not in action.upper() and 'HEDGE' not in action.upper()
-        if _is_pure_augment and not is_hedge and real_gain < _half_min_gain and real_amt > 0 and not _is_sba:
+        _reason_is_reentry = 'REENTRY' in reason.upper() or 'GUARANTEED_CROSS' in reason.upper() or 'GUARANTEED_BOTTOM' in reason.upper() or 'RECLAIM_LEVEL' in reason.upper() or 'MANDATORY_REENTRY' in reason.upper()
+        if _is_pure_augment and not is_hedge and real_gain < _half_min_gain and real_amt > 0 and not _is_sba and not _reason_is_reentry:
             logger.warning(f"[AUGMENT_HALF_MIN_GAIN] {position_key}: BLOCKED augment — gain {real_gain:.2f}% < {_half_min_gain:.2f}% (0.5×MIN_GAIN). Wait for gain to build.")
             return False, f"BLOCKED_AUGMENT_BELOW_HALF_MIN_GAIN_{real_gain:.2f}%"
-        _reason_is_reentry = 'REENTRY' in reason.upper() or 'GUARANTEED_CROSS' in reason.upper() or 'GUARANTEED_BOTTOM' in reason.upper() or 'RECLAIM_LEVEL' in reason.upper() or 'MANDATORY_REENTRY' in reason.upper()
         if getattr(config, 'AUGMENT_ONLY_WHEN_PROFITABLE', True) and real_gain < 0 and real_amt > 0 and not _is_sba and not is_hedge and not _reason_is_reentry:
             logger.warning(f"[AUGMENT_PROFITABLE_ONLY] {position_key}: BLOCKED augment in quick — position is losing (gain={real_gain:.2f}%). Only augment winners.")
             return False, f"BLOCKED_AUGMENT_LOSING_POSITION_{real_gain:.2f}%"
@@ -11759,7 +11762,8 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     try:
                         from scalp_v3_live import check_scalp_v3_live_exit
                         _v3x_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
-                        _v3x_is_v3 = _v3x_pos and str(getattr(_v3x_pos, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_')
+                        _v3x_aug = str(getattr(_v3x_pos, 'augment_reason', '') or '') if _v3x_pos else ''
+                        _v3x_is_v3 = _v3x_pos and 'SCALP_V3_OPEN_' in _v3x_aug
                         if _v3x_is_v3:
                             _v3x_sym = parse_position_key(position_key)[1]
                             _v3x_metrics, _v3x_ind, _, _, _, _, _v3x_fresh = await data_manager.get_hot_state(_v3x_sym)
@@ -13003,7 +13007,7 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                 if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — stale_data px={_v3_px}")
                             else:
                                 _v3_max = int(getattr(config, 'SCALP_V3_MAX_CONCURRENT', 3))
-                                _v3_active = sum(1 for _pk, _p in (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).items() if str(getattr(_p, 'augment_reason', '') or '').startswith('SCALP_V3_OPEN_') and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0)
+                                _v3_active = sum(1 for _pk, _p in (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).items() if 'SCALP_V3_OPEN_' in (str(getattr(_p, 'augment_reason', '') or '')) and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0)
                                 if _v3_active >= _v3_max:
                                     if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {position_key}: skip — max_concurrent active={_v3_active}/{_v3_max}")
                                 else:
@@ -15708,6 +15712,16 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
             if mark_price <= 0:
                 mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
             if mark_price <= 0: continue
+            _v3_max_loss = float(getattr(config, 'SCALP_V3_MAX_LOSS_PCT', -1.5))
+            if gain <= _v3_max_loss:
+                close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_MAX_LOSS_gain{gain:+.2f}_cap{_v3_max_loss:.2f}"
+                logger.critical(f"🛑 [SCALP_V3_MAX_LOSS_EXIT] {pk}: gain={gain:+.2f}% <= {_v3_max_loss:.2f}% — closing at loss (bypasses S/R guard)")
+                await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
+                                             account_key, pk, amt, 'CLOSE',
+                                             mark_price, amt, close_reason,
+                                             is_hedge=False, data_manager=data_manager)
+                fires += 1
+                continue
             at_sr, sr_reason = _v3_at_support_or_resistance(ind, mark_price, side)
             if at_sr:
                 logger.warning(f"🛡️ [SCALP_V3_CLOSE_SKIP_SR] {pk}: gain={gain:+.2f}% would-close reversal=[{','.join(triggers[:2])}] BUT {sr_reason} → HOLD+HEDGE")
@@ -15748,7 +15762,7 @@ async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
     fires = 0
     for pk, p in by_acct.items():
         reason = str(getattr(p, 'augment_reason', '') or '')
-        if not reason.startswith('SCALP_V3_OPEN_'):
+        if 'SCALP_V3_OPEN_' not in reason:
             continue
         amt = abs(safe_fetch_float(getattr(p, 'positionAmt', 0), 0))
         if amt <= 0: continue
@@ -15965,6 +15979,21 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
     # don't enter blind. NOTUSDT wasn't in the OB universe → SHORT opened without OB validation.
     if bool(getattr(config, 'SCALP_V3_OB_REQUIRED', True)) and ob_long <= 0 and ob_short <= 0:
         logger.warning(f"🚫 [V3_OB_MISSING_BLOCK] {sym} {side} rejected: no OB data (ob_long={ob_long} ob_short={ob_short}). Add to orderbook universe first.")
+        return False
+    _ob_min_diff = float(getattr(config, 'SCALP_V3_OB_MIN_DIFF', 30.0))
+    _ob_net = ob_long - ob_short
+    if forced_side == 'LONG' and _ob_net < _ob_min_diff:
+        logger.info(f"🚫 [V3_OB_DIFF_BLOCK] {sym} LONG rejected: ob_net={_ob_net:.0f} < {_ob_min_diff:.0f} (l={ob_long:.0f} s={ob_short:.0f})")
+        return False
+    if forced_side == 'SHORT' and _ob_net > -_ob_min_diff:
+        logger.info(f"🚫 [V3_OB_DIFF_BLOCK] {sym} SHORT rejected: ob_net={_ob_net:.0f} > -{_ob_min_diff:.0f} (l={ob_long:.0f} s={ob_short:.0f})")
+        return False
+    _ob_div_conflict_net = float(getattr(config, 'SCALP_V3_OB_DIV_CONFLICT_MAX_NET', 50.0))
+    if forced_side == 'SHORT' and div > 0.3 and abs(_ob_net) < _ob_div_conflict_net:
+        logger.info(f"🚫 [V3_OB_CONFLICT] {sym} SHORT rejected: div={div:+.2f}>0.3 bullish but ob_net={_ob_net:.0f} (need |net|>={_ob_div_conflict_net:.0f} to override)")
+        return False
+    if forced_side == 'LONG' and div < -0.3 and abs(_ob_net) < _ob_div_conflict_net:
+        logger.info(f"🚫 [V3_OB_CONFLICT] {sym} LONG rejected: div={div:+.2f}<-0.3 bearish but ob_net={_ob_net:.0f} (need |net|>={_ob_div_conflict_net:.0f} to override)")
         return False
     # Build reason string with orderbook + divergence evidence
     decision = {

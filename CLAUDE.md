@@ -627,4 +627,5 @@ Testing 10 configs (P15_BASELINE through P15_HYBRID) to validate removing STRICT
 2. `data/sweep_results/` = all CSV sweep output
 3. `backtest_v5_sweep.py` = only way to run sweep configs
 4. `push.py` syncs `100.md` + `config.py` + sweep configs to server
-5. `CLAUDE.md` syncs to server via `push.py`
+5. `CLAUDE.md` syncs to server via `push.py` - which is NOT used as long as s1 and s2 are dedicated to backtesting and ALL live scripts run on macbook until June 2026
+
