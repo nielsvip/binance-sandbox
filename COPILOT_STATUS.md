@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-25 18:02:39 UTC
+# Copilot Status — 2026-04-25 18:17:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:56:30
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:56:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:57:33
-- **STALE_INDICATORS** [tradier]  — 2026-04-25T17:58:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T17:58:34
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:58:36
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T17:59:41
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T18:00:42
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:00:46
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:01:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T18:13:19
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:13:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:14:27
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T18:15:28
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T18:15:28
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:15:30
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:16:33
+- **STALE_INDICATORS** [tradier]  — 2026-04-25T18:17:33
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-25T18:17:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-25T18:17:34
 
 ## Missed Trades (trader comparison)
 
@@ -40,8 +40,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] ez_prices.py running but log stale (61min)
-- [MEDIUM] ez_prices.py running but log stale (62min)
-- [MEDIUM] ez_prices.py running but log stale (63min)
-- [MEDIUM] ez_prices.py running but log stale (64min)
-- [MEDIUM] ez_prices.py running but log stale (65min)
+- [MEDIUM] ez_prices.py running but log stale (69min)
+- [MEDIUM] ez_prices.py running but log stale (70min)
+- [MEDIUM] ez_prices.py running but log stale (71min)
+- [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] ez_prices.py running but log stale (72min)
