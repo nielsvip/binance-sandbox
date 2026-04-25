@@ -745,7 +745,7 @@ class Config:
     LEGACY_REENTRY_GUARANTEED_BOTTOM: bool = False     # ez_manage.py:16128 — wt15m bounce + 1h trend + 2/4 WT, 150%
     LEGACY_REENTRY_GUARANTEED_CROSS: bool = False      # ez_manage.py:16133 — exit crossed + 3/4 WT, 50-100% by DC pos
     LEGACY_REENTRY_GUARANTEED_2WT: bool = False        # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%
-    LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = False    # ez_manage.py:18757 — price ± atr_3m within 60min, k cross
+    LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = True     # 2026-04-25 ENABLED — was False (dead switch). Implements user's "early-exit reentry on price recovery" hypothesis: ≤60min after exit + price moved past last_reduction_price ± atr_3m + K3m aligned → REENTRY conviction 75. Sites: ez_manage.py:18254, ez_positions_quick.py:14572.
     LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False    # ez_manage.py:18777 LONG / 18798 SHORT — k_3m/15m crossover above dc_low_3m/15m
     LEGACY_REENTRY_PSR_FULL_DC: bool = False           # ez_manage.py:18812 — full reentry stoch_above_dc OR dc_basis_crossover_3m
     LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False         # ez_manage.py:18836 — DC bounce within 8h, near dc_high/low

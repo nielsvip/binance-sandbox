@@ -10858,7 +10858,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         _lock_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
         _lock_existing_reason = str(getattr(_lock_pos, 'augment_reason', '') or '') if _lock_pos else ''
         _lock_incoming_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()
-        if _lock_existing_reason.startswith('SCALP_V3_OPEN_') and not _lock_incoming_v3:
+        if 'SCALP_V3_OPEN_' in _lock_existing_reason and not _lock_incoming_v3:
             logger.critical(f"🛡️ [V3_POSITION_LOCKED] {position_key}: V3-tagged position only accepts V3-origin augments. BLOCKING incoming action={action} reason={(reason or '')[:60]}")
             return False, f"BLOCKED_V3_POSITION_LOCKED"
     # ═══ V3 AUGMENT REVERSAL-BLOCK (2026-04-24) ═══════════════════════════════════
@@ -10867,7 +10867,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT') and not is_hedge and current_price > 0 and data_manager:
         _v3_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
         _v3_reason_existing = str(getattr(_v3_pos, 'augment_reason', '') or '') if _v3_pos else ''
-        if _v3_reason_existing.startswith('SCALP_V3_OPEN_'):
+        if 'SCALP_V3_OPEN_' in _v3_reason_existing:
             try:
                 _v3_sym = parse_position_key(position_key)[1] if parse_position_key(position_key) else ""
                 _, _v3_ind, _, _, _, _, _ = await data_manager.get_hot_state(_v3_sym)
