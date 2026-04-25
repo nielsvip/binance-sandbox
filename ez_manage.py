@@ -10814,7 +10814,10 @@ class MultiAccountTradeManager:
         # Other augments still hit the original K-based 15m gate.
         if is_augment and not _is_reentry and not is_hedge and i:
             _eta_min_gain = safe_fetch_float(getattr(config, 'MIN_GAIN', 3.0), 3.0)
-            _eta_pos_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+            _eta_raw_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+            _eta_ppl_st = getattr(trade_manager, 'partial_profit_lock_state', {}).get(position_key, {})
+            _eta_ppl_eff = float(_eta_ppl_st.get('effective_entry', 0.0))
+            _eta_pos_gain = ((current_price - _eta_ppl_eff) / _eta_ppl_eff * 100.0 if position_key.endswith('_LONG') else (_eta_ppl_eff - current_price) / _eta_ppl_eff * 100.0) if (_eta_ppl_st.get('fired') and _eta_ppl_eff > 0 and current_price > 0) else _eta_raw_gain
             _eta_pos_max = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
             _eta_winner = _eta_pos_gain >= _eta_min_gain
             _eta_pullback = _eta_pos_gain >= 0.5 * _eta_min_gain and (_eta_pos_max - _eta_pos_gain) >= 1.0
@@ -11112,14 +11115,23 @@ class MultiAccountTradeManager:
                         return failure_reason
                 # high_gain_bypass also fires on half_min_gain (1.5%) so pullback augments
                 # don't get killed by the downstream gain_since_last_augment check.
-                high_gain_bypass = position.gain > 0.5 * config.MIN_GAIN
+                # PPL effective_gain: after partial close, use lowered cost basis so augment
+                # fires sooner on pullback (the captured partial profit reduces effective entry).
+                _aug_ppl_state = getattr(trade_manager, 'partial_profit_lock_state', {}).get(position_key, {})
+                _aug_ppl_eff_entry = float(_aug_ppl_state.get('effective_entry', 0.0))
+                if _aug_ppl_state.get('fired') and _aug_ppl_eff_entry > 0 and current_price > 0:
+                    _aug_pos_gain = (current_price - _aug_ppl_eff_entry) / _aug_ppl_eff_entry * 100.0 if is_long else (_aug_ppl_eff_entry - current_price) / _aug_ppl_eff_entry * 100.0
+                    logger.info(f"[PPL_AUG_EFF_GAIN] {position_key}: nominal={position.gain:.2f}% → effective={_aug_pos_gain:.2f}% (eff_entry={_aug_ppl_eff_entry:.6f})")
+                else:
+                    _aug_pos_gain = position.gain
+                high_gain_bypass = _aug_pos_gain > 0.5 * config.MIN_GAIN
                 min_gain_gap = 0.3 * config.MIN_GAIN
                 if position.entry_price > 0:
-                    gain_since_last_augment = position.gain - ((position.last_augmentation_price - position.entry_price) / position.entry_price) if is_long else position.gain - ((position.entry_price - position.last_augmentation_price) / position.entry_price)
+                    gain_since_last_augment = _aug_pos_gain - ((position.last_augmentation_price - position.entry_price) / position.entry_price) if is_long else _aug_pos_gain - ((position.entry_price - position.last_augmentation_price) / position.entry_price)
                 else:
                     gain_since_last_augment=0.0
-                if not high_gain_bypass and position.gain != 0 and (gain_since_last_augment < 1.5 * min_gain_gap or (position.gain < 0.3 * config.MIN_GAIN)):
-                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_INSUFFICIENT_GAIN (gain_since_last={gain_since_last_augment:.3f}% < required={1.5 * min_gain_gap:.3f}% OR total_gain={position.gain:.3f}% < min={0.3 * config.MIN_GAIN:.3f}%)"
+                if not high_gain_bypass and _aug_pos_gain != 0 and (gain_since_last_augment < 1.5 * min_gain_gap or (_aug_pos_gain < 0.3 * config.MIN_GAIN)):
+                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_INSUFFICIENT_GAIN (gain_since_last={gain_since_last_augment:.3f}% < required={1.5 * min_gain_gap:.3f}% OR eff_gain={_aug_pos_gain:.3f}% < min={0.3 * config.MIN_GAIN:.3f}%)"
                     logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
                     side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
                     await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)

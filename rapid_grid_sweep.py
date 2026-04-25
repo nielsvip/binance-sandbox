@@ -57,6 +57,16 @@ CRYPTO_GRID = [
     # ── COMBOS: best from each test stacked ───────────────────────────────
     ("COMBO_noloss5_wskill",       {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 5, "WRONG_SIDE_ABS_KILL_ENABLED": True}),
     ("COMBO_k50_wtexit2",          {"REENTRY_RALLY_K15M_MAX": 50.0, "WT_EXIT_MIN_TFS": 2}),
+
+    # ── HEDGE_VS_CLOSE: does closing at technicals beat hedging? ──────────
+    # Baseline = hedge system holds losers (NOLOSS=no bypass). These tests
+    # force-close at different WT agreement thresholds regardless of gain level.
+    ("HVC_BYPASS_3TF",             {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 3}),
+    ("HVC_BYPASS_4TF",             {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
+    ("HVC_EXIT2_BYPASS4",          {"WT_EXIT_MIN_TFS": 2, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
+    ("HVC_KILL_BYPASS4",           {"WRONG_SIDE_ABS_KILL_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
+    ("HVC_KILL_BYPASS3",           {"WRONG_SIDE_ABS_KILL_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 3}),
+    ("HVC_FULL_CLOSE_AGGRESSIVE",  {"WRONG_SIDE_ABS_KILL_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 3, "WT_EXIT_MIN_TFS": 2}),
 ]
 
 TRADIER_GRID = [
@@ -104,6 +114,13 @@ TRADIER_GRID = [
     # ── COMBOS ────────────────────────────────────────────────────────────
     ("COMBO_noloss5_wskill",       {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 5, "WRONG_SIDE_ABS_KILL_ENABLED": False}),
     ("COMBO_k50_wtexit2",          {"REENTRY_RALLY_K15M_MAX": 50.0, "WT_EXIT_MIN_TFS": 2}),
+
+    # ── HEDGE_VS_CLOSE for tradier: stocks should HOLD on technicals turn ──
+    # These confirm (or deny) that tradier stocks recover after WT reversal.
+    ("HVC_BYPASS_3TF",             {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 3}),
+    ("HVC_BYPASS_4TF",             {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
+    ("HVC_EXIT2_BYPASS4",          {"WT_EXIT_MIN_TFS": 2, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
+    ("HVC_KILL_BYPASS4",           {"WRONG_SIDE_ABS_KILL_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_ENABLED": True, "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": 4}),
 ]
 
 GRIDS = {"crypto": CRYPTO_GRID, "tradier": TRADIER_GRID}

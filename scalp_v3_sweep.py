@@ -665,6 +665,61 @@ def make_grid(grid_name: str) -> List[Dict]:
             "reentry_bounce_mode": ["3M_BAR_ONLY", "K15M_ONLY", "3M_BAR_OR_K15M"],
             "reentry_cooldown_s":[0, 60, 180],
         }
+    elif grid_name == "long_only_wide":
+        # 2026-04-25: LONG_ONLY confirmed winner. Sweep wider K thresholds to increase trade count
+        # without destroying WR. Fix 3M_ONLY entry + 15M_ONLY exit (confirmed best combo).
+        # Also test removing VWAP gate vs tight VWAP to see how many trades are gated.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["15M_ONLY"],
+            "side_mode":         ["LONG_ONLY"],
+            "k1m_max":           [20, 30, 40, 50],
+            "k_3m_max":          [40, 50, 60, 70, 80],
+            "k_15m_max":         [65, 75, 80, 85],
+            "k_1h_max":          [70, 80, 85],
+            "k_4h_max":          [75, 85],
+            "vol_mult":          [1.0, 1.5],
+            "atr_tp_mult":       [0.8, 1.0, 1.5],
+            "vwap_dev_min_pct":  [0.0, 0.2, 0.3],
+        }
+    elif grid_name == "exit_finegrain":
+        # 2026-04-25: Fix best-known entry (3M/LONG/k1m=30/k3m=40/vwap=0.2/vol=1.0).
+        # Sweep exit combinations to find highest WR exit path.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "side_mode":         ["LONG_ONLY"],
+            "k_1m_max":          [30],
+            "k_3m_max":          [40],
+            "vwap_dev_min_pct":  [0.2],
+            "vol_mult":          [1.0],
+            "exit_mode":         ["15M_ONLY", "ANY", "3M_ONLY"],
+            "exit_k_1m_min":     [85, 90, 95, 98],
+            "exit_k_3m_min":     [80, 90, 95, 98],
+            "exit_k_15m_min":    [70, 80, 90, 95],
+            "atr_tp_mult":       [0.5, 0.8, 1.0, 1.5, 2.0, 2.5],
+            "pg_arm_pct":        [0.0, 0.3, 0.5, 0.8, 1.0],
+            "pg_giveback_pct":   [0.0, 0.1, 0.15, 0.2, 0.3],
+        }
+    elif grid_name == "entry_tight":
+        # 2026-04-25: Fix best-known exit (15M_ONLY/atr_tp=0.8). Sweep entry filters
+        # to find tighter entry that increases WR further: VWAP, BB, pin-bar, HTF K.
+        axes = {
+            "disable_stall":     [True],
+            "tf_mode":           ["3M_ONLY"],
+            "exit_mode":         ["15M_ONLY"],
+            "side_mode":         ["LONG_ONLY"],
+            "atr_tp_mult":       [0.8],
+            "k_1m_max":          [20, 25, 30],
+            "k_3m_max":          [30, 40, 50],
+            "vwap_dev_min_pct":  [0.0, 0.2, 0.3, 0.5, 0.7, 1.0],
+            "bb_squeeze_max_pct":[0.0, 1.5, 2.0, 3.0, 5.0],
+            "pin_bar_ratio":     [0.0, 1.5, 2.0, 2.5, 3.0],
+            "htf_align":         [False, True],
+            "htf_align_max":     [40, 50, 60],
+            "vol_mult":          [1.0, 1.5, 2.0],
+        }
     elif grid_name == "techniques":
         # 2026-04-24: NO-STALL grid focusing on new techniques (ATR TP/SL, peak-giveback,
         # VWAP-deviation, BB-squeeze, pin-bar). Disable_stall is ALWAYS True here.
@@ -770,7 +825,7 @@ def parse_deadline(args) -> float:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined", "winners_refined_v2"], default="orthogonal")
+    ap.add_argument("--grid", choices=["tiny", "orthogonal", "coarse", "medium", "techniques", "techniques_random", "winners_refined", "winners_refined_v2", "long_only_wide", "exit_finegrain", "entry_tight"], default="orthogonal")
     ap.add_argument("--variants", type=int, default=0, help="Cap (0 = no cap)")
     ap.add_argument("--random-sample", type=int, default=0, help="Random-sample N from the grid (0 = use full grid)")
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() - 2))
