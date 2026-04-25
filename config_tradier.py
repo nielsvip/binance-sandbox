@@ -384,18 +384,27 @@ class TradierConfig:
     # Step 2 (gain >= PPL_ARM_GAIN_PCT_TRADIER): arm trailing stop at first-exit price.
     # Step 3 (price back to first-exit price): close remainder via execute_trade_action(action='CLOSE').
     # Values differ from crypto: stocks have wider spreads + 5m base, so gain bars are larger.
-    PARTIAL_PROFIT_LOCK_ENABLED: bool = False  # 2026-04-25 PPL SWEEP (114-sym, corrected key): 0.5%=2.83 Sharpe/114%gain | 0.9375%(baseline)=2.44/171% | 1.5%=1.78/206% | 2.0%=1.51/226% | 3.0%=1.25/244% | 5.0%=1.09/262% | disabled=1.08/247%. TRADEOFF: lower threshold → higher Sharpe, lower total gain. 0.5% optimal for risk-adjusted; 0.9375% optimal for raw returns. Use PARTIAL_PROFIT_LOCK_GAIN_PCT (not _TRADIER key) for vectorized sweeps.
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    # 2026-04-25 PPL CURVE (114-sym, 4.3yr, HVC sweep confirmed): 0.5%=2.832 Sharpe/114%gain | 0.9375%(baseline)=2.435/171% | 1.5%=1.784/206% | 2.0%=1.507/226% | 2.5%=1.379/239% | 3.0%=1.253/244% | 4.0%=1.130/259% | 5.0%=1.092/262% | disabled=1.077/247%.
+    # TRADEOFF: lower threshold → higher Sharpe, lower total gain. 0.5% = risk-adjusted winner (+0.40 vs baseline). 0.9375% = user-preferred for total returns.
+    # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
-    # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks. 2026-04-25 rapid-grid CONFIRMED DAMAGING: 5TF=−1.70 Sharpe (8.3% DD), 4TF=−1.34 Sharpe (2.8% DD). Stocks recover — forcing exits on full-WT-against destroys edge.
+    # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
+    # 2026-04-25 rapid-grid HVC sweep (114-sym, 4.3yr): CONFIRMED DAMAGING on all thresholds:
+    #   3TF=0.880 Sharpe (-1.56 vs baseline, 3.76% DD) | 4TF=1.092 (-1.34, 2.79% DD) | 5TF=0.731 (-1.70, 8.3% DD).
+    # VERDICT: HOLD wins. Stocks recover after WT reversal — closing on technicals at any threshold destroys edge.
+    # COMBINED WS_KILL+4TF=1.071 Sharpe (-1.36) — combining kill+bypass does NOT help.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = False
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled. 2026-04-25 rapid-grid CONFIRMED DAMAGING: −2.03 pool_sharpe on 114-sym (2.44→0.41). Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
+    # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
+    # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled.
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
     WRONG_SIDE_WT_TFS_REQUIRED: int = 5
     WRONG_SIDE_WT_TFS_REDUCED: int = 3
