@@ -18460,7 +18460,11 @@ async def evaluate_reentry_2(trade_manager):
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0
-            if _age_hrs > 72000000000000000000000.0:
+            # 2026-04-26 FIX: was 72000000000000000000000.0 (never expire) — caused
+            # flz/men suffocation. Stale reentries aged into AGE_GATE_STRICT (3/3
+            # stoch align) and never fired. Restored to 72h to match log message
+            # AND sister logic in ez_positions_quick.py:14772.
+            if _age_hrs > 72.0:
                 logger.info(f"[REENTRY_EXPIRED] {pk}: {_age_hrs:.0f}h old — removing (max 72h)")
                 del trade_manager.reentry_data[pk]
                 continue
@@ -21445,14 +21449,24 @@ async def periodic_tasks(order_queue: OrderQueue, trade_manager: MultiAccountTra
                 _notional = _amt * _mp
                 if _notional > _max_usd * 1.5:
                     _cd_key = f"oversize:{_pk}"
-                    if time.time() - _oversize_cooldown.get(_cd_key, 0) < 30: continue
+                    # 2026-04-26 FIX: was 30s cooldown — when position at loss, NOLOSS_GATE correctly blocks
+                    # the FORCE_REDUCE every 30s causing log spam + deadlock (37 firings/18min on flz:BNBUSDC_LONG).
+                    # New: 600s cooldown when at loss (just log warn, don't try to reduce — respects user "never close at loss" rule).
+                    # 30s cooldown when at gain (proceed with reduce — safe to realize).
+                    _ov_gain = safe_fetch_float(getattr(_pos, 'gain', 0), 0.0)
+                    _ov_at_loss = _ov_gain < 0
+                    _ov_cd = 600 if _ov_at_loss else 30
+                    if time.time() - _oversize_cooldown.get(_cd_key, 0) < _ov_cd: continue
                     _oversize_cooldown[_cd_key] = time.time()
                     _excess_usd = _notional - _max_usd
                     _excess_qty = _excess_usd / _mp
                     _, _sym, _ps = parse_position_key(_pk)
                     _is_long = _ps == 'LONG'
                     _close_side = 'SELL' if _is_long else 'BUY'
-                    logger.critical(f"🚨🚨🚨 [EMERGENCY_OVERSIZE] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} (150%). FORCE REDUCING excess ${_excess_usd:.2f} ({_excess_qty:.4f} qty)")
+                    if _ov_at_loss:
+                        logger.warning(f"⚠️ [EMERGENCY_OVERSIZE_AT_LOSS_SKIP] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} BUT gain={_ov_gain:.2f}%<0 — skipping FORCE_REDUCE (NOLOSS gate would block). Will recheck in {_ov_cd}s. Hedge it or wait for gain>=0.")
+                        continue
+                    logger.critical(f"🚨🚨🚨 [EMERGENCY_OVERSIZE] {_pk}: notional=${_notional:.2f} > max=${_max_usd:.2f} (150%) gain={_ov_gain:.2f}%. FORCE REDUCING excess ${_excess_usd:.2f} ({_excess_qty:.4f} qty)")
                     try:
                         await trade_manager.execute_now(_pk, _ak, _sym, _amt, _close_side, _ps, _excess_qty, _mp, f"EMERGENCY_OVERSIZE_{int(time.time())}", f"FORCE_REDUCE_OVERSIZE_{_notional:.0f}>${_max_usd:.0f}", False, 'REDUCE', is_hedge=False)
                     except Exception as _oe:

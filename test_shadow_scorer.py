@@ -189,6 +189,98 @@ async def main():
         print(f"  ✓ live hit_rate={result['live_score']['hit_rate']:.2f}  "
               f"agg hit_rate={result['per_variant_scores']['agg']['hit_rate']:.2f}")
 
+        # ---- TEST 7: auto-graduation fires after 3-win streak ----
+        print("\nT7. Auto-graduation after 3-win streak")
+        # Reset state
+        if (scorer.SHADOW_DIR / "live_overrides_active.json").exists():
+            (scorer.SHADOW_DIR / "live_overrides_active.json").unlink()
+        if (scorer.SHADOW_DIR / "mutation_log.jsonl").exists():
+            (scorer.SHADOW_DIR / "mutation_log.jsonl").unlink()
+        variants_t7 = {"live": {}, "winner": {"OPTIONS_BUY_MIN_WT_DC_SCORE": 75.0}}
+        # 3 days winning with sufficient proposals
+        history_t7 = {"winner": [
+            {"date": "20260420", "hit_rate": 0.7, "n_proposals": 10,
+             "live_hit_rate": 0.5, "delta_vs_live": 0.2, "won_vs_live": True},
+            {"date": "20260421", "hit_rate": 0.65, "n_proposals": 8,
+             "live_hit_rate": 0.45, "delta_vs_live": 0.2, "won_vs_live": True},
+            {"date": "20260422", "hit_rate": 0.72, "n_proposals": 12,
+             "live_hit_rate": 0.5, "delta_vs_live": 0.22, "won_vs_live": True},
+        ]}
+        events = scorer._auto_graduate(variants_t7, history_t7, {}, "20260422")
+        assert len(events) >= 1, f"expected ≥1 graduation, got {len(events)}"
+        assert events[0]["event"] == "GRADUATE"
+        assert events[0]["knob"] == "OPTIONS_BUY_MIN_WT_DC_SCORE"
+        assert events[0]["new_value"] == 75.0
+        ovrf = scorer.SHADOW_DIR / "live_overrides_active.json"
+        assert ovrf.exists(), "active overrides file not written"
+        ovr = json.loads(ovrf.read_text())
+        assert "OPTIONS_BUY_MIN_WT_DC_SCORE" in ovr["active_overrides"]
+        print(f"  ✓ graduated: {events[0]['knob']}={events[0]['new_value']} "
+              f"from variant '{events[0]['variant']}'")
+        print(f"  ✓ active_overrides file written: {ovrf.name}")
+
+        # ---- TEST 8: cooldown blocks re-graduation ----
+        print("\nT8. Cooldown blocks back-to-back graduations")
+        # The previous graduation just fired (cooldown should now be active)
+        history_t8 = {"another_winner": [
+            {"date": "20260420", "hit_rate": 0.8, "n_proposals": 10, "won_vs_live": True},
+            {"date": "20260421", "hit_rate": 0.8, "n_proposals": 10, "won_vs_live": True},
+            {"date": "20260422", "hit_rate": 0.8, "n_proposals": 10, "won_vs_live": True},
+        ]}
+        variants_t8 = {"live": {}, "another_winner": {"OPTIONS_BUY_MIN_DTE": 45}}
+        events_t8 = scorer._auto_graduate(variants_t8, history_t8, {}, "20260422")
+        assert len(events_t8) == 0, f"cooldown failed: got {len(events_t8)} graduations"
+        print(f"  ✓ cooldown blocked second graduation (got {len(events_t8)})")
+
+        # ---- TEST 9: small-sample graduation rejected ----
+        print("\nT9. GRADUATE_MIN_PROPOSALS rejection (lucky tiny sample)")
+        # Bypass cooldown by clearing log
+        (scorer.SHADOW_DIR / "mutation_log.jsonl").unlink()
+        history_t9 = {"luckysmall": [
+            {"date": "20260420", "hit_rate": 1.0, "n_proposals": 1, "won_vs_live": True},
+            {"date": "20260421", "hit_rate": 1.0, "n_proposals": 2, "won_vs_live": True},
+            {"date": "20260422", "hit_rate": 1.0, "n_proposals": 1, "won_vs_live": True},
+        ]}
+        variants_t9 = {"live": {}, "luckysmall": {"OPTIONS_BUY_MAX_OTM_PCT": 4.0}}
+        events_t9 = scorer._auto_graduate(variants_t9, history_t9, {}, "20260422")
+        assert len(events_t9) == 0, f"small-sample filter failed: got {len(events_t9)} graduations"
+        print(f"  ✓ small samples (1-2 props/day) rejected")
+
+        # ---- TEST 10: runtime override applied to live config ----
+        print("\nT10. _apply_runtime_overrides patches config")
+        # Use the active_overrides file we wrote in T7
+        # Restore it
+        scorer._save_active_overrides({
+            "ts_last_updated": "2026-04-26T20:05:00Z",
+            "active_overrides": {
+                "OPTIONS_BUY_MIN_WT_DC_SCORE": {
+                    "value": 75.0, "graduated_from": "winner",
+                    "graduated_ts": "2026-04-26T20:05:00Z",
+                    "win_streak_at_graduation": 3,
+                    "avg_delta_vs_live": 0.2,
+                    "rollback_value": 70.0,
+                }}
+        })
+        # Agent reads overrides from BASE_PATH/data/options_shadow/. Mirror the file there.
+        import tradier_options_agent as agent
+        orig_base = agent.BASE_PATH
+        agent.BASE_PATH = tmp
+        agent_overrides_dir = tmp / "data" / "options_shadow"
+        agent_overrides_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(scorer.SHADOW_DIR / "live_overrides_active.json",
+                    agent_overrides_dir / "live_overrides_active.json")
+        try:
+            from config_tradier import TradierConfig
+            cfg = TradierConfig()
+            orig_val = getattr(cfg, "OPTIONS_BUY_MIN_WT_DC_SCORE", None)
+            applied = agent._apply_runtime_overrides(cfg)
+            new_val = getattr(cfg, "OPTIONS_BUY_MIN_WT_DC_SCORE", None)
+            assert "OPTIONS_BUY_MIN_WT_DC_SCORE" in applied, f"override not applied: {applied}"
+            assert new_val == 75.0, f"expected 75.0, got {new_val}"
+            print(f"  ✓ config patched: OPTIONS_BUY_MIN_WT_DC_SCORE {orig_val} → {new_val}")
+        finally:
+            agent.BASE_PATH = orig_base
+
         print("\n" + "=" * 60)
         print(f" ALL TESTS PASSED")
         print("=" * 60)

@@ -13236,7 +13236,9 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
     asyncio.create_task(service._periodic_phantom_kill())
     total_count = sum(len(p) for p in service.positions_by_account.values())
     _t3 = time.time()
-    logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s")
+    # 2026-04-26 FIX: was `logger.critical(...)` — when caller passes logger=None this AttributeError'd 758× in 2 days,
+    # crashing ez_positions_realtime workers (which call bootstrap_position_service(logger=None, ...) early in main()).
+    if logger: logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s")
     if logger: logger.info(f"[bootstrap] DONE. Service initialized with {total_count} total positions.")
     return service
 if __name__ == "__main__":

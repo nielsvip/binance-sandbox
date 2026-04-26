@@ -34,8 +34,14 @@ STATE_DIR = BASE_PATH / "data" / "options_state"
 # Mutation policy
 MUTATION_LOSS_STREAK = 3            # mutate after N consecutive day losses vs live
 MUTATION_HISTORY_DAYS = 14          # keep last 14 days of scores per variant
-SUGGESTION_WIN_STREAK = 3           # graduate variant to suggestion after N consecutive wins
+SUGGESTION_WIN_STREAK = 3           # graduate variant overrides to live after N consecutive wins
 PROTECT_LIVE = "live"               # the variant named "live" is never mutated
+
+# Auto-graduation policy (owner directive 2026-04-26 — auto-promote winners)
+AUTO_GRADUATE_ENABLED = True        # if False, only suggestions, no auto-write
+GRADUATE_COOLDOWN_DAYS = 7          # max 1 graduation per N days (system-wide)
+MAX_ACTIVE_OVERRIDES = 3            # max simultaneously-active overrides on live config
+GRADUATE_MIN_PROPOSALS = 5          # variant must have proposed ≥ N items per winning day
 
 # Knob bounds + step (used by mutator). All ranges INCLUSIVE.
 KNOB_BOUNDS: Dict[str, Dict[str, Any]] = {
@@ -316,10 +322,139 @@ def _mutate_variants(variants: Dict[str, Dict[str, Any]],
     return new_variants, events
 
 
+def _load_active_overrides() -> dict:
+    p = SHADOW_DIR / "live_overrides_active.json"
+    if not p.exists():
+        return {"ts_last_updated": None, "active_overrides": {}}
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {"ts_last_updated": None, "active_overrides": {}}
+
+
+def _save_active_overrides(payload: dict) -> None:
+    _atomic_write_json(SHADOW_DIR / "live_overrides_active.json", payload)
+
+
+def _last_graduation_age_days() -> Optional[float]:
+    """Return days since last GRADUATE event in mutation_log.jsonl, or None if never."""
+    p = SHADOW_DIR / "mutation_log.jsonl"
+    if not p.exists():
+        return None
+    last_ts = None
+    for rec in _read_jsonl(p):
+        if rec.get("event") == "GRADUATE":
+            last_ts = rec.get("ts")
+    if not last_ts:
+        return None
+    try:
+        last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - last_dt).total_seconds() / 86400.0
+    except Exception:
+        return None
+
+
+def _auto_graduate(variants: Dict[str, Dict[str, Any]],
+                   history: Dict[str, List[dict]],
+                   per_variant_scores: Dict[str, dict],
+                   date_str: str) -> List[dict]:
+    """Auto-promote variant overrides to live when they beat live for SUGGESTION_WIN_STREAK days.
+
+    Safeguards:
+    - AUTO_GRADUATE_ENABLED master switch.
+    - GRADUATE_COOLDOWN_DAYS — at most one graduation system-wide per N days.
+    - MAX_ACTIVE_OVERRIDES — caps how many overrides can be live at once.
+    - GRADUATE_MIN_PROPOSALS — each winning day must have ≥ N proposals (avoid lucky tiny samples).
+    - Each graduation logs both forward (apply) and rollback values for easy revert.
+    - Resets variant's win-streak history after graduation (must re-win to graduate again).
+
+    Returns list of graduation events (also logged to mutation_log.jsonl)."""
+    if not AUTO_GRADUATE_ENABLED:
+        return []
+    cooldown_age = _last_graduation_age_days()
+    if cooldown_age is not None and cooldown_age < GRADUATE_COOLDOWN_DAYS:
+        return []
+    active = _load_active_overrides()
+    active_overrides = dict(active.get("active_overrides") or {})
+    if len(active_overrides) >= MAX_ACTIVE_OVERRIDES:
+        return []
+    events: List[dict] = []
+    candidates: List[Tuple[str, int, float, dict]] = []
+    for name, h in history.items():
+        if name == PROTECT_LIVE:
+            continue
+        win_streak = _streak(h, True)
+        if win_streak < SUGGESTION_WIN_STREAK:
+            continue
+        # Each winning day must have ≥ GRADUATE_MIN_PROPOSALS to count
+        recent = h[-win_streak:]
+        if any((e.get("n_proposals") or 0) < GRADUATE_MIN_PROPOSALS for e in recent):
+            continue
+        avg_delta = sum(e["delta_vs_live"] for e in recent) / max(1, len(recent))
+        ovr = variants.get(name, {})
+        if not ovr:
+            continue  # variant has no overrides to graduate (it IS live)
+        candidates.append((name, win_streak, avg_delta, ovr))
+    # Best candidate first (largest avg delta)
+    candidates.sort(key=lambda x: -x[2])
+    for name, ws, avg_d, ovr in candidates:
+        if len(active_overrides) >= MAX_ACTIVE_OVERRIDES:
+            break
+        # Pick the override knob(s) — for now graduate ALL of this variant's overrides
+        for knob, val in ovr.items():
+            if knob in active_overrides:
+                # Knob already active from another variant — skip (would conflict)
+                continue
+            # Sanity check the new value against bounds
+            if knob in KNOB_BOUNDS:
+                b = KNOB_BOUNDS[knob]
+                if not (b["min"] <= val <= b["max"]):
+                    continue
+            rollback_val = None
+            try:
+                from config_tradier import TradierConfig as _TC
+                rollback_val = getattr(_TC(), knob, None)
+            except Exception:
+                pass
+            active_overrides[knob] = {
+                "value": val,
+                "graduated_from": name,
+                "graduated_ts": datetime.now(timezone.utc).isoformat(),
+                "win_streak_at_graduation": ws,
+                "avg_delta_vs_live": round(avg_d, 4),
+                "rollback_value": rollback_val,
+            }
+            ev = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "event": "GRADUATE",
+                "variant": name,
+                "knob": knob,
+                "new_value": val,
+                "rollback_value": rollback_val,
+                "win_streak": ws,
+                "avg_delta_vs_live": round(avg_d, 4),
+                "date_triggered": date_str,
+            }
+            events.append(ev)
+            _append_jsonl(SHADOW_DIR / "mutation_log.jsonl", ev)
+        # Reset this variant's history so it must earn the streak again
+        if name in history:
+            history[name] = []
+    if events:
+        active["active_overrides"] = active_overrides
+        active["ts_last_updated"] = datetime.now(timezone.utc).isoformat()
+        _save_active_overrides(active)
+        # Persist the trimmed history so reset takes effect tomorrow
+        _save_score_history(history)
+    return events
+
+
 def _emit_suggestions(date_str: str, per_variant_scores: Dict[str, dict],
                       live_score: dict, history: Dict[str, List[dict]],
                       mutation_events: List[dict],
-                      variants: Dict[str, Dict[str, Any]]) -> Path:
+                      variants: Dict[str, Dict[str, Any]],
+                      graduation_events: Optional[List[dict]] = None,
+                      active_overrides: Optional[dict] = None) -> Path:
     out_path = SHADOW_DIR / f"suggestions_{date_str}.md"
     lines: List[str] = []
     lines.append(f"# Options shadow EOD report — {date_str}\n")
@@ -356,8 +491,37 @@ def _emit_suggestions(date_str: str, per_variant_scores: Dict[str, dict],
         for ev in mutation_events:
             lines.append(f"- **{ev['variant']}** (loss streak: {ev['loss_streak_before']}): "
                          f"{ev['knob']} {ev['old_value']} → {ev['new_value']} ({ev['direction']})")
-    # Suggestions to graduate to live
-    lines.append("\n## Graduation candidates (variants beating live ≥ {} days running)\n".format(SUGGESTION_WIN_STREAK))
+    # Auto-graduations applied tonight
+    lines.append("\n## Auto-graduations applied to live config tonight\n")
+    if not graduation_events:
+        lines.append("_No graduations — no variant met all criteria (win streak ≥ {}, ≥ {} proposals/day, "
+                     "cooldown clean, < {} active overrides)._".format(
+                         SUGGESTION_WIN_STREAK, GRADUATE_MIN_PROPOSALS, MAX_ACTIVE_OVERRIDES))
+    else:
+        lines.append("**The following overrides were AUTO-WRITTEN to `data/options_shadow/live_overrides_active.json` "
+                     "and will be applied at next live agent restart:**\n")
+        for ev in graduation_events:
+            rb = ev.get("rollback_value")
+            rb_str = f" (rollback: {rb})" if rb is not None else ""
+            lines.append(f"- **GRADUATED** `{ev['knob']}` ← {ev['new_value']}{rb_str} "
+                         f"from variant **{ev['variant']}** "
+                         f"(won {ev['win_streak']} days, avg +{ev['avg_delta_vs_live']*100:.1f}pp vs live)")
+        lines.append("\nTo manually revert: edit or delete `data/options_shadow/live_overrides_active.json`.")
+    # Currently-active overrides
+    lines.append("\n## Currently active runtime overrides on live config\n")
+    if not active_overrides:
+        lines.append("_None — live config running on stock `config_tradier.py` defaults._")
+    else:
+        lines.append("| knob | value | rollback | from variant | graduated |")
+        lines.append("|---|---|---|---|---|")
+        for k, info in active_overrides.items():
+            if isinstance(info, dict):
+                lines.append(f"| `{k}` | {info.get('value')} | {info.get('rollback_value')} | "
+                             f"{info.get('graduated_from','?')} | {info.get('graduated_ts','?')[:10]} |")
+            else:
+                lines.append(f"| `{k}` | {info} | — | manual | — |")
+    # Pending suggestion candidates (not yet graduated, e.g. cooldown active)
+    lines.append("\n## Pending suggestion candidates (won {}+ days but blocked by cooldown / cap)\n".format(SUGGESTION_WIN_STREAK))
     candidates = []
     for name, h in history.items():
         if name == PROTECT_LIVE:
@@ -367,13 +531,12 @@ def _emit_suggestions(date_str: str, per_variant_scores: Dict[str, dict],
             avg_delta = sum(e["delta_vs_live"] for e in h[-win_streak:]) / win_streak
             candidates.append((name, win_streak, avg_delta, variants.get(name, {})))
     if not candidates:
-        lines.append("_No variant currently meets the graduation criterion._")
+        lines.append("_None._")
     else:
-        lines.append("**REVIEW THESE — consider promoting one to live config:**\n")
         for name, ws, avg_d, ovr in sorted(candidates, key=lambda x: -x[2]):
             ovr_str = ", ".join(f"{k}={v}" for k, v in ovr.items()) or "—"
             lines.append(f"- **{name}**: won {ws} days running, avg +{avg_d*100:.1f}pp vs live. "
-                         f"Proposed change: `{ovr_str}`")
+                         f"Pending: `{ovr_str}` (will graduate when cooldown clears)")
     out_path.write_text("\n".join(lines) + "\n")
     return out_path
 
@@ -406,10 +569,15 @@ async def score_and_mutate(date_str: str,
     new_variants, mutation_events = _mutate_variants(variants, history, date_str)
     if mutation_events:
         _atomic_write_json(variants_path, new_variants)
-    # 6. Emit human-readable suggestions
+    # 6. Auto-graduate variants that beat live for SUGGESTION_WIN_STREAK days (owner directive)
+    graduation_events = _auto_graduate(variants, history, per_variant_scores, date_str)
+    active_overrides = (_load_active_overrides() or {}).get("active_overrides") or {}
+    # 7. Emit human-readable suggestions
     sugg_path = _emit_suggestions(date_str, per_variant_scores, live_score,
-                                  history, mutation_events, variants)
-    # 7. Save scores file
+                                  history, mutation_events, variants,
+                                  graduation_events=graduation_events,
+                                  active_overrides=active_overrides)
+    # 8. Save scores file
     scores_payload = {
         "date": date_str,
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -418,6 +586,9 @@ async def score_and_mutate(date_str: str,
         "n_eod_quotes": len(eod_quotes),
         "n_mutations": len(mutation_events),
         "mutations": mutation_events,
+        "n_graduations": len(graduation_events),
+        "graduations": graduation_events,
+        "active_overrides": active_overrides,
         "suggestions_path": str(sugg_path),
     }
     _atomic_write_json(SHADOW_DIR / f"scores_{date_str}.json", scores_payload)

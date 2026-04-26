@@ -854,6 +854,7 @@ async def execute_decisions(client: TradierAPIClient, decisions: List[TradeDecis
 
 async def run_agent(args):
     config = TradierConfig()
+    _apply_runtime_overrides(config)
     account_key = args.account or "trb"
     dry_run = args.dry_run
     max_per = args.budget or MAX_PER_ORDER
@@ -1023,6 +1024,47 @@ async def run_agent(args):
 
 DAILY_PLAN_FILE = "options_daily_plan.json"
 GTC_MAX_AGE_DAYS = 7
+
+
+def _apply_runtime_overrides(config) -> dict:
+    """Apply variant-graduation overrides at startup (2026-04-26 owner directive).
+
+    Reads `data/options_shadow/live_overrides_active.json` and patches the live
+    TradierConfig in-place. Overrides are written by tradier_options_shadow_scorer
+    when a variant beats live for SUGGESTION_WIN_STREAK consecutive days.
+
+    Safe behaviors:
+    - Missing file → no-op (returns {}).
+    - Read error → logs warning, no patch applied.
+    - Unknown config keys → silently skipped (defensive).
+    - Each applied override is logged with old/new value + source variant.
+
+    Returns dict of {key: {"old": val, "new": val, "from": variant_name}}.
+    Manual revert: delete or edit the JSON file. Doesn't touch config_tradier.py."""
+    overrides_file = BASE_PATH / "data" / "options_shadow" / "live_overrides_active.json"
+    if not overrides_file.exists():
+        return {}
+    try:
+        data = json.loads(overrides_file.read_text())
+    except Exception as e:
+        logger.warning(f"[RUNTIME_OVERRIDE] read error {e} — no overrides applied")
+        return {}
+    applied: dict = {}
+    active = data.get("active_overrides") or {}
+    for key, info in active.items():
+        if not hasattr(config, key):
+            logger.warning(f"[RUNTIME_OVERRIDE] unknown config key {key} — skipped")
+            continue
+        val = info.get("value") if isinstance(info, dict) else info
+        src = info.get("graduated_from", "manual") if isinstance(info, dict) else "manual"
+        old = getattr(config, key)
+        setattr(config, key, val)
+        applied[key] = {"old": old, "new": val, "from": src}
+        logger.info(f"[RUNTIME_OVERRIDE] {key}: {old} → {val} (graduated from variant '{src}')")
+    if applied:
+        logger.info(f"[RUNTIME_OVERRIDE] applied {len(applied)} variant-graduated override(s)")
+    return applied
+
 
 
 def _load_allowed_symbols(config) -> tuple:
@@ -1808,6 +1850,7 @@ async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], 
 async def run_daily_cycle(args):
     """Afternoon cycle: review portfolio, find opportunities, place GTC orders at dip prices."""
     config = TradierConfig()
+    _apply_runtime_overrides(config)
     account_key = getattr(args, "account", "trb") or "trb"
     dry_run = getattr(args, "dry_run", False)
     review_only = getattr(args, "review", False)
@@ -1984,6 +2027,7 @@ async def run_daily_cycle(args):
 async def run_premarket(args):
     """Pre-market: re-scan prices, adjust GTC orders, fire pending plan orders."""
     config = TradierConfig()
+    _apply_runtime_overrides(config)
     account_key = getattr(args, "account", "trb") or "trb"
     ind_file = config.DATA_DIR / "tradier_indicators_latest.json"
     indicators = {}

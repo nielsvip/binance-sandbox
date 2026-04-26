@@ -2643,9 +2643,10 @@ class AdvancedSignalRater:
                 score += 15; reasons.append(f"TIER1_PULLBACK_REENTRY(k_reset,+15,min={min_since_red:.0f})")
             elif not _br_has_reset and actual_last_red_price > 0 and ((is_long and current_price >= actual_last_red_price) or (not is_long and current_price <= actual_last_red_price)):
                 # MANDATORY_REENTRY_PRICE_CROSS: exit price crossed — NO TIMER GATE. REENTRY IS A RIGHT.
+                # 2026-04-26 FIX: was `indicators.get(...)` — function param is `ind` (line 1583). NameError dropped 11+ live entry candidates per account in last 2 days.
                 _mr_wt = 0
                 for _tf in ['3m', '15m', '1h']:
-                    _wb = bool(indicators.get(f'wt_bullish_{_tf}', False))
+                    _wb = bool(ind.get(f'wt_bullish_{_tf}', False))
                     if (is_long and _wb) or (not is_long and not _wb): _mr_wt += 1
                 if _mr_wt >= 1:
                     _tier1_forced = True
@@ -2668,7 +2669,7 @@ class AdvancedSignalRater:
                     if _gr_crossed:
                         _gr_wt = 0
                         for _tf in ['3m', '15m', '1h', '4h']:
-                            _wb = bool(indicators.get(f'wt_bullish_{_tf}', False))
+                            _wb = bool(ind.get(f'wt_bullish_{_tf}', False))  # 2026-04-26 FIX: was `indicators` (NameError)
                             if (is_long and _wb) or (not is_long and not _wb): _gr_wt += 1
                         if _gr_wt >= 3:
                             _tier1_forced = True
@@ -4970,7 +4971,8 @@ class HedgeEngine:
                                         _hedge_opened_at = _safe_ts_epoch(_hr_ts, 0.0) or None
                                 except Exception: pass
                                 if not _hedge_opened_at:
-                                    _hedge_pos_obj = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key) if hasattr(tracker_manager, 'positions_service') else None
+                                    # 2026-04-26 FIX: was `tracker_manager` (NameError — local var doesn't exist; class attr is `self.tracker_manager`)
+                                    _hedge_pos_obj = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key) if hasattr(self.tracker_manager, 'positions_service') else None
                                     _opo = getattr(_hedge_pos_obj, 'opened_at', None) or getattr(_hedge_pos_obj, 'timestamp', None)
                                     if _opo: _hedge_opened_at = _safe_ts_epoch(_opo, 0.0) or None
                                 _age_min = ((time.time() - _hedge_opened_at) / 60.0) if _hedge_opened_at else 999.0
