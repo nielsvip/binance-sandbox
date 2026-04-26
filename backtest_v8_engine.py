@@ -745,9 +745,9 @@ def _v8ns_tsmom_book_scalar(cfg_obj, open_positions_summary):
         return 1.0
     if not open_positions_summary:
         return 1.0
-    min_agree = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_MIN_AGREEMENT', 0.5))
-    low = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_LOW_CAP', 0.5))
-    high = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_HIGH_CAP', 1.5))
+    min_agree = float(_v8ns_get(cfg_obj, 'TSMOM_MIN_AGREEMENT', 0.5))
+    low = float(_v8ns_get(cfg_obj, 'TSMOM_LOW_CAP', 0.25))
+    high = float(_v8ns_get(cfg_obj, 'TSMOM_HIGH_CAP', 1.5))
     aligned = 0
     total = 0
     for p in open_positions_summary:
@@ -777,18 +777,18 @@ def _v8ns_check_entry_vetos(cfg_obj, indicators, is_long):
     if not is_long:
         return True, ""
     if bool(_v8ns_get(cfg_obj, 'MINERVINI_GATE_ENABLED', False)):
-        min_score = float(_v8ns_get(cfg_obj, 'MINERVINI_GATE_MIN_SCORE', 70.0))
+        min_score = float(_v8ns_get(cfg_obj, 'MINERVINI_MIN_SCORE', 5.0))
         sepa_pass = _v8ns_get_indicator_field(indicators, 'sepa_pass', 0.0)
         sepa_score = _v8ns_get_indicator_field(indicators, 'sepa_score', 0.0)
         if sepa_pass <= 0 or sepa_score < min_score:
             return False, f"BLOCKED_MINERVINI_GATE_score={sepa_score:.0f}_lt_{min_score:.0f}"
     if bool(_v8ns_get(cfg_obj, 'CLENOW_GATE_ENABLED', False)):
-        min_score = float(_v8ns_get(cfg_obj, 'CLENOW_GATE_MIN_SCORE', 50.0))
+        min_score = float(_v8ns_get(cfg_obj, 'CLENOW_GATE_MIN_SCORE', 30.0))
         cl_score = _v8ns_get_indicator_field(indicators, 'clenow_score', 0.0)
         if cl_score < min_score:
             return False, f"BLOCKED_CLENOW_GATE_score={cl_score:.2f}_lt_{min_score:.2f}"
     if bool(_v8ns_get(cfg_obj, 'PROXIMITY_TOP_GATE_ENABLED', False)):
-        max_drop = float(_v8ns_get(cfg_obj, 'PROXIMITY_TOP_GATE_MAX_DROP_PCT', 25.0))
+        max_drop = float(_v8ns_get(cfg_obj, 'PROXIMITY_TOP_MAX_DROP_PCT', 5.0))
         drop = abs(_v8ns_get_indicator_field(indicators, 'pct_from_52w_high', 0.0))
         if drop > max_drop:
             return False, f"BLOCKED_PROXIMITY_TOP_drop={drop:.1f}pct_gt_{max_drop:.1f}pct"
@@ -1083,7 +1083,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _bsym = getattr(_bpos, 'symbol', '') or (_bpk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _bpk else _bpk.rsplit('_', 1)[0])
                     _bind = indicator_cache.get(_bsym.upper(), {}) if isinstance(indicator_cache, dict) else {}
                     _v8ns_book.append({'is_long': _bpk.endswith('_LONG'),
-                                        'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+                                        'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(config, 'TSMOM_LOOKBACK_BARS', 252)))})
             except Exception:
                 _v8ns_book = []
             _v8ns_tm = _v8ns_tsmom_book_scalar(config, _v8ns_book)
@@ -1822,6 +1822,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     for _s, _d in sorted(_live_pnl["by_symbol"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
         v8_logger.info(f"[V8_FINAL_PNL] {_s:<15} n={_d['n_trades']:>4} sum={_d['pnl_pct_sum']:+9.2f}%")
     v8_logger.info("=" * 80)
+    # NEW 2026-04-26 sweep switches: per-run counter dump (crypto path).
+    v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  counters={_v8ns_counters}")
+    print(f"V8_NEW_SWITCHES: vt={_v8ns_counters['vol_target_applied']} dk={_v8ns_counters['dd_kelly_applied']} tm={_v8ns_counters['tsmom_applied']} mn={_v8ns_counters['minervini_block']} cl={_v8ns_counters['clenow_block']} pt={_v8ns_counters['proximity_top_block']} sf={_v8ns_counters['squeeze_fire_aligned']} dd_min={_v8ns_dd_state.get('dd_pct', 0.0):.2f}", flush=True)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
@@ -2331,7 +2334,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _bsym = getattr(_bpos, 'symbol', '') or _bpk.split(':', 1)[-1].rsplit('_', 1)[0]
                     _bind = manager.market_snapshot.get(_bsym.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                     _v8ns_book_t.append({'is_long': _bpk.endswith('_LONG'),
-                                          'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(tm_mod.config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+                                          'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(tm_mod.config, 'TSMOM_LOOKBACK_BARS', 252)))})
             except Exception:
                 _v8ns_book_t = []
             _v8ns_tm_t = _v8ns_tsmom_book_scalar(tm_mod.config, _v8ns_book_t)
@@ -2505,7 +2508,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         _bsym_r = getattr(_bpos_r, 'symbol', '') or _bpk_r.split(':', 1)[-1].rsplit('_', 1)[0]
                         _bind_r = manager.market_snapshot.get(_bsym_r.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
                         _v8ns_book_r.append({'is_long': _bpk_r.endswith('_LONG'),
-                                              'mom': _v8ns_compute_position_mom(_bind_r, int(_v8ns_get(tm_mod.config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+                                              'mom': _v8ns_compute_position_mom(_bind_r, int(_v8ns_get(tm_mod.config, 'TSMOM_LOOKBACK_BARS', 252)))})
                 except Exception:
                     _v8ns_book_r = []
                 _v8ns_tm_r = _v8ns_tsmom_book_scalar(tm_mod.config, _v8ns_book_r)
@@ -2671,6 +2674,45 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if not getattr(tm_mod.config, 'DELTA_ENTRY_ENABLED', True) and reason:
                 if "DELTA_ENTRY" in reason.upper() or "DELTA_SIGNAL" in reason.upper():
                     return "BLOCKED_DELTA_ENTRY_DISABLED"
+            # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier exec_now path).
+            _v8ns_ind_e = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _v8ns_is_long_e = (position_side == 'LONG')
+            _v8ns_allow_e, _v8ns_veto_e = _v8ns_check_entry_vetos(tm_mod.config, _v8ns_ind_e, _v8ns_is_long_e)
+            if not _v8ns_allow_e:
+                if 'MINERVINI' in _v8ns_veto_e: _v8ns_counters['minervini_block'] += 1
+                elif 'CLENOW' in _v8ns_veto_e: _v8ns_counters['clenow_block'] += 1
+                elif 'PROXIMITY_TOP' in _v8ns_veto_e: _v8ns_counters['proximity_top_block'] += 1
+                return _v8ns_veto_e
+            _v8ns_sf_fired_e, _ = _v8ns_squeeze_fire_aligned(tm_mod.config, _v8ns_ind_e, _v8ns_is_long_e)
+            if _v8ns_sf_fired_e:
+                _v8ns_counters['squeeze_fire_aligned'] += 1
+            _v8ns_vt_e = _v8ns_vol_target_scalar(tm_mod.config, _v8ns_ind_e)
+            if _v8ns_vt_e != 1.0: _v8ns_counters['vol_target_applied'] += 1
+            _v8ns_total_pct_e = sum(t.get('pnl_pct', 0.0) for t in executed_trades if t.get('pnl_pct') is not None)
+            _v8ns_equity_pct[0] = _v8ns_total_pct_e
+            _v8ns_dd_state_update(_v8ns_dd_state, _v8ns_total_pct_e)
+            _v8ns_dk_e = _v8ns_dd_kelly_scalar(tm_mod.config, _v8ns_dd_state)
+            if _v8ns_dk_e != 1.0: _v8ns_counters['dd_kelly_applied'] += 1
+            _v8ns_book_e = []
+            try:
+                _v8ns_pos_src_e = manager.position_manager.positions if manager.position_manager else {}
+                for _bpk_e, _bpos_e in _v8ns_pos_src_e.items():
+                    if not _bpk_e.startswith(f"{account_key_en}:"): continue
+                    if abs(getattr(_bpos_e, 'positionAmt', getattr(_bpos_e, 'quantity', 0))) <= 0: continue
+                    _bsym_e = getattr(_bpos_e, 'symbol', '') or _bpk_e.split(':', 1)[-1].rsplit('_', 1)[0]
+                    _bind_e = manager.market_snapshot.get(_bsym_e.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                    _v8ns_book_e.append({'is_long': _bpk_e.endswith('_LONG'),
+                                          'mom': _v8ns_compute_position_mom(_bind_e, int(_v8ns_get(tm_mod.config, 'TSMOM_LOOKBACK_BARS', 252)))})
+            except Exception:
+                _v8ns_book_e = []
+            _v8ns_tm_e = _v8ns_tsmom_book_scalar(tm_mod.config, _v8ns_book_e)
+            if _v8ns_tm_e != 1.0: _v8ns_counters['tsmom_applied'] += 1
+            _v8ns_scalar_e = _v8ns_vt_e * _v8ns_dk_e * _v8ns_tm_e
+            if _v8ns_scalar_e != 1.0:
+                quantity = max(0.0, float(quantity) * _v8ns_scalar_e)
+                if quantity <= 0:
+                    return f"BLOCKED_V8NS_SIZE_ZERO_vt={_v8ns_vt_e:.2f}_dk={_v8ns_dk_e:.2f}_tm={_v8ns_tm_e:.2f}"
+                reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt_e:.2f}_dk={_v8ns_dk_e:.2f}_tm={_v8ns_tm_e:.2f}"
         v8_logger.warning(f"[V8_EXEC_NOW] {position_key} {side} qty={quantity} px={old_price} action={action}")
         act = action or ("CLOSE" if is_reduce else "OPEN")
         await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
@@ -3116,6 +3158,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _r_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
                 print(f"V8_RESULT_LIVE: step={step}/{len(all_ts)} closes={_r_closes} elapsed={_real_time_module.time()-t0:.0f}s", flush=True)
     elapsed = _real_time_module.time() - t0
+    # NEW 2026-04-26 sweep switches: per-run counter dump (tradier path).
+    v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  equity_pct={_v8ns_equity_pct[0]:+.2f}%  counters={_v8ns_counters}")
+    print(f"V8_NEW_SWITCHES: vt={_v8ns_counters['vol_target_applied']} dk={_v8ns_counters['dd_kelly_applied']} tm={_v8ns_counters['tsmom_applied']} mn={_v8ns_counters['minervini_block']} cl={_v8ns_counters['clenow_block']} pt={_v8ns_counters['proximity_top_block']} sf={_v8ns_counters['squeeze_fire_aligned']} dd_min={_v8ns_dd_state.get('dd_pct', 0.0):.2f}", flush=True)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

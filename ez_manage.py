@@ -659,6 +659,7 @@ from binance.enums import *
 from binance.exceptions import BinanceAPIException
 
 from config import Config
+import hedge_decisions as _hd
 from ez_positions_service import bootstrap_position_service
 from utils import (
     REDIS_CHANNELS,
@@ -18187,10 +18188,16 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _bear_15m_v = k_15m < 45 and _ha15_v == 'red' and wt1_15m < wt2_15m
             _bear_1h_v = k_1h < 50 and _ha1_v == 'red' and wt1_1h < wt2_1h
             _bear_4h_v = k_4h < 50 and _ha4_v == 'red' and wt1_4h < wt2_4h
-            _htf_against_short_v = (not is_long) and _bull_15m_v and _bull_1h_v and _bull_4h_v
-            _htf_against_long_v = is_long and _bear_15m_v and _bear_1h_v and _bear_4h_v
+            # 2026-04-26 USER: tightened from ALL-3 to >=2-of-3. ZRX SHORT got double-opened
+            # while wt 3m/15m/1h all bullish but k_1h read 14 (ha/wt cross still bullish);
+            # AND-3 let entry through. >=2-of-3 catches realistic uptrend even if 1 TF disagrees.
+            _bull_count_v = int(_bull_15m_v) + int(_bull_1h_v) + int(_bull_4h_v)
+            _bear_count_v = int(_bear_15m_v) + int(_bear_1h_v) + int(_bear_4h_v)
+            _htf_min_against = int(getattr(config, 'PRICE_CROSSED_HTF_AGAINST_MIN_TFS', 2))
+            _htf_against_short_v = (not is_long) and _bull_count_v >= _htf_min_against
+            _htf_against_long_v = is_long and _bear_count_v >= _htf_min_against
             if _htf_against_short_v or _htf_against_long_v:
-                logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — 15m/1h/4h ALL AGAINST {'SHORT' if not is_long else 'LONG'}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}")
+                logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — {'SHORT' if not is_long else 'LONG'} count={_bull_count_v if not is_long else _bear_count_v}/3 >= {_htf_min_against}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}")
                 return
         price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         if price_above_reduction:
@@ -18211,13 +18218,14 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _force_qty = max(reentry_amount * _force_mult, getattr(config, 'START_POSITION_SIZE', 45.0) / current_price)
             _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}"
             logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_REENTRY] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})")
+            # 2026-04-26 USER: ZRX SHORT got DOUBLE-OPENED 7s apart because rate-limit timestamp
+            # was only stamped on QUEUED/SUCCESS. If first call returned PENDING/error/anything else,
+            # stamp was missed → next cycle (10s later) re-fired. Now stamp UNCONDITIONALLY before
+            # firing — even if order fails, the next 300s window is rate-limited to prevent dup.
+            trade_manager._mpc_last_fire[position_key] = _mpc_now
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _force_reason, 99.0, override_qty=_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: QUEUED qty={_force_qty:.4f} at ${current_price:.4f}")
-                # Stamp the rate-limit timestamp ONLY — do NOT delete the reentry record.
-                # Reentries persist for centuries per owner directive. The 300s rate-limit
-                # alone is enough to prevent the rogue loop without erasing the trigger.
-                trade_manager._mpc_last_fire[position_key] = _mpc_now
             return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
@@ -19723,20 +19731,15 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _hg_i = await ii(trade_manager, symbol)
                     if _hg_i:
                         _hg_long = position_key.endswith("_LONG")
-                        _hg_w13 = safe_fetch_float(_hg_i.get('wt1_3m'), 0)
-                        _hg_w23 = safe_fetch_float(_hg_i.get('wt2_3m'), 0)
-                        _hg_w11 = safe_fetch_float(_hg_i.get('wt1_1h'), 0)
-                        _hg_w21 = safe_fetch_float(_hg_i.get('wt2_1h'), 0)
-                        _hg_3ok = (_hg_w13 != 0 or _hg_w23 != 0)
-                        _hg_1ok = (_hg_w11 != 0 or _hg_w21 != 0)
-                        _hg_3ag = (_hg_long and _hg_w13 < _hg_w23) or ((not _hg_long) and _hg_w13 > _hg_w23)
-                        _hg_1ag = (_hg_long and _hg_w11 < _hg_w21) or ((not _hg_long) and _hg_w11 > _hg_w21)
-                        if _hg_3ok and _hg_1ok and _hg_3ag and _hg_1ag:
-                            _hg_gain = safe_fetch_float(getattr(_hg_pos, 'gain', 0), 0)
+                        _hg_gain = safe_fetch_float(getattr(_hg_pos, 'gain', 0), 0)
+                        _hg_decision = _hd.should_close_hedge_wt3m1h(_hg_i, _hg_long, _hg_gain, config)
+                        if _hg_decision is not None:
+                            _hg_w13 = _hg_decision['wt']['wt1_3m']; _hg_w23 = _hg_decision['wt']['wt2_3m']
+                            _hg_w11 = _hg_decision['wt']['wt1_1h']; _hg_w21 = _hg_decision['wt']['wt2_1h']
                             _hg_ord_side = 'SELL' if _hg_long else 'BUY'
                             _hg_pos_side = 'LONG' if _hg_long else 'SHORT'
                             _hg_hedge_for = getattr(_hg_pos, 'hedge_for', None) or _hedge_for_tracker or position_key
-                            if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and _hg_gain < 0:
+                            if not _hg_decision['fire']:
                                 logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge but gain={_hg_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
                                 return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD"
                             logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (gain={_hg_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}).")
@@ -19793,21 +19796,16 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _pp_is_hedge = bool(getattr(position, 'is_hedge', False)) if position else False
             if _pp_is_hedge and is_active_position:
                 _pp_long = position_key.endswith("_LONG")
-                _pp_w13 = safe_fetch_float(i.get('wt1_3m'), 0.0)
-                _pp_w23 = safe_fetch_float(i.get('wt2_3m'), 0.0)
-                _pp_w11 = safe_fetch_float(i.get('wt1_1h'), 0.0)
-                _pp_w21 = safe_fetch_float(i.get('wt2_1h'), 0.0)
-                _pp_3ok = (_pp_w13 != 0 or _pp_w23 != 0)
-                _pp_1ok = (_pp_w11 != 0 or _pp_w21 != 0)
-                _pp_3ag = (_pp_long and _pp_w13 < _pp_w23) or ((not _pp_long) and _pp_w13 > _pp_w23)
-                _pp_1ag = (_pp_long and _pp_w11 < _pp_w21) or ((not _pp_long) and _pp_w11 > _pp_w21)
-                if _pp_3ok and _pp_1ok and _pp_3ag and _pp_1ag:
+                _pp_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _pp_decision = _hd.should_close_hedge_wt3m1h(i, _pp_long, _pp_gain, config)
+                if _pp_decision is not None:
+                    _pp_w13 = _pp_decision['wt']['wt1_3m']; _pp_w23 = _pp_decision['wt']['wt2_3m']
+                    _pp_w11 = _pp_decision['wt']['wt1_1h']; _pp_w21 = _pp_decision['wt']['wt2_1h']
                     _pp_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0))
-                    _pp_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                     _pp_ord_side = 'SELL' if _pp_long else 'BUY'
                     _pp_pos_side = 'LONG' if _pp_long else 'SHORT'
                     _pp_hedge_for = getattr(position, 'hedge_for', None) or position_key
-                    if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and _pp_gain < 0:
+                    if not _pp_decision['fire']:
                         logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PP_ABS_NOLOSS_HOLD] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge but gain={_pp_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
                         return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PP_ABS_NOLOSS_HOLD"
                     logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PP_ABS] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge — safety-net close (gain={_pp_gain:.2f}%).")

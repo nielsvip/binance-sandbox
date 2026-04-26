@@ -187,6 +187,14 @@ class QuickConfig:
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True
     HEDGE_SAME_SYMBOL_PCT: float = 1.0
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True
+    # === 2026-04-26 hedge gate switches (sweep-testable in autonomous_search) ===
+    HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = False  # reject hedge open if symbol at DC extreme against hedge direction
+    HEDGE_DC_LONG_REJECT_DCP: float = 0.85          # LONG-hedge: reject if dc_position_1h/4h < this (i.e. symbol at resistance for SHORT defending LONG main)
+    HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-hedge: reject if dc_position_1h/4h > this
+    HEDGE_WT_VEL_GATE_ENABLED: bool = False         # reject hedge open if wt_velocity 1h+4h decel against hedge direction
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = False  # require live_pnl actively dropping (not flat) before hedge fires
+    HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # min pp drop from K bars ago to qualify
+    HEDGE_DETERIORATING_GAIN_WINDOW_BARS: int = 5   # K bars lookback (5×3m=15min on crypto)
     # wt_D bounce augment — add to losing position when daily WT bounces with higher WT and/or higher price
     AUGMENT_WT_D_BOUNCE_ENABLED: bool = False
     AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
@@ -700,7 +708,7 @@ class QuickConfig:
     MINERVINI_MIN_SCORE: int = 5              # min sepa_score 0-6
     # CLENOW score gate (long-side trend filter)
     CLENOW_GATE_ENABLED: bool = False
-    CLENOW_MIN_SCORE: float = 30.0            # min clenow_score
+    CLENOW_GATE_MIN_SCORE: float = 30.0       # min clenow_score (matches config_tradier name; was CLENOW_MIN_SCORE which collided with existing dead Clenow strategy param)
     # 52w-high proximity gate (avoid topping)
     PROXIMITY_TOP_GATE_ENABLED: bool = False
     PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0   # don't long if pct_from_52w_high > -X% (within X% of high)
@@ -1737,11 +1745,11 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _sepa_score = _safe(npz, 'sepa_score', n, 0).astype(np.int8)
         _sepa_min = int(getattr(cfg, 'MINERVINI_MIN_SCORE', 5))
         minervini_ok = _sepa_score >= _sepa_min
-    # CLENOW_GATE: require clenow_score >= CLENOW_MIN_SCORE on long entries.
+    # CLENOW_GATE: require clenow_score >= CLENOW_GATE_MIN_SCORE on long entries.
     clenow_ok = np.ones(n, dtype=bool)
     if is_long and bool(getattr(cfg, 'CLENOW_GATE_ENABLED', False)):
         _clenow = _safe(npz, 'clenow_score', n, 0.0)
-        _clenow_min = float(getattr(cfg, 'CLENOW_MIN_SCORE', 30.0))
+        _clenow_min = float(getattr(cfg, 'CLENOW_GATE_MIN_SCORE', 30.0))
         clenow_ok = _clenow >= _clenow_min
     # PROXIMITY_TOP_GATE: avoid topping. pct_from_52w_high is negative, so within X% of high
     # means -X <= pct_from_52w_high <= 0. Veto when pct_from_52w_high > -PROXIMITY_TOP_MAX_DROP_PCT.
@@ -2374,6 +2382,32 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # ═══ 2026-04-26 HEDGE GATE PRECOMPUTE — vectorized port of LIVE rules from ez_positions_quick ═══
+            # Three gates govern hedge OPEN: HEDGE_DC_RESISTANCE_GATE / HEDGE_WT_VEL_GATE / HEDGE_DETERIORATING_GAIN.
+            # All sweep-testable (default False here for backward compat with existing autonomous_search runs).
+            # Logic: hedge SHORT defends LONG main → reject if symbol at SUPPORT or WT decel down.
+            # Hedge LONG defends SHORT main → reject if symbol at RESISTANCE or WT decel up.
+            _hedge_dc_gate_on = bool(getattr(cfg, 'HEDGE_DC_RESISTANCE_GATE_ENABLED', False))
+            _hedge_wt_vel_gate_on = bool(getattr(cfg, 'HEDGE_WT_VEL_GATE_ENABLED', False))
+            _hedge_det_on = bool(getattr(cfg, 'HEDGE_DETERIORATING_GAIN_ENABLED', False))
+            _hedge_dc_long_th = float(getattr(cfg, 'HEDGE_DC_LONG_REJECT_DCP', 0.85))
+            _hedge_dc_short_th = float(getattr(cfg, 'HEDGE_DC_SHORT_REJECT_DCP', 0.15))
+            _hedge_det_delta = float(getattr(cfg, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', 0.10))
+            _hedge_det_window = max(1, int(getattr(cfg, 'HEDGE_DETERIORATING_GAIN_WINDOW_BARS', 5)))
+            _hedge_dc_ok = None; _hedge_wt_vel_ok = None
+            if _hedge_dc_gate_on or _hedge_wt_vel_gate_on:
+                _h_dcp_1h = _safe(npz, 'dc_position_1h', n, 0.5)
+                _h_dcp_4h = _safe(npz, 'dc_position_4h', n, 0.5)
+                _h_wtv_1h = _safe(npz, 'wt_velocity_1h', n, 0.0)
+                _h_wtv_4h = _safe(npz, 'wt_velocity_4h', n, 0.0)
+                if is_long:
+                    # LONG main → SHORT hedge candidate. Bad SHORT entry if symbol at SUPPORT (low dcp) OR vel up.
+                    _hedge_dc_ok = (_h_dcp_1h > _hedge_dc_short_th) & (_h_dcp_4h > _hedge_dc_short_th)
+                    _hedge_wt_vel_ok = ~((_h_wtv_1h >= 0) & (_h_wtv_4h >= 0))
+                else:
+                    # SHORT main → LONG hedge candidate. Bad LONG entry if symbol at RESISTANCE (high dcp) OR vel down.
+                    _hedge_dc_ok = (_h_dcp_1h < _hedge_dc_long_th) & (_h_dcp_4h < _hedge_dc_long_th)
+                    _hedge_wt_vel_ok = ~((_h_wtv_1h <= 0) & (_h_wtv_4h <= 0))
             # NOLOSS_BYPASS_WT_5OF5 precompute: 5/5 WT TFs (LTF/15m/1h/4h/D) against pos → allow loss exit.
             # Default OFF; sweep-only flag. Mirror of ez_manage/tradier exception.
             _nlb_5of5_mask = None
@@ -2844,8 +2878,27 @@ def simulate(stores, cfg, capital=10000.0):
                             else:
                                 _wt_kill = _wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]
                         _hedge_should_close = live_pnl >= 0 or _wt_kill
+                        # ═══ 2026-04-26 HEDGE GATES — apply DC/WT-vel/deteriorating-gain to hedge open decision ═══
                         if hc and not hedge_in_pos:
-                            hedge_in_pos = True; hedge_ep = px; hedge_eb = i
+                            _h_gate_block = False
+                            if _hedge_dc_gate_on and _hedge_dc_ok is not None and not bool(_hedge_dc_ok[i]):
+                                _h_gate_block = True
+                            if (not _h_gate_block) and _hedge_wt_vel_gate_on and _hedge_wt_vel_ok is not None and not bool(_hedge_wt_vel_ok[i]):
+                                _h_gate_block = True
+                            if (not _h_gate_block) and _hedge_det_on:
+                                # Deteriorating-gain rule: live_pnl now must be < live_pnl K bars ago - delta_pp.
+                                # Need same-position history (eb is entry bar, so K-bars-ago must be >= eb).
+                                if (i - _hedge_det_window) >= eb and (i - _hedge_det_window) >= 0:
+                                    _h_px_K = float(close[i - _hedge_det_window])
+                                    if _h_px_K > 0:
+                                        _h_pnl_K = ((_h_px_K - ep) / ep * 100.0) if is_long else ((ep - _h_px_K) / ep * 100.0)
+                                        if live_pnl >= _h_pnl_K - _hedge_det_delta:
+                                            _h_gate_block = True
+                                else:
+                                    # Not enough position history yet → don't hedge (conservative)
+                                    _h_gate_block = True
+                            if not _h_gate_block:
+                                hedge_in_pos = True; hedge_ep = px; hedge_eb = i
                         elif _hedge_should_close and hedge_in_pos and hedge_ep > 0 and (i - hedge_eb) >= hedge_min_hold:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0

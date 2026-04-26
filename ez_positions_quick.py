@@ -29,6 +29,7 @@ from dateutil.parser import isoparse
 from requests.adapters import HTTPAdapter
 
 from config import Config
+import hedge_decisions as _hd
 
 # Helpers needed by the ported reentry loops (ez_positions_quick.py OWNS these loops now).
 # We still import the small leaf helpers — they are not zombie logic; they are stateless
@@ -5007,16 +5008,11 @@ class HedgeEngine:
                             # Hedge LONG → close when wt1_3m < wt2_3m AND wt1_1h < wt2_1h.
                             # Hedge SHORT → close when wt1_3m > wt2_3m AND wt1_1h > wt2_1h.
                             _abs_h_is_long = hedge_key.endswith('_LONG')
-                            _abs_wt1_3m = safe_fetch_float(h_ind.get('wt1_3m'), 0)
-                            _abs_wt2_3m = safe_fetch_float(h_ind.get('wt2_3m'), 0)
-                            _abs_wt1_1h = safe_fetch_float(h_ind.get('wt1_1h'), 0)
-                            _abs_wt2_1h = safe_fetch_float(h_ind.get('wt2_1h'), 0)
-                            _abs_wt3m_ok = (_abs_wt1_3m != 0 or _abs_wt2_3m != 0)
-                            _abs_wt1h_ok = (_abs_wt1_1h != 0 or _abs_wt2_1h != 0)
-                            _abs_wt3m_against = (_abs_h_is_long and _abs_wt1_3m < _abs_wt2_3m) or ((not _abs_h_is_long) and _abs_wt1_3m > _abs_wt2_3m)
-                            _abs_wt1h_against = (_abs_h_is_long and _abs_wt1_1h < _abs_wt2_1h) or ((not _abs_h_is_long) and _abs_wt1_1h > _abs_wt2_1h)
-                            if _abs_wt3m_ok and _abs_wt1h_ok and _abs_wt3m_against and _abs_wt1h_against and hedge_amt > 0.001:
-                                if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and hedge_gain < 0:
+                            _abs_decision = _hd.should_close_hedge_wt3m1h(h_ind, _abs_h_is_long, hedge_gain, config) if hedge_amt > 0.001 else None
+                            if _abs_decision is not None:
+                                _abs_wt1_3m = _abs_decision['wt']['wt1_3m']; _abs_wt2_3m = _abs_decision['wt']['wt2_3m']
+                                _abs_wt1_1h = _abs_decision['wt']['wt1_1h']; _abs_wt2_1h = _abs_decision['wt']['wt2_1h']
+                                if not _abs_decision['fire']:
                                     logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_ABS_NOLOSS_HOLD] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge but gain={hedge_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
                                     continue
                                 logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_ABS] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING (hedge_gain={hedge_gain:.2f}%)")
@@ -6241,22 +6237,22 @@ class HedgeEngine:
                                         # Hedge closes ONLY when wt_3m AND wt_1h both flip against the hedge side.
                                         _kr_h_is_long = hedge_position_key.endswith('_LONG')
                                         _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
-                                        _kr_wt1_3m = safe_fetch_float(_kr_ind.get('wt1_3m'), 0)
-                                        _kr_wt2_3m = safe_fetch_float(_kr_ind.get('wt2_3m'), 0)
-                                        _kr_wt1_1h = safe_fetch_float(_kr_ind.get('wt1_1h'), 0)
-                                        _kr_wt2_1h = safe_fetch_float(_kr_ind.get('wt2_1h'), 0)
-                                        _kr_wt3m_ok = (_kr_wt1_3m != 0 or _kr_wt2_3m != 0)
-                                        _kr_wt1h_ok = (_kr_wt1_1h != 0 or _kr_wt2_1h != 0)
-                                        _kr_wt3m_against = (_kr_h_is_long and _kr_wt1_3m < _kr_wt2_3m) or ((not _kr_h_is_long) and _kr_wt1_3m > _kr_wt2_3m)
-                                        _kr_wt1h_against = (_kr_h_is_long and _kr_wt1_1h < _kr_wt2_1h) or ((not _kr_h_is_long) and _kr_wt1_1h > _kr_wt2_1h)
-                                        if _kr_wt3m_ok and _kr_wt1h_ok and _kr_wt3m_against and _kr_wt1h_against:
-                                            if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and existing_gain < 0:
+                                        _kr_decision = _hd.should_close_hedge_wt3m1h(_kr_ind, _kr_h_is_long, existing_gain, config)
+                                        if _kr_decision is not None:
+                                            _kr_wt1_3m = _kr_decision['wt']['wt1_3m']; _kr_wt2_3m = _kr_decision['wt']['wt2_3m']
+                                            _kr_wt1_1h = _kr_decision['wt']['wt1_1h']; _kr_wt2_1h = _kr_decision['wt']['wt2_1h']
+                                            if not _kr_decision['fire']:
                                                 logger.warning(f"🛡️ [HEDGE_KILL_REVERSING_WT_NOLOSS_HOLD] {hedge_position_key}: wt_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f} AND wt_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f} against {'LONG' if _kr_h_is_long else 'SHORT'} hedge but gain={existing_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
                                             else:
                                                 logger.critical(f"🛑 [HEDGE_KILL_REVERSING_WT] {hedge_position_key}: wt_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f} AND wt_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f} against {'LONG' if _kr_h_is_long else 'SHORT'} hedge — closing on technical (gain={existing_gain:.2f}%)")
                                                 await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action='CLOSE', current_price=current_price, qty=positionAmt_abs, reason=f"HEDGE_KILL_REVERSING_WT_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f}_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f}_gain={existing_gain:.2f}%", is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
                                                 await self.tracker_manager.nuke_hedge_key(account_key, hedge_position_key)
                                         else:
+                                            _kr_wt1_3m = safe_fetch_float(_kr_ind.get('wt1_3m'), 0); _kr_wt2_3m = safe_fetch_float(_kr_ind.get('wt2_3m'), 0)
+                                            _kr_wt1_1h = safe_fetch_float(_kr_ind.get('wt1_1h'), 0); _kr_wt2_1h = safe_fetch_float(_kr_ind.get('wt2_1h'), 0)
+                                            _kr_wt3m_ok = (_kr_wt1_3m != 0 or _kr_wt2_3m != 0); _kr_wt1h_ok = (_kr_wt1_1h != 0 or _kr_wt2_1h != 0)
+                                            _kr_wt3m_against = (_kr_h_is_long and _kr_wt1_3m < _kr_wt2_3m) or ((not _kr_h_is_long) and _kr_wt1_3m > _kr_wt2_3m)
+                                            _kr_wt1h_against = (_kr_h_is_long and _kr_wt1_1h < _kr_wt2_1h) or ((not _kr_h_is_long) and _kr_wt1_1h > _kr_wt2_1h)
                                             logger.info(f"[HEDGE_HOLD_NO_WT_FLIP] {hedge_position_key} gain={existing_gain:.2f}% — wt_3m/wt_1h not BOTH against, holding (3m_ok={_kr_wt3m_ok} 3m_against={_kr_wt3m_against} 1h_ok={_kr_wt1h_ok} 1h_against={_kr_wt1h_against})")
                                     quantity = 0
                             if positionAmt_abs > 0 and quantity > 0:
@@ -11261,9 +11257,12 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if 'OPEN' in action:
         # 2026-04-23: SCALP_V3 divergence-scanner fires every 10s on strong outliers.
         # The 300s cooldown is for swing-entries, counterproductive for scalpers.
+        # 2026-04-26 USER: REMOVED `not is_hedge` exemption. Hedges DOUBLE-OPENED 2026-04-26
+        # (RENDERUSDT_LONG hedge for ACHUSDT_SHORT — foothold + maker fallback double-fill).
+        # CLAUDE.md absolute rule: "NO `not is_hedge` bypasses — guards apply to ALL callers."
         _is_scalp_v3 = str(reason or '').upper().startswith('SCALP_V3_OPEN_')
-        if not is_hedge and not _is_scalp_v3 and is_open_pending(position_key):
-            logger.warning(f"🛑 [OPEN_PENDING_BLOCK] {position_key}: Open already pending (cooldown {PENDING_OPEN_COOLDOWN}s). Rejecting duplicate.")
+        if not _is_scalp_v3 and is_open_pending(position_key):
+            logger.warning(f"🛑 [OPEN_PENDING_BLOCK] {position_key}: Open already pending (cooldown {PENDING_OPEN_COOLDOWN}s). Rejecting duplicate. is_hedge={is_hedge}")
             return False, "BLOCKED_OPEN_PENDING"
         if not _is_scalp_v3:
             mark_open_pending(position_key)
