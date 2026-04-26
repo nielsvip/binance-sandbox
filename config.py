@@ -215,6 +215,9 @@ class Config:
     # position when price is at DC support (LONG) / resistance (SHORT) — bounce likely.
     # Entry-side flag: require S/R proximity on NEW V3 opens (soft filter, off by default).
     SCALP_V3_REQUIRE_SR_ON_ENTRY: bool = False
+    # S/R guard tolerance + hold threshold (2026-04-26 fix: 1.5% was blocking ALL exits)
+    SCALP_V3_SR_TOL_PCT: float = 0.5            # within X% of a DC/BB/SMA level = "at" it (was hardcoded 1.5 — too wide, blocks all exits)
+    SCALP_V3_SR_HOLD_MIN_GAIN_PCT: float = 0.1  # only hold at S/R if gain > this. At a loss, close on technicals regardless of S/R.
     # ═══ WINNER TECHNIQUES from 2026-04-24 winners_refined sweep (Sharpe +1.298, WR 97.1%, DD 0.0%) ═══
     # Apply equally to LONG and SHORT (SIDE_MODE=BOTH preserved — sweep's LONG_ONLY bias was bull-market window).
     SCALP_V3_ATR_TP_MULT: float = 0.8        # exit when gain >= N × 3m-ATR%. 0.8 = winners median.

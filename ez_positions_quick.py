@@ -15663,7 +15663,7 @@ def _v3_at_support_or_resistance(ind: dict, price: float, side: str) -> tuple[bo
     bounce is statistically likely and closing locks in the loss instead of
     catching the rebound."""
     if not ind or price <= 0: return False, ""
-    tol_pct = 1.5  # within 1.5% of level = "at" it
+    tol_pct = float(getattr(config, 'SCALP_V3_SR_TOL_PCT', 0.5))  # within X% of level = "at" it (was hardcoded 1.5)
     if side == 'LONG':
         # Nearest SUPPORT below or just above price
         levels = {
@@ -15800,16 +15800,12 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                                              is_hedge=False, data_manager=data_manager)
                 fires += 1
                 continue
+            # 2026-04-26: S/R guard removed from exits. Close on technicals ALWAYS.
+            # When at a loss, single 3m confirmation (WT/DC/BB) is sufficient.
+            # S/R is noted for info only — never blocks a close.
             at_sr, sr_reason = _v3_at_support_or_resistance(ind, mark_price, side)
             if at_sr:
-                logger.warning(f"🛡️ [SCALP_V3_CLOSE_SKIP_SR] {pk}: gain={gain:+.2f}% would-close reversal=[{','.join(triggers[:2])}] BUT {sr_reason} → HOLD+HEDGE")
-                try:
-                    if hedge_engine and gain < 0:
-                        asyncio.create_task(hedge_engine.execute_same_symbol_hedge(account_key, p, pk.split(':',1)[1].rsplit('_',1)[0], side, amt, mark_price))
-                        logger.warning(f"🛡️ [SCALP_V3_SR_HEDGE_TRIGGER] {pk}: dispatching same-symbol hedge at {sr_reason}")
-                except Exception as _e_sh:
-                    logger.debug(f"[SCALP_V3_SR_HEDGE_ERR] {pk}: {_e_sh}")
-                continue
+                logger.info(f"ℹ️ [SCALP_V3_SR_INFO] {pk}: gain={gain:+.2f}% at {sr_reason} — closing anyway on technicals")
             # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
             close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_gain{gain:+.2f}_{'_'.join(triggers)[:80]}"
             logger.critical(f"🛡️ [SCALP_V3_PROTECTIVE_EXIT] {pk}: gain={gain:+.2f}% reversal [{','.join(triggers[:3])}] — CLOSING 100%")
@@ -15863,11 +15859,7 @@ async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
             if mark_price <= 0 and ind:
                 mark_price = safe_fetch_float(ind.get('current_price', 0), 0)
             if mark_price <= 0: continue
-            # Skip close if at support/resistance — likely bounce
-            at_sr, sr_reason = _v3_at_support_or_resistance(ind or {}, mark_price, side)
-            if at_sr:
-                logger.warning(f"🛡️ [SCALP_V3_BE_STOP_SKIP_SR] {pk}: gain={gain:+.2f}% BE-stop would fire BUT {sr_reason} → HOLD")
-                continue
+            # 2026-04-26: S/R guard removed from BE-stop exits. Close on technicals ALWAYS.
             close_reason = f"SCALP_V3_OPEN_BE_STOP_AUG_{side}_gain{gain:+.2f}_max{max_gain:+.2f}_be{be_stop}"
             logger.critical(f"🛡️ [SCALP_V3_AUG_BE_STOP] {pk}: augmented pos gain={gain:+.2f}% (peak {max_gain:+.2f}%) fell below BE stop {be_stop}% — closing 100%")
             await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,

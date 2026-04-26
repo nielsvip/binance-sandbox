@@ -256,7 +256,8 @@ def write_and_push(snap):
     SNAPSHOT_PATH.write_bytes(new_bytes)
     log.info("wrote snapshot (%d bytes)", len(new_bytes))
     git_env = os.environ.copy()
-    git_env["GIT_SSH_COMMAND"] = "ssh -i ~/.ssh/id_ed25519_github -o IdentitiesOnly=yes"
+    git_env["GIT_SSH_COMMAND"] = f"ssh -i {Path.home()}/.ssh/id_ed25519_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+    git_env["HOME"] = str(Path.home())
     cmds = [
         ["git", "-C", str(HANDOFF_REPO), "add", "snapshot.json"],
         ["git", "-C", str(HANDOFF_REPO), "commit", "-m", f"snapshot {snap['generated_at_utc']}"],

@@ -15567,11 +15567,13 @@ class MultiAccountTradeManager:
                             _crossed_at = _price_crossed_since.get(position_key, time.time())
                             _sec_since_cross = time.time() - _crossed_at
                             if _sec_since_cross > REENTRY_CRASH_TIMEOUT_SEC:
-                                logger.critical(f"💀💀💀 [REENTRY_CRASH] {position_key}: Price crossed exit {exit_price:.6f} {_sec_since_cross:.0f}s ago, reentry FAILED {data['attempts']} times. result={result}. CRASHING SCRIPT — REENTRY IS MANDATORY.")
-                                if os.environ.get("SHADOW_MODE") == "1":
-                                    logger.warning(f"[SHADOW] suppressing REENTRY_CRASH self-kill for {position_key} — shadow execute_now is stubbed so reentries never queue")
-                                else:
-                                    os._exit(1)
+                                # 2026-04-26: was os._exit(1) which crashed the script every ~9 minutes when LIMBO/DEDUPE
+                                # transient failures piled up. Now: log CRITICAL alarm but keep retrying — never self-kill.
+                                # Real retry loop will eventually succeed when LIMBO clears (typically within seconds).
+                                # Original intent: detect dead reentry pipeline. New intent: detect AND ALERT, but don't suicide.
+                                _result_str = str(result) if result else "unknown"
+                                _is_transient = any(t in _result_str for t in ("LIMBO", "DEDUPE", "TIMEOUT", "RETRY"))
+                                logger.critical(f"💀 [REENTRY_STUCK] {position_key}: Price crossed exit {exit_price:.6f} {_sec_since_cross:.0f}s ago, reentry FAILED {data['attempts']} times. result={result}. Continuing to retry (was self-kill before 2026-04-26 fix). transient={_is_transient}")
                             else:
                                 logger.critical(f"🚨 [REENTRY_RETRY] {position_key}: Price crossed exit but order failed (result={result}). {_sec_since_cross:.0f}s/{REENTRY_CRASH_TIMEOUT_SEC:.0f}s until CRASH. Retrying...")
                     else:
@@ -15586,11 +15588,11 @@ class MultiAccountTradeManager:
                             if pos and abs(float(getattr(pos, 'positionAmt', 0))) > 0:
                                 _gain = float(getattr(pos, 'gain', 0) or 0)
                                 if _gain < 0:
-                                    logger.critical(f"💀💀💀 [REENTRY_LOSS_KILL] {position_key}: Reentered {_fill_age:.0f}s ago, gain={_gain*100:.2f}%% — NOT WINNING AFTER 6MIN. CRASHING.")
-                                    if os.environ.get("SHADOW_MODE") == "1":
-                                        logger.warning(f"[SHADOW] suppressing REENTRY_LOSS_KILL self-kill for {position_key}")
-                                    else:
-                                        os._exit(1)
+                                    # 2026-04-26: was os._exit(1). This violates STRICT_NO_LOSS — we don't kill positions
+                                    # at a loss, we hedge. A 6-min losing reentry just needs to be held; the L/S ratio /
+                                    # hedge engine handles the risk. Crashing the entire trading process to "punish" one
+                                    # losing reentry is wildly disproportionate and was the #1 cause of fin's 9-min restart cycle.
+                                    logger.critical(f"⚠️ [REENTRY_NEGATIVE] {position_key}: Reentered {_fill_age:.0f}s ago, gain={_gain*100:.2f}%% — at loss. Holding per STRICT_NO_LOSS. (was self-kill before 2026-04-26 fix)")
             except Exception as e:
                 logger.error(f"[REENTRY_ENFORCE_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(15.0)
@@ -16045,13 +16047,18 @@ class OrderQueue:
             if position_key in self.trade_manager.orders_in_limbo and side in self.trade_manager.orders_in_limbo[position_key]:
                 limbo_time = self.trade_manager.orders_in_limbo[position_key][side]
                 age = now_ts - limbo_time if isinstance(limbo_time, (int, float)) else 999
-                if age > 10.0: # Stale entry - clean it up
+                # 2026-04-26 LIMBO COOLDOWN FIX: was 5s reject + 10s cleanup which
+                # let MANDATORY_PRICE_CROSS_REENTRY duplicate-fire across cycles
+                # (flz fired 134 entries in 5 min, rogue-loop pattern). Raised to
+                # 30s reject + 90s cleanup. Real fills typically confirm in 1-2s,
+                # so 30s is safe headroom. 90s cleanup catches stuck-pending orders.
+                if age > 90.0: # Stale entry - clean it up
                     logger.warning(f"[add_order] CLEANUP_STALE_LIMBO: Removing stale limbo entry for {position_key} {side} (age={age:.2f}s)")
                     if position_key in self.trade_manager.orders_in_limbo:
                         self.trade_manager.orders_in_limbo[position_key].pop(side, None)
                         if not self.trade_manager.orders_in_limbo[position_key]:
                             self.trade_manager.orders_in_limbo.pop(position_key, None)
-                elif age < 5.0:
+                elif age < 30.0:
                     try:
                         if await asyncio.wait_for(self.trade_manager.dedupe_lock.acquire(), timeout=0.05):
                             try:
@@ -18473,9 +18480,22 @@ async def evaluate_reentry_2(trade_manager):
             # flz/men suffocation. Stale reentries aged into AGE_GATE_STRICT (3/3
             # stoch align) and never fired. Restored to 72h to match log message
             # AND sister logic in ez_positions_quick.py:14772.
+            # 2026-04-26 v2 FIX: delete from BOTH trade_manager.reentry_data AND
+            # service.reentry_data. They are nominally the same object (per comment
+            # at line 15401), but in practice MANDATORY_PRICE_CROSS_REENTRY kept
+            # firing on records "expired" here — meaning the eval loop reads from
+            # service.reentry_data which retained them. flz fired 134 entries in 5
+            # min (rogue-loop shape of 2026-03-29 incident). Defense-in-depth: hit
+            # both. Cost is null if they're truly the same object.
             if _age_hrs > 72.0:
                 logger.info(f"[REENTRY_EXPIRED] {pk}: {_age_hrs:.0f}h old — removing (max 72h)")
                 del trade_manager.reentry_data[pk]
+                try:
+                    if getattr(trade_manager, 'service', None) and hasattr(trade_manager.service, 'reentry_data'):
+                        if pk in trade_manager.service.reentry_data:
+                            del trade_manager.service.reentry_data[pk]
+                except Exception as _re_del_err:
+                    logger.warning(f"[REENTRY_EXPIRED] {pk}: service-side delete error {_re_del_err}")
                 continue
             elif _age_hrs > 48.0:
                 rd['age_gate'] = 'strict'

@@ -4039,6 +4039,26 @@ class StockStrategy:
         _in_buffer, _mins_open = in_opening_buffer()
         if _in_buffer:
             return False, f"OPENING_BUFFER_NO_TRADE({_mins_open:.0f}m<30m_no_data)", 0
+        # 🤖 TRC_AGENT advisory short-circuit (paper account, supervisor routine override)
+        try:
+            _trc_acct = current_account.get("")
+            if _trc_acct == "trc":
+                import trc_advisory_consumer as _trc_adv
+                _trc_pside = getattr(position, 'position_side', 'LONG')
+                _trc_adv_obj = _trc_adv.check(_trc_acct, symbol, _trc_pside, "stop")
+                if _trc_adv_obj:
+                    _trc_action = _trc_adv_obj.get("action")
+                    _trc_reason = _trc_adv_obj.get("reason", "")[:60]
+                    if _trc_action == "force_close":
+                        _trc_adv.log_application(_trc_acct, symbol, _trc_pside, "stop", "force_close", _trc_adv_obj)
+                        logger.info(f"🤖 TRC_AGENT_FORCE_CLOSE {symbol}_{_trc_pside}: {_trc_reason}")
+                        return True, f"TRC_AGENT_FORCE_CLOSE({_trc_reason})", 1.0
+                    if _trc_action == "hold":
+                        _trc_adv.log_application(_trc_acct, symbol, _trc_pside, "stop", "hold", _trc_adv_obj)
+                        logger.info(f"🤖 TRC_AGENT_HOLD {symbol}_{_trc_pside}: {_trc_reason}")
+                        return False, f"TRC_AGENT_HOLD({_trc_reason})", 0
+        except Exception as _trc_err:
+            logger.warning(f"[TRC_AGENT] evaluate_stop advisory check failed: {_trc_err}")
         i = self.parse_market_data(indicators)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         qty = abs(float(getattr(position, 'positionAmt', 0)))
@@ -4848,6 +4868,30 @@ class StockStrategy:
         _in_buf, _mins = in_opening_buffer()
         if _in_buf:
             return "NO_ACTION", f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
+        # 🤖 TRC_AGENT advisory short-circuit (paper, supervisor routine override)
+        try:
+            if account_key == "trc":
+                import trc_advisory_consumer as _trc_adv
+                _trc_adv_obj = _trc_adv.check(account_key, symbol.upper(), position_side, "open")
+                if _trc_adv_obj:
+                    _trc_action = _trc_adv_obj.get("action")
+                    _trc_reason = _trc_adv_obj.get("reason", "")[:60]
+                    if _trc_action == "block_entry":
+                        _trc_adv.log_application(account_key, symbol.upper(), position_side, "open", "block_entry", _trc_adv_obj)
+                        logger.info(f"🤖 TRC_AGENT_BLOCK_ENTRY {symbol}_{position_side}: {_trc_reason}")
+                        return "NO_ACTION", f"TRC_AGENT_BLOCK_ENTRY({_trc_reason})", 0.0, 0.0
+                    if _trc_action == "force_open":
+                        _trc_size = float(_trc_adv_obj.get("size_override_usd") or 0)
+                        _trc_price, _ = await self.trade_manager.get_current_price(symbol.upper())
+                        _trc_price = float(_trc_price) if _trc_price else 0.0
+                        if _trc_size > 0 and _trc_price > 0:
+                            _trc_qty = max(1.0, _trc_size / _trc_price)
+                            _trc_act = "OPEN_LONG" if position_side == "LONG" else "OPEN_SHORT"
+                            _trc_adv.log_application(account_key, symbol.upper(), position_side, "open", "force_open", _trc_adv_obj)
+                            logger.info(f"🤖 TRC_AGENT_FORCE_OPEN {symbol}_{position_side} qty={_trc_qty:.2f}: {_trc_reason}")
+                            return _trc_act, f"TRC_AGENT_FORCE_OPEN({_trc_reason})", _trc_price, _trc_qty
+        except Exception as _trc_err:
+            logger.warning(f"[TRC_AGENT] evaluate_open advisory check failed: {_trc_err}")
         symbol = symbol.upper()
         i = self.parse_market_data(indicators)
         final_qty = 0.0
@@ -5251,6 +5295,31 @@ class StockStrategy:
         _in_buf, _mins = in_opening_buffer()
         if _in_buf:
             return False, f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
+        # 🤖 TRC_AGENT advisory short-circuit (paper, supervisor routine override)
+        try:
+            _trc_acct = current_account.get("")
+            if _trc_acct == "trc":
+                import trc_advisory_consumer as _trc_adv
+                _trc_pside = getattr(position, 'position_side', 'LONG')
+                _trc_adv_obj = _trc_adv.check(_trc_acct, symbol, _trc_pside, "augment")
+                if _trc_adv_obj:
+                    _trc_action = _trc_adv_obj.get("action")
+                    _trc_reason = _trc_adv_obj.get("reason", "")[:60]
+                    if _trc_action == "block_augment":
+                        _trc_adv.log_application(_trc_acct, symbol, _trc_pside, "augment", "block_augment", _trc_adv_obj)
+                        logger.info(f"🤖 TRC_AGENT_BLOCK_AUGMENT {symbol}_{_trc_pside}: {_trc_reason}")
+                        return False, f"TRC_AGENT_BLOCK_AUGMENT({_trc_reason})", 0.0, 0.0
+                    if _trc_action == "force_augment":
+                        _trc_size = float(_trc_adv_obj.get("size_override_usd") or 0)
+                        _trc_price, _ = await self.trade_manager.get_current_price(symbol)
+                        _trc_price = float(_trc_price) if _trc_price else 0.0
+                        if _trc_size > 0 and _trc_price > 0:
+                            _trc_qty = max(1.0, _trc_size / _trc_price)
+                            _trc_adv.log_application(_trc_acct, symbol, _trc_pside, "augment", "force_augment", _trc_adv_obj)
+                            logger.info(f"🤖 TRC_AGENT_FORCE_AUGMENT {symbol}_{_trc_pside} qty={_trc_qty:.2f}: {_trc_reason}")
+                            return True, f"TRC_AGENT_FORCE_AUGMENT({_trc_reason})", _trc_price, _trc_qty
+        except Exception as _trc_err:
+            logger.warning(f"[TRC_AGENT] evaluate_augment advisory check failed: {_trc_err}")
         try:
             i = self.parse_market_data(indicators)
             current_price = float(i.get('current_price', 0) or 0)
