@@ -178,7 +178,7 @@ class Config:
     SCALP_V3_SCAN_TOP_N: int = 8                 # 2026-04-23 evening: 5→15→8 (15 caused weight overrun)
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
-    SCALP_V3_SIDE_MODE: str = "BOTH"             # BOTH for now (2026-04-23 evening): only 7 LONG vs 54 SHORT inf keys; sweep's SHORT disaster was rally-window bias. Paper A/B will reveal which side works forward.
+    SCALP_V3_SIDE_MODE: str = "SHORT_ONLY"        # 2026-04-26: BOTH (-5.77%) ≪ SHORT_ONLY (-1.81%) ≪ shorthold5 (-1.46%) on 330-cycle live shadow + 12sym×6mo backtest top-4. Switched to SHORT_ONLY pending more data; revert to BOTH if regime flips bullish.
     SCALP_V3_SCAN_BYPASS_GATES: bool = False     # 2026-04-26: OFF after V3 trend-follow rewrite. Bypass let the scanner open SHORTs into rallies (XTZ/KSM/AWE on 2026-04-25), which is exactly the mean-rev pattern the rewrite removed. Scanner now respects new trend-follow K/WT/HTF gates.
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
     # the market median. Positive z-score → top_winners_st → symbols_inf_long_list
@@ -455,6 +455,9 @@ class Config:
     SCALP_V3_EXIT_BAR_REVERSAL_ENABLED: bool = True   # Close LONG on 3m LL/LH (price turning down). Disable -> only WT/K trigger close.
     SCALP_V3_EXIT_WT_FLIP_ENABLED: bool = True        # Close LONG on wt1_3m < wt2_3m. Disable -> wait for bar/K signal.
     SCALP_V3_EXIT_K_CROSS_ENABLED: bool = True        # Close LONG on k_3m crossing down through 50. Disable -> wait for bar/WT signal.
+    # 2026-04-26 USER: "exit at TOP not at fixed %". Require N of {bar,wt,k} signals to fire before closing.
+    # 1 = OR (current); 2 = require 2/3 confirmation (filters noise); 3 = unanimous (most patient).
+    SCALP_V3_EXIT_REQUIRE_N_SIGNALS: int = 1
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

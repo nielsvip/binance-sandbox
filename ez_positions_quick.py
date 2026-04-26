@@ -6103,10 +6103,14 @@ class HedgeEngine:
         if _loser_td and (_loser_td.get('is_hedge', False) or _loser_td.get('hedge_for')):
             logger.info(f"[HEDGE_OF_HEDGE_BLOCK_EC] {losing_position_key}: is hedge in exit_candidates. Not hedging a hedge.")
             return {'overall_status': 'blocked_hedge_of_hedge'}
-        if losing_position_key in self._hedge_in_flight:
-            logger.info(f"[HEDGE_IN_FLIGHT] {losing_position_key} hedge already in progress (in_flight set size={len(self._hedge_in_flight)}). Skipping.")
+        # 2026-04-26 RACE FIX: cross-check BOTH in-flight sets. Without this, execute_dual_hedge and
+        # execute_same_symbol_hedge can both fire orders for the same loser within ~22s (different sets,
+        # no cross-visibility). Result: real double-hedges on Binance (ZRX/ACH/IMX/1000SATS observed).
+        if losing_position_key in self._hedge_in_flight or losing_position_key in self._hedge_same_in_flight:
+            logger.info(f"[HEDGE_IN_FLIGHT] {losing_position_key} hedge already in progress (dual={len(self._hedge_in_flight)} same={len(self._hedge_same_in_flight)}). Skipping.")
             return {'overall_status': 'in_flight', 'elected_symbol': {'status': 'in_flight'}, 'actual_symbol': {'status': 'in_flight'}}
         self._hedge_in_flight.add(losing_position_key)
+        self._hedge_same_in_flight.add(losing_position_key)  # also block parallel execute_same_symbol_hedge
         logger.info(f"✅ [HEDGE_GATES_PASSED] {losing_position_key}: all gates cleared, calling find_hedge_candidates...")
         try:
           async with self._get_account_lock(account_key):
@@ -6366,6 +6370,7 @@ class HedgeEngine:
                 return results
         finally:
             self._hedge_in_flight.discard(losing_position_key)
+            self._hedge_same_in_flight.discard(losing_position_key)  # release shared in-flight (2026-04-26 race fix)
 
     async def _process_hedge_waiting_queue(self):
         """Process queued hedge-waiting positions: retry candidates every 60s, same-symbol last resort after 300s + pnl < -1%."""
@@ -6493,10 +6498,14 @@ class HedgeEngine:
                 hedge_symbol = _usdc_sibling
                 logger.warning(f"💱 [HEDGE_USDC_REDIRECT] origin={symbol} USDT in loss → hedging via {_usdc_sibling} (zero commission)")
         hedge_key = f"{account_key}:{hedge_symbol}_{hedge_side}"
-        if origin_key in self._hedge_same_in_flight:
-            logger.warning(f"🚫 [HEDGE_SAME_IN_FLIGHT] {origin_key}: already in progress (set size={len(self._hedge_same_in_flight)}) — BLOCKED")
+        # 2026-04-26 RACE FIX: cross-check BOTH in-flight sets (dual + same). Without this, parallel
+        # execute_dual_hedge can fire a same-symbol-fallback order while we're awaiting our own
+        # execute_trade_wrapper. Real double-hedges resulted (ZRX/ACH/IMX/1000SATS observed on Binance).
+        if origin_key in self._hedge_same_in_flight or origin_key in self._hedge_in_flight:
+            logger.warning(f"🚫 [HEDGE_SAME_IN_FLIGHT] {origin_key}: already in progress (same={len(self._hedge_same_in_flight)} dual={len(self._hedge_in_flight)}) — BLOCKED")
             return False
         self._hedge_same_in_flight.add(origin_key)
+        self._hedge_in_flight.add(origin_key)  # also block parallel execute_dual_hedge
         logger.warning(f"🔍 [HEDGE_SAME_START] origin={origin_key} hedge={hedge_key} hedge_symbol={hedge_symbol} side={hedge_side}")
         try:
             _result = await self._execute_same_symbol_hedge_inner(account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol)
@@ -6507,6 +6516,7 @@ class HedgeEngine:
             return False
         finally:
             self._hedge_same_in_flight.discard(origin_key)
+            self._hedge_in_flight.discard(origin_key)  # release shared in-flight (2026-04-26 race fix)
 
     async def _execute_same_symbol_hedge_inner(self, account_key, origin_position, symbol, origin_side, qty, current_price, hedge_side, hedge_key, origin_key, hedge_symbol=None):
         # 2026-04-17: hedge_symbol may differ from symbol when origin was USDT and USDC sibling exists.
