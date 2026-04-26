@@ -19616,6 +19616,47 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:BLACKLISTED_{symbol}"
     position = await trade_manager.get_position(position_key)
+    # 🤖 FIN_AGENT advisory short-circuit (paper-style supervisor override, fin only)
+    # Hook fires after position fetch so we have all needed context. Other accounts skipped.
+    if account_key == "fin":
+        try:
+            import fin_advisory_consumer as _fin_adv
+            _fin_adv_obj = _fin_adv.check(account_key, symbol, position_side, "process")
+            if _fin_adv_obj:
+                _fin_action = _fin_adv_obj.get("action")
+                _fin_reason = (_fin_adv_obj.get("reason") or "")[:60]
+                _fin_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0))) if position else 0.0
+                if _fin_action == "force_close" and _fin_pos_amt > 0:
+                    _fin_side = 'SELL' if position_side == 'LONG' else 'BUY'
+                    _fin_adv.log_application(account_key, symbol, position_side, "process", "force_close", _fin_adv_obj)
+                    logger.info(f"🤖 FIN_AGENT_FORCE_CLOSE {position_key}: {_fin_reason}")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_fin_pos_amt, side=_fin_side, position_side=position_side, quantity=_fin_pos_amt, reason=f"FIN_AGENT_FORCE_CLOSE({_fin_reason})", is_full_close=True, action='CLOSE')
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:FIN_AGENT_FORCE_CLOSE"
+                if _fin_action == "hold" and _fin_pos_amt > 0:
+                    _fin_adv.log_application(account_key, symbol, position_side, "process", "hold", _fin_adv_obj)
+                    logger.info(f"🤖 FIN_AGENT_HOLD {position_key}: {_fin_reason}")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.NO_ACTION}:FIN_AGENT_HOLD"
+                if _fin_action == "force_open" and _fin_pos_amt == 0:
+                    _fin_size_usd = float(_fin_adv_obj.get("size_override_usd") or 0)
+                    _fin_price, _ = await get_current_price(symbol)
+                    _fin_price = float(_fin_price) if _fin_price else 0.0
+                    if _fin_size_usd > 0 and _fin_price > 0:
+                        _fin_qty = max(_fin_size_usd / _fin_price, 0.0)
+                        _fin_side = 'BUY' if position_side == 'LONG' else 'SELL'
+                        _fin_adv.log_application(account_key, symbol, position_side, "process", "force_open", _fin_adv_obj)
+                        logger.info(f"🤖 FIN_AGENT_FORCE_OPEN {position_key} size=${_fin_size_usd:.0f} qty={_fin_qty:.4f}: {_fin_reason}")
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0, side=_fin_side, position_side=position_side, quantity=_fin_qty, reason=f"FIN_AGENT_FORCE_OPEN({_fin_reason})", action='OPEN')
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:FIN_AGENT_FORCE_OPEN"
+                if _fin_action == "block_entry" and _fin_pos_amt == 0:
+                    _fin_adv.log_application(account_key, symbol, position_side, "process", "block_entry", _fin_adv_obj)
+                    logger.info(f"🤖 FIN_AGENT_BLOCK_ENTRY {position_key}: {_fin_reason}")
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.NO_ACTION}:FIN_AGENT_BLOCK_ENTRY"
+        except Exception as _fin_err:
+            logger.warning(f"[FIN_AGENT] advisory check failed for {position_key}: {_fin_err}")
     if position and abs(safe_float(getattr(position, 'positionAmt', 0))) == 0:
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:ZERO_AMT"

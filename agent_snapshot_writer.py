@@ -195,6 +195,14 @@ def _load_allowlists():
                 out[f"{acct}_{side}"] = json.loads(f.read_text())
             except Exception as e:
                 log.warning("allowlist read %s failed: %s", f, e)
+    for acct in ("fin", "men"):
+        f = BASE / f"symbols_{acct}.json"
+        if not f.exists():
+            continue
+        try:
+            out[acct] = json.loads(f.read_text())
+        except Exception as e:
+            log.warning("crypto allowlist read %s failed: %s", f, e)
     return out
 
 
