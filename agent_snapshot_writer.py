@@ -203,6 +203,14 @@ def _load_allowlists():
             out[acct] = json.loads(f.read_text())
         except Exception as e:
             log.warning("crypto allowlist read %s failed: %s", f, e)
+    tk_path = BASE / "tradeable_keys.json"
+    if tk_path.exists():
+        try:
+            tk_all = json.loads(tk_path.read_text())
+            for acct in ("fin", "ang", "inf", "flz", "men"):
+                out[f"tradeable_{acct}"] = [k for k in tk_all if k.startswith(f"{acct}:")]
+        except Exception as e:
+            log.warning("tradeable_keys read failed: %s", e)
     return out
 
 

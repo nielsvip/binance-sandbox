@@ -61,6 +61,17 @@ _STOCK_TFS = ["5m", "15m", "1h", "4h", "D"]
 load_environment_from_gpg(None)
 from tradier_api import TradierAPIClient
 from tradier_positions import TradierPosition, TradierPositionManager
+# === 2026-04-26 NEW MODULES (VIX regime + per-sector L/S) ===
+try:
+    from tradier_vix_regime import get_vix_regime_size_mult, get_vix_regime_label, is_vix_panic_regime
+    _VIX_MODULE_AVAILABLE = True
+except Exception as _vix_err:
+    _VIX_MODULE_AVAILABLE = False
+try:
+    from tradier_sector_ls_ratio import check_sector_ls_ratio
+    _SECTOR_LS_MODULE_AVAILABLE = True
+except Exception as _slr_err:
+    _SECTOR_LS_MODULE_AVAILABLE = False
 
 _GLOBAL_JSON_CACHE={}
 config = TradierConfig()
@@ -7568,6 +7579,20 @@ class TradierTradeManager:
         if not _is_exit_or_reduce and not self.is_symbol_tradeable(symbol, account_key, position_side):
             logger.warning(f"[{account_key}] ⛔ EXECUTE BLOCK {symbol} {position_side}: Not in approved list.")
             return "BLOCKED_NOT_TRADEABLE"
+        # 2026-04-26 Per-sector L/S ratio check — block opens that worsen sector imbalance
+        if (is_entry_action and not is_hedge and not _is_exit_or_reduce and _SECTOR_LS_MODULE_AVAILABLE
+            and getattr(config, 'SECTOR_LS_RATIO_ENABLED', False)):
+            try:
+                # Build positions dict in {pk: {positionAmt}} format
+                _all_pos = {}
+                for _pk, _p in (self.position_manager.positions if self.position_manager else {}).items():
+                    _all_pos[_pk] = {'positionAmt': float(getattr(_p, 'positionAmt', 0) or 0)}
+                _slr_ok, _slr_reason = check_sector_ls_ratio(account_key, symbol, position_side, _all_pos, config, is_hedge=is_hedge)
+                if not _slr_ok:
+                    logger.warning(f"[{account_key}] ⛔ {_slr_reason}")
+                    return f"BLOCKED_SECTOR_LS_{_slr_reason}"
+            except Exception as _slr_e:
+                logger.warning(f"[{account_key}] [SECTOR_LS] check failed: {_slr_e}")
 
         # 2. Indicators Fetch & Unpack
         i = self.get_indicators(symbol)
@@ -9088,6 +9113,18 @@ class TradierTradeManager:
             if congress_boost > 1.0:
                 max_value *= congress_boost
                 max_value = min(max_value, config.MAX_ORDER_VALUE * 1.5)
+            # 2026-04-26 VIX volatility regime size multiplier (VIX vs VIX-200dMA)
+            if _VIX_MODULE_AVAILABLE and getattr(config, 'VIX_VOLATILITY_REGIME_ENABLED', False):
+                try:
+                    _vix_mult = get_vix_regime_size_mult(config)
+                    if _vix_mult <= 0.0:
+                        logger.warning(f"[{account_key}] [VIX_REGIME] {get_vix_regime_label(config)} — entry blocked for {symbol}")
+                        return 0.0
+                    if _vix_mult < 1.0:
+                        max_value *= _vix_mult
+                        logger.info(f"[{account_key}] [VIX_REGIME] {get_vix_regime_label(config)} size_mult={_vix_mult:.2f} → max_value=${max_value:.0f}")
+                except Exception as _vix_e:
+                    logger.warning(f"[{account_key}] [VIX_REGIME] check failed: {_vix_e}")
             shares = max_value / price
             shares_int = max(1, int(round(shares)))
             return float(shares_int)

@@ -5012,16 +5012,11 @@ class HedgeEngine:
                                 except Exception as _abs_e:
                                     logger.error(f"[HEDGE_CLOSE_WT3M1H_ABS_FAIL] {hedge_key}: {_abs_e}", exc_info=True)
                                 continue
-                            # 2026-04-25 PREV_GAIN BACKSTOP — fires ONLY when WT indicators are unavailable.
-                            # Prevents a hedge from holding indefinitely when indicators are missing for a symbol.
-                            if (not _abs_wt3m_ok or not _abs_wt1h_ok) and hedge_gain < 0 and hedge_gain < hedge_prev_gain and hedge_amt > 0.001:
-                                logger.critical(f"🛑 [HEDGE_CLOSE_PREV_GAIN] {hedge_key}: WT missing (3m_ok={_abs_wt3m_ok} 1h_ok={_abs_wt1h_ok}), gain={hedge_gain:.2f}% < prev_gain={hedge_prev_gain:.2f}% — backstop close")
-                                try:
-                                    await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_PREV_GAIN_3m_ok={_abs_wt3m_ok}_1h_ok={_abs_wt1h_ok}_gain={hedge_gain:.2f}%_prev={hedge_prev_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
-                                    await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                except Exception as _pg_e:
-                                    logger.error(f"[HEDGE_CLOSE_PREV_GAIN_FAIL] {hedge_key}: {_pg_e}", exc_info=True)
-                                continue
+                            # 2026-04-26 OWNER RULE: NO % closes on hedges. EVER.
+                            # Former HEDGE_CLOSE_PREV_GAIN backstop (fired when WT data missing AND
+                            # gain < prev_gain) was a %-based close. Removed per "we DO NOT close
+                            # on % but on technicals". If WT is missing the hedge holds — wait for
+                            # the indicator to return, then HEDGE_CLOSE_WT3M1H_ABS above handles it.
                             # 2026-04-25 SCALP HEDGE CLOSE v2 — gain-based, not structure-based.
                             # WIFUSDC incident: SHORT opened -0.62%, hedge LONG opened late at -0.25%,
                             # both stuck losing. Structure check wasn't firing because price just

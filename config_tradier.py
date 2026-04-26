@@ -749,6 +749,12 @@ class TradierConfig:
     # === FOMC/CPI/NFP blackout (Phase B framework) ===
     MACRO_BLACKOUT_ENABLED: bool = True
     MACRO_BLACKOUT_SIZE_MULT: float = 0.5
+    # === Per-sector L/S ratio enforcement (Phase B framework) ===
+    SECTOR_LS_RATIO_ENABLED: bool = True
+    SECTOR_LS_RATIO_MIN: float = 0.50
+    SECTOR_LS_RATIO_MAX: float = 2.00
+    SECTOR_LS_MIN_POSITIONS: int = 3        # don't enforce until ≥3 positions in a sector
+    SECTOR_LS_RATIO_BYPASS_HEDGE: bool = True
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
     # === AUGMENT GUARD (parity with crypto) ===
