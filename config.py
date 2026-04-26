@@ -463,7 +463,7 @@ class Config:
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
     WRONG_SIDE_ABS_KILL_ENABLED: bool = True  # Kill non-hedge positions when ALL WT+K TFs against side.
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0  # Grace period — won't fire on newborn positions.
-    WRONG_SIDE_WT_TFS_REQUIRED: int = 5  # Of 5 WT TFs (3m/15m/1h/4h/D), how many must be against.
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 4  # Of 5 WT TFs (3m/15m/1h/4h/D), how many must be against. 2026-04-26: 5→4. 7-day inf forensic: 5/5 fired ZERO times (data/v3_loss_pattern_analysis_20260426_1835.md). Mega-loser tail (-135% on 5 trades: APE/INX/BB) walked free. 4/5 + K already 0 = WT-only gate, still technical, still bypasses STRICT_NO_LOSS by design. Sweep evidence on this knob unreliable (12-sym chained, fails ≥48 floor).
     WRONG_SIDE_K_TFS_REQUIRED: int = 3  # Of 3 stoch K TFs (3m/15m/1h), how many must be against.
     STALL_SUB_ENABLED: bool = False  # Close flat-delta stalled positions to free capital for high-delta entries.
     STALL_AGE_MIN_MIN: float = 180.0  # Position must be at least N minutes old to count as "stalled".
@@ -1220,7 +1220,7 @@ class Config:
     # 2026-04-25 rapid-grid: already True in crypto baseline; disabling costs −0.007 Sharpe. Confirmed correct.
     WRONG_SIDE_ABS_KILL_ENABLED: bool = True
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
-    WRONG_SIDE_WT_TFS_REQUIRED: int = 5
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 4              # 2026-04-26: 5→4. See line ~466 for full reasoning.
     WRONG_SIDE_WT_TFS_REDUCED: int = 3              # when divergence confirms, this threshold applies
     WRONG_SIDE_DIV_TFS_REQUIRED: int = 2            # min TFs with divergence to reduce threshold
     WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20          # K-bars back for HH/LH comparison

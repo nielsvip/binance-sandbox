@@ -5642,9 +5642,18 @@ class HedgeEngine:
         base_notional = losing_value_usd * ratio
         metrics, indicators, k_3m, d_3m, _, _, is_data_fresh = await self.data_manager.get_hot_state(target_symbol)
         current_price, _ = await self.data_manager.get_fresh_price(target_symbol)
-        # Allow up to 200% of losing value (capped by max_hedge_notional for safety)
         adjusted_notional = base_notional
         adjusted_notional = min(adjusted_notional, self.max_hedge_notional)
+        # 2026-04-26 USER RULE — hard cap so hedges can NEVER exceed 1.5× loser notional or absolute $25.
+        # Reality check: per-trade gain/loss is <1%, account is ~$1k crypto. Any hedge sizing ≥$50 or
+        # ≥200% of loser was the result of accumulated double-fires that shouldn't exist.
+        # Triggered after ALTUSDT_LONG $1013 / 12478% in tracker.
+        _max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.5))
+        _max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
+        _hard_cap = min(losing_value_usd * _max_pct, _max_abs) if losing_value_usd > 0 else _max_abs
+        if adjusted_notional > _hard_cap:
+            logger.warning(f"🛑 [HEDGE_SIZE_HARD_CAP] {target_symbol}: requested ${adjusted_notional:.2f} > cap ${_hard_cap:.2f} (loser=${losing_value_usd:.2f} × {_max_pct} or abs ${_max_abs}) — clamping")
+            adjusted_notional = _hard_cap
         return adjusted_notional
 
     async def cleanup_infinite_hedges(self, account_key: str):

@@ -1262,6 +1262,24 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
     data_path = Path(config.DATA_DIR) if hasattr(config, 'DATA_DIR') else BASE_PATH / "data"
     data_manager = ez_positions_quick.FastDataManager(redis_manager, data_path, trade_manager=trade_manager)
+    # ═══ 2026-04-26 IPC BYPASS — backtest reads NPZ only, no shared-mem RPC ═══
+    # In live, shared_proxy is the IPC handle to the ez_share_ind server (port 50005).
+    # In backtest, all indicator data is loaded into store.arrays + injected into
+    # data_manager._cold_data per bar (line ~1524). Shared_proxy is NEVER needed.
+    # Without this stub, fallback paths in ez_positions_quick (lines 4742, 5126, 5891, 7189)
+    # call shared_proxy.get_symbol() which spins on connection retries when the server
+    # isn't running — caused 0.7%-sim-completion-in-30-min slowdown observed 2026-04-26.
+    data_manager.shared_proxy = None
+    # Disable the reconnect watchdog so it doesn't keep trying every 2-5s.
+    if hasattr(data_manager, '_shared_mem_last_attempt'):
+        data_manager._shared_mem_last_attempt = float('inf')  # never retry
+    # Replace _connect_shared with a no-op so any code path triggering it does nothing.
+    if hasattr(data_manager, '_connect_shared'):
+        data_manager._connect_shared = lambda *a, **kw: None
+    if hasattr(data_manager, 'shared_mem_watchdog'):
+        async def _noop_watchdog(*a, **kw): return
+        data_manager.shared_mem_watchdog = _noop_watchdog
+    v8_logger.info("V8 BACKTEST: shared_proxy disabled, ez_share_ind IPC bypassed (NPZ-only mode)")
     trade_manager.data_manager = data_manager
     tracker_manager.data_manager = data_manager
 

@@ -1024,6 +1024,65 @@ def build_param_grid_mega_crypto_v8():
     }
 
 
+def build_param_grid_mega_crypto_v8_a1234():
+    """NEW 2026-04-26 — sweeps Improvement Framework A1-A4 switches on top of mega_crypto_v8 baseline.
+    Inherits the FIXED baseline params from mega_crypto_v8 (proven crypto starting point).
+    Old "UNKNOWNS" replaced with the 4 new primitives: SQUEEZE_FIRE, DIVERGENCE, FUNDING, OI.
+    Engine guards already in place: ADDITIVE_SIGNAL_MIN_HTF for SQUEEZE/DIV, pre-cache pass-through for FUNDING/OI.
+    Run: --mode crypto --tier mega_crypto_v8_a1234 --workers 4 --stream --shuffle --start 2022-01-01 --kill-secs 99999
+    """
+    return {
+        # ── FIXED: same proven crypto baseline as mega_crypto_v8 ──
+        "MIN_HOLD_BARS": [50],
+        "STRENGTH_MIN_SCORE": [3.0],
+        "D_TREND_REQUIRED": [True],
+        "WT_EXIT_MIN_TFS": [2],
+        "HTF_MIN_ALIGNED": [1],
+        "DC_RECOVERY_EXIT_ENABLED": [True],
+        "NOLOSS_ENABLED": [True],
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        "RZ_BREAKOUT_NOLOSS_MODE": ["dc_low4_15m"],
+        # ── A1-A4 NEW PRIMITIVES (the actual sweep target) ──
+        "SQUEEZE_FIRE_ENTRY_ENABLED": [True, False],
+        "SQUEEZE_FIRE_TF": ["1h", "4h"],
+        "DIVERGENCE_ENTRY_ENABLED": [True, False],
+        "DIVERGENCE_ENTRY_TF": ["1h", "4h"],
+        "DIVERGENCE_INDICATOR": ["wt", "mfi", "either"],
+        "FUNDING_GATE_ENABLED": [True, False],
+        "FUNDING_GATE_LONG_MAX": [0.0003, 0.0005, 0.001],
+        "FUNDING_GATE_SHORT_MIN": [-0.001, -0.0005, -0.0003],
+        "OI_CONFIRM_ENABLED": [True, False],
+        "OI_CONFIRM_MIN_CHANGE_PCT": [0.3, 0.5, 1.0],
+        "ADDITIVE_SIGNAL_MIN_HTF": [1, 2],
+        # ── FLOOR ──
+        "EARLY_ABORT_MIN_SYMBOLS": [6],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],  # lower than v8's 3.0 since this explores OFF-baseline territory
+        "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
+    }
+
+
+def build_param_grid_mega_tradier_v8_a134():
+    """NEW 2026-04-26 — tradier mirror of A1-A4 (excluding A1/A2 funding+OI: stocks have no perp funding/OI).
+    Sweeps SQUEEZE_FIRE (A3) + DIVERGENCE (A4) on top of le_dynamic_v2 tradier baseline.
+    Run: --mode tradier --tier mega_tradier_v8_a134 --workers 4 --stream --shuffle --start 2022-01-01 --kill-secs 99999
+    """
+    return {
+        # FIXED: tradier baseline (mirrors mega_tradier_v8 inherited starts; placeholder — keep simple)
+        "NOLOSS_ENABLED": [True],
+        "RZ_BREAKOUT_ENTRY_ENABLED": [True],
+        # A3+A4 sweep
+        "SQUEEZE_FIRE_ENTRY_ENABLED": [True, False],
+        "SQUEEZE_FIRE_TF": ["1h", "4h"],
+        "DIVERGENCE_ENTRY_ENABLED": [True, False],
+        "DIVERGENCE_ENTRY_TF": ["1h", "4h"],
+        "DIVERGENCE_INDICATOR": ["wt", "mfi", "either"],
+        "ADDITIVE_SIGNAL_MIN_HTF": [1, 2],
+        "EARLY_ABORT_MIN_SYMBOLS": [10],
+        "EARLY_ABORT_SHARPE_FLOOR": [2.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [15.0],
+    }
+
+
 def build_param_grid_mega_tradier_v8():
     """REBASED 2026-04-20 to le_dynamic_v2_baseline snapshot (Sharpe 6.577 on 262 sym).
     All le_dynamic_v2 winner params FIXED. RZ_BREAKOUT_ENTRY always ON (it's a fact).
@@ -2170,6 +2229,8 @@ TIER_MAP = {
     "exit_wt_phase2": build_param_grid_exit_wt_phase2,
     "exit_wt_48sym": build_param_grid_exit_wt_48sym,
     "mega_crypto_v8": build_param_grid_mega_crypto_v8,
+    "mega_crypto_v8_a1234": build_param_grid_mega_crypto_v8_a1234,
+    "mega_tradier_v8_a134": build_param_grid_mega_tradier_v8_a134,
     "mega_tradier_v8": build_param_grid_mega_tradier_v8,
     "mega_tradier_v8_focused": build_param_grid_mega_tradier_v8_focused,
     "rz_exit_sweep": build_param_grid_rz_exit_sweep,

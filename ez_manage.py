@@ -13649,7 +13649,11 @@ class MultiAccountTradeManager:
                 # Old SMA200 block killed ALL longs in bear market, preventing 90%+ of entries
                     
                 projected_total = current_real_amt + quantity
-                if projected_total < retention_qty and tier_mult > 1:
+                # 2026-04-26 USER: HEDGES are sized exactly by hedge_engine (hedge_notional/price).
+                # The tier_mult retention bump inflated RENDERUSDT_LONG hedge from 3.86→7.5 RENDER
+                # ($7 intent → $13.62 actual), then foothold ($7) + maker fallback ($13.68) = double-fill.
+                # Hedges keep requested qty. is_hedge_account exception preserved for non-hedge inflations.
+                if projected_total < retention_qty and tier_mult > 1 and not is_hedge:
                     shortfall = retention_qty - projected_total
                     if (current_real_amt + quantity + shortfall) * current_price < max_pos_size_usd:
                         quantity += shortfall
@@ -19630,47 +19634,48 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:BLACKLISTED_{symbol}"
     position = await trade_manager.get_position(position_key)
-    # 🤖 FIN_AGENT advisory short-circuit (paper-style supervisor override, fin only)
+    # 🤖 AGENT advisory short-circuit (supervisor override, fin + ang)
     # Hook fires after position fetch so we have all needed context. Other accounts skipped.
-    if account_key == "fin":
+    if account_key in ("fin", "ang"):
         try:
-            import fin_advisory_consumer as _fin_adv
-            _fin_adv_obj = _fin_adv.check(account_key, symbol, position_side, "process")
-            if _fin_adv_obj:
-                _fin_action = _fin_adv_obj.get("action")
-                _fin_reason = (_fin_adv_obj.get("reason") or "")[:60]
-                _fin_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0))) if position else 0.0
-                if _fin_action == "force_close" and _fin_pos_amt > 0:
-                    _fin_side = 'SELL' if position_side == 'LONG' else 'BUY'
-                    _fin_adv.log_application(account_key, symbol, position_side, "process", "force_close", _fin_adv_obj)
-                    logger.info(f"🤖 FIN_AGENT_FORCE_CLOSE {position_key}: {_fin_reason}")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_fin_pos_amt, side=_fin_side, position_side=position_side, quantity=_fin_pos_amt, reason=f"FIN_AGENT_FORCE_CLOSE({_fin_reason})", is_full_close=True, action='CLOSE')
+            import fin_advisory_consumer as _ag_adv
+            _ag_obj = _ag_adv.check(account_key, symbol, position_side, "process")
+            if _ag_obj:
+                _ag_tag = account_key.upper()
+                _ag_action = _ag_obj.get("action")
+                _ag_reason = (_ag_obj.get("reason") or "")[:60]
+                _ag_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0))) if position else 0.0
+                if _ag_action == "force_close" and _ag_pos_amt > 0:
+                    _ag_side = 'SELL' if position_side == 'LONG' else 'BUY'
+                    _ag_adv.log_application(account_key, symbol, position_side, "process", "force_close", _ag_obj)
+                    logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_CLOSE {position_key}: {_ag_reason}")
+                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_ag_pos_amt, side=_ag_side, position_side=position_side, quantity=_ag_pos_amt, reason=f"{_ag_tag}_AGENT_FORCE_CLOSE({_ag_reason})", is_full_close=True, action='CLOSE')
                     trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.ACTION_TAKEN}:FIN_AGENT_FORCE_CLOSE"
-                if _fin_action == "hold" and _fin_pos_amt > 0:
-                    _fin_adv.log_application(account_key, symbol, position_side, "process", "hold", _fin_adv_obj)
-                    logger.info(f"🤖 FIN_AGENT_HOLD {position_key}: {_fin_reason}")
+                    return f"{EvalStatus.ACTION_TAKEN}:{_ag_tag}_AGENT_FORCE_CLOSE"
+                if _ag_action == "hold" and _ag_pos_amt > 0:
+                    _ag_adv.log_application(account_key, symbol, position_side, "process", "hold", _ag_obj)
+                    logger.info(f"🤖 {_ag_tag}_AGENT_HOLD {position_key}: {_ag_reason}")
                     trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.NO_ACTION}:FIN_AGENT_HOLD"
-                if _fin_action == "force_open" and _fin_pos_amt == 0:
-                    _fin_size_usd = float(_fin_adv_obj.get("size_override_usd") or 0)
-                    _fin_price, _ = await get_current_price(symbol)
-                    _fin_price = float(_fin_price) if _fin_price else 0.0
-                    if _fin_size_usd > 0 and _fin_price > 0:
-                        _fin_qty = max(_fin_size_usd / _fin_price, 0.0)
-                        _fin_side = 'BUY' if position_side == 'LONG' else 'SELL'
-                        _fin_adv.log_application(account_key, symbol, position_side, "process", "force_open", _fin_adv_obj)
-                        logger.info(f"🤖 FIN_AGENT_FORCE_OPEN {position_key} size=${_fin_size_usd:.0f} qty={_fin_qty:.4f}: {_fin_reason}")
-                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0, side=_fin_side, position_side=position_side, quantity=_fin_qty, reason=f"FIN_AGENT_FORCE_OPEN({_fin_reason})", action='OPEN')
+                    return f"{EvalStatus.NO_ACTION}:{_ag_tag}_AGENT_HOLD"
+                if _ag_action == "force_open" and _ag_pos_amt == 0:
+                    _ag_size_usd = float(_ag_obj.get("size_override_usd") or 0)
+                    _ag_price, _ = await get_current_price(symbol)
+                    _ag_price = float(_ag_price) if _ag_price else 0.0
+                    if _ag_size_usd > 0 and _ag_price > 0:
+                        _ag_qty = max(_ag_size_usd / _ag_price, 0.0)
+                        _ag_side = 'BUY' if position_side == 'LONG' else 'SELL'
+                        _ag_adv.log_application(account_key, symbol, position_side, "process", "force_open", _ag_obj)
+                        logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_OPEN {position_key} size=${_ag_size_usd:.0f} qty={_ag_qty:.4f}: {_ag_reason}")
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=0, side=_ag_side, position_side=position_side, quantity=_ag_qty, reason=f"{_ag_tag}_AGENT_FORCE_OPEN({_ag_reason})", action='OPEN')
                         trade_manager.processing_keys.discard(position_key)
-                        return f"{EvalStatus.ACTION_TAKEN}:FIN_AGENT_FORCE_OPEN"
-                if _fin_action == "block_entry" and _fin_pos_amt == 0:
-                    _fin_adv.log_application(account_key, symbol, position_side, "process", "block_entry", _fin_adv_obj)
-                    logger.info(f"🤖 FIN_AGENT_BLOCK_ENTRY {position_key}: {_fin_reason}")
+                        return f"{EvalStatus.ACTION_TAKEN}:{_ag_tag}_AGENT_FORCE_OPEN"
+                if _ag_action == "block_entry" and _ag_pos_amt == 0:
+                    _ag_adv.log_application(account_key, symbol, position_side, "process", "block_entry", _ag_obj)
+                    logger.info(f"🤖 {_ag_tag}_AGENT_BLOCK_ENTRY {position_key}: {_ag_reason}")
                     trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.NO_ACTION}:FIN_AGENT_BLOCK_ENTRY"
-        except Exception as _fin_err:
-            logger.warning(f"[FIN_AGENT] advisory check failed for {position_key}: {_fin_err}")
+                    return f"{EvalStatus.NO_ACTION}:{_ag_tag}_AGENT_BLOCK_ENTRY"
+        except Exception as _ag_err:
+            logger.warning(f"[AGENT] advisory check failed for {position_key}: {_ag_err}")
     if position and abs(safe_float(getattr(position, 'positionAmt', 0))) == 0:
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:ZERO_AMT"

@@ -1,15 +1,17 @@
 # pylint: disable=W,C,R,I
-"""fin_advisory_consumer.py — local consumer for routine-emitted fin (crypto) advisories.
+"""fin_advisory_consumer.py — local consumer for routine-emitted advisories.
 
-The remote `fin-hourly-supervisor` Claude routine writes advisories to
-~/binance-agent-handoff/fin_advisories.json. This module reads them, caches the
-result for 30s, ignores expired entries, and exposes a single short-circuit helper
-for ez_manage.py to call at the top of relevant evaluate_* paths.
+Originally fin-only; now serves fin AND ang. Filename retained for import
+backward-compatibility (ez_manage.py:19637 imports it as fin_advisory_consumer).
 
-fin-only. Other crypto accounts (ang/inf/flz/men) must never invoke this — they
-remain pure scripted (control comparison + safety budget).
+The remote `fin-hourly-supervisor` Claude routine writes per-account advisories to
+~/binance-agent-handoff/{account}_advisories.json. This module reads them, caches per-account
+for 30s, ignores expired entries, and exposes a single short-circuit helper for ez_manage.py
+to call at the top of relevant evaluate_* paths.
 
-Advisory schema:
+Other crypto accounts (inf/flz/men) remain pure scripted (control comparison + safety budget).
+
+Advisory schema (per-account file):
 {
   "schema_version": 1,
   "generated_at_utc": "...",
@@ -33,11 +35,12 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-ADVISORY_PATH = Path.home() / "binance-agent-handoff" / "fin_advisories.json"
-DECISION_LOG_PATH = Path.home() / "binance-agent-handoff" / "logs" / "fin_decisions_log.jsonl"
+SUPPORTED_ACCOUNTS = {"fin", "ang"}
+HANDOFF_DIR = Path.home() / "binance-agent-handoff"
+DECISION_LOG_PATH = HANDOFF_DIR / "logs" / "agent_decisions_log.jsonl"
 CACHE_TTL_SEC = 30
-log = logging.getLogger("fin_advisory")
-_cache = {"loaded_at": 0.0, "data": None, "mtime": 0.0}
+log = logging.getLogger("agent_advisory")
+_cache = {}
 _cache_lock = threading.Lock()
 
 
@@ -55,25 +58,29 @@ def _parse_iso(s):
         return None
 
 
-def _load_advisories():
+def _advisory_path(account_key):
+    return HANDOFF_DIR / f"{account_key}_advisories.json"
+
+
+def _load_advisories(account_key):
+    path = _advisory_path(account_key)
     try:
-        st = ADVISORY_PATH.stat()
+        st = path.stat()
     except FileNotFoundError:
         return {}
     now_ts = _now().timestamp()
     with _cache_lock:
-        if _cache["data"] is not None and now_ts - _cache["loaded_at"] < CACHE_TTL_SEC and _cache["mtime"] == st.st_mtime:
-            return _cache["data"]
+        c = _cache.get(account_key)
+        if c is not None and now_ts - c["loaded_at"] < CACHE_TTL_SEC and c["mtime"] == st.st_mtime:
+            return c["data"]
         try:
-            with ADVISORY_PATH.open() as f:
+            with path.open() as f:
                 doc = json.load(f)
         except Exception as e:
-            log.warning("advisory load failed: %s", e)
-            return _cache.get("data") or {}
+            log.warning("advisory load %s failed: %s", path, e)
+            return (c or {}).get("data") or {}
         adv = doc.get("advisories") or {}
-        _cache["data"] = adv
-        _cache["loaded_at"] = now_ts
-        _cache["mtime"] = st.st_mtime
+        _cache[account_key] = {"data": adv, "loaded_at": now_ts, "mtime": st.st_mtime}
         return adv
 
 
@@ -111,15 +118,15 @@ def _log_decision(record):
 def check(account_key, symbol, position_side, decision_kind):
     """Return advisory dict if active+applicable, else None.
 
-    decision_kind: 'stop' | 'open' | 'augment' | 'reentry'
+    decision_kind: 'stop' | 'open' | 'augment' | 'reentry' | 'process'
     Caller short-circuits the evaluate_* return based on adv['action'].
     """
-    if account_key != "fin":
+    if account_key not in SUPPORTED_ACCOUNTS:
         return None
     if not symbol:
         return None
     pkey = f"{symbol}_{position_side}" if position_side else symbol
-    advisories = _load_advisories()
+    advisories = _load_advisories(account_key)
     adv = _lookup(advisories, pkey, symbol)
     if not adv or not _is_active(adv):
         return None
@@ -127,7 +134,7 @@ def check(account_key, symbol, position_side, decision_kind):
 
 
 def log_application(account_key, symbol, position_side, decision_kind, action_taken, advisory, scripted_decision=None):
-    if account_key != "fin":
+    if account_key not in SUPPORTED_ACCOUNTS:
         return
     record = {
         "timestamp": _now().isoformat(timespec="seconds"),

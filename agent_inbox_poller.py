@@ -35,6 +35,7 @@ LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 SUBJECT_TO_FILE = {
     "[TRC_ADVISORIES_v1]": "trc_advisories.json",
     "[FIN_ADVISORIES_v1]": "fin_advisories.json",
+    "[ANG_ADVISORIES_v1]": "ang_advisories.json",
     "[OPTIONS_BRIEFING_v1]": "options_briefing.json",
     "[MORNING_NEWSLETTER_v1]": None,
     "[EVENING_RECAP_v1]": None,

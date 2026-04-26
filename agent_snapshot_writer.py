@@ -195,7 +195,7 @@ def _load_allowlists():
                 out[f"{acct}_{side}"] = json.loads(f.read_text())
             except Exception as e:
                 log.warning("allowlist read %s failed: %s", f, e)
-    for acct in ("fin", "men"):
+    for acct in ("fin", "men", "ang"):
         f = BASE / f"symbols_{acct}.json"
         if not f.exists():
             continue
@@ -264,6 +264,17 @@ def _market_meta(r):
     }
 
 
+def _load_local_handoff_file(name):
+    p = HANDOFF_REPO / name
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except Exception as e:
+        log.warning("handoff read %s failed: %s", name, e)
+        return None
+
+
 def build_snapshot():
     r = _redis_client()
     positions = _load_positions(r)
@@ -272,6 +283,7 @@ def build_snapshot():
         "generated_at_utc": _utc_now_iso(),
         "generator": "agent_snapshot_writer.py",
         "stale": False,
+        "agent_focus_accounts": ["fin", "ang"],
         "positions": positions,
         "positions_count": {
             "tradier": {acct: len(p) for acct, p in positions["tradier"].items()},
@@ -284,6 +296,8 @@ def build_snapshot():
         "allowlists": _load_allowlists(),
         "conviction_signals": _conviction_signals(),
         "config_summary": _config_summary(),
+        "tradeable_refresh": _load_local_handoff_file("tradeable_refresh.json"),
+        "tv_enrichment": _load_local_handoff_file("tv_enrichment.json"),
     }
 
 
