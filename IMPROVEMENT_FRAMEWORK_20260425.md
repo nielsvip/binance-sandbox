@@ -216,6 +216,10 @@ Candidate doesn't ship unless it dominates or ties 2.6365 across all 5 metrics o
 | D3 | PPL slippage sample (50 fires from JSONL) | open | |
 | 100-SYM-VERIFY | Re-test c08_crypto_winner on 100 syms (also addresses D4) | open | **gates C1–C5** |
 | TRADIER-CRON-RESTORE | Re-enable autonomous watchdog: `ssh s2-int "crontab -l \| sed 's/^#REGEN_PAUSE_//' \| crontab -"` | open | do once w36106 stable. Cron currently disabled on S2. Also screen `autochain_s2` killed — re-create if you want auto-respawn. |
+| S1-VQS-CRON-RESTORE | Re-enable v8_quick_sweep watchdog on S1 once memory permits | open | `ssh s1-int "crontab -l \| sed 's/^#REGEN_PAUSE_//' \| crontab -"`. Watchdog points at NEW tier `mega_crypto_v8_a1234` which sweeps SQUEEZE_FIRE/DIVERGENCE/FUNDING/OI on top of v8 baseline. Old workers consumed 6.8GB; only re-enable after autonomous gets traction or NPZ shrinks. |
+| MAC-AUTONWATCHDOG-RESTORE | Re-enable MacBook `autonomous_watchdog.py` cron | open | `crontab -l \| sed 's/^#REGEN_PAUSE_//' \| crontab -`. CAUTION: this cron has hardcoded 50-sym args + restarts dead workers across all 3 machines. It overrides server-side launchers. Only re-enable when you want it back to autonomous-recovery mode. |
+| A1234-TIER-ADDED | New `mega_crypto_v8_a1234` + `mega_tradier_v8_a134` sweep tiers | ✅ 2026-04-26 18:50, md5 ec7e423f… (v8_quick_sweep.py). Sweeps SQUEEZE_FIRE_ENTRY_ENABLED/_TF, DIVERGENCE_ENTRY_ENABLED/_TF/_INDICATOR, FUNDING_GATE_ENABLED/_LONG_MAX/_SHORT_MIN, OI_CONFIRM_ENABLED/_MIN_CHANGE_PCT, ADDITIVE_SIGNAL_MIN_HTF on top of frozen baseline. |
+| MEMORY-OOM-S1 | S1 30GB RAM + 32GB swap insufficient for 50-sym crypto post-regen | DIAGNOSTIC ONGOING | NPZ doubled in size after new fields (180MB/sym × 50 = 9GB compressed → ~25GB+ decompressed). Reduced launcher to 36 syms (still ~28GB RSS). Workers respawn-loop-OOMing or barely producing 0 iter. Tradier on S2 fine. Real fix needs structural change — uncompressed NPZ with mmap, or stream-per-symbol simulate refactor. |
 
 ### Open — sweeps (blocked on 100-SYM-VERIFY)
 

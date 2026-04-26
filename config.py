@@ -443,7 +443,7 @@ class Config:
     # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
     # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
     # accumulated to $1013 / 12478% in tracker from pre-fix double-fires.
-    HEDGE_MAX_PCT_OF_LOSER: float = 1.5
+    HEDGE_MAX_PCT_OF_LOSER: float = 1.0  # 2026-04-26 user rule: hedges NEVER exceed loser size
     HEDGE_MAX_ABSOLUTE_USD: float = 25.0
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
@@ -464,7 +464,7 @@ class Config:
     SCALP_V3_EXIT_K_CROSS_ENABLED: bool = True        # Close LONG on k_3m crossing down through 50. Disable -> wait for bar/WT signal.
     # 2026-04-26 USER: "exit at TOP not at fixed %". Require N of {bar,wt,k} signals to fire before closing.
     # 1 = OR (current); 2 = require 2/3 confirmation (filters noise); 3 = unanimous (most patient).
-    SCALP_V3_EXIT_REQUIRE_N_SIGNALS: int = 1
+    SCALP_V3_EXIT_REQUIRE_N_SIGNALS: int = 3  # 2026-04-26 SHADOW LIVE A/B: sig3=-0.89% vs default=-15.21% over 483 cycles (17× better, WR 30%→47%, trades 113→17). Confirms research consensus: OR-fan exit IS the bleed cause; require all 3 confirmation signals before close. Reverts: 1 = original OR; 2 = compromise.
     # 2026-04-26 USER: V3 reentry pipeline broken — 33/44 V3-traded syms drop out of inf universe after close (0/345 same-key reentries).
     # Sticky window: after a V3 entry OR exit, mark sym/side in Redis with TTL so ez_rankings keeps it in symbols_inf_*_list for the next N min, allowing V3 to re-fire.
     SCALP_V3_REENTRY_STICKY_MIN: int = 30

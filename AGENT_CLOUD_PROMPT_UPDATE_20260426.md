@@ -68,6 +68,14 @@ snapshot.config_summary                 — relevant live config values
 - When paused, fall back to `tradeable_refresh` (which uses Redis-cached MTF — same data quality, just no Pine indicators).
 - Never block on TV enrichment.
 
+### USDC pair enforcement (CRITICAL — fee impact)
+
+**When both USDT and USDC variants exist for a coin, always emit advisories on the USDC key.** Binance charges zero fees on USDC pairs; on a high-freq account like fin/ang, USDT fees (~0.04% taker) can erase the edge.
+
+- Lookup rule: for any coin C where `{account}:{C}USDC_{SIDE}` exists in `snapshot.allowlists.tradeable_{account}`, use `{C}USDC_{SIDE}`. Otherwise use the USDT key (only valid if USDC has no listing for that coin).
+- Reference data (news_sentiment, Bitget trader copy CSVs) may carry USDT names — that's their feed, not actionable. Translate to USDC for any trade decision.
+- **Never emit an advisory for a key not in tradeable_{account}.** That key won't trade.
+
 ### Iteration ID
 
 Increment `iteration_id` per advisory; lets local consumer dedupe.

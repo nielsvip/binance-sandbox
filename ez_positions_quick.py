@@ -5644,11 +5644,11 @@ class HedgeEngine:
         current_price, _ = await self.data_manager.get_fresh_price(target_symbol)
         adjusted_notional = base_notional
         adjusted_notional = min(adjusted_notional, self.max_hedge_notional)
-        # 2026-04-26 USER RULE — hard cap so hedges can NEVER exceed 1.5× loser notional or absolute $25.
-        # Reality check: per-trade gain/loss is <1%, account is ~$1k crypto. Any hedge sizing ≥$50 or
-        # ≥200% of loser was the result of accumulated double-fires that shouldn't exist.
+        # 2026-04-26 USER RULE — hedges NEVER exceed loser size. Default 1.0 = 100% of loser.
+        # Was 1.5×; tightened after RENDERUSDT_LONG hedge inflated to $13.62 vs $7 intent.
+        # Single source of truth: HEDGE_MAX_PCT_OF_LOSER=1.0. Wrapper uses same key.
         # Triggered after ALTUSDT_LONG $1013 / 12478% in tracker.
-        _max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.5))
+        _max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
         _max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
         _hard_cap = min(losing_value_usd * _max_pct, _max_abs) if losing_value_usd > 0 else _max_abs
         if adjusted_notional > _hard_cap:
@@ -11067,9 +11067,9 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 logger.critical(f"🚫 [TRADEABLE_KEYS_GATE] {position_key}: NOT in tradeable_keys ({len(_tk)} keys). BLOCKED. action={action} reason={reason[:60]}")
                 return False, f"BLOCKED_NOT_TRADEABLE_{position_key}"
     # ═══════════════════════════════════════════════════════════════════════════
-    # ABSOLUTE HEDGE SIZE CAP — NEVER allow a hedge larger than 200% of the
-    # position it's protecting. This prevents 10x-20x hedge monsters that
-    # eat the entire account. NO EXCEPTIONS. NO BYPASS.
+    # ABSOLUTE HEDGE SIZE CAP — 2026-04-26 user rule: hedges NEVER exceed loser size.
+    # Default `HEDGE_MAX_PCT_OF_LOSER`=1.0 (100% of loser). Was 2.0× — caused over-hedging
+    # cascades. Tightening to 1.0× until proven we need bigger. NO BYPASS.
     # ═══════════════════════════════════════════════════════════════════════════
     if is_hedge and hedge_for and current_price > 0:
         _origin_pos = await tracker_manager.get_position(hedge_for)
@@ -11077,9 +11077,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _origin_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_for) if hasattr(tracker_manager, 'positions_service') else None
         _origin_val = abs(safe_fetch_float(getattr(_origin_pos, 'positionAmt', 0), 0)) * current_price if _origin_pos else 0
         _hedge_val = qty * current_price
-        if _origin_val > 0 and _hedge_val > _origin_val * 2.0:
-            _capped_qty = (_origin_val * 2.0) / current_price
-            logger.critical(f"🚫🚫 [HEDGE_SIZE_CAP] {position_key}: hedge ${_hedge_val:.1f} > 200% of origin ${_origin_val:.1f}. CAPPING qty {qty:.6f} → {_capped_qty:.6f} (${_origin_val*2:.1f})")
+        _max_pct_wrap = float(getattr(config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        if _origin_val > 0 and _hedge_val > _origin_val * _max_pct_wrap:
+            _capped_qty = (_origin_val * _max_pct_wrap) / current_price
+            logger.critical(f"🚫🚫 [HEDGE_SIZE_CAP] {position_key}: hedge ${_hedge_val:.1f} > {_max_pct_wrap*100:.0f}% of origin ${_origin_val:.1f}. CAPPING qty {qty:.6f} → {_capped_qty:.6f} (${_origin_val*_max_pct_wrap:.1f})")
             qty = _capped_qty
             if override_qty:
                 override_qty = _capped_qty
