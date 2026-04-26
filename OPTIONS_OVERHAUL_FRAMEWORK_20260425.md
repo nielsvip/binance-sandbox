@@ -11,15 +11,19 @@
 ### Decisions locked in
 | # | Decision | Effect on framework |
 |---|----------|---------------------|
-| Q1 | Loss source = `/Users/niels/Downloads/activity.csv` | See §0.1 below — confirmed losers |
+| Q1 | Loss source = `/Users/niels/Downloads/activity.csv` (longer export coming) | See §0.1 below — confirmed losers |
 | Q2 | **Kill switches use TECHNICALS, not %.** "Fall through DC bottom = kill no matter what." | Layer 1 rewritten — see §4 below |
 | Q3 | YES to spreads + **re-purchase logic** when better price re-appears | Layer 3 + new §3a (re-entry policy) |
-| Q4 | Verify per-sector P/C budgets exist | **Verified: they do NOT exist. Only global P/C ratio + per-sector $ cap.** Must be built. |
+| Q4 | P/C bias derived from `tradier_manage.py:4902` equity ratio, exaggerated K=1.5, clamps 15/85. No separate per-sector P/C table. | Phase 2 in §6 |
 | Q5 | SPY catastrophe hedge — go | Layer 7 stays |
 | Q6 | Tighten concentration | Layer 6 stays (per-symbol 25→20%, sector 40→35%) |
 | Q7 | CSP — accept deprecation | Mark dead code, archive monitor |
 | Q8 | Force-close on analyzer score ≥ 80 | Layer 2 stays |
 | Daily P&L breaker | **Prefer technicals over hard %.** | Account-level breaker downgraded to last-resort backstop. Per-position technical exits do the work. |
+| **D5 (was open)** | **Single allowlist is sole authority. NO trade in any symbol not in `symbols_trb_long.json` (calls) or `symbols_trb_short.json` (puts). Period.** | Phase 0.7 rewritten — see §6 |
+| **C (was open)** | **ABT, JNJ permanently forbidden** in addition to the allowlist enforcement | New §0.2 forbidden-symbol list; remove from any allowlist where present; assert in tests |
+| **Entry quality** (new) | Options entries MUST be tied to a recognized technical setup (pullback, breakout, red-zone, DC, WT, BB, etc.). **Not just "underpriced relative to fair value."** | New §3b — entry-setup taxonomy, gates analyzer recommendations |
+| **E (augment)** | If a call is in loss: **no more calls UNLESS confirmed technical bottom**. **"Way out" for losing call = buy protective put (collar) OR sell higher-strike call (convert to vertical spread)** — not adding to the loser. | L1.A1 modified — see Layer 1 below; new L3.W (way-out conversions) |
 
 ### New critical findings from 2026-04-26 audit
 
@@ -30,6 +34,37 @@
 3. **PLTR averaging-up disaster** (Apr 21–23). PLTR Jul17 $150C was bought 6 times: $17.45, $17.30, $14.65, $12.52, $12.45, $12.35. That's adding contracts as the option fell ~28% over 3 days. No stop fired through any of those adds. **The framework must explicitly forbid augmenting an option position that is below its first-fill price** (or equivalently, must use technicals on the underlying to gate further buys).
 
 4. **Per-sector P/C does NOT exist** (your assumption wrong). Only global `OPTIONS_MARKET_RATIO_MIN/MAX` (25–75% calls overall) and `OPTIONS_MAX_PER_SECTOR` ($ cap, 40%). There is no `HEALTH: 60% calls / 40% puts` style mapping. Building it is part of Phase 2 — see §6.
+
+### 0.2 — Forbidden symbols (PERMANENT)
+
+**Hard-forbidden symbols — NO option trade in these, ever:**
+- `ABT` (rogue 2026-04-22, -$240)
+- `JNJ` (rogue 2026-04-22, -$345)
+
+These are removed from `symbols_trb_long.json` / `symbols_trb_short.json` and added to a permanent denylist that is checked even before the allowlist. Asserted in unit tests.
+
+**Allowlist is sole authority** (owner directive 2026-04-26): no option may be traded in any symbol not present in `symbols_trb_long.json` (for calls) or `symbols_trb_short.json` (for puts). The `BLACKLIST` constant in `config_tradier.py:95` is dead code and is being removed in Phase 0.7 — single source of truth, no parallel systems.
+
+### 0.3 — The "first loss" rule (PERMANENT, owner 2026-04-26)
+
+> *"As soon as a call/put starts losing money you either close it or cover it with a contrary."*
+
+This is the **meta-rule** that governs all Layer 1 / Layer 3 logic. When any option position crosses from gain to loss:
+
+1. **Decision required this tick** — not "monitor", not "wait for confirmation". Either:
+   - **CLOSE** — exit the position (preferred when technicals against, see L1.T*).
+   - **COVER** — open a contrary leg (Layer 3.W "way out"): for a losing long call, either buy a protective put on the same underlying (collar) **or** sell a higher-strike call (convert to vertical debit spread, recoups some basis and caps remaining loss). Mirror for puts.
+2. **Forbidden actions when losing**:
+   - Hold and hope without coverage.
+   - Buy more of the same direction (no averaging down) — *unless* a confirmed technical bottom hit per L1.A1 exception.
+   - Wait for a generic time-based "let it work."
+3. **Cover-or-close picker** (default selection logic, configurable):
+   - Technicals against AND no defined-risk leg available → CLOSE.
+   - Technicals neutral and contrary leg liquid (bid–ask < 10% of mid) → COVER.
+   - DTE ≤ 14 → CLOSE (cover is too expensive on short-DTE).
+   - Already covered (collar in place, or already a spread) → CLOSE.
+
+This rule is enforced by the supervisor every tick. It is **not** a soft guideline.
 
 ### 0.1 — Confirmed losers from activity.csv (Apr 21–24 only — full week needs longer export)
 
@@ -225,10 +260,16 @@ These are computed from the underlying's existing indicator pipeline (`tradier_i
 - L1.B1 — Premium loss > -75% of debit paid → emergency close. **One number, one threshold, no DTE-tier complexity.** Triggers only if technicals already failed to fire.
 - L1.B2 — Single-position $-loss > 1.5% of account ($1,050 on $70k) → emergency close.
 
-**Augment / averaging-down forbidden** (the PLTR pattern):
-- L1.A1 — **No buys to add to an existing OCC position if any technical (L1.T1–T8) is currently flagged.** This would have stopped 5 of the 6 PLTR adds.
-- L1.A2 — No buys to add if current option mid < first-fill price × 0.85 (already down 15%+ from entry — the move went against you, don't double down).
-- L1.A3 — Adds to existing OCC require an explicit user override flag *or* must come from the standard re-entry policy in §3a.
+**Augment / averaging-down forbidden** (the PLTR pattern, refined per owner 2026-04-26):
+- L1.A1 — **No buys to add to an existing losing call (or put) UNLESS a "definite bottom" signal fires on the underlying.** A definite bottom = ALL of:
+  - Underlying touched and bounced from `dc_low_D` (calls) / `dc_high_D` (puts) — wick rejection or close back inside the channel
+  - Stoch_D K crossed up from < 20 (calls) / down from > 80 (puts)
+  - WT 3m bull cross (calls) / bear cross (puts) confirming on most recent bar
+  - Position not already augmented in last 4 hours (no rapid stacking even on bottoms)
+  
+  Without all four → no add. The PLTR pattern (6 adds with no bottom signal) would have been stopped after add #1.
+- L1.A2 — No buys to add if current option mid < first-fill price × 0.85 AND no L1.A1 bottom signal. (15%+ drawdown without a bottom = thesis broken, don't dollar-cost into broken theses.)
+- L1.A3 — Adds to existing OCC require either L1.A1 bottom signal, the §3a re-entry policy after a clean exit, or an explicit user override flag. No silent override paths.
 
 **Concurrency**:
 - L1.C1 — Max 8 open option positions at once (down from 15).

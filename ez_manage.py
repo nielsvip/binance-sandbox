@@ -19649,6 +19649,52 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     min_since_aug = (now - last_augmentation_time).total_seconds() / 60.0 if last_augmentation_time else 999999.0
     try:
         ak, symbol, position_side = parse_position_key(position_key)
+        # ═══ 2026-04-26 HEDGE_CLOSE PRE-GATE — runs BEFORE symbol_allowed/leaderboard ═══
+        # Hedges may sit on symbols not in tradeable_keys (cross-symbol elected hedges) or
+        # outside the leaderboard. Without this pre-gate, process_position returns
+        # SYMBOL_NOT_ALLOWED and the wt_3m+wt_1h close never fires for those hedges.
+        # Detection: position.is_hedge attribute OR membership in tracker_manager.active_hedges.
+        try:
+            _hg_pos = position if (position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > 0) else None
+            if _hg_pos is None:
+                _hg_pos = await trade_manager.get_position(position_key)
+            _hg_amt = abs(safe_fetch_float(getattr(_hg_pos, 'positionAmt', 0), 0)) if _hg_pos else 0
+            if _hg_pos and _hg_amt > 0:
+                _is_hedge_attr = bool(getattr(_hg_pos, 'is_hedge', False))
+                _is_hedge_tracker = False
+                _hedge_for_tracker = None
+                try:
+                    for _h in (getattr(tracker_manager, 'active_hedges', None) or []):
+                        if isinstance(_h, dict) and _h.get('position_key') == position_key:
+                            _is_hedge_tracker = True
+                            _hedge_for_tracker = _h.get('losing_position_key') or _h.get('hedge_for')
+                            break
+                except Exception: pass
+                if _is_hedge_attr or _is_hedge_tracker:
+                    _hg_i = await ii(trade_manager, symbol)
+                    if _hg_i:
+                        _hg_long = position_key.endswith("_LONG")
+                        _hg_w13 = safe_fetch_float(_hg_i.get('wt1_3m'), 0)
+                        _hg_w23 = safe_fetch_float(_hg_i.get('wt2_3m'), 0)
+                        _hg_w11 = safe_fetch_float(_hg_i.get('wt1_1h'), 0)
+                        _hg_w21 = safe_fetch_float(_hg_i.get('wt2_1h'), 0)
+                        _hg_3ok = (_hg_w13 != 0 or _hg_w23 != 0)
+                        _hg_1ok = (_hg_w11 != 0 or _hg_w21 != 0)
+                        _hg_3ag = (_hg_long and _hg_w13 < _hg_w23) or ((not _hg_long) and _hg_w13 > _hg_w23)
+                        _hg_1ag = (_hg_long and _hg_w11 < _hg_w21) or ((not _hg_long) and _hg_w11 > _hg_w21)
+                        if _hg_3ok and _hg_1ok and _hg_3ag and _hg_1ag:
+                            _hg_gain = safe_fetch_float(getattr(_hg_pos, 'gain', 0), 0)
+                            _hg_ord_side = 'SELL' if _hg_long else 'BUY'
+                            _hg_pos_side = 'LONG' if _hg_long else 'SHORT'
+                            _hg_hedge_for = getattr(_hg_pos, 'hedge_for', None) or _hedge_for_tracker or position_key
+                            logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (gain={_hg_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}). NO P/L gate.")
+                            try:
+                                await trade_manager.execute_now(position_key, account_key, symbol, _hg_amt, _hg_ord_side, _hg_pos_side, _hg_amt, current_price, f"HEDGE_WT3M1H_PRE_{int(time.time())}", f"HEDGE_CLOSE_WT3M1H_PRE_GATE_3m={_hg_w13:.1f}/{_hg_w23:.1f}_1h={_hg_w11:.1f}/{_hg_w21:.1f}_gain={_hg_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_hg_hedge_for)
+                            finally:
+                                trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PRE_GATE"
+        except Exception as _hge:
+            logger.debug(f"[HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: pre-gate check failed: {_hge}")
         if not force and not trade_manager.is_symbol_allowed(account_key, symbol, position_key):
             logger.info(f"[{position_key}] process_position REJECTED: Symbol not allowed (force={force})")
             return f"{EvalStatus.NO_ACTION}:SYMBOL_NOT_ALLOWED"
