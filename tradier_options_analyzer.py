@@ -2648,6 +2648,57 @@ async def run_watch(args):
                     # ones (UNG, ABT, etc.). The buy allowlist in make_decisions/find_opportunities
                     # is the right place to prevent new entries on bad symbols.
                     if _existing_hedge is None and _sellable_pct <= eq_trigger and _bid > 0:
+                        # ── HEDGE LADDER (2026-04-26 owner directive) ─────────────────────
+                        # Order: HOLD if at confirmed bottom → BUY_PUT if underpriced put
+                        # exists → fall through to EQUITY_HEDGE (existing code below).
+                        # Default A (equity hedge) was the only path before today.
+                        _hl_ind: dict = {}
+                        try:
+                            _hl_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                            if _hl_path.exists():
+                                with open(_hl_path) as _hlf:
+                                    _hl_map = json.load(_hlf)
+                                if isinstance(_hl_map, dict):
+                                    _hl_ind = _hl_map.get(_und_sym, {}) or {}
+                        except Exception:
+                            _hl_ind = {}
+                        _hl_und_px = float(_hl_ind.get("current_price", 0) or _hl_ind.get("mark_price", 0) or 0)
+                        if _hl_und_px <= 0:
+                            try:
+                                _q_und = await client.get_quote(_und_sym)
+                                _hl_und_px = float(_q_und.get("last", 0) or 0)
+                            except Exception:
+                                _hl_und_px = 0.0
+                        try:
+                            _dte_for_pos = max(1, (datetime.strptime(_parsed.get("expiration", ""), "%Y-%m-%d") - datetime.now()).days)
+                        except Exception:
+                            _dte_for_pos = 60
+                        _hedge = None
+                        if bool(getattr(config, "OPTIONS_HEDGE_LADDER_ENABLED", False)):
+                            try:
+                                from tradier_options_hedge import decide_hedge_action
+                                _hedge = await decide_hedge_action(_und_sym, _otype, _hl_ind, _hl_und_px, int(_q), _dte_for_pos, client, config)
+                            except Exception as _hl_err:
+                                logger.warning(f"[HEDGE_LADDER] decide failed for {_occ}: {_hl_err} — falling through to equity hedge")
+                                _hedge = None
+                        if _hedge is not None and _hedge.action == "HOLD":
+                            logger.info(f"[HEDGE_LADDER:HOLD] {_occ}: {_hedge.reason}")
+                            print(f"  \033[96m[HEDGE_LADDER:HOLD]\033[0m {_und_sym} — confirmed bottom: {_hedge.reason}")
+                            eq_hedges[_occ] = {"underlying": _und_sym, "action": "HOLD", "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "evaluated_only": True}
+                            _save_equity_hedges(config, eq_hedges)
+                            continue
+                        if _hedge is not None and _hedge.action == "BUY_PUT" and _hedge.put_occ:
+                            logger.info(f"[HEDGE_LADDER:BUY_PUT] for {_occ}: buying {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f} ({_hedge.reason})")
+                            print(f"  \033[92m[HEDGE_LADDER:BUY_PUT]\033[0m {_und_sym} {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f}  iv_rank={_hedge.put_iv_chain_rank:.0f}% Δ={_hedge.put_delta:+.2f} DTE={_hedge.put_dte}")
+                            try:
+                                _bp_res = await place_option_order(client, _und_sym, _hedge.put_occ, "buy_to_open", _hedge.put_qty, "limit", _hedge.put_limit_price, duration="day")
+                                if "errors" not in _bp_res:
+                                    eq_hedges[_occ] = {"underlying": _und_sym, "action": "BUY_PUT", "put_occ": _hedge.put_occ, "put_limit": _hedge.put_limit_price, "put_qty": _hedge.put_qty, "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "order_resp": str(_bp_res)[:200]}
+                                    _save_equity_hedges(config, eq_hedges)
+                                    continue
+                                logger.warning(f"[HEDGE_LADDER:BUY_PUT] order rejected: {_bp_res.get('errors')} — falling through to equity hedge")
+                            except Exception as _bp_err:
+                                logger.warning(f"[HEDGE_LADDER:BUY_PUT] exception: {_bp_err} — falling through to equity hedge")
                         # Fetch fresh delta from quote greeks
                         try:
                             _g_res = await client._request("GET", "/markets/options/chains", params={"symbol": _und_sym, "expiration": _parsed.get("expiration", ""), "greeks": "true"}, use_data_context=True)

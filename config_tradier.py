@@ -215,6 +215,23 @@ class TradierConfig:
     # below entry_avg × this fraction. 0.85 = "down 15%+ already, do not double down."
     OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED: bool = True
     OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD: float = 0.85
+    # === HEDGE LADDER (2026-04-26 — replaces plain SELL_NOW on losing positions) ===
+    # Order: HOLD if at confirmed bottom → BUY_PUT if underpriced put exists →
+    # EQUITY_HEDGE. See tradier_options_hedge.py. Wired at the existing
+    # OPTIONS_EQUITY_HEDGE entry in tradier_options_analyzer:2650.
+    # *** DEFAULT OFF *** — flip to True only after verifying with shadow runner.
+    # When False, existing equity-hedge path fires unchanged (status quo).
+    OPTIONS_HEDGE_LADDER_ENABLED: bool = False
+    OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS: int = 2
+    OPTIONS_HEDGE_K_OVERSOLD_PCT: float = 25.0
+    OPTIONS_HEDGE_DC_REL_TOL_PCT: float = 1.0
+    OPTIONS_HEDGE_PUT_DELTA_MIN: float = 0.30
+    OPTIONS_HEDGE_PUT_DELTA_MAX: float = 0.50
+    OPTIONS_HEDGE_PUT_MAX_IV_RANK: float = 35.0
+    OPTIONS_HEDGE_PUT_DTE_MIN: int = 45
+    OPTIONS_HEDGE_PUT_DTE_MAX: int = 120
+    OPTIONS_HEDGE_PUT_MAX_SPREAD_PCT: float = 8.0
+    RISK_FREE_RATE: float = 0.045
     OPTIONS_MIN_SECTORS: int = 2              # Min sectors for hedged tier
     OPTIONS_MIN_GROUPS: int = 3               # Min groups for full diversification tier
     OPTIONS_HEDGE_RATIO_MIN: float = 0.25     # Min puts/(puts+calls) to qualify as hedged
@@ -613,6 +630,7 @@ class TradierConfig:
     # REENTRY_RALLY_HTF_MIN: min HTF TFs (1h/4h/D) aligned — 1=loose, 2=default, 3=strict
     REENTRY_RALLY_K15M_MAX: float = 100.0# sweep: 100 (off) / 40 / 20
     REENTRY_RALLY_HTF_MIN: int = 3          # 2026-04-18: sqlite reentry analysis — wt_all3 avg_sharpe 0.1036 vs wt_2of3 -0.0468. Was 2.
+    TRADIER_REENTRY_HARDCOOL_MIN: float = 30.0  # 2026-04-26 NEW: was hardcoded at tradier_manage.py:5392. Default 30 preserves prior behavior. Sweep candidate values: 5/10/15/30. Lower → more reentry surface (helps reentry_rate=3.7% problem) but risk of churn the 30-min was originally protecting against.
     # MINIMUM HOLD TIME — prevents churning/death-by-1000-cuts on stocks
     MIN_HOLD_MINUTES_TRADIER: float = 30.0  # No exits before 30 min. Bypassed only if loss > -5%. ; WIRED 2026-04-16 (priority 90/100) — tradier_manage.py:3891 stock min hold fallback
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength

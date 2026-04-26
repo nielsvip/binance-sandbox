@@ -5381,7 +5381,8 @@ class StockStrategy:
                     return "NO_ACTION", f"RZ_BLOCK_REENTRY_LONG_AT_TOP_{_re_dsig.zone_reason}", 0.0, 0.0
                 if not is_long and _re_dsig.zone == "BOTTOM" and _re_dsig.exit_short:
                     return "NO_ACTION", f"RZ_BLOCK_REENTRY_SHORT_AT_BOTTOM_{_re_dsig.zone_reason}", 0.0, 0.0
-        # --- 30-min cooldown (was 5min — too fast, caused churn) ---
+        # --- Reentry hardcool (was hardcoded 30 min — caused 3.7% reentry rate per 2026-04-25 audit) ---
+        # Now configurable via TRADIER_REENTRY_HARDCOOL_MIN (default 30 preserves prior behavior).
         last_red_age_min = 999.0
         if last_red_time:
             try:
@@ -5389,8 +5390,9 @@ class StockStrategy:
                 if lt.tzinfo is None: lt = lt.replace(tzinfo=timezone.utc)
                 last_red_age_min = (now - lt).total_seconds() / 60.0
             except Exception: pass
-        if last_red_age_min < 30.0:
-            return "NO_ACTION", f"Reentry_cooldown_{30-last_red_age_min:.0f}m", 0.0, 0.0
+        _hardcool_min = float(getattr(config, 'TRADIER_REENTRY_HARDCOOL_MIN', 30.0))
+        if last_red_age_min < _hardcool_min:
+            return "NO_ACTION", f"Reentry_cooldown_{_hardcool_min-last_red_age_min:.0f}m_of_{_hardcool_min:.0f}m", 0.0, 0.0
         # === BC_155: TIER 2 CHASE REENTRY — trend continued past exit without pullback ===
         _last_red_px = float(getattr(position, 'last_reduction_price', 0) or 0)
         _t2_pct_t = getattr(config, 'REENTRY_TIER2_PRICE_PCT_TRADIER', 0.003)
@@ -5439,6 +5441,21 @@ class StockStrategy:
                     _emaq = config.START_POSITION_SIZE / max(current_price, 1e-9) * 0.8
                     logger.warning(f"[EMA200_1H_BOUNCE] SHORT {symbol}: price {current_price:.2f} crossed back below ema_200_1h {_ema200_1h:.2f} — REENTER qty={_emaq:.2f}")
                     return "REENTRY_OPEN", f"EMA200_1H_BOUNCE_SHORT_px{current_price:.2f}<ema{_ema200_1h:.2f}", 80.0, _emaq
+        # === BOUNCE_REENTRY_K_RESET (2026-04-26) — wires DEAD switches BOUNCE_REENTRY_K_RESET_{LONG,SHORT}_TRADIER ===
+        # K-reset bounce: previous bar's K was at/below the LONG threshold (default 35) and current K bounced
+        # back above it AND is rising. Mirror for SHORT at the SHORT threshold (default 65).
+        # Only fires when BOUNCE_REENTRY_ENABLED_TRADIER (default True). Conviction 75 (between EMA bounce 80 and WT 85).
+        if bool(getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)):
+            _kr_long = int(getattr(config, 'BOUNCE_REENTRY_K_RESET_LONG_TRADIER', 35))
+            _kr_short = int(getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT_TRADIER', 65))
+            if is_long and k_5m_prev_t2 <= _kr_long and k_5m_t2 > _kr_long and k_5m_t2 > k_5m_prev_t2:
+                _kr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                logger.warning(f"[BOUNCE_REENTRY_K_RESET] LONG {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced above reset_long={_kr_long} — REENTER qty={_kr_qty:.2f}")
+                return "REENTRY_OPEN", f"BOUNCE_REENTRY_K_RESET_LONG_k{k_5m_t2:.0f}_from{k_5m_prev_t2:.0f}_thresh{_kr_long}", 75.0, _kr_qty
+            if (not is_long) and k_5m_prev_t2 >= _kr_short and k_5m_t2 < _kr_short and k_5m_t2 < k_5m_prev_t2:
+                _kr_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                logger.warning(f"[BOUNCE_REENTRY_K_RESET] SHORT {symbol}: k_5m {k_5m_prev_t2:.0f}→{k_5m_t2:.0f} bounced below reset_short={_kr_short} — REENTER qty={_kr_qty:.2f}")
+                return "REENTRY_OPEN", f"BOUNCE_REENTRY_K_RESET_SHORT_k{k_5m_t2:.0f}_from{k_5m_prev_t2:.0f}_thresh{_kr_short}", 75.0, _kr_qty
         # === 2/3 WT IN FAVOR = REENTER NOW (matches exit signal mirror) ===
         # Backtest: 198,264/198,321 reentries (99.97%), median 55min wait
         _wt1_5m = float(i.get('wt1_5m', 0) or 0); _wt2_5m = float(i.get('wt2_5m', 0) or 0)
@@ -5505,14 +5522,14 @@ class StockStrategy:
             if not ((wt_entry and htf_confirm) or (stoch_fallback and dc_pullback)):
                 # Check for bullish divergence — override even without cross
                 if _bull_div and dc_pullback:
-                    _reentry_size_mult = 1.5
-                    logger.info(f"[REENTRY_DIV] LONG {symbol}: Bullish divergence + DC pullback({_dc_pos:.2f}) — high conviction reentry 1.5x")
+                    _reentry_size_mult = float(getattr(config, 'BOUNCE_TOP_REENTRY_MULT', 1.5))
+                    logger.info(f"[REENTRY_DIV] LONG {symbol}: Bullish divergence + DC pullback({_dc_pos:.2f}) — conviction reentry {_reentry_size_mult:.2f}x (BOUNCE_TOP_REENTRY_MULT)")
                 else:
                     return "NO_ACTION", f"Wait_WT_Reentry_L(wt5={_wt1_5m:.0f},htf={'Y' if htf_confirm else 'N'},dc={_dc_pos:.2f})", 0.0, 0.0
-            # Rising cross = strengthening trend = 150% size
+            # Rising cross = strengthening trend
             if _wt_cross_rising is True or _wt_cross_rising_1h is True:
-                _reentry_size_mult = 1.5
-                logger.info(f"[REENTRY_RISING] LONG {symbol}: WT cross at {_wt_cross_val:.0f} > prev {_wt_cross_prev:.0f} — trend strengthening, 1.5x size")
+                _reentry_size_mult = float(getattr(config, 'BOUNCE_TOP_RISING_CROSS_MULT', 2.0))
+                logger.info(f"[REENTRY_RISING] LONG {symbol}: WT cross at {_wt_cross_val:.0f} > prev {_wt_cross_prev:.0f} — trend strengthening, {_reentry_size_mult:.2f}x size (BOUNCE_TOP_RISING_CROSS_MULT)")
             # Divergence bonus stacks
             if _bull_div:
                 _reentry_size_mult = min(2.0, _reentry_size_mult * 1.3)
@@ -7930,10 +7947,13 @@ class TradierTradeManager:
                                 local_pos.last_reduction_price = float(current_price)
                                 local_pos.was_reduced = True
                                 local_pos.reduction_reason = reason or action
-                                # Full close: record exit time for reopen-cooldown
+                                # 2026-04-26 — record exit time/price on EVERY reduce (not only full close).
+                                # Was: only on `if new_qty <= 0` (full close), causing reopen-cooldown to read stale data
+                                # on partial reduces. Inconsequential while TRADIER_REOPEN_WAIT_S=0.0 but should be correct.
+                                self.last_exit_times[symbol] = time.time()
+                                self.last_exit_prices[symbol] = float(current_price)
+                                # Full close: ALSO record reentry candidate snapshot for reopen logic.
                                 if new_qty <= 0:
-                                    self.last_exit_times[symbol] = time.time()
-                                    self.last_exit_prices[symbol] = float(current_price)
                                     if order_id != "GHOST_CLEARED":
                                         _ep = float(getattr(local_pos, 'entry_price', 0) or 0)
                                         _mg = float(getattr(local_pos, 'max_gain', 0) or 0)

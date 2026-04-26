@@ -122,10 +122,25 @@ os.environ["SHADOW_CONFIG_ID"] = SHADOW_CONFIG_ID
 # L6 DECISIONS REDIRECT — builtins.open + aiofiles.open redirect
 # ─────────────────────────────────────────────────────────────────────────────
 _LIVE_DECISIONS_FRAGMENT = "/data/decisions/"
+_HOME_LOGS = str(Path.home() / "logs") + "/"
+_LIVE_PID_FRAGMENT = "/pids/ez_manage_"
+_LIVE_TRADIER_PID = "/pids/tradier_manage"
+_SHADOW_LOGS_DIR = SHADOW_DIR / "live_log_capture"
+_SHADOW_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+_SHADOW_PIDS_DIR = BASE_DIR / "pids" / "shadow"
+_SHADOW_PIDS_DIR.mkdir(parents=True, exist_ok=True)
+
 def _redirect_path(p):
     sp = str(p)
+    # 1. Decisions JSONL → shadow output dir
     if _LIVE_DECISIONS_FRAGMENT in sp:
         return str(SHADOW_DIR / Path(sp).name)
+    # 2. ~/logs/ez_manage_*  /  ~/logs/.ez_manage_* / ~/logs/tradier_manage* — shadow's own dir
+    if sp.startswith(_HOME_LOGS) and ("ez_manage" in sp or "tradier_manage" in sp):
+        return str(_SHADOW_LOGS_DIR / Path(sp).name)
+    # 3. pids/ez_manage_*.pid  → pids/shadow/ to avoid stomping live PID files
+    if _LIVE_PID_FRAGMENT in sp or _LIVE_TRADIER_PID in sp:
+        return str(_SHADOW_PIDS_DIR / Path(sp).name)
     return sp
 
 _real_open = builtins.open
@@ -221,6 +236,62 @@ def _shadow_is_sandbox(config_obj, account_key: str) -> bool:
 _utils_mod.is_sandbox_account = _shadow_is_sandbox
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Stub binance Client init + WebSocketManager.start — prevents the retry loop
+# that exponentially backs off forever when L0 blocks DNS to api.binance.com.
+# ─────────────────────────────────────────────────────────────────────────────
+class _FakeBinanceClient:
+    """Returns harmless empty data for any futures_* call."""
+    _timestamp_offset = 0
+    def __getattr__(self, name):
+        def _stub(*a, **kw):
+            if name == "futures_time": return {"serverTime": int(time.time() * 1000)}
+            if name in ("futures_account_balance", "futures_position_information",
+                        "futures_get_open_orders", "futures_klines"): return []
+            if name == "futures_stream_get_listen_key": return "shadow_dummy_listen_key"
+            if name == "ping": return {}
+            return {}
+        return _stub
+    def __call__(self, *a, **kw): return self
+
+try:
+    import ez_positions_service as _eps_for_ws
+    if hasattr(_eps_for_ws, "WebSocketManager"):
+        def _shadow_init_blocking(self):
+            return _FakeBinanceClient()
+        async def _shadow_ws_start(self, account_key):
+            slog.info(f"WebSocketManager.start({account_key}) → SHADOW NO-OP (no Binance WS)")
+            return
+        _eps_for_ws.WebSocketManager._init_binance_client_blocking = _shadow_init_blocking
+        _eps_for_ws.WebSocketManager.start = _shadow_ws_start
+        slog.info("L0+: WebSocketManager.start no-op + _init_binance_client_blocking → fake client")
+    # ALSO patch the service-side position loaders — bootstrap calls these,
+    # and they read from disk after our svc.positions={} wipe.
+    _SVC_CLASSES = []
+    for _cls_name in ("PositionsService", "PositionService", "EzPositionsService"):
+        _c = getattr(_eps_for_ws, _cls_name, None)
+        if _c is not None: _SVC_CLASSES.append(_c)
+    # Fallback: find any class with both _load_positions_with_lock and fetch_positions
+    if not _SVC_CLASSES:
+        for _name in dir(_eps_for_ws):
+            _c = getattr(_eps_for_ws, _name, None)
+            if isinstance(_c, type) and hasattr(_c, "_load_positions_with_lock") and hasattr(_c, "fetch_positions"):
+                _SVC_CLASSES.append(_c)
+    for _SVC in _SVC_CLASSES:
+        async def _svc_empty_load_with_lock(self, *a, **kw):
+            return
+        async def _svc_empty_fetch(self, account_key=None, *a, **kw):
+            return {}
+        async def _svc_empty_sync(self, *a, **kw):
+            return
+        _SVC._load_positions_with_lock = _svc_empty_load_with_lock
+        _SVC.fetch_positions = _svc_empty_fetch
+        if hasattr(_SVC, "_sync_memory_with_master_symbols"):
+            _SVC._sync_memory_with_master_symbols = _svc_empty_sync
+        slog.info(f"L4 STRICT_EMPTY (service): {_SVC.__name__}._load_positions_with_lock + fetch_positions + _sync → no-op")
+except ImportError:
+    pass
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Patch bootstrap_position_service BEFORE live import (so post-bootstrap is empty)
 # ─────────────────────────────────────────────────────────────────────────────
 try:
@@ -257,6 +328,36 @@ live.is_sandbox_account = _shadow_is_sandbox
 # Re-bind the wrapped bootstrap inside ez_manage (it was imported at module top)
 if SHADOW_PLATFORM == "crypto" and hasattr(live, "bootstrap_position_service"):
     live.bootstrap_position_service = _eps.bootstrap_position_service
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ISOLATION: PID file no-op + strict empty start (option A)
+# ─────────────────────────────────────────────────────────────────────────────
+if hasattr(live, "check_pid_file"):
+    live.check_pid_file = lambda *a, **kw: None  # shadow_runner manages its own PIDs
+    slog.info("ISO: live.check_pid_file → no-op (shadow uses pids/shadow/)")
+
+if SHADOW_PLATFORM == "crypto" and hasattr(live, "MultiAccountTradeManager"):
+    _MATM = live.MultiAccountTradeManager
+    async def _empty_load_with_lock(self, master_allowed_symbols):
+        self.positions_by_account.setdefault(SHADOW_ACCOUNT, {})
+        return
+    async def _empty_redis_load(self, account_key=None): return {}
+    async def _empty_load_all(self): return
+    async def _empty_quick_load(self, account_key=None): return {}
+    _MATM._load_positions_with_lock = _empty_load_with_lock
+    _MATM._load_positions_from_redis = _empty_redis_load
+    _MATM.load_all_positions = _empty_load_all
+    _MATM._load_positions_quick_from_files = _empty_quick_load
+    slog.info("L4 STRICT_EMPTY: all crypto position loaders → no-op")
+
+if SHADOW_PLATFORM == "tradier":
+    try:
+        from tradier_api import TradierAPIClient as _TAC2
+        async def _empty_get_positions(self, account_key=None): return []
+        _TAC2.get_account_positions = _empty_get_positions
+        slog.info("L4 STRICT_EMPTY: TradierAPIClient.get_account_positions → []")
+    except ImportError:
+        pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # L2 EXECUTE_NOW PATCH — the single chokepoint
