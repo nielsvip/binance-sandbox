@@ -19730,7 +19730,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _hg_ord_side = 'SELL' if _hg_long else 'BUY'
                             _hg_pos_side = 'LONG' if _hg_long else 'SHORT'
                             _hg_hedge_for = getattr(_hg_pos, 'hedge_for', None) or _hedge_for_tracker or position_key
-                            logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (gain={_hg_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}). NO P/L gate.")
+                            if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and _hg_gain < 0:
+                                logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge but gain={_hg_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
+                                return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD"
+                            logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (gain={_hg_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}).")
                             try:
                                 await trade_manager.execute_now(position_key, account_key, symbol, _hg_amt, _hg_ord_side, _hg_pos_side, _hg_amt, current_price, f"HEDGE_WT3M1H_PRE_{int(time.time())}", f"HEDGE_CLOSE_WT3M1H_PRE_GATE_3m={_hg_w13:.1f}/{_hg_w23:.1f}_1h={_hg_w11:.1f}/{_hg_w21:.1f}_gain={_hg_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_hg_hedge_for)
                             finally:
@@ -19798,7 +19801,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _pp_ord_side = 'SELL' if _pp_long else 'BUY'
                     _pp_pos_side = 'LONG' if _pp_long else 'SHORT'
                     _pp_hedge_for = getattr(position, 'hedge_for', None) or position_key
-                    logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PP_ABS] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge — safety-net close (gain={_pp_gain:.2f}%). NO P/L gate.")
+                    if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and _pp_gain < 0:
+                        logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PP_ABS_NOLOSS_HOLD] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge but gain={_pp_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
+                        return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PP_ABS_NOLOSS_HOLD"
+                    logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PP_ABS] {position_key}: wt_3m={_pp_w13:.1f}/{_pp_w23:.1f} AND wt_1h={_pp_w11:.1f}/{_pp_w21:.1f} against {_pp_pos_side} hedge — safety-net close (gain={_pp_gain:.2f}%).")
                     try:
                         await trade_manager.execute_now(position_key, account_key, symbol, _pp_amt, _pp_ord_side, _pp_pos_side, _pp_amt, current_price, f"HEDGE_WT3M1H_PP_{int(time.time())}", f"HEDGE_CLOSE_WT3M1H_PP_ABS_3m={_pp_w13:.1f}/{_pp_w23:.1f}_1h={_pp_w11:.1f}/{_pp_w21:.1f}_gain={_pp_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_pp_hedge_for)
                     finally:

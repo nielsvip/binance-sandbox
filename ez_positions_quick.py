@@ -4092,6 +4092,12 @@ class RatingRegistry:
         _zg_wtv_3m = safe_fetch_float(data.get('wt_velocity_3m', 0), 0)
         _zg_wtv_1h = safe_fetch_float(data.get('wt_velocity_1h', 0), 0)
         _zg_wtv_4h = safe_fetch_float(data.get('wt_velocity_4h', 0), 0)
+        # 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs.
+        # Counts how many of the 5 WT TFs (3m/15m/1h/4h/D) align with the proposed hedge direction.
+        # LONG hedge wants wt1>wt2 (rising); SHORT hedge wants wt1<wt2 (falling). Stops "shorting a rocket".
+        _strict_on = bool(getattr(config, 'HEDGE_STRICT_WT_ALL_TFS_ENABLED', True))
+        _strict_min = int(getattr(config, 'HEDGE_STRICT_WT_MIN_TFS_AGAINST', 4))
+        _wt_pairs = ((wt1_3m, wt2_3m), (wt1_15m, wt2_15m), (wt1_1h, wt2_1h), (wt1_4h, wt2_4h), (wt1_D, wt2_D))
         if score > 0:
             if _daily_bear: return 0
             if _dc_gate_on:
@@ -4101,6 +4107,9 @@ class RatingRegistry:
             if _wt_gate_on:
                 if _zg_wtv_1h <= 0 and _zg_wtv_4h <= 0: return 0
                 if _zg_wtv_3m < -1.0: return 0
+            if _strict_on:
+                _aligned_long = sum(1 for w1, w2 in _wt_pairs if (w1 != 0 or w2 != 0) and w1 > w2)
+                if _aligned_long < _strict_min: return 0
             return min(round(score, 1), 30)
         else:
             if _daily_bull: return 0
@@ -4111,6 +4120,9 @@ class RatingRegistry:
             if _wt_gate_on:
                 if _zg_wtv_1h >= 0 and _zg_wtv_4h >= 0: return 0
                 if _zg_wtv_3m > 1.0: return 0
+            if _strict_on:
+                _aligned_short = sum(1 for w1, w2 in _wt_pairs if (w1 != 0 or w2 != 0) and w1 < w2)
+                if _aligned_short < _strict_min: return 0
             return max(round(score, 1), -30)
 
     async def refresh_rankings(self):
@@ -5004,7 +5016,10 @@ class HedgeEngine:
                             _abs_wt3m_against = (_abs_h_is_long and _abs_wt1_3m < _abs_wt2_3m) or ((not _abs_h_is_long) and _abs_wt1_3m > _abs_wt2_3m)
                             _abs_wt1h_against = (_abs_h_is_long and _abs_wt1_1h < _abs_wt2_1h) or ((not _abs_h_is_long) and _abs_wt1_1h > _abs_wt2_1h)
                             if _abs_wt3m_ok and _abs_wt1h_ok and _abs_wt3m_against and _abs_wt1h_against and hedge_amt > 0.001:
-                                logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_ABS] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING regardless of P/L (hedge_gain={hedge_gain:.2f}%)")
+                                if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and hedge_gain < 0:
+                                    logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_ABS_NOLOSS_HOLD] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge but gain={hedge_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
+                                    continue
+                                logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_ABS] {hedge_key}: wt_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f} AND wt_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f} against {'LONG' if _abs_h_is_long else 'SHORT'} hedge — CLOSING (hedge_gain={hedge_gain:.2f}%)")
                                 try:
                                     await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"HEDGE_CLOSE_WT3M1H_ABS_3m={_abs_wt1_3m:.1f}/{_abs_wt2_3m:.1f}_1h={_abs_wt1_1h:.1f}/{_abs_wt2_1h:.1f}_gain={hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
                                     await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
@@ -6221,13 +6236,28 @@ class HedgeEngine:
                                     if not _pos_is_hedge:
                                         logger.warning(f"[HEDGE_KILL_REVERSING_SKIPPED] {hedge_position_key}: position.is_hedge=False — main position, NOT killing via hedge engine")
                                     else:
-                                        _prev_gain = safe_fetch_float(getattr(position, 'prev_gain', existing_gain) if not isinstance(position, dict) else position.get('prev_gain', existing_gain), existing_gain)
-                                        if existing_gain < _prev_gain:
-                                            logger.critical(f"[HEDGE_KILL_REVERSING] {hedge_position_key} gain={existing_gain:.2f}% < prev={_prev_gain:.2f}% — recovery FAILED, killing confirmed hedge")
-                                            await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action='CLOSE', current_price=current_price, qty=positionAmt_abs, reason=f"HEDGE_KILL_REVERSING_{existing_gain:.2f}%<prev{_prev_gain:.2f}%", is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
-                                            await self.tracker_manager.nuke_hedge_key(account_key, hedge_position_key)
+                                        # 2026-04-26 OWNER RULE: NO % closes on hedges. Replaced gain<prev_gain
+                                        # with WT 3m AND 1h technical (matches HEDGE_CLOSE_WT3M1H_ABS at line ~5006).
+                                        # Hedge closes ONLY when wt_3m AND wt_1h both flip against the hedge side.
+                                        _kr_h_is_long = hedge_position_key.endswith('_LONG')
+                                        _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
+                                        _kr_wt1_3m = safe_fetch_float(_kr_ind.get('wt1_3m'), 0)
+                                        _kr_wt2_3m = safe_fetch_float(_kr_ind.get('wt2_3m'), 0)
+                                        _kr_wt1_1h = safe_fetch_float(_kr_ind.get('wt1_1h'), 0)
+                                        _kr_wt2_1h = safe_fetch_float(_kr_ind.get('wt2_1h'), 0)
+                                        _kr_wt3m_ok = (_kr_wt1_3m != 0 or _kr_wt2_3m != 0)
+                                        _kr_wt1h_ok = (_kr_wt1_1h != 0 or _kr_wt2_1h != 0)
+                                        _kr_wt3m_against = (_kr_h_is_long and _kr_wt1_3m < _kr_wt2_3m) or ((not _kr_h_is_long) and _kr_wt1_3m > _kr_wt2_3m)
+                                        _kr_wt1h_against = (_kr_h_is_long and _kr_wt1_1h < _kr_wt2_1h) or ((not _kr_h_is_long) and _kr_wt1_1h > _kr_wt2_1h)
+                                        if _kr_wt3m_ok and _kr_wt1h_ok and _kr_wt3m_against and _kr_wt1h_against:
+                                            if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and existing_gain < 0:
+                                                logger.warning(f"🛡️ [HEDGE_KILL_REVERSING_WT_NOLOSS_HOLD] {hedge_position_key}: wt_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f} AND wt_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f} against {'LONG' if _kr_h_is_long else 'SHORT'} hedge but gain={existing_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
+                                            else:
+                                                logger.critical(f"🛑 [HEDGE_KILL_REVERSING_WT] {hedge_position_key}: wt_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f} AND wt_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f} against {'LONG' if _kr_h_is_long else 'SHORT'} hedge — closing on technical (gain={existing_gain:.2f}%)")
+                                                await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_position_key, positionAmt=positionAmt_abs, action='CLOSE', current_price=current_price, qty=positionAmt_abs, reason=f"HEDGE_KILL_REVERSING_WT_3m={_kr_wt1_3m:.1f}/{_kr_wt2_3m:.1f}_1h={_kr_wt1_1h:.1f}/{_kr_wt2_1h:.1f}_gain={existing_gain:.2f}%", is_hedge=True, hedge_for=losing_position_key, data_manager=self.data_manager)
+                                                await self.tracker_manager.nuke_hedge_key(account_key, hedge_position_key)
                                         else:
-                                            logger.info(f"[HEDGE_RECOVERING] {hedge_position_key} gain={existing_gain:.2f}% >= prev={_prev_gain:.2f}% — LET IT RUN")
+                                            logger.info(f"[HEDGE_HOLD_NO_WT_FLIP] {hedge_position_key} gain={existing_gain:.2f}% — wt_3m/wt_1h not BOTH against, holding (3m_ok={_kr_wt3m_ok} 3m_against={_kr_wt3m_against} 1h_ok={_kr_wt1h_ok} 1h_against={_kr_wt1h_against})")
                                     quantity = 0
                             if positionAmt_abs > 0 and quantity > 0:
                                 logger.warning(f"[HEDGE_ACTUAL_ALREADY_EXISTS] {hedge_position_key} already open (amt={positionAmt_abs:.4f}). Hedge = ONE entry only. Skipping.")

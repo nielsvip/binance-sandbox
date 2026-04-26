@@ -179,7 +179,7 @@ class Config:
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
     SCALP_V3_SIDE_MODE: str = "BOTH"             # BOTH for now (2026-04-23 evening): only 7 LONG vs 54 SHORT inf keys; sweep's SHORT disaster was rally-window bias. Paper A/B will reveal which side works forward.
-    SCALP_V3_SCAN_BYPASS_GATES: bool = True      # 2026-04-23 evening: scanner opens on divergence sign directly; K-gates blocked 100% of user's high-conviction picks (THETA +1.66, ZEC +2.5, MOVR +7.6)
+    SCALP_V3_SCAN_BYPASS_GATES: bool = False     # 2026-04-26: OFF after V3 trend-follow rewrite. Bypass let the scanner open SHORTs into rallies (XTZ/KSM/AWE on 2026-04-25), which is exactly the mean-rev pattern the rewrite removed. Scanner now respects new trend-follow K/WT/HTF gates.
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
     # the market median. Positive z-score → top_winners_st → symbols_inf_long_list
     # (auto-added to tradeable_keys). Negative → symbols_inf_short_list. This is
@@ -441,6 +441,15 @@ class Config:
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
+    # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
+    # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
+    # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.
+    HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
+    # === 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs, not just velocity ===
+    # _quick_hedge_rank rejects hedge candidates where < HEDGE_STRICT_WT_MIN_TFS_AGAINST of the 5 TFs (3m/15m/1h/4h/D) align against the proposed hedge direction.
+    # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.
+    HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = True
+    HEDGE_STRICT_WT_MIN_TFS_AGAINST: int = 4  # Out of 5: 3m/15m/1h/4h/D. 4 = strong consensus; raise to 5 for unanimous, lower to 3 to relax.
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

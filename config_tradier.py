@@ -732,7 +732,7 @@ class TradierConfig:
     TRB_MAX_CALL_VALUE: float = 3000.0    # NEW: max $ per call option
     # === 2026-04-26 NEW user-spec position caps for trb (ABOVE) ===
     # === VIX regime filter (Phase B framework) ===
-    VIX_REGIME_FILTER_ENABLED: bool = True   # 2026-04-26: VIX vs 200dMA gate; 32% DD reduction documented
+    VIX_VOLATILITY_REGIME_ENABLED: bool = True   # 2026-04-26: VIX vs VIX-200dMA gate (NOT SPY-SMA200 — that's L1061); 32% DD reduction documented
     VIX_PANIC_THRESHOLD: float = 30.0
     VIX_EXTREME_THRESHOLD: float = 40.0
     VIX_REGIME_SIZE_MULT_HIGH_VOL: float = 0.5   # VIX > 200dMA → 50% size
