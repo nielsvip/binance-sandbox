@@ -195,7 +195,7 @@ def _load_allowlists():
                 out[f"{acct}_{side}"] = json.loads(f.read_text())
             except Exception as e:
                 log.warning("allowlist read %s failed: %s", f, e)
-    for acct in ("fin", "men", "ang"):
+    for acct in ("fin", "men", "ang", "inf", "flz"):
         f = BASE / f"symbols_{acct}.json"
         if not f.exists():
             continue
@@ -302,7 +302,7 @@ def build_snapshot():
         "generated_at_utc": _utc_now_iso(),
         "generator": "agent_snapshot_writer.py",
         "stale": False,
-        "agent_focus_accounts": ["fin", "ang"],
+        "agent_focus_accounts": ["fin", "ang", "inf", "flz", "men"],
         "positions": positions,
         "positions_count": {
             "tradier": {acct: len(p) for acct, p in positions["tradier"].items()},

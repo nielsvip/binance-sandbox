@@ -19634,9 +19634,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         trade_manager.processing_keys.discard(position_key)
         return f"{EvalStatus.NO_ACTION}:BLACKLISTED_{symbol}"
     position = await trade_manager.get_position(position_key)
-    # 🤖 AGENT advisory short-circuit (supervisor override, fin + ang)
-    # Hook fires after position fetch so we have all needed context. Other accounts skipped.
-    if account_key in ("fin", "ang"):
+    # 🤖 AGENT advisory short-circuit (supervisor override, all 5 crypto accounts)
+    # Hook fires after position fetch so we have all needed context. inf runs SCALP_V3 too —
+    # this hook runs first; a force_close advisory wins over a SCALP_V3 hold.
+    if account_key in ("fin", "ang", "inf", "flz", "men"):
         try:
             import fin_advisory_consumer as _ag_adv
             _ag_obj = _ag_adv.check(account_key, symbol, position_side, "process")

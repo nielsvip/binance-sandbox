@@ -1096,6 +1096,40 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         last_mon = trade_manager.last_monitored_positions.get(position_key, 0.0)
         position = trade_manager.position_manager.get_position(position_key)
         has_position = position and abs(float(getattr(position, 'positionAmt', 0))) > 0
+        if account_key in ("tra", "trb", "trc"):
+            try:
+                import tradier_advisory_consumer as _ag_adv
+                _ag_obj = _ag_adv.check(account_key, symbol, position_side, "process")
+                if _ag_obj:
+                    _ag_tag = account_key.upper()
+                    _ag_action = _ag_obj.get("action")
+                    _ag_reason = (_ag_obj.get("reason") or "")[:60]
+                    _ag_pos_amt = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
+                    if _ag_action == "force_close" and _ag_pos_amt > 0:
+                        _ag_adv.log_application(account_key, symbol, position_side, "process", "force_close", _ag_obj)
+                        logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_CLOSE {position_key}: {_ag_reason}")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"{_ag_tag}_AGENT_FORCE_CLOSE({_ag_reason})", 100.0, override_qty=999999)
+                        return f"AGENT_FORCE_CLOSE:{_ag_tag}"
+                    if _ag_action == "hold" and _ag_pos_amt > 0:
+                        _ag_adv.log_application(account_key, symbol, position_side, "process", "hold", _ag_obj)
+                        logger.info(f"🤖 {_ag_tag}_AGENT_HOLD {position_key}: {_ag_reason}")
+                        return f"AGENT_HOLD:{_ag_tag}"
+                    if _ag_action == "force_open" and _ag_pos_amt == 0:
+                        _ag_size_usd = float(_ag_obj.get("size_override_usd") or 0)
+                        _ag_price_t, _ = await trade_manager.get_current_price(symbol)
+                        _ag_price_t = float(_ag_price_t) if _ag_price_t else 0.0
+                        if _ag_size_usd > 0 and _ag_price_t > 0:
+                            _ag_qty = max(_ag_size_usd / _ag_price_t, 0.0)
+                            _ag_adv.log_application(account_key, symbol, position_side, "process", "force_open", _ag_obj)
+                            logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_OPEN {position_key} size=${_ag_size_usd:.0f} qty={_ag_qty:.4f}: {_ag_reason}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", f"{_ag_tag}_AGENT_FORCE_OPEN({_ag_reason})", 100.0, override_qty=_ag_qty)
+                            return f"AGENT_FORCE_OPEN:{_ag_tag}"
+                    if _ag_action == "block_entry" and _ag_pos_amt == 0:
+                        _ag_adv.log_application(account_key, symbol, position_side, "process", "block_entry", _ag_obj)
+                        logger.info(f"🤖 {_ag_tag}_AGENT_BLOCK_ENTRY {position_key}: {_ag_reason}")
+                        return f"AGENT_BLOCK_ENTRY:{_ag_tag}"
+            except Exception as _ag_err:
+                logger.warning(f"[AGENT] tradier advisory check failed for {position_key}: {_ag_err}")
         
         # --- CHECK OPPOSING POSITION ---
         opposing_side = "SHORT" if position_side == "LONG" else "LONG"

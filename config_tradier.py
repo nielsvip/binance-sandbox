@@ -47,8 +47,8 @@ class TradierConfig:
     MAX_POSITION_SIZE: float = 5000.0
     START_POSITION_SIZE: float = 600.0  # BACKTEST_CHANGE_T26 was 400 → 600 larger base size
     # === WING BUDGETS ===
-    SWING_LONG_BUDGET: float = 2000.0       # Max $ in swing longs
-    SWING_SHORT_BUDGET: float = 2000.0      # Max $ in swing shorts
+    SWING_LONG_BUDGET: float = 100000.0     # 2026-04-26 raised 2k → 100k. With $200k account, 2k was 1% and the ratio-shrink (×0.12 in bearish market = $2.4k) was choking trb to ZERO opens. 100k matches TRC; half of total available so LONG+SHORT can both deploy.
+    SWING_SHORT_BUDGET: float = 100000.0    # 2026-04-26 raised 2k → 100k. Same reason.
     SWING_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     SWING_START_SIZE: float = 800.0          # Base order value for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     SCALP_LONG_BUDGET: float = 1000.0       # Max $ in scalp longs

@@ -1,8 +1,8 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
 # pylint: disable=W,C,R,I
-"""tradeable_refresh_loop.py — fast 1-min local loop for fin+ang agent.
+"""tradeable_refresh_loop.py — fast 1-min local loop for all 5 crypto accounts.
 
-Walks tradeable_keys.json for fin and ang, reads Redis `latest_market_data`,
+Walks tradeable_keys.json for fin/ang/inf/flz/men, reads Redis `latest_market_data`,
 scores each (symbol, side) pair on:
   1. MTF WaveTrend alignment across {3m, 15m, 1h, 4h, D}
   2. S/R proximity (dc_4h, bb_1h, sma200_D, sma200_1h)
@@ -30,7 +30,7 @@ HANDOFF_REPO = Path.home() / "binance-agent-handoff"
 OUT_PATH = HANDOFF_REPO / "tradeable_refresh.json"
 LOG_PATH = Path.home() / "logs" / "tradeable_refresh_loop.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-ACCOUNTS = ("fin", "ang")
+ACCOUNTS = ("fin", "ang", "inf", "flz", "men")
 TF_ORDER = ("3m", "15m", "1h", "4h", "D")
 TOP_N_PER_ACCOUNT = 25
 SR_NEAR_PCT = 1.5
@@ -294,11 +294,11 @@ def main():
         log.exception("write failed: %s", e)
         sys.exit(2)
     elapsed = time.time() - t0
-    fin_count = len(payload["accounts"]["fin"]["candidates"])
-    ang_count = len(payload["accounts"]["ang"]["candidates"])
-    fin_fresh = len(payload["accounts"]["fin"]["fresh_setups"])
-    ang_fresh = len(payload["accounts"]["ang"]["fresh_setups"])
-    log.info("refresh ok in %.1fs: fin top=%d fresh=%d | ang top=%d fresh=%d", elapsed, fin_count, fin_fresh, ang_count, ang_fresh)
+    parts = []
+    for acct in ACCOUNTS:
+        a = payload["accounts"].get(acct) or {}
+        parts.append(f"{acct} top={len(a.get('candidates') or [])} fresh={len(a.get('fresh_setups') or [])}")
+    log.info("refresh ok in %.1fs: %s", elapsed, " | ".join(parts))
 
 
 if __name__ == "__main__":

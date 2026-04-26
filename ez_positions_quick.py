@@ -6080,6 +6080,33 @@ class HedgeEngine:
     async def execute_dual_hedge(self, account_key: str, losing_position_key: str, losing_symbol: str, losing_side: str, losing_value_usd: float, dry_run: bool = False) -> Dict[str, Any]:
         # 2026-04-17: upgraded DEBUG→INFO logs on silent early-returns so we can SEE which gate blocks.
         logger.info(f"🔍 [HEDGE_ENTRY] {losing_position_key}: execute_dual_hedge called, val=${losing_value_usd:.2f} side={losing_side}")
+        # ═══ 2026-04-26 V3 SAME-SYMBOL HEDGE ONLY (user rule) ═══════════════════════════════
+        # SCALP_V3 trades are ultra-short-duration mean-rev scalps with $10-$20 notional. A
+        # cross-symbol elected hedge introduces a long-duration directional position on a
+        # different symbol that lives long after the V3 scalp closes — orphaning + counter-bleed.
+        # User directive: V3-tagged losers must hedge same-symbol only (or skip entirely if
+        # same-symbol can't open). DO NOT remove without explicit user re-approval.
+        try:
+            _v3_pos = None
+            _ps = getattr(self.tracker_manager, 'positions_service', None)
+            if _ps and hasattr(_ps, 'positions_by_account'):
+                _v3_pos = _ps.positions_by_account.get(account_key, {}).get(losing_position_key)
+            _v3_reason = ''
+            if _v3_pos is not None:
+                _v3_reason = str(getattr(_v3_pos, 'augment_reason', '') or getattr(_v3_pos, 'reason', '') or getattr(_v3_pos, 'last_signal', '') or '').upper()
+            if _v3_reason.startswith('SCALP_V3_OPEN'):
+                logger.warning(f"⚡ [HEDGE_V3_SAME_SYMBOL_ONLY] {losing_position_key}: origin is SCALP_V3 (reason={_v3_reason!r}). "
+                               f"Skipping cross-symbol elect; delegating to execute_same_symbol_hedge directly.")
+                _v3_qty = abs(safe_fetch_float(getattr(_v3_pos, 'positionAmt', 0), 0)) if _v3_pos else 0
+                _v3_mark = safe_fetch_float(getattr(_v3_pos, 'mark_price', 0), 0) if _v3_pos else 0
+                if _v3_qty > 0 and _v3_mark > 0:
+                    asyncio.create_task(self.execute_same_symbol_hedge(
+                        account_key=account_key, origin_position=_v3_pos, symbol=losing_symbol,
+                        origin_side=losing_side, qty=_v3_qty, current_price=_v3_mark))
+                return {'overall_status': 'v3_same_symbol_only', 'elected_symbol': {'status': 'v3_skip'}, 'actual_symbol': {'status': 'delegated_to_same_symbol'}}
+        except Exception as _v3e:
+            logger.debug(f"[HEDGE_V3_CHECK_FAIL] {losing_position_key}: {_v3e}")
+        # ════════════════════════════════════════════════════════════════════════════════
         # FIX 2026-04-07: GLOBAL HEDGE-COMPLETED LOCKOUT — ONE hedge per position, period.
         _hc_ts = self._hedge_completed.get(losing_position_key, 0)
         if (time.time() - _hc_ts) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:

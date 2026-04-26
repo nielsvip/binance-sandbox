@@ -33,9 +33,14 @@ HANDOFF_REPO = Path.home() / "binance-agent-handoff"
 LOG_PATH = Path.home() / "logs" / "agent_inbox_poller.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 SUBJECT_TO_FILE = {
+    "[TRA_ADVISORIES_v1]": "tra_advisories.json",
+    "[TRB_ADVISORIES_v1]": "trb_advisories.json",
     "[TRC_ADVISORIES_v1]": "trc_advisories.json",
     "[FIN_ADVISORIES_v1]": "fin_advisories.json",
     "[ANG_ADVISORIES_v1]": "ang_advisories.json",
+    "[INF_ADVISORIES_v1]": "inf_advisories.json",
+    "[FLZ_ADVISORIES_v1]": "flz_advisories.json",
+    "[MEN_ADVISORIES_v1]": "men_advisories.json",
     "[OPTIONS_BRIEFING_v1]": "options_briefing.json",
     "[MORNING_NEWSLETTER_v1]": None,
     "[EVENING_RECAP_v1]": None,

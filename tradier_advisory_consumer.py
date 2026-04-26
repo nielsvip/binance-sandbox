@@ -1,23 +1,22 @@
 # pylint: disable=W,C,R,I
-"""fin_advisory_consumer.py — local consumer for routine-emitted advisories.
+"""tradier_advisory_consumer.py — local consumer for stock-account routine advisories.
 
-Originally fin-only; now serves all 5 crypto accounts (fin, ang, inf, flz, men). Filename
-retained for import backward-compatibility (ez_manage.py imports it as fin_advisory_consumer).
+Mirror of fin_advisory_consumer.py for the tradier (stocks) side. Serves tra, trb, trc.
 
-The remote `fin-hourly-supervisor` Claude routine writes per-account advisories to
+The remote `{account}-hourly-supervisor` Claude routine writes per-account advisories to
 ~/binance-agent-handoff/{account}_advisories.json. This module reads them, caches per-account
-for 30s, ignores expired entries, and exposes a single short-circuit helper for ez_manage.py
-to call at the top of relevant evaluate_* paths.
+for 30s, ignores expired entries, and exposes a single short-circuit helper for tradier_manage.py
+to call at the top of process_position.
 
-inf runs SCALP_V3 live; the advisory hook short-circuits process_position BEFORE SCALP_V3
-runs, so a force_close advisory wins over a SCALP_V3 hold.
+Decision log path is distinct from crypto so analytics don't conflate streams:
+~/binance-agent-handoff/logs/tradier_advisory_decisions_log.jsonl
 
 Advisory schema (per-account file):
 {
   "schema_version": 1,
   "generated_at_utc": "...",
   "advisories": {
-    "BTCUSDT_LONG": {
+    "AAPL_LONG": {
       "action": "force_close|hold|block_entry|force_open|block_augment|force_augment",
       "scope": "position|symbol|global",
       "size_override_usd": 50.0,
@@ -36,11 +35,11 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SUPPORTED_ACCOUNTS = {"fin", "ang", "inf", "flz", "men"}
+SUPPORTED_ACCOUNTS = {"tra", "trb", "trc"}
 HANDOFF_DIR = Path.home() / "binance-agent-handoff"
-DECISION_LOG_PATH = HANDOFF_DIR / "logs" / "agent_decisions_log.jsonl"
+DECISION_LOG_PATH = HANDOFF_DIR / "logs" / "tradier_advisory_decisions_log.jsonl"
 CACHE_TTL_SEC = 30
-log = logging.getLogger("agent_advisory")
+log = logging.getLogger("tradier_agent_advisory")
 _cache = {}
 _cache_lock = threading.Lock()
 

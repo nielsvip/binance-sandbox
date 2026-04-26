@@ -1,6 +1,6 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
 # pylint: disable=W,C,R,I
-"""local_advisory_generator.py — fast 1-min advisory writer for fin + ang.
+"""local_advisory_generator.py — fast 1-min advisory writer for all 5 crypto accounts.
 
 Bypasses the slow hourly cloud routine for safety + speed.
 
@@ -14,6 +14,9 @@ Inputs:
 Outputs (idempotent — only writes if semantic change vs existing local entries):
   ~/binance-agent-handoff/fin_advisories.json
   ~/binance-agent-handoff/ang_advisories.json
+  ~/binance-agent-handoff/inf_advisories.json
+  ~/binance-agent-handoff/flz_advisories.json
+  ~/binance-agent-handoff/men_advisories.json
 
 Conflict avoidance: cloud advisories carry generator='fin-hourly-supervisor'. We never overwrite those
 unless they have expired. We only manage entries with generator='local_advisory_generator'.
@@ -36,7 +39,7 @@ TRADEABLE_KEYS_FILE = BASE / "tradeable_keys.json"
 LOG_PATH = Path.home() / "logs" / "local_advisory_generator.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-ACCOUNTS = ("fin", "ang")
+ACCOUNTS = ("fin", "ang", "inf", "flz", "men")
 GENERATOR_NAME = "local_advisory_generator"
 SCHEMA_VERSION = 1
 TF_ORDER = ("3m", "15m", "1h", "4h", "D")
