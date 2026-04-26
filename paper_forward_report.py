@@ -16,9 +16,11 @@ from pathlib import Path
 from typing import Dict, List
 
 BASE = Path(__file__).resolve().parent
-DATA_DIR = BASE / "data" / "paper_forward"
+ROOT_DIR = BASE / "data" / "paper_forward"
+DATA_DIR = ROOT_DIR / sys.argv[1] if len(sys.argv) > 1 else ROOT_DIR / "v01_baseline"
 REPORT_FILE = DATA_DIR / "REPORT.md"
 DAILY_LOG = DATA_DIR / "DAILY.log"
+LEADERBOARD = ROOT_DIR / "LEADERBOARD.md"
 STARTING_EQUITY = 1000.0
 
 
@@ -167,6 +169,50 @@ def _arm_label(arm_id: str) -> str:
     }.get(arm_id, arm_id)
 
 
+def _build_leaderboard() -> None:
+    """Scan every variant subdir under data/paper_forward and rank arm B (V3 +
+    inf-filter) by avg gain per trade and pool sharpe. This is the spotlight
+    metric for the multi-variant paper farm."""
+    if not ROOT_DIR.exists():
+        return
+    rows = []
+    for variant_dir in sorted(ROOT_DIR.iterdir()):
+        if not variant_dir.is_dir():
+            continue
+        # Skip if no arm dirs.
+        if not any((variant_dir / f"arm_{a}").exists() for a in ("A", "B", "C")):
+            continue
+        prev_data, prev_report = DATA_DIR, REPORT_FILE
+        try:
+            globals()["DATA_DIR"] = variant_dir
+            for arm_id in ("A", "B", "C"):
+                m = _arm_metrics(arm_id)
+                m["variant"] = variant_dir.name
+                rows.append(m)
+        finally:
+            globals()["DATA_DIR"] = prev_data
+    if not rows:
+        return
+    rows.sort(key=lambda m: (m["arm"], -m["avg_gain_trade"]))
+    header = (
+        "# Paper Forward Leaderboard\n\n"
+        f"Generated: {_utc_iso()}\n\n"
+        "Sorted within each arm by avg gain per trade (descending).\n\n"
+        "| Variant | Arm | Trades | AvgGain/Tr | PoolShp | AccGain | MaxDD | PnL | Hours |\n"
+        "|---|---|---|---|---|---|---|---|---|\n"
+    )
+    body = []
+    for m in rows:
+        body.append(
+            f"| {m['variant']} | {m['arm']} | {m['n_close']:>5} | "
+            f"{m['avg_gain_trade']:>+5.3f}% | {m['pool_sharpe']:>+5.3f} | "
+            f"{m['acc_gain_pct']:>+7.2f}% | {m['max_dd_pct']:>5.2f}% | "
+            f"${m['pnl_usd']:>+7.2f} | {m['elapsed_hours']:>5.1f}h |"
+        )
+    LEADERBOARD.write_text(header + "\n".join(body) + "\n")
+    print(f"Wrote {LEADERBOARD}")
+
+
 def main() -> int:
     metrics = [_arm_metrics(a) for a in ("A", "B", "C")]
 
@@ -221,6 +267,10 @@ def main() -> int:
     print(f"Appended {DAILY_LOG}")
     print()
     print(daily_line.rstrip())
+    try:
+        _build_leaderboard()
+    except Exception as e:
+        print(f"leaderboard error: {e}", file=sys.stderr)
     return 0
 
 

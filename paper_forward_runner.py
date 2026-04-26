@@ -43,7 +43,8 @@ import config as live_config
 
 CFG = live_config.Config()
 
-DATA_DIR = BASE_PATH / "data" / "paper_forward"
+VARIANT_ID = os.environ.get("PAPER_FWD_VARIANT", "default")
+DATA_DIR = BASE_PATH / "data" / "paper_forward" / VARIANT_ID
 LOG_DIR = BASE_PATH / "logs"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -83,7 +84,40 @@ SYMBOLS_FILE = BASE_PATH / "symbols.json"
 SYMBOLS_INF_LONG_FILE = BASE_PATH / "symbols_inf_long.json"
 SYMBOLS_INF_SHORT_FILE = BASE_PATH / "symbols_inf_short.json"
 
-SIDE_MODE = os.environ.get("PAPER_FWD_SIDE_MODE", "LONG_ONLY").upper()
+SIDE_MODE = os.environ.get("PAPER_FWD_SIDE_MODE", "BOTH").upper()
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except Exception:
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except Exception:
+        return default
+
+
+# Variant overrides — each parallel instance picks its own values via env vars.
+# Per-side asymmetry: SHORT thresholds default to LONG, then can be tightened
+# (markets aren't always bullish — must run both, but shorts need their own knobs).
+VARIANT_OVERRIDES = {
+    "SCALP_V3_ENTRY_K_3M_MAX": _env_int("V_K_3M_MAX_LONG", 40),
+    "SCALP_V3_ENTRY_K_15M_MAX": _env_int("V_K_15M_MAX_LONG", 65),
+    "SCALP_V3_ENTRY_K_1H_MAX": _env_int("V_K_1H_MAX_LONG", 80),
+    "SCALP_V3_ENTRY_K_4H_MAX": _env_int("V_K_4H_MAX_LONG", 85),
+    "SCALP_V3_SHORT_ENTRY_K_3M_MAX": _env_int("V_K_3M_MAX_SHORT", 40),
+    "SCALP_V3_SHORT_ENTRY_K_15M_MAX": _env_int("V_K_15M_MAX_SHORT", 65),
+    "SCALP_V3_SHORT_ENTRY_K_1H_MAX": _env_int("V_K_1H_MAX_SHORT", 80),
+    "SCALP_V3_SHORT_REQUIRE_RECENT_DUMP": os.environ.get("V_SHORT_DUMP", "1") not in ("0", "false", "False"),
+    "SCALP_V3_SHORT_RECENT_DUMP_PCT": _env_float("V_SHORT_DUMP_PCT", 3.0),
+    "SCALP_V3_EXIT_3M_K_MIN": _env_int("V_EXIT_K_3M_MIN", 95),
+    "SCALP_V3_EXIT_15M_K_MIN": _env_int("V_EXIT_K_15M_MIN", 95),
+    "SCALP_V3_EXIT_1M_K_MIN": _env_int("V_EXIT_K_1M_MIN", 98),
+}
 
 
 def _ts() -> float:
@@ -122,7 +156,9 @@ class FakePosition:
     """Duck-typed stand-in for the live Position object that scalp_v3_live expects."""
 
     def __init__(self, symbol: str, side: str, entry_price: float, qty: float,
-                 opened_at: float, augment_reason: str):
+                 opened_at: float, augment_reason: str,
+                 is_hedge: bool = False, hedge_of_pk: Optional[str] = None,
+                 has_hedge_pk: Optional[str] = None):
         self.symbol = symbol
         self.side = side
         self.entry_price = entry_price
@@ -130,7 +166,9 @@ class FakePosition:
         self.opened_at = opened_at
         self.augment_reason = augment_reason
         self.gain = 0.0
-        self.is_hedge = False
+        self.is_hedge = is_hedge
+        self.hedge_of_pk = hedge_of_pk
+        self.has_hedge_pk = has_hedge_pk
 
 
 class PaperBook:
@@ -163,6 +201,9 @@ class PaperBook:
                     entry_price=float(p["entry_price"]), qty=float(p["qty"]),
                     opened_at=float(p["opened_at"]),
                     augment_reason=p.get("augment_reason", "SCALP_V3_OPEN_LONG_RESUMED"),
+                    is_hedge=bool(p.get("is_hedge", False)),
+                    hedge_of_pk=p.get("hedge_of_pk"),
+                    has_hedge_pk=p.get("has_hedge_pk"),
                 )
             _log(f"[{self.arm_id}] state restored: realized={self.realized_pnl:.2f} open={len(self.positions)}")
         except Exception as e:
@@ -180,7 +221,10 @@ class PaperBook:
                      "entry_price": p.entry_price,
                      "qty": abs(p.positionAmt),
                      "opened_at": p.opened_at,
-                     "augment_reason": p.augment_reason}
+                     "augment_reason": p.augment_reason,
+                     "is_hedge": p.is_hedge,
+                     "hedge_of_pk": p.hedge_of_pk,
+                     "has_hedge_pk": p.has_hedge_pk}
                 for pk, p in self.positions.items()
             },
         }
@@ -320,9 +364,10 @@ class V3Arm:
         self.side_mode = side_mode
         self._stop = asyncio.Event()
         self._patched_cfg = self._build_arm_config()
+        self._hedge_cfg = self._build_hedge_cfg()
 
     def _build_arm_config(self):
-        """Clone CFG and force SIDE_MODE for this arm without mutating the global."""
+        """Clone CFG and force SIDE_MODE + paper-test overrides for this arm."""
         class _Shim:
             pass
         s = _Shim()
@@ -334,6 +379,26 @@ class V3Arm:
             except Exception:
                 pass
         s.SCALP_V3_SIDE_MODE = self.side_mode
+        s.SCALP_V3_MAX_HOLD_MIN = V3_PAPER_MAX_HOLD_MIN
+        s.SCALP_V3_STALL_GAIN_MAX_PCT = V3_PAPER_STALL_GAIN_MAX_PCT
+        for k, v in VARIANT_OVERRIDES.items():
+            setattr(s, k, v)
+        return s
+
+    def _build_hedge_cfg(self):
+        """Variant of patched cfg with SIDE_MODE=BOTH so hedge detection can fire
+        the opposing side regardless of arm side_mode."""
+        class _Shim:
+            pass
+        s = _Shim()
+        for attr in dir(self._patched_cfg):
+            if attr.startswith("_"):
+                continue
+            try:
+                setattr(s, attr, getattr(self._patched_cfg, attr))
+            except Exception:
+                pass
+        s.SCALP_V3_SIDE_MODE = "BOTH"
         return s
 
     async def stop(self) -> None:
@@ -347,6 +412,8 @@ class V3Arm:
             try:
                 await self.indicator_src.refresh()
                 await self._exit_pass()
+                if PAPER_HEDGE_PROMOTION_ENABLED:
+                    await self._hedge_pass()
                 await self._entry_pass()
                 if (_ts() - last_equity_log) >= EQUITY_LOG_SEC:
                     self.book.log_equity(self.indicator_src.price)
@@ -381,6 +448,95 @@ class V3Arm:
                 continue
             if decision and decision.get("reason"):
                 self.book.close(pk, price, decision["reason"])
+
+    def _gain_pct(self, pos: FakePosition, price: float) -> float:
+        if pos.entry_price <= 0:
+            return 0.0
+        return ((price - pos.entry_price) / pos.entry_price * 100.0
+                if pos.side == "LONG"
+                else (pos.entry_price - price) / pos.entry_price * 100.0)
+
+    async def _hedge_pass(self) -> None:
+        """PnD protection — two phases:
+        Phase 1: any non-hedge, un-hedged, underwater position whose opposing-side
+                 V3 entry would fire → open opposing position as `is_hedge=True`,
+                 link both. NEVER recursively hedge a hedge.
+        Phase 2: any `is_hedge` position whose own gain >= HEDGE_PROMOTION_GAIN_PCT
+                 → close its origin (lock the loss), clear the hedge flag, rename
+                 augment_reason from `_HEDGE_OF_` to `_PROMOTED_FROM_` so V3 exit
+                 logic continues to manage it as a standalone position.
+        """
+        # Phase 1.
+        for pk in list(self.book.positions.keys()):
+            pos = self.book.positions.get(pk)
+            if not pos or pos.is_hedge:
+                continue
+            if pos.has_hedge_pk and pos.has_hedge_pk in self.book.positions:
+                continue
+            if pos.has_hedge_pk and pos.has_hedge_pk not in self.book.positions:
+                pos.has_hedge_pk = None
+            ind = self.indicator_src.dict.get(pos.symbol)
+            if not ind:
+                continue
+            price = self.indicator_src.price(pos.symbol)
+            if price is None:
+                continue
+            gp = self._gain_pct(pos, price)
+            if gp > HEDGE_TRIGGER_LOSS_PCT:
+                continue
+            opp_side = "SHORT" if pos.side == "LONG" else "LONG"
+            opp_pk = f"{pos.symbol}_{opp_side}"
+            if opp_pk in self.book.positions:
+                continue
+            if not self.book.can_open():
+                continue
+            try:
+                decision = check_scalp_v3_live_entry(
+                    pos.symbol, opp_pk, ind, price, None, "inf", self._hedge_cfg
+                )
+            except Exception as e:
+                _log(f"[{self.arm_id}] hedge V3 check err {pk}: {e}")
+                continue
+            if not decision or decision.get("side") != opp_side:
+                continue
+            hedge_reason = (f"SCALP_V3_OPEN_{opp_side}_HEDGE_OF_{pk}"
+                            f"_orig_g{gp:+.2f}%_{decision.get('reason', '')[:80]}")
+            if not self.book.open(pos.symbol, opp_side, price, hedge_reason):
+                continue
+            hedge_pos = self.book.positions.get(opp_pk)
+            if hedge_pos:
+                hedge_pos.is_hedge = True
+                hedge_pos.hedge_of_pk = pk
+                pos.has_hedge_pk = opp_pk
+                _log(f"[{self.arm_id}] 🛡️ HEDGE_OPEN {opp_pk} on origin={pk} g={gp:+.2f}%")
+        # Phase 2.
+        for pk in list(self.book.positions.keys()):
+            pos = self.book.positions.get(pk)
+            if not pos or not pos.is_hedge:
+                continue
+            origin_pk = pos.hedge_of_pk
+            origin = self.book.positions.get(origin_pk) if origin_pk else None
+            if origin is None:
+                # Origin already closed (e.g., stop fired) — clear hedge flag, treat
+                # as a standalone position from here on.
+                pos.is_hedge = False
+                pos.hedge_of_pk = None
+                pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_ORPHANED_FROM_")
+                _log(f"[{self.arm_id}] ⚠️ HEDGE_ORPHAN {pk} — origin gone, promoted to standalone")
+                continue
+            price = self.indicator_src.price(pos.symbol)
+            if price is None:
+                continue
+            hedge_gain = self._gain_pct(pos, price)
+            if hedge_gain < HEDGE_PROMOTION_GAIN_PCT:
+                continue
+            origin_gain = self._gain_pct(origin, price)
+            self.book.close(origin_pk, price,
+                            f"SCALP_V3_HEDGE_PROMOTED_LOCK_LOSS_origin_g{origin_gain:+.2f}%_hedge_g{hedge_gain:+.2f}%")
+            pos.is_hedge = False
+            pos.hedge_of_pk = None
+            pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_PROMOTED_FROM_")
+            _log(f"[{self.arm_id}] ✅ HEDGE_PROMOTE {pk} hg={hedge_gain:+.2f}% → closed origin {origin_pk} og={origin_gain:+.2f}%")
 
     async def _entry_pass(self) -> None:
         if not self.book.can_open():
@@ -503,20 +659,22 @@ class ArmC_Universe:
         if last <= 0:
             return False, ""
         age_min = (_ts() - pos.opened_at) / 60.0
+        # Zombie backstop only — primary exit is structural (DC-5 break).
         if age_min >= ARM_C_MAX_HOLD_MIN:
-            return True, f"DC20_TIME_STOP_age{age_min:.1f}m"
+            return True, f"DC_ZOMBIE_BACKSTOP_age{age_min:.1f}m"
         dq = self.candles.get(pos.symbol)
-        if not dq or len(dq) < ARM_C_DC_LOOKBACK:
+        if not dq or len(dq) < ARM_C_EXIT_STRUCTURE_BARS + 1:
             return False, ""
-        bars = list(dq)[-ARM_C_DC_LOOKBACK:]
+        bars = list(dq)[-(ARM_C_EXIT_STRUCTURE_BARS + 1):]
         if pos.side == "LONG":
-            prior_low = min(b["l"] for b in bars[:-1]) if len(bars) > 1 else bars[-1]["l"]
+            # Exit on close < prior 5-bar low — "structure breaks downward".
+            prior_low = min(b["l"] for b in bars[:-1])
             if last < prior_low:
-                return True, f"DC20_EXIT_LONG_break_low={prior_low:.6g}"
+                return True, f"DC{ARM_C_EXIT_STRUCTURE_BARS}_STRUCT_BREAK_LONG_low={prior_low:.6g}"
         else:
-            prior_high = max(b["h"] for b in bars[:-1]) if len(bars) > 1 else bars[-1]["h"]
+            prior_high = max(b["h"] for b in bars[:-1])
             if last > prior_high:
-                return True, f"DC20_EXIT_SHORT_break_high={prior_high:.6g}"
+                return True, f"DC{ARM_C_EXIT_STRUCTURE_BARS}_STRUCT_BREAK_SHORT_high={prior_high:.6g}"
         return False, ""
 
     def _process_strategy_pass(self) -> None:
@@ -645,8 +803,10 @@ async def heartbeat_loop(arms: list, indicator_src: IndicatorSource):
 
 async def main() -> None:
     _log("=" * 78)
-    _log(f"paper_forward_runner starting | side_mode={SIDE_MODE} | pos_usd={POSITION_USD} max={MAX_CONCURRENT}")
+    _log(f"paper_forward_runner starting | variant={VARIANT_ID} | side_mode={SIDE_MODE} | pos_usd={POSITION_USD} max={MAX_CONCURRENT}")
     _log(f"data_dir={DATA_DIR}")
+    _log(f"hedge_promo={PAPER_HEDGE_PROMOTION_ENABLED} trigger={HEDGE_TRIGGER_LOSS_PCT}% promo={HEDGE_PROMOTION_GAIN_PCT}%")
+    _log("variant_overrides: " + " ".join(f"{k}={v}" for k, v in VARIANT_OVERRIDES.items()))
 
     redis_client = aioredis.from_url("redis://localhost:6379", decode_responses=False,
                                       socket_connect_timeout=5, socket_timeout=5)

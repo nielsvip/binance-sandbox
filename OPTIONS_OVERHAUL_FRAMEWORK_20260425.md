@@ -445,20 +445,24 @@ Either consolidate to one source (recommended: drop BLACKLIST, make it a comment
 
 ### Phase 2 — Defined-risk + sector P/C budgets (2–4 days)
 - Wire `OPTIONS_SPREAD_ENABLED=True` through the entry path so default = vertical debit spread (L3).
-- Build per-sector P/C budget map (this does NOT exist today). Suggested initial table:
+- **P/C bias derived from existing equity sentiment ratio, with exaggeration** (owner directive 2026-04-26):
+  - Source: `tradier_manage.py:4902` already computes `_target_long_pct = max(10, min(90, 50 + composite × 0.9))` where composite = `(universe_score + qqq_momentum + A/D)/3`. This is the global equity long-bias target the system uses for stocks.
+  - Options derivation: `options_call_pct = clamp(15, 85, 50 + (equity_target_long_pct − 50) × K)` with **K = 1.5 default**.
+  - Examples (with K=1.5):
 
-| Sector | Max % of options book | Default P/C bias | Rationale |
-|--------|------------------------|------------------|-----------|
-| TECH | 25% | 50/50 | Highest IV, balanced expression |
-| HEALTH | 15% | 40C/60P | Defensive — biased puts on rallies |
-| FINANCIAL | 15% | 60C/40P | Pro-cyclical |
-| ENERGY | 15% | 50/50 | High IV, no edge view |
-| CONSUMER | 10% | 50/50 | |
-| GOLD/COMMOD | 15% | 60C/40P | Trend-following bias |
-| INDEX/ETF | 10% | 50/50 | Includes spy hedge bucket |
-| OTHER | 5% | 50/50 | |
+    | composite | equity target | options call% | put% |
+    |-----------|---------------|---------------|------|
+    | 0 (neutral) | 50% | 50% | 50% |
+    | +20 (mod bull) | 68% | 77% | 23% |
+    | +40 (strong bull) | 86% | 85% (clamped) | 15% |
+    | -20 (mod bear) | 32% | 23% | 77% |
+    | -50 (strong bear) | 5% (clamp 10) | 10% (after 15 floor → 15%) | 85% |
 
-(These are placeholders — ground them in your sector P&L history during implementation.)
+  - **Why exaggerated** (owner rationale): options come in discrete contract chunks ($500–$1.5k each), and we only enter at oversold/overbought price points → fewer entry windows than equity. Each entry must express the directional view more strongly, because we can't fine-tune like with single shares of stock.
+  - **Why clamps at 15/85, not 0/100**: never fully naked-directional — always keep at least one hedge contract on the book. Catches the "regime flips overnight" case.
+  - **Per-sector P/C is NOT separately maintained**. Only per-sector $ caps (already exist: `OPTIONS_MAX_PER_SECTOR=0.40` etc.) + this single global P/C target. Sectors absorb the global bias proportionally to their own $ allocation. Simpler, fewer knobs to drift.
+  - **Granularity reality check**: with ~$6k options budget and ~$700/contract average, that's 8–9 contracts max. 75/25 = 6C/2P. 85/15 = 7C/1P. Rarely will the math need finer than that.
+  - **K is a sweep knob**, not a permanent constant. Default 1.5; backtest 1.0/1.25/1.5/2.0 once Phase 0 + Phase 1 logging gives us enough data to evaluate it (~30–60 days post-Phase-1).
 - IV-rank gate on entries (L5.1).
 - VIX regime gate (L5.2).
 - Re-purchase / re-entry policy (§3a) — this is conceptually part of Phase 1 + Phase 2 — wire after spreads are live.
@@ -495,24 +499,24 @@ Either consolidate to one source (recommended: drop BLACKLIST, make it a comment
 8. ✅ Force-close on analyzer score ≥ 80 — confirmed.
 9. ✅ Account-level breaker downgraded to backstop (-2.5% soft / -5% hard). Per-position technical exits do the work.
 
+**Resolved 2026-04-26**:
+- ✅ A. Longer activity export — owner will provide.
+- ✅ B. P/C bias source — derive from existing `tradier_manage.py:4902` equity target with exaggeration K=1.5 (clamps 15/85). No separate per-sector P/C table. See Phase 2 above.
+
 **Still open — needs your input before Phase 0 ships**:
 
-A. **Longer activity export.** The 200-line CSV covers Apr 21–24 only. Can you export Tradier history for the full month (or longer — back to 2026-03-25 ideally)? Without it the post-mortem is incomplete, the Phase 0.5 backfill is partial, and we'll be designing safeguards for ~$1.5k of visible options losses when the actual hole is ~$14k.
+C. **The ABT/JNJ bypass path.** Find it now (2-3h investigation) or defer until Phase 0.7? Strong recommendation: now. Knowing how the leak happened informs every other safeguard — it may reveal additional hidden bypass paths.
 
-B. **Sector P/C bias table** (§6 in Phase 2). I sketched a default. You may want to override based on your actual P&L by sector — do you have intuition on which sectors you've made/lost on? E.g. should HEALTH default to 40C/60P (defensive) or 50/50?
-
-C. **The ABT/JNJ bypass path.** Do you want me to find it now (2-3h investigation) or defer until Phase 0.7? Strong recommendation: find it now — we should know how the leak happened before we trust any new safeguards. It might also reveal *other* hidden bypass paths for unrelated tradeable_keys checks.
-
-D. **Phase 0 logging — what's the priority order?** I can ship in this order:
-   - D1. State module + per-tick snapshot log (P0.1, P0.2) — gives us "what do we own right now?"
-   - D2. Per-OCC lifecycle log (P0.3) — gives us "what happened to each trade?"
-   - D3. Backfill from CSV (P0.5) — gives us history.
-   - D4. UI route (P0.6) — gives you a dashboard.
+D. **Phase 0 logging — priority order?** Substeps:
+   - D1. State module + per-tick snapshot log (P0.1, P0.2) — "what do we own right now?"
+   - D2. Per-OCC lifecycle log (P0.3) — "what happened to each trade?"
+   - D3. Backfill from activity export (P0.5) — history.
+   - D4. UI route (P0.6) — dashboard.
    - D5. Symbol-gate audit (P0.7) — closes the rogue-trade hole.
    
-   Ship all in parallel? Or D5 (gate audit) first as the most urgent safety fix?
+   All in parallel? Or D5 first as urgent safety, then D1+D2 next, then D3 once you provide the longer export, D4 last?
 
-E. **L1.A1 (no augment when technical against you) — does it apply to spreads too?** When we move to vertical spreads in Phase 2, an "augment" usually means opening a fresh spread on the same underlying. Should L1.A1 block that, or only block adds to the same OCC? My recommendation: block adds to same OCC (the PLTR pattern), but allow new spreads on same underlying as long as concurrency limit (L1.C3 = 2/symbol) holds.
+E. **L1.A1 scope under spreads** — block adds to same OCC only (recommended), or also block opening fresh spreads on the same underlying when technical is against?
 
 ---
 

@@ -202,8 +202,9 @@ Candidate doesn't ship unless it dominates or ties 2.6365 across all 5 metrics o
 | A2 | Open Interest ingest + ENGINE WIRING | **WIRED 2026-04-26** | Fetcher + cache + NPZ injection complete. 191 OI caches on S1 (~30d each per Binance limit). Engine wired: `OI_CONFIRM_ENABLED` requires oi_change_1h ≥ MIN_PCT for longs, ≤ -MIN_PCT for shorts. |
 | A3 | KC + Squeeze fire ENGINE WIRING | **WIRED 2026-04-26** | NPZ fields complete. v8_quick_engine wired: `SQUEEZE_FIRE_ENTRY_ENABLED` adds entry signal when squeeze_fire_{tf} matches direction (additive). Plus live helpers in ez_indicators.py for future live use. |
 | A4 | WT/MFI divergence ENGINE WIRING | **WIRED 2026-04-26** | NPZ fields complete (40 fields per symbol). v8_quick_engine wired: `DIVERGENCE_ENTRY_ENABLED` + `DIVERGENCE_INDICATOR={wt,mfi,either}` adds entry signal when div_reg_bull(long)/div_reg_bear(short) active. |
-| NPZ-REGEN | Regenerate all 48 crypto NPZs with new fields | **IN PROGRESS** | Started 00:18 UTC on S1, 12 workers. ~21/48 at 00:26. Estimated completion ~00:40. After completion, auto-trigger autonomous_search via /tmp/wait_and_run_autonomous.sh (PID 247944 polling). |
-| AUTONOMOUS-RESTART | Restart with extended parameter space | **SCHEDULED** | Same args as killed w25105 + bumped flip probabilities to 0.05 (from 0.02) to explore new 9-switch space faster. Seed 26104, output `data/autonomous/crypto_2p6365_50sym/w26104`. |
+| NPZ-REGEN | Regenerate all 48 crypto NPZs with new fields | **DONE 2026-04-26 00:39** | DONE: 50/50. 70 new fields per NPZ verified populated. Sentiment injection ran post-pass. |
+| AUTONOMOUS-RESTART | Restart with extended parameter space | **LIVE 2026-04-26 00:40** | autonomous_search w26104 running (PID 329183 on S1). Extended 9-switch space active. Output: `data/autonomous/crypto_2p6365_50sym/w26104/autonomous_crypto.csv`. Log: `/home/niels/logs/autonomous_crypto_w26104_postregen.log`. Each iteration up to 120s. |
+| MONITORING | Watch for first winning configs | **TODO** | Check `data/autonomous/crypto_2p6365_50sym/w26104/autonomous_crypto.csv` periodically. Look for any iteration with `pool_sharpe > 2.6365` AND uses one of the new switches. |
 | A5 | CVD spot-vs-perp | parking lot | |
 | A6 | Liquidation cascade fade | parking lot | |
 | A7 | ICT/SMC primitives | parking lot | |
