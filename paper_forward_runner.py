@@ -65,12 +65,25 @@ V3_PAPER_MAX_HOLD_MIN = 1440.0
 V3_PAPER_STALL_GAIN_MAX_PCT = -5.0
 
 # Hedge-promotion (PnD protection) — arms A/B only. EXPLICITLY FORBIDDEN in live
-# accounts. Logic: if V3 would fire opposite side on an underwater position, open
-# the hedge; once hedge gains >= HEDGE_PROMOTION_GAIN_PCT, close the original at
-# its realized loss and promote the hedge to primary.
+# accounts. Logic: if trigger fires on an underwater position, open the hedge.
+# Two trigger modes:
+#   PCT          — gain ≤ HEDGE_TRIGGER_LOSS_PCT AND V3 reverse signal (legacy)
+#   TF_HIERARCHY — multi-TF (3m/15m/1h/4h/D) "against side" conditions per spec
+# Two promote modes:
+#   BY_PROFIT — when hedge gain ≥ HEDGE_PROMOTION_GAIN_PCT, CLOSE origin (lock loss)
+#   HOLD_BOTH — when hedge gain ≥ HEDGE_PROMOTION_GAIN_PCT, just CONFIRM hedge.
+#               Both legs remain open. Origin recovers naturally on its own
+#               technical exit. NO realized loss on origin. (User-preferred)
 PAPER_HEDGE_PROMOTION_ENABLED = True
 HEDGE_TRIGGER_LOSS_PCT = -0.5
 HEDGE_PROMOTION_GAIN_PCT = 0.2
+HEDGE_TRIGGER_MODE = os.environ.get("V_HEDGE_TRIGGER_MODE", "PCT").upper()
+HEDGE_TF_HIERARCHY = os.environ.get("V_HEDGE_TF_HIERARCHY", "3m_15m_AND_1of_1h_4h_D").lower()
+HEDGE_PROMOTE_MODE = os.environ.get("V_HEDGE_PROMOTE_MODE", "BY_PROFIT").upper()
+try:
+    HEDGE_NEWBORN_AGE_SEC = int(os.environ.get("V_HEDGE_NEWBORN_AGE_SEC", 60))
+except Exception:
+    HEDGE_NEWBORN_AGE_SEC = 60
 
 ARM_C_CANDLE_BARS = 60
 ARM_C_DC_LOOKBACK = 20
@@ -352,6 +365,68 @@ class IndicatorSource:
             return None
 
 
+def _per_tf_against(side: str, ind: dict, price: float) -> Dict[str, bool]:
+    """Per-TF "going against position side" condition map.
+    LONG (mirror for SHORT):
+      3m  : k_3m < d_3m AND wt1_3m < wt2_3m
+      15m : k_15m < d_15m
+      1h  : k_1h < d_1h
+      4h  : k_4h < d_4h
+      D   : current_price < sma_200_D OR k_D < d_D
+    """
+    def f(*keys, default=50.0):
+        for k in keys:
+            v = ind.get(k)
+            if v is None:
+                continue
+            try:
+                fv = float(v)
+                return fv
+            except Exception:
+                continue
+        return default
+    is_long = side == "LONG"
+    out: Dict[str, bool] = {}
+    k3 = f('stoch_k_3m', 'k_3m')
+    d3 = f('stoch_d_3m', 'd_3m')
+    w1_3 = f('wt1_3m', default=0.0)
+    w2_3 = f('wt2_3m', default=0.0)
+    out['3m'] = ((k3 < d3) and (w1_3 < w2_3)) if is_long else ((k3 > d3) and (w1_3 > w2_3))
+    k15 = f('stoch_k_15m', 'k_15m')
+    d15 = f('stoch_d_15m', 'd_15m')
+    out['15m'] = (k15 < d15) if is_long else (k15 > d15)
+    k1h = f('stoch_k_1h', 'k_1h')
+    d1h = f('stoch_d_1h', 'd_1h')
+    out['1h'] = (k1h < d1h) if is_long else (k1h > d1h)
+    k4h = f('stoch_k_4h', 'k_4h')
+    d4h = f('stoch_d_4h', 'd_4h')
+    out['4h'] = (k4h < d4h) if is_long else (k4h > d4h)
+    kD = f('stoch_k_D', 'stoch_k_d', 'k_D', 'k_d')
+    dD = f('stoch_d_D', 'stoch_d_d', 'd_D', 'd_d')
+    sma_D = f('sma_200_D', default=0.0)
+    if sma_D > 0 and price > 0:
+        struct_break = (price < sma_D) if is_long else (price > sma_D)
+    else:
+        struct_break = False
+    out['D'] = struct_break or ((kD < dD) if is_long else (kD > dD))
+    return out
+
+
+def _evaluate_tf_hierarchy(hierarchy: str, conds: Dict[str, bool]) -> bool:
+    """True if the per-TF condition map satisfies the named hierarchy."""
+    h = hierarchy.lower().replace("+", "_").strip()
+    if h.startswith("3m_15m_and_1of_1h_4h_d"):
+        return (conds.get('3m', False) and conds.get('15m', False)
+                and any(conds.get(tf, False) for tf in ('1h', '4h', 'D')))
+    if h.startswith("3m_15m_1h_and_1of_4h_d"):
+        return (conds.get('3m', False) and conds.get('15m', False) and conds.get('1h', False)
+                and any(conds.get(tf, False) for tf in ('4h', 'D')))
+    if h.startswith("3m_and_2of_15m_1h_4h_d"):
+        return (conds.get('3m', False)
+                and sum(1 for tf in ('15m', '1h', '4h', 'D') if conds.get(tf, False)) >= 2)
+    return False
+
+
 class V3Arm:
     """Shared body for arms A and B — they only differ in eligible_symbols()."""
 
@@ -457,14 +532,22 @@ class V3Arm:
                 else (pos.entry_price - price) / pos.entry_price * 100.0)
 
     async def _hedge_pass(self) -> None:
-        """PnD protection — two phases:
-        Phase 1: any non-hedge, un-hedged, underwater position whose opposing-side
-                 V3 entry would fire → open opposing position as `is_hedge=True`,
-                 link both. NEVER recursively hedge a hedge.
-        Phase 2: any `is_hedge` position whose own gain >= HEDGE_PROMOTION_GAIN_PCT
-                 → close its origin (lock the loss), clear the hedge flag, rename
-                 augment_reason from `_HEDGE_OF_` to `_PROMOTED_FROM_` so V3 exit
-                 logic continues to manage it as a standalone position.
+        """Hedge logic — two phases.
+
+        Phase 1 (open hedge). Trigger choice via HEDGE_TRIGGER_MODE:
+          PCT          : gain ≤ HEDGE_TRIGGER_LOSS_PCT AND V3 reverses opposite side
+          TF_HIERARCHY : multi-TF condition map satisfies HEDGE_TF_HIERARCHY
+                         (per-TF "against side" defined in _per_tf_against)
+
+        Phase 2 (handle confirmed hedge). HEDGE_PROMOTE_MODE:
+          BY_PROFIT : when hedge gain ≥ promotion floor, CLOSE origin (lock loss)
+                      and promote hedge to standalone.
+          HOLD_BOTH : when hedge gain ≥ promotion floor, CONFIRM hedge (clear
+                      is_hedge flag) but keep origin open. No realized loss.
+                      Both legs play out under their own technical exit logic.
+
+        Newborn protection: HEDGE_NEWBORN_AGE_SEC seconds minimum age on origin.
+        Never recursively hedge a hedge.
         """
         # Phase 1.
         for pk in list(self.book.positions.keys()):
@@ -475,6 +558,8 @@ class V3Arm:
                 continue
             if pos.has_hedge_pk and pos.has_hedge_pk not in self.book.positions:
                 pos.has_hedge_pk = None
+            if (_ts() - pos.opened_at) < HEDGE_NEWBORN_AGE_SEC:
+                continue
             ind = self.indicator_src.dict.get(pos.symbol)
             if not ind:
                 continue
@@ -482,25 +567,37 @@ class V3Arm:
             if price is None:
                 continue
             gp = self._gain_pct(pos, price)
-            if gp > HEDGE_TRIGGER_LOSS_PCT:
-                continue
+            trigger_reason = ""
+            conds_str = ""
+            if HEDGE_TRIGGER_MODE == "TF_HIERARCHY":
+                conds = _per_tf_against(pos.side, ind, price)
+                if not _evaluate_tf_hierarchy(HEDGE_TF_HIERARCHY, conds):
+                    continue
+                conds_str = "".join("1" if conds.get(tf) else "0" for tf in ('3m', '15m', '1h', '4h', 'D'))
+                trigger_reason = f"TFH_{HEDGE_TF_HIERARCHY}_3-15-1h-4h-D={conds_str}"
+            else:  # PCT (legacy)
+                if gp > HEDGE_TRIGGER_LOSS_PCT:
+                    continue
+                opp_side_check = "SHORT" if pos.side == "LONG" else "LONG"
+                try:
+                    decision = check_scalp_v3_live_entry(
+                        pos.symbol, f"{pos.symbol}_{opp_side_check}", ind, price,
+                        None, "inf", self._hedge_cfg
+                    )
+                except Exception as e:
+                    _log(f"[{self.arm_id}] hedge V3 check err {pk}: {e}")
+                    continue
+                if not decision or decision.get("side") != opp_side_check:
+                    continue
+                trigger_reason = f"PCT_{decision.get('reason', '')[:60]}"
             opp_side = "SHORT" if pos.side == "LONG" else "LONG"
             opp_pk = f"{pos.symbol}_{opp_side}"
             if opp_pk in self.book.positions:
                 continue
             if not self.book.can_open():
                 continue
-            try:
-                decision = check_scalp_v3_live_entry(
-                    pos.symbol, opp_pk, ind, price, None, "inf", self._hedge_cfg
-                )
-            except Exception as e:
-                _log(f"[{self.arm_id}] hedge V3 check err {pk}: {e}")
-                continue
-            if not decision or decision.get("side") != opp_side:
-                continue
             hedge_reason = (f"SCALP_V3_OPEN_{opp_side}_HEDGE_OF_{pk}"
-                            f"_orig_g{gp:+.2f}%_{decision.get('reason', '')[:80]}")
+                            f"_orig_g{gp:+.2f}%_{trigger_reason}")[:240]
             if not self.book.open(pos.symbol, opp_side, price, hedge_reason):
                 continue
             hedge_pos = self.book.positions.get(opp_pk)
@@ -508,7 +605,7 @@ class V3Arm:
                 hedge_pos.is_hedge = True
                 hedge_pos.hedge_of_pk = pk
                 pos.has_hedge_pk = opp_pk
-                _log(f"[{self.arm_id}] 🛡️ HEDGE_OPEN {opp_pk} on origin={pk} g={gp:+.2f}%")
+                _log(f"[{self.arm_id}] 🛡️ HEDGE_OPEN {opp_pk} on origin={pk} og={gp:+.2f}% trig={trigger_reason[:80]}")
         # Phase 2.
         for pk in list(self.book.positions.keys()):
             pos = self.book.positions.get(pk)
@@ -517,12 +614,10 @@ class V3Arm:
             origin_pk = pos.hedge_of_pk
             origin = self.book.positions.get(origin_pk) if origin_pk else None
             if origin is None:
-                # Origin already closed (e.g., stop fired) — clear hedge flag, treat
-                # as a standalone position from here on.
                 pos.is_hedge = False
                 pos.hedge_of_pk = None
                 pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_ORPHANED_FROM_")
-                _log(f"[{self.arm_id}] ⚠️ HEDGE_ORPHAN {pk} — origin gone, promoted to standalone")
+                _log(f"[{self.arm_id}] ⚠️ HEDGE_ORPHAN {pk} — origin gone, treating hedge as standalone")
                 continue
             price = self.indicator_src.price(pos.symbol)
             if price is None:
@@ -531,12 +626,19 @@ class V3Arm:
             if hedge_gain < HEDGE_PROMOTION_GAIN_PCT:
                 continue
             origin_gain = self._gain_pct(origin, price)
-            self.book.close(origin_pk, price,
-                            f"SCALP_V3_HEDGE_PROMOTED_LOCK_LOSS_origin_g{origin_gain:+.2f}%_hedge_g{hedge_gain:+.2f}%")
-            pos.is_hedge = False
-            pos.hedge_of_pk = None
-            pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_PROMOTED_FROM_")
-            _log(f"[{self.arm_id}] ✅ HEDGE_PROMOTE {pk} hg={hedge_gain:+.2f}% → closed origin {origin_pk} og={origin_gain:+.2f}%")
+            if HEDGE_PROMOTE_MODE == "HOLD_BOTH":
+                pos.is_hedge = False
+                pos.hedge_of_pk = None
+                origin.has_hedge_pk = None
+                pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_HEDGE_CONFIRMED_FROM_")
+                _log(f"[{self.arm_id}] 🛡️ HEDGE_CONFIRM {pk} hg={hedge_gain:+.2f}% origin {origin_pk} og={origin_gain:+.2f}% — BOTH OPEN (HOLD_BOTH)")
+            else:  # BY_PROFIT
+                self.book.close(origin_pk, price,
+                                f"SCALP_V3_HEDGE_PROMOTED_LOCK_LOSS_origin_g{origin_gain:+.2f}%_hedge_g{hedge_gain:+.2f}%")
+                pos.is_hedge = False
+                pos.hedge_of_pk = None
+                pos.augment_reason = pos.augment_reason.replace("_HEDGE_OF_", "_PROMOTED_FROM_")
+                _log(f"[{self.arm_id}] ✅ HEDGE_PROMOTE {pk} hg={hedge_gain:+.2f}% → closed origin {origin_pk} og={origin_gain:+.2f}%")
 
     async def _entry_pass(self) -> None:
         if not self.book.can_open():

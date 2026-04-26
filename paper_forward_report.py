@@ -84,6 +84,92 @@ def _stat_max_dd(equity_series: List[float]) -> float:
     return worst
 
 
+def _hedge_metrics(trades: list) -> dict:
+    """Hedge-specific stats parsed from reason strings.
+    HEDGE OPEN reason format:
+      SCALP_V3_OPEN_<SIDE>_HEDGE_OF_<origin_pk>_orig_g<gain>%_<trigger_reason>
+    HEDGE CLOSE we read net_pct directly. Recovery = origin closed in profit
+    after a hedge fired on it.
+    """
+    import re
+    hedge_opens = [t for t in trades
+                   if t.get("action") == "OPEN" and "_HEDGE_OF_" in (t.get("reason") or "")]
+    promoted_closes = [t for t in trades
+                       if t.get("action") == "CLOSE"
+                       and "HEDGE_PROMOTED_LOCK_LOSS" in (t.get("reason") or "")]
+    # Build origin -> hedge_open record map.
+    origin_to_hedge: Dict[str, dict] = {}
+    for h in hedge_opens:
+        m = re.search(r"_HEDGE_OF_([A-Z0-9_]+?)(?:_orig_g|$)", h.get("reason", ""))
+        if not m:
+            continue
+        origin_to_hedge[m.group(1)] = h
+    # Hedge close records (close trade where origin had a hedge fired).
+    hedge_close_records = []
+    for h_open in hedge_opens:
+        h_sym = h_open.get("symbol")
+        h_side = h_open.get("side")
+        h_open_ts = h_open.get("ts", 0.0)
+        # Find the corresponding close trade for this hedge (same sym, same side, after open).
+        for c in trades:
+            if c.get("action") != "CLOSE":
+                continue
+            if c.get("symbol") != h_sym or c.get("side") != h_side:
+                continue
+            if c.get("ts", 0.0) <= h_open_ts:
+                continue
+            hedge_close_records.append(c)
+            break
+    # Origin loss at hedge fire (parse from reason string).
+    origin_losses_at_hedge = []
+    for h in hedge_opens:
+        m = re.search(r"_orig_g([+-]?\d+\.\d+)%", h.get("reason", ""))
+        if m:
+            try:
+                origin_losses_at_hedge.append(float(m.group(1)))
+            except Exception:
+                pass
+    # Recovery rate: origin closes that came after a hedge was opened on it AND
+    # closed in profit. Origin pk is encoded in hedge reason.
+    recoveries = 0
+    n_origin_with_hedge = 0
+    for origin_pk, h_open in origin_to_hedge.items():
+        n_origin_with_hedge += 1
+        # Find origin close after hedge open.
+        h_open_ts = h_open.get("ts", 0.0)
+        h_sym = h_open.get("symbol")
+        # Origin side is opposite to hedge side.
+        origin_side = "SHORT" if h_open.get("side") == "LONG" else "LONG"
+        for c in trades:
+            if c.get("action") != "CLOSE":
+                continue
+            if c.get("symbol") != h_sym or c.get("side") != origin_side:
+                continue
+            if c.get("ts", 0.0) <= h_open_ts:
+                continue
+            if float(c.get("net_pct", 0.0)) > 0:
+                recoveries += 1
+            break
+    hedge_win = sum(1 for c in hedge_close_records if float(c.get("net_pct", 0.0)) > 0)
+    return {
+        "n_hedge_fires": len(hedge_opens),
+        "n_hedge_closes": len(hedge_close_records),
+        "n_origin_promoted_close": len(promoted_closes),
+        "avg_origin_loss_at_hedge_fire": (
+            sum(origin_losses_at_hedge) / len(origin_losses_at_hedge)
+            if origin_losses_at_hedge else 0.0
+        ),
+        "hedge_win_rate_pct": (
+            (hedge_win / len(hedge_close_records) * 100.0)
+            if hedge_close_records else 0.0
+        ),
+        "recovery_rate_pct": (
+            (recoveries / n_origin_with_hedge * 100.0)
+            if n_origin_with_hedge else 0.0
+        ),
+    }
+
+
 def _arm_metrics(arm_id: str) -> dict:
     arm_dir = DATA_DIR / f"arm_{arm_id}"
     trades = _read_jsonl(arm_dir / "trades.jsonl")
@@ -91,6 +177,7 @@ def _arm_metrics(arm_id: str) -> dict:
 
     closes = [t for t in trades if t.get("action") == "CLOSE"]
     opens = [t for t in trades if t.get("action") == "OPEN"]
+    hm = _hedge_metrics(trades)
 
     net_pcts = [float(t.get("net_pct", 0.0)) for t in closes]
     pnls_usd = [float(t.get("pnl_usd", 0.0)) for t in closes]
@@ -147,6 +234,13 @@ def _arm_metrics(arm_id: str) -> dict:
         "pnl_usd": pnl_total_usd,
         "last_equity": last_equity,
         "elapsed_hours": elapsed_sec / 3600.0,
+        # Hedge-specific (mostly relevant for bgh_* variants):
+        "n_hedge_fires": hm["n_hedge_fires"],
+        "n_hedge_closes": hm["n_hedge_closes"],
+        "n_origin_promoted_close": hm["n_origin_promoted_close"],
+        "avg_origin_loss_at_hedge_fire": hm["avg_origin_loss_at_hedge_fire"],
+        "hedge_win_rate_pct": hm["hedge_win_rate_pct"],
+        "recovery_rate_pct": hm["recovery_rate_pct"],
     }
 
 
@@ -250,6 +344,26 @@ def main() -> int:
         f"- **AccGain delta (C − A):** {delta_c_a:+.2f}%\n"
         f"- **Arm C trades:** {c['n_close']} on {c['n_unique_sym']} unique symbols\n"
     )
+
+    # Hedge-specific block (relevant when V_HEDGE_TRIGGER_MODE=TF_HIERARCHY).
+    total_hedge_fires = sum(m["n_hedge_fires"] for m in metrics)
+    if total_hedge_fires > 0:
+        summary += (
+            "\n## Hedge metrics (TF-hierarchy trigger evaluation)\n\n"
+            "| Arm | Hedge fires | Hedge closes | Origin closes (PROMOTED) | Avg origin loss @ fire | Hedge WR | Recovery rate |\n"
+            "|---|---|---|---|---|---|---|\n"
+        )
+        for m in metrics:
+            summary += (
+                f"| {_arm_label(m['arm']):s} | {m['n_hedge_fires']:>4} | {m['n_hedge_closes']:>4} | "
+                f"{m['n_origin_promoted_close']:>4} | {m['avg_origin_loss_at_hedge_fire']:>+5.2f}% | "
+                f"{m['hedge_win_rate_pct']:>4.1f}% | {m['recovery_rate_pct']:>4.1f}% |\n"
+            )
+        summary += (
+            "\n_Hedge WR > 50% AND low recovery_rate = trigger is correctly detecting failed trades. "
+            "Recovery_rate > 50% means we hedged too early and origin recovered. "
+            "Avg origin loss at fire shows how late/early the trigger fires._\n"
+        )
 
     REPORT_FILE.write_text(header + rows + summary)
 

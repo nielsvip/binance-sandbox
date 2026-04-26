@@ -276,18 +276,19 @@ try:
             _c = getattr(_eps_for_ws, _name, None)
             if isinstance(_c, type) and hasattr(_c, "_load_positions_with_lock") and hasattr(_c, "fetch_positions"):
                 _SVC_CLASSES.append(_c)
-    for _SVC in _SVC_CLASSES:
-        async def _svc_empty_load_with_lock(self, *a, **kw):
-            return
-        async def _svc_empty_fetch(self, account_key=None, *a, **kw):
-            return {}
-        async def _svc_empty_sync(self, *a, **kw):
-            return
-        _SVC._load_positions_with_lock = _svc_empty_load_with_lock
-        _SVC.fetch_positions = _svc_empty_fetch
-        if hasattr(_SVC, "_sync_memory_with_master_symbols"):
-            _SVC._sync_memory_with_master_symbols = _svc_empty_sync
-        slog.info(f"L4 STRICT_EMPTY (service): {_SVC.__name__}._load_positions_with_lock + fetch_positions + _sync → no-op")
+    if os.environ.get("SHADOW_STRICT_EMPTY") == "1":
+        for _SVC in _SVC_CLASSES:
+            async def _svc_empty_load_with_lock(self, *a, **kw):
+                return
+            async def _svc_empty_fetch(self, account_key=None, *a, **kw):
+                return {}
+            async def _svc_empty_sync(self, *a, **kw):
+                return
+            _SVC._load_positions_with_lock = _svc_empty_load_with_lock
+            _SVC.fetch_positions = _svc_empty_fetch
+            if hasattr(_SVC, "_sync_memory_with_master_symbols"):
+                _SVC._sync_memory_with_master_symbols = _svc_empty_sync
+            slog.info(f"L4 STRICT_EMPTY (service): {_SVC.__name__}._load_positions_with_lock + fetch_positions + _sync → no-op")
 except ImportError:
     pass
 
@@ -299,16 +300,19 @@ try:
     _real_bootstrap = _eps.bootstrap_position_service
     async def _shadow_bootstrap(*args, **kwargs):
         svc = await _real_bootstrap(*args, **kwargs)
-        # L4 EMPTY-START: wipe inherited live state from local in-memory clone
-        try:
-            if hasattr(svc, "positions"):
-                _n = len(svc.positions)
-                svc.positions = {}
-                slog.info(f"L4 EMPTY-START: positions_service.positions cleared (was {_n})")
-            if hasattr(svc, "positions_by_account"):
-                svc.positions_by_account = {SHADOW_ACCOUNT: {}}
-        except Exception as e:
-            slog.warning(f"L4 wipe failed: {e}")
+        if os.environ.get("SHADOW_STRICT_EMPTY") == "1":
+            try:
+                if hasattr(svc, "positions"):
+                    _n = len(svc.positions)
+                    svc.positions = {}
+                    slog.info(f"L4 EMPTY-START: positions_service.positions cleared (was {_n})")
+                if hasattr(svc, "positions_by_account"):
+                    svc.positions_by_account = {SHADOW_ACCOUNT: {}}
+            except Exception as e:
+                slog.warning(f"L4 wipe failed: {e}")
+        else:
+            _n = len(getattr(svc, "positions", {}) or {})
+            slog.info(f"L4 INHERIT_MODE: keeping {_n} positions from live snapshot")
         return svc
     _eps.bootstrap_position_service = _shadow_bootstrap
     slog.info("L4 ez_positions_service.bootstrap_position_service wrapped")
@@ -336,28 +340,38 @@ if hasattr(live, "check_pid_file"):
     live.check_pid_file = lambda *a, **kw: None  # shadow_runner manages its own PIDs
     slog.info("ISO: live.check_pid_file → no-op (shadow uses pids/shadow/)")
 
-if SHADOW_PLATFORM == "crypto" and hasattr(live, "MultiAccountTradeManager"):
-    _MATM = live.MultiAccountTradeManager
-    async def _empty_load_with_lock(self, master_allowed_symbols):
-        self.positions_by_account.setdefault(SHADOW_ACCOUNT, {})
-        return
-    async def _empty_redis_load(self, account_key=None): return {}
-    async def _empty_load_all(self): return
-    async def _empty_quick_load(self, account_key=None): return {}
-    _MATM._load_positions_with_lock = _empty_load_with_lock
-    _MATM._load_positions_from_redis = _empty_redis_load
-    _MATM.load_all_positions = _empty_load_all
-    _MATM._load_positions_quick_from_files = _empty_quick_load
-    slog.info("L4 STRICT_EMPTY: all crypto position loaders → no-op")
-
-if SHADOW_PLATFORM == "tradier":
-    try:
-        from tradier_api import TradierAPIClient as _TAC2
-        async def _empty_get_positions(self, account_key=None): return []
-        _TAC2.get_account_positions = _empty_get_positions
-        slog.info("L4 STRICT_EMPTY: TradierAPIClient.get_account_positions → []")
-    except ImportError:
-        pass
+# STRICT_EMPTY disabled 2026-04-26 03:09 UTC — caused crash loop in baseline_crypto
+# and sweep_crypto_0p7574 because ez_manage.py:20833+20839 use position.gain without
+# a re-check after the CRITICAL6 guard at line 20539. With empty positions, every
+# process_position invocation hit None and crashed.
+# User said "no significant positions we need to include" — falling back to inherit:
+# shadow inherits live positions snapshot at startup, then evolves independently
+# via the L2 execute_now chokepoint. No drift back to live (writes are namespaced).
+# To re-enable strict empty, set SHADOW_STRICT_EMPTY=1 in the env.
+if os.environ.get("SHADOW_STRICT_EMPTY") == "1":
+    if SHADOW_PLATFORM == "crypto" and hasattr(live, "MultiAccountTradeManager"):
+        _MATM = live.MultiAccountTradeManager
+        async def _empty_load_with_lock(self, master_allowed_symbols):
+            self.positions_by_account.setdefault(SHADOW_ACCOUNT, {})
+            return
+        async def _empty_redis_load(self, account_key=None): return {}
+        async def _empty_load_all(self): return
+        async def _empty_quick_load(self, account_key=None): return {}
+        _MATM._load_positions_with_lock = _empty_load_with_lock
+        _MATM._load_positions_from_redis = _empty_redis_load
+        _MATM.load_all_positions = _empty_load_all
+        _MATM._load_positions_quick_from_files = _empty_quick_load
+        slog.info("L4 STRICT_EMPTY: all crypto position loaders → no-op")
+    if SHADOW_PLATFORM == "tradier":
+        try:
+            from tradier_api import TradierAPIClient as _TAC2
+            async def _empty_get_positions(self, account_key=None): return []
+            _TAC2.get_account_positions = _empty_get_positions
+            slog.info("L4 STRICT_EMPTY: TradierAPIClient.get_account_positions → []")
+        except ImportError:
+            pass
+else:
+    slog.info("L4 STRICT_EMPTY DISABLED — inheriting live positions snapshot at startup")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # L2 EXECUTE_NOW PATCH — the single chokepoint

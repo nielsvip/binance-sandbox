@@ -212,6 +212,7 @@ def _reconcile(prev_positions: List[dict], curr_positions: List[dict], ts: str) 
 async def snapshot_once(account_keys: List[str]) -> dict:
     config = TradierConfig()
     ts = datetime.now(timezone.utc).isoformat()
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     all_positions: List[dict] = []
     per_account: Dict[str, List[dict]] = {}
     for ak in account_keys:
@@ -225,6 +226,12 @@ async def snapshot_once(account_keys: List[str]) -> dict:
     prev = _load_prev_snapshot()
     prev_positions = (prev or {}).get("positions", [])
     reconcile_events = _reconcile(prev_positions, all_positions, ts)
+    alerts = _compute_loss_alerts(prev_positions, all_positions, ts, config)
+    for a in alerts:
+        _append_jsonl(STATE_DIR / f"alerts_{today}.jsonl", a)
+    hedge_proposals = await _shadow_hedge_proposals(all_positions, config, ts)
+    for hp in hedge_proposals:
+        _append_jsonl(STATE_DIR / f"hedge_proposals_{today}.jsonl", hp)
     snapshot = {
         "ts": ts,
         "n_positions": len(all_positions),
@@ -233,15 +240,119 @@ async def snapshot_once(account_keys: List[str]) -> dict:
         "by_account": {ak: _portfolio_aggregates(per_account[ak]) for ak in account_keys},
         "positions": all_positions,
         "reconcile_events": reconcile_events,
+        "alerts": alerts,
+        "hedge_proposals": hedge_proposals,
     }
     _atomic_write_json(CURRENT_PATH, snapshot)
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     _append_jsonl(STATE_DIR / f"{today}.jsonl", {
         "ts": ts,
         "portfolio": snapshot["portfolio"],
         "positions": all_positions,
     })
     return snapshot
+
+
+def _compute_loss_alerts(prev_positions: List[dict], curr_positions: List[dict], ts: str, config) -> List[dict]:
+    """Loss-deepening alerts: fire when a position's unrealized_pct drops by
+    > ALERT_DROP_PP from its prior worst-seen pct in the same day's snapshots.
+    Owner directive 2026-04-26 — close monitoring on the 4 losing positions."""
+    drop_pp = float(getattr(config, "OPTIONS_ALERT_DROP_PP", 5.0))
+    abs_loss_pp = float(getattr(config, "OPTIONS_ALERT_ABS_LOSS_PP", 25.0))
+    prev_by_occ = {p.get("occ"): p for p in (prev_positions or []) if p.get("occ")}
+    out: List[dict] = []
+    for cur in curr_positions:
+        occ = cur.get("occ")
+        if not occ:
+            continue
+        cur_pct = float(cur.get("unrealized_pct", 0) or 0)
+        prev = prev_by_occ.get(occ, {})
+        prev_min = float(prev.get("min_seen_pct", prev.get("unrealized_pct", cur_pct)) or cur_pct)
+        new_min = min(prev_min, cur_pct)
+        cur["min_seen_pct"] = round(new_min, 2)
+        delta_pp = prev_min - cur_pct
+        if delta_pp > drop_pp:
+            out.append({"ts": ts, "kind": "DEEPENING_LOSS", "occ": occ,
+                        "symbol": cur.get("symbol"), "account": cur.get("account_key"),
+                        "prev_min_pct": round(prev_min, 2), "curr_pct": round(cur_pct, 2),
+                        "drop_pp": round(delta_pp, 2),
+                        "unrealized_pnl": cur.get("unrealized_pnl"),
+                        "note": f"dropped {delta_pp:.1f}pp since last seen low ({prev_min:.1f}% → {cur_pct:.1f}%)"})
+        if cur_pct <= -abs_loss_pp and prev.get("abs_loss_alerted") != True:
+            out.append({"ts": ts, "kind": "ABS_LOSS_THRESHOLD", "occ": occ,
+                        "symbol": cur.get("symbol"), "account": cur.get("account_key"),
+                        "curr_pct": round(cur_pct, 2),
+                        "threshold_pp": -abs_loss_pp,
+                        "unrealized_pnl": cur.get("unrealized_pnl"),
+                        "note": f"crossed -{abs_loss_pp:.0f}% loss threshold (curr {cur_pct:.1f}%)"})
+            cur["abs_loss_alerted"] = True
+        else:
+            cur["abs_loss_alerted"] = bool(prev.get("abs_loss_alerted", False))
+    return out
+
+
+async def _shadow_hedge_proposals(positions: List[dict], config, ts: str) -> List[dict]:
+    """For each LOSING long-option position, run decide_hedge_action and log
+    the proposal WITHOUT firing. Lets owner verify ladder behavior over days
+    before flipping OPTIONS_HEDGE_LADDER_ENABLED=True. Read-only."""
+    if not positions:
+        return []
+    try:
+        from tradier_options_hedge import decide_hedge_action
+    except Exception as e:
+        print(f"[hedge_shadow] import failed: {e}", file=sys.stderr)
+        return []
+    eq_trigger = float(getattr(config, "OPTIONS_EQUITY_HEDGE_TRIGGER_PCT", -10.0))
+    ind_path = BASE_PATH / "data" / "tradier" / "tradier_indicators_latest.json"
+    if not ind_path.exists():
+        ind_path = BASE_PATH / "data" / "tradier_indicators_latest.json"
+    ind_map: dict = {}
+    try:
+        if ind_path.exists():
+            ind_map = json.loads(ind_path.read_text())
+    except Exception:
+        ind_map = {}
+    proposals: List[dict] = []
+    clients_by_account: Dict[str, "TradierAPIClient"] = {}
+    for p in positions:
+        ak = p.get("account_key", "trb")
+        if ak not in clients_by_account:
+            clients_by_account[ak] = TradierAPIClient(config=config, account_key=ak)
+            setattr(clients_by_account[ak], "_account_key", ak)
+        client = clients_by_account[ak]
+        sellable_pct = float(p.get("unrealized_pct", 0) or 0)
+        if sellable_pct > eq_trigger:
+            continue
+        sym = p.get("symbol", "")
+        ind = (ind_map or {}).get(sym, {}) if isinstance(ind_map, dict) else {}
+        und_px = float(ind.get("current_price", 0) or ind.get("mark_price", 0) or p.get("underlying_price", 0) or 0)
+        try:
+            hedge = await decide_hedge_action(
+                sym, p.get("option_type", "call"), ind, und_px,
+                int(p.get("qty", 0) or 0), int(p.get("dte", 60) or 60),
+                client, config,
+            )
+        except Exception as e:
+            proposals.append({"ts": ts, "occ": p.get("occ"), "symbol": sym,
+                              "shadow_only": True, "action": "ERROR", "error": str(e)})
+            continue
+        rec = {"ts": ts, "shadow_only": True, "occ": p.get("occ"), "symbol": sym,
+               "account": ak, "option_type": p.get("option_type"),
+               "sellable_pct": sellable_pct, "action": hedge.action, "reason": hedge.reason}
+        if hedge.action == "BUY_PUT":
+            rec.update({
+                "put_occ": hedge.put_occ, "put_strike": hedge.put_strike,
+                "put_expiration": hedge.put_expiration, "put_dte": hedge.put_dte,
+                "put_iv_chain_rank": hedge.put_iv_chain_rank,
+                "put_delta": hedge.put_delta, "put_limit_price": hedge.put_limit_price,
+                "put_qty": hedge.put_qty,
+            })
+        proposals.append(rec)
+    for c in clients_by_account.values():
+        try:
+            await c.close()
+        except Exception:
+            pass
+    return proposals
 
 
 def _print_summary(snap: dict) -> None:

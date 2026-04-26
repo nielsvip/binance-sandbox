@@ -458,6 +458,13 @@ class TradeDecision:
 def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positions: List[Dict], current_exposure: float, max_per_order: float, max_total: float, diversification: PortfolioDiversification = None, config: TradierConfig = None) -> List[TradeDecision]:
     """Core decision logic: what to buy, sell, or hold. Diversification-aware."""
     decisions = []
+    # OPENING_BUFFER_NO_TRADE (2026-04-26): block ALL options buys in first 30m
+    # after open. Wait for VWAP + first-30m data before deciding anything.
+    _in_buf, _mins_open = _in_opening_buffer(config)
+    if _in_buf:
+        logger.warning(f"[OPENING_BUFFER_NO_TRADE] {_mins_open:.0f}m<30m — make_decisions returning empty (waiting for first-30m data)")
+        decisions.append(TradeDecision(action="SKIP", symbol="ALL", option_type="", strike=0, expiration="", qty=0, limit_price=0, budget_used=0, reason=f"OPENING_BUFFER_NO_TRADE({_mins_open:.0f}m<30m_no_data)", confidence=0, signal_score=0, occ_symbol=""))
+        return decisions
     # Use diversification-adjusted cap if available
     if diversification:
         effective_cap = diversification.effective_cap
@@ -1052,6 +1059,30 @@ OIL_SPREAD_SYMBOLS = {"USO", "BNO"}
 BTC_SPREAD_SYMBOLS = {"MSTR", "IBIT", "COIN"}
 GOLD_SPREAD_SYMBOLS = {"NEM", "GLD", "GDX", "AEM", "RGLD", "WPM"}
 SPREAD_EXCLUDED_SYMBOLS = OIL_SPREAD_SYMBOLS | BTC_SPREAD_SYMBOLS | GOLD_SPREAD_SYMBOLS
+
+
+def _in_opening_buffer(config) -> tuple:
+    """(is_in_buffer, mins_since_open). Mirrors tradier_manage.in_opening_buffer.
+    Used to block OPTIONS opens/augments in the first 30m after market open
+    until first-30m + VWAP data is meaningful (2026-04-26 owner directive)."""
+    try:
+        min_minutes = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0))
+    except Exception:
+        min_minutes = 30.0
+    if min_minutes <= 0:
+        return False, 0.0
+    try:
+        import pytz
+        now_et = datetime.now(pytz.timezone("America/New_York"))
+        if now_et.weekday() >= 5:
+            return False, 0.0
+        open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+        mins = (now_et - open_et).total_seconds() / 60.0
+        if 0 <= mins < min_minutes:
+            return True, mins
+        return False, mins
+    except Exception:
+        return False, 0.0
 
 
 def _wt_dc_options_entry_gate(symbol: str, is_long: bool, indicators_map: dict, config) -> tuple:

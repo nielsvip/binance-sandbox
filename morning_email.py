@@ -1475,6 +1475,96 @@ def _build_conviction_scorecard():
 INJECTION_TTL_HOURS = 48
 
 
+def build_options_alerts_and_held_section():
+    """Loss-deepening alerts (data/options_state/alerts_<date>.jsonl) + held
+    premarket orders (data/daily_plan.json with premarket_held flag).
+    Read-only — surfaces what the system DETECTED for owner review."""
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    base = _Path("/Users/niels/Documents/binance/data/options_state")
+    today = _dt.utcnow().strftime("%Y%m%d")
+    parts = []
+    alerts_path = base / f"alerts_{today}.jsonl"
+    if alerts_path.exists() and alerts_path.stat().st_size > 0:
+        try:
+            alerts = [_json.loads(line) for line in alerts_path.read_text().splitlines() if line.strip()]
+        except Exception:
+            alerts = []
+        if alerts:
+            seen_keys = set()
+            unique = []
+            for a in reversed(alerts):
+                k = (a.get("occ"), a.get("kind"))
+                if k in seen_keys:
+                    continue
+                seen_keys.add(k)
+                unique.append(a)
+            unique = list(reversed(unique))
+            rows = []
+            for a in unique[-20:]:
+                rows.append(f"<tr><td>{a.get('ts','')[:19].replace('T',' ')}</td><td>{a.get('symbol','')}</td><td>{a.get('occ','')}</td><td><span class='r b'>{a.get('kind','')}</span></td><td>{a.get('curr_pct','?'):+.1f}%</td><td>{a.get('drop_pp','')}</td><td>${a.get('unrealized_pnl','?'):+,.2f}</td><td>{a.get('note','')}</td></tr>")
+            parts.append("<p><b>Loss-deepening alerts (today UTC):</b></p>")
+            parts.append("<table><tr><th>ts UTC</th><th>sym</th><th>occ</th><th>kind</th><th>curr%</th><th>drop pp</th><th>$ pnl</th><th>note</th></tr>" + "".join(rows) + "</table>")
+        else:
+            parts.append("<p>No alerts fired yet today.</p>")
+    else:
+        parts.append("<p>No alerts file for today (snapshot loop may not have started).</p>")
+    plan_path = _Path("/Users/niels/Documents/binance/data/options_daily_plan.json")
+    if not plan_path.exists():
+        plan_path = _Path("/Users/niels/Documents/binance/data/daily_plan.json")
+    if plan_path.exists():
+        try:
+            plan = _json.loads(plan_path.read_text())
+        except Exception:
+            plan = {}
+        if plan.get("premarket_held"):
+            held = plan.get("orders", []) or []
+            rows = []
+            for o in held:
+                rows.append(f"<tr><td>{o.get('symbol','')}</td><td>{o.get('type','')}</td><td>{o.get('strike','')}</td><td>{o.get('expiration','')}</td><td>{o.get('qty',1)}</td><td>${o.get('gtc_price',0):.2f}</td><td>{o.get('reason','')[:60]}</td></tr>")
+            parts.append(f"<p><b>Premarket orders HELD ({len(held)}) — OPTIONS_PREMARKET_NO_FIRE=True. Held at {plan.get('premarket_held','')[:19]}.</b></p>")
+            parts.append("<table><tr><th>sym</th><th>type</th><th>strike</th><th>exp</th><th>qty</th><th>limit</th><th>reason</th></tr>" + "".join(rows) + "</table>")
+            parts.append("<p style='font-size:11px;color:#888'>To fire any of these manually after review: edit config_tradier.OPTIONS_PREMARKET_NO_FIRE=False, then run <code>python3 tradier_options_agent.py --premarket</code>.</p>")
+    return "\n".join(parts) if parts else "<p>No alerts or held orders.</p>"
+
+
+def build_hedge_proposals_section():
+    """Read latest hedge_proposals_<date>.jsonl. Each cycle the snapshot loop
+    runs decide_hedge_action against losing positions; this surfaces the
+    proposals so owner can verify ladder behavior before flipping live.
+    NEVER fires orders."""
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    base = _Path("/Users/niels/Documents/binance/data/options_state")
+    today = _dt.utcnow().strftime("%Y%m%d")
+    path = base / f"hedge_proposals_{today}.jsonl"
+    if not path.exists() or path.stat().st_size == 0:
+        return "<p>No hedge proposals yet today (snapshot loop not started or no losing positions hit -10% trigger).</p>"
+    try:
+        lines = [_json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    except Exception:
+        return "<p>(error reading hedge proposals)</p>"
+    if not lines:
+        return "<p>No hedge proposals.</p>"
+    latest_by_occ = {}
+    for rec in lines:
+        latest_by_occ[rec.get("occ", "?")] = rec
+    rows = []
+    for occ, rec in latest_by_occ.items():
+        action = rec.get("action", "?")
+        color_class = "g b" if action == "HOLD" else ("o b" if action == "BUY_PUT" else "r b")
+        details = rec.get("reason", "")
+        if action == "BUY_PUT":
+            details = (f"buy {rec.get('put_qty',1)} × {rec.get('put_occ','')} @ ${rec.get('put_limit_price',0):.2f}  "
+                       f"(IV rank {rec.get('put_iv_chain_rank',0):.0f}%, Δ={rec.get('put_delta',0):+.2f}, DTE {rec.get('put_dte',0)}) — cost ≈ ${rec.get('put_qty',1) * rec.get('put_limit_price',0) * 100:.0f}")
+        rows.append(f"<tr><td>{rec.get('ts','')[:19].replace('T',' ')}</td><td>{rec.get('symbol','')}</td><td>{occ}</td><td>{rec.get('sellable_pct','?'):+.1f}%</td><td><span class='{color_class}'>{action}</span></td><td>{details}</td></tr>")
+    out = ["<p style='font-size:11px;color:#888'>Hedge ladder = HOLD@bottom → BUY_PUT@underpriced → EQUITY_HEDGE. Currently <b>shadow only</b> (OPTIONS_HEDGE_LADDER_ENABLED=False). To activate: review proposals over 1-2 days, then flip the flag.</p>"]
+    out.append("<table><tr><th>ts UTC</th><th>sym</th><th>occ</th><th>sellable%</th><th>action</th><th>details</th></tr>" + "".join(rows) + "</table>")
+    return "\n".join(out)
+
+
 def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_closed=None):
     now_utc = datetime.now(timezone.utc)
     now_et = now_utc - timedelta(hours=4)
@@ -1512,6 +1602,12 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 
 <h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
 {build_options_positions_section()}
+
+<h2>&#128680; Loss Alerts &amp; Held Premarket Orders</h2>
+{build_options_alerts_and_held_section()}
+
+<h2>&#128737;&#65039; Hedge Ladder Proposals (shadow — no orders fired)</h2>
+{build_hedge_proposals_section()}
 
 <h2>Options Scanner</h2>
 {build_options_section()}
@@ -1700,6 +1796,12 @@ def build_public_email_html(market_quotes, tra_data, trb_data):
 
 <h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
 {build_options_positions_section()}
+
+<h2>&#128680; Loss Alerts &amp; Held Premarket Orders</h2>
+{build_options_alerts_and_held_section()}
+
+<h2>&#128737;&#65039; Hedge Ladder Proposals (shadow — no orders fired)</h2>
+{build_hedge_proposals_section()}
 
 <h2>Options Scanner</h2>
 {build_options_section()}

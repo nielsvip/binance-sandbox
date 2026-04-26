@@ -656,9 +656,34 @@ def is_regular_trading_hours():
     current_time = now_est.time()
     return market_open <= current_time <= market_close
 
+def in_opening_buffer(min_minutes: float = None) -> tuple[bool, float]:
+    """Return (is_in_buffer, mins_since_open). True means within OPENING_BUFFER_NO_CLOSE_MINUTES
+    after the 9:30 ET open on a weekday. Used by evaluate_stop/open/augment/reentry to block
+    all trade actions until first-30m data is meaningful (2026-04-26 owner directive)."""
+    if min_minutes is None:
+        try:
+            min_minutes = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0))
+        except Exception:
+            min_minutes = 30.0
+    if min_minutes <= 0:
+        return False, 0.0
+    try:
+        import pytz
+        now_et = datetime.now(pytz.timezone("America/New_York"))
+        if now_et.weekday() >= 5:
+            return False, 0.0
+        open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+        mins = (now_et - open_et).total_seconds() / 60.0
+        if 0 <= mins < min_minutes:
+            return True, mins
+        return False, mins
+    except Exception:
+        return False, 0.0
+
+
 def calculate_gain(position_side, current_price, entry_price):
     if entry_price <= 0: return 0.0
-    if position_side == 'LONG': 
+    if position_side == 'LONG':
         return ((current_price - entry_price) / entry_price) * 100
     else: 
         return ((entry_price - current_price) / entry_price) * 100 
@@ -4008,24 +4033,12 @@ class StockStrategy:
         return False, ""
 
     async def evaluate_stop(self, symbol: str, position: Any, indicators: dict, market_context: dict = None, in_grace_period: bool = False) -> tuple[bool, str, float]:
-        # OPENING_BUFFER_NO_CLOSE (2026-04-26 owner directive): block CLOSEs
-        # during the first N minutes after market open. Bid-ask is wide,
-        # momentum is unclear, and panic-selling at 13:30 UTC has burned us
-        # before. Default 30 min. Wins like profit-take exits also wait.
-        try:
-            _ob_min = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0))
-            if _ob_min > 0 and is_regular_trading_hours():
-                try:
-                    import pytz
-                    _now_et = datetime.now(pytz.timezone("America/New_York"))
-                    _open_et = _now_et.replace(hour=9, minute=30, second=0, microsecond=0)
-                    _mins_since_open = (_now_et - _open_et).total_seconds() / 60.0
-                    if 0 <= _mins_since_open < _ob_min:
-                        return False, f"OPENING_BUFFER_NO_CLOSE({_mins_since_open:.0f}m<{_ob_min:.0f}m)", 0
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # OPENING_BUFFER_NO_TRADE (2026-04-26 owner directive): block ALL trade
+        # actions during first N min after open. Wait for first-30m data to be
+        # meaningful (VWAP, range, trend) before deciding anything. Default 30m.
+        _in_buffer, _mins_open = in_opening_buffer()
+        if _in_buffer:
+            return False, f"OPENING_BUFFER_NO_TRADE({_mins_open:.0f}m<30m_no_data)", 0
         i = self.parse_market_data(indicators)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         qty = abs(float(getattr(position, 'positionAmt', 0)))
@@ -4831,6 +4844,10 @@ class StockStrategy:
         return False, "", 0.0
     
     async def evaluate_open(self, account_key, symbol: str, position_side: str, indicators: dict, market_context: dict = None) -> tuple[str, str, float, float]:
+        # OPENING_BUFFER_NO_TRADE: no new opens in first 30m after open
+        _in_buf, _mins = in_opening_buffer()
+        if _in_buf:
+            return "NO_ACTION", f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
         symbol = symbol.upper()
         i = self.parse_market_data(indicators)
         final_qty = 0.0
@@ -5230,6 +5247,10 @@ class StockStrategy:
         Tiers: 5m=1×, 15m=2×, 1h=3×, 4h=5× of START_POSITION_SIZE.
         REQUIRES gain > 0.15% before augmenting — never add to a losing position.
         """
+        # OPENING_BUFFER_NO_TRADE: no augments in first 30m after open
+        _in_buf, _mins = in_opening_buffer()
+        if _in_buf:
+            return False, f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
         try:
             i = self.parse_market_data(indicators)
             current_price = float(i.get('current_price', 0) or 0)
@@ -5350,6 +5371,10 @@ class StockStrategy:
         Simple and fast: k_5m crosses d_5m + k_15m confirms direction.
         30-bar cooldown after exit.
         """
+        # OPENING_BUFFER_NO_TRADE: no reentries in first 30m after open
+        _in_buf, _mins = in_opening_buffer()
+        if _in_buf:
+            return "NO_ACTION", f"OPENING_BUFFER_NO_TRADE({_mins:.0f}m<30m)", 0.0, 0.0
         i = self.parse_market_data(indicators)
         current_price, _ = await self.trade_manager.get_current_price(symbol)
         if current_price is None:

@@ -230,6 +230,12 @@ class TradierConfig:
     # Default-on guard: premarket cron saves the adjusted plan but skips _place_gtc_buys.
     # Morning brief surfaces the held plan; owner re-runs manually without flag to fire.
     OPTIONS_PREMARKET_NO_FIRE: bool = True
+    # === LOSS-DEEPENING ALERTS (2026-04-26 — close monitor on the 4 losers) ===
+    # Alerts fire when a position drops > DROP_PP from its prior worst-seen pct
+    # (across snapshots) OR crosses ABS_LOSS_PP (one-shot per position).
+    # Output: data/options_state/alerts_<YYYYMMDD>.jsonl + morning brief surface.
+    OPTIONS_ALERT_DROP_PP: float = 5.0
+    OPTIONS_ALERT_ABS_LOSS_PP: float = 25.0
     OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS: int = 2
     OPTIONS_HEDGE_K_OVERSOLD_PCT: float = 25.0
     OPTIONS_HEDGE_DC_REL_TOL_PCT: float = 1.0
@@ -440,11 +446,11 @@ class TradierConfig:
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
-    WRONG_SIDE_ABS_KILL_ENABLED: bool = False  # 2026-04-23 EMERGENCY: disabled.
+    WRONG_SIDE_ABS_KILL_ENABLED: bool = True  # 2026-04-26 RE-ENABLED: Phase 6 winner +33% Sharpe; 4/5 WT against + ≥1 div = catastrophe close
     WRONG_SIDE_MIN_AGE_MIN: float = 30.0
-    WRONG_SIDE_WT_TFS_REQUIRED: int = 5
+    WRONG_SIDE_WT_TFS_REQUIRED: int = 4  # 2026-04-26: 4-of-5 (Phase 6 winner)
     WRONG_SIDE_WT_TFS_REDUCED: int = 3
-    WRONG_SIDE_DIV_TFS_REQUIRED: int = 2
+    WRONG_SIDE_DIV_TFS_REQUIRED: int = 1  # 2026-04-26: ≥1 div confirms (lowered from 2)
     WRONG_SIDE_DIV_LOOKBACK_BARS: int = 20
     WRONG_SIDE_K_TFS_REQUIRED: int = 0
     # HEDGE_ENTRY_MODE (shared semantics with crypto).
@@ -644,7 +650,7 @@ class TradierConfig:
     # MULTI-TF EXIT CONFIRMATION — exits must mirror entry strength
     # Entry needs multi-TF WT alignment → exit needs multi-TF WT disalignment
     # Prevents 5m noise from killing positions that 15m/1h/4h still support
-    MIN_EXIT_TF_AGAINST_TRADIER: int = 2  # Need 2+ TFs (of 5m/15m/1h/4h) with WT against position before exit
+    MIN_EXIT_TF_AGAINST_TRADIER: int = 3  # 2026-04-26: 3 TFs against (was 2) — fewer false exits
     # BOUNCE-TOP EXIT — V4 backtest proven: Sharpe -0.5 → +0.42 on 121 stocks 2yr
     # Exits losing positions at the TOP of a bounce (not the bottom like a stop loss).
     # Mandatory reentry follows: 150% at pullback, 200% at rising WT cross.
@@ -714,11 +720,16 @@ class TradierConfig:
     MAX_SYMBOL_VALUE_TRADIER: float = 15000.0  # Max $ value per symbol. USO hit $352K, IBIT $119K — caused disaster losses.
     TRC_MAX_SYMBOL_VALUE: float = 5000.0  # Local extremes: cap per symbol at $5000 (was 15000)
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
-    TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = True  # LE scorer for ALL tradier accounts (trb+trc): 25-indicator gate + $50-$5000 tier sizing
+    TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = False  # 2026-04-26 KILL: tier sizing was suffocating PnL; Phase 8 disable = 90× PnL boost in v8
     LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # 2026-04-20 le_dynamic winner: min LE score to allow entry (262sym Sharpe 3.5479). Wire in tradier_manage.py entry gate.
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # 2026-04-20 le_dynamic winner: exit when opposite-direction LE score >= threshold
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # 2026-04-20 le_dynamic winner: counter-exit trigger threshold (score=55 validated)
     TRB_MAX_SYMBOL_VALUE: float = 10000.0  # trb cap (smaller account)
+    # === 2026-04-26 NEW user-spec position caps for trb ===
+    TRB_MAX_LONG_VALUE: float = 50000.0   # NEW: max $ per long position (user spec 2026-04-26)
+    TRB_MAX_SHORT_VALUE: float = 50000.0  # NEW: max $ per short position
+    TRB_MAX_PUT_VALUE: float = 3000.0     # NEW: max $ per put option
+    TRB_MAX_CALL_VALUE: float = 3000.0    # NEW: max $ per call option
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
     # === AUGMENT GUARD (parity with crypto) ===
@@ -860,7 +871,7 @@ class TradierConfig:
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
     # === MOMENTUM INTERCEPTION (MI) — Early exit/entry via slowing deltas, LH/LL structure, divergence ===
     MI_EXIT_ENABLED_TRADIER: bool = False  # REVERTED 2026-04-17: MI_EXIT was triggering early exits at 0.3%. Mar-30 baseline OFF.
-    MI_ENTRY_ENABLED_TRADIER: bool = False  # Entry scoring bonus for favorable MI signals
+    MI_ENTRY_ENABLED_TRADIER: bool = True  # 2026-04-26: Phase 9 alpha enable
     MI_STRUCT_EXIT_ENABLED_TRADIER: bool = True  # WT peak LH / trough HL = structural weakening
     MI_EXHAUST_EXIT_ENABLED_TRADIER: bool = True  # EXHAUST_UP/DOWN on 1h/4h
     MI_DIV_EXIT_ENABLED_TRADIER: bool = True  # Divergence on 1h/4h
@@ -899,7 +910,7 @@ class TradierConfig:
     DELTA_EXIT_ENABLED: bool = True  # Re-enabled — real fix is in REENTRY_MONITOR (checks exit score before reopen)
     # WT_DC scorer exit guards
     WT_DC_EXIT_STALE_MAX_S: int = 600  # Don't exit on indicators > 10min stale (protects against stale data firing exits)
-    DELTA_PYRAMID_ENABLED: bool = False  # DEAD_CONFIRMED (priority 75/100) — no plausible wiring site found 20260416
+    DELTA_PYRAMID_ENABLED: bool = True  # 2026-04-26: Phase 9 alpha — re-test in live (was DEAD_CONFIRMED)
     DELTA_SPEED_SMOOTH: int = 5  # WINNER: sm=5
     DELTA_ACCEL_LOOKBACK: int = 5
     DELTA_TF_WEIGHTS: dict = None  # Set in __post_init__
@@ -949,7 +960,7 @@ class TradierConfig:
     # ═══ D4 BREAKOUT MULTI-LUNG (stocks, 2026-04-16) — extracted from ez_breakout_agent.py ════
     # UNPROVEN: default OFF until sweep tier breakout_multi_lung_tradier delivers Sharpe > 2 on 128-stock × 2yr.
     # NEVER flip ENABLED=True in live config without sweep proof.
-    BREAKOUT_MULTI_LUNG_ENABLED: bool = False
+    BREAKOUT_MULTI_LUNG_ENABLED: bool = True  # 2026-04-26: Phase 9 alpha (Sharpe 1.26 in v8)
     BREAKOUT_MULTI_LUNG_MODE: str = "AUGMENT"      # "AUGMENT" (OR) | "REPLACE"
     BREAKOUT_MULTI_LUNG_TIER: str = "STOCK"        # stocks default to STOCK tier (D+W+4h)
     BREAKOUT_MULTI_LUNG_COMPOSITE_INHALE: float = 0.20
@@ -1239,7 +1250,7 @@ class TradierConfig:
     ASYMMETRIC_STOPS_ENABLED: bool = False  # TIER_A: estimated Sharpe +0.5 alone.
     ASYMMETRIC_WINNER_GAIN_PCT: float = 1.5  # At this gain, position switches to winner rules.
     ATR_ADAPTIVE_SIZING_ENABLED: bool = False  # BACKTEST_CHANGE_135: Inverse ATR sizing (high vol = smaller)
-    ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 2.0  # BACKTEST_CHANGE_135: Target ATR%. Size=1x at this ATR.
+    ATR_ADAPTIVE_SIZING_TARGET_PCT: float = 12.0  # 2026-04-26: 12% target (was 2%) — Phase 8 winner setting
     ATR_ADAPTIVE_STOP_ENABLED: bool = False  # BACKTEST_CHANGE_130: ATR-based sizing reduction (not stop — STRICT_NO_LOSS)
     ATR_ADAPTIVE_STOP_MULT: float = 2.0  # BACKTEST_CHANGE_130: ATR(14) x this = risk distance
     ATR_ADAPTIVE_STOP_TF: str = '1h'
@@ -1250,7 +1261,7 @@ class TradierConfig:
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.
     AUGMENT_WT_CROSS_ENABLED: bool = True  # WT cross + aligned 2/3 TFs + gain >= MIN_GAIN, conviction 80.
     BASIS_CONDITION: bool = False  # BACKTEST: OFF is +0.67 delta Sharpe (dc_basis_15m/1h both SKIP in sweep)  # No opening on wrong side of dc_basis_15m + 1h + 4h
-    BB_BREAKOUT_ENABLED: bool = False  # BACKTEST_CHANGE_132: BB breakout + SMA200 (trending regime only)
+    BB_BREAKOUT_ENABLED: bool = True  # 2026-04-26: Phase 9 alpha enable
     BB_BREAKOUT_SCORE: int = 20  # BACKTEST_CHANGE_132: Score bonus for breakout
     BB_BREAKOUT_TF: str = '1h'
     BB_ENTRY_LONG_THRESHOLD: float = -0.2  # BACKTEST_CHANGE_6: BB %B extremes
@@ -1274,8 +1285,8 @@ class TradierConfig:
     BREAKEVEN_DC_LOW4_ENABLED: bool = True  # DC_LOW4_5M structural stop — fires any time position was profitable
     BREAKEVEN_GRACE_MINUTES: float = 15.0  # Grace period (bars pardon) before no-loss kicks in
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True  # Close positions that were profitable and fell back below 0
-    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.3  # must have reached >= 0.3% gain to activate (stocks move slower)
-    PEAK_GIVEBACK_DROP_PCT: float = 2.0  # also exit if gave back >= 2.0% from peak (even if still positive)
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 2.0  # 2026-04-26: 2% peak required (was 0.3%) — only protect meaningful gains
+    PEAK_GIVEBACK_DROP_PCT: float = 5.0  # 2026-04-26: 5% drop from peak (was 2%) — let winners breathe
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True  # exit immediately when gain turns negative after profitable peak
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
@@ -1562,12 +1573,12 @@ class TradierConfig:
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
     PROGRESSIVE_LOCK_ENABLED: bool = False  # TIER_A: Sharpe +0.3. Staged profit without full close.
     PROGRESSIVE_LOCK_FRACTION: float = 0.25  # Reduce fraction per tier.
-    PYRAMID_ENABLED: bool = False  # TIER_D: Sharpe +0.2. Amplifies winners.
+    PYRAMID_ENABLED: bool = True  # 2026-04-26: Phase 8 winner; amplifies winners
     PYRAMID_MAX_DC_POS_15M_SHORT: float = 0.3  # SHORT: DC pos < 0.3 = lower third.
     PYRAMID_MIN_DC_POS_15M: float = 0.7  # LONG: DC pos > 0.7 = upper third.
-    PYRAMID_MIN_GAIN_PCT: float = 1.5  # Fires once gain >= this.
+    PYRAMID_MIN_GAIN_PCT: float = 2.0  # 2026-04-26: only pyramid after +2% confirmed gain
     PYRAMID_MIN_WT_VEL_1H: float = 2.0  # 1h velocity must trend.
-    PYRAMID_SIZE_MULT: float = 0.5  # Add N × position_amt (0.5 = 50%).
+    PYRAMID_SIZE_MULT: float = 1.5  # 2026-04-26: 1.5× existing position per pyramid (more aggressive)
     RANKING_LOOP_SLEEP_SECONDS: int = 120  # BACKTEST_CHANGE_44: ranking loop sleep (2 minutes, was 3)
     RATIO_EMERGENCY_EXIT_COOLDOWN: float = 999999.0  # Infinite cooldown
     RATIO_EMERGENCY_EXIT_ENABLED: bool = False  # PERMANENTLY DISABLED: closing losers = Sharpe 19 vs ratio-only 357. Fix ratio by OPENING underweight side, NEVER by closing losers. ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416
@@ -1597,9 +1608,9 @@ class TradierConfig:
     # Stocks reward URGENCY after stoch/DC exit clears. Crypto uses 30min in config.py.
     REENTRY_AGGRESSIVE_WINDOW_MIN: float = 5.0  # 5 min on stocks (5m base = 1 bar — matches Sharpe peak)
     # PATHWAY F — FAVORABLE MOVE force-reentry (2026-04-17, matches crypto config.py)
-    REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = False  # Pathway G: DISABLED — sweep shows -22% Sharpe (0.38→0.30); catches tops not pullbacks
-    REENTRY_60MIN_WINDOW_MIN: float = 60.0            # window after exit in minutes
-    REENTRY_60MIN_MIN_PCT: float = 0.3                # price must move ≥0.3% in trade direction from exit to trigger
+    REENTRY_60MIN_UNCONDITIONAL_ENABLED: bool = True  # 2026-04-26 user directive — "ANY strategy that reenters when exit price is passed OUTPERFORMS B&H by plain logic"
+    REENTRY_60MIN_WINDOW_MIN: float = 1440.0            # 2026-04-26: 24h window (was 60min) — wide enough to catch back-cross even after weekend
+    REENTRY_60MIN_MIN_PCT: float = 0.05                # 2026-04-26: tightened to 0.05% (was 0.3%) — almost pure price-cross with tiny epsilon to avoid bid-ask thrash
     REENTRY_FAVORABLE_MOVE_PCT: float = 1.0          # reenter if price moved ≥1% in our direction since exit
     REENTRY_FAVORABLE_HTF_MIN: int = 1                # require ≥1 of (1h,4h,D) WT aligned — was 2, but 1h is bearish after any WT exit
     REENTRY_FAVORABLE_QTY_MULT: float = 1.0           # base size when rally continues (100%)
