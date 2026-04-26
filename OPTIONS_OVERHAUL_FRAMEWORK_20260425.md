@@ -232,6 +232,33 @@ Re-entries log to the same `data/options_trades/<occ>.jsonl` lifecycle file as t
 
 ---
 
+## 3b. Entry quality — required technical setup (owner 2026-04-26)
+
+> *"The analyzer should not just find over/underpriced options but investigate which ones are actually trades we want to make (pullback, breakout, red zone, DC, WT, BB, etc.) instead of recklessly buying something nobody wants for good reasons."*
+
+The current `tradier_options_analyzer.py` entry logic ranks candidates primarily on edge / pricing fit (delta, OTM%, DTE, score). Going forward, **a recognized technical setup on the underlying is a hard prerequisite**, regardless of how cheap the option looks. "Cheap because the market correctly priced it as decaying garbage" is exactly the JNJ/ABT pattern.
+
+**Recognized setups** (call entry — mirror for puts):
+
+| Setup ID | Trigger on underlying | What it expresses |
+|----------|------------------------|-------------------|
+| `PULLBACK_TO_SUPPORT` | Price within 1.5% of `dc_low_D` AND `wt1_D` rising AND stoch_D K < 30 turning up | Mean-reversion bounce off daily channel low |
+| `BREAKOUT_DC_HIGH` | Close > `dc_high_4h` (prior 20-bar) on volume > 1.2× avg, with `dc_high_D` not yet broken | Momentum breakout, room to run |
+| `RED_ZONE_BOUNCE` | Touched `dc_low_D` last 1–3 bars AND closed back inside | Confirmed support hold |
+| `WT_BULL_CROSS_HTF` | wt1_D crosses up over wt2_D AND wt1_4h aligned bullish | Daily WT trigger with 4h confirmation |
+| `BB_SQUEEZE_RELEASE` | BB width hit 6-month low AND price breaks BB upper | Volatility expansion in bull direction |
+| `STOCH_OVERSOLD_REV` | Stoch_D K cross up from < 20 AND volume > 1.1× avg | Oversold reversal |
+
+**Gate**: every option-buy candidate from the analyzer must be **paired with at least one recognized setup**. Setup is logged with the entry (`data/options_trades/<occ>.jsonl` action=OPEN includes `"setup": "PULLBACK_TO_SUPPORT"`). No setup match → no buy, regardless of edge.
+
+**Why this matters for the disaster pattern**: ABT and JNJ on 2026-04-22 were bought because the analyzer found them in some "good edge" calculation. They had no recognized setup — JNJ was actually in a bearish trend. With this gate, they would have been skipped *even if the symbol-allowlist bypass had let them through*. Defense in depth.
+
+**Implementation note**: setups are computed in `tradier_indicators.py` (data already there) and surfaced by a new helper `tradier_options_setup.detect_setups(symbol, side) -> List[SetupID]` that the analyzer calls before scoring. The analyzer's own scoring stays — it just gets a hard prerequisite gate added.
+
+**Sweep knob**: which setups are enabled is configurable per side (calls/puts) per sector — once Phase 0 logging gives 30+ days of data, sweep which setups have positive expectancy and disable the dead ones.
+
+---
+
 ## 4. The proposed framework
 
 Eight layers, ranked by disaster-prevention value. Each layer should fail safely if the layer below it breaks.
@@ -300,6 +327,26 @@ Defines maximum loss per trade *structurally*, before any kill switch is needed.
 - **L3.1** — Default entry construction = vertical debit spread (long ATM-ish, short 1-2 strikes higher for calls / lower for puts). Width $5–$10. `OPTIONS_SPREAD_ENABLED=True` is already set; the entry path needs to actually use it.
 - **L3.2** — Naked long premium allowed only if (a) IV rank < 20 AND (b) signal score ≥ 90 AND (c) explicit override flag.
 - **L3.3** — Spread max-loss = debit paid. This is your hard floor per trade. Combined with L1.3, single-trade ruin is mathematically capped.
+
+#### Layer 3.W — "Way-out" conversions for losing naked positions (owner 2026-04-26)
+
+Implements the §0.3 "first loss = close or cover" rule for legacy naked longs that exist before Phase 2 spread-by-default ships.
+
+When a naked long call goes negative AND the picker (§0.3 step 3) selects COVER:
+
+| Conversion | Mechanic | When to prefer |
+|------------|----------|----------------|
+| **L3.W.A — Buy protective put (collar)** | Buy a put on the same underlying, ~5% OTM, same-or-later expiry | Underlying near a major support; expect bounce but want downside cap |
+| **L3.W.B — Sell higher-strike call (convert to vertical debit spread)** | Sell a call 1–2 strikes above your long call, same expiry | Recoups premium; caps both upside and downside; cheapest cover |
+| **L3.W.C — Roll down + out** | Close existing call, open a longer-DTE call at lower strike, smaller size | Thesis intact but timing was wrong; only with explicit override |
+
+Mirror logic for losing puts (buy protective call OR sell lower-strike put OR roll up + out).
+
+**Rules**:
+- Cover legs count toward the same OCC position group for concurrency (L1.C1).
+- Once covered, the position cannot be uncovered until close — the cover stays for the life of the original.
+- Cover cost limit: ≤ 50% of the original debit. If a cover costs more than half what you paid, just close.
+- L3.W is preferred to CLOSE only when DTE > 14 AND contrary leg is liquid. Otherwise CLOSE wins (per §0.3 picker).
 
 ### Layer 4 — PORTFOLIO GREEKS BUDGET
 Treat the book as one position, not a list of positions.
@@ -460,12 +507,24 @@ This gives us a populated history from day 1 instead of waiting weeks for organi
 - New `/options/daily` showing daily roll-ups.
 - Same Flask app as equity — minimal new infra.
 
-#### P0.7 — Symbol gate audit (find and close the ABT/JNJ bypass)
-Before shipping any other phase: trace every code path that can call `place_order` for an option and prove that **all** of them check both:
-- `_load_allowed_symbols()` (current JSON allowlist)
-- `config_tradier.BLACKLIST` (currently dead)
+#### P0.7 — Single symbol gate (owner directive 2026-04-26: "extremely simple")
 
-Either consolidate to one source (recommended: drop BLACKLIST, make it a comment that says "use symbols_trb_*.json"), or wire BLACKLIST into the agent. **The fact that two parallel systems disagreed is the literal bug — pick one and enforce it everywhere.**
+**Rule, no exceptions, no tiers**:
+> **`symbols_trb_long.json` is the SOLE allowlist for call buys. `symbols_trb_short.json` is the SOLE allowlist for put buys. No symbol outside these JSONs may have an option order placed against it, ever, by any code path.**
+
+Implementation:
+1. **Add a permanent denylist** `OPTIONS_DENYLIST = {"ABT", "JNJ"}` in `config_tradier.py` — checked *before* the allowlist as belt-and-suspenders. Even if a symbol gets re-added to the JSON by mistake, the denylist still blocks it.
+2. **Centralize the gate** in one helper: `tradier_options_gate.is_allowed(symbol, side) -> (bool, reason)`. Returns False with a reason string for any of: in denylist, not in long JSON (for calls), not in short JSON (for puts).
+3. **Audit every call site** that can place an option order. Replace any local allowlist check with the central helper. Greps to run:
+   - `grep -nE "place_order|create_order|submit.*option" tradier_*.py`
+   - `grep -nE "_load_allowed_symbols|symbols_trb_" tradier_*.py`
+   - `grep -nE "BUY|SELL.*option" tradier_options_agent.py tradier_options_analyzer.py tradier_manage.py`
+4. **Delete `BLACKLIST = ["ABT","JNJ","MSTR"]`** from `config_tradier.py:95`. It's dead. Two systems = the bug.
+5. **Refusal log**: every gate refusal writes to `data/options_gate_refusals.jsonl` with `{ts, symbol, side, source_path, reason}`. If we ever see a refused symbol in `data/options_trades/`, we have proof a bypass exists.
+6. **Remove ABT and JNJ from `symbols_trb_long.json` / `symbols_trb_short.json`** if present (verified: ABT/JNJ NOT currently in long JSON, but removing from any list confirms safety).
+7. **Test**: a unit test attempts to call the entry path with `symbol="ABT"` and `symbol="RANDOMTICKER"` — both must return blocked. Test runs in CI / pre-commit.
+
+**The bypass investigation (was Q-C) is now folded into step 3** — auditing every call site IS finding the bypass. Both the *fix* and the *forensic discovery* happen in the same pass.
 
 **Phase 0 acceptance criteria**:
 - Every existing open option position appears in `current.json` within 60s of the supervisor starting.
@@ -540,24 +599,23 @@ Either consolidate to one source (recommended: drop BLACKLIST, make it a comment
 8. ✅ Force-close on analyzer score ≥ 80 — confirmed.
 9. ✅ Account-level breaker downgraded to backstop (-2.5% soft / -5% hard). Per-position technical exits do the work.
 
-**Resolved 2026-04-26**:
-- ✅ A. Longer activity export — owner will provide.
-- ✅ B. P/C bias source — derive from existing `tradier_manage.py:4902` equity target with exaggeration K=1.5 (clamps 15/85). No separate per-sector P/C table. See Phase 2 above.
+**All resolved 2026-04-26**:
+- ✅ A. Longer activity export — owner will provide. Phase 0.5 backfill runs against it when it lands.
+- ✅ B. P/C bias source — derive from `tradier_manage.py:4902` equity target with exaggeration K=1.5 (clamps 15/85). No separate per-sector P/C table. See Phase 2.
+- ✅ C. ABT/JNJ bypass — folded into D5/Phase 0.7 audit (auditing every call site IS finding the bypass). ABT and JNJ now permanently in `OPTIONS_DENYLIST`.
+- ✅ D5 (sole authority): `symbols_trb_long.json` / `symbols_trb_short.json` are the only allowlists. `BLACKLIST` deleted. Centralized gate helper. Refusal log. Unit test in CI.
+- ✅ E. L1.A1 — no augment to losing call/put **unless** all four "definite bottom" signals fire (DC zone bounce, stoch reversal, WT confirm, 4h cooldown). When losing AND no bottom: choice is CLOSE or COVER (Layer 3.W) — never hold-and-hope (per §0.3 first-loss rule).
+- ✅ Entry quality (new): every option buy must match a recognized technical setup (PULLBACK, BREAKOUT, RED_ZONE_BOUNCE, WT_BULL_CROSS_HTF, BB_SQUEEZE_RELEASE, STOCH_OVERSOLD_REV). No setup → no buy. See §3b.
+- ✅ "First loss" meta-rule: position goes negative → decide CLOSE or COVER this tick. No third option. See §0.3.
 
-**Still open — needs your input before Phase 0 ships**:
+**Phase 0 substep order (locked)**:
+1. **P0.7 / D5 first** — JSON-allowlist sole authority + denylist + central gate + refusal log. Closes the rogue-trade hole. ~1 day.
+2. **P0.1 + P0.2 in parallel** — state module + per-tick snapshot log. Gives "what do we own". ~1 day.
+3. **P0.3** — per-OCC lifecycle log. Hooks into agent + manage close paths. ~0.5 day.
+4. **P0.5** — backfill from activity export, *after* you provide the longer CSV.
+5. **P0.6** — read-only UI route on existing :5050. ~0.5 day.
 
-C. **The ABT/JNJ bypass path.** Find it now (2-3h investigation) or defer until Phase 0.7? Strong recommendation: now. Knowing how the leak happened informs every other safeguard — it may reveal additional hidden bypass paths.
-
-D. **Phase 0 logging — priority order?** Substeps:
-   - D1. State module + per-tick snapshot log (P0.1, P0.2) — "what do we own right now?"
-   - D2. Per-OCC lifecycle log (P0.3) — "what happened to each trade?"
-   - D3. Backfill from activity export (P0.5) — history.
-   - D4. UI route (P0.6) — dashboard.
-   - D5. Symbol-gate audit (P0.7) — closes the rogue-trade hole.
-   
-   All in parallel? Or D5 first as urgent safety, then D1+D2 next, then D3 once you provide the longer export, D4 last?
-
-E. **L1.A1 scope under spreads** — block adds to same OCC only (recommended), or also block opening fresh spreads on the same underlying when technical is against?
+Then Phase 1 starts (kill switches + analyzer-as-enforced + L3.W way-out conversions).
 
 ---
 
