@@ -2021,11 +2021,25 @@ async def run_premarket(args):
                 existing_gtc_pm = {**existing_gtc_pm, f"_pm_{symbol}_{pm_type}_{order['strike']}": {"side": "buy_to_open", "symbol": symbol, "type": pm_type, "target_price": new_price, "qty": order.get("qty", 1)}}
             await asyncio.sleep(0.2)
         if adjusted:
-            print(f"\n  Placing {len(adjusted)} adjusted orders...")
-            results = await _place_gtc_buys(client, config, adjusted)
-            plan["orders"] = []
-            plan["premarket_placed"] = datetime.now().isoformat()
-            _save_daily_plan(config, plan)
+            # PREMARKET NO-FIRE GUARD (2026-04-26 owner directive)
+            # Premarket cron fires at 13:23 UTC = 9:23 AM ET while owner may still
+            # be asleep. Default-on guard skips order placement; the analysis +
+            # adjusted plan is still saved so morning brief can show it. Owner
+            # reviews, then manually re-runs without the flag to fire.
+            if bool(getattr(config, "OPTIONS_PREMARKET_NO_FIRE", True)):
+                print(f"\n  \033[93m[PREMARKET_NO_FIRE]\033[0m {len(adjusted)} adjusted orders held — config OPTIONS_PREMARKET_NO_FIRE=True")
+                print(f"  Plan saved for review. To fire manually: flip OPTIONS_PREMARKET_NO_FIRE=False, run --premarket again.")
+                logger.warning(f"[PREMARKET_NO_FIRE] held {len(adjusted)} orders: {[o.get('symbol') + '/' + o.get('type','?') + '/' + str(o.get('strike','?')) for o in adjusted]}")
+                plan["orders"] = adjusted  # preserve so morning brief can read
+                plan["premarket_held"] = datetime.now().isoformat()
+                plan["premarket_held_reason"] = "OPTIONS_PREMARKET_NO_FIRE=True"
+                _save_daily_plan(config, plan)
+            else:
+                print(f"\n  Placing {len(adjusted)} adjusted orders...")
+                results = await _place_gtc_buys(client, config, adjusted)
+                plan["orders"] = []
+                plan["premarket_placed"] = datetime.now().isoformat()
+                _save_daily_plan(config, plan)
         else:
             print("  No orders survived pre-market adjustment.")
     finally:

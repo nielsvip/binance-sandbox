@@ -2440,8 +2440,25 @@ async def run_watch(args):
                 else:
                     print(f"    \033[92m[OK] No exit signals — position looks healthy\033[0m")
                 await asyncio.sleep(0.2)  # rate limit
+            # OPENING_BUFFER_NO_CLOSE (2026-04-26 owner directive): no auto-sells in
+            # the first N minutes after market open. Bid-ask wide, momentum unclear.
+            _ob_min_opt = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0))
+            _in_opening_buffer = False
+            if auto_sell and _ob_min_opt > 0:
+                try:
+                    import pytz as _pytz_ob
+                    _now_et_ob = datetime.now(_pytz_ob.timezone("America/New_York"))
+                    if _now_et_ob.weekday() < 5:
+                        _open_et_ob = _now_et_ob.replace(hour=9, minute=30, second=0, microsecond=0)
+                        _mins_open = (_now_et_ob - _open_et_ob).total_seconds() / 60.0
+                        if 0 <= _mins_open < _ob_min_opt:
+                            _in_opening_buffer = True
+                            print(f"\n  \033[93m[OPENING_BUFFER_NO_CLOSE]\033[0m {_mins_open:.0f}m since open < {_ob_min_opt:.0f}m — auto-sell HELD ({len(all_sell_now)} signals queued for after buffer)")
+                            logger.warning(f"[OPENING_BUFFER_NO_CLOSE] {_mins_open:.0f}m<{_ob_min_opt:.0f}m — held {len(all_sell_now)} sells")
+                except Exception:
+                    pass
             # Auto-sell if enabled — uses smart fill (start at ask, walk to mid)
-            if auto_sell and all_sell_now:
+            if auto_sell and all_sell_now and not _in_opening_buffer:
                 print(f"\n  {'─'*86}")
                 print(f"  AUTO-SELL EXECUTING ({len(all_sell_now)} positions):")
                 sold_occs = set()  # Track what we've sold this cycle

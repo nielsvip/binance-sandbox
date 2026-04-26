@@ -53,7 +53,7 @@ kill_duplicate_python() {
         done
     fi
 }
-# Run singleton guard at startup
+# Run singleton guard at startup (kills duplicate PYTHON children)
 kill_duplicate_python
 
 # Setup logging
@@ -68,6 +68,22 @@ for i in "${!ARGS[@]}"; do
         break
     fi
 done
+
+# ═══ WATCHDOG SINGLETON LOCK ═══
+# Without this, two concurrent watchdogs for the same script+account fight
+# each other: each runs kill_duplicate_python → SIGKILLs the other's child →
+# 15 rapid restarts → both watchdogs give up. Caused men loop 2026-04-26 02:02-02:04.
+WATCHDOG_LOCK="$LOGDIR/.watchdog_${SCRIPT_BASE}${ACCT_SUFFIX}.pid"
+if [ -f "$WATCHDOG_LOCK" ]; then
+    OLD_WD_PID=$(cat "$WATCHDOG_LOCK" 2>/dev/null)
+    if [ -n "$OLD_WD_PID" ] && kill -0 "$OLD_WD_PID" 2>/dev/null; then
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] [WATCHDOG_SINGLETON] Another watchdog is alive (pid=$OLD_WD_PID) for ${SCRIPT_BASE}${ACCT_SUFFIX} — refusing to start to avoid SIGKILL fight" | tee -a "$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_watchdog.log"
+        exit 0
+    fi
+fi
+echo "$$" > "$WATCHDOG_LOCK"
+trap 'rm -f "$WATCHDOG_LOCK"; kill -TERM ${CHILD_PID:-0} 2>/dev/null; exit' EXIT INT TERM
+
 APP_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_app.log"  # legacy, no longer written to
 WD_LOG="$LOGDIR/${SCRIPT_BASE}${ACCT_SUFFIX}_watchdog.log"
 

@@ -222,6 +222,14 @@ class TradierConfig:
     # *** DEFAULT OFF *** — flip to True only after verifying with shadow runner.
     # When False, existing equity-hedge path fires unchanged (status quo).
     OPTIONS_HEDGE_LADDER_ENABLED: bool = False
+    # === OPENING-BUFFER NO-CLOSE (2026-04-26 — don't sell at open) ===
+    # Block CLOSE/sell-to-close orders during first N minutes after market open.
+    # Wired in tradier_manage.evaluate_stop AND tradier_options_analyzer.auto_sell.
+    OPENING_BUFFER_NO_CLOSE_MINUTES: float = 30.0
+    # === PREMARKET NO-FIRE (2026-04-26 — no surprise BUYS while owner sleeps) ===
+    # Default-on guard: premarket cron saves the adjusted plan but skips _place_gtc_buys.
+    # Morning brief surfaces the held plan; owner re-runs manually without flag to fire.
+    OPTIONS_PREMARKET_NO_FIRE: bool = True
     OPTIONS_HEDGE_BOTTOM_MIN_SIGNALS: int = 2
     OPTIONS_HEDGE_K_OVERSOLD_PCT: float = 25.0
     OPTIONS_HEDGE_DC_REL_TOL_PCT: float = 1.0
@@ -611,8 +619,8 @@ class TradierConfig:
     K_ZONE_SHORT_THRESHOLD_TRADIER: int = 65  # S1_SWEEP_2026-04-15: 65 top S1 cfg Sharpe=4.23 on 20605 trades (was 20)
     K_ZONE_ENTRY_BONUS_TRADIER: int = 20  # 2026-04-08 SWEEP: 20 → Sharpe 11.12 vs 25 → 6.92 (+61%). Biggest single config win.
     BOUNCE_REENTRY_ENABLED_TRADIER: bool = True  # BACKTEST_CHANGE_T53: After profitable exit, K must reset to zone before reentry.
-    BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35  # DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
-    BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65  # DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
+    BOUNCE_REENTRY_K_RESET_LONG_TRADIER: int = 35  # 2026-04-26 WIRED — tradier_manage.py:5449 (new K-reset bounce branch in evaluate_reentry, conviction 75) + 8343 (REENTRY_MONITOR k_5m gate, was hardcoded 50). Previously DEAD_CONFIRMED (priority 90).
+    BOUNCE_REENTRY_K_RESET_SHORT_TRADIER: int = 65  # 2026-04-26 WIRED — tradier_manage.py:5450 + 8344. SHORT mirror. Previously DEAD_CONFIRMED (priority 90).
     # ═══ SAFETY SWITCHES (2026-04-16 audit) ═══
     TRADIER_REQUIRE_TRADEABLE_KEY: bool = True     # Gate entry at execute_now if not in tradeable_keys
     TRADIER_RATIO_REQUIRE_MIN_GAIN: bool = False   # Block RATIO_BOOST on positions with gain < min
@@ -620,7 +628,7 @@ class TradierConfig:
     TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED: bool = True  # True=legacy (bypass after 48h); False=always enforce stoch
     TRADIER_NOLOSS_SRS_BYPASS: bool = True          # True=SRS reason bypasses NOLOSS; False=no reason bypass
     # === TWO-TIER MANDATORY REENTRY — STOCKS (BC_155) ===
-    REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # Tier 1: 150% of closed qty ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    REENTRY_TIER1_SIZE_MULT_TRADIER: float = 1.5  # 2026-04-26 WIRED — tradier_manage.py:5561 applies this mult to base_qty cap (was hardcoded 1.5). Tier 1: % of closed qty. Default 1.5 preserves prior behavior. Previously DEAD_CONFIRMED (priority 70).
     REENTRY_TIER2_SIZE_MULT_TRADIER: float = 0.8  # Tier 2: 80% of closed qty
     REENTRY_TIER2_PRICE_PCT_TRADIER: float = 0.003  # 0.3% price move triggers Tier 2
     REENTRY_TIER2_MIN_MINUTES_TRADIER: float = 10.0  # Min minutes before Tier 2
@@ -644,8 +652,8 @@ class TradierConfig:
     BOUNCE_TOP_MIN_HOLD_MINUTES: float = 1440.0  # 24h min hold before bounce exit eligible
     BOUNCE_TOP_MIN_LOSS_PCT: float = -3.0  # Only fires when loss is between -3% and -50%
     BOUNCE_TOP_MAX_LOSS_PCT: float = -50.0  # Don't exit positions beyond -50% (too late)
-    BOUNCE_TOP_REENTRY_MULT: float = 1.5  # 150% qty on pullback reentry ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    BOUNCE_TOP_RISING_CROSS_MULT: float = 2.0  # 200% qty on rising WT cross reentry ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
+    BOUNCE_TOP_REENTRY_MULT: float = 1.5  # 2026-04-26 WIRED — tradier_manage.py:5525, 5544 (divergence reentry size mult, was hardcoded 1.5). Previously DEAD_CONFIRMED (priority 70).
+    BOUNCE_TOP_RISING_CROSS_MULT: float = 2.0  # 2026-04-26 WIRED — tradier_manage.py:5531, 5550 (rising/falling WT cross reentry size mult, was hardcoded 1.5; raised default to 2.0 to match config intent). Previously DEAD_CONFIRMED (priority 70).
     HODL_LONG_ONLY: bool = True  # BACKTEST_CHANGE_T54: HODL strategy is LONG only. SHORT on stocks = negative returns (upward bias kills hold-forever shorts). ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     # === MOMENTUM FADE — STOCKS (2026-03-23 — crypto-validated, adapted for stocks) ===
     MOMENTUM_FADE_ENABLED_TRADIER: bool = False  # DISABLED: Gate ablation 2026-03-26 proved zero impact (Sharpe +0.00, +0 trades). Was T55b.

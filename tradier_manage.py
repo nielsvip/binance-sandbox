@@ -4008,6 +4008,24 @@ class StockStrategy:
         return False, ""
 
     async def evaluate_stop(self, symbol: str, position: Any, indicators: dict, market_context: dict = None, in_grace_period: bool = False) -> tuple[bool, str, float]:
+        # OPENING_BUFFER_NO_CLOSE (2026-04-26 owner directive): block CLOSEs
+        # during the first N minutes after market open. Bid-ask is wide,
+        # momentum is unclear, and panic-selling at 13:30 UTC has burned us
+        # before. Default 30 min. Wins like profit-take exits also wait.
+        try:
+            _ob_min = float(getattr(config, "OPENING_BUFFER_NO_CLOSE_MINUTES", 30.0))
+            if _ob_min > 0 and is_regular_trading_hours():
+                try:
+                    import pytz
+                    _now_et = datetime.now(pytz.timezone("America/New_York"))
+                    _open_et = _now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+                    _mins_since_open = (_now_et - _open_et).total_seconds() / 60.0
+                    if 0 <= _mins_since_open < _ob_min:
+                        return False, f"OPENING_BUFFER_NO_CLOSE({_mins_since_open:.0f}m<{_ob_min:.0f}m)", 0
+                except Exception:
+                    pass
+        except Exception:
+            pass
         i = self.parse_market_data(indicators)
         is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
         qty = abs(float(getattr(position, 'positionAmt', 0)))
@@ -5541,14 +5559,14 @@ class StockStrategy:
             stoch_fallback = (k_5m < d_5m) and (k_15m < d_15m or k_15m > 70)
             if not ((wt_entry and htf_confirm) or (stoch_fallback and dc_pullback)):
                 if _bear_div and dc_pullback:
-                    _reentry_size_mult = 1.5
-                    logger.info(f"[REENTRY_DIV] SHORT {symbol}: Bearish divergence + DC pullback({_dc_pos:.2f}) — high conviction reentry 1.5x")
+                    _reentry_size_mult = float(getattr(config, 'BOUNCE_TOP_REENTRY_MULT', 1.5))
+                    logger.info(f"[REENTRY_DIV] SHORT {symbol}: Bearish divergence + DC pullback({_dc_pos:.2f}) — conviction reentry {_reentry_size_mult:.2f}x (BOUNCE_TOP_REENTRY_MULT)")
                 else:
                     return "NO_ACTION", f"Wait_WT_Reentry_S(wt5={_wt1_5m:.0f},htf={'Y' if htf_confirm else 'N'},dc={_dc_pos:.2f})", 0.0, 0.0
-            # Falling cross = strengthening downtrend = 150% size for shorts
+            # Falling cross = strengthening downtrend
             if _wt_cross_rising is False or _wt_cross_rising_1h is False:
-                _reentry_size_mult = 1.5
-                logger.info(f"[REENTRY_FALLING] SHORT {symbol}: WT cross at {_wt_cross_val:.0f} < prev {_wt_cross_prev:.0f} — downtrend strengthening, 1.5x size")
+                _reentry_size_mult = float(getattr(config, 'BOUNCE_TOP_RISING_CROSS_MULT', 2.0))
+                logger.info(f"[REENTRY_FALLING] SHORT {symbol}: WT cross at {_wt_cross_val:.0f} < prev {_wt_cross_prev:.0f} — downtrend strengthening, {_reentry_size_mult:.2f}x size (BOUNCE_TOP_RISING_CROSS_MULT)")
             if _bear_div:
                 _reentry_size_mult = min(2.0, _reentry_size_mult * 1.3)
                 logger.info(f"[REENTRY_BEAR_DIV] SHORT {symbol}: Bearish divergence detected — {_reentry_size_mult:.1f}x size")
@@ -5557,7 +5575,9 @@ class StockStrategy:
         _last_red_amt = abs(float(getattr(position, 'last_reduction_amount', 0) or 0))
         _start_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
         base_qty = max(_last_red_amt, _start_qty) if _last_red_amt > 0 else _start_qty  # Never less than what we just sold
-        if max_q: base_qty = min(base_qty * 1.5, max(1.0, max_q - positionAmt))
+        # 2026-04-26 — wires DEAD switch REENTRY_TIER1_SIZE_MULT_TRADIER. Default 1.5 preserves prior 1.5× cap behavior.
+        _tier1_mult = float(getattr(config, 'REENTRY_TIER1_SIZE_MULT_TRADIER', 1.5))
+        if max_q: base_qty = min(base_qty * _tier1_mult, max(1.0, max_q - positionAmt))
 
         dc_high_15m_val = float(i.get('dc_high_15m', 0))
         dc_low_15m_val = float(i.get('dc_low_15m', 0))
@@ -8334,17 +8354,20 @@ class TradierTradeManager:
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT rally gate FAIL k5m={k_5m:.0f}(falling={k_5m < k_5m_prev}) k15m={k_15m:.0f}(falling={k_15m < k_15m_prev},lvl={_k15m_lvl_ok}) htf={_htf_wt_fav}/{_rally_htf_min} (<3h)")
                                     continue
                         elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired and hours_since < 48.0:
-                            # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16) ═══
+                            # ═══ SAFETY SWITCH 4: BOUNCE REENTRY K-GATE (2026-04-16, hardcoded 50/50 → config 2026-04-26) ═══
                             _bounce_enabled = getattr(config, 'BOUNCE_REENTRY_ENABLED_TRADIER', True)
                             if _bounce_enabled:
-                                if side == "LONG" and not (k_5m < 50.0 and k_5m > k_5m_prev):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <50 and rising, {hours_since:.1f}h)")
+                                # 2026-04-26 — wires DEAD switches BOUNCE_REENTRY_K_RESET_{LONG,SHORT}_TRADIER. Was hardcoded 50/50.
+                                _kr_long_thr = float(getattr(config, 'BOUNCE_REENTRY_K_RESET_LONG_TRADIER', 35))
+                                _kr_short_thr = float(getattr(config, 'BOUNCE_REENTRY_K_RESET_SHORT_TRADIER', 65))
+                                if side == "LONG" and not (k_5m < _kr_long_thr and k_5m > k_5m_prev):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <{_kr_long_thr:.0f} and rising, {hours_since:.1f}h)")
                                     continue
                                 if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
                                     continue
-                                if side == "SHORT" and not (k_5m > 50.0 and k_5m < k_5m_prev):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >50 and falling, {hours_since:.1f}h)")
+                                if side == "SHORT" and not (k_5m > _kr_short_thr and k_5m < k_5m_prev):
+                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >{_kr_short_thr:.0f} and falling, {hours_since:.1f}h)")
                                     continue
                                 if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
