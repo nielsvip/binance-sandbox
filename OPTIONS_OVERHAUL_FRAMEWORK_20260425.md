@@ -1,8 +1,52 @@
-# Options Trading Overhaul Framework — 2026-04-25
+# Options Trading Overhaul Framework — 2026-04-25 (v2)
 
 > **Trigger**: -20% portfolio week, primarily options-driven. Owner: nielsvip.
-> **Status**: Framework draft. **No code changes yet.** Decisions required from owner before any wiring.
+> **Status**: Framework v2 — owner decisions applied 2026-04-26. **No code changes yet.**
 > **Scope**: Tradier options only (`trb`, `trc`). Crypto execution is out of scope here.
+
+---
+
+## v2 ADDENDUM — Owner decisions + new findings (2026-04-26)
+
+### Decisions locked in
+| # | Decision | Effect on framework |
+|---|----------|---------------------|
+| Q1 | Loss source = `/Users/niels/Downloads/activity.csv` | See §0.1 below — confirmed losers |
+| Q2 | **Kill switches use TECHNICALS, not %.** "Fall through DC bottom = kill no matter what." | Layer 1 rewritten — see §4 below |
+| Q3 | YES to spreads + **re-purchase logic** when better price re-appears | Layer 3 + new §3a (re-entry policy) |
+| Q4 | Verify per-sector P/C budgets exist | **Verified: they do NOT exist. Only global P/C ratio + per-sector $ cap.** Must be built. |
+| Q5 | SPY catastrophe hedge — go | Layer 7 stays |
+| Q6 | Tighten concentration | Layer 6 stays (per-symbol 25→20%, sector 40→35%) |
+| Q7 | CSP — accept deprecation | Mark dead code, archive monitor |
+| Q8 | Force-close on analyzer score ≥ 80 | Layer 2 stays |
+| Daily P&L breaker | **Prefer technicals over hard %.** | Account-level breaker downgraded to last-resort backstop. Per-position technical exits do the work. |
+
+### New critical findings from 2026-04-26 audit
+
+1. **BLACKLIST not enforced** (`config_tradier.py:95`). `BLACKLIST = ["ABT","JNJ","MSTR"]` exists but the options agent uses `_load_allowed_symbols()` against `symbols_trb_long.json` / `symbols_trb_short.json` instead. Result: **ABT and JNJ were bought as call options on 2026-04-22 despite both being blacklisted AND not present in `symbols_trb_long.json`**. There is a bypass path that needs to be found and closed. **Two parallel symbol-gate systems that disagree = guaranteed leak.**
+
+2. **No options trade logging exists.** No `data/options_*` directory. No JSONL writers in `tradier_options_agent.py` / `tradier_options_analyzer.py` / `tradier_options_csp_monitor.py` (the CSP monitor logs ticks, but CSPs are disabled, so it logs nothing useful). **You cannot manage what you cannot see.** This becomes Phase 0 — gating everything else.
+
+3. **PLTR averaging-up disaster** (Apr 21–23). PLTR Jul17 $150C was bought 6 times: $17.45, $17.30, $14.65, $12.52, $12.45, $12.35. That's adding contracts as the option fell ~28% over 3 days. No stop fired through any of those adds. **The framework must explicitly forbid augmenting an option position that is below its first-fill price** (or equivalently, must use technicals on the underlying to gate further buys).
+
+4. **Per-sector P/C does NOT exist** (your assumption wrong). Only global `OPTIONS_MARKET_RATIO_MIN/MAX` (25–75% calls overall) and `OPTIONS_MAX_PER_SECTOR` ($ cap, 40%). There is no `HEALTH: 60% calls / 40% puts` style mapping. Building it is part of Phase 2 — see §6.
+
+### 0.1 — Confirmed losers from activity.csv (Apr 21–24 only — full week needs longer export)
+
+| OCC | Description | Action | Net | Note |
+|-----|-------------|--------|-----|------|
+| `PYPL260618P00050000` | PYPL Jun18 $50P | 3 buys @ ~$3.53 = $1059, 3 sells @ $3.75 = $1125, then re-bought @ $3.45+$3.55+$3.58 = $1058 spent again | -$106 (current) | ATM put with chop, churning fees |
+| `GLD260630C00440000` | GLD Jun30 $440C | Bought 1 @ $16.75 = $1675 | -$235 (current) | Underlying $433–435, $5–7 OTM |
+| `PLTR260717C00150000` | PLTR Jul17 $150C | 6 buys avg ~$14.45 ≈ $8672 spent, 4 sells netted ~$4884 | **-$566 current on remainder** | Averaged up *and* down, no stop |
+| `ABT260618C00097500` | ABT Jun18 $97.50C | 4 @ $2.15 = $860, sold same day @ $1.55 = $620 | **-$240 ROGUE — blacklisted** | Symbol on BLACKLIST, gate didn't fire |
+| `JNJ260515C00240000` | JNJ May15 $240C | 8 @ $1.10 = $880, sold same day @ $0.67 = $535 | **-$345 ROGUE — blacklisted** | Symbol on BLACKLIST, gate didn't fire |
+| `NEM260618C00105000` | NEM Jun18 $105C | Sold 2 @ $11.85 = $2370 | (closing leg) | NEM is in gold spread group |
+| `UNG260515C00011000` | UNG May15 $11C | 1 @ $0.55, sold @ $0.32 | -$23 | < 30 DTE, lottery ticket — should not have been opened |
+| `BOIL260515C00014000` | BOIL May15 $14C | 1 @ $1.11, sold @ $1.03 | -$8 | < 30 DTE, lottery ticket |
+
+**Visible options-attributable loss in 4-day snapshot ≈ -$1.5k.** The remaining ~$12.5k of the -20% week must be either (a) earlier-week options (longer CSV export needed), (b) realized stock losses on the heavy MSTR/PLTR/NEM churn visible in the same CSV, or (c) marked-to-market losses on positions still open. **You should export the full 30-day activity range so we can complete the post-mortem.**
+
+---
 
 ---
 
@@ -124,20 +168,76 @@ I want to be direct rather than just nod along, because mis-naming this could co
 
 ---
 
+## 3a. Re-purchase / re-entry policy (new — owner-requested)
+
+> *"Re-purchase of closed calls and puts if a better opportunity arrives at a good price."*
+
+After a position closes (whether by L1 kill, L2 analyzer exit, or profit-take), the same OCC may be re-bought **only if all of**:
+
+1. **Cooldown ≥ 2 hours** since the prior close. Prevents whipsaw / chasing.
+2. **Underlying technicals favorable**: for a call, underlying close > `dc_low_D` AND `wt_cross_D` ∉ {BEAR}. For a put, underlying close < `dc_high_D` AND `wt_cross_D` ∉ {BULL}. (i.e. the technicals that *would have killed it* must not currently be flagged.)
+3. **Better price**: current ask ≤ 70% of the average exit price from the prior round. ("Significantly better" — not 1% cheaper.)
+4. **DTE still passes the entry gate**: ≥ 60 DTE (existing rule, unchanged).
+5. **Concurrency budget allows** (L1.C1–C3 still apply).
+6. **Re-entry counter ≤ 3** for this OCC across its lifetime. After 3 round-trips the OCC is permanently retired — repeated re-entries on the same strike are a sign the original thesis is broken.
+
+State stored in `data/options_repurchase_state.json`:
+```json
+{"PLTR260717C00150000": {
+  "round_trips": [
+    {"in_ts": "...", "in_px": 12.45, "out_ts": "...", "out_px": 9.80, "out_reason": "L1.T3"},
+    ...
+  ],
+  "last_close_ts": "...",
+  "permanently_retired": false
+}}
+```
+
+Re-entries log to the same `data/options_trades/<occ>.jsonl` lifecycle file as the original (Phase 0). Audit-traceable.
+
+---
+
 ## 4. The proposed framework
 
 Eight layers, ranked by disaster-prevention value. Each layer should fail safely if the layer below it breaks.
 
-### Layer 1 — KILL SWITCHES (non-negotiable, ship first)
-The thing that should have prevented this week.
+### Layer 1 — KILL SWITCHES — TECHNICAL FIRST (rewritten v2)
+Owner directive: kill on technicals, not arbitrary %. % is a backstop only.
 
-- **L1.1 — Re-enable `OPTIONS_MAX_LOSS_GUARD_ENABLED`.** Per-position hard stop: -50% premium for DTE >30, -40% for 14<DTE≤30, -30% for DTE≤14. Stricter than the previous values because the previous values let trades go too far before triggering.
-- **L1.2 — Daily account loss circuit breaker.**
-  - Soft (`-1.5%` of account / day, ≈ -$1,050): block new option opens, log warning, email.
-  - Hard (`-3%` of account / day, ≈ -$2,100): close all open options at market, halt trading until manual reset.
-  - Reset at 13:30 UTC daily.
-- **L1.3 — Per-trade dollar ceiling = 1% of equity.** Right now caps are absolute ($800/order). Make it `min($800, 1% × equity)`. On a $70k account that's $700 — same number, but it scales when the account grows or shrinks.
-- **L1.4 — Max concurrent open option positions = 8** (down from 15). Empirically you cannot supervise 15 long-premium positions in a fast tape; reducing concurrency is the simplest gamma-risk control there is.
+**Per-position technical exits — primary** (any one fires → close immediately, regardless of P&L):
+
+| ID | Trigger (underlying) | Long call | Long put |
+|----|----------------------|-----------|----------|
+| L1.T1 | Close < `dc_low_4h` | KILL | (skip) |
+| L1.T2 | Close > `dc_high_4h` | (skip) | KILL |
+| L1.T3 | Close < `dc_low_D` (red zone break) | **KILL — no exception** | (skip) |
+| L1.T4 | Close > `dc_high_D` (red zone break) | (skip) | **KILL — no exception** |
+| L1.T5 | Daily WT bear cross (wt1_D < wt2_D, was wt1>wt2) | KILL on next 3m confirm | (skip) |
+| L1.T6 | Daily WT bull cross | (skip) | KILL on next 3m confirm |
+| L1.T7 | Stoch_D K crosses < 80 from above (on call) | KILL if also in loss | (skip) |
+| L1.T8 | Stoch_D K crosses > 20 from below (on put) | (skip) | KILL if also in loss |
+| L1.T9 | DTE ≤ 5 | KILL (theta cliff, no exception) | KILL |
+| L1.T10 | 21 calendar days held | KILL | KILL |
+
+These are computed from the underlying's existing indicator pipeline (`tradier_indicators.py`) — no new data needed.
+
+**% backstops — last resort, NOT primary** (catches the case where indicators lag a gap):
+- L1.B1 — Premium loss > -75% of debit paid → emergency close. **One number, one threshold, no DTE-tier complexity.** Triggers only if technicals already failed to fire.
+- L1.B2 — Single-position $-loss > 1.5% of account ($1,050 on $70k) → emergency close.
+
+**Augment / averaging-down forbidden** (the PLTR pattern):
+- L1.A1 — **No buys to add to an existing OCC position if any technical (L1.T1–T8) is currently flagged.** This would have stopped 5 of the 6 PLTR adds.
+- L1.A2 — No buys to add if current option mid < first-fill price × 0.85 (already down 15%+ from entry — the move went against you, don't double down).
+- L1.A3 — Adds to existing OCC require an explicit user override flag *or* must come from the standard re-entry policy in §3a.
+
+**Concurrency**:
+- L1.C1 — Max 8 open option positions at once (down from 15).
+- L1.C2 — Max 3 open positions per sector group.
+- L1.C3 — Max 2 open positions per single underlying.
+
+**Daily account loss breaker — backstop only** (per owner directive, technicals are primary):
+- L1.D1 — Soft trigger: realized + MTM intra-day loss < -2.5% of equity → **block new opens** for the rest of the day, no force-flatten. Reset 13:30 UTC.
+- L1.D2 — Hard trigger: < -5% of equity intra-day → **flatten all options at market**, halt new entries until manual reset. This is the "the building is on fire" switch — should rarely fire if L1.T* are working.
 
 ### Layer 2 — MAKE EXITS MANDATORY
 Convert the existing analyzer signals from advisory to enforced.
@@ -260,31 +360,116 @@ This becomes your post-mortem corpus. Every Friday, one cron job summarizes the 
 
 ## 6. Phased implementation
 
-Don't ship this all at once. Each phase is independently valuable and reversible.
+Each phase is independently valuable and reversible. **Phase 0 gates everything else** — without trade logging, no later phase can be validated, debugged, or post-mortemed.
 
-### Phase 0 — Diagnosis (today, before any code)
-- You confirm where this week's losses actually came from. Specific OCCs, entry prices, exit prices, account.
-- I (or you) write a `LOSS_POSTMORTEM_2026-04-25.md` modeled on `TRADE_LOSS_ANALYSIS.md`. Without this, every fix below is fighting yesterday's war.
+### Phase 0 — OPTIONS ADMIN / LOGGING (BLOCKER — ship before anything else)
 
-### Phase 1 — Stop the bleed (1 day, deploy same day after backtest)
-- Re-enable `OPTIONS_MAX_LOSS_GUARD_ENABLED` (L1.1) with stricter thresholds.
-- Add daily PnL circuit breaker (L1.2). Soft + hard.
+> *"Make sure we finally get an admin of options trades like what we have for equity. If you don't know what we own how can you even know to close it."* — owner
+
+**Today's reality**: zero structured logs. No `data/options_*` dir. No JSONL writer in the agent or analyzer. Every trade through Tradier vanishes from our records the moment it fires. This is why the post-mortem of this week is so hard.
+
+**What to build**:
+
+#### P0.1 — Single source of truth: `tradier_options_state.py`
+A new module that owns "what options do we own right now and what is their state?" Mirrors what `tradier_positions.py` does for equity. Responsibilities:
+- Poll Tradier `/v1/accounts/{id}/positions` every 30s (configurable).
+- Reconcile against last-known internal state. Detect new fills (no entry seen) → log as `RECONCILE_NEW`. Detect missing positions (had it, gone) → log as `RECONCILE_CLOSED`.
+- Compute and stamp Greeks (delta/gamma/theta/vega via existing BS in `tradier_options_analyzer.py:82`).
+- Compute and stamp underlying technicals (dc_high_D/dc_low_D/wt_cross_D/stoch_D from `tradier_indicators.py`).
+- Publish current snapshot to `data/options_state/current.json` atomically (write-tmp + rename).
+- Single Redis key `tradier:options:state` with TTL 90s as fast-read mirror.
+
+#### P0.2 — Per-tick snapshot log: `data/options_state/<YYYYMMDD>.jsonl`
+Every poll tick appends one line:
+```json
+{"ts":"2026-04-26T13:35:00Z","positions":[{"occ":"PYPL260618P00050000","qty":3,"avg_cost":3.53,"mid":3.45,"pnl":-24,"pnl_pct":-2.3,"dte":53,"delta":-0.42,"theta":-0.04,"underlying":49.88,"dc_low_D":48.5,"dc_high_D":52.1,"wt_cross_D":"NEUTRAL","stoch_D_K":52,"flags":[]}],"portfolio":{"net_delta":12.3,"net_theta":-15.4,"total_premium":4830,"daily_pnl":-186}}
+```
+This is what the supervisor reads. This is what the post-mortem reads. This is what the morning email reads. **Single source of truth for all downstream consumers.**
+
+#### P0.3 — Per-OCC lifecycle log: `data/options_trades/<occ>.jsonl`
+One file per OCC, append-only, full life cycle:
+```json
+{"ts":"...","action":"OPEN","qty":3,"price":3.53,"reason":"daily_cycle_recommendation","analyzer_score":82}
+{"ts":"...","action":"AUGMENT","qty":1,"price":3.45,"reason":"daily_cycle_recommendation"}
+{"ts":"...","action":"CLOSE","qty":-3,"price":3.75,"reason":"L2.3_WT_D_REVERSAL","pnl":66}
+{"ts":"...","action":"REOPEN","qty":1,"price":2.40,"reason":"3a_repurchase_round_2"}
+```
+Powered by hooks in `tradier_options_agent.execute_decisions` and `tradier_manage.py`'s closing paths. No order can fire without writing this entry first (write-then-fire pattern).
+
+#### P0.4 — Daily roll-up: `data/options_daily/<YYYYMMDD>.json`
+End-of-day summary:
+- Open positions count, total premium, net Greeks, daily MTM P&L.
+- Trades-today list (opens, closes, reopens), realized P&L per OCC.
+- Sector breakdown: $ deployed, P/C ratio per sector.
+- Kill-switch fires (count by L1.T1–T10, L1.B*, L1.A*, L1.D*) — proves the safety net works.
+- Re-entries (count, success rate).
+- Appended to morning email next day.
+
+#### P0.5 — Backfill from `activity.csv`
+Build a one-shot importer `backfill_options_history.py` that ingests `/Users/niels/Downloads/activity.csv` (or a longer Tradier history export) and produces:
+- One `data/options_trades/<occ>.jsonl` file per option seen.
+- One `data/options_daily/<date>.json` per trading day.
+- A starting `data/options_state/current.json` matching today's broker positions.
+
+This gives us a populated history from day 1 instead of waiting weeks for organic data.
+
+#### P0.6 — UI (read-only) — extends existing `:5050` analytics feed
+- New `/options` route showing current positions table (OCC, qty, cost, mid, P&L, DTE, Greeks, underlying technicals, kill-switch flags armed).
+- New `/options/<occ>` showing the lifecycle log for one OCC.
+- New `/options/daily` showing daily roll-ups.
+- Same Flask app as equity — minimal new infra.
+
+#### P0.7 — Symbol gate audit (find and close the ABT/JNJ bypass)
+Before shipping any other phase: trace every code path that can call `place_order` for an option and prove that **all** of them check both:
+- `_load_allowed_symbols()` (current JSON allowlist)
+- `config_tradier.BLACKLIST` (currently dead)
+
+Either consolidate to one source (recommended: drop BLACKLIST, make it a comment that says "use symbols_trb_*.json"), or wire BLACKLIST into the agent. **The fact that two parallel systems disagreed is the literal bug — pick one and enforce it everywhere.**
+
+**Phase 0 acceptance criteria**:
+- Every existing open option position appears in `current.json` within 60s of the supervisor starting.
+- Every close fired by any path produces a `data/options_trades/<occ>.jsonl` line within 5s.
+- One full week of `data/options_daily/` files exists.
+- ABT and JNJ can no longer be bought via any code path (verified by intentional test calls in dry-run).
+
+**No subsequent phase ships until Phase 0 is green.**
+
+### Phase 1 — Stop the bleed (1 day after Phase 0)
+- Wire L1.T1–T10 (technical kill switches) into the supervisor — ride on the data the supervisor already polls.
+- Wire L1.B1–B2 (% backstops) into the same loop.
+- Wire L1.A1–A3 (no-augment-into-loss) into `tradier_options_agent.execute_decisions` and any other entry path.
+- Wire L1.C1–C3 (concurrency caps).
+- Re-enable `OPTIONS_MAX_LOSS_GUARD_ENABLED` as the L1.B1 backstop (single -75% threshold, not the old DTE tiers).
 - Make `tradier_manage.py` *enforce* analyzer exit signals at score ≥ 80 (L2.1, L2.2).
-- These four changes alone would have prevented most of this week. Backtest on `backtest_v8_engine.py` against last 30 days before flipping live.
+- Backtest on `backtest_v8_engine.py` against the past 30 days of Tradier history (use Phase 0 backfilled data) before flipping live.
 
-### Phase 2 — Convert to defined-risk (2–4 days)
+### Phase 2 — Defined-risk + sector P/C budgets (2–4 days)
 - Wire `OPTIONS_SPREAD_ENABLED=True` through the entry path so default = vertical debit spread (L3).
-- Add IV-rank gate on entries (L5.1).
-- Add VIX regime gate (L5.2).
+- Build per-sector P/C budget map (this does NOT exist today). Suggested initial table:
+
+| Sector | Max % of options book | Default P/C bias | Rationale |
+|--------|------------------------|------------------|-----------|
+| TECH | 25% | 50/50 | Highest IV, balanced expression |
+| HEALTH | 15% | 40C/60P | Defensive — biased puts on rallies |
+| FINANCIAL | 15% | 60C/40P | Pro-cyclical |
+| ENERGY | 15% | 50/50 | High IV, no edge view |
+| CONSUMER | 10% | 50/50 | |
+| GOLD/COMMOD | 15% | 60C/40P | Trend-following bias |
+| INDEX/ETF | 10% | 50/50 | Includes spy hedge bucket |
+| OTHER | 5% | 50/50 | |
+
+(These are placeholders — ground them in your sector P&L history during implementation.)
+- IV-rank gate on entries (L5.1).
+- VIX regime gate (L5.2).
+- Re-purchase / re-entry policy (§3a) — this is conceptually part of Phase 1 + Phase 2 — wire after spreads are live.
 
 ### Phase 3 — Supervisor agent (3–5 days)
-- Implement `tradier_options_supervisor.py` per Section 5.
-- Replace `options_watchdog_runner.sh` schedule to launch it.
+- `tradier_options_supervisor.py` reads from Phase 0's `current.json` and fires the kill switches from Phase 1.
+- Replace `options_watchdog_runner.sh` schedule to launch it (13:30–20:00 UTC weekdays).
 - Run alongside existing watchdog for one week, dry-run only (logs decisions without firing). Compare against actual outcomes. Then enable live actions.
 
 ### Phase 4 — Portfolio Greeks budget (1 week)
-- Aggregate Greeks computation (L4.1).
-- Bands + breach actions (L4.2, L4.3).
+- Aggregate Greeks (already computed and logged in Phase 0) get bands + breach actions (L4.2, L4.3).
 - Greeks added to morning + evening email (L4.4).
 
 ### Phase 5 — Catastrophe hedge (slow, deliberate)
@@ -297,18 +482,37 @@ Don't ship this all at once. Each phase is independently valuable and reversible
 
 ---
 
-## 7. Decisions I need from you before writing any code
+## 7. Decisions status (updated 2026-04-26)
 
-These are not rhetorical — each one changes the implementation materially.
+**Locked in** (will be implemented as specified):
+1. ✅ Loss source — `activity.csv` (4-day snapshot only; longer export still wanted to complete post-mortem).
+2. ✅ Kill switches use **technicals** (DC/D-zone breaks, WT crosses, stoch reversals). % is backstop only at -75% premium / -1.5% account.
+3. ✅ Default to vertical debit spreads. Naked longs only with explicit override.
+4. ✅ Pivot from "weaker-sector pairs" to vertical spreads + SPY tail puts.
+5. ✅ SPY catastrophe hedge — go.
+6. ✅ Concurrency: 8 max positions, 3/sector, 2/symbol.
+7. ✅ CSPs deprecated — monitor will be archived, code marked dead.
+8. ✅ Force-close on analyzer score ≥ 80 — confirmed.
+9. ✅ Account-level breaker downgraded to backstop (-2.5% soft / -5% hard). Per-position technical exits do the work.
 
-1. **Loss confirmation**: where did the -20% actually come from? OCCs + dollar amounts + which account. *Without this Phase 0 can't close.*
-2. **Daily loss circuit breaker thresholds**: am I right that -1.5% soft / -3% hard is the right pain point? Or are you willing to tolerate more for upside? Note: *every* extra percent you allow on the breaker is potentially extra weeks like this one.
-3. **Naked long premium — eliminate or restrict?** My recommendation is "default to spreads, naked only with explicit override." Are you willing to give up the unbounded upside of a naked long call in exchange for a structurally bounded loss?
-4. **Pairs-trade vs spread hedge**: do you accept the analysis in §3 — that "long call + long put on weaker name" is a pairs trade and not a hedge — and pivot to vertical spreads + portfolio-level SPY puts? Or do you want to also pursue the pairs construction as a separate alpha book?
-5. **Catastrophe hedge budget**: 1–1.5% of equity / quarter is the standard. Are you OK with that drag, or do you want a smaller (or zero) tail hedge?
-6. **Concurrency**: drop max-open option positions from 15 to 8? You can supervise 8 in your head. 15 you cannot.
-7. **`OPTIONS_CSP_ENABLED`**: stays off? It's been off since inception. The CSP infrastructure (monitor, sweep, backtest) is complete but unused. Either commit to it or deprecate it — leaving it half-ready is dead code that confuses future debugging.
-8. **Enforcement hardness for exit signals**: are you OK with the supervisor *force-closing* a position the analyzer flags at score ≥ 80, even if the position is at a small loss? This is the violation of `STRICT_NO_LOSS` you've already accepted in spirit for options ("Options Hold Strategy: Exit ONLY on D reversal" — but D reversal often *is* the exit at a loss, just framed as technical not P&L based). I want explicit confirmation before wiring it.
+**Still open — needs your input before Phase 0 ships**:
+
+A. **Longer activity export.** The 200-line CSV covers Apr 21–24 only. Can you export Tradier history for the full month (or longer — back to 2026-03-25 ideally)? Without it the post-mortem is incomplete, the Phase 0.5 backfill is partial, and we'll be designing safeguards for ~$1.5k of visible options losses when the actual hole is ~$14k.
+
+B. **Sector P/C bias table** (§6 in Phase 2). I sketched a default. You may want to override based on your actual P&L by sector — do you have intuition on which sectors you've made/lost on? E.g. should HEALTH default to 40C/60P (defensive) or 50/50?
+
+C. **The ABT/JNJ bypass path.** Do you want me to find it now (2-3h investigation) or defer until Phase 0.7? Strong recommendation: find it now — we should know how the leak happened before we trust any new safeguards. It might also reveal *other* hidden bypass paths for unrelated tradeable_keys checks.
+
+D. **Phase 0 logging — what's the priority order?** I can ship in this order:
+   - D1. State module + per-tick snapshot log (P0.1, P0.2) — gives us "what do we own right now?"
+   - D2. Per-OCC lifecycle log (P0.3) — gives us "what happened to each trade?"
+   - D3. Backfill from CSV (P0.5) — gives us history.
+   - D4. UI route (P0.6) — gives you a dashboard.
+   - D5. Symbol-gate audit (P0.7) — closes the rogue-trade hole.
+   
+   Ship all in parallel? Or D5 (gate audit) first as the most urgent safety fix?
+
+E. **L1.A1 (no augment when technical against you) — does it apply to spreads too?** When we move to vertical spreads in Phase 2, an "augment" usually means opening a fresh spread on the same underlying. Should L1.A1 block that, or only block adds to the same OCC? My recommendation: block adds to same OCC (the PLTR pattern), but allow new spreads on same underlying as long as concurrency limit (L1.C3 = 2/symbol) holds.
 
 ---
 

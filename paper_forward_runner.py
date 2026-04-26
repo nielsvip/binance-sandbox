@@ -48,8 +48,8 @@ LOG_DIR = BASE_PATH / "logs"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-POSITION_USD = 20.0
-MAX_CONCURRENT = 8
+POSITION_USD = 10.0
+MAX_CONCURRENT = 25
 PAPER_FEES_PER_SIDE = 0.0004
 STARTING_EQUITY = 1000.0
 ENTRY_LOOP_SEC = 10.0
@@ -58,10 +58,24 @@ EQUITY_LOG_SEC = 60.0
 STATE_SNAPSHOT_SEC = 60.0
 HEARTBEAT_SEC = 30.0
 
+# V3 stall override for arms A/B: ride out until V3's technical exits fire
+# (k>95 + bar reversal = WT/DC slowdown at top). 24h backstop prevents zombies.
+V3_PAPER_MAX_HOLD_MIN = 1440.0
+V3_PAPER_STALL_GAIN_MAX_PCT = -5.0
+
+# Hedge-promotion (PnD protection) — arms A/B only. EXPLICITLY FORBIDDEN in live
+# accounts. Logic: if V3 would fire opposite side on an underwater position, open
+# the hedge; once hedge gains >= HEDGE_PROMOTION_GAIN_PCT, close the original at
+# its realized loss and promote the hedge to primary.
+PAPER_HEDGE_PROMOTION_ENABLED = True
+HEDGE_TRIGGER_LOSS_PCT = -0.5
+HEDGE_PROMOTION_GAIN_PCT = 0.2
+
 ARM_C_CANDLE_BARS = 60
 ARM_C_DC_LOOKBACK = 20
+ARM_C_EXIT_STRUCTURE_BARS = 5  # close on N-bar high/low break — "structural exit"
 ARM_C_MIN_24H_QUOTE_VOL = 1_000_000.0
-ARM_C_MAX_HOLD_MIN = 30.0
+ARM_C_MAX_HOLD_MIN = 1440.0  # 24h zombie backstop only
 ARM_C_TICK_BUF_FLUSH_SEC = 1.0
 
 LATEST_MARKET_DATA_KEY = "latest_market_data"

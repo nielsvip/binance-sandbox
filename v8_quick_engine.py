@@ -667,6 +667,19 @@ class QuickConfig:
     # WT bull/bear cross count: require N recent crosses for entry momentum
     WT_CROSS_COUNT_ENTRY_ENABLED: bool = False
     WT_CROSS_COUNT_MIN: int = 1            # min wt_bull_cross_count (long) or wt_bear_cross_count (short)
+    # === Improvement Framework A1-A4 (2026-04-25, default OFF, NEEDS Tier 2 SWEEP) ===
+    # NPZ data populated by binance_funding_fetcher.py (A1), binance_oi_fetcher.py (A2),
+    # backtest_v8_precompute.py KC/Squeeze block (A3), divergence block (A4).
+    SQUEEZE_FIRE_ENTRY_ENABLED: bool = False  # squeeze release fires entry in matching direction
+    SQUEEZE_FIRE_TF: str = "1h"               # which squeeze_fire_{tf} to read
+    DIVERGENCE_ENTRY_ENABLED: bool = False    # regular pivot-based div fires entry
+    DIVERGENCE_ENTRY_TF: str = "1h"
+    DIVERGENCE_INDICATOR: str = "wt"          # "wt" | "mfi" | "either"
+    FUNDING_GATE_ENABLED: bool = False        # veto entry when 8h funding too extreme (overcrowded)
+    FUNDING_GATE_LONG_MAX: float = 0.0005     # rate above this = veto longs
+    FUNDING_GATE_SHORT_MIN: float = -0.0005   # rate below this = veto shorts
+    OI_CONFIRM_ENABLED: bool = False          # require OI rising/falling to confirm trend
+    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this for direction
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1689,6 +1702,53 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _cc_min = int(getattr(cfg, 'WT_CROSS_COUNT_MIN', 1))
         if _cc_arr.any():
             base_sig = base_sig & (_cc_arr >= _cc_min)
+    # === Improvement Framework A1-A4 (2026-04-25): squeeze, divergence, funding, OI ===
+    # SQUEEZE_FIRE_ENTRY (A3): on squeeze release, fire entry in direction. Additive — opens new entries.
+    if getattr(cfg, 'SQUEEZE_FIRE_ENTRY_ENABLED', False):
+        _sf_tf = str(getattr(cfg, 'SQUEEZE_FIRE_TF', '1h'))
+        _sf_arr = _safe(npz, f'squeeze_fire_{_sf_tf}', n, 0).astype(np.int8)
+        if _sf_arr.any():
+            _sf_match = (_sf_arr == 1) if is_long else (_sf_arr == -1)
+            base_sig = base_sig | _sf_match
+    # DIVERGENCE_ENTRY (A4): regular bull (long) / bear (short) divergence fires entry. Additive.
+    if getattr(cfg, 'DIVERGENCE_ENTRY_ENABLED', False):
+        _dv_tf = str(getattr(cfg, 'DIVERGENCE_ENTRY_TF', '1h'))
+        _dv_ind = str(getattr(cfg, 'DIVERGENCE_INDICATOR', 'wt'))
+        _dv_key = 'div_reg_bull' if is_long else 'div_reg_bear'
+        if _dv_ind == 'either':
+            _dv_wt = _safeb(npz, f'{_dv_key}_wt_{_dv_tf}', n)
+            _dv_mfi = _safeb(npz, f'{_dv_key}_mfi_{_dv_tf}', n)
+            _dv_sig = _dv_wt | _dv_mfi
+        elif _dv_ind == 'mfi':
+            _dv_sig = _safeb(npz, f'{_dv_key}_mfi_{_dv_tf}', n)
+        else:
+            _dv_sig = _safeb(npz, f'{_dv_key}_wt_{_dv_tf}', n)
+        if _dv_sig.any():
+            base_sig = base_sig | _dv_sig
+    # FUNDING_GATE (A1): veto when funding rate too extreme. Filter — but pass-through on pre-cache bars (rate exactly 0).
+    # Symbols listed after 2022-01-01 have funding_rate=0 before listing date.
+    if getattr(cfg, 'FUNDING_GATE_ENABLED', False):
+        _fr = _safe(npz, f'funding_rate_{_ltf}', n, 0.0)
+        if np.abs(_fr).sum() > 0:
+            _fr_live = _fr != 0.0
+            if is_long:
+                _fr_pass = (_fr <= float(getattr(cfg, 'FUNDING_GATE_LONG_MAX', 0.0005))) | (~_fr_live)
+            else:
+                _fr_pass = (_fr >= float(getattr(cfg, 'FUNDING_GATE_SHORT_MIN', -0.0005))) | (~_fr_live)
+            base_sig = base_sig & _fr_pass
+    # OI_CONFIRM (A2): Binance limits OI history to ~30d. Pre-cache bars have oi=0; gate must pass-through there.
+    # Filter ONLY applies on bars where oi_{tf} > 0 (cache active). Otherwise gate is no-op.
+    if getattr(cfg, 'OI_CONFIRM_ENABLED', False):
+        _oi_arr = _safe(npz, f'oi_{_ltf}', n, 0.0)
+        if _oi_arr.max() > 0:
+            _oi_chg = _safe(npz, f'oi_change_1h_{_ltf}', n, 0.0)
+            _oi_min = float(getattr(cfg, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))
+            _oi_live = _oi_arr > 0
+            if is_long:
+                _oi_pass = (_oi_chg >= _oi_min) | (~_oi_live)
+            else:
+                _oi_pass = (_oi_chg <= -_oi_min) | (~_oi_live)
+            base_sig = base_sig & _oi_pass
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
     elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
