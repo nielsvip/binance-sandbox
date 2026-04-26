@@ -18252,9 +18252,12 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         if not stoch_ready:
             return
         last_reduction_time = getattr(position, 'last_reduction_time', None); last_reduction_price = safe_fetch_float(getattr(position, 'last_reduction_price', 0.0), 0.0);atr_3m = safe_fetch_float(i.get('atr_3m', 0), 0.0)
+        # 2026-04-26: was hardcoded 60.0 — agent log scan showed 9,386× "minutes_since_reduction>=60" rejections in 2d, 0 queued.
+        # Made configurable + raised default 60→120 to widen the price-recovery window so K3m alignment has more time to fire.
+        _qr_window_min = float(getattr(config, 'QUICK_RECOVERY_WINDOW_MIN', 120.0))
         if last_reduction_time and last_reduction_price > 0 and atr_3m > 0 and getattr(config, 'REENTRY2_QUICK_RECOVERY_ENABLED', True):
             minutes_since_reduction = (now - last_reduction_time).total_seconds() / 60.0
-            if minutes_since_reduction < 60.0:
+            if minutes_since_reduction < _qr_window_min:
                 quick_recovery_long = is_long and current_price > (last_reduction_price + atr_3m) and k_3m > d_3m
                 quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
                 if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY check - minutes_since_reduction={minutes_since_reduction:.1f}m, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}, current_price={current_price:.6f}, price_threshold={'above' if is_long else 'below'} {last_reduction_price + atr_3m if is_long else last_reduction_price - atr_3m:.6f}, k_3m={k_3m:.1f}, d_3m={d_3m:.1f}, k_3m>d_3m={k_3m > d_3m if is_long else k_3m < d_3m}, quick_recovery_long={quick_recovery_long}, quick_recovery_short={quick_recovery_short}")
@@ -18396,7 +18399,10 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     bounce_dc_high_15m = (not is_long and current_price >= dc_high_15m * 0.998 and current_price <= dc_high_15m * 1.002) if dc_high_15m > 0 else False
                     cross_dc_basis_15m = (is_long and current_price >= dc_basis_15m) or (not is_long and current_price <= dc_basis_15m) if dc_basis_15m > 0 else False
                     if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: DC_BOUNCE check - hours_since_reduction={hours_since_reduction:.1f}h, bounce_dc_low_1h={bounce_dc_low_1h}, bounce_dc_low_15m={bounce_dc_low_15m}, bounce_dc_high_1h={bounce_dc_high_1h}, bounce_dc_high_15m={bounce_dc_high_15m}, cross_dc_basis_15m={cross_dc_basis_15m}, dc_high_1h={dc_high_1h:.6f}, dc_high_1h_ant={dc_high_1h_ant:.6f}, dc_high_1h>dc_high_1h_ant={dc_high_1h > dc_high_1h_ant}, (t_up_3m={t_up_3m}, k_3m={k_3m:.1f} d_3m={d_3m:.1f}, k_15m={k_15m:.1f} d_15m={d_15m:.1f})")
-                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and dc_high_1h > dc_high_1h_ant and getattr(config, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
+                    # 2026-04-26 FIX: was `dc_high_1h > dc_high_1h_ant` for both sides — broken for SHORT (requires uptrend confirmation for short reentry).
+                    # Now: LONG requires dc_high_1h rising (uptrend), SHORT requires dc_low_1h falling (downtrend). 0 fires in 2d before fix.
+                    _dcb_trend_ok = (is_long and dc_high_1h > dc_high_1h_ant) or ((not is_long) and dc_low_1h < dc_low_1h_ant)
+                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and _dcb_trend_ok and getattr(config, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
                         reentry_amount = min(reentry_amount, config.START_POSITION_SIZE / current_price)
                         if dc_low_15m > dc_low_15m_ant:
                             reentry_amount = reentry_amount * 1.5

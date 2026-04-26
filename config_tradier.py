@@ -730,6 +730,25 @@ class TradierConfig:
     TRB_MAX_SHORT_VALUE: float = 50000.0  # NEW: max $ per short position
     TRB_MAX_PUT_VALUE: float = 3000.0     # NEW: max $ per put option
     TRB_MAX_CALL_VALUE: float = 3000.0    # NEW: max $ per call option
+    # === 2026-04-26 NEW user-spec position caps for trb (ABOVE) ===
+    # === VIX regime filter (Phase B framework) ===
+    VIX_REGIME_FILTER_ENABLED: bool = True   # 2026-04-26: VIX vs 200dMA gate; 32% DD reduction documented
+    VIX_PANIC_THRESHOLD: float = 30.0
+    VIX_EXTREME_THRESHOLD: float = 40.0
+    VIX_REGIME_SIZE_MULT_HIGH_VOL: float = 0.5   # VIX > 200dMA → 50% size
+    VIX_REGIME_SIZE_MULT_PANIC: float = 0.0      # VIX > 30 → halt new entries
+    VIX_SMA_LOOKBACK_DAYS: int = 200
+    # === Earnings calendar avoidance (Phase B framework) ===
+    EARNINGS_AVOIDANCE_ENABLED: bool = True
+    EARNINGS_BLACKOUT_DAYS_BEFORE: int = 1     # T-1 blackout
+    EARNINGS_BLACKOUT_DAYS_AFTER: int = 1      # T+1 still blackout (drift unclear early)
+    EARNINGS_FORCE_TRIM_PCT: float = 0.5        # 50% trim T-1 close
+    EARNINGS_PEAD_BOOST_ENABLED: bool = False  # post-earnings-drift overlay (start OFF)
+    EARNINGS_PEAD_MIN_SURPRISE_PCT: float = 4.0
+    EARNINGS_PEAD_BOOST_MULT: float = 1.5
+    # === FOMC/CPI/NFP blackout (Phase B framework) ===
+    MACRO_BLACKOUT_ENABLED: bool = True
+    MACRO_BLACKOUT_SIZE_MULT: float = 0.5
     # === POSITION LIMITS (backtest) ===
     MAX_CONCURRENT_POSITIONS: int = 16  # BACKTEST_CHANGE_T35 total max positions across all strategies
     # === AUGMENT GUARD (parity with crypto) ===
@@ -1835,7 +1854,7 @@ class TradierConfig:
     WT_REDUCE_FRAC_HIGH: float = 0.5  # V4: at gains 1-3%, reduce 50% (was 70%).
     WT_REDUCE_FRAC_LOW: float = 0.15  # V4: was 0.30. At gains 0.3-0.5%, only reduce 15% (was 30%).
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
-    ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # FIX 2026-03-29: was 1, killed real hedges on fin. Need 2 misses to confirm phantom.
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 22% needed restore. 5 = compromise. FIX 2026-03-29: was 1, killed real hedges.
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
     _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'  # WIRED 2026-04-16 (priority 5/100) — tradier_rankings.py:2338 regime tracking
     _INSTANCES: ClassVar[WeakSet] = WeakSet()  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416

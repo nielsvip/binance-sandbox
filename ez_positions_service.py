@@ -6843,15 +6843,23 @@ class PositionService:
         logger.critical(f"[POSAMT_WRITE][HANDLE_AUG][{position_key}] {_old_aug} -> {positionAmt_abs} (augment_qty={augment_qty})")
         if augment_qty > 0 and position.positionAmt > 0:
             old_quantity = position.positionAmt - augment_qty
+            # 2026-04-26 GUARD: entry_price is SACRED per CLAUDE.md. Refuse to write 0 — log and keep prior value.
             if old_quantity > pos_min_qty:
                 old_entry_price = position.entry_price if position.entry_price > 0 else current_price
                 old_value = old_quantity * old_entry_price
                 new_value = augment_qty * current_price
                 total_quantity = position.positionAmt
-                position.entry_price = (old_value + new_value) / total_quantity
+                _new_ep = (old_value + new_value) / total_quantity if total_quantity > 0 else 0
+                if _new_ep > 0:
+                    position.entry_price = _new_ep
+                else:
+                    logger.error(f"[ENTRY_PRICE_GUARD][{getattr(position,'symbol','?')}] Refusing to write entry_price=0 (computed={_new_ep}, total_qty={total_quantity}). Keeping prior entry_price={position.entry_price}.")
             else:
-                position.entry_price = current_price
-                position.initial_quantity = augment_qty
+                if current_price > 0:
+                    position.entry_price = current_price
+                    position.initial_quantity = augment_qty
+                else:
+                    logger.error(f"[ENTRY_PRICE_GUARD][{getattr(position,'symbol','?')}] Refusing to write entry_price=0 (current_price={current_price}). Keeping prior entry_price={position.entry_price}.")
         base_entry_for_gain = position.entry_price
         new_gain = calculate_gain(position.position_side, current_price, base_entry_for_gain)
         if abs(new_gain - position.gain) > 0.1:
@@ -7123,7 +7131,11 @@ class PositionService:
         if reversed_key in self.reversed_positions:
             self.unmark_reversed(reversed_key)
         if was_tiny_position and positionAmt > pos_min_qty:
-            position.entry_price = current_price
+            # 2026-04-26 GUARD: entry_price is SACRED — refuse to write 0
+            if current_price > 0:
+                position.entry_price = current_price
+            else:
+                logger.error(f"[ENTRY_PRICE_GUARD][{getattr(position,'symbol','?')}] Refusing tiny-position entry_price write — current_price={current_price}. Keeping prior entry_price={position.entry_price}.")
             if position.was_reentered or position.was_reduced:
                 position.was_reentered = False
                 position.was_reduced = True

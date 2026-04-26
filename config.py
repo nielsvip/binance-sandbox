@@ -52,7 +52,7 @@ class Config:
     MAX_GAIN_DECAY_COMPLETE_DAYS = 7
     # PNL_PERFORMANCE_WINDOW_HOURS: int =     48   # Window for recent performance calculation
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
-    ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # FIX 2026-03-29: was 1, killed real hedges on fin. Need 2 misses to confirm phantom.
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 203 had to be restored (22% false-positive). Memory rule says 10. 5 is the compromise. FIX 2026-03-29: was 1, killed real hedges on fin.
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
     MIN_GAIN: float = 3.0  # was 5.0 (too late, near TP). 3.0% = 2.8% buffer after 50% aug, survives 1.5% reversal. Tiered: 0.4x=1.2% pullback, 0.5x=1.5% reduced, 1x=3.0% full
@@ -550,6 +550,7 @@ class Config:
     REENTRY2_DIR_FAV_ENABLED: bool = True  # BC_152 direction-favorable immediate reentry
     REENTRY2_DC_BREAK_ENABLED: bool = True  # DC breakout fast-path reentry
     REENTRY2_QUICK_RECOVERY_ENABLED: bool = True  # quick recovery after exit + momentum
+    QUICK_RECOVERY_WINDOW_MIN: float = 120.0  # 2026-04-26 NEW — was hardcoded 60.0 (ez_manage.py:18259, ez_positions_quick.py:14647). Widened to give K3m alignment more time. 9,386 NOT_ALLOWED rejects in 2d at 60.
     # === V8_QUICK v2 WINNER (2026-04-16 micro-experiments) ===
     # Progression:
     #   Baseline (no filter):          Sharpe 0.17 on 11-sym

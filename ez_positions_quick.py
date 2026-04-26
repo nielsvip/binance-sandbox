@@ -14642,9 +14642,11 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         last_reduction_time = getattr(position, 'last_reduction_time', None)
         last_reduction_price = _sf(getattr(position, 'last_reduction_price', 0), 0.0)
         atr_3m = _sf(i.get('atr_3m', 0), 0.0)
+        # 2026-04-26 — configurable QUICK_RECOVERY window (was hardcoded 60.0 → default 120 to widen K3m alignment window)
+        _qr_window_min_epq = float(getattr(config_obj, 'QUICK_RECOVERY_WINDOW_MIN', 120.0))
         if last_reduction_time and last_reduction_price > 0 and atr_3m > 0 and getattr(config_obj, 'REENTRY2_QUICK_RECOVERY_ENABLED', True):
             minutes_since_reduction = (now - last_reduction_time).total_seconds() / 60.0 if isinstance(last_reduction_time, datetime) else 999.0
-            if minutes_since_reduction < 60.0:
+            if minutes_since_reduction < _qr_window_min_epq:
                 quick_recovery_long = is_long and current_price > (last_reduction_price + atr_3m) and k_3m > d_3m
                 quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
                 if (quick_recovery_long or quick_recovery_short) and getattr(config_obj, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False):
@@ -14722,7 +14724,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                     bounce_dc_high_1h = (not is_long and current_price >= dc_high_1h * 0.998 and current_price <= dc_high_1h * 1.002) if dc_high_1h > 0 else False
                     bounce_dc_high_15m = (not is_long and current_price >= dc_high_15m * 0.998 and current_price <= dc_high_15m * 1.002) if dc_high_15m > 0 else False
                     cross_dc_basis_15m = (is_long and current_price >= dc_basis_15m) or (not is_long and current_price <= dc_basis_15m) if dc_basis_15m > 0 else False
-                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and dc_high_1h > dc_high_1h_ant and getattr(config_obj, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
+                    # 2026-04-26 FIX: was `dc_high_1h > dc_high_1h_ant` for both sides — broken for SHORT.
+                    _dcb_trend_ok_epq = (is_long and dc_high_1h > dc_high_1h_ant) or ((not is_long) and dc_low_1h < dc_low_1h_ant)
+                    if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and _dcb_trend_ok_epq and getattr(config_obj, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
                         reason = f"[PROC_SINGLE_REENTRY_EPQ]: dc_bounce_{hours_since_reduction:.1f}h"
                         result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 65.0)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
