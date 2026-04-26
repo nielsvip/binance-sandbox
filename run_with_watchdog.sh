@@ -228,6 +228,25 @@ run_script() {
                 break
             fi
         fi
+        # 2026-04-26: Preemptive RSS recycling for ez_manage workers — beat jetsam to the punch
+        # with a graceful TERM so positions/locks save cleanly. Mac jetsam SIGKILLs at ~1GB+ when
+        # whole-system memory pressure is high, losing in-flight state. Recycle at 900MB instead.
+        if [[ "$SCRIPT" == "ez_manage.py" && "$runtime" -gt 60 ]]; then
+            local rss_kb
+            if [[ "$(uname)" == "Darwin" ]]; then
+                rss_kb=$(ps -p "$script_pid" -o rss= 2>/dev/null | tr -d ' ' || echo 0)
+            else
+                rss_kb=$(awk '/VmRSS/{print $2}' "/proc/$script_pid/status" 2>/dev/null || echo 0)
+            fi
+            local MAX_RSS_KB=921600  # 900MB
+            if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
+                log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB. Graceful restart before jetsam fires."
+                kill -TERM "$script_pid" 2>/dev/null || true
+                sleep 5
+                kill -KILL "$script_pid" 2>/dev/null || true
+                break
+            fi
+        fi
     done
     
     # Wait for process to exit

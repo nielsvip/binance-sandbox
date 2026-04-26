@@ -4595,25 +4595,24 @@ class HedgeEngine:
         for position_key, pos in list(positions.items()):
             if not position_key.startswith(account_key): continue
             # ═══ 2026-04-26 SYMBOL-HEDGE-ACTIVE LOCK (user rule) ═══
-            # A symbol that already has an active hedge on EITHER side cannot become a new hedge
-            # source/target until that hedge closes. Triggered after IMXUSDT/CAKEUSDT/C98USDT
-            # triple-fired hedges within seconds because positions/active_hedges hadn't updated yet.
+            # A symbol whose HEDGE SIDE is currently open cannot spawn another hedge for the same
+            # loser until the HEDGE position closes (qty=0 on the hedge side = "killed and reused").
+            # Loser side qty is IGNORED — it's the loser asking to be hedged.
+            # Fixes 2026-04-26 IMXUSDT/CAKEUSDT/C98USDT triple-fired same-symbol hedges within seconds.
             try:
                 _sym_lock = position_key.split(':',1)[1].replace('_LONG','').replace('_SHORT','')
                 _sym_lock_key = f"{account_key}:{_sym_lock}"
+                _hedge_side_for_lock = 'SHORT' if position_key.endswith('_LONG') else 'LONG'
+                _hedge_side_pos = positions.get(f"{account_key}:{_sym_lock}_{_hedge_side_for_lock}")
+                _hedge_side_qty = abs(safe_fetch_float(getattr(_hedge_side_pos, 'positionAmt', 0), 0)) if _hedge_side_pos else 0.0
                 if _sym_lock_key in self._symbol_hedge_active:
-                    # Verify the lock is still valid (hedge still has qty); auto-clear stale locks.
-                    _opp_long = positions.get(f"{account_key}:{_sym_lock}_LONG")
-                    _opp_short = positions.get(f"{account_key}:{_sym_lock}_SHORT")
-                    _opp_qty = (abs(safe_fetch_float(getattr(_opp_long,'positionAmt',0),0)) if _opp_long else 0.0) + \
-                               (abs(safe_fetch_float(getattr(_opp_short,'positionAmt',0),0)) if _opp_short else 0.0)
-                    if _opp_qty > 0:
-                        if int(_now_scan) % 60 == 0: logger.info(f"🛡️ [HEDGE_SYMBOL_LOCK] {position_key}: symbol {_sym_lock} already in hedge state — NO new hedges until killed")
+                    if _hedge_side_qty > 0:
+                        if int(_now_scan) % 60 == 0: logger.info(f"🛡️ [HEDGE_SYMBOL_LOCK] {position_key}: hedge side {_hedge_side_for_lock} still has qty={_hedge_side_qty:.4f} — NO new hedge until that hedge is killed")
                         continue
                     else:
-                        # Both sides flat — clear the lock; symbol is "killed and reused" eligible
+                        # Hedge side flat (closed) — symbol "killed and reused" eligible; clear lock
                         self._symbol_hedge_active.pop(_sym_lock_key, None)
-                        logger.warning(f"[HEDGE_SYMBOL_LOCK_CLEARED] {_sym_lock_key}: both sides flat, lock released")
+                        logger.warning(f"[HEDGE_SYMBOL_LOCK_CLEARED] {_sym_lock_key}: hedge side {_hedge_side_for_lock} flat, lock released — fresh hedge allowed")
             except Exception as _se:
                 logger.debug(f"[HEDGE_SYMBOL_LOCK_ERR] {position_key}: {_se}")
             # ═══ 2026-04-26 SCAN-LEVEL DEBOUNCE: prevent re-fire while order is pending ═══
