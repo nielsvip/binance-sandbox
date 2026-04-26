@@ -699,7 +699,53 @@ class QuickConfig:
                         setattr(cfg, k, float(v))
                     else:
                         setattr(cfg, k, v)
+        cfg._clamp_overrides()
         return cfg
+
+    def _clamp_overrides(self):
+        # Reset out-of-physical-range fields to dataclass defaults. Protects against drift
+        # accumulated from autonomous_search numeric perturbation (multiplicative ×0.25–×3.0).
+        # Only resets fields whose NAME unambiguously identifies the indicator AND whose value
+        # is clearly out of physical bounds. Multipliers, durations, percentages, booleans skipped.
+        # Added 2026-04-26 after audit found baselines with MFI=225, K=1620, etc.
+        from dataclasses import fields as _dfields, MISSING as _MISSING
+        skip_substrings = ('_MULT', '_BARS', '_DAYS', '_HOURS', '_MIN_GAP', '_AGE_MIN', '_PCT', '_FRAC', '_BUFFER', '_WINDOW', '_LOOKBACK', '_PERIOD', '_LENGTH', '_COOLDOWN', '_DELAY', '_ALIGNMENT', '_COUNT', '_MIN_TFS', '_TFS_REQUIRED', '_SCORE', '_BONUS', '_PENALTY')
+        clamps = []
+        for fld in _dfields(self):
+            nm = fld.name
+            val = getattr(self, nm, None)
+            if not isinstance(val, (int, float)) or isinstance(val, bool):
+                continue
+            if nm.endswith('_ENABLED') or '_ENABLED_' in nm:
+                continue
+            if any(s in nm for s in skip_substrings):
+                continue
+            lo, hi = None, None
+            if 'MFI' in nm:
+                lo, hi = 0.0, 100.0
+            elif 'RSI' in nm:
+                lo, hi = 0.0, 100.0
+            elif 'STOCH_ENTRY' in nm or 'STOCH_EXTREME' in nm or 'STOCH_K' in nm:
+                lo, hi = 0.0, 100.0
+            elif nm in ('K3M_FLOOR', 'K3M_CAP', 'K15M_FLOOR', 'K15M_CAP', 'V8Q_K3M_FLOOR'):
+                lo, hi = 0.0, 100.0
+            elif 'K_ZONE' in nm or 'K_EXTREME' in nm:
+                lo, hi = 0.0, 100.0
+            elif 'EXIT_SCORER_K' in nm:
+                lo, hi = 0.0, 100.0
+            elif 'CHOP' in nm:
+                lo, hi = 0.0, 100.0
+            if lo is not None and (val < lo or val > hi):
+                if fld.default is not _MISSING:
+                    setattr(self, nm, fld.default)
+                    clamps.append((nm, val, fld.default))
+        if clamps:
+            try:
+                import sys
+                print(f"[QuickConfig._clamp_overrides] reset {len(clamps)} out-of-range fields: " + ", ".join(f"{n}={v}->{d}" for n, v, d in clamps[:8]) + ("..." if len(clamps) > 8 else ""), file=sys.stderr)
+            except Exception:
+                pass
+        return clamps
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"

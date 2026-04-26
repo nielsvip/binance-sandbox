@@ -4444,6 +4444,16 @@ class HedgeEngine:
         # NO MORE hedge attempts from ANY code path for 3600s. Prevents multi-open cascade.
         self._hedge_completed: Dict[str, float] = {}  # losing_position_key -> timestamp of successful hedge
         self.HEDGE_COMPLETED_LOCKOUT_SECONDS = 3600  # 1 hour lockout after successful hedge
+        # 2026-04-26 USER RULE: a symbol that is currently a hedge CANNOT become a hedge again
+        # until killed and reused. Keyed by 'account:symbol' (no side) — one entry per symbol
+        # while ANY hedge is active on it. Set on hedge fire; cleared only when the hedge position
+        # itself closes (qty=0 confirmed). Prevents the IMXUSDT/CAKEUSDT/C98USDT triple-fire pattern.
+        self._symbol_hedge_active: Dict[str, float] = {}  # 'account:symbol' -> timestamp of activation
+        # 2026-04-26 USER RULE: short-term per-loser debounce to cover the
+        # gap between fire and active_hedges/positions update arriving (8-13s observed
+        # in 2026-04-26 IMXUSDT/CAKEUSDT triple-fires).
+        self._scan_hedge_debounce: Dict[str, float] = {}  # losing_position_key -> last fire ts
+        self.SCAN_HEDGE_DEBOUNCE_SECONDS = 60.0
 
     def _get_account_lock(self, account_key: str) -> DummyLock:
         if account_key not in self._account_locks: self._account_locks[account_key] = DummyLock()
@@ -4581,8 +4591,41 @@ class HedgeEngine:
         _oh_min_loss = float(getattr(self.config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
         _hedge_all = bool(getattr(self.config, 'HEDGE_ALL_POSITIONS', False))
         _dual_if_hm = bool(getattr(self.config, 'HEDGE_DUAL_IF_HEDGE_MODE', True))
+        _now_scan = time.time()
         for position_key, pos in list(positions.items()):
             if not position_key.startswith(account_key): continue
+            # ═══ 2026-04-26 SYMBOL-HEDGE-ACTIVE LOCK (user rule) ═══
+            # A symbol that already has an active hedge on EITHER side cannot become a new hedge
+            # source/target until that hedge closes. Triggered after IMXUSDT/CAKEUSDT/C98USDT
+            # triple-fired hedges within seconds because positions/active_hedges hadn't updated yet.
+            try:
+                _sym_lock = position_key.split(':',1)[1].replace('_LONG','').replace('_SHORT','')
+                _sym_lock_key = f"{account_key}:{_sym_lock}"
+                if _sym_lock_key in self._symbol_hedge_active:
+                    # Verify the lock is still valid (hedge still has qty); auto-clear stale locks.
+                    _opp_long = positions.get(f"{account_key}:{_sym_lock}_LONG")
+                    _opp_short = positions.get(f"{account_key}:{_sym_lock}_SHORT")
+                    _opp_qty = (abs(safe_fetch_float(getattr(_opp_long,'positionAmt',0),0)) if _opp_long else 0.0) + \
+                               (abs(safe_fetch_float(getattr(_opp_short,'positionAmt',0),0)) if _opp_short else 0.0)
+                    if _opp_qty > 0:
+                        if int(_now_scan) % 60 == 0: logger.info(f"🛡️ [HEDGE_SYMBOL_LOCK] {position_key}: symbol {_sym_lock} already in hedge state — NO new hedges until killed")
+                        continue
+                    else:
+                        # Both sides flat — clear the lock; symbol is "killed and reused" eligible
+                        self._symbol_hedge_active.pop(_sym_lock_key, None)
+                        logger.warning(f"[HEDGE_SYMBOL_LOCK_CLEARED] {_sym_lock_key}: both sides flat, lock released")
+            except Exception as _se:
+                logger.debug(f"[HEDGE_SYMBOL_LOCK_ERR] {position_key}: {_se}")
+            # ═══ 2026-04-26 SCAN-LEVEL DEBOUNCE: prevent re-fire while order is pending ═══
+            _last_fire = self._scan_hedge_debounce.get(position_key, 0)
+            if _now_scan - _last_fire < self.SCAN_HEDGE_DEBOUNCE_SECONDS:
+                logger.info(f"[HEDGE_SCAN_DEBOUNCE] {position_key}: hedge fired {_now_scan - _last_fire:.0f}s ago < {self.SCAN_HEDGE_DEBOUNCE_SECONDS:.0f}s — skip (waiting for positions/active_hedges update)")
+                continue
+            # ═══ 2026-04-26: check existing 1-hr completed-hedge lockout (prev only checked in dual path) ═══
+            _hc_ts_scan = self._hedge_completed.get(position_key, 0)
+            if _hc_ts_scan and (_now_scan - _hc_ts_scan) < self.HEDGE_COMPLETED_LOCKOUT_SECONDS:
+                logger.info(f"[HEDGE_COMPLETED_LOCKOUT_SCAN] {position_key}: hedge fired {_now_scan - _hc_ts_scan:.0f}s ago < {self.HEDGE_COMPLETED_LOCKOUT_SECONDS:.0f}s lockout — skip")
+                continue
             # ═══ TRACKER CONSULTATION (2026-03-29 FIX) ═══
             # Check BOTH exit_candidates AND active_hedges. If EITHER says this is a hedge, skip.
             # This prevents the circular hedge death spiral that caused 24,833 rogue orders.
@@ -4708,6 +4751,18 @@ class HedgeEngine:
                     except Exception as _tk_e:
                         logger.debug(f"[HEDGE_TRADEABLE_BYPASS_ERR] {_same_hedge_key}: {_tk_e}")
                 logger.warning(f"🛡️[HEDGE_OPEN] {position_key}: pnl={pnl_pct:.2f}% wt15m against (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f}) — SAME-SYMBOL {_hss_pct*100:.0f}% hedge ({hedge_qty} {symbol})")
+                # 2026-04-26: stamp dedup dicts BEFORE awaiting execute, so a parallel scan
+                # within the same tick cannot also fire. Both gates (debounce + symbol lock + completed lockout)
+                # checked at top of loop; setting all three here makes them effective immediately.
+                _now_fire = time.time()
+                self._scan_hedge_debounce[position_key] = _now_fire
+                self._hedge_completed[position_key] = _now_fire
+                try:
+                    _sym_for_lock = symbol
+                    self._symbol_hedge_active[f"{account_key}:{_sym_for_lock}"] = _now_fire
+                    logger.warning(f"🔒 [HEDGE_SYMBOL_LOCK_SET] {account_key}:{_sym_for_lock}: locked for new hedges until both sides flat")
+                except Exception as _le:
+                    logger.debug(f"[HEDGE_SYMBOL_LOCK_SET_ERR] {position_key}: {_le}")
                 await self.execute_same_symbol_hedge(account_key, pos, symbol, losing_side, hedge_qty, mark_price)
             # KILLED 2026-04-07: Was opening BOTH same-symbol AND cross-symbol = double hedge. ONE only.
 
@@ -14636,6 +14691,24 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             elif _age_gate == 'extreme':
                 if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align and _ag_k4h_align): return
         # STANDARD GATES
+        # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend (mirrors ez_manage version).
+        if getattr(config_obj, 'PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED', True):
+            _wt1_1h_v = _sf(i.get('wt1_1h', 0), 0); _wt2_1h_v = _sf(i.get('wt2_1h', 0), 0)
+            _wt1_4h_v = _sf(i.get('wt1_4h', 0), 0); _wt2_4h_v = _sf(i.get('wt2_4h', 0), 0)
+            _ha1_v = (i.get('ha_1h', 'neutral') or 'neutral').lower()
+            _ha4_v = (i.get('ha_4h', 'neutral') or 'neutral').lower()
+            _ha15_v = (i.get('ha_15m', 'neutral') or 'neutral').lower()
+            _bull_15m_v = k_15m > 55 and _ha15_v == 'green' and wt1_15m > wt2_15m
+            _bull_1h_v = k_1h > 50 and _ha1_v == 'green' and _wt1_1h_v > _wt2_1h_v
+            _bull_4h_v = k_4h > 50 and _ha4_v == 'green' and _wt1_4h_v > _wt2_4h_v
+            _bear_15m_v = k_15m < 45 and _ha15_v == 'red' and wt1_15m < wt2_15m
+            _bear_1h_v = k_1h < 50 and _ha1_v == 'red' and _wt1_1h_v < _wt2_1h_v
+            _bear_4h_v = k_4h < 50 and _ha4_v == 'red' and _wt1_4h_v < _wt2_4h_v
+            _htf_against_short_v = (not is_long) and _bull_15m_v and _bull_1h_v and _bull_4h_v
+            _htf_against_long_v = is_long and _bear_15m_v and _bear_1h_v and _bear_4h_v
+            if _htf_against_short_v or _htf_against_long_v:
+                logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO_EPQ] {position_key}: REFUSING force-reentry — 15m/1h/4h ALL AGAINST {'SHORT' if not is_long else 'LONG'}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f}")
+                return
         _price_above_red_epq = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         if _price_above_red_epq:
             _epq_force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0

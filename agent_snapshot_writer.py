@@ -212,6 +212,22 @@ def _config_summary():
     return out
 
 
+def _conviction_signals():
+    cdir = BASE / "data" / "stock_traders"
+    if not cdir.exists():
+        return []
+    files = sorted(cdir.glob("*_conviction.json"), reverse=True)[:1]
+    if not files:
+        return []
+    try:
+        rows = json.loads(files[0].read_text())
+        if isinstance(rows, list):
+            return rows[:25]
+    except Exception as e:
+        log.warning("conviction read %s failed: %s", files[0], e)
+    return []
+
+
 def _market_meta(r):
     raw = _read_redis_json(r, "latest_market_data")
     if not isinstance(raw, dict):
@@ -241,6 +257,7 @@ def build_snapshot():
         "market_meta": _market_meta(r),
         "decisions_recent": _load_recent_decisions(),
         "allowlists": _load_allowlists(),
+        "conviction_signals": _conviction_signals(),
         "config_summary": _config_summary(),
     }
 

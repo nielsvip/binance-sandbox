@@ -18169,6 +18169,23 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     return
                 logger.debug(f"[AGE_GATE_EXTREME] {position_key}: passed 4/4 stoch levels (3m+15m+1h+4h), continuing to standard gates")
         # == STANDARD REENTRY GATES ==
+        # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend.
+        # Triggered after C98USDT_SHORT triple-open while 1h+15m+4h all bullish (suicide setup).
+        # Block SHORT only when 1h+15m+4h ALL confirm bullish (k>threshold AND ha=green AND wt cross up).
+        # Mirrored for LONG. Defaults ON for live safety; sweep can flip to test.
+        if getattr(config, 'PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED', True):
+            _ha1_v = (ha_1h or 'neutral').lower(); _ha4_v = (ha_4h or 'neutral').lower(); _ha15_v = (ha_15m or 'neutral').lower()
+            _bull_15m_v = k_15m > 55 and _ha15_v == 'green' and wt1_15m > wt2_15m
+            _bull_1h_v = k_1h > 50 and _ha1_v == 'green' and wt1_1h > wt2_1h
+            _bull_4h_v = k_4h > 50 and _ha4_v == 'green' and wt1_4h > wt2_4h
+            _bear_15m_v = k_15m < 45 and _ha15_v == 'red' and wt1_15m < wt2_15m
+            _bear_1h_v = k_1h < 50 and _ha1_v == 'red' and wt1_1h < wt2_1h
+            _bear_4h_v = k_4h < 50 and _ha4_v == 'red' and wt1_4h < wt2_4h
+            _htf_against_short_v = (not is_long) and _bull_15m_v and _bull_1h_v and _bull_4h_v
+            _htf_against_long_v = is_long and _bear_15m_v and _bear_1h_v and _bear_4h_v
+            if _htf_against_short_v or _htf_against_long_v:
+                logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — 15m/1h/4h ALL AGAINST {'SHORT' if not is_long else 'LONG'}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}")
+                return
         price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         if price_above_reduction:
             # 2026-04-26 RATE LIMIT (rogue-loop fix): refuse to fire MANDATORY_PRICE_CROSS

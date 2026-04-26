@@ -193,10 +193,12 @@ Candidate doesn't ship unless it dominates or ties 2.6365 across all 5 metrics o
 | A3 | KC + Squeeze fire: NPZ fields + SQUEEZE_FIRE_ENTRY engine wiring + ez_indicators helpers | ✅ WIRED 2026-04-26 |
 | A4 | WT/MFI divergence: pivot detector + 40 NPZ fields + DIVERGENCE_ENTRY engine wiring | ✅ WIRED 2026-04-26 |
 | ENGINE-REVISION | HTF alignment guard for additive signals (`ADDITIVE_SIGNAL_MIN_HTF`) | ✅ 2026-04-26 04:00, md5 da106de8… |
+| ENGINE-CLAMP | `_clamp_overrides()` in QuickConfig — auto-reset out-of-range MFI/RSI/K/Chop fields to defaults on load | ✅ 2026-04-26 05:55, md5 5d583f07… |
+| BASELINES-SANITIZED | Both baselines cleaned of drift artifacts | ✅ crypto: 7 fields removed (`crypto_2p6365_sanitized.json`); tradier: 13 fields removed (`tradier_3p4361_sanitized.json`) |
 | CRYPTO-NPZ-REGEN | 50/50 crypto NPZs regenerated with all new fields | ✅ DONE 00:39 |
 | TRADIER-NPZ-REGEN | 106/114 tradier NPZs regenerated with KC/Squeeze/divergence (no funding/OI by design) | ✅ DONE 03:48 |
-| CRYPTO-AUTONOMOUS | w26104 LIVE on S1 (50sym, target 2.0, baseline 2p6365, flip 0.05, extended 9-switch space) | ✅ LIVE since 00:40 |
-| TRADIER-AUTONOMOUS | w36106 LIVE on S2 with REVISED args (target 2.5, flip 0.08, perturb 0.08) — w36105 ran 51 iter with old args first (no winner; iter 49 hit DIV+OI true at sym_sharpe 1.87) | ✅ LIVE since 05:08 |
+| CRYPTO-AUTONOMOUS | w26200 LIVE on S1 (50sym, target 2.0, sanitized baseline `crypto_2p6365_sanitized.json`, flip 0.05) — replaces w26104 (killed 05:54, 0 iter snapshot) | ✅ LIVE since 05:54 |
+| TRADIER-AUTONOMOUS | w36200 LIVE on S2 (114sym, target 2.5, sanitized baseline `tradier_3p4361_sanitized.json`, flip 0.08) — replaces w36106 (killed 05:54, 47 iter pre-sanitize snapshot saved) | ✅ LIVE since 05:54 |
 | CONFIG-MIRROR | SQUEEZE_FIRE switches added to both config.py and config_tradier.py | ✅ |
 
 ### Open — wiring/diagnostics (still pending from original framework)
