@@ -4652,11 +4652,31 @@ class HedgeEngine:
             # Also check active_hedges — position might be a hedge even if exit_candidates missed it
             async with self.tracker_manager._hedges_lock:
                 _is_hedge_in_tracker = any(h.get('position_key') == position_key and h.get('is_hedge', False) for h in self.tracker_manager.active_hedges if isinstance(h, dict))
-                _already_has_hedge = any(h.get('losing_position_key') == position_key for h in self.tracker_manager.active_hedges if isinstance(h, dict))
+                _matching_hedges_scan = [h for h in self.tracker_manager.active_hedges if isinstance(h, dict) and h.get('losing_position_key') == position_key]
             if _is_hedge_in_tracker:
                 continue
-            if _already_has_hedge:
-                continue
+            # 2026-04-26 STALE-TRACKER AUTO-CLEAN (mirrors execute_same_symbol_hedge):
+            # if recorded hedge has qty=0, the entry is a ghost — drop it and allow new hedge.
+            if _matching_hedges_scan:
+                _stale_scan = []
+                _live_scan = 0
+                for _h in _matching_hedges_scan:
+                    _hk = _h.get('position_key')
+                    if not _hk:
+                        _stale_scan.append(_h); continue
+                    _hp = positions.get(_hk)
+                    _hq = abs(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0)) if _hp else 0.0
+                    if _hq <= 0:
+                        _stale_scan.append(_h)
+                        logger.warning(f"🧹 [HEDGE_TRACKER_STALE_CLEAR_SCAN] {position_key}: recorded hedge {_hk} qty={_hq} — stale, removing")
+                    else:
+                        _live_scan += 1
+                if _stale_scan:
+                    async with self.tracker_manager._hedges_lock:
+                        self.tracker_manager.active_hedges = [h for h in self.tracker_manager.active_hedges if h not in _stale_scan]
+                if _live_scan > 0:
+                    continue  # at least one live hedge — block
+                logger.warning(f"✅ [HEDGE_TRACKER_STALE_CLEARED_SCAN] {position_key}: {len(_stale_scan)} stale entries removed — proceeding")
             qty = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0)))
             entry_price = safe_fetch_float(getattr(pos, 'entry_price', 0))
             mark_price = safe_fetch_float(getattr(pos, 'mark_price', 0))
@@ -6402,15 +6422,42 @@ class HedgeEngine:
         # is the single source of truth for active hedges. Block EARLIEST before any side effect.
         # Root incident: 60× NMR hedge opens because positions_service dropped NMR_LONG from Redis.
         # With this gate, tracker.active_hedges blocks repeats regardless of positions_dict state.
+        # 2026-04-26 STALE-TRACKER AUTO-CLEAN: tracker entries survive restarts but the hedge
+        # POSITION may have closed/expired. If the recorded hedge has qty=0 on Binance, the
+        # tracker entry is a ghost — remove it and allow a fresh hedge. Without this, ALL
+        # bleeders that had any hedge earlier today are PERMANENTLY blocked from new hedges.
         try:
             async with self.tracker_manager._hedges_lock:
-                _tracker_has_hedge = any(
-                    isinstance(h, dict) and h.get('losing_position_key') == origin_key
-                    for h in self.tracker_manager.active_hedges
-                )
-            if _tracker_has_hedge:
-                logger.warning(f"🛡️ [HEDGE_TRACKER_BLOCK] {origin_key}: active_hedges already has a hedge for this origin — BLOCKED (tracker-authoritative, survives restarts)")
-                return False
+                _matching = [h for h in self.tracker_manager.active_hedges
+                             if isinstance(h, dict) and h.get('losing_position_key') == origin_key]
+            if _matching:
+                _positions_for_check = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}) if hasattr(self.tracker_manager, 'positions_service') and self.tracker_manager.positions_service else {}
+                _stale = []
+                _live = 0
+                for _h in _matching:
+                    _hk = _h.get('position_key')
+                    if not _hk:
+                        _stale.append(_h); continue
+                    _hp = _positions_for_check.get(_hk)
+                    _hq = abs(safe_fetch_float(getattr(_hp, 'positionAmt', 0), 0)) if _hp else 0.0
+                    if _hq <= 0:
+                        _stale.append(_h)
+                        logger.warning(f"🧹 [HEDGE_TRACKER_STALE_CLEAR] {origin_key}: recorded hedge {_hk} qty={_hq} — stale tracker entry, removing")
+                    else:
+                        _live += 1
+                if _stale:
+                    async with self.tracker_manager._hedges_lock:
+                        self.tracker_manager.active_hedges = [h for h in self.tracker_manager.active_hedges if h not in _stale]
+                    try:
+                        if hasattr(self.tracker_manager, 'save_tracker'):
+                            await self.tracker_manager.save_tracker(account_key, force=True)
+                    except Exception as _se:
+                        logger.debug(f"[HEDGE_TRACKER_STALE_SAVE_ERR] {origin_key}: {_se}")
+                if _live > 0:
+                    logger.warning(f"🛡️ [HEDGE_TRACKER_BLOCK] {origin_key}: active_hedges has {_live} LIVE hedge(s) (qty>0) — BLOCKED (tracker-authoritative)")
+                    return False
+                if _stale and _live == 0:
+                    logger.warning(f"✅ [HEDGE_TRACKER_STALE_CLEARED] {origin_key}: {len(_stale)} stale hedge entries removed — fresh hedge allowed")
         except Exception as _tr_e:
             logger.warning(f"[HEDGE_TRACKER_CHECK_ERR] {origin_key}: {_tr_e}")
         # 2026-04-24 NEVER-HEDGE-A-HEDGE early gate. Checks origin's augment_reason
