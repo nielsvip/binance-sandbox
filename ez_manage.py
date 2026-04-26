@@ -13389,7 +13389,8 @@ class MultiAccountTradeManager:
                     try:
                         _v3_pos_check = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None
                         _v3_own = _v3_pos_check and ('SCALP_V3' in str(getattr(_v3_pos_check, 'augment_reason', '') or ''))
-                        if _v3_own and self.data_manager:
+                        _v3_max_loss_exit = 'MAX_LOSS' in reason_upper
+                        if _v3_own and self.data_manager and not _v3_max_loss_exit:
                             _ind_sr2 = self.data_manager._cold_data.get(symbol, {}) or {}
                             if not _ind_sr2 and hasattr(self.data_manager, 'shared_proxy') and self.data_manager.shared_proxy:
                                 _ind_sr2 = dict(self.data_manager.shared_proxy.get_symbol(symbol) or {})

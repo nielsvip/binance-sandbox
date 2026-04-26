@@ -758,8 +758,8 @@ class Config:
     LEGACY_REENTRY_GUARANTEED_2WT: bool = False        # ez_manage.py:16138 — exit crossed >0.3% + 2/4 WT, 50%
     LEGACY_REENTRY_PSR_QUICK_RECOVERY: bool = True     # 2026-04-25 ENABLED — was False (dead switch). Implements user's "early-exit reentry on price recovery" hypothesis: ≤60min after exit + price moved past last_reduction_price ± atr_3m + K3m aligned → REENTRY conviction 75. Sites: ez_manage.py:18254, ez_positions_quick.py:14572.
     LEGACY_REENTRY_PSR_K_DC_CROSSOVER: bool = False    # ez_manage.py:18777 LONG / 18798 SHORT — k_3m/15m crossover above dc_low_3m/15m
-    LEGACY_REENTRY_PSR_FULL_DC: bool = False           # ez_manage.py:18812 — full reentry stoch_above_dc OR dc_basis_crossover_3m
-    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = False         # ez_manage.py:18836 — DC bounce within 8h, near dc_high/low
+    LEGACY_REENTRY_PSR_FULL_DC: bool = True            # 2026-04-25 ENABLED + monitored — fires on stoch_3m crossover & price >/< dc_basis_15m, OR dc_basis_crossover_3m. Sites: ez_manage.py:18369, ez_positions_quick.py:14634. Conviction 80.
+    LEGACY_REENTRY_PSR_DC_BOUNCE: bool = True          # 2026-04-25 ENABLED + monitored — fires on DC band bounce within 8h of last reduction, requires dc_high_1h>dc_high_1h_ant. Sites: ez_manage.py:18393, ez_positions_quick.py:14652. Conviction 65.
     LEGACY_WR_PULLBACK: bool = True            # ON
     LEGACY_FAST_CUT_LOSS: bool = False         # OFF — % stop in disguise
     LEGACY_AGGRESSIVE_LOSS_CUT: bool = False   # OFF — single TF 1m flip

@@ -493,16 +493,23 @@ def print_summary(state: dict, counters: dict):
 
 async def main_async(args):
     base_cfg = Config()
-    # Apply sweep-winning defaults as CfgOverride — beats the base config defaults for V3.
-    cfg = CfgOverride(base_cfg,
-                      SCALP_V3_ENTRY_TF_MODE=args.tf_mode,
-                      SCALP_V3_EXIT_TF_MODE=args.exit_mode,
-                      SCALP_V3_ENTRY_K_1M_MAX=args.k_1m_max,
-                      SCALP_V3_EXIT_1M_K_MIN=args.exit_k_1m_min,
-                      SCALP_V3_ENTRY_VOL_SPIKE_MULT=args.vol_mult,
-                      SCALP_V3_MAX_HOLD_MIN=args.max_hold_min,
-                      SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain,
-                      _exit_strategy=args.exit_strategy)
+    _ovr = dict(
+        SCALP_V3_ENTRY_TF_MODE=args.tf_mode,
+        SCALP_V3_EXIT_TF_MODE=args.exit_mode,
+        SCALP_V3_ENTRY_K_1M_MAX=args.k_1m_max,
+        SCALP_V3_EXIT_1M_K_MIN=args.exit_k_1m_min,
+        SCALP_V3_ENTRY_VOL_SPIKE_MULT=args.vol_mult,
+        SCALP_V3_MAX_HOLD_MIN=args.max_hold_min,
+        SCALP_V3_STALL_GAIN_MAX_PCT=args.stall_gain,
+        _exit_strategy=args.exit_strategy,
+    )
+    if args.atr_tp_mult is not None: _ovr["SCALP_V3_ATR_TP_MULT"] = args.atr_tp_mult
+    if args.pg_arm_pct is not None: _ovr["SCALP_V3_PG_ARM_PCT"] = args.pg_arm_pct
+    if args.pg_giveback_pct is not None: _ovr["SCALP_V3_PG_GIVEBACK_PCT"] = args.pg_giveback_pct
+    if args.side_mode is not None: _ovr["SCALP_V3_SIDE_MODE"] = args.side_mode
+    if args.stall_enabled is not None: _ovr["SCALP_V3_STALL_ENABLED"] = bool(args.stall_enabled)
+    if args.min_tp_early_exit is not None: _ovr["SCALP_V3_MIN_TP_FOR_EARLY_EXIT"] = args.min_tp_early_exit
+    cfg = CfgOverride(base_cfg, **_ovr)
     # All globals declared up-front (Python: global must precede first use)
     global STATE_FILE, today_trades_file, _OB_REDIS, _OB_CFG
     # Exit-strategy: route hedge-mode to separate files so A/B can compare
@@ -644,6 +651,12 @@ def main():
     ap.add_argument("--ob-min-short-score", type=float, default=0.0, help="Min ob_short_score (0..100) for SHORT. 0=disabled.")
     ap.add_argument("--ob-wall-too-close-pct", type=float, default=0.0, help="Skip entry if opposite-side wall closer than this %% (resistance/support). 0=disabled. Recommend 0.5.")
     ap.add_argument("--ob-void-extend-hold", action="store_true", help="When OB shows gap-up void above (LONG) or gap-down void below (SHORT), extend hold time — skip exit this cycle (stall exits still fire, but other technical exits skip once).")
+    ap.add_argument("--atr-tp-mult", type=float, default=None, help="ATR_TP_MULT override (0=disable, 0.8=winner). Default uses config.SCALP_V3_ATR_TP_MULT.")
+    ap.add_argument("--pg-arm-pct", type=float, default=None, help="PEAK_GIVEBACK arm threshold (gain%% before peak-tracking arms). 0=disable. Default uses config.")
+    ap.add_argument("--pg-giveback-pct", type=float, default=None, help="PEAK_GIVEBACK exit threshold (giveback %% from peak). 0=disable. Default uses config.")
+    ap.add_argument("--side-mode", type=str, default=None, choices=[None, "LONG_ONLY", "SHORT_ONLY", "BOTH"], help="V3 side gate. Default uses config.")
+    ap.add_argument("--stall-enabled", type=int, default=None, choices=[None, 0, 1], help="0=disable STALL exit, 1=enable. Default uses config.")
+    ap.add_argument("--min-tp-early-exit", type=float, default=None, help="GAIN-AWARE early-exit threshold (gain%%). Default uses config.")
     args = ap.parse_args()
     asyncio.run(main_async(args))
 
