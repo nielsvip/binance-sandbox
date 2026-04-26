@@ -219,7 +219,8 @@ def cycle(variant: str, account: str, cfg, positions: Dict[str, VirtualPosition]
     max_concurrent = int(getattr(cfg, "SCALP_V3_MAX_CONCURRENT", 3))
     n_open = sum(1 for p in positions.values() if abs(p.positionAmt) > 0)
 
-    vwap_on = bool(getattr(cfg, 'SCALP_V3_VWAP_FILTER_ENABLED', False))
+    enrich_on = (bool(getattr(cfg, 'SCALP_V3_VWAP_FILTER_ENABLED', False))
+                 or bool(getattr(cfg, 'SCALP_V3_ATR_PCTL_GATE_ENABLED', False)))
     for sym in universe:
         ind = market.get(sym)
         if not ind:
@@ -227,8 +228,8 @@ def cycle(variant: str, account: str, cfg, positions: Dict[str, VirtualPosition]
         price = float(ind.get("current_price") or ind.get("close") or 0)
         if price <= 0:
             continue
-        # 2026-04-26 VWAP enrichment — only when filter is enabled (avoids load on default variant)
-        if vwap_on:
+        # 2026-04-26 enrichment — only when any kline-derived gate is enabled (avoids load on default variant)
+        if enrich_on:
             try:
                 bars = load_3m_klines(sym)
                 if bars:

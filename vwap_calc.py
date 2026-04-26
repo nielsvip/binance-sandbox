@@ -123,24 +123,41 @@ def compute_us_rth_vwap(bars_3m: List[dict], now_ts_utc: Optional[float] = None)
     return (_vwap_from(bars_3m, anchor_idx), anchor_idx)
 
 
+def compute_atr_3m_percentile(bars_3m: List[dict], lookback: int = 100) -> Optional[float]:
+    """Returns the percentile rank (0-100) of the most-recent bar's true range vs the prior `lookback` bars.
+    Used to filter dead-vol chop. Returns None if not enough data.
+    """
+    n = len(bars_3m)
+    if n < lookback + 2:
+        return None
+    trs = []
+    for i in range(n - lookback - 1, n):
+        cur = bars_3m[i]; prev = bars_3m[i - 1] if i > 0 else cur
+        h = float(cur.get("high", 0)); l = float(cur.get("low", 0))
+        pc = float(prev.get("close", 0))
+        tr = max(h - l, abs(h - pc), abs(l - pc))
+        trs.append(tr)
+    if not trs:
+        return None
+    last = trs[-1]
+    history = sorted(trs[:-1])
+    if not history:
+        return None
+    n_below = sum(1 for x in history if x <= last)
+    return 100.0 * n_below / len(history)
+
+
 def add_vwap_to_indicators(indicators: dict, bars_3m: List[dict], now_ts_utc: Optional[float] = None,
                            dc_period_bars: int = 20) -> dict:
-    """Mutates and returns the indicators dict with VWAP fields added.
-
-    Keys added:
-      vwap_dc_long      — anchored VWAP from last DC-HIGH break (LONG-bias anchor)
-      vwap_dc_short     — anchored VWAP from last DC-LOW break  (SHORT-bias anchor)
-      vwap_dc_long_idx  — bar index of the LONG anchor (for diagnostics)
-      vwap_dc_short_idx — bar index of the SHORT anchor
-      vwap_us_rth       — VWAP since most-recent 13:30 UTC
-      vwap_us_rth_idx   — bar index of the US RTH anchor
-    """
+    """Mutates and returns the indicators dict with VWAP + ATR-percentile fields added."""
     vl, vs, li, si = compute_dc_break_vwap(bars_3m, dc_period_bars=dc_period_bars)
     vwap_us, ui = compute_us_rth_vwap(bars_3m, now_ts_utc=now_ts_utc)
+    atr_pctl = compute_atr_3m_percentile(bars_3m, lookback=100)
     indicators["vwap_dc_long"] = vl
     indicators["vwap_dc_short"] = vs
     indicators["vwap_dc_long_idx"] = li
     indicators["vwap_dc_short_idx"] = si
     indicators["vwap_us_rth"] = vwap_us
     indicators["vwap_us_rth_idx"] = ui
+    indicators["atr_3m_pctl_100"] = atr_pctl
     return indicators

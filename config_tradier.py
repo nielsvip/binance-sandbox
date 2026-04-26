@@ -436,6 +436,17 @@ class TradierConfig:
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.5
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
+    # === 2026-04-26 USER RULE — MICRO_SCALP_STOCKS_MAKER (mirror of crypto MICRO_SCALP_USDC_MAKER) ===
+    # Stocks-side micro-scalper: closes positions at gain >= MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT
+    # AND first deceleration (gain < prev_gain). Reopens when price re-crosses exit_price.
+    # Threshold higher than crypto (0.05% vs 0.02%) because stock spreads + 5m base TF.
+    # Limit-only via existing place_order chase loop (already maker-first with market fallback at 10s).
+    # Fires from process_position BEFORE evaluate_stop — bypasses STOCK_MIN_HOLD/UNIVERSAL_NOLOSS_GATE
+    # because we close ONLY at positive gain. Bypasses are safe by construction.
+    # Constrained to RTH (13:30-20:00 UTC) by is_regular_trading_hours() inside place_order.
+    MICRO_SCALP_STOCKS_MAKER_ENABLED: bool = True
+    MICRO_SCALP_STOCKS_ACCOUNTS: List[str] = field(default_factory=lambda: ["trb", "trc", "tra"])
+    MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT: float = 0.05
     # NOLOSS exception (sweep-only, default OFF): 5/5 WT TFs against → allow bypass. TFs: 5m/15m/1h/4h/D for stocks.
     # 2026-04-25 rapid-grid HVC sweep (114-sym, 4.3yr): CONFIRMED DAMAGING on all thresholds:
     #   3TF=0.880 Sharpe (-1.56 vs baseline, 3.76% DD) | 4TF=1.092 (-1.34, 2.79% DD) | 5TF=0.731 (-1.70, 8.3% DD).
@@ -765,6 +776,50 @@ class TradierConfig:
     LS_RATIO_MAX_TRADIER: float = 2.00  # BACKTEST_CHANGE_T36 max L/S ratio
     # === DAILY LOSS LIMIT (backtest) ===
     MAX_DAILY_LOSS_PCT: float = 3.0  # BACKTEST_CHANGE_T37 halt trading at 3% daily loss
+    # === THROUGHPUT SAFETY KNOBS (added 2026-04-26 — pre-50-500/day push) ===
+    # Master kill switch — when True, the four THROUGHPUT_SAFETY_* gates below are honored.
+    # Stocks: trb=$70k live, trc=$30k paper-aggressive, tra=cash long-only.
+    # Defaults are SANE-CONSERVATIVE; flip enabled=True before high-frequency push.
+    THROUGHPUT_SAFETY_ENABLED_TRADIER: bool = False  # master gate
+    # 1) Per-day max-loss % per account (halt new entries when day-PnL% breaches floor).
+    #    Reuses existing trb (3%, MAX_DAILY_LOSS_PCT) and trc (10%, TRC_MAX_DAILY_LOSS_PCT) values.
+    THROUGHPUT_MAX_DAILY_LOSS_PCT_TRADIER: Dict[str, float] = field(default_factory=lambda: {
+        "trb": -3.0,   # mirrors MAX_DAILY_LOSS_PCT (3%)
+        "trc": -10.0,  # mirrors TRC_MAX_DAILY_LOSS_PCT (10% — paper)
+        "tra": -2.0,   # cash long-only — tightest floor
+    })
+    # Day boundary: 13:30 UTC (= 9:30 AM ET market open). Reset day-PnL counter at open.
+    THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR_TRADIER: int = 13   # market open UTC hour
+    THROUGHPUT_DAILY_LOSS_RESET_UTC_MINUTE_TRADIER: int = 30
+    # 2) Max concurrent positions per account.
+    #    trb: 16 (mirrors existing MAX_CONCURRENT_POSITIONS).
+    #    trc: 40 (mirrors TRC_MAX_CONCURRENT_POSITIONS).
+    #    tra: 9 (TRA_PREFERRED_SYMBOLS is 9 names — long-only hold).
+    THROUGHPUT_MAX_CONCURRENT_POSITIONS_TRADIER: Dict[str, int] = field(default_factory=lambda: {
+        "trb": 16,
+        "trc": 40,
+        "tra": 9,
+    })
+    # 3) Max total notional cap (USD) per account — refuse new opens beyond M $ gross exposure.
+    #    Conservative defaults relative to account capital. trb cap = 16 × TRB_MAX_SYMBOL_VALUE (10000) = 160k
+    #    floor → set to 80k as halfway gate. trc = 40 × 5000 = 200k → 100k floor.
+    THROUGHPUT_MAX_TOTAL_NOTIONAL_USD_TRADIER: Dict[str, float] = field(default_factory=lambda: {
+        "trb": 80000.0,
+        "trc": 100000.0,
+        "tra": 50000.0,
+    })
+    # 4) Per-symbol max fires per hour — anti-spam (one symbol can't dominate the queue).
+    #    Stocks more conservative than crypto (cash settles slower, less re-entry edge intra-bar).
+    THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL_TRADIER: int = 4
+    # 4b) Per-account global max fires per hour.
+    THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT_TRADIER: Dict[str, int] = field(default_factory=lambda: {
+        "trb": 60,
+        "trc": 90,
+        "tra": 12,   # cash hold — extremely low frequency
+    })
+    # External 0.01% incl-commissions Finandy stop (activates after +0.25% gain) — applies to crypto
+    # only; stocks route through Tradier API directly. Documented in config.py too.
+    # === END THROUGHPUT SAFETY KNOBS ===
     # === DAYTRADE WING — DC Breakout on lower TFs (5m/15m), open AM, flatten before close ===
     DC_DAYTRADE_ENABLED: bool = True  # Enable DC breakout daytrade system (parallel to HODL)
     DC_DAYTRADE_ACCOUNT: str = "trb"  # Account for daytrade positions

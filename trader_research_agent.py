@@ -175,6 +175,144 @@ def run_deep_analysis(csv_path: Path) -> Dict[str, Any]:
 
 
 # ═══════════════════════════════════════════════════════════════════
+# PHASE 3b — CAUSALITY WEIGHTING (opinion_causality_report.json → per-trader weight)
+# ═══════════════════════════════════════════════════════════════════
+
+CAUSALITY_REPORT_PATH = config.DATA_DIR / "opinion_causality_report.json"
+WEIGHTED_OUTPUT_PATH = config.DATA_DIR / "trader_weighted_conviction.json"
+TRADEABLE_KEYS_PATH = BASE_PATH / "tradeable_keys.json"
+
+
+def _load_causality_weights() -> Dict[str, float]:
+    """Build {trader_id: weight} from opinion_causality_report.json.
+    weight = clip(max(0, mean_4h_pct × hit_4h_pct/100), 0, 5).
+    Default 1.0 for unknown traders (applied at lookup site, not stored).
+    Explicit noise_traders → 0.0."""
+    if not CAUSALITY_REPORT_PATH.exists():
+        logger.warning(f"Causality report not found: {CAUSALITY_REPORT_PATH} — all traders weight=1.0")
+        return {}
+    try:
+        with open(CAUSALITY_REPORT_PATH) as f:
+            report = json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load causality report: {e}")
+        return {}
+    weights: Dict[str, float] = {}
+    verdict = report.get("verdict", {}) or {}
+    for noisy in verdict.get("noise_traders", []) or []:
+        tid = noisy.get("trader_id")
+        if tid:
+            weights[tid] = 0.0
+    for entry in report.get("per_trader_top20", []) or []:
+        tid = entry.get("trader_id")
+        if not tid or tid in weights:
+            continue
+        h4 = (entry.get("stats_per_horizon", {}) or {}).get("4h", {}) or {}
+        mean_pct = float(h4.get("mean_pct", 0.0))
+        hit_pct = float(h4.get("hit_rate_pct", 0.0))
+        raw = max(0.0, mean_pct * hit_pct / 100.0)
+        weights[tid] = max(0.0, min(5.0, raw))
+    for entry in report.get("per_trader_bottom10", []) or []:
+        tid = entry.get("trader_id")
+        if not tid or tid in weights:
+            continue
+        h4 = (entry.get("stats_per_horizon", {}) or {}).get("4h", {}) or {}
+        mean_pct = float(h4.get("mean_pct", 0.0))
+        hit_pct = float(h4.get("hit_rate_pct", 0.0))
+        raw = max(0.0, mean_pct * hit_pct / 100.0)
+        weights[tid] = max(0.0, min(5.0, raw))
+    n_zero = sum(1 for w in weights.values() if w == 0.0)
+    n_pos = sum(1 for w in weights.values() if w > 0.0)
+    logger.info(f"Causality weights loaded: {len(weights)} traders ({n_pos} positive, {n_zero} zero/noise)")
+    return weights
+
+
+_TRADEABLE_USDC_SYMBOLS_CACHE: Optional[set] = None
+
+
+def _load_usdc_symbol_set() -> set:
+    """Return a set of base assets (e.g. {'BTC','ETH'}) that have a USDC variant in tradeable_keys."""
+    global _TRADEABLE_USDC_SYMBOLS_CACHE
+    if _TRADEABLE_USDC_SYMBOLS_CACHE is not None:
+        return _TRADEABLE_USDC_SYMBOLS_CACHE
+    bases: set = set()
+    if TRADEABLE_KEYS_PATH.exists():
+        try:
+            with open(TRADEABLE_KEYS_PATH) as f:
+                keys = json.load(f)
+            for k in keys:
+                pair = k.split(":", 1)[1] if ":" in k else k
+                if "USDC" in pair:
+                    sym = pair.rsplit("_", 1)[0]
+                    if sym.endswith("USDC"):
+                        bases.add(sym[:-4])
+        except Exception as e:
+            logger.warning(f"Could not load tradeable_keys.json for USDC mapping: {e}")
+    _TRADEABLE_USDC_SYMBOLS_CACHE = bases
+    return bases
+
+
+def _normalize_symbol_to_usdc(symbol: str) -> str:
+    """Map BTCUSDT → BTCUSDC if the USDC variant exists in tradeable_keys; else passthrough."""
+    if not symbol or not symbol.endswith("USDT"):
+        return symbol
+    base = symbol[:-4]
+    usdc_bases = _load_usdc_symbol_set()
+    if base in usdc_bases:
+        return base + "USDC"
+    return symbol
+
+
+def build_weighted_conviction(analysis: Dict[str, Any], weights: Dict[str, float]) -> Dict[str, Any]:
+    """Aggregate per-symbol conviction weighted by causality.
+    For each trade: contribution = pnl_pct × weight, signed by side (LONG=+, SHORT=−).
+    Output: {symbol_usdc: {long_score, short_score, net_score, n_trades, contributing_traders}}."""
+    trades = analysis.get("trades", []) or []
+    if not trades:
+        return {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "n_trades_input": 0, "n_traders_with_weight": len(weights), "per_symbol": {}, "top_long": [], "top_short": []}
+    per_symbol: Dict[str, Dict[str, Any]] = {}
+    for t in trades:
+        w = weights.get(t.trader_id, 1.0)
+        if w <= 0.0:
+            continue
+        contribution = float(t.pnl_pct) * w
+        sym_usdc = _normalize_symbol_to_usdc(t.symbol)
+        if sym_usdc not in per_symbol:
+            per_symbol[sym_usdc] = {"raw_symbol": t.symbol, "long_score": 0.0, "short_score": 0.0, "net_score": 0.0, "n_trades": 0, "contributing_traders": set(), "weighted_trade_count": 0.0}
+        bucket = per_symbol[sym_usdc]
+        if t.side == "LONG":
+            bucket["long_score"] += contribution
+            bucket["net_score"] += contribution
+        elif t.side == "SHORT":
+            bucket["short_score"] += contribution
+            bucket["net_score"] -= contribution
+        bucket["n_trades"] += 1
+        bucket["weighted_trade_count"] += w
+        bucket["contributing_traders"].add(t.trader_id)
+    for sym, bucket in per_symbol.items():
+        bucket["contributing_traders"] = sorted(bucket["contributing_traders"])
+        bucket["n_contributing_traders"] = len(bucket["contributing_traders"])
+        for k in ("long_score", "short_score", "net_score", "weighted_trade_count"):
+            bucket[k] = round(bucket[k], 4)
+    sorted_long = sorted(per_symbol.items(), key=lambda kv: kv[1]["net_score"], reverse=True)
+    sorted_short = sorted(per_symbol.items(), key=lambda kv: kv[1]["net_score"])
+    top_long = [{"symbol": s, **{k: v for k, v in b.items() if k != "contributing_traders"}} for s, b in sorted_long[:25] if b["net_score"] > 0]
+    top_short = [{"symbol": s, **{k: v for k, v in b.items() if k != "contributing_traders"}} for s, b in sorted_short[:25] if b["net_score"] < 0]
+    return {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "causality_report_path": str(CAUSALITY_REPORT_PATH), "n_trades_input": len(trades), "n_trades_used": sum(b["n_trades"] for b in per_symbol.values()), "n_traders_with_weight": len(weights), "n_traders_zero_weight": sum(1 for w in weights.values() if w == 0.0), "per_symbol": per_symbol, "top_long": top_long, "top_short": top_short}
+
+
+def write_weighted_conviction(analysis: Dict[str, Any]) -> Path:
+    """Compute weighted conviction and write to data/trader_weighted_conviction.json."""
+    weights = _load_causality_weights()
+    payload = build_weighted_conviction(analysis, weights)
+    WEIGHTED_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(WEIGHTED_OUTPUT_PATH, "w") as f:
+        json.dump(payload, f, indent=2, default=str)
+    logger.info(f"Weighted conviction written: {WEIGHTED_OUTPUT_PATH} ({len(payload.get('per_symbol', {}))} symbols, {payload.get('n_trades_used', 0)} trades used)")
+    return WEIGHTED_OUTPUT_PATH
+
+
+# ═══════════════════════════════════════════════════════════════════
 # PHASE 4 — COMPARE PATTERNS TO OUR SYSTEM
 # ═══════════════════════════════════════════════════════════════════
 
@@ -402,6 +540,10 @@ def run_full_cycle(skip_scrape: bool = False):
     if not analysis:
         logger.error("Deep analysis failed. Aborting.")
         return
+    try:
+        write_weighted_conviction(analysis)
+    except Exception as e:
+        logger.warning(f"Weighted conviction write failed: {e}")
     # Phase 4: Compare to our system
     findings = compare_to_our_system(analysis)
     # Phase 5: Generate report

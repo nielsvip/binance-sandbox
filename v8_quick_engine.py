@@ -2239,8 +2239,26 @@ def simulate(stores, cfg, capital=10000.0):
     all_pnl = []
     per_symbol_pnl = {}
     start_size = cfg.START_POSITION_SIZE
-    cooldown = cfg.COOLDOWN_BARS
-    min_hold = cfg.MIN_HOLD_BARS
+    # MODE-AWARE THROTTLING (2026-04-26 fix): tradier sweeps were silently ignoring
+    # COOLDOWN_BARS_TRADIER / MIN_HOLD_MINUTES_TRADIER — engine read crypto fields only,
+    # under-counting tradier trades 100-1000x. Tradier base TF=5m so MIN_HOLD_MINUTES/5
+    # gives bars. Direct MIN_HOLD_BARS_TRADIER override also honored if a sweep adds it.
+    _mode = str(getattr(cfg, 'MODE', 'crypto') or 'crypto').lower()
+    if _mode == 'tradier':
+        cooldown = int(getattr(cfg, 'COOLDOWN_BARS_TRADIER', getattr(cfg, 'COOLDOWN_BARS', 3)))
+        _mh_bars_t = getattr(cfg, 'MIN_HOLD_BARS_TRADIER', None)
+        if _mh_bars_t is not None:
+            min_hold = int(_mh_bars_t)
+        else:
+            _mh_min_t = getattr(cfg, 'MIN_HOLD_MINUTES_TRADIER', None)
+            if _mh_min_t is not None:
+                # Tradier base TF = 5m; convert minutes → bars
+                min_hold = max(1, int(float(_mh_min_t) // 5))
+            else:
+                min_hold = int(getattr(cfg, 'MIN_HOLD_BARS', 4))
+    else:
+        cooldown = int(getattr(cfg, 'COOLDOWN_BARS', 3))
+        min_hold = int(getattr(cfg, 'MIN_HOLD_BARS', 250))
     ea_enabled = bool(getattr(cfg, 'EARLY_ABORT_ENABLED', True))
     ea_min_syms = int(getattr(cfg, 'EARLY_ABORT_MIN_SYMBOLS', 15))
     ea_floor = float(getattr(cfg, 'EARLY_ABORT_SHARPE_FLOOR', 1.0))
@@ -2500,9 +2518,15 @@ def simulate(stores, cfg, capital=10000.0):
             _ppl_enabled_q = bool(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
             if _ppl_enabled_q:
                 _pe_enabled = True
-                _pe_frac = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC', getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', 0.5)))
-                _pe_pct = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', 0.5)))
-                _pe_trail_arm = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', 0.7)))
+                # MODE-AWARE PPL (2026-04-26 fix): tradier sweeps overriding *_TRADIER were ignored.
+                if _mode == 'tradier':
+                    _pe_frac = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC_TRADIER', getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5)))
+                    _pe_pct = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER', getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5)))
+                    _pe_trail_arm = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER', getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.7)))
+                else:
+                    _pe_frac = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
+                    _pe_pct = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))
+                    _pe_trail_arm = float(getattr(cfg, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.7))
                 _pe_trail_floor = _pe_pct
                 _pe_be_buffer = float(getattr(cfg, 'PARTIAL_BE_BUFFER_PCT', 0.0))
             else:

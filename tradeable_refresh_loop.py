@@ -1,6 +1,6 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
 # pylint: disable=W,C,R,I
-"""tradeable_refresh_loop.py — fast 3-min local loop for fin+ang agent.
+"""tradeable_refresh_loop.py — fast 1-min local loop for fin+ang agent.
 
 Walks tradeable_keys.json for fin and ang, reads Redis `latest_market_data`,
 scores each (symbol, side) pair on:
@@ -14,7 +14,7 @@ hourly iterations. agent_snapshot_writer also inlines this into snapshot.json on
 
 NOT a trade executor. Read-only producer of advisory ranking data.
 
-Cron: */3 * * * *
+Cron: */1 * * * *
 """
 import json
 import logging
@@ -57,6 +57,50 @@ def _redis_market_data():
             return pickle.loads(raw)
         except Exception:
             return {}
+
+
+def _redis_positions(acct):
+    """Return inner positions dict for an account ({} if none). Keys look like 'ang:SYMBOL_LONG'."""
+    import redis
+    r = redis.Redis(host="localhost", port=6379, db=0, decode_responses=False)
+    raw = r.get(f"positions:{acct}")
+    if raw is None:
+        return {}
+    try:
+        d = json.loads(raw.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        try:
+            d = pickle.loads(raw)
+        except Exception:
+            return {}
+    if isinstance(d, dict):
+        inner = d.get("positions")
+        if isinstance(inner, dict):
+            return inner
+    return {}
+
+
+def _position_gain(positions_inner, acct, symbol, side):
+    """Look up gain for an account-prefixed key. Returns (gain_pct_or_None, is_held_bool)."""
+    if not positions_inner:
+        return None, False
+    key = f"{acct}:{symbol}_{side}"
+    p = positions_inner.get(key)
+    if not isinstance(p, dict):
+        return None, False
+    qty = p.get("positionAmt")
+    try:
+        if qty is not None and abs(float(qty)) <= 0:
+            return None, False
+    except (TypeError, ValueError):
+        pass
+    g = p.get("gain")
+    if g is None:
+        g = p.get("gain_pct")
+    try:
+        return (float(g) if g is not None else None), True
+    except (TypeError, ValueError):
+        return None, True
 
 
 def _load_tradeable_keys():
@@ -161,7 +205,7 @@ def _score(mtf_count, mtf_seen, sr_dist, sr_supportive):
     return round(base, 2)
 
 
-def _score_pair(symbol, side, market_data):
+def _score_pair(symbol, side, market_data, acct, positions_inner):
     fields = market_data.get(symbol)
     if not isinstance(fields, dict):
         return None
@@ -169,6 +213,13 @@ def _score_pair(symbol, side, market_data):
     mtf_count, mtf_seen, per_tf = _wt_alignment_count(fields, side)
     sr_name, sr_dist, sr_supportive = _sr_proximity(fields, side, price)
     score = _score(mtf_count, mtf_seen, sr_dist, sr_supportive)
+    gain_pct, is_held = _position_gain(positions_inner, acct, symbol, side)
+    bb_high_1h = fields.get("bb_high_1h")
+    if bb_high_1h is None:
+        bb_high_1h = fields.get("bb_upper_1h")
+    bb_low_1h = fields.get("bb_low_1h")
+    if bb_low_1h is None:
+        bb_low_1h = fields.get("bb_lower_1h")
     return {
         "key": f"{symbol}_{side}",
         "symbol": symbol,
@@ -183,17 +234,27 @@ def _score_pair(symbol, side, market_data):
         "current_price": price,
         "ranking_points": fields.get("0ranking_points"),
         "sentiment_class": fields.get("0sentiment_classification"),
+        "gain_pct": gain_pct,
+        "is_held": is_held,
+        "dc_high_4h": fields.get("dc_high_4h"),
+        "dc_low_4h": fields.get("dc_low_4h"),
+        "bb_high_1h": bb_high_1h,
+        "bb_low_1h": bb_low_1h,
+        "wt_velocity_3m": fields.get("wt_velocity_3m"),
+        "wt_velocity_15m": fields.get("wt_velocity_15m"),
     }
 
 
 def _refresh_account(acct, tradeable_keys, market_data):
     pairs = _per_account(tradeable_keys, acct)
-    rows = [r for r in (_score_pair(s, side, market_data) for s, side in pairs) if r is not None]
+    positions_inner = _redis_positions(acct)
+    rows = [r for r in (_score_pair(s, side, market_data, acct, positions_inner) for s, side in pairs) if r is not None]
     rows.sort(key=lambda r: r["score"], reverse=True)
     fresh_setups = [r for r in rows if r["score"] >= 70 and r["mtf_align"] >= 4]
     return {
         "tradeable_count": len(pairs),
         "scored_count": len(rows),
+        "positions_count": sum(1 for r in rows if r.get("is_held")),
         "candidates": rows[:TOP_N_PER_ACCOUNT],
         "fresh_setups": fresh_setups,
         "warnings": [] if rows else ["no_market_data_for_any_symbol"],
@@ -208,7 +269,7 @@ def build():
         "schema_version": SCHEMA_VERSION,
         "generated_at_utc": _utc_now_iso(),
         "generator": "tradeable_refresh_loop.py",
-        "ttl_sec": 300,
+        "ttl_sec": 120,
         "market_data_symbols": len(market_data),
         "accounts": accounts_out,
     }

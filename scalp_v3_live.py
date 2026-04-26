@@ -69,6 +69,31 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'BOTH')).upper()
     allow_long = side_mode in ('LONG_ONLY', 'BOTH')
     allow_short = side_mode in ('SHORT_ONLY', 'BOTH')
+    # 2026-04-26 entry-quality filters (default OFF; opt-in via config; tested in shadow A/B)
+    # HTF SMA200 alignment
+    if bool(getattr(config, 'SCALP_V3_HTF_SMA200_ENABLED', False)):
+        sma_d = _sf(indicators.get('sma_200_D'), 0)
+        sma_4h = _sf(indicators.get('sma_200_4h'), 0)
+        if allow_long and sma_d > 0 and sma_4h > 0:
+            if not (price > sma_d and price > sma_4h):
+                allow_long = False
+        if allow_short and sma_d > 0 and sma_4h > 0:
+            if not (price < sma_d and price < sma_4h):
+                allow_short = False
+    # ATR percentile gate (block dead-vol chop)
+    if bool(getattr(config, 'SCALP_V3_ATR_PCTL_GATE_ENABLED', False)):
+        atr_pctl_min = float(getattr(config, 'SCALP_V3_ATR_PCTL_MIN', 40.0))
+        atr_pctl = _sf(indicators.get('atr_3m_pctl_100'), -1)
+        if atr_pctl >= 0 and atr_pctl < atr_pctl_min:
+            return None  # too quiet — skip entry entirely
+    # UTC session block (e.g., [3,4,5] = block 03-06 UTC alts)
+    block_hours = getattr(config, 'SCALP_V3_SESSION_BLOCK_HOURS', None) or []
+    if block_hours:
+        utc_h = time.gmtime().tm_hour
+        if utc_h in block_hours:
+            return None
+    if not (allow_long or allow_short):
+        return None
     # 2026-04-26 anchored VWAP filter (default OFF; opt-in via SCALP_V3_VWAP_FILTER_ENABLED).
     # DC_BREAK: LONG requires price > vwap_dc_long; SHORT requires price < vwap_dc_short.
     # US_RTH:   LONG requires price > vwap_us_rth;  SHORT requires price < vwap_us_rth.
@@ -112,10 +137,47 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
                 pass
             else:
                 return None
-    if allow_long and bar_rising and k_rising and wt_bull and htf_bull:
-        return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_TREND_k3m{k_3m:.0f}>{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
-    if allow_short and bar_falling and k_falling and wt_bear and htf_bear:
-        return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_TREND_k3m{k_3m:.0f}<{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+    # ===== ENTRY PATH 1: TREND (current strict logic) — controlled by SCALP_V3_ENTRY_TREND_ENABLED =====
+    if bool(getattr(config, 'SCALP_V3_ENTRY_TREND_ENABLED', True)):
+        if allow_long and bar_rising and k_rising and wt_bull and htf_bull:
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_TREND_k3m{k_3m:.0f}>{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+        if allow_short and bar_falling and k_falling and wt_bear and htf_bear:
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_TREND_k3m{k_3m:.0f}<{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+    # Pull HTF context for the looser paths (no early-return on miss).
+    wt1_1h = _sf(indicators.get('wt1_1h', 0), 0); wt2_1h = _sf(indicators.get('wt2_1h', 0), 0)
+    htf_bullish_loose = (k_1h >= 50) or (wt1_1h > wt2_1h)
+    htf_bearish_loose = (k_1h <= 50) or (wt1_1h < wt2_1h)
+    bar_pulling_up = (high_3m > high_3m_prev) or (low_3m > low_3m_prev)    # any rising touch (looser than HH+HL)
+    bar_pulling_down = (high_3m < high_3m_prev) or (low_3m < low_3m_prev)
+    # ===== ENTRY PATH 2: PULLBACK continuation (research consensus — fixes 0/345 reentry gap) =====
+    # LONG: HTF bullish, current 3m showed pullback (LL or LH last bar) AND k_3m oversold-bouncing AND WT 3m turning up.
+    if bool(getattr(config, 'SCALP_V3_ENTRY_PULLBACK_ENABLED', False)):
+        if allow_long and htf_bullish_loose and bar_pulling_down and (k_3m <= 35) and (k_3m > k_3m_prev) and wt_bull:
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_PULLBACK_k3m{k_3m:.0f}>{k_3m_prev:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+        if allow_short and htf_bearish_loose and bar_pulling_up and (k_3m >= 65) and (k_3m < k_3m_prev) and wt_bear:
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_PULLBACK_k3m{k_3m:.0f}<{k_3m_prev:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+    # ===== ENTRY PATH 3: DC channel break (15m channel) =====
+    dc_high_15m = _sf(indicators.get('dc_high_15m', 0), 0)
+    dc_low_15m = _sf(indicators.get('dc_low_15m', 0), 0)
+    if bool(getattr(config, 'SCALP_V3_ENTRY_DC_BREAK_ENABLED', False)):
+        if allow_long and dc_high_15m > 0 and price > dc_high_15m and (k_1h > 30) and wt_bull:
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_DCBREAK_p{price:.4g}>dc15m{dc_high_15m:.4g}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+        if allow_short and dc_low_15m > 0 and price < dc_low_15m and (k_1h < 70) and wt_bear:
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_DCBREAK_p{price:.4g}<dc15m{dc_low_15m:.4g}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+    # ===== ENTRY PATH 4: WT 3m line crossover (looser than full TREND stack) =====
+    wt_velocity_3m = _sf(indicators.get('wt_velocity_3m', 0), 0)
+    if bool(getattr(config, 'SCALP_V3_ENTRY_WT_CROSS_ENABLED', False)):
+        if allow_long and wt_bull and wt_velocity_3m > 0 and (k_3m >= 40) and htf_bullish_loose:
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_WTCROSS_v3m{wt_velocity_3m:.2f}_k3m{k_3m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+        if allow_short and wt_bear and wt_velocity_3m < 0 and (k_3m <= 60) and htf_bearish_loose:
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_WTCROSS_v3m{wt_velocity_3m:.2f}_k3m{k_3m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+    # ===== ENTRY PATH 5: Stoch K bounce off oversold/overbought =====
+    d_3m = _sf(indicators.get('stoch_d_3m', 50), 50)
+    if bool(getattr(config, 'SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED', False)):
+        if allow_long and (k_3m > 25) and (k_3m_prev <= 25) and (k_3m > d_3m) and (k_1h > 25):
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STOCHBOUNCE_k3m{k_3m_prev:.0f}->{k_3m:.0f}_d3m{d_3m:.0f}_k1h{k_1h:.0f}"}
+        if allow_short and (k_3m < 75) and (k_3m_prev >= 75) and (k_3m < d_3m) and (k_1h < 75):
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STOCHBOUNCE_k3m{k_3m_prev:.0f}->{k_3m:.0f}_d3m{d_3m:.0f}_k1h{k_1h:.0f}"}
     return None
 
 

@@ -1171,8 +1171,61 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         market_open = is_regular_trading_hours()
         action_taken = False
 
-        
-        
+        # ═══ 2026-04-26 USER RULE — MICRO_SCALP_STOCKS_MAKER ═══
+        # Mirror of crypto MICRO_SCALP_USDC_MAKER (ez_manage.py:19793). Stocks micro-scalper.
+        # CLOSE: gain >= MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT AND gain < prev_gain (first decel).
+        # REOPEN: when flat AND price re-crosses prior exit_price.
+        # Limit-only — place_order already runs a 10s aggressive limit-chase loop with market
+        # fallback. RTH-gated (place_order checks is_regular_trading_hours internally).
+        # Fires BEFORE evaluate_stop ladder so we exit fast without tripping STOCK_MIN_HOLD,
+        # UNIVERSAL_NOLOSS_GATE, etc. Closes only at POSITIVE gain → bypasses NOLOSS by construction.
+        # State stored on trade_manager._micro_scalp_state_stocks (separate dict from crypto's).
+        if (market_open and bool(getattr(config, 'MICRO_SCALP_STOCKS_MAKER_ENABLED', False))
+            and account_key in (getattr(config, 'MICRO_SCALP_STOCKS_ACCOUNTS', None) or [])):
+            try:
+                _mss_dict = getattr(trade_manager, '_micro_scalp_state_stocks', None)
+                if _mss_dict is None:
+                    trade_manager._micro_scalp_state_stocks = {}
+                    _mss_dict = trade_manager._micro_scalp_state_stocks
+                _mss_st = _mss_dict.get(position_key, {})
+                _mss_threshold = float(getattr(config, 'MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT', 0.05))
+                _mss_qty = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
+                # CLOSE branch — held position, gain past threshold AND first deceleration
+                if _mss_qty >= 1 and current_price > 0:
+                    _mss_gain = float(getattr(position, 'gain', 0) or 0)
+                    _mss_prev = float(_mss_st.get('prev_gain', _mss_gain))
+                    if _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
+                        _mss_reason = f"MICRO_SCALP_STOCKS_CLOSE_g{_mss_gain:.3f}%_prev{_mss_prev:.3f}%"
+                        logger.critical(f"⚡ [MICRO_SCALP_STOCKS_CLOSE] {position_key}: gain={_mss_gain:.3f}% < prev={_mss_prev:.3f}% (threshold={_mss_threshold}%) — limit close (chase→market fallback at 10s)")
+                        # Cooldown bookkeeping (same key as evaluate_stop CLOSE path)
+                        if not hasattr(trade_manager, '_pending_closes'):
+                            trade_manager._pending_closes = {}
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", _mss_reason, 95.0, override_qty=999999)
+                        trade_manager._pending_closes[symbol] = time.time()
+                        # Stash state for reopen branch — record exit_price + side + original qty
+                        _mss_dict[position_key] = {'prev_gain': 0.0, 'exit_price': current_price, 'reopen_pending': True, 'original_side': position_side, 'original_qty': _mss_qty}
+                        action_taken = True
+                    else:
+                        # Track prev_gain even if we don't fire — for next-cycle decel detection
+                        _mss_st_new = dict(_mss_st)
+                        _mss_st_new['prev_gain'] = _mss_gain
+                        _mss_dict[position_key] = _mss_st_new
+                # REOPEN branch — flat position, prior close pending, price re-crossed exit
+                elif _mss_qty < 1 and _mss_st.get('reopen_pending', False) and current_price > 0:
+                    _mss_exit_px = float(_mss_st.get('exit_price', 0) or 0)
+                    _mss_orig_side = str(_mss_st.get('original_side', '') or '')
+                    _mss_orig_qty = float(_mss_st.get('original_qty', 0) or 0)
+                    if _mss_exit_px > 0 and _mss_orig_qty >= 1 and _mss_orig_side in ('LONG', 'SHORT'):
+                        _mss_orig_long = (_mss_orig_side == 'LONG')
+                        _mss_crossed = (_mss_orig_long and current_price <= _mss_exit_px) or ((not _mss_orig_long) and current_price >= _mss_exit_px)
+                        if _mss_crossed:
+                            _mss_reason = f"MICRO_SCALP_STOCKS_REOPEN_exit{_mss_exit_px:.4f}_now{current_price:.4f}"
+                            logger.critical(f"⚡ [MICRO_SCALP_STOCKS_REOPEN] {position_key}: price {current_price:.4f} re-crossed exit {_mss_exit_px:.4f} ({_mss_orig_side}) — limit reopen qty={_mss_orig_qty:.0f}")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _mss_reason, 95.0, override_qty=_mss_orig_qty)
+                            _mss_dict[position_key] = {'prev_gain': 0.0, 'exit_price': 0.0, 'reopen_pending': False, 'original_side': '', 'original_qty': 0.0}
+                            action_taken = True
+            except Exception as _mss_e:
+                logger.warning(f"[MICRO_SCALP_STOCKS_ERR] {position_key}: {type(_mss_e).__name__}: {_mss_e}")
 
         # =========================================================
         # LOGIC BRANCH A: HELD POSITION (EXIT / AUGMENT)

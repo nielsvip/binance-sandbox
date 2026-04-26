@@ -275,6 +275,25 @@ def _load_local_handoff_file(name):
         return None
 
 
+def _load_causality_verdict():
+    path = BASE / "data" / "opinion_causality_report.json"
+    if not path.exists():
+        return None
+    try:
+        rep = json.loads(path.read_text())
+    except Exception as e:
+        log.warning("causality report read failed: %s", e)
+        return None
+    if not isinstance(rep, dict):
+        return None
+    return {
+        "generated_at_utc": rep.get("generated_at_utc"),
+        "verdict": rep.get("verdict"),
+        "per_trader_top20": rep.get("per_trader_top20"),
+        "per_symbol_top30_by_volume": rep.get("per_symbol_top30_by_volume"),
+    }
+
+
 def build_snapshot():
     r = _redis_client()
     positions = _load_positions(r)
@@ -298,6 +317,7 @@ def build_snapshot():
         "config_summary": _config_summary(),
         "tradeable_refresh": _load_local_handoff_file("tradeable_refresh.json"),
         "tv_enrichment": _load_local_handoff_file("tv_enrichment.json"),
+        "causality_verdict": _load_causality_verdict(),
     }
 
 

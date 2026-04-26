@@ -273,6 +273,37 @@ class Config:
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.
     STRICT_NO_LOSS_ACCOUNTS = ['ang','flz', 'men', 'fin', 'inf']  # 2026-04-24: added 'inf'. MOVR -13% was hit with DC_BREACH_REDUCE_UNHEDGED instead of DC_BREACH_HEDGE_TRIGGER because inf was missing from this list (the hedge branch at ez_manage.py:14491 requires STRICT_NO_LOSS membership). RE-ENABLED 2026-04-07: Removing this halved account value in 10 minutes. NO closing at a loss. EVER. Hedge + ratio IS the protection.
     SCALP_OVERRIDE = False
+    # === THROUGHPUT SAFETY KNOBS (added 2026-04-26 — pre-50-500/day push) ===
+    # Master kill switch — when True, all four THROUGHPUT_SAFETY_* gates below are honored.
+    # Defaults are SANE-CONSERVATIVE for current account sizes ($1k crypto). Flip enabled=True
+    # before high-frequency push; tune per-account dicts as accounts scale.
+    THROUGHPUT_SAFETY_ENABLED: bool = False  # master gate — set True only after wiring is verified
+    # 1) Per-day max-loss kill switch — halts NEW entries when account day-PnL% breaches floor.
+    #    Defaults: -3% per crypto account (small sizes, contained drawdown). Flip THROUGHPUT_SAFETY_ENABLED to enforce.
+    THROUGHPUT_MAX_DAILY_LOSS_PCT: Dict[str, float] = field(default_factory=lambda: {
+        "ang": -3.0, "inf": -3.0, "flz": -3.0, "men": -3.0, "fin": -3.0,
+    })
+    THROUGHPUT_DAILY_LOSS_RESET_UTC_HOUR: int = 0  # day boundary (00:00 UTC). Stocks override in tradier config.
+    # 2) Max concurrent positions cap — refuse new opens beyond N total per account.
+    #    Defaults match current observed live counts with ~30% headroom.
+    THROUGHPUT_MAX_CONCURRENT_POSITIONS: Dict[str, int] = field(default_factory=lambda: {
+        "ang": 25, "inf": 30, "flz": 20, "men": 25, "fin": 20,
+    })
+    # 3) Max total notional cap (USD) — refuse new opens beyond M $ gross exposure per account.
+    #    Defaults: $1500 per crypto account (1.5× nominal $1k account size).
+    THROUGHPUT_MAX_TOTAL_NOTIONAL_USD: Dict[str, float] = field(default_factory=lambda: {
+        "ang": 1500.0, "inf": 1500.0, "flz": 1500.0, "men": 1500.0, "fin": 1500.0,
+    })
+    # 4) Per-symbol max fires per hour — anti-spam (one symbol can't dominate the queue).
+    #    Default: 6 fires/hour/symbol = 1 every 10 min.
+    THROUGHPUT_MAX_FIRES_PER_HOUR_PER_SYMBOL: int = 6
+    # 4b) Per-account global max fires per hour — circuit breaker for queue spam at account level.
+    THROUGHPUT_MAX_FIRES_PER_HOUR_PER_ACCOUNT: Dict[str, int] = field(default_factory=lambda: {
+        "ang": 60, "inf": 90, "flz": 60, "men": 60, "fin": 60,
+    })
+    # External 0.01% incl-commissions Finandy stop (activates after +0.25% gain) is configured
+    # in Finandy's webhook settings, NOT here. Documented for traceability — do not duplicate logic.
+    # === END THROUGHPUT SAFETY KNOBS ===
     # === PER-ACCOUNT STRATEGIES — gate ablation tested (47 sym, 4yr, 25 configs) ===
     # ALL_GATES: Sharpe 2.62L/-15.69S, 58/31 trades → BROKEN
     # SCALP_FAST: Sharpe 4.46L/6.02S, 473/481 trades → ang/men
@@ -453,7 +484,7 @@ class Config:
     # deceleration; reopens when price re-crosses exit_price. Fires from process_position before
     # other close paths. Bypasses STRICT_NO_LOSS / UNG / hedge gates — close only on POSITIVE gain.
     MICRO_SCALP_USDC_MAKER_ENABLED: bool = True
-    MICRO_SCALP_USDC_ACCOUNTS: list = ["inf"]
+    MICRO_SCALP_USDC_ACCOUNTS: list = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
@@ -488,6 +519,21 @@ class Config:
     # BOTH     = require LONG entry: price > vwap_dc_long AND price > vwap_us_rth (mirror SHORT).
     SCALP_V3_VWAP_FILTER_ENABLED: bool = False
     SCALP_V3_VWAP_TYPE: str = "BOTH"  # "DC_BREAK" | "US_RTH" | "BOTH"
+    # === 2026-04-26 V3 entry-quality filters (research-agent recommendations to fix shameful WR 30-47%) ===
+    # HTF SMA200 alignment: LONG entry requires price > sma_200_D AND price > sma_200_4h. Mirror SHORT. Research consensus: kills ~40% counter-trend losers.
+    SCALP_V3_HTF_SMA200_ENABLED: bool = False
+    # ATR percentile gate: skip entries when current ATR_3m below Nth percentile of last 100 bars (filters dead-vol chop).
+    SCALP_V3_ATR_PCTL_GATE_ENABLED: bool = False
+    SCALP_V3_ATR_PCTL_MIN: float = 40.0  # 40 = block bottom 40% of vol regimes
+    # UTC session block: skip entries during these UTC hours (low-liquidity Asian-overnight window). Empty = no block.
+    SCALP_V3_SESSION_BLOCK_HOURS: list = field(default_factory=list)  # e.g. [3,4,5] to block 03-06 UTC
+    # === 2026-04-26 V3 entry-path expansion (user: "AUGMENT trades 20-1000x — more entry paths not stricter filters") ===
+    # Each path is independently switchable; on each cycle V3 fires the FIRST path that matches. Default: TREND only (current behavior).
+    SCALP_V3_ENTRY_TREND_ENABLED: bool = True       # current strict trend-follow (HH+HL + k_3m rising + HTF stoch + WT bull)
+    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = False   # pullback-to-EMA20 continuation: 3m LL+LH then close back >= EMA20 + WT bull (ignore HTF stoch)
+    SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = False   # DC channel break: 3m close > dc_high_15m (LONG) / < dc_low_15m (SHORT) + volume confirm
+    SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = False   # WT 3m line crossover: wt1 just crossed wt2 + k_3m supportive (looser than full TREND stack)
+    SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = False  # K bounce off oversold/overbought: k_3m crossed up through 25 (LONG) or down through 75 (SHORT)
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
