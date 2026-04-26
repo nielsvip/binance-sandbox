@@ -680,6 +680,7 @@ class QuickConfig:
     FUNDING_GATE_SHORT_MIN: float = -0.0005   # rate below this = veto shorts
     OI_CONFIRM_ENABLED: bool = False          # require OI rising/falling to confirm trend
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this for direction
+    ADDITIVE_SIGNAL_MIN_HTF: int = 1          # min aligned 1h/4h/D TFs for additive SQUEEZE_FIRE/DIVERGENCE entry
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1702,15 +1703,24 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _cc_min = int(getattr(cfg, 'WT_CROSS_COUNT_MIN', 1))
         if _cc_arr.any():
             base_sig = base_sig & (_cc_arr >= _cc_min)
-    # === Improvement Framework A1-A4 (2026-04-25): squeeze, divergence, funding, OI ===
-    # SQUEEZE_FIRE_ENTRY (A3): on squeeze release, fire entry in direction. Additive — opens new entries.
+    # === Improvement Framework A1-A4 (2026-04-25, REVISED 2026-04-26): squeeze, divergence, funding, OI ===
+    # Additive entry signals (SQUEEZE_FIRE, DIVERGENCE) now require minimum HTF alignment to prevent
+    # firing entries against the dominant trend. Computed inline so it works even when HTF_ALIGNMENT_ENABLED=False.
+    _additive_htf_ok = None
+    if getattr(cfg, 'SQUEEZE_FIRE_ENTRY_ENABLED', False) or getattr(cfg, 'DIVERGENCE_ENTRY_ENABLED', False):
+        if is_long:
+            _ah = (wt1_1h > wt2_1h).astype(int) + (wt1_4h > wt2_4h).astype(int) + (wt1_D > wt2_D).astype(int)
+        else:
+            _ah = (wt1_1h < wt2_1h).astype(int) + (wt1_4h < wt2_4h).astype(int) + (wt1_D < wt2_D).astype(int)
+        _additive_htf_ok = _ah >= int(getattr(cfg, 'ADDITIVE_SIGNAL_MIN_HTF', 1))
+    # SQUEEZE_FIRE_ENTRY (A3): squeeze release fires entry in matching direction (additive, HTF-gated).
     if getattr(cfg, 'SQUEEZE_FIRE_ENTRY_ENABLED', False):
         _sf_tf = str(getattr(cfg, 'SQUEEZE_FIRE_TF', '1h'))
         _sf_arr = _safe(npz, f'squeeze_fire_{_sf_tf}', n, 0).astype(np.int8)
         if _sf_arr.any():
             _sf_match = (_sf_arr == 1) if is_long else (_sf_arr == -1)
-            base_sig = base_sig | _sf_match
-    # DIVERGENCE_ENTRY (A4): regular bull (long) / bear (short) divergence fires entry. Additive.
+            base_sig = base_sig | (_sf_match & _additive_htf_ok)
+    # DIVERGENCE_ENTRY (A4): regular div fires entry in direction (additive, HTF-gated).
     if getattr(cfg, 'DIVERGENCE_ENTRY_ENABLED', False):
         _dv_tf = str(getattr(cfg, 'DIVERGENCE_ENTRY_TF', '1h'))
         _dv_ind = str(getattr(cfg, 'DIVERGENCE_INDICATOR', 'wt'))
@@ -1724,7 +1734,7 @@ def compute_entry_signals(npz, n, is_long, cfg):
         else:
             _dv_sig = _safeb(npz, f'{_dv_key}_wt_{_dv_tf}', n)
         if _dv_sig.any():
-            base_sig = base_sig | _dv_sig
+            base_sig = base_sig | (_dv_sig & _additive_htf_ok)
     # FUNDING_GATE (A1): veto when funding rate too extreme. Filter — but pass-through on pre-cache bars (rate exactly 0).
     # Symbols listed after 2022-01-01 have funding_rate=0 before listing date.
     if getattr(cfg, 'FUNDING_GATE_ENABLED', False):

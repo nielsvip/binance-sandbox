@@ -184,36 +184,54 @@ Candidate doesn't ship unless it dominates or ties 2.6365 across all 5 metrics o
 
 ## Status Tracker (update as work progresses)
 
+### Done (data + engine + sweeps live)
+
+| ID | Task | Status |
+|----|------|--------|
+| A1 | Funding rate: fetcher + cache + NPZ + FUNDING_GATE engine wiring | ✅ WIRED 2026-04-26 (196 caches on S1) |
+| A2 | OI: fetcher + cache + NPZ + OI_CONFIRM engine wiring | ✅ WIRED 2026-04-26 (191 caches, ~30d each per Binance limit) |
+| A3 | KC + Squeeze fire: NPZ fields + SQUEEZE_FIRE_ENTRY engine wiring + ez_indicators helpers | ✅ WIRED 2026-04-26 |
+| A4 | WT/MFI divergence: pivot detector + 40 NPZ fields + DIVERGENCE_ENTRY engine wiring | ✅ WIRED 2026-04-26 |
+| ENGINE-REVISION | HTF alignment guard for additive signals (`ADDITIVE_SIGNAL_MIN_HTF`) | ✅ 2026-04-26 04:00, md5 da106de8… |
+| CRYPTO-NPZ-REGEN | 50/50 crypto NPZs regenerated with all new fields | ✅ DONE 00:39 |
+| TRADIER-NPZ-REGEN | 106/114 tradier NPZs regenerated with KC/Squeeze/divergence (no funding/OI by design) | ✅ DONE 03:48 |
+| CRYPTO-AUTONOMOUS | w26104 LIVE on S1 (50sym, target 2.0, baseline 2p6365, flip 0.05, extended 9-switch space) | ✅ LIVE since 00:40 |
+| TRADIER-AUTONOMOUS | w36106 LIVE on S2 with REVISED args (target 2.5, flip 0.08, perturb 0.08) — w36105 ran 51 iter with old args first (no winner; iter 49 hit DIV+OI true at sym_sharpe 1.87) | ✅ LIVE since 05:08 |
+| CONFIG-MIRROR | SQUEEZE_FIRE switches added to both config.py and config_tradier.py | ✅ |
+
+### Open — wiring/diagnostics (still pending from original framework)
+
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| B1 | Verify DELTA_EXIT_OVERRIDE_NOLOSS wiring in v8_quick_engine | not started | grep first; memory is 18 days old |
-| B2 | Verify HEDGE_EXIT_BYPASS_NOLOSS + STALL_SUB wiring | not started | |
-| B3 | Decide: score MACD/LinReg or delete compute | not started | |
-| B4 | Grep + delete dead BC_155/156/157 branches | not started | |
-| B5 | Unify SCALP_V3 paper/live TF set | not started | paper=1M, live=3M |
-| B6 | Confirm hedge close gate fix synced to S1+S2 | not started | fixed 2026-04-25 |
-| 2.6365-verify | Re-test c08_crypto_winner on 100 syms | not started | gates everything below |
-| C1 | WRONG_SIDE_ABS_KILL param sweep | blocked on 2.6365-verify | |
-| C2 | PPL step-ladder sweep | blocked on 2.6365-verify | |
-| C3 | ADX_4h × K3M_FLOOR cross-section | blocked on 2.6365-verify | |
-| C4 | AUGMENT multiplier sweep | blocked on 2.6365-verify | |
-| C5 | NOLOSS_BYPASS_WT_5OF5 + WRONG_SIDE_ABS_KILL co-sweep | blocked on 2.6365-verify | |
-| A1 | Funding rate ingest + ENGINE WIRING | **WIRED 2026-04-26** | Fetcher + cache + NPZ injection complete. Backfill done on S1 (196 funding caches). Engine wired in v8_quick_engine.compute_entry_signals: `FUNDING_GATE_ENABLED` filters longs when funding > LONG_MAX, shorts when < SHORT_MIN. autonomous_search auto-discovers via fields(QuickConfig). |
-| A2 | Open Interest ingest + ENGINE WIRING | **WIRED 2026-04-26** | Fetcher + cache + NPZ injection complete. 191 OI caches on S1 (~30d each per Binance limit). Engine wired: `OI_CONFIRM_ENABLED` requires oi_change_1h ≥ MIN_PCT for longs, ≤ -MIN_PCT for shorts. |
-| A3 | KC + Squeeze fire ENGINE WIRING | **WIRED 2026-04-26** | NPZ fields complete. v8_quick_engine wired: `SQUEEZE_FIRE_ENTRY_ENABLED` adds entry signal when squeeze_fire_{tf} matches direction (additive). Plus live helpers in ez_indicators.py for future live use. |
-| A4 | WT/MFI divergence ENGINE WIRING | **WIRED 2026-04-26** | NPZ fields complete (40 fields per symbol). v8_quick_engine wired: `DIVERGENCE_ENTRY_ENABLED` + `DIVERGENCE_INDICATOR={wt,mfi,either}` adds entry signal when div_reg_bull(long)/div_reg_bear(short) active. |
-| NPZ-REGEN | Regenerate all 48 crypto NPZs with new fields | **DONE 2026-04-26 00:39** | DONE: 50/50. 70 new fields per NPZ verified populated. Sentiment injection ran post-pass. |
-| AUTONOMOUS-RESTART | Restart with extended parameter space | **LIVE 2026-04-26 00:40** | autonomous_search w26104 running (PID 329183 on S1). Extended 9-switch space active. Output: `data/autonomous/crypto_2p6365_50sym/w26104/autonomous_crypto.csv`. Log: `/home/niels/logs/autonomous_crypto_w26104_postregen.log`. Each iteration up to 120s. |
-| MONITORING | Watch for first winning configs | **TODO** | Check `data/autonomous/crypto_2p6365_50sym/w26104/autonomous_crypto.csv` periodically. Look for any iteration with `pool_sharpe > 2.6365` AND uses one of the new switches. |
-| TRADIER-EXTEND | Mirror new fields/switches to tradier path | **REGEN IN PROGRESS 2026-04-26 03:43+** | (1) ✅ config_tradier.py SQUEEZE_FIRE switches added md5 b7e87ee2…. (2) ✅ Killed all tradier autonomous workers (4 across 2p4860+3p4361 baselines, plus a respawn w35177 at 03:42). (3) ✅ Cron `watchdog_autonomous.sh` disabled (`#REGEN_PAUSE_…`) — backup at `/tmp/crontab.backup_*`. (4) ✅ klines_cache/tradier rsync DONE (2697 files, AAPL_15m mtime Apr 26 01:57). (5) ✅ klines_cache_backtest/tradier rsync DONE (mkdir parent + retry rsync, 262 files of 15m alone, AAPL 4MB full history). (6) ✅ Master poller (PID 271452) detected rsync stable at 03:43:24, fired chain. (7) **NPZ regen LIVE**: 6 workers on S2, log `/home/niels/binance-sandbox/logs/npz_regen_tradier_20260426_034324.log`. (8) PENDING (auto): autonomous tradier w36105 (seed 36105, target Sharpe 3.0, baseline 3p4361_genuine, extended 9-switch space, flip 0.05). |
-| TRADIER-CRON-RESTORE | Re-enable autonomous watchdog after chain completes | **TODO** | After tradier regen + autonomous w36105 confirmed running: `ssh niels@204.168.181.211 "crontab -l \| sed 's/^#REGEN_PAUSE_//' \| crontab -"`. Watchdog will respawn 2p4860 workers if pgrep -fc autonomous_search < 3. |
-| A5 | CVD spot-vs-perp | parking lot | |
-| A6 | Liquidation cascade fade | parking lot | |
-| A7 | ICT/SMC primitives | parking lot | |
-| D1 | Weekly check_sandbox_parity.py cadence | not started | |
-| D2 | Audit v8_engine FEE_PCT setting | not started | likely-high-impact diagnostic |
-| D3 | PPL slippage sample (50 fires from JSONL) | not started | |
-| D4 | c08_crypto_winner on 100-sym (overlaps with 2.6365-verify) | not started | |
+| B1 | Verify `DELTA_EXIT_OVERRIDE_NOLOSS` wiring in v8_quick_engine | open | grep first; memory is 18 days old |
+| B2 | Verify `HEDGE_EXIT_BYPASS_NOLOSS` + `STALL_SUB` wiring | open | same memory entry |
+| B3 | Decide: score MACD/LinReg or delete compute | open | wasted compute |
+| B4 | Grep + delete dead BC_155/156/157 branches | open | |
+| B5 | Unify SCALP_V3 paper/live TF set | open | paper=1M, live=3M |
+| B6 | Confirm 2026-04-25 hedge close gate fix synced to S1+S2 | open | |
+| D1 | Weekly `check_sandbox_parity.py` cadence | open | |
+| D2 | Audit `v8_engine` `FEE_PCT` setting | open | likely-high-impact diagnostic for "bad real gains" |
+| D3 | PPL slippage sample (50 fires from JSONL) | open | |
+| 100-SYM-VERIFY | Re-test c08_crypto_winner on 100 syms (also addresses D4) | open | **gates C1–C5** |
+| TRADIER-CRON-RESTORE | Re-enable autonomous watchdog: `ssh s2-int "crontab -l \| sed 's/^#REGEN_PAUSE_//' \| crontab -"` | open | do once w36106 stable. Cron currently disabled on S2. Also screen `autochain_s2` killed — re-create if you want auto-respawn. |
+
+### Open — sweeps (blocked on 100-SYM-VERIFY)
+
+| ID | Task | Notes |
+|----|------|-------|
+| C1 | WRONG_SIDE_ABS_KILL param sweep | min_tfs ∈ {3,4,5}, k_tfs ∈ {1,2,3}, age ∈ {15,30,60,120} |
+| C2 | PPL step-ladder sweep | GAIN_PCT ∈ {0.3,0.4,0.5,0.7,1.0}, FRAC ∈ {0.3,0.5,0.7} |
+| C3 | ADX_4h × K3M_FLOOR cross-section | |
+| C4 | AUGMENT multiplier sweep | {1.0,1.25,1.5,1.75,2.0,2.5,3.0} with AUGMENT_ONLY_PROFITABLE locked |
+| C5 | NOLOSS_BYPASS_WT_5OF5 + WRONG_SIDE_ABS_KILL co-sweep | |
+
+### Parking lot (revisit only after A1–A4 prove out)
+
+| ID | Task | Why parked |
+|----|------|------------|
+| A5 | CVD spot-vs-perp | needs aggTrades reconstruction, hundreds of MB/day per symbol |
+| A6 | Liquidation cascade fade | needs Coinalyze/CoinGlass external feed |
+| A7 | ICT/SMC primitives (FVG/OB/BOS/CHoCH/sweeps) | published backtests vary 30%+ across forks; high overfit risk |
 
 ---
 

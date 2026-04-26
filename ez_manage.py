@@ -18229,6 +18229,19 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         # == STANDARD REENTRY GATES ==
         price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         if price_above_reduction:
+            # 2026-04-26 RATE LIMIT (rogue-loop fix): refuse to fire MANDATORY_PRICE_CROSS
+            # twice on the same position_key within MIN_INTERVAL seconds. The original bug
+            # was that this fires every cycle while price > exit_level, even AFTER a
+            # successful order — flz fired BNBUSDC_SHORT 6× in 1min, 134 entries in 5min
+            # across 4 accounts (rogue-loop shape of 2026-03-29 disaster). Default 300s.
+            _mpc_min_interval = float(getattr(config, 'MANDATORY_PRICE_CROSS_MIN_INTERVAL_SEC', 300.0))
+            if not hasattr(trade_manager, '_mpc_last_fire'):
+                trade_manager._mpc_last_fire = {}
+            _mpc_last = trade_manager._mpc_last_fire.get(position_key, 0)
+            _mpc_now = time.time()
+            if _mpc_now - _mpc_last < _mpc_min_interval:
+                if config.VERBOSE: logger.info(f"[MANDATORY_PRICE_CROSS_RATELIMIT] {position_key}: last fire {_mpc_now-_mpc_last:.0f}s ago < {_mpc_min_interval:.0f}s — skipping")
+                return
             _force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
             _force_qty = max(reentry_amount * _force_mult, getattr(config, 'START_POSITION_SIZE', 45.0) / current_price)
             _force_reason = f"PRICE_CROSSED_MANDATORY_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_force_mult:.1f}"
@@ -18236,6 +18249,17 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _force_reason, 99.0, override_qty=_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: QUEUED qty={_force_qty:.4f} at ${current_price:.4f}")
+                # Stamp the rate-limit timestamp + delete reentry record so it doesn't
+                # re-fire on next cycle. Position is now (re)opened — record's job is done.
+                trade_manager._mpc_last_fire[position_key] = _mpc_now
+                try:
+                    if position_key in trade_manager.reentry_data:
+                        del trade_manager.reentry_data[position_key]
+                    if getattr(trade_manager, 'service', None) and hasattr(trade_manager.service, 'reentry_data'):
+                        if position_key in trade_manager.service.reentry_data:
+                            del trade_manager.service.reentry_data[position_key]
+                except Exception as _mpc_del_err:
+                    logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: record cleanup error {_mpc_del_err}")
             return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):

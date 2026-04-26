@@ -4619,7 +4619,7 @@ class HedgeEngine:
                 _det_prev = safe_fetch_float(getattr(pos, 'prev_gain', pnl_pct), pnl_pct)
                 _det_delta = float(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', 0.10))
                 if pnl_pct >= _det_prev - _det_delta:
-                    logger.debug(f"[HEDGE_NOT_DETERIORATING] {position_key}: gain={pnl_pct:.2f}% prev={_det_prev:.2f}% drop={_det_prev - pnl_pct:.2f}pp < {_det_delta:.2f}pp — skip")
+                    logger.info(f"[HEDGE_NOT_DETERIORATING] {position_key}: gain={pnl_pct:.2f}% prev={_det_prev:.2f}% drop={_det_prev - pnl_pct:.2f}pp < {_det_delta:.2f}pp — skip")
                     continue
             symbol = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
             # ═══ 2026-04-16: NEWBORN GRACE — don't hedge positions < N min old ═══
@@ -4885,23 +4885,40 @@ class HedgeEngine:
                             if not hedge_pos: continue
                             _losing_amt_chk = abs(safe_fetch_float(getattr(losing_pos, 'positionAmt', 0), 0)) if losing_pos else 0
                             if not losing_pos or _losing_amt_chk < 0.0001:
-                                # Original position GONE or CLOSED (positionAmt=0) → orphan kill
+                                # ═══ 2026-04-26 USER RULE: orphans = IMMEDIATE KILL, NO EXCEPTIONS ═══
+                                # Original position GONE or CLOSED → orphan must close now.
+                                # If close fails (no price), DO NOT nuke tracker — retry next cycle.
+                                # Tracker nuke only after confirmed close, so we never silently leave
+                                # an orphan position alive on exchange while tracker thinks it's dead.
                                 _orphan_amt = abs(safe_fetch_float(getattr(hedge_pos, 'positionAmt', 0), 0))
+                                _orphan_close_success = False
                                 if _orphan_amt > 0:
                                     _orphan_gain = safe_fetch_float(getattr(hedge_pos, 'gain', 0), 0)
                                     _orphan_sym = getattr(hedge_pos, 'symbol', hedge_key.split(':')[-1].replace('_LONG', '').replace('_SHORT', ''))
                                     _orphan_price, _ = await self.data_manager.get_fresh_price(_orphan_sym)
+                                    if not _orphan_price or _orphan_price <= 0:
+                                        try: _orphan_price, _ = await get_current_price(_orphan_sym)
+                                        except Exception: _orphan_price = 0
                                     if _orphan_price > 0:
-                                        logger.critical(f"💀[HEDGE_ORPHAN_HEALTH_KILL] {hedge_key}: original {losing_key} no longer exists (positionAmt={_losing_amt_chk:.6f}). gain={_orphan_gain:.2f}%. Closing orphaned hedge.")
-                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=_orphan_amt, action='CLOSE', current_price=_orphan_price, qty=_orphan_amt, reason=f"HEDGE_ORPHAN_HEALTH_KILL_no_original_gain{_orphan_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
-                                await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
-                                # Clear ALL entry locks so original direction can re-enter immediately
-                                _orig_sym = (losing_key or '').split(':')[-1].replace('_LONG','').replace('_SHORT','')
-                                self._hedge_completed.pop(losing_key, None)
-                                self._hedge_cooldowns.pop(_orig_sym, None)
-                                self.tracker_manager.hedge_liability_cooldowns.pop(losing_key, None)
-                                self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
-                                logger.critical(f"[ORPHAN_REENTRY_UNLOCK] {losing_key}: all hedge locks cleared — original direction free to re-enter on next signal")
+                                        logger.critical(f"💀[HEDGE_ORPHAN_HEALTH_KILL] {hedge_key}: original {losing_key} no longer exists (positionAmt={_losing_amt_chk:.6f}). gain={_orphan_gain:.2f}%. NO EXCEPTIONS — closing orphan.")
+                                        try:
+                                            _orph_result = await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=_orphan_amt, action='CLOSE', current_price=_orphan_price, qty=_orphan_amt, reason=f"HEDGE_ORPHAN_HEALTH_KILL_no_original_gain{_orphan_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                            _orphan_close_success = True
+                                        except Exception as _orph_e:
+                                            logger.error(f"💀[HEDGE_ORPHAN_KILL_FAIL] {hedge_key}: close failed: {_orph_e} — will retry next cycle, tracker NOT nuked")
+                                    else:
+                                        logger.critical(f"💀[HEDGE_ORPHAN_KILL_NO_PRICE] {hedge_key}: cannot fetch price for {_orphan_sym} — will retry next cycle, tracker NOT nuked")
+                                else:
+                                    # qty=0 means already flat on exchange — safe to nuke tracker
+                                    _orphan_close_success = True
+                                if _orphan_close_success:
+                                    await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                                    _orig_sym = (losing_key or '').split(':')[-1].replace('_LONG','').replace('_SHORT','')
+                                    self._hedge_completed.pop(losing_key, None)
+                                    self._hedge_cooldowns.pop(_orig_sym, None)
+                                    self.tracker_manager.hedge_liability_cooldowns.pop(losing_key, None)
+                                    self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
+                                    logger.critical(f"[ORPHAN_REENTRY_UNLOCK] {losing_key}: all hedge locks cleared — original direction free to re-enter on next signal")
                                 continue
                             hedge_sym = hedge_pos.symbol
                             losing_sym = losing_pos.symbol
@@ -10288,6 +10305,12 @@ _open_in_flight = {}  # position_key -> timestamp — ATOMIC lock to prevent dou
 # but TWO entries within 900s on same key IS blocked — fixes BIGTIME hedge 8-opens bug.
 _recent_entries: dict = {}
 _RECENT_ENTRIES_COOLDOWN = 900.0
+# 2026-04-26 V3 DUP-OPEN GUARD — separate from _recent_entries/900s which fires inside execute_trade_wrapper.
+# V3 scanner + position-monitor paths both see stale positions_by_account and can double/triple-fire
+# the same (symbol, side) before execute_trade_wrapper records success. 120s is long enough to cover
+# stale-cache lag; short enough not to block genuine re-entries after a fast close.
+_v3_recent_opens: dict = {}  # position_key -> timestamp of last V3 open attempt
+_V3_RECENT_OPENS_COOLDOWN = 120.0
 _ratio_recovery_last: dict = {}  # account_key -> timestamp of last RATIO_RECOVERY fire
 # DC Breakout hedge tracker: {position_key: {"hedge_pk": str, "hedge_qty": float, "opened_at": float, "peak_gain": float, "rehedge_count": int}}
 _dc_breakout_hedges: dict = {}
@@ -13105,6 +13128,12 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                         _v3_real_pos = _v3_by_acct.get(_v3_real_key)
                                         _v3_real_amt = abs(safe_fetch_float(getattr(_v3_real_pos, 'positionAmt', 0), 0)) if _v3_real_pos else 0
                                         if _v3_real_amt > 0: return
+                                        _v3_last_open = _v3_recent_opens.get(_v3_real_key, 0)
+                                        _v3_since = time.time() - _v3_last_open
+                                        if _v3_since < _V3_RECENT_OPENS_COOLDOWN:
+                                            if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {_v3_real_key}: dup-open blocked — last attempt {_v3_since:.0f}s ago (<{_V3_RECENT_OPENS_COOLDOWN:.0f}s cooldown)")
+                                            return
+                                        _v3_recent_opens[_v3_real_key] = time.time()
                                         _v3_cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
                                         _v3_min_qty = trade_manager.min_qty.get(_v3_sym, 0.0001) * 1.2
                                         _v3_cap_qty = _v3_cap_usd / _v3_px if _v3_px > 0 else 0
@@ -16083,6 +16112,12 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
     real_pos = by_acct.get(real_key)
     real_amt = abs(safe_fetch_float(getattr(real_pos, 'positionAmt', 0), 0)) if real_pos else 0
     if real_amt > 0: return False
+    _scan_last_open = _v3_recent_opens.get(real_key, 0)
+    _scan_since = time.time() - _scan_last_open
+    if _scan_since < _V3_RECENT_OPENS_COOLDOWN:
+        logger.info(f"🚫 [V3_SCAN_DUP_BLOCK] {real_key}: dup-open blocked — last attempt {_scan_since:.0f}s ago (<{_V3_RECENT_OPENS_COOLDOWN:.0f}s cooldown)")
+        return False
+    _v3_recent_opens[real_key] = time.time()
     cap_usd = float(getattr(config, 'SCALP_V3_POSITION_CAP_USD', 10.0))
     min_qty = trade_manager.min_qty.get(sym, 0.0001) * 1.2
     cap_qty = cap_usd / price if price > 0 else 0
