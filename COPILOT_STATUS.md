@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-26 12:42:36 UTC
+# Copilot Status — 2026-04-26 12:57:53 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:39:26
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:39:26
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:40:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:40:28
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T12:41:30
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T12:41:30
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:41:32
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:41:32
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:42:35
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:42:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:54:11
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:54:11
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:55:15
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:55:15
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T12:56:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T12:56:16
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:56:18
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:56:18
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T12:57:22
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T12:57:22
 
 ## Missed Trades (trader comparison)
 
@@ -33,15 +33,15 @@ _None_
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **MASKUSDT** LONG (crypto) peaked +3.3%, exited 10m ago
+- WATCHING: **MASKUSDT** LONG (crypto) peaked +3.3%, exited 25m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 6
-- [HIGH] ez_manage.py for inf is NOT running
+**Issues (last 1h):** 7
 - [HIGH] ez_manage.py for men is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_manage.py for men is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
+- [LOW] tradier_rankings.py is NOT running
