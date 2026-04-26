@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-26 17:43:53 UTC
+# Copilot Status — 2026-04-26 17:48:58 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:38:00
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:39:04
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T17:40:05
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T17:40:05
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:40:09
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:41:12
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T17:42:14
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T17:42:14
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:42:18
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:43:21
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T17:44:23
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:44:28
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:45:34
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T17:46:25
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T17:46:25
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:46:37
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:47:39
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T17:48:30
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T17:48:30
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T17:48:46
 
 ## Missed Trades (trader comparison)
 
@@ -27,11 +27,16 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 7 | **Watching for reentry:** 1 | **Reentered:** 0
 
-- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
-- WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
-- WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
+- HELD: **MU** LONG (tradier) peak +13.3%, now +-0.4%
+- HELD: **GOOGL** LONG (tradier) peak +9.9%, now +0.2%
+- HELD: **IBIT** LONG (tradier) peak +9.6%, now +-1.9%
+- HELD: **MSFT** LONG (tradier) peak +8.4%, now +0.7%
+- HELD: **SNDK** LONG (tradier) peak +7.9%, now +-0.2%
+- HELD: **USO** LONG (tradier) peak +4.2%, now +-0.9%
+- HELD: **PLTR** SHORT (tradier) peak +3.6%, now +-0.2%
+
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
 
 ## Supervisor

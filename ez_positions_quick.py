@@ -14889,7 +14889,10 @@ async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
                     "timestamp": ts.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if isinstance(ts, datetime) else str(ts),
                     "reason": "SYNC_FROM_REDUCED_POSITIONS",
                 }
-    # Age-gate + 72h purge
+    # 2026-04-26 PER OWNER DIRECTIVE: reentries NEVER expire. Records persist for
+    # centuries; only the AGE_GATE confirmation requirement tightens (normal →
+    # elevated 24h → strict 48h → extreme 72h+). Removed the 72h purge that
+    # was deleting records.
     _tk = getattr(trade_manager, 'tradeable_keys', None) or set()
     for pk in list(trade_manager.reentry_data.keys()):
         rd = trade_manager.reentry_data[pk]
@@ -14899,9 +14902,7 @@ async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0
-            if _age_hrs > 72.0:
-                del trade_manager.reentry_data[pk]
-                continue
+            if _age_hrs > 72.0: rd['age_gate'] = 'extreme'
             elif _age_hrs > 48.0: rd['age_gate'] = 'strict'
             elif _age_hrs > 24.0: rd['age_gate'] = 'elevated'
             else: rd['age_gate'] = 'normal'
