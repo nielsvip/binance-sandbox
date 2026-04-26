@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-26 15:40:42 UTC
+# Copilot Status — 2026-04-26 15:55:56 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:36:54
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:37:56
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:37:56
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T15:38:17
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:38:59
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:38:59
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:40:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:40:01
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T15:40:22
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T15:40:22
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T15:52:56
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T15:52:56
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:53:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:53:39
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:54:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:54:42
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T15:55:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T15:55:03
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T15:55:45
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T15:55:45
 
 ## Missed Trades (trader comparison)
 
@@ -33,7 +33,7 @@ _None_
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **MASKUSDT** LONG (crypto) peaked +3.3%, exited 188m ago
+- WATCHING: **MASKUSDT** LONG (crypto) peaked +3.3%, exited 204m ago
 
 ## Supervisor
 
@@ -44,4 +44,4 @@ _None_
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+- [LOW] tradier_rankings.py is NOT running
