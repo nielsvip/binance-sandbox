@@ -14700,20 +14700,25 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
             return
-        # AGE_GATE
+        # AGE_GATE — WT confirmation (2026-04-26 owner rule: WT not stoch). Records persist
+        # forever; only the confirmation requirement tightens with age:
+        #   elevated (24h+): 2/3 WT on {3m, 15m, 1h}
+        #   strict   (48h+): 3/3 WT on {3m, 15m, 1h}
+        #   extreme  (72h+): 4/4 WT on {3m, 15m, 1h, 4h}
         _age_gate = reentry_data.get('age_gate', 'normal') if isinstance(reentry_data, dict) else 'normal'
         if _age_gate in ('elevated', 'strict', 'extreme'):
-            _ag_k3_align = (is_long and k_3m > d_3m) or (not is_long and k_3m < d_3m)
-            _ag_k15_align = (is_long and k_15m > d_15m) or (not is_long and k_15m < d_15m)
-            _ag_k1h_align = (is_long and k_1h > d_1h) or (not is_long and k_1h < d_1h)
-            _ag_wt_confirm = (is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m) or (not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m)
-            _ag_k4h_align = (is_long and k_4h > d_4h) or (not is_long and k_4h < d_4h)
+            _ag_wt1_1h = _sf(i.get('wt1_1h', 0), 0.0); _ag_wt2_1h = _sf(i.get('wt2_1h', 0), 0.0)
+            _ag_wt1_4h = _sf(i.get('wt1_4h', 0), 0.0); _ag_wt2_4h = _sf(i.get('wt2_4h', 0), 0.0)
+            _ag_wt3m  = (is_long and wt1_3m  > wt2_3m)  or (not is_long and wt1_3m  < wt2_3m)
+            _ag_wt15m = (is_long and wt1_15m > wt2_15m) or (not is_long and wt1_15m < wt2_15m)
+            _ag_wt1h  = (is_long and _ag_wt1_1h > _ag_wt2_1h) or (not is_long and _ag_wt1_1h < _ag_wt2_1h)
+            _ag_wt4h  = (is_long and _ag_wt1_4h > _ag_wt2_4h) or (not is_long and _ag_wt1_4h < _ag_wt2_4h)
             if _age_gate == 'elevated':
-                if sum([_ag_k3_align, _ag_k15_align, _ag_wt_confirm]) < 2: return
+                if sum([_ag_wt3m, _ag_wt15m, _ag_wt1h]) < 2: return
             elif _age_gate == 'strict':
-                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align): return
+                if not (_ag_wt3m and _ag_wt15m and _ag_wt1h): return
             elif _age_gate == 'extreme':
-                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align and _ag_k4h_align): return
+                if not (_ag_wt3m and _ag_wt15m and _ag_wt1h and _ag_wt4h): return
         # STANDARD GATES
         # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend (mirrors ez_manage version).
         if getattr(config_obj, 'PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED', True):

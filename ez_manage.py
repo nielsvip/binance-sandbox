@@ -18144,30 +18144,36 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         # == BC_155: DISABLED 2026-03-30 — caused runaway reentry flood (13-day-old exits force-reentered every cycle) ==
         # 120min mandatory reentry with no directional check opened LONGs in downtrends and SHORTs in uptrends
         # if min_since_exit >= 120: pass
-        # == AGE_GATE: stricter LTF confirmation as reentry record ages (records never expire, just need more confirms) ==
+        # == AGE_GATE: stricter WT confirmation as reentry record ages (records never expire, just need more confirms) ==
+        # 2026-04-26 OWNER RULE: confirmations use WT (wt1 vs wt2), NOT stoch K/D. WT is the
+        # canonical multi-TF primitive — slightly faster than stoch. Tier ladder:
+        #   elevated (24h+): 2/3 WT on {3m, 15m, 1h}
+        #   strict   (48h+): 3/3 WT on {3m, 15m, 1h}
+        #   extreme  (72h+): 4/4 WT on {3m, 15m, 1h, 4h}
         _age_gate = reentry_data.get('age_gate', 'normal') if isinstance(reentry_data, dict) else 'normal'
         if _age_gate in ('elevated', 'strict', 'extreme'):
-            _ag_k3_align = (is_long and k_3m > d_3m) or (not is_long and k_3m < d_3m)
-            _ag_k15_align = (is_long and k_15m > d_15m) or (not is_long and k_15m < d_15m)
-            _ag_k1h_align = (is_long and k_1h > d_1h) or (not is_long and k_1h < d_1h)
-            _ag_wt_confirm = (is_long and wt1_3m > wt2_3m and wt1_15m > wt2_15m) or (not is_long and wt1_3m < wt2_3m and wt1_15m < wt2_15m)
-            _ag_k4h_align = (is_long and k_4h > d_4h) or (not is_long and k_4h < d_4h)
+            _ag_wt1h_a = safe_fetch_float(i.get('wt1_1h', 0), 0.0); _ag_wt2_1h = safe_fetch_float(i.get('wt2_1h', 0), 0.0)
+            _ag_wt1_4h = safe_fetch_float(i.get('wt1_4h', 0), 0.0); _ag_wt2_4h = safe_fetch_float(i.get('wt2_4h', 0), 0.0)
+            _ag_wt3m  = (is_long and wt1_3m  > wt2_3m)  or (not is_long and wt1_3m  < wt2_3m)
+            _ag_wt15m = (is_long and wt1_15m > wt2_15m) or (not is_long and wt1_15m < wt2_15m)
+            _ag_wt1h  = (is_long and _ag_wt1h_a > _ag_wt2_1h) or (not is_long and _ag_wt1h_a < _ag_wt2_1h)
+            _ag_wt4h  = (is_long and _ag_wt1_4h > _ag_wt2_4h) or (not is_long and _ag_wt1_4h < _ag_wt2_4h)
             if _age_gate == 'elevated':
-                _ag_score = sum([_ag_k3_align, _ag_k15_align, _ag_wt_confirm])
+                _ag_score = sum([_ag_wt3m, _ag_wt15m, _ag_wt1h])
                 if _ag_score < 2:
-                    if config.VERBOSE: logger.info(f"[AGE_GATE_ELEVATED] {position_key}: blocked — need 2/3 (k3+k15 levels + wt mtf), got {_ag_score}/3 (k3={_ag_k3_align} k15={_ag_k15_align} wt={_ag_wt_confirm})")
+                    if config.VERBOSE: logger.info(f"[AGE_GATE_ELEVATED] {position_key}: blocked — need 2/3 WT (3m+15m+1h), got {_ag_score}/3 (wt3m={_ag_wt3m} wt15m={_ag_wt15m} wt1h={_ag_wt1h})")
                     return
-                logger.debug(f"[AGE_GATE_ELEVATED] {position_key}: passed {_ag_score}/3, continuing to standard gates")
+                logger.debug(f"[AGE_GATE_ELEVATED] {position_key}: passed {_ag_score}/3 WT, continuing to standard gates")
             elif _age_gate == 'strict':
-                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align):
-                    if config.VERBOSE: logger.info(f"[AGE_GATE_STRICT] {position_key}: blocked — need 3/3 stoch levels (3m+15m+1h), got k3={_ag_k3_align} k15={_ag_k15_align} k1h={_ag_k1h_align}")
+                if not (_ag_wt3m and _ag_wt15m and _ag_wt1h):
+                    if config.VERBOSE: logger.info(f"[AGE_GATE_STRICT] {position_key}: blocked — need 3/3 WT (3m+15m+1h), got wt3m={_ag_wt3m} wt15m={_ag_wt15m} wt1h={_ag_wt1h}")
                     return
-                logger.debug(f"[AGE_GATE_STRICT] {position_key}: passed 3/3 stoch levels, continuing to standard gates")
+                logger.debug(f"[AGE_GATE_STRICT] {position_key}: passed 3/3 WT, continuing to standard gates")
             elif _age_gate == 'extreme':
-                if not (_ag_k3_align and _ag_k15_align and _ag_k1h_align and _ag_k4h_align):
-                    if config.VERBOSE: logger.info(f"[AGE_GATE_EXTREME] {position_key}: blocked — need 4/4 stoch levels (3m+15m+1h+4h), got k3={_ag_k3_align} k15={_ag_k15_align} k1h={_ag_k1h_align} k4h={_ag_k4h_align}")
+                if not (_ag_wt3m and _ag_wt15m and _ag_wt1h and _ag_wt4h):
+                    if config.VERBOSE: logger.info(f"[AGE_GATE_EXTREME] {position_key}: blocked — need 4/4 WT (3m+15m+1h+4h), got wt3m={_ag_wt3m} wt15m={_ag_wt15m} wt1h={_ag_wt1h} wt4h={_ag_wt4h}")
                     return
-                logger.debug(f"[AGE_GATE_EXTREME] {position_key}: passed 4/4 stoch levels (3m+15m+1h+4h), continuing to standard gates")
+                logger.debug(f"[AGE_GATE_EXTREME] {position_key}: passed 4/4 WT, continuing to standard gates")
         # == STANDARD REENTRY GATES ==
         # 2026-04-26 USER RULE — NEVER force-reenter against confirmed HTF trend.
         # Triggered after C98USDT_SHORT triple-open while 1h+15m+4h all bullish (suicide setup).
