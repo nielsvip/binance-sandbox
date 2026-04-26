@@ -19790,6 +19790,65 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         if not is_active_position:
             pass  # Entry gates moved to rate() and evaluate functions — process_position must reach ALL evaluators
         logger.info(f'👂👂{position_key} {current_price}: k_1m:{stoch_k_1m}, d_1m:{stoch_d_1m}, k_3m:{stoch_k_3m}, d_3m:{stoch_d_3m}, k_15m:{stoch_k_15m}, d_15m:{stoch_d_15m}, age_1m:{age_1m}, age_3m:{age_3m},age_15m:{age_15m}, age_pr:{age_pr}')
+        # ═══ 2026-04-26 USER RULE — MICRO_SCALP_USDC_MAKER ═══
+        # USDC-only, maker-only micro-scalper. Closes at gain >= MICRO_SCALP_GAIN_THRESHOLD AND gain < prev_gain
+        # (first deceleration past threshold). On flat-after-close, reopens when price re-crosses exit_price.
+        # NO webhook fallback — if place_maker_order doesn't fill, just retry next cycle.
+        # USDC pairs have zero maker fees on Binance Futures, so 0.02% gross == 0.02% net.
+        if bool(getattr(config, 'MICRO_SCALP_USDC_MAKER_ENABLED', True)) and symbol.endswith('USDC') and account_key in (getattr(config, 'MICRO_SCALP_USDC_ACCOUNTS', None) or ['inf']):
+            try:
+                _ms_state_dict = getattr(trade_manager, '_micro_scalp_state', None)
+                if _ms_state_dict is None:
+                    trade_manager._micro_scalp_state = {}
+                    _ms_state_dict = trade_manager._micro_scalp_state
+                _ms_st = _ms_state_dict.get(position_key, {})
+                _ms_pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0)) if position else 0.0
+                _ms_threshold = float(getattr(config, 'MICRO_SCALP_GAIN_THRESHOLD_PCT', 0.02))
+                _ms_long = position_key.endswith('_LONG')
+                # CLOSE branch — active position, gain past threshold AND first decel
+                if _ms_pos_amt > pos_min_qty and current_price > 0:
+                    _ms_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                    _ms_prev = float(_ms_st.get('prev_gain', _ms_gain))
+                    if _ms_gain >= _ms_threshold and _ms_gain < _ms_prev:
+                        _ms_close_side = 'SELL' if _ms_long else 'BUY'
+                        _ms_uid = f"MS_USDC_CLOSE_{int(time.time()*1000)}"
+                        _ms_reason = f"MICRO_SCALP_USDC_CLOSE_g{_ms_gain:.3f}%_prev{_ms_prev:.3f}%"
+                        logger.critical(f"⚡ [MICRO_SCALP_USDC_CLOSE] {position_key}: gain={_ms_gain:.3f}% < prev={_ms_prev:.3f}% (threshold={_ms_threshold}%) — maker close, NO webhook fallback")
+                        _ms_ok, _ms_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ms_pos_amt, current_price, _ms_pos_amt, _ms_close_side, position_side, _ms_uid, _ms_reason)
+                        if _ms_ok:
+                            logger.critical(f"✅ [MICRO_SCALP_USDC_CLOSED] {position_key}: filled qty={_ms_filled} at ${current_price:.6f}. Pending reopen on price re-cross of exit.")
+                            _ms_state_dict[position_key] = {'prev_gain': 0.0, 'exit_price': current_price, 'reopen_pending': True, 'original_side': position_side, 'original_qty': _ms_pos_amt}
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:MICRO_SCALP_USDC_CLOSE"
+                        else:
+                            logger.warning(f"⏸️ [MICRO_SCALP_USDC_CLOSE_RETRY] {position_key}: maker did not fill (ok={_ms_ok} filled={_ms_filled}). NO webhook fallback — will retry next cycle.")
+                    # Track prev_gain regardless of fire — for next-cycle decel detection
+                    _ms_st_new = dict(_ms_st)
+                    _ms_st_new['prev_gain'] = _ms_gain
+                    _ms_state_dict[position_key] = _ms_st_new
+                # REOPEN branch — flat position, prior close pending, price re-crossed exit
+                elif _ms_pos_amt <= pos_min_qty and _ms_st.get('reopen_pending', False) and current_price > 0:
+                    _ms_exit_px = float(_ms_st.get('exit_price', 0) or 0)
+                    _ms_orig_side = str(_ms_st.get('original_side', '') or '')
+                    _ms_orig_qty = float(_ms_st.get('original_qty', 0) or 0)
+                    if _ms_exit_px > 0 and _ms_orig_qty > 0:
+                        _ms_orig_long = (_ms_orig_side == 'LONG')
+                        _ms_crossed = (_ms_orig_long and current_price <= _ms_exit_px) or ((not _ms_orig_long) and current_price >= _ms_exit_px)
+                        if _ms_crossed:
+                            _ms_open_side = 'BUY' if _ms_orig_long else 'SELL'
+                            _ms_uid = f"MS_USDC_REOPEN_{int(time.time()*1000)}"
+                            _ms_reason = f"MICRO_SCALP_USDC_REOPEN_exit{_ms_exit_px:.6f}_now{current_price:.6f}"
+                            logger.critical(f"⚡ [MICRO_SCALP_USDC_REOPEN] {position_key}: price {current_price:.6f} re-crossed exit {_ms_exit_px:.6f} ({_ms_orig_side}) — maker reopen qty={_ms_orig_qty:.6f}, NO webhook fallback")
+                            _ms_ok, _ms_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, 0.0, current_price, _ms_orig_qty, _ms_open_side, _ms_orig_side, _ms_uid, _ms_reason)
+                            if _ms_ok:
+                                logger.critical(f"✅ [MICRO_SCALP_USDC_REOPENED] {position_key}: filled qty={_ms_filled} at ${current_price:.6f}")
+                                _ms_state_dict[position_key] = {'prev_gain': 0.0, 'exit_price': 0.0, 'reopen_pending': False, 'original_side': '', 'original_qty': 0.0}
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:MICRO_SCALP_USDC_REOPEN"
+                            else:
+                                logger.warning(f"⏸️ [MICRO_SCALP_USDC_REOPEN_RETRY] {position_key}: maker did not fill (ok={_ms_ok} filled={_ms_filled}). NO webhook fallback — will retry next cycle.")
+            except Exception as _ms_e:
+                logger.warning(f"[MICRO_SCALP_USDC_ERR] {position_key}: {type(_ms_e).__name__}: {_ms_e}")
         # ═══ 2026-04-21 HEDGE_CLOSE_WT3M1H_ABS SAFETY NET IN process_position ═══
         # User rule (feedback_hedge_wt3m_close_absolute.md + 2026-04-21 complaint): hedge MUST close
         # when wt_3m AND wt_1h BOTH go against. NO P/L gate. Primary path lives in ez_positions_quick

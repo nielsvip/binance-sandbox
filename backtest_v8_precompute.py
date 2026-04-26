@@ -32,10 +32,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("v7_precompute")
 
 # Imports for new indicator fields (Improvement Framework A3+A4+A5, 2026-04-26).
-# Existing scalar functions in tradier_indicators_extra.py are reused where useful;
+# Existing scalar functions in tradier_indicators.py are reused where useful;
 # numpy-vectorized rolling wrappers below handle the time-series fields.
 try:
-    from tradier_indicators_extra import (
+    from tradier_indicators import (
         compute_minervini_sepa as _scalar_sepa,
         compute_clenow_score as _scalar_clenow,
         detect_episodic_pivot as _scalar_ep,

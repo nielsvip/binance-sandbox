@@ -37,7 +37,7 @@ from tradier_indicators import analyze_multi_tf_state_tradier
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
 from wt_dc_delta import DeltaTracker
-from tradier_indicators_extra import (
+from tradier_indicators import (
     compute_extra_indicators,
     get_rvol_gate_for_strategy,
     is_lunch_dead_zone,

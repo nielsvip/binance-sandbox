@@ -448,6 +448,13 @@ class Config:
     # 2026-04-26 — refuse new hedge orders if existing hedge-side position already covers
     # >= this fraction of target. Stops accumulation across many cycles.
     HEDGE_ALREADY_COVERED_THRESHOLD: float = 0.9
+    # 2026-04-26 USER RULE — MICRO_SCALP_USDC_MAKER. USDC pairs only, maker-only (zero fees on
+    # Binance Futures USDC pairs), no webhook fallback. Closes at gain >= threshold AND first
+    # deceleration; reopens when price re-crosses exit_price. Fires from process_position before
+    # other close paths. Bypasses STRICT_NO_LOSS / UNG / hedge gates — close only on POSITIVE gain.
+    MICRO_SCALP_USDC_MAKER_ENABLED: bool = True
+    MICRO_SCALP_USDC_ACCOUNTS: list = ["inf"]
+    MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
