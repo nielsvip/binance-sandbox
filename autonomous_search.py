@@ -266,6 +266,10 @@ def main():
                     help="Kill any single iteration exceeding this (subprocess SIGKILL). Default 120s.")
     ap.add_argument("--symbol-list", default=None,
                     help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
+    ap.add_argument("--auto-restart-iters", type=int, default=50,
+                    help="Exit cleanly after N successful iters so the watchdog can respawn a fresh worker. "
+                         "Combats slow memory growth that OOMs the worker around iter 25-30. "
+                         "Set to 0 to disable. CSV is append-mode, so progress persists across restarts.")
     args = ap.parse_args()
 
     sys.path.insert(0, str(Path(__file__).parent))
@@ -439,6 +443,25 @@ def main():
                       f"sym_sharpe={sym_sharpe:.3f} gain={gain:.0f}% avg_gain_trade={avg_gain_trade:.4f}%/trade "
                       f"gain_per_yr={gain_per_yr:.2f}%/yr gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
                       f"({gvb:.1f}x BH) dd={dd:.1f}% tr={tr} ***", flush=True)
+            # ═══ 2026-04-26 MEM HYGIENE — combats slow growth that OOMs around iter 25-30 ═══
+            # Drop per-iter refs explicitly + force gc. Pipe pickle of cfg+result leaves dangling
+            # refs that Python's auto-GC doesn't reap aggressively enough on 30GB box with ~5GB
+            # parent NPZ subset already pinned.
+            del cfg, ovr, r
+            try: del timed_out, err
+            except Exception: pass
+            if (i + 1) % 5 == 0:
+                gc.collect()
+            # Auto-restart: exit cleanly so watchdog respawns a fresh process. CSV is append-mode,
+            # winners JSONL is append-mode, so no progress is lost.
+            if args.auto_restart_iters > 0 and (i + 1) >= args.auto_restart_iters:
+                gc.collect()
+                try: import resource; ru = resource.getrusage(resource.RUSAGE_SELF); rss_mb = ru.ru_maxrss // 1024
+                except Exception: rss_mb = 0
+                print(f"[AUTO_SEARCH] AUTO_RESTART after {args.auto_restart_iters} iters (max_rss≈{rss_mb}MB). "
+                      f"Watchdog will respawn — CSV preserved at {csv_path}", flush=True)
+                csv_f.flush()
+                sys.exit(0)
 
 
 if __name__ == "__main__":
