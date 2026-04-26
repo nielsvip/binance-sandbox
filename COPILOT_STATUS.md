@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-26 11:25:21 UTC
+# Copilot Status — 2026-04-26 11:40:52 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:20:00
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:21:01
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T11:22:02
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T11:22:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:22:05
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:23:07
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T11:24:08
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T11:24:08
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:24:09
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:25:10
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T11:38:36
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T11:38:36
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T11:38:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:38:37
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T11:39:39
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:39:39
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T11:40:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T11:40:40
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-26T11:40:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T11:40:41
 
 ## Missed Trades (trader comparison)
 
@@ -33,8 +33,8 @@ _None_
 - WATCHING: **GOOGL** LONG (tradier) peaked +9.9%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
 - WATCHING: **SNDK** LONG (tradier) peaked +7.9%, exited 0m ago
+- WATCHING: **RSRUSDT** LONG (crypto) peaked +7.0%, exited 0m ago
 - WATCHING: **MSFT** LONG (tradier) peaked +6.9%, exited 0m ago
-- WATCHING: **RSRUSDT** LONG (crypto) peaked +6.0%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
