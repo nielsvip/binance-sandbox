@@ -9553,35 +9553,8 @@ class MultiAccountTradeManager:
                                             if is_strict_no_loss_account(config, account_key) and position.gain < _noloss_min and not _imm_srs:
                                                 logger.warning(f"[IMMEDIATE_REDUCE_BLOCKED_NOLOSS] {position_key}: gain={position.gain:.2f}% < {_noloss_min}%. STRICT_NO_LOSS — NEVER close at a loss. Hedging instead.")
                                                 continue
-                                            _v3_owned = 'SCALP_V3' in str(getattr(position, 'augment_reason', '') or '')
-                                            if _v3_owned and not _imm_srs:
-                                                try:
-                                                    _ind_sr = self.data_manager.get_indicators(position.symbol) if hasattr(self, 'data_manager') else {}
-                                                    _price_sr = float(position.mark_price or 0)
-                                                    _side_sr = position.position_side
-                                                    _tol_pct = 1.5
-                                                    if _ind_sr and _price_sr > 0:
-                                                        _at_sr = False
-                                                        _sr_reason = ""
-                                                        if _side_sr == 'LONG':
-                                                            for _n in ('dc_low_15m','dc_low_1h','dc_low_4h','dc_low_D','bb_low_1h','sma_200_D'):
-                                                                _L = float(_ind_sr.get(_n, 0) or 0)
-                                                                if _L <= 0: continue
-                                                                _dp = (_price_sr - _L) / _L * 100.0
-                                                                if -0.3 <= _dp <= _tol_pct:
-                                                                    _at_sr = True; _sr_reason = f"AT_SUPPORT_{_n}={_L:.6g}_d{_dp:+.2f}%"; break
-                                                        else:
-                                                            for _n in ('dc_high_15m','dc_high_1h','dc_high_4h','dc_high_D','bb_high_1h','sma_200_D'):
-                                                                _L = float(_ind_sr.get(_n, 0) or 0)
-                                                                if _L <= 0: continue
-                                                                _dp = (_L - _price_sr) / _price_sr * 100.0
-                                                                if -0.3 <= _dp <= _tol_pct:
-                                                                    _at_sr = True; _sr_reason = f"AT_RESISTANCE_{_n}={_L:.6g}_d{_dp:+.2f}%"; break
-                                                        if _at_sr:
-                                                            logger.warning(f"🛡️ [SCALP_V3_IMMEDIATE_REDUCE_SKIP_SR] {position_key}: gain={position.gain:+.2f}% {signal_category} -> would REDUCE BUT {_sr_reason} → HOLD at level")
-                                                            continue
-                                                except Exception as _e_sr:
-                                                    logger.debug(f"[SCALP_V3_IMMEDIATE_REDUCE_SR_CHECK_ERR] {position_key}: {_e_sr}")
+                                            # 2026-04-26: S/R guard removed — close on technicals ALWAYS.
+                                            # Former SCALP_V3_IMMEDIATE_REDUCE_SKIP_SR blocked reduces at S/R levels.
                                             reason_code = f"[HANDLE_SIGNAL]:{signal_category}_{event_type}_IMMEDIATE_REDUCE" if signal_category != "UNKNOWN" else f"{event_type}_IMMEDIATE_REDUCE"
                                             logger.warning(f"[🚀 IMMEDIATE_REDUCE] {position_key}: {signal_category} signal -> REDUCE (conviction={conviction:.1f})")
                                             account_key, symbol, position_side = parse_position_key(position_key)
@@ -13385,39 +13358,8 @@ class MultiAccountTradeManager:
                         _ung_bypass = True
                         logger.warning(f"⚠️ [UNIVERSAL_NOLOSS_TECHNICAL_BYPASS][{account_key}] {position_key}: technical exit '{_brk}' allowed to close at loss (reason={reason[:60]})")
                         break
-                if _ung_bypass:
-                    try:
-                        _v3_pos_check = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None
-                        _v3_own = _v3_pos_check and ('SCALP_V3' in str(getattr(_v3_pos_check, 'augment_reason', '') or ''))
-                        _v3_max_loss_exit = 'MAX_LOSS' in reason_upper
-                        if _v3_own and self.data_manager and not _v3_max_loss_exit:
-                            _ind_sr2 = self.data_manager._cold_data.get(symbol, {}) or {}
-                            if not _ind_sr2 and hasattr(self.data_manager, 'shared_proxy') and self.data_manager.shared_proxy:
-                                _ind_sr2 = dict(self.data_manager.shared_proxy.get_symbol(symbol) or {})
-                            _price_sr2 = float(old_price or 0)
-                            _tol2 = 1.5
-                            _at_sr2 = False
-                            _sr_reason2 = ""
-                            if _ind_sr2 and _price_sr2 > 0:
-                                if position_side == 'LONG':
-                                    for _n2 in ('dc_low_15m','dc_low_1h','dc_low_4h','dc_low_D','bb_low_1h','sma_200_D'):
-                                        _L2 = safe_fetch_float(_ind_sr2.get(_n2, 0), 0)
-                                        if _L2 <= 0: continue
-                                        _dp2 = (_price_sr2 - _L2) / _L2 * 100.0
-                                        if -0.3 <= _dp2 <= _tol2:
-                                            _at_sr2 = True; _sr_reason2 = f"AT_SUPPORT_{_n2}={_L2:.6g}_d{_dp2:+.2f}%"; break
-                                else:
-                                    for _n2 in ('dc_high_15m','dc_high_1h','dc_high_4h','dc_high_D','bb_high_1h','sma_200_D'):
-                                        _L2 = safe_fetch_float(_ind_sr2.get(_n2, 0), 0)
-                                        if _L2 <= 0: continue
-                                        _dp2 = (_L2 - _price_sr2) / _price_sr2 * 100.0
-                                        if -0.3 <= _dp2 <= _tol2:
-                                            _at_sr2 = True; _sr_reason2 = f"AT_RESISTANCE_{_n2}={_L2:.6g}_d{_dp2:+.2f}%"; break
-                            if _at_sr2:
-                                logger.warning(f"🛡️ [SCALP_V3_NOLOSS_BYPASS_DENY_SR][{account_key}] {position_key}: tech bypass '{_brk}' REFUSED — {_sr_reason2} → keep NOLOSS, hold at level")
-                                _ung_bypass = False
-                    except Exception as _e_sr2:
-                        logger.debug(f"[SCALP_V3_NOLOSS_BYPASS_SR_ERR] {position_key}: {_e_sr2}")
+                # 2026-04-26: SCALP_V3_NOLOSS_BYPASS_DENY_SR removed — close on technicals ALWAYS.
+                # Former guard revoked _ung_bypass when price was within 1.5% of any S/R level.
             _ung_srs = 'STRUCTURAL_RANGE_SHIFT' in reason_upper
             if not _ung_bypass:
                 pos = await self.tracker_manager.get_position(position_key) if self.tracker_manager else None

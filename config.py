@@ -432,10 +432,10 @@ class Config:
     HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
     # === 2026-04-26 HEDGE SYMBOL-SELECTION GUARDS (sweep-testable) — user wants gain-deterioration as primary trigger, DC zones secondary ===
-    HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True   # In RatingRegistry: reject LONG candidates at dc_position_1h/4h>=0.85 / SHORT at <=0.15. Sweep both.
+    HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = False  # 2026-04-26: OFF — was blocking hedges precisely when needed (V3 SHORT bleeding into a pump, all LONG hedge candidates rejected because they were pumping too). User rule: hedges activate on deteriorating gains, INDEPENDENT of dc position. Sweep-only knob now.
     HEDGE_DC_LONG_REJECT_DCP: float = 0.85          # LONG-side dc_position_1h/4h threshold (>=) for rejection.
     HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-side dc_position_1h/4h threshold (<=) for rejection.
-    HEDGE_WT_VEL_GATE_ENABLED: bool = True          # In RatingRegistry: reject when wt_velocity_1h+4h are decelerating against hedge direction. Sweep both.
+    HEDGE_WT_VEL_GATE_ENABLED: bool = False         # 2026-04-26: OFF — same reason as DC gate above. Hedge-the-bleeder must not be filtered by candidate-symbol velocity. Sweep-only knob.
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
