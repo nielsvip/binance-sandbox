@@ -34,6 +34,7 @@ from typing import Dict, List, Optional
 import config as live_config
 from scalp_v3_live import check_scalp_v3_live_entry, check_scalp_v3_live_exit
 from hedge_decisions import should_close_hedge_wt3m1h, score_hedge_candidate
+from vwap_calc import add_vwap_to_indicators
 
 SHADOW_DIR = Path("data/scalp_v3_shadow")
 SHADOW_DIR.mkdir(parents=True, exist_ok=True)
@@ -111,6 +112,33 @@ def load_market_data() -> Dict[str, Dict]:
     except Exception as e:
         print(f"[shadow] load_market_data failed: {e}")
         return {}
+
+
+_KLINES_3M_CACHE: Dict[str, tuple[float, list]] = {}  # sym -> (mtime, bars)
+
+def load_3m_klines(symbol: str, max_bars: int = 500) -> list:
+    """Load 3m klines for a symbol with mtime-based cache (avoid re-reading the same file)."""
+    p = Path(f"klines_cache/{symbol}_3m.json")
+    if not p.exists():
+        return []
+    try:
+        mtime = p.stat().st_mtime
+    except Exception:
+        return []
+    cached = _KLINES_3M_CACHE.get(symbol)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        import orjson
+        with open(p, "rb") as f:
+            bars = orjson.loads(f.read())
+        if isinstance(bars, list) and bars:
+            bars = bars[-max_bars:]
+            _KLINES_3M_CACHE[symbol] = (mtime, bars)
+            return bars
+    except Exception:
+        pass
+    return []
 
 
 def load_universe(account: str) -> List[str]:
@@ -191,6 +219,7 @@ def cycle(variant: str, account: str, cfg, positions: Dict[str, VirtualPosition]
     max_concurrent = int(getattr(cfg, "SCALP_V3_MAX_CONCURRENT", 3))
     n_open = sum(1 for p in positions.values() if abs(p.positionAmt) > 0)
 
+    vwap_on = bool(getattr(cfg, 'SCALP_V3_VWAP_FILTER_ENABLED', False))
     for sym in universe:
         ind = market.get(sym)
         if not ind:
@@ -198,6 +227,14 @@ def cycle(variant: str, account: str, cfg, positions: Dict[str, VirtualPosition]
         price = float(ind.get("current_price") or ind.get("close") or 0)
         if price <= 0:
             continue
+        # 2026-04-26 VWAP enrichment — only when filter is enabled (avoids load on default variant)
+        if vwap_on:
+            try:
+                bars = load_3m_klines(sym)
+                if bars:
+                    add_vwap_to_indicators(ind, bars)
+            except Exception:
+                pass
 
         # Check both LONG and SHORT keys for this symbol
         for side in ("LONG", "SHORT"):

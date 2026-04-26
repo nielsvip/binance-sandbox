@@ -69,6 +69,49 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'BOTH')).upper()
     allow_long = side_mode in ('LONG_ONLY', 'BOTH')
     allow_short = side_mode in ('SHORT_ONLY', 'BOTH')
+    # 2026-04-26 anchored VWAP filter (default OFF; opt-in via SCALP_V3_VWAP_FILTER_ENABLED).
+    # DC_BREAK: LONG requires price > vwap_dc_long; SHORT requires price < vwap_dc_short.
+    # US_RTH:   LONG requires price > vwap_us_rth;  SHORT requires price < vwap_us_rth.
+    # BOTH:     both checks must pass.
+    vwap_on = bool(getattr(config, 'SCALP_V3_VWAP_FILTER_ENABLED', False))
+    vwap_type = str(getattr(config, 'SCALP_V3_VWAP_TYPE', 'BOTH')).upper()
+    if vwap_on:
+        v_dl = _sf(indicators.get('vwap_dc_long'), 0)
+        v_ds = _sf(indicators.get('vwap_dc_short'), 0)
+        v_us = _sf(indicators.get('vwap_us_rth'), 0)
+        # LONG path
+        if allow_long and bar_rising and k_rising and wt_bull and htf_bull:
+            checks_ok = True
+            tag_parts = []
+            if vwap_type in ('DC_BREAK', 'BOTH') and v_dl > 0:
+                if not (price > v_dl): checks_ok = False
+                tag_parts.append(f"DCL{v_dl:.4g}")
+            if vwap_type in ('US_RTH', 'BOTH') and v_us > 0:
+                if not (price > v_us): checks_ok = False
+                tag_parts.append(f"USR{v_us:.4g}")
+            if checks_ok and tag_parts:
+                return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_TREND_VWAP{vwap_type}_{'+'.join(tag_parts)}_k3m{k_3m:.0f}>{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+            elif not tag_parts and (vwap_type in ('DC_BREAK', 'BOTH', 'US_RTH')):
+                # VWAP fields missing — fall through to non-VWAP path below
+                pass
+            else:
+                return None  # vwap check failed
+        # SHORT path
+        if allow_short and bar_falling and k_falling and wt_bear and htf_bear:
+            checks_ok = True
+            tag_parts = []
+            if vwap_type in ('DC_BREAK', 'BOTH') and v_ds > 0:
+                if not (price < v_ds): checks_ok = False
+                tag_parts.append(f"DCS{v_ds:.4g}")
+            if vwap_type in ('US_RTH', 'BOTH') and v_us > 0:
+                if not (price < v_us): checks_ok = False
+                tag_parts.append(f"USR{v_us:.4g}")
+            if checks_ok and tag_parts:
+                return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_TREND_VWAP{vwap_type}_{'+'.join(tag_parts)}_k3m{k_3m:.0f}<{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+            elif not tag_parts and (vwap_type in ('DC_BREAK', 'BOTH', 'US_RTH')):
+                pass
+            else:
+                return None
     if allow_long and bar_rising and k_rising and wt_bull and htf_bull:
         return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_TREND_k3m{k_3m:.0f}>{k_3m_prev:.0f}_k15m{k_15m:.0f}_k1h{k_1h:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
     if allow_short and bar_falling and k_falling and wt_bear and htf_bear:

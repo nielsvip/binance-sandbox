@@ -6616,6 +6616,22 @@ class HedgeEngine:
         if _target_val > _hsize_cap:
             logger.warning(f"🛑 [HEDGE_SAME_HARD_CAP] {hedge_key}: requested ${_target_val:.2f} > cap ${_hsize_cap:.2f} (origin=${_origin_val:.2f} × {_hsize_max_pct} or abs ${_hsize_max_abs}) — clamping")
             _target_val = _hsize_cap
+        # 2026-04-26 USER RULE — STOP ACCUMULATION. Before firing a new hedge order, check the
+        # existing hedge-side position. If it already covers ≥90% of target, REFUSE to fire another
+        # order. Prevents the silent stacking that built ACHUSDT_LONG to 306k qty / $1995 even with
+        # per-order caps in place — every $7-$25 fire was COMPOUNDING into the same Binance position.
+        try:
+            _existing_hedge_pos = None
+            if hasattr(self.tracker_manager, 'positions_service') and self.tracker_manager.positions_service:
+                _existing_hedge_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(hedge_key)
+            _existing_hedge_qty = abs(safe_fetch_float(getattr(_existing_hedge_pos, 'positionAmt', 0), 0)) if _existing_hedge_pos else 0.0
+            _existing_notional = _existing_hedge_qty * current_price
+            _cover_threshold = float(getattr(self.config, 'HEDGE_ALREADY_COVERED_THRESHOLD', 0.9))
+            if _existing_notional >= _target_val * _cover_threshold and _target_val > 0:
+                logger.critical(f"🛑 [HEDGE_SAME_ALREADY_COVERED] {hedge_key}: existing hedge ${_existing_notional:.2f} (qty={_existing_hedge_qty:.4g}) already >= target ${_target_val:.2f} × {_cover_threshold:.0%} — REFUSING new order to prevent accumulation")
+                return True
+        except Exception as _ac_e:
+            logger.warning(f"[HEDGE_ALREADY_COVERED_CHECK_ERR] {hedge_key}: {_ac_e}")
         qty = _target_val / current_price if current_price > 0 else qty
         logger.info(f"[HEDGE_SAME_SIZED] {hedge_key}: origin_val=${_origin_val:.1f} → hedge_val=${_target_val:.1f} qty={qty:.6f}")
         if qty * current_price < 5.0: return True

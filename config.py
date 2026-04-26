@@ -445,6 +445,9 @@ class Config:
     # accumulated to $1013 / 12478% in tracker from pre-fix double-fires.
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0  # 2026-04-26 user rule: hedges NEVER exceed loser size
     HEDGE_MAX_ABSOLUTE_USD: float = 25.0
+    # 2026-04-26 — refuse new hedge orders if existing hedge-side position already covers
+    # >= this fraction of target. Stops accumulation across many cycles.
+    HEDGE_ALREADY_COVERED_THRESHOLD: float = 0.9
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
@@ -472,6 +475,12 @@ class Config:
     # 2026-04-26 USER + research-agent verdict: technical exits should fire ONLY when in profit ("exit at top, never at loss").
     # If True and gain<=0, no BAR/WT/K close fires; only MAX_HOLD or hedge-engine handles the position. Aligns with STRICT_NO_LOSS doctrine.
     SCALP_V3_EXIT_PROFIT_ONLY: bool = False
+    # 2026-04-26 USER: anchored VWAP gate. Default OFF — opt-in via shadow A/B first.
+    # DC_BREAK = use vwap_dc_long/vwap_dc_short anchored at last DC channel break (no session assumption).
+    # US_RTH   = use vwap_us_rth anchored at most-recent 13:30 UTC (US equity open; ~70% of crypto vol).
+    # BOTH     = require LONG entry: price > vwap_dc_long AND price > vwap_us_rth (mirror SHORT).
+    SCALP_V3_VWAP_FILTER_ENABLED: bool = False
+    SCALP_V3_VWAP_TYPE: str = "BOTH"  # "DC_BREAK" | "US_RTH" | "BOTH"
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
