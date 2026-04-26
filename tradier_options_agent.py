@@ -79,7 +79,7 @@ PREFERRED_PER_ORDER = MAX_CHEAP_ORDER_BUDGET
 MAX_TOTAL_OPTIONS = 6000.0        # Hard ceiling — NO new positions above this (= sum of per-side caps)
 MAX_TOTAL_CALLS = 3000.0          # Max $ in calls
 MAX_TOTAL_PUTS = 3000.0           # Max $ in puts
-MAX_POSITIONS = 15                # Max open option positions
+MAX_POSITIONS = 8                 # Max open option positions (tightened 2026-04-26 per OPTIONS_OVERHAUL §L1.C1, was 15)
 MAX_CALL_RATIO = 0.65             # Max calls as fraction of total (65%)
 MAX_PUT_RATIO = 0.65              # Max puts as fraction of total (65%)
 MIN_ORDER_SIZE = 50.0
@@ -996,7 +996,13 @@ GTC_MAX_AGE_DAYS = 7
 
 def _load_allowed_symbols(config) -> tuple:
     """Load symbols_trb_long.json (for calls) and symbols_trb_short.json (for puts).
-    These are the hand-picked best long/short candidates. Options ONLY on these."""
+    These are the hand-picked best long/short candidates. Options ONLY on these.
+
+    BLACKLIST from config_tradier is applied as a final reject. Closes the
+    2026-04-22 ABT/JNJ rogue-buy bypass (OPTIONS_OVERHAUL_FRAMEWORK §0.7) where
+    BLACKLIST existed but was never consulted by the options entry path —
+    blacklisted symbols got bought as calls because allowlist + blacklist were
+    two parallel systems that never spoke."""
     long_file = BASE_PATH / "symbols_trb_long.json"
     short_file = BASE_PATH / "symbols_trb_short.json"
     call_symbols = set()
@@ -1009,6 +1015,19 @@ def _load_allowed_symbols(config) -> tuple:
         with open(short_file) as f:
             data = json.load(f)
         put_symbols = {s for s in data if isinstance(s, str) and len(s) <= 5}
+    blacklist: set = set()
+    try:
+        bl = getattr(config, 'BLACKLIST', None) or []
+        blacklist = {s.upper() for s in bl if isinstance(s, str)}
+    except Exception as _bl_err:
+        logger.warning(f"[BLACKLIST_GATE] read error: {_bl_err}")
+    if blacklist:
+        _rm_calls = call_symbols & blacklist
+        _rm_puts = put_symbols & blacklist
+        call_symbols -= blacklist
+        put_symbols -= blacklist
+        if _rm_calls or _rm_puts:
+            logger.warning(f"[BLACKLIST_GATE] rejected from allowlist: calls={sorted(_rm_calls)} puts={sorted(_rm_puts)} (BLACKLIST={sorted(blacklist)})")
     return call_symbols, put_symbols
 
 
@@ -1543,10 +1562,33 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
 async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], dry_run: bool = False) -> List[Dict]:
     """Place GTC orders: buy_to_open, sell_to_open (CSP), or multileg credit spread."""
     gtc_orders = _load_gtc_orders(config)
+    # DEFENSIVE GATE (2026-04-26): symbol allowlist + BLACKLIST check at the
+    # order-placement site itself. Upstream gates exist in make_decisions and
+    # _daily_find_opportunities, but adding this final-mile check makes the
+    # function self-defending — any future caller cannot bypass.
+    _gtc_blacklist: set = {s.upper() for s in (getattr(config, 'BLACKLIST', None) or []) if isinstance(s, str)}
+    _gtc_call_allowed, _gtc_put_allowed = _load_allowed_symbols(config) if config else (set(), set())
     results = []
     for order in orders:
+        _o_sym = str(order.get("symbol", "")).upper()
+        if _gtc_blacklist and _o_sym in _gtc_blacklist:
+            logger.error(f"[BLACKLIST_BLOCK] refused to place order on blacklisted {_o_sym} (order={order.get('type')}/{order.get('side')})")
+            results.append({**order, "status": "blocked_blacklist"})
+            continue
         is_spread = order.get("type") == "spread"
         is_csp = (order.get("type") == "csp") or (order.get("side") == "sell_to_open" and not is_spread)
+        # Allowlist: only enforce on outright long calls/puts (not spreads/CSPs which are
+        # defined-risk and may legitimately use a different symbol universe).
+        if not is_spread and not is_csp:
+            _o_type = order.get("type")
+            if _o_type == "call" and _gtc_call_allowed and _o_sym not in _gtc_call_allowed:
+                logger.error(f"[ALLOWLIST_BLOCK] refused call on non-allowlisted {_o_sym}")
+                results.append({**order, "status": "blocked_allowlist"})
+                continue
+            if _o_type == "put" and _gtc_put_allowed and _o_sym not in _gtc_put_allowed:
+                logger.error(f"[ALLOWLIST_BLOCK] refused put on non-allowlisted {_o_sym}")
+                results.append({**order, "status": "blocked_allowlist"})
+                continue
         if is_spread:
             short_occ = order.get("occ_symbol") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["strike"])
             long_occ = order.get("long_leg_occ") or build_occ_symbol(order["symbol"], order["expiration"], "put", order["long_strike"])

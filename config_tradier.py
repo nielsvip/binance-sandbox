@@ -201,9 +201,9 @@ class TradierConfig:
     OPTIONS_BASE_CAP: float = 5000.0          # Max with zero diversification
     OPTIONS_HEDGED_CAP: float = 10000.0       # Max with call+put hedging within sectors
     OPTIONS_FULL_DIV_CAP: float = 15000.0     # Max with hedging + 3+ sector groups
-    OPTIONS_MAX_PER_SECTOR: float = 0.40      # Max 40% of portfolio in one sector
+    OPTIONS_MAX_PER_SECTOR: float = 0.35      # tightened 2026-04-26 per §L6.2 (was 0.40)
     OPTIONS_MAX_PER_GROUP: float = 0.60       # Max 60% of portfolio in one sector group
-    OPTIONS_MAX_PER_SYMBOL: float = 0.25      # Max 25% of portfolio in one symbol
+    OPTIONS_MAX_PER_SYMBOL: float = 0.20      # tightened 2026-04-26 per §L6.1 (was 0.25)
     OPTIONS_MIN_SECTORS: int = 2              # Min sectors for hedged tier
     OPTIONS_MIN_GROUPS: int = 3               # Min groups for full diversification tier
     OPTIONS_HEDGE_RATIO_MIN: float = 0.25     # Min puts/(puts+calls) to qualify as hedged

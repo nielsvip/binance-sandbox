@@ -12,13 +12,14 @@ COMMON="--tf-mode 3M_ONLY --exit-mode 15M_ONLY --vol-mult 2.0 --k-1m-max 25 --ex
 OBWIN="--orderbook-filter --ob-min-long-score 70 --ob-wall-too-close-pct 0.5 --ob-void-extend-hold"
 
 # variant_id (also serves as suffix without leading _) | extra args
-# Suffix in args is `--ob-out-suffix _<variant_id>` so it matches.
+# 2026-04-26: trimmed to 3 variants — system at 35G/36G memory, OOM-kills ez_orderbook
+# under more load. The 3 most informative comparisons:
+#   1. ob_close   = winner config close-on-signal (with OB filter)
+#   2. ob_hedge   = winner config but hedge-on-loss (with OB filter)  ← A vs B for STRICT_NO_LOSS
+#   3. no_ob_close = no OB filter, otherwise winner close             ← does OB filter help?
 VARIANTS=(
   "ob_close|--exit-strategy close $OBWIN"
   "ob_hedge|--exit-strategy hedge $OBWIN"
-  "ob_close_both|--exit-strategy close $OBWIN --side-mode BOTH"
-  "ob_close_atrtight|--exit-strategy close $OBWIN --atr-tp-mult 0.4"
-  "ob_close_pgtight|--exit-strategy close $OBWIN --pg-arm-pct 0.3 --pg-giveback-pct 0.1"
   "no_ob_close|--exit-strategy close"
 )
 
