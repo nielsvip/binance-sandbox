@@ -428,6 +428,14 @@ class Config:
     HEDGE_CLOSE_REMOVE_FROM_TRADEABLE: bool = True  # On hedge close, drop position_key from tradeable_keys.
     HEDGE_SAME_SYMBOL_PCT: float = 1.0  # Same-symbol hedge size as fraction of loser qty (1.0 = 100%).
     HEDGE_SAME_SYMBOL_BYPASS_TRADEABLE: bool = True  # Same-symbol hedge bypasses tradeable_keys gate (special hedge status).
+    # === 2026-04-26 HEDGE SYMBOL-SELECTION GUARDS (sweep-testable) — user wants gain-deterioration as primary trigger, DC zones secondary ===
+    HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True   # In RatingRegistry: reject LONG candidates at dc_position_1h/4h>=0.85 / SHORT at <=0.15. Sweep both.
+    HEDGE_DC_LONG_REJECT_DCP: float = 0.85          # LONG-side dc_position_1h/4h threshold (>=) for rejection.
+    HEDGE_DC_SHORT_REJECT_DCP: float = 0.15         # SHORT-side dc_position_1h/4h threshold (<=) for rejection.
+    HEDGE_WT_VEL_GATE_ENABLED: bool = True          # In RatingRegistry: reject when wt_velocity_1h+4h are decelerating against hedge direction. Sweep both.
+    # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
+    HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

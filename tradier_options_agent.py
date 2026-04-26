@@ -52,6 +52,7 @@ from tradier_options_analyzer import (
     score_sell_put_csp, pick_best_structure, CSPCandidate, StructureChoice,
     score_bull_put_spread, SpreadCandidate,
 )
+from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 
 logger = logging.getLogger("options_agent")
 logger.setLevel(logging.INFO)
@@ -595,6 +596,21 @@ def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positi
             if otype == "put" and (_wt_d == "BULL" or _mom_d in ("IMPULSE_UP", "EXHAUST_UP")):
                 logger.info(f"D_TREND_BLOCK skip PUT {symbol} — wt_D={_wt_d} mom_D={_mom_d}")
                 continue
+        # ── WT/DC MULTI-TF ENTRY GATE (2026-04-26 owner directive) ─────────────
+        # See _wt_dc_options_entry_gate docstring. Closes the "buy any cheap option"
+        # leak. Wired in BOTH make_decisions (here) AND _daily_find_opportunities.
+        _gate_ok, _gate_reason = _wt_dc_options_entry_gate(symbol, otype == "call", _ma_ind_map, config)
+        if not _gate_ok:
+            logger.info(f"WT_DC_GATE skip {otype.upper()} {symbol} — {_gate_reason}")
+            continue
+        # Bonus for high-score passes (encourages picking the strongest signals)
+        if "score=" in _gate_reason:
+            try:
+                _gate_score_val = float(_gate_reason.split("score=")[1].split("/")[0])
+                _gate_min = float(getattr(config, "OPTIONS_BUY_MIN_WT_DC_SCORE", 70.0))
+                score += min(20, int((_gate_score_val - _gate_min) / 2))
+            except Exception:
+                pass
         # Don't trade blocked symbols/sectors (concentration limits)
         if symbol in blocked_symbols:
             continue
@@ -1038,6 +1054,32 @@ GOLD_SPREAD_SYMBOLS = {"NEM", "GLD", "GDX", "AEM", "RGLD", "WPM"}
 SPREAD_EXCLUDED_SYMBOLS = OIL_SPREAD_SYMBOLS | BTC_SPREAD_SYMBOLS | GOLD_SPREAD_SYMBOLS
 
 
+def _wt_dc_options_entry_gate(symbol: str, is_long: bool, indicators_map: dict, config) -> tuple:
+    """Multi-TF WT/DC gate for options entries (2026-04-26 owner directive).
+
+    Runs the same wt_dc_score_entry that equity stocks use (tradier_manage.py:1367)
+    against the symbol's indicator snapshot. Returns (allow: bool, reason: str).
+
+    score_entry_multitf checks D_aligned + 4h_aligned + 1h_cross + dc_1h + k_5m
+    (range 0-100, validated Sharpe 27.4 over 121 stocks 2.9yr). Threshold default
+    70 = at least 3 of 5 majors aligned. Closes the "buy any cheap option" leak
+    that contributed to the 2026-04-22 -20% week."""
+    if not bool(getattr(config, "OPTIONS_BUY_WT_DC_GATE_ENABLED", True)):
+        return True, "WT_DC_GATE_DISABLED"
+    ind = (indicators_map or {}).get(symbol, {}) if isinstance(indicators_map, dict) else {}
+    if not ind:
+        return True, "WT_DC_GATE_NO_INDICATORS"
+    try:
+        score, reason = wt_dc_score_entry(ind, is_long, 0.0)
+    except Exception as e:
+        logger.warning(f"WT_DC_GATE {symbol}: scorer error {e} — BLOCKING")
+        return False, f"WT_DC_GATE_ERROR:{e}"
+    min_score = float(getattr(config, "OPTIONS_BUY_MIN_WT_DC_SCORE", 70.0))
+    if score < min_score:
+        return False, f"WT_DC_GATE_BLOCK score={score:.0f}<{min_score:.0f} ({reason})"
+    return True, f"WT_DC_GATE_PASS score={score:.0f}/{min_score:.0f} ({reason})"
+
+
 # ── STRICT CALL/PUT RATIO ENFORCEMENT ─────────────────────────────────────────
 # Hard cap: neither side may exceed MAX_CALL_RATIO / MAX_PUT_RATIO of the
 # total directional options book (spread strategies excluded). The cap is
@@ -1403,6 +1445,11 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
         for sig in call_signals[:5]:
             if sig.symbol in held_symbols:
                 continue
+            # WT/DC multi-TF gate (2026-04-26 owner directive — see helper docstring)
+            _gate_ok, _gate_reason = _wt_dc_options_entry_gate(sig.symbol, True, indicators, config)
+            if not _gate_ok:
+                logger.info(f"WT_DC_GATE skip CALL {sig.symbol} (daily) — {_gate_reason}")
+                continue
             expirations = await fetch_expirations(client, sig.symbol)
             if not expirations:
                 continue
@@ -1519,6 +1566,11 @@ async def _daily_find_opportunities(client: TradierAPIClient, config, indicators
         for sig in put_signals[:5]:
             if sig.symbol in held_symbols:
                 continue
+            # WT/DC multi-TF gate (2026-04-26 owner directive — see helper docstring)
+            _gate_ok, _gate_reason = _wt_dc_options_entry_gate(sig.symbol, False, indicators, config)
+            if not _gate_ok:
+                logger.info(f"WT_DC_GATE skip PUT {sig.symbol} (daily) — {_gate_reason}")
+                continue
             expirations = await fetch_expirations(client, sig.symbol)
             if not expirations:
                 continue
@@ -1568,6 +1620,25 @@ async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], 
     # function self-defending — any future caller cannot bypass.
     _gtc_blacklist: set = {s.upper() for s in (getattr(config, 'BLACKLIST', None) or []) if isinstance(s, str)}
     _gtc_call_allowed, _gtc_put_allowed = _load_allowed_symbols(config) if config else (set(), set())
+    # AUGMENT-INTO-LOSS BLOCK (2026-04-26): refuse to add more contracts to an
+    # existing OCC that has fallen below entry_avg × THRESHOLD. Closes the PLTR
+    # Jul17 $150C 6-buy averaging pattern (entries at $17.45, $17.30, $14.65,
+    # $12.52, $12.45, $12.35 = doubling down through a 28% drop). Fetches
+    # current positions ONCE upfront — single API call cost amortized over batch.
+    _aug_block_enabled = bool(getattr(config, "OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED", True))
+    _aug_threshold = float(getattr(config, "OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD", 0.85))
+    _occ_to_avg_cost: dict = {}
+    if _aug_block_enabled:
+        try:
+            _curr_positions = await get_option_positions(client, config=config)
+            for _p in (_curr_positions or []):
+                _occ_p = _p.get("occ_symbol") or _p.get("symbol")
+                _qty_p = float(_p.get("quantity", 0) or 0)
+                _cb_p = float(_p.get("cost_basis", 0) or 0)
+                if _occ_p and _qty_p > 0:
+                    _occ_to_avg_cost[_occ_p] = _cb_p / (_qty_p * 100.0)
+        except Exception as _ape:
+            logger.warning(f"[AUGMENT_BLOCK] could not fetch positions for augment check: {_ape}")
     results = []
     for order in orders:
         _o_sym = str(order.get("symbol", "")).upper()
@@ -1577,6 +1648,19 @@ async def _place_gtc_buys(client: TradierAPIClient, config, orders: List[Dict], 
             continue
         is_spread = order.get("type") == "spread"
         is_csp = (order.get("type") == "csp") or (order.get("side") == "sell_to_open" and not is_spread)
+        # AUGMENT-INTO-LOSS gate: only applies to outright buys on existing OCCs
+        if _aug_block_enabled and not is_spread and not is_csp and order.get("side") != "sell_to_open":
+            try:
+                _o_occ = order.get("occ_symbol") or build_occ_symbol(order["symbol"], order["expiration"], order["type"], order["strike"])
+            except Exception:
+                _o_occ = order.get("occ_symbol", "")
+            if _o_occ and _o_occ in _occ_to_avg_cost:
+                _existing_avg = _occ_to_avg_cost[_o_occ]
+                _new_price = float(order.get("gtc_price", order.get("price", 0)) or 0)
+                if _existing_avg > 0 and _new_price > 0 and _new_price < _existing_avg * _aug_threshold:
+                    logger.error(f"[AUGMENT_BLOCK] refused add to {_o_occ}: new=${_new_price:.2f} < avg=${_existing_avg:.2f} × {_aug_threshold:.2f} (down >{(1-_aug_threshold)*100:.0f}% from entry — do not double down on a losing position)")
+                    results.append({**order, "status": "blocked_augment_into_loss", "reason": f"new ${_new_price:.2f} < avg ${_existing_avg:.2f} × {_aug_threshold:.2f}"})
+                    continue
         # Allowlist: only enforce on outright long calls/puts (not spreads/CSPs which are
         # defined-risk and may legitimately use a different symbol universe).
         if not is_spread and not is_csp:

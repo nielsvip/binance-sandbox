@@ -204,6 +204,17 @@ class TradierConfig:
     OPTIONS_MAX_PER_SECTOR: float = 0.35      # tightened 2026-04-26 per §L6.2 (was 0.40)
     OPTIONS_MAX_PER_GROUP: float = 0.60       # Max 60% of portfolio in one sector group
     OPTIONS_MAX_PER_SYMBOL: float = 0.20      # tightened 2026-04-26 per §L6.1 (was 0.25)
+    # === MULTI-TF WT/DC ENTRY GATE (2026-04-26 — closes "buy any cheap option" leak) ===
+    # Every options buy runs wt_dc_score_entry on the underlying's indicators.
+    # Score 0-100 (validated Sharpe 27.4, 121 stocks 2.9yr). Threshold 70 ≈
+    # 3-of-5 majors aligned (D + 4h + 1h_cross + dc_1h + k_5m).
+    OPTIONS_BUY_WT_DC_GATE_ENABLED: bool = True
+    OPTIONS_BUY_MIN_WT_DC_SCORE: float = 70.0
+    # === AUGMENT-INTO-LOSS BLOCK (2026-04-26 — closes PLTR Jul17 averaging-down pattern) ===
+    # Refuse to add more contracts to an existing OCC if its current bid is
+    # below entry_avg × this fraction. 0.85 = "down 15%+ already, do not double down."
+    OPTIONS_AUGMENT_INTO_LOSS_BLOCK_ENABLED: bool = True
+    OPTIONS_AUGMENT_INTO_LOSS_THRESHOLD: float = 0.85
     OPTIONS_MIN_SECTORS: int = 2              # Min sectors for hedged tier
     OPTIONS_MIN_GROUPS: int = 3               # Min groups for full diversification tier
     OPTIONS_HEDGE_RATIO_MIN: float = 0.25     # Min puts/(puts+calls) to qualify as hedged

@@ -4074,9 +4074,13 @@ class RatingRegistry:
         score = composite / 30.0
         abs_score = abs(score)
         if abs_score < 10: return 0  # Raised from 8→10 (backtest: score>=10 = meaningful edge)
-        # ═══ 2026-04-26 USER RULE — DC channel + WT velocity zone guards ═══
-        # Zero out hedge-readiness when candidate sits at structural resistance/support OR
-        # WT momentum decelerates against the hedge direction.
+        # ═══ 2026-04-26 USER RULE — DC channel + WT velocity zone guards (config-switched, sweep-testable) ═══
+        # User opinion: hedges should activate on deteriorating gains, INDEPENDENT of dc position values.
+        # Both gates are sweep-testable knobs (HEDGE_DC_RESISTANCE_GATE_ENABLED, HEDGE_WT_VEL_GATE_ENABLED).
+        _dc_gate_on = bool(getattr(config, 'HEDGE_DC_RESISTANCE_GATE_ENABLED', True))
+        _wt_gate_on = bool(getattr(config, 'HEDGE_WT_VEL_GATE_ENABLED', True))
+        _dc_long_th = float(getattr(config, 'HEDGE_DC_LONG_REJECT_DCP', 0.85))
+        _dc_short_th = float(getattr(config, 'HEDGE_DC_SHORT_REJECT_DCP', 0.15))
         _zg_dcp_15m = safe_fetch_float(data.get('dc_position_15m', 0.5), 0.5)
         _zg_dcp_1h = safe_fetch_float(data.get('dc_position_1h', 0.5), 0.5)
         _zg_dcp_4h = safe_fetch_float(data.get('dc_position_4h', 0.5), 0.5)
@@ -4089,19 +4093,23 @@ class RatingRegistry:
         _zg_wtv_4h = safe_fetch_float(data.get('wt_velocity_4h', 0), 0)
         if score > 0:
             if _daily_bear: return 0
-            if _zg_dcp_1h >= 0.85 or _zg_dcp_4h >= 0.85 or _zg_dcp_15m >= 0.92: return 0
-            if _zg_dch_1h > 0 and price >= _zg_dch_1h * 0.995: return 0
-            if _zg_dch_4h > 0 and price >= _zg_dch_4h * 0.995: return 0
-            if _zg_wtv_1h <= 0 and _zg_wtv_4h <= 0: return 0
-            if _zg_wtv_3m < -1.0: return 0
+            if _dc_gate_on:
+                if _zg_dcp_1h >= _dc_long_th or _zg_dcp_4h >= _dc_long_th or _zg_dcp_15m >= max(_dc_long_th + 0.07, 0.92): return 0
+                if _zg_dch_1h > 0 and price >= _zg_dch_1h * 0.995: return 0
+                if _zg_dch_4h > 0 and price >= _zg_dch_4h * 0.995: return 0
+            if _wt_gate_on:
+                if _zg_wtv_1h <= 0 and _zg_wtv_4h <= 0: return 0
+                if _zg_wtv_3m < -1.0: return 0
             return min(round(score, 1), 30)
         else:
             if _daily_bull: return 0
-            if _zg_dcp_1h <= 0.15 or _zg_dcp_4h <= 0.15 or _zg_dcp_15m <= 0.08: return 0
-            if _zg_dcl_1h > 0 and price <= _zg_dcl_1h * 1.005: return 0
-            if _zg_dcl_4h > 0 and price <= _zg_dcl_4h * 1.005: return 0
-            if _zg_wtv_1h >= 0 and _zg_wtv_4h >= 0: return 0
-            if _zg_wtv_3m > 1.0: return 0
+            if _dc_gate_on:
+                if _zg_dcp_1h <= _dc_short_th or _zg_dcp_4h <= _dc_short_th or _zg_dcp_15m <= min(_dc_short_th - 0.07, 0.08): return 0
+                if _zg_dcl_1h > 0 and price <= _zg_dcl_1h * 1.005: return 0
+                if _zg_dcl_4h > 0 and price <= _zg_dcl_4h * 1.005: return 0
+            if _wt_gate_on:
+                if _zg_wtv_1h >= 0 and _zg_wtv_4h >= 0: return 0
+                if _zg_wtv_3m > 1.0: return 0
             return max(round(score, 1), -30)
 
     async def refresh_rankings(self):
@@ -4288,10 +4296,11 @@ class RatingRegistry:
             _k1h = float(_ind.get('stoch_k_1h', 50) or 50)
             if target_side == 'LONG' and _k15 > 80 and _k1h > 70: continue
             if target_side == 'SHORT' and _k15 < 20 and _k1h < 30: continue
-            # ═══ 2026-04-26 USER RULE — DC channel + WT velocity zone guards ═══
-            # Reject hedge candidates AT resistance (LONG) / AT support (SHORT) and ones with
-            # decelerating WT (slowing momentum in the hedge direction). Prevents "stupid hedges
-            # at the wrong moment". Lenient when data is missing (default 0.5 / 0).
+            # ═══ 2026-04-26 USER RULE — DC channel + WT velocity zone guards (config-switched, sweep-testable) ═══
+            _dc_gate_on = bool(getattr(config, 'HEDGE_DC_RESISTANCE_GATE_ENABLED', True))
+            _wt_gate_on = bool(getattr(config, 'HEDGE_WT_VEL_GATE_ENABLED', True))
+            _dc_long_th = float(getattr(config, 'HEDGE_DC_LONG_REJECT_DCP', 0.85))
+            _dc_short_th = float(getattr(config, 'HEDGE_DC_SHORT_REJECT_DCP', 0.15))
             _dcp_15m = float(_ind.get('dc_position_15m', 0.5) or 0.5)
             _dcp_1h = float(_ind.get('dc_position_1h', 0.5) or 0.5)
             _dcp_4h = float(_ind.get('dc_position_4h', 0.5) or 0.5)
@@ -4303,20 +4312,21 @@ class RatingRegistry:
             _wtv_1h = float(_ind.get('wt_velocity_1h', 0) or 0)
             _wtv_4h = float(_ind.get('wt_velocity_4h', 0) or 0)
             if target_side == 'LONG':
-                # At resistance: 1h or 4h DC position >= 0.85 OR price within 0.5% below dc_high_1h/4h
-                if _dcp_1h >= 0.85 or _dcp_4h >= 0.85 or _dcp_15m >= 0.92: continue
-                if _dch_1h > 0 and price >= _dch_1h * 0.995: continue
-                if _dch_4h > 0 and price >= _dch_4h * 0.995: continue
-                # WT velocity decelerating up: at least one of 1h/4h must be positive (momentum up)
-                if _wtv_1h <= 0 and _wtv_4h <= 0: continue
-                # 3m must not be sharply down — last-bar reversal indicator
-                if _wtv_3m < -1.0: continue
+                if _dc_gate_on:
+                    if _dcp_1h >= _dc_long_th or _dcp_4h >= _dc_long_th or _dcp_15m >= max(_dc_long_th + 0.07, 0.92): continue
+                    if _dch_1h > 0 and price >= _dch_1h * 0.995: continue
+                    if _dch_4h > 0 and price >= _dch_4h * 0.995: continue
+                if _wt_gate_on:
+                    if _wtv_1h <= 0 and _wtv_4h <= 0: continue
+                    if _wtv_3m < -1.0: continue
             elif target_side == 'SHORT':
-                if _dcp_1h <= 0.15 or _dcp_4h <= 0.15 or _dcp_15m <= 0.08: continue
-                if _dcl_1h > 0 and price <= _dcl_1h * 1.005: continue
-                if _dcl_4h > 0 and price <= _dcl_4h * 1.005: continue
-                if _wtv_1h >= 0 and _wtv_4h >= 0: continue
-                if _wtv_3m > 1.0: continue
+                if _dc_gate_on:
+                    if _dcp_1h <= _dc_short_th or _dcp_4h <= _dc_short_th or _dcp_15m <= min(_dc_short_th - 0.07, 0.08): continue
+                    if _dcl_1h > 0 and price <= _dcl_1h * 1.005: continue
+                    if _dcl_4h > 0 and price <= _dcl_4h * 1.005: continue
+                if _wt_gate_on:
+                    if _wtv_1h >= 0 and _wtv_4h >= 0: continue
+                    if _wtv_3m > 1.0: continue
             pos_key_l = construct_position_key(account_key, sym, 'LONG')
             pos_key_s = construct_position_key(account_key, sym, 'SHORT')
             pos_l = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(pos_key_l)
@@ -4601,6 +4611,15 @@ class HedgeEngine:
             pnl_pct = ((mark_price - entry_price) / entry_price * 100) if is_long else ((entry_price - mark_price) / entry_price * 100)
             # Gate: must be losing (or HEDGE_ALL_POSITIONS for all positions)
             if not _hedge_all and pnl_pct >= _oh_min_loss: continue
+            # ═══ 2026-04-26 USER RULE — gain must be ACTIVELY DETERIORATING (sweep-testable) ═══
+            # Prevents "wrong moment" hedge: a position that's flat-lining at -0.3% does not need a hedge.
+            # Only hedge when gain is dropping (cur < prev - delta_pp). Knob: HEDGE_DETERIORATING_GAIN_DELTA_PP.
+            if bool(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_ENABLED', True)):
+                _det_prev = safe_fetch_float(getattr(pos, 'prev_gain', pnl_pct), pnl_pct)
+                _det_delta = float(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', 0.10))
+                if pnl_pct >= _det_prev - _det_delta:
+                    logger.debug(f"[HEDGE_NOT_DETERIORATING] {position_key}: gain={pnl_pct:.2f}% prev={_det_prev:.2f}% drop={_det_prev - pnl_pct:.2f}pp < {_det_delta:.2f}pp — skip")
+                    continue
             symbol = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
             # ═══ 2026-04-16: NEWBORN GRACE — don't hedge positions < N min old ═══
             # Exception: if price has breached DC support (long) / resistance (short), break grace
