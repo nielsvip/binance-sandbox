@@ -14,12 +14,21 @@ import json
 import logging
 import os
 import pickle
+import platform
 import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-BASE = Path("/Users/niels/Documents/binance")
+
+def _detect_base():
+    for cand in (Path("/Users/niels/Documents/binance"), Path("/home/niels/binance"), Path("/home/niels/binance-sandbox")):
+        if cand.exists():
+            return cand
+    return Path(__file__).resolve().parent
+
+
+BASE = _detect_base()
 HANDOFF_REPO = Path.home() / "binance-agent-handoff"
 SNAPSHOT_PATH = HANDOFF_REPO / "snapshot.json"
 DECISIONS_DIR = BASE / "data" / "decisions"

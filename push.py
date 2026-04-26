@@ -23,6 +23,9 @@ SERVER2_SYNC_FILES = [
     "backtest_v5_full_tradier.py", "backtest_v5_engine.py", "backtest_v5_sweep.py",
     "backtest_v5_harness.py", "backtest_v5_analyze.py",
     "backtest_wt_intel_sweep.py",
+    # Agent advisory bundle — paper-account agent-supervisor wiring (trc + fin)
+    "trc_advisory_consumer.py", "fin_advisory_consumer.py",
+    "agent_snapshot_writer.py", "compare_trc_trb.py", "agent_inbox_poller.py",
 ]
 
 # THE SOURCE OF TRUTH - only tradier_*, ez_*, and shared config/utils
@@ -39,6 +42,9 @@ FILES = [
     "ez_positions_realtime_ang.py", "ez_positions_realtime_fin.py", "ez_positions_realtime_flz.py",
     "ez_positions_realtime_inf.py", "ez_positions_realtime_men.py", "ez_positions_watchdog.py",
     "ez_copilot.py", "trade_analytics.py",
+    # --- Agent advisory bundle (paper-account supervisor channel) ---
+    "trc_advisory_consumer.py", "fin_advisory_consumer.py",
+    "agent_snapshot_writer.py", "compare_trc_trb.py", "agent_inbox_poller.py",
     # --- Shared config/utils ---
     "utils.py", "config.py", "config_tradier.py",
     # --- Managed on server, pulled before pushing ---

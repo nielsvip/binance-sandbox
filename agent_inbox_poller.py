@@ -45,9 +45,16 @@ log = logging.getLogger("agent_inbox_poller")
 def _password():
     try:
         return subprocess.check_output(["security", "find-generic-password", "-a", GMAIL_USER, "-s", "gmail-app-password", "-w"], stderr=subprocess.DEVNULL).decode().strip()
-    except Exception as e:
-        log.error("keychain password fetch failed: %s", e)
-        return None
+    except Exception:
+        pass
+    for path in (Path.home() / ".config" / "binance-agent" / "gmail_app_password", Path("/etc/binance-agent/gmail_app_password")):
+        try:
+            if path.exists():
+                return path.read_text().strip()
+        except Exception:
+            continue
+    log.error("no gmail app password found (keychain + ~/.config/binance-agent/gmail_app_password both empty)")
+    return None
 
 
 def _connect():
