@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-26 06:26:42 UTC
+# Copilot Status — 2026-04-26 06:41:55 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T06:23:05
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:23:05
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T06:24:06
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T06:24:06
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-26T06:24:07
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:24:07
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:25:09
-- **STALE_INDICATORS** [tradier]  — 2026-04-26T06:26:10
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T06:26:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:26:11
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:36:33
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:37:36
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T06:38:37
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T06:38:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:38:38
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:39:40
+- **STALE_INDICATORS** [tradier]  — 2026-04-26T06:40:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-26T06:40:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:40:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-26T06:41:44
 
 ## Missed Trades (trader comparison)
 
@@ -27,9 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 0 | **Watching for reentry:** 4 | **Reentered:** 0
+**Held:** 0 | **Watching for reentry:** 8 | **Reentered:** 0
 
+- WATCHING: **MU** LONG (tradier) peaked +13.3%, exited 0m ago
+- WATCHING: **GOOGL** LONG (tradier) peaked +9.9%, exited 0m ago
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
+- WATCHING: **SNDK** LONG (tradier) peaked +7.9%, exited 0m ago
+- WATCHING: **MSFT** LONG (tradier) peaked +6.9%, exited 0m ago
 - WATCHING: **USO** LONG (tradier) peaked +4.2%, exited 0m ago
 - WATCHING: **PLTR** SHORT (tradier) peaked +3.6%, exited 0m ago
 - WATCHING: **OPUSDT** SHORT (crypto) peaked +3.3%, exited 0m ago
@@ -39,8 +43,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_prices.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
