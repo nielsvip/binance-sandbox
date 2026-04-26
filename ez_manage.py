@@ -18191,17 +18191,10 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _force_reason, 99.0, override_qty=_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: QUEUED qty={_force_qty:.4f} at ${current_price:.4f}")
-                # Stamp the rate-limit timestamp + delete reentry record so it doesn't
-                # re-fire on next cycle. Position is now (re)opened — record's job is done.
+                # Stamp the rate-limit timestamp ONLY — do NOT delete the reentry record.
+                # Reentries persist for centuries per owner directive. The 300s rate-limit
+                # alone is enough to prevent the rogue loop without erasing the trigger.
                 trade_manager._mpc_last_fire[position_key] = _mpc_now
-                try:
-                    if position_key in trade_manager.reentry_data:
-                        del trade_manager.reentry_data[position_key]
-                    if getattr(trade_manager, 'service', None) and hasattr(trade_manager.service, 'reentry_data'):
-                        if position_key in trade_manager.service.reentry_data:
-                            del trade_manager.service.reentry_data[position_key]
-                except Exception as _mpc_del_err:
-                    logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: record cleanup error {_mpc_del_err}")
             return
         _strong_trend = (is_long and (k_15m > 80 or k_1h > 80)) or (not is_long and (k_15m < 20 or k_1h < 20))
         if (k_15m > 70 and is_long) or (k_15m < 30 and not is_long):
@@ -18442,26 +18435,13 @@ async def evaluate_reentry_2(trade_manager):
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0
-            # 2026-04-26 FIX: was 72000000000000000000000.0 (never expire) — caused
-            # flz/men suffocation. Stale reentries aged into AGE_GATE_STRICT (3/3
-            # stoch align) and never fired. Restored to 72h to match log message
-            # AND sister logic in ez_positions_quick.py:14772.
-            # 2026-04-26 v2 FIX: delete from BOTH trade_manager.reentry_data AND
-            # service.reentry_data. They are nominally the same object (per comment
-            # at line 15401), but in practice MANDATORY_PRICE_CROSS_REENTRY kept
-            # firing on records "expired" here — meaning the eval loop reads from
-            # service.reentry_data which retained them. flz fired 134 entries in 5
-            # min (rogue-loop shape of 2026-03-29 incident). Defense-in-depth: hit
-            # both. Cost is null if they're truly the same object.
-            if _age_hrs > 72.0:
+            # 2026-04-26 REVERTED to centuries per owner directive: reentries never
+            # expire — they age into stricter AGE_GATE confirmation but the record
+            # persists. Earlier intermediate "fix" mis-read the "max 72h" log message
+            # as a bug; it's a stale label. Original threshold was intentional.
+            if _age_hrs > 72000000000000000000000.0:
                 logger.info(f"[REENTRY_EXPIRED] {pk}: {_age_hrs:.0f}h old — removing (max 72h)")
                 del trade_manager.reentry_data[pk]
-                try:
-                    if getattr(trade_manager, 'service', None) and hasattr(trade_manager.service, 'reentry_data'):
-                        if pk in trade_manager.service.reentry_data:
-                            del trade_manager.service.reentry_data[pk]
-                except Exception as _re_del_err:
-                    logger.warning(f"[REENTRY_EXPIRED] {pk}: service-side delete error {_re_del_err}")
                 continue
             elif _age_hrs > 48.0:
                 rd['age_gate'] = 'strict'
