@@ -15565,7 +15565,10 @@ class MultiAccountTradeManager:
                             _sec_since_cross = time.time() - _crossed_at
                             if _sec_since_cross > REENTRY_CRASH_TIMEOUT_SEC:
                                 logger.critical(f"💀💀💀 [REENTRY_CRASH] {position_key}: Price crossed exit {exit_price:.6f} {_sec_since_cross:.0f}s ago, reentry FAILED {data['attempts']} times. result={result}. CRASHING SCRIPT — REENTRY IS MANDATORY.")
-                                os._exit(1)
+                                if os.environ.get("SHADOW_MODE") == "1":
+                                    logger.warning(f"[SHADOW] suppressing REENTRY_CRASH self-kill for {position_key} — shadow execute_now is stubbed so reentries never queue")
+                                else:
+                                    os._exit(1)
                             else:
                                 logger.critical(f"🚨 [REENTRY_RETRY] {position_key}: Price crossed exit but order failed (result={result}). {_sec_since_cross:.0f}s/{REENTRY_CRASH_TIMEOUT_SEC:.0f}s until CRASH. Retrying...")
                     else:
@@ -15581,7 +15584,10 @@ class MultiAccountTradeManager:
                                 _gain = float(getattr(pos, 'gain', 0) or 0)
                                 if _gain < 0:
                                     logger.critical(f"💀💀💀 [REENTRY_LOSS_KILL] {position_key}: Reentered {_fill_age:.0f}s ago, gain={_gain*100:.2f}%% — NOT WINNING AFTER 6MIN. CRASHING.")
-                                    os._exit(1)
+                                    if os.environ.get("SHADOW_MODE") == "1":
+                                        logger.warning(f"[SHADOW] suppressing REENTRY_LOSS_KILL self-kill for {position_key}")
+                                    else:
+                                        os._exit(1)
             except Exception as e:
                 logger.error(f"[REENTRY_ENFORCE_ERROR] {e}", exc_info=True)
                 await asyncio.sleep(15.0)
