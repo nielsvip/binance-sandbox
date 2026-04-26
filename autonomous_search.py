@@ -6,11 +6,86 @@ until killed or N_MAX reached.
 Timeout is enforced via multiprocessing.Process (fork) so numpy C code can
 actually be killed — signal.SIGALRM cannot interrupt numpy's C extensions.
 """
-import argparse, copy, csv, json, os, random, signal, sys, time, gc
+import argparse, copy, csv, json, math, os, random, signal, sys, time, gc
 from datetime import datetime
 import multiprocessing as mp
 from dataclasses import fields
 from pathlib import Path
+
+try:
+    from scipy.stats import norm as _scipy_norm
+    _HAVE_SCIPY = True
+except Exception:
+    _HAVE_SCIPY = False
+
+
+def _norm_ppf(p):
+    """Inverse normal CDF; uses scipy if available, else Acklam approximation."""
+    if _HAVE_SCIPY:
+        return float(_scipy_norm.ppf(p))
+    # Peter Acklam's algorithm — accurate to ~1e-9
+    if p <= 0.0 or p >= 1.0:
+        if p <= 0.0: return -float("inf")
+        return float("inf")
+    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
+    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+         6.680131188771972e+01, -1.328068155288572e+01]
+    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+         3.754408661907416e+00]
+    plow = 0.02425; phigh = 1 - plow
+    if p < plow:
+        q = math.sqrt(-2 * math.log(p))
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    if p <= phigh:
+        q = p - 0.5; r = q * q
+        return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / \
+               (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
+    q = math.sqrt(-2 * math.log(1 - p))
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+
+
+def _norm_cdf(x):
+    if _HAVE_SCIPY:
+        return float(_scipy_norm.cdf(x))
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def deflated_sharpe(observed_sharpe, n_trials, n_observations,
+                    skew=0.0, kurt=3.0, sharpe_std=None):
+    """Bailey & Lopez de Prado (2014) Deflated Sharpe Ratio.
+
+    observed_sharpe: per-trade Sharpe (the user's pool_sharpe)
+    n_trials: number of independent backtests run (~ iter count)
+    n_observations: number of trades in the winning config
+    skew, kurt: skew and kurtosis of trade returns (default normal: 0, 3)
+    sharpe_std: stdev of Sharpes across trials (unused if None — null model used)
+    Returns: (dsr, psr) where
+        dsr = deflated SR in stdev units (sr - expected_max_under_null) / sigma_sr
+        psr = probabilistic SR in [0,1] (cdf of dsr)
+    """
+    gamma = 0.5772156649015329  # Euler-Mascheroni
+    n_t = max(int(n_trials), 2)
+    z1 = _norm_ppf(1.0 - 1.0 / n_t)
+    z2 = _norm_ppf(1.0 - 1.0 / (n_t * math.e))
+    expected_max_sr_null = (1.0 - gamma) * z1 + gamma * z2
+    sr = float(observed_sharpe)
+    n_obs = max(int(n_observations) - 1, 1)
+    var_sr = (1.0 - skew * sr + (kurt - 1.0) / 4.0 * sr * sr) / n_obs
+    sigma_sr = math.sqrt(max(var_sr, 1e-12))
+    dsr = (sr - expected_max_sr_null) / sigma_sr
+    psr = _norm_cdf(dsr)
+    return dsr, psr
+
+
+# Default ranking metric. Per CLAUDE.md `feedback_chained_sharpe_is_overfit_lie`
+# raw pool_sharpe overfits in large search spaces — DSR penalises by trial count.
+RANKING_METRIC = os.environ.get("AUTO_SEARCH_RANKING_METRIC", "deflated_sharpe")  # "deflated_sharpe" | "pool_sharpe"
+RANKING_TRIALS_THRESHOLD = 100  # below this, fall back to pool_sharpe (DSR unstable on tiny n_trials)
 
 
 FORBIDDEN_FLIPS = {
@@ -115,7 +190,14 @@ def _run_simulate_timed(cfg, timeout_secs, mp_ctx):
 
 
 def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
-    """Return a dict of overrides sampled randomly from knob space, skipping FORBIDDEN_FLIPS."""
+    """Return a dict of overrides sampled randomly from knob space, skipping FORBIDDEN_FLIPS.
+
+    Sweep dimensions are auto-discovered via dataclasses.fields(QuickConfig). New switches added
+    to v8_quick_engine.QuickConfig (VOL_TARGET_*, DD_KELLY_*, MINERVINI_*, CLENOW_*,
+    PROXIMITY_TOP_*, SQUEEZE_FIRE_*, TSMOM_BOOK_SCALAR_*, etc.) are picked up automatically.
+    No explicit dimension registry is needed — by design, follow the existing pattern.
+    To LOCK a dimension OFF for safety, add it to FORBIDDEN_FLIPS above.
+    """
     ovr = {}
     for fld in fields(base_cfg):
         nm = fld.name
@@ -246,8 +328,9 @@ def main():
     with open(csv_path, "a", newline="") as csv_f:
         w = csv.writer(csv_f)
         if not csv_exists:
-            w.writerow(["iter", "pool_sharpe", "sym_sharpe", "acc_gain_pct", "gain_sym_yr",
-                        "avg_gain_trade", "gain_per_yr", "max_dd_pct", "trades", "gain_vs_bh",
+            w.writerow(["iter", "pool_sharpe", "deflated_sharpe", "psr", "sym_sharpe",
+                        "acc_gain_pct", "gain_sym_yr", "avg_gain_trade", "gain_per_yr",
+                        "max_dd_pct", "trades", "gain_vs_bh",
                         "elapsed_s", "overrides_count", "reliable", "useless", "overrides_json"])
 
         # iter=-1: evaluate baseline (no perturbation) as reference floor
@@ -268,16 +351,21 @@ def main():
                 gsy0 = round(g0 / len(subset) / n_years, 4)
                 agt0 = round(g0 / tr0, 4) if tr0 else 0.0
                 gpy0 = round(g0 / n_years, 4)
-                w.writerow([-1, round(s0, 4), round(sym_s0, 4), round(g0, 2), gsy0, agt0, gpy0,
+                # DSR for baseline uses n_trials=1 (no search yet) — informative but not used for ranking.
+                dsr0, psr0 = deflated_sharpe(s0, n_trials=max(args.n_max, 2), n_observations=max(tr0, 1))
+                w.writerow([-1, round(s0, 4), round(dsr0, 4), round(psr0, 4), round(sym_s0, 4),
+                             round(g0, 2), gsy0, agt0, gpy0,
                              round(r0.get("max_dd_pct", 0.0), 2), tr0,
                              round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
                              round(time.time() - t_bl, 1), 0, rel0, 0, json.dumps({})])
                 csv_f.flush()
-                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} sym_sharpe={sym_s0:.4f} "
-                      f"gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade gain_per_yr={gpy0:.2f}%/yr "
-                      f"gain_sym_yr={gsy0:.4f}%/sym/yr trades={tr0} reliable={rel0}", flush=True)
+                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} dsr={dsr0:.4f} psr={psr0:.4f} "
+                      f"sym_sharpe={sym_s0:.4f} gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade "
+                      f"gain_per_yr={gpy0:.2f}%/yr gain_sym_yr={gsy0:.4f}%/sym/yr trades={tr0} "
+                      f"reliable={rel0}", flush=True)
 
         best_gain = -1e9
+        best_rank_score = -1e9  # tracks best by RANKING_METRIC (DSR by default)
         for i in range(args.n_max):
             cfg = copy.deepcopy(base)
             ovr = _sample_cfg(base, args.bool_flip_prob, args.numeric_perturb_prob)
@@ -306,28 +394,51 @@ def main():
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
             reliable = 1 if tr >= floor_total else 0
             useless = 1 if (reliable and sharpe < args.sharpe_useless_floor) else 0
-            w.writerow([i, round(sharpe, 4), round(sym_sharpe, 4), round(gain, 2), gain_sym_yr,
-                        avg_gain_trade, gain_per_yr, round(dd, 2), tr,
-                        round(gvb, 3), round(el, 1), len(ovr), reliable, useless, json.dumps(ovr)])
+            # Deflated Sharpe — n_trials = current iter count (i+1 trials including this one).
+            tr_skew = float(r.get("trade_returns_skew", 0.0)) if isinstance(r, dict) else 0.0
+            tr_kurt = float(r.get("trade_returns_kurt", 3.0)) if isinstance(r, dict) else 3.0
+            dsr, psr = deflated_sharpe(sharpe, n_trials=max(i + 1, 2),
+                                       n_observations=max(tr, 1),
+                                       skew=tr_skew, kurt=tr_kurt)
+            w.writerow([i, round(sharpe, 4), round(dsr, 4), round(psr, 4), round(sym_sharpe, 4),
+                        round(gain, 2), gain_sym_yr, avg_gain_trade, gain_per_yr,
+                        round(dd, 2), tr, round(gvb, 3), round(el, 1), len(ovr),
+                        reliable, useless, json.dumps(ovr)])
             csv_f.flush()
-            if gain > best_gain:
-                best_gain = gain
-                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN pool_sharpe={sharpe:.3f} sym_sharpe={sym_sharpe:.3f} "
+            # Ranking: deflated_sharpe once n_trials > threshold, else pool_sharpe.
+            if RANKING_METRIC == "deflated_sharpe" and (i + 1) > RANKING_TRIALS_THRESHOLD:
+                rank_score = dsr
+                rank_label = "dsr"
+            else:
+                rank_score = sharpe
+                rank_label = "pool_sharpe"
+            if reliable and rank_score > best_rank_score:
+                best_rank_score = rank_score
+                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_{rank_label.upper()}={rank_score:.4f} "
+                      f"pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} sym_sharpe={sym_sharpe:.3f} "
                       f"gain={gain:.1f}% avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
                       f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
                       f"ovr={len(ovr)} el={el:.1f}s", flush=True)
+            if gain > best_gain:
+                best_gain = gain
+                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} "
+                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.1f}% avg_gain_trade={avg_gain_trade:.4f}%/trade "
+                      f"gain_per_yr={gain_per_yr:.2f}%/yr gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
+                      f"({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} ovr={len(ovr)} el={el:.1f}s", flush=True)
             if reliable and gain >= target_gain and sharpe >= target_sharpe:
-                win = {"iter": i, "pool_sharpe": round(sharpe, 4), "sym_sharpe": round(sym_sharpe, 4),
+                win = {"iter": i, "pool_sharpe": round(sharpe, 4),
+                       "deflated_sharpe": round(dsr, 4), "psr": round(psr, 4),
+                       "sym_sharpe": round(sym_sharpe, 4),
                        "acc_gain_pct": round(gain, 2), "gain_sym_yr": gain_sym_yr,
                        "avg_gain_trade": avg_gain_trade, "gain_per_yr": gain_per_yr,
                        "max_dd_pct": round(dd, 2), "trades": tr, "gain_vs_bh": round(gvb, 3),
-                       "reliable": reliable, "overrides": ovr}
+                       "reliable": reliable, "n_trials_at_win": i + 1, "overrides": ovr}
                 with open(winners_path, "a") as wf:
                     wf.write(json.dumps(win) + "\n")
-                print(f"[AUTO_SEARCH] *** WINNER iter={i} pool_sharpe={sharpe:.3f} sym_sharpe={sym_sharpe:.3f} "
-                      f"gain={gain:.0f}% avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
-                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.1f}x BH) dd={dd:.1f}% tr={tr} ***",
-                      flush=True)
+                print(f"[AUTO_SEARCH] *** WINNER iter={i} pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} "
+                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.0f}% avg_gain_trade={avg_gain_trade:.4f}%/trade "
+                      f"gain_per_yr={gain_per_yr:.2f}%/yr gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
+                      f"({gvb:.1f}x BH) dd={dd:.1f}% tr={tr} ***", flush=True)
 
 
 if __name__ == "__main__":

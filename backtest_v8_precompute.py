@@ -31,6 +31,164 @@ sys.path.insert(0, str(Path(__file__).parent))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("v7_precompute")
 
+# Imports for new indicator fields (Improvement Framework A3+A4+A5, 2026-04-26).
+# Existing scalar functions in tradier_indicators_extra.py are reused where useful;
+# numpy-vectorized rolling wrappers below handle the time-series fields.
+try:
+    from tradier_indicators_extra import (
+        compute_minervini_sepa as _scalar_sepa,
+        compute_clenow_score as _scalar_clenow,
+        detect_episodic_pivot as _scalar_ep,
+    )
+except Exception as _e:
+    _scalar_sepa = None
+    _scalar_clenow = None
+    _scalar_ep = None
+
+# Module-level mode flag set by main(). Used by compute_tf_arrays() to choose
+# annualization factor (252 for tradier, 365 for crypto). Threading via kwarg
+# would alter the public signature; module-level keeps existing call sites stable.
+MODE = "tradier"
+
+
+def _ann_factor() -> float:
+    """Annualization factor: 252 trading days for stocks, 365 for crypto (24/7)."""
+    return 365.0 if MODE == "crypto" else 252.0
+
+
+def _yz_vol(open_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+            close_arr: np.ndarray, n: int, ann_factor: float) -> np.ndarray:
+    """Yang-Zhang (2000) annualized realized volatility, rolling window n. % units."""
+    o = np.log(np.maximum(open_arr, 1e-10))
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    c = np.log(np.maximum(close_arr, 1e-10))
+    pc = np.roll(c, 1); pc[0] = c[0]
+    o_minus_pc = o - pc
+    c_minus_o = c - o
+    rs = (h - c) * (h - o) + (l - c) * (l - o)
+    def _roll_var(x):
+        s1 = pd.Series(x).rolling(n).mean()
+        s2 = pd.Series(x * x).rolling(n).mean()
+        return (s2 - s1 * s1).clip(lower=0).values
+    sig_o2 = _roll_var(o_minus_pc)
+    sig_c2 = _roll_var(c_minus_o)
+    sig_rs2 = pd.Series(rs).rolling(n).mean().clip(lower=0).values
+    k = 0.34 / (1.34 + (n + 1) / max(n - 1, 1))
+    yz_var = sig_o2 + k * sig_c2 + (1.0 - k) * sig_rs2
+    yz_var = np.nan_to_num(yz_var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(yz_var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _pk_vol(high_arr: np.ndarray, low_arr: np.ndarray,
+            n: int, ann_factor: float) -> np.ndarray:
+    """Parkinson high-low annualized volatility. % units."""
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    hl2 = (h - l) ** 2
+    var = pd.Series(hl2).rolling(n).mean().values / (4.0 * np.log(2.0))
+    var = np.nan_to_num(var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _gk_vol(open_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+            close_arr: np.ndarray, n: int, ann_factor: float) -> np.ndarray:
+    """Garman-Klass annualized volatility. % units."""
+    o = np.log(np.maximum(open_arr, 1e-10))
+    h = np.log(np.maximum(high_arr, 1e-10))
+    l = np.log(np.maximum(low_arr, 1e-10))
+    c = np.log(np.maximum(close_arr, 1e-10))
+    term1 = 0.5 * (h - l) ** 2
+    term2 = (2.0 * np.log(2.0) - 1.0) * (c - o) ** 2
+    var = pd.Series(term1 - term2).rolling(n).mean().clip(lower=0).values
+    var = np.nan_to_num(var, nan=0.0, posinf=0.0, neginf=0.0)
+    return (np.sqrt(np.maximum(var, 0)) * np.sqrt(ann_factor) * 100.0).astype(np.float32)
+
+
+def _rolling_sepa(close_arr: np.ndarray, high_arr: np.ndarray, low_arr: np.ndarray,
+                  volume_arr: np.ndarray) -> tuple:
+    """Rolling Minervini SEPA: per-bar pass/score using bars[:i+1].
+    Returns (sepa_pass int8, sepa_score int8). Daily TF only (slow loop)."""
+    n = len(close_arr)
+    sepa_pass = np.zeros(n, dtype=np.int8)
+    sepa_score = np.zeros(n, dtype=np.int8)
+    if n < 252 or _scalar_sepa is None:
+        return sepa_pass, sepa_score
+    cl = close_arr.tolist()
+    hl = high_arr.tolist()
+    ll = low_arr.tolist()
+    vl = volume_arr.tolist()
+    for i in range(252, n):
+        try:
+            res = _scalar_sepa(cl[: i + 1], hl[: i + 1], ll[: i + 1], vl[: i + 1])
+            if res:
+                sepa_pass[i] = 1 if res.get("sepa_pass") else 0
+                sepa_score[i] = int(res.get("sepa_score", 0))
+        except Exception:
+            pass
+    return sepa_pass, sepa_score
+
+
+def _rolling_clenow(close_arr: np.ndarray, lookback: int = 90) -> tuple:
+    """Rolling Clenow: per-bar slope_ann × R². Returns (score, slope, r2) float32 arrays.
+    Daily TF only (slow loop)."""
+    n = len(close_arr)
+    score = np.zeros(n, dtype=np.float32)
+    slope = np.zeros(n, dtype=np.float32)
+    r2 = np.zeros(n, dtype=np.float32)
+    if n < lookback + 5 or _scalar_clenow is None:
+        return score, slope, r2
+    cl = close_arr.tolist()
+    for i in range(lookback + 5, n):
+        try:
+            res = _scalar_clenow(cl[: i + 1], lookback=lookback)
+            if res:
+                score[i] = float(res.get("clenow_score", 0.0))
+                slope[i] = float(res.get("clenow_slope", 0.0))
+                r2[i] = float(res.get("clenow_r2", 0.0))
+        except Exception:
+            pass
+    return score, slope, r2
+
+
+def _rolling_episodic_pivot(open_arr: np.ndarray, high_arr: np.ndarray,
+                             low_arr: np.ndarray, close_arr: np.ndarray,
+                             volume_arr: np.ndarray, fwd_days: int = 30) -> tuple:
+    """Rolling Episodic Pivot detection (Daily TF). On bar i, run detect on bars[:i+1];
+    if detected, mark ep_detected=1 on bars [i, i+fwd_days). Returns (ep_detected int8,
+    ep_breakout_level float32, ep_direction int8 +1/-1/0)."""
+    n = len(close_arr)
+    ep_det = np.zeros(n, dtype=np.int8)
+    ep_lvl = np.zeros(n, dtype=np.float32)
+    ep_dir = np.zeros(n, dtype=np.int8)
+    if n < 30 or _scalar_ep is None:
+        return ep_det, ep_lvl, ep_dir
+    for i in range(20, n):
+        bars = []
+        for j in range(max(0, i - 60), i + 1):
+            bars.append({
+                "open": float(open_arr[j]),
+                "high": float(high_arr[j]),
+                "low": float(low_arr[j]),
+                "close": float(close_arr[j]),
+                "volume": float(volume_arr[j]),
+            })
+        try:
+            res = _scalar_ep(bars)
+        except Exception:
+            res = None
+        if res and res.get("ep_detected"):
+            lvl = float(res.get("ep_breakout_level", 0.0) or 0.0)
+            d = res.get("ep_direction", "")
+            d_int = 1 if d == "LONG" else (-1 if d == "SHORT" else 0)
+            for k in range(i, min(n, i + fwd_days)):
+                # Only fill if not already set by a more recent detection
+                if ep_det[k] == 0:
+                    ep_det[k] = 1
+                    ep_lvl[k] = lvl
+                    ep_dir[k] = d_int
+    return ep_det, ep_lvl, ep_dir
+
 if platform.system() == "Darwin":
     BASE_PATH = Path("/Users/niels/Documents/binance")
 else:
@@ -357,6 +515,54 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
             pass
         except Exception:
             pass
+    # === CONTRACT ALIASES (Improvement Framework A3, 2026-04-26) ===
+    # Engine reads kc_middle_{tf} and squeeze_on_{tf}; existing fields use kc_mid + squeeze.
+    # Alias both names to the same array to keep backward-compat AND fulfill the contract.
+    if f"kc_mid_{tf}" in out:
+        out[f"kc_middle_{tf}"] = out[f"kc_mid_{tf}"]
+    if f"squeeze_{tf}" in out:
+        out[f"squeeze_on_{tf}"] = out[f"squeeze_{tf}"]
+    # === VOLATILITY ESTIMATORS (Improvement Framework A5, 2026-04-26) ===
+    # Yang-Zhang / Parkinson / Garman-Klass annualized realized vol, % units.
+    # Daily TF: 60-bar window. 4h TF: 20-bar window. Other TFs: skipped (unused).
+    ann = _ann_factor()
+    o_arr = open_.values.astype(np.float64)
+    h_arr = high.values.astype(np.float64)
+    l_arr = low.values.astype(np.float64)
+    c_arr = close.values.astype(np.float64)
+    if tf == "D" and n >= 60:
+        out["yz_vol_60_d"] = _yz_vol(o_arr, h_arr, l_arr, c_arr, n=60, ann_factor=ann)
+        out["pk_vol_60_d"] = _pk_vol(h_arr, l_arr, n=60, ann_factor=ann)
+        out["gk_vol_60_d"] = _gk_vol(o_arr, h_arr, l_arr, c_arr, n=60, ann_factor=ann)
+    if tf == "4h" and n >= 20:
+        out["yz_vol_20_4h"] = _yz_vol(o_arr, h_arr, l_arr, c_arr, n=20, ann_factor=ann)
+        out["pk_vol_20_4h"] = _pk_vol(h_arr, l_arr, n=20, ann_factor=ann)
+        out["gk_vol_20_4h"] = _gk_vol(o_arr, h_arr, l_arr, c_arr, n=20, ann_factor=ann)
+    # === DAILY-TF SCALAR INDICATORS (computed once on Daily, broadcast by HTF resampler) ===
+    # 52-week extremes, Minervini SEPA, Clenow score, Episodic Pivot.
+    # Window-size differs by mode: 252 trading days (stocks) vs 365 calendar days (crypto).
+    if tf == "D":
+        n52 = 365 if MODE == "crypto" else 252
+        min_p = max(20, n52 // 12)
+        high_52w = pd.Series(h_arr).rolling(n52, min_periods=min_p).max().bfill().fillna(h_arr[0]).values
+        low_52w = pd.Series(l_arr).rolling(n52, min_periods=min_p).min().bfill().fillna(l_arr[0]).values
+        out["pct_from_52w_high"] = ((c_arr / np.maximum(high_52w, 1e-10) - 1.0) * 100.0).astype(np.float32)
+        out["pct_from_52w_low"] = ((c_arr / np.maximum(low_52w, 1e-10) - 1.0) * 100.0).astype(np.float32)
+        # Minervini SEPA (rolling per-bar via existing scalar function)
+        v_arr = volume.values.astype(np.float64)
+        sepa_pass, sepa_score = _rolling_sepa(c_arr, h_arr, l_arr, v_arr)
+        out["sepa_pass"] = sepa_pass
+        out["sepa_score"] = sepa_score
+        # Clenow score
+        cl_score, cl_slope, cl_r2 = _rolling_clenow(c_arr, lookback=90)
+        out["clenow_score"] = cl_score
+        out["clenow_slope"] = cl_slope
+        out["clenow_r2"] = cl_r2
+        # Episodic Pivot — fires forward 30 days from detection
+        ep_det, ep_lvl, ep_dir = _rolling_episodic_pivot(o_arr, h_arr, l_arr, c_arr, v_arr, fwd_days=30)
+        out["ep_detected"] = ep_det
+        out["ep_breakout_level"] = ep_lvl
+        out["ep_direction"] = ep_dir
     # Filter: only return arrays matching expected length n
     return {k: v for k, v in out.items() if isinstance(v, np.ndarray) and len(v) == n}
 
@@ -459,6 +665,10 @@ def _inject_funding_oi(merged: dict, symbol: str, ts_epoch_sec: np.ndarray, base
 
 def compute_symbol(symbol: str, mode: str) -> bool:
     t0 = time.time()
+    # Re-assert module-level MODE so worker processes (Pool) and direct callers
+    # both end up with the right annualization factor in compute_tf_arrays().
+    global MODE
+    MODE = mode
     if mode == "tradier":
         base_tf = "15m"  # 15m has 2yr history, 5m only 3mo — use 15m, fabricate 5m
         tfs = ["5m", "15m", "1h", "4h", "D"]
@@ -725,6 +935,10 @@ def main():
     parser.add_argument("--mode", choices=["tradier", "crypto"], required=True)
     parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
+    # Set module-level MODE so compute_tf_arrays uses the correct annualization
+    # factor (252 trading days for tradier, 365 calendar days for crypto).
+    global MODE
+    MODE = args.mode
     klines_dir = TRADIER_KLINES if args.mode == "tradier" else CRYPTO_KLINES
     if args.symbol:
         symbols = [args.symbol.upper()]

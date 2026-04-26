@@ -659,6 +659,172 @@ def _v8_result_from_trades(executed_trades, capital):
 
 
 # ═══════════════════════════════════════════════════════════════
+# NEW 2026-04-26 sweep switches (mirrored from v8_quick_engine sibling).
+# All default OFF. Consume new NPZ fields added by precompute agent.
+# Switches:
+#   VOL_TARGET, DD_KELLY, MINERVINI_GATE, CLENOW_GATE, PROXIMITY_TOP_GATE,
+#   SQUEEZE_FIRE_ENTRY, TSMOM_BOOK_SCALAR
+# Wiring contract: same field names + semantics as v8_quick. See CLAUDE.md
+# section "Engine-tier architecture" 2c. Tier-1 (v8_quick vectorized) and
+# Tier-2 (this engine, real-code) MUST stay flag-comparable.
+# ═══════════════════════════════════════════════════════════════
+def _v8ns_get(cfg_obj, name, default):
+    """Safe getattr against either Config instance or module — returns default if missing."""
+    return getattr(cfg_obj, name, default)
+
+
+def _v8ns_get_indicator_field(indicators, key, default=0.0):
+    try:
+        v = indicators.get(key, default) if indicators else default
+        if v is None:
+            return default
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _v8ns_realized_vol(indicators, field):
+    """Return realized vol from one of yz/pk/gk_vol_60_d / yz/pk/gk_vol_20_4h. 0 = missing."""
+    return _v8ns_get_indicator_field(indicators, str(field or 'yz_vol_60_d'), 0.0)
+
+
+def _v8ns_vol_target_scalar(cfg_obj, indicators):
+    """VOL_TARGET sizing scalar: clip(VOL_TARGET_PCT / realized_vol, LOW_CAP, HIGH_CAP).
+    If VOL_TARGET disabled or realized_vol <= 0 (no NPZ data), returns 1.0 (no-op)."""
+    if not bool(_v8ns_get(cfg_obj, 'VOL_TARGET_ENABLED', False)):
+        return 1.0
+    target = float(_v8ns_get(cfg_obj, 'VOL_TARGET_PCT', 0.02))
+    low = float(_v8ns_get(cfg_obj, 'VOL_TARGET_LOW_CAP', 0.5))
+    high = float(_v8ns_get(cfg_obj, 'VOL_TARGET_HIGH_CAP', 2.0))
+    field = str(_v8ns_get(cfg_obj, 'VOL_TARGET_FIELD', 'yz_vol_60_d'))
+    rv = _v8ns_realized_vol(indicators, field)
+    if rv <= 0:
+        return 1.0
+    s = target / rv
+    if s < low:
+        s = low
+    if s > high:
+        s = high
+    return s
+
+
+def _v8ns_dd_kelly_scalar(cfg_obj, dd_state):
+    """DD_KELLY sizing scalar tracked from sim peak equity:
+        DD <= -10% → TIER1_PCT, <= -15% → TIER2_PCT, <= -20% → TIER3_PCT.
+    dd_state mutates: caller updates 'peak' and 'dd_pct' before this call.
+    Returns 1.0 when disabled or no DD breached."""
+    if not bool(_v8ns_get(cfg_obj, 'DD_KELLY_ENABLED', False)):
+        return 1.0
+    dd = float(dd_state.get('dd_pct', 0.0))
+    t1 = float(_v8ns_get(cfg_obj, 'DD_KELLY_TIER1_PCT', 0.5))
+    t2 = float(_v8ns_get(cfg_obj, 'DD_KELLY_TIER2_PCT', 0.25))
+    t3 = float(_v8ns_get(cfg_obj, 'DD_KELLY_TIER3_PCT', 0.125))
+    if dd <= -20.0:
+        return t3
+    if dd <= -15.0:
+        return t2
+    if dd <= -10.0:
+        return t1
+    return 1.0
+
+
+def _v8ns_dd_state_update(dd_state, total_equity_pct):
+    """Mutate dd_state['peak'] / dd_state['dd_pct'] given current cumulative equity gain%."""
+    peak = float(dd_state.get('peak', 0.0))
+    if total_equity_pct > peak:
+        peak = total_equity_pct
+        dd_state['peak'] = peak
+    dd_state['dd_pct'] = total_equity_pct - peak  # negative when underwater
+
+
+def _v8ns_tsmom_book_scalar(cfg_obj, open_positions_summary):
+    """TSMOM book-level scalar based on sign-agreement of 12-1 momentum across open positions.
+    open_positions_summary: list of {is_long: bool, mom: float} where mom > 0 = up over LOOKBACK_BARS.
+    agreement_pct = aligned / total. Result clipped to [LOW_CAP, HIGH_CAP]."""
+    if not bool(_v8ns_get(cfg_obj, 'TSMOM_BOOK_SCALAR_ENABLED', False)):
+        return 1.0
+    if not open_positions_summary:
+        return 1.0
+    min_agree = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_MIN_AGREEMENT', 0.5))
+    low = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_LOW_CAP', 0.5))
+    high = float(_v8ns_get(cfg_obj, 'TSMOM_BOOK_HIGH_CAP', 1.5))
+    aligned = 0
+    total = 0
+    for p in open_positions_summary:
+        m = float(p.get('mom', 0.0))
+        if m == 0.0:
+            continue
+        total += 1
+        if (p.get('is_long', True) and m > 0) or ((not p.get('is_long', True)) and m < 0):
+            aligned += 1
+    if total == 0:
+        return 1.0
+    agree = aligned / total
+    s = low + (high - low) * max(0.0, (agree - min_agree) / max(1e-9, 1.0 - min_agree))
+    if s < low:
+        s = low
+    if s > high:
+        s = high
+    return s
+
+
+def _v8ns_check_entry_vetos(cfg_obj, indicators, is_long):
+    """Returns (allow:bool, reason:str). Long-side entry vetoes:
+       MINERVINI_GATE_ENABLED + MIN_SCORE → reject if sepa_score < MIN_SCORE (or sepa_pass=0)
+       CLENOW_GATE_ENABLED + MIN_SCORE → reject if clenow_score < MIN_SCORE
+       PROXIMITY_TOP_GATE_ENABLED + MAX_DROP_PCT → reject if abs(pct_from_52w_high) > MAX_DROP_PCT
+    Shorts pass through (these are momentum/leadership filters for longs)."""
+    if not is_long:
+        return True, ""
+    if bool(_v8ns_get(cfg_obj, 'MINERVINI_GATE_ENABLED', False)):
+        min_score = float(_v8ns_get(cfg_obj, 'MINERVINI_GATE_MIN_SCORE', 70.0))
+        sepa_pass = _v8ns_get_indicator_field(indicators, 'sepa_pass', 0.0)
+        sepa_score = _v8ns_get_indicator_field(indicators, 'sepa_score', 0.0)
+        if sepa_pass <= 0 or sepa_score < min_score:
+            return False, f"BLOCKED_MINERVINI_GATE_score={sepa_score:.0f}_lt_{min_score:.0f}"
+    if bool(_v8ns_get(cfg_obj, 'CLENOW_GATE_ENABLED', False)):
+        min_score = float(_v8ns_get(cfg_obj, 'CLENOW_GATE_MIN_SCORE', 50.0))
+        cl_score = _v8ns_get_indicator_field(indicators, 'clenow_score', 0.0)
+        if cl_score < min_score:
+            return False, f"BLOCKED_CLENOW_GATE_score={cl_score:.2f}_lt_{min_score:.2f}"
+    if bool(_v8ns_get(cfg_obj, 'PROXIMITY_TOP_GATE_ENABLED', False)):
+        max_drop = float(_v8ns_get(cfg_obj, 'PROXIMITY_TOP_GATE_MAX_DROP_PCT', 25.0))
+        drop = abs(_v8ns_get_indicator_field(indicators, 'pct_from_52w_high', 0.0))
+        if drop > max_drop:
+            return False, f"BLOCKED_PROXIMITY_TOP_drop={drop:.1f}pct_gt_{max_drop:.1f}pct"
+    return True, ""
+
+
+def _v8ns_squeeze_fire_aligned(cfg_obj, indicators, is_long):
+    """SQUEEZE_FIRE_ENTRY: returns (fired:bool, bonus:float). True when squeeze_fire_{tf}
+    direction matches is_long and WT 1h direction matches. Caller may use bonus to lower
+    score thresholds (mirrors v8_quick OR-additive behavior)."""
+    if not bool(_v8ns_get(cfg_obj, 'SQUEEZE_FIRE_ENTRY_ENABLED', False)):
+        return False, 0.0
+    tf = str(_v8ns_get(cfg_obj, 'SQUEEZE_FIRE_TF', '1h'))
+    bonus = float(_v8ns_get(cfg_obj, 'SQUEEZE_FIRE_BONUS_SCORE', 10.0))
+    sf = _v8ns_get_indicator_field(indicators, f'squeeze_fire_{tf}', 0.0)
+    if (is_long and sf <= 0) or ((not is_long) and sf >= 0):
+        return False, 0.0
+    wt1_1h = _v8ns_get_indicator_field(indicators, 'wt1_1h', 0.0)
+    wt2_1h = _v8ns_get_indicator_field(indicators, 'wt2_1h', 0.0)
+    aligned = (wt1_1h > wt2_1h) if is_long else (wt1_1h < wt2_1h)
+    if not aligned:
+        return False, 0.0
+    return True, bonus
+
+
+def _v8ns_compute_position_mom(indicators, lookback_bars=12):
+    """Approximate 12-1 momentum proxy from indicators when we don't have direct price array
+    access in the eta wrapper. Use wt_score_D (signed −5..+5) scaled by lookback. Sign
+    is what matters for TSMOM agreement; magnitude is illustrative."""
+    s = _v8ns_get_indicator_field(indicators, 'wt_score_D', 0.0)
+    if s == 0.0:
+        s = _v8ns_get_indicator_field(indicators, 'wt_score_4h', 0.0)
+    return s
+
+
+# ═══════════════════════════════════════════════════════════════
 # STEP 7: The simulation engine
 # ═══════════════════════════════════════════════════════════════
 async def run_simulation(mode, account_key, start_date, capital, stores, resolution):
@@ -694,6 +860,12 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         "first_close_ts": 0.0,  # sim ts of first close — for annualized Sharpe
         "last_close_ts": 0.0,   # sim ts of latest close
     }
+    # NEW 2026-04-26 sweep switch: DD_KELLY peak/dd tracker (no-op when disabled).
+    _v8ns_dd_state = {"peak": 0.0, "dd_pct": 0.0}
+    # NEW 2026-04-26 sweep switch: counters for MINERVINI/CLENOW/PROXIMITY_TOP/SQUEEZE_FIRE/VOL_TARGET/DD_KELLY/TSMOM.
+    _v8ns_counters = {"vol_target_applied": 0, "dd_kelly_applied": 0, "tsmom_applied": 0,
+                      "minervini_block": 0, "clenow_block": 0, "proximity_top_block": 0,
+                      "squeeze_fire_aligned": 0}
     def _compute_sharpe_and_gain():
         """Compute multiple Sharpes — system rewards FREQUENCY equally with magnitude.
         - sharpe_weekly: classic weekly $-based (compares to risk-free, time-anchored)
@@ -874,6 +1046,61 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             return "BLOCKED_ZERO"
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
+        # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (crypto path).
+        # Apply ONLY to non-reduce / non-hedge OPEN/AUGMENT/REENTRY actions. All default OFF.
+        # Hedges intentionally bypass — hedge gates live in HEDGE_* config and hedge_engine.
+        if (not is_red) and (not is_hedge):
+            _v8ns_ind = indicator_cache.get(sym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+            _v8ns_is_long = (ps == 'LONG') if ps else pk.endswith('_LONG')
+            # NEW 2026-04-26 sweep switch: MINERVINI_GATE / CLENOW_GATE / PROXIMITY_TOP_GATE
+            _v8ns_allow, _v8ns_veto = _v8ns_check_entry_vetos(config, _v8ns_ind, _v8ns_is_long)
+            if not _v8ns_allow:
+                if 'MINERVINI' in _v8ns_veto: _v8ns_counters['minervini_block'] += 1
+                elif 'CLENOW' in _v8ns_veto: _v8ns_counters['clenow_block'] += 1
+                elif 'PROXIMITY_TOP' in _v8ns_veto: _v8ns_counters['proximity_top_block'] += 1
+                return _v8ns_veto
+            # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE_ENTRY (informational tag for crypto eta).
+            # In v8_quick this is OR-additive to base_sig; here, real check_entry_candidates already
+            # produced the candidate. We tag the reason and count alignment for sweep diagnostics.
+            _v8ns_sf_fired, _v8ns_sf_bonus = _v8ns_squeeze_fire_aligned(config, _v8ns_ind, _v8ns_is_long)
+            if _v8ns_sf_fired:
+                _v8ns_counters['squeeze_fire_aligned'] += 1
+            # NEW 2026-04-26 sweep switch: VOL_TARGET sizing scalar.
+            _v8ns_vt = _v8ns_vol_target_scalar(config, _v8ns_ind)
+            if _v8ns_vt != 1.0:
+                _v8ns_counters['vol_target_applied'] += 1
+            # NEW 2026-04-26 sweep switch: DD_KELLY sizing scalar (peak/dd updated post-close in tracker).
+            _v8ns_total_pct = _live_pnl.get('running_pnl_pct', 0.0)
+            _v8ns_dd_state_update(_v8ns_dd_state, _v8ns_total_pct)
+            _v8ns_dk = _v8ns_dd_kelly_scalar(config, _v8ns_dd_state)
+            if _v8ns_dk != 1.0:
+                _v8ns_counters['dd_kelly_applied'] += 1
+            # NEW 2026-04-26 sweep switch: TSMOM_BOOK_SCALAR — sign-agreement of 12-1 momentum across book.
+            _v8ns_book = []
+            try:
+                for _bpk, _bpos in trade_manager.positions.items():
+                    if abs(getattr(_bpos, 'positionAmt', 0)) < 0.0001: continue
+                    _bsym = getattr(_bpos, 'symbol', '') or (_bpk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _bpk else _bpk.rsplit('_', 1)[0])
+                    _bind = indicator_cache.get(_bsym.upper(), {}) if isinstance(indicator_cache, dict) else {}
+                    _v8ns_book.append({'is_long': _bpk.endswith('_LONG'),
+                                        'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+            except Exception:
+                _v8ns_book = []
+            _v8ns_tm = _v8ns_tsmom_book_scalar(config, _v8ns_book)
+            if _v8ns_tm != 1.0:
+                _v8ns_counters['tsmom_applied'] += 1
+            # Combined sizing scalar — multiplicative.
+            _v8ns_scalar = _v8ns_vt * _v8ns_dk * _v8ns_tm
+            if _v8ns_scalar != 1.0:
+                qty = max(0.0, qty * _v8ns_scalar)
+                if qty <= 0:
+                    return f"BLOCKED_V8NS_SIZE_ZERO_vt={_v8ns_vt:.2f}_dk={_v8ns_dk:.2f}_tm={_v8ns_tm:.2f}"
+                if _v8ns_sf_fired:
+                    reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus:.0f}|V8NS_SCALE_vt={_v8ns_vt:.2f}_dk={_v8ns_dk:.2f}_tm={_v8ns_tm:.2f}"
+                else:
+                    reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt:.2f}_dk={_v8ns_dk:.2f}_tm={_v8ns_tm:.2f}"
+            elif _v8ns_sf_fired:
+                reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus:.0f}"
         executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk, "side": side, "quantity": qty, "price": px, "action": act, "reason": str(reason)[:200]})
         # ═══ LIVE PnL TRACKING — instrument every open/close to find problem paths ═══
         _is_open_action = act.upper() in ('OPEN', 'QUICK_OPEN', 'AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'HEDGE_OPEN')
@@ -1957,6 +2184,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _utils_mod.record_decision_context = _v8_record
     tm_mod.record_decision_context = _v8_record
     indicator_cache, price_cache, executed_trades = {}, {}, []
+    # NEW 2026-04-26 sweep switch: DD_KELLY peak/dd tracker (no-op when disabled).
+    _v8ns_dd_state = {"peak": 0.0, "dd_pct": 0.0}
+    # NEW 2026-04-26 sweep switch: counters (tradier path).
+    _v8ns_counters = {"vol_target_applied": 0, "dd_kelly_applied": 0, "tsmom_applied": 0,
+                      "minervini_block": 0, "clenow_block": 0, "proximity_top_block": 0,
+                      "squeeze_fire_aligned": 0}
+    # NEW 2026-04-26 sweep switch: rolling tradier-equity-percent for DD_KELLY (mark-to-trade-pnl).
+    _v8ns_equity_pct = [0.0]
     manager = tm_mod.TradierTradeManager(account_list=[account_key])
     # BUG FIX 2026-04-11: DeltaTracker.cfg is a FROZEN SNAPSHOT built at __init__.
     # Sweep overrides applied to tm_mod.config are read correctly during construction,
@@ -2062,6 +2297,53 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return "BLOCKED_WT_XU_FINAL_DISABLED"
         is_reduce = action.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier path).
+        if (not is_reduce) and (not is_hedge):
+            _v8ns_ind_t = manager.market_snapshot.get(symbol.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+            _v8ns_is_long_t = (position_side == 'LONG')
+            # NEW 2026-04-26 sweep switch: MINERVINI_GATE / CLENOW_GATE / PROXIMITY_TOP_GATE
+            _v8ns_allow_t, _v8ns_veto_t = _v8ns_check_entry_vetos(tm_mod.config, _v8ns_ind_t, _v8ns_is_long_t)
+            if not _v8ns_allow_t:
+                if 'MINERVINI' in _v8ns_veto_t: _v8ns_counters['minervini_block'] += 1
+                elif 'CLENOW' in _v8ns_veto_t: _v8ns_counters['clenow_block'] += 1
+                elif 'PROXIMITY_TOP' in _v8ns_veto_t: _v8ns_counters['proximity_top_block'] += 1
+                return _v8ns_veto_t
+            # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE_ENTRY (tag-only here; bonus applied in real-eta wrapper).
+            _v8ns_sf_fired_t, _v8ns_sf_bonus_t = _v8ns_squeeze_fire_aligned(tm_mod.config, _v8ns_ind_t, _v8ns_is_long_t)
+            if _v8ns_sf_fired_t:
+                _v8ns_counters['squeeze_fire_aligned'] += 1
+            # NEW 2026-04-26 sweep switch: VOL_TARGET sizing scalar
+            _v8ns_vt_t = _v8ns_vol_target_scalar(tm_mod.config, _v8ns_ind_t)
+            if _v8ns_vt_t != 1.0: _v8ns_counters['vol_target_applied'] += 1
+            # NEW 2026-04-26 sweep switch: DD_KELLY (uses cumulative pnl% from executed_trades).
+            _v8ns_total_pct_t = sum(t.get('pnl_pct', 0.0) for t in executed_trades if t.get('pnl_pct') is not None)
+            _v8ns_equity_pct[0] = _v8ns_total_pct_t
+            _v8ns_dd_state_update(_v8ns_dd_state, _v8ns_total_pct_t)
+            _v8ns_dk_t = _v8ns_dd_kelly_scalar(tm_mod.config, _v8ns_dd_state)
+            if _v8ns_dk_t != 1.0: _v8ns_counters['dd_kelly_applied'] += 1
+            # NEW 2026-04-26 sweep switch: TSMOM_BOOK_SCALAR
+            _v8ns_book_t = []
+            try:
+                _v8ns_pos_src = manager.position_manager.positions if manager.position_manager else {}
+                for _bpk, _bpos in _v8ns_pos_src.items():
+                    if not _bpk.startswith(f"{account_key}:"): continue
+                    if abs(getattr(_bpos, 'positionAmt', getattr(_bpos, 'quantity', 0))) <= 0: continue
+                    _bsym = getattr(_bpos, 'symbol', '') or _bpk.split(':', 1)[-1].rsplit('_', 1)[0]
+                    _bind = manager.market_snapshot.get(_bsym.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                    _v8ns_book_t.append({'is_long': _bpk.endswith('_LONG'),
+                                          'mom': _v8ns_compute_position_mom(_bind, int(_v8ns_get(tm_mod.config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+            except Exception:
+                _v8ns_book_t = []
+            _v8ns_tm_t = _v8ns_tsmom_book_scalar(tm_mod.config, _v8ns_book_t)
+            if _v8ns_tm_t != 1.0: _v8ns_counters['tsmom_applied'] += 1
+            _v8ns_scalar_t = _v8ns_vt_t * _v8ns_dk_t * _v8ns_tm_t
+            if _v8ns_scalar_t != 1.0:
+                qty = max(0.0, qty * _v8ns_scalar_t)
+                if qty <= 0:
+                    return f"BLOCKED_V8NS_SIZE_ZERO_vt={_v8ns_vt_t:.2f}_dk={_v8ns_dk_t:.2f}_tm={_v8ns_tm_t:.2f}"
+                reason = f"{reason}|V8NS_SCALE_vt={_v8ns_vt_t:.2f}_dk={_v8ns_dk_t:.2f}_tm={_v8ns_tm_t:.2f}"
+            if _v8ns_sf_fired_t:
+                reason = f"{reason}|SQ_FIRE+{_v8ns_sf_bonus_t:.0f}"
         # SWEEPABLE ENTRY GATES: enforce SATOSHIT + DELTA_ENTRY switches at execution layer
         if not is_reduce:
             if getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
@@ -2190,6 +2472,53 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _act = str(action or '')
             _reason = str(reason or '')
             _is_reduce = _act.upper() in ('CLOSE', 'REDUCE', 'QUICK_CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'STOP_MAJOR_LOSS_REDUCE', 'STOP_FUNCTIONS_KILL', 'HEDGE_CLOSE') or 'CLOSE' in _reason.upper() or 'REDUCE' in _reason.upper()
+            # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (tradier real-eta path).
+            _v8ns_sf_bonus_r = 0.0
+            if (not _is_reduce) and (not is_hedge):
+                _v8ns_ind_r = manager.market_snapshot.get(str(symbol).upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                _v8ns_is_long_r = (str(position_side) == 'LONG')
+                # NEW 2026-04-26 sweep switch: MINERVINI / CLENOW / PROXIMITY_TOP entry vetoes
+                _v8ns_allow_r, _v8ns_veto_r = _v8ns_check_entry_vetos(tm_mod.config, _v8ns_ind_r, _v8ns_is_long_r)
+                if not _v8ns_allow_r:
+                    if 'MINERVINI' in _v8ns_veto_r: _v8ns_counters['minervini_block'] += 1
+                    elif 'CLENOW' in _v8ns_veto_r: _v8ns_counters['clenow_block'] += 1
+                    elif 'PROXIMITY_TOP' in _v8ns_veto_r: _v8ns_counters['proximity_top_block'] += 1
+                    return _v8ns_veto_r
+                # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE bonus (effective threshold reduction below).
+                _v8ns_sf_fired_r, _v8ns_sf_bonus_r = _v8ns_squeeze_fire_aligned(tm_mod.config, _v8ns_ind_r, _v8ns_is_long_r)
+                if _v8ns_sf_fired_r:
+                    _v8ns_counters['squeeze_fire_aligned'] += 1
+                # NEW 2026-04-26 sweep switch: combined sizing scalar (VOL_TARGET × DD_KELLY × TSMOM_BOOK).
+                _v8ns_vt_r = _v8ns_vol_target_scalar(tm_mod.config, _v8ns_ind_r)
+                if _v8ns_vt_r != 1.0: _v8ns_counters['vol_target_applied'] += 1
+                _v8ns_total_pct_r = sum(t.get('pnl_pct', 0.0) for t in executed_trades if t.get('pnl_pct') is not None)
+                _v8ns_equity_pct[0] = _v8ns_total_pct_r
+                _v8ns_dd_state_update(_v8ns_dd_state, _v8ns_total_pct_r)
+                _v8ns_dk_r = _v8ns_dd_kelly_scalar(tm_mod.config, _v8ns_dd_state)
+                if _v8ns_dk_r != 1.0: _v8ns_counters['dd_kelly_applied'] += 1
+                _v8ns_book_r = []
+                try:
+                    _v8ns_pos_src_r = manager.position_manager.positions if manager.position_manager else {}
+                    for _bpk_r, _bpos_r in _v8ns_pos_src_r.items():
+                        if not _bpk_r.startswith(f"{account_key}:"): continue
+                        if abs(getattr(_bpos_r, 'positionAmt', getattr(_bpos_r, 'quantity', 0))) <= 0: continue
+                        _bsym_r = getattr(_bpos_r, 'symbol', '') or _bpk_r.split(':', 1)[-1].rsplit('_', 1)[0]
+                        _bind_r = manager.market_snapshot.get(_bsym_r.upper(), {}) if hasattr(manager, 'market_snapshot') else {}
+                        _v8ns_book_r.append({'is_long': _bpk_r.endswith('_LONG'),
+                                              'mom': _v8ns_compute_position_mom(_bind_r, int(_v8ns_get(tm_mod.config, 'TSMOM_BOOK_LOOKBACK_BARS', 12)))})
+                except Exception:
+                    _v8ns_book_r = []
+                _v8ns_tm_r = _v8ns_tsmom_book_scalar(tm_mod.config, _v8ns_book_r)
+                if _v8ns_tm_r != 1.0: _v8ns_counters['tsmom_applied'] += 1
+                _v8ns_scalar_r = _v8ns_vt_r * _v8ns_dk_r * _v8ns_tm_r
+                if _v8ns_scalar_r != 1.0:
+                    quantity = max(0.0, float(quantity) * _v8ns_scalar_r)
+                    if override_qty is not None:
+                        override_qty = max(0.0, float(override_qty) * _v8ns_scalar_r)
+                    if (override_qty if override_qty is not None else quantity) <= 0:
+                        return f"BLOCKED_V8NS_SIZE_ZERO_vt={_v8ns_vt_r:.2f}_dk={_v8ns_dk_r:.2f}_tm={_v8ns_tm_r:.2f}"
+                    reason = f"{_reason}|V8NS_SCALE_vt={_v8ns_vt_r:.2f}_dk={_v8ns_dk_r:.2f}_tm={_v8ns_tm_r:.2f}"
+                    _reason = reason
             # SWEEPABLE ENTRY GATES (must be in REAL ETA wrapper, not just fallback)
             if not _is_reduce:
                 _sat_on = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
@@ -2208,6 +2537,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     if "DELTA_ENTRY" in _reason.upper() or "DELTA_SIGNAL" in _reason.upper():
                         return "BLOCKED_DELTA_ENTRY_DISABLED"
                 _wt_dc_thr = float(getattr(tm_mod.config, 'WT_DC_ENTRY_THRESHOLD', 55) or 55)
+                # NEW 2026-04-26 sweep switch: SQUEEZE_FIRE bonus lowers effective WT_DC threshold.
+                if _v8ns_sf_bonus_r > 0 and _wt_dc_thr > 0:
+                    _wt_dc_thr = max(0.0, _wt_dc_thr - _v8ns_sf_bonus_r)
                 if _wt_dc_thr > 0:
                     try:
                         from wt_dc_entry_scorer import score_entry as _v8_score_entry_raw

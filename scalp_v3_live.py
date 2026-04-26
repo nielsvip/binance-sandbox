@@ -101,25 +101,28 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     wt1_3m = _sf(indicators.get('wt1_3m', 0), 0)
     wt2_3m = _sf(indicators.get('wt2_3m', 0), 0)
     if high_3m_prev <= 0 or low_3m_prev <= 0: return None
+    bar_on = bool(getattr(config, 'SCALP_V3_EXIT_BAR_REVERSAL_ENABLED', True))
+    wt_on = bool(getattr(config, 'SCALP_V3_EXIT_WT_FLIP_ENABLED', True))
+    k_on = bool(getattr(config, 'SCALP_V3_EXIT_K_CROSS_ENABLED', True))
     if side == 'LONG':
         bar_falling = (low_3m < low_3m_prev) or (high_3m < high_3m_prev)
         wt_flip_bear = wt1_3m < wt2_3m
         k_cross_down = (k_3m < k_3m_prev) and (k_3m < 50)
-        if bar_falling:
+        if bar_on and bar_falling:
             return {"reason": f"SCALP_V3_CLOSE_BAR_DOWN_LONG_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}"}
-        if wt_flip_bear:
+        if wt_on and wt_flip_bear:
             return {"reason": f"SCALP_V3_CLOSE_WT_FLIP_LONG_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
-        if k_cross_down:
+        if k_on and k_cross_down:
             return {"reason": f"SCALP_V3_CLOSE_K_DOWN_LONG_k3m{k_3m:.0f}<{k_3m_prev:.0f}"}
     else:
         bar_rising = (high_3m > high_3m_prev) or (low_3m > low_3m_prev)
         wt_flip_bull = wt1_3m > wt2_3m
         k_cross_up = (k_3m > k_3m_prev) and (k_3m > 50)
-        if bar_rising:
+        if bar_on and bar_rising:
             return {"reason": f"SCALP_V3_CLOSE_BAR_UP_SHORT_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}"}
-        if wt_flip_bull:
+        if wt_on and wt_flip_bull:
             return {"reason": f"SCALP_V3_CLOSE_WT_FLIP_SHORT_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
-        if k_cross_up:
+        if k_on and k_cross_up:
             return {"reason": f"SCALP_V3_CLOSE_K_UP_SHORT_k3m{k_3m:.0f}>{k_3m_prev:.0f}"}
     max_hold_min = float(getattr(config, 'SCALP_V3_MAX_HOLD_MIN', 0.0) or 0.0)
     if max_hold_min > 0 and age_sec > max_hold_min * 60.0:

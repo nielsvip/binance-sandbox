@@ -1862,6 +1862,50 @@ class TradierConfig:
     WT_REDUCE_FRAC_MED: float = 0.25  # V4: was 0.50. At gains 0.5-1.0%, only reduce 25% (was 50%).
     ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 22% needed restore. 5 = compromise. FIX 2026-03-29: was 1, killed real hedges.
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
+
+    # ====================================================================
+    # 2026-04-26 RESEARCH SCAN — SWEEP-ONLY OVERLAYS + STRATEGY GATES
+    # All default OFF. Sweep validates before live. See RESEARCH_SCAN_20260426.md
+    # ====================================================================
+
+    # --- Vol-targeting global size scalar (Harvey 2018) ---
+    VOL_TARGET_ENABLED: bool = False
+    VOL_TARGET_PCT: float = 20.0       # target annualized vol % (S&P 15-25% range)
+    VOL_TARGET_LOW_CAP: float = 0.25
+    VOL_TARGET_HIGH_CAP: float = 2.0
+    VOL_TARGET_FIELD: str = "yz_vol_60_d"   # NPZ field (Yang-Zhang 60d Daily)
+
+    # --- Drawdown-aware fractional Kelly (sizing reduction at account DD tiers) ---
+    # IMPORTANT: scales SIZING only, never closes positions (per feedback_no_pct_stops).
+    DD_KELLY_ENABLED: bool = False
+    DD_KELLY_TIER1_PCT: float = 10.0       # at -10% DD, size × 0.5
+    DD_KELLY_TIER2_PCT: float = 15.0       # at -15% DD, size × 0.25
+    DD_KELLY_TIER3_PCT: float = 20.0       # at -20% DD, size × 0.125
+
+    # --- Minervini SEPA gate (long-side trend filter) ---
+    MINERVINI_GATE_ENABLED: bool = False
+    MINERVINI_MIN_SCORE: int = 5          # int 0-6 (5 = all 5 SEPA conditions met)
+
+    # --- Clenow score gate (long-side trend strength filter) ---
+    CLENOW_GATE_ENABLED: bool = False
+    CLENOW_GATE_MIN_SCORE: float = 30.0       # slope_ann × R² (renamed from CLENOW_MIN_SCORE — collided with existing Clenow strategy param at line 1044)
+
+    # --- 52w-high proximity gate (avoid topping out) ---
+    PROXIMITY_TOP_GATE_ENABLED: bool = False
+    PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0        # don't long when within X% of 52w high
+
+    # --- Squeeze-fire entry score boost (TTM Squeeze release) ---
+    SQUEEZE_FIRE_ENTRY_ENABLED: bool = False
+    SQUEEZE_FIRE_TF: str = "5m"
+    SQUEEZE_FIRE_BONUS_SCORE: float = 15.0
+
+    # --- TSMOM book-level scalar (12-1 month sign-agreement) ---
+    TSMOM_BOOK_SCALAR_ENABLED: bool = False
+    TSMOM_LOOKBACK_BARS: int = 252
+    TSMOM_MIN_AGREEMENT: float = 0.5
+    TSMOM_LOW_CAP: float = 0.25
+    TSMOM_HIGH_CAP: float = 1.5
+
     _CURRENT_MARKET_MODE: ClassVar[str] = 'NORMAL_MODE'  # WIRED 2026-04-16 (priority 5/100) — tradier_rankings.py:2338 regime tracking
     _INSTANCES: ClassVar[WeakSet] = WeakSet()  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416
     _REGIME_LOG: ClassVar[list] = []  # DEAD_CONFIRMED (priority 5/100) — no plausible wiring site found 20260416

@@ -450,6 +450,11 @@ class Config:
     # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.
     HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = True
     HEDGE_STRICT_WT_MIN_TFS_AGAINST: int = 4  # Out of 5: 3m/15m/1h/4h/D. 4 = strong consensus; raise to 5 for unanimous, lower to 3 to relax.
+    # === 2026-04-26 SCALP_V3 exit-trigger toggles (sweep-testable) — user hypothesis: V3 closes too early on minor 3m bar wobbles ===
+    # Disable any of these to A/B test which V3 exit family is most/least valuable.
+    SCALP_V3_EXIT_BAR_REVERSAL_ENABLED: bool = True   # Close LONG on 3m LL/LH (price turning down). Disable -> only WT/K trigger close.
+    SCALP_V3_EXIT_WT_FLIP_ENABLED: bool = True        # Close LONG on wt1_3m < wt2_3m. Disable -> wait for bar/K signal.
+    SCALP_V3_EXIT_K_CROSS_ENABLED: bool = True        # Close LONG on k_3m crossing down through 50. Disable -> wait for bar/WT signal.
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
@@ -2659,6 +2664,49 @@ class Config:
 #     'mfi_D', 'rsi_D',
 #     'high_D', 'low_D',
 # ]
+
+# ====================================================================
+# 2026-04-26 RESEARCH SCAN — SWEEP-ONLY OVERLAYS + STRATEGY GATES
+# All default OFF. Sweep validates before live. See RESEARCH_SCAN_20260426.md
+# ====================================================================
+
+# --- Vol-targeting global size scalar (Harvey 2018) ---
+VOL_TARGET_ENABLED              = False
+VOL_TARGET_PCT                  = 60.0       # target annualized vol % (crypto realizes 50-80%)
+VOL_TARGET_LOW_CAP              = 0.25
+VOL_TARGET_HIGH_CAP             = 2.0
+VOL_TARGET_FIELD                = "yz_vol_60_d"   # NPZ field (Yang-Zhang 60d Daily)
+
+# --- Drawdown-aware fractional Kelly (sizing reduction at account DD tiers) ---
+# IMPORTANT: scales SIZING only, never closes positions (per feedback_no_pct_stops).
+DD_KELLY_ENABLED                = False
+DD_KELLY_TIER1_PCT              = 10.0       # at -10% DD, size × 0.5
+DD_KELLY_TIER2_PCT              = 15.0       # at -15% DD, size × 0.25
+DD_KELLY_TIER3_PCT              = 20.0       # at -20% DD, size × 0.125
+
+# --- Minervini SEPA gate (long-side trend filter) ---
+MINERVINI_GATE_ENABLED          = False
+MINERVINI_MIN_SCORE             = 5          # int 0-6 (5 = all 5 SEPA conditions met)
+
+# --- Clenow score gate (long-side trend strength filter) ---
+CLENOW_GATE_ENABLED             = False
+CLENOW_GATE_MIN_SCORE           = 30.0       # slope_ann × R² (renamed from CLENOW_MIN_SCORE — collided with existing tradier Clenow strategy param)
+
+# --- 52w-high proximity gate (avoid topping out) ---
+PROXIMITY_TOP_GATE_ENABLED      = False
+PROXIMITY_TOP_MAX_DROP_PCT      = 5.0        # don't long when within X% of 52w high
+
+# --- Squeeze-fire entry score boost (TTM Squeeze release) ---
+SQUEEZE_FIRE_ENTRY_ENABLED      = False
+SQUEEZE_FIRE_TF                 = "5m"
+SQUEEZE_FIRE_BONUS_SCORE        = 15.0
+
+# --- TSMOM book-level scalar (12-1 month sign-agreement) ---
+TSMOM_BOOK_SCALAR_ENABLED       = False
+TSMOM_LOOKBACK_BARS             = 252
+TSMOM_MIN_AGREEMENT             = 0.5
+TSMOM_LOW_CAP                   = 0.25
+TSMOM_HIGH_CAP                  = 1.5
 
 REQUIRED_INDICATORS: List[str] = [
     # === RANKING & SCORING (MANDATORY) ===

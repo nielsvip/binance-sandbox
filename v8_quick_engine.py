@@ -681,6 +681,41 @@ class QuickConfig:
     OI_CONFIRM_ENABLED: bool = False          # require OI rising/falling to confirm trend
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this for direction
     ADDITIVE_SIGNAL_MIN_HTF: int = 1          # min aligned 1h/4h/D TFs for additive SQUEEZE_FIRE/DIVERGENCE entry
+    # === 2026-04-26 NEW SWITCHES — vol-target / DD-Kelly / Minervini / Clenow / 52w-prox / Squeeze-bonus / TSMOM ===
+    # All default OFF — flip via QuickConfig overrides. Wired to consume new NPZ fields added by
+    # backtest_v8_precompute extension (yz/pk/gk vol, sepa, clenow, kc/squeeze, ep_*).
+    # VOL_TARGET — multiplicative position-size scalar from realized vol field
+    VOL_TARGET_ENABLED: bool = False
+    VOL_TARGET_PCT: float = 20.0              # target annualized vol % (vol-targeting overlay)
+    VOL_TARGET_LOW_CAP: float = 0.25          # size scalar floor
+    VOL_TARGET_HIGH_CAP: float = 2.0          # size scalar ceiling
+    VOL_TARGET_FIELD: str = "yz_vol_60_d"     # NPZ field: yz_vol_60_d / pk_vol_60_d / gk_vol_60_d / yz_vol_20_4h
+    # DD_KELLY — sizing reduction at account-DD tiers (sizing-only, NEVER an exit per CLAUDE.md feedback_no_pct_stops)
+    DD_KELLY_ENABLED: bool = False
+    DD_KELLY_TIER1_PCT: float = 10.0          # at -10% DD, size × 0.5
+    DD_KELLY_TIER2_PCT: float = 15.0          # at -15% DD, size × 0.25
+    DD_KELLY_TIER3_PCT: float = 20.0          # at -20% DD, size × 0.125
+    # MINERVINI SEPA gate (long-side only)
+    MINERVINI_GATE_ENABLED: bool = False
+    MINERVINI_MIN_SCORE: int = 5              # min sepa_score 0-6
+    # CLENOW score gate (long-side trend filter)
+    CLENOW_GATE_ENABLED: bool = False
+    CLENOW_MIN_SCORE: float = 30.0            # min clenow_score
+    # 52w-high proximity gate (avoid topping)
+    PROXIMITY_TOP_GATE_ENABLED: bool = False
+    PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0   # don't long if pct_from_52w_high > -X% (within X% of high)
+    # SQUEEZE_FIRE score-boost (separate path from existing SQUEEZE_FIRE_ENTRY_ENABLED additive-signal path)
+    # Existing SQUEEZE_FIRE_ENTRY_ENABLED fires entry as boolean signal (OR with base_sig).
+    # SQUEEZE_FIRE_SCORE_BOOST_ENABLED instead adds to STRENGTH_FILTER score for the bar (additive).
+    SQUEEZE_FIRE_SCORE_BOOST_ENABLED: bool = False
+    SQUEEZE_FIRE_SCORE_BOOST_TF: str = "5m"   # tf in 5m / 15m / 1h
+    SQUEEZE_FIRE_BONUS_SCORE: float = 15.0    # entry-score boost when squeeze fires + WT bullish (long side, mirror short)
+    # TSMOM book-level scalar (12-1 momentum agreement across positions in book)
+    TSMOM_BOOK_SCALAR_ENABLED: bool = False
+    TSMOM_LOOKBACK_BARS: int = 252            # daily-equivalent bars (252 bars ≈ 12 months on D base)
+    TSMOM_MIN_AGREEMENT: float = 0.5          # base offset in clip(0.5 + 0.5*agreement, low, high)
+    TSMOM_LOW_CAP: float = 0.25
+    TSMOM_HIGH_CAP: float = 1.5
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -1527,6 +1562,19 @@ def compute_entry_signals(npz, n, is_long, cfg):
         score = np.zeros(n, dtype=np.float32)
         for name, arr in blocks.items():
             score = score + arr.astype(np.float32) * weights.get(name, 1)
+        # SQUEEZE_FIRE_SCORE_BOOST (2026-04-26): additive bonus to entry score when squeeze fires
+        # AND WT is bullish (LONG) / bearish (SHORT) on the same TF. NPZ fields:
+        # squeeze_fire_{tf} (int8 +1=long fire / -1=short fire / 0), wt_bullish_{tf} (bool).
+        if bool(getattr(cfg, 'SQUEEZE_FIRE_SCORE_BOOST_ENABLED', False)):
+            _sb_tf = str(getattr(cfg, 'SQUEEZE_FIRE_SCORE_BOOST_TF', '5m'))
+            _sb_bonus = float(getattr(cfg, 'SQUEEZE_FIRE_BONUS_SCORE', 15.0))
+            _sb_fire = _safe(npz, f'squeeze_fire_{_sb_tf}', n, 0).astype(np.int8)
+            _sb_bull = _safeb(npz, f'wt_bullish_{_sb_tf}', n)
+            if is_long:
+                _sb_hit = (_sb_fire == 1) & _sb_bull
+            else:
+                _sb_hit = (_sb_fire == -1) & (~_sb_bull)
+            score = score + _sb_hit.astype(np.float32) * _sb_bonus
         raw = raw & (score >= cfg.STRENGTH_MIN_SCORE)
         # ENTRY_SCORE_THRESHOLD — second score floor swept independently.
         # DELTA_ENTRY_ENABLED proxy: live delta_tracker fires on velocity zone transitions,
@@ -1682,7 +1730,27 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _le_score = _compute_le_score_arr(npz, n, is_long, cfg)
         _le_min = float(getattr(cfg, 'LOCAL_EXTREMES_MIN_SCORE', 30.0))
         le_ok = _le_score >= _le_min
-    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok & le_ok
+    # === 2026-04-26 NEW LONG-SIDE ENTRY VETO GATES — consume new NPZ fields ===
+    # MINERVINI_GATE: require sepa_score >= MINERVINI_MIN_SCORE on long entries.
+    minervini_ok = np.ones(n, dtype=bool)
+    if is_long and bool(getattr(cfg, 'MINERVINI_GATE_ENABLED', False)):
+        _sepa_score = _safe(npz, 'sepa_score', n, 0).astype(np.int8)
+        _sepa_min = int(getattr(cfg, 'MINERVINI_MIN_SCORE', 5))
+        minervini_ok = _sepa_score >= _sepa_min
+    # CLENOW_GATE: require clenow_score >= CLENOW_MIN_SCORE on long entries.
+    clenow_ok = np.ones(n, dtype=bool)
+    if is_long and bool(getattr(cfg, 'CLENOW_GATE_ENABLED', False)):
+        _clenow = _safe(npz, 'clenow_score', n, 0.0)
+        _clenow_min = float(getattr(cfg, 'CLENOW_MIN_SCORE', 30.0))
+        clenow_ok = _clenow >= _clenow_min
+    # PROXIMITY_TOP_GATE: avoid topping. pct_from_52w_high is negative, so within X% of high
+    # means -X <= pct_from_52w_high <= 0. Veto when pct_from_52w_high > -PROXIMITY_TOP_MAX_DROP_PCT.
+    proximity_top_ok = np.ones(n, dtype=bool)
+    if is_long and bool(getattr(cfg, 'PROXIMITY_TOP_GATE_ENABLED', False)):
+        _pct_high = _safe(npz, 'pct_from_52w_high', n, 0.0)
+        _max_drop = float(getattr(cfg, 'PROXIMITY_TOP_MAX_DROP_PCT', 5.0))
+        proximity_top_ok = _pct_high <= -_max_drop
+    base_sig = raw & kltf_ok & ct_vel_ok & ct_dc_ok & htf_ok & mfi_gate & vwap_ok & extra_ok & mtf_vel_ok & cross_fresh_ok & le_ok & minervini_ok & clenow_ok & proximity_top_ok
     if getattr(cfg, 'RATIO_SENTIMENT_FILTER_ENABLED', False):
         mkt_s = _safe(npz, 'market_sentiment_score', n, 50.0)
         base_sig = base_sig & ((mkt_s >= cfg.RATIO_SENTIMENT_LONG_MIN) if is_long else (mkt_s <= cfg.RATIO_SENTIMENT_SHORT_MAX))
@@ -2487,6 +2555,66 @@ def simulate(stores, cfg, capital=10000.0):
                     _atb_against = sum((w1 < w2).astype(int) for w1, w2 in _atb_tfs)
                 else:
                     _atb_against = sum((w1 > w2).astype(int) for w1, w2 in _atb_tfs)
+            # === 2026-04-26 NEW SIZE-SCALAR PRECOMPUTES ===
+            # VOL_TARGET: per-bar position-size scalar = clip(VOL_TARGET_PCT / max(realized_vol, 1.0), low, high).
+            # NPZ field is realized vol % per-bar (yz/pk/gk 60d on D base, or _20_4h on 4h base).
+            _vt_enabled = bool(getattr(cfg, 'VOL_TARGET_ENABLED', False))
+            _vt_arr = None
+            if _vt_enabled:
+                _vt_field = str(getattr(cfg, 'VOL_TARGET_FIELD', 'yz_vol_60_d'))
+                _vt_target = float(getattr(cfg, 'VOL_TARGET_PCT', 20.0))
+                _vt_low = float(getattr(cfg, 'VOL_TARGET_LOW_CAP', 0.25))
+                _vt_high = float(getattr(cfg, 'VOL_TARGET_HIGH_CAP', 2.0))
+                _vt_realized = _safe(npz, _vt_field, n, 0.0)
+                _vt_realized_clip = np.maximum(_vt_realized, 1.0)
+                _vt_arr = np.clip(_vt_target / _vt_realized_clip, _vt_low, _vt_high).astype(np.float64)
+            # TSMOM_BOOK_SCALAR: per-bar agreement of side vs sign(close[i] - close[i - lookback]).
+            # Vectorized engine is per-symbol — book-agreement collapses to single-symbol momentum signal.
+            # agreement = 1.0 when sign matches direction, 0.0 otherwise; mapped via clip.
+            _tsmom_enabled = bool(getattr(cfg, 'TSMOM_BOOK_SCALAR_ENABLED', False))
+            _tsmom_arr = None
+            if _tsmom_enabled:
+                _tsmom_lb = int(getattr(cfg, 'TSMOM_LOOKBACK_BARS', 252) or 252)
+                _tsmom_min = float(getattr(cfg, 'TSMOM_MIN_AGREEMENT', 0.5))
+                _tsmom_low = float(getattr(cfg, 'TSMOM_LOW_CAP', 0.25))
+                _tsmom_high = float(getattr(cfg, 'TSMOM_HIGH_CAP', 1.5))
+                _tsmom_lb_eff = min(max(1, _tsmom_lb), max(1, n - 1))
+                _tsmom_close_back = np.roll(close, _tsmom_lb_eff)
+                _tsmom_close_back[:_tsmom_lb_eff] = close[0] if n > 0 else 0.0
+                _tsmom_diff = close - _tsmom_close_back
+                if is_long:
+                    _tsmom_agree = (_tsmom_diff > 0).astype(np.float64)
+                else:
+                    _tsmom_agree = (_tsmom_diff < 0).astype(np.float64)
+                _tsmom_raw = _tsmom_min + (1.0 - _tsmom_min) * _tsmom_agree * 2.0
+                _tsmom_arr = np.clip(_tsmom_raw, _tsmom_low, _tsmom_high).astype(np.float64)
+            # DD_KELLY: running per-symbol equity from sym_pnl (cumulative %). Tier scalar resolved at entry.
+            # Sizing-only — NEVER an exit (per CLAUDE.md feedback_no_pct_stops).
+            _ddk_enabled = bool(getattr(cfg, 'DD_KELLY_ENABLED', False))
+            _ddk_t1 = float(getattr(cfg, 'DD_KELLY_TIER1_PCT', 10.0))
+            _ddk_t2 = float(getattr(cfg, 'DD_KELLY_TIER2_PCT', 15.0))
+            _ddk_t3 = float(getattr(cfg, 'DD_KELLY_TIER3_PCT', 20.0))
+            # Helper: combined size scalar from VOL_TARGET / DD_KELLY / TSMOM. Uses running sym_pnl
+            # for DD-tier resolution (per-symbol equity-curve proxy; vectorized engine has no global account).
+            def _new_sizing_scalar(_idx):
+                _s = 1.0
+                if _vt_arr is not None:
+                    _s *= float(_vt_arr[_idx])
+                if _tsmom_arr is not None:
+                    _s *= float(_tsmom_arr[_idx])
+                if _ddk_enabled and sym_pnl:
+                    # Equity curve: cumulative sum of % returns. Peak vs current → drawdown %.
+                    _eq = np.cumsum(sym_pnl)
+                    _peak = float(_eq.max()) if len(_eq) > 0 else 0.0
+                    _now = float(_eq[-1]) if len(_eq) > 0 else 0.0
+                    _dd = max(0.0, _peak - _now)  # equity-curve DD in % points
+                    if _dd >= _ddk_t3:
+                        _s *= 0.125
+                    elif _dd >= _ddk_t2:
+                        _s *= 0.25
+                    elif _dd >= _ddk_t1:
+                        _s *= 0.5
+                return _s
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
@@ -2537,6 +2665,7 @@ def simulate(stores, cfg, capital=10000.0):
                             _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
                             _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                             _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
+                            _cur_sz_mult *= _new_sizing_scalar(i)
                             _qr_exit_px = 0.0; cd = 0
                             continue
                 if _t1pc_enabled and not in_pos and _t1pc_exit_px > 0 and (i - _t1pc_exit_bar) <= _t1pc_window:
@@ -2553,6 +2682,7 @@ def simulate(stores, cfg, capital=10000.0):
                         _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px
                         _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                         _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0) * _t1pc_sz
+                        _cur_sz_mult *= _new_sizing_scalar(i)
                         _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                         _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                         _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
@@ -2580,6 +2710,7 @@ def simulate(stores, cfg, capital=10000.0):
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
+                    _cur_sz_mult *= _new_sizing_scalar(i)
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
