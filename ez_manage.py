@@ -14176,9 +14176,12 @@ class MultiAccountTradeManager:
                 logger.info(f"✅ [HEDGE_GUARD] Hedge successful. Lock will expire naturally.")
                 return "ACTION_TAKEN_HEDGE_SUCCESS"
             else:
-                logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed for {position_key} (gain={getattr(position, 'gain', 0.0):.2f}%). Allowing CLOSE — cannot leave position bleeding without hedge.")
+                # 2026-04-26 FIX: was returning None which let caller close at loss — STRICT_NO_LOSS violation.
+                # 1,360× in 2d. Per CLAUDE.md feedback_ratio_backtest_253: NEVER close losers. Hedge IS the protection;
+                # if it fails, refuse to close. Position stays open until hedge can be re-attempted or position recovers.
+                logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed for {position_key} (gain={getattr(position, 'gain', 0.0):.2f}%). REFUSING CLOSE — hedge will be retried next cycle. Position stays open per STRICT_NO_LOSS.")
                 if self.redis_manager: await self.redis_manager.delete(lock_key)
-                return None 
+                return "ACTION_TAKEN_HEDGE_FAILED_REFUSE_CLOSE"
         except Exception as e:
             logger.error(f"[HEDGE_GUARD] Crash: {e}")
             if self.redis_manager: await self.redis_manager.delete(lock_key)

@@ -16,7 +16,7 @@ Wired into tradier_manage.py at three points:
   3. Boost mean-reversion entries when VIX > 200dMA (`get_vix_regime_label()`)
 
 Config flags (added to config_tradier.py):
-  VIX_REGIME_FILTER_ENABLED: bool = True
+  VIX_VOLATILITY_REGIME_ENABLED: bool = True
   VIX_PANIC_THRESHOLD: float = 30.0
   VIX_EXTREME_THRESHOLD: float = 40.0
   VIX_REGIME_SIZE_MULT_HIGH_VOL: float = 0.5    # VIX > 200dMA
@@ -188,7 +188,7 @@ def _ensure_fresh(config) -> None:
 
 def get_vix_regime_label(config) -> str:
     """Return current regime: NORMAL, HIGH_VOL, PANIC, EXTREME, UNKNOWN."""
-    if not getattr(config, "VIX_REGIME_FILTER_ENABLED", False):
+    if not getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False):
         return "DISABLED"
     _ensure_fresh(config)
     return _vix_cache.get("regime", "UNKNOWN")
@@ -196,7 +196,7 @@ def get_vix_regime_label(config) -> str:
 
 def get_vix_regime_size_mult(config) -> float:
     """Sizing multiplier based on VIX regime. Caller multiplies new-entry size by this."""
-    if not getattr(config, "VIX_REGIME_FILTER_ENABLED", False):
+    if not getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False):
         return 1.0
     regime = get_vix_regime_label(config)
     if regime == "EXTREME":
@@ -214,14 +214,14 @@ def get_vix_regime_size_mult(config) -> float:
 
 def is_vix_panic_regime(config) -> bool:
     """True when VIX is in panic/extreme — used as a hard entry-block signal."""
-    if not getattr(config, "VIX_REGIME_FILTER_ENABLED", False):
+    if not getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False):
         return False
     return get_vix_regime_label(config) in ("PANIC", "EXTREME")
 
 
 def is_vix_high_vol(config) -> bool:
     """True when VIX > 200dMA — prefer mean-reversion over trend."""
-    if not getattr(config, "VIX_REGIME_FILTER_ENABLED", False):
+    if not getattr(config, "VIX_VOLATILITY_REGIME_ENABLED", False):
         return False
     return get_vix_regime_label(config) in ("HIGH_VOL", "PANIC", "EXTREME")
 
@@ -240,7 +240,7 @@ def get_vix_snapshot() -> dict:
 if __name__ == "__main__":
     import sys
     class MockConfig:
-        VIX_REGIME_FILTER_ENABLED = True
+        VIX_VOLATILITY_REGIME_ENABLED = True
         VIX_PANIC_THRESHOLD = 30.0
         VIX_EXTREME_THRESHOLD = 40.0
         VIX_REGIME_SIZE_MULT_HIGH_VOL = 0.5

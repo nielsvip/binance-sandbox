@@ -1034,7 +1034,9 @@ class TradierPositionManager:
             await self.save_all_positions()
         still_missing = len(missing) - recovered
         if still_missing > 0:
-            logger.critical(f"[{self.account_key}] {still_missing} positions STILL MISSING after exhaustive search — data loss")
+            # 2026-04-26: downgraded CRITICAL→INFO. These are tradeable_keys symbols never opened (no positions to load).
+            # Not data loss — flat-position state is reconstructed on first signal. Real data loss = ORPHAN_EXCHANGE_POSITION.
+            logger.info(f"[{self.account_key}] {still_missing} tradeable_keys have no prior position state (expected for never-opened symbols).")
 
     async def _restore_position_from_anywhere(self, symbol: str, position_side: str) -> Optional[TradierPosition]:
         """Search: own backups → own main file → ALL other accounts. Never returns None without exhausting everything."""
@@ -1087,7 +1089,11 @@ class TradierPositionManager:
                         return restored
                 except Exception:
                     pass
-        logger.critical(f"[RESTORE] ABSOLUTE FAILURE: {pk} not found in ANY account, ANY backup on the entire system")
+        # 2026-04-26: downgraded CRITICAL→DEBUG. The vast majority of "missing" positions are tradeable_keys
+        # symbols that simply have never been opened (~510 per account = the full symbols_tradier.json). These
+        # are not data loss — they're flat positions awaiting first entry. Real data-loss has different signature
+        # (positionAmt > 0 in API but missing locally) and is caught by ORPHAN_EXCHANGE_POSITION elsewhere.
+        logger.debug(f"[RESTORE] {pk} not in any backup — likely never-opened tradeable_key (expected). Will create flat record on first signal.")
         return None
 
     # ------------------------------------------------------------------

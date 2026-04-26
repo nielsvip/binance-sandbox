@@ -404,9 +404,11 @@ async def stream_chunk(symbols: List[str], books: Dict[str, DeepBook], stop: asy
                 backoff = 1.0
                 while not stop.is_set():
                     try:
-                        raw = await asyncio.wait_for(ws.recv(), timeout=45.0)
+                        # 2026-04-26: was 45s — caused 19k+ reconnects on chunks containing low-volume pairs
+                        # like 1000MOGUSDT. Real overnight idle is regularly 60-90s on these. Bumped to 120s.
+                        raw = await asyncio.wait_for(ws.recv(), timeout=120.0)
                     except asyncio.TimeoutError:
-                        logger.warning(f"WS idle 45s first={symbols[0]} — reconnecting")
+                        logger.warning(f"WS idle 120s first={symbols[0]} — reconnecting")
                         break
                     try:
                         msg = orjson.loads(raw)
