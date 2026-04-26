@@ -1,16 +1,21 @@
-"""End-of-day comparator for tradier_options_shadow_runner.
+"""End-of-day comparator + scorer + mutator for tradier_options_shadow_runner.
 
 Reads data/options_shadow/*/decisions_<date>.jsonl and produces:
   - Per-variant summary table
   - Symbol-level diff (which symbols each variant uniquely proposed)
   - Diff vs live OCC fills (data/options_state/<date>.jsonl)
   - data/options_shadow/compare_<date>.json
+  - data/options_shadow/scores_<date>.json (via tradier_options_shadow_scorer)
+  - data/options_shadow/suggestions_<date>.md (human-readable EOD report)
+  - data/options_shadow/variants.json — auto-mutated for tomorrow
 
 CLI:
   python3 tradier_options_shadow_compare.py                # today UTC
   python3 tradier_options_shadow_compare.py --date 20260426
+  python3 tradier_options_shadow_compare.py --no-score     # skip scorer (legacy mode)
 """
 import argparse
+import asyncio
 import json
 import sys
 from collections import defaultdict
@@ -173,9 +178,36 @@ def _live_vs_shadow_diff(live: dict, per_variant: Dict[str, dict]) -> Dict[str, 
     return out
 
 
+async def _run_scorer(date_str: str, per_variant: Dict[str, dict]) -> Optional[dict]:
+    """Call the scorer module for EOD scoring + mutation + suggestions."""
+    try:
+        from tradier_options_shadow_scorer import score_and_mutate, _collect_proposals
+    except ImportError as e:
+        print(f"  scorer unavailable: {e}", file=sys.stderr)
+        return None
+    # Need raw records again — re-read for proposals
+    per_variant_proposals: Dict[str, list] = {}
+    for var_dir in sorted(SHADOW_DIR.iterdir()):
+        if not var_dir.is_dir() or var_dir.name not in per_variant:
+            continue
+        f = var_dir / f"decisions_{date_str}.jsonl"
+        records = _read_jsonl(f)
+        per_variant_proposals[var_dir.name] = _collect_proposals(records)
+    variants_path = SHADOW_DIR / "variants.json"
+    variants = {}
+    if variants_path.exists():
+        try:
+            variants = json.loads(variants_path.read_text())
+        except Exception:
+            variants = {}
+    return await score_and_mutate(date_str, per_variant_proposals, variants, variants_path)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None, help="YYYYMMDD; default = today UTC")
+    ap.add_argument("--no-score", action="store_true",
+                    help="skip scoring/mutation pass (legacy compare-only)")
     args = ap.parse_args()
     date_str = args.date or datetime.now(timezone.utc).strftime("%Y%m%d")
     print(f"\n=== options shadow comparison for {date_str} ===\n")
@@ -229,6 +261,16 @@ def main() -> None:
     tmp.write_text(json.dumps(out_payload, indent=2, default=str))
     tmp.replace(out_path)
     print(f"\nwrote {out_path}")
+    # Score, mutate, and emit suggestions (NEW)
+    if not args.no_score:
+        print("\n--- scoring + mutation pass ---")
+        scores = asyncio.run(_run_scorer(date_str, per_variant))
+        if scores:
+            live_hr = scores["live_score"].get("hit_rate", 0) * 100
+            print(f"  live hit rate: {live_hr:.1f}%  ({scores['live_score'].get('n_proposals',0)} proposals)")
+            print(f"  variants scored: {len(scores['per_variant_scores'])}")
+            print(f"  mutations applied for tomorrow: {scores['n_mutations']}")
+            print(f"  suggestions report: {scores['suggestions_path']}")
 
 
 if __name__ == "__main__":

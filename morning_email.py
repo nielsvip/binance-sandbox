@@ -1475,6 +1475,115 @@ def _build_conviction_scorecard():
 INJECTION_TTL_HOURS = 48
 
 
+def build_emergency_brake_section():
+    """Independent emergency-brake status. Reads data/emergency_brake/{config,state,halt}."""
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    base = _Path("/Users/niels/Documents/binance/data/emergency_brake")
+    parts = []
+    halt_path = base / "halt.flag"
+    if halt_path.exists():
+        try:
+            payload = _json.loads(halt_path.read_text())
+            parts.append(f"<p style='font-size:14px;color:#c00'><b>&#128721; HALT FLAG ACTIVE</b> — set at {payload.get('set_at','?')}<br>Reason: {payload.get('reason','?')}</p>")
+            parts.append("<p>All NEW options entries are REFUSED by tradier_options_agent.make_decisions and _daily_find_opportunities until manual reset.<br>To clear: <code>python3 tradier_emergency_brake.py --reset-halt</code></p>")
+        except Exception:
+            parts.append("<p style='color:#c00'><b>HALT FLAG present (unparseable payload)</b></p>")
+    else:
+        parts.append("<p style='color:#080'><b>&#9989; No halt flag</b> — system armed.</p>")
+    cfg_path = base / "config.json"
+    if cfg_path.exists():
+        try:
+            cfg = _json.loads(cfg_path.read_text())
+            dry = cfg.get("DRY_RUN", True)
+            mode = ("<span style='color:#e60'><b>DRY_RUN</b></span>" if dry else "<span style='color:#c00'><b>LIVE</b></span>")
+            tiers = cfg.get("TIERS", {})
+            parts.append(f"<p>Brake mode: {mode}. Polling: {cfg.get('POLL_INTERVAL_SEC', 60)}s. Accounts: {cfg.get('ACCOUNTS', [])}</p>")
+            rows = []
+            order = ["alert", "hedge", "double", "halt"]
+            tier_descr = {"alert": "ALERT only", "hedge": "Auto equity hedge (delta-sized)",
+                          "double": "Double hedge (1.5× delta)", "halt": "CIRCUIT BREAKER (cancel pending buys + halt flag)"}
+            for name in order:
+                t = tiers.get(name, {})
+                rows.append(f"<tr><td>{name}</td><td>{t.get('loss_pct','?')}%</td><td>{t.get('hedge_mult','?')}×</td><td>{tier_descr.get(name,'')}</td></tr>")
+            parts.append("<table><tr><th>tier</th><th>premium loss</th><th>hedge mult</th><th>action</th></tr>" + "".join(rows) + "</table>")
+        except Exception as e:
+            parts.append(f"<p>(config error: {e})</p>")
+    today = _dt.utcnow().strftime("%Y%m%d")
+    log_path = base / f"{today}.jsonl"
+    if log_path.exists() and log_path.stat().st_size > 0:
+        try:
+            actions = [_json.loads(l) for l in log_path.read_text().splitlines() if l.strip()]
+        except Exception:
+            actions = []
+        if actions:
+            parts.append(f"<p><b>Brake actions today UTC ({len(actions)}):</b></p>")
+            rows = []
+            for a in actions[-15:]:
+                rows.append(f"<tr><td>{a.get('ts','')[:19].replace('T',' ')}</td><td>{a.get('occ','')}</td><td>{a.get('tier','')}</td><td>{a.get('action','')}</td><td>{a.get('loss_pct','?')}%</td><td>{a.get('hedge_side','')}</td><td>{a.get('hedge_qty','')}</td><td>{'DRY' if a.get('dry_run') else 'LIVE'}</td></tr>")
+            parts.append("<table><tr><th>ts</th><th>occ</th><th>tier</th><th>action</th><th>loss%</th><th>side</th><th>qty</th><th>mode</th></tr>" + "".join(rows) + "</table>")
+    return "\n".join(parts)
+
+
+def build_opening_buffer_section():
+    """Surface opening-buffer status (no-trade until 14:00 UTC) + first 30m + VWAP
+    snapshot so owner sees data-quality state at email-send (13:35 UTC = 5m into open)."""
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt
+    try:
+        import pytz
+        now_et = _dt.now(pytz.timezone("America/New_York"))
+        is_weekend = now_et.weekday() >= 5
+        open_et = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+        mins_since_open = (now_et - open_et).total_seconds() / 60.0
+    except Exception:
+        is_weekend = False
+        mins_since_open = -999
+    if is_weekend:
+        return "<p>Weekend — buffer/VWAP not applicable.</p>"
+    parts = []
+    BUFFER_MIN = 30.0
+    if mins_since_open < 0:
+        parts.append(f"<p><b>Pre-market</b> ({-mins_since_open:.0f}m to open). NO TRADES will fire — premarket orders held (OPTIONS_PREMARKET_NO_FIRE=True). Opening buffer activates at 9:30 AM ET.</p>")
+    elif mins_since_open < BUFFER_MIN:
+        remaining = BUFFER_MIN - mins_since_open
+        parts.append(f"<p style='font-size:14px;color:#e60'><b>&#9888;&#65039; OPENING BUFFER ACTIVE</b> — {mins_since_open:.0f}m / {BUFFER_MIN:.0f}m elapsed. <b>{remaining:.0f}m until trades can fire.</b></p>")
+        parts.append("<p>All evaluate_open / evaluate_augment / evaluate_reentry / evaluate_stop calls return NO_ACTION until buffer expires. Options auto_sell + _daily_find_opportunities also held.</p>")
+    else:
+        parts.append(f"<p><b>Buffer expired</b> ({mins_since_open:.0f}m since open). Trade actions enabled. First-30m metrics below should be used as confirmation.</p>")
+    spy_ind = {}
+    qqq_ind = {}
+    ind_path = _Path("/Users/niels/Documents/binance/data/tradier_indicators_latest.json")
+    if not ind_path.exists():
+        ind_path = _Path("/Users/niels/Documents/binance/data/tradier/tradier_indicators_latest.json")
+    if ind_path.exists():
+        try:
+            ind_map = _json.loads(ind_path.read_text())
+            spy_ind = ind_map.get("SPY", {}) or {}
+            qqq_ind = ind_map.get("QQQ", {}) or {}
+        except Exception:
+            pass
+    rows = []
+    for sym, ind in [("SPY", spy_ind), ("QQQ", qqq_ind)]:
+        if not ind:
+            rows.append(f"<tr><td>{sym}</td><td colspan='6'>(no indicators yet)</td></tr>")
+            continue
+        px = ind.get("current_price", "?")
+        vwap = ind.get("vwap", "?")
+        vd = ind.get("vwap_distance_pct", "?")
+        dc_h = ind.get("dc_high_5m", "?")
+        dc_l = ind.get("dc_low_5m", "?")
+        k_15m = ind.get("stoch_k_15m", "?")
+        wt_d = ind.get("wt_cross_D", "?")
+        rows.append(f"<tr><td><b>{sym}</b></td><td>{px}</td><td>{vwap}</td><td>{vd}</td><td>{dc_l} / {dc_h}</td><td>{k_15m}</td><td>{wt_d}</td></tr>")
+    parts.append("<p><b>Index data quality:</b></p>")
+    parts.append("<table><tr><th>sym</th><th>price</th><th>VWAP</th><th>vwap_dist%</th><th>DC_5m L / H</th><th>K_15m</th><th>wt_cross_D</th></tr>" + "".join(rows) + "</table>")
+    parts.append("<p style='font-size:11px;color:#888'>VWAP_FILTER_ENABLED=False (sweep-validated — VWAP as hard gate hurt Sharpe). VWAP shown as decision-support context only. Use it to gauge whether opening prints favor your existing positions before manually firing held orders.</p>")
+    return "\n".join(parts)
+
+
 def build_options_alerts_and_held_section():
     """Loss-deepening alerts (data/options_state/alerts_<date>.jsonl) + held
     premarket orders (data/daily_plan.json with premarket_held flag).
@@ -1602,6 +1711,12 @@ def build_email_html(tra_data, trb_data, market_quotes, tra_closed=None, trb_clo
 
 <h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
 {build_options_positions_section()}
+
+<h2>&#128721; Emergency Brake Status</h2>
+{build_emergency_brake_section()}
+
+<h2>&#9203; Opening Buffer + VWAP Status</h2>
+{build_opening_buffer_section()}
 
 <h2>&#128680; Loss Alerts &amp; Held Premarket Orders</h2>
 {build_options_alerts_and_held_section()}
@@ -1796,6 +1911,12 @@ def build_public_email_html(market_quotes, tra_data, trb_data):
 
 <h2>Open Options Positions &amp; Sector Hedge Analysis</h2>
 {build_options_positions_section()}
+
+<h2>&#128721; Emergency Brake Status</h2>
+{build_emergency_brake_section()}
+
+<h2>&#9203; Opening Buffer + VWAP Status</h2>
+{build_opening_buffer_section()}
 
 <h2>&#128680; Loss Alerts &amp; Held Premarket Orders</h2>
 {build_options_alerts_and_held_section()}

@@ -20834,6 +20834,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 if result and "SUCCESS" in result:
                     return f"{EvalStatus.ACTION_TAKEN}:MOMENTUM_TP"
 
+        if not position:
+            logger.warning(f"[{position_key}] CRITICAL7: Position vanished post-MOMENTUM_TP — Aborting evaluation.")
+            return f"{EvalStatus.NO_ACTION}:POSITION_LOST_RACE_CONDITION"
         logger.info(f"[[PP2] {position_key}] afterstops")
         if config.VERBOSE:
             logger.info(f"[VERBOSE][CALC] {position_key} 📊 INDICATOR_VALUES: price=${current_price:.2f} ha_3m={ha_3m} ha_15m={ha_15m} k_3m={k_3m:} k_3m_prev={k_3m_prev:} d_3m={d_3m:} k_15m={k_15m:} d_15m={d_15m:} k_15m_prev={k_15m_prev:} k_1h={k_1h:} d_1h={d_1h:} k_4h={k_4h:} d_4h={d_4h:} t_up_3m={t_up_3m} t_up_15m={t_up_15m} sma_200_1m={sma_200_1m:.2f} gain={position.gain:.2f}% positionAmt={position.positionAmt:.6f} t15:{timestamp_15m} t3:{timestamp_3m} t1:{timestamp_1m}")

@@ -286,32 +286,82 @@ async def manage_exits(tickers, state):
             except Exception as e:
                 logger.error(f"❌ EXIT SIGNAL FAIL {key}: {e}")
 
+def _lock_holder_alive() -> bool:
+    """PID-aware lock check. Returns True if the lock holder is actually a live
+    ez_breakout_hunter python process; False if stale (process gone or different
+    binary). On True, our run should bail. On False, we take the lock."""
+    try:
+        if not LOCK_FILE.exists():
+            return False
+        raw = LOCK_FILE.read_text().strip()
+        if not raw.isdigit():
+            return False
+        pid = int(raw)
+        if pid <= 0 or pid == os.getpid():
+            return False
+        # Probe: signal 0 raises if PID is dead.
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        # Verify the live PID is actually a breakout-hunter python (not just any
+        # PID-recycled process).
+        try:
+            import subprocess
+            cmd = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "command="],
+                capture_output=True, text=True, timeout=2,
+            )
+            if cmd.returncode != 0 or "ez_breakout_hunter" not in cmd.stdout:
+                return False
+        except Exception:
+            # If we can't verify, err on the side of "stale" so we don't deadlock
+            # forever on a confused lock.
+            return False
+        return True
+    except Exception:
+        return False
+
+
 async def main():
-    if LOCK_FILE.exists() and time.time() - LOCK_FILE.stat().st_mtime < 90: return
+    # PID-aware lock — supersedes the old mtime-only check that let the hunter
+    # double-spawn whenever a scan hung past 90s on a slow API call.
+    if _lock_holder_alive():
+        return
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     LOCK_FILE.write_text(str(os.getpid()))
+    # Hard runtime cap — kills the scan if it exceeds this. Prevents the hung
+    # scan that caused the original duplicate-spawn pile-up.
+    HARD_RUNTIME_CAP_SEC = 75
     try:
-        import aiohttp
-        state = load_state()
-        blacklist = load_blacklist()
-        async with aiohttp.ClientSession() as session:
-            tickers = await get_tickers(session)
-            if not tickers: logger.error("No tickers"); return
-            await manage_exits(tickers, state)
-            breakouts = await scan_breakouts(session, tickers, state, blacklist)
-            cur = len(state.get("positions", {}))
-            entered = 0
-            for bo in breakouts:
-                if cur + entered >= MAX_POSITIONS: break
-                k = f"{bo['sym']}_{bo['side']}"
-                opp = f"{bo['sym']}_{'SHORT' if bo['side'] == 'LONG' else 'LONG'}"
-                if k in state.get("positions", {}) or opp in state.get("positions", {}): continue
-                logger.info(f"🎯 {bo['sym']} {bo['side']} dist={bo['dist']:+.1f}% 24h={bo['chg']:+.1f}% sz={bo['sz']:.1f}x")
-                if await enter(session, bo, state): entered += 1
-            if entered: logger.warning(f"📊 Entered {entered}. Total: {len(state.get('positions', {}))}. Blacklisted: {len(blacklist.get('symbols', {}))}")
-            else: logger.info(f"📊 No new entries. {len(state.get('positions', {}))} open. {len(breakouts)} breakouts found. {len(blacklist.get('symbols', {}))} blacklisted.")
-        save_state(state)
-        save_blacklist(blacklist)
+        async def _do_scan():
+            import aiohttp
+            state = load_state()
+            blacklist = load_blacklist()
+            async with aiohttp.ClientSession() as session:
+                tickers = await get_tickers(session)
+                if not tickers:
+                    logger.error("No tickers")
+                    return
+                await manage_exits(tickers, state)
+                breakouts = await scan_breakouts(session, tickers, state, blacklist)
+                cur = len(state.get("positions", {}))
+                entered = 0
+                for bo in breakouts:
+                    if cur + entered >= MAX_POSITIONS: break
+                    k = f"{bo['sym']}_{bo['side']}"
+                    opp = f"{bo['sym']}_{'SHORT' if bo['side'] == 'LONG' else 'LONG'}"
+                    if k in state.get("positions", {}) or opp in state.get("positions", {}): continue
+                    logger.info(f"🎯 {bo['sym']} {bo['side']} dist={bo['dist']:+.1f}% 24h={bo['chg']:+.1f}% sz={bo['sz']:.1f}x")
+                    if await enter(session, bo, state): entered += 1
+                if entered: logger.warning(f"📊 Entered {entered}. Total: {len(state.get('positions', {}))}. Blacklisted: {len(blacklist.get('symbols', {}))}")
+                else: logger.info(f"📊 No new entries. {len(state.get('positions', {}))} open. {len(breakouts)} breakouts found. {len(blacklist.get('symbols', {}))} blacklisted.")
+            save_state(state)
+            save_blacklist(blacklist)
+        try:
+            await asyncio.wait_for(_do_scan(), timeout=HARD_RUNTIME_CAP_SEC)
+        except asyncio.TimeoutError:
+            logger.error(f"⏱️ Scan exceeded {HARD_RUNTIME_CAP_SEC}s hard cap — aborting to free lock for next cron")
     finally:
         try: LOCK_FILE.unlink()
         except: pass

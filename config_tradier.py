@@ -1275,6 +1275,14 @@ class TradierConfig:
     BB_SQUEEZE_THRESHOLD_15M: float = 0.025  # bb_squeeze < this on 15m = entry signal ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_THRESHOLD_1H: float = 0.03  # bb_squeeze < this on 1h = entry signal ; DEAD_CONFIRMED (priority 90/100) — no plausible wiring site found 20260416
     BB_SQUEEZE_WIDTH_PERCENTILE: float = 0.2  # Width must be in bottom 20% to count as squeeze
+    # === SQUEEZE FIRE — Improvement Framework A3 (2026-04-26, default OFF, NEEDS Tier 2 SWEEP) ===
+    # Mirrors config.py SQUEEZE_FIRE_*. NPZ fields kc_upper/mid/lower_{tf}, squeeze_{tf} (1=BB inside KC), squeeze_fire_{tf} (+1 bull / -1 bear release / 0).
+    # Replaces dead BB_SQUEEZE_THRESHOLD_15M/1H above. Real BB-inside-KC compression-release gate via v8_quick_engine.
+    # Funding rate / OI gates (A1/A2) intentionally NOT mirrored — stocks have no perp funding or Binance-style OI.
+    # WT/MFI divergence (A4) auto-applies via NPZ fields populated for both crypto + tradier (compute_tf_arrays runs for both modes).
+    SQUEEZE_FIRE_ENABLED: bool = False
+    SQUEEZE_FIRE_TFS: List[str] = field(default_factory=lambda: ["1h", "4h"])
+    SQUEEZE_FIRE_SCORE_BONUS: int = 20
     BINANCE_API_BASE: str = 'https://fapi.binance.com'
     BOUNCE_AUGMENT_DC_LOW_D_TOLERANCE: float = 0.02  # Price within 2% of dc_low_D
     BOUNCE_AUGMENT_ENABLED: bool = True  # D-low bounce augment for losing positions

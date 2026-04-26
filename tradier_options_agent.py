@@ -458,6 +458,14 @@ class TradeDecision:
 def make_decisions(market: MarketAssessment, scan_results: Dict, existing_positions: List[Dict], current_exposure: float, max_per_order: float, max_total: float, diversification: PortfolioDiversification = None, config: TradierConfig = None) -> List[TradeDecision]:
     """Core decision logic: what to buy, sell, or hold. Diversification-aware."""
     decisions = []
+    # EMERGENCY_BRAKE HALT (2026-04-26): if tradier_emergency_brake fired a Tier-4
+    # halt, refuse all new options entries until manual reset.
+    _halted, _halt_info = _emergency_brake_halted()
+    if _halted:
+        _hi = _halt_info or {}
+        logger.critical(f"[EMERGENCY_BRAKE_HALT] make_decisions REFUSED — halt.flag present: {_hi}")
+        decisions.append(TradeDecision(action="SKIP", symbol="ALL", option_type="", strike=0, expiration="", qty=0, limit_price=0, budget_used=0, reason=f"EMERGENCY_BRAKE_HALT({_hi.get('reason','?')[:60]})", confidence=0, signal_score=0, occ_symbol=""))
+        return decisions
     # OPENING_BUFFER_NO_TRADE (2026-04-26): block ALL options buys in first 30m
     # after open. Wait for VWAP + first-30m data before deciding anything.
     _in_buf, _mins_open = _in_opening_buffer(config)
@@ -1061,6 +1069,19 @@ GOLD_SPREAD_SYMBOLS = {"NEM", "GLD", "GDX", "AEM", "RGLD", "WPM"}
 SPREAD_EXCLUDED_SYMBOLS = OIL_SPREAD_SYMBOLS | BTC_SPREAD_SYMBOLS | GOLD_SPREAD_SYMBOLS
 
 
+def _emergency_brake_halted() -> tuple:
+    """Returns (is_halted, payload). Reads data/emergency_brake/halt.flag written
+    by tradier_emergency_brake.py when a position breaches the -85% tier. When
+    True, ALL new options entries must be blocked. Manual reset required."""
+    p = BASE_PATH / "data" / "emergency_brake" / "halt.flag"
+    if not p.exists():
+        return False, None
+    try:
+        return True, json.loads(p.read_text())
+    except Exception:
+        return True, None
+
+
 def _in_opening_buffer(config) -> tuple:
     """(is_in_buffer, mins_since_open). Mirrors tradier_manage.in_opening_buffer.
     Used to block OPTIONS opens/augments in the first 30m after market open
@@ -1419,6 +1440,16 @@ async def _cancel_stale_gtc(client: TradierAPIClient, config) -> int:
 async def _daily_find_opportunities(client: TradierAPIClient, config, indicators: Dict, rankings: Dict, held_symbols: set, needs_puts: bool, limits: dict) -> List[Dict]:
     """Find call and put opportunities — RESTRICTED to trb_long (calls) / trb_short (puts).
     Enforces portfolio limits: max positions, max exposure, call/put ratio ceilings."""
+    # EMERGENCY_BRAKE HALT: if tradier_emergency_brake fired a Tier-4 halt, no scan
+    _halted, _halt_info = _emergency_brake_halted()
+    if _halted:
+        logger.critical(f"[EMERGENCY_BRAKE_HALT] _daily_find_opportunities REFUSED — halt.flag present: {_halt_info}")
+        return []
+    # OPENING_BUFFER_NO_TRADE: don't scan for opportunities in first 30m after open
+    _in_buf, _mins_open = _in_opening_buffer(config)
+    if _in_buf:
+        logger.warning(f"[OPENING_BUFFER_NO_TRADE] _daily_find_opportunities held: {_mins_open:.0f}m<30m_no_data")
+        return []
     call_allowed, put_allowed = _load_allowed_symbols(config)
     logger.info(f"Allowed symbols: {len(call_allowed)} for calls, {len(put_allowed)} for puts")
     if not limits["can_buy_calls"] and not limits["can_buy_puts"]:
