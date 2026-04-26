@@ -338,6 +338,38 @@ if SHADOW_PLATFORM == "crypto" and hasattr(live, "MultiAccountTradeManager"):
     slog.info("L3 MultiAccountTradeManager.place_maker_order + send_webhook patched")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Empty-start enforcement: shadow positions accumulate from zero (user choice)
+# ─────────────────────────────────────────────────────────────────────────────
+if SHADOW_PLATFORM == "crypto" and hasattr(live, "MultiAccountTradeManager"):
+    _MATM = live.MultiAccountTradeManager
+    # Block snapshot ingestion (positions_service hand-off would carry live state)
+    _MATM._positions_from_snapshot_payload = lambda self, account_key, snapshot_payload: {}
+    # Block disk load
+    async def _shadow_load_with_lock(self, master_allowed_symbols):
+        self.positions_by_account.setdefault(SHADOW_ACCOUNT, {})
+        slog.info(f"empty-start: positions_by_account[{SHADOW_ACCOUNT}] initialized empty")
+        return
+    _MATM._load_positions_with_lock = _shadow_load_with_lock
+    # Defense in depth: also no-op the (already-killed) Redis loader and load_all_positions
+    async def _empty_redis_load(self, account_key=None): return {}
+    async def _empty_load_all(self): return
+    _MATM._load_positions_from_redis = _empty_redis_load
+    _MATM.load_all_positions = _empty_load_all
+    slog.info("empty-start: position loaders patched (snapshot/disk/redis/all)")
+
+if SHADOW_PLATFORM == "tradier" and hasattr(live, "TradierTradeManager"):
+    _TTM = live.TradierTradeManager
+    # Tradier loads positions in __init__ + via TradierAPIClient.get_account_positions.
+    # Patch the API call to return empty so shadow starts with zero stock positions.
+    try:
+        from tradier_api import TradierAPIClient as _TAC2
+        async def _empty_get_positions(self, account_key=None): return []
+        _TAC2.get_account_positions = _empty_get_positions
+        slog.info("empty-start: TradierAPIClient.get_account_positions → []")
+    except ImportError:
+        pass
+
+# ─────────────────────────────────────────────────────────────────────────────
 # L6. SANDBOX_MODE on + add shadow account to SANDBOX_ACCOUNTS
 # ─────────────────────────────────────────────────────────────────────────────
 live.config.SANDBOX_MODE = True
