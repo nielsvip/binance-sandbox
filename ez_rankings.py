@@ -4492,6 +4492,37 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         logger.warning(f"[SCALP_V3_OUTLIER_INJECT] error: {_v3inj_err}")
     # === END SCALP_V3 OUTLIER INJECTION ============================================
 
+    # === SCALP_V3 REENTRY STICKY INJECT (2026-04-26) ================================
+    # Fix for V3 reentry pipeline gap (0/345 same-key reentries observed):
+    # ez_positions_quick writes Redis key v3_recent:{SYM}_{SIDE} with TTL on every V3
+    # entry/exit. Here we read those keys back and re-inject the symbols so they stay
+    # in the inf universe for the sticky window even if outlier z-score has decayed.
+    try:
+        if getattr(config, 'SCALP_V3_REENTRY_STICKY_ENABLED', True):
+            _v3rs_long = []; _v3rs_short = []
+            try:
+                if redis is not None:
+                    _v3rs_keys = await redis.keys("v3_recent:*")
+                    for _k in _v3rs_keys or []:
+                        _kp = _k.split(":", 1)[1] if ":" in _k else _k
+                        if _kp.endswith("_LONG"):
+                            _v3rs_long.append(_kp[:-5])
+                        elif _kp.endswith("_SHORT"):
+                            _v3rs_short.append(_kp[:-6])
+            except Exception as _rdx_e:
+                logger.debug(f"[SCALP_V3_REENTRY_STICKY] redis keys scan failed: {_rdx_e}")
+            for _s in _v3rs_long:
+                if _s not in symbols_inf_long_list:
+                    symbols_inf_long_list.append(_s)
+            for _s in _v3rs_short:
+                if _s not in symbols_inf_short_list:
+                    symbols_inf_short_list.append(_s)
+            if _v3rs_long or _v3rs_short:
+                logger.info(f"🔁 [SCALP_V3_REENTRY_STICKY_INJECT] +LONG {len(_v3rs_long)}: {_v3rs_long[:8]} | +SHORT {len(_v3rs_short)}: {_v3rs_short[:8]}")
+    except Exception as _v3rs_err:
+        logger.warning(f"[SCALP_V3_REENTRY_STICKY] error: {_v3rs_err}")
+    # === END SCALP_V3 REENTRY STICKY INJECT =========================================
+
     # Save scores to files
     save_scores(fs, FINAL_SCORE_FILE)
     save_scores(fsr, FINAL_SCORE_R_FILE)

@@ -6607,6 +6607,15 @@ class HedgeEngine:
         _origin_val = abs(safe_fetch_float(getattr(origin_position, 'positionAmt', 0), 0)) * current_price
         if _origin_val < 1.0: return True
         _target_val = _origin_val * 1.5
+        # 2026-04-26 USER RULE — hard cap. Trades move <1% per cycle, account is ~$1k. Hedges
+        # must NEVER exceed HEDGE_MAX_PCT_OF_LOSER × loser_notional or HEDGE_MAX_ABSOLUTE_USD.
+        # Triggered after ALTUSDT_LONG accumulated to $1013/12478% in tracker.
+        _hsize_max_pct = float(getattr(self.config, 'HEDGE_MAX_PCT_OF_LOSER', 1.5))
+        _hsize_max_abs = float(getattr(self.config, 'HEDGE_MAX_ABSOLUTE_USD', 25.0))
+        _hsize_cap = min(_origin_val * _hsize_max_pct, _hsize_max_abs)
+        if _target_val > _hsize_cap:
+            logger.warning(f"🛑 [HEDGE_SAME_HARD_CAP] {hedge_key}: requested ${_target_val:.2f} > cap ${_hsize_cap:.2f} (origin=${_origin_val:.2f} × {_hsize_max_pct} or abs ${_hsize_max_abs}) — clamping")
+            _target_val = _hsize_cap
         qty = _target_val / current_price if current_price > 0 else qty
         logger.info(f"[HEDGE_SAME_SIZED] {hedge_key}: origin_val=${_origin_val:.1f} → hedge_val=${_target_val:.1f} qty={qty:.6f}")
         if qty * current_price < 5.0: return True
@@ -12017,6 +12026,16 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                                     _v3x_amt = abs(safe_fetch_float(getattr(_v3x_pos, 'positionAmt', 0), 0))
                                     if _v3x_amt > 0:
                                         logger.warning(f"⚡ [SCALP_V3_EXIT] {position_key}: {_v3x_decision['reason']}")
+                                        try:
+                                            if bool(getattr(config, 'SCALP_V3_REENTRY_STICKY_ENABLED', True)):
+                                                _v3x_ttl = int(getattr(config, 'SCALP_V3_REENTRY_STICKY_MIN', 30)) * 60
+                                                _v3x_side = 'LONG' if position_key.endswith('_LONG') else 'SHORT'
+                                                _rmgr = getattr(tracker_manager, 'redis_manager', None)
+                                                _rcli = getattr(_rmgr, 'redis', None) if _rmgr else None
+                                                if _rcli is not None:
+                                                    await _rcli.setex(f"v3_recent:{_v3x_sym}_{_v3x_side}", _v3x_ttl, "EXIT")
+                                        except Exception as _v3x_stk_e:
+                                            logger.debug(f"[SCALP_V3_STICKY_EXIT] {position_key}: redis setex failed: {_v3x_stk_e}")
                                         await execute_trade_wrapper(
                                             trade_manager, tracker_manager, hedge_engine,
                                             account_key, position_key, _v3x_amt, 'QUICK_CLOSE',
@@ -12623,23 +12642,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         else:
                             hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
                             logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
-                # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
-                # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
-                # MOVEUSDT: was +1.26% then bled to -13% because HTF_EXIT_VETO blocked breakeven exit.
-                # Bypasses HTF_EXIT_VETO intentionally — once position was profitable, protecting that
-                # profit takes precedence over HTF trend alignment.
-                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
-                    _pgp_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
-                    _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.5))
-                    if _pgp_max_g >= _pgp_min_peak:
-                        _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
-                        _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 1.0))
-                        if _pgp_hard_zero and current_gain < 0.08:
-                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
-                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% near-zero cur={current_gain:.2f}% — EXITING (HTF veto bypassed) ⚠️ DO NOT DISABLE")
-                        elif current_gain < _pgp_max_g - _pgp_drop:
-                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%"
-                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING ⚠️ DO NOT DISABLE")
+                # 2026-04-26 REORDER: PEAK_GIVEBACK_PROTECTION moved to AFTER WT_CROSS_EXIT and STDEV_BREAKOUT.
+                # User directive: technicals must kill position first; PEAK_GIVEBACK is a % fallback only.
+                # The block now lives ~40 lines down, after STDEV_BREAKOUT_EXIT.
                 # ═══ WT CROSS EXIT (2026-04-16): fires on 1h WT flip against direction ═══
                 # Catches reversals that DC_LOW4/BREAKEVEN misses. Required to stop the
                 # "opened against HTF, bleeds for 20min" pattern seen on ATOMUSDT SHORT (-2.78%).
@@ -12681,6 +12686,25 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if _sbe_reason:
                         hard_exit_reason = _sbe_reason
                         logger.warning(f"[STDEV_BREAKOUT_EXIT] {position_key}: {_sbe_reason} gain={current_gain:.2f}%")
+                # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19, REORDERED 2026-04-26 to fire AFTER all technicals) ═══
+                # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
+                # MOVEUSDT: was +1.26% then bled to -13% because HTF_EXIT_VETO blocked breakeven exit.
+                # Bypasses HTF_EXIT_VETO intentionally — once position was profitable, protecting that
+                # profit takes precedence over HTF trend alignment.
+                # 2026-04-26 reorder: now runs AFTER WT_CROSS_EXIT + STDEV_BREAKOUT so technicals get first
+                # chance to close the position. PEAK_GIVEBACK is the % safety-net for cases technicals miss.
+                if not hard_exit_reason and not is_hedge and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+                    _pgp_max_g = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
+                    _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.5))
+                    if _pgp_max_g >= _pgp_min_peak:
+                        _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
+                        _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 1.0))
+                        if _pgp_hard_zero and current_gain < 0.08:
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% near-zero cur={current_gain:.2f}% — EXITING (technicals first; HTF veto bypassed) ⚠️ DO NOT DISABLE")
+                        elif current_gain < _pgp_max_g - _pgp_drop:
+                            hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%"
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING ⚠️ DO NOT DISABLE")
                 hard_augment = False
                 if not hard_exit_reason:
                     last_aug_age = minutes_since(position.last_augmentation_time)
@@ -13284,6 +13308,15 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                         _v3_qty = max(_v3_min_qty, _v3_cap_qty)
                                         if _v3_qty > 0:
                                             logger.warning(f"⚡ [SCALP_V3_ENTRY] {_v3_real_key}: {_v3_decision['reason']} qty={_v3_qty:.6f} cap_usd=${_v3_cap_usd}")
+                                            try:
+                                                if bool(getattr(config, 'SCALP_V3_REENTRY_STICKY_ENABLED', True)):
+                                                    _v3_ttl = int(getattr(config, 'SCALP_V3_REENTRY_STICKY_MIN', 30)) * 60
+                                                    _rmgr = getattr(tracker_manager, 'redis_manager', None)
+                                                    _rcli = getattr(_rmgr, 'redis', None) if _rmgr else None
+                                                    if _rcli is not None:
+                                                        await _rcli.setex(f"v3_recent:{_v3_sym}_{_v3_real_side}", _v3_ttl, "ENTRY")
+                                            except Exception as _v3_stk_e:
+                                                logger.debug(f"[SCALP_V3_STICKY_ENTRY] {_v3_real_key}: redis setex failed: {_v3_stk_e}")
                                             await execute_trade_wrapper(
                                                 trade_manager, tracker_manager, hedge_engine,
                                                 account_key, _v3_real_key, 0.0, 'OPEN',

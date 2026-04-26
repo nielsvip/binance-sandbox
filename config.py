@@ -178,6 +178,7 @@ class Config:
     SCALP_V3_SCAN_TOP_N: int = 8                 # 2026-04-23 evening: 5→15→8 (15 caused weight overrun)
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
+    SCALP_V3_EXIT_PROFIT_ONLY: bool = False      # 2026-04-26 SBL test flag: when True, V3 technical exits only fire while gain>0 (lock profit, never close at loss). Default False = unchanged. Shadow A/B variants override to True.
     SCALP_V3_SIDE_MODE: str = "SHORT_ONLY"        # 2026-04-26: BOTH (-5.77%) ≪ SHORT_ONLY (-1.81%) ≪ shorthold5 (-1.46%) on 330-cycle live shadow + 12sym×6mo backtest top-4. Switched to SHORT_ONLY pending more data; revert to BOTH if regime flips bullish.
     SCALP_V3_SCAN_BYPASS_GATES: bool = False     # 2026-04-26: OFF after V3 trend-follow rewrite. Bypass let the scanner open SHORTs into rallies (XTZ/KSM/AWE on 2026-04-25), which is exactly the mean-rev pattern the rewrite removed. Scanner now respects new trend-follow K/WT/HTF gates.
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
@@ -438,6 +439,12 @@ class Config:
     HEDGE_WT_VEL_GATE_ENABLED: bool = False         # 2026-04-26: OFF — same reason as DC gate above. Hedge-the-bleeder must not be filtered by candidate-symbol velocity. Sweep-only knob.
     # 2026-04-26 — Force-reentry HTF veto (refuse PRICE_CROSSED_MANDATORY when 1h+15m+4h all confirm trend AGAINST). Triggered after C98USDT triple-open against bullish HTF.
     PRICE_CROSSED_HTF_AGAINST_VETO_ENABLED: bool = True
+    # 2026-04-26 USER RULE — HARD hedge sizing caps. Trades move <1% per cycle on a ~$1k crypto
+    # account, so hedges must NEVER exceed 1.5× loser notional or absolute $25. Caps applied in
+    # both compute_hedge_size and execute_same_symbol_hedge inner. Triggered after ALTUSDT_LONG
+    # accumulated to $1013 / 12478% in tracker from pre-fix double-fires.
+    HEDGE_MAX_PCT_OF_LOSER: float = 1.5
+    HEDGE_MAX_ABSOLUTE_USD: float = 25.0
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
@@ -458,6 +465,13 @@ class Config:
     # 2026-04-26 USER: "exit at TOP not at fixed %". Require N of {bar,wt,k} signals to fire before closing.
     # 1 = OR (current); 2 = require 2/3 confirmation (filters noise); 3 = unanimous (most patient).
     SCALP_V3_EXIT_REQUIRE_N_SIGNALS: int = 1
+    # 2026-04-26 USER: V3 reentry pipeline broken — 33/44 V3-traded syms drop out of inf universe after close (0/345 same-key reentries).
+    # Sticky window: after a V3 entry OR exit, mark sym/side in Redis with TTL so ez_rankings keeps it in symbols_inf_*_list for the next N min, allowing V3 to re-fire.
+    SCALP_V3_REENTRY_STICKY_MIN: int = 30
+    SCALP_V3_REENTRY_STICKY_ENABLED: bool = True
+    # 2026-04-26 USER + research-agent verdict: technical exits should fire ONLY when in profit ("exit at top, never at loss").
+    # If True and gain<=0, no BAR/WT/K close fires; only MAX_HOLD or hedge-engine handles the position. Aligns with STRICT_NO_LOSS doctrine.
+    SCALP_V3_EXIT_PROFIT_ONLY: bool = False
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

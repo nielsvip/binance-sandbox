@@ -101,6 +101,20 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     wt1_3m = _sf(indicators.get('wt1_3m', 0), 0)
     wt2_3m = _sf(indicators.get('wt2_3m', 0), 0)
     if high_3m_prev <= 0 or low_3m_prev <= 0: return None
+    # SBL ("sell before loss"): when True, technical exits ONLY fire while in profit.
+    # Goal: lock profit on technical reversal; never close at a loss (rely on hedge/recovery instead).
+    # Defaults False so live behavior is unchanged; A/B variants override to True.
+    profit_only = bool(getattr(config, 'SCALP_V3_EXIT_PROFIT_ONLY', False))
+    if side == 'LONG':
+        _gain_now = ((price - entry_price) / entry_price * 100.0)
+    else:
+        _gain_now = ((entry_price - price) / entry_price * 100.0)
+    if profit_only and _gain_now <= 0:
+        # Don't fire any technical exit; let MAX_HOLD or hedge logic handle losers.
+        max_hold_min = float(getattr(config, 'SCALP_V3_MAX_HOLD_MIN', 0.0) or 0.0)
+        if max_hold_min > 0 and age_sec > max_hold_min * 60.0:
+            return {"reason": f"SCALP_V3_CLOSE_MAX_HOLD_{side}_age{age_sec/60:.1f}m_g{_gain_now:+.2f}%"}
+        return None
     bar_on = bool(getattr(config, 'SCALP_V3_EXIT_BAR_REVERSAL_ENABLED', True))
     wt_on = bool(getattr(config, 'SCALP_V3_EXIT_WT_FLIP_ENABLED', True))
     k_on = bool(getattr(config, 'SCALP_V3_EXIT_K_CROSS_ENABLED', True))
