@@ -1186,19 +1186,31 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 symbol, position, indicators_raw, market_context, in_grace_period )
             
             if should_exit:
-                log_rec = "💥CLOSE"
-                log_reason = exit_reason
-                # FIX 2026-04-08: Use 999999 as override_qty for CLOSE — execute_trade_action
-                # will clamp to ACTUAL API position via min(quantity, current_qty).
-                # Never trust local positionAmt — it's stale from Redis sync lag.
-                exit_qty = 999999  # Will be clamped to real API qty in execute_trade_action
-                logger.info(f"[{account_key}] 🛑 CLOSING {symbol}: {exit_reason}")
-                await queue_trade_action( order_queue, trade_manager, position_key, "CLOSE",  exit_reason, 100.0, override_qty=exit_qty )
-                action_taken = True
-                # BLOCK: mark symbol as pending close to prevent entries racing the close
+                # IDEMPOTENCY GUARD (2026-04-26): if a CLOSE for this symbol was queued
+                # recently, suppress the duplicate. Without this, the 30s loop re-fires
+                # CLOSE every cycle while no fill confirms (off-hours, rejected order, or
+                # broker lag) — flooded data/decisions/ JSONL with 6+ duplicate GLD/SLV
+                # closes 2026-04-26 00:43–01:30 UTC. Cooldown is short intra-day (allow
+                # fast retry on legit reject) and long off-hours (no fills possible).
                 if not hasattr(trade_manager, '_pending_closes'):
                     trade_manager._pending_closes = {}
-                trade_manager._pending_closes[symbol] = time.time()
+                _last_close_ts = trade_manager._pending_closes.get(symbol, 0.0)
+                _close_cooldown = 30.0 if market_open else 7200.0
+                _since_last = time.time() - _last_close_ts
+                if _since_last < _close_cooldown:
+                    log_rec = "HOLD"
+                    log_reason = f"CLOSE_COOLDOWN_{int(_since_last)}s/{int(_close_cooldown)}s ({exit_reason[:40]})"
+                else:
+                    log_rec = "💥CLOSE"
+                    log_reason = exit_reason
+                    # FIX 2026-04-08: Use 999999 as override_qty for CLOSE — execute_trade_action
+                    # will clamp to ACTUAL API position via min(quantity, current_qty).
+                    # Never trust local positionAmt — it's stale from Redis sync lag.
+                    exit_qty = 999999  # Will be clamped to real API qty in execute_trade_action
+                    logger.info(f"[{account_key}] 🛑 CLOSING {symbol}: {exit_reason} (mkt_open={market_open})")
+                    await queue_trade_action( order_queue, trade_manager, position_key, "CLOSE",  exit_reason, 100.0, override_qty=exit_qty )
+                    action_taken = True
+                    trade_manager._pending_closes[symbol] = time.time()
             
             # --- 3. EVALUATE AUGMENT ---
             # tra is long-term hold — no augmentation churn. Initial entry only.
