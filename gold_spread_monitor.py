@@ -22,6 +22,7 @@ import platform
 import statistics
 import sys
 import argparse
+import time
 from datetime import datetime
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
@@ -40,6 +41,19 @@ from tradier_options_analyzer import (
 logger = logging.getLogger("gold_spread")
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
+# === ORDER DEDUPE (2026-04-27) ===
+_ORDER_DEDUPE_LOG: dict = {}
+_ORDER_DEDUPE_SEC: float = 60.0
+
+def _order_allowed(key: str) -> bool:
+    now = time.time()
+    last = _ORDER_DEDUPE_LOG.get(key, 0.0)
+    if now - last < _ORDER_DEDUPE_SEC:
+        logger.warning(f"[ORDER_DEDUPE_SKIP] {key} — last attempt {now-last:.0f}s ago < {_ORDER_DEDUPE_SEC:.0f}s")
+        return False
+    _ORDER_DEDUPE_LOG[key] = now
+    return True
 if not logger.handlers:
     log_dir = Path(os.path.expanduser("~")) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -269,6 +283,8 @@ async def place_spread_orders(client: TradierAPIClient, pair_name: str, directio
         print(f"  {'[DRY] ' if dry_run else ''}GTC BUY {occ} x{qty} @ ${gtc_price:.2f} (ask=${opt['ask']:.2f}, {gtc_price / opt['ask'] * 100:.0f}% of ask)  Cost: ${cost:.0f}")
         print(f"    {opt.get('source', '?')} — edge: {opt.get('edge_pct', 0):+.1f}%  OI: {opt['oi']}")
         if not dry_run:
+            if not _order_allowed(f"{occ}|buy_to_open"):
+                continue
             res = await place_option_order(client, symbol, occ, "buy_to_open", qty, "limit", gtc_price, duration="gtc")
             if "order" in res:
                 order_id = res["order"].get("id")
@@ -443,6 +459,8 @@ async def run_close(args):
                 qty = leg["qty"]
                 print(f"    {'[DRY] ' if dry_run else ''}SELL_TO_CLOSE {occ} x{qty}")
                 if not dry_run:
+                    if not _order_allowed(f"{occ}|sell_to_close"):
+                        continue
                     res = await place_option_order(client, leg["symbol"], occ, "sell_to_close", qty, "market")
                     if "order" in res:
                         print(f"      CLOSED ID={res['order'].get('id')}")

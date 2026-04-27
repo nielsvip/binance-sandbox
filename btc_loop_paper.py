@@ -162,11 +162,14 @@ def build_features(market_data: Dict[str, Dict], cfg) -> Optional[Dict]:
     """Assemble features from live market_data + klines. Returns None if data not ready."""
     md = market_data.get(SYMBOL) or market_data.get("BTCUSDT")
     if not md:
+        print(f"[paper] no BTC entry in market_data (keys sample: {list(market_data.keys())[:5]})", flush=True)
         return None
-    price = float(md.get("currentPrice") or md.get("price") or md.get("last") or 0)
+    # Live writes flat: current_price + close_3m / wt_velocity_3m / etc all at md root.
+    price = float(md.get("current_price") or md.get("close_3m") or md.get("price") or 0)
     if price <= 0:
+        print(f"[paper] no usable price in BTC entry (sample keys: {list(md.keys())[:5]})", flush=True)
         return None
-    inds = md.get("indicators", {}) or {}
+    inds = md   # indicators are flat on the BTC entry, not nested
 
     # Accel per TF (live's wt_velocity is named wt1_velocity_<tf> — tolerate variants)
     accel_per_tf = {}
@@ -190,7 +193,7 @@ def build_features(market_data: Dict[str, Dict], cfg) -> Optional[Dict]:
             bars = load_klines(tf, max_bars=div_lb + 1)
             if len(bars) < div_lb + 1:
                 continue
-            closes = [float(b[4]) for b in bars]
+            closes = [float(b['close']) for b in bars]
             ind_val = float(inds.get(f"{ind_name.lower()}_{tf}",
                                      inds.get(f"wt1_{tf}" if ind_name == "WT" else "", 50)))
             # Build a degenerate indicator window: only the latest is real; pad with current
@@ -212,8 +215,8 @@ def build_features(market_data: Dict[str, Dict], cfg) -> Optional[Dict]:
             bars = load_klines(tf, max_bars=lb)
             if len(bars) < 10:
                 continue
-            highs = [float(b[2]) for b in bars]
-            lows = [float(b[3]) for b in bars]
+            highs = [float(b['high']) for b in bars]
+            lows = [float(b['low']) for b in bars]
             fib_per_tf[tf] = compute_fib_levels(max(highs), min(lows))
     round_levels = {}
     if bool(getattr(cfg, "BTC_RZ_USE_ROUND", True)):

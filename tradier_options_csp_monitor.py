@@ -450,13 +450,16 @@ async def run_once(client: TradierAPIClient, config: TradierConfig, dry_run: boo
                         parsed = parse_occ_symbol(long_leg_occ) or {}
                         underlying = parsed.get("symbol") or ""
                         initial = max(l_bid, (l_bid + l_ask) / 2.0) if l_bid > 0 else 0.05
-                        try:
-                            res_long = await smart_fill_option(client, underlying, long_leg_occ, "sell_to_close", long_qty, initial, l_bid, l_ask, max_walk_steps=4, walk_interval=30)
-                            logger.warning(f"CLOSE_LONG_LEG {long_leg_occ} x{long_qty} — paired with {action['occ']}")
-                            audit(f"CLOSE_LONG\t{long_leg_occ}\t{json.dumps(res_long, default=str)}")
-                        except Exception as e:
-                            logger.error(f"CLOSE_LONG_LEG FAILED {long_leg_occ}: {e}")
-                            audit(f"CLOSE_LONG_ERROR\t{long_leg_occ}\t{e}")
+                        if not _order_allowed(f"{long_leg_occ}|sell_to_close"):
+                            logger.warning(f"CLOSE_LONG_LEG dedupe-skipped {long_leg_occ}")
+                        else:
+                            try:
+                                res_long = await smart_fill_option(client, underlying, long_leg_occ, "sell_to_close", long_qty, initial, l_bid, l_ask, max_walk_steps=4, walk_interval=30)
+                                logger.warning(f"CLOSE_LONG_LEG {long_leg_occ} x{long_qty} — paired with {action['occ']}")
+                                audit(f"CLOSE_LONG\t{long_leg_occ}\t{json.dumps(res_long, default=str)}")
+                            except Exception as e:
+                                logger.error(f"CLOSE_LONG_LEG FAILED {long_leg_occ}: {e}")
+                                audit(f"CLOSE_LONG_ERROR\t{long_leg_occ}\t{e}")
     # Correlated-breach emergency escalation
     corr_n = getattr(config, "OPTIONS_CSP_MONITOR_CORRELATED_BREACH_N", 3)
     if len(absolute_breaches) >= corr_n:
