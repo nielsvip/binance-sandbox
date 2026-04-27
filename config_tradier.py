@@ -101,7 +101,7 @@ class TradierConfig:
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
     LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200 alignment
-    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
+    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5        # 2026-04-27: lowered 0.6→0.5 per user (way too few trades across the board). Same change as crypto.
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # 2026-04-27 — REENTRY engine hook: engines NEVER block reentries, only ADD size + tag reason.
     # 1.0 = pass-through (engines run, log +ENGINES tag for observability, NO size change). 1.5 = up to +50% size at max conviction.

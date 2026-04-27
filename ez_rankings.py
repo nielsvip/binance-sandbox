@@ -4551,6 +4551,77 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         logger.warning(f"[SCALP_V3_REENTRY_STICKY] error: {_v3rs_err}")
     # === END SCALP_V3 REENTRY STICKY INJECT =========================================
 
+    # === FUNDING + OI EXTREME-OUTLIER INJECTION (2026-04-27 user directive) ============
+    # Reads funding_rate + oi_change_1h_pct + price_change_1h from Redis hot_metrics:{sym}
+    # (populated by ez_market_data funding_rate_loop / open_interest_loop) and injects
+    # symbols with extreme/conviction readings into the inf long/short universe.
+    #
+    # FUNDING: stretched funding fades the overcrowded side
+    #   funding > +FUNDING_INJECT_LONG_MIN  → SHORT injection (longs overcrowded, will revert)
+    #   funding < -FUNDING_INJECT_SHORT_MIN → LONG injection (shorts overcrowded)
+    # OI×PRICE 4-quadrant (Schabacker classic):
+    #   price↑ + OI↑ = new long conviction → LONG injection
+    #   price↓ + OI↑ = new short conviction → SHORT injection
+    #   (squeeze/liquidation quadrants intentionally not injected — they're fades, not entries)
+    try:
+        if getattr(config, 'FUNDING_OI_INJECT_ENABLED', True) and redis is not None:
+            _fr_long_min = float(getattr(config, 'FUNDING_INJECT_SHORT_OVERCROWDED_BELOW', -0.0008))  # funding ≤ -0.08%
+            _fr_short_min = float(getattr(config, 'FUNDING_INJECT_LONG_OVERCROWDED_ABOVE', 0.0008))  # funding ≥ +0.08%
+            _oi_min_pct = float(getattr(config, 'FUNDING_OI_INJECT_OI_MIN_PCT', 1.0))  # |oi_chg| ≥ 1.0%
+            _px_min_pct = float(getattr(config, 'FUNDING_OI_INJECT_PRICE_MIN_PCT', 0.5))  # |price_chg| ≥ 0.5%
+            _max_each = int(getattr(config, 'FUNDING_OI_INJECT_MAX_EACH', 10))
+            _foi_long = []  # (sym, reason)
+            _foi_short = []
+            _candidate_syms = list({e["symbol"] for e in final_ranking_data_scalars})
+            for _sym in _candidate_syms:
+                try:
+                    _hm = await redis.get(f"hot_metrics:{_sym}")
+                    if not _hm: continue
+                    _hm_d = json_loads(_hm)
+                    if not isinstance(_hm_d, dict): continue
+                    _fr = _hm_d.get('funding_rate')
+                    _oi_chg = _hm_d.get('oi_change_1h_pct')
+                    _px_now = _hm_d.get('current_price') or _hm_d.get('close')
+                    _px_1h = _hm_d.get('close_1h_prev') or _hm_d.get('close_1h')
+                    _px_chg = ((float(_px_now) - float(_px_1h)) / float(_px_1h) * 100.0) if (_px_now and _px_1h and float(_px_1h) > 0) else None
+                    _fr = float(_fr) if _fr is not None else None
+                    _oi_chg = float(_oi_chg) if _oi_chg is not None else None
+                    # Funding-extreme injection (fade the overcrowded side)
+                    if _fr is not None:
+                        if _fr <= _fr_long_min and _sym not in _bullish_syms:
+                            _foi_long.append((_sym, f"funding={_fr*100:.3f}%_shorts_overcrowded"))
+                        elif _fr >= _fr_short_min and _sym not in _bearish_syms:
+                            _foi_short.append((_sym, f"funding={_fr*100:.3f}%_longs_overcrowded"))
+                    # OI×price 4-quadrant injection (CONVICTION quadrants only)
+                    if _oi_chg is not None and _px_chg is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg) >= _px_min_pct:
+                        _px_up = _px_chg > 0; _oi_up = _oi_chg > 0
+                        if _px_up and _oi_up and _sym not in _bearish_syms:
+                            _foi_long.append((_sym, f"OI↑{_oi_chg:+.2f}%×px↑{_px_chg:+.2f}%_new_longs"))
+                        elif (not _px_up) and _oi_up and _sym not in _bullish_syms:
+                            _foi_short.append((_sym, f"OI↑{_oi_chg:+.2f}%×px↓{_px_chg:+.2f}%_new_shorts"))
+                except Exception:
+                    continue
+            # Dedup by symbol (keep first reason if both funding+OI hit), then cap
+            _seen_l = set(); _foi_long_d = []
+            for _s, _r in _foi_long:
+                if _s not in _seen_l:
+                    _seen_l.add(_s); _foi_long_d.append((_s, _r))
+            _seen_s = set(); _foi_short_d = []
+            for _s, _r in _foi_short:
+                if _s not in _seen_s:
+                    _seen_s.add(_s); _foi_short_d.append((_s, _r))
+            _foi_long_d = _foi_long_d[:_max_each]
+            _foi_short_d = _foi_short_d[:_max_each]
+            for _s, _ in _foi_long_d:
+                if _s not in symbols_inf_long_list: symbols_inf_long_list.append(_s)
+            for _s, _ in _foi_short_d:
+                if _s not in symbols_inf_short_list: symbols_inf_short_list.append(_s)
+            if _foi_long_d or _foi_short_d:
+                logger.info(f"💰 [FUNDING_OI_INJECT] +LONG {len(_foi_long_d)}: {[(s,r) for s,r in _foi_long_d[:5]]} | +SHORT {len(_foi_short_d)}: {[(s,r) for s,r in _foi_short_d[:5]]}")
+    except Exception as _foi_err:
+        logger.warning(f"[FUNDING_OI_INJECT] error: {_foi_err}")
+    # === END FUNDING + OI INJECTION ====================================================
+
     # Save scores to files
     save_scores(fs, FINAL_SCORE_FILE)
     save_scores(fsr, FINAL_SCORE_R_FILE)

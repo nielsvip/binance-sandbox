@@ -250,7 +250,7 @@ class Config:
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 + kD<40 extreme oversold tier
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent: dc_x4h breakout in 90% of S1 top-3
     LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200up_D + ha alignment
-    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
+    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.5        # 2026-04-27: lowered 0.6→0.5 per user (way too few trades). Crypto reentries rarely cleared 0.6.
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # 2026-04-27 — REENTRY engine hook: engines NEVER block reentries, only ADD size + tag reason.
     # 1.0 = pass-through (engines run, log +ENGINES tag for observability, NO size change). 1.5 = up to +50% size at max conviction.
@@ -549,12 +549,21 @@ class Config:
     FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
     FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
     FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
-    OI_CONFIRM_ENABLED: bool = False                # 4-quadrant OI×price gate (Schabacker classic). Default OFF until sweep validates.
+    OI_CONFIRM_ENABLED: bool = True                 # 2026-04-27: live ON per user directive after Batch 1 A/B (+40% max / +107% avg). Backtest reconfirm queued. 4-quadrant OI×price (Schabacker classic).
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this to consider OI move significant
     OI_CONFIRM_MIN_PRICE_PCT: float = 0.3           # |price_change_1h_pct| must exceed this; gate fires only when BOTH oi+price are significant
     OI_HEDGE_GATE_ENABLED: bool = False             # apply OI gate to hedge entries too (default OFF)
     OI_LIVE_REFRESH_HOURS: float = 1.0              # ez_market_data refreshes OI hourly via Binance OI API
     FUNDING_LIVE_REFRESH_HOURS: float = 1.0         # how often ez_market_data refreshes funding rates from Binance API in live
+    # === 2026-04-27 FUNDING + OI EXTREME-OUTLIER INJECTION INTO ez_rankings winners/losers ===
+    # Stretched funding fades the overcrowded side (longs overcrowded → SHORT, shorts overcrowded → LONG).
+    # OI×price conviction quadrants only inject (price↑+OI↑ → LONG, price↓+OI↑ → SHORT).
+    FUNDING_OI_INJECT_ENABLED: bool = True
+    FUNDING_INJECT_LONG_OVERCROWDED_ABOVE: float = 0.0008   # funding ≥ +0.08% → SHORT injection (longs paying heavily)
+    FUNDING_INJECT_SHORT_OVERCROWDED_BELOW: float = -0.0008 # funding ≤ -0.08% → LONG injection (shorts overcrowded)
+    FUNDING_OI_INJECT_OI_MIN_PCT: float = 1.0       # |oi_change_1h_pct| threshold for OI-based injection
+    FUNDING_OI_INJECT_PRICE_MIN_PCT: float = 0.5    # |price_change_1h_pct| threshold (filters tiny moves)
+    FUNDING_OI_INJECT_MAX_EACH: int = 10            # cap per side
     # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.
