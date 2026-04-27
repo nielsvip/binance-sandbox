@@ -606,6 +606,19 @@ class MarketDataEngine:
 
             # 5. Publish Results
             if results:
+                # ═══ 2026-04-27 FUNDING RATE PROPAGATION ═══
+                # Inject funding_rate from market.data into per-symbol payload so it flows through
+                # Redis hot_metrics:{sym} → data_manager.get_hot_state → execute_trade_wrapper._gate_ind.
+                # Without this, funding_rate_loop stored values are invisible to the entry-gate logic.
+                for sym, payload in results:
+                    try:
+                        store = self.market.data.get(sym, {})
+                        _fr = store.get('funding_rate')
+                        if _fr is not None:
+                            payload['funding_rate'] = _fr
+                            payload['funding_rate_ts'] = store.get('funding_rate_ts', 0)
+                    except Exception:
+                        pass
                 # Update Bridge
                 if self.shared_proxy:
                     try:
@@ -613,7 +626,6 @@ class MarketDataEngine:
                         await asyncio.to_thread(self.shared_proxy.update_batch, batch_payload)
                     except Exception:
                         self.shared_proxy = None
-                
                 # Update Redis Pipeline
                 async with self.redis.pipeline() as pipe:
                     for sym, payload in results:

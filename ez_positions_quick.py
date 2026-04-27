@@ -6503,9 +6503,10 @@ class HedgeEngine:
             logger.warning(f"[HEDGE_TRACKER_CHECK_ERR] {origin_key}: {_tr_e}")
         # 2026-04-24 NEVER-HEDGE-A-HEDGE early gate. Checks origin's augment_reason
         # for hedge markers BEFORE any tracker lookup. Survives cleared/missing tracker state.
-        # Incident: ALT_LONG → QNT_SHORT (hedge, reason=QUICK_HEDGE_ELECTED_ALTUSDT_LONG) →
-        # QNT_SHORT went red → system tried to hedge QNT_SHORT with QNT_LONG. active_hedges
-        # was empty (persist failed), so tracker-authoritative didn't catch it.
+        # 2026-04-27 ORPHAN EXEMPTION: if the position-this-was-hedging is now CLOSED (amt=0),
+        # the hedge is orphaned and bleeding alone (PHB/GRIFFAIN incident — both sat at -13% / -21%
+        # with augment_reason=QUICK_HEDGE_PROTECT_X_LOSS but the X they were protecting was already
+        # closed). Allow hedge of an orphan — it's now effectively a standalone losing position.
         try:
             _op = await self.tracker_manager.get_position(origin_key)
             if not _op and hasattr(self.tracker_manager, 'positions_service'):
@@ -6513,6 +6514,19 @@ class HedgeEngine:
             _ar = str(getattr(_op, 'augment_reason', '') or '').upper()
             for _hm in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
                 if _hm in _ar:
+                    # Orphan check: was this hedging a SHORT/LONG that is now closed?
+                    _orphan = False
+                    _opp_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
+                    try:
+                        _opp_key = f"{account_key}:{symbol}_{_opp_side}"
+                        _opp_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(_opp_key)
+                        _opp_amt = abs(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0)) if _opp_pos else 0.0
+                        if _opp_amt <= 0.0:
+                            _orphan = True
+                    except Exception: pass
+                    if _orphan:
+                        logger.warning(f"🟡 [HEDGE_OF_ORPHAN_ALLOWED] {origin_key}: marked as hedge ('{_hm}') but the {_opp_side} it was protecting is closed (amt=0). ORPHAN — allowing hedge.")
+                        break  # exit the for-loop, continue past the early gate
                     logger.critical(f"🚫 [HEDGE_OF_HEDGE_BLOCK_EARLY] {origin_key}: augment_reason has '{_hm}' → origin born as hedge. Refusing to hedge-the-hedge (reason={_ar[:80]})")
                     return False
         except Exception as _re:
@@ -6573,8 +6587,17 @@ class HedgeEngine:
                 if not _origin_pos:
                     _origin_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(origin_key)
                 _aug_reason = str(getattr(_origin_pos, 'augment_reason', '') or '').upper()
+                # 2026-04-27 ORPHAN exemption: same as early gate.
+                _opp_side = 'SHORT' if origin_side == 'LONG' else 'LONG'
+                _opp_key = f"{account_key}:{symbol}_{_opp_side}"
+                _opp_pos = self.tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(_opp_key)
+                _opp_amt = abs(safe_fetch_float(getattr(_opp_pos, 'positionAmt', 0), 0)) if _opp_pos else 0.0
+                _is_orphan = _opp_amt <= 0.0
                 for _mark in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_'):
                     if _mark in _aug_reason:
+                        if _is_orphan:
+                            logger.warning(f"🟡 [HEDGE_OF_ORPHAN_ALLOWED_INNER] {origin_key}: hedge tag '{_mark}' but {_opp_side} target closed (amt=0). ORPHAN — allowing.")
+                            break  # do not set _origin_is_hedge — proceed past gate
                         _origin_is_hedge = True
                         logger.critical(f"[HEDGE_OF_HEDGE_BLOCK_BY_REASON] {origin_key}: augment_reason contains '{_mark}' → origin was born as a hedge. Refusing to hedge-the-hedge. reason={_aug_reason[:100]}")
                         break

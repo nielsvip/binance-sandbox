@@ -2510,6 +2510,254 @@ def compute_exit_signals(npz, n, is_long, cfg):
     return base_exit
 
 
+def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
+                                     _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int):
+    """BTC-dedicated per-symbol Tier-1 backtest (Path B: technical exit + guaranteed reentry).
+
+    Called from simulate() when cfg.BTC_DEDICATED_ENABLED=True and symbol is BTC.
+    Imports btc_loop and uses the SAME decision functions live + paper will use.
+    Returns sym_pnl list (per-trade %returns) compatible with simulate()'s aggregator.
+
+    Path A (hedge) NOT implemented in vec engine — hedge requires portfolio-level
+    state that v8_quick can't track. Path A validated in Tier-2 only.
+    """
+    import btc_loop as _btc
+
+    close = _safe(npz, f'close_{_ltf}', n)
+    high = _safe(npz, f'high_{_ltf}', n)
+    low = _safe(npz, f'low_{_ltf}', n)
+
+    # Multi-TF accel inputs (velocity + prior-bar velocity for accel-ramp detection)
+    tfs = ['3m', '15m', '1h', '4h', 'D']
+    vel = {tf: _safe(npz, f'wt_velocity_{tf}', n) for tf in tfs}
+    # prior-bar velocity = roll forward 1 bar (live-realistic: at bar i, you only know vel up to i-1)
+    vel_prev = {tf: np.roll(vel[tf], 1) for tf in tfs}
+    for tf in tfs:
+        vel_prev[tf][0] = vel[tf][0]
+
+    # WT against-side count for exit
+    wt1 = {tf: _safe(npz, f'wt1_{tf}', n) for tf in tfs}
+    wt2 = {tf: _safe(npz, f'wt2_{tf}', n) for tf in tfs}
+
+    # Multi-indicator divergence inputs
+    rsi = {tf: _safe(npz, f'rsi_{tf}', n, 50.0) for tf in tfs}
+    mfi = {tf: _safe(npz, f'mfi_{tf}', n, 50.0) for tf in tfs}
+
+    # DC zone proxy for wt_dc_zone hint (simplified)
+    bb_pct_b_4h = _safe(npz, 'bb_pct_b_4h', n, 0.5)
+
+    # 4h/D high/low arrays for fib swings (resampled in NPZ to LTF timestamps)
+    h4 = _safe(npz, 'high_4h', n)
+    l4 = _safe(npz, 'low_4h', n)
+    hD = _safe(npz, 'high_D', n)
+    lD = _safe(npz, 'low_D', n)
+
+    # Config knobs
+    rz_use_fib = bool(getattr(cfg, 'BTC_RZ_USE_FIB', True))
+    rz_use_round = bool(getattr(cfg, 'BTC_RZ_USE_ROUND', True))
+    rz_use_wt_dc = bool(getattr(cfg, 'BTC_RZ_USE_WT_DC', True))
+    rz_proximity_pct = float(getattr(cfg, 'BTC_RZ_PROXIMITY_PCT', 0.5))
+    accel_min_tfs = int(getattr(cfg, 'BTC_ACCEL_RAMP_MIN_TFS', 5))
+    div_min_inds = max(int(getattr(cfg, 'BTC_DIVERGENCE_BEAR_MIN_INDS', 2)),
+                       int(getattr(cfg, 'BTC_DIVERGENCE_BULL_MIN_INDS', 2)))
+    div_lb = int(getattr(cfg, 'BTC_DIVERGENCE_LOOKBACK_BARS', 5))
+    tech_exit_min_tfs = int(getattr(cfg, 'BTC_TECH_EXIT_WT_MIN_TFS', 3))
+    reentry_enabled = bool(getattr(cfg, 'BTC_GUARANTEED_REENTRY_ENABLED', True))
+    reentry_max_age = int(getattr(cfg, 'BTC_GUARANTEED_REENTRY_MAX_AGE_BARS', 480))
+    reentry_min_gap = int(getattr(cfg, 'BTC_GUARANTEED_REENTRY_MIN_GAP_BARS', 5))
+
+    # Compute hard-loss pct from $10 / ($90 * 20x) = 0.555% effective adverse on price
+    own_max = float(getattr(cfg, 'BTC_PER_TRADE_NOTIONAL_USD_MAX', 90.0))
+    leverage = float(getattr(cfg, 'BTC_LEVERAGE', 20.0))
+    hard_loss_usd = float(getattr(cfg, 'BTC_HARD_LOSS_USD_PER_TRADE', 10.0))
+    if own_max > 0 and leverage > 0:
+        hard_loss_pct = -(hard_loss_usd / (own_max * leverage)) * 100.0  # e.g. -0.555%
+    else:
+        hard_loss_pct = -0.555
+
+    # Lookback bars per TF (in LTF bars) for fib swing
+    fib_lb_4h_at_tf = int(getattr(cfg, 'BTC_FIB_LOOKBACK_4H', 200))
+    fib_lb_D_at_tf = int(getattr(cfg, 'BTC_FIB_LOOKBACK_D', 180))
+    fib_lb_4h_in_ltf = fib_lb_4h_at_tf * _bph_4h
+    fib_lb_D_in_ltf = fib_lb_D_at_tf * _bph_D
+
+    # Round increments
+    round_primary = float(getattr(cfg, 'BTC_ROUND_INC_PRIMARY_USD', 5000.0))
+    round_secondary = float(getattr(cfg, 'BTC_ROUND_INC_SECONDARY_USD', 1000.0))
+    round_bands = int(getattr(cfg, 'BTC_ROUND_BANDS_EACH_SIDE', 8))
+
+    sym_pnl = []
+    position = "FLAT"            # FLAT | LONG | SHORT
+    entry_price = 0.0
+    entry_bar = 0
+    last_exit_side = "NONE"
+    last_exit_bar = -10**9
+
+    # Min lookback to start sim — need fib_lb_D_in_ltf bars
+    start_i = max(fib_lb_D_in_ltf, div_lb + 1, 100)
+
+    for i in range(start_i, n):
+        price_i = float(close[i])
+        if price_i <= 0:
+            continue
+
+        # ── Build features at bar i ─────────────────────────────────────────
+        # Accel ramp
+        accel_per_tf = {
+            tf: _btc.WTAccelFeatures(
+                velocity=float(vel[tf][i]),
+                velocity_prev=float(vel_prev[tf][i]),
+                acceleration=float(vel[tf][i] - vel_prev[tf][i]),
+            ) for tf in tfs
+        }
+        accel = _btc.compute_accel_ramp(
+            accel_per_tf,
+            require_positive=bool(getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', True)),
+        )
+
+        # Multi-indicator divergence on RSI/MFI/WT (skip OBV/CVD — not in NPZ yet)
+        # Build (price_window, indicator_window) per indicator per TF
+        if i >= div_lb:
+            slc = slice(i - div_lb, i + 1)
+            mtf = {
+                'WT': {tf: (close[slc].tolist(), wt1[tf][slc].tolist()) for tf in tfs},
+                'RSI': {tf: (close[slc].tolist(), rsi[tf][slc].tolist()) for tf in tfs},
+                'MFI': {tf: (close[slc].tolist(), mfi[tf][slc].tolist()) for tf in tfs},
+            }
+            div = _btc.aggregate_multi_indicator_divergence(
+                mtf, lookback_bars=div_lb, strong_tfs_threshold=3,
+            )
+        else:
+            div = _btc.DivergenceState()
+
+        # Red zone: fib levels per TF + round levels + wt_dc zone proxy
+        fib_per_tf = {}
+        if rz_use_fib:
+            if i >= fib_lb_4h_in_ltf:
+                hi_4h = float(np.max(h4[i - fib_lb_4h_in_ltf:i]))
+                lo_4h = float(np.min(l4[i - fib_lb_4h_in_ltf:i]))
+                fib_per_tf['4h'] = _btc.compute_fib_levels(hi_4h, lo_4h)
+            if i >= fib_lb_D_in_ltf:
+                hi_D = float(np.max(hD[i - fib_lb_D_in_ltf:i]))
+                lo_D = float(np.min(lD[i - fib_lb_D_in_ltf:i]))
+                fib_per_tf['D'] = _btc.compute_fib_levels(hi_D, lo_D)
+        round_levels = {}
+        if rz_use_round:
+            round_levels = _btc.compute_round_levels(
+                price_i,
+                primary_inc_usd=round_primary,
+                secondary_inc_usd=round_secondary,
+                bands_each_side=round_bands,
+            )
+        # Crude wt_dc_zone proxy: BB %B 4h extreme = TOP/BOTTOM, else BASELINE
+        wt_dc_zone = "none"
+        if rz_use_wt_dc:
+            bp = float(bb_pct_b_4h[i])
+            if bp >= 0.85: wt_dc_zone = "TOP"
+            elif bp <= 0.15: wt_dc_zone = "BOTTOM"
+            else: wt_dc_zone = "BASELINE"
+        rz = _btc.build_red_zone_state(
+            current_price=price_i,
+            fib_levels_per_tf=fib_per_tf,
+            round_levels=round_levels,
+            wt_dc_zone=wt_dc_zone,
+            proximity_pct=rz_proximity_pct,
+        )
+
+        # ── Decision: FLAT → entry / reentry ────────────────────────────────
+        if position == "FLAT":
+            # Reentry guarantee path
+            reenter = False
+            reenter_side = None
+            if reentry_enabled and last_exit_side != "NONE":
+                bars_since = i - last_exit_bar
+                if bars_since >= reentry_min_gap and bars_since <= reentry_max_age:
+                    pos_state = _btc.PositionRiskState(side="FLAT", bars_since_last_exit=bars_since)
+                    ok, _ = _btc.should_reenter_btc(
+                        position=pos_state, last_exit_side=last_exit_side,
+                        red_zone=rz, accel=accel, divergence=div, cfg=cfg,
+                    )
+                    if ok:
+                        reenter = True
+                        reenter_side = last_exit_side
+            # Primary entry
+            ok_long = ok_short = False
+            if not reenter:
+                ok_long, _ = _btc.should_enter_btc_long(
+                    current_price=price_i, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
+                )
+                ok_short, _ = _btc.should_enter_btc_short(
+                    current_price=price_i, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
+                )
+            if reenter:
+                position = reenter_side
+                entry_price = price_i
+                entry_bar = i
+            elif ok_long and not ok_short:
+                position = "LONG"
+                entry_price = price_i
+                entry_bar = i
+            elif ok_short and not ok_long:
+                position = "SHORT"
+                entry_price = price_i
+                entry_bar = i
+            continue
+
+        # ── Decision: open position → exit check ────────────────────────────
+        # Compute current pnl pct
+        if position == "LONG":
+            pnl_pct = (price_i - entry_price) / entry_price * 100.0
+        else:
+            pnl_pct = (entry_price - price_i) / entry_price * 100.0
+        pnl_usd = (pnl_pct / 100.0) * own_max * leverage
+
+        # WT against count: how many TFs have wt1 < wt2 (LONG) or wt1 > wt2 (SHORT)
+        wt_against_count = 0
+        for tf in tfs:
+            if position == "LONG" and wt1[tf][i] < wt2[tf][i]:
+                wt_against_count += 1
+            elif position == "SHORT" and wt1[tf][i] > wt2[tf][i]:
+                wt_against_count += 1
+
+        pos_state = _btc.PositionRiskState(
+            side=position,
+            own_capital_usd=own_max,
+            notional_usd=own_max * leverage,
+            current_pnl_pct=pnl_pct,
+            current_pnl_usd=pnl_usd,
+            age_bars=i - entry_bar,
+        )
+
+        ok_exit, _reason = _btc.should_exit_btc(
+            position=pos_state, accel=accel, divergence=div,
+            wt_against_min_tfs=tech_exit_min_tfs,
+            wt_against_count=wt_against_count,
+            cfg=cfg,
+        )
+        # Hard stop at computed pct (translates $10 cap to price move pct)
+        if pnl_pct <= hard_loss_pct:
+            ok_exit = True
+
+        if ok_exit:
+            sym_pnl.append(pnl_pct)
+            last_exit_side = position
+            last_exit_bar = i
+            position = "FLAT"
+            entry_price = 0.0
+            entry_bar = 0
+
+    # Mark-to-market open position at end of sim (CLAUDE.md Sharpe rule #2)
+    if position != "FLAT":
+        price_last = float(close[n - 1])
+        if entry_price > 0:
+            if position == "LONG":
+                sym_pnl.append((price_last - entry_price) / entry_price * 100.0)
+            else:
+                sym_pnl.append((entry_price - price_last) / entry_price * 100.0)
+
+    return sym_pnl
+
+
 def simulate(stores, cfg, capital=10000.0):
     """stores can be a dict {sym: data} (preloaded) or an iterable of
     (sym, data) tuples (streaming). Streaming releases memory per symbol."""
@@ -2565,6 +2813,23 @@ def simulate(stores, cfg, capital=10000.0):
                 n = len(_close_ltf)
             else:
                 continue
+        # ─── BTC-DEDICATED LOOP DISPATCH ───────────────────────────────────
+        # When BTC_DEDICATED_ENABLED=True and symbol is BTC, route through
+        # btc_loop.* shared decision functions (same code path as live + paper).
+        # See BTC_DEDICATED_LOOP_DESIGN_20260427.md.
+        if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in ('BTCUSDT', 'BTCUSDC'):
+            try:
+                _btc_sym_pnl = _btc_dedicated_simulate_per_sym(
+                    npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
+                )
+                per_symbol_pnl[sym] = _btc_sym_pnl
+                all_pnl.extend(_btc_sym_pnl)
+                symbols_processed += 1
+            except Exception as _btc_e:
+                print(f"[BTC_DEDICATED] {sym} sim error: {_btc_e}", flush=True)
+                per_symbol_pnl[sym] = []
+            continue
+        # ─── End BTC dispatch ──────────────────────────────────────────────
         _intraday_enabled = bool(getattr(cfg, 'INTRADAY_SESSION_EXIT_ENABLED', False))
         if _intraday_enabled and len(ts) >= n and n > 0:
             _sec_of_day = (np.asarray(ts[:n], dtype=np.int64) % 86400).astype(np.int32)

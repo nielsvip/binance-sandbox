@@ -184,6 +184,180 @@ def is_within_proximity(
     return False
 
 
+# ── Divergence detection (pure-function, single-bar at index i over lookback) ─
+
+
+def detect_divergence_at(
+    price: list,
+    indicator: list,
+    *,
+    lookback_bars: int = 5,
+    require_strict: bool = True,
+) -> Tuple[bool, bool]:
+    """Detect bull/bear divergence at the latest bar of `price` vs `indicator`.
+
+    Algorithm:
+      Bull div: price made a LOWER LOW than `lookback_bars` ago,
+                AND indicator made a HIGHER LOW.
+      Bear div: price made a HIGHER HIGH than `lookback_bars` ago,
+                AND indicator made a LOWER HIGH.
+
+    Inputs are ordered oldest→newest; the last element is "now". Min lookback 2.
+    Strict mode requires the latest two extrema to be the comparison bars.
+    Lenient mode also accepts within-window comparisons.
+
+    Returns (bull_div, bear_div).
+    """
+    n = len(price)
+    if n < 2 or n != len(indicator) or lookback_bars < 2:
+        return False, False
+    lb = min(lookback_bars, n - 1)
+    p_now = price[-1]
+    p_then = price[-1 - lb]
+    i_now = indicator[-1]
+    i_then = indicator[-1 - lb]
+    bull = False
+    bear = False
+    if require_strict:
+        # Strict: simply compare endpoints
+        bull = (p_now < p_then) and (i_now > i_then)
+        bear = (p_now > p_then) and (i_now < i_then)
+    else:
+        # Lenient: window minima/maxima vs current
+        win_p = price[-lb:]
+        win_i = indicator[-lb:]
+        # bull div = current is a window low for price + window high for indicator
+        bull = (p_now == min(win_p)) and (i_now > min(win_i))
+        bear = (p_now == max(win_p)) and (i_now < max(win_i))
+    return bool(bull), bool(bear)
+
+
+def aggregate_multi_indicator_divergence(
+    indicators_by_name: Dict[str, Dict[str, Tuple[list, list]]],
+    *,
+    lookback_bars: int = 5,
+    require_strict: bool = True,
+    strong_tfs_threshold: int = 3,
+) -> DivergenceState:
+    """Aggregate divergence across multiple indicators × multiple TFs.
+
+    Args:
+      indicators_by_name: nested dict
+          {
+              "WT":  {"3m": (price_arr, wt_arr), "15m": (...), ...},
+              "RSI": {"3m": (price_arr, rsi_arr), ...},
+              "MFI": ...,
+              "OBV": ...,
+              "CVD": ...,
+          }
+        Each TF entry is a (price_window, indicator_window) tuple of equal-length lists.
+        Caller decides whether to include OBV/CVD (skip if NPZ doesn't have them).
+
+      strong_tfs_threshold: an indicator counts as "strong-aligned" if N TFs simultaneously
+        show divergence in the same direction.
+
+    Returns DivergenceState with bull_inds_aligned, bear_inds_aligned, and the
+    "strong" counts (how many indicators showed div on threshold+ TFs at once).
+    """
+    bull_inds = 0
+    bear_inds = 0
+    bull_strong = 0
+    bear_strong = 0
+    for ind_name, tf_map in indicators_by_name.items():
+        ind_bull_tfs = 0
+        ind_bear_tfs = 0
+        for tf, payload in tf_map.items():
+            if not payload or len(payload) != 2:
+                continue
+            price, ind = payload
+            b, br = detect_divergence_at(
+                price, ind,
+                lookback_bars=lookback_bars,
+                require_strict=require_strict,
+            )
+            if b:
+                ind_bull_tfs += 1
+            if br:
+                ind_bear_tfs += 1
+        if ind_bull_tfs > 0:
+            bull_inds += 1
+        if ind_bear_tfs > 0:
+            bear_inds += 1
+        if ind_bull_tfs >= strong_tfs_threshold:
+            bull_strong += 1
+        if ind_bear_tfs >= strong_tfs_threshold:
+            bear_strong += 1
+    return DivergenceState(
+        bull_inds_aligned=bull_inds,
+        bear_inds_aligned=bear_inds,
+        bull_inds_strong_3plus_tfs=bull_strong,
+        bear_inds_strong_3plus_tfs=bear_strong,
+    )
+
+
+def build_red_zone_state(
+    *,
+    current_price: float,
+    fib_levels_per_tf: Optional[Dict[str, Dict[str, float]]] = None,
+    round_levels: Optional[Dict[str, list]] = None,
+    wt_dc_zone: str = "none",
+    proximity_pct: float = 0.5,
+) -> RedZoneState:
+    """Compose RedZoneState from fib + round + wt_dc inputs.
+
+    Args:
+      fib_levels_per_tf: {"4h": {"retr_500": 70700.0, ...}, "D": {...}, ...}
+        From compute_fib_levels per TF.
+      round_levels: output of compute_round_levels.
+      wt_dc_zone: from existing wt_dc_delta._run_redzone() result.
+
+    Returns RedZoneState with active=True if proximity matches ANY level OR
+    wt_dc_zone is meaningful (BASELINE/TOP/BOTTOM).
+    """
+    fib_count = 0
+    nearest_dist = float("inf")
+    nearest_kind = "none"
+    if fib_levels_per_tf:
+        for tf, levels in fib_levels_per_tf.items():
+            for nm, lvl in levels.items():
+                if lvl <= 0:
+                    continue
+                d = (lvl - current_price) / current_price
+                if abs(d) <= proximity_pct / 100.0:
+                    fib_count += 1
+                    if abs(d) < abs(nearest_dist):
+                        nearest_dist = d
+                        nearest_kind = "fib"
+    round_within = False
+    if round_levels:
+        all_round = []
+        for k, v in round_levels.items():
+            if isinstance(v, list):
+                all_round.extend(v)
+        if is_within_proximity(current_price, all_round, proximity_pct):
+            round_within = True
+            for lvl in all_round:
+                if lvl <= 0:
+                    continue
+                d = (lvl - current_price) / current_price
+                if abs(d) <= proximity_pct / 100.0 and abs(d) < abs(nearest_dist):
+                    nearest_dist = d
+                    nearest_kind = "round"
+    wt_dc_active = wt_dc_zone in ("BASELINE", "TOP", "BOTTOM")
+    if wt_dc_active and nearest_kind == "none":
+        nearest_kind = "wt_dc"
+        nearest_dist = 0.0
+    active = (fib_count > 0) or round_within or wt_dc_active
+    return RedZoneState(
+        active=active,
+        nearest_kind=nearest_kind,
+        nearest_distance_pct=(nearest_dist * 100.0) if nearest_dist != float("inf") else 0.0,
+        fib_count_within=fib_count,
+        round_within=round_within,
+        wt_dc_zone=wt_dc_zone,
+    )
+
+
 # ── Decision functions (called identically by live + paper + backtest) ───────
 
 
