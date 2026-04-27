@@ -24,6 +24,7 @@ SERVICES = [
     ("ez_prices_ws.py", "ez_prices_ws"),
     ("ez_rankings.py", "ez_rankings"),
     ("ez_market_data.py", "ez_market_data"),
+    ("ez_orderbook.py", "ez_orderbook"),
     ("ez_positions_watchdog.py", "ez_positions_watchdog"),
     ("ez_backup.py", "ez_backup"),
     ("ez_news_scanner.py", "ez_news_scanner"),

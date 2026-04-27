@@ -32,6 +32,7 @@ from v8_quick_engine import (
     FAST_SYMBOLS_CRYPTO, FAST_SYMBOLS_TRADIER,
     MEDIUM_SYMBOLS_CRYPTO, MEDIUM_SYMBOLS_TRADIER
 )
+from test_rate_guard import RateGuard
 
 _WORKER_STORES = None
 _WORKER_MODE = None
@@ -2482,6 +2483,10 @@ def main():
     best_sharpe = -999
     t_start = time.time()
     pass_num = 0
+    _sw_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
+    _sw_n_syms_guess = max(1, len(symbols_list) if symbols_list else 12)
+    _sw_rg = None if _sw_rg_disabled else RateGuard(n_accts=_sw_n_syms_guess, label=f"v8_quick_sweep.{args.mode}.{args.tier}")
+    _sw_total_trades = 0
 
     # Count existing winners from a resumed CSV
     if args.resume and csv_path.exists():
@@ -2508,8 +2513,13 @@ def main():
             writer.writeheader()
 
         def _process_result(result, todo_len):
-            nonlocal completed, best_sharpe, winners_found
+            nonlocal completed, best_sharpe, winners_found, _sw_total_trades
             completed += 1
+            _sw_total_trades += int(result.get("trades", 0) or 0)
+            if _sw_rg is not None:
+                _sw_syms_used = max(1, int(result.get("symbols_used", _sw_n_syms_guess) or _sw_n_syms_guess))
+                _sw_rg.n_accts = max(1, completed * _sw_syms_used)
+                _sw_rg.tick(_sw_total_trades)
             cfg_dict = result.get("config", {})
             row = {
                 "run_id": result["run_id"],
@@ -2682,6 +2692,15 @@ def main():
 
     if dead_csvfile:
         dead_csvfile.close()
+
+    if _sw_rg is not None and completed > 0:
+        try:
+            _sw_start_dt = datetime.strptime(args.start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            _sw_per_cfg_days = max((datetime.now(timezone.utc) - _sw_start_dt).days, 1)
+        except Exception:
+            _sw_per_cfg_days = 365
+        _sw_rg.n_accts = max(1, completed * _sw_n_syms_guess)
+        _sw_rg.final_check(_sw_total_trades, test_window_days=_sw_per_cfg_days)
 
     winner_str = f"  Winners (sharpe>={winner_floor:.2f}): {winners_found}/{target_winners}\n" if target_winners > 0 else ""
     dead_str = f"  Dead log: {dead_log_path}\n" if dead_log_path else ""

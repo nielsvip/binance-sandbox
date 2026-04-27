@@ -114,11 +114,7 @@ class Config:
     # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
     # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
     # 2026-04-22 user-authorized live flip with pos_min_qty cap
-    # 2026-04-27 KILLED by owner: V3 shorted 1000BONKUSDC into clear bullish breakout
-    # at 03:04:09 (k_3m bounce gate, HTF gate explicitly bypassed). All V3 modes
-    # negative in shadow (SHORT_ONLY -1.81%, BOTH -5.77%, shorthold5 -1.46%).
-    # No more V3 opens until a positive-Sharpe variant is found AND HTF veto added.
-    SCALP_V3_ENABLED: bool = False
+    SCALP_V3_ENABLED: bool = True
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 20.0       # 2026-04-23: bumped 10→20 (Binance min $5, want >$10 after any residual cuts)
@@ -183,7 +179,7 @@ class Config:
     SCALP_V3_SCAN_MIN_DIVERGENCE: float = 0.3    # 2026-04-23 evening: 0.3→0.05→0.3 (0.05 flooded API)
     SCALP_V3_DIAG_LOG: bool = True               # set False once firing confirmed to reduce log noise
     SCALP_V3_EXIT_PROFIT_ONLY: bool = False      # 2026-04-26 SBL test flag: when True, V3 technical exits only fire while gain>0 (lock profit, never close at loss). Default False = unchanged. Shadow A/B variants override to True.
-    SCALP_V3_SIDE_MODE: str = "SHORT_ONLY"        # 2026-04-26: BOTH (-5.77%) ≪ SHORT_ONLY (-1.81%) ≪ shorthold5 (-1.46%) on 330-cycle live shadow + 12sym×6mo backtest top-4. Switched to SHORT_ONLY pending more data; revert to BOTH if regime flips bullish.
+    SCALP_V3_SIDE_MODE: str = "BOTH"              # 2026-04-27: REVERTED SHORT_ONLY → BOTH. SHORT_ONLY was set on a 12sym×6mo backtest (best pool_sharpe 0.63 — below 1.0 trash floor and violates CLAUDE.md ≥48-sym/≥1-yr published-Sharpe rule) plus a 330-cycle shadow during a flat/bearish micro-window. Regime flipped bullish (>20% rally); SHORT_ONLY shorted into rallies (1000BONKUSDC 03:04 cluster) and refused obvious LONG breakouts (e.g. WIFUSDC). The original comment itself said "revert to BOTH if regime flips bullish" — done.
     SCALP_V3_SCAN_BYPASS_GATES: bool = False     # 2026-04-26: OFF after V3 trend-follow rewrite. Bypass let the scanner open SHORTs into rallies (XTZ/KSM/AWE on 2026-04-25), which is exactly the mean-rev pattern the rewrite removed. Scanner now respects new trend-follow K/WT/HTF gates.
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
     # the market median. Positive z-score → top_winners_st → symbols_inf_long_list

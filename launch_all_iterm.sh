@@ -61,8 +61,9 @@ launch_tab "$INFRA_WIN" "SHARE_IND" "$PY ez_share_ind.py"
 launch_tab "$INFRA_WIN" "IND_MERGER" "$PY ez_indicators_merger.py"
 launch_tab "$INFRA_WIN" "MARK_PRICES" "$PY ez_mark_prices.py"
 launch_tab "$INFRA_WIN" "NEWS_SCANNER" "$PY ez_news_scanner.py"
+launch_tab "$INFRA_WIN" "ORDERBOOK" "$PY ez_orderbook.py"
 
-echo "[$(date)] Infra launched (11 tabs). Waiting 30s for fresh data..."
+echo "[$(date)] Infra launched (12 tabs). Waiting 30s for fresh data..."
 sleep 30
 
 # Create Crypto Trading window

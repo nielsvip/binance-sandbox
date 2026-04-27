@@ -10615,12 +10615,8 @@ class MultiAccountTradeManager:
         if is_augment and not _original_action_was_reentry:
             _last_open_ts = _recent_opens.get(position_key, 0)
             if time.time() - _last_open_ts < _dup_cooldown:
-                # 2026-04-27 SCALP_V3 bypass: V3 has its own 60s internal cooldown via _v3_recent_opens. The wrapper's 900s gate is meant to stop runaway loops on hedge bug paths — V3 micro-entries ($20) are explicit user-authorized re-fires for trade-volume augmentation.
-                if 'SCALP_V3_OPEN' in str(reason or '').upper():
-                    logger.info(f"⚡ [DUPLICATE_OPEN_GUARD_V3_BYPASS] {position_key}: SCALP_V3 micro-entry ({(time.time() - _last_open_ts):.0f}s since last open) — bypassing 900s wrapper cooldown (V3 has own 60s gate)")
-                else:
-                    logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
-                    return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
+                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
+                return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
         # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. No exceptions. Not hedge. Not reentry. Not anything.
         # ONLY exception: REENTRY on position <= min_pos_qty (rebuilding from near-zero, API-verified).
         if is_augment:
@@ -11020,14 +11016,8 @@ class MultiAccountTradeManager:
             logger.info(f'[execute _trade_action] {position_key} k_1m:{k_1m} k_1m_prev:{k_1m_prev} d_1m:{d_1m} 3:{d_3m} k_3m:{k_3m} p{k_3m_prev} d{d_3m} 15:{k_15m} p{k_15m_prev} d{d_15m} dc4l1:{dc_low4_1m}, dc4h1:{dc_high4_1m}')
             _stoch_uncalc = (k_3m == 0 and d_3m == 0) or (k_15m == 0 and d_15m == 0)
             if _stoch_uncalc and ('OPEN' in action or 'AUGMENT' in action):
-                # 2026-04-27 SCALP_V3 bypass: V3 entry's own check_scalp_v3_live_entry already validated stoch_k_3m + stoch_k_15m before firing.
-                # If they appear "uncalculated" here it's because the post-decision indicator-snapshot fetch returned a stale 0/0 default.
-                # V3 should not be re-blocked by the staleness gate after passing its own checks.
-                if 'SCALP_V3_OPEN' in str(reason or '').upper():
-                    logger.info(f"⚡ [UNCALC_STOCH_V3_BYPASS] {position_key}: SCALP_V3 entry — bypassing uncalc-stoch staleness gate (k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m})")
-                else:
-                    logger.warning(f'[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m}')
-                    return f'{position_key}_BLOCKED_UNCALCULATED_STOCH'
+                logger.warning(f'[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m}')
+                return f'{position_key}_BLOCKED_UNCALCULATED_STOCH'
             # HTF TREND SCORING — now via shared trading_policy (was 18 lines of inline scoring)
             _htf_dir_eta, _htf_score_eta = trading_policy.check_htf_trend(i, current_price)
             _htf_bull = max(0, _htf_score_eta); _htf_bear = max(0, -_htf_score_eta)
@@ -11752,12 +11742,8 @@ class MultiAccountTradeManager:
                     return "BLOCKEDAUGMENT_NOT_ALLOWED_NEGATIVE_GAIN"
                 quantity = max( 6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
             if quantity <= 3 * config.MIN_POSITION_SIZE / current_price:
-                # 2026-04-27 SCALP_V3 bypass: V3 entries are deliberately tiny ($20 cap) — don't reject them as "shitty idea".
-                if 'SCALP_V3_OPEN' in str(reason or '').upper():
-                    logger.info(f"⚡ [SHITTY_BYPASS_V3] {position_key}: SCALP_V3 micro-entry — bypassing qty-floor reject (qty=${quantity*current_price:.2f})")
-                else:
-                    logger.warning(f'{position_key} order not_allowed no quantity left ${quantity*current_price} should have been killed before this point')
-                    return "BLOCKED_AUGMENT_NOT_ALLOWED_SHITTY IDEA"#if account_key == 'inf' :
+                logger.warning(f'{position_key} order not_allowed no quantity left ${quantity*current_price} should have been killed before this point')
+                return "BLOCKED_AUGMENT_NOT_ALLOWED_SHITTY IDEA"#if account_key == 'inf' :
             if ((is_long and k_3m > 70 or k_15m > 70) or (not is_long and k_3m < 30 or k_15m < 30)) and self.is_same_direction(position_side, side):
                 quantity = 0.7 * quantity
             if ((is_long and k_15m < k_15m_prev or ha_3m=='red') or (not is_long and k_15m > k_15m_prev or ha_3m=='green')) and self.is_same_direction(position_side, side): logger.info(f'{position_key} fffffff execute_ after 15m check $ {quantity*current_price}')
@@ -11901,10 +11887,6 @@ class MultiAccountTradeManager:
             # 2026-04-09: use 0.5×MIN_GAIN floor so pullback augments at 1.5% pass through.
             _apg_floor = 0.5 * getattr(config, 'MIN_GAIN', 3.0)
             _gain_ok = _pos_gain >= _apg_floor
-            # 2026-04-27 SCALP_V3 bypass: $20 micro-entries by V3 should not be rate-limited by augment guard.
-            if not _gain_ok and 'SCALP_V3_OPEN' in str(reason or '').upper():
-                logger.info(f"⚡ [AUGMENTED_POSITIONS_GUARD_V3_BYPASS] {position_key}: SCALP_V3 micro-entry — bypassing already-augmented gate (gain={_pos_gain:.2f}%, action={action})")
-                _gain_ok = True
             if not _gain_ok:
                 logger.critical(f"🚫🚫🚫 [AUGMENTED_POSITIONS_GUARD] {position_key}: BLOCKED — already augmented {_aug_age:.0f}s ago. gain={_pos_gain:.2f}% < {_apg_floor:.2f}% (0.5×MIN_GAIN) action={action}")
                 return f"BLOCKED_ALREADY_AUGMENTED_{position_key}"

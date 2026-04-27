@@ -2486,6 +2486,7 @@ def simulate(stores, cfg, capital=10000.0):
     early_abort = False
     _rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
     _rg = None if _rg_disabled else RateGuard(n_accts=1, label=f"v8_quick_engine.simulate.{getattr(cfg, 'MODE', 'crypto')}")
+    _rg_max_n = 0
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
     _bph_15m = 15 // _ltf_mins   # bars per 15m period: 5 (crypto/3m) or 3 (tradier/5m)
@@ -3259,6 +3260,8 @@ def simulate(stores, cfg, capital=10000.0):
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
         if _rg is not None:
+            if n > _rg_max_n:
+                _rg_max_n = n
             _rg.n_accts = max(1, symbols_processed)
             _rg.tick(len(all_pnl))
         if ea_enabled:
@@ -3273,7 +3276,8 @@ def simulate(stores, cfg, capital=10000.0):
                         break
     if _rg is not None and not early_abort:
         _rg.n_accts = max(1, symbols_processed)
-        _rg.final_check(len(all_pnl))
+        _rg_days = (_rg_max_n * _ltf_mins / 1440.0) if _rg_max_n > 0 else None
+        _rg.final_check(len(all_pnl), test_window_days=_rg_days)
     return _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort)
 
 

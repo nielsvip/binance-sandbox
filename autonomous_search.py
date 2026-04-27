@@ -12,6 +12,9 @@ import multiprocessing as mp
 from dataclasses import fields
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_rate_guard import RateGuard
+
 try:
     from scipy.stats import norm as _scipy_norm
     _HAVE_SCIPY = True
@@ -370,6 +373,11 @@ def main():
 
         best_gain = -1e9
         best_rank_score = -1e9  # tracks best by RANKING_METRIC (DSR by default)
+        _as_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
+        _as_n_syms = max(1, len(subset))
+        _as_rg = None if _as_rg_disabled else RateGuard(n_accts=_as_n_syms, label=f"autonomous_search.{args.mode}")
+        _as_total_trades = 0
+        _as_completed_iters = 0
         for i in range(args.n_max):
             cfg = copy.deepcopy(base)
             ovr = _sample_cfg(base, args.bool_flip_prob, args.numeric_perturb_prob)
@@ -392,6 +400,11 @@ def main():
             tr = r.get("trades", 0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
             n_syms = len(subset)
+            _as_completed_iters += 1
+            _as_total_trades += int(tr or 0)
+            if _as_rg is not None:
+                _as_rg.n_accts = max(1, _as_completed_iters * _as_n_syms)
+                _as_rg.tick(_as_total_trades)
             gain_sym_yr = round(gain / n_syms / n_years, 4)
             avg_gain_trade = round(gain / tr, 4) if tr else 0.0
             gain_per_yr = round(gain / n_years, 4)
@@ -461,6 +474,9 @@ def main():
                 print(f"[AUTO_SEARCH] AUTO_RESTART after {args.auto_restart_iters} iters (max_rss≈{rss_mb}MB). "
                       f"Watchdog will respawn — CSV preserved at {csv_path}", flush=True)
                 csv_f.flush()
+                if _as_rg is not None and _as_completed_iters > 0:
+                    _as_rg.n_accts = max(1, _as_completed_iters * _as_n_syms)
+                    _as_rg.final_check(_as_total_trades, test_window_days=n_years * 365.25)
                 sys.exit(0)
 
 

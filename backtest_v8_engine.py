@@ -37,6 +37,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
+from test_rate_guard import RateGuard
+
 # ═══════════════════════════════════════════════════════════════
 # STEP 0: Set dummy env vars BEFORE any import touches AccountConfig
 # ═══════════════════════════════════════════════════════════════
@@ -1436,6 +1438,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         sorted_ts = sorted_ts[:_v8_max_bars]
         v8_logger.info(f"[V8_MAX_BARS] capped sim to {_v8_max_bars} bars")
 
+    _bt_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
+    _bt_rg = None if _bt_rg_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.crypto.{account_key}")
+
     for step, ts in enumerate(sorted_ts):
         _sim_ts[0] = float(ts)
         # Heartbeat every 10s wall-clock so sweep monitor knows engine is alive
@@ -1443,6 +1448,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if _now_real - _last_heartbeat > 10.0:
             print(f"V8_HEARTBEAT: step={step}/{len(sorted_ts)} closes={_live_pnl['n_closes']}", flush=True)
             _last_heartbeat = _now_real
+        if _bt_rg is not None:
+            _bt_rg.tick(_live_pnl["n_closes"])
 
         # Clear per-bar cooldowns/debounces — in live these use wall clock,
         # in V8 multiple bars process per real second so cooldowns block everything.
@@ -1843,6 +1850,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # NEW 2026-04-26 sweep switches: per-run counter dump (crypto path).
     v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  counters={_v8ns_counters}")
     print(f"V8_NEW_SWITCHES: vt={_v8ns_counters['vol_target_applied']} dk={_v8ns_counters['dd_kelly_applied']} tm={_v8ns_counters['tsmom_applied']} mn={_v8ns_counters['minervini_block']} cl={_v8ns_counters['clenow_block']} pt={_v8ns_counters['proximity_top_block']} sf={_v8ns_counters['squeeze_fire_aligned']} dd_min={_v8ns_dd_state.get('dd_pct', 0.0):.2f}", flush=True)
+    if _bt_rg is not None and len(sorted_ts) >= 2:
+        _bt_days = max((sorted_ts[-1] - sorted_ts[0]) / 86400.0, 1e-6)
+        _bt_rg.final_check(_live_pnl["n_closes"], test_window_days=_bt_days)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
@@ -3030,6 +3040,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     t0 = _real_time_module.time()
     report_every = 200 if _SWEEP_MODE else max(1, len(all_ts) // 20)
     _last_heartbeat_t = _real_time_module.time()
+    _bt_rg_t_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
+    _bt_rg_t = None if _bt_rg_t_disabled else RateGuard(n_accts=max(1, len(stores)), label=f"backtest_v8_engine.tradier.{account_key}")
     for step, ts in enumerate(all_ts):
         _sim_ts[0] = float(ts)
         if _SWEEP_MODE:
@@ -3038,6 +3050,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _t_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
                 print(f"V8_HEARTBEAT: step={step}/{len(all_ts)} closes={_t_closes}", flush=True)
                 _last_heartbeat_t = _now_real
+        if _bt_rg_t is not None and (step % 50 == 0):
+            _bt_rg_t.tick(len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')]))
         for sym, store in stores.items():
             idx = store.ts_to_idx.get(ts, -1)
             if idx < 0: continue
@@ -3179,6 +3193,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # NEW 2026-04-26 sweep switches: per-run counter dump (tradier path).
     v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  equity_pct={_v8ns_equity_pct[0]:+.2f}%  counters={_v8ns_counters}")
     print(f"V8_NEW_SWITCHES: vt={_v8ns_counters['vol_target_applied']} dk={_v8ns_counters['dd_kelly_applied']} tm={_v8ns_counters['tsmom_applied']} mn={_v8ns_counters['minervini_block']} cl={_v8ns_counters['clenow_block']} pt={_v8ns_counters['proximity_top_block']} sf={_v8ns_counters['squeeze_fire_aligned']} dd_min={_v8ns_dd_state.get('dd_pct', 0.0):.2f}", flush=True)
+    if _bt_rg_t is not None and len(all_ts) >= 2:
+        _bt_t_days = max((all_ts[-1] - all_ts[0]) / 86400.0, 1e-6)
+        _bt_t_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
+        _bt_rg_t.final_check(_bt_t_closes, test_window_days=_bt_t_days)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
     log_dir = BASE_PATH / "backtest_v8" / "logs"

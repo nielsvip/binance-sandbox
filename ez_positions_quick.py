@@ -11300,7 +11300,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 _is_aug_target = bool(_is_winner_aug or _is_pullback_aug)
                 _is_open_target = not _is_aug_target
                 _should_gate = (_is_open_target and _htf_apply_open) or (_is_aug_target and _htf_apply_aug)
-                if _should_gate and not (_htf_bypass_rz and _is_rz_entry) and 'RATIO_RECOVERY' not in str(reason or '').upper():
+                # 2026-04-27 V3 must NEVER bypass the HTF direction gate. V3 is mean-rev
+                # so its LTF bypass stays (line 11283), but shorting an uptrending coin or
+                # longing a downtrending coin = suicide. 1000BONKUSDC SHORT 03:04 incident.
+                _is_v3_entry = str(reason or '').upper().startswith('SCALP_V3_OPEN_')
+                if _should_gate and not (_htf_bypass_rz and _is_rz_entry and not _is_v3_entry) and 'RATIO_RECOVERY' not in str(reason or '').upper():
                     _htf_pass, _htf_met, _htf_total, _htf_reason = check_htf_direction_gate(_gate_ind, _gate_is_long, current_price)
                     if not _htf_pass:
                         logger.warning(f"🚫 [HTF_DIRECTION_GATE] {position_key}: BLOCKED {action} ({reason[:60] if reason else ''}) — {_htf_reason}")
