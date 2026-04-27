@@ -1772,14 +1772,57 @@ class TradierIndicatorOrchestrator:
         self._schedule_order =["D", "4h", "1h", "15m", "5m", "3m", "1m"]
         self._shutdown = asyncio.Event()
         self.executor = ThreadPoolExecutor(max_workers=4)
-        self.cycle_semaphore = asyncio.Semaphore(4)
+        # 2026-04-27 user rule: indicators max 1 min stale. Bumped from 4→24.
+        # If we hit Tradier 429s we back off via _http_semaphore (which still throttles total in-flight).
+        self.cycle_semaphore = asyncio.Semaphore(int(getattr(self.config, 'TRADIER_INDICATORS_CYCLE_CONCURRENCY', 24)))
         ensure_directory(self.config.DATA_DIR)
         self._load_existing_data()
         self._init_state()
-        self._http_semaphore = asyncio.Semaphore(15) 
+        self._http_semaphore = asyncio.Semaphore(int(getattr(self.config, 'TRADIER_INDICATORS_HTTP_CONCURRENCY', 48)))  # was 15 — 2026-04-27 speedup
 
     def _load_symbols(self) -> List[str]:
         collected: Set[str] = set()
+        # 2026-04-27 user rule: indicators max 1 min stale. Narrow universe to
+        # tradeable_keys watchlist + active position symbols (~120) instead of
+        # the 270-symbol master list. 270 × 7 timeframes × 4 concurrency = ~12 min cycle.
+        # Narrow + bumped concurrency hits the <60s target.
+        narrow = bool(getattr(self.config, 'TRADIER_INDICATORS_NARROW_UNIVERSE', True))
+        if narrow:
+            base_path = Path(getattr(self.config, 'BASE_PATH', '/Users/niels/Documents/binance'))
+            for fn in ('symbols_trb_long.json', 'symbols_trb_short.json',
+                       'symbols_trc_long.json', 'symbols_trc_short.json',
+                       'symbols_tra_long.json', 'symbols_tra_short.json'):
+                p = base_path / fn
+                if not p.exists():
+                    continue
+                try:
+                    with open(p) as f:
+                        data = json.load(f)
+                    if isinstance(data, list):
+                        collected.update(str(s).upper() for s in data if isinstance(s, str) and s.strip())
+                except Exception as e:
+                    logger.warning(f"_load_symbols: {fn} read err: {e}")
+            for acct in ('trb', 'trc', 'tra'):
+                for side in ('long_positions.json', 'short_positions.json'):
+                    p = base_path / acct / side
+                    if not p.exists():
+                        continue
+                    try:
+                        with open(p) as f:
+                            data = json.load(f)
+                        if isinstance(data, dict):
+                            for k in data.keys():
+                                # keys look like "AAPL_LONG" / "MSFT_SHORT" / option OCC
+                                sym = str(k).split('_', 1)[0].upper()
+                                # Exclude option OCCs (PLTR260717C00150000) — those have digits
+                                if sym and sym.isalpha():
+                                    collected.add(sym)
+                    except Exception as e:
+                        logger.warning(f"_load_symbols: {acct}/{side} read err: {e}")
+            if collected:
+                logger.info(f"_load_symbols (narrow): {len(collected)} symbols (watchlist + active positions)")
+                return sorted(collected)
+            logger.warning("_load_symbols (narrow): empty — falling back to SYMBOLS_FILE master list")
         if self.config.SYMBOLS_FILE.exists():
             try:
                 with open(self.config.SYMBOLS_FILE, "r") as f:
@@ -2002,13 +2045,17 @@ class TradierIndicatorOrchestrator:
             self._save_due = True
             
     async def _schedule_loop(self) -> None:
+        # 2026-04-27 user rule: indicators max 1 min stale. Sleep between cycles
+        # cut from 15s to a configurable value (default 1s). The cycle itself is the
+        # rate-limit bound; this just removes the idle gap.
+        _idle = float(getattr(self.config, 'TRADIER_INDICATORS_IDLE_SLEEP_SEC', 1.0))
         while not self._shutdown.is_set():
             try:
                 await self.run_cycle()
-                await asyncio.sleep(15)
+                await asyncio.sleep(_idle)
             except Exception as e:
                 logger.error(f"Schedule Loop Error: {e}")
-                await asyncio.sleep(15)
+                await asyncio.sleep(_idle)
 
     def _required_by_timeframe(self, timeframe: str) -> List[str]:
         base_indicators =[f"timestamp_{timeframe}", f"dc_high_{timeframe}", f"dc_low_{timeframe}", f"dc_basis_{timeframe}",

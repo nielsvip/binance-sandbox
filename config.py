@@ -2567,6 +2567,95 @@ class Config:
     ERROR_RECOVERY_SLEEP_SECONDS: int = 60  # Sleep after errors
     # INITIAL_WAIT_SECONDS: int = 30  # Initial wait for setup
 
+    # ════════════════════════════════════════════════════════════════════
+    # BTC-DEDICATED LOOP (flz:BTCUSDC + inf BTC trades). Default ALL OFF.
+    # Spec: BTC_DEDICATED_LOOP_DESIGN_20260427.md. 20× leverage. Path B (technical exit
+    # + guaranteed reentry) is default; sweep validates Path A (hedge) too.
+    # CRITICAL: paper-live-backtest parity — same Python function objects.
+    # ════════════════════════════════════════════════════════════════════
+    BTC_DEDICATED_ENABLED: bool = False                                   # MASTER kill switch — flip True only after sweep proof + paper days + user approval
+    BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
+    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDT at is_tradeable
+
+    # --- Red zone composition (existing wt_dc + new fib + new round numbers) ---
+    BTC_RZ_USE_WT_DC: bool = True
+    BTC_RZ_USE_FIB: bool = True
+    BTC_RZ_USE_ROUND: bool = True
+    BTC_RZ_PROXIMITY_PCT: float = 0.5                                     # within X% of any level = active red zone
+
+    # --- Fib levels (4h/D/W/M/Y) ---
+    BTC_FIB_LOOKBACK_4H: int = 200
+    BTC_FIB_LOOKBACK_D: int = 180
+    BTC_FIB_LOOKBACK_W: int = 104
+    BTC_FIB_LOOKBACK_M: int = 24
+    BTC_FIB_LOOKBACK_Y: int = 5
+    BTC_FIB_RECOMPUTE_ON_NEW_HL: bool = True                              # recompute fib for a TF whenever it makes a new local H or L
+
+    # --- Round-number bands ---
+    BTC_ROUND_INC_PRIMARY_USD: float = 5000.0
+    BTC_ROUND_INC_SECONDARY_USD: float = 1000.0
+    BTC_ROUND_BANDS_EACH_SIDE: int = 8
+
+    # --- Multi-TF accelerating WT delta gate (PRIMARY entry trigger) ---
+    BTC_ACCEL_RAMP_ENABLED: bool = True                                   # Δwt > Δwt_prev > 0 on every TF
+    BTC_ACCEL_RAMP_MIN_TFS: int = 5                                       # default strict (all 5: 3m,15m,1h,4h,D)
+    BTC_ACCEL_RAMP_REQUIRE_POSITIVE: bool = True                          # require accel > 0 (true ramp), not just rising-from-negative
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_TF: str = "3m"
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_BARS: int = 3
+
+    # --- Divergence (continuous monitoring on multiple indicators) ---
+    BTC_DIVERGENCE_ENABLED: bool = True
+    BTC_DIVERGENCE_BULL_MIN_INDS: int = 2                                 # 2-of-5 inds (WT/RSI/MFI/OBV/CVD) showing bull div
+    BTC_DIVERGENCE_BEAR_MIN_INDS: int = 2
+    BTC_DIVERGENCE_LOOKBACK_BARS: int = 5
+    BTC_DIVERGENCE_BLOCK_AGAINST: bool = True                             # bear div blocks LONG entries
+    BTC_DIVERGENCE_EXIT_AGAINST: bool = True                              # bear div triggers LONG exit
+
+    # --- Entry trigger composition ---
+    BTC_ENTRY_PRIMARY_REQUIRE_RZ: bool = True                             # red zone must be active
+    BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP: bool = True                     # accel ramp must align
+    BTC_ENTRY_PRIMARY_BLOCK_OPPOSING_DIV: bool = True
+    BTC_ENTRY_DIV_ONLY_ENABLED: bool = False                              # secondary path: divergence-strong + RZ
+    BTC_ENTRY_DIV_ONLY_MIN_INDS: int = 3
+
+    # --- Risk path selection ---
+    BTC_RISK_PATH: str = "technical"                                      # "technical" (default per user) | "hedge" — sweep both
+
+    # --- Risk path A: HEDGE (sweep all settings) ---
+    BTC_HEDGE_TRIGGER_LOSS_PCT: float = -0.4                              # tight at 20× (target: hedge before -0.55%)
+    BTC_HEDGE_SAME_SYMBOL_PCT: float = 1.0
+    BTC_HEDGE_MIN_HOLD_BARS: int = 10
+    BTC_HEDGE_WT_KILL_CONFIRM_TF: str = "1h"
+    BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True
+    BTC_HEDGE_WT_VEL_GATE_ENABLED: bool = True
+    BTC_HEDGE_REQUIRE_4OF5_WT_TFS: bool = True
+    BTC_HEDGE_NEVER_CLOSE_AT_LOSS: bool = True
+
+    # --- Risk path B: TECHNICAL EXIT + GUARANTEED REENTRY (default per user 2026-04-27) ---
+    BTC_TECH_EXIT_WT_MIN_TFS: int = 3
+    BTC_TECH_EXIT_DC_BREACH_TF: str = "15m"
+    BTC_TECH_EXIT_AT_ANY_PNL: bool = True                                 # bypass NOLOSS — sell at technicals at any P/L
+    BTC_GUARANTEED_REENTRY_ENABLED: bool = True
+    BTC_GUARANTEED_REENTRY_MAX_AGE_BARS: int = 480                        # 480 × 3m = 24h max persistence
+    BTC_GUARANTEED_REENTRY_MIN_GAP_BARS: int = 5
+    BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE: bool = True
+    BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
+
+    # --- 20× leverage hard caps (CRITICAL — 2.5% loss = 50% account wipe) ---
+    BTC_LEVERAGE: float = 20.0
+    BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0                          # OWN-CAPITAL cap per trade. With 20× → $1,800 effective notional. Per user 2026-04-27.
+    BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0                             # max concurrent OWN-capital across all BTC positions ($3,600 effective at 20×)
+    BTC_HARD_LOSS_USD_PER_TRADE: float = 10.0                             # max $ loss per trade — implies ~0.55% adverse on $1,800 notional. Hard panic exit.
+    BTC_DAILY_LOSS_PCT_FLOOR: float = -0.5                                # halt new entries if day PnL < -0.5%
+    BTC_WEEKLY_LOSS_PCT_FLOOR: float = -1.5                               # halt all BTC trading 24h if week PnL < -1.5%
+    BTC_PYRAMID_DISABLED: bool = True                                     # NO augmenting at 20×
+    BTC_INTRABAR_REVERSAL_EXIT: bool = True                               # exit on accel sign-flip without TF confirm
+    BTC_REGIME_PAUSE_ENABLED: bool = True                                 # pause new entries during BTC funding spike or extreme OI
+
+    # --- Paper/live parity (HARD RULE per user 2026-04-27) ---
+    BTC_PAPER_PARITY_VERIFY_AT_STARTUP: bool = True                       # check id() equality of decision functions paper-vs-live
+    BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT: float = 0.1                      # alarm if paper-live decision drift > 0.1% per day
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))

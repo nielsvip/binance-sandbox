@@ -11370,10 +11370,12 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if _pos_is_open and _is_entry and _action_upper != 'AUGMENT' and _action_upper != 'QUICK_AUGMENT':
             logger.warning(f"🚫 [POSITION_ALREADY_OPEN] {position_key}: BLOCKED {action} — amt={_fresh_amt:.4f} > min={_min_qty:.4f} (val=${_fresh_val:.1f}). Position is OPEN. Use AUGMENT only.")
             return False, f"BLOCKED_POSITION_ALREADY_OPEN"
-        # ATOMIC DOUBLE-OPEN GUARD: If position is CLOSED (amt=0) and another thread is already opening it, block
+        # ATOMIC DOUBLE-OPEN GUARD: If position is CLOSED (amt=0) and another thread is already opening it, block.
+        # 2026-04-27 (ACHUSDT incident): timeout reduced 60s→15s. Lock leaked on success-path + on `result contains BLOCK`
+        # early return (line 11821) — no pop on those paths. Until refactor adds try/finally, 15s ceiling makes hedge retries viable.
         if not _pos_is_open and _is_entry:
             _inflight_ts = _open_in_flight.get(position_key, 0)
-            if time.time() - _inflight_ts < 60:
+            if time.time() - _inflight_ts < 15:
                 logger.critical(f"🚫🚫 [DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — another OPEN is in-flight (started {time.time() - _inflight_ts:.0f}s ago). RACE CONDITION PREVENTED.")
                 return False, f"BLOCKED_DOUBLE_OPEN_IN_FLIGHT"
             _open_in_flight[position_key] = time.time()
@@ -11818,8 +11820,9 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 _open_in_flight.pop(position_key, None)  # clear atomic flag on early return
                 return False, "BLOCKED_NOT_TRADEABLE"
         success = 'SUCCESS' in str(result).upper()
-        if result and 'BLOCK' in result: 
-            return False, result 
+        if result and 'BLOCK' in result:
+            _open_in_flight.pop(position_key, None)  # 2026-04-27 leak fix: BLOCK return must clear the in-flight lock
+            return False, result
         if not success:
             success = await verify_trade_via_websocket(trade_manager, account_key, position_key, qty, is_long, timeout_seconds=9, action=action)
             if result and not success and 'BLOCK' not in result:
@@ -11828,6 +11831,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if not success:
             _open_in_flight.pop(position_key, None)
         if success:
+            _open_in_flight.pop(position_key, None)  # 2026-04-27 leak fix: success must also clear the in-flight lock so next legitimate open isn't blocked
             _hard_trade_guard[position_key] = time.time()  # CRITICAL FIX: record successful trade for duplicate guard
             # 2026-04-21 — record entry-action successes separately from close/reduce
             _ok_up = (action or '').upper()

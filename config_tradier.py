@@ -541,6 +541,13 @@ class TradierConfig:
     KLINES_CACHE_DIR: Path = BASE_PATH / "klines_cache" / "tradier"
     SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"
     TRADIER_SYMBOLS_FILE: Path = BASE_PATH / "symbols_tradier.json"
+    # 2026-04-27 user rule: indicators max 1 min stale. Narrow universe + bump parallelism.
+    # 270 syms × 7 TFs × cycle_sem=4 → ~12 min. Narrow (~120, watchlist + positions) +
+    # cycle_sem=24 + http=48 + idle=1s → expected <60s. Flip NARROW=False to revert.
+    TRADIER_INDICATORS_NARROW_UNIVERSE: bool = True
+    TRADIER_INDICATORS_CYCLE_CONCURRENCY: int = 24       # was 4
+    TRADIER_INDICATORS_HTTP_CONCURRENCY: int = 48        # was 15
+    TRADIER_INDICATORS_IDLE_SLEEP_SEC: float = 1.0       # was 15
     LEADERBOARD_LONG: Path = BASE_PATH / "symbols_long_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     LEADERBOARD_SHORT: Path = BASE_PATH / "symbols_short_tr.json"  # DEAD_CONFIRMED (priority 15/100) — no plausible wiring site found 20260416
     INDICATORS_FILE: Path = DATA_DIR / "tradier_indicators_latest.json"  # WIRED 2026-04-16 (priority 15/100) — tradier_rankings.py:144

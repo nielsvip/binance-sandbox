@@ -11377,11 +11377,11 @@ class MultiAccountTradeManager:
                     quantity += 1.5 * SP
                 elif (position_side == "LONG" and current_price > i.get('sma_200_1h',0.0) * 1.1) or (position_side == "SHORT" and current_price < i.get('sma_200_1h',0.0) * 0.9):
                     quantity += 1 * SP
-                if (position_side == "LONG" and i.get('dc_low4_15m',50) > dc_low_15m) or (position_side == "SHORT" and i.get('dc_high4_15m') < dc_high_15m ):
+                if (position_side == "LONG" and i.get('dc_low4_15m',0) > dc_low_15m) or (position_side == "SHORT" and i.get('dc_high4_15m',1e18) < dc_high_15m ):
                     quantity += 1.5 * SP
-                if (position_side == "LONG" and i.get('dc_low4_1h') > dc_low_1h) or (position_side == "SHORT" and i.get('dc_high4_1h') < dc_high_1h ):
-                    quantity += SP 
-                if (position_side == "LONG" and i.get('dc_low4_4h') > dc_low_4h) or (position_side == "SHORT" and i.get('dc_high4_4h') < dc_high_4h ):
+                if (position_side == "LONG" and i.get('dc_low4_1h',0) > dc_low_1h) or (position_side == "SHORT" and i.get('dc_high4_1h',1e18) < dc_high_1h ):
+                    quantity += SP
+                if (position_side == "LONG" and i.get('dc_low4_4h',0) > dc_low_4h) or (position_side == "SHORT" and i.get('dc_high4_4h',1e18) < dc_high_4h ):
                     quantity += 0.5 * SP
                 if (position_side == "LONG" and dc_low_3m > dc_low_3m_ant) or (position_side == "SHORT" and dc_high_3m < dc_high_3m_ant ):
                     quantity += 3 * SP 
@@ -11399,8 +11399,8 @@ class MultiAccountTradeManager:
                     quantity += 0.25 * SP
                 if (position_side == "LONG" and (current_price >= dc_low_3m and current_price <= dc_basis_3m )) or (position_side == "SHORT" and (current_price <= dc_high_3m and current_price >= dc_basis_3m)) :
                     quantity += 0.2 * SP 
-                if (position_side == "LONG" and i.get('dc_low4_15m') < i.get('dc_low_15m_ant')) or (position_side == "SHORT" and i.get('dc_high4_15m') > i.get('dc_high_15m_ant') ):
-                    quantity = 0.3 * float(quantity) 
+                if (position_side == "LONG" and i.get('dc_low4_15m',1e18) < i.get('dc_low_15m_ant',0)) or (position_side == "SHORT" and i.get('dc_high4_15m',0) > i.get('dc_high_15m_ant',1e18) ):
+                    quantity = 0.3 * float(quantity)
                 if (position_side == "LONG" and current_price < dc_basis_1h) or (position_side == "SHORT" and current_price > dc_basis_1h ):
                     quantity = 0.5 * float(quantity) 
                 if (position_side == "LONG" and current_price < dc_basis_4h) or (position_side == "SHORT" and current_price > dc_basis_4h ):

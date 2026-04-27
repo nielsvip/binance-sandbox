@@ -738,6 +738,65 @@ class QuickConfig:
     TSMOM_LOW_CAP: float = 0.25
     TSMOM_HIGH_CAP: float = 1.5
 
+    # ============ BTC-DEDICATED LOOP (mirror of config.py BTC_* — sweepable) ============
+    # See BTC_DEDICATED_LOOP_DESIGN_20260427.md. All defaults match live config.py.
+    # Engine reads these from override_json or autonomous_search perturbation.
+    BTC_DEDICATED_ENABLED: bool = False
+    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True
+    BTC_RZ_USE_WT_DC: bool = True
+    BTC_RZ_USE_FIB: bool = True
+    BTC_RZ_USE_ROUND: bool = True
+    BTC_RZ_PROXIMITY_PCT: float = 0.5
+    BTC_FIB_LOOKBACK_4H: int = 200
+    BTC_FIB_LOOKBACK_D: int = 180
+    BTC_FIB_LOOKBACK_W: int = 104
+    BTC_FIB_LOOKBACK_M: int = 24
+    BTC_FIB_LOOKBACK_Y: int = 5
+    BTC_FIB_RECOMPUTE_ON_NEW_HL: bool = True
+    BTC_ROUND_INC_PRIMARY_USD: float = 5000.0
+    BTC_ROUND_INC_SECONDARY_USD: float = 1000.0
+    BTC_ROUND_BANDS_EACH_SIDE: int = 8
+    BTC_ACCEL_RAMP_ENABLED: bool = True
+    BTC_ACCEL_RAMP_MIN_TFS: int = 5
+    BTC_ACCEL_RAMP_REQUIRE_POSITIVE: bool = True
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_TF: str = "3m"
+    BTC_ACCEL_RAMP_PRICE_BOUNCE_BARS: int = 3
+    BTC_DIVERGENCE_ENABLED: bool = True
+    BTC_DIVERGENCE_BULL_MIN_INDS: int = 2
+    BTC_DIVERGENCE_BEAR_MIN_INDS: int = 2
+    BTC_DIVERGENCE_LOOKBACK_BARS: int = 5
+    BTC_DIVERGENCE_BLOCK_AGAINST: bool = True
+    BTC_DIVERGENCE_EXIT_AGAINST: bool = True
+    BTC_ENTRY_PRIMARY_REQUIRE_RZ: bool = True
+    BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP: bool = True
+    BTC_ENTRY_PRIMARY_BLOCK_OPPOSING_DIV: bool = True
+    BTC_ENTRY_DIV_ONLY_ENABLED: bool = False
+    BTC_ENTRY_DIV_ONLY_MIN_INDS: int = 3
+    BTC_RISK_PATH: str = "technical"          # "technical" | "hedge"
+    BTC_HEDGE_TRIGGER_LOSS_PCT: float = -0.4
+    BTC_HEDGE_SAME_SYMBOL_PCT: float = 1.0
+    BTC_HEDGE_MIN_HOLD_BARS: int = 10
+    BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED: bool = True
+    BTC_HEDGE_WT_VEL_GATE_ENABLED: bool = True
+    BTC_HEDGE_REQUIRE_4OF5_WT_TFS: bool = True
+    BTC_HEDGE_NEVER_CLOSE_AT_LOSS: bool = True
+    BTC_TECH_EXIT_WT_MIN_TFS: int = 3
+    BTC_TECH_EXIT_AT_ANY_PNL: bool = True
+    BTC_GUARANTEED_REENTRY_ENABLED: bool = True
+    BTC_GUARANTEED_REENTRY_MAX_AGE_BARS: int = 480
+    BTC_GUARANTEED_REENTRY_MIN_GAP_BARS: int = 5
+    BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE: bool = True
+    BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
+    BTC_LEVERAGE: float = 20.0
+    BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0
+    BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0
+    BTC_HARD_LOSS_USD_PER_TRADE: float = 10.0
+    BTC_DAILY_LOSS_PCT_FLOOR: float = -0.5
+    BTC_WEEKLY_LOSS_PCT_FLOOR: float = -1.5
+    BTC_PYRAMID_DISABLED: bool = True
+    BTC_INTRABAR_REVERSAL_EXIT: bool = True
+    BTC_REGIME_PAUSE_ENABLED: bool = True
+
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
         cfg = cls()
