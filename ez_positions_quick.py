@@ -16398,6 +16398,51 @@ async def _scalp_v3_attempt_open(sym: str, account_key: str, trade_manager,
     if forced_side == 'LONG' and div < -0.3 and abs(_ob_net) < _ob_div_conflict_net:
         logger.info(f"🚫 [V3_OB_CONFLICT] {sym} LONG rejected: div={div:+.2f}<-0.3 bearish but ob_net={_ob_net:.0f} (need |net|>={_ob_div_conflict_net:.0f} to override)")
         return False
+    # 2026-04-27 OB-LEADS-3M FLOW AGREEMENT GATE — kills the bleed pattern where OB SHORT fires during rallies
+    # because wall+void scores are static-liquidity geometry, not directional flow. Live wt_velocity is what
+    # actually moves BEFORE 3m bars print. If OB picks SHORT but wt_velocity_3m is positive (rally), reject.
+    # Mirror for LONG. With MODE=OFI, also/alternatively use ob_ofi_1s sign from Redis. Default OFF until A/B.
+    if bool(getattr(config, 'SCALP_V3_OB_FLOW_AGREE_ENABLED', False)):
+        _flow_mode = str(getattr(config, 'SCALP_V3_OB_FLOW_AGREE_MODE', 'WT_VEL')).upper()
+        _vel_3m = safe_fetch_float(ind.get('wt_velocity_3m', 0), 0)
+        _vel_1m = safe_fetch_float(ind.get('wt_velocity_1m', 0), 0)
+        _k_3m = safe_fetch_float(ind.get('stoch_k_3m', ind.get('k_3m', 50)), 50)
+        _k_3m_prev = safe_fetch_float(ind.get('k_3m_prev', _k_3m), _k_3m)
+        _vel3_min = float(getattr(config, 'SCALP_V3_OB_FLOW_VEL_3M_MIN', 0.0) or 0.0)
+        _vel1_min = float(getattr(config, 'SCALP_V3_OB_FLOW_VEL_1M_MIN', 0.0) or 0.0)
+        _k_agree_required = bool(getattr(config, 'SCALP_V3_OB_FLOW_K_AGREE', True))
+        if _flow_mode in ('WT_VEL', 'BOTH'):
+            if forced_side == 'LONG':
+                if _vel_3m <= -abs(_vel3_min) or _vel_1m <= -abs(_vel1_min):
+                    logger.info(f"🚫 [V3_OB_FLOW_DISAGREE] {sym} LONG rejected: wt_vel_3m={_vel_3m:+.2f} wt_vel_1m={_vel_1m:+.2f} (need both >= -min; OB says LONG but momentum is bearish)")
+                    return False
+                if _k_agree_required and _k_3m < _k_3m_prev:
+                    logger.info(f"🚫 [V3_OB_FLOW_DISAGREE] {sym} LONG rejected: k_3m={_k_3m:.0f}<prev={_k_3m_prev:.0f} (k falling against OB LONG)")
+                    return False
+            elif forced_side == 'SHORT':
+                if _vel_3m >= abs(_vel3_min) or _vel_1m >= abs(_vel1_min):
+                    logger.info(f"🚫 [V3_OB_FLOW_DISAGREE] {sym} SHORT rejected: wt_vel_3m={_vel_3m:+.2f} wt_vel_1m={_vel_1m:+.2f} (need both <= +min; OB says SHORT but momentum is bullish — RALLY-FADE pattern)")
+                    return False
+                if _k_agree_required and _k_3m > _k_3m_prev:
+                    logger.info(f"🚫 [V3_OB_FLOW_DISAGREE] {sym} SHORT rejected: k_3m={_k_3m:.0f}>prev={_k_3m_prev:.0f} (k rising against OB SHORT)")
+                    return False
+        if _flow_mode in ('OFI', 'BOTH'):
+            try:
+                import redis as _r_mod
+                _rc = _r_mod.Redis(host='localhost', port=6379, decode_responses=True)
+                _ob_raw_flow = _rc.get(f"orderbook:{sym}")
+                if _ob_raw_flow:
+                    _ob_dict = json.loads(_ob_raw_flow) if isinstance(_ob_raw_flow, str) else orjson.loads(_ob_raw_flow)
+                    _ofi = float(_ob_dict.get('ob_ofi_1s', 0) or 0)
+                    _ofi_min = float(getattr(config, 'SCALP_V3_OB_FLOW_OFI_MIN_ABS', 0.0) or 0.0)
+                    if forced_side == 'LONG' and _ofi < -abs(_ofi_min):
+                        logger.info(f"🚫 [V3_OB_FLOW_DISAGREE_OFI] {sym} LONG rejected: ob_ofi_1s={_ofi:.2f} (need >= -{_ofi_min:.2f}; flow is sell-pressured)")
+                        return False
+                    if forced_side == 'SHORT' and _ofi > abs(_ofi_min):
+                        logger.info(f"🚫 [V3_OB_FLOW_DISAGREE_OFI] {sym} SHORT rejected: ob_ofi_1s={_ofi:.2f} (need <= +{_ofi_min:.2f}; flow is buy-pressured — RALLY-FADE pattern)")
+                        return False
+            except Exception as _e_ofi:
+                logger.debug(f"[V3_OB_FLOW_OFI] {sym} OFI read failed: {_e_ofi}")
     # Build reason string with orderbook + divergence evidence
     decision = {
         'side': side,

@@ -57,9 +57,23 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     low_3m_prev = _sf(indicators.get('low_3m_prev', 0), 0)
     wt1_3m = _sf(indicators.get('wt1_3m', 0), 0)
     wt2_3m = _sf(indicators.get('wt2_3m', 0), 0)
-    if high_3m_prev <= 0 or low_3m_prev <= 0: return None
-    bar_rising = (high_3m > high_3m_prev) and (low_3m > low_3m_prev)
-    bar_falling = (high_3m < high_3m_prev) and (low_3m < low_3m_prev)
+    # 2026-04-27 LIVE PROXY for "3m bar HH+HL/LL+LH" — high_3m/low_3m are BACKTEST-ONLY fields,
+    # not in live hot_metrics, so the original gate `if high_3m_prev <= 0: return None` always
+    # tripped, dead-coding the entire entry logic. Use wt + velocity + k as direction proxies
+    # which ARE live in hot_metrics. Keeps the original behavior when bar fields ARE present
+    # (e.g. via shared-ind cache later).
+    wt1_3m_prev = _sf(indicators.get('wt1_3m_prev', wt1_3m), wt1_3m)
+    wt2_3m_prev = _sf(indicators.get('wt2_3m_prev', wt2_3m), wt2_3m)
+    wt_velocity_3m_live = _sf(indicators.get('wt_velocity_3m', 0), 0)
+    wt_velocity_1m_live = _sf(indicators.get('wt_velocity_1m', 0), 0)
+    if high_3m_prev > 0 and low_3m_prev > 0:
+        # Backtest path — use real OHLC.
+        bar_rising = (high_3m > high_3m_prev) and (low_3m > low_3m_prev)
+        bar_falling = (high_3m < high_3m_prev) and (low_3m < low_3m_prev)
+    else:
+        # Live path — proxy: bar "rising" iff wt1_3m rose AND velocity positive AND k_1m positive.
+        bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0) and (wt_velocity_1m_live > 0)
+        bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0) and (wt_velocity_1m_live < 0)
     k_rising = (k_3m > k_3m_prev) and (k_3m > 50)
     k_falling = (k_3m < k_3m_prev) and (k_3m < 50)
     wt_bull = wt1_3m > wt2_3m

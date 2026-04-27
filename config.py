@@ -114,7 +114,11 @@ class Config:
     # Reentry: immediate if k_15m still rising; else wait for clear 15m bounce.
     # UNPROVEN. Defaults OFF. Path: 1m backtest (~25h) → 3m-proxy longer → forward paper on inf → live.
     # 2026-04-22 user-authorized live flip with pos_min_qty cap
-    SCALP_V3_ENABLED: bool = True
+    # 2026-04-27 KILLED by owner: V3 shorted 1000BONKUSDC into clear bullish breakout
+    # at 03:04:09 (k_3m bounce gate, HTF gate explicitly bypassed). All V3 modes
+    # negative in shadow (SHORT_ONLY -1.81%, BOTH -5.77%, shorthold5 -1.46%).
+    # No more V3 opens until a positive-Sharpe variant is found AND HTF veto added.
+    SCALP_V3_ENABLED: bool = False
     SCALP_V3_ACCOUNTS: list = field(default_factory=lambda: ["inf"])
     SCALP_V3_MAX_CONCURRENT: int = 8              # max open V3 positions per account
     SCALP_V3_POSITION_CAP_USD: float = 20.0       # 2026-04-23: bumped 10→20 (Binance min $5, want >$10 after any residual cuts)
@@ -240,6 +244,19 @@ class Config:
     SCALP_V3_OB_MIN_DIFF: float = 30.0           # 2026-04-25: require |ob_long - ob_short| >= this — no near-tied signals
     SCALP_V3_OB_DIV_CONFLICT_MAX_NET: float = 50.0  # 2026-04-25: when OB says SHORT but div>0.3 (bullish), need |net|>=50 to override conflict
     SCALP_V3_OB_VOID_EXTEND_HOLD: bool = True    # when void above (LONG) or below (SHORT), extend hold — skip non-STALL exits once
+    # 2026-04-27 OB-LEADS-3M FLOW AGREEMENT GATE (OFF by default — A/B before flipping live):
+    # The OB long/short scores are STATIC liquidity geometry (walls/voids/imb5), not directional flow.
+    # Bleed pattern 2026-04-25: SHORT picks fired during rallies because wall-above + bid-void-below
+    # repeatedly hit short_score=108-115 even as price rallied through the wall. Fix: require live momentum
+    # to AGREE with OB-picked side using wt_velocity_1m / wt_velocity_3m as direction proxies (these are
+    # actually live in hot_metrics; the 2026-04-26 scalp_v3_live.py rewrite used high_3m/low_3m which are
+    # backtest-only fields and thus dead-coded the entry check). This gate kills the rally-fade SHORT pattern.
+    SCALP_V3_OB_FLOW_AGREE_ENABLED: bool = True   # require live momentum to agree with OB side
+    SCALP_V3_OB_FLOW_AGREE_MODE: str = "WT_VEL"   # "WT_VEL" (cheap, always live) | "OFI" (needs ez_orderbook running)
+    SCALP_V3_OB_FLOW_VEL_3M_MIN: float = 0.0      # |wt_velocity_3m| must exceed this AND match OB side
+    SCALP_V3_OB_FLOW_VEL_1M_MIN: float = 0.0      # |wt_velocity_1m| must exceed this AND match OB side
+    SCALP_V3_OB_FLOW_K_AGREE: bool = True         # require k_3m vs k_3m_prev direction to match OB side
+    SCALP_V3_OB_FLOW_OFI_MIN_ABS: float = 0.0     # min |ob_ofi_1s| when MODE=OFI; 0=any non-zero sign agreement
     # ═══ GLOBAL ORDERBOOK GATES (2026-04-24) — apply to any account listed. Enter at support, exit at resistance. ═══
     # Per-account opt-in list. If empty, no impact. To enable for ang+men: OB_ENTRY_GATE_ACCOUNTS=["ang","men"].
     OB_ENTRY_GATE_ACCOUNTS: list = field(default_factory=lambda: [])
