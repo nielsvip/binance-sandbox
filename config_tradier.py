@@ -47,7 +47,7 @@ class TradierConfig:
     # 2026-04-27 EMERGENCY SIZE CUT — user at -25% / 10d. Halve all caps until bleed stops.
     # Original values preserved in inline comment in case we need to revert.
     MAX_POSITION_SIZE: float = 2500.0   # was 5000 — emergency halve
-    START_POSITION_SIZE: float = 300.0  # was 600 — emergency halve
+    START_POSITION_SIZE: float = 200.0  # 2026-04-27 EMERGENCY: was 300 (already halved 600→300). User: "enter SOFTER". 1452 entries in 2.5h × $300 = too much capital deployed at bad entries.
     # === WING BUDGETS ===
     SWING_LONG_BUDGET: float = 50000.0      # was 100000 — emergency halve
     SWING_SHORT_BUDGET: float = 50000.0     # was 100000 — emergency halve
@@ -451,8 +451,8 @@ class TradierConfig:
     # TRADEOFF: lower threshold → higher Sharpe, lower total gain. 0.5% = risk-adjusted winner (+0.40 vs baseline). 0.9375% = user-preferred for total returns.
     # Use PARTIAL_PROFIT_LOCK_GAIN_PCT (NOT _TRADIER key) for vectorized sweeps.
     PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER: List[str] = field(default_factory=lambda: ["trb", "trc"])
-    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.5      # TP trigger: close 50% via webhook_url_2
-    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.75 # Upgrade stop from BE+buffer to first_exit_price
+    PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER: float = 0.3      # 2026-04-27 EMERGENCY: was 0.5 — close 50% sooner, lock profits before reversal. User: "get out quicker".
+    PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER: float = 0.5  # 2026-04-27 EMERGENCY: was 0.75 — upgrade stop to first_exit price ASAP after partial.
     PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER: float = 0.02
     PARTIAL_PROFIT_LOCK_FRAC_TRADIER: float = 0.625
     PARTIAL_PROFIT_LOCK_USE_MAKER_TRADIER: bool = True
@@ -473,7 +473,7 @@ class TradierConfig:
     # VERDICT: HOLD wins. Stocks recover after WT reversal — closing on technicals at any threshold destroys edge.
     # COMBINED WS_KILL+4TF=1.071 Sharpe (-1.36) — combining kill+bypass does NOT help.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = True  # 2026-04-25: belt-and-suspenders — even if NOLOSS sneaks back on somewhere, allow WT-against bypass.
-    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 3  # 2026-04-25: lowered from 5 (which never fires). 3-of-5 is the sweep target floor.
+    NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5  # 2026-04-27 EMERGENCY: 3/5 fires constantly during normal market noise. Restored to 5/5 — bypass only when ALL 5 WT TFs flip against position. Backup safety in case UNIVERSAL_NOLOSS_GATE leaks.
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
@@ -1405,7 +1405,7 @@ class TradierConfig:
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True  # Close positions that were profitable and fell back below 0
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 2.0  # 2026-04-26: 2% peak required (was 0.3%) — only protect meaningful gains
     PEAK_GIVEBACK_DROP_PCT: float = 5.0  # 2026-04-26: 5% drop from peak (was 2%) — let winners breathe
-    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True  # exit immediately when gain turns negative after profitable peak
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False  # 2026-04-27 EMERGENCY: examples today peak2.45%->cur-5.12%, peak4.61%->cur-0.20% — HARD_ZERO not firing fast enough at zero, instead realizing -5% losses. PARTIAL_PROFIT_LOCK at 0.3% handles winner-protection.
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds
@@ -1464,7 +1464,7 @@ class TradierConfig:
     DELTA_ENTRY_SCORE_PENALTY: int = -25  # Score penalty when delta opposes entry
     DELTA_EXIT_DC_FLOOR: bool = True  # DC15M floor break as exit ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     DELTA_EXIT_DOM_TF_ENABLED: bool = True  # 2026-04-10 04:15 APPLIED — winner per user "yes apply" (was False)
-    DELTA_EXIT_OVERRIDE_NOLOSS: bool = True  # Delta exits bypass STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    DELTA_EXIT_OVERRIDE_NOLOSS: bool = False  # 2026-04-27 EMERGENCY: DELTA_EXIT_TOP_TOP_EXIT_LONG fired 67/83 trc loss-closes today on positions ALREADY underwater. Top-exit makes no sense at a loss; gate it.
     DELTA_EXIT_SCORE_BONUS: int = 20  # Score bonus when delta confirms exit
     DELTA_EXIT_SPEED_DECAY: bool = True  # Speed decay exit (primary)
     DELTA_EXIT_WT_CROSS: bool = True  # WT cross against as exit ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
@@ -1914,7 +1914,7 @@ class TradierConfig:
     TR_MFI4H_LONG_BOYCOTT_SCORE: int = -25  # BC_155d: Moderate penalty
     TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
     TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
-    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-04-25 KILL: blocked 8804 PEAK_GIVEBACK closes/14d, drove 20% loss. Replaced by technical-flip exits + same-sector hedge.
+    UNIVERSAL_NOLOSS_GATE: bool = True  # 2026-04-27 EMERGENCY RESTORE: 350+ closes/2.5h at 80% loss-rate avg -2.5% sum -860%. User: "no more panic selling losing positions". Loss-closes blocked; hedge engine handles deepening losers via WT-flip technical hedges (HEDGE_STRICT_WT_ALL_TFS_ENABLED=True).
     USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
@@ -1980,12 +1980,12 @@ class TradierConfig:
     PROXIMITY_TOP_MAX_DROP_PCT: float = 5.0        # don't long when within X% of 52w high
 
     # --- Squeeze-fire entry score boost (TTM Squeeze release) ---
-    SQUEEZE_FIRE_ENTRY_ENABLED: bool = False
+    SQUEEZE_FIRE_ENTRY_ENABLED: bool = True  # 2026-04-27 sweep T1 (S2/91 winners): 9× True. Was False.
     SQUEEZE_FIRE_TF: str = "5m"
     SQUEEZE_FIRE_BONUS_SCORE: float = 11.25
 
     # --- TSMOM book-level scalar (12-1 month sign-agreement) ---
-    TSMOM_BOOK_SCALAR_ENABLED: bool = False
+    TSMOM_BOOK_SCALAR_ENABLED: bool = True  # 2026-04-27 sweep T1: 8× True in winners. Was False.
     TSMOM_LOOKBACK_BARS: int = 252
     TSMOM_MIN_AGREEMENT: float = 0.5
     TSMOM_LOW_CAP: float = 0.25

@@ -1010,7 +1010,7 @@ class Config:
     # --- Feature 3: Winner protection in exit evaluation (uses 0ranking_points_global) ---
     # High-rank winners skip the poll-based exit cycle until they've locked >= RP_PROTECT_MIN_GAIN.
     # Technical exits (WT_CROSS_EXIT, DC_LOW4_3M, DELTA_EXIT, HEDGE paths, STRUCTURAL_RANGE_SHIFT) still fire.
-    WINNER_PROTECT_ENABLED: bool = True
+    WINNER_PROTECT_ENABLED: bool = False  # 2026-04-27 sweep T1: 8/91 winners had this False; flipping per sweep recommendation. Was True.
     RP_PROTECT_THRESHOLD: float = 70.0  # ranking_points_global matches direction AND >= this → protect
     RP_PROTECT_MIN_GAIN: float = 1.0    # 2026-04-17 coord descent: 1.0 beats 1.5/2.0 (+1.618 vs 1.547). Was 2.0.
     # --- Feature 4: ST vs LT outperformer split in ez_rankings ---
@@ -2831,12 +2831,12 @@ PROXIMITY_TOP_GATE_ENABLED      = False
 PROXIMITY_TOP_MAX_DROP_PCT      = 5.0        # don't long when within X% of 52w high
 
 # --- Squeeze-fire entry score boost (TTM Squeeze release) ---
-SQUEEZE_FIRE_ENTRY_ENABLED      = False
+SQUEEZE_FIRE_ENTRY_ENABLED      = True   # 2026-04-27 sweep T1: 9/91 winners True. Was False.
 SQUEEZE_FIRE_TF                 = "5m"
 SQUEEZE_FIRE_BONUS_SCORE        = 15.0
 
 # --- TSMOM book-level scalar (12-1 month sign-agreement) ---
-TSMOM_BOOK_SCALAR_ENABLED       = False
+TSMOM_BOOK_SCALAR_ENABLED       = True   # 2026-04-27 sweep T1: 8/91 winners True. Was False.
 TSMOM_LOOKBACK_BARS             = 252
 TSMOM_MIN_AGREEMENT             = 0.5
 TSMOM_LOW_CAP                   = 0.25
