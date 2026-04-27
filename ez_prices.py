@@ -4765,14 +4765,20 @@ class ResamplingAndGapFillEngine:
                         # MacBook: clip >1800 → 1200 to save disk
                         if env == 'server':
                             continue
-                        if not df.empty and len(df) > 1800:
+                        _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (1500, 2000),
+                                 '1h': (1700, 2500), '4h': (1700, 2500), 'D': (2000, 3000),
+                                 'W': (300, 500), 'M': (60, 100)}
+                        _stem = json_file.stem
+                        _tf = _stem.rsplit('_', 1)[1] if '_' in _stem else ''
+                        _keep, _cap = _trim.get(_tf, (1200, 1800))
+                        if not df.empty and len(df) > _cap:
                             before_bars = len(df)
-                            df_clipped = df.tail(1200).copy()
+                            df_clipped = df.tail(_keep).copy()
                             await self._write_file_unlocked(df_clipped, json_file)
                             new_size = json_file.stat().st_size
                             freed_space += (original_size - new_size)
                             clipped_files += 1
-                            self.logger.debug(f"Clipped {json_file.name}: {before_bars} → 1200 bars, saved {(original_size - new_size) / 1024:.1f}KB")
+                            self.logger.debug(f"Clipped {json_file.name}: {before_bars} → {_keep} bars, saved {(original_size - new_size) / 1024:.1f}KB")
                 except Exception as e:
                     self.logger.warning(f"Failed to clip {json_file}: {e}")
             self.logger.info(f"🧹 Aggressive cleanup completed: {removed_dirs} backup dirs removed, {clipped_files} files clipped to 1800 bars, {freed_space / (1024**3):.2f}GB freed")

@@ -252,6 +252,9 @@ class Config:
     LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200up_D + ha alignment
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
+    # 2026-04-27 — REENTRY engine hook: engines NEVER block reentries, only ADD size + tag reason.
+    # 1.0 = pass-through (engines run, log +ENGINES tag for observability, NO size change). 1.5 = up to +50% size at max conviction.
+    LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT: float = 1.0
     # ═══ WINNER TECHNIQUES from 2026-04-24 winners_refined sweep (Sharpe +1.298, WR 97.1%, DD 0.0%) ═══
     # Apply equally to LONG and SHORT (SIDE_MODE=BOTH preserved — sweep's LONG_ONLY bias was bull-market window).
     SCALP_V3_ATR_TP_MULT: float = 0.8        # exit when gain >= N × 3m-ATR%. 0.8 = winners median.

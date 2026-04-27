@@ -48,6 +48,39 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+def _ee_reentry_boost(symbol, indicators, is_long, cfg):
+    """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
+    Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
+    With LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT=1.0 (default), size_mult is always 1.0 — pure observability.
+    Wrapped to never raise — engine bug must NEVER block a reentry."""
+    try:
+        if cfg is None or not getattr(cfg, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+            return 1.0, ''
+        _side = 'LONG' if is_long else 'SHORT'
+        _score_max = 0.0
+        _reasons = []
+        for _name, _fn, _flag in (
+            ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+            ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+            ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+            ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+        ):
+            if not getattr(cfg, _flag, False): continue
+            if _fn is None: continue
+            try:
+                _fire, _why, _sc = _fn(symbol, indicators, _side)
+                if _fire and _sc >= float(getattr(cfg, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                    _score_max = max(_score_max, _sc)
+                    _reasons.append(f"{_name}={_sc:.2f}")
+            except Exception:
+                pass
+        if _score_max <= 0.0 or not _reasons:
+            return 1.0, ''
+        _mult_cap = float(getattr(cfg, 'LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT', 1.0))
+        _mult = 1.0 + (_mult_cap - 1.0) * _score_max
+        return _mult, f" +ENGINES({','.join(_reasons)})"
+    except Exception:
+        return 1.0, ''
 from tradier_indicators import (
     compute_extra_indicators,
     get_rvol_gate_for_strategy,
@@ -8735,7 +8768,10 @@ class TradierTradeManager:
                                 reentry_qty = max(1, int(reentry_qty * 0.5))
                             position_side = side
                             order_side = "BUY" if side == "LONG" else "SELL"
-                            reentry_reason = f"REENTRY_MONITOR exit@{exit_price:.2f} now@{current_price:.2f} k5m={k_5m:.0f} wt={wt_support}"
+                            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, side == "LONG", config)
+                            reentry_qty = max(1, int(reentry_qty * _ee_mult))
+                            reentry_reason = f"REENTRY_MONITOR exit@{exit_price:.2f} now@{current_price:.2f} k5m={k_5m:.0f} wt={wt_support}" + _ee_tag
                             api_side = "buy" if side == "LONG" else "sell_short"
                             logger.warning(f"[REENTRY_MONITOR] {pk}: PLACING REAL ORDER {api_side} {reentry_qty} {symbol} @ market | k5m={k_5m:.0f} wt={wt_support}")
                             result = {}

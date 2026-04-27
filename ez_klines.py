@@ -104,8 +104,13 @@ def merge_and_write(symbol, interval, rows):
         merged=_normalize_df(pd.concat([existing_df,new_df], ignore_index=True))
     before=len(existing_df)
     added=max(len(merged)-before,0)
-    if env != 'server' and len(merged) > 1800:
-        merged = merged.tail(1200).reset_index(drop=True)
+    if env != 'server':
+        _trim = {'1m': (14000, 18000), '3m': (5000, 7000), '15m': (1500, 2000),
+                 '1h': (1700, 2500), '4h': (1700, 2500), 'D': (2000, 3000),
+                 'W': (300, 500), 'M': (60, 100)}
+        keep, cap = _trim.get(interval, (1200, 1800))
+        if len(merged) > cap:
+            merged = merged.tail(keep).reset_index(drop=True)
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     df_out=merged.copy()
     df_out['timestamp']=df_out['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ')

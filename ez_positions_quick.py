@@ -41,6 +41,39 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+def _ee_reentry_boost(symbol, indicators, is_long, cfg):
+    """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
+    Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
+    With LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT=1.0 (default), size_mult is always 1.0 — pure observability.
+    Wrapped to never raise — engine bug must NEVER block a reentry."""
+    try:
+        if cfg is None or not getattr(cfg, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+            return 1.0, ''
+        _side = 'LONG' if is_long else 'SHORT'
+        _score_max = 0.0
+        _reasons = []
+        for _name, _fn, _flag in (
+            ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+            ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+            ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+            ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+        ):
+            if not getattr(cfg, _flag, False): continue
+            if _fn is None: continue
+            try:
+                _fire, _why, _sc = _fn(symbol, indicators, _side)
+                if _fire and _sc >= float(getattr(cfg, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                    _score_max = max(_score_max, _sc)
+                    _reasons.append(f"{_name}={_sc:.2f}")
+            except Exception:
+                pass
+        if _score_max <= 0.0 or not _reasons:
+            return 1.0, ''
+        _mult_cap = float(getattr(cfg, 'LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT', 1.0))
+        _mult = 1.0 + (_mult_cap - 1.0) * _score_max
+        return _mult, f" +ENGINES({','.join(_reasons)})"
+    except Exception:
+        return 1.0, ''
 
 # Helpers needed by the ported reentry loops (ez_positions_quick.py OWNS these loops now).
 # We still import the small leaf helpers — they are not zombie logic; they are stateless
@@ -14764,6 +14797,9 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
                     override_qty = _base_qty * _qty_mult
                     if current_price > 0: override_qty = max(override_qty, config.START_POSITION_SIZE / current_price)
+                    # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                    _ee_mult, _ee_tag = _ee_reentry_boost(symbol, indicators, is_long, config)
+                    override_qty = override_qty * _ee_mult; reason = reason + _ee_tag
                     result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 99.0, override_qty=override_qty)
                     if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                         data['status'] = 'queued'
@@ -15105,6 +15141,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                     return
                 _dfr_reason = f"DIRECTION_FAVORABLE_REENTRY_k3m{k_3m:.0f}_k15m{k_15m:.0f}_min{min_since_exit:.0f}"
                 logger.warning(f"[DIRECTION_FAVORABLE_REENTRY_EPQ] {position_key}: {'LONG' if is_long else 'SHORT'} direction still favorable within {min_since_exit:.0f}m of exit. k_3m={k_3m:.1f} k_15m={k_15m:.1f}. delta={_dfr_delta_reason}. Immediate reentry.")
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+                _dfr_reason = _dfr_reason + _ee_tag
                 result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _dfr_reason, 85.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[DIRECTION_FAVORABLE_REENTRY_EPQ] {position_key}: QUEUED at ${current_price:.4f}")
@@ -15145,6 +15184,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 return
             logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}")
             reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+            reason = reason + _ee_tag
             result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 90.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
@@ -15193,6 +15235,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             _epq_force_qty = max(reentry_amount * _epq_force_mult, getattr(config_obj, 'START_POSITION_SIZE', 45.0) / current_price)
             _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.1f}"
             logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})")
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+            _epq_force_qty = _epq_force_qty * _ee_mult; _epq_force_reason = _epq_force_reason + _ee_tag
             result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _epq_force_reason, 99.0, override_qty=_epq_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_EPQ] {position_key}: QUEUED qty={_epq_force_qty:.4f} at ${current_price:.4f}")
@@ -15231,6 +15276,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
                 if (quick_recovery_long or quick_recovery_short) and getattr(config_obj, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False):
                     reason = f"[PROC_SINGLE_REENTRY_EPQ]:quick_recovery_{minutes_since_reduction:.1f}m"
+                    # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                    _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+                    reason = reason + _ee_tag
                     result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 75.0)
                     if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                         logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: QUICK RECOVERY queued — price={current_price:.6f}")
@@ -15258,7 +15306,10 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             if (k_3mm_crossover_above_dc_low_3m or k_15mm_crossover_above_dc_low_15m) and k_15m >= d_15m and k_3m >= d_3m and k_15m < 70 and k_3m < 70 and not is_invalidated and getattr(config_obj, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config_obj, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
                 _psr_delta_ok, _psr_delta_reason = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _psr_delta_ok: return
-                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY_EPQ]_LONG_k3m_cross_above_dc_low_3m_delta_{_psr_delta_reason[:30]}", 75.0)
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+                _psr_long_reason_epq = f"[PROC_SINGLE_REENTRY_EPQ]_LONG_k3m_cross_above_dc_low_3m_delta_{_psr_delta_reason[:30]}" + _ee_tag
+                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_long_reason_epq, 75.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSOVER ABOVE DC_LOW_3M queued")
                 return
@@ -15279,7 +15330,10 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             if (k_3mm_crossunder_below_dc_high_3m or k_15mm_crossunder_below_dc_high_15m) and k_15m <= d_15m and k_3m <= d_3m and k_15m > 30 and k_3m > 30 and not is_invalidated and getattr(config_obj, 'LEGACY_PROC_SINGLE_REENTRY', False) and getattr(config_obj, 'LEGACY_REENTRY_PSR_K_DC_CROSSOVER', False):
                 _psr_delta_ok_s, _psr_delta_reason_s = _ez_check_reentry_delta_tolerant(i, is_long, trade_manager, symbol)
                 if not _psr_delta_ok_s: return
-                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY_EPQ]_SHORT_k3m_cross_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}", 75.0)
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+                _psr_short_reason_epq = f"[PROC_SINGLE_REENTRY_EPQ]_SHORT_k3m_cross_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}" + _ee_tag
+                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_short_reason_epq, 75.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSUNDER BELOW DC_HIGH_3M queued")
                 return
@@ -15288,6 +15342,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         _psr_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
         if (full_reentry_stoch_above_dc or dc_basis_crossover_3m) and not is_invalidated and _psr_notional < config_obj.START_POSITION_SIZE and getattr(config_obj, 'LEGACY_REENTRY_PSR_FULL_DC', False):
             reason = f"[PROC_SINGLE_REENTRY_EPQ]: full_reentry_{'stoch3m_x_dc15m' if full_reentry_stoch_above_dc else 'dc3m_cross'}"
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+            reason = reason + _ee_tag
             result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 80.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: FULL REENTRY queued")
@@ -15308,6 +15365,9 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                     _dcb_trend_ok_epq = (is_long and dc_high_1h > dc_high_1h_ant) or ((not is_long) and dc_low_1h < dc_low_1h_ant)
                     if (bounce_dc_low_1h or bounce_dc_low_15m or bounce_dc_high_1h or bounce_dc_high_15m or cross_dc_basis_15m) and _dcb_trend_ok_epq and getattr(config_obj, 'LEGACY_REENTRY_PSR_DC_BOUNCE', False):
                         reason = f"[PROC_SINGLE_REENTRY_EPQ]: dc_bounce_{hours_since_reduction:.1f}h"
+                        # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                        _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
+                        reason = reason + _ee_tag
                         result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 65.0)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             logger.info(f"[evaluate_reentry_2_EPQ] {position_key}: DC bounce reentry queued")

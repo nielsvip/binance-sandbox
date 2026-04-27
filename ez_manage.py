@@ -672,6 +672,40 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+def _ee_reentry_boost(symbol, indicators, is_long, cfg):
+    """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
+    Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
+    With LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT=1.0 (default), size_mult is always 1.0 — pure observability.
+    With mult>1.0, size scales with max engine score: (1 + (mult-1) * max_score).
+    Wrapped to never raise — engine bug must NEVER block a reentry."""
+    try:
+        if cfg is None or not getattr(cfg, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+            return 1.0, ''
+        _side = 'LONG' if is_long else 'SHORT'
+        _score_max = 0.0
+        _reasons = []
+        for _name, _fn, _flag in (
+            ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+            ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+            ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+            ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+        ):
+            if not getattr(cfg, _flag, False): continue
+            if _fn is None: continue
+            try:
+                _fire, _why, _sc = _fn(symbol, indicators, _side)
+                if _fire and _sc >= float(getattr(cfg, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                    _score_max = max(_score_max, _sc)
+                    _reasons.append(f"{_name}={_sc:.2f}")
+            except Exception:
+                pass  # never let an individual engine error block reentry
+        if _score_max <= 0.0 or not _reasons:
+            return 1.0, ''
+        _mult_cap = float(getattr(cfg, 'LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT', 1.0))
+        _mult = 1.0 + (_mult_cap - 1.0) * _score_max
+        return _mult, f" +ENGINES({','.join(_reasons)})"
+    except Exception:
+        return 1.0, ''
 from utils import (
     REDIS_CHANNELS,
     RateLimitDuplicateFilter,
@@ -15534,6 +15568,9 @@ class MultiAccountTradeManager:
                         _base_qty = safe_fetch_float(data.get('original_qty', 0), 0.0)
                         if _base_qty <= 0: _base_qty = config.START_POSITION_SIZE / current_price
                         override_qty = _base_qty * _qty_mult
+                        # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                        _ee_mult, _ee_tag = _ee_reentry_boost(symbol, indicators, is_long, config)
+                        override_qty = override_qty * _ee_mult; reason = reason + _ee_tag
                         result = await queue_trade_action(self.order_queue, self, position_key, "REENTRY", reason, 99.0, override_qty=override_qty)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             data['status'] = 'queued'
@@ -18152,6 +18189,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 _dfr_amt = min(reentry_amount, 2 * config.START_POSITION_SIZE / current_price)
                 _dfr_reason = f"DIRECTION_FAVORABLE_REENTRY_k3m{k_3m:.0f}_k15m{k_15m:.0f}_wt{_wt1_15m:.1f}/{_wt2_15m:.1f}_min{min_since_exit:.0f}"
                 logger.warning(f"[DIRECTION_FAVORABLE_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} direction still favorable within {min_since_exit:.0f}m of exit. k_3m={k_3m:.1f} k_15m={k_15m:.1f} wt={_wt1_15m:.1f}/{_wt2_15m:.1f}. delta={_dfr_delta_reason}. Immediate reentry.")
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                _dfr_reason = _dfr_reason + _ee_tag
                 result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _dfr_reason, 85.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[DIRECTION_FAVORABLE_REENTRY] {position_key}: QUEUED at ${current_price:.4f}")
@@ -18196,6 +18236,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             logger.warning(f"[DC_BREAKOUT_REENTRY] {position_key}: DC {_dc_re_tf} breakout! delta={_dcbr_delta_reason}. Reentry at ${current_price:.4f}")
             recovery_reentry_amount = min(reentry_amount, 3 * config.START_POSITION_SIZE / current_price)
             reason = f"DC_BREAKOUT_REENTRY_{_dc_re_tf}_{current_price:.4f}"
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+            reason = reason + _ee_tag
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 90.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[DC_BREAKOUT_REENTRY] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
@@ -18284,6 +18327,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             # stamp was missed → next cycle (10s later) re-fired. Now stamp UNCONDITIONALLY before
             # firing — even if order fails, the next 300s window is rate-limited to prevent dup.
             trade_manager._mpc_last_fire[position_key] = _mpc_now
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+            _force_qty = _force_qty * _ee_mult; _force_reason = _force_reason + _ee_tag
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _force_reason, 99.0, override_qty=_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_REENTRY] {position_key}: QUEUED qty={_force_qty:.4f} at ${current_price:.4f}")
@@ -18323,8 +18369,11 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 quick_recovery_short = not is_long and current_price < (last_reduction_price - atr_3m) and k_3m < d_3m
                 if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY check - minutes_since_reduction={minutes_since_reduction:.1f}m, last_reduction_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}, current_price={current_price:.6f}, price_threshold={'above' if is_long else 'below'} {last_reduction_price + atr_3m if is_long else last_reduction_price - atr_3m:.6f}, k_3m={k_3m:.1f}, d_3m={d_3m:.1f}, k_3m>d_3m={k_3m > d_3m if is_long else k_3m < d_3m}, quick_recovery_long={quick_recovery_long}, quick_recovery_short={quick_recovery_short}")
                 if (quick_recovery_long or quick_recovery_short) and getattr(config, 'LEGACY_REENTRY_PSR_QUICK_RECOVERY', False):
-                    recovery_reentry_amount = min(reentry_amount, 2 * config.START_POSITION_SIZE / current_price); reason = f"PROC_SINGLE_REENTRY]:quick_recovery {minutes_since_reduction:.1f}_qty_{recovery_reentry_amount}_${current_price}_price{'above' if is_long else 'below'}_{position.last_reducion_level}+atr"; conviction = 75.0; 
+                    recovery_reentry_amount = min(reentry_amount, 2 * config.START_POSITION_SIZE / current_price); reason = f"PROC_SINGLE_REENTRY]:quick_recovery {minutes_since_reduction:.1f}_qty_{recovery_reentry_amount}_${current_price}_price{'above' if is_long else 'below'}_{position.last_reducion_level}+atr"; conviction = 75.0;
                     if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: QUICK_RECOVERY CONDITIONS MET - queuing REENTRY")
+                    # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                    _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                    reason = reason + _ee_tag
                     result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction)#), override_qty=recovery_reentry_amount)
                     if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                         logger.warning(f"[evaluate_reentry_2] {position_key}: QUICK RECOVERY REENTRY queued - amount={recovery_reentry_amount:.6f}, price={current_price:.6f}, exit_price={last_reduction_price:.6f}, atr_3m={atr_3m:.6f}, diff={((current_price/last_reduction_price-1)*100):.2f}%, k_3m={k_3m:.1f} d_3m={d_3m:.1f}, min_since_red={minutes_since_reduction:.1f}m")
@@ -18361,6 +18410,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 _fm, _tags = _compose_reentry_mult(float(getattr(config, 'REENTRY_WT15M_SIZE_MULT', 1.5)), "WT15M_CROSS")
                 _wt_re_reason = f"WT15M_CROSS_REENTRY_{'_'.join(_tags)}_wt15m={wt1_15m:.1f}/{wt2_15m:.1f}_wt1h={_wt1_1h:.1f}/{_wt2_1h:.1f}_wt4h={_wt1_4h:.1f}/{_wt2_4h:.1f}_k15m={k_15m:.0f}_mult={_fm:.2f}"
                 logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} 15m WT cross + HTF fav={_htf_fav} mult={_fm:.2f}. Queuing reentry.")
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                _wt_re_reason = _wt_re_reason + _ee_tag
                 result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _wt_re_reason, 85.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[WT15M_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_fm:.2f}")
@@ -18385,6 +18437,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
             _fm, _tags = _compose_reentry_mult(_base, _tag)
             _d_reason = f"PRICE_CROSS_REENTRY_{'_'.join(_tags)}_exit_level={reentry_level:.6f}_cur={current_price:.6f}_k15m={k_15m:.0f}_mult={_fm:.2f}"
             logger.warning(f"[PRICE_CROSS_REENTRY] {position_key}: {'LONG' if is_long else 'SHORT'} price crossed exit_level={reentry_level:.6f} k_15m={k_15m:.0f} mult={_fm:.2f}. Queuing.")
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+            _d_reason = _d_reason + _ee_tag
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _d_reason, 80.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[PRICE_CROSS_REENTRY] {position_key}: QUEUED at ${current_price:.4f} size_mult={_fm:.2f}")
@@ -18407,7 +18462,10 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     logger.info(f"[PROC_SINGLE_REENTRY_DELTA_BLOCK] {position_key}: {_psr_delta_reason}")
                     return
                 if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: LONG CROSSOVER CONDITIONS MET - queuing REENTRY")
-                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY]:_qty_{reentry_amount}_k_3mm_crossover_above_dc_low_3m_delta_{_psr_delta_reason[:30]}", 75.0)#,override_qty=reentry_amount)
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                _psr_long_reason = f"[PROC_SINGLE_REENTRY]:_qty_{reentry_amount}_k_3mm_crossover_above_dc_low_3m_delta_{_psr_delta_reason[:30]}" + _ee_tag
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_long_reason, 75.0)#,override_qty=reentry_amount)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2] {position_key}: k_3mM CROSSOVER ABOVE DC_LOW_3M REENTRY queued - amount={reentry_amount:.6f}, price={current_price:.6f}, dc_low_3m={dc_low_3m:.6f}, k_3m={k_3m:.1f} d_3m={d_3m:.1f}")
                 return
@@ -18428,7 +18486,10 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                     logger.info(f"[PROC_SINGLE_REENTRY_DELTA_BLOCK] {position_key}: {_psr_delta_reason_s}")
                     return
                 if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: SHORT CROSSUNDER CONDITIONS MET - queuing REENTRY")
-                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", f"[PROC_SINGLE_REENTRY]_qty_{reentry_amount}:k_3mm_crossunder_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}", 75.0)#,override_qty=reentry_amount)
+                # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                _psr_short_reason = f"[PROC_SINGLE_REENTRY]_qty_{reentry_amount}:k_3mm_crossunder_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}" + _ee_tag
+                result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_short_reason, 75.0)#,override_qty=reentry_amount)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2] {position_key}: k_3mM CROSSUNDER BELOW DC_HIGH_3M REENTRY queued - amount={reentry_amount:.6f}, price={current_price:.6f}, dc_high_3m={dc_high_3m:.6f}, k_3m={k_3m:.1f} d_3m={d_3m:.1f}")
                 return
@@ -18439,6 +18500,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         if (full_reentry_stoch_above_dc or dc_basis_crossover_3m) and not is_invalidated and _psr_notional < config.START_POSITION_SIZE and getattr(config, 'LEGACY_REENTRY_PSR_FULL_DC', False):
             reason = f"PROC_SINGLE_REENTRY]: full_reentry_qty_{reentry_amount}_{'stoch3m_crossover_above_dc15m' if full_reentry_stoch_above_dc else 'dc3m_crossover'}"; conviction = 80.0;
             if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: FULL_REENTRY CONDITIONS MET - queuing REENTRY")
+            # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+            _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+            reason = reason + _ee_tag
             result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction)#,override_qty=reentry_amount)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[evaluate_reentry_2] {position_key}: FULL REENTRY queued - amount={reentry_amount:.6f}, price={current_price:.6f}, dc_basis_15m={dc_basis_15m:.6f}, k_3m={k_3m:.1f} d_3m={d_3m:.1f} k_3m_prev={k_3m_prev:.1f} d_3m_prev={d_3m_prev:.1f}, reason={reason}")
@@ -18470,6 +18534,9 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                         reason = f"PROC_SINGLE_REENTRY]: dc_bounce_reentry_t_qty_{reentry_amount}_{hours_since_reduction:.1f}h"
                         conviction = 65.0
                         if config.VERBOSE: logger.info(f"[proces s_single_reentry_evaluation] {position_key}: DC_BOUNCE CONDITIONS MET - queuing REENTRY")
+                        # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                        _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                        reason = reason + _ee_tag
                         result = await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction)# override_qty=reentry_amount)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             logger.info(f"[evaluate_reentry_2] {position_key}: DC bounce reentry queued - amount={reentry_amount:.6f}, price={current_price:.6f}, hours_since_reduction={hours_since_reduction:.1f}h")
@@ -18948,7 +19015,11 @@ async def _process_single_override_check(trade_manager, account_key: str, positi
                             logger.warning(f"[OVERRIDE_CHECK] {position_key}: Needed qty {needed_qty:.6f} <= min {pos_min_qty:.6f} after final check - CANCELLING reentry order!")
                             return f"SKIPPED_NEEDED_QTY_TOO_SMALL"
                     base_conviction = 70.0 if indicators_good_reentry else 50.0
-                    await queue_trade_action(order_queue, trade_manager, position_key, 'REENTRY' if position_value <= config.MIN_POSITION_SIZE else 'AUGMENT', f'OVERRIDE_AUGMENT_IMMEDIATE_REENTRY_MAX_QTY_{"LONG" if is_long else "SHORT"}_{reentry_reason}', base_conviction)#, override_qty=needed_qty)
+                    # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
+                    _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config)
+                    _ovr_action = 'REENTRY' if position_value <= config.MIN_POSITION_SIZE else 'AUGMENT'
+                    _ovr_reason = f'OVERRIDE_AUGMENT_IMMEDIATE_REENTRY_MAX_QTY_{"LONG" if is_long else "SHORT"}_{reentry_reason}' + _ee_tag
+                    await queue_trade_action(order_queue, trade_manager, position_key, _ovr_action, _ovr_reason, base_conviction)#, override_qty=needed_qty)
                     if logger: logger.warning(f"[O VE RRIDE_CHECK] {position_key}: IMMEDIATE_REENTRY to max_quantity={position_max_quantity:.6f} current_qty={current_positionAmt:.6f} needed={needed_qty:.6f} {reentry_reason} ts3/15:{i.get('timestamp_3m')}/{i.get('timestamp_15m')}")
                     return
                 else:
