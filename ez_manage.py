@@ -13675,10 +13675,27 @@ class MultiAccountTradeManager:
                 if ('CLOSE' in action or 'REDUCE' in action or 'PROFIT_TAKE' in action or 'SCALP' in action) and position.gain < 0.17 and position.gain > 0.04: 
                     action = 'CLOSE'
                 is_huge = abs(float(position.positionAmt)) * old_price > 5 * self.config.START_POSITION_SIZE
-                if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
+                # 2026-04-27 V3 BYPASS — this drain-protection gate was the actual phantom-close
+                # cause for MOVRUSDT_LONG (54 protective_exit fires, 0 closes). The wrapper passed
+                # action='CLOSE' (not 'QUICK_'/'SCALP_') and reason='QUICK_SCALP_V3_OPEN_PROTECTIVE_EXIT...'
+                # which contains SCALP_V3 in the REASON but the check only looked at the ACTION
+                # for SCALP/QUICK. Plus SCALP_V3 protective exits are technical-driven, not %-driven —
+                # the whole point is to close on technical reversal regardless of small-loss draining.
+                # Add reason-side bypasses for V3 / protective / emergency / gain_erosion.
+                _reason_up_drain = (reason or '').upper()
+                _drain_bypass = (
+                    'SCALP_V3' in _reason_up_drain
+                    or 'PROTECTIVE_EXIT' in _reason_up_drain
+                    or 'GAIN_EROSION' in _reason_up_drain
+                    or 'EMERGENCY' in _reason_up_drain
+                    or 'LIQUIDATION' in _reason_up_drain
+                    or 'MAX_LOSS' in _reason_up_drain
+                    or 'BE_STOP' in _reason_up_drain
+                )
+                if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper() and not _drain_bypass:
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
                 dc_check = (is_long and i.get('dc_low4_3m', 0) > i.get('dc_low_3m', 0))
-                if not is_hedge and dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper():
+                if not is_hedge and dc_check and position.gain < 0.1 and position.gain > -2.4 and not is_huge and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper() and not _drain_bypass:
                     return 'ABORT STOP draining'
                 if account_key in ['flz', 'men', 'fin'] and position.gain < 0.6 and 'HEDGE' not in action and 'CLOSE' not in action and 'SCALP' not in action and 'QUICK' not in action:
                     if (position.positionAmt < 4 * config.START_POSITION_SIZE/current_price and position.gain > 0.3):

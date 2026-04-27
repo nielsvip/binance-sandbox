@@ -245,11 +245,11 @@ class Config:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # master flag
-    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-27: ALL ON per user. Master flag.
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent in sweep: wt_all3 dominates winners
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 + kD<40 extreme oversold tier
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent: dc_x4h breakout in 90% of S1 top-3
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200up_D + ha alignment
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # ═══ WINNER TECHNIQUES from 2026-04-24 winners_refined sweep (Sharpe +1.298, WR 97.1%, DD 0.0%) ═══
@@ -556,6 +556,12 @@ class Config:
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.
     HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
+    # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
+    # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
+    # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})
+    # 'wt_3m_15m_htf2' / 'wt_3m_15m_htf3' (3m+15m+ALL HTF) / 'wt_dc_score' (use wt_dc_exit_scorer).
+    HEDGE_CLOSE_MODE: str = 'wt_3m_1h'
+    HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
     # === 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs, not just velocity ===
     # _quick_hedge_rank rejects hedge candidates where < HEDGE_STRICT_WT_MIN_TFS_AGAINST of the 5 TFs (3m/15m/1h/4h/D) align against the proposed hedge direction.
     # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.

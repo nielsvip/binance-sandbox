@@ -49,6 +49,19 @@ from tradier_options_analyzer import (
 logger = logging.getLogger("csp_monitor")
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
+# === ORDER DEDUPE (2026-04-27 — user audit) ===
+_ORDER_DEDUPE_LOG: dict = {}
+_ORDER_DEDUPE_SEC: float = 60.0
+
+def _order_allowed(key: str) -> bool:
+    now = time.time()
+    last = _ORDER_DEDUPE_LOG.get(key, 0.0)
+    if now - last < _ORDER_DEDUPE_SEC:
+        logger.warning(f"[ORDER_DEDUPE_SKIP] {key} — last attempt {now-last:.0f}s ago < {_ORDER_DEDUPE_SEC:.0f}s")
+        return False
+    _ORDER_DEDUPE_LOG[key] = now
+    return True
 if not logger.handlers:
     log_dir = Path(os.path.expanduser("~")) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -369,6 +382,8 @@ async def _close_short_option(client: TradierAPIClient, occ: str, qty: int, bid:
     audit(f"CLOSE\t{occ}\tqty={qty}\tinitial={initial:.2f}\tbid={bid:.2f}\task={ask:.2f}\t{reason}")
     parsed = parse_occ_symbol(occ) or {}
     underlying = parsed.get("symbol") or ""
+    if not _order_allowed(f"{occ}|buy_to_close"):
+        return {"status": "skipped_dedupe", "occ": occ}
     try:
         res = await smart_fill_option(client, underlying, occ, "buy_to_close", qty, initial, bid, ask, max_walk_steps=4, walk_interval=30)
         audit(f"CLOSE_RESULT\t{occ}\t{json.dumps(res, default=str)}")

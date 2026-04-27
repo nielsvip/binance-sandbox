@@ -29,32 +29,81 @@ def _sf(v, default=0.0):
         return default
 
 
+_HEDGE_TF_LIST = ('3m', '15m', '1h', '4h', 'D')
+
+
+def _wt_against_tf(indicators: Dict, tf: str, position_is_long: bool):
+    """Returns: True/False if data present, None if missing for this TF."""
+    w1 = _sf(indicators.get(f'wt1_{tf}'), 0)
+    w2 = _sf(indicators.get(f'wt2_{tf}'), 0)
+    if w1 == 0 and w2 == 0:
+        return None
+    return (position_is_long and w1 < w2) or ((not position_is_long) and w1 > w2)
+
+
 def should_close_hedge_wt3m1h(indicators: Dict, position_is_long: bool, hedge_gain: float, config) -> Optional[Dict]:
-    """Pure-function WT 3m+1h hedge close decision.
+    """Configurable hedge close decision (formerly hardcoded WT 3m+1h).
+
+    Mode controlled by HEDGE_CLOSE_MODE (default 'wt_3m_1h' = legacy behavior):
+        'wt_3m'           : WT 3m only (single TF — fastest signal)
+        'wt_3m_15m'       : WT 3m AND 15m
+        'wt_3m_1h'        : WT 3m AND 1h (LEGACY default — was hardcoded)
+        'wt_3m_15m_1h'    : WT 3m AND 15m AND 1h (3-TF strict)
+        'wt_3m_15m_htf1'  : WT 3m AND 15m AND 1of(1h, 4h, D)
+        'wt_3m_15m_htf2'  : WT 3m AND 15m AND 2of(1h, 4h, D)
+        'wt_3m_15m_htf3'  : WT 3m AND 15m AND ALL(1h, 4h, D) — 5-TF strict
+        'wt_dc_score'     : wt_dc_exit_scorer.score_exit() >= HEDGE_CLOSE_WT_DC_THRESHOLD
 
     Returns:
-        {'fire': True,  'reason': str, 'wt': {...}}  when WT signal AND gain gate pass → caller closes
-        {'fire': False, 'reason': str, 'wt': {...}}  when WT signal fires but gain<0 → caller holds (NOLOSS_HOLD)
-        None                                          when WT signal not present → caller does nothing
+        {'fire': True,  'reason': str, 'wt': {...}}  → close
+        {'fire': False, 'reason': str, 'wt': {...}}  → noloss-hold (signal fired but gain<0)
+        None                                          → no decision (data missing or criteria not met)
     """
     if not indicators:
         return None
-    w13 = _sf(indicators.get('wt1_3m'), 0)
-    w23 = _sf(indicators.get('wt2_3m'), 0)
-    w11 = _sf(indicators.get('wt1_1h'), 0)
-    w21 = _sf(indicators.get('wt2_1h'), 0)
-    ok_3m = (w13 != 0 or w23 != 0)
-    ok_1h = (w11 != 0 or w21 != 0)
-    if not (ok_3m and ok_1h):
-        return None
-    against_3m = (position_is_long and w13 < w23) or ((not position_is_long) and w13 > w23)
-    against_1h = (position_is_long and w11 < w21) or ((not position_is_long) and w11 > w21)
-    if not (against_3m and against_1h):
-        return None
-    wt_block = {'wt1_3m': w13, 'wt2_3m': w23, 'wt1_1h': w11, 'wt2_1h': w21}
+    mode = str(getattr(config, 'HEDGE_CLOSE_MODE', 'wt_3m_1h')).lower().strip()
+    against = {tf: _wt_against_tf(indicators, tf, position_is_long) for tf in _HEDGE_TF_LIST}
+
+    fired_reason = None
+    if mode == 'wt_3m':
+        if against['3m'] is None: return None
+        if not against['3m']: return None
+        fired_reason = 'WT_3M_AGAINST'
+    elif mode == 'wt_3m_15m':
+        if against['3m'] is None or against['15m'] is None: return None
+        if not (against['3m'] and against['15m']): return None
+        fired_reason = 'WT_3M_15M_AGAINST'
+    elif mode == 'wt_3m_15m_1h':
+        if any(against[t] is None for t in ('3m', '15m', '1h')): return None
+        if not (against['3m'] and against['15m'] and against['1h']): return None
+        fired_reason = 'WT_3M_15M_1H_AGAINST'
+    elif mode in ('wt_3m_15m_htf1', 'wt_3m_15m_htf2', 'wt_3m_15m_htf3'):
+        if against['3m'] is None or against['15m'] is None: return None
+        if not (against['3m'] and against['15m']): return None
+        htf_count = sum(1 for tf in ('1h', '4h', 'D') if against[tf] is True)
+        need = {'wt_3m_15m_htf1': 1, 'wt_3m_15m_htf2': 2, 'wt_3m_15m_htf3': 3}[mode]
+        if htf_count < need: return None
+        fired_reason = f'WT_3M_15M_HTF{need}_AGAINST'
+    elif mode == 'wt_dc_score':
+        try:
+            from wt_dc_exit_scorer import score_exit
+            score, score_reason = score_exit(indicators, position_is_long, 0.0, config)
+            threshold = float(getattr(config, 'HEDGE_CLOSE_WT_DC_THRESHOLD', 25.0))
+            if score < threshold: return None
+            fired_reason = f'WT_DC_SCORE_{score:.0f}>={threshold:.0f}'
+        except Exception:
+            return None
+    else:  # 'wt_3m_1h' (LEGACY default) and any unknown
+        if against['3m'] is None or against['1h'] is None: return None
+        if not (against['3m'] and against['1h']): return None
+        fired_reason = 'WT3M1H_AGAINST'
+
+    wt_block = {f'wt1_{tf}': _sf(indicators.get(f'wt1_{tf}'), 0) for tf in _HEDGE_TF_LIST}
+    wt_block.update({f'wt2_{tf}': _sf(indicators.get(f'wt2_{tf}'), 0) for tf in _HEDGE_TF_LIST})
+    wt_block['mode'] = mode
     if bool(getattr(config, 'HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN', True)) and hedge_gain < 0:
         return {'fire': False, 'reason': 'NOLOSS_HOLD', 'wt': wt_block, 'gain': hedge_gain}
-    return {'fire': True, 'reason': 'WT3M1H_AGAINST', 'wt': wt_block, 'gain': hedge_gain}
+    return {'fire': True, 'reason': fired_reason, 'wt': wt_block, 'gain': hedge_gain}
 
 
 def score_hedge_candidate(data: Dict, price: float, config) -> float:

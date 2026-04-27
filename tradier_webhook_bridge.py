@@ -30,6 +30,7 @@ Tradier Webhook Bridge (Fixed Logic)
 import asyncio
 import json
 import logging
+import time
 from flask import Flask, request, jsonify
 from datetime import datetime, timezone
 import sys
@@ -40,6 +41,21 @@ import subprocess
 from io import StringIO
 from dotenv import dotenv_values
 import redis
+
+# === ORDER DEDUPE (2026-04-27 — webhook burst protection) ===
+# Webhooks can fire in bursts (TV alert spam). Reject same (account, symbol, side)
+# within cooldown window so a flood of identical alerts only fires one order.
+_ORDER_DEDUPE_LOG: dict = {}
+_ORDER_DEDUPE_SEC: float = 60.0
+
+def _order_allowed(key: str, log) -> bool:
+    now = time.time()
+    last = _ORDER_DEDUPE_LOG.get(key, 0.0)
+    if now - last < _ORDER_DEDUPE_SEC:
+        log.warning(f"[ORDER_DEDUPE_SKIP] {key} — last attempt {now-last:.0f}s ago < {_ORDER_DEDUPE_SEC:.0f}s")
+        return False
+    _ORDER_DEDUPE_LOG[key] = now
+    return True
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -208,6 +224,9 @@ async def execute_smart_order(params: dict):
         if not final_side:
             raise ValueError(f"Could not determine order side for {raw_side} {pos_side}")
 
+        # Dedupe: refuse identical (account, symbol, side) within 60s.
+        if not _order_allowed(f"{account}|{symbol}|{final_side}", logger):
+            return {"skipped": "dedupe", "key": f"{account}|{symbol}|{final_side}"}
         # Execute
         result = await client.place_order(
             account_key=account,

@@ -96,11 +96,11 @@ class TradierConfig:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # master flag
-    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
-    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-27: ALL ON per user. Master flag.
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = True      # convergent: sma200 alignment
     LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
     LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # tra preferred symbols (user-specified). The actual list is in

@@ -11873,10 +11873,32 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         side = 'SELL' if is_long else 'BUY'
         reduce_qty=fresh_position.positionAmt - pos_min_qty if 'REDUCE' in action else fresh_position.positionAmt
         result = await trade_manager.execute_now(position_key, account_key, symbol, real_amt, side, position_side, reduce_qty, current_price, unique_id, f"QUICK_{reason}_REDUCE", False, action, is_hedge=is_hedge, hedge_for=hedge_for)
-        if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
-            # [WEBHOOK_BYPASS_KILLED 2026-04-17] execute_now result is authoritative — no direct webhook fallback.
-            logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: execute_now={str(result)[:60]} — NOT firing direct webhook (bypass path closed by user directive 2026-04-17 inf:CELRUSDT_LONG triple-open incident).")
-            success = False
+        success = 'SUCCESS' in str(result or '').upper()
+        if result and not success and 'BLOCK' not in result and account_key != 'ang':
+            # 2026-04-27: webhook fallback re-enabled for CLOSE/REDUCE only (this branch is
+            # already inside `if 'CLOSE' in action or 'REDUCE' in action:`). The 2026-04-17
+            # blanket WEBHOOK_BYPASS_KILLED kill (CELRUSDT triple-OPEN incident) was an
+            # OVERCORRECTION that also killed the close-side fallback — caused the MOVRUSDT_LONG
+            # phantom-close loop (54 protective_exit fires, 0 actual closes, position never
+            # exited). Per user 2026-04-27: "double-close does no harm; closes always fall
+            # back to webhook." Webhook fallback fires here only when execute_now's INNER
+            # maker→webhook chain returns non-SUCCESS/non-BLOCK after its 2 retries.
+            logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: execute_now={str(result)[:60]} — firing wrapper-level webhook fallback (double-close harmless).")
+            try:
+                _fb_uid = f"{unique_id}:WRAPPER_FB"
+                _fb_reason = f"{reason}_QWFB"
+                success = await trade_manager.send_webhook(
+                    position_key, account_key, symbol, real_amt, reduce_qty, current_price,
+                    side, position_side, _fb_uid, ('CLOSE' in action.upper()), _fb_reason,
+                    level=None, stoch_required=False
+                )
+                if success:
+                    logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: wrapper webhook fired successfully.")
+                else:
+                    logger.error(f"❌ [CLOSE_WEBHOOK_FALLBACK_FAIL] {position_key}: webhook returned False.")
+            except Exception as _wfb_e:
+                logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: {type(_wfb_e).__name__}: {_wfb_e}")
+                success = False
         if success:
             tracker_manager.registry.release_hedge_slot(account_key, symbol)
         if override_qty is None or not override_qty:
@@ -11916,8 +11938,30 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         if not success:
             success = await verify_trade_via_websocket(trade_manager, account_key, position_key, qty, is_long, timeout_seconds=9, action=action)
             if result and not success and 'BLOCK' not in result:
-                # [WEBHOOK_BYPASS_KILLED 2026-04-17] ALL webhook fallbacks removed — execute_now() is the sole authority.
-                logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: action={action} result={str(result)[:60]} — NOT firing direct webhook fallback.")
+                # 2026-04-27: webhook fallback re-enabled for CLOSE/REDUCE only. Entries
+                # (OPEN/AUGMENT/REENTRY/HEDGE_OPEN) stay killed per the 2026-04-17 CELRUSDT
+                # triple-OPEN incident — double-open is dangerous. Closes are different:
+                # double-close is harmless, and silent close failure caused MOVRUSDT_LONG
+                # phantom-close loop (54 protective_exit fires, 0 actual closes).
+                _act_up = (action or '').upper()
+                _is_close_or_reduce = ('CLOSE' in _act_up or 'REDUCE' in _act_up) and 'OPEN' not in _act_up and 'AUGMENT' not in _act_up
+                if _is_close_or_reduce:
+                    logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: action={action} result={str(result)[:60]} — firing wrapper-level webhook fallback (double-close harmless).")
+                    try:
+                        _fb_uid = f"{unique_id}:WRAPPER_FB"
+                        _fb_reason = f"{reason}_QWFB"
+                        _fb_qty = override_qty if (override_qty is not None and override_qty > 0) else qty
+                        success = await trade_manager.send_webhook(
+                            position_key, account_key, symbol, real_amt, _fb_qty, current_price,
+                            side, position_side, _fb_uid, ('CLOSE' in _act_up), _fb_reason,
+                            level=None, stoch_required=False
+                        )
+                        if success:
+                            logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: wrapper webhook fired successfully.")
+                    except Exception as _wfb2_e:
+                        logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: {type(_wfb2_e).__name__}: {_wfb2_e}")
+                else:
+                    logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: action={action} result={str(result)[:60]} — NOT firing webhook (entry actions stay killed per 2026-04-17 CELRUSDT triple-OPEN).")
         if not success:
             _open_in_flight.pop(position_key, None)
         if success:
@@ -13189,9 +13233,22 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         return f'{position_key} WAIT MEANS WAIT'
                     result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduction_qty, current_price, f"QUICK_{full_reason}_REDUCE", f"QUICK_{full_reason}_REDUCE", False, rec_exit, is_hedge=is_hedge, hedge_for=hedge_for)
                     if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
-                        # [WEBHOOK_BYPASS_KILLED 2026-04-17] REDUCE fallback removed. execute_now is the sole authority.
-                        logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: REDUCE execute_now={str(result)[:60]} — NOT firing direct webhook.")
-                        result = None
+                        # 2026-04-27: webhook fallback re-enabled for REDUCE (this branch is
+                        # action_type="REDUCE", always close-side). Per user "double-close does
+                        # no harm." 2026-04-17 blanket kill caused phantom-close loops.
+                        logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: REDUCE execute_now={str(result)[:60]} — firing wrapper-level webhook fallback.")
+                        try:
+                            _fb_ok = await trade_manager.send_webhook(
+                                position_key, account_key, symbol, position.positionAmt, reduction_qty, current_price,
+                                side, position_side, f"PROACTIVE_REDUCE_FB:{full_reason}", False,
+                                f"QUICK_{full_reason}_REDUCE_QWFB", level=None, stoch_required=False
+                            )
+                            result = "SUCCESS_WEBHOOK_FALLBACK" if _fb_ok else None
+                            if _fb_ok:
+                                logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: REDUCE webhook fired.")
+                        except Exception as _pfb_e:
+                            logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: REDUCE {type(_pfb_e).__name__}: {_pfb_e}")
+                            result = None
                     if result and 'SUCCESS' in result:
                         tracker_manager.registry.release_hedge_slot(account_key, symbol)
                         await tracker_manager.clear_processing(position_key)

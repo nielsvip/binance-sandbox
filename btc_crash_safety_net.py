@@ -38,6 +38,22 @@ sys.path.insert(0, str(BASE_PATH))
 logger = logging.getLogger("btc_safety_net")
 logger.setLevel(logging.INFO)
 logger.propagate = False
+
+# === ORDER DEDUPE (2026-04-27 — user audit, "headless chicken" prevention) ===
+# Stops the same (symbol, side) from being submitted twice within the cooldown,
+# even if state gets corrupted or daemon restarts mid-execution. State machine
+# is supposed to handle this but defense-in-depth.
+_ORDER_DEDUPE_LOG: dict = {}
+_ORDER_DEDUPE_SEC: float = 60.0
+
+def _order_allowed(key: str) -> bool:
+    now = time.time()
+    last = _ORDER_DEDUPE_LOG.get(key, 0.0)
+    if now - last < _ORDER_DEDUPE_SEC:
+        logger.warning(f"[ORDER_DEDUPE_SKIP] {key} — last attempt {now-last:.0f}s ago < {_ORDER_DEDUPE_SEC:.0f}s")
+        return False
+    _ORDER_DEDUPE_LOG[key] = now
+    return True
 if not logger.handlers:
     log_dir = Path(os.path.expanduser("~")) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -124,6 +140,8 @@ async def execute_shorts(state: dict) -> dict:
         mstr_qty = max(1, int(SHORT_BUDGET_MSTR / mstr_price))
         logger.warning(f"BTC CRASH TRIGGER — shorting IBIT x{ibit_qty} @ ~${ibit_price:.2f}, MSTR x{mstr_qty} @ ~${mstr_price:.2f}")
         # Short IBIT
+        if not _order_allowed("trb|IBIT|sell_short"):
+            return state
         ibit_res = await client.place_order("trb", "IBIT", "sell_short", ibit_qty, order_type="market")
         ibit_order_id = None
         if ibit_res and "order" in ibit_res:
@@ -132,6 +150,8 @@ async def execute_shorts(state: dict) -> dict:
         elif ibit_res and "errors" in ibit_res:
             logger.error(f"IBIT short FAILED: {ibit_res['errors']}")
         # Short MSTR
+        if not _order_allowed("trb|MSTR|sell_short"):
+            return state
         mstr_res = await client.place_order("trb", "MSTR", "sell_short", mstr_qty, order_type="market")
         mstr_order_id = None
         if mstr_res and "order" in mstr_res:
@@ -222,6 +242,8 @@ async def scan_for_put_rotation(state: dict) -> dict:
                     logger.info(f"Put order placed — {put_order_id}")
                     # Close the short
                     logger.warning(f"Closing {symbol} short — buy_to_cover x{short_qty}")
+                    if not _order_allowed(f"trb|{symbol}|buy_to_cover"):
+                        return state
                     cover_res = await client.place_order("trb", symbol, "buy_to_cover", short_qty, order_type="market")
                     if cover_res and "order" in cover_res:
                         logger.info(f"Cover order placed — {cover_res['order'].get('id')}")
@@ -238,7 +260,8 @@ async def scan_for_put_rotation(state: dict) -> dict:
                     other_qty = state.get(f"{other.lower()}_short_qty", 0)
                     if other_qty > 0 and not state.get(f"{other.lower()}_covered"):
                         logger.warning(f"Also covering {other} short x{other_qty}")
-                        await client.place_order("trb", other, "buy_to_cover", other_qty, order_type="market")
+                        if _order_allowed(f"trb|{other}|buy_to_cover"):
+                            await client.place_order("trb", other, "buy_to_cover", other_qty, order_type="market")
                         state[f"{other.lower()}_covered"] = True
                     break
                 elif "errors" in res:
