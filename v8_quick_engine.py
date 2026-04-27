@@ -833,15 +833,26 @@ class QuickConfig:
     BTC_DIVERGENCE_LB_4H: int = 20
     BTC_DIVERGENCE_LB_D: int = 10
     BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS: int = 2
-    # TREND-FOLLOW POC (path A — fundamental rebuild for big returns)
+    # TREND-FOLLOW POC (REJECTED 2026-04-27 — user course-corrected: HODL doesn't work at 20× lev,
+    # need 50 trades/day with hedge-based protection. Keep flag but default OFF; will be removed.)
     BTC_TREND_MODE_ENABLED: bool = False
     BTC_TREND_ATR_MULT: float = 2.5
     BTC_TREND_HARD_LOSS_PCT: float = 5.0
     BTC_TREND_NOTIONAL_USD_MAX: float = 500.0
     BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT: bool = True
     BTC_TREND_COOLDOWN_BARS: int = 480
-    BTC_TREND_ENTRY_MODE: str = "dc_d"               # "dc_d" | "dc_4h" | "wt_align" | "wt_d_cross"
-    BTC_TREND_MIN_HTF_ALIGNED: int = 3               # min of D+4h+1h aligned (3 = strict, 2 = loose)
+    BTC_TREND_ENTRY_MODE: str = "dc_d"
+    BTC_TREND_MIN_HTF_ALIGNED: int = 3
+    # ─── HF + HEDGE redesign (2026-04-27 path A correction) ────────────────────────
+    # Target: 50+ trades/day, accept 0.1-0.3% avg per trade, compound. Hedge engine
+    # opens opposite-side position on adverse move instead of stop-loss; hedge closes
+    # on WT 3m+1h flip + non-negative gain (per memory feedback_hedge_wt3m_close_absolute).
+    BTC_HF_MIN_HOLD_BARS: int = 3                                     # was 20 — too slow
+    BTC_HF_COOLDOWN_BARS: int = 1                                     # was 20 — too slow
+    BTC_HF_HEDGE_ON_ADVERSE_PCT: float = -0.3                         # open hedge when position pnl ≤ this
+    BTC_HF_HEDGE_NOTIONAL_PCT_OF_LOSER: float = 1.0                   # hedge size = 1.0× loser side
+    BTC_HF_HEDGE_CLOSE_REQUIRE_NONNEG_GAIN: bool = True               # hedge only closes when gain ≥ 0 (per memory feedback_hedge_wt3m_close_absolute)
+    BTC_HF_HEDGE_CLOSE_REQUIRE_BOTH_WT3M_AND_1H: bool = True          # both WT 3m AND 1h must flip in favor before closing hedge
     # Same-bar REVERSE-ON-EXIT
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True

@@ -618,6 +618,11 @@ class Config:
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.
     HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
+    # 2026-04-27 — wires the compact 7-block evaluate_reentry (was dead code, defined at line 16593, never called).
+    # 683 reentry mentions / 0 executions today across 5 crypto accounts. When True, process_position calls
+    # evaluate_reentry per cycle for fresh-flat or partially-reduced positions. User: "test the difference
+    # (huge functions so augments backtest times by up to 50% but if it works it works)".
+    EVAL_REENTRY_ENABLED: bool = True
     # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})
