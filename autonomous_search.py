@@ -127,9 +127,13 @@ FORBIDDEN_FLIPS = {
 # squeeze_*, yz_vol_*, pk_vol_*, gk_vol_*). engine `_safe()` zero-fills missing arrays,
 # so flipping these gates ON during a tradier sweep produces incoherent winners that
 # rely on dead data. Lock OFF for tradier mode only — crypto NPZ has full data.
+# 2026-04-27 update: FUNDING_GATE_* and OI_CONFIRM_* removed from this list per user
+# directive — engine has safe pass-through (`np.abs(_fr).sum() > 0` / `_oi_arr.max() > 0`
+# guards at v8_quick_engine.py:2139 and 2154). On tradier NPZ without funding/OI data
+# the gates no-op (don't filter), so they're safe to mutate. Tier-1 A/B proved
+# +91% pool_sharpe (FUNDING_GATE) and +40-107% (OI_CONFIRM); flipping these in
+# tradier sweeps tests whether the same edge surfaces in stock-mode entry logic.
 TRADIER_NO_DATA_FLIPS = {
-    "FUNDING_GATE_ENABLED", "FUNDING_GATE_LONG_MAX", "FUNDING_GATE_SHORT_MIN",
-    "OI_CONFIRM_ENABLED", "OI_CONFIRM_MIN_CHANGE_PCT",
     "VOL_TARGET_ENABLED", "VOL_TARGET_PCT", "VOL_TARGET_FIELD",
     "VOL_TARGET_LOW_CAP", "VOL_TARGET_HIGH_CAP",
     "SQUEEZE_ENABLED", "SQUEEZE_ENTRY_ENABLED",

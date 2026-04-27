@@ -702,6 +702,14 @@ class QuickConfig:
     OI_CONFIRM_ENABLED: bool = False          # 4-quadrant OI×price gate (Schabacker classic 2026-04-27 rewrite)
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this to consider OI significant
     OI_CONFIRM_MIN_PRICE_PCT: float = 0.3     # |price_change_1h_pct| must exceed this; gate fires only when BOTH significant
+    # === 2026-04-27 LH_HL_FILTER (sweep-testable, default OFF) ===
+    # LONG blocked when 1h+4h make lower highs (LH); SHORT blocked when they make higher lows (HL).
+    # REQUIRE_BOTH=True also requires LL (LONG block) / HH (SHORT block) — full descending/ascending channel.
+    LH_HL_FILTER_ENABLED: bool = False
+    LH_HL_FILTER_MODE: str = "STRICT_2BAR"    # "STRICT_2BAR" | "DC_REGRESS"
+    LH_HL_FILTER_TF_REQ: int = 2              # 1=either 1h/4h, 2=both must confirm
+    LH_HL_FILTER_DC_THRESHOLD_PCT: float = 0.5  # DC_REGRESS mode threshold
+    LH_HL_FILTER_REQUIRE_BOTH: bool = False   # False=LH-only/HL-only; True=LH+LL/HL+HH
     ADDITIVE_SIGNAL_MIN_HTF: int = 1          # min aligned 1h/4h/D TFs for additive SQUEEZE_FIRE/DIVERGENCE entry
     # === 2026-04-26 NEW SWITCHES — vol-target / DD-Kelly / Minervini / Clenow / 52w-prox / Squeeze-bonus / TSMOM ===
     # All default OFF — flip via QuickConfig overrides. Wired to consume new NPZ fields added by
@@ -2166,6 +2174,56 @@ def compute_entry_signals(npz, n, is_long, cfg):
             else:
                 _oi_block = _both_sig & ((~_px_up & ~_oi_up) | (_px_up & _oi_up))
             base_sig = base_sig & ~_oi_block
+    # LH_HL_FILTER (2026-04-27 sweep-testable): block LONG when 1h+4h make lower highs (LH);
+    # block SHORT when they make higher lows (HL). REQUIRE_BOTH=True also requires LL/HH (full channel).
+    # Modes: STRICT_2BAR (high < high_prev) | DC_REGRESS (high < dc_high * (1-threshold))
+    if getattr(cfg, 'LH_HL_FILTER_ENABLED', False):
+        try:
+            _lh_mode = str(getattr(cfg, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))
+            _lh_tf_req = int(getattr(cfg, 'LH_HL_FILTER_TF_REQ', 2))
+            _lh_dc_th = float(getattr(cfg, 'LH_HL_FILTER_DC_THRESHOLD_PCT', 0.5)) / 100.0
+            _lh_req_both = bool(getattr(cfg, 'LH_HL_FILTER_REQUIRE_BOTH', False))
+            _h1h = _safe(npz, 'high_1h', n, 0.0)
+            _h1hp = _safe(npz, 'high_1h_prev', n, 0.0)
+            _h4h = _safe(npz, 'high_4h', n, 0.0)
+            _h4hp = _safe(npz, 'high_4h_prev', n, 0.0)
+            _l1h = _safe(npz, 'low_1h', n, 0.0)
+            _l1hp = _safe(npz, 'low_1h_prev', n, 0.0)
+            _l4h = _safe(npz, 'low_4h', n, 0.0)
+            _l4hp = _safe(npz, 'low_4h_prev', n, 0.0)
+            if _lh_mode == "DC_REGRESS":
+                _dch1h = _safe(npz, 'dc_high_1h', n, 0.0)
+                _dch4h = _safe(npz, 'dc_high_4h', n, 0.0)
+                _dcl1h = _safe(npz, 'dc_low_1h', n, 0.0)
+                _dcl4h = _safe(npz, 'dc_low_4h', n, 0.0)
+                _lh_1h_b = (_h1h > 0) & (_dch1h > 0) & (_h1h < _dch1h * (1.0 - _lh_dc_th))
+                _lh_4h_b = (_h4h > 0) & (_dch4h > 0) & (_h4h < _dch4h * (1.0 - _lh_dc_th))
+                _hl_1h_b = (_l1h > 0) & (_dcl1h > 0) & (_l1h > _dcl1h * (1.0 + _lh_dc_th))
+                _hl_4h_b = (_l4h > 0) & (_dcl4h > 0) & (_l4h > _dcl4h * (1.0 + _lh_dc_th))
+            else:
+                _lh_1h_b = (_h1h > 0) & (_h1hp > 0) & (_h1h < _h1hp)
+                _lh_4h_b = (_h4h > 0) & (_h4hp > 0) & (_h4h < _h4hp)
+                _hl_1h_b = (_l1h > 0) & (_l1hp > 0) & (_l1h > _l1hp)
+                _hl_4h_b = (_l4h > 0) & (_l4hp > 0) & (_l4h > _l4hp)
+            _ll_1h = (_l1h > 0) & (_l1hp > 0) & (_l1h < _l1hp)
+            _ll_4h = (_l4h > 0) & (_l4hp > 0) & (_l4h < _l4hp)
+            _hh_1h = (_h1h > 0) & (_h1hp > 0) & (_h1h > _h1hp)
+            _hh_4h = (_h4h > 0) & (_h4hp > 0) & (_h4h > _h4hp)
+            if is_long:
+                _lh_count = _lh_1h_b.astype(np.int8) + _lh_4h_b.astype(np.int8)
+                _ll_count = _ll_1h.astype(np.int8) + _ll_4h.astype(np.int8)
+                _primary = _lh_count >= _lh_tf_req
+                _confirm = np.ones(n, dtype=bool) if not _lh_req_both else (_ll_count >= _lh_tf_req)
+                _lh_block = _primary & _confirm
+            else:
+                _hl_count = _hl_1h_b.astype(np.int8) + _hl_4h_b.astype(np.int8)
+                _hh_count = _hh_1h.astype(np.int8) + _hh_4h.astype(np.int8)
+                _primary = _hl_count >= _lh_tf_req
+                _confirm = np.ones(n, dtype=bool) if not _lh_req_both else (_hh_count >= _lh_tf_req)
+                _lh_block = _primary & _confirm
+            base_sig = base_sig & ~_lh_block
+        except Exception:
+            pass
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
     elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))

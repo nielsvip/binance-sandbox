@@ -5072,22 +5072,30 @@ class HedgeEngine:
                             # Hedge LONG → close when wt1_3m < wt2_3m AND wt1_1h < wt2_1h.
                             # Hedge SHORT → close when wt1_3m > wt2_3m AND wt1_1h > wt2_1h.
                             _abs_h_is_long = hedge_key.endswith('_LONG')
-                            # 2026-04-27 USER ABSOLUTE: refuse close on stale data
+                            # 2026-04-27 USER ABSOLUTE: NEVER act on stale data, NEVER bail. Force-refresh from API.
                             from dateutil.parser import isoparse as _abs_isoparse
                             _abs_max_age = float(getattr(self.config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
                             _abs_now = time.time()
-                            def _abs_age_of(_field):
-                                _raw = getattr(hedge_pos, _field, None)
+                            def _abs_age_of(_pos, _field):
+                                _raw = getattr(_pos, _field, None)
                                 if _raw is None: return 9999.0
                                 try:
                                     _dt = _abs_isoparse(_raw) if isinstance(_raw, str) else _raw
                                     if hasattr(_dt, 'timestamp'): return _abs_now - _dt.timestamp()
                                 except Exception: pass
                                 return 9999.0
-                            _abs_pos_age = _abs_age_of('last_updated'); _abs_mp_age = _abs_age_of('mark_price_last_updated')
+                            _abs_pos_age = _abs_age_of(hedge_pos, 'last_updated'); _abs_mp_age = _abs_age_of(hedge_pos, 'mark_price_last_updated')
                             if max(_abs_pos_age, _abs_mp_age) > _abs_max_age:
-                                logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK_ABS] {hedge_key}: pos_age={_abs_pos_age:.1f}s mp_age={_abs_mp_age:.1f}s > {_abs_max_age}s — REFUSING close on stale data.")
-                                continue
+                                logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESH_ABS] {hedge_key}: pos_age={_abs_pos_age:.1f}s mp_age={_abs_mp_age:.1f}s > {_abs_max_age}s — FORCE-REFRESHING from API")
+                                try:
+                                    _ps = getattr(self.tracker_manager, 'positions_service', None)
+                                    if _ps and hasattr(_ps, 'fetch_positions'):
+                                        import asyncio as _a
+                                        await _a.wait_for(_ps.fetch_positions(account_key), timeout=8.0)
+                                    _refreshed = await self.tracker_manager.get_position(hedge_key)
+                                    if _refreshed: hedge_pos = _refreshed
+                                except Exception as _rf_e:
+                                    logger.error(f"⏰ [HEDGE_FRESHNESS_REFRESH_ERR_ABS] {hedge_key}: {type(_rf_e).__name__}: {_rf_e} — proceeding with last-known data + live h_price")
                             # 2026-04-27 (C98USDT): position.gain field can be stale relative to live price. Recompute real gain at decision time and use min(stale, real) so we never close at a hidden loss.
                             _abs_entry_px = safe_fetch_float(getattr(hedge_pos, 'entry_price', 0), 0)
                             if _abs_entry_px > 0 and h_price > 0:
@@ -6367,25 +6375,34 @@ class HedgeEngine:
                                         # Hedge closes ONLY when wt_3m AND wt_1h both flip against the hedge side.
                                         _kr_h_is_long = hedge_position_key.endswith('_LONG')
                                         _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
-                                        # 2026-04-27 USER ABSOLUTE: refuse close on stale data — set sentinel that skips the close decision below.
+                                        # 2026-04-27 USER ABSOLUTE: NEVER act on stale data, NEVER bail. Force-refresh from API.
                                         from dateutil.parser import isoparse as _kr_isoparse
                                         _kr_max_age = float(getattr(self.config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
                                         _kr_now = time.time()
-                                        def _kr_age_of(_field):
-                                            if isinstance(position, dict):
-                                                _raw = position.get(_field)
+                                        def _kr_age_of(_pos, _field):
+                                            if isinstance(_pos, dict):
+                                                _raw = _pos.get(_field)
                                             else:
-                                                _raw = getattr(position, _field, None)
+                                                _raw = getattr(_pos, _field, None)
                                             if _raw is None: return 9999.0
                                             try:
                                                 _dt = _kr_isoparse(_raw) if isinstance(_raw, str) else _raw
                                                 if hasattr(_dt, 'timestamp'): return _kr_now - _dt.timestamp()
                                             except Exception: pass
                                             return 9999.0
-                                        _kr_pos_age = _kr_age_of('last_updated'); _kr_mp_age = _kr_age_of('mark_price_last_updated')
-                                        _kr_stale = max(_kr_pos_age, _kr_mp_age) > _kr_max_age
-                                        if _kr_stale:
-                                            logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK_KR] {hedge_position_key}: pos_age={_kr_pos_age:.1f}s mp_age={_kr_mp_age:.1f}s > {_kr_max_age}s — REFUSING close on stale data.")
+                                        _kr_pos_age = _kr_age_of(position, 'last_updated'); _kr_mp_age = _kr_age_of(position, 'mark_price_last_updated')
+                                        if max(_kr_pos_age, _kr_mp_age) > _kr_max_age:
+                                            logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESH_KR] {hedge_position_key}: pos_age={_kr_pos_age:.1f}s mp_age={_kr_mp_age:.1f}s > {_kr_max_age}s — FORCE-REFRESHING from API")
+                                            try:
+                                                _ps = getattr(self.tracker_manager, 'positions_service', None)
+                                                if _ps and hasattr(_ps, 'fetch_positions'):
+                                                    import asyncio as _aio
+                                                    await _aio.wait_for(_ps.fetch_positions(account_key), timeout=8.0)
+                                                _refreshed = await self.tracker_manager.get_position(hedge_position_key)
+                                                if _refreshed: position = _refreshed
+                                            except Exception as _rf_e:
+                                                logger.error(f"⏰ [HEDGE_FRESHNESS_REFRESH_ERR_KR] {hedge_position_key}: {type(_rf_e).__name__}: {_rf_e} — proceeding with last-known data")
+                                        _kr_stale = False  # never bail; always proceed with live current_price + recomputed real_gain
                                         # 2026-04-27 (C98USDT): recompute real gain from current_price + entry_price; use min(stale, real).
                                         _kr_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0) if not isinstance(position, dict) else position.get('entry_price', 0), 0)
                                         if _kr_entry_px > 0 and current_price > 0:
@@ -11605,6 +11622,72 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                             pass
                         except Exception as _rz_exc:
                             logger.debug(f"[RED_ZONE_GATE] {position_key}: exception {type(_rz_exc).__name__} {_rz_exc} — skipped")
+                # ═══ 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable) ═══
+                # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
+                # User 2026-04-27 23:13: "test lh with or without ll for longs hl with or without hh for shorts on both platforms".
+                # Default OFF — sweep-testable knob: flip LH_HL_FILTER_ENABLED on Tier-1 + Tier-2 sweeps before going live.
+                if bool(getattr(config, 'LH_HL_FILTER_ENABLED', False)):
+                    _lh_apply = True
+                    if is_hedge and not bool(getattr(config, 'LH_HL_FILTER_HEDGE_GATE_ENABLED', False)):
+                        _lh_apply = False
+                    if _is_aug_action and not bool(getattr(config, 'LH_HL_FILTER_AUGMENT_GATE_ENABLED', True)):
+                        _lh_apply = False
+                    if _lh_apply:
+                        try:
+                            _lh_mode = str(getattr(config, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))
+                            _lh_tf_req = int(getattr(config, 'LH_HL_FILTER_TF_REQ', 2))
+                            _lh_dc_th = float(getattr(config, 'LH_HL_FILTER_DC_THRESHOLD_PCT', 0.5)) / 100.0
+                            _lh_req_both = bool(getattr(config, 'LH_HL_FILTER_REQUIRE_BOTH', False))
+                            _lh_h1h = safe_fetch_float(_gate_ind.get('high_1h'), 0)
+                            _lh_h1hp = safe_fetch_float(_gate_ind.get('high_1h_prev'), 0)
+                            _lh_h4h = safe_fetch_float(_gate_ind.get('high_4h'), 0)
+                            _lh_h4hp = safe_fetch_float(_gate_ind.get('high_4h_prev'), 0)
+                            _lh_l1h = safe_fetch_float(_gate_ind.get('low_1h'), 0)
+                            _lh_l1hp = safe_fetch_float(_gate_ind.get('low_1h_prev'), 0)
+                            _lh_l4h = safe_fetch_float(_gate_ind.get('low_4h'), 0)
+                            _lh_l4hp = safe_fetch_float(_gate_ind.get('low_4h_prev'), 0)
+                            if _lh_mode == "DC_REGRESS":
+                                _lh_dch1h = safe_fetch_float(_gate_ind.get('dc_high_1h'), 0)
+                                _lh_dch4h = safe_fetch_float(_gate_ind.get('dc_high_4h'), 0)
+                                _lh_dcl1h = safe_fetch_float(_gate_ind.get('dc_low_1h'), 0)
+                                _lh_dcl4h = safe_fetch_float(_gate_ind.get('dc_low_4h'), 0)
+                                _lh_1h = (_lh_h1h > 0 and _lh_dch1h > 0 and _lh_h1h < _lh_dch1h * (1.0 - _lh_dc_th))
+                                _lh_4h = (_lh_h4h > 0 and _lh_dch4h > 0 and _lh_h4h < _lh_dch4h * (1.0 - _lh_dc_th))
+                                _hl_1h = (_lh_l1h > 0 and _lh_dcl1h > 0 and _lh_l1h > _lh_dcl1h * (1.0 + _lh_dc_th))
+                                _hl_4h = (_lh_l4h > 0 and _lh_dcl4h > 0 and _lh_l4h > _lh_dcl4h * (1.0 + _lh_dc_th))
+                                _ll_1h = (_lh_l1h > 0 and _lh_l1hp > 0 and _lh_l1h < _lh_l1hp)
+                                _ll_4h = (_lh_l4h > 0 and _lh_l4hp > 0 and _lh_l4h < _lh_l4hp)
+                                _hh_1h = (_lh_h1h > 0 and _lh_h1hp > 0 and _lh_h1h > _lh_h1hp)
+                                _hh_4h = (_lh_h4h > 0 and _lh_h4hp > 0 and _lh_h4h > _lh_h4hp)
+                            else:  # STRICT_2BAR (default)
+                                _lh_1h = (_lh_h1h > 0 and _lh_h1hp > 0 and _lh_h1h < _lh_h1hp)
+                                _lh_4h = (_lh_h4h > 0 and _lh_h4hp > 0 and _lh_h4h < _lh_h4hp)
+                                _hl_1h = (_lh_l1h > 0 and _lh_l1hp > 0 and _lh_l1h > _lh_l1hp)
+                                _hl_4h = (_lh_l4h > 0 and _lh_l4hp > 0 and _lh_l4h > _lh_l4hp)
+                                _ll_1h = (_lh_l1h > 0 and _lh_l1hp > 0 and _lh_l1h < _lh_l1hp)
+                                _ll_4h = (_lh_l4h > 0 and _lh_l4hp > 0 and _lh_l4h < _lh_l4hp)
+                                _hh_1h = (_lh_h1h > 0 and _lh_h1hp > 0 and _lh_h1h > _lh_h1hp)
+                                _hh_4h = (_lh_h4h > 0 and _lh_h4hp > 0 and _lh_h4h > _lh_h4hp)
+                            if _gate_is_long:
+                                _lh_count = int(_lh_1h) + int(_lh_4h)
+                                _ll_count = int(_ll_1h) + int(_ll_4h)
+                                _primary_hit = _lh_count >= _lh_tf_req
+                                _confirm_hit = (not _lh_req_both) or (_ll_count >= _lh_tf_req)
+                                if _primary_hit and _confirm_hit:
+                                    _tag = "LH+LL" if _lh_req_both else "LH"
+                                    logger.warning(f"📉 [LH_HL_FILTER] {position_key}: BLOCKED LONG — {_tag} on {_lh_count}/2 TFs (1h LH={_lh_1h} LL={_ll_1h} | 4h LH={_lh_4h} LL={_ll_4h}) mode={_lh_mode} req={_lh_tf_req}TF reqBoth={_lh_req_both}. action={action}")
+                                    return False, f"LH_HL_BLOCK_LONG_{_tag}_1h={int(_lh_1h)}_4h={int(_lh_4h)}"
+                            else:
+                                _hl_count = int(_hl_1h) + int(_hl_4h)
+                                _hh_count = int(_hh_1h) + int(_hh_4h)
+                                _primary_hit = _hl_count >= _lh_tf_req
+                                _confirm_hit = (not _lh_req_both) or (_hh_count >= _lh_tf_req)
+                                if _primary_hit and _confirm_hit:
+                                    _tag = "HL+HH" if _lh_req_both else "HL"
+                                    logger.warning(f"📈 [LH_HL_FILTER] {position_key}: BLOCKED SHORT — {_tag} on {_hl_count}/2 TFs (1h HL={_hl_1h} HH={_hh_1h} | 4h HL={_hl_4h} HH={_hh_4h}) mode={_lh_mode} req={_lh_tf_req}TF reqBoth={_lh_req_both}. action={action}")
+                                    return False, f"LH_HL_BLOCK_SHORT_{_tag}_1h={int(_hl_1h)}_4h={int(_hl_4h)}"
+                        except Exception as _lh_exc:
+                            logger.debug(f"[LH_HL_FILTER] {position_key}: exception {type(_lh_exc).__name__} {_lh_exc} — skipped")
     if _is_aug_action and not is_hedge:
         _last_trade_ts = _hard_trade_guard.get(position_key, 0)
         _since = time.time() - _last_trade_ts

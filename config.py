@@ -593,6 +593,27 @@ class Config:
     RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
     RED_ZONE_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into resistance)
     RED_ZONE_STALE_MAX_SEC: float = 30.0           # ignore ob_*_wall fields older than 30s (orderbook:_heartbeat dead)
+    # === 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable, default OFF) ===
+    # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
+    # LONG blocked when 1h+4h are making lower highs (downtrend confirming on HTFs).
+    # SHORT blocked when 1h+4h are making higher lows (uptrend confirming).
+    # Modes:
+    #   "DISABLED" — gate off (default for forward-testing safety)
+    #   "STRICT_2BAR" — high_1h < high_1h_prev AND high_4h < high_4h_prev (LONG block); mirror for SHORT (low > low_prev)
+    #   "DC_REGRESS" — current high < dc_high_*(1-threshold%) — failing to take out recent N-bar swing high
+    # TF_REQ controls how many timeframes (1h, 4h) must confirm: 1=either, 2=both.
+    # REPLACE_SMA200D=True also disables HTF_GATE_SIGNALS_SMA200D so this REPLACES the SMA200_D filter rather than ADDS.
+    LH_HL_FILTER_ENABLED: bool = False
+    LH_HL_FILTER_MODE: str = "STRICT_2BAR"
+    LH_HL_FILTER_TF_REQ: int = 2                       # 1=either 1h or 4h, 2=both must confirm
+    LH_HL_FILTER_DC_THRESHOLD_PCT: float = 0.5         # only used in DC_REGRESS mode
+    LH_HL_FILTER_REPLACE_SMA200D: bool = False         # if True, also turns off HTF_GATE_SIGNALS_SMA200D
+    LH_HL_FILTER_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into reversing trend)
+    LH_HL_FILTER_HEDGE_GATE_ENABLED: bool = False      # apply to hedge entries (default OFF — hedges are intentional counter-trend)
+    # Sweep dimension (user 2026-04-27): test LH alone vs LH+LL for LONGS, HL alone vs HL+HH for SHORTS.
+    #   False (default): block LONG on LH only / block SHORT on HL only — catches trend hesitation.
+    #   True: also require LL (LONG) / HH (SHORT) — full descending/ascending channel confirmation.
+    LH_HL_FILTER_REQUIRE_BOTH: bool = False
     # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.

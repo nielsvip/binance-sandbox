@@ -19915,12 +19915,14 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _hg_i = await ii(trade_manager, symbol)
                     if _hg_i:
                         _hg_long = position_key.endswith("_LONG")
-                        # 2026-04-27 USER ABSOLUTE: gain/mark_price/positionAmt MUST NEVER be stale when deciding to close a hedge.
-                        # Refuse to close on data older than LIVE_POSITION_FRESHNESS_MAX_SEC.
+                        # 2026-04-27 USER ABSOLUTE: gain/mark_price/positionAmt MUST NEVER be stale.
+                        # If service data is older than LIVE_POSITION_FRESHNESS_MAX_SEC, FORCE-REFRESH from
+                        # fallback sources (positions_service.fetch_positions = Binance API), then re-fetch position.
+                        # NEVER bail on staleness — positions data is the LIFELINE.
                         _max_age = float(getattr(config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
                         _now_epoch = time.time()
-                        def _hg_age_of(_field):
-                            _raw = getattr(_hg_pos, _field, None)
+                        def _hg_age_of(_pos, _field):
+                            _raw = getattr(_pos, _field, None)
                             if _raw is None: return 9999.0
                             try:
                                 _dt = isoparse(_raw) if isinstance(_raw, str) else _raw
@@ -19928,11 +19930,21 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                     return _now_epoch - _dt.timestamp()
                             except Exception: pass
                             return 9999.0
-                        _hg_pos_age = _hg_age_of('last_updated')
-                        _hg_mp_age = _hg_age_of('mark_price_last_updated')
+                        _hg_pos_age = _hg_age_of(_hg_pos, 'last_updated')
+                        _hg_mp_age = _hg_age_of(_hg_pos, 'mark_price_last_updated')
                         if max(_hg_pos_age, _hg_mp_age) > _max_age:
-                            logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK] {position_key}: pos_age={_hg_pos_age:.1f}s mp_age={_hg_mp_age:.1f}s > {_max_age}s — REFUSING close on stale data.")
-                            return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_FRESHNESS_BLOCK"
+                            logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESH] {position_key}: pos_age={_hg_pos_age:.1f}s mp_age={_hg_mp_age:.1f}s > {_max_age}s — FORCE-REFRESHING from API")
+                            try:
+                                _ps = getattr(trade_manager, 'positions_service', None)
+                                if _ps and hasattr(_ps, 'fetch_positions'):
+                                    await asyncio.wait_for(_ps.fetch_positions(account_key), timeout=8.0)
+                                _hg_pos = await trade_manager.get_position(position_key) or _hg_pos
+                                _hg_pos_age = _hg_age_of(_hg_pos, 'last_updated')
+                                _hg_mp_age = _hg_age_of(_hg_pos, 'mark_price_last_updated')
+                                logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESHED] {position_key}: post-refresh pos_age={_hg_pos_age:.1f}s mp_age={_hg_mp_age:.1f}s")
+                            except Exception as _rf_e:
+                                logger.error(f"⏰ [HEDGE_FRESHNESS_REFRESH_ERR] {position_key}: {type(_rf_e).__name__}: {_rf_e} — proceeding with last-known data (logged for diagnostic)")
+                            # Even if refresh failed, proceed using current_price for real_gain calc — the recompute below already uses current_price (live), so the close decision is based on live price not stale gain field.
                         # 2026-04-27 (C98USDT incident): position.gain field is sometimes stale relative to live current_price.
                         # Recompute REAL gain from entry_price + current_price NOW so the NOLOSS gate doesn't trust stale +0.55% when actual is -1.27%.
                         _hg_entry_px = safe_fetch_float(getattr(_hg_pos, 'entry_price', 0), 0)
@@ -20069,22 +20081,29 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _pp_is_hedge = bool(getattr(position, 'is_hedge', False)) if position else False
             if _pp_is_hedge and is_active_position:
                 _pp_long = position_key.endswith("_LONG")
-                # 2026-04-27 USER ABSOLUTE: refuse close on stale data
+                # 2026-04-27 USER ABSOLUTE: NEVER act on stale data, NEVER bail. Force-refresh from API.
                 _pp_max_age = float(getattr(config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
                 _pp_now = time.time()
-                def _pp_age_of(_field):
-                    _raw = getattr(position, _field, None)
+                def _pp_age_of(_pos, _field):
+                    _raw = getattr(_pos, _field, None)
                     if _raw is None: return 9999.0
                     try:
                         _dt = isoparse(_raw) if isinstance(_raw, str) else _raw
                         if hasattr(_dt, 'timestamp'): return _pp_now - _dt.timestamp()
                     except Exception: pass
                     return 9999.0
-                _pp_pos_age = _pp_age_of('last_updated')
-                _pp_mp_age = _pp_age_of('mark_price_last_updated')
+                _pp_pos_age = _pp_age_of(position, 'last_updated')
+                _pp_mp_age = _pp_age_of(position, 'mark_price_last_updated')
                 if max(_pp_pos_age, _pp_mp_age) > _pp_max_age:
-                    logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK_PP] {position_key}: pos_age={_pp_pos_age:.1f}s mp_age={_pp_mp_age:.1f}s > {_pp_max_age}s — REFUSING close on stale data.")
-                    return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_FRESHNESS_BLOCK_PP"
+                    logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESH_PP] {position_key}: pos_age={_pp_pos_age:.1f}s mp_age={_pp_mp_age:.1f}s > {_pp_max_age}s — FORCE-REFRESHING from API")
+                    try:
+                        _ps = getattr(trade_manager, 'positions_service', None)
+                        if _ps and hasattr(_ps, 'fetch_positions'):
+                            await asyncio.wait_for(_ps.fetch_positions(account_key), timeout=8.0)
+                        position = await trade_manager.get_position(position_key) or position
+                        logger.warning(f"⏰ [HEDGE_FRESHNESS_REFRESHED_PP] {position_key}: post-refresh pos_age={_pp_age_of(position, 'last_updated'):.1f}s")
+                    except Exception as _rf_e:
+                        logger.error(f"⏰ [HEDGE_FRESHNESS_REFRESH_ERR_PP] {position_key}: {type(_rf_e).__name__}: {_rf_e} — proceeding with last-known data + live current_price (real_gain recompute is authoritative)")
                 # 2026-04-27 (C98USDT): same stale-gain fix — recompute real_gain at decision time, use min(stale, real).
                 _pp_stale_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
                 _pp_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0), 0)

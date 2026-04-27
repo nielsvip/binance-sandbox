@@ -1482,12 +1482,42 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     log_reason = f"ReopenCD {(reopen_wait_s - secs_since_close)/60:.0f}m"
                     if force: logger.info(f"[{account_key}] ⏳ {symbol} REOPEN COOLDOWN {log_reason}")
                     return "COOLDOWN"
-                # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
+                # --- 0. PRICE_CROSS_BACK_REENTRY (2026-04-27 fix — was dead code in evaluate_reentry) ---
+                # 662 closes/day were tagged _MANDATORY_REENTRY but never executed because the
+                # executor was unreachable (positionAmt==0 check inside positionAmt>0 caller path).
+                # Now wired here in BRANCH B (positionAmt==0): if a recent close happened within
+                # band of current price + within max age, fire immediate reopen. NO_DOUBLE_OPEN
+                # guard naturally allows this (positionAmt==0 in this branch).
                 action_type = "NO_ACTION"
                 reason = "SCANNING"
                 qty = 0
                 conf = 0
                 _delta_entry = False
+                _xb_reentry_fired = False
+                if bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)):
+                    _xb_last_t = trade_manager.last_exit_times.get(symbol, 0)
+                    _xb_last_px = trade_manager.last_exit_prices.get(symbol, 0)
+                    if _xb_last_t > 0 and _xb_last_px > 0 and current_price > 0:
+                        _xb_age_min = (time.time() - _xb_last_t) / 60.0
+                        _xb_max_age = float(getattr(config, 'PRICE_CROSS_BACK_MAX_AGE_MIN', 240.0))
+                        _xb_band_pct = float(getattr(config, 'PRICE_CROSS_BACK_BAND_PCT', 0.3))
+                        _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
+                        if _xb_age_min < _xb_max_age and _xb_dist_pct <= _xb_band_pct:
+                            # Direction sanity: LONG only buys back when price is at-or-below exit (pullback);
+                            # SHORT only sells when price is at-or-above exit (rally back into resistance).
+                            _xb_dir_ok = (is_long and current_price <= _xb_last_px * (1 + _xb_band_pct/100)) or \
+                                         ((not is_long) and current_price >= _xb_last_px * (1 - _xb_band_pct/100))
+                            if _xb_dir_ok:
+                                _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
+                                action_type = "REENTRY_OPEN"
+                                qty = max(1, int(_xb_qty))
+                                conf = 90.0
+                                reason = f"PRICE_CROSS_BACK_REENTRY exit={_xb_last_px:.4f} cur={current_price:.4f} dist={_xb_dist_pct:.2f}% age={_xb_age_min:.0f}m"
+                                _xb_reentry_fired = True
+                                logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
+                # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
+                if _xb_reentry_fired:
+                    pass  # skip DELTA/WT_DC/RZ when reentry fired
                 # tra: long-term account, delta is too fast — block here so the
                 # WT/DC scorer (with high threshold) is the only entry path.
                 _tra_block_delta = (account_key == 'tra' and getattr(config, 'TRA_DISABLE_DELTA_ENTRY', True))
@@ -8302,8 +8332,107 @@ class TradierTradeManager:
             if quantity < 1.0:
                 logger.warning(f"[EXECUTE_NOW] {position_key}: Quantity {quantity} < 1, enforcing minimum of 1 share")
                 quantity = 1.0
-            quantity = max(1, int(round(quantity))) 
-            
+            quantity = max(1, int(round(quantity)))
+            # ═══ 2026-04-27 FUNDING_GATE_TRADIER + OI_CONFIRM_TRADIER ═══
+            # Stocks have no native funding rate; put/call OI ratio is the bullish/bearish flow analogue.
+            # Mirrors crypto FUNDING_GATE + OI_CONFIRM (ez_positions_quick.py:11515-11574).
+            # Reads data/stocks_oi_cache/{symbol}.json (READ-ONLY, populated by tradier_options_oi_fetcher.py).
+            # FAIL-OPEN: any exception or missing data → PASS through (never block on gate bug).
+            # Gates only fire on entry actions (OPEN/REENTRY/QUICK_OPEN/REVERSE/HEDGE_OPEN); skipped on exits/reduces.
+            if is_entry_action and not _is_exit_or_reduce:
+                try:
+                    _fg_enabled = bool(getattr(config, 'FUNDING_GATE_ENABLED_TRADIER', False))
+                    _oi_enabled = bool(getattr(config, 'OI_CONFIRM_ENABLED_TRADIER', False))
+                    if _fg_enabled or _oi_enabled:
+                        _oi_cache_path = Path(config.BASE_PATH) / "data" / "stocks_oi_cache" / f"{symbol}.json"
+                        _oi_doc = None
+                        if _oi_cache_path.is_file():
+                            try:
+                                with open(_oi_cache_path) as _ofh: _oi_doc = json.load(_ofh)
+                            except Exception: _oi_doc = None
+                        if _oi_doc:
+                            _stale_h = float(getattr(config, 'FUNDING_GATE_TRADIER_STALE_MAX_HOURS', 4.0))
+                            _oi_age_sec = time.time() - float(_oi_doc.get('ts') or 0)
+                            _oi_fresh = (_oi_age_sec <= _stale_h * 3600.0)
+                            if _oi_fresh:
+                                # ── FUNDING_GATE_TRADIER (P/C ratio analogue) ──
+                                if _fg_enabled:
+                                    _fg_apply = (not is_hedge) or bool(getattr(config, 'FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED', False))
+                                    if _fg_apply:
+                                        _prefer_near = bool(getattr(config, 'FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER', True))
+                                        _pc_long_max = float(getattr(config, 'FUNDING_GATE_PC_RATIO_LONG_MAX', 1.2))
+                                        _pc_short_min = float(getattr(config, 'FUNDING_GATE_PC_RATIO_SHORT_MIN', 0.83))
+                                        _pc_val = None
+                                        if _prefer_near:
+                                            _v = _oi_doc.get('near_money_pc_ratio')
+                                            try: _pc_val = float(_v) if _v is not None else None
+                                            except Exception: _pc_val = None
+                                        if _pc_val is None:
+                                            _v = _oi_doc.get('pc_ratio')
+                                            try: _pc_val = float(_v) if _v is not None else None
+                                            except Exception: _pc_val = None
+                                        if _pc_val is not None and _pc_val > 0:
+                                            if is_long and _pc_val >= _pc_long_max:
+                                                logger.warning(f"🚫 [FUNDING_GATE_TRADIER] {position_key}: BLOCKED LONG entry — pc_ratio={_pc_val:.3f} >= {_pc_long_max:.3f} (bearish options flow). action={action}")
+                                                if lock_acquired and self.redis_manager:
+                                                    await self.redis_manager.delete(exec_lock_key)
+                                                return f"FUNDING_GATE_TRADIER_LONG_REJECT_pc={_pc_val:.3f}"
+                                            if (not is_long) and _pc_val <= _pc_short_min:
+                                                logger.warning(f"🚫 [FUNDING_GATE_TRADIER] {position_key}: BLOCKED SHORT entry — pc_ratio={_pc_val:.3f} <= {_pc_short_min:.3f} (bullish options flow). action={action}")
+                                                if lock_acquired and self.redis_manager:
+                                                    await self.redis_manager.delete(exec_lock_key)
+                                                return f"FUNDING_GATE_TRADIER_SHORT_REJECT_pc={_pc_val:.3f}"
+                                            logger.debug(f"[FUNDING_GATE_TRADIER_OK] {position_key}: pc_ratio={_pc_val:.3f} within [{_pc_short_min:.3f}, {_pc_long_max:.3f}]")
+                                # ── OI_CONFIRM_TRADIER (4-quadrant OI×price) ──
+                                if _oi_enabled:
+                                    _oi_apply = (not is_hedge) or bool(getattr(config, 'OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED', False))
+                                    if _oi_apply:
+                                        _oi_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER', 0.5))
+                                        _oi_px_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_PRICE_PCT_TRADIER', 0.3))
+                                        # Total OI delta: weighted call+put change. Cache stores call_oi_change_pct/put_oi_change_pct.
+                                        _call_oi = float(_oi_doc.get('total_call_oi') or 0.0)
+                                        _put_oi = float(_oi_doc.get('total_put_oi') or 0.0)
+                                        _total_oi = _call_oi + _put_oi
+                                        _call_chg = _oi_doc.get('call_oi_change_pct')
+                                        _put_chg = _oi_doc.get('put_oi_change_pct')
+                                        _oi_chg = None
+                                        if _call_chg is not None and _put_chg is not None and _total_oi > 0:
+                                            try:
+                                                _oi_chg = (float(_call_chg) * _call_oi + float(_put_chg) * _put_oi) / _total_oi
+                                            except Exception: _oi_chg = None
+                                        # Price delta: cache's underlying_price (older) vs current_price (now).
+                                        _px_chg_pct = None
+                                        try:
+                                            _px_old = float(_oi_doc.get('underlying_price') or 0.0)
+                                            if _px_old > 0 and current_price > 0:
+                                                _px_chg_pct = (float(current_price) - _px_old) / _px_old * 100.0
+                                        except Exception: _px_chg_pct = None
+                                        if _oi_chg is not None and _px_chg_pct is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg_pct) >= _oi_px_min_pct:
+                                            _px_up = _px_chg_pct > 0; _oi_up = _oi_chg > 0
+                                            if is_long:
+                                                if _px_up and not _oi_up:
+                                                    logger.warning(f"🚫 [OI_CONFIRM_TRADIER] {position_key}: BLOCKED LONG — squeeze rally (px↑{_px_chg_pct:+.2f}% + OI↓{_oi_chg:+.2f}%) action={action}")
+                                                    if lock_acquired and self.redis_manager:
+                                                        await self.redis_manager.delete(exec_lock_key)
+                                                    return f"OI_CONFIRM_TRADIER_BLOCK_LONG_SQUEEZE_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                                                if (not _px_up) and _oi_up:
+                                                    logger.warning(f"🚫 [OI_CONFIRM_TRADIER] {position_key}: BLOCKED LONG — smart-money shorting (px↓{_px_chg_pct:+.2f}% + OI↑{_oi_chg:+.2f}%) action={action}")
+                                                    if lock_acquired and self.redis_manager:
+                                                        await self.redis_manager.delete(exec_lock_key)
+                                                    return f"OI_CONFIRM_TRADIER_BLOCK_LONG_NEW_SHORTS_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                                            else:
+                                                if (not _px_up) and (not _oi_up):
+                                                    logger.warning(f"🚫 [OI_CONFIRM_TRADIER] {position_key}: BLOCKED SHORT — long liquidation (px↓{_px_chg_pct:+.2f}% + OI↓{_oi_chg:+.2f}%) action={action}")
+                                                    if lock_acquired and self.redis_manager:
+                                                        await self.redis_manager.delete(exec_lock_key)
+                                                    return f"OI_CONFIRM_TRADIER_BLOCK_SHORT_LIQUIDATION_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                                                if _px_up and _oi_up:
+                                                    logger.warning(f"🚫 [OI_CONFIRM_TRADIER] {position_key}: BLOCKED SHORT — bullish breakout (px↑{_px_chg_pct:+.2f}% + OI↑{_oi_chg:+.2f}%) action={action}")
+                                                    if lock_acquired and self.redis_manager:
+                                                        await self.redis_manager.delete(exec_lock_key)
+                                                    return f"OI_CONFIRM_TRADIER_BLOCK_SHORT_NEW_LONGS_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                except Exception as _fgoi_e:
+                    logger.debug(f"[FUNDING_OI_GATE_TRADIER] {position_key}: gate skipped on exception (fail-open): {_fgoi_e}")
             if not is_regular_trading_hours():
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)
@@ -8944,7 +9073,9 @@ class TradierTradeManager:
                     if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: zone={_zone} k_1h={k_1h:.1f} > threshold {100.0 - _zt:.0f}")
                     return False
             # BACKTEST_CHANGE_T3: SMA200 distance check on 4h
-            if getattr(config, 'SMA200_DIST_ENTRY_ENABLED', False):
+            # 2026-04-27: when LH_HL_FILTER_REPLACE_SMA200D is True, this filter is bypassed (LH/HL filter replaces it).
+            _lh_replace = bool(getattr(config, 'LH_HL_FILTER_ENABLED', False)) and bool(getattr(config, 'LH_HL_FILTER_REPLACE_SMA200D', False))
+            if getattr(config, 'SMA200_DIST_ENTRY_ENABLED', False) and not _lh_replace:
                 _sma200_4h = float(indicators.get('sma_200_4h', 0) or 0)
                 _cur_price = float(indicators.get('current_price', 0) or 0)
                 if _sma200_4h > 0 and _cur_price > 0:
@@ -8952,6 +9083,42 @@ class TradierTradeManager:
                     if _dist_pct < getattr(config, 'SMA200_DIST_LONG_THRESHOLD_4H', -10.0):
                         if config.VERBOSE: logger.info(f"[VERBOSE][CALC][LONG] {symbol} BLOCKED: SMA200_4h dist={_dist_pct:.1f}% < threshold {config.SMA200_DIST_LONG_THRESHOLD_4H}")
                         return False
+            # 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (LONG side) — sweep-testable, default OFF.
+            # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
+            # User 2026-04-27 23:13: "test lh with or without ll for longs hl with or without hh for shorts on both platforms".
+            if bool(getattr(config, 'LH_HL_FILTER_ENABLED', False)):
+                _lh_apply = True
+                # Per-action gating: tradier should_enter_long only fires for OPEN-class actions, no AUGMENT distinction here.
+                if _lh_apply:
+                    try:
+                        _lh_mode = str(getattr(config, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))
+                        _lh_tf_req = int(getattr(config, 'LH_HL_FILTER_TF_REQ', 2))
+                        _lh_dc_th = float(getattr(config, 'LH_HL_FILTER_DC_THRESHOLD_PCT', 0.5)) / 100.0
+                        _lh_req_both = bool(getattr(config, 'LH_HL_FILTER_REQUIRE_BOTH', False))
+                        _lh_h1h = float(indicators.get('high_1h', 0) or 0); _lh_h1hp = float(indicators.get('high_1h_prev', 0) or 0)
+                        _lh_h4h = float(indicators.get('high_4h', 0) or 0); _lh_h4hp = float(indicators.get('high_4h_prev', 0) or 0)
+                        _lh_l1h = float(indicators.get('low_1h', 0) or 0); _lh_l1hp = float(indicators.get('low_1h_prev', 0) or 0)
+                        _lh_l4h = float(indicators.get('low_4h', 0) or 0); _lh_l4hp = float(indicators.get('low_4h_prev', 0) or 0)
+                        if _lh_mode == "DC_REGRESS":
+                            _lh_dch1h = float(indicators.get('dc_high_1h', 0) or 0)
+                            _lh_dch4h = float(indicators.get('dc_high_4h', 0) or 0)
+                            _lh_1h = (_lh_h1h > 0 and _lh_dch1h > 0 and _lh_h1h < _lh_dch1h * (1.0 - _lh_dc_th))
+                            _lh_4h = (_lh_h4h > 0 and _lh_dch4h > 0 and _lh_h4h < _lh_dch4h * (1.0 - _lh_dc_th))
+                        else:
+                            _lh_1h = (_lh_h1h > 0 and _lh_h1hp > 0 and _lh_h1h < _lh_h1hp)
+                            _lh_4h = (_lh_h4h > 0 and _lh_h4hp > 0 and _lh_h4h < _lh_h4hp)
+                        _ll_1h = (_lh_l1h > 0 and _lh_l1hp > 0 and _lh_l1h < _lh_l1hp)
+                        _ll_4h = (_lh_l4h > 0 and _lh_l4hp > 0 and _lh_l4h < _lh_l4hp)
+                        _lh_count = int(_lh_1h) + int(_lh_4h)
+                        _ll_count = int(_ll_1h) + int(_ll_4h)
+                        _primary_hit = _lh_count >= _lh_tf_req
+                        _confirm_hit = (not _lh_req_both) or (_ll_count >= _lh_tf_req)
+                        if _primary_hit and _confirm_hit:
+                            _tag = "LH+LL" if _lh_req_both else "LH"
+                            logger.info(f"📉 [LH_HL_FILTER] {symbol} BLOCKED LONG — {_tag} on {_lh_count}/2 TFs (1h LH={_lh_1h} LL={_ll_1h} | 4h LH={_lh_4h} LL={_ll_4h}) mode={_lh_mode} req={_lh_tf_req}TF reqBoth={_lh_req_both}")
+                            return False
+                    except Exception as _lh_exc:
+                        logger.debug(f"[LH_HL_FILTER][LONG] {symbol}: {type(_lh_exc).__name__} {_lh_exc} — skipped")
             # BACKTEST_CHANGE_T4: MFI check on Daily
             if getattr(config, 'MFI_ENTRY_ENABLED', False):
                 _mfi_d = float(indicators.get('mfi_D', 50) or 50)
@@ -9131,6 +9298,39 @@ class TradierTradeManager:
                     if _wt1_15m >= _wt2_15m:
                         if config.VERBOSE: logger.info(f"[VERBOSE][CALC][SHORT] {symbol} BLOCKED: mid zone requires wt_crossunder_15m (wt1={_wt1_15m:.1f} >= wt2={_wt2_15m:.1f})")
                         return False
+            # 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (SHORT side) — sweep-testable, default OFF.
+            # User: "block long trades while 1h/4h charts make lower highs (shorts vv)".
+            # User 2026-04-27 23:13: "test lh with or without ll for longs hl with or without hh for shorts on both platforms".
+            if bool(getattr(config, 'LH_HL_FILTER_ENABLED', False)):
+                try:
+                    _lh_mode = str(getattr(config, 'LH_HL_FILTER_MODE', 'STRICT_2BAR'))
+                    _lh_tf_req = int(getattr(config, 'LH_HL_FILTER_TF_REQ', 2))
+                    _lh_dc_th = float(getattr(config, 'LH_HL_FILTER_DC_THRESHOLD_PCT', 0.5)) / 100.0
+                    _lh_req_both = bool(getattr(config, 'LH_HL_FILTER_REQUIRE_BOTH', False))
+                    _lh_h1h = float(indicators.get('high_1h', 0) or 0); _lh_h1hp = float(indicators.get('high_1h_prev', 0) or 0)
+                    _lh_h4h = float(indicators.get('high_4h', 0) or 0); _lh_h4hp = float(indicators.get('high_4h_prev', 0) or 0)
+                    _lh_l1h = float(indicators.get('low_1h', 0) or 0); _lh_l1hp = float(indicators.get('low_1h_prev', 0) or 0)
+                    _lh_l4h = float(indicators.get('low_4h', 0) or 0); _lh_l4hp = float(indicators.get('low_4h_prev', 0) or 0)
+                    if _lh_mode == "DC_REGRESS":
+                        _lh_dcl1h = float(indicators.get('dc_low_1h', 0) or 0)
+                        _lh_dcl4h = float(indicators.get('dc_low_4h', 0) or 0)
+                        _hl_1h = (_lh_l1h > 0 and _lh_dcl1h > 0 and _lh_l1h > _lh_dcl1h * (1.0 + _lh_dc_th))
+                        _hl_4h = (_lh_l4h > 0 and _lh_dcl4h > 0 and _lh_l4h > _lh_dcl4h * (1.0 + _lh_dc_th))
+                    else:
+                        _hl_1h = (_lh_l1h > 0 and _lh_l1hp > 0 and _lh_l1h > _lh_l1hp)
+                        _hl_4h = (_lh_l4h > 0 and _lh_l4hp > 0 and _lh_l4h > _lh_l4hp)
+                    _hh_1h = (_lh_h1h > 0 and _lh_h1hp > 0 and _lh_h1h > _lh_h1hp)
+                    _hh_4h = (_lh_h4h > 0 and _lh_h4hp > 0 and _lh_h4h > _lh_h4hp)
+                    _hl_count = int(_hl_1h) + int(_hl_4h)
+                    _hh_count = int(_hh_1h) + int(_hh_4h)
+                    _primary_hit = _hl_count >= _lh_tf_req
+                    _confirm_hit = (not _lh_req_both) or (_hh_count >= _lh_tf_req)
+                    if _primary_hit and _confirm_hit:
+                        _tag = "HL+HH" if _lh_req_both else "HL"
+                        logger.info(f"📈 [LH_HL_FILTER] {symbol} BLOCKED SHORT — {_tag} on {_hl_count}/2 TFs (1h HL={_hl_1h} HH={_hh_1h} | 4h HL={_hl_4h} HH={_hh_4h}) mode={_lh_mode} req={_lh_tf_req}TF reqBoth={_lh_req_both}")
+                        return False
+                except Exception as _lh_exc:
+                    logger.debug(f"[LH_HL_FILTER][SHORT] {symbol}: {type(_lh_exc).__name__} {_lh_exc} — skipped")
             # BACKTEST_CHANGE_T9: conviction threshold for shorts
             if getattr(config, 'CONVICTION_SHORT_THRESHOLD', 0) > 0:
                 _conviction = float(indicators.get('0conviction', 0) or 0)

@@ -135,6 +135,33 @@ class TradierConfig:
     RED_ZONE_TRADIER_MIN_OI_AT_WALL: int = 1000     # require wall strike to have ≥1000 OI (filters spurious thin strikes)
     RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED: bool = True   # apply to AUGMENT actions (don't add into resistance)
     RED_ZONE_TRADIER_STALE_MAX_HOURS: float = 4.0   # skip wall check if cache older than 4h
+    # === 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable, default OFF — STOCKS) ===
+    # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
+    # LONG blocked when 1h+4h make lower highs (LH); optionally also require lower lows (LL).
+    # SHORT blocked when 1h+4h make higher lows (HL); optionally also require higher highs (HH).
+    # When REPLACE_SMA200D=True, also turns OFF SMA200_DIST_ENTRY_ENABLED so this filter REPLACES the SMA200_4h dist filter rather than ADDS.
+    LH_HL_FILTER_ENABLED: bool = False
+    LH_HL_FILTER_MODE: str = "STRICT_2BAR"             # "STRICT_2BAR" | "DC_REGRESS"
+    LH_HL_FILTER_TF_REQ: int = 2                       # 1=either 1h/4h, 2=both must confirm
+    LH_HL_FILTER_DC_THRESHOLD_PCT: float = 0.5         # only used in DC_REGRESS mode
+    LH_HL_FILTER_REPLACE_SMA200D: bool = False         # if True, turns off SMA200_DIST_ENTRY_ENABLED
+    LH_HL_FILTER_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions
+    LH_HL_FILTER_REQUIRE_BOTH: bool = False            # False=LH-only/HL-only; True=LH+LL/HL+HH (full channel)
+    # === 2026-04-27 FUNDING/OI ENTRY-GATE ANALOGUES (mirror crypto FUNDING_GATE + OI_CONFIRM) ===
+    # Stocks have no native funding rate; options put/call OI ratio is the bullish/bearish flow analogue.
+    # Reads data/stocks_oi_cache/{sym}.json (populated by tradier_options_oi_fetcher.py, READ-ONLY).
+    # Defaults OFF — flip in sweep / live promotion only after validation.
+    # Pattern mirrors ez_positions_quick.py:11515-11574 (crypto FUNDING_GATE + OI_CONFIRM 4-quadrant).
+    FUNDING_GATE_ENABLED_TRADIER: bool = False        # default OFF; flip in sweep
+    FUNDING_GATE_PC_RATIO_LONG_MAX: float = 1.2       # block LONG when put/call ratio >= this (bearish flow)
+    FUNDING_GATE_PC_RATIO_SHORT_MIN: float = 0.83     # block SHORT when put/call ratio <= this (bullish flow)
+    FUNDING_GATE_TRADIER_NEAR_MONEY_PREFER: bool = True   # prefer near_money_pc_ratio (±5% strikes) when present — purer signal
+    FUNDING_GATE_TRADIER_HEDGE_GATE_ENABLED: bool = False # apply gate to hedge entries too (default OFF)
+    FUNDING_GATE_TRADIER_STALE_MAX_HOURS: float = 4.0     # skip gate if cache older than 4h (fail-open)
+    OI_CONFIRM_ENABLED_TRADIER: bool = False          # 4-quadrant OI×price gate (Schabacker classic)
+    OI_CONFIRM_MIN_OI_CHANGE_PCT_TRADIER: float = 0.5 # |total OI change since last cache snapshot| significance threshold
+    OI_CONFIRM_MIN_PRICE_PCT_TRADIER: float = 0.3     # |price change since last cache snapshot| significance threshold
+    OI_CONFIRM_TRADIER_HEDGE_GATE_ENABLED: bool = False
     # === SECTOR CLASSIFICATION — for options diversification engine ===
     # Each symbol maps to a sector. Used by options agent to enforce hedging + diversification.
     SECTOR_MAP: Dict[str, str] = field(default_factory=lambda: {
