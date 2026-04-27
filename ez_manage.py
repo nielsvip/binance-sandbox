@@ -661,6 +661,17 @@ from binance.exceptions import BinanceAPIException
 from config import Config
 import hedge_decisions as _hd
 from ez_positions_service import bootstrap_position_service
+# 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
+try:
+    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
+    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
+    from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
+    from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+except Exception:
+    _ee_should_fire_wt_entry = None
+    _ee_should_fire_stoch_entry = None
+    _ee_should_fire_dc_entry = None
+    _ee_should_fire_htf_entry = None
 from utils import (
     REDIS_CHANNELS,
     RateLimitDuplicateFilter,
@@ -17484,6 +17495,32 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
     reason_parts = [f"TECH_SIGNAL_{positives[0]}"]
     if reasons:
         reason_parts.append(", ".join(str(r) for r in reasons if r))
+    # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
+    # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
+    _tm_cfg = getattr(trade_manager, 'config', None)
+    if _tm_cfg is not None and getattr(_tm_cfg, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+        _ee_score_max = 0.0
+        _ee_reasons = []
+        _ee_side = 'LONG' if is_long else 'SHORT'
+        for _ee_name, _ee_fn, _ee_flag in (
+            ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+            ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+            ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+            ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+        ):
+            if not getattr(_tm_cfg, _ee_flag, False): continue
+            if _ee_fn is None: continue
+            try:
+                _fire, _why, _sc = _ee_fn(symbol, i, _ee_side)
+                if _fire and _sc >= float(getattr(_tm_cfg, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                    _ee_score_max = max(_ee_score_max, _sc)
+                    _ee_reasons.append(f"{_ee_name}={_sc:.2f}")
+            except Exception:
+                pass  # never let engine error block entry
+        if _ee_score_max > 0:
+            _ee_boost = float(getattr(_tm_cfg, 'LIVE_ENTRY_ENGINE_BOOST_SCORE', 8.0))
+            conviction = conviction + (_ee_boost * _ee_score_max)
+            reason_parts.append(f"+ENGINES({','.join(_ee_reasons)})")
     reason = " | ".join(part for part in reason_parts if part)
     _pts_result = await _process_technical_signals(ctx, event_hint or 'process_position', is_long, '15m', k_15m, d_15m, current_price, trade_manager.config.MIN_POSITION_SIZE / current_price, True, 1.0)
     if _pts_result and hasattr(_pts_result, 'action') and _pts_result.action != 'NO_ACTION':

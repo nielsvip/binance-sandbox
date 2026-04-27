@@ -37,6 +37,17 @@ from tradier_indicators import analyze_multi_tf_state_tradier
 from wt_dc_entry_scorer import score_entry as wt_dc_score_entry
 from wt_dc_exit_scorer import score_exit as wt_dc_score_exit
 from wt_dc_delta import DeltaTracker
+# 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
+try:
+    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
+    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
+    from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
+    from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+except Exception:
+    _ee_should_fire_wt_entry = None
+    _ee_should_fire_stoch_entry = None
+    _ee_should_fire_dc_entry = None
+    _ee_should_fire_htf_entry = None
 from tradier_indicators import (
     compute_extra_indicators,
     get_rvol_gate_for_strategy,
@@ -1500,6 +1511,31 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if action_type != "OPEN":
                     _entry_ind = indicators_raw if indicators_raw else i
                     _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price)
+                    # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
+                    # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
+                    if getattr(config, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+                        _ee_score_max = 0.0
+                        _ee_reasons = []
+                        _ee_side = 'LONG' if is_long else 'SHORT'
+                        for _ee_name, _ee_fn, _ee_flag in (
+                            ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+                            ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+                            ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+                            ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+                        ):
+                            if not getattr(config, _ee_flag, False): continue
+                            if _ee_fn is None: continue
+                            try:
+                                _fire, _why, _sc = _ee_fn(symbol, _entry_ind, _ee_side)
+                                if _fire and _sc >= float(getattr(config, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                                    _ee_score_max = max(_ee_score_max, _sc)
+                                    _ee_reasons.append(f"{_ee_name}={_sc:.2f}")
+                            except Exception:
+                                pass  # never let engine error block entry
+                        if _ee_score_max > 0:
+                            _ee_boost = float(getattr(config, 'LIVE_ENTRY_ENGINE_BOOST_SCORE', 8.0))
+                            _entry_score = _entry_score + (_ee_boost * _ee_score_max)
+                            _entry_reason = (_entry_reason or '') + f" +ENGINES({','.join(_ee_reasons)})"
                     # tra uses a much higher entry bar so only the strongest HTF
                     # setups fire — long-term hold needs few, very high quality entries.
                     if account_key == 'tra':
@@ -1815,9 +1851,22 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
     try:
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
-        if not is_regular_trading_hours(): 
+        if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
+        # 2026-04-27 user rule: stop "headless-chicken" duplicate fires. Same
+        # (position_key, action) within cooldown → refused. Catches MSTR REBALANCE
+        # loop and any other path that re-fires after a rejected/invalid order.
+        if not hasattr(trade_manager, '_queue_attempt_ts'):
+            trade_manager._queue_attempt_ts = {}
+        _qa_key = f"{position_key}|{action}"
+        _qa_now = time.time()
+        _qa_cooldown = float(getattr(config, 'TRADIER_QUEUE_DEDUPE_SEC', 60.0))
+        _qa_last = trade_manager._queue_attempt_ts.get(_qa_key, 0.0)
+        if _qa_now - _qa_last < _qa_cooldown:
+            logger.warning(f"[QUEUE_DEDUPE] {position_key} {action}: queued {_qa_now - _qa_last:.0f}s ago < {_qa_cooldown:.0f}s — refusing duplicate. Reason='{reason[:80]}'")
+            return False
+        trade_manager._queue_attempt_ts[_qa_key] = _qa_now
         if position_key.count(":") != 1:
             logger.error(f"[queue_trade_action] !! CORRUPTED position_key with {position_key.count(':')} colons: {position_key}")
             from utils import clean_position_key, orjson_default
@@ -6547,6 +6596,28 @@ class TradierTradeManager:
                             except Exception: return 9999
                         if _age_s(_last_red) < _rebal_cooldown_s or _age_s(_last_aug) < _rebal_cooldown_s:
                             continue
+                        # 2026-04-27 user rule: stop the headless-chicken loop. last_reduction_time
+                        # is only set on SUCCESS — failed/rejected orders never updated it, so the
+                        # rebalance retried every 60s. Track ATTEMPT timestamps separately and
+                        # refuse to re-attempt within 5 min, success or fail.
+                        if not hasattr(self, '_rebal_attempt_ts'):
+                            self._rebal_attempt_ts = {}
+                        _attempt_age = _now_ts - self._rebal_attempt_ts.get(pk, 0.0)
+                        _attempt_cooldown_s = float(getattr(config, 'REBAL_ATTEMPT_COOLDOWN_SEC', 300.0))
+                        if _attempt_age < _attempt_cooldown_s:
+                            logger.info(f"[REBAL_ATTEMPT_COOLDOWN] {pk}: last attempt {_attempt_age:.0f}s ago < {_attempt_cooldown_s:.0f}s — skip re-fire")
+                            continue
+                        # 2026-04-27 user rule: 72h min hold also gates SENTIMENT_FADE rebalance.
+                        # Stocks must not be flipped on bias inside the hold window.
+                        _rebal_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
+                        try:
+                            _opened_at = getattr(pos, 'opened_at', None)
+                            _hold_min = (datetime.now(timezone.utc) - _opened_at).total_seconds() / 60.0 if _opened_at else 0.0
+                        except Exception:
+                            _hold_min = 0.0
+                        if _hold_min < _rebal_min_hold:
+                            logger.info(f"[REBAL_MIN_HOLD_BLOCK] {pk}: hold={_hold_min:.0f}m<{_rebal_min_hold:.0f}m — SENTIMENT_FADE rebalance gated")
+                            continue
 
                         # 2. Get Fresh Indicators
                         i = self.get_indicators(symbol)
@@ -6579,6 +6650,8 @@ class TradierTradeManager:
                                 reason = f"SENTIMENT_FADE ideal={int(ideal_qty)} cur={int(current_qty)} loc={i.get('0market_sentiment_local',0):.1f} WT{_rebal_tf_against}TF"
                                 logger.info(f"📉 {symbol} REBALANCE REDUCE: {reason}")
                                 _acct = pk.split(':')[0] if ':' in pk else 'trb'
+                                # Stamp attempt BEFORE firing so a failed order still blocks re-fire for cooldown window.
+                                self._rebal_attempt_ts[pk] = _now_ts
                                 await self.execute_trade_action(
                                     _acct, pk, symbol, qty_to_reduce, current_price,
                                     "SELL" if side == "LONG" else "BUY",

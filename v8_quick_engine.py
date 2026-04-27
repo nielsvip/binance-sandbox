@@ -699,8 +699,9 @@ class QuickConfig:
     FUNDING_GATE_ENABLED: bool = False        # veto entry when 8h funding too extreme (overcrowded)
     FUNDING_GATE_LONG_MAX: float = 0.0005     # rate above this = veto longs
     FUNDING_GATE_SHORT_MIN: float = -0.0005   # rate below this = veto shorts
-    OI_CONFIRM_ENABLED: bool = False          # require OI rising/falling to confirm trend
-    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this for direction
+    OI_CONFIRM_ENABLED: bool = False          # 4-quadrant OI×price gate (Schabacker classic 2026-04-27 rewrite)
+    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5    # |oi_change_1h_pct| must exceed this to consider OI significant
+    OI_CONFIRM_MIN_PRICE_PCT: float = 0.3     # |price_change_1h_pct| must exceed this; gate fires only when BOTH significant
     ADDITIVE_SIGNAL_MIN_HTF: int = 1          # min aligned 1h/4h/D TFs for additive SQUEEZE_FIRE/DIVERGENCE entry
     # === 2026-04-26 NEW SWITCHES — vol-target / DD-Kelly / Minervini / Clenow / 52w-prox / Squeeze-bonus / TSMOM ===
     # All default OFF — flip via QuickConfig overrides. Wired to consume new NPZ fields added by
@@ -2113,19 +2114,29 @@ def compute_entry_signals(npz, n, is_long, cfg):
             else:
                 _fr_pass = (_fr >= float(getattr(cfg, 'FUNDING_GATE_SHORT_MIN', -0.0005))) | (~_fr_live)
             base_sig = base_sig & _fr_pass
-    # OI_CONFIRM (A2): Binance limits OI history to ~30d. Pre-cache bars have oi=0; gate must pass-through there.
-    # Filter ONLY applies on bars where oi_{tf} > 0 (cache active). Otherwise gate is no-op.
+    # OI_CONFIRM (A2 — 2026-04-27 4-QUADRANT REWRITE): pair OI direction with PRICE direction.
+    #   price↑ + OI↑ = new longs entering   → LONG ok / block SHORT
+    #   price↑ + OI↓ = short-cover squeeze  → block LONG / SHORT ok (fade)
+    #   price↓ + OI↑ = new shorts entering  → SHORT ok / block LONG
+    #   price↓ + OI↓ = long liquidation     → block SHORT / LONG ok (mean-revert)
+    # Pass-through on pre-cache bars (oi=0) and small moves below thresholds.
     if getattr(cfg, 'OI_CONFIRM_ENABLED', False):
         _oi_arr = _safe(npz, f'oi_{_ltf}', n, 0.0)
         if _oi_arr.max() > 0:
             _oi_chg = _safe(npz, f'oi_change_1h_{_ltf}', n, 0.0)
             _oi_min = float(getattr(cfg, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))
+            _oi_px_min = float(getattr(cfg, 'OI_CONFIRM_MIN_PRICE_PCT', 0.3))
             _oi_live = _oi_arr > 0
+            _close_1h_prev_oi = _safe(npz, 'close_1h_prev', n, 0.0)
+            _px_chg = np.where(_close_1h_prev_oi > 0, (close - _close_1h_prev_oi) / np.maximum(_close_1h_prev_oi, 1e-9) * 100.0, 0.0)
+            _both_sig = (np.abs(_oi_chg) >= _oi_min) & (np.abs(_px_chg) >= _oi_px_min) & _oi_live
+            _px_up = _px_chg > 0
+            _oi_up = _oi_chg > 0
             if is_long:
-                _oi_pass = (_oi_chg >= _oi_min) | (~_oi_live)
+                _oi_block = _both_sig & ((_px_up & ~_oi_up) | (~_px_up & _oi_up))
             else:
-                _oi_pass = (_oi_chg <= -_oi_min) | (~_oi_live)
-            base_sig = base_sig & _oi_pass
+                _oi_block = _both_sig & ((~_px_up & ~_oi_up) | (_px_up & _oi_up))
+            base_sig = base_sig & ~_oi_block
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
     elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))

@@ -2184,9 +2184,50 @@ def build_param_grid_hedge_wt_kill():
     return configs
 
 
+def build_param_grid_exit_decision_tradier():
+    """2026-04-27 EXISTENTIAL EXIT-KNOB SWEEP — tradier (no same-symbol hedge).
+    Tests every combination of WRONG_SIDE TF gates + WT_EXIT + PEAK_GIVEBACK + NOLOSS_BYPASS.
+    Lock UNIVERSAL_NOLOSS_GATE=False (per user: True cost 25%/wk) and DELTA_EXIT_OVERRIDE_NOLOSS=False (today's bleed).
+    288 configs. ~18 min on S2 8c at 30s/config."""
+    grid = {
+        "WRONG_SIDE_ABS_KILL_ENABLED": [True],
+        "WRONG_SIDE_WT_TFS_REQUIRED": [2, 3, 4, 5],
+        "WRONG_SIDE_K_TFS_REQUIRED": [0, 1, 2, 3],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "PEAK_GIVEBACK_HARD_ZERO_ENABLED": [True, False],
+        "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": [3, 4, 5],
+        # Locked per user judgement
+        "UNIVERSAL_NOLOSS_GATE": [False],
+        "DELTA_EXIT_OVERRIDE_NOLOSS": [False],
+    }
+    return grid
+
+
+def build_param_grid_exit_decision_crypto():
+    """2026-04-27 EXISTENTIAL EXIT-KNOB SWEEP — crypto (with same-symbol hedge available).
+    Tests WRONG_SIDE TF gates + WT_EXIT + HEDGE_CLOSE_NONNEG + HEDGE_STRICT_TFS + NOLOSS_BYPASS.
+    864 configs. ~27 min on S1 16c at 30s/config."""
+    grid = {
+        "WRONG_SIDE_ABS_KILL_ENABLED": [True],
+        "WRONG_SIDE_WT_TFS_REQUIRED": [2, 3, 4, 5],
+        "WRONG_SIDE_K_TFS_REQUIRED": [0, 1, 2, 3],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "HEDGE_WT_CLOSE_REQUIRE_NONNEG_GAIN": [True, False],
+        "HEDGE_STRICT_WT_MIN_TFS_AGAINST": [3, 4, 5],
+        "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": [3, 4, 5],
+        # Locked per user judgement
+        "UNIVERSAL_NOLOSS_GATE": [False],
+        "DELTA_EXIT_OVERRIDE_NOLOSS": [False],
+        "HEDGE_STRICT_WT_ALL_TFS_ENABLED": [True],
+    }
+    return grid
+
+
 TIER_MAP = {
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
+    "exit_decision_tradier": build_param_grid_exit_decision_tradier,
+    "exit_decision_crypto": build_param_grid_exit_decision_crypto,
     "full": build_param_grid_full,
     "v3_core": build_param_grid_v3_core,
     "tradier_core": build_param_grid_tradier_core,

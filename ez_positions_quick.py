@@ -30,6 +30,17 @@ from requests.adapters import HTTPAdapter
 
 from config import Config
 import hedge_decisions as _hd
+# 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
+try:
+    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
+    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
+    from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
+    from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+except Exception:
+    _ee_should_fire_wt_entry = None
+    _ee_should_fire_stoch_entry = None
+    _ee_should_fire_dc_entry = None
+    _ee_should_fire_htf_entry = None
 
 # Helpers needed by the ported reentry loops (ez_positions_quick.py OWNS these loops now).
 # We still import the small leaf helpers — they are not zombie logic; they are stateless
@@ -11305,9 +11316,27 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 )
                 if _is_rz_entry:
                     logger.info(f"✅ [WT_GATE_BYPASS_RZ] {position_key}: RZ entry ({_reason_str[:40]}) — bypassing LTF gate (bounce logic already validated HTF+LTF velocity). {_gwt_d}")
-                elif _gwt_ltf < 2:
-                    logger.warning(f"🚫 [WT_LTF_GATE] {position_key}: BLOCKED — only {_gwt_ltf}/3 LTF WT aligned. Need 2. {_gwt_d}. action={action}")
-                    return False, f"WT_LTF_GATE_{_gwt_ltf}/3"
+                else:
+                    # 2026-04-27 owner: softened gate. Pass if ANY of (1h, 4h, D)
+                    # aligned with trade direction OR if (3m AND 15m) both aligned.
+                    # Block only when zero HTF aligned AND LTF cross disagrees.
+                    # Counter-factual on 31 queued reentries: prior 2/3 strict gate
+                    # blocked 17 winners (+108%) to avoid 14 losers (-110%) net -$30.72,
+                    # concentrated in 2 outliers (EDU LONG -34%, LUNC SHORT -46%).
+                    if _gate_is_long:
+                        _wt_1h_al = _gw1_1h > _gw2_1h and _gw1_1h != 0
+                        _wt_4h_al = _gw1_4h > _gw2_4h and _gw1_4h != 0
+                        _wt_D_al = _gw1_D > _gw2_D and _gw1_D != 0
+                    else:
+                        _wt_1h_al = _gw1_1h < _gw2_1h and _gw1_1h != 0
+                        _wt_4h_al = _gw1_4h < _gw2_4h and _gw1_4h != 0
+                        _wt_D_al = _gw1_D < _gw2_D and _gw1_D != 0
+                    _htf_any_al = _wt_1h_al or _wt_4h_al or _wt_D_al
+                    _ltf_3m15m = _wt_3m_aligned and _wt_15m_aligned
+                    if not (_htf_any_al or _ltf_3m15m):
+                        logger.warning(f"🚫 [WT_LTF_GATE_SOFT] {position_key}: BLOCKED — neither HTF(1h/4h/D) nor (3m+15m) aligned. {_gwt_d}. action={action}")
+                        return False, f"WT_LTF_GATE_SOFT_htf_any={_htf_any_al}_3m15m={_ltf_3m15m}"
+                    logger.info(f"✅ [WT_LTF_GATE_SOFT_PASS] {position_key}: htf_any={_htf_any_al} (1h={_wt_1h_al} 4h={_wt_4h_al} D={_wt_D_al}) ltf_both={_ltf_3m15m}. {_gwt_d}")
                 if not _is_rz_entry and _gwt_htf < 2:
                     _wt_discount = 0.5 if _gwt_htf == 1 else 0.3
                     qty = qty * _wt_discount
@@ -11338,25 +11367,44 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                         return False, f"HTF_DIRECTION_GATE_{_htf_met}/{_htf_total}"
                     else:
                         logger.info(f"✅ [HTF_DIRECTION_GATE] {position_key}: {_htf_reason}")
-                # ═══ 2026-04-27 OPEN-INTEREST CONFIRM GATE ═══
-                # LONG entries require oi_change_1h_pct ≥ OI_CONFIRM_MIN_CHANGE_PCT (rising OI confirms uptrend buying).
-                # SHORT entries require oi_change_1h_pct ≤ -OI_CONFIRM_MIN_CHANGE_PCT (falling OI confirms downtrend covering).
-                # Default OFF until sweep validates. Knob names match v8_quick_engine.py:702-703.
+                # ═══ 2026-04-27 OPEN-INTEREST × PRICE 4-QUADRANT GATE (Schabacker/Murphy) ═══
+                # Classic OI theory pairs price-direction with OI-direction:
+                #   price↑ + OI↑ = new longs entering with conviction → LONG OK, block SHORT
+                #   price↑ + OI↓ = short-cover squeeze (no real buyers) → block LONG, SHORT OK (fade)
+                #   price↓ + OI↑ = new shorts entering with conviction → SHORT OK, block LONG
+                #   price↓ + OI↓ = long liquidation (exhaustion)        → block SHORT, LONG OK (mean-revert)
+                # Block fires only when BOTH |price_chg|≥OI_CONFIRM_MIN_PRICE_PCT AND |oi_chg|≥OI_CONFIRM_MIN_CHANGE_PCT.
                 if bool(getattr(config, 'OI_CONFIRM_ENABLED', False)):
                     _oi_apply = (not is_hedge) or bool(getattr(config, 'OI_HEDGE_GATE_ENABLED', False))
                     if _oi_apply:
                         _oi_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))
+                        _oi_px_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_PRICE_PCT', 0.3))
                         _oi_chg = _gate_ind.get('oi_change_1h_pct')
-                        if _oi_chg is not None:
-                            try: _oi_chg = float(_oi_chg)
-                            except Exception: _oi_chg = None
-                        if _oi_chg is not None and _oi_chg != 0.0:
-                            if _gate_is_long and _oi_chg < _oi_min_pct:
-                                logger.warning(f"🚫 [OI_CONFIRM_GATE] {position_key}: BLOCKED LONG — oi_change_1h={_oi_chg:.2f}% < {_oi_min_pct:.2f}% (no rising OI to confirm). action={action}")
-                                return False, f"OI_CONFIRM_LONG_REJECT_oi={_oi_chg:.2f}%"
-                            if (not _gate_is_long) and _oi_chg > -_oi_min_pct:
-                                logger.warning(f"🚫 [OI_CONFIRM_GATE] {position_key}: BLOCKED SHORT — oi_change_1h={_oi_chg:.2f}% > {-_oi_min_pct:.2f}% (no falling OI to confirm). action={action}")
-                                return False, f"OI_CONFIRM_SHORT_REJECT_oi={_oi_chg:.2f}%"
+                        try: _oi_chg = float(_oi_chg) if _oi_chg is not None else None
+                        except Exception: _oi_chg = None
+                        _px_now = _gate_ind.get('current_price') or _gate_ind.get('close')
+                        _px_1h = _gate_ind.get('close_1h_prev') or _gate_ind.get('close_1h')
+                        _px_chg_pct = None
+                        try:
+                            if _px_now and _px_1h and float(_px_1h) > 0:
+                                _px_chg_pct = (float(_px_now) - float(_px_1h)) / float(_px_1h) * 100.0
+                        except Exception: _px_chg_pct = None
+                        if _oi_chg is not None and _px_chg_pct is not None and abs(_oi_chg) >= _oi_min_pct and abs(_px_chg_pct) >= _oi_px_min_pct:
+                            _px_up = _px_chg_pct > 0; _oi_up = _oi_chg > 0
+                            if _gate_is_long:
+                                if _px_up and not _oi_up:
+                                    logger.warning(f"🚫 [OI×PRICE_GATE] {position_key}: BLOCKED LONG — squeeze rally (price↑{_px_chg_pct:+.2f}% + OI↓{_oi_chg:+.2f}%) action={action}")
+                                    return False, f"OI_BLOCK_LONG_SQUEEZE_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                                if (not _px_up) and _oi_up:
+                                    logger.warning(f"🚫 [OI×PRICE_GATE] {position_key}: BLOCKED LONG — smart-money shorting (price↓{_px_chg_pct:+.2f}% + OI↑{_oi_chg:+.2f}%) action={action}")
+                                    return False, f"OI_BLOCK_LONG_NEW_SHORTS_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                            else:
+                                if (not _px_up) and (not _oi_up):
+                                    logger.warning(f"🚫 [OI×PRICE_GATE] {position_key}: BLOCKED SHORT — long liquidation (price↓{_px_chg_pct:+.2f}% + OI↓{_oi_chg:+.2f}%) action={action}")
+                                    return False, f"OI_BLOCK_SHORT_LIQUIDATION_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
+                                if _px_up and _oi_up:
+                                    logger.warning(f"🚫 [OI×PRICE_GATE] {position_key}: BLOCKED SHORT — real bullish breakout (price↑{_px_chg_pct:+.2f}% + OI↑{_oi_chg:+.2f}%) action={action}")
+                                    return False, f"OI_BLOCK_SHORT_NEW_LONGS_px={_px_chg_pct:.2f}%_oi={_oi_chg:.2f}%"
                 # ═══ 2026-04-27 FUNDING-RATE GATE — DECISIVE FACTOR (user directive) ═══
                 # Funding rate >0 = longs pay shorts (overheated long market). >0.05% = stretched → reject NEW LONG.
                 # Funding rate <0 = shorts pay longs. <-0.05% = stretched → reject NEW SHORT.
@@ -13962,6 +14010,31 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                 data_manager.delta_tracker.temp_keys.on_position_closed(position_key)
                     elif random.random() < 0.002 and _delta_sig.total_fields >= 10:
                         logger.info(f"[RZ_WATCH] {symbol}: zone={_rz} action={_rz_action} bull={_delta_sig.bull_speed:.2f} bear={_delta_sig.bear_speed:.2f} legs={_rz_legs:.0f}")
+                # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
+                # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
+                if getattr(config, 'LIVE_ENTRY_ENGINE_ENABLED', False):
+                    _ee_score_max = 0.0
+                    _ee_reasons = []
+                    _ee_side = 'LONG' if is_long else 'SHORT'
+                    for _ee_name, _ee_fn, _ee_flag in (
+                        ('wt', _ee_should_fire_wt_entry, 'LIVE_ENTRY_ENGINE_WT_ENABLED'),
+                        ('stoch', _ee_should_fire_stoch_entry, 'LIVE_ENTRY_ENGINE_STOCH_ENABLED'),
+                        ('dc', _ee_should_fire_dc_entry, 'LIVE_ENTRY_ENGINE_DC_ENABLED'),
+                        ('htf', _ee_should_fire_htf_entry, 'LIVE_ENTRY_ENGINE_HTF_ENABLED'),
+                    ):
+                        if not getattr(config, _ee_flag, False): continue
+                        if _ee_fn is None: continue
+                        try:
+                            _fire, _why, _sc = _ee_fn(symbol, indicators, _ee_side)
+                            if _fire and _sc >= float(getattr(config, 'LIVE_ENTRY_ENGINE_MIN_SCORE', 0.6)):
+                                _ee_score_max = max(_ee_score_max, _sc)
+                                _ee_reasons.append(f"{_ee_name}={_sc:.2f}")
+                        except Exception:
+                            pass  # never let engine error block entry
+                    if _ee_score_max > 0:
+                        _ee_boost = float(getattr(config, 'LIVE_ENTRY_ENGINE_BOOST_SCORE', 8.0))
+                        score = score + (_ee_boost * _ee_score_max)
+                        reason = (reason or '') + f" +ENGINES({','.join(_ee_reasons)})"
                 # == SIGNAL-BASED ENTRY (only if no DC breakout) ==
                 if not should_trade:
                     if (score >= 4 or "BUY" in rec or "SELL" in rec) and ('WAIT' not in str(rec) and 'HEDGE' not in str(rec)):

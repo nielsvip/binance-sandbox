@@ -46,17 +46,18 @@ class TradierConfig:
     MIN_POSITION_SIZE: float = 62.5
     # 2026-04-27 EMERGENCY SIZE CUT — user at -25% / 10d. Halve all caps until bleed stops.
     # Original values preserved in inline comment in case we need to revert.
-    MAX_POSITION_SIZE: float = 2500.0   # was 5000 — emergency halve
-    START_POSITION_SIZE: float = 200.0  # 2026-04-27 EMERGENCY: was 300 (already halved 600→300). User: "enter SOFTER". 1452 entries in 2.5h × $300 = too much capital deployed at bad entries.
+    # 2026-04-27 SECOND CUT — user at -30%/week, headless-chicken MSTR loop. Now 1/4 of original.
+    MAX_POSITION_SIZE: float = 1250.0   # was 2500 / orig 5000
+    START_POSITION_SIZE: float = 100.0  # was 200 / orig 600
     # === WING BUDGETS ===
-    SWING_LONG_BUDGET: float = 50000.0      # was 100000 — emergency halve
-    SWING_SHORT_BUDGET: float = 50000.0     # was 100000 — emergency halve
-    SWING_MAX_POSITION_SIZE: float = 1000.0  # was 2000 (DEAD_CONFIRMED but halved for safety)
-    SWING_START_SIZE: float = 400.0          # was 800 (DEAD_CONFIRMED but halved for safety)
-    SCALP_LONG_BUDGET: float = 500.0        # was 1000 — emergency halve
-    SCALP_SHORT_BUDGET: float = 500.0       # was 1000 — emergency halve
-    SCALP_MAX_POSITION_SIZE: float = 1000.0  # was 2000 — emergency halve
-    SCALP_START_SIZE: float = 300.0          # was 600 — emergency halve
+    SWING_LONG_BUDGET: float = 25000.0      # was 50000 / orig 100000
+    SWING_SHORT_BUDGET: float = 25000.0     # was 50000 / orig 100000
+    SWING_MAX_POSITION_SIZE: float = 500.0   # was 1000 (DEAD)
+    SWING_START_SIZE: float = 200.0          # was 400 (DEAD)
+    SCALP_LONG_BUDGET: float = 250.0         # was 500 / orig 1000
+    SCALP_SHORT_BUDGET: float = 250.0        # was 500 / orig 1000
+    SCALP_MAX_POSITION_SIZE: float = 500.0   # was 1000 / orig 2000
+    SCALP_START_SIZE: float = 150.0          # was 300 / orig 600
     SCALP_MAX_HOLD_MINUTES: float = 180.0     # URGENT_FIX: shorter holds, take profits/losses faster (was 300)
     SCALP_STOP_PCT: float = 9.99             # BACKTEST_CHANGE_T12 was 1.5% → 999% effectively disabled NO_LOSS mode
     SCALP_TARGET_PCT: float = 0.005           # URGENT_FIX: tighter TP in choppy market, take profits faster (was 0.01 = 1.0% → 0.005 = 0.5%)
@@ -64,7 +65,7 @@ class TradierConfig:
     SCALP_TOP_MOVERS_N: int = 14             # Candidate pool size
     SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify
     SCALP_MIN_MOVE_PCT: float = 0.003        # Min 0.3% 5m deviation from ema_20_5m
-    MAX_ORDER_VALUE: float = 1000.0  # 2026-04-27 emergency halve (was 2000) — user at -25%/10d
+    MAX_ORDER_VALUE: float = 500.0  # was 1000 / orig 2000 — 2026-04-27 second cut
     ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # tra = SATOSHIT-only account. Block all other strategies (HODL, rotation, RSI2, gap fill, ORB, EP).
     TRA_SATOSHIT_ONLY: bool = True
@@ -91,6 +92,17 @@ class TradierConfig:
     TRA_DISABLE_AUGMENT: bool = True                 # no churn from augments either
     TRA_WT_DC_ENTRY_THRESHOLD: float = 85.0          # high bar — only the strongest HTF setups
     TRA_MIN_HOLD_MINUTES: float = 1440.0             # 24h hold floor before any exit considered
+    # 2026-04-27 — live entry-engine boost (defaults OFF for safety; user flips when ready).
+    # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
+    # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
+    # NEVER block existing entries. Worst case is a few extra entries fire.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # master flag
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
+    LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
     TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
@@ -728,23 +740,23 @@ class TradierConfig:
     HEDGE_MODE_TRADIER: bool = False  # BACKTEST_CHANGE_T31 hedge mode disabled for stocks
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
-    # 2026-04-27 EMERGENCY HALVE — user at -25%/10d. Every trc cap halved.
-    TRC_START_POSITION_SIZE: float = 500.0   # was 1000
-    TRC_MAX_ORDER_VALUE: float = 2500.0      # was 5000
-    TRC_MAX_POSITION_SIZE: float = 2500.0    # was 5000
-    TRC_SCALP_START_SIZE: float = 500.0      # was 1000
-    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 10  # was 20 — concentrate
-    TRC_MAX_CONCURRENT_POSITIONS: int = 20   # was 40 — concentrate
-    TRC_ROTATION_POSITION_SIZE: float = 1500.0  # was 3000
-    TRC_RSI2_POSITION_SIZE: float = 990.0    # was 1980
-    TRC_GAP_FILL_POSITION_SIZE: float = 990.0  # was 1980
-    TRC_DC_DAYTRADE_START_SIZE: float = 990.0  # was 1980
-    TRC_DC_DAYTRADE_LONG_BUDGET: float = 4950.0   # was 9900
-    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 4950.0  # was 9900
-    TRC_SWING_LONG_BUDGET: float = 50000.0   # was 100000
-    TRC_SWING_SHORT_BUDGET: float = 50000.0  # was 100000
-    TRC_SCALP_LONG_BUDGET: float = 2500.0    # was 5000
-    TRC_SCALP_SHORT_BUDGET: float = 2500.0   # was 5000
+    # 2026-04-27 SECOND CUT — every trc cap now 1/4 of original.
+    TRC_START_POSITION_SIZE: float = 250.0    # was 500 / orig 1000
+    TRC_MAX_ORDER_VALUE: float = 1250.0       # was 2500 / orig 5000
+    TRC_MAX_POSITION_SIZE: float = 1250.0     # was 2500 / orig 5000
+    TRC_SCALP_START_SIZE: float = 250.0       # was 500 / orig 1000
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 5   # was 10 / orig 20
+    TRC_MAX_CONCURRENT_POSITIONS: int = 10    # was 20 / orig 40
+    TRC_ROTATION_POSITION_SIZE: float = 750.0   # was 1500 / orig 3000
+    TRC_RSI2_POSITION_SIZE: float = 495.0     # was 990 / orig 1980
+    TRC_GAP_FILL_POSITION_SIZE: float = 495.0   # was 990 / orig 1980
+    TRC_DC_DAYTRADE_START_SIZE: float = 495.0   # was 990 / orig 1980
+    TRC_DC_DAYTRADE_LONG_BUDGET: float = 2475.0    # was 4950 / orig 9900
+    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 2475.0   # was 4950 / orig 9900
+    TRC_SWING_LONG_BUDGET: float = 25000.0    # was 50000 / orig 100000
+    TRC_SWING_SHORT_BUDGET: float = 25000.0   # was 50000 / orig 100000
+    TRC_SCALP_LONG_BUDGET: float = 1250.0     # was 2500 / orig 5000
+    TRC_SCALP_SHORT_BUDGET: float = 1250.0    # was 2500 / orig 5000
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
     TRC_ENTRY_ZONE_LONG: float = 25.0  # Local extremes: deeper oversold bottom (was 30)
     TRC_ENTRY_ZONE_SHORT: float = 75.0  # Local extremes: deeper overbought top (was 70)
@@ -756,19 +768,19 @@ class TradierConfig:
     TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY.
     # === CONCENTRATION CAP — prevent single-symbol overexposure ===
-    MAX_SYMBOL_VALUE_TRADIER: float = 7500.0  # was 15000 — 2026-04-27 emergency halve
-    TRC_MAX_SYMBOL_VALUE: float = 2500.0  # was 5000 — 2026-04-27 emergency halve
+    MAX_SYMBOL_VALUE_TRADIER: float = 3750.0  # was 7500 / orig 15000 — 2026-04-27 second cut
+    TRC_MAX_SYMBOL_VALUE: float = 1250.0  # was 2500 / orig 5000 — 2026-04-27 second cut
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
     TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = False  # 2026-04-26 KILL: tier sizing was suffocating PnL; Phase 8 disable = 90× PnL boost in v8
     LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # 2026-04-20 le_dynamic winner: min LE score to allow entry (262sym Sharpe 3.5479). Wire in tradier_manage.py entry gate.
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # 2026-04-20 le_dynamic winner: exit when opposite-direction LE score >= threshold
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # 2026-04-20 le_dynamic winner: counter-exit trigger threshold (score=55 validated)
-    TRB_MAX_SYMBOL_VALUE: float = 5000.0  # was 10000 — 2026-04-27 emergency halve
-    # === 2026-04-26 NEW user-spec position caps for trb (HALVED 2026-04-27) ===
-    TRB_MAX_LONG_VALUE: float = 25000.0    # was 50000 — emergency halve
-    TRB_MAX_SHORT_VALUE: float = 25000.0   # was 50000 — emergency halve
-    TRB_MAX_PUT_VALUE: float = 1500.0      # was 3000 — emergency halve
-    TRB_MAX_CALL_VALUE: float = 1500.0     # was 3000 — emergency halve
+    TRB_MAX_SYMBOL_VALUE: float = 2500.0  # was 5000 / orig 10000 — 2026-04-27 second cut
+    # === trb caps now 1/4 of original ===
+    TRB_MAX_LONG_VALUE: float = 12500.0    # was 25000 / orig 50000
+    TRB_MAX_SHORT_VALUE: float = 12500.0   # was 25000 / orig 50000
+    TRB_MAX_PUT_VALUE: float = 750.0       # was 1500 / orig 3000
+    TRB_MAX_CALL_VALUE: float = 750.0      # was 1500 / orig 3000
     # === 2026-04-26 NEW user-spec position caps for trb (ABOVE) ===
     # === VIX regime filter (Phase B framework) ===
     VIX_VOLATILITY_REGIME_ENABLED: bool = True   # 2026-04-26: VIX vs VIX-200dMA gate (NOT SPY-SMA200 — that's L1061); 32% DD reduction documented
@@ -1103,6 +1115,12 @@ class TradierConfig:
     PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True
     PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
     PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0 # only fire within 4h of the close
+    # === DUPLICATE-FIRE GUARDS (2026-04-27 — MSTR headless-chicken loop) ===
+    # Same (position_key, action) refused if queued within N sec. Stops the
+    # "REBALANCE → invalid_api_response → REBALANCE" loop the broker rejected
+    # with phantom 58/36-share sells.
+    TRADIER_QUEUE_DEDUPE_SEC: float = 60.0       # global queue_trade_action dedupe
+    REBAL_ATTEMPT_COOLDOWN_SEC: float = 300.0    # SENTIMENT_FADE rebalance per-position cooldown (success or fail)
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.

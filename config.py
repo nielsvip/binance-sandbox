@@ -241,6 +241,17 @@ class Config:
     # S/R guard tolerance + hold threshold (2026-04-26 fix: 1.5% was blocking ALL exits)
     SCALP_V3_SR_TOL_PCT: float = 0.5            # within X% of a DC/BB/SMA level = "at" it (was hardcoded 1.5 — too wide, blocks all exits)
     SCALP_V3_SR_HOLD_MIN_GAIN_PCT: float = 0.1  # only hold at S/R if gain > this. At a loss, close on technicals regardless of S/R.
+    # 2026-04-27 — live entry-engine boost (defaults OFF for safety; user flips when ready).
+    # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
+    # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
+    # NEVER block existing entries. Worst case is a few extra entries fire.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # master flag
+    LIVE_ENTRY_ENGINE_WT_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_DC_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    LIVE_ENTRY_ENGINE_MIN_SCORE: float = 0.6        # engine output threshold (wt 3/5 = 0.6, dc breakout = 0.6, etc.)
+    LIVE_ENTRY_ENGINE_BOOST_SCORE: float = 8.0      # additive bump to entry score when an engine fires above threshold
     # ═══ WINNER TECHNIQUES from 2026-04-24 winners_refined sweep (Sharpe +1.298, WR 97.1%, DD 0.0%) ═══
     # Apply equally to LONG and SHORT (SIDE_MODE=BOTH preserved — sweep's LONG_ONLY bias was bull-market window).
     SCALP_V3_ATR_TP_MULT: float = 0.8        # exit when gain >= N × 3m-ATR%. 0.8 = winners median.
@@ -535,8 +546,9 @@ class Config:
     FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
     FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
     FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
-    OI_CONFIRM_ENABLED: bool = False                # OFF until sweep validates — require OI delta to confirm trend on entry
-    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this for direction agreement
+    OI_CONFIRM_ENABLED: bool = False                # 4-quadrant OI×price gate (Schabacker classic). Default OFF until sweep validates.
+    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this to consider OI move significant
+    OI_CONFIRM_MIN_PRICE_PCT: float = 0.3           # |price_change_1h_pct| must exceed this; gate fires only when BOTH oi+price are significant
     OI_HEDGE_GATE_ENABLED: bool = False             # apply OI gate to hedge entries too (default OFF)
     OI_LIVE_REFRESH_HOURS: float = 1.0              # ez_market_data refreshes OI hourly via Binance OI API
     FUNDING_LIVE_REFRESH_HOURS: float = 1.0         # how often ez_market_data refreshes funding rates from Binance API in live
