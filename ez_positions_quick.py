@@ -13440,6 +13440,25 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                         _v3_real_pos = _v3_by_acct.get(_v3_real_key)
                                         _v3_real_amt = abs(safe_fetch_float(getattr(_v3_real_pos, 'positionAmt', 0), 0)) if _v3_real_pos else 0
                                         if _v3_real_amt > 0: return
+                                        # 2026-04-27 USER DIRECTIONAL ENFORCEMENT: V3 LONG only on inf_long-listed symbols, SHORT only on inf_short-listed.
+                                        # EXEMPTION: same-symbol hedge — if opposite-side position already open on this symbol, allow either direction.
+                                        if bool(getattr(config, 'SCALP_V3_ENFORCE_UNIVERSE_DIRECTION', True)):
+                                            _v3_dir_long_set = set(getattr(trade_manager, 'symbols_inf_long', set()) or set())
+                                            _v3_dir_short_set = set(getattr(trade_manager, 'symbols_inf_short', set()) or set())
+                                            _v3_opp_side = 'SHORT' if _v3_real_side == 'LONG' else 'LONG'
+                                            _v3_opp_key = f"{account_key}:{_v3_sym}_{_v3_opp_side}"
+                                            _v3_opp_pos = _v3_by_acct.get(_v3_opp_key)
+                                            _v3_opp_amt = abs(safe_fetch_float(getattr(_v3_opp_pos, 'positionAmt', 0), 0)) if _v3_opp_pos else 0
+                                            _v3_is_same_sym_hedge = _v3_opp_amt > 0
+                                            if _v3_real_side == 'LONG':
+                                                _v3_dir_ok = (_v3_sym in _v3_dir_long_set) or _v3_is_same_sym_hedge
+                                            else:
+                                                _v3_dir_ok = (_v3_sym in _v3_dir_short_set) or _v3_is_same_sym_hedge
+                                            if not _v3_dir_ok:
+                                                if _v3_probe: logger.info(f"[SCALP_V3_DIAG] {_v3_real_key}: skip — direction-gate (sym not in inf_{_v3_real_side.lower()} AND no same-sym hedge target)")
+                                                return
+                                            if _v3_is_same_sym_hedge:
+                                                logger.info(f"⚡ [SCALP_V3_DIR_HEDGE_EXEMPT] {_v3_real_key}: same-symbol hedge for existing {_v3_opp_key} (amt={_v3_opp_amt:.4f}) — direction gate bypassed")
                                         _v3_last_open = _v3_recent_opens.get(_v3_real_key, 0)
                                         _v3_since = time.time() - _v3_last_open
                                         if _v3_since < _V3_RECENT_OPENS_COOLDOWN:

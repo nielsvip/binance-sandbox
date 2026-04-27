@@ -1209,11 +1209,17 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
         # Mirror of crypto MICRO_SCALP_USDC_MAKER (ez_manage.py:19793). Stocks micro-scalper.
         # CLOSE: gain >= MICRO_SCALP_STOCKS_GAIN_THRESHOLD_PCT AND gain < prev_gain (first decel).
         # REOPEN: when flat AND price re-crosses prior exit_price.
-        # Limit-only — place_order already runs a 10s aggressive limit-chase loop with market
-        # fallback. RTH-gated (place_order checks is_regular_trading_hours internally).
-        # Fires BEFORE evaluate_stop ladder so we exit fast without tripping STOCK_MIN_HOLD,
-        # UNIVERSAL_NOLOSS_GATE, etc. Closes only at POSITIVE gain → bypasses NOLOSS by construction.
+        # 2026-04-27 user rule: NOW respects STOCK_MIN_HOLD on the CLOSE branch (was bypassing).
+        # User: "respect the min hold of 72 hours". Reopen branch unchanged — needed for cross-back.
         # State stored on trade_manager._micro_scalp_state_stocks (separate dict from crypto's).
+        _mss_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
+        _mss_hold_min_check: float = 0.0
+        try:
+            _mss_opened_at = getattr(position, 'opened_at', None) if position else None
+            if _mss_opened_at:
+                _mss_hold_min_check = (datetime.now(timezone.utc) - _mss_opened_at).total_seconds() / 60.0
+        except Exception:
+            _mss_hold_min_check = 0.0
         if (market_open and bool(getattr(config, 'MICRO_SCALP_STOCKS_MAKER_ENABLED', False))
             and account_key in (getattr(config, 'MICRO_SCALP_STOCKS_ACCOUNTS', None) or [])):
             try:
@@ -1228,7 +1234,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 if _mss_qty >= 1 and current_price > 0:
                     _mss_gain = float(getattr(position, 'gain', 0) or 0)
                     _mss_prev = float(_mss_st.get('prev_gain', _mss_gain))
-                    if _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
+                    if _mss_hold_min_check < _mss_min_hold:
+                        _mss_st_new = dict(_mss_st)
+                        _mss_st_new['prev_gain'] = _mss_gain
+                        _mss_dict[position_key] = _mss_st_new
+                        if _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
+                            logger.info(f"[MICRO_SCALP_MIN_HOLD_BLOCK] {position_key}: hold={_mss_hold_min_check:.0f}m<{_mss_min_hold:.0f}m — micro-scalp close gated (user rule 2026-04-27)")
+                    elif _mss_gain >= _mss_threshold and _mss_gain < _mss_prev:
                         _mss_reason = f"MICRO_SCALP_STOCKS_CLOSE_g{_mss_gain:.3f}%_prev{_mss_prev:.3f}%"
                         logger.critical(f"⚡ [MICRO_SCALP_STOCKS_CLOSE] {position_key}: gain={_mss_gain:.3f}% < prev={_mss_prev:.3f}% (threshold={_mss_threshold}%) — limit close (chase→market fallback at 10s)")
                         # Cooldown bookkeeping (same key as evaluate_stop CLOSE path)
@@ -2163,26 +2175,43 @@ async def periodic_override_check(trade_manager, account_key):
                     market_bias = market_context.get('bias', 0.0)
                     is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
                     
+                    # 2026-04-27 user rule: 72h min hold gates the soft REDUCE/take-profit
+                    # paths below. Stocks must not be flipped on bias/stoch noise inside the hold window.
+                    _ovr_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
+                    _ovr_hold_min: float = 0.0
+                    try:
+                        _ovr_opened_at = getattr(position, 'opened_at', None)
+                        if _ovr_opened_at:
+                            _ovr_hold_min = (datetime.now(timezone.utc) - _ovr_opened_at).total_seconds() / 60.0
+                    except Exception:
+                        _ovr_hold_min = 0.0
+                    _ovr_min_hold_ok = _ovr_hold_min >= _ovr_min_hold
                     if (is_long and market_bias < -0.3) or (not is_long and market_bias > 0.3):
                         last_aug_ts = getattr(position, 'last_augmentation_time', None)
                         min_since_aug = (datetime.now(timezone.utc) - last_aug_ts).total_seconds() / 60.0 if last_aug_ts else 9999
                         if gain > 0 and gain < 0.08 and min_since_aug > 15:
-                            reduce_qty = max(1, int(position_amt * 0.3))
-                            reason = f"Market_Against_Position_Bias_{market_bias:.2f}_Loss_{gain:.1f}%_AugAge_{min_since_aug:.0f}m"
-                            logger.info(f"[OVERRIDE_CHECK] {position_key}: Market against + loss {gain:.2f}% + {min_since_aug:.0f}m since aug → reducing 30%")
-                            await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REDUCE", reason, 75.0, override_qty=reduce_qty)
-                    
+                            if not _ovr_min_hold_ok:
+                                logger.info(f"[MARKET_BIAS_MIN_HOLD_BLOCK] {position_key}: hold={_ovr_hold_min:.0f}m<{_ovr_min_hold:.0f}m — bias-reduce gated (user rule 2026-04-27)")
+                            else:
+                                reduce_qty = max(1, int(position_amt * 0.3))
+                                reason = f"Market_Against_Position_Bias_{market_bias:.2f}_Loss_{gain:.1f}%_AugAge_{min_since_aug:.0f}m"
+                                logger.info(f"[OVERRIDE_CHECK] {position_key}: Market against + loss {gain:.2f}% + {min_since_aug:.0f}m since aug → reducing 30%")
+                                await queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REDUCE", reason, 75.0, override_qty=reduce_qty)
+
                     if is_long and i.get('stoch_k_5m', 50) > 85 and i.get('rsi_5m', 50) > 75 and i.get('stoch_k_5m', 50) < i.get('stoch_d_5m', 50) :
                         if gain > 2.0:
-                            reduce_qty = max(1, int(position_amt * 0.25))
-                            reason = f"Overbought_Take_Profit_Gain_{gain:.1f}%"
-                            logger.info(f"[OVERRIDE_CHECK] {position_key}: Overbought, taking profits")
-                            await queue_trade_action(
-                                trade_manager.order_queue, trade_manager, position_key,
-                                "REDUCE", reason, 75.0, override_qty=reduce_qty    )
-                    
+                            if not _ovr_min_hold_ok:
+                                logger.info(f"[OVERBOUGHT_TP_MIN_HOLD_BLOCK] {position_key}: hold={_ovr_hold_min:.0f}m<{_ovr_min_hold:.0f}m — overbought-TP gated")
+                            else:
+                                reduce_qty = max(1, int(position_amt * 0.25))
+                                reason = f"Overbought_Take_Profit_Gain_{gain:.1f}%"
+                                logger.info(f"[OVERRIDE_CHECK] {position_key}: Overbought, taking profits")
+                                await queue_trade_action(
+                                    trade_manager.order_queue, trade_manager, position_key,
+                                    "REDUCE", reason, 75.0, override_qty=reduce_qty    )
+
                     elif not is_long and i.get('stoch_k_5m', 50) < 15 and i.get('rsi_5m', 50) < 25 and i.get('stoch_k_5m', 50) > i.get('stoch_d_5m', 50) :
-                        if gain > 2.0:
+                        if gain > 2.0 and _ovr_min_hold_ok:
                             reduce_qty = max(1, int(position_amt * 0.25))
                             reason = f"Oversold_Take_Profit_Gain_{gain:.1f}%"
                             logger.info(f"[OVERRIDE_CHECK] {position_key}: Oversold, taking profits")
@@ -4227,12 +4256,12 @@ class StockStrategy:
 
         # ═══ PEAK_GIVEBACK_PROTECTION + DC_LOW4_5M (2026-04-20) ═══
         # "Positions that were in gain and fall back below 0 must close."
-        # Bypasses STOCK_MIN_HOLD and UNIVERSAL_NOLOSS_GATE intentionally — protecting
-        # realised peak gain takes precedence over hold-time rules.
-        # Grace period (BREAKEVEN_GRACE_MINUTES) provides initial pardon for pullbacks.
-        # DC_LOW4_5M structural stop fires any time the position was ever profitable.
+        # 2026-04-27 user rule: NOW respects STOCK_MIN_HOLD (was bypassing). Stocks are
+        # NOT scalps — peak-to-now noise must not flip a 72h-hold position.
+        # DC_LOW4_5M structural stop still fires any time the position was ever profitable.
         _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
-        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)):
+        _peak_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
+        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min >= _peak_min_hold:
             _pgp_max_g = float(getattr(position, 'max_gain', 0) or 0)
             _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.3))
             _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
@@ -4246,6 +4275,8 @@ class StockStrategy:
                 if gain < _pgp_max_g - _pgp_drop:
                     logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
                     return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
+        if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min < _peak_min_hold:
+            logger.info(f"[PEAK_GIVEBACK_MIN_HOLD_BLOCK] {symbol} {'L' if is_long else 'S'}: hold={hold_time_min:.0f}m<{_peak_min_hold:.0f}m — peak-giveback gated (user rule 2026-04-27)")
             if _pgp_max_g > 0 and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
                 _be_dc_low4 = float((_pgp_ind).get('dc_low4_5m', 0) or 0)
                 _be_dc_high4 = float((_pgp_ind).get('dc_high4_5m', 0) or 0)
@@ -5564,6 +5595,29 @@ class StockStrategy:
         except Exception as _allow_err:
             logger.warning(f"[REENTRY_ALLOWLIST] {symbol}: allowlist check failed ({_allow_err}) — proceeding")
         logger.info(f"[REENTRY_EVAL] {symbol}: positionAmt={positionAmt} gain={getattr(position, 'gain', 'N/A')} last_red_price={getattr(position, 'last_reduction_price', 'N/A')} last_red_time={getattr(position, 'last_reduction_time', 'N/A')}")
+        # ═══ PRICE_CROSS_BACK_REENTRY (2026-04-27 user rule) ═══════════════
+        # "IT NEEDS TO IMMEDIATELY BUY AGAIN IF EXIT PRICE IS CROSSED." When
+        # a position is flat and price returns to within a tight band of the
+        # last reduction price, reopen — bypasses ANTI_CHURN, RZ_BLOCK,
+        # hardcool, stoch/WT/HTF/rally gates. The user explicitly demands it.
+        if positionAmt == 0 and bool(getattr(config, 'PRICE_CROSS_BACK_REENTRY_ENABLED', True)):
+            _xb_last_px = float(getattr(position, 'last_reduction_price', 0) or 0)
+            _xb_last_t = getattr(position, 'last_reduction_time', None)
+            _xb_band_pct = float(getattr(config, 'PRICE_CROSS_BACK_BAND_PCT', 0.3))
+            _xb_max_age_min = float(getattr(config, 'PRICE_CROSS_BACK_MAX_AGE_MIN', 240.0))
+            _xb_age_min = 9999.0
+            if _xb_last_t:
+                try:
+                    _xb_lt = _xb_last_t if not isinstance(_xb_last_t, str) else datetime.fromisoformat(str(_xb_last_t).replace("Z", "+00:00"))
+                    if _xb_lt.tzinfo is None: _xb_lt = _xb_lt.replace(tzinfo=timezone.utc)
+                    _xb_age_min = (datetime.now(timezone.utc) - _xb_lt).total_seconds() / 60.0
+                except Exception: pass
+            if _xb_last_px > 0 and _xb_age_min < _xb_max_age_min and current_price > 0:
+                _xb_dist_pct = abs(current_price - _xb_last_px) / _xb_last_px * 100.0
+                if _xb_dist_pct <= _xb_band_pct:
+                    _xb_qty = config.START_POSITION_SIZE / max(current_price, 1e-9)
+                    logger.warning(f"[PRICE_CROSS_BACK_REENTRY] {symbol} {'L' if is_long else 'S'}: cur={current_price:.4f} ≈ exit={_xb_last_px:.4f} ({_xb_dist_pct:.2f}% within {_xb_band_pct:.2f}%) age={_xb_age_min:.0f}m — REOPEN")
+                    return "REENTRY_OPEN", f"PRICE_CROSS_BACK_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m", 90.0, _xb_qty
         entry_price = float(getattr(position, 'entry_price', current_price) or current_price)
         max_q = float(getattr(position, 'max_positionSize', 0) or positionAmt)
         last_red_time = getattr(position, 'last_reduction_time', None)

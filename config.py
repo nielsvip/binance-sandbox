@@ -181,6 +181,14 @@ class Config:
     SCALP_V3_EXIT_PROFIT_ONLY: bool = False      # 2026-04-26 SBL test flag: when True, V3 technical exits only fire while gain>0 (lock profit, never close at loss). Default False = unchanged. Shadow A/B variants override to True.
     SCALP_V3_SIDE_MODE: str = "BOTH"              # 2026-04-27: REVERTED SHORT_ONLY → BOTH. SHORT_ONLY was set on a 12sym×6mo backtest (best pool_sharpe 0.63 — below 1.0 trash floor and violates CLAUDE.md ≥48-sym/≥1-yr published-Sharpe rule) plus a 330-cycle shadow during a flat/bearish micro-window. Regime flipped bullish (>20% rally); SHORT_ONLY shorted into rallies (1000BONKUSDC 03:04 cluster) and refused obvious LONG breakouts (e.g. WIFUSDC). The original comment itself said "revert to BOTH if regime flips bullish" — done.
     SCALP_V3_SCAN_BYPASS_GATES: bool = False     # 2026-04-26: OFF after V3 trend-follow rewrite. Bypass let the scanner open SHORTs into rallies (XTZ/KSM/AWE on 2026-04-25), which is exactly the mean-rev pattern the rewrite removed. Scanner now respects new trend-follow K/WT/HTF gates.
+    # 2026-04-27 K-FRESHNESS WINDOW (anti-extreme-entry). Pre-fix audit: mean k_3m at
+    # SHORT_TREND fire was 24.6 (26% at k<10 = falling knife) and at LONG_TREND fire
+    # was 86.7 (61% at k>90 = buying the top). Restrict TREND entries to the mid-range
+    # zone right after a 50-line cross — fresh momentum with room to run.
+    SCALP_V3_K_FRESH_LO: float = 25.0              # SHORT lower bound: don't catch k<25 (already exhausted)
+    SCALP_V3_K_FRESH_MID_LO: float = 50.0          # LONG lower bound: only fire above 50 (cross confirmed)
+    SCALP_V3_K_FRESH_MID_HI: float = 50.0          # SHORT upper bound: only fire below 50 (cross confirmed)
+    SCALP_V3_K_FRESH_HI: float = 75.0              # LONG upper bound: don't buy k>75 (already extended)
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
     # the market median. Positive z-score → top_winners_st → symbols_inf_long_list
     # (auto-added to tradeable_keys). Negative → symbols_inf_short_list. This is
@@ -537,6 +545,9 @@ class Config:
     # Sticky window: after a V3 entry OR exit, mark sym/side in Redis with TTL so ez_rankings keeps it in symbols_inf_*_list for the next N min, allowing V3 to re-fire.
     SCALP_V3_REENTRY_STICKY_MIN: int = 30
     SCALP_V3_REENTRY_STICKY_ENABLED: bool = True
+    # 2026-04-27 USER: V3 LONG only on inf_long-listed symbols (winners), SHORT only on inf_short-listed (losers). Stops "shorting rallies".
+    # EXEMPTION: same-symbol hedge — if opposite-side position already open on this symbol, V3 may fire either direction (so a losing LONG can be hedged by V3-SHORT and vice versa).
+    SCALP_V3_ENFORCE_UNIVERSE_DIRECTION: bool = True
     # 2026-04-26 USER + research-agent verdict: technical exits should fire ONLY when in profit ("exit at top, never at loss").
     # If True and gain<=0, no BAR/WT/K close fires; only MAX_HOLD or hedge-engine handles the position. Aligns with STRICT_NO_LOSS doctrine.
     SCALP_V3_EXIT_PROFIT_ONLY: bool = False
@@ -945,7 +956,7 @@ class Config:
     # Added 2026-04-16 after audit: shorts opened against bullish 4h/1h/D caused 1:10 short-heavy PnL trap
     HTF_DIRECTION_GATE_ENABLED: bool = True
     HTF_GATE_MIN_CONFIRMATIONS: int = 2  # 2026-04-16: lowered 3→2 per user directive "HTF confirmations should not be exaggerated". D still mandatory via HTF_GATE_D_MANDATORY.
-    HTF_GATE_D_MANDATORY: bool = True  # wt_D must align with trade direction (else block)
+    HTF_GATE_D_MANDATORY: bool = False  # 2026-04-27 owner: loosened from True. With min_conf=2, requiring D=aligned in addition was too strict — V3 blocks at 03:31 had D=✗ but 4h+1h+SMA all aligned. Now D can dissent if 2+ of (4h,1h,SMA) align.
     HTF_GATE_SIGNALS_SMA200D: bool = True  # include price vs sma_200_D as the 4th signal
     HTF_GATE_APPLY_TO_OPEN: bool = True  # gate applies to OPEN actions
     HTF_GATE_APPLY_TO_AUGMENT: bool = True  # 2026-04-16 flipped True: enforce 4h/D veto on augments too. Existing 3m+15m gate still runs in addition.

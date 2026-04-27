@@ -401,8 +401,8 @@ class TradierConfig:
         "VXX", "UVXY",
     }
     # === ENTRY ZONE GATES (backtest: 1h primary for stocks, SMA200 Sharpe 89, MFI_D Sharpe 78) ===
-    ENTRY_ZONE_LONG: float =               35.0   # V8 ABLATION 2026-04-13: Sharpe 1.437 (best combo). Was 25.
-    ENTRY_ZONE_SHORT: float = 100.0# Mirror of ZONE_LONG (100-35=65). Was 75. ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:7106 short-side entry zone gate
+    ENTRY_ZONE_LONG: float =               80.0   # 2026-04-27 LOOSENED from 35 — was blocking 65% of long entries. Now permissive: longs allowed when k<80.
+    ENTRY_ZONE_SHORT: float =              20.0   # 2026-04-27 FIX TYPO — was 100.0 (always-block bug from 2026-04-16 wiring task; comment said 100-35=65 but value typed wrong). Loosened to 20: shorts allowed when k>20.
     ENTRY_MIN_ALIGNMENT: int =             10     # V8 ABLATION 2026-04-13: Sharpe 1.0, WR 53.9%. Was 8.
     ENTRY_PRIMARY_TF: str =                '4h'   # BACKTEST_CHANGE_T7 was 1h → 4h slower primary TF
     ENTRY_TRIGGER_TF: str =                '15m'  # Trigger TF for crossover (was 5m, shifted to 15m for stocks) ; WIRED 2026-04-16 (priority 92/100) — tradier_manage.py:2680 referenced in entry eval
@@ -1083,7 +1083,16 @@ class TradierConfig:
     # "STOCKS CAN [get into a loss briefly] THEY ARE HELD AT LEAST 4H OR SO".
     # Stocks are swing trades, not scalps. Must wait for HTF (1h/4h/D) delta slowdown
     # before considering any exit. Below this hold time, return HOLD regardless.
-    TRADIER_MIN_HOLD_MINUTES: float = 100.0  # 2026-04-20: le_dynamic winner MIN_HOLD_BARS=20 (20×5min=100min). Was 240 (4h). 262sym Sharpe 3.5479.
+    TRADIER_MIN_HOLD_MINUTES: float = 4320.0  # 2026-04-27 user rule: 72h minimum hold. Stocks are NOT scalps — peak-giveback / micro-scalp / market-bias closes must wait 72h. Was 100 (le_dynamic winner) → bleeding from premature exits on MU/SNDK/MSFT/INTC/GOOGL.
+    # === PRICE CROSS-BACK REENTRY (2026-04-27 user rule) ===
+    # When a stock position is fully closed and price subsequently returns to within
+    # a tight band of last_reduction_price, immediately reopen — bypasses ANTI_CHURN,
+    # RZ_BLOCK, hardcool, stoch/WT/HTF gates. User: "IMMEDIATELY BUY AGAIN IF EXIT
+    # PRICE IS CROSSED". Defends against the suicide pattern of "we sold, price came
+    # right back, we did nothing".
+    PRICE_CROSS_BACK_REENTRY_ENABLED: bool = True
+    PRICE_CROSS_BACK_BAND_PCT: float = 0.3      # within 0.3% of last_reduction_price
+    PRICE_CROSS_BACK_MAX_AGE_MIN: float = 240.0 # only fire within 4h of the close
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.

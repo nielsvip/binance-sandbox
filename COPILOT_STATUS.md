@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-27 15:15:04 UTC
+# Copilot Status — 2026-04-27 15:30:47 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-27T15:13:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:13:59
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:13:59
-- **STALE_INDICATORS** [tradier]  — 2026-04-27T15:14:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:14:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:14:29
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-27T15:14:33
-- **STALE_INDICATORS** [tradier]  — 2026-04-27T15:15:04
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:15:04
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:15:04
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:29:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:29:32
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-27T15:29:35
+- **STALE_INDICATORS** [tradier]  — 2026-04-27T15:30:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:30:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:30:06
+- **STALE_INDICATORS** [tradier]  — 2026-04-27T15:30:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-27T15:30:36
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-27T15:30:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-27T15:30:46
 
 ## Missed Trades (trader comparison)
 
@@ -27,20 +27,21 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 2 | **Watching for reentry:** 3 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **GOOGL** LONG (tradier) peak +10.9%, now +0.2%
+- HELD: **GOOGL** LONG (tradier) peak +10.9%, now +-0.1%
 - HELD: **NVDA** LONG (tradier) peak +5.0%, now +-0.1%
 
-- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 1m ago
-- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
-- WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 1m ago
+- WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 2m ago
+- WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 2m ago
+- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 2m ago
+- WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 2m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 3
-- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
 - [MEDIUM] tradier_rankings.py running but log stale (10min)
 - [MEDIUM] tradier_rankings.py running but log stale (10min)
+- [HIGH] ez_prices.py is NOT running

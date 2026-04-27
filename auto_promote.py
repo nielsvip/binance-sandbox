@@ -159,6 +159,7 @@ def run_v8_validation(mode, baseline_path, overrides, profile, work_dir):
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = str(override_path)
     env["V8_SKIP_PROCESS_POSITION"] = "1"
+    env["V8_RATE_GUARD_DISABLED"] = "1"
     t0 = time.time()
     try:
         with open(log_path, "w") as lf:

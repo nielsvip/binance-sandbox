@@ -77,8 +77,19 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
         # alone is the appropriate gate for a 3m-bar scalper.
         bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0)
         bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0)
-    k_rising = (k_3m > k_3m_prev) and (k_3m > 50)
-    k_falling = (k_3m < k_3m_prev) and (k_3m < 50)
+    # 2026-04-27 K-FRESHNESS GATE — was `k_3m > 50` (LONG) / `k_3m < 50` (SHORT) with no
+    # upper/lower bound. Live audit (115 SHORT_TREND fires, 18 LONG_TREND): mean k_3m at
+    # SHORT entry = 24.6 (26% at k<10 = catching falling knives); mean at LONG entry =
+    # 86.7 (61% at k>90 = buying the top). For a 3m scalp we want FRESH momentum
+    # (just-crossed 50) with room to run, NOT exhausted extremes. Tighten to a mid-range
+    # window: LONG fires only when k_3m crossed up THROUGH 50 and is still in 50-75;
+    # SHORT fires only when k_3m crossed down THROUGH 50 and is still in 25-50.
+    _k_lo = float(getattr(config, 'SCALP_V3_K_FRESH_LO', 25.0))
+    _k_mid_lo = float(getattr(config, 'SCALP_V3_K_FRESH_MID_LO', 50.0))
+    _k_mid_hi = float(getattr(config, 'SCALP_V3_K_FRESH_MID_HI', 50.0))
+    _k_hi = float(getattr(config, 'SCALP_V3_K_FRESH_HI', 75.0))
+    k_rising = (k_3m > k_3m_prev) and (_k_mid_lo <= k_3m <= _k_hi)
+    k_falling = (k_3m < k_3m_prev) and (_k_lo <= k_3m <= _k_mid_hi)
     wt_bull = wt1_3m > wt2_3m
     wt_bear = wt1_3m < wt2_3m
     # 2026-04-27 SCALP_V3 IS A 3M SCALPER — do not double-gate on HTF stoch.
