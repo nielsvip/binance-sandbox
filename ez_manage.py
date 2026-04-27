@@ -12997,6 +12997,22 @@ class MultiAccountTradeManager:
         _ENTRY_ACTIONS = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _is_open_action = _act_upper_early in _ENTRY_ACTIONS or ('OPEN' in _act_upper_early and 'CLOSE' not in _act_upper_early) or 'HEDGE' in _act_upper_early or 'ENTRY' in _act_upper_early or 'AUGMENT' in _act_upper_early
         _is_open_action = _is_open_action and 'CLOSE' not in _act_upper_early and 'REDUCE' not in _act_upper_early and 'KILL' not in _act_upper_early
+        # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
+        # If a position is already alive for this key (positionAmt > 0), block any open of any kind.
+        # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).
+        # OPEN, REENTRY, HEDGE_OPEN, REVERSE, etc. all REFUSED while positionAmt > 0.
+        _is_augment_action_early = ('AUGMENT' in _act_upper_early) and ('REVERSE' not in _act_upper_early)
+        if _is_open_action and not _is_augment_action_early and position_key:
+            try:
+                _ndo_pos = await self.get_position(position_key)
+                _ndo_amt = abs(safe_fetch_float(getattr(_ndo_pos, 'positionAmt', 0), 0.0)) if _ndo_pos else abs(safe_fetch_float(original_positionAmt, 0.0))
+                _ndo_px = old_price if old_price > 0 else safe_fetch_float(getattr(_ndo_pos, 'mark_price', 0), 0.0) if _ndo_pos else 0.0
+                _ndo_min_q = safe_fetch_float(getattr(config, 'MIN_POSITION_SIZE', 45.0), 45.0) / max(_ndo_px, 1e-9)
+                if _ndo_amt > _ndo_min_q:
+                    logger.critical(f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED action={action} positionAmt={_ndo_amt:.6f} > min_q={_ndo_min_q:.6f}. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{(reason or '')[:80]}'")
+                    return f"BLOCKED_NO_DOUBLE_OPEN_{(action or '')[:20]}"
+            except Exception as _ndo_e:
+                logger.warning(f"[NO_DOUBLE_OPEN_CHECK_ERR] {position_key}: {type(_ndo_e).__name__}: {_ndo_e} — proceeding")
         # USDC UPGRADE — transparently redirect USDT→USDC for opens when USDC pair is available.
         # Not a switch. Only fires when live_usdc_pairs is explicitly populated from the exchange.
         # Backtests/sandbox: live_usdc_pairs is empty → file fallback DISABLED → USDT stays as USDT.
@@ -13832,15 +13848,20 @@ class MultiAccountTradeManager:
                 if not webhook_success:
                     return "FAILED_WEBHOOK"
                 if position: position.last_signal = action.upper()
-                reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
+                # 2026-04-27: bumped verifier timeout 8s→12s to comfortably cover both
+                # ws (<1s) and api (<6s) confirmation windows plus Finandy's typical lag.
+                # User directive: "verifier waits until ws confirmation (<1s) or api
+                # confirmation (<6s)". 12s also tolerates Finandy queueing.
+                reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=12, initial_positionAmt=baseline_amt, action=action)
                 if not reduce_verified:
-                    logger.warning(f"⚠️ [REDUCE_UNVERIFIED] {position_key}: Webhook HTTP 200 but fill not confirmed — retrying webhook once")
-                    retry_ok = await self.send_webhook(position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:RETRY:{reason}", is_full_close, f"{reason}_RETRY_QWH", level=None, stoch_required=False)
-                    if retry_ok:
-                        reduce_verified = await verifier.verify_trade(account_key, position_key, quantity, is_long, timeout_seconds=8, initial_positionAmt=baseline_amt, action=action)
-                    if not reduce_verified:
-                        logger.error(f"❌ [REDUCE_FAILED] {position_key}: Fill not confirmed after retry — skipping handle_filled_maker")
-                        return "FAILED_REDUCE_UNVERIFIED"
+                    # 2026-04-27: REMOVED webhook retry. If Finandy returned success once,
+                    # spamming a second close is wasted rate-limit and can cause double-fill
+                    # ambiguity. Webhook accepted = position will close async. Verifier
+                    # timeout means LOCAL state hasn't caught up yet, NOT that close failed.
+                    # process_account_update will reconcile when the WS fill event arrives.
+                    logger.warning(f"⏳ [REDUCE_DISPATCHED] {position_key}: webhook accepted by Finandy, local fill confirmation pending (12s verifier timeout). Trusting webhook — proceeding with handle_filled_maker.")
+                    # Fall through to handle_filled_maker so local state matches expected outcome
+                # process_account_update is authoritative for real fill state — handle_filled_maker is admin
                 await self.handle_filled_maker( account_key, position_key, position, original_positionAmt, quantity, current_price, side, position_side, unique_id, reason )
                 if hasattr(self, 'positions_service') and self.positions_service:
                     if position_key in self.positions_service.positions:

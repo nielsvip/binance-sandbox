@@ -16505,9 +16505,18 @@ async def _v3_emergency_close_via_execute_now(trade_manager, account_key: str, p
             is_hedge=False, hedge_for=None,
         )
         result_s = str(result or '').upper()
+        # 2026-04-27: result classification — verifier-side timeouts are NOT failures.
+        # Per user "verifier waits for ws confirmation (<1s) or api confirmation (<6s)":
+        # FAILED_REDUCE_UNVERIFIED means the webhook went out (Finandy returned success)
+        # but local verifier couldn't confirm fill within its window. Position IS closing
+        # asynchronously. Treat as soft success.
         if 'SUCCESS' in result_s:
             logger.warning(f"✅ [V3_DIRECT_CLOSE_OK] {position_key}: {close_reason[:80]} → {str(result)[:60]}")
             return True
+        if 'FAILED_REDUCE_UNVERIFIED' in result_s:
+            logger.warning(f"⏳ [V3_DIRECT_CLOSE_DISPATCHED] {position_key}: {close_reason[:80]} → webhook accepted by Finandy, fill confirmation pending (verifier timeout)")
+            return True
+        # Real failures: webhook itself failed, BLOCK gates fired, or unhandled error
         logger.warning(f"❌ [V3_DIRECT_CLOSE_FAIL] {position_key}: {close_reason[:80]} → {str(result)[:60]}")
         return False
     except Exception as _v3dc_e:

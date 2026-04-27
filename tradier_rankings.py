@@ -2309,6 +2309,77 @@ async def initial_fetch_and_ranking(symbols, timeframes=None):
     symbols_tra_short = _raw_shorts
     symbols_trb_long  = _raw_longs
     symbols_trb_short = _raw_shorts
+    # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (mirror crypto FUNDING_OI_INJECT) ===
+    # Read data/stocks_oi_cache/{sym}.json populated by tradier_options_oi_fetcher.py (READ-ONLY).
+    # Inject extreme-P/C symbols (call-dominant → LONG, put-dominant → SHORT) into the trb/trc lists
+    # so options-market consensus directional bias surfaces in entry candidates. Cap per side, dedup.
+    try:
+        if bool(getattr(config, 'TRADIER_OI_INJECT_ENABLED', False)):
+            _pc_bull = float(getattr(config, 'TRADIER_OI_INJECT_PC_BULLISH', 0.6))
+            _pc_bear = float(getattr(config, 'TRADIER_OI_INJECT_PC_BEARISH', 1.4))
+            _prefer_near = bool(getattr(config, 'TRADIER_OI_INJECT_NEAR_MONEY_PREFER', True))
+            _min_total_oi = int(getattr(config, 'TRADIER_OI_INJECT_MIN_TOTAL_OI', 1000))
+            _max_each = int(getattr(config, 'TRADIER_OI_INJECT_MAX_EACH', 10))
+            _stale_h = float(getattr(config, 'TRADIER_OI_INJECT_STALE_MAX_HOURS', 4.0))
+            _now = time.time()
+            _cache_dir = Path(config.BASE_PATH) / "data" / "stocks_oi_cache"
+            _toi_long = []   # [(sym, reason, score)] — sort by P/C deviation from neutral
+            _toi_short = []
+            if _cache_dir.is_dir():
+                for _p in _cache_dir.glob("*.json"):
+                    try:
+                        with open(_p) as _fh: _doi = json.load(_fh)
+                        _sym = _doi.get("sym")
+                        if not _sym or _sym in _blacklist:
+                            continue
+                        _ts = _doi.get("ts") or 0
+                        if _now - _ts > _stale_h * 3600:
+                            continue
+                        _total_oi = (_doi.get("total_call_oi") or 0) + (_doi.get("total_put_oi") or 0)
+                        if _total_oi < _min_total_oi:
+                            continue
+                        _pc = _doi.get("near_money_pc_ratio") if (_prefer_near and _doi.get("near_money_pc_ratio") is not None) else _doi.get("pc_ratio")
+                        if _pc is None:
+                            continue
+                        _pc = float(_pc)
+                        if _pc <= _pc_bull:
+                            # call-dominant → LONG bias. Score = how extreme below threshold.
+                            _toi_long.append((_sym, f"pc={_pc:.2f}_call_dominant_oi={_total_oi}", _pc_bull - _pc))
+                        elif _pc >= _pc_bear:
+                            if _sym in _non_shortable:
+                                continue
+                            _toi_short.append((_sym, f"pc={_pc:.2f}_put_dominant_oi={_total_oi}", _pc - _pc_bear))
+                    except Exception:
+                        continue
+            # Sort by extremeness (most extreme first), dedup, cap
+            _toi_long.sort(key=lambda x: -x[2])
+            _toi_short.sort(key=lambda x: -x[2])
+            _seen_l = set(); _seen_s = set()
+            _added_l = 0; _added_s = 0
+            _injected_l_log = []; _injected_s_log = []
+            for _s, _r, _ in _toi_long:
+                if _s in _seen_l: continue
+                _seen_l.add(_s)
+                if _added_l >= _max_each: break
+                if _s not in symbols_trb_long: symbols_trb_long.append(_s)
+                if _s not in symbols_trc_long: symbols_trc_long.append(_s)
+                _added_l += 1
+                if len(_injected_l_log) < 5: _injected_l_log.append((_s, _r))
+            for _s, _r, _ in _toi_short:
+                if _s in _seen_s: continue
+                _seen_s.add(_s)
+                if _added_s >= _max_each: break
+                if _s not in symbols_trb_short: symbols_trb_short.append(_s)
+                if _s not in symbols_trc_short: symbols_trc_short.append(_s)
+                _added_s += 1
+                if len(_injected_s_log) < 5: _injected_s_log.append((_s, _r))
+            if _added_l or _added_s:
+                logger.info(f"💰 [TRADIER_OI_INJECT] +LONG {_added_l}: {_injected_l_log} | +SHORT {_added_s}: {_injected_s_log}")
+            else:
+                logger.debug(f"[TRADIER_OI_INJECT] no extreme-P/C candidates (cache={len(list(_cache_dir.glob('*.json'))) if _cache_dir.is_dir() else 0} files)")
+    except Exception as _toi_err:
+        logger.warning(f"[TRADIER_OI_INJECT] error: {_toi_err}")
+    # === END STOCKS OPTIONS-OI INJECTION ====================================================
     try:
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = int(time.time())

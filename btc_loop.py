@@ -234,53 +234,65 @@ def detect_divergence_at(
     return bool(bull), bool(bear)
 
 
+# TF ordering for MIN_TF filter (3m=0 ... D=4). HTF-only divergence is the user-validated
+# direction (D = clockwork, 1h/4h = testable, 3m/15m = noise per 2026-04-27 chart audit).
+_TF_INDEX = {"3m": 0, "15m": 1, "1h": 2, "4h": 3, "D": 4}
+
+
 def aggregate_multi_indicator_divergence(
     indicators_by_name: Dict[str, Dict[str, Tuple[list, list]]],
     *,
     lookback_bars: int = 5,
     require_strict: bool = True,
     strong_tfs_threshold: int = 3,
+    lookback_by_tf: Optional[Dict[str, int]] = None,
+    min_tf: str = "3m",
 ) -> DivergenceState:
     """Aggregate divergence across multiple indicators × multiple TFs.
 
     Args:
-      indicators_by_name: nested dict
-          {
-              "WT":  {"3m": (price_arr, wt_arr), "15m": (...), ...},
-              "RSI": {"3m": (price_arr, rsi_arr), ...},
-              "MFI": ...,
-              "OBV": ...,
-              "CVD": ...,
-          }
-        Each TF entry is a (price_window, indicator_window) tuple of equal-length lists.
-        Caller decides whether to include OBV/CVD (skip if NPZ doesn't have them).
+      indicators_by_name: nested dict {ind_name: {tf: (price_window, ind_window)}}.
+      lookback_bars: default lookback if `lookback_by_tf` doesn't override.
+      lookback_by_tf: per-TF lookback override, e.g. {"3m":5, "15m":10, "1h":20, "4h":20, "D":10}.
+        HTF needs longer windows because HTF bars are denser in time but sparser in number;
+        20 4h bars = 80 hours of price action, comparable to 5 3m bars in DENSITY.
+      min_tf: lower bound on TFs counted. "1h" → skip 3m+15m divergence (too noisy per audit).
+        Sweep this knob; D and 4h are user-validated as reliable.
 
-      strong_tfs_threshold: an indicator counts as "strong-aligned" if N TFs simultaneously
-        show divergence in the same direction.
-
-    Returns DivergenceState with bull_inds_aligned, bear_inds_aligned, and the
-    "strong" counts (how many indicators showed div on threshold+ TFs at once).
+    Returns DivergenceState with bull/bear_inds_aligned + strong-TF counts AND
+    a new flag indicating which TFs contributed (for D-confirmation logic in caller).
     """
     bull_inds = 0
     bear_inds = 0
     bull_strong = 0
     bear_strong = 0
+    bull_d_present = False
+    bear_d_present = False
+    min_idx = _TF_INDEX.get(min_tf, 0)
     for ind_name, tf_map in indicators_by_name.items():
         ind_bull_tfs = 0
         ind_bear_tfs = 0
         for tf, payload in tf_map.items():
+            tf_idx = _TF_INDEX.get(tf, -1)
+            if tf_idx < min_idx:
+                continue                       # TF below user-validated floor — skip
             if not payload or len(payload) != 2:
                 continue
             price, ind = payload
+            lb = (lookback_by_tf or {}).get(tf, lookback_bars)
             b, br = detect_divergence_at(
                 price, ind,
-                lookback_bars=lookback_bars,
+                lookback_bars=lb,
                 require_strict=require_strict,
             )
             if b:
                 ind_bull_tfs += 1
+                if tf == "D":
+                    bull_d_present = True
             if br:
                 ind_bear_tfs += 1
+                if tf == "D":
+                    bear_d_present = True
         if ind_bull_tfs > 0:
             bull_inds += 1
         if ind_bear_tfs > 0:
@@ -289,12 +301,18 @@ def aggregate_multi_indicator_divergence(
             bull_strong += 1
         if ind_bear_tfs >= strong_tfs_threshold:
             bear_strong += 1
-    return DivergenceState(
+    out = DivergenceState(
         bull_inds_aligned=bull_inds,
         bear_inds_aligned=bear_inds,
         bull_inds_strong_3plus_tfs=bull_strong,
         bear_inds_strong_3plus_tfs=bear_strong,
     )
+    # Stash D-presence in unused-int fields so caller can check without breaking dataclass shape.
+    # These piggy-back: bull_inds_strong_3plus_tfs_d / bear_..._d encoded in upper bits is ugly,
+    # so we add a sidecar attribute.
+    out.bull_d_present = bull_d_present  # type: ignore[attr-defined]
+    out.bear_d_present = bear_d_present  # type: ignore[attr-defined]
+    return out
 
 
 def build_red_zone_state(

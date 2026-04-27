@@ -113,6 +113,28 @@ class TradierConfig:
     ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX","SNDK","MU"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
+    # === 2026-04-27 STOCKS OPTIONS-OI INJECTION (READ-ONLY) ===
+    # Source: tradier_options_oi_fetcher.py → data/stocks_oi_cache/{sym}.json (P/C ratio + max-OI strikes).
+    # Mirror of crypto FUNDING_OI_INJECT in ez_rankings.py:~4567. Inject extreme-P/C symbols into trb/trc winners/losers
+    # so trader directional bias from options market consensus shows up in entry candidate lists.
+    # NEVER places options orders — pure sentiment signal per feedback_oi_signal_only_no_options_trading_20260427.md.
+    TRADIER_OI_INJECT_ENABLED: bool = True
+    TRADIER_OI_INJECT_PC_BULLISH: float = 0.6      # P/C below this → call OI dominates → LONG bias inject
+    TRADIER_OI_INJECT_PC_BEARISH: float = 1.4      # P/C above this → put OI dominates → SHORT bias inject
+    TRADIER_OI_INJECT_NEAR_MONEY_PREFER: bool = True   # use near_money_pc_ratio (±5% strikes) when present — purer near-term sentiment
+    TRADIER_OI_INJECT_MIN_TOTAL_OI: int = 1000     # require ≥1000 contracts open across all monitored exps (filters illiquid names)
+    TRADIER_OI_INJECT_MAX_EACH: int = 10            # cap per side
+    TRADIER_OI_INJECT_STALE_MAX_HOURS: float = 4.0 # skip cache files older than 4h (fetcher missed last cycle)
+    # === 2026-04-27 STOCKS RED_ZONE_GATE — options-OI walls as proxy for L2 depth (Tradier has no L2) ===
+    # Block LONG entries when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT BELOW max_call_oi_strike (resistance ceiling).
+    # Block SHORT entries when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT ABOVE max_put_oi_strike (support floor).
+    # The strike with heaviest call OI = price point above which dealers' delta-hedging crushes momentum.
+    # The strike with heaviest put OI = price point below which dealers absorb sell-pressure ("max pain" theory.)
+    RED_ZONE_TRADIER_GATE_ENABLED: bool = True
+    RED_ZONE_TRADIER_MIN_DISTANCE_PCT: float = 0.5  # block entry when underlying within 0.5% of wall strike
+    RED_ZONE_TRADIER_MIN_OI_AT_WALL: int = 1000     # require wall strike to have ≥1000 OI (filters spurious thin strikes)
+    RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED: bool = True   # apply to AUGMENT actions (don't add into resistance)
+    RED_ZONE_TRADIER_STALE_MAX_HOURS: float = 4.0   # skip wall check if cache older than 4h
     # === SECTOR CLASSIFICATION — for options diversification engine ===
     # Each symbol maps to a sector. Used by options agent to enforce hedging + diversification.
     SECTOR_MAP: Dict[str, str] = field(default_factory=lambda: {

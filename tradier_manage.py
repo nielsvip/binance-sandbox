@@ -1914,6 +1914,13 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             if action in ["CLOSE", "REDUCE", "AUGMENT"] and positionAmt <= 0:
                 logger.warning(f"[queue_trade_action] !! Blocked {action}: {position_key} has no position in Redis (positionAmt={positionAmt})")
                 return False
+            # 2026-04-27 USER ABSOLUTE: NO MULTIPLE OPENS. EVER.
+            # If position already exists for this key (positionAmt > 0), block any new open of any kind.
+            # OPEN/REENTER/REENTRY/HEDGE all forbidden while same-key position is alive.
+            # AUGMENT is the ONLY legitimate add path — and it has its own MIN_GAIN gates upstream.
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and positionAmt > 0:
+                logger.critical(f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — positionAmt={positionAmt:.4f} > 0. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{reason[:80]}'")
+                return False
         parts = position_key.split(':')
         if len(parts) != 2:
             return False
@@ -1936,6 +1943,45 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                 if _opp_pos and abs(float(getattr(_opp_pos, 'positionAmt', 0))) > 0:
                     logger.critical(f"[OPPOSING_BLOCK] {position_key}: BLOCKED {action} — cannot open {position_side} while {_opp_side} position held (Tradier no-hedge). Close {_opp_side} first.")
                     return False
+            # === 2026-04-27 RED_ZONE_GATE_TRADIER (options-OI walls as L2 proxy) ===
+            # Tradier exposes no L2 depth. Use options-chain max-OI strikes from data/stocks_oi_cache/{sym}.json
+            # (populated by tradier_options_oi_fetcher.py READ-ONLY) as proxy walls:
+            #   max_call_oi_strike = options-implied resistance ceiling (dealer hedging crushes momentum here)
+            #   max_put_oi_strike  = options-implied support floor (dealer absorption / max-pain pin)
+            # Block LONG when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT below max_call_oi_strike.
+            # Block SHORT when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT above max_put_oi_strike.
+            if bool(getattr(config, 'RED_ZONE_TRADIER_GATE_ENABLED', False)):
+                _rzt_apply = True
+                if action == "AUGMENT" and not bool(getattr(config, 'RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED', True)):
+                    _rzt_apply = False
+                if _rzt_apply:
+                    try:
+                        _rzt_min_dist = float(getattr(config, 'RED_ZONE_TRADIER_MIN_DISTANCE_PCT', 0.5))
+                        _rzt_min_oi = int(getattr(config, 'RED_ZONE_TRADIER_MIN_OI_AT_WALL', 1000))
+                        _rzt_stale_h = float(getattr(config, 'RED_ZONE_TRADIER_STALE_MAX_HOURS', 4.0))
+                        _rzt_cache_p = Path(config.BASE_PATH) / "data" / "stocks_oi_cache" / f"{symbol}.json"
+                        if _rzt_cache_p.exists():
+                            with open(_rzt_cache_p) as _rzt_fh: _rzt_doi = json.load(_rzt_fh)
+                            _rzt_age_h = (time.time() - (_rzt_doi.get("ts") or 0)) / 3600.0
+                            if _rzt_age_h <= _rzt_stale_h:
+                                if position_side == "LONG":
+                                    _wall_strike = _rzt_doi.get("max_call_oi_strike")
+                                    _wall_oi = _rzt_doi.get("max_call_oi_value") or 0
+                                    if _wall_strike and _wall_oi >= _rzt_min_oi and _wall_strike > current_price:
+                                        _dist_pct = (_wall_strike - current_price) / current_price * 100.0
+                                        if _dist_pct < _rzt_min_dist:
+                                            logger.warning(f"🧱 [RED_ZONE_TRADIER] {position_key}: BLOCKED LONG {action} — call-OI ceiling ${_wall_strike:.2f} {_dist_pct:.2f}% above (OI={_wall_oi} ≥ {_rzt_min_oi}, threshold {_rzt_min_dist}%). reason={reason[:60]}")
+                                            return False
+                                else:  # SHORT
+                                    _wall_strike = _rzt_doi.get("max_put_oi_strike")
+                                    _wall_oi = _rzt_doi.get("max_put_oi_value") or 0
+                                    if _wall_strike and _wall_oi >= _rzt_min_oi and _wall_strike < current_price:
+                                        _dist_pct = (current_price - _wall_strike) / current_price * 100.0
+                                        if _dist_pct < _rzt_min_dist:
+                                            logger.warning(f"🧱 [RED_ZONE_TRADIER] {position_key}: BLOCKED SHORT {action} — put-OI floor ${_wall_strike:.2f} {_dist_pct:.2f}% below (OI={_wall_oi} ≥ {_rzt_min_oi}, threshold {_rzt_min_dist}%). reason={reason[:60]}")
+                                            return False
+                    except Exception as _rzt_exc:
+                        logger.debug(f"[RED_ZONE_TRADIER] {position_key}: exception {type(_rzt_exc).__name__} {_rzt_exc} — skipped (no block)")
         if action == "OPEN":
             # BACKTEST_CHANGE_T37: daily loss circuit breaker
             if _daily_loss_tracker.get("halted", False):
