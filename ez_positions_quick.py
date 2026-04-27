@@ -6225,6 +6225,17 @@ class HedgeEngine:
             return {'overall_status': 'in_flight', 'elected_symbol': {'status': 'in_flight'}, 'actual_symbol': {'status': 'in_flight'}}
         self._hedge_in_flight.add(losing_position_key)
         self._hedge_same_in_flight.add(losing_position_key)  # also block parallel execute_same_symbol_hedge
+        # 2026-04-27 owner: cross-symbol hedge ABSOLUTELY OFF. Same-symbol only.
+        # User: "we are hedging same symbol so that RULES OUT VET for LUNA2 completely".
+        # Was bleeding through HEDGE_ELECTED_<SYM> path despite HEDGE_DUAL_IF_HEDGE_MODE=False
+        # because this function did not check the flag — only the inner guards.
+        if not bool(getattr(config, 'HEDGE_DUAL_IF_HEDGE_MODE', False)):
+            logger.info(f"🛑 [HEDGE_ELECTED_DISABLED] {losing_position_key}: cross-symbol hedge OFF (HEDGE_DUAL_IF_HEDGE_MODE=False). Same-symbol path is the only allowed hedge.")
+            try: self._hedge_in_flight.discard(losing_position_key)
+            except Exception: pass
+            try: self._hedge_same_in_flight.discard(losing_position_key)
+            except Exception: pass
+            return {'overall_status': 'cross_symbol_disabled', 'elected_symbol': {'status': 'disabled'}, 'actual_symbol': {'status': 'disabled'}}
         logger.info(f"✅ [HEDGE_GATES_PASSED] {losing_position_key}: all gates cleared, calling find_hedge_candidates...")
         try:
           async with self._get_account_lock(account_key):

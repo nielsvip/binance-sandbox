@@ -19873,6 +19873,40 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     if not current_price or current_price <= 0:
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # 2026-04-27 — WIRE evaluate_reentry (was dead code at line 16593, never called).
+    # 683 reentry mentions / 0 executions today across 5 crypto accounts. The compact 7-block
+    # function (B15/B04/B11/B02/B12/B14/B10) is ablation-tested and returns Signal(action='REENTRY').
+    # Gated by EVAL_REENTRY_ENABLED (default True). Per user: "Test the difference (huge functions
+    # so augments backtest times by up to 50% but if it works it works)".
+    # Function self-gates on position_value <= 2*MIN_POSITION_SIZE so it only fires for fresh-flat or
+    # partially-reduced positions. NO_DOUBLE_OPEN guard naturally allows because execute_now
+    # reclassifies REENTRY → OPEN (positionAmt=0) or AUGMENT (positionAmt>min_pos).
+    if bool(getattr(config, 'EVAL_REENTRY_ENABLED', True)):
+        try:
+            _re_ctx = {
+                'config': config, 'logger': logger,
+                'position_key': position_key, 'symbol': symbol,
+                'account_key': account_key, 'trade_manager': trade_manager,
+                'position_side': position_side,
+                'current_price': current_price, 'mark_price': current_price,
+            }
+            _re_signal = await evaluate_reentry(_re_ctx)
+            if _re_signal and getattr(_re_signal, 'action', None) == 'REENTRY':
+                _re_qty = float(getattr(_re_signal, 'quantity', 0) or 0)
+                _re_reason = getattr(_re_signal, 'reason', 'EVAL_REENTRY_FIRED')
+                if _re_qty > 0:
+                    _re_side = 'BUY' if position_side == 'LONG' else 'SELL'
+                    logger.warning(f"[EVAL_REENTRY_FIRED] {position_key}: {_re_reason} qty={_re_qty:.6f}")
+                    await trade_manager.execute_now(
+                        position_key=position_key, account_key=account_key, symbol=symbol,
+                        original_positionAmt=0.0, side=_re_side, position_side=position_side,
+                        quantity=_re_qty, old_price=current_price,
+                        unique_id=f"EVAL_REENTRY_{int(time.time())}", reason=_re_reason,
+                        is_full_close=False, action='REENTRY')
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.NO_ACTION}:EVAL_REENTRY_QUEUED"
+        except Exception as _re_e:
+            logger.warning(f"[EVAL_REENTRY_ERR] {position_key}: {type(_re_e).__name__}: {_re_e}")
     age_pr = -1
     if price_ts:
         if isinstance(price_ts, datetime):

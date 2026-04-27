@@ -833,6 +833,15 @@ class QuickConfig:
     BTC_DIVERGENCE_LB_4H: int = 20
     BTC_DIVERGENCE_LB_D: int = 10
     BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS: int = 2
+    # TREND-FOLLOW POC (path A — fundamental rebuild for big returns)
+    BTC_TREND_MODE_ENABLED: bool = False
+    BTC_TREND_ATR_MULT: float = 2.5
+    BTC_TREND_HARD_LOSS_PCT: float = 5.0
+    BTC_TREND_NOTIONAL_USD_MAX: float = 500.0
+    BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT: bool = True
+    BTC_TREND_COOLDOWN_BARS: int = 480
+    BTC_TREND_ENTRY_MODE: str = "dc_d"               # "dc_d" | "dc_4h" | "wt_align" | "wt_d_cross"
+    BTC_TREND_MIN_HTF_ALIGNED: int = 3               # min of D+4h+1h aligned (3 = strict, 2 = loose)
     # Same-bar REVERSE-ON-EXIT
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
@@ -2610,6 +2619,137 @@ def compute_exit_signals(npz, n, is_long, cfg):
     return base_exit
 
 
+def _btc_trend_simulate_per_sym(npz, cfg, n: int, _ltf: str,
+                                  _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int):
+    """BTC TREND-FOLLOW Tier-1 POC (2026-04-27 — user path A).
+
+    Different design philosophy from _btc_dedicated_simulate_per_sym:
+      - Catch big trend legs (≥30% moves), not chop
+      - Wide ATR-based trailing stops (2.5× ATR_D)
+      - Hold for days, not 20 bars
+      - Bigger size per trade ($500 own / $10k notional at 20×)
+      - Max 1 concurrent position
+
+    Entry LONG: close > prev_dc_high_D AND wt1_D>wt2_D AND wt1_4h>wt2_4h AND wt1_1h>wt2_1h
+    Entry SHORT: mirror.
+    Exit: ATR trailing OR D WT flip after profit OR hard % stop.
+    """
+    close = _safe(npz, f'close_{_ltf}', n)
+    dc_high_D = _safe(npz, 'dc_high_D', n); dc_low_D = _safe(npz, 'dc_low_D', n)
+    dc_high_D_prev = np.roll(dc_high_D, 1); dc_high_D_prev[0] = dc_high_D[0]
+    dc_low_D_prev = np.roll(dc_low_D, 1); dc_low_D_prev[0] = dc_low_D[0]
+    wt1_D = _safe(npz, 'wt1_D', n); wt2_D = _safe(npz, 'wt2_D', n)
+    wt1_4h = _safe(npz, 'wt1_4h', n); wt2_4h = _safe(npz, 'wt2_4h', n)
+    wt1_1h = _safe(npz, 'wt1_1h', n); wt2_1h = _safe(npz, 'wt2_1h', n)
+    atr_D = _safe(npz, 'atr_D', n)
+
+    atr_mult = float(getattr(cfg, 'BTC_TREND_ATR_MULT', 2.5))
+    hard_loss_pct = float(getattr(cfg, 'BTC_TREND_HARD_LOSS_PCT', 5.0))
+    require_d_profit_for_wt_exit = bool(getattr(cfg, 'BTC_TREND_REQUIRE_PROFIT_FOR_WT_EXIT', True))
+    cooldown_bars = int(getattr(cfg, 'BTC_TREND_COOLDOWN_BARS', _bph_D))
+
+    sym_pnl = []
+    position = "FLAT"; entry_price = 0.0; peak_price = 0.0
+    last_exit_bar = -10**9
+    start_i = max(_bph_D * 2, 200)
+
+    for i in range(start_i, n):
+        price_i = float(close[i])
+        if price_i <= 0:
+            continue
+        if position == "FLAT":
+            if i - last_exit_bar < cooldown_bars:
+                continue
+            d_bull = wt1_D[i] > wt2_D[i]; d_bear = wt1_D[i] < wt2_D[i]
+            h4_bull = wt1_4h[i] > wt2_4h[i]; h4_bear = wt1_4h[i] < wt2_4h[i]
+            h1_bull = wt1_1h[i] > wt2_1h[i]; h1_bear = wt1_1h[i] < wt2_1h[i]
+            # Configurable entry mode (BTC_TREND_ENTRY_MODE):
+            #   "dc_d"        — original: D Donchian breakout + WT D+4h+1h aligned (rare, ~10 trades/4yr)
+            #   "dc_4h"       — 4h Donchian breakout (more frequent)
+            #   "wt_align"    — WT bull on D+4h+1h, no Donchian requirement (most permissive)
+            #   "wt_d_cross"  — D WT cross within last 5 D-bars + 4h alignment
+            mode = str(getattr(cfg, 'BTC_TREND_ENTRY_MODE', 'dc_d'))
+            min_htf_aligned = int(getattr(cfg, 'BTC_TREND_MIN_HTF_ALIGNED', 3))   # how many of D+4h+1h must align
+            bull_aligned = int(d_bull) + int(h4_bull) + int(h1_bull)
+            bear_aligned = int(d_bear) + int(h4_bear) + int(h1_bear)
+            if mode == "dc_d":
+                long_ok = (price_i > float(dc_high_D_prev[i]) and dc_high_D_prev[i] > 0
+                           and bull_aligned >= min_htf_aligned)
+                short_ok = (price_i < float(dc_low_D_prev[i]) and dc_low_D_prev[i] > 0
+                            and bear_aligned >= min_htf_aligned)
+            elif mode == "dc_4h":
+                # Use 4h Donchian (need 4h dc fields)
+                _dc_h4 = _safe(npz, 'dc_high_4h', n)
+                _dc_l4 = _safe(npz, 'dc_low_4h', n)
+                _dc_h4p = _dc_h4[i - 1] if i > 0 else _dc_h4[0]
+                _dc_l4p = _dc_l4[i - 1] if i > 0 else _dc_l4[0]
+                long_ok = (price_i > float(_dc_h4p) and _dc_h4p > 0
+                           and bull_aligned >= min_htf_aligned)
+                short_ok = (price_i < float(_dc_l4p) and _dc_l4p > 0
+                            and bear_aligned >= min_htf_aligned)
+            elif mode == "wt_align":
+                long_ok = bull_aligned >= min_htf_aligned
+                short_ok = bear_aligned >= min_htf_aligned
+            elif mode == "wt_d_cross":
+                # Detect D WT cross within last 5 D-bars (5 × _bph_D LTF bars)
+                lb = 5 * _bph_D
+                start = max(0, i - lb)
+                # crossed up = at some point in window, wt1_D[k-1] <= wt2_D[k-1] AND wt1_D[k] > wt2_D[k]
+                d_cross_up = False; d_cross_dn = False
+                for k in range(start + 1, i + 1):
+                    if wt1_D[k - 1] <= wt2_D[k - 1] and wt1_D[k] > wt2_D[k]:
+                        d_cross_up = True; break
+                for k in range(start + 1, i + 1):
+                    if wt1_D[k - 1] >= wt2_D[k - 1] and wt1_D[k] < wt2_D[k]:
+                        d_cross_dn = True; break
+                long_ok = d_cross_up and bull_aligned >= max(2, min_htf_aligned - 1)
+                short_ok = d_cross_dn and bear_aligned >= max(2, min_htf_aligned - 1)
+            else:
+                long_ok = False; short_ok = False
+            if long_ok and not short_ok:
+                position = "LONG"; entry_price = price_i; peak_price = price_i
+            elif short_ok and not long_ok:
+                position = "SHORT"; entry_price = price_i; peak_price = price_i
+            continue
+
+        if position == "LONG":
+            pnl_pct = (price_i - entry_price) / entry_price * 100.0
+            if price_i > peak_price: peak_price = price_i
+            atr_i = float(atr_D[i]) if atr_D[i] > 0 else max(price_i * 0.02, 1.0)
+            trail_stop = peak_price - atr_mult * atr_i
+            if price_i <= trail_stop:
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+            if wt1_D[i] < wt2_D[i] and ((not require_d_profit_for_wt_exit) or pnl_pct > 0):
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+            if pnl_pct <= -hard_loss_pct:
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+        else:
+            pnl_pct = (entry_price - price_i) / entry_price * 100.0
+            if price_i < peak_price: peak_price = price_i
+            atr_i = float(atr_D[i]) if atr_D[i] > 0 else max(price_i * 0.02, 1.0)
+            trail_stop = peak_price + atr_mult * atr_i
+            if price_i >= trail_stop:
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+            if wt1_D[i] > wt2_D[i] and ((not require_d_profit_for_wt_exit) or pnl_pct > 0):
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+            if pnl_pct <= -hard_loss_pct:
+                sym_pnl.append(pnl_pct); last_exit_bar = i
+                position = "FLAT"; entry_price = 0.0; peak_price = 0.0; continue
+
+    if position != "FLAT" and entry_price > 0:
+        price_last = float(close[n - 1])
+        if position == "LONG":
+            sym_pnl.append((price_last - entry_price) / entry_price * 100.0)
+        else:
+            sym_pnl.append((entry_price - price_last) / entry_price * 100.0)
+    return sym_pnl
+
+
 def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                                      _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int):
     """BTC-dedicated per-symbol Tier-1 backtest (Path B: technical exit + guaranteed reentry).
@@ -3101,9 +3241,14 @@ def simulate(stores, cfg, capital=10000.0):
         # See BTC_DEDICATED_LOOP_DESIGN_20260427.md.
         if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in ('BTCUSDT', 'BTCUSDC'):
             try:
-                _btc_sym_pnl = _btc_dedicated_simulate_per_sym(
-                    npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
-                )
+                if bool(getattr(cfg, 'BTC_TREND_MODE_ENABLED', False)):
+                    _btc_sym_pnl = _btc_trend_simulate_per_sym(
+                        npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
+                    )
+                else:
+                    _btc_sym_pnl = _btc_dedicated_simulate_per_sym(
+                        npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
+                    )
                 per_symbol_pnl[sym] = _btc_sym_pnl
                 all_pnl.extend(_btc_sym_pnl)
                 symbols_processed += 1

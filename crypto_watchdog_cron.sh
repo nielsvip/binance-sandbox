@@ -135,6 +135,18 @@ if [ "$DOW" -le 5 ] && [ "$ET_MINS" -ge 555 ] && [ "$ET_MINS" -le 975 ]; then
     done
 fi
 
+# === 2c. TRADIER OPTIONS OI FETCHER (READ-ONLY 24/7 daemon) ===
+# Refreshes data/stocks_oi_cache/{sym}.json hourly via Tradier options chain endpoint.
+# READ-ONLY — never opens options orders. Per feedback_oi_signal_only_no_options_trading_20260427.md.
+# Runs 24/7 (not market-hours gated) — OI publishes daily and we want overnight refreshes too.
+if ! pgrep -f "tradier_options_oi_fetcher.py" >/dev/null 2>&1; then
+    log "RESTARTING: tradier_options_oi_fetcher.py"
+    cd "$WORKDIR"
+    nohup $PYTHON -u tradier_options_oi_fetcher.py > "$LOGDIR/tradier_oi_fetcher_cron.log" 2>&1 &
+    sleep 2
+    alert "tradier_options_oi_fetcher was dead — restarted"
+fi
+
 # === 3. TRADE QUALITY CHECK ===
 # Check last 5 minutes of decisions for STRICT_NO_LOSS violations
 TODAY=$(date +%Y%m%d)

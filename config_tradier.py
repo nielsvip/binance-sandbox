@@ -96,7 +96,8 @@ class TradierConfig:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-27: ALL ON per user. Master flag.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # 2026-04-27 TIGHTENED per user "TAKE IT FUCKING EASY" — engine boost was amplifying marginal entries (PLTR-into-uptrend pattern)
+    WT_DC_HTF_GATE: str = "4h"                      # 2026-04-27 NEW — block WT_DC entry when 4h is against. Closes the gap that DELTA_HTF_GATE had. Values: 'none' / '4h' / '4h_D'
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
     LIVE_ENTRY_ENGINE_DC_ENABLED: bool = True       # convergent on crypto side; harmless on tradier when no dc_x signal
@@ -1054,7 +1055,7 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 55  # V8 ABLATION 2026-04-13: Sharpe 1.276 (best of 35/55/75/95). T25 2026-04-14: DC=55 avg_sharpe=0.386 best among 35(0.356)/43(0.342)/55(0.386). DC=75 fires 0 trades.
+    WT_DC_ENTRY_THRESHOLD: float = 75  # 2026-04-27 TIGHTENED: was 55. Per user "TAKE IT EASY". Old comment claimed 75 fires 0 trades on the OLD eng/data; with current ABSOLUTE_OPEN_LOCK + NO_DOUBLE_OPEN guard + WT_DC_HTF_GATE, 75 is the right level for high-quality only.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage

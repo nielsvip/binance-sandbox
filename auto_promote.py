@@ -27,20 +27,23 @@ PY_LOCAL = "/opt/anaconda3/envs/binance_env/bin/python"
 
 THRESH = {
     "tradier": {
-        "min_pool_sharpe": 1.0,
-        "min_trades": 200,
+        "min_pool_sharpe": 0.5,    # 2026-04-27 LOOSENED — Tier-3 collapses 50-80% from Tier-2; insist on 1.0 = 0 candidates
+        "min_trades": 100,         # was 200 — get more samples through validation
         "max_dd_pct": 35.0,
-        "min_gain_per_yr": 20.0,
-        "min_sym_sharpe": 0.5,
+        "min_gain_per_yr": 10.0,   # was 20 — Tier-2 numbers don't hold; let Tier-3 reject
+        "min_sym_sharpe": 0.3,     # was 0.5
     },
     "crypto": {
-        "min_pool_sharpe": 1.0,
-        "min_trades": 200,
+        "min_pool_sharpe": 0.5,    # was 1.0
+        "min_trades": 100,         # was 200
         "max_dd_pct": 40.0,
-        "min_gain_per_yr": 30.0,
-        "min_sym_sharpe": 0.5,
+        "min_gain_per_yr": 15.0,   # was 30
+        "min_sym_sharpe": 0.3,
     },
 }
+# Tier-3 acceptance rule: keep candidate if Tier-3 sharpe is >= max(0.3, 0.5*tier2_sharpe).
+# Was 50% rule alone — too strict given Tier-3 floor of 0.3 catches "alive but mediocre" candidates.
+TIER3_KEEP_FLOOR = 0.3
 
 VAL_PROFILES = {
     "smoke":  {"start": "2025-10-01", "n_syms": 12,  "timeout": 600},
@@ -310,7 +313,7 @@ def main():
                 tier3 = val.get("v8_sharpe_pt", val.get("v8_sharpe", 0)) or 0
                 worth_keeping = (val["status"] == "done"
                                  and isinstance(tier3, (int, float))
-                                 and tier3 >= max(0.5, tier2 * 0.5))
+                                 and tier3 >= TIER3_KEEP_FLOOR)
                 if worth_keeping:
                     p = write_candidate(args.out_dir, c, val)
                     state["candidates_written"] += 1

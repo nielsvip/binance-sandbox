@@ -1509,19 +1509,17 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                          ((not is_long) and current_price >= _xb_last_px * (1 - _xb_band_pct/100))
                             if _xb_dir_ok:
                                 _xb_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / max(current_price, 1e-9)
-                                action_type = "REENTRY_OPEN"
+                                action_type = "OPEN"
                                 qty = max(1, int(_xb_qty))
                                 conf = 90.0
-                                reason = f"PRICE_CROSS_BACK_REENTRY exit={_xb_last_px:.4f} cur={current_price:.4f} dist={_xb_dist_pct:.2f}% age={_xb_age_min:.0f}m"
+                                reason = f"PRICE_CROSS_BACK_REENTRY_exit{_xb_last_px:.4f}_cur{current_price:.4f}_dist{_xb_dist_pct:.2f}%_age{_xb_age_min:.0f}m"
                                 _xb_reentry_fired = True
                                 logger.warning(f"[{account_key}] 🔁 REENTRY {symbol} {'L' if is_long else 'S'}: {reason}")
                 # --- 4. DELTA ENGINE ENTRY (Sharpe 63.44, 85.9% WR) ---
-                if _xb_reentry_fired:
-                    pass  # skip DELTA/WT_DC/RZ when reentry fired
                 # tra: long-term account, delta is too fast — block here so the
                 # WT/DC scorer (with high threshold) is the only entry path.
                 _tra_block_delta = (account_key == 'tra' and getattr(config, 'TRA_DISABLE_DELTA_ENTRY', True))
-                if not _tra_block_delta and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED and trade_manager.delta_tracker:
+                if not _xb_reentry_fired and not _tra_block_delta and config.DELTA_ENGINE_ENABLED and config.DELTA_ENTRY_ENABLED and trade_manager.delta_tracker:
                     _d_ind = indicators_raw if indicators_raw else i
                     _d_sig = trade_manager.delta_tracker.update(symbol, _d_ind)
                     if _d_sig and ((is_long and _d_sig.entry_long) or (not is_long and _d_sig.entry_short)):
@@ -1607,7 +1605,21 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _entry_threshold = getattr(config, 'WT_DC_ENTRY_THRESHOLD', 55)
                     _k5m_now = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
                     _k5m_block = (is_long and _k5m_now > float(getattr(config, 'WT_DC_ENTRY_K5M_MAX_LONG', 100))) or ((not is_long) and _k5m_now < float(getattr(config, 'WT_DC_ENTRY_K5M_MIN_SHORT', 0)))
-                    if _entry_score >= _entry_threshold and not _k5m_block:
+                    # 2026-04-27 — HTF gate on WT_DC_ENTRY path (matches DELTA_HTF_GATE pattern). Closes the
+                    # SHORT-into-uptrend gap that allowed PLTR loss. Default 'none' = inert; live config sets '4h'.
+                    _wtdc_htf_gate = str(getattr(config, 'WT_DC_HTF_GATE', 'none')).lower()
+                    _htf_block = False
+                    if _wtdc_htf_gate in ('4h', '4h_d'):
+                        _wt1_4h = float((_entry_ind or {}).get('wt1_4h', 0) or 0)
+                        _wt2_4h = float((_entry_ind or {}).get('wt2_4h', 0) or 0)
+                        _4h_against = (is_long and _wt1_4h < _wt2_4h) or ((not is_long) and _wt1_4h > _wt2_4h)
+                        if _4h_against: _htf_block = True
+                    if not _htf_block and _wtdc_htf_gate == '4h_d':
+                        _wt1_D = float((_entry_ind or {}).get('wt1_D', 0) or 0)
+                        _wt2_D = float((_entry_ind or {}).get('wt2_D', 0) or 0)
+                        _D_against = (is_long and _wt1_D < _wt2_D) or ((not is_long) and _wt1_D > _wt2_D)
+                        if _D_against: _htf_block = True
+                    if _entry_score >= _entry_threshold and not _k5m_block and not _htf_block:
                         _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
@@ -1615,6 +1627,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         reason = f"WT_DC_ENTRY_{_entry_score:.0f}_{_entry_reason[:60]}"
                     elif _k5m_block and _entry_score >= _entry_threshold:
                         logger.info(f"[WT_DC_ENTRY_K5M_BLOCK] {symbol} {'L' if is_long else 'S'}: k5m={_k5m_now:.1f} score={_entry_score:.0f}")
+                    elif _htf_block and _entry_score >= _entry_threshold:
+                        logger.info(f"[WT_DC_HTF_BLOCK] {symbol} {'L' if is_long else 'S'}: HTF against (gate={_wtdc_htf_gate}) score={_entry_score:.0f}")
                 # RZ_BREAKOUT: third entry path — fires when bb_pct_b_1h just exited extreme zone.
                 # Band approach: LONG fires when bb_pctb is in [rz_bot, rz_bot+band] (just broke up from oversold).
                 # SHORT fires when bb_pctb is in [rz_top-band, rz_top] (just broke down from overbought).
