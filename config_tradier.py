@@ -44,17 +44,19 @@ class TradierConfig:
     AUGMENTATION_COOLDOWN_SECONDS: float = 300.0
     MIN_GAIN_TO_BUY_AGGRESSIVELY: float = 3.0  # was 5.0. 3.0% survives 1.5% reversal after 50% aug
     MIN_POSITION_SIZE: float = 62.5
-    MAX_POSITION_SIZE: float = 5000.0
-    START_POSITION_SIZE: float = 600.0  # BACKTEST_CHANGE_T26 was 400 → 600 larger base size
+    # 2026-04-27 EMERGENCY SIZE CUT — user at -25% / 10d. Halve all caps until bleed stops.
+    # Original values preserved in inline comment in case we need to revert.
+    MAX_POSITION_SIZE: float = 2500.0   # was 5000 — emergency halve
+    START_POSITION_SIZE: float = 300.0  # was 600 — emergency halve
     # === WING BUDGETS ===
-    SWING_LONG_BUDGET: float = 100000.0     # 2026-04-26 raised 2k → 100k. With $200k account, 2k was 1% and the ratio-shrink (×0.12 in bearish market = $2.4k) was choking trb to ZERO opens. 100k matches TRC; half of total available so LONG+SHORT can both deploy.
-    SWING_SHORT_BUDGET: float = 100000.0    # 2026-04-26 raised 2k → 100k. Same reason.
-    SWING_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    SWING_START_SIZE: float = 800.0          # Base order value for swing ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    SCALP_LONG_BUDGET: float = 1000.0       # Max $ in scalp longs
-    SCALP_SHORT_BUDGET: float = 1000.0      # Max $ in scalp shorts
-    SCALP_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap for scalp
-    SCALP_START_SIZE: float = 600.0          # BACKTEST_CHANGE_T27 was 800 → 600 align with START_POSITION_SIZE
+    SWING_LONG_BUDGET: float = 50000.0      # was 100000 — emergency halve
+    SWING_SHORT_BUDGET: float = 50000.0     # was 100000 — emergency halve
+    SWING_MAX_POSITION_SIZE: float = 1000.0  # was 2000 (DEAD_CONFIRMED but halved for safety)
+    SWING_START_SIZE: float = 400.0          # was 800 (DEAD_CONFIRMED but halved for safety)
+    SCALP_LONG_BUDGET: float = 500.0        # was 1000 — emergency halve
+    SCALP_SHORT_BUDGET: float = 500.0       # was 1000 — emergency halve
+    SCALP_MAX_POSITION_SIZE: float = 1000.0  # was 2000 — emergency halve
+    SCALP_START_SIZE: float = 300.0          # was 600 — emergency halve
     SCALP_MAX_HOLD_MINUTES: float = 180.0     # URGENT_FIX: shorter holds, take profits/losses faster (was 300)
     SCALP_STOP_PCT: float = 9.99             # BACKTEST_CHANGE_T12 was 1.5% → 999% effectively disabled NO_LOSS mode
     SCALP_TARGET_PCT: float = 0.005           # URGENT_FIX: tighter TP in choppy market, take profits faster (was 0.01 = 1.0% → 0.005 = 0.5%)
@@ -62,7 +64,7 @@ class TradierConfig:
     SCALP_TOP_MOVERS_N: int = 14             # Candidate pool size
     SCALP_MIN_REL_VOL: float = 1.1           # Min relative volume to qualify
     SCALP_MIN_MOVE_PCT: float = 0.003        # Min 0.3% 5m deviation from ema_20_5m
-    MAX_ORDER_VALUE: float = 2000.0
+    MAX_ORDER_VALUE: float = 1000.0  # 2026-04-27 emergency halve (was 2000) — user at -25%/10d
     ACCOUNT_SIDE_MAPPING: Dict[str, List[str]] = field(default_factory=lambda: {"tra": ["LONG"]})  # DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     # tra = SATOSHIT-only account. Block all other strategies (HODL, rotation, RSI2, gap fill, ORB, EP).
     TRA_SATOSHIT_ONLY: bool = True
@@ -275,8 +277,8 @@ class TradierConfig:
     #                  MAX_NOTIONAL_USD / px, MAX_POSITION_SIZE / px, MAX_ORDER_VALUE / px )
     # First pass at PLTR opened 137-share short on a $4,262 call (~$19.6k notional, 4.6× option
     # cost basis). User considers any hedge >>1× option cost basis insane. Default 150% (1.5×).
-    OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST: float = 150.0  # hedge notional ≤ 1.5× option cost basis
-    OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD: float = 5000.0    # absolute $ ceiling per OCC hedge
+    OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST: float = 100.0  # was 150 — 2026-04-27 emergency tighten: hedge ≤ 1× option cost basis
+    OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD: float = 2500.0    # was 5000 — 2026-04-27 emergency halve
     # === HEDGE DUP-FIRE & DC-BREACH GUARDS (2026-04-27 — same incident) ===
     # Two analyzer processes (--auto-sell + --daemon) raced and fired hedge 3× in 12min,
     # net 346 shares short vs 137 fair. fcntl lock on options_equity_hedges.lock prevents
@@ -313,7 +315,7 @@ class TradierConfig:
     # Max spend per new order = $800. Exception: if one contract costs more than $800, still
     # buy exactly 1 contract (no multi-contract spending spree). Hard rule: if option
     # price > $9/share (= $900/contract), max 1 contract regardless of budget.
-    OPTIONS_MAX_ORDER_BUDGET: float = 800.0         # Hard per-order spend cap
+    OPTIONS_MAX_ORDER_BUDGET: float = 400.0         # was 800 — 2026-04-27 emergency halve
     OPTIONS_MAX_SINGLE_CONTRACT_PRICE: float = 9.0  # If price/share > this, max qty=1
     # === OPTIONS BUY SANITY GATES (2026-04-22 — blocks JNJ/ABT-style misbuys) ===
     # Background: 2026-04-22 14:05 UTC cron bypass bought 2 OTM calls on downtrending,
@@ -719,22 +721,23 @@ class TradierConfig:
     HEDGE_MODE_TRADIER: bool = False  # BACKTEST_CHANGE_T31 hedge mode disabled for stocks
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
-    TRC_START_POSITION_SIZE: float = 1000.0  # Local extremes: base size — scorer overrides per trade ($50-$5000)
-    TRC_MAX_ORDER_VALUE: float = 5000.0  # Max single order (cap at $5000)
-    TRC_MAX_POSITION_SIZE: float = 5000.0  # Max per position = $5000 (was 15000)
-    TRC_SCALP_START_SIZE: float = 1000.0  # Scalp base size
-    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 20  # 20 long + 20 short = 40 total (was 12)
-    TRC_MAX_CONCURRENT_POSITIONS: int = 40  # 40 total = 20 per side (was 32)
-    TRC_ROTATION_POSITION_SIZE: float = 3000.0  # 2.5x trb ($1200)
-    TRC_RSI2_POSITION_SIZE: float = 1980.0  # 3.3x trb ($600)
-    TRC_GAP_FILL_POSITION_SIZE: float = 1980.0  # 3.3x trb ($600)
-    TRC_DC_DAYTRADE_START_SIZE: float = 1980.0  # 3.3x trb ($600)
-    TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0  # 3.3x trb ($3000)
-    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0  # 3.3x trb ($3000)
-    TRC_SWING_LONG_BUDGET: float = 100000.0  # Local extremes: unlimited paper budget for 20 longs at $5000 (was 8000)
-    TRC_SWING_SHORT_BUDGET: float = 100000.0  # Local extremes: unlimited paper budget for 20 shorts at $5000 (was 8000)
-    TRC_SCALP_LONG_BUDGET: float = 5000.0  # 5x trb ($1000)
-    TRC_SCALP_SHORT_BUDGET: float = 5000.0  # 5x trb ($1000)
+    # 2026-04-27 EMERGENCY HALVE — user at -25%/10d. Every trc cap halved.
+    TRC_START_POSITION_SIZE: float = 500.0   # was 1000
+    TRC_MAX_ORDER_VALUE: float = 2500.0      # was 5000
+    TRC_MAX_POSITION_SIZE: float = 2500.0    # was 5000
+    TRC_SCALP_START_SIZE: float = 500.0      # was 1000
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 10  # was 20 — concentrate
+    TRC_MAX_CONCURRENT_POSITIONS: int = 20   # was 40 — concentrate
+    TRC_ROTATION_POSITION_SIZE: float = 1500.0  # was 3000
+    TRC_RSI2_POSITION_SIZE: float = 990.0    # was 1980
+    TRC_GAP_FILL_POSITION_SIZE: float = 990.0  # was 1980
+    TRC_DC_DAYTRADE_START_SIZE: float = 990.0  # was 1980
+    TRC_DC_DAYTRADE_LONG_BUDGET: float = 4950.0   # was 9900
+    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 4950.0  # was 9900
+    TRC_SWING_LONG_BUDGET: float = 50000.0   # was 100000
+    TRC_SWING_SHORT_BUDGET: float = 50000.0  # was 100000
+    TRC_SCALP_LONG_BUDGET: float = 2500.0    # was 5000
+    TRC_SCALP_SHORT_BUDGET: float = 2500.0   # was 5000
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
     TRC_ENTRY_ZONE_LONG: float = 25.0  # Local extremes: deeper oversold bottom (was 30)
     TRC_ENTRY_ZONE_SHORT: float = 75.0  # Local extremes: deeper overbought top (was 70)
@@ -746,19 +749,19 @@ class TradierConfig:
     TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY.
     # === CONCENTRATION CAP — prevent single-symbol overexposure ===
-    MAX_SYMBOL_VALUE_TRADIER: float = 15000.0  # Max $ value per symbol. USO hit $352K, IBIT $119K — caused disaster losses.
-    TRC_MAX_SYMBOL_VALUE: float = 5000.0  # Local extremes: cap per symbol at $5000 (was 15000)
+    MAX_SYMBOL_VALUE_TRADIER: float = 7500.0  # was 15000 — 2026-04-27 emergency halve
+    TRC_MAX_SYMBOL_VALUE: float = 2500.0  # was 5000 — 2026-04-27 emergency halve
     TRC_LOCAL_EXTREMES_SCORER_ENABLED: bool = True  # Use local_extremes_scorer for dynamic $50-$5000 sizing
     TRADIER_LOCAL_EXTREMES_SCORING_ENABLED: bool = False  # 2026-04-26 KILL: tier sizing was suffocating PnL; Phase 8 disable = 90× PnL boost in v8
     LOCAL_EXTREMES_MIN_SCORE: float = 45.0  # 2026-04-20 le_dynamic winner: min LE score to allow entry (262sym Sharpe 3.5479). Wire in tradier_manage.py entry gate.
     DYNAMIC_SCORE_COUNTER_EXIT_ENABLED: bool = True  # 2026-04-20 le_dynamic winner: exit when opposite-direction LE score >= threshold
     DYNAMIC_SCORE_COUNTER_EXIT_THRESHOLD: float = 55.0  # 2026-04-20 le_dynamic winner: counter-exit trigger threshold (score=55 validated)
-    TRB_MAX_SYMBOL_VALUE: float = 10000.0  # trb cap (smaller account)
-    # === 2026-04-26 NEW user-spec position caps for trb ===
-    TRB_MAX_LONG_VALUE: float = 50000.0   # NEW: max $ per long position (user spec 2026-04-26)
-    TRB_MAX_SHORT_VALUE: float = 50000.0  # NEW: max $ per short position
-    TRB_MAX_PUT_VALUE: float = 3000.0     # NEW: max $ per put option
-    TRB_MAX_CALL_VALUE: float = 3000.0    # NEW: max $ per call option
+    TRB_MAX_SYMBOL_VALUE: float = 5000.0  # was 10000 — 2026-04-27 emergency halve
+    # === 2026-04-26 NEW user-spec position caps for trb (HALVED 2026-04-27) ===
+    TRB_MAX_LONG_VALUE: float = 25000.0    # was 50000 — emergency halve
+    TRB_MAX_SHORT_VALUE: float = 25000.0   # was 50000 — emergency halve
+    TRB_MAX_PUT_VALUE: float = 1500.0      # was 3000 — emergency halve
+    TRB_MAX_CALL_VALUE: float = 1500.0     # was 3000 — emergency halve
     # === 2026-04-26 NEW user-spec position caps for trb (ABOVE) ===
     # === VIX regime filter (Phase B framework) ===
     VIX_VOLATILITY_REGIME_ENABLED: bool = True   # 2026-04-26: VIX vs VIX-200dMA gate (NOT SPY-SMA200 — that's L1061); 32% DD reduction documented
@@ -844,7 +847,7 @@ class TradierConfig:
     DC_DAYTRADE_LONG_BUDGET: float = 3000.0  # Max $ exposure in daytrade longs
     DC_DAYTRADE_SHORT_BUDGET: float = 3000.0  # Max $ exposure in daytrade shorts
     DC_DAYTRADE_START_SIZE: float = 600.0  # Base order value per daytrade entry
-    DC_DAYTRADE_MAX_POSITION_SIZE: float = 2000.0  # Per-symbol cap
+    DC_DAYTRADE_MAX_POSITION_SIZE: float = 1000.0  # was 2000 — 2026-04-27 emergency halve
     DC_DAYTRADE_MAX_PER_SIDE: int = 5  # Max concurrent daytrade positions per side
     DC_DAYTRADE_REQUIRE_1H_EXPANSION: bool = True  # Only trade DC breaks when 1h channel is expanding in same direction
     DC_DAYTRADE_BUFFER: float = 0.001  # Min % outside channel to confirm break (0.1%)

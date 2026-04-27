@@ -11300,11 +11300,15 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 _is_aug_target = bool(_is_winner_aug or _is_pullback_aug)
                 _is_open_target = not _is_aug_target
                 _should_gate = (_is_open_target and _htf_apply_open) or (_is_aug_target and _htf_apply_aug)
-                # 2026-04-27 V3 must NEVER bypass the HTF direction gate. V3 is mean-rev
-                # so its LTF bypass stays (line 11283), but shorting an uptrending coin or
-                # longing a downtrending coin = suicide. 1000BONKUSDC SHORT 03:04 incident.
+                # 2026-04-27 V3 HTF gate bypass — user-authorized. The earlier "V3 must NEVER bypass" rule
+                # was based on the 1000BONKUSDC 03:04 incident from BEFORE the universe-direction enforcement
+                # was added (line 13442+). Now that V3 LONG only fires on inf_long-listed symbols and SHORT
+                # only on inf_short-listed (or same-symbol hedge), the universe IS the direction filter.
+                # V3 micro-entries ($20 cap) shouldn't be additionally rate-limited by HTF gate.
+                # Switch: SCALP_V3_BYPASS_HTF_DIRECTION_GATE (default True per user 2026-04-27).
                 _is_v3_entry = str(reason or '').upper().startswith('SCALP_V3_OPEN_')
-                if _should_gate and not (_htf_bypass_rz and _is_rz_entry and not _is_v3_entry) and 'RATIO_RECOVERY' not in str(reason or '').upper():
+                _v3_htf_bypass = _is_v3_entry and bool(getattr(config, 'SCALP_V3_BYPASS_HTF_DIRECTION_GATE', True))
+                if _should_gate and not _v3_htf_bypass and not (_htf_bypass_rz and _is_rz_entry and not _is_v3_entry) and 'RATIO_RECOVERY' not in str(reason or '').upper():
                     _htf_pass, _htf_met, _htf_total, _htf_reason = check_htf_direction_gate(_gate_ind, _gate_is_long, current_price)
                     if not _htf_pass:
                         logger.warning(f"🚫 [HTF_DIRECTION_GATE] {position_key}: BLOCKED {action} ({reason[:60] if reason else ''}) — {_htf_reason}")
@@ -16182,6 +16186,67 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                 if wt1_3m and wt2_3m and wt1_3m > wt2_3m: triggers.append(f"WT3m_bull_{wt1_3m:.1f}>{wt2_3m:.1f}")
                 if ob_bid_wall_pct is not None and float(ob_bid_wall_pct) < _wall_close_pct and gain > 0:
                     triggers.append(f"OB_BID_WALL_{float(ob_bid_wall_pct):.2f}pct<{_wall_close_pct:.2f}pct_gain={gain:.2f}%")
+            # 2026-04-27 K-EXTREME + OB-RESISTANCE EXIT (user directive: close when k_3m
+            # or k_15m is high/low and price hits the wall). Fires regardless of gain
+            # sign — extreme K + opposing wall = exhaustion + barrier, take what you can.
+            if bool(getattr(config, 'SCALP_V3_K_OB_EXIT_ENABLED', True)):
+                _kob_k3m_hi = float(getattr(config, 'SCALP_V3_K_OB_EXIT_K3M_HI', 80.0))
+                _kob_k3m_lo = float(getattr(config, 'SCALP_V3_K_OB_EXIT_K3M_LO', 20.0))
+                _kob_k15m_hi = float(getattr(config, 'SCALP_V3_K_OB_EXIT_K15M_HI', 80.0))
+                _kob_k15m_lo = float(getattr(config, 'SCALP_V3_K_OB_EXIT_K15M_LO', 20.0))
+                _kob_wall_pct = float(getattr(config, 'SCALP_V3_K_OB_EXIT_WALL_PCT', 0.5))
+                k_15m = safe_fetch_float(ind.get('stoch_k_15m', 50), 50)
+                if side == 'LONG':
+                    _k_extreme = (k_3m >= _kob_k3m_hi) or (k_15m >= _kob_k15m_hi)
+                    _wall_in_way = (ob_ask_wall_pct is not None and float(ob_ask_wall_pct) < _kob_wall_pct)
+                    if _k_extreme and _wall_in_way:
+                        triggers.append(f"K_OB_EXIT_LONG_k3m{k_3m:.0f}_k15m{k_15m:.0f}_askwall{float(ob_ask_wall_pct):.2f}pct")
+                else:  # SHORT
+                    _k_extreme = (k_3m <= _kob_k3m_lo) or (k_15m <= _kob_k15m_lo)
+                    _wall_in_way = (ob_bid_wall_pct is not None and float(ob_bid_wall_pct) < _kob_wall_pct)
+                    if _k_extreme and _wall_in_way:
+                        triggers.append(f"K_OB_EXIT_SHORT_k3m{k_3m:.0f}_k15m{k_15m:.0f}_bidwall{float(ob_bid_wall_pct):.2f}pct")
+            # 2026-04-27 V3 FAST PPL — process_position runs PPL but its cadence misses
+            # fast V3 peaks (UMA/INX/NEIRO peaked +4-7% then gave it ALL back to 0% with
+            # zero PPL fires today). This 10s-cadence loop fires PPL TP for V3 directly:
+            # at gain ≥ 0.5%, close 50% via maker, set stop_level at BE+buffer. Reuses
+            # trade_manager.partial_profit_lock_state so the standard PPL stop-arm/SL
+            # path in process_position still handles the upgrade and SL hit.
+            if bool(getattr(config, 'SCALP_V3_FAST_PPL_ENABLED', True)) and bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)):
+                _fppl_min_gain = float(getattr(config, 'SCALP_V3_FAST_PPL_GAIN_PCT', float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))))
+                if not hasattr(trade_manager, 'partial_profit_lock_state'):
+                    trade_manager.partial_profit_lock_state = {}
+                _fppl_state = trade_manager.partial_profit_lock_state.get(pk, {})
+                if not _fppl_state.get('fired', False) and gain >= _fppl_min_gain:
+                    _fppl_entry = safe_fetch_float(getattr(p, 'entry_price', 0.0), 0.0)
+                    if _fppl_entry > 0:
+                        _fppl_be_buffer = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.02))
+                        _fppl_frac = float(getattr(config, 'PARTIAL_PROFIT_LOCK_FRAC', 0.5))
+                        _fppl_close_side = "SELL" if side == 'LONG' else "BUY"
+                        _fppl_pos_side = "LONG" if side == 'LONG' else "SHORT"
+                        _fppl_reduce = amt * _fppl_frac
+                        _fppl_keep = amt - _fppl_reduce
+                        _fppl_be_stop = _fppl_entry * (1.0 + _fppl_be_buffer / 100.0) if side == 'LONG' else _fppl_entry * (1.0 - _fppl_be_buffer / 100.0)
+                        _fppl_uid = f"V3_FPPL_TP_{pk}_{int(time.time())}"
+                        _fppl_reason = f"SCALP_V3_OPEN_FAST_PPL_TP_gain{gain:.2f}_URL2_50pct"
+                        _fppl_px = safe_fetch_float(getattr(p, 'mark_price', 0), 0) or safe_fetch_float(ind.get('current_price', 0), 0)
+                        if _fppl_px <= 0: continue
+                        logger.warning(f"⚡ [SCALP_V3_FAST_PPL_TP] {pk}: gain={gain:.2f}% ≥ {_fppl_min_gain}% — firing 50% maker→URL2 + BE stop @ {_fppl_be_stop:.6f}")
+                        _fppl_ok = False
+                        try:
+                            _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, pk, sym, amt, _fppl_px, _fppl_reduce, _fppl_close_side, _fppl_pos_side, _fppl_uid, _fppl_reason)
+                            _fppl_ok = bool(_m_ok)
+                        except Exception as _fppl_me:
+                            logger.warning(f"[SCALP_V3_FAST_PPL_MAKER_ERR] {pk}: {type(_fppl_me).__name__}: {_fppl_me} — webhook2 fallback")
+                        if not _fppl_ok:
+                            try:
+                                _fppl_ok = await trade_manager.send_webhook(pk, account_key, sym, amt, _fppl_reduce, _fppl_px, _fppl_close_side, _fppl_pos_side, _fppl_uid, False, _fppl_reason, url_variant="2")
+                            except Exception as _fppl_we:
+                                logger.error(f"[SCALP_V3_FAST_PPL_URL2_ERR] {pk}: {type(_fppl_we).__name__}: {_fppl_we}")
+                        if _fppl_ok:
+                            trade_manager.partial_profit_lock_state[pk] = {'fired': True, 'first_exit_price': _fppl_px, 'stop_level': _fppl_be_stop, 'stop_upgraded': False}
+                            fires += 1
+                            continue  # skip this iteration's full-CLOSE — half is locked
             if not triggers:
                 continue
             # User 2026-04-24: NEVER close if at support (LONG) or resistance (SHORT) —

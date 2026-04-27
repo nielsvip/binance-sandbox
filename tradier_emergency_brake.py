@@ -287,6 +287,75 @@ async def cancel_pending_buy_options(client: TradierAPIClient) -> List[Dict[str,
     return cancelled
 
 
+def _brake_load_underlying_indicators(underlying: str) -> Dict[str, Any]:
+    # Read the live indicator snapshot used by tradier_manage / analyzer.
+    # Same path the analyzer uses; falls back to empty if file is missing.
+    try:
+        path = Path("/Users/niels/Documents/binance/data/tradier/tradier_indicators_latest.json")
+        if not path.exists():
+            path = Path("/home/niels/binance/data/tradier/tradier_indicators_latest.json")
+        if path.exists():
+            with open(path) as f:
+                _map = json.load(f)
+            if isinstance(_map, dict):
+                return _map.get(underlying, {}) or {}
+    except Exception:
+        pass
+    return {}
+
+
+def _brake_direction_blocks(side: str, ind: Dict[str, Any], und_px: float) -> Optional[str]:
+    # Mirror of tradier_options_analyzer DIRECTION_GUARD.
+    # Never sell_short into an uptick. Never buy into a downtick. Hedging is not suicide.
+    if not ind or und_px <= 0:
+        return None
+    close_5m_prev = float(ind.get("close_5m_prev", 0) or 0)
+    dch5 = float(ind.get("dc_high_5m", 0) or 0)
+    dcl5 = float(ind.get("dc_low_5m", 0) or 0)
+    wt_vel_5m = float(ind.get("wt_velocity_5m", 0) or 0)
+    going_up = (close_5m_prev > 0 and und_px > close_5m_prev) or (dch5 > 0 and und_px > dch5) or (wt_vel_5m > 0)
+    going_down = (close_5m_prev > 0 and und_px < close_5m_prev) or (dcl5 > 0 and und_px < dcl5) or (wt_vel_5m < 0)
+    if side == "sell_short" and going_up:
+        return f"market_UP px={und_px:.2f} prev5m={close_5m_prev:.2f} dch5={dch5:.2f} wt_vel5m={wt_vel_5m:+.1f}"
+    if side == "buy" and going_down:
+        return f"market_DOWN px={und_px:.2f} prev5m={close_5m_prev:.2f} dcl5={dcl5:.2f} wt_vel5m={wt_vel_5m:+.1f}"
+    return None
+
+
+def _brake_cap_qty(delta_qty: int, und_px: float, opt_cost_basis: float) -> Tuple[int, str]:
+    # Mirror of tradier_options_analyzer _hedge_qty_capped. Bounded by delta-equivalent
+    # shares, % of option cost basis, absolute notional, MAX_POSITION_SIZE, MAX_ORDER_VALUE.
+    if delta_qty <= 0 or und_px <= 0:
+        return 0, "qty<=0"
+    cfg_obj = TradierConfig()
+    caps: List[Tuple[int, str]] = [(delta_qty, "delta")]
+    pct = float(getattr(cfg_obj, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", 100.0) or 100.0)
+    if opt_cost_basis > 0 and pct > 0:
+        caps.append((int((opt_cost_basis * pct / 100.0) / und_px), f"opt_cost_x{pct:.0f}%"))
+    abs_usd = float(getattr(cfg_obj, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", 2500.0) or 0.0)
+    if abs_usd > 0:
+        caps.append((int(abs_usd / und_px), f"abs_${abs_usd:.0f}"))
+    pos_size = float(getattr(cfg_obj, "MAX_POSITION_SIZE", 2500.0) or 0.0)
+    if pos_size > 0:
+        caps.append((int(pos_size / und_px), f"MAX_POSITION_SIZE_${pos_size:.0f}"))
+    order_cap = float(getattr(cfg_obj, "MAX_ORDER_VALUE", 1000.0) or 0.0)
+    if order_cap > 0:
+        caps.append((int(order_cap / und_px), f"MAX_ORDER_VALUE_${order_cap:.0f}"))
+    qty, label = min(caps, key=lambda x: x[0])
+    return max(0, qty), label
+
+
+async def _brake_get_underlying_price(client: TradierAPIClient, underlying: str, ind: Dict[str, Any]) -> float:
+    px = float(ind.get("current_price", 0) or ind.get("mark_price", 0) or 0)
+    if px > 0:
+        return px
+    try:
+        q = await client.get_quote(underlying)
+        return float(q.get("last", 0) or 0)
+    except Exception:
+        return 0.0
+
+
 async def place_emergency_hedge(
     client: TradierAPIClient,
     account_key: str,
@@ -390,29 +459,73 @@ async def evaluate_account(client: TradierAPIClient, account_key: str, cfg: Dict
             delta = await compute_delta_for_position(client, pos, cfg)
             qty_pos = abs(float(pos.get("quantity", 0) or 0))
             mult = float(cfg["TIERS"]["hedge"].get("hedge_mult", 1.0))
-            hedge_qty = max(int(cfg.get("MIN_HEDGE_SHARES", 1)), math.ceil(delta * qty_pos * 100.0 * mult))
-            hedge_qty = min(hedge_qty, int(cfg.get("MAX_HEDGE_SHARES_PER_OCC", 10000)))
             hedge_side = "sell_short" if opt_type == "call" else "buy"
-            reason = f"BRAKE_TIER2_HEDGE loss={loss_pct:.1f}% delta={delta:.2f} qty={qty_pos:.0f}"
+            _opt_cb = abs(float(pos.get("cost_basis", 0) or 0))
+            _und_ind = _brake_load_underlying_indicators(underlying)
+            _und_px = await _brake_get_underlying_price(client, underlying, _und_ind)
+            _dir_block = _brake_direction_blocks(hedge_side, _und_ind, _und_px)
+            if _dir_block:
+                logger.critical(f"[BRAKE_HEDGE_DIR_BLOCK] {underlying} {hedge_side} REFUSED — {_dir_block}. HEDGING IS NOT SUICIDE.")
+                rec = {**record_base, "action": "HEDGE_BLOCKED_DIRECTION",
+                       "hedge_side": hedge_side, "block_reason": _dir_block}
+                actions.append(rec)
+                fired[fire_key] = record_base["ts"]
+                continue
+            _delta_qty = max(int(cfg.get("MIN_HEDGE_SHARES", 1)), math.ceil(delta * qty_pos * 100.0 * mult))
+            _delta_qty = min(_delta_qty, int(cfg.get("MAX_HEDGE_SHARES_PER_OCC", 10000)))
+            hedge_qty, _cap_label = _brake_cap_qty(_delta_qty, _und_px or 1.0, _opt_cb)
+            if hedge_qty <= 0:
+                logger.warning(f"[BRAKE_HEDGE_CAP_ZERO] {underlying} {hedge_side} — capped to 0 (uncapped={_delta_qty}, cap={_cap_label})")
+                rec = {**record_base, "action": "HEDGE_CAPPED_TO_ZERO",
+                       "uncapped_qty": _delta_qty, "cap_label": _cap_label}
+                actions.append(rec)
+                fired[fire_key] = record_base["ts"]
+                continue
+            if hedge_qty < _delta_qty:
+                logger.warning(f"[BRAKE_HEDGE_CAP_HIT] {underlying} qty {_delta_qty}→{hedge_qty} (cap={_cap_label} cb=${_opt_cb:.0f} px=${_und_px:.2f})")
+            reason = f"BRAKE_TIER2_HEDGE loss={loss_pct:.1f}% delta={delta:.2f} qty={qty_pos:.0f} cap={_cap_label}"
             res = await place_emergency_hedge(client, account_key, underlying, hedge_side, hedge_qty, reason, cfg.get("DRY_RUN", True))
             rec = {**record_base, "action": "HEDGE", "hedge_side": hedge_side,
-                   "hedge_qty": hedge_qty, "delta": round(delta, 4),
+                   "hedge_qty": hedge_qty, "uncapped_qty": _delta_qty, "cap_label": _cap_label,
+                   "delta": round(delta, 4),
                    "hedge_mult": mult, "reason": reason, "result": res}
-            logger.critical(f"[BRAKE_HEDGE] {occ} loss={loss_pct:.1f}% → {hedge_side} {underlying} x{hedge_qty}")
+            logger.critical(f"[BRAKE_HEDGE] {occ} loss={loss_pct:.1f}% → {hedge_side} {underlying} x{hedge_qty} (cap={_cap_label})")
             actions.append(rec)
         elif tier == "double":
             delta = await compute_delta_for_position(client, pos, cfg)
             qty_pos = abs(float(pos.get("quantity", 0) or 0))
             mult = float(cfg["TIERS"]["double"].get("hedge_mult", 1.5))
-            hedge_qty = max(int(cfg.get("MIN_HEDGE_SHARES", 1)), math.ceil(delta * qty_pos * 100.0 * mult))
-            hedge_qty = min(hedge_qty, int(cfg.get("MAX_HEDGE_SHARES_PER_OCC", 10000)))
             hedge_side = "sell_short" if opt_type == "call" else "buy"
-            reason = f"BRAKE_TIER3_DOUBLE loss={loss_pct:.1f}% delta={delta:.2f} mult={mult}"
+            _opt_cb = abs(float(pos.get("cost_basis", 0) or 0))
+            _und_ind = _brake_load_underlying_indicators(underlying)
+            _und_px = await _brake_get_underlying_price(client, underlying, _und_ind)
+            _dir_block = _brake_direction_blocks(hedge_side, _und_ind, _und_px)
+            if _dir_block:
+                logger.critical(f"[BRAKE_DOUBLE_DIR_BLOCK] {underlying} {hedge_side} REFUSED — {_dir_block}. HEDGING IS NOT SUICIDE.")
+                rec = {**record_base, "action": "DOUBLE_HEDGE_BLOCKED_DIRECTION",
+                       "hedge_side": hedge_side, "block_reason": _dir_block}
+                actions.append(rec)
+                fired[fire_key] = record_base["ts"]
+                continue
+            _delta_qty = max(int(cfg.get("MIN_HEDGE_SHARES", 1)), math.ceil(delta * qty_pos * 100.0 * mult))
+            _delta_qty = min(_delta_qty, int(cfg.get("MAX_HEDGE_SHARES_PER_OCC", 10000)))
+            hedge_qty, _cap_label = _brake_cap_qty(_delta_qty, _und_px or 1.0, _opt_cb)
+            if hedge_qty <= 0:
+                logger.warning(f"[BRAKE_DOUBLE_CAP_ZERO] {underlying} {hedge_side} — capped to 0 (uncapped={_delta_qty}, cap={_cap_label})")
+                rec = {**record_base, "action": "DOUBLE_HEDGE_CAPPED_TO_ZERO",
+                       "uncapped_qty": _delta_qty, "cap_label": _cap_label}
+                actions.append(rec)
+                fired[fire_key] = record_base["ts"]
+                continue
+            if hedge_qty < _delta_qty:
+                logger.warning(f"[BRAKE_DOUBLE_CAP_HIT] {underlying} qty {_delta_qty}→{hedge_qty} (cap={_cap_label} cb=${_opt_cb:.0f} px=${_und_px:.2f})")
+            reason = f"BRAKE_TIER3_DOUBLE loss={loss_pct:.1f}% delta={delta:.2f} mult={mult} cap={_cap_label}"
             res = await place_emergency_hedge(client, account_key, underlying, hedge_side, hedge_qty, reason, cfg.get("DRY_RUN", True))
             rec = {**record_base, "action": "DOUBLE_HEDGE", "hedge_side": hedge_side,
-                   "hedge_qty": hedge_qty, "delta": round(delta, 4),
+                   "hedge_qty": hedge_qty, "uncapped_qty": _delta_qty, "cap_label": _cap_label,
+                   "delta": round(delta, 4),
                    "hedge_mult": mult, "reason": reason, "result": res}
-            logger.critical(f"[BRAKE_DOUBLE] {occ} loss={loss_pct:.1f}% → {hedge_side} {underlying} x{hedge_qty} (1.5×)")
+            logger.critical(f"[BRAKE_DOUBLE] {occ} loss={loss_pct:.1f}% → {hedge_side} {underlying} x{hedge_qty} (1.5×, cap={_cap_label})")
             actions.append(rec)
         elif tier == "halt":
             cancelled = []

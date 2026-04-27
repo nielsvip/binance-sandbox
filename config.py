@@ -185,10 +185,24 @@ class Config:
     # SHORT_TREND fire was 24.6 (26% at k<10 = falling knife) and at LONG_TREND fire
     # was 86.7 (61% at k>90 = buying the top). Restrict TREND entries to the mid-range
     # zone right after a 50-line cross — fresh momentum with room to run.
-    SCALP_V3_K_FRESH_LO: float = 25.0              # SHORT lower bound: don't catch k<25 (already exhausted)
-    SCALP_V3_K_FRESH_MID_LO: float = 50.0          # LONG lower bound: only fire above 50 (cross confirmed)
-    SCALP_V3_K_FRESH_MID_HI: float = 50.0          # SHORT upper bound: only fire below 50 (cross confirmed)
-    SCALP_V3_K_FRESH_HI: float = 75.0              # LONG upper bound: don't buy k>75 (already extended)
+    SCALP_V3_K_FRESH_LO: float = 15.0              # 2026-04-27 relaxed 25→15: catch SHORTs earlier in down-momentum
+    SCALP_V3_K_FRESH_MID_LO: float = 40.0          # 2026-04-27 relaxed 50→40: LONG fires before full cross of 50 (catch the bounce)
+    SCALP_V3_K_FRESH_MID_HI: float = 60.0          # 2026-04-27 relaxed 50→60: SHORT fires before full break of 50 (catch the rejection)
+    SCALP_V3_K_FRESH_HI: float = 85.0              # 2026-04-27 relaxed 75→85: LONG fires later in up-momentum
+    # 2026-04-27 K-EXTREME + OB-RESISTANCE EXIT (user directive: close as soon as K is
+    # high/low and price runs into the wall). Fires inside _scalp_v3_protective_exits
+    # which runs every 10s. Pairs with PEAK_GIVEBACK loosening to lock profits faster.
+    SCALP_V3_K_OB_EXIT_ENABLED: bool = True
+    SCALP_V3_K_OB_EXIT_K3M_HI: float = 80.0        # LONG: close if k_3m >= this AND ask wall close
+    SCALP_V3_K_OB_EXIT_K3M_LO: float = 20.0        # SHORT: close if k_3m <= this AND bid wall close
+    SCALP_V3_K_OB_EXIT_K15M_HI: float = 80.0       # LONG: also k_15m gate
+    SCALP_V3_K_OB_EXIT_K15M_LO: float = 20.0       # SHORT: also k_15m gate
+    SCALP_V3_K_OB_EXIT_WALL_PCT: float = 0.5       # treat wall as "close" if within this % of price
+    # 2026-04-27 V3 FAST PPL — process_position runs PPL but cadence misses fast V3
+    # peaks (5min holds, gain crosses 0.5% and back within process_position interval).
+    # _scalp_v3_protective_exits runs every 10s and now fires PPL on V3 directly.
+    SCALP_V3_FAST_PPL_ENABLED: bool = True
+    SCALP_V3_FAST_PPL_GAIN_PCT: float = 0.5        # mirror PARTIAL_PROFIT_LOCK_GAIN_PCT
     # ez_rankings outlier detector: boosts symbols whose 15-min return deviates from
     # the market median. Positive z-score → top_winners_st → symbols_inf_long_list
     # (auto-added to tradeable_keys). Negative → symbols_inf_short_list. This is
@@ -548,6 +562,8 @@ class Config:
     # 2026-04-27 USER: V3 LONG only on inf_long-listed symbols (winners), SHORT only on inf_short-listed (losers). Stops "shorting rallies".
     # EXEMPTION: same-symbol hedge — if opposite-side position already open on this symbol, V3 may fire either direction (so a losing LONG can be hedged by V3-SHORT and vice versa).
     SCALP_V3_ENFORCE_UNIVERSE_DIRECTION: bool = True
+    # 2026-04-27 USER-authorized HTF direction gate bypass for V3. Universe direction (LONG only on inf_long, SHORT only on inf_short) IS the trend filter; HTF gate would double-restrict.
+    SCALP_V3_BYPASS_HTF_DIRECTION_GATE: bool = True
     # 2026-04-26 USER + research-agent verdict: technical exits should fire ONLY when in profit ("exit at top, never at loss").
     # If True and gain<=0, no BAR/WT/K close fires; only MAX_HOLD or hedge-engine handles the position. Aligns with STRICT_NO_LOSS doctrine.
     SCALP_V3_EXIT_PROFIT_ONLY: bool = False
@@ -568,7 +584,7 @@ class Config:
     # === 2026-04-26 V3 entry-path expansion (user: "AUGMENT trades 20-1000x — more entry paths not stricter filters") ===
     # Each path is independently switchable; on each cycle V3 fires the FIRST path that matches. Default: TREND only (current behavior).
     SCALP_V3_ENTRY_TREND_ENABLED: bool = True       # current strict trend-follow (HH+HL + k_3m rising + HTF stoch + WT bull)
-    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = False   # 2026-04-27 OFF — produced multi-opens on existing positions
+    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = True    # 2026-04-27 user-authorized re-enable. Direction gate + HTF bypass + AUGMENT guards now prevent the prior multi-open / shorting-rallies issues
     SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = False   # 2026-04-27 OFF — same
     SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = False   # 2026-04-27 OFF — was firing SHORT on rallying WR-tagged symbols (>90% of V3 entries today)
     SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = False  # 2026-04-27 OFF — same
@@ -868,8 +884,8 @@ class Config:
     # Fires when position was profitable and gains have been given back. Bypasses HTF_EXIT_VETO.
     PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5          # must have reached >= 0.5% gain to activate
-    PEAK_GIVEBACK_DROP_PCT: float = 1.0              # exit if current_gain dropped >= 1.0% from peak
-    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = True     # also exit if ANY negative gain after profitable peak
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5              # 2026-04-27: 1.0→0.5. Live audit: V3 positions peaked +3-7% (UMA 6.58, INX 4.94, NEIRO 4.72) and gave it ALL back to 0% before PEAK_GIVEBACK fired (fired at peak_drop≥1pp, so 4% peak only triggered exit after dropping to 3%). Tighter pp threshold locks more of the peak.
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False    # 2026-04-27 OFF: was forcing exit at exactly 0% gain after a profitable peak — that's WHY UMA/INX/NEIRO all closed at 0%. Now technicals own the loss-side; let positions ride past BE if WT/K/DC haven't reversed.
     # ═══ HARD_BREAKEVEN_FLOOR (2026-04-19) ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
     # Overrides HTF_EXIT_VETO for breakeven stop when position was genuinely profitable.
