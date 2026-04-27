@@ -412,9 +412,11 @@ def compute_metrics(trades, n_syms, n_years):
 
 
 def main():
+    from test_rate_guard import RateGuard
     keys = json.loads(TRADEABLE_KEYS_FILE.read_text())
     syms = sorted({k[4:].rsplit("_", 1)[0] for k in keys if k.startswith("fin:") or k.startswith("ang:")})
     print(f"[init] {len(syms)} fin+ang symbols")
+    guard = RateGuard(n_accts=2, label="backtest_local_advisory_advisory_arm")
     all_adv = []
     all_base = []
     n_loaded = 0
@@ -434,9 +436,11 @@ def main():
         base = backtest_baseline(s, k)
         all_adv.extend(adv)
         all_base.extend(base)
+        guard.tick(len(all_adv))
     days = n_bars_max / 96.0
     n_years = days / 365.25
     print(f"[run] loaded={n_loaded} skipped={n_skipped} bar_range=[{n_bars_min},{n_bars_max}] days~{days:.1f} years~{n_years:.4f}")
+    guard.final_check(len(all_adv), test_window_days=days)
     adv_m = compute_metrics(all_adv, n_loaded, n_years)
     base_m = compute_metrics(all_base, n_loaded, n_years)
     # Write outputs

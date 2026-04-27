@@ -15100,12 +15100,11 @@ async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
     # centuries; only the AGE_GATE confirmation requirement tightens (normal →
     # elevated 24h → strict 48h → extreme 72h+). Removed the 72h purge that
     # was deleting records.
-    _tk = getattr(trade_manager, 'tradeable_keys', None) or set()
+    # 2026-04-27 OWNER DIRECTIVE: tradeable_keys purge ALSO removed. Symbol may
+    # rotate out of tradeable universe temporarily; record must persist so
+    # reentry fires when symbol rotates back in.
     for pk in list(trade_manager.reentry_data.keys()):
         rd = trade_manager.reentry_data[pk]
-        if _tk and pk not in _tk:
-            del trade_manager.reentry_data[pk]
-            continue
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0

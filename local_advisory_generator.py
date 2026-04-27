@@ -259,13 +259,33 @@ def _sr_break_against(market_data, symbol, side, current_price):
     return False, None
 
 
-def _build_force_close(symbol, side, reason, mtf_against_n, mtf_against_seen, mtf_per_tf, gain, level=None):
+def _build_force_hedge(symbol, side, reason, mtf_against_n, mtf_against_seen, mtf_per_tf, gain, level=None):
+    """For LOSING positions only. NEVER closes at a loss. Triggers same-symbol hedge instead."""
+    return {
+        "action": "force_hedge",
+        "scope": "position",
+        "reason": reason,
+        "thesis": {
+            "setup": "advisory_loss_hedge",
+            "mtf_against": f"{mtf_against_n}/{mtf_against_seen}",
+            "mtf_per_tf_against": mtf_per_tf,
+            "current_gain_pct": gain,
+            "broken_level": level,
+        },
+        "expires_at_utc": _iso_plus(CLOSE_EXPIRES_MIN),
+        "iteration_id": int(time.time() / 60),
+        "generator": GENERATOR_NAME,
+    }
+
+
+def _build_force_close_profit(symbol, side, reason, mtf_against_n, mtf_against_seen, mtf_per_tf, gain, level=None):
+    """For PROFITABLE positions only. Take profit on technical reversal."""
     return {
         "action": "force_close",
         "scope": "position",
         "reason": reason,
         "thesis": {
-            "setup": "advisory_safety_close",
+            "setup": "advisory_profit_take",
             "mtf_against": f"{mtf_against_n}/{mtf_against_seen}",
             "mtf_per_tf_against": mtf_per_tf,
             "current_gain_pct": gain,
@@ -408,13 +428,16 @@ def _generate_for_account(acct, refresh, market_data, allowed_keys, causality_tr
         against_n, against_seen, against_per_tf = _mtf_against_count(refresh_lookup, market_data, symbol, side)
         with_n, with_seen, _with_per_tf = _mtf_with_count(refresh_lookup, market_data, symbol, side)
         if gain < LOSER_GAIN_THRESHOLD and against_n is not None and against_seen and against_n >= 4 and (with_n or 0) <= 1:
-            advisories[short_key] = _build_force_close(symbol, side, "MTF_AGAINST_LOSER", against_n, against_seen, against_per_tf, gain)
+            advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_MTF_AGAINST_LOSER", against_n, against_seen, against_per_tf, gain)
             continue
         if gain < SR_BREAK_GAIN_THRESHOLD:
             broken, lvl = _sr_break_against(market_data, symbol, side, current_price)
             if broken:
-                advisories[short_key] = _build_force_close(symbol, side, "SR_BREAK_AGAINST", against_n, against_seen, against_per_tf, gain, level=lvl)
+                advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_SR_BREAK", against_n, against_seen, against_per_tf, gain, level=lvl)
                 continue
+        if gain > 0 and against_n is not None and against_seen and against_n >= 4 and (with_n or 0) <= 1:
+            advisories[short_key] = _build_force_close_profit(symbol, side, "PROFIT_TAKE_MTF_REVERSE", against_n, against_seen, against_per_tf, gain)
+            continue
         if gain >= HOLD_MIN_GAIN_PCT and with_n is not None and with_n >= HOLD_MIN_MTF_ALIGN:
             advisories[short_key] = _build_hold(symbol, side, with_n, with_seen, gain)
             continue

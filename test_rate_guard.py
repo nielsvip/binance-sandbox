@@ -47,6 +47,29 @@ class RateGuard:
             sys.exit(2)
 
 
+    def final_check(self, trades_total, test_window_days=None):
+        """Call once at end of test. If projected rate is broken (regardless of elapsed),
+        exit 2 with EARLY_ABORT_LOW_RATE so the result file isn't trusted."""
+        if self.aborted:
+            return
+        if test_window_days and test_window_days > 0:
+            per_day_per_acct = trades_total / float(test_window_days) / self.n_accts
+        else:
+            elapsed = max(time.time() - self.t0, 1e-6)
+            per_day_per_acct = (trades_total / elapsed) * SECONDS_PER_DAY / self.n_accts
+        if per_day_per_acct < self.min_per_day:
+            self.aborted = True
+            msg = (
+                f"FINAL_BROKEN_RATE: label={self.label} "
+                f"trades={trades_total} n_accts={self.n_accts} "
+                f"projected={per_day_per_acct:.2f}/acct/day target>={self.min_per_day:.0f}/acct/day "
+                f"(window_days={test_window_days}) — result NOT trustworthy"
+            )
+            print(msg, file=sys.stderr, flush=True)
+            print(msg, flush=True)
+            sys.exit(2)
+
+
 def check_rate_or_abort(t0, trades_so_far, n_accts=1, min_per_day=None, window_sec=None, label="guard"):
     """One-shot version for engines that already track t0/trades externally."""
     elapsed = time.time() - t0

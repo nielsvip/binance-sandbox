@@ -11741,9 +11741,13 @@ class MultiAccountTradeManager:
                     logger.warning(f"[{position_key}] AUGMENT_NOT_ALLOWED: Cannot enforce minimum quantity for augmentation with negative/zero gain ({position.gain:.3f}%)")
                     return "BLOCKEDAUGMENT_NOT_ALLOWED_NEGATIVE_GAIN"
                 quantity = max( 6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
-            if quantity <= 3 * config.MIN_POSITION_SIZE / current_price: 
-                logger.warning(f'{position_key} order not_allowed no quantity left ${quantity*current_price} should have been killed before this point')
-                return "BLOCKED_AUGMENT_NOT_ALLOWED_SHITTY IDEA"#if account_key == 'inf' :
+            if quantity <= 3 * config.MIN_POSITION_SIZE / current_price:
+                # 2026-04-27 SCALP_V3 bypass: V3 entries are deliberately tiny ($20 cap) — don't reject them as "shitty idea".
+                if 'SCALP_V3_OPEN' in str(reason or '').upper():
+                    logger.info(f"⚡ [SHITTY_BYPASS_V3] {position_key}: SCALP_V3 micro-entry — bypassing qty-floor reject (qty=${quantity*current_price:.2f})")
+                else:
+                    logger.warning(f'{position_key} order not_allowed no quantity left ${quantity*current_price} should have been killed before this point')
+                    return "BLOCKED_AUGMENT_NOT_ALLOWED_SHITTY IDEA"#if account_key == 'inf' :
             if ((is_long and k_3m > 70 or k_15m > 70) or (not is_long and k_3m < 30 or k_15m < 30)) and self.is_same_direction(position_side, side):
                 quantity = 0.7 * quantity
             if ((is_long and k_15m < k_15m_prev or ha_3m=='red') or (not is_long and k_15m > k_15m_prev or ha_3m=='green')) and self.is_same_direction(position_side, side): logger.info(f'{position_key} fffffff execute_ after 15m check $ {quantity*current_price}')
@@ -11887,6 +11891,10 @@ class MultiAccountTradeManager:
             # 2026-04-09: use 0.5×MIN_GAIN floor so pullback augments at 1.5% pass through.
             _apg_floor = 0.5 * getattr(config, 'MIN_GAIN', 3.0)
             _gain_ok = _pos_gain >= _apg_floor
+            # 2026-04-27 SCALP_V3 bypass: $20 micro-entries by V3 should not be rate-limited by augment guard.
+            if not _gain_ok and 'SCALP_V3_OPEN' in str(reason or '').upper():
+                logger.info(f"⚡ [AUGMENTED_POSITIONS_GUARD_V3_BYPASS] {position_key}: SCALP_V3 micro-entry — bypassing already-augmented gate (gain={_pos_gain:.2f}%, action={action})")
+                _gain_ok = True
             if not _gain_ok:
                 logger.critical(f"🚫🚫🚫 [AUGMENTED_POSITIONS_GUARD] {position_key}: BLOCKED — already augmented {_aug_age:.0f}s ago. gain={_pos_gain:.2f}% < {_apg_floor:.2f}% (0.5×MIN_GAIN) action={action}")
                 return f"BLOCKED_ALREADY_AUGMENTED_{position_key}"
@@ -18457,16 +18465,13 @@ async def evaluate_reentry_2(trade_manager):
                     "reason": "SYNC_FROM_REDUCED_POSITIONS"
                 }
 
-    # FIX 2026-04-08: Reentry expires after 72h (was: never). Also purge non-tradeable keys.
-    # Age gates: <24h normal | 24-48h elevated | 48-72h strict | >72h EXPIRED+REMOVED
-    _tk = getattr(trade_manager, 'tradeable_keys', None) or set() if trade_manager else set()
+    # 2026-04-27 OWNER DIRECTIVE: reentry records are NEVER deleted by tradeable_keys.
+    # Symbol may rotate out of the tradeable universe temporarily; when it rotates
+    # back in, the reentry record must still exist so the reentry fires. Eval-skip
+    # below (line ~18500) still prevents acting while not tradeable — but the
+    # record persists. Combined with "reentries never expire" (centuries TTL).
     for pk in list(trade_manager.reentry_data.keys()):
         rd = trade_manager.reentry_data[pk]
-        # Purge non-tradeable reentry records
-        if _tk and pk not in _tk:
-            logger.info(f"[REENTRY_PURGE_NOT_TRADEABLE] {pk}: removed — not in tradeable_keys")
-            del trade_manager.reentry_data[pk]
-            continue
         rd_ts = safe_datetime(rd.get("timestamp"))
         if rd_ts:
             _age_hrs = (now - rd_ts).total_seconds() / 3600.0
@@ -19647,12 +19652,37 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 _ag_reason = (_ag_obj.get("reason") or "")[:60]
                 _ag_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0))) if position else 0.0
                 if _ag_action == "force_close" and _ag_pos_amt > 0:
-                    _ag_side = 'SELL' if position_side == 'LONG' else 'BUY'
-                    _ag_adv.log_application(account_key, symbol, position_side, "process", "force_close", _ag_obj)
-                    logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_CLOSE {position_key}: {_ag_reason}")
-                    await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_ag_pos_amt, side=_ag_side, position_side=position_side, quantity=_ag_pos_amt, reason=f"{_ag_tag}_AGENT_FORCE_CLOSE({_ag_reason})", is_full_close=True, action='CLOSE')
-                    trade_manager.processing_keys.discard(position_key)
-                    return f"{EvalStatus.ACTION_TAKEN}:{_ag_tag}_AGENT_FORCE_CLOSE"
+                    _ag_gain = safe_float(getattr(position, 'gain', 0)) if position else 0.0
+                    if _ag_gain < 0:
+                        logger.warning(f"🚫 {_ag_tag}_AGENT_FORCE_CLOSE_DENIED_LOSS {position_key}: gain={_ag_gain:.2f}% — never close at loss; downgrading to hedge")
+                        _ag_action = "force_hedge"
+                    else:
+                        _ag_side = 'SELL' if position_side == 'LONG' else 'BUY'
+                        _ag_adv.log_application(account_key, symbol, position_side, "process", "force_close", _ag_obj)
+                        logger.info(f"🤖 {_ag_tag}_AGENT_FORCE_CLOSE {position_key} (profit gain={_ag_gain:.2f}%): {_ag_reason}")
+                        await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_ag_pos_amt, side=_ag_side, position_side=position_side, quantity=_ag_pos_amt, reason=f"{_ag_tag}_AGENT_FORCE_CLOSE({_ag_reason})", is_full_close=True, action='CLOSE')
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:{_ag_tag}_AGENT_FORCE_CLOSE"
+                if _ag_action == "force_hedge" and _ag_pos_amt > 0:
+                    _ag_adv.log_application(account_key, symbol, position_side, "process", "force_hedge", _ag_obj)
+                    _he = getattr(trade_manager, 'hedge_engine', None)
+                    if _he is None:
+                        logger.error(f"🤖 {_ag_tag}_AGENT_FORCE_HEDGE_NO_ENGINE {position_key}: no hedge_engine — falling through to scripted")
+                    else:
+                        _ag_mark = safe_float(getattr(position, 'mark_price', 0)) if position else 0.0
+                        if _ag_mark <= 0:
+                            _ag_mark, _ = await get_current_price(symbol)
+                            _ag_mark = float(_ag_mark) if _ag_mark else 0.0
+                        logger.warning(f"🤖 {_ag_tag}_AGENT_FORCE_HEDGE {position_key} qty={_ag_pos_amt} mark={_ag_mark}: {_ag_reason}")
+                        try:
+                            _ag_h_result = await _he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _ag_pos_amt, _ag_mark)
+                        except Exception as _ag_h_e:
+                            logger.error(f"🤖 {_ag_tag}_AGENT_FORCE_HEDGE_ERR {position_key}: {type(_ag_h_e).__name__}: {_ag_h_e}")
+                            _ag_h_result = False
+                        trade_manager.processing_keys.discard(position_key)
+                        if _ag_h_result:
+                            return f"{EvalStatus.ACTION_TAKEN}:{_ag_tag}_AGENT_FORCE_HEDGE"
+                        return f"{EvalStatus.NO_ACTION}:{_ag_tag}_AGENT_FORCE_HEDGE_FAILED"
                 if _ag_action == "hold" and _ag_pos_amt > 0:
                     _ag_adv.log_application(account_key, symbol, position_side, "process", "hold", _ag_obj)
                     logger.info(f"🤖 {_ag_tag}_AGENT_HOLD {position_key}: {_ag_reason}")

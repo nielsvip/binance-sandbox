@@ -227,6 +227,15 @@ def main():
     log.info("loaded %d rows after %d-day filter", len(rows), args.days)
     per_trade, skipped = _scan(rows)
     log.info("scored %d trades, skipped: %s", len(per_trade), skipped)
+    try:
+        from test_rate_guard import RateGuard
+        # Conceptual: causality scan is "1 account" of historical Bitget trader copy data over args.days days.
+        # 50 trades/day × N days is the floor for a meaningful sample.
+        RateGuard(n_accts=1, label="opinion_causality_scan").final_check(len(per_trade), test_window_days=args.days)
+    except SystemExit:
+        raise
+    except Exception as _g_err:
+        log.warning("rate guard failed: %s", _g_err)
     overall, trader_stats, sym_stats = _aggregate(per_trade)
     verdict = _verdict(overall, trader_stats)
     out = {
