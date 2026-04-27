@@ -2683,6 +2683,19 @@ class Config:
     BTC_COOLDOWN_BARS: int = 5                                            # min bars between exit and next entry consideration
     BTC_MIN_HOLD_BARS: int = 5                                            # min bars after entry before non-panic exit can fire
 
+    # --- BREAKOUT entry mode (added 2026-04-27 — bounce-only missed big moves) ---
+    BTC_BREAKOUT_ENTRY_ENABLED: bool = True                               # enable breakout entries alongside bounce
+    BTC_BREAKOUT_DC_TF: str = "3m"                                        # DC channel TF for breakout detection
+    BTC_BREAKOUT_ACCEL_MIN_TFS: int = 2                                   # looser than bounce default (3) — breakouts are momentum
+    BTC_BREAKOUT_BLOCK_OPPOSING_DIV: bool = True                          # bear div still blocks LONG breakouts
+    BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = 5.0                     # tighter $ stop ($5 vs $10 bounce)
+    BTC_BREAKOUT_MIN_HOLD_BARS: int = 3                                   # short min-hold — breakouts go fast or fail fast
+    BTC_BREAKOUT_COOLDOWN_BARS: int = 3                                   # short cooldown after breakout exit
+    BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True                             # reenter same side after breakout exit
+    BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True                       # reentry needs accel still aligned
+    BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True                       # reentry past exit price even without RZ
+    BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3                          # min %% past exit price to trigger
+
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))

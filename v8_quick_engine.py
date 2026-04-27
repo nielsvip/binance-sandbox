@@ -799,6 +799,18 @@ class QuickConfig:
     BTC_REGIME_PAUSE_ENABLED: bool = True
     BTC_COOLDOWN_BARS: int = 5
     BTC_MIN_HOLD_BARS: int = 5
+    # Breakout mode (2026-04-27 add)
+    BTC_BREAKOUT_ENTRY_ENABLED: bool = True
+    BTC_BREAKOUT_DC_TF: str = "3m"
+    BTC_BREAKOUT_ACCEL_MIN_TFS: int = 2
+    BTC_BREAKOUT_BLOCK_OPPOSING_DIV: bool = True
+    BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE: float = 5.0
+    BTC_BREAKOUT_MIN_HOLD_BARS: int = 3
+    BTC_BREAKOUT_COOLDOWN_BARS: int = 3
+    BTC_BREAKOUT_REENTRY_ON_EXIT: bool = True
+    BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
+    BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True
+    BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2615,6 +2627,34 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     # Cooldown / min hold (BTC-specific so the loop doesn't over-trade like the smoke run)
     btc_cooldown_bars = int(getattr(cfg, 'BTC_COOLDOWN_BARS', 5))
     btc_min_hold_bars = int(getattr(cfg, 'BTC_MIN_HOLD_BARS', 5))
+    # Breakout-mode pacing (tighter — 2026-04-27 add)
+    btc_breakout_enabled = bool(getattr(cfg, 'BTC_BREAKOUT_ENTRY_ENABLED', True))
+    btc_breakout_min_hold = int(getattr(cfg, 'BTC_BREAKOUT_MIN_HOLD_BARS', 3))
+    btc_breakout_cooldown = int(getattr(cfg, 'BTC_BREAKOUT_COOLDOWN_BARS', 3))
+    btc_breakout_reentry_on_exit = bool(getattr(cfg, 'BTC_BREAKOUT_REENTRY_ON_EXIT', True))
+    btc_follow_through_enabled = bool(getattr(cfg, 'BTC_FOLLOW_THROUGH_REENTRY_ENABLED', True))
+    btc_follow_through_min_pct = float(getattr(cfg, 'BTC_FOLLOW_THROUGH_MIN_MOVE_PCT', 0.3))
+    # Breakout-specific hard-loss in pct
+    bk_loss_usd = float(getattr(cfg, 'BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE', hard_loss_usd / 2.0))
+    if own_max > 0 and leverage > 0:
+        breakout_hard_loss_pct = -(bk_loss_usd / (own_max * leverage)) * 100.0
+    else:
+        breakout_hard_loss_pct = hard_loss_pct / 2.0
+
+    # DC channels on 3m for breakout detection (current bar's channel includes
+    # current bar's high/low — must compare to PREV bar's value to avoid lookahead).
+    dc_high_3m_raw = _safe(npz, 'dc_high_3m', n)
+    dc_low_3m_raw = _safe(npz, 'dc_low_3m', n)
+    dc_high_3m_prev = np.roll(dc_high_3m_raw, 1); dc_high_3m_prev[0] = dc_high_3m_raw[0]
+    dc_low_3m_prev = np.roll(dc_low_3m_raw, 1); dc_low_3m_prev[0] = dc_low_3m_raw[0]
+    # 4-bar DC channel for tighter breakout exits
+    dc_high4_3m_raw = _safe(npz, 'dc_high4_3m', n)
+    dc_low4_3m_raw = _safe(npz, 'dc_low4_3m', n)
+    dc_high4_3m_prev = np.roll(dc_high4_3m_raw, 1); dc_high4_3m_prev[0] = dc_high4_3m_raw[0]
+    dc_low4_3m_prev = np.roll(dc_low4_3m_raw, 1); dc_low4_3m_prev[0] = dc_low4_3m_raw[0]
+    # 3m WT for single-TF flip detection (BREAKOUT exits)
+    wt1_3m = _safe(npz, 'wt1_3m', n)
+    wt2_3m = _safe(npz, 'wt2_3m', n)
 
     # Round increments
     round_primary = float(getattr(cfg, 'BTC_ROUND_INC_PRIMARY_USD', 5000.0))
@@ -2625,8 +2665,11 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     position = "FLAT"            # FLAT | LONG | SHORT
     entry_price = 0.0
     entry_bar = 0
+    entry_type = "BOUNCE"        # BOUNCE | BREAKOUT — affects exit cluster
     last_exit_side = "NONE"
     last_exit_bar = -10**9
+    last_exit_price = 0.0
+    last_exit_type = "NONE"      # to know which cooldown to apply for reentry
 
     # Min lookback to start sim — need fib_lb_D_in_ltf bars
     start_i = max(fib_lb_D_in_ltf, div_lb + 1, 100)
@@ -2697,12 +2740,50 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
         # ── Decision: FLAT → entry / reentry ────────────────────────────────
         if position == "FLAT":
-            # Cooldown gate (prevents over-trading; sweep can tighten/loosen)
-            if i - last_exit_bar < btc_cooldown_bars:
+            # Cooldown gate — use breakout-cooldown if last exit was a breakout, else regular
+            cd_bars = btc_breakout_cooldown if last_exit_type == "BREAKOUT" else btc_cooldown_bars
+            if i - last_exit_bar < cd_bars:
                 continue
-            # Reentry guarantee path
-            reenter = False
-            reenter_side = None
+
+            # 1. BREAKOUT entry detection (NEW — runs FIRST so trends are caught before bounce logic)
+            #    Tighter exits + smaller stop in exchange for catching big moves.
+            bk_side, _ = _btc.detect_btc_breakout(
+                current_price=price_i,
+                prev_dc_high_3m=float(dc_high_3m_prev[i]),
+                prev_dc_low_3m=float(dc_low_3m_prev[i]),
+                accel=accel, divergence=div, cfg=cfg,
+            ) if btc_breakout_enabled else ("NONE", "")
+            if bk_side == "LONG":
+                position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                continue
+            if bk_side == "SHORT":
+                position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                continue
+
+            # 2. FOLLOW-THROUGH reentry: same-side reentry past exit price (no RZ required).
+            #    Catches the case where we exited prematurely on a bear-div / WT_AGAINST and
+            #    price kept going in our original direction.
+            if (
+                btc_follow_through_enabled
+                and last_exit_side != "NONE"
+                and last_exit_price > 0
+                and (i - last_exit_bar) >= reentry_min_gap
+                and (i - last_exit_bar) <= reentry_max_age
+            ):
+                pct_past = ((price_i - last_exit_price) / last_exit_price) * 100.0
+                ft_long = (last_exit_side == "LONG"  and pct_past >=  btc_follow_through_min_pct
+                           and accel["side"] == "bull" and accel["bull_aligned_tfs"] >= 1)
+                ft_short = (last_exit_side == "SHORT" and pct_past <= -btc_follow_through_min_pct
+                            and accel["side"] == "bear" and accel["bear_aligned_tfs"] >= 1)
+                if ft_long:
+                    position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    continue
+                if ft_short:
+                    position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    continue
+
+            # 3. BOUNCE-style reentry guarantee (existing path B reentry)
+            reenter = False; reenter_side = None
             if reentry_enabled and last_exit_side != "NONE":
                 bars_since = i - last_exit_bar
                 if bars_since >= reentry_min_gap and bars_since <= reentry_max_age:
@@ -2712,9 +2793,9 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                         red_zone=rz, accel=accel, divergence=div, cfg=cfg,
                     )
                     if ok:
-                        reenter = True
-                        reenter_side = last_exit_side
-            # Primary entry
+                        reenter = True; reenter_side = last_exit_side
+
+            # 4. PRIMARY BOUNCE entry
             ok_long = ok_short = False
             if not reenter:
                 ok_long, _ = _btc.should_enter_btc_long(
@@ -2724,17 +2805,11 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                     current_price=price_i, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
                 )
             if reenter:
-                position = reenter_side
-                entry_price = price_i
-                entry_bar = i
+                position = reenter_side; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
             elif ok_long and not ok_short:
-                position = "LONG"
-                entry_price = price_i
-                entry_bar = i
+                position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
             elif ok_short and not ok_long:
-                position = "SHORT"
-                entry_price = price_i
-                entry_bar = i
+                position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
             continue
 
         # ── Decision: open position → exit check ────────────────────────────
@@ -2760,28 +2835,43 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             current_pnl_pct=pnl_pct,
             current_pnl_usd=pnl_usd,
             age_bars=i - entry_bar,
+            entry_type=entry_type,
         )
+
+        # Single-3m WT flip + dc_low4_3m breach detection (BREAKOUT-mode exit signals)
+        wt_3m_against = (position == "LONG" and wt1_3m[i] < wt2_3m[i]) or \
+                        (position == "SHORT" and wt1_3m[i] > wt2_3m[i])
+        dc_low4_breach = price_i < float(dc_low4_3m_prev[i]) and dc_low4_3m_prev[i] > 0
+        dc_high4_breach = price_i > float(dc_high4_3m_prev[i]) and dc_high4_3m_prev[i] > 0
 
         ok_exit, _reason = _btc.should_exit_btc(
             position=pos_state, accel=accel, divergence=div,
             wt_against_min_tfs=tech_exit_min_tfs,
             wt_against_count=wt_against_count,
+            wt_3m_against=wt_3m_against,
+            dc_low4_3m_breach=dc_low4_breach,
+            dc_high4_3m_breach=dc_high4_breach,
             cfg=cfg,
         )
-        # Min-hold gate suppresses exits (except hard-loss panic) before BTC_MIN_HOLD_BARS
-        if (i - entry_bar) < btc_min_hold_bars and pnl_pct > hard_loss_pct:
+        # Per-entry-type panic floor + min-hold gate
+        is_breakout_pos = (entry_type == "BREAKOUT")
+        eff_hard_loss_pct = breakout_hard_loss_pct if is_breakout_pos else hard_loss_pct
+        eff_min_hold = btc_breakout_min_hold if is_breakout_pos else btc_min_hold_bars
+        if (i - entry_bar) < eff_min_hold and pnl_pct > eff_hard_loss_pct:
             ok_exit = False
-        # Hard stop at computed pct (translates $10 cap to price move pct) — always fires
-        if pnl_pct <= hard_loss_pct:
+        if pnl_pct <= eff_hard_loss_pct:
             ok_exit = True
 
         if ok_exit:
             sym_pnl.append(pnl_pct)
             last_exit_side = position
             last_exit_bar = i
+            last_exit_price = price_i
+            last_exit_type = entry_type
             position = "FLAT"
             entry_price = 0.0
             entry_bar = 0
+            entry_type = "BOUNCE"
 
     # Mark-to-market open position at end of sim (CLAUDE.md Sharpe rule #2)
     if position != "FLAT":

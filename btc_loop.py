@@ -81,6 +81,8 @@ class PositionRiskState:
     bars_since_last_exit: int = 9999          # bars since the last technical exit (for reentry gate)
     daily_pnl_pct: float = 0.0                # for floor checks
     weekly_pnl_pct: float = 0.0
+    entry_type: str = "BOUNCE"                # "BOUNCE" (red-zone bounce) | "BREAKOUT" (DC/RZ breakout)
+                                              # Different exit rules apply per type — breakouts use tighter stops.
 
 
 # ── Pure compute helpers (deterministic; no I/O) ─────────────────────────────
@@ -425,37 +427,123 @@ def should_exit_btc(
     wt_against_min_tfs: int,
     wt_against_count: int,
     cfg: Any,
+    wt_3m_against: bool = False,        # NEW: for BREAKOUT entries — single 3m WT flip alone = exit
+    dc_low4_3m_breach: bool = False,    # NEW: for LONG BREAKOUT — close < dc_low4_3m_prev → exit
+    dc_high4_3m_breach: bool = False,   # NEW: for SHORT BREAKOUT — close > dc_high4_3m_prev → exit
 ) -> Tuple[bool, str]:
-    """Combined exit decision. Branch on cfg.BTC_RISK_PATH."""
+    """Combined exit decision. Branches on cfg.BTC_RISK_PATH and position.entry_type.
+
+    BOUNCE entries: the "patient" exit cluster — needs N TFs against, accel reversal,
+                    or divergence. Generous min-hold + standard hard-loss.
+
+    BREAKOUT entries: tighter stops — single 3m WT flip alone OR dc_low4_3m breach
+                      triggers exit immediately. Tighter hard-loss-pct.
+                      (Per user 2026-04-27: breakouts can't tolerate the same patience
+                      as bounces — they fail fast and need quick risk-off.)
+    """
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
         return False, "BTC_LOOP_DISABLED"
     if position.side == "FLAT":
         return False, "FLAT"
-    # Hard panic exit at $10 loss regardless of risk path
-    if position.current_pnl_usd <= -getattr(cfg, "BTC_HARD_LOSS_USD_PER_TRADE", 10.0):
-        return True, "HARD_LOSS_USD_FLOOR"
+
+    is_breakout = position.entry_type == "BREAKOUT"
+
+    # Hard-loss panic — for BREAKOUTs, use the (tighter) breakout-specific floor if set.
+    if is_breakout:
+        # Breakout-specific USD ceiling — defaults to half of regular ($5 vs $10)
+        bk_loss_usd = getattr(cfg, "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE",
+                              getattr(cfg, "BTC_HARD_LOSS_USD_PER_TRADE", 10.0) / 2.0)
+        if position.current_pnl_usd <= -bk_loss_usd:
+            return True, "BREAKOUT_HARD_LOSS_USD_FLOOR"
+    else:
+        if position.current_pnl_usd <= -getattr(cfg, "BTC_HARD_LOSS_USD_PER_TRADE", 10.0):
+            return True, "HARD_LOSS_USD_FLOOR"
+
+    # BREAKOUT exit cluster — fires regardless of risk_path because breakouts are
+    # by design close-at-loss-with-reentry per user.
+    if is_breakout:
+        # 1. DC channel breach (structural failure of the breakout)
+        if position.side == "LONG" and dc_low4_3m_breach:
+            return True, "BREAKOUT_DC_LOW4_3M_BREACH"
+        if position.side == "SHORT" and dc_high4_3m_breach:
+            return True, "BREAKOUT_DC_HIGH4_3M_BREACH"
+        # 2. Single 3m WT against (the breakout momentum failed)
+        if wt_3m_against:
+            return True, "BREAKOUT_WT_3M_FLIP"
+        # 3. Accel reversal — kept for breakouts too (faster than bounce)
+        if position.side == "LONG" and accel["side"] == "bear":
+            return True, "BREAKOUT_ACCEL_REVERSAL"
+        if position.side == "SHORT" and accel["side"] == "bull":
+            return True, "BREAKOUT_ACCEL_REVERSAL"
+        return False, "BREAKOUT_NO_EXIT"
+
+    # ── BOUNCE path (existing logic — no change) ──
     risk_path = getattr(cfg, "BTC_RISK_PATH", "technical")
     if risk_path == "hedge":
-        # Path A: never close at loss; let hedge engine handle losers.
         if getattr(cfg, "BTC_HEDGE_NEVER_CLOSE_AT_LOSS", True) and position.current_pnl_pct < 0:
             return False, "HEDGE_PATH_NO_LOSS_CLOSE"
-    # Path B (default per user 2026-04-27): technical exit at any P/L.
-    # 1. WT count against side
     if wt_against_count >= wt_against_min_tfs:
         return True, f"WT_AGAINST_{wt_against_count}OF5"
-    # 2. Accel reversal
     if getattr(cfg, "BTC_INTRABAR_REVERSAL_EXIT", True):
         if position.side == "LONG" and accel["side"] == "bear":
             return True, "ACCEL_REVERSAL_BEAR"
         if position.side == "SHORT" and accel["side"] == "bull":
             return True, "ACCEL_REVERSAL_BULL"
-    # 3. Divergence against
     if getattr(cfg, "BTC_DIVERGENCE_EXIT_AGAINST", True):
         if position.side == "LONG" and divergence.bear_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BEAR_MIN_INDS", 2):
             return True, "BEAR_DIV_EXIT"
         if position.side == "SHORT" and divergence.bull_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BULL_MIN_INDS", 2):
             return True, "BULL_DIV_EXIT"
     return False, "NO_EXIT_TRIGGER"
+
+
+def detect_btc_breakout(
+    *,
+    current_price: float,
+    prev_dc_high_3m: float,
+    prev_dc_low_3m: float,
+    accel: Dict[str, Any],
+    divergence: DivergenceState,
+    cfg: Any,
+) -> Tuple[str, str]:
+    """Detect a DC-channel breakout on 3m base TF.
+
+    LONG_BREAKOUT: close > prev_dc_high_3m AND accel.bull aligned ≥ MIN_TFS
+                   AND no opposing div block (if BTC_BREAKOUT_BLOCK_OPPOSING_DIV).
+    SHORT_BREAKDOWN: mirror.
+
+    Returns (side, reason). Side ∈ {"LONG", "SHORT", "NONE"}.
+    """
+    if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
+        return "NONE", "BTC_LOOP_DISABLED"
+    if not getattr(cfg, "BTC_BREAKOUT_ENTRY_ENABLED", True):
+        return "NONE", "BREAKOUT_DISABLED"
+
+    min_tfs = int(getattr(cfg, "BTC_BREAKOUT_ACCEL_MIN_TFS", 2))   # looser than bounce default
+    block_div = bool(getattr(cfg, "BTC_BREAKOUT_BLOCK_OPPOSING_DIV", True))
+
+    # LONG breakout
+    if (
+        current_price > prev_dc_high_3m > 0
+        and accel["bull_aligned_tfs"] >= min_tfs
+        and accel["side"] == "bull"
+    ):
+        if block_div and divergence.bear_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BEAR_MIN_INDS", 2):
+            return "NONE", "BREAKOUT_LONG_BLOCKED_BEAR_DIV"
+        return "LONG", "BREAKOUT_LONG"
+
+    # SHORT breakdown
+    if (
+        current_price < prev_dc_low_3m
+        and prev_dc_low_3m > 0
+        and accel["bear_aligned_tfs"] >= min_tfs
+        and accel["side"] == "bear"
+    ):
+        if block_div and divergence.bull_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BULL_MIN_INDS", 2):
+            return "NONE", "BREAKOUT_SHORT_BLOCKED_BULL_DIV"
+        return "SHORT", "BREAKOUT_SHORT"
+
+    return "NONE", "NO_BREAKOUT"
 
 
 def should_reenter_btc(
