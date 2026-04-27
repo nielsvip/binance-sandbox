@@ -13326,7 +13326,14 @@ class MultiAccountTradeManager:
         except Exception:
             pass
         # ═══ END QUARANTINE CHECK ═══
-        if 'OPEN' in reason.upper() and original_positionAmt > 0: 
+        # 2026-04-27: was `if 'OPEN' in reason.upper() and ...`. The reason can legitimately
+        # contain 'OPEN' as part of a strategy ENTRY label (e.g. SCALP_V3_OPEN_PROTECTIVE_EXIT_*)
+        # while the ACTUAL action is CLOSE/REDUCE. The reason-match was blocking V3 emergency
+        # closes (1000BONKUSDC_SHORT phantom-loop, K_OB_EXIT firing every 12s with this block).
+        # Gate on action only — the duplicate-OPEN protection is for entry actions.
+        _bofzp_act = (action or '').upper()
+        _bofzp_is_entry = ('OPEN' in _bofzp_act or 'AUGMENT' in _bofzp_act or 'ENTRY' in _bofzp_act) and 'CLOSE' not in _bofzp_act and 'REDUCE' not in _bofzp_act and 'KILL' not in _bofzp_act
+        if _bofzp_is_entry and original_positionAmt > 0:
             return f'BLOCK_OPEN_IS_FOR_ZERO_POS'
         await self.load_tradeable() 
         if account_key not in self._allowed_accounts: 
@@ -19887,7 +19894,19 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _hg_i = await ii(trade_manager, symbol)
                     if _hg_i:
                         _hg_long = position_key.endswith("_LONG")
-                        _hg_gain = safe_fetch_float(getattr(_hg_pos, 'gain', 0), 0)
+                        # 2026-04-27 (C98USDT incident): position.gain field is sometimes stale relative to live current_price.
+                        # Recompute REAL gain from entry_price + current_price NOW so the NOLOSS gate doesn't trust stale +0.55% when actual is -1.27%.
+                        _hg_entry_px = safe_fetch_float(getattr(_hg_pos, 'entry_price', 0), 0)
+                        _hg_stale_gain = safe_fetch_float(getattr(_hg_pos, 'gain', 0), 0)
+                        if _hg_entry_px > 0 and current_price > 0:
+                            if _hg_long:
+                                _hg_real_gain = ((current_price - _hg_entry_px) / _hg_entry_px) * 100.0
+                            else:
+                                _hg_real_gain = ((_hg_entry_px - current_price) / _hg_entry_px) * 100.0
+                        else:
+                            _hg_real_gain = _hg_stale_gain
+                        # Use the WORSE of stale-gain and real-gain so we never close at a hidden loss.
+                        _hg_gain = min(_hg_stale_gain, _hg_real_gain)
                         _hg_decision = _hd.should_close_hedge_wt3m1h(_hg_i, _hg_long, _hg_gain, config)
                         if _hg_decision is not None:
                             _hg_w13 = _hg_decision['wt']['wt1_3m']; _hg_w23 = _hg_decision['wt']['wt2_3m']
@@ -19896,9 +19915,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _hg_pos_side = 'LONG' if _hg_long else 'SHORT'
                             _hg_hedge_for = getattr(_hg_pos, 'hedge_for', None) or _hedge_for_tracker or position_key
                             if not _hg_decision['fire']:
-                                logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge but gain={_hg_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
+                                logger.warning(f"🛡️ [HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge but min(stale={_hg_stale_gain:.2f}%, real={_hg_real_gain:.2f}%)={_hg_gain:.2f}% < 0 — STRICT_NO_LOSS, holding hedge.")
                                 return f"{EvalStatus.NO_ACTION}:HEDGE_CLOSE_WT3M1H_PRE_GATE_NOLOSS_HOLD"
-                            logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (gain={_hg_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}).")
+                            logger.critical(f"🛑 [HEDGE_CLOSE_WT3M1H_PRE_GATE] {position_key}: wt_3m={_hg_w13:.1f}/{_hg_w23:.1f} AND wt_1h={_hg_w11:.1f}/{_hg_w21:.1f} against {_hg_pos_side} hedge — pre-gate close (stale_gain={_hg_stale_gain:.2f}% real_gain={_hg_real_gain:.2f}%, attr={_is_hedge_attr}, tracker={_is_hedge_tracker}).")
                             try:
                                 await trade_manager.execute_now(position_key, account_key, symbol, _hg_amt, _hg_ord_side, _hg_pos_side, _hg_amt, current_price, f"HEDGE_WT3M1H_PRE_{int(time.time())}", f"HEDGE_CLOSE_WT3M1H_PRE_GATE_3m={_hg_w13:.1f}/{_hg_w23:.1f}_1h={_hg_w11:.1f}/{_hg_w21:.1f}_gain={_hg_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_hg_hedge_for)
                             finally:
@@ -20011,7 +20030,17 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _pp_is_hedge = bool(getattr(position, 'is_hedge', False)) if position else False
             if _pp_is_hedge and is_active_position:
                 _pp_long = position_key.endswith("_LONG")
-                _pp_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                # 2026-04-27 (C98USDT): same stale-gain fix — recompute real_gain at decision time, use min(stale, real).
+                _pp_stale_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _pp_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
+                if _pp_entry_px > 0 and current_price > 0:
+                    if _pp_long:
+                        _pp_real_gain = ((current_price - _pp_entry_px) / _pp_entry_px) * 100.0
+                    else:
+                        _pp_real_gain = ((_pp_entry_px - current_price) / _pp_entry_px) * 100.0
+                else:
+                    _pp_real_gain = _pp_stale_gain
+                _pp_gain = min(_pp_stale_gain, _pp_real_gain)
                 _pp_decision = _hd.should_close_hedge_wt3m1h(i, _pp_long, _pp_gain, config)
                 if _pp_decision is not None:
                     _pp_w13 = _pp_decision['wt']['wt1_3m']; _pp_w23 = _pp_decision['wt']['wt2_3m']

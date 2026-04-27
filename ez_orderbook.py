@@ -315,25 +315,57 @@ class DeepBook:
         bid_surge = top_bid_q / self.ema_bid_qty if self.ema_bid_qty > 0 else 1.0
         ask_surge = top_ask_q / self.ema_ask_qty if self.ema_ask_qty > 0 else 1.0
 
-        # Composite entry signals (each 0..100)
+        # Composite entry signals (each 0..165)
+        # 2026-04-27: Original score = static geometry only (walls/voids/imbalance).
+        # That fires when book is balanced + S/R close — NOT at extremes/reversals.
+        # Added OFI / surge / microprice = LEADING flow signals that fire BEFORE
+        # WT/K confirm. Values clamp safely; original geometry component preserved.
         long_score = 0.0; short_score = 0.0
-        # A close bid-wall means price has a floor here — good for LONG
-        if bid_wall_pct is not None and bid_wall_pct <= 2.0:
-            long_score += max(0, 30.0 * (2.0 - bid_wall_pct) / 2.0 + 15)
+        # ── Static geometry (original, unchanged) ──
+        # A close bid-wall means price has a floor here — good for LONG. Loosened
+        # gate from ≤2% to ≤4% because real S/R levels often sit 1-3% out.
+        _wall_max = 4.0
+        if bid_wall_pct is not None and bid_wall_pct <= _wall_max:
+            long_score += max(0, 30.0 * (_wall_max - bid_wall_pct) / _wall_max + 15)
         # A close ask-void means thin liquidity above — price likely to jet through
-        if ask_void_pct is not None and ask_void_pct <= 2.0:
-            long_score += max(0, 30.0 * (2.0 - ask_void_pct) / 2.0 + 15)
+        if ask_void_pct is not None and ask_void_pct <= _wall_max:
+            long_score += max(0, 30.0 * (_wall_max - ask_void_pct) / _wall_max + 15)
         # Bid-heavy top-of-book adds 0..40
         imb5 = top_imb(5)
         if imb5 > 0.55:
             long_score += min(40.0, (imb5 - 0.5) * 200.0)
         # Symmetric SHORT
-        if ask_wall_pct is not None and ask_wall_pct <= 2.0:
-            short_score += max(0, 30.0 * (2.0 - ask_wall_pct) / 2.0 + 15)
-        if bid_void_pct is not None and bid_void_pct <= 2.0:
-            short_score += max(0, 30.0 * (2.0 - bid_void_pct) / 2.0 + 15)
+        if ask_wall_pct is not None and ask_wall_pct <= _wall_max:
+            short_score += max(0, 30.0 * (_wall_max - ask_wall_pct) / _wall_max + 15)
+        if bid_void_pct is not None and bid_void_pct <= _wall_max:
+            short_score += max(0, 30.0 * (_wall_max - bid_void_pct) / _wall_max + 15)
         if imb5 < 0.45:
             short_score += min(40.0, (0.5 - imb5) * 200.0)
+        # ── Leading flow signals (NEW 2026-04-27) ──
+        # OFI lean (0..25 per side) — signed flow imbalance over last 1s, normalized
+        # by current top-of-book size. Positive OFI = net bid-side aggression =
+        # leading LONG signal. Fires BEFORE 3m candle prints / WT crosses.
+        denom_qty = top_bid_q + top_ask_q
+        if denom_qty > 0:
+            ofi_norm = ofi_1s / denom_qty
+            if ofi_norm > 0:
+                long_score  += min(25.0, ofi_norm * 50.0)
+            elif ofi_norm < 0:
+                short_score += min(25.0, -ofi_norm * 50.0)
+        # Surge (0..25 per side) — top-of-book qty spike vs 600s EMA = absorption
+        # signal. Bid surge during sell-off = bottom forming; ask surge during
+        # rally = top forming.
+        if bid_surge > 1.5:
+            long_score  += min(25.0, (bid_surge - 1.0) * 25.0)
+        if ask_surge > 1.5:
+            short_score += min(25.0, (ask_surge - 1.0) * 25.0)
+        # Microprice lean (0..15 per side) — size-weighted equilibrium tilt vs mid.
+        # Microprice > mid = bid is bigger AND price is leaning up via execution.
+        mp_bps = (microprice - mid) / mid * 10000.0
+        if mp_bps > 0:
+            long_score  += min(15.0, mp_bps * 5.0)
+        elif mp_bps < 0:
+            short_score += min(15.0, -mp_bps * 5.0)
 
         return {
             "ob_ts_ms": self.last_event_ts_ms,

@@ -635,6 +635,14 @@ class Config:
     SCALP_V3_SESSION_BLOCK_HOURS: list = field(default_factory=list)  # e.g. [3,4,5] to block 03-06 UTC
     # === 2026-04-26 V3 entry-path expansion (user: "AUGMENT trades 20-1000x — more entry paths not stricter filters") ===
     # Each path is independently switchable; on each cycle V3 fires the FIRST path that matches. Default: TREND only (current behavior).
+    # 2026-04-27 BAR_BREAK — pure price-action entry. Fires the moment a 3m bar
+    # breaks against direction (wt1_3m + velocity_3m proxy in live since prev-bar
+    # OHLC isn't in hot_metrics). User directive: "ACTUAL PRICE ACTION should have
+    # entered when falling below prev close and exited at the rebounds." TREND
+    # waits for K-cross + HTF stoch which lags. BAR_BREAK fires earlier; the global
+    # HTF_DIRECTION_GATE downstream still blocks counter-macro entries.
+    SCALP_V3_ENTRY_BAR_BREAK_ENABLED: bool = True
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN: float = 1.0    # |wt_velocity_3m| must exceed this to filter noise
     SCALP_V3_ENTRY_TREND_ENABLED: bool = True       # current strict trend-follow (HH+HL + k_3m rising + HTF stoch + WT bull)
     SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = True    # 2026-04-27 user-authorized re-enable. Direction gate + HTF bypass + AUGMENT guards now prevent the prior multi-open / shorting-rallies issues
     SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = False   # 2026-04-27 OFF — same

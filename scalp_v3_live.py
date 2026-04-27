@@ -171,6 +171,22 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
                 pass
             else:
                 return None
+    # ===== ENTRY PATH 0: BAR_BREAK — pure price action, fastest leading signal =====
+    # 2026-04-27 USER DIRECTIVE: "ACTUAL PRICE ACTION should have entered when falling
+    # below prev close and exited at the rebounds." Waiting for K-cross + WT-cross +
+    # HTF stoch confirmation lags the actual price move. This path fires the moment
+    # the bar closes against direction, before K/WT confirm.
+    # LONG: 3m bar rising AND wt1_3m direction up AND velocity > 0  (no K gate, no WT-cross gate)
+    # SHORT: mirror
+    # The global HTF_DIRECTION_GATE downstream still blocks suicidal counter-macro
+    # entries; this path just stops gating on slow-moving LTF indicators.
+    # Use velocity threshold to filter pure noise (velocity 0 = stale).
+    if bool(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_ENABLED', False)):
+        _bb_vel_min = float(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN', 1.0))
+        if allow_long and bar_rising and (wt_velocity_3m_live > _bb_vel_min):
+            return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_BAR_BREAK_p{price:.4g}_wt3m{wt1_3m:.1f}>{wt1_3m_prev:.1f}_v3m{wt_velocity_3m_live:+.1f}_k3m{k_3m:.0f}"}
+        if allow_short and bar_falling and (wt_velocity_3m_live < -_bb_vel_min):
+            return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_BAR_BREAK_p{price:.4g}_wt3m{wt1_3m:.1f}<{wt1_3m_prev:.1f}_v3m{wt_velocity_3m_live:+.1f}_k3m{k_3m:.0f}"}
     # ===== ENTRY PATH 1: TREND (current strict logic) — controlled by SCALP_V3_ENTRY_TREND_ENABLED =====
     if bool(getattr(config, 'SCALP_V3_ENTRY_TREND_ENABLED', True)):
         if allow_long and bar_rising and k_rising and wt_bull and htf_bull:
