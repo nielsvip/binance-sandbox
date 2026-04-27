@@ -100,6 +100,7 @@ case "$SCRIPT_BASE" in
     ez_manage)           NO_OUTPUT_TIMEOUT=600  ;;  # quick_general writes every ~30-300s
     ez_share_ind)        NO_OUTPUT_TIMEOUT=600  ;;  # heartbeat every few minutes
     ez_mark_prices)      NO_OUTPUT_TIMEOUT=600  ;;  # periodic
+    ez_orderbook)        NO_OUTPUT_TIMEOUT=600  ;;  # 2026-04-27: writes Redis OB scores ~1-5s but log heartbeat is sparser
     *)                   NO_OUTPUT_TIMEOUT=600  ;;  # safe default
 esac
 
@@ -230,15 +231,19 @@ run_script() {
         fi
         # 2026-04-26: Preemptive RSS recycling for ez_manage workers — beat jetsam to the punch
         # with a graceful TERM so positions/locks save cleanly. Mac jetsam SIGKILLs at ~1GB+ when
-        # whole-system memory pressure is high, losing in-flight state. Recycle at 900MB instead.
-        if [[ "$SCRIPT" == "ez_manage.py" && "$runtime" -gt 60 ]]; then
+        # whole-system memory pressure is high, losing in-flight state. Recycle at 900MB → 1.5GB
+        # 2026-04-27: bumped 900MB → 1500MB. Live audit: inf was being recycled every 3-5 min
+        # (RSS hit 900MB fast), causing constant cutouts user complained about. System has 36GB
+        # RAM, 5 ez_manage workers ≈ 3.5GB total; 1.5GB ceiling per worker is plenty of headroom.
+        # Apply to ez_orderbook too (long-running OB ingest, similar pattern).
+        if [[ ( "$SCRIPT" == "ez_manage.py" || "$SCRIPT" == "ez_orderbook.py" ) && "$runtime" -gt 60 ]]; then
             local rss_kb
             if [[ "$(uname)" == "Darwin" ]]; then
                 rss_kb=$(ps -p "$script_pid" -o rss= 2>/dev/null | tr -d ' ' || echo 0)
             else
                 rss_kb=$(awk '/VmRSS/{print $2}' "/proc/$script_pid/status" 2>/dev/null || echo 0)
             fi
-            local MAX_RSS_KB=921600  # 900MB
+            local MAX_RSS_KB=1572864  # 1.5GB (was 900MB)
             if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
                 log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB. Graceful restart before jetsam fires."
                 kill -TERM "$script_pid" 2>/dev/null || true

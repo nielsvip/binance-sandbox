@@ -31,16 +31,21 @@ CRITICAL_PROCESSES=(
     "ez_market_data.py"
     "ez_klines.py"
     "setup_ssh_tunnels.py"
+    "ez_orderbook.py"  # 2026-04-27 added — was dying silently w/o auto-restart, killing V3 OB scanner
 )
 
 # Scripts that ALREADY have a run_with_watchdog.sh wrapper in an iTerm tab.
 # For these: only restart if BOTH the python process AND the wrapper are dead.
 # If the wrapper is alive, it will restart the python process itself.
+# When the cron does need to start one of these, it launches them WRAPPED in
+# run_with_watchdog.sh (see launch loop below) so they auto-restart on RSS/crash.
 WATCHDOG_MANAGED=(
     "ez_prices.py"
     "ez_indicators.py"
     "ez_market_data.py"
     "ez_klines.py"
+    "ez_orderbook.py"  # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog
+    "ez_manage.py"     # 2026-04-27 added — RSS recycle ceiling 1.5GB applies via watchdog (was bare)
 )
 
 MISSING=""
@@ -70,7 +75,15 @@ for proc in "${CRITICAL_PROCESSES[@]}"; do
         if [ -n "$args" ]; then
             LOG_NAME="${LOG_NAME}_$(echo "$args" | tr ' ' '_' | tr '-' '_')"
         fi
-        nohup $PYTHON -u $script_name $args >> "$LOGDIR/${LOG_NAME}_cron.log" 2>&1 &
+        # 2026-04-27: launch under run_with_watchdog.sh for WATCHDOG_MANAGED scripts so
+        # they get RSS-recycle protection (1.5GB ceiling) and auto-restart on crash.
+        # Bare python only for non-managed scripts (e.g. setup_ssh_tunnels.py).
+        if $is_watchdog_managed; then
+            log "  → launching under run_with_watchdog.sh"
+            nohup /bin/bash "$WORKDIR/run_with_watchdog.sh" $script_name $args >> "$LOGDIR/${LOG_NAME}_cron.log" 2>&1 &
+        else
+            nohup $PYTHON -u $script_name $args >> "$LOGDIR/${LOG_NAME}_cron.log" 2>&1 &
+        fi
         sleep 2
     fi
 done

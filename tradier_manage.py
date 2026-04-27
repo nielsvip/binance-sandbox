@@ -1506,12 +1506,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _entry_threshold = float(getattr(config, 'TRA_WT_DC_ENTRY_THRESHOLD', 85))
                     else:
                         _entry_threshold = getattr(config, 'WT_DC_ENTRY_THRESHOLD', 55)
-                    if _entry_score >= _entry_threshold:
+                    _k5m_now = float((_entry_ind or {}).get('stoch_k_5m', 50) or 50)
+                    _k5m_block = (is_long and _k5m_now > float(getattr(config, 'WT_DC_ENTRY_K5M_MAX_LONG', 100))) or ((not is_long) and _k5m_now < float(getattr(config, 'WT_DC_ENTRY_K5M_MIN_SHORT', 0)))
+                    if _entry_score >= _entry_threshold and not _k5m_block:
                         _base_qty = float(getattr(config, 'START_POSITION_SIZE', 600)) / current_price if current_price > 0 else 1
                         action_type = "OPEN"
                         qty = int(max(1, _base_qty))
                         conf = _entry_score
                         reason = f"WT_DC_ENTRY_{_entry_score:.0f}_{_entry_reason[:60]}"
+                    elif _k5m_block and _entry_score >= _entry_threshold:
+                        logger.info(f"[WT_DC_ENTRY_K5M_BLOCK] {symbol} {'L' if is_long else 'S'}: k5m={_k5m_now:.1f} score={_entry_score:.0f}")
                 # RZ_BREAKOUT: third entry path — fires when bb_pct_b_1h just exited extreme zone.
                 # Band approach: LONG fires when bb_pctb is in [rz_bot, rz_bot+band] (just broke up from oversold).
                 # SHORT fires when bb_pctb is in [rz_top-band, rz_top] (just broke down from overbought).

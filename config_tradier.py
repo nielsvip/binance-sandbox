@@ -1234,6 +1234,8 @@ class TradierConfig:
     # Stoch entry filters (non-K-zone)
     TRADIER_STOCH_ENTRY_LONG_TRADIER: int = 30          # K < this for normal long entry
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: int = 52  # K > this for normal short entry
+    WT_DC_ENTRY_K5M_MAX_LONG: float = 100.0  # 2026-04-27: hard k5m cap for WT_DC_ENTRY_THRESHOLD-path LONG entries (default inert at 100). Lower to 80 to block "buy at 5m top" e.g. NVDA k5m=95.
+    WT_DC_ENTRY_K5M_MIN_SHORT: float = 0.0   # 2026-04-27: hard k5m floor for WT_DC_ENTRY_THRESHOLD-path SHORT entries (default inert at 0). Raise to 20 to block "short at 5m bottom".
     TRADIER_STOCH_EXTREME_LONG_TRADIER: int = 15        # deeper K for high-conviction long
     TRADIER_STOCH_EXTREME_SHORT_TRADIER: int = 85       # deeper K for high-conviction short
 

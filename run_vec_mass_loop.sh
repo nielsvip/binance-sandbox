@@ -8,11 +8,23 @@ MODE="${1:-crypto}"
 PICK="${2:-3}"
 BARS="${3:-5000}"
 TAG="${4:-default}"
-case "$(hostname -s 2>/dev/null || hostname)" in
-    s1*|*157*)  PY=/home/niels/.conda/envs/binance_env/bin/python; BASE=/home/niels/binance-sandbox ;;
-    s2*|*204*)  PY=/home/niels/miniconda3/envs/binance_env/bin/python; BASE=/home/niels/binance-sandbox ;;
-    *)          PY=/opt/anaconda3/envs/binance_env/bin/python; BASE=/Users/niels/Documents/binance ;;
-esac
+# 2026-04-27 user directive: vec tests are too heavy on MacBook — refuse to launch here.
+# Detection: only S1/S2 have /home/niels/binance-sandbox. MacBook is Darwin and lacks /home/niels.
+HOST="$(hostname -s 2>/dev/null || hostname)"
+if [ "$(uname -s)" = "Darwin" ] || [ ! -d /home/niels/binance-sandbox ]; then
+    echo "[$(date -u '+%H:%M:%S UTC')] ABORT: vec_mass_loop is not allowed on MacBook (host=$HOST). Run on S1 or S2." >&2
+    exit 2
+fi
+# S1: niels (157.180.125.52), conda env. S2: sweep-box (204.168.181.211), miniconda env.
+if [ -x /home/niels/.conda/envs/binance_env/bin/python ]; then
+    PY=/home/niels/.conda/envs/binance_env/bin/python   # S1
+elif [ -x /home/niels/miniconda3/envs/binance_env/bin/python ]; then
+    PY=/home/niels/miniconda3/envs/binance_env/bin/python   # S2
+else
+    echo "[$(date -u '+%H:%M:%S UTC')] ABORT: cannot locate python env on $HOST" >&2
+    exit 3
+fi
+BASE=/home/niels/binance-sandbox
 LOG="/tmp/vec_mass_${MODE}_${TAG}_$(date +%Y%m%d_%H%M%S).log"
 cd "$BASE"
 echo "[$(date -u '+%H:%M:%S UTC')] vec_mass loop start mode=$MODE pick=$PICK bars=$BARS tag=$TAG -> $LOG"
