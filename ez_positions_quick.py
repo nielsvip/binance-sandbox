@@ -5072,7 +5072,17 @@ class HedgeEngine:
                             # Hedge LONG → close when wt1_3m < wt2_3m AND wt1_1h < wt2_1h.
                             # Hedge SHORT → close when wt1_3m > wt2_3m AND wt1_1h > wt2_1h.
                             _abs_h_is_long = hedge_key.endswith('_LONG')
-                            _abs_decision = _hd.should_close_hedge_wt3m1h(h_ind, _abs_h_is_long, hedge_gain, config) if hedge_amt > 0.001 else None
+                            # 2026-04-27 (C98USDT): position.gain field can be stale relative to live price. Recompute real gain at decision time and use min(stale, real) so we never close at a hidden loss.
+                            _abs_entry_px = safe_fetch_float(getattr(hedge_pos, 'entry_price', 0), 0)
+                            if _abs_entry_px > 0 and h_price > 0:
+                                if _abs_h_is_long:
+                                    _abs_real_gain = ((h_price - _abs_entry_px) / _abs_entry_px) * 100.0
+                                else:
+                                    _abs_real_gain = ((_abs_entry_px - h_price) / _abs_entry_px) * 100.0
+                                _abs_eff_gain = min(hedge_gain, _abs_real_gain)
+                            else:
+                                _abs_eff_gain = hedge_gain
+                            _abs_decision = _hd.should_close_hedge_wt3m1h(h_ind, _abs_h_is_long, _abs_eff_gain, config) if hedge_amt > 0.001 else None
                             if _abs_decision is not None:
                                 _abs_wt1_3m = _abs_decision['wt']['wt1_3m']; _abs_wt2_3m = _abs_decision['wt']['wt2_3m']
                                 _abs_wt1_1h = _abs_decision['wt']['wt1_1h']; _abs_wt2_1h = _abs_decision['wt']['wt2_1h']
@@ -6341,7 +6351,17 @@ class HedgeEngine:
                                         # Hedge closes ONLY when wt_3m AND wt_1h both flip against the hedge side.
                                         _kr_h_is_long = hedge_position_key.endswith('_LONG')
                                         _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
-                                        _kr_decision = _hd.should_close_hedge_wt3m1h(_kr_ind, _kr_h_is_long, existing_gain, config)
+                                        # 2026-04-27 (C98USDT): recompute real gain from current_price + entry_price; use min(stale, real).
+                                        _kr_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0) if not isinstance(position, dict) else position.get('entry_price', 0), 0)
+                                        if _kr_entry_px > 0 and current_price > 0:
+                                            if _kr_h_is_long:
+                                                _kr_real_gain = ((current_price - _kr_entry_px) / _kr_entry_px) * 100.0
+                                            else:
+                                                _kr_real_gain = ((_kr_entry_px - current_price) / _kr_entry_px) * 100.0
+                                            _kr_eff_gain = min(existing_gain, _kr_real_gain)
+                                        else:
+                                            _kr_eff_gain = existing_gain
+                                        _kr_decision = _hd.should_close_hedge_wt3m1h(_kr_ind, _kr_h_is_long, _kr_eff_gain, config)
                                         if _kr_decision is not None:
                                             _kr_wt1_3m = _kr_decision['wt']['wt1_3m']; _kr_wt2_3m = _kr_decision['wt']['wt2_3m']
                                             _kr_wt1_1h = _kr_decision['wt']['wt1_1h']; _kr_wt2_1h = _kr_decision['wt']['wt2_1h']
@@ -6691,6 +6711,39 @@ class HedgeEngine:
         if not _hgate_ok:
             logger.warning(f"🛡️ [HEDGE_SAME_GATE_BLOCK] {hedge_key}: {_hgate_reason} — not opening against wt3m/delta policy")
             return False
+        # 2026-04-27 USER (C98USDT incident): orderbook resistance check before opening hedge.
+        # ez_orderbook publishes ob_bid_ask_imb_X (bid-pressure / total) — high = bid-heavy = price likely UP.
+        # Block hedge entries that would open into adverse orderbook pressure:
+        #   LONG hedge into bid_imb < (1-bound) = strong ask pressure → price likely DOWN → bad LONG entry
+        #   SHORT hedge into bid_imb > bound    = strong bid pressure → price likely UP   → bad SHORT entry
+        # Default bound = 0.65 (only blocks egregious mismatches; allows neutral). Disable: HEDGE_OPEN_OB_CHECK_ENABLED=False.
+        try:
+            if bool(getattr(self.config, 'HEDGE_OPEN_OB_CHECK_ENABLED', True)):
+                _ob_bound = float(getattr(self.config, 'HEDGE_OPEN_OB_IMB_BOUND', 0.65))
+                _rcli = None
+                try:
+                    _rmgr = getattr(self.tracker_manager, 'redis_manager', None)
+                    _rcli = getattr(_rmgr, 'redis', None) if _rmgr else None
+                except Exception: pass
+                if _rcli is not None:
+                    _ob_raw = await _rcli.get(f"orderbook:{hedge_symbol}")
+                    if _ob_raw:
+                        try:
+                            import orjson as _oj
+                            _ob = _oj.loads(_ob_raw)
+                        except Exception:
+                            import json as _jm
+                            _ob = _jm.loads(_ob_raw)
+                        _ob_imb = float(_ob.get('ob_bid_ask_imb_10', 0.5))
+                        if hedge_side == 'LONG' and _ob_imb < (1.0 - _ob_bound):
+                            logger.warning(f"🛡️ [HEDGE_OB_BLOCK] {hedge_key}: LONG hedge but ob_imb_10={_ob_imb:.3f} < {(1.0-_ob_bound):.3f} (ask pressure dominant) — price likely DOWN, refusing LONG entry into resistance")
+                            return False
+                        if hedge_side == 'SHORT' and _ob_imb > _ob_bound:
+                            logger.warning(f"🛡️ [HEDGE_OB_BLOCK] {hedge_key}: SHORT hedge but ob_imb_10={_ob_imb:.3f} > {_ob_bound:.3f} (bid pressure dominant) — price likely UP, refusing SHORT entry into resistance")
+                            return False
+                        logger.info(f"✅ [HEDGE_OB_OK] {hedge_key}: ob_imb_10={_ob_imb:.3f} ok for {hedge_side} (bound={_ob_bound})")
+        except Exception as _obe:
+            logger.debug(f"[HEDGE_OB_CHECK_ERR] {hedge_key}: {_obe}")
         # Use HEDGE symbol's current price if we redirected (USDC has own price)
         if hedge_symbol != symbol:
             try:
@@ -11532,16 +11585,24 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         _fresh_amt = abs(safe_fetch_float(getattr(_fresh_pos, 'positionAmt', 0), 0)) if _fresh_pos else 0
         _fresh_val = _fresh_amt * current_price if current_price > 0 else 0
         _pos_symbol = parse_position_key(position_key)[1] if position_key else ""
-        _min_qty = max(config.MIN_POSITION_SIZE / current_price, trade_manager.min_qty.get(_pos_symbol, 0.0) * 1.2) if current_price > 0 else 0
+        # 2026-04-27 owner: dust-floor only. Was max($18/price, step*1.2) which let
+        # any sub-$18 position be classified "not open" → CAKE_LONG re-opened 4×
+        # via QUICK_HEDGE_PROTECT_SHORT_LOSS at top-of-move (k_3m=100, k_15m=89).
+        # Now: ANY non-dust amount = OPEN. Only true exchange-dust slips through.
+        _step_qty = float(trade_manager.min_qty.get(_pos_symbol, 0.0) or 0)
+        _min_qty = _step_qty * 1.2 if _step_qty > 0 else 1e-9
         _max_pos_val = float(getattr(config, 'START_POSITION_SIZE', 18.0)) * 12.0
         _pos_is_open = _fresh_amt > _min_qty
-        # HARD BLOCK: No entry action on an already-open position — covers ALL entry action names
+        # HARD BLOCK: No entry action on an already-open position — covers ALL entry action names.
+        # 2026-04-27 owner: explicit "no multiple entries — not for hedges, not for anything,
+        # unless it is an AUGMENT with >3% gain". AUGMENT exemption stays; gain ≥ MIN_GAIN
+        # check is enforced upstream at _is_winner_aug definition (line ~11243).
         _ENTRY_ACTIONS_ETW = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _action_upper = (action or '').upper()
         _is_entry = _action_upper in _ENTRY_ACTIONS_ETW or 'OPEN' in _action_upper or 'ENTRY' in _action_upper or 'HEDGE' in _action_upper or 'AUGMENT' in _action_upper
         _is_entry = _is_entry and 'CLOSE' not in _action_upper and 'REDUCE' not in _action_upper and 'KILL' not in _action_upper
         if _pos_is_open and _is_entry and _action_upper != 'AUGMENT' and _action_upper != 'QUICK_AUGMENT':
-            logger.warning(f"🚫 [POSITION_ALREADY_OPEN] {position_key}: BLOCKED {action} — amt={_fresh_amt:.4f} > min={_min_qty:.4f} (val=${_fresh_val:.1f}). Position is OPEN. Use AUGMENT only.")
+            logger.warning(f"🚫 [POSITION_ALREADY_OPEN] {position_key}: BLOCKED {action} — amt={_fresh_amt:.6f} > dust={_min_qty:.6f} (val=${_fresh_val:.2f}). Position is OPEN. Use AUGMENT only. reason={(reason or '')[:80]}")
             return False, f"BLOCKED_POSITION_ALREADY_OPEN"
         # ATOMIC DOUBLE-OPEN GUARD: If position is CLOSED (amt=0) and another thread is already opening it, block.
         # 2026-04-27 (ACHUSDT incident): timeout reduced 60s→15s. Lock leaked on success-path + on `result contains BLOCK`

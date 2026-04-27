@@ -538,6 +538,11 @@ class Config:
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
+    # 2026-04-27 USER (C98USDT incident): block hedge entries opening into adverse orderbook pressure.
+    # ez_orderbook publishes ob_bid_ask_imb_10 (bid pressure / total). Block LONG hedge if imb < (1-bound), SHORT if imb > bound.
+    # Bound 0.65 → blocks egregious mismatches (allows neutral 0.35-0.65 range). Reads `orderbook:{SYM}` from Redis live.
+    HEDGE_OPEN_OB_CHECK_ENABLED: bool = True
+    HEDGE_OPEN_OB_IMB_BOUND: float = 0.65
     # === 2026-04-27 FUNDING-RATE GATES (Binance Futures, 8h funding) — DECISIVE FACTOR (USER DIRECTIVE) ===
     # Funding rate >0 means longs pay shorts (overheated long market). <0 means shorts pay longs.
     # Knob names mirror v8_quick_engine.py:699-701 so sweeps test the SAME live knobs.
