@@ -879,7 +879,7 @@ class Config:
     OBLIGATORY_HEDGE_WT_USE_3M: bool = True              # primary signal (sacred rule)
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
-    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 2            # count of enabled TFs against pos
+    OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0            # 2026-04-27 USER: hedge ENTRY = gain<0 only (no WT confirmation needed). Same-symbol same-qty hedge → effective delta = 0 → deep loss is irrelevant. Was 2 (required wt 2/2 against). Set 0 to fire hedge unconditionally on gain<0 trigger. Per `feedback_hedge_k_wt_3m_1h_gate.md`: "hedge ENTRY = gain<0 only".
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
     # MOVEUSDT bled from +1.26% peak to -13% because HTF_EXIT_VETO blocked breakeven exit.
