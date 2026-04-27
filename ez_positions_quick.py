@@ -16148,20 +16148,54 @@ async def scalp_v3_scan_loop(trade_manager, account_key: str, stop_event: asynci
         print(f"[SCALP_V3_SCAN_EXIT] {account_key} not in SCALP_V3_ACCOUNTS, returning", flush=True)
         return
     interval = float(getattr(config, 'SCALP_V3_SCAN_INTERVAL_SEC', 10.0))
-    # Reclaim V3 ownership of existing positions (augment_reason contains SCALP_V3)
-    # so MAX_LOSS_CUT + protective-exits work even when reason was overwritten.
+    # Reclaim V3 ownership of existing positions across restart.
+    # 2026-04-27: Augment_reason gets OVERWRITTEN by other strategies (e.g. GUARANTEED_REENTRY,
+    # RED_ZONE_ENTRY) AFTER a V3 entry, so the live `augment_reason` no longer contains SCALP_V3.
+    # That made V3 protective_exit / FAST_PPL / K_OB_EXIT skip these positions — UMA_SHORT was
+    # +6.58% unrealized for hours with NO V3 close logic considering it. Fix: ALSO scan the
+    # history files for any record with 'SCALP_V3_OPEN_' as the entry reason; if found AND the
+    # position currently exists with positionAmt > 0, mark it as V3 in `_v3_dynamic_keys`.
     try:
         if not hasattr(tracker_manager, '_v3_dynamic_keys'):
             tracker_manager._v3_dynamic_keys = set()
         _by = tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}
-        _reclaimed = 0
+        _reclaimed_reason = 0
+        _reclaimed_history = 0
+        # Pass 1: positions whose CURRENT augment_reason still contains SCALP_V3
         for _pk, _p in _by.items():
             _r = str(getattr(_p, 'augment_reason', '') or '')
             if 'SCALP_V3' in _r and abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) > 0:
                 tracker_manager._v3_dynamic_keys.add(_pk)
-                _reclaimed += 1
-        if _reclaimed:
-            logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] reclaimed {_reclaimed} V3 positions across restart")
+                _reclaimed_reason += 1
+        # Pass 2: history scan — catches positions whose reason got overwritten.
+        # Only checks active positions (positionAmt > 0). Reads last ~10KB of history file
+        # (cheap), looks for SCALP_V3_OPEN_ origin.
+        try:
+            from pathlib import Path as _Phist
+            _hist_dir = _Phist(config.BASE_PATH) / 'data' / 'history' / account_key
+            for _pk, _p in _by.items():
+                if abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0)) <= 0:
+                    continue
+                if _pk in tracker_manager._v3_dynamic_keys:
+                    continue
+                _sym_side = _pk.split(':', 1)[1] if ':' in _pk else _pk
+                _hf = _hist_dir / f'{_sym_side}.jsonl'
+                if not _hf.exists():
+                    continue
+                try:
+                    with open(_hf, 'rb') as _fh:
+                        _fh.seek(0, 2); _sz = _fh.tell()
+                        _fh.seek(max(0, _sz - 20000))  # last 20KB
+                        _data = _fh.read().decode('utf-8', errors='replace')
+                    if 'SCALP_V3_OPEN_' in _data:
+                        tracker_manager._v3_dynamic_keys.add(_pk)
+                        _reclaimed_history += 1
+                except Exception:
+                    pass
+        except Exception as _hist_err:
+            logger.debug(f"[SCALP_V3_SCAN] history reclaim err: {_hist_err}")
+        if _reclaimed_reason or _reclaimed_history:
+            logger.warning(f"⚡ [SCALP_V3_SCAN][{account_key}] reclaimed {_reclaimed_reason} via reason + {_reclaimed_history} via history (total V3 keys: {len(tracker_manager._v3_dynamic_keys)})")
     except Exception as _rc_err:
         logger.debug(f"[SCALP_V3_SCAN] reclaim err: {_rc_err}")
     print(f"[SCALP_V3_SCAN_STARTED] account={account_key} interval={interval}", flush=True)

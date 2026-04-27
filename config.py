@@ -52,7 +52,7 @@ class Config:
     MAX_GAIN_DECAY_COMPLETE_DAYS = 7
     # PNL_PERFORMANCE_WINDOW_HOURS: int =     48   # Window for recent performance calculation
     ZERO_CONFIRMATION_THRESHOLD_WS: int = 1  # Single WS positionAmt=0 is authoritative — was 2, caused 81 phantom positions
-    ZERO_CONFIRMATION_THRESHOLD_API: int = 5  # 2026-04-26: was 2 — 907 phantom-kills in 2d, 203 had to be restored (22% false-positive). Memory rule says 10. 5 is the compromise. FIX 2026-03-29: was 1, killed real hedges on fin.
+    ZERO_CONFIRMATION_THRESHOLD_API: int = 2  # 2026-04-27 owner: tightened 5→2 ("twice in a row triggers zero"). Stricter phantom detection. Trade-off: higher false-positive rate (~22% restoration historically), but stale ghosts cost augment cycles + HAIKU_STALE block storms.
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
     MIN_GAIN: float = 3.0  # was 5.0 (too late, near TP). 3.0% = 2.8% buffer after 50% aug, survives 1.5% reversal. Tiered: 0.4x=1.2% pullback, 0.5x=1.5% reduced, 1x=3.0% full
