@@ -13413,12 +13413,20 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                                                         await _rcli.setex(f"v3_recent:{_v3_sym}_{_v3_real_side}", _v3_ttl, "ENTRY")
                                             except Exception as _v3_stk_e:
                                                 logger.debug(f"[SCALP_V3_STICKY_ENTRY] {_v3_real_key}: redis setex failed: {_v3_stk_e}")
-                                            await execute_trade_wrapper(
+                                            _v3_etw_result = await execute_trade_wrapper(
                                                 trade_manager, tracker_manager, hedge_engine,
                                                 account_key, _v3_real_key, 0.0, 'OPEN',
                                                 _v3_px, _v3_qty, _v3_decision['reason'],
                                                 is_hedge=False, data_manager=data_manager
                                             )
+                                            try:
+                                                _v3_ok, _v3_fail = (_v3_etw_result if isinstance(_v3_etw_result, tuple) else (bool(_v3_etw_result), ""))
+                                            except Exception:
+                                                _v3_ok, _v3_fail = False, "etw_result_unparsable"
+                                            if _v3_ok:
+                                                logger.warning(f"✅ [SCALP_V3_ENTRY_OK] {_v3_real_key}: order placed via execute_trade_wrapper")
+                                            else:
+                                                logger.warning(f"❌ [SCALP_V3_ENTRY_BLOCKED] {_v3_real_key}: execute_trade_wrapper rejected reason={_v3_fail}")
                                             return
                     except Exception as _v3_err:
                         logger.warning(f"[SCALP_V3_ENTRY] {position_key}: error {_v3_err}")

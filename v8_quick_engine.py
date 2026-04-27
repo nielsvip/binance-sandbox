@@ -309,6 +309,17 @@ class QuickConfig:
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4  # bars between multi-lung entries
 
+    # ===== ENTRY ENGINES (2026-04-26) — additive fire-on-alignment triggers =====
+    # Pure vectorized adaptations of entry_engine_{wt,stoch,dc,htf}.py scalar engines.
+    # ADDITIVE: when any flag True, engine sig is ORed/ANDed/MAJORITY-voted alongside
+    # existing base_sig. Never replaces. Default OFF until sweep proves Sharpe > floor.
+    V8_ENTRY_ENGINE_WT_ENABLED: bool = False
+    V8_ENTRY_ENGINE_STOCH_ENABLED: bool = False
+    V8_ENTRY_ENGINE_DC_ENABLED: bool = False
+    V8_ENTRY_ENGINE_HTF_ENABLED: bool = False
+    V8_ENTRY_ENGINE_COMBINE: str = "OR"   # "OR" | "AND" | "MAJORITY" — combine engine sigs to single mask
+    V8_ENTRY_ENGINE_MIN_SCORE: float = 0.5  # per-engine score floor; bars below excluded from engine sig
+
     # ===== Early-abort rule (2026-04-16 user directive) =====
     # Stop evaluating a config if after N symbols its Sharpe < floor. Saves compute
     # on combos that clearly don't clear the baseline. Only fires when stores has
@@ -1473,6 +1484,177 @@ def compute_rz_cascade_signals(npz, n, is_long, cfg):
     return entry_sig, exit_sig
 
 
+# ============================================================================
+# ENTRY ENGINES — vectorized adaptations of entry_engine_{wt,stoch,dc,htf}.py
+# Scalar source-of-truth: /Users/niels/Documents/binance/entry_engine_*.py
+# Each returns (sig_mask: np.ndarray[bool, n], score_arr: np.ndarray[float32, n]).
+# Bar-level — no I/O, no Python loop over n. Side-aware (is_long).
+# ============================================================================
+def _engine_wt_vec(npz, n, is_long, cfg):
+    """Vectorized port of entry_engine_wt.should_fire_wt_entry. 5-of-5 TF align.
+    2026-04-27 LTF fix: was hardcoded '3m'; now reads cfg.LTF so tradier (5m base) reads wt1_5m etc."""
+    _ltf = getattr(cfg, 'LTF', '3m')
+    tfs = (_ltf, '15m', '1h', '4h', 'D')
+    aligned_count = np.zeros(n, dtype=np.int8)
+    for tf in tfs:
+        w1 = _safe(npz, f'wt1_{tf}', n, 0.0)
+        w2 = _safe(npz, f'wt2_{tf}', n, 0.0)
+        if is_long:
+            aligned_count = aligned_count + (w1 > w2).astype(np.int8)
+        else:
+            aligned_count = aligned_count + (w1 < w2).astype(np.int8)
+    score = np.zeros(n, dtype=np.float32)
+    score = np.where(aligned_count == 5, 1.0, score)
+    score = np.where(aligned_count == 4, 0.8, score)
+    score = np.where(aligned_count == 3, 0.6, score)
+    score = np.where(aligned_count == 2, 0.4, score)
+    score = np.where(aligned_count == 1, 0.2, score)
+    fire5 = aligned_count == 5
+    fire4 = aligned_count == 4
+    v_ltf = _safe(npz, f'wt_velocity_{_ltf}', n, 0.0)
+    v1h = _safe(npz, 'wt_velocity_1h', n, 0.0)
+    v4h = _safe(npz, 'wt_velocity_4h', n, 0.0)
+    if is_long:
+        vel_ok = (v_ltf > 0) | (v1h > 0) | (v4h > 0)
+    else:
+        vel_ok = (v_ltf < 0) | (v1h < 0) | (v4h < 0)
+    fire3 = (aligned_count == 3) & vel_ok
+    sig = fire5 | fire4 | fire3
+    return sig, score
+
+
+def _engine_stoch_vec(npz, n, is_long, cfg):
+    """Vectorized port of entry_engine_stoch.should_fire_stoch_entry."""
+    _ltf = getattr(cfg, 'LTF', '3m')
+    k_3m = _safe(npz, f'stoch_k_{_ltf}', n, 50.0)
+    d_3m = _safe(npz, f'stoch_d_{_ltf}', n, 50.0)
+    k_3m_prev = np.roll(k_3m, 1); k_3m_prev[0] = k_3m[0]
+    d_3m_prev = np.roll(d_3m, 1); d_3m_prev[0] = d_3m[0]
+    k_15m = _safe(npz, 'stoch_k_15m', n, 50.0)
+    k_1h = _safe(npz, 'stoch_k_1h', n, 50.0)
+    k_4h = _safe(npz, 'stoch_k_4h', n, 50.0)
+    d_15m = _safe(npz, 'stoch_d_15m', n, 50.0)
+    MID = 50.0
+    OS = 20.0
+    OB = 80.0
+    if is_long:
+        crossover = (k_3m > d_3m) & (k_3m_prev <= d_3m_prev)
+        a1 = k_3m > MID; a2 = k_15m > MID; a3 = k_1h > MID; a4 = k_4h > MID
+        extreme = k_3m < OS
+        kd_3m_dir = k_3m > d_3m
+        kd_15m_dir = k_15m > d_15m
+    else:
+        crossover = (k_3m < d_3m) & (k_3m_prev >= d_3m_prev)
+        a1 = k_3m < MID; a2 = k_15m < MID; a3 = k_1h < MID; a4 = k_4h < MID
+        extreme = k_3m > OB
+        kd_3m_dir = k_3m < d_3m
+        kd_15m_dir = k_15m < d_15m
+    aligned_count = a1.astype(np.int8) + a2.astype(np.int8) + a3.astype(np.int8) + a4.astype(np.int8)
+    score = np.zeros(n, dtype=np.float32)
+    fire_strong = (aligned_count == 4) & crossover & kd_3m_dir & kd_15m_dir
+    fire_good = (aligned_count >= 3) & crossover & kd_3m_dir & ~fire_strong
+    fire_contra = (aligned_count >= 2) & extreme & kd_3m_dir & ~fire_strong & ~fire_good
+    score = np.where(fire_strong, 1.0, score)
+    score = np.where(fire_good, 0.7, score)
+    score = np.where(fire_contra, 0.5, score)
+    sig = fire_strong | fire_good | fire_contra
+    return sig, score
+
+
+def _engine_dc_vec(npz, n, is_long, cfg):
+    """Vectorized port of entry_engine_dc.should_fire_dc_entry.
+    2026-04-27 LTF fix: was hardcoded '3m'; now reads cfg.LTF so tradier (5m) reads dc_high_5m etc."""
+    _ltf = getattr(cfg, 'LTF', '3m')
+    FIRE = 0.6; RETEST_TOL = 0.30; BOUNCE_TOL = 0.50
+    close = _close_with_mode_check(npz, n, cfg, '_engine_dc_vec')
+    dc_h_3m = _safe(npz, f'dc_high_{_ltf}', n, 0.0)
+    dc_h_15m = _safe(npz, 'dc_high_15m', n, 0.0)
+    dc_h_1h = _safe(npz, 'dc_high_1h', n, 0.0)
+    dc_l_3m = _safe(npz, f'dc_low_{_ltf}', n, 0.0)
+    dc_l_15m = _safe(npz, 'dc_low_15m', n, 0.0)
+    dc_l_1h = _safe(npz, 'dc_low_1h', n, 0.0)
+    dc_l_4h = _safe(npz, 'dc_low_4h', n, 0.0)
+    dc_h_4h = _safe(npz, 'dc_high_4h', n, 0.0)
+    dc_b_15m = _safe(npz, 'dc_basis_15m', n, 0.0)
+    ha_3m = _ha_int(npz, f'ha_{_ltf}', n)
+    wt1_3m = _safe(npz, f'wt1_{_ltf}', n, 0.0)
+    wt2_3m = _safe(npz, f'wt2_{_ltf}', n, 0.0)
+    score = np.zeros(n, dtype=np.float32)
+    if is_long:
+        b3 = (dc_h_3m > 0) & (close > dc_h_3m)
+        b15 = (dc_h_15m > 0) & (close > dc_h_15m)
+        b1h = (dc_h_1h > 0) & (close > dc_h_1h)
+        retest_dist = np.where(dc_b_15m > 0, np.abs(close - dc_b_15m) / np.where(dc_b_15m > 0, dc_b_15m, 1.0) * 100.0, 1e9)
+        retest = (dc_b_15m > 0) & (ha_3m == 1) & (close >= dc_b_15m) & (retest_dist <= RETEST_TOL)
+        bounce_dist = np.where(dc_l_4h > 0, np.abs(close - dc_l_4h) / np.where(dc_l_4h > 0, dc_l_4h, 1.0) * 100.0, 1e9)
+        bounce = (dc_l_4h > 0) & (wt1_3m > wt2_3m) & (bounce_dist <= BOUNCE_TOL)
+    else:
+        b3 = (dc_l_3m > 0) & (close < dc_l_3m)
+        b15 = (dc_l_15m > 0) & (close < dc_l_15m)
+        b1h = (dc_l_1h > 0) & (close < dc_l_1h)
+        retest_dist = np.where(dc_b_15m > 0, np.abs(close - dc_b_15m) / np.where(dc_b_15m > 0, dc_b_15m, 1.0) * 100.0, 1e9)
+        retest = (dc_b_15m > 0) & (ha_3m == -1) & (close <= dc_b_15m) & (retest_dist <= RETEST_TOL)
+        bounce_dist = np.where(dc_h_4h > 0, np.abs(close - dc_h_4h) / np.where(dc_h_4h > 0, dc_h_4h, 1.0) * 100.0, 1e9)
+        bounce = (dc_h_4h > 0) & (wt1_3m < wt2_3m) & (bounce_dist <= BOUNCE_TOL)
+    score = np.where(b3, np.maximum(score, 0.6), score)
+    score = np.where(b15, np.maximum(score, 0.8), score)
+    score = np.where(b1h, np.maximum(score, 1.0), score)
+    score = np.where(retest, np.maximum(score, 0.7), score)
+    score = np.where(bounce, np.maximum(score, 0.6), score)
+    sig = score >= FIRE
+    return sig, score
+
+
+def _engine_htf_vec(npz, n, is_long, cfg):
+    """Vectorized port of entry_engine_htf.should_fire_htf_entry."""
+    FIRE = 0.5
+    close = _close_with_mode_check(npz, n, cfg, '_engine_htf_vec')
+    sma_d = _safe(npz, 'sma_200_D', n, 0.0)
+    dcb_d = _safe(npz, 'dc_basis_D', n, 0.0)
+    dcb_d_ant = _safe(npz, 'dc_basis_D_ant', n, 0.0)
+    ha_4h = _ha_int(npz, 'ha_4h', n)
+    ha_d = _ha_int(npz, 'ha_D', n)
+    k_4h = _safe(npz, 'stoch_k_4h', n, 0.0)
+    score = np.zeros(n, dtype=np.float32)
+    valid_sma = (sma_d > 0) & (close > 0)
+    if is_long:
+        score = score + np.where(valid_sma & (close > sma_d * 1.01), 0.3, 0.0).astype(np.float32)
+        score = score + np.where((dcb_d > 0) & (dcb_d_ant > 0) & (dcb_d > dcb_d_ant), 0.2, 0.0).astype(np.float32)
+        score = score + np.where(ha_4h == 1, 0.2, 0.0).astype(np.float32)
+        score = score + np.where(ha_d == 1, 0.2, 0.0).astype(np.float32)
+        score = score + np.where((k_4h > 0) & (k_4h > 50), 0.1, 0.0).astype(np.float32)
+    else:
+        score = score + np.where(valid_sma & (close < sma_d * 0.99), 0.3, 0.0).astype(np.float32)
+        score = score + np.where((dcb_d > 0) & (dcb_d_ant > 0) & (dcb_d < dcb_d_ant), 0.2, 0.0).astype(np.float32)
+        score = score + np.where(ha_4h == -1, 0.2, 0.0).astype(np.float32)
+        score = score + np.where(ha_d == -1, 0.2, 0.0).astype(np.float32)
+        score = score + np.where((k_4h > 0) & (k_4h < 50), 0.1, 0.0).astype(np.float32)
+    sig = score >= FIRE
+    return sig, score
+
+
+def _combine_engine_sigs(sigs, mode):
+    """Combine list of (n,)-bool arrays via OR / AND / MAJORITY. Empty list -> None."""
+    if not sigs:
+        return None
+    mode_u = str(mode).upper()
+    if len(sigs) == 1:
+        return sigs[0]
+    if mode_u == "AND":
+        out = sigs[0].copy()
+        for s in sigs[1:]:
+            out = out & s
+        return out
+    if mode_u == "MAJORITY":
+        stk = np.stack(sigs, axis=0).astype(np.int8)
+        cnt = stk.sum(axis=0)
+        return cnt >= ((len(sigs) + 1) // 2)
+    out = sigs[0].copy()
+    for s in sigs[1:]:
+        out = out | s
+    return out
+
+
 def compute_entry_signals(npz, n, is_long, cfg):
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
@@ -1899,10 +2081,44 @@ def compute_entry_signals(npz, n, is_long, cfg):
             ml_sig = multi_lung_entry_signal(npz, n, is_long, cfg)
             mode = str(getattr(cfg, 'BREAKOUT_MULTI_LUNG_MODE', 'AUGMENT')).upper()
             if mode == 'REPLACE':
-                return ml_sig
-            return base_sig | ml_sig
+                base_sig = ml_sig
+            else:
+                base_sig = base_sig | ml_sig
         except Exception:
             pass  # graceful fallback if NPZ missing OHLCV fields
+    # ENTRY ENGINES (2026-04-26) — additive fire-on-alignment triggers
+    # Each engine: vectorized port of entry_engine_*.py scalar logic.
+    # Combined via OR/AND/MAJORITY, then ORed onto base_sig (additive, not replace).
+    _ee_min_score = float(getattr(cfg, 'V8_ENTRY_ENGINE_MIN_SCORE', 0.5))
+    _ee_sigs = []
+    if bool(getattr(cfg, 'V8_ENTRY_ENGINE_WT_ENABLED', False)):
+        try:
+            _s, _sc = _engine_wt_vec(npz, n, is_long, cfg)
+            _ee_sigs.append(_s & (_sc >= _ee_min_score))
+        except Exception:
+            pass
+    if bool(getattr(cfg, 'V8_ENTRY_ENGINE_STOCH_ENABLED', False)):
+        try:
+            _s, _sc = _engine_stoch_vec(npz, n, is_long, cfg)
+            _ee_sigs.append(_s & (_sc >= _ee_min_score))
+        except Exception:
+            pass
+    if bool(getattr(cfg, 'V8_ENTRY_ENGINE_DC_ENABLED', False)):
+        try:
+            _s, _sc = _engine_dc_vec(npz, n, is_long, cfg)
+            _ee_sigs.append(_s & (_sc >= _ee_min_score))
+        except Exception:
+            pass
+    if bool(getattr(cfg, 'V8_ENTRY_ENGINE_HTF_ENABLED', False)):
+        try:
+            _s, _sc = _engine_htf_vec(npz, n, is_long, cfg)
+            _ee_sigs.append(_s & (_sc >= _ee_min_score))
+        except Exception:
+            pass
+    if _ee_sigs:
+        _ee_combined = _combine_engine_sigs(_ee_sigs, getattr(cfg, 'V8_ENTRY_ENGINE_COMBINE', 'OR'))
+        if _ee_combined is not None:
+            base_sig = base_sig | _ee_combined
     return base_sig
 
 
