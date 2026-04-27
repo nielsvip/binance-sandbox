@@ -16147,6 +16147,39 @@ def _v3_at_support_or_resistance(ind: dict, price: float, side: str) -> tuple[bo
     return False, ""
 
 
+async def _v3_emergency_close_via_execute_now(trade_manager, account_key: str, position_key: str,
+                                                qty: float, mark_price: float, close_reason: str) -> bool:
+    """Bypass execute_trade_wrapper and fire CLOSE straight to execute_now for V3 emergency exits.
+
+    User directive 2026-04-27: protective_exit log line was firing 50+ times for MOVRUSDT_LONG
+    with ZERO actual close orders reaching ez_manage_inf.log — execute_trade_wrapper was silently
+    swallowing the close (likely STRICT_NO_LOSS / FINAL_NOLOSS_GATE blocks NOT honoring the V3
+    bypass clause, OR the maker pending state never clearing). For life-or-death V3 closes,
+    go straight to execute_now. Reason string keeps the SCALP_V3_OPEN_PROTECTIVE_EXIT_ prefix
+    so any downstream V3 bypass guards still trigger.
+    """
+    try:
+        _, sym, position_side = parse_position_key(position_key)
+        side = 'SELL' if position_side == 'LONG' else 'BUY'
+        unique_id = generate_unique_id(position_key, side, close_reason)
+        result = await trade_manager.execute_now(
+            position_key=position_key, account_key=account_key, symbol=sym,
+            original_positionAmt=qty, side=side, position_side=position_side,
+            quantity=qty, old_price=mark_price, unique_id=unique_id,
+            reason=close_reason, is_full_close=True, action='CLOSE',
+            is_hedge=False, hedge_for=None,
+        )
+        result_s = str(result or '').upper()
+        if 'SUCCESS' in result_s:
+            logger.warning(f"✅ [V3_DIRECT_CLOSE_OK] {position_key}: {close_reason[:80]} → {str(result)[:60]}")
+            return True
+        logger.warning(f"❌ [V3_DIRECT_CLOSE_FAIL] {position_key}: {close_reason[:80]} → {str(result)[:60]}")
+        return False
+    except Exception as _v3dc_e:
+        logger.error(f"[V3_DIRECT_CLOSE_ERR] {position_key}: {type(_v3dc_e).__name__}: {_v3dc_e}")
+        return False
+
+
 async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                                        tracker_manager: "TrackerManager",
                                        data_manager: "FastDataManager",
@@ -16304,11 +16337,8 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
             _v3_max_loss = float(getattr(config, 'SCALP_V3_MAX_LOSS_PCT', -1.5))
             if gain <= _v3_max_loss:
                 close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_MAX_LOSS_gain{gain:+.2f}_cap{_v3_max_loss:.2f}"
-                logger.critical(f"🛑 [SCALP_V3_MAX_LOSS_EXIT] {pk}: gain={gain:+.2f}% <= {_v3_max_loss:.2f}% — closing at loss (bypasses S/R guard)")
-                await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
-                                             account_key, pk, amt, 'CLOSE',
-                                             mark_price, amt, close_reason,
-                                             is_hedge=False, data_manager=data_manager)
+                logger.critical(f"🛑 [SCALP_V3_MAX_LOSS_EXIT] {pk}: gain={gain:+.2f}% <= {_v3_max_loss:.2f}% — closing at loss (bypasses S/R guard, direct execute_now)")
+                await _v3_emergency_close_via_execute_now(trade_manager, account_key, pk, amt, mark_price, close_reason)
                 fires += 1
                 continue
             # 2026-04-26: S/R guard removed from exits. Close on technicals ALWAYS.
@@ -16319,11 +16349,8 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                 logger.info(f"ℹ️ [SCALP_V3_SR_INFO] {pk}: gain={gain:+.2f}% at {sr_reason} — closing anyway on technicals")
             # CLOSE 100% — reason prefix SCALP_V3_OPEN_ keeps all bypass gates active
             close_reason = f"SCALP_V3_OPEN_PROTECTIVE_EXIT_{side}_gain{gain:+.2f}_{'_'.join(triggers)[:80]}"
-            logger.critical(f"🛡️ [SCALP_V3_PROTECTIVE_EXIT] {pk}: gain={gain:+.2f}% reversal [{','.join(triggers[:3])}] — CLOSING 100%")
-            await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
-                                         account_key, pk, amt, 'CLOSE',
-                                         mark_price, amt, close_reason,
-                                         is_hedge=False, data_manager=data_manager)
+            logger.critical(f"🛡️ [SCALP_V3_PROTECTIVE_EXIT] {pk}: gain={gain:+.2f}% reversal [{','.join(triggers[:3])}] — CLOSING 100% (direct execute_now)")
+            await _v3_emergency_close_via_execute_now(trade_manager, account_key, pk, amt, mark_price, close_reason)
             fires += 1
         except Exception as e:
             logger.debug(f"[SCALP_V3_PROTECTIVE_EXIT] {pk}: {e}")
@@ -16372,11 +16399,8 @@ async def _scalp_v3_attempt_be_stops(trade_manager, account_key: str,
             if mark_price <= 0: continue
             # 2026-04-26: S/R guard removed from BE-stop exits. Close on technicals ALWAYS.
             close_reason = f"SCALP_V3_OPEN_BE_STOP_AUG_{side}_gain{gain:+.2f}_max{max_gain:+.2f}_be{be_stop}"
-            logger.critical(f"🛡️ [SCALP_V3_AUG_BE_STOP] {pk}: augmented pos gain={gain:+.2f}% (peak {max_gain:+.2f}%) fell below BE stop {be_stop}% — closing 100%")
-            await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine,
-                                         account_key, pk, amt, 'CLOSE',
-                                         mark_price, amt, close_reason,
-                                         is_hedge=False, data_manager=data_manager)
+            logger.critical(f"🛡️ [SCALP_V3_AUG_BE_STOP] {pk}: augmented pos gain={gain:+.2f}% (peak {max_gain:+.2f}%) fell below BE stop {be_stop}% — closing 100% (direct execute_now)")
+            await _v3_emergency_close_via_execute_now(trade_manager, account_key, pk, amt, mark_price, close_reason)
             fires += 1
         except Exception as e:
             logger.debug(f"[SCALP_V3_AUG_BE_STOP] {pk}: {e}")
