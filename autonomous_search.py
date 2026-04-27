@@ -123,6 +123,20 @@ FORBIDDEN_FLIPS = {
     # It must be searchable — it is the only TP mechanism after PROFIT_TARGET removal.
 }
 
+# 2026-04-27: Stock NPZ files do NOT contain futures-style fields (funding_rate, oi_*,
+# squeeze_*, yz_vol_*, pk_vol_*, gk_vol_*). engine `_safe()` zero-fills missing arrays,
+# so flipping these gates ON during a tradier sweep produces incoherent winners that
+# rely on dead data. Lock OFF for tradier mode only — crypto NPZ has full data.
+TRADIER_NO_DATA_FLIPS = {
+    "FUNDING_GATE_ENABLED", "FUNDING_GATE_LONG_MAX", "FUNDING_GATE_SHORT_MIN",
+    "OI_CONFIRM_ENABLED", "OI_CONFIRM_MIN_CHANGE_PCT",
+    "VOL_TARGET_ENABLED", "VOL_TARGET_PCT", "VOL_TARGET_FIELD",
+    "VOL_TARGET_LOW_CAP", "VOL_TARGET_HIGH_CAP",
+    "SQUEEZE_ENABLED", "SQUEEZE_ENTRY_ENABLED",
+    "STOCH_CROSS_NPZ_ENTRY_ENABLED", "STOCH_CROSS_NPZ_ENTRY_TF",
+    "STOCH_CROSS_NPZ_ENTRY_SCORE",
+}
+
 # Per-mode caps for hold-bar parameters — prevents multi-session overnight holds that inflate
 # Sharpe by forcing losers to recover before exit (gap risk not modeled in backtest).
 # 2026-04-24: 100% of Sharpe>3.0 tradier winners used MIN_HOLD_BARS >= 2×baseline (124 bars =
@@ -202,10 +216,12 @@ def _sample_cfg(base_cfg, bool_flip_prob=0.15, numeric_perturb_prob=0.10):
     To LOCK a dimension OFF for safety, add it to FORBIDDEN_FLIPS above.
     """
     ovr = {}
+    _mode = getattr(base_cfg, "MODE", "crypto")
     for fld in fields(base_cfg):
         nm = fld.name
         if nm in ("MODE", "LTF", "_loaded_from"): continue
         if nm in FORBIDDEN_FLIPS: continue
+        if _mode == "tradier" and nm in TRADIER_NO_DATA_FLIPS: continue
         val = getattr(base_cfg, nm)
         if isinstance(val, bool):
             if random.random() < bool_flip_prob:

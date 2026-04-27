@@ -187,6 +187,8 @@ def compute_tf_indicators_stock(df, tf):
     ant_shift = min(22, len(dc_h) - 1)
     out[f"dc_high_{tf}_ant"] = np.roll(dc_h, ant_shift); out[f"dc_high_{tf}_ant"][:ant_shift] = dc_h[0]
     out[f"dc_low_{tf}_ant"] = np.roll(dc_l, ant_shift); out[f"dc_low_{tf}_ant"][:ant_shift] = dc_l[0]
+    # 2026-04-27 — added dc_basis_{tf}_ant. HTF entry engine reads dc_basis_D_ant; was silently fallback-zeroed.
+    out[f"dc_basis_{tf}_ant"] = np.roll(dc_b, ant_shift); out[f"dc_basis_{tf}_ant"][:ant_shift] = dc_b[0]
     dc_b_co, dc_b_cu = compute_crossovers(close.values, dc_b)
     out[f"dc_basis_crossover_{tf}"] = dc_b_co
     out[f"dc_basis_crossunder_{tf}"] = dc_b_cu

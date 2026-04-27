@@ -300,9 +300,10 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     out[f"dc_high_{tf}_prev"] = dc_high.shift(1).fillna(dc_high.iloc[0]).values.astype(np.float32)
     out[f"dc_low_{tf}_prev"] = dc_low.shift(1).fillna(dc_low.iloc[0]).values.astype(np.float32)
     out[f"dc_basis_{tf}_prev"] = dc_basis.shift(1).fillna(dc_basis.iloc[0]).values.astype(np.float32)
-    # DC ancient (30 bars back)
+    # DC ancient (30 bars back) — 2026-04-27: added dc_basis_{tf}_ant emission. HTF entry engine reads dc_basis_D_ant; was silently fallback-zeroed.
     out[f"dc_high_{tf}_ant"] = dc_high.shift(30).fillna(dc_high.iloc[0]).values.astype(np.float32)
     out[f"dc_low_{tf}_ant"] = dc_low.shift(30).fillna(dc_low.iloc[0]).values.astype(np.float32)
+    out[f"dc_basis_{tf}_ant"] = dc_basis.shift(30).fillna(dc_basis.iloc[0]).values.astype(np.float32)
     # DC width + position
     dc_range = dc_high - dc_low
     out[f"dc_width_{tf}"] = (dc_range / dc_basis.replace(0, 1e-10) * 100).values.astype(np.float32)

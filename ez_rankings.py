@@ -4380,12 +4380,23 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                 merged[sym_candidate] = {"returns_15m": val_15, "returns_3m": val_3}
         return merged
         
-    top_100_set = set(top_100_long_term)
-    final_merged_top = merge_filter(returns_15m, returns_3m, top_100_set, lambda x: x > 1.0, lambda x: x > 0.9)
-    final_merged_bottom = merge_filter(returns_15m, returns_3m, top_100_set, lambda x: x < -0.9, lambda x: x < -0.75)
-    
-    to_save_top15_15m[:] = [{"symbol": k, **v} for k, v in final_merged_top.items()]
-    to_save_bottom15_15m[:] = [{"symbol": k, **v} for k, v in final_merged_bottom.items()]
+    # 2026-04-27 USER BUG FIX: top_15_15m must find ACTUAL 15m gainers, NOT "LT-top-100 with a 15m bump".
+    # Old code filtered `top_100_long_term` (LT winners by final_score_norm) by 15m return, so a symbol
+    # like WIFUSDC with -85 LT score but +screaming 15m bull (wt_cross=BULL/IMPULSE_UP/wt_percentile_15m=93.5)
+    # was excluded — never appeared in symbols_inf_long. Now: iterate ALL symbols with valid returns.
+    _all_15m_syms = set(returns_15m.keys()) | set(returns_3m.keys())
+    final_merged_top = merge_filter(returns_15m, returns_3m, _all_15m_syms, lambda x: x > 1.0, lambda x: x > 0.9)
+    final_merged_bottom = merge_filter(returns_15m, returns_3m, _all_15m_syms, lambda x: x < -0.9, lambda x: x < -0.75)
+    # Sort by 15m return then take top/bottom 30 so the file size stays bounded.
+    _sort_top = sorted(final_merged_top.items(), key=lambda x: -(x[1].get("returns_15m") or x[1].get("returns_3m") or 0))[:30]
+    _sort_bot = sorted(final_merged_bottom.items(), key=lambda x: (x[1].get("returns_15m") or x[1].get("returns_3m") or 0))[:30]
+
+    to_save_top15_15m[:] = [{"symbol": k, **v} for k, v in _sort_top]
+    to_save_bottom15_15m[:] = [{"symbol": k, **v} for k, v in _sort_bot]
+    try:
+        _wif_in = next(((i+1, v) for i,(k,v) in enumerate(_sort_top) if k=='WIFUSDC'), None)
+        logger.info(f"🎯 [TOP15_15M_FIX] universe={len(_all_15m_syms)} top={len(_sort_top)} bot={len(_sort_bot)} top5={[k for k,_ in _sort_top[:5]]} bot5={[k for k,_ in _sort_bot[:5]]}")
+    except Exception: pass
 
     # ------------------------------------------------------------------
     # Build symbol lists with ranking_points.json enhancement
