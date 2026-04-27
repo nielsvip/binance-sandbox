@@ -71,7 +71,7 @@ def collect_remote_csvs(host, remote_root, local_dest):
            "--include=*/", "--include=autonomous_*.csv", "--exclude=*",
            f"{host}:{remote_root}/", str(local_dest) + "/"]
     try:
-        subprocess.run(cmd, check=True, timeout=180, capture_output=True)
+        subprocess.run(cmd, check=True, timeout=600, capture_output=True)
         return True
     except subprocess.CalledProcessError as e:
         log(f"rsync {host} failed: {e.stderr.decode()[:200] if e.stderr else e}", file=sys.stderr)
