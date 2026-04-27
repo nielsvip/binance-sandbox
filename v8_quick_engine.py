@@ -811,6 +811,12 @@ class QuickConfig:
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
     BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True
     BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3
+    # HTF alignment for BREAKOUT (added 2026-04-27 — prevents buying into downtrends)
+    BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
+    BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
+    # Same-bar REVERSE-ON-EXIT
+    BTC_REVERSE_ON_EXIT_ENABLED: bool = True
+    BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2745,6 +2751,15 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             if i - last_exit_bar < cd_bars:
                 continue
 
+            # HTF alignment: count 1h/4h/D where wt1>wt2 (bull) or <wt2 (bear).
+            # Used by BREAKOUT to avoid buying small uptick rallies during a clear downtrend.
+            htf_long_n  = ((1 if wt1['1h'][i] > wt2['1h'][i] else 0)
+                           + (1 if wt1['4h'][i] > wt2['4h'][i] else 0)
+                           + (1 if wt1['D'][i]  > wt2['D'][i]  else 0))
+            htf_short_n = ((1 if wt1['1h'][i] < wt2['1h'][i] else 0)
+                           + (1 if wt1['4h'][i] < wt2['4h'][i] else 0)
+                           + (1 if wt1['D'][i]  < wt2['D'][i]  else 0))
+
             # 1. BREAKOUT entry detection (NEW — runs FIRST so trends are caught before bounce logic)
             #    Tighter exits + smaller stop in exchange for catching big moves.
             bk_side, _ = _btc.detect_btc_breakout(
@@ -2752,6 +2767,8 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 prev_dc_high_3m=float(dc_high_3m_prev[i]),
                 prev_dc_low_3m=float(dc_low_3m_prev[i]),
                 accel=accel, divergence=div, cfg=cfg,
+                htf_long_aligned_tfs=htf_long_n,
+                htf_short_aligned_tfs=htf_short_n,
             ) if btc_breakout_enabled else ("NONE", "")
             if bk_side == "LONG":
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
@@ -2864,6 +2881,7 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
         if ok_exit:
             sym_pnl.append(pnl_pct)
+            exited_side = position
             last_exit_side = position
             last_exit_bar = i
             last_exit_price = price_i
@@ -2872,6 +2890,35 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             entry_price = 0.0
             entry_bar = 0
             entry_type = "BOUNCE"
+
+            # ── REVERSE-ON-EXIT (2026-04-27) ──────────────────────────
+            # If we just closed and the OPPOSITE side has a fresh breakout this bar,
+            # immediately enter the opposite side. Catches the "fail-and-flip" pattern
+            # the chart audit revealed (LONG hits stop on DC4 breach → SHORT setup
+            # already firing, was being missed during cooldown).
+            if bool(getattr(cfg, 'BTC_REVERSE_ON_EXIT_ENABLED', True)):
+                rev_htf_long_n = htf_long_n if 'htf_long_n' in dir() else 0
+                rev_htf_short_n = htf_short_n if 'htf_short_n' in dir() else 0
+                # Recompute HTF counts for safety (pos branch may not have set them)
+                rev_htf_long_n  = ((1 if wt1['1h'][i] > wt2['1h'][i] else 0)
+                                   + (1 if wt1['4h'][i] > wt2['4h'][i] else 0)
+                                   + (1 if wt1['D'][i]  > wt2['D'][i]  else 0))
+                rev_htf_short_n = ((1 if wt1['1h'][i] < wt2['1h'][i] else 0)
+                                   + (1 if wt1['4h'][i] < wt2['4h'][i] else 0)
+                                   + (1 if wt1['D'][i]  < wt2['D'][i]  else 0))
+                rev_side, _rev_why = _btc.detect_btc_breakout(
+                    current_price=price_i,
+                    prev_dc_high_3m=float(dc_high_3m_prev[i]),
+                    prev_dc_low_3m=float(dc_low_3m_prev[i]),
+                    accel=accel, divergence=div, cfg=cfg,
+                    htf_long_aligned_tfs=rev_htf_long_n,
+                    htf_short_aligned_tfs=rev_htf_short_n,
+                )
+                # Only flip — never re-enter same side via reverse path.
+                if rev_side == "SHORT" and exited_side == "LONG":
+                    position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                elif rev_side == "LONG" and exited_side == "SHORT":
+                    position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
 
     # Mark-to-market open position at end of sim (CLAUDE.md Sharpe rule #2)
     if position != "FLAT":

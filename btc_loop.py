@@ -505,12 +505,18 @@ def detect_btc_breakout(
     accel: Dict[str, Any],
     divergence: DivergenceState,
     cfg: Any,
+    htf_long_aligned_tfs: int = 0,           # NEW: count of HTFs (1h/4h/D) where wt1>wt2 (bullish)
+    htf_short_aligned_tfs: int = 0,          # NEW: mirror for bearish
 ) -> Tuple[str, str]:
     """Detect a DC-channel breakout on 3m base TF.
 
     LONG_BREAKOUT: close > prev_dc_high_3m AND accel.bull aligned ≥ MIN_TFS
-                   AND no opposing div block (if BTC_BREAKOUT_BLOCK_OPPOSING_DIV).
+                   AND no opposing div block AND HTF aligned bullish (≥ HTF_MIN_ALIGNED).
     SHORT_BREAKDOWN: mirror.
+
+    The HTF filter prevents buying breakouts INTO a downtrend (the small consolidation
+    rallies through dc_high_3m during a bear leg) — without it, system bleeds on
+    every fakeout. Default requires 2-of-3 HTFs aligned.
 
     Returns (side, reason). Side ∈ {"LONG", "SHORT", "NONE"}.
     """
@@ -519,8 +525,10 @@ def detect_btc_breakout(
     if not getattr(cfg, "BTC_BREAKOUT_ENTRY_ENABLED", True):
         return "NONE", "BREAKOUT_DISABLED"
 
-    min_tfs = int(getattr(cfg, "BTC_BREAKOUT_ACCEL_MIN_TFS", 2))   # looser than bounce default
+    min_tfs = int(getattr(cfg, "BTC_BREAKOUT_ACCEL_MIN_TFS", 2))
     block_div = bool(getattr(cfg, "BTC_BREAKOUT_BLOCK_OPPOSING_DIV", True))
+    require_htf = bool(getattr(cfg, "BTC_BREAKOUT_REQUIRE_HTF_ALIGNED", True))
+    htf_min = int(getattr(cfg, "BTC_BREAKOUT_HTF_MIN_ALIGNED", 2))
 
     # LONG breakout
     if (
@@ -528,6 +536,8 @@ def detect_btc_breakout(
         and accel["bull_aligned_tfs"] >= min_tfs
         and accel["side"] == "bull"
     ):
+        if require_htf and htf_long_aligned_tfs < htf_min:
+            return "NONE", f"BREAKOUT_LONG_HTF_AGAINST_{htf_long_aligned_tfs}_OF_{htf_min}"
         if block_div and divergence.bear_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BEAR_MIN_INDS", 2):
             return "NONE", "BREAKOUT_LONG_BLOCKED_BEAR_DIV"
         return "LONG", "BREAKOUT_LONG"
@@ -539,6 +549,8 @@ def detect_btc_breakout(
         and accel["bear_aligned_tfs"] >= min_tfs
         and accel["side"] == "bear"
     ):
+        if require_htf and htf_short_aligned_tfs < htf_min:
+            return "NONE", f"BREAKOUT_SHORT_HTF_AGAINST_{htf_short_aligned_tfs}_OF_{htf_min}"
         if block_div and divergence.bull_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BULL_MIN_INDS", 2):
             return "NONE", "BREAKOUT_SHORT_BLOCKED_BULL_DIV"
         return "SHORT", "BREAKOUT_SHORT"

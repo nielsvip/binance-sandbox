@@ -2704,6 +2704,12 @@ class Config:
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True                       # reentry needs accel still aligned
     BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True                       # reentry past exit price even without RZ
     BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3                          # min %% past exit price to trigger
+    # HTF alignment for BREAKOUT — prevents buying breakouts INTO a downtrend
+    BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True                         # 2026-04-27: required after chart showed BK_L firing during clear bear leg
+    BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2                                 # min HTFs (of 3 = 1h/4h/D) wt1>wt2 same direction
+    # Same-bar REVERSE-ON-EXIT — when exiting on bear/bull signal and opposite breakout fires, flip immediately
+    BTC_REVERSE_ON_EXIT_ENABLED: bool = True                              # 2026-04-27: was missing reverse opportunities per chart audit
+    BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
 
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
