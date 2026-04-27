@@ -817,6 +817,14 @@ class QuickConfig:
     # RZ as boost (2026-04-27 redesign: RZ softens accel requirement, no longer gates)
     BTC_RZ_AS_BOOST_ENABLED: bool = True
     BTC_RZ_SOFTEN_ACCEL_BY: int = 1
+    # Divergence redesign (2026-04-27 user: D = clockwork, 1h/4h testable, 3m/15m noise)
+    BTC_DIVERGENCE_MIN_TF: str = "4h"
+    BTC_DIVERGENCE_LB_3M: int = 5
+    BTC_DIVERGENCE_LB_15M: int = 10
+    BTC_DIVERGENCE_LB_1H: int = 20
+    BTC_DIVERGENCE_LB_4H: int = 20
+    BTC_DIVERGENCE_LB_D: int = 10
+    BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS: int = 2
     # Same-bar REVERSE-ON-EXIT
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
@@ -2679,6 +2687,12 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     last_exit_bar = -10**9
     last_exit_price = 0.0
     last_exit_type = "NONE"      # to know which cooldown to apply for reentry
+    # D-confirmation state (2026-04-27): persistent bars of D divergence presence,
+    # required ≥ BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS before allowing div-triggered exit.
+    bull_d_persist = 0
+    bear_d_persist = 0
+    div_min_tf = str(getattr(cfg, "BTC_DIVERGENCE_MIN_TF", "4h"))
+    div_d_confirm_bars = int(getattr(cfg, "BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS", 2))
 
     # Min lookback to start sim — need fib_lb_D_in_ltf bars
     start_i = max(fib_lb_D_in_ltf, div_lb + 1, 100)
@@ -2702,20 +2716,53 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             require_positive=bool(getattr(cfg, 'BTC_ACCEL_RAMP_REQUIRE_POSITIVE', True)),
         )
 
-        # Multi-indicator divergence on RSI/MFI/WT (skip OBV/CVD — not in NPZ yet)
-        # Build (price_window, indicator_window) per indicator per TF
-        if i >= div_lb:
-            slc = slice(i - div_lb, i + 1)
-            mtf = {
-                'WT': {tf: (close[slc].tolist(), wt1[tf][slc].tolist()) for tf in tfs},
-                'RSI': {tf: (close[slc].tolist(), rsi[tf][slc].tolist()) for tf in tfs},
-                'MFI': {tf: (close[slc].tolist(), mfi[tf][slc].tolist()) for tf in tfs},
-            }
+        # Multi-indicator divergence on RSI/MFI/WT (skip OBV/CVD — not in NPZ yet).
+        # Per-TF lookback (HTF needs longer window). Min_tf filter skips noisy LTF divergence.
+        lb_by_tf = {
+            "3m":  int(getattr(cfg, "BTC_DIVERGENCE_LB_3M", 5)),
+            "15m": int(getattr(cfg, "BTC_DIVERGENCE_LB_15M", 10)),
+            "1h":  int(getattr(cfg, "BTC_DIVERGENCE_LB_1H", 20)),
+            "4h":  int(getattr(cfg, "BTC_DIVERGENCE_LB_4H", 20)),
+            "D":   int(getattr(cfg, "BTC_DIVERGENCE_LB_D", 10)),
+        }
+        max_lb = max(lb_by_tf.values())
+        if i >= max_lb:
+            mtf = {}
+            for ind_name, ind_arr in (("WT", wt1), ("RSI", rsi), ("MFI", mfi)):
+                tf_map = {}
+                for tf in tfs:
+                    tf_lb = lb_by_tf[tf]
+                    slc = slice(i - tf_lb, i + 1)
+                    tf_map[tf] = (close[slc].tolist(), ind_arr[tf][slc].tolist())
+                mtf[ind_name] = tf_map
             div = _btc.aggregate_multi_indicator_divergence(
-                mtf, lookback_bars=div_lb, strong_tfs_threshold=3,
+                mtf,
+                lookback_bars=div_lb,
+                lookback_by_tf=lb_by_tf,
+                min_tf=div_min_tf,
+                strong_tfs_threshold=3,
             )
         else:
             div = _btc.DivergenceState()
+
+        # D-confirmation: track persistent bars of D-side divergence presence.
+        # Per user 2026-04-27: D divergence works clockwork but TAKES TIME to materialize —
+        # don't stop out until N consecutive bars confirm.
+        if getattr(div, 'bull_d_present', False):
+            bull_d_persist += 1
+        else:
+            bull_d_persist = 0
+        if getattr(div, 'bear_d_present', False):
+            bear_d_persist += 1
+        else:
+            bear_d_persist = 0
+        # If user has set MIN_TF=D, only let div fire after persistence threshold met.
+        # If MIN_TF<D, persistence is informational only (lower-TF div fires immediately).
+        if div_min_tf == "D":
+            if bull_d_persist < div_d_confirm_bars:
+                div.bull_inds_aligned = 0
+            if bear_d_persist < div_d_confirm_bars:
+                div.bear_inds_aligned = 0
 
         # Red zone: fib levels per TF + round levels + wt_dc zone proxy
         fib_per_tf = {}

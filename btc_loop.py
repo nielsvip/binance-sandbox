@@ -193,44 +193,54 @@ def detect_divergence_at(
     price: list,
     indicator: list,
     *,
-    lookback_bars: int = 5,
+    lookback_bars: int = 20,
     require_strict: bool = True,
 ) -> Tuple[bool, bool]:
-    """Detect bull/bear divergence at the latest bar of `price` vs `indicator`.
+    """Detect bull/bear divergence at the latest bar — PIVOT-BASED (rewritten 2026-04-27).
 
-    Algorithm:
-      Bull div: price made a LOWER LOW than `lookback_bars` ago,
-                AND indicator made a HIGHER LOW.
-      Bear div: price made a HIGHER HIGH than `lookback_bars` ago,
-                AND indicator made a LOWER HIGH.
+    Old endpoint-comparison method (5-bar strict) was essentially noise — A/B sweep
+    showed near-identical results across all MIN_TFs because random walks frequently
+    produce 2-point "divergences" that mean nothing.
 
-    Inputs are ordered oldest→newest; the last element is "now". Min lookback 2.
-    Strict mode requires the latest two extrema to be the comparison bars.
-    Lenient mode also accepts within-window comparisons.
+    New algorithm:
+      1. Find the WINDOW MINIMUM of price in last lookback_bars (call it the recent low)
+      2. Find the indicator's value AT that low's index
+      3. Bull div: price[now] < window_min  AND  indicator[now] > indicator[at_low]
+         (price made a NEW low; indicator failed to confirm — bullish reversal pattern)
+      4. Mirror for bear div with window maximum
+      5. require_strict adds: now must be within `min_now_distance` (=3) of the latest low
+
+    Inputs ordered oldest→newest. Last element = now.
 
     Returns (bull_div, bear_div).
     """
     n = len(price)
-    if n < 2 or n != len(indicator) or lookback_bars < 2:
+    # Need at least lookback_bars elements; the slice [-lookback_bars:-1] gives lookback_bars-1 windows.
+    if n < max(3, lookback_bars) or n != len(indicator):
         return False, False
-    lb = min(lookback_bars, n - 1)
+    win_p = price[-lookback_bars:-1] if n > lookback_bars else price[:-1]
+    win_i = indicator[-lookback_bars:-1] if n > lookback_bars else indicator[:-1]
+    if not win_p or not win_i:
+        return False, False
     p_now = price[-1]
-    p_then = price[-1 - lb]
     i_now = indicator[-1]
-    i_then = indicator[-1 - lb]
-    bull = False
-    bear = False
+    # Bull side
+    p_min = min(win_p)
+    idx_min = win_p.index(p_min)
+    i_at_min = win_i[idx_min]
+    # Bear side
+    p_max = max(win_p)
+    idx_max = win_p.index(p_max)
+    i_at_max = win_i[idx_max]
+    bull = (p_now < p_min) and (i_now > i_at_min)
+    bear = (p_now > p_max) and (i_now < i_at_max)
     if require_strict:
-        # Strict: simply compare endpoints
-        bull = (p_now < p_then) and (i_now > i_then)
-        bear = (p_now > p_then) and (i_now < i_then)
-    else:
-        # Lenient: window minima/maxima vs current
-        win_p = price[-lb:]
-        win_i = indicator[-lb:]
-        # bull div = current is a window low for price + window high for indicator
-        bull = (p_now == min(win_p)) and (i_now > min(win_i))
-        bear = (p_now == max(win_p)) and (i_now < max(win_i))
+        # Strict: also require the recent low/high to be within the latter half of window
+        # (otherwise comparison spans an unrelated regime). Looking back N, the pivot
+        # should be in the most-recent N/2.
+        half = max(1, lookback_bars // 2)
+        bull = bull and (idx_min >= len(win_p) - half)
+        bear = bear and (idx_max >= len(win_p) - half)
     return bool(bull), bool(bear)
 
 

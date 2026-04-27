@@ -5072,6 +5072,22 @@ class HedgeEngine:
                             # Hedge LONG → close when wt1_3m < wt2_3m AND wt1_1h < wt2_1h.
                             # Hedge SHORT → close when wt1_3m > wt2_3m AND wt1_1h > wt2_1h.
                             _abs_h_is_long = hedge_key.endswith('_LONG')
+                            # 2026-04-27 USER ABSOLUTE: refuse close on stale data
+                            from dateutil.parser import isoparse as _abs_isoparse
+                            _abs_max_age = float(getattr(self.config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
+                            _abs_now = time.time()
+                            def _abs_age_of(_field):
+                                _raw = getattr(hedge_pos, _field, None)
+                                if _raw is None: return 9999.0
+                                try:
+                                    _dt = _abs_isoparse(_raw) if isinstance(_raw, str) else _raw
+                                    if hasattr(_dt, 'timestamp'): return _abs_now - _dt.timestamp()
+                                except Exception: pass
+                                return 9999.0
+                            _abs_pos_age = _abs_age_of('last_updated'); _abs_mp_age = _abs_age_of('mark_price_last_updated')
+                            if max(_abs_pos_age, _abs_mp_age) > _abs_max_age:
+                                logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK_ABS] {hedge_key}: pos_age={_abs_pos_age:.1f}s mp_age={_abs_mp_age:.1f}s > {_abs_max_age}s — REFUSING close on stale data.")
+                                continue
                             # 2026-04-27 (C98USDT): position.gain field can be stale relative to live price. Recompute real gain at decision time and use min(stale, real) so we never close at a hidden loss.
                             _abs_entry_px = safe_fetch_float(getattr(hedge_pos, 'entry_price', 0), 0)
                             if _abs_entry_px > 0 and h_price > 0:
@@ -6351,6 +6367,25 @@ class HedgeEngine:
                                         # Hedge closes ONLY when wt_3m AND wt_1h both flip against the hedge side.
                                         _kr_h_is_long = hedge_position_key.endswith('_LONG')
                                         _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
+                                        # 2026-04-27 USER ABSOLUTE: refuse close on stale data — set sentinel that skips the close decision below.
+                                        from dateutil.parser import isoparse as _kr_isoparse
+                                        _kr_max_age = float(getattr(self.config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
+                                        _kr_now = time.time()
+                                        def _kr_age_of(_field):
+                                            if isinstance(position, dict):
+                                                _raw = position.get(_field)
+                                            else:
+                                                _raw = getattr(position, _field, None)
+                                            if _raw is None: return 9999.0
+                                            try:
+                                                _dt = _kr_isoparse(_raw) if isinstance(_raw, str) else _raw
+                                                if hasattr(_dt, 'timestamp'): return _kr_now - _dt.timestamp()
+                                            except Exception: pass
+                                            return 9999.0
+                                        _kr_pos_age = _kr_age_of('last_updated'); _kr_mp_age = _kr_age_of('mark_price_last_updated')
+                                        _kr_stale = max(_kr_pos_age, _kr_mp_age) > _kr_max_age
+                                        if _kr_stale:
+                                            logger.critical(f"⏰ [HEDGE_CLOSE_FRESHNESS_BLOCK_KR] {hedge_position_key}: pos_age={_kr_pos_age:.1f}s mp_age={_kr_mp_age:.1f}s > {_kr_max_age}s — REFUSING close on stale data.")
                                         # 2026-04-27 (C98USDT): recompute real gain from current_price + entry_price; use min(stale, real).
                                         _kr_entry_px = safe_fetch_float(getattr(position, 'entry_price', 0) if not isinstance(position, dict) else position.get('entry_price', 0), 0)
                                         if _kr_entry_px > 0 and current_price > 0:
@@ -6361,7 +6396,7 @@ class HedgeEngine:
                                             _kr_eff_gain = min(existing_gain, _kr_real_gain)
                                         else:
                                             _kr_eff_gain = existing_gain
-                                        _kr_decision = _hd.should_close_hedge_wt3m1h(_kr_ind, _kr_h_is_long, _kr_eff_gain, config)
+                                        _kr_decision = _hd.should_close_hedge_wt3m1h(_kr_ind, _kr_h_is_long, _kr_eff_gain, config) if not _kr_stale else None
                                         if _kr_decision is not None:
                                             _kr_wt1_3m = _kr_decision['wt']['wt1_3m']; _kr_wt2_3m = _kr_decision['wt']['wt2_3m']
                                             _kr_wt1_1h = _kr_decision['wt']['wt1_1h']; _kr_wt2_1h = _kr_decision['wt']['wt2_1h']

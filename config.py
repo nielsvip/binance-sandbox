@@ -543,6 +543,10 @@ class Config:
     # Bound 0.65 → blocks egregious mismatches (allows neutral 0.35-0.65 range). Reads `orderbook:{SYM}` from Redis live.
     HEDGE_OPEN_OB_CHECK_ENABLED: bool = True
     HEDGE_OPEN_OB_IMB_BOUND: float = 0.65
+    # 2026-04-27 USER ABSOLUTE: gain/mark_price/positionAmt MUST NEVER be stale when deciding to close a hedge.
+    # Refuse to close if EITHER position.last_updated OR mark_price_last_updated is older than this many seconds.
+    # Fallback chain (per user): ez_positions_realtime → S1/MacBook/gateway rsync → fail closed if all stale.
+    LIVE_POSITION_FRESHNESS_MAX_SEC: float = 3.0
     # === 2026-04-27 FUNDING-RATE GATES (Binance Futures, 8h funding) — DECISIVE FACTOR (USER DIRECTIVE) ===
     # Funding rate >0 means longs pay shorts (overheated long market). <0 means shorts pay longs.
     # Knob names mirror v8_quick_engine.py:699-701 so sweeps test the SAME live knobs.
@@ -2746,6 +2750,14 @@ class Config:
     # entries near RZ levels can fire with fewer accel TFs aligned.
     BTC_RZ_AS_BOOST_ENABLED: bool = True                                  # True = softener mode (default), False = legacy gate
     BTC_RZ_SOFTEN_ACCEL_BY: int = 1                                       # min_tfs reduction when RZ active (0 = no effect, 1 = 1 fewer TF needed, ...)
+    # Divergence redesign (2026-04-27 user: D = clockwork, 1h/4h testable, 3m/15m noise)
+    BTC_DIVERGENCE_MIN_TF: str = "4h"                                     # only count divergence from this TF up
+    BTC_DIVERGENCE_LB_3M: int = 5
+    BTC_DIVERGENCE_LB_15M: int = 10
+    BTC_DIVERGENCE_LB_1H: int = 20
+    BTC_DIVERGENCE_LB_4H: int = 20
+    BTC_DIVERGENCE_LB_D: int = 10
+    BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS: int = 2                        # D-div exits/blocks require N consecutive bars
     # Same-bar REVERSE-ON-EXIT — when exiting on bear/bull signal and opposite breakout fires, flip immediately
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True                              # 2026-04-27: was missing reverse opportunities per chart audit
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
