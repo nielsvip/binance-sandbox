@@ -630,6 +630,74 @@ class MarketDataEngine:
             logger.info(f"💓 Engine Alive | Symbols: {len(self.market.data)} | {status}")
             await asyncio.sleep(30)
 
+    async def funding_rate_loop(self):
+        """═══ 2026-04-27 FUNDING-RATE LIVE REFRESH (USER DIRECTIVE) ═══
+        Polls Binance Futures /fapi/v1/fundingRate every FUNDING_LIVE_REFRESH_HOURS for tracked symbols
+        and stores the latest 8h funding rate into market.data[sym]['funding_rate']. The entry-gate logic
+        in ez_positions_quick.execute_trade_wrapper reads this field via _gate_ind.get('funding_rate').
+        Falls back to disk cache (data/funding_cache/{sym}.json populated by binance_funding_fetcher.py).
+        """
+        try:
+            import requests as _frq
+        except ImportError:
+            logger.warning("[FUNDING_LOOP] requests not available — funding rates disabled")
+            return
+        cache_dir = BASE_PATH / "data" / "funding_cache"
+        endpoint = "https://fapi.binance.com/fapi/v1/fundingRate"
+        # Initial wait — let market_data finish bootstrap so self.market.data is populated.
+        await asyncio.sleep(30)
+        while self.running:
+            try:
+                refresh_hrs = float(getattr(__import__('config'), 'FUNDING_LIVE_REFRESH_HOURS', 1.0))
+                symbols = list(self.market.data.keys())
+                n_updated = 0
+                n_cache = 0
+                for sym in symbols:
+                    fr_val = 0.0
+                    fr_ts = 0
+                    # 1) Try fresh API fetch (limit=1, latest rate)
+                    try:
+                        r = await asyncio.to_thread(_frq.get, endpoint, params={"symbol": sym, "limit": 1}, timeout=10)
+                        if r.status_code == 200:
+                            batch = r.json()
+                            if isinstance(batch, list) and batch:
+                                rec = batch[-1]
+                                fr_val = float(rec.get("fundingRate", 0.0))
+                                fr_ts = int(rec.get("fundingTime", 0))
+                                n_updated += 1
+                    except Exception:
+                        pass
+                    # 2) Fallback: disk cache from binance_funding_fetcher.py
+                    if fr_val == 0.0 and fr_ts == 0:
+                        cache_path = cache_dir / f"{sym}.json"
+                        if cache_path.exists():
+                            try:
+                                async with aiofiles.open(cache_path, "rb") as f:
+                                    recs = orjson.loads(await f.read())
+                                if recs:
+                                    rec = recs[-1]
+                                    fr_val = float(rec.get("fundingRate", 0.0))
+                                    fr_ts = int(rec.get("fundingTime", 0))
+                                    n_cache += 1
+                            except Exception:
+                                pass
+                    # Store on market store so it's visible to indicator computation
+                    if sym in self.market.data:
+                        try:
+                            self.market.data[sym]["funding_rate"] = fr_val
+                            self.market.data[sym]["funding_rate_ts"] = fr_ts
+                        except Exception:
+                            pass
+                    # API courtesy: 200ms between symbols (Binance limits 2400 weight/min, fundingRate weight 1)
+                    await asyncio.sleep(0.2)
+                logger.info(f"[FUNDING_LOOP] refreshed: {n_updated} from API, {n_cache} from cache, total {len(symbols)} syms. Next in {refresh_hrs}h.")
+                await asyncio.sleep(refresh_hrs * 3600)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[FUNDING_LOOP] crash: {e}", exc_info=True)
+                await asyncio.sleep(300)
+
     async def klines_cache_writeback(self):
         """Periodically merge composed 1m/3m candles back to klines_cache so ez_indicators stays fresh."""
         cache_dir = BASE_PATH / "klines_cache"
@@ -707,7 +775,8 @@ class MarketDataEngine:
                 self.broadcast_loop(),
                 self.heartbeat(),
                 self.shared_mem_watchdog(),
-                self.klines_cache_writeback()
+                self.klines_cache_writeback(),
+                self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
             )
         except KeyboardInterrupt:
             self.running = False

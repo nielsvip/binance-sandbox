@@ -4380,23 +4380,40 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
                 merged[sym_candidate] = {"returns_15m": val_15, "returns_3m": val_3}
         return merged
         
-    # 2026-04-27 USER BUG FIX: top_15_15m must find ACTUAL 15m gainers, NOT "LT-top-100 with a 15m bump".
-    # Old code filtered `top_100_long_term` (LT winners by final_score_norm) by 15m return, so a symbol
-    # like WIFUSDC with -85 LT score but +screaming 15m bull (wt_cross=BULL/IMPULSE_UP/wt_percentile_15m=93.5)
-    # was excluded — never appeared in symbols_inf_long. Now: iterate ALL symbols with valid returns.
+    # 2026-04-27 USER BUG FIX (v2): top_15_15m must find ACTUAL recent gainers across ALL symbols.
+    # Two issues fixed:
+    #   (1) Old code pre-filtered by LT-top-100 → strong-15m setups with poor LT score (e.g. WIFUSDC LT=-85, wt_percentile_15m=93.5) were excluded.
+    #   (2) Single-bar 15m return penalizes mid-rally pullback bars — a symbol that rallied +3% over 1h but the latest 15m bar went -0.4% gets sorted to the bottom.
+    # New scoring: gain_score = max(returns_15m, 4*returns_3m) blended with wt_score_15m as a momentum proxy.
+    # This catches both fresh 15m breakouts AND ongoing rallies regardless of latest single-bar noise.
+    _ranking_by_sym = {e["symbol"]: e for e in final_ranking_data_scalars}
     _all_15m_syms = set(returns_15m.keys()) | set(returns_3m.keys())
-    final_merged_top = merge_filter(returns_15m, returns_3m, _all_15m_syms, lambda x: x > 1.0, lambda x: x > 0.9)
-    final_merged_bottom = merge_filter(returns_15m, returns_3m, _all_15m_syms, lambda x: x < -0.9, lambda x: x < -0.75)
-    # Sort by 15m return then take top/bottom 30 so the file size stays bounded.
-    _sort_top = sorted(final_merged_top.items(), key=lambda x: -(x[1].get("returns_15m") or x[1].get("returns_3m") or 0))[:30]
-    _sort_bot = sorted(final_merged_bottom.items(), key=lambda x: (x[1].get("returns_15m") or x[1].get("returns_3m") or 0))[:30]
-
-    to_save_top15_15m[:] = [{"symbol": k, **v} for k, v in _sort_top]
-    to_save_bottom15_15m[:] = [{"symbol": k, **v} for k, v in _sort_bot]
+    def _gain_score(sym):
+        v15 = returns_15m.get(sym)
+        v3 = returns_3m.get(sym)
+        v15_f = float(v15) if v15 is not None and pd.notna(v15) else 0.0
+        v3_f = float(v3) if v3 is not None and pd.notna(v3) else 0.0
+        # 4× 3m return ≈ 1h estimate (4 bars). Take MAX of the two — captures whichever timeframe shows momentum.
+        ret_max = max(v15_f, v3_f * 4.0)
+        # wt_score_15m component: positive = bullish momentum, negative = bearish. Scale ~0.1 to balance with %-returns.
+        wt_score = 0.0
+        e = _ranking_by_sym.get(sym, {})
+        try:
+            wt_score = float(e.get("indicators_data", {}).get("wt_score_15m", 0)) * 0.1
+        except Exception: pass
+        return ret_max + wt_score
+    _scored = [(s, _gain_score(s), returns_15m.get(s), returns_3m.get(s)) for s in _all_15m_syms]
+    _scored.sort(key=lambda x: -x[1])
+    _sort_top = _scored[:30]
+    _sort_bot = sorted(_scored, key=lambda x: x[1])[:30]
+    to_save_top15_15m[:] = [{"symbol": s, "returns_15m": r15, "returns_3m": r3, "gain_score": round(sc, 3)} for s, sc, r15, r3 in _sort_top]
+    to_save_bottom15_15m[:] = [{"symbol": s, "returns_15m": r15, "returns_3m": r3, "gain_score": round(sc, 3)} for s, sc, r15, r3 in _sort_bot]
     try:
-        _wif_in = next(((i+1, v) for i,(k,v) in enumerate(_sort_top) if k=='WIFUSDC'), None)
-        logger.info(f"🎯 [TOP15_15M_FIX] universe={len(_all_15m_syms)} top={len(_sort_top)} bot={len(_sort_bot)} top5={[k for k,_ in _sort_top[:5]]} bot5={[k for k,_ in _sort_bot[:5]]}")
-    except Exception: pass
+        _wif_t = next((i+1 for i,(s,_,_,_) in enumerate(_sort_top) if s=='WIFUSDC'), None)
+        _wif_b = next((i+1 for i,(s,_,_,_) in enumerate(_sort_bot) if s=='WIFUSDC'), None)
+        logger.info(f"🎯 [TOP15_15M_FIX] universe={len(_all_15m_syms)} top5={[(s,round(sc,3)) for s,sc,_,_ in _sort_top[:5]]} bot5={[(s,round(sc,3)) for s,sc,_,_ in _sort_bot[:5]]} WIFUSDC_top={_wif_t} WIFUSDC_bot={_wif_b}")
+    except Exception as _e:
+        logger.warning(f"[TOP15_15M_FIX] log error: {_e}")
 
     # ------------------------------------------------------------------
     # Build symbol lists with ranking_points.json enhancement

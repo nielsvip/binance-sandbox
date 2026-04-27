@@ -502,6 +502,20 @@ class Config:
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
+    # === 2026-04-27 FUNDING-RATE GATES (Binance Futures, 8h funding) — DECISIVE FACTOR (USER DIRECTIVE) ===
+    # Funding rate >0 means longs pay shorts (overheated long market). <0 means shorts pay longs.
+    # Knob names mirror v8_quick_engine.py:699-701 so sweeps test the SAME live knobs.
+    # Cache: binance_funding_fetcher.py → data/funding_cache/{sym}.json (8h API).
+    # Live wire: ez_market_data.funding_rate_loop refreshes hourly into data_manager._cold_data[sym]['funding_rate'].
+    # Backtest wire: NPZ field `funding_rate_{ltf}` (forward-filled) — already integrated in backtest_v8_precompute._inject_funding_oi.
+    # Live entry gate: ez_positions_quick.execute_trade_wrapper reads `funding_rate*` from indicator dict.
+    FUNDING_GATE_ENABLED: bool = True               # 2026-04-27 default ON in live per user directive (was OFF in pre-existing sweep knob)
+    FUNDING_GATE_LONG_MAX: float = 0.0005           # reject NEW LONG when funding_rate >= 0.05%
+    FUNDING_GATE_SHORT_MIN: float = -0.0005         # reject NEW SHORT when funding_rate <= -0.05%
+    FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
+    OI_CONFIRM_ENABLED: bool = False                # OFF until sweep validates — require OI delta to confirm trend on entry
+    OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this for direction agreement
+    FUNDING_LIVE_REFRESH_HOURS: float = 1.0         # how often ez_market_data refreshes funding rates from Binance API in live
     # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.

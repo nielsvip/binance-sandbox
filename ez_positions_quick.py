@@ -11311,6 +11311,35 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                         return False, f"HTF_DIRECTION_GATE_{_htf_met}/{_htf_total}"
                     else:
                         logger.info(f"✅ [HTF_DIRECTION_GATE] {position_key}: {_htf_reason}")
+                # ═══ 2026-04-27 FUNDING-RATE GATE — DECISIVE FACTOR (user directive) ═══
+                # Funding rate >0 = longs pay shorts (overheated long market). >0.05% = stretched → reject NEW LONG.
+                # Funding rate <0 = shorts pay longs. <-0.05% = stretched → reject NEW SHORT.
+                # Reads `funding_rate` from indicator dict (live: refreshed by ez_market_data.funding_rate_loop;
+                # backtest_v8_engine: forward-filled from NPZ field `funding_rate_3m`/`funding_rate_5m`).
+                # is_hedge entries also gated when FUNDING_HEDGE_GATE_ENABLED.
+                if bool(getattr(config, 'FUNDING_GATE_ENABLED', True)):
+                    _fund_apply = (not is_hedge) or bool(getattr(config, 'FUNDING_HEDGE_GATE_ENABLED', True))
+                    if _fund_apply:
+                        # Knob names match v8_quick_engine.py:699-701 so sweep + live share knobs.
+                        _fr_long_th = float(getattr(config, 'FUNDING_GATE_LONG_MAX', 0.0005))
+                        _fr_short_th = float(getattr(config, 'FUNDING_GATE_SHORT_MIN', -0.0005))
+                        # try multiple field names: live runtime ('funding_rate'), NPZ-injected ('funding_rate_3m'/'_5m')
+                        _fr_val = None
+                        for _fr_key in ('funding_rate', 'funding_rate_3m', 'funding_rate_5m', 'funding_rate_15m'):
+                            _v = _gate_ind.get(_fr_key)
+                            if _v is not None:
+                                try:
+                                    _fr_val = float(_v)
+                                    if _fr_val != 0.0: break  # take first non-zero
+                                except Exception: pass
+                        if _fr_val is not None and _fr_val != 0.0:
+                            if _gate_is_long and _fr_val >= _fr_long_th:
+                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED LONG entry — funding_rate={_fr_val*100:.4f}% >= {_fr_long_th*100:.4f}% (longs paying shorts, overheated). action={action}")
+                                return False, f"FUNDING_GATE_LONG_REJECT_fr={_fr_val*100:.4f}%"
+                            if (not _gate_is_long) and _fr_val <= _fr_short_th:
+                                logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED SHORT entry — funding_rate={_fr_val*100:.4f}% <= {_fr_short_th*100:.4f}% (shorts paying longs, overheated). action={action}")
+                                return False, f"FUNDING_GATE_SHORT_REJECT_fr={_fr_val*100:.4f}%"
+                            logger.debug(f"[FUNDING_GATE_OK] {position_key}: funding={_fr_val*100:.4f}% within bounds [{_fr_short_th*100:.4f}%, {_fr_long_th*100:.4f}%]")
     if _is_aug_action and not is_hedge:
         _last_trade_ts = _hard_trade_guard.get(position_key, 0)
         _since = time.time() - _last_trade_ts
