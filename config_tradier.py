@@ -1923,7 +1923,7 @@ class TradierConfig:
     TR_MFI4H_LONG_BOYCOTT_SCORE: int = -25  # BC_155d: Moderate penalty
     TR_MFI4H_LONG_ENABLED: bool = True  # BC_155d: LONG boycott when MFI_4h too low (no buying pressure)
     TR_MFI4H_LONG_MIN: float = 40.0  # BC_155d: Conservative (41 was loser mean)
-    UNIVERSAL_NOLOSS_GATE: bool = True  # 2026-04-27 EMERGENCY RESTORE: 350+ closes/2.5h at 80% loss-rate avg -2.5% sum -860%. User: "no more panic selling losing positions". Loss-closes blocked; hedge engine handles deepening losers via WT-flip technical hedges (HEDGE_STRICT_WT_ALL_TFS_ENABLED=True).
+    UNIVERSAL_NOLOSS_GATE: bool = False  # 2026-04-27 RE-DISABLED: True cost 25% of net worth/week (positions buried, never recovered). Bleed today was from PEAK_GIVEBACK + DELTA_EXIT_TOP firing as profit-take while position negative — those are now individually gated (DELTA_EXIT_OVERRIDE_NOLOSS=False, PEAK_GIVEBACK_HARD_ZERO=False) so technical exits (WT 5/5 flip, DC break) still fire at loss. Targeted, not blanket.
     USE_INDICATOR_SNAPSHOT: bool = True  # DEAD_CONFIRMED (priority 20/100) — no plausible wiring site found 20260416
     V8Q_COOLDOWN_BARS: int = 3  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_D_TREND_REQUIRED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416

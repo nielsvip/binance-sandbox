@@ -11338,6 +11338,25 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                         return False, f"HTF_DIRECTION_GATE_{_htf_met}/{_htf_total}"
                     else:
                         logger.info(f"✅ [HTF_DIRECTION_GATE] {position_key}: {_htf_reason}")
+                # ═══ 2026-04-27 OPEN-INTEREST CONFIRM GATE ═══
+                # LONG entries require oi_change_1h_pct ≥ OI_CONFIRM_MIN_CHANGE_PCT (rising OI confirms uptrend buying).
+                # SHORT entries require oi_change_1h_pct ≤ -OI_CONFIRM_MIN_CHANGE_PCT (falling OI confirms downtrend covering).
+                # Default OFF until sweep validates. Knob names match v8_quick_engine.py:702-703.
+                if bool(getattr(config, 'OI_CONFIRM_ENABLED', False)):
+                    _oi_apply = (not is_hedge) or bool(getattr(config, 'OI_HEDGE_GATE_ENABLED', False))
+                    if _oi_apply:
+                        _oi_min_pct = float(getattr(config, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))
+                        _oi_chg = _gate_ind.get('oi_change_1h_pct')
+                        if _oi_chg is not None:
+                            try: _oi_chg = float(_oi_chg)
+                            except Exception: _oi_chg = None
+                        if _oi_chg is not None and _oi_chg != 0.0:
+                            if _gate_is_long and _oi_chg < _oi_min_pct:
+                                logger.warning(f"🚫 [OI_CONFIRM_GATE] {position_key}: BLOCKED LONG — oi_change_1h={_oi_chg:.2f}% < {_oi_min_pct:.2f}% (no rising OI to confirm). action={action}")
+                                return False, f"OI_CONFIRM_LONG_REJECT_oi={_oi_chg:.2f}%"
+                            if (not _gate_is_long) and _oi_chg > -_oi_min_pct:
+                                logger.warning(f"🚫 [OI_CONFIRM_GATE] {position_key}: BLOCKED SHORT — oi_change_1h={_oi_chg:.2f}% > {-_oi_min_pct:.2f}% (no falling OI to confirm). action={action}")
+                                return False, f"OI_CONFIRM_SHORT_REJECT_oi={_oi_chg:.2f}%"
                 # ═══ 2026-04-27 FUNDING-RATE GATE — DECISIVE FACTOR (user directive) ═══
                 # Funding rate >0 = longs pay shorts (overheated long market). >0.05% = stretched → reject NEW LONG.
                 # Funding rate <0 = shorts pay longs. <-0.05% = stretched → reject NEW SHORT.

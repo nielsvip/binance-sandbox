@@ -606,10 +606,10 @@ class MarketDataEngine:
 
             # 5. Publish Results
             if results:
-                # ═══ 2026-04-27 FUNDING RATE PROPAGATION ═══
-                # Inject funding_rate from market.data into per-symbol payload so it flows through
+                # ═══ 2026-04-27 FUNDING RATE + OI PROPAGATION ═══
+                # Inject funding_rate + OI from market.data into per-symbol payload so they flow through
                 # Redis hot_metrics:{sym} → data_manager.get_hot_state → execute_trade_wrapper._gate_ind.
-                # Without this, funding_rate_loop stored values are invisible to the entry-gate logic.
+                # Without this, funding_rate_loop / open_interest_loop stored values are invisible to gates.
                 for sym, payload in results:
                     try:
                         store = self.market.data.get(sym, {})
@@ -617,6 +617,11 @@ class MarketDataEngine:
                         if _fr is not None:
                             payload['funding_rate'] = _fr
                             payload['funding_rate_ts'] = store.get('funding_rate_ts', 0)
+                        _oichg = store.get('oi_change_1h_pct')
+                        if _oichg is not None:
+                            payload['oi_change_1h_pct'] = _oichg
+                            payload['oi_value'] = store.get('oi_value', 0.0)
+                            payload['oi_ts'] = store.get('oi_ts', 0)
                     except Exception:
                         pass
                 # Update Bridge
@@ -710,6 +715,74 @@ class MarketDataEngine:
                 logger.error(f"[FUNDING_LOOP] crash: {e}", exc_info=True)
                 await asyncio.sleep(300)
 
+    async def open_interest_loop(self):
+        """═══ 2026-04-27 OPEN INTEREST LIVE REFRESH ═══
+        Polls Binance Futures /fapi/v1/openInterestHist every OI_LIVE_REFRESH_HOURS for tracked symbols
+        and stores latest OI + 1h-pct-change into market.data[sym]['oi_value', 'oi_change_1h_pct'].
+        Read by execute_trade_wrapper via _gate_ind.get('oi_change_1h_pct') for OI_CONFIRM_ENABLED gate.
+        Falls back to disk cache (data/oi_cache/{sym}.json populated by binance_oi_fetcher.py).
+        Binance limits OI history to ~30d so cache + API blend keeps freshness.
+        """
+        try:
+            import requests as _oirq
+        except ImportError:
+            logger.warning("[OI_LOOP] requests not available — OI disabled")
+            return
+        cache_dir = BASE_PATH / "data" / "oi_cache"
+        endpoint = "https://fapi.binance.com/fapi/v1/openInterestHist"
+        await asyncio.sleep(45)  # stagger 15s after funding_rate_loop init
+        while self.running:
+            try:
+                refresh_hrs = float(getattr(__import__('config'), 'OI_LIVE_REFRESH_HOURS', 1.0))
+                symbols = list(self.market.data.keys())
+                n_updated = 0; n_cache = 0
+                for sym in symbols:
+                    oi_now = 0.0; oi_value = 0.0; oi_1h_ago = 0.0; oi_ts = 0
+                    # API: latest 12 × 5min OI = 1h window
+                    try:
+                        r = await asyncio.to_thread(_oirq.get, endpoint, params={"symbol": sym, "period": "5m", "limit": 13}, timeout=10)
+                        if r.status_code == 200:
+                            batch = r.json()
+                            if isinstance(batch, list) and len(batch) >= 2:
+                                oi_now = float(batch[-1].get("sumOpenInterest", 0.0))
+                                oi_value = float(batch[-1].get("sumOpenInterestValue", 0.0))
+                                oi_1h_ago = float(batch[0].get("sumOpenInterest", 0.0))
+                                oi_ts = int(batch[-1].get("timestamp", 0))
+                                n_updated += 1
+                    except Exception:
+                        pass
+                    # Fallback to disk cache
+                    if oi_now == 0.0 and oi_ts == 0:
+                        cache_path = cache_dir / f"{sym}.json"
+                        if cache_path.exists():
+                            try:
+                                async with aiofiles.open(cache_path, "rb") as f:
+                                    recs = orjson.loads(await f.read())
+                                if recs and len(recs) >= 13:
+                                    oi_now = float(recs[-1].get("sumOpenInterest", 0.0))
+                                    oi_value = float(recs[-1].get("sumOpenInterestValue", 0.0))
+                                    oi_1h_ago = float(recs[-13].get("sumOpenInterest", 0.0))
+                                    oi_ts = int(recs[-1].get("timestamp", 0))
+                                    n_cache += 1
+                            except Exception:
+                                pass
+                    oi_change_1h_pct = ((oi_now - oi_1h_ago) / oi_1h_ago * 100.0) if oi_1h_ago > 0 else 0.0
+                    if sym in self.market.data:
+                        try:
+                            self.market.data[sym]["oi_value"] = oi_value
+                            self.market.data[sym]["oi_change_1h_pct"] = oi_change_1h_pct
+                            self.market.data[sym]["oi_ts"] = oi_ts
+                        except Exception:
+                            pass
+                    await asyncio.sleep(0.2)
+                logger.info(f"[OI_LOOP] refreshed: {n_updated} from API, {n_cache} from cache, total {len(symbols)} syms. Next in {refresh_hrs}h.")
+                await asyncio.sleep(refresh_hrs * 3600)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[OI_LOOP] crash: {e}", exc_info=True)
+                await asyncio.sleep(300)
+
     async def klines_cache_writeback(self):
         """Periodically merge composed 1m/3m candles back to klines_cache so ez_indicators stays fresh."""
         cache_dir = BASE_PATH / "klines_cache"
@@ -789,6 +862,7 @@ class MarketDataEngine:
                 self.shared_mem_watchdog(),
                 self.klines_cache_writeback(),
                 self.funding_rate_loop(),  # 2026-04-27: live funding-rate refresh into market.data[sym]['funding_rate']
+                self.open_interest_loop(),  # 2026-04-27: live OI refresh into market.data[sym]['oi_value','oi_change_1h_pct']
             )
         except KeyboardInterrupt:
             self.running = False

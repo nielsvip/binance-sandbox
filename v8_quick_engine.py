@@ -796,6 +796,8 @@ class QuickConfig:
     BTC_PYRAMID_DISABLED: bool = True
     BTC_INTRABAR_REVERSAL_EXIT: bool = True
     BTC_REGIME_PAUSE_ENABLED: bool = True
+    BTC_COOLDOWN_BARS: int = 5
+    BTC_MIN_HOLD_BARS: int = 5
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2551,6 +2553,20 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     l4 = _safe(npz, 'low_4h', n)
     hD = _safe(npz, 'high_D', n)
     lD = _safe(npz, 'low_D', n)
+    # Precompute rolling max/min for fib swing — vectorized O(N) instead of per-bar O(N*W)
+    from numpy.lib.stride_tricks import sliding_window_view as _swv
+    def _rolling_extreme(a, w, fn):
+        if w <= 1 or w > len(a):
+            return None
+        # First w-1 entries use cumulative; rest use stride window
+        try:
+            wins = _swv(a, w)   # shape (n-w+1, w)
+            ext = fn(wins, axis=-1)
+            # Pad first w-1 entries with cumulative extreme
+            pre = fn.accumulate(a[:w-1])
+            return np.concatenate([pre, ext])
+        except Exception:
+            return None
 
     # Config knobs
     rz_use_fib = bool(getattr(cfg, 'BTC_RZ_USE_FIB', True))
@@ -2580,6 +2596,14 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     fib_lb_D_at_tf = int(getattr(cfg, 'BTC_FIB_LOOKBACK_D', 180))
     fib_lb_4h_in_ltf = fib_lb_4h_at_tf * _bph_4h
     fib_lb_D_in_ltf = fib_lb_D_at_tf * _bph_D
+    # Vectorize rolling max/min for fib lookback windows
+    h4_rmax = _rolling_extreme(h4, fib_lb_4h_in_ltf, np.maximum) if rz_use_fib else None
+    l4_rmin = _rolling_extreme(l4, fib_lb_4h_in_ltf, np.minimum) if rz_use_fib else None
+    hD_rmax = _rolling_extreme(hD, fib_lb_D_in_ltf, np.maximum) if rz_use_fib else None
+    lD_rmin = _rolling_extreme(lD, fib_lb_D_in_ltf, np.minimum) if rz_use_fib else None
+    # Cooldown / min hold (BTC-specific so the loop doesn't over-trade like the smoke run)
+    btc_cooldown_bars = int(getattr(cfg, 'BTC_COOLDOWN_BARS', 5))
+    btc_min_hold_bars = int(getattr(cfg, 'BTC_MIN_HOLD_BARS', 5))
 
     # Round increments
     round_primary = float(getattr(cfg, 'BTC_ROUND_INC_PRIMARY_USD', 5000.0))
@@ -2633,14 +2657,10 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
         # Red zone: fib levels per TF + round levels + wt_dc zone proxy
         fib_per_tf = {}
         if rz_use_fib:
-            if i >= fib_lb_4h_in_ltf:
-                hi_4h = float(np.max(h4[i - fib_lb_4h_in_ltf:i]))
-                lo_4h = float(np.min(l4[i - fib_lb_4h_in_ltf:i]))
-                fib_per_tf['4h'] = _btc.compute_fib_levels(hi_4h, lo_4h)
-            if i >= fib_lb_D_in_ltf:
-                hi_D = float(np.max(hD[i - fib_lb_D_in_ltf:i]))
-                lo_D = float(np.min(lD[i - fib_lb_D_in_ltf:i]))
-                fib_per_tf['D'] = _btc.compute_fib_levels(hi_D, lo_D)
+            if h4_rmax is not None and i < len(h4_rmax) and i < len(l4_rmin):
+                fib_per_tf['4h'] = _btc.compute_fib_levels(float(h4_rmax[i]), float(l4_rmin[i]))
+            if hD_rmax is not None and i < len(hD_rmax) and i < len(lD_rmin):
+                fib_per_tf['D'] = _btc.compute_fib_levels(float(hD_rmax[i]), float(lD_rmin[i]))
         round_levels = {}
         if rz_use_round:
             round_levels = _btc.compute_round_levels(
@@ -2666,6 +2686,9 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
         # ── Decision: FLAT → entry / reentry ────────────────────────────────
         if position == "FLAT":
+            # Cooldown gate (prevents over-trading; sweep can tighten/loosen)
+            if i - last_exit_bar < btc_cooldown_bars:
+                continue
             # Reentry guarantee path
             reenter = False
             reenter_side = None
@@ -2734,7 +2757,10 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             wt_against_count=wt_against_count,
             cfg=cfg,
         )
-        # Hard stop at computed pct (translates $10 cap to price move pct)
+        # Min-hold gate suppresses exits (except hard-loss panic) before BTC_MIN_HOLD_BARS
+        if (i - entry_bar) < btc_min_hold_bars and pnl_pct > hard_loss_pct:
+            ok_exit = False
+        # Hard stop at computed pct (translates $10 cap to price move pct) — always fires
         if pnl_pct <= hard_loss_pct:
             ok_exit = True
 

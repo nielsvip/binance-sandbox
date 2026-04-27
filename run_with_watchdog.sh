@@ -100,7 +100,7 @@ case "$SCRIPT_BASE" in
     ez_manage)           NO_OUTPUT_TIMEOUT=600  ;;  # quick_general writes every ~30-300s
     ez_share_ind)        NO_OUTPUT_TIMEOUT=600  ;;  # heartbeat every few minutes
     ez_mark_prices)      NO_OUTPUT_TIMEOUT=600  ;;  # periodic
-    ez_orderbook)        NO_OUTPUT_TIMEOUT=600  ;;  # 2026-04-27: writes Redis OB scores ~1-5s but log heartbeat is sparser
+    ez_orderbook)        NO_OUTPUT_TIMEOUT=0    ;;  # 2026-04-27: disabled — real heartbeat is Redis (orderbook:* keys), not the log file. The 600s log-mtime check was killing healthy processes every ~10 min in a loop.
     *)                   NO_OUTPUT_TIMEOUT=600  ;;  # safe default
 esac
 

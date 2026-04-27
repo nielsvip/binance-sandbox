@@ -537,6 +537,8 @@ class Config:
     FUNDING_HEDGE_GATE_ENABLED: bool = True         # apply funding gate to hedge entries too (helps "wrong moment" hedge open)
     OI_CONFIRM_ENABLED: bool = False                # OFF until sweep validates — require OI delta to confirm trend on entry
     OI_CONFIRM_MIN_CHANGE_PCT: float = 0.5          # |oi_change_1h_pct| must exceed this for direction agreement
+    OI_HEDGE_GATE_ENABLED: bool = False             # apply OI gate to hedge entries too (default OFF)
+    OI_LIVE_REFRESH_HOURS: float = 1.0              # ez_market_data refreshes OI hourly via Binance OI API
     FUNDING_LIVE_REFRESH_HOURS: float = 1.0         # how often ez_market_data refreshes funding rates from Binance API in live
     # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
@@ -2655,6 +2657,10 @@ class Config:
     # --- Paper/live parity (HARD RULE per user 2026-04-27) ---
     BTC_PAPER_PARITY_VERIFY_AT_STARTUP: bool = True                       # check id() equality of decision functions paper-vs-live
     BTC_PAPER_RECONCILE_ALARM_DRIFT_PCT: float = 0.1                      # alarm if paper-live decision drift > 0.1% per day
+
+    # --- BTC trade-pacing knobs (separate from generic crypto COOLDOWN/MIN_HOLD) ---
+    BTC_COOLDOWN_BARS: int = 5                                            # min bars between exit and next entry consideration
+    BTC_MIN_HOLD_BARS: int = 5                                            # min bars after entry before non-panic exit can fire
 
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
