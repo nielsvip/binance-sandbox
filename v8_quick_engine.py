@@ -814,6 +814,9 @@ class QuickConfig:
     # HTF alignment for BREAKOUT (added 2026-04-27 — prevents buying into downtrends)
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
+    # RZ as boost (2026-04-27 redesign: RZ softens accel requirement, no longer gates)
+    BTC_RZ_AS_BOOST_ENABLED: bool = True
+    BTC_RZ_SOFTEN_ACCEL_BY: int = 1
     # Same-bar REVERSE-ON-EXIT
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True

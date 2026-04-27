@@ -11467,6 +11467,56 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                 logger.warning(f"🚫 [FUNDING_GATE] {position_key}: BLOCKED SHORT entry — funding_rate={_fr_val*100:.4f}% <= {_fr_short_th*100:.4f}% (shorts paying longs, overheated). action={action}")
                                 return False, f"FUNDING_GATE_SHORT_REJECT_fr={_fr_val*100:.4f}%"
                             logger.debug(f"[FUNDING_GATE_OK] {position_key}: funding={_fr_val*100:.4f}% within bounds [{_fr_short_th*100:.4f}%, {_fr_long_th*100:.4f}%]")
+                # ═══ 2026-04-27 ORDER-BOOK RED-ZONE GATE — heatmap walls from real bids/asks ═══
+                # ez_orderbook.py writes ob_bid_wall_pct (support distance %) and ob_ask_wall_pct (resistance distance %) per sym.
+                # Block LONG when resistance wall too close above (ob_ask_wall_pct < threshold).
+                # Block SHORT when support wall too close below (ob_bid_wall_pct < threshold).
+                # Wall must exceed RED_ZONE_MIN_WALL_NOTIONAL_USD to count (filters illiquid noise).
+                # Stale (ob_ts_ms older than RED_ZONE_STALE_MAX_SEC) → skip gate, don't false-block on dead orderbook feed.
+                if bool(getattr(config, 'RED_ZONE_GATE_ENABLED', False)):
+                    _rz_apply = True
+                    if is_hedge and not bool(getattr(config, 'RED_ZONE_HEDGE_GATE_ENABLED', True)):
+                        _rz_apply = False
+                    if _is_aug_action and not bool(getattr(config, 'RED_ZONE_AUGMENT_GATE_ENABLED', True)):
+                        _rz_apply = False
+                    if _rz_apply:
+                        try:
+                            _rz_min_dist = float(getattr(config, 'RED_ZONE_MIN_DISTANCE_PCT', 0.4))
+                            _rz_min_size = float(getattr(config, 'RED_ZONE_MIN_WALL_NOTIONAL_USD', 50_000.0))
+                            _rz_stale = float(getattr(config, 'RED_ZONE_STALE_MAX_SEC', 30.0))
+                            _ob_ts_ms = _gate_ind.get('ob_ts_ms')
+                            _ob_fresh = True
+                            if _ob_ts_ms is not None:
+                                try:
+                                    _age = time.time() - (float(_ob_ts_ms) / 1000.0)
+                                    _ob_fresh = (_age <= _rz_stale)
+                                except Exception:
+                                    _ob_fresh = True
+                            if _ob_fresh:
+                                if _gate_is_long:
+                                    _ask_wall = _gate_ind.get('ob_ask_wall_pct')
+                                    _ask_wall_size = _gate_ind.get('ob_ask_wall_size')
+                                    if _ask_wall is not None and _ask_wall_size is not None:
+                                        try:
+                                            _aw = float(_ask_wall); _asz = float(_ask_wall_size)
+                                            if _aw < _rz_min_dist and _asz >= _rz_min_size:
+                                                logger.warning(f"🧱 [RED_ZONE_GATE] {position_key}: BLOCKED LONG — resistance wall {_aw:.2f}% above (size=${_asz:,.0f} ≥ ${_rz_min_size:,.0f}, threshold {_rz_min_dist}%). action={action}")
+                                                return False, f"RED_ZONE_BLOCK_LONG_wall={_aw:.2f}%_size=${_asz:,.0f}"
+                                        except Exception:
+                                            pass
+                                else:
+                                    _bid_wall = _gate_ind.get('ob_bid_wall_pct')
+                                    _bid_wall_size = _gate_ind.get('ob_bid_wall_size')
+                                    if _bid_wall is not None and _bid_wall_size is not None:
+                                        try:
+                                            _bw = float(_bid_wall); _bsz = float(_bid_wall_size)
+                                            if _bw < _rz_min_dist and _bsz >= _rz_min_size:
+                                                logger.warning(f"🧱 [RED_ZONE_GATE] {position_key}: BLOCKED SHORT — support wall {_bw:.2f}% below (size=${_bsz:,.0f} ≥ ${_rz_min_size:,.0f}, threshold {_rz_min_dist}%). action={action}")
+                                                return False, f"RED_ZONE_BLOCK_SHORT_wall={_bw:.2f}%_size=${_bsz:,.0f}"
+                                        except Exception:
+                                            pass
+                        except Exception as _rz_exc:
+                            logger.debug(f"[RED_ZONE_GATE] {position_key}: exception {type(_rz_exc).__name__} {_rz_exc} — skipped")
     if _is_aug_action and not is_hedge:
         _last_trade_ts = _hard_trade_guard.get(position_key, 0)
         _since = time.time() - _last_trade_ts

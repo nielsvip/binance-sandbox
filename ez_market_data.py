@@ -624,6 +624,31 @@ class MarketDataEngine:
                             payload['oi_ts'] = store.get('oi_ts', 0)
                     except Exception:
                         pass
+                # ═══ 2026-04-27 ORDER-BOOK RED-ZONE / WALL PROPAGATION ═══
+                # ez_orderbook.py writes per-sym features to Redis `orderbook:<SYM>` (TTL 10s).
+                # Batched MGET → inject ob_bid_wall_pct, ob_ask_wall_pct, ob_*_wall_size, ob_long/short_score,
+                # ob_imb_5pct, ob_ts_ms into hot_metrics so RED_ZONE_GATE in execute_trade_wrapper can read.
+                try:
+                    _ob_keys = [f"orderbook:{sym}" for sym, _ in results]
+                    _ob_blobs = await self.redis.mget(*_ob_keys) if _ob_keys else []
+                    for (sym, payload), blob in zip(results, _ob_blobs):
+                        if not blob:
+                            continue
+                        try:
+                            _ob = orjson.loads(blob)
+                        except Exception:
+                            continue
+                        for _k in ('ob_bid_wall_pct', 'ob_bid_wall_size',
+                                   'ob_ask_wall_pct', 'ob_ask_wall_size',
+                                   'ob_bid_void_pct', 'ob_ask_void_pct',
+                                   'ob_long_score', 'ob_short_score',
+                                   'ob_imb_5pct', 'ob_imb_10pct',
+                                   'ob_ts_ms', 'ob_spread_bps'):
+                            _v = _ob.get(_k)
+                            if _v is not None:
+                                payload[_k] = _v
+                except Exception:
+                    pass
                 # Update Bridge
                 if self.shared_proxy:
                     try:

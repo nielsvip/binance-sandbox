@@ -371,25 +371,39 @@ def should_enter_btc_long(
     divergence: DivergenceState,
     cfg: Any,                                 # Config or QuickConfig
 ) -> Tuple[bool, str]:
-    """Return (enter_long, reason). Pure function — no I/O."""
+    """Return (enter_long, reason). Pure function — no I/O.
+
+    RZ semantics (2026-04-27 redesign per user — option 3 "RZ as score boost"):
+      - When BTC_RZ_AS_BOOST_ENABLED=True (default), RZ does NOT gate entry.
+        Instead it SOFTENS the accel-ramp requirement by BTC_RZ_SOFTEN_ACCEL_BY
+        when red_zone.active (e.g., min_tfs 3 → 2). RZ becomes a permissiveness
+        bonus, not a binary filter that was always-on at default proximity.
+      - When BTC_RZ_AS_BOOST_ENABLED=False, legacy behavior: RZ gates if
+        BTC_ENTRY_PRIMARY_REQUIRE_RZ=True.
+    """
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
         return False, "BTC_LOOP_DISABLED"
-    # Veto: opposing divergence
+    # Veto: opposing divergence (unchanged)
     if (
         getattr(cfg, "BTC_DIVERGENCE_BLOCK_AGAINST", True)
         and getattr(cfg, "BTC_DIVERGENCE_ENABLED", True)
         and divergence.bear_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BEAR_MIN_INDS", 2)
     ):
         return False, "BLOCKED_BEAR_DIVERGENCE"
-    # Primary trigger: red zone + accel ramp aligned bull
-    if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_RZ", True) and not red_zone.active:
-        return False, "NO_RED_ZONE"
+    # RZ branch: gate (legacy) vs softener (new default)
+    rz_boost_mode = bool(getattr(cfg, "BTC_RZ_AS_BOOST_ENABLED", True))
+    soften = int(getattr(cfg, "BTC_RZ_SOFTEN_ACCEL_BY", 1)) if rz_boost_mode and red_zone.active else 0
+    if not rz_boost_mode:
+        if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_RZ", True) and not red_zone.active:
+            return False, "NO_RED_ZONE"
+    # Accel ramp gate (with possible RZ softening)
     if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP", True):
         if accel["side"] != "bull":
             return False, "NO_BULL_ACCEL_RAMP"
-        if accel["bull_aligned_tfs"] < getattr(cfg, "BTC_ACCEL_RAMP_MIN_TFS", 5):
-            return False, f"ACCEL_RAMP_INSUFFICIENT_TFS_{accel['bull_aligned_tfs']}"
-    return True, "PRIMARY_BULL"
+        eff_min_tfs = max(1, int(getattr(cfg, "BTC_ACCEL_RAMP_MIN_TFS", 5)) - soften)
+        if accel["bull_aligned_tfs"] < eff_min_tfs:
+            return False, f"ACCEL_RAMP_INSUFFICIENT_TFS_{accel['bull_aligned_tfs']}_NEED_{eff_min_tfs}"
+    return True, ("PRIMARY_BULL_RZ_BOOST" if soften > 0 else "PRIMARY_BULL")
 
 
 def should_enter_btc_short(
@@ -400,7 +414,10 @@ def should_enter_btc_short(
     divergence: DivergenceState,
     cfg: Any,
 ) -> Tuple[bool, str]:
-    """Return (enter_short, reason). Mirror of should_enter_btc_long."""
+    """Return (enter_short, reason). Mirror of should_enter_btc_long.
+
+    RZ-as-boost semantics same as LONG side.
+    """
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
         return False, "BTC_LOOP_DISABLED"
     if (
@@ -409,14 +426,18 @@ def should_enter_btc_short(
         and divergence.bull_inds_aligned >= getattr(cfg, "BTC_DIVERGENCE_BULL_MIN_INDS", 2)
     ):
         return False, "BLOCKED_BULL_DIVERGENCE"
-    if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_RZ", True) and not red_zone.active:
-        return False, "NO_RED_ZONE"
+    rz_boost_mode = bool(getattr(cfg, "BTC_RZ_AS_BOOST_ENABLED", True))
+    soften = int(getattr(cfg, "BTC_RZ_SOFTEN_ACCEL_BY", 1)) if rz_boost_mode and red_zone.active else 0
+    if not rz_boost_mode:
+        if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_RZ", True) and not red_zone.active:
+            return False, "NO_RED_ZONE"
     if getattr(cfg, "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP", True):
         if accel["side"] != "bear":
             return False, "NO_BEAR_ACCEL_RAMP"
-        if accel["bear_aligned_tfs"] < getattr(cfg, "BTC_ACCEL_RAMP_MIN_TFS", 5):
-            return False, f"ACCEL_RAMP_INSUFFICIENT_TFS_{accel['bear_aligned_tfs']}"
-    return True, "PRIMARY_BEAR"
+        eff_min_tfs = max(1, int(getattr(cfg, "BTC_ACCEL_RAMP_MIN_TFS", 5)) - soften)
+        if accel["bear_aligned_tfs"] < eff_min_tfs:
+            return False, f"ACCEL_RAMP_INSUFFICIENT_TFS_{accel['bear_aligned_tfs']}_NEED_{eff_min_tfs}"
+    return True, ("PRIMARY_BEAR_RZ_BOOST" if soften > 0 else "PRIMARY_BEAR")
 
 
 def should_exit_btc(

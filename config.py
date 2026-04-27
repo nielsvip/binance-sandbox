@@ -564,6 +564,26 @@ class Config:
     FUNDING_OI_INJECT_OI_MIN_PCT: float = 1.0       # |oi_change_1h_pct| threshold for OI-based injection
     FUNDING_OI_INJECT_PRICE_MIN_PCT: float = 0.5    # |price_change_1h_pct| threshold (filters tiny moves)
     FUNDING_OI_INJECT_MAX_EACH: int = 10            # cap per side
+    # === 2026-04-27 ORDER-BOOK RED-ZONE GATE (heatmap walls from real bids/asks) ===
+    # ez_orderbook.py DeepBook already computes per-sym wall fields and writes to Redis `orderbook:<SYM>` (TTL 10s):
+    #   ob_bid_wall_pct  — distance % to nearest support wall (>4× mean bid-bucket notional, ≥0.5% from mid)
+    #   ob_ask_wall_pct  — distance % to nearest resistance wall (>4× mean ask-bucket notional, ≥0.5% from mid)
+    #   ob_bid_wall_size, ob_ask_wall_size — notional in those walls
+    #   ob_long_score / ob_short_score — composite 0..100 (wall + void + top-imbalance)
+    # Live propagation: ez_market_data.broadcast_loop MGETs `orderbook:*` per cycle and injects ob_* fields
+    # into per-sym Redis hot_metrics:{sym} payload → data_manager.get_hot_state → execute_trade_wrapper._gate_ind.
+    # Entry gate (ez_positions_quick.execute_trade_wrapper):
+    #   - LONG blocked when ob_ask_wall_pct < RED_ZONE_MIN_DISTANCE_PCT  (resistance wall too close above)
+    #   - SHORT blocked when ob_bid_wall_pct < RED_ZONE_MIN_DISTANCE_PCT (support wall too close below)
+    # Wall must also exceed RED_ZONE_MIN_WALL_NOTIONAL_USD to count (filters tiny walls on illiquid pairs).
+    # Stocks side: Tradier exposes no L2 depth — RED_ZONE_GATE is crypto-only.
+    # Stocks proxy = options-chain OI walls (call OI = ceiling, put OI = floor) — deferred to tradier_options_oi_fetcher build.
+    RED_ZONE_GATE_ENABLED: bool = True
+    RED_ZONE_MIN_DISTANCE_PCT: float = 0.4         # block entry when wall is closer than 0.4% from current price
+    RED_ZONE_MIN_WALL_NOTIONAL_USD: float = 50_000 # ignore walls smaller than $50k notional (illiquid noise)
+    RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
+    RED_ZONE_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into resistance)
+    RED_ZONE_STALE_MAX_SEC: float = 30.0           # ignore ob_*_wall fields older than 30s (orderbook:_heartbeat dead)
     # === 2026-04-26 USER ABSOLUTE: hedges NEVER close at a loss (overrides feedback_hedge_wt3m_close_absolute.md until tests prove otherwise) ===
     # Applied to: HEDGE_CLOSE_WT3M1H_PRE_GATE (ez_manage), HEDGE_CLOSE_WT3M1H_PP_ABS (ez_manage), HEDGE_CLOSE_WT3M1H_ABS (ez_positions_quick), HEDGE_KILL_REVERSING_WT (ez_positions_quick).
     # If gain<0 the WT-flip signal is recorded but the close is held; we wait for gain>=0 OR the position to organically improve. STRICT_NO_LOSS-aligned.
@@ -2707,6 +2727,12 @@ class Config:
     # HTF alignment for BREAKOUT — prevents buying breakouts INTO a downtrend
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True                         # 2026-04-27: required after chart showed BK_L firing during clear bear leg
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2                                 # min HTFs (of 3 = 1h/4h/D) wt1>wt2 same direction
+    # RZ semantics redesign (2026-04-27 user option 3): RZ no longer gates,
+    # instead SOFTENS the accel-ramp requirement when active. With default fib+round+wt_dc
+    # density, RZ was always-active → no-op as a gate. As softener it becomes meaningful:
+    # entries near RZ levels can fire with fewer accel TFs aligned.
+    BTC_RZ_AS_BOOST_ENABLED: bool = True                                  # True = softener mode (default), False = legacy gate
+    BTC_RZ_SOFTEN_ACCEL_BY: int = 1                                       # min_tfs reduction when RZ active (0 = no effect, 1 = 1 fewer TF needed, ...)
     # Same-bar REVERSE-ON-EXIT — when exiting on bear/bull signal and opposite breakout fires, flip immediately
     BTC_REVERSE_ON_EXIT_ENABLED: bool = True                              # 2026-04-27: was missing reverse opportunities per chart audit
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
