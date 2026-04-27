@@ -12303,6 +12303,21 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             hedge_for = _cand_hedge_for
 
                 hard_exit_reason = ""
+                # ═══ K1M EXTREME REVERSE EXIT (USER RULE 2026-04-27) ═══
+                # Simple top-level: k_1m at overbought/oversold extreme AND turning back = trade is OUT.
+                # Fires ONLY when in profit (current_gain >= 0) per universal "never close at loss" rule.
+                # At loss the same-symbol hedge engine handles the position; this gate skips silently.
+                # Uses live Redis fields stoch_k_1m + k_1m_prev (both published by ez_market_data).
+                # Skips hedges (they're managed by hedge engine's own gates).
+                if not hard_exit_reason and not is_hedge and current_gain >= 0:
+                    _k1m_now = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50)
+                    _k1m_prev_v = safe_fetch_float(indicators.get('k_1m_prev', _k1m_now), _k1m_now)
+                    if is_long and _k1m_now > 90 and _k1m_now < _k1m_prev_v:
+                        hard_exit_reason = f"K1M_EXTREME_REVERSE_LONG_k1m={_k1m_now:.0f}<prev={_k1m_prev_v:.0f}_gain{current_gain:.2f}%"
+                        logger.critical(f"🔥 [K1M_EXTREME_REVERSE_LONG] {position_key}: k_1m={_k1m_now:.0f}>90 turning down — locking profit at {current_gain:.2f}%")
+                    elif (not is_long) and _k1m_now < 10 and _k1m_now > _k1m_prev_v:
+                        hard_exit_reason = f"K1M_EXTREME_REVERSE_SHORT_k1m={_k1m_now:.0f}>prev={_k1m_prev_v:.0f}_gain{current_gain:.2f}%"
+                        logger.critical(f"🔥 [K1M_EXTREME_REVERSE_SHORT] {position_key}: k_1m={_k1m_now:.0f}<10 turning up — locking profit at {current_gain:.2f}%")
                 # ═══ PARABOLIC EXHAUSTION EXIT (USER RULE 2026-04-10): k_15m extreme + DC breakout + 3m structure crack ═══
                 # Even when delta says hold and the move looks unstoppable, if the LTF (3m) makes a wrong-way structure
                 # break (lower-low for LONG / higher-high for SHORT), get out NOW. Catches parabolic tops/bottoms.

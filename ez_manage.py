@@ -11015,9 +11015,12 @@ class MultiAccountTradeManager:
             dc_low4_1m = safe_fetch_float(i.get('dc_low4_1m'), 0.0)
             logger.info(f'[execute _trade_action] {position_key} k_1m:{k_1m} k_1m_prev:{k_1m_prev} d_1m:{d_1m} 3:{d_3m} k_3m:{k_3m} p{k_3m_prev} d{d_3m} 15:{k_15m} p{k_15m_prev} d{d_15m} dc4l1:{dc_low4_1m}, dc4h1:{dc_high4_1m}')
             _stoch_uncalc = (k_3m == 0 and d_3m == 0) or (k_15m == 0 and d_15m == 0)
-            if _stoch_uncalc and ('OPEN' in action or 'AUGMENT' in action):
+            _is_reentry_bypass = 'REENTRY' in str(reason or '').upper() or 'GUARANTEED' in str(reason or '').upper() or _original_action_was_reentry
+            if _stoch_uncalc and ('OPEN' in action or 'AUGMENT' in action) and not _is_reentry_bypass:
                 logger.warning(f'[execute_trade_action] {position_key}: BLOCKED UNCALCULATED_STOCH k3={k_3m}/d3={d_3m} k15={k_15m}/d15={d_15m}')
                 return f'{position_key}_BLOCKED_UNCALCULATED_STOCH'
+            if _stoch_uncalc and _is_reentry_bypass:
+                logger.info(f'✅ [REENTRY_BYPASS_STOCH] {position_key}: stoch missing but reentry — bypassing gate (reason={str(reason)[:60]})')
             # HTF TREND SCORING — now via shared trading_policy (was 18 lines of inline scoring)
             _htf_dir_eta, _htf_score_eta = trading_policy.check_htf_trend(i, current_price)
             _htf_bull = max(0, _htf_score_eta); _htf_bear = max(0, -_htf_score_eta)
@@ -11180,7 +11183,7 @@ class MultiAccountTradeManager:
             # 2026-04-23: bypass for SCALP_V3 — scanner uses divergence+velocity as its own
             # signal; delta_tracker requires aligned entries which blocks scalp outliers.
             _is_scalp_v3 = 'SCALP_V3_OPEN' in str(reason).upper()
-            if self.delta_tracker and action in ('OPEN', 'QUICK_OPEN', 'REENTRY') and 'HEDGE' not in action and not _is_scalp_v3:
+            if self.delta_tracker and action in ('OPEN', 'QUICK_OPEN', 'REENTRY') and 'HEDGE' not in action and not _is_scalp_v3 and not _is_reentry_bypass:
                 _d_sig = self.delta_tracker.update(symbol, i)
                 _delta_ok = _d_sig and ((is_long and _d_sig.entry_long) or (not is_long and _d_sig.entry_short))
                 if not _delta_ok:

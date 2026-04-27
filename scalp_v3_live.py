@@ -71,15 +71,24 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
         bar_rising = (high_3m > high_3m_prev) and (low_3m > low_3m_prev)
         bar_falling = (high_3m < high_3m_prev) and (low_3m < low_3m_prev)
     else:
-        # Live path — proxy: bar "rising" iff wt1_3m rose AND velocity positive AND k_1m positive.
-        bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0) and (wt_velocity_1m_live > 0)
-        bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0) and (wt_velocity_1m_live < 0)
+        # 2026-04-27 LIVE PROXY (relaxed): bar "rising" iff wt1_3m rose AND 3m velocity positive.
+        # Removed the additional `wt_velocity_1m > 0` requirement — one bad 1m tick during a real
+        # rising 3m sequence was blocking entries on clean breakouts (WIFUSDC pump). 3m velocity
+        # alone is the appropriate gate for a 3m-bar scalper.
+        bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0)
+        bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0)
     k_rising = (k_3m > k_3m_prev) and (k_3m > 50)
     k_falling = (k_3m < k_3m_prev) and (k_3m < 50)
     wt_bull = wt1_3m > wt2_3m
     wt_bear = wt1_3m < wt2_3m
-    htf_bull = (k_15m >= 50) and (k_1h >= 50)
-    htf_bear = (k_15m <= 50) and (k_1h <= 50)
+    # 2026-04-27 SCALP_V3 IS A 3M SCALPER — do not double-gate on HTF stoch.
+    # The global HTF_DIRECTION_GATE in ez_positions_quick (D+4h+1h+SMA200) already
+    # blocks suicidal entries against the macro trend. Requiring k_15m≥50 AND
+    # k_1h≥50 inside TREND killed obvious scalp setups (e.g. WIFUSDC pump where
+    # k_1h hadn't crossed 50 yet at the breakout moment — the move was over by
+    # the time it would have). Drop the in-strategy htf_bull/htf_bear gate.
+    htf_bull = True
+    htf_bear = True
     side_mode = str(getattr(config, 'SCALP_V3_SIDE_MODE', 'BOTH')).upper()
     allow_long = side_mode in ('LONG_ONLY', 'BOTH')
     allow_short = side_mode in ('SHORT_ONLY', 'BOTH')
@@ -219,7 +228,14 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     low_3m_prev = _sf(indicators.get('low_3m_prev', 0), 0)
     wt1_3m = _sf(indicators.get('wt1_3m', 0), 0)
     wt2_3m = _sf(indicators.get('wt2_3m', 0), 0)
-    if high_3m_prev <= 0 or low_3m_prev <= 0: return None
+    # 2026-04-27 LIVE FALLBACK — high_3m/low_3m_prev are BACKTEST-ONLY fields not in
+    # live hot_metrics (same constraint as entry path). Prior `return None` here
+    # dead-coded ALL technical exits in live, so V3 only ever closed via MAX_HOLD —
+    # i.e. "doesn't scalp". Match entry: when bar fields missing, derive bar
+    # rising/falling from wt1_3m direction + 3m velocity (both live-available).
+    _live_no_bar = (high_3m_prev <= 0 or low_3m_prev <= 0)
+    wt1_3m_prev = _sf(indicators.get('wt1_3m_prev', wt1_3m), wt1_3m)
+    wt_velocity_3m_live = _sf(indicators.get('wt_velocity_3m', 0), 0)
     # SBL ("sell before loss"): when True, technical exits ONLY fire while in profit.
     # Goal: lock profit on technical reversal; never close at a loss (rely on hedge/recovery instead).
     # Defaults False so live behavior is unchanged; A/B variants override to True.
@@ -239,7 +255,10 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     k_on = bool(getattr(config, 'SCALP_V3_EXIT_K_CROSS_ENABLED', True))
     require_n = max(1, int(getattr(config, 'SCALP_V3_EXIT_REQUIRE_N_SIGNALS', 1)))
     if side == 'LONG':
-        bar_falling = (low_3m < low_3m_prev) or (high_3m < high_3m_prev)
+        if _live_no_bar:
+            bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0)
+        else:
+            bar_falling = (low_3m < low_3m_prev) or (high_3m < high_3m_prev)
         wt_flip_bear = wt1_3m < wt2_3m
         k_cross_down = (k_3m < k_3m_prev) and (k_3m < 50)
         sigs = []
@@ -249,7 +268,10 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
         if len(sigs) >= require_n:
             return {"reason": f"SCALP_V3_CLOSE_{'_'.join(sigs)}_LONG_n{len(sigs)}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}"}
     else:
-        bar_rising = (high_3m > high_3m_prev) or (low_3m > low_3m_prev)
+        if _live_no_bar:
+            bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0)
+        else:
+            bar_rising = (high_3m > high_3m_prev) or (low_3m > low_3m_prev)
         wt_flip_bull = wt1_3m > wt2_3m
         k_cross_up = (k_3m > k_3m_prev) and (k_3m > 50)
         sigs = []
