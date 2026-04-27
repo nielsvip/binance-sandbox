@@ -530,10 +530,11 @@ class Config:
     # === 2026-04-26 V3 entry-path expansion (user: "AUGMENT trades 20-1000x — more entry paths not stricter filters") ===
     # Each path is independently switchable; on each cycle V3 fires the FIRST path that matches. Default: TREND only (current behavior).
     SCALP_V3_ENTRY_TREND_ENABLED: bool = True       # current strict trend-follow (HH+HL + k_3m rising + HTF stoch + WT bull)
-    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = False   # pullback-to-EMA20 continuation: 3m LL+LH then close back >= EMA20 + WT bull (ignore HTF stoch)
-    SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = False   # DC channel break: 3m close > dc_high_15m (LONG) / < dc_low_15m (SHORT) + volume confirm
-    SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = False   # WT 3m line crossover: wt1 just crossed wt2 + k_3m supportive (looser than full TREND stack)
-    SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = False  # K bounce off oversold/overbought: k_3m crossed up through 25 (LONG) or down through 75 (SHORT)
+    SCALP_V3_ENTRY_PULLBACK_ENABLED: bool = True    # 2026-04-26 LIVE: pullback-to-mean continuation, fixes 0/345 reentry gap (research consensus #1)
+    SCALP_V3_ENTRY_DC_BREAK_ENABLED: bool = True    # 2026-04-26 LIVE: DC channel breakout, captures fresh momentum on dc_high_15m / dc_low_15m
+    SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = True    # 2026-04-26 LIVE: WT 3m crossover with velocity confirm + HTF-loose context
+    SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = True   # 2026-04-26 LIVE: Stoch bounce off oversold/overbought
+    # All 4 new paths flipped True per user "AUGMENT trades 20-1000x — more entry paths". Sig3 exit + reentry sticky + hedge no-close-at-loss are the safety net. Revert any to False to disable a single path.
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

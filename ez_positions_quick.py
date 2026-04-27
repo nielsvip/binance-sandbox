@@ -11536,7 +11536,14 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                         _use_3m = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True))
                         _use_15m = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False))
                         _use_1h = bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True))
-                        _oh_ind = indicators or {}
+                        # 2026-04-26 FIX: was `indicators or {}` — execute_trade_wrapper has NO `indicators` param. Silent NameError dropped this entire OBLIGATORY_HEDGE branch in caught Exception path. Fetch from data_manager.
+                        _oh_ind = {}
+                        try:
+                            if data_manager is not None:
+                                _, _oh_ind, *_ = await data_manager.get_hot_state(symbol)
+                                if not isinstance(_oh_ind, dict): _oh_ind = {}
+                        except Exception:
+                            _oh_ind = {}
                         _wt_against_count = 0
                         _tfs_enabled = 0
                         if _use_1m:
@@ -11827,13 +11834,58 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 if is_hedge:
                     await tracker_manager.nuke_hedge_key(account_key, position_key)
                 else:
+                    # ═══ 2026-04-26 USER ABSOLUTE RULE — SIMULTANEOUS HEDGE CLOSE ═══
+                    # When a hedged position closes, ALL its hedges in tracker.active_hedges
+                    # MUST close in the SAME atomic operation. Not eventually. Not after the
+                    # 5s monitor_hedge_health_loop tick. SIMULTANEOUSLY. NOT UP FOR DEBATE.
+                    # Hedge pairing is tracked in tracker.json via active_hedges entries with
+                    # `losing_position_key`. asyncio.gather fires all hedge closes in parallel.
+                    # ANY failed hedge close is logged at CRITICAL with the hedge key + reason.
                     async with tracker_manager._hedges_lock:
-                        hedges_to_close =[h.copy() for h in tracker_manager.active_hedges if h.get('losing_position_key') == position_key]
-                    for h_record in hedges_to_close:
-                        h_key = h_record.get('position_key')
-                        h_qty = h_record.get('quantity', 0.0)
-                        logger.info(f"🛡️ [HEDGE_CLEANUP] Parent {position_key} closed. Triggering close of hedge {h_key}")
-                        await execute_trade_wrapper(trade_manager, tracker_manager, hedge_engine, account_key, h_key, h_qty, 'CLOSE', current_price, 0.0, f"HEDGE_CLEANUP_FOR_{position_key}", is_hedge=True, data_manager=data_manager)
+                        hedges_to_close = [h.copy() for h in tracker_manager.active_hedges if h.get('losing_position_key') == position_key]
+                    if hedges_to_close:
+                        logger.critical(f"🛡️🛡️ [HEDGE_SIMULTANEOUS_CLOSE] Parent {position_key} closed → firing {len(hedges_to_close)} hedge close(s) IN PARALLEL: {[h.get('position_key') for h in hedges_to_close]}")
+                        async def _close_one_hedge(h_record):
+                            h_key = h_record.get('position_key')
+                            h_qty = h_record.get('quantity', 0.0)
+                            h_sym = h_record.get('symbol') or h_record.get('target_symbol') or (h_key.split(':')[-1].rsplit('_', 1)[0] if h_key and ':' in h_key else '')
+                            # Fetch fresh price for the hedge symbol (may differ from parent's symbol on cross-symbol hedges)
+                            try:
+                                h_price = current_price  # default fallback
+                                if h_sym and data_manager:
+                                    _hp, _ = await data_manager.get_fresh_price(h_sym)
+                                    if _hp and _hp > 0: h_price = _hp
+                                # If still no good price, pull from positions_service mark_price
+                                if h_price <= 0 and tracker_manager.positions_service:
+                                    _hp_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(h_key)
+                                    if _hp_pos: h_price = safe_fetch_float(getattr(_hp_pos, 'mark_price', 0), 0)
+                                # Pull live qty if record qty is stale
+                                if (not h_qty or h_qty <= 0) and tracker_manager.positions_service:
+                                    _hp_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(h_key)
+                                    if _hp_pos: h_qty = abs(safe_fetch_float(getattr(_hp_pos, 'positionAmt', 0), 0))
+                                if not h_qty or h_qty <= 0:
+                                    # No quantity to close — just nuke tracker entry
+                                    await tracker_manager.nuke_hedge_key(account_key, h_key)
+                                    logger.warning(f"🛡️ [HEDGE_SIMULTANEOUS_CLOSE_NUKE] {h_key}: qty=0, nuked tracker only (parent {position_key})")
+                                    return (h_key, True, "NUKED_QTY_ZERO")
+                                _ok, _reason = await execute_trade_wrapper(
+                                    trade_manager, tracker_manager, hedge_engine, account_key,
+                                    h_key, h_qty, 'CLOSE', h_price, h_qty,
+                                    f"HEDGE_SIMULTANEOUS_CLOSE_PARENT_{position_key}",
+                                    is_hedge=True, hedge_for=position_key, data_manager=data_manager)
+                                if _ok:
+                                    return (h_key, True, _reason)
+                                logger.critical(f"🚨 [HEDGE_SIMULTANEOUS_CLOSE_FAIL] {h_key} for parent {position_key} → {_reason}. ORPHAN POSITION ALIVE. monitor_hedge_health_loop will retry.")
+                                return (h_key, False, _reason)
+                            except Exception as _hce:
+                                logger.critical(f"🚨 [HEDGE_SIMULTANEOUS_CLOSE_EXC] {h_key} for parent {position_key}: {_hce}", exc_info=True)
+                                return (h_key, False, str(_hce))
+                        try:
+                            _hc_results = await asyncio.gather(*[_close_one_hedge(h) for h in hedges_to_close], return_exceptions=False)
+                            _ok_count = sum(1 for r in _hc_results if r and r[1])
+                            logger.critical(f"🛡️ [HEDGE_SIMULTANEOUS_CLOSE_DONE] parent={position_key}: {_ok_count}/{len(hedges_to_close)} hedge closes confirmed.")
+                        except Exception as _gather_e:
+                            logger.critical(f"🚨 [HEDGE_SIMULTANEOUS_CLOSE_GATHER_FAIL] parent={position_key}: {_gather_e}", exc_info=True)
                     
             await record_trade_event(tracker_manager, account_key, position_key, symbol, action, position_side, current_price, qty, reason, False, is_hedge=is_hedge, hedge_for=hedge_for)
             await tracker_manager.save_tracker(account_key, force=True)
