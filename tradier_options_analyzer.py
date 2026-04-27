@@ -1558,6 +1558,7 @@ async def _check_options_reentry_queue(client: TradierAPIClient, config, account
 # the hedge is unwound. State lives in data/tradier/options_equity_hedges.json.
 # ══════════════════════════════════════════════════════════════════════════════
 _EQ_HEDGE_FILE = "options_equity_hedges.json"
+_EQ_HEDGE_LOCK_FILE = "options_equity_hedges.lock"
 
 def _load_equity_hedges(config) -> Dict:
     try:
@@ -1578,6 +1579,58 @@ def _save_equity_hedges(config, state: Dict) -> None:
             json.dump(state, f, indent=2, default=str)
     except Exception as e:
         logger.error(f"_save_equity_hedges error: {e}")
+
+
+class _eq_hedge_lock:
+    # Cross-process critical section for equity-hedge state. Two analyzer processes
+    # racing on the same JSON state file caused the 2026-04-27 PLTR triple-fire
+    # ($50k short on a $4.3k call). Hold this lock around any read-modify-write.
+    def __init__(self, config):
+        self._config = config
+        self._fh = None
+
+    def __enter__(self) -> Dict:
+        path = self._config.DATA_DIR / _EQ_HEDGE_LOCK_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._fh = open(path, "a+")
+        fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX)
+        return _load_equity_hedges(self._config)
+
+    def save(self, state: Dict) -> None:
+        _save_equity_hedges(self._config, state)
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if self._fh is not None:
+                fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
+                self._fh.close()
+        except Exception:
+            pass
+        return False
+
+
+def _hedge_qty_capped(config, delta_qty: int, underlying_px: float, opt_cost_basis: float) -> Tuple[int, str]:
+    # Floors and ceilings for an equity-hedge order. Returns (qty, reason_label).
+    # Bounded by: delta-equivalent shares (fair hedge), MAX_ORDER_VALUE, MAX_POSITION_SIZE,
+    # and a notional ceiling expressed as a percent of the option cost basis. The last
+    # one is the lesson from PLTR: a $4.3k call must not anchor a $50k short.
+    if delta_qty <= 0 or underlying_px <= 0:
+        return 0, "qty<=0"
+    caps: List[Tuple[int, str]] = [(delta_qty, "delta")]
+    pct_of_opt = float(getattr(config, "OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST", 150.0) or 150.0)
+    if opt_cost_basis > 0 and pct_of_opt > 0:
+        caps.append((int((opt_cost_basis * pct_of_opt / 100.0) / underlying_px), f"opt_cost_x{pct_of_opt:.0f}%"))
+    abs_usd = float(getattr(config, "OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD", 5000.0) or 0.0)
+    if abs_usd > 0:
+        caps.append((int(abs_usd / underlying_px), f"abs_${abs_usd:.0f}"))
+    pos_size = float(getattr(config, "MAX_POSITION_SIZE", 5000.0) or 0.0)
+    if pos_size > 0:
+        caps.append((int(pos_size / underlying_px), f"MAX_POSITION_SIZE_${pos_size:.0f}"))
+    order_cap = float(getattr(config, "MAX_ORDER_VALUE", 2000.0) or 0.0)
+    if order_cap > 0:
+        caps.append((int(order_cap / underlying_px), f"MAX_ORDER_VALUE_${order_cap:.0f}"))
+    qty, label = min(caps, key=lambda x: x[0])
+    return max(0, qty), label
 
 
 _OPTIONS_POSITIONS_FILE = "options_positions.json"
@@ -2645,6 +2698,51 @@ async def run_watch(args):
                     # Compute sellable P&L if we exited at current bid
                     _sellable_pct = ((_bid - _cps) / _cps * 100.0) if _cps > 0 else 0.0
                     _existing_hedge = eq_hedges.get(_occ)
+                    # ── DC-BREACH IMMEDIATE UNWIND (2026-04-27 user rule) ─────────────
+                    # If price has broken the wrong side of dc_5m vs the hedge direction,
+                    # the hedge is bleeding. Close NOW — don't wait for option to recover.
+                    # Short hedge above dc_high_5m = shorting a rising tape = suicide.
+                    # Long hedge below dc_low_5m  = longing a falling tape = suicide.
+                    if (_existing_hedge
+                        and not _existing_hedge.get("evaluated_only")
+                        and not _existing_hedge.get("cross_hedge")
+                        and not _existing_hedge.get("pre_existing")
+                        and bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED", True))):
+                        _h_qty_br = int(_existing_hedge.get("hedge_qty", 0) or 0)
+                        _h_side_br = _existing_hedge.get("hedge_side", "")
+                        if _h_qty_br > 0 and _h_side_br in ("sell_short", "buy"):
+                            _br_ind: dict = {}
+                            try:
+                                _br_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                                if _br_path.exists():
+                                    with open(_br_path) as _brf:
+                                        _br_map = json.load(_brf)
+                                    if isinstance(_br_map, dict):
+                                        _br_ind = _br_map.get(_und_sym, {}) or {}
+                            except Exception:
+                                _br_ind = {}
+                            _br_px = float(_br_ind.get("current_price", 0) or _br_ind.get("mark_price", 0) or 0)
+                            if _br_px <= 0:
+                                try:
+                                    _br_q = await client.get_quote(_und_sym)
+                                    _br_px = float(_br_q.get("last", 0) or 0)
+                                except Exception:
+                                    _br_px = 0.0
+                            _br_dch5 = float(_br_ind.get("dc_high_5m", 0) or 0)
+                            _br_dcl5 = float(_br_ind.get("dc_low_5m", 0) or 0)
+                            _breach_reason = ""
+                            if _h_side_br == "sell_short" and _br_px > 0 and _br_dch5 > 0 and _br_px > _br_dch5:
+                                _breach_reason = f"px {_br_px:.2f} > dc_high_5m {_br_dch5:.2f}"
+                            elif _h_side_br == "buy" and _br_px > 0 and _br_dcl5 > 0 and _br_px < _br_dcl5:
+                                _breach_reason = f"px {_br_px:.2f} < dc_low_5m {_br_dcl5:.2f}"
+                            if _breach_reason:
+                                print(f"  \033[91m[EQ_HEDGE_BREACH_UNWIND]\033[0m {_und_sym} {_h_side_br} x{_h_qty_br} — {_breach_reason}. Closing immediately.")
+                                logger.critical(f"[EQ_HEDGE_BREACH_UNWIND] {_und_sym} {_h_side_br} x{_h_qty_br} — {_breach_reason} — opt {_occ} still {_sellable_pct:+.1f}%")
+                                _br_res = await _unwind_equity_hedge(client, account_key, _und_sym, _h_qty_br, _h_side_br, reason=f"DC5_BREACH {_breach_reason}")
+                                if "error" not in _br_res:
+                                    eq_hedges.pop(_occ, None)
+                                    _save_equity_hedges(config, eq_hedges)
+                                continue
                     # ── UNWIND: hedge exists and option is sellable again ──
                     if _existing_hedge and _sellable_pct > eq_trigger:
                         if _existing_hedge.get("cross_hedge"):
@@ -2667,102 +2765,180 @@ async def run_watch(args):
                     # ones (UNG, ABT, etc.). The buy allowlist in make_decisions/find_opportunities
                     # is the right place to prevent new entries on bad symbols.
                     if _existing_hedge is None and _sellable_pct <= eq_trigger and _bid > 0:
-                        # ── HEDGE LADDER (2026-04-26 owner directive) ─────────────────────
-                        # Order: HOLD if at confirmed bottom → BUY_PUT if underpriced put
-                        # exists → fall through to EQUITY_HEDGE (existing code below).
-                        # Default A (equity hedge) was the only path before today.
-                        _hl_ind: dict = {}
+                        # ── CRITICAL SECTION: file lock + race recheck + cooldown. ──
+                        # Defends against the 2026-04-27 PLTR triple-fire (two analyzer
+                        # processes raced and shorted 346 shares on a 137-share delta).
+                        _eq_lock_path = config.DATA_DIR / _EQ_HEDGE_LOCK_FILE
+                        _eq_lock_path.parent.mkdir(parents=True, exist_ok=True)
+                        _eq_lock_fh = open(_eq_lock_path, "a+")
                         try:
-                            _hl_path = config.DATA_DIR / "tradier_indicators_latest.json"
-                            if _hl_path.exists():
-                                with open(_hl_path) as _hlf:
-                                    _hl_map = json.load(_hlf)
-                                if isinstance(_hl_map, dict):
-                                    _hl_ind = _hl_map.get(_und_sym, {}) or {}
-                        except Exception:
-                            _hl_ind = {}
-                        _hl_und_px = float(_hl_ind.get("current_price", 0) or _hl_ind.get("mark_price", 0) or 0)
-                        if _hl_und_px <= 0:
+                            fcntl.flock(_eq_lock_fh.fileno(), fcntl.LOCK_EX)
+                            eq_hedges = _load_equity_hedges(config)
+                            if eq_hedges.get(_occ) is not None:
+                                logger.warning(f"[EQ_HEDGE_RACE_SKIP] {_occ} — peer process already hedged under lock. No double-fire.")
+                                print(f"  \033[93m[EQ_HEDGE_RACE_SKIP]\033[0m {_und_sym} {_occ} — peer process already hedged.")
+                                continue
+                            _cooldown_min = float(getattr(config, "OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN", 60.0) or 0.0)
+                            if _cooldown_min > 0:
+                                _last_fires = (eq_hedges.get("__meta__", {}) or {}).get("last_fires", {}) or {}
+                                _last_iso = _last_fires.get(_occ)
+                                if _last_iso:
+                                    try:
+                                        _last_dt = datetime.fromisoformat(str(_last_iso).replace("Z", "+00:00"))
+                                        if _last_dt.tzinfo is None:
+                                            _now_dt = datetime.utcnow()
+                                        else:
+                                            from datetime import timezone as _tz
+                                            _now_dt = datetime.now(_tz.utc)
+                                        _age_min = (_now_dt - _last_dt).total_seconds() / 60.0
+                                        if _age_min < _cooldown_min:
+                                            logger.warning(f"[EQ_HEDGE_COOLDOWN_SKIP] {_occ} — last fire {_age_min:.1f}min ago < {_cooldown_min:.0f}min. Refusing.")
+                                            print(f"  \033[93m[EQ_HEDGE_COOLDOWN_SKIP]\033[0m {_und_sym} {_occ} — fired {_age_min:.1f}min ago.")
+                                            continue
+                                    except Exception:
+                                        pass
+                            # ── HEDGE LADDER (2026-04-26 owner directive) ─────────────────────
+                            # Order: HOLD if at confirmed bottom → BUY_PUT if underpriced put
+                            # exists → fall through to EQUITY_HEDGE (existing code below).
+                            # Default A (equity hedge) was the only path before today.
+                            _hl_ind: dict = {}
                             try:
-                                _q_und = await client.get_quote(_und_sym)
-                                _hl_und_px = float(_q_und.get("last", 0) or 0)
+                                _hl_path = config.DATA_DIR / "tradier_indicators_latest.json"
+                                if _hl_path.exists():
+                                    with open(_hl_path) as _hlf:
+                                        _hl_map = json.load(_hlf)
+                                    if isinstance(_hl_map, dict):
+                                        _hl_ind = _hl_map.get(_und_sym, {}) or {}
                             except Exception:
-                                _hl_und_px = 0.0
-                        try:
-                            _dte_for_pos = max(1, (datetime.strptime(_parsed.get("expiration", ""), "%Y-%m-%d") - datetime.now()).days)
-                        except Exception:
-                            _dte_for_pos = 60
-                        _hedge = None
-                        if bool(getattr(config, "OPTIONS_HEDGE_LADDER_ENABLED", False)):
+                                _hl_ind = {}
+                            _hl_und_px = float(_hl_ind.get("current_price", 0) or _hl_ind.get("mark_price", 0) or 0)
+                            if _hl_und_px <= 0:
+                                try:
+                                    _q_und = await client.get_quote(_und_sym)
+                                    _hl_und_px = float(_q_und.get("last", 0) or 0)
+                                except Exception:
+                                    _hl_und_px = 0.0
                             try:
-                                from tradier_options_hedge import decide_hedge_action
-                                _hedge = await decide_hedge_action(_und_sym, _otype, _hl_ind, _hl_und_px, int(_q), _dte_for_pos, client, config)
-                            except Exception as _hl_err:
-                                logger.warning(f"[HEDGE_LADDER] decide failed for {_occ}: {_hl_err} — falling through to equity hedge")
-                                _hedge = None
-                        if _hedge is not None and _hedge.action == "HOLD":
-                            logger.info(f"[HEDGE_LADDER:HOLD] {_occ}: {_hedge.reason}")
-                            print(f"  \033[96m[HEDGE_LADDER:HOLD]\033[0m {_und_sym} — confirmed bottom: {_hedge.reason}")
-                            eq_hedges[_occ] = {"underlying": _und_sym, "action": "HOLD", "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "evaluated_only": True}
-                            _save_equity_hedges(config, eq_hedges)
-                            continue
-                        if _hedge is not None and _hedge.action == "BUY_PUT" and _hedge.put_occ:
-                            logger.info(f"[HEDGE_LADDER:BUY_PUT] for {_occ}: buying {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f} ({_hedge.reason})")
-                            print(f"  \033[92m[HEDGE_LADDER:BUY_PUT]\033[0m {_und_sym} {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f}  iv_rank={_hedge.put_iv_chain_rank:.0f}% Δ={_hedge.put_delta:+.2f} DTE={_hedge.put_dte}")
+                                _dte_for_pos = max(1, (datetime.strptime(_parsed.get("expiration", ""), "%Y-%m-%d") - datetime.now()).days)
+                            except Exception:
+                                _dte_for_pos = 60
+                            _hedge = None
+                            if bool(getattr(config, "OPTIONS_HEDGE_LADDER_ENABLED", False)):
+                                try:
+                                    from tradier_options_hedge import decide_hedge_action
+                                    _hedge = await decide_hedge_action(_und_sym, _otype, _hl_ind, _hl_und_px, int(_q), _dte_for_pos, client, config)
+                                except Exception as _hl_err:
+                                    logger.warning(f"[HEDGE_LADDER] decide failed for {_occ}: {_hl_err} — falling through to equity hedge")
+                                    _hedge = None
+                            if _hedge is not None and _hedge.action == "HOLD":
+                                logger.info(f"[HEDGE_LADDER:HOLD] {_occ}: {_hedge.reason}")
+                                print(f"  \033[96m[HEDGE_LADDER:HOLD]\033[0m {_und_sym} — confirmed bottom: {_hedge.reason}")
+                                eq_hedges[_occ] = {"underlying": _und_sym, "action": "HOLD", "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "evaluated_only": True}
+                                _save_equity_hedges(config, eq_hedges)
+                                continue
+                            if _hedge is not None and _hedge.action == "BUY_PUT" and _hedge.put_occ:
+                                logger.info(f"[HEDGE_LADDER:BUY_PUT] for {_occ}: buying {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f} ({_hedge.reason})")
+                                print(f"  \033[92m[HEDGE_LADDER:BUY_PUT]\033[0m {_und_sym} {_hedge.put_occ} @ ${_hedge.put_limit_price:.2f}  iv_rank={_hedge.put_iv_chain_rank:.0f}% Δ={_hedge.put_delta:+.2f} DTE={_hedge.put_dte}")
+                                try:
+                                    _bp_res = await place_option_order(client, _und_sym, _hedge.put_occ, "buy_to_open", _hedge.put_qty, "limit", _hedge.put_limit_price, duration="day")
+                                    if "errors" not in _bp_res:
+                                        eq_hedges[_occ] = {"underlying": _und_sym, "action": "BUY_PUT", "put_occ": _hedge.put_occ, "put_limit": _hedge.put_limit_price, "put_qty": _hedge.put_qty, "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "order_resp": str(_bp_res)[:200]}
+                                        _save_equity_hedges(config, eq_hedges)
+                                        continue
+                                    logger.warning(f"[HEDGE_LADDER:BUY_PUT] order rejected: {_bp_res.get('errors')} — falling through to equity hedge")
+                                except Exception as _bp_err:
+                                    logger.warning(f"[HEDGE_LADDER:BUY_PUT] exception: {_bp_err} — falling through to equity hedge")
+                            # Fetch fresh delta from quote greeks
                             try:
-                                _bp_res = await place_option_order(client, _und_sym, _hedge.put_occ, "buy_to_open", _hedge.put_qty, "limit", _hedge.put_limit_price, duration="day")
-                                if "errors" not in _bp_res:
-                                    eq_hedges[_occ] = {"underlying": _und_sym, "action": "BUY_PUT", "put_occ": _hedge.put_occ, "put_limit": _hedge.put_limit_price, "put_qty": _hedge.put_qty, "placed_at": datetime.utcnow().isoformat(), "reason": _hedge.reason, "order_resp": str(_bp_res)[:200]}
-                                    _save_equity_hedges(config, eq_hedges)
+                                _g_res = await client._request("GET", "/markets/options/chains", params={"symbol": _und_sym, "expiration": _parsed.get("expiration", ""), "greeks": "true"}, use_data_context=True)
+                                _ch_opts = _g_res.get("options", {}).get("option", []) if _g_res else []
+                                if isinstance(_ch_opts, dict):
+                                    _ch_opts = [_ch_opts]
+                                _delta = 0.0
+                                for _co in _ch_opts:
+                                    if _co.get("symbol") == _occ:
+                                        _delta = float((_co.get("greeks") or {}).get("delta", 0) or 0)
+                                        break
+                            except Exception:
+                                _delta = 0.0
+                            if _delta == 0.0:
+                                logger.warning(f"[EQ_HEDGE] no delta for {_occ} — skip hedge")
+                                continue
+                            _hedge_side = "sell_short" if _otype == "call" else "buy"
+                            # ── DIRECTION GUARD (2026-04-27 user rule, no exceptions) ───────────
+                            # NEVER short into an uptick. NEVER long into a downtick. Hedging is not
+                            # supposed to be suicide. PLTR was shorted while breaking up — never again.
+                            if bool(getattr(config, "OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED", True)):
+                                _close_5m_prev = float(_hl_ind.get("close_5m_prev", 0) or 0)
+                                _dch5_g = float(_hl_ind.get("dc_high_5m", 0) or 0)
+                                _dcl5_g = float(_hl_ind.get("dc_low_5m", 0) or 0)
+                                _wt_vel_5m = float(_hl_ind.get("wt_velocity_5m", 0) or 0)
+                                _going_up = (
+                                    (_close_5m_prev > 0 and _hl_und_px > _close_5m_prev)
+                                    or (_dch5_g > 0 and _hl_und_px > _dch5_g)
+                                    or (_wt_vel_5m > 0)
+                                )
+                                _going_down = (
+                                    (_close_5m_prev > 0 and _hl_und_px < _close_5m_prev)
+                                    or (_dcl5_g > 0 and _hl_und_px < _dcl5_g)
+                                    or (_wt_vel_5m < 0)
+                                )
+                                if _hedge_side == "sell_short" and _going_up:
+                                    logger.critical(f"[EQ_HEDGE_DIR_BLOCK] {_und_sym} sell_short refused — market UP (px={_hl_und_px:.2f} prev5m={_close_5m_prev:.2f} dch5={_dch5_g:.2f} wt_vel5m={_wt_vel_5m:+.1f}). HEDGING IS NOT SUICIDE.")
+                                    print(f"  \033[91m[EQ_HEDGE_DIR_BLOCK]\033[0m {_und_sym} sell_short refused — market going UP.")
                                     continue
-                                logger.warning(f"[HEDGE_LADDER:BUY_PUT] order rejected: {_bp_res.get('errors')} — falling through to equity hedge")
-                            except Exception as _bp_err:
-                                logger.warning(f"[HEDGE_LADDER:BUY_PUT] exception: {_bp_err} — falling through to equity hedge")
-                        # Fetch fresh delta from quote greeks
-                        try:
-                            _g_res = await client._request("GET", "/markets/options/chains", params={"symbol": _und_sym, "expiration": _parsed.get("expiration", ""), "greeks": "true"}, use_data_context=True)
-                            _ch_opts = _g_res.get("options", {}).get("option", []) if _g_res else []
-                            if isinstance(_ch_opts, dict):
-                                _ch_opts = [_ch_opts]
-                            _delta = 0.0
-                            for _co in _ch_opts:
-                                if _co.get("symbol") == _occ:
-                                    _delta = float((_co.get("greeks") or {}).get("delta", 0) or 0)
-                                    break
-                        except Exception:
-                            _delta = 0.0
-                        if _delta == 0.0:
-                            logger.warning(f"[EQ_HEDGE] no delta for {_occ} — skip hedge")
-                            continue
-                        _hedge_qty = int(round(abs(_delta) * _q * 100))
-                        if _hedge_qty <= 0:
-                            continue
-                        _hedge_side = "sell_short" if _otype == "call" else "buy"
-                        # Don't double-hedge: check existing equity on this symbol
-                        _existing_stock = await _get_stock_position(client, _und_sym)
-                        _pre_hedged = False
-                        if _existing_stock:
-                            _existing_qty = _existing_stock.get("quantity", 0)
-                            if _hedge_side == "sell_short" and _existing_qty < 0:
-                                _pre_hedged = True  # already short
-                            elif _hedge_side == "buy" and _existing_qty > 0:
-                                _pre_hedged = True  # already long
-                        if _pre_hedged:
-                            # Record that this option is considered hedged by a pre-existing position
-                            eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"pre_existing_stock_{_existing_stock.get('quantity')}", "pre_existing": True}
-                            _save_equity_hedges(config, eq_hedges)
-                            print(f"  \033[93m[EQ_HEDGE_SKIP]\033[0m {_und_sym} — user already holds {_existing_stock.get('quantity')} shares ({_hedge_side} side). Marking {_occ} as pre-hedged.")
-                            continue
-                        print(f"  \033[91m[EQ_HEDGE_OPEN]\033[0m {_und_sym} {_otype.upper()} {_occ} bid=${_bid:.2f} cps=${_cps:.2f} sellable={_sellable_pct:+.1f}% — hedging {_hedge_side} x{_hedge_qty} (|delta|={abs(_delta):.2f} × {int(_q)} × 100)")
-                        _open_res = await _place_equity_hedge(client, account_key, _und_sym, _hedge_qty, _hedge_side, reason=f"opt {_occ} unsellable at {_sellable_pct:+.1f}%")
-                        if "error" not in _open_res:
-                            eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"sellable_{_sellable_pct:+.1f}%", "order_resp": str(_open_res)[:200]}
-                            _save_equity_hedges(config, eq_hedges)
+                                if _hedge_side == "buy" and _going_down:
+                                    logger.critical(f"[EQ_HEDGE_DIR_BLOCK] {_und_sym} buy refused — market DOWN (px={_hl_und_px:.2f} prev5m={_close_5m_prev:.2f} dcl5={_dcl5_g:.2f} wt_vel5m={_wt_vel_5m:+.1f}). HEDGING IS NOT SUICIDE.")
+                                    print(f"  \033[91m[EQ_HEDGE_DIR_BLOCK]\033[0m {_und_sym} buy refused — market going DOWN.")
+                                    continue
+                            # ── SIZING CAP (2026-04-27): cap by delta, % of opt cost basis, ──
+                            # OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD, MAX_POSITION_SIZE, MAX_ORDER_VALUE.
+                            _hedge_qty_uncapped = int(round(abs(_delta) * _q * 100))
+                            if _hedge_qty_uncapped <= 0:
+                                continue
+                            _hedge_qty, _cap_label = _hedge_qty_capped(config, _hedge_qty_uncapped, _hl_und_px if _hl_und_px > 0 else 1.0, _cb)
+                            if _hedge_qty <= 0:
+                                logger.warning(f"[EQ_HEDGE_CAP_ZERO] {_und_sym} {_occ} — capped qty=0 (uncapped={_hedge_qty_uncapped} cap={_cap_label}). Skip.")
+                                continue
+                            if _hedge_qty < _hedge_qty_uncapped:
+                                logger.warning(f"[EQ_HEDGE_CAP_HIT] {_und_sym} {_occ} — qty {_hedge_qty_uncapped} → {_hedge_qty} (cap={_cap_label} cps_cb=${_cb:.0f} px=${_hl_und_px:.2f})")
+                                print(f"  \033[93m[EQ_HEDGE_CAP_HIT]\033[0m {_und_sym} {_hedge_qty_uncapped}→{_hedge_qty} ({_cap_label})")
+                            # Don't double-hedge: check existing equity on this symbol
+                            _existing_stock = await _get_stock_position(client, _und_sym)
+                            _pre_hedged = False
+                            if _existing_stock:
+                                _existing_qty = _existing_stock.get("quantity", 0)
+                                if _hedge_side == "sell_short" and _existing_qty < 0:
+                                    _pre_hedged = True  # already short
+                                elif _hedge_side == "buy" and _existing_qty > 0:
+                                    _pre_hedged = True  # already long
+                            if _pre_hedged:
+                                # Record that this option is considered hedged by a pre-existing position
+                                eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"pre_existing_stock_{_existing_stock.get('quantity')}", "pre_existing": True}
+                                _save_equity_hedges(config, eq_hedges)
+                                print(f"  \033[93m[EQ_HEDGE_SKIP]\033[0m {_und_sym} — user already holds {_existing_stock.get('quantity')} shares ({_hedge_side} side). Marking {_occ} as pre-hedged.")
+                                continue
+                            print(f"  \033[91m[EQ_HEDGE_OPEN]\033[0m {_und_sym} {_otype.upper()} {_occ} bid=${_bid:.2f} cps=${_cps:.2f} sellable={_sellable_pct:+.1f}% — hedging {_hedge_side} x{_hedge_qty} (|delta|={abs(_delta):.2f} × {int(_q)} × 100={_hedge_qty_uncapped}, cap={_cap_label})")
+                            _open_res = await _place_equity_hedge(client, account_key, _und_sym, _hedge_qty, _hedge_side, reason=f"opt {_occ} unsellable at {_sellable_pct:+.1f}%")
+                            if "error" not in _open_res:
+                                eq_hedges[_occ] = {"underlying": _und_sym, "hedge_side": _hedge_side, "hedge_qty": _hedge_qty, "uncapped_qty": _hedge_qty_uncapped, "cap_label": _cap_label, "placed_at": datetime.utcnow().isoformat(), "opt_delta_at_hedge": _delta, "opt_qty": int(_q), "trigger_reason": f"sellable_{_sellable_pct:+.1f}%", "order_resp": str(_open_res)[:200]}
+                                _meta = eq_hedges.setdefault("__meta__", {})
+                                _meta_fires = _meta.setdefault("last_fires", {})
+                                _meta_fires[_occ] = datetime.utcnow().isoformat()
+                                _save_equity_hedges(config, eq_hedges)
+                        finally:
+                            try:
+                                fcntl.flock(_eq_lock_fh.fileno(), fcntl.LOCK_UN)
+                                _eq_lock_fh.close()
+                            except Exception:
+                                pass
             # ── Write equity hedge guard so tradier_manage won't close hedging equity positions ──
             try:
                 _gd_cross_short: Dict[str, str] = {}
                 _gd_cross_long: Dict[str, str] = {}
                 for _gh_occ, _gh_entry in _load_equity_hedges(config).items():
+                    if _gh_occ.startswith("_") or not isinstance(_gh_entry, dict):
+                        continue
                     if _gh_entry.get("cross_hedge"):
                         _gh_hsym = _gh_entry.get("hedge_symbol", "")
                         _gh_hside = _gh_entry.get("hedge_side", "")

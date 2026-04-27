@@ -270,6 +270,24 @@ class TradierConfig:
     # Losing CALL -> sell_short stock; Losing PUT -> buy stock. Size = |delta|×qty×100.
     OPTIONS_EQUITY_HEDGE_ENABLED: bool = True
     OPTIONS_EQUITY_HEDGE_TRIGGER_PCT: float = -10.0  # Unsellable := bid implies loss ≤ this (%)
+    # === HEDGE SIZING CAPS (2026-04-27 — PLTR triple-fire $50k short on $4.3k call) ===
+    # Hedge qty = min( delta×contracts×100, MAX_PCT_OF_OPT_COST × cb / px,
+    #                  MAX_NOTIONAL_USD / px, MAX_POSITION_SIZE / px, MAX_ORDER_VALUE / px )
+    # First pass at PLTR opened 137-share short on a $4,262 call (~$19.6k notional, 4.6× option
+    # cost basis). User considers any hedge >>1× option cost basis insane. Default 150% (1.5×).
+    OPTIONS_EQUITY_HEDGE_MAX_PCT_OF_OPT_COST: float = 150.0  # hedge notional ≤ 1.5× option cost basis
+    OPTIONS_EQUITY_HEDGE_MAX_NOTIONAL_USD: float = 5000.0    # absolute $ ceiling per OCC hedge
+    # === HEDGE DUP-FIRE & DC-BREACH GUARDS (2026-04-27 — same incident) ===
+    # Two analyzer processes (--auto-sell + --daemon) raced and fired hedge 3× in 12min,
+    # net 346 shares short vs 137 fair. fcntl lock on options_equity_hedges.lock prevents
+    # the race. Per-OCC cooldown adds defense in depth.
+    OPTIONS_EQUITY_HEDGE_COOLDOWN_MIN: float = 60.0  # don't re-fire same OCC within N minutes
+    # Wrong-direction exit: if existing hedge is sell_short and price > dc_high_5m (or
+    # buy hedge below dc_low_5m), close immediately — don't wait for option to recover.
+    OPTIONS_EQUITY_HEDGE_DC_BREACH_EXIT_ENABLED: bool = True
+    # Direction guard at OPEN: never sell_short while market is moving up, never buy
+    # while market is moving down — even when "hedging". Hedging is not suicide.
+    OPTIONS_EQUITY_HEDGE_DIRECTION_GUARD_ENABLED: bool = True
     # === HEDGE PAIR GUARD (2026-04-22 — NEM naked-short incident) ===
     # When an option is hedged by an opposite-side stock position on the same underlying
     # (call paired with short shares, or put paired with long shares), auto-sell MUST NOT
