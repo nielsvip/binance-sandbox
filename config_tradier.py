@@ -1432,6 +1432,12 @@ class TradierConfig:
     EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = True
     EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = True
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
+    # 2026-04-28 — Price-cross GUARANTEE safety loop. See config.py for full description.
+    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
+    EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.001
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 600.0
+    EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
     ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416

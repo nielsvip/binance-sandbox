@@ -654,6 +654,16 @@ class Config:
     EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = True
     EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = True
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
+    # 2026-04-28 — Price-cross GUARANTEE safety loop. User: "NEVER allow a position
+    # to break out above exit price without having at least a partial reentry".
+    # Tight 5s tick checks every position with reentry_data: if current price has
+    # crossed past the recorded exit price by EZ_REENTRY_PRICE_CROSS_PCT, fires
+    # a partial reentry through execute_now. Idempotent via _price_cross_last_fire.
+    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
+    EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.001
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 600.0
+    EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})

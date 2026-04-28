@@ -24170,6 +24170,12 @@ async def main():
             background_tasks.append(asyncio.create_task(trade_manager.monitor_dc_breach_reduce()))
             if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED', True)):
                 background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
+            # 2026-04-28 — Price-cross GUARANTEE: tight 5s safety loop that NEVER lets a
+            # position cross past exit price without firing at least a partial reentry.
+            # Independent of every other reentry path; uses execute_now directly.
+            if bool(getattr(config, 'EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED', True)):
+                import ez_reentry as _ezr_mod
+                background_tasks.append(asyncio.create_task(_ezr_mod.price_cross_reentry_safety_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
             background_tasks.append(asyncio.create_task(monitor_system_state(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.momentum_rider_loop()))

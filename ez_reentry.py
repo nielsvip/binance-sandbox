@@ -150,6 +150,158 @@ def pick_reentry_evaluator(stores: Optional[dict] = None, cfg: Optional[Any] = N
     return get_evaluate_reentry()
 
 
+async def enforce_price_cross_reentry(trade_manager) -> int:
+    """Safety net (2026-04-28, user-mandated): for every position with a recorded
+    exit price in trade_manager.reentry_data, fire a partial reentry the FIRST
+    time current price crosses past exit (LONG: above, SHORT: below).
+
+    Why: existing reentry paths (evaluate_reentry, evaluate_reentry_2, TIER1/TIER2,
+    _price_level_reentry_monitor, reentry_enforcement_loop) all CAN block on
+    downstream gates (NO_DOUBLE_OPEN, MIN_GAP, SYMGATE, RALLY_K15M, etc) and
+    sometimes the position never reenters even when price has clearly crossed
+    the exit. User invariant: "NEVER allow a position to break out above exit
+    price without having at least a partial reentry. Effective NOW".
+
+    Idempotent via trade_manager._price_cross_last_fire (in-memory dict). Fires
+    once per cross epoch (default 600s min gap between fires per position). Uses
+    execute_now per CLAUDE.md "ONLY gate" rule. Returns count of fires.
+
+    Switches: EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED (default True),
+    EZ_REENTRY_PRICE_CROSS_PCT (cross threshold, default 0.001 = 0.1%),
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S (per-key dedup, default 600s),
+    EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC (size fraction, default 0.5).
+    """
+    try:
+        import config as _cfg
+    except Exception:
+        return 0
+    if not bool(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", True)):
+        return 0
+    cross_pct = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PCT", 0.001))
+    min_gap_s = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", 600.0))
+    partial_frac = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", 0.5))
+    start_size = float(getattr(_cfg, "START_POSITION_SIZE", 18.0))
+    if not hasattr(trade_manager, "_price_cross_last_fire"):
+        trade_manager._price_cross_last_fire = {}
+    src = (
+        trade_manager.service.reentry_data
+        if getattr(trade_manager, "service", None)
+        else getattr(trade_manager, "reentry_data", {})
+    )
+    if not isinstance(src, dict) or not src:
+        return 0
+    try:
+        from utils import parse_position_key as _ppk
+    except Exception:
+        return 0
+    now = time.time()
+    fired = 0
+    for pk, rd in list(src.items()):
+        if not isinstance(rd, dict):
+            continue
+        try:
+            exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
+        except (TypeError, ValueError):
+            exit_px = 0.0
+        if exit_px <= 0:
+            continue
+        try:
+            account_key, sym, side = _ppk(pk)
+        except Exception:
+            continue
+        is_long = side == "LONG"
+        position = trade_manager.positions.get(pk) if hasattr(trade_manager, "positions") else None
+        if position is None:
+            continue
+        try:
+            cur_px = float(getattr(position, "mark_price", 0) or 0)
+        except (TypeError, ValueError):
+            cur_px = 0.0
+        if cur_px <= 0:
+            continue
+        crossed = (
+            (is_long and cur_px > exit_px * (1.0 + cross_pct))
+            or ((not is_long) and cur_px < exit_px * (1.0 - cross_pct))
+        )
+        if not crossed:
+            continue
+        last_fire = float(trade_manager._price_cross_last_fire.get(pk, 0))
+        if now - last_fire < min_gap_s:
+            continue
+        try:
+            re_amt = float(rd.get("reentry_amount", 0) or 0)
+        except (TypeError, ValueError):
+            re_amt = 0.0
+        fire_qty = (re_amt if re_amt > 0 else (start_size / max(cur_px, 1e-9))) * partial_frac
+        if fire_qty <= 0:
+            continue
+        try:
+            pos_amt = abs(float(getattr(position, "positionAmt", 0) or 0))
+        except (TypeError, ValueError):
+            pos_amt = 0.0
+        try:
+            uid = f"PRICE_CROSS_GUARANTEE_{int(now)}"
+            reason = (
+                f"GUARANTEED_PRICE_CROSS_REENTRY_exit{exit_px:.6f}"
+                f"_cur{cur_px:.6f}_partial{partial_frac:.2f}"
+            )
+            await trade_manager.execute_now(
+                position_key=pk,
+                account_key=account_key,
+                symbol=sym,
+                original_positionAmt=pos_amt,
+                side=("BUY" if is_long else "SELL"),
+                position_side=side,
+                quantity=fire_qty,
+                old_price=cur_px,
+                unique_id=uid,
+                reason=reason,
+                is_full_close=False,
+                action="AUGMENT",
+            )
+            trade_manager._price_cross_last_fire[pk] = now
+            fired += 1
+        except Exception as e:
+            try:
+                trade_manager.logger.error(f"[PRICE_CROSS_GUARANTEE] {pk}: {e}")
+            except Exception:
+                pass
+    return fired
+
+
+async def price_cross_reentry_safety_loop(trade_manager) -> None:
+    """Tight tick loop wrapping enforce_price_cross_reentry. Default 5s interval.
+    Owned by ez_manage.py's main(); also callable from any other live process."""
+    import asyncio as _aio
+    try:
+        import config as _cfg
+        interval = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_INTERVAL_S", 5.0))
+    except Exception:
+        interval = 5.0
+    try:
+        trade_manager.logger.info(
+            f"[PRICE_CROSS_GUARANTEE] safety loop started — interval={interval}s"
+        )
+    except Exception:
+        pass
+    while True:
+        try:
+            n = await enforce_price_cross_reentry(trade_manager)
+            if n:
+                try:
+                    trade_manager.logger.warning(
+                        f"[PRICE_CROSS_GUARANTEE] fired {n} reentries this tick"
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            try:
+                trade_manager.logger.error(f"[PRICE_CROSS_GUARANTEE_ERROR] {e}", exc_info=True)
+            except Exception:
+                pass
+        await _aio.sleep(interval)
+
+
 __all__ = [
     "inline_active",
     "daemon_enabled",
@@ -164,4 +316,6 @@ __all__ = [
     "get_evaluate_reentry_2_periodic_loop_epq",
     "get_evaluate_reentry_2_epq",
     "pick_reentry_evaluator",
+    "enforce_price_cross_reentry",
+    "price_cross_reentry_safety_loop",
 ]
