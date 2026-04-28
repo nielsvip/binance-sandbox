@@ -2815,6 +2815,19 @@ class Config:
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True                       # reentry needs accel still aligned
     BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True                       # reentry past exit price even without RZ
     BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3                          # min %% past exit price to trigger
+    # ── Same-symbol HEDGE engine in v8_quick_engine BTC sim (2026-04-28) ──
+    # Per user: when technicals (wt 3m + wt 15m + ≥1 of wt 1h/4h/D) turn against a primary
+    # already in loss, open opposite-side hedge same notional. Hedge closes when wt 3m+1h
+    # flip in hedge's favor + hedge gain ≥ 0 (per memory feedback_hedge_wt3m_close_absolute).
+    BTC_HEDGE_SAMESYM_ENABLED: bool = False                               # default OFF — sweep validates before flipping live
+    BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT: float = -0.3                      # primary pnl ≤ this triggers hedge eligibility
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_3M: bool = True                          # wt1_3m against primary side required
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_15M: bool = True                         # wt1_15m against required
+    BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN: int = 1                        # of {1h, 4h, D} how many wt against required
+    BTC_HEDGE_SAMESYM_NOTIONAL_PCT: float = 1.0                           # 1.0 = same notional as primary (full delta-neutral)
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN: bool = True              # only close hedge when hedge_pnl ≥ 0
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_WT_3M_AND_1H: bool = True             # both wt 3m AND 1h must flip in hedge's favor
+    BTC_HEDGE_SAMESYM_HEDGE_HARD_LOSS_PCT: float = -2.0                   # hedge hard stop (rare — hedge usually closes via WT flip)
     # HTF alignment for BREAKOUT — prevents buying breakouts INTO a downtrend
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True                         # 2026-04-27: required after chart showed BK_L firing during clear bear leg
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2                                 # min HTFs (of 3 = 1h/4h/D) wt1>wt2 same direction

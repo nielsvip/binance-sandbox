@@ -147,6 +147,18 @@ if ! pgrep -f "tradier_options_oi_fetcher.py" >/dev/null 2>&1; then
     alert "tradier_options_oi_fetcher was dead — restarted"
 fi
 
+# === 2d. EZ_VOLUME_PROFILE (crypto deep heatmap, READ-ONLY 24/7 daemon) ===
+# Builds vol_profile:<sym> Redis keys (1500×15m bars × ±50% range × 1% buckets, top-5 HVNs).
+# Consumed by VP_GATE in ez_positions_quick (currently default OFF after sweep validation).
+# Has been dying repeatedly without auto-restart — adding here per "regress to qualifying setup" rule.
+if ! pgrep -f "ez_volume_profile.py" >/dev/null 2>&1; then
+    log "RESTARTING: ez_volume_profile.py"
+    cd "$WORKDIR"
+    nohup $PYTHON -u ez_volume_profile.py > "$LOGDIR/ez_volume_profile_cron.log" 2>&1 &
+    sleep 2
+    alert "ez_volume_profile was dead — restarted"
+fi
+
 # === 3. TRADE QUALITY CHECK ===
 # Check last 5 minutes of decisions for STRICT_NO_LOSS violations
 TODAY=$(date +%Y%m%d)

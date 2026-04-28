@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 16:04:23 UTC
+# Copilot Status — 2026-04-28 16:18:56 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,9 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T16:03:21
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T16:03:21
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T16:03:21
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T16:17:28
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T16:17:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T16:17:28
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T16:17:28
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T16:18:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T16:18:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T16:18:02
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T16:18:32
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T16:18:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T16:18:32
 
 ## Missed Trades (trader comparison)
 
@@ -20,9 +27,10 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 5 | **Reentered:** 0
 
 - HELD: **AXSUSDT** LONG (crypto) peak +6.0%, now +-1.7%
+- HELD: **XTZUSDT** SHORT (crypto) peak +4.2%, now +4.2%
 
 - WATCHING: **ACHUSDT** SHORT (crypto) peaked +6.1%, exited 1m ago
 - WATCHING: **EDUUSDT** SHORT (crypto) peaked +5.9%, exited 1m ago
@@ -34,9 +42,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 6
-- [HIGH] ez_manage.py for ang is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
+**Issues (last 1h):** 21
+- [MEDIUM] ez_prices.py running but log stale (10min)
+- [HIGH] ez_share_ind.py is NOT running
+- [HIGH] ez_share_ind.py is NOT running
+- [HIGH] ez_share_ind.py is NOT running
+- [HIGH] ez_share_ind.py is NOT running

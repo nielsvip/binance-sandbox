@@ -825,6 +825,16 @@ class QuickConfig:
     BTC_BREAKOUT_REENTRY_REQUIRE_TREND: bool = True
     BTC_FOLLOW_THROUGH_REENTRY_ENABLED: bool = True
     BTC_FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.3
+    # Same-symbol HEDGE engine in v8 BTC sim (2026-04-28)
+    BTC_HEDGE_SAMESYM_ENABLED: bool = False
+    BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT: float = -0.3
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_3M: bool = True
+    BTC_HEDGE_SAMESYM_REQUIRE_WT_15M: bool = True
+    BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN: int = 1
+    BTC_HEDGE_SAMESYM_NOTIONAL_PCT: float = 1.0
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN: bool = True
+    BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_WT_3M_AND_1H: bool = True
+    BTC_HEDGE_SAMESYM_HEDGE_HARD_LOSS_PCT: float = -2.0
     # HTF alignment for BREAKOUT (added 2026-04-27 — prevents buying into downtrends)
     BTC_BREAKOUT_REQUIRE_HTF_ALIGNED: bool = True
     BTC_BREAKOUT_HTF_MIN_ALIGNED: int = 2
@@ -2909,6 +2919,20 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     last_exit_bar = -10**9
     last_exit_price = 0.0
     last_exit_type = "NONE"      # to know which cooldown to apply for reentry
+    # Same-symbol hedge state (2026-04-28). Hedge runs alongside primary; opens when primary
+    # in loss + technicals turn against; closes on WT 3m+1h flip in hedge's favor + nonneg gain.
+    hedge_side = "FLAT"          # FLAT | LONG | SHORT
+    hedge_entry_price = 0.0
+    hedge_entry_bar = 0
+    hedge_enabled = bool(getattr(cfg, 'BTC_HEDGE_SAMESYM_ENABLED', False))
+    hedge_trigger_loss_pct = float(getattr(cfg, 'BTC_HEDGE_SAMESYM_TRIGGER_LOSS_PCT', -0.3))
+    hedge_req_3m = bool(getattr(cfg, 'BTC_HEDGE_SAMESYM_REQUIRE_WT_3M', True))
+    hedge_req_15m = bool(getattr(cfg, 'BTC_HEDGE_SAMESYM_REQUIRE_WT_15M', True))
+    hedge_req_htf_min = int(getattr(cfg, 'BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN', 1))
+    hedge_notional_pct = float(getattr(cfg, 'BTC_HEDGE_SAMESYM_NOTIONAL_PCT', 1.0))
+    hedge_close_nonneg = bool(getattr(cfg, 'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_NONNEG_GAIN', True))
+    hedge_close_3m_1h = bool(getattr(cfg, 'BTC_HEDGE_SAMESYM_CLOSE_REQUIRE_WT_3M_AND_1H', True))
+    hedge_hard_loss_pct = float(getattr(cfg, 'BTC_HEDGE_SAMESYM_HEDGE_HARD_LOSS_PCT', -2.0))
     # D-confirmation state (2026-04-27): persistent bars of D divergence presence,
     # required ≥ BTC_DIVERGENCE_REQUIRE_D_CONFIRM_BARS before allowing div-triggered exit.
     bull_d_persist = 0
@@ -3015,6 +3039,73 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             wt_dc_zone=wt_dc_zone,
             proximity_pct=rz_proximity_pct,
         )
+
+        # ── SAME-SYMBOL HEDGE LOGIC (2026-04-28) ────────────────────────────
+        # Runs BEFORE primary FLAT/OPEN branches. Hedge state is independent of
+        # primary; both can be open simultaneously (delta-neutral pair).
+        if hedge_enabled:
+            # Per-TF wt-against-primary booleans (used for hedge OPEN trigger)
+            _wt1_3m_now = wt1["3m"][i]; _wt2_3m_now = wt2["3m"][i]
+            _wt1_15m_now = wt1["15m"][i]; _wt2_15m_now = wt2["15m"][i]
+            _wt1_1h_now = wt1["1h"][i]; _wt2_1h_now = wt2["1h"][i]
+            _wt1_4h_now = wt1["4h"][i]; _wt2_4h_now = wt2["4h"][i]
+            _wt1_D_now = wt1["D"][i]; _wt2_D_now = wt2["D"][i]
+            # 1) HEDGE CLOSE check (runs first — frees state for re-open if needed)
+            if hedge_side != "FLAT":
+                if hedge_side == "LONG":
+                    h_pnl_pct = (price_i - hedge_entry_price) / hedge_entry_price * 100.0
+                else:
+                    h_pnl_pct = (hedge_entry_price - price_i) / hedge_entry_price * 100.0
+                # Hard hedge stop (rare safety net)
+                if h_pnl_pct <= hedge_hard_loss_pct:
+                    sym_pnl.append(h_pnl_pct * hedge_notional_pct)
+                    hedge_side = "FLAT"; hedge_entry_price = 0.0; hedge_entry_bar = 0
+                else:
+                    # Conditional close: WT 3m+1h flip in HEDGE'S favor + nonneg gain
+                    if hedge_side == "LONG":
+                        wt3m_in_favor = _wt1_3m_now > _wt2_3m_now
+                        wt1h_in_favor = _wt1_1h_now > _wt2_1h_now
+                    else:
+                        wt3m_in_favor = _wt1_3m_now < _wt2_3m_now
+                        wt1h_in_favor = _wt1_1h_now < _wt2_1h_now
+                    close_ok = (h_pnl_pct >= 0) if hedge_close_nonneg else True
+                    if hedge_close_3m_1h:
+                        close_ok = close_ok and wt3m_in_favor and wt1h_in_favor
+                    else:
+                        close_ok = close_ok and (wt3m_in_favor or wt1h_in_favor)
+                    if close_ok:
+                        sym_pnl.append(h_pnl_pct * hedge_notional_pct)
+                        hedge_side = "FLAT"; hedge_entry_price = 0.0; hedge_entry_bar = 0
+            # 2) HEDGE OPEN check (only if hedge is FLAT and primary is open + losing)
+            if hedge_side == "FLAT" and position != "FLAT":
+                if position == "LONG":
+                    p_pnl = (price_i - entry_price) / entry_price * 100.0
+                else:
+                    p_pnl = (entry_price - price_i) / entry_price * 100.0
+                if p_pnl <= hedge_trigger_loss_pct:
+                    if position == "LONG":
+                        wt3m_against = _wt1_3m_now < _wt2_3m_now
+                        wt15m_against = _wt1_15m_now < _wt2_15m_now
+                        htf_against = (
+                            (1 if _wt1_1h_now < _wt2_1h_now else 0)
+                            + (1 if _wt1_4h_now < _wt2_4h_now else 0)
+                            + (1 if _wt1_D_now < _wt2_D_now else 0)
+                        )
+                    else:
+                        wt3m_against = _wt1_3m_now > _wt2_3m_now
+                        wt15m_against = _wt1_15m_now > _wt2_15m_now
+                        htf_against = (
+                            (1 if _wt1_1h_now > _wt2_1h_now else 0)
+                            + (1 if _wt1_4h_now > _wt2_4h_now else 0)
+                            + (1 if _wt1_D_now > _wt2_D_now else 0)
+                        )
+                    cond_3m = (wt3m_against if hedge_req_3m else True)
+                    cond_15m = (wt15m_against if hedge_req_15m else True)
+                    cond_htf = (htf_against >= hedge_req_htf_min)
+                    if cond_3m and cond_15m and cond_htf:
+                        hedge_side = "SHORT" if position == "LONG" else "LONG"
+                        hedge_entry_price = price_i
+                        hedge_entry_bar = i
 
         # ── Decision: FLAT → entry / reentry ────────────────────────────────
         if position == "FLAT":
@@ -3200,6 +3291,13 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 sym_pnl.append((price_last - entry_price) / entry_price * 100.0)
             else:
                 sym_pnl.append((entry_price - price_last) / entry_price * 100.0)
+    # Mark-to-market open hedge at end of sim too
+    if hedge_side != "FLAT" and hedge_entry_price > 0:
+        price_last = float(close[n - 1])
+        if hedge_side == "LONG":
+            sym_pnl.append((price_last - hedge_entry_price) / hedge_entry_price * 100.0 * hedge_notional_pct)
+        else:
+            sym_pnl.append((hedge_entry_price - price_last) / hedge_entry_price * 100.0 * hedge_notional_pct)
 
     return sym_pnl
 
