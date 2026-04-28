@@ -20453,12 +20453,30 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _oa_dt = safe_datetime(_oa_raw) if _oa_raw else None
             _pos_age_s = (now - _oa_dt).total_seconds() if isinstance(_oa_dt, datetime) and isinstance(now, datetime) else 9999
             _pp_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            if _4h_against and _pos_age_s > 360:
-                logger.warning(f"[WT_4H_VEL_EXIT] {position_key}: vel_4h={_wt_vel_4h:.1f} wt1/2={_wt1_4h:.1f}/{_wt2_4h:.1f} g={_pp_g:.2f}% → MANDATORY_REENTRY")
-                result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"WT_4H_VEL_EXIT_vel={_wt_vel_4h:.1f}_g={_pp_g:.2f}%_MANDATORY_REENTRY", 0.95)
+            # 2026-04-28 USER RULE: WT_4H_VEL_EXIT may only fire on profitable positions AND when stoch K is in extreme zone
+            # against position direction. Old gate fired at any gain → drove API3USDT_SHORT bleed -374% across 89 closes today.
+            _wtve_req_profit = bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_PROFIT', True))
+            _wtve_req_kx = bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME', True))
+            _wtve_kx_hi = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_HIGH', 80.0))
+            _wtve_kx_lo = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_LOW', 20.0))
+            _profit_ok = (_pp_g >= 0) if _wtve_req_profit else True
+            _k_3m = safe_fetch_float(i.get('stoch_k_3m', 50.0), 50.0)
+            _k_15m = safe_fetch_float(i.get('stoch_k_15m', 50.0), 50.0)
+            if _wtve_req_kx:
+                if is_long:
+                    _kx_ok = (_k_3m >= _wtve_kx_hi) or (_k_15m >= _wtve_kx_hi)
+                else:
+                    _kx_ok = (_k_3m <= _wtve_kx_lo) or (_k_15m <= _wtve_kx_lo)
+            else:
+                _kx_ok = True
+            if _4h_against and _pos_age_s > 360 and _profit_ok and _kx_ok:
+                logger.warning(f"[WT_4H_VEL_EXIT] {position_key}: vel_4h={_wt_vel_4h:.1f} wt1/2={_wt1_4h:.1f}/{_wt2_4h:.1f} g={_pp_g:.2f}% k_3m={_k_3m:.0f} k_15m={_k_15m:.0f} → MANDATORY_REENTRY")
+                result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"WT_4H_VEL_EXIT_vel={_wt_vel_4h:.1f}_g={_pp_g:.2f}%_k3m={_k_3m:.0f}_k15m={_k_15m:.0f}_MANDATORY_REENTRY", 0.95)
                 if result:
                     trade_manager.processing_keys.discard(position_key)
                     return f"{EvalStatus.ACTION_TAKEN}:WT_4H_VEL_EXIT"
+            elif _4h_against and _pos_age_s > 360:
+                logger.info(f"🛡️[WT_4H_VEL_EXIT_BLOCKED] {position_key}: vel_4h={_wt_vel_4h:.1f} g={_pp_g:.2f}% k_3m={_k_3m:.0f} k_15m={_k_15m:.0f} profit_ok={_profit_ok} kx_ok={_kx_ok} — holding")
         # ==================================================================
         # DC_HOPELESS_EXIT — close if entry_price is now outside dc_4h channel
         # LONG: entry_price > dc_high_4h → bought above the channel ceiling, structure failed

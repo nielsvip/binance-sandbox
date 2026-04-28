@@ -2838,20 +2838,35 @@ class AdvancedSignalRater:
                 _tier1_forced = True
                 score += 15; reasons.append(f"TIER1_PULLBACK_REENTRY(k_reset,+15,min={min_since_red:.0f})")
             elif not _br_has_reset and actual_last_red_price > 0 and ((is_long and current_price >= actual_last_red_price) or (not is_long and current_price <= actual_last_red_price)):
-                # MANDATORY_REENTRY_PRICE_CROSS: exit price crossed — NO TIMER GATE. REENTRY IS A RIGHT.
-                # 2026-04-26 FIX: was `indicators.get(...)` — function param is `ind` (line 1583). NameError dropped 11+ live entry candidates per account in last 2 days.
+                # MANDATORY_REENTRY_PRICE_CROSS: exit price crossed.
+                # 2026-04-28 USER RULE: only enter if WT agrees AND K is NOT in extreme value.
+                # Don't reenter LONG when K already at top (buying tops); don't reenter SHORT at bottom (selling bottoms).
+                # 2026-04-26 FIX: was `indicators.get(...)` — function param is `ind` (line 1583).
                 _mr_wt = 0
                 for _tf in ['3m', '15m', '1h']:
                     _wb = bool(ind.get(f'wt_bullish_{_tf}', False))
                     if (is_long and _wb) or (not is_long and not _wb): _mr_wt += 1
-                if _mr_wt >= 1:
+                _mr_min_wt = int(getattr(config, 'MANDATORY_REENTRY_MIN_WT_AGREE', 2))
+                _mr_req_kx = bool(getattr(config, 'MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME', True))
+                _mr_k_hi = float(getattr(config, 'MANDATORY_REENTRY_K_HIGH_BLOCK', 80.0))
+                _mr_k_lo = float(getattr(config, 'MANDATORY_REENTRY_K_LOW_BLOCK', 20.0))
+                _mr_allow_wt0 = bool(getattr(config, 'MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS', False))
+                if _mr_req_kx:
+                    _mr_kx_block = (is_long and k_3m >= _mr_k_hi) or (not is_long and k_3m <= _mr_k_lo)
+                else:
+                    _mr_kx_block = False
+                if _mr_kx_block:
+                    logger.warning(f"🛡️[MANDATORY_REENTRY_BLOCKED_K_EXTREME] {position_key}: k_3m={k_3m:.0f} {'>='+str(_mr_k_hi) if is_long else '<='+str(_mr_k_lo)} — refusing reentry at extreme K (would buy top / sell bottom)")
+                elif _mr_wt >= _mr_min_wt:
                     _tier1_forced = True
-                    score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_WT{_mr_wt}(+30,exit_crossed_no_timer,exit={actual_last_red_price:.6f})")
-                    logger.critical(f"🚀[MANDATORY_REENTRY] {position_key}: price {current_price:.6f} >= exit {actual_last_red_price:.6f} + WT{_mr_wt}/3 — FORCING REENTRY (NO TIMER, REENTRY IS A RIGHT)")
-                elif abs(current_price / actual_last_red_price - 1.0) > 0.003:
+                    score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_WT{_mr_wt}(+30,exit_crossed,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY] {position_key}: price {current_price:.6f} {'>=' if is_long else '<='} exit {actual_last_red_price:.6f} + WT{_mr_wt}/3 (need {_mr_min_wt}) k_3m={k_3m:.0f} — FORCING REENTRY")
+                elif _mr_allow_wt0 and abs(current_price / actual_last_red_price - 1.0) > 0.003:
                     _tier1_forced = True
-                    score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_WT0(+20,0.3pct_above_exit,exit={actual_last_red_price:.6f})")
-                    logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct above exit {actual_last_red_price:.6f} WT=0 — FORCING REENTRY (0 WT ok, strong cross)")
+                    score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_WT{_mr_wt}(+20,0.3pct,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct past exit {actual_last_red_price:.6f} WT={_mr_wt} k_3m={k_3m:.0f} — FORCING REENTRY (WT0 fallback explicitly enabled)")
+                else:
+                    logger.info(f"🛡️[MANDATORY_REENTRY_BLOCKED_WT] {position_key}: WT{_mr_wt}/3 < min {_mr_min_wt} (k_3m={k_3m:.0f}) — no reentry, waiting for stronger setup")
             elif not _br_has_reset and actual_last_red_price > 0 and min_since_red >= _tier2_min_min:
                 _trend_continues = (is_long and current_price > actual_last_red_price * (1.0 + _tier2_price_pct)) or (not is_long and current_price < actual_last_red_price * (1.0 - _tier2_price_pct))
                 _momentum_ok = (is_long and k_3m > k_3m_prev and k_1m > d_1m) or (not is_long and k_3m < k_3m_prev and k_1m < d_1m)
@@ -5319,10 +5334,16 @@ class HedgeEngine:
                                     _scalp_close_fire = True
                                     _scalp_reason = f"B_combined_recov_orig={_orig_gain:.2f}%_max_loss={_orig_max_loss:.2f}%_recov={_orig_recovery_pp:.2f}pp"
                                 # Rule C — stuck losing hedge timeout (5 min, was 15)
+                                # 2026-04-28 USER RULE: only fire if (hedge_gain + orig_gain) >= 0 — pair must be at/above breakeven combined.
+                                # Old gate fired ALTUSDT_LONG at hedge_gain=-5.37% with orig deeply negative → -5.37% standalone loss.
                                 _max_age = float(getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', 5.0) or 5.0)
-                                if hedge_gain < -0.3 and _age_min > _max_age:
+                                _ruleC_req_combined = bool(getattr(config, 'HEDGE_SCALP_C_REQUIRE_COMBINED_NONNEG', True))
+                                _ruleC_combined_ok = (_combined_pnl >= 0) if _ruleC_req_combined else True
+                                if hedge_gain < -0.3 and _age_min > _max_age and _ruleC_combined_ok:
                                     _scalp_close_fire = True
-                                    _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%"
+                                    _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%_combined={_combined_pnl:.2f}%"
+                                elif hedge_gain < -0.3 and _age_min > _max_age and _ruleC_req_combined:
+                                    logger.info(f"🛡️ [HEDGE_CLOSE_SCALP_C_BLOCKED_COMBINED] {hedge_key}: hedge={hedge_gain:.2f}% orig={_orig_gain:.2f}% combined={_combined_pnl:.2f}% < 0 — holding pair")
                                 # Rule D — 1m WT against hedge: close immediately, no age gate
                                 if not _scalp_close_fire:
                                     _wt_bull_1m = h_ind.get('wt_bullish_1m')
@@ -6102,8 +6123,11 @@ class HedgeEngine:
                         except Exception: _h_opened_ts = 0.0
                     if _h_opened_ts > 0:
                         _h_age_h = (now_ts - _h_opened_ts) / 3600.0
-                        if _h_age_h >= _hedge_max_age_h:
-                            logger.critical(f"⏰ [HEDGE_MAX_AGE_KILL] {hedge_key}: open {_h_age_h:.1f}h >= {_hedge_max_age_h}h cap — CLOSING regardless of WT state. gain={hedge_gain:.2f}%")
+                        # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL may not close hedge at a loss. Was firing at -0.21%/-0.24% on
+                        # 994h-old hedges → 22 closes summing -10.6% today on inf.
+                        _hmak_req_profit = bool(getattr(self.config, 'HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT', True))
+                        if _h_age_h >= _hedge_max_age_h and ((not _hmak_req_profit) or hedge_gain >= 0):
+                            logger.critical(f"⏰ [HEDGE_MAX_AGE_KILL] {hedge_key}: open {_h_age_h:.1f}h >= {_hedge_max_age_h}h cap — CLOSING (profit-gated). gain={hedge_gain:.2f}%")
                             await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_MAX_AGE_KILL_{_h_age_h:.1f}h_g{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                             await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                             if original_key:
@@ -6112,6 +6136,8 @@ class HedgeEngine:
                                 self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                                 self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
                             continue
+                        elif _h_age_h >= _hedge_max_age_h and hedge_gain < 0:
+                            logger.info(f"🛡️ [HEDGE_MAX_AGE_KILL_BLOCKED_LOSS] {hedge_key}: age {_h_age_h:.1f}h but gain={hedge_gain:.2f}% < 0 — holding hedge until profitable or technical")
                 # ═══ HEDGE KILL: LOSING-POSITION WT_3M RECOVERS → KILL HEDGE IMMEDIATELY ═══
                 # USER RULE 2026-04-15: A hedge dies the moment the LOSING position it protects starts to recover.
                 # Recovery = wt1_3m crossing in favor of the losing position's own direction (NOT hedge symbol).
@@ -11828,6 +11854,44 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                             pass
                         except Exception as _rz_exc:
                             logger.debug(f"[RED_ZONE_GATE] {position_key}: exception {type(_rz_exc).__name__} {_rz_exc} — skipped")
+                        # 2026-04-28 USER RULE: OB-fallback signal when ez_orderbook key missing/stale for symbol.
+                        # ez_orderbook TTLs were 2-10s and only ~17/130 keys live at any moment → wall gate silently no-oped.
+                        # Fallback: 1m K direction + k_15m extreme + 1h/4h LH(LONG)/HL(SHORT) — same block decision.
+                        _rz_fb_enabled = bool(getattr(config, 'RED_ZONE_GATE_FALLBACK_ENABLED', True))
+                        _ob_data_present = (_gate_ind.get('ob_ask_wall_pct') is not None) or (_gate_ind.get('ob_bid_wall_pct') is not None)
+                        if _rz_fb_enabled and (not _ob_data_present):
+                            try:
+                                _fb_k15 = safe_fetch_float(_gate_ind.get('stoch_k_15m', 50.0), 50.0)
+                                _fb_k1 = safe_fetch_float(_gate_ind.get('stoch_k_1m', 50.0), 50.0)
+                                _fb_k1p = safe_fetch_float(_gate_ind.get('stoch_k_1m_prev', _fb_k1), _fb_k1)
+                                _fb_kx_hi = float(getattr(config, 'RED_ZONE_FALLBACK_K15_HIGH', 80.0))
+                                _fb_kx_lo = float(getattr(config, 'RED_ZONE_FALLBACK_K15_LOW', 20.0))
+                                if _gate_is_long:
+                                    _fb_h1 = safe_fetch_float(_gate_ind.get('high_1h', 0), 0)
+                                    _fb_h1p = safe_fetch_float(_gate_ind.get('high_1h_prev', 0), 0)
+                                    _fb_h4 = safe_fetch_float(_gate_ind.get('high_4h', 0), 0)
+                                    _fb_h4p = safe_fetch_float(_gate_ind.get('high_4h_prev', 0), 0)
+                                    _fb_lh1 = (_fb_h1 > 0 and _fb_h1p > 0 and _fb_h1 < _fb_h1p)
+                                    _fb_lh4 = (_fb_h4 > 0 and _fb_h4p > 0 and _fb_h4 < _fb_h4p)
+                                    _fb_lh = _fb_lh1 and _fb_lh4
+                                    _fb_k1_falling = _fb_k1 < _fb_k1p
+                                    if _fb_k15 >= _fb_kx_hi and _fb_k1_falling and _fb_lh:
+                                        logger.warning(f"🧱 [RED_ZONE_GATE_FB] {position_key}: BLOCKED LONG (OB missing) — k15={_fb_k15:.0f}>={_fb_kx_hi:.0f} k1m={_fb_k1:.0f}<prev{_fb_k1p:.0f} LH(1h={_fb_lh1} 4h={_fb_lh4}). action={action}")
+                                        return False, f"RED_ZONE_FB_BLOCK_LONG_k15={_fb_k15:.0f}_k1m={_fb_k1:.0f}<{_fb_k1p:.0f}_LH"
+                                else:
+                                    _fb_l1 = safe_fetch_float(_gate_ind.get('low_1h', 0), 0)
+                                    _fb_l1p = safe_fetch_float(_gate_ind.get('low_1h_prev', 0), 0)
+                                    _fb_l4 = safe_fetch_float(_gate_ind.get('low_4h', 0), 0)
+                                    _fb_l4p = safe_fetch_float(_gate_ind.get('low_4h_prev', 0), 0)
+                                    _fb_hl1 = (_fb_l1 > 0 and _fb_l1p > 0 and _fb_l1 > _fb_l1p)
+                                    _fb_hl4 = (_fb_l4 > 0 and _fb_l4p > 0 and _fb_l4 > _fb_l4p)
+                                    _fb_hl = _fb_hl1 and _fb_hl4
+                                    _fb_k1_rising = _fb_k1 > _fb_k1p
+                                    if _fb_k15 <= _fb_kx_lo and _fb_k1_rising and _fb_hl:
+                                        logger.warning(f"🧱 [RED_ZONE_GATE_FB] {position_key}: BLOCKED SHORT (OB missing) — k15={_fb_k15:.0f}<={_fb_kx_lo:.0f} k1m={_fb_k1:.0f}>prev{_fb_k1p:.0f} HL(1h={_fb_hl1} 4h={_fb_hl4}). action={action}")
+                                        return False, f"RED_ZONE_FB_BLOCK_SHORT_k15={_fb_k15:.0f}_k1m={_fb_k1:.0f}>{_fb_k1p:.0f}_HL"
+                            except Exception as _fb_exc:
+                                logger.debug(f"[RED_ZONE_GATE_FB] {position_key}: exception {type(_fb_exc).__name__} {_fb_exc} — skipped")
                 # ═══ 2026-04-28 DEEP VOLUME-PROFILE GATE (±50% historical heatmap, crypto) ═══
                 # User: "heat maps over the next 50% up or down instead of the open orders for the next minute".
                 # ez_volume_profile.py writes vol_profile:<sym> with top HVN buckets above/below price.
@@ -13425,7 +13489,12 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
                 if not hard_exit_reason and not is_hedge:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
-                    if _pos_age_min >= _be_grace and current_gain < 0.02:
+                    # 2026-04-28 USER RULE: BREAKEVEN_GAIN_EROSION may NOT close at a loss. Only fires when current_gain >= 0.
+                    # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% today.
+                    _be_req_profit = bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', True))
+                    _be_min_gain = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0))
+                    _be_window = (_be_min_gain <= current_gain < 0.02) if _be_req_profit else (current_gain < 0.02)
+                    if _pos_age_min >= _be_grace and _be_window:
                         _hbf_enabled = bool(getattr(config, 'HARD_BREAKEVEN_FLOOR_ENABLED', True))
                         _hbf_min_peak = float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5))
                         _pos_max_g_be = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
@@ -13436,7 +13505,9 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                             if _hbf_override and _htf_veto_active:
                                 logger.critical(f"🔥[HARD_BREAKEVEN_FLOOR] {position_key}: max_gain={_pos_max_g_be:.2f}% ≥ {_hbf_min_peak:.1f}% — OVERRIDING HTF veto, gain={current_gain:.2f}% ⚠️ DO NOT DISABLE")
                             hard_exit_reason = f"BREAKEVEN_GAIN_EROSION_STOP_age{_pos_age_min:.0f}m_gain{current_gain:.2f}%"
-                            logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED")
+                            logger.critical(f"🚫[BREAKEVEN] {position_key}: age {_pos_age_min:.0f}m > grace {_be_grace:.0f}m, gain {current_gain:.2f}% — taking near-breakeven exit (profit-gated)")
+                    elif _pos_age_min >= _be_grace and current_gain < 0:
+                        logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED, holding for technical exit")
                 if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
                     _be_dc_low4 = safe_fetch_float(indicators.get('dc_low4_3m', 0), 0)
                     _be_dc_high4 = safe_fetch_float(indicators.get('dc_high4_3m', 0), 0)

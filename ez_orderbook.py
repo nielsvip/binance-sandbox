@@ -483,7 +483,7 @@ async def write_loop(books: Dict[str, DeepBook], redis: aioredis.Redis, get_symb
             if feat is None:
                 continue
             try:
-                await redis.set(f"orderbook:{sym}", orjson.dumps(feat), ex=10)
+                await redis.set(f"orderbook:{sym}", orjson.dumps(feat), ex=90)
                 updates_written += 1
                 wrote_this_cycle += 1
             except Exception as e:

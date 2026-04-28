@@ -1844,6 +1844,31 @@ class Config:
     WT_4H_VEL_EXIT_ENABLED: bool = True
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
     WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
+    # 2026-04-28 USER RULE: WT_4H_VEL_EXIT must require profit AND extreme stoch K
+    # Old gate fired at -9.75% on API3USDT_SHORT, looped MANDATORY_REENTRY → -374% bleed across 89 closes today.
+    WT_4H_VEL_EXIT_REQUIRE_PROFIT: bool = True       # only fire when current_gain >= 0
+    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: bool = True    # only fire when K is at extreme against position direction
+    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 80.0      # LONG exit needs k_3m>=80 OR k_15m>=80 (overbought top)
+    WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 20.0       # SHORT exit needs k_3m<=20 OR k_15m<=20 (oversold bottom)
+    # 2026-04-28 USER RULE: MANDATORY_REENTRY must require WT agreement AND K not at extreme
+    # Old gate fired with WT=1/3 OR WT=0 (price-cross only) → bought tops, sold bottoms
+    MANDATORY_REENTRY_MIN_WT_AGREE: int = 2          # need at least 2/3 WT TFs (3m/15m/1h) agreeing
+    MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME: bool = True
+    MANDATORY_REENTRY_K_HIGH_BLOCK: float = 80.0     # block LONG reentry when k_3m >= this (top)
+    MANDATORY_REENTRY_K_LOW_BLOCK: float = 20.0      # block SHORT reentry when k_3m <= this (bottom)
+    MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS: bool = False  # banned by user — WT must agree, no WT=0 exception
+    # 2026-04-28 USER RULE: BREAKEVEN_GAIN_EROSION may not close at a loss — only fire when in profit zone
+    BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True
+    BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 0.0     # gate fires only when MIN_GAIN <= current_gain < 0.02
+    # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL may not close hedge at a loss
+    HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT: bool = True
+    # 2026-04-28 USER RULE: HEDGE_CLOSE_SCALP Rule C requires combined (hedge+orig) >= 0 before firing
+    HEDGE_SCALP_C_REQUIRE_COMBINED_NONNEG: bool = True
+    # 2026-04-28 USER RULE: RED_ZONE_GATE OB-fallback when ez_orderbook key missing for symbol
+    # Uses 1m K direction + k_15m extreme + 1h/4h LH/HL pattern as substitute for L2 walls
+    RED_ZONE_GATE_FALLBACK_ENABLED: bool = True
+    RED_ZONE_FALLBACK_K15_HIGH: float = 80.0   # LONG block: k_15m >= this (overbought, top warning)
+    RED_ZONE_FALLBACK_K15_LOW: float = 20.0    # SHORT block: k_15m <= this (oversold, bottom warning)
     # DC_HOPELESS_EXIT — close if entry_price is now outside the dc_4h channel entirely
     # LONG: entry_price > dc_high_4h → bought above channel ceiling, channel moved below us
     # SHORT: entry_price < dc_low_4h → sold below channel floor, channel moved above us
