@@ -8,8 +8,15 @@
 
 | Server | Lock | Owner | Task | Started | ETA |
 |--------|------|-------|------|---------|-----|
-| **204.168.181.211** | `/home/niels/SWEEP_RUNNING` | tradier_48h_sweep | 408-config V5 full tradier sweep | 2026-04-01 20:11 UTC | ~16h |
-| **157.180.125.52** | `/home/niels/SWEEP_RUNNING` | tradier_48h_sweep_s1 | 204-config V5 full tradier sweep (noloss 0.5/2.0/5.0) | PENDING REBOOT | ~7h after start |
+| **157.180.125.52 (S1)** | none (advisory) | crypto_funding_oi_ON | autonomous_search 24sym × 1.32yr crypto funding_oi_ON_w50400 (seed 50400) — vec_mass loops PAUSED to free RAM | 2026-04-28 00:19 UTC | open-ended |
+| **204.168.181.211 (S2)** | none (advisory) | tradier_funding_oi_ON | autonomous_search 114sym × 2.32yr tradier funding_oi_ON_w70100 (seed 70100) | 2026-04-28 00:11 UTC | open-ended |
+
+### Notes (2026-04-28 funding_oi_ON sweep launch)
+
+- **iter_npz streaming fix** (md5 `9f5e70fc58200c879c786036d635ddab`) deployed across MB+S1+S2 — cuts NPZ memory from view-aliased full-file holds to deep slice copies.
+- **Crypto S1 RAM ceiling**: ~24 syms × 1.32 yr is the largest scope that fits S1's 30 GB with funding_oi_ON baseline (which allocates more derived arrays than `genuine` baseline). Larger scopes OOM at ~30.5 GB anon-rss.
+- **vec_mass loops on S1 (PIDs 137338 & 895816 + children) WERE KILLED** to free RAM for the funding_oi_ON sweep. To restart: `nohup bash run_vec_mass_loop.sh crypto 3 5000 c_pri &` etc.
+- **Tradier baseline JSON patch**: `tradier_3p4361_funding_oi_ON_20260427.json` has v8-shared `FUNDING_GATE_ENABLED=false` and `OI_CONFIRM_ENABLED=false` (vec engine can't read stocks_oi_cache). New TRADIER-suffixed knobs (`FUNDING_GATE_ENABLED_TRADIER`, `OI_CONFIRM_ENABLED_TRADIER`) are ON for live tradier_manage.py P/C ratio analogue but don't affect vec sim.
 
 ### Rules
 

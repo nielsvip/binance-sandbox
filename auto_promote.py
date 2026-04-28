@@ -139,6 +139,11 @@ def run_v8_validation(mode, baseline_path, overrides, profile, work_dir):
     with open(baseline_path) as f:
         merged = json.load(f)
     merged.update(overrides)
+    # 2026-04-28: disable eval_reentry in validation backtests — adds ~50% runtime, doesn't fire in
+    # 12-sym × 6mo sample anyway (live crypto sees fires but smoke window too small). Enable
+    # explicitly via override if testing reentry impact.
+    if "EVAL_REENTRY_ENABLED" not in overrides:
+        merged["EVAL_REENTRY_ENABLED"] = False
     override_path = work_dir / "merged_override.json"
     with open(override_path, "w") as f:
         json.dump(merged, f, indent=2, sort_keys=True)
