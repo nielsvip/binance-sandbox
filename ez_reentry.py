@@ -200,6 +200,44 @@ def _allowed_accounts_for(trade_manager) -> list:
     return [a for a in accs if isinstance(a, str)]
 
 
+def effective_gain_pct(position_key: str, raw_gain: float, trade_manager=None, cfg=None) -> float:
+    """User mandate (2026-04-28): after a PARTIAL_PROFIT_LOCK 50% close, the
+    REMAINING position has effectively doubled its gain percentage on the
+    half-sized cost basis. So gain<MIN_GAIN augment-block checks should compare
+    against the AMPLIFIED gain (raw_gain / (1 - PPL_FRAC)) when PPL has fired
+    for this position_key. With FRAC=0.5 → 2× multiplier.
+
+    Returns ``raw_gain`` unchanged if PPL has not fired or feature is disabled.
+    Switch: ``EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED`` (default True).
+
+    Used at every gain<MIN_GAIN block site in ez_manage / ez_positions_quick /
+    tradier_manage so a profit-locked position becomes augment-eligible at
+    half the gain it would otherwise need.
+    """
+    try:
+        if cfg is None:
+            import config as cfg
+    except Exception:
+        return raw_gain
+    if not bool(getattr(cfg, "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED", True)):
+        return raw_gain
+    if trade_manager is None:
+        return raw_gain
+    try:
+        st = getattr(trade_manager, "partial_profit_lock_state", None)
+        if not isinstance(st, dict):
+            return raw_gain
+        entry = st.get(position_key) or {}
+        if not entry.get("fired"):
+            return raw_gain
+        frac = float(getattr(cfg, "PARTIAL_PROFIT_LOCK_FRAC", 0.5))
+        if not (0.0 < frac < 1.0):
+            return raw_gain
+        return raw_gain / (1.0 - frac)
+    except Exception:
+        return raw_gain
+
+
 def _ts_to_epoch(v) -> float:
     if not v:
         return 0.0
@@ -441,4 +479,5 @@ __all__ = [
     "pick_reentry_evaluator",
     "enforce_price_cross_reentry",
     "price_cross_reentry_safety_loop",
+    "effective_gain_pct",
 ]

@@ -11398,11 +11398,17 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             _wrap_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key)
             if _wrap_pos:
                 _wrap_amt = abs(safe_fetch_float(getattr(_wrap_pos, 'positionAmt', 0), 0))
-                _wrap_gain = safe_fetch_float(getattr(_wrap_pos, 'gain', 0), 0)
+                _wrap_gain_raw = safe_fetch_float(getattr(_wrap_pos, 'gain', 0), 0)
+                # 2026-04-28: PPL-fired positions get effective gain doubled (raw / (1-FRAC)).
+                try:
+                    from ez_reentry import effective_gain_pct as _eff_gain
+                    _wrap_gain = _eff_gain(position_key, _wrap_gain_raw, trade_manager, config)
+                except Exception:
+                    _wrap_gain = _wrap_gain_raw
                 _wrap_min = float(getattr(config, 'MIN_GAIN', 3.0))
                 if _wrap_amt > 0 and _wrap_gain < _wrap_min:
-                    logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK_WRAPPER] {position_key}: amt={_wrap_amt:.4f} gain={_wrap_gain:.2f}% < MIN_GAIN={_wrap_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
-                    return False, f"BLOCKED_LOSING_POSITION_GAIN{_wrap_gain:.2f}_LT_MIN{_wrap_min:.2f}"
+                    logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK_WRAPPER] {position_key}: amt={_wrap_amt:.4f} gain={_wrap_gain_raw:.2f}% (eff={_wrap_gain:.2f}%) < MIN_GAIN={_wrap_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
+                    return False, f"BLOCKED_LOSING_POSITION_GAIN{_wrap_gain_raw:.2f}_EFF{_wrap_gain:.2f}_LT_MIN{_wrap_min:.2f}"
         except Exception as _wrap_e:
             logger.debug(f"[LOSING_POSITION_HARD_BLOCK_WRAPPER] {position_key}: check err {type(_wrap_e).__name__}: {_wrap_e}")
     # ═══════════════════════════════════════════════════════════════════════════

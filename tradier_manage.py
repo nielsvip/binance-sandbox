@@ -5689,7 +5689,13 @@ class StockStrategy:
                                 self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_price': current_price, 'last_aug_ts': time.time(), 'dd_qty': qty}
                                 return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} px={current_price:.2f}>prev_aug={last_aug_price:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
             # MUST be in profit before augmenting — 3% gate matches crypto (MIN_GAIN)
-            if gain < getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0):
+            # 2026-04-28: if PPL has fired, effective gain is doubled.
+            try:
+                from ez_reentry import effective_gain_pct as _eff_gain_t
+                _eff_gain_val = _eff_gain_t(f"{getattr(self, 'account_key', '')}:{symbol}_{position_side}", gain, self, config)
+            except Exception:
+                _eff_gain_val = gain
+            if _eff_gain_val < getattr(config, 'MIN_GAIN_TO_BUY_AGGRESSIVELY', 3.0):
                 return False, "", 0.0, 0.0
 
             # Cooldown: don't augment if we augmented in the last 5 min

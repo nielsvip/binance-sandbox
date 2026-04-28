@@ -13104,11 +13104,18 @@ class MultiAccountTradeManager:
                 _lpb_pos = self.positions_by_account.get(account_key, {}).get(position_key)
                 if _lpb_pos:
                     _lpb_amt = abs(safe_fetch_float(getattr(_lpb_pos, 'positionAmt', 0), 0))
-                    _lpb_gain = safe_fetch_float(getattr(_lpb_pos, 'gain', 0), 0)
+                    _lpb_gain_raw = safe_fetch_float(getattr(_lpb_pos, 'gain', 0), 0)
+                    # 2026-04-28: if PPL has fired (50% closed at small profit), treat remaining
+                    # gain as doubled (gain / (1 - PPL_FRAC)) for the augment-eligibility check.
+                    try:
+                        from ez_reentry import effective_gain_pct as _eff_gain
+                        _lpb_gain = _eff_gain(position_key, _lpb_gain_raw, self, config)
+                    except Exception:
+                        _lpb_gain = _lpb_gain_raw
                     _lpb_min = float(getattr(config, 'MIN_GAIN', 3.0))
                     if _lpb_amt > 0 and _lpb_gain < _lpb_min:
-                        logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain:.2f}% < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
-                        return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
+                        logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
+                        return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain_raw:.2f}_EFF{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
             except Exception as _lpb_e:
                 logger.debug(f"[LOSING_POSITION_HARD_BLOCK] {position_key}: check err {type(_lpb_e).__name__}: {_lpb_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -13244,11 +13251,16 @@ class MultiAccountTradeManager:
             _pos_check = await self.get_position(position_key)
             _pos_amt_check = abs(safe_fetch_float(getattr(_pos_check, 'positionAmt', 0), 0.0)) if _pos_check else 0.0
             _pos_val_check = _pos_amt_check * (old_price if old_price > 0 else safe_fetch_float(getattr(_pos_check, 'mark_price', 0), 0.0) if _pos_check else 0)
-            _pos_gain_check = safe_fetch_float(getattr(_pos_check, 'gain', 0), 0.0) if _pos_check else 0.0
+            _pos_gain_check_raw = safe_fetch_float(getattr(_pos_check, 'gain', 0), 0.0) if _pos_check else 0.0
+            try:
+                from ez_reentry import effective_gain_pct as _eff_gain
+                _pos_gain_check = _eff_gain(position_key, _pos_gain_check_raw, self, config)
+            except Exception:
+                _pos_gain_check = _pos_gain_check_raw
             _min_pos_val_check = safe_fetch_float(getattr(config, 'MIN_POSITION_SIZE', 45.0), 45.0)
             if _pos_val_check > _min_pos_val_check and _pos_gain_check < safe_fetch_float(getattr(config, 'MIN_GAIN', 1.2), 1.2):
-                logger.critical(f"🚫🚫🚫 [POSITION_EXISTS_BLOCK] {position_key}: Position ${_pos_val_check:.1f} exists with gain={_pos_gain_check:.2f}% < MIN_GAIN. NO further opens/augents/reentries until profitable. action={action} reason={reason}")
-                return f"BLOCKED_POSITION_EXISTS_gain{_pos_gain_check:.2f}pct"
+                logger.critical(f"🚫🚫🚫 [POSITION_EXISTS_BLOCK] {position_key}: Position ${_pos_val_check:.1f} exists with gain={_pos_gain_check_raw:.2f}% (eff={_pos_gain_check:.2f}%) < MIN_GAIN. NO further opens/augents/reentries until profitable. action={action} reason={reason}")
+                return f"BLOCKED_POSITION_EXISTS_gain{_pos_gain_check_raw:.2f}_eff{_pos_gain_check:.2f}pct"
             # ═══ SHARPE-TRIPLE ENTRY GATES 2026-04-16 — regime / volume / circuit / hour ═══
             # All default OFF, switch-gated. Applied ONLY to fresh opens (not augments of winners).
             try:
@@ -13300,11 +13312,16 @@ class MultiAccountTradeManager:
             _sg_val = _sg_amt * _sg_price
             _sg_start = safe_fetch_float(getattr(config, 'START_POSITION_SIZE', 55.0), 55.0)
             if _sg_val >= _sg_start:
-                _sg_gain = safe_fetch_float(getattr(_sg_pos, 'gain', 0), 0.0) if _sg_pos else 0
+                _sg_gain_raw = safe_fetch_float(getattr(_sg_pos, 'gain', 0), 0.0) if _sg_pos else 0
+                try:
+                    from ez_reentry import effective_gain_pct as _eff_gain
+                    _sg_gain = _eff_gain(position_key, _sg_gain_raw, self, config)
+                except Exception:
+                    _sg_gain = _sg_gain_raw
                 _sg_min_gain = safe_fetch_float(getattr(config, 'MIN_GAIN', 1.2), 1.2)
                 if _sg_gain < _sg_min_gain:
-                    logger.critical(f"🚫 [HARD_SIZE_GATE] {position_key}: BLOCKED {action} — position ${_sg_val:.1f} >= START ${_sg_start:.0f} but gain {_sg_gain:.2f}% < MIN_GAIN {_sg_min_gain:.1f}%. reason={reason}")
-                    return f"BLOCKED_HARD_SIZE_GATE_{_sg_gain:.2f}pct"
+                    logger.critical(f"🚫 [HARD_SIZE_GATE] {position_key}: BLOCKED {action} — position ${_sg_val:.1f} >= START ${_sg_start:.0f} but gain {_sg_gain_raw:.2f}% (eff={_sg_gain:.2f}%) < MIN_GAIN {_sg_min_gain:.1f}%. reason={reason}")
+                    return f"BLOCKED_HARD_SIZE_GATE_{_sg_gain_raw:.2f}_eff{_sg_gain:.2f}pct"
         # Smart circuit breaker: diagnose losing positions (bad entry vs market event), block bad paths
         if position_key and action and 'OPEN' in (action or '').upper() and hasattr(self, 'circuit_breaker'):
             def _cb_get_ind(sym):
