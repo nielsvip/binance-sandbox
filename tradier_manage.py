@@ -154,6 +154,14 @@ _GROUP_C_READS = (
     getattr(config, 'EXIT_MI_ENABLED', False),
     getattr(config, 'EXIT_OVERRIDE_REDUCE_DETERIORATED_ENABLED', False),
     getattr(config, 'EXIT_STDEV_BREAKOUT_FAIL_ENABLED', False),
+    getattr(config, 'STDEV_BOUNCE_ENABLED', False),
+    getattr(config, 'STDEV_BOUNCE_PCTB_LONG', 0.05),
+    getattr(config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95),
+    getattr(config, 'STDEV_BOUNCE_RVOL_MIN', 1.2),
+    getattr(config, 'STDEV_REJECT_EXIT_ENABLED', False),
+    getattr(config, 'STDEV_REJECT_EXIT_TF', 'D'),
+    getattr(config, 'STDEV_REJECT_EXIT_ZONE', 0.80),
+    getattr(config, 'STDEV_REJECT_EXIT_RETURN', 0.65),
     getattr(config, 'EXIT_STRUCT_BREAK_5M_ENABLED', False),
     getattr(config, 'EXIT_STRUCT_DC_BREAK_ENABLED', False),
     getattr(config, 'EXIT_TREND_REVERSAL_ENABLED', False),
@@ -4842,6 +4850,32 @@ class StockStrategy:
                     if _vf_mi_signals >= _vf_mi_min:
                         logger.warning(f"[VARIANCE_FIX_MI_EXIT] {symbol} {_vf_exit_side}: {_vf_mi_signals}/{_vf_mi_min} ({'+'.join(_vf_mi_reasons)}) g={gain:.2f}%")
                         return True, f"MI_EXIT_VARFIX({_vf_mi_signals}/{_vf_mi_min},g={gain:.2f}%,{'+'.join(_vf_mi_reasons)})", qty
+            # STDEV_BB_RZ_EXIT: exit when pctb crosses FROM ≥ 1.0 back to < 1.0 (failed breakout rejection)
+            if getattr(config, 'STDEV_BB_RZ_EXIT_ENABLED', False):
+                _brz_tf = str(getattr(config, 'STDEV_BB_RZ_EXIT_TF', 'D'))
+                _brz_pctb_now = float(i.get(f'bb_pct_b_{_brz_tf}', 0.5) or 0.5)
+                _brz_pctb_prev = float(i.get(f'bb_pct_b_{_brz_tf}_prev', _brz_pctb_now) or _brz_pctb_now)
+                _brz_vel = float(i.get('wt_velocity_1h', 0) or 0)
+                if is_long and _brz_pctb_prev >= 1.0 and _brz_pctb_now < 1.0 and _brz_vel < 0:
+                    logger.warning(f"[STDEV_BB_RZ_EXIT] {symbol} LONG: pctb {_brz_pctb_prev:.3f}→{_brz_pctb_now:.3f} vel={_brz_vel:.1f} g={gain:.2f}%")
+                    return True, f"STDEV_BB_RZ_EXIT_{_brz_tf}_pctb={_brz_pctb_now:.3f}_g={gain:.2f}%", qty
+                if not is_long and _brz_pctb_prev <= 0.0 and _brz_pctb_now > 0.0 and _brz_vel > 0:
+                    logger.warning(f"[STDEV_BB_RZ_EXIT] {symbol} SHORT: pctb {_brz_pctb_prev:.3f}→{_brz_pctb_now:.3f} vel={_brz_vel:.1f} g={gain:.2f}%")
+                    return True, f"STDEV_BB_RZ_EXIT_{_brz_tf}_pctb={_brz_pctb_now:.3f}_g={gain:.2f}%", qty
+            # STDEV_REJECT_EXIT: exit when price approached band but failed to hold (pre-breakout rejection)
+            if getattr(config, 'STDEV_REJECT_EXIT_ENABLED', False):
+                _sre_tf = str(getattr(config, 'STDEV_REJECT_EXIT_TF', 'D'))
+                _sre_zone = float(getattr(config, 'STDEV_REJECT_EXIT_ZONE', 0.80))
+                _sre_ret = float(getattr(config, 'STDEV_REJECT_EXIT_RETURN', 0.65))
+                _sre_pctb_now = float(i.get(f'bb_pct_b_{_sre_tf}', 0.5) or 0.5)
+                _sre_pctb_prev = float(i.get(f'bb_pct_b_{_sre_tf}_prev', _sre_pctb_now) or _sre_pctb_now)
+                _sre_vel = float(i.get('wt_velocity_1h', 0) or 0)
+                if is_long and _sre_pctb_prev >= _sre_zone and _sre_pctb_now < _sre_ret and _sre_vel < 0:
+                    logger.warning(f"[STDEV_REJECT_EXIT] {symbol} LONG: pctb {_sre_pctb_prev:.3f}→{_sre_pctb_now:.3f} zone={_sre_zone} vel={_sre_vel:.1f} g={gain:.2f}%")
+                    return True, f"STDEV_REJECT_EXIT_{_sre_tf}_pctb={_sre_pctb_now:.3f}_g={gain:.2f}%", qty
+                if not is_long and _sre_pctb_prev <= (1.0 - _sre_zone) and _sre_pctb_now > (1.0 - _sre_ret) and _sre_vel > 0:
+                    logger.warning(f"[STDEV_REJECT_EXIT] {symbol} SHORT: pctb {_sre_pctb_prev:.3f}→{_sre_pctb_now:.3f} zone={1.0-_sre_zone:.2f} vel={_sre_vel:.1f} g={gain:.2f}%")
+                    return True, f"STDEV_REJECT_EXIT_{_sre_tf}_pctb={_sre_pctb_now:.3f}_g={gain:.2f}%", qty
             # Scorer says HOLD — check max hold timeout if enabled
             if getattr(config, 'EXIT_MAX_HOLD_ENABLED', False) and hold_time_min > getattr(config, 'EXIT_MAX_HOLD_MINUTES', 99999):
                 return True, f"MAX_HOLD_TIMEOUT_{hold_time_min:.0f}min_scorer={_exit_score:.0f}", qty
@@ -5703,8 +5737,9 @@ class StockStrategy:
                 if gain >= _ta_next_threshold and _ta_state['aug_count'] < _ta_max_augs:
                     _ta_max_val = getattr(config, 'MAX_SYMBOL_VALUE_TRADIER', 15000)
                     if current_value < _ta_max_val * 0.95:
-                        _ta_aug_qty_raw = float(getattr(config, 'START_POSITION_SIZE', 100)) / max(current_price, 0.01)
-                        if _ta_aug_qty_raw >= 0.5:
+                        # 2026-04-28: round up to 1 share min — START_POSITION_SIZE/price often <1 for high-priced stocks
+                        _ta_aug_qty_raw = max(1.0, round(float(getattr(config, 'START_POSITION_SIZE', 100)) / max(current_price, 0.01)))
+                        if _ta_aug_qty_raw >= 1.0:
                             direction = "LONG" if is_long else "SHORT"
                             qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, _ta_aug_qty_raw, indicators, position, market_context)
                             if qty > 0:
@@ -9072,6 +9107,17 @@ class TradierTradeManager:
                     if _sb_pctb_val >= _sb_pctb_long and _sb_rvol_val >= _sb_rvol_min:
                         logger.warning(f"[STDEV_BREAKOUT_LONG] {symbol}: bb_pct_b_{_sb_htf}={_sb_pctb_val:.3f} rvol={_sb_rvol_val:.2f}")
                         return True
+            # STDEV_BOUNCE: stateless mean-reversion entry at lower BB band (LONG when pctb ≤ threshold)
+            if getattr(config, 'STDEV_BOUNCE_ENABLED', False):
+                _bn_htf_list = list(getattr(config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+                _bn_pctb_long = float(getattr(config, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
+                _bn_rvol_min = float(getattr(config, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+                for _bn_htf in _bn_htf_list:
+                    _bn_pctb_val = float(indicators.get(f'bb_pct_b_{_bn_htf}', 0.5) or 0.5)
+                    _bn_rvol_val = float(indicators.get(f'relative_volume_{_bn_htf}', 1.0) or 1.0)
+                    if _bn_pctb_val <= _bn_pctb_long and _bn_rvol_val >= _bn_rvol_min:
+                        logger.warning(f"[STDEV_BOUNCE_LONG] {symbol}: bb_pct_b_{_bn_htf}={_bn_pctb_val:.3f} rvol={_bn_rvol_val:.2f}")
+                        return True
             # If SHOULD_ENTER_FALLBACK_ENABLED is False (default), block here. Set True to test other paths.
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False
@@ -9302,6 +9348,17 @@ class TradierTradeManager:
                     _sb_rvol_val_s = float(indicators.get(f'relative_volume_{_sb_htf_s}', 1.0) or 1.0)
                     if _sb_pctb_val_s <= _sb_pctb_short and _sb_rvol_val_s >= _sb_rvol_min_s:
                         logger.warning(f"[STDEV_BREAKOUT_SHORT] {symbol}: bb_pct_b_{_sb_htf_s}={_sb_pctb_val_s:.3f} rvol={_sb_rvol_val_s:.2f}")
+                        return True
+            # STDEV_BOUNCE: stateless mean-reversion SHORT entry at upper BB band (pctb ≥ threshold)
+            if getattr(config, 'STDEV_BOUNCE_ENABLED', False):
+                _bn_htf_list_s = list(getattr(config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+                _bn_pctb_short = float(getattr(config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
+                _bn_rvol_min_s = float(getattr(config, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+                for _bn_htf_s in _bn_htf_list_s:
+                    _bn_pctb_val_s = float(indicators.get(f'bb_pct_b_{_bn_htf_s}', 0.5) or 0.5)
+                    _bn_rvol_val_s = float(indicators.get(f'relative_volume_{_bn_htf_s}', 1.0) or 1.0)
+                    if _bn_pctb_val_s >= _bn_pctb_short and _bn_rvol_val_s >= _bn_rvol_min_s:
+                        logger.warning(f"[STDEV_BOUNCE_SHORT] {symbol}: bb_pct_b_{_bn_htf_s}={_bn_pctb_val_s:.3f} rvol={_bn_rvol_val_s:.2f}")
                         return True
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False

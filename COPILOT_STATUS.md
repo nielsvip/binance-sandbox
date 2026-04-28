@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 23:06:52 UTC
+# Copilot Status — 2026-04-28 23:21:57 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:01:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:01:48
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:03:53
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:03:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:03:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:03:53
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:05:59
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:05:59
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:05:59
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:05:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:16:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:16:26
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:18:34
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:18:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:18:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:18:34
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:20:34
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:20:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:20:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:20:34
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 7 | **Reentered:** 0
 
 - HELD: **AIAUSDT** LONG (crypto) peak +8.3%, now +8.3%
 - HELD: **ZECUSDC** LONG (crypto) peak +7.2%, now +7.2%
-- HELD: **TIAUSDC** SHORT (crypto) peak +4.5%, now +3.6%
 
-- WATCHING: **APEUSDT** SHORT (crypto) peaked +12.5%, exited 15m ago
+- WATCHING: **APEUSDT** SHORT (crypto) peaked +12.5%, exited 30m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.0%, exited 0m ago
 - WATCHING: **ZKUSDT** SHORT (crypto) peaked +4.8%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago

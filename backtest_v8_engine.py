@@ -1522,6 +1522,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _sb_rvol = _g_store.arrays.get(f'relative_volume_{_sb_htf}', np.ones(_g_n))
                     _g_mask |= (_sb_pctb >= _sb_pctb_long) & (_sb_rvol >= _sb_rvol_min)
                     _g_mask |= (_sb_pctb <= _sb_pctb_short) & (_sb_rvol >= _sb_rvol_min)
+            if getattr(config, 'STDEV_BOUNCE_ENABLED', False):
+                _bn_htf_list = list(getattr(config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+                _bn_pctb_long = float(getattr(config, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
+                _bn_pctb_short = float(getattr(config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
+                _bn_rvol_min = float(getattr(config, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+                for _bn_htf in _bn_htf_list:
+                    _bn_pctb = _g_store.arrays.get(f'bb_pct_b_{_bn_htf}', np.zeros(_g_n))
+                    _bn_rvol = _g_store.arrays.get(f'relative_volume_{_bn_htf}', np.ones(_g_n))
+                    _g_mask |= (_bn_pctb <= _bn_pctb_long) & (_bn_rvol >= _bn_rvol_min)
+                    _g_mask |= (_bn_pctb >= _bn_pctb_short) & (_bn_rvol >= _bn_rvol_min)
             if _g_mask.any():
                 _g_dil = _g_mask.copy()
                 for _g_d in range(1, 4):
@@ -3161,6 +3171,22 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     score = 999.0
                     reason = f"STDEV_BREAKOUT_SHORT_{_sb_htf_w}_pctb={_sb_pv_w:.3f}+{reason}"
                     break
+        if score < 1.0 and getattr(tm_mod.config, 'STDEV_BOUNCE_ENABLED', False):
+            _bn_htf_list_w = list(getattr(tm_mod.config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+            _bn_pctb_thr_lw = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
+            _bn_pctb_thr_sw = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
+            _bn_rvol_min_w = float(getattr(tm_mod.config, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+            for _bn_htf_w in _bn_htf_list_w:
+                _bn_pv_w = float(indicators.get(f'bb_pct_b_{_bn_htf_w}', 0.5) or 0.5)
+                _bn_rv_w = float(indicators.get(f'relative_volume_{_bn_htf_w}', 1.0) or 1.0)
+                if is_long and _bn_pv_w <= _bn_pctb_thr_lw and _bn_rv_w >= _bn_rvol_min_w:
+                    score = 999.0
+                    reason = f"STDEV_BOUNCE_LONG_{_bn_htf_w}_pctb={_bn_pv_w:.3f}+{reason}"
+                    break
+                if not is_long and _bn_pv_w >= _bn_pctb_thr_sw and _bn_rv_w >= _bn_rvol_min_w:
+                    score = 999.0
+                    reason = f"STDEV_BOUNCE_SHORT_{_bn_htf_w}_pctb={_bn_pv_w:.3f}+{reason}"
+                    break
         return score, reason
     tm_mod.wt_dc_score_entry = _v8_satoshit_wt_dc_score_entry
     v8_logger.info(f"[V8] SATOSHIT wt_dc_score_entry wrapper installed (boost=+15 when SATOSHIT fires)")
@@ -3210,6 +3236,12 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _pidx = max(0, idx - 1)
                     _src_k = f'stoch_k_{_ptf}'
                     ind[_pk] = float(store.get(_src_k, _pidx)) if _pidx != idx and _src_k in store.arrays else ind.get(_src_k, 50)
+            for _bb_ptf in ['D', '4h', '1h']:
+                _bb_pk = f'bb_pct_b_{_bb_ptf}_prev'
+                if _bb_pk not in ind:
+                    _bb_pidx = max(0, idx - 1)
+                    _bb_src = f'bb_pct_b_{_bb_ptf}'
+                    ind[_bb_pk] = float(store.get(_bb_src, _bb_pidx)) if _bb_pidx != idx and _bb_src in store.arrays else ind.get(_bb_src, 0.5)
             indicator_cache[sym.upper()] = ind
             price_cache[sym.upper()] = p
             manager.price_cache[sym.upper()] = {"price": p, "timestamp": float(ts)}
@@ -3288,6 +3320,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         if _sb_pv_f >= _sb_pctb_thr_lf and _sb_rv_f >= _sb_rvol_min_f:
                             _stdev_long_ok = True
                         if _sb_pv_f <= _sb_pctb_thr_sf and _sb_rv_f >= _sb_rvol_min_f:
+                            _stdev_short_ok = True
+                if getattr(tm_mod.config, 'STDEV_BOUNCE_ENABLED', False):
+                    _bn_htf_list_f = list(getattr(tm_mod.config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+                    _bn_pctb_thr_lf = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
+                    _bn_pctb_thr_sf = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
+                    _bn_rvol_min_f = float(getattr(tm_mod.config, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+                    for _bn_htf_f in _bn_htf_list_f:
+                        _bn_pv_f = float(ind.get(f'bb_pct_b_{_bn_htf_f}', 0.5) or 0.5)
+                        _bn_rv_f = float(ind.get(f'relative_volume_{_bn_htf_f}', 1.0) or 1.0)
+                        if _bn_pv_f <= _bn_pctb_thr_lf and _bn_rv_f >= _bn_rvol_min_f:
+                            _stdev_long_ok = True
+                        if _bn_pv_f >= _bn_pctb_thr_sf and _bn_rv_f >= _bn_rvol_min_f:
                             _stdev_short_ok = True
                 if pk_l not in open_keys and _is_long_ok and (_sat_long_ok or _stdev_long_ok):
                     cand_keys.append(pk_l)
