@@ -230,6 +230,55 @@ def _allowed_accounts_for(trade_manager) -> list:
     return [a for a in accs if isinstance(a, str)]
 
 
+def is_reentry_eligible(trade_manager, position_key: str, account_key: str, symbol: str, cfg=None) -> tuple:
+    """Pre-flight check: would execute_now refuse this REENTRY/AUGMENT call?
+
+    Mirrors the two top-of-execute_now hard guards so a caller can skip BEFORE
+    paying the cost of indicator fetch + execute_now traversal:
+      • NON_TRADEABLE_HARD_BLOCK  — `position_key not in trade_manager.tradeable_keys`
+      • LOSING_POSITION_HARD_BLOCK — existing positionAmt>0 AND effective_gain<MIN_GAIN
+
+    Returns ``(eligible: bool, reason: str)``. Caller skips when ``eligible`` is
+    False. Failure modes fail-open (return True) so a misconfigured trade_manager
+    cannot starve all reentry paths.
+
+    Call at the TOP of every path that fires a REENTRY toward execute_now —
+    safety loop (`enforce_price_cross_reentry`), `reentry_enforcement_loop`,
+    `evaluate_reentry`, `evaluate_reentry_2`, TIER1/TIER2 inline blocks, etc.
+    User mandate 2026-04-28: "find from where the call came and ADD THE FILTER
+    there instead of just dumbly turning it off ... so we stop wasting compute
+    on dead end streets".
+    """
+    if cfg is None:
+        try:
+            import config as cfg
+        except Exception:
+            return True, "NO_CONFIG"
+    try:
+        tk = getattr(trade_manager, "tradeable_keys", None)
+        if tk is not None and len(tk) > 0 and position_key not in tk:
+            return False, "NON_TRADEABLE"
+    except Exception:
+        pass
+    try:
+        pos = None
+        if hasattr(trade_manager, "positions_by_account"):
+            pos = (trade_manager.positions_by_account.get(account_key, {}) or {}).get(position_key)
+        if pos is None and hasattr(trade_manager, "positions"):
+            pos = trade_manager.positions.get(position_key)
+        if pos is not None:
+            amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
+            if amt > 0:
+                raw_gain = float(getattr(pos, "gain", 0) or 0)
+                eff_gain = effective_gain_pct(position_key, raw_gain, trade_manager, cfg)
+                min_gain = float(getattr(cfg, "MIN_GAIN", 3.0))
+                if eff_gain < min_gain:
+                    return False, f"GAIN_LT_MIN_raw{raw_gain:.2f}_eff{eff_gain:.2f}_min{min_gain:.2f}"
+    except Exception:
+        pass
+    return True, "OK"
+
+
 def effective_gain_pct(position_key: str, raw_gain: float, trade_manager=None, cfg=None) -> float:
     """User mandate (2026-04-28): after a PARTIAL_PROFIT_LOCK 50% close, the
     REMAINING position has effectively doubled its gain percentage on the
@@ -376,11 +425,8 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
     max_age_h = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", 48.0))
     max_fires = int(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", 20))
     base_path = Path(getattr(_cfg, "BASE_PATH", "/Users/niels/Documents/binance"))
-    block_duration_s = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S", 3600.0))
     if not hasattr(trade_manager, "_price_cross_last_fire"):
         trade_manager._price_cross_last_fire = {}
-    if not hasattr(trade_manager, "_price_cross_block_until"):
-        trade_manager._price_cross_block_until = {}
     candidates = _collect_reentry_candidates(trade_manager, base_path)
     if not candidates:
         return 0
@@ -398,17 +444,18 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             break
         if exit_ts > 0 and exit_ts < age_cutoff:
             continue
-        # Sticky block — if execute_now BLOCKED this key recently (LOSING_POSITION_HARD_BLOCK,
-        # NON_TRADEABLE_HARD_BLOCK, etc.), skip until block expires. Otherwise we fire the
-        # same doomed reentry every dedup-window forever (~1/min × forever = log spam).
-        block_until = float(trade_manager._price_cross_block_until.get(pk, 0))
-        if block_until > now:
-            continue
         try:
             account_key, sym, side = _ppk(pk)
         except Exception:
             continue
         if allowed and account_key not in allowed:
+            continue
+        # Pre-flight gate (user 2026-04-28): skip if execute_now would refuse this
+        # call — saves the indicator fetch, mark-price lookup, dedup write, and
+        # execute_now traversal. Mirror of LOSING_POSITION_HARD_BLOCK + NON_TRADEABLE
+        # at top of execute_now (ez_manage:13084 / ez_positions_quick:11380).
+        eligible, gate_reason = is_reentry_eligible(trade_manager, pk, account_key, sym, _cfg)
+        if not eligible:
             continue
         cur_px = _lookup_mark_price(trade_manager, pk, sym, mkt)
         if cur_px <= 0:
@@ -446,7 +493,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
                 f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
                 f"_cur{cur_px:.6f}_partial{partial_frac:.2f}"
             )
-            ret = await trade_manager.execute_now(
+            await trade_manager.execute_now(
                 position_key=pk,
                 account_key=account_key,
                 symbol=sym,
@@ -462,11 +509,6 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             )
             trade_manager._price_cross_last_fire[pk] = now
             fired += 1
-            # Sticky-block on hard-block returns. execute_now's contract: returns a string
-            # starting with "BLOCKED_" when a guard refuses (LOSING_POSITION_HARD_BLOCK,
-            # NON_TRADEABLE_HARD_BLOCK, POSITION_EXISTS_BLOCK, HARD_SIZE_GATE, etc).
-            if isinstance(ret, str) and ret.startswith("BLOCKED_"):
-                trade_manager._price_cross_block_until[pk] = now + block_duration_s
         except Exception as e:
             try:
                 trade_manager.logger.error(f"[PRICE_CROSS_GUARANTEE] {pk}: {e}")
@@ -525,4 +567,5 @@ __all__ = [
     "enforce_price_cross_reentry",
     "price_cross_reentry_safety_loop",
     "effective_gain_pct",
+    "is_reentry_eligible",
 ]

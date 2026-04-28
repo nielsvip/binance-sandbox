@@ -15687,6 +15687,16 @@ class MultiAccountTradeManager:
                     if (time.time() - _last) < REENTRY_COOLDOWN:
                         continue
                     account_key, symbol, pos_side = parse_position_key(position_key)
+                    # 2026-04-28: pre-flight eligibility gate — skip if execute_now would
+                    # refuse this REENTRY (LOSING_POSITION_HARD_BLOCK or NON_TRADEABLE).
+                    # Saves the indicator fetch + execute_now traversal cost.
+                    try:
+                        from ez_reentry import is_reentry_eligible as _ezr_eligible
+                        _ok, _gate_why = _ezr_eligible(self, position_key, account_key, symbol, config)
+                        if not _ok:
+                            continue
+                    except Exception:
+                        pass
                     is_long = pos_side == 'LONG'
                     indicators = await ii(self, symbol)
                     if not indicators: continue

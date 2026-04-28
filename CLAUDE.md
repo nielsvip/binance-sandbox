@@ -1,5 +1,20 @@
 # CLAUDE.md — Trading System Rules
 
+## 🚨 NPZ REGEN — STOP DOING THIS WRONG (12+ TIMES NOW) 🚨
+
+**The NPZ regen requirements have been the SAME forever. They keep being violated. Stop.**
+
+1. **NPZ source of klines = `klines_cache_backtest/` ONLY.** NOT `klines_cache/` (live), NOT `klines_cache_gateway/` (server sync only). The `_backtest` dir was refreshed 2026-04-27 with **4+ years of data for 48 crypto syms + 128 stocks**. THAT is the input.
+2. **Mac uses `klines_cache/`** (live + V3 forward-test). 1200-1800 klines per sym per TF. Mac does NOT backtest 4-year sweeps; servers do.
+3. **Servers use `klines_cache_gateway/`** for live data sync (when servers ran live, currently they don't). Servers backtest from `klines_cache_backtest/`.
+4. **NPZ scope is fixed**: **48 crypto × 4yr** + **128 stocks × 4yr**. Going wider (61c / 256s) is fine if compute permits. Going narrower than 48/128 is NOT a backtest — it's noise.
+5. **NPZ MUST include EVERY param the v8 sweep ever asks for.** If precompute writes fewer fields than `v8_quick_engine.py` reads, the engine zero-fills and produces lying results. After EVERY regen, diff `set(npz.keys())` vs `set(v8_quick_engine field reads)` — gaps = reject.
+6. **Verify before "done"**: `python3 -c "import numpy as np; d=dict(np.load('NPZ_PATH', allow_pickle=True)); print(len(d.keys()), sorted(d.keys())[-30:])"`. Compare key count + key list to a known-good NPZ.
+
+**12 regens in 9 sessions, each missing fields or using wrong source. Read this BEFORE running `backtest_v8_precompute.py`.**
+
+---
+
 ## ☠️ DEATH PENALTY — NEVER REVERT LIVE CODE ☠️
 
 **REVERTING live scripts (tradier_manage.py, ez_manage.py, config*.py, backtest_v8_engine.py, ez_positions_quick.py, or any other core file) to an older version is PROHIBITED. NO EXCEPTIONS.**

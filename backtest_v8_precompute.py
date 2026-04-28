@@ -570,7 +570,8 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
 
 def resample_tf(df_base: pd.DataFrame, target_tf: str) -> Optional[pd.DataFrame]:
     """Resample a lower TF DataFrame to a higher TF."""
-    rule = {"15m": "15min", "1h": "1h", "4h": "4h", "D": "1D"}.get(target_tf)
+    # 2026-04-28: added W (weekly) and M (monthly) for HTF context fields wt1_W/wt1_M etc.
+    rule = {"15m": "15min", "1h": "1h", "4h": "4h", "D": "1D", "W": "1W", "M": "1ME"}.get(target_tf)
     if not rule:
         return None
     try:
@@ -670,22 +671,36 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # both end up with the right annualization factor in compute_tf_arrays().
     global MODE
     MODE = mode
+    # 2026-04-28: Added W (weekly) and M (monthly) to TFs — v8_quick_engine reads
+    # wt1_W/wt2_W/wt1_M/wt2_M and the missing fields were silently zero-filled,
+    # producing lying backtest results.
     if mode == "tradier":
         base_tf = "15m"  # 15m has 2yr history, 5m only 3mo — use 15m, fabricate 5m
-        tfs = ["5m", "15m", "1h", "4h", "D"]
+        tfs = ["5m", "15m", "1h", "4h", "D", "W", "M"]
         klines_dir = TRADIER_KLINES
     else:
         base_tf = "15m"  # 15m is the source of truth — full history back to 2020
-        tfs = ["3m", "15m", "1h", "4h", "D"]
+        tfs = ["3m", "15m", "1h", "4h", "D", "W", "M"]
         klines_dir = CRYPTO_KLINES
-    # Load klines per TF — try primary dir, fall back to alternate for longest history
+    # Klines source: STRICTLY klines_cache_backtest on servers (4yr × 48 crypto / 128+ stocks).
+    # User directive 2026-04-28: NEVER fall back to klines_cache (live, ~1200 bars only).
+    # On Mac (Darwin), klines_cache is acceptable for V3 forward-test only.
     dfs = {}
-    alt_dirs = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache"]
-    if mode == "tradier":
-        alt_dirs = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier"]
+    if platform.system() != "Darwin":
+        # Server: ONLY _backtest. No fallback.
+        if mode == "tradier":
+            sources = [BASE_PATH / "klines_cache_backtest" / "tradier"]
+        else:
+            sources = [BASE_PATH / "klines_cache_backtest"]
+    else:
+        # Mac: prefer _backtest if present, else klines_cache.
+        if mode == "tradier":
+            sources = [BASE_PATH / "klines_cache_backtest" / "tradier", BASE_PATH / "klines_cache" / "tradier"]
+        else:
+            sources = [BASE_PATH / "klines_cache_backtest", BASE_PATH / "klines_cache"]
     for tf in tfs:
         best_df = None
-        for d in [klines_dir] + [a for a in alt_dirs if a != klines_dir]:
+        for d in sources:
             path = d / f"{symbol}_{tf}.json"
             df = load_klines(path)
             if df is not None and len(df) >= 30:
@@ -876,6 +891,54 @@ def compute_symbol(symbol: str, mode: str) -> bool:
             _inject_funding_oi(merged, symbol, ts_epoch, base_tf)
         except Exception as _e:
             logger.warning(f"[FUNDING_OI_INJECT] {symbol}: {_e}")
+    else:
+        # 2026-04-28: Tradier — zero-fill funding/OI fields (stocks have no perp funding/OI;
+        # v8_quick_engine reads them and would otherwise zero-fill silently with a warning).
+        merged[f"funding_rate_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_value_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_change_15m_{base_tf}"] = np.zeros(n, dtype=np.float32)
+        merged[f"oi_change_1h_{base_tf}"] = np.zeros(n, dtype=np.float32)
+    # === MISSING FIELDS PASS (2026-04-28) ===
+    # v8_quick_engine reads these — silently zero-filled before this pass.
+    # 1. timestamp_{base_tf}: alias to canonical timestamps array.
+    merged[f"timestamp_{base_tf}"] = ts_epoch
+    # 2. rsi2_{base_tf}: Connors 2-period RSI on base TF close.
+    if f"close_{base_tf}" in merged:
+        cl_b = merged[f"close_{base_tf}"].astype(np.float64)
+        delta = np.diff(cl_b, prepend=cl_b[0])
+        gain = np.where(delta > 0, delta, 0.0)
+        loss = np.where(delta < 0, -delta, 0.0)
+        avg_gain = pd.Series(gain).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        avg_loss = pd.Series(loss).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        rs = avg_gain / np.where(avg_loss > 0, avg_loss, 1e-10)
+        rsi2 = 100.0 - 100.0 / (1.0 + rs)
+        merged[f"rsi2_{base_tf}"] = rsi2.astype(np.float32)
+    # 3. vwap_D: daily VWAP broadcast to base TF.
+    # Compute as cumulative (typical_price × volume) / cumulative_volume per UTC day.
+    if f"close_{base_tf}" in merged and f"high_{base_tf}" in merged and f"low_{base_tf}" in merged and f"volume_{base_tf}" in merged:
+        tp = (merged[f"high_{base_tf}"].astype(np.float64) + merged[f"low_{base_tf}"].astype(np.float64) + merged[f"close_{base_tf}"].astype(np.float64)) / 3.0
+        vol = merged[f"volume_{base_tf}"].astype(np.float64)
+        # UTC day index: floor to day from epoch seconds.
+        day_idx = (ts_epoch // 86400).astype(np.int64)
+        # Reset cumsum at each day boundary.
+        day_changed = np.concatenate([[True], day_idx[1:] != day_idx[:-1]])
+        # Compute per-day cumulative numerator/denominator using groupby-like pattern.
+        tpv = tp * vol
+        cum_tpv = np.zeros_like(tpv)
+        cum_vol = np.zeros_like(vol)
+        running_tpv = 0.0
+        running_vol = 0.0
+        for i in range(len(tpv)):
+            if day_changed[i]:
+                running_tpv = 0.0
+                running_vol = 0.0
+            running_tpv += tpv[i]
+            running_vol += vol[i]
+            cum_tpv[i] = running_tpv
+            cum_vol[i] = running_vol
+        vwap_d = np.where(cum_vol > 0, cum_tpv / cum_vol, merged[f"close_{base_tf}"].astype(np.float64)).astype(np.float32)
+        merged["vwap_D"] = vwap_d
     # Save
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{symbol}.npz"

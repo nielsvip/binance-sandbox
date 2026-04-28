@@ -671,7 +671,11 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0  # skip exits older than this — stale levels don't matter
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20  # cap per 5s tick to prevent queue overload
-    EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S: float = 3600.0  # sticky-block on BLOCKED_* return; skip same key for 1h
+    # EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S removed 2026-04-28 — replaced by upstream
+    # is_reentry_eligible() pre-flight gate at the source of each REENTRY call so we
+    # never call execute_now when we already know it'll be blocked. Per user mandate
+    # "find from where the call came and ADD THE FILTER there instead of just dumbly
+    # turning it off when it might be a critical close from somewhere else".
     # 2026-04-28 — When PARTIAL_PROFIT_LOCK has fired (50% closed at small profit),
     # treat remaining position's gain as raw_gain / (1 - PPL_FRAC). For FRAC=0.5
     # this DOUBLES the effective gain so augment/reentry eligibility (gain>MIN_GAIN)

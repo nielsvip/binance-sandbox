@@ -582,6 +582,106 @@ def load_stores(mode, symbols=None, start_date=None, npz_dir_override=""):
 # ═══════════════════════════════════════════════════════════════
 # STEP 6b: PnL computation — pair OPEN→CLOSE by position_key
 # ═══════════════════════════════════════════════════════════════
+def _reconstruct_chart_trades(executed_trades):
+    """Walk eta events into closed-trade rounds keyed by position_key.
+    Round = qty 0 → qty>0 (OPEN/AUGMENT) → qty 0 (REDUCE/CLOSE chain).
+    Returns {symbol: [trade_dict]} in the same schema as v8_quick_engine emits.
+    """
+    open_rounds = {}    # pk -> {entry_ts, entry_price, qty, side, entry_reason, events}
+    closed_by_sym = {}  # sym -> [trade]
+    for ev in executed_trades:
+        if ev.get("type") != "eta":
+            continue
+        pk = ev.get("position_key", "")
+        sym = pk.split(":", 1)[-1].rsplit("_", 1)[0] if ":" in pk else pk.rsplit("_", 1)[0]
+        side = "LONG" if pk.endswith("_LONG") else "SHORT"
+        action = (ev.get("action") or "").upper()
+        reason = ev.get("reason", "")
+        try:
+            ts_raw = ev.get("timestamp")
+            if hasattr(ts_raw, "timestamp"):
+                ts = int(ts_raw.timestamp())
+            elif isinstance(ts_raw, (int, float)):
+                ts = int(ts_raw)
+            elif isinstance(ts_raw, str):
+                ts = int(datetime.fromisoformat(ts_raw.replace("Z", "+00:00")).timestamp())
+            else:
+                ts = 0
+        except Exception:
+            ts = 0
+        try:
+            qty = float(ev.get("quantity") or 0)
+            px = float(ev.get("price") or 0)
+        except (TypeError, ValueError):
+            continue
+        if qty <= 0 or px <= 0:
+            continue
+        is_open = action in ("OPEN", "QUICK_OPEN", "AUGMENT", "QUICK_AUGMENT", "REENTRY", "HEDGE_OPEN")
+        is_close = action in ("CLOSE", "REDUCE", "QUICK_CLOSE", "FULL_CLOSE", "PROFIT_TAKE", "STOP_MAJOR_LOSS_REDUCE", "STOP_FUNCTIONS_KILL", "HEDGE_CLOSE") or "CLOSE" in reason.upper() or "REDUCE" in reason.upper()
+        rd = open_rounds.get(pk)
+        if is_open:
+            if rd is None or rd["qty"] <= 0:
+                open_rounds[pk] = {
+                    "entry_ts": ts, "entry_price": px, "qty": qty, "side": side,
+                    "entry_reason": reason[:120], "is_hedge": "HEDGE" in action,
+                }
+            else:
+                new_qty = rd["qty"] + qty
+                rd["entry_price"] = (rd["entry_price"] * rd["qty"] + px * qty) / new_qty
+                rd["qty"] = new_qty
+        elif is_close:
+            if rd is None or rd["qty"] <= 0:
+                continue
+            close_qty = min(qty, rd["qty"])
+            if side == "LONG":
+                pnl_pct = (px - rd["entry_price"]) / rd["entry_price"] * 100.0
+            else:
+                pnl_pct = (rd["entry_price"] - px) / rd["entry_price"] * 100.0
+            rd["qty"] -= close_qty
+            if rd["qty"] <= 1e-9:
+                closed_by_sym.setdefault(sym, []).append({
+                    "symbol": sym, "side": side,
+                    "entry_type": "HEDGE" if rd["is_hedge"] else ("AUGMENT" if "AUGMENT" in rd["entry_reason"].upper() else "OPEN"),
+                    "entry_reason": rd["entry_reason"],
+                    "exit_reason": reason[:120],
+                    "entry_bar": 0,
+                    "entry_ts": rd["entry_ts"], "entry_price": float(rd["entry_price"]),
+                    "exit_bar": 0,
+                    "exit_ts": ts, "exit_price": float(px),
+                    "pnl_pct": float(pnl_pct),
+                    "pnl_usd": float((pnl_pct / 100.0) * (rd["entry_price"] * close_qty)),
+                    "duration_bars": 0,
+                    "duration_sec": ts - rd["entry_ts"],
+                    "stream": "tier2",
+                })
+                open_rounds[pk] = None
+    return closed_by_sym
+
+
+def _write_chart_trades(executed_trades):
+    """If V8_TRADES_OUT_DIR is set, reconstruct trades + dump to {run_id}__{symbol}.jsonl
+    in the same schema the chart_server.py /backtest_trades endpoint reads.
+    """
+    out_dir = os.environ.get("V8_TRADES_OUT_DIR", "")
+    if not out_dir:
+        return
+    run_id = os.environ.get("V8_TRADES_RUN_ID", "tier2_default")
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        by_sym = _reconstruct_chart_trades(executed_trades)
+        wrote = 0
+        for sym, trades in by_sym.items():
+            if not trades: continue
+            path = os.path.join(out_dir, f"{run_id}__{sym}.jsonl")
+            with open(path, "w") as f:
+                for t in trades:
+                    f.write(json.dumps(t, default=str) + "\n")
+            wrote += 1
+        print(f"V8_TIER2_CHART_TRADES: wrote {wrote} symbol files to {out_dir} (run_id={run_id})", flush=True)
+    except Exception as exc:
+        print(f"V8_TIER2_CHART_TRADES_ERR: {exc}", flush=True)
+
+
 def _compute_trade_pnl(executed_trades):
     """Compute pnl_pct, pnl_dollars, position_value for each CLOSE/REDUCE trade.
     Uses VWAP entry for augmented positions (multiple buys before a sell)."""
@@ -1868,6 +1968,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _bt_rg.final_check(_live_pnl["n_closes"], test_window_days=_bt_days)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
+    _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"v8_{mode}_{account_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.jsonl"
@@ -3212,6 +3313,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         _bt_rg_t.final_check(_bt_t_closes, test_window_days=_bt_t_days)
     _compute_trade_pnl(executed_trades)
     _v8_result_from_trades(executed_trades, capital)
+    _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"v8_tradier_{account_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.jsonl"

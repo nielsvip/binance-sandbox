@@ -1444,7 +1444,7 @@ class TradierConfig:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
-    EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S: float = 3600.0
+    # EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S removed 2026-04-28 — see config.py for context.
     # 2026-04-28 — PPL-fired positions get effective gain doubled. See config.py.
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
