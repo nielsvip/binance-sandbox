@@ -10810,9 +10810,17 @@ class SentimentExposureManager:
 
 _ls_ratio_last_log = {}
 _pending_opens = {}  # position_key -> timestamp — prevents duplicate opens/hedges
-PENDING_OPEN_COOLDOWN = 300  # 5 min before same symbol can be opened again
+# 2026-04-28 owner: lowered 300→60s. Old 5-min cooldown was the main reason
+# reentries "closed and never reopened" — when a webhook fired but Finandy
+# returned success-with-empty-data (no actual Binance fill), the lock blocked
+# legitimate retries for 5 minutes. LUNA2_SHORT was the concrete trigger:
+# RED_ZONE_ENTRY signal kept firing every cycle, OPEN_PENDING_BLOCK rejected
+# every retry, position never actually opened despite valid signal.
+PENDING_OPEN_COOLDOWN = 60
 def mark_open_pending(position_key):
     _pending_opens[position_key] = time.time()
+def clear_open_pending(position_key):
+    _pending_opens.pop(position_key, None)
 def is_open_pending(position_key):
     ts = _pending_opens.get(position_key, 0)
     if time.time() - ts < PENDING_OPEN_COOLDOWN:

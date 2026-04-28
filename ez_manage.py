@@ -13002,7 +13002,11 @@ class MultiAccountTradeManager:
         # AUGMENT is the ONLY legitimate add path (its own MIN_GAIN gates apply upstream).
         # OPEN, REENTRY, HEDGE_OPEN, REVERSE, etc. all REFUSED while positionAmt > 0.
         _is_augment_action_early = ('AUGMENT' in _act_upper_early) and ('REVERSE' not in _act_upper_early)
-        if _is_open_action and not _is_augment_action_early and position_key:
+        # 2026-04-28 — REENTRY exempt from NO_DOUBLE_OPEN: execute_trade_action reclassifies REENTRY→AUGMENT
+        # (line 10643-10653) when positionAmt>0, AUGMENT runs MIN_GAIN gates downstream. Blocking REENTRY
+        # here breaks evaluate_reentry's "augment at pullback" path the user explicitly wants.
+        _is_reentry_exempt_early = (_act_upper_early == 'REENTRY' or 'REENTRY' in _act_upper_early) and 'AUGMENT' not in _act_upper_early
+        if _is_open_action and not _is_augment_action_early and not _is_reentry_exempt_early and position_key:
             try:
                 _ndo_pos = await self.get_position(position_key)
                 _ndo_amt = abs(safe_fetch_float(getattr(_ndo_pos, 'positionAmt', 0), 0.0)) if _ndo_pos else abs(safe_fetch_float(original_positionAmt, 0.0))
@@ -14474,6 +14478,53 @@ class MultiAccountTradeManager:
                             logger.error(f"[{position_key}] WEBHOOK_FAIL: Status {resp.status} - {resp_text}")
                             return False
             logger.warning(f"👷 [{position_key}] WEBHOOK_SENT: {resolved_kind} order | resp={resp_text[:200]}")
+            # 2026-04-28 owner: POST-FIRE VERIFICATION + CANCEL-IF-UNFILLED.
+            # Finandy returns {"success":true,"data":[]} when it accepts the webhook
+            # but does NOT place a Binance order (silent rejection). Old behavior:
+            # send_webhook returned True, pending-lock stayed set, retries blocked.
+            # New: detect empty `data` AND verify position via WS/API. If unfilled,
+            # cancel any leftover Binance orders for this symbol/side, confirm
+            # cancellation, then clear the pending lock so the next signal can retry.
+            try:
+                _resp_json = None
+                try: _resp_json = json.loads(resp_text)
+                except Exception: pass
+                _finandy_empty = (isinstance(_resp_json, dict) and _resp_json.get('success') is True
+                                  and isinstance(_resp_json.get('data'), list) and len(_resp_json['data']) == 0)
+                if _finandy_empty:
+                    logger.critical(f"⚠️ [WEBHOOK_FINANDY_EMPTY] {position_key}: success:true but data:[] — Finandy did NOT place a Binance order. Cancelling leftover orders + clearing lock.")
+                # Verify position actually changed (5s window for the fill)
+                _post_verified = await verify_trade_via_websocket(self, account_key, position_key, amount, is_long=position_side=='LONG', timeout_seconds=5.0, initial_positionAmt=positionAmt, action='AUGMENT' if is_augmentation else 'REDUCE')
+                if not _post_verified or _finandy_empty:
+                    # No fill detected. Cancel any open Binance orders for this symbol/side.
+                    _cancel_count = 0
+                    _confirm_count = 0
+                    try:
+                        _wh_client_post = getattr(self.accounts.get(account_key), "client", None)
+                        if _wh_client_post:
+                            _open_orders_post = await asyncio.to_thread(_wh_client_post.futures_get_open_orders, symbol=symbol)
+                            _to_cancel_post = [o for o in (_open_orders_post or []) if o.get("side") == side and o.get("positionSide") == position_side]
+                            for _co in _to_cancel_post:
+                                _oid = _co.get("orderId")
+                                try:
+                                    _cr = await asyncio.to_thread(_wh_client_post.futures_cancel_order, symbol=symbol, orderId=_oid)
+                                    _cancel_count += 1
+                                    if isinstance(_cr, dict) and _cr.get("status") in ("CANCELED", "EXPIRED"):
+                                        _confirm_count += 1
+                                except Exception as _ce:
+                                    logger.warning(f"[WEBHOOK_POST_CANCEL_ERR] {position_key} oid={_oid}: {_ce}")
+                    except Exception as _ge:
+                        logger.warning(f"[WEBHOOK_POST_CANCEL_FETCH_ERR] {position_key}: {_ge}")
+                    # Clear pending lock so next signal cycle can retry
+                    try:
+                        from ez_positions_quick import clear_open_pending as _cop
+                        _cop(position_key)
+                    except Exception:
+                        pass
+                    logger.critical(f"🧹 [WEBHOOK_UNFILLED_CLEANUP] {position_key}: empty_data={_finandy_empty} cancelled={_cancel_count} confirmed={_confirm_count}. Pending lock cleared. Next signal cycle may retry.")
+                    return False
+            except Exception as _vex:
+                logger.warning(f"[WEBHOOK_POST_VERIFY_ERR] {position_key}: {_vex} — proceeding as if filled.")
             # 2026-04-24 UNIVERSAL HEDGE PERSIST: if reason marks this as a hedge open, write
             # a tracker.active_hedges record RIGHT NOW — don't rely on execute_trade_wrapper's
             # return value propagation (which missed records in NMR + TWT cascades).
