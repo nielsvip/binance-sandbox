@@ -2905,6 +2905,31 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     wt1_3m = _safe(npz, 'wt1_3m', n)
     wt2_3m = _safe(npz, 'wt2_3m', n)
 
+    # ── Funding rate / OI / Multi-factor wt_dc zone fields (2026-04-28 wiring) ──
+    funding_rate_arr = _safe(npz, f'funding_rate_{_ltf}', n, 0.0)
+    oi_arr = _safe(npz, f'oi_{_ltf}', n, 0.0)
+    bb_pct_b_1h_arr = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+    dc_pos_1h_arr = _safe(npz, 'dc_position_1h', n, 0.5)
+    dc_pos_4h_arr = _safe(npz, 'dc_position_4h', n, 0.5)
+    stoch_k_1h_arr = _safe(npz, 'stoch_k_1h', n, 50.0)
+    stoch_k_4h_arr = _safe(npz, 'stoch_k_4h', n, 50.0)
+    mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50.0)
+    mfi_4h_arr = _safe(npz, 'mfi_4h', n, 50.0)
+    # Funding gate config
+    funding_gate_enabled = bool(getattr(cfg, 'FUNDING_GATE_ENABLED', False))
+    funding_long_max = float(getattr(cfg, 'FUNDING_GATE_LONG_MAX', 0.0005))
+    funding_short_min = float(getattr(cfg, 'FUNDING_GATE_SHORT_MIN', -0.0005))
+    # OI gate config
+    oi_gate_enabled = bool(getattr(cfg, 'OI_CONFIRM_ENABLED', False))
+    oi_min_change_pct = float(getattr(cfg, 'OI_CONFIRM_MIN_CHANGE_PCT', 0.5))
+    oi_min_price_pct = float(getattr(cfg, 'OI_CONFIRM_MIN_PRICE_PCT', 0.3))
+    # Multi-factor wt_dc switch (defaults to enriched mode)
+    wt_dc_multifactor = bool(getattr(cfg, 'BTC_RZ_WT_DC_MULTIFACTOR', True))
+    # Pre-compute 1h-prior OI and price for OI 4-quadrant detection (~20 bars at 3m = 1h)
+    _1h_in_ltf = _bph_1h
+    oi_prev_arr = np.roll(oi_arr, _1h_in_ltf); oi_prev_arr[:_1h_in_ltf] = oi_arr[:_1h_in_ltf]
+    close_prev_1h_arr = np.roll(close, _1h_in_ltf); close_prev_1h_arr[:_1h_in_ltf] = close[:_1h_in_ltf]
+
     # Round increments
     round_primary = float(getattr(cfg, 'BTC_ROUND_INC_PRIMARY_USD', 5000.0))
     round_secondary = float(getattr(cfg, 'BTC_ROUND_INC_SECONDARY_USD', 1000.0))
@@ -3025,13 +3050,32 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 secondary_inc_usd=round_secondary,
                 bands_each_side=round_bands,
             )
-        # Crude wt_dc_zone proxy: BB %B 4h extreme = TOP/BOTTOM, else BASELINE
+        # Multi-factor wt_dc zone (2026-04-28 — was BB %B 4h proxy only).
+        # Combines BB %B (4h+1h) + DC position (4h+1h) + stoch K (4h+1h) + MFI extremes.
+        # Mirrors wt_dc_delta._run_redzone() factors. Falls back to simple BB %B if disabled.
         wt_dc_zone = "none"
         if rz_use_wt_dc:
-            bp = float(bb_pct_b_4h[i])
-            if bp >= 0.85: wt_dc_zone = "TOP"
-            elif bp <= 0.15: wt_dc_zone = "BOTTOM"
-            else: wt_dc_zone = "BASELINE"
+            bp4 = float(bb_pct_b_4h[i])
+            if wt_dc_multifactor:
+                bp1 = float(bb_pct_b_1h_arr[i])
+                dcp1 = float(dc_pos_1h_arr[i])
+                dcp4 = float(dc_pos_4h_arr[i])
+                k1 = float(stoch_k_1h_arr[i])
+                k4 = float(stoch_k_4h_arr[i])
+                mf1 = float(mfi_1h_arr[i])
+                mf4 = float(mfi_4h_arr[i])
+                # TOP: any 2-of-7 extreme high readings
+                top_score = ((bp4 >= 0.85) + (bp1 >= 0.85) + (dcp4 >= 0.80) + (dcp1 >= 0.80)
+                              + (k4 >= 80) + (k1 >= 80) + (mf4 >= 80))
+                bot_score = ((bp4 <= 0.15) + (bp1 <= 0.15) + (dcp4 <= 0.20) + (dcp1 <= 0.20)
+                              + (k4 <= 20) + (k1 <= 20) + (mf4 <= 20))
+                if top_score >= 2: wt_dc_zone = "TOP"
+                elif bot_score >= 2: wt_dc_zone = "BOTTOM"
+                else: wt_dc_zone = "BASELINE"
+            else:
+                if bp4 >= 0.85: wt_dc_zone = "TOP"
+                elif bp4 <= 0.15: wt_dc_zone = "BOTTOM"
+                else: wt_dc_zone = "BASELINE"
         rz = _btc.build_red_zone_state(
             current_price=price_i,
             fib_levels_per_tf=fib_per_tf,
@@ -3113,6 +3157,39 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             cd_bars = btc_breakout_cooldown if last_exit_type == "BREAKOUT" else btc_cooldown_bars
             if i - last_exit_bar < cd_bars:
                 continue
+            # ── Funding rate gate (2026-04-28 wiring) ──
+            #   funding > LONG_MAX  → veto LONG  (longs already crowded)
+            #   funding < SHORT_MIN → veto SHORT (shorts already crowded)
+            funding_blocks_long = False
+            funding_blocks_short = False
+            if funding_gate_enabled:
+                _fr = float(funding_rate_arr[i])
+                # Skip pre-cache zeros (funding=exactly 0 means data not available)
+                if _fr != 0.0:
+                    if _fr > funding_long_max:
+                        funding_blocks_long = True
+                    if _fr < funding_short_min:
+                        funding_blocks_short = True
+            # ── OI 4-quadrant gate (2026-04-28 wiring) ──
+            #   Quadrant A (price up + OI up)  → confirm LONG (smart $ accumulating)
+            #   Quadrant B (price up + OI down) → block LONG  (short squeeze, weak)
+            #   Quadrant C (price down + OI up) → confirm SHORT
+            #   Quadrant D (price down + OI down) → block SHORT (long unwinds, weak)
+            oi_blocks_long = False
+            oi_blocks_short = False
+            if oi_gate_enabled and i >= _1h_in_ltf:
+                _oi_now = float(oi_arr[i]); _oi_prev = float(oi_prev_arr[i])
+                _px_now = price_i; _px_prev = float(close_prev_1h_arr[i])
+                if _oi_prev > 0 and _px_prev > 0:
+                    _oi_chg_pct = (_oi_now - _oi_prev) / _oi_prev * 100.0
+                    _px_chg_pct = (_px_now - _px_prev) / _px_prev * 100.0
+                    if abs(_oi_chg_pct) >= oi_min_change_pct and abs(_px_chg_pct) >= oi_min_price_pct:
+                        # Quadrant B: price up + OI down → veto LONG
+                        if _px_chg_pct > 0 and _oi_chg_pct < 0:
+                            oi_blocks_long = True
+                        # Quadrant D: price down + OI down → veto SHORT
+                        if _px_chg_pct < 0 and _oi_chg_pct < 0:
+                            oi_blocks_short = True
 
             # HTF alignment: count 1h/4h/D where wt1>wt2 (bull) or <wt2 (bear).
             # Used by BREAKOUT to avoid buying small uptick rallies during a clear downtrend.
@@ -3133,10 +3210,11 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 htf_long_aligned_tfs=htf_long_n,
                 htf_short_aligned_tfs=htf_short_n,
             ) if btc_breakout_enabled else ("NONE", "")
-            if bk_side == "LONG":
+            # Apply funding/OI veto to all entry paths below
+            if bk_side == "LONG" and not (funding_blocks_long or oi_blocks_long):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                 continue
-            if bk_side == "SHORT":
+            if bk_side == "SHORT" and not (funding_blocks_short or oi_blocks_short):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                 continue
 
@@ -3155,10 +3233,10 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                            and accel["side"] == "bull" and accel["bull_aligned_tfs"] >= 1)
                 ft_short = (last_exit_side == "SHORT" and pct_past <= -btc_follow_through_min_pct
                             and accel["side"] == "bear" and accel["bear_aligned_tfs"] >= 1)
-                if ft_long:
+                if ft_long and not (funding_blocks_long or oi_blocks_long):
                     position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                     continue
-                if ft_short:
+                if ft_short and not (funding_blocks_short or oi_blocks_short):
                     position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                     continue
 
@@ -3185,10 +3263,13 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                     current_price=price_i, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
                 )
             if reenter:
-                position = reenter_side; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
-            elif ok_long and not ok_short:
+                _veto = ((reenter_side == "LONG"  and (funding_blocks_long  or oi_blocks_long))
+                         or (reenter_side == "SHORT" and (funding_blocks_short or oi_blocks_short)))
+                if not _veto:
+                    position = reenter_side; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+            elif ok_long and not ok_short and not (funding_blocks_long or oi_blocks_long):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
-            elif ok_short and not ok_long:
+            elif ok_short and not ok_long and not (funding_blocks_short or oi_blocks_short):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
             continue
 

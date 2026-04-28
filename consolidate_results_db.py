@@ -491,8 +491,10 @@ def import_autonomous(conn, path: Path, source_dir: str, worker: str, mode: str,
 # backtest_v8_run_summaries  (JSONL — store summaries, not per-trade rows)
 # ---------------------------------------------------------------------------
 
-def import_v8_jsonl(conn, path: Path, dry_run: bool):
+def import_v8_jsonl(conn, path: Path, dry_run: bool, delete_after: bool = False):
     if already_done(conn, path):
+        if delete_after and not dry_run and path.exists():
+            path.unlink()
         return
     name = path.stem
     m = re.match(r"v8_(crypto|tradier)_(\w+?)_\d{8}", name)
@@ -548,6 +550,8 @@ def import_v8_jsonl(conn, path: Path, dry_run: bool):
 
     log_import(conn, path, "backtest_v8_run_summaries", n_events, "done")
     print(f"  jsonl     {path.name}: {n_events:,} events, {len(positions)} positions [{date_min}→{date_max}]")
+    if delete_after and not dry_run:
+        path.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -656,7 +660,7 @@ def main():
         jsonl_files = sorted(V8_LOGS.glob("*.jsonl"))
         print(f"  processing {len(jsonl_files):,} JSONL files...")
         for i, p in enumerate(jsonl_files, 1):
-            import_v8_jsonl(conn, p, args.dry_run)
+            import_v8_jsonl(conn, p, args.dry_run, delete_after=args.delete_after)
             if i % 500 == 0:
                 print(f"  ...{i:,}/{len(jsonl_files):,} done")
     else:
