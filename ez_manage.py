@@ -13016,15 +13016,12 @@ class MultiAccountTradeManager:
                     if _existing:
                         logger.critical(f"🛑 [HEDGE_FIRE_ONCE] {position_key} hedging {_hedge_target}: BLOCKED — {len(_existing)} active hedge record(s) already exist. action={action} reason={(reason or '')[:80]}")
                         return f"BLOCKED_HEDGE_FIRE_ONCE_n={len(_existing)}"
-                # 2) per-symbol 30-min cooldown (user 2026-04-28: "IF A HEDGE IS EVER FIRED
-                #    FUCKING BLOCK ANY HEDGE FOR THE SYMBOL FOR AT LEAST 30 MIN")
-                global _HEDGE_SYMBOL_COOLDOWN_TS
-                try:
-                    _HEDGE_SYMBOL_COOLDOWN_TS
-                except NameError:
-                    _HEDGE_SYMBOL_COOLDOWN_TS = {}
+                # 2) per-symbol 30-min cooldown — REDIS-PERSISTED (survives worker restarts)
+                #    user 2026-04-28: "IF A HEDGE IS EVER FIRED FUCKING BLOCK ANY HEDGE FOR THE
+                #    SYMBOL FOR AT LEAST 30 MIN". In-memory dict alone resets on restart;
+                #    workers cycle every ~10 min via watchdog → cooldown state must persist.
                 _hg_cooldown = float(getattr(config, 'HEDGE_SYMBOL_COOLDOWN_SEC', 1800.0))
-                # Extract symbol from this position_key OR hedge_for (whichever is present)
+                # Extract symbol
                 _hg_sym = None
                 for _src in (position_key, hedge_for, _hedge_target):
                     if _src and ':' in _src:
@@ -13039,13 +13036,36 @@ class MultiAccountTradeManager:
                     if _hg_sym:
                         break
                 _hg_sym = _hg_sym or symbol or 'UNKNOWN'
-                _hg_last = _HEDGE_SYMBOL_COOLDOWN_TS.get(_hg_sym, 0.0)
-                _hg_since = time.time() - _hg_last
+                _hg_redis_key = f"hedge_cooldown:{_hg_sym}"
+                _hg_now_ts = time.time()
+                _hg_last = 0.0
+                _hg_redis_ok = False
+                try:
+                    import redis as _rs_hg
+                    _r_hg = _rs_hg.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB, decode_responses=True, socket_timeout=1, socket_connect_timeout=1)
+                    _stored = _r_hg.get(_hg_redis_key)
+                    if _stored:
+                        _hg_last = float(_stored)
+                    _hg_redis_ok = True
+                except Exception as _hg_re:
+                    logger.debug(f"[HEDGE_SYMBOL_COOLDOWN] redis read err {type(_hg_re).__name__}: {_hg_re}")
+                # Fallback to in-memory if redis unavailable
+                global _HEDGE_SYMBOL_COOLDOWN_TS
+                try: _HEDGE_SYMBOL_COOLDOWN_TS
+                except NameError: _HEDGE_SYMBOL_COOLDOWN_TS = {}
+                if not _hg_redis_ok:
+                    _hg_last = max(_hg_last, _HEDGE_SYMBOL_COOLDOWN_TS.get(_hg_sym, 0.0))
+                _hg_since = _hg_now_ts - _hg_last
                 if _hg_since < _hg_cooldown:
-                    logger.critical(f"🛑 [HEDGE_SYMBOL_COOLDOWN] {position_key} sym={_hg_sym}: BLOCKED — last hedge on this symbol {_hg_since:.0f}s ago < {_hg_cooldown:.0f}s cooldown. action={action} reason={(reason or '')[:60]}")
+                    logger.critical(f"🛑 [HEDGE_SYMBOL_COOLDOWN] {position_key} sym={_hg_sym}: BLOCKED — last hedge {_hg_since:.0f}s ago < {_hg_cooldown:.0f}s cooldown (src={'redis' if _hg_redis_ok else 'mem'}). action={action} reason={(reason or '')[:60]}")
                     return f"BLOCKED_HEDGE_SYMBOL_COOLDOWN_{_hg_sym}_{_hg_since:.0f}s"
-                # Stamp BEFORE order placement so failed orders still consume cooldown (prevents retry loops)
-                _HEDGE_SYMBOL_COOLDOWN_TS[_hg_sym] = time.time()
+                # Stamp BEFORE order placement (failed orders still consume cooldown — prevents retry loops)
+                _HEDGE_SYMBOL_COOLDOWN_TS[_hg_sym] = _hg_now_ts
+                if _hg_redis_ok:
+                    try:
+                        _r_hg.set(_hg_redis_key, str(_hg_now_ts), ex=int(_hg_cooldown) + 60)
+                    except Exception as _hg_we:
+                        logger.debug(f"[HEDGE_SYMBOL_COOLDOWN] redis write err {type(_hg_we).__name__}: {_hg_we}")
             except Exception as _hf_e:
                 logger.debug(f"[HEDGE_FIRE_ONCE] check err {type(_hf_e).__name__}: {_hf_e}")
         # ═══════════════════════════════════════════════════════════════════════════

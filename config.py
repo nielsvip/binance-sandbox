@@ -661,8 +661,8 @@ class Config:
     # a partial reentry through execute_now. Idempotent via _price_cross_last_fire.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
-    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.001
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 600.0
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup; price-cross fires often
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:

@@ -34,8 +34,10 @@ neither is touched by this module.
 """
 from __future__ import annotations
 
+import json
 import os
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 
@@ -150,25 +152,129 @@ def pick_reentry_evaluator(stores: Optional[dict] = None, cfg: Optional[Any] = N
     return get_evaluate_reentry()
 
 
+def _get_redis_client(trade_manager):
+    try:
+        rm = getattr(trade_manager, "redis_manager", None)
+        if rm is None:
+            return None
+        client = getattr(rm, "client", None)
+        if client is not None:
+            return client
+        return rm
+    except Exception:
+        return None
+
+
+def _lookup_mark_price(trade_manager, position_key: str, symbol: str) -> float:
+    cur_px = 0.0
+    try:
+        position = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
+        if position is not None:
+            cur_px = float(getattr(position, "mark_price", 0) or 0)
+    except Exception:
+        cur_px = 0.0
+    if cur_px > 0:
+        return cur_px
+    client = _get_redis_client(trade_manager)
+    if client is None:
+        return 0.0
+    try:
+        raw = client.get(f"mark_price:{symbol}")
+        if not raw:
+            return 0.0
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8", errors="ignore")
+        obj = json.loads(raw)
+        return float(obj.get("price") or 0)
+    except Exception:
+        return 0.0
+
+
+def _allowed_accounts_for(trade_manager) -> list:
+    raw = getattr(trade_manager, "_allowed_accounts", None)
+    accs = list(raw) if raw else []
+    if not accs:
+        single = getattr(trade_manager, "account_key", None)
+        if single:
+            accs = [single]
+    return [a for a in accs if isinstance(a, str)]
+
+
+def _collect_reentry_candidates(trade_manager, base_path: Path) -> dict:
+    """Build {position_key: (is_long, exit_px, exit_amt, src)} from disk JSON files
+    PLUS in-memory reentry_data. Disk wins on duplicates (canonical source)."""
+    candidates: dict = {}
+    for acc in _allowed_accounts_for(trade_manager):
+        acc_dir = base_path / acc
+        if not acc_dir.exists():
+            continue
+        for side_name, is_long in (("long", True), ("short", False)):
+            f = acc_dir / f"{side_name}_reentry.json"
+            if not f.exists():
+                continue
+            try:
+                with open(f, "r") as fp:
+                    data = json.load(fp)
+            except Exception:
+                continue
+            if not isinstance(data, dict):
+                continue
+            for pk, rd in data.items():
+                if not isinstance(rd, dict):
+                    continue
+                try:
+                    exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
+                    exit_amt = float(rd.get("reentry_amount", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if exit_px <= 0:
+                    continue
+                candidates[pk] = (is_long, exit_px, exit_amt, f"DISK_{side_name.upper()}")
+    src_mem = (
+        trade_manager.service.reentry_data
+        if getattr(trade_manager, "service", None)
+        else getattr(trade_manager, "reentry_data", {})
+    )
+    if isinstance(src_mem, dict):
+        for pk, rd in src_mem.items():
+            if pk in candidates or not isinstance(rd, dict):
+                continue
+            try:
+                exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
+                exit_amt = float(rd.get("reentry_amount", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if exit_px <= 0:
+                continue
+            is_long = pk.endswith("_LONG")
+            candidates[pk] = (is_long, exit_px, exit_amt, "MEM")
+    return candidates
+
+
 async def enforce_price_cross_reentry(trade_manager) -> int:
     """Safety net (2026-04-28, user-mandated): for every position with a recorded
-    exit price in trade_manager.reentry_data, fire a partial reentry the FIRST
-    time current price crosses past exit (LONG: above, SHORT: below).
+    exit price (disk JSON file OR in-memory reentry_data), fire a partial reentry
+    when current mark_price crosses past exit (LONG: above, SHORT: below).
 
-    Why: existing reentry paths (evaluate_reentry, evaluate_reentry_2, TIER1/TIER2,
-    _price_level_reentry_monitor, reentry_enforcement_loop) all CAN block on
-    downstream gates (NO_DOUBLE_OPEN, MIN_GAP, SYMGATE, RALLY_K15M, etc) and
-    sometimes the position never reenters even when price has clearly crossed
-    the exit. User invariant: "NEVER allow a position to break out above exit
-    price without having at least a partial reentry. Effective NOW".
+    Why disk + Redis instead of just in-memory: in-memory state can be empty
+    immediately after restart, on a different worker, or after a service hot-swap.
+    Disk JSON files (`<account>/long_reentry.json` / `short_reentry.json`) are the
+    canonical persistence layer written by execute_trade_action on every reduce/
+    close. Mark price comes from Redis `mark_price:<SYMBOL>` (JSON-encoded with
+    `price` field) when the position object is stale.
 
-    Idempotent via trade_manager._price_cross_last_fire (in-memory dict). Fires
-    once per cross epoch (default 600s min gap between fires per position). Uses
-    execute_now per CLAUDE.md "ONLY gate" rule. Returns count of fires.
+    Existing paths (evaluate_reentry, evaluate_reentry_2, TIER1/TIER2,
+    _price_level_reentry_monitor, reentry_enforcement_loop) all gate on
+    NO_DOUBLE_OPEN/MIN_GAP/SYMGATE/RALLY_K15M and miss real crosses. This loop
+    has NO pre-gates — only cross + dedup + execute_now (CLAUDE.md "ONLY gate").
+
+    Action='REENTRY' so execute_now's REENTRY-bypass paths (lines 10641-10674,
+    13007-13008) treat the call as a guaranteed rebuild instead of a normal
+    AUGMENT (which can re-block on entry gates).
 
     Switches: EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED (default True),
-    EZ_REENTRY_PRICE_CROSS_PCT (cross threshold, default 0.001 = 0.1%),
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S (per-key dedup, default 600s),
+    EZ_REENTRY_PRICE_CROSS_PCT (cross threshold, default 0.0 = strict cross),
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S (per-key dedup, default 60s),
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC (size fraction, default 0.5).
     """
     try:
@@ -177,72 +283,57 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         return 0
     if not bool(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", True)):
         return 0
-    cross_pct = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PCT", 0.001))
-    min_gap_s = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", 600.0))
+    cross_pct = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PCT", 0.0))
+    min_gap_s = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", 60.0))
     partial_frac = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC", 0.5))
     start_size = float(getattr(_cfg, "START_POSITION_SIZE", 18.0))
+    base_path = Path(getattr(_cfg, "BASE_PATH", "/Users/niels/Documents/binance"))
     if not hasattr(trade_manager, "_price_cross_last_fire"):
         trade_manager._price_cross_last_fire = {}
-    src = (
-        trade_manager.service.reentry_data
-        if getattr(trade_manager, "service", None)
-        else getattr(trade_manager, "reentry_data", {})
-    )
-    if not isinstance(src, dict) or not src:
+    candidates = _collect_reentry_candidates(trade_manager, base_path)
+    if not candidates:
         return 0
     try:
         from utils import parse_position_key as _ppk
     except Exception:
         return 0
+    allowed = set(_allowed_accounts_for(trade_manager))
     now = time.time()
     fired = 0
-    for pk, rd in list(src.items()):
-        if not isinstance(rd, dict):
-            continue
-        try:
-            exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
-        except (TypeError, ValueError):
-            exit_px = 0.0
-        if exit_px <= 0:
-            continue
+    for pk, (is_long, exit_px, exit_amt, src_tag) in candidates.items():
         try:
             account_key, sym, side = _ppk(pk)
         except Exception:
             continue
-        is_long = side == "LONG"
-        position = trade_manager.positions.get(pk) if hasattr(trade_manager, "positions") else None
-        if position is None:
+        if allowed and account_key not in allowed:
             continue
-        try:
-            cur_px = float(getattr(position, "mark_price", 0) or 0)
-        except (TypeError, ValueError):
-            cur_px = 0.0
+        cur_px = _lookup_mark_price(trade_manager, pk, sym)
         if cur_px <= 0:
             continue
-        crossed = (
-            (is_long and cur_px > exit_px * (1.0 + cross_pct))
-            or ((not is_long) and cur_px < exit_px * (1.0 - cross_pct))
-        )
+        if cross_pct > 0:
+            crossed = (
+                (is_long and cur_px > exit_px * (1.0 + cross_pct))
+                or ((not is_long) and cur_px < exit_px * (1.0 - cross_pct))
+            )
+        else:
+            crossed = (is_long and cur_px > exit_px) or ((not is_long) and cur_px < exit_px)
         if not crossed:
             continue
         last_fire = float(trade_manager._price_cross_last_fire.get(pk, 0))
         if now - last_fire < min_gap_s:
             continue
-        try:
-            re_amt = float(rd.get("reentry_amount", 0) or 0)
-        except (TypeError, ValueError):
-            re_amt = 0.0
-        fire_qty = (re_amt if re_amt > 0 else (start_size / max(cur_px, 1e-9))) * partial_frac
+        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * partial_frac
         if fire_qty <= 0:
             continue
+        position = trade_manager.positions.get(pk) if hasattr(trade_manager, "positions") else None
         try:
-            pos_amt = abs(float(getattr(position, "positionAmt", 0) or 0))
-        except (TypeError, ValueError):
+            pos_amt = abs(float(getattr(position, "positionAmt", 0) or 0)) if position is not None else 0.0
+        except Exception:
             pos_amt = 0.0
         try:
             uid = f"PRICE_CROSS_GUARANTEE_{int(now)}"
             reason = (
-                f"GUARANTEED_PRICE_CROSS_REENTRY_exit{exit_px:.6f}"
+                f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
                 f"_cur{cur_px:.6f}_partial{partial_frac:.2f}"
             )
             await trade_manager.execute_now(
@@ -257,7 +348,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
                 unique_id=uid,
                 reason=reason,
                 is_full_close=False,
-                action="AUGMENT",
+                action="REENTRY",
             )
             trade_manager._price_cross_last_fire[pk] = now
             fired += 1

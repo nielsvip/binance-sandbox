@@ -1435,8 +1435,8 @@ class TradierConfig:
     # 2026-04-28 — Price-cross GUARANTEE safety loop. See config.py for full description.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
-    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.001
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 600.0
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
