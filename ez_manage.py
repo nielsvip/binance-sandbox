@@ -11017,8 +11017,20 @@ class MultiAccountTradeManager:
             logger.error(f"[execute_trade_action] {position_key}: could not get valid price, aborting")
             return f"BLOCKED_INVALID_PRICE_{position_key}"
         is_long = position_side == "LONG"
-        pos_min_qty = max(5.50 / current_price, self.min_qty.get(symbol, 0.0001) * 1.2)
-        if 'OPEN' in reason.upper() and position.positionAmt > pos_min_qty: return f'BLOCK_YOUFUCKINGPIECEOFSHIT_OPEN IS FOR ZERO YOU FUCKING DISGRACEFUL MOTHER FUCKER SICK MOTHER FUCKING BITCH'
+        # 2026-04-28: pos_min_qty = max(min_qty.json[sym], $6/price). Below this = effectively closed.
+        pos_min_qty = max(self.min_qty.get(symbol, 0.0001), 6.0 / current_price if current_price > 0 else 0)
+        _action_upper_etw = (action or '').upper()
+        _reason_upper_etw = (reason or '').upper()
+        _is_entry_etw = (
+            _action_upper_etw in ('OPEN', 'REENTRY', 'QUICK_OPEN', 'QUICK_HEDGE_OPEN', 'HEDGE_OPEN', 'REVERSE', 'REVERSE_AUGMENT', 'DC_BREAKOUT', 'BB_SQUEEZE_BREAKOUT', 'VOL_SPIKE')
+            or 'OPEN' in _action_upper_etw
+            or 'REENTRY' in _action_upper_etw
+            or 'REENTRY' in _reason_upper_etw
+        ) and 'CLOSE' not in _action_upper_etw and 'REDUCE' not in _action_upper_etw and 'KILL' not in _action_upper_etw and 'AUGMENT' not in _action_upper_etw
+        if _is_entry_etw and abs(position.positionAmt) > pos_min_qty:
+            _val = abs(position.positionAmt) * current_price
+            logger.warning(f"🚫 [POSITION_ALREADY_OPEN_ETA] {position_key}: BLOCKED {action} — amt={abs(position.positionAmt):.6f} > pos_min_qty={pos_min_qty:.6f} (val=${_val:.2f}, gain={position.gain:.2f}%). Only AUGMENT with gain≥{config.MIN_GAIN:.1f}% allowed. reason={(reason or '')[:80]}")
+            return f"BLOCKED_POSITION_ALREADY_OPEN_ETA_amt={abs(position.positionAmt):.6f}_val=${_val:.2f}"
         if not override_qty or 'REENTRY' in action or _original_action_was_reentry: #await calc_qty
             if position and position.gain < -0.3 and is_entry_action and position.positionAmt > config.START_POSITION_SIZE / current_price:
                 if 'quick' not in reason.lower() and 'QUICK' not in action:
