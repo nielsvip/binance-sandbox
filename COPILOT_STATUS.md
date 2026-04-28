@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 12:06:08 UTC
+# Copilot Status — 2026-04-28 12:21:24 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T12:01:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:01:03
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T12:03:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:03:10
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T12:03:10
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:03:10
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T12:05:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:05:15
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T12:05:15
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:05:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:11:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:13:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:13:42
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:15:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:15:48
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T12:17:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:17:55
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:17:55
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:19:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:19:59
 
 ## Missed Trades (trader comparison)
 
@@ -35,12 +35,13 @@ _None_
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 0m ago
-- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 5m ago
+- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 15m ago
+- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 20m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 1
+**Issues (last 1h):** 2
 - [HIGH] ez_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
