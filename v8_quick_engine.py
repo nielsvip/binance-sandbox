@@ -855,6 +855,12 @@ class QuickConfig:
     BTC_RESTRICTED_K_EXTREME_HI_THRESHOLD: float = 80.0
     BTC_RESTRICTED_WT_EXTREME_NEG: float = -50.0          # WT must be < this for bull cross to count
     BTC_RESTRICTED_WT_EXTREME_POS: float = 50.0           # WT must be > this for bear cross to count
+    # HA candle confirmation (2026-04-28): when ENABLED, restrict-mode setups must ALSO be on a green
+    # HA candle for LONG (or red for SHORT). User insight: just trading green vs red HA on 3m alone
+    # already filters out a ton of bad entries. Stack with the other restricted setup gates.
+    BTC_RESTRICTED_HA_CONFIRM_ENABLED: bool = False
+    BTC_RESTRICTED_HA_CONFIRM_TF: str = "3m"   # 3m / 15m / 1h / 4h / D
+    BTC_RESTRICTED_HA_REQUIRE_TWO_BARS: bool = False  # require current AND prev bar same color
     BTC_LEVERAGE: float = 20.0
     BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0
     BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0
@@ -3042,6 +3048,21 @@ def _btc_restricted_setup_check(npz, i, cfg):
             v = npz[field][idx]
             return float(v.item()) if hasattr(v, 'item') else float(v)
         except Exception: return default
+    # HA confirmation pre-filter — applied AFTER setup matching to suppress non-confirmed sides.
+    # NPZ stores HA direction as 1.0 (green/up) / -1.0 (red/down) / 0.0 (doji).
+    ha_long_ok = True
+    ha_short_ok = True
+    if bool(getattr(cfg, 'BTC_RESTRICTED_HA_CONFIRM_ENABLED', False)):
+        tf = str(getattr(cfg, 'BTC_RESTRICTED_HA_CONFIRM_TF', '3m'))
+        require_two = bool(getattr(cfg, 'BTC_RESTRICTED_HA_REQUIRE_TWO_BARS', False))
+        ha_now = _g(f'ha_{tf}', i, 0.0)
+        ha_prev = _g(f'ha_{tf}', pi, 0.0)
+        if require_two:
+            ha_long_ok = (ha_now > 0 and ha_prev > 0)
+            ha_short_ok = (ha_now < 0 and ha_prev < 0)
+        else:
+            ha_long_ok = (ha_now > 0)
+            ha_short_ok = (ha_now < 0)
     k_lo = float(getattr(cfg, 'BTC_RESTRICTED_K_EXTREME_LO_THRESHOLD', 20.0))
     k_hi = float(getattr(cfg, 'BTC_RESTRICTED_K_EXTREME_HI_THRESHOLD', 80.0))
     wt_neg = float(getattr(cfg, 'BTC_RESTRICTED_WT_EXTREME_NEG', -50.0))
@@ -3114,6 +3135,9 @@ def _btc_restricted_setup_check(npz, i, cfg):
             bb_up = _g(f'bb_upper_{tf}', i, 0)
             if bb_up > 0 and c_prev >= bb_up and c_now < bb_up:
                 shorts.append(f'STDEV_{tf}_UPPER_REJECT'); break
+    # Apply HA confirmation: suppress LONG if HA red, SHORT if HA green
+    if not ha_long_ok: longs = []
+    if not ha_short_ok: shorts = []
     return longs, shorts
 
 
@@ -3247,6 +3271,7 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     bb_pct_b_1h_arr = _safe(npz, 'bb_pct_b_1h', n, 0.5)
     dc_pos_1h_arr = _safe(npz, 'dc_position_1h', n, 0.5)
     dc_pos_4h_arr = _safe(npz, 'dc_position_4h', n, 0.5)
+    stoch_k_3m_arr = _safe(npz, 'stoch_k_3m', n, 50.0)
     stoch_k_1h_arr = _safe(npz, 'stoch_k_1h', n, 50.0)
     stoch_k_4h_arr = _safe(npz, 'stoch_k_4h', n, 50.0)
     mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50.0)
@@ -3679,6 +3704,31 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
         dc_low4_breach = price_i < float(dc_low4_3m_prev[i]) and dc_low4_3m_prev[i] > 0
         dc_high4_breach = price_i > float(dc_high4_3m_prev[i]) and dc_high4_3m_prev[i] > 0
 
+        # REJECTION detection (2026-04-28): replaces over-eager BREAKOUT_ACCEL_REVERSAL.
+        # LONG rejection = (a) 2-bar reclaim of prev DC high (closed back inside the channel
+        #                       we broke out of for two consecutive bars), OR
+        #                  (b) k_3m extreme reversal (was >= 80, now ticking down)
+        # SHORT rejection = mirror.
+        if i >= 2:
+            price_prev = float(close[i - 1])
+            dc_h_prev_now = float(dc_high_3m_prev[i]) if dc_high_3m_prev[i] > 0 else 0.0
+            dc_h_prev_prev = float(dc_high_3m_prev[i - 1]) if dc_high_3m_prev[i - 1] > 0 else 0.0
+            dc_l_prev_now = float(dc_low_3m_prev[i]) if dc_low_3m_prev[i] > 0 else 0.0
+            dc_l_prev_prev = float(dc_low_3m_prev[i - 1]) if dc_low_3m_prev[i - 1] > 0 else 0.0
+            k3_now = float(stoch_k_3m_arr[i])
+            k3_prev = float(stoch_k_3m_arr[i - 1])
+            long_dc_reclaim = (dc_h_prev_now > 0 and dc_h_prev_prev > 0
+                               and price_i < dc_h_prev_now and price_prev < dc_h_prev_prev)
+            long_k_reversal = (k3_prev >= 80 and k3_now < k3_prev)
+            short_dc_reclaim = (dc_l_prev_now > 0 and dc_l_prev_prev > 0
+                                and price_i > dc_l_prev_now and price_prev > dc_l_prev_prev)
+            short_k_reversal = (k3_prev <= 20 and k3_now > k3_prev)
+            long_rejection = long_dc_reclaim or long_k_reversal
+            short_rejection = short_dc_reclaim or short_k_reversal
+        else:
+            long_rejection = False
+            short_rejection = False
+
         ok_exit, _reason = _btc.should_exit_btc(
             position=pos_state, accel=accel, divergence=div,
             wt_against_min_tfs=tech_exit_min_tfs,
@@ -3686,6 +3736,8 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             wt_3m_against=wt_3m_against,
             dc_low4_3m_breach=dc_low4_breach,
             dc_high4_3m_breach=dc_high4_breach,
+            long_rejection=long_rejection,
+            short_rejection=short_rejection,
             cfg=cfg,
         )
         # Per-entry-type panic floor + min-hold gate

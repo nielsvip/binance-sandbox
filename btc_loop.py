@@ -479,6 +479,8 @@ def should_exit_btc(
     wt_3m_against: bool = False,        # NEW: for BREAKOUT entries — single 3m WT flip alone = exit
     dc_low4_3m_breach: bool = False,    # NEW: for LONG BREAKOUT — close < dc_low4_3m_prev → exit
     dc_high4_3m_breach: bool = False,   # NEW: for SHORT BREAKOUT — close > dc_high4_3m_prev → exit
+    long_rejection: bool = False,       # NEW (2026-04-28): true REJECTION — DC reclaim or K extreme reversal
+    short_rejection: bool = False,      # NEW: mirror for SHORT
 ) -> Tuple[bool, str]:
     """Combined exit decision. Branches on cfg.BTC_RISK_PATH and position.entry_type.
 
@@ -517,13 +519,24 @@ def should_exit_btc(
         if position.side == "SHORT" and dc_high4_3m_breach:
             return True, "BREAKOUT_DC_HIGH4_3M_BREACH"
         # 2. Single 3m WT against (the breakout momentum failed)
-        if wt_3m_against:
+        if getattr(cfg, "BTC_BREAKOUT_USE_WT_3M_FLIP_EXIT", True) and wt_3m_against:
             return True, "BREAKOUT_WT_3M_FLIP"
-        # 3. Accel reversal — kept for breakouts too (faster than bounce)
-        if position.side == "LONG" and accel["side"] == "bear":
-            return True, "BREAKOUT_ACCEL_REVERSAL"
-        if position.side == "SHORT" and accel["side"] == "bull":
-            return True, "BREAKOUT_ACCEL_REVERSAL"
+        # 3. REJECTION exit (2026-04-28 — replaces the over-eager ACCEL_REVERSAL).
+        #    True rejection = DC reclaim (price closed back inside the channel we broke)
+        #    OR K_3m extreme reversal. Default ON.
+        if getattr(cfg, "BTC_BREAKOUT_USE_REJECTION_EXIT", True):
+            if position.side == "LONG" and long_rejection:
+                return True, "BREAKOUT_REJECTION_LONG"
+            if position.side == "SHORT" and short_rejection:
+                return True, "BREAKOUT_REJECTION_SHORT"
+        # 4. Legacy accel reversal — DEFAULT OFF (was the dominant churn driver:
+        #    15,790 churn-middle exits leading immediately to follow-through reentries.
+        #    User 2026-04-28: "exit on reject instead of just delta slowdown".)
+        if getattr(cfg, "BTC_BREAKOUT_USE_LEGACY_ACCEL_REVERSAL", False):
+            if position.side == "LONG" and accel["side"] == "bear":
+                return True, "BREAKOUT_ACCEL_REVERSAL"
+            if position.side == "SHORT" and accel["side"] == "bull":
+                return True, "BREAKOUT_ACCEL_REVERSAL"
         return False, "BREAKOUT_NO_EXIT"
 
     # ── BOUNCE path (existing logic — no change) ──
