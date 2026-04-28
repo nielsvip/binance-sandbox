@@ -15486,6 +15486,16 @@ async def evaluate_reentry_epq(ctx: dict):
     position_key = ctx['position_key']
     symbol = ctx['symbol']
     trade_manager = ctx['trade_manager']
+    # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
+    # would BLOCK any resulting signal (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE).
+    try:
+        from ez_reentry import is_reentry_eligible as _ezr_eligible
+        _account_key_pre, _, _ = parse_position_key(position_key)
+        _ok_pre, _gw_pre = _ezr_eligible(trade_manager, position_key, _account_key_pre, symbol, cfg)
+        if not _ok_pre:
+            return None
+    except Exception:
+        pass
     position = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
     if not position:
         try:

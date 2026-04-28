@@ -16861,6 +16861,17 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     trade_manager = ctx['trade_manager']
     position = trade_manager.positions.get(position_key)
     if not position: return None
+    # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
+    # would BLOCK the resulting signal (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE).
+    # Saves the indicator fetch + 7 sub-block traversal cost; suppresses B12_*,
+    # B15_*, B04_*, B11_*, etc reasons from spamming execute_now.
+    try:
+        from ez_reentry import is_reentry_eligible as _ezr_eligible
+        _ok, _gw = _ezr_eligible(trade_manager, position_key, account_key, symbol, config)
+        if not _ok:
+            return None
+    except Exception:
+        pass
     is_long = ctx.get('position_side', 'LONG') == "LONG"
     current_price = safe_fetch_float(ctx.get('current_price') or ctx.get('mark_price') or getattr(position, 'mark_price', 0.0), 0.0)
     if not current_price: current_price = await price(symbol, position, 3)
@@ -18402,6 +18413,18 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         if account_key not in trade_manager.positions_by_account:
             if config.VERBOSE: logger.debug(f"[proces s_single_reentry_evaluation] {position_key}: NOT_ALLOWED - account_key {account_key} not in positions_by_account")
             return
+        # 2026-04-28: pre-flight eligibility gate — skip if execute_now would BLOCK
+        # this REENTRY (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE). Saves the
+        # position-recovery + indicator + queue_trade_action traversal cost on
+        # every dead-end path (DIRECTION_FAVORABLE_REENTRY, DC_BREAKOUT_REENTRY,
+        # K_RESET, etc.) inside this function.
+        try:
+            from ez_reentry import is_reentry_eligible as _ezr_eligible
+            _ok, _gate_why = _ezr_eligible(trade_manager, position_key, account_key, symbol, config)
+            if not _ok:
+                return
+        except Exception:
+            pass
         position = await trade_manager.get_position(position_key)
         if not position:
             position = trade_manager.positions_by_account.get(account_key, {}).get(position_key)

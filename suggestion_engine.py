@@ -143,12 +143,46 @@ def analyze_run(run_id, sym, trades_dir, fields, missed_lookahead_bars, missed_g
     if npz is None: return None
     ts_arr = npz["timestamps"]
 
-    # Pull feature snapshots
+    # Pull feature snapshots — vectorized: load each field array ONCE, index by all trade bars.
+    print(f"  [{run_id}/{sym}] loading {len(fields)} indicator arrays...", flush=True)
+    field_arrays_full = {}
+    for f in fields:
+        if f in npz.files:
+            arr = np.asarray(npz[f])
+            if len(arr) >= len(ts_arr):
+                field_arrays_full[f] = arr
+    print(f"  [{run_id}/{sym}] indexing {len(trades)} trades...", flush=True)
+    n_ts = len(ts_arr)
     feats = []
-    for t in trades:
-        f = _trade_features(npz, ts_arr, t, fields)
-        if f: feats.append(f)
+    en_ts_list = np.array([int(t.get("entry_ts", 0)) for t in trades], dtype=np.int64)
+    ex_ts_list = np.array([int(t.get("exit_ts", 0)) for t in trades], dtype=np.int64)
+    en_idx = np.searchsorted(ts_arr, en_ts_list).clip(0, n_ts - 1)
+    ex_idx = np.searchsorted(ts_arr, ex_ts_list).clip(0, n_ts - 1)
+    # Build a lookup of entry/exit values per field via vectorized fancy-indexing
+    entry_vals_by_field = {f: arr[en_idx] for f, arr in field_arrays_full.items()}
+    exit_vals_by_field  = {f: arr[ex_idx] for f, arr in field_arrays_full.items()}
+    for ti, t in enumerate(trades):
+        if en_idx[ti] >= n_ts or ex_idx[ti] >= n_ts:
+            continue
+        feat = {"_pnl": float(t.get("pnl_pct", 0) or 0),
+                "_side": t.get("side", "LONG"),
+                "_entry_reason": t.get("entry_reason", ""),
+                "_exit_reason": t.get("exit_reason", ""),
+                "_entry_ts": int(t.get("entry_ts", 0)),
+                "_dur_bars": int(ex_idx[ti] - en_idx[ti]),
+                "_win": int((t.get("pnl_pct", 0) or 0) > 0)}
+        for f in field_arrays_full:
+            ev = entry_vals_by_field[f][ti]
+            xv = exit_vals_by_field[f][ti]
+            ev = ev.item() if hasattr(ev, "item") else ev
+            xv = xv.item() if hasattr(xv, "item") else xv
+            if isinstance(ev, float) and not np.isfinite(ev): ev = None
+            if isinstance(xv, float) and not np.isfinite(xv): xv = None
+            feat["en_" + f] = ev
+            feat["ex_" + f] = xv
+        feats.append(feat)
     if not feats: return None
+    print(f"  [{run_id}/{sym}] features built. winners={sum(f['_win'] for f in feats)} losers={sum(1 for f in feats if not f['_win'] and f['_pnl']<0)}", flush=True)
 
     winners = [f for f in feats if f["_win"]]
     losers = [f for f in feats if not f["_win"] and f["_pnl"] < 0]
@@ -181,8 +215,9 @@ def analyze_run(run_id, sym, trades_dir, fields, missed_lookahead_bars, missed_g
     # ── 2. Winner vs loser indicator separability ──────────────────────────
     sep = []
     for f in fields:
-        win_vals = [w["en_"+f] for w in winners]
-        lose_vals = [l["en_"+f] for l in losers]
+        key = "en_" + f
+        win_vals = [w.get(key) for w in winners if key in w]
+        lose_vals = [l.get(key) for l in losers if key in l]
         d = _cohen_d(win_vals, lose_vals)
         if d is None or abs(d) < 0.2: continue   # only material effects
         sep.append({
@@ -193,56 +228,68 @@ def analyze_run(run_id, sym, trades_dir, fields, missed_lookahead_bars, missed_g
         })
     sep.sort(key=lambda s: -abs(s["cohen_d"]))
 
-    # ── 3. Missed entries: bars where price moved >threshold in next N bars
-    #     AND no trade in this run was opened around then ────────────────────
-    close = npz["close_3m"] if "close_3m" in npz.files else None
+    # ── 3. Missed entries: VECTORIZED. Find bars where price moved >threshold
+    #     in next N bars AND no trade was opened within ±3 bars of that bar. ───
+    print(f"  [{run_id}/{sym}] missed-entry scan...", flush=True)
+    close = np.asarray(npz["close_3m"]) if "close_3m" in npz.files else None
     missed = []
     if close is not None and len(close) > missed_lookahead_bars:
         n = len(close)
-        # quick lookup of entry timestamps for this run
-        entry_ts_set = set(int(t.get("entry_ts", 0)) for t in trades)
-        # match within ±2 bars (~6 min)
         ahead = missed_lookahead_bars
-        # vectorized future-max / future-min
+        # Future-max/min via stride (vectorized, no Python loop)
         from numpy.lib.stride_tricks import sliding_window_view as _swv
         try:
             wins = _swv(close, ahead)
-            fmax = wins.max(axis=-1)
-            fmin = wins.min(axis=-1)
+            fmax = np.concatenate([wins.max(axis=-1), np.full(ahead - 1, np.nan)])
+            fmin = np.concatenate([wins.min(axis=-1), np.full(ahead - 1, np.nan)])
         except Exception:
             fmax = fmin = None
-        sample = 0
-        for i in range(0, n - ahead - 1, 5):  # every 5 bars to limit work
-            if close[i] <= 0: continue
-            future_high = float(fmax[i]) if fmax is not None else float(close[i:i+ahead].max())
-            future_low = float(fmin[i]) if fmin is not None else float(close[i:i+ahead].min())
-            up_pct = (future_high - close[i]) / close[i] * 100.0
-            dn_pct = (future_low - close[i]) / close[i] * 100.0
-            this_ts = int(ts_arr[i])
-            # Check if any entry within ±540s (3 bars)
-            had_entry = any(abs(this_ts - e) <= 540 for e in entry_ts_set if abs(e - this_ts) <= 1800)
-            if had_entry: continue
-            # Long opportunity?
-            if up_pct >= missed_gain_threshold:
-                feat = {"_side": "LONG", "_pnl_potential": up_pct, "_ts": this_ts}
-                for f in fields:
-                    feat[f] = _read_field_at(npz, f, i)
+        if fmax is not None:
+            valid = (close > 0) & np.isfinite(fmax) & np.isfinite(fmin)
+            up_pct = np.where(valid, (fmax - close) / np.where(close > 0, close, 1) * 100.0, 0.0)
+            dn_pct = np.where(valid, (fmin - close) / np.where(close > 0, close, 1) * 100.0, 0.0)
+            # Mask bars within ±3 LTF bars (~9 min) of any taken entry
+            entry_ts_arr = np.array(sorted(int(t.get("entry_ts", 0)) for t in trades), dtype=np.int64)
+            taken_mask = np.zeros(n, dtype=bool)
+            if entry_ts_arr.size:
+                # For each entry_ts, find idx in ts_arr and mark a small window
+                ent_idx = np.searchsorted(ts_arr, entry_ts_arr).clip(0, n - 1)
+                for ix in ent_idx:
+                    lo = max(0, ix - 3); hi = min(n, ix + 4)
+                    taken_mask[lo:hi] = True
+            long_op  = (up_pct >= missed_gain_threshold) & ~taken_mask
+            short_op = (-dn_pct >= missed_gain_threshold) & ~taken_mask
+            # Subsample (every 5 bars) and cap
+            stride = 5
+            cap = 500
+            long_idx_all  = np.where(long_op)[0][::stride][:cap]
+            short_idx_all = np.where(short_op)[0][::stride][:cap]
+            # Reuse the already-loaded field_arrays_full to fancy-index all missed bars at once
+            for i_ in long_idx_all:
+                feat = {"_side": "LONG", "_pnl_potential": float(up_pct[i_]), "_ts": int(ts_arr[i_])}
+                for f, arr in field_arrays_full.items():
+                    v = arr[i_]
+                    v = v.item() if hasattr(v, "item") else v
+                    if isinstance(v, float) and not np.isfinite(v): v = None
+                    feat[f] = v
                 missed.append(feat)
-                sample += 1
-            elif -dn_pct >= missed_gain_threshold:
-                feat = {"_side": "SHORT", "_pnl_potential": -dn_pct, "_ts": this_ts}
-                for f in fields:
-                    feat[f] = _read_field_at(npz, f, i)
+            for i_ in short_idx_all:
+                feat = {"_side": "SHORT", "_pnl_potential": -float(dn_pct[i_]), "_ts": int(ts_arr[i_])}
+                for f, arr in field_arrays_full.items():
+                    v = arr[i_]
+                    v = v.item() if hasattr(v, "item") else v
+                    if isinstance(v, float) and not np.isfinite(v): v = None
+                    feat[f] = v
                 missed.append(feat)
-                sample += 1
-            if sample >= 500: break  # cap per-symbol
+        print(f"  [{run_id}/{sym}] missed sampled: {len(missed)}", flush=True)
 
     # Compare missed-entry indicator state vs taken-winners state
     missed_separability = []
     if missed and winners:
         for f in fields:
-            taken_win = [w["en_"+f] for w in winners]
-            miss_vals = [m[f] for m in missed]
+            key = "en_" + f
+            taken_win = [w.get(key) for w in winners if key in w]
+            miss_vals = [m.get(f) for m in missed if f in m]
             d = _cohen_d(taken_win, miss_vals)
             if d is None or abs(d) < 0.3: continue
             missed_separability.append({

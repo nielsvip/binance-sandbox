@@ -656,6 +656,15 @@ def tier_diff():
     })
 
 
+@app.route("/suggestions")
+def suggestions():
+    """Return the latest SUGGESTIONS_latest.md as plain text for in-page rendering."""
+    p = TRADES_DIR / "SUGGESTIONS_latest.md"
+    if not p.exists():
+        return "No suggestions report yet. Run `python3 suggestion_engine.py` to generate.", 404, {"Content-Type": "text/plain"}
+    return p.read_text(), 200, {"Content-Type": "text/markdown"}
+
+
 @app.route("/health")
 def health():
     return jsonify({

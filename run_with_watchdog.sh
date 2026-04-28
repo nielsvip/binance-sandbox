@@ -15,7 +15,7 @@ fi
 # Timeouts and limits
 TIMEOUT=0                 # DISABLED — never kill healthy processes. NO_OUTPUT_TIMEOUT handles stuck ones.
 NO_OUTPUT_TIMEOUT=300     # 5 minutes default — overridden per-script below
-MIN_RESTART_INTERVAL=3   # Minimum seconds between restarts
+MIN_RESTART_INTERVAL=60  # 2026-04-28 user: bumped 3→60s. Workers OOM-killing every ~60s with 3s respawn = no recovery time for memory pages. 60s lets the OS reclaim before next allocation spike.
 MAX_RAPID_RESTARTS=15      # Max restarts within rapid window
 RAPID_WINDOW=300          # 5 minutes for rapid restart detection
 

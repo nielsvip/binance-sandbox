@@ -239,7 +239,10 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
                                      relative_volume, wavetrend_intelligence,
                                      crossover_flags)
     n = len(df)
-    if n < 30:
+    # 2026-04-28: lowered threshold for HTF (W/M) — tradier 2yr data has only ~24 monthly
+    # bars but engine still benefits from wt1_M/wt2_M etc. Skip Yang-Zhang vol & SEPA paths
+    # internally when n is small (existing guards already handle that).
+    if n < (10 if tf in ("W", "M") else 30):
         return {}
     out = {}
     close = df["close"].astype(float)

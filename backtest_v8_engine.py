@@ -3145,6 +3145,22 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         elif not getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
             score -= 15.0
             reason = f"NO_SAT_CONFIRM_PENALTY-15+{reason}"
+        if score < 1.0 and getattr(tm_mod.config, 'STDEV_BREAKOUT_ENABLED', False):
+            _sb_htf_list_w = list(getattr(tm_mod.config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+            _sb_pctb_thr_lw = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
+            _sb_pctb_thr_sw = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
+            _sb_rvol_min_w = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+            for _sb_htf_w in _sb_htf_list_w:
+                _sb_pv_w = float(indicators.get(f'bb_pct_b_{_sb_htf_w}', 0.5) or 0.5)
+                _sb_rv_w = float(indicators.get(f'relative_volume_{_sb_htf_w}', 1.0) or 1.0)
+                if is_long and _sb_pv_w >= _sb_pctb_thr_lw and _sb_rv_w >= _sb_rvol_min_w:
+                    score = 999.0
+                    reason = f"STDEV_BREAKOUT_LONG_{_sb_htf_w}_pctb={_sb_pv_w:.3f}+{reason}"
+                    break
+                if not is_long and _sb_pv_w <= _sb_pctb_thr_sw and _sb_rv_w >= _sb_rvol_min_w:
+                    score = 999.0
+                    reason = f"STDEV_BREAKOUT_SHORT_{_sb_htf_w}_pctb={_sb_pv_w:.3f}+{reason}"
+                    break
         return score, reason
     tm_mod.wt_dc_score_entry = _v8_satoshit_wt_dc_score_entry
     v8_logger.info(f"[V8] SATOSHIT wt_dc_score_entry wrapper installed (boost=+15 when SATOSHIT fires)")
@@ -3259,9 +3275,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     except Exception as _sat_pf_se:
                         v8_logger.warning(f"[V8_SATOSHIT_PREFILTER_SHORT] {s} blocked on error: {_sat_pf_se}")
                         _sat_short_ok = False
-                if pk_l not in open_keys and _is_long_ok and _sat_long_ok:
+                _stdev_long_ok = False
+                _stdev_short_ok = False
+                if getattr(tm_mod.config, 'STDEV_BREAKOUT_ENABLED', False):
+                    _sb_htf_list_f = list(getattr(tm_mod.config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+                    _sb_pctb_thr_lf = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
+                    _sb_pctb_thr_sf = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
+                    _sb_rvol_min_f = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+                    for _sb_htf_f in _sb_htf_list_f:
+                        _sb_pv_f = float(ind.get(f'bb_pct_b_{_sb_htf_f}', 0.5) or 0.5)
+                        _sb_rv_f = float(ind.get(f'relative_volume_{_sb_htf_f}', 1.0) or 1.0)
+                        if _sb_pv_f >= _sb_pctb_thr_lf and _sb_rv_f >= _sb_rvol_min_f:
+                            _stdev_long_ok = True
+                        if _sb_pv_f <= _sb_pctb_thr_sf and _sb_rv_f >= _sb_rvol_min_f:
+                            _stdev_short_ok = True
+                if pk_l not in open_keys and _is_long_ok and (_sat_long_ok or _stdev_long_ok):
                     cand_keys.append(pk_l)
-                if pk_s not in open_keys and _is_short_ok and _sat_short_ok:
+                if pk_s not in open_keys and _is_short_ok and (_sat_short_ok or _stdev_short_ok):
                     cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
         if not all_keys: continue
