@@ -757,6 +757,7 @@ class QuickConfig:
     # See BTC_DEDICATED_LOOP_DESIGN_20260427.md. All defaults match live config.py.
     # Engine reads these from override_json or autonomous_search perturbation.
     BTC_DEDICATED_ENABLED: bool = False
+    BTC_DEDICATED_SYMBOLS: tuple = ("BTCUSDT", "BTCUSDC")
     BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True
     BTC_RZ_USE_WT_DC: bool = True
     BTC_RZ_USE_FIB: bool = True
@@ -3442,7 +3443,12 @@ def simulate(stores, cfg, capital=10000.0):
         # When BTC_DEDICATED_ENABLED=True and symbol is BTC, route through
         # btc_loop.* shared decision functions (same code path as live + paper).
         # See BTC_DEDICATED_LOOP_DESIGN_20260427.md.
-        if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in ('BTCUSDT', 'BTCUSDC'):
+        # 2026-04-28 Path A: per-symbol dedicated configs. The dedicated path now applies
+        # to any symbol in BTC_DEDICATED_SYMBOLS (default {BTCUSDT, BTCUSDC} for backward compat).
+        # Each symbol can have its own override file with per-symbol tuned BTC_* knobs.
+        _ded_syms = set(getattr(cfg, 'BTC_DEDICATED_SYMBOLS',
+                                ('BTCUSDT', 'BTCUSDC', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'BTCDOMUSDT')))
+        if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in _ded_syms:
             try:
                 if bool(getattr(cfg, 'BTC_TREND_MODE_ENABLED', False)):
                     _btc_sym_pnl = _btc_trend_simulate_per_sym(

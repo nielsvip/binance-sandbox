@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 17:17:17 UTC
+# Copilot Status — 2026-04-28 17:34:54 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,10 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:15:50
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:15:50
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T17:16:24
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:16:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:16:24
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:16:24
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T17:16:54
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:16:54
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:16:54
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:16:54
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T17:34:01
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:34:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:34:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:34:01
 
 ## Missed Trades (trader comparison)
 
@@ -27,24 +21,24 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 1 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 2 | **Watching for reentry:** 5 | **Reentered:** 0
 
+- HELD: **GOOGL** LONG (tradier) peak +11.6%, now +0.0%
 - HELD: **AXSUSDT** LONG (crypto) peak +6.0%, now +-1.7%
 
-- WATCHING: **ACHUSDT** SHORT (crypto) peaked +6.1%, exited 0m ago
-- WATCHING: **EDUUSDT** SHORT (crypto) peaked +5.9%, exited 0m ago
-- WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
-- WATCHING: **XTZUSDT** SHORT (crypto) peaked +4.2%, exited 11m ago
-- WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
-- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
+- WATCHING: **ACHUSDT** SHORT (crypto) peaked +6.1%, exited 1m ago
+- WATCHING: **EDUUSDT** SHORT (crypto) peaked +5.9%, exited 1m ago
+- WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 1m ago
+- WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 1m ago
+- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [HIGH] ez_share_ind.py is NOT running
-- [HIGH] ez_share_ind.py is NOT running
-- [HIGH] ez_share_ind.py is NOT running
-- [HIGH] ez_share_ind.py is NOT running
-- [HIGH] ez_share_ind.py is NOT running
+**Issues (last 1h):** 5
+- [HIGH] ez_manage.py for ang is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for fin is NOT running
+- [HIGH] ez_manage.py for flz is NOT running
