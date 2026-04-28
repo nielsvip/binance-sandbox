@@ -262,12 +262,8 @@ try:
 except:
     print(9999)
 " 2>/dev/null)
-if [ "$STALE_CHECK" -gt 300 ] 2>/dev/null; then
-    alert "hot_metrics stale (${STALE_CHECK}s) — restarting ez_market_data"
-    pkill -f "ez_market_data.py" 2>/dev/null
-    sleep 2
-    cd "$WORKDIR"
-    nohup $PYTHON -u ez_market_data.py > /dev/null 2>&1 &
+if [ "$STALE_CHECK" -gt 7200 ] 2>/dev/null; then
+    alert "hot_metrics stale (${STALE_CHECK}s) — but NOT killing (kill-loop disabled 2026-04-28). Investigate manually."
 fi
 
 # 4d. IP ban detection — check for -1003 errors

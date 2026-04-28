@@ -564,6 +564,15 @@ class MarketDataEngine:
                 # This prevents "updating without recalculating".
                 if buf['t'] <= store.get('last_calc_ts', 0.0):
                     continue
+                _now_ts = time.time()
+                _buf_age = _now_ts - float(buf.get('t', 0) or 0)
+                if _buf_age > 3.0:
+                    _last_warn = self._stale_warn_throttle.get(sym, 0.0) if hasattr(self, "_stale_warn_throttle") else 0.0
+                    if _now_ts - _last_warn > 30.0:
+                        if not hasattr(self, "_stale_warn_throttle"): self._stale_warn_throttle = {}
+                        self._stale_warn_throttle[sym] = _now_ts
+                        try: logger.error(f"[mark_price_freshness] CRITICAL ez_market_data {sym} buf_age={_buf_age:.1f}s>3.0s — WS likely dead, calculating with stale price")
+                        except Exception: pass
 
                 # 3. ATOMIC UPDATE & SNAPSHOT
                 # We update the store NOW, knowing we will immediately snapshot it.

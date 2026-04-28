@@ -520,7 +520,7 @@ class SymbolTimeframeState:
 class PriceCacheManager:
     WS_ENDPOINT = "wss://fstream.binance.com/ws/!markPrice@arr"
 
-    def __init__(self, path: Path, redis_client: Optional[redis.Redis] = None, symbols: Optional[List[str]] = None, refresh_seconds: float = 2.0, max_age: float = 5.0):
+    def __init__(self, path: Path, redis_client: Optional[redis.Redis] = None, symbols: Optional[List[str]] = None, refresh_seconds: float = 2.0, max_age: float = 3.0, external_pull_path: Optional[Path] = None):
         self.path = path
         self.refresh_seconds = refresh_seconds
         self.max_age = max_age
@@ -531,6 +531,9 @@ class PriceCacheManager:
         self._running = False
         self._tasks: List[asyncio.Task] = []
         self._session: Optional[aiohttp.ClientSession] = None
+        self._external_pull_path = external_pull_path
+        self._external_pull_mtime: float = 0.0
+        self._stale_warn_throttle: Dict[str, datetime] = {}
 
     async def start(self) -> None:
         if self._running:
@@ -682,39 +685,75 @@ class PriceCacheManager:
         async with self._lock:
             self._data[symbol] = {"price": price, "timestamp": ts, "source": source}
 
+    def _lookup_external_pull(self, symbol: str, now: datetime) -> Tuple[Optional[float], Optional[datetime]]:
+        if not self._external_pull_path:
+            return None, None
+        try:
+            p = self._external_pull_path
+            if not p.exists(): return None, None
+            mtime = p.stat().st_mtime
+            if mtime != self._external_pull_mtime:
+                with open(p, "r") as f:
+                    self._external_pull_data = json.load(f) if f else {}
+                self._external_pull_mtime = mtime
+            entry = (self._external_pull_data or {}).get(symbol) or (self._external_pull_data or {}).get(symbol.upper())
+            if not isinstance(entry, dict): return None, None
+            price = entry.get("price")
+            ts_raw = entry.get("timestamp")
+            if price is None or ts_raw is None: return None, None
+            ts = self._parse_timestamp(ts_raw, now)
+            return float(price), ts
+        except Exception:
+            return None, None
+
+    def _warn_stale_throttled(self, symbol: str, age: float, source: str, candidates: List[Tuple[float, float, datetime, str]], now: datetime) -> None:
+        last = self._stale_warn_throttle.get(symbol)
+        if last and (now - last).total_seconds() < 30.0: return
+        self._stale_warn_throttle[symbol] = now
+        srcs = ",".join(f"{c[3]}:{c[0]:.1f}s" for c in candidates[:4])
+        try:
+            logger.error(f"[mark_price_freshness] CRITICAL stale {symbol} freshest={source}@{age:.1f}s>{self.max_age}s sources=[{srcs}]")
+        except Exception: pass
+
     async def get_price_with_ts(self, symbol: str) -> Tuple[Optional[float], Optional[datetime]]:
-        """Returns (price, timestamp) tuple. Timestamp is the DATA ORIGIN time."""
+        """Returns (price, timestamp) tuple. Multi-source: memory + Redis + external pull file. Picks freshest. Logs CRITICAL if all sources >3s."""
         symbol = symbol.upper()
         now = utc_now()
-        
-        # 1. Check Local Memory Cache
+        candidates: List[Tuple[float, float, datetime, str]] = []
         async with self._lock:
             entry = self._data.get(symbol)
-        
         if entry:
             ts = entry.get("timestamp")
             price = entry.get("price")
-            # If we have a price and it's not ancient (e.g. > 30s), use it
-            # We are more lenient here because we want the *timestamp* even if slightly old
             if price is not None:
-                # Ensure ts is a datetime object
                 if not isinstance(ts, datetime):
                     ts = self._parse_timestamp(ts, now)
-                return float(price), ts
-
-        # 2. Check Redis (Fallback)
-        # Note: _fetch_from_redis usually updates internal cache, but let's grab it directly
+                if isinstance(ts, datetime):
+                    age = (now - ts).total_seconds()
+                    candidates.append((age, float(price), ts, entry.get("source", "memory")))
         if self._redis:
             try:
                 raw = await self._redis.get(f"mark_price:{symbol}")
                 price, ts = self._decode_price_with_ts(raw)
-                if price is not None:
-                    # Update internal cache for next time
-                    await self._update_price(symbol, price, ts, "redis")
-                    return price, ts
+                if price is not None and isinstance(ts, datetime):
+                    age = (now - ts).total_seconds()
+                    candidates.append((age, float(price), ts, "redis"))
             except Exception: pass
-            
-        return None, None
+        try:
+            ext_price, ext_ts = self._lookup_external_pull(symbol, now)
+            if ext_price is not None and isinstance(ext_ts, datetime):
+                age = (now - ext_ts).total_seconds()
+                candidates.append((age, float(ext_price), ext_ts, "external_file"))
+        except Exception: pass
+        if not candidates:
+            return None, None
+        candidates.sort(key=lambda x: x[0])
+        best_age, best_price, best_ts, best_source = candidates[0]
+        if best_age > self.max_age:
+            self._warn_stale_throttled(symbol, best_age, best_source, candidates, now)
+        if best_source == "redis":
+            await self._update_price(symbol, best_price, best_ts, "redis")
+        return best_price, best_ts
 
     def _decode_price_with_ts(self, raw: Any) -> Tuple[Optional[float], datetime]:
         # Helper to parse redis payload {price: x, timestamp: y}
@@ -830,22 +869,8 @@ class PriceCacheManager:
         return default
 
     async def get_price(self, symbol: str) -> Optional[float]:
-        symbol = symbol.upper()
-        now = utc_now()
-        async with self._lock:
-            entry = self._data.get(symbol)
-        if entry:
-            ts = entry.get("timestamp") or now
-            price = entry.get("price")
-            if price is not None and (now - ts).total_seconds() <= self.max_age:
-                return float(price)
-            stale_price = price
-        else:
-            stale_price = None
-        price = await self._fetch_from_redis(symbol)
-        if price is not None:
-            return price
-        return float(stale_price) if stale_price is not None else None
+        price, _ts = await self.get_price_with_ts(symbol)
+        return price
 
 class KlineManager:
     def __init__(self, base_path: Path, env: str, target_bars: int = 1500):
@@ -2341,7 +2366,7 @@ class IndicatorOrchestrator:
         self._connect_shared_memory()
         self.base_path = Path(config.BASE_PATH)
         self.kline_manager = KlineManager(self.base_path, env)
-        self.price_cache = PriceCacheManager(config.PRICE_CACHE_FILE_2, redis_client=self.redis_client, symbols=self.symbols)
+        self.price_cache = PriceCacheManager(config.PRICE_CACHE_FILE_2, redis_client=self.redis_client, symbols=self.symbols, external_pull_path=getattr(config, "PRICE_CACHE_PULL_S1", None))
         self.calculator = IndicatorCalculator()
         self.final_scores = load_scores_file(Path(config.FINAL_SCORE_FILE))
         self.ranking_scores = load_scores_file(Path(config.RANKING_POINTS_FILE))

@@ -1041,7 +1041,8 @@ async def quick_price(symbol: str) -> float:
                     ts_dt = ensure_tz(isoparse(ts)) if isinstance(ts, str) else ensure_tz(ts) if isinstance(ts, datetime) else now_utc
                     age = (now_utc - ts_dt).total_seconds()
                     if age < 90 and price > 0 and manager:
-                        await manager._apply_mark_price(symbol, price, ts_dt)
+                        if age < 3.0:
+                            await manager._apply_mark_price(symbol, price, ts_dt)
                         return price
                     candidates.append((age, price, "price_cache_2", ts_dt))
                 elif isinstance(cache_entry, (tuple, list)) and cache_entry:
@@ -1090,7 +1091,8 @@ async def quick_price(symbol: str) -> float:
             logger.error(f"[quick_price] CRITICAL: Best candidate has invalid price {best_price} for {symbol}!")
             return None
         candidate_ts = best_ts if isinstance(best_ts, datetime) else now_utc - timedelta(seconds=best_age) if best_age else datetime.now(timezone.utc)
-        if manager:
+        cand_age = (datetime.now(timezone.utc) - candidate_ts).total_seconds() if isinstance(candidate_ts, datetime) else 999.0
+        if manager and cand_age < 3.0:
             try : await manager._apply_mark_price(symbol, best_price, candidate_ts)
             except Exception: pass
         return best_price
@@ -2875,7 +2877,9 @@ class WebSocketManager:
                             ts = getattr(position, "mark_price_last_updated", None)
                             break
         if price is not None and price > 0:
-            await self._apply_mark_price(norm, price, ts)
+            ts_age = (datetime.now(timezone.utc) - ts).total_seconds() if isinstance(ts, datetime) else 999.0
+            if ts is None or ts_age < 3.0:
+                await self._apply_mark_price(norm, price, ts)
             return price
         return 0.0
 

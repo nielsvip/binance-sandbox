@@ -2460,6 +2460,8 @@ class Config:
     PRICE_CACHE_FILE: Path = BASE_PATH / "price_cache_1.json"
     PRICE_CACHE_FILE_2: Path = BASE_PATH / "price_cache_2.json"
     PRICE_CACHE_FILE_3: Path = BASE_PATH / "price_cache_3.json"
+    PRICE_CACHE_PULL_S1: Path = BASE_PATH / "data" / "mark_prices_pull" / "from_s1.json"
+    PRICE_CACHE_PULL_MAX_AGE_SEC: float = 3.0
     MIN_QTY_FILE: Path = BASE_PATH / "min_qty.json"
     MULT_FILE: Path = BASE_PATH / "multipliers.json"
     SYMBOL_CONFIGS_FILE: Path = BASE_PATH / "symbol_configs.json"
