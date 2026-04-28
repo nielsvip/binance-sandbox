@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 17:34:54 UTC
+# Copilot Status — 2026-04-28 17:49:29 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,10 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T17:34:01
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:34:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:34:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:34:01
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:48:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:48:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:48:07
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T17:48:41
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:48:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:48:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:48:41
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T17:49:11
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T17:49:11
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T17:49:11
 
 ## Missed Trades (trader comparison)
 
@@ -21,9 +27,8 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 2 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 5 | **Reentered:** 0
 
-- HELD: **GOOGL** LONG (tradier) peak +11.6%, now +0.0%
 - HELD: **AXSUSDT** LONG (crypto) peak +6.0%, now +-1.7%
 
 - WATCHING: **ACHUSDT** SHORT (crypto) peaked +6.1%, exited 1m ago
