@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 14:18:17 UTC
+# Copilot Status — 2026-04-28 14:33:34 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T14:16:54
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:16:54
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:17:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:17:24
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T14:17:24
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:17:24
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:17:57
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:17:57
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T14:17:57
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:17:57
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T14:32:15
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:32:15
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:32:15
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:32:15
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:32:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:32:49
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:32:49
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:33:19
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:33:19
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:33:19
 
 ## Missed Trades (trader comparison)
 
@@ -37,9 +37,9 @@ _None_
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 132m ago
+- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 147m ago
 - WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
-- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 137m ago
+- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 152m ago
 
 ## Supervisor
 
