@@ -12988,6 +12988,67 @@ class MultiAccountTradeManager:
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛑🛑🛑 USER ABSOLUTE 2026-04-28 02:24 UTC — STOP THE BLEEDING 🛑🛑🛑
+        # User screenshot showed ADAUSDT_SHORT with 13× -24 SELL TP-Limit orders accumulating
+        # at Finandy ($0.245-$0.248) over 5h while position bled to -1.20%. AND 8 opens on
+        # every open. Must hard-kill all DCA/AUGMENT and dedup hedges in execute_now NOW.
+        #
+        # 1) ALL DCA / AUGMENT DISABLED — no AUGMENT action survives, no exceptions.
+        # 2) HEDGE FIRE-ONCE PER position_key — if active hedge already exists, refuse.
+        # 3) STRICT NO LOSS now ALSO enforced at Finandy level externally — but still
+        #    blocking close-at-loss here for belt+suspenders.
+        # ═══════════════════════════════════════════════════════════════════════════
+        _kill_act = (action or '').upper()
+        # 2026-04-28 02:38 — user correction: AUGMENT is the ONE GOOD path when gain is sufficient.
+        # The duplicate-fire problem is HEDGES, not augments. LOSING_POSITION_HARD_BLOCK below
+        # already prevents augment on losing positions. Augments on winners pass.
+        # HEDGE FIRE-ONCE PER POSITION: if this is a hedge open and the LOSING position
+        # already has an active hedge tracked, refuse. Each losing position gets at most ONE hedge.
+        # PLUS HEDGE GLOBAL COOLDOWN (user 2026-04-28 02:30): if ANY hedge fired for this account
+        # in the last 30 min, refuse. No new hedges for 30 min after each hedge fire.
+        if (is_hedge or 'HEDGE' in _kill_act) and ('OPEN' in _kill_act or 'ENTRY' in _kill_act or _kill_act in ('', 'BUY', 'SELL')):
+            try:
+                _hedge_target = hedge_for or position_key
+                # 1) per-losing-position dedup
+                if _hedge_target and hasattr(self, 'tracker_manager') and self.tracker_manager is not None:
+                    _existing = [h for h in (getattr(self.tracker_manager, 'active_hedges', None) or [])
+                                 if h.get('losing_position_key') == _hedge_target or h.get('position_key') == position_key]
+                    if _existing:
+                        logger.critical(f"🛑 [HEDGE_FIRE_ONCE] {position_key} hedging {_hedge_target}: BLOCKED — {len(_existing)} active hedge record(s) already exist. action={action} reason={(reason or '')[:80]}")
+                        return f"BLOCKED_HEDGE_FIRE_ONCE_n={len(_existing)}"
+                # 2) per-symbol 30-min cooldown (user 2026-04-28: "IF A HEDGE IS EVER FIRED
+                #    FUCKING BLOCK ANY HEDGE FOR THE SYMBOL FOR AT LEAST 30 MIN")
+                global _HEDGE_SYMBOL_COOLDOWN_TS
+                try:
+                    _HEDGE_SYMBOL_COOLDOWN_TS
+                except NameError:
+                    _HEDGE_SYMBOL_COOLDOWN_TS = {}
+                _hg_cooldown = float(getattr(config, 'HEDGE_SYMBOL_COOLDOWN_SEC', 1800.0))
+                # Extract symbol from this position_key OR hedge_for (whichever is present)
+                _hg_sym = None
+                for _src in (position_key, hedge_for, _hedge_target):
+                    if _src and ':' in _src:
+                        try:
+                            _rest = _src.split(':', 1)[1]
+                            for _suf in ('_LONG', '_SHORT'):
+                                if _rest.endswith(_suf):
+                                    _hg_sym = _rest[:-len(_suf)]
+                                    break
+                        except Exception:
+                            pass
+                    if _hg_sym:
+                        break
+                _hg_sym = _hg_sym or symbol or 'UNKNOWN'
+                _hg_last = _HEDGE_SYMBOL_COOLDOWN_TS.get(_hg_sym, 0.0)
+                _hg_since = time.time() - _hg_last
+                if _hg_since < _hg_cooldown:
+                    logger.critical(f"🛑 [HEDGE_SYMBOL_COOLDOWN] {position_key} sym={_hg_sym}: BLOCKED — last hedge on this symbol {_hg_since:.0f}s ago < {_hg_cooldown:.0f}s cooldown. action={action} reason={(reason or '')[:60]}")
+                    return f"BLOCKED_HEDGE_SYMBOL_COOLDOWN_{_hg_sym}_{_hg_since:.0f}s"
+                # Stamp BEFORE order placement so failed orders still consume cooldown (prevents retry loops)
+                _HEDGE_SYMBOL_COOLDOWN_TS[_hg_sym] = time.time()
+            except Exception as _hf_e:
+                logger.debug(f"[HEDGE_FIRE_ONCE] check err {type(_hf_e).__name__}: {_hf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
         # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN
         # NOT AUGMENT REOPEN HEDGE REENTER WHATEVER THE FUCK if positionAmt > 0".
