@@ -1668,9 +1668,13 @@ def _btc_build_features_from_indicators(indicators: dict, current_price: float, 
     tfs = ("3m", "15m", "1h", "4h", "D")
     accel_per_tf = {}
     for tf in tfs:
+        # 2026-04-28 BUG FIX: wt_velocity_*_prev never existed in NPZ or live indicators.
+        # Both backtest engine and paper runner derive v_prev from the relationship
+        #   accel = velocity - velocity_prev  ⇒  velocity_prev = velocity - accel.
+        # Without this, v_prev was always 0 → every accel-ramp gate silently failed live.
         v = float(indicators.get(f"wt_velocity_{tf}", 0) or 0)
-        v_prev = float(indicators.get(f"wt_velocity_{tf}_prev", 0) or 0)
-        a = float(indicators.get(f"wt_acceleration_{tf}", v - v_prev) or 0)
+        a = float(indicators.get(f"wt_acceleration_{tf}", 0) or 0)
+        v_prev = v - a
         accel_per_tf[tf] = _btc_loop.WTAccelFeatures(velocity=v, velocity_prev=v_prev, acceleration=a)
     accel = _btc_loop.compute_accel_ramp(
         accel_per_tf,
