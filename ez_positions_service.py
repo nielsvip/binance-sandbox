@@ -2388,7 +2388,17 @@ class WebSocketManager:
                                     data = safe_json_loads(message.data)
                                     event_type = data.get("e")
                                     if event_type == "ACCOUNT_UPDATE":
-                                        await self.handle_account_update(data, account_key)
+                                        # CRASH-ON-HANG: handle_account_update feeds the same handle_ chain
+                                        # as process_account_update. If it stalls > 60s the WS appears alive
+                                        # (timestamp updated above) but no further messages get processed
+                                        # AND REST fallback never kicks in — silent death. Crash so watchdog respawns.
+                                        try:
+                                            await asyncio.wait_for(self.handle_account_update(data, account_key), timeout=60.0)
+                                        except asyncio.TimeoutError:
+                                            logger.critical(f"[WS][{account_key}] 🚨🚨🚨 handle_account_update HUNG > 60s — CRASHING worker so watchdog respawns.")
+                                            try: sys.stdout.flush(); sys.stderr.flush()
+                                            except Exception: pass
+                                            os._exit(44)
                                     elif event_type == "listenKeyExpired":
                                         logger.warning(f"[{account_key}] Listen key expired. Triggering full restart.")
                                         return
@@ -6197,18 +6207,29 @@ class PositionService:
             if config.VERBOSE_FETCH_LOGGING: logger.info(f"[fetch_positions][{account_key}] 🚨 Fetched {len(positions_data) if isinstance(positions_data, list) else 'non-list'} positions from API - CALLING process_account_update NOW")
             logger.info(f"[FETCHFETCH]ez_pos_serv[{account_key}] 🚨 Fetched {positions_data}")
             try :
-                updated_keys = await self.process_account_update(account_key, positions_data, single=False, skip_broadcast_save=False)
+                # CRASH-ON-HANG: process_account_update is the CORE — handle_ functions feed
+                # the entire system. If it stalls > 60s the worker is dead in all but name;
+                # exit so the watchdog respawns within 5s instead of trading on stale data.
+                try:
+                    updated_keys = await asyncio.wait_for(self.process_account_update(account_key, positions_data, single=False, skip_broadcast_save=False), timeout=60.0)
+                except asyncio.TimeoutError:
+                    logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update HUNG > 60s — CRASHING worker so watchdog respawns. Stale positions WILL trade wrong if we continue.")
+                    try: sys.stdout.flush(); sys.stderr.flush()
+                    except Exception: pass
+                    os._exit(42)
                 if config.VERBOSE_FETCH_LOGGING: logger.info(f"[fetch_positions][{account_key}] 🚨 process_account_update RETURNED: {len(updated_keys)} updated keys")
                 if config.VERBOSE_FETCH_LOGGING: logger.info(f'[fetch_positions][{account_key}] process_account_update processed and saved {len(updated_keys)} updated position keys, {len(self.positions_by_account.get(account_key, {}))} total positions in memory')
-                if not updated_keys and len(positions_data) > 0: 
+                if not updated_keys and len(positions_data) > 0:
                     logger.warning(f"[fetch_positions][{account_key}] process_account_update returned no updated keys despite {len(positions_data)} positions from API - this may indicate a bug")
                 self.positions_last_sync = datetime.now(timezone.utc)
                 asyncio.create_task(self.monitor_reductions_priority(account_key))
                 if config.VERBOSE_FETCH_LOGGING: logger.debug(f"[fetch_positions][{account_key}] Processing complete, positions_dirty={self._positions_dirty}, updated_keys={len(updated_keys)}")
                 result = positions_data
             except Exception as e:
-                logger.error(f"[fetch_positions][{account_key}] Error processing positions: {e}", exc_info=True)
-                result = positions_data if positions_data is not None else {}
+                logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update RAISED — CRASHING worker so watchdog respawns. Error: {e}", exc_info=True)
+                try: sys.stdout.flush(); sys.stderr.flush()
+                except Exception: pass
+                os._exit(43)
         except Exception as e:
             logger.error(f"[fetch_positions][{account_key}] Unexpected error in fetch_positions: {e}", exc_info=True)
             result = {}

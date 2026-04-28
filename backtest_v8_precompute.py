@@ -903,6 +903,67 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     # v8_quick_engine reads these — silently zero-filled before this pass.
     # 1. timestamp_{base_tf}: alias to canonical timestamps array.
     merged[f"timestamp_{base_tf}"] = ts_epoch
+    # 1b. volume_sma_1h: SMA(volume_1h, 20). Engine reads via _safe(npz, 'volume_sma_1h').
+    if "volume_1h" in merged:
+        v1h = merged["volume_1h"].astype(np.float64)
+        vs = pd.Series(v1h).rolling(20, min_periods=1).mean().values
+        merged["volume_sma_1h"] = vs.astype(np.float32)
+    # 1c. lr_trend_1h: rolling linreg slope of close_1h over 50 bars, %-per-bar units.
+    if "close_1h" in merged:
+        c1h = merged["close_1h"].astype(np.float64)
+        n_lr = len(c1h)
+        out_lr = np.zeros(n_lr, dtype=np.float32)
+        win = 50
+        if n_lr >= win:
+            x = np.arange(win, dtype=np.float64)
+            x_mean = x.mean()
+            x_dev = x - x_mean
+            x_var = (x_dev ** 2).sum()
+            if x_var > 0:
+                # Vectorized rolling linreg via cumsum-trick is messy; loop over unique 1h bars only.
+                # close_1h is broadcast to base TF (3m/5m), so consecutive entries are duplicates.
+                # Compute on unique values then broadcast back.
+                unique_idx = np.concatenate([[0], np.where(np.diff(c1h) != 0)[0] + 1])
+                if len(unique_idx) >= win:
+                    c_uniq = c1h[unique_idx]
+                    out_uniq = np.zeros(len(c_uniq), dtype=np.float64)
+                    for i in range(win - 1, len(c_uniq)):
+                        y = c_uniq[i - win + 1:i + 1]
+                        if not np.isfinite(y).all():
+                            continue
+                        y_mean = y.mean()
+                        slope = ((x_dev * (y - y_mean)).sum()) / x_var
+                        out_uniq[i] = slope / max(abs(y_mean), 1e-9)
+                    # Broadcast back to base-TF index using searchsorted.
+                    base_idx_in_uniq = np.searchsorted(unique_idx, np.arange(n_lr), side="right") - 1
+                    base_idx_in_uniq = np.clip(base_idx_in_uniq, 0, len(c_uniq) - 1)
+                    out_lr = out_uniq[base_idx_in_uniq].astype(np.float32)
+        merged["lr_trend_1h"] = out_lr
+    # 1d. adx_1h: ADX(14) on 1h. Engine reads via _safe(npz, 'adx_1h').
+    if "high_1h" in merged and "low_1h" in merged and "close_1h" in merged:
+        h1h = merged["high_1h"].astype(np.float64)
+        l1h = merged["low_1h"].astype(np.float64)
+        c1h = merged["close_1h"].astype(np.float64)
+        n_a = len(c1h)
+        if n_a > 30:
+            up = np.zeros(n_a)
+            dn = np.zeros(n_a)
+            up[1:] = h1h[1:] - h1h[:-1]
+            dn[1:] = l1h[:-1] - l1h[1:]
+            plus_dm = np.where((up > dn) & (up > 0), up, 0.0)
+            minus_dm = np.where((dn > up) & (dn > 0), dn, 0.0)
+            tr1 = h1h - l1h
+            tr2 = np.zeros(n_a); tr2[1:] = np.abs(h1h[1:] - c1h[:-1])
+            tr3 = np.zeros(n_a); tr3[1:] = np.abs(l1h[1:] - c1h[:-1])
+            tr = np.maximum.reduce([tr1, tr2, tr3])
+            atr14 = pd.Series(tr).ewm(alpha=1.0 / 14, adjust=False).mean().values
+            plus_di = 100.0 * pd.Series(plus_dm).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14 > 0, atr14, 1e-10)
+            minus_di = 100.0 * pd.Series(minus_dm).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14 > 0, atr14, 1e-10)
+            dx = 100.0 * np.abs(plus_di - minus_di) / np.where((plus_di + minus_di) > 0, plus_di + minus_di, 1e-10)
+            adx14 = pd.Series(dx).ewm(alpha=1.0 / 14, adjust=False).mean().values
+            merged["adx_1h"] = np.nan_to_num(adx14, nan=0.0).astype(np.float32)
+        else:
+            merged["adx_1h"] = np.zeros(n_a, dtype=np.float32)
     # 2. rsi2_{base_tf}: Connors 2-period RSI on base TF close.
     if f"close_{base_tf}" in merged:
         cl_b = merged[f"close_{base_tf}"].astype(np.float64)
@@ -914,6 +975,66 @@ def compute_symbol(symbol: str, mode: str) -> bool:
         rs = avg_gain / np.where(avg_loss > 0, avg_loss, 1e-10)
         rsi2 = 100.0 - 100.0 / (1.0 + rs)
         merged[f"rsi2_{base_tf}"] = rsi2.astype(np.float32)
+    # 2b. market_sentiment_score: NEUTRAL fallback. Cross-sym pass at end of --all
+    # run overrides this with real per-bar breadth (see _inject_market_sentiment).
+    # Single-symbol regen leaves the neutral 50.0 — engine then doesn't zero-fill warn.
+    merged["market_sentiment_score"] = np.full(n, 50.0, dtype=np.float32)
+    # 2c. clenow_score_D: alias for clenow_score (engine reads with _D suffix).
+    if "clenow_score" in merged:
+        merged["clenow_score_D"] = merged["clenow_score"]
+    # 2d. connors_rsi_D: ConnorsRSI = avg(RSI(close,3), RSI(streak,2), pctRank(1d-return, 100)).
+    # Compute on RAW Daily TF close (not the broadcast-to-base-TF version), then
+    # forward-fill back to base TF via searchsorted on day boundaries.
+    if "D" in dfs:
+        cD_raw = dfs["D"]["close"].values.astype(np.float64)
+        nD = len(cD_raw)
+        if nD >= 5:
+            delta_d = np.diff(cD_raw, prepend=cD_raw[0])
+            gain_d = np.where(delta_d > 0, delta_d, 0.0)
+            loss_d = np.where(delta_d < 0, -delta_d, 0.0)
+            ag3 = pd.Series(gain_d).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            al3 = pd.Series(loss_d).ewm(alpha=1.0 / 3, adjust=False).mean().values
+            rsi3 = 100.0 - 100.0 / (1.0 + ag3 / np.where(al3 > 0, al3, 1e-10))
+            # Streak length (consecutive up/down days)
+            ret_sign = np.sign(delta_d)
+            streak = np.zeros(nD)
+            for i in range(1, nD):
+                if ret_sign[i] == 0:
+                    streak[i] = 0
+                elif ret_sign[i] == ret_sign[i - 1]:
+                    streak[i] = streak[i - 1] + ret_sign[i]
+                else:
+                    streak[i] = ret_sign[i]
+            d_streak = np.diff(streak, prepend=streak[0])
+            gs = np.where(d_streak > 0, d_streak, 0.0)
+            ls = np.where(d_streak < 0, -d_streak, 0.0)
+            ag2 = pd.Series(gs).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            al2 = pd.Series(ls).ewm(alpha=1.0 / 2, adjust=False).mean().values
+            rsi_streak = 100.0 - 100.0 / (1.0 + ag2 / np.where(al2 > 0, al2, 1e-10))
+            # Percent rank of 1-day return over 100-day window
+            cD_prev = np.roll(cD_raw, 1); cD_prev[0] = cD_raw[0]
+            ret1 = np.where(cD_prev > 0, (cD_raw - cD_prev) / cD_prev * 100.0, 0.0)
+            ret1[0] = 0.0
+            pct_rank = np.zeros(nD)
+            for i in range(nD):
+                lo = max(0, i - 99)
+                window = ret1[lo:i + 1]
+                if len(window) > 1:
+                    pct_rank[i] = (window[:-1] < ret1[i]).sum() / max(len(window) - 1, 1) * 100.0
+                else:
+                    pct_rank[i] = 50.0
+            crsi_d = (rsi3 + rsi_streak + pct_rank) / 3.0
+            crsi_d = np.nan_to_num(crsi_d, nan=50.0)
+            # Broadcast back to base TF index using searchsorted on daily timestamps.
+            df_d = dfs["D"]
+            _d_unit = np.datetime_data(df_d.index.values.dtype)[0]
+            _d_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_d_unit, 10**9)
+            d_ts = (df_d.index.values.astype("int64") // _d_div).astype(np.int64)
+            indices = np.searchsorted(d_ts, ts_epoch, side="right") - 1
+            indices = np.clip(indices, 0, nD - 1)
+            merged["connors_rsi_D"] = crsi_d[indices].astype(np.float32)
+        else:
+            merged["connors_rsi_D"] = np.full(n, 50.0, dtype=np.float32)
     # 3. vwap_D: daily VWAP broadcast to base TF.
     # Compute as cumulative (typical_price × volume) / cumulative_volume per UTC day.
     if f"close_{base_tf}" in merged and f"high_{base_tf}" in merged and f"low_{base_tf}" in merged and f"volume_{base_tf}" in merged:

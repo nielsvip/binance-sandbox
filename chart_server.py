@@ -543,6 +543,119 @@ def run_diff():
     })
 
 
+@app.route("/tier_diff")
+def tier_diff():
+    """Categorized Tier-1 vs Tier-2 disagreement report.
+    Query: ?run_t1=X&run_t2=Y&sym=Z[&match_window_sec=180]
+    Returns categorized buckets + reason cross-tab.
+    """
+    run_t1 = request.args.get("run_t1", "")
+    run_t2 = request.args.get("run_t2", "")
+    sym = request.args.get("sym", "").upper()
+    match_window = int(request.args.get("match_window_sec", 180))
+    if not run_t1 or not run_t2 or not sym:
+        return jsonify({"error": "run_t1, run_t2, sym required"}), 400
+
+    def _load(run):
+        path = TRADES_DIR / f"{run}__{sym}.jsonl"
+        if not path.exists(): return []
+        out = []
+        for line in path.read_text().splitlines():
+            if line.strip():
+                try: out.append(json.loads(line))
+                except Exception: pass
+        return out
+
+    t1 = _load(run_t1)
+    t2 = _load(run_t2)
+    if not t1 and not t2:
+        return jsonify({"error": f"no trades for {run_t1} or {run_t2} on {sym}"}), 404
+
+    def _index_by_side(trades):
+        idx = {"LONG": [], "SHORT": []}
+        for i, t in enumerate(trades):
+            side = t.get("side", "LONG")
+            idx.setdefault(side, []).append((int(t.get("entry_ts", 0)), i))
+        for s in idx: idx[s].sort()
+        return idx
+    t2_idx = _index_by_side(t2)
+
+    # Match T1 → T2
+    t1_only = []
+    shared_t1 = []  # paired with t2 partner
+    matched_t2 = set()
+    for ti, t in enumerate(t1):
+        side = t.get("side", "LONG")
+        ts = int(t.get("entry_ts", 0))
+        match_idx = None
+        for bts, bi in t2_idx.get(side, []):
+            if abs(bts - ts) <= match_window:
+                match_idx = bi; break
+            if bts > ts + match_window: break
+        if match_idx is None:
+            t1_only.append(t)
+        else:
+            shared_t1.append({"t1": t, "t2": t2[match_idx]})
+            matched_t2.add(match_idx)
+    t2_only = [t2[i] for i in range(len(t2)) if i not in matched_t2]
+
+    # Stats
+    def _stats(trades):
+        if not trades: return {"trades": 0}
+        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+        n = len(pnls)
+        wins = sum(1 for p in pnls if p > 0)
+        std = statistics.stdev(pnls) if n > 1 else 0
+        return {"trades": n, "win_rate": wins / n if n else 0, "total_gain_pct": sum(pnls),
+                "avg_pnl_pct": sum(pnls) / n if n else 0, "pool_sharpe_per_trade": (sum(pnls)/n)/std if std > 0 else 0}
+
+    # Reason cross-tab on shared (where T1 and T2 BOTH entered, what reasons matched/diverged)
+    crosstab_entry = {}  # (t1_reason, t2_reason) -> count
+    crosstab_exit  = {}
+    for pair in shared_t1:
+        ek = (pair["t1"].get("entry_reason", "?"), pair["t2"].get("entry_reason", "?"))
+        xk = (pair["t1"].get("exit_reason", "?"), pair["t2"].get("exit_reason", "?"))
+        crosstab_entry[ek] = crosstab_entry.get(ek, 0) + 1
+        crosstab_exit[xk] = crosstab_exit.get(xk, 0) + 1
+
+    # Diverged exits: same entry, different exit_ts (>match_window apart)
+    exit_diverged = []
+    for pair in shared_t1:
+        ext1 = int(pair["t1"].get("exit_ts", 0))
+        ext2 = int(pair["t2"].get("exit_ts", 0))
+        if abs(ext1 - ext2) > match_window:
+            exit_diverged.append(pair)
+
+    # Top reason buckets in unique sets
+    def _reason_counts(trades, kind):
+        c = {}
+        for t in trades:
+            r = t.get(f"{kind}_reason", "?")
+            c[r] = c.get(r, 0) + 1
+        return sorted(c.items(), key=lambda x: -x[1])[:10]
+
+    return jsonify({
+        "match_window_sec": match_window,
+        "totals": {"t1": len(t1), "t2": len(t2), "shared": len(shared_t1),
+                   "t1_only": len(t1_only), "t2_only": len(t2_only),
+                   "shared_exit_diverged": len(exit_diverged)},
+        "stats": {
+            "t1_only": _stats(t1_only),
+            "t2_only": _stats(t2_only),
+            "shared_t1": _stats([p["t1"] for p in shared_t1]),
+            "shared_t2": _stats([p["t2"] for p in shared_t1]),
+            "shared_exit_diverged_t1": _stats([p["t1"] for p in exit_diverged]),
+            "shared_exit_diverged_t2": _stats([p["t2"] for p in exit_diverged]),
+        },
+        "top_t1_only_entry_reasons": _reason_counts(t1_only, "entry"),
+        "top_t1_only_exit_reasons":  _reason_counts(t1_only, "exit"),
+        "top_t2_only_entry_reasons": _reason_counts(t2_only, "entry"),
+        "top_t2_only_exit_reasons":  _reason_counts(t2_only, "exit"),
+        "exit_crosstab_top": sorted([(k, v) for k, v in crosstab_exit.items()], key=lambda x: -x[1])[:15],
+        "entry_crosstab_top": sorted([(k, v) for k, v in crosstab_entry.items()], key=lambda x: -x[1])[:15],
+    })
+
+
 @app.route("/health")
 def health():
     return jsonify({

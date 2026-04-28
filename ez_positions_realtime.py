@@ -76,7 +76,21 @@ class RealtimePositionUpdater:
                     logger.warning(f"[FETCH_LOOP][{self.account_key}] 📡 API returned {len(positions_data) if isinstance(positions_data, list) else 0} positions")
                     if isinstance(positions_data, list):
                         logger.warning(f"[FETCH_LOOP][{self.account_key}] 📡 Processing {len(positions_data)} positions...")
-                        updated_keys = await self.position_service.process_account_update( self.account_key, positions_data, single=False, skip_broadcast_save=False  )
+                        # CRASH-ON-HANG: process_account_update is the CORE — handle_ functions feed
+                        # the entire system. If it stalls > 60s the worker is dead in all but name;
+                        # exit so the watchdog respawns within 5s instead of trading on stale data.
+                        try:
+                            updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=60.0)
+                        except asyncio.TimeoutError:
+                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update HUNG > 60s — CRASHING realtime worker so watchdog respawns.")
+                            try: sys.stdout.flush(); sys.stderr.flush()
+                            except Exception: pass
+                            os._exit(42)
+                        except Exception as _pau_err:
+                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update RAISED — CRASHING realtime worker so watchdog respawns. Error: {_pau_err}", exc_info=True)
+                            try: sys.stdout.flush(); sys.stderr.flush()
+                            except Exception: pass
+                            os._exit(43)
                         logger.info(f"[FETCHFETCH]ez_pos_realtime {self.account_key}[ 🚨 Fetched {positions_data}")
                         updated_count = len(updated_keys) if isinstance(updated_keys, set) else 0
                         logger.warning(f"[FETCH_LOOP][{self.account_key}] ✅ FETCHED and SYNCED {updated_count} positions")
@@ -210,12 +224,21 @@ async def main():
             # CRITICAL: Use handle_account_update to properly process WebSocket updates
             # This ensures all position logic (augmentations, reductions, etc.) is applied correctly
             logger.warning(f"[WS][{account_key}] 🔄 Processing WebSocket update via handle_account_update...")
+            # CRASH-ON-HANG: same chain as _service. If it stalls > 60s we are blind to position
+            # changes — exit so the watchdog respawns within 5s instead of trading on stale data.
             try:
-                await original_handle(data, account_key_param)
+                await asyncio.wait_for(original_handle(data, account_key_param), timeout=60.0)
                 logger.warning(f"[WS][{account_key}] ✅ handle_account_update completed")
+            except asyncio.TimeoutError:
+                logger.critical(f"[WS][{account_key}] 🚨🚨🚨 handle_account_update HUNG > 60s — CRASHING realtime worker so watchdog respawns.")
+                try: sys.stdout.flush(); sys.stderr.flush()
+                except Exception: pass
+                os._exit(44)
             except Exception as handle_err:
-                logger.error(f"[WS][{account_key}] ❌ handle_account_update failed: {handle_err}", exc_info=True)
-                return
+                logger.critical(f"[WS][{account_key}] 🚨🚨🚨 handle_account_update RAISED — CRASHING realtime worker. Error: {handle_err}", exc_info=True)
+                try: sys.stdout.flush(); sys.stderr.flush()
+                except Exception: pass
+                os._exit(45)
             
             try:
                 account_positions = service.positions_by_account.get(account_key, {})

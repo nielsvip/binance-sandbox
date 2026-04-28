@@ -14674,13 +14674,21 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             _rz_augment = True
                         elif _delta_sig.pyramid_short and not is_long:
                             _rz_augment = True
-                        if _rz_augment and current_gain > 0.5:  # Only augment when already in profit
+                        # 2026-04-28 USER ABSOLUTE: gain must be ≥ MIN_GAIN before any augment.
+                        # Was `current_gain > 0.5` which let RZ_AUGMENT queue at +0.5-3% range —
+                        # caught by LOSING_POSITION_HARD_BLOCK_WRAPPER (e.g. C98USDT_SHORT +2.16%
+                        # 02:00:32 fire). Tighten the source so we don't queue what the wrapper
+                        # would refuse. Same rule applies everywhere: gain < MIN_GAIN = no growth.
+                        _rz_min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
+                        if _rz_augment and current_gain >= _rz_min_gain:
                             should_trade = True
                             _dc_breakout_entry = True
                             score = max(score, 20.0)
                             reason = f"RZ_AUGMENT_{_rz}_{_rz_reason}_gain={current_gain:.1f}%_legs={_rz_legs:.0f}"
                             rec = "BUY" if is_long else "SELL"
-                            logger.warning(f"[RED_ZONE_AUGMENT] {position_key}: zone={_rz} gain={current_gain:.1f}% legs={_rz_legs:.0f}")
+                            logger.warning(f"[RED_ZONE_AUGMENT] {position_key}: zone={_rz} gain={current_gain:.1f}% (≥MIN_GAIN={_rz_min_gain:.1f}%) legs={_rz_legs:.0f}")
+                        elif _rz_augment and current_gain < _rz_min_gain:
+                            logger.debug(f"[RED_ZONE_AUGMENT_SKIP] {position_key}: zone={_rz} gain={current_gain:.2f}% < MIN_GAIN={_rz_min_gain:.1f}% — refusing to augment a not-yet-winning position")
                     # === RED ZONE EXIT (close when zone says get out) ===
                     _her_check = locals().get('hard_exit_reason', None)
                     if config.DELTA_EXIT_ENABLED and pos_amt > 0 and not _her_check:

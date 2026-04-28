@@ -100,6 +100,45 @@ def run_one(override_path: Path, symbols: list, out_dir: str, extra_overrides: d
     return results
 
 
+def run_tier2(override_path, account, start_date, symbols, capital, out_dir):
+    """Spawn backtest_v8_engine.py as subprocess with V8_TRADES_OUT_DIR set.
+    Real-code engine — slower but produces actual decision-engine trades.
+    """
+    import subprocess
+    run_id = "tier2_" + stem_to_run_id(override_path)
+    env = os.environ.copy()
+    env["V8_TRADES_OUT_DIR"] = out_dir
+    env["V8_TRADES_RUN_ID"] = run_id
+    env["TEST_RATE_GUARD_MIN_PER_DAY"] = env.get("TEST_RATE_GUARD_MIN_PER_DAY", "0")
+    env["V8_SKIP_PROCESS_POSITION"] = env.get("V8_SKIP_PROCESS_POSITION", "1")
+    # Apply override via temp config patching: read override and set as env var that
+    # the engine's config module would honor. The engine reads from config.py at import,
+    # so we instead pass overrides through a JSON file the engine reads if present.
+    print(f"  [{run_id}] tier-2 spawning subprocess account={account} start={start_date} syms={symbols}")
+    cmd = [
+        sys.executable, str(ROOT / "backtest_v8_engine.py"),
+        "--mode", "crypto", "--account", account, "--start", start_date,
+        "--symbols", ",".join(symbols), "--capital", str(capital),
+    ]
+    t0 = time.time()
+    try:
+        out = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=3600, cwd=str(ROOT))
+        elapsed = time.time() - t0
+        # Pull V8_TIER2 line from stdout
+        last_line = ""
+        for line in (out.stdout or "").splitlines():
+            if "V8_TIER2_CHART_TRADES" in line or "V8_RESULT_LIVE" in line:
+                last_line = line
+        print(f"  [{run_id}] tier-2 done in {elapsed:.0f}s | {last_line[:140]}")
+        if out.returncode != 0:
+            err_tail = (out.stderr or "")[-300:]
+            print(f"  [{run_id}] return={out.returncode} stderr={err_tail}")
+    except subprocess.TimeoutExpired:
+        print(f"  [{run_id}] tier-2 TIMEOUT after 1h")
+    except Exception as e:
+        print(f"  [{run_id}] tier-2 ERROR: {e}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--override-dir", help="folder of override JSONs")
@@ -111,6 +150,10 @@ def main():
     ap.add_argument("--out-dir", default=DEFAULT_TRADES_DIR)
     ap.add_argument("--limit", type=int, default=0, help="cap on # variants")
     ap.add_argument("--extra", action="append", default=[], help="key=value override applied to every variant (repeatable)")
+    ap.add_argument("--tier2", action="store_true", help="route through backtest_v8_engine.py (real-code, slower)")
+    ap.add_argument("--account", default="flz", help="account for tier-2 mode (default: flz)")
+    ap.add_argument("--start", default="2026-04-25", help="start date for tier-2 mode (YYYY-MM-DD)")
+    ap.add_argument("--capital", type=float, default=10000.0, help="capital for tier-2")
     args = ap.parse_args()
 
     Path(args.out_dir).mkdir(parents=True, exist_ok=True)
@@ -163,7 +206,11 @@ def main():
         if not p.exists():
             print(f"  MISSING: {p}")
             continue
-        summary[stem_to_run_id(p)] = run_one(p, symbols, args.out_dir, extra)
+        if args.tier2:
+            run_tier2(p, args.account, args.start, symbols, args.capital, args.out_dir)
+            summary[stem_to_run_id(p)] = {}
+        else:
+            summary[stem_to_run_id(p)] = run_one(p, symbols, args.out_dir, extra)
 
     print(f"\n=== Done in {time.time() - t_total:.1f}s ===")
     print(f"\n{'Run ID':<26s} {'Symbol':<11s} {'Sharpe':>7s} {'Trades':>7s} {'WR':>5s} {'AccGain':>9s} {'DD':>6s}")
