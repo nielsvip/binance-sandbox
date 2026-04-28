@@ -75,9 +75,12 @@ STRATEGIES = [
     {"name": "SYMBOL_PERF",           "param": "SYMBOL_PERF_ENABLED",           "config": "config_tradier.py",  "mode": "tradier", "tier1_done": False},
     # ── Needs precompute extension before tier-1 ──────────────────────────
     {"name": "SMFI",                  "param": "SMFI_ENABLED",                  "config": "config_tradier.py",  "mode": "tradier", "blocked_by": "needs_npz_smfi",    "notes": "smfi/smfi_sma missing from NPZ"},
-    {"name": "CONNORS_RSI",           "param": "CONNORS_RSI_ENABLED",           "config": "config_tradier.py",  "mode": "tradier", "blocked_by": "needs_npz_connors", "notes": "connors_rsi missing from NPZ"},
-    {"name": "CLENOW",                "param": "CLENOW_ENABLED",                "config": "config_tradier.py",  "mode": "tradier", "blocked_by": "needs_npz_clenow",  "notes": "slope_ann/r_squared missing from NPZ"},
     {"name": "ORB",                   "param": "TRC_ORB_ENABLED",               "config": "config_tradier.py",  "mode": "tradier", "blocked_by": "needs_npz_orb",     "notes": "session-range not in precompute; ORB_WINDOW_MINUTES param dead"},
+    # ── NPZ patched 2026-04-28 — ready for tier-1 ────────────────────────
+    {"name": "CONNORS_RSI",           "param": "CONNORS_RSI_ENABLED",           "config": "config_tradier.py",  "mode": "tradier", "tier1_done": False, "notes": "connors_rsi_D patched into NPZ 2026-04-28"},
+    {"name": "CONNORS_RSI_CRYPTO",    "param": "CONNORS_RSI_ENABLED",           "config": "config.py",          "mode": "crypto",  "tier1_done": False, "notes": "connors_rsi_D patched into NPZ 2026-04-28"},
+    {"name": "CLENOW",                "param": "CLENOW_ENABLED",                "config": "config_tradier.py",  "mode": "tradier", "tier1_done": False, "notes": "clenow_score_D patched into NPZ 2026-04-28"},
+    {"name": "CLENOW_CRYPTO",         "param": "CLENOW_ENABLED",                "config": "config.py",          "mode": "crypto",  "tier1_done": False, "notes": "clenow_score_D patched into NPZ 2026-04-28"},
     # ── Additional untested switches ──────────────────────────────────────
     {"name": "LS_RATIO_ENFORCE",      "param": "LS_RATIO_ENFORCE",              "config": "config.py",          "mode": "crypto",  "tier1_done": False},
     {"name": "LS_RATIO_ENFORCE_TR",   "param": "LS_RATIO_ENFORCE_TRADIER",      "config": "config_tradier.py",  "mode": "tradier", "tier1_done": False},

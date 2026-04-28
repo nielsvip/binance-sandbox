@@ -423,6 +423,14 @@ class QuickConfig:
     MI_ENTRY_STRUCT_BONUS: int = 10
     MI_ENTRY_EXHAUST_BONUS: int = 8
     MI_EXIT_ENABLED_TRADIER: bool = True
+    CLENOW_ENABLED: bool = False
+    CLENOW_SCORE_MIN: float = 30.0
+    CLENOW_SCORE_SHORT_MAX: float = -10.0
+    CLENOW_GATE_ONLY: bool = True
+    CONNORS_RSI_ENABLED: bool = False
+    CONNORS_RSI_ENTRY_LONG_MAX: float = 15.0
+    CONNORS_RSI_ENTRY_SHORT_MIN: float = 85.0
+    CONNORS_RSI_GATE_ONLY: bool = False
     MOM3_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven
     MOM3_LONG_THRESHOLD: float = -1.0
     MOM3_SHORT_THRESHOLD: float = 1.0
@@ -2356,6 +2364,52 @@ def compute_entry_signals(npz, n, is_long, cfg):
             base_sig = base_sig | _stdev_sig
         except Exception:
             pass
+    # CLENOW_ENABLED (2026-04-28): Clenow momentum — 90-day log-regression slope×R² on daily close.
+    # GATE_ONLY=True: require positive score for LONG / negative for SHORT (gate existing base_sig).
+    # GATE_ONLY=False: also fire new entries when score exceeds SCORE_MIN threshold (additive path).
+    if bool(getattr(cfg, 'CLENOW_ENABLED', False)):
+        try:
+            _cl_score = _safe(npz, 'clenow_score_D', n, 0.0)
+            _cl_score_min = float(getattr(cfg, 'CLENOW_SCORE_MIN', 30.0))
+            _cl_score_short = float(getattr(cfg, 'CLENOW_SCORE_SHORT_MAX', -10.0))
+            _cl_gate_only = bool(getattr(cfg, 'CLENOW_GATE_ONLY', True))
+            _cl_has_data = _cl_score != 0
+            if is_long:
+                _cl_ok = ~_cl_has_data | (_cl_score >= _cl_score_min)
+                if _cl_gate_only:
+                    base_sig = base_sig & _cl_ok
+                else:
+                    base_sig = base_sig | ((_cl_score >= _cl_score_min) & _cl_has_data)
+            else:
+                _cl_ok = ~_cl_has_data | (_cl_score <= _cl_score_short)
+                if _cl_gate_only:
+                    base_sig = base_sig & _cl_ok
+                else:
+                    base_sig = base_sig | ((_cl_score <= _cl_score_short) & _cl_has_data)
+        except Exception:
+            pass
+    # CONNORS_RSI_ENABLED (2026-04-28): oversold/overbought entry from 90-day daily ConnorsRSI.
+    # GATE_ONLY=False (default): open new LONG when crsi_D < 15 (oversold), SHORT when crsi_D > 85.
+    # GATE_ONLY=True: gate existing base_sig — require crsi not overbought (LONG) / not oversold (SHORT).
+    if bool(getattr(cfg, 'CONNORS_RSI_ENABLED', False)):
+        try:
+            _crsi = _safe(npz, 'connors_rsi_D', n, 50.0)
+            _crsi_long_max = float(getattr(cfg, 'CONNORS_RSI_ENTRY_LONG_MAX', 15.0))
+            _crsi_short_min = float(getattr(cfg, 'CONNORS_RSI_ENTRY_SHORT_MIN', 85.0))
+            _crsi_gate = bool(getattr(cfg, 'CONNORS_RSI_GATE_ONLY', False))
+            _crsi_has_data = _crsi != 50.0
+            if is_long:
+                if _crsi_gate:
+                    base_sig = base_sig & (~_crsi_has_data | (_crsi < _crsi_short_min))
+                else:
+                    base_sig = base_sig | ((_crsi <= _crsi_long_max) & _crsi_has_data)
+            else:
+                if _crsi_gate:
+                    base_sig = base_sig & (~_crsi_has_data | (_crsi > _crsi_long_max))
+                else:
+                    base_sig = base_sig | ((_crsi >= _crsi_short_min) & _crsi_has_data)
+        except Exception:
+            pass
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
     elif getattr(cfg, 'RZ_BREAKOUT_ENTRY_ENABLED', False):
         _rz_top_e = float(getattr(cfg, 'RZ_TOP_BB_THRESHOLD', 0.85))
@@ -4070,6 +4124,8 @@ def simulate(stores, cfg, capital=10000.0):
             # Trade recorder transition state (for chart visualization).
             _rec_entry_bar = -1
             _rec_entry_price = 0.0
+            _rec_pending_exit_reason = ""
+            _rec_pending_entry_reason = ""
             for i in range(n):
                 # Track exit transitions — used by REENTRY_IF_MOMENTUM bypass below.
                 if _prev_in_pos and not in_pos:
@@ -4078,22 +4134,19 @@ def simulate(stores, cfg, capital=10000.0):
                         _ex_px = float(close[i - 1]) if i >= 1 and close[i - 1] > 0 else 0.0
                         _ex_ts = int(ts[i - 1]) if hasattr(ts, '__len__') and (i - 1) < len(ts) else 0
                         _en_ts = int(ts[_rec_entry_bar]) if hasattr(ts, '__len__') and _rec_entry_bar < len(ts) else 0
-                        # Derive reasons from state flags. (entry_sig / exit_sig are flat ndarrays in this engine.)
-                        _en_reason = "BREAKOUT" if _entry_was_breakout else ("RZ_BREAK" if _entry_was_rz_break else "BOUNCE")
-                        # Exit reason: query active flags + signal arrays at exit bar
-                        _ex_reason = "TECH_EXIT"
-                        try:
-                            ix = i - 1
-                            if ix < n and exit_sig is not None and bool(exit_sig[ix]):
-                                _ex_reason = "WT_EXIT"
-                            if _pe_partial_done:
-                                _ex_reason = "PPL_TRAIL_STOP"
-                            # Hard-stop / SL detection: large adverse close vs entry
-                            if _rec_entry_price > 0:
-                                _adverse_pct = ((float(close[ix]) - _rec_entry_price) / _rec_entry_price * 100.0) * (1 if is_long else -1)
-                                if _adverse_pct < -1.5: _ex_reason = "HARD_LOSS"
-                                elif _adverse_pct < -0.5 and _rec_entry_bar > 0 and (ix - _rec_entry_bar) <= 3: _ex_reason = "QUICK_REVERSAL"
-                        except Exception: pass
+                        _en_reason = _rec_pending_entry_reason or ("BREAKOUT" if _entry_was_breakout else ("RZ_BREAK" if _entry_was_rz_break else "BOUNCE"))
+                        # Prefer explicit branch label when set; else derive from state heuristics.
+                        _ex_reason = _rec_pending_exit_reason or "TECH_EXIT"
+                        if not _rec_pending_exit_reason:
+                            try:
+                                ix = i - 1
+                                if ix < n and exit_sig is not None and bool(exit_sig[ix]):
+                                    _ex_reason = "WT_EXIT"
+                                if _rec_entry_price > 0:
+                                    _adverse_pct = ((float(close[ix]) - _rec_entry_price) / _rec_entry_price * 100.0) * (1 if is_long else -1)
+                                    if _adverse_pct < -1.5: _ex_reason = "HARD_LOSS"
+                                    elif _adverse_pct < -0.5 and _rec_entry_bar > 0 and (ix - _rec_entry_bar) <= 3: _ex_reason = "QUICK_REVERSAL"
+                            except Exception: pass
                         _generic_trades_buf.append({
                             "symbol": sym,
                             "side": "LONG" if is_long else "SHORT",
@@ -4110,6 +4163,8 @@ def simulate(stores, cfg, capital=10000.0):
                         })
                         _rec_entry_bar = -1
                         _rec_entry_price = 0.0
+                        _rec_pending_exit_reason = ""
+                        _rec_pending_entry_reason = ""
                 if not _prev_in_pos and in_pos and _rec_entry_bar < 0:
                     _rec_entry_bar = i - 1 if i >= 1 else 0
                     _rec_entry_price = float(ep) if ep > 0 else float(close[_rec_entry_bar]) if close[_rec_entry_bar] > 0 else 0.0
@@ -4193,6 +4248,7 @@ def simulate(stores, cfg, capital=10000.0):
                                 (not is_long and _rz_nl_guard_high is not None and _rz_nl_guard_high[i] > 0 and px > _rz_nl_guard_high[i])
                             ))
                         if _rz_bypass_now:
+                            _rec_pending_exit_reason = "RZ_NOLOSS_BYPASS"
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                             _entry_was_rz_break = False; _rz_entry_bar = -1
@@ -4203,6 +4259,7 @@ def simulate(stores, cfg, capital=10000.0):
                     if _ws_kill_enabled and _ws_wt_mask_full is not None and (i - eb) >= _ws_min_age_bars:
                         _ws_fire = bool(_ws_wt_mask_full[i]) or (_ws_wt_mask_reduced is not None and _ws_div_mask is not None and bool(_ws_wt_mask_reduced[i]) and bool(_ws_div_mask[i]))
                         if _ws_fire:
+                            _rec_pending_exit_reason = "WRONG_SIDE_ABS_KILL"
                             _wa_ws = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
                             all_pnl.append(_wa_ws); sym_pnl.append(_wa_ws)
                             in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
@@ -4213,6 +4270,7 @@ def simulate(stores, cfg, capital=10000.0):
                         _pe_partial_done = True
                         continue
                     if _pe_enabled and _pe_partial_done and not _pe_trail_armed and live_pnl <= _pe_be_buffer:
+                        _rec_pending_exit_reason = "PPL_BE_STOP"
                         total_pnl = _pe_realized + (1.0 - _pe_frac) * live_pnl
                         _wa = total_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
@@ -4220,6 +4278,7 @@ def simulate(stores, cfg, capital=10000.0):
                     if _pe_enabled and _pe_partial_done and not _pe_trail_armed and live_pnl >= _pe_trail_arm:
                         _pe_trail_armed = True
                     if _pe_enabled and _pe_partial_done and _pe_trail_armed and live_pnl <= _pe_trail_floor:
+                        _rec_pending_exit_reason = "PPL_TRAIL_STOP"
                         total_pnl = _pe_realized + (1.0 - _pe_frac) * live_pnl
                         _wa = total_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
@@ -4227,6 +4286,7 @@ def simulate(stores, cfg, capital=10000.0):
                     # Dynamic counter-exit: cut position when opposite direction scores strongly
                     if _dyn_counter_enabled and (i - eb) >= min_hold and _dyn_counter_score is not None:
                         if _dyn_counter_score[i] >= _dyn_counter_thr:
+                            _rec_pending_exit_reason = "DYN_COUNTER_EXIT"
                             _wa = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
                             all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
@@ -4266,6 +4326,7 @@ def simulate(stores, cfg, capital=10000.0):
                             _aug_4h_done = True; _aug_4h_wt_last = _wt1_4h_cur; _aug_4h_px_last = px
                     # Augmented position profit target — fires after any augment (wt_D or wt_4h)
                     if _aug_pt_enabled and (_aug_done or _aug_4h_done) and live_pnl >= _aug_pt_pct:
+                        _rec_pending_exit_reason = "AUG_PT_HIT"
                         _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         in_pos = False; _aug_done = False; cd = max(cooldown, min_gap_bars); continue
                     # Continuous hedge — disabled when HEDGE_ENABLED=False (tradier has no hedge engine).
@@ -4328,17 +4389,20 @@ def simulate(stores, cfg, capital=10000.0):
                     # ALL_TF_BRAKE: all TFs (incl. W/M when available) flip against → bypass NOLOSS
                     if _atb_enabled and _atb_against is not None and (i - eb) >= min_hold:
                         if _atb_against[i] >= _atb_min_tfs:
+                            _rec_pending_exit_reason = "ALL_TF_BRAKE"
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
                     # DC_BREAKOUT_FAILED_STOP: entered above prev-bar DC high → exit when price falls back below prev-bar DC high
                     if _bfs_enabled and _entry_was_breakout:
                         _bfs_hit = (is_long and _dc_h4_prev[i] > 0 and px < _dc_h4_prev[i]) or (not is_long and _dc_l4_prev[i] > 0 and px > _dc_l4_prev[i])
                         if _bfs_hit:
+                            _rec_pending_exit_reason = "BREAKOUT_FAILED_STOP"
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; _entry_was_breakout = False; cd = max(cooldown, min_gap_bars); continue
                     if _dc4_bypass_enabled and (_dc4_max_bars == 0 or (i - eb) <= _dc4_max_bars):
                         _dc4_hit = (is_long and _dc4_low is not None and _dc4_low[i] > 0 and px < _dc4_low[i]) or (not is_long and _dc4_high is not None and _dc4_high[i] > 0 and px > _dc4_high[i])
                         if _dc4_hit:
+                            _rec_pending_exit_reason = "DC4_BYPASS"
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if cfg.DC_RECOVERY_EXIT_ENABLED and cfg.NOLOSS_ENABLED and (i - eb) >= min_hold and live_pnl < 0:
@@ -4347,17 +4411,20 @@ def simulate(stores, cfg, capital=10000.0):
                         else:
                             _dc_stranded = ep < dc_low_4h[i] and dc_low_4h[i] > 0
                         if _dc_stranded:
+                            _rec_pending_exit_reason = "DC_RECOVERY_STRANDED"
                             _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                             if _qr_enabled: _qr_exit_px = px; _qr_exit_bar = i
                             if _t1pc_enabled: _t1pc_exit_px = px; _t1pc_exit_bar = i
                             in_pos = False; cd = max(cooldown, min_gap_bars); continue
                     if sl_enabled and live_pnl <= -sl_pct:
+                        _rec_pending_exit_reason = "STOP_LOSS"
                         _wa = live_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
                         if hedge_in_pos and hedge_ep > 0:
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                         in_pos = False; cd = max(cooldown, min_gap_bars); continue
                 if _intraday_enabled and in_pos and _sec_of_day is not None and _sec_of_day[i] >= _intraday_force_exit_utc:
+                    _rec_pending_exit_reason = "INTRADAY_FORCE_EXIT"
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     if _pe_partial_done:
                         pnl = _pe_realized + (1.0 - _pe_frac) * pnl
@@ -4371,6 +4438,7 @@ def simulate(stores, cfg, capital=10000.0):
                 if in_pos and (i - eb) < min_hold and _mh_dc_bypass_enabled and _mh_dc_low is not None:
                     _mh_break = (is_long and _mh_dc_low[i] > 0 and px < _mh_dc_low[i]) or (not is_long and _mh_dc_high is not None and _mh_dc_high[i] > 0 and px > _mh_dc_high[i])
                     if _mh_break:
+                        _rec_pending_exit_reason = "MIN_HOLD_DC_BYPASS"
                         pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                         if _pe_partial_done: pnl = _pe_realized + (1.0 - _pe_frac) * pnl
                         _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
@@ -4380,6 +4448,12 @@ def simulate(stores, cfg, capital=10000.0):
                         in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; _last_exit_bar = i; cd = max(cooldown, min_gap_bars); continue
                 _wt_exit_now = (not _pe_partial_done and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i]))) or (_pe_partial_done and exit_sig_rem[i])
                 if in_pos and (i - eb) >= min_hold and _wt_exit_now:
+                    if _pe_partial_done:
+                        _rec_pending_exit_reason = "WT_EXIT_POST_PPL"
+                    elif _adaptive_exit_enabled and exit_sig_extra is not None and bool(exit_sig_extra[i]) and not bool(exit_sig[i]):
+                        _rec_pending_exit_reason = "ADAPTIVE_EXIT"
+                    else:
+                        _rec_pending_exit_reason = "WT_EXIT"
                     pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                     if not _pe_partial_done:
                         if _adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i] and not exit_sig[i] and pnl <= _adaptive_gain_pct:
