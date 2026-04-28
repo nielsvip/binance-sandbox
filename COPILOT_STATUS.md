@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 14:48:52 UTC
+# Copilot Status — 2026-04-28 15:04:11 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:47:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:47:39
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:48:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:48:10
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T14:48:10
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:48:10
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T14:48:42
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T14:48:42
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T14:48:42
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T14:48:42
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T15:02:31
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T15:03:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T15:03:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T15:03:02
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T15:03:36
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T15:03:36
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T15:03:36
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T15:04:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T15:04:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T15:04:06
 
 ## Missed Trades (trader comparison)
 
@@ -37,9 +37,9 @@ _None_
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 1m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 1m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
-- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 163m ago
+- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 178m ago
 - WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 1m ago
-- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 168m ago
+- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 183m ago
 
 ## Supervisor
 

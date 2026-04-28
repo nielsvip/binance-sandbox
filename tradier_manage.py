@@ -1337,11 +1337,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # REENTRY is REENTRY — not AUGMENT. execute_trade_action handles reclassification internally.
                     exec_action = "REENTRY"
                     _re_tagged_reason = f"REENTRY_{re_reason}" if 'REENTRY' not in re_reason.upper() else re_reason
-                    await queue_trade_action(
+                    _re_queued = await queue_trade_action(
                         order_queue, trade_manager, position_key, exec_action,
                         _re_tagged_reason, re_conf, override_qty=re_qty
                     )
-                    action_taken = True
+                    if _re_queued:
+                        action_taken = True
 
         if has_position and not action_taken:
             opened_at = position.opened_at
@@ -8217,6 +8218,8 @@ class TradierTradeManager:
             is_hedge = action in ('HEDGE_OPEN', 'HEDGE_CLOSE') if action else False
             is_long = position_side == 'LONG'
             _is_augment_or_entry = is_augment
+            is_entry_action = action in ['OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'] if action else False
+            _is_exit_or_reduce = action in ('REDUCE', 'CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'QUICK_CLOSE') if action else False
             # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══
             if is_augment and getattr(config, 'TRADIER_REQUIRE_TRADEABLE_KEY', True):
                 await self.load_tradeable()

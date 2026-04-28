@@ -1564,10 +1564,10 @@ class TradierPositionManager:
     #     return updated_keys_in_api
 
     async def _handle_missing_positions(self, account_key: str, updated_keys_in_api: set, account_positions: dict, now: datetime):
-        """Zero positions absent from Tradier API after 3 consecutive misses. Unlike crypto, the Tradier API returns ALL held positions — absence means genuinely not held."""
+        """Zero positions absent from Tradier API on first miss. Tradier returns ALL held positions — absence definitively means closed."""
         if not hasattr(self, '_api_absence_count'):
             self._api_absence_count = {}
-        THRESHOLD = 3
+        THRESHOLD = 1
         for pk, pos in list(account_positions.items()):
             if not pk.startswith(f"{account_key}:"):
                 continue
