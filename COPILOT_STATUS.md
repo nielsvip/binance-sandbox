@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 20:33:48 UTC
+# Copilot Status — 2026-04-28 20:49:20 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:29:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:29:17
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T20:31:24
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T20:31:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:31:24
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:31:24
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T20:33:28
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T20:33:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:33:28
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:33:28
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:44:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:44:07
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T20:46:12
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T20:46:12
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:46:12
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:46:12
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T20:48:17
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T20:48:17
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T20:48:17
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T20:48:17
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 5 | **Reentered:** 0
 
-- HELD: **CHRUSDT** SHORT (crypto) peak +9.5%, now +0.3%
-- HELD: **AIAUSDT** LONG (crypto) peak +8.9%, now +-0.8%
-- HELD: **TIAUSDC** SHORT (crypto) peak +3.2%, now +-0.7%
+- HELD: **CHRUSDT** SHORT (crypto) peak +9.5%, now +9.5%
+- HELD: **AIAUSDT** LONG (crypto) peak +8.9%, now +8.9%
+- HELD: **ZECUSDC** LONG (crypto) peak +7.2%, now +7.2%
+- HELD: **TIAUSDC** SHORT (crypto) peak +3.2%, now +3.2%
 
-- WATCHING: **ZECUSDC** LONG (crypto) peaked +7.2%, exited 4m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 4m ago
 - WATCHING: **EDUUSDT** SHORT (crypto) peaked +4.1%, exited 4m ago
 - WATCHING: **ZKUSDT** SHORT (crypto) peaked +4.1%, exited 4m ago
@@ -44,8 +44,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 11
-- [HIGH] ez_prices.py is NOT running
+**Issues (last 1h):** 41
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
