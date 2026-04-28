@@ -393,8 +393,21 @@ def main():
     for idx, item in enumerate(updated_queue):
         if item.get("status") != "pending":
             continue
-        result_item = run_item(item, args)
+        try:
+            result_item = run_item(item, args)
+        except Exception as _exc:
+            # 2026-04-28: per-item timeout/error catch so one bad A/B doesn't kill the whole queue.
+            import traceback as _tb
+            _err_msg = f"{type(_exc).__name__}: {_exc}"
+            print(f"\n⚠️ ITEM_FAILED [{item.get('param','?')}]: {_err_msg}")
+            _tb.print_exc()
+            result_item = dict(item)
+            result_item["status"] = "failed"
+            result_item["error"] = _err_msg[:500]
+            result_item["failed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         updated_queue[idx] = result_item
+        # 2026-04-28: persist queue after EACH item so a crash doesn't lose progress.
+        save_queue(updated_queue)
 
     save_queue(updated_queue)
     print(f"\nQueue saved to {QUEUE_PATH}")
