@@ -738,6 +738,21 @@ class Config:
     SCALP_V3_ENTRY_WT_CROSS_ENABLED: bool = False   # 2026-04-27 OFF — was firing SHORT on rallying WR-tagged symbols (>90% of V3 entries today)
     SCALP_V3_ENTRY_STOCH_BOUNCE_ENABLED: bool = False  # 2026-04-27 OFF — same
     # All 4 new paths flipped True per user "AUGMENT trades 20-1000x — more entry paths". Sig3 exit + reentry sticky + hedge no-close-at-loss are the safety net. Revert any to False to disable a single path.
+    # === 2026-04-28 STDEV path — auto-tuned BB %B entry (BREAKOUT or BOUNCE) + band-rejection exit ===
+    # MODE='BREAKOUT' fires LONG when bb_pct_b crosses above BREAK_HI on TF (with WT+k confirm).
+    # MODE='BOUNCE' fires LONG when bb_pct_b drops below BOUNCE_LO and wt is turning up (mean-rev fit for V3).
+    # TF='3m' or '15m'. EXIT_STDEV_REJECT adds an SDREJ signal when price reaches opposite band (target).
+    # Default OFF — A/B variants flip these flags via shadow-runner overrides.
+    SCALP_V3_ENTRY_STDEV_ENABLED: bool = False
+    SCALP_V3_STDEV_TF: str = '3m'
+    SCALP_V3_STDEV_MODE: str = 'BOUNCE'  # 'BREAKOUT' or 'BOUNCE'
+    SCALP_V3_STDEV_BREAK_HI: float = 1.0   # bb_pct_b > this for LONG breakout (>1.0 = above upper band)
+    SCALP_V3_STDEV_BREAK_LO: float = 0.0   # bb_pct_b < this for SHORT breakout
+    SCALP_V3_STDEV_BOUNCE_LO: float = 0.10 # bb_pct_b < this for LONG bounce (at lower band)
+    SCALP_V3_STDEV_BOUNCE_HI: float = 0.90 # bb_pct_b > this for SHORT bounce (at upper band)
+    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = False
+    SCALP_V3_STDEV_REJECT_HI: float = 0.95 # LONG exits when bb_pct_b >= this (target hit at upper band)
+    SCALP_V3_STDEV_REJECT_LO: float = 0.05 # SHORT exits when bb_pct_b <= this (target hit at lower band)
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

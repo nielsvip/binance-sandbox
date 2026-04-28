@@ -228,6 +228,31 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
             return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STOCHBOUNCE_k3m{k_3m_prev:.0f}->{k_3m:.0f}_d3m{d_3m:.0f}_k1h{k_1h:.0f}"}
         if allow_short and (k_3m < 75) and (k_3m_prev >= 75) and (k_3m < d_3m) and (k_1h < 75):
             return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STOCHBOUNCE_k3m{k_3m_prev:.0f}->{k_3m:.0f}_d3m{d_3m:.0f}_k1h{k_1h:.0f}"}
+    # ===== ENTRY PATH 6: STDEV — BB %B band breakout (momentum) or bounce (mean-rev) =====
+    # 2026-04-28: BB %B is auto-tuned per-symbol on every TF (3m/15m/1h/4h/D) via
+    # ez_indicators.bb_auto_tune. MODE=BREAKOUT fires on band break + WT alignment;
+    # MODE=BOUNCE fires on band touch + WT turn (mean-rev fit for V3 nature).
+    # TF=3m or 15m. Defaults OFF — A/B variants flip the switches.
+    if bool(getattr(config, 'SCALP_V3_ENTRY_STDEV_ENABLED', False)):
+        _sd_tf = str(getattr(config, 'SCALP_V3_STDEV_TF', '3m'))
+        _sd_mode = str(getattr(config, 'SCALP_V3_STDEV_MODE', 'BOUNCE')).upper()
+        _bb_pctb = _sf(indicators.get(f'bb_pct_b_{_sd_tf}', 0.5), 0.5)
+        _bb_touches = _sf(indicators.get(f'bb_touches_{_sd_tf}', 0), 0)
+        if _bb_touches >= 1:  # require auto-tune actually computed (not fallback)
+            if _sd_mode == 'BREAKOUT':
+                _br_hi = float(getattr(config, 'SCALP_V3_STDEV_BREAK_HI', 1.0))
+                _br_lo = float(getattr(config, 'SCALP_V3_STDEV_BREAK_LO', 0.0))
+                if allow_long and _bb_pctb > _br_hi and wt_bull and (k_3m > k_3m_prev):
+                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}>{_br_hi:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+                if allow_short and _bb_pctb < _br_lo and wt_bear and (k_3m < k_3m_prev):
+                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}<{_br_lo:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+            else:  # BOUNCE
+                _bo_lo = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_LO', 0.10))
+                _bo_hi = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_HI', 0.90))
+                if allow_long and _bb_pctb < _bo_lo and wt_bull and (wt1_3m > wt1_3m_prev):
+                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}<{_bo_lo:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+                if allow_short and _bb_pctb > _bo_hi and wt_bear and (wt1_3m < wt1_3m_prev):
+                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}>{_bo_hi:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
     return None
 
 
@@ -281,6 +306,16 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     wt_on = bool(getattr(config, 'SCALP_V3_EXIT_WT_FLIP_ENABLED', True))
     k_on = bool(getattr(config, 'SCALP_V3_EXIT_K_CROSS_ENABLED', True))
     require_n = max(1, int(getattr(config, 'SCALP_V3_EXIT_REQUIRE_N_SIGNALS', 1)))
+    # 2026-04-28: STDEV band-rejection exit signal — fires when price reaches the
+    # opposite band (target hit at upper for LONG / lower for SHORT) OR when an
+    # entered breakout fails (price falls back inside 1σ). Adds to sigs count for
+    # require_n threshold. TF defaults to whatever entry used (or config).
+    sd_exit_on = bool(getattr(config, 'SCALP_V3_EXIT_STDEV_REJECT_ENABLED', False))
+    sd_exit_tf = str(getattr(config, 'SCALP_V3_STDEV_TF', '3m'))
+    sd_reject_hi = float(getattr(config, 'SCALP_V3_STDEV_REJECT_HI', 0.95))
+    sd_reject_lo = float(getattr(config, 'SCALP_V3_STDEV_REJECT_LO', 0.05))
+    sd_pctb = _sf(indicators.get(f'bb_pct_b_{sd_exit_tf}', 0.5), 0.5)
+    sd_touches = _sf(indicators.get(f'bb_touches_{sd_exit_tf}', 0), 0)
     if side == 'LONG':
         if _live_no_bar:
             bar_falling = (wt1_3m < wt1_3m_prev) and (wt_velocity_3m_live < 0)
@@ -292,8 +327,9 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
         if bar_on and bar_falling: sigs.append('BAR')
         if wt_on and wt_flip_bear: sigs.append('WT')
         if k_on and k_cross_down: sigs.append('K')
+        if sd_exit_on and sd_touches >= 1 and sd_pctb >= sd_reject_hi: sigs.append(f'SDREJ{sd_exit_tf}')
         if len(sigs) >= require_n:
-            return {"reason": f"SCALP_V3_CLOSE_{'_'.join(sigs)}_LONG_n{len(sigs)}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}"}
+            return {"reason": f"SCALP_V3_CLOSE_{'_'.join(sigs)}_LONG_n{len(sigs)}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}_pctb{sd_pctb:.2f}"}
     else:
         if _live_no_bar:
             bar_rising = (wt1_3m > wt1_3m_prev) and (wt_velocity_3m_live > 0)
@@ -305,8 +341,9 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
         if bar_on and bar_rising: sigs.append('BAR')
         if wt_on and wt_flip_bull: sigs.append('WT')
         if k_on and k_cross_up: sigs.append('K')
+        if sd_exit_on and sd_touches >= 1 and sd_pctb <= sd_reject_lo: sigs.append(f'SDREJ{sd_exit_tf}')
         if len(sigs) >= require_n:
-            return {"reason": f"SCALP_V3_CLOSE_{'_'.join(sigs)}_SHORT_n{len(sigs)}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}"}
+            return {"reason": f"SCALP_V3_CLOSE_{'_'.join(sigs)}_SHORT_n{len(sigs)}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}/{wt2_3m:.1f}_pctb{sd_pctb:.2f}"}
     max_hold_min = float(getattr(config, 'SCALP_V3_MAX_HOLD_MIN', 0.0) or 0.0)
     if max_hold_min > 0 and age_sec > max_hold_min * 60.0:
         return {"reason": f"SCALP_V3_CLOSE_MAX_HOLD_{side}_age{age_sec/60:.1f}m"}
