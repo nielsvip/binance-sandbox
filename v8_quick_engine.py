@@ -19,6 +19,12 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from test_rate_guard import RateGuard
+# 2026-04-28 — central reentry facade so vectorized engine sees the same
+# config switches and (in Phase 2) shared evaluators as live + real-engine v8.
+try:
+    import ez_reentry  # noqa: F401
+except Exception:
+    ez_reentry = None  # vec engine has no scalar dependency; facade is informational here
 
 BASE_PATH = Path(__file__).resolve().parent
 

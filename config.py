@@ -587,7 +587,7 @@ class Config:
     # Wall must also exceed RED_ZONE_MIN_WALL_NOTIONAL_USD to count (filters tiny walls on illiquid pairs).
     # Stocks side: Tradier exposes no L2 depth — RED_ZONE_GATE is crypto-only.
     # Stocks proxy = options-chain OI walls (call OI = ceiling, put OI = floor) — deferred to tradier_options_oi_fetcher build.
-    RED_ZONE_GATE_ENABLED: bool = True
+    RED_ZONE_GATE_ENABLED: bool = False            # 2026-04-28 reverted to OFF per user "regress to qualifying setup, use better parameters instead of destroying good results". Sweep-testable knob.
     RED_ZONE_MIN_DISTANCE_PCT: float = 0.4         # block entry when wall is closer than 0.4% from current price
     RED_ZONE_MIN_WALL_NOTIONAL_USD: float = 50_000 # ignore walls smaller than $50k notional (illiquid noise)
     RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
@@ -602,7 +602,7 @@ class Config:
     # Block LONG when underlying within VP_GATE_MIN_DISTANCE_PCT below an HVN above (resistance shelf).
     # Block SHORT when underlying within VP_GATE_MIN_DISTANCE_PCT above an HVN below (support floor).
     # Complements RED_ZONE_GATE (near-term, ±5% L2 walls): VP_GATE = long-term (±50% historical density).
-    VP_GATE_ENABLED: bool = True
+    VP_GATE_ENABLED: bool = False                  # 2026-04-28 reverted to OFF per user "regress to qualifying setup". Sweep-testable knob; flip True only after sweep validation.
     VP_GATE_MIN_DISTANCE_PCT: float = 1.0          # block entries within 1% of an HVN shelf
     VP_GATE_MIN_DENSITY_Z: float = 2.0             # require HVN density-z ≥ 2.0 (~5× mean) to block
     VP_GATE_HEDGE_GATE_ENABLED: bool = False       # apply to hedge entries (default off)
@@ -638,6 +638,22 @@ class Config:
     # evaluate_reentry per cycle for fresh-flat or partially-reduced positions. User: "test the difference
     # (huge functions so augments backtest times by up to 50% but if it works it works)".
     EVAL_REENTRY_ENABLED: bool = True
+    # 2026-04-28 — ez_reentry.py / ez_reentry_daemon.py wiring switches.
+    # Master EZ_REENTRY_INLINE_ENABLED gates ALL inline reentry call sites in
+    # ez_manage / ez_positions_quick. Granular *_ENABLED switches are checked
+    # only when the master is True. Default True to preserve current behavior;
+    # flip the master False once the daemon is validated to run inline-free.
+    # Daemon process (ez_reentry_daemon.py) is independent — see start_everything_2.command.
+    EZ_REENTRY_DAEMON_ENABLED: bool = True
+    EZ_REENTRY_INLINE_ENABLED: bool = True
+    EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED: bool = True
+    EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = True
+    EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = True
+    EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED: bool = True
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = True
+    EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = True
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = True
+    EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
     # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})

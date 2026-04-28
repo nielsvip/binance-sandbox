@@ -1339,7 +1339,7 @@ async def monitor_system_state(trade_manager):
             else:
                 logger.info(f"🎯 REENTRY LEVELS: none")
             reentry_data_dict = trade_manager.service.reentry_data if trade_manager.service else getattr(trade_manager, 'reentry_data', {})
-            if reentry_data_dict and isinstance(reentry_data_dict, dict):
+            if reentry_data_dict and isinstance(reentry_data_dict, dict) and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED', True)):
                 filtered_keys = _filter_position_keys(trade_manager, list(reentry_data_dict.keys()))
                 if filtered_keys:
                     filtered_reentry_data = {position_key: reentry_data_dict[position_key] for position_key in filtered_keys if position_key in reentry_data_dict}
@@ -19723,7 +19723,7 @@ async def monitor_stale_augmentations(trade_manager: MultiAccountTradeManager, o
                         logger.error(f"[AUGMENT_MONITOR] Task failed for {position_key} ({account_key}): {result}")
                         logger.debug(traceback.format_exc())
                 reentry_data_dict = trade_manager.service.reentry_data if trade_manager.service else getattr(trade_manager, 'reentry_data', {})
-                if reentry_data_dict and isinstance(reentry_data_dict, dict):
+                if reentry_data_dict and isinstance(reentry_data_dict, dict) and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED', True)):
                     filtered_keys = _filter_position_keys(trade_manager, list(reentry_data_dict.keys()))
                     if filtered_keys:
                         filtered_reentry_data = {position_key: reentry_data_dict[position_key] for position_key in filtered_keys if position_key in reentry_data_dict}
@@ -19932,7 +19932,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     # Function self-gates on position_value <= 2*MIN_POSITION_SIZE so it only fires for fresh-flat or
     # partially-reduced positions. NO_DOUBLE_OPEN guard naturally allows because execute_now
     # reclassifies REENTRY → OPEN (positionAmt=0) or AUGMENT (positionAmt>min_pos).
-    if bool(getattr(config, 'EVAL_REENTRY_ENABLED', True)):
+    if bool(getattr(config, 'EVAL_REENTRY_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED', True)):
         try:
             _re_ctx = {
                 'config': config, 'logger': logger,
@@ -21413,7 +21413,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             eval_funcs.append(evaluate_leaderboard_entry)
         if not getattr(config, 'ABLATION_DISABLE_ENTRY_RANKING', False):
             eval_funcs.append(evaluate_ranking_momentum_trade)
-        if should_consider_reentry and not getattr(config, 'ABLATION_DISABLE_REENTRY', False):
+        if should_consider_reentry and not getattr(config, 'ABLATION_DISABLE_REENTRY', False) and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)):
             eval_funcs.append(evaluate_reentry)
         if should_consider_augmentation and not getattr(config, 'ABLATION_DISABLE_AUGMENTATION', False):
             eval_funcs.append(evaluate_augmentation)
@@ -22762,15 +22762,16 @@ async def symbol_monitoring_watchdog(trade_manager: MultiAccountTradeManager, ac
                         logger.error(f"[SYMBOL_WATCHDOG] Error checking {symbol}: {sym_err}")
                 reentry_data_dict = trade_manager.service.reentry_data if trade_manager.service else getattr(trade_manager, 'reentry_data', {})
                 if reentry_data_dict and isinstance(reentry_data_dict, dict):
-                    filtered_keys = _filter_position_keys(trade_manager, list(reentry_data_dict.keys()))
-                    if filtered_keys:
-                        filtered_reentry_data = {position_key: reentry_data_dict[position_key] for position_key in filtered_keys if position_key in reentry_data_dict}
-                        original_reentry_data = trade_manager.reentry_data
-                        try:
-                            trade_manager.reentry_data = filtered_reentry_data
-                            await evaluate_reentry_2(trade_manager)
-                        finally:
-                            trade_manager.reentry_data = original_reentry_data
+                    if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED', True)):
+                        filtered_keys = _filter_position_keys(trade_manager, list(reentry_data_dict.keys()))
+                        if filtered_keys:
+                            filtered_reentry_data = {position_key: reentry_data_dict[position_key] for position_key in filtered_keys if position_key in reentry_data_dict}
+                            original_reentry_data = trade_manager.reentry_data
+                            try:
+                                trade_manager.reentry_data = filtered_reentry_data
+                                await evaluate_reentry_2(trade_manager)
+                            finally:
+                                trade_manager.reentry_data = original_reentry_data
             await asyncio.sleep(10)
         except asyncio.CancelledError:
             break
@@ -24153,8 +24154,10 @@ async def main():
             background_tasks.append(asyncio.create_task(trade_manager.periodic_zombie_nuke()))
             background_tasks.append(asyncio.create_task(order_queue.process_orders())) 
             background_tasks.append(asyncio.create_task(periodic_tasks(order_queue, trade_manager)))
-            background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager)))
-            background_tasks.append(asyncio.create_task(_price_level_reentry_monitor_loop(trade_manager)))
+            if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED', True)):
+                background_tasks.append(asyncio.create_task(periodic_evaluate_reentry_loop(trade_manager)))
+            if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED', True)):
+                background_tasks.append(asyncio.create_task(_price_level_reentry_monitor_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(symbol_monitoring_watchdog(trade_manager, list(trade_manager._allowed_accounts))))
             background_tasks.append(asyncio.create_task(performance_report_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(outlier_scan_loop(trade_manager)))
@@ -24165,7 +24168,8 @@ async def main():
             background_tasks.append(asyncio.create_task(capital_reallocation_loop(trade_manager))) 
             background_tasks.append(asyncio.create_task(trade_manager.monitor_strict_close_positions()))
             background_tasks.append(asyncio.create_task(trade_manager.monitor_dc_breach_reduce()))
-            background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
+            if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED', True)):
+                background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
             background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
             background_tasks.append(asyncio.create_task(monitor_system_state(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.momentum_rider_loop()))

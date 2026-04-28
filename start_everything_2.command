@@ -83,6 +83,35 @@ done
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] [Launcher_SE2] All local ez_manage.py scripts launched." | tee -a "$LAUNCHER_LOG"
 
+# 2026-04-28 — Launch ez_reentry_daemon.py (24/7 standalone reentry shadow + heartbeat watchdog).
+# Independent of per-account ez_manage workers so a worker crash does not lose reentry observability.
+# See ez_reentry.py / ez_reentry_daemon.py headers for architecture.
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] [Launcher_SE2] Killing existing ez_reentry_daemon..." | tee -a "$LAUNCHER_LOG"
+pkill -9 -f "python.*ez_reentry_daemon.py" 2>/dev/null || true
+pkill -9 -f "bash.*run_with_watchdog.*ez_reentry_daemon.py" 2>/dev/null || true
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] [Launcher_SE2] Launching ez_reentry_daemon.py under run_with_watchdog..." | tee -a "$LAUNCHER_LOG"
+DAEMON_TAB_NAME="reentry_daemon"
+DAEMON_TMPSCRIPT="/tmp/iterm_launch_${DAEMON_TAB_NAME}.sh"
+cat > "$DAEMON_TMPSCRIPT" << LAUNCHER
+#!/bin/bash
+printf '\\e]1;${DAEMON_TAB_NAME}\\a'
+cd $WORKDIR && bash $WRAPPER_FULL_PATH ez_reentry_daemon.py
+LAUNCHER
+chmod +x "$DAEMON_TMPSCRIPT"
+osascript -e "
+tell application \"iTerm\"
+    if (count of windows) = 0 then
+        create window with default profile
+    end if
+    tell current window
+        set newTab to (create tab with default profile)
+        tell current session of newTab
+            write text \"bash $DAEMON_TMPSCRIPT\"
+        end tell
+    end tell
+end tell" >/dev/null 2>&1 || echo "[$(date +'%Y-%m-%d %H:%M:%S')] [Launcher_SE2] WARNING: Failed to open iTerm tab for ez_reentry_daemon" | tee -a "$LAUNCHER_LOG"
+sleep 1
+
 # Wait for quick loggers to initialize before tailing
 sleep 5
 

@@ -14247,8 +14247,10 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                 # == BC_155: TWO-TIER MANDATORY REENTRY (runs BEFORE everything) ==
                 # Tier 1: Price reclaimed exit level → full size reentry (existing PRICE_CROSS)
                 # Tier 2: Trend continues past exit without pullback → chase at 80% size
+                # 2026-04-28: gated by EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED so user can flip OFF
+                # and let ez_reentry_daemon (or future Phase 2 redis-driven path) handle it.
                 _reentry_tier = None
-                if pos_amt <= _pos_min_qty_entry:
+                if pos_amt <= _pos_min_qty_entry and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED', True)):
                     _pk_variants = [position_key, f"{account_key}:{symbol}_{position_side}"]
                     def _ts_to_epoch(v):
                         if not v: return 0.0
@@ -14387,7 +14389,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             logger.info(f"[REENTRY_PENDING] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, waiting for signal. k3m={_px_k3m:.0f}")
                 # == EVALUATE_REENTRY (ported from ez_manage.py:16010) — 7-block per-symbol reentry evaluator ==
                 # Runs as fallback when TIER1/TIER2 did NOT fire. Reuses SAME MIN_GAP + SYMGATE + RALLY_K15M guards.
-                if (not should_trade) and pos_amt <= _pos_min_qty_entry:
+                # 2026-04-28: gated by EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED.
+                if (not should_trade) and pos_amt <= _pos_min_qty_entry and bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED', True)):
                     try:
                         _er_ctx = {
                             'config': config, 'logger': logger,
@@ -17754,8 +17757,10 @@ async def main(account_key_filter: Optional[str] = None) -> None:
         all_background_tasks['registry_loop'] = asyncio.create_task(registry.run_loop())
         # Ported from ez_manage.py (which is now zombie for loops). The live crypto path
         # spawns reentry enforcement + evaluate_reentry_2 periodic pass here.
-        all_background_tasks['reentry_enforce_epq'] = asyncio.create_task(reentry_enforcement_loop_epq(trade_manager, stop_event, data_manager))
-        all_background_tasks['evaluate_reentry_2_loop_epq'] = asyncio.create_task(evaluate_reentry_2_periodic_loop_epq(trade_manager, stop_event, data_manager))
+        if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED', True)):
+            all_background_tasks['reentry_enforce_epq'] = asyncio.create_task(reentry_enforcement_loop_epq(trade_manager, stop_event, data_manager))
+        if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED', True)):
+            all_background_tasks['evaluate_reentry_2_loop_epq'] = asyncio.create_task(evaluate_reentry_2_periodic_loop_epq(trade_manager, stop_event, data_manager))
         # monitor_hedge_health_loop always runs: manages same-symbol hedge lifecycle (BANDAID_OFF/DECAY_NUKE)
         # regardless of HEDGE_MODE. breathing_hedge_scan remains permanently disabled (cascade).
         all_background_tasks['hedge_balancing'] = asyncio.create_task(hedge_engine.monitor_hedge_health_loop(stop_event))
