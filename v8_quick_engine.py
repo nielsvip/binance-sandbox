@@ -2874,7 +2874,8 @@ def _btc_trend_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
 
 def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
-                                     _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int):
+                                     _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int,
+                                     _trade_recorder=None, _symbol: str = ""):
     """BTC-dedicated per-symbol Tier-1 backtest (Path B: technical exit + guaranteed reentry).
 
     Called from simulate() when cfg.BTC_DEDICATED_ENABLED=True and symbol is BTC.
@@ -2883,6 +2884,8 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
     Path A (hedge) NOT implemented in vec engine — hedge requires portfolio-level
     state that v8_quick can't track. Path A validated in Tier-2 only.
+
+    `_trade_recorder`: optional list to receive per-trade dicts for chart visualization.
     """
     import btc_loop as _btc
 
@@ -3029,6 +3032,12 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     entry_price = 0.0
     entry_bar = 0
     entry_type = "BOUNCE"        # BOUNCE | BREAKOUT — affects exit cluster
+    entry_reason = ""
+    entry_ts = 0
+    _ts_arr = npz.get('timestamps', None) if hasattr(npz, 'get') else None
+    if _ts_arr is None:
+        try: _ts_arr = npz['timestamps']
+        except Exception: _ts_arr = None
     last_exit_side = "NONE"
     last_exit_bar = -10**9
     last_exit_price = 0.0
@@ -3302,9 +3311,13 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             # Apply funding/OI veto to all entry paths below
             if bk_side == "LONG" and not (funding_blocks_long or oi_blocks_long):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                entry_reason = "BREAKOUT_LONG"
+                entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 continue
             if bk_side == "SHORT" and not (funding_blocks_short or oi_blocks_short):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                entry_reason = "BREAKOUT_SHORT"
+                entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 continue
 
             # 2. FOLLOW-THROUGH reentry: same-side reentry past exit price (no RZ required).
@@ -3324,9 +3337,13 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                             and accel["side"] == "bear" and accel["bear_aligned_tfs"] >= 1)
                 if ft_long and not (funding_blocks_long or oi_blocks_long):
                     position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    entry_reason = "FOLLOW_THROUGH_REENTRY_LONG"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                     continue
                 if ft_short and not (funding_blocks_short or oi_blocks_short):
                     position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    entry_reason = "FOLLOW_THROUGH_REENTRY_SHORT"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                     continue
 
             # 3. BOUNCE-style reentry guarantee (existing path B reentry)
@@ -3356,10 +3373,16 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                          or (reenter_side == "SHORT" and (funding_blocks_short or oi_blocks_short)))
                 if not _veto:
                     position = reenter_side; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                    entry_reason = f"BOUNCE_REENTRY_{reenter_side}"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
             elif ok_long and not ok_short and not (funding_blocks_long or oi_blocks_long):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                entry_reason = "PRIMARY_BOUNCE_LONG"
+                entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
             elif ok_short and not ok_long and not (funding_blocks_short or oi_blocks_short):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                entry_reason = "PRIMARY_BOUNCE_SHORT"
+                entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
             continue
 
         # ── Decision: open position → exit check ────────────────────────────
@@ -3414,6 +3437,25 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
         if ok_exit:
             sym_pnl.append(pnl_pct)
+            if _trade_recorder is not None:
+                _exit_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                _trade_recorder.append({
+                    "symbol": _symbol,
+                    "side": position,
+                    "entry_type": entry_type,
+                    "entry_reason": entry_reason,
+                    "exit_reason": _reason or "TECH_EXIT",
+                    "entry_bar": int(entry_bar),
+                    "entry_ts": entry_ts,
+                    "entry_price": float(entry_price),
+                    "exit_bar": int(i),
+                    "exit_ts": _exit_ts,
+                    "exit_price": float(price_i),
+                    "pnl_pct": float(pnl_pct),
+                    "pnl_usd": float(pnl_usd),
+                    "duration_bars": int(i - entry_bar),
+                    "stream": "primary",
+                })
             exited_side = position
             last_exit_side = position
             last_exit_bar = i
@@ -3423,6 +3465,8 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             entry_price = 0.0
             entry_bar = 0
             entry_type = "BOUNCE"
+            entry_reason = ""
+            entry_ts = 0
 
             # ── REVERSE-ON-EXIT (2026-04-27) ──────────────────────────
             # If we just closed and the OPPOSITE side has a fresh breakout this bar,
@@ -3450,24 +3494,51 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 # Only flip — never re-enter same side via reverse path.
                 if rev_side == "SHORT" and exited_side == "LONG":
                     position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    entry_reason = "REVERSE_ON_EXIT_SHORT"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 elif rev_side == "LONG" and exited_side == "SHORT":
                     position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
+                    entry_reason = "REVERSE_ON_EXIT_LONG"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
 
     # Mark-to-market open position at end of sim (CLAUDE.md Sharpe rule #2)
     if position != "FLAT":
         price_last = float(close[n - 1])
         if entry_price > 0:
             if position == "LONG":
-                sym_pnl.append((price_last - entry_price) / entry_price * 100.0)
+                _mtm_pct = (price_last - entry_price) / entry_price * 100.0
             else:
-                sym_pnl.append((entry_price - price_last) / entry_price * 100.0)
+                _mtm_pct = (entry_price - price_last) / entry_price * 100.0
+            sym_pnl.append(_mtm_pct)
+            if _trade_recorder is not None:
+                _exit_ts = int(_ts_arr[n - 1]) if _ts_arr is not None and (n - 1) < len(_ts_arr) else 0
+                _trade_recorder.append({
+                    "symbol": _symbol, "side": position, "entry_type": entry_type,
+                    "entry_reason": entry_reason, "exit_reason": "MTM_END_OF_SIM",
+                    "entry_bar": int(entry_bar), "entry_ts": entry_ts, "entry_price": float(entry_price),
+                    "exit_bar": int(n - 1), "exit_ts": _exit_ts, "exit_price": float(price_last),
+                    "pnl_pct": float(_mtm_pct), "pnl_usd": float((_mtm_pct / 100.0) * own_max * leverage),
+                    "duration_bars": int(n - 1 - entry_bar), "stream": "primary",
+                })
     # Mark-to-market open hedge at end of sim too
     if hedge_side != "FLAT" and hedge_entry_price > 0:
         price_last = float(close[n - 1])
         if hedge_side == "LONG":
-            sym_pnl.append((price_last - hedge_entry_price) / hedge_entry_price * 100.0 * hedge_notional_pct)
+            _h_pct = (price_last - hedge_entry_price) / hedge_entry_price * 100.0 * hedge_notional_pct
         else:
-            sym_pnl.append((hedge_entry_price - price_last) / hedge_entry_price * 100.0 * hedge_notional_pct)
+            _h_pct = (hedge_entry_price - price_last) / hedge_entry_price * 100.0 * hedge_notional_pct
+        sym_pnl.append(_h_pct)
+        if _trade_recorder is not None:
+            _exit_ts = int(_ts_arr[n - 1]) if _ts_arr is not None and (n - 1) < len(_ts_arr) else 0
+            _trade_recorder.append({
+                "symbol": _symbol, "side": hedge_side, "entry_type": "HEDGE",
+                "entry_reason": "HEDGE_OPEN", "exit_reason": "MTM_END_OF_SIM",
+                "entry_bar": int(hedge_entry_bar), "entry_ts": int(_ts_arr[hedge_entry_bar]) if _ts_arr is not None and hedge_entry_bar < len(_ts_arr) else 0,
+                "entry_price": float(hedge_entry_price),
+                "exit_bar": int(n - 1), "exit_ts": _exit_ts, "exit_price": float(price_last),
+                "pnl_pct": float(_h_pct), "pnl_usd": 0.0,
+                "duration_bars": int(n - 1 - hedge_entry_bar), "stream": "hedge",
+            })
 
     return sym_pnl
 
@@ -3538,14 +3609,27 @@ def simulate(stores, cfg, capital=10000.0):
                                 ('BTCUSDT', 'BTCUSDC', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'BTCDOMUSDT')))
         if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in _ded_syms:
             try:
+                _trades_dir = os.environ.get('V8_TRADES_OUT_DIR', '')
+                _trades_buf = [] if _trades_dir else None
                 if bool(getattr(cfg, 'BTC_TREND_MODE_ENABLED', False)):
                     _btc_sym_pnl = _btc_trend_simulate_per_sym(
                         npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
                     )
                 else:
                     _btc_sym_pnl = _btc_dedicated_simulate_per_sym(
-                        npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D
+                        npz, cfg, n, _ltf, _bph_15m, _bph_1h, _bph_4h, _bph_D,
+                        _trade_recorder=_trades_buf, _symbol=sym,
                     )
+                if _trades_dir and _trades_buf:
+                    try:
+                        os.makedirs(_trades_dir, exist_ok=True)
+                        _run_id = os.environ.get('V8_TRADES_RUN_ID', 'default')
+                        _out_path = os.path.join(_trades_dir, f"{_run_id}__{sym}.jsonl")
+                        with open(_out_path, 'w') as _tf:
+                            for _td in _trades_buf:
+                                _tf.write(json.dumps(_td) + "\n")
+                    except Exception as _te:
+                        print(f"[V8_TRADES_OUT] write error {sym}: {_te}", flush=True)
                 per_symbol_pnl[sym] = _btc_sym_pnl
                 all_pnl.extend(_btc_sym_pnl)
                 symbols_processed += 1

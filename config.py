@@ -1487,7 +1487,12 @@ class Config:
     PARTIAL_PROFIT_LOCK_ACCOUNTS: List[str] = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 0.5          # TP trigger. 2026-04-25 rapid-grid: vectorized optimum 1.125%; 0.8%→2.02, 0.5%→1.52, 0.3%→1.25 pool_sharpe (vs 2.66 at 1.125%). Live stays 0.5% (Finandy latency limits); do not lower further.
     PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT: float = 0.75     # At this gain, upgrade stop from BE+buffer to first_exit_price (0.5% level)
-    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.02    # After TP fires, initial stop = entry × (1 ± buffer). Ensures close fires BEFORE gain reaches 0%.
+    PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT: float = 0.10    # 2026-04-28 user: bumped from 0.02 → 0.10 to cover commissions (round-trip ~0.04% maker + ~0.06% slippage). Stop now fires only when remainder is net-positive after fees.
+    # 2026-04-28 USER RULE: maker CLOSE orders rest at a commission-positive price.
+    # When market is below the floor (LONG close) / above the floor (SHORT close), the post-only
+    # GTX limit rests at the floor and waits — does not chase into a net-loss fill.
+    MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = True
+    MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC: float = 300.0  # how long to wait at floor before timing out
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5              # Semantic only — URL2 handles actual 50% on Finandy side
     PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
     # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss. 2026-04-25 rapid-grid: neutral for crypto on both 4TF and 5TF — existing exit paths already cover confirmed reversals.

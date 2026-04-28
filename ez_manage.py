@@ -12654,6 +12654,29 @@ class MultiAccountTradeManager:
             filled = False
             async with self.dedupe_lock:
                 self.active_maker_orders[position_key] = {'status': 'placing', 'start_time': time.time(), 'order_id': 'chasing'}
+            # 2026-04-28 USER RULE: maker CLOSE orders must rest at a price that nets >= COMMISSION_BUFFER_PCT
+            # after fees + slippage. We compute the floor once before the chasing loop and clamp the
+            # limit-target each iteration. Bypass for emergency reasons (STRICT_NO_LOSS, hopeless DC, etc).
+            _close_floor_enabled = bool(getattr(config, 'MAKER_CLOSE_COMMISSION_FLOOR_ENABLED', True))
+            _close_floor_bypass_reasons = ('STRICT_NO_LOSS', 'EMERGENCY', 'STDEV_BREAKOUT', 'DC_HOPELESS', 'PROTECTIVE_EXIT', 'V3_DIRECT', 'DELTA_EXIT')
+            _close_floor_skip = any(b in reason_upper for b in _close_floor_bypass_reasons)
+            _close_floor_price = None
+            _close_floor_buf_pct = 0.0
+            if _close_floor_enabled and ta == 'REDUCE' and not _close_floor_skip:
+                _cf_pos = self.positions.get(position_key)
+                if _cf_pos is None and self.tracker_manager:
+                    try: _cf_pos = await self.tracker_manager.get_position(position_key)
+                    except Exception: _cf_pos = None
+                if _cf_pos:
+                    _cf_entry = safe_fetch_float(getattr(_cf_pos, 'entry_price', 0), 0)
+                    if _cf_entry > 0:
+                        _close_floor_buf_pct = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                        if is_long:
+                            _cf_floor_f = _cf_entry * (1.0 + _close_floor_buf_pct / 100.0)
+                        else:
+                            _cf_floor_f = _cf_entry * (1.0 - _close_floor_buf_pct / 100.0)
+                        _close_floor_price = Decimal(str(round(_cf_floor_f, 12)))
+                        logger.info(f"💰 [MAKER_CLOSE_FLOOR_SET] {position_key} {side}: entry={_cf_entry} buf={_close_floor_buf_pct:.2f}% floor={_close_floor_price}")
             # 2026-04-24 OB PRICE-DEFERRAL (user directive): when enabled for this account,
             # consult ez_orderbook `orderbook:<SYM>` and override limit price to rest at
             # nearest support (for buys) / resistance (for sells). If wall is within
@@ -12724,6 +12747,23 @@ class MultiAccountTradeManager:
                             target_price_str = str(target if target > bb else ba)
                     else:
                         target_price_str = str(lp - tick if side == 'BUY' else lp + tick)
+                    # 2026-04-28: clamp target to commission floor for CLOSE orders (post-only — rests if floor not crossed)
+                    if _close_floor_price is not None:
+                        try:
+                            _tp_d = Decimal(target_price_str)
+                            if side == 'SELL' and _tp_d < _close_floor_price:
+                                _quant_floor = (_close_floor_price // tick) * tick
+                                if _quant_floor < _close_floor_price: _quant_floor = _quant_floor + tick
+                                target_price_str = str(_quant_floor)
+                                TIMEOUT = max(TIMEOUT, float(getattr(config, 'MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC', 300.0)))
+                                logger.info(f"💰 [MAKER_CLOSE_FLOOR_CLAMP] {position_key} SELL: market={_tp_d} < floor={_close_floor_price} → resting at {target_price_str} (entry+{_close_floor_buf_pct:.2f}%, TTL={TIMEOUT:.0f}s)")
+                            elif side == 'BUY' and _tp_d > _close_floor_price:
+                                _quant_floor = (_close_floor_price // tick) * tick
+                                target_price_str = str(_quant_floor)
+                                TIMEOUT = max(TIMEOUT, float(getattr(config, 'MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC', 300.0)))
+                                logger.info(f"💰 [MAKER_CLOSE_FLOOR_CLAMP] {position_key} BUY: market={_tp_d} > floor={_close_floor_price} → resting at {target_price_str} (entry-{_close_floor_buf_pct:.2f}%, TTL={TIMEOUT:.0f}s)")
+                        except Exception as _cf_e:
+                            logger.debug(f"[MAKER_CLOSE_FLOOR_CLAMP] {position_key}: skip clamp on err {_cf_e}")
                     if active_order_id and active_price == target_price_str:
                         verified = await verify_trade_via_websocket(self, account_key=account_key, position_key=position_key, qty=qty_abs, is_long=is_long, timeout_seconds=0.3, initial_positionAmt=positionAmt, action=ta)
                         if verified:
@@ -20459,7 +20499,9 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _wtve_req_kx = bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME', True))
             _wtve_kx_hi = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_HIGH', 80.0))
             _wtve_kx_lo = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_LOW', 20.0))
-            _profit_ok = (_pp_g >= 0) if _wtve_req_profit else True
+            # 2026-04-28 user: commission-aware floor — close must net positive after fees + slippage.
+            _wtve_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+            _profit_ok = (_pp_g >= _wtve_comm_buf) if _wtve_req_profit else True
             _k_3m = safe_fetch_float(i.get('stoch_k_3m', 50.0), 50.0)
             _k_15m = safe_fetch_float(i.get('stoch_k_15m', 50.0), 50.0)
             if _wtve_req_kx:

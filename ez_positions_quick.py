@@ -5334,16 +5334,18 @@ class HedgeEngine:
                                     _scalp_close_fire = True
                                     _scalp_reason = f"B_combined_recov_orig={_orig_gain:.2f}%_max_loss={_orig_max_loss:.2f}%_recov={_orig_recovery_pp:.2f}pp"
                                 # Rule C — stuck losing hedge timeout (5 min, was 15)
-                                # 2026-04-28 USER RULE: only fire if (hedge_gain + orig_gain) >= 0 — pair must be at/above breakeven combined.
-                                # Old gate fired ALTUSDT_LONG at hedge_gain=-5.37% with orig deeply negative → -5.37% standalone loss.
+                                # 2026-04-28 USER RULE: combined (hedge+orig) must clear 2× COMMISSION_BUFFER (round-trip on BOTH legs).
+                                # Closing both legs costs 2× round-trip; combined must net-positive after that.
                                 _max_age = float(getattr(config, 'HEDGE_SCALP_MAX_AGE_MIN', 5.0) or 5.0)
                                 _ruleC_req_combined = bool(getattr(config, 'HEDGE_SCALP_C_REQUIRE_COMBINED_NONNEG', True))
-                                _ruleC_combined_ok = (_combined_pnl >= 0) if _ruleC_req_combined else True
+                                _ruleC_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                                _ruleC_combined_floor = 2.0 * _ruleC_comm_buf
+                                _ruleC_combined_ok = (_combined_pnl >= _ruleC_combined_floor) if _ruleC_req_combined else True
                                 if hedge_gain < -0.3 and _age_min > _max_age and _ruleC_combined_ok:
                                     _scalp_close_fire = True
-                                    _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%_combined={_combined_pnl:.2f}%"
+                                    _scalp_reason = f"C_stuck_age={_age_min:.0f}m>{_max_age:.0f}m_h={hedge_gain:.2f}%_combined={_combined_pnl:.2f}%>={_ruleC_combined_floor:.2f}%"
                                 elif hedge_gain < -0.3 and _age_min > _max_age and _ruleC_req_combined:
-                                    logger.info(f"🛡️ [HEDGE_CLOSE_SCALP_C_BLOCKED_COMBINED] {hedge_key}: hedge={hedge_gain:.2f}% orig={_orig_gain:.2f}% combined={_combined_pnl:.2f}% < 0 — holding pair")
+                                    logger.info(f"🛡️ [HEDGE_CLOSE_SCALP_C_BLOCKED_COMMISSION] {hedge_key}: hedge={hedge_gain:.2f}% orig={_orig_gain:.2f}% combined={_combined_pnl:.2f}% < {_ruleC_combined_floor:.2f}% (2× commission) — holding pair")
                                 # Rule D — 1m WT against hedge: close immediately, no age gate
                                 if not _scalp_close_fire:
                                     _wt_bull_1m = h_ind.get('wt_bullish_1m')
@@ -6123,11 +6125,13 @@ class HedgeEngine:
                         except Exception: _h_opened_ts = 0.0
                     if _h_opened_ts > 0:
                         _h_age_h = (now_ts - _h_opened_ts) / 3600.0
-                        # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL may not close hedge at a loss. Was firing at -0.21%/-0.24% on
-                        # 994h-old hedges → 22 closes summing -10.6% today on inf.
+                        # 2026-04-28 USER RULE: HEDGE_MAX_AGE_KILL must close net-positive after fees. Was firing at
+                        # -0.21%/-0.24% on 994h-old hedges → 22 closes summing -10.6% earlier today on inf.
+                        # Floor at COMMISSION_BUFFER_PCT (0.10%) — closes below that are NET LOSS after fees.
                         _hmak_req_profit = bool(getattr(self.config, 'HEDGE_MAX_AGE_KILL_REQUIRE_PROFIT', True))
-                        if _h_age_h >= _hedge_max_age_h and ((not _hmak_req_profit) or hedge_gain >= 0):
-                            logger.critical(f"⏰ [HEDGE_MAX_AGE_KILL] {hedge_key}: open {_h_age_h:.1f}h >= {_hedge_max_age_h}h cap — CLOSING (profit-gated). gain={hedge_gain:.2f}%")
+                        _hmak_comm_buf = float(getattr(self.config, 'COMMISSION_BUFFER_PCT', 0.10))
+                        if _h_age_h >= _hedge_max_age_h and ((not _hmak_req_profit) or hedge_gain >= _hmak_comm_buf):
+                            logger.critical(f"⏰ [HEDGE_MAX_AGE_KILL] {hedge_key}: open {_h_age_h:.1f}h >= {_hedge_max_age_h}h cap — CLOSING (commission-gated, gain >= {_hmak_comm_buf:.2f}%). gain={hedge_gain:.2f}%")
                             await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=current_price, qty=hedge_amt, reason=f"HEDGE_MAX_AGE_KILL_{_h_age_h:.1f}h_g{hedge_gain:.2f}", is_hedge=True, hedge_for=original_key, data_manager=self.data_manager)
                             await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
                             if original_key:
@@ -6136,8 +6140,8 @@ class HedgeEngine:
                                 self.tracker_manager.hedge_liability_cooldowns.pop(original_key, None)
                                 self.tracker_manager.hedge_liability_cooldowns.pop(hedge_key, None)
                             continue
-                        elif _h_age_h >= _hedge_max_age_h and hedge_gain < 0:
-                            logger.info(f"🛡️ [HEDGE_MAX_AGE_KILL_BLOCKED_LOSS] {hedge_key}: age {_h_age_h:.1f}h but gain={hedge_gain:.2f}% < 0 — holding hedge until profitable or technical")
+                        elif _h_age_h >= _hedge_max_age_h and hedge_gain < _hmak_comm_buf:
+                            logger.info(f"🛡️ [HEDGE_MAX_AGE_KILL_BLOCKED_COMMISSION] {hedge_key}: age {_h_age_h:.1f}h but gain={hedge_gain:.2f}% < {_hmak_comm_buf:.2f}% commission floor — holding")
                 # ═══ HEDGE KILL: LOSING-POSITION WT_3M RECOVERS → KILL HEDGE IMMEDIATELY ═══
                 # USER RULE 2026-04-15: A hedge dies the moment the LOSING position it protects starts to recover.
                 # Recovery = wt1_3m crossing in favor of the losing position's own direction (NOT hedge symbol).
@@ -13489,11 +13493,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         _htf_veto_active = _hv_aligned >= int(getattr(config, 'HTF_EXIT_VETO_MIN_ALIGNED', 2))
                 if not hard_exit_reason and not is_hedge:
                     _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
-                    # 2026-04-28 USER RULE: BREAKEVEN_GAIN_EROSION may NOT close at a loss. Only fires when current_gain >= 0.
-                    # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% today.
+                    # 2026-04-28 USER RULE: commission-aware. Close must net positive after fees+slippage.
+                    # Old gate `current_gain < 0.02` allowed close at -8.12% (API3) — 92 closes summing -45.5% earlier today.
+                    # Floor lifted to COMMISSION_BUFFER_PCT (0.10%) so a "near-breakeven" close is ACTUALLY breakeven post-fees.
                     _be_req_profit = bool(getattr(config, 'BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT', True))
-                    _be_min_gain = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', 0.0))
-                    _be_window = (_be_min_gain <= current_gain < 0.02) if _be_req_profit else (current_gain < 0.02)
+                    _be_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                    _be_min_gain = float(getattr(config, 'BREAKEVEN_GAIN_EROSION_MIN_GAIN', _be_comm_buf))
+                    _be_upper = max(_be_min_gain + 0.5, 0.02)  # window must be non-empty
+                    _be_window = (_be_min_gain <= current_gain < _be_upper) if _be_req_profit else (current_gain < 0.02)
                     if _pos_age_min >= _be_grace and _be_window:
                         _hbf_enabled = bool(getattr(config, 'HARD_BREAKEVEN_FLOOR_ENABLED', True))
                         _hbf_min_peak = float(getattr(config, 'HARD_BREAKEVEN_MIN_PEAK_PCT', 0.5))

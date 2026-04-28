@@ -11518,11 +11518,23 @@ class TradierTradeManager:
             if price <= 0: continue
             extras = self._get_extras(sym)
             signal = data.get('smfi_signal') or extras.get('smfi_signal', 'NEUTRAL')
+            smfi_max_hold = getattr(config, 'SMFI_MAX_HOLD_DAYS', 7)
             if signal == 'LONG' and smfi_long_count < max_per_side and long_pct < 0.67:
                 pk = f"{account_key}:{sym}_LONG"
                 pos = positions.get(pk)
                 has_pos = pos and abs(float(getattr(pos, 'positionAmt', 0))) > 0
-                if has_pos: continue
+                if has_pos:
+                    if 'SMFI' in str(getattr(pos, 'augment_reason', '')):
+                        opened_at = getattr(pos, 'opened_at', None)
+                        if opened_at:
+                            ots = opened_at.timestamp() if hasattr(opened_at, 'timestamp') else float(opened_at) if isinstance(opened_at, (int, float)) else time.time()
+                            age_days = (time.time() - ots) / 86400.0
+                            entry_p = float(getattr(pos, 'entry_price', 0) or 0)
+                            gain = (price - entry_p) / entry_p * 100 if entry_p > 0 else 0
+                            if age_days >= smfi_max_hold and gain > 0:
+                                logger.info(f"[{account_key}] [SMFI] MAX_HOLD EXIT LONG {sym}: age={age_days:.1f}d gain={gain:.1f}%")
+                                await queue_trade_action(self.order_queue, self, pk, "CLOSE", f"SMFI_MAX_HOLD_{age_days:.0f}d gain={gain:.1f}%", 82.0)
+                    continue
                 if not self.is_symbol_tradeable(sym, account_key, 'LONG'): continue
                 qty = max(1, int(smfi_size / price))
                 if _smfi_long_budget > 0:
@@ -11646,12 +11658,20 @@ class TradierTradeManager:
             has_long = pos_long and abs(float(getattr(pos_long, 'positionAmt', 0))) > 0
             # Exit check for existing CRSI positions
             if has_long and 'CONNORS' in str(getattr(pos_long, 'augment_reason', '')):
-                if crsi > exit_thresh:
-                    entry_p = float(getattr(pos_long, 'entry_price', 0) or 0)
-                    gain = (price - entry_p) / entry_p * 100 if entry_p > 0 else 0
-                    if gain > 0:
-                        logger.info(f"[{account_key}] [CONNORS_RSI] EXIT LONG {sym}: CRSI={crsi:.0f} > {exit_thresh} gain={gain:.1f}%")
-                        await queue_trade_action(self.order_queue, self, pk_long, "CLOSE", f"CONNORS_EXIT crsi={crsi:.0f}", 85.0)
+                entry_p = float(getattr(pos_long, 'entry_price', 0) or 0)
+                gain = (price - entry_p) / entry_p * 100 if entry_p > 0 else 0
+                opened_at = getattr(pos_long, 'opened_at', None)
+                age_days = 0.0
+                if opened_at:
+                    ots = opened_at.timestamp() if hasattr(opened_at, 'timestamp') else float(opened_at) if isinstance(opened_at, (int, float)) else time.time()
+                    age_days = (time.time() - ots) / 86400.0
+                max_hold = getattr(config, 'CONNORS_RSI_MAX_HOLD_DAYS', 5)
+                if crsi > exit_thresh and gain > 0:
+                    logger.info(f"[{account_key}] [CONNORS_RSI] EXIT LONG {sym}: CRSI={crsi:.0f} > {exit_thresh} gain={gain:.1f}%")
+                    await queue_trade_action(self.order_queue, self, pk_long, "CLOSE", f"CONNORS_EXIT crsi={crsi:.0f}", 85.0)
+                elif age_days >= max_hold and gain > 0:
+                    logger.info(f"[{account_key}] [CONNORS_RSI] MAX_HOLD EXIT LONG {sym}: age={age_days:.1f}d gain={gain:.1f}%")
+                    await queue_trade_action(self.order_queue, self, pk_long, "CLOSE", f"CONNORS_MAX_HOLD_{age_days:.0f}d gain={gain:.1f}%", 82.0)
                 continue
             # Entry: CRSI < threshold + price > SMA200
             if signal == 'LONG' or crsi < entry_thresh:
@@ -11816,6 +11836,24 @@ class TradierTradeManager:
             logger.debug(f"[{account_key}] [ROTATION] Not enough symbols with daily data ({len(scored)})")
             return
         scored.sort(key=lambda x: x['return_nd'], reverse=True)
+        # Antonacci absolute-momentum filter: block new longs when SPY 12-month return < 0
+        # (bear-market protection — avoids long exposure during sustained downtrends)
+        _abs_mom_enabled = getattr(config, 'ROTATION_ANTONACCI_ABS_MOM_ENABLED', True)
+        _abs_mom_block_longs = False
+        if _abs_mom_enabled:
+            try:
+                spy_path = config.KLINES_CACHE_DIR / "SPY_D.json"
+                if spy_path.exists():
+                    _spy_raw = json.loads(spy_path.read_text())
+                    _spy_bars = _spy_raw if isinstance(_spy_raw, list) else _spy_raw.get('bars', [])
+                    _spy_closes = [float(b.get('close') or b.get('c') or 0) for b in _spy_bars if float(b.get('close') or b.get('c') or 0) > 0]
+                    if len(_spy_closes) >= 252:
+                        _spy_12m_ret = (_spy_closes[-1] - _spy_closes[-252]) / _spy_closes[-252]
+                        if _spy_12m_ret < 0:
+                            _abs_mom_block_longs = True
+                            logger.info(f"[{account_key}] [ROTATION] Antonacci: SPY 12m={_spy_12m_ret:.1%} < 0 → blocking new longs")
+            except Exception:
+                pass
         top_n = getattr(config, 'ROTATION_TOP_N', 5)
         bottom_n = getattr(config, 'ROTATION_BOTTOM_N', 3)
         winners = scored[:top_n]
@@ -11843,6 +11881,9 @@ class TradierTradeManager:
                         else:
                             logger.info(f"[{account_key}] [ROTATION] REBALANCE EXIT {sym}: held {age_days:.1f} days >= {hold_days} gain={_rot_gain:.2f}%")
                             await queue_trade_action(self.order_queue, self, pk, "CLOSE", f"ROTATION_REBALANCE_{age_days:.0f}d gain={_rot_gain:.2f}%", 80.0)
+                continue
+            if _abs_mom_block_longs:
+                logger.debug(f"[{account_key}] [ROTATION] Skip LONG {sym}: Antonacci abs-mom bear regime")
                 continue
             if long_pct > 0.67:
                 logger.debug(f"[{account_key}] [ROTATION] Skip LONG {sym}: L/S ratio too high ({long_pct:.2f})")
