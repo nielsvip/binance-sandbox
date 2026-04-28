@@ -418,7 +418,10 @@ class QuickConfig:
     MIN_HOLD_MINUTES_TRADIER: float = 30.0
     MIN_PERC_FROM_SMA_1: float = 0.01
     MIN_PERC_FROM_SMA_15: float = 0.03
+    MI_ENTRY_ENABLED: bool = False
     MI_ENTRY_ENABLED_TRADIER: bool = False
+    MI_ENTRY_STRUCT_BONUS: int = 10
+    MI_ENTRY_EXHAUST_BONUS: int = 8
     MI_EXIT_ENABLED_TRADIER: bool = True
     MOM3_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven
     MOM3_LONG_THRESHOLD: float = -1.0
@@ -503,6 +506,16 @@ class QuickConfig:
     SATOSHIT_SHORT_STOCH_K_MIN_TRADIER: float = 50.0
     SMA200_DIST_LONG_THRESHOLD: float = -3.0
     SQUEEZE_ENABLED: bool = False
+    STDEV_BREAKOUT_ENABLED: bool = False
+    STDEV_BREAKOUT_PCTB_LONG: float = 1.125
+    STDEV_BREAKOUT_PCTB_SHORT: float = -0.125
+    STDEV_BREAKOUT_HTF_LIST: list = None
+    STDEV_BREAKOUT_RVOL_MIN: float = 1.2
+    HLR_RALLY_ENABLED: bool = True
+    HLR_PTS_1H: int = 40
+    HLR_PTS_4H: int = 60
+    HLR_SMA_BAND_PCT: float = 0.03
+    HLR_OFF_SMA_PTS_FRAC: float = 0.5
     STOCH_CROSS_3M_EXIT_ENABLED: bool = False
     STOCH_CROSS_ENTRY_TRADIER: bool = False
     TF_ALIGNMENT_MIN_LONG: int = 2
@@ -1910,6 +1923,57 @@ def compute_entry_signals(npz, n, is_long, cfg):
             else:
                 _sb_hit = (_sb_fire == -1) & (~_sb_bull)
             score = score + _sb_hit.astype(np.float32) * _sb_bonus
+        # MI_ENTRY score bonuses (2026-04-28): HL structure bonus + opposing divergence bonus.
+        # Proxy for live MI signals using NPZ-available fields.
+        if bool(getattr(cfg, 'MI_ENTRY_ENABLED', False)):
+            _mi_struct_pts = float(getattr(cfg, 'MI_ENTRY_STRUCT_BONUS', 10))
+            _mi_exhaust_pts = float(getattr(cfg, 'MI_ENTRY_EXHAUST_BONUS', 8))
+            _low_1h = _safe(npz, 'low_1h', n, 0.0)
+            _low_1h_prev = _safe(npz, 'low_1h_prev', n, 0.0)
+            _high_1h = _safe(npz, 'high_1h', n, 0.0)
+            _high_1h_prev = _safe(npz, 'high_1h_prev', n, 0.0)
+            _bull_div = _safeb(npz, 'wt_any_bull_div', n)
+            _bear_div = _safeb(npz, 'wt_any_bear_div', n)
+            if is_long:
+                _mi_struct = (_low_1h > 0) & (_low_1h_prev > 0) & (_low_1h > _low_1h_prev)
+                _mi_exhaust = _bear_div
+            else:
+                _mi_struct = (_high_1h > 0) & (_high_1h_prev > 0) & (_high_1h < _high_1h_prev)
+                _mi_exhaust = _bull_div
+            score = score + _mi_struct.astype(np.float32) * _mi_struct_pts
+            score = score + _mi_exhaust.astype(np.float32) * _mi_exhaust_pts
+        # HLR_RALLY score bonus (2026-04-28): higher low on 1h/4h near SMA200 = trending pullback.
+        # Score bonus per TF; near-SMA = full pts, off-SMA = HLR_OFF_SMA_PTS_FRAC * pts.
+        if bool(getattr(cfg, 'HLR_RALLY_ENABLED', True)):
+            _hlr_pts_1h = float(getattr(cfg, 'HLR_PTS_1H', 40))
+            _hlr_pts_4h = float(getattr(cfg, 'HLR_PTS_4H', 60))
+            _hlr_sma_band = float(getattr(cfg, 'HLR_SMA_BAND_PCT', 0.03))
+            _hlr_off_frac = float(getattr(cfg, 'HLR_OFF_SMA_PTS_FRAC', 0.5))
+            _sma_1h = _safe(npz, 'sma_200_1h', n, 0.0)
+            _sma_4h = _safe(npz, 'sma_200_4h', n, 0.0)
+            _l1h_hlr = _safe(npz, 'low_1h', n, 0.0)
+            _l1hp_hlr = _safe(npz, 'low_1h_prev', n, 0.0)
+            _l4h_hlr = _safe(npz, 'low_4h', n, 0.0)
+            _l4hp_hlr = _safe(npz, 'low_4h_prev', n, 0.0)
+            _h1h_hlr = _safe(npz, 'high_1h', n, 0.0)
+            _h1hp_hlr = _safe(npz, 'high_1h_prev', n, 0.0)
+            _h4h_hlr = _safe(npz, 'high_4h', n, 0.0)
+            _h4hp_hlr = _safe(npz, 'high_4h_prev', n, 0.0)
+            close_hlr = _safe(npz, 'close_15m', n, 0.0)
+            if is_long:
+                _hl_1h = (_l1h_hlr > 0) & (_l1hp_hlr > 0) & (_l1h_hlr > _l1hp_hlr)
+                _hl_4h = (_l4h_hlr > 0) & (_l4hp_hlr > 0) & (_l4h_hlr > _l4hp_hlr)
+                _near_1h = (_sma_1h > 0) & (np.abs(close_hlr - _sma_1h) / np.where(_sma_1h > 0, _sma_1h, 1) <= _hlr_sma_band)
+                _near_4h = (_sma_4h > 0) & (np.abs(close_hlr - _sma_4h) / np.where(_sma_4h > 0, _sma_4h, 1) <= _hlr_sma_band)
+            else:
+                _hl_1h = (_h1h_hlr > 0) & (_h1hp_hlr > 0) & (_h1h_hlr < _h1hp_hlr)
+                _hl_4h = (_h4h_hlr > 0) & (_h4hp_hlr > 0) & (_h4h_hlr < _h4hp_hlr)
+                _near_1h = (_sma_1h > 0) & (np.abs(close_hlr - _sma_1h) / np.where(_sma_1h > 0, _sma_1h, 1) <= _hlr_sma_band)
+                _near_4h = (_sma_4h > 0) & (np.abs(close_hlr - _sma_4h) / np.where(_sma_4h > 0, _sma_4h, 1) <= _hlr_sma_band)
+            _pts_1h = np.where(_near_1h, _hlr_pts_1h, _hlr_pts_1h * _hlr_off_frac)
+            _pts_4h = np.where(_near_4h, _hlr_pts_4h, _hlr_pts_4h * _hlr_off_frac)
+            score = score + (_hl_1h.astype(np.float32) * _pts_1h.astype(np.float32))
+            score = score + (_hl_4h.astype(np.float32) * _pts_4h.astype(np.float32))
         raw = raw & (score >= cfg.STRENGTH_MIN_SCORE)
         # ENTRY_SCORE_THRESHOLD — second score floor swept independently.
         # DELTA_ENTRY_ENABLED proxy: live delta_tracker fires on velocity zone transitions,
@@ -2266,6 +2330,30 @@ def compute_entry_signals(npz, n, is_long, cfg):
                 _confirm = np.ones(n, dtype=bool) if not _lh_req_both else (_hh_count >= _lh_tf_req)
                 _lh_block = _primary & _confirm
             base_sig = base_sig & ~_lh_block
+        except Exception:
+            pass
+    # STDEV_BREAKOUT_ENABLED (2026-04-28): BB %B breakout above 2.5σ (LONG) / below (SHORT) on HTFs.
+    # Acts as additive entry OR—fires new entries on statistically extreme breakouts with volume.
+    # No cooldown in vectorized engine (approximation; live has 600s cooldown).
+    if bool(getattr(cfg, 'STDEV_BREAKOUT_ENABLED', False)):
+        try:
+            _sb_pctb_long = float(getattr(cfg, 'STDEV_BREAKOUT_PCTB_LONG', 1.125))
+            _sb_pctb_short = float(getattr(cfg, 'STDEV_BREAKOUT_PCTB_SHORT', -0.125))
+            _sb_rvol_min = float(getattr(cfg, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+            _sb_htf_list = list(getattr(cfg, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+            _stdev_sig = np.zeros(n, dtype=bool)
+            for _htf in _sb_htf_list:
+                _pctb = _safe(npz, f'bb_pct_b_{_htf}', n, 0.5)
+                _rvol = _safe(npz, f'relative_volume_{_htf}', n, 1.0)
+                _rvol_ok = _rvol >= _sb_rvol_min
+                if is_long:
+                    _stdev_sig = _stdev_sig | ((_pctb > _sb_pctb_long) & _rvol_ok)
+                else:
+                    _stdev_sig = _stdev_sig | ((_pctb < _sb_pctb_short) & _rvol_ok)
+            if getattr(cfg, 'DELTA_GATE_STDEV_BREAKOUT', True):
+                _delta_ok = wt_vel_1h > 0 if is_long else wt_vel_1h < 0
+                _stdev_sig = _stdev_sig & _delta_ok
+            base_sig = base_sig | _stdev_sig
         except Exception:
             pass
     # LEGACY RZ_BREAKOUT_ENTRY (kept for sweep-compat, default OFF). Do not enable alongside RZ_CASCADE.
