@@ -146,23 +146,26 @@ def fabricate_5m_from_15m(open_15m, high_15m, low_15m, close_15m, vol_15m):
     return o5, h5, l5, c5, v5
 
 
-def patch_one_npz(path: Path, mode: str) -> dict:
-    """Returns dict of fields added."""
+def patch_one_npz(path: Path, mode: str, skip_5m: bool = True) -> dict:
+    """Returns dict of fields added.
+    skip_5m=True (DEFAULT) — skip approximate 5m fabrication. Engine has zero-fill defaults.
+    skip_5m=False — fabricate 5m from 15m linearly (slow + approximate, NOT accurate)."""
     z = dict(np.load(str(path), allow_pickle=True))
     added = {}
 
-    # 1. lr_trend_1h
+    # 1. lr_trend_1h — accurate, computed from real close_1h
     if 'lr_trend_1h' not in z and 'close_1h' in z:
         z['lr_trend_1h'] = _rolling_linreg_slope(np.asarray(z['close_1h'], dtype=np.float64), 50)
         added['lr_trend_1h'] = z['lr_trend_1h'].shape
 
-    # 2. volume_sma_1h
+    # 2. volume_sma_1h — accurate, computed from real volume_1h
     if 'volume_sma_1h' not in z and 'volume_1h' in z:
         z['volume_sma_1h'] = _rolling_sma(np.asarray(z['volume_1h'], dtype=np.float64), 20)
         added['volume_sma_1h'] = z['volume_sma_1h'].shape
 
     # 3-9. 5m fields (crypto only — tradier already has 5m TF natively)
-    if mode == 'crypto' and 'close_15m' in z and 'close_5m' not in z:
+    # SKIPPED by default — fabrication from 15m is approximate. Engine zero-fills neutral defaults.
+    if not skip_5m and mode == 'crypto' and 'close_15m' in z and 'close_5m' not in z:
         try:
             n_total = len(z['close_3m']) if 'close_3m' in z else len(z['close_15m']) * 5
             o15 = np.asarray(z.get('open_15m', z['close_15m']), dtype=np.float64)
