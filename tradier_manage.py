@@ -5688,6 +5688,28 @@ class StockStrategy:
                             if qty > 0:
                                 self._wt_d_aug_state[symbol] = {**self._wt_d_aug_state.get(symbol, {}), 'prev_wt1_d': wt1_d, 'last_aug_wt1_d': wt1_d, 'last_aug_price': current_price, 'last_aug_ts': time.time(), 'dd_qty': qty}
                                 return True, f"WT_D_BOUNCE_AUG wt1_D={wt1_d:.2f}>prev={prev_wt1_d:.2f} px={current_price:.2f}>prev_aug={last_aug_price:.2f} gain={gain:.2f}% mult={mult:.1f}x", 75.0, qty
+            # 2026-04-28 PATH B (B4): TRAILING_AUG — compound winners with stepped augments at small gains.
+            # Investigation showed evaluate_augment had 0 fires on tradier vs 17,449 on crypto because
+            # MIN_GAIN_TO_BUY_AGGRESSIVELY=3% was too high for typical stock moves. New path fires every
+            # +0.5% gain (configurable), capped at N augments per position. Compounds without breakout.
+            if getattr(config, 'TRAILING_AUG_ENABLED_TRADIER', False) and gain > 0:
+                _ta_step_pct = float(getattr(config, 'TRAILING_AUG_GAIN_STEP_PCT', 0.5))
+                _ta_max_augs = int(getattr(config, 'TRAILING_AUG_MAX_PER_POSITION', 3))
+                _ta_min_step = float(getattr(config, 'TRAILING_AUG_MIN_GAIN_PCT', 0.5))
+                if not hasattr(self, '_trailing_aug_state'): self._trailing_aug_state = {}
+                _ta_pk = f"{getattr(self, 'account_key', symbol)}:{symbol}_{'LONG' if is_long else 'SHORT'}"
+                _ta_state = self._trailing_aug_state.get(_ta_pk, {'last_threshold': 0.0, 'aug_count': 0})
+                _ta_next_threshold = max(_ta_min_step, _ta_state['last_threshold'] + _ta_step_pct)
+                if gain >= _ta_next_threshold and _ta_state['aug_count'] < _ta_max_augs:
+                    _ta_max_val = getattr(config, 'MAX_SYMBOL_VALUE_TRADIER', 15000)
+                    if current_value < _ta_max_val * 0.95:
+                        _ta_aug_qty_raw = float(getattr(config, 'START_POSITION_SIZE', 100)) / max(current_price, 0.01)
+                        if _ta_aug_qty_raw >= 0.5:
+                            direction = "LONG" if is_long else "SHORT"
+                            qty = await self.calculate_quantity_complex(symbol, "AUGMENT", direction, _ta_aug_qty_raw, indicators, position, market_context)
+                            if qty > 0:
+                                self._trailing_aug_state[_ta_pk] = {'last_threshold': _ta_next_threshold, 'aug_count': _ta_state['aug_count'] + 1}
+                                return True, f"TRAILING_AUG_step{_ta_next_threshold:.2f}%_g{gain:.2f}%_count{_ta_state['aug_count']+1}/{_ta_max_augs}", 80.0, qty
             # MUST be in profit before augmenting — 3% gate matches crypto (MIN_GAIN)
             # 2026-04-28: if PPL has fired, effective gain is doubled.
             try:

@@ -96,7 +96,7 @@ class TradierConfig:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # 2026-04-27 TIGHTENED per user "TAKE IT FUCKING EASY" — engine boost was amplifying marginal entries (PLTR-into-uptrend pattern)
+    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-28 PATH A: re-enabled. Backtest 12sym×6mo showed 55+engine_on = sharpe 0.874 vs 75+engine_off = 0.354. HTF gate + NOLOSS gate protect against PLTR-pattern bleed.
     WT_DC_HTF_GATE: str = "4h"                      # 2026-04-27 NEW — block WT_DC entry when 4h is against. Closes the gap that DELTA_HTF_GATE had. Values: 'none' / '4h' / '4h_D'
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
@@ -1055,7 +1055,7 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 75  # 2026-04-27 TIGHTENED: was 55. Per user "TAKE IT EASY". Old comment claimed 75 fires 0 trades on the OLD eng/data; with current ABSOLUTE_OPEN_LOCK + NO_DOUBLE_OPEN guard + WT_DC_HTF_GATE, 75 is the right level for high-quality only.
+    WT_DC_ENTRY_THRESHOLD: float = 55  # 2026-04-28 PATH A LOOSENED: 75 produced 12 trades/6mo (system frozen). 55 + engine_on tested = 21 trades / sharpe 0.874 / +0.05% pnl. HTF gate + NOLOSS gate still protect quality.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage
@@ -1469,6 +1469,14 @@ class TradierConfig:
     ATR_ADAPTIVE_STOP_TF: str = '1h'
     ATR_LONG_WINDOW = 100
     AUGMENT_BLOWPAST_ENABLED: bool = True  # gain >= 3×MIN_GAIN, conviction 90. Highest conviction.
+    # 2026-04-28 PATH B (B4) — TRAILING augment for compound gains. Crypto fired 17,449 augments, tradier 0
+    # because MIN_GAIN_TO_BUY_AGGRESSIVELY=3% rarely hit on stocks. New path fires every TRAILING_AUG_GAIN_STEP_PCT
+    # of gain (default 0.5%), capped at TRAILING_AUG_MAX_PER_POSITION (default 3) augments per position.
+    # Default DISABLED in live until backtest validates. Override flag in sweep tests.
+    TRAILING_AUG_ENABLED_TRADIER: bool = False
+    TRAILING_AUG_GAIN_STEP_PCT: float = 0.5
+    TRAILING_AUG_MAX_PER_POSITION: int = 3
+    TRAILING_AUG_MIN_GAIN_PCT: float = 0.5
     AUGMENT_HTF_TREND_ENABLED: bool = True  # HTF trend only, conviction 65. Most frequent.
     AUGMENT_PYRAMID_ENABLED: bool = True  # Re-enabled — pyramid must always run, sizing handles risk ; DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     AUGMENT_WT_3TF_ENABLED: bool = True  # 3/3 LTF aligned + smaller gain, conviction 70.

@@ -430,6 +430,119 @@ def trade_snapshot():
     return jsonify(out)
 
 
+@app.route("/run_diff")
+def run_diff():
+    """Match trades across two runs by entry_ts proximity + side. Returns unique/shared splits.
+
+    Query: ?run_a=X&run_b=Y&sym=Z[&match_window_sec=180&match_side=true&start=&end=]
+    """
+    run_a = request.args.get("run_a", "")
+    run_b = request.args.get("run_b", "")
+    sym = request.args.get("sym", "").upper()
+    match_window = int(request.args.get("match_window_sec", 180))
+    match_side = request.args.get("match_side", "true").lower() != "false"
+    start = _ts_to_unix(request.args.get("start"))
+    end = _ts_to_unix(request.args.get("end"))
+    if not run_a or not run_b or not sym:
+        return jsonify({"error": "run_a, run_b, sym required"}), 400
+
+    def _load(run: str):
+        path = TRADES_DIR / f"{run}__{sym}.jsonl"
+        if not path.exists():
+            return []
+        out = []
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                t = json.loads(line)
+            except Exception:
+                continue
+            if start is not None and t.get("entry_ts", 0) < start: continue
+            if end is not None and t.get("exit_ts", 0) > end: continue
+            out.append(t)
+        return out
+
+    a_trades = _load(run_a)
+    b_trades = _load(run_b)
+    # Build lookup keyed by side → list of (entry_ts, idx)
+    def _index(trades):
+        idx = {"LONG": [], "SHORT": []}
+        for i, t in enumerate(trades):
+            side = t.get("side", "LONG")
+            idx.setdefault(side, []).append((int(t.get("entry_ts", 0)), i))
+        for s in idx:
+            idx[s].sort()
+        return idx
+    b_idx = _index(b_trades)
+
+    def _has_match_in_b(t):
+        side = t.get("side", "LONG") if match_side else "ANY"
+        candidates = b_idx.get(side, []) if match_side else (b_idx.get("LONG", []) + b_idx.get("SHORT", []))
+        ts = int(t.get("entry_ts", 0))
+        # Linear scan for simplicity — most lookups are O(small)
+        for bts, bi in candidates:
+            if abs(bts - ts) <= match_window:
+                return bi
+            if bts > ts + match_window:
+                break
+        return None
+
+    a_idx = _index(a_trades)
+    def _has_match_in_a(t):
+        side = t.get("side", "LONG") if match_side else "ANY"
+        candidates = a_idx.get(side, []) if match_side else (a_idx.get("LONG", []) + a_idx.get("SHORT", []))
+        ts = int(t.get("entry_ts", 0))
+        for ats, ai in candidates:
+            if abs(ats - ts) <= match_window:
+                return ai
+            if ats > ts + match_window:
+                break
+        return None
+
+    unique_a, shared_pairs = [], []
+    matched_b_indices = set()
+    for ti, t in enumerate(a_trades):
+        m = _has_match_in_b(t)
+        if m is None:
+            unique_a.append(t)
+        else:
+            shared_pairs.append({"a": t, "b": b_trades[m]})
+            matched_b_indices.add(m)
+    unique_b = [b_trades[i] for i in range(len(b_trades)) if i not in matched_b_indices]
+
+    def _stats(trades):
+        if not trades: return {"trades": 0}
+        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+        n = len(pnls)
+        wins = sum(1 for p in pnls if p > 0)
+        std = statistics.stdev(pnls) if n > 1 else 0.0
+        return {
+            "trades": n,
+            "win_rate": wins / n if n else 0.0,
+            "total_gain_pct": sum(pnls),
+            "avg_pnl_pct": sum(pnls) / n if n else 0.0,
+            "pool_sharpe_per_trade": (sum(pnls) / n) / std if std > 0 else 0.0,
+        }
+
+    return jsonify({
+        "match_window_sec": match_window,
+        "match_side": match_side,
+        "a_total": len(a_trades),
+        "b_total": len(b_trades),
+        "unique_a": unique_a,
+        "unique_b": unique_b,
+        "shared_a": [p["a"] for p in shared_pairs],
+        "shared_b": [p["b"] for p in shared_pairs],
+        "stats": {
+            "unique_a": _stats(unique_a),
+            "unique_b": _stats(unique_b),
+            "shared_a": _stats([p["a"] for p in shared_pairs]),
+            "shared_b": _stats([p["b"] for p in shared_pairs]),
+        },
+    })
+
+
 @app.route("/health")
 def health():
     return jsonify({
