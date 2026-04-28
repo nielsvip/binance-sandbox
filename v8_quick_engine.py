@@ -431,6 +431,10 @@ class QuickConfig:
     CONNORS_RSI_ENTRY_LONG_MAX: float = 15.0
     CONNORS_RSI_ENTRY_SHORT_MIN: float = 85.0
     CONNORS_RSI_GATE_ONLY: bool = False
+    EXIT_STDEV_BREAKOUT_FAIL_ENABLED: bool = False
+    EXIT_STDEV_REJECTION_HIGH: float = 1.0
+    EXIT_STDEV_REJECTION_RETURN: float = 0.85
+    EXIT_STDEV_REJECTION_TF: str = "4h"
     MOM3_ENTRY_ENABLED: bool = False  # 2026-04-16: off until proven
     MOM3_LONG_THRESHOLD: float = -1.0
     MOM3_SHORT_THRESHOLD: float = 1.0
@@ -515,7 +519,7 @@ class QuickConfig:
     SMA200_DIST_LONG_THRESHOLD: float = -3.0
     SQUEEZE_ENABLED: bool = False
     STDEV_BREAKOUT_ENABLED: bool = False
-    STDEV_BREAKOUT_PCTB_LONG: float = 1.125
+    STDEV_BREAKOUT_PCTB_LONG: float = 1.0
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125
     STDEV_BREAKOUT_HTF_LIST: list = None
     STDEV_BREAKOUT_RVOL_MIN: float = 1.2
@@ -2781,7 +2785,18 @@ def compute_exit_signals(npz, n, is_long, cfg):
             _mh_prev = np.roll(_mh, 1); _mh_prev[0] = _mh[0]
             if is_long: macd_hist_exit = (_mh_prev > 0) & (_mh <= 0)
             else: macd_hist_exit = (_mh_prev < 0) & (_mh >= 0)
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit
+    stdev_fail_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'EXIT_STDEV_BREAKOUT_FAIL_ENABLED', False):
+        _sf_tf = str(getattr(cfg, 'EXIT_STDEV_REJECTION_TF', 'D'))
+        _sf_high = float(getattr(cfg, 'EXIT_STDEV_REJECTION_HIGH', 1.0))
+        _sf_ret = float(getattr(cfg, 'EXIT_STDEV_REJECTION_RETURN', 0.85))
+        _sf_pctb = _safe(npz, f'bb_pct_b_{_sf_tf}', n, 0.5)
+        _sf_prev = np.roll(_sf_pctb, 1); _sf_prev[0] = _sf_pctb[0]
+        if is_long:
+            stdev_fail_exit = (_sf_prev >= _sf_high) & (_sf_pctb < _sf_ret)
+        else:
+            stdev_fail_exit = (_sf_prev <= (1.0 - _sf_high)) & (_sf_pctb > (1.0 - _sf_ret))
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit | stdev_fail_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:

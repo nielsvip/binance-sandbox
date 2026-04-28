@@ -343,6 +343,93 @@ def available_fields():
     return jsonify(sorted(z.files))
 
 
+SNAPSHOT_FIELDS = [
+    # OHLC
+    "open_3m", "high_3m", "low_3m", "close_3m",
+    # Stoch K/D per TF
+    "stoch_k_3m", "stoch_d_3m", "stoch_k_15m", "stoch_d_15m",
+    "stoch_k_1h", "stoch_d_1h", "stoch_k_4h", "stoch_d_4h", "stoch_k_D", "stoch_d_D",
+    # WaveTrend
+    "wt1_3m", "wt2_3m", "wt1_15m", "wt2_15m", "wt1_1h", "wt2_1h",
+    "wt1_4h", "wt2_4h", "wt1_D", "wt2_D",
+    "wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h", "wt_velocity_4h", "wt_velocity_D",
+    "wt_acceleration_3m", "wt_acceleration_15m", "wt_acceleration_1h", "wt_acceleration_4h", "wt_acceleration_D",
+    # Donchian
+    "dc_high_3m", "dc_low_3m", "dc_high_15m", "dc_low_15m",
+    "dc_high_1h", "dc_low_1h", "dc_high_4h", "dc_low_4h", "dc_high_D", "dc_low_D",
+    # EMA / SMA
+    "ema_200_3m", "ema_200_15m", "ema_200_1h", "ema_200_4h", "ema_200_D",
+    "sma_200_4h", "sma_200_D",
+    # Bollinger
+    "bb_upper_15m", "bb_lower_15m", "bb_upper_1h", "bb_lower_1h",
+    "bb_upper_4h", "bb_lower_4h", "bb_upper_D", "bb_lower_D",
+    # ATR/ADX/MFI/RSI
+    "atr_15m", "atr_1h", "atr_4h", "atr_D",
+    "adx_1h", "adx_4h",
+    "mfi_15m", "mfi_1h", "mfi_4h", "mfi_D",
+    "rsi_15m", "rsi_1h", "rsi_4h", "rsi_D",
+    # Heikin Ashi
+    "ha_3m", "ha_15m", "ha_1h", "ha_4h", "ha_D",
+    # Sentiment
+    "funding_rate_3m", "oi_3m", "oi_change_15m_3m", "oi_change_1h_3m",
+    "0market_sentiment_score", "0final_score_norm", "0sentiment_classification",
+    # Squeeze / KC
+    "squeeze_3m", "squeeze_15m", "squeeze_1h", "squeeze_4h",
+    # Divergence flags
+    "div_reg_bull_wt_15m", "div_reg_bear_wt_15m", "div_reg_bull_wt_1h", "div_reg_bear_wt_1h",
+    "div_reg_bull_wt_4h", "div_reg_bear_wt_4h",
+    "div_hid_bull_wt_15m", "div_hid_bear_wt_15m",
+]
+
+
+@app.route("/trade_snapshot")
+def trade_snapshot():
+    """Return indicator values at entry_ts and exit_ts for one trade.
+    Query: ?sym=X&entry_ts=N&exit_ts=N[&fields=a,b,c]"""
+    sym = request.args.get("sym", "").upper()
+    entry_ts = _ts_to_unix(request.args.get("entry_ts"))
+    exit_ts = _ts_to_unix(request.args.get("exit_ts"))
+    fields_raw = request.args.get("fields", "")
+    fields = [f.strip() for f in fields_raw.split(",") if f.strip()] if fields_raw else SNAPSHOT_FIELDS
+    z = _load_npz(sym)
+    if z is None:
+        return jsonify({"error": f"no NPZ for {sym}"}), 404
+    if entry_ts is None or exit_ts is None:
+        return jsonify({"error": "entry_ts and exit_ts required"}), 400
+    ts_arr = z["timestamps"] if "timestamps" in z.files else None
+    if ts_arr is None:
+        return jsonify({"error": "no timestamps"}), 500
+    n = len(ts_arr)
+    en_idx = int(np.searchsorted(ts_arr, entry_ts))
+    ex_idx = int(np.searchsorted(ts_arr, exit_ts))
+    en_idx = max(0, min(en_idx, n - 1))
+    ex_idx = max(0, min(ex_idx, n - 1))
+    out = {"entry": {"ts": int(ts_arr[en_idx]), "bar": en_idx, "values": {}},
+           "exit":  {"ts": int(ts_arr[ex_idx]), "bar": ex_idx, "values": {}},
+           "missing": []}
+    for f in fields:
+        if f not in z.files:
+            out["missing"].append(f)
+            continue
+        arr = z[f]
+        if len(arr) <= max(en_idx, ex_idx):
+            out["missing"].append(f)
+            continue
+        try:
+            ev = arr[en_idx]
+            xv = arr[ex_idx]
+            # Convert numpy scalars to native python (and handle non-finite)
+            ev = ev.item() if hasattr(ev, "item") else ev
+            xv = xv.item() if hasattr(xv, "item") else xv
+            if isinstance(ev, float) and not np.isfinite(ev): ev = None
+            if isinstance(xv, float) and not np.isfinite(xv): xv = None
+            out["entry"]["values"][f] = ev
+            out["exit"]["values"][f] = xv
+        except Exception:
+            out["missing"].append(f)
+    return jsonify(out)
+
+
 @app.route("/health")
 def health():
     return jsonify({

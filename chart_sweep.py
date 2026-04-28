@@ -93,7 +93,7 @@ def run_one(override_path: Path, symbols: list, out_dir: str, extra_overrides: d
             results[sym] = stats
             jsonl = Path(out_dir) / f"{run_id}__{sym}.jsonl"
             n_trades = sum(1 for _ in open(jsonl)) if jsonl.exists() else 0
-            print(f"  [{run_id}] {sym:>10s}  sharpe={stats['sharpe']:+.3f}  trades={stats['trades']:>6d}  wr={stats['wr']*100:>4.1f}%  Σ={stats['acc_gain_pct']:>8.1f}%  dd={stats['max_dd_pct']:>5.1f}%  ({elapsed:>4.1f}s, {n_trades} recorded)", flush=True)
+            print(f"  [{run_id}] {sym:>10s}  sharpe={stats['sharpe']:+.3f}  trades={stats['trades']:>6d}  wr={stats['wr']:>5.1f}%  Σ={stats['acc_gain_pct']:>8.1f}%  dd={stats['max_dd_pct']:>5.1f}%  ({elapsed:>4.1f}s, {n_trades} recorded)", flush=True)
         except Exception as e:
             print(f"  [{run_id}] {sym}: ERROR {e}", flush=True)
             results[sym] = {"error": str(e)}
@@ -173,7 +173,7 @@ def main():
             if "error" in s:
                 print(f"{run_id:<26s} {sym:<11s} ERROR: {s['error']}")
             else:
-                print(f"{run_id:<26s} {sym:<11s} {s['sharpe']:>+7.3f} {s['trades']:>7d} {s['wr']*100:>4.1f}% {s['acc_gain_pct']:>+8.1f}% {s['max_dd_pct']:>5.1f}%")
+                print(f"{run_id:<26s} {sym:<11s} {s['sharpe']:>+7.3f} {s['trades']:>7d} {s['wr']:>5.1f}% {s['acc_gain_pct']:>+8.1f}% {s['max_dd_pct']:>5.1f}%")
     print(f"\nView at http://127.0.0.1:5077/  (refresh the run list)")
 
 
