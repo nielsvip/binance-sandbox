@@ -664,6 +664,8 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup; price-cross fires often
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
+    EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0  # skip exits older than this — stale levels don't matter
+    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20  # cap per 5s tick to prevent queue overload
     # 2026-04-27 — hedge_decisions.should_close_hedge_wt3m1h now configurable via HEDGE_CLOSE_MODE.
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})

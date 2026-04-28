@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 02:47:31 UTC
+# Copilot Status — 2026-04-28 03:02:54 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-28T02:43:54
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T02:44:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T02:44:55
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T02:44:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-28T02:44:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-28T02:45:57
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T02:46:58
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T02:46:58
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T02:46:58
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-28T02:47:00
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-28T02:59:37
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-28T03:00:39
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-28T03:00:39
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T03:01:40
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T03:01:40
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T03:01:40
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-28T03:01:41
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-28T03:01:41
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-28T03:02:43
+- **RATIO_IMBALANCE** [crypto] fin — 2026-04-28T03:02:43
 
 ## Missed Trades (trader comparison)
 
@@ -27,16 +27,14 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 2 | **Watching for reentry:** 5 | **Reentered:** 0
+**Held:** 1 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **AXSUSDT** LONG (crypto) peak +3.7%, now +-0.5%
-- HELD: **AXSUSDT** SHORT (crypto) peak +3.1%, now +3.1%
+- HELD: **AIAUSDT** LONG (crypto) peak +8.9%, now +8.9%
 
 - WATCHING: **IBIT** LONG (tradier) peaked +9.6%, exited 0m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **GALAUSDT** LONG (crypto) peaked +3.8%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
 
 ## Supervisor
 

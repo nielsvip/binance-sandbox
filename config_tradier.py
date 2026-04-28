@@ -1438,6 +1438,8 @@ class TradierConfig:
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
+    EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
+    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions
     ABLATION_DISABLE_SPIKE_FADE_EXIT: bool = False  # Disable spike fade 1m exit monitor
     ADAPTIVE_REGIME_DC_BREAKDOWN_THRESHOLD: float = 0.1  # dc_position < this = breakout DOWN ; DEAD_CONFIRMED (priority 65/100) — no plausible wiring site found 20260416
