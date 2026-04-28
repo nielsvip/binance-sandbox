@@ -12988,6 +12988,38 @@ class MultiAccountTradeManager:
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
+        # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN
+        # NOT AUGMENT REOPEN HEDGE REENTER WHATEVER THE FUCK if positionAmt > 0".
+        # Live evidence 2026-04-27: ADAUSDT_SHORT got 13× SELL augments over 5h while
+        # holding gain=-0.95% (well below MIN_GAIN=3.0). Every prior gate had a bypass
+        # that let this through. THIS gate is unconditional, top-of-execute_now, no
+        # exemptions: if THIS position_key already has positionAmt>0 AND gain<MIN_GAIN
+        # AND the action increases position size, BLOCK. Hedges open OTHER position_keys
+        # (e.g. ADAUSDT_LONG hedging ADAUSDT_SHORT) so legitimate hedge entries still
+        # pass — they target a different key whose positionAmt is 0 (or own gain ≥ MIN_GAIN).
+        # ═══════════════════════════════════════════════════════════════════════════
+        _lpb_act_up = (action or '').upper()
+        _lpb_is_increase = (
+            ('OPEN' in _lpb_act_up or 'AUGMENT' in _lpb_act_up or 'REENTRY' in _lpb_act_up
+             or 'ENTRY' in _lpb_act_up or 'HEDGE_OPEN' in _lpb_act_up or 'HEDGE_AUGMENT' in _lpb_act_up
+             or 'REVERSE' in _lpb_act_up)
+            and 'CLOSE' not in _lpb_act_up and 'REDUCE' not in _lpb_act_up and 'KILL' not in _lpb_act_up
+        )
+        if _lpb_is_increase and position_key and account_key:
+            try:
+                _lpb_pos = self.positions_by_account.get(account_key, {}).get(position_key)
+                if _lpb_pos:
+                    _lpb_amt = abs(safe_fetch_float(getattr(_lpb_pos, 'positionAmt', 0), 0))
+                    _lpb_gain = safe_fetch_float(getattr(_lpb_pos, 'gain', 0), 0)
+                    _lpb_min = float(getattr(config, 'MIN_GAIN', 3.0))
+                    if _lpb_amt > 0 and _lpb_gain < _lpb_min:
+                        logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain:.2f}% < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
+                        return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
+            except Exception as _lpb_e:
+                logger.debug(f"[LOSING_POSITION_HARD_BLOCK] {position_key}: check err {type(_lpb_e).__name__}: {_lpb_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🔒🔒🔒 ABSOLUTE OPEN LOCK (2026-04-17) — TOP OF execute_now, NO BYPASS 🔒🔒🔒
         # Unconditional 60s rate limit on OPEN/AUGMENT/HEDGE/ENTRY per position_key.
         # Cannot be disabled by config. Cannot be exempted by reason, action, is_hedge.

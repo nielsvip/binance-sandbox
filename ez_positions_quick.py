@@ -11377,6 +11377,36 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if account_key not in trade_manager.accounts:
         return False, f"IGNORED: Account {account_key} not loaded in TradeManager."
     # ═══════════════════════════════════════════════════════════════════════════
+    # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
+    # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN NOT
+    # AUGMENT REOPEN HEDGE REENTER WHATEVER if positionAmt > 0".
+    # Live evidence: ADAUSDT_SHORT got 13× SELL augments while at -0.95% gain (well
+    # below MIN_GAIN=3.0). Mirrored at the wrapper too so hedge_engine, ratio_rebalance,
+    # process_position, scan callers, etc. all hit it before reaching execute_now.
+    # Hedges open OTHER position_keys (e.g. ADAUSDT_LONG hedging ADAUSDT_SHORT) so
+    # those still pass — the gate is per-position-key only.
+    # ═══════════════════════════════════════════════════════════════════════════
+    _wrap_act_up = (action or '').upper()
+    _wrap_is_increase = (
+        ('OPEN' in _wrap_act_up or 'AUGMENT' in _wrap_act_up or 'REENTRY' in _wrap_act_up
+         or 'ENTRY' in _wrap_act_up or 'HEDGE_OPEN' in _wrap_act_up or 'HEDGE_AUGMENT' in _wrap_act_up
+         or 'REVERSE' in _wrap_act_up)
+        and 'CLOSE' not in _wrap_act_up and 'REDUCE' not in _wrap_act_up and 'KILL' not in _wrap_act_up
+    )
+    if _wrap_is_increase and position_key:
+        try:
+            _wrap_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key)
+            if _wrap_pos:
+                _wrap_amt = abs(safe_fetch_float(getattr(_wrap_pos, 'positionAmt', 0), 0))
+                _wrap_gain = safe_fetch_float(getattr(_wrap_pos, 'gain', 0), 0)
+                _wrap_min = float(getattr(config, 'MIN_GAIN', 3.0))
+                if _wrap_amt > 0 and _wrap_gain < _wrap_min:
+                    logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK_WRAPPER] {position_key}: amt={_wrap_amt:.4f} gain={_wrap_gain:.2f}% < MIN_GAIN={_wrap_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
+                    return False, f"BLOCKED_LOSING_POSITION_GAIN{_wrap_gain:.2f}_LT_MIN{_wrap_min:.2f}"
+        except Exception as _wrap_e:
+            logger.debug(f"[LOSING_POSITION_HARD_BLOCK_WRAPPER] {position_key}: check err {type(_wrap_e).__name__}: {_wrap_e}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════════════
     # IRON GATE: Symbol MUST exist in symbols.json. NO EXCEPTIONS. NO BYPASS.
     # If it's not in the master symbol list, it does NOT exist. Period.
     # Added 2026-03-28 after TAUSDT hedge loss — symbol was never in symbols.json.
