@@ -208,40 +208,55 @@ def patch_one_npz(path: Path, mode: str) -> dict:
 
 
 def inject_sentiment_pass(npz_dir: Path):
-    """Cross-sym pass: compute market_sentiment_score from wt_composite_bias across all syms."""
+    """Cross-sym pass: compute market_sentiment_score from wt_composite_bias across all syms.
+    STREAMING — load only timestamps+bias per sym (small), accumulate globally, then second pass writes."""
     from collections import defaultdict
-    files = list(npz_dir.glob("*.npz"))
-    sym_data = {}
+    files = sorted(npz_dir.glob("*.npz"))
+    print(f"  [sentiment] pass 1: scan {len(files)} files for ts+bias...")
+    ts_bull = defaultdict(int); ts_bear = defaultdict(int); ts_total = defaultdict(int)
+    sym_ts = {}  # sym -> ts array (small int64 array, ~kb)
+    valid = 0
     for p in files:
         try:
-            z = dict(np.load(str(p), allow_pickle=True))
-            ts = z.get('timestamps')
-            bias = z.get('wt_composite_bias')
-            if ts is None or bias is None or len(ts) != len(bias):
-                continue
-            sym_data[p.stem] = (ts.astype(np.int64), bias.astype(np.int8), z, p)
+            with np.load(str(p), allow_pickle=True) as z:
+                if 'timestamps' not in z.files or 'wt_composite_bias' not in z.files:
+                    continue
+                ts = z['timestamps'].astype(np.int64)
+                bias = z['wt_composite_bias'].astype(np.int8)
+                if len(ts) != len(bias):
+                    continue
+                sym_ts[p.stem] = ts.copy()
+                # Vectorized accumulation
+                for t, b in zip(ts.tolist(), bias.tolist()):
+                    ts_total[t] += 1
+                    if b == 1: ts_bull[t] += 1
+                    elif b == -1: ts_bear[t] += 1
+                valid += 1
         except Exception as e:
-            print(f"  [sentiment] load fail {p.name}: {e}")
-    if not sym_data:
-        print("  [sentiment] no syms with timestamps + wt_composite_bias")
+            print(f"  [sentiment] pass1 fail {p.name}: {type(e).__name__} {e}")
+    if not ts_total:
+        print("  [sentiment] no usable data — skipping")
         return 0
-    ts_bull = defaultdict(int); ts_bear = defaultdict(int); ts_total = defaultdict(int)
-    for sym, (ts, bias, _, _) in sym_data.items():
-        for t, b in zip(ts.tolist(), bias.tolist()):
-            ts_total[t] += 1
-            if b == 1: ts_bull[t] += 1
-            elif b == -1: ts_bear[t] += 1
-    ts_score = {t: float(50.0 + (ts_bull[t] - ts_bear[t]) / max(ts_total[t], 1) * 50.0) for t in ts_total}
+    print(f"  [sentiment] valid syms: {valid} | unique timestamps: {len(ts_total)}")
+    ts_score_dict = {t: float(50.0 + (ts_bull[t] - ts_bear[t]) / max(ts_total[t], 1) * 50.0) for t in ts_total}
+    print(f"  [sentiment] pass 2: write market_sentiment_score back...")
     updated = 0
-    for sym, (ts, _, z, p) in sym_data.items():
-        if 'market_sentiment_score' in z and len(z['market_sentiment_score']) == len(ts):
-            continue
-        mss = np.array([ts_score.get(int(t), 50.0) for t in ts], dtype=np.float32)
-        z['market_sentiment_score'] = mss
-        tmp = p.with_suffix('.tmp.npz')
-        np.savez_compressed(str(tmp), **z)
-        tmp.replace(p)
-        updated += 1
+    for p_stem, ts in sym_ts.items():
+        p = npz_dir / f"{p_stem}.npz"
+        try:
+            with np.load(str(p), allow_pickle=True) as z_in:
+                if 'market_sentiment_score' in z_in.files and len(z_in['market_sentiment_score']) == len(ts):
+                    continue
+                z_out = dict(z_in)
+            mss = np.array([ts_score_dict.get(int(t), 50.0) for t in ts], dtype=np.float32)
+            z_out['market_sentiment_score'] = mss
+            tmp = p.with_suffix('.tmp.npz')
+            np.savez_compressed(str(tmp), **z_out)
+            tmp.replace(p)
+            updated += 1
+            del z_out, mss
+        except Exception as e:
+            print(f"  [sentiment] pass2 fail {p_stem}: {type(e).__name__} {e}")
     return updated
 
 
