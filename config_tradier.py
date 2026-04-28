@@ -1046,6 +1046,15 @@ class TradierConfig:
     STDEV_BREAKOUT_MAX_AGE_BARS: int = 50
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
+    STDEV_BOUNCE_ENABLED: bool = False
+    STDEV_BOUNCE_PCTB_LONG: float = 0.05
+    STDEV_BOUNCE_PCTB_SHORT: float = 0.95
+    STDEV_BOUNCE_RVOL_MIN: float = 1.2
+    STDEV_BOUNCE_HTF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])
+    STDEV_REJECT_EXIT_ENABLED: bool = False
+    STDEV_REJECT_EXIT_TF: str = "D"
+    STDEV_REJECT_EXIT_ZONE: float = 0.80
+    STDEV_REJECT_EXIT_RETURN: float = 0.65
     # === MOMENTUM INTERCEPTION (MI) — Early exit/entry via slowing deltas, LH/LL structure, divergence ===
     MI_EXIT_ENABLED_TRADIER: bool = False  # REVERTED 2026-04-17: MI_EXIT was triggering early exits at 0.3%. Mar-30 baseline OFF.
     MI_ENTRY_ENABLED_TRADIER: bool = False  # 2026-04-26: Phase 9 alpha enable

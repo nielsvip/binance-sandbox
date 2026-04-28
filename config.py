@@ -1358,6 +1358,15 @@ class Config:
     STDEV_BREAKOUT_RVOL_MIN: float = 1.2  # Min relative volume for breakout confirmation
     STDEV_BREAKOUT_MAX_AGE_BARS: int = 50  # Breakout state expires after this many bars (no follow-through)
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75  # Exit if HTF pctb falls below this (breakout failed, back inside 1σ)
+    STDEV_BOUNCE_ENABLED: bool = False
+    STDEV_BOUNCE_PCTB_LONG: float = 0.05
+    STDEV_BOUNCE_PCTB_SHORT: float = 0.95
+    STDEV_BOUNCE_RVOL_MIN: float = 1.2
+    STDEV_BOUNCE_HTF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])
+    STDEV_REJECT_EXIT_ENABLED: bool = False
+    STDEV_REJECT_EXIT_TF: str = "D"
+    STDEV_REJECT_EXIT_ZONE: float = 0.80
+    STDEV_REJECT_EXIT_RETURN: float = 0.65
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True  # Also exit on WT turn against on 1h
     # === HLR_RALLY: Higher Low Rally / Lower High Breakdown detector ===
     # Detects price making higher lows (LONG) or lower highs (SHORT) while pulling back toward 200 SMA.

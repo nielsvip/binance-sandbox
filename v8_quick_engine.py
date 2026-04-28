@@ -527,6 +527,15 @@ class QuickConfig:
     STDEV_BB_RZ_EXIT_ENABLED: bool = False
     STDEV_BB_RZ_EXIT_TF: str = "D"
     STDEV_BB_RZ_SUPPRESS_PCTB: float = 0.85
+    STDEV_BOUNCE_ENABLED: bool = False
+    STDEV_BOUNCE_PCTB_LONG: float = 0.05
+    STDEV_BOUNCE_PCTB_SHORT: float = 0.95
+    STDEV_BOUNCE_RVOL_MIN: float = 1.2
+    STDEV_BOUNCE_HTF_LIST: list = None
+    STDEV_REJECT_EXIT_ENABLED: bool = False
+    STDEV_REJECT_EXIT_TF: str = "D"
+    STDEV_REJECT_EXIT_ZONE: float = 0.80
+    STDEV_REJECT_EXIT_RETURN: float = 0.65
     HLR_RALLY_ENABLED: bool = True
     HLR_PTS_1H: int = 40
     HLR_PTS_4H: int = 60
@@ -2372,6 +2381,27 @@ def compute_entry_signals(npz, n, is_long, cfg):
             base_sig = base_sig | _stdev_sig
         except Exception:
             pass
+    # STDEV_BOUNCE_ENABLED: mean-reversion entry at lower band (LONG: pctb ≤ threshold = at/below lower 2σ band).
+    # Opposite of STDEV_BREAKOUT — buys the band touch, not the band break.
+    # No delta gate by default (velocity is often negative at lower band).
+    if bool(getattr(cfg, 'STDEV_BOUNCE_ENABLED', False)):
+        try:
+            _bn_pctb_long = float(getattr(cfg, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
+            _bn_pctb_short = float(getattr(cfg, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
+            _bn_rvol_min = float(getattr(cfg, 'STDEV_BOUNCE_RVOL_MIN', 1.2))
+            _bn_htf_list = list(getattr(cfg, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
+            _bounce_sig = np.zeros(n, dtype=bool)
+            for _htf in _bn_htf_list:
+                _pctb = _safe(npz, f'bb_pct_b_{_htf}', n, 0.5)
+                _rvol = _safe(npz, f'relative_volume_{_htf}', n, 1.0)
+                _rvol_ok = _rvol >= _bn_rvol_min
+                if is_long:
+                    _bounce_sig = _bounce_sig | ((_pctb <= _bn_pctb_long) & _rvol_ok)
+                else:
+                    _bounce_sig = _bounce_sig | ((_pctb >= _bn_pctb_short) & _rvol_ok)
+            base_sig = base_sig | _bounce_sig
+        except Exception:
+            pass
     # CLENOW_ENABLED (2026-04-28): Clenow momentum — 90-day log-regression slope×R² on daily close.
     # GATE_ONLY=True: require positive score for LONG / negative for SHORT (gate existing base_sig).
     # GATE_ONLY=False: also fire new entries when score exceeds SCORE_MIN threshold (additive path).
@@ -2824,7 +2854,18 @@ def compute_exit_signals(npz, n, is_long, cfg):
             stdev_fail_exit = (_sf_prev >= _sf_high) & (_sf_pctb < _sf_ret)
         else:
             stdev_fail_exit = (_sf_prev <= (1.0 - _sf_high)) & (_sf_pctb > (1.0 - _sf_ret))
-    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit | stdev_fail_exit
+    stdev_reject_exit = np.zeros(n, dtype=bool)
+    if getattr(cfg, 'STDEV_REJECT_EXIT_ENABLED', False):
+        _sre_tf = str(getattr(cfg, 'STDEV_REJECT_EXIT_TF', 'D'))
+        _sre_zone = float(getattr(cfg, 'STDEV_REJECT_EXIT_ZONE', 0.80))
+        _sre_ret = float(getattr(cfg, 'STDEV_REJECT_EXIT_RETURN', 0.65))
+        _sre_pctb = _safe(npz, f'bb_pct_b_{_sre_tf}', n, 0.5)
+        _sre_prev = np.roll(_sre_pctb, 1); _sre_prev[0] = _sre_pctb[0]
+        if is_long:
+            stdev_reject_exit = (_sre_prev >= _sre_zone) & (_sre_pctb < _sre_ret) & (wt_vel_ltf < 0)
+        else:
+            stdev_reject_exit = (_sre_prev <= (1.0 - _sre_zone)) & (_sre_pctb > (1.0 - _sre_ret)) & (wt_vel_ltf > 0)
+    base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit | stdev_fail_exit | stdev_reject_exit
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:

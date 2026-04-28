@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 22:51:46 UTC
+# Copilot Status — 2026-04-28 23:06:52 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T22:47:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T22:47:18
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T22:49:21
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T22:49:21
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T22:49:21
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T22:49:21
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T22:51:26
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T22:51:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T22:51:26
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T22:51:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:01:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:01:48
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:03:53
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:03:53
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:03:53
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:03:53
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T23:05:59
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-28T23:05:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T23:05:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T23:05:59
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 7 | **Reentered:** 0
 
-- HELD: **AIAUSDT** LONG (crypto) peak +8.2%, now +8.2%
-- HELD: **ZECUSDC** LONG (crypto) peak +7.2%, now +0.4%
-- HELD: **TIAUSDC** SHORT (crypto) peak +4.5%, now +0.1%
+- HELD: **AIAUSDT** LONG (crypto) peak +8.3%, now +8.3%
+- HELD: **ZECUSDC** LONG (crypto) peak +7.2%, now +7.2%
+- HELD: **TIAUSDC** SHORT (crypto) peak +4.5%, now +3.6%
 
-- WATCHING: **APEUSDT** SHORT (crypto) peaked +12.5%, exited 0m ago
+- WATCHING: **APEUSDT** SHORT (crypto) peaked +12.5%, exited 15m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +6.0%, exited 0m ago
 - WATCHING: **ZKUSDT** SHORT (crypto) peaked +4.8%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago

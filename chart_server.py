@@ -63,6 +63,12 @@ def index():
     return send_from_directory(app.static_folder, "chart.html")
 
 
+@app.route("/heatmap")
+@app.route("/heatmap.html")
+def heatmap_page():
+    return send_from_directory(app.static_folder, "heatmap.html")
+
+
 @app.route("/symbols")
 def symbols():
     syms = sorted(p.stem for p in NPZ_DIR.glob("*.npz"))
@@ -653,6 +659,100 @@ def tier_diff():
         "top_t2_only_exit_reasons":  _reason_counts(t2_only, "exit"),
         "exit_crosstab_top": sorted([(k, v) for k, v in crosstab_exit.items()], key=lambda x: -x[1])[:15],
         "entry_crosstab_top": sorted([(k, v) for k, v in crosstab_entry.items()], key=lambda x: -x[1])[:15],
+    })
+
+
+OVERRIDE_DIRS = [
+    BASE_PATH / "backtest_v8" / "btc_loop_results",
+    TRADES_DIR / "auto_overrides",
+]
+
+
+@app.route("/config_heatmap")
+def config_heatmap():
+    """Cross-correlate config switches with backtest outcomes across all runs.
+    For each switch that appears in ≥2 runs with different values, report:
+    {switch: {value: [{run, sym, trades, wr, sharpe_pt, total_gain_pct}, ...]}}
+    """
+    sym_filter = request.args.get("sym", "").upper()
+    # Map run_id → override config (try both override dirs)
+    run_to_cfg: Dict[str, Dict[str, Any]] = {}
+    for d in OVERRIDE_DIRS:
+        if not d.exists(): continue
+        for p in d.glob("*.json"):
+            stem = p.stem
+            run_id = stem
+            if stem.startswith("override_"):
+                run_id = stem[len("override_"):]
+            try:
+                cfg = json.loads(p.read_text())
+                run_to_cfg[run_id] = cfg
+            except Exception:
+                continue
+    # For each trade JSONL, compute stats
+    run_stats: Dict[str, Dict[str, Any]] = {}
+    for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
+        run_id, _, sym = p.stem.partition("__")
+        if sym_filter and sym.upper() != sym_filter: continue
+        trades = []
+        for line in p.read_text().splitlines():
+            if line.strip():
+                try: trades.append(json.loads(line))
+                except Exception: pass
+        if len(trades) < 5: continue
+        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+        n = len(pnls)
+        wins = sum(1 for x in pnls if x > 0)
+        std = statistics.stdev(pnls) if n > 1 else 0
+        run_stats.setdefault(run_id, {})[sym] = {
+            "trades": n, "wr": wins / n, "total_gain_pct": sum(pnls),
+            "avg_pnl_pct": sum(pnls) / n, "sharpe_pt": (sum(pnls) / n) / std if std > 0 else 0,
+        }
+    # Build heatmap: collect every switch:value combo seen across runs
+    switch_values: Dict[str, Dict[str, list]] = {}
+    for run_id, sym_map in run_stats.items():
+        cfg = run_to_cfg.get(run_id, {})
+        if not cfg: continue
+        for sym, st in sym_map.items():
+            for k, v in cfg.items():
+                if k.startswith("_"): continue
+                # Only flat scalar values (skip lists/dicts)
+                if isinstance(v, (list, dict)): continue
+                key = str(v)
+                switch_values.setdefault(k, {}).setdefault(key, []).append({
+                    "run": run_id, "sym": sym,
+                    **st,
+                })
+    # Trim to switches that vary (≥2 distinct values, ≥2 runs)
+    out_switches = {}
+    for switch, by_val in switch_values.items():
+        if len(by_val) < 2: continue
+        total_runs = sum(len(v) for v in by_val.values())
+        if total_runs < 2: continue
+        # Aggregate per value: mean sharpe_pt, mean wr, total trades, run count
+        rows = []
+        for val, lst in by_val.items():
+            n_runs = len(lst)
+            tot_trades = sum(r["trades"] for r in lst)
+            mean_sharpe = sum(r["sharpe_pt"] for r in lst) / n_runs
+            mean_wr = sum(r["wr"] for r in lst) / n_runs
+            mean_gain = sum(r["total_gain_pct"] for r in lst) / n_runs
+            rows.append({
+                "value": val, "n_runs": n_runs, "trades": tot_trades,
+                "mean_sharpe_pt": round(mean_sharpe, 3), "mean_wr": round(mean_wr, 3),
+                "mean_total_gain_pct": round(mean_gain, 1),
+                "runs": [r["run"] for r in lst],
+            })
+        rows.sort(key=lambda r: -r["mean_sharpe_pt"])
+        # Effect size: (best - worst) Sharpe spread
+        spread = rows[0]["mean_sharpe_pt"] - rows[-1]["mean_sharpe_pt"] if len(rows) > 1 else 0
+        out_switches[switch] = {"rows": rows, "sharpe_spread": round(spread, 3)}
+    # Sort switches by spread desc (most impactful first)
+    sorted_switches = sorted(out_switches.items(), key=lambda kv: -kv[1]["sharpe_spread"])
+    return jsonify({
+        "n_runs": len(run_stats),
+        "n_switches_varying": len(out_switches),
+        "switches": [{"name": k, **v} for k, v in sorted_switches],
     })
 
 
