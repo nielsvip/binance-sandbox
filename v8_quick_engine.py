@@ -841,6 +841,20 @@ class QuickConfig:
     BTC_GUARANTEED_REENTRY_MIN_GAP_BARS: int = 5
     BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE: bool = True
     BTC_GUARANTEED_REENTRY_SIZE_MULT: float = 1.0
+    # Restricted-entry mode: only enter when ONE of the explicit setup types matches.
+    # When master switch is True, ALL existing entry pathways (BREAKOUT/BOUNCE/FOLLOW_THROUGH/REVERSE)
+    # are disabled and only setups with their per-type switch ON can fire.
+    BTC_RESTRICTED_ENTRY_MODE_ENABLED: bool = False
+    BTC_RESTRICTED_K_15M_EXTREME_BOUNCE: bool = False    # k_15m crosses up from <=20 (LONG) / down from >=80 (SHORT)
+    BTC_RESTRICTED_WT_15M_PLUS_BOUNCE: bool = False      # wt1×wt2 cross on 15m/1h/4h/D from extreme zone
+    BTC_RESTRICTED_DC_15M_PLUS_TOUCH: bool = False       # close crosses back over dc_low (LONG) or dc_high (SHORT)
+    BTC_RESTRICTED_DC_15M_PLUS_BREAKOUT: bool = False    # close breaks above dc_high (LONG) or below dc_low (SHORT)
+    BTC_RESTRICTED_STDEV_BREAKOUT: bool = False          # close above bb_upper (LONG) or below bb_lower (SHORT)
+    BTC_RESTRICTED_STDEV_BOUNCE: bool = False            # close crosses back over bb_lower (LONG) or bb_upper (SHORT)
+    BTC_RESTRICTED_K_EXTREME_LO_THRESHOLD: float = 20.0  # K extreme defs
+    BTC_RESTRICTED_K_EXTREME_HI_THRESHOLD: float = 80.0
+    BTC_RESTRICTED_WT_EXTREME_NEG: float = -50.0          # WT must be < this for bull cross to count
+    BTC_RESTRICTED_WT_EXTREME_POS: float = 50.0           # WT must be > this for bear cross to count
     BTC_LEVERAGE: float = 20.0
     BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0
     BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0
@@ -3011,6 +3025,98 @@ def _btc_trend_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     return sym_pnl
 
 
+def _btc_restricted_setup_check(npz, i, cfg):
+    """When BTC_RESTRICTED_ENTRY_MODE_ENABLED, return ([long_setups], [short_setups]) at bar i.
+    Each setup is a string label (e.g. 'K_15M_EXTREME_BOUNCE_LONG') used as entry_reason.
+    """
+    if not bool(getattr(cfg, 'BTC_RESTRICTED_ENTRY_MODE_ENABLED', False)):
+        return [], []
+    if i < 1:
+        return [], []
+    longs, shorts = [], []
+    pi = i - 1
+    files = npz.files if hasattr(npz, "files") else set()
+    def _g(field, idx, default=0.0):
+        if field not in files: return default
+        try:
+            v = npz[field][idx]
+            return float(v.item()) if hasattr(v, 'item') else float(v)
+        except Exception: return default
+    k_lo = float(getattr(cfg, 'BTC_RESTRICTED_K_EXTREME_LO_THRESHOLD', 20.0))
+    k_hi = float(getattr(cfg, 'BTC_RESTRICTED_K_EXTREME_HI_THRESHOLD', 80.0))
+    wt_neg = float(getattr(cfg, 'BTC_RESTRICTED_WT_EXTREME_NEG', -50.0))
+    wt_pos = float(getattr(cfg, 'BTC_RESTRICTED_WT_EXTREME_POS', 50.0))
+    # 1. K_15M extreme + bounce
+    if bool(getattr(cfg, 'BTC_RESTRICTED_K_15M_EXTREME_BOUNCE', False)):
+        k_now = _g('stoch_k_15m', i, 50)
+        k_prev = _g('stoch_k_15m', pi, 50)
+        if k_prev <= k_lo and k_now > k_prev:
+            longs.append('K_15M_EXTREME_BOUNCE_LONG')
+        if k_prev >= k_hi and k_now < k_prev:
+            shorts.append('K_15M_EXTREME_BOUNCE_SHORT')
+    # 2. WT 15m+ bounce: cross + extreme zone
+    if bool(getattr(cfg, 'BTC_RESTRICTED_WT_15M_PLUS_BOUNCE', False)):
+        for tf in ('15m', '1h', '4h', 'D'):
+            w1 = _g(f'wt1_{tf}', i, 0); w2 = _g(f'wt2_{tf}', i, 0)
+            w1p = _g(f'wt1_{tf}', pi, 0); w2p = _g(f'wt2_{tf}', pi, 0)
+            # Bull cross from extreme negative
+            if w1p < w2p and w1 > w2 and w1p < wt_neg:
+                longs.append(f'WT_{tf}_BULL_CROSS_FROM_EXTR')
+                break
+        for tf in ('15m', '1h', '4h', 'D'):
+            w1 = _g(f'wt1_{tf}', i, 0); w2 = _g(f'wt2_{tf}', i, 0)
+            w1p = _g(f'wt1_{tf}', pi, 0); w2p = _g(f'wt2_{tf}', pi, 0)
+            # Bear cross from extreme positive
+            if w1p > w2p and w1 < w2 and w1p > wt_pos:
+                shorts.append(f'WT_{tf}_BEAR_CROSS_FROM_EXTR')
+                break
+    # 3. DC 15m+ touches (rejection: close crosses back inside)
+    if bool(getattr(cfg, 'BTC_RESTRICTED_DC_15M_PLUS_TOUCH', False)):
+        c_now = _g('close_3m', i, 0); c_prev = _g('close_3m', pi, 0)
+        for tf in ('15m', '1h', '4h', 'D'):
+            dc_lo = _g(f'dc_low_{tf}', i, 0)
+            if dc_lo > 0 and c_prev <= dc_lo and c_now > dc_lo:
+                longs.append(f'DC_{tf}_LOW_BOUNCE'); break
+        for tf in ('15m', '1h', '4h', 'D'):
+            dc_hi = _g(f'dc_high_{tf}', i, 0)
+            if dc_hi > 0 and c_prev >= dc_hi and c_now < dc_hi:
+                shorts.append(f'DC_{tf}_HIGH_REJECT'); break
+    # 4. DC 15m+ breakouts (close crosses outside prev period channel)
+    if bool(getattr(cfg, 'BTC_RESTRICTED_DC_15M_PLUS_BREAKOUT', False)):
+        c_now = _g('close_3m', i, 0); c_prev = _g('close_3m', pi, 0)
+        for tf in ('15m', '1h', '4h', 'D'):
+            dc_hi_prev = _g(f'dc_high_{tf}', pi, 0)
+            if dc_hi_prev > 0 and c_prev <= dc_hi_prev and c_now > dc_hi_prev:
+                longs.append(f'DC_{tf}_HIGH_BREAKOUT'); break
+        for tf in ('15m', '1h', '4h', 'D'):
+            dc_lo_prev = _g(f'dc_low_{tf}', pi, 0)
+            if dc_lo_prev > 0 and c_prev >= dc_lo_prev and c_now < dc_lo_prev:
+                shorts.append(f'DC_{tf}_LOW_BREAKDOWN'); break
+    # 5. StDev (BB) breakouts
+    if bool(getattr(cfg, 'BTC_RESTRICTED_STDEV_BREAKOUT', False)):
+        c_now = _g('close_3m', i, 0)
+        for tf in ('15m', '1h', '4h', 'D'):
+            bb_up = _g(f'bb_upper_{tf}', i, 0)
+            if bb_up > 0 and c_now > bb_up:
+                longs.append(f'STDEV_{tf}_BREAKOUT_UPPER'); break
+        for tf in ('15m', '1h', '4h', 'D'):
+            bb_lo = _g(f'bb_lower_{tf}', i, 0)
+            if bb_lo > 0 and c_now < bb_lo:
+                shorts.append(f'STDEV_{tf}_BREAKOUT_LOWER'); break
+    # 6. StDev (BB) bounces (close crosses back inside)
+    if bool(getattr(cfg, 'BTC_RESTRICTED_STDEV_BOUNCE', False)):
+        c_now = _g('close_3m', i, 0); c_prev = _g('close_3m', pi, 0)
+        for tf in ('15m', '1h', '4h', 'D'):
+            bb_lo = _g(f'bb_lower_{tf}', i, 0)
+            if bb_lo > 0 and c_prev <= bb_lo and c_now > bb_lo:
+                longs.append(f'STDEV_{tf}_LOWER_BOUNCE'); break
+        for tf in ('15m', '1h', '4h', 'D'):
+            bb_up = _g(f'bb_upper_{tf}', i, 0)
+            if bb_up > 0 and c_prev >= bb_up and c_now < bb_up:
+                shorts.append(f'STDEV_{tf}_UPPER_REJECT'); break
+    return longs, shorts
+
+
 def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                                      _bph_15m: int, _bph_1h: int, _bph_4h: int, _bph_D: int,
                                      _trade_recorder=None, _symbol: str = ""):
@@ -3436,6 +3542,24 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                            + (1 if wt1['4h'][i] < wt2['4h'][i] else 0)
                            + (1 if wt1['D'][i]  < wt2['D'][i]  else 0))
 
+            # ── RESTRICTED ENTRY MODE ── If enabled, ONLY fire on explicit setup matches.
+            # All other entry pathways (BREAKOUT/PRIMARY_BOUNCE/FOLLOW_THROUGH/REVERSE) are skipped.
+            if bool(getattr(cfg, 'BTC_RESTRICTED_ENTRY_MODE_ENABLED', False)):
+                long_setups, short_setups = _btc_restricted_setup_check(npz, i, cfg)
+                # Funding/OI vetoes still apply
+                if long_setups and not (funding_blocks_long or oi_blocks_long):
+                    position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                    entry_reason = f"RESTRICTED_{long_setups[0]}"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    continue
+                if short_setups and not (funding_blocks_short or oi_blocks_short):
+                    position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                    entry_reason = f"RESTRICTED_{short_setups[0]}"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    continue
+                # No setup matched — skip all other entry logic this bar
+                continue
+
             # 1. BREAKOUT entry detection (NEW — runs FIRST so trends are caught before bounce logic)
             #    Tighter exits + smaller stop in exchange for catching big moves.
             bk_side, _ = _btc.detect_btc_breakout(
@@ -3611,7 +3735,8 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             # immediately enter the opposite side. Catches the "fail-and-flip" pattern
             # the chart audit revealed (LONG hits stop on DC4 breach → SHORT setup
             # already firing, was being missed during cooldown).
-            if bool(getattr(cfg, 'BTC_REVERSE_ON_EXIT_ENABLED', True)):
+            if (bool(getattr(cfg, 'BTC_REVERSE_ON_EXIT_ENABLED', True))
+                and not bool(getattr(cfg, 'BTC_RESTRICTED_ENTRY_MODE_ENABLED', False))):
                 rev_htf_long_n = htf_long_n if 'htf_long_n' in dir() else 0
                 rev_htf_short_n = htf_short_n if 'htf_short_n' in dir() else 0
                 # Recompute HTF counts for safety (pos branch may not have set them)

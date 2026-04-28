@@ -309,7 +309,23 @@ def main():
     ap.add_argument("--max-mutations", type=int, default=3, help="cap N mutations per iteration")
     ap.add_argument("--symbols", help="comma-sep symbols (default: 5 BTC-loop syms)")
     ap.add_argument("--skip-suggest", action="store_true", help="don't re-run suggestion_engine.py first")
+    ap.add_argument("--use-discovered", action="store_true", help="merge auto-discovered indicator→switch map (run build_indicator_switch_map.py --merge first)")
     args = ap.parse_args()
+    if args.use_discovered:
+        merged_path = ROOT / "data" / "indicator_switch_map_merged.json"
+        if merged_path.exists():
+            try:
+                merged = json.loads(merged_path.read_text())
+                added = 0
+                for f, info in merged.items():
+                    if f not in INDICATOR_TO_SWITCH:
+                        INDICATOR_TO_SWITCH[f] = info
+                        added += 1
+                print(f"[auto] loaded {added} discovered mappings from {merged_path.name} (now {len(INDICATOR_TO_SWITCH)} total)")
+            except Exception as e:
+                print(f"[auto] failed to load discovered map: {e}")
+        else:
+            print(f"[auto] no discovered map at {merged_path}; run build_indicator_switch_map.py --merge first")
     if args.loop:
         print(f"[auto_suggest_loop] LOOP every {args.interval}s")
         while True:

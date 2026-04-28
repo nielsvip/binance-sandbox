@@ -61,9 +61,31 @@ def main():
     lines = text.splitlines()
     n = len(lines)
 
-    # Find all `getattr(cfg, 'NAME'` and `cfg.NAME` references
+    # Find all `getattr(cfg, 'NAME'` and `cfg.NAME` references.
+    # Filter to legitimate switches by suffix — drops noise like cfg.LTF, cfg.MODE, etc.
     switch_re = re.compile(r"""getattr\(\s*cfg\s*,\s*['"]([A-Z][A-Z0-9_]{2,})['"]""")
     switch_dot_re = re.compile(r"""\bcfg\.([A-Z][A-Z0-9_]{2,})\b""")
+    SWITCH_SUFFIXES = ("_ENABLED", "_DISABLED", "_PCT", "_BPS", "_MIN_TFS", "_MAX_TFS",
+                       "_MIN_INDS", "_MIN_BARS", "_MAX_BARS", "_BARS", "_THRESHOLD",
+                       "_BUFFER", "_FLOOR", "_CEILING", "_GATE", "_REQUIRE",
+                       "_LEVERAGE", "_NOTIONAL", "_FRAC", "_MULT", "_BOOST",
+                       "_LOOKBACK", "_WINDOW", "_PROXIMITY", "_USE_FIB",
+                       "_USE_ROUND", "_USE_WT_DC", "_DEDICATED", "_SYMBOLS",
+                       "_TFS", "_TF", "_HARD_LOSS_USD_PER_TRADE", "_RISK_PATH",
+                       "_FIB", "_ROUND", "_BOUNCE", "_MODE", "_VALUE", "_PCT_PER_TRADE",
+                       "_MIN_TFS_THRESHOLD")
+    SWITCH_BLACKLIST = {"LTF", "MODE", "BASE_PATH", "DATA_DIR", "HOME"}
+    def is_real_switch(name):
+        if name in SWITCH_BLACKLIST: return False
+        # Either a known suffix OR contains a known sub-token
+        if any(name.endswith(s) for s in SWITCH_SUFFIXES): return True
+        if any(tok in name for tok in ("_RZ_", "_BTC_", "_HEDGE_", "_ENTRY", "_EXIT",
+                                        "_AUGMENT", "_REENTRY", "_DIVERGENCE",
+                                        "_FUNDING", "_OI", "_PARTIAL_PROFIT",
+                                        "_NOLOSS", "_STOP_LOSS", "_BREAKOUT",
+                                        "_FOLLOW_THROUGH", "_TECH_EXIT", "_ACCEL_RAMP")):
+            return True
+        return False
 
     # Find indicator field accesses: _safe(npz, 'field', ...) and npz['field']
     field_safe_re = re.compile(r"""_safe\([^,]+,\s*f?['"]([a-zA-Z0-9_]+)['"]""")
@@ -75,9 +97,11 @@ def main():
     line_fields = defaultdict(set)
     for i, line in enumerate(lines):
         for m in switch_re.finditer(line):
-            line_switches[i].add(m.group(1))
+            if is_real_switch(m.group(1)):
+                line_switches[i].add(m.group(1))
         for m in switch_dot_re.finditer(line):
-            line_switches[i].add(m.group(1))
+            if is_real_switch(m.group(1)):
+                line_switches[i].add(m.group(1))
         for rgx in (field_safe_re, field_npz_re, field_files_re):
             for m in rgx.finditer(line):
                 tok = m.group(1)
