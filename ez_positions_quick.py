@@ -15638,6 +15638,13 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
         lower_low_condition = not is_long and lower_low and (dc_high_3m > current_price > dc_basis_3m or dc_high_15m > current_price > dc_basis_15m)
         # DIRECTION_FAVORABLE REENTRY (BC_152)
         _dfr_pos_notional = abs(_sf(getattr(position, 'positionAmt', 0), 0)) * current_price
+        # 2026-04-28 user: require price improvement vs exit before reentering.
+        _dfr_improve_pct = float(getattr(config_obj, 'REENTRY_PRICE_IMPROVE_PCT', 0.10))
+        if reentry_level > 0:
+            _dfr_price_improved = (is_long and current_price <= reentry_level * (1.0 - _dfr_improve_pct/100.0)) or ((not is_long) and current_price >= reentry_level * (1.0 + _dfr_improve_pct/100.0))
+            if not _dfr_price_improved:
+                logger.info(f"[DIRECTION_FAVORABLE_PRICE_BLOCK_EPQ] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — need {_dfr_improve_pct:.2f}% improvement ({'lower' if is_long else 'higher'}) before reentry. Skipping.")
+                return
         if min_since_exit < 120 and _dfr_pos_notional < config_obj.START_POSITION_SIZE:
             _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
             _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15

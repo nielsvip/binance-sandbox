@@ -56,6 +56,11 @@ class Config:
     MIN_PERC_FROM_SMA_1: float = 1.0 / 100  # SMA_1
     MIN_PERC_FROM_SMA_15: float = 3.0 / 100  # SMA_15
     MIN_GAIN: float = 3.0  # was 5.0 (too late, near TP). 3.0% = 2.8% buffer after 50% aug, survives 1.5% reversal. Tiered: 0.4x=1.2% pullback, 0.5x=1.5% reduced, 1x=3.0% full
+    # 2026-04-28 user: "make sure commissions are included in the sell before loss !!!! that is the real bleed"
+    # Maker fee is 0.02% per side = 0.04% round-trip. Taker is 0.05% per side = 0.10% round-trip.
+    # Set buffer to 0.10% to cover worst case (taker close + slippage). Closing below this = NET LOSS.
+    COMMISSION_BUFFER_PCT: float = 0.10
+    REENTRY_PRICE_IMPROVE_PCT: float = 0.10  # require 0.10% price improvement vs exit before reentry
     AUGMENT_ONLY_WHEN_PROFITABLE: bool = True  # URGENT_FIX: NEVER augment a position with gain < 0
     MAX_AUGMENTS_PER_POSITION: int = 3  # URGENT_FIX: cap total augments, stop piling into losers
     BEAR_MARKET_MODE: bool = True  # URGENT_FIX: When True, favor shorts over longs

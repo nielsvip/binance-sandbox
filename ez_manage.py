@@ -13568,7 +13568,9 @@ class MultiAccountTradeManager:
                     _entry_px = safe_fetch_float(getattr(pos, 'entry_price', 0), 0)
                     _is_long = position_side == 'LONG'
                     _real_gain = ((old_price - _entry_px) / _entry_px * 100) if _entry_px > 0 and old_price > 0 and _is_long else (((_entry_px - old_price) / _entry_px * 100) if _entry_px > 0 and old_price > 0 else safe_fetch_float(getattr(pos, 'gain', 0), 0.0))
-                    if _real_gain < -0.01:
+                    # 2026-04-28 user: include commissions. Close below COMMISSION_BUFFER_PCT = NET LOSS.
+                    _ung_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                    if _real_gain < _ung_comm_buf:
                         # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, default OFF) ===
                         # 2026-04-17: per-account disable — inf bleeding shorts sit below dc_low_4h,
                         # if price rises to entry with 3m green bar this rule would close at massive loss.
@@ -18379,6 +18381,16 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         # Skips invalidation, bounce reset, DC structure checks. The trend IS the signal.
         _wt1_15m = safe_fetch_float(i.get('wt1_15m', 0), 0.0); _wt2_15m = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
         _dfr_pos_notional = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) * current_price
+        # 2026-04-28 user: reentries firing at SAME price as exit = duplicate-open accumulation.
+        # Require price improvement vs reentry_level (= exit_price) before reentering.
+        # LONG: current_price must DROP below exit (better entry on dip).
+        # SHORT: current_price must RISE above exit (better entry on rip).
+        _dfr_improve_pct = float(getattr(config, 'REENTRY_PRICE_IMPROVE_PCT', 0.10))
+        if reentry_level > 0:
+            _dfr_price_improved = (is_long and current_price <= reentry_level * (1.0 - _dfr_improve_pct/100.0)) or ((not is_long) and current_price >= reentry_level * (1.0 + _dfr_improve_pct/100.0))
+            if not _dfr_price_improved:
+                logger.info(f"[DIRECTION_FAVORABLE_PRICE_BLOCK] {position_key}: cur={current_price:.6f} vs exit={reentry_level:.6f} — need {_dfr_improve_pct:.2f}% improvement ({'lower' if is_long else 'higher'}) before reentry. Skipping.")
+                return
         if min_since_exit < 120 and _dfr_pos_notional < config.START_POSITION_SIZE:
             _dir_fav_long = is_long and k_3m > d_3m and k_15m > d_15m and k_3m < 85
             _dir_fav_short = not is_long and k_3m < d_3m and k_15m < d_15m and k_3m > 15
@@ -20640,18 +20652,20 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _r6_main_pos = trade_manager.positions.get(_r6_main_pk) if _r6_main_pk else None
                     _r6_main_gone = not _r6_main_pos or abs(safe_fetch_float(getattr(_r6_main_pos, 'positionAmt', 0), 0)) < 0.0001
                     _r6_main_gain = safe_fetch_float(getattr(_r6_main_pos, 'gain', 0), 0) if _r6_main_pos and not _r6_main_gone else None
-                    _r6_main_recovered = _r6_main_gone or (_r6_main_gain is not None and _r6_main_gain >= 0.0)
+                    # 2026-04-28 user: "make sure commissions are included in the sell before loss"
+                    # main_recovered must be ABOVE commission buffer, not just >= 0.
+                    _r6_comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                    _r6_main_recovered = _r6_main_gone or (_r6_main_gain is not None and _r6_main_gain >= _r6_comm_buf)
                     _r6_main_gain_str = f"{_r6_main_gain:.2f}" if _r6_main_gain is not None else "gone"
                     _r6_bypass = bool(getattr(config, 'HEDGE_EXIT_BYPASS_NOLOSS', True))
                     _r6_wt_flip_trigger = (_r6_wt_wrong_3m and _r6_wt_wrong_1h) if _r6_bypass else _r6_wt_all_wrong
                     _r6_should_close = _r6_wt_flip_trigger or _r6_main_recovered
                     # ⚠️ NOLOSS GATE — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
-                    # A hedge closing at a loss is only allowed when entry_price is OUTSIDE the dc_4h
-                    # UNCONDITIONAL NOLOSS GATE — R6 NEVER closes at a loss. NO EXCEPTIONS.
-                    # If gain < 0: purge stale active_hedges record and skip. Use MANDATORY_HEDGE instead.
-                    if _r6_should_close and _pp_gain < 0:
+                    # 2026-04-28 user: include commissions. Hedge close at gain < COMMISSION_BUFFER_PCT
+                    # is a NET LOSS after entry+exit fees. Block until gain covers fees.
+                    if _r6_should_close and _pp_gain < _r6_comm_buf:
                         _r6_entry = safe_fetch_float(getattr(position, 'entry_price', 0), 0)
-                        logger.critical(f"[HEDGE_CLEANUP_R6_NOLOSS_BLOCK] {position_key}: gain={_pp_gain:.2f}% < 0 — UNCONDITIONAL BLOCK, purging stale active_hedges record. R6 NEVER closes at a loss. ⚠️ DO NOT REMOVE")
+                        logger.critical(f"[HEDGE_CLEANUP_R6_COMMISSION_BLOCK] {position_key}: gain={_pp_gain:.2f}% < {_r6_comm_buf:.2f}% commission buffer — close would be NET LOSS after fees. Holding until commissions covered. ⚠️ DO NOT REMOVE")
                         try:
                             async with trade_manager.tracker_manager._hedges_lock:
                                 trade_manager.tracker_manager.active_hedges = [h for h in trade_manager.tracker_manager.active_hedges if h.get('position_key') != position_key]
