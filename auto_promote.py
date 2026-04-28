@@ -46,7 +46,7 @@ THRESH = {
 TIER3_KEEP_FLOOR = 0.3
 
 VAL_PROFILES = {
-    "smoke":  {"start": "2025-10-01", "n_syms": 12,  "timeout": 600},
+    "smoke":  {"start": "2025-10-01", "n_syms": 12,  "timeout": 1500},  # 2026-04-27: was 600; eval_reentry adds ~50% runtime
     "medium": {"start": "2024-01-01", "n_syms": 48,  "timeout": 1800},
     "full":   {"start": "2022-01-01", "n_syms": 0,   "timeout": 3600},
 }
@@ -319,7 +319,7 @@ def main():
                     state["candidates_written"] += 1
                     log(f"  WROTE candidate: {p.name}")
                 else:
-                    log(f"  REJECTED: tier-3 sharpe={tier3} fell below 50% of tier-2 ps={tier2:.3f}")
+                    log(f"  REJECTED: tier-3 sharpe={tier3} below TIER3_KEEP_FLOOR={TIER3_KEEP_FLOOR} (tier-2 ps={tier2:.3f})")
 
         state["seen_hashes"] = sorted(seen_hashes)[-5000:]
         with open(state_file, "w") as f: json.dump(state, f, indent=2)

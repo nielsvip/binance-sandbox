@@ -11714,25 +11714,30 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         _fresh_amt = abs(safe_fetch_float(getattr(_fresh_pos, 'positionAmt', 0), 0)) if _fresh_pos else 0
         _fresh_val = _fresh_amt * current_price if current_price > 0 else 0
         _pos_symbol = parse_position_key(position_key)[1] if position_key else ""
-        # 2026-04-27 owner: dust-floor only. Was max($18/price, step*1.2) which let
-        # any sub-$18 position be classified "not open" → CAKE_LONG re-opened 4×
-        # via QUICK_HEDGE_PROTECT_SHORT_LOSS at top-of-move (k_3m=100, k_15m=89).
-        # Now: ANY non-dust amount = OPEN. Only true exchange-dust slips through.
-        _step_qty = float(trade_manager.min_qty.get(_pos_symbol, 0.0) or 0)
-        _min_qty = _step_qty * 1.2 if _step_qty > 0 else 1e-9
+        # 2026-04-27 owner: pos_min_qty = max(MIN_POSITION_SIZE/price, step*1.2).
+        # MIN_POSITION_SIZE=$1.0 (config). Below pos_min_qty: position is "closed",
+        # any new entry is allowed. Above pos_min_qty: NOTHING new fires —
+        # NOT open, NOT hedge, NOT reentry, NOT reopen. ONLY AUGMENT with gain ≥ MIN_GAIN.
+        # Earlier dust-floor (step*1.2) was too tight; reverted to canonical formula.
+        _min_qty = max(config.MIN_POSITION_SIZE / current_price, trade_manager.min_qty.get(_pos_symbol, 0.0) * 1.2) if current_price > 0 else 0
         _max_pos_val = float(getattr(config, 'START_POSITION_SIZE', 18.0)) * 12.0
         _pos_is_open = _fresh_amt > _min_qty
         # HARD BLOCK: No entry action on an already-open position — covers ALL entry action names.
-        # 2026-04-27 owner: explicit "no multiple entries — not for hedges, not for anything,
-        # unless it is an AUGMENT with >3% gain". AUGMENT exemption stays; gain ≥ MIN_GAIN
-        # check is enforced upstream at _is_winner_aug definition (line ~11243).
+        # 2026-04-27 owner: AUGMENT also blocked when gain < MIN_GAIN. Only profitable
+        # augments may grow an open position. Was exempting AUGMENT/QUICK_AUGMENT entirely
+        # which let small-gain augments compound into already-open hedge positions.
         _ENTRY_ACTIONS_ETW = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
         _action_upper = (action or '').upper()
         _is_entry = _action_upper in _ENTRY_ACTIONS_ETW or 'OPEN' in _action_upper or 'ENTRY' in _action_upper or 'HEDGE' in _action_upper or 'AUGMENT' in _action_upper
         _is_entry = _is_entry and 'CLOSE' not in _action_upper and 'REDUCE' not in _action_upper and 'KILL' not in _action_upper
-        if _pos_is_open and _is_entry and _action_upper != 'AUGMENT' and _action_upper != 'QUICK_AUGMENT':
-            logger.warning(f"🚫 [POSITION_ALREADY_OPEN] {position_key}: BLOCKED {action} — amt={_fresh_amt:.6f} > dust={_min_qty:.6f} (val=${_fresh_val:.2f}). Position is OPEN. Use AUGMENT only. reason={(reason or '')[:80]}")
-            return False, f"BLOCKED_POSITION_ALREADY_OPEN"
+        if _pos_is_open and _is_entry:
+            _is_augment_action = _action_upper in ('AUGMENT', 'QUICK_AUGMENT')
+            _open_gain = safe_fetch_float(getattr(_fresh_pos, 'gain', 0), 0.0) if _fresh_pos and not isinstance(_fresh_pos, dict) else (float(_fresh_pos.get('gain', 0)) if isinstance(_fresh_pos, dict) else 0.0)
+            _min_gain_aug = float(getattr(config, 'MIN_GAIN', 3.0))
+            if not (_is_augment_action and _open_gain >= _min_gain_aug):
+                _why = "not_augment" if not _is_augment_action else f"augment_gain_{_open_gain:.2f}%<{_min_gain_aug:.1f}%"
+                logger.warning(f"🚫 [POSITION_ALREADY_OPEN] {position_key}: BLOCKED {action} ({_why}) — amt={_fresh_amt:.6f} > pos_min_qty={_min_qty:.6f} (val=${_fresh_val:.2f}). Above threshold: only AUGMENT with gain≥{_min_gain_aug:.1f}% allowed. reason={(reason or '')[:80]}")
+                return False, f"BLOCKED_POSITION_ALREADY_OPEN_{_why}"
         # ATOMIC DOUBLE-OPEN GUARD: If position is CLOSED (amt=0) and another thread is already opening it, block.
         # 2026-04-27 (ACHUSDT incident): timeout reduced 60s→15s. Lock leaked on success-path + on `result contains BLOCK`
         # early return (line 11821) — no pop on those paths. Until refactor adds try/finally, 15s ceiling makes hedge retries viable.

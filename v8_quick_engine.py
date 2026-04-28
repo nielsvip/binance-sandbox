@@ -1061,7 +1061,14 @@ def iter_npz(mode, symbols, start_date, npz_dir=""):
         if start_ts and ts[-1] < start_ts:
             continue
         start_idx = np.searchsorted(ts, start_ts) if start_ts else 0
-        trimmed = {k: v[start_idx:] if isinstance(v, np.ndarray) and len(v) > start_idx else v for k, v in data.items()}
+        trimmed = {}
+        for k, v in data.items():
+            if isinstance(v, np.ndarray) and len(v) > start_idx:
+                # COPY (not view) so the full underlying array can be freed
+                trimmed[k] = np.ascontiguousarray(v[start_idx:])
+            else:
+                trimmed[k] = v
+        del data  # explicit drop
         count += 1
         yield sym, trimmed
     print(f"Streamed {count} symbols from {d}", file=sys.stderr)

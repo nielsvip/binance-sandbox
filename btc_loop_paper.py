@@ -406,8 +406,10 @@ def main():
                 if rec is not None:
                     log_f.write(json.dumps(rec, default=str) + "\n")
                     if rec.get("action") in ("OPEN_LONG", "OPEN_SHORT", "OPEN_REENTRY", "CLOSE"):
+                        _p = rec.get('pnl_pct')
+                        _p_str = f"{_p:.4f}%" if isinstance(_p, (int, float)) else str(_p)
                         print(f"[paper] {rec['iso']} {rec['action']} side={rec.get('side','-')} "
-                              f"price={rec['price']:.2f} pnl={rec.get('pnl_pct','-'):.4f}% "
+                              f"price={rec['price']:.2f} pnl={_p_str} "
                               f"reason={rec.get('exit_reason', rec.get('action'))}", flush=True)
             # Persist state snapshot every cycle
             try:
