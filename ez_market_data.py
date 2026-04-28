@@ -463,22 +463,30 @@ class MarketDataEngine:
         url = "wss://fstream.binance.com/ws/!markPrice@arr@1s"
         while self.running:
             try:
-                session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=10)
+                session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=60)
                 async with aiohttp.ClientSession(timeout=session_timeout) as session:
-                    async with session.ws_connect(url, heartbeat=15) as ws:
+                    async with session.ws_connect(url, heartbeat=30, autoping=True, receive_timeout=60) as ws:
                         logger.info("🔌 WS Connected to Binance Stream")
                         async for msg in ws:
                             if msg.type == aiohttp.WSMsgType.TEXT:
-                                data = orjson.loads(msg.data)
-                                for p in data:
-                                    sym = p['s']
-                                    if sym in self.symbols:
-                                        ts = p['E'] / 1000.0
-                                        # Buffer the price
-                                        self.price_buffer[sym] = {'p': float(p['p']), 't': ts}
+                                try:
+                                    data = orjson.loads(msg.data)
+                                    if isinstance(data, list):
+                                        for p in data:
+                                            sym = p.get('s')
+                                            if sym and sym in self.symbols:
+                                                ts = float(p.get('E', 0)) / 1000.0
+                                                price = p.get('p') or p.get('markPrice')
+                                                if price:
+                                                    self.price_buffer[sym] = {'p': float(price), 't': ts}
+                                except Exception as ex:
+                                    logger.debug(f"WS parse error: {ex}")
+                            elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSING):
+                                logger.warning(f"WS msg type {msg.type} — reconnecting")
+                                break
             except Exception as e:
                 logger.error(f"WS Connection failed: {e}")
-                await asyncio.sleep(5)
+                await asyncio.sleep(3)
 
     async def redis_injector(self):
         """Source 2: Redis Fallback Poll (ALL price sources from ALL scripts)"""
