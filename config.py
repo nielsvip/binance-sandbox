@@ -587,7 +587,7 @@ class Config:
     # Wall must also exceed RED_ZONE_MIN_WALL_NOTIONAL_USD to count (filters tiny walls on illiquid pairs).
     # Stocks side: Tradier exposes no L2 depth — RED_ZONE_GATE is crypto-only.
     # Stocks proxy = options-chain OI walls (call OI = ceiling, put OI = floor) — deferred to tradier_options_oi_fetcher build.
-    RED_ZONE_GATE_ENABLED: bool = False            # 2026-04-28 reverted to OFF per user "regress to qualifying setup, use better parameters instead of destroying good results". Sweep-testable knob.
+    RED_ZONE_GATE_ENABLED: bool = True             # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
     RED_ZONE_MIN_DISTANCE_PCT: float = 0.4         # block entry when wall is closer than 0.4% from current price
     RED_ZONE_MIN_WALL_NOTIONAL_USD: float = 50_000 # ignore walls smaller than $50k notional (illiquid noise)
     RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
@@ -602,7 +602,7 @@ class Config:
     # Block LONG when underlying within VP_GATE_MIN_DISTANCE_PCT below an HVN above (resistance shelf).
     # Block SHORT when underlying within VP_GATE_MIN_DISTANCE_PCT above an HVN below (support floor).
     # Complements RED_ZONE_GATE (near-term, ±5% L2 walls): VP_GATE = long-term (±50% historical density).
-    VP_GATE_ENABLED: bool = False                  # 2026-04-28 reverted to OFF per user "regress to qualifying setup". Sweep-testable knob; flip True only after sweep validation.
+    VP_GATE_ENABLED: bool = True                   # 2026-04-28 restored — probe one-by-one to find which gate actually regressed
     VP_GATE_MIN_DISTANCE_PCT: float = 1.0          # block entries within 1% of an HVN shelf
     VP_GATE_MIN_DENSITY_Z: float = 2.0             # require HVN density-z ≥ 2.0 (~5× mean) to block
     VP_GATE_HEDGE_GATE_ENABLED: bool = False       # apply to hedge entries (default off)

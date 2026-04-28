@@ -119,7 +119,7 @@ class TradierConfig:
     # Mirror of crypto FUNDING_OI_INJECT in ez_rankings.py:~4567. Inject extreme-P/C symbols into trb/trc winners/losers
     # so trader directional bias from options market consensus shows up in entry candidate lists.
     # NEVER places options orders — pure sentiment signal per feedback_oi_signal_only_no_options_trading_20260427.md.
-    TRADIER_OI_INJECT_ENABLED: bool = False        # 2026-04-28 reverted to OFF per user "regress to qualifying setup". Speculative — sweep-test before re-enabling.
+    TRADIER_OI_INJECT_ENABLED: bool = True         # 2026-04-28 restored — probe one-by-one
     TRADIER_OI_INJECT_PC_BULLISH: float = 0.6      # P/C below this → call OI dominates → LONG bias inject
     TRADIER_OI_INJECT_PC_BEARISH: float = 1.4      # P/C above this → put OI dominates → SHORT bias inject
     TRADIER_OI_INJECT_NEAR_MONEY_PREFER: bool = True   # use near_money_pc_ratio (±5% strikes) when present — purer near-term sentiment
@@ -131,7 +131,7 @@ class TradierConfig:
     # Block SHORT entries when underlying is within RED_ZONE_TRADIER_MIN_DISTANCE_PCT ABOVE max_put_oi_strike (support floor).
     # The strike with heaviest call OI = price point above which dealers' delta-hedging crushes momentum.
     # The strike with heaviest put OI = price point below which dealers absorb sell-pressure ("max pain" theory.)
-    RED_ZONE_TRADIER_GATE_ENABLED: bool = False     # 2026-04-28 reverted to OFF per user "regress to qualifying setup". Sweep-testable knob.
+    RED_ZONE_TRADIER_GATE_ENABLED: bool = True      # 2026-04-28 restored — probe one-by-one
     RED_ZONE_TRADIER_MIN_DISTANCE_PCT: float = 0.5  # block entry when underlying within 0.5% of wall strike
     RED_ZONE_TRADIER_MIN_OI_AT_WALL: int = 1000     # require wall strike to have ≥1000 OI (filters spurious thin strikes)
     RED_ZONE_TRADIER_AUGMENT_GATE_ENABLED: bool = True   # apply to AUGMENT actions (don't add into resistance)
