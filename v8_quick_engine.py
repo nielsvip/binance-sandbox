@@ -3750,6 +3750,10 @@ def simulate(stores, cfg, capital=10000.0):
         _aug_4h_mult = float(getattr(cfg, 'AUGMENT_WT_4H_MULTIPLIER', 2.0))
         _aug_4h_req_hwt = bool(getattr(cfg, 'AUGMENT_WT_4H_REQUIRE_HIGHER_WT', False))
         _aug_4h_req_hpx = bool(getattr(cfg, 'AUGMENT_WT_4H_REQUIRE_HIGHER_PRICE', False))
+        # Trade recorder buffer for non-BTC sim (accumulates across both sides).
+        # Activated by env V8_TRADES_OUT_DIR. Generic ENTRY/EXIT reasons (full instrumentation deferred).
+        _generic_trades_dir = os.environ.get('V8_TRADES_OUT_DIR', '')
+        _generic_trades_buf = [] if _generic_trades_dir else None
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
@@ -4063,10 +4067,52 @@ def simulate(stores, cfg, capital=10000.0):
             _rm_d_arr = _safe(npz, f'stoch_d_{_reentry_mom_tf}', n, 50.0)
             _last_exit_bar = -9999
             _prev_in_pos = False
+            # Trade recorder transition state (for chart visualization).
+            _rec_entry_bar = -1
+            _rec_entry_price = 0.0
             for i in range(n):
                 # Track exit transitions — used by REENTRY_IF_MOMENTUM bypass below.
                 if _prev_in_pos and not in_pos:
                     _last_exit_bar = i - 1
+                    if _generic_trades_buf is not None and _rec_entry_bar >= 0 and sym_pnl:
+                        _ex_px = float(close[i - 1]) if i >= 1 and close[i - 1] > 0 else 0.0
+                        _ex_ts = int(ts[i - 1]) if hasattr(ts, '__len__') and (i - 1) < len(ts) else 0
+                        _en_ts = int(ts[_rec_entry_bar]) if hasattr(ts, '__len__') and _rec_entry_bar < len(ts) else 0
+                        # Derive reasons from state flags. (entry_sig / exit_sig are flat ndarrays in this engine.)
+                        _en_reason = "BREAKOUT" if _entry_was_breakout else ("RZ_BREAK" if _entry_was_rz_break else "BOUNCE")
+                        # Exit reason: query active flags + signal arrays at exit bar
+                        _ex_reason = "TECH_EXIT"
+                        try:
+                            ix = i - 1
+                            if ix < n and exit_sig is not None and bool(exit_sig[ix]):
+                                _ex_reason = "WT_EXIT"
+                            if _pe_partial_done:
+                                _ex_reason = "PPL_TRAIL_STOP"
+                            # Hard-stop / SL detection: large adverse close vs entry
+                            if _rec_entry_price > 0:
+                                _adverse_pct = ((float(close[ix]) - _rec_entry_price) / _rec_entry_price * 100.0) * (1 if is_long else -1)
+                                if _adverse_pct < -1.5: _ex_reason = "HARD_LOSS"
+                                elif _adverse_pct < -0.5 and _rec_entry_bar > 0 and (ix - _rec_entry_bar) <= 3: _ex_reason = "QUICK_REVERSAL"
+                        except Exception: pass
+                        _generic_trades_buf.append({
+                            "symbol": sym,
+                            "side": "LONG" if is_long else "SHORT",
+                            "entry_type": "BREAKOUT" if _entry_was_breakout else "BOUNCE",
+                            "entry_reason": _en_reason,
+                            "exit_reason": _ex_reason,
+                            "entry_bar": int(_rec_entry_bar), "entry_ts": _en_ts,
+                            "entry_price": float(_rec_entry_price),
+                            "exit_bar": int(i - 1), "exit_ts": _ex_ts, "exit_price": _ex_px,
+                            "pnl_pct": float(sym_pnl[-1]),
+                            "pnl_usd": 0.0,
+                            "duration_bars": int(i - 1 - _rec_entry_bar),
+                            "stream": "primary",
+                        })
+                        _rec_entry_bar = -1
+                        _rec_entry_price = 0.0
+                if not _prev_in_pos and in_pos and _rec_entry_bar < 0:
+                    _rec_entry_bar = i - 1 if i >= 1 else 0
+                    _rec_entry_price = float(ep) if ep > 0 else float(close[_rec_entry_bar]) if close[_rec_entry_bar] > 0 else 0.0
                 _prev_in_pos = in_pos
                 if _qr_enabled and not in_pos and _qr_exit_px > 0 and (i - _qr_exit_bar) <= _qr_window:
                     px = close[i]
@@ -4385,10 +4431,38 @@ def simulate(stores, cfg, capital=10000.0):
                     if _pe_partial_done:
                         final_pnl = _pe_realized + (1.0 - _pe_frac) * final_pnl
                     _wa = final_pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                    if _generic_trades_buf is not None and _rec_entry_bar >= 0:
+                        _en_ts = int(ts[_rec_entry_bar]) if hasattr(ts, '__len__') and _rec_entry_bar < len(ts) else 0
+                        _ex_ts = int(ts[n - 1]) if hasattr(ts, '__len__') and (n - 1) < len(ts) else 0
+                        _generic_trades_buf.append({
+                            "symbol": sym,
+                            "side": "LONG" if is_long else "SHORT",
+                            "entry_type": "BREAKOUT" if _entry_was_breakout else "BOUNCE",
+                            "entry_reason": "ENTRY", "exit_reason": "MTM_END_OF_SIM",
+                            "entry_bar": int(_rec_entry_bar), "entry_ts": _en_ts,
+                            "entry_price": float(_rec_entry_price),
+                            "exit_bar": int(n - 1), "exit_ts": _ex_ts, "exit_price": float(final_px),
+                            "pnl_pct": float(_wa), "pnl_usd": 0.0,
+                            "duration_bars": int(n - 1 - _rec_entry_bar),
+                            "stream": "primary",
+                        })
+                        _rec_entry_bar = -1
+                        _rec_entry_price = 0.0
                 if hedge_in_pos and final_px > 0 and hedge_ep > 0:
                     h_pnl = ((hedge_ep - final_px) / hedge_ep * 100) if is_long else ((final_px - hedge_ep) / hedge_ep * 100)
                     all_pnl.append(h_pnl); sym_pnl.append(h_pnl)
                 in_pos = False; hedge_in_pos = False; hedge_ep = 0.0
+        # Dump non-BTC trade buffer to JSONL (one file per symbol, both sides merged).
+        if _generic_trades_dir and _generic_trades_buf:
+            try:
+                os.makedirs(_generic_trades_dir, exist_ok=True)
+                _run_id = os.environ.get('V8_TRADES_RUN_ID', 'default')
+                _out_path = os.path.join(_generic_trades_dir, f"{_run_id}__{sym}.jsonl")
+                with open(_out_path, 'w') as _tf:
+                    for _td in _generic_trades_buf:
+                        _tf.write(json.dumps(_td) + "\n")
+            except Exception as _te:
+                print(f"[V8_TRADES_OUT_GEN] write error {sym}: {_te}", flush=True)
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
         if _rg is not None:

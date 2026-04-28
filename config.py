@@ -1493,6 +1493,17 @@ class Config:
     # GTX limit rests at the floor and waits — does not chase into a net-loss fill.
     MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = True
     MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC: float = 300.0  # how long to wait at floor before timing out
+    # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation, plus a tight stop.
+    GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = True
+    GUARANTEED_REENTRY_K_HIGH_BLOCK: float = 80.0      # block LONG reentry when k_3m >= this (adverse extreme)
+    GUARANTEED_REENTRY_K_LOW_BLOCK: float = 20.0       # block SHORT reentry when k_3m <= this (adverse extreme)
+    GUARANTEED_REENTRY_K_FAVORABLE_LOW: float = 30.0   # LONG reentry favorable: k_3m <= this (oversold)
+    GUARANTEED_REENTRY_K_FAVORABLE_HIGH: float = 70.0  # SHORT reentry favorable: k_3m >= this (overbought)
+    # Tight stop on GUARANTEED_REENTRY positions: cut early if reversed (controlled bleed, bypasses commission floor)
+    GUARANTEED_REENTRY_TIGHT_STOP_ENABLED: bool = True
+    GUARANTEED_REENTRY_TIGHT_STOP_PCT: float = 0.5     # close at gain <= -0.5% if origin was GUARANTEED_REENTRY
+    GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S: float = 60.0   # don't fire in first 60s (let entry settle)
+    GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S: float = 1800.0  # only relevant for first 30min after reentry
     PARTIAL_PROFIT_LOCK_FRAC: float = 0.5              # Semantic only — URL2 handles actual 50% on Finandy side
     PARTIAL_PROFIT_LOCK_USE_MAKER: bool = True
     # NOLOSS exception (sweep-only, default OFF): if all 5 WT TFs (3m/15m/1h/4h/D) flip against → allow close at loss. 2026-04-25 rapid-grid: neutral for crypto on both 4TF and 5TF — existing exit paths already cover confirmed reversals.

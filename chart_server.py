@@ -291,6 +291,58 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+@app.route("/indicator")
+def indicator():
+    """Return time-series for one or more NPZ fields. ?sym=X&fields=a,b,c[&start=&end=&max=]"""
+    sym = request.args.get("sym", "").upper()
+    fields_raw = request.args.get("fields", "")
+    fields = [f.strip() for f in fields_raw.split(",") if f.strip()]
+    start = _ts_to_unix(request.args.get("start"))
+    end = _ts_to_unix(request.args.get("end"))
+    max_pts = int(request.args.get("max", 5000))
+    z = _load_npz(sym)
+    if z is None:
+        return jsonify({"error": f"no NPZ for {sym}"}), 404
+    ts_arr = z["timestamps"] if "timestamps" in z.files else None
+    if ts_arr is None:
+        return jsonify({"error": "no timestamps"}), 500
+    n = len(ts_arr)
+    lo = int(np.searchsorted(ts_arr, start)) if start is not None else 0
+    hi = int(np.searchsorted(ts_arr, end)) if end is not None else n
+    lo = max(lo, 0); hi = min(hi, n)
+    if hi <= lo:
+        return jsonify({"timestamps": [], "fields": {}})
+    step = max(1, (hi - lo) // max_pts + 1)
+    out_ts = ts_arr[lo:hi:step].tolist()
+    out_fields: Dict[str, List[float]] = {}
+    missing = []
+    for f in fields:
+        if f not in z.files:
+            missing.append(f)
+            continue
+        arr = z[f]
+        if len(arr) < n:
+            # pad with zeros if shorter (rare but possible)
+            arr = np.pad(arr, (0, n - len(arr)), constant_values=0)
+        out_fields[f] = [float(x) if x == x else None for x in arr[lo:hi:step].tolist()]
+    return jsonify({
+        "timestamps": [int(t) for t in out_ts],
+        "fields": out_fields,
+        "missing": missing,
+        "step": step,
+    })
+
+
+@app.route("/available_fields")
+def available_fields():
+    """List all NPZ fields available for a symbol."""
+    sym = request.args.get("sym", "").upper()
+    z = _load_npz(sym)
+    if z is None:
+        return jsonify({"error": f"no NPZ for {sym}"}), 404
+    return jsonify(sorted(z.files))
+
+
 @app.route("/health")
 def health():
     return jsonify({

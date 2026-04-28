@@ -15376,6 +15376,21 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True) and not _price_crossed:
                     should_reenter = False
                     logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config (T1 price_crossed bypasses this)")
+                # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation.
+                # Require either FULL WT STACK (3m+15m+≥2HTF) OR favorable K extreme. Block adverse K extreme.
+                if should_reenter and bool(getattr(config, 'GUARANTEED_REENTRY_STRICT_CONFIRMATION', True)):
+                    _gr_k_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_HIGH_BLOCK', 80.0))
+                    _gr_k_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_LOW_BLOCK', 20.0))
+                    _gr_k_fav_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_LOW', 30.0))
+                    _gr_k_fav_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_HIGH', 70.0))
+                    _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (not is_long and k_3m <= _gr_k_lo)
+                    _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (not is_long and k_3m >= _gr_k_fav_hi)
+                    if _gr_k_adverse:
+                        should_reenter = False
+                        logger.warning(f"🛡️[GUARANTEED_REENTRY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} {'>=' if is_long else '<='}{_gr_k_hi if is_long else _gr_k_lo} — refusing reentry at top/bottom")
+                    elif not _full_stack and not _gr_k_favorable:
+                        should_reenter = False
+                        logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
                 if should_reenter:
                     _gr_ok, _gr_reason = _ez_check_reentry_delta_tolerant(indicators, is_long, trade_manager, symbol)
                     if not _gr_ok:

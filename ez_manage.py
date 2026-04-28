@@ -12658,7 +12658,7 @@ class MultiAccountTradeManager:
             # after fees + slippage. We compute the floor once before the chasing loop and clamp the
             # limit-target each iteration. Bypass for emergency reasons (STRICT_NO_LOSS, hopeless DC, etc).
             _close_floor_enabled = bool(getattr(config, 'MAKER_CLOSE_COMMISSION_FLOOR_ENABLED', True))
-            _close_floor_bypass_reasons = ('STRICT_NO_LOSS', 'EMERGENCY', 'STDEV_BREAKOUT', 'DC_HOPELESS', 'PROTECTIVE_EXIT', 'V3_DIRECT', 'DELTA_EXIT')
+            _close_floor_bypass_reasons = ('STRICT_NO_LOSS', 'EMERGENCY', 'STDEV_BREAKOUT', 'DC_HOPELESS', 'PROTECTIVE_EXIT', 'V3_DIRECT', 'DELTA_EXIT', 'GR_TIGHT_STOP', 'GUARANTEED_REENTRY_TIGHT')
             _close_floor_skip = any(b in reason_upper for b in _close_floor_bypass_reasons)
             _close_floor_price = None
             _close_floor_buf_pct = 0.0
@@ -15819,6 +15819,21 @@ class MultiAccountTradeManager:
                     if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True):
                         should_reenter = False
                         logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config")
+                    # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation.
+                    # Require either FULL WT STACK (3m+15m+≥2HTF) OR favorable K extreme. Block adverse K extreme.
+                    if should_reenter and bool(getattr(config, 'GUARANTEED_REENTRY_STRICT_CONFIRMATION', True)):
+                        _gr_k_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_HIGH_BLOCK', 80.0))
+                        _gr_k_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_LOW_BLOCK', 20.0))
+                        _gr_k_fav_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_LOW', 30.0))
+                        _gr_k_fav_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_HIGH', 70.0))
+                        _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (not is_long and k_3m <= _gr_k_lo)
+                        _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (not is_long and k_3m >= _gr_k_fav_hi)
+                        if _gr_k_adverse:
+                            should_reenter = False
+                            logger.warning(f"🛡️[GUARANTEED_REENTRY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} {'>=' if is_long else '<='}{_gr_k_hi if is_long else _gr_k_lo} — refusing reentry at top/bottom")
+                        elif not _full_stack and not _gr_k_favorable:
+                            should_reenter = False
+                            logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
                     if should_reenter:
                         _gr_ok, _gr_reason = check_reentry_delta_tolerant(indicators, is_long, self, symbol)
                         if not _gr_ok:
@@ -20471,6 +20486,30 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if result and "SUCCESS" in str(result): return f"{EvalStatus.ACTION_TAKEN}:PYRAMID"
             except Exception as _sx_err:
                 logger.debug(f"[STRATEGY_ENHANCEMENTS] {position_key}: {_sx_err}")
+        # ==================================================================
+        # 2026-04-28 USER RULE: GUARANTEED_REENTRY positions get a tight stop.
+        # If a position was opened/augmented via GUARANTEED_REENTRY and quickly reverses,
+        # cut at TIGHT_STOP_PCT before it bleeds further. Bypasses commission floor (controlled bleed).
+        # The strict-confirmation gate above prevents most bad reentries; this is the safety net for the rest.
+        # ==================================================================
+        if bool(getattr(config, 'GUARANTEED_REENTRY_TIGHT_STOP_ENABLED', True)) and is_active_position and position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0)) > pos_min_qty:
+            _gr_signal_blob = (str(getattr(position, 'last_signal', '')) + ' ' + str(getattr(position, 'augment_reason', '')) + ' ' + str(getattr(position, 'reduction_reason', ''))).upper()
+            if 'GUARANTEED_REENTRY' in _gr_signal_blob:
+                _gr_stop_pct = -abs(float(getattr(config, 'GUARANTEED_REENTRY_TIGHT_STOP_PCT', 0.5)))
+                _gr_pp_g = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _gr_oa_raw = getattr(position, 'opened_at', None) or getattr(position, 'last_augmentation_time', None)
+                if isinstance(_gr_oa_raw, (int, float)):
+                    _gr_oa_raw = datetime.fromtimestamp(_gr_oa_raw, tz=timezone.utc) if _gr_oa_raw > 0 else None
+                _gr_oa_dt = safe_datetime(_gr_oa_raw) if _gr_oa_raw else None
+                _gr_age_s = (now - _gr_oa_dt).total_seconds() if isinstance(_gr_oa_dt, datetime) and isinstance(now, datetime) else 9999
+                _gr_min_age = float(getattr(config, 'GUARANTEED_REENTRY_TIGHT_STOP_MIN_AGE_S', 60.0))
+                _gr_max_age = float(getattr(config, 'GUARANTEED_REENTRY_TIGHT_STOP_MAX_AGE_S', 1800.0))
+                if _gr_min_age <= _gr_age_s <= _gr_max_age and _gr_pp_g <= _gr_stop_pct:
+                    logger.critical(f"🛑[GR_TIGHT_STOP] {position_key}: GUARANTEED_REENTRY position gain={_gr_pp_g:.2f}% <= stop {_gr_stop_pct:.2f}% (age={_gr_age_s:.0f}s) — closing tight-stop, bypasses commission floor")
+                    result = await queue_trade_action(order_queue, trade_manager, position_key, "QUICK_CLOSE", f"GR_TIGHT_STOP_g{_gr_pp_g:.2f}%_age{_gr_age_s:.0f}s_pos_was_GUARANTEED_REENTRY", 0.95)
+                    if result:
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:GR_TIGHT_STOP"
         # ==================================================================
         # #1 RULE: EXIT ON 4H WT VELOCITY SLOWDOWN — MANDATORY REENTRY
         # V5 WT Pure backtest 2026-03-31: 4h velocity = +$10,074 (WINNER)
