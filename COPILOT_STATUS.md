@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-28 13:02:10 UTC
+# Copilot Status — 2026-04-28 13:17:21 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:53:28
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:55:34
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:55:34
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:57:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:57:39
-- **STALE_INDICATORS** [tradier]  — 2026-04-28T12:59:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T12:59:43
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T12:59:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T13:01:47
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T13:01:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T13:10:10
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-28T13:10:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T13:10:10
+- **STALE_INDICATORS** [tradier]  — 2026-04-28T13:12:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T13:12:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T13:12:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T13:14:22
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T13:14:22
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-28T13:16:28
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-28T13:16:28
 
 ## Missed Trades (trader comparison)
 
@@ -35,16 +35,14 @@ _None_
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
-- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 56m ago
+- WATCHING: **EIGENUSDT** LONG (crypto) peaked +3.2%, exited 71m ago
 - WATCHING: **ATOMUSDT** SHORT (crypto) peaked +3.1%, exited 0m ago
-- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 61m ago
+- WATCHING: **TRUMPUSDC** LONG (crypto) peaked +3.0%, exited 76m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 4
-- [HIGH] ez_prices.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 2
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_rankings.py running but log stale (10min)
