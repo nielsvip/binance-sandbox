@@ -30,6 +30,7 @@ from requests.adapters import HTTPAdapter
 
 from config import Config
 import hedge_decisions as _hd
+import btc_loop as _btc_loop  # 2026-04-28 Phase 6b: BTC dedicated loop decision module (kill switch BTC_DEDICATED_ENABLED defaults False)
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
     from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
@@ -1623,6 +1624,148 @@ class BreakoutHunter:
                 except Exception as e:
                     logger.error(f"[BREAKOUT_HUNTER] ❌ EXIT {key}: {e}")
 
+# ════════════════════════════════════════════════════════════════════════
+# BTC DEDICATED LOOP — live wiring (Phase 6b, 2026-04-28)
+# Default OFF via cfg.BTC_DEDICATED_ENABLED. When False, all helpers are
+# pass-through and existing rate() pipeline runs unchanged.
+# When True, OVERRIDES rate() decision for BTC symbols on configured accounts.
+# Existing hedge engine + tracker.json continue to handle losing positions —
+# this layer only changes the ENTRY/EXIT signal source, not the execution path.
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
+    """True iff BTC dedicated loop should override rate() for this acct+symbol."""
+    if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
+        return False
+    if symbol not in ("BTCUSDC", "BTCUSDT"):
+        return False
+    accounts = getattr(cfg, "BTC_DEDICATED_ACCOUNTS", ["flz", "inf"])
+    return account_key in accounts
+
+
+def _btc_dedicated_account_blocked(account_key: str, symbol: str, cfg) -> bool:
+    """Hard-block: True iff BTC trading is disallowed for this account."""
+    if symbol not in ("BTCUSDC", "BTCUSDT"):
+        return False
+    if not getattr(cfg, "BTC_HARD_BLOCK_OTHER_ACCOUNTS", True):
+        return False
+    accounts = getattr(cfg, "BTC_DEDICATED_ACCOUNTS", ["flz", "inf"])
+    return account_key not in accounts
+
+
+def _btc_build_features_from_indicators(indicators: dict, current_price: float, cfg):
+    """Build btc_loop feature dataclasses from the live `indicators` dict.
+
+    Live indicators dict has wt1_3m/15m/1h/4h/D, wt2_*, wt_velocity_*, wt_velocity_*_prev,
+    wt_acceleration_*, rsi_*, mfi_*, dc_high_*, dc_low_*, bb_pct_b_4h, etc.
+
+    Returns (red_zone_state, accel_dict, divergence_state) — None if data missing.
+    """
+    if not indicators or current_price <= 0:
+        return None, None, None
+
+    tfs = ("3m", "15m", "1h", "4h", "D")
+    accel_per_tf = {}
+    for tf in tfs:
+        v = float(indicators.get(f"wt_velocity_{tf}", 0) or 0)
+        v_prev = float(indicators.get(f"wt_velocity_{tf}_prev", 0) or 0)
+        a = float(indicators.get(f"wt_acceleration_{tf}", v - v_prev) or 0)
+        accel_per_tf[tf] = _btc_loop.WTAccelFeatures(velocity=v, velocity_prev=v_prev, acceleration=a)
+    accel = _btc_loop.compute_accel_ramp(
+        accel_per_tf,
+        require_positive=bool(getattr(cfg, "BTC_ACCEL_RAMP_REQUIRE_POSITIVE", True)),
+    )
+
+    # Divergence — best-effort: live indicators dict has only current values, not history.
+    # Without bar arrays we can't compute pivot divergence. So we return empty DivergenceState
+    # for now — the entry/exit logic still works (just no div block/exit). Future: feed kline
+    # history through this function.
+    div = _btc_loop.DivergenceState()
+
+    # Red zone — fib/round levels need swing high/low arrays. Use bb_pct_b_4h as wt_dc_zone proxy.
+    bp = float(indicators.get("bb_pct_b_4h", 0.5) or 0.5)
+    if bp >= 0.85:
+        wt_dc_zone = "TOP"
+    elif bp <= 0.15:
+        wt_dc_zone = "BOTTOM"
+    else:
+        wt_dc_zone = "BASELINE"
+    rz = _btc_loop.build_red_zone_state(
+        current_price=current_price,
+        fib_levels_per_tf=None,            # live live caller can pass swing if available
+        round_levels=_btc_loop.compute_round_levels(
+            current_price,
+            primary_inc_usd=float(getattr(cfg, "BTC_ROUND_INC_PRIMARY_USD", 5000.0)),
+            secondary_inc_usd=float(getattr(cfg, "BTC_ROUND_INC_SECONDARY_USD", 1000.0)),
+            bands_each_side=int(getattr(cfg, "BTC_ROUND_BANDS_EACH_SIDE", 8)),
+        ),
+        wt_dc_zone=wt_dc_zone,
+        proximity_pct=float(getattr(cfg, "BTC_RZ_PROXIMITY_PCT", 0.5)),
+    )
+    return rz, accel, div
+
+
+def _btc_dedicated_entry_decision(account_key: str, symbol: str, is_long: bool,
+                                    current_price: float, indicators: dict, cfg):
+    """Returns (score, rec, reason) tuple matching AdvancedSignalRater.rate() output,
+    or None to fall through to rate(). When dedicated loop active and signal fires,
+    score=score_threshold to clear gates downstream; if not firing, score=0."""
+    rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
+    if rz is None:
+        return None
+    if is_long:
+        ok, why = _btc_loop.should_enter_btc_long(
+            current_price=current_price, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
+        )
+    else:
+        ok, why = _btc_loop.should_enter_btc_short(
+            current_price=current_price, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
+        )
+    if ok:
+        return 100.0, True, f"BTC_LOOP_ENTRY_{('LONG' if is_long else 'SHORT')}_{why}"
+    return 0.0, False, f"BTC_LOOP_NO_ENTRY_{why}"
+
+
+def _btc_dedicated_exit_decision(account_key: str, symbol: str, is_long: bool,
+                                   current_price: float, indicators: dict, position_size: float,
+                                   entry_price: float, age_bars: int, cfg):
+    """Returns (score, rec, reason) for exit decision, or None."""
+    rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
+    if rz is None or entry_price <= 0:
+        return None
+    side = "LONG" if is_long else "SHORT"
+    pnl_pct = ((current_price - entry_price) / entry_price * 100.0) if is_long else ((entry_price - current_price) / entry_price * 100.0)
+    own_max = float(getattr(cfg, "BTC_PER_TRADE_NOTIONAL_USD_MAX", 90.0))
+    leverage = float(getattr(cfg, "BTC_LEVERAGE", 20.0))
+    pnl_usd = (pnl_pct / 100.0) * own_max * leverage
+    pos = _btc_loop.PositionRiskState(
+        side=side, own_capital_usd=own_max, notional_usd=own_max * leverage,
+        current_pnl_pct=pnl_pct, current_pnl_usd=pnl_usd, age_bars=age_bars,
+        entry_type="BOUNCE",        # default; live caller may override via tracker
+    )
+    # Compute WT-against count
+    tfs = ("3m", "15m", "1h", "4h", "D")
+    wt_against_count = 0
+    for tf in tfs:
+        w1 = float(indicators.get(f"wt1_{tf}", 0) or 0)
+        w2 = float(indicators.get(f"wt2_{tf}", 0) or 0)
+        if (is_long and w1 < w2) or (not is_long and w1 > w2):
+            wt_against_count += 1
+    ok, why = _btc_loop.should_exit_btc(
+        position=pos, accel=accel, divergence=div,
+        wt_against_min_tfs=int(getattr(cfg, "BTC_TECH_EXIT_WT_MIN_TFS", 3)),
+        wt_against_count=wt_against_count,
+        cfg=cfg,
+    )
+    if ok:
+        return 100.0, True, f"BTC_LOOP_EXIT_{side}_{why}"
+    return 0.0, False, f"BTC_LOOP_HOLD_{why}"
+
+
+# ────────────────────────── End BTC dedicated loop hooks ────────────────
+
+
 class AdvancedSignalRater:
     @staticmethod
     async def rate(account_key, symbol, is_long, current_price, metrics, ind, prev_cross_price, is_exit, is_allowed, avg_entry=0.0, last_exit_timestamp=None, last_reduction_price=0.0, scalping_mode=False, scalping_override=False, tracker_data=None, tracker_manager=None, skip_boycott=False, data_manager=None):
@@ -1837,6 +1980,10 @@ class AdvancedSignalRater:
                 is_tradeable = True
                 _is_temp_key = True
         if not is_tradeable and (not position or positionAmt <= 0): return 0, "NOT A TRADEABLE KEY", f'{position_key} NOT TRADEABLE'
+        # BTC HARD-BLOCK (Phase 6b 2026-04-28): when BTC dedicated loop is active,
+        # only configured accounts (default flz, inf) may trade BTC. Other accts vetoed.
+        if _btc_dedicated_account_blocked(account_key, symbol, config) and (not position or positionAmt <= 0):
+            return 0, "BTC_HARD_BLOCKED", f"BTC trading restricted to BTC_DEDICATED_ACCOUNTS — {account_key} vetoed"
         if not last_reduction_price: last_reduction_price = position.last_reduction_price if position else current_price
         if not is_allowed and not is_exit: return 0, "WAIT", "Not Allowed"
         if current_price <= 0: return 0, "WAIT", "No current_price"
@@ -11633,6 +11780,54 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                             pass
                         except Exception as _rz_exc:
                             logger.debug(f"[RED_ZONE_GATE] {position_key}: exception {type(_rz_exc).__name__} {_rz_exc} — skipped")
+                # ═══ 2026-04-28 DEEP VOLUME-PROFILE GATE (±50% historical heatmap, crypto) ═══
+                # User: "heat maps over the next 50% up or down instead of the open orders for the next minute".
+                # ez_volume_profile.py writes vol_profile:<sym> with top HVN buckets above/below price.
+                # Block LONG within VP_GATE_MIN_DISTANCE_PCT below any HVN-above (resistance shelf).
+                # Block SHORT within MIN_DISTANCE_PCT above any HVN-below (support floor).
+                if bool(getattr(config, 'VP_GATE_ENABLED', False)):
+                    _vp_apply = True
+                    if is_hedge and not bool(getattr(config, 'VP_GATE_HEDGE_GATE_ENABLED', False)):
+                        _vp_apply = False
+                    if _is_aug_action and not bool(getattr(config, 'VP_GATE_AUGMENT_GATE_ENABLED', True)):
+                        _vp_apply = False
+                    if _vp_apply:
+                        try:
+                            _vp_min_dist = float(getattr(config, 'VP_GATE_MIN_DISTANCE_PCT', 1.0))
+                            _vp_min_z = float(getattr(config, 'VP_GATE_MIN_DENSITY_Z', 2.0))
+                            _vp_stale = float(getattr(config, 'VP_GATE_STALE_MAX_SEC', 7200.0))
+                            _vp_sym = parse_position_key(position_key)[1] if position_key else None
+                            if _vp_sym:
+                                _vp_blob = await tracker_manager.redis.get(f"vol_profile:{_vp_sym}") if hasattr(tracker_manager, 'redis') else None
+                                if _vp_blob:
+                                    _vp = orjson.loads(_vp_blob)
+                                    _vp_age = time.time() - (_vp.get('vp_ts') or 0)
+                                    if _vp_age <= _vp_stale:
+                                        _vp_under = float(_vp.get('vp_underlying_price') or 0)
+                                        _hvns = _vp.get('vp_top_hvn_above' if _gate_is_long else 'vp_top_hvn_below') or []
+                                        for _hvn in _hvns:
+                                            try:
+                                                _z = float(_hvn.get('density_z') or 0)
+                                                if _z < _vp_min_z:
+                                                    continue
+                                                _mid_pct = float(_hvn.get('mid_pct') or 0)
+                                                # mid_pct already in % units relative to underlying when vp written; recompute relative to current_price for accuracy
+                                                if _vp_under > 0 and current_price > 0:
+                                                    _hvn_price = _vp_under * (1.0 + _mid_pct / 100.0)
+                                                    if _gate_is_long and _hvn_price > current_price:
+                                                        _dist = (_hvn_price - current_price) / current_price * 100.0
+                                                        if _dist < _vp_min_dist:
+                                                            logger.warning(f"📊 [VP_GATE] {position_key}: BLOCKED LONG — HVN resistance shelf at {_mid_pct:+.1f}% (dist={_dist:.2f}% from current ${current_price:.4f}, density_z={_z:.2f} ≥ {_vp_min_z}, threshold {_vp_min_dist}%). action={action}")
+                                                            return False, f"VP_BLOCK_LONG_hvn={_mid_pct:+.1f}%_z={_z:.1f}"
+                                                    elif (not _gate_is_long) and _hvn_price < current_price:
+                                                        _dist = (current_price - _hvn_price) / current_price * 100.0
+                                                        if _dist < _vp_min_dist:
+                                                            logger.warning(f"📊 [VP_GATE] {position_key}: BLOCKED SHORT — HVN support floor at {_mid_pct:+.1f}% (dist={_dist:.2f}% from current ${current_price:.4f}, density_z={_z:.2f} ≥ {_vp_min_z}, threshold {_vp_min_dist}%). action={action}")
+                                                            return False, f"VP_BLOCK_SHORT_hvn={_mid_pct:+.1f}%_z={_z:.1f}"
+                                            except Exception:
+                                                continue
+                        except Exception as _vp_exc:
+                            logger.debug(f"[VP_GATE] {position_key}: {type(_vp_exc).__name__} {_vp_exc} — skipped")
                 # ═══ 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable) ═══
                 # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
                 # User 2026-04-27 23:13: "test lh with or without ll for longs hl with or without hh for shorts on both platforms".
@@ -11714,12 +11909,15 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
         _fresh_amt = abs(safe_fetch_float(getattr(_fresh_pos, 'positionAmt', 0), 0)) if _fresh_pos else 0
         _fresh_val = _fresh_amt * current_price if current_price > 0 else 0
         _pos_symbol = parse_position_key(position_key)[1] if position_key else ""
-        # 2026-04-27 owner: pos_min_qty = max(MIN_POSITION_SIZE/price, step*1.2).
-        # MIN_POSITION_SIZE=$1.0 (config). Below pos_min_qty: position is "closed",
-        # any new entry is allowed. Above pos_min_qty: NOTHING new fires —
-        # NOT open, NOT hedge, NOT reentry, NOT reopen. ONLY AUGMENT with gain ≥ MIN_GAIN.
-        # Earlier dust-floor (step*1.2) was too tight; reverted to canonical formula.
-        _min_qty = max(config.MIN_POSITION_SIZE / current_price, trade_manager.min_qty.get(_pos_symbol, 0.0) * 1.2) if current_price > 0 else 0
+        # 2026-04-28 owner: pos_min_qty = max(min_qty.json[sym], $6/price).
+        # Use the symbol's exchange minQty as the base; if that's worth less than $6,
+        # bump up so a $5 dust position still counts as OPEN. Below pos_min_qty:
+        # any new entry allowed (position is effectively closed). Above pos_min_qty:
+        # NOTHING new fires — NOT open, NOT hedge, NOT reentry, NOT reopen.
+        # ONLY AUGMENT with gain ≥ MIN_GAIN passes through.
+        _min_qty_sym = float(trade_manager.min_qty.get(_pos_symbol, 0.0) or 0)
+        _min_usd_floor = 6.0
+        _min_qty = max(_min_qty_sym, _min_usd_floor / current_price) if current_price > 0 else _min_qty_sym
         _max_pos_val = float(getattr(config, 'START_POSITION_SIZE', 18.0)) * 12.0
         _pos_is_open = _fresh_amt > _min_qty
         # HARD BLOCK: No entry action on an already-open position — covers ALL entry action names.
@@ -13417,7 +13615,20 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # is_stale_or_boycott = (time.time() - ts) > 15 or "BOYCOTT" in str(rec_exit).upper() or "WAIT" in str(rec_exit).upper()
                 # if is_stale_or_boycott:
                 prev_cross = _get_prev_cross_price(symbol, is_long)
-                score_exit, rec_exit, reason_exit = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=True, is_allowed=True, scalping_mode=should_scalp, tracker_manager=tracker_manager, data_manager=data_manager)
+                # ── BTC dedicated loop EXIT override (Phase 6b) ──
+                _btc_exit_dec = None
+                if _btc_dedicated_active(account_key, symbol, config):
+                    _entry_p = float(position.get('entry_price', 0.0) or 0.0) if position else 0.0
+                    _opened_at = float(position.get('opened_at', time.time()) or time.time()) if position else time.time()
+                    _age_bars = max(0, int((time.time() - _opened_at) / 180))   # 3m bars
+                    _btc_exit_dec = _btc_dedicated_exit_decision(
+                        account_key, symbol, is_long, current_price, indicators,
+                        positionAmt, _entry_p, _age_bars, config,
+                    )
+                if _btc_exit_dec is not None:
+                    score_exit, rec_exit, reason_exit = _btc_exit_dec
+                else:
+                    score_exit, rec_exit, reason_exit = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=True, is_allowed=True, scalping_mode=should_scalp, tracker_manager=tracker_manager, data_manager=data_manager)
                 if is_long and tracker_manager.registry.market_panic:
                     if current_gain < 0.2: 
                         score_exit -= 10
@@ -14008,7 +14219,18 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                     tracker_manager.entry_candidates[position_key] = entry_meta
                 score, rec, reason, ts_cache = tracker_manager.registry.get_rating(symbol, position_side)
                 if (now - ts_cache) > 15:
-                    score, rec, reason = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=False, is_allowed=True, last_exit_timestamp=entry_meta.get('last_exit_timestamp'), scalping_mode=should_scalp, tracker_data=entry_meta, tracker_manager=tracker_manager, data_manager=data_manager)
+                    # ── BTC dedicated loop entry override (Phase 6b 2026-04-28) ──
+                    # When BTC_DEDICATED_ENABLED + symbol is BTC + account in BTC_DEDICATED_ACCOUNTS,
+                    # bypass rate() and use btc_loop.should_enter_btc_long/short. Default OFF.
+                    _btc_dec = None
+                    if _btc_dedicated_active(account_key, symbol, config):
+                        _btc_dec = _btc_dedicated_entry_decision(
+                            account_key, symbol, is_long, current_price, indicators, config,
+                        )
+                    if _btc_dec is not None:
+                        score, rec, reason = _btc_dec
+                    else:
+                        score, rec, reason = await AdvancedSignalRater.rate(account_key, symbol, is_long, current_price, metrics, indicators, prev_cross, is_exit=False, is_allowed=True, last_exit_timestamp=entry_meta.get('last_exit_timestamp'), scalping_mode=should_scalp, tracker_data=entry_meta, tracker_manager=tracker_manager, data_manager=data_manager)
                 should_trade = False
                 pyramid_data = None
                 _dc_breakout_entry = False

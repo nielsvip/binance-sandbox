@@ -1608,11 +1608,7 @@ class TradierBarManager:
                         if not is_intraday_data(df_new, tf):
                             logger.warning(f"REJECTED {symbol} {tf}: timesales returned daily bars")
                         elif 'time' in df_new.columns:
-                            df_new['timestamp_dt'] = pd.to_datetime(df_new['time'], errors='coerce')
-                            if not df_new.empty and df_new['timestamp_dt'].dt.tz is None:
-                                df_new['timestamp_dt'] = df_new['timestamp_dt'].dt.tz_localize(ET, ambiguous='infer').dt.tz_convert('UTC')
-                            else:
-                                df_new['timestamp_dt'] = df_new['timestamp_dt'].dt.tz_convert('UTC')
+                            df_new['timestamp_dt'] = pd.to_datetime(df_new['time'], utc=True, errors='coerce')
                                 
                             df_new = df_new.dropna(subset=['timestamp_dt'])
                             # df_new['timestamp'] = df_new['timestamp_dt'].dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")

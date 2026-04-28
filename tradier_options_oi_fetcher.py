@@ -68,8 +68,11 @@ CACHE_DIR = BASE / "data" / "stocks_oi_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 OI_REFRESH_SEC = 3600          # full-universe refresh cadence (1h)
-NEAREST_EXP_COUNT = 2          # use nearest-N expirations only (skip LEAPs — pure sentiment)
+NEAREST_EXP_COUNT = 4          # 2026-04-28: widened 2→4 to capture ±50% deep heatmap (user request)
 NEAR_MONEY_BAND_PCT = 5.0      # ±5% strike band for near_money_pc_ratio
+DEEP_RANGE_PCT = 50.0          # 2026-04-28: ±50% strike range for deep heatmap (top-N walls within this range)
+TOP_N_WALLS = 5                # 2026-04-28: capture top 5 highest-OI strikes per side (vs single max) for full S/R shelves
+WALL_BUCKET_PCT = 5.0          # 2026-04-28: bucketize OI into 5%-wide strike bins (heatmap density)
 PER_SYM_SLEEP_SEC = 0.4        # ~150 syms/min ceiling — keeps us under Tradier 120/min
 MAX_PARALLEL_SYMS = 1          # serial — Tradier hates parallel chain fetches
 LOG_FILE = BASE / "logs" / "tradier_options_oi_fetcher.log"
@@ -128,16 +131,23 @@ def _write_cache_atomic(sym: str, payload: dict):
 
 
 def _aggregate_chain(chain: List[dict], underlying_price: float) -> dict:
-    """Aggregate a flat list of option contracts into per-sym OI sentiment features."""
+    """Aggregate option chain into per-sym OI sentiment + DEEP HEATMAP across ±50% range.
+
+    2026-04-28 user request: same utility as OI but over the next 50% up or down instead of
+    the open orders for the next minute. Captures top-N highest-OI strikes per side as
+    options-implied S/R shelves, plus density bucketization for full heatmap visualization.
+    """
     total_call_oi = 0
     total_put_oi = 0
-    max_call: Tuple[Optional[float], int] = (None, 0)
-    max_put: Tuple[Optional[float], int] = (None, 0)
     near_call_oi = 0
     near_put_oi = 0
     n_contracts = 0
     band_low = underlying_price * (1.0 - NEAR_MONEY_BAND_PCT / 100.0)
     band_high = underlying_price * (1.0 + NEAR_MONEY_BAND_PCT / 100.0)
+    deep_low = underlying_price * (1.0 - DEEP_RANGE_PCT / 100.0)
+    deep_high = underlying_price * (1.0 + DEEP_RANGE_PCT / 100.0)
+    # Per-strike OI accumulator: { strike → {'call_oi':int, 'put_oi':int} }
+    by_strike: Dict[float, Dict[str, int]] = {}
     for opt in chain:
         try:
             otype = (opt.get("option_type") or "").lower()
@@ -145,22 +155,45 @@ def _aggregate_chain(chain: List[dict], underlying_price: float) -> dict:
             oi = int(opt.get("open_interest") or 0)
             if oi <= 0 or strike <= 0:
                 continue
+            # Drop strikes outside ±50% (filters spurious far-OTM tails that don't affect price)
+            if strike < deep_low or strike > deep_high:
+                continue
             n_contracts += 1
             in_band = band_low <= strike <= band_high
+            entry = by_strike.setdefault(strike, {"call_oi": 0, "put_oi": 0})
             if otype == "call":
+                entry["call_oi"] += oi
                 total_call_oi += oi
-                if oi > max_call[1]:
-                    max_call = (strike, oi)
-                if in_band:
-                    near_call_oi += oi
+                if in_band: near_call_oi += oi
             elif otype == "put":
+                entry["put_oi"] += oi
                 total_put_oi += oi
-                if oi > max_put[1]:
-                    max_put = (strike, oi)
-                if in_band:
-                    near_put_oi += oi
+                if in_band: near_put_oi += oi
         except Exception:
             continue
+    # Top-N walls per side
+    call_walls = sorted([(s, d["call_oi"]) for s, d in by_strike.items() if d["call_oi"] > 0],
+                        key=lambda x: -x[1])[:TOP_N_WALLS]
+    put_walls = sorted([(s, d["put_oi"]) for s, d in by_strike.items() if d["put_oi"] > 0],
+                       key=lambda x: -x[1])[:TOP_N_WALLS]
+    # Bucketed heatmap (dollar volume normalized to % distance from underlying)
+    # Buckets centered on underlying, ±DEEP_RANGE_PCT in WALL_BUCKET_PCT-wide bins.
+    n_buckets = int(DEEP_RANGE_PCT / WALL_BUCKET_PCT) * 2  # both sides
+    heatmap_buckets: List[dict] = []
+    for i in range(n_buckets):
+        # bucket i covers (-DEEP_RANGE_PCT + i*WALL_BUCKET_PCT, -DEEP_RANGE_PCT + (i+1)*WALL_BUCKET_PCT)
+        lo_pct = -DEEP_RANGE_PCT + i * WALL_BUCKET_PCT
+        hi_pct = lo_pct + WALL_BUCKET_PCT
+        lo_px = underlying_price * (1.0 + lo_pct / 100.0)
+        hi_px = underlying_price * (1.0 + hi_pct / 100.0)
+        c_sum = sum(d["call_oi"] for s, d in by_strike.items() if lo_px <= s < hi_px)
+        p_sum = sum(d["put_oi"] for s, d in by_strike.items() if lo_px <= s < hi_px)
+        if c_sum + p_sum > 0:
+            heatmap_buckets.append({
+                "lo_pct": round(lo_pct, 1), "hi_pct": round(hi_pct, 1),
+                "mid_pct": round((lo_pct + hi_pct) / 2.0, 1),
+                "call_oi": c_sum, "put_oi": p_sum,
+            })
     pc_ratio = (total_put_oi / total_call_oi) if total_call_oi > 0 else None
     near_pc = (near_put_oi / near_call_oi) if near_call_oi > 0 else None
     out = {
@@ -171,15 +204,25 @@ def _aggregate_chain(chain: List[dict], underlying_price: float) -> dict:
         "near_money_pc_ratio": round(near_pc, 4) if near_pc is not None else None,
         "near_money_call_oi": near_call_oi,
         "near_money_put_oi": near_put_oi,
-        "max_call_oi_strike": max_call[0],
-        "max_call_oi_value": max_call[1],
-        "max_put_oi_strike": max_put[0],
-        "max_put_oi_value": max_put[1],
+        # Backward-compat single max (existing consumers in tradier_rankings + tradier_manage)
+        "max_call_oi_strike": call_walls[0][0] if call_walls else None,
+        "max_call_oi_value": call_walls[0][1] if call_walls else 0,
+        "max_put_oi_strike": put_walls[0][0] if put_walls else None,
+        "max_put_oi_value": put_walls[0][1] if put_walls else 0,
+        # 2026-04-28 DEEP HEATMAP fields — top-N walls + density buckets
+        "top_call_walls": [{"strike": s, "oi": v,
+                            "dist_pct": round((s - underlying_price) / underlying_price * 100.0, 3)}
+                           for s, v in call_walls],
+        "top_put_walls":  [{"strike": s, "oi": v,
+                            "dist_pct": round((underlying_price - s) / underlying_price * 100.0, 3)}
+                           for s, v in put_walls],
+        "heatmap_buckets": heatmap_buckets,
+        "deep_range_pct": DEEP_RANGE_PCT,
     }
-    if max_call[0] and underlying_price > 0:
-        out["max_call_oi_distance_pct"] = round((max_call[0] - underlying_price) / underlying_price * 100.0, 3)
-    if max_put[0] and underlying_price > 0:
-        out["max_put_oi_distance_pct"] = round((underlying_price - max_put[0]) / underlying_price * 100.0, 3)
+    if call_walls and underlying_price > 0:
+        out["max_call_oi_distance_pct"] = round((call_walls[0][0] - underlying_price) / underlying_price * 100.0, 3)
+    if put_walls and underlying_price > 0:
+        out["max_put_oi_distance_pct"] = round((underlying_price - put_walls[0][0]) / underlying_price * 100.0, 3)
     return out
 
 

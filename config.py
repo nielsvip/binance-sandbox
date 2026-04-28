@@ -593,6 +593,21 @@ class Config:
     RED_ZONE_HEDGE_GATE_ENABLED: bool = True       # apply red-zone gate to hedge entries too (stops hedging into hard wall)
     RED_ZONE_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions (don't add into resistance)
     RED_ZONE_STALE_MAX_SEC: float = 30.0           # ignore ob_*_wall fields older than 30s (orderbook:_heartbeat dead)
+    # === 2026-04-28 DEEP VOLUME-PROFILE HEATMAP GATE (crypto, ±50% range) ===
+    # User 2026-04-28: "Did you search find and apply heat maps (basically ez_order_book but over the next 50% up or down...
+    # same utility as oi, not applied in our system needs adding and testing".
+    # Source: ez_volume_profile.py → Redis vol_profile:<SYM> (TTL ~1h).
+    # Bucketize 1500 × 15m bars × volume into 1%-wide bins ±50%, identify HVNs (density z≥1.5).
+    # Top-K HVN above price = resistance shelves; below = support floors.
+    # Block LONG when underlying within VP_GATE_MIN_DISTANCE_PCT below an HVN above (resistance shelf).
+    # Block SHORT when underlying within VP_GATE_MIN_DISTANCE_PCT above an HVN below (support floor).
+    # Complements RED_ZONE_GATE (near-term, ±5% L2 walls): VP_GATE = long-term (±50% historical density).
+    VP_GATE_ENABLED: bool = True
+    VP_GATE_MIN_DISTANCE_PCT: float = 1.0          # block entries within 1% of an HVN shelf
+    VP_GATE_MIN_DENSITY_Z: float = 2.0             # require HVN density-z ≥ 2.0 (~5× mean) to block
+    VP_GATE_HEDGE_GATE_ENABLED: bool = False       # apply to hedge entries (default off)
+    VP_GATE_AUGMENT_GATE_ENABLED: bool = True      # apply to AUGMENT actions
+    VP_GATE_STALE_MAX_SEC: float = 7200.0          # 2h freshness — daemon refreshes hourly
     # === 2026-04-27 LOWER-HIGHS / HIGHER-LOWS FILTER (sweep-testable, default OFF) ===
     # User: "block long trades while 1h/4h charts make lower highs (shorts vv) instead of the sma_200_D filter (or on top of it)".
     # LONG blocked when 1h+4h are making lower highs (downtrend confirming on HTFs).

@@ -2008,22 +2008,39 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                             with open(_rzt_cache_p) as _rzt_fh: _rzt_doi = json.load(_rzt_fh)
                             _rzt_age_h = (time.time() - (_rzt_doi.get("ts") or 0)) / 3600.0
                             if _rzt_age_h <= _rzt_stale_h:
-                                if position_side == "LONG":
-                                    _wall_strike = _rzt_doi.get("max_call_oi_strike")
-                                    _wall_oi = _rzt_doi.get("max_call_oi_value") or 0
-                                    if _wall_strike and _wall_oi >= _rzt_min_oi and _wall_strike > current_price:
-                                        _dist_pct = (_wall_strike - current_price) / current_price * 100.0
-                                        if _dist_pct < _rzt_min_dist:
-                                            logger.warning(f"🧱 [RED_ZONE_TRADIER] {position_key}: BLOCKED LONG {action} — call-OI ceiling ${_wall_strike:.2f} {_dist_pct:.2f}% above (OI={_wall_oi} ≥ {_rzt_min_oi}, threshold {_rzt_min_dist}%). reason={reason[:60]}")
-                                            return False
-                                else:  # SHORT
-                                    _wall_strike = _rzt_doi.get("max_put_oi_strike")
-                                    _wall_oi = _rzt_doi.get("max_put_oi_value") or 0
-                                    if _wall_strike and _wall_oi >= _rzt_min_oi and _wall_strike < current_price:
-                                        _dist_pct = (current_price - _wall_strike) / current_price * 100.0
-                                        if _dist_pct < _rzt_min_dist:
-                                            logger.warning(f"🧱 [RED_ZONE_TRADIER] {position_key}: BLOCKED SHORT {action} — put-OI floor ${_wall_strike:.2f} {_dist_pct:.2f}% below (OI={_wall_oi} ≥ {_rzt_min_oi}, threshold {_rzt_min_dist}%). reason={reason[:60]}")
-                                            return False
+                                # 2026-04-28 DEEP HEATMAP: check ALL top-N walls within ±50%, not just max.
+                                # User: "same utility as oi but over the next 50% up or down".
+                                # Falls back to single max strike if top_*_walls fields not yet populated (older cache).
+                                _check_long = (position_side == "LONG")
+                                _walls = _rzt_doi.get("top_call_walls" if _check_long else "top_put_walls") or []
+                                if not _walls:
+                                    # backward-compat: synthesize single-wall list from max fields
+                                    _ms = _rzt_doi.get("max_call_oi_strike" if _check_long else "max_put_oi_strike")
+                                    _mv = _rzt_doi.get("max_call_oi_value" if _check_long else "max_put_oi_value") or 0
+                                    if _ms:
+                                        _dp = ((_ms - current_price) if _check_long else (current_price - _ms)) / current_price * 100.0
+                                        _walls = [{"strike": _ms, "oi": _mv, "dist_pct": _dp}]
+                                # Iterate ALL walls; block on FIRST that's too close + size sufficient + correct side
+                                _blocked = False
+                                for _w in _walls:
+                                    try:
+                                        _ws = float(_w.get("strike") or 0); _woi = int(_w.get("oi") or 0)
+                                        if _ws <= 0 or _woi < _rzt_min_oi:
+                                            continue
+                                        # LONG: only walls ABOVE price are resistance ceilings; SHORT: only walls BELOW price are support floors
+                                        if _check_long and _ws <= current_price: continue
+                                        if (not _check_long) and _ws >= current_price: continue
+                                        _dist = abs(_ws - current_price) / current_price * 100.0
+                                        if _dist < _rzt_min_dist:
+                                            _label = "call-OI ceiling" if _check_long else "put-OI floor"
+                                            _side = "LONG" if _check_long else "SHORT"
+                                            logger.warning(f"🧱 [RED_ZONE_TRADIER] {position_key}: BLOCKED {_side} {action} — {_label} ${_ws:.2f} {_dist:.2f}% away (OI={_woi} ≥ {_rzt_min_oi}, threshold {_rzt_min_dist}%, deep-heatmap top-N). reason={reason[:60]}")
+                                            _blocked = True
+                                            break
+                                    except Exception:
+                                        continue
+                                if _blocked:
+                                    return False
                     except Exception as _rzt_exc:
                         logger.debug(f"[RED_ZONE_TRADIER] {position_key}: exception {type(_rzt_exc).__name__} {_rzt_exc} — skipped (no block)")
         if action == "OPEN":
