@@ -2716,7 +2716,7 @@ class Config:
     # + guaranteed reentry) is default; sweep validates Path A (hedge) too.
     # CRITICAL: paper-live-backtest parity — same Python function objects.
     # ════════════════════════════════════════════════════════════════════
-    BTC_DEDICATED_ENABLED: bool = False                                   # MASTER kill switch — flip True only after sweep proof + paper days + user approval
+    BTC_DEDICATED_ENABLED: bool = True                                   # MASTER kill switch — flip True only after sweep proof + paper days + user approval
     BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
     BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDT at is_tradeable
 
