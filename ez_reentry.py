@@ -165,7 +165,25 @@ def _get_redis_client(trade_manager):
         return None
 
 
-def _lookup_mark_price(trade_manager, position_key: str, symbol: str) -> float:
+def _load_market_data(trade_manager) -> dict:
+    """Read Redis ``latest_market_data`` once per tick — it's the canonical live
+    price source, a single JSON-encoded string of {symbol: {current_price, ...}}.
+    Per-tick result is cached on the trade_manager via _mark_price_dict_cache."""
+    client = _get_redis_client(trade_manager)
+    if client is None:
+        return {}
+    try:
+        raw = client.get("latest_market_data")
+        if not raw:
+            return {}
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8", errors="ignore")
+        return json.loads(raw) or {}
+    except Exception:
+        return {}
+
+
+def _lookup_mark_price(trade_manager, position_key: str, symbol: str, mkt: Optional[dict] = None) -> float:
     cur_px = 0.0
     try:
         position = trade_manager.positions.get(position_key) if hasattr(trade_manager, "positions") else None
@@ -175,19 +193,31 @@ def _lookup_mark_price(trade_manager, position_key: str, symbol: str) -> float:
         cur_px = 0.0
     if cur_px > 0:
         return cur_px
+    # latest_market_data — primary live source, dict {sym: {current_price, ...}}
+    if mkt is not None:
+        try:
+            entry = mkt.get(symbol) or {}
+            v = float(entry.get("current_price") or entry.get("mark_price") or entry.get("close_3m") or 0)
+            if v > 0:
+                return v
+        except Exception:
+            pass
+    # tradier path: tradier_prices_latest is a JSON-string for stocks
     client = _get_redis_client(trade_manager)
     if client is None:
         return 0.0
     try:
-        raw = client.get(f"mark_price:{symbol}")
-        if not raw:
-            return 0.0
-        if isinstance(raw, (bytes, bytearray)):
-            raw = raw.decode("utf-8", errors="ignore")
-        obj = json.loads(raw)
-        return float(obj.get("price") or 0)
+        raw = client.hget("mark_prices", symbol)
+        if raw:
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode("utf-8", errors="ignore")
+            obj = json.loads(raw)
+            v = float(obj.get("price") or 0)
+            if v > 0:
+                return v
     except Exception:
-        return 0.0
+        pass
+    return 0.0
 
 
 def _allowed_accounts_for(trade_manager) -> list:
@@ -346,8 +376,11 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
     max_age_h = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS", 48.0))
     max_fires = int(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", 20))
     base_path = Path(getattr(_cfg, "BASE_PATH", "/Users/niels/Documents/binance"))
+    block_duration_s = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S", 3600.0))
     if not hasattr(trade_manager, "_price_cross_last_fire"):
         trade_manager._price_cross_last_fire = {}
+    if not hasattr(trade_manager, "_price_cross_block_until"):
+        trade_manager._price_cross_block_until = {}
     candidates = _collect_reentry_candidates(trade_manager, base_path)
     if not candidates:
         return 0
@@ -358,11 +391,18 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
     allowed = set(_allowed_accounts_for(trade_manager))
     now = time.time()
     age_cutoff = now - (max_age_h * 3600.0)
+    mkt = _load_market_data(trade_manager)
     fired = 0
     for pk, is_long, exit_px, exit_amt, exit_ts, src_tag in candidates:
         if fired >= max_fires:
             break
         if exit_ts > 0 and exit_ts < age_cutoff:
+            continue
+        # Sticky block — if execute_now BLOCKED this key recently (LOSING_POSITION_HARD_BLOCK,
+        # NON_TRADEABLE_HARD_BLOCK, etc.), skip until block expires. Otherwise we fire the
+        # same doomed reentry every dedup-window forever (~1/min × forever = log spam).
+        block_until = float(trade_manager._price_cross_block_until.get(pk, 0))
+        if block_until > now:
             continue
         try:
             account_key, sym, side = _ppk(pk)
@@ -370,7 +410,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             continue
         if allowed and account_key not in allowed:
             continue
-        cur_px = _lookup_mark_price(trade_manager, pk, sym)
+        cur_px = _lookup_mark_price(trade_manager, pk, sym, mkt)
         if cur_px <= 0:
             continue
         if cross_pct > 0:
@@ -406,7 +446,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
                 f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
                 f"_cur{cur_px:.6f}_partial{partial_frac:.2f}"
             )
-            await trade_manager.execute_now(
+            ret = await trade_manager.execute_now(
                 position_key=pk,
                 account_key=account_key,
                 symbol=sym,
@@ -422,6 +462,11 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             )
             trade_manager._price_cross_last_fire[pk] = now
             fired += 1
+            # Sticky-block on hard-block returns. execute_now's contract: returns a string
+            # starting with "BLOCKED_" when a guard refuses (LOSING_POSITION_HARD_BLOCK,
+            # NON_TRADEABLE_HARD_BLOCK, POSITION_EXISTS_BLOCK, HARD_SIZE_GATE, etc).
+            if isinstance(ret, str) and ret.startswith("BLOCKED_"):
+                trade_manager._price_cross_block_until[pk] = now + block_duration_s
         except Exception as e:
             try:
                 trade_manager.logger.error(f"[PRICE_CROSS_GUARANTEE] {pk}: {e}")

@@ -671,6 +671,7 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0  # skip exits older than this — stale levels don't matter
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20  # cap per 5s tick to prevent queue overload
+    EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S: float = 3600.0  # sticky-block on BLOCKED_* return; skip same key for 1h
     # 2026-04-28 — When PARTIAL_PROFIT_LOCK has fired (50% closed at small profit),
     # treat remaining position's gain as raw_gain / (1 - PPL_FRAC). For FRAC=0.5
     # this DOUBLES the effective gain so augment/reentry eligibility (gain>MIN_GAIN)
@@ -1334,6 +1335,10 @@ class Config:
     # Scale in on LTF retests to the band with larger size. Technical exit on band failure.
     # Math: bb_pctb > 1.125 = above 2.5σ (with 2.0σ BB bands). pctb_at_Nσ = (N+2)/4
     STDEV_BREAKOUT_ENABLED: bool = False  # Kill switch OFF — backtest sweep first
+    STDEV_SUPPRESS_EARLY_EXIT: bool = False  # Suppress vel/delta exits when approaching BB band
+    STDEV_BB_RZ_EXIT_ENABLED: bool = False  # Exit when price exits daily BB band (rejection)
+    STDEV_BB_RZ_EXIT_TF: str = "D"
+    STDEV_BB_RZ_SUPPRESS_PCTB: float = 0.85
     STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # bb_pctb threshold for LONG breakout (2.5σ)
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # bb_pctb threshold for SHORT breakout (2.5σ)
     STDEV_BREAKOUT_HTF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])  # HTFs for breakout detection

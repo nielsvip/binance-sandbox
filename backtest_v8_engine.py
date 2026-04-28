@@ -1412,6 +1412,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             for _g_key in _GATE_KEYS:
                 if _g_key in _g_store.arrays:
                     _g_mask |= _g_store.arrays[_g_key].astype(bool)
+            if getattr(config, 'STDEV_BREAKOUT_ENABLED', False):
+                _sb_htf_list = list(getattr(config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+                _sb_pctb_long = float(getattr(config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
+                _sb_pctb_short = float(getattr(config, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
+                _sb_rvol_min = float(getattr(config, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+                for _sb_htf in _sb_htf_list:
+                    _sb_pctb = _g_store.arrays.get(f'bb_pct_b_{_sb_htf}', np.zeros(_g_n))
+                    _sb_rvol = _g_store.arrays.get(f'relative_volume_{_sb_htf}', np.ones(_g_n))
+                    _g_mask |= (_sb_pctb >= _sb_pctb_long) & (_sb_rvol >= _sb_rvol_min)
+                    _g_mask |= (_sb_pctb <= _sb_pctb_short) & (_sb_rvol >= _sb_rvol_min)
             if _g_mask.any():
                 _g_dil = _g_mask.copy()
                 for _g_d in range(1, 4):

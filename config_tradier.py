@@ -1026,6 +1026,10 @@ class TradierConfig:
     # === 2.5σ STDEV BREAKOUT (HTF breakout + LTF retest scaling) ===
     # Stocks: same logic as crypto but with stock-tuned thresholds
     STDEV_BREAKOUT_ENABLED: bool = False  # Kill switch OFF — backtest sweep first
+    STDEV_SUPPRESS_EARLY_EXIT: bool = False  # Suppress vel/delta exits when approaching BB band
+    STDEV_BB_RZ_EXIT_ENABLED: bool = False  # Exit when price exits daily BB band (rejection)
+    STDEV_BB_RZ_EXIT_TF: str = "D"
+    STDEV_BB_RZ_SUPPRESS_PCTB: float = 0.85
     STDEV_BREAKOUT_PCTB_LONG: float = 1.125  # bb_pctb threshold for LONG breakout (2.5σ)
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125  # bb_pctb threshold for SHORT breakout (2.5σ)
     STDEV_BREAKOUT_HTF_LIST: List[str] = field(default_factory=lambda: ["D", "4h"])
@@ -1440,6 +1444,7 @@ class TradierConfig:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
+    EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S: float = 3600.0
     # 2026-04-28 — PPL-fired positions get effective gain doubled. See config.py.
     EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED: bool = True
     ABLATION_DISABLE_SCALP_GUARD: bool = False  # Disable monitor_strict_close_positions

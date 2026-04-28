@@ -523,6 +523,10 @@ class QuickConfig:
     STDEV_BREAKOUT_PCTB_SHORT: float = -0.125
     STDEV_BREAKOUT_HTF_LIST: list = None
     STDEV_BREAKOUT_RVOL_MIN: float = 1.2
+    STDEV_SUPPRESS_EARLY_EXIT: bool = False
+    STDEV_BB_RZ_EXIT_ENABLED: bool = False
+    STDEV_BB_RZ_EXIT_TF: str = "D"
+    STDEV_BB_RZ_SUPPRESS_PCTB: float = 0.85
     HLR_RALLY_ENABLED: bool = True
     HLR_PTS_1H: int = 40
     HLR_PTS_4H: int = 60
@@ -2527,6 +2531,15 @@ def compute_exit_signals(npz, n, is_long, cfg):
     delta_exit = wt_against >= cfg.WT_EXIT_MIN_TFS
     _vel_exit_thr = float(getattr(cfg, 'DELTA_EXIT_VEL_MIN_DECAY', 2.0))
     vel_exit = (wt_vel_4h < -_vel_exit_thr) if is_long else (wt_vel_4h > _vel_exit_thr)
+    if getattr(cfg, 'STDEV_SUPPRESS_EARLY_EXIT', False):
+        _bb_pctb_D_sup = _safe(npz, 'bb_pct_b_D', n, 0.5)
+        _bb_sup_thr = float(getattr(cfg, 'STDEV_BB_RZ_SUPPRESS_PCTB', 0.85))
+        if is_long:
+            _approaching_band = (_bb_pctb_D_sup > _bb_sup_thr) & (_bb_pctb_D_sup < 1.0)
+        else:
+            _approaching_band = (_bb_pctb_D_sup < (1.0 - _bb_sup_thr)) & (_bb_pctb_D_sup > 0.0)
+        delta_exit = delta_exit & ~_approaching_band
+        vel_exit = vel_exit & ~_approaching_band
 
     # WT-VELOCITY-DECAY exit (user priority: "sell when wt delta slows down")
     # Exit when 1h velocity magnitude drops below threshold after being strong
@@ -2536,7 +2549,6 @@ def compute_exit_signals(npz, n, is_long, cfg):
     if getattr(cfg, 'WT_VEL_DECAY_EXIT_ENABLED', True):
         decay_threshold = float(getattr(cfg, 'WT_VEL_DECAY_THRESHOLD', 1.0))
         if is_long:
-            # Was strong positive momentum, now decayed below threshold AND LTF vel also dropping
             was_strong = wt_vel_1h_prev > decay_threshold * 2
             now_decayed = wt_vel_1h_exit < decay_threshold
             vel_decay_exit = was_strong & now_decayed & (wt_vel_ltf < wt_vel_1h_prev * 0.5)
@@ -2544,6 +2556,14 @@ def compute_exit_signals(npz, n, is_long, cfg):
             was_strong = wt_vel_1h_prev < -decay_threshold * 2
             now_decayed = wt_vel_1h_exit > -decay_threshold
             vel_decay_exit = was_strong & now_decayed & (wt_vel_ltf > wt_vel_1h_prev * 0.5)
+        if getattr(cfg, 'STDEV_SUPPRESS_EARLY_EXIT', False):
+            _bb_sup2 = _safe(npz, 'bb_pct_b_D', n, 0.5)
+            _bb_sup2_thr = float(getattr(cfg, 'STDEV_BB_RZ_SUPPRESS_PCTB', 0.85))
+            if is_long:
+                _apr2 = (_bb_sup2 > _bb_sup2_thr) & (_bb_sup2 < 1.0)
+            else:
+                _apr2 = (_bb_sup2 < (1.0 - _bb_sup2_thr)) & (_bb_sup2 > 0.0)
+            vel_decay_exit = vel_decay_exit & ~_apr2
     srs_exit = np.zeros(n, dtype=bool)
     if cfg.STRUCTURAL_RANGE_SHIFT_EXIT:
         tf_map = {'dc_1h': ('dc_high_1h', 'dc_low_1h'), 'dc_4h': ('dc_high_4h', 'dc_low_4h'),
@@ -2581,6 +2601,14 @@ def compute_exit_signals(npz, n, is_long, cfg):
             rz_exit = (bb_pctb_1h <= _rz_bot_bb) & (k_1h <= (100.0 - _rz_k_exit)) & (wt_vel_ltf > 1.0)
             if _rz_mfi_exit > 0:
                 rz_exit = rz_exit | ((bb_pctb_1h <= _rz_bot_bb) & (mfi_1h <= (100.0 - _rz_mfi_exit)) & (wt_vel_ltf > 1.0))
+    if getattr(cfg, 'STDEV_BB_RZ_EXIT_ENABLED', False):
+        _bb_rz_tf = str(getattr(cfg, 'STDEV_BB_RZ_EXIT_TF', 'D'))
+        _bb_pctb_rz = _safe(npz, f'bb_pct_b_{_bb_rz_tf}', n, 0.5)
+        _bb_rz_prev = np.roll(_bb_pctb_rz, 1); _bb_rz_prev[0] = _bb_pctb_rz[0]
+        if is_long:
+            rz_exit = rz_exit | ((_bb_rz_prev >= 1.0) & (_bb_pctb_rz < 1.0) & (wt_vel_ltf < 0))
+        else:
+            rz_exit = rz_exit | ((_bb_rz_prev <= 0.0) & (_bb_pctb_rz > 0.0) & (wt_vel_ltf > 0))
     exit_scorer_exit = np.zeros(n, dtype=bool)
     if getattr(cfg, 'EXIT_SCORER_ENABLED', False):
         _es_min = int(getattr(cfg, 'EXIT_SCORER_MIN_CONDITIONS', 3))

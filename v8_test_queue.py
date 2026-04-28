@@ -211,7 +211,7 @@ def run_item(item: dict, args) -> dict:
     mode = args.mode or inferred
     account = infer_account(mode)
     symbols = args.symbols or (DEFAULT_SYMBOLS_TRADIER if mode == "tradier" else DEFAULT_SYMBOLS_CRYPTO)
-    start = DEFAULT_START_TRADIER if mode == "tradier" else DEFAULT_START_CRYPTO
+    start = args.start or (DEFAULT_START_TRADIER if mode == "tradier" else DEFAULT_START_CRYPTO)
     capital = args.capital
 
     # Try to parse typed values (float, int, bool, str)
@@ -362,6 +362,7 @@ def main():
     parser.add_argument("--show", action="store_true", help="Show queue and results without running")
     parser.add_argument("--apply-winner", action="store_true", help="Write winner value to config file (Δ >= 0.05)")
     parser.add_argument("--symbols", type=str, default="", help="Override default symbols")
+    parser.add_argument("--start", type=str, default="", help="Override default backtest start date (YYYY-MM-DD)")
     parser.add_argument("--capital", type=float, default=2000.0, help="Backtest capital (default 2000)")
     parser.add_argument("--results-summary", action="store_true", help="Print summary from sweep archive files")
     args = parser.parse_args()

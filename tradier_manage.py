@@ -9061,6 +9061,17 @@ class TradierTradeManager:
                 if _sat_ok:
                     logger.warning(f"[SATOSHIT_ENTRY] LONG {symbol}: {_sat_reason}")
                     return True
+            # STDEV_BREAKOUT: stateless BB %B breakout entry — works in backtest + live without state machine
+            if getattr(config, 'STDEV_BREAKOUT_ENABLED', False):
+                _sb_htf_list = list(getattr(config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+                _sb_pctb_long = float(getattr(config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
+                _sb_rvol_min = float(getattr(config, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+                for _sb_htf in _sb_htf_list:
+                    _sb_pctb_val = float(indicators.get(f'bb_pct_b_{_sb_htf}', 0.5) or 0.5)
+                    _sb_rvol_val = float(indicators.get(f'relative_volume_{_sb_htf}', 1.0) or 1.0)
+                    if _sb_pctb_val >= _sb_pctb_long and _sb_rvol_val >= _sb_rvol_min:
+                        logger.warning(f"[STDEV_BREAKOUT_LONG] {symbol}: bb_pct_b_{_sb_htf}={_sb_pctb_val:.3f} rvol={_sb_rvol_val:.2f}")
+                        return True
             # If SHOULD_ENTER_FALLBACK_ENABLED is False (default), block here. Set True to test other paths.
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False
@@ -9281,6 +9292,17 @@ class TradierTradeManager:
                 if _sat_ok:
                     logger.warning(f"[SATOSHIT_ENTRY] SHORT {symbol}: {_sat_reason}")
                     return True
+            # STDEV_BREAKOUT: stateless BB %B breakdown entry for SHORT
+            if getattr(config, 'STDEV_BREAKOUT_ENABLED', False):
+                _sb_htf_list_s = list(getattr(config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
+                _sb_pctb_short = float(getattr(config, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
+                _sb_rvol_min_s = float(getattr(config, 'STDEV_BREAKOUT_RVOL_MIN', 1.2))
+                for _sb_htf_s in _sb_htf_list_s:
+                    _sb_pctb_val_s = float(indicators.get(f'bb_pct_b_{_sb_htf_s}', 0.5) or 0.5)
+                    _sb_rvol_val_s = float(indicators.get(f'relative_volume_{_sb_htf_s}', 1.0) or 1.0)
+                    if _sb_pctb_val_s <= _sb_pctb_short and _sb_rvol_val_s >= _sb_rvol_min_s:
+                        logger.warning(f"[STDEV_BREAKOUT_SHORT] {symbol}: bb_pct_b_{_sb_htf_s}={_sb_pctb_val_s:.3f} rvol={_sb_rvol_val_s:.2f}")
+                        return True
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False
             # YOUTUBE_CONSENSUS: Lunch dead zone — block momentum entries 11:30-14:00 ET
