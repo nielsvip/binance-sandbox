@@ -2137,8 +2137,20 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             quantity = override_qty if override_qty else await trade_manager.calculate_position_size(symbol, current_price, account_key=account_key)
         elif action in ["REDUCE", "CLOSE"]:
             if position:
-                position_qty = abs(getattr(position, 'quantity', 0))
+                # 2026-04-29 FIX: was `getattr(position, 'quantity', 0)` — TradierPosition has NO 'quantity'
+                # attribute (only positionAmt). This silently returned 0, then quantity = 0 * 0.5 = 0
+                # → either no order, or order qty came from override_qty. Now reads positionAmt correctly.
+                position_qty = abs(getattr(position, 'positionAmt', 0) or 0)
                 quantity = override_qty if override_qty else (position_qty * 0.5)
+                # 2026-04-29 USER ABSOLUTE: NEVER queue a SELL/CLOSE for more shares than we own.
+                # Today user saw "Sell 81" pending order when positionAmt=38 → 43 phantom shares.
+                # If override_qty exceeds actual position by >1 share, ABORT (not silent clamp).
+                if override_qty and position_qty > 0 and float(override_qty) > position_qty + 1:
+                    logger.critical(f"🚫 [QTY_OVERSHOOT_ABORT] {position_key}: override_qty={override_qty} > positionAmt={position_qty}+1 — REFUSING to place {action}. Real bug — find the source. Reason='{reason[:80]}'")
+                    return False
+                if quantity > 0 and position_qty > 0 and quantity > position_qty + 1:
+                    logger.warning(f"⚠️ [QTY_CLAMP_TO_POS] {position_key}: clamping {action} qty {quantity} → {position_qty} (own={position_qty})")
+                    quantity = position_qty
             else:
                 return False
         elif action in ["AUGMENT", "REENTER", "REENTRY"]:
@@ -2642,15 +2654,9 @@ class PositionReader:
                                 if amt > 0:
                                     existing.positionAmt = 0.0
                                     existing.gain = 0.0
-                                    # 2026-04-29 USER ABSOLUTE: reset max_gain on close (prevents stale peak from killing next manual buy)
-                                    if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
-                                        _old_mg_r = float(getattr(existing, 'max_gain', 0) or 0)
-                                        existing.max_gain = 0.0
-                                        existing.prev_gain = 0.0
-                                        try: existing.max_loss_since_hedge = 0.0
-                                        except Exception: pass
-                                        if _old_mg_r > 0:
-                                            logger.warning(f"[REDIS_SYNC_RESET] {pk}: max_gain reset (was {_old_mg_r:.2f}%)")
+                                    # 2026-04-29: reset cycle_peak_gain only (NOT max_gain — that decays separately for reentry logic)
+                                    try: existing.cycle_peak_gain = 0.0
+                                    except Exception: pass
             except Exception as e:
                 logger.warning(f"[Reader] Redis sync failed for {acc}: {e}")
                 self.redis_client = None
@@ -4489,7 +4495,15 @@ class StockStrategy:
         _is_opts_check = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         _peak_min_hold = float(getattr(config, 'TRADIER_MIN_HOLD_MINUTES', getattr(config, 'MIN_HOLD_MINUTES_TRADIER', 240.0)))
         if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min >= _peak_min_hold:
-            _pgp_max_g = float(getattr(position, 'max_gain', 0) or 0)
+            # 2026-04-29 USER RULE: PEAK_GIVEBACK uses cycle_peak_gain (resets on close), NOT max_gain
+            # (which has its own decay and is for reentry). Stops "stale 12% peak from prior cycle kills
+            # fresh manual buy" bug. Maintain cycle_peak_gain inline so it tracks live.
+            _cur_g_pk = float(getattr(position, 'gain', 0) or 0)
+            _cycle_peak_old = float(getattr(position, 'cycle_peak_gain', 0) or 0)
+            if _cur_g_pk > _cycle_peak_old:
+                try: position.cycle_peak_gain = _cur_g_pk
+                except Exception: pass
+            _pgp_max_g = float(getattr(position, 'cycle_peak_gain', 0) or 0)  # was max_gain
             _pgp_min_peak = float(getattr(config, 'PEAK_GIVEBACK_MIN_PEAK_PCT', 0.3))
             _be_grace = float(getattr(config, 'BREAKEVEN_GRACE_MINUTES', 15.0))
             _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 2.0))
@@ -8656,20 +8670,13 @@ class TradierTradeManager:
                                         _mg = float(getattr(local_pos, 'max_gain', 0) or 0)
                                         self._record_reentry_candidate(position_key, float(current_price), _ep, reason or action, _mg, float(original_position_amt))
                                     if order_id == "GHOST_CLEARED":
+                                        # ONLY zero positionAmt + gain + cycle_peak_gain. NEVER zero entry_price/max_gain — they are sacred.
+                                        # max_gain has its own decay function for reentry; cycle_peak_gain resets per cycle for exit logic.
                                         local_pos.positionAmt = 0.0
-                                        # 2026-04-29 USER ABSOLUTE: reset max_gain on close (prior comment said "sacred" but that
-                                        # caused user's manual GOOGL/MSFT buys to inherit stale 12.37% / 8.69% peak from prior cycle
-                                        # and get killed by PEAK_GIVEBACK. User overrides for tradier).
-                                        if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
-                                            _old_mg_g = float(getattr(local_pos, 'max_gain', 0) or 0)
-                                            local_pos.max_gain = 0.0
-                                            local_pos.prev_gain = 0.0
-                                            local_pos.gain = 0.0
-                                            try: local_pos.max_loss_since_hedge = 0.0
-                                            except Exception: pass
-                                            logger.warning(f"[GHOST_CLEAR_RESET] {position_key}: positionAmt zeroed + max_gain reset (was {_old_mg_g:.2f}%) — entry_price preserved")
-                                        else:
-                                            logger.warning(f"[GHOST_CLEAR] {position_key}: positionAmt zeroed. entry_price/gain/max_gain PRESERVED.")
+                                        local_pos.gain = 0.0
+                                        try: local_pos.cycle_peak_gain = 0.0
+                                        except Exception: pass
+                                        logger.warning(f"[GHOST_CLEAR] {position_key}: positionAmt + gain + cycle_peak_gain zeroed. entry_price/max_gain PRESERVED.")
                             elif is_augment:
                                 new_qty = float(local_pos.positionAmt) + float(quantity)
                                 # 2026-04-08 FIX: Do NOT update positionAmt locally.
@@ -10867,15 +10874,9 @@ class TradierTradeManager:
                             pos.gain = 0.0
                             pos.unrealized_pnl = 0.0
                             pos.last_updated = now
-                            # 2026-04-29 USER ABSOLUTE: reset max_gain on close
-                            if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
-                                _old_mg_pk = float(getattr(pos, 'max_gain', 0) or 0)
-                                pos.max_gain = 0.0
-                                pos.prev_gain = 0.0
-                                try: pos.max_loss_since_hedge = 0.0
-                                except Exception: pass
-                                if _old_mg_pk > 0:
-                                    logger.warning(f"[PHANTOM_KILL_RESET] {pk}: max_gain reset (was {_old_mg_pk:.2f}%)")
+                            # 2026-04-29: reset cycle_peak_gain only (NOT max_gain — separate decay path)
+                            try: pos.cycle_peak_gain = 0.0
+                            except Exception: pass
                             self._phantom_killed_keys.add(pk)
                             zeroed_count += 1
                     for pk in list(self._phantom_killed_keys):

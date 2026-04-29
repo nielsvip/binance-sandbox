@@ -78,9 +78,40 @@ This is the rule that recovers from the past 3 months of damage. When (a)/(b)/(d
 
 ### LAUNCHER SCRIPTS (canonical, do not invent variants)
 
-- S1 crypto sweep launcher: `/home/niels/binance-sandbox/start_crypto_sweeps.sh` (if missing, create from canonical template — never inline ad-hoc nohup chains)
-- S2 tradier sweep launcher: `/home/niels/binance-sandbox/start_tradier_sweeps.sh`
-- watchdog: existing `watchdog_v8_quick_sweep.sh` restarts workers if they die mid-run. If watchdog itself dies, sweeps stop forever — verify watchdog presence in step (b)/(d).
+**🚀 THE ONE WAY TO START A SWEEP — FOR HUMANS AND AGENTS:**
+
+#### Option A — GUI (preferred, requires zero shell knowledge)
+1. Open **http://localhost:5051/sweeps** (cockpit on MacBook).
+2. Pick a tier from the green box (crypto → S1) or blue box (tradier → S2).
+3. Click **▶ Launch on S1** or **▶ Launch on S2**.
+4. Page reloads, shows ✅ if sweep is alive, ❌ if dead. Auto-refreshes every 30s.
+5. **Stop button** kills all sweeps of that mode on that server.
+
+The GUI calls the canonical launcher scripts via SSH. It refuses mode-mismatch by design (crypto button only goes to S1, tradier only to S2).
+
+#### Option B — Shell (for agents, scripts, manual work)
+```bash
+# Crypto sweep (S1 only):
+ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh wt_dc_full'
+ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh status'      # liveness check
+ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh kill_tradier'  # purge wrong-mode
+
+# Tradier sweep (S2 only):
+ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh wt_dc_full'
+ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh status'
+ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh kill_crypto'
+```
+
+Both launcher scripts:
+1. Refuse to launch on the wrong host / kill any wrong-mode procs they find.
+2. Use `nohup ... > /home/niels/logs/sweep_<tier>_<ts>.log 2>&1 < /dev/null & disown`.
+3. Wait 30s after launch and verify `pgrep` finds the workers; print `✓` or fail loud.
+4. The `status` subcommand is the canonical liveness check — call it before declaring anything "running".
+
+**NEVER invent ad-hoc `nohup` chains in your terminal session.** They will die on ssh disconnect (we have lost weeks of compute to this). Only use the GUI button or the launcher scripts above.
+
+#### Watchdog
+- `watchdog_v8_quick_sweep.sh` restarts workers if they die mid-run. If watchdog itself dies, sweeps stop forever — verify watchdog presence in step (b)/(d).
 
 ### EXAMPLES OF FAILURES THIS RULE PREVENTS
 

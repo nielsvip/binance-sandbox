@@ -3,6 +3,7 @@
 """Sweep Cockpit — Real-time V8 backtest sweep dashboard on port 5051."""
 import csv
 import glob
+import html
 import io
 import json
 import math
@@ -295,6 +296,7 @@ a:hover { text-decoration: underline; }
 
 NAV_ITEMS = [
     ("Home", "/"),
+    ("🚀 Sweeps", "/sweeps"),
     ("Live Stocks", "/live"),
     ("Live Crypto", "/live/crypto"),
     ("Symbols Stocks", "/symbols"),
@@ -1809,6 +1811,175 @@ behavior may diverge from the proven run.</p>
 {''.join(cfg_sections)}
 """
     return render_page(body, title="Live vs Frozen", active_nav="Home")
+
+
+# ---------------------------------------------------------------------------
+# /sweeps — One-click sweep launcher (the canonical agent + human entry point).
+# Crypto tiers go to S1 ONLY. Tradier tiers go to S2 ONLY. (CLAUDE.md mandate.)
+# ---------------------------------------------------------------------------
+def _list_tier_names():
+    sw = os.path.join(BASE_DIR, "v8_quick_sweep.py")
+    if not os.path.exists(sw):
+        return []
+    try:
+        src = open(sw).read()
+    except Exception:
+        return []
+    m = re.search(r"TIER_MAP\s*=\s*\{(.+?)\n\}", src, re.DOTALL)
+    if not m:
+        return []
+    return sorted(set(re.findall(r'"([\w_]+)"\s*:', m.group(1))))
+
+
+def _sweep_status_for(host, mode):
+    out = _ssh_run(host, None, f'pgrep -afc "v8_quick_sweep.*--mode {mode}"', timeout=5)
+    nproc = 0
+    try:
+        nproc = int((out or "0").splitlines()[0])
+    except Exception:
+        nproc = 0
+    procs_raw = _ssh_run(host, None, f'pgrep -af "v8_quick_sweep.*--mode {mode}" 2>/dev/null | head -8', timeout=5)
+    csv = _ssh_run(host, None, f'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1', timeout=5)
+    csv_rows = _ssh_run(host, None, f'ls /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1 | xargs wc -l 2>/dev/null', timeout=5)
+    wrong_mode = "tradier" if mode == "crypto" else "crypto"
+    bad = _ssh_run(host, None, f'pgrep -afc "v8_quick_sweep.*--mode {wrong_mode}"', timeout=5)
+    bad_n = 0
+    try:
+        bad_n = int((bad or "0").splitlines()[0])
+    except Exception:
+        pass
+    return {"nproc": nproc, "procs": procs_raw, "csv": csv, "csv_rows": csv_rows, "wrong_mode_n": bad_n}
+
+
+@app.route("/sweeps")
+def sweeps_page():
+    msg = request.args.get("msg", "")
+    tiers = _list_tier_names()
+    crypto_tiers = [t for t in tiers if "crypto" in t.lower() or t in ("wt_dc_full", "mega", "mega_v2", "mega_v3", "mega_v4", "mega_v5", "mega_v6", "mega_v7", "rz_exit_sweep", "exit_wt_audit", "exit_wt_phase2", "exit_wt_48sym", "hunt_crypto", "hedge_wt_kill", "ratio_sentiment_crypto")]
+    tradier_tiers = [t for t in tiers if "tradier" in t.lower() or "stock" in t.lower() or t in ("wt_dc_full", "rz_exit_sweep", "exit_wt_audit", "exit_wt_phase2", "exit_wt_48sym", "rz_breakout_tradier", "rz_noloss_mode", "ratio_sentiment_tradier", "hedge_wt_kill")]
+    crypto_tiers = sorted(set(crypto_tiers))
+    tradier_tiers = sorted(set(tradier_tiers))
+    s1 = _sweep_status_for("s1-int", "crypto")
+    s2 = _sweep_status_for("s2-int", "tradier")
+
+    def _opts(arr, sel="wt_dc_full"):
+        return "".join(f'<option value="{t}"' + (' selected' if t == sel else '') + f'>{t}</option>' for t in arr)
+
+    msg_html = f'<div style="background:#fffbe6;border:2px solid #d4a000;padding:8px 12px;margin:10px 0;font-weight:600;color:#664d00;">{html.escape(msg)}</div>' if msg else ""
+
+    def _status_card(label, host, mode, st):
+        ok = "✅" if st["nproc"] >= 3 and st["wrong_mode_n"] == 0 else "❌"
+        bad_warn = f'<div style="color:#b00020;font-weight:600;">⚠ WRONG-MODE procs detected: {st["wrong_mode_n"]}</div>' if st["wrong_mode_n"] > 0 else ""
+        return f'''<div style="border:2px solid #444;border-radius:6px;padding:12px;margin:8px;background:#fafafa;flex:1;min-width:340px;">
+  <h3 style="margin-top:0;">{ok} {label} ({host} / --mode {mode})</h3>
+  <div><b>{st["nproc"]}</b> sweep processes alive (need ≥3)</div>
+  {bad_warn}
+  <details><summary>processes</summary><pre style="font-size:11px;background:#eee;padding:6px;overflow-x:auto;">{html.escape(st["procs"] or "(none)")}</pre></details>
+  <div style="margin-top:6px;"><b>Newest CSV:</b><br><code style="font-size:11px;">{html.escape(st["csv"] or "(none)")}</code></div>
+  <div><b>Rows:</b> <code>{html.escape(st["csv_rows"] or "(none)")}</code></div>
+</div>'''
+
+    crypto_status = _status_card("S1 Crypto", "s1-int", "crypto", s1)
+    tradier_status = _status_card("S2 Tradier", "s2-int", "tradier", s2)
+
+    body = f'''
+<h2 style="margin-top:0;">🚀 Launch Sweep — One-click vectorized backtests</h2>
+<p style="color:#555;font-size:13px;">
+  Crypto sweeps run on <b>S1 only</b>. Tradier sweeps run on <b>S2 only</b>. Mode-mismatch is rejected.<br>
+  Launch button calls the canonical <code>start_{{crypto|tradier}}_sweeps.sh</code> launcher on the target server, which:
+  ① kills any wrong-mode procs, ② nohup + disown launches the tier, ③ verifies T+30s liveness before returning.
+</p>
+{msg_html}
+
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;">
+{crypto_status}
+{tradier_status}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:24px;">
+
+  <div style="flex:1;min-width:380px;border:2px solid #2a7;border-radius:8px;padding:18px;background:#f4fff4;">
+    <h3 style="margin-top:0;">🟢 Launch CRYPTO sweep on S1</h3>
+    <form method="POST" action="/sweeps/launch" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="hidden" name="mode" value="crypto">
+      <select name="tier" style="font-size:14px;padding:6px;flex:1;min-width:200px;">
+        {_opts(crypto_tiers)}
+      </select>
+      <button type="submit" style="background:#2a7;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S1</button>
+    </form>
+    <form method="POST" action="/sweeps/stop" style="margin-top:8px;">
+      <input type="hidden" name="mode" value="crypto">
+      <button type="submit" onclick="return confirm('Kill ALL crypto v8_quick_sweep procs on S1?');" style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S1 crypto sweeps</button>
+    </form>
+  </div>
+
+  <div style="flex:1;min-width:380px;border:2px solid #27a;border-radius:8px;padding:18px;background:#f4f8ff;">
+    <h3 style="margin-top:0;">🔵 Launch TRADIER sweep on S2</h3>
+    <form method="POST" action="/sweeps/launch" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input type="hidden" name="mode" value="tradier">
+      <select name="tier" style="font-size:14px;padding:6px;flex:1;min-width:200px;">
+        {_opts(tradier_tiers)}
+      </select>
+      <button type="submit" style="background:#27a;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S2</button>
+    </form>
+    <form method="POST" action="/sweeps/stop" style="margin-top:8px;">
+      <input type="hidden" name="mode" value="tradier">
+      <button type="submit" onclick="return confirm('Kill ALL tradier v8_quick_sweep procs on S2?');" style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S2 tradier sweeps</button>
+    </form>
+  </div>
+
+</div>
+
+<h3 style="margin-top:30px;">📋 All available tiers ({len(tiers)} total)</h3>
+<details><summary>show full list (defined in <code>v8_quick_sweep.py:TIER_MAP</code>)</summary>
+<pre style="background:#eee;padding:8px;font-size:11px;max-height:200px;overflow:auto;">{html.escape(", ".join(tiers))}</pre>
+</details>
+
+<p style="color:#777;font-size:12px;margin-top:24px;">
+  Page auto-refreshes every 30s. To check liveness via shell:<br>
+  <code>ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh status'</code><br>
+  <code>ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh status'</code>
+</p>
+<meta http-equiv="refresh" content="30">
+'''
+    return render_page(body, title="Launch Sweep", active_nav="🚀 Sweeps")
+
+
+@app.route("/sweeps/launch", methods=["POST"])
+def sweeps_launch():
+    tier = (request.form.get("tier", "") or "").strip()
+    mode = (request.form.get("mode", "") or "").strip()
+    if not tier:
+        return redirect("/sweeps?msg=Error:+tier+is+required")
+    if mode not in ("crypto", "tradier"):
+        return redirect("/sweeps?msg=Error:+mode+must+be+crypto+or+tradier")
+    if mode == "crypto":
+        host = "s1-int"
+        cmd = f"bash /home/niels/binance-sandbox/start_crypto_sweeps.sh {tier}"
+    else:
+        host = "s2-int"
+        cmd = f"bash /home/niels/binance-sandbox/start_tradier_sweeps.sh {tier}"
+    try:
+        out = _ssh_run(host, None, cmd, timeout=90) or ""
+    except subprocess.TimeoutExpired:
+        return redirect(f"/sweeps?msg=Timeout+launching+{tier}+on+{host}+(launcher+may+still+be+verifying;+check+status)")
+    snippet = out.splitlines()[-3:] if out else ["(no output)"]
+    msg = f"Launched {tier} on {host}: " + " | ".join(snippet)[:200]
+    return redirect("/sweeps?msg=" + msg.replace(" ", "+").replace("&", "%26"))
+
+
+@app.route("/sweeps/stop", methods=["POST"])
+def sweeps_stop():
+    mode = (request.form.get("mode", "") or "").strip()
+    if mode == "crypto":
+        host = "s1-int"
+    elif mode == "tradier":
+        host = "s2-int"
+    else:
+        return redirect("/sweeps?msg=Error:+invalid+mode")
+    cmd = f"pkill -f 'v8_quick_sweep.py.*--mode {mode}' ; sleep 1 ; pgrep -afc 'v8_quick_sweep.*--mode {mode}'"
+    out = _ssh_run(host, None, cmd, timeout=10) or "0"
+    return redirect(f"/sweeps?msg=Stopped+{mode}+sweeps+on+{host}+(remaining+procs:+{out[:5]})")
 
 
 @app.route("/swarm")
