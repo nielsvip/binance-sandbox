@@ -232,21 +232,18 @@ def run_all_configs(symbol, data, entry_long, entry_short, exit_long, exit_short
 
 
 def compute_weekly_sharpe(trades):
-    """Compute annualized weekly Sharpe."""
+    """Per-trade pool_sharpe (function name kept for back-compat).
+    Weekly bucketing + sqrt(52) annualization stripped 2026-04-29 per CLAUDE.md rule 4.
+    Pool Sharpe = mean(per-trade pnl) / std(per-trade pnl), unitless, frequency-blind."""
     if not trades:
         return 0.0
-    weekly_pnl = {}
-    for t in trades:
-        dt = datetime.utcfromtimestamp(t["exit_ts"])
-        wk = (dt.isocalendar()[0], dt.isocalendar()[1])
-        weekly_pnl[wk] = weekly_pnl.get(wk, 0.0) + t["pnl"]
-    if len(weekly_pnl) < 2:
+    pnls = np.array([t.get("pnl_pct", t.get("pnl", 0.0)) for t in trades])
+    if len(pnls) < 2:
         return 0.0
-    returns = np.array(list(weekly_pnl.values()))
-    std = np.std(returns)
+    std = np.std(pnls)
     if std == 0:
         return 0.0
-    return (np.mean(returns) / std) * np.sqrt(52)
+    return float(np.mean(pnls) / std)
 
 
 def max_drawdown_dollars(trades):

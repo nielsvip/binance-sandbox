@@ -733,34 +733,41 @@ def _compute_trade_pnl(executed_trades):
 
 
 def _v8_result_from_trades(executed_trades, capital):
-    """Compute and print V8_RESULT line from PnL-annotated trades."""
+    """Compute and print V8_RESULT. CANONICAL_METRICS.md / CLAUDE.md rule 4: pool_sharpe + sym_sharpe ONLY.
+    pool_sharpe = mean(per-trade pcts) / std(per-trade pcts)  — frequency-blind, the canonical Sharpe.
+    sym_sharpe  = mean(per-symbol pool_sharpes), ±20 capped — diagnostic only.
+    Emits legacy `sharpe=` alias = pool_sharpe so existing parsers keep working.
+    NEVER emits sharpe_weekly, sharpe_annual, or any sqrt-anything (banned 2026-04-29)."""
     close_trades = [t for t in executed_trades if t.get("pnl_dollars") is not None]
     wins = sum(1 for t in close_trades if t.get("pnl_dollars", 0) > 0)
     losses = sum(1 for t in close_trades if t.get("pnl_dollars", 0) <= 0)
     total_pnl = sum(t.get("pnl_dollars", 0) for t in close_trades)
     pnl_pct = (total_pnl / capital * 100) if capital > 0 else 0.0
-    weekly_pnls = {}
-    for t in close_trades:
-        ts = t.get("timestamp", 0)
-        if isinstance(ts, str):
-            try:
-                ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
-            except Exception:
-                ts = 0
-        week = int(ts) // (7 * 86400)
-        weekly_pnls[week] = weekly_pnls.get(week, 0) + t.get("pnl_dollars", 0)
-    if len(weekly_pnls) > 1:
-        wp = list(weekly_pnls.values())
-        mean_w = sum(wp) / len(wp)
-        std_w = (sum((x - mean_w) ** 2 for x in wp) / len(wp)) ** 0.5
-        sharpe = mean_w / std_w if std_w > 0 else 0.0
+    pcts = [t.get("pnl_pct", 0.0) for t in close_trades]
+    n_trades = len(pcts)
+    if n_trades >= 2:
+        mean_p = sum(pcts) / n_trades
+        std_p = (sum((x - mean_p) ** 2 for x in pcts) / n_trades) ** 0.5
+        pool_sharpe = mean_p / std_p if std_p > 0 else (20.0 if mean_p > 0 else 0.0)
     else:
-        sharpe = 0.0
-    n_trades = len(close_trades)
+        pool_sharpe = 0.0
+    by_sym = {}
+    for t in close_trades:
+        sym = t.get("symbol") or str(t.get("position_key", "")).split(":", 1)[-1].rsplit("_", 1)[0]
+        by_sym.setdefault(sym, []).append(t.get("pnl_pct", 0.0))
+    sym_sharpes = []
+    for _sym, plist in by_sym.items():
+        if len(plist) < 2:
+            continue
+        m = sum(plist) / len(plist)
+        s = (sum((x - m) ** 2 for x in plist) / len(plist)) ** 0.5
+        ss = m / s if s > 0 else (20.0 if m > 0 else 0.0)
+        sym_sharpes.append(max(-20.0, min(20.0, ss)))
+    sym_sharpe = sum(sym_sharpes) / len(sym_sharpes) if sym_sharpes else 0.0
     avg_pnl = total_pnl / max(1, n_trades)
     avg_pos_val = sum(t.get("position_value", 0) for t in close_trades) / max(1, n_trades)
-    print(f"V8_RESULT: sharpe={sharpe:.3f} pnl={pnl_pct:.2f} trades={n_trades} wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}")
-    return sharpe, pnl_pct, n_trades, wins, losses
+    print(f"V8_RESULT: pool_sharpe={pool_sharpe:.4f} sym_sharpe={sym_sharpe:.4f} sharpe={pool_sharpe:.3f} pnl={pnl_pct:.2f} trades={n_trades} wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}")
+    return pool_sharpe, pnl_pct, n_trades, wins, losses
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -972,45 +979,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                       "minervini_block": 0, "clenow_block": 0, "proximity_top_block": 0,
                       "squeeze_fire_aligned": 0}
     def _compute_sharpe_and_gain():
-        """Compute multiple Sharpes — system rewards FREQUENCY equally with magnitude.
-        - sharpe_weekly: classic weekly $-based (compares to risk-free, time-anchored)
-        - sharpe_per_trade: mean / std of per-trade % returns (UNITLESS, frequency-blind)
-        - sharpe_annual: per_trade × sqrt(N_trades_per_year) — REWARDS HIGH FREQUENCY
-          A million 1% trades → annual Sharpe massively higher than 1 trade at +5%.
-        Always available (works mid-run with any number of closes).
+        """CANONICAL_METRICS.md / CLAUDE.md rule 4: ONLY pool_sharpe (= sharpe_per_trade).
+        Returns 7-tuple for back-compat — sharpe_weekly and sharpe_annual now alias to pool_sharpe
+        (banned 2026-04-29: weekly $-Sharpe and sqrt(N)-annualization both produced inflated decision-grade lies).
+        trades_per_year retained as a metadata field (no Sharpe transformation).
         """
-        import math
-        # 1) Weekly $ Sharpe
-        wp = list(_live_pnl["weekly_pnl_dollars"].values())
-        if len(wp) >= 2:
-            mean_w = sum(wp) / len(wp)
-            std_w = (sum((x - mean_w) ** 2 for x in wp) / len(wp)) ** 0.5
-            sharpe_weekly = mean_w / std_w if std_w > 0 else 0.0
-        else:
-            sharpe_weekly = 0.0
-        # 2) Per-trade Sharpe (frequency-blind, just mean/std of returns)
         pcts = _live_pnl["all_pnl_pcts"]
         n = len(pcts)
-        mean_t = 0.0
-        std_t = 0.0
         if n >= 2:
             mean_t = sum(pcts) / n
             std_t = (sum((x - mean_t) ** 2 for x in pcts) / n) ** 0.5
-            sharpe_per_trade = mean_t / std_t if std_t > 0 else (1e9 if mean_t > 0 else 0.0)
+            sharpe_per_trade = mean_t / std_t if std_t > 0 else (20.0 if mean_t > 0 else 0.0)
         else:
             sharpe_per_trade = 0.0
-        # 3) Annualized Sharpe — scales with sqrt of trade count over time elapsed.
-        # Use sim time elapsed (sec) → trades_per_year extrapolation.
         if _live_pnl.get("first_close_ts", 0) > 0 and _live_pnl.get("last_close_ts", 0) > 0:
             sim_secs = max(1.0, _live_pnl["last_close_ts"] - _live_pnl["first_close_ts"])
             trades_per_year = n * (365 * 86400) / sim_secs
         else:
-            trades_per_year = n  # fallback
-        sharpe_annual = sharpe_per_trade * math.sqrt(max(1, trades_per_year)) if std_t > 0 else (1e9 if (n >= 2 and mean_t > 0) else 0.0) if n >= 2 else 0.0
+            trades_per_year = n
         total_pnl_dollars = sum(_live_pnl["all_pnl_dollars"])
         total_gain_pct_dollars = (total_pnl_dollars / _live_pnl["starting_capital"] * 100) if _live_pnl["starting_capital"] > 0 else 0.0
         sum_pct = _live_pnl["running_pnl_pct"]
-        return sharpe_weekly, total_gain_pct_dollars, total_pnl_dollars, sum_pct, sharpe_per_trade, sharpe_annual, trades_per_year
+        # Aliases preserved so callers unpacking the 7-tuple continue to work; both equal pool_sharpe.
+        return sharpe_per_trade, total_gain_pct_dollars, total_pnl_dollars, sum_pct, sharpe_per_trade, sharpe_per_trade, trades_per_year
 
     # Scale START_POSITION_SIZE to backtest capital (live=$18 for $1k acct)
     # execute_trade_action subtracts up to SP*0.8*4 + SP*0.8*3 + SP*0.8*2 = 7.2*SP
@@ -1949,10 +1940,28 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # ═══ FINAL PnL BREAKDOWN ═══
     v8_logger.info("=" * 80)
     _f_sharpe_w, _f_gain_pct, _f_gain_dol, _f_sum_pct, _f_sharpe_pt, _f_sharpe_ann, _f_tpy = _compute_sharpe_and_gain()
+    # Per-symbol Sharpe (CLAUDE.md rule 4 diagnostic): mean of per-symbol pool_sharpes, ±20 cap.
+    _f_sym_sharpe = 0.0
+    try:
+        _f_by_sym = {}
+        for _t in executed_trades:
+            if _t.get("pnl_pct") is None: continue
+            _ssym = _t.get("symbol") or str(_t.get("position_key", "")).split(":", 1)[-1].rsplit("_", 1)[0]
+            _f_by_sym.setdefault(_ssym, []).append(float(_t.get("pnl_pct", 0.0)))
+        _f_sslist = []
+        for _ssym, _plist in _f_by_sym.items():
+            if len(_plist) < 2: continue
+            _m = sum(_plist) / len(_plist)
+            _s = (sum((x - _m) ** 2 for x in _plist) / len(_plist)) ** 0.5
+            _ss = _m / _s if _s > 0 else (20.0 if _m > 0 else 0.0)
+            _f_sslist.append(max(-20.0, min(20.0, _ss)))
+        _f_sym_sharpe = (sum(_f_sslist) / len(_f_sslist)) if _f_sslist else 0.0
+    except Exception:
+        _f_sym_sharpe = 0.0
     v8_logger.info(f"[V8_FINAL_PNL] sum_trade_pcts={_f_sum_pct:+.2f}% gain_pct_dollars={_f_gain_pct:+.2f}% gain_dollars={_f_gain_dol:+.2f} | closes={_live_pnl['n_closes']} | W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} | WR={_live_pnl['n_wins']*100/max(1,_live_pnl['n_closes']):.1f}%")
-    # CANONICAL_METRICS.md: pool_sharpe ONLY in user-facing logs.
-    v8_logger.info(f"[V8_FINAL_PNL] pool_sharpe={_f_sharpe_pt:.3f} (trades_per_year={_f_tpy:.0f})")
-    print(f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
+    # CANONICAL_METRICS.md / CLAUDE.md rule 4: pool_sharpe + sym_sharpe ONLY.
+    v8_logger.info(f"[V8_FINAL_PNL] pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} (trades_per_year={_f_tpy:.0f})")
+    print(f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
 
     # Cancel queue processor (after result is already printed)
     queue_task.cancel()

@@ -252,13 +252,9 @@ def compute_stats(trades):
     wins = pnls > 0
     gp = np.sum(pnls[wins]) if np.any(wins) else 0
     gl = abs(np.sum(pnls[~wins])) if np.any(~wins) else 0.001
-    weekly_pnl = defaultdict(float)
-    for t in trades:
-        dt = datetime.fromtimestamp(t["exit_ts"], tz=timezone.utc)
-        wk = f"{dt.isocalendar()[0]}-W{dt.isocalendar()[1]:02d}"
-        weekly_pnl[wk] += t["pnl_dollar"]
-    wr = np.array(list(weekly_pnl.values()))
-    ws = np.mean(wr) / np.std(wr) * np.sqrt(52) if len(wr) > 1 and np.std(wr) > 0 else 0
+    # 2026-04-29 per CLAUDE.md rule 4: weekly $-Sharpe + sqrt(52) annualize → per-trade pool_sharpe.
+    pnl_pcts = np.array([t.get("pnl_pct", t.get("pnl_dollar", 0.0)) for t in trades])
+    ws = float(np.mean(pnl_pcts) / np.std(pnl_pcts)) if len(pnl_pcts) > 1 and np.std(pnl_pcts) > 0 else 0
     return {
         "trades": len(trades),
         "total_pnl": float(np.sum(pnls)),

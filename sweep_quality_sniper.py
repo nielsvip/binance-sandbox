@@ -127,13 +127,15 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
                         k, v = t.split("=", 1)
                         toks[k] = v.rstrip("%").rstrip("s")
                 override.unlink(missing_ok=True)
-                sh_ann = float(toks.get("sharpe_ann", 0) or 0)
-                sh_pt = float(toks.get("sharpe_pt", 0) or 0)
-                sh_w = float(toks.get("sharpe_w", 0) or 0)
-                sh = float(toks.get("sharpe", sh_ann) or 0)
+                # 2026-04-29: pool_sharpe + sym_sharpe canonical (CLAUDE.md rule 4). sharpe_w/_ann banned.
+                pool = float(toks.get("pool_sharpe", toks.get("sharpe_pt", toks.get("sharpe", toks.get("sharpe_w", 0)))) or 0)
+                sym = float(toks.get("sym_sharpe", 0) or 0)
+                sh = pool  # canonical Sharpe = pool_sharpe
                 return {
                     "label": label,
-                    "sharpe": sh, "sharpe_pt": sh_pt, "sharpe_w": sh_w, "sharpe_ann": sh_ann,
+                    "sharpe": sh, "pool_sharpe": pool, "sym_sharpe": sym,
+                    # legacy slots aliased to pool_sharpe so ranking-by-sharpe_w/_ann keeps working
+                    "sharpe_pt": pool, "sharpe_w": pool, "sharpe_ann": pool,
                     "pnl": float(toks.get("pnl", toks.get("gain_pct", 0)) or 0),
                     "trades": int(toks.get("trades", toks.get("closes", 0)) or 0),
                     "wins": int(toks.get("wins", 0) or 0), "losses": int(toks.get("losses", 0) or 0),
@@ -147,7 +149,8 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
     except Exception as e:
         elapsed = time.time() - t0
     override.unlink(missing_ok=True)
-    return {"label": label, "sharpe": 0, "sharpe_pt": 0, "sharpe_w": 0, "sharpe_ann": 0,
+    return {"label": label, "sharpe": 0, "pool_sharpe": 0, "sym_sharpe": 0,
+            "sharpe_pt": 0, "sharpe_w": 0, "sharpe_ann": 0,
             "pnl": 0, "trades": 0, "elapsed": round(elapsed, 1), "status": "timeout_or_error", **cfg}
 
 

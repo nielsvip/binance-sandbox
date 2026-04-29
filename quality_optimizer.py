@@ -159,8 +159,13 @@ def compute_run_metrics(run, sym, trades_dir, entry_lookback=20, churn_window_se
 
 
 def composite_score(m, weights):
+    # 2026-04-29 user directive: "sharpe per symbol per trade and pool sharpe DESTROY everything else".
+    # Make per-trade Sharpe the dominant term; quality + churn stay as soft secondary signals.
+    # Default sharpe weight (10x) ensures higher-Sharpe variants always rank above
+    # higher-trade-count variants of equal Sharpe.
     return (
-        weights["avg"]   * m["avg_pnl_pct"]
+        weights.get("sharpe", 10.0) * m["sharpe_pt"]
+        + weights["avg"]   * m["avg_pnl_pct"]
         + weights["total"] * (m["total_gain_pct"] / 1000.0)
         + weights["botq"]  * m["bottom_quartile_entry_rate"]
         + weights["topq"]  * m["top_quartile_exit_rate"]
@@ -248,7 +253,7 @@ def append_leaderboard(scored_rows, weights):
 
 
 def parse_weights(s):
-    out = {"avg": 1.0, "total": 1.0, "botq": 1.0, "topq": 1.0, "count": 1.0, "churn": 1.0}
+    out = {"sharpe": 10.0, "avg": 1.0, "total": 1.0, "botq": 1.0, "topq": 1.0, "count": 1.0, "churn": 1.0}
     if not s: return out
     for part in s.split(","):
         if "=" not in part: continue

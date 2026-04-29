@@ -161,7 +161,7 @@ def compute_stats(trades):
 
     avg_bars = np.mean([t["h"] for t in trades])
     tpy = 35040 / max(avg_bars, 1)
-    sharpe = float(pnls.mean() / pnls.std() * np.sqrt(tpy)) if len(pnls) > 1 and pnls.std() > 0 else 0
+    sharpe = float(pnls.mean() / pnls.std()) if len(pnls) > 1 and pnls.std() > 0 else 0  # per-trade pool_sharpe (sqrt(tpy) annualization stripped 2026-04-29 per CLAUDE.md rule 4)
 
     reasons = {}
     for t in trades:

@@ -356,8 +356,8 @@ def compare_to_our_system(analysis: Dict[str, Any]) -> List[str]:
     import numpy as np
     all_pnls = [t.pnl_pct for t in trades if t.pnl_pct != 0]
     if len(all_pnls) > 5:
-        sharpe = np.mean(all_pnls) / np.std(all_pnls) * np.sqrt(252) if np.std(all_pnls) > 0 else 0
-        findings.append(f"SHARPE: {sharpe:.2f} (annualized, {len(all_pnls)} trades)")
+        sharpe = np.mean(all_pnls) / np.std(all_pnls) if np.std(all_pnls) > 0 else 0  # per-trade pool_sharpe (sqrt(252) stripped 2026-04-29 per CLAUDE.md rule 4)
+        findings.append(f"pool_sharpe: {sharpe:.4f} (per-trade, {len(all_pnls)} trades)")
     # --- 4. Healthy trader edge ---
     green_traders = {tid: h for tid, h in health.items() if h["status"] == "GREEN" and h["n_trades"] >= 20}
     if green_traders:

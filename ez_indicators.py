@@ -1231,7 +1231,8 @@ def linreg_features(series: pd.Series, length: int) -> Tuple[Optional[float], Op
     if denominator == 0:
         return None, None
     slope = np.sum((x - x_mean) * (y - y_mean)) / denominator
-    y_fit = x_mean + slope * (x - x_mean)
+    # 2026-04-29: bug fix — y_fit was using x_mean instead of y_mean. See _helpers.py.
+    y_fit = y_mean + slope * (x - x_mean)
     residuals = y - y_fit
     ss_res = np.sum(residuals ** 2)
     ss_tot = np.sum((y - y_mean) ** 2)

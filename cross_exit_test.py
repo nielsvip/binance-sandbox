@@ -74,22 +74,16 @@ def compute_pnl(entry_price, exit_price, is_long, size_usd):
 
 
 def weekly_sharpe(trades):
-    """Compute per-symbol weekly Sharpe from trade list."""
+    """Per-trade pool_sharpe (name kept for back-compat). Weekly bucketing stripped 2026-04-29 per CLAUDE.md rule 4."""
     if not trades:
         return 0.0
-    # Group trades by week
-    weekly_pnl = defaultdict(float)
-    for t in trades:
-        week = datetime.datetime.utcfromtimestamp(t["exit_ts"]).isocalendar()[:2]
-        weekly_pnl[week] += t["pnl"]
-    if len(weekly_pnl) < 2:
+    pnls = np.array([t.get("pnl_pct", t.get("pnl", 0.0)) for t in trades])
+    if len(pnls) < 2:
         return 0.0
-    vals = list(weekly_pnl.values())
-    mean = np.mean(vals)
-    std = np.std(vals, ddof=1)
+    std = np.std(pnls, ddof=1)
     if std < 1e-10:
         return 0.0
-    return mean / std
+    return float(np.mean(pnls) / std)
 
 
 def run_backtest(symbol, data, is_stock, exit_fn, step=2, start_ts=None):

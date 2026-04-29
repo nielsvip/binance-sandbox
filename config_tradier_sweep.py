@@ -281,10 +281,10 @@ def compute_metrics(trades, weekly_pnl):
         vals = list(weekly_pnl.values())
         mu = np.mean(vals)
         sigma = np.std(vals)
-        wk_sharpe = (mu / sigma * np.sqrt(52)) if sigma > 0 else 0
+        wk_sharpe = (mu / sigma) if sigma > 0 else 0  # per-period pool_sharpe (sqrt(52) annualization stripped 2026-04-29 per CLAUDE.md rule 4)
     else:
         wk_sharpe = 0
-    return {"trades": n, "wr": wr, "pf": pf, "wk_sharpe": wk_sharpe}
+    return {"trades": n, "wr": wr, "pf": pf, "pool_sharpe": wk_sharpe}
 
 
 # ============================================================

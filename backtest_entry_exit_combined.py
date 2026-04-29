@@ -266,7 +266,7 @@ def compute_metrics(trades: list, capital: float):
     win_sum = np.sum(winners) if len(winners) > 0 else 0
     loss_sum = np.sum(losers) if len(losers) > 0 else 0
     pf = abs(win_sum / loss_sum) if loss_sum != 0 else 999.0
-    sharpe = float(np.mean(pnls) / np.std(pnls) * np.sqrt(252 * 12)) if np.std(pnls) > 0 else 0.0
+    sharpe = float(np.mean(pnls) / np.std(pnls)) if np.std(pnls) > 0 else 0.0  # per-trade pool_sharpe (sqrt(252*12) annualization stripped 2026-04-29 per CLAUDE.md rule 4 — was the most extreme inflator in repo)
     total_pnl = float(np.sum(pnl_usd))
     longs = [t for t in trades if t["side"] == "LONG"]
     shorts = [t for t in trades if t["side"] == "SHORT"]

@@ -63,16 +63,39 @@ def infer_account(mode: str) -> str:
 
 
 def parse_v8_result(output: str) -> dict | None:
-    """Parse V8_RESULT line. Supports three formats:
+    """Parse V8_RESULT line. Supports four formats:
 
-    POOL (current):  `V8_RESULT: pool_sharpe=X gain_pct=G closes=C wins=W losses=L`
-    LEGACY_NEW:      `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
-    OLD:             `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
+    POOL_SYM (2026-04-29):  `V8_RESULT: pool_sharpe=X sym_sharpe=Y sharpe=X gain_pct=G closes=C wins=W losses=L` (or `trades=N` legacy)
+    POOL (legacy):          `V8_RESULT: pool_sharpe=X gain_pct=G closes=C wins=W losses=L`
+    LEGACY_NEW (banned):    `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
+    OLD:                    `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
 
     Uses LAST match (re.finditer) so V8_RESULT_LIVE interim lines are skipped — final summary comes last.
-    Returns normalized dict with 'sharpe' = pool_sharpe / sharpe_pt (per-trade, canonical metric).
+    Returns normalized dict with 'sharpe' = pool_sharpe (per-trade canonical, CLAUDE.md rule 4).
+    Adds 'sym_sharpe' field when emitted by engine; absent → 0.0 (safe diagnostic default).
     """
-    # POOL format — current engine output (pool_sharpe= canonical per CLAUDE.md)
+    # POOL_SYM format — 2026-04-29 engine output (pool_sharpe + sym_sharpe diagnostic per CLAUDE.md rule 4)
+    matches = list(re.finditer(
+        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+sym_sharpe=([0-9.-]+)\s+sharpe=[0-9.-]+\s+(?:pnl=[0-9.-]+\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)|gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+))",
+        output,
+    ))
+    if matches:
+        m = matches[-1]
+        if m.group(3) is not None:  # _v8_result_from_trades fallback path — pnl=, trades=
+            trades = int(m.group(3)); wins = int(m.group(4)); losses = int(m.group(5)); pnl = 0.0
+        else:  # _compute_sharpe_and_gain final path — gain_pct=, closes=
+            trades = int(m.group(7)); wins = int(m.group(8)); losses = int(m.group(9)); pnl = float(m.group(6))
+        return {
+            "sharpe": float(m.group(1)),
+            "sharpe_pt": float(m.group(1)),
+            "pool_sharpe": float(m.group(1)),
+            "sym_sharpe": float(m.group(2)),
+            "pnl": pnl,
+            "trades": trades, "wins": wins, "losses": losses,
+            "total_pnl_dollars": None, "avg_pnl": None,
+            "_format": "pool_sym",
+        }
+    # POOL format — earlier engine output (pool_sharpe only)
     matches = list(re.finditer(
         r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
         output,
@@ -85,6 +108,8 @@ def parse_v8_result(output: str) -> dict | None:
         return {
             "sharpe": float(m.group(1)),
             "sharpe_pt": float(m.group(1)),
+            "pool_sharpe": float(m.group(1)),
+            "sym_sharpe": 0.0,
             "pnl": float(m.group(2)),
             "trades": closes,
             "wins": wins,

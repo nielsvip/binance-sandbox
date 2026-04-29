@@ -86,7 +86,7 @@ def analyze_jsonl(path):
     mean = sum(realized_pnls) / len(realized_pnls)
     var = sum((x - mean) ** 2 for x in realized_pnls) / len(realized_pnls)
     sd = math.sqrt(var)
-    sharpe_simple = mean / sd * math.sqrt(252) if sd > 0 else 0.0
+    sharpe_simple = mean / sd if sd > 0 else 0.0  # per-trade pool_sharpe (sqrt(252) stripped 2026-04-29 per CLAUDE.md rule 4)
     wins = [p for p in realized_pnls if p > 0]
     losses = [p for p in realized_pnls if p <= 0]
     return {

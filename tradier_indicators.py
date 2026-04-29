@@ -351,7 +351,8 @@ def linreg_features(series: pd.Series, length: int) -> Tuple[Optional[float], Op
     if denominator == 0:
         return None, None
     slope = np.sum((x - x_mean) * (y - y_mean)) / denominator
-    y_fit = x_mean + slope * (x - x_mean)
+    # 2026-04-29: bug fix — y_fit was using x_mean instead of y_mean. See _helpers.py.
+    y_fit = y_mean + slope * (x - x_mean)
     residuals = y - y_fit
     ss_res = np.sum(residuals ** 2)
     ss_tot = np.sum((y - y_mean) ** 2)
@@ -1313,9 +1314,11 @@ class IndicatorCalculator:
         slope, linearity = linreg_features(close_series, LINREG_LENGTH)
         if slope is not None:
             result[f"lr_trend_{timeframe}"] = slope
-        if timeframe == "1h" and linearity is not None:
-            result["linearity_1h"] = linearity
-            result["slope_close_1h"] = slope
+        # 2026-04-29: write linearity + slope_close for ALL timeframes (was 1h-only).
+        # Per user: linearity_4h plus all lr numbers' signs is the new entry filter.
+        if linearity is not None:
+            result[f"linearity_{timeframe}"] = linearity
+            result[f"slope_close_{timeframe}"] = slope
         if timeframe in ("1h", "4h", "D"):
             _bb_u, _bb_l, _bb_pb = bb_features(close_series, length=20, std_mult=2.0)
             if _bb_pb is not None:

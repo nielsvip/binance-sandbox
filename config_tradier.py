@@ -1457,6 +1457,20 @@ class TradierConfig:
     # to WT_DC_ENTRY-only behavior (the firehose that produced 7000+ buys/day per
     # symbol with no setup qualification).
     B_MAIN_ENTRY_GATE_ENABLED: bool = True
+    # 2026-04-29 — A (WT_DC_ENTRY scorer) optional filter on top of B. Flip False to
+    # let B alone fire entries (skip A's score-threshold check). Sweep-testable.
+    WT_DC_ENTRY_FILTER_ENABLED: bool = True
+    # 2026-04-29 — LINEARITY+LR alternative filter: requires all configured TFs'
+    # lr_trend_* slopes to share sign (positive=LONG, negative=SHORT). Optional
+    # linearity magnitude gate via LINEARITY_LR_LIN4H_MIN (currently broken-by-bug
+    # in linreg_features y_fit formula — set to 0 to ignore until fixed).
+    # Sweep test: enable these + flip STDEV_BREAKOUT_ENABLED=False + STDEV_BOUNCE_ENABLED=False
+    # + WT_DC_ENTRY_FILTER_ENABLED=False to test pure LIN+LR signal.
+    LINEARITY_LR_LONG_ENABLED: bool = False
+    LINEARITY_LR_SHORT_ENABLED: bool = False
+    LINEARITY_LR_TFS: List[str] = field(default_factory=lambda: ['5m', '15m', '1h', '4h'])
+    LINEARITY_LR_REQUIRE_ALL: bool = True
+    LINEARITY_LR_LIN4H_MIN: float = 0.0  # 0 = magnitude check disabled
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup

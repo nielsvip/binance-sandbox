@@ -156,7 +156,8 @@ def per_sym_best():
 
 def _file_aggregates(p):
     """Return aggregate dict for a single jsonl file, using mtime cache.
-    Aggregates: {n, wr, total_gain, chained_pct, ts_first, ts_last}"""
+    Per CLAUDE.md STANDARD METRIC SET: stores sum_pnl + sum_pnl_sq so we can
+    pool variance across symbols correctly when aggregating runs."""
     sp = str(p)
     try:
         mtime = p.stat().st_mtime
@@ -182,6 +183,13 @@ def _file_aggregates(p):
     n = len(pnls)
     wins = sum(1 for x in pnls if x > 0)
     total_gain = sum(pnls)
+    sum_pnl_sq = sum(x * x for x in pnls)
+    avg_pnl = total_gain / n if n else 0
+    var = (sum_pnl_sq / n - avg_pnl * avg_pnl) if n > 1 else 0
+    sym_std = var ** 0.5 if var > 0 else 0
+    sym_sharpe = (avg_pnl / sym_std) if sym_std > 0 else 0
+    # CLAUDE.md cap: ±5.0 for diagnostic per-symbol sharpe
+    sym_sharpe_capped = max(-5.0, min(5.0, sym_sharpe))
     sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
     chained = 0
     for j in range(1, len(sorted_t)):
@@ -195,6 +203,11 @@ def _file_aggregates(p):
         "wins": wins,
         "wr": wins / n if n else 0,
         "total_gain": total_gain,
+        "sum_pnl": total_gain,
+        "sum_pnl_sq": sum_pnl_sq,
+        "avg_pnl": avg_pnl,
+        "sym_sharpe": sym_sharpe,
+        "sym_sharpe_capped": sym_sharpe_capped,
         "chained": chained,
         "chained_pct": chained / n if n else 0,
         "ts_first": ts_first,
@@ -205,8 +218,10 @@ def _file_aggregates(p):
 
 
 def _compute_runs_ranked(sym_filter: str = "") -> str:
-    """Pure compute (no Flask context). Returns JSON body string.
-    Uses _file_aggregates() so unchanged files are read from cache."""
+    """Pure compute. Per CLAUDE.md STANDARD METRIC SET, every row carries:
+        pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr, gain_sym_yr,
+        total_gain_pct, trades, wr, chained_pct, max_dd_pct (TBD)
+    Sorts by pool_sharpe (the canonical metric) descending."""
     if not TRADES_DIR.exists():
         return "[]"
     by_run = {}
@@ -219,35 +234,70 @@ def _compute_runs_ranked(sym_filter: str = "") -> str:
         agg = _file_aggregates(p)
         if not agg:
             continue
-        n = agg["n"]
-        wr = agg["wr"]
-        total_gain = agg["total_gain"]
-        chained_pct = agg["chained_pct"]
-        score = total_gain * wr * max(0.05, 1.0 - chained_pct)
+        # Carry full agg through so we can pool variance across syms
         by_run.setdefault(run, []).append({
-            "sym": sym, "trades": n, "wr": round(wr, 3),
-            "total_gain_pct": round(total_gain, 1),
-            "chained_pct": round(chained_pct, 3),
-            "score": round(score, 1),
+            "sym": sym, "trades": agg["n"], "wr": round(agg["wr"], 3),
+            "total_gain_pct": round(agg["total_gain"], 1),
+            "chained_pct": round(agg["chained_pct"], 3),
+            "sym_sharpe": round(agg["sym_sharpe_capped"], 4),
+            "_n": agg["n"],
+            "_sum": agg["sum_pnl"],
+            "_sum_sq": agg["sum_pnl_sq"],
+            "_ts_first": agg["ts_first"],
+            "_ts_last": agg["ts_last"],
         })
     out = []
     for run, sym_rows in by_run.items():
-        agg_score = sum(r["score"] for r in sym_rows)
-        agg_trades = sum(r["trades"] for r in sym_rows)
-        agg_gain = sum(r["total_gain_pct"] for r in sym_rows)
-        agg_wr = sum(r["wr"] * r["trades"] for r in sym_rows) / agg_trades if agg_trades else 0
-        agg_churn = sum(r["chained_pct"] * r["trades"] for r in sym_rows) / agg_trades if agg_trades else 0
+        # Pool across all symbols: pool_sharpe = mean(all_returns) / std(all_returns)
+        total_n = sum(r["_n"] for r in sym_rows)
+        total_sum = sum(r["_sum"] for r in sym_rows)
+        total_sum_sq = sum(r["_sum_sq"] for r in sym_rows)
+        if total_n > 1:
+            pool_avg = total_sum / total_n
+            pool_var = total_sum_sq / total_n - pool_avg * pool_avg
+            pool_std = pool_var ** 0.5 if pool_var > 0 else 0
+            pool_sharpe = (pool_avg / pool_std) if pool_std > 0 else 0
+        else:
+            pool_avg = 0
+            pool_sharpe = 0
+        # Per-sym-avg sharpe — diagnostic only, exclude syms with <30 trades
+        eligible = [r for r in sym_rows if r["_n"] >= 30]
+        sym_sharpe_avg = (sum(r["sym_sharpe"] for r in eligible) / len(eligible)) if eligible else 0
+        # Time-window metrics
+        ts_min = min((r["_ts_first"] for r in sym_rows if r["_ts_first"]), default=0)
+        ts_max = max((r["_ts_last"] for r in sym_rows if r["_ts_last"]), default=0)
+        years = max(0.01, (ts_max - ts_min) / (86400 * 365.25)) if ts_max > ts_min else 0.01
+        agg_trades = total_n
+        agg_gain = total_sum
+        avg_gain_trade = (agg_gain / agg_trades) if agg_trades else 0
+        gain_per_yr = agg_gain / years
+        gain_sym_yr = (agg_gain / max(1, len(sym_rows))) / years
+        agg_wr = sum(r["wr"] * r["_n"] for r in sym_rows) / agg_trades if agg_trades else 0
+        agg_churn = sum(r["chained_pct"] * r["_n"] for r in sym_rows) / agg_trades if agg_trades else 0
+        # Strip private _ keys before serialization
+        clean_per_sym = [{k: v for k, v in r.items() if not k.startswith("_")} for r in sym_rows]
+        # Legacy composite score (kept for backward compat / chart UI tooltip)
+        legacy_score = agg_gain * agg_wr * max(0.05, 1.0 - agg_churn)
         out.append({
             "run": run,
-            "score": round(agg_score, 1),
+            # ===== CANONICAL METRICS (CLAUDE.md STANDARD METRIC SET) =====
+            "pool_sharpe": round(pool_sharpe, 4),
+            "sym_sharpe": round(sym_sharpe_avg, 4),
+            "avg_gain_trade": round(avg_gain_trade, 4),
+            "gain_per_yr": round(gain_per_yr, 1),
+            "gain_sym_yr": round(gain_sym_yr, 2),
+            # ===== Existing fields (kept for compatibility) =====
+            "score": round(legacy_score, 1),
             "trades": agg_trades,
             "wr": round(agg_wr, 3),
             "total_gain_pct": round(agg_gain, 1),
             "chained_pct": round(agg_churn, 3),
             "n_syms": len(sym_rows),
-            "per_symbol": sym_rows,
+            "n_years": round(years, 2),
+            "per_symbol": clean_per_sym,
         })
-    out.sort(key=lambda r: -r["score"])
+    # SORT BY POOL_SHARPE descending — the canonical CLAUDE.md ranking metric
+    out.sort(key=lambda r: -r["pool_sharpe"])
     return json.dumps(out)
 
 

@@ -9358,6 +9358,25 @@ class TradierTradeManager:
                     if _bn_pctb_val <= _bn_pctb_long and _bn_rvol_val >= _bn_rvol_min:
                         logger.warning(f"[STDEV_BOUNCE_LONG] {symbol}: bb_pct_b_{_bn_htf}={_bn_pctb_val:.3f} rvol={_bn_rvol_val:.2f}")
                         return True
+            # 2026-04-29: LINEARITY_LR alternative entry filter — sweep test as opposed to
+            # DC_WT(A) + STDEV(B). User: "test linearity_4h plus all lr numbers pos or neg
+            # as the filter as opposed to DC_WT and stdev". Default OFF — sweep first.
+            # Filter: ALL configured TFs must show lr_trend slope same sign (positive for
+            # LONG); optional linearity_4h magnitude gate. NOTE: linearity_* values are
+            # currently broken (linreg_features bug — y_fit uses x_mean not y_mean).
+            # Set LINEARITY_LR_LIN4H_MIN=0 to ignore magnitude until bug is fixed.
+            if getattr(config, 'LINEARITY_LR_LONG_ENABLED', False):
+                _ll_tfs = list(getattr(config, 'LINEARITY_LR_TFS', None) or ['5m', '15m', '1h', '4h'])
+                _ll_slopes = [float(indicators.get(f'lr_trend_{_t}', 0) or 0) for _t in _ll_tfs]
+                _ll_pos_count = sum(1 for _s in _ll_slopes if _s > 0)
+                _ll_require_all = bool(getattr(config, 'LINEARITY_LR_REQUIRE_ALL', True))
+                _ll_need = len(_ll_tfs) if _ll_require_all else (len(_ll_tfs) // 2 + 1)
+                _ll_lin4h_min = float(getattr(config, 'LINEARITY_LR_LIN4H_MIN', 0.0))
+                _ll_lin = float(indicators.get('linearity_4h', indicators.get('linearity_1h', 0)) or 0)
+                _ll_lin_ok = _ll_lin4h_min == 0.0 or _ll_lin >= _ll_lin4h_min
+                if _ll_pos_count >= _ll_need and _ll_lin_ok:
+                    logger.warning(f"[LINEARITY_LR_LONG] {symbol}: pos={_ll_pos_count}/{len(_ll_tfs)} slopes={[f'{s:.4f}' for s in _ll_slopes]} lin={_ll_lin:.2f}")
+                    return True
             # If SHOULD_ENTER_FALLBACK_ENABLED is False (default), block here. Set True to test other paths.
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False
@@ -9600,6 +9619,21 @@ class TradierTradeManager:
                     if _bn_pctb_val_s >= _bn_pctb_short and _bn_rvol_val_s >= _bn_rvol_min_s:
                         logger.warning(f"[STDEV_BOUNCE_SHORT] {symbol}: bb_pct_b_{_bn_htf_s}={_bn_pctb_val_s:.3f} rvol={_bn_rvol_val_s:.2f}")
                         return True
+            # 2026-04-29: LINEARITY_LR alternative entry filter — sweep test as opposed to
+            # DC_WT(A) + STDEV(B). Mirrored from should_enter_long. SHORT requires ALL
+            # configured TFs to show NEGATIVE lr_trend slope.
+            if getattr(config, 'LINEARITY_LR_SHORT_ENABLED', False):
+                _ll_tfs_s = list(getattr(config, 'LINEARITY_LR_TFS', None) or ['5m', '15m', '1h', '4h'])
+                _ll_slopes_s = [float(indicators.get(f'lr_trend_{_t}', 0) or 0) for _t in _ll_tfs_s]
+                _ll_neg_count = sum(1 for _s in _ll_slopes_s if _s < 0)
+                _ll_require_all_s = bool(getattr(config, 'LINEARITY_LR_REQUIRE_ALL', True))
+                _ll_need_s = len(_ll_tfs_s) if _ll_require_all_s else (len(_ll_tfs_s) // 2 + 1)
+                _ll_lin4h_min_s = float(getattr(config, 'LINEARITY_LR_LIN4H_MIN', 0.0))
+                _ll_lin_s = float(indicators.get('linearity_4h', indicators.get('linearity_1h', 0)) or 0)
+                _ll_lin_ok_s = _ll_lin4h_min_s == 0.0 or _ll_lin_s >= _ll_lin4h_min_s
+                if _ll_neg_count >= _ll_need_s and _ll_lin_ok_s:
+                    logger.warning(f"[LINEARITY_LR_SHORT] {symbol}: neg={_ll_neg_count}/{len(_ll_tfs_s)} slopes={[f'{s:.4f}' for s in _ll_slopes_s]} lin={_ll_lin_s:.2f}")
+                    return True
             if not getattr(config, 'SHOULD_ENTER_FALLBACK_ENABLED', False):
                 return False
             # YOUTUBE_CONSENSUS: Lunch dead zone — block momentum entries 11:30-14:00 ET

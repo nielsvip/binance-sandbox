@@ -59,21 +59,23 @@ OVERRIDE_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 PY_BIN = sys.executable
+# 2026-04-29: V8_RESULT now emits pool_sharpe + sym_sharpe + sharpe-alias (CLAUDE.md rule 4).
+# sharpe_w / sharpe_ann are BANNED — sweep ranking now uses pool_sharpe (= sharpe_pt = per-trade canonical).
 V8_RESULT_RE = re.compile(
     r"V8_RESULT:\s*"
-    r"sharpe_w=(?P<sharpe_w>[-\d.]+)\s+"
-    r"sharpe_pt=(?P<sharpe_pt>[-\d.]+)\s+"
-    r"sharpe_ann=(?P<sharpe_ann>[-\d.]+)\s+"
+    r"pool_sharpe=(?P<sharpe_w>[-\d.]+)\s+"        # pool_sharpe captured into sharpe_w field for back-compat
+    r"sym_sharpe=(?P<sharpe_pt>[-\d.]+)\s+"         # sym_sharpe → sharpe_pt slot (caller treats as diagnostic)
+    r"sharpe=(?P<sharpe_ann>[-\d.]+)\s+"            # alias = pool_sharpe (also into sharpe_ann slot for compat)
     r"gain_pct=(?P<gain_pct>[-+\d.]+)\s+"
     r"closes=(?P<closes>\d+)\s+"
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
-V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*sharpe_w=(?P<sharpe_w>[-\d.]+)")
-# Tradier engine emits a simpler final format (from _v8_result_from_trades):
-# V8_RESULT: sharpe=X pnl=X trades=X wins=X losses=X ...
+V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*pool_sharpe=(?P<sharpe_w>[-\d.]+)")
+# Fallback _v8_result_from_trades format (now also emits pool/sym/sharpe-alias):
 V8_RESULT_TRADIER_RE = re.compile(
     r"V8_RESULT:\s*"
+    r"pool_sharpe=[-\d.]+\s+sym_sharpe=[-\d.]+\s+"
     r"sharpe=(?P<sharpe>[-\d.]+)\s+"
     r"pnl=(?P<pnl>[-+\d.]+)\s+"
     r"trades=(?P<trades>\d+)\s+"

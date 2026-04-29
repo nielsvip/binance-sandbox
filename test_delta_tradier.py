@@ -338,33 +338,20 @@ def simulate_score_trades(close, timestamps, score_signals, market_mask, start_m
 
 
 def weekly_sharpe(trades, annualize=True):
-    """Compute weekly Sharpe from trade list. Returns (sharpe, n_trades, total_pnl, win_rate)."""
+    """Per-trade pool_sharpe (name kept for back-compat). Returns (sharpe, n_trades, total_pnl, win_rate).
+    Weekly bucketing + sqrt(52) annualize stripped 2026-04-29 per CLAUDE.md rule 4. annualize arg ignored."""
     if not trades:
         return 0.0, 0, 0.0, 0.0
-
-    # Bucket PnL by week
-    weekly_pnl = {}
-    for t in trades:
-        entry_ts = int(t[0])
-        week = datetime.utcfromtimestamp(entry_ts).isocalendar()[:2]
-        weekly_pnl.setdefault(week, 0.0)
-        weekly_pnl[week] += t[5]
-
-    if len(weekly_pnl) < 2:
-        total = sum(t[5] for t in trades)
-        wins = sum(1 for t in trades if t[5] > 0)
+    pnls = np.array([t[5] for t in trades])
+    if len(pnls) < 2:
+        total = float(np.sum(pnls))
+        wins = int(np.sum(pnls > 0))
         return 0.0, len(trades), total, wins / len(trades) if trades else 0.0
-
-    returns = np.array(list(weekly_pnl.values()))
-    mu = np.mean(returns)
-    sigma = np.std(returns)
-    sharpe = mu / sigma if sigma > 1e-10 else 0.0
-    if annualize:
-        sharpe *= np.sqrt(52)
-
-    total = sum(t[5] for t in trades)
-    wins = sum(1 for t in trades if t[5] > 0)
-    wr = wins / len(trades) if trades else 0.0
+    sigma = np.std(pnls)
+    sharpe = float(np.mean(pnls) / sigma) if sigma > 1e-10 else 0.0
+    total = float(np.sum(pnls))
+    wins = int(np.sum(pnls > 0))
+    wr = wins / len(trades)
     return sharpe, len(trades), total, wr
 
 

@@ -10,7 +10,12 @@ def linreg_features(series: pd.Series, length: int) -> Tuple[Optional[float], Op
     if denominator == 0:
         return None, None
     slope = np.sum((x - x_mean) * (y - y_mean)) / denominator
-    y_fit = x_mean + slope * (x - x_mean)
+    # 2026-04-29: bug fix — y_fit was using x_mean instead of y_mean, producing
+    # massive negative linearity values for any series whose y range != x range
+    # (e.g. AAPL price ~$243 vs x_index ~24.5 → linearity_1h = -4715). All
+    # consumers (ez_manage check_pullback_reexpansion, precompute_rankings htf_r
+    # multiplier) were dead before this fix.
+    y_fit = y_mean + slope * (x - x_mean)
     residuals = y - y_fit
     ss_res = np.sum(residuals ** 2)
     ss_tot = np.sum((y - y_mean) ** 2)

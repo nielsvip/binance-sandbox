@@ -563,7 +563,7 @@ def analyze_direction(entries, direction, horizons, is_long):
         avg_w = np.mean(winners_4h) if len(winners_4h) > 0 else 0
         avg_l = np.mean(losers_4h) if len(losers_4h) > 0 else 0
         pf = abs(np.sum(winners_4h) / np.sum(losers_4h)) if len(losers_4h) > 0 and np.sum(losers_4h) != 0 else 99.9
-        sharpe = np.mean(returns_4h) / np.std(returns_4h) * np.sqrt(252) if np.std(returns_4h) > 0 else 0
+        sharpe = np.mean(returns_4h) / np.std(returns_4h) if np.std(returns_4h) > 0 else 0  # per-trade (sqrt-annualization stripped 2026-04-29 per CLAUDE.md rule 4)
 
         row = f"{thresh:>6} {len(filtered):>7} "
         row += f"{wr.get('1h', 0):>6.1f}% {wr.get('2h', 0):>6.1f}% {wr.get('4h', 0):>6.1f}% {wr.get('8h', 0):>6.1f}% "
@@ -664,14 +664,14 @@ def find_optimal_threshold(entries, direction, is_long):
         if std_r == 0:
             continue
 
-        sharpe = mean_r / std_r * np.sqrt(252)
+        sharpe = mean_r / std_r  # per-trade (sqrt-annualization stripped 2026-04-29 per CLAUDE.md rule 4)
         wr = np.sum(returns_4h > 0.3) / len(returns_4h) * 100
         winners = returns_4h[returns_4h > 0]
         losers = returns_4h[returns_4h < 0]
         pf = abs(np.sum(winners) / np.sum(losers)) if len(losers) > 0 and np.sum(losers) != 0 else 99.9
 
-        # Composite metric: sharpe * sqrt(count) to balance quality and quantity
-        composite = sharpe * np.sqrt(len(filtered)) / 100
+        # Composite metric: weighted product of per-trade sharpe + log(count) — replaces sqrt-N inflation.
+        composite = sharpe * (np.log(max(len(filtered), 2))) / 10.0
 
         if sharpe > best_sharpe:
             best_sharpe = sharpe
@@ -737,7 +737,7 @@ def validate_production_scorer():
             wins = rets[rets > 0]
             losses = rets[rets < 0]
             pf = abs(np.sum(wins) / np.sum(losses)) if len(losses) > 0 and np.sum(losses) != 0 else 99.9
-            sharpe = np.mean(rets) / np.std(rets) * np.sqrt(252) if np.std(rets) > 0 else 0
+            sharpe = np.mean(rets) / np.std(rets) if np.std(rets) > 0 else 0  # per-trade (sqrt-annualization stripped 2026-04-29)
             print(f"{thresh:>6} {len(rets):>7} {wr:>6.1f}% {np.mean(rets):>7.3f}% {min(pf, 99.9):>6.2f}x {sharpe:>7.2f}")
         print()
 

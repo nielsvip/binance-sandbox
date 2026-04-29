@@ -228,7 +228,7 @@ def main():
             log.info("[QUEUE] empty — all known sweeps done. Seeding new round with diverse neighborhoods.")
             # Seed around: running_best + top-3 robustness leaders (different configs = different search paths)
             import math
-            def _robust(r): return r.get("best_sharpe", 0) * math.sqrt(max(r.get("best_trades", 0), 1) / 10.0)
+            def _robust(r): return r.get("best_sharpe", 0) * (1.0 + 0.1 * math.log(max(r.get("best_trades", 0), 1)))  # per-trade sharpe weighted by log(n_trades) — sqrt(N) inflation stripped 2026-04-29 per CLAUDE.md rule 4
             # Get top configs by robustness, dedup
             cs = state["completed_sweeps"]
             seen_cfg_keys = set()
