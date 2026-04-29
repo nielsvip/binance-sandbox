@@ -160,9 +160,15 @@ _g_simulate = None
 
 
 def _sim_worker_fn(cfg, conn):
-    """Runs in forked child process. Inherits _g_subset/_g_simulate via COW fork."""
+    """Runs in forked child process. Inherits _g_subset/_g_simulate via COW fork.
+    If _g_subset is a streaming sentinel tuple, fetch via iter_npz each call (bounded memory)."""
     try:
-        r = _g_simulate(_g_subset, cfg)
+        if isinstance(_g_subset, tuple) and len(_g_subset) > 0 and _g_subset[0] == "__STREAM__":
+            from v8_quick_engine import iter_npz
+            _, mode, syms, start_date, npz_dir = _g_subset
+            r = _g_simulate(iter_npz(mode, syms, start_date, npz_dir), cfg)
+        else:
+            r = _g_simulate(_g_subset, cfg)
         conn.send(r)
     except Exception as e:
         conn.send({"_err": str(e)})
@@ -289,6 +295,8 @@ def main():
                     help="Kill any single iteration exceeding this (subprocess SIGKILL). Default 120s.")
     ap.add_argument("--symbol-list", default=None,
                     help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
+    ap.add_argument("--stream-npz", action="store_true",
+                    help="Stream NPZs per-iter (for large sym sets). Bounded memory.")
     ap.add_argument("--auto-restart-iters", type=int, default=50,
                     help="Exit cleanly after N successful iters so the watchdog can respawn a fresh worker. "
                          "Combats slow memory growth that OOMs the worker around iter 25-30. "
@@ -296,7 +304,7 @@ def main():
     args = ap.parse_args()
 
     sys.path.insert(0, str(Path(__file__).parent))
-    from v8_quick_engine import QuickConfig, load_npz, simulate
+    from v8_quick_engine import QuickConfig, load_npz, iter_npz, simulate
 
     n_years = max((datetime.utcnow() - datetime.strptime(args.start, "%Y-%m-%d")).days / 365.25, 0.01)
 
@@ -321,8 +329,12 @@ def main():
             if args.mode == "tradier" and is_crypto: continue
             candidates.append(sym)
         syms = candidates[:args.symbols]
-    subset = load_npz(args.mode, syms, args.start, args.npz_dir)
-    gc.collect()
+    if args.stream_npz:
+        subset = ("__STREAM__", args.mode, syms, args.start, args.npz_dir)
+        print(f"[AUTO_SEARCH] STREAMING: {len(syms)} syms will load per-iter via iter_npz", flush=True)
+    else:
+        subset = load_npz(args.mode, syms, args.start, args.npz_dir)
+        gc.collect()
 
     base = QuickConfig()
     base.MODE = args.mode
@@ -341,7 +353,7 @@ def main():
             if isinstance(val, bool):
                 setattr(base, nm, False)
 
-    print(f"[AUTO_SEARCH] mode={args.mode} syms={len(subset)} start={args.start} "
+    print(f"[AUTO_SEARCH] mode={args.mode} syms={len(syms) if args.stream_npz else len(subset)} start={args.start} "
           f"BH_gain={args.bh_accumulated_gain_pct:.1f}% TARGET>{target_gain:.1f}% "
           f"timeout={args.max_iter_seconds}s out={args.out_dir}", flush=True)
 

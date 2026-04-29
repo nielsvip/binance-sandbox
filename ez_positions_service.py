@@ -998,7 +998,10 @@ async def quick_price(symbol: str) -> float:
                 read_client = (service.redis_manager.connections.get("gateway") or service.redis_manager.connections.get("local"))
             if read_client:
                 redis_key = f"mark_price:{symbol}"
-                data = await read_client.get(redis_key)
+                try:
+                    data = await asyncio.wait_for(read_client.get(redis_key), timeout=0.5)
+                except asyncio.TimeoutError:
+                    data = None
                 if data:
                     try :
                         p_data = json.loads(data)
@@ -6508,11 +6511,18 @@ class PositionService:
             logger.warning(f"[_process_account_update_impl][{account_key}] Processed {processed_count} positions, skipped {skipped_count}, total updated_keys: {len(updated_keys_in_api)}")
             try :
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
+                _phantom_budget_deadline = time.time() + 5.0
+                _phantom_skip_price = False
                 for pk_mem_not_api in keys_in_memory_not_in_api:
-                    position_obj = account_positions.get(pk_mem_not_api) 
+                    position_obj = account_positions.get(pk_mem_not_api)
                     fresh_price = None
-                    try : fresh_price = await quick_price(position_obj.symbol)
-                    except Exception: pass
+                    if not _phantom_skip_price:
+                        if time.time() > _phantom_budget_deadline:
+                            _phantom_skip_price = True
+                            logger.warning(f"[_process_account_update_impl][{account_key}] phantom price-refresh budget exceeded ({len(keys_in_memory_not_in_api)} keys) — skipping quick_price for remainder this cycle; ez_mark_prices is authoritative")
+                        else:
+                            try : fresh_price = await asyncio.wait_for(quick_price(position_obj.symbol), timeout=0.6)
+                            except Exception: pass
                     if fresh_price is not None and fresh_price > 0:
                         position_obj.mark_price = fresh_price
                         position_obj.mark_price_last_updated = now
