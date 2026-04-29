@@ -121,6 +121,9 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = override_path
     env["TEST_RATE_GUARD_MIN_PER_DAY"] = "0"
+    env["V8_BACKTEST_TIMEOUT"] = str(int(os.environ.get("V8_BACKTEST_TIMEOUT", "3600")))
+    if mode == "crypto":
+        env["V8_SKIP_PROCESS_POSITION"] = "1"
     cmd = [
         PYTHON, "-u", str(ENGINE),
         "--mode", mode,

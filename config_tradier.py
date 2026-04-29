@@ -1543,6 +1543,12 @@ class TradierConfig:
     # 2026-04-29 USER RULE: post-close cooldown — block re-OPEN of same symbol within X min of CLOSE.
     # Stops the 1-share NVDA/USO/MSFT/GOOGL flap observed today (LONG BUY every ~30s after a CLOSE).
     TRADIER_POST_CLOSE_COOLDOWN_MIN: float = 15.0
+    # 2026-04-29 USER ABSOLUTE: reset max_gain (and prev_gain, max_loss_since_hedge) when positionAmt → 0.
+    # Prior CLAUDE.md rule said "max_gain SACRED, never zero" — but that caused stale 12.37% peak from a
+    # closed cycle to be inherited by user's MANUAL <3-min-old reopen of GOOGL, triggering PEAK_GIVEBACK
+    # immediately. User explicitly overrides for tradier. entry_price still preserved (broker API refreshes
+    # on next position open).
+    TRADIER_RESET_MAX_GAIN_ON_CLOSE: bool = True
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

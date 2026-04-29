@@ -1,5 +1,97 @@
 # CLAUDE.md — Trading System Rules
 
+## 🚨🚨🚨 SWEEP-LIVENESS MANDATE — READ FIRST. NON-NEGOTIABLE 🚨🚨🚨
+
+**Three months of expected results have been LOST because agents launch tests, watch a PID flash, declare "running", and walk away — and the tests die quietly. Servers cost real money. Every idle compute hour is a step backward. THIS STOPS NOW.**
+
+### MACHINE ROLES — IMMUTABLE
+
+| Machine | Role | What MUST be running | What MUST NOT be running |
+|---|---|---|---|
+| **MacBook** (`/Users/niels/Documents/binance`) | LIVE TRADING | `ez_manage.py --account {ang,inf,fin,flz,men}` (5 crypto), `tradier_manage.py --account {trb,trc}` (2 stocks), `ez_positions_quick.py`, `ez_positions_service.py`, `ez_market_data.py`, `ez_orderbook.py` | NO sweeps. NO precompute. NO autonomous_search. |
+| **S1** (`s1-int`, `/home/niels/binance-sandbox`) | **CRYPTO SWEEPS ONLY** | `v8_quick_sweep.py --mode crypto` and/or `autonomous_search.py --mode crypto` and/or `v8_test_queue.py --mode crypto`. Continuous. | NO `--mode tradier` ANYTHING. NO live trading. |
+| **S2** (`s2-int`, `/home/niels/binance-sandbox`) | **TRADIER SWEEPS ONLY** | `v8_quick_sweep.py --mode tradier` and/or `autonomous_search.py --mode tradier` and/or `v8_test_queue.py --mode tradier`. Continuous. | NO `--mode crypto` ANYTHING. NO live trading. |
+
+Mode-mismatch (crypto sweep on S2 / tradier sweep on S1) wastes compute on data the engine cannot read correctly and produces 0-trade lying results. **It has cost weeks. KILL on sight.**
+
+### EVERY-SESSION STEP 0 (replaces any other "step 0" — DO THIS FIRST)
+
+```bash
+# Run this verbatim at the START of every session.
+# Failure on any line = STOP all other work, fix, then continue.
+
+# (a) MacBook live trading
+ps -ef | grep -E 'ez_manage\.py --account|tradier_manage\.py --account' | grep -v grep | wc -l
+# Expected: ≥7 (5 crypto + 2 tradier accounts). If <7 → run start_everything_2 / start_tradier_2.
+
+# (b) S1 has crypto sweeps RUNNING (workers alive, not just parent)
+ssh s1-int 'pgrep -afc "v8_quick_sweep.*--mode crypto|autonomous_search.*--mode crypto|v8_test_queue.*--mode crypto"'
+# Expected: ≥3 (parent + workers). If 0 → relaunch (see watchdog scripts on disk).
+
+# (c) S1 has NO tradier sweeps (mode-mismatch ban)
+ssh s1-int 'pgrep -af "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier|v8_test_queue.*--mode tradier"'
+# Expected: empty. If anything found → kill it.
+
+# (d) S2 has tradier sweeps RUNNING
+ssh s2-int 'pgrep -afc "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier|v8_test_queue.*--mode tradier"'
+# Expected: ≥3.
+
+# (e) S2 has NO crypto sweeps
+ssh s2-int 'pgrep -af "v8_quick_sweep.*--mode crypto|autonomous_search.*--mode crypto|v8_test_queue.*--mode crypto"'
+# Expected: empty.
+
+# (f) Sweep CSVs are GROWING — pick the newest result file each side
+ssh s1-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_crypto_*.csv 2>/dev/null | head -1'
+ssh s2-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_tradier_*.csv 2>/dev/null | head -1'
+# Note size + mtime. After 5 minutes, mtime must advance OR row count must increase.
+# A frozen file = sweep dying silently. Fix.
+```
+
+If anything is wrong, **fix it before doing anything else the user asked for**. Sweeps not running is a P0 — every minute of idle is a minute we never get back.
+
+### POST-LAUNCH VERIFICATION — REQUIRED FOR EVERY SWEEP YOU START
+
+A "PID echoed" is NOT proof of running. Sweeps die silently from import errors, missing NPZ fields, mode mismatches, OOM, shell-redirect issues. The protocol:
+
+1. Launch with: `nohup ... > /home/niels/logs/<descriptive>.log 2>&1 < /dev/null & disown` — NEVER `/tmp/*.log` (cleared on reboot, easy to lose), NEVER without `< /dev/null` (stdin tied to ssh tty causes silent death on disconnect).
+2. **T+5s**: `pgrep -af <tier_name>` returns ≥ N processes (parent + workers).
+3. **T+30s**: tail the log for `V8 Quick Sweep:` or equivalent startup banner. No `Traceback`, no `ERROR`, no `MODE_CONFIG_MISMATCH_SKIP`.
+4. **T+5min**: log shows `[1/N]` config-progress line OR CSV file has rows > header. If still 0 rows → the sweep is stuck or dying. Investigate.
+5. State to user verbatim: "S1 wt_dc_full: N workers alive, log advancing, CSV at R rows" — only AFTER all 4 checks pass.
+
+If you don't have time to do steps 2–4 before ending the session, **don't launch the sweep at all**. A queued-but-not-running sweep is worse than no sweep — it gives false confidence.
+
+### END-OF-SESSION CHECK — DO THIS BEFORE YOUR FINAL RESPONSE
+
+Repeat the Step 0 check (a)–(f). State the result to the user. Examples of acceptable end-of-session reports:
+
+- ✅ "MacBook live: 7 procs. S1: wt_dc_full crypto 4 workers, CSV 437/2304 rows, growing. S2: wt_dc_full tradier 3 workers, CSV 89/2304 rows, growing. End-of-session liveness OK."
+- ❌ "Launched the sweep, exiting." — NEVER acceptable. The user is going to walk away. If sweep dies after you exit, you have wasted hours of compute.
+
+### WHAT TO DO IF YOU FIND DEAD SWEEPS AT SESSION START
+
+This is the rule that recovers from the past 3 months of damage. When (a)/(b)/(d) shows 0 sweeps:
+
+1. Look at recent CSVs in `/home/niels/binance-sandbox/data/sweep_results/` — pick the highest-priority unfinished tier (largest config-count, newest, mode-correct).
+2. Relaunch using the post-launch verification protocol above.
+3. **Tell the user**: "Found dead sweep on {S1|S2}. Last alive at {mtime}. Relaunched as {tier}. {N} workers running, log advancing." — they need to know about the gap.
+
+### LAUNCHER SCRIPTS (canonical, do not invent variants)
+
+- S1 crypto sweep launcher: `/home/niels/binance-sandbox/start_crypto_sweeps.sh` (if missing, create from canonical template — never inline ad-hoc nohup chains)
+- S2 tradier sweep launcher: `/home/niels/binance-sandbox/start_tradier_sweeps.sh`
+- watchdog: existing `watchdog_v8_quick_sweep.sh` restarts workers if they die mid-run. If watchdog itself dies, sweeps stop forever — verify watchdog presence in step (b)/(d).
+
+### EXAMPLES OF FAILURES THIS RULE PREVENTS
+
+- 2026-01–04: agents launching `v8_quick_sweep` and reporting "running" when ssh-disconnect SIGHUP killed the process within seconds → 3 months of intended sweep coverage = NIL.
+- 2026-04-29: agent (this session) launched wt_dc_full with `> /tmp/wt_dc_full_*.log` redirect; the redirect string never expanded properly through nested ssh quoting; logs went nowhere; processes died on ssh disconnect; CSV stayed at 0 bytes for an hour before noticing. Mitigated by switching to `~/logs/` and `< /dev/null & disown`.
+- Repeated: tradier sweep launched on S1 (mode mismatch with crypto config) → 0-trade lying results that pass the runner's "completed" check.
+
+**This mandate is enforced at session start AND session end. Skipping it is the same as deliberately wasting compute.**
+
+---
+
 ## 🚨 USDC-OVER-USDT — HARD POLICY 🚨
 
 **If a sym has a USDC perp on Binance Futures, EVERYTHING refers to it as USDC. NOTHING uses USDT for those syms.**

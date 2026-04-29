@@ -1590,6 +1590,17 @@ class TradierPositionManager:
                 pos.gain = 0.0
                 pos.unrealized_pnl = 0.0
                 pos.last_updated = now
+                # 2026-04-29 USER ABSOLUTE: when position closes, reset max_gain so a NEW manual reopen
+                # of the same symbol doesn't inherit stale peak. Was killing user's GOOGL/MSFT today
+                # (manual buy <3min ago, max_gain=12.37% from prior cycle → PEAK_GIVEBACK fired).
+                # Overrides crypto-side "max_gain SACRED" rule for tradier (per user directive 2026-04-29).
+                if bool(getattr(self.config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
+                    _old_mg = float(getattr(pos, 'max_gain', 0) or 0)
+                    pos.max_gain = 0.0
+                    pos.prev_gain = 0.0
+                    try: pos.max_loss_since_hedge = 0.0
+                    except Exception: pass
+                    logger.warning(f"[GHOST_ZERO_RESET] {pk}: max_gain reset (was {_old_mg:.2f}%) — fresh slate for any future open")
                 self._api_absence_count.pop(pk, None)
                 try:
                     await self.append_to_position_history_file(pk, "GHOST_CLOSE", abs(_ghost_qty), _ghost_price, rich_context={"reason": f"tradier_api_absence_{count}x_lastgain={_ghost_gain:.2f}%_entry={_ghost_entry:.2f}", "indicators": {}})

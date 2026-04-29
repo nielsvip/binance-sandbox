@@ -2642,6 +2642,15 @@ class PositionReader:
                                 if amt > 0:
                                     existing.positionAmt = 0.0
                                     existing.gain = 0.0
+                                    # 2026-04-29 USER ABSOLUTE: reset max_gain on close (prevents stale peak from killing next manual buy)
+                                    if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
+                                        _old_mg_r = float(getattr(existing, 'max_gain', 0) or 0)
+                                        existing.max_gain = 0.0
+                                        existing.prev_gain = 0.0
+                                        try: existing.max_loss_since_hedge = 0.0
+                                        except Exception: pass
+                                        if _old_mg_r > 0:
+                                            logger.warning(f"[REDIS_SYNC_RESET] {pk}: max_gain reset (was {_old_mg_r:.2f}%)")
             except Exception as e:
                 logger.warning(f"[Reader] Redis sync failed for {acc}: {e}")
                 self.redis_client = None
@@ -8647,9 +8656,20 @@ class TradierTradeManager:
                                         _mg = float(getattr(local_pos, 'max_gain', 0) or 0)
                                         self._record_reentry_candidate(position_key, float(current_price), _ep, reason or action, _mg, float(original_position_amt))
                                     if order_id == "GHOST_CLEARED":
-                                        # ONLY zero positionAmt. NEVER zero entry_price/gain/max_gain — they are sacred.
                                         local_pos.positionAmt = 0.0
-                                        logger.warning(f"[GHOST_CLEAR] {position_key}: positionAmt zeroed. entry_price/gain/max_gain PRESERVED.")
+                                        # 2026-04-29 USER ABSOLUTE: reset max_gain on close (prior comment said "sacred" but that
+                                        # caused user's manual GOOGL/MSFT buys to inherit stale 12.37% / 8.69% peak from prior cycle
+                                        # and get killed by PEAK_GIVEBACK. User overrides for tradier).
+                                        if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
+                                            _old_mg_g = float(getattr(local_pos, 'max_gain', 0) or 0)
+                                            local_pos.max_gain = 0.0
+                                            local_pos.prev_gain = 0.0
+                                            local_pos.gain = 0.0
+                                            try: local_pos.max_loss_since_hedge = 0.0
+                                            except Exception: pass
+                                            logger.warning(f"[GHOST_CLEAR_RESET] {position_key}: positionAmt zeroed + max_gain reset (was {_old_mg_g:.2f}%) — entry_price preserved")
+                                        else:
+                                            logger.warning(f"[GHOST_CLEAR] {position_key}: positionAmt zeroed. entry_price/gain/max_gain PRESERVED.")
                             elif is_augment:
                                 new_qty = float(local_pos.positionAmt) + float(quantity)
                                 # 2026-04-08 FIX: Do NOT update positionAmt locally.
@@ -10847,6 +10867,15 @@ class TradierTradeManager:
                             pos.gain = 0.0
                             pos.unrealized_pnl = 0.0
                             pos.last_updated = now
+                            # 2026-04-29 USER ABSOLUTE: reset max_gain on close
+                            if bool(getattr(config, 'TRADIER_RESET_MAX_GAIN_ON_CLOSE', True)):
+                                _old_mg_pk = float(getattr(pos, 'max_gain', 0) or 0)
+                                pos.max_gain = 0.0
+                                pos.prev_gain = 0.0
+                                try: pos.max_loss_since_hedge = 0.0
+                                except Exception: pass
+                                if _old_mg_pk > 0:
+                                    logger.warning(f"[PHANTOM_KILL_RESET] {pk}: max_gain reset (was {_old_mg_pk:.2f}%)")
                             self._phantom_killed_keys.add(pk)
                             zeroed_count += 1
                     for pk in list(self._phantom_killed_keys):
