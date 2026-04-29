@@ -1199,26 +1199,56 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             # Update breakout state continuously so it's ready when entry branch fires
             _update_stdev_state(symbol, indicators_raw)
         if not macro_fresh:
-            # INDICATORS ARE DEAD (>1200s) — STALE_HOLD policy: never trigger exits on stale data EXCEPT
-            # the DC_BAND_BREAK_5M_KILL emergency (2026-04-29 user directive). Even with stale dc_low_5m,
-            # if live price drops below it, the trend break is real — close immediately.
+            # STALE_HOLD with dc_low4_5m emergency exit + prev_gain accumulation (2026-04-29 user spec)
+            # 1. If live price < stale dc_low4_5m (LONG) or > stale dc_high4_5m (SHORT) → close NOW
+            # 2. Otherwise track gain history while stale; if gain dropping drastically → close
+            # 3. NEVER open or augment while stale
+            # 4. (TODO) spawn indicator-repair agent
             if has_position:
                 try:
-                    _stale_dcl5 = float((indicators_raw or {}).get('dc_low_5m') or 0)
-                    _stale_dch5 = float((indicators_raw or {}).get('dc_high_5m') or 0)
+                    _stale_dcl4 = float((indicators_raw or {}).get('dc_low4_5m') or 0)
+                    _stale_dch4 = float((indicators_raw or {}).get('dc_high4_5m') or 0)
                     _is_long_pos = getattr(position, 'position_side', 'LONG') == 'LONG'
+                    _live_gain = float(getattr(position, 'gain', 0.0) or 0.0)
                     if current_price > 0:
-                        if _is_long_pos and _stale_dcl5 > 0 and current_price < _stale_dcl5:
-                            logger.critical(f"🛑 STALE_DC_KILL {symbol}_LONG: live_price={current_price:.4f} < stale dc_low_5m={_stale_dcl5:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
-                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_BAND_BREAK_5M_KILL_STALE_LONG(p={current_price:.2f}<dcl5={_stale_dcl5:.2f})", 100.0, override_qty=999999)
+                        if _is_long_pos and _stale_dcl4 > 0 and current_price < _stale_dcl4:
+                            logger.critical(f"🛑 STALE_DC4_KILL {symbol}_LONG: live_price={current_price:.4f} < stale dc_low4_5m={_stale_dcl4:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_LOW4_5M_KILL_STALE_LONG(p={current_price:.2f}<dcl4={_stale_dcl4:.2f})", 100.0, override_qty=999999)
                             return "STALE_DC_KILL_FIRED"
-                        if (not _is_long_pos) and _stale_dch5 > 0 and current_price > _stale_dch5:
-                            logger.critical(f"🛑 STALE_DC_KILL {symbol}_SHORT: live_price={current_price:.4f} > stale dc_high_5m={_stale_dch5:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
-                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_BAND_BREAK_5M_KILL_STALE_SHORT(p={current_price:.2f}>dch5={_stale_dch5:.2f})", 100.0, override_qty=999999)
+                        if (not _is_long_pos) and _stale_dch4 > 0 and current_price > _stale_dch4:
+                            logger.critical(f"🛑 STALE_DC4_KILL {symbol}_SHORT: live_price={current_price:.4f} > stale dc_high4_5m={_stale_dch4:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_HIGH4_5M_KILL_STALE_SHORT(p={current_price:.2f}>dch4={_stale_dch4:.2f})", 100.0, override_qty=999999)
                             return "STALE_DC_KILL_FIRED"
+                    # prev_gain accumulation: track gain trajectory across stale cycles.
+                    # On entering stale state, snapshot first_stale_gain. Each cycle compare current to first.
+                    if not hasattr(trade_manager, '_stale_gain_history'):
+                        trade_manager._stale_gain_history = {}
+                    _hist = trade_manager._stale_gain_history.setdefault(position_key, {'first_gain': _live_gain, 'last_gain': _live_gain, 'first_ts': time.time(), 'samples': []})
+                    _hist['last_gain'] = _live_gain
+                    _hist['samples'].append((time.time(), _live_gain))
+                    if len(_hist['samples']) > 100:
+                        _hist['samples'] = _hist['samples'][-100:]
+                    _drastic_drop_pct = float(getattr(config, 'STALE_DRASTIC_DROP_PCT_TRADIER', 1.5))
+                    _gain_delta = _live_gain - _hist['first_gain']
+                    if _gain_delta < -_drastic_drop_pct:
+                        logger.critical(f"🛑 STALE_DRASTIC_DROP {symbol}: gain {_hist['first_gain']:+.2f}% → {_live_gain:+.2f}% (Δ={_gain_delta:+.2f}% over {(time.time()-_hist['first_ts'])/60:.1f}m) — closing despite stale indicators")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"STALE_DRASTIC_DROP_first{_hist['first_gain']:.2f}_now{_live_gain:.2f}_d{_gain_delta:.2f}", 100.0, override_qty=999999)
+                        return "STALE_DRASTIC_DROP_FIRED"
                 except Exception as _stale_dc_err:
                     logger.warning(f"[STALE_DC_KILL] {symbol}: check error {_stale_dc_err}")
-                logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits except DC_5m break)")
+                # Spawn indicator-repair attempt (best-effort; non-blocking)
+                try:
+                    if hasattr(trade_manager, '_stale_repair_last'):
+                        _repair_last = trade_manager._stale_repair_last.get(symbol, 0)
+                    else:
+                        trade_manager._stale_repair_last = {}
+                        _repair_last = 0
+                    if time.time() - _repair_last > 300:  # at most once per 5 min per symbol
+                        trade_manager._stale_repair_last[symbol] = time.time()
+                        logger.warning(f"[STALE_REPAIR_TRIGGER] {symbol}: indicators stale — TODO agent spawn (placeholder, manual intervention or watchdog should refresh tradier_indicators)")
+                except Exception:
+                    pass
+                logger.info(f"[STALE_HOLD] {symbol}: stale indicators — HOLDING (DC4 5m within bounds, gain stable). NEVER opening/augmenting while stale.")
                 return "STALE_INDICATORS_HELD"
             else:
                 return "STALE_ABSOLUTE_NO_POS"
@@ -4472,25 +4502,27 @@ class StockStrategy:
         current_price = float(current_price)
 
         # ═══════════════════════════════════════════════════════════════════
-        # DC_BAND_BREAK_5M_KILL (2026-04-29 user directive — UNCONDITIONAL)
-        # If LONG closes below dc_low_5m OR SHORT closes above dc_high_5m,
-        # toss it IMMEDIATELY. Overrides STRICT_NO_LOSS, UNIVERSAL_NOLOSS_GATE,
-        # STALE_HOLD, OPTIONS_EQUITY_HEDGE_GUARD, every other gate.
-        # User: "buying into a fucking loss MSTR — gets immediately tossed
-        # if it goes below DC_LOW 5m like everything it fucking buys".
+        # DC_LOW4_5M_KILL (2026-04-29 user directive — UNCONDITIONAL early-exit)
+        # If LONG closes below dc_low4_5m (4-period tight Donchian on 5m) OR
+        # SHORT closes above dc_high4_5m, toss it IMMEDIATELY.
+        # Overrides STRICT_NO_LOSS, UNIVERSAL_NOLOSS_GATE, STALE_HOLD,
+        # OPTIONS_EQUITY_HEDGE_GUARD, peak_giveback gates. Same field as the
+        # existing DC_LOW4_5M_BREAK at line ~4598 but UNCONDITIONAL (not gated
+        # by _pgp_max_g > 0 / hold_time_min). User: "tossed if below dc_low4_5m
+        # like everything it buys".
         # ═══════════════════════════════════════════════════════════════════
         try:
-            _dcl5 = float(i.get('dc_low_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_low_5m', 0) or 0)
-            _dch5 = float(i.get('dc_high_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_high_5m', 0) or 0)
+            _dcl4_5 = float(i.get('dc_low4_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_low4_5m', 0) or 0)
+            _dch4_5 = float(i.get('dc_high4_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_high4_5m', 0) or 0)
         except Exception:
-            _dcl5 = 0.0; _dch5 = 0.0
+            _dcl4_5 = 0.0; _dch4_5 = 0.0
         if current_price > 0:
-            if is_long and _dcl5 > 0 and current_price < _dcl5:
-                logger.critical(f"🛑 DC_BAND_BREAK_5M_KILL {symbol}_LONG: price={current_price:.4f} < dc_low_5m={_dcl5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
-                return True, f"DC_BAND_BREAK_5M_KILL_LONG(p={current_price:.2f}<dcl5={_dcl5:.2f})", 1.0
-            if (not is_long) and _dch5 > 0 and current_price > _dch5:
-                logger.critical(f"🛑 DC_BAND_BREAK_5M_KILL {symbol}_SHORT: price={current_price:.4f} > dc_high_5m={_dch5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
-                return True, f"DC_BAND_BREAK_5M_KILL_SHORT(p={current_price:.2f}>dch5={_dch5:.2f})", 1.0
+            if is_long and _dcl4_5 > 0 and current_price < _dcl4_5:
+                logger.critical(f"🛑 DC_LOW4_5M_KILL {symbol}_LONG: price={current_price:.4f} < dc_low4_5m={_dcl4_5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                return True, f"DC_LOW4_5M_KILL_LONG(p={current_price:.2f}<dcl4={_dcl4_5:.2f})", 1.0
+            if (not is_long) and _dch4_5 > 0 and current_price > _dch4_5:
+                logger.critical(f"🛑 DC_HIGH4_5M_KILL {symbol}_SHORT: price={current_price:.4f} > dc_high4_5m={_dch4_5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                return True, f"DC_HIGH4_5M_KILL_SHORT(p={current_price:.2f}>dch4={_dch4_5:.2f})", 1.0
 
         opened_at = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
         hold_time_min = 0.0

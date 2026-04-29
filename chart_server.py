@@ -143,20 +143,15 @@ def _compute_per_sym_best() -> str:
 
 @app.route("/per_sym_best")
 def per_sym_best():
-    """Cached endpoint."""
+    """Cached endpoint. Returns []+'warming' header if not yet populated."""
     import time as _time
     with _precompute_lock:
         pre = _precomputed.get("per_sym_best")
     if pre:
         return app.response_class(pre, mimetype="application/json")
-    cache_key = "per_sym_best"
-    now = _time.time()
-    cached = _response_cache.get(cache_key)
-    if cached and cached[0] > now:
-        return app.response_class(cached[1], mimetype="application/json")
-    body = _compute_per_sym_best()
-    _response_cache[cache_key] = (now + 30, body)
-    return app.response_class(body, mimetype="application/json")
+    resp = app.response_class("[]", mimetype="application/json")
+    resp.headers["X-Cache-Status"] = "warming"
+    return resp
 
 
 def _file_aggregates(p):
@@ -258,8 +253,8 @@ def _compute_runs_ranked(sym_filter: str = "") -> str:
 
 @app.route("/runs_ranked")
 def runs_ranked():
-    """Cached endpoint. Background thread refreshes unfiltered every 30s.
-    Sym-filtered requests run live + cache for 30s."""
+    """Cached endpoint. Returns 503+'warming up' if cache not yet populated to
+    avoid blocking the request thread on the 67s cold scan (parallel scans = 5x slower)."""
     import time as _time
     sym_filter = request.args.get("sym", "").upper()
     if not sym_filter:
@@ -267,6 +262,10 @@ def runs_ranked():
             pre = _precomputed.get("runs_ranked")
         if pre:
             return app.response_class(pre, mimetype="application/json")
+        # No cache yet — return empty list with a header so client knows to retry
+        resp = app.response_class("[]", mimetype="application/json")
+        resp.headers["X-Cache-Status"] = "warming"
+        return resp
     cache_key = f"runs_ranked:{sym_filter}"
     now = _time.time()
     cached = _response_cache.get(cache_key)
@@ -1103,24 +1102,49 @@ def health():
     })
 
 
+_CACHE_DIR = Path("/tmp/chart_cache")
+_CACHE_DIR.mkdir(exist_ok=True)
+
+
+def _load_cache_from_disk():
+    """On startup, load any persisted cache so endpoints serve immediately."""
+    for key in ("runs_ranked", "per_sym_best"):
+        p = _CACHE_DIR / f"{key}.json"
+        if p.exists():
+            try:
+                body = p.read_text()
+                with _precompute_lock:
+                    _precomputed[key] = body
+                print(f"[precompute] loaded {key}={len(body)}B from disk", flush=True)
+            except Exception as e:
+                print(f"[precompute] disk load {key}: {e}", flush=True)
+
+
 def _precompute_loop():
-    """Background thread: every 30s, recompute the heavy aggregates.
-    Calls the pure helpers directly (no Flask context, no cache check).
-    Stores as JSON strings in `_precomputed`. Endpoints serve those instantly."""
+    """Background thread: every 30s, recompute aggregates and persist to disk.
+    Pure-helper calls, no Flask context. Endpoints serve from `_precomputed` dict."""
     import time as _t
+    import sys
+    print(f"[precompute] thread started pid={os.getpid()}", flush=True)
+    sys.stdout.flush()
     while True:
         try:
             t0 = _t.time()
+            print(f"[precompute] cycle starting...", flush=True)
             rr_body = _compute_runs_ranked("")
             with _precompute_lock:
                 _precomputed["runs_ranked"] = rr_body
+            (_CACHE_DIR / "runs_ranked.json").write_text(rr_body)
+            print(f"[precompute] runs_ranked={len(rr_body)}B in {_t.time()-t0:.1f}s", flush=True)
+            t1 = _t.time()
             psb_body = _compute_per_sym_best()
             with _precompute_lock:
                 _precomputed["per_sym_best"] = psb_body
-            print(f"[precompute] runs_ranked={len(rr_body)}B per_sym_best={len(psb_body)}B in {_t.time()-t0:.1f}s")
+            (_CACHE_DIR / "per_sym_best.json").write_text(psb_body)
+            print(f"[precompute] per_sym_best={len(psb_body)}B in {_t.time()-t1:.1f}s", flush=True)
         except Exception as e:
             import traceback
-            print(f"[precompute] error: {e}")
+            print(f"[precompute] error: {e}", flush=True)
             traceback.print_exc()
         _t.sleep(30)
 
@@ -1128,6 +1152,7 @@ def _precompute_loop():
 if __name__ == "__main__":
     port = int(os.environ.get("CHART_PORT", 5077))
     print(f"Chart server on http://127.0.0.1:{port}")
+    _load_cache_from_disk()
     import threading
     threading.Thread(target=_precompute_loop, daemon=True).start()
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

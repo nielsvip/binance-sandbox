@@ -63,14 +63,37 @@ def infer_account(mode: str) -> str:
 
 
 def parse_v8_result(output: str) -> dict | None:
-    """Parse V8_RESULT line. Supports two formats:
+    """Parse V8_RESULT line. Supports three formats:
 
-    NEW (2026-04+): `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
-    OLD (legacy):   `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
+    POOL (current):  `V8_RESULT: pool_sharpe=X gain_pct=G closes=C wins=W losses=L`
+    LEGACY_NEW:      `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
+    OLD:             `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
 
-    Returns normalized dict with 'sharpe' = sharpe_pt (per-trade, per memory `feedback_sharpe_per_trade_always`).
+    Uses LAST match (re.finditer) so V8_RESULT_LIVE interim lines are skipped — final summary comes last.
+    Returns normalized dict with 'sharpe' = pool_sharpe / sharpe_pt (per-trade, canonical metric).
     """
-    # NEW format (search LAST match so V8_RESULT_LIVE interim lines are skipped — final summary comes last)
+    # POOL format — current engine output (pool_sharpe= canonical per CLAUDE.md)
+    matches = list(re.finditer(
+        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
+        output,
+    ))
+    if matches:
+        m = matches[-1]
+        closes = int(m.group(3))
+        wins = int(m.group(4))
+        losses = int(m.group(5))
+        return {
+            "sharpe": float(m.group(1)),
+            "sharpe_pt": float(m.group(1)),
+            "pnl": float(m.group(2)),
+            "trades": closes,
+            "wins": wins,
+            "losses": losses,
+            "total_pnl_dollars": None,
+            "avg_pnl": None,
+            "_format": "pool",
+        }
+    # LEGACY_NEW format (sharpe_w= sharpe_pt= era)
     matches = list(re.finditer(
         r"V8_RESULT:\s+sharpe_w=([0-9.-]+)\s+sharpe_pt=([0-9.-]+)\s+sharpe_ann=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
         output,
@@ -81,19 +104,19 @@ def parse_v8_result(output: str) -> dict | None:
         wins = int(m.group(6))
         losses = int(m.group(7))
         return {
-            "sharpe": float(m.group(2)),            # sharpe_pt — per-trade (primary)
+            "sharpe": float(m.group(2)),
             "sharpe_w": float(m.group(1)),
             "sharpe_pt": float(m.group(2)),
             "sharpe_ann": float(m.group(3)),
-            "pnl": float(m.group(4)),               # gain_pct as %
+            "pnl": float(m.group(4)),
             "trades": trades,
             "wins": wins,
             "losses": losses,
-            "total_pnl_dollars": None,              # not in new format
+            "total_pnl_dollars": None,
             "avg_pnl": None,
-            "_format": "new",
+            "_format": "legacy_new",
         }
-    # OLD fallback
+    # OLD format fallback (sharpe= pnl= trades= era)
     m = re.search(
         r"V8_RESULT:\s+sharpe=([0-9.-]+)\s+pnl=([0-9.-]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)\s+total_pnl_dollars=([0-9.-]+)\s+avg_pnl=([0-9.-]+)",
         output,

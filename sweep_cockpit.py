@@ -2205,24 +2205,30 @@ def autonomous_page():
             overall_best_pool = top_b
             overall_best_loc = label
 
+        def _sf(v, default=0.0):
+            try: return float(v)
+            except (ValueError, TypeError): return default
+        def _si(v, default=0):
+            try: return int(float(v))
+            except (ValueError, TypeError): return default
         rows_html = ""
         for _, r in top.iterrows():
             run_short = str(r.get("_run", ""))[-60:]
             useless_tag = ' <span style="color:#ff9800;" title="useless=1: reliable but pool_sharpe below floor">⚠</span>' if r.get("useless") in (1, "1", 1.0) else ""
             rows_html += (
                 f'<tr style="border-bottom:1px solid #2a2a2a;">'
-                f'<td title="pool_sharpe — canonical Sharpe per CANONICAL_METRICS.md" style="color:#4caf50;font-weight:600;padding:4px 6px;">{float(r["pool_sharpe"]):.4f}{useless_tag}</td>'
-                f'<td title="sym_sharpe — diagnostic per-sym avg, capped ±20" style="color:#bb86fc;padding:4px 6px;">{float(r.get("sym_sharpe",0) or 0):.3f}</td>'
-                f'<td title="acc_gain_pct — sum of all per-trade %-returns" style="padding:4px 6px;">{float(r.get("acc_gain_pct",0) or 0):.0f}%</td>'
-                f'<td title="avg_gain_trade — acc_gain_pct/trades" style="padding:4px 6px;">{float(r.get("avg_gain_trade",0) or 0):.3f}%</td>'
-                f'<td title="gain_per_yr — annual return" style="padding:4px 6px;">{float(r.get("gain_per_yr",0) or 0):.0f}%</td>'
-                f'<td title="gain_sym_yr — cross-machine comparable" style="padding:4px 6px;">{float(r.get("gain_sym_yr",0) or 0):.2f}%</td>'
-                f'<td title="max_dd_pct — peak-to-trough" style="padding:4px 6px;">{float(r.get("max_dd_pct",0) or 0):.1f}%</td>'
-                f'<td title="wr — win rate" style="padding:4px 6px;">{float(r.get("wr",0) or 0):.1f}%</td>'
-                f'<td title="trades count" style="padding:4px 6px;">{int(float(r.get("trades",0) or 0))}</td>'
-                f'<td title="n_syms — distinct syms with trades" style="padding:4px 6px;">{int(float(r.get("n_syms",0) or 0))}</td>'
-                f'<td title="n_years — test window" style="padding:4px 6px;">{float(r.get("n_years",0) or 0):.1f}y</td>'
-                f'<td title="iteration index" style="padding:4px 6px;color:#888;">i={int(float(r.get("iter",0) or 0))}</td>'
+                f'<td title="pool_sharpe — canonical Sharpe per CANONICAL_METRICS.md" style="color:#4caf50;font-weight:600;padding:4px 6px;">{_sf(r["pool_sharpe"]):.4f}{useless_tag}</td>'
+                f'<td title="sym_sharpe — diagnostic per-sym avg, capped ±20" style="color:#bb86fc;padding:4px 6px;">{_sf(r.get("sym_sharpe",0)):.3f}</td>'
+                f'<td title="acc_gain_pct — sum of all per-trade %-returns" style="padding:4px 6px;">{_sf(r.get("acc_gain_pct",0)):.0f}%</td>'
+                f'<td title="avg_gain_trade — acc_gain_pct/trades" style="padding:4px 6px;">{_sf(r.get("avg_gain_trade",0)):.3f}%</td>'
+                f'<td title="gain_per_yr — annual return" style="padding:4px 6px;">{_sf(r.get("gain_per_yr",0)):.0f}%</td>'
+                f'<td title="gain_sym_yr — cross-machine comparable" style="padding:4px 6px;">{_sf(r.get("gain_sym_yr",0)):.2f}%</td>'
+                f'<td title="max_dd_pct — peak-to-trough" style="padding:4px 6px;">{_sf(r.get("max_dd_pct",0)):.1f}%</td>'
+                f'<td title="wr — win rate" style="padding:4px 6px;">{_sf(r.get("wr",0)):.1f}%</td>'
+                f'<td title="trades count" style="padding:4px 6px;">{_si(r.get("trades",0))}</td>'
+                f'<td title="n_syms — distinct syms with trades" style="padding:4px 6px;">{_si(r.get("n_syms",0))}</td>'
+                f'<td title="n_years — test window" style="padding:4px 6px;">{_sf(r.get("n_years",0)):.1f}y</td>'
+                f'<td title="iteration index" style="padding:4px 6px;color:#888;">i={_si(r.get("iter",0))}</td>'
                 f'<td style="font-size:10px;color:#888;padding:4px 6px;" title="{run_short}">{r.get("_age_min",-1)}m</td>'
                 f'</tr>'
             )
