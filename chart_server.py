@@ -350,6 +350,27 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     sharpe_pt = (avg / std) if std > 0 else 0.0
     longs = [t for t in trades if t.get("side") == "LONG"]
     shorts = [t for t in trades if t.get("side") == "SHORT"]
+    # Time-window normalization
+    ts_list = sorted([int(t.get("entry_ts", 0)) for t in trades if t.get("entry_ts")])
+    ex_list = sorted([int(t.get("exit_ts", 0)) for t in trades if t.get("exit_ts")])
+    first_ts = ts_list[0] if ts_list else 0
+    last_ts = ex_list[-1] if ex_list else 0
+    window_sec = max(1, last_ts - first_ts)
+    window_days = window_sec / 86400.0
+    window_weeks = window_sec / (86400.0 * 7)
+    window_months = window_sec / (86400.0 * 30.44)
+    window_years = window_sec / (86400.0 * 365.25)
+    # Equity-curve max drawdown
+    eq = []; cum = 0
+    for p in pnls: cum += p; eq.append(cum)
+    peak = -1e9; max_dd = 0
+    for v in eq:
+        if v > peak: peak = v
+        if peak - v > max_dd: max_dd = peak - v
+    # Annualized "diagnostic" Sharpe — per CLAUDE.md rule 3 this is INVALID for ranking, label clearly.
+    trades_per_year = n / window_years if window_years > 0 else 0
+    import math
+    sharpe_annual_diag = sharpe_pt * math.sqrt(trades_per_year) if trades_per_year > 0 else 0
     return {
         "trades": n,
         "wins": wins,
@@ -359,12 +380,28 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         "avg_pnl_pct": avg,
         "std_pnl_pct": std,
         "pool_sharpe_per_trade": sharpe_pt,
+        "sharpe_annual_diagnostic": sharpe_annual_diag,
+        "max_dd_pct": max_dd,
         "best_pct": max(pnls),
         "worst_pct": min(pnls),
         "long_count": len(longs),
         "short_count": len(shorts),
         "long_total_gain_pct": sum(t.get("pnl_pct", 0) for t in longs),
         "short_total_gain_pct": sum(t.get("pnl_pct", 0) for t in shorts),
+        "first_entry_ts": first_ts,
+        "last_exit_ts": last_ts,
+        "window_days": round(window_days, 1),
+        "window_weeks": round(window_weeks, 1),
+        "window_months": round(window_months, 1),
+        "window_years": round(window_years, 2),
+        "trades_per_day": round(n / window_days, 2) if window_days > 0 else 0,
+        "trades_per_week": round(n / window_weeks, 1) if window_weeks > 0 else 0,
+        "trades_per_month": round(n / window_months, 1) if window_months > 0 else 0,
+        "trades_per_year": round(trades_per_year, 0),
+        "gain_per_day_pct": round(total_gain / window_days, 4) if window_days > 0 else 0,
+        "gain_per_week_pct": round(total_gain / window_weeks, 3) if window_weeks > 0 else 0,
+        "gain_per_month_pct": round(total_gain / window_months, 2) if window_months > 0 else 0,
+        "gain_per_year_pct": round(total_gain / window_years, 1) if window_years > 0 else 0,
     }
 
 
