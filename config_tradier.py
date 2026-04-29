@@ -1025,7 +1025,7 @@ class TradierConfig:
     SPIKE_FADE_COOLDOWN_BARS: int = 6  # Min bars between entries on same symbol
     # === 2.5σ STDEV BREAKOUT (HTF breakout + LTF retest scaling) ===
     # Stocks: same logic as crypto but with stock-tuned thresholds
-    STDEV_BREAKOUT_ENABLED: bool = False  # Kill switch OFF — backtest sweep first
+    STDEV_BREAKOUT_ENABLED: bool = True  # 2026-04-29: enabled as part of B (should_enter_long) main entry path
     STDEV_SUPPRESS_EARLY_EXIT: bool = False  # Suppress vel/delta exits when approaching BB band
     STDEV_BB_RZ_EXIT_ENABLED: bool = False  # Exit when price exits daily BB band (rejection)
     STDEV_BB_RZ_EXIT_TF: str = "D"
@@ -1046,7 +1046,7 @@ class TradierConfig:
     STDEV_BREAKOUT_MAX_AGE_BARS: int = 50
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
-    STDEV_BOUNCE_ENABLED: bool = False
+    STDEV_BOUNCE_ENABLED: bool = True  # 2026-04-29: enabled as part of B (should_enter_long) main entry path
     STDEV_BOUNCE_PCTB_LONG: float = 0.05
     STDEV_BOUNCE_PCTB_SHORT: float = 0.95
     STDEV_BOUNCE_RVOL_MIN: float = 1.2
@@ -1451,6 +1451,12 @@ class TradierConfig:
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
     # 2026-04-28 — Price-cross GUARANTEE safety loop. See config.py for full description.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
+    # 2026-04-29 — B (should_enter_long/short) is the MAIN entry gate. SATOSHIT /
+    # STDEV_BREAKOUT / STDEV_BOUNCE / VWAP / EMA9_21 / RVOL filters live there.
+    # WT_DC_ENTRY scorer is a CONFIRMATION FILTER on top. Flip False to revert
+    # to WT_DC_ENTRY-only behavior (the firehose that produced 7000+ buys/day per
+    # symbol with no setup qualification).
+    B_MAIN_ENTRY_GATE_ENABLED: bool = True
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup

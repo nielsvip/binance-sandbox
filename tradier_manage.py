@@ -1252,6 +1252,13 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 return "STALE_INDICATORS_HELD"
             else:
                 return "STALE_ABSOLUTE_NO_POS"
+        # Indicators are FRESH from this point → clear stale-gain history for this position so next
+        # stale episode starts fresh. Otherwise old stale-baseline gain would falsely trigger drastic-drop.
+        try:
+            if hasattr(trade_manager, '_stale_gain_history') and position_key in trade_manager._stale_gain_history:
+                del trade_manager._stale_gain_history[position_key]
+        except Exception:
+            pass
         if not force and (now_ts - last_mon < 30):
             return "THROTTLED"
         is_stale = not macro_fresh
@@ -1623,8 +1630,29 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             logger.warning(f"[DELTA_ENTRY] {symbol} {'L' if is_long else 'S'}: zone={_d_sig.zone} {_zr} htf={_htf_gate}")
                         else:
                             logger.info(f"[DELTA_BLOCKED] {symbol} {'L' if is_long else 'S'}: {_block_reason}")
-                # Fallback: WT/DC scorer if delta didn't trigger
-                if action_type != "OPEN":
+                # 2026-04-29 — B (should_enter_long/short) is the MAIN entry gate.
+                # SATOSHIT / STDEV_BREAKOUT / STDEV_BOUNCE / VWAP / EMA9_21 / RVOL filters live
+                # inside should_enter_long. WT_DC_ENTRY scorer (A) acts as a CONFIRMATION
+                # FILTER on top — score must clear threshold AND B must approve. User directive:
+                # B is the entry, A is the filter (test whether A is even needed).
+                # Switch B_MAIN_ENTRY_GATE_ENABLED (default True) — flip False to revert to
+                # WT_DC_ENTRY-only behavior.
+                _b_gate_on = bool(getattr(config, 'B_MAIN_ENTRY_GATE_ENABLED', True))
+                _b_passed = True
+                if action_type != "OPEN" and _b_gate_on:
+                    _entry_ind_pre = indicators_raw if indicators_raw else i
+                    try:
+                        if is_long:
+                            _b_passed = await trade_manager.should_enter_long(symbol, _entry_ind_pre)
+                        else:
+                            _b_passed = await trade_manager.should_enter_short(symbol, _entry_ind_pre)
+                    except Exception as _b_err:
+                        logger.debug(f"[B_MAIN_ENTRY_GATE_ERR] {symbol}: {_b_err} — fail-open")
+                        _b_passed = True
+                    if not _b_passed and config.VERBOSE:
+                        logger.info(f"[B_MAIN_ENTRY_GATE_BLOCK] {symbol} {'L' if is_long else 'S'}: should_enter_{('long' if is_long else 'short')} returned False")
+                # A: WT/DC scorer is now the CONFIRMATION FILTER on top of B
+                if action_type != "OPEN" and _b_passed:
                     _entry_ind = indicators_raw if indicators_raw else i
                     _entry_score, _entry_reason = wt_dc_score_entry(_entry_ind, is_long, current_price)
                     # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
@@ -6984,7 +7012,51 @@ class TradierTradeManager:
                                 # STRICT_NO_LOSS: Never reduce at a loss — IBIT disaster -$3,148 on Mar 5-11
                                 _gain_pct = getattr(pos, 'gain', 0) or 0
                                 if _gain_pct < 0.3:
+                                    # 2026-04-29 user directive: instead of just HOLDING, open a same-sector
+                                    # OPPOSITE-side hedge on a DIFFERENT symbol. The original position keeps
+                                    # bleeding under STRICT_NO_LOSS, but the hedge offsets sector-wide drift.
                                     logger.info(f"[REBAL_NOLOSS_BLOCK] {symbol} {side}: sentiment wants reduce but gain={_gain_pct:+.2f}% < 0.3% — HOLDING (STRICT_NO_LOSS)")
+                                    try:
+                                        if bool(getattr(config, 'REBAL_NOLOSS_SAME_SECTOR_HEDGE_ENABLED', True)):
+                                            _hedge_side = "SHORT" if side == "LONG" else "LONG"
+                                            _losing_sec = get_sector(symbol)
+                                            # Candidate same-sector mates (NOT the losing symbol)
+                                            _sec_mates = [s for s in (SECTOR_MAP.get(_losing_sec, []) + [k for k, v in SYMBOL_TO_SECTOR.items() if v == _losing_sec]) if s != symbol]
+                                            # Dedupe + filter to whitelisted tradeables (must be in tradeable_keys for opposite side)
+                                            _sec_mates = list(dict.fromkeys(_sec_mates))
+                                            # Filter: not already opening/holding hedge on this losing symbol
+                                            if not hasattr(self, '_rebal_hedge_attempt_ts'):
+                                                self._rebal_hedge_attempt_ts = {}
+                                            _hcd = float(getattr(config, 'REBAL_NOLOSS_HEDGE_COOLDOWN_SEC', 1800))  # 30 min default
+                                            _last_h_attempt = self._rebal_hedge_attempt_ts.get(pk, 0)
+                                            if _now_ts - _last_h_attempt < _hcd:
+                                                logger.info(f"[REBAL_HEDGE_COOLDOWN] {pk}: hedge attempt cooldown {(_now_ts - _last_h_attempt):.0f}s/{_hcd:.0f}s")
+                                                continue
+                                            # Pick first mate WITHOUT an existing position (any side) to keep clean
+                                            _hedge_target = None
+                                            for _cand in _sec_mates:
+                                                _cand_long_pk = f"{pk.split(':')[0] if ':' in pk else 'trb'}:{_cand}_LONG"
+                                                _cand_short_pk = f"{pk.split(':')[0] if ':' in pk else 'trb'}:{_cand}_SHORT"
+                                                _has_long = self.position_manager.positions.get(_cand_long_pk) and abs(float(getattr(self.position_manager.positions.get(_cand_long_pk), 'positionAmt', 0))) > 0
+                                                _has_short = self.position_manager.positions.get(_cand_short_pk) and abs(float(getattr(self.position_manager.positions.get(_cand_short_pk), 'positionAmt', 0))) > 0
+                                                if not (_has_long or _has_short):
+                                                    _hedge_target = _cand
+                                                    break
+                                            if _hedge_target is None:
+                                                logger.info(f"[REBAL_HEDGE_NO_TARGET] {symbol} sec={_losing_sec}: no clean same-sector mate (all have positions). Mates considered: {_sec_mates[:8]}")
+                                                continue
+                                            # Size hedge to match losing position notional
+                                            _hedge_notional = abs(float(getattr(pos, 'positionAmt', 0))) * float(current_price)
+                                            _hedge_pk = f"{pk.split(':')[0] if ':' in pk else 'trb'}:{_hedge_target}_{_hedge_side}"
+                                            self._rebal_hedge_attempt_ts[pk] = _now_ts
+                                            _hedge_reason = f"REBAL_NOLOSS_SAME_SECTOR_HEDGE_for_{symbol}_{side}_g{_gain_pct:.2f}%_sec={_losing_sec}"
+                                            logger.warning(f"🛡️ [REBAL_HEDGE_OPEN] {_hedge_target} {_hedge_side} (~${_hedge_notional:.0f}) hedge for losing {symbol} {side} g={_gain_pct:+.2f}% sector={_losing_sec}")
+                                            await self.execute_trade_action(
+                                                pk.split(':')[0] if ':' in pk else 'trb',
+                                                _hedge_pk, _hedge_target, _hedge_notional / float(current_price),
+                                                float(current_price), "OPEN", _hedge_reason)
+                                    except Exception as _hedge_err:
+                                        logger.error(f"[REBAL_HEDGE_ERR] {symbol}: {_hedge_err}")
                                     continue
                                 # V4: Multi-TF WT exit confirmation — don't rebalance if HTFs still support
                                 _wt_b5 = float(i.get('wt1_5m', 0) or 0) > float(i.get('wt2_5m', 0) or 0)
@@ -8472,8 +8544,8 @@ class TradierTradeManager:
             if is_reduce and not is_hedge:
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
                 _reason_upper = str(reason or '').upper()
-                # 2026-04-29 user directive: DC_BAND_BREAK_5M_KILL ALWAYS bypasses NOLOSS — unconditional close.
-                _dc_kill_bypass = 'DC_BAND_BREAK_5M_KILL' in _reason_upper
+                # 2026-04-29 user directive: DC4_5M kill OR stale-drastic-drop ALWAYS bypass NOLOSS — unconditional close.
+                _dc_kill_bypass = ('DC_LOW4_5M_KILL' in _reason_upper or 'DC_HIGH4_5M_KILL' in _reason_upper or 'STALE_DRASTIC_DROP' in _reason_upper)
                 _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in _reason_upper or 'DD_BOUNCE_STOP' in _reason_upper)
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0

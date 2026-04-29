@@ -2148,7 +2148,18 @@ def autonomous_page():
     import pandas as _pd
 
     show_unreliable = request.args.get("show_unreliable", "0") == "1"
+    show_below_floor = request.args.get("show_below_floor", "0") == "1"
     min_pool = float(request.args.get("min_pool", "0") or 0)
+    # CLAUDE.md min-sample floor — anything below this is diagnostic only, not decision material.
+    MIN_SYMS = {"crypto": 48, "tradier": 100}
+    MIN_YEARS = 1.0
+    def _violates_floor(n_syms, n_years, mode_str):
+        try: ns = float(n_syms or 0)
+        except (ValueError, TypeError): ns = 0
+        try: ny = float(n_years or 0)
+        except (ValueError, TypeError): ny = 0
+        floor_syms = MIN_SYMS.get(mode_str, 48)
+        return ns < floor_syms or ny < MIN_YEARS
 
     # CANONICAL columns (per CANONICAL_METRICS.md). Anything else is dropped from view.
     KEEP = ["iter", "pool_sharpe", "sym_sharpe", "acc_gain_pct", "avg_gain_trade",
@@ -2195,12 +2206,28 @@ def autonomous_page():
             combined = combined[combined["reliable"] == 1]
         if combined.empty:
             continue
+        # Apply min-sample floor BEFORE ranking — below-floor rows are noise unless toggle enabled.
+        # Mode inference from sym names (crude but works for autonomous_search outputs).
+        def _infer_mode_from_files(file_paths):
+            for p in file_paths:
+                if "tradier" in os.path.basename(p).lower():
+                    return "tradier"
+            return "crypto"
+        mode_str = _infer_mode_from_files(files)
+        if not show_below_floor and "n_syms" in combined.columns and "n_years" in combined.columns:
+            mask_above = ~combined.apply(lambda r: _violates_floor(r.get("n_syms",0), r.get("n_years",0), mode_str), axis=1)
+            combined_visible = combined[mask_above]
+        else:
+            combined_visible = combined
+        if combined_visible.empty:
+            # Everything was below floor — show with strikethrough as diagnostic
+            combined_visible = combined
         # Top 10 by pool_sharpe (canonical ranking)
-        top = combined.nlargest(10, "pool_sharpe").copy()
+        top = combined_visible.nlargest(10, "pool_sharpe").copy()
         for c in KEEP:
             if c not in top.columns:
                 top[c] = "—"
-        top_b = combined["pool_sharpe"].max()
+        top_b = combined_visible["pool_sharpe"].max()
         if top_b > overall_best_pool:
             overall_best_pool = top_b
             overall_best_loc = label
@@ -2215,8 +2242,18 @@ def autonomous_page():
         for _, r in top.iterrows():
             run_short = str(r.get("_run", ""))[-60:]
             useless_tag = ' <span style="color:#ff9800;" title="useless=1: reliable but pool_sharpe below floor">⚠</span>' if r.get("useless") in (1, "1", 1.0) else ""
+            below_floor = _violates_floor(r.get("n_syms",0), r.get("n_years",0), mode_str)
+            row_style = "border-bottom:1px solid #2a2a2a;"
+            row_extra = ""
+            if below_floor:
+                # Strike-through + dim — Sharpe value is real but sample violates min-floor (CLAUDE.md).
+                row_style += "opacity:0.45;text-decoration:line-through;"
+                _ns_v = r.get("n_syms", 0)
+                _ny_v = r.get("n_years", 0)
+                _floor_v = MIN_SYMS.get(mode_str, 48)
+                row_extra = f' title="BELOW MIN-SAMPLE FLOOR: n_syms={_ns_v} (need >={_floor_v}) or n_years={_ny_v} (need >=1.0). pool_sharpe is real but tiny-sample noise — DIAGNOSTIC ONLY per CLAUDE.md."'
             rows_html += (
-                f'<tr style="border-bottom:1px solid #2a2a2a;">'
+                f'<tr style="{row_style}"{row_extra}>'
                 f'<td title="pool_sharpe — canonical Sharpe per CANONICAL_METRICS.md" style="color:#4caf50;font-weight:600;padding:4px 6px;">{_sf(r["pool_sharpe"]):.4f}{useless_tag}</td>'
                 f'<td title="sym_sharpe — diagnostic per-sym avg, capped ±20" style="color:#bb86fc;padding:4px 6px;">{_sf(r.get("sym_sharpe",0)):.3f}</td>'
                 f'<td title="acc_gain_pct — sum of all per-trade %-returns" style="padding:4px 6px;">{_sf(r.get("acc_gain_pct",0)):.0f}%</td>'
@@ -2265,6 +2302,7 @@ def autonomous_page():
 
     filter_form = f'''<form method="GET" action="/autonomous" style="background:#1a2330;padding:10px;margin-bottom:16px;border-radius:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
   <label title="Hide reliable=0 rows (configs that didn't meet the per-sym trade-floor)"><input type="checkbox" name="show_unreliable" value="1" {'checked' if show_unreliable else ''}> show unreliable</label>
+  <label title="Show rows BELOW the CLAUDE.md min-sample floor (≥48 syms crypto / ≥100 syms tradier × ≥1yr). Default OFF: undersized rows are filtered. With this ON, they appear with strike-through + dim formatting and a hover tooltip explaining why they're diagnostic only."><input type="checkbox" name="show_below_floor" value="1" {'checked' if show_below_floor else ''}> show below-floor (diagnostic only — strike-through)</label>
   <label title="Filter to pool_sharpe >= this. Default 0 = show all.">min pool_sharpe: <input type="number" step="0.1" name="min_pool" value="{min_pool}" style="background:#0d1117;color:#e8e8e8;border:1px solid #444;padding:4px;width:80px;"></label>
   <button type="submit" style="background:#27a;color:white;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">apply</button>
 </form>'''
