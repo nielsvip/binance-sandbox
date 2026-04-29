@@ -1883,23 +1883,37 @@ def _list_tier_names():
 
 
 def _sweep_status_for(host, mode):
-    out = _ssh_run(host, None, f'pgrep -afc "v8_quick_sweep.*--mode {mode}"', timeout=5)
-    nproc = 0
-    try:
-        nproc = int((out or "0").splitlines()[0])
-    except Exception:
-        nproc = 0
-    procs_raw = _ssh_run(host, None, f'pgrep -af "v8_quick_sweep.*--mode {mode}" 2>/dev/null | head -8', timeout=5)
-    csv = _ssh_run(host, None, f'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1', timeout=5)
-    csv_rows = _ssh_run(host, None, f'ls /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1 | xargs wc -l 2>/dev/null', timeout=5)
+    """Bundle 5 ssh queries into ONE call to avoid serial round-trips and 500s on slow ssh.
+    Each individual call is wrapped in try/except so a slow link returns partial results, not a 500."""
+    def _safe_ssh(cmd, timeout=15):
+        try: return _ssh_run(host, None, cmd, timeout=timeout) or ""
+        except Exception as e: return f"(ssh error: {e})"
     wrong_mode = "tradier" if mode == "crypto" else "crypto"
-    bad = _ssh_run(host, None, f'pgrep -afc "v8_quick_sweep.*--mode {wrong_mode}"', timeout=5)
-    bad_n = 0
-    try:
-        bad_n = int((bad or "0").splitlines()[0])
-    except Exception:
-        pass
-    return {"nproc": nproc, "procs": procs_raw, "csv": csv, "csv_rows": csv_rows, "wrong_mode_n": bad_n}
+    # One ssh, multiple commands separated by sentinel — much faster than 5 round-trips.
+    combo_cmd = (
+        f'echo "==NPROC=="; pgrep -afc "v8_quick_sweep.*--mode {mode}"; '
+        f'echo "==PROCS=="; pgrep -af "v8_quick_sweep.*--mode {mode}" 2>/dev/null | head -8; '
+        f'echo "==CSV=="; ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1; '
+        f'echo "==ROWS=="; ls /home/niels/binance-sandbox/data/sweep_results/v8_quick_{mode}_*.csv 2>/dev/null | head -1 | xargs wc -l 2>/dev/null; '
+        f'echo "==BAD=="; pgrep -afc "v8_quick_sweep.*--mode {wrong_mode}"'
+    )
+    raw = _safe_ssh(combo_cmd, timeout=20)
+    parts = {"NPROC": "", "PROCS": "", "CSV": "", "ROWS": "", "BAD": ""}
+    cur = None
+    for line in raw.splitlines():
+        m = re.match(r"==([A-Z]+)==", line)
+        if m: cur = m.group(1); continue
+        if cur and line: parts[cur] = (parts.get(cur, "") + line + "\n")
+    def _pi(s, default=0):
+        try: return int(s.strip().splitlines()[0])
+        except Exception: return default
+    return {
+        "nproc": _pi(parts.get("NPROC", "0")),
+        "procs": parts.get("PROCS", "").strip() or "(none)",
+        "csv": parts.get("CSV", "").strip() or "(none)",
+        "csv_rows": parts.get("ROWS", "").strip() or "(none)",
+        "wrong_mode_n": _pi(parts.get("BAD", "0")),
+    }
 
 
 @app.route("/sweeps")
