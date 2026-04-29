@@ -96,7 +96,7 @@ class TradierConfig:
     # Engines are pure-function additive triggers in entry_engine_{wt,stoch,dc,htf}.py — they
     # boost the existing entry score when they fire above LIVE_ENTRY_ENGINE_MIN_SCORE; they
     # NEVER block existing entries. Worst case is a few extra entries fire.
-    LIVE_ENTRY_ENGINE_ENABLED: bool = True          # 2026-04-28 PATH A: re-enabled. Backtest 12sym×6mo showed 55+engine_on = sharpe 0.874 vs 75+engine_off = 0.354. HTF gate + NOLOSS gate protect against PLTR-pattern bleed.
+    LIVE_ENTRY_ENGINE_ENABLED: bool = False         # 2026-04-29 PATH A REVERTED: 12sym×6mo sample below 100sym×1yr published-Sharpe floor (rule 4b) and 0.874<1.0 trash floor (rule 6). Both numbers were undersize noise. Re-enable only after 114-stock × ≥1yr Tier-2 clears pool_sharpe ≥1.0.
     WT_DC_HTF_GATE: str = "4h"                      # 2026-04-27 NEW — block WT_DC entry when 4h is against. Closes the gap that DELTA_HTF_GATE had. Values: 'none' / '4h' / '4h_D'
     LIVE_ENTRY_ENGINE_WT_ENABLED: bool = True       # convergent: wt_all3 dominates tradier winners (Sharpe 7.71 @ 79 trades)
     LIVE_ENTRY_ENGINE_STOCH_ENABLED: bool = True    # convergent: k4h<20 paired with wt_all3
@@ -1068,7 +1068,7 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 55  # 2026-04-28 PATH A LOOSENED: 75 produced 12 trades/6mo (system frozen). 55 + engine_on tested = 21 trades / sharpe 0.874 / +0.05% pnl. HTF gate + NOLOSS gate still protect quality.
+    WT_DC_ENTRY_THRESHOLD: float = 75  # 2026-04-29 PATH A REVERTED to 75. 55 was based on 12sym×6mo sample (rule 4b violation) and 0.874 sharpe (rule 6 trash floor). Re-loosen only after Tier-2 on 114 stocks × ≥1yr clears pool_sharpe ≥1.0.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage

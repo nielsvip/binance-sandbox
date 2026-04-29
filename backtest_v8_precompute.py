@@ -470,12 +470,19 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     sma_cu = ((close < sma) & (close_prev >= sma.shift(1).fillna(sma.iloc[0]))).fillna(False)
     out[f"sma_crossover_{tf}"] = sma_co.values.astype(np.int8)
     out[f"sma_crossunder_{tf}"] = sma_cu.values.astype(np.int8)
-    # Bollinger Band %B (SMA20, 2σ) — used by STDEV_BREAKOUT strategy
-    # Bands computed from TF close; %B computed from TF close (will be corrected in post-process for HTF)
+    # Bollinger Band %B — auto-tuned σ (same as live ez_indicators.bb_auto_tune).
+    # Find σ that maximizes balanced upper+lower band touches, sweep 1.5→3.5 in 0.1 steps.
+    # Uses full series for sigma selection (global optimum), then applies that sigma rolling.
+    from ez_indicators import bb_auto_tune as _bb_auto_tune
+    _bb_n = len(close)
+    if _bb_n >= 120:
+        _bb_best_mult, _, _, _, _ = _bb_auto_tune(high, low, close, length=20, lookback=min(500, _bb_n - 20), touch_pct=0.002)
+    else:
+        _bb_best_mult = 2.0
     bb_sma20 = close.rolling(20, min_periods=1).mean()
     bb_std20 = close.rolling(20, min_periods=1).std(ddof=0).fillna(0)
-    bb_upper = bb_sma20 + 2.0 * bb_std20
-    bb_lower = bb_sma20 - 2.0 * bb_std20
+    bb_upper = bb_sma20 + _bb_best_mult * bb_std20
+    bb_lower = bb_sma20 - _bb_best_mult * bb_std20
     bb_width = bb_upper - bb_lower
     out[f"bb_upper_{tf}"] = bb_upper.values.astype(np.float32)
     out[f"bb_lower_{tf}"] = bb_lower.values.astype(np.float32)

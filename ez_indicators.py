@@ -2271,6 +2271,10 @@ class IndicatorCalculator:
                 result[f"bb_width_{timeframe}"] = round((_at_u - _at_l) / _bb_mid * 100.0, 3) if _bb_mid > 0 else 0.0
                 result[f"bb_mult_{timeframe}"] = round(_at_mult, 2)
                 result[f"bb_touches_{timeframe}"] = _at_touches
+                _bw = _at_u - _at_l
+                _prev_close = float(close_series.iloc[-2]) if len(close_series) > 1 else float(close_series.iloc[-1])
+                _prev_pb = round(max(0.0, min(1.5, (_prev_close - _at_l) / _bw)), 4) if _bw > 0 else 0.5
+                result[f"bb_pct_b_{timeframe}_prev"] = _prev_pb
             _lr_u, _lr_l, _lr_pb = linreg_channel(close_series, LINREG_LENGTH, std_mult=2.5)
             if _lr_pb is not None:
                 result[f"lr_pct_b_{timeframe}"] = _lr_pb
