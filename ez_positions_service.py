@@ -6211,9 +6211,11 @@ class PositionService:
                 # the entire system. If it stalls > 60s the worker is dead in all but name;
                 # exit so the watchdog respawns within 5s instead of trading on stale data.
                 try:
-                    updated_keys = await asyncio.wait_for(self.process_account_update(account_key, positions_data, single=False, skip_broadcast_save=False), timeout=60.0)
+                    # 2026-04-29 user: bumped 60→120s. Same fix as ez_positions_realtime.
+                    _pau_timeout = float(getattr(config, 'PAU_TIMEOUT_SEC', 120.0))
+                    updated_keys = await asyncio.wait_for(self.process_account_update(account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
                 except asyncio.TimeoutError:
-                    logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update HUNG > 60s — CRASHING worker so watchdog respawns. Stale positions WILL trade wrong if we continue.")
+                    logger.critical(f"[fetch_positions][{account_key}] 🚨🚨🚨 process_account_update HUNG > {_pau_timeout}s — CRASHING worker so watchdog respawns. Stale positions WILL trade wrong if we continue.")
                     try: sys.stdout.flush(); sys.stderr.flush()
                     except Exception: pass
                     os._exit(42)

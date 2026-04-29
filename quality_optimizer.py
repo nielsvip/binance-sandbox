@@ -284,30 +284,73 @@ def iteration(args):
     if args.score_only:
         print("[qopt] score-only mode — not generating new variants")
         return
-    # 2. Mutate top-K elites
-    elites = []
-    seen_runs = set()
-    for run, sym, m, score in scored:
-        if run in seen_runs: continue
-        seen_runs.add(run)
-        elites.append((run, m))
-        if len(elites) >= args.top_k: break
-    new_paths = []
-    for run, m in elites:
-        ovr_path = find_override_for_run(run)
-        if not ovr_path: continue
-        try: baseline = json.loads(ovr_path.read_text())
-        except Exception: continue
-        for j in range(args.new_per_elite):
-            new_cfg, mutations = mutate(baseline, n_mutations=random.randint(1, 3))
-            if not mutations: continue
-            new_path = write_override(new_cfg, mutations, run)
-            new_paths.append(new_path)
-            print(f"  [qopt] mutate {run} → {new_path.name}: {[(k, old, new) for k, old, new in mutations]}")
-    # 3. Run them
-    for p in new_paths:
-        run_id = "qopt_" + p.stem
-        run_chart_sweep(p, syms, run_id)
+    # 2. Mutate top-K elites — PER SYMBOL when --per-sym, else global
+    if args.per_sym:
+        # Track per-symbol best — top elites per-sym, mutate each, save per-sym winner override
+        for sym in syms:
+            sym_scored = [(r, s, m, sc) for r, s, m, sc in scored if s == sym]
+            if not sym_scored: continue
+            elites = []
+            seen_runs = set()
+            for run, _, m, score in sym_scored:
+                if run in seen_runs: continue
+                seen_runs.add(run)
+                elites.append((run, m))
+                if len(elites) >= args.top_k: break
+            print(f"  [qopt][{sym}] elites: {[r for r, _ in elites]}")
+            for run, m in elites:
+                ovr_path = find_override_for_run(run)
+                if not ovr_path: continue
+                try: baseline = json.loads(ovr_path.read_text())
+                except Exception: continue
+                for j in range(args.new_per_elite):
+                    new_cfg, mutations = mutate(baseline, n_mutations=random.randint(1, 3))
+                    if not mutations: continue
+                    # Tag the override file with the symbol it's optimizing for
+                    new_path = write_override(new_cfg, mutations, f"{sym}_{run}")
+                    run_id = f"qopt_{sym}_" + new_path.stem
+                    print(f"  [qopt][{sym}] mutate {run} → {new_path.name}: {[(k, old, new) for k, old, new in mutations]}")
+                    run_chart_sweep(new_path, [sym], run_id)
+            # Save per-symbol "current best" — refresh after each iteration
+            best_run, _, best_m, best_score = sym_scored[0]
+            best_ovr = find_override_for_run(best_run)
+            if best_ovr:
+                per_sym_best_path = ROOT / "backtest_v8" / "btc_loop_results" / f"override_per_sym_{sym}_BEST.json"
+                try:
+                    cfg_data = json.loads(best_ovr.read_text())
+                    cfg_data["_meta"] = (
+                        f"Auto-promoted PER-SYMBOL best for {sym} @ {datetime.now(timezone.utc).isoformat()}. "
+                        f"Source run: {best_run}. Score: {best_score:.1f}. "
+                        f"Stats: trades={best_m['trades']} WR={best_m['wr']*100:.1f}% gain={best_m['total_gain_pct']:+.1f}%. "
+                        f"Promoted by: quality_optimizer.py --per-sym."
+                    )
+                    per_sym_best_path.write_text(json.dumps(cfg_data, indent=2))
+                except Exception as e:
+                    print(f"  [qopt][{sym}] best-save error: {e}")
+    else:
+        # Global mode — mutate top-K and run on all syms simultaneously
+        elites = []
+        seen_runs = set()
+        for run, sym, m, score in scored:
+            if run in seen_runs: continue
+            seen_runs.add(run)
+            elites.append((run, m))
+            if len(elites) >= args.top_k: break
+        new_paths = []
+        for run, m in elites:
+            ovr_path = find_override_for_run(run)
+            if not ovr_path: continue
+            try: baseline = json.loads(ovr_path.read_text())
+            except Exception: continue
+            for j in range(args.new_per_elite):
+                new_cfg, mutations = mutate(baseline, n_mutations=random.randint(1, 3))
+                if not mutations: continue
+                new_path = write_override(new_cfg, mutations, run)
+                new_paths.append(new_path)
+                print(f"  [qopt] mutate {run} → {new_path.name}: {[(k, old, new) for k, old, new in mutations]}")
+        for p in new_paths:
+            run_id = "qopt_" + p.stem
+            run_chart_sweep(p, syms, run_id)
 
 
 def main():
@@ -320,6 +363,7 @@ def main():
     ap.add_argument("--new-per-elite", type=int, default=2)
     ap.add_argument("--score-weights", default="avg=1,total=1,botq=1,topq=1,count=1,churn=1")
     ap.add_argument("--score-only", action="store_true", help="just score and write leaderboard, no new sweeps")
+    ap.add_argument("--per-sym", action="store_true", help="optimize each symbol independently with its own elites + mutations + per-sym BEST file")
     args = ap.parse_args()
     if args.loop:
         print(f"[quality_optimizer] LOOP every {args.interval}s")

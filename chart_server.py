@@ -92,6 +92,54 @@ def runs():
     return jsonify(sorted(out))
 
 
+@app.route("/per_sym_best")
+def per_sym_best():
+    """Returns the current best run per symbol (highest churn-penalized score per-sym).
+    Reflects what quality_optimizer.py --per-sym would auto-promote.
+    """
+    if not TRADES_DIR.exists():
+        return jsonify([])
+    by_sym: Dict[str, list] = {}
+    for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
+        run, _, sym = p.stem.partition("__")
+        if not run or not sym: continue
+        trades = []
+        for line in p.read_text().splitlines():
+            if line.strip():
+                try: trades.append(json.loads(line))
+                except Exception: pass
+        if len(trades) < 5: continue
+        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+        n = len(pnls)
+        wins = sum(1 for x in pnls if x > 0)
+        wr = wins / n if n else 0
+        total_gain = sum(pnls)
+        sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
+        chained = 0
+        for j in range(1, len(sorted_t)):
+            prev, cur = sorted_t[j - 1], sorted_t[j]
+            if prev.get("side") == cur.get("side") and 0 <= int(cur.get("entry_ts", 0)) - int(prev.get("exit_ts", 0)) <= 3600:
+                chained += 1
+        chained_pct = chained / n if n else 0
+        score = total_gain * wr * max(0.05, 1.0 - chained_pct)
+        ts_first = min(int(t.get("entry_ts", 0)) for t in trades if t.get("entry_ts"))
+        ts_last = max(int(t.get("exit_ts", 0)) for t in trades if t.get("exit_ts"))
+        win_yrs = max(0.01, (ts_last - ts_first) / (86400.0 * 365.25))
+        by_sym.setdefault(sym, []).append({
+            "run": run, "score": round(score, 1),
+            "trades": n, "wr": round(wr, 3),
+            "total_gain_pct": round(total_gain, 1),
+            "chained_pct": round(chained_pct, 3),
+            "gain_per_year_pct": round(total_gain / win_yrs, 1),
+        })
+    out = []
+    for sym, rows in by_sym.items():
+        rows.sort(key=lambda r: -r["score"])
+        out.append({"sym": sym, "best": rows[0], "top5": rows[:5]})
+    out.sort(key=lambda x: x["sym"])
+    return jsonify(out)
+
+
 @app.route("/runs_ranked")
 def runs_ranked():
     """Return runs sorted by composite score (best first) with per-symbol stats.

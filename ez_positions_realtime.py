@@ -80,9 +80,12 @@ class RealtimePositionUpdater:
                         # the entire system. If it stalls > 60s the worker is dead in all but name;
                         # exit so the watchdog respawns within 5s instead of trading on stale data.
                         try:
-                            updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=60.0)
+                            # 2026-04-29 user: bumped 60→120s. flz was crashing every 116s on this exact gate.
+                            # Stale-data trading risk vs constant-crash data loss — 120s gives slow-API accounts headroom.
+                            _pau_timeout = float(getattr(config, 'PAU_TIMEOUT_SEC', 120.0))
+                            updated_keys = await asyncio.wait_for(self.position_service.process_account_update(self.account_key, positions_data, single=False, skip_broadcast_save=False), timeout=_pau_timeout)
                         except asyncio.TimeoutError:
-                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update HUNG > 60s — CRASHING realtime worker so watchdog respawns.")
+                            logger.critical(f"[FETCH_LOOP][{self.account_key}] 🚨🚨🚨 process_account_update HUNG > {_pau_timeout}s — CRASHING realtime worker so watchdog respawns.")
                             try: sys.stdout.flush(); sys.stderr.flush()
                             except Exception: pass
                             os._exit(42)

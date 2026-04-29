@@ -758,14 +758,14 @@ class Config:
     # MODE='BOUNCE' fires LONG when bb_pct_b drops below BOUNCE_LO and wt is turning up (mean-rev fit for V3).
     # TF='3m' or '15m'. EXIT_STDEV_REJECT adds an SDREJ signal when price reaches opposite band (target).
     # Default OFF — A/B variants flip these flags via shadow-runner overrides.
-    SCALP_V3_ENTRY_STDEV_ENABLED: bool = True   # 2026-04-29 user: enable stdev bounce/rejection/breakout in V3 (it changed everything in other tests)
+    SCALP_V3_ENTRY_STDEV_ENABLED: bool = False  # 2026-04-29 reverted to False for live default — phase3 shadow showed -0.37% / 189 cycles. Knob exists, sweep-only until shadow validates.
     SCALP_V3_STDEV_TF: str = '3m'
     SCALP_V3_STDEV_MODE: str = 'BOUNCE'  # 'BREAKOUT' or 'BOUNCE'
     SCALP_V3_STDEV_BREAK_HI: float = 1.0   # bb_pct_b > this for LONG breakout (>1.0 = above upper band)
     SCALP_V3_STDEV_BREAK_LO: float = 0.0   # bb_pct_b < this for SHORT breakout
     SCALP_V3_STDEV_BOUNCE_LO: float = 0.10 # bb_pct_b < this for LONG bounce (at lower band)
     SCALP_V3_STDEV_BOUNCE_HI: float = 0.90 # bb_pct_b > this for SHORT bounce (at upper band)
-    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = True   # 2026-04-29 user: wire stdev rejection into V3 exit (target-hit at opposite band)
+    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = False  # 2026-04-29 reverted to False for live default — pairs with ENTRY_STDEV which is shadow-only until validated
     SCALP_V3_STDEV_REJECT_HI: float = 0.95 # LONG exits when bb_pct_b >= this (target hit at upper band)
     SCALP_V3_STDEV_REJECT_LO: float = 0.05 # SHORT exits when bb_pct_b <= this (target hit at lower band)
     # 2026-04-29 USER RULE: per-side V3 params — SHORT trades don't follow same rules as LONG
@@ -782,6 +782,9 @@ class Config:
     # 2026-04-29 USER A/B: emergency-exit Donchian basis. 'DC4' = 4-bar low/high (current — frequent fires, churny);
     # 'DC' = 20-bar low/high (looser — bigger losses when fires, but far less churn). Test via shadow variant.
     BREAKEVEN_DC_FIELD_MODE: str = 'DC4'
+    # 2026-04-29 user: process_account_update timeout (was hardcoded 60s, caused flz exit-42 every 116s).
+    # Slower accounts (flz) need 90-120s; stale-data trading risk vs constant-crash data loss.
+    PAU_TIMEOUT_SEC: float = 120.0
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
