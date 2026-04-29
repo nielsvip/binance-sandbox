@@ -35,6 +35,8 @@ app = Flask(__name__, static_folder=str(BASE_PATH / "chart_static"))
 
 _npz_cache: Dict[str, Any] = {}
 _response_cache: Dict[str, Any] = {}  # {key: (expires_unix, json_str)}
+_precomputed: Dict[str, str] = {}  # {endpoint: json_body}  written by background thread
+_precompute_lock = __import__("threading").Lock()
 
 
 def _load_npz(symbol: str):
@@ -104,9 +106,13 @@ def runs():
 def per_sym_best():
     """Returns the current best run per symbol (highest churn-penalized score per-sym).
     Reflects what quality_optimizer.py --per-sym would auto-promote.
-    Cached 30s — full scan over 1500+ files takes ~90s without caching.
+    Background thread refreshes every 30s; otherwise live scan + 30s cache.
     """
     import time as _time
+    with _precompute_lock:
+        pre = _precomputed.get("per_sym_best")
+    if pre:
+        return app.response_class(pre, mimetype="application/json")
     cache_key = "per_sym_best"
     now = _time.time()
     cached = _response_cache.get(cache_key)
@@ -162,10 +168,17 @@ def runs_ranked():
     """Return runs sorted by composite score (best first) with per-symbol stats.
     Composite = total_gain × win_rate / (1 + churn%) — favors high gain + high WR + low churn.
     Optional ?sym=X to filter.
-    Cached 30s — full scan over 1500+ files takes ~90s without caching.
+    Background thread refreshes the unfiltered result every 30s; sym-filtered requests
+    fall through to the live scan but also cache for 30s.
     """
     import time as _time
     sym_filter = request.args.get("sym", "").upper()
+    # Fast path: serve background-precomputed full result for unfiltered requests
+    if not sym_filter:
+        with _precompute_lock:
+            pre = _precomputed.get("runs_ranked")
+        if pre:
+            return app.response_class(pre, mimetype="application/json")
     cache_key = f"runs_ranked:{sym_filter}"
     now = _time.time()
     cached = _response_cache.get(cache_key)
@@ -1060,7 +1073,29 @@ def health():
     })
 
 
+def _precompute_loop():
+    """Background thread: every 30s, compute /runs_ranked and /per_sym_best results
+    and store as raw JSON strings in `_precomputed`. Endpoints serve those instantly."""
+    import time as _t
+    while True:
+        try:
+            with app.test_request_context("/runs_ranked"):
+                rr = runs_ranked.__wrapped__() if hasattr(runs_ranked, "__wrapped__") else runs_ranked()
+            # `rr` is a Flask Response — extract its data
+            with _precompute_lock:
+                _precomputed["runs_ranked"] = rr.get_data(as_text=True) if hasattr(rr, "get_data") else None
+            with app.test_request_context("/per_sym_best"):
+                psb = per_sym_best.__wrapped__() if hasattr(per_sym_best, "__wrapped__") else per_sym_best()
+            with _precompute_lock:
+                _precomputed["per_sym_best"] = psb.get_data(as_text=True) if hasattr(psb, "get_data") else None
+        except Exception as e:
+            print(f"[precompute] error: {e}")
+        _t.sleep(30)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("CHART_PORT", 5077))
     print(f"Chart server on http://127.0.0.1:{port}")
+    import threading
+    threading.Thread(target=_precompute_loop, daemon=True).start()
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

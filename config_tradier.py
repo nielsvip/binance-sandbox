@@ -110,7 +110,7 @@ class TradierConfig:
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
     TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    BLACKLIST = ["ABT","JNJ","MSTR", 'PLTR'] #'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview
+    BLACKLIST = ["ABT","JNJ","MSTR", "PLTR", "MAST"] #'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview  (MAST added 2026-04-29 per user — same family of forbidden meme/lunatic-trade tickers as PLTR)
     ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX","SNDK","MU"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
@@ -1549,6 +1549,12 @@ class TradierConfig:
     # immediately. User explicitly overrides for tradier. entry_price still preserved (broker API refreshes
     # on next position open).
     TRADIER_RESET_MAX_GAIN_ON_CLOSE: bool = True
+    # 2026-04-29 USER ABSOLUTE: periodic broker open-order audit. Cancels any SELL/CLOSE order
+    # whose qty > current API positionAmt + tolerance. Runs every N×30s cycles. Triggered by
+    # today's PYPL "Sell 81 Market" pending while we own 38 (43-share phantom — would short us).
+    STALE_ORDER_AUDIT_ENABLED: bool = True
+    STALE_ORDER_AUDIT_EVERY_N_CYCLES: int = 2  # 30s × 2 = 60s
+    STALE_ORDER_AUDIT_TOLERANCE_SHARES: float = 1.0  # allow off-by-one rounding
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

@@ -1199,10 +1199,26 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             # Update breakout state continuously so it's ready when entry branch fires
             _update_stdev_state(symbol, indicators_raw)
         if not macro_fresh:
-            # INDICATORS ARE DEAD (>1200s) — but NEVER close positions on stale data
-            # Only block NEW entries. Existing positions hold until fresh data returns.
+            # INDICATORS ARE DEAD (>1200s) — STALE_HOLD policy: never trigger exits on stale data EXCEPT
+            # the DC_BAND_BREAK_5M_KILL emergency (2026-04-29 user directive). Even with stale dc_low_5m,
+            # if live price drops below it, the trend break is real — close immediately.
             if has_position:
-                logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits)")
+                try:
+                    _stale_dcl5 = float((indicators_raw or {}).get('dc_low_5m') or 0)
+                    _stale_dch5 = float((indicators_raw or {}).get('dc_high_5m') or 0)
+                    _is_long_pos = getattr(position, 'position_side', 'LONG') == 'LONG'
+                    if current_price > 0:
+                        if _is_long_pos and _stale_dcl5 > 0 and current_price < _stale_dcl5:
+                            logger.critical(f"🛑 STALE_DC_KILL {symbol}_LONG: live_price={current_price:.4f} < stale dc_low_5m={_stale_dcl5:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_BAND_BREAK_5M_KILL_STALE_LONG(p={current_price:.2f}<dcl5={_stale_dcl5:.2f})", 100.0, override_qty=999999)
+                            return "STALE_DC_KILL_FIRED"
+                        if (not _is_long_pos) and _stale_dch5 > 0 and current_price > _stale_dch5:
+                            logger.critical(f"🛑 STALE_DC_KILL {symbol}_SHORT: live_price={current_price:.4f} > stale dc_high_5m={_stale_dch5:.4f} — UNCONDITIONAL CLOSE despite stale indicators")
+                            await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"DC_BAND_BREAK_5M_KILL_STALE_SHORT(p={current_price:.2f}>dch5={_stale_dch5:.2f})", 100.0, override_qty=999999)
+                            return "STALE_DC_KILL_FIRED"
+                except Exception as _stale_dc_err:
+                    logger.warning(f"[STALE_DC_KILL] {symbol}: check error {_stale_dc_err}")
+                logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits except DC_5m break)")
                 return "STALE_INDICATORS_HELD"
             else:
                 return "STALE_ABSOLUTE_NO_POS"
@@ -4425,6 +4441,27 @@ class StockStrategy:
         gain = float(getattr(position, 'gain', 0))
         current_price, ts = await self.trade_manager.get_current_price(symbol)
         current_price = float(current_price)
+
+        # ═══════════════════════════════════════════════════════════════════
+        # DC_BAND_BREAK_5M_KILL (2026-04-29 user directive — UNCONDITIONAL)
+        # If LONG closes below dc_low_5m OR SHORT closes above dc_high_5m,
+        # toss it IMMEDIATELY. Overrides STRICT_NO_LOSS, UNIVERSAL_NOLOSS_GATE,
+        # STALE_HOLD, OPTIONS_EQUITY_HEDGE_GUARD, every other gate.
+        # User: "buying into a fucking loss MSTR — gets immediately tossed
+        # if it goes below DC_LOW 5m like everything it fucking buys".
+        # ═══════════════════════════════════════════════════════════════════
+        try:
+            _dcl5 = float(i.get('dc_low_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_low_5m', 0) or 0)
+            _dch5 = float(i.get('dc_high_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_high_5m', 0) or 0)
+        except Exception:
+            _dcl5 = 0.0; _dch5 = 0.0
+        if current_price > 0:
+            if is_long and _dcl5 > 0 and current_price < _dcl5:
+                logger.critical(f"🛑 DC_BAND_BREAK_5M_KILL {symbol}_LONG: price={current_price:.4f} < dc_low_5m={_dcl5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                return True, f"DC_BAND_BREAK_5M_KILL_LONG(p={current_price:.2f}<dcl5={_dcl5:.2f})", 1.0
+            if (not is_long) and _dch5 > 0 and current_price > _dch5:
+                logger.critical(f"🛑 DC_BAND_BREAK_5M_KILL {symbol}_SHORT: price={current_price:.4f} > dc_high_5m={_dch5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                return True, f"DC_BAND_BREAK_5M_KILL_SHORT(p={current_price:.2f}>dch5={_dch5:.2f})", 1.0
 
         opened_at = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
         hold_time_min = 0.0
@@ -8361,7 +8398,10 @@ class TradierTradeManager:
             # ═══ SAFETY SWITCH 5: SRS REASON-STRING NOLOSS BYPASS (2026-04-16) ═══
             if is_reduce and not is_hedge:
                 _srs_bypass_allowed = getattr(config, 'TRADIER_NOLOSS_SRS_BYPASS', True)
-                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in str(reason or '').upper() or 'DD_BOUNCE_STOP' in str(reason or '').upper())
+                _reason_upper = str(reason or '').upper()
+                # 2026-04-29 user directive: DC_BAND_BREAK_5M_KILL ALWAYS bypasses NOLOSS — unconditional close.
+                _dc_kill_bypass = 'DC_BAND_BREAK_5M_KILL' in _reason_upper
+                _en_srs = _srs_bypass_allowed and ('STRUCTURAL_RANGE_SHIFT' in _reason_upper or 'DD_BOUNCE_STOP' in _reason_upper)
                 _en_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
                 _en_gain = getattr(_en_pos, 'gain', 0.0) if _en_pos else 0.0
                 _en_noloss_min = getattr(config, 'NOLOSS_MIN_PROFIT_PCT_TRADIER', 3.0)
@@ -8398,7 +8438,9 @@ class TradierTradeManager:
                                     logger.warning(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: SHORT entry={_br_entry:.4f}<bb_low_1h={_bbl_1h:.4f}, recovered to {_br_px:.4f} (tol={_br_tol_abs:.4f}), 3m reversal — allowing close at gain={_en_gain:.2f}%")
                     except Exception as _br_e:
                         logger.debug(f"[BB_RECOVERY_EXIT_BYPASS] {position_key}: error: {_br_e}")
-                if _en_srs:
+                if _dc_kill_bypass:
+                    logger.critical(f"[EXECUTE_NOW_DC_KILL_BYPASS] {position_key}: gain={_en_gain:.2f}% — DC_BAND_BREAK_5M_KILL forced through (user directive 2026-04-29)")
+                elif _en_srs:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
                 elif _bb_recov_bypass:
                     pass
@@ -10142,12 +10184,79 @@ class TradierTradeManager:
                 logger.error(f"[update_all_positions_prices] Error: {e}",  exc_info=True )
                 await asyncio.sleep(1)
 
+    async def audit_stale_open_orders(self, account_key: str):
+        """2026-04-29 USER ABSOLUTE: cancel any open broker SELL/CLOSE order whose qty exceeds
+        current API positionAmt. Catches: stale GTC orders, ghost-quantity orders from earlier
+        sessions, max_quantity leakage into qty. Today's PYPL Sell-81 vs own-38 was the trigger.
+        Runs every ~60s as part of periodic_tasks."""
+        if not bool(getattr(config, 'STALE_ORDER_AUDIT_ENABLED', True)):
+            return
+        try:
+            client = TradierAPIClient(config, account_key=account_key)
+            await client.connect()
+            orders = await client.get_orders(account_key)
+            if not orders:
+                return
+            api_positions = await client.get_account_positions(account_key)
+            pos_list = []
+            if isinstance(api_positions, dict):
+                p = api_positions.get('positions', {})
+                if isinstance(p, dict) and 'position' in p:
+                    pos_list = p['position'] if isinstance(p['position'], list) else [p['position']]
+                elif isinstance(p, list):
+                    pos_list = p
+            elif isinstance(api_positions, list):
+                pos_list = api_positions
+            sym_qty = {}
+            for p in pos_list:
+                try:
+                    sym = str(p.get('symbol', '')).strip().upper()
+                    if not sym: continue
+                    q = abs(float(p.get('quantity', 0) or 0))
+                    if q > 0: sym_qty[sym] = q
+                except Exception: pass
+            cancelled = 0
+            for od in orders:
+                try:
+                    status = str(od.get('status', '')).lower()
+                    if status not in ('open', 'pending', 'partially_filled'):
+                        continue
+                    side = str(od.get('side', '')).lower()
+                    if 'sell' not in side and 'buy_to_cover' not in side:
+                        continue
+                    sym = str(od.get('symbol', '')).strip().upper()
+                    if not sym:
+                        continue
+                    qty = float(od.get('quantity', 0) or 0)
+                    pos_qty = sym_qty.get(sym, 0.0)
+                    tolerance = float(getattr(config, 'STALE_ORDER_AUDIT_TOLERANCE_SHARES', 1.0))
+                    if qty > pos_qty + tolerance:
+                        order_id = od.get('id')
+                        logger.critical(f"🚫 [STALE_ORDER_CANCEL] {account_key}:{sym}: open {side} qty={qty:.0f} > positionAmt={pos_qty:.0f} (tolerance +{tolerance:.0f}) → cancelling order_id={order_id}")
+                        try:
+                            await client.cancel_order(account_key, order_id)
+                            cancelled += 1
+                        except Exception as _ce:
+                            logger.error(f"[STALE_ORDER_CANCEL_ERR] {account_key}:{sym} order={order_id}: {_ce}")
+                except Exception as _oe:
+                    logger.debug(f"[STALE_ORDER_AUDIT] order parse: {_oe}")
+            if cancelled > 0:
+                logger.warning(f"🧹 [STALE_ORDER_AUDIT] {account_key}: cancelled {cancelled} stale order(s) this cycle (qty > positionAmt)")
+        except Exception as _e:
+            logger.warning(f"[STALE_ORDER_AUDIT_ERR] {account_key}: {type(_e).__name__}: {_e}")
+
     async def periodic_tasks(self, account_key, order_queue):
         """Main periodic task loop"""
         logger.info(f"☀️[periodic_tasks] Task started for {account_key}")
+        _stale_audit_counter = 0
         while self.running:
             try:
                 await asyncio.sleep(30)
+                # 2026-04-29: stale-order audit every 2 cycles (60s) — cancels SELL > positionAmt
+                _stale_audit_counter += 1
+                if _stale_audit_counter >= int(getattr(config, 'STALE_ORDER_AUDIT_EVERY_N_CYCLES', 2)):
+                    _stale_audit_counter = 0
+                    asyncio.create_task(self.audit_stale_open_orders(account_key))
                 await self.load_leaderboards()
                 await self.load_account_symbols()
                 
