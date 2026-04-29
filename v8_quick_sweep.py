@@ -2223,7 +2223,54 @@ def build_param_grid_exit_decision_crypto():
     return grid
 
 
+def build_param_grid_wt_dc_full():
+    """2026-04-29: Full WT_DC + EXIT_SCORER + DELTA_EXIT sweep at Tier-3 scope.
+    Targets all v8_quick-readable knobs that drive the WT_DC exit decision.
+    Defaults match live baseline so off-axis knobs reflect real behavior.
+
+    Run on FULL universe to clear CLAUDE.md min-sample floor:
+      crypto: --mode crypto  --symbols all --start 2022-01-01 --tier wt_dc_full --workers 4 --stream
+      tradier: --mode tradier --symbols all --start 2022-01-01 --tier wt_dc_full --workers 4 --stream
+
+    Anchored against the FUNDING_OI Tier-2 baseline pool_sharpe 1.23. Only configs that
+    BEAT the baseline with ≥30 trades/sym are decision-material.
+
+    Knobs included:
+      EXIT_SCORER (3 of 5 N-of-K conditions, 3 K-extreme thresholds, 3 DC-extreme thresholds, T/F)
+      WT_EXIT_MIN_TFS (1/2/3 of 3-TF MTF cross — direct test of "simple MTF WT cross" hypothesis)
+      WT_CROSSUNDER_FINAL_ENABLED (single-TF + K-extreme cross, T/F)
+      SIMPLE_MTF_WT_CROSS_EXIT_ENABLED (LTF+15m+ANY-HTF live-mirror, T/F — added 2026-04-29)
+      RZ_EXIT_ENABLED + WT_VEL_DECAY_EXIT (the "deltas/proximities" the user dismissed)
+      DELTA_EXIT_VEL_MIN_DECAY (vel_exit threshold)
+    """
+    return {
+        "EXIT_SCORER_ENABLED": [True, False],
+        "EXIT_SCORER_MIN_CONDITIONS": [3, 4, 5],
+        "EXIT_SCORER_K_EXTREME": [75.0, 85.0],
+        "EXIT_SCORER_DC_EXTREME": [0.80, 0.85],
+        "WT_EXIT_MIN_TFS": [2, 3],
+        "WT_CROSSUNDER_FINAL_ENABLED": [True, False],
+        "SIMPLE_MTF_WT_CROSS_EXIT_ENABLED": [True, False],
+        "RZ_EXIT_ENABLED": [True, False],
+        "WT_VEL_DECAY_EXIT_ENABLED": [True, False],
+        "DELTA_EXIT_VEL_MIN_DECAY": [1.0, 2.0, 3.0],
+        # Anchor knobs at default-on so we test the WT_DC-axis effect cleanly
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True],
+        "DC_RECOVERY_EXIT_ENABLED": [True],
+        "K_LOWER_HIGH_EXIT_ENABLED": [True],
+        "WINNER_PROTECT_ENABLED": [True],
+        "MIN_HOLD_BARS": [20],
+        "WT_EXIT_USE_CROSS_EVENTS": [False],
+        # Don't strip NOLOSS / PPL — those are the live setup
+        # Floor: don't early-abort on big universe; want full pool
+        "EARLY_ABORT_MIN_SYMBOLS": [40],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.5],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [120.0],
+    }
+
+
 TIER_MAP = {
+    "wt_dc_full": build_param_grid_wt_dc_full,
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,
     "exit_decision_tradier": build_param_grid_exit_decision_tradier,
