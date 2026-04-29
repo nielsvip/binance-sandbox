@@ -267,6 +267,9 @@ def iteration(args):
     weights = parse_weights(args.score_weights)
     syms = [s.upper() for s in (args.syms.split(",") if args.syms else ["BTCUSDT"])]
     # 1. Score all existing runs
+    # 2026-04-29 user directive: REJECT picks below CLAUDE.md sample floors.
+    # A 167-trade Sharpe lies; only ≥200 trades/sym is publishable per rule 4 + 4b.
+    MIN_TRADES_FOR_PROMOTION = int(os.environ.get("QOPT_MIN_TRADES", "200"))
     runs = set()
     for p in DEFAULT_TRADES_DIR.glob("*__*.jsonl"):
         run, _, _ = p.stem.partition("__")
@@ -276,7 +279,14 @@ def iteration(args):
         for sym in syms:
             m = compute_run_metrics(run, sym, DEFAULT_TRADES_DIR)
             if not m: continue
-            score = composite_score(m, weights)
+            # Below-floor samples get massive score penalty so they NEVER win the BEST slot.
+            # We still log them for diagnostics but don't promote.
+            if m["trades"] < MIN_TRADES_FOR_PROMOTION:
+                m["below_min_trades"] = True
+                m["raw_score_before_penalty"] = composite_score(m, weights)
+                score = -1e6 + m["raw_score_before_penalty"]  # heavily penalize but keep order
+            else:
+                score = composite_score(m, weights)
             scored.append((run, sym, m, score))
     scored.sort(key=lambda r: -r[3])
     if not scored:

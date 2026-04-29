@@ -1200,12 +1200,114 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             _update_stdev_state(symbol, indicators_raw)
         if not macro_fresh:
             # INDICATORS ARE DEAD (>1200s) — but NEVER close positions on stale data
-            # Only block NEW entries. Existing positions hold until fresh data returns.
+            # ── 2026-04-29 user directive ──
+            # New: 3 stale-mode escapes (otherwise still HOLD):
+            #   (a) DC_LOW4_5M kill on LIVE price vs LAST KNOWN dc_low4_5m / dc_high4_5m.
+            #   (b) Drastic gain drop while stale: track first_stale_gain on
+            #       trade_manager._stale_gain_history[position_key]. If
+            #       (first_stale_gain - current_gain) > MULT * atr_5m_pct → close.
+            #       Threshold is ATR-based (NOT a fixed %).
+            #   (c) Watchdog-trigger placeholder log (real auto-respawn is separate work),
+            #       throttled to once per 5 min per (symbol, account).
+            # Stale entries / augments are still blocked (existing flow). NEVER opens here.
             if has_position:
+                _stale_pos = trade_manager.position_manager.get_position(position_key)
+                _stale_is_long = (position_side == "LONG")
+                _stale_gain_now = float(getattr(_stale_pos, 'gain', 0) or 0) if _stale_pos else 0.0
+                _stale_close_decided = False
+                _stale_close_reason = ""
+                # (a) Stale-mode DC_LOW4_5M kill (uses last known indicators_raw if any).
+                try:
+                    if bool(getattr(config, 'DC_LOW4_5M_KILL_ENABLED_TRADIER', True)) and indicators_raw:
+                        _ind_stale = trade_manager.strategy.parse_market_data(indicators_raw)
+                        _dcl4_s = float(_ind_stale.get('dc_low4_5m') or 0)
+                        _dch4_s = float(_ind_stale.get('dc_high4_5m') or 0)
+                        if current_price > 0:
+                            if _stale_is_long and _dcl4_s > 0 and current_price < _dcl4_s:
+                                _stale_close_decided = True
+                                _stale_close_reason = f"STALE_DC_LOW4_5M_KILL_LONG(p={current_price:.2f}<dcl4={_dcl4_s:.2f})"
+                                logger.critical(f"🛑 [STALE_DC_LOW4_5M_KILL] {symbol}_LONG: price={current_price:.4f} < dc_low4_5m={_dcl4_s:.4f} (stale) — UNCONDITIONAL CLOSE")
+                            elif (not _stale_is_long) and _dch4_s > 0 and current_price > _dch4_s:
+                                _stale_close_decided = True
+                                _stale_close_reason = f"STALE_DC_HIGH4_5M_KILL_SHORT(p={current_price:.2f}>dch4={_dch4_s:.2f})"
+                                logger.critical(f"🛑 [STALE_DC_HIGH4_5M_KILL] {symbol}_SHORT: price={current_price:.4f} > dc_high4_5m={_dch4_s:.4f} (stale) — UNCONDITIONAL CLOSE")
+                except Exception as _stale_dc_err:
+                    logger.warning(f"[STALE_DC_KILL] {symbol}: read error: {_stale_dc_err}")
+                # (b) Drastic-drop tracker. ATR-based threshold (NEVER fixed %).
+                if not _stale_close_decided and bool(getattr(config, 'STALE_DRASTIC_DROP_ENABLED_TRADIER', True)):
+                    if not hasattr(trade_manager, '_stale_gain_history'):
+                        trade_manager._stale_gain_history = {}
+                    _hist = trade_manager._stale_gain_history
+                    _entry = _hist.get(position_key)
+                    if _entry is None:
+                        _hist[position_key] = {'first_gain': _stale_gain_now, 'first_ts': time.time()}
+                    else:
+                        _first_gain = float(_entry.get('first_gain', _stale_gain_now))
+                        # ATR%-based threshold from last known indicators_raw if present.
+                        _atr5_pct = 0.0
+                        try:
+                            if indicators_raw and current_price > 0:
+                                _atr5 = float(indicators_raw.get('atr_5m') or 0)
+                                if _atr5 > 0:
+                                    _atr5_pct = (_atr5 / current_price) * 100.0
+                        except Exception:
+                            _atr5_pct = 0.0
+                        _mult = float(getattr(config, 'STALE_DRASTIC_DROP_ATR_MULT_TRADIER', 2.0))
+                        # Clamp mult to user-stated 2.0–3.0 band.
+                        if _mult < 2.0: _mult = 2.0
+                        if _mult > 3.0: _mult = 3.0
+                        _drop = _first_gain - _stale_gain_now
+                        if _atr5_pct > 0 and _drop > (_mult * _atr5_pct):
+                            _stale_close_decided = True
+                            _stale_close_reason = f"STALE_DRASTIC_DROP(drop={_drop:.2f}%>{_mult:.1f}xATR5={_mult*_atr5_pct:.2f}%)"
+                            logger.critical(f"🛑 [STALE_DRASTIC_DROP] {symbol}_{position_side}: gain {_first_gain:+.2f}%→{_stale_gain_now:+.2f}% drop={_drop:.2f}% > {_mult:.1f}×ATR5%={_mult*_atr5_pct:.2f}% — CLOSE")
+                # (c) Watchdog-trigger placeholder, throttled per (symbol, account) 5min.
+                try:
+                    if not hasattr(trade_manager, '_stale_repair_log_ts'):
+                        trade_manager._stale_repair_log_ts = {}
+                    _rkey = f"{account_key}:{symbol}"
+                    if (time.time() - trade_manager._stale_repair_log_ts.get(_rkey, 0)) > 300:
+                        logger.warning(f"[STALE_REPAIR_TRIGGER] {symbol} ({account_key}): indicators stale ({freshness_reason}) — placeholder for auto-respawn")
+                        trade_manager._stale_repair_log_ts[_rkey] = time.time()
+                except Exception:
+                    pass
+                if _stale_close_decided:
+                    # Submit close via existing trade pipeline. Use evaluate_stop callers' path:
+                    # the calling process_position will see the return and execute. We call
+                    # evaluate_stop manually here? No — this branch is in process_position
+                    # itself (the outer wrapper). Use the same close pathway as evaluate_stop
+                    # by directly invoking execute_trade_action like other emergency closes.
+                    try:
+                        _close_pos = trade_manager.position_manager.get_position(position_key)
+                        if _close_pos and abs(float(getattr(_close_pos, 'positionAmt', 0))) > 0:
+                            _qty = abs(float(getattr(_close_pos, 'positionAmt', 0)))
+                            _api_side = "SELL" if _stale_is_long else "BUY"
+                            await trade_manager.execute_trade_action(
+                                account_key, position_key, symbol, _qty, current_price,
+                                _api_side, position_side,
+                                f"stale_close_{int(time.time())}",
+                                action="CLOSE", reason=_stale_close_reason, override_qty=_qty)
+                            # Clear tracker on close.
+                            try:
+                                if hasattr(trade_manager, '_stale_gain_history'):
+                                    trade_manager._stale_gain_history.pop(position_key, None)
+                            except Exception:
+                                pass
+                    except Exception as _stale_close_err:
+                        logger.error(f"[STALE_CLOSE_ERR] {symbol}: {_stale_close_err}")
+                    return "STALE_INDICATORS_CLOSED"
                 logger.info(f"[STALE_HOLD] {symbol}: indicators stale but HOLDING position (stale data must NEVER trigger exits)")
                 return "STALE_INDICATORS_HELD"
             else:
                 return "STALE_ABSOLUTE_NO_POS"
+        else:
+            # Fresh data returned — clear stale-gain tracker for this position_key so the
+            # next stale period starts a new baseline.
+            try:
+                if hasattr(trade_manager, '_stale_gain_history'):
+                    trade_manager._stale_gain_history.pop(position_key, None)
+            except Exception:
+                pass
         if not force and (now_ts - last_mon < 30):
             return "THROTTLED"
         is_stale = not macro_fresh
@@ -4426,6 +4528,24 @@ class StockStrategy:
         current_price, ts = await self.trade_manager.get_current_price(symbol)
         current_price = float(current_price)
 
+        # ═══ DC_LOW4_5M_KILL — UNCONDITIONAL emergency exit (2026-04-29 user directive) ═══
+        # If LONG close < dc_low4_5m OR SHORT close > dc_high4_5m, toss immediately.
+        # Overrides STRICT_NO_LOSS, UNIVERSAL_NOLOSS_GATE, STALE_HOLD, peak_giveback gates.
+        # Existing brake at line ~4598 was gated on _pgp_max_g > 0 — this fires regardless.
+        if bool(getattr(config, 'DC_LOW4_5M_KILL_ENABLED_TRADIER', True)):
+            try:
+                _dcl4_5 = float(i.get('dc_low4_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_low4_5m', 0) or 0)
+                _dch4_5 = float(i.get('dc_high4_5m') or 0) if isinstance(i, dict) else float(getattr(i, 'dc_high4_5m', 0) or 0)
+            except Exception:
+                _dcl4_5 = 0.0; _dch4_5 = 0.0
+            if current_price > 0:
+                if is_long and _dcl4_5 > 0 and current_price < _dcl4_5:
+                    logger.critical(f"🛑 DC_LOW4_5M_KILL {symbol}_LONG: price={current_price:.4f} < dc_low4_5m={_dcl4_5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                    return True, f"DC_LOW4_5M_KILL_LONG(p={current_price:.2f}<dcl4={_dcl4_5:.2f})", 1.0
+                if (not is_long) and _dch4_5 > 0 and current_price > _dch4_5:
+                    logger.critical(f"🛑 DC_HIGH4_5M_KILL {symbol}_SHORT: price={current_price:.4f} > dc_high4_5m={_dch4_5:.4f} (gain={gain:+.2f}%) — UNCONDITIONAL CLOSE")
+                    return True, f"DC_HIGH4_5M_KILL_SHORT(p={current_price:.2f}>dch4={_dch4_5:.2f})", 1.0
+
         opened_at = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
         hold_time_min = 0.0
         if opened_at:
@@ -6887,6 +7007,57 @@ class TradierTradeManager:
                                 _gain_pct = getattr(pos, 'gain', 0) or 0
                                 if _gain_pct < 0.3:
                                     logger.info(f"[REBAL_NOLOSS_BLOCK] {symbol} {side}: sentiment wants reduce but gain={_gain_pct:+.2f}% < 0.3% — HOLDING (STRICT_NO_LOSS)")
+                                    # 2026-04-29 user directive: instead of just holding, open
+                                    # a same-sector hedge to bleed-protect the loser.
+                                    if bool(getattr(config, 'REBAL_NOLOSS_SAME_SECTOR_HEDGE_ENABLED_TRADIER', True)):
+                                        try:
+                                            if not hasattr(self, '_rebal_hedge_attempt_ts'):
+                                                self._rebal_hedge_attempt_ts = {}
+                                            _hcool_s = float(getattr(config, 'REBAL_NOLOSS_HEDGE_COOLDOWN_SEC_TRADIER', 1800))
+                                            _h_age = _now_ts - self._rebal_hedge_attempt_ts.get(pk, 0.0)
+                                            if _h_age < _hcool_s:
+                                                logger.info(f"[REBAL_NOLOSS_HEDGE_COOLDOWN] {pk}: last hedge {_h_age:.0f}s < {_hcool_s:.0f}s — skip")
+                                                continue
+                                            _losing_sec = get_sector(symbol)
+                                            _sec_mates = [_s for _s, _sec in SYMBOL_TO_SECTOR.items() if _sec == _losing_sec and _s != symbol]
+                                            _hedge_sym = None
+                                            _hedge_side = "SHORT" if side == "LONG" else "LONG"
+                                            for _cand in _sec_mates:
+                                                _cand_long_key = construct_position_key(_acct if '_acct' in locals() else (pk.split(':')[0] if ':' in pk else 'trb'), _cand, "LONG")
+                                                _cand_short_key = construct_position_key(_acct if '_acct' in locals() else (pk.split(':')[0] if ':' in pk else 'trb'), _cand, "SHORT")
+                                                _cand_long_pos = self.position_manager.get_position(_cand_long_key)
+                                                _cand_short_pos = self.position_manager.get_position(_cand_short_key)
+                                                _cand_long_open = _cand_long_pos and abs(float(getattr(_cand_long_pos, 'positionAmt', 0))) > 0
+                                                _cand_short_open = _cand_short_pos and abs(float(getattr(_cand_short_pos, 'positionAmt', 0))) > 0
+                                                if not _cand_long_open and not _cand_short_open:
+                                                    _hedge_sym = _cand
+                                                    break
+                                            if _hedge_sym:
+                                                _losing_notional = float(current_qty) * float(current_price)
+                                                _hedge_prices = self.market_snapshot or {}
+                                                _hp = float((_hedge_prices.get(_hedge_sym) or {}).get('current_price', 0) or 0)
+                                                if _hp <= 0:
+                                                    _hp_t, _ = await self.get_current_price(_hedge_sym)
+                                                    _hp = float(_hp_t or 0)
+                                                if _hp > 0 and _losing_notional > 100:
+                                                    _hedge_qty = _losing_notional / _hp
+                                                    _hedge_acct = pk.split(':')[0] if ':' in pk else 'trb'
+                                                    _hedge_pk = construct_position_key(_hedge_acct, _hedge_sym, _hedge_side)
+                                                    _hedge_api_side = "BUY" if _hedge_side == "LONG" else "SELL"
+                                                    _hedge_reason = f"REBAL_NOLOSS_SAME_SECTOR_HEDGE_for_{symbol}_{side}_g{_gain_pct:.2f}_sec={_losing_sec}"
+                                                    logger.info(f"🛡️ [REBAL_NOLOSS_HEDGE] {symbol}_{side} (g={_gain_pct:+.2f}%) → open {_hedge_sym}_{_hedge_side} qty={_hedge_qty:.2f} sec={_losing_sec}")
+                                                    self._rebal_hedge_attempt_ts[pk] = _now_ts
+                                                    await self.execute_trade_action(
+                                                        _hedge_acct, _hedge_pk, _hedge_sym, _hedge_qty, _hp,
+                                                        _hedge_api_side, _hedge_side,
+                                                        f"rebal_hedge_{int(time.time())}",
+                                                        action="OPEN", reason=_hedge_reason, override_qty=_hedge_qty)
+                                                else:
+                                                    logger.info(f"[REBAL_NOLOSS_HEDGE_SKIP] {pk}: no price for {_hedge_sym} or notional too small")
+                                            else:
+                                                logger.info(f"[REBAL_NOLOSS_HEDGE_SKIP] {pk}: no free same-sector mate in {_losing_sec}")
+                                        except Exception as _hedge_err:
+                                            logger.error(f"[REBAL_NOLOSS_HEDGE_ERR] {pk}: {_hedge_err}")
                                     continue
                                 # V4: Multi-TF WT exit confirmation — don't rebalance if HTFs still support
                                 _wt_b5 = float(i.get('wt1_5m', 0) or 0) > float(i.get('wt2_5m', 0) or 0)

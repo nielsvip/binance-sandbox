@@ -1191,6 +1191,16 @@ class TradierConfig:
     # with phantom 58/36-share sells.
     TRADIER_QUEUE_DEDUPE_SEC: float = 60.0       # global queue_trade_action dedupe
     REBAL_ATTEMPT_COOLDOWN_SEC: float = 300.0    # SENTIMENT_FADE rebalance per-position cooldown (success or fail)
+    # ═══ 2026-04-29 USER DIRECTIVE — 3 NEW EXIT/HEDGE RULES (BACKTEST-GATED) ═══
+    # Rule 1: DC_LOW4_5M unconditional kill — top of evaluate_stop, overrides ALL gates.
+    DC_LOW4_5M_KILL_ENABLED_TRADIER: bool = True
+    # Rule 2: STALE_HOLD drastic-drop trigger; ATR-based threshold (NOT a fixed %).
+    # If first_stale_gain - current_gain > MULT * atr_5m_pct → close. Range 2.0-3.0.
+    STALE_DRASTIC_DROP_ENABLED_TRADIER: bool = True
+    STALE_DRASTIC_DROP_ATR_MULT_TRADIER: float = 2.0
+    # Rule 3: REBAL_NOLOSS_BLOCK opens same-sector hedge instead of hold-and-pray.
+    REBAL_NOLOSS_SAME_SECTOR_HEDGE_ENABLED_TRADIER: bool = True
+    REBAL_NOLOSS_HEDGE_COOLDOWN_SEC_TRADIER: int = 1800  # 30 min per losing position
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.
