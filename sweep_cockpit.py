@@ -192,7 +192,14 @@ def fmt_pnl(v):
 
 
 def fmt_sharpe(v):
+    """Format a Sharpe number for display.
+    2026-04-29: any |value| > 5.0 is flagged INFLATED red — those values are
+    almost always sqrt-annualized inflation (banned per CLAUDE.md rule 3) or
+    a tiny-sample outlier. They MUST NOT drive decisions."""
     f = safe_float(v)
+    if abs(f) > 5.0:
+        # Likely sqrt-annualized or per-symbol-uncapped — refuse to color it green
+        return f'<span style="color:#f44336;font-weight:700;text-decoration:line-through" title="|Sharpe| > 5.0 — almost always sqrt-annualized inflation or tiny-sample outlier. Per CLAUDE.md rule 3 + 6, this number is INVALID for ranking or live decisions.">⚠ {f:.3f} INFLATED</span>'
     if f >= 2.0:
         color = "#4caf50"
     elif f >= 1.0:
@@ -424,16 +431,23 @@ def dashboard():
                     tier = p.upper()
                     break
 
-        # Last 5 results
+        # Last 5 results — show pool_sharpe (the only valid Sharpe per CLAUDE.md);
+        # fall back to bare 'sharpe' tagged DIAGNOSTIC since legacy CSVs may not
+        # have the canonical column. Bare-Sharpe display caused the 30%-loss-week.
         last5 = rows[-5:] if rows else []
         last5_html = ""
         if last5:
-            last5_html = '<table><tr><th>Name</th><th>Sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th></tr>'
+            last5_html = '<table><tr><th>Name</th><th>pool_sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th></tr>'
             for r in reversed(last5):
                 name = r.get("name", "?")
                 short_name = name[:50] + "..." if len(name) > 50 else name
                 link = f'<a href="/config/{name}">{short_name}</a>'
-                last5_html += f'<tr><td>{link}</td><td>{fmt_sharpe(r.get("sharpe", 0))}</td><td>{fmt_pnl(r.get("pnl", 0))}</td><td>{r.get("trades", 0)}</td><td>{r.get("wins", 0)}/{r.get("losses", 0)}</td></tr>'
+                ps = r.get("pool_sharpe")
+                if ps is None or ps == "":
+                    ps_disp = '<span style="color:#888;font-style:italic" title="legacy CSV with bare \'sharpe\' column — value not trustworthy per CLAUDE.md rule 8">[diag] ' + fmt_sharpe(r.get("sharpe", 0)) + '</span>'
+                else:
+                    ps_disp = fmt_sharpe(safe_float(ps))
+                last5_html += f'<tr><td>{link}</td><td>{ps_disp}</td><td>{fmt_pnl(r.get("pnl", 0))}</td><td>{r.get("trades", 0)}</td><td>{r.get("wins", 0)}/{r.get("losses", 0)}</td></tr>'
             last5_html += "</table>"
         else:
             last5_html = '<div style="color:#888">No results yet</div>'
@@ -462,8 +476,15 @@ def dashboard():
         server_sections.append(card)
 
     # --- Aggregate view ---
+    # 2026-04-29: pool_sharpe is the ONLY valid Sharpe per CLAUDE.md.
+    # Falls back to bare 'sharpe' for legacy rows but tags them DIAGNOSTIC.
     total_done = len(all_rows)
-    sharpe_vals = [safe_float(r.get("sharpe", 0)) for r in all_rows]
+    def _row_sharpe(r):
+        ps = r.get("pool_sharpe")
+        if ps is not None and ps != "":
+            return safe_float(ps)
+        return safe_float(r.get("sharpe", 0))  # legacy fallback
+    sharpe_vals = [_row_sharpe(r) for r in all_rows]
     pnl_vals = [safe_float(r.get("pnl", 0)) for r in all_rows]
 
     # Differentiation check
@@ -478,20 +499,25 @@ def dashboard():
         diff_verdict = "NO DATA"
         diff_color = "#888"
 
-    # Top 10 / Bottom 5
-    sorted_rows = sorted(all_rows, key=lambda r: safe_float(r.get("sharpe", 0)), reverse=True)
+    # Top 10 / Bottom 5 — sorted by pool_sharpe (with bare-sharpe legacy fallback)
+    sorted_rows = sorted(all_rows, key=_row_sharpe, reverse=True)
     top10 = sorted_rows[:10]
     bottom5 = sorted_rows[-5:] if len(sorted_rows) >= 5 else sorted_rows
 
     def render_ranked_table(rows, label):
         if not rows:
             return f"<div style='color:#888'>No {label} data</div>"
-        html = '<table><tr><th>#</th><th>Server</th><th>Name</th><th>Sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th></tr>'
+        html = '<table><tr><th>#</th><th>Server</th><th>Name</th><th title="pool_sharpe — the only valid Sharpe per CLAUDE.md (mean/std across all trades pooled). Bare \'sharpe\' rows are tagged [diag].">pool_sharpe</th><th>PnL</th><th>Trades</th><th>W/L</th></tr>'
         for i, r in enumerate(rows, 1):
             name = r.get("name", "?")
             short_name = name[:60] + "..." if len(name) > 60 else name
             link = f'<a href="/config/{name}">{short_name}</a>'
-            html += f'<tr><td>{i}</td><td>{r.get("_server", "?")}</td><td>{link}</td><td>{fmt_sharpe(r.get("sharpe", 0))}</td><td>{fmt_pnl(r.get("pnl", 0))}</td><td>{r.get("trades", 0)}</td><td>{r.get("wins", 0)}/{r.get("losses", 0)}</td></tr>'
+            ps = r.get("pool_sharpe")
+            if ps is None or ps == "":
+                ps_disp = f'<span style="color:#888;font-style:italic" title="legacy CSV without pool_sharpe column — bare \'sharpe\' value cannot be trusted">[diag] {fmt_sharpe(r.get("sharpe", 0))}</span>'
+            else:
+                ps_disp = fmt_sharpe(safe_float(ps))
+            html += f'<tr><td>{i}</td><td>{r.get("_server", "?")}</td><td>{link}</td><td>{ps_disp}</td><td>{fmt_pnl(r.get("pnl", 0))}</td><td>{r.get("trades", 0)}</td><td>{r.get("wins", 0)}/{r.get("losses", 0)}</td></tr>'
         html += "</table>"
         return html
 

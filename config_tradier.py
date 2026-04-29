@@ -110,7 +110,7 @@ class TradierConfig:
     # tra preferred symbols (user-specified). The actual list is in
     # symbols_tra_satoshit_long.json — these are the "core 9" the user named.
     TRA_PREFERRED_SYMBOLS: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "MSTR", "PLTR", "NEM", "MU", "SNDK", "NVDA"])  # DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    BLACKLIST = ["ABT","JNJ","MSTR", "PLTR", "MAST"] #'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview  (MAST added 2026-04-29 per user — same family of forbidden meme/lunatic-trade tickers as PLTR)
+    BLACKLIST = ["ABT","JNJ","MSTR", 'PLTR'] #'BTC', 'ETHE', 'GOOGL', 'XIACF',"AAPL"] #Tradingview
     ALWAYS_TRADEABLE = ["NVDA", "GOOG", "META", "MSFT", "GLD", "XLE", "XOP", "GDX", "USO", "CVX", "XOM", "SLV", "NEM", "FCX","SNDK","MU"]
     NON_SHORTABLE = {"ETHE", "TCEHY", "XIACF", "BITO", "GBTC", "MARA", "CLSK", "HIVE", "CAN", "BTBT", "CUBT", "ETH", "BTC", "QUBT", "GLD", "ETHD", "SBIT", "INOD", "BTCL", "DIME", "UCO", "PDBC", "COPX", "BLOK", "USO", "UNG", "BOIL", "WEAT", "CORN", "DBA", "GDXJ", "XME", "XOP", "OIH", "URA", "URNM", "ITA", "PPA", "MOO", "REMX", "IPI", "LSB", "UAN", "ASC", "EGLE", "GNK", "NAT", "TNK", "NNE", "DNN", "PLL", "SGML", "MAG", "BTG", "ICL", "SQM", "GOGL", "SBLK", "DAC", "FRO", "ZIM", "GOLD", "UNG"}
     EXCEPTIONS = ['GOOGL', 'MSFT', 'NVDA', 'CVX', 'XOM', 'IBIT', 'GLD', 'ETH', 'XLE', 'GDX', 'USO', 'SLV'] #4* max order size and max pos size
@@ -1025,7 +1025,7 @@ class TradierConfig:
     SPIKE_FADE_COOLDOWN_BARS: int = 6  # Min bars between entries on same symbol
     # === 2.5σ STDEV BREAKOUT (HTF breakout + LTF retest scaling) ===
     # Stocks: same logic as crypto but with stock-tuned thresholds
-    STDEV_BREAKOUT_ENABLED: bool = True  # 2026-04-29: enabled as part of B (should_enter_long) main entry path
+    STDEV_BREAKOUT_ENABLED: bool = False  # Kill switch OFF — backtest sweep first
     STDEV_SUPPRESS_EARLY_EXIT: bool = False  # Suppress vel/delta exits when approaching BB band
     STDEV_BB_RZ_EXIT_ENABLED: bool = False  # Exit when price exits daily BB band (rejection)
     STDEV_BB_RZ_EXIT_TF: str = "D"
@@ -1046,7 +1046,7 @@ class TradierConfig:
     STDEV_BREAKOUT_MAX_AGE_BARS: int = 50
     STDEV_BREAKOUT_EXIT_PCTB_FAIL: float = 0.75
     STDEV_BREAKOUT_EXIT_WT_ENABLED: bool = True
-    STDEV_BOUNCE_ENABLED: bool = True  # 2026-04-29: enabled as part of B (should_enter_long) main entry path
+    STDEV_BOUNCE_ENABLED: bool = False
     STDEV_BOUNCE_PCTB_LONG: float = 0.05
     STDEV_BOUNCE_PCTB_SHORT: float = 0.95
     STDEV_BOUNCE_RVOL_MIN: float = 1.2
@@ -1191,6 +1191,15 @@ class TradierConfig:
     # with phantom 58/36-share sells.
     TRADIER_QUEUE_DEDUPE_SEC: float = 60.0       # global queue_trade_action dedupe
     REBAL_ATTEMPT_COOLDOWN_SEC: float = 300.0    # SENTIMENT_FADE rebalance per-position cooldown (success or fail)
+    # ═══ 2026-04-29 USER DIRECTIVE — 3 NEW EXIT/HEDGE RULES (BACKTEST-GATED) ═══
+    # Rule 1: DC_LOW4_5M unconditional kill — top of evaluate_stop, overrides ALL gates.
+    DC_LOW4_5M_KILL_ENABLED_TRADIER: bool = True
+    # Rule 2: STALE_HOLD drastic-drop trigger; ATR-based threshold (NOT a fixed %).
+    # If first_stale_gain - current_gain > MULT * atr_5m_pct → close. Range 2.0-3.0.
+    STALE_DRASTIC_DROP_ATR_MULT_TRADIER: float = 2.0
+    # Rule 3: REBAL_NOLOSS_BLOCK opens same-sector hedge instead of hold-and-pray.
+    REBAL_NOLOSS_SAME_SECTOR_HEDGE_ENABLED_TRADIER: bool = True
+    REBAL_NOLOSS_HEDGE_COOLDOWN_SEC_TRADIER: int = 1800  # 30 min per losing position
     # ═══ STOCK DELTA EXIT TF WEIGHTS — HTF only ═══
     # Stocks exit ONLY on 1h/4h/D slowdown. LTF (5m/15m) noise must NOT move the
     # delta speed calculation. This dict is passed to DeltaTracker.tf_weights.
@@ -1451,26 +1460,6 @@ class TradierConfig:
     EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
     # 2026-04-28 — Price-cross GUARANTEE safety loop. See config.py for full description.
     EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
-    # 2026-04-29 — B (should_enter_long/short) is the MAIN entry gate. SATOSHIT /
-    # STDEV_BREAKOUT / STDEV_BOUNCE / VWAP / EMA9_21 / RVOL filters live there.
-    # WT_DC_ENTRY scorer is a CONFIRMATION FILTER on top. Flip False to revert
-    # to WT_DC_ENTRY-only behavior (the firehose that produced 7000+ buys/day per
-    # symbol with no setup qualification).
-    B_MAIN_ENTRY_GATE_ENABLED: bool = True
-    # 2026-04-29 — A (WT_DC_ENTRY scorer) optional filter on top of B. Flip False to
-    # let B alone fire entries (skip A's score-threshold check). Sweep-testable.
-    WT_DC_ENTRY_FILTER_ENABLED: bool = True
-    # 2026-04-29 — LINEARITY+LR alternative filter: requires all configured TFs'
-    # lr_trend_* slopes to share sign (positive=LONG, negative=SHORT). Optional
-    # linearity magnitude gate via LINEARITY_LR_LIN4H_MIN (currently broken-by-bug
-    # in linreg_features y_fit formula — set to 0 to ignore until fixed).
-    # Sweep test: enable these + flip STDEV_BREAKOUT_ENABLED=False + STDEV_BOUNCE_ENABLED=False
-    # + WT_DC_ENTRY_FILTER_ENABLED=False to test pure LIN+LR signal.
-    LINEARITY_LR_LONG_ENABLED: bool = False
-    LINEARITY_LR_SHORT_ENABLED: bool = False
-    LINEARITY_LR_TFS: List[str] = field(default_factory=lambda: ['5m', '15m', '1h', '4h'])
-    LINEARITY_LR_REQUIRE_ALL: bool = True
-    LINEARITY_LR_LIN4H_MIN: float = 0.0  # 0 = magnitude check disabled
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
     EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
     EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup
@@ -1569,17 +1558,6 @@ class TradierConfig:
     # immediately. User explicitly overrides for tradier. entry_price still preserved (broker API refreshes
     # on next position open).
     TRADIER_RESET_MAX_GAIN_ON_CLOSE: bool = True
-    # 2026-04-29 USER ABSOLUTE: periodic broker open-order audit. Cancels any SELL/CLOSE order
-    # whose qty > current API positionAmt + tolerance. Runs every N×30s cycles. Triggered by
-    # today's PYPL "Sell 81 Market" pending while we own 38 (43-share phantom — would short us).
-    STALE_ORDER_AUDIT_ENABLED: bool = True
-    STALE_ORDER_AUDIT_EVERY_N_CYCLES: int = 2  # 30s × 2 = 60s
-    STALE_ORDER_AUDIT_TOLERANCE_SHARES: float = 1.0  # allow off-by-one rounding
-    # 2026-04-29 USER ABSOLUTE: force-refresh position from API at decision time.
-    # Default 15s API sync was leaving 10-15s windows where decisions used stale positionAmt.
-    # If cached state > TTL seconds old when queue_trade_action is called → force refresh BEFORE queueing.
-    POSITION_FORCE_REFRESH_ON_TRADE: bool = True
-    POSITION_FRESHNESS_TTL_SEC: float = 10.0
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

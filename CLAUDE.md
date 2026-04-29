@@ -183,16 +183,31 @@ Monitoring: `WINNER=<X> Δ=0.000` with both arms `trades=0` = mode mismatch or w
 
 ## 📊 BACKTEST REPORTING RULES
 
-### ⚠️ SHARPE DEFINITION — NON-NEGOTIABLE
+### 🩸 SHARPE DEFINITION — LIVE-MONEY POLICY (2026-04-29)
 
-1. **Per-trade returns only.** Sharpe = `mean(trade_returns) / std(trade_returns)`. NEVER sum. NEVER accumulate.
-2. **Open losing positions MUST be marked-to-market** at final bar and appended to trade-return distribution before computing. `v8_quick_engine.py:2105-2115` does this. `NOLOSS_ENABLED` blocks premature exits; it does NOT filter negatives from the denominator.
-3. **NEVER annualize Sharpe.** `sharpe_annual = sharpe_per_trade * sqrt(trades_per_year)` is BANNED — mathematical frequency-gaming. `sharpe_per_trade` is the only valid Sharpe.
-4. **Pool Sharpe IS THE Sharpe.** `mean(all_trade_returns) / std(all_trade_returns)` across ALL trades of ALL symbols pooled. Per-symbol-avg is DIAGNOSTIC ONLY. Sweep ranking MUST use `pool_sharpe`.
-4b. **MINIMUM SAMPLE**: ≥48 crypto symbols OR ≥100 stock symbols, >1 year, pool-averaged. NEVER cite single-symbol Sharpes. Results below this floor = internal debug only, not for decisions.
-5. **Cap per-symbol Sharpe at ±5.0**, exclude <30-trade symbols from per-symbol avg.
-6. **Per-symbol-avg Sharpe < 1.0 = trash.** Stop ranking and redesign.
-7. **Track `total_gain_pct` and `avg_gain_per_trade_pct` separately** — useful but not substitutes for Sharpe.
+**This rule was hardened after a 30%-net-worth-in-a-week loss caused by inflated Sharpe numbers reaching live deployment. EVERY violation in this section is now a hard error, not a warning.**
+
+Any number labeled "Sharpe" in any UI, CSV, log, message, memo, or planning doc MUST satisfy ALL of:
+
+1. **Per-trade returns only.** `sharpe = mean(trade_returns) / std(trade_returns)`. NEVER sum. NEVER accumulate. NEVER divide by anything other than std of the same return distribution. Sharpe IS dimensionless — if your number depends on bar-count, days, or sqrt of anything, it's NOT Sharpe and must not be called Sharpe.
+2. **Open losing positions MUST be marked-to-market** at the final bar and appended to the return distribution BEFORE computing Sharpe. Skipping this is fraudulent — it hides losses behind held positions and was the proximate cause of the live blow-up.
+3. **`sharpe_annual = sharpe_per_trade * sqrt(trades_per_year)` is BANNED.** Same for `sharpe * sqrt(252)`, `sharpe * sqrt(N)`, or any multiplier whose only purpose is making the number bigger. These are frequency-gaming, not Sharpe. They MUST NOT appear in any column, label, log, or report — including diagnostics. If you find one, delete it.
+4. **Pool Sharpe IS THE Sharpe**: `mean(all_trade_returns) / std(all_trade_returns)` pooled across ALL trades of ALL symbols. Per-symbol-avg Sharpe is diagnostic ONLY and MUST be labeled `sym_sharpe` — never bare "sharpe".
+5. **MINIMUM SAMPLE for any *publishable* Sharpe**: ≥48 crypto symbols OR ≥100 stock symbols, >1 year of trades each, pool-averaged. Below this floor a Sharpe is "internal debug" — it MAY be displayed only with an attached `[DIAGNOSTIC ONLY · n_syms=X · years=Y]` tag. Decisions, promotions to live, and recommendations to user CANNOT use sub-floor Sharpe — period.
+6. **Cap per-symbol Sharpe at ±5.0** before averaging. Exclude any symbol with <30 trades from `sym_sharpe`. Single-symbol Sharpes >5 are noise — a 3-trade symbol with luck hits 20.
+7. **Pool Sharpe < 1.0 = trash.** A config below 1.0 on the canonical metric is NOT a candidate for promotion. Stop ranking variants; redesign the strategy.
+8. **NEVER bare "Sharpe X.X" in user-facing text.** Always use the qualifier name: `pool_sharpe`, `sym_sharpe`, or `sharpe_per_trade`. Bare "Sharpe" is the format that historically misled into live deployment and is forbidden.
+
+**Mandatory reporting line for "Best" anywhere** (sweep summary, leaderboard, status update, memory entry):
+```
+pool_sharpe=X.XXXX | sym_sharpe=X.XXXX | avg_gain_trade=X.XX%/trade | gain_per_yr=XX.X%/yr | gain_sym_yr=X.XXXX%/sym/yr | trades=N | dd=X.X% | n_syms=N | years=Y.Y
+```
+ALL nine fields. Drop any one and the report is invalid.
+
+**Enforcement**: every Sharpe-displaying script imports `metrics_guard.py` and routes through `validate_and_format_sharpe()`. The function REFUSES to format a Sharpe number that violates rules 1, 3, 4, or 8 (raises). It DOWNGRADES to "[DIAGNOSTIC]" tag for violations of rule 5. Direct `f"{sharpe:.2f}"` in user-facing code = bug to fix.
+
+### Legacy compatibility for stored numbers
+Historical CSVs/JSONLs may contain `sharpe_annual` columns from before the rule. Treat these as INVALID until converted: read trade-list, recompute pool_sharpe from per-trade returns, overwrite the column. NEVER read a stored "Sharpe X.XX" column at face value — verify the formula by which it was produced. The `metrics_guard.audit_csv()` helper does this.
 
 ### Required columns in every sweep CSV / report
 
