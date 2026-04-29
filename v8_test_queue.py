@@ -133,9 +133,9 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
         "--symbols", symbols,
     ]
     print(f"  [{label}] {param}={value!r}  running ...", flush=True)
-    # 2026-04-17: bumped 600→1800 (30 min) — RANK_CONVICTION over 4 symbols × 15 months × 3m bars needed >10 min.
-    # Per-test ceiling governed by V8_BACKTEST_TIMEOUT env var (default 1800).
-    _bt_timeout = int(os.environ.get("V8_BACKTEST_TIMEOUT", "1800"))
+    # Default 3600s (1h) — real engine on 4 crypto syms × 18mo 3m bars needs ~45 min.
+    # Override with V8_BACKTEST_TIMEOUT env var.
+    _bt_timeout = int(os.environ.get("V8_BACKTEST_TIMEOUT", "3600"))
     result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=_bt_timeout)
     os.unlink(override_path)
     output = result.stdout + result.stderr
