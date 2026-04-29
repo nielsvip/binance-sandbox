@@ -555,15 +555,28 @@ def dashboard():
         if not files:
             continue
         pieces = []
+        newest_mtime = 0
         for f in files:
             try:
-                df = _pd2.read_csv(f, usecols=lambda c: c in ["pool_sharpe", "acc_gain_pct", "max_dd_pct", "trades", "symbols_used"])
+                df = _pd2.read_csv(f, usecols=lambda c: c in [
+                    "pool_sharpe", "sharpe", "acc_gain_pct", "accumulated_gain_pct",
+                    "max_dd_pct", "trades", "wins", "losses", "wr", "avg_pnl_pct",
+                    "symbols_used", "syms_with_sharpe", "elapsed", "elapsed_s",
+                    "gain_vs_bh", "reliable", "n_years", "start_date"
+                ])
                 pieces.append(df)
+                try:
+                    newest_mtime = max(newest_mtime, os.path.getmtime(f))
+                except Exception:
+                    pass
             except Exception:
                 pass
         if not pieces:
             continue
         combined = _pd2.concat(pieces, ignore_index=True)
+        # Normalize column aliases — autonomous_search uses acc_gain_pct, v8_quick uses accumulated_gain_pct
+        if "accumulated_gain_pct" in combined.columns and "acc_gain_pct" not in combined.columns:
+            combined["acc_gain_pct"] = combined["accumulated_gain_pct"]
         combined["pool_sharpe"] = _pd2.to_numeric(combined["pool_sharpe"], errors="coerce")
         combined = combined.dropna(subset=["pool_sharpe"])
         combined = combined[combined["pool_sharpe"] > 0]
@@ -575,18 +588,51 @@ def dashboard():
         best = combined.nlargest(3, "pool_sharpe")
         top_sharpe = combined["pool_sharpe"].max()
         swarm_bests.append(top_sharpe)
-        rows_h = "".join(
-            f'<tr><td style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
-            f'<td>{r.get("acc_gain_pct",0):.0f}%</td>'
-            f'<td>{r.get("max_dd_pct",0):.1f}%</td>'
-            f'<td>{int(r.get("trades",0))}</td>'
-            f'<td>{int(r.get("symbols_used",0))}</td></tr>'
-            for _, r in best.iterrows()
-        )
+        # Age in minutes since newest CSV mtime
+        age_min = int((time.time() - newest_mtime) / 60) if newest_mtime else 0
+        # n_years inference: prefer column, else default 4 (full 4yr Tier-3)
+        def _infer_years(r):
+            try:
+                return float(r["n_years"]) if "n_years" in r and not _pd2.isna(r["n_years"]) else 4.0
+            except Exception:
+                return 4.0
+        rows_h = ""
+        for _, r in best.iterrows():
+            tr = int(r.get("trades", 0) or 0)
+            ng = float(r.get("acc_gain_pct", 0) or 0)
+            ns = int(r.get("symbols_used", 0) or 0)
+            ny = _infer_years(r)
+            avg_gain_trade = (ng / tr) if tr > 0 else 0.0
+            gain_per_yr = (ng / ny) if ny > 0 else 0.0
+            gain_sym_yr = (ng / max(1, ns) / ny) if ny > 0 else 0.0
+            sym_sharpe = float(r.get("sharpe", 0) or 0) if "sharpe" in r else 0.0
+            wr_v = float(r.get("wr", 0) or 0) if "wr" in r else 0.0
+            rel = r.get("reliable", "")
+            rel_tag = '<span title="reliable=1: passed min-trades / consistency check" style="color:#4caf50;">✓</span>' if str(rel) in ("1", "True", "1.0") else ('<span title="reliable=0: passed but failed consistency check — treat with skepticism" style="color:#ff9800;">!</span>' if rel != "" else '')
+            rows_h += (
+                f'<tr>'
+                f'<td title="pool_sharpe: mean(all_trade_returns)/std across all trades pooled. CANONICAL Sharpe per CLAUDE.md." style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
+                f'<td title="sym_sharpe: mean of per-symbol Sharpes (capped ±20). Diagnostic only — lies when trade counts vary." style="color:#bb86fc">{sym_sharpe:.3f}</td>'
+                f'<td title="acc_gain_pct: sum of all per-trade %-returns across all symbols.">{ng:.0f}%</td>'
+                f'<td title="avg_gain_trade = acc_gain_pct / trades. Per-trade % return.">{avg_gain_trade:.3f}%</td>'
+                f'<td title="gain_per_yr = acc_gain_pct / n_years. Time-window neutral.">{gain_per_yr:.0f}%</td>'
+                f'<td title="gain_sym_yr = acc_gain_pct / n_syms / n_years. Cross-machine comparable unit.">{gain_sym_yr:.2f}%</td>'
+                f'<td title="max_dd_pct: peak-to-trough equity DD as % of starting capital.">{float(r.get("max_dd_pct",0) or 0):.1f}%</td>'
+                f'<td title="wr: win rate %. Together with avg_gain_trade gives expectancy = wr*avg_win - (1-wr)*avg_loss.">{wr_v:.1f}%</td>'
+                f'<td title="trades: total round-trip count across all syms. <30/sym = small-sample lies.">{tr}</td>'
+                f'<td title="symbols_used: distinct syms that produced at least 1 trade. <48 = below CLAUDE.md min-sample floor.">{ns}</td>'
+                f'<td title="n_years: time window of the test. <1yr = below floor.">{ny:.1f}y</td>'
+                f'<td>{rel_tag}</td>'
+                f'</tr>'
+            )
+        timespan_note = "n_years: column present" if "n_years" in combined.columns else "n_years: assumed 4 (column missing — write n_years to CSV in your sweep runner)"
         swarm_rows_html += (
-            f'<div style="margin-bottom:8px">'
-            f'<b>✅ {label}</b> — best=<span style="color:#4caf50">{top_sharpe:.4f}</span>'
-            f'<table style="font-size:11px;margin-top:3px"><tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th><th>Syms</th></tr>{rows_h}</table>'
+            f'<div style="margin-bottom:12px">'
+            f'<b>✅ {label}</b> — best pool_sharpe=<span style="color:#4caf50">{top_sharpe:.4f}</span> '
+            f'<span style="color:#888;font-size:10px;" title="Minutes since the newest CSV in this group was last modified.">({age_min}m ago, {timespan_note})</span>'
+            f'<table style="font-size:11px;margin-top:3px;border-collapse:collapse;">'
+            f'<tr style="background:#1a2330;color:#fff;"><th title="pool_sharpe — canonical Sharpe">pool</th><th title="sym_sharpe — diagnostic, per-sym avg">sym</th><th title="acc_gain_pct">Gain%</th><th title="acc_gain_pct/trades">/trade%</th><th title="acc_gain_pct/n_years">/yr%</th><th title="acc_gain_pct/n_syms/n_years">/sym/yr%</th><th title="max drawdown">DD%</th><th title="win rate">WR</th><th title="trade count">Trades</th><th title="symbols">Syms</th><th title="years">Span</th><th title="reliable flag">Rel</th></tr>'
+            f'{rows_h}</table>'
             f'</div>'
         )
 
@@ -594,10 +640,14 @@ def dashboard():
     swarm_block = f"""
     <div style="background:#0d1f12; border:2px solid #4caf50; border-radius:8px; padding:16px; margin-bottom:20px">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-            <h2 style="margin:0; color:#4caf50">🔬 Live Swarm Results — Best Sharpe: {overall_best:.4f}</h2>
+            <h2 style="margin:0; color:#4caf50" title="Best pool_sharpe across all swarm result groups (Local + S1/S2 cache). Apples-to-apples only when groups use same sym scope + time window — see /sweeps for canonical metric definitions.">🔬 Live Swarm Results — Best pool_sharpe: {overall_best:.4f}</h2>
             <a href="/swarm" style="background:#4caf50; color:#000; padding:6px 14px; border-radius:4px; text-decoration:none; font-weight:bold">Full Swarm View →</a>
         </div>
-        <p style="color:#888; margin:0 0 10px 0; font-size:11px">Stage-1 (small sym): screening only. ✅ = validated (≥12 sym). Run <code>./sync_swarm_cache.sh</code> to refresh S1/S2 cache.</p>
+        <p style="color:#aaa; margin:0 0 10px 0; font-size:11px" title="Stage-1 = small-sym screening (NOT decision-material). ✅ = validated (≥12 sym). The sweep_cache directory is populated by ./sync_swarm_cache.sh — run periodically to pull S1/S2 latest.">
+          Stage-1 (small sym): screening only. ✅ = validated (≥12 sym). Run <code>./sync_swarm_cache.sh</code> to refresh S1/S2 cache.
+          <br><b style="color:#ff9800;">⚠ Apples-vs-pears warning:</b>
+          this panel shows the best pool_sharpe per group, but groups can have different sym scopes / time windows / NOLOSS settings. A 9.x value on 4 syms × 4 months ≠ a 1.x value on 48 syms × 4yr. Always check Syms + Span columns AND prefer pool_sharpe over sym_sharpe per CLAUDE.md.
+        </p>
         {swarm_rows_html or '<div style="color:#888">No swarm data found — check data/autonomous/ and data/swarm_cache/</div>'}
     </div>
     """
@@ -1862,30 +1912,122 @@ def sweeps_page():
     s1 = _sweep_status_for("s1-int", "crypto")
     s2 = _sweep_status_for("s2-int", "tradier")
 
-    def _opts(arr, sel="wt_dc_full"):
-        return "".join(f'<option value="{t}"' + (' selected' if t == sel else '') + f'>{t}</option>' for t in arr)
+    # Per-tier tooltips — shown on hover so any human/agent knows what each tier does without reading source.
+    TIER_DESCRIPTIONS = {
+        "wt_dc_full": "Full WT_DC + EXIT_SCORER + DELTA_EXIT sweep, 2304 configs. Anchored against 1.23 baseline. Mode-agnostic — runs on whichever server you launch from.",
+        "mega_tradier_v8": "Tradier mega tier — 192 configs, le_dynamic_v2 winner params fixed, sweeps RZ_EXIT/EXIT_SCORER/DC_RECOVERY on top.",
+        "mega_crypto_v8": "Crypto mega tier — broad sweep over WT/EXIT/RZ/DC primitives.",
+        "mega_crypto_v8_a1234": "Crypto mega tier variant — alternative kernel for ablation.",
+        "mega_tradier_v8_a134": "Tradier mega tier variant — alternative kernel.",
+        "mega_tradier_v8_focused": "Tradier follow-up to mega_v8: 48 configs on full 128-symbol set, fixed winner params + 5 open questions.",
+        "rz_exit_sweep": "Isolate RZ_EXIT + EXIT_SCORER impact across modes — 432 combos. K_EXIT 70-95, BB 0.80-0.90.",
+        "rz_breakout_tradier": "RZ breakout entry — price exits extreme BB zone as entry signal. Paired with NO_LOSS guard.",
+        "rz_noloss_mode": "Sweep RZ_BREAKOUT_NOLOSS_MODE: bar_structure / dc_low4_base / dc_low_base / dc_low4_15m.",
+        "stock_v2": "Stock mega — currently active on S2 watchdog. CT_DC_CROSSOVER_SKIP / CT_WT_VELOCITY_GATE / RZ_EXIT / SRS combinations.",
+        "stock_dc_hunt": "Stock DC_LOW exit hunt — large grid on 262 stock symbols.",
+        "stock_dc_wide": "Stock DC widened — 1,152 configs on full 262 stock universe.",
+        "exit_wt_audit": "Audit exit-WT primitives — measures incremental contribution of each exit signal.",
+        "exit_wt_phase2": "Phase-2 follow-up to exit_wt_audit — narrowed configs.",
+        "exit_wt_48sym": "Exit-WT validation on full 48-sym crypto / 48-sym tradier scope.",
+        "hunt_crypto": "Crypto hunt sweep — broad search.",
+        "hunt_stock": "Stock hunt sweep — broad search.",
+        "hedge_wt_kill": "HEDGE_KILL_REVERSING_WT — when to close losing hedge based on WT alignment count.",
+        "ratio_sentiment_crypto": "Crypto ratio rebalance + sentiment knobs.",
+        "ratio_sentiment_tradier": "Tradier equivalent of ratio_sentiment_crypto.",
+        "local_extremes_tradier": "LOCAL_EXTREMES_SCORER for tradier — pivot+extreme entry.",
+        "local_extremes_tradier_scorer": "LE scorer subgrid — score thresholds.",
+        "local_extremes_tradier_validate": "LE validation on full universe.",
+        "le_dynamic_tradier": "LE dynamic counter-exit — DYNAMIC_SCORE_COUNTER_EXIT_ENABLED.",
+        "le_dynamic_tradier_v2": "LE dynamic v2 — refined version after first-pass winners.",
+        "le_partial_exit_tradier": "LE + partial-exit (PE_REM_TFS, PE_FRAC).",
+        "le_partial_exit_crypto": "LE + partial-exit on crypto.",
+        "dc_low4_bypass_tradier": "DC_LOW4_BYPASS_NOLOSS_ENABLED — verdict was paper-cuts but tradier validate run.",
+        "dc_low4_bypass_crypto": "Crypto equivalent of dc_low4_bypass_tradier.",
+        "dc_low_tf_tradier": "DC_LOW timeframe sweep on tradier — 9 configs × 262 syms.",
+        "dc_low_tf_crypto": "Crypto equivalent.",
+        "dc_breakout_failed_tradier": "DC_BREAKOUT_FAILED entry path on tradier.",
+        "dc_breakout_failed_crypto": "DC_BREAKOUT_FAILED on crypto.",
+        "all_tf_brake_tradier": "ALL_TF_BRAKE_ENABLED — verdict: never fires (tradier: no W/M).",
+        "all_tf_brake_crypto": "ALL_TF_BRAKE on crypto — verdict: redundant with WT_EXIT_MIN_TFS, do NOT enable.",
+        "stock_60min_reentry": "60-minute reentry window for stocks.",
+        "stock_wt_d_aug": "Stock WT-Daily augmentation entry.",
+        "stock_wt_d_aug_pt": "Same + PT (profit-target) variant.",
+        "crypto_wt_d_4h_aug": "Crypto WT-D + 4h augmentation.",
+        "crypto_vel_sweep": "Crypto velocity-threshold sweep (DELTA_EXIT_VEL_MIN_DECAY).",
+        "stock_exit_v1": "Stock exit primitives v1.",
+        "crypto_exit_v1": "Crypto exit primitives v1.",
+        "le_full_tradier": "Full LE configuration on tradier.",
+        "le_k1h_rising": "LE with K_1h rising filter.",
+        "crypto_validate_top": "Validate top-N crypto winners on full sym scope.",
+        "exit_tuning": "Exit-side parameter tuning grid.",
+        "exit_decision_tradier": "Tradier exit-decision sweep.",
+        "exit_decision_crypto": "Crypto exit-decision sweep.",
+        "entry_gates": "Entry-gate sweep — RSI / Stoch / MFI thresholds.",
+        "tradier_core": "Core tradier knob set — small grid.",
+        "v3_core": "V3 strategy core sweep.",
+        "breakout_multi_lung": "BREAKOUT_MULTI_LUNG — multi-confirmation breakout entry on crypto.",
+        "breakout_multi_lung_tradier": "BREAKOUT_MULTI_LUNG on tradier.",
+        "sharpe3_tradier": "Push tradier above Sharpe 3 (legacy).",
+        "reentry_sharpe_push": "Reentry-side knob sweep aiming Sharpe push.",
+        "reentry_sharpe_push_wide": "Wider grid version.",
+        "indicator_audit": "Indicator-by-indicator on/off audit.",
+        "full": "Full grid (large).",
+        "baseline255_ablation": "Ablate each switch from the 255-symbol baseline. 1-knob removal study.",
+        "stock_phase2": "Stock phase-2 follow-up.",
+        "stock_phase3": "Stock phase-3 follow-up.",
+        "stock_phase4": "Stock phase-4 follow-up.",
+        "stock_phase5": "Stock phase-5 follow-up.",
+        "stock_phase6": "Stock phase-6 follow-up.",
+        "stock_phase7": "Stock phase-7 follow-up.",
+        "stock_sweep_v1": "Stock sweep v1.",
+        "stock_v3": "Stock v3.",
+        "stock_v4": "Stock v4.",
+        "stock_v5": "Stock v5.",
+        "stock_v6": "Stock v6.",
+        "stock_v7": "Stock v7.",
+        "stock_champion": "Stock champion config validation.",
+        "stock_validate": "Stock validation pass.",
+        "stock_validate2": "Stock validation pass 2.",
+        "mega": "Original mega tier.",
+        "mega_v2": "Mega v2.",
+        "mega_v3": "Mega v3.",
+        "mega_v4": "Mega v4.",
+        "mega_v5": "Mega v5.",
+        "mega_v6": "Mega v6.",
+        "mega_v7": "Mega v7.",
+        "mega_stock": "Mega stock variant.",
+        "stock_mega": "Stock mega variant.",
+        "le_dynamic_tradier_validate": "Validate LE dynamic winners on full universe.",
+        "le_dynamic_tradier_v2_validate": "Validate LE v2 winners on full universe.",
+        "le_dynamic_tradier_v2_validate_ea": "Validate LE v2 winners + EA early-abort knobs.",
+        "le_partial_exit_tradier_validate": "Validate LE+PE tradier winners.",
+        "le_partial_exit_crypto_validate": "Validate LE+PE crypto winners.",
+    }
 
-    msg_html = f'<div style="background:#fffbe6;border:2px solid #d4a000;padding:8px 12px;margin:10px 0;font-weight:600;color:#664d00;">{html.escape(msg)}</div>' if msg else ""
+    def _opts(arr, sel="wt_dc_full"):
+        return "".join(f'<option value="{t}" title="{html.escape(TIER_DESCRIPTIONS.get(t, "(no description — see v8_quick_sweep.py docstring)"))}"' + (' selected' if t == sel else '') + f'>{t}</option>' for t in arr)
+
+    msg_html = f'<div style="background:#3d2c00;border:2px solid #d4a000;padding:8px 12px;margin:10px 0;font-weight:600;color:#ffe082;">{html.escape(msg)}</div>' if msg else ""
 
     def _status_card(label, host, mode, st):
         ok = "✅" if st["nproc"] >= 3 and st["wrong_mode_n"] == 0 else "❌"
-        bad_warn = f'<div style="color:#b00020;font-weight:600;">⚠ WRONG-MODE procs detected: {st["wrong_mode_n"]}</div>' if st["wrong_mode_n"] > 0 else ""
-        return f'''<div style="border:2px solid #444;border-radius:6px;padding:12px;margin:8px;background:#fafafa;flex:1;min-width:340px;">
-  <h3 style="margin-top:0;">{ok} {label} ({host} / --mode {mode})</h3>
-  <div><b>{st["nproc"]}</b> sweep processes alive (need ≥3)</div>
+        bad_warn = f'<div style="color:#ff6b6b;font-weight:600;">⚠ WRONG-MODE procs detected: {st["wrong_mode_n"]}</div>' if st["wrong_mode_n"] > 0 else ""
+        return f'''<div style="border:2px solid #4caf50;border-radius:6px;padding:12px;margin:8px;background:#1a2330;color:#e8e8e8;flex:1;min-width:340px;">
+  <h3 style="margin-top:0;color:#4caf50;" title="Liveness state for {host} ({mode} mode). ✅ = ≥3 procs AND zero wrong-mode procs. ❌ = anything else.">{ok} {label} ({host} / --mode {mode})</h3>
+  <div title="Number of v8_quick_sweep processes alive in this mode on this server. Includes parent + workers. Need ≥3 for a healthy sweep (1 parent + 2+ workers)."><b>{st["nproc"]}</b> sweep processes alive (need ≥3)</div>
   {bad_warn}
-  <details><summary>processes</summary><pre style="font-size:11px;background:#eee;padding:6px;overflow-x:auto;">{html.escape(st["procs"] or "(none)")}</pre></details>
-  <div style="margin-top:6px;"><b>Newest CSV:</b><br><code style="font-size:11px;">{html.escape(st["csv"] or "(none)")}</code></div>
-  <div><b>Rows:</b> <code>{html.escape(st["csv_rows"] or "(none)")}</code></div>
+  <details><summary style="cursor:pointer;color:#aaa;">processes</summary><pre style="font-size:11px;background:#0d1117;padding:6px;overflow-x:auto;color:#9cdcfe;">{html.escape(st["procs"] or "(none)")}</pre></details>
+  <div style="margin-top:6px;" title="Most recently modified v8_quick_*.csv result file in /home/niels/binance-sandbox/data/sweep_results/. This is where this server is currently writing results."><b>Newest CSV:</b><br><code style="font-size:11px;color:#9cdcfe;">{html.escape(st["csv"] or "(none)")}</code></div>
+  <div title="Row count of the newest CSV. 0 = sweep started but hasn't completed any config yet (wait or investigate). Should grow steadily — refresh to see."><b>Rows:</b> <code style="color:#9cdcfe;">{html.escape(st["csv_rows"] or "(none)")}</code></div>
 </div>'''
 
     crypto_status = _status_card("S1 Crypto", "s1-int", "crypto", s1)
     tradier_status = _status_card("S2 Tradier", "s2-int", "tradier", s2)
 
     body = f'''
-<h2 style="margin-top:0;">🚀 Launch Sweep — One-click vectorized backtests</h2>
-<p style="color:#555;font-size:13px;">
-  Crypto sweeps run on <b>S1 only</b>. Tradier sweeps run on <b>S2 only</b>. Mode-mismatch is rejected.<br>
+<h2 style="margin-top:0;color:#bb86fc;" title="Vectorized backtests via v8_quick_engine. Each tier is a parameter grid defined in v8_quick_sweep.py. Hover any element for context.">🚀 Launch Sweep — One-click vectorized backtests</h2>
+<p style="color:#aaa;font-size:13px;">
+  Crypto sweeps run on <b>S1 only</b>. Tradier sweeps run on <b>S2 only</b>. Mode-mismatch is rejected at the launcher.<br>
   Launch button calls the canonical <code>start_{{crypto|tradier}}_sweeps.sh</code> launcher on the target server, which:
   ① kills any wrong-mode procs, ② nohup + disown launches the tier, ③ verifies T+30s liveness before returning.
 </p>
@@ -1898,47 +2040,60 @@ def sweeps_page():
 
 <div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:24px;">
 
-  <div style="flex:1;min-width:380px;border:2px solid #2a7;border-radius:8px;padding:18px;background:#f4fff4;">
-    <h3 style="margin-top:0;">🟢 Launch CRYPTO sweep on S1</h3>
+  <div style="flex:1;min-width:380px;border:2px solid #2a7;border-radius:8px;padding:18px;background:#0d1f12;color:#e8e8e8;">
+    <h3 style="margin-top:0;color:#4caf50;" title="Crypto sweeps run on S1 (157.180.125.52). The launcher refuses if invoked on S2.">🟢 Launch CRYPTO sweep on S1</h3>
     <form method="POST" action="/sweeps/launch" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="hidden" name="mode" value="crypto">
-      <select name="tier" style="font-size:14px;padding:6px;flex:1;min-width:200px;">
+      <select name="tier" title="Hover any option to see what that tier sweeps. Default wt_dc_full = full WT_DC + EXIT_SCORER + DELTA_EXIT, 2304 configs." style="font-size:14px;padding:6px;flex:1;min-width:200px;background:#1a2330;color:#e8e8e8;border:1px solid #4caf50;">
         {_opts(crypto_tiers)}
       </select>
-      <button type="submit" style="background:#2a7;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S1</button>
+      <button type="submit" title="POST /sweeps/launch with mode=crypto. Routes to S1 via SSH, calls start_crypto_sweeps.sh, verifies liveness for 30s." style="background:#2a7;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S1</button>
     </form>
     <form method="POST" action="/sweeps/stop" style="margin-top:8px;">
       <input type="hidden" name="mode" value="crypto">
-      <button type="submit" onclick="return confirm('Kill ALL crypto v8_quick_sweep procs on S1?');" style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S1 crypto sweeps</button>
+      <button type="submit" onclick="return confirm('Kill ALL crypto v8_quick_sweep procs on S1?');" title="pkill -f 'v8_quick_sweep.py.*--mode crypto' on S1. Use to clear stuck/duplicated runs before relaunching." style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S1 crypto sweeps</button>
     </form>
   </div>
 
-  <div style="flex:1;min-width:380px;border:2px solid #27a;border-radius:8px;padding:18px;background:#f4f8ff;">
-    <h3 style="margin-top:0;">🔵 Launch TRADIER sweep on S2</h3>
+  <div style="flex:1;min-width:380px;border:2px solid #27a;border-radius:8px;padding:18px;background:#0d1424;color:#e8e8e8;">
+    <h3 style="margin-top:0;color:#64b5f6;" title="Tradier sweeps run on S2 (204.168.181.211). The launcher refuses if invoked on S1.">🔵 Launch TRADIER sweep on S2</h3>
     <form method="POST" action="/sweeps/launch" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="hidden" name="mode" value="tradier">
-      <select name="tier" style="font-size:14px;padding:6px;flex:1;min-width:200px;">
+      <select name="tier" title="Hover any option to see what that tier sweeps." style="font-size:14px;padding:6px;flex:1;min-width:200px;background:#1a2330;color:#e8e8e8;border:1px solid #64b5f6;">
         {_opts(tradier_tiers)}
       </select>
-      <button type="submit" style="background:#27a;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S2</button>
+      <button type="submit" title="POST /sweeps/launch with mode=tradier. Routes to S2 via SSH, calls start_tradier_sweeps.sh, verifies liveness for 30s." style="background:#27a;color:white;font-size:14px;font-weight:600;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;">▶ Launch on S2</button>
     </form>
     <form method="POST" action="/sweeps/stop" style="margin-top:8px;">
       <input type="hidden" name="mode" value="tradier">
-      <button type="submit" onclick="return confirm('Kill ALL tradier v8_quick_sweep procs on S2?');" style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S2 tradier sweeps</button>
+      <button type="submit" onclick="return confirm('Kill ALL tradier v8_quick_sweep procs on S2?');" title="pkill -f 'v8_quick_sweep.py.*--mode tradier' on S2." style="background:#c33;color:white;font-size:12px;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">🛑 Stop all S2 tradier sweeps</button>
     </form>
   </div>
 
 </div>
 
-<h3 style="margin-top:30px;">📋 All available tiers ({len(tiers)} total)</h3>
-<details><summary>show full list (defined in <code>v8_quick_sweep.py:TIER_MAP</code>)</summary>
-<pre style="background:#eee;padding:8px;font-size:11px;max-height:200px;overflow:auto;">{html.escape(", ".join(tiers))}</pre>
+<h3 style="margin-top:30px;color:#ffa726;" title="The v8_quick_sweep.py:TIER_MAP dict registers every available tier. Hover items in the dropdowns above for descriptions; click 'show full list' for a flat enumeration.">📋 All available tiers ({len(tiers)} total)</h3>
+<details><summary style="cursor:pointer;color:#aaa;">show full list (defined in <code>v8_quick_sweep.py:TIER_MAP</code>)</summary>
+<pre style="background:#0d1117;padding:8px;font-size:11px;max-height:200px;overflow:auto;color:#9cdcfe;">{html.escape(", ".join(tiers))}</pre>
 </details>
 
-<p style="color:#777;font-size:12px;margin-top:24px;">
-  Page auto-refreshes every 30s. To check liveness via shell:<br>
-  <code>ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh status'</code><br>
-  <code>ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh status'</code>
+<details style="margin-top:20px;"><summary style="cursor:pointer;color:#aaa;font-weight:600;">📖 Metric definitions (canonical, per CLAUDE.md)</summary>
+<table style="background:#0d1117;color:#e8e8e8;font-size:12px;border-collapse:collapse;width:100%;margin-top:6px;">
+<tr style="background:#1a2330;"><th style="padding:6px;text-align:left;">Name</th><th style="padding:6px;text-align:left;">Formula</th><th style="padding:6px;text-align:left;">What it tells you</th></tr>
+<tr><td style="padding:6px;color:#4caf50;"><b>pool_sharpe</b></td><td style="padding:6px;"><code>mean(all_trade_returns) / std(all_trade_returns)</code> across ALL trades pooled</td><td style="padding:6px;">CANONICAL Sharpe. Per-trade quality. Compare configs by this. Threshold: ≥1.0 to be non-trash.</td></tr>
+<tr><td style="padding:6px;color:#bb86fc;"><b>sym_sharpe</b> (aka <code>sharpe</code> in v8 CSV)</td><td style="padding:6px;"><code>mean(per-symbol Sharpes)</code>, capped ±20</td><td style="padding:6px;">DIAGNOSTIC ONLY. Lies when trade counts vary across syms. Use to check consistency, not to rank.</td></tr>
+<tr><td style="padding:6px;color:#ff5252;"><b>sharpe_annual</b></td><td style="padding:6px;"><code>sharpe_per_trade × sqrt(trades_per_year)</code></td><td style="padding:6px;">⛔ BANNED. Frequency-gaming. The "frozen 2.52 baseline" lie was sharpe_annual.</td></tr>
+<tr><td style="padding:6px;color:#ffa726;"><b>avg_gain_trade</b></td><td style="padding:6px;"><code>acc_gain_pct / trades</code></td><td style="padding:6px;">Per-trade % return. Trade-count neutral. Mandatory in every report.</td></tr>
+<tr><td style="padding:6px;color:#ffa726;"><b>gain_per_yr</b></td><td style="padding:6px;"><code>acc_gain_pct / n_years</code></td><td style="padding:6px;">Annual return. Time-window neutral.</td></tr>
+<tr><td style="padding:6px;color:#ffa726;"><b>gain_sym_yr</b></td><td style="padding:6px;"><code>acc_gain_pct / n_syms / n_years</code></td><td style="padding:6px;">Cross-machine comparable unit.</td></tr>
+<tr><td style="padding:6px;"><b>max_dd_pct</b></td><td style="padding:6px;">Peak-to-trough equity DD as % of starting capital</td><td style="padding:6px;">Mandatory in every summary. Worst-the-account-ever-looked.</td></tr>
+<tr><td style="padding:6px;"><b>min sample</b></td><td style="padding:6px;">≥48 syms (crypto) / ≥100 syms (tradier), >1yr, ≥30 trades/sym</td><td style="padding:6px;">Below this floor, results are NOT decision-material — diagnostic only.</td></tr>
+</table></details>
+
+<p style="color:#888;font-size:12px;margin-top:24px;">
+  Page auto-refreshes every 30s. Equivalent shell commands:<br>
+  <code style="color:#9cdcfe;">ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh status'</code><br>
+  <code style="color:#9cdcfe;">ssh s2-int 'bash /home/niels/binance-sandbox/start_tradier_sweeps.sh status'</code>
 </p>
 <meta http-equiv="refresh" content="30">
 '''

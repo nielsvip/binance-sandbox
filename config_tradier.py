@@ -1555,6 +1555,11 @@ class TradierConfig:
     STALE_ORDER_AUDIT_ENABLED: bool = True
     STALE_ORDER_AUDIT_EVERY_N_CYCLES: int = 2  # 30s × 2 = 60s
     STALE_ORDER_AUDIT_TOLERANCE_SHARES: float = 1.0  # allow off-by-one rounding
+    # 2026-04-29 USER ABSOLUTE: force-refresh position from API at decision time.
+    # Default 15s API sync was leaving 10-15s windows where decisions used stale positionAmt.
+    # If cached state > TTL seconds old when queue_trade_action is called → force refresh BEFORE queueing.
+    POSITION_FORCE_REFRESH_ON_TRADE: bool = True
+    POSITION_FRESHNESS_TTL_SEC: float = 10.0
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

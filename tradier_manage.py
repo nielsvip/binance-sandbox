@@ -1956,6 +1956,35 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
+        # 2026-04-29 USER ABSOLUTE: force-refresh position from API when cached state is stale.
+        # Today user observed system trading on stale positionAmt (PYPL Sell 81 vs own 38). The
+        # 15s API sync loop is too slow when user manually trades + system reacts within the same
+        # window. Refresh BEFORE the decision is made so qty/gain decisions match broker reality.
+        try:
+            _pf_ttl = float(getattr(config, 'POSITION_FRESHNESS_TTL_SEC', 10.0))
+            _pf_pos = trade_manager.position_manager.get_position(position_key) if trade_manager.position_manager else None
+            _pf_last = getattr(_pf_pos, 'last_updated', None) if _pf_pos else None
+            _pf_age = 9999.0
+            if _pf_last:
+                try:
+                    _pf_dt = safe_datetime(_pf_last) if not isinstance(_pf_last, datetime) else _pf_last
+                    _pf_age = (datetime.now(timezone.utc) - _pf_dt).total_seconds()
+                except Exception: pass
+            if _pf_age > _pf_ttl and bool(getattr(config, 'POSITION_FORCE_REFRESH_ON_TRADE', True)):
+                _ak2, _sym2, _side2 = parse_position_key(position_key)
+                _old_amt = abs(float(getattr(_pf_pos, 'positionAmt', 0) or 0)) if _pf_pos else 0.0
+                try:
+                    _pm = trade_manager.position_manager
+                    if _pm and hasattr(_pm, 'fetch_positions_from_api'):
+                        await _pm.fetch_positions_from_api(account_key=account_key)
+                        _pf_pos2 = _pm.get_position(position_key)
+                        _new_amt = abs(float(getattr(_pf_pos2, 'positionAmt', 0) or 0)) if _pf_pos2 else 0.0
+                        if abs(_new_amt - _old_amt) > 0.5:
+                            logger.warning(f"🔄 [POSITION_FORCE_REFRESH] {position_key}: stale {_pf_age:.1f}s — was positionAmt={_old_amt} now={_new_amt}. Decision now uses fresh state.")
+                except Exception as _pre:
+                    logger.warning(f"[POSITION_FORCE_REFRESH_ERR] {position_key}: {_pre}")
+        except Exception as _pfe:
+            logger.debug(f"[POSITION_FORCE_REFRESH_OUTER] {position_key}: {_pfe}")
         # 2026-04-27 user rule: stop "headless-chicken" duplicate fires. Same
         # (position_key, action) within cooldown → refused. Catches MSTR REBALANCE
         # loop and any other path that re-fires after a rejected/invalid order.
@@ -2101,7 +2130,7 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             if getattr(config, 'LS_RATIO_ENFORCE_TRADIER', False) and trade_manager.position_manager:
                 _lv2 = 0.0; _sv2 = 0.0
                 for _pk, _p in trade_manager.position_manager.positions.items():
-                    _amt = abs(float(getattr(_p, 'positionAmt', 0) or getattr(_p, 'quantity', 0)))
+                    _amt = abs(float(getattr(_p, 'positionAmt', 0) or 0))
                     if _amt <= 0: continue
                     _px = float(getattr(_p, 'mark_price', 0) or getattr(_p, 'entry_price', 0))
                     if _px <= 0: continue
@@ -2235,7 +2264,7 @@ async def process_symbols_periodically(order_queue: OrderQueue, trade_manager, a
             # Open positions — always included every 30s
             open_keys = [
                 pk for pk, pos in trade_manager.position_manager.positions.items()
-                if pk.startswith(f"{account_key}:") and abs(getattr(pos, 'positionAmt', getattr(pos, 'quantity', 0))) > 0
+                if pk.startswith(f"{account_key}:") and abs(getattr(pos, 'positionAmt', 0) or 0) > 0
             ]
 
             # Candidate keys (non-open) — every 90s only
@@ -5769,7 +5798,7 @@ class StockStrategy:
             if current_price <= 0: return False, "", 0.0, 0.0
 
             is_long = getattr(position, 'position_side', 'LONG') == 'LONG'
-            current_qty = abs(float(getattr(position, 'quantity', 0) or getattr(position, 'positionAmt', 0) or 0))
+            current_qty = abs(float(getattr(position, 'positionAmt', 0) or 0))
             current_value = current_qty * current_price
             entry_price = float(getattr(position, 'entry_price', 0) or 0)
             if entry_price > 0:
@@ -7850,8 +7879,20 @@ class TradierTradeManager:
                 order_id = order_info.get('id')
                 
                 if not order_id or order_info.get('status') == 'rejected':
-                    logger.error(f"❌ Rejection on {symbol}. Reason: {order_res.get('errors')}")
+                    _rej_errs = order_res.get('errors')
+                    logger.error(f"❌ Rejection on {symbol} ({account_key} {action} {side} qty={remaining_to_fill}). Reason: {_rej_errs}")
                     self.rejection_cooldowns[symbol] = time.time() + 900
+                    # 2026-04-29 USER ABSOLUTE: read the rejection — broker truth often diverges from our state.
+                    # Force a position refresh from API so next decision uses the broker's reality.
+                    try:
+                        if self.position_manager and hasattr(self.position_manager, 'fetch_positions_from_api'):
+                            await self.position_manager.fetch_positions_from_api(account_key=account_key)
+                            _refr_pk = construct_position_key(account_key, symbol, position_side or "LONG")
+                            _refr_pos = self.position_manager.get_position(_refr_pk)
+                            _refr_amt = abs(float(getattr(_refr_pos, 'positionAmt', 0) or 0)) if _refr_pos else 0.0
+                            logger.warning(f"🔄 [REJECTION_REFRESH] {account_key}:{symbol}_{position_side}: post-rejection sync — positionAmt={_refr_amt}. Errors: {_rej_errs}")
+                    except Exception as _rrf_e:
+                        logger.error(f"[REJECTION_REFRESH_ERR] {account_key}:{symbol}: {_rrf_e}")
                     return order_res
 
                 # Wait short burst to see if it fills
@@ -8478,7 +8519,7 @@ class TradierTradeManager:
                 _long_val = 0.0
                 _short_val = 0.0
                 for _pk_s, _p_s in _pm.get_positions_by_account(account_key).items():
-                    _qty_s = abs(float(getattr(_p_s, 'positionAmt', 0) or getattr(_p_s, 'quantity', 0) or 0))
+                    _qty_s = abs(float(getattr(_p_s, 'positionAmt', 0) or 0))
                     if _qty_s == 0:
                         continue
                     _pr_s = float(getattr(_p_s, 'current_price', 0) or getattr(_p_s, 'entry_price', 0) or current_price)
@@ -10263,7 +10304,7 @@ class TradierTradeManager:
                 if self.position_manager and self.order_queue:
                     position_keys = []
                     for pk, pos in self.position_manager.positions.items():
-                        if pos and abs(getattr(pos, 'quantity', getattr(pos, 'positionAmt', 0))) > 0:
+                        if pos and abs(getattr(pos, 'positionAmt', 0) or 0) > 0:
                             if pk.startswith(f"{account_key}:"):
                                 position_keys.append(pk)
 
@@ -12826,7 +12867,7 @@ async def tradier_performance_report_loop(trade_manager):
             now_str = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
             open_symbols = set()
             for pk, pos in trade_manager.positions.items():
-                if pos and abs(getattr(pos, 'positionAmt', 0) or getattr(pos, 'quantity', 0) or 0) > 0:
+                if pos and abs(getattr(pos, 'positionAmt', 0) or 0) > 0:
                     sym = pk.split(':')[-1].rsplit('_', 1)[0] if ':' in pk else pk.rsplit('_', 1)[0]
                     open_symbols.add(sym)
             lines = [f"TRADIER PERFORMANCE REPORT — {now_str}", f"{'=' * 80}", f"Total: {len(stats)} symbols | A={len(tiers['A'])} B={len(tiers['B'])} C={len(tiers['C'])}", ""]
@@ -12862,7 +12903,7 @@ async def tradier_outlier_scan_loop(trade_manager):
             for pk, pos in trade_manager.positions.items():
                 if not pos:
                     continue
-                amt = abs(getattr(pos, 'positionAmt', 0) or getattr(pos, 'quantity', 0) or 0)
+                amt = abs(getattr(pos, 'positionAmt', 0) or 0)
                 if amt == 0:
                     continue
                 total_positions += 1
@@ -12928,7 +12969,7 @@ async def tradier_capital_reallocation_loop(trade_manager):
             for pk, pos in trade_manager.positions.items():
                 if not pos:
                     continue
-                amt = abs(getattr(pos, 'positionAmt', 0) or getattr(pos, 'quantity', 0) or 0)
+                amt = abs(getattr(pos, 'positionAmt', 0) or 0)
                 if amt == 0:
                     continue
                 mark = safe_fetch_float(getattr(pos, 'mark_price', 0) or getattr(pos, 'current_price', 0), 0.0)
