@@ -11242,6 +11242,39 @@ def check_stdev_breakout_exit(symbol: str, is_long: bool, indicators: dict) -> O
     return None
 
 
+def detect_stdev_bounce(symbol: str, is_long: bool, indicators: dict, metrics: dict) -> Optional[dict]:
+    """STDEV_BOUNCE: entry when price touches/crosses lower band (LONG) or upper band (SHORT)."""
+    if not getattr(config, "STDEV_BOUNCE_ENABLED", False):
+        return None
+    htf_list = getattr(config, "STDEV_BOUNCE_HTF_LIST", ["D", "4h"])
+    pctb_long = float(getattr(config, "STDEV_BOUNCE_PCTB_LONG", 0.05))
+    pctb_short = float(getattr(config, "STDEV_BOUNCE_PCTB_SHORT", 0.95))
+    rvol_min = float(getattr(config, "STDEV_BOUNCE_RVOL_MIN", 1.2))
+    for tf in htf_list:
+        pctb = _get_bb_pctb(symbol, tf, indicators)
+        rvol = safe_fetch_float(indicators.get(f"relative_volume_{tf}", indicators.get("relative_volume_15m", 1.0)), 1.0)
+        if is_long and pctb <= pctb_long and rvol >= rvol_min:
+            return {"signal": "BUY", "phase": "BOUNCE", "htf": tf, "pctb": pctb, "rvol": rvol, "score": getattr(config, "STDEV_BOUNCE_SCORE", 22)}
+        if not is_long and pctb >= pctb_short and rvol >= rvol_min:
+            return {"signal": "SELL", "phase": "BOUNCE", "htf": tf, "pctb": pctb, "rvol": rvol, "score": getattr(config, "STDEV_BOUNCE_SCORE", 22)}
+    return None
+def check_stdev_reject_exit(symbol: str, is_long: bool, indicators: dict, current_gain: float) -> Optional[str]:
+    """STDEV_REJECT_EXIT: exit when price approached band (pctb >= zone) but retreated back below return threshold."""
+    if not getattr(config, "STDEV_REJECT_EXIT_ENABLED", False):
+        return None
+    tf = str(getattr(config, "STDEV_REJECT_EXIT_TF", "D"))
+    zone = float(getattr(config, "STDEV_REJECT_EXIT_ZONE", 0.80))
+    ret = float(getattr(config, "STDEV_REJECT_EXIT_RETURN", 0.65))
+    pctb_now = safe_fetch_float(indicators.get(f"bb_pct_b_{tf}", 0.5), 0.5)
+    pctb_prev = safe_fetch_float(indicators.get(f"bb_pct_b_{tf}_prev", pctb_now), pctb_now)
+    vel = safe_fetch_float(indicators.get("wt_velocity_1h", 0), 0)
+    if is_long and pctb_prev >= zone and pctb_now < ret and vel < 0:
+        logger.warning(f"[STDEV_REJECT_EXIT] {symbol} LONG: pctb {pctb_prev:.3f}→{pctb_now:.3f} zone={zone} vel={vel:.1f} g={current_gain:.2f}%")
+        return f"STDEV_REJECT_EXIT_{tf}_pctb={pctb_now:.3f}_g={current_gain:.2f}%"
+    if not is_long and pctb_prev <= (1.0 - zone) and pctb_now > (1.0 - ret) and vel > 0:
+        logger.warning(f"[STDEV_REJECT_EXIT] {symbol} SHORT: pctb {pctb_prev:.3f}→{pctb_now:.3f} zone={1.0-zone:.2f} vel={vel:.1f} g={current_gain:.2f}%")
+        return f"STDEV_REJECT_EXIT_{tf}_pctb={pctb_now:.3f}_g={current_gain:.2f}%"
+    return None
 async def get_ls_ratio(tracker_manager, account_key: str) -> tuple:
     """Returns (ratio, long_val, short_val) for account. ratio=long/short.
     Prefers live positions_service (fresh positionAmt/mark_price). Falls back to exit_candidates
@@ -13584,6 +13617,11 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if _sbe_reason:
                         hard_exit_reason = _sbe_reason
                         logger.warning(f"[STDEV_BREAKOUT_EXIT] {position_key}: {_sbe_reason} gain={current_gain:.2f}%")
+                # ═══ STDEV REJECT EXIT: pctb approached band but retreated (failed band approach) ═══
+                if not hard_exit_reason and not is_hedge:
+                    _sre_reason = check_stdev_reject_exit(symbol, is_long, indicators, current_gain)
+                    if _sre_reason:
+                        hard_exit_reason = _sre_reason
                 # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19, REORDERED 2026-04-26 to fire AFTER all technicals) ═══
                 # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
                 # MOVEUSDT: was +1.26% then bled to -13% because HTF_EXIT_VETO blocked breakeven exit.
@@ -14896,6 +14934,16 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             reason = f"STDEV_RETEST{_sb_result_standalone.get('retest_num', 0)}_{_sb_result_standalone['signal']}_{_sb_result_standalone.get('retest_tf', '?')}_pctb={_sb_pctb_s:.3f}"
                             rec = "GOOD_BUY" if _sb_result_standalone['signal'] == 'BUY' else "GOOD_SELL"
                         logger.warning(f"[STDEV_BREAKOUT] {position_key}: {_sb_phase_s} {_sb_result_standalone['signal']} pctb={_sb_pctb_s:.3f} score={score:.0f}")
+                # == STDEV BOUNCE: mean-reversion entry when price touches lower/upper band ==
+                if not should_trade and getattr(config, "STDEV_BOUNCE_ENABLED", False):
+                    _sboun_result = detect_stdev_bounce(symbol, is_long, indicators, metrics)
+                    if _sboun_result:
+                        should_trade = True
+                        score = max(score, _sboun_result['score'])
+                        _sboun_pctb = _sboun_result.get('pctb', 0)
+                        reason = f"STDEV_BOUNCE_{_sboun_result['signal']}_{_sboun_result.get('htf', '?')}_pctb={_sboun_pctb:.3f}_rvol={_sboun_result.get('rvol', 0):.1f}"
+                        rec = "STRONG_BUY" if _sboun_result['signal'] == 'BUY' else "STRONG_SELL"
+                        logger.warning(f"[STDEV_BOUNCE] {position_key}: {_sboun_result['phase']} {_sboun_result['signal']} pctb={_sboun_pctb:.3f} score={score:.0f}")
                 # == VOLUME SPIKE REVERSAL: fade panic selling / euphoria ==
                 if not should_trade and getattr(config, "VOL_SPIKE_ENABLED", False):
                     _vs_sym_key = f"{account_key}:{symbol}"

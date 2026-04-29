@@ -112,13 +112,15 @@ def parse_v8_result(output: str) -> dict | None:
     return None
 
 
-def run_single(param: str, value, mode: str, account: str, symbols: str, start: str, capital: float, label: str) -> dict:
-    override = {param: value}
+def run_single(param: str, value, mode: str, account: str, symbols: str, start: str, capital: float, label: str, base_override: dict | None = None) -> dict:
+    override = dict(base_override) if base_override else {}
+    override[param] = value
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tf:
         json.dump(override, tf)
         override_path = tf.name
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = override_path
+    env["TEST_RATE_GUARD_MIN_PER_DAY"] = "0"
     cmd = [
         PYTHON, "-u", str(ENGINE),
         "--mode", mode,
@@ -210,9 +212,10 @@ def run_item(item: dict, args) -> dict:
         return skipped
     mode = args.mode or inferred
     account = infer_account(mode)
-    symbols = args.symbols or (DEFAULT_SYMBOLS_TRADIER if mode == "tradier" else DEFAULT_SYMBOLS_CRYPTO)
-    start = args.start or (DEFAULT_START_TRADIER if mode == "tradier" else DEFAULT_START_CRYPTO)
+    symbols = args.symbols or item.get("symbols", "") or (DEFAULT_SYMBOLS_TRADIER if mode == "tradier" else DEFAULT_SYMBOLS_CRYPTO)
+    start = args.start or item.get("start_date", "") or (DEFAULT_START_TRADIER if mode == "tradier" else DEFAULT_START_CRYPTO)
     capital = args.capital
+    base_override = item.get("base_override", None)
 
     # Try to parse typed values (float, int, bool, str)
     def _parse(v):
@@ -241,8 +244,8 @@ def run_item(item: dict, args) -> dict:
         print(f"  [DRY-RUN] Would run A={value_a!r} vs B={value_b!r}")
         return {**item, "status": "dry_run"}
 
-    result_a = run_single(param, value_a, mode, account, symbols, start, capital, "A")
-    result_b = run_single(param, value_b, mode, account, symbols, start, capital, "B")
+    result_a = run_single(param, value_a, mode, account, symbols, start, capital, "A", base_override=base_override)
+    result_b = run_single(param, value_b, mode, account, symbols, start, capital, "B", base_override=base_override)
 
     # Determine winner
     sharpe_a = result_a["sharpe"]

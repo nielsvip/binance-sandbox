@@ -58,21 +58,28 @@ def _ts_to_unix(s: Optional[str]) -> Optional[int]:
         return None
 
 
+def _no_cache(resp):
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
 @app.route("/")
 def index():
-    return send_from_directory(app.static_folder, "chart.html")
+    return _no_cache(send_from_directory(app.static_folder, "chart.html"))
 
 
 @app.route("/heatmap")
 @app.route("/heatmap.html")
 def heatmap_page():
-    return send_from_directory(app.static_folder, "heatmap.html")
+    return _no_cache(send_from_directory(app.static_folder, "heatmap.html"))
 
 
 @app.route("/leaderboard")
 @app.route("/leaderboard.html")
 def leaderboard_page():
-    return send_from_directory(app.static_folder, "leaderboard.html")
+    return _no_cache(send_from_directory(app.static_folder, "leaderboard.html"))
 
 
 @app.route("/symbols")
@@ -268,6 +275,7 @@ def backtest_trades():
     sym = request.args.get("sym", "").upper()
     start = _ts_to_unix(request.args.get("start"))
     end = _ts_to_unix(request.args.get("end"))
+    max_trades = int(request.args.get("max", 8000))
     if not run or not sym:
         return jsonify({"error": "run and sym required"}), 400
     path = TRADES_DIR / f"{run}__{sym}.jsonl"
@@ -286,7 +294,12 @@ def backtest_trades():
         if end is not None and t.get("exit_ts", 0) > end:
             continue
         trades.append(t)
-    return jsonify({"trades": trades, "stats": _trade_stats(trades)})
+    stats = _trade_stats(trades)
+    truncated = False
+    if len(trades) > max_trades:
+        trades = trades[-max_trades:]
+        truncated = True
+    return jsonify({"trades": trades, "stats": stats, "truncated": truncated})
 
 
 @app.route("/equity_curves")
