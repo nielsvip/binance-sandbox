@@ -883,6 +883,12 @@ class QuickConfig:
     # 3 = 3 of 4 TFs in same category. 4 = all four.
     # Combined with MIN_CATEGORIES gives a 2-level confluence requirement.
     BTC_HTF_REVERSAL_SWING_MIN_TF_PER_CATEGORY: int = 1
+    # 2026-04-29: HTF direction anchor — prevent flip-flopping within a single HTF candle.
+    # When enabled with TF != "off", track which HTF candle the last entry was in (1h, 4h, or D).
+    # Within the SAME HTF candle, only allow same-side re-entries; block opposite-side.
+    # This is the structural fix for the "5 trades in 1 hour, 3 in 15m" churn — the strategy
+    # was treating each 3m bar as a fresh decision when the HTF clearly hadn't reversed.
+    BTC_HTF_DIRECTION_ANCHOR_TF: str = "off"   # "off" | "15m" | "1h" | "4h" | "D"
     BTC_LEVERAGE: float = 20.0
     BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0
     BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0
@@ -3463,6 +3469,14 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     stoch_k_4h_arr = _safe(npz, 'stoch_k_4h', n, 50.0)
     mfi_1h_arr = _safe(npz, 'mfi_1h', n, 50.0)
     mfi_4h_arr = _safe(npz, 'mfi_4h', n, 50.0)
+    # ── HTF direction anchor (2026-04-29) — block opposite-side flips within same HTF candle.
+    _anchor_tf = str(getattr(cfg, 'BTC_HTF_DIRECTION_ANCHOR_TF', 'off')).lower()
+    _anchor_bars_per_candle = {'15m': _bph_15m, '1h': _bph_1h, '4h': _bph_4h, 'd': _bph_D}.get(_anchor_tf, 0)
+    _anchor_enabled = _anchor_bars_per_candle > 0
+    # Track the HTF-candle index of the most recent entry, and which side it took.
+    _last_entry_htf_candle = -1
+    _last_entry_side_in_candle = "NONE"
+
     # Vectorized restricted-mode setup detection — runs ONCE here instead of per-bar.
     # Returns None if restricted-mode disabled.
     _restr_long_mask, _restr_short_mask, _restr_long_label, _restr_short_label = \
@@ -3587,11 +3601,20 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
 
     # Min lookback to start sim — need fib_lb_D_in_ltf bars
     start_i = max(fib_lb_D_in_ltf, div_lb + 1, 100)
+    _prev_position_for_anchor = "FLAT"
 
     for i in range(start_i, n):
         price_i = float(close[i])
         if price_i <= 0:
             continue
+
+        # HTF-anchor: detect FLAT→entry transition that happened in PREVIOUS iteration
+        # (i.e., last bar's entry decision was made and position is now non-FLAT).
+        # Update the anchor tracker so this bar's entry block can block opposite-side flips.
+        if _anchor_enabled and _prev_position_for_anchor == "FLAT" and position != "FLAT":
+            _last_entry_htf_candle = (i - 1) // _anchor_bars_per_candle if i >= 1 else 0
+            _last_entry_side_in_candle = position
+        _prev_position_for_anchor = position
 
         # ── Build features at bar i ─────────────────────────────────────────
         # Accel ramp
@@ -3820,6 +3843,19 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                            + (1 if wt1['4h'][i] < wt2['4h'][i] else 0)
                            + (1 if wt1['D'][i]  < wt2['D'][i]  else 0))
 
+            # ── HTF DIRECTION ANCHOR (2026-04-29) — block opposite-side flips inside same HTF candle.
+            # Computes current HTF candle index. If we already entered in this candle on the
+            # opposite side, block this bar entirely (continue the loop). Same-side re-entries pass.
+            _block_long_flip = False
+            _block_short_flip = False
+            if _anchor_enabled and _last_entry_side_in_candle != "NONE":
+                _cur_htf_candle = i // _anchor_bars_per_candle
+                if _cur_htf_candle == _last_entry_htf_candle:
+                    if _last_entry_side_in_candle == "LONG":
+                        _block_short_flip = True
+                    elif _last_entry_side_in_candle == "SHORT":
+                        _block_long_flip = True
+
             # ── RESTRICTED ENTRY MODE ── (vectorized 2026-04-29 — ~60× faster than per-bar)
             # When enabled, ONLY fire on pre-computed setup matches. All other entry
             # pathways (BREAKOUT/PRIMARY_BOUNCE/FOLLOW_THROUGH/REVERSE) are skipped.
@@ -3827,13 +3863,13 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 long_hit = bool(_restr_long_mask[i])
                 short_hit = bool(_restr_short_mask[i])
                 # Funding/OI vetoes still apply
-                if long_hit and not (funding_blocks_long or oi_blocks_long):
+                if long_hit and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
                     position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                     code = int(_restr_long_label[i])
                     entry_reason = f"RESTRICTED_{_RESTRICTED_LABEL_NAMES.get(code, 'UNK')}_LONG"
                     entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                     continue
-                if short_hit and not (funding_blocks_short or oi_blocks_short):
+                if short_hit and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
                     position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                     code = int(_restr_short_label[i])
                     entry_reason = f"RESTRICTED_{_RESTRICTED_LABEL_NAMES.get(code, 'UNK')}_SHORT"
@@ -3853,12 +3889,12 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 htf_short_aligned_tfs=htf_short_n,
             ) if btc_breakout_enabled else ("NONE", "")
             # Apply funding/OI veto to all entry paths below
-            if bk_side == "LONG" and not (funding_blocks_long or oi_blocks_long):
+            if bk_side == "LONG" and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                 entry_reason = "BREAKOUT_LONG"
                 entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 continue
-            if bk_side == "SHORT" and not (funding_blocks_short or oi_blocks_short):
+            if bk_side == "SHORT" and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                 entry_reason = "BREAKOUT_SHORT"
                 entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
@@ -3879,12 +3915,12 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                            and accel["side"] == "bull" and accel["bull_aligned_tfs"] >= 1)
                 ft_short = (last_exit_side == "SHORT" and pct_past <= -btc_follow_through_min_pct
                             and accel["side"] == "bear" and accel["bear_aligned_tfs"] >= 1)
-                if ft_long and not (funding_blocks_long or oi_blocks_long):
+                if ft_long and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
                     position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                     entry_reason = "FOLLOW_THROUGH_REENTRY_LONG"
                     entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                     continue
-                if ft_short and not (funding_blocks_short or oi_blocks_short):
+                if ft_short and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
                     position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BREAKOUT"
                     entry_reason = "FOLLOW_THROUGH_REENTRY_SHORT"
                     entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
@@ -3913,17 +3949,17 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                     current_price=price_i, red_zone=rz, accel=accel, divergence=div, cfg=cfg,
                 )
             if reenter:
-                _veto = ((reenter_side == "LONG"  and (funding_blocks_long  or oi_blocks_long))
-                         or (reenter_side == "SHORT" and (funding_blocks_short or oi_blocks_short)))
+                _veto = ((reenter_side == "LONG"  and (funding_blocks_long  or oi_blocks_long or _block_long_flip))
+                         or (reenter_side == "SHORT" and (funding_blocks_short or oi_blocks_short or _block_short_flip)))
                 if not _veto:
                     position = reenter_side; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                     entry_reason = f"BOUNCE_REENTRY_{reenter_side}"
                     entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
-            elif ok_long and not ok_short and not (funding_blocks_long or oi_blocks_long):
+            elif ok_long and not ok_short and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
                 position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                 entry_reason = "PRIMARY_BOUNCE_LONG"
                 entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
-            elif ok_short and not ok_long and not (funding_blocks_short or oi_blocks_short):
+            elif ok_short and not ok_long and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
                 position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                 entry_reason = "PRIMARY_BOUNCE_SHORT"
                 entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
@@ -4082,12 +4118,12 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 _min_cats = int(getattr(cfg, 'BTC_HTF_REVERSAL_SWING_MIN_CATEGORIES', 1))
                 # Opposite side from exited
                 if exited_side == "LONG":
-                    if int(_htf_short_categories[i]) >= _min_cats and not (funding_blocks_short or oi_blocks_short):
+                    if int(_htf_short_categories[i]) >= _min_cats and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
                         position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                         entry_reason = f"HTF_SWING_SHORT_{int(_htf_short_categories[i])}of3cat"
                         entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 elif exited_side == "SHORT":
-                    if int(_htf_long_categories[i]) >= _min_cats and not (funding_blocks_long or oi_blocks_long):
+                    if int(_htf_long_categories[i]) >= _min_cats and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
                         position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
                         entry_reason = f"HTF_SWING_LONG_{int(_htf_long_categories[i])}of3cat"
                         entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0

@@ -69,6 +69,12 @@ def heatmap_page():
     return send_from_directory(app.static_folder, "heatmap.html")
 
 
+@app.route("/leaderboard")
+@app.route("/leaderboard.html")
+def leaderboard_page():
+    return send_from_directory(app.static_folder, "leaderboard.html")
+
+
 @app.route("/symbols")
 def symbols():
     syms = sorted(p.stem for p in NPZ_DIR.glob("*.npz"))
@@ -84,6 +90,71 @@ def runs():
         run, _, _ = p.stem.partition("__")
         out.add(run)
     return jsonify(sorted(out))
+
+
+@app.route("/runs_ranked")
+def runs_ranked():
+    """Return runs sorted by composite score (best first) with per-symbol stats.
+    Composite = total_gain × win_rate / (1 + churn%) — favors high gain + high WR + low churn.
+    Optional ?sym=X to filter.
+    """
+    sym_filter = request.args.get("sym", "").upper()
+    if not TRADES_DIR.exists():
+        return jsonify([])
+    by_run = {}
+    for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
+        run, _, sym = p.stem.partition("__")
+        if not run or not sym: continue
+        if sym_filter and sym.upper() != sym_filter: continue
+        trades = []
+        for line in p.read_text().splitlines():
+            if line.strip():
+                try: trades.append(json.loads(line))
+                except Exception: pass
+        if len(trades) < 5: continue
+        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+        n = len(pnls)
+        wins = sum(1 for x in pnls if x > 0)
+        wr = wins / n if n else 0
+        total_gain = sum(pnls)
+        # Quick churn estimate: chained same-side trades within 60min
+        sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
+        chained = 0
+        for j in range(1, len(sorted_t)):
+            prev, cur = sorted_t[j - 1], sorted_t[j]
+            if prev.get("side") == cur.get("side") and 0 <= int(cur.get("entry_ts", 0)) - int(prev.get("exit_ts", 0)) <= 3600:
+                chained += 1
+        chained_pct = chained / n if n else 0
+        # Composite score — heavily penalize churn (user 2026-04-29: stop showing
+        # configs with 8 trades / half-hour at the top). Multiplicative penalty so
+        # 65% churn → 0.35× multiplier, 30% churn → 0.70× multiplier.
+        score = total_gain * wr * max(0.05, 1.0 - chained_pct)
+        by_run.setdefault(run, []).append({
+            "sym": sym, "trades": n, "wr": round(wr, 3),
+            "total_gain_pct": round(total_gain, 1),
+            "chained_pct": round(chained_pct, 3),
+            "score": round(score, 1),
+        })
+    # Aggregate per-run: sum scores across symbols
+    out = []
+    for run, sym_rows in by_run.items():
+        agg_score = sum(r["score"] for r in sym_rows)
+        agg_trades = sum(r["trades"] for r in sym_rows)
+        agg_gain = sum(r["total_gain_pct"] for r in sym_rows)
+        agg_wr = sum(r["wr"] * r["trades"] for r in sym_rows) / agg_trades if agg_trades else 0
+        agg_churn = sum(r["chained_pct"] * r["trades"] for r in sym_rows) / agg_trades if agg_trades else 0
+        out.append({
+            "run": run,
+            "score": round(agg_score, 1),
+            "trades": agg_trades,
+            "wr": round(agg_wr, 3),
+            "total_gain_pct": round(agg_gain, 1),
+            "chained_pct": round(agg_churn, 3),
+            "n_syms": len(sym_rows),
+            "per_symbol": sym_rows,
+        })
+    out.sort(key=lambda r: -r["score"])
+    return jsonify(out)
 
 
 @app.route("/klines")
