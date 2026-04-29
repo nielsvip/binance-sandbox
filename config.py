@@ -688,6 +688,16 @@ class Config:
     # 'wt_3m_15m_htf2' / 'wt_3m_15m_htf3' (3m+15m+ALL HTF) / 'wt_dc_score' (use wt_dc_exit_scorer).
     HEDGE_CLOSE_MODE: str = 'wt_3m_1h'
     HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
+    # === 2026-04-29 SURFACED hidden wt_dc_exit_scorer knobs (were implicit defaults via getattr-fallback in wt_dc_exit_scorer.py) ===
+    # ez_manage.py and tradier_manage.py both call wt_dc_score_exit. Crypto live had ZERO of these declared,
+    # so wt_dc_exit_scorer.py was using its hardcoded fallbacks (5/75/0.80). Now explicit + sweep-testable.
+    # Test C v8_quick verdict (12sym×2yr crypto NOLOSS=off): 5/5 K=85 wins pool_sharpe 0.1695 vs simple_mtf 0.105 vs delta3 0.135 vs loose 3/5 K75 0.142.
+    WT_DC_EXIT_THRESHOLD: float = 25.0          # ez_manage.py read with default 25 — surfaced for sweep
+    EXIT_SCORER_MIN_CONDITIONS: int = 5         # was implicit default 5; Test C confirms strict 5/5 wins on crypto too. Sweep 3,4,5.
+    EXIT_SCORER_K_EXTREME: float = 75.0         # was implicit default 75. Sweep 70,75,80,85.
+    EXIT_SCORER_DC_EXTREME: float = 0.80        # was implicit default 0.80. Sweep 0.70-0.90.
+    EXIT_SCORER_PARTIAL_SCORE: float = 40.0     # was implicit default 40 (N-1 conditions). Sweep 30-50.
+    EXIT_SCORER_FULL_SCORE: float = 100.0       # was implicit default 100. Stays.
     # === 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs, not just velocity ===
     # _quick_hedge_rank rejects hedge candidates where < HEDGE_STRICT_WT_MIN_TFS_AGAINST of the 5 TFs (3m/15m/1h/4h/D) align against the proposed hedge direction.
     # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.

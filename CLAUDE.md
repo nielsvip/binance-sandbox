@@ -1,17 +1,44 @@
 # CLAUDE.md — Trading System Rules
 
+## 🚨 USDC-OVER-USDT — HARD POLICY 🚨
+
+**If a sym has a USDC perp on Binance Futures, EVERYTHING refers to it as USDC. NOTHING uses USDT for those syms.**
+
+This applies to: mark_price, klines, funding rates, OI, NPZ, indicators, sweep symbol-list, live trading order routing — ALL of it.
+
+The 10 syms with USDC perps (as of 2026-04-29): **ETH, BTC, SOL, ADA, BNB, AVAX, XRP, LINK, LTC, UNI**. Always use the `USDC` suffix for these. Re-check Binance Futures `/fapi/v1/exchangeInfo` if uncertain — but never default to USDT for these names.
+
+The 50 legacy syms (1INCH, ALGO, ANKR, ATOM, AXS, BAND, BAT, BEL, BTCDOM, C98, CELR, CHR, COMP, COTI, DASH, DOT, EGLD, ENJ, ETC, GRT, GTC, HOT, IOST, IOTA, IOTX, KAVA, KNC, KSM, LRC, MANA, MTL, NKN, QTUM, RLC, RSR, RVN, SAND, SKL, SNX, STORJ, SUSHI, SXP, THETA, TRX, VET, XLM, XMR, XTZ, YFI, ZEN) DO NOT have USDC perps and stay as `USDT`.
+
+**Backtest convention** (data-source for klines+funding+OI): we use **USDT historical data labeled as USDC** for the 10 majors, because USDC perps only launched 2024 (insufficient 4yr+ history). The label is USDC; the underlying source rows are USDT. Live trading still queries the actual USDC bid/ask before sending an order — that's where the price gets adjusted to true USDC.
+
+**Files that MUST NOT exist anywhere (Mac, S1, S2)** for the 10 majors:
+- `klines_cache/{sym}USDT_*.json` (any TF)
+- `klines_cache_backtest/{sym}USDT_*.json`
+- `klines_cache_gateway/{sym}USDT_*.json`
+- `backtest_v8/indicators/{sym}USDT.npz`
+- `data/funding_cache/{sym}USDT.json`
+- `data/oi_cache/{sym}USDT.json`
+
+Where `{sym}` is one of `ETH, BTC, SOL, ADA, BNB, AVAX, XRP, LINK, LTC, UNI`. If you find any of these — DELETE. Don't fetch USDT for these syms. If a fetcher script defaults to symbols.json (USDC pairs), great. Don't add USDT names to override.
+
+If you accidentally fetch USDT data for a USDC sym (e.g. backfill script fetches `ETHUSDT` to get full history), your job is to **rename the file to USDC immediately** — never leave both files coexisting.
+
+---
+
 ## 🚨 NPZ REGEN — STOP DOING THIS WRONG (12+ TIMES NOW) 🚨
 
 **The NPZ regen requirements have been the SAME forever. They keep being violated. Stop.**
 
-1. **NPZ source of klines = `klines_cache_backtest/` ONLY.** NOT `klines_cache/` (live), NOT `klines_cache_gateway/` (server sync only). The `_backtest` dir was refreshed 2026-04-27 with **4+ years of data for 48 crypto syms + 128 stocks**. THAT is the input.
-2. **Mac uses `klines_cache/`** (live + V3 forward-test). 1200-1800 klines per sym per TF. Mac does NOT backtest 4-year sweeps; servers do.
+1. **NPZ source of klines = `klines_cache_backtest/` ONLY.** NOT `klines_cache/` (live), NOT `klines_cache_gateway/` (server sync only). The `_backtest` dir holds **5+ years of 15m klines for 50 legacy USDT pairs + 10 USDC majors (with USDT data labeled USDC, see above)**. THAT is the input. **15m is the BASIS — all higher TFs (1h, 4h, D, W, M) and lower (3m, 5m) are derived from 15m by the precompute.**
+2. **Mac uses `klines_cache/`** (live + V3 forward-test). 1200-1800 klines per sym per TF. Mac does NOT backtest multi-year sweeps; servers do.
 3. **Servers use `klines_cache_gateway/`** for live data sync (when servers ran live, currently they don't). Servers backtest from `klines_cache_backtest/`.
-4. **NPZ scope is fixed**: **48 crypto × 4yr** + **128 stocks × 4yr**. Going wider (61c / 256s) is fine if compute permits. Going narrower than 48/128 is NOT a backtest — it's noise.
-5. **NPZ MUST include EVERY param the v8 sweep ever asks for.** If precompute writes fewer fields than `v8_quick_engine.py` reads, the engine zero-fills and produces lying results. After EVERY regen, diff `set(npz.keys())` vs `set(v8_quick_engine field reads)` — gaps = reject.
-6. **Verify before "done"**: `python3 -c "import numpy as np; d=dict(np.load('NPZ_PATH', allow_pickle=True)); print(len(d.keys()), sorted(d.keys())[-30:])"`. Compare key count + key list to a known-good NPZ.
+4. **Tail freshness**: before each regen, append latest klines from `klines_cache/` into `klines_cache_backtest/` so 15m base goes up to within 1 hour of NOW. Then regen.
+5. **NPZ scope is fixed**: **48+ crypto × 4yr** + **128+ stocks × 4yr**. Wider (60c / 262s) is fine if compute permits. Narrower than 48/128 is NOT a backtest — it's noise.
+6. **NPZ MUST include EVERY param the v8 sweep ever asks for** including all TFs the sweep can mutate to (e.g. `adx_15m`/`adx_4h`/`adx_D`/`adx_5m` not just `adx_1h`; `macd_crossover_*` and `macd_crossunder_*` for all TFs; `wt*_W`/`wt*_M` etc.). If precompute writes fewer fields than `v8_quick_engine.py` reads, the engine zero-fills and produces lying results.
+7. **Mandatory audit before any sweep run**: `python /tmp/audit_npz_fields.py v8_quick_engine.py backtest_v8/indicators MODE` — must report `ALL FIELDS PRESENT ✓` for both modes. Failures = REJECT, fix precompute and re-run.
 
-**12 regens in 9 sessions, each missing fields or using wrong source. Read this BEFORE running `backtest_v8_precompute.py`.**
+**12+ regens in 9 sessions, each missing fields or using wrong source. Read this BEFORE running `backtest_v8_precompute.py`.**
 
 ---
 

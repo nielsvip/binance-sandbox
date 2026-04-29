@@ -500,8 +500,11 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
     released = was_squeezed & (~is_squeezed)
     fire = np.where(released & (close > kc_mid), 1, np.where(released & (close < kc_mid), -1, 0))
     out[f"squeeze_fire_{tf}"] = fire.astype(np.int8)
-    # MACD (1h, 4h, D only)
-    if tf in ("1h", "4h", "D"):
+    # MACD (ALL TFs - 2026-04-29: expanded from 1h/4h/D to fix sweep zero-fill)
+    # Engine reads macd_hist_{MACD_HIST_EXIT_TF}, macd_crossover_{MACD_CROSS_ENTRY_TF},
+    # macd_crossunder_{MACD_CROSS_ENTRY_TF}. These knobs are sweep-mutable, so all TFs
+    # (15m, 1h, 4h, D, base_tf 3m/5m) MUST be present or sweeps get zero-filled lies.
+    if n >= 30:
         ema12 = close.ewm(span=12, adjust=False).mean()
         ema26 = close.ewm(span=26, adjust=False).mean()
         macd = ema12 - ema26
@@ -510,15 +513,33 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
         out[f"macd_{tf}"] = macd.values.astype(np.float32)
         out[f"macd_signal_{tf}"] = signal.values.astype(np.float32)
         out[f"macd_hist_{tf}"] = hist.values.astype(np.float32)
-    # ADX (1h, 4h, D)
-    if tf in ("1h", "4h", "D"):
-        try:
-            from tradier_indicators import adx_value
-            # Compute ADX series manually (adx_value returns scalar)
-            # Use ta-lib style ADX if available, otherwise skip
-            pass
-        except Exception:
-            pass
+        # Boolean cross arrays — int8 0/1
+        diff_cur = (macd - signal).values
+        diff_prev = np.roll(diff_cur, 1); diff_prev[0] = 0.0
+        out[f"macd_crossover_{tf}"] = ((diff_prev <= 0.0) & (diff_cur > 0.0)).astype(np.int8)
+        out[f"macd_crossunder_{tf}"] = ((diff_prev >= 0.0) & (diff_cur < 0.0)).astype(np.int8)
+    # ADX (ALL TFs - 2026-04-29: was only adx_1h at merged level, now per-TF here)
+    # Engine reads adx_{ADX_ENTRY_TF}; sweep-mutable knob (1h/4h/D etc).
+    if n >= 30:
+        h_ad = high.values.astype(np.float64)
+        l_ad = low.values.astype(np.float64)
+        c_ad = close.values.astype(np.float64)
+        up_ad = np.zeros(n)
+        dn_ad = np.zeros(n)
+        up_ad[1:] = h_ad[1:] - h_ad[:-1]
+        dn_ad[1:] = l_ad[:-1] - l_ad[1:]
+        plus_dm_ad = np.where((up_ad > dn_ad) & (up_ad > 0), up_ad, 0.0)
+        minus_dm_ad = np.where((dn_ad > up_ad) & (dn_ad > 0), dn_ad, 0.0)
+        tr1_ad = h_ad - l_ad
+        tr2_ad = np.zeros(n); tr2_ad[1:] = np.abs(h_ad[1:] - c_ad[:-1])
+        tr3_ad = np.zeros(n); tr3_ad[1:] = np.abs(l_ad[1:] - c_ad[:-1])
+        tr_ad = np.maximum.reduce([tr1_ad, tr2_ad, tr3_ad])
+        atr14_ad = pd.Series(tr_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values
+        plus_di_ad = 100.0 * pd.Series(plus_dm_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14_ad > 0, atr14_ad, 1e-10)
+        minus_di_ad = 100.0 * pd.Series(minus_dm_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values / np.where(atr14_ad > 0, atr14_ad, 1e-10)
+        dx_ad = 100.0 * np.abs(plus_di_ad - minus_di_ad) / np.where((plus_di_ad + minus_di_ad) > 0, plus_di_ad + minus_di_ad, 1e-10)
+        adx14_ad = pd.Series(dx_ad).ewm(alpha=1.0 / 14, adjust=False).mean().values
+        out[f"adx_{tf}"] = np.nan_to_num(adx14_ad, nan=0.0).astype(np.float32)
     # === CONTRACT ALIASES (Improvement Framework A3, 2026-04-26) ===
     # Engine reads kc_middle_{tf} and squeeze_on_{tf}; existing fields use kc_mid + squeeze.
     # Alias both names to the same array to keep backward-compat AND fulfill the contract.
