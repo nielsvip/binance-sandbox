@@ -1535,6 +1535,14 @@ class TradierConfig:
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 2.0  # 2026-04-26: 2% peak required (was 0.3%) — only protect meaningful gains
     PEAK_GIVEBACK_DROP_PCT: float = 5.0  # 2026-04-26: 5% drop from peak (was 2%) — let winners breathe
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False  # 2026-04-27 EMERGENCY: examples today peak2.45%->cur-5.12%, peak4.61%->cur-0.20% — HARD_ZERO not firing fast enough at zero, instead realizing -5% losses. PARTIAL_PROFIT_LOCK at 0.3% handles winner-protection.
+    # 2026-04-29 USER RULE: PEAK_GIVEBACK must NOT close manual buys that pulled back to flat. Today killed
+    # GOOGL (peak 12.37% → cur 0.00%) and MSFT (peak 8.69% → 0.00%) — normal swing pullbacks, NOT reversals.
+    # Require real loss after fees before peak-giveback fires.
+    PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN: bool = True
+    PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT: float = -0.5  # only fire when gain <= -0.5% (real loss after fees)
+    # 2026-04-29 USER RULE: post-close cooldown — block re-OPEN of same symbol within X min of CLOSE.
+    # Stops the 1-share NVDA/USO/MSFT/GOOGL flap observed today (LONG BUY every ~30s after a CLOSE).
+    TRADIER_POST_CLOSE_COOLDOWN_MIN: float = 15.0
     BREAKOUT_GUARD_LOSS_THRESHOLD: float = -999.0  # BACKTEST_CHANGE_20: was -0.5. Dead code under STRICT_NO_LOSS ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     BREAKOUT_GUARD_MOMENTUM_CHECK_ENABLED: bool = False  # Disables 1-sec momentum kills ; DEAD_CONFIRMED (priority 40/100) — no plausible wiring site found 20260416
     CHECK_INTERVAL = 3.0  # Check every 4 seconds

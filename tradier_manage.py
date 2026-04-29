@@ -1974,6 +1974,22 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
             if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE") and positionAmt > 0:
                 logger.critical(f"[NO_DOUBLE_OPEN_BLOCK] {position_key}: BLOCKED {action} — positionAmt={positionAmt:.4f} > 0. Only AUGMENT allowed (under MIN_GAIN rules). Reason='{reason[:80]}'")
                 return False
+            # 2026-04-29 USER RULE: post-close cooldown. After a CLOSE, block re-OPEN of same symbol
+            # for TRADIER_POST_CLOSE_COOLDOWN_MIN minutes. Stops the 1-share open→close→reopen flap
+            # observed today on NVDA/USO/MSFT/GOOGL (LONG BUY firing every ~30s).
+            if action in ("OPEN", "REENTER", "REENTRY", "REENTRY_OPEN", "HEDGE"):
+                _pc_cooldown_min = float(getattr(config, 'TRADIER_POST_CLOSE_COOLDOWN_MIN', 15.0))
+                if _pc_cooldown_min > 0:
+                    _pc_last_red = getattr(position, 'last_reduction_time', None)
+                    if _pc_last_red is not None:
+                        try:
+                            _pc_dt = safe_datetime(_pc_last_red) if not isinstance(_pc_last_red, datetime) else _pc_last_red
+                            _pc_age_min = (datetime.now(timezone.utc) - _pc_dt).total_seconds() / 60.0
+                            if _pc_age_min < _pc_cooldown_min:
+                                logger.warning(f"[POST_CLOSE_COOLDOWN] {position_key}: BLOCKED {action} — last close {_pc_age_min:.1f}m ago < {_pc_cooldown_min:.0f}m cooldown. Reason='{reason[:80]}'")
+                                return False
+                        except Exception as _pc_e:
+                            logger.debug(f"[POST_CLOSE_COOLDOWN_ERR] {position_key}: {_pc_e}")
         parts = position_key.split(':')
         if len(parts) != 2:
             return False
@@ -4471,12 +4487,22 @@ class StockStrategy:
             _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
             _pgp_ind = indicators if indicators else i
             if _pgp_max_g >= _pgp_min_peak and hold_time_min >= _be_grace:
-                if _pgp_hard_zero and gain < 0.08:
-                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% near-zero gain={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
-                    return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{gain:.2f}%", qty
-                if gain < _pgp_max_g - _pgp_drop:
-                    logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
-                    return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
+                # 2026-04-29 USER RULE: PEAK_GIVEBACK must NOT close manually-bought positions that
+                # peaked then pulled back to flat. Today closed user's GOOGL (peak 12.37% → cur 0.00%)
+                # and MSFT (peak 8.69% → 0.00%) for "no apparent reason". A 5pp drawdown from a 12% peak
+                # is normal swing pullback, not a reversal. Require the position to actually be at a
+                # net loss after fees before this fires.
+                _pgp_require_neg = bool(getattr(config, 'PEAK_GIVEBACK_REQUIRE_NEGATIVE_GAIN', True))
+                _pgp_neg_floor = float(getattr(config, 'PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT', -0.5))  # require gain <= -0.5% (real loss after fees)
+                if _pgp_require_neg and gain > _pgp_neg_floor:
+                    logger.info(f"🛡️[PEAK_GIVEBACK_BLOCKED_PROFIT] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% cur={gain:.2f}% > floor={_pgp_neg_floor:.2f}% — holding (still in profit zone, manual-buy protection)")
+                else:
+                    if _pgp_hard_zero and gain < 0.08:
+                        logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% near-zero gain={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
+                        return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{gain:.2f}%", qty
+                    if gain < _pgp_max_g - _pgp_drop:
+                        logger.critical(f"🔥[PEAK_GIVEBACK] {symbol} {'L' if is_long else 'S'}: peak={_pgp_max_g:.2f}% gave back >{_pgp_drop:.1f}% cur={gain:.2f}% age={hold_time_min:.0f}m — EXITING ⚠️ DO NOT DISABLE")
+                        return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
         if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min < _peak_min_hold:
             logger.info(f"[PEAK_GIVEBACK_MIN_HOLD_BLOCK] {symbol} {'L' if is_long else 'S'}: hold={hold_time_min:.0f}m<{_peak_min_hold:.0f}m — peak-giveback gated (user rule 2026-04-27)")
             if _pgp_max_g > 0 and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
