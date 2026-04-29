@@ -289,6 +289,101 @@ def backtest_trades():
     return jsonify({"trades": trades, "stats": _trade_stats(trades)})
 
 
+@app.route("/equity_curves")
+def equity_curves():
+    """Cumulative equity curves per run + buy&hold curve for the symbol.
+
+    Output: {"runs": {run: [{t, v}, ...]}, "buy_hold": [{t, v}, ...],
+             "buy_hold_pct": float, "run_totals": {run: total_pct}}
+    Equity values are cumulative pnl_pct (sum of per-trade %); B&H is %change-from-window-start.
+    """
+    runs_arg = request.args.get("runs", "")
+    sym = request.args.get("sym", "").upper()
+    start = _ts_to_unix(request.args.get("start"))
+    end = _ts_to_unix(request.args.get("end"))
+    max_pts = int(request.args.get("max", 2000))
+    if not runs_arg or not sym:
+        return jsonify({"error": "runs and sym required"}), 400
+    runs = [r.strip() for r in runs_arg.split(",") if r.strip()]
+    out_runs: Dict[str, List[Dict[str, float]]] = {}
+    run_totals: Dict[str, float] = {}
+    anchor_ts = start if start is not None else 0
+    for run in runs:
+        path = TRADES_DIR / f"{run}__{sym}.jsonl"
+        if not path.exists():
+            out_runs[run] = []
+            run_totals[run] = 0.0
+            continue
+        trades: List[Dict[str, Any]] = []
+        for line in path.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                t = json.loads(line)
+            except Exception:
+                continue
+            ets = int(t.get("exit_ts", 0) or 0)
+            if start is not None and ets < start:
+                continue
+            if end is not None and ets > end:
+                continue
+            trades.append(t)
+        trades.sort(key=lambda t: int(t.get("exit_ts", 0) or 0))
+        if not trades:
+            out_runs[run] = []
+            run_totals[run] = 0.0
+            continue
+        a_ts = anchor_ts or (int(trades[0].get("entry_ts", 0) or 0) - 1)
+        eq: List[Dict[str, float]] = [{"t": int(a_ts), "v": 0.0}]
+        cum = 0.0
+        for t in trades:
+            cum += float(t.get("pnl_pct", 0) or 0)
+            eq.append({"t": int(t.get("exit_ts", 0) or 0), "v": cum})
+        if len(eq) > max_pts:
+            step = len(eq) // max_pts + 1
+            keep = eq[::step]
+            if keep[-1]["t"] != eq[-1]["t"]:
+                keep.append(eq[-1])
+            eq = keep
+        out_runs[run] = eq
+        run_totals[run] = round(cum, 4)
+    bh: List[Dict[str, float]] = []
+    bh_total = 0.0
+    z = _load_npz(sym)
+    if z is not None and "timestamps" in z.files and "close_3m" in z.files:
+        ts_arr = z["timestamps"]
+        c_arr = z["close_3m"]
+        n = len(ts_arr)
+        lo = int(np.searchsorted(ts_arr, start)) if start is not None else 0
+        hi = int(np.searchsorted(ts_arr, end)) if end is not None else n
+        lo = max(lo, 0)
+        hi = min(hi, n)
+        if hi > lo:
+            base = 0.0
+            for j in range(lo, min(lo + 10, hi)):
+                cv = c_arr[j]
+                if cv is not None and float(cv) > 0:
+                    base = float(cv)
+                    break
+            if base > 0:
+                step = max(1, (hi - lo) // max_pts)
+                last_v = 0.0
+                for i in range(lo, hi, step):
+                    cv = c_arr[i]
+                    if cv is None or float(cv) <= 0:
+                        continue
+                    v = (float(cv) / base - 1.0) * 100.0
+                    last_v = v
+                    bh.append({"t": int(ts_arr[i]), "v": v})
+                bh_total = last_v
+    return jsonify({
+        "runs": out_runs,
+        "buy_hold": bh,
+        "buy_hold_pct": round(bh_total, 4),
+        "run_totals": run_totals,
+    })
+
+
 @app.route("/historic_trades")
 def historic_trades():
     sym = request.args.get("sym", "").upper()

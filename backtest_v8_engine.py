@@ -3155,7 +3155,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         elif not getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
             score -= 15.0
             reason = f"NO_SAT_CONFIRM_PENALTY-15+{reason}"
-        if score < 1.0 and getattr(tm_mod.config, 'STDEV_BREAKOUT_ENABLED', False):
+        if getattr(tm_mod.config, 'STDEV_BREAKOUT_ENABLED', False):
             _sb_htf_list_w = list(getattr(tm_mod.config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
             _sb_pctb_thr_lw = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
             _sb_pctb_thr_sw = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_SHORT', 0.0))
@@ -3171,7 +3171,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     score = 999.0
                     reason = f"STDEV_BREAKOUT_SHORT_{_sb_htf_w}_pctb={_sb_pv_w:.3f}+{reason}"
                     break
-        if score < 1.0 and getattr(tm_mod.config, 'STDEV_BOUNCE_ENABLED', False):
+        if getattr(tm_mod.config, 'STDEV_BOUNCE_ENABLED', False):
             _bn_htf_list_w = list(getattr(tm_mod.config, 'STDEV_BOUNCE_HTF_LIST', None) or ['D', '4h'])
             _bn_pctb_thr_lw = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_LONG', 0.05))
             _bn_pctb_thr_sw = float(getattr(tm_mod.config, 'STDEV_BOUNCE_PCTB_SHORT', 0.95))
