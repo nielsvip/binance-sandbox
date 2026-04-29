@@ -34,6 +34,7 @@ TF_SECONDS = {"3m": 180, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400}
 app = Flask(__name__, static_folder=str(BASE_PATH / "chart_static"))
 
 _npz_cache: Dict[str, Any] = {}
+_response_cache: Dict[str, Any] = {}  # {key: (expires_unix, json_str)}
 
 
 def _load_npz(symbol: str):
@@ -103,7 +104,14 @@ def runs():
 def per_sym_best():
     """Returns the current best run per symbol (highest churn-penalized score per-sym).
     Reflects what quality_optimizer.py --per-sym would auto-promote.
+    Cached 30s — full scan over 1500+ files takes ~90s without caching.
     """
+    import time as _time
+    cache_key = "per_sym_best"
+    now = _time.time()
+    cached = _response_cache.get(cache_key)
+    if cached and cached[0] > now:
+        return app.response_class(cached[1], mimetype="application/json")
     if not TRADES_DIR.exists():
         return jsonify([])
     by_sym: Dict[str, list] = {}
@@ -144,7 +152,9 @@ def per_sym_best():
         rows.sort(key=lambda r: -r["score"])
         out.append({"sym": sym, "best": rows[0], "top5": rows[:5]})
     out.sort(key=lambda x: x["sym"])
-    return jsonify(out)
+    body = json.dumps(out)
+    _response_cache[cache_key] = (now + 30, body)  # 30s cache
+    return app.response_class(body, mimetype="application/json")
 
 
 @app.route("/runs_ranked")
@@ -152,8 +162,15 @@ def runs_ranked():
     """Return runs sorted by composite score (best first) with per-symbol stats.
     Composite = total_gain × win_rate / (1 + churn%) — favors high gain + high WR + low churn.
     Optional ?sym=X to filter.
+    Cached 30s — full scan over 1500+ files takes ~90s without caching.
     """
+    import time as _time
     sym_filter = request.args.get("sym", "").upper()
+    cache_key = f"runs_ranked:{sym_filter}"
+    now = _time.time()
+    cached = _response_cache.get(cache_key)
+    if cached and cached[0] > now:
+        return app.response_class(cached[1], mimetype="application/json")
     if not TRADES_DIR.exists():
         return jsonify([])
     by_run = {}
@@ -209,7 +226,9 @@ def runs_ranked():
             "per_symbol": sym_rows,
         })
     out.sort(key=lambda r: -r["score"])
-    return jsonify(out)
+    body = json.dumps(out)
+    _response_cache[cache_key] = (now + 30, body)  # 30s cache
+    return app.response_class(body, mimetype="application/json")
 
 
 @app.route("/klines")
