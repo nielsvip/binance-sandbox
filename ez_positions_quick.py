@@ -13516,20 +13516,30 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     elif _pos_age_min >= _be_grace and current_gain < 0:
                         logger.info(f"🛡️[BREAKEVEN_BLOCKED_LOSS] {position_key}: gain {current_gain:.2f}% < 0 — NO LOSS ACCEPTED, holding for technical exit")
                 if not hard_exit_reason and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
-                    _be_dc_low4 = safe_fetch_float(indicators.get('dc_low4_3m', 0), 0)
-                    _be_dc_high4 = safe_fetch_float(indicators.get('dc_high4_3m', 0), 0)
-                    if is_long and _be_dc_low4 > 0 and current_price > 0 and current_price < _be_dc_low4:
+                    # 2026-04-29 USER A/B: BREAKEVEN_DC_FIELD_MODE selects the emergency-exit Donchian basis.
+                    # 'DC4' = dc_low4_3m / dc_high4_3m (4-bar low/high — current default, fires often, smaller losses but churn)
+                    # 'DC'  = dc_low_3m  / dc_high_3m  (20-bar low/high — looser, bigger loss when fires but less churn)
+                    _dc_mode = str(getattr(config, 'BREAKEVEN_DC_FIELD_MODE', 'DC4')).upper()
+                    if _dc_mode == 'DC':
+                        _be_dc_low_v = safe_fetch_float(indicators.get('dc_low_3m', 0), 0)
+                        _be_dc_high_v = safe_fetch_float(indicators.get('dc_high_3m', 0), 0)
+                        _dc_tag = 'DC'
+                    else:
+                        _be_dc_low_v = safe_fetch_float(indicators.get('dc_low4_3m', 0), 0)
+                        _be_dc_high_v = safe_fetch_float(indicators.get('dc_high4_3m', 0), 0)
+                        _dc_tag = 'DC4'
+                    if is_long and _be_dc_low_v > 0 and current_price > 0 and current_price < _be_dc_low_v:
                         if _htf_veto_active:
-                            logger.info(f"🛡️[HTF_VETO_DC_LOW4] {position_key}: DC_LOW4 break but HTF still bullish ({_hv_aligned}/3) — holding through pullback")
+                            logger.info(f"🛡️[HTF_VETO_{_dc_tag}_LOW] {position_key}: {_dc_tag} break but HTF still bullish ({_hv_aligned}/3) — holding through pullback")
                         else:
-                            hard_exit_reason = f"DC_LOW4_3M_GAIN_EROSION_STOP_p{current_price:.6f}<dc4{_be_dc_low4:.6f}_g{current_gain:.2f}%"
-                            logger.critical(f"🚫[DC_LOW4_BREAK] {position_key}: price {current_price:.6f} < dc_low4_3m {_be_dc_low4:.6f} — structural stop")
-                    elif not is_long and _be_dc_high4 > 0 and current_price > 0 and current_price > _be_dc_high4:
+                            hard_exit_reason = f"{_dc_tag}_LOW_3M_GAIN_EROSION_STOP_p{current_price:.6f}<{_dc_tag.lower()}{_be_dc_low_v:.6f}_g{current_gain:.2f}%"
+                            logger.critical(f"🚫[{_dc_tag}_LOW_BREAK] {position_key}: price {current_price:.6f} < {_dc_tag.lower()}_low_3m {_be_dc_low_v:.6f} — structural stop ({_dc_tag} mode)")
+                    elif not is_long and _be_dc_high_v > 0 and current_price > 0 and current_price > _be_dc_high_v:
                         if _htf_veto_active:
-                            logger.info(f"🛡️[HTF_VETO_DC_HIGH4] {position_key}: DC_HIGH4 break but HTF still bearish ({_hv_aligned}/3) — holding through pullback")
+                            logger.info(f"🛡️[HTF_VETO_{_dc_tag}_HIGH] {position_key}: {_dc_tag} break but HTF still bearish ({_hv_aligned}/3) — holding through pullback")
                         else:
-                            hard_exit_reason = f"DC_HIGH4_3M_GAIN_EROSION_STOP_p{current_price:.6f}>dc4{_be_dc_high4:.6f}_g{current_gain:.2f}%"
-                            logger.critical(f"🚫[DC_HIGH4_BREAK] {position_key}: price {current_price:.6f} > dc_high4_3m {_be_dc_high4:.6f} — structural stop")
+                            hard_exit_reason = f"{_dc_tag}_HIGH_3M_GAIN_EROSION_STOP_p{current_price:.6f}>{_dc_tag.lower()}{_be_dc_high_v:.6f}_g{current_gain:.2f}%"
+                            logger.critical(f"🚫[{_dc_tag}_HIGH_BREAK] {position_key}: price {current_price:.6f} > {_dc_tag.lower()}_high_3m {_be_dc_high_v:.6f} — structural stop ({_dc_tag} mode)")
                 # 2026-04-26 REORDER: PEAK_GIVEBACK_PROTECTION moved to AFTER WT_CROSS_EXIT and STDEV_BREAKOUT.
                 # User directive: technicals must kill position first; PEAK_GIVEBACK is a % fallback only.
                 # The block now lives ~40 lines down, after STDEV_BREAKOUT_EXIT.

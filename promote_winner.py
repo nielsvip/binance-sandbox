@@ -101,22 +101,27 @@ def aggregate_run(sym_stats):
 def find_override_for_run(run):
     """Try to find the override JSON that produced this run-id."""
     candidates = []
-    # auto_<ts>_<i>_<switch>=<val> → check auto_overrides
-    if run.startswith("auto_"):
-        for p in AUTO_OVERRIDE_DIR.glob("*.json"):
-            if p.stem == run or p.stem.endswith(run.split("_", 1)[-1]):
-                candidates.append(p)
-    # tier2_<base> → look for override_<base>.json
     base = run
     if base.startswith("tier2_"): base = base[len("tier2_"):]
+    # 1. EXACT match in auto_overrides (chart_sweep names runs after the override stem)
+    for p in AUTO_OVERRIDE_DIR.glob("*.json"):
+        if p.stem == run or p.stem == base:
+            candidates.append(p)
+    # 2. EXACT match in override_dir (manual overrides like override_5SYM_BEST.json)
     for p in OVERRIDE_DIR.glob("override_*.json"):
         stem = p.stem
         if stem == "override_" + base or stem == "override_" + run:
             candidates.append(p)
-    # Fuzzy: any override that contains the run name (without prefix)
-    for p in OVERRIDE_DIR.glob("override_*.json"):
-        if base.lower() in p.stem.lower():
-            candidates.append(p)
+    # 3. Fuzzy match on auto_overrides (auto_<ts>_<switch>=<val> patterns)
+    if not candidates and run.startswith("auto_"):
+        for p in AUTO_OVERRIDE_DIR.glob("*.json"):
+            if p.stem.endswith(run.split("_", 1)[-1]):
+                candidates.append(p)
+    # 4. Fuzzy match on OVERRIDE_DIR
+    if not candidates:
+        for p in OVERRIDE_DIR.glob("override_*.json"):
+            if base.lower() in p.stem.lower():
+                candidates.append(p)
     return candidates[0] if candidates else None
 
 

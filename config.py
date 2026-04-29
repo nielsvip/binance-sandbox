@@ -779,6 +779,9 @@ class Config:
     SCALP_V3_STDEV_BREAK_LO_SHORT: float = 0.0  # per-side STDEV breakout (short)
     SCALP_V3_STDEV_BOUNCE_LO_LONG: float = 0.10 # per-side STDEV bounce (long, lower band)
     SCALP_V3_STDEV_BOUNCE_HI_SHORT: float = 0.85# per-side STDEV bounce (short, tighter — catch only deeper rejections at upper band)
+    # 2026-04-29 USER A/B: emergency-exit Donchian basis. 'DC4' = 4-bar low/high (current — frequent fires, churny);
+    # 'DC' = 20-bar low/high (looser — bigger losses when fires, but far less churn). Test via shadow variant.
+    BREAKEVEN_DC_FIELD_MODE: str = 'DC4'
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".
