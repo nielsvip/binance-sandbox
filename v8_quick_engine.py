@@ -862,6 +862,14 @@ class QuickConfig:
     BTC_RESTRICTED_HA_CONFIRM_ENABLED: bool = False
     BTC_RESTRICTED_HA_CONFIRM_TF: str = "3m"   # 3m / 15m / 1h / 4h / D
     BTC_RESTRICTED_HA_REQUIRE_TWO_BARS: bool = False  # require current AND prev bar same color
+    # 2026-04-29: per-setup-type TF restriction. Each list is which TFs are SCANNED for that setup.
+    # Empty list / None means use all default TFs (15m, 1h, 4h, D). Set to ["1h"] to test 1h-only.
+    # Used for ablation: "what does 1h contribute?" → set every list to ["15m","4h","D"] (drops 1h).
+    BTC_RESTRICTED_WT_TFS: list = None
+    BTC_RESTRICTED_DC_TOUCH_TFS: list = None
+    BTC_RESTRICTED_DC_BREAKOUT_TFS: list = None
+    BTC_RESTRICTED_STDEV_BREAKOUT_TFS: list = None
+    BTC_RESTRICTED_STDEV_BOUNCE_TFS: list = None
     # HTF-reversal swing-trade-on-exit (2026-04-29 user request):
     # When a position exits AND a higher-TF (4h or D) setup signal for the OPPOSITE side
     # is active at the same bar, immediately enter the opposite side as a SWING trade
@@ -3129,7 +3137,9 @@ def _btc_restricted_setup_vec(npz, n, cfg):
 
     # 2. WT 15m+ bounce — multi-TF, first match wins
     if bool(getattr(cfg, 'BTC_RESTRICTED_WT_15M_PLUS_BOUNCE', False)):
+        _wt_tf_filter = getattr(cfg, 'BTC_RESTRICTED_WT_TFS', None)
         for tf, code in (('15m', 2), ('1h', 3), ('4h', 4), ('D', 5)):
+            if _wt_tf_filter and tf not in _wt_tf_filter: continue
             w1 = _arr(f'wt1_{tf}', 0.0); w2 = _arr(f'wt2_{tf}', 0.0)
             w1p = np.empty_like(w1); w1p[1:] = w1[:-1]; w1p[0] = w1[0]
             w2p = np.empty_like(w2); w2p[1:] = w2[:-1]; w2p[0] = w2[0]
@@ -3142,7 +3152,9 @@ def _btc_restricted_setup_vec(npz, n, cfg):
     if bool(getattr(cfg, 'BTC_RESTRICTED_DC_15M_PLUS_TOUCH', False)):
         c = _arr('close_3m', 0.0)
         c_p = np.empty_like(c); c_p[1:] = c[:-1]; c_p[0] = c[0]
+        _dct_tf_filter = getattr(cfg, 'BTC_RESTRICTED_DC_TOUCH_TFS', None)
         for tf, code in (('15m', 6), ('1h', 7), ('4h', 8), ('D', 9)):
+            if _dct_tf_filter and tf not in _dct_tf_filter: continue
             dc_lo = _arr(f'dc_low_{tf}', 0.0)
             dc_hi = _arr(f'dc_high_{tf}', 0.0)
             long_hit = (dc_lo > 0) & (c_p <= dc_lo) & (c > dc_lo) & ~long_mask
@@ -3154,7 +3166,9 @@ def _btc_restricted_setup_vec(npz, n, cfg):
     if bool(getattr(cfg, 'BTC_RESTRICTED_DC_15M_PLUS_BREAKOUT', False)):
         c = _arr('close_3m', 0.0)
         c_p = np.empty_like(c); c_p[1:] = c[:-1]; c_p[0] = c[0]
+        _dcb_tf_filter = getattr(cfg, 'BTC_RESTRICTED_DC_BREAKOUT_TFS', None)
         for tf, code in (('15m', 10), ('1h', 11), ('4h', 12), ('D', 13)):
+            if _dcb_tf_filter and tf not in _dcb_tf_filter: continue
             dc_hi = _arr(f'dc_high_{tf}', 0.0)
             dc_lo = _arr(f'dc_low_{tf}', 0.0)
             dc_hi_p = np.empty_like(dc_hi); dc_hi_p[1:] = dc_hi[:-1]; dc_hi_p[0] = dc_hi[0]
@@ -3167,7 +3181,9 @@ def _btc_restricted_setup_vec(npz, n, cfg):
     # 5. StDev (BB) breakouts
     if bool(getattr(cfg, 'BTC_RESTRICTED_STDEV_BREAKOUT', False)):
         c = _arr('close_3m', 0.0)
+        _sdb_tf_filter = getattr(cfg, 'BTC_RESTRICTED_STDEV_BREAKOUT_TFS', None)
         for tf, code in (('15m', 14), ('1h', 15), ('4h', 16), ('D', 17)):
+            if _sdb_tf_filter and tf not in _sdb_tf_filter: continue
             bb_up = _arr(f'bb_upper_{tf}', 0.0)
             bb_lo = _arr(f'bb_lower_{tf}', 0.0)
             long_hit = (bb_up > 0) & (c > bb_up) & ~long_mask
@@ -3179,7 +3195,9 @@ def _btc_restricted_setup_vec(npz, n, cfg):
     if bool(getattr(cfg, 'BTC_RESTRICTED_STDEV_BOUNCE', False)):
         c = _arr('close_3m', 0.0)
         c_p = np.empty_like(c); c_p[1:] = c[:-1]; c_p[0] = c[0]
+        _sdo_tf_filter = getattr(cfg, 'BTC_RESTRICTED_STDEV_BOUNCE_TFS', None)
         for tf, code in (('15m', 18), ('1h', 19), ('4h', 20), ('D', 21)):
+            if _sdo_tf_filter and tf not in _sdo_tf_filter: continue
             bb_up = _arr(f'bb_upper_{tf}', 0.0)
             bb_lo = _arr(f'bb_lower_{tf}', 0.0)
             long_hit = (bb_lo > 0) & (c_p <= bb_lo) & (c > bb_lo) & ~long_mask
