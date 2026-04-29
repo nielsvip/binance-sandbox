@@ -748,16 +748,27 @@ class Config:
     # MODE='BOUNCE' fires LONG when bb_pct_b drops below BOUNCE_LO and wt is turning up (mean-rev fit for V3).
     # TF='3m' or '15m'. EXIT_STDEV_REJECT adds an SDREJ signal when price reaches opposite band (target).
     # Default OFF — A/B variants flip these flags via shadow-runner overrides.
-    SCALP_V3_ENTRY_STDEV_ENABLED: bool = False
+    SCALP_V3_ENTRY_STDEV_ENABLED: bool = True   # 2026-04-29 user: enable stdev bounce/rejection/breakout in V3 (it changed everything in other tests)
     SCALP_V3_STDEV_TF: str = '3m'
     SCALP_V3_STDEV_MODE: str = 'BOUNCE'  # 'BREAKOUT' or 'BOUNCE'
     SCALP_V3_STDEV_BREAK_HI: float = 1.0   # bb_pct_b > this for LONG breakout (>1.0 = above upper band)
     SCALP_V3_STDEV_BREAK_LO: float = 0.0   # bb_pct_b < this for SHORT breakout
     SCALP_V3_STDEV_BOUNCE_LO: float = 0.10 # bb_pct_b < this for LONG bounce (at lower band)
     SCALP_V3_STDEV_BOUNCE_HI: float = 0.90 # bb_pct_b > this for SHORT bounce (at upper band)
-    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = False
+    SCALP_V3_EXIT_STDEV_REJECT_ENABLED: bool = True   # 2026-04-29 user: wire stdev rejection into V3 exit (target-hit at opposite band)
     SCALP_V3_STDEV_REJECT_HI: float = 0.95 # LONG exits when bb_pct_b >= this (target hit at upper band)
     SCALP_V3_STDEV_REJECT_LO: float = 0.05 # SHORT exits when bb_pct_b <= this (target hit at lower band)
+    # 2026-04-29 USER RULE: per-side V3 params — SHORT trades don't follow same rules as LONG
+    SCALP_V3_LONG_K_RISE_MIN: float = 40.0      # LONG fires when k_3m ≥ this (default to legacy MID_LO=40)
+    SCALP_V3_LONG_K_RISE_MAX: float = 85.0      # LONG fires when k_3m ≤ this (default to legacy HI=85)
+    SCALP_V3_SHORT_K_FALL_MIN: float = 15.0     # SHORT fires when k_3m ≥ this (default to legacy LO=15)
+    SCALP_V3_SHORT_K_FALL_MAX: float = 60.0     # SHORT fires when k_3m ≤ this (default to legacy MID_HI=60)
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_LONG: float = 1.0    # LONG bar-break velocity floor
+    SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_SHORT: float = 1.5   # SHORT bar-break needs stronger downward velocity (don't catch falling knives)
+    SCALP_V3_STDEV_BREAK_HI_LONG: float = 1.0   # per-side STDEV breakout (long)
+    SCALP_V3_STDEV_BREAK_LO_SHORT: float = 0.0  # per-side STDEV breakout (short)
+    SCALP_V3_STDEV_BOUNCE_LO_LONG: float = 0.10 # per-side STDEV bounce (long, lower band)
+    SCALP_V3_STDEV_BOUNCE_HI_SHORT: float = 0.85# per-side STDEV bounce (short, tighter — catch only deeper rejections at upper band)
     # === 2026-04-18/19 LIVE CHANGES — UNTESTED, PENDING SWEEP COVERAGE (see V8_SWEEP_PRIORITY_MATRIX.md) ===
     # Kill switches — flip any to False to disable the corresponding live behavior.
     HEDGE_EXIT_DELTA_CHECK_ENABLED: bool = False  # Legacy delta-decel hedge close. Default OFF per user rule "wt only at exit".

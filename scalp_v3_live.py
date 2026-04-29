@@ -84,12 +84,18 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     # (just-crossed 50) with room to run, NOT exhausted extremes. Tighten to a mid-range
     # window: LONG fires only when k_3m crossed up THROUGH 50 and is still in 50-75;
     # SHORT fires only when k_3m crossed down THROUGH 50 and is still in 25-50.
+    # 2026-04-29 USER RULE: per-side K window — SHORT trades don't follow same rules as LONG.
+    # New names; default to legacy SCALP_V3_K_FRESH_* so behavior unchanged unless explicitly tuned.
     _k_lo = float(getattr(config, 'SCALP_V3_K_FRESH_LO', 25.0))
     _k_mid_lo = float(getattr(config, 'SCALP_V3_K_FRESH_MID_LO', 50.0))
     _k_mid_hi = float(getattr(config, 'SCALP_V3_K_FRESH_MID_HI', 50.0))
     _k_hi = float(getattr(config, 'SCALP_V3_K_FRESH_HI', 75.0))
-    k_rising = (k_3m > k_3m_prev) and (_k_mid_lo <= k_3m <= _k_hi)
-    k_falling = (k_3m < k_3m_prev) and (_k_lo <= k_3m <= _k_mid_hi)
+    _long_k_min = float(getattr(config, 'SCALP_V3_LONG_K_RISE_MIN', _k_mid_lo))
+    _long_k_max = float(getattr(config, 'SCALP_V3_LONG_K_RISE_MAX', _k_hi))
+    _short_k_min = float(getattr(config, 'SCALP_V3_SHORT_K_FALL_MIN', _k_lo))
+    _short_k_max = float(getattr(config, 'SCALP_V3_SHORT_K_FALL_MAX', _k_mid_hi))
+    k_rising = (k_3m > k_3m_prev) and (_long_k_min <= k_3m <= _long_k_max)
+    k_falling = (k_3m < k_3m_prev) and (_short_k_min <= k_3m <= _short_k_max)
     wt_bull = wt1_3m > wt2_3m
     wt_bear = wt1_3m < wt2_3m
     # 2026-04-27 SCALP_V3 IS A 3M SCALPER — do not double-gate on HTF stoch.
@@ -183,9 +189,12 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
     # Use velocity threshold to filter pure noise (velocity 0 = stale).
     if bool(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_ENABLED', False)):
         _bb_vel_min = float(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN', 1.0))
-        if allow_long and bar_rising and (wt_velocity_3m_live > _bb_vel_min):
+        # 2026-04-29 per-side velocity floor — SHORTs need stronger downward velocity (don't catch falling knives)
+        _bb_vel_long = float(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_LONG', _bb_vel_min))
+        _bb_vel_short = float(getattr(config, 'SCALP_V3_ENTRY_BAR_BREAK_VEL_MIN_SHORT', _bb_vel_min))
+        if allow_long and bar_rising and (wt_velocity_3m_live > _bb_vel_long):
             return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_BAR_BREAK_p{price:.4g}_wt3m{wt1_3m:.1f}>{wt1_3m_prev:.1f}_v3m{wt_velocity_3m_live:+.1f}_k3m{k_3m:.0f}"}
-        if allow_short and bar_falling and (wt_velocity_3m_live < -_bb_vel_min):
+        if allow_short and bar_falling and (wt_velocity_3m_live < -_bb_vel_short):
             return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_BAR_BREAK_p{price:.4g}_wt3m{wt1_3m:.1f}<{wt1_3m_prev:.1f}_v3m{wt_velocity_3m_live:+.1f}_k3m{k_3m:.0f}"}
     # ===== ENTRY PATH 1: TREND (current strict logic) — controlled by SCALP_V3_ENTRY_TREND_ENABLED =====
     if bool(getattr(config, 'SCALP_V3_ENTRY_TREND_ENABLED', True)):
@@ -242,17 +251,23 @@ def check_scalp_v3_live_entry(symbol: str, position_key: str, indicators: Dict, 
             if _sd_mode == 'BREAKOUT':
                 _br_hi = float(getattr(config, 'SCALP_V3_STDEV_BREAK_HI', 1.0))
                 _br_lo = float(getattr(config, 'SCALP_V3_STDEV_BREAK_LO', 0.0))
-                if allow_long and _bb_pctb > _br_hi and wt_bull and (k_3m > k_3m_prev):
-                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}>{_br_hi:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
-                if allow_short and _bb_pctb < _br_lo and wt_bear and (k_3m < k_3m_prev):
-                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}<{_br_lo:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+                # 2026-04-29 per-side: SHORT may want stricter band-break threshold than LONG
+                _br_long = float(getattr(config, 'SCALP_V3_STDEV_BREAK_HI_LONG', _br_hi))
+                _br_short = float(getattr(config, 'SCALP_V3_STDEV_BREAK_LO_SHORT', _br_lo))
+                if allow_long and _bb_pctb > _br_long and wt_bull and (k_3m > k_3m_prev):
+                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}>{_br_long:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+                if allow_short and _bb_pctb < _br_short and wt_bear and (k_3m < k_3m_prev):
+                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BREAK_{_sd_tf}_pctb{_bb_pctb:.2f}<{_br_short:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
             else:  # BOUNCE
                 _bo_lo = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_LO', 0.10))
                 _bo_hi = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_HI', 0.90))
-                if allow_long and _bb_pctb < _bo_lo and wt_bull and (wt1_3m > wt1_3m_prev):
-                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}<{_bo_lo:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
-                if allow_short and _bb_pctb > _bo_hi and wt_bear and (wt1_3m < wt1_3m_prev):
-                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}>{_bo_hi:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
+                # 2026-04-29 per-side: tune bounce bands independently
+                _bo_long = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_LO_LONG', _bo_lo))
+                _bo_short = float(getattr(config, 'SCALP_V3_STDEV_BOUNCE_HI_SHORT', _bo_hi))
+                if allow_long and _bb_pctb < _bo_long and wt_bull and (wt1_3m > wt1_3m_prev):
+                    return {"side": "LONG", "reason": f"SCALP_V3_OPEN_LONG_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}<{_bo_long:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}>{wt2_3m:.1f}"}
+                if allow_short and _bb_pctb > _bo_short and wt_bear and (wt1_3m < wt1_3m_prev):
+                    return {"side": "SHORT", "reason": f"SCALP_V3_OPEN_SHORT_STDEV_BOUNCE_{_sd_tf}_pctb{_bb_pctb:.2f}>{_bo_short:.2f}_k3m{k_3m:.0f}_wt3m{wt1_3m:.1f}<{wt2_3m:.1f}"}
     return None
 
 

@@ -872,6 +872,17 @@ class QuickConfig:
     BTC_HTF_REVERSAL_SWING_ENABLED: bool = False
     BTC_HTF_REVERSAL_SWING_MIN_HOLD_BARS: int = 20    # 1h on 3m base — give swing time to develop
     BTC_HTF_REVERSAL_SWING_USE_RESTRICTED_SETUPS: bool = True  # require restricted-mode arrays computed (adds the gates)
+    # 2026-04-29: how many of (WT, DC, STDEV) HTF categories must agree at the same bar for the swing to fire.
+    # 1 = ANY single 4h/D signal triggers (default — original behavior).
+    # 2 = need 2 of 3 categories — much higher conviction.
+    # 3 = need all 3 (very rare).
+    BTC_HTF_REVERSAL_SWING_MIN_CATEGORIES: int = 1
+    # 2026-04-29: within each category, how many TFs (of {15m, 1h, 4h, D}) must agree.
+    # 1 = any single TF in the category fires (most permissive — original behavior).
+    # 2 = need 2 TFs in same category aligning, e.g. WT_4h + WT_D both crossing — tighter.
+    # 3 = 3 of 4 TFs in same category. 4 = all four.
+    # Combined with MIN_CATEGORIES gives a 2-level confluence requirement.
+    BTC_HTF_REVERSAL_SWING_MIN_TF_PER_CATEGORY: int = 1
     BTC_LEVERAGE: float = 20.0
     BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0
     BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0
@@ -3457,6 +3468,67 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     _restr_long_mask, _restr_short_mask, _restr_long_label, _restr_short_label = \
         _btc_restricted_setup_vec(npz, n, cfg)
     _restr_enabled = _restr_long_mask is not None
+
+    # ── HTF-reversal swing CATEGORY MASKS (2026-04-29) ────────────────────
+    # Three category arrays per side: WT-cross, DC-touch/breakout, STDEV-breakout/bounce.
+    # Used to require N-of-3 agreement before firing a swing flip.
+    # Computed only when HTF_REVERSAL_SWING_ENABLED — independent of restricted-entry-mode masks.
+    _htf_swing_enabled = bool(getattr(cfg, 'BTC_HTF_REVERSAL_SWING_ENABLED', False))
+    _htf_long_categories = None
+    _htf_short_categories = None
+    if _htf_swing_enabled:
+        _files = npz.files if hasattr(npz, "files") else set()
+        def _harr(field, default=0.0):
+            if field not in _files:
+                return np.full(n, default, dtype=np.float32)
+            a = np.asarray(npz[field], dtype=np.float32)
+            if len(a) < n: return np.pad(a, (0, n - len(a)), constant_values=default)
+            return a[:n]
+        _wt_neg = float(getattr(cfg, 'BTC_RESTRICTED_WT_EXTREME_NEG', -50.0))
+        _wt_pos = float(getattr(cfg, 'BTC_RESTRICTED_WT_EXTREME_POS', 50.0))
+        _min_tf = int(getattr(cfg, 'BTC_HTF_REVERSAL_SWING_MIN_TF_PER_CATEGORY', 1))
+        _tfs = ('15m', '1h', '4h', 'D')
+        # Per-category PER-TF firing arrays — count how many TFs in each category align.
+        # WT cross category
+        _htf_wt_long_count = np.zeros(n, dtype=np.int8); _htf_wt_short_count = np.zeros(n, dtype=np.int8)
+        for tf in _tfs:
+            w1 = _harr(f'wt1_{tf}', 0.0); w2 = _harr(f'wt2_{tf}', 0.0)
+            w1p = np.empty_like(w1); w1p[1:] = w1[:-1]; w1p[0] = w1[0]
+            w2p = np.empty_like(w2); w2p[1:] = w2[:-1]; w2p[0] = w2[0]
+            _htf_wt_long_count  += ((w1p < w2p) & (w1 > w2) & (w1p < _wt_neg)).astype(np.int8)
+            _htf_wt_short_count += ((w1p > w2p) & (w1 < w2) & (w1p > _wt_pos)).astype(np.int8)
+        # DC category (touch rejection OR breakout)
+        _close_3m_h = _harr('close_3m', 0.0)
+        _c_p = np.empty_like(_close_3m_h); _c_p[1:] = _close_3m_h[:-1]; _c_p[0] = _close_3m_h[0]
+        _htf_dc_long_count = np.zeros(n, dtype=np.int8); _htf_dc_short_count = np.zeros(n, dtype=np.int8)
+        for tf in _tfs:
+            dc_lo = _harr(f'dc_low_{tf}', 0.0); dc_hi = _harr(f'dc_high_{tf}', 0.0)
+            dc_hi_p = np.empty_like(dc_hi); dc_hi_p[1:] = dc_hi[:-1]; dc_hi_p[0] = dc_hi[0]
+            dc_lo_p = np.empty_like(dc_lo); dc_lo_p[1:] = dc_lo[:-1]; dc_lo_p[0] = dc_lo[0]
+            tf_long_fire = (((dc_lo > 0) & (_c_p <= dc_lo) & (_close_3m_h > dc_lo))
+                            | ((dc_hi_p > 0) & (_c_p <= dc_hi_p) & (_close_3m_h > dc_hi_p)))
+            tf_short_fire = (((dc_hi > 0) & (_c_p >= dc_hi) & (_close_3m_h < dc_hi))
+                             | ((dc_lo_p > 0) & (_c_p >= dc_lo_p) & (_close_3m_h < dc_lo_p)))
+            _htf_dc_long_count  += tf_long_fire.astype(np.int8)
+            _htf_dc_short_count += tf_short_fire.astype(np.int8)
+        # STDEV category (BB band breakout OR bounce)
+        _htf_st_long_count = np.zeros(n, dtype=np.int8); _htf_st_short_count = np.zeros(n, dtype=np.int8)
+        for tf in _tfs:
+            bb_up = _harr(f'bb_upper_{tf}', 0.0); bb_lo = _harr(f'bb_lower_{tf}', 0.0)
+            tf_long_fire = (((bb_up > 0) & (_close_3m_h > bb_up))
+                            | ((bb_lo > 0) & (_c_p <= bb_lo) & (_close_3m_h > bb_lo)))
+            tf_short_fire = (((bb_lo > 0) & (_close_3m_h < bb_lo))
+                             | ((bb_up > 0) & (_c_p >= bb_up) & (_close_3m_h < bb_up)))
+            _htf_st_long_count  += tf_long_fire.astype(np.int8)
+            _htf_st_short_count += tf_short_fire.astype(np.int8)
+        # A category "fires" iff at least _min_tf of its 4 TFs aligned this bar.
+        # Then category-firing array is sum across the 3 categories (0..3).
+        _htf_long_categories = ((_htf_wt_long_count >= _min_tf).astype(np.int8)
+                                + (_htf_dc_long_count >= _min_tf).astype(np.int8)
+                                + (_htf_st_long_count >= _min_tf).astype(np.int8))
+        _htf_short_categories = ((_htf_wt_short_count >= _min_tf).astype(np.int8)
+                                 + (_htf_dc_short_count >= _min_tf).astype(np.int8)
+                                 + (_htf_st_short_count >= _min_tf).astype(np.int8))
     # Funding gate config
     funding_gate_enabled = bool(getattr(cfg, 'FUNDING_GATE_ENABLED', False))
     funding_long_max = float(getattr(cfg, 'FUNDING_GATE_LONG_MAX', 0.0005))
@@ -4002,27 +4074,23 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                     entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
 
             # ── HTF-REVERSAL SWING (2026-04-29 user request) ──
-            # When we just exited AND a 4h/D-level setup for the OPPOSITE side fires
-            # at this bar, take the swing trade. Higher conviction than REVERSE_ON_EXIT
-            # (which uses 3m breakout) because it requires HTF reversal evidence.
-            elif (bool(getattr(cfg, 'BTC_HTF_REVERSAL_SWING_ENABLED', False))
-                  and _restr_long_mask is not None
+            # When we just exited AND ≥N-of-3 HTF setup categories agree on the OPPOSITE
+            # side at this bar, take the swing trade. Each category requires ≥M-of-4 TFs
+            # to align (15m, 1h, 4h, D). Two-level confluence — much higher conviction.
+            elif (_htf_swing_enabled and _htf_long_categories is not None
                   and position == "FLAT"):
+                _min_cats = int(getattr(cfg, 'BTC_HTF_REVERSAL_SWING_MIN_CATEGORIES', 1))
                 # Opposite side from exited
                 if exited_side == "LONG":
-                    if bool(_restr_short_mask[i]) and int(_restr_short_label[i]) in _HTF_LABEL_CODES:
-                        if not (funding_blocks_short or oi_blocks_short):
-                            position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
-                            code = int(_restr_short_label[i])
-                            entry_reason = f"HTF_SWING_{_RESTRICTED_LABEL_NAMES.get(code, 'UNK')}_SHORT"
-                            entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    if int(_htf_short_categories[i]) >= _min_cats and not (funding_blocks_short or oi_blocks_short):
+                        position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                        entry_reason = f"HTF_SWING_SHORT_{int(_htf_short_categories[i])}of3cat"
+                        entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 elif exited_side == "SHORT":
-                    if bool(_restr_long_mask[i]) and int(_restr_long_label[i]) in _HTF_LABEL_CODES:
-                        if not (funding_blocks_long or oi_blocks_long):
-                            position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
-                            code = int(_restr_long_label[i])
-                            entry_reason = f"HTF_SWING_{_RESTRICTED_LABEL_NAMES.get(code, 'UNK')}_LONG"
-                            entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    if int(_htf_long_categories[i]) >= _min_cats and not (funding_blocks_long or oi_blocks_long):
+                        position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "BOUNCE"
+                        entry_reason = f"HTF_SWING_LONG_{int(_htf_long_categories[i])}of3cat"
+                        entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
 
     # Mark-to-market open position at end of sim (CLAUDE.md Sharpe rule #2)
     if position != "FLAT":

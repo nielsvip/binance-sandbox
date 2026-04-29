@@ -1139,6 +1139,10 @@ class TradierConfig:
     SRS_K_EXIT_1H: float = 85.0                  # v8 engine: SRS exit k_1h threshold (matches K_HIGH above)
     STOCH_1H_EXIT_K_MIN: float = 85.0            # v8 engine: stoch cross exit requires k_1h >= 85
     EXIT_SCORER_K_EXTREME: float = 85.0          # wt_dc_exit_scorer: extreme k threshold (was hardcoded 75)
+    EXIT_SCORER_MIN_CONDITIONS: int = 5          # 2026-04-29: SURFACED hidden knob — was implicit default 5 because not declared in config. wt_dc_exit_scorer.py:56 falls through to 5 when missing. Test C 12sym×2yr v8_quick (NOLOSS=off, all-other-exits=off) verdict: 5/5 K85 = pool_sharpe 0.0795 BEAT simple_mtf 0.0702 BEAT delta3 0.0697 BEAT loose 3/5 K75 0.0744. Sweep range: 3,4,5.
+    EXIT_SCORER_DC_EXTREME: float = 0.80         # 2026-04-29: SURFACED hidden knob — was implicit default 0.80. Sweep range 0.70-0.90.
+    EXIT_SCORER_PARTIAL_SCORE: float = 40.0      # 2026-04-29: SURFACED hidden knob — score returned for N-1 conditions met. Sweep 30-50.
+    EXIT_SCORER_FULL_SCORE: float = 100.0        # 2026-04-29: SURFACED hidden knob — score returned for full N. Stays 100; setting <30 effectively gates score≥threshold check.
     K_LOWER_HIGH_EXIT_ENABLED: bool = True        # v8 engine: exit if k peaks below extreme and turns down
     K_LOWER_HIGH_LTF_THRESHOLD: float = 65.0     # k_5m must reach >= 65 to qualify as failed rally
     K_LOWER_HIGH_EXTREME: float = 95.0           # only fires if k_prev < 95 (didn't reach true extreme)
