@@ -1940,14 +1940,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
                 v8_logger.info(f"[V8_PNL_BREAKDOWN] {_r:<25} n={_d['n']:>4} sum={_d['pnl_pct_sum']:+8.2f}% W={_d['n_wins']} L={_d['n_losses']} worst={_d['worst_loss']:.2f}% best={_d['best_win']:.2f}%")
 
-    # Cancel queue processor
-    queue_task.cancel()
-    try:
-        await queue_task
-    except asyncio.CancelledError:
-        pass
-
-    # Results
+    # Results — compute and print BEFORE queue cleanup so cancellation errors cannot block result
     elapsed = _real_time_module.time() - t0
     v8_logger.info(f"Done in {elapsed:.1f}s | {len(executed_trades)} trades")
     # ═══ FINAL PnL BREAKDOWN ═══
@@ -1956,6 +1949,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     v8_logger.info(f"[V8_FINAL_PNL] sum_trade_pcts={_f_sum_pct:+.2f}% gain_pct_dollars={_f_gain_pct:+.2f}% gain_dollars={_f_gain_dol:+.2f} | closes={_live_pnl['n_closes']} | W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} | WR={_live_pnl['n_wins']*100/max(1,_live_pnl['n_closes']):.1f}%")
     v8_logger.info(f"[V8_FINAL_PNL] sharpe_weekly={_f_sharpe_w:.3f} sharpe_per_trade={_f_sharpe_pt:.3f} sharpe_annual={_f_sharpe_ann:.2f} (trades_per_year={_f_tpy:.0f})")
     print(f"V8_RESULT: sharpe_w={_f_sharpe_w:.3f} sharpe_pt={_f_sharpe_pt:.3f} sharpe_ann={_f_sharpe_ann:.2f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
+
+    # Cancel queue processor (after result is already printed)
+    queue_task.cancel()
+    try:
+        await queue_task
+    except Exception:
+        pass
     v8_logger.info("[V8_FINAL_PNL] === BY CLOSE REASON (sorted by total PnL ascending) ===")
     for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
         _avg = _d['pnl_pct_sum'] / max(1, _d['n'])
