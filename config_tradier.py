@@ -794,32 +794,32 @@ class TradierConfig:
     # === TRC AGGRESSIVE SANDBOX — "after-sandbox sandbox" ===
     # trc is paper-money. Push extreme settings here to prove before applying to trb.
     # 2026-04-27 SECOND CUT — every trc cap now 1/4 of original.
-    TRC_START_POSITION_SIZE: float = 250.0    # was 500 / orig 1000
+    TRC_START_POSITION_SIZE: float = 330.0    # was 500 / orig 1000
     TRC_MAX_ORDER_VALUE: float = 1250.0       # was 2500 / orig 5000
-    TRC_MAX_POSITION_SIZE: float = 1250.0     # was 2500 / orig 5000
-    TRC_SCALP_START_SIZE: float = 250.0       # was 500 / orig 1000
-    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 5   # was 10 / orig 20
-    TRC_MAX_CONCURRENT_POSITIONS: int = 10    # was 20 / orig 40
-    TRC_ROTATION_POSITION_SIZE: float = 750.0   # was 1500 / orig 3000
-    TRC_RSI2_POSITION_SIZE: float = 495.0     # was 990 / orig 1980
-    TRC_GAP_FILL_POSITION_SIZE: float = 495.0   # was 990 / orig 1980
-    TRC_DC_DAYTRADE_START_SIZE: float = 495.0   # was 990 / orig 1980
-    TRC_DC_DAYTRADE_LONG_BUDGET: float = 2475.0    # was 4950 / orig 9900
-    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 2475.0   # was 4950 / orig 9900
-    TRC_SWING_LONG_BUDGET: float = 25000.0    # was 50000 / orig 100000
-    TRC_SWING_SHORT_BUDGET: float = 25000.0   # was 50000 / orig 100000
+    TRC_MAX_POSITION_SIZE: float = 3750.0     # was 2500 / orig 5000
+    TRC_SCALP_START_SIZE: float = 495.0       # was 500 / orig 1000
+    TRC_SCALP_MAX_POSITIONS_PER_SIDE: int = 12   # was 10 / orig 20
+    TRC_MAX_CONCURRENT_POSITIONS: int = 32    # was 20 / orig 40
+    TRC_ROTATION_POSITION_SIZE: float = 3000.0   # was 1500 / orig 3000
+    TRC_RSI2_POSITION_SIZE: float = 1980.0     # was 990 / orig 1980
+    TRC_GAP_FILL_POSITION_SIZE: float = 1980.0   # was 990 / orig 1980
+    TRC_DC_DAYTRADE_START_SIZE: float = 1980.0   # was 990 / orig 1980
+    TRC_DC_DAYTRADE_LONG_BUDGET: float = 9900.0    # was 4950 / orig 9900
+    TRC_DC_DAYTRADE_SHORT_BUDGET: float = 9900.0   # was 4950 / orig 9900
+    TRC_SWING_LONG_BUDGET: float = 100000.0    # was 50000 / orig 100000
+    TRC_SWING_SHORT_BUDGET: float = 100000.0   # was 50000 / orig 100000
     TRC_SCALP_LONG_BUDGET: float = 1250.0     # was 2500 / orig 5000
     TRC_SCALP_SHORT_BUDGET: float = 1250.0    # was 2500 / orig 5000
     TRC_BEAR_MARKET_MODE: bool = False  # No bear penalty — test both directions equally
-    TRC_ENTRY_ZONE_LONG: float = 25.0  # Local extremes: deeper oversold bottom (was 30)
-    TRC_ENTRY_ZONE_SHORT: float = 75.0  # Local extremes: deeper overbought top (was 70)
+    TRC_ENTRY_ZONE_LONG: float = 30.0  # Local extremes: deeper oversold bottom (was 30)
+    TRC_ENTRY_ZONE_SHORT: float = 70.0  # Local extremes: deeper overbought top (was 70)
     TRC_ENTRY_MIN_ALIGNMENT: int = 6  # Looser than trb (8)
     TRC_LS_RATIO_MIN: float = 0.30  # Wider than trb (0.50)
     TRC_LS_RATIO_MAX: float = 3.00  # Wider than trb (2.00)
     TRC_MAX_DAILY_LOSS_PCT: float = 10.0  # 3.3x trb (3%) — paper money, let it run
     TRC_SCALP_TARGET_PCT: float = 0.01  # 2x trb (0.005) — let winners run further
     TRB_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY. Was 3.0% which blocked all exits on losers. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
-    TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.0  # 2026-04-08: TECHNICALS ONLY.
+    TRC_NOLOSS_MIN_PROFIT_PCT: float = 0.5  # 2026-04-08: TECHNICALS ONLY.
     # === CONCENTRATION CAP — prevent single-symbol overexposure ===
     MAX_SYMBOL_VALUE_TRADIER: float = 3750.0  # was 7500 / orig 15000 — 2026-04-27 second cut
     TRC_MAX_SYMBOL_VALUE: float = 1250.0  # was 2500 / orig 5000 — 2026-04-27 second cut
