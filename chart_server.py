@@ -37,6 +37,10 @@ _npz_cache: Dict[str, Any] = {}
 _response_cache: Dict[str, Any] = {}  # {key: (expires_unix, json_str)}
 _precomputed: Dict[str, str] = {}  # {endpoint: json_body}  written by background thread
 _precompute_lock = __import__("threading").Lock()
+# Per-file aggregate cache: {path_str: (mtime, agg_dict)}
+# Lets us avoid re-parsing 3.7GB of trade jsonls every cycle — only re-read files
+# whose mtime has changed since last cycle.
+_file_agg_cache: Dict[str, Any] = {}
 
 
 def _load_npz(symbol: str):
@@ -102,49 +106,25 @@ def runs():
     return jsonify(sorted(out))
 
 
-@app.route("/per_sym_best")
-def per_sym_best():
-    """Returns the current best run per symbol (highest churn-penalized score per-sym).
-    Reflects what quality_optimizer.py --per-sym would auto-promote.
-    Background thread refreshes every 30s; otherwise live scan + 30s cache.
-    """
-    import time as _time
-    with _precompute_lock:
-        pre = _precomputed.get("per_sym_best")
-    if pre:
-        return app.response_class(pre, mimetype="application/json")
-    cache_key = "per_sym_best"
-    now = _time.time()
-    cached = _response_cache.get(cache_key)
-    if cached and cached[0] > now:
-        return app.response_class(cached[1], mimetype="application/json")
+def _compute_per_sym_best() -> str:
+    """Pure compute. Reuses _file_aggregates() for speed."""
     if not TRADES_DIR.exists():
-        return jsonify([])
+        return "[]"
     by_sym: Dict[str, list] = {}
     for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
         run, _, sym = p.stem.partition("__")
-        if not run or not sym: continue
-        trades = []
-        for line in p.read_text().splitlines():
-            if line.strip():
-                try: trades.append(json.loads(line))
-                except Exception: pass
-        if len(trades) < 5: continue
-        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
-        n = len(pnls)
-        wins = sum(1 for x in pnls if x > 0)
-        wr = wins / n if n else 0
-        total_gain = sum(pnls)
-        sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
-        chained = 0
-        for j in range(1, len(sorted_t)):
-            prev, cur = sorted_t[j - 1], sorted_t[j]
-            if prev.get("side") == cur.get("side") and 0 <= int(cur.get("entry_ts", 0)) - int(prev.get("exit_ts", 0)) <= 3600:
-                chained += 1
-        chained_pct = chained / n if n else 0
+        if not run or not sym:
+            continue
+        agg = _file_aggregates(p)
+        if not agg:
+            continue
+        n = agg["n"]
+        wr = agg["wr"]
+        total_gain = agg["total_gain"]
+        chained_pct = agg["chained_pct"]
         score = total_gain * wr * max(0.05, 1.0 - chained_pct)
-        ts_first = min(int(t.get("entry_ts", 0)) for t in trades if t.get("entry_ts"))
-        ts_last = max(int(t.get("exit_ts", 0)) for t in trades if t.get("exit_ts"))
+        ts_first = agg["ts_first"]
+        ts_last = agg["ts_last"]
         win_yrs = max(0.01, (ts_last - ts_first) / (86400.0 * 365.25))
         by_sym.setdefault(sym, []).append({
             "run": run, "score": round(score, 1),
@@ -158,61 +138,96 @@ def per_sym_best():
         rows.sort(key=lambda r: -r["score"])
         out.append({"sym": sym, "best": rows[0], "top5": rows[:5]})
     out.sort(key=lambda x: x["sym"])
-    body = json.dumps(out)
-    _response_cache[cache_key] = (now + 30, body)  # 30s cache
-    return app.response_class(body, mimetype="application/json")
+    return json.dumps(out)
 
 
-@app.route("/runs_ranked")
-def runs_ranked():
-    """Return runs sorted by composite score (best first) with per-symbol stats.
-    Composite = total_gain × win_rate / (1 + churn%) — favors high gain + high WR + low churn.
-    Optional ?sym=X to filter.
-    Background thread refreshes the unfiltered result every 30s; sym-filtered requests
-    fall through to the live scan but also cache for 30s.
-    """
+@app.route("/per_sym_best")
+def per_sym_best():
+    """Cached endpoint."""
     import time as _time
-    sym_filter = request.args.get("sym", "").upper()
-    # Fast path: serve background-precomputed full result for unfiltered requests
-    if not sym_filter:
-        with _precompute_lock:
-            pre = _precomputed.get("runs_ranked")
-        if pre:
-            return app.response_class(pre, mimetype="application/json")
-    cache_key = f"runs_ranked:{sym_filter}"
+    with _precompute_lock:
+        pre = _precomputed.get("per_sym_best")
+    if pre:
+        return app.response_class(pre, mimetype="application/json")
+    cache_key = "per_sym_best"
     now = _time.time()
     cached = _response_cache.get(cache_key)
     if cached and cached[0] > now:
         return app.response_class(cached[1], mimetype="application/json")
+    body = _compute_per_sym_best()
+    _response_cache[cache_key] = (now + 30, body)
+    return app.response_class(body, mimetype="application/json")
+
+
+def _file_aggregates(p):
+    """Return aggregate dict for a single jsonl file, using mtime cache.
+    Aggregates: {n, wr, total_gain, chained_pct, ts_first, ts_last}"""
+    sp = str(p)
+    try:
+        mtime = p.stat().st_mtime
+    except OSError:
+        return None
+    cached = _file_agg_cache.get(sp)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    trades = []
+    try:
+        for line in p.read_text().splitlines():
+            if line.strip():
+                try:
+                    trades.append(json.loads(line))
+                except Exception:
+                    pass
+    except OSError:
+        return None
+    if len(trades) < 5:
+        _file_agg_cache[sp] = (mtime, None)
+        return None
+    pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
+    n = len(pnls)
+    wins = sum(1 for x in pnls if x > 0)
+    total_gain = sum(pnls)
+    sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
+    chained = 0
+    for j in range(1, len(sorted_t)):
+        prev, cur = sorted_t[j - 1], sorted_t[j]
+        if prev.get("side") == cur.get("side") and 0 <= int(cur.get("entry_ts", 0)) - int(prev.get("exit_ts", 0)) <= 3600:
+            chained += 1
+    ts_first = min((int(t.get("entry_ts", 0)) for t in trades if t.get("entry_ts")), default=0)
+    ts_last = max((int(t.get("exit_ts", 0)) for t in trades if t.get("exit_ts")), default=0)
+    agg = {
+        "n": n,
+        "wins": wins,
+        "wr": wins / n if n else 0,
+        "total_gain": total_gain,
+        "chained": chained,
+        "chained_pct": chained / n if n else 0,
+        "ts_first": ts_first,
+        "ts_last": ts_last,
+    }
+    _file_agg_cache[sp] = (mtime, agg)
+    return agg
+
+
+def _compute_runs_ranked(sym_filter: str = "") -> str:
+    """Pure compute (no Flask context). Returns JSON body string.
+    Uses _file_aggregates() so unchanged files are read from cache."""
     if not TRADES_DIR.exists():
-        return jsonify([])
+        return "[]"
     by_run = {}
     for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
         run, _, sym = p.stem.partition("__")
-        if not run or not sym: continue
-        if sym_filter and sym.upper() != sym_filter: continue
-        trades = []
-        for line in p.read_text().splitlines():
-            if line.strip():
-                try: trades.append(json.loads(line))
-                except Exception: pass
-        if len(trades) < 5: continue
-        pnls = [float(t.get("pnl_pct", 0) or 0) for t in trades]
-        n = len(pnls)
-        wins = sum(1 for x in pnls if x > 0)
-        wr = wins / n if n else 0
-        total_gain = sum(pnls)
-        # Quick churn estimate: chained same-side trades within 60min
-        sorted_t = sorted(trades, key=lambda t: int(t.get("entry_ts", 0)))
-        chained = 0
-        for j in range(1, len(sorted_t)):
-            prev, cur = sorted_t[j - 1], sorted_t[j]
-            if prev.get("side") == cur.get("side") and 0 <= int(cur.get("entry_ts", 0)) - int(prev.get("exit_ts", 0)) <= 3600:
-                chained += 1
-        chained_pct = chained / n if n else 0
-        # Composite score — heavily penalize churn (user 2026-04-29: stop showing
-        # configs with 8 trades / half-hour at the top). Multiplicative penalty so
-        # 65% churn → 0.35× multiplier, 30% churn → 0.70× multiplier.
+        if not run or not sym:
+            continue
+        if sym_filter and sym.upper() != sym_filter:
+            continue
+        agg = _file_aggregates(p)
+        if not agg:
+            continue
+        n = agg["n"]
+        wr = agg["wr"]
+        total_gain = agg["total_gain"]
+        chained_pct = agg["chained_pct"]
         score = total_gain * wr * max(0.05, 1.0 - chained_pct)
         by_run.setdefault(run, []).append({
             "sym": sym, "trades": n, "wr": round(wr, 3),
@@ -220,7 +235,6 @@ def runs_ranked():
             "chained_pct": round(chained_pct, 3),
             "score": round(score, 1),
         })
-    # Aggregate per-run: sum scores across symbols
     out = []
     for run, sym_rows in by_run.items():
         agg_score = sum(r["score"] for r in sym_rows)
@@ -239,8 +253,27 @@ def runs_ranked():
             "per_symbol": sym_rows,
         })
     out.sort(key=lambda r: -r["score"])
-    body = json.dumps(out)
-    _response_cache[cache_key] = (now + 30, body)  # 30s cache
+    return json.dumps(out)
+
+
+@app.route("/runs_ranked")
+def runs_ranked():
+    """Cached endpoint. Background thread refreshes unfiltered every 30s.
+    Sym-filtered requests run live + cache for 30s."""
+    import time as _time
+    sym_filter = request.args.get("sym", "").upper()
+    if not sym_filter:
+        with _precompute_lock:
+            pre = _precomputed.get("runs_ranked")
+        if pre:
+            return app.response_class(pre, mimetype="application/json")
+    cache_key = f"runs_ranked:{sym_filter}"
+    now = _time.time()
+    cached = _response_cache.get(cache_key)
+    if cached and cached[0] > now:
+        return app.response_class(cached[1], mimetype="application/json")
+    body = _compute_runs_ranked(sym_filter)
+    _response_cache[cache_key] = (now + 30, body)
     return app.response_class(body, mimetype="application/json")
 
 
@@ -555,10 +588,8 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     for v in eq:
         if v > peak: peak = v
         if peak - v > max_dd: max_dd = peak - v
-    # Annualized "diagnostic" Sharpe — per CLAUDE.md rule 3 this is INVALID for ranking, label clearly.
+    # CANONICAL_METRICS.md: NO sharpe_annual emission anywhere — banned for being feel-good frequency inflation.
     trades_per_year = n / window_years if window_years > 0 else 0
-    import math
-    sharpe_annual_diag = sharpe_pt * math.sqrt(trades_per_year) if trades_per_year > 0 else 0
     return {
         "trades": n,
         "wins": wins,
@@ -567,8 +598,7 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         "total_gain_pct": total_gain,
         "avg_pnl_pct": avg,
         "std_pnl_pct": std,
-        "pool_sharpe_per_trade": sharpe_pt,
-        "sharpe_annual_diagnostic": sharpe_annual_diag,
+        "pool_sharpe": sharpe_pt,
         "max_dd_pct": max_dd,
         "best_pct": max(pnls),
         "worst_pct": min(pnls),
@@ -824,7 +854,7 @@ def run_diff():
             "win_rate": wins / n if n else 0.0,
             "total_gain_pct": sum(pnls),
             "avg_pnl_pct": sum(pnls) / n if n else 0.0,
-            "pool_sharpe_per_trade": (sum(pnls) / n) / std if std > 0 else 0.0,
+            "pool_sharpe": (sum(pnls) / n) / std if std > 0 else 0.0,
         }
 
     return jsonify({
@@ -909,7 +939,7 @@ def tier_diff():
         wins = sum(1 for p in pnls if p > 0)
         std = statistics.stdev(pnls) if n > 1 else 0
         return {"trades": n, "win_rate": wins / n if n else 0, "total_gain_pct": sum(pnls),
-                "avg_pnl_pct": sum(pnls) / n if n else 0, "pool_sharpe_per_trade": (sum(pnls)/n)/std if std > 0 else 0}
+                "avg_pnl_pct": sum(pnls) / n if n else 0, "pool_sharpe": (sum(pnls)/n)/std if std > 0 else 0}
 
     # Reason cross-tab on shared (where T1 and T2 BOTH entered, what reasons matched/diverged)
     crosstab_entry = {}  # (t1_reason, t2_reason) -> count
@@ -1074,22 +1104,24 @@ def health():
 
 
 def _precompute_loop():
-    """Background thread: every 30s, compute /runs_ranked and /per_sym_best results
-    and store as raw JSON strings in `_precomputed`. Endpoints serve those instantly."""
+    """Background thread: every 30s, recompute the heavy aggregates.
+    Calls the pure helpers directly (no Flask context, no cache check).
+    Stores as JSON strings in `_precomputed`. Endpoints serve those instantly."""
     import time as _t
     while True:
         try:
-            with app.test_request_context("/runs_ranked"):
-                rr = runs_ranked.__wrapped__() if hasattr(runs_ranked, "__wrapped__") else runs_ranked()
-            # `rr` is a Flask Response — extract its data
+            t0 = _t.time()
+            rr_body = _compute_runs_ranked("")
             with _precompute_lock:
-                _precomputed["runs_ranked"] = rr.get_data(as_text=True) if hasattr(rr, "get_data") else None
-            with app.test_request_context("/per_sym_best"):
-                psb = per_sym_best.__wrapped__() if hasattr(per_sym_best, "__wrapped__") else per_sym_best()
+                _precomputed["runs_ranked"] = rr_body
+            psb_body = _compute_per_sym_best()
             with _precompute_lock:
-                _precomputed["per_sym_best"] = psb.get_data(as_text=True) if hasattr(psb, "get_data") else None
+                _precomputed["per_sym_best"] = psb_body
+            print(f"[precompute] runs_ranked={len(rr_body)}B per_sym_best={len(psb_body)}B in {_t.time()-t0:.1f}s")
         except Exception as e:
+            import traceback
             print(f"[precompute] error: {e}")
+            traceback.print_exc()
         _t.sleep(30)
 
 

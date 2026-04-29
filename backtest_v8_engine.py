@@ -1288,7 +1288,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if _pos["qty"] <= 0.0001:
                 del _live_pnl["open_positions"][pk]
             _live_sharpe_w, _live_gain_pct, _live_gain_dol, _, _live_sharpe_pt, _live_sharpe_ann, _live_tpy = _compute_sharpe_and_gain()
-            v8_logger.warning(f"[V8_PNL] CLOSE {pk} {_close_reason_short} entry={_pos['vwap']:.4f} exit={px:.4f} pnl={_pnl_pct:+.2f}% gain%={_live_gain_pct:+.2f}% sharpe_pt={_live_sharpe_pt:.3f} sharpe_ann={_live_sharpe_ann:.2f} closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']}")
+            # CANONICAL_METRICS.md: pool_sharpe (= sharpe_per_trade) only — sharpe_ann banned.
+            v8_logger.warning(f"[V8_PNL] CLOSE {pk} {_close_reason_short} entry={_pos['vwap']:.4f} exit={px:.4f} pnl={_pnl_pct:+.2f}% gain%={_live_gain_pct:+.2f}% pool_sharpe={_live_sharpe_pt:.3f} closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']}")
         v8_logger.warning(f"[V8_TRADE] {pk} {side} qty={qty:.4f} @{px:.6f} {act} {reason[:60]}")
         pos = trade_manager.positions.get(pk)
         if is_red and pos:
@@ -1933,8 +1934,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _wr = _live_pnl['n_wins'] * 100.0 / max(1, _live_pnl['n_closes'])
             _gate_pct = _gate_filtered * 100 // max(1, _gate_total_checks)
             v8_logger.info(f"[PROGRESS] {step}/{len(sorted_ts)} ({step*100//len(sorted_ts)}%) | trades={n_trades} | active={n_active} | {elapsed:.0f}s | gate_skip={_gate_pct}%")
-            v8_logger.info(f"[V8_RESULT_LIVE] sharpe_weekly={_sharpe_w:.3f} sharpe_per_trade={_sharpe_pt:.3f} sharpe_annual={_sharpe_ann:.2f} (trades/yr={_tpy:.0f}) gain_pct={_gain_pct:+.2f}% gain_dollars={_gain_dol:+.2f} sum_trade_pcts={_sum_pct:+.2f}% closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} WR={_wr:.1f}%")
-            print(f"V8_RESULT_LIVE: sharpe_w={_sharpe_w:.3f} sharpe_pt={_sharpe_pt:.3f} sharpe_ann={_sharpe_ann:.2f} gain_pct={_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']} wr={_wr:.1f}", flush=True)
+            # CANONICAL_METRICS.md: only pool_sharpe (= sharpe_per_trade in this engine) survives in user-facing logs.
+            # sharpe_weekly + sharpe_annual are BANNED for display (they were the "feel-good" inflation that misled decisions for months).
+            v8_logger.info(f"[V8_RESULT_LIVE] pool_sharpe={_sharpe_pt:.3f} (trades/yr={_tpy:.0f}) gain_pct={_gain_pct:+.2f}% gain_dollars={_gain_dol:+.2f} sum_trade_pcts={_sum_pct:+.2f}% closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} WR={_wr:.1f}%")
+            print(f"V8_RESULT_LIVE: pool_sharpe={_sharpe_pt:.3f} gain_pct={_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']} wr={_wr:.1f}", flush=True)
             # Live PnL breakdown by close reason — every report interval
             v8_logger.info("[V8_PNL_BREAKDOWN] === BY CLOSE REASON ===")
             for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
@@ -1947,8 +1950,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     v8_logger.info("=" * 80)
     _f_sharpe_w, _f_gain_pct, _f_gain_dol, _f_sum_pct, _f_sharpe_pt, _f_sharpe_ann, _f_tpy = _compute_sharpe_and_gain()
     v8_logger.info(f"[V8_FINAL_PNL] sum_trade_pcts={_f_sum_pct:+.2f}% gain_pct_dollars={_f_gain_pct:+.2f}% gain_dollars={_f_gain_dol:+.2f} | closes={_live_pnl['n_closes']} | W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} | WR={_live_pnl['n_wins']*100/max(1,_live_pnl['n_closes']):.1f}%")
-    v8_logger.info(f"[V8_FINAL_PNL] sharpe_weekly={_f_sharpe_w:.3f} sharpe_per_trade={_f_sharpe_pt:.3f} sharpe_annual={_f_sharpe_ann:.2f} (trades_per_year={_f_tpy:.0f})")
-    print(f"V8_RESULT: sharpe_w={_f_sharpe_w:.3f} sharpe_pt={_f_sharpe_pt:.3f} sharpe_ann={_f_sharpe_ann:.2f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
+    # CANONICAL_METRICS.md: pool_sharpe ONLY in user-facing logs.
+    v8_logger.info(f"[V8_FINAL_PNL] pool_sharpe={_f_sharpe_pt:.3f} (trades_per_year={_f_tpy:.0f})")
+    print(f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
 
     # Cancel queue processor (after result is already printed)
     queue_task.cancel()

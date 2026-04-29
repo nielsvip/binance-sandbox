@@ -87,8 +87,8 @@ def deflated_sharpe(observed_sharpe, n_trials, n_observations,
 
 # Default ranking metric. Per CLAUDE.md `feedback_chained_sharpe_is_overfit_lie`
 # raw pool_sharpe overfits in large search spaces — DSR penalises by trial count.
-RANKING_METRIC = os.environ.get("AUTO_SEARCH_RANKING_METRIC", "deflated_sharpe")  # "deflated_sharpe" | "pool_sharpe"
-RANKING_TRIALS_THRESHOLD = 100  # below this, fall back to pool_sharpe (DSR unstable on tiny n_trials)
+RANKING_METRIC = "pool_sharpe"  # CANONICAL_METRICS.md: only pool_sharpe and sym_sharpe — no DSR/PSR/annualized.
+RANKING_TRIALS_THRESHOLD = 0    # unused — kept for API compat only.
 
 
 FORBIDDEN_FLIPS = {
@@ -355,10 +355,15 @@ def main():
     with open(csv_path, "a", newline="") as csv_f:
         w = csv.writer(csv_f)
         if not csv_exists:
-            w.writerow(["iter", "pool_sharpe", "deflated_sharpe", "psr", "sym_sharpe",
-                        "acc_gain_pct", "gain_sym_yr", "avg_gain_trade", "gain_per_yr",
-                        "max_dd_pct", "trades", "gain_vs_bh",
-                        "elapsed_s", "overrides_count", "reliable", "useless", "overrides_json"])
+            # CANONICAL columns per CLAUDE.md / CANONICAL_METRICS.md.
+            # ONLY pool_sharpe + sym_sharpe — no annualized, no deflated, no PSR.
+            # Adding wr/wins/losses/n_syms/n_years/start_date for full context.
+            w.writerow(["iter", "pool_sharpe", "sym_sharpe",
+                        "acc_gain_pct", "avg_gain_trade", "gain_per_yr", "gain_sym_yr",
+                        "max_dd_pct", "trades", "wins", "losses", "wr",
+                        "n_syms", "n_years", "start_date",
+                        "gain_vs_bh", "elapsed_s", "overrides_count",
+                        "reliable", "useless", "overrides_json"])
 
         # iter=-1: evaluate baseline (no perturbation) as reference floor
         if not csv_exists:
@@ -372,27 +377,28 @@ def main():
                 s0 = r0.get("pool_sharpe", 0.0)
                 g0 = r0.get("accumulated_gain_pct", 0.0)
                 tr0 = r0.get("trades", 0)
+                w0 = r0.get("wins", 0); l0 = r0.get("losses", 0); wr0 = r0.get("wr", 0.0)
                 floor_total = len(subset) * args.min_trades_per_sym
                 rel0 = 1 if tr0 >= floor_total else 0
                 sym_s0 = r0.get("sharpe", 0.0)
                 gsy0 = round(g0 / len(subset) / n_years, 4)
                 agt0 = round(g0 / tr0, 4) if tr0 else 0.0
                 gpy0 = round(g0 / n_years, 4)
-                # DSR for baseline uses n_trials=1 (no search yet) — informative but not used for ranking.
-                dsr0, psr0 = deflated_sharpe(s0, n_trials=max(args.n_max, 2), n_observations=max(tr0, 1))
-                w.writerow([-1, round(s0, 4), round(dsr0, 4), round(psr0, 4), round(sym_s0, 4),
-                             round(g0, 2), gsy0, agt0, gpy0,
-                             round(r0.get("max_dd_pct", 0.0), 2), tr0,
+                w.writerow([-1, round(s0, 4), round(sym_s0, 4),
+                             round(g0, 2), agt0, gpy0, gsy0,
+                             round(r0.get("max_dd_pct", 0.0), 2), tr0, w0, l0, round(wr0, 1),
+                             len(subset), round(n_years, 3), args.start,
                              round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
                              round(time.time() - t_bl, 1), 0, rel0, 0, json.dumps({})])
                 csv_f.flush()
-                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} dsr={dsr0:.4f} psr={psr0:.4f} "
-                      f"sym_sharpe={sym_s0:.4f} gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade "
-                      f"gain_per_yr={gpy0:.2f}%/yr gain_sym_yr={gsy0:.4f}%/sym/yr trades={tr0} "
+                print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} sym_sharpe={sym_s0:.4f} "
+                      f"gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade "
+                      f"gain_per_yr={gpy0:.2f}%/yr gain_sym_yr={gsy0:.4f}%/sym/yr "
+                      f"trades={tr0} wr={wr0:.1f}% n_syms={len(subset)} n_years={n_years:.2f} "
                       f"reliable={rel0}", flush=True)
 
         best_gain = -1e9
-        best_rank_score = -1e9  # tracks best by RANKING_METRIC (DSR by default)
+        best_rank_score = -1e9  # tracks best pool_sharpe (CANONICAL_METRICS.md)
         _as_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
         _as_n_syms = max(1, len(subset))
         _as_rg = None if _as_rg_disabled else RateGuard(n_accts=_as_n_syms, label=f"autonomous_search.{args.mode}")
@@ -418,6 +424,9 @@ def main():
             sym_sharpe = r.get("sharpe", 0.0)
             dd = r.get("max_dd_pct", 0.0)
             tr = r.get("trades", 0)
+            wins = r.get("wins", 0)
+            losses = r.get("losses", 0)
+            wr = r.get("wr", 0.0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
             n_syms = len(subset)
             _as_completed_iters += 1
@@ -431,51 +440,49 @@ def main():
             floor_total = max(args.min_trades_for_record, n_syms * args.min_trades_per_sym)
             reliable = 1 if tr >= floor_total else 0
             useless = 1 if (reliable and sharpe < args.sharpe_useless_floor) else 0
-            # Deflated Sharpe — n_trials = current iter count (i+1 trials including this one).
-            tr_skew = float(r.get("trade_returns_skew", 0.0)) if isinstance(r, dict) else 0.0
-            tr_kurt = float(r.get("trade_returns_kurt", 3.0)) if isinstance(r, dict) else 3.0
-            dsr, psr = deflated_sharpe(sharpe, n_trials=max(i + 1, 2),
-                                       n_observations=max(tr, 1),
-                                       skew=tr_skew, kurt=tr_kurt)
-            w.writerow([i, round(sharpe, 4), round(dsr, 4), round(psr, 4), round(sym_sharpe, 4),
-                        round(gain, 2), gain_sym_yr, avg_gain_trade, gain_per_yr,
-                        round(dd, 2), tr, round(gvb, 3), round(el, 1), len(ovr),
+            w.writerow([i, round(sharpe, 4), round(sym_sharpe, 4),
+                        round(gain, 2), avg_gain_trade, gain_per_yr, gain_sym_yr,
+                        round(dd, 2), tr, wins, losses, round(wr, 1),
+                        n_syms, round(n_years, 3), args.start,
+                        round(gvb, 3), round(el, 1), len(ovr),
                         reliable, useless, json.dumps(ovr)])
             csv_f.flush()
-            # Ranking: deflated_sharpe once n_trials > threshold, else pool_sharpe.
-            if RANKING_METRIC == "deflated_sharpe" and (i + 1) > RANKING_TRIALS_THRESHOLD:
-                rank_score = dsr
-                rank_label = "dsr"
-            else:
-                rank_score = sharpe
-                rank_label = "pool_sharpe"
+            # Ranking by pool_sharpe ONLY (per CLAUDE.md / CANONICAL_METRICS.md). No DSR/PSR — they
+            # are statistical adjustments, not Sharpe values, and conflate the user-facing picture.
+            rank_score = sharpe
+            rank_label = "pool_sharpe"
             if reliable and rank_score > best_rank_score:
                 best_rank_score = rank_score
-                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_{rank_label.upper()}={rank_score:.4f} "
-                      f"pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} sym_sharpe={sym_sharpe:.3f} "
-                      f"gain={gain:.1f}% avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
-                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} "
+                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_POOL_SHARPE={rank_score:.4f} "
+                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.1f}% "
+                      f"avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
+                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% "
+                      f"tr={tr} wr={wr:.1f}% n_syms={n_syms} n_years={n_years:.2f} "
                       f"ovr={len(ovr)} el={el:.1f}s", flush=True)
             if gain > best_gain:
                 best_gain = gain
-                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} "
-                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.1f}% avg_gain_trade={avg_gain_trade:.4f}%/trade "
-                      f"gain_per_yr={gain_per_yr:.2f}%/yr gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
-                      f"({gvb:.2f}x BH) dd={dd:.1f}% tr={tr} ovr={len(ovr)} el={el:.1f}s", flush=True)
+                print(f"[AUTO_SEARCH] iter={i} NEW_BEST_GAIN pool_sharpe={sharpe:.3f} "
+                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.1f}% "
+                      f"avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
+                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.2f}x BH) dd={dd:.1f}% "
+                      f"tr={tr} wr={wr:.1f}% n_syms={n_syms} n_years={n_years:.2f} "
+                      f"ovr={len(ovr)} el={el:.1f}s", flush=True)
             if reliable and gain >= target_gain and sharpe >= target_sharpe:
                 win = {"iter": i, "pool_sharpe": round(sharpe, 4),
-                       "deflated_sharpe": round(dsr, 4), "psr": round(psr, 4),
                        "sym_sharpe": round(sym_sharpe, 4),
                        "acc_gain_pct": round(gain, 2), "gain_sym_yr": gain_sym_yr,
                        "avg_gain_trade": avg_gain_trade, "gain_per_yr": gain_per_yr,
-                       "max_dd_pct": round(dd, 2), "trades": tr, "gain_vs_bh": round(gvb, 3),
+                       "max_dd_pct": round(dd, 2), "trades": tr, "wins": wins, "losses": losses,
+                       "wr": round(wr, 1), "n_syms": n_syms, "n_years": round(n_years, 3),
+                       "start_date": args.start, "gain_vs_bh": round(gvb, 3),
                        "reliable": reliable, "n_trials_at_win": i + 1, "overrides": ovr}
                 with open(winners_path, "a") as wf:
                     wf.write(json.dumps(win) + "\n")
-                print(f"[AUTO_SEARCH] *** WINNER iter={i} pool_sharpe={sharpe:.3f} dsr={dsr:.3f} psr={psr:.3f} "
-                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.0f}% avg_gain_trade={avg_gain_trade:.4f}%/trade "
-                      f"gain_per_yr={gain_per_yr:.2f}%/yr gain_sym_yr={gain_sym_yr:.4f}%/sym/yr "
-                      f"({gvb:.1f}x BH) dd={dd:.1f}% tr={tr} ***", flush=True)
+                print(f"[AUTO_SEARCH] *** WINNER iter={i} pool_sharpe={sharpe:.3f} "
+                      f"sym_sharpe={sym_sharpe:.3f} gain={gain:.0f}% "
+                      f"avg_gain_trade={avg_gain_trade:.4f}%/trade gain_per_yr={gain_per_yr:.2f}%/yr "
+                      f"gain_sym_yr={gain_sym_yr:.4f}%/sym/yr ({gvb:.1f}x BH) dd={dd:.1f}% "
+                      f"tr={tr} wr={wr:.1f}% n_syms={n_syms} n_years={n_years:.2f} ***", flush=True)
             # ═══ 2026-04-26 MEM HYGIENE — combats slow growth that OOMs around iter 25-30 ═══
             # Drop per-iter refs explicitly + force gc. Pipe pickle of cfg+result leaves dangling
             # refs that Python's auto-GC doesn't reap aggressively enough on 30GB box with ~5GB

@@ -278,7 +278,8 @@ def backtest_strategy(strategy: Dict, hold_bars: int = 12, max_concurrent: int =
     total = len(pnls)
     avg_pnl = np.mean(pnls)
     std_pnl = np.std(pnls) if len(pnls) > 1 else 1
-    sharpe = (avg_pnl / std_pnl) * np.sqrt(252 / max(1, hold_bars)) if std_pnl > 0 else 0
+    # CANONICAL_METRICS.md: pool_sharpe only — no sqrt(252/hold_bars) annualization (BANNED).
+    sharpe = (avg_pnl / std_pnl) if std_pnl > 0 else 0
     # Max drawdown
     equity = np.cumsum(pnls)
     peak = np.maximum.accumulate(equity)
@@ -341,7 +342,7 @@ def load_our_system_performance() -> Dict:
         "total_pnl": total_pnl,
         "n_trades": total,
         "win_rate": wins / total * 100,
-        "sharpe": (avg / std) * np.sqrt(252) if std > 0 else 0,
+        "sharpe": (avg / std) if std > 0 else 0,  # CANONICAL_METRICS.md: pool_sharpe, not annualized.
         "avg_pnl_pct": avg,
     }
 

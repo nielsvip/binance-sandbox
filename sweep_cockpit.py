@@ -297,6 +297,7 @@ a:hover { text-decoration: underline; }
 NAV_ITEMS = [
     ("Home", "/"),
     ("🚀 Sweeps", "/sweeps"),
+    ("🤖 Autonomous", "/autonomous"),
     ("Live Stocks", "/live"),
     ("Live Crypto", "/live/crypto"),
     ("Symbols Stocks", "/symbols"),
@@ -2135,6 +2136,154 @@ def sweeps_stop():
     cmd = f"pkill -f 'v8_quick_sweep.py.*--mode {mode}' ; sleep 1 ; pgrep -afc 'v8_quick_sweep.*--mode {mode}'"
     out = _ssh_run(host, None, cmd, timeout=10) or "0"
     return redirect(f"/sweeps?msg=Stopped+{mode}+sweeps+on+{host}+(remaining+procs:+{out[:5]})")
+
+
+# ---------------------------------------------------------------------------
+# /autonomous — autonomous_search.csv viewer with CANONICAL_METRICS only.
+# ---------------------------------------------------------------------------
+@app.route("/autonomous")
+def autonomous_page():
+    """Show every autonomous_search CSV with canonical metrics — only pool_sharpe + sym_sharpe.
+    Cross-machine: globs MB local + S1/S2 swarm cache. Filterable by reliable=1."""
+    import pandas as _pd
+
+    show_unreliable = request.args.get("show_unreliable", "0") == "1"
+    min_pool = float(request.args.get("min_pool", "0") or 0)
+
+    # CANONICAL columns (per CANONICAL_METRICS.md). Anything else is dropped from view.
+    KEEP = ["iter", "pool_sharpe", "sym_sharpe", "acc_gain_pct", "avg_gain_trade",
+            "gain_per_yr", "gain_sym_yr", "max_dd_pct", "trades", "wins", "losses",
+            "wr", "n_syms", "n_years", "start_date", "gain_vs_bh", "elapsed_s",
+            "overrides_count", "reliable", "useless"]
+
+    SOURCES = [
+        ("Local (MacBook)", os.path.join(BASE_DIR, "data", "autonomous", "**", "autonomous_*.csv")),
+        ("S1 cache (crypto)", os.path.join(BASE_DIR, "data", "swarm_cache", "s1", "autonomous", "**", "autonomous_*.csv")),
+        ("S2 cache (tradier)", os.path.join(BASE_DIR, "data", "swarm_cache", "s2", "autonomous", "**", "autonomous_*.csv")),
+    ]
+
+    sections = []
+    overall_best_pool = 0.0
+    overall_best_loc = ""
+
+    for label, pattern in SOURCES:
+        files = sorted(glob.glob(pattern, recursive=True))
+        if not files:
+            continue
+        rows = []
+        for f in files:
+            try:
+                df = _pd.read_csv(f)
+            except Exception:
+                continue
+            # Skip files lacking the canonical columns — they're old-format (had deflated_sharpe etc).
+            if "pool_sharpe" not in df.columns:
+                continue
+            df["_run"] = os.path.relpath(f, BASE_DIR)
+            try:
+                df["_age_min"] = int((time.time() - os.path.getmtime(f)) / 60)
+            except Exception:
+                df["_age_min"] = -1
+            rows.append(df)
+        if not rows:
+            continue
+        combined = _pd.concat(rows, ignore_index=True)
+        combined["pool_sharpe"] = _pd.to_numeric(combined["pool_sharpe"], errors="coerce").fillna(0)
+        combined = combined[combined["pool_sharpe"] >= min_pool]
+        if not show_unreliable and "reliable" in combined.columns:
+            combined["reliable"] = _pd.to_numeric(combined["reliable"], errors="coerce").fillna(0).astype(int)
+            combined = combined[combined["reliable"] == 1]
+        if combined.empty:
+            continue
+        # Top 10 by pool_sharpe (canonical ranking)
+        top = combined.nlargest(10, "pool_sharpe").copy()
+        for c in KEEP:
+            if c not in top.columns:
+                top[c] = "—"
+        top_b = combined["pool_sharpe"].max()
+        if top_b > overall_best_pool:
+            overall_best_pool = top_b
+            overall_best_loc = label
+
+        rows_html = ""
+        for _, r in top.iterrows():
+            run_short = str(r.get("_run", ""))[-60:]
+            useless_tag = ' <span style="color:#ff9800;" title="useless=1: reliable but pool_sharpe below floor">⚠</span>' if r.get("useless") in (1, "1", 1.0) else ""
+            rows_html += (
+                f'<tr style="border-bottom:1px solid #2a2a2a;">'
+                f'<td title="pool_sharpe — canonical Sharpe per CANONICAL_METRICS.md" style="color:#4caf50;font-weight:600;padding:4px 6px;">{float(r["pool_sharpe"]):.4f}{useless_tag}</td>'
+                f'<td title="sym_sharpe — diagnostic per-sym avg, capped ±20" style="color:#bb86fc;padding:4px 6px;">{float(r.get("sym_sharpe",0) or 0):.3f}</td>'
+                f'<td title="acc_gain_pct — sum of all per-trade %-returns" style="padding:4px 6px;">{float(r.get("acc_gain_pct",0) or 0):.0f}%</td>'
+                f'<td title="avg_gain_trade — acc_gain_pct/trades" style="padding:4px 6px;">{float(r.get("avg_gain_trade",0) or 0):.3f}%</td>'
+                f'<td title="gain_per_yr — annual return" style="padding:4px 6px;">{float(r.get("gain_per_yr",0) or 0):.0f}%</td>'
+                f'<td title="gain_sym_yr — cross-machine comparable" style="padding:4px 6px;">{float(r.get("gain_sym_yr",0) or 0):.2f}%</td>'
+                f'<td title="max_dd_pct — peak-to-trough" style="padding:4px 6px;">{float(r.get("max_dd_pct",0) or 0):.1f}%</td>'
+                f'<td title="wr — win rate" style="padding:4px 6px;">{float(r.get("wr",0) or 0):.1f}%</td>'
+                f'<td title="trades count" style="padding:4px 6px;">{int(float(r.get("trades",0) or 0))}</td>'
+                f'<td title="n_syms — distinct syms with trades" style="padding:4px 6px;">{int(float(r.get("n_syms",0) or 0))}</td>'
+                f'<td title="n_years — test window" style="padding:4px 6px;">{float(r.get("n_years",0) or 0):.1f}y</td>'
+                f'<td title="iteration index" style="padding:4px 6px;color:#888;">i={int(float(r.get("iter",0) or 0))}</td>'
+                f'<td style="font-size:10px;color:#888;padding:4px 6px;" title="{run_short}">{r.get("_age_min",-1)}m</td>'
+                f'</tr>'
+            )
+        n_total = len(combined)
+        n_files = len(files)
+        n_with_canonical = sum(1 for r in rows if not r.empty)
+        sections.append(
+            f'<div style="margin-bottom:18px;">'
+            f'<h3 style="color:#64b5f6;margin-bottom:4px;">{label} — {n_total} configs (top 10 by pool_sharpe), {n_files} CSV files</h3>'
+            f'<div style="font-size:11px;color:#888;margin-bottom:6px;">Files with canonical columns: {n_with_canonical}/{n_files}. Older files lacking pool_sharpe column are skipped (regen with patched autonomous_search.py to populate).</div>'
+            f'<table style="background:#0d1117;color:#e8e8e8;font-size:11px;border-collapse:collapse;width:100%;">'
+            f'<tr style="background:#1a2330;color:#fff;">'
+            f'<th style="padding:6px;text-align:left;" title="pool_sharpe = mean(all trade returns) / std. Canonical Sharpe.">pool</th>'
+            f'<th style="padding:6px;text-align:left;" title="sym_sharpe = mean(per-sym Sharpes), capped ±20. Diagnostic only.">sym</th>'
+            f'<th style="padding:6px;text-align:left;">Gain%</th>'
+            f'<th style="padding:6px;text-align:left;">/trade%</th>'
+            f'<th style="padding:6px;text-align:left;">/yr%</th>'
+            f'<th style="padding:6px;text-align:left;">/sym/yr%</th>'
+            f'<th style="padding:6px;text-align:left;">DD%</th>'
+            f'<th style="padding:6px;text-align:left;">WR</th>'
+            f'<th style="padding:6px;text-align:left;">Trades</th>'
+            f'<th style="padding:6px;text-align:left;">Syms</th>'
+            f'<th style="padding:6px;text-align:left;">Span</th>'
+            f'<th style="padding:6px;text-align:left;">Iter</th>'
+            f'<th style="padding:6px;text-align:left;">Age</th>'
+            f'</tr>'
+            f'{rows_html}</table></div>'
+        )
+
+    if not sections:
+        body_inner = '<p style="color:#aaa;">No autonomous_search CSVs found with canonical columns. Old-format CSVs (with deflated_sharpe/psr columns) are skipped — they need to be regenerated by autonomous_search.py with the new column set, or you can re-launch the autonomous search and the new run will populate canonical columns from iter=-1 onward.</p>'
+    else:
+        body_inner = "".join(sections)
+
+    filter_form = f'''<form method="GET" action="/autonomous" style="background:#1a2330;padding:10px;margin-bottom:16px;border-radius:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+  <label title="Hide reliable=0 rows (configs that didn't meet the per-sym trade-floor)"><input type="checkbox" name="show_unreliable" value="1" {'checked' if show_unreliable else ''}> show unreliable</label>
+  <label title="Filter to pool_sharpe >= this. Default 0 = show all.">min pool_sharpe: <input type="number" step="0.1" name="min_pool" value="{min_pool}" style="background:#0d1117;color:#e8e8e8;border:1px solid #444;padding:4px;width:80px;"></label>
+  <button type="submit" style="background:#27a;color:white;padding:6px 12px;border:none;border-radius:4px;cursor:pointer;">apply</button>
+</form>'''
+
+    body = f'''
+<h2 style="margin-top:0;color:#bb86fc;" title="Autonomous search results — random+perturbation walk over QuickConfig knobs. Top configs by canonical pool_sharpe.">🤖 Autonomous Search Results</h2>
+<p style="color:#aaa;font-size:13px;">
+  Per-iteration vector A/B walk over QuickConfig knobs. Reranked by <b>pool_sharpe</b> (CANONICAL_METRICS.md).<br>
+  <b style="color:#ff9800;">Reliable filter is ON by default</b> — configs with trades < floor are hidden. Toggle below to inspect noise.<br>
+  Best pool_sharpe across all sources: <span style="color:#4caf50;font-weight:600;font-size:18px;">{overall_best_pool:.4f}</span> {f'<span style="color:#888;">in {overall_best_loc}</span>' if overall_best_loc else ''}
+</p>
+{filter_form}
+{body_inner}
+
+<details style="margin-top:30px;"><summary style="cursor:pointer;color:#aaa;">📖 What you're looking at</summary>
+<p style="color:#ccc;font-size:12px;margin-top:6px;">
+Each row is one autonomous-search iteration. The engine applied a random subset of QuickConfig overrides and ran a vectorized v8_quick simulate.
+The CSV columns shown are the CANONICAL set per <code>CANONICAL_METRICS.md</code> — only the 2 canonical Sharpes (pool + sym).
+Banned values (deflated_sharpe, psr, sharpe_annual, sharpe_weekly) have been removed from the writer.
+Click the column headers' tooltip-icons to see formulas.
+</p>
+</details>
+<meta http-equiv="refresh" content="60">
+'''
+    return render_page(body, title="Autonomous Search", active_nav="🤖 Autonomous")
 
 
 @app.route("/swarm")

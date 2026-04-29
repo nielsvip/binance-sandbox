@@ -252,17 +252,17 @@ def compute_optimal_exits(data, entries, is_long):
     return np.array(best_pnls), np.array(best_holds)
 
 
-def calc_sharpe(pnls, hold_bars):
-    """Annualized Sharpe from per-trade PnL array."""
+def calc_sharpe(pnls, hold_bars=None):
+    """pool_sharpe per CANONICAL_METRICS.md — mean(per-trade returns)/std, no annualization.
+    The OLD implementation multiplied by sqrt(trades_per_year) which was BANNED for inflating
+    high-frequency configs. `hold_bars` arg kept for API compatibility but ignored."""
     if len(pnls) == 0:
         return 0
-    avg_hold_h = np.mean(hold_bars) / BARS_PER_HOUR
-    trades_per_year = 252 * 6.5 / max(avg_hold_h, 0.5)
     mean_r = np.mean(pnls)
     std_r = np.std(pnls)
     if std_r == 0:
         return 0
-    return (mean_r / std_r) * np.sqrt(trades_per_year)
+    return mean_r / std_r
 
 
 # ============================================================
