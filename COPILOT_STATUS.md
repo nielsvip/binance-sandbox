@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-29 03:53:11 UTC
+# Copilot Status — 2026-04-29 04:08:51 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-04-29T03:50:49
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-29T03:50:49
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-29T03:50:49
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-29T03:50:49
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-29T03:51:44
-- **RATIO_IMBALANCE** [crypto] inf — 2026-04-29T03:52:49
-- **STALE_INDICATORS** [tradier]  — 2026-04-29T03:53:01
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-29T03:53:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-29T03:53:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-29T03:53:01
+- **STALE_INDICATORS** [tradier]  — 2026-04-29T04:06:35
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-29T04:06:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-29T04:06:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-29T04:06:35
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-29T04:07:10
+- **RATIO_IMBALANCE** [crypto] inf — 2026-04-29T04:08:20
+- **STALE_INDICATORS** [tradier]  — 2026-04-29T04:08:41
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-29T04:08:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-29T04:08:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-29T04:08:41
 
 ## Missed Trades (trader comparison)
 
@@ -29,8 +29,8 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **TIAUSDC** SHORT (crypto) peak +6.9%, now +-0.9%
-- HELD: **ZECUSDC** LONG (crypto) peak +6.5%, now +-0.0%
+- HELD: **TIAUSDC** SHORT (crypto) peak +6.9%, now +6.9%
+- HELD: **ZECUSDC** LONG (crypto) peak +6.7%, now +6.7%
 - HELD: **TAOUSDT** SHORT (crypto) peak +4.3%, now +3.4%
 
 - WATCHING: **APEUSDT** SHORT (crypto) peaked +9.0%, exited 0m ago
@@ -40,7 +40,7 @@ _None_
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **1000SATSUSDT** SHORT (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **ZKUSDT** SHORT (crypto) peaked +3.6%, exited 0m ago
-- WATCHING: **XLMUSDT** LONG (crypto) peaked +3.4%, exited 35m ago
+- WATCHING: **XLMUSDT** LONG (crypto) peaked +3.4%, exited 51m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 0m ago
 
 ## Supervisor
@@ -48,8 +48,8 @@ _None_
 **Active Opus agents:** 0 / 2
 
 **Issues (last 1h):** 50
-- [MEDIUM] ez_prices.py running but log stale (13min)
+- [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
-- [MEDIUM] ez_prices.py running but log stale (14min)
