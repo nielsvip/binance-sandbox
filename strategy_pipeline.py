@@ -336,19 +336,32 @@ def run_tier2(reg: dict, state: dict) -> dict:
 
 
 def _parse_v8_result(output: str) -> dict | None:
+    # 2026-04-29: pool_sharpe + sym_sharpe canonical format (CLAUDE.md rule 4). Old sharpe_w/_ann banned.
     matches = list(re.finditer(
-        r"V8_RESULT:\s+sharpe_w=([0-9.-]+)\s+sharpe_pt=([0-9.-]+)\s+sharpe_ann=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
+        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+sym_sharpe=([0-9.-]+)\s+sharpe=[0-9.-]+\s+(?:pnl=([0-9.-]+)\s+trades=(\d+)|gain_pct=([0-9.-]+)\s+closes=(\d+))\s+wins=(\d+)\s+losses=(\d+)",
         output))
     if matches:
         m = matches[-1]
-        return {"sharpe": float(m.group(2)), "pnl": float(m.group(4)),
-                "trades": int(m.group(5)), "wins": int(m.group(6)), "losses": int(m.group(7))}
+        if m.group(3) is not None:
+            pnl, trades = float(m.group(3)), int(m.group(4))
+        else:
+            pnl, trades = float(m.group(5)), int(m.group(6))
+        return {"sharpe": float(m.group(1)), "pool_sharpe": float(m.group(1)), "sym_sharpe": float(m.group(2)),
+                "pnl": pnl, "trades": trades, "wins": int(m.group(7)), "losses": int(m.group(8))}
+    # Legacy POOL format (pool_sharpe only, no sym)
+    m = re.search(
+        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
+        output)
+    if m:
+        return {"sharpe": float(m.group(1)), "pool_sharpe": float(m.group(1)), "sym_sharpe": 0.0,
+                "pnl": float(m.group(2)), "trades": int(m.group(3)), "wins": int(m.group(4)), "losses": int(m.group(5))}
+    # Old simple format fallback
     m = re.search(
         r"V8_RESULT:\s+sharpe=([0-9.-]+)\s+pnl=([0-9.-]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
         output)
     if m:
-        return {"sharpe": float(m.group(1)), "pnl": float(m.group(2)),
-                "trades": int(m.group(3)), "wins": int(m.group(4)), "losses": int(m.group(5))}
+        return {"sharpe": float(m.group(1)), "pool_sharpe": float(m.group(1)), "sym_sharpe": 0.0,
+                "pnl": float(m.group(2)), "trades": int(m.group(3)), "wins": int(m.group(4)), "losses": int(m.group(5))}
     return None
 
 

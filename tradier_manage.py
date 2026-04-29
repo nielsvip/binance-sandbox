@@ -1234,7 +1234,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                 except Exception as _stale_dc_err:
                     logger.warning(f"[STALE_DC_KILL] {symbol}: read error: {_stale_dc_err}")
                 # (b) Drastic-drop tracker. ATR-based threshold (NEVER fixed %).
-                if not _stale_close_decided:
+                if not _stale_close_decided and bool(getattr(config, 'STALE_DRASTIC_DROP_ENABLED_TRADIER', True)):
                     if not hasattr(trade_manager, '_stale_gain_history'):
                         trade_manager._stale_gain_history = {}
                     _hist = trade_manager._stale_gain_history

@@ -1196,6 +1196,7 @@ class TradierConfig:
     DC_LOW4_5M_KILL_ENABLED_TRADIER: bool = True
     # Rule 2: STALE_HOLD drastic-drop trigger; ATR-based threshold (NOT a fixed %).
     # If first_stale_gain - current_gain > MULT * atr_5m_pct → close. Range 2.0-3.0.
+    STALE_DRASTIC_DROP_ENABLED_TRADIER: bool = True
     STALE_DRASTIC_DROP_ATR_MULT_TRADIER: float = 2.0
     # Rule 3: REBAL_NOLOSS_BLOCK opens same-sector hedge instead of hold-and-pray.
     REBAL_NOLOSS_SAME_SECTOR_HEDGE_ENABLED_TRADIER: bool = True

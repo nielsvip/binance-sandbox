@@ -67,7 +67,11 @@ def run_one(cfg, mode, symbols, start, py_bin, engine_path):
                         toks[k] = v.rstrip("%").rstrip("s")
                 override.unlink(missing_ok=True)
                 return {
-                    "label": label, "sharpe": float(toks.get("sharpe", toks.get("sharpe_w", 0)) or 0),
+                    "label": label,
+                    # 2026-04-29: canonical = pool_sharpe (CLAUDE.md rule 4). sharpe_w aliased on banned-write side.
+                    "sharpe": float(toks.get("pool_sharpe", toks.get("sharpe", toks.get("sharpe_w", 0))) or 0),
+                    "pool_sharpe": float(toks.get("pool_sharpe", toks.get("sharpe", 0)) or 0),
+                    "sym_sharpe": float(toks.get("sym_sharpe", 0) or 0),
                     "pnl": float(toks.get("pnl", toks.get("gain_pct", 0)) or 0),
                     "trades": int(toks.get("trades", toks.get("closes", 0)) or 0),
                     "wins": int(toks.get("wins", 0) or 0), "losses": int(toks.get("losses", 0) or 0),

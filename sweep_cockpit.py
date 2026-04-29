@@ -564,7 +564,7 @@ def dashboard():
         top_sharpe = combined["pool_sharpe"].max()
         swarm_bests.append(top_sharpe)
         rows_h = "".join(
-            f'<tr><td style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
+            f'<tr><td>{fmt_sharpe(r["pool_sharpe"])}</td>'
             f'<td>{r.get("acc_gain_pct",0):.0f}%</td>'
             f'<td>{r.get("max_dd_pct",0):.1f}%</td>'
             f'<td>{int(r.get("trades",0))}</td></tr>'
@@ -572,9 +572,9 @@ def dashboard():
         )
         swarm_rows_html += (
             f'<div style="margin-bottom:8px">'
-            f'<b>{label}</b> — {n} configs, best=<span style="color:#4caf50">{top_sharpe:.4f}</span> '
+            f'<b>{label}</b> — {n} configs, best={fmt_sharpe(top_sharpe)} '
             f'<span style="color:{ac}">({age_str})</span>'
-            f'<table style="font-size:11px;margin-top:3px"><tr><th>Sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th></tr>{rows_h}</table>'
+            f'<table style="font-size:11px;margin-top:3px"><tr><th>pool_sharpe</th><th>Gain%</th><th>DD%</th><th>Trades</th></tr>{rows_h}</table>'
             f'</div>'
         )
     for label, pat in validated_dirs:
@@ -638,8 +638,8 @@ def dashboard():
             rel_tag = '<span title="reliable=1: passed min-trades / consistency check" style="color:#4caf50;">✓</span>' if str(rel) in ("1", "True", "1.0") else ('<span title="reliable=0: passed but failed consistency check — treat with skepticism" style="color:#ff9800;">!</span>' if rel != "" else '')
             rows_h += (
                 f'<tr>'
-                f'<td title="pool_sharpe: mean(all_trade_returns)/std across all trades pooled. CANONICAL Sharpe per CLAUDE.md." style="color:#4caf50">{r["pool_sharpe"]:.4f}</td>'
-                f'<td title="sym_sharpe: mean of per-symbol Sharpes (capped ±20). Diagnostic only — lies when trade counts vary." style="color:#bb86fc">{sym_sharpe:.3f}</td>'
+                f'<td title="pool_sharpe: mean(all_trade_returns)/std across all trades pooled. CANONICAL Sharpe per CLAUDE.md. |val|>5 auto-flagged INFLATED.">{fmt_sharpe(r["pool_sharpe"])}</td>'
+                f'<td title="sym_sharpe: mean of per-symbol Sharpes (capped ±5 per CLAUDE.md). Diagnostic only — lies when trade counts vary.">{fmt_sharpe(sym_sharpe)}</td>'
                 f'<td title="acc_gain_pct: sum of all per-trade %-returns across all symbols.">{ng:.0f}%</td>'
                 f'<td title="avg_gain_trade = acc_gain_pct / trades. Per-trade % return.">{avg_gain_trade:.3f}%</td>'
                 f'<td title="gain_per_yr = acc_gain_pct / n_years. Time-window neutral.">{gain_per_yr:.0f}%</td>'
@@ -655,7 +655,7 @@ def dashboard():
         timespan_note = "n_years: column present" if "n_years" in combined.columns else "n_years: assumed 4 (column missing — write n_years to CSV in your sweep runner)"
         swarm_rows_html += (
             f'<div style="margin-bottom:12px">'
-            f'<b>✅ {label}</b> — best pool_sharpe=<span style="color:#4caf50">{top_sharpe:.4f}</span> '
+            f'<b>✅ {label}</b> — best pool_sharpe={fmt_sharpe(top_sharpe)} '
             f'<span style="color:#888;font-size:10px;" title="Minutes since the newest CSV in this group was last modified.">({age_min}m ago, {timespan_note})</span>'
             f'<table style="font-size:11px;margin-top:3px;border-collapse:collapse;">'
             f'<tr style="background:#1a2330;color:#fff;"><th title="pool_sharpe — canonical Sharpe">pool</th><th title="sym_sharpe — diagnostic, per-sym avg">sym</th><th title="acc_gain_pct">Gain%</th><th title="acc_gain_pct/trades">/trade%</th><th title="acc_gain_pct/n_years">/yr%</th><th title="acc_gain_pct/n_syms/n_years">/sym/yr%</th><th title="max drawdown">DD%</th><th title="win rate">WR</th><th title="trade count">Trades</th><th title="symbols">Syms</th><th title="years">Span</th><th title="reliable flag">Rel</th></tr>'
@@ -664,10 +664,12 @@ def dashboard():
         )
 
     overall_best = max(swarm_bests) if swarm_bests else 0
+    # 2026-04-29: route the headline through fmt_sharpe so |overall_best|>5 auto-flags INFLATED
+    overall_label_color = "#dc6c6c" if abs(overall_best) > 5 else "#4caf50"
     swarm_block = f"""
-    <div style="background:#0d1f12; border:2px solid #4caf50; border-radius:8px; padding:16px; margin-bottom:20px">
+    <div style="background:#0d1f12; border:2px solid {overall_label_color}; border-radius:8px; padding:16px; margin-bottom:20px">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-            <h2 style="margin:0; color:#4caf50" title="Best pool_sharpe across all swarm result groups (Local + S1/S2 cache). Apples-to-apples only when groups use same sym scope + time window — see /sweeps for canonical metric definitions.">🔬 Live Swarm Results — Best pool_sharpe: {overall_best:.4f}</h2>
+            <h2 style="margin:0; color:{overall_label_color}" title="Best pool_sharpe across all swarm result groups (Local + S1/S2 cache). |val|&gt;5 = INFLATED auto-flagged. Apples-to-apples only when groups use same sym scope + time window.">🔬 Live Swarm Results — Best pool_sharpe: {fmt_sharpe(overall_best)}</h2>
             <a href="/swarm" style="background:#4caf50; color:#000; padding:6px 14px; border-radius:4px; text-decoration:none; font-weight:bold">Full Swarm View →</a>
         </div>
         <p style="color:#aaa; margin:0 0 10px 0; font-size:11px" title="Stage-1 = small-sym screening (NOT decision-material). ✅ = validated (≥12 sym). The sweep_cache directory is populated by ./sync_swarm_cache.sh — run periodically to pull S1/S2 latest.">

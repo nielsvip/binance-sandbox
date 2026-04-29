@@ -3623,7 +3623,9 @@ class PositionService:
         self._positions_reference_snapshot: Dict[str, Position] = {}
         self._positions_by_account_reference_snapshot: Dict[str, Dict[str, Position]] = {}
         self._reference_snapshot_lock = DummyLock()
-        self._last_deletion_check: Dict[str, float] = {} 
+        self._last_deletion_check: Dict[str, float] = {}
+        self._restore_negative_cache: Dict[str, float] = {}
+        self._restore_negative_cache_ttl: float = 300.0
         self.stop_levels: Dict[str, List[StopLevel]] = {}
         self.reentry_plans: Dict[str, ReentryPlan] = {}
         self.ladder_plans: Dict[str, LadderPlan] = {}
@@ -5654,10 +5656,10 @@ class PositionService:
         except Exception as e:
             logger.error(f"[_check_for_deletions] Error during check: {e}")
 
-    async def restore_position_from_backups(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
-        """Search ALL backup files (newest first) for this position. Any backup data is sacred — even zero-amt positions have history (entry_price, max_gain, etc). The most recent backup with this key wins. positionAmt is preserved from backup; caller overrides with API amt if needed."""
+    def _restore_position_from_backups_blocking(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
+        """Synchronous worker for restore_position_from_backups. Performs all disk I/O. MUST be invoked via asyncio.to_thread — never on the event loop directly. Event-loop blocking here caused process_account_update HUNG > 120s on 2026-04-29."""
+        position_key = f"{account_key}:{symbol}_{position_side}"
         try:
-            position_key = f"{account_key}:{symbol}_{position_side}"
             backup_dir_str = os.path.join(str(self.config.BASE_PATH), account_key, "backups")
             position_side_str = position_side.lower()
             patterns = [f"{position_side_str}_positions_backup_*.json", f"{position_side_str}_positions.json_backup_*.json"]
@@ -5758,6 +5760,25 @@ class PositionService:
         except Exception as e:
             logger.error(f"[RESTORE_BACKUP] Error searching backups for {position_key}: {e}")
             return None
+
+    async def restore_position_from_backups(self, account_key: str, symbol: str, position_side: str) -> Optional[Position]:
+        """Search ALL backup files (newest first) for this position. Any backup data is sacred — even zero-amt positions have history (entry_price, max_gain, etc). The most recent backup with this key wins. positionAmt is preserved from backup; caller overrides with API amt if needed.
+        Disk I/O runs in a worker thread to avoid blocking the asyncio event loop (was source of process_account_update HUNG > 120s). Negative results are cached for `_restore_negative_cache_ttl` seconds so dead orphan symbols (delisted USDC perps, etc.) don't trigger ~50-file rescans on every WS tick.
+        """
+        position_key = f"{account_key}:{symbol}_{position_side}"
+        cache_hit = self._restore_negative_cache.get(position_key)
+        now_ts = time.time()
+        if cache_hit and (now_ts - cache_hit) < self._restore_negative_cache_ttl:
+            return None
+        result = await asyncio.to_thread(self._restore_position_from_backups_blocking, account_key, symbol, position_side)
+        if result is None:
+            self._restore_negative_cache[position_key] = now_ts
+            if len(self._restore_negative_cache) > 5000:
+                cutoff = now_ts - self._restore_negative_cache_ttl
+                self._restore_negative_cache = {k: v for k, v in self._restore_negative_cache.items() if v > cutoff}
+        else:
+            self._restore_negative_cache.pop(position_key, None)
+        return result
 
     async def get_symbols_for_account(self, account_key: str) -> set:
         allowed_symbols = set()
@@ -8887,15 +8908,10 @@ class PositionService:
                         except Exception:
                             pass
                         if not disk_pos:
-                            backup_pos = await self.restore_position_from_backups(account_key, symbol, side)
-                            if backup_pos:
-                                disk_pos = backup_pos
-                        if disk_pos:
-                            self.positions_by_account[account_key][pos_key] = disk_pos
-                            self.positions[pos_key] = disk_pos
-                            added_count += 1
-                        else:
-                            logger.error(f"[_sync_memory] {pos_key}: NOT on disk, NOT in backups. Position data truly missing — cannot create without data.")
+                            disk_pos = Position.from_dict({"symbol": symbol, "position_side": side})
+                        self.positions_by_account[account_key][pos_key] = disk_pos
+                        self.positions[pos_key] = disk_pos
+                        added_count += 1
                 
                 # 2. Remove obsolete empty positions
                 keys_to_remove = []
