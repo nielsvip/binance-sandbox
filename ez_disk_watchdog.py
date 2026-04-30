@@ -2,6 +2,7 @@
 """Disk space watchdog — monitors /home/niels partition, triggers staged cleanup at >90% usage.
 Runs as a standalone daemon. Never touches: position files, history JSONL, symbols.json, .env.gpg.
 Cleanup cascade (each stage runs until disk < 85%):
+  Stage 0 — quarantine dirs (data/quarantine_*) — explicitly marked for deletion
   Stage 1 — old logs (>3 days)
   Stage 2 — old plots (>4h, keep at least 3)
   Stage 3 — old backups (keep last 10 per stem)
@@ -46,6 +47,26 @@ def is_protected(path: Path) -> bool:
         if p in ("ang", "inf", "flz", "men", "fin", "trb", "trc"):
             if path.name in PROTECTED: return True
     return False
+
+def stage0_quarantine_dirs() -> int:
+    """Delete quarantine_* dirs under data/ — explicitly flagged for deletion on disk pressure."""
+    freed = 0
+    for base in [BASE, BASE.parent / "binance-sandbox"]:
+        data_dir = base / "data"
+        if not data_dir.exists():
+            continue
+        for q in sorted(data_dir.glob("quarantine_*")):
+            if not q.is_dir():
+                continue
+            try:
+                sz = sum(f.stat().st_size for f in q.rglob("*") if f.is_file())
+                shutil.rmtree(q)
+                freed += sz
+                logger.info(f"[S0] deleted quarantine dir {q.name} ({format_size(sz)})")
+            except Exception as e:
+                logger.warning(f"[S0] failed {q}: {e}")
+    logger.info(f"[S0] stage0_quarantine_dirs freed {format_size(freed)}")
+    return freed
 
 def stage1_old_logs(max_days=3) -> int:
     """Delete log files older than max_days."""
@@ -137,7 +158,7 @@ def stage4_clip_klines(target_bars=1200) -> int:
 def run_cleanup():
     pct = disk_pct()
     logger.warning(f"Disk at {pct:.1f}% — starting cleanup cascade (target <{TARGET_PCT}%)")
-    for stage_fn in [stage1_old_logs, stage2_old_plots, stage3_old_backups, stage4_clip_klines]:
+    for stage_fn in [stage0_quarantine_dirs, stage1_old_logs, stage2_old_plots, stage3_old_backups, stage4_clip_klines]:
         stage_fn()
         pct = disk_pct()
         logger.info(f"After {stage_fn.__name__}: disk at {pct:.1f}%")
