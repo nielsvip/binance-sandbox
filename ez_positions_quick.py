@@ -5272,6 +5272,37 @@ class HedgeEngine:
                                 _abs_eff_gain = min(hedge_gain, _abs_real_gain)
                             else:
                                 _abs_eff_gain = hedge_gain
+                            # ═══ 2026-04-30 USER ABSOLUTE: wt_15m flip closes hedge FIRST, regardless of P/L ═══
+                            # User: "CLOSE the hedge when wt_15m goes against it. Same as last 500 years."
+                            # The 3m+1h NOLOSS_HOLD block at the next chunk would `continue` and skip
+                            # the BANDAID_OFF block at line 5387, so the wt_15m rule never fired on
+                            # losing hedges. Hoisting BANDAID_OFF check ABOVE the 3m+1h decision so
+                            # it ALWAYS gets a chance to fire first. NO P/L gate.
+                            if getattr(self.config, 'HEDGE_BANDAID_OFF_ENABLED', False) and hedge_amt > 0.001:
+                                _ph_losing_is_long = losing_key.endswith('_LONG')
+                                _ph_l_ind = {}
+                                if self.data_manager:
+                                    try: _ph_l_ind = self.data_manager._cold_data.get(losing_sym, {})
+                                    except Exception: pass
+                                if not _ph_l_ind.get('wt1_15m') and hasattr(self.data_manager, 'shared_proxy') and self.data_manager.shared_proxy:
+                                    try:
+                                        _ph_shm = self.data_manager.shared_proxy.get_symbol(losing_sym)
+                                        if _ph_shm: _ph_l_ind = dict(_ph_shm)
+                                    except Exception: pass
+                                _ph_w1_15m = safe_fetch_float(_ph_l_ind.get('wt1_15m'), 0)
+                                _ph_w2_15m = safe_fetch_float(_ph_l_ind.get('wt2_15m'), 0)
+                                # _wt_favors_origin = wt_15m moves AGAINST the hedge (in favor of origin).
+                                # Origin LONG (losing) → hedge SHORT → close when wt1_15m > wt2_15m.
+                                # Origin SHORT (losing) → hedge LONG → close when wt1_15m < wt2_15m.
+                                _ph_favors_origin = (_ph_losing_is_long and _ph_w1_15m > _ph_w2_15m) or (not _ph_losing_is_long and _ph_w1_15m < _ph_w2_15m)
+                                if _ph_favors_origin and (_ph_w1_15m != 0 or _ph_w2_15m != 0):
+                                    logger.warning(f"🩹 [BANDAID_OFF_FIRST] {hedge_key}: 15m WT favors origin {losing_key} (wt1={_ph_w1_15m:.1f} wt2={_ph_w2_15m:.1f} {'BULL' if _ph_losing_is_long else 'BEAR'}). Hedge gain={hedge_gain:.2f}%. NUKING (NO P/L gate, hoisted above 3m+1h NOLOSS_HOLD).")
+                                    try:
+                                        await execute_trade_wrapper(trade_manager=self.trade_manager, tracker_manager=self.tracker_manager, hedge_engine=self, account_key=account_key, position_key=hedge_key, positionAmt=hedge_amt, action='CLOSE', current_price=h_price, qty=hedge_amt, reason=f"BANDAID_OFF_FIRST_wt15m_{_ph_w1_15m:.1f}>{_ph_w2_15m:.1f}_hgain{hedge_gain:.2f}%", is_hedge=True, hedge_for=losing_key, data_manager=self.data_manager)
+                                        await self.tracker_manager.nuke_hedge_key(account_key, hedge_key)
+                                    except Exception as _ph_e:
+                                        logger.error(f"[BANDAID_OFF_FIRST_FAIL] {hedge_key}: {_ph_e}", exc_info=True)
+                                    continue  # hedge nuked; don't fall through to 3m+1h
                             _abs_decision = _hd.should_close_hedge_wt3m1h(h_ind, _abs_h_is_long, _abs_eff_gain, config) if hedge_amt > 0.001 else None
                             if _abs_decision is not None:
                                 _abs_wt1_3m = _abs_decision['wt']['wt1_3m']; _abs_wt2_3m = _abs_decision['wt']['wt2_3m']

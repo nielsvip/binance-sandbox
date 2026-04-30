@@ -51,8 +51,10 @@ TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 
 
 def _trade_records(entry_mask: np.ndarray, exit_mask: np.ndarray,
-                   close: np.ndarray, ts: np.ndarray, side: str) -> List[Dict]:
-    """Same logic as vec_sweep._trade_returns but emits dicts with timestamps."""
+                   close: np.ndarray, ts: np.ndarray, side: str,
+                   sym: str, entry_reason: str, exit_reason: str) -> List[Dict]:
+    """Same logic as vec_sweep._trade_returns but emits the rich JSONL schema
+    chart_server expects (matches existing canon_crypto_1 file format)."""
     entry_bars = np.flatnonzero(entry_mask)
     if entry_bars.size == 0:
         return []
@@ -76,12 +78,21 @@ def _trade_records(entry_mask: np.ndarray, exit_mask: np.ndarray,
         if direction < 0:
             r = -r
         out.append({
-            "entry_ts": int(ts[e]),
-            "exit_ts": int(ts[xb]),
+            "symbol": sym,
             "side": side,
+            "entry_type": entry_reason,
+            "entry_reason": entry_reason,
+            "exit_reason": exit_reason,
+            "entry_bar": int(e),
+            "entry_ts": int(ts[e]),
             "entry_price": round(ep, 6),
+            "exit_bar": int(xb),
+            "exit_ts": int(ts[xb]),
             "exit_price": round(xp, 6),
             "pnl_pct": round(r * 100.0, 6),
+            "pnl_usd": 0.0,
+            "duration_bars": int(xb - e),
+            "stream": "vec_sweep",
         })
         last_exit = xb
         if xb >= n - 1:
@@ -103,22 +114,41 @@ def evaluate_with_trades(npz: Dict[str, np.ndarray], cfg: vs.Config) -> List[Dic
 
 
 def fetch_remote_db(remote: str, remote_db: str) -> Path:
-    """Use Python's sqlite3.iterdump on the remote (sqlite3 CLI may be absent),
-    pipe SQL → local Python reimport. WAL-safe consistent snapshot."""
+    """Lean dump: only configs + results tables (skip streaming_returns blobs
+    which can be GBs). We re-evaluate trades from NPZ locally so we don't need
+    the raw returns blobs. Dump size drops from ~2GB to ~5MB."""
     tmp_dir = Path(tempfile.mkdtemp(prefix="vec_publish_"))
     local_db = tmp_dir / "vec_sweep_remote.db"
-    print(f"[publish] dumping {remote}:{remote_db} via Python iterdump → {local_db}")
-    remote_cmd = (
-        "python3 -c \"import sqlite3,sys; con=sqlite3.connect('" + remote_db + "'); "
-        "[sys.stdout.write(line+'\\n') for line in con.iterdump()]\""
+    print(f"[publish] dumping {remote}:{remote_db} (configs+results only) → {local_db}")
+    dump_script = (
+        f"import sqlite3,json,sys\n"
+        f"con = sqlite3.connect({remote_db!r})\n"
+        f"con.execute('PRAGMA wal_checkpoint(PASSIVE)')\n"
+        f"out = sqlite3.connect(':memory:')\n"
+        f"out.executescript('''\n"
+        f"CREATE TABLE configs (id INTEGER PRIMARY KEY, config_hash TEXT UNIQUE, config_json TEXT, label TEXT, created_at TEXT);\n"
+        f"CREATE TABLE results (id INTEGER PRIMARY KEY, config_id INTEGER, symbol TEXT, n_syms INTEGER, years REAL, pool_sharpe REAL, sym_sharpe REAL, trades INTEGER, trades_long INTEGER, trades_short INTEGER, acc_gain_pct REAL, avg_gain_trade REAL, gain_per_yr REAL, gain_sym_yr REAL, max_dd_pct REAL, win_rate_pct REAL, verdict TEXT, mode TEXT, created_at TEXT);\n"
+        f"''')\n"
+        f"# Bulk-copy rows\n"
+        f"out.executemany('INSERT INTO configs(id,config_hash,config_json,label,created_at) VALUES(?,?,?,?,?)',\n"
+        f"    [r for r in con.execute('SELECT id,config_hash,config_json,label,created_at FROM configs')])\n"
+        f"out.executemany('INSERT INTO results(id,config_id,symbol,n_syms,years,pool_sharpe,sym_sharpe,trades,trades_long,trades_short,acc_gain_pct,avg_gain_trade,gain_per_yr,gain_sym_yr,max_dd_pct,win_rate_pct,verdict,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',\n"
+        f"    [r for r in con.execute('SELECT id,config_id,symbol,n_syms,years,pool_sharpe,sym_sharpe,trades,trades_long,trades_short,acc_gain_pct,avg_gain_trade,gain_per_yr,gain_sym_yr,max_dd_pct,win_rate_pct,verdict,mode,created_at FROM results')])\n"
+        f"out.commit()\n"
+        f"for line in out.iterdump():\n"
+        f"    sys.stdout.write(line + '\\n')\n"
     )
     dump = subprocess.run(
-        ["ssh", "-o", "BatchMode=yes", remote, remote_cmd],
-        check=True, capture_output=True, text=True)
-    # Reimport into a local DB
+        ["ssh", "-o", "BatchMode=yes", remote, "python3 -"],
+        input=dump_script, capture_output=True, text=True, check=False)
+    if dump.returncode != 0:
+        print(f"[publish] remote dump failed (rc={dump.returncode}): {dump.stderr[:600]}")
+        sys.exit(2)
+    sql = dump.stdout
+    print(f"[publish] received {len(sql):,} bytes of SQL; reimporting locally")
     import_con = sqlite3.connect(str(local_db))
     try:
-        import_con.executescript(dump.stdout)
+        import_con.executescript(sql)
         import_con.commit()
     finally:
         import_con.close()
@@ -186,16 +216,16 @@ def publish(args) -> None:
         print("[publish] nothing to publish — DB has no qualifying rows.")
         return
 
-    # Resolve symbols. If --syms given, use those. Else, use streaming_returns
-    # to get the actual symbols each config was evaluated on.
+    # Resolve symbols. Priority: --syms > local NPZ basket discovery.
+    # We don't query streaming_returns (skipped in lean dump); we re-evaluate
+    # on every NPZ available locally. That's actually what we want — chart
+    # views need ALL the trades on charts user can browse.
     if args.syms:
         sym_universe = [s.strip() for s in args.syms.split(",") if s.strip()]
     else:
-        sym_universe = [r[0] for r in con.execute(
-            "SELECT DISTINCT symbol FROM streaming_returns").fetchall()]
-        if not sym_universe:
-            sym_universe = [r[0] for r in con.execute(
-                "SELECT DISTINCT symbol FROM results WHERE symbol NOT IN ('crypto48','crypto32','crypto20','crypto61_local','priority6')").fetchall()]
+        npz_files = sorted(Path(args.npz_dir).glob("*.npz"))
+        sym_universe = [p.stem for p in npz_files
+                        if p.stem.endswith("USDT") or p.stem.endswith("USDC")][:args.max_syms]
     print(f"[publish] sym universe: {len(sym_universe)} syms")
 
     npz_dir = Path(args.npz_dir)
@@ -220,8 +250,13 @@ def publish(args) -> None:
             xl = cache.and_many(cfg.exit_long)  if cfg.exit_long  else np.zeros(len(close), dtype=bool)
             es = cache.and_many(cfg.entry_short) if cfg.entry_short else np.zeros(len(close), dtype=bool)
             xs = cache.and_many(cfg.exit_short)  if cfg.exit_short  else np.zeros(len(close), dtype=bool)
-            trades = (_trade_records(el, xl, close, ts, "LONG") +
-                      _trade_records(es, xs, close, ts, "SHORT"))
+            # Reason strings are useful in chart_server tooltips
+            el_reason = "+".join(p.field for p in cfg.entry_long)[:60] or "-"
+            xl_reason = "+".join(p.field for p in cfg.exit_long)[:60] or "-"
+            es_reason = "+".join(p.field for p in cfg.entry_short)[:60] or "-"
+            xs_reason = "+".join(p.field for p in cfg.exit_short)[:60] or "-"
+            trades = (_trade_records(el, xl, close, ts, "LONG", sym, el_reason, xl_reason) +
+                      _trade_records(es, xs, close, ts, "SHORT", sym, es_reason, xs_reason))
             if trades:
                 by_run[run_id][sym] = trades
         del npz, cache
@@ -265,6 +300,7 @@ def main():
     ap.add_argument("--syms", default="", help="comma-separated NPZ syms to publish; default = whatever's in DB")
     ap.add_argument("--npz-dir", default=str(REPO / "backtest_v8" / "indicators"))
     ap.add_argument("--reset", action="store_true", help="wipe prior vec_* files in TRADES_DIR before publishing")
+    ap.add_argument("--max-syms", type=int, default=20, help="cap sym universe (NPZ load is heavy)")
     args = ap.parse_args()
     publish(args)
 
