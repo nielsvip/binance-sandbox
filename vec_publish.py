@@ -245,16 +245,27 @@ def publish(args) -> None:
         if ts is None:
             print(f"  [publish] skip {sym}: no timestamps in NPZ")
             del npz; continue
+        def prim_str(p):
+            """Human-readable primitive: 'mfi_4h≤25', 'wt_cross_bull_3m=1',
+            'close>dc_high_4h'. Matches what chart tooltips need to show."""
+            if p.op.startswith("gt_field:"):
+                return f"close>{p.op.split(':',1)[1]}"
+            if p.op.startswith("lt_field:"):
+                return f"close<{p.op.split(':',1)[1]}"
+            sym_op = {"ge": "≥", "le": "≤", "eq": "=", "ne": "≠"}.get(p.op, p.op)
+            t = p.threshold
+            t_str = f"{t:.4g}" if abs(t) >= 0.01 else f"{t:.6g}"
+            return f"{p.field}{sym_op}{t_str}"
+
         for run_id, cfg, meta in selected:
             el = cache.and_many(cfg.entry_long) if cfg.entry_long else np.zeros(len(close), dtype=bool)
             xl = cache.and_many(cfg.exit_long)  if cfg.exit_long  else np.zeros(len(close), dtype=bool)
             es = cache.and_many(cfg.entry_short) if cfg.entry_short else np.zeros(len(close), dtype=bool)
             xs = cache.and_many(cfg.exit_short)  if cfg.exit_short  else np.zeros(len(close), dtype=bool)
-            # Reason strings are useful in chart_server tooltips
-            el_reason = "+".join(p.field for p in cfg.entry_long)[:60] or "-"
-            xl_reason = "+".join(p.field for p in cfg.exit_long)[:60] or "-"
-            es_reason = "+".join(p.field for p in cfg.entry_short)[:60] or "-"
-            xs_reason = "+".join(p.field for p in cfg.exit_short)[:60] or "-"
+            el_reason = " AND ".join(prim_str(p) for p in cfg.entry_long) or "-"
+            xl_reason = " AND ".join(prim_str(p) for p in cfg.exit_long) or "-"
+            es_reason = " AND ".join(prim_str(p) for p in cfg.entry_short) or "-"
+            xs_reason = " AND ".join(prim_str(p) for p in cfg.exit_short) or "-"
             trades = (_trade_records(el, xl, close, ts, "LONG", sym, el_reason, xl_reason) +
                       _trade_records(es, xs, close, ts, "SHORT", sym, es_reason, xs_reason))
             if trades:
@@ -278,12 +289,39 @@ def publish(args) -> None:
         print(f"  [publish] {run_id}: {per_sym_rows} sym files, {per_sym_trades:,} trades  "
               f"pool={meta.get('pool_sharpe', 0):+.4f}")
 
-    # Drop a manifest for the visualizer to read (optional friendly index).
+    # Per-run meta sidecar — full config + thresholds + DB stats. The chart
+    # frontend can fetch /runs_ranked or read these files directly to display
+    # the strategy details for any run.
+    for run_id, cfg, meta in selected:
+        sidecar = TRADES_DIR / f"{run_id}__meta.json"
+        sidecar.write_text(json.dumps({
+            "run_id": run_id,
+            "config": json.loads(cfg.to_json()),
+            "config_hash": meta.get("config_hash", ""),
+            "stats": {
+                "pool_sharpe": meta.get("pool_sharpe"),
+                "sym_sharpe": meta.get("sym_sharpe"),
+                "trades": meta.get("trades"),
+                "acc_gain_pct": meta.get("acc_gain_pct"),
+                "max_dd_pct": meta.get("max_dd_pct"),
+                "n_syms": meta.get("n_syms"),
+                "years": meta.get("years"),
+                "mode": meta.get("mode"),
+            },
+            "human_readable": {
+                "entry_long":  " AND ".join(prim_str(p) for p in cfg.entry_long)  or "-",
+                "exit_long":   " AND ".join(prim_str(p) for p in cfg.exit_long)   or "-",
+                "entry_short": " AND ".join(prim_str(p) for p in cfg.entry_short) or "-",
+                "exit_short":  " AND ".join(prim_str(p) for p in cfg.exit_short)  or "-",
+            },
+        }, indent=2))
+
     manifest = TRADES_DIR / "vec_sweep_manifest.json"
     manifest.write_text(json.dumps([
         {"run_id": r, "syms_published": ns, "trades_total": nt, **m}
         for r, ns, nt, m in summary_rows], indent=2))
     print(f"\n[publish] manifest → {manifest}")
+    print(f"[publish] {len(selected)} per-run meta sidecars written")
     print(f"[publish] visit http://127.0.0.1:5077/  (refresh /runs to see new run_ids)")
     print(f"[publish] runs published: {len(summary_rows)}, "
           f"total trade lines: {sum(nt for _,_,nt,_ in summary_rows):,}")
