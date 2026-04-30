@@ -179,6 +179,15 @@ class QuickConfig:
     # 2026-04-30 Phase 2: route reentry through position_evaluator.evaluate_reentry_vec (live-equivalent).
     # OFF preserves existing v8_quick lookahead-corrected blocks. Sweep this to measure parity gap.
     USE_LIVE_EVALUATOR_VEC: bool = False
+    # 2026-04-30 Phase 3a/3b: route per-trade qty through compute_trade_qty_vec.
+    # Computes per-symbol average qty modifier (WT_HTF_DISCOUNT, HEDGE_SIZE_CAP,
+    # MIN_POS floor) and applies it as a symbol-level pnl weight. OFF preserves
+    # existing equal-weight Sharpe semantics. Sweep this flag to expose how much
+    # backtest results inflate vs live (where qty discount/cap is real).
+    APPLY_QTY_PIPELINE_TO_PNL: bool = False
+    WT_HTF_DISCOUNT_ENABLED: bool = True
+    HEDGE_MAX_PCT_OF_LOSER: float = 1.0
+    MIN_POSITION_SIZE: float = 55.0
     # PULLBACK-FIRST entry blocks (2026-04-16) — OPT-IN: Sharpe 0.80 test, keep OFF until proven
     REENTRY_PULL1_ENABLED: bool = False  # HTF uptrend + LTF deep oversold + reversing
     REENTRY_PULL2_ENABLED: bool = False  # Rising fundamentals + SMA200 pullback bounce
@@ -1045,6 +1054,45 @@ class QuickConfig:
         self.VWAP_FILTER_ENABLED = True
         self.FH_MOMENTUM_ENABLED = True
         self.DC_DAYTRADE_ENABLED = True
+        # ===== ENGINE-RETROFIT 2026-04-30 — live-parity entry/exit paths (registry: docs/engine_retrofit_registry.md) =====
+        # E1. WT_DC_ENTRY — biggest live entry path (~26k LONG BUY/day on tradier).
+        # Source: wt_dc_entry_scorer.score_entry_multitf. Vectorized here.
+        self.WT_DC_ENTRY_ENABLED = False                  # master switch (sweep-flippable)
+        self.WT_DC_ENTRY_LONG_THRESHOLD = 55              # tradier default; tra=85
+        self.WT_DC_ENTRY_SHORT_THRESHOLD = 55
+        self.WT_DC_ENTRY_W_HTF_D = 25.0                   # D-bull/bear weight
+        self.WT_DC_ENTRY_W_HTF_4H = 25.0                  # 4h-bull/bear weight
+        self.WT_DC_ENTRY_W_LTF_1H = 30.0                  # 1h-cross weight
+        self.WT_DC_ENTRY_W_DC_1H = 10.0                   # dc_position_1h weight
+        self.WT_DC_ENTRY_W_K_5M = 10.0                    # stoch_k_5m weight
+        self.WT_DC_ENTRY_DC1H_LONG_MAX = 0.50             # LONG fires only when dc_pos_1h < this
+        self.WT_DC_ENTRY_DC1H_SHORT_MIN = 0.50            # SHORT fires only when dc_pos_1h > this
+        self.WT_DC_ENTRY_K5M_LONG_MAX = 40.0              # LONG fires only when k_5m < this
+        self.WT_DC_ENTRY_K5M_SHORT_MIN = 60.0             # SHORT fires only when k_5m > this
+        # X1. PEAK_GIVEBACK_GAIN_EROSION — 1,343/day live exit
+        self.PEAK_GIVEBACK_ENABLED = False
+        self.PEAK_GIVEBACK_PEAK_MIN_PCT = 0.50            # arm only after peak ≥ this
+        self.PEAK_GIVEBACK_DROP_PCT = 0.5                 # exit on this much give-back from peak
+        self.PEAK_GIVEBACK_HARD_ZERO_ENABLED = False      # additional: exit if peak ≥ X but cur ≤ 0
+        self.PEAK_GIVEBACK_MIN_AGE_BARS = 0
+        # X2. BREAKEVEN_GAIN_EROSION — 738/day live exit
+        self.BE_EROSION_ENABLED = False
+        self.BE_EROSION_AGE_MIN_BARS = 30                 # only fire after position is ≥ N bars old
+        self.BE_EROSION_MIN_GAIN = 0.0                    # exit if gain < this AND profit
+        self.BE_EROSION_REQUIRE_PROFIT = True
+        self.BE_EROSION_COMM_BUFFER = 0.05                # commissions buffer
+        # X3. K1M_EXTREME_REVERSE — 1,205/day live exit (BLOCKED on missing k_1m NPZ field)
+        self.K1M_EXTREME_REVERSE_ENABLED = False
+        self.K1M_EXTREME_HIGH = 90.0                      # LONG exits when k_1m > this AND turning down
+        self.K1M_EXTREME_LOW = 10.0                       # SHORT exits when k_1m < this AND turning up
+        self.K1M_REVERSE_REQUIRES_PROFIT = True
+        # X4. STRONG_REDUCE_K — 2,716/day live reduce (top exit volume)
+        self.STRONG_REDUCE_K_ENABLED = False
+        self.SRK_K15M_LONG_MIN = 80.0                     # LONG reduces when k_15m > this
+        self.SRK_K1H_LONG_MAX = 30.0                      # AND k_1h < this (1h trending opposite)
+        self.SRK_K15M_SHORT_MAX = 20.0
+        self.SRK_K1H_SHORT_MIN = 70.0
+        self.SRK_REDUCE_FRAC = 0.5                        # close 50% of position on fire
         self.STOCH_CROSS_1H_EXIT_ENABLED = True
         self.MFI_FLIP_EXIT_ENABLED = True
         self.WT_CROSSUNDER_FINAL_ENABLED = True
@@ -3640,6 +3688,29 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     start_i = max(fib_lb_D_in_ltf, div_lb + 1, 100)
     _prev_position_for_anchor = "FLAT"
 
+    # ===== ENGINE-RETROFIT 2026-04-30: pre-compute vectorized live-parity masks =====
+    # Each path returns a per-bar boolean array. Looked up by mask[i] inside the per-bar loop.
+    _wt_dc_entry_active = bool(getattr(cfg, 'WT_DC_ENTRY_ENABLED', False))
+    if _wt_dc_entry_active:
+        _wt_dc_long_fire, _wt_dc_long_score = _wt_dc_entry_mask(npz, n, cfg, is_long=True)
+        _wt_dc_short_fire, _wt_dc_short_score = _wt_dc_entry_mask(npz, n, cfg, is_long=False)
+    else:
+        _wt_dc_long_fire = np.zeros(n, dtype=bool); _wt_dc_long_score = np.zeros(n, dtype=np.float32)
+        _wt_dc_short_fire = np.zeros(n, dtype=bool); _wt_dc_short_score = np.zeros(n, dtype=np.float32)
+    # Exit-side masks (per-bar; the per-position context — gain_pct, age, etc — feeds them inside the loop)
+    _peak_giveback_active = bool(getattr(cfg, 'PEAK_GIVEBACK_ENABLED', False))
+    _be_erosion_active = bool(getattr(cfg, 'BE_EROSION_ENABLED', False))
+    _k1m_extreme_active = bool(getattr(cfg, 'K1M_EXTREME_REVERSE_ENABLED', False))
+    _strong_reduce_k_active = bool(getattr(cfg, 'STRONG_REDUCE_K_ENABLED', False))
+    # k_15m / k_1h for STRONG_REDUCE_K (read once)
+    if _strong_reduce_k_active or _k1m_extreme_active:
+        _k_15m_arr = _safe(npz, 'stoch_k_15m', n, default=50.0)
+        _k_1h_arr = _safe(npz, 'stoch_k_1h', n, default=50.0)
+    if _k1m_extreme_active:
+        _k_1m_arr = _safe(npz, 'stoch_k_1m', n, default=50.0)
+        _k_1m_prev_arr = np.roll(_k_1m_arr, 1); _k_1m_prev_arr[0] = _k_1m_arr[0]
+        _k1m_field_present = not (_k_1m_arr == 50.0).all()  # detect zero-fill
+
     for i in range(start_i, n):
         price_i = float(close[i])
         if price_i <= 0:
@@ -3937,6 +4008,20 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
                 entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
                 continue
 
+            # 1b. WT_DC_ENTRY (engine-retrofit 2026-04-30, registry E1) — biggest live entry path
+            # Pre-computed masks _wt_dc_long_fire / _wt_dc_short_fire are looked up per bar.
+            if _wt_dc_entry_active:
+                if _wt_dc_long_fire[i] and not (funding_blocks_long or oi_blocks_long or _block_long_flip):
+                    position = "LONG"; entry_price = price_i; entry_bar = i; entry_type = "WT_DC_ENTRY"
+                    entry_reason = f"WT_DC_ENTRY_LONG_score{_wt_dc_long_score[i]:.0f}"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    continue
+                if _wt_dc_short_fire[i] and not (funding_blocks_short or oi_blocks_short or _block_short_flip):
+                    position = "SHORT"; entry_price = price_i; entry_bar = i; entry_type = "WT_DC_ENTRY"
+                    entry_reason = f"WT_DC_ENTRY_SHORT_score{_wt_dc_short_score[i]:.0f}"
+                    entry_ts = int(_ts_arr[i]) if _ts_arr is not None and i < len(_ts_arr) else 0
+                    continue
+
             # 2. FOLLOW-THROUGH reentry: same-side reentry past exit price (no RZ required).
             #    Catches the case where we exited prematurely on a bear-div / WT_AGAINST and
             #    price kept going in our original direction.
@@ -4207,6 +4292,144 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     return sym_pnl
 
 
+# ============================================================================
+# ENGINE-RETROFIT 2026-04-30 — vectorized live-parity entry/exit path masks
+# Each function returns a numpy boolean array of length n where True = path fires.
+# Pattern: read all NPZ fields once, build the boolean condition vectorized,
+# return for the main simulate() loop to consume via mask[i] checks.
+# Registry: docs/engine_retrofit_registry.md
+# ============================================================================
+
+def _wt_dc_entry_mask(npz: dict, n: int, cfg, is_long: bool) -> tuple:
+    """E1. WT_DC_ENTRY (live: ~26k LONG BUY/day on tradier, source wt_dc_entry_scorer.py).
+    Multi-TF score 0-100. LONG fires when score >= cfg.WT_DC_ENTRY_LONG_THRESHOLD.
+
+    Score components (all weights tunable):
+        D bull/bear:    +cfg.WT_DC_ENTRY_W_HTF_D    if wt1_D > wt2_D (LONG) / < (SHORT)
+        4h bull/bear:   +cfg.WT_DC_ENTRY_W_HTF_4H   if wt1_4h > wt2_4h
+        1h cross:       +cfg.WT_DC_ENTRY_W_LTF_1H   if wt_cross_1h matches direction
+        DC pos 1h:      +cfg.WT_DC_ENTRY_W_DC_1H    if dc_pos_1h < DC1H_LONG_MAX (LONG)
+        Stoch K 5m:     +cfg.WT_DC_ENTRY_W_K_5M     if k_5m < K5M_LONG_MAX (LONG)
+
+    Returns (fire_mask, score_array). score_array can be inspected by sweep diagnostics.
+    """
+    if not getattr(cfg, 'WT_DC_ENTRY_ENABLED', False):
+        return np.zeros(n, dtype=bool), np.zeros(n, dtype=np.float32)
+    wt1_D = _safe(npz, 'wt1_D', n)
+    wt2_D = _safe(npz, 'wt2_D', n)
+    wt1_4h = _safe(npz, 'wt1_4h', n)
+    wt2_4h = _safe(npz, 'wt2_4h', n)
+    # wt_cross_1h is stored as int8 in NPZ (1=BULL, -1=BEAR, 0=NONE)
+    wt_cross_1h = _safe(npz, 'wt_cross_1h', n)
+    dc_pos_1h = _safe(npz, 'dc_position_1h', n, default=0.5)
+    k_5m = _safe(npz, 'stoch_k_5m', n, default=50.0)
+    w_d = float(getattr(cfg, 'WT_DC_ENTRY_W_HTF_D', 25.0))
+    w_4h = float(getattr(cfg, 'WT_DC_ENTRY_W_HTF_4H', 25.0))
+    w_1h = float(getattr(cfg, 'WT_DC_ENTRY_W_LTF_1H', 30.0))
+    w_dc = float(getattr(cfg, 'WT_DC_ENTRY_W_DC_1H', 10.0))
+    w_k5 = float(getattr(cfg, 'WT_DC_ENTRY_W_K_5M', 10.0))
+    score = np.zeros(n, dtype=np.float32)
+    if is_long:
+        score += np.where(wt1_D > wt2_D, w_d, 0.0)
+        score += np.where(wt1_4h > wt2_4h, w_4h, 0.0)
+        score += np.where(wt_cross_1h > 0.5, w_1h, 0.0)
+        dc_max = float(getattr(cfg, 'WT_DC_ENTRY_DC1H_LONG_MAX', 0.50))
+        score += np.where(dc_pos_1h < dc_max, w_dc, 0.0)
+        k_max = float(getattr(cfg, 'WT_DC_ENTRY_K5M_LONG_MAX', 40.0))
+        score += np.where(k_5m < k_max, w_k5, 0.0)
+        thresh = float(getattr(cfg, 'WT_DC_ENTRY_LONG_THRESHOLD', 55))
+    else:
+        score += np.where(wt1_D < wt2_D, w_d, 0.0)
+        score += np.where(wt1_4h < wt2_4h, w_4h, 0.0)
+        score += np.where(wt_cross_1h < -0.5, w_1h, 0.0)
+        dc_min = float(getattr(cfg, 'WT_DC_ENTRY_DC1H_SHORT_MIN', 0.50))
+        score += np.where(dc_pos_1h > dc_min, w_dc, 0.0)
+        k_min = float(getattr(cfg, 'WT_DC_ENTRY_K5M_SHORT_MIN', 60.0))
+        score += np.where(k_5m > k_min, w_k5, 0.0)
+        thresh = float(getattr(cfg, 'WT_DC_ENTRY_SHORT_THRESHOLD', 55))
+    fire = score >= thresh
+    return fire, score
+
+
+def _peak_giveback_mask(gain_pct_running: np.ndarray, peak_gain_running: np.ndarray, age_bars: np.ndarray, cfg) -> np.ndarray:
+    """X1. PEAK_GIVEBACK_GAIN_EROSION_STOP — 1,343/day live exit.
+    Exits when peak gain reached threshold AND current gain has dropped X% from peak.
+
+    Inputs are computed inside the per-position lifecycle (gain_pct, peak via cummax, age in bars).
+    Returns boolean mask: True at bars where the exit fires.
+    """
+    if not getattr(cfg, 'PEAK_GIVEBACK_ENABLED', False):
+        return np.zeros_like(gain_pct_running, dtype=bool)
+    peak_min = float(getattr(cfg, 'PEAK_GIVEBACK_PEAK_MIN_PCT', 0.50))
+    drop_pct = float(getattr(cfg, 'PEAK_GIVEBACK_DROP_PCT', 0.5))
+    min_age = int(getattr(cfg, 'PEAK_GIVEBACK_MIN_AGE_BARS', 0))
+    drop = peak_gain_running - gain_pct_running
+    fire = (peak_gain_running >= peak_min) & (drop >= drop_pct) & (age_bars >= min_age)
+    if bool(getattr(cfg, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', False)):
+        fire = fire | ((peak_gain_running >= peak_min) & (gain_pct_running <= 0.0) & (age_bars >= min_age))
+    return fire
+
+
+def _be_erosion_mask(gain_pct_running: np.ndarray, age_bars: np.ndarray, cfg) -> np.ndarray:
+    """X2. BREAKEVEN_GAIN_EROSION_STOP — 738/day live exit.
+    Fires when position is ≥ N bars old AND in profit AND gain < BE_min (i.e. winning trade
+    eroding back toward zero — close before it's a loser).
+    """
+    if not getattr(cfg, 'BE_EROSION_ENABLED', False):
+        return np.zeros_like(gain_pct_running, dtype=bool)
+    age_min = int(getattr(cfg, 'BE_EROSION_AGE_MIN_BARS', 30))
+    be_min = float(getattr(cfg, 'BE_EROSION_MIN_GAIN', 0.0))
+    require_profit = bool(getattr(cfg, 'BE_EROSION_REQUIRE_PROFIT', True))
+    comm_buf = float(getattr(cfg, 'BE_EROSION_COMM_BUFFER', 0.05))
+    fire = (age_bars >= age_min) & (gain_pct_running < be_min)
+    if require_profit:
+        fire = fire & (gain_pct_running >= comm_buf)
+    return fire
+
+
+def _k1m_extreme_reverse_mask(npz: dict, n: int, gain_pct_running: np.ndarray, cfg, is_long: bool) -> np.ndarray:
+    """X3. K1M_EXTREME_REVERSE — 1,205/day live exit. BLOCKED if NPZ lacks stoch_k_1m.
+    LONG: k_1m > 90 AND k_1m < k_1m_prev AND in profit.
+    SHORT: k_1m < 10 AND k_1m > k_1m_prev AND in profit.
+    """
+    if not getattr(cfg, 'K1M_EXTREME_REVERSE_ENABLED', False):
+        return np.zeros(n, dtype=bool)
+    k_1m = _safe(npz, 'stoch_k_1m', n, default=50.0)
+    if (k_1m == 50.0).all():
+        return np.zeros(n, dtype=bool)  # field zero-filled; path can't fire credibly
+    k_1m_prev = np.roll(k_1m, 1)
+    k_1m_prev[0] = k_1m[0]
+    hi = float(getattr(cfg, 'K1M_EXTREME_HIGH', 90.0))
+    lo = float(getattr(cfg, 'K1M_EXTREME_LOW', 10.0))
+    require_profit = bool(getattr(cfg, 'K1M_REVERSE_REQUIRES_PROFIT', True))
+    if is_long:
+        fire = (k_1m > hi) & (k_1m < k_1m_prev)
+    else:
+        fire = (k_1m < lo) & (k_1m > k_1m_prev)
+    if require_profit:
+        fire = fire & (gain_pct_running >= 0.0)
+    return fire
+
+
+def _strong_reduce_k_mask(npz: dict, n: int, gain_pct_running: np.ndarray, cfg, is_long: bool) -> np.ndarray:
+    """X4. STRONG_REDUCE_K — 2,716/day live reduce.
+    LONG reduces 50% when k_15m extreme high AND k_1h trending opposite (mean-reverting setup).
+    """
+    if not getattr(cfg, 'STRONG_REDUCE_K_ENABLED', False):
+        return np.zeros(n, dtype=bool)
+    k_15m = _safe(npz, 'stoch_k_15m', n, default=50.0)
+    k_1h = _safe(npz, 'stoch_k_1h', n, default=50.0)
+    if is_long:
+        k15_min = float(getattr(cfg, 'SRK_K15M_LONG_MIN', 80.0))
+        k1h_max = float(getattr(cfg, 'SRK_K1H_LONG_MAX', 30.0))
+        fire = (k_15m > k15_min) & (k_1h < k1h_max) & (gain_pct_running >= 0.0)
+    else:
+        k15_max = float(getattr(cfg, 'SRK_K15M_SHORT_MAX', 20.0))
+        k1h_min = float(getattr(cfg, 'SRK_K1H_SHORT_MIN', 70.0))
+        fire = (k_15m < k15_max) & (k_1h > k1h_min) & (gain_pct_running >= 0.0)
+    return fire
+
+
 def simulate(stores, cfg, capital=10000.0):
     """stores can be a dict {sym: data} (preloaded) or an iterable of
     (sym, data) tuples (streaming). Streaming releases memory per symbol."""
@@ -4252,6 +4475,7 @@ def simulate(stores, cfg, capital=10000.0):
     _iter = stores.items() if isinstance(stores, dict) else stores
     for sym, npz in _iter:
         sym_pnl = []
+        _pnl_slice_start = len(all_pnl)  # Phase 3b: track slice for qty-pipeline re-weight
         # Derive n from LTF close (stocks may not have timestamps/timestamp_3m fields at all).
         ts = npz.get('timestamps', npz.get(f'timestamp_{_ltf}', npz.get('timestamp_3m', np.array([]))))
         n = len(ts)
@@ -5147,6 +5371,30 @@ def simulate(stores, cfg, capital=10000.0):
                         _tf.write(json.dumps(_td) + "\n")
             except Exception as _te:
                 print(f"[V8_TRADES_OUT_GEN] write error {sym}: {_te}", flush=True)
+        # 2026-04-30 Phase 3b: apply qty pipeline as symbol-level pnl weight.
+        # Real per-trade qty needs surgery into 20+ append sites (Phase 3d). MVP weights
+        # the symbol's pnl by its average qty/start_size ratio across the NPZ — captures
+        # the systemic WT_HTF_DISCOUNT/HEDGE_CAP bias that backtest historically ignored.
+        # Re-weights BOTH sym_pnl AND the matching slice of all_pnl so pool stays consistent.
+        if getattr(cfg, 'APPLY_QTY_PIPELINE_TO_PNL', False) and sym_pnl:
+            try:
+                from position_evaluator import compute_trade_qty_vec
+                _close_arr = npz.get('close')
+                if _close_arr is not None and len(_close_arr) >= n:
+                    _cp = np.asarray(_close_arr[:n], dtype=np.float32)
+                    _cp = np.where(_cp > 0, _cp, 1.0)
+                    _start_qty = (cfg.START_POSITION_SIZE / _cp).astype(np.float32)
+                    _qty_long = compute_trade_qty_vec({**npz, 'close': _cp}, _start_qty, is_long=True, config=cfg)
+                    _qty_short = compute_trade_qty_vec({**npz, 'close': _cp}, _start_qty, is_long=False, config=cfg)
+                    _avg_ratio_long = float(np.mean(_qty_long['qty'] / np.maximum(_start_qty, 1e-9)))
+                    _avg_ratio_short = float(np.mean(_qty_short['qty'] / np.maximum(_start_qty, 1e-9)))
+                    _avg_ratio = (_avg_ratio_long + _avg_ratio_short) / 2.0
+                    sym_pnl = [float(p) * _avg_ratio for p in sym_pnl]
+                    for _ai in range(_pnl_slice_start, len(all_pnl)):
+                        all_pnl[_ai] = float(all_pnl[_ai]) * _avg_ratio
+            except Exception as _qpe:
+                if symbols_processed < 3:
+                    print(f"[QTY_PIPELINE] {sym} weight error: {_qpe}", flush=True)
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
         if _rg is not None:

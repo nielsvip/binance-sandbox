@@ -36,6 +36,103 @@ NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 HISTORY_DIR = BASE_PATH / "data" / "history"
 ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
+
+# Extra trade-JSONL roots scanned in addition to TRADES_DIR (added 2026-04-30 per
+# user: "make sure I can see and select the latest 7d tests AND all the big sweeps").
+# Each entry is a glob pattern relative to BASE_PATH. We walk recursively and pick
+# up *__*.jsonl files. A registry cache (rebuilt every 30s) maps run_id → file path.
+_DEFAULT_EXTRA_ROOTS = [
+    "data/hourly_reconfig/*/runs/*",       # latest hourly cycles per account
+    "data/canonical_trades/*",             # big-sweep canonical trade JSONLs
+    "data/hourly_reconfig/*/runs/*/",      # tolerate trailing slash globs
+]
+EXTRA_ROOTS_CFG = os.environ.get("V8_TRADES_EXTRA_ROOTS", "").strip()
+if EXTRA_ROOTS_CFG:
+    EXTRA_ROOT_GLOBS = [g.strip() for g in EXTRA_ROOTS_CFG.split(",") if g.strip()]
+else:
+    EXTRA_ROOT_GLOBS = _DEFAULT_EXTRA_ROOTS
+
+# Registry: run_id → Path. Refreshed every REGISTRY_TTL seconds.
+_run_registry: Dict[str, Path] = {}
+_run_registry_built_at: float = 0.0
+REGISTRY_TTL = 30.0
+
+
+def _all_trade_roots() -> List[Path]:
+    roots: List[Path] = [TRADES_DIR] if TRADES_DIR.exists() else []
+    for g in EXTRA_ROOT_GLOBS:
+        for p in BASE_PATH.glob(g):
+            if p.is_dir():
+                roots.append(p)
+    return roots
+
+
+def _build_run_registry() -> Dict[str, Path]:
+    """Walk every trade root, collect *__*.jsonl. run_id is derived from the file
+    stem (everything before the LAST __<SYM>). Latest mtime wins on collision.
+    """
+    reg: Dict[str, Tuple[Path, float]] = {}
+    for root in _all_trade_roots():
+        try:
+            for p in root.rglob("*__*.jsonl"):
+                stem = p.stem
+                idx = stem.rfind("__")
+                if idx <= 0:
+                    continue
+                run_id = stem[:idx]
+                # Disambiguate same-named runs from different parent dirs by tagging
+                # with the parent dir name when there's a collision.
+                if run_id in reg and reg[run_id][0].parent != p.parent:
+                    parent_tag = p.parent.name
+                    run_id_tagged = f"{parent_tag}::{run_id}"
+                else:
+                    run_id_tagged = run_id
+                try:
+                    mtime = p.stat().st_mtime
+                except Exception:
+                    mtime = 0.0
+                if run_id_tagged not in reg or mtime > reg[run_id_tagged][1]:
+                    reg[run_id_tagged] = (p, mtime)
+        except Exception:
+            continue
+    return {rid: pair[0] for rid, pair in reg.items()}
+
+
+def _get_run_registry(force: bool = False) -> Dict[str, Path]:
+    global _run_registry, _run_registry_built_at
+    now = time.time()
+    if force or now - _run_registry_built_at > REGISTRY_TTL:
+        _run_registry = _build_run_registry()
+        _run_registry_built_at = now
+    return _run_registry
+
+
+def _resolve_trade_path(run: str, sym: str) -> Optional[Path]:
+    """Find the JSONL for (run, sym). First check legacy TRADES_DIR convention,
+    then fall back to the multi-root registry.
+    """
+    legacy = TRADES_DIR / f"{run}__{sym}.jsonl"
+    if legacy.exists():
+        return legacy
+    reg = _get_run_registry()
+    # Direct match
+    if run in reg:
+        p = reg[run]
+        # The registry's path may be for a DIFFERENT sym in the same run group;
+        # construct the sym-specific path within the same parent dir.
+        candidate = p.parent / f"{run}__{sym}.jsonl"
+        if candidate.exists():
+            return candidate
+        return p if p.stem.endswith(f"__{sym}") else None
+    # Tagged-match: parent_tag::run
+    if "::" in run:
+        parent_tag, _, real_run = run.partition("::")
+        for r, p in reg.items():
+            if r == run and p.parent.name == parent_tag:
+                cand = p.parent / f"{real_run}__{sym}.jsonl"
+                if cand.exists():
+                    return cand
+    return None
 TF_SECONDS = {"3m": 180, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400}
 
 app = Flask(__name__, static_folder=str(BASE_PATH / "chart_static"))
@@ -104,13 +201,53 @@ def symbols():
 
 @app.route("/runs")
 def runs():
-    if not TRADES_DIR.exists():
-        return jsonify([])
+    """Return all known run_ids across legacy TRADES_DIR + extra roots.
+    Latest hourly_reconfig cycles + canonical_trades dirs auto-included.
+    """
     out = set()
-    for p in TRADES_DIR.glob("*__*.jsonl"):
-        run, _, _ = p.stem.partition("__")
-        out.add(run)
+    if TRADES_DIR.exists():
+        for p in TRADES_DIR.glob("*__*.jsonl"):
+            run, _, _ = p.stem.partition("__")
+            out.add(run)
+    reg = _get_run_registry()
+    for rid in reg:
+        out.add(rid)
     return jsonify(sorted(out))
+
+
+@app.route("/runs_grouped")
+def runs_grouped():
+    """Return runs grouped by source (latest hourly per account vs big sweeps).
+    User-friendly for the chart UI to show separated lists.
+    """
+    groups: Dict[str, List[str]] = {"hourly_flz": [], "hourly_fin": [], "hourly_inf": [],
+                                     "hourly_trc": [], "hourly_trb": [],
+                                     "big_sweep": [], "legacy": [], "other": []}
+    reg = _get_run_registry()
+    for rid, p in reg.items():
+        s = str(p)
+        if "/hourly_reconfig/flz/" in s:
+            groups["hourly_flz"].append(rid)
+        elif "/hourly_reconfig/fin/" in s:
+            groups["hourly_fin"].append(rid)
+        elif "/hourly_reconfig/inf/" in s:
+            groups["hourly_inf"].append(rid)
+        elif "/hourly_reconfig/trc/" in s:
+            groups["hourly_trc"].append(rid)
+        elif "/hourly_reconfig/trb/" in s:
+            groups["hourly_trb"].append(rid)
+        elif "/canonical_trades/" in s:
+            groups["big_sweep"].append(rid)
+        else:
+            groups["other"].append(rid)
+    if TRADES_DIR.exists():
+        for p in TRADES_DIR.glob("*__*.jsonl"):
+            run, _, _ = p.stem.partition("__")
+            groups["legacy"].append(run)
+    for k in groups:
+        groups[k] = sorted(set(groups[k]))
+    groups["_roots"] = [str(r) for r in _all_trade_roots()]
+    return jsonify(groups)
 
 
 def _compute_per_sym_best() -> str:
@@ -399,9 +536,9 @@ def backtest_trades():
     max_trades = int(request.args.get("max", 8000))
     if not run or not sym:
         return jsonify({"error": "run and sym required"}), 400
-    path = TRADES_DIR / f"{run}__{sym}.jsonl"
-    if not path.exists():
-        return jsonify({"trades": [], "stats": {}})
+    path = _resolve_trade_path(run, sym)
+    if path is None or not path.exists():
+        return jsonify({"trades": [], "stats": {}, "missing_run": run, "missing_sym": sym})
     trades = []
     for line in path.read_text().splitlines():
         if not line.strip():
@@ -443,8 +580,8 @@ def equity_curves():
     run_totals: Dict[str, float] = {}
     anchor_ts = start if start is not None else 0
     for run in runs:
-        path = TRADES_DIR / f"{run}__{sym}.jsonl"
-        if not path.exists():
+        path = _resolve_trade_path(run, sym)
+        if path is None or not path.exists():
             out_runs[run] = []
             run_totals[run] = 0.0
             continue
@@ -1203,8 +1340,8 @@ def run_diff():
         return jsonify({"error": "run_a, run_b, sym required"}), 400
 
     def _load(run: str):
-        path = TRADES_DIR / f"{run}__{sym}.jsonl"
-        if not path.exists():
+        path = _resolve_trade_path(run, sym)
+        if path is None or not path.exists():
             return []
         out = []
         for line in path.read_text().splitlines():
@@ -1313,8 +1450,8 @@ def tier_diff():
         return jsonify({"error": "run_t1, run_t2, sym required"}), 400
 
     def _load(run):
-        path = TRADES_DIR / f"{run}__{sym}.jsonl"
-        if not path.exists(): return []
+        path = _resolve_trade_path(run, sym)
+        if path is None or not path.exists(): return []
         out = []
         for line in path.read_text().splitlines():
             if line.strip():
