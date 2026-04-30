@@ -63,99 +63,61 @@ def infer_account(mode: str) -> str:
 
 
 def parse_v8_result(output: str) -> dict | None:
-    """Parse V8_RESULT line. Supports four formats:
+    """Parse V8_RESULT line emitted by backtest_v8_engine / v8_quick_engine.
 
-    POOL_SYM (2026-04-29):  `V8_RESULT: pool_sharpe=X sym_sharpe=Y sharpe=X gain_pct=G closes=C wins=W losses=L` (or `trades=N` legacy)
-    POOL (legacy):          `V8_RESULT: pool_sharpe=X gain_pct=G closes=C wins=W losses=L`
-    LEGACY_NEW (banned):    `V8_RESULT: sharpe_w=X sharpe_pt=Y sharpe_ann=Z gain_pct=G closes=C wins=W losses=L`
-    OLD:                    `V8_RESULT: sharpe=X pnl=Y trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
+    Canonical format (post-2026-04-30 NO-LIES retrofit):
+      `V8_RESULT: pool_sharpe=X sym_sharpe=Y gain_pct=G closes=C wins=W losses=L`
+      or
+      `V8_RESULT: pool_sharpe=X sym_sharpe=Y pnl=P trades=N wins=W losses=L total_pnl_dollars=D avg_pnl=A`
 
-    Uses LAST match (re.finditer) so V8_RESULT_LIVE interim lines are skipped — final summary comes last.
-    Returns normalized dict with 'sharpe' = pool_sharpe (per-trade canonical, CLAUDE.md rule 4).
-    Adds 'sym_sharpe' field when emitted by engine; absent → 0.0 (safe diagnostic default).
+    The optional `sharpe=...` token (legacy bare-label) is tolerated for backward
+    compat with logs from engines that haven't been re-deployed yet, but it's
+    NOT carried into the parsed dict. Returns None if no match.
     """
-    # POOL_SYM format — 2026-04-29 engine output (pool_sharpe + sym_sharpe diagnostic per CLAUDE.md rule 4)
     matches = list(re.finditer(
-        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+sym_sharpe=([0-9.-]+)\s+sharpe=[0-9.-]+\s+(?:pnl=[0-9.-]+\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)|gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+))",
+        r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+sym_sharpe=([0-9.-]+)"
+        r"(?:\s+sharpe=[0-9.-]+)?"
+        r"\s+(?:"
+        r"pnl=([0-9.-]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)(?:\s+total_pnl_dollars=([0-9.-]+))?(?:\s+avg_pnl=([0-9.-]+))?"
+        r"|gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)"
+        r")",
         output,
     ))
     if matches:
         m = matches[-1]
-        if m.group(3) is not None:  # _v8_result_from_trades fallback path — pnl=, trades=
-            trades = int(m.group(3)); wins = int(m.group(4)); losses = int(m.group(5)); pnl = 0.0
-        else:  # _compute_sharpe_and_gain final path — gain_pct=, closes=
-            trades = int(m.group(7)); wins = int(m.group(8)); losses = int(m.group(9)); pnl = float(m.group(6))
+        if m.group(3) is not None:
+            pnl = float(m.group(3)); trades = int(m.group(4)); wins = int(m.group(5)); losses = int(m.group(6))
+            total_pnl = float(m.group(7)) if m.group(7) is not None else None
+            avg_pnl = float(m.group(8)) if m.group(8) is not None else None
+        else:
+            pnl = float(m.group(9)); trades = int(m.group(10)); wins = int(m.group(11)); losses = int(m.group(12))
+            total_pnl = None; avg_pnl = None
         return {
-            "sharpe": float(m.group(1)),
-            "sharpe_pt": float(m.group(1)),
             "pool_sharpe": float(m.group(1)),
             "sym_sharpe": float(m.group(2)),
+            "sharpe_pt": float(m.group(1)),
             "pnl": pnl,
             "trades": trades, "wins": wins, "losses": losses,
-            "total_pnl_dollars": None, "avg_pnl": None,
+            "total_pnl_dollars": total_pnl, "avg_pnl": avg_pnl,
             "_format": "pool_sym",
         }
-    # POOL format — earlier engine output (pool_sharpe only)
-    matches = list(re.finditer(
+    pool_only = list(re.finditer(
         r"V8_RESULT:\s+pool_sharpe=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
         output,
     ))
-    if matches:
-        m = matches[-1]
-        closes = int(m.group(3))
-        wins = int(m.group(4))
-        losses = int(m.group(5))
+    if pool_only:
+        m = pool_only[-1]
         return {
-            "sharpe": float(m.group(1)),
-            "sharpe_pt": float(m.group(1)),
             "pool_sharpe": float(m.group(1)),
             "sym_sharpe": 0.0,
-            "pnl": float(m.group(2)),
-            "trades": closes,
-            "wins": wins,
-            "losses": losses,
-            "total_pnl_dollars": None,
-            "avg_pnl": None,
-            "_format": "pool",
-        }
-    # LEGACY_NEW format (sharpe_w= sharpe_pt= era)
-    matches = list(re.finditer(
-        r"V8_RESULT:\s+sharpe_w=([0-9.-]+)\s+sharpe_pt=([0-9.-]+)\s+sharpe_ann=([0-9.-]+)\s+gain_pct=([0-9.-]+)\s+closes=(\d+)\s+wins=(\d+)\s+losses=(\d+)",
-        output,
-    ))
-    if matches:
-        m = matches[-1]
-        trades = int(m.group(5))
-        wins = int(m.group(6))
-        losses = int(m.group(7))
-        return {
-            "sharpe": float(m.group(2)),
-            "sharpe_w": float(m.group(1)),
-            "sharpe_pt": float(m.group(2)),
-            "sharpe_ann": float(m.group(3)),
-            "pnl": float(m.group(4)),
-            "trades": trades,
-            "wins": wins,
-            "losses": losses,
-            "total_pnl_dollars": None,
-            "avg_pnl": None,
-            "_format": "legacy_new",
-        }
-    # OLD format fallback (sharpe= pnl= trades= era)
-    m = re.search(
-        r"V8_RESULT:\s+sharpe=([0-9.-]+)\s+pnl=([0-9.-]+)\s+trades=(\d+)\s+wins=(\d+)\s+losses=(\d+)\s+total_pnl_dollars=([0-9.-]+)\s+avg_pnl=([0-9.-]+)",
-        output,
-    )
-    if m:
-        return {
-            "sharpe": float(m.group(1)),
+            "sharpe_pt": float(m.group(1)),
             "pnl": float(m.group(2)),
             "trades": int(m.group(3)),
             "wins": int(m.group(4)),
             "losses": int(m.group(5)),
-            "total_pnl_dollars": float(m.group(6)),
-            "avg_pnl": float(m.group(7)),
-            "_format": "old",
+            "total_pnl_dollars": None,
+            "avg_pnl": None,
+            "_format": "pool",
         }
     return None
 
@@ -207,7 +169,7 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
             if _rf_content:
                 parsed = parse_v8_result(_rf_content)
                 if parsed:
-                    print(f"    [{label}] (from result file) sharpe={parsed['sharpe']:.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
+                    print(f"    [{label}] (from result file) pool_sharpe={parsed['pool_sharpe']:.3f} sym_sharpe={parsed.get('sym_sharpe',0):.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
         except Exception:
             pass
         try:
@@ -234,14 +196,14 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
         if _vr_idx >= 0:
             print(f"    DEBUG: V8_RESULT context: {output[_vr_idx:_vr_idx+200]!r}", flush=True)
         if parsed is None:
-            parsed = {"sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0}
+            parsed = {"pool_sharpe": 0.0, "sym_sharpe": 0.0, "sharpe_pt": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0}
             _reason = "TIMEOUT" if timed_out else "MISSING"
             print(f"    WARNING: no V8_RESULT found for {label} (reason={_reason})")
             last_lines = [l for l in output.splitlines() if l.strip()][-5:]
             for l in last_lines:
                 print(f"    {l}")
         else:
-            print(f"    [{label}] (from stdout) sharpe={parsed['sharpe']:.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
+            print(f"    [{label}] (from stdout) pool_sharpe={parsed['pool_sharpe']:.3f} sym_sharpe={parsed.get('sym_sharpe',0):.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
     return parsed
 
 
@@ -344,22 +306,22 @@ def run_item(item: dict, args) -> dict:
     result_a = run_single(param, value_a, mode, account, symbols, start, capital, "A", base_override=base_override)
     result_b = run_single(param, value_b, mode, account, symbols, start, capital, "B", base_override=base_override)
 
-    # Determine winner
-    sharpe_a = result_a["sharpe"]
-    sharpe_b = result_b["sharpe"]
-    if sharpe_a > sharpe_b:
+    # Determine winner — pool_sharpe is canonical (CLAUDE.md rule 4)
+    ps_a = result_a["pool_sharpe"]
+    ps_b = result_b["pool_sharpe"]
+    if ps_a > ps_b:
         winner_val = value_a_raw
-        winner_sharpe = sharpe_a
-        loser_sharpe = sharpe_b
+        winner_pool_sharpe = ps_a
+        loser_pool_sharpe = ps_b
         edge = "A"
     else:
         winner_val = value_b_raw
-        winner_sharpe = sharpe_b
-        loser_sharpe = sharpe_a
+        winner_pool_sharpe = ps_b
+        loser_pool_sharpe = ps_a
         edge = "B"
 
-    delta = abs(sharpe_a - sharpe_b)
-    print(f"\n  RESULT: A={sharpe_a:.3f}({result_a['trades']}t)  B={sharpe_b:.3f}({result_b['trades']}t)  WINNER={edge}({winner_val})  Δ={delta:.3f}")
+    delta = abs(ps_a - ps_b)
+    print(f"\n  RESULT: A pool_sharpe={ps_a:.3f}({result_a['trades']}t)  B pool_sharpe={ps_b:.3f}({result_b['trades']}t)  WINNER={edge}({winner_val})  Δ={delta:.3f}")
 
     # Save per-test result JSON
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -375,9 +337,9 @@ def run_item(item: dict, args) -> dict:
         "result_b": result_b,
         "winner": edge,
         "winner_value": winner_val,
-        "winner_sharpe": winner_sharpe,
-        "loser_sharpe": loser_sharpe,
-        "delta_sharpe": delta,
+        "winner_pool_sharpe": winner_pool_sharpe,
+        "loser_pool_sharpe": loser_pool_sharpe,
+        "delta_pool_sharpe": delta,
         "notes": item.get("notes", ""),
         "tested_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -408,7 +370,7 @@ def print_queue(queue: list):
         for item in done:
             w = item.get("winner_value", "?")
             ra = item.get("result_a", {}); rb = item.get("result_b", {})
-            print(f"  [{item.get('config','?')}] {item['param']} winner={w} (A={ra.get('sharpe',0):.3f}/B={rb.get('sharpe',0):.3f})")
+            print(f"  [{item.get('config','?')}] {item['param']} winner={w} (A pool_sharpe={ra.get('pool_sharpe',0):.3f}/B pool_sharpe={rb.get('pool_sharpe',0):.3f})")
 
 
 def print_results_from_sweep_files():
@@ -427,16 +389,16 @@ def print_results_from_sweep_files():
                 t_grp = [r for r in nonzero if r.get("config", {}).get(key) is True]
                 f_grp = [r for r in nonzero if r.get("config", {}).get(key) is False]
                 if t_grp and f_grp:
-                    t_avg = sum(r["sharpe"] for r in t_grp) / len(t_grp)
-                    f_avg = sum(r["sharpe"] for r in f_grp) / len(f_grp)
+                    t_avg = sum(r.get("pool_sharpe", 0) for r in t_grp) / len(t_grp)
+                    f_avg = sum(r.get("pool_sharpe", 0) for r in f_grp) / len(f_grp)
                     winner = "True" if t_avg > f_avg else "False"
                     delta = abs(t_avg - f_avg)
-                    summary.append(f"  tradier_t25 {key}: True={t_avg:.3f}({len(t_grp)}) False={f_avg:.3f}({len(f_grp)}) → winner={winner} Δ={delta:.3f}")
+                    summary.append(f"  tradier_t25 {key}: True pool_sharpe={t_avg:.3f}({len(t_grp)}) False pool_sharpe={f_avg:.3f}({len(f_grp)}) -> winner={winner} D={delta:.3f}")
             for thresh in [35, 43, 55, 75]:
                 g = [r for r in nonzero if r.get("config", {}).get("WT_DC_ENTRY_THRESHOLD") == thresh]
                 if g:
-                    avg = sum(r["sharpe"] for r in g) / len(g)
-                    summary.append(f"  tradier_t25 WT_DC_THRESHOLD={thresh}: n={len(g)} avg_sharpe={avg:.3f}")
+                    avg = sum(r.get("pool_sharpe", 0) for r in g) / len(g)
+                    summary.append(f"  tradier_t25 WT_DC_THRESHOLD={thresh}: n={len(g)} avg_pool_sharpe={avg:.3f}")
     # Crypto t13
     ct13 = progress_dir / "v8_sweep_crypto_t13_4sym_progress.json"
     if ct13.exists():
@@ -447,8 +409,8 @@ def print_results_from_sweep_files():
         for thresh in [1.5, 2.5]:
             g = [r for r in nonzero if r.get("config", {}).get("DELTA_ENTRY_Z_THRESHOLD") == thresh]
             if g:
-                avg = sum(r["sharpe"] for r in g) / len(g)
-                summary.append(f"  crypto_t13 DELTA_ENTRY_Z_THRESHOLD={thresh}: n={len(g)} avg_sharpe={avg:.3f}")
+                avg = sum(r.get("pool_sharpe", 0) for r in g) / len(g)
+                summary.append(f"  crypto_t13 DELTA_ENTRY_Z_THRESHOLD={thresh}: n={len(g)} avg_pool_sharpe={avg:.3f}")
     if summary:
         print("\n=== SWEEP RESULT SUMMARY ===")
         for line in summary:

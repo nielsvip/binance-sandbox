@@ -32,6 +32,33 @@ Any historical claim of Sharpe X without going through the audit is a LIE. Don't
 
 If you're about to write a Sharpe number ANYWHERE without going through `metrics_guard`, STOP. The user lost half their net worth to that exact pattern. Don't be that script.
 
+### IMPOSTER BLOCK (added 2026-04-30 after quality_optimizer per_sym fiasco)
+
+The user lost **tens of thousands of dollars** to "imposter" results: numbers that look like Sharpe / WR / gain but bypass `metrics_guard`, hide their sample, and entrap promotion paths that touch live config. **Hang the imposters before they ever produce a number.**
+
+**An "imposter result" is any of these** — they MUST be refused at production time, not at review time:
+
+1. **Single-symbol "BEST" promotion.** A per-symbol-only optimizer output (e.g. `override_per_sym_<SYM>_BEST.json`, qopt single-sym scoring, autonomous_search single-sym leaderboard) is a structural sample-floor violation. It is FORBIDDEN to auto-write any such file or to feed it to live config. Multi-symbol pool only — period. If a tool wants per-symbol diagnostics, the file MUST live under `data/_diagnostic/` AND have `[DIAGNOSTIC ONLY · n_syms=1]` in its `_meta` AND must NOT be discoverable by any live override loader.
+
+2. **Custom "Score" / composite metric without canonical row.** A "Score 12.9" / "score=8.8" / "composite_score=…" with no accompanying canonical row (the 9 fields in rule 2) is an imposter. Custom scores are allowed for ranking ONLY if `pool_sharpe + sym_sharpe + avg_gain_trade + gain_per_yr + gain_sym_yr + trades + max_dd_pct + n_syms + years` are written alongside in the same record.
+
+3. **"trades=N WR=X% gain=+Y%" string in `_meta`.** This is the exact pattern that lured promotion of single-sym tests with +13,435% gain. Forbidden. Use the mandatory reporting line (rule 4 of the legacy SHARPE section) or refuse to write the file.
+
+4. **Auto-promotion to `backtest_v8/btc_loop_results/override_*` (or any path a live loader reads) from any script that does NOT import `metrics_guard`.** All promote paths route through `metrics_guard.write_sharpe_row()` + a sample-floor check. Currently quarantined producers: `quality_optimizer.py`, `autonomous_search.py`, `v8_quick_engine.py`, `v8_quick_sweep.py`, `v8_test_queue.py`, `backtest_v8_engine.py` (see `audit_repo_baseline.json`). They MUST exit non-zero if asked to promote until retrofitted.
+
+5. **"Source run: qopt_…" with the source dir not on disk.** Any meta that claims a source run whose data directory does not exist = `[UNVERIFIABLE]`. The override is dead-on-arrival. Refuse to load.
+
+6. **"Auto-promoted" without trade-list co-location.** A promote that does not co-locate its per-trade returns JSONL alongside the override file is forbidden. The trade list IS the proof — without it, the override is hearsay.
+
+**Enforcement at chokepoints:**
+
+- `quality_optimizer.py --per-sym` → DISARMED at promote site. Raises `SystemExit("IMPOSTER_BLOCK: per-sym promotion is forbidden — use multi-symbol pool sweep + metrics_guard.write_sharpe_row")` until the multi-sym retrofit is merged.
+- `auto-promote` paths in `autonomous_search.py` and any future optimizer → must call `metrics_guard.write_sharpe_row()` (which validates) OR exit non-zero.
+- Override loaders (`btc_loop.py`, `ez_manage.py`, `v8_quick_engine.py`) must reject any override file whose `_meta` matches the imposter pattern (`trades=N WR=X% gain=+Y%` without canonical row, or `Source run: <missing>`). A simple regex guard at load time + log line `IMPOSTER_OVERRIDE_REFUSED: <path>` + skip.
+- `[UNVERIFIED]`-tagged files stay where they are — **do not move, do not delete** until a verified replacement exists (per the lockdown rule above). Tag in `_meta`, leave on disk, and ensure no live loader reads them.
+
+**When you encounter an imposter while working: HANG IT FIRST, ask questions later.** Tag the `_meta`, disarm the producer, write the refusal log line, and only then continue. The user has been entrapped into promoting these too many times. The default reflex must be "refuse and log", not "review and decide".
+
 ---
 
 ## 🚨🚨🚨 SWEEP-LIVENESS MANDATE — READ FIRST. NON-NEGOTIABLE 🚨🚨🚨
