@@ -40,9 +40,9 @@ def run_one(mode, syms, npz_dir, label, params, max_bars, start_date):
     if mode == 'tradier':
         cfg.apply_tradier_defaults()
     cfg.MAX_BARS = max_bars
-    # Always-on phase-4 flags
+    # Always-on phase-4 flags. Round 1 showed qty hurts crypto, helps tradier.
     cfg.USE_LIVE_EVALUATOR_VEC = True
-    cfg.APPLY_QTY_PIPELINE_TO_PNL = True
+    cfg.APPLY_QTY_PIPELINE_TO_PNL = (mode == 'tradier')
     cfg.USE_PROCESS_POSITION_EXIT_GATES = True
     cfg.MODE = mode
     for k, v in params.items():
