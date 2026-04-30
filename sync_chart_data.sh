@@ -4,8 +4,19 @@
 
 set -u
 LOG="${HOME}/Documents/binance/logs/sync_chart_data.log"
+LOCK="${HOME}/Documents/binance/logs/.sync_chart_data.lock"
 mkdir -p "$(dirname "$LOG")"
 exec >>"$LOG" 2>&1
+# Lockfile: skip if previous run still active.
+if [ -f "$LOCK" ]; then
+  pid=$(cat "$LOCK" 2>/dev/null)
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] previous sync (pid=$pid) still running, skip"
+    exit 0
+  fi
+fi
+echo $$ > "$LOCK"
+trap 'rm -f "$LOCK"' EXIT
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] start"
 
 MB_BASE="/Users/niels/Documents/binance"

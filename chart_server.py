@@ -44,7 +44,6 @@ ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
 _DEFAULT_EXTRA_ROOTS = [
     "data/hourly_reconfig/*/runs/*",       # latest hourly cycles per account
     "data/canonical_trades/*",             # big-sweep canonical trade JSONLs
-    "data/hourly_reconfig/*/runs/*/",      # tolerate trailing slash globs
 ]
 EXTRA_ROOTS_CFG = os.environ.get("V8_TRADES_EXTRA_ROOTS", "").strip()
 if EXTRA_ROOTS_CFG:
@@ -59,10 +58,18 @@ REGISTRY_TTL = 30.0
 
 
 def _all_trade_roots() -> List[Path]:
-    roots: List[Path] = [TRADES_DIR] if TRADES_DIR.exists() else []
+    seen: set = set()
+    roots: List[Path] = []
+    if TRADES_DIR.exists():
+        roots.append(TRADES_DIR)
+        seen.add(str(TRADES_DIR))
     for g in EXTRA_ROOT_GLOBS:
         for p in BASE_PATH.glob(g):
             if p.is_dir():
+                key = str(p)
+                if key in seen:
+                    continue
+                seen.add(key)
                 roots.append(p)
     return roots
 
