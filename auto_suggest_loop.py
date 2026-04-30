@@ -286,7 +286,7 @@ def iteration(args):
         run_id = path.stem  # auto_<ts>_<switch>=<val>
         # Symbols: same default as chart_sweep
         symbols = (args.symbols.split(",") if args.symbols else
-                   ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "BTCDOMUSDT"])
+                   ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "BTCDOMUSDT"])
         rc = run_chart_sweep(path, symbols, run_id)
         history_rows.append({
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),

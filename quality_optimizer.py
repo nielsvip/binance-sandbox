@@ -29,7 +29,7 @@ Usage:
   python3 quality_optimizer.py --once                              # one iteration
   python3 quality_optimizer.py --loop --interval 1800              # every 30min forever
   python3 quality_optimizer.py --top-k 3 --new-per-elite 2 --once  # 6 new variants per round
-  python3 quality_optimizer.py --syms BTCUSDT,ETHUSDT --score-weights 'avg=2,total=1,botq=3,topq=3,count=0.5,churn=2'
+  python3 quality_optimizer.py --syms BTCUSDC,ETHUSDC --score-weights 'avg=2,total=1,botq=3,topq=3,count=0.5,churn=2'
 """
 import argparse
 import json
@@ -265,7 +265,7 @@ def parse_weights(s):
 def iteration(args):
     print(f"\n=== quality_optimizer @ {datetime.now(timezone.utc).isoformat()} ===")
     weights = parse_weights(args.score_weights)
-    syms = [s.upper() for s in (args.syms.split(",") if args.syms else ["BTCUSDT"])]
+    syms = [s.upper() for s in (args.syms.split(",") if args.syms else ["BTCUSDC"])]
     # 1. Score all existing runs
     # 2026-04-29 user directive: REJECT picks below CLAUDE.md sample floors.
     # A 167-trade Sharpe lies; only ≥200 trades/sym is publishable per rule 4 + 4b.
@@ -383,7 +383,7 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--interval", type=int, default=1800)
-    ap.add_argument("--syms", default="BTCUSDT")
+    ap.add_argument("--syms", default="BTCUSDC")
     ap.add_argument("--top-k", type=int, default=3)
     ap.add_argument("--new-per-elite", type=int, default=2)
     ap.add_argument("--score-weights", default="avg=1,total=1,botq=1,topq=1,count=1,churn=1")

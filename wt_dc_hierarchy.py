@@ -316,7 +316,7 @@ if __name__ == "__main__":
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from v8_quick_engine import QuickConfig, load_npz
-    stores = load_npz("crypto", ["BTCUSDT", "ETHUSDT"], "2022-01-01", "/Users/niels/Documents/binance/backtest_v8/indicators")
+    stores = load_npz("crypto", ["BTCUSDC", "ETHUSDC"], "2022-01-01", "/Users/niels/Documents/binance/backtest_v8/indicators")
     cfg = QuickConfig()
     for sym, npz in stores.items():
         n = len(npz.get("timestamps", npz.get("timestamp_3m", [])))

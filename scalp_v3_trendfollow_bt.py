@@ -33,7 +33,7 @@ OUT_DIR = '/Users/niels/Documents/binance/data'
 
 # 12 symbols: majors + diverse alts that have 6mo of 15m data.
 SYMBOLS = [
-    'ETHUSDT', 'ADAUSDT',
+    'ETHUSDC', 'ADAUSDC',
     'AAVEUSDT', '1000PEPEUSDT', '1000SHIBUSDT', '1000BONKUSDT',
     'AEROUSDT', 'AEVOUSDT', 'AKTUSDT', 'ALICEUSDT',
     'ACXUSDT', 'AERGOUSDT',

@@ -123,7 +123,7 @@ def get_sentiment() -> float:
         if not raw:
             return 50.0
         data = json.loads(raw)
-        for key_candidate in ("BTCUSDC", "BTCUSDT", "BTC"):
+        for key_candidate in ("BTCUSDC", "BTCUSDC", "BTC"):
             section = data.get(key_candidate)
             if not isinstance(section, dict):
                 continue

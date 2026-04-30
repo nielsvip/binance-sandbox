@@ -3,7 +3,7 @@
 
 Endpoints:
   GET /                           → chart.html
-  GET /symbols                    → ["BTCUSDT", "ETHUSDT", ...]
+  GET /symbols                    → ["BTCUSDC", "ETHUSDC", ...]
   GET /runs                       → ["smoke_5sym_best", "iter18", ...]
   GET /klines?sym=X&tf=3m&start=ISO&end=ISO[&max=N] → OHLCV bars from NPZ
   GET /backtest_trades?run=Y&sym=X[&start=&end=]    → trade JSONL parsed

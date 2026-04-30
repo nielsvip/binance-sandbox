@@ -540,7 +540,7 @@ class HigherTimeframeBackup:
 # cbs = ConsolidatedBackupSystem(Path("/data/klines"))
 # await cbs.consolidate_all_symbols()
 # htb = HigherTimeframeBackup(Path("/data/klines"))
-# await htb.create_backup("BTCUSDT")
+# await htb.create_backup("BTCUSDC")
 
 # class HigherTimeframeBackup:
 #     def __init__(self, klines_cache_dir: Path):

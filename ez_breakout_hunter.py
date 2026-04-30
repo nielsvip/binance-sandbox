@@ -179,15 +179,15 @@ async def get_closes(session, symbol, limit=210):
 
 async def scan_breakouts(session, tickers, state, blacklist):
     """Scan for SMA200 breakouts, filter through P&D detection."""
-    btc_c = await get_closes(session, "BTCUSDT")
+    btc_c = await get_closes(session, "BTCUSDC")
     btc_sma = sum(btc_c[-200:]) / 200 if len(btc_c) >= 200 else 0
-    btc_p = tickers.get("BTCUSDT", {}).get("price", 0)
+    btc_p = tickers.get("BTCUSDC", {}).get("price", 0)
     btc_dist = ((btc_p - btc_sma) / btc_sma * 100) if btc_sma > 0 else 0
     state["btc_sma200_dist"] = round(btc_dist, 2)
     # Scan symbols from symbols.json first (our universe), then top movers from ALL
     _sym_file = BASE_PATH / "symbols.json"
     _our_syms = set(json.loads(_sym_file.read_text())) if _sym_file.exists() else set()
-    _all = [(s, t) for s, t in tickers.items() if t["vol"] > 1_000_000 and s != "BTCUSDT"]
+    _all = [(s, t) for s, t in tickers.items() if t["vol"] > 1_000_000 and s != "BTCUSDC"]
     # Priority: our symbols first, then top movers
     _ours = [(s, t) for s, t in _all if s in _our_syms]
     _others = sorted([(s, t) for s, t in _all if s not in _our_syms], key=lambda x: abs(x[1]["chg"]), reverse=True)[:60]

@@ -4934,7 +4934,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
 #     #             band_score = band_data.get("score", 0.0)
                 
 #     #             # Log breakdown for debugging
-#     #             if sym in ["BTCUSDT", "ETHUSDT"]:
+#     #             if sym in ["BTCUSDC", "ETHUSDC"]:
 #     #                 breakdown = band_data.get("breakdown", {})
 #     #                 logger.debug(f"[{sym}] Band score breakdown: " + 
 #     #                             ", ".join([f"{tf}:{data['score']:.1f}"   for tf, data in breakdown.items()]) + f" → Weighted: {band_score:.1f}")
@@ -4984,7 +4984,7 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
 #     #                 weighted_prox_raw = sum(score for _, score, _ in all_prox_scores) / len(all_prox_scores)
 #     #             mean_prox_score_raw_3m = weighted_prox_raw
 #     #             all_raw_proximity_scores_3m_for_norm.append(weighted_prox_raw)
-#     #             if sym in ["BTCUSDT", "ETHUSDT"]:
+#     #             if sym in ["BTCUSDC", "ETHUSDC"]:
 #     #                 logger.debug(f"[{sym}] Proximity scores: {all_prox_scores}, Weighted: {weighted_prox_raw:.2f}")
                 
 #     #     breakthrough_bonus = 0.0
@@ -5993,7 +5993,7 @@ async def fetch_crypto_trades_from_log(symbol: str, log_path: str = "~/logs/acti
     if not os.path.exists(expanded_path):
         return trades
 
-    # Matches: 2026-02-06 20:56:09 ... trb:BTCUSDT_LONG: ... augmented. ... Augment by: 150.25
+    # Matches: 2026-02-06 20:56:09 ... trb:BTCUSDC_LONG: ... augmented. ... Augment by: 150.25
     pattern = re.compile(
         r"(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*trb:(?P<sym>[A-Z0-9]+)_.*"
         r"Position was (?P<action>augmented|reduced).*"

@@ -17,7 +17,7 @@ Advisory schema (per-account file):
   "schema_version": 1,
   "generated_at_utc": "...",
   "advisories": {
-    "BTCUSDT_LONG": {
+    "BTCUSDC_LONG": {
       "action": "force_close|hold|block_entry|force_open|block_augment|force_augment",
       "scope": "position|symbol|global",
       "size_override_usd": 50.0,

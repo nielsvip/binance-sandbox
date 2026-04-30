@@ -253,7 +253,7 @@ def _load_usdc_symbol_set() -> set:
 
 
 def _normalize_symbol_to_usdc(symbol: str) -> str:
-    """Map BTCUSDT → BTCUSDC if the USDC variant exists in tradeable_keys; else passthrough."""
+    """Map BTCUSDC → BTCUSDC if the USDC variant exists in tradeable_keys; else passthrough."""
     if not symbol or not symbol.endswith("USDT"):
         return symbol
     base = symbol[:-4]

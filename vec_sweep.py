@@ -37,10 +37,10 @@ grid. Pass `--ranges-json path` to override default thresholds.
 USAGE
 =====
   # Catalog of all auto-generated primitive families:
-  python3 vec_sweep.py catalog --sample-sym BTCUSDT
+  python3 vec_sweep.py catalog --sample-sym BTCUSDC
 
   # Per-symbol diagnostic sweep (priority 6 syms):
-  python3 vec_sweep.py per_symbol --syms BTCUSDT,ETHUSDT,SOLUSDT,BTCDOMUSDT,DOGEUSDT,ZECUSDT --max-configs 200000
+  python3 vec_sweep.py per_symbol --syms BTCUSDC,ETHUSDC,SOLUSDC,BTCDOMUSDT,DOGEUSDT,ZECUSDT --max-configs 200000
 
   # Pooled 48-sym crypto basket (publishable):
   python3 vec_sweep.py pooled --basket crypto48 --max-configs 50000
@@ -101,8 +101,8 @@ SAMPLE_SIZE_FOR_PERCENTILES = 200_000  # bars used to derive percentile threshol
 
 BASKETS: Dict[str, List[str]] = {
     "crypto48": [
-        "BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "BNBUSDT", "AVAXUSDT",
-        "XRPUSDT", "LINKUSDT", "LTCUSDT", "UNIUSDT",
+        "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC", "BNBUSDC", "AVAXUSDC",
+        "XRPUSDC", "LINKUSDC", "LTCUSDC", "UNIUSDC",
         "1INCHUSDT", "ALGOUSDT", "ANKRUSDT", "ATOMUSDT", "AXSUSDT", "BANDUSDT",
         "BATUSDT", "BELUSDT", "BTCDOMUSDT", "C98USDT", "CELRUSDT", "CHRUSDT",
         "COMPUSDT", "COTIUSDT", "DASHUSDT", "DOTUSDT", "EGLDUSDT", "ENJUSDT",
@@ -111,7 +111,7 @@ BASKETS: Dict[str, List[str]] = {
         "MTLUSDT", "NKNUSDT", "QTUMUSDT", "RLCUSDT", "RSRUSDT", "RVNUSDT",
         "SANDUSDT", "SKLUSDT",
     ],
-    "priority6": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BTCDOMUSDT", "DOGEUSDT", "ZECUSDT"],
+    "priority6": ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BTCDOMUSDT", "DOGEUSDT", "ZECUSDT"],
 }
 
 # Field-name regex → side hint. Used only for bool-like primitives where the
@@ -1165,7 +1165,7 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("per_symbol"); _add_common(a)
-    a.add_argument("--syms", default="BTCUSDT,ETHUSDT,SOLUSDT,BTCDOMUSDT,DOGEUSDT,ZECUSDT")
+    a.add_argument("--syms", default="BTCUSDC,ETHUSDC,SOLUSDC,BTCDOMUSDT,DOGEUSDT,ZECUSDT")
     a.add_argument("--max-configs", type=int, default=200_000)
     a.set_defaults(fn=run_per_symbol)
 
@@ -1203,7 +1203,7 @@ def main():
     e.set_defaults(fn=run_top)
 
     f = sub.add_parser("catalog"); _add_common(f)
-    f.add_argument("--sample-sym", default="BTCUSDT")
+    f.add_argument("--sample-sym", default="BTCUSDC")
     f.add_argument("--show", type=int, default=0,
                    help="print first N families with their thresholds")
     f.set_defaults(fn=run_catalog)

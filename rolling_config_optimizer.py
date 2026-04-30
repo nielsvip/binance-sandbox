@@ -554,7 +554,7 @@ def _load_tradeable_keys(account: str, mode: str = "tradier") -> List[Tuple[str,
     tk_path = BASE_PATH / "tradeable_keys.json"
     if not tk_path.exists():
         if mode == "crypto":
-            return [(s, sd) for s in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT"]
+            return [(s, sd) for s in ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "ADAUSDC"]
                     for sd in ["LONG", "SHORT"]]
         return [(s, sd) for s in ["NVDA", "AAPL", "META", "MSFT", "XOM", "BA"]
                 for sd in ["LONG", "SHORT"]]

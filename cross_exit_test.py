@@ -22,7 +22,7 @@ RESULTS_FILE = "/Users/niels/Documents/binance/cross_exit_test_results.txt"
 # Symbols
 STOCKS = ["MU", "AAPL", "TTD", "FIVN", "AMZN", "MRVL", "XOM", "CVX", "GLD", "USO", "NVDA", "MSFT", "ASTS"]
 CRYPTO = ["ANKRUSDT", "ATOMUSDT", "BANDUSDT", "BATUSDT", "BELUSDT",
-          "BTCDOMUSDT", "CELRUSDT", "CHRUSDT"]  # 8 valid, COMPUSDT corrupt, BTCUSDT too short
+          "BTCDOMUSDT", "CELRUSDT", "CHRUSDT"]  # 8 valid, COMPUSDT corrupt, BTCUSDC too short
 
 # Sizing
 STOCK_CAPITAL = 180_000.0

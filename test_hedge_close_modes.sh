@@ -6,7 +6,7 @@ set -uo pipefail
 OUTDIR=/tmp/hedge_close_modes
 mkdir -p "$OUTDIR"
 PY=/opt/anaconda3/envs/binance_env/bin/python
-SYMS="BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,DOTUSDT,AVAXUSDT,MATICUSDT,LINKUSDT,UNIUSDT,LTCUSDT"
+SYMS="BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,DOTUSDT,AVAXUSDC,MATICUSDT,LINKUSDC,UNIUSDC,LTCUSDC"
 MODES="wt_3m wt_3m_15m wt_3m_1h wt_3m_15m_1h wt_3m_15m_htf1 wt_3m_15m_htf2 wt_3m_15m_htf3 wt_dc_score"
 cd /Users/niels/Documents/binance
 

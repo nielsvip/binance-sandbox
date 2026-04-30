@@ -2077,10 +2077,10 @@ class TradierConfig:
     V8Q_MIN_HOLD_BARS: int = 10  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_STRENGTH_FILTER_ENABLED: bool = True  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_STRENGTH_MIN_SCORE: float = 5.0  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_SYMBOL_TIER_TOP4: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_SYMBOL_TIER_TOP5: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
-    V8Q_SYMBOL_TIER_TOP6: tuple = ('LINKUSDT', 'ETHUSDT', 'DOTUSDT', 'BTCUSDT', 'UNIUSDT', 'SOLUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP3: tuple = ('LINKUSDC', 'ETHUSDC', 'DOTUSDT')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP4: tuple = ('LINKUSDC', 'ETHUSDC', 'DOTUSDT', 'BTCUSDC')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP5: tuple = ('LINKUSDC', 'ETHUSDC', 'DOTUSDT', 'BTCUSDC', 'UNIUSDC')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
+    V8Q_SYMBOL_TIER_TOP6: tuple = ('LINKUSDC', 'ETHUSDC', 'DOTUSDT', 'BTCUSDC', 'UNIUSDC', 'SOLUSDC')  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     V8Q_WT_EXIT_MIN_TFS: int = 2  # DEAD_CONFIRMED (priority 80/100) — no plausible wiring site found 20260416
     VALIDATE_REFRESH: int = 2  # seconds
     VOLUME_CONFIRMATION_ENABLED: bool = False  # TIER_C: Sharpe +0.1. Kills dead-zone entries.

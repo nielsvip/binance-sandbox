@@ -45,9 +45,39 @@ def excluded(path: Path) -> bool:
     return bool(parts & EXCLUDE_DIRS)
 
 
+def _best_pool_sharpe_in_jsonl(p: Path) -> float:
+    """Highest pool_sharpe across all lines in a JSONL. Returns -inf on no rows."""
+    best = float("-inf")
+    try:
+        for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            ps = float(rec.get("pool_sharpe", float("-inf")))
+            if ps > best:
+                best = ps
+    except Exception:
+        pass
+    return best
+
+
 def rename_files(roots, dry_run: bool):
-    """Rename files whose name contains 'BTCUSDT' etc. → 'BTCUSDC' etc."""
+    """Rename files whose name contains 'BTCUSDT' etc. → 'BTCUSDC' etc.
+
+    Collision policy (per user 2026-04-30):
+      - USDC absent → rename USDT → USDC
+      - Both exist → MERGE (concatenate USDT content into USDC), then delete USDT.
+        Per-trade JSONLs: append all lines.
+        For winners JSONLs the merged file naturally contains all iterations from
+        both runs — pool_sharpe ranking afterwards picks the best.
+        CSVs: append USDT rows (skip header on append).
+        Other: keep USDC as-is, move USDT to <stem>.usdt_dup<suffix> for review."""
     n_renamed = 0
+    n_merged = 0
     for root in roots:
         if not root.exists(): continue
         for p in root.rglob("*"):
@@ -58,7 +88,48 @@ def rename_files(roots, dry_run: bool):
                 continue
             new_path = p.with_name(new_name)
             if new_path.exists():
-                print(f"  COLLISION: {p.name} → {new_name} already exists, skipping")
+                # Collision — merge per file type
+                action = "merge"
+                if p.suffix == ".jsonl":
+                    if dry_run:
+                        print(f"  would merge JSONL: {p.name} → {new_name} (append USDT lines)")
+                    else:
+                        try:
+                            usdt_text = p.read_text(encoding="utf-8")
+                            with new_path.open("a", encoding="utf-8") as f:
+                                if not usdt_text.endswith("\n"):
+                                    usdt_text += "\n"
+                                f.write(usdt_text)
+                            p.unlink()
+                            print(f"  merged JSONL: {p.name} → {new_name} (USDT removed)")
+                        except Exception as e:
+                            print(f"  MERGE_FAIL {p}: {e}")
+                            continue
+                elif p.suffix == ".csv":
+                    if dry_run:
+                        print(f"  would merge CSV: {p.name} → {new_name} (append USDT rows skipping header)")
+                    else:
+                        try:
+                            usdt_lines = p.read_text(encoding="utf-8").splitlines()
+                            usdc_first_line = new_path.read_text(encoding="utf-8").splitlines()[:1]
+                            with new_path.open("a", encoding="utf-8") as f:
+                                for ln in usdt_lines:
+                                    if ln and ln not in usdc_first_line:  # skip header dup
+                                        f.write(ln + "\n")
+                            p.unlink()
+                            print(f"  merged CSV: {p.name} → {new_name} (USDT removed)")
+                        except Exception as e:
+                            print(f"  MERGE_FAIL {p}: {e}")
+                            continue
+                else:
+                    # Other file types — keep USDC, move USDT to <stem>.usdt_dup
+                    dup_path = new_path.with_name(new_path.stem + ".usdt_dup" + new_path.suffix)
+                    if dry_run:
+                        print(f"  would set-aside: {p.name} → {dup_path.name} (USDC kept canonical)")
+                    else:
+                        p.rename(dup_path)
+                        print(f"  set-aside: {p.name} → {dup_path.name}")
+                n_merged += 1
                 continue
             if dry_run:
                 print(f"  would rename: {p} → {new_path.name}")
@@ -66,7 +137,7 @@ def rename_files(roots, dry_run: bool):
                 p.rename(new_path)
                 print(f"  renamed: {p.name} → {new_path.name}")
             n_renamed += 1
-    return n_renamed
+    return n_renamed, n_merged
 
 
 def rewrite_csvs(roots, dry_run: bool):
@@ -132,9 +203,9 @@ def main():
     print(f"[migrate] mapping: {SUB_MAP}")
     print()
     roots_files = [REPO / "data" / "sweep_results", REPO / "data" / "autonomous", TRADES]
-    print(f"=== Step 1: rename files ===")
-    n_files = rename_files(roots_files, args.dry_run)
-    print(f"  total file renames: {n_files}\n")
+    print(f"=== Step 1: rename files (with merge-on-collision) ===")
+    n_files, n_merged = rename_files(roots_files, args.dry_run)
+    print(f"  total renames: {n_files}, merges: {n_merged}\n")
 
     print(f"=== Step 2: rewrite CSV cell contents ===")
     n_csv, n_rows = rewrite_csvs(roots_files, args.dry_run)

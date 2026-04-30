@@ -8,7 +8,7 @@ Usage:
 
   # Specific overrides + custom symbol list
   python3 chart_sweep.py --overrides override_5SYM_BEST.json,override_btc_BEST.json \\
-                        --symbols BTCUSDT,ETHUSDT,SOLUSDT
+                        --symbols BTCUSDC,ETHUSDC,SOLUSDC
 
   # Single override on every symbol in NPZ dir
   python3 chart_sweep.py --override override_5SYM_BEST.json --all-symbols
@@ -29,7 +29,7 @@ import numpy as np
 ROOT = Path("/Users/niels/Documents/binance")
 sys.path.insert(0, str(ROOT))
 
-DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "BTCDOMUSDT"]
+DEFAULT_SYMBOLS = ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "BTCDOMUSDT"]
 DEFAULT_TRADES_DIR = "/tmp/v8_trades"
 NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 

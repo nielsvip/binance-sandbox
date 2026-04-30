@@ -362,7 +362,7 @@ def _parse_order(o: Dict, trader_id: str) -> Optional[Dict]:
 
 def follow_trader(creds: Dict, trader_id: str, trace_value: float = 5.0) -> bool:
     """Follow a trader with minimal capital via V2 follower settings endpoint."""
-    settings_item = {"symbol": "BTCUSDT", "productType": "USDT-FUTURES", "marginType": "trader", "marginCoin": "USDT", "leverType": "trader", "traceType": "amount", "traceValue": str(trace_value), "maxHoldSize": "5000"}
+    settings_item = {"symbol": "BTCUSDC", "productType": "USDT-FUTURES", "marginType": "trader", "marginCoin": "USDT", "leverType": "trader", "traceType": "amount", "traceValue": str(trace_value), "maxHoldSize": "5000"}
     body = {"traderId": trader_id, "settings": [settings_item]}
     data = _request("POST", "/api/v2/copy/mix-follower/settings", body=body, creds=creds)
     if data is not None:

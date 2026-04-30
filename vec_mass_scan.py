@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-CRYPTO_SYMS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT"]
+CRYPTO_SYMS = ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "ADAUSDC"]
 TRADIER_SYMS = ["AAPL", "MSFT", "NVDA", "AMZN", "SPY", "XOM", "GLD", "TSLA"]
 HORIZONS = [4, 8, 16, 32, 64, 128, 256]
 

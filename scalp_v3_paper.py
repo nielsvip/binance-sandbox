@@ -11,7 +11,7 @@ Usage:
     python3 scalp_v3_paper.py                           # default: 1M_ONLY, all inf syms
     python3 scalp_v3_paper.py --tf-mode 1M_AND_3M
     python3 scalp_v3_paper.py --exit-mode 1M_ONLY
-    python3 scalp_v3_paper.py --symbols BTCUSDT,ETHUSDT
+    python3 scalp_v3_paper.py --symbols BTCUSDC,ETHUSDC
     python3 scalp_v3_paper.py --poll-sec 60 --max-symbols 50
 """
 from __future__ import annotations

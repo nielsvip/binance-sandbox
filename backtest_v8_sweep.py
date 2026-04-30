@@ -16,12 +16,12 @@ written incrementally so interruptions don't lose work.
 Usage examples:
   # Test all hedge switches one-by-one (baseline + single-flip ablation)
   python3 backtest_v8_sweep.py --mode crypto --account ang \\
-      --start 2026-01-01 --symbols BTCUSDT,ETHUSDT,SOLUSDT \\
+      --start 2026-01-01 --symbols BTCUSDC,ETHUSDC,SOLUSDC \\
       --tier hedge_one_by_one --workers 4
 
   # Full reentry-overhaul ablation
   python3 backtest_v8_sweep.py --mode crypto --account ang \\
-      --start 2026-01-01 --symbols BTCUSDT,ETHUSDT,LINKUSDT,DOTUSDT \\
+      --start 2026-01-01 --symbols BTCUSDC,ETHUSDC,LINKUSDC,DOTUSDT \\
       --tier reentry_one_by_one --workers 4
 
   # Combined ablation
@@ -483,7 +483,7 @@ def grid_indicator_audit():
     """2026-04-19 indicator-audit v2 — exit quality sweep.
     Baseline: new config defaults (WT_MTF_VEL_GATE_ENABLED=True/min=2, WT_4H_VEL_EXIT fixed SHORT,
     DC_HOPELESS_EXIT_ENABLED=True). Goal: exit at top/channel break, never at random bottom.
-    Run on BTCUSDT,ETHUSDT,SOLUSDT,DOTUSDT,LINKUSDT for stat power."""
+    Run on BTCUSDC,ETHUSDC,SOLUSDC,DOTUSDT,LINKUSDC for stat power."""
     return [
         # Baseline = new config defaults (vel gate ON/2, fixed SHORT vel exit, DC hopeless ON)
         ("baseline", {}),
@@ -516,7 +516,7 @@ def grid_indicator_audit():
 
 def grid_indicator_audit_v2():
     """2026-04-19 indicator-audit v2 FULL — tests each R-S*/R-Z*/RE-*/E-* switch in isolation.
-    Each variant flips exactly ONE switch vs baseline. Sweep on BTCUSDT+ETHUSDT+SOLUSDT+DOTUSDT+LINKUSDT
+    Each variant flips exactly ONE switch vs baseline. Sweep on BTCUSDC+ETHUSDC+SOLUSDC+DOTUSDT+LINKUSDC
     for stat power. Baseline = all new switches OFF (current live behavior).
     Goal: rank each switch by Sharpe delta vs baseline; top performers go to full 48-sym sweep."""
     return [
@@ -616,7 +616,7 @@ def grid_indicator_audit_v3_full():
     (C) category stacks (all R-S together, etc.), (D) full stack.
     Baseline = current live config (what's already ON stays on). Each variant flips
     ONLY the listed overrides vs baseline.
-    Total variants: ~70. Recommended symbols: BTCUSDT,ETHUSDT,SOLUSDT,DOTUSDT,LINKUSDT."""
+    Total variants: ~70. Recommended symbols: BTCUSDC,ETHUSDC,SOLUSDC,DOTUSDT,LINKUSDC."""
     return [
         # ══════════════════════════════════════════════════════════════════════
         # (A) BASELINE + SINGLE-SWITCH ABLATIONS

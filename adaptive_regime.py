@@ -888,7 +888,7 @@ class AdaptiveRegimeDaemon:
         all_m = self._load_all(r)
         self._all_syms = set(all_m.keys())  # ALL 196+ symbols, not just tradeable
         logger.info(f"Scanning ALL {len(self._all_syms)} symbols ({len(self._tradeable_syms)} tradeable, {len(self._all_syms) - len(self._tradeable_syms)} scan-only)")
-        btc = all_m.get("BTCUSDC", all_m.get("BTCUSDT", {}))
+        btc = all_m.get("BTCUSDC", all_m.get("BTCUSDC", {}))
         btc_close_1h = _sf(btc.get("close_1h"))
         btc_close_4h = _sf(btc.get("close_4h"))
         btc_price = _sf(btc.get("current_price"))
@@ -916,7 +916,7 @@ class AdaptiveRegimeDaemon:
                     time.sleep(1)
                     continue
                 # Update BTC baseline
-                btc = all_m.get("BTCUSDC", all_m.get("BTCUSDT", {}))
+                btc = all_m.get("BTCUSDC", all_m.get("BTCUSDC", {}))
                 btc_price = _sf(btc.get("current_price"))
                 btc_c1 = _sf(btc.get("close_1h"))
                 btc_c4 = _sf(btc.get("close_4h"))

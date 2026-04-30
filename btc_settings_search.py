@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """btc_settings_search — continuous BTC-cluster settings optimizer.
 
-User directive 2026-04-30: "Set an agent on optimizing BTCUSDT settings so we get
+User directive 2026-04-30: "Set an agent on optimizing BTCUSDC settings so we get
 ≥20 trades/week. DO NOT DISCARD BTCDOMUSDT — it's the most predictable, easiest-to-
 trade ticker and should 5x outperform with the right settings."
 
-This daemon focuses on BTCUSDT, BTCUSDC, BTCDOMUSDT, ETHUSDT (the BTC cluster).
+This daemon focuses on BTCUSDC, BTCUSDC, BTCDOMUSDT, ETHUSDC (the BTC cluster).
 Per cycle:
   1. Pick a baseline (BEST or dedv3) and apply random mutations to entry-tightness
      and trade-frequency knobs.
@@ -42,7 +42,7 @@ LOG_DIR = ROOT / "data" / "hourly_reconfig" / "_btc_search"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 CAND_DIR.mkdir(parents=True, exist_ok=True)
 
-BTC_SYMS = ("BTCUSDC", "BTCDOMUSDT", "ETHUSDC", "BTCUSDT", "ETHUSDT")
+BTC_SYMS = ("BTCUSDC", "BTCDOMUSDT", "ETHUSDC", "BTCUSDC", "ETHUSDC")
 TARGET_TRADES_PER_WEEK = 6  # Lowered 2026-04-30 per user — realistic for short window.
 
 # Mutation grid — focused on knobs that affect trade FREQUENCY + reentry behavior.

@@ -5,7 +5,7 @@ Caches per-symbol JSON in data/funding_cache/{symbol}.json with ts (ms), funding
 
 Usage:
     python binance_funding_fetcher.py                       # fetch all symbols in symbols.json
-    python binance_funding_fetcher.py BTCUSDT ETHUSDT       # specific symbols
+    python binance_funding_fetcher.py BTCUSDC ETHUSDC       # specific symbols
     python binance_funding_fetcher.py --since 2022-01-01    # backfill from date
     python binance_funding_fetcher.py --update              # only fetch new since last cached entry
 

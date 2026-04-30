@@ -23,7 +23,7 @@ BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE))
 from v8_quick_engine import QuickConfig, load_npz, simulate, FAST_SYMBOLS_TRADIER
 
-CRYPTO_SYMS_ALL = "ANKRUSDT,ATOMUSDT,BANDUSDT,BATUSDT,BELUSDT,BTCDOMUSDT,BTCUSDT,CELRUSDT,CHRUSDT,COMPUSDT"
+CRYPTO_SYMS_ALL = "ANKRUSDT,ATOMUSDT,BANDUSDT,BATUSDT,BELUSDT,BTCDOMUSDT,BTCUSDC,CELRUSDT,CHRUSDT,COMPUSDT"
 
 SWITCHES = [
     # (name_in_QuickConfig, on_value, off_value, config_file_for_live_patch, live_name, live_off_value)

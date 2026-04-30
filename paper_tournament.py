@@ -45,8 +45,8 @@ LOG_FILE = Path.home() / "logs" / "paper_tournament.log"
 
 # Top 20 most liquid crypto futures
 SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
-    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "LINKUSDT",
+    "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC",
+    "DOGEUSDT", "ADAUSDC", "AVAXUSDC", "DOTUSDT", "LINKUSDC",
     "MATICUSDT", "ATOMUSDT", "NEARUSDT", "APTUSDT", "SUIUSDT",
     "ARBUSDT", "OPUSDT", "INJUSDT", "SEIUSDT", "TAOUSDT",
 ]

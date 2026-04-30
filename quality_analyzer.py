@@ -20,8 +20,8 @@ Output:
   - /tmp/v8_trades/QUALITY_SUMMARY.md cross-run table
 
 Usage:
-  python3 quality_analyzer.py --all-runs --syms BTCUSDT
-  python3 quality_analyzer.py --runs 5SYM_BEST,no_churn_v2 --syms BTCUSDT,ETHUSDT
+  python3 quality_analyzer.py --all-runs --syms BTCUSDC
+  python3 quality_analyzer.py --runs 5SYM_BEST,no_churn_v2 --syms BTCUSDC,ETHUSDC
 """
 import argparse
 import json

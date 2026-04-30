@@ -44,7 +44,7 @@ def should_fire_wt_entry(symbol: str, indicators: dict, side: str) -> Tuple[bool
     Fires when WT alignment makes `side` high conviction.
 
     Args:
-        symbol: e.g. "BTCUSDT" — passed through into reason for traceability.
+        symbol: e.g. "BTCUSDC" — passed through into reason for traceability.
         indicators: dict containing wt1_<tf>, wt2_<tf> for tf in {3m,15m,1h,4h,D}
                     and optionally wt_velocity_3m / _1h / _4h.
         side: "LONG" or "SHORT" (case-insensitive).
@@ -98,7 +98,7 @@ if __name__ == "__main__":
         "wt1_D": 40, "wt2_D": 35,
         "wt_velocity_3m": 1.5, "wt_velocity_1h": 0.8, "wt_velocity_4h": 0.4,
     }
-    fire, reason, score = should_fire_wt_entry("BTCUSDT", long_full, "LONG")
+    fire, reason, score = should_fire_wt_entry("BTCUSDC", long_full, "LONG")
     print(f"\n[TEST 1] CLEAR LONG (5/5 aligned)")
     print(f"  fire={fire} score={score} reason={reason}")
     assert fire is True, "5/5 LONG must fire"
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         "wt1_D": 40, "wt2_D": 35,
         "wt_velocity_3m": -0.9, "wt_velocity_1h": -0.4, "wt_velocity_4h": -0.2,
     }
-    fire, reason, score = should_fire_wt_entry("ETHUSDT", short_strong, "SHORT")
+    fire, reason, score = should_fire_wt_entry("ETHUSDC", short_strong, "SHORT")
     print(f"\n[TEST 2] CLEAR SHORT (4/5 aligned: 3m,15m,1h,4h vs D against)")
     print(f"  fire={fire} score={score} reason={reason}")
     assert fire is True, "4/5 SHORT must fire"
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         "wt1_D": 35, "wt2_D": 40,
         "wt_velocity_3m": 0.1, "wt_velocity_1h": 0.05, "wt_velocity_4h": 0.02,
     }
-    fire, reason, score = should_fire_wt_entry("SOLUSDT", mixed, "LONG")
+    fire, reason, score = should_fire_wt_entry("SOLUSDC", mixed, "LONG")
     print(f"\n[TEST 3] MIXED (2/5 LONG aligned: 3m,1h)")
     print(f"  fire={fire} score={score} reason={reason}")
     assert fire is False, "2/5 must NOT fire"
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         "wt1_D": 35, "wt2_D": 40,
         "wt_velocity_3m": 1.2, "wt_velocity_1h": -0.1, "wt_velocity_4h": -0.2,
     }
-    fire, reason, score = should_fire_wt_entry("AVAXUSDT", boundary, "LONG")
+    fire, reason, score = should_fire_wt_entry("AVAXUSDC", boundary, "LONG")
     print(f"\n[TEST 4] BOUNDARY 3/5 LONG with positive 3m velocity")
     print(f"  fire={fire} score={score} reason={reason}")
     assert fire is True, "3/5 with vel_ok must fire"
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     boundary_no_vel["wt_velocity_3m"] = -0.5
     boundary_no_vel["wt_velocity_1h"] = -0.5
     boundary_no_vel["wt_velocity_4h"] = -0.5
-    fire, reason, score = should_fire_wt_entry("AVAXUSDT", boundary_no_vel, "LONG")
+    fire, reason, score = should_fire_wt_entry("AVAXUSDC", boundary_no_vel, "LONG")
     print(f"\n[TEST 5] BOUNDARY 3/5 LONG with all-negative velocity (vel fail)")
     print(f"  fire={fire} score={score} reason={reason}")
     assert fire is False, "3/5 LONG with all-negative vel must NOT fire"

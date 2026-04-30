@@ -2,7 +2,7 @@
 patch_npz_missing_fields.py — inject the 9 fields the engine reads but precompute didn't write.
 
 Audit (2026-04-28):
-  Engine v8_quick_engine.py reads via _safe(npz, 'KEY', ...) but BTCUSDT.npz lacks:
+  Engine v8_quick_engine.py reads via _safe(npz, 'KEY', ...) but BTCUSDC.npz lacks:
     - lr_trend_1h         linreg slope of close_1h over 50 bars
     - volume_sma_1h       SMA(volume_1h, 20)
     - close_5m, mfi_5m, stoch_k_5m, wt1_5m, wt2_5m, relative_volume_5m

@@ -41,7 +41,7 @@ class IndicatorStore:
     def update_batch(self, batch_data: dict):
         """
         Updates multiple symbols at once to reduce IPC overhead.
-        batch_data format: { 'BTCUSDT': { ...data... }, 'ETHUSDT': { ... } }
+        batch_data format: { 'BTCUSDC': { ...data... }, 'ETHUSDC': { ... } }
         """
         ts = time.time()
         for symbol, data in batch_data.items():

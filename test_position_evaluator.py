@@ -241,6 +241,78 @@ def test_qty_pipeline_parity(npz_path: str, n_bars: int = 5000, is_long: bool = 
     return n_qty_diff == 0 and n_mod_diff == 0
 
 
+def test_exit_gates_parity(npz_path: str, n_bars: int = 5000, is_long: bool = True):
+    """Scalar vs vec parity for indicator-only exit gates (excludes WT_4H_VEL +
+    DC_HOPELESS which require trade state). Sets E_1 + E_3 to live so all 4
+    indicator-only gates exercise."""
+    from position_evaluator import (
+        evaluate_exit_gates_core, evaluate_exit_gates_vec,
+        EXIT_NONE, EXIT_WT_EXHAUST, EXIT_WT_PERCENTILE, EXIT_E1_WT_DELTA, EXIT_E3_STRUCTURE,
+    )
+    raw = np.load(npz_path)
+    npz_data = {k: raw[k] for k in raw.files}
+    cfg = MockConfig()
+    cfg.WT_EXHAUST_EXIT_ENABLED = True
+    cfg.WT_PERCENTILE_EXIT_ENABLED = True
+    cfg.E_1_WT_EXIT_USE_DELTA_ENABLED = True
+    cfg.E_1_EXIT_DELTA_THR = 50.0
+    cfg.E_3_USE_WT_STRUCTURE_EXIT_MODE = 2  # live exit mode
+    cfg.WT_EXHAUST_EXIT_REQUIRE_GAIN = False
+    # Disable the state-dependent gates for this parity test (different test path)
+    cfg.WT_4H_VEL_EXIT_ENABLED = False
+    cfg.DC_HOPELESS_EXIT_ENABLED = False
+
+    n_total = len(npz_data['close'])
+    start = max(0, n_total - n_bars - 100)
+    end = n_total
+    sliced = {k: (v[start:end] if isinstance(v, np.ndarray) and len(v) == n_total else v) for k, v in npz_data.items()}
+    n = len(sliced['close'])
+
+    vec = evaluate_exit_gates_vec(sliced, is_long=is_long, config=cfg, ltf='3m')
+
+    # Scalar loop — combine the 4 indicator-only masks per bar
+    fire_scalar = np.zeros(n, dtype=bool)
+    exit_id_scalar = np.zeros(n, dtype=np.int8)
+    for i in range(n):
+        ind = npz_to_indicator_dict(sliced, i, ltf='3m')
+        # Inject all needed _3m/_15m/_1h/_4h/_D indicator values for momentum_state, percentile, etc.
+        for k in ('wt_momentum_state_4h', 'wt_momentum_state_1h', 'wt_momentum_state_15m',
+                  'wt_percentile_D', 'wt_percentile_4h', 'wt_composite_delta',
+                  'wt_velocity_4h', 'wt_structure_15m', 'wt_structure_1h', 'wt_structure_4h',
+                  'stoch_k_3m', 'stoch_k_15m', 'dc_high_4h', 'dc_low_4h'):
+            arr = sliced.get(k)
+            if arr is not None and i < len(arr):
+                v = arr[i]
+                if hasattr(v, 'item'):
+                    v = v.item()
+                ind[k] = v
+        eid, _ = evaluate_exit_gates_core(ind, is_long, cfg)
+        if eid != EXIT_NONE:
+            fire_scalar[i] = True
+            exit_id_scalar[i] = eid
+
+    # Vec: combine 4 masks. First-match precedence per evaluate_exit_gates_core:
+    # WT_EXHAUST → WT_PERCENTILE → E_1 → E_3
+    fire_vec = np.zeros(n, dtype=bool)
+    exit_id_vec = np.zeros(n, dtype=np.int8)
+    for mask, eid in [(vec['wt_exhaust'], EXIT_WT_EXHAUST),
+                       (vec['wt_percentile'], EXIT_WT_PERCENTILE),
+                       (vec['e1_wt_delta'], EXIT_E1_WT_DELTA),
+                       (vec['e3_structure'], EXIT_E3_STRUCTURE)]:
+        new_hit = mask & ~fire_vec
+        fire_vec = fire_vec | new_hit
+        exit_id_vec = np.where(new_hit, np.int8(eid), exit_id_vec)
+
+    fire_diff = int((fire_vec != fire_scalar).sum())
+    id_diff = int((exit_id_scalar != exit_id_vec)[fire_scalar].sum())
+    print(f"  EXIT gates indicator-only: scalar fires={int(fire_scalar.sum())} vec fires={int(fire_vec.sum())} fire_diff={fire_diff} id_diff={id_diff}")
+    if fire_diff > 0:
+        bad = np.where(fire_vec != fire_scalar)[0][:3]
+        for bi in bad:
+            print(f"    bar={bi}: scalar fire={fire_scalar[bi]} id={exit_id_scalar[bi]} | vec fire={fire_vec[bi]} id={exit_id_vec[bi]}")
+    return fire_diff == 0 and id_diff == 0
+
+
 if __name__ == '__main__':
     cryptos = [f for f in glob.glob('/Users/niels/Documents/binance/backtest_v8/indicators/*.npz')
                if any(s in f for s in ['BTCDOM', 'XRPUSDC', 'SOLUSDC', 'ADAUSDC', 'BNBUSDC'])][:3]
@@ -263,6 +335,10 @@ if __name__ == '__main__':
                 ok = test_qty_pipeline_parity(path, n_bars=5000, is_long=is_long, is_hedge=is_hedge)
                 if not ok:
                     all_pass = False
+            print('\n--- EXIT gates parity ---')
+            ok = test_exit_gates_parity(path, n_bars=5000, is_long=is_long)
+            if not ok:
+                all_pass = False
 
     print('\n' + ('=' * 60))
     print('OVERALL:', 'PASS' if all_pass else 'FAIL')

@@ -13,9 +13,9 @@ Outputs:
   - Structured JSON for downstream tooling
 
 Usage:
-  python3 churn_analyzer.py --run 5SYM_BEST --sym BTCUSDT
-  python3 churn_analyzer.py --run-pattern 'auto_*' --sym BTCUSDT
-  python3 churn_analyzer.py --all-runs --sym BTCUSDT --window-minutes 60 --min-chain 3
+  python3 churn_analyzer.py --run 5SYM_BEST --sym BTCUSDC
+  python3 churn_analyzer.py --run-pattern 'auto_*' --sym BTCUSDC
+  python3 churn_analyzer.py --all-runs --sym BTCUSDC --window-minutes 60 --min-chain 3
 """
 import argparse
 import glob

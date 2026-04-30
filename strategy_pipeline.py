@@ -283,7 +283,7 @@ def run_tier2(reg: dict, state: dict) -> dict:
         if mode == "tradier":
             symbols = "AAPL,MSFT,NVDA,AMZN,AMD,XOM,QQQ,SPY,META,GOOGL,JPM,TSM"
         else:
-            symbols = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,MATICUSDT,DOGEUSDT,AVAXUSDT,LTCUSDT,LINKUSDT,DOTUSDT"
+            symbols = "BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,MATICUSDT,DOGEUSDT,AVAXUSDC,LTCUSDC,LINKUSDC,DOTUSDT"
         n_syms = 12
     else:
         with open(symbols_file) as f:

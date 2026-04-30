@@ -3,7 +3,7 @@ backtest_scalp_v3.py — V3 scalper backtest harness on 1m klines.
 
 Usage:
     python3 backtest_scalp_v3.py              # all symbols, all 3 TF modes
-    python3 backtest_scalp_v3.py --symbols BTCUSDT,ETHUSDT
+    python3 backtest_scalp_v3.py --symbols BTCUSDC,ETHUSDC
     python3 backtest_scalp_v3.py --tf-modes 1M_ONLY,3M_ONLY
 
 Reads klines_cache/<SYMBOL>_1m.json (list of {ts,o,h,l,c,v} dicts).

@@ -188,6 +188,31 @@ class QuickConfig:
     WT_HTF_DISCOUNT_ENABLED: bool = True
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0
     MIN_POSITION_SIZE: float = 55.0
+    # 2026-04-30 Phase 4: route process_position exit gates (WT_4H_VEL_EXIT,
+    # DC_HOPELESS_EXIT, WT_EXHAUST_EXIT, WT_PERCENTILE_EXIT, E_1 delta, E_3 structure)
+    # through position_evaluator.evaluate_exit_gates_vec. Default OFF preserves existing
+    # backtest semantics; sweep this to align backtest exits with live process_position.
+    USE_PROCESS_POSITION_EXIT_GATES: bool = False
+    WT_4H_VEL_EXIT_ENABLED: bool = True
+    WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0
+    WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0
+    WT_4H_VEL_EXIT_REQUIRE_PROFIT: bool = True
+    WT_4H_VEL_EXIT_REQUIRE_K_EXTREME: bool = True
+    WT_4H_VEL_EXIT_K_EXTREME_HIGH: float = 80.0
+    WT_4H_VEL_EXIT_K_EXTREME_LOW: float = 20.0
+    DC_HOPELESS_EXIT_ENABLED: bool = True
+    DC_HOPELESS_EXIT_MIN_AGE_S: float = 900.0
+    WT_EXHAUST_EXIT_ENABLED: bool = True
+    WT_EXHAUST_EXIT_REQUIRE_GAIN: bool = False
+    WT_PERCENTILE_EXIT_ENABLED: bool = True
+    WT_PERCENTILE_EXIT_OB_D: float = 90.0
+    WT_PERCENTILE_EXIT_OB_4H: float = 75.0
+    WT_PERCENTILE_EXIT_OS_D: float = 10.0
+    WT_PERCENTILE_EXIT_OS_4H: float = 25.0
+    E_1_WT_EXIT_USE_DELTA_ENABLED: bool = False
+    E_1_EXIT_DELTA_THR: float = 50.0
+    E_3_USE_WT_STRUCTURE_EXIT_MODE: int = 0
+    COMMISSION_BUFFER_PCT: float = 0.10
     # PULLBACK-FIRST entry blocks (2026-04-16) — OPT-IN: Sharpe 0.80 test, keep OFF until proven
     REENTRY_PULL1_ENABLED: bool = False  # HTF uptrend + LTF deep oversold + reversing
     REENTRY_PULL2_ENABLED: bool = False  # Rising fundamentals + SMA200 pullback bounce
@@ -857,7 +882,7 @@ class QuickConfig:
     # See BTC_DEDICATED_LOOP_DESIGN_20260427.md. All defaults match live config.py.
     # Engine reads these from override_json or autonomous_search perturbation.
     BTC_DEDICATED_ENABLED: bool = False
-    BTC_DEDICATED_SYMBOLS: tuple = ("BTCUSDT", "BTCUSDC")
+    BTC_DEDICATED_SYMBOLS: tuple = ("BTCUSDC",)
     BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True
     BTC_RZ_USE_WT_DC: bool = True
     BTC_RZ_USE_FIB: bool = True
@@ -4540,10 +4565,10 @@ def simulate(stores, cfg, capital=10000.0):
         # btc_loop.* shared decision functions (same code path as live + paper).
         # See BTC_DEDICATED_LOOP_DESIGN_20260427.md.
         # 2026-04-28 Path A: per-symbol dedicated configs. The dedicated path now applies
-        # to any symbol in BTC_DEDICATED_SYMBOLS (default {BTCUSDT, BTCUSDC} for backward compat).
+        # to any symbol in BTC_DEDICATED_SYMBOLS (default {BTCUSDC, BTCUSDC} for backward compat).
         # Each symbol can have its own override file with per-symbol tuned BTC_* knobs.
         _ded_syms = set(getattr(cfg, 'BTC_DEDICATED_SYMBOLS',
-                                ('BTCUSDT', 'BTCUSDC', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'BTCDOMUSDT')))
+                                ('BTCUSDC', 'BTCUSDC', 'ETHUSDC', 'SOLUSDC', 'BNBUSDC', 'BTCDOMUSDT')))
         if getattr(cfg, 'BTC_DEDICATED_ENABLED', False) and sym in _ded_syms:
             try:
                 _trades_dir = os.environ.get('V8_TRADES_OUT_DIR', '')
@@ -4694,6 +4719,16 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # Phase 4 (2026-04-30): OR-merge indicator-only process_position exit gates
+            # (WT_EXHAUST, WT_PERCENTILE, E_1 delta, E_3 structure, WT_4H_VEL_full).
+            # State-dependent gates (DC_HOPELESS needs entry_price; WT_4H_VEL needs profit/age)
+            # are applied scalar-style inside the trade loop using precomputed arrays.
+            _exit_gate_extras = None
+            if getattr(cfg, 'USE_PROCESS_POSITION_EXIT_GATES', False):
+                from position_evaluator import evaluate_exit_gates_vec
+                _exit_gate_extras = evaluate_exit_gates_vec(npz, is_long=is_long, config=cfg, ltf=_ltf)
+                # Indicator-only gates fold into exit_sig directly.
+                exit_sig = exit_sig | _exit_gate_extras['wt_exhaust'] | _exit_gate_extras['wt_percentile'] | _exit_gate_extras['e1_wt_delta'] | _exit_gate_extras['e3_structure']
             # ═══ 2026-04-26 HEDGE GATE PRECOMPUTE — vectorized port of LIVE rules from ez_positions_quick ═══
             # Three gates govern hedge OPEN: HEDGE_DC_RESISTANCE_GATE / HEDGE_WT_VEL_GATE / HEDGE_DETERIORATING_GAIN.
             # All sweep-testable (default False here for backward compat with existing autonomous_search runs).
@@ -5518,6 +5553,38 @@ def simulate(stores, cfg, capital=10000.0):
                             h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
                             all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
                         in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False; _last_exit_bar = i; cd = max(cooldown, min_gap_bars); continue
+                # Phase 4 (2026-04-30): state-dependent process_position exit gates.
+                # DC_HOPELESS_EXIT: entry_price outside dc_4h channel + age > 900s → force close.
+                # WT_4H_VEL_EXIT_FULL: vel against + age > 360s + profit_ok + k_extreme → force close.
+                _phase4_force_exit = False
+                _phase4_force_reason = ""
+                if in_pos and _exit_gate_extras is not None:
+                    _age_s = (i - eb) * _ltf_mins * 60.0
+                    if cfg.DC_HOPELESS_EXIT_ENABLED and _age_s > float(getattr(cfg, 'DC_HOPELESS_EXIT_MIN_AGE_S', 900)):
+                        _dch = _exit_gate_extras['dc_h_4h'][i]
+                        _dcl = _exit_gate_extras['dc_l_4h'][i]
+                        if _dch > 0 and _dcl > 0:
+                            if (is_long and ep > _dch) or (not is_long and ep < _dcl):
+                                _phase4_force_exit = True
+                                _phase4_force_reason = "DC_HOPELESS_EXIT"
+                    if not _phase4_force_exit and cfg.WT_4H_VEL_EXIT_ENABLED and _age_s > 360.0 and _exit_gate_extras['wt_4h_vel_full'][i]:
+                        _phase4_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                        _phase4_comm_buf = float(getattr(cfg, 'COMMISSION_BUFFER_PCT', 0.10))
+                        _phase4_profit_ok = (_phase4_pnl >= _phase4_comm_buf) if bool(getattr(cfg, 'WT_4H_VEL_EXIT_REQUIRE_PROFIT', True)) else True
+                        if _phase4_profit_ok:
+                            _phase4_force_exit = True
+                            _phase4_force_reason = "WT_4H_VEL_EXIT"
+                if _phase4_force_exit:
+                    pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    if _pe_partial_done: pnl = _pe_realized + (1.0 - _pe_frac) * pnl
+                    _wa = pnl * _cur_sz_mult; all_pnl.append(_wa); sym_pnl.append(_wa)
+                    if hedge_in_pos and hedge_ep > 0:
+                        h_pnl = ((hedge_ep - px) / hedge_ep * 100) if is_long else ((px - hedge_ep) / hedge_ep * 100)
+                        all_pnl.append(h_pnl); sym_pnl.append(h_pnl); hedge_in_pos = False; hedge_ep = 0.0
+                    in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                    _last_exit_bar = i; cd = max(cooldown, min_gap_bars)
+                    _rec_pending_exit_reason = _phase4_force_reason
+                    continue
                 _wt_exit_now = (not _pe_partial_done and (exit_sig[i] or (_adaptive_exit_enabled and exit_sig_extra is not None and exit_sig_extra[i]))) or (_pe_partial_done and exit_sig_rem[i])
                 if in_pos and (i - eb) >= min_hold and _wt_exit_now:
                     if _pe_partial_done:
@@ -5734,17 +5801,17 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
     return out
 
 
-FAST_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT"
+FAST_SYMBOLS_CRYPTO = "BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,AVAXUSDC,DOTUSDT,LINKUSDC,LTCUSDC,UNIUSDC,SANDUSDT"
 FAST_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD"
 MEDIUM_SYMBOLS_TRADIER = "AAPL,MSFT,NVDA,AMZN,JPM,XOM,ABBV,TSLA,SPY,META,BA,GLD,GOOGL,AMD,INTC,V,PFE,JNJ,WMT,CME,CVX,UNH,CAT,HD"
-MEDIUM_SYMBOLS_CRYPTO = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,ADAUSDT,AVAXUSDT,DOTUSDT,LINKUSDT,LTCUSDT,UNIUSDT,SANDUSDT,ATOMUSDT,ALGOUSDT,XLMUSDT,VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"
+MEDIUM_SYMBOLS_CRYPTO = "BTCUSDC,ETHUSDC,SOLUSDC,BNBUSDC,XRPUSDC,ADAUSDC,AVAXUSDC,DOTUSDT,LINKUSDC,LTCUSDC,UNIUSDC,SANDUSDT,ATOMUSDT,ALGOUSDT,XLMUSDT,VETUSDT,TRXUSDT,XMRUSDT,ETCUSDT,SUSHIUSDT,MANAUSDT,KSMUSDT,SNXUSDT,YFIUSDT"
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["crypto", "tradier"], default="crypto")
     p.add_argument("--start", default="2024-01-01")
-    p.add_argument("--symbols", default="BTCUSDT")
+    p.add_argument("--symbols", default="BTCUSDC")
     p.add_argument("--capital", type=float, default=10000.0)
     p.add_argument("--npz-dir", default="")
     args = p.parse_args()

@@ -94,7 +94,7 @@ def get_history():
         bot_hist_path = os.path.join(HISTORY_DIR, bot)
         if not os.path.exists(bot_hist_path): continue
 
-        # Find all .jsonl files (e.g. BTCUSDT_LONG.jsonl)
+        # Find all .jsonl files (e.g. BTCUSDC_LONG.jsonl)
         jsonl_files = glob.glob(os.path.join(bot_hist_path, "*.jsonl"))
         for fpath in jsonl_files:
             fname = os.path.basename(fpath)

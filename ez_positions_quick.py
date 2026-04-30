@@ -1549,9 +1549,9 @@ class BreakoutHunter:
                 return [float(k[4]) for k in await r.json()]
         except: return []
     async def _scan(self, session, tickers):
-        btc_c = await self._get_closes(session, "BTCUSDT")
+        btc_c = await self._get_closes(session, "BTCUSDC")
         btc_sma = sum(btc_c[-200:]) / 200 if len(btc_c) >= 200 else 0
-        btc_p = tickers.get("BTCUSDT", {}).get("price", 0)
+        btc_p = tickers.get("BTCUSDC", {}).get("price", 0)
         btc_dist = ((btc_p - btc_sma) / btc_sma * 100) if btc_sma > 0 else 0
         self._state["btc_sma200_dist"] = round(btc_dist, 2)
         # Load P&D blacklist (maintained by ez_breakout_hunter.py cron agent)
@@ -1560,7 +1560,7 @@ class BreakoutHunter:
         try:
             if _bl_file.exists(): _blacklisted = set(json.loads(_bl_file.read_text()).get("symbols", {}).keys())
         except: pass
-        cands = sorted([(s, t) for s, t in tickers.items() if t["vol"] > 5_000_000 and s != "BTCUSDT" and s not in _blacklisted], key=lambda x: abs(x[1]["chg"]), reverse=True)[:60]
+        cands = sorted([(s, t) for s, t in tickers.items() if t["vol"] > 5_000_000 and s != "BTCUSDC" and s not in _blacklisted], key=lambda x: abs(x[1]["chg"]), reverse=True)[:60]
         bos = []
         for sym, t in cands:
             try:
@@ -1638,7 +1638,7 @@ def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
     """True iff BTC dedicated loop should override rate() for this acct+symbol."""
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
         return False
-    if symbol not in ("BTCUSDC", "BTCUSDT"):
+    if symbol not in ("BTCUSDC", "BTCUSDC"):
         return False
     accounts = getattr(cfg, "BTC_DEDICATED_ACCOUNTS", ["flz", "inf"])
     return account_key in accounts
@@ -1646,7 +1646,7 @@ def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
 
 def _btc_dedicated_account_blocked(account_key: str, symbol: str, cfg) -> bool:
     """Hard-block: True iff BTC trading is disallowed for this account."""
-    if symbol not in ("BTCUSDC", "BTCUSDT"):
+    if symbol not in ("BTCUSDC", "BTCUSDC"):
         return False
     if not getattr(cfg, "BTC_HARD_BLOCK_OTHER_ACCOUNTS", True):
         return False
@@ -7286,7 +7286,7 @@ class SentimentMomentumStrategy:
     async def _scan_for_entries(self, account_key: str, rules: dict, target_long_ratio: float, snapshot: dict, global_score: float):
         max_pos = rules.get('max_pos', 20)
         check_keys = rules.get('check_keys', False)
-        _btc_data = snapshot.get('BTCUSDC', snapshot.get('BTCUSDT', {}))
+        _btc_data = snapshot.get('BTCUSDC', snapshot.get('BTCUSDC', {}))
         _regime = trading_policy.check_market_regime(global_score, _btc_data if isinstance(_btc_data, dict) else None)
         _calc_long_pct = target_long_ratio * 100.0
         _applied_long, _applied_short, _ratio_active = trading_policy.compute_applied_ratio(_calc_long_pct, 100.0 - _calc_long_pct, _btc_data if isinstance(_btc_data, dict) else {}, True)
@@ -8261,7 +8261,7 @@ class TrackerManager:
             account_key = account_key.lower()
             # ═══════════════════════════════════════════════════════════════════════════
             # 🔒🔒🔒 ABSOLUTE WEBHOOK LOCK (2026-04-17) — bypass-proof rate limiter 🔒🔒🔒
-            # This method is the path that caused the BNBUSDT 80-SELL cascade (bypassed
+            # This method is the path that caused the BNBUSDC 80-SELL cascade (bypassed
             # execute_now and its preflight locks). Unconditional 30s cap on same
             # (account:symbol:side:orderside) for OPEN-direction webhooks. NO EXEMPTIONS.
             # CLOSE webhooks pass through (exit safety).
@@ -11478,10 +11478,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
     # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN NOT
     # AUGMENT REOPEN HEDGE REENTER WHATEVER if positionAmt > 0".
-    # Live evidence: ADAUSDT_SHORT got 13× SELL augments while at -0.95% gain (well
+    # Live evidence: ADAUSDC_SHORT got 13× SELL augments while at -0.95% gain (well
     # below MIN_GAIN=3.0). Mirrored at the wrapper too so hedge_engine, ratio_rebalance,
     # process_position, scan callers, etc. all hit it before reaching execute_now.
-    # Hedges open OTHER position_keys (e.g. ADAUSDT_LONG hedging ADAUSDT_SHORT) so
+    # Hedges open OTHER position_keys (e.g. ADAUSDC_LONG hedging ADAUSDC_SHORT) so
     # those still pass — the gate is per-position-key only.
     # ═══════════════════════════════════════════════════════════════════════════
     _wrap_act_up = (action or '').upper()

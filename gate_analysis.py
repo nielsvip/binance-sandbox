@@ -10,7 +10,7 @@ This tells us exactly what to loosen for more entries without guessing.
 
 Usage:
     python3 gate_analysis.py                   # Full analysis
-    python3 gate_analysis.py --symbol BTCUSDT  # Single symbol
+    python3 gate_analysis.py --symbol BTCUSDC  # Single symbol
     python3 gate_analysis.py --export          # Export CSV of all gate results
 """
 import argparse

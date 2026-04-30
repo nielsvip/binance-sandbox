@@ -21,7 +21,7 @@ import pandas as pd
 
 KLINES_DIR = "/tmp/klines_30d"
 SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "BNBUSDT", "DOGEUSDT", "ADAUSDT", "XRPUSDT",
+    "BTCUSDC", "ETHUSDC", "BNBUSDC", "DOGEUSDT", "ADAUSDC", "XRPUSDC",
     "BTCUSDC", "ETHUSDC", "BNBUSDC", "DOGEUSDC", "ADAUSDC",
 ]
 DAYS = 30

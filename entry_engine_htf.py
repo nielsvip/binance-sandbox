@@ -115,12 +115,12 @@ if __name__ == "__main__":
         "ha_4h": "neutral", "ha_D": "neutral", "stoch_k_4h": 50.0,
     }
     tests = [
-        ("BULL_LONG_FIRES",  "BTCUSDT", bull_htf,  "LONG",  True,  0.8),
-        ("BULL_SHORT_NOFIRE","BTCUSDT", bull_htf,  "SHORT", False, 0.0),
-        ("BEAR_SHORT_FIRES", "ETHUSDT", bear_htf,  "SHORT", True,  0.8),
-        ("BEAR_LONG_NOFIRE", "ETHUSDT", bear_htf,  "LONG",  False, 0.0),
-        ("MIXED_LONG_NOFIRE","SOLUSDT", mixed_htf, "LONG",  False, 0.5),
-        ("MIXED_SHORT_NOFIRE","SOLUSDT",mixed_htf, "SHORT", False, 0.5),
+        ("BULL_LONG_FIRES",  "BTCUSDC", bull_htf,  "LONG",  True,  0.8),
+        ("BULL_SHORT_NOFIRE","BTCUSDC", bull_htf,  "SHORT", False, 0.0),
+        ("BEAR_SHORT_FIRES", "ETHUSDC", bear_htf,  "SHORT", True,  0.8),
+        ("BEAR_LONG_NOFIRE", "ETHUSDC", bear_htf,  "LONG",  False, 0.0),
+        ("MIXED_LONG_NOFIRE","SOLUSDC", mixed_htf, "LONG",  False, 0.5),
+        ("MIXED_SHORT_NOFIRE","SOLUSDC",mixed_htf, "SHORT", False, 0.5),
     ]
     fail = 0
     for name, sym, ind, side, want_fire, min_or_max in tests:

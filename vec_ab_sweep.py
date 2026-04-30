@@ -10,7 +10,7 @@ switches the override is silently dropped → A=B numbers (engine-blind).
 We label these clearly so the user doesn't mistake "no signal" for "no diff".
 
 Usage:
-  python3 vec_ab_sweep.py --mode crypto --symbols BTCUSDT,ETHUSDT,SOLUSDT --start 2024-01-01
+  python3 vec_ab_sweep.py --mode crypto --symbols BTCUSDC,ETHUSDC,SOLUSDC --start 2024-01-01
 
 Output: data/test_queue_results/vec_abtest_<param>_<ts>.json + summary table.
 """
@@ -85,7 +85,7 @@ def run_engine(mode: str, symbols: str, start: str, override_kv: dict, capital: 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", choices=["crypto", "tradier"], default="crypto")
-    p.add_argument("--symbols", default="BTCUSDT,ETHUSDT,SOLUSDT")
+    p.add_argument("--symbols", default="BTCUSDC,ETHUSDC,SOLUSDC")
     p.add_argument("--start", default="2024-01-01")
     p.add_argument("--capital", type=float, default=2000.0)
     p.add_argument("--npz-dir", default="")

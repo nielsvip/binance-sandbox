@@ -99,26 +99,26 @@ def _test():
     """Inline tests — run via `python entry_engine_dc.py`."""
     # Test 1: clean 1h breakout LONG -> highest tier 1.0
     ind1 = {'current_price': 110.0, 'dc_high_3m': 100.0, 'dc_high_15m': 105.0, 'dc_high_1h': 108.0, 'dc_low_4h': 80.0, 'wt1_3m': 5.0, 'wt2_3m': 4.0}
-    fire, reason, score = should_fire_dc_entry("BTCUSDT", ind1, "LONG")
+    fire, reason, score = should_fire_dc_entry("BTCUSDC", ind1, "LONG")
     assert fire is True, f"T1 fire={fire}"
     assert score == 1.0, f"T1 score={score}"
     assert "DC_BRK_1H" in reason, f"T1 reason={reason}"
     print(f"T1 LONG 1h-breakout: fire={fire} score={score} reason={reason}")
     # Test 2: SHORT 3m breakdown only -> 0.6
     ind2 = {'current_price': 90.0, 'dc_low_3m': 95.0, 'dc_low_15m': 80.0, 'dc_low_1h': 70.0, 'dc_high_4h': 200.0, 'wt1_3m': 1.0, 'wt2_3m': 2.0}
-    fire2, reason2, score2 = should_fire_dc_entry("ETHUSDT", ind2, "SHORT")
+    fire2, reason2, score2 = should_fire_dc_entry("ETHUSDC", ind2, "SHORT")
     assert fire2 is True, f"T2 fire={fire2}"
     assert score2 == 0.6, f"T2 score={score2}"
     print(f"T2 SHORT 3m-breakdown: fire={fire2} score={score2} reason={reason2}")
     # Test 3: no trigger inside channel -> NO_TRIGGER
     ind3 = {'current_price': 100.0, 'dc_high_3m': 110.0, 'dc_high_15m': 115.0, 'dc_high_1h': 120.0, 'dc_low_3m': 90.0, 'dc_low_15m': 85.0, 'dc_low_1h': 80.0, 'dc_low_4h': 50.0, 'dc_basis_15m': 200.0, 'wt1_3m': 1.0, 'wt2_3m': 2.0}
-    fire3, reason3, score3 = should_fire_dc_entry("XRPUSDT", ind3, "LONG")
+    fire3, reason3, score3 = should_fire_dc_entry("XRPUSDC", ind3, "LONG")
     assert fire3 is False, f"T3 fire={fire3}"
     assert score3 == 0.0, f"T3 score={score3}"
     print(f"T3 LONG no-trigger: fire={fire3} score={score3} reason={reason3}")
     # Test 4: LONG bounce off dc_low_4h with wt accelerating
     ind4 = {'current_price': 100.2, 'dc_high_3m': 110.0, 'dc_high_15m': 115.0, 'dc_high_1h': 120.0, 'dc_low_4h': 100.0, 'wt1_3m': 5.0, 'wt2_3m': 3.0}
-    fire4, reason4, score4 = should_fire_dc_entry("SOLUSDT", ind4, "LONG")
+    fire4, reason4, score4 = should_fire_dc_entry("SOLUSDC", ind4, "LONG")
     assert fire4 is True, f"T4 fire={fire4}"
     assert "BOUNCE" in reason4, f"T4 reason={reason4}"
     print(f"T4 LONG bounce-low-4h: fire={fire4} score={score4} reason={reason4}")

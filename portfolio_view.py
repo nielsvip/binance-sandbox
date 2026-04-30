@@ -3,8 +3,8 @@
 configurable allocation. Reports combined Sharpe, gain, DD, churn vs constituents.
 
 Usage:
-  python3 portfolio_view.py --pools v4_dctouch1h:0.7,v4_quality_lane:0.3 --syms BTCUSDT
-  python3 portfolio_view.py --pools v4_dctouch1h:0.5,v4_quality_lane:0.5 --syms BTCUSDT,ETHUSDT
+  python3 portfolio_view.py --pools v4_dctouch1h:0.7,v4_quality_lane:0.3 --syms BTCUSDC
+  python3 portfolio_view.py --pools v4_dctouch1h:0.5,v4_quality_lane:0.5 --syms BTCUSDC,ETHUSDC
 """
 # metrics_guard retrofit (audited 2026-04-30): this script writes a Sharpe
 # number to a print/log surface. Per CLAUDE.md NO-LIES MANDATE, any future

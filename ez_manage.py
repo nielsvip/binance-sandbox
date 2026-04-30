@@ -262,7 +262,7 @@ _tiered_tp_hit: Dict[str, Set[int]] = {}  # BACKTEST_CHANGE_12: tracks which tie
 # ═══ CRITICAL FIX: DUPLICATE OPEN GUARD — NEVER open same symbol+side twice ═══
 _recent_opens: Dict[str, float] = {}  # position_key → timestamp of last OPEN/AUGMENT execution
 # ═══ 2026-04-17 EMERGENCY — ABSOLUTE ATOMIC OPEN/WEBHOOK LOCK ═══
-# Triggered by BNBUSDT hedge cascade: 80+ SELL orders in 45 min via WT_15M_SAME_HEDGE webhook.
+# Triggered by BNBUSDC hedge cascade: 80+ SELL orders in 45 min via WT_15M_SAME_HEDGE webhook.
 # Unconditional per-(account,symbol,side) lock with 60s TTL. Cannot be bypassed by any reason,
 # action, or is_hedge flag. Every OPEN/AUGMENT/HEDGE/ENTRY fails if prior fire was <60s ago.
 _ABSOLUTE_OPEN_LOCK: Dict[str, float] = {}  # (account:symbol_side) → expiry ts
@@ -10892,7 +10892,7 @@ class MultiAccountTradeManager:
         if is_entry_action and 'HEDGE' not in reason.upper() and 'REENTRY' not in action.upper() and not _is_winner_augment and self.positions_service:
             try:
                 ratio_data = self.positions_service.get_long_short_ratio(account_key)
-                indicators_ratio = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDT')
+                indicators_ratio = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDC')
                 ir = indicators_ratio if indicators_ratio else {}
                 _calc_long = ratio_data.get('long_pct', 50)
                 _calc_short = ratio_data.get('short_pct', 50)
@@ -11789,7 +11789,7 @@ class MultiAccountTradeManager:
                         std_multiplier = min_multiplier + (std_normalized * (max_multiplier - min_multiplier))
                     quantity = quantity * std_multiplier
                     if config.VERBOSE2: logger.info(f"[{position_key}] fff after standard dev check : ema_20_std_3m={std_ema_3m:.6f}, bb_band_width={bb_band_width:.4f}% ({min_bb_width}%={min_multiplier}x, {max_bb_width}%={max_multiplier}x), multiplier={std_multiplier:.3f}, qty=${quantity*current_price:.2f}")
-            if position_key in ['fin:BTCUSDT_LONG', 'fin:BTCUSDC_SHORT', 'fin:BTCUSDTDOM_LONG', 'fin:BTCUSDCDOM_SHORT','fin:BNBUSDC_LONG','fin:BNBUSDC_SHORT','men:BTCUSDT_LONG', 'men:BTCUSDC_SHORT', 'men:BTCUSDTDOM_LONG', 'men:BTCUSDCDOM_SHORT','men:BNBUSDC_LONG','men:BNBUSDC_SHORT', 'fin:ZECUSDC_LONG', 'fin:ZECUSDC_SHORT','fin:ZENUSDT_LONG', 'fin:ZENUSDT_SHORT', 'fin:DASHUSDT_LONG', 'fin:DASHUSDT_SHORT','AAVEUSDC_LONG','AAVEUSDC_SHORT']:
+            if position_key in ['fin:BTCUSDC_LONG', 'fin:BTCUSDC_SHORT', 'fin:BTCUSDCDOM_LONG', 'fin:BTCUSDCDOM_SHORT','fin:BNBUSDC_LONG','fin:BNBUSDC_SHORT','men:BTCUSDC_LONG', 'men:BTCUSDC_SHORT', 'men:BTCUSDCDOM_LONG', 'men:BTCUSDCDOM_SHORT','men:BNBUSDC_LONG','men:BNBUSDC_SHORT', 'fin:ZECUSDC_LONG', 'fin:ZECUSDC_SHORT','fin:ZENUSDT_LONG', 'fin:ZENUSDT_SHORT', 'fin:DASHUSDT_LONG', 'fin:DASHUSDT_SHORT','AAVEUSDC_LONG','AAVEUSDC_SHORT']:
                 quantity = 6 * quantity
             if quantity < 7 * config.MIN_POSITION_SIZE / current_price and quantity > 3 * config.MIN_POSITION_SIZE / current_price :
                 if action == 'AUGMENT' and position.gain < 0 and not _is_reentry_for_sizing:
@@ -13036,7 +13036,7 @@ class MultiAccountTradeManager:
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # ═══════════════════════════════════════════════════════════════════════════
         # 🛑🛑🛑 USER ABSOLUTE 2026-04-28 02:24 UTC — STOP THE BLEEDING 🛑🛑🛑
-        # User screenshot showed ADAUSDT_SHORT with 13× -24 SELL TP-Limit orders accumulating
+        # User screenshot showed ADAUSDC_SHORT with 13× -24 SELL TP-Limit orders accumulating
         # at Finandy ($0.245-$0.248) over 5h while position bled to -1.20%. AND 8 opens on
         # every open. Must hard-kill all DCA/AUGMENT and dedup hedges in execute_now NOW.
         #
@@ -13119,12 +13119,12 @@ class MultiAccountTradeManager:
         # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
         # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN
         # NOT AUGMENT REOPEN HEDGE REENTER WHATEVER THE FUCK if positionAmt > 0".
-        # Live evidence 2026-04-27: ADAUSDT_SHORT got 13× SELL augments over 5h while
+        # Live evidence 2026-04-27: ADAUSDC_SHORT got 13× SELL augments over 5h while
         # holding gain=-0.95% (well below MIN_GAIN=3.0). Every prior gate had a bypass
         # that let this through. THIS gate is unconditional, top-of-execute_now, no
         # exemptions: if THIS position_key already has positionAmt>0 AND gain<MIN_GAIN
         # AND the action increases position size, BLOCK. Hedges open OTHER position_keys
-        # (e.g. ADAUSDT_LONG hedging ADAUSDT_SHORT) so legitimate hedge entries still
+        # (e.g. ADAUSDC_LONG hedging ADAUSDC_SHORT) so legitimate hedge entries still
         # pass — they target a different key whose positionAmt is 0 (or own gain ≥ MIN_GAIN).
         # ═══════════════════════════════════════════════════════════════════════════
         _lpb_act_up = (action or '').upper()
@@ -13158,7 +13158,7 @@ class MultiAccountTradeManager:
         # 🔒🔒🔒 ABSOLUTE OPEN LOCK (2026-04-17) — TOP OF execute_now, NO BYPASS 🔒🔒🔒
         # Unconditional 60s rate limit on OPEN/AUGMENT/HEDGE/ENTRY per position_key.
         # Cannot be disabled by config. Cannot be exempted by reason, action, is_hedge.
-        # Triggered by BNBUSDT cascade: 80 SELL orders in 45min via WT_15M_SAME_HEDGE.
+        # Triggered by BNBUSDC cascade: 80 SELL orders in 45min via WT_15M_SAME_HEDGE.
         # ═══════════════════════════════════════════════════════════════════════════
         _act_upper_early = (action or '').upper()
         _ENTRY_ACTIONS = {'OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT', 'QUICK_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'HEDGE_OPEN'}
@@ -15911,7 +15911,7 @@ class MultiAccountTradeManager:
                 if not self.positions_service: continue
                 _he = getattr(self, 'hedge_engine', None)
                 _reg = _he.registry if _he else None
-                btc_ind = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDT') or {}
+                btc_ind = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDC') or {}
                 k_1h = safe_fetch_float(btc_ind.get('stoch_k_1h'), 50.0)
                 d_1h = safe_fetch_float(btc_ind.get('stoch_d_1h'), 50.0)
                 k_4h = safe_fetch_float(btc_ind.get('stoch_k_4h'), 50.0)

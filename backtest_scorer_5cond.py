@@ -11,7 +11,7 @@ Compares vs the old 2-condition version to measure churn reduction.
 Usage:
   python3 backtest_scorer_5cond.py --crypto      # 48 sym, 4yr
   python3 backtest_scorer_5cond.py --stocks      # 121 sym, 2yr
-  python3 backtest_scorer_5cond.py --symbols BTCUSDT,ETHUSDT
+  python3 backtest_scorer_5cond.py --symbols BTCUSDC,ETHUSDC
 """
 import argparse
 import csv

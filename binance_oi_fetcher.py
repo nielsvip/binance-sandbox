@@ -8,7 +8,7 @@ Caches per-symbol JSON in data/oi_cache/{symbol}.json with ts (ms), sumOpenInter
 
 Usage:
     python binance_oi_fetcher.py                            # all symbols, 30d backfill
-    python binance_oi_fetcher.py BTCUSDT ETHUSDT            # specific symbols
+    python binance_oi_fetcher.py BTCUSDC ETHUSDC            # specific symbols
     python binance_oi_fetcher.py --update                   # only fetch since last cached entry
 
 Improvement Framework A2 (2026-04-25). Integrates into backtest_v8_precompute.py via _inject_oi.

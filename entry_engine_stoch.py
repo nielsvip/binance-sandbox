@@ -100,7 +100,7 @@ if __name__ == "__main__":
         "stoch_k_1h": 58, "stoch_d_1h": 54,
         "stoch_k_4h": 70, "stoch_d_4h": 65,
     }
-    fire, reason, score = should_fire_stoch_entry("BTCUSDT", long_strong, "LONG")
+    fire, reason, score = should_fire_stoch_entry("BTCUSDC", long_strong, "LONG")
     ok = fire and score == 1.0
     print(f"[{'PASS' if ok else 'FAIL'}] Test 1 LONG STRONG: fire={fire} score={score} reason={reason}")
     tests_passed += int(ok)
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         "stoch_k_1h": 42, "stoch_d_1h": 47,
         "stoch_k_4h": 58, "stoch_d_4h": 55,  # 4h NOT aligned
     }
-    fire, reason, score = should_fire_stoch_entry("ETHUSDT", short_good, "SHORT")
+    fire, reason, score = should_fire_stoch_entry("ETHUSDC", short_good, "SHORT")
     ok = fire and score == 0.7
     print(f"[{'PASS' if ok else 'FAIL'}] Test 2 SHORT GOOD: fire={fire} score={score} reason={reason}")
     tests_passed += int(ok)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         "stoch_k_1h": 55, "stoch_d_1h": 50,    # above mid (aligned for LONG)
         "stoch_k_4h": 60, "stoch_d_4h": 58,    # above mid (aligned for LONG)
     }
-    fire, reason, score = should_fire_stoch_entry("SOLUSDT", long_contrarian, "LONG")
+    fire, reason, score = should_fire_stoch_entry("SOLUSDC", long_contrarian, "LONG")
     ok = fire and score == 0.5
     print(f"[{'PASS' if ok else 'FAIL'}] Test 3 LONG CONTRARIAN: fire={fire} score={score} reason={reason}")
     tests_passed += int(ok)

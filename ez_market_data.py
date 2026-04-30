@@ -406,7 +406,7 @@ class MarketDataEngine:
         self.executor = ThreadPoolExecutor(max_workers=4)
         
         # THE BRAIN: Stores the freshest price found across all sources
-        self.price_buffer = {} # { 'BTCUSDT': {'p': 50.0, 't': 1700.0} }
+        self.price_buffer = {} # { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
         
         self._connect_shared()
 
@@ -3219,7 +3219,7 @@ if __name__ == "__main__":
 # # #         self.shared_proxy = None  
 # # #         self.shm_lock = DummyLock()      
 # # #         self.executor = ThreadPoolExecutor(max_workers=8) 
-# # #         self.price_buffer = {} # THE BRAIN: { 'BTCUSDT': {'p': 50.0, 't': 1700.0} }
+# # #         self.price_buffer = {} # THE BRAIN: { 'BTCUSDC': {'p': 50.0, 't': 1700.0} }
 
 # # #         self._connect_shared()
 

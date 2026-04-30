@@ -46,9 +46,9 @@ from htf_breakout_scalper import (check_scalp_v2_entry, check_scalp_v2_exit,
                                   VARIANTS, SCALP_V2_REASON_PREFIX)
 
 SYMBOLS_48 = json.load(open(BASE_PATH / "backtest_48_symbols.json"))
-SYMBOLS_QUICK = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "LINKUSDT",
+SYMBOLS_QUICK = ["BTCUSDC", "ETHUSDC", "SOLUSDC", "AVAXUSDC", "LINKUSDC",
                  "DOGEUSDT", "MATICUSDT", "DOTUSDT", "ATOMUSDT", "NEARUSDT",
-                 "TRXUSDT", "LTCUSDT"]
+                 "TRXUSDT", "LTCUSDC"]
 
 # Fields the strategy module reads — only load these from NPZ
 NEEDED_FIELDS = {

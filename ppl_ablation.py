@@ -20,7 +20,7 @@ Output: data/orchestrator/ablation_{mode}_{timestamp}/
 Usage:
   python3 ppl_ablation.py --mode crypto --start 2022-01-01 \
     --baseline data/orchestrator/server_snapshots/s1_crypto/config.py \
-    --symbols BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT,BNBUSDT,XRPUSDT,AVAXUSDT,DOTUSDT,ATOMUSDT
+    --symbols BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC,BNBUSDC,XRPUSDC,AVAXUSDC,DOTUSDT,ATOMUSDT
 """
 import argparse
 import copy

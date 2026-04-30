@@ -204,28 +204,28 @@ wait_for_quiet
 
 # Step 1: reentry_all_real on 4-sym × 4wk
 run_sweep "reentry_all_real" \
-  "BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT" \
+  "BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC" \
   "2026-03-20" \
   "1" "1500" \
   "Step 1 — reentry_all_real 4sym × 4wk"
 
 # Step 2: hedge_reentry_ablation 4-sym × 4wk
 run_sweep "hedge_reentry_ablation" \
-  "BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT" \
+  "BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC" \
   "2026-03-20" \
   "1" "1500" \
   "Step 2 — hedge_reentry_ablation 4sym × 4wk"
 
 # Step 3: reentry_all_real WIDER (8 sym × 6wk) — statistical power
 run_sweep "reentry_all_real" \
-  "BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT,DOTUSDT,UNIUSDT,AVAXUSDT,BNBUSDT" \
+  "BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC,DOTUSDT,UNIUSDC,AVAXUSDC,BNBUSDC" \
   "2026-03-01" \
   "1" "2000" \
   "Step 3 — reentry_all_real 8sym × 6wk (wider)"
 
 # Step 4: reentry_optimize on 8 sym × 6 wk — parameter tuning
 run_sweep "reentry_optimize" \
-  "BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT,DOTUSDT,UNIUSDT,AVAXUSDT,BNBUSDT" \
+  "BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC,DOTUSDT,UNIUSDC,AVAXUSDC,BNBUSDC" \
   "2026-03-01" \
   "1" "2000" \
   "Step 4 — reentry_optimize 8sym × 6wk"
@@ -234,7 +234,7 @@ run_sweep "reentry_optimize" \
 while true; do
   check_deadline
   run_sweep "reentry_all_real" \
-    "BTCUSDT,ETHUSDT,SOLUSDT,LINKUSDT,DOTUSDT,UNIUSDT,AVAXUSDT,BNBUSDT,ADAUSDT,XRPUSDT,LTCUSDT,MATICUSDT" \
+    "BTCUSDC,ETHUSDC,SOLUSDC,LINKUSDC,DOTUSDT,UNIUSDC,AVAXUSDC,BNBUSDC,ADAUSDC,XRPUSDC,LTCUSDC,MATICUSDT" \
     "2026-02-15" \
     "1" "3000" \
     "Step 5+ — reentry_all_real 12sym × 8wk (loop)"

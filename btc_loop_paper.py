@@ -135,8 +135,8 @@ _KLINES_CACHE: Dict[str, tuple[float, list]] = {}
 
 def load_klines(tf: str, max_bars: int = 500) -> list:
     """Load BTCUSDC klines for a TF (3m/15m/1h/4h/D) with mtime-based cache."""
-    # Live system writes klines_cache/<sym>_<tf>.json. Try BTCUSDC first, fallback to BTCUSDT (NPZ data).
-    for sym in (SYMBOL, "BTCUSDT"):
+    # Live system writes klines_cache/<sym>_<tf>.json. Try BTCUSDC first, fallback to BTCUSDC (NPZ data).
+    for sym in (SYMBOL, "BTCUSDC"):
         p = Path(f"klines_cache/{sym}_{tf}.json")
         if p.exists():
             try: mtime = p.stat().st_mtime
@@ -160,7 +160,7 @@ def load_klines(tf: str, max_bars: int = 500) -> list:
 
 def build_features(market_data: Dict[str, Dict], cfg) -> Optional[Dict]:
     """Assemble features from live market_data + klines. Returns None if data not ready."""
-    md = market_data.get(SYMBOL) or market_data.get("BTCUSDT")
+    md = market_data.get(SYMBOL) or market_data.get("BTCUSDC")
     if not md:
         print(f"[paper] no BTC entry in market_data (keys sample: {list(market_data.keys())[:5]})", flush=True)
         return None

@@ -7,7 +7,7 @@ script proves vec_sweep reads the same NPZ field values that live code
 computes via ez_indicators, and quantifies any divergence.
 
 Usage:
-    python3 parity_test.py --hash <config_hash> [--sym BTCUSDT] [--bars 1000]
+    python3 parity_test.py --hash <config_hash> [--sym BTCUSDC] [--bars 1000]
 
 Output: per-primitive % match, total entry-bar overlap %, and a hard
 verdict (PARITY_OK / PARITY_DIVERGENT / NEED_LIVE_BACKTEST).
@@ -84,7 +84,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=str(REPO / "data" / "vec_sweep.db"))
     ap.add_argument("--hash", required=True, help="config_hash from vec_sweep.db")
-    ap.add_argument("--sym", default="BTCUSDT")
+    ap.add_argument("--sym", default="BTCUSDC")
     ap.add_argument("--npz-dir", default=str(REPO / "backtest_v8" / "indicators"))
     args = ap.parse_args()
 

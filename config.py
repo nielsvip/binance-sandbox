@@ -930,10 +930,10 @@ class Config:
     V8Q_D_TREND_REQUIRED: bool = True
     V8Q_K3M_FLOOR: int = 30
     # Symbol tiers — sorted by per-symbol Sharpe descending
-    V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT")  # Sharpe 1.93, 58 trades, 98.3% WR
-    V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT")  # Sharpe 1.88, 78 trades, 96.2% WR (best balance)
-    V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT")  # Sharpe 1.74, 89 trades, 95.5% WR
-    V8Q_SYMBOL_TIER_TOP6: tuple = ("LINKUSDT", "ETHUSDT", "DOTUSDT", "BTCUSDT", "UNIUSDT", "SOLUSDT")  # Sharpe 1.78, 126 trades, 95.2% WR
+    V8Q_SYMBOL_TIER_TOP3: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT")  # Sharpe 1.93, 58 trades, 98.3% WR
+    V8Q_SYMBOL_TIER_TOP4: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT", "BTCUSDC")  # Sharpe 1.88, 78 trades, 96.2% WR (best balance)
+    V8Q_SYMBOL_TIER_TOP5: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT", "BTCUSDC", "UNIUSDC")  # Sharpe 1.74, 89 trades, 95.5% WR
+    V8Q_SYMBOL_TIER_TOP6: tuple = ("LINKUSDC", "ETHUSDC", "DOTUSDT", "BTCUSDC", "UNIUSDC", "SOLUSDC")  # Sharpe 1.78, 126 trades, 95.2% WR
     REENTRY2_STOCH_CROSS_ENABLED: bool = False  # 2026-04-17: user said stoch crossovers not used anymore — replaced by WT-15m-cross reentry below.
     # === 2026-04-17 REENTRY OVERHAUL — user directive: WT crossovers, not stoch ===
     # C: 15m WT cross after exit + HTF still favorable (1h or 4h wt1 > wt2 for long, vv short) → 1.5x reentry
@@ -1930,7 +1930,7 @@ class Config:
     # WT_4H_VEL_EXIT switches — 2026-04-19: add kill switch + fix broken SHORT condition
     # OLD SHORT: _wt1_4h > _wt2_4h (any bullish cross → exit short — no velocity threshold, too aggressive)
     # NEW SHORT: wt_velocity_4h > WT_4H_VEL_EXIT_SHORT_VEL_MIN (symmetric with LONG side)
-    # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDT
+    # Real baseline showed this caused 409 closes at 14% WR (-4.69% total) with BTCUSDC
     WT_4H_VEL_EXIT_ENABLED: bool = True
     WT_4H_VEL_EXIT_LONG_VEL_MIN: float = -2.0    # LONG exits when vel_4h < this (downward momentum)
     WT_4H_VEL_EXIT_SHORT_VEL_MIN: float = 2.0    # SHORT exits when vel_4h > this (upward momentum)
@@ -2841,7 +2841,7 @@ class Config:
     # ════════════════════════════════════════════════════════════════════
     BTC_DEDICATED_ENABLED: bool = True                                   # MASTER kill switch — flip True only after sweep proof + paper days + user approval
     BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
-    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDT at is_tradeable
+    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDC at is_tradeable
 
     # --- Red zone composition (existing wt_dc + new fib + new round numbers) ---
     BTC_RZ_USE_WT_DC: bool = True

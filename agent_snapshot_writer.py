@@ -258,8 +258,8 @@ def _market_meta(r):
     if not isinstance(raw, dict):
         return {}
     return {
-        "btc_price": raw.get("BTCUSDT", {}).get("mark_price") if isinstance(raw.get("BTCUSDT"), dict) else None,
-        "eth_price": raw.get("ETHUSDT", {}).get("mark_price") if isinstance(raw.get("ETHUSDT"), dict) else None,
+        "btc_price": raw.get("BTCUSDC", {}).get("mark_price") if isinstance(raw.get("BTCUSDC"), dict) else None,
+        "eth_price": raw.get("ETHUSDC", {}).get("mark_price") if isinstance(raw.get("ETHUSDC"), dict) else None,
         "symbols_count": len(raw),
     }
 

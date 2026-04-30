@@ -105,7 +105,7 @@ def load_okx_trades(path: str) -> List[Dict]:
         for line in f:
             row = json.loads(line)
             inst = row.get("inst", "")
-            # OKX format: ETH-USDT-SWAP → ETHUSDT
+            # OKX format: ETH-USDT-SWAP → ETHUSDC
             symbol = inst.replace("-SWAP", "").replace("-", "")
             open_ts = row.get("open_time", "")
             close_ts = row.get("close_time", "")

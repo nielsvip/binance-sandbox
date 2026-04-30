@@ -808,7 +808,7 @@ if __name__ == "__main__":
     elif cmd in ("smoke", "test", "selftest"):
         rets_btc = [0.5, -0.3, 0.8, 0.2, -0.1] * 10
         rets_eth = [0.4, -0.2, 0.6, 0.1, 0.0] * 10
-        m = standard_metric_set({"BTCUSDT": rets_btc, "ETHUSDT": rets_eth}, years=1.5)
+        m = standard_metric_set({"BTCUSDC": rets_btc, "ETHUSDC": rets_eth}, years=1.5)
         print("Smoke test STANDARD METRIC SET:")
         print(format_standard_set({**m, "max_dd_pct": 4.2}, mode="crypto"))
         print()

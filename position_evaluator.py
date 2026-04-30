@@ -544,3 +544,258 @@ def compute_trade_qty_vec(
     modifier = np.where(new_mod_floor, np.int8(MOD_MIN_POS_FLOOR), modifier)
 
     return {'qty': qty, 'modifier': modifier}
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Phase 4: PROCESS_POSITION EXIT GATES
+# Extracted from ez_manage.process_position lines 20500-20651. The 5 most-impactful
+# technical exit gates that v8_quick's compute_exit_signals does NOT replicate:
+#   • WT_4H_VEL_EXIT      — vel_4h against direction + age + profit + k_extreme
+#   • DC_HOPELESS_EXIT    — entry_price outside dc_4h channel + age > 900s
+#   • WT_EXHAUST_EXIT     — wt_momentum_state EXHAUST on 4h + (1h or 15m)
+#   • WT_PERCENTILE_EXIT  — wt_percentile D + 4h both at extreme
+#   • E_1_WT_DELTA_EXIT   — wt_composite_delta crosses threshold against position
+#   • E_3_STRUCTURE_EXIT  — wt_structure HH/HL/LH/LL on ≥2 HTFs
+#
+# Live and backtest historically had different exit logic — sweep tuning on these
+# gates produced different live behavior than backtest predicted.
+# ════════════════════════════════════════════════════════════════════════════════
+
+# Exit reason ids (for vec dumps + diagnostics)
+EXIT_NONE = 0
+EXIT_WT_4H_VEL = 1
+EXIT_DC_HOPELESS = 2
+EXIT_WT_EXHAUST = 3
+EXIT_WT_PERCENTILE = 4
+EXIT_E1_WT_DELTA = 5
+EXIT_E3_STRUCTURE = 6
+
+EXIT_NAMES = {
+    EXIT_NONE: 'NONE',
+    EXIT_WT_4H_VEL: 'WT_4H_VEL_EXIT',
+    EXIT_DC_HOPELESS: 'DC_HOPELESS_EXIT',
+    EXIT_WT_EXHAUST: 'WT_EXHAUST_EXIT',
+    EXIT_WT_PERCENTILE: 'WT_PERCENTILE_EXIT',
+    EXIT_E1_WT_DELTA: 'E_1_WT_DELTA_EXIT',
+    EXIT_E3_STRUCTURE: 'E_3_STRUCTURE_EXIT',
+}
+
+# wt_momentum_state encoding (matches backtest_v8_harness._INT_DECODE)
+_MOM_EXHAUST_DOWN = -2
+_MOM_EXHAUST_UP = 2
+# wt_structure encoding: -1=LH, 0=NEUTRAL, 1=HH
+
+
+def evaluate_exit_gates_core(
+    indicators: Dict[str, Any],
+    is_long: bool,
+    config: Any,
+    *,
+    entry_price: float = 0.0,
+    gain_pct: float = 0.0,
+    pos_age_s: float = 0.0,
+) -> Tuple[int, str]:
+    """Pure scalar exit-gate evaluator. Mirrors ez_manage.process_position
+    exit-gate sequence (WT_4H_VEL → DC_HOPELESS → WT_EXHAUST → WT_PERCENTILE →
+    E_1 delta → E_3 structure). Returns (exit_id, reason_string) — first match
+    wins, matching live precedence.
+
+    The position-state args (entry_price, gain_pct, pos_age_s) are pure inputs;
+    caller is responsible for pulling them from the live position object or
+    the backtest trade state."""
+    current_price = _sf(indicators.get('current_price'), 0.0)
+    if current_price == 0.0:
+        # Fall back to LTF close if caller did not pass one
+        for tf in ('3m', '5m'):
+            cp = _sf(indicators.get(f'close_{tf}'), 0.0)
+            if cp > 0:
+                current_price = cp
+                break
+    # WT_4H_VEL_EXIT
+    if getattr(config, 'WT_4H_VEL_EXIT_ENABLED', True):
+        vel_4h = _sf(indicators.get('wt_velocity_4h'), 0)
+        long_min = float(getattr(config, 'WT_4H_VEL_EXIT_LONG_VEL_MIN', -2.0))
+        short_min = float(getattr(config, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN', 2.0))
+        against = (is_long and vel_4h < long_min) or (not is_long and vel_4h > short_min)
+        req_profit = bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_PROFIT', True))
+        req_kx = bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME', True))
+        kx_hi = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_HIGH', 80.0))
+        kx_lo = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_LOW', 20.0))
+        comm_buf = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+        profit_ok = (gain_pct >= comm_buf) if req_profit else True
+        if req_kx:
+            k_3m = _sf(indicators.get('stoch_k_3m'), 50)
+            k_15m = _sf(indicators.get('stoch_k_15m'), 50)
+            kx_ok = ((k_3m >= kx_hi) or (k_15m >= kx_hi)) if is_long else ((k_3m <= kx_lo) or (k_15m <= kx_lo))
+        else:
+            kx_ok = True
+        if against and pos_age_s > 360 and profit_ok and kx_ok:
+            return EXIT_WT_4H_VEL, f"WT_4H_VEL_vel={vel_4h:.1f}_g={gain_pct:.2f}%"
+    # DC_HOPELESS_EXIT
+    if getattr(config, 'DC_HOPELESS_EXIT_ENABLED', True) and entry_price > 0:
+        dc_h_4h = _sf(indicators.get('dc_high_4h'), 0)
+        dc_l_4h = _sf(indicators.get('dc_low_4h'), 0)
+        min_age = float(getattr(config, 'DC_HOPELESS_EXIT_MIN_AGE_S', 900))
+        if dc_h_4h > 0 and dc_l_4h > 0 and pos_age_s > min_age:
+            hopeless = (is_long and entry_price > dc_h_4h) or (not is_long and entry_price < dc_l_4h)
+            if hopeless:
+                return EXIT_DC_HOPELESS, f"DC_HOPELESS_entry={entry_price:.4f}_dc=[{dc_l_4h:.4f},{dc_h_4h:.4f}]"
+    # WT_EXHAUST_EXIT
+    if getattr(config, 'WT_EXHAUST_EXIT_ENABLED', True):
+        m4 = int(_sf(indicators.get('wt_momentum_state_4h'), 0))
+        m1 = int(_sf(indicators.get('wt_momentum_state_1h'), 0))
+        m15 = int(_sf(indicators.get('wt_momentum_state_15m'), 0))
+        exhaust = (is_long and m4 == _MOM_EXHAUST_UP and (m1 == _MOM_EXHAUST_UP or m15 == _MOM_EXHAUST_UP)) or \
+                  (not is_long and m4 == _MOM_EXHAUST_DOWN and (m1 == _MOM_EXHAUST_DOWN or m15 == _MOM_EXHAUST_DOWN))
+        req_gain = bool(getattr(config, 'WT_EXHAUST_EXIT_REQUIRE_GAIN', False))
+        if exhaust and (not req_gain or gain_pct > 0):
+            return EXIT_WT_EXHAUST, f"WT_EXHAUST_4h={m4}_1h={m1}_15m={m15}_g={gain_pct:.2f}%"
+    # WT_PERCENTILE_EXIT
+    if getattr(config, 'WT_PERCENTILE_EXIT_ENABLED', True):
+        pct_D = _sf(indicators.get('wt_percentile_D'), 50)
+        pct_4h = _sf(indicators.get('wt_percentile_4h'), 50)
+        ob_D = float(getattr(config, 'WT_PERCENTILE_EXIT_OB_D', 90))
+        ob_4h = float(getattr(config, 'WT_PERCENTILE_EXIT_OB_4H', 75))
+        os_D = float(getattr(config, 'WT_PERCENTILE_EXIT_OS_D', 10))
+        os_4h = float(getattr(config, 'WT_PERCENTILE_EXIT_OS_4H', 25))
+        fire = (is_long and pct_D > ob_D and pct_4h > ob_4h) or (not is_long and pct_D < os_D and pct_4h < os_4h)
+        if fire:
+            return EXIT_WT_PERCENTILE, f"WT_PERCENTILE_pctD={pct_D:.0f}_4h={pct_4h:.0f}"
+    # E_1 WT_DELTA_EXIT (default OFF)
+    if bool(getattr(config, 'E_1_WT_EXIT_USE_DELTA_ENABLED', False)):
+        delta = _sf(indicators.get('wt_composite_delta'), 0)
+        thr = float(getattr(config, 'E_1_EXIT_DELTA_THR', 50.0))
+        fire = (is_long and delta < -thr) or (not is_long and delta > thr)
+        if fire:
+            return EXIT_E1_WT_DELTA, f"E_1_DELTA_delta={delta:+.0f}_thr={thr:.0f}"
+    # E_3 STRUCTURE_EXIT (default OFF — mode 0)
+    e3_mode = int(getattr(config, 'E_3_USE_WT_STRUCTURE_EXIT_MODE', 0))
+    if e3_mode == 2:  # mode 1 = shadow (no exit), mode 2 = live exit
+        against = 0
+        for tf in ('15m', '1h', '4h'):
+            s = int(_sf(indicators.get(f'wt_structure_{tf}'), 0))
+            # encoding: -1=LH (against LONG), 1=HH (against SHORT). Live also checked
+            # 'LL'/'HL' but those map to wt_trough_structure not wt_structure → dead in live too.
+            if (is_long and s == -1) or (not is_long and s == 1):
+                against += 1
+        if against >= 2:
+            return EXIT_E3_STRUCTURE, f"E_3_STRUCTURE_against={against}TF"
+    return EXIT_NONE, ""
+
+
+def evaluate_exit_gates_vec(
+    npz: Dict[str, np.ndarray],
+    is_long: bool,
+    config: Any,
+    ltf: str = '3m',
+) -> Dict[str, np.ndarray]:
+    """Vectorized indicator-only exit gates. Returns per-bar masks for gates that
+    don't require trade state (entry_price, gain, age). The trade loop should call
+    `evaluate_exit_gates_core` with full state for the WT_4H_VEL + DC_HOPELESS
+    gates that need profit/age info, OR layer profit/age gates manually.
+
+    Returns dict with bool arrays:
+        wt_4h_vel_raw       — vel_4h against direction (no profit/age/k filter)
+        wt_4h_vel_full      — adds k_extreme filter (profit + age still caller's job)
+        wt_exhaust          — fully gated (indicator-only)
+        wt_percentile       — fully gated (indicator-only)
+        e1_wt_delta         — fully gated (indicator-only)
+        e3_structure        — fully gated (indicator-only)
+        dc_h_4h, dc_l_4h    — passthrough for caller's entry_price comparison
+    """
+    close = npz.get('close')
+    if close is None:
+        close = npz.get(f'close_{ltf}')
+    n = len(close)
+
+    def f(name: str, default: float = 0.0) -> np.ndarray:
+        a = npz.get(name)
+        if a is None:
+            return np.full(n, default, dtype=np.float32)
+        a = np.asarray(a)
+        if a.dtype == np.int8:
+            a = a.astype(np.int8)
+            if len(a) != n:
+                pad = np.zeros(n, dtype=np.int8)
+                m = min(len(a), n)
+                pad[:m] = a[:m]
+                a = pad
+            return a
+        a = a.astype(np.float32)
+        if len(a) != n:
+            out = np.full(n, default, dtype=np.float32)
+            m = min(len(a), n)
+            out[:m] = a[:m]
+            a = out
+        return np.nan_to_num(a, nan=default)
+
+    out = {}
+    # WT_4H_VEL — raw (against direction) and full (adds k_extreme)
+    if getattr(config, 'WT_4H_VEL_EXIT_ENABLED', True):
+        vel_4h = f('wt_velocity_4h')
+        long_min = float(getattr(config, 'WT_4H_VEL_EXIT_LONG_VEL_MIN', -2.0))
+        short_min = float(getattr(config, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN', 2.0))
+        out['wt_4h_vel_raw'] = (vel_4h < long_min) if is_long else (vel_4h > short_min)
+        if bool(getattr(config, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME', True)):
+            kx_hi = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_HIGH', 80.0))
+            kx_lo = float(getattr(config, 'WT_4H_VEL_EXIT_K_EXTREME_LOW', 20.0))
+            k_3m = f(f'stoch_k_{ltf}', 50.0); k_15m = f('stoch_k_15m', 50.0)
+            kx = ((k_3m >= kx_hi) | (k_15m >= kx_hi)) if is_long else ((k_3m <= kx_lo) | (k_15m <= kx_lo))
+            out['wt_4h_vel_full'] = out['wt_4h_vel_raw'] & kx
+        else:
+            out['wt_4h_vel_full'] = out['wt_4h_vel_raw']
+    else:
+        out['wt_4h_vel_raw'] = np.zeros(n, dtype=bool)
+        out['wt_4h_vel_full'] = np.zeros(n, dtype=bool)
+
+    # DC_HOPELESS — passthrough for caller's entry_price check
+    out['dc_h_4h'] = f('dc_high_4h')
+    out['dc_l_4h'] = f('dc_low_4h')
+
+    # WT_EXHAUST_EXIT — fully gated
+    if getattr(config, 'WT_EXHAUST_EXIT_ENABLED', True):
+        m4 = f('wt_momentum_state_4h', 0)
+        m1 = f('wt_momentum_state_1h', 0)
+        m15 = f('wt_momentum_state_15m', 0)
+        if is_long:
+            out['wt_exhaust'] = (m4 == _MOM_EXHAUST_UP) & ((m1 == _MOM_EXHAUST_UP) | (m15 == _MOM_EXHAUST_UP))
+        else:
+            out['wt_exhaust'] = (m4 == _MOM_EXHAUST_DOWN) & ((m1 == _MOM_EXHAUST_DOWN) | (m15 == _MOM_EXHAUST_DOWN))
+    else:
+        out['wt_exhaust'] = np.zeros(n, dtype=bool)
+
+    # WT_PERCENTILE_EXIT
+    if getattr(config, 'WT_PERCENTILE_EXIT_ENABLED', True):
+        pct_D = f('wt_percentile_D', 50)
+        pct_4h = f('wt_percentile_4h', 50)
+        if is_long:
+            ob_D = float(getattr(config, 'WT_PERCENTILE_EXIT_OB_D', 90))
+            ob_4h = float(getattr(config, 'WT_PERCENTILE_EXIT_OB_4H', 75))
+            out['wt_percentile'] = (pct_D > ob_D) & (pct_4h > ob_4h)
+        else:
+            os_D = float(getattr(config, 'WT_PERCENTILE_EXIT_OS_D', 10))
+            os_4h = float(getattr(config, 'WT_PERCENTILE_EXIT_OS_4H', 25))
+            out['wt_percentile'] = (pct_D < os_D) & (pct_4h < os_4h)
+    else:
+        out['wt_percentile'] = np.zeros(n, dtype=bool)
+
+    # E_1 WT_DELTA_EXIT
+    if bool(getattr(config, 'E_1_WT_EXIT_USE_DELTA_ENABLED', False)):
+        delta = f('wt_composite_delta')
+        thr = float(getattr(config, 'E_1_EXIT_DELTA_THR', 50.0))
+        out['e1_wt_delta'] = (delta < -thr) if is_long else (delta > thr)
+    else:
+        out['e1_wt_delta'] = np.zeros(n, dtype=bool)
+
+    # E_3 STRUCTURE_EXIT (mode 2 = live)
+    e3_mode = int(getattr(config, 'E_3_USE_WT_STRUCTURE_EXIT_MODE', 0))
+    if e3_mode == 2:
+        against = np.zeros(n, dtype=np.int8)
+        for tf in ('15m', '1h', '4h'):
+            s = f(f'wt_structure_{tf}', 0)
+            against = against + (((s == -1) if is_long else (s == 1))).astype(np.int8)
+        out['e3_structure'] = against >= 2
+    else:
+        out['e3_structure'] = np.zeros(n, dtype=bool)
+
+    return out

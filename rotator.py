@@ -68,7 +68,7 @@ def run_engine(symbols: list[str], start_date: str, capital: float = 1000.0,
 
 
 def parse_position_key(pk: str) -> tuple[str, str]:
-    """fin:BTCUSDT_LONG → (BTCUSDT, LONG)."""
+    """fin:BTCUSDC_LONG → (BTCUSDC, LONG)."""
     after_colon = pk.split(":", 1)[-1]
     if after_colon.endswith("_LONG"):
         return after_colon[:-5], "LONG"

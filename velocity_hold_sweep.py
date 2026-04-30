@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from v8_quick_engine import QuickConfig, simulate, iter_npz
 
 CRYPTO_12 = [
-    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "AVAXUSDT",
-    "LINKUSDT", "ADAUSDT", "DOTUSDT", "LTCUSDT", "TRXUSDT", "ATOMUSDT",
+    "BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "AVAXUSDC",
+    "LINKUSDC", "ADAUSDC", "DOTUSDT", "LTCUSDC", "TRXUSDT", "ATOMUSDT",
 ]
 
 SWEEP_VARIANTS = [

@@ -16,7 +16,7 @@ For each run JSONL in $V8_TRADES_OUT_DIR:
 Usage:
   python3 suggestion_engine.py                              # one-shot, default dir
   python3 suggestion_engine.py --runs btc_BEST,5SYM_BEST    # specific runs
-  python3 suggestion_engine.py --syms BTCUSDT,ETHUSDT       # specific symbols
+  python3 suggestion_engine.py --syms BTCUSDC,ETHUSDC       # specific symbols
   python3 suggestion_engine.py --loop --interval 900        # every 15 min forever
   python3 suggestion_engine.py --gain-threshold 0.5 --lookahead-bars 20  # tune missed-entry detection
 """
