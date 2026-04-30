@@ -48,9 +48,29 @@ def main() -> int:
             or "per_sym" in override_path.stem.lower()):
         sys.exit(f"IMPOSTER_OVERRIDE_REFUSED: {override_path}")
 
-    syms_all = sorted([p.stem for p in NPZ_DIR.glob("*.npz")
-                       if (p.stem.endswith("USDC") or p.stem.endswith("USDT"))
-                       and not p.stem.startswith("tradier")])
+    # Filter syms to those with REAL canonical NPZ structure (≥3 years of 3m bars).
+    # Recently-listed syms (SKYUSDT etc.) have truncated NPZs that the engine zero-fills
+    # and then raises SystemExit on — bypasses normal try/except. Pre-flight filter.
+    MIN_BARS = 50000  # ≈3.47y on 3m TF
+    candidates = sorted([p.stem for p in NPZ_DIR.glob("*.npz")
+                         if (p.stem.endswith("USDC") or p.stem.endswith("USDT"))
+                         and not p.stem.startswith("tradier")])
+    syms_all: List[str] = []
+    skipped: List[str] = []
+    for stem in candidates:
+        try:
+            z = np.load(str(NPZ_DIR / f"{stem}.npz"))
+            ts = z["timestamps"] if "timestamps" in z.files else z[z.files[0]]
+            n = int(len(ts))
+            z.close()
+        except Exception:
+            n = 0
+        if n >= MIN_BARS:
+            syms_all.append(stem)
+        else:
+            skipped.append(f"{stem}({n})")
+    if skipped:
+        print(f"[48sym] skipped {len(skipped)} short-history syms: {','.join(skipped[:8])}{' ...' if len(skipped)>8 else ''}", flush=True)
     syms = syms_all[: args.limit] if args.limit else syms_all
     # ALL syms must be in BTC_DEDICATED_SYMBOLS so engine fires the dedicated path on each.
     DEDICATED_FULL = tuple(syms)
@@ -81,6 +101,9 @@ def main() -> int:
             ts = z["timestamps"] if "timestamps" in z.files else z[z.files[0]]
             yr = float(ts[-1] - ts[0]) / (365.25 * 86400)
             years_max = max(years_max, yr)
+        except SystemExit as e:
+            # Engine sometimes raises SystemExit on broken NPZ; convert to per-sym skip.
+            print(f"  [{i}/{len(syms)}] {sym} SystemExit: {e}", flush=True)
         except Exception as e:
             print(f"  [{i}/{len(syms)}] {sym} ERR: {e}", flush=True)
         finally:
