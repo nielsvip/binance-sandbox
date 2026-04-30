@@ -82,10 +82,10 @@ def run_one(mode: str, syms: list, npz_dir: str, label: str,
     cfg.USE_PROCESS_POSITION_EXIT_GATES = use_exit
     cfg.MODE = mode
     t0 = time.time()
-    stores = list(iter_npz(mode, syms, start_date, npz_dir=npz_dir))
-    elapsed_load = time.time() - t0
+    elapsed_load = 0.0
     t1 = time.time()
-    res = simulate(stores, cfg, capital=10000.0)
+    # Stream NPZs (do NOT materialize into a list — 60 syms × 200k bars OOM's a 30GB box).
+    res = simulate(iter_npz(mode, syms, start_date, npz_dir=npz_dir), cfg, capital=10000.0)
     elapsed_sim = time.time() - t1
     n_syms = len(syms)
     years = float(res.get('years', 0) or 0)
