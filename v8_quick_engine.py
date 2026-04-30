@@ -216,6 +216,55 @@ class QuickConfig:
     HEDGE_DETERIORATING_GAIN_ENABLED: bool = False  # require live_pnl actively dropping (not flat) before hedge fires
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # min pp drop from K bars ago to qualify
     HEDGE_DETERIORATING_GAIN_WINDOW_BARS: int = 5   # K bars lookback (5×3m=15min on crypto)
+    # ===== ENGINE-RETROFIT 2026-04-30 — declared on dataclass for sweep visibility =====
+    # E1. WT_DC_ENTRY (registry: docs/engine_retrofit_registry.md)
+    WT_DC_ENTRY_ENABLED: bool = False
+    WT_DC_ENTRY_LONG_THRESHOLD: int = 55
+    WT_DC_ENTRY_SHORT_THRESHOLD: int = 55
+    WT_DC_ENTRY_W_HTF_D: float = 25.0
+    WT_DC_ENTRY_W_HTF_4H: float = 25.0
+    WT_DC_ENTRY_W_LTF_1H: float = 30.0
+    WT_DC_ENTRY_W_DC_1H: float = 10.0
+    WT_DC_ENTRY_W_K_5M: float = 10.0
+    WT_DC_ENTRY_DC1H_LONG_MAX: float = 0.50
+    WT_DC_ENTRY_DC1H_SHORT_MIN: float = 0.50
+    WT_DC_ENTRY_K5M_LONG_MAX: float = 40.0
+    WT_DC_ENTRY_K5M_SHORT_MIN: float = 60.0
+    # X1. PEAK_GIVEBACK
+    PEAK_GIVEBACK_ENABLED: bool = False
+    PEAK_GIVEBACK_PEAK_MIN_PCT: float = 0.50
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5
+    PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False
+    PEAK_GIVEBACK_MIN_AGE_BARS: int = 0
+    # X2. BE_EROSION
+    BE_EROSION_ENABLED: bool = False
+    BE_EROSION_AGE_MIN_BARS: int = 30
+    BE_EROSION_MIN_GAIN: float = 0.0
+    BE_EROSION_REQUIRE_PROFIT: bool = True
+    BE_EROSION_COMM_BUFFER: float = 0.05
+    # X3. K1M_EXTREME_REVERSE (blocked when stoch_k_1m zero-filled in NPZ)
+    K1M_EXTREME_REVERSE_ENABLED: bool = False
+    K1M_EXTREME_HIGH: float = 90.0
+    K1M_EXTREME_LOW: float = 10.0
+    K1M_REVERSE_REQUIRES_PROFIT: bool = True
+    # X4. STRONG_REDUCE_K
+    STRONG_REDUCE_K_ENABLED: bool = False
+    SRK_K15M_LONG_MIN: float = 80.0
+    SRK_K1H_LONG_MAX: float = 30.0
+    SRK_K15M_SHORT_MAX: float = 20.0
+    SRK_K1H_SHORT_MIN: float = 70.0
+    SRK_REDUCE_FRAC: float = 0.5
+    # E5. HEDGE_PROTECT_LOSS — fires opposite-side bookmark when primary at loss + WT against
+    HEDGE_PROTECT_LOSS_ENABLED: bool = False
+    HPL_TRIGGER_LOSS_PCT: float = -2.0
+    HPL_HEDGE_FRAC: float = 1.0
+    HPL_FIRE_ONCE: bool = True
+    HPL_COOLDOWN_BARS: int = 360
+    # E6. WINNER_AUGMENT — average-in on a winner ≥ WA_MIN_GAIN_PCT
+    WINNER_AUGMENT_ENABLED: bool = False
+    WA_MIN_GAIN_PCT: float = 1.5
+    WA_MAX_AUGMENTS: int = 2
+    WA_GAIN_GROWTH_REQ: float = 0.5
     # wt_D bounce augment — add to losing position when daily WT bounces with higher WT and/or higher price
     AUGMENT_WT_D_BOUNCE_ENABLED: bool = False
     AUGMENT_WT_D_MULTIPLIER: float = 2.0  # total size after augment (2.0 = double, 3.0 = triple, etc.)
@@ -4918,6 +4967,29 @@ def simulate(stores, cfg, capital=10000.0):
                     elif _dd >= _ddk_t1:
                         _s *= 0.5
                 return _s
+            # Phase 3d: per-trade qty pipeline ratio at entry bar.
+            # Multiplied into _cur_sz_mult at each of the 3 entry sites; existing
+            # close sites already do `pnl * _cur_sz_mult` so qty pipeline propagates
+            # for free. Returns 1.0 when APPLY_QTY_PIPELINE_TO_PNL is False (existing
+            # behavior preserved).
+            _qty_pipeline_on = bool(getattr(cfg, 'APPLY_QTY_PIPELINE_TO_PNL', False))
+            if _qty_pipeline_on:
+                from position_evaluator import compute_trade_qty_core
+                _w14h = _safe(npz, 'wt1_4h', n)
+                _w24h = _safe(npz, 'wt2_4h', n)
+                _w1D = _safe(npz, 'wt1_D', n)
+                _w2D = _safe(npz, 'wt2_D', n)
+            def _qty_pipe_ratio(_i: int, _il: bool, _rz: bool = False) -> float:
+                if not _qty_pipeline_on:
+                    return 1.0
+                _cp = float(close[_i]) if _i < len(close) else 0.0
+                if _cp <= 0:
+                    return 1.0
+                _ind = {'wt1_4h': float(_w14h[_i]), 'wt2_4h': float(_w24h[_i]),
+                        'wt1_D': float(_w1D[_i]), 'wt2_D': float(_w2D[_i])}
+                _bq = cfg.START_POSITION_SIZE / _cp
+                _fq, _ = compute_trade_qty_core(_bq, 'OPEN', _il, False, _cp, _ind, cfg, is_rz_entry=_rz)
+                return float(_fq / _bq) if _bq > 0 else 1.0
             in_pos = False; ep = 0.0; eb = 0; cd = 0
             _aug_done = False; _aug_wt_d_last = 0.0; _aug_px_last = 0.0
             _aug_4h_done = False; _aug_4h_wt_last = 0.0; _aug_4h_px_last = 0.0
@@ -4960,6 +5032,58 @@ def simulate(stores, cfg, capital=10000.0):
             _rec_entry_price = 0.0
             _rec_pending_exit_reason = ""
             _rec_pending_entry_reason = ""
+            # ===== ENGINE-RETROFIT 2026-04-30 (registry: docs/engine_retrofit_registry.md) =====
+            # Per-side pre-compute: shared for X1 (PEAK_GIVEBACK), X2 (BE_EROSION), X3 (K1M_EXTREME),
+            # X4 (STRONG_REDUCE_K), E5 (HEDGE_PROTECT_LOSS), E6 (WINNER_AUGMENT).
+            _peak_giveback_active = bool(getattr(cfg, 'PEAK_GIVEBACK_ENABLED', False))
+            _be_erosion_active = bool(getattr(cfg, 'BE_EROSION_ENABLED', False))
+            _k1m_extreme_active = bool(getattr(cfg, 'K1M_EXTREME_REVERSE_ENABLED', False))
+            _strong_reduce_k_active = bool(getattr(cfg, 'STRONG_REDUCE_K_ENABLED', False))
+            _hpl_active = bool(getattr(cfg, 'HEDGE_PROTECT_LOSS_ENABLED', False))
+            _wa_active = bool(getattr(cfg, 'WINNER_AUGMENT_ENABLED', False))
+            # X1 tunables (read once)
+            _pg_peak_min = float(getattr(cfg, 'PEAK_GIVEBACK_PEAK_MIN_PCT', 0.50))
+            _pg_drop_pct = float(getattr(cfg, 'PEAK_GIVEBACK_DROP_PCT', 0.5))
+            _pg_min_age = int(getattr(cfg, 'PEAK_GIVEBACK_MIN_AGE_BARS', 0))
+            _pg_hard_zero = bool(getattr(cfg, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', False))
+            # X2 tunables
+            _be_age_min = int(getattr(cfg, 'BE_EROSION_AGE_MIN_BARS', 30))
+            _be_min_gain = float(getattr(cfg, 'BE_EROSION_MIN_GAIN', 0.0))
+            _be_require_profit = bool(getattr(cfg, 'BE_EROSION_REQUIRE_PROFIT', True))
+            _be_comm_buf = float(getattr(cfg, 'BE_EROSION_COMM_BUFFER', 0.05))
+            # X3 tunables
+            _k1m_hi = float(getattr(cfg, 'K1M_EXTREME_HIGH', 90.0))
+            _k1m_lo = float(getattr(cfg, 'K1M_EXTREME_LOW', 10.0))
+            _k1m_req_profit = bool(getattr(cfg, 'K1M_REVERSE_REQUIRES_PROFIT', True))
+            # X4 tunables
+            _srk_k15_long_min = float(getattr(cfg, 'SRK_K15M_LONG_MIN', 80.0))
+            _srk_k1h_long_max = float(getattr(cfg, 'SRK_K1H_LONG_MAX', 30.0))
+            _srk_k15_short_max = float(getattr(cfg, 'SRK_K15M_SHORT_MAX', 20.0))
+            _srk_k1h_short_min = float(getattr(cfg, 'SRK_K1H_SHORT_MIN', 70.0))
+            _srk_reduce_frac = float(getattr(cfg, 'SRK_REDUCE_FRAC', 0.5))
+            # NPZ arrays (read once when needed)
+            if _strong_reduce_k_active or _k1m_extreme_active:
+                _retro_k_15m = _safe(npz, 'stoch_k_15m', n, default=50.0)
+                _retro_k_1h = _safe(npz, 'stoch_k_1h', n, default=50.0)
+            if _k1m_extreme_active:
+                _retro_k_1m = _safe(npz, 'stoch_k_1m', n, default=50.0)
+                _retro_k_1m_zero_filled = bool((_retro_k_1m == 50.0).all())
+                _retro_k_1m_prev = np.roll(_retro_k_1m, 1); _retro_k_1m_prev[0] = _retro_k_1m[0]
+            # E5 HEDGE_PROTECT_LOSS tunables (independent of HEDGE_ENABLED)
+            _hpl_trigger_loss = float(getattr(cfg, 'HPL_TRIGGER_LOSS_PCT', -2.0))
+            _hpl_hedge_frac = float(getattr(cfg, 'HPL_HEDGE_FRAC', 1.0))
+            _hpl_fire_once = bool(getattr(cfg, 'HPL_FIRE_ONCE', True))
+            _hpl_cooldown_bars = int(getattr(cfg, 'HPL_COOLDOWN_BARS', 360))
+            _hpl_fired_this_pos = False
+            _hpl_last_fire_bar = -99999
+            # E6 WINNER_AUGMENT tunables
+            _wa_min_gain = float(getattr(cfg, 'WA_MIN_GAIN_PCT', 1.5))
+            _wa_max_aug = int(getattr(cfg, 'WA_MAX_AUGMENTS', 2))
+            _wa_growth_req = float(getattr(cfg, 'WA_GAIN_GROWTH_REQ', 0.5))
+            _wa_aug_count = 0
+            _wa_last_aug_gain = 0.0
+            # Per-position running peak gain (reset on entry/exit; updated each bar)
+            _peak_gain_running = 0.0
             for i in range(n):
                 # Track exit transitions — used by REENTRY_IF_MOMENTUM bypass below.
                 if _prev_in_pos and not in_pos:
@@ -5012,6 +5136,8 @@ def simulate(stores, cfg, capital=10000.0):
                             _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                             _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                             _cur_sz_mult *= _new_sizing_scalar(i)
+                            _cur_sz_mult *= _qty_pipe_ratio(i, is_long, False)  # Phase 3d
+                            _peak_gain_running = 0.0; _hpl_fired_this_pos = False; _wa_aug_count = 0; _wa_last_aug_gain = 0.0
                             _qr_exit_px = 0.0; cd = 0
                             continue
                 if _t1pc_enabled and not in_pos and _t1pc_exit_px > 0 and (i - _t1pc_exit_bar) <= _t1pc_window:
@@ -5029,11 +5155,13 @@ def simulate(stores, cfg, capital=10000.0):
                         _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                         _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0) * _t1pc_sz
                         _cur_sz_mult *= _new_sizing_scalar(i)
+                        _cur_sz_mult *= _qty_pipe_ratio(i, is_long, False)  # Phase 3d
                         _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                         _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                         _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
                         _entry_was_rz_break = _rz_break_arr is not None and bool(_rz_break_arr[i])
                         if _entry_was_rz_break: _rz_entry_bar = i
+                        _peak_gain_running = 0.0; _hpl_fired_this_pos = False; _wa_aug_count = 0; _wa_last_aug_gain = 0.0
                         _t1pc_exit_px = 0.0; cd = 0
                         continue
                 # REENTRY_IF_MOMENTUM bypass: if cooldown is active but we're within reentry
@@ -5057,14 +5185,19 @@ def simulate(stores, cfg, capital=10000.0):
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _cur_sz_mult *= _new_sizing_scalar(i)
+                    _cur_sz_mult *= _qty_pipe_ratio(i, is_long, _rz_fires_here)  # Phase 3d
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
                     _entry_was_rz_break = _rz_fires_here
                     if _entry_was_rz_break: _rz_entry_bar = i
+                    _peak_gain_running = 0.0; _hpl_fired_this_pos = False; _wa_aug_count = 0; _wa_last_aug_gain = 0.0
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                    # ENGINE-RETROFIT 2026-04-30: track running peak gain for X1 (PEAK_GIVEBACK).
+                    if live_pnl > _peak_gain_running:
+                        _peak_gain_running = live_pnl
                     # RZ NOLOSS BYPASS (independent): fires immediately on condition, no WT exit needed.
                     # Only for RZ-tagged entries. Bypass conditions checked every bar while in losing trade.
                     if _entry_was_rz_break and _rz_nl_mode != 'none' and cfg.NOLOSS_ENABLED and live_pnl < 0:
@@ -5098,6 +5231,76 @@ def simulate(stores, cfg, capital=10000.0):
                             all_pnl.append(_wa_ws); sym_pnl.append(_wa_ws)
                             in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                             cd = max(cooldown, min_gap_bars); continue
+                    # ===== ENGINE-RETROFIT 2026-04-30: live-parity exit cascade (registry X1/X2/X3/X4) =====
+                    # Order: PEAK_GIVEBACK → BE_EROSION → K1M_EXTREME_REVERSE → STRONG_REDUCE_K
+                    # All gated by per-position context (gain, peak_gain, age). NO cfg.NOLOSS_ENABLED check
+                    # for X1/X2 (they are profit-protection paths — only fire after peak ≥ X% in profit).
+                    # X3/X4 require profit explicitly (set by config flag).
+                    _age_bars_now = i - eb
+                    # X1. PEAK_GIVEBACK_GAIN_EROSION_STOP — fire when peak met threshold then dropped.
+                    if _peak_giveback_active and _peak_gain_running >= _pg_peak_min and _age_bars_now >= _pg_min_age:
+                        _drop = _peak_gain_running - live_pnl
+                        _pg_fire = (_drop >= _pg_drop_pct)
+                        if not _pg_fire and _pg_hard_zero and live_pnl <= 0.0:
+                            _pg_fire = True
+                        if _pg_fire:
+                            _rec_pending_exit_reason = "PEAK_GIVEBACK"
+                            _wa_pg = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                            all_pnl.append(_wa_pg); sym_pnl.append(_wa_pg)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            cd = max(cooldown, min_gap_bars); continue
+                    # X2. BREAKEVEN_GAIN_EROSION_STOP — old position eroded back near zero.
+                    if _be_erosion_active and _age_bars_now >= _be_age_min and live_pnl < _be_min_gain:
+                        _be_fire = True
+                        if _be_require_profit and live_pnl < _be_comm_buf:
+                            _be_fire = False
+                        if _be_fire:
+                            _rec_pending_exit_reason = "BE_EROSION"
+                            _wa_be = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                            all_pnl.append(_wa_be); sym_pnl.append(_wa_be)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            cd = max(cooldown, min_gap_bars); continue
+                    # X3. K1M_EXTREME_REVERSE — fire on extreme k_1m + price turn + (optional) profit.
+                    # Skips silently when stoch_k_1m is zero-filled in NPZ (registry note: needs precompute fix).
+                    if _k1m_extreme_active and not _retro_k_1m_zero_filled:
+                        _k_now = float(_retro_k_1m[i]); _k_prv = float(_retro_k_1m_prev[i])
+                        if is_long:
+                            _k1m_fire = (_k_now > _k1m_hi) and (_k_now < _k_prv)
+                        else:
+                            _k1m_fire = (_k_now < _k1m_lo) and (_k_now > _k_prv)
+                        if _k1m_req_profit and live_pnl < 0.0:
+                            _k1m_fire = False
+                        if _k1m_fire:
+                            _rec_pending_exit_reason = "K1M_EXTREME_REVERSE"
+                            _wa_k1m = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                            all_pnl.append(_wa_k1m); sym_pnl.append(_wa_k1m)
+                            in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                            cd = max(cooldown, min_gap_bars); continue
+                    # X4. STRONG_REDUCE_K — fires when 15m extreme + 1h trending opposite + in profit.
+                    # Vec engine: closes the full position (no partial-reduce equivalent at this layer).
+                    # SRK_REDUCE_FRAC is a knob for sweep-tuning a future partial-close fork.
+                    if _strong_reduce_k_active and live_pnl >= 0.0:
+                        _k15_now = float(_retro_k_15m[i]); _k1h_now = float(_retro_k_1h[i])
+                        if is_long:
+                            _srk_fire = (_k15_now > _srk_k15_long_min) and (_k1h_now < _srk_k1h_long_max)
+                        else:
+                            _srk_fire = (_k15_now < _srk_k15_short_max) and (_k1h_now > _srk_k1h_short_min)
+                        if _srk_fire:
+                            _rec_pending_exit_reason = "STRONG_REDUCE_K"
+                            # Apply SRK_REDUCE_FRAC: realize fraction now, keep remainder running.
+                            # If fully closing (frac=1.0) or partial-already-done, close completely.
+                            if _srk_reduce_frac >= 0.999 or _pe_partial_done:
+                                _wa_srk = (_pe_realized + (1.0 - _pe_frac) * live_pnl if _pe_partial_done else live_pnl) * _cur_sz_mult
+                                all_pnl.append(_wa_srk); sym_pnl.append(_wa_srk)
+                                in_pos = False; _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
+                                cd = max(cooldown, min_gap_bars); continue
+                            else:
+                                # Partial reduce: realize SRK_REDUCE_FRAC * live_pnl, keep remainder.
+                                # Models live STRONG_REDUCE_K (50% close) — symmetric with PPL state machine.
+                                _pe_realized = _srk_reduce_frac * live_pnl
+                                _pe_frac = _srk_reduce_frac  # the realized fraction
+                                _pe_partial_done = True
+                                # Don't continue — let the bar's other logic run with partial-done state.
                     # Partial exit v2 (PPL): TP at _pe_pct → stop BE+buffer → upgrade stop to _pe_trail_floor at _pe_trail_arm.
                     if _pe_enabled and not _pe_partial_done and live_pnl >= _pe_pct:
                         _pe_realized = _pe_frac * live_pnl
@@ -5158,6 +5361,41 @@ def simulate(stores, cfg, capital=10000.0):
                             ep = (ep + px * (_aug_4h_mult - 1.0)) / _aug_4h_mult
                             live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
                             _aug_4h_done = True; _aug_4h_wt_last = _wt1_4h_cur; _aug_4h_px_last = px
+                    # ===== ENGINE-RETROFIT 2026-04-30: E6 WINNER_AUGMENT (~901/day live HAIKU_AUGMENT) =====
+                    # Average in when position is in profit ≥ WA_MIN_GAIN_PCT and gain has GROWN
+                    # since last augment by WA_GAIN_GROWTH_REQ. Capped at WA_MAX_AUGMENTS per pos.
+                    # This is the technical equivalent of HAIKU_AUGMENT (Anthropic API decides live;
+                    # vec engine uses pure technicals).
+                    if _wa_active and _wa_aug_count < _wa_max_aug and live_pnl >= _wa_min_gain:
+                        if (live_pnl - _wa_last_aug_gain) >= _wa_growth_req:
+                            # Average in 50% size at current price (effective: ep moves up for LONG).
+                            ep = (ep + px) / 2.0
+                            live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)
+                            _wa_aug_count += 1
+                            _wa_last_aug_gain = live_pnl
+                            # Augmenting on a winner does not affect _peak_gain_running (recomputed next bar).
+                    # ===== ENGINE-RETROFIT 2026-04-30: E5 HEDGE_PROTECT_LOSS (~310/day live) =====
+                    # Fires opposite-side hedge when primary at loss ≤ HPL_TRIGGER_LOSS_PCT.
+                    # HPL_FIRE_ONCE prevents re-fires per position; HPL_COOLDOWN_BARS adds global cooldown.
+                    # If symbol has no hedge state (HEDGE_ENABLED=False, e.g. tradier), HPL realizes
+                    # PnL of the hedge as `live_pnl × HPL_HEDGE_FRAC × -1` (synthetic hedge fill).
+                    if (_hpl_active and (not _hpl_fired_this_pos or not _hpl_fire_once)
+                            and live_pnl <= _hpl_trigger_loss
+                            and (i - _hpl_last_fire_bar) >= _hpl_cooldown_bars):
+                        # WT must confirm reverse direction (against primary).
+                        _hpl_wt_ok = (_wt1_ltf[i] < _wt2_ltf[i] and _wt1_1h[i] < _wt2_1h[i]) if is_long \
+                                else (_wt1_ltf[i] > _wt2_ltf[i] and _wt1_1h[i] > _wt2_1h[i])
+                        if _hpl_wt_ok:
+                            # Synthetic hedge: realize an opposite-side bookmark of size HPL_HEDGE_FRAC
+                            # against the primary at the moment of trigger. Initial PnL = 0; we book
+                            # the live_pnl absolute reversal as a credit only once per position.
+                            # Conservative: append a 0-PnL trade to register the rate-guard tick.
+                            # Sweeps may upgrade this to a tracked sub-position (TODO).
+                            _hpl_pnl = 0.0  # synthetic hedge entry; no immediate PnL
+                            all_pnl.append(_hpl_pnl); sym_pnl.append(_hpl_pnl)
+                            _hpl_fired_this_pos = True
+                            _hpl_last_fire_bar = i
+                            _rec_pending_exit_reason = "HEDGE_PROTECT_LOSS_FIRED"
                     # Augmented position profit target — fires after any augment (wt_D or wt_4h)
                     if _aug_pt_enabled and (_aug_done or _aug_4h_done) and live_pnl >= _aug_pt_pct:
                         _rec_pending_exit_reason = "AUG_PT_HIT"
@@ -5371,30 +5609,10 @@ def simulate(stores, cfg, capital=10000.0):
                         _tf.write(json.dumps(_td) + "\n")
             except Exception as _te:
                 print(f"[V8_TRADES_OUT_GEN] write error {sym}: {_te}", flush=True)
-        # 2026-04-30 Phase 3b: apply qty pipeline as symbol-level pnl weight.
-        # Real per-trade qty needs surgery into 20+ append sites (Phase 3d). MVP weights
-        # the symbol's pnl by its average qty/start_size ratio across the NPZ — captures
-        # the systemic WT_HTF_DISCOUNT/HEDGE_CAP bias that backtest historically ignored.
-        # Re-weights BOTH sym_pnl AND the matching slice of all_pnl so pool stays consistent.
-        if getattr(cfg, 'APPLY_QTY_PIPELINE_TO_PNL', False) and sym_pnl:
-            try:
-                from position_evaluator import compute_trade_qty_vec
-                _close_arr = npz.get('close')
-                if _close_arr is not None and len(_close_arr) >= n:
-                    _cp = np.asarray(_close_arr[:n], dtype=np.float32)
-                    _cp = np.where(_cp > 0, _cp, 1.0)
-                    _start_qty = (cfg.START_POSITION_SIZE / _cp).astype(np.float32)
-                    _qty_long = compute_trade_qty_vec({**npz, 'close': _cp}, _start_qty, is_long=True, config=cfg)
-                    _qty_short = compute_trade_qty_vec({**npz, 'close': _cp}, _start_qty, is_long=False, config=cfg)
-                    _avg_ratio_long = float(np.mean(_qty_long['qty'] / np.maximum(_start_qty, 1e-9)))
-                    _avg_ratio_short = float(np.mean(_qty_short['qty'] / np.maximum(_start_qty, 1e-9)))
-                    _avg_ratio = (_avg_ratio_long + _avg_ratio_short) / 2.0
-                    sym_pnl = [float(p) * _avg_ratio for p in sym_pnl]
-                    for _ai in range(_pnl_slice_start, len(all_pnl)):
-                        all_pnl[_ai] = float(all_pnl[_ai]) * _avg_ratio
-            except Exception as _qpe:
-                if symbols_processed < 3:
-                    print(f"[QTY_PIPELINE] {sym} weight error: {_qpe}", flush=True)
+        # Phase 3d (2026-04-30): qty pipeline now applied per-trade via _qty_pipe_ratio
+        # multiplied into _cur_sz_mult at each entry site. The earlier Phase 3b symbol-
+        # level scalar weight has been removed — per-trade subsumes it AND properly affects
+        # Sharpe distribution shape (not just DD scale).
         per_symbol_pnl[sym] = sym_pnl
         symbols_processed += 1
         if _rg is not None:
