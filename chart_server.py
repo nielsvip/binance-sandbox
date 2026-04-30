@@ -255,14 +255,55 @@ def runs_grouped():
     return jsonify(groups)
 
 
-def _compute_per_sym_best() -> str:
-    """Pure compute. Reuses _file_aggregates() for speed."""
-    if not TRADES_DIR.exists():
-        return "[]"
+def _iter_all_trade_files() -> List[Tuple[str, str, Path]]:
+    """Walk every known run-trade JSONL across all roots.
+
+    Yields (run_id_keyed, sym, path) tuples. run_id_keyed matches what
+    `_build_run_registry` produces (hr_<acct>::, bigsweep::, or bare for legacy).
+    Multi-sym runs surface every sym — the registry alone keeps only one Path
+    per run_id (latest mtime), but for ranking we need every sibling file.
+    """
+    out: List[Tuple[str, str, Path]] = []
+    seen: set = set()
+    for root in _all_trade_roots():
+        try:
+            for p in root.rglob("*__*.jsonl"):
+                stem = p.stem
+                idx = stem.rfind("__")
+                if idx <= 0:
+                    continue
+                run_id = stem[:idx]
+                sym = stem[idx + 2:]
+                if not sym:
+                    continue
+                s = str(p)
+                if "/hourly_reconfig/" in s:
+                    try:
+                        parts = p.parts
+                        i = parts.index("hourly_reconfig")
+                        acct = parts[i + 1]
+                        run_keyed = f"hr_{acct}::{run_id}"
+                    except Exception:
+                        run_keyed = run_id
+                elif "/canonical_trades/" in s:
+                    run_keyed = f"bigsweep::{run_id}"
+                else:
+                    run_keyed = run_id
+                key = (run_keyed, sym, str(p))
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append((run_keyed, sym, p))
+        except Exception:
+            continue
+    return out
+
+
+def _compute_per_sym_best(sym_filter: str = "") -> str:
+    """Pure compute across ALL trade roots (legacy + hourly_reconfig + canonical_trades)."""
     by_sym: Dict[str, list] = {}
-    for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
-        run, _, sym = p.stem.partition("__")
-        if not run or not sym:
+    for run, sym, p in _iter_all_trade_files():
+        if sym_filter and sym.upper() != sym_filter.upper():
             continue
         agg = _file_aggregates(p)
         if not agg:
@@ -281,6 +322,7 @@ def _compute_per_sym_best() -> str:
             "total_gain_pct": round(total_gain, 1),
             "chained_pct": round(chained_pct, 3),
             "gain_per_year_pct": round(total_gain / win_yrs, 1),
+            "sym_sharpe": round(agg["sym_sharpe_capped"], 4),
         })
     out = []
     for sym, rows in by_sym.items():
@@ -292,8 +334,12 @@ def _compute_per_sym_best() -> str:
 
 @app.route("/per_sym_best")
 def per_sym_best():
-    """Cached endpoint. Returns []+'warming' header if not yet populated."""
-    import time as _time
+    """Cached endpoint. ?sym=X filters to one symbol's top runs.
+    Returns []+'warming' header if not yet populated."""
+    sym_filter = request.args.get("sym", "").upper()
+    if sym_filter:
+        body = _compute_per_sym_best(sym_filter)
+        return app.response_class(body, mimetype="application/json")
     with _precompute_lock:
         pre = _precomputed.get("per_sym_best")
     if pre:
@@ -370,14 +416,11 @@ def _compute_runs_ranked(sym_filter: str = "") -> str:
     """Pure compute. Per CLAUDE.md STANDARD METRIC SET, every row carries:
         pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr, gain_sym_yr,
         total_gain_pct, trades, wr, chained_pct, max_dd_pct (TBD)
-    Sorts by pool_sharpe (the canonical metric) descending."""
-    if not TRADES_DIR.exists():
-        return "[]"
+    Sorts by pool_sharpe (the canonical metric) descending.
+    Walks ALL trade roots (legacy + hourly_reconfig + canonical_trades)."""
     by_run = {}
-    for p in sorted(TRADES_DIR.glob("*__*.jsonl")):
-        run, _, sym = p.stem.partition("__")
-        if not run or not sym:
-            continue
+    by_run_mtime: Dict[str, float] = {}
+    for run, sym, p in _iter_all_trade_files():
         if sym_filter and sym.upper() != sym_filter:
             continue
         agg = _file_aggregates(p)
@@ -395,6 +438,12 @@ def _compute_runs_ranked(sym_filter: str = "") -> str:
             "_ts_first": agg["ts_first"],
             "_ts_last": agg["ts_last"],
         })
+        try:
+            mt = p.stat().st_mtime
+            if mt > by_run_mtime.get(run, 0):
+                by_run_mtime[run] = mt
+        except Exception:
+            pass
     out = []
     for run, sym_rows in by_run.items():
         # Pool across all symbols: pool_sharpe = mean(all_returns) / std(all_returns)
@@ -444,6 +493,8 @@ def _compute_runs_ranked(sym_filter: str = "") -> str:
             "n_syms": len(sym_rows),
             "n_years": round(years, 2),
             "per_symbol": clean_per_sym,
+            "mtime": int(by_run_mtime.get(run, 0)),
+            "syms": sorted([r["sym"] for r in sym_rows]),
         })
     # SORT BY POOL_SHARPE descending — the canonical CLAUDE.md ranking metric
     out.sort(key=lambda r: -r["pool_sharpe"])
@@ -1655,6 +1706,353 @@ def suggestions():
     if not p.exists():
         return "No suggestions report yet. Run `python3 suggestion_engine.py` to generate.", 404, {"Content-Type": "text/plain"}
     return p.read_text(), 200, {"Content-Type": "text/markdown"}
+
+
+CRYPTO_ACCOUNTS = {"ang", "inf", "flz", "men", "fin"}
+STOCK_ACCOUNTS = {"trb", "trc"}
+
+CATEGORY_DESCRIPTIONS = {
+    "7D_macbook_crypto": "7-Day hourly reconfig (crypto live accounts: ang/inf/flz/men/fin). Re-optimized every hour, ACTIVATES LIVE IMMEDIATELY — most urgent to monitor.",
+    "7D_macbook_stocks": "7-Day hourly reconfig (stock live accounts: trb/trc). Re-optimized every hour, ACTIVATES LIVE IMMEDIATELY for stocks.",
+    "v3_paper": "Scalp V3 paper-trading variants (data/scalp_v3_paper). Live decisions feed but no real-money execution.",
+    "v3_shadow": "Scalp V3 shadow A/B variants (data/scalp_v3_shadow). Each variant runs live in shadow with different switches; decisions logged but not executed.",
+    "s1_crypto_canonical": "S1 crypto canonical top-N replays (canon_crypto_*). Top-ranked autonomous-search winners replayed via populate_canonical_top10.",
+    "s1_crypto_vec": "S1 crypto vectorized backtests (vec_p*). Quick-engine sweeps on the v8 NPZ.",
+    "s1_crypto_bigsweep": "S1 crypto big-sweep canonical 48-sym universes (canonical_48sym_*).",
+    "s2_stocks_canonical": "S2 stocks canonical top-N replays (canon_tradier_*). Top-ranked autonomous-search winners for tradier.",
+    "s2_stocks_bigsweep": "S2 stocks big-sweep canonical replays.",
+    "legacy_other": "Legacy / uncategorized runs.",
+}
+
+
+def _classify_run(run: str, syms: List[str]) -> Tuple[str, str]:
+    """Return (machine, category_key) for a run.
+    machine ∈ {"macbook", "s1", "s2"}.
+    """
+    rl = run.lower()
+    syms_set = {s.upper() for s in (syms or [])}
+    is_stocks = bool(syms_set) and not any(s.endswith(("USDC", "USDT", "USD", "BTC", "ETH")) for s in syms_set)
+    is_crypto = bool(syms_set) and any(s.endswith(("USDC", "USDT")) for s in syms_set)
+    if run.startswith("hr_"):
+        try:
+            acct = run.split("::", 1)[0].split("_", 1)[1]
+        except Exception:
+            acct = ""
+        if acct in CRYPTO_ACCOUNTS:
+            return ("macbook", "7D_macbook_crypto")
+        if acct in STOCK_ACCOUNTS:
+            return ("macbook", "7D_macbook_stocks")
+        return ("macbook", "7D_macbook_crypto")
+    if rl.startswith("v3_paper::") or rl.startswith("paper_"):
+        return ("macbook", "v3_paper")
+    if rl.startswith("v3_shadow::"):
+        return ("macbook", "v3_shadow")
+    if run.startswith("canon_tradier_"):
+        return ("s2", "s2_stocks_canonical")
+    if run.startswith("canon_crypto_"):
+        return ("s1", "s1_crypto_canonical")
+    if run.startswith("vec_"):
+        if is_stocks:
+            return ("s2", "s2_stocks_canonical")
+        return ("s1", "s1_crypto_vec")
+    if run.startswith("bigsweep::"):
+        if is_stocks:
+            return ("s2", "s2_stocks_bigsweep")
+        return ("s1", "s1_crypto_bigsweep")
+    if is_stocks:
+        return ("s2", "legacy_other")
+    if is_crypto:
+        return ("s1", "legacy_other")
+    return ("s1", "legacy_other")
+
+
+def _v3_paper_runs() -> List[Dict[str, Any]]:
+    """Surface v3 paper/shadow as virtual runs (no chart trade arrows yet —
+    PAPER_ENTRY/V3_EXIT events use a different format; show as catalog entries
+    with a description block so the user sees them next to backtest runs)."""
+    out: List[Dict[str, Any]] = []
+    paper_dir = BASE_PATH / "data" / "scalp_v3_paper"
+    if paper_dir.exists():
+        variants: Dict[str, List[Path]] = {}
+        for p in paper_dir.glob("trades_*.jsonl"):
+            stem = p.stem  # trades_<variant>_<date> OR trades_<date>
+            tail = stem[len("trades_"):]
+            parts = tail.rsplit("_", 1)
+            variant = parts[0] if len(parts) == 2 and parts[1].isdigit() else "default"
+            variants.setdefault(variant, []).append(p)
+        for variant, paths in sorted(variants.items()):
+            paths.sort(key=lambda x: x.stat().st_mtime)
+            n_events = 0
+            ts_first = ts_last = 0
+            for p in paths:
+                try:
+                    lines = p.read_text().splitlines()
+                except Exception:
+                    continue
+                n_events += len([l for l in lines if l.strip()])
+            try:
+                mt = max(p.stat().st_mtime for p in paths)
+                ts_first = int(min(p.stat().st_mtime for p in paths))
+                ts_last = int(mt)
+            except Exception:
+                mt = 0
+            out.append({
+                "run": f"v3_paper::{variant}",
+                "category": "v3_paper",
+                "machine": "macbook",
+                "description": f"V3 paper variant: {variant}. {len(paths)} day-files, {n_events} events.",
+                "n_events": n_events,
+                "mtime": int(mt),
+                "ts_first": ts_first,
+                "ts_last": ts_last,
+                "files": [str(p) for p in paths],
+            })
+    shadow_dir = BASE_PATH / "data" / "scalp_v3_shadow"
+    if shadow_dir.exists():
+        variants_s: Dict[str, List[Path]] = {}
+        for p in shadow_dir.glob("*_decisions_*.jsonl"):
+            stem = p.stem  # <variant>_decisions_<date>
+            idx = stem.find("_decisions_")
+            if idx <= 0:
+                continue
+            variant = stem[:idx]
+            variants_s.setdefault(variant, []).append(p)
+        for variant, paths in sorted(variants_s.items()):
+            paths.sort(key=lambda x: x.stat().st_mtime)
+            n_events = 0
+            for p in paths:
+                try:
+                    n_events += len([l for l in p.read_text().splitlines() if l.strip()])
+                except Exception:
+                    pass
+            try:
+                mt = max(p.stat().st_mtime for p in paths)
+            except Exception:
+                mt = 0
+            out.append({
+                "run": f"v3_shadow::{variant}",
+                "category": "v3_shadow",
+                "machine": "macbook",
+                "description": f"V3 shadow variant: {variant}. {len(paths)} day-files, {n_events} decisions.",
+                "n_events": n_events,
+                "mtime": int(mt),
+                "files": [str(p) for p in paths],
+            })
+    return out
+
+
+@app.route("/run_catalog")
+def run_catalog():
+    """Categorized catalog of all runs partitioned by machine.
+
+    Output:
+        {
+          "machines": {
+            "macbook": {"categories": [{"key": "7D_macbook_crypto", "description": "...", "runs": [...]}, ...]},
+            "s1": {...},
+            "s2": {...},
+          },
+          "all_run_count": int, "generated_utc": "..."
+        }
+    Each run carries: run, category, description (from overrides diff or canonical line),
+    pool_sharpe, sym_sharpe, trades, n_syms, n_years, mtime, syms, tier, inflated.
+
+    Categories within a machine are sorted: 7D_* first, then by best run pool_sharpe desc.
+    Runs within a category are sorted by pool_sharpe desc with chronological tiebreak (mtime desc).
+    """
+    with _precompute_lock:
+        rr_body = _precomputed.get("runs_ranked")
+    runs_data: List[Dict[str, Any]] = []
+    if rr_body:
+        try:
+            runs_data = json.loads(rr_body)
+        except Exception:
+            runs_data = []
+    by_machine: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
+        "macbook": {}, "s1": {}, "s2": {},
+    }
+    for r in runs_data:
+        run = r.get("run", "")
+        syms = r.get("syms", [])
+        machine, cat = _classify_run(run, syms)
+        ps = float(r.get("pool_sharpe", 0) or 0)
+        trades = int(r.get("trades", 0) or 0)
+        n_syms = int(r.get("n_syms", 0) or 0)
+        n_years = float(r.get("n_years", 0) or 0)
+        floor_syms = metrics_guard.MIN_SYMS_STOCKS if machine == "s2" else metrics_guard.MIN_SYMS_CRYPTO
+        sample_floor_pass = (n_syms >= floor_syms) and (n_years >= 1.0) and (n_syms == 0 or trades / max(1, n_syms) >= 30)
+        inflated = abs(ps) > metrics_guard.PER_SYM_SHARPE_CAP and trades < 5000
+        tier = metrics_guard.tier_name(ps)
+        canonical_line = (
+            f"pool_sharpe={ps:+.4f} | sym_sharpe={float(r.get('sym_sharpe', 0)):+.4f} | "
+            f"avg_gain_trade={float(r.get('avg_gain_trade', 0)):.4f}%/trade | "
+            f"gain_per_yr={float(r.get('gain_per_yr', 0)):.1f}%/yr | "
+            f"gain_sym_yr={float(r.get('gain_sym_yr', 0)):.4f}%/sym/yr | "
+            f"trades={trades} | n_syms={n_syms} | years={n_years:.2f}"
+        )
+        entry = {
+            "run": run,
+            "category": cat,
+            "machine": machine,
+            "tier": tier,
+            "inflated": inflated,
+            "sample_floor_pass": sample_floor_pass,
+            "canonical_line": canonical_line,
+            "pool_sharpe": ps,
+            "sym_sharpe": float(r.get("sym_sharpe", 0) or 0),
+            "trades": trades,
+            "n_syms": n_syms,
+            "n_years": n_years,
+            "max_dd_pct": float(r.get("max_dd_pct", 0) or 0),
+            "gain_per_yr": float(r.get("gain_per_yr", 0) or 0),
+            "mtime": int(r.get("mtime", 0) or 0),
+            "syms": syms,
+        }
+        by_machine.setdefault(machine, {}).setdefault(cat, []).append(entry)
+    for vrun in _v3_paper_runs():
+        machine = vrun["machine"]
+        cat = vrun["category"]
+        vrun.setdefault("pool_sharpe", 0.0)
+        vrun.setdefault("trades", vrun.get("n_events", 0))
+        vrun.setdefault("n_syms", 0)
+        vrun.setdefault("n_years", 0.0)
+        vrun.setdefault("tier", "Noise")
+        vrun.setdefault("inflated", False)
+        vrun.setdefault("sample_floor_pass", False)
+        vrun.setdefault("canonical_line", vrun.get("description", ""))
+        vrun.setdefault("syms", [])
+        vrun.setdefault("max_dd_pct", 0.0)
+        vrun.setdefault("gain_per_yr", 0.0)
+        vrun.setdefault("sym_sharpe", 0.0)
+        by_machine.setdefault(machine, {}).setdefault(cat, []).append(vrun)
+    output = {"machines": {}, "generated_utc": datetime.now(timezone.utc).isoformat()}
+    total = 0
+    for machine in ("macbook", "s1", "s2"):
+        cat_dict = by_machine.get(machine, {})
+        cats: List[Dict[str, Any]] = []
+        for ckey, items in cat_dict.items():
+            items.sort(key=lambda r: (-(r.get("pool_sharpe") or 0), -(r.get("mtime") or 0)))
+            best_ps = items[0].get("pool_sharpe", 0) if items else 0
+            cats.append({
+                "key": ckey,
+                "description": CATEGORY_DESCRIPTIONS.get(ckey, ckey),
+                "best_pool_sharpe": best_ps,
+                "n_runs": len(items),
+                "runs": items,
+            })
+        def _cat_sort(c):
+            k = c["key"]
+            seven_d = 0 if k.startswith("7D_") else 1
+            return (seven_d, -(c.get("best_pool_sharpe") or 0))
+        cats.sort(key=_cat_sort)
+        output["machines"][machine] = {
+            "categories": cats,
+            "n_runs": sum(c["n_runs"] for c in cats),
+        }
+        total += sum(c["n_runs"] for c in cats)
+    output["all_run_count"] = total
+    return jsonify(output)
+
+
+@app.route("/run_info")
+def run_info():
+    """Detailed metadata for one run.
+
+    Output:
+        run, machine, category, description, canonical_line, syms_with_trades,
+        per_symbol [{sym, trades, sym_sharpe, total_gain_pct, ...}],
+        overrides (if discoverable from autonomous winners by run_id),
+        files (list of trade JSONL paths)
+    """
+    run = request.args.get("run", "")
+    if not run:
+        return jsonify({"error": "run required"}), 400
+    with _precompute_lock:
+        rr_body = _precomputed.get("runs_ranked")
+    rr_match = None
+    if rr_body:
+        try:
+            for r in json.loads(rr_body):
+                if r.get("run") == run:
+                    rr_match = r
+                    break
+        except Exception:
+            pass
+    files: List[str] = []
+    bare = run.split("::", 1)[1] if "::" in run else run
+    for r_keyed, _sym, p in _iter_all_trade_files():
+        if r_keyed == run:
+            files.append(str(p))
+    machine, category = _classify_run(run, (rr_match or {}).get("syms", []))
+    overrides_match: Optional[Dict[str, Any]] = None
+    pool_origin: Optional[str] = None
+    base_aut = BASE_PATH / "data" / "autonomous"
+    if base_aut.exists():
+        try:
+            for p in base_aut.rglob("autonomous_*_winners.jsonl"):
+                s = str(p)
+                if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+                    continue
+                try:
+                    txt = p.read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                if bare not in txt:
+                    continue
+                for line in txt.splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    iter_id = rec.get("iter") or rec.get("run") or rec.get("id") or ""
+                    if str(iter_id) == bare or rec.get("run_id") == bare:
+                        overrides_match = rec.get("overrides") or rec.get("overrides_json") or {}
+                        pool_origin = f"{p.parent.parent.name}/{p.parent.name}"
+                        break
+                if overrides_match:
+                    break
+        except Exception:
+            pass
+    if rr_match:
+        ps = float(rr_match.get("pool_sharpe", 0) or 0)
+        trades = int(rr_match.get("trades", 0) or 0)
+        n_syms = int(rr_match.get("n_syms", 0) or 0)
+        n_years = float(rr_match.get("n_years", 0) or 0)
+        canonical_line = (
+            f"pool_sharpe={ps:+.4f} | sym_sharpe={float(rr_match.get('sym_sharpe', 0)):+.4f} | "
+            f"avg_gain_trade={float(rr_match.get('avg_gain_trade', 0)):.4f}%/trade | "
+            f"gain_per_yr={float(rr_match.get('gain_per_yr', 0)):.1f}%/yr | "
+            f"gain_sym_yr={float(rr_match.get('gain_sym_yr', 0)):.4f}%/sym/yr | "
+            f"trades={trades} | n_syms={n_syms} | years={n_years:.2f}"
+        )
+        tier = metrics_guard.tier_name(ps)
+    else:
+        canonical_line = "(no aggregate stats — run not in /runs_ranked yet)"
+        tier = "Noise"
+    description_lines = [CATEGORY_DESCRIPTIONS.get(category, category)]
+    if overrides_match:
+        n_keys = len(overrides_match)
+        description_lines.append(
+            f"Test parameters: {n_keys} override key{'s' if n_keys != 1 else ''} "
+            f"from sweep pool {pool_origin or '?'}"
+        )
+    return jsonify({
+        "run": run,
+        "machine": machine,
+        "category": category,
+        "category_description": CATEGORY_DESCRIPTIONS.get(category, category),
+        "description": " · ".join(description_lines),
+        "canonical_line": canonical_line,
+        "tier": tier,
+        "syms_with_trades": sorted({s for r_keyed, s, _p in _iter_all_trade_files() if r_keyed == run}),
+        "per_symbol": (rr_match or {}).get("per_symbol", []),
+        "overrides": overrides_match or {},
+        "pool_origin": pool_origin,
+        "files": sorted(files),
+        "stats": rr_match or {},
+    })
 
 
 @app.route("/health")
