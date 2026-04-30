@@ -69,7 +69,11 @@ def _all_trade_roots() -> List[Path]:
 
 def _build_run_registry() -> Dict[str, Path]:
     """Walk every trade root, collect *__*.jsonl. run_id is derived from the file
-    stem (everything before the LAST __<SYM>). Latest mtime wins on collision.
+    stem (everything before the LAST __<SYM>). Source-tagged so chart UI can group:
+      hourly_reconfig/<acct>/runs/<cycle>/<run>__<sym>.jsonl  →  hr_<acct>::<run>
+      canonical_trades/<run>/<run>__<sym>.jsonl              →  bigsweep::<run>
+      legacy /tmp/v8_trades/<run>__<sym>.jsonl               →  <run>  (no prefix)
+    Latest mtime wins on collision.
     """
     reg: Dict[str, Tuple[Path, float]] = {}
     for root in _all_trade_roots():
@@ -80,19 +84,25 @@ def _build_run_registry() -> Dict[str, Path]:
                 if idx <= 0:
                     continue
                 run_id = stem[:idx]
-                # Disambiguate same-named runs from different parent dirs by tagging
-                # with the parent dir name when there's a collision.
-                if run_id in reg and reg[run_id][0].parent != p.parent:
-                    parent_tag = p.parent.name
-                    run_id_tagged = f"{parent_tag}::{run_id}"
+                s = str(p)
+                if "/hourly_reconfig/" in s:
+                    try:
+                        parts = p.parts
+                        i = parts.index("hourly_reconfig")
+                        acct = parts[i + 1]
+                        run_id_keyed = f"hr_{acct}::{run_id}"
+                    except Exception:
+                        run_id_keyed = run_id
+                elif "/canonical_trades/" in s:
+                    run_id_keyed = f"bigsweep::{run_id}"
                 else:
-                    run_id_tagged = run_id
+                    run_id_keyed = run_id  # legacy /tmp/v8_trades
                 try:
                     mtime = p.stat().st_mtime
                 except Exception:
                     mtime = 0.0
-                if run_id_tagged not in reg or mtime > reg[run_id_tagged][1]:
-                    reg[run_id_tagged] = (p, mtime)
+                if run_id_keyed not in reg or mtime > reg[run_id_keyed][1]:
+                    reg[run_id_keyed] = (p, mtime)
         except Exception:
             continue
     return {rid: pair[0] for rid, pair in reg.items()}
@@ -108,30 +118,21 @@ def _get_run_registry(force: bool = False) -> Dict[str, Path]:
 
 
 def _resolve_trade_path(run: str, sym: str) -> Optional[Path]:
-    """Find the JSONL for (run, sym). First check legacy TRADES_DIR convention,
-    then fall back to the multi-root registry.
+    """Find the JSONL for (run, sym). Strips registry prefix (hr_<acct>:: or
+    bigsweep::) before constructing the file path within the resolved parent dir.
     """
     legacy = TRADES_DIR / f"{run}__{sym}.jsonl"
     if legacy.exists():
         return legacy
     reg = _get_run_registry()
-    # Direct match
+    # Strip prefix if present — bare run_id is used in filename.
+    bare_run = run.split("::", 1)[1] if "::" in run else run
     if run in reg:
         p = reg[run]
-        # The registry's path may be for a DIFFERENT sym in the same run group;
-        # construct the sym-specific path within the same parent dir.
-        candidate = p.parent / f"{run}__{sym}.jsonl"
+        candidate = p.parent / f"{bare_run}__{sym}.jsonl"
         if candidate.exists():
             return candidate
         return p if p.stem.endswith(f"__{sym}") else None
-    # Tagged-match: parent_tag::run
-    if "::" in run:
-        parent_tag, _, real_run = run.partition("::")
-        for r, p in reg.items():
-            if r == run and p.parent.name == parent_tag:
-                cand = p.parent / f"{real_run}__{sym}.jsonl"
-                if cand.exists():
-                    return cand
     return None
 TF_SECONDS = {"3m": 180, "15m": 900, "1h": 3600, "4h": 14400, "D": 86400}
 
@@ -224,26 +225,23 @@ def runs_grouped():
                                      "hourly_trc": [], "hourly_trb": [],
                                      "big_sweep": [], "legacy": [], "other": []}
     reg = _get_run_registry()
-    for rid, p in reg.items():
-        s = str(p)
-        if "/hourly_reconfig/flz/" in s:
+    for rid in reg:
+        if rid.startswith("hr_flz::"):
             groups["hourly_flz"].append(rid)
-        elif "/hourly_reconfig/fin/" in s:
+        elif rid.startswith("hr_fin::"):
             groups["hourly_fin"].append(rid)
-        elif "/hourly_reconfig/inf/" in s:
+        elif rid.startswith("hr_inf::"):
             groups["hourly_inf"].append(rid)
-        elif "/hourly_reconfig/trc/" in s:
+        elif rid.startswith("hr_trc::"):
             groups["hourly_trc"].append(rid)
-        elif "/hourly_reconfig/trb/" in s:
+        elif rid.startswith("hr_trb::"):
             groups["hourly_trb"].append(rid)
-        elif "/canonical_trades/" in s:
+        elif rid.startswith("bigsweep::"):
             groups["big_sweep"].append(rid)
+        elif "::" not in rid:
+            groups["legacy"].append(rid)
         else:
             groups["other"].append(rid)
-    if TRADES_DIR.exists():
-        for p in TRADES_DIR.glob("*__*.jsonl"):
-            run, _, _ = p.stem.partition("__")
-            groups["legacy"].append(run)
     for k in groups:
         groups[k] = sorted(set(groups[k]))
     groups["_roots"] = [str(r) for r in _all_trade_roots()]

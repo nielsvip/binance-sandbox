@@ -787,6 +787,81 @@ def _engine_fingerprint() -> dict:
     return out
 
 
+def grid_system_combo():
+    """Full-system high-impact combo sweep — every entry & exit path stays
+    ENABLED (no ablation), we only vary the knobs with proven leverage on
+    Sharpe / WR / total-gain. Each variant is a real backtest_v8_engine run
+    with the FULL pipeline live: WT_DC_ENTRY + B_MAIN_ENTRY (SATOSHIT,
+    STDEV_*) + DELTA_ENTRY + REENTRY_B01-B15 + WT/DC/RZ/STRUCTURAL exits +
+    PPL + HEDGE + STRICT_NO_LOSS + LH/HL filter + FUNDING_GATE +
+    OI_CONFIRM. We don't add new strategies; we tune what's already wired.
+
+    High-leverage knobs (per CLAUDE.md memory + canonical_switches.json):
+      - Entry score floor (TRADIER_ENTRY_SCORE_THRESHOLD / ENTRY_SCORE_THRESHOLD)
+      - K-zone reversal thresholds + bonus
+      - Stoch entry thresholds
+      - WT exit min-TFs (how many timeframes must agree to exit)
+      - Structural exit on/off + TF
+      - RZ_EXIT on/off
+      - DC daytrade max-hold
+      - Reentry B-block enable/disable + size mult
+      - DELTA_ENTRY + DELTA_HTF gate
+      - PPL gain trigger + arm pct (currently 0.5/0.75 — sweep around)
+    """
+    out = [("baseline", {})]
+
+    # 1. Entry score threshold — primary trade-frequency vs quality gate
+    for v in (16, 18, 20, 22, 24, 26, 28):
+        out.append((f"ENTRY_SCORE_{v}", {"ENTRY_SCORE_THRESHOLD": v,
+                                          "TRADIER_ENTRY_SCORE_THRESHOLD": v}))
+
+    # 2. K-zone reversal bonus + thresholds (cross-bias sizing kick)
+    for bonus in (4, 6, 8, 10, 12):
+        out.append((f"K_ZONE_BONUS_{bonus}", {"TRADIER_K_ZONE_ENTRY_BONUS_TRADIER": bonus}))
+
+    # 3. WT exit alignment count — how many TFs must agree to exit (1..5)
+    for n in (1, 2, 3, 4, 5):
+        out.append((f"WT_EXIT_MIN_TFS_{n}", {"TRADIER_WT_EXIT_MIN_TFS_TRADIER": n,
+                                              "WT_EXIT_MIN_TFS": n}))
+
+    # 4. Structural range-shift exit ON / OFF
+    out.append(("STRUCTURAL_EXIT_OFF", {"STRUCTURAL_RANGE_SHIFT_EXIT": False}))
+    for tf in ("3m", "15m", "1h", "4h", "D"):
+        out.append((f"STRUCTURAL_TF_{tf}", {"STRUCTURAL_RANGE_SHIFT_EXIT": True,
+                                             "STRUCTURAL_RANGE_SHIFT_TF": tf}))
+
+    # 5. RZ exit ON / OFF (can be too aggressive)
+    out.append(("RZ_EXIT_OFF", {"RZ_EXIT_ENABLED": False}))
+
+    # 6. PPL trigger gain — locking profits earlier vs later
+    for g in (0.3, 0.5, 0.75, 1.0):
+        out.append((f"PPL_GAIN_{g}", {"PARTIAL_PROFIT_LOCK_GAIN_PCT": g,
+                                       "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": g + 0.25}))
+
+    # 7. Reentry B-block gates — sizing multipliers
+    for m in (0.5, 1.0, 1.5, 2.0):
+        out.append((f"REENTRY_SIZE_{m}", {"REENTRY_WT15M_SIZE_MULT": m,
+                                           "REENTRY_K15M_PARTIAL_MULT": m * 0.5,
+                                           "REENTRY_POST_CONSOL_MULT": m}))
+
+    # 8. DELTA engine on/off + HTF gate
+    for d_on in (True, False):
+        for htf in ("none", "any", "all"):
+            out.append((f"DELTA_{'ON' if d_on else 'OFF'}_HTF_{htf}",
+                        {"DELTA_ENGINE_ENABLED": d_on, "DELTA_HTF_GATE": htf}))
+
+    # 9. SATOSHIT entry (proven entry pattern) on/off
+    out.append(("SATOSHIT_ON",  {"SATOSHIT_ENABLED": True, "SATOSHIT_ENABLED_TRADIER": True}))
+    out.append(("SATOSHIT_OFF", {"SATOSHIT_ENABLED": False, "SATOSHIT_ENABLED_TRADIER": False}))
+
+    # 10. FUNDING_GATE thresholds (proven directional per memory)
+    for th in (0.0, 0.005, 0.01, 0.02):
+        out.append((f"FUNDING_TH_{th}", {"FUNDING_GATE_LONG_MAX": -th,
+                                          "FUNDING_GATE_SHORT_MIN": +th}))
+
+    return out
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -800,6 +875,7 @@ TIER_MAP = {
     "indicator_audit_v2": grid_indicator_audit_v2,
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_param_hunt": grid_tradier_param_hunt,
+    "system_combo": grid_system_combo,
 }
 
 
