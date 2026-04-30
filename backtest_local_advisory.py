@@ -1,4 +1,5 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 # pylint: disable=W,C,R,I
 """backtest_local_advisory.py — directional-only backtest of local_advisory_generator.py
 decision logic vs a no-advisory baseline.

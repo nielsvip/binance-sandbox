@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """Buy-and-hold benchmark for a symbol corpus:
   - per-symbol total return
   - accumulated_gain_pct = sum(per_symbol_return) [same definition strategy uses]

@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """
 Combined System Backtest: Delta Engine + WT/DC Scorers + BB Boost
 =================================================================

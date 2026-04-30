@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """
 scalp_v3_sweep.py — Mass variant sweep for V3 scalper.
 

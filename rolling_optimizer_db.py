@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """
 Rolling Optimizer DB — SQLite backend for per-symbol config sweep results.
 

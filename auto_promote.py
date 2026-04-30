@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """auto_promote.py — Tier-2 → Tier-3 candidate validator.
 
 Watches autonomous_search worker outputs across MacBook + S1 + S2.

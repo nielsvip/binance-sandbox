@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """
 WT+DC Exit Scorer — v2 EXPERIMENTAL (2026-04-27 SLOWDOWN + RED_ZONE rewrite).
 

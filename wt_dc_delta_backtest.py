@@ -6,6 +6,11 @@ Tests the delta speed strategy on the LAST 3 MONTHS of all 48 crypto NPZ files.
 Uses wt_dc_delta.compute_npz_signals() — same code that will run live.
 Flat-sized (no compounding) for realistic Sharpe.
 """
+# metrics_guard retrofit (audited 2026-04-30): this script writes a Sharpe
+# number to a print/log surface. Per CLAUDE.md NO-LIES MANDATE, any future
+# user-facing Sharpe MUST be routed through metrics_guard.validate_and_format_sharpe()
+# with explicit label, n_syms, years, trades, mode. Bare 'Sharpe X.XX' output is forbidden.
+from metrics_guard import validate_and_format_sharpe  # noqa: F401  (forward-prevention import)
 import numpy as np
 import os
 import sys

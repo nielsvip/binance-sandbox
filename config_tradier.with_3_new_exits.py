@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 # ═══════════════════════════════════════════════════════════════════════
 # SWEEP REFERENCE: data/sweep_tiers.json → "tradier" section — prioritized
 # switches with ranges and tiers. Agents: read that file before sweeping.

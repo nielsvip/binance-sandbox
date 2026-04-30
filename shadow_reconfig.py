@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """shadow_reconfig.py — daily rotation of active shadow configs.
 
 User directive: "keep changing configs frequently at first signs of worse

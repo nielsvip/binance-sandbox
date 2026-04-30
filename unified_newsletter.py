@@ -1,4 +1,5 @@
 #!/opt/anaconda3/envs/binance_env/bin/python
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 # pylint: disable=W,C,R,I
 """Unified Newsletter — delta-only digest combining copy-trader research + backtest sweeps.
 

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-30 00:56:45 UTC
+# Copilot Status — 2026-04-30 01:12:04 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T00:54:41
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T00:54:42
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T00:55:43
-- **STALE_INDICATORS** [tradier]  — 2026-04-30T00:56:43
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T00:56:43
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T00:56:43
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T00:56:43
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T00:56:43
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T00:56:43
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T00:56:44
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T01:08:59
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T01:10:00
+- **STALE_INDICATORS** [tradier]  — 2026-04-30T01:11:01
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T01:11:01
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T01:11:01
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T01:11:01
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T01:11:01
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T01:11:01
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T01:11:01
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T01:12:03
 
 ## Missed Trades (trader comparison)
 
@@ -27,19 +27,16 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 6 | **Watching for reentry:** 6 | **Reentered:** 0
 
+- HELD: **ZECUSDC** LONG (crypto) peak +10.3%, now +0.0%
 - HELD: **GOOGL** LONG (tradier) peak +7.0%, now +7.0%
-- HELD: **FLOWUSDT** SHORT (crypto) peak +6.1%, now +-0.6%
-- HELD: **CHRUSDT** SHORT (crypto) peak +5.0%, now +5.0%
-- HELD: **RENDERUSDT** LONG (crypto) peak +4.9%, now +0.0%
-- HELD: **ALGOUSDT** LONG (crypto) peak +4.9%, now +1.3%
-- HELD: **XTZUSDT** SHORT (crypto) peak +3.8%, now +3.1%
-- HELD: **INXUSDT** SHORT (crypto) peak +3.4%, now +3.4%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-4.2%
+- HELD: **FLOWUSDT** SHORT (crypto) peak +6.1%, now +-1.4%
+- HELD: **ALGOUSDT** LONG (crypto) peak +4.9%, now +1.0%
+- HELD: **XTZUSDT** SHORT (crypto) peak +3.8%, now +3.4%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-4.3%
 
 - WATCHING: **COMPUSDT** SHORT (crypto) peaked +6.8%, exited 0m ago
-- WATCHING: **XVGUSDT** LONG (crypto) peaked +5.6%, exited 0m ago
 - WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 0m ago

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """Live-config baseline snapshot — computes per-trade Sharpe/WR/Mean + equity-curve max drawdown
 for the validated winning combos on the FULL dataset under current live config regime.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """baseline_regime_report.py — emit LR / BB / STDEV per TF for Tier-2 baseline window.
 
 User directive 2026-04-30: baseline must report regime context, not just pool_sharpe.

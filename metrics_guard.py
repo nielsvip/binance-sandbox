@@ -15,8 +15,11 @@ The function:
 from __future__ import annotations
 
 import csv
+import datetime
 import json
 import math
+import re
+import shutil
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 
@@ -123,12 +126,32 @@ def validate_and_format_sharpe(value: float, *, label: str, n_syms: int,
     return f"{label_norm}={val_str} [DIAGNOSTIC ONLY · n_syms={n_syms} · years={years:.2f}]"
 
 
+def tier_name(pool_sharpe_value: float) -> str:
+    """Map pool_sharpe to a tier name per user 2026-04-30 'Real floors not lies'
+    directive. Replaces the old 'trash' label — sub-floor results still get the
+    [DIAGNOSTIC] tag separately, but tier names are quality positions, not slurs.
+        <0       = Discard
+        0–0.3    = Noise
+        0.3–0.6  = Directional
+        ≥0.6     = Best-of-current  (current anchor: tradier pool=0.6516)
+        ≥1.0     = Strong
+        ≥1.5     = Aspirational
+    """
+    v = float(pool_sharpe_value)
+    if v < 0:    return "Discard"
+    if v < 0.3:  return "Noise"
+    if v < 0.6:  return "Directional"
+    if v < 1.0:  return "Best-of-current"
+    if v < 1.5:  return "Strong"
+    return "Aspirational"
+
+
 def format_standard_set(metrics: Mapping[str, float], *, mode: str = "crypto") -> str:
     """Format the full STANDARD METRIC SET as a single line per CLAUDE.md.
 
     Required fields: pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr,
     gain_sym_yr, trades, dd (or max_dd_pct), n_syms, years.
-    Refuses if any are missing.
+    Refuses if any are missing. Includes tier name per Real-floors directive.
     """
     required = ("pool_sharpe", "sym_sharpe", "avg_gain_trade",
                 "gain_per_yr", "gain_sym_yr", "trades", "n_syms", "years")
@@ -145,8 +168,9 @@ def format_standard_set(metrics: Mapping[str, float], *, mode: str = "crypto") -
     floor_syms = MIN_SYMS_STOCKS if mode == "stocks" else MIN_SYMS_CRYPTO
     diag = "" if (n_syms >= floor_syms and years >= MIN_YEARS) else \
            f"  [DIAGNOSTIC · {n_syms}/{floor_syms} syms · {years:.2f}y]"
+    tier = tier_name(metrics["pool_sharpe"])
     return (
-        f"pool_sharpe={metrics['pool_sharpe']:+.4f} | "
+        f"pool_sharpe={metrics['pool_sharpe']:+.4f} ({tier}) | "
         f"sym_sharpe={metrics['sym_sharpe']:+.4f} | "
         f"avg_gain_trade={metrics['avg_gain_trade']:+.4f}%/trade | "
         f"gain_per_yr={metrics['gain_per_yr']:+.1f}%/yr | "
@@ -361,11 +385,336 @@ def recompute_pool_sharpe_from_jsonl(jsonl_path: Path,
     }
 
 
+# ---------- deep CSV row audit -------------------------------------------
+
+def _safe_float(x):
+    try:
+        return float(x) if x not in (None, "", "None", "nan") else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _safe_int(x):
+    try:
+        return int(float(x)) if x not in (None, "", "None", "nan") else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _find_trade_jsonl_pair(csv_path):
+    """Heuristic: locate a sibling per-trade JSONL by common naming conventions.
+    Returns Path on hit, None otherwise."""
+    p = Path(csv_path)
+    candidates = [
+        p.with_suffix(".trades.jsonl"),
+        p.with_suffix(".jsonl"),
+        p.parent / (p.stem + "_trades.jsonl"),
+        p.parent / (p.stem + ".trades.jsonl"),
+        p.parent / "trades" / (p.stem + ".jsonl"),
+        p.parent / (p.stem.replace("_results", "_trades") + ".jsonl"),
+    ]
+    for c in candidates:
+        if c.exists() and c.stat().st_size > 0:
+            return c
+    return None
+
+
+def audit_csv_deep(path, mode: str = "crypto") -> Dict[str, object]:
+    """Augments audit_csv with row-level value checks. Catches inflated rows
+    (|pool_sharpe| > 5 with trades < 5000) AND sub-floor rows (n_syms < floor
+    or years < 1).
+
+    verdict_deep:
+      OK            — canonical column, no banned, no inflated rows, ≥1 publishable row
+      DIAGNOSTIC_ONLY — canonical column, all rows below sample floor (sub-floor)
+      RECOMPUTABLE  — banned/inflated/bare-sharpe BUT a sibling trade JSONL exists
+      UNVERIFIABLE  — banned/inflated/bare-sharpe AND no recompute source
+      INVALID       — column-level failure with no recovery path
+      QUESTIONABLE  — canonical present + suspicious tells (mixed signals)
+      READ_ERROR    — could not parse
+      NO_SHARPE     — CSV doesn't claim a Sharpe at all (fine, untouched)
+    """
+    base = audit_csv(path)
+    if not base.get("exists"):
+        return {**base, "verdict_deep": base.get("verdict", "MISSING")}
+    if base.get("verdict") == "NO_SHARPE":
+        return {**base, "verdict_deep": "NO_SHARPE", "n_rows": 0}
+    p = Path(path)
+    cols = base.get("columns", [])
+    canonical = base.get("canonical_columns", [])
+    sharpe_col = canonical[0] if canonical else (
+        "sharpe" if "sharpe" in cols else (
+            base.get("bare_sharpe_columns", [None])[0]
+            if base.get("bare_sharpe_columns") else None
+        )
+    )
+    if sharpe_col is None:
+        # has_any_sharpe_col but neither canonical nor bare; e.g. only banned cols
+        for c in base.get("banned_columns", []):
+            sharpe_col = c
+            break
+    floor_syms = MIN_SYMS_STOCKS if mode == "stocks" else MIN_SYMS_CRYPTO
+    n_rows = 0
+    inflated_rows = 0
+    subfloor_rows = 0
+    publishable_rows = 0
+    syms_seen: set = set()
+    years_seen: set = set()
+    sharpe_values: List[float] = []
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            rd = csv.DictReader(f)
+            for r in rd:
+                n_rows += 1
+                ps = _safe_float(r.get(sharpe_col)) if sharpe_col else None
+                tr = _safe_int(r.get("trades"))
+                ns = _safe_int(r.get("n_syms"))
+                yr = _safe_float(r.get("years"))
+                if ps is not None:
+                    sharpe_values.append(ps)
+                if ns is not None:
+                    syms_seen.add(ns)
+                if yr is not None:
+                    years_seen.add(round(yr, 2))
+                if ps is not None and abs(ps) > PER_SYM_SHARPE_CAP and (tr or 0) < 5000:
+                    inflated_rows += 1
+                publishable = (ns is not None and ns >= floor_syms) and (yr is not None and yr >= MIN_YEARS)
+                if publishable:
+                    publishable_rows += 1
+                else:
+                    subfloor_rows += 1
+    except Exception as e:
+        return {**base, "verdict_deep": "READ_ERROR", "error": str(e)}
+    has_jsonl_pair = _find_trade_jsonl_pair(p) is not None
+    base_verdict = base.get("verdict")
+    if base_verdict == "INVALID" or inflated_rows > 0 or base.get("bare_sharpe_columns"):
+        verdict_deep = "RECOMPUTABLE" if has_jsonl_pair else "UNVERIFIABLE"
+    elif base.get("banned_columns") and not canonical:
+        verdict_deep = "RECOMPUTABLE" if has_jsonl_pair else "UNVERIFIABLE"
+    elif publishable_rows == 0 and n_rows > 0:
+        verdict_deep = "DIAGNOSTIC_ONLY"
+    elif base_verdict == "OK" and inflated_rows == 0:
+        verdict_deep = "OK"
+    elif base_verdict == "QUESTIONABLE":
+        verdict_deep = "QUESTIONABLE"
+    else:
+        verdict_deep = "QUESTIONABLE"
+    return {
+        **base,
+        "n_rows": n_rows,
+        "inflated_rows": inflated_rows,
+        "subfloor_rows": subfloor_rows,
+        "publishable_rows": publishable_rows,
+        "max_n_syms": max(syms_seen) if syms_seen else None,
+        "min_n_syms": min(syms_seen) if syms_seen else None,
+        "max_years": max(years_seen) if years_seen else None,
+        "min_years": min(years_seen) if years_seen else None,
+        "max_sharpe": max(sharpe_values) if sharpe_values else None,
+        "min_sharpe": min(sharpe_values) if sharpe_values else None,
+        "has_jsonl_pair": has_jsonl_pair,
+        "sharpe_col_used": sharpe_col,
+        "verdict_deep": verdict_deep,
+    }
+
+
+# ---------- quarantine ----------------------------------------------------
+
+def quarantine_csv(path, dest_root, reason: str) -> Path:
+    """Move a CSV (and any sibling .jsonl trade list) to dest_root preserving
+    a useful relative path. Writes a sidecar .quarantine.json with reason +
+    timestamp. Idempotent: appends timestamp suffix if dest already exists.
+    """
+    p = Path(path).resolve()
+    dest_root = Path(dest_root).resolve()
+    dest_root.mkdir(parents=True, exist_ok=True)
+    rel = p.name
+    s = str(p)
+    for anchor in ("data/sweep_results", "data/autonomous", "data/_legacy_unverified", "data"):
+        if anchor in s:
+            idx = s.index(anchor)
+            rel = s[idx:]
+            break
+    dest = dest_root / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        dest = dest.parent / f"{dest.stem}_{ts}{dest.suffix}"
+    shutil.move(str(p), str(dest))
+    sidecar = dest.with_suffix(dest.suffix + ".quarantine.json")
+    sidecar.write_text(json.dumps({
+        "original_path": str(p),
+        "quarantined_to": str(dest),
+        "reason": reason,
+        "quarantined_utc": datetime.datetime.utcnow().isoformat() + "Z",
+    }, indent=2))
+    pair = _find_trade_jsonl_pair(p)
+    if pair and pair.exists():
+        pair_dest = dest.parent / pair.name
+        if pair_dest.exists():
+            ts2 = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            pair_dest = dest.parent / f"{pair.stem}_{ts2}{pair.suffix}"
+        try:
+            shutil.move(str(pair), str(pair_dest))
+        except Exception:
+            pass
+    return dest
+
+
+def audit_and_quarantine_directory(directory, dest_root, mode: str = "crypto",
+                                    dry_run: bool = False) -> Dict[str, object]:
+    """Audit every CSV under directory; quarantine UNVERIFIABLE/INVALID/READ_ERROR
+    to dest_root. RECOMPUTABLE files are reported but NOT quarantined here —
+    they need a separate recompute pass first. Returns summary dict."""
+    quarantined: List[Dict[str, object]] = []
+    kept_ok: List[Dict[str, object]] = []
+    diagnostic_only: List[Dict[str, object]] = []
+    recomputable: List[Dict[str, object]] = []
+    questionable: List[Dict[str, object]] = []
+    read_error: List[Dict[str, object]] = []
+    no_sharpe: List[Dict[str, object]] = []
+    for p in sorted(Path(directory).rglob("*.csv")):
+        if "_legacy_unverified" in str(p) or "_NOLIES_HOLD_" in str(p):
+            continue
+        a = audit_csv_deep(p, mode=mode)
+        v = a.get("verdict_deep")
+        if v in ("INVALID", "UNVERIFIABLE", "READ_ERROR"):
+            if not dry_run:
+                try:
+                    dest = quarantine_csv(p, dest_root, reason=f"verdict_deep={v} | {a.get('reason', '')}")
+                    a["quarantined_to"] = str(dest)
+                except Exception as e:
+                    a["quarantine_error"] = str(e)
+            quarantined.append(a)
+        elif v == "OK":
+            kept_ok.append(a)
+        elif v == "DIAGNOSTIC_ONLY":
+            diagnostic_only.append(a)
+        elif v == "RECOMPUTABLE":
+            recomputable.append(a)
+        elif v == "QUESTIONABLE":
+            questionable.append(a)
+        elif v == "NO_SHARPE":
+            no_sharpe.append(a)
+    return {
+        "directory": str(directory),
+        "dest_root": str(dest_root),
+        "mode": mode,
+        "dry_run": dry_run,
+        "n_total": (len(quarantined) + len(kept_ok) + len(diagnostic_only) +
+                    len(recomputable) + len(questionable) + len(no_sharpe)),
+        "n_ok": len(kept_ok),
+        "n_diagnostic_only": len(diagnostic_only),
+        "n_recomputable": len(recomputable),
+        "n_quarantined": len(quarantined),
+        "n_questionable": len(questionable),
+        "n_no_sharpe": len(no_sharpe),
+        "quarantined": quarantined,
+        "recomputable": recomputable,
+        "questionable_paths": [r["path"] for r in questionable],
+    }
+
+
+# ---------- repo-wide emitter scan ----------------------------------------
+
+_PATTERN_SQRT_ANNUAL = re.compile(
+    r"\*\s*(?:np\.|math\.)?sqrt\s*\(\s*(?:252|252\.|365|n_trades|len\(|trades_per_yr|trades_per_year)\b"
+)
+_PATTERN_BARE_SHARPE_KEY = re.compile(
+    r"""['"](?:sharpe|sharpe_w|sharpe_annual|sharpe_yearly|sharpe_y|sharpe_ann|"""
+    r"""pool_sharpe_proxy|sharpe_rough|sharpe_estimate|sharpe_proxy|sharpe_weighted)['"]"""
+)
+_PATTERN_FSTRING_SHARPE = re.compile(
+    r"""f['"][^'"]*\b[Ss]harpe\b[^'"]*\{[^}]*\}"""
+)
+_PATTERN_BARE_LABEL = re.compile(
+    r"""['"][Ss]harpe['"]?\s*[=:]\s*\{?(?!sharpe_per|pool_sharpe|sym_sharpe)"""
+)
+_DEFAULT_EXCLUDE_DIRS = (
+    "old", ".git", "__pycache__", "backups", "klines_cache",
+    "klines_cache_backtest", "klines_cache_gateway", "data",
+    "_NOLIES_HOLD_20260430", "_legacy_unverified", "node_modules",
+    ".venv", "venv", "env",
+)
+
+
+def scan_repo_for_emitters(repo_root,
+                           exclude_dirs: Iterable[str] = _DEFAULT_EXCLUDE_DIRS,
+                           include_old: bool = False) -> List[Dict[str, object]]:
+    """Scan all .py files in repo_root for cockroach Sharpe-emission patterns
+    OUTSIDE metrics_guard imports. Returns list of findings dicts."""
+    excludes = set(exclude_dirs)
+    if include_old:
+        excludes.discard("old")
+    findings: List[Dict[str, object]] = []
+    root = Path(repo_root)
+    for py in root.rglob("*.py"):
+        if any(part in excludes for part in py.parts):
+            continue
+        if py.name == "metrics_guard.py":
+            continue
+        try:
+            text = py.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        if "sharpe" not in text.lower():
+            continue
+        imports_guard = ("import metrics_guard" in text) or ("from metrics_guard" in text)
+        for ln_no, line in enumerate(text.splitlines(), start=1):
+            stripped = line.lstrip()
+            if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
+                continue
+            for label, pat in (
+                ("SQRT_ANNUAL", _PATTERN_SQRT_ANNUAL),
+                ("BARE_SHARPE_KEY", _PATTERN_BARE_SHARPE_KEY),
+                ("FSTRING_SHARPE", _PATTERN_FSTRING_SHARPE),
+            ):
+                if pat.search(line):
+                    findings.append({
+                        "file": str(py.relative_to(root)) if py.is_relative_to(root) else str(py),
+                        "line": ln_no,
+                        "pattern": label,
+                        "code": line.strip()[:240],
+                        "imports_metrics_guard": imports_guard,
+                    })
+    return findings
+
+
+# ---------- audit_repo CI gate -------------------------------------------
+
+ACTIVE_EMITTERS = {
+    "v8_quick_sweep.py", "v8_quick_engine.py", "autonomous_search.py",
+    "backtest_v8_engine.py", "v8_test_queue.py",
+}
+
+
+def audit_repo_strict(repo_root, fail_on_active_emitters_only: bool = False
+                      ) -> 'tuple[int, list]':
+    """Returns (exit_code, findings). exit_code=0 only when no cockroaches
+    found. fail_on_active_emitters_only narrows to the 5 known live scripts.
+    """
+    findings = scan_repo_for_emitters(repo_root)
+    if fail_on_active_emitters_only:
+        findings = [f for f in findings if Path(f["file"]).name in ACTIVE_EMITTERS]
+    return (1 if findings else 0), findings
+
+
 # ---------- self-test -----------------------------------------------------
+
+def _arg_value(argv, flag, default=None):
+    """Read --flag VALUE or --flag=VALUE from argv; default if absent."""
+    for i, a in enumerate(argv):
+        if a == flag and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith(flag + "="):
+            return a.split("=", 1)[1]
+    return default
+
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) >= 2 and sys.argv[1] == "audit":
+    cmd = sys.argv[1] if len(sys.argv) >= 2 else "smoke"
+
+    if cmd == "audit":
         target = Path(sys.argv[2]) if len(sys.argv) >= 3 else Path("data/sweep_results")
         results = audit_directory(target)
         invalid = [r for r in results if r.get("verdict") == "INVALID"]
@@ -380,8 +729,82 @@ if __name__ == "__main__":
         if "--show-invalid" in sys.argv:
             for r in invalid[:50]:
                 print(f"    {r['path']}: banned={r.get('banned_columns')} bare={r.get('bare_sharpe_columns')} canonical={r.get('canonical_columns')}")
-    else:
-        # Smoke test
+
+    elif cmd == "audit-deep":
+        target = Path(sys.argv[2]) if len(sys.argv) >= 3 else Path("data/sweep_results")
+        mode = _arg_value(sys.argv, "--mode")
+        if mode is None:
+            mode = "stocks" if any(x in str(target).lower() for x in ("tradier", "stocks")) else "crypto"
+        results = [audit_csv_deep(p, mode=mode) for p in sorted(Path(target).rglob("*.csv"))
+                   if "_legacy_unverified" not in str(p) and "_NOLIES_HOLD_" not in str(p)]
+        by_v: Dict[str, List[Dict[str, object]]] = {}
+        for r in results:
+            by_v.setdefault(str(r.get("verdict_deep", "?")), []).append(r)
+        print(f"Deep-audited {len(results)} CSVs in {target} (mode={mode})")
+        for v in ("OK", "DIAGNOSTIC_ONLY", "RECOMPUTABLE", "UNVERIFIABLE",
+                  "INVALID", "QUESTIONABLE", "READ_ERROR", "NO_SHARPE"):
+            n = len(by_v.get(v, []))
+            if n:
+                print(f"  {v}: {n}")
+        if "--show-bad" in sys.argv:
+            for v in ("INVALID", "UNVERIFIABLE", "QUESTIONABLE", "READ_ERROR"):
+                for r in by_v.get(v, [])[:30]:
+                    print(f"  [{v}] {r['path']}  rows={r.get('n_rows')} "
+                          f"infl={r.get('inflated_rows')} subfloor={r.get('subfloor_rows')} "
+                          f"max_syms={r.get('max_n_syms')} max_yr={r.get('max_years')} "
+                          f"max_S={r.get('max_sharpe')}")
+
+    elif cmd == "quarantine":
+        if len(sys.argv) < 4:
+            print("usage: metrics_guard.py quarantine SOURCE_DIR DEST_ROOT [--mode crypto|stocks] [--dry-run]")
+            sys.exit(2)
+        src = sys.argv[2]
+        dst = sys.argv[3]
+        mode = _arg_value(sys.argv, "--mode") or (
+            "stocks" if any(x in src.lower() for x in ("tradier", "stocks")) else "crypto"
+        )
+        dry_run = "--dry-run" in sys.argv
+        summary = audit_and_quarantine_directory(src, dst, mode=mode, dry_run=dry_run)
+        out = {k: v for k, v in summary.items() if k not in ("quarantined", "recomputable")}
+        print(json.dumps(out, indent=2))
+        print(f"\nQuarantined paths ({len(summary['quarantined'])}):")
+        for r in summary["quarantined"][:50]:
+            print(f"  {r['path']}  → {r.get('quarantined_to', '(dry-run)')}")
+        if summary["recomputable"]:
+            print(f"\nRECOMPUTABLE (left in place — needs separate JSONL recompute pass) ({len(summary['recomputable'])}):")
+            for r in summary["recomputable"][:30]:
+                print(f"  {r['path']}  has_jsonl={r.get('has_jsonl_pair')}")
+
+    elif cmd == "scan-repo":
+        root = Path(sys.argv[2]) if len(sys.argv) >= 3 else Path(".")
+        include_old = "--include-old" in sys.argv
+        findings = scan_repo_for_emitters(root, include_old=include_old)
+        by_pattern: Dict[str, List[Dict[str, object]]] = {}
+        for f in findings:
+            by_pattern.setdefault(str(f["pattern"]), []).append(f)
+        print(f"Scanned {root} → {len(findings)} cockroach patterns "
+              f"(include_old={include_old})")
+        for pat, items in sorted(by_pattern.items()):
+            print(f"  {pat}: {len(items)} hits")
+        if "--show" in sys.argv:
+            for f in findings[:200]:
+                print(f"  {f['file']}:{f['line']} [{f['pattern']}] {f['code']}")
+        if findings and "--exit-on-findings" in sys.argv:
+            sys.exit(1)
+
+    elif cmd == "enforce":
+        root = Path(sys.argv[2]) if len(sys.argv) >= 3 else Path(".")
+        active_only = "--active-only" in sys.argv
+        rc, findings = audit_repo_strict(root, fail_on_active_emitters_only=active_only)
+        scope = "active emitters only" if active_only else "full repo"
+        print(f"audit_repo enforce ({scope}): {len(findings)} cockroach findings")
+        for f in findings[:50]:
+            print(f"  {f['file']}:{f['line']} [{f['pattern']}] {f['code']}")
+        if len(findings) > 50:
+            print(f"  ...and {len(findings) - 50} more")
+        sys.exit(rc)
+
+    elif cmd in ("smoke", "test", "selftest"):
         rets_btc = [0.5, -0.3, 0.8, 0.2, -0.1] * 10
         rets_eth = [0.4, -0.2, 0.6, 0.1, 0.0] * 10
         m = standard_metric_set({"BTCUSDT": rets_btc, "ETHUSDT": rets_eth}, years=1.5)
@@ -402,3 +825,16 @@ if __name__ == "__main__":
             print(validate_and_format_sharpe(0.5, label="sharpe", n_syms=50, years=2.0, trades=10000))
         except FakeMetricRefused as e:
             print(f"  FakeMetricRefused: {e}")
+
+    else:
+        print(__doc__ or "metrics_guard CLI")
+        print()
+        print("Subcommands:")
+        print("  audit DIR              — shallow column audit")
+        print("  audit-deep DIR         — deep row + column audit (--mode, --show-bad)")
+        print("  quarantine SRC DST     — audit-deep + move INVALID/UNVERIFIABLE to DST")
+        print("  scan-repo ROOT         — grep .py files for cockroach patterns")
+        print("  enforce ROOT           — CI gate: exit non-zero on findings")
+        print("                           (--active-only narrows to 5 live emitters)")
+        print("  smoke                  — self-test")
+        sys.exit(2)

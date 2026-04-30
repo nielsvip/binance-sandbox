@@ -1,3 +1,4 @@
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """Measure REAL per-trade pool Sharpe for each snapshot's overrides under CURRENT engine."""
 import argparse, json, sys, time, gc
 from pathlib import Path

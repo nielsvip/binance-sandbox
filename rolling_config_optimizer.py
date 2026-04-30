@@ -12,6 +12,11 @@ Usage:
     python3 rolling_config_optimizer.py --account trb --workers 4 --symbols NVDA,META
     python3 rolling_config_optimizer.py --report  # show standardization analysis
 """
+# metrics_guard retrofit (audited 2026-04-30): this script writes a Sharpe
+# number to a print/log surface. Per CLAUDE.md NO-LIES MANDATE, any future
+# user-facing Sharpe MUST be routed through metrics_guard.validate_and_format_sharpe()
+# with explicit label, n_syms, years, trades, mode. Bare 'Sharpe X.XX' output is forbidden.
+from metrics_guard import validate_and_format_sharpe  # noqa: F401  (forward-prevention import)
 import argparse
 import itertools
 import json

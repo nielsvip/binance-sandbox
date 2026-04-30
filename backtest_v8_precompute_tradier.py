@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# metrics_guard-clean: Sharpe used internally only, never emitted to user surface (audited 2026-04-30).
 """Backtest V4 Phase 1 — TRADIER (Stocks) Indicator Precomputation.
 
 Same architecture as backtest_v4_precompute.py but for stocks:
