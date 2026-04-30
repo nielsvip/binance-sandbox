@@ -4425,6 +4425,31 @@ class StockStrategy:
         gain = float(getattr(position, 'gain', 0))
         current_price, ts = await self.trade_manager.get_current_price(symbol)
         current_price = float(current_price)
+        # ═══ 2026-04-30 HTF PORT — F3. HTF_W_REVERSAL_EXIT (default OFF, sweep-gated) ═══
+        # Crypto baseline uses ALL_TF_BRAKE counting W+M; tradier baseline never reads W or M
+        # for exits. F3 fires when W WaveTrend turns against position AND (optional) D agrees.
+        # Only fires in profit (gain > 0) — STRICT_NO_LOSS rule still applies.
+        if getattr(config, 'HTF_W_REVERSAL_EXIT_TRADIER_ENABLED', False) and gain > 0:
+            try:
+                _w1_W = float(i.get('wt1_W', 0) or 0)
+                _w2_W = float(i.get('wt2_W', 0) or 0)
+                _w1_D = float(i.get('wt1_D', 0) or 0)
+                _w2_D = float(i.get('wt2_D', 0) or 0)
+                _w_has = (_w1_W != 0 or _w2_W != 0)
+                _d_has = (_w1_D != 0 or _w2_D != 0)
+                if _w_has:
+                    if is_long:
+                        _w_against = _w1_W < _w2_W
+                        _d_against = _w1_D < _w2_D and _d_has
+                    else:
+                        _w_against = _w1_W > _w2_W
+                        _d_against = _w1_D > _w2_D and _d_has
+                    _need_d = bool(getattr(config, 'HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D', True))
+                    if _w_against and (_d_against or not _need_d):
+                        logger.warning(f"[HTF_W_REVERSAL_EXIT] {symbol}_{('L' if is_long else 'S')} g={gain:.2f}% wt_W={_w1_W:.1f}/{_w2_W:.1f} wt_D={_w1_D:.1f}/{_w2_D:.1f} need_D={_need_d}")
+                        return True, f"HTF_W_REVERSAL_EXIT(W={_w1_W:.1f}/{_w2_W:.1f}_D={_w1_D:.1f}/{_w2_D:.1f}_g={gain:.2f}%)", qty
+            except Exception as _htfwre:
+                logger.debug(f"[HTF_W_REVERSAL_EXIT] {symbol}: {type(_htfwre).__name__} {_htfwre} — skipped")
 
         opened_at = getattr(position, 'opened_at', None) or getattr(position, 'entry_time', None)
         hold_time_min = 0.0
@@ -9142,6 +9167,46 @@ class TradierTradeManager:
                 if _sg_blocked:
                     if config.VERBOSE: logger.info(f"[SYMGATE] LONG {symbol} BLOCKED: {_sg_reason}")
                     return False
+            # ═══ 2026-04-30 HTF PORT — F1. HTF_W_M_ALIGN_GATE (default OFF) ═══
+            # Block LONG entries unless N of 2 (W, M) WaveTrend agree with side.
+            if getattr(config, 'HTF_W_M_ALIGN_GATE_TRADIER_ENABLED', False):
+                try:
+                    _w1_W = float(indicators.get('wt1_W', 0) or 0)
+                    _w2_W = float(indicators.get('wt2_W', 0) or 0)
+                    _w1_M = float(indicators.get('wt1_M', 0) or 0)
+                    _w2_M = float(indicators.get('wt2_M', 0) or 0)
+                    _w_has = (_w1_W != 0 or _w2_W != 0)
+                    _m_has = (_w1_M != 0 or _w2_M != 0)
+                    _w_ok = (_w1_W > _w2_W) if _w_has else True   # pass through pre-cache bars
+                    _m_ok = (_w1_M > _w2_M) if _m_has else True
+                    _req = int(getattr(config, 'HTF_W_M_ALIGN_TRADIER_REQUIRED', 2))
+                    _agree = int(_w_ok) + int(_m_ok)
+                    if _agree < _req:
+                        if config.VERBOSE: logger.info(f"[HTF_W_M_ALIGN_GATE] LONG {symbol} BLOCKED: agree={_agree}/{_req} W_ok={_w_ok}(has={_w_has}) M_ok={_m_ok}(has={_m_has})")
+                        return False
+                except Exception as _htfg:
+                    logger.debug(f"[HTF_W_M_ALIGN_GATE][LONG] {symbol}: {type(_htfg).__name__} {_htfg} — skipped")
+            # ═══ 2026-04-30 HTF PORT — F2. HTF_DC_BREAKOUT entry (default OFF, fast path) ═══
+            # Additive entry: close > dc_high_TF (prev) * (1+thr) AND optional W WT bullish.
+            if getattr(config, 'HTF_DC_BREAKOUT_TRADIER_ENABLED', False):
+                try:
+                    _bk_tf = str(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_TF', '4h'))
+                    _bk_thr = float(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT', 0.0)) / 100.0
+                    _bk_req_w = bool(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT', True))
+                    _dch_prev = float(indicators.get(f'dc_high_{_bk_tf}_prev', indicators.get(f'dc_high_{_bk_tf}', 0)) or 0)
+                    _cur_p = float(indicators.get('current_price', 0) or 0)
+                    if _dch_prev > 0 and _cur_p > _dch_prev * (1.0 + _bk_thr):
+                        _w_ok_bk = True
+                        if _bk_req_w:
+                            _w1_W_bk = float(indicators.get('wt1_W', 0) or 0)
+                            _w2_W_bk = float(indicators.get('wt2_W', 0) or 0)
+                            if (_w1_W_bk != 0 or _w2_W_bk != 0):
+                                _w_ok_bk = _w1_W_bk > _w2_W_bk
+                        if _w_ok_bk:
+                            logger.warning(f"[HTF_DC_BREAKOUT_LONG] {symbol}: close={_cur_p:.4f} > dc_high_{_bk_tf}_prev={_dch_prev:.4f}*(1+{_bk_thr:.4f}) W_ok={_w_ok_bk}")
+                            return True
+                except Exception as _htfb:
+                    logger.debug(f"[HTF_DC_BREAKOUT][LONG] {symbol}: {type(_htfb).__name__} {_htfb} — skipped")
             # SATOSHIT — fast path (opt-in via SATOSHIT_ENTRY_FILTER, default True for backward compat)
             if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
@@ -9385,6 +9450,44 @@ class TradierTradeManager:
                 if _sg_blocked:
                     if config.VERBOSE: logger.info(f"[SYMGATE] SHORT {symbol} BLOCKED: {_sg_reason}")
                     return False
+            # ═══ 2026-04-30 HTF PORT — F1. HTF_W_M_ALIGN_GATE SHORT (default OFF) ═══
+            if getattr(config, 'HTF_W_M_ALIGN_GATE_TRADIER_ENABLED', False):
+                try:
+                    _w1_W = float(indicators.get('wt1_W', 0) or 0)
+                    _w2_W = float(indicators.get('wt2_W', 0) or 0)
+                    _w1_M = float(indicators.get('wt1_M', 0) or 0)
+                    _w2_M = float(indicators.get('wt2_M', 0) or 0)
+                    _w_has = (_w1_W != 0 or _w2_W != 0)
+                    _m_has = (_w1_M != 0 or _w2_M != 0)
+                    _w_ok = (_w1_W < _w2_W) if _w_has else True   # pass through pre-cache bars
+                    _m_ok = (_w1_M < _w2_M) if _m_has else True
+                    _req = int(getattr(config, 'HTF_W_M_ALIGN_TRADIER_REQUIRED', 2))
+                    _agree = int(_w_ok) + int(_m_ok)
+                    if _agree < _req:
+                        if config.VERBOSE: logger.info(f"[HTF_W_M_ALIGN_GATE] SHORT {symbol} BLOCKED: agree={_agree}/{_req} W_ok={_w_ok}(has={_w_has}) M_ok={_m_ok}(has={_m_has})")
+                        return False
+                except Exception as _htfg:
+                    logger.debug(f"[HTF_W_M_ALIGN_GATE][SHORT] {symbol}: {type(_htfg).__name__} {_htfg} — skipped")
+            # ═══ 2026-04-30 HTF PORT — F2. HTF_DC_BREAKDOWN entry SHORT (default OFF) ═══
+            if getattr(config, 'HTF_DC_BREAKOUT_TRADIER_ENABLED', False):
+                try:
+                    _bk_tf = str(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_TF', '4h'))
+                    _bk_thr = float(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT', 0.0)) / 100.0
+                    _bk_req_w = bool(getattr(config, 'HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT', True))
+                    _dcl_prev = float(indicators.get(f'dc_low_{_bk_tf}_prev', indicators.get(f'dc_low_{_bk_tf}', 0)) or 0)
+                    _cur_p = float(indicators.get('current_price', 0) or 0)
+                    if _dcl_prev > 0 and _cur_p > 0 and _cur_p < _dcl_prev * (1.0 - _bk_thr):
+                        _w_ok_bk = True
+                        if _bk_req_w:
+                            _w1_W_bk = float(indicators.get('wt1_W', 0) or 0)
+                            _w2_W_bk = float(indicators.get('wt2_W', 0) or 0)
+                            if (_w1_W_bk != 0 or _w2_W_bk != 0):
+                                _w_ok_bk = _w1_W_bk < _w2_W_bk
+                        if _w_ok_bk:
+                            logger.warning(f"[HTF_DC_BREAKOUT_SHORT] {symbol}: close={_cur_p:.4f} < dc_low_{_bk_tf}_prev={_dcl_prev:.4f}*(1-{_bk_thr:.4f}) W_ok={_w_ok_bk}")
+                            return True
+                except Exception as _htfb:
+                    logger.debug(f"[HTF_DC_BREAKOUT][SHORT] {symbol}: {type(_htfb).__name__} {_htfb} — skipped")
             if getattr(config, 'SATOSHIT_ENTRY_FILTER', True):
                 from ez_satoshit import satoshit_entry_signal
                 _sat_ok, _sat_votes, _sat_reason = satoshit_entry_signal(indicators, False, config)

@@ -58,6 +58,20 @@ def _safeb(npz: dict, key: str, n: int) -> np.ndarray:
     return np.zeros(n, dtype=bool)
 
 
+def _safe_k_1m(npz: dict, n: int, ltf: str = "3m", default: float = 50.0) -> np.ndarray:
+    # 2026-04-30 Phase 2(b): wake K1M_EXTREME_REVERSE from dormancy.
+    # Real 1m klines aren't on disk (15m is the base), so use stoch_k_{ltf} (3m crypto / 5m tradier)
+    # as proxy. Fires K1M at LTF frequency rather than true 1m — lower count than live's 1,205/day,
+    # but functional vs the prior all-50.0 zero-fill that left the gate dormant.
+    v = npz.get("stoch_k_1m")
+    if v is not None and isinstance(v, np.ndarray) and len(v) == n and not (np.asarray(v) == default).all():
+        return v.astype(np.float64)
+    proxy = npz.get(f"stoch_k_{ltf}")
+    if proxy is not None and isinstance(proxy, np.ndarray) and len(proxy) == n:
+        return proxy.astype(np.float64)
+    return np.full(n, default, dtype=np.float64)
+
+
 def _ha_int(npz: dict, key: str, n: int):
     v = npz.get(key)
     if v is None or not isinstance(v, np.ndarray) or len(v) != n:
@@ -177,8 +191,9 @@ class QuickConfig:
     REENTRY_B14_HA_TREND_ENABLED: bool = True
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
     # 2026-04-30 Phase 2: route reentry through position_evaluator.evaluate_reentry_vec (live-equivalent).
-    # OFF preserves existing v8_quick lookahead-corrected blocks. Sweep this to measure parity gap.
-    USE_LIVE_EVALUATOR_VEC: bool = False
+    # 2026-04-30 22:15 Phase 2(a) flipped default ON — aligns v8_quick reentries with ez_manage.evaluate_reentry
+    # (326x faster vec, byte-equivalent at 30k bar-eval parity). Set False to recover prior lookahead-corrected blocks.
+    USE_LIVE_EVALUATOR_VEC: bool = True
     # 2026-04-30 Phase 3a/3b: route per-trade qty through compute_trade_qty_vec.
     # Computes per-symbol average qty modifier (WT_HTF_DISCOUNT, HEDGE_SIZE_CAP,
     # MIN_POS floor) and applies it as a symbol-level pnl weight. OFF preserves
@@ -1262,6 +1277,21 @@ class QuickConfig:
         self.EXIT_SCORER_MIN_CONDITIONS = 3
         self.EXIT_SCORER_K_EXTREME = 75.0
         self.EXIT_SCORER_DC_EXTREME = 0.80
+        # ===== 2026-04-30 HTF PORT FROM CRYPTO — tradier-only (default OFF, sweep first) =====
+        # The crypto baseline (pool_sharpe 0.7770) uses ALL_TF_BRAKE that counts W+M timeframes.
+        # Tradier baseline ignores W and M completely. These three flags lift HTF anchoring into
+        # the tradier path. Default OFF; flip on after sweep proof.
+        # F1. HTF_W_M_ALIGN_GATE — entry gate: require N of 2 (W, M) WaveTrend agree with side.
+        self.HTF_W_M_ALIGN_GATE_TRADIER_ENABLED = False
+        self.HTF_W_M_ALIGN_TRADIER_REQUIRED = 2          # 1 = either; 2 = both
+        # F2. HTF_DC_BREAKOUT — additive entry: close above dc_high_4h * (1+thr) AND wt1_W > wt2_W.
+        self.HTF_DC_BREAKOUT_TRADIER_ENABLED = False
+        self.HTF_DC_BREAKOUT_TRADIER_TF = "4h"           # 4h | D | W
+        self.HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT = 0.0 # 0 = exact break; 0.1 = +0.1% confirm
+        self.HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT = True # require W WaveTrend on side
+        # F3. HTF_W_REVERSAL_EXIT — exit when wt1_W against side AND wt1_D against side.
+        self.HTF_W_REVERSAL_EXIT_TRADIER_ENABLED = False
+        self.HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D = True  # also require D against (2-TF anchor)
 
 
 def _resolve_npz_dir(npz_dir=""):
@@ -2710,6 +2740,58 @@ def compute_entry_signals(npz, n, is_long, cfg):
         _ee_combined = _combine_engine_sigs(_ee_sigs, getattr(cfg, 'V8_ENTRY_ENGINE_COMBINE', 'OR'))
         if _ee_combined is not None:
             base_sig = base_sig | _ee_combined
+    # ═══ 2026-04-30 HTF PORT FROM CRYPTO — tradier-only entry paths (default OFF) ═══
+    # Tradier-only via mode check; crypto path is unaffected.
+    _is_tradier_mode = (str(getattr(cfg, 'MODE', 'crypto')) == 'tradier')
+    if _is_tradier_mode:
+        # F1. HTF_W_M_ALIGN_GATE — entry GATE: require N of 2 (W, M) WaveTrend on side.
+        if bool(getattr(cfg, 'HTF_W_M_ALIGN_GATE_TRADIER_ENABLED', False)):
+            try:
+                _w1_W = _safe(npz, 'wt1_W', n); _w2_W = _safe(npz, 'wt2_W', n)
+                _w1_M = _safe(npz, 'wt1_M', n); _w2_M = _safe(npz, 'wt2_M', n)
+                # Pass-through bars without W/M data (early symbol history): only enforce when both have signal.
+                _w_has = (_w1_W != 0) | (_w2_W != 0)
+                _m_has = (_w1_M != 0) | (_w2_M != 0)
+                if is_long:
+                    _w_ok = (_w1_W > _w2_W) | (~_w_has)
+                    _m_ok = (_w1_M > _w2_M) | (~_m_has)
+                else:
+                    _w_ok = (_w1_W < _w2_W) | (~_w_has)
+                    _m_ok = (_w1_M < _w2_M) | (~_m_has)
+                _req = int(getattr(cfg, 'HTF_W_M_ALIGN_TRADIER_REQUIRED', 2))
+                _agree = _w_ok.astype(np.int8) + _m_ok.astype(np.int8)
+                base_sig = base_sig & (_agree >= _req)
+            except Exception:
+                pass
+        # F2. HTF_DC_BREAKOUT — additive entry path: close > dc_high_TF * (1+thr) (LONG) AND optional W WT on side.
+        if bool(getattr(cfg, 'HTF_DC_BREAKOUT_TRADIER_ENABLED', False)):
+            try:
+                _bk_tf = str(getattr(cfg, 'HTF_DC_BREAKOUT_TRADIER_TF', '4h'))
+                _bk_thr = float(getattr(cfg, 'HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT', 0.0)) / 100.0
+                _bk_req_w = bool(getattr(cfg, 'HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT', True))
+                _dch = _safe(npz, f'dc_high_{_bk_tf}', n, 0.0)
+                _dcl = _safe(npz, f'dc_low_{_bk_tf}', n, 0.0)
+                # Use prev DC band — current bar's high/low includes current candle (lookahead).
+                _dch_prev = np.roll(_dch, 1); _dch_prev[0] = _dch[0]
+                _dcl_prev = np.roll(_dcl, 1); _dcl_prev[0] = _dcl[0]
+                close_bk = _safe(npz, f'close_{getattr(cfg, "LTF", "5m")}', n, 0.0)
+                if close_bk.sum() == 0:
+                    close_bk = close
+                if is_long:
+                    _bk_sig = (_dch_prev > 0) & (close_bk > _dch_prev * (1.0 + _bk_thr))
+                else:
+                    _bk_sig = (_dcl_prev > 0) & (close_bk < _dcl_prev * (1.0 - _bk_thr))
+                if _bk_req_w:
+                    _w1_Wbk = _safe(npz, 'wt1_W', n); _w2_Wbk = _safe(npz, 'wt2_W', n)
+                    _w_has_bk = (_w1_Wbk != 0) | (_w2_Wbk != 0)
+                    if is_long:
+                        _w_ok_bk = (_w1_Wbk > _w2_Wbk) | (~_w_has_bk)
+                    else:
+                        _w_ok_bk = (_w1_Wbk < _w2_Wbk) | (~_w_has_bk)
+                    _bk_sig = _bk_sig & _w_ok_bk
+                base_sig = base_sig | _bk_sig
+            except Exception:
+                pass
     return base_sig
 
 
@@ -3087,6 +3169,26 @@ def compute_exit_signals(npz, n, is_long, cfg):
         else:
             stdev_reject_exit = (_sre_prev <= (1.0 - _sre_zone)) & (_sre_pctb > (1.0 - _sre_ret)) & (wt_vel_ltf > 0)
     base_exit = delta_exit | vel_exit | srs_exit | sat_exit | rz_exit | rz_cascade_exit | exit_scorer_exit | stoch_1h_exit | mfi_flip_exit | wt_cu_exit | simple_mtf_wt_cross_exit | mi_exit | vel_decay_exit | extra_exit | wt_mom_exit | wt_struct_exit | wt_div_exit | wt_pct_exit | wt_zscore_exit | wt_accel_exit | wt_wave_exit | wt_score_flip_exit | wt_vel_mtf_exit | wt_align_exit | wt_comp_delta_exit | dc_pos_exit | vel_floor_exit | kd_wt1h_exit | k_lower_high_exit | macd_hist_exit | stdev_fail_exit | stdev_reject_exit
+    # ═══ 2026-04-30 HTF PORT — F3. HTF_W_REVERSAL_EXIT — tradier-only (default OFF) ═══
+    if (str(getattr(cfg, 'MODE', 'crypto')) == 'tradier') and bool(getattr(cfg, 'HTF_W_REVERSAL_EXIT_TRADIER_ENABLED', False)):
+        try:
+            _w1_W_e = _safe(npz, 'wt1_W', n); _w2_W_e = _safe(npz, 'wt2_W', n)
+            _w1_D_e = _safe(npz, 'wt1_D', n); _w2_D_e = _safe(npz, 'wt2_D', n)
+            _w_has_e = (_w1_W_e != 0) | (_w2_W_e != 0)
+            _d_has_e = (_w1_D_e != 0) | (_w2_D_e != 0)
+            if is_long:
+                _w_against = (_w1_W_e < _w2_W_e) & _w_has_e
+                _d_against = (_w1_D_e < _w2_D_e) & _d_has_e
+            else:
+                _w_against = (_w1_W_e > _w2_W_e) & _w_has_e
+                _d_against = (_w1_D_e > _w2_D_e) & _d_has_e
+            if bool(getattr(cfg, 'HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D', True)):
+                _htf_rev_exit = _w_against & _d_against
+            else:
+                _htf_rev_exit = _w_against
+            base_exit = base_exit | _htf_rev_exit
+        except Exception:
+            pass
     # D4: BREAKOUT MULTI-LUNG exit augmentation (default OFF)
     if getattr(cfg, 'BREAKOUT_MULTI_LUNG_ENABLED', False):
         try:
@@ -3790,9 +3892,9 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
         _k_15m_arr = _safe(npz, 'stoch_k_15m', n, default=50.0)
         _k_1h_arr = _safe(npz, 'stoch_k_1h', n, default=50.0)
     if _k1m_extreme_active:
-        _k_1m_arr = _safe(npz, 'stoch_k_1m', n, default=50.0)
+        _k_1m_arr = _safe_k_1m(npz, n, ltf=getattr(cfg, 'LTF', '3m'))
         _k_1m_prev_arr = np.roll(_k_1m_arr, 1); _k_1m_prev_arr[0] = _k_1m_arr[0]
-        _k1m_field_present = not (_k_1m_arr == 50.0).all()  # detect zero-fill
+        _k1m_field_present = not (_k_1m_arr == 50.0).all()  # zero-fill check still valid; helper proxies to LTF when 1m absent
 
     for i in range(start_i, n):
         price_i = float(close[i])
@@ -4477,9 +4579,9 @@ def _k1m_extreme_reverse_mask(npz: dict, n: int, gain_pct_running: np.ndarray, c
     """
     if not getattr(cfg, 'K1M_EXTREME_REVERSE_ENABLED', False):
         return np.zeros(n, dtype=bool)
-    k_1m = _safe(npz, 'stoch_k_1m', n, default=50.0)
+    k_1m = _safe_k_1m(npz, n, ltf=getattr(cfg, 'LTF', '3m'))
     if (k_1m == 50.0).all():
-        return np.zeros(n, dtype=bool)  # field zero-filled; path can't fire credibly
+        return np.zeros(n, dtype=bool)  # both 1m + LTF proxy missing; can't fire credibly
     k_1m_prev = np.roll(k_1m, 1)
     k_1m_prev[0] = k_1m[0]
     hi = float(getattr(cfg, 'K1M_EXTREME_HIGH', 90.0))
@@ -5130,7 +5232,7 @@ def simulate(stores, cfg, capital=10000.0):
                 _retro_k_15m = _safe(npz, 'stoch_k_15m', n, default=50.0)
                 _retro_k_1h = _safe(npz, 'stoch_k_1h', n, default=50.0)
             if _k1m_extreme_active:
-                _retro_k_1m = _safe(npz, 'stoch_k_1m', n, default=50.0)
+                _retro_k_1m = _safe_k_1m(npz, n, ltf=getattr(cfg, 'LTF', '3m'))
                 _retro_k_1m_zero_filled = bool((_retro_k_1m == 50.0).all())
                 _retro_k_1m_prev = np.roll(_retro_k_1m, 1); _retro_k_1m_prev[0] = _retro_k_1m[0]
             # E5 HEDGE_PROTECT_LOSS tunables (independent of HEDGE_ENABLED)

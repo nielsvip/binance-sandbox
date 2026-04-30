@@ -972,8 +972,9 @@ def _account_pool_stats(account: str) -> Dict[str, Any]:
     if inflated:
         tags.append(f"INFLATED ({pool_sharpe:.2f} >5 with {trades} trades)")
     n_syms_v = int(metrics["n_syms"])
-    if n_syms_v < metrics_guard.MIN_SYMS_CRYPTO:
-        tags.append(f"DIAGNOSTIC (n_syms={n_syms_v}/{metrics_guard.MIN_SYMS_CRYPTO})")
+    floor = metrics_guard.MIN_SYMS_STOCKS if account in STOCK_ACCOUNT_KEYS else metrics_guard.MIN_SYMS_CRYPTO
+    if n_syms_v < floor:
+        tags.append(f"DIAGNOSTIC (n_syms={n_syms_v}/{floor})")
     result = {
         "account": account,
         "trades": trades,
@@ -1251,6 +1252,33 @@ def account_pool_stats_route():
     accts = [a.strip() for a in accts_raw.split(",") if a.strip() and a.strip() in ACCOUNTS]
     out = {a: _account_pool_stats(a) for a in accts}
     return jsonify({"per_account": out, "generated_utc": datetime.now(timezone.utc).isoformat()})
+
+
+@app.route("/live_status")
+def live_status():
+    """Per-account file-counts for both crypto (data/history) and stocks
+    (data/tradier/history). Lets the chart show which accounts have data and
+    where it lives — instead of silently empty panes."""
+    out: Dict[str, Any] = {}
+    for acct in ACCOUNTS:
+        base = _history_dir_for(acct)
+        n_files = 0
+        n_syms = 0
+        if base.exists():
+            try:
+                files = list(base.glob("*.jsonl"))
+                n_files = len(files)
+                n_syms = len({p.stem.rsplit("_", 1)[0] for p in files})
+            except Exception:
+                pass
+        out[acct] = {
+            "history_dir": str(base),
+            "exists": base.exists(),
+            "n_files": n_files,
+            "n_symbols": n_syms,
+            "kind": "stocks" if acct in STOCK_ACCOUNT_KEYS else "crypto",
+        }
+    return jsonify(out)
 
 
 @app.route("/indicator")

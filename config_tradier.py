@@ -148,6 +148,18 @@ class TradierConfig:
     LH_HL_FILTER_REPLACE_SMA200D: bool = False         # if True, turns off SMA200_DIST_ENTRY_ENABLED
     LH_HL_FILTER_AUGMENT_GATE_ENABLED: bool = True     # apply to AUGMENT actions
     LH_HL_FILTER_REQUIRE_BOTH: bool = False            # False=LH-only/HL-only; True=LH+LL/HL+HH (full channel)
+    # === 2026-04-30 HTF PORT FROM CRYPTO — tradier-only HTF (W/M/4h) entry+exit anchors ===
+    # Crypto baseline (pool_sharpe 0.7770) uses W and M timeframes via ALL_TF_BRAKE; tradier
+    # baseline ignores them entirely. These three switches port the highest-leverage HTF idea.
+    # ALL DEFAULT OFF — flip in sweep / live promotion only after verified ≥0.05 sharpe lift.
+    HTF_W_M_ALIGN_GATE_TRADIER_ENABLED: bool = False   # F1: entry GATE — N of 2 (W, M) WT must agree with side
+    HTF_W_M_ALIGN_TRADIER_REQUIRED: int = 2            # 1=either; 2=both
+    HTF_DC_BREAKOUT_TRADIER_ENABLED: bool = False      # F2: additive entry — close > dc_high_4h * (1+thr) AND W WT on side
+    HTF_DC_BREAKOUT_TRADIER_TF: str = "4h"             # 4h | D | W (DC band timeframe)
+    HTF_DC_BREAKOUT_TRADIER_THRESHOLD_PCT: float = 0.0 # 0 = exact break; 0.1 = +0.1% confirm
+    HTF_DC_BREAKOUT_TRADIER_REQUIRE_W_WT: bool = True  # require W WaveTrend on side (HTF anchor)
+    HTF_W_REVERSAL_EXIT_TRADIER_ENABLED: bool = False  # F3: exit when wt1_W against side AND wt1_D against side
+    HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D: bool = True # also require D against (2-TF anchor; if False, W alone suffices)
     # === 2026-04-27 FUNDING/OI ENTRY-GATE ANALOGUES (mirror crypto FUNDING_GATE + OI_CONFIRM) ===
     # Stocks have no native funding rate; options put/call OI ratio is the bullish/bearish flow analogue.
     # Reads data/stocks_oi_cache/{sym}.json (populated by tradier_options_oi_fetcher.py, READ-ONLY).

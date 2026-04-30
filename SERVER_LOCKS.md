@@ -8,8 +8,8 @@
 
 | Server | Lock | Owner | Task | Started | ETA |
 |--------|------|-------|------|---------|-----|
-| **157.180.125.52 (S1)** | none (advisory) | crypto_funding_oi_ON | autonomous_search 24sym × 1.32yr crypto funding_oi_ON_w50400 (seed 50400) — vec_mass loops PAUSED to free RAM | 2026-04-28 00:19 UTC | open-ended |
-| **204.168.181.211 (S2)** | none (advisory) | tradier_funding_oi_ON | autonomous_search 114sym × 2.32yr tradier funding_oi_ON_w70100 (seed 70100) | 2026-04-28 00:11 UTC | open-ended |
+| **157.180.125.52 (S1)** | **advisory (priority)** | hourly_reconfig | hr_flz / hr_fin / hr_inf / bts / mis_flz / mis_fin / mis_inf — 7d rolling reconfig daemons (user 2026-04-30: HIGHEST PRIORITY). Other sweeps PAUSED to prevent OOM. **system_combo ang sweep KILLED 2026-04-30 22:00 UTC** (was eating 15.6 GB across 4 procs and triggered S1 OOM). Do NOT relaunch system_combo / wt_dc_full sweeps without first stopping the hourly daemons. | 2026-04-30 19:54 UTC | open-ended |
+| **204.168.181.211 (S2)** | **advisory (priority)** | hourly_reconfig | hr_trc / hr_trb / mis_trc / mis_trb tradier hourly daemons. **stock_v2_tradier sweep KILLED 2026-04-30 22:00 UTC** (eating 7 GB). | 2026-04-30 19:55 UTC | open-ended |
 
 ### Notes (2026-04-28 funding_oi_ON sweep launch)
 
