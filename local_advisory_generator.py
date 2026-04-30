@@ -53,8 +53,15 @@ ENTRY_SCORE_MIN = 75.0
 ENTRY_MTF_MIN = 4
 ENTRY_NEAR_DIST_MAX_PCT = 1.5
 
-LOSER_GAIN_THRESHOLD = -0.5
-SR_BREAK_GAIN_THRESHOLD = 0.0
+# 2026-04-30 BLEED KILL: hedge-storm of 134 force-hedges/day on inf bled real money
+# (8 hedges sitting at -0.5% to -5.59% per hedge_safety_alerts). The previous -0.5%
+# threshold + 4-TF gate fired on minor wobbles, opening hedges that themselves bled.
+# Trigger now requires SEVERE losers (-3%) + still-against MTF, not normal noise.
+# Override at runtime via env: INF_AGENT_HEDGE_DISABLED=1 (full kill) or
+# INF_AGENT_LOSER_THRESHOLD=-2.0 (custom).
+LOSER_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_LOSER_THRESHOLD", "-3.0"))
+SR_BREAK_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_SR_BREAK_THRESHOLD", "-1.5"))
+INF_AGENT_HEDGE_DISABLED = os.environ.get("INF_AGENT_HEDGE_DISABLED", "0") == "1"
 HOLD_MIN_MTF_ALIGN = 3
 HOLD_MIN_GAIN_PCT = 0.0
 
@@ -427,14 +434,17 @@ def _generate_for_account(acct, refresh, market_data, allowed_keys, causality_tr
             current_price = 0.0
         against_n, against_seen, against_per_tf = _mtf_against_count(refresh_lookup, market_data, symbol, side)
         with_n, with_seen, _with_per_tf = _mtf_with_count(refresh_lookup, market_data, symbol, side)
-        if gain < LOSER_GAIN_THRESHOLD and against_n is not None and against_seen and against_n >= 4 and (with_n or 0) <= 1:
-            advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_MTF_AGAINST_LOSER", against_n, against_seen, against_per_tf, gain)
-            continue
-        if gain < SR_BREAK_GAIN_THRESHOLD:
-            broken, lvl = _sr_break_against(market_data, symbol, side, current_price)
-            if broken:
-                advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_SR_BREAK", against_n, against_seen, against_per_tf, gain, level=lvl)
+        # BLEED KILL 2026-04-30: kill switch + raised thresholds. Force-hedge only on SEVERE losers
+        # to stop the 134/day fee-bleed that ate real $.
+        if not INF_AGENT_HEDGE_DISABLED:
+            if gain < LOSER_GAIN_THRESHOLD and against_n is not None and against_seen and against_n >= 4 and (with_n or 0) <= 1:
+                advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_MTF_AGAINST_LOSER", against_n, against_seen, against_per_tf, gain)
                 continue
+            if gain < SR_BREAK_GAIN_THRESHOLD:
+                broken, lvl = _sr_break_against(market_data, symbol, side, current_price)
+                if broken:
+                    advisories[short_key] = _build_force_hedge(symbol, side, "HEDGE_SR_BREAK", against_n, against_seen, against_per_tf, gain, level=lvl)
+                    continue
         if gain > 0 and against_n is not None and against_seen and against_n >= 4 and (with_n or 0) <= 1:
             advisories[short_key] = _build_force_close_profit(symbol, side, "PROFIT_TAKE_MTF_REVERSE", against_n, against_seen, against_per_tf, gain)
             continue

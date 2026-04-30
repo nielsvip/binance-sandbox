@@ -81,7 +81,12 @@ case "$TIER" in
         N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
         echo "[$TIER] basket: $N NPZs (target $TARGET)"
         [ "$N" -ge "$TARGET" ] || { echo "ERR: only $N NPZs, need $TARGET"; exit 2; }
-        launch "$TIER" vec_sweep.py pooled --basket "crypto$TARGET" --syms "$SYMS" --max-configs 5000 --seed 31
+        # HTF-only: drop 3m/15m/1h primitives → fewer trades, smarter signal.
+        # Trade caps: 5-200/sym/yr (~ once a week to ~once every 2 days). Anything
+        # higher is overtrading; anything lower is a stale strategy.
+        launch "$TIER" vec_sweep.py pooled --basket "crypto$TARGET" --syms "$SYMS" \
+            --max-configs 5000 --seed 31 \
+            --tf-filter htf_only --min-tps-per-yr 5 --max-tps-per-yr 200
         ;;
     validate_top)
         is_s1 || { echo "ERR: validate_top is CRYPTO — run on S1"; exit 2; }

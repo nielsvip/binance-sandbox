@@ -663,6 +663,9 @@ def _load_npz(sym: str, npz_dir: Path) -> Dict[str, np.ndarray]:
     return dict(np.load(p, allow_pickle=False))
 
 
+_HTF_SUFFIX_RE = re.compile(r"_(4h|D|W|M|D_prev|W_prev|M_prev|D_ant|W_ant|M_ant)$|^wt_(composite|bull_alignment|bear_alignment|cross_count|falling|rising|peak|trough)")
+
+
 def _families_for(args, sample_npz: Dict[str, np.ndarray],
                   symbol_relative_only: bool = False) -> List[PrimitiveFamily]:
     enabled = tuple((args.enable_families or "*").split(","))
@@ -670,6 +673,13 @@ def _families_for(args, sample_npz: Dict[str, np.ndarray],
     fams = auto_families(sample_npz, enabled_globs=enabled, disabled_globs=disabled)
     if symbol_relative_only or getattr(args, "symbol_relative_only", False):
         fams = [f for f in fams if f.symbol_relative]
+    tf = getattr(args, "tf_filter", "any")
+    if tf == "htf_only":
+        # Keep only 4h/D/W/M-suffixed fields + multi-TF wt aggregates.
+        fams = [f for f in fams if _HTF_SUFFIX_RE.search(f.field)]
+    elif tf == "no_3m":
+        # Drop 3m-only primitives (often noise-firing); keep 15m up.
+        fams = [f for f in fams if not f.field.endswith("_3m") and not f.field.endswith("_3m_prev")]
     return fams
 
 
@@ -762,6 +772,13 @@ def run_pooled(args) -> None:
             "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
             "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
         }
+        # Trade-frequency gates: drop overtrading and undertrading configs at insert time.
+        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
+        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
+        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
+        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
+            n_done += 1
+            continue
         insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=mode, metrics=metrics)
         n_done += 1
         # Same sample-floor gate as validate-mode.
@@ -828,10 +845,15 @@ def run_validate(args) -> None:
             "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
             "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
         }
+        # Trade-frequency gates same as pooled.
+        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
+        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
+        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
+        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
+            n_done += 1
+            continue
         insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=out_mode, metrics=metrics)
         n_done += 1
-        # Sample-floor gate per CLAUDE.md: ignore "best" claims with <30 trades/sym
-        # AND drop |pool|>5 outliers unless trades>=5000 (rule 6 + metrics_guard).
         sample_ok = len(all_rets) >= 30 * max(1, n_syms) and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
         if pool > best and sample_ok:
             best = pool
@@ -941,6 +963,12 @@ def _add_common(p):
                    help="comma globs of family field-names to ENABLE (default: all)")
     p.add_argument("--disable-families", default="",
                    help="comma globs of family field-names to DISABLE")
+    p.add_argument("--tf-filter", default="any", choices=("any", "htf_only", "no_3m"),
+                   help="restrict primitive timeframes: any (default), htf_only (4h/D/W/M), no_3m")
+    p.add_argument("--max-tps-per-yr", type=float, default=0,
+                   help="reject configs with > N trades/sym/yr (anti-overtrading; 0=disabled)")
+    p.add_argument("--min-tps-per-yr", type=float, default=0,
+                   help="reject configs with < N trades/sym/yr (sample floor; 0=disabled)")
 
 
 def main():

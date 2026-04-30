@@ -15,6 +15,7 @@ Trade recorder writes JSONL to V8_TRADES_OUT_DIR (default /tmp/v8_trades).
 """
 import json
 import os
+import re
 import statistics
 import sys
 import time
@@ -786,6 +787,112 @@ def _account_pool_stats(account: str) -> Dict[str, Any]:
     }
     _acct_pool_cache[account] = (time.time(), result)
     return result
+
+
+_sweep_status_cache: Tuple[float, Dict[str, Any]] = (0.0, {})
+_SWEEP_STATUS_TTL_SEC = 60  # seconds — page polls this; want freshness
+
+
+def _read_sweep_status_from_disk() -> Dict[str, Any]:
+    """Walk autonomous winners JSONLs (S1+S2 mirrored to MB local _s1/_s2),
+    apply same canonical audit as flz_dashboard, return concise summary +
+    publishable top-5 + sweep-process status (best-effort SSH probe with
+    short timeout)."""
+    import subprocess as _sp
+    base = BASE_PATH / "data" / "autonomous"
+    findings: List[Dict[str, Any]] = []
+    if base.exists():
+        from collections import Counter
+        for p in base.rglob("autonomous_*_winners.jsonl"):
+            s = str(p)
+            if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+                continue
+            mode = "tradier" if "tradier" in s.lower() else ("crypto" if "crypto" in s.lower() else "?")
+            n_syms_hint = None
+            for part in p.parts:
+                m = re.search(r"_(\d+)sym", part)
+                if m:
+                    n_syms_hint = int(m.group(1))
+                    break
+            try:
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    rec["_mode"] = mode
+                    rec["_pool"] = p.parent.parent.name
+                    rec["_n_syms_hint"] = n_syms_hint
+                    findings.append(rec)
+            except Exception:
+                continue
+    # Apply canonical filters: pool_sharpe in publishable range,
+    # n_syms hint ≥ floor, trades/sym ≥ 30 if n_syms known.
+    def _is_publishable(r):
+        ps = float(r.get("pool_sharpe", 0) or 0)
+        sym_s = float(r.get("sym_sharpe", 0) or 0)
+        tr = int(r.get("trades", 0) or 0)
+        n = r.get("_n_syms_hint") or 0
+        mode = r.get("_mode")
+        floor = metrics_guard.MIN_SYMS_STOCKS if mode == "tradier" else metrics_guard.MIN_SYMS_CRYPTO
+        if abs(ps) > metrics_guard.PER_SYM_SHARPE_CAP and tr < 5000:
+            return False  # inflated
+        if n < floor:
+            return False
+        if n and tr / n < metrics_guard.MIN_TRADES_PER_SYM_FOR_SYM_SHARPE:
+            return False
+        return True
+    publishable = [r for r in findings if _is_publishable(r)]
+    publishable.sort(key=lambda r: float(r.get("pool_sharpe", 0)), reverse=True)
+    top = publishable[:10]
+    # Probe S1+S2 for live sweep procs (short timeout)
+    procs = {}
+    for host in ("s1-int", "s2-int"):
+        try:
+            r = _sp.run(["ssh", "-o", "ConnectTimeout=2", "-o", "BatchMode=yes",
+                         host, "pgrep -afc 'autonomous_search\\|v8_quick_sweep'"],
+                        capture_output=True, text=True, timeout=5)
+            procs[host] = int((r.stdout or "0").strip() or 0)
+        except Exception:
+            procs[host] = -1  # unknown
+    return {
+        "n_iters_total": len(findings),
+        "n_publishable": len(publishable),
+        "n_diagnostic": len(findings) - len(publishable),
+        "top_10": [
+            {
+                "tier": metrics_guard.tier_name(float(r.get("pool_sharpe", 0))),
+                "mode": r.get("_mode"),
+                "pool_sharpe": round(float(r.get("pool_sharpe", 0) or 0), 4),
+                "sym_sharpe": round(float(r.get("sym_sharpe", 0) or 0), 4),
+                "trades": int(r.get("trades", 0) or 0),
+                "n_syms": r.get("_n_syms_hint"),
+                "acc_gain_pct": round(float(r.get("acc_gain_pct", 0) or 0), 2),
+                "max_dd_pct": round(float(r.get("max_dd_pct", 0) or 0), 2),
+                "pool": r.get("_pool"),
+            }
+            for r in top
+        ],
+        "live_sweep_procs": procs,
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.route("/sweep_status")
+def sweep_status_route():
+    """Surface canonical sweep status + top-10 publishable on 5077.
+    Uses 60s cache to keep the chart page snappy."""
+    global _sweep_status_cache
+    now = time.time()
+    ts, data = _sweep_status_cache
+    if (now - ts) < _SWEEP_STATUS_TTL_SEC and data:
+        return jsonify({**data, "_cache_age_sec": int(now - ts)})
+    data = _read_sweep_status_from_disk()
+    _sweep_status_cache = (now, data)
+    return jsonify({**data, "_cache_age_sec": 0})
 
 
 @app.route("/account_pool_stats")

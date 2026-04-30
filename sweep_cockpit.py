@@ -10,8 +10,10 @@ import math
 import os
 import re
 import subprocess
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from flask import Flask, request, redirect
 
@@ -50,29 +52,67 @@ SERVERS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Cache layer — avoid hammering SSH
+# Cache layer — stale-tolerant, never block a route past FAST_BUDGET_SEC.
+# 2026-04-30 patch: routes were hung 5+ seconds waiting on cold SSH calls.
+# Now: any cold-cache fetch runs in a background thread; the route returns
+# whatever's in cache (even if stale, with a STALE flag) within FAST_BUDGET_SEC.
 # ---------------------------------------------------------------------------
 _cache = {}
-CACHE_TTL = 30  # seconds
+CACHE_TTL = 30  # seconds (when fresh, return without re-fetching)
+FAST_BUDGET_SEC = 2.0  # max time a route will block on a cold-cache lookup
+_refresh_locks: dict = {}
+_refresh_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="cockpit_bg")
+
+
+def _kick_refresh(key, fn):
+    """Refresh cache entry in background. Idempotent if a refresh is already in flight."""
+    lock = _refresh_locks.setdefault(key, threading.Lock())
+    if not lock.acquire(blocking=False):
+        return  # already refreshing
+    def _run():
+        try:
+            data = fn()
+            _cache[key] = {"ts": time.time(), "data": data, "stale": False}
+        except Exception as e:
+            # On error, mark cache stale but keep the prior data if any
+            cur = _cache.get(key, {})
+            cur["stale"] = True
+            cur.setdefault("data", {"error": str(e)})
+            cur.setdefault("ts", time.time() - CACHE_TTL - 1)
+            _cache[key] = cur
+        finally:
+            lock.release()
+    _refresh_pool.submit(_run)
 
 
 def _cached(key, fn):
     now = time.time()
-    if key in _cache and now - _cache[key]["ts"] < CACHE_TTL:
-        return _cache[key]["data"]
+    rec = _cache.get(key)
+    # Hot cache → instant
+    if rec and (now - rec.get("ts", 0)) < CACHE_TTL and not rec.get("stale"):
+        return rec["data"]
+    # Stale cache exists → kick refresh, return stale data immediately
+    if rec and "data" in rec:
+        _kick_refresh(key, fn)
+        return rec["data"]
+    # Cold cache → try a SHORT blocking call (FAST_BUDGET_SEC), then fall back to empty
+    fut = _refresh_pool.submit(fn)
     try:
-        data = fn()
-    except Exception as e:
-        data = {"error": str(e)}
-    _cache[key] = {"ts": now, "data": data}
-    return data
+        data = fut.result(timeout=FAST_BUDGET_SEC)
+        _cache[key] = {"ts": now, "data": data, "stale": False}
+        return data
+    except (FuturesTimeoutError, Exception) as e:
+        empty = {"error": "stale or unavailable", "_exception": str(e)} if isinstance(e, Exception) else {}
+        _cache[key] = {"ts": now, "data": empty, "stale": True}
+        # Let the future keep running so next request gets the result
+        return empty
 
 
-def _ssh_run(host, user, cmd, timeout=10):
-    # 2026-04-14: host is now an SSH alias (s1-int, s2-int) — alias embeds user+ProxyJump via ~/.ssh/config.
-    # If caller still passes old IP-based host, fall back to legacy user@host form.
+def _ssh_run(host, user, cmd, timeout=5):
+    """Default timeout tightened from 10s → 5s. ConnectTimeout 5 → 2.
+    Routes call this only via _cached(), which short-circuits on cold cache."""
     target = host if (host and host.endswith("-int")) else f"{user}@{host}"
-    full = ["ssh", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=no", target, cmd]
+    full = ["ssh", "-o", "ConnectTimeout=2", "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes", target, cmd]
     r = subprocess.run(full, capture_output=True, text=True, timeout=timeout)
     return r.stdout.strip()
 
