@@ -57,13 +57,21 @@ OUT_BASE = ROOT / "data" / "hourly_reconfig"
 SWEEP_CSV_DIR = ROOT / "data" / "sweep_results"
 
 # Account → tradeable-syms file (long/short or pooled).
+# For accounts with split long/short files, list both — wrapper unions them.
 ACCOUNT_SYMS = {
-    "flz": ROOT / "symbols_flz.json",
-    "inf_long": ROOT / "symbols_inf_long.json",
-    "inf_short": ROOT / "symbols_inf_short.json",
-    "trc_long": ROOT / "symbols_trc_long.json",
-    "trc_short": ROOT / "symbols_trc_short.json",
+    "flz": [ROOT / "symbols_flz.json"],
+    "fin": [ROOT / "symbols_fin.json"],
+    "inf": [ROOT / "symbols_inf_long.json", ROOT / "symbols_inf_short.json"],
+    "trc": [ROOT / "symbols_trc_long.json", ROOT / "symbols_trc_short.json"],
+    "trb": [ROOT / "symbols_trb_long.json", ROOT / "symbols_trb_short.json"],
 }
+
+# Trade thresholds (per CLAUDE.md sample-floor rule 5, but for hourly 7d window we
+# cannot reasonably hit ≥30 trades/sym for low-frequency syms like BTCDOMUSDT).
+# So: full opinion published if ≥30 trades, [LOW_SAMPLE] tag if 14–29, FLAT below 14.
+OPINION_FULL_TRADES = 30
+OPINION_LOW_SAMPLE_TRADES = 14
+OPINION_WSHARPE_FLOOR = 0.3  # Directional tier minimum to publish non-FLAT
 
 # Imposter-block regex (bypass chart_sweep import side effect; same pattern).
 _IMPOSTER_RE = re.compile(
@@ -87,16 +95,22 @@ def load_safe_override(path: Path) -> Dict:
     return data
 
 
-# Candidate set: known-good overrides + 4 small perturbations on dedv3 entry tightness.
-# Compact enough for an hourly cycle to finish in <10 min for 8-sym universe.
+# Candidate set: known-good overrides + dynamic candidate pool from BTC settings search.
+# Compact enough (4-6 candidates) for an hourly cycle to finish in <30 min for 8-sym universe.
+EXTRA_CAND_DIR = ROOT / "data" / "hourly_reconfig" / "_candidates"
+
+
 def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
-    """Return list of (tag, overrides_dict) candidates."""
+    """Return list of (tag, overrides_dict) candidates.
+
+    Static: BEST + dedv3 + baseline. Plus any JSONs dropped into _candidates/
+    by btc_settings_search (auto-pickup) — those persist across cycles.
+    """
     base_dir = ROOT / "backtest_v8" / "btc_loop_results"
     cand: List[Tuple[str, Dict]] = []
     for tag, fname in (
-        ("dedv3", "override_btc_dedicated_v3.json"),
         ("BEST", "override_btc_BEST.json"),
-        ("LOOSE", "override_btc_LOOSE.json"),
+        ("dedv3", "override_btc_dedicated_v3.json"),
     ):
         p = base_dir / fname
         try:
@@ -104,19 +118,30 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
         except Exception as e:
             print(f"  [candidates] skip {tag}: {e}", flush=True)
     cand.append(("baseline", {}))
-    # Mutations on dedv3
-    if cand and cand[0][0] == "dedv3":
+    # Mutation focused on producing more trades (loosens entry gates) — addresses
+    # BTCDOMUSDT and other low-frequency syms.
+    if cand and cand[0][0] == "BEST":
         base = cand[0][1]
-        muts = [
-            ("dedv3_tight", {"BTC_TECH_EXIT_WT_MIN_TFS": 4, "BTC_RZ_PROXIMITY_PCT": 0.3}),
-            ("dedv3_loose", {"BTC_TECH_EXIT_WT_MIN_TFS": 2, "BTC_RZ_PROXIMITY_PCT": 0.8}),
-            ("dedv3_minhold5", {"BTC_MIN_HOLD_BARS": 5, "MIN_HOLD_BARS": 5}),
-            ("dedv3_minhold50", {"BTC_MIN_HOLD_BARS": 50, "MIN_HOLD_BARS": 50}),
-        ]
-        for mtag, delta in muts:
-            mcfg = dict(base)
-            mcfg.update(delta)
-            cand.append((mtag, mcfg))
+        more_trades = dict(base)
+        more_trades.update({
+            "BTC_BREAKOUT_MIN_HOLD_BARS": 1,
+            "BTC_MIN_HOLD_BARS": 5,
+            "MIN_HOLD_BARS": 5,
+            "BTC_COOLDOWN_BARS": 1,
+            "BTC_BREAKOUT_COOLDOWN_BARS": 1,
+            "BTC_TECH_EXIT_WT_MIN_TFS": 2,
+        })
+        cand.append(("BEST_more_trades", more_trades))
+    # Auto-pickup candidates dropped by btc_settings_search (extra optimizers may
+    # publish JSONs here as they discover new winners).
+    if EXTRA_CAND_DIR.exists():
+        for p in sorted(EXTRA_CAND_DIR.glob("*.json")):
+            try:
+                cfg = load_safe_override(p)
+                tag = f"extra_{p.stem}"
+                cand.append((tag, cfg))
+            except Exception as e:
+                print(f"  [candidates] skip {p.name}: {e}", flush=True)
     return cand
 
 
@@ -216,32 +241,56 @@ def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
 
 
 def write_opinion(account: str, sym: str, side: str, winner: Dict,
-                  prev_opinion: str, now_ts: int) -> str:
-    """Decide LONG/SHORT/FLAT opinion. Threshold: weighted pool_sharpe > 0.3 (Directional)
-    AND ≥ 30 raw trades AND positive mean return required.
+                  prev_opinion: str, now_ts: int) -> Tuple[str, str]:
+    """Decide LONG/SHORT/FLAT opinion + a quality tag.
+
+    Returns (opinion, sample_tag).
+      - opinion: "LONG" / "SHORT" / "FLAT" — what to actually do
+      - sample_tag: "FULL" / "LOW_SAMPLE" / "INSUFFICIENT" — confidence
+
+    Rules:
+      - n >= 30 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, FULL
+      - n >= 14 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, LOW_SAMPLE
+      - else → FLAT, INSUFFICIENT (or DISCARD if wsharpe<0)
     """
     ws = float(winner.get("wsharpe", 0.0))
     n = int(winner.get("trades", 0))
     raw = winner.get("raw_returns", [])
     mean_pnl = float(np.mean(raw)) if raw else 0.0
-    if n >= 30 and ws >= 0.3 and mean_pnl > 0:
-        opinion = side.upper()  # LONG or SHORT
-    else:
-        opinion = "FLAT"
-    return opinion
+    if n >= OPINION_FULL_TRADES and ws >= OPINION_WSHARPE_FLOOR and mean_pnl > 0:
+        return side.upper(), "FULL"
+    if n >= OPINION_LOW_SAMPLE_TRADES and ws >= OPINION_WSHARPE_FLOOR and mean_pnl > 0:
+        return side.upper(), "LOW_SAMPLE"
+    if ws < 0:
+        return "FLAT", "DISCARD"
+    return "FLAT", "INSUFFICIENT"
 
 
 def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
-    syms_path = ACCOUNT_SYMS.get(account)
-    if not syms_path or not syms_path.exists():
-        print(f"[hourly] no symbol file for account={account}", flush=True)
+    syms_paths = ACCOUNT_SYMS.get(account)
+    if not syms_paths:
+        print(f"[hourly] unknown account={account}", flush=True)
         return 1
-    raw = syms_path.read_text()
-    # Tolerate trailing commas in symbols_flz.json (production format).
-    raw_clean = re.sub(r",(\s*[\]}])", r"\1", raw)
-    all_syms = [s for s in json.loads(raw_clean) if isinstance(s, str)]
-    if max_syms > 0:
-        all_syms = all_syms[:max_syms]
+    all_syms_set: List[str] = []
+    seen = set()
+    for sp in syms_paths:
+        if not sp.exists():
+            print(f"[hourly] symbol file missing: {sp}", flush=True)
+            continue
+        raw = sp.read_text()
+        # Tolerate trailing commas in symbols_*.json (production format).
+        raw_clean = re.sub(r",(\s*[\]}])", r"\1", raw)
+        try:
+            for s in json.loads(raw_clean):
+                if isinstance(s, str) and s not in seen:
+                    all_syms_set.append(s)
+                    seen.add(s)
+        except Exception as e:
+            print(f"[hourly] parse error {sp}: {e}", flush=True)
+    if not all_syms_set:
+        print(f"[hourly] no symbols loaded for account={account}", flush=True)
+        return 1
+    all_syms = all_syms_set[:max_syms] if max_syms > 0 else all_syms_set
     sides = ("LONG", "SHORT")
     cands = candidate_configs(account)
     if not cands:
@@ -295,16 +344,18 @@ def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
                     best = r
             sym_key = f"{sym}_{side}"
             prev_op = prev_opinions.get("syms", {}).get(sym_key, {}).get("opinion", "FLAT")
-            opinion = write_opinion(account, sym, side, best, prev_op, now_ts)
+            opinion, sample_tag = write_opinion(account, sym, side, best, prev_op, now_ts)
             active[sym_key] = {
                 "winning_tag": best["tag"],
                 "wsharpe": best["wsharpe"],
                 "trades": best["trades"],
+                "sample_tag": sample_tag,
                 "overrides": best.get("overrides", {}),
                 "cycle_id": cycle_id,
             }
             opinions["syms"][sym_key] = {
                 "opinion": opinion,
+                "sample_tag": sample_tag,
                 "prev_opinion": prev_op,
                 "changed": opinion != prev_op,
                 "winning_tag": best["tag"],
@@ -334,7 +385,7 @@ def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
                 worst = peak - eq
         m["max_dd_pct"] = worst
         m["override_path"] = "candidate_grid"
-        m["tag"] = f"hourly_{account}_{cycle_id}"
+        m["tag"] = f"hourly_{account}_{cycle_id}_w7d"  # _w7d marks rolling 7-day window
         try:
             csv_path = SWEEP_CSV_DIR / f"canonical_hourly_{account}.csv"
             mg.write_sharpe_row(csv_path, m, mode="crypto", append=True)

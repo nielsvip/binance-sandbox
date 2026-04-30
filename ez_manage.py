@@ -20280,6 +20280,33 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _hg_real_gain = _hg_stale_gain
                         # Use the WORSE of stale-gain and real-gain so we never close at a hidden loss.
                         _hg_gain = min(_hg_stale_gain, _hg_real_gain)
+                        # ═══ 2026-04-30 USER ABSOLUTE: wt_15m flip closes hedge FIRST, NO P/L gate ═══
+                        # User: "CLOSE the hedge when wt_15m goes against it. Same as last 500 years."
+                        # The 3m+1h NOLOSS_HOLD check below RETURNS early from process_position when
+                        # hedge is at a loss — stopping all subsequent close logic (including the
+                        # BANDAID_OFF block in ez_positions_quick.monitor_and_manage_hedges, which is
+                        # in a separate loop). Hoist the wt_15m close check ABOVE the 3m+1h block so
+                        # losing hedges with wt_15m flipped against them DO close.
+                        if getattr(config, 'HEDGE_BANDAID_OFF_ENABLED', False):
+                            _hg_losing_pk = _hedge_for_tracker or getattr(_hg_pos, 'hedge_for', None) or position_key
+                            try:
+                                _, _hg_losing_sym, _hg_losing_side = _hg_losing_pk.split(':')[0], _hg_losing_pk.split(':')[1].rsplit('_', 1)[0], _hg_losing_pk.rsplit('_', 1)[1]
+                            except Exception:
+                                _hg_losing_sym = symbol; _hg_losing_side = 'SHORT' if _hg_long else 'LONG'
+                            _hg_losing_is_long = (_hg_losing_side == 'LONG')
+                            # Same-symbol hedge: 15m WT is in _hg_i. Cross-symbol: would need separate fetch.
+                            _hg_w1_15m = safe_fetch_float(_hg_i.get('wt1_15m'), 0)
+                            _hg_w2_15m = safe_fetch_float(_hg_i.get('wt2_15m'), 0)
+                            _hg_favors_origin = (_hg_losing_is_long and _hg_w1_15m > _hg_w2_15m) or (not _hg_losing_is_long and _hg_w1_15m < _hg_w2_15m)
+                            if _hg_favors_origin and (_hg_w1_15m != 0 or _hg_w2_15m != 0):
+                                _hg_ord_side_first = 'SELL' if _hg_long else 'BUY'
+                                _hg_pos_side_first = 'LONG' if _hg_long else 'SHORT'
+                                logger.warning(f"🩹 [HEDGE_BANDAID_OFF_FIRST_PRE] {position_key}: 15m WT favors origin {_hg_losing_pk} (wt1={_hg_w1_15m:.1f} wt2={_hg_w2_15m:.1f} {'BULL' if _hg_losing_is_long else 'BEAR'}). Hedge gain={_hg_gain:.2f}%. NUKING (NO P/L gate, hoisted above 3m+1h NOLOSS_HOLD).")
+                                try:
+                                    await trade_manager.execute_now(position_key, account_key, symbol, _hg_amt, _hg_ord_side_first, _hg_pos_side_first, _hg_amt, current_price, f"HEDGE_BANDAID_OFF_FIRST_{int(time.time())}", f"HEDGE_BANDAID_OFF_FIRST_PRE_wt15m_{_hg_w1_15m:.1f}vs{_hg_w2_15m:.1f}_hgain{_hg_gain:.2f}%", True, "CLOSE", is_hedge=True, hedge_for=_hg_losing_pk)
+                                finally:
+                                    trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.NO_ACTION}:HEDGE_BANDAID_OFF_FIRST_PRE"
                         _hg_decision = _hd.should_close_hedge_wt3m1h(_hg_i, _hg_long, _hg_gain, config)
                         if _hg_decision is not None:
                             _hg_w13 = _hg_decision['wt']['wt1_3m']; _hg_w23 = _hg_decision['wt']['wt2_3m']
