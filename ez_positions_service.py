@@ -2565,11 +2565,11 @@ class WebSocketManager:
                     logger.warning(f"[WS_AMT_CHANGE][{position_key}] prev={prev_amt} ws={amt_abs} diff={amount_diff:.6f}")
                 if amount_diff < tolerance:
                     if self.service and hasattr(self.service, 'handle_unchanged_position'):
-                        await self.service.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
+                        await self.service.handle_unchanged_position(existing_position, position_key, amt_abs, current_price, price_is_fresh=True)
                 elif amt_abs > prev_amt:
                     logger.critical(f"[POSAMT_WRITE][WS_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via WS")
                     if self.service and hasattr(self.service, 'handle_augmentation'):
-                        await self.service.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price)
+                        await self.service.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=True)
                 elif amt_abs < prev_amt:
                     logger.critical(f"[POSAMT_WRITE][WS_RED][{position_key}] {prev_amt} -> {amt_abs} (-{prev_amt-amt_abs}) via WS")
                     if self.service and hasattr(self.service, 'handle_reduction'):
@@ -6530,10 +6530,10 @@ class PositionService:
                 if prev_amt > 0 and amt_abs != prev_amt:
                     logger.warning(f"[API_AMT_CHANGE][{position_key}] prev={prev_amt} api={amt_abs} diff={amount_diff:.6f} tol={tolerance:.6f} trade_just_exec={trade_just_executed}")
                 if amount_diff < tolerance:
-                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
+                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price, price_is_fresh=_price_is_fresh)
                 elif amt_abs > prev_amt:
                     logger.critical(f"[POSAMT_WRITE][API_AUG][{position_key}] {prev_amt} -> {amt_abs} (+{amt_abs-prev_amt}) via API")
-                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price)
+                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, amt_abs - prev_amt, current_price, existing_position.entry_price or current_price, price_is_fresh=_price_is_fresh)
                 elif amt_abs < prev_amt:
                     if trade_just_executed:
                         logger.warning(f"[API_SYNC_BLOCKED][{position_key}] API says amt={amt_abs} < prev={prev_amt} but a trade was JUST executed (120s cooldown). Keeping local amt. API data is stale.")
@@ -6549,7 +6549,7 @@ class PositionService:
                     else:
                         await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, prev_amt - amt_abs, current_price, existing_position.entry_price or current_price, reduction_source="api_sync")
                 else:
-                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
+                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price, price_is_fresh=_price_is_fresh)
                 existing_position.last_updated = now
                 account_positions[position_key] = existing_position
                 self.positions[position_key] = existing_position
@@ -6784,7 +6784,7 @@ class PositionService:
         except Exception as exc:
             self.logger.error(f"[prev_gain] loop error: {exc}")
 
-    async def handle_unchanged_position(self, position, position_key: str, amt_abs:float, current_price: float):
+    async def handle_unchanged_position(self, position, position_key: str, amt_abs:float, current_price: float, price_is_fresh: bool = False):
         now = datetime.now(timezone.utc)
         account_key, _, _ = parse_position_key(position_key)
         if abs(position.positionAmt) > 0 and amt_abs == 0:
@@ -6794,28 +6794,16 @@ class PositionService:
             if current_price and current_price > 0:
                 # 2026-04-24: SELF-REINFORCING STALENESS FIX. Previously this path refreshed
                 # mark_price_last_updated = now EVERY cycle regardless of whether the value
-                # actually changed. Downstream quick_price() sees age<2s and returns the stale
-                # value → next cycle feeds that stale value back in → timestamp refreshed again.
-                # Fix: ONLY advance timestamp when we have a genuinely NEW price (either
-                # price_ts is fresh, or current_price differs from stored value).
-                price_ts = None
-                try :
-                    if hasattr(self, 'get_current_price'):
-                        _, price_ts = await self.get_current_price(position.symbol)
-                except Exception:
-                    pass
+                # actually changed. Fix: ONLY advance timestamp when value changed OR caller
+                # signals price_is_fresh=True (API mp / WS payload).
+                # 2026-04-30: Removed inline get_current_price() — at ~200 positions × 0.5s
+                # Redis timeout it stacked to >120s and tripped the PAU safety net (3 hangs
+                # in 30 min on ang/inf). Caller already knows whether its source is fresh.
                 _old_mark = position.mark_price or 0
                 _value_changed = abs(current_price - _old_mark) / max(_old_mark, 1e-12) > 1e-6
-                _ts_is_fresh = False
-                if price_ts:
-                    try:
-                        _ts_age = (now - ensure_tz(price_ts)).total_seconds()
-                        _ts_is_fresh = _ts_age < 30
-                    except Exception:
-                        _ts_is_fresh = False
-                if _value_changed or _ts_is_fresh:
+                if _value_changed or price_is_fresh:
                     position.mark_price = current_price
-                    position.mark_price_last_updated = ensure_tz(price_ts) if price_ts else now
+                    position.mark_price_last_updated = now
                 # else: leave mark_price_last_updated AT ITS ORIGINAL — staleness will surface to callers
             current_price = position.mark_price or current_price
             if amt_abs == 0.0:
@@ -6862,17 +6850,14 @@ class PositionService:
             pass
         self._mark_positions_dirty()
 
-    async def handle_augmentation(self, position, position_key, positionAmt, positionAmt_abs, augment_qty, current_price, entry_price):
+    async def handle_augmentation(self, position, position_key, positionAmt, positionAmt_abs, augment_qty, current_price, entry_price, price_is_fresh: bool = False):
         now = datetime.now(timezone.utc)
         if current_price and current_price > 0:
+            # 2026-04-30: Removed inline get_current_price() — at ~200 positions × 0.5s
+            # Redis timeout it stacked to >120s and tripped the PAU safety net. Caller
+            # already knows whether its source is fresh (API mp / WS payload).
             position.mark_price = current_price
-            price_ts = None
-            try :
-                if hasattr(self, 'get_current_price'):
-                    _, price_ts = await self.get_current_price(position.symbol)
-            except Exception:
-                pass
-            position.mark_price_last_updated = ensure_tz(price_ts) if price_ts else now
+            position.mark_price_last_updated = now
         account_key, symbol, position_side = parse_position_key(position_key)
         min_qty = self.min_qty.get(symbol, 0.0001)*1.2
         pos_min_qty = max(3 * config.MIN_POSITION_SIZE / current_price, min_qty) if current_price > 0 else min_qty
