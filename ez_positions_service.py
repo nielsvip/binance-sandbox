@@ -2366,24 +2366,57 @@ class WebSocketManager:
                 async with self.session.ws_connect(url, heartbeat=15, timeout=30) as ws:
                     logger.info(f"[{account_key}] ✅ WebSocket connected!")
                     reconnect_delay = 2
-                    last_message_time = time.time()
+                    # Wrap last_message_time in a list so the watchdog closure can mutate it
+                    # via index assignment without needing `nonlocal` (cleaner than rewriting the
+                    # outer assignments below).
+                    lmt = [time.time()]
                     if self.service and hasattr(self.service, '_ws_update_timestamps'):
                         self.service._ws_update_timestamps[f"{account_key}_connected"] = time.time()
 
                     async def message_watchdog():
+                        # 2026-04-30: prior watchdog reset the WS whenever no user-data
+                        # message arrived for 60s. But Binance USER-DATA streams are
+                        # naturally silent unless the account has an order/balance/margin
+                        # event — quiet periods of 60-300s are normal even on busy accounts.
+                        # The blind reset thrashed every account ~once a minute (29
+                        # resets/30min per account), losing real events during the ~3s
+                        # reconnect window AND wasting POST listenKey calls. Now: when
+                        # silence > 60s, FIRST probe the listen key with PUT keepalive.
+                        # If keepalive succeeds the connection is healthy, account is just
+                        # quiet — extend tolerance to 10min and reset the timer. Only force
+                        # WS teardown when the probe FAILS (key truly invalid) or silence
+                        # exceeds the 10-min hard cap.
+                        idle_probe_ok_count = 0
                         while self._running:
                             await asyncio.sleep(30)
-                            silence = time.time() - last_message_time
-                            if silence > 60:
-                                logger.warning(f"[{account_key}] WS frozen (no msg > {silence:.0f}s). Resetting.")
-                                try : await ws.close()
-                                except Exception: pass
-                                break
+                            silence = time.time() - lmt[0]
+                            if silence <= 60:
+                                idle_probe_ok_count = 0
+                                continue
+                            lk = self.listen_keys.get(account_key)
+                            probe_ok = False
+                            if lk and self.client:
+                                try:
+                                    await asyncio.wait_for(asyncio.to_thread(self.client.futures_stream_keepalive, lk), timeout=8.0)
+                                    probe_ok = True
+                                except Exception as probe_err:
+                                    logger.warning(f"[{account_key}] Listen-key probe failed during {silence:.0f}s WS silence: {probe_err}")
+                            if probe_ok and silence < 600:
+                                idle_probe_ok_count += 1
+                                if idle_probe_ok_count == 1 or idle_probe_ok_count % 10 == 0:
+                                    logger.info(f"[{account_key}] WS silent {silence:.0f}s but listen key valid — idle stream (probes_ok={idle_probe_ok_count})")
+                                lmt[0] = time.time()
+                                continue
+                            logger.warning(f"[{account_key}] WS frozen (no msg > {silence:.0f}s, probe={'ok' if probe_ok else 'FAIL'}). Resetting with fresh listen key.")
+                            self.listen_keys.pop(account_key, None)
+                            try : await ws.close()
+                            except Exception: pass
+                            break
                     watchdog_task = asyncio.create_task(message_watchdog())
                     try :
                         async for message in ws:
                             if not self._running: break
-                            last_message_time = time.time()
+                            lmt[0] = time.time()
                             if self.service and hasattr(self.service, '_ws_update_timestamps'):
                                 self.service._ws_update_timestamps[account_key] = time.time()
                             if message.type == aiohttp.WSMsgType.TEXT:
