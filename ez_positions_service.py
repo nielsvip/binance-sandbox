@@ -5301,7 +5301,8 @@ class PositionService:
         self._account_listen_keys.clear()
 
     async def _broadcast_positions_to_redis(self, account_key: str, arg2: Any = None, arg3: Any = None, allow_incomplete: bool = True):
-        """ Handles both signatures: 1. (account_key, updates_dict) 2. (account_key, side_string, updates_dict) """
+        """ Handles both signatures: 1. (account_key, updates_dict) 2. (account_key, side_string, updates_dict)
+        2026-04-30: All redis ops wrapped in asyncio.wait_for(timeout=5.0) to prevent process_account_update HUNG > 120s when Redis is slow on multi-MB snapshot SET. Broadcast is best-effort — a failed broadcast must NOT block PAU; the next cycle re-sends the full snapshot."""
         if isinstance(arg2, str) and isinstance(arg3, dict):
             actual_updates = arg3
         elif isinstance(arg2, dict):
@@ -5318,7 +5319,10 @@ class PositionService:
                 channel = REDIS_CHANNELS.get("position_updates", "position_updates")
                 delta_payload = json_dumps({ "account_key": account_key, "positions": actual_updates, "type": "delta" })
                 if isinstance(delta_payload, bytes): delta_payload = delta_payload.decode('utf-8')
-                await redis_manager.publish(channel, delta_payload)
+                try:
+                    await asyncio.wait_for(redis_manager.publish(channel, delta_payload), timeout=5.0)
+                except asyncio.TimeoutError:
+                    self.logger.error(f"[REDIS_SYNC_FAIL][{account_key}] publish delta timed out >5s — dropping (next PAU will re-broadcast)")
             last_full = self._last_full_redis_sync.get(account_key, 0)
             if (now - last_full) >= 3.0 or not actual_updates:
                 account_positions = self.positions_by_account.get(account_key, {})
@@ -5328,8 +5332,11 @@ class PositionService:
                     redis_key = f"positions:{account_key}"
                     full_payload = json_dumps({ "positions": full_account_snapshot, "meta": {"timestamp": now, "account": account_key} })
                     if isinstance(full_payload, bytes): full_payload = full_payload.decode('utf-8')
-                    await redis_manager.set(redis_key, full_payload, ex=300)
-                    self._last_full_redis_sync[account_key] = now
+                    try:
+                        await asyncio.wait_for(redis_manager.set(redis_key, full_payload, ex=300), timeout=5.0)
+                        self._last_full_redis_sync[account_key] = now
+                    except asyncio.TimeoutError:
+                        self.logger.error(f"[REDIS_SYNC_FAIL][{account_key}] full-snapshot SET timed out >5s ({len(full_payload)} bytes) — dropping (next PAU will retry)")
         except Exception as e:
             self.logger.error(f"[REDIS_SYNC_FAIL][{account_key}] {e}")
 
@@ -6986,30 +6993,20 @@ class PositionService:
         from ez_positions import atomic_save_positions
         await atomic_save_positions(self, account_key, force=True)
 
-    async def _fetch_decision_context(self, position_key: str) -> dict:
-        """Fetch decision context: Redis first, then JSONL fallback, then history fallback."""
-        # 1. Try Redis (fastest, 5 min TTL)
-        if self.redis_manager:
-            redis_key = f"decision:{position_key}"
-            client = self.redis_manager.connections.get('local') if hasattr(self.redis_manager, 'connections') else None
-            if client:
-                for _ in range(3):
-                    try:
-                        data = await client.get(redis_key)
-                        if data: return orjson.loads(data)
-                    except Exception: pass
-                    await asyncio.sleep(0.2)
-        # 2. Try decisions JSONL (on disk, persists forever)
+    def _fetch_decision_context_blocking(self, position_key: str) -> dict:
+        """Synchronous JSONL/disk scan for decision context. MUST run in asyncio.to_thread — never on event loop. Each JSONL file can be 1–12 MB; line scan blocks event loop and was contributing to process_account_update HUNG > 120s on 2026-04-29."""
         try:
             account_key = position_key.split(':')[0] if ':' in position_key else ''
-            if account_key:
-                from pathlib import Path as _P
-                _now = datetime.now(timezone.utc)
-                for _days_back in range(2):
-                    _date = (_now - timedelta(days=_days_back)).strftime('%Y%m%d')
-                    _jfile = _P(config.BASE_PATH) / 'data' / 'decisions' / f'decisions_{account_key}_{_date}.jsonl'
-                    if not _jfile.exists(): continue
-                    _last_match = None
+            if not account_key:
+                return {}
+            from pathlib import Path as _P
+            _now = datetime.now(timezone.utc)
+            for _days_back in range(2):
+                _date = (_now - timedelta(days=_days_back)).strftime('%Y%m%d')
+                _jfile = _P(config.BASE_PATH) / 'data' / 'decisions' / f'decisions_{account_key}_{_date}.jsonl'
+                if not _jfile.exists(): continue
+                _last_match = None
+                try:
                     with open(_jfile, 'r') as _f:
                         for _line in _f:
                             _line = _line.strip()
@@ -7017,25 +7014,44 @@ class PositionService:
                             if position_key in _line:
                                 try: _last_match = orjson.loads(_line)
                                 except Exception: pass
-                    if _last_match: return _last_match
-        except Exception: pass
-        # 3. Try history JSONL (trade log)
-        try:
-            if account_key:
-                _sym_side = position_key.split(':')[1] if ':' in position_key else ''
-                _hfile = _P(config.BASE_PATH) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
-                if _hfile.exists():
-                    _last = None
+                except Exception: pass
+                if _last_match: return _last_match
+            _sym_side = position_key.split(':')[1] if ':' in position_key else ''
+            _hfile = _P(config.BASE_PATH) / 'data' / 'history' / account_key / f'{_sym_side}.jsonl'
+            if _hfile.exists():
+                _last = None
+                try:
                     with open(_hfile, 'r') as _f:
                         for _line in _f:
                             _line = _line.strip()
                             if _line:
                                 try: _last = orjson.loads(_line)
                                 except Exception: pass
-                    if _last:
-                        return {'action': _last.get('type', ''), 'reason': _last.get('reason', ''), 'snapshot': _last.get('indicators', {}), 'timestamp': _last.get('ts', '')}
+                except Exception: pass
+                if _last:
+                    return {'action': _last.get('type', ''), 'reason': _last.get('reason', ''), 'snapshot': _last.get('indicators', {}), 'timestamp': _last.get('ts', '')}
         except Exception: pass
         return {}
+
+    async def _fetch_decision_context(self, position_key: str) -> dict:
+        """Fetch decision context: Redis first, then JSONL fallback (in worker thread), then history fallback.
+        2026-04-30: Disk scans moved to asyncio.to_thread. Each redis.get is bounded by asyncio.wait_for(timeout=0.5)."""
+        # 1. Try Redis (fastest, 5 min TTL) — bounded
+        if self.redis_manager:
+            redis_key = f"decision:{position_key}"
+            client = self.redis_manager.connections.get('local') if hasattr(self.redis_manager, 'connections') else None
+            if client:
+                for _ in range(3):
+                    try:
+                        data = await asyncio.wait_for(client.get(redis_key), timeout=0.5)
+                        if data: return orjson.loads(data)
+                    except Exception: pass
+                    await asyncio.sleep(0.2)
+        # 2/3. JSONL/history scans run in worker thread — never on event loop
+        try:
+            return await asyncio.to_thread(self._fetch_decision_context_blocking, position_key)
+        except Exception:
+            return {}
 
     _history_dedup = {}
     async def _append_to_history(self, position_key: str, trade_type: str, qty: float, price: float, decision_context: dict = None):
@@ -7068,7 +7084,7 @@ class PositionService:
             redis_key = f"decision:{position_key}"
             if not context and self.redis_manager:
                 try :
-                    raw = await self.redis_manager.get(redis_key)
+                    raw = await asyncio.wait_for(self.redis_manager.get(redis_key), timeout=0.5)
                     if raw: context = json.loads(raw)
                 except Exception: pass
             reason = context.get('reason') or context.get('reason_text') or "Manual/System Detection"
@@ -7076,7 +7092,9 @@ class PositionService:
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
             async with aiofiles.open(filename, "a") as f:
                 await f.write(orjson.dumps(entry).decode('utf-8') + "\n")
-            if self.redis_manager: await self.redis_manager.delete(redis_key)
+            if self.redis_manager:
+                try: await asyncio.wait_for(self.redis_manager.delete(redis_key), timeout=0.5)
+                except Exception: pass
         except Exception as e:
             logger.error(f"[HISTORY] Write error {position_key}: {e}")
 

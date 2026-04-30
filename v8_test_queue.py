@@ -166,8 +166,12 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tf:
         json.dump(override, tf)
         override_path = tf.name
+    # Dedicated result file: engine writes V8_RESULT here, we read it cleanly
+    # bypassing 200K+ lines of trade/PnL noise in stdout/stderr.
+    result_file = tempfile.mktemp(suffix=".v8result")
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = override_path
+    env["V8_RESULT_FILE"] = result_file
     env["TEST_RATE_GUARD_MIN_PER_DAY"] = "0"
     env["V8_BACKTEST_TIMEOUT"] = str(int(os.environ.get("V8_BACKTEST_TIMEOUT", "3600")))
     if mode == "crypto":
@@ -184,24 +188,60 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
     # Default 3600s (1h) — real engine on 4 crypto syms × 18mo 3m bars needs ~45 min.
     # Override with V8_BACKTEST_TIMEOUT env var.
     _bt_timeout = int(os.environ.get("V8_BACKTEST_TIMEOUT", "3600"))
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=_bt_timeout)
+    timed_out = False
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=_bt_timeout)
+    except subprocess.TimeoutExpired as _te:
+        timed_out = True
+        print(f"    TIMEOUT: engine exceeded {_bt_timeout}s for {label}", flush=True)
+        result = type("R", (), {"stdout": (_te.stdout or b"").decode("utf-8", errors="replace") if isinstance(_te.stdout, bytes) else (_te.stdout or ""),
+                                 "stderr": (_te.stderr or b"").decode("utf-8", errors="replace") if isinstance(_te.stderr, bytes) else (_te.stderr or ""),
+                                 "returncode": -1})()
     os.unlink(override_path)
-    output = result.stdout + result.stderr
-    # Diagnostic: check if V8_RESULT: literal appears in output before regex parse
-    _vr_idx = output.find("V8_RESULT:")
-    _vrl_count = output.count("V8_RESULT_LIVE:")
-    print(f"    DEBUG: rc={result.returncode} out_len={len(output)} V8_RESULT@idx={_vr_idx} V8_RESULT_LIVE_count={_vrl_count}", flush=True)
-    if _vr_idx >= 0:
-        print(f"    DEBUG: V8_RESULT context: {output[_vr_idx:_vr_idx+120]!r}", flush=True)
-    parsed = parse_v8_result(output)
-    if parsed is None:
-        parsed = {"sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0}
-        print(f"    WARNING: no V8_RESULT found for {label}")
-        last_lines = [l for l in output.splitlines() if l.strip()][-5:]
-        for l in last_lines:
-            print(f"    {l}")
+    # Strategy 1: Read V8_RESULT from dedicated file (cleanest — no noise)
+    parsed = None
+    if os.path.exists(result_file):
+        try:
+            with open(result_file) as _rf:
+                _rf_content = _rf.read().strip()
+            if _rf_content:
+                parsed = parse_v8_result(_rf_content)
+                if parsed:
+                    print(f"    [{label}] (from result file) sharpe={parsed['sharpe']:.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
+        except Exception:
+            pass
+        try:
+            os.unlink(result_file)
+        except Exception:
+            pass
     else:
-        print(f"    [{label}] sharpe={parsed['sharpe']:.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
+        try:
+            os.unlink(result_file)
+        except Exception:
+            pass
+    # Strategy 2: Fall back to parsing stdout+stderr (search from END for efficiency)
+    if parsed is None:
+        output = result.stdout + result.stderr
+        _out_len = len(output)
+        # Search last 50KB first (V8_RESULT is printed last), fall back to full output
+        _tail = output[-50000:] if _out_len > 50000 else output
+        parsed = parse_v8_result(_tail)
+        if parsed is None and _out_len > 50000:
+            parsed = parse_v8_result(output)
+        # Diagnostic
+        _vr_idx = output.rfind("V8_RESULT:")
+        print(f"    DEBUG: rc={result.returncode} out_len={_out_len} V8_RESULT@last_idx={_vr_idx} timed_out={timed_out}", flush=True)
+        if _vr_idx >= 0:
+            print(f"    DEBUG: V8_RESULT context: {output[_vr_idx:_vr_idx+200]!r}", flush=True)
+        if parsed is None:
+            parsed = {"sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0}
+            _reason = "TIMEOUT" if timed_out else "MISSING"
+            print(f"    WARNING: no V8_RESULT found for {label} (reason={_reason})")
+            last_lines = [l for l in output.splitlines() if l.strip()][-5:]
+            for l in last_lines:
+                print(f"    {l}")
+        else:
+            print(f"    [{label}] (from stdout) sharpe={parsed['sharpe']:.3f} trades={parsed['trades']} pnl={parsed['pnl']:.2f}")
     return parsed
 
 

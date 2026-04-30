@@ -1961,7 +1961,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     v8_logger.info(f"[V8_FINAL_PNL] sum_trade_pcts={_f_sum_pct:+.2f}% gain_pct_dollars={_f_gain_pct:+.2f}% gain_dollars={_f_gain_dol:+.2f} | closes={_live_pnl['n_closes']} | W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} | WR={_live_pnl['n_wins']*100/max(1,_live_pnl['n_closes']):.1f}%")
     # CANONICAL_METRICS.md / CLAUDE.md rule 4: pool_sharpe + sym_sharpe ONLY.
     v8_logger.info(f"[V8_FINAL_PNL] pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} (trades_per_year={_f_tpy:.0f})")
-    print(f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}", flush=True)
+    _v8_result_line = f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}"
+    print(_v8_result_line, flush=True)
+    # Write V8_RESULT to dedicated file so v8_test_queue.py can read it cleanly
+    # even when stdout is 200K+ lines of trade/PnL logs that may cause regex issues.
+    _v8_result_file = os.environ.get("V8_RESULT_FILE", "")
+    if _v8_result_file:
+        try:
+            with open(_v8_result_file, "w") as _rf:
+                _rf.write(_v8_result_line + "\n")
+        except Exception as _rfe:
+            v8_logger.warning(f"[V8_RESULT_FILE] Failed to write {_v8_result_file}: {_rfe}")
 
     # Cancel queue processor (after result is already printed)
     queue_task.cancel()
