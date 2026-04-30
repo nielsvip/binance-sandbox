@@ -187,6 +187,12 @@ def run_single(param: str, value, mode: str, account: str, symbols: str, start: 
     result = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(BASE), timeout=_bt_timeout)
     os.unlink(override_path)
     output = result.stdout + result.stderr
+    # Diagnostic: check if V8_RESULT: literal appears in output before regex parse
+    _vr_idx = output.find("V8_RESULT:")
+    _vrl_count = output.count("V8_RESULT_LIVE:")
+    print(f"    DEBUG: rc={result.returncode} out_len={len(output)} V8_RESULT@idx={_vr_idx} V8_RESULT_LIVE_count={_vrl_count}", flush=True)
+    if _vr_idx >= 0:
+        print(f"    DEBUG: V8_RESULT context: {output[_vr_idx:_vr_idx+120]!r}", flush=True)
     parsed = parse_v8_result(output)
     if parsed is None:
         parsed = {"sharpe": 0.0, "pnl": 0.0, "trades": 0, "wins": 0, "losses": 0, "total_pnl_dollars": 0.0, "avg_pnl": 0.0}

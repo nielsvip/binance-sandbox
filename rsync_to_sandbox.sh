@@ -2,6 +2,20 @@
 # Syncs latest live + backtest scripts to BOTH sandbox servers.
 # Non-destructive: never touches live trading dirs, never restarts services.
 # Sandbox dirs are backtest-only per CLAUDE.md ("servers = backtests ONLY").
+#
+# BACKTEST_HOLD sentinel (2026-04-30): if /tmp/BACKTEST_HOLD exists, autosync is
+# SUSPENDED. This prevents Mac→server pushes from contaminating an isolated A/B
+# backtest mid-run. Any test that needs isolation must:
+#   1. touch /tmp/BACKTEST_HOLD with the test name + start time inside
+#   2. run the test (swap files on S2 etc.)
+#   3. rm /tmp/BACKTEST_HOLD when done
+# After the rm, the next */5 cron tick will resume normal sync.
+if [ -e /tmp/BACKTEST_HOLD ]; then
+    _ts=$(date -u +%FT%TZ)
+    _reason=$(head -c 200 /tmp/BACKTEST_HOLD 2>/dev/null | tr '\n' ' ')
+    echo "[$_ts] rsync_to_sandbox SUSPENDED — /tmp/BACKTEST_HOLD present (reason: $_reason)" >&2
+    exit 0
+fi
 LOCAL="/Users/niels/Documents/binance"
 SANDBOXES=("s1-int:/home/niels/binance-sandbox" "s2-int:/home/niels/binance-sandbox")
 FILES=(

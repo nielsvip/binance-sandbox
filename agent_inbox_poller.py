@@ -17,6 +17,7 @@ Subject patterns (must be exact prefix match):
   - "[OPTIONS_BRIEFING_v1] <iso-timestamp>" -> options_briefing.json
 """
 import email
+import fcntl
 import imaplib
 import json
 import logging
@@ -27,6 +28,15 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+_SINGLETON_LOCK_FH = None
+def _acquire_singleton_lock():
+    global _SINGLETON_LOCK_FH
+    _SINGLETON_LOCK_FH = open("/tmp/agent_inbox_poller.lock", "w")
+    try:
+        fcntl.flock(_SINGLETON_LOCK_FH.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(0)
 
 GMAIL_USER = "nielsvip@gmail.com"
 HANDOFF_REPO = Path.home() / "binance-agent-handoff"
@@ -196,6 +206,7 @@ def _process_drafts(M):
 
 
 def main():
+    _acquire_singleton_lock()
     M = _connect()
     if not M:
         sys.exit(1)
