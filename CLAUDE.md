@@ -27,6 +27,8 @@ Any historical claim of Sharpe X without going through the audit is a LIE. Don't
 - **`metrics_guard.write_sharpe_row()`** is the ONLY sanctioned way to write a Sharpe-bearing row to a CSV in `data/sweep_results/` or `data/autonomous/`. It validates and refuses on violation.
 - **`/tmp/BACKTEST_HOLD`** sentinel suspends Mac→server autosync (see `rsync_to_sandbox.sh`). Any A/B backtest must `touch /tmp/BACKTEST_HOLD` with reason+timestamp before starting and `rm` after.
 - **CLAUDE.md rules 1–8 from the legacy "SHARPE DEFINITION — LIVE-MONEY POLICY" section remain in force** (per-trade returns only; open losers MtM'd; no annualization; pool Sharpe canonical; sample floor; etc).
+- **NEVER move / quarantine / delete a lying CSV or violator script BEFORE both (a) a recomputed real Sharpe exists for that result, AND (b) a non-toxic compliant replacement script exists.** Tagging the file with `# [UNVERIFIED ...]` is OK; physically moving it is NOT until the replacement is in place. The user was burned 2026-04-30 by an agent that moved 329 files into quarantine before any replacement existed; everything was restored. Rule: tag in place, replace, verify, THEN move.
+- **Tier names per `metrics_guard.tier_name()`** replace the word "trash" everywhere: Discard / Noise / Directional / Best-of-current / Strong / Aspirational. Sub-floor results still get the `[DIAGNOSTIC]` tag separately. Never call a result "trash" — name the tier.
 
 If you're about to write a Sharpe number ANYWHERE without going through `metrics_guard`, STOP. The user lost half their net worth to that exact pattern. Don't be that script.
 

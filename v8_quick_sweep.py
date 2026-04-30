@@ -2404,7 +2404,7 @@ def run_one_config(args_tuple):
     npz_dir, mode, symbols_list, start_date, cfg_dict, run_id = args_tuple
     stores = load_npz(mode, symbols_list, start_date, npz_dir)
     if not stores:
-        return {"run_id": run_id, "sharpe": 0, "pnl": 0, "trades": 0, "wins": 0, "losses": 0, "status": "no_data", "config": cfg_dict}
+        return {"run_id": run_id, "sym_sharpe": 0, "pool_sharpe": 0, "pnl": 0, "trades": 0, "wins": 0, "losses": 0, "status": "no_data", "config": cfg_dict}
     return _run_config_with_stores(stores, mode, cfg_dict, run_id)
 
 
@@ -2562,7 +2562,7 @@ def main():
     print(f"CSV: {csv_path}\n")
 
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
-    fieldnames = ["run_id", "config_hash", "sharpe", "pool_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "accumulated_gain_pct", "max_dd_pct", "avg_dd_pct", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
+    fieldnames = ["run_id", "config_hash", "pool_sharpe", "sym_sharpe", "sharpe_min", "sharpe_p25", "sharpe_med", "sharpe_p75", "sharpe_max", "syms_with_sharpe", "syms_excluded", "pnl", "accumulated_gain_pct", "max_dd_pct", "avg_dd_pct", "trades", "wins", "losses", "wr", "avg_pnl_pct", "elapsed", "status", "early_abort", "symbols_used"]
     for k in cfg_keys:
         fieldnames.append(f"cfg_{k}")
 
@@ -2612,8 +2612,8 @@ def main():
             row = {
                 "run_id": result["run_id"],
                 "config_hash": config_hash(cfg_dict),
-                "sharpe": result.get("sharpe", 0),
                 "pool_sharpe": result.get("pool_sharpe", 0),
+                "sym_sharpe": result.get("sym_sharpe", 0),
                 "sharpe_min": result.get("sharpe_min", 0),
                 "sharpe_p25": result.get("sharpe_p25", 0),
                 "sharpe_med": result.get("sharpe_med", 0),
@@ -2637,7 +2637,6 @@ def main():
             }
             for k in cfg_keys:
                 row[f"cfg_{k}"] = cfg_dict.get(k, "")
-            s = result.get("sharpe", 0)
             ps = result.get("pool_sharpe", 0)
             if ps > best_sharpe:
                 best_sharpe = ps
@@ -2790,14 +2789,14 @@ def main():
         _sw_rg.n_accts = max(1, completed * _sw_n_syms_guess)
         _sw_rg.final_check(_sw_total_trades, test_window_days=_sw_per_cfg_days)
 
-    winner_str = f"  Winners (sharpe>={winner_floor:.2f}): {winners_found}/{target_winners}\n" if target_winners > 0 else ""
+    winner_str = f"  Winners (pool_sharpe>={winner_floor:.2f}): {winners_found}/{target_winners}\n" if target_winners > 0 else ""
     dead_str = f"  Dead log: {dead_log_path}\n" if dead_log_path else ""
     print(f"\n{'='*70}")
     print(f"  SWEEP COMPLETE — {completed} configs in {time.time()-t_start:.0f}s")
-    print(f"  Best Sharpe: {best_sharpe:.4f}")
+    print(f"  Best pool_sharpe: {best_sharpe:.4f}")
     print(f"{winner_str}{dead_str}  Results: {csv_path}")
     print(f"{'='*70}")
-    print(f"\nV8_QUICK_SWEEP_DONE: configs={completed} best_sharpe={best_sharpe:.4f} winners={winners_found} csv={csv_path}")
+    print(f"\nV8_QUICK_SWEEP_DONE: configs={completed} best_pool_sharpe={best_sharpe:.4f} winners={winners_found} csv={csv_path}")
 
 
 if __name__ == "__main__":

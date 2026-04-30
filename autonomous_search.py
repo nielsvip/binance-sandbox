@@ -392,7 +392,7 @@ def main():
                 w0 = r0.get("wins", 0); l0 = r0.get("losses", 0); wr0 = r0.get("wr", 0.0)
                 floor_total = len(subset) * args.min_trades_per_sym
                 rel0 = 1 if tr0 >= floor_total else 0
-                sym_s0 = r0.get("sharpe", 0.0)
+                sym_s0 = r0.get("sym_sharpe", 0.0)
                 gsy0 = round(g0 / len(subset) / n_years, 4)
                 agt0 = round(g0 / tr0, 4) if tr0 else 0.0
                 gpy0 = round(g0 / n_years, 4)
@@ -433,7 +433,7 @@ def main():
                 continue
             gain = r.get("accumulated_gain_pct", 0.0)
             sharpe = r.get("pool_sharpe", 0.0)
-            sym_sharpe = r.get("sharpe", 0.0)
+            sym_sharpe = r.get("sym_sharpe", 0.0)
             dd = r.get("max_dd_pct", 0.0)
             tr = r.get("trades", 0)
             wins = r.get("wins", 0)

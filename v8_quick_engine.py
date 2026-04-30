@@ -5202,7 +5202,7 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
     if not per_sym_sharpes:
         p = np.array(all_pnl) if all_pnl else np.array([0.0])
         w = int((p > 0).sum()); l = int((p <= 0).sum())
-        return {"sharpe": 0, "sharpe_min": 0, "sharpe_p25": 0, "sharpe_med": 0,
+        return {"sym_sharpe": 0, "sharpe_min": 0, "sharpe_p25": 0, "sharpe_med": 0,
                 "sharpe_p75": 0, "sharpe_max": 0, "syms_with_sharpe": 0,
                 "pool_sharpe": ps, "syms_excluded": syms_excluded,
                 "pnl": round(p.sum() / 100 * start_size, 2), "trades": n_trades,
@@ -5216,7 +5216,7 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
     p = np.array(all_pnl) if all_pnl else np.array([0.0])
     w = int((p > 0).sum()); l = int((p <= 0).sum())
     out = {
-        "sharpe": round(float(arr.mean()), 4),
+        "sym_sharpe": round(float(arr.mean()), 4),
         "sharpe_min": round(float(arr.min()), 4),
         "sharpe_p25": round(float(np.percentile(arr, 25)), 4),
         "sharpe_med": round(float(np.median(arr)), 4),
@@ -5282,10 +5282,10 @@ def main():
             print("No data"); return
     r = simulate(stores, cfg, args.capital)
     el = time.time() - t0
-    print(f"V8_QUICK_RESULT: sharpe={r['sharpe']} pool_sharpe={r.get('pool_sharpe',0)} "
+    print(f"V8_QUICK_RESULT: pool_sharpe={r.get('pool_sharpe',0)} sym_sharpe={r.get('sym_sharpe',0)} "
           f"(syms={r.get('syms_with_sharpe',0)} excl={r.get('syms_excluded',0)} "
-          f"min={r.get('sharpe_min',0)} p25={r.get('sharpe_p25',0)} "
-          f"med={r.get('sharpe_med',0)} p75={r.get('sharpe_p75',0)} max={r.get('sharpe_max',0)}) "
+          f"sym_sharpe_min={r.get('sharpe_min',0)} sym_sharpe_p25={r.get('sharpe_p25',0)} "
+          f"sym_sharpe_med={r.get('sharpe_med',0)} sym_sharpe_p75={r.get('sharpe_p75',0)} sym_sharpe_max={r.get('sharpe_max',0)}) "
           f"pnl={r['pnl']:.2f} trades={r['trades']} wins={r['wins']} "
           f"losses={r['losses']} wr={r['wr']}% avg_pnl={r['avg_pnl_pct']:.4f}% "
           f"early_abort={r.get('early_abort',False)} elapsed={el:.1f}s")

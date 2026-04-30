@@ -766,7 +766,7 @@ def _v8_result_from_trades(executed_trades, capital):
     sym_sharpe = sum(sym_sharpes) / len(sym_sharpes) if sym_sharpes else 0.0
     avg_pnl = total_pnl / max(1, n_trades)
     avg_pos_val = sum(t.get("position_value", 0) for t in close_trades) / max(1, n_trades)
-    print(f"V8_RESULT: pool_sharpe={pool_sharpe:.4f} sym_sharpe={sym_sharpe:.4f} sharpe={pool_sharpe:.3f} pnl={pnl_pct:.2f} trades={n_trades} wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}")
+    print(f"V8_RESULT: pool_sharpe={pool_sharpe:.4f} sym_sharpe={sym_sharpe:.4f} pnl={pnl_pct:.2f} trades={n_trades} wins={wins} losses={losses} total_pnl_dollars={total_pnl:.2f} avg_pnl={avg_pnl:.2f} avg_pos_value={avg_pos_val:.2f}")
     return pool_sharpe, pnl_pct, n_trades, wins, losses
 
 
@@ -1961,7 +1961,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     v8_logger.info(f"[V8_FINAL_PNL] sum_trade_pcts={_f_sum_pct:+.2f}% gain_pct_dollars={_f_gain_pct:+.2f}% gain_dollars={_f_gain_dol:+.2f} | closes={_live_pnl['n_closes']} | W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} | WR={_live_pnl['n_wins']*100/max(1,_live_pnl['n_closes']):.1f}%")
     # CANONICAL_METRICS.md / CLAUDE.md rule 4: pool_sharpe + sym_sharpe ONLY.
     v8_logger.info(f"[V8_FINAL_PNL] pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} (trades_per_year={_f_tpy:.0f})")
-    _v8_result_line = f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} sharpe={_f_sharpe_pt:.3f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}"
+    _v8_result_line = f"V8_RESULT: pool_sharpe={_f_sharpe_pt:.4f} sym_sharpe={_f_sym_sharpe:.4f} gain_pct={_f_gain_pct:.2f} closes={_live_pnl['n_closes']} wins={_live_pnl['n_wins']} losses={_live_pnl['n_losses']}"
     print(_v8_result_line, flush=True)
     # Write V8_RESULT to dedicated file so v8_test_queue.py can read it cleanly
     # even when stdout is 200K+ lines of trade/PnL logs that may cause regex issues.
