@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-30 10:56:38 UTC
+# Copilot Status — 2026-04-30 11:11:59 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T10:55:26
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:55:26
-- **STALE_INDICATORS** [tradier]  — 2026-04-30T10:55:47
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T10:55:47
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T10:55:47
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T10:55:47
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T10:55:47
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T10:55:47
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T10:56:27
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:56:27
+- **STALE_INDICATORS** [tradier]  — 2026-04-30T11:10:06
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T11:10:06
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T11:10:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T11:10:06
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T11:10:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T11:10:06
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T11:10:46
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T11:10:46
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T11:11:48
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T11:11:48
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **SANDUSDT** LONG (crypto) peak +9.6%, now +-0.3%
+- HELD: **SANDUSDT** LONG (crypto) peak +9.6%, now +-0.2%
 - HELD: **GOOGL** LONG (tradier) peak +7.0%, now +7.0%
-- HELD: **ATOMUSDT** LONG (crypto) peak +5.9%, now +-0.2%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-8.8%
+- HELD: **ATOMUSDT** LONG (crypto) peak +5.9%, now +0.0%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-8.0%
 
 - WATCHING: **WIFUSDC** LONG (crypto) peaked +20.2%, exited 0m ago
 - WATCHING: **ZECUSDC** LONG (crypto) peaked +9.6%, exited 0m ago
