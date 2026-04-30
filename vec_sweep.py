@@ -369,34 +369,88 @@ class Config:
                       load(d["entry_short"]), load(d["exit_short"]))
 
 
+# Family-class buckets: groups of related fields. The diverse sampler picks
+# at most ONE primitive per class per side, ensuring strategies mix indicators
+# (e.g. WT + DC + BB) instead of stacking 3 different stoch primitives.
+_CLASS_PATTERNS = [
+    ("WT",       re.compile(r"^wt\d?_|^wt_")),
+    ("DC",       re.compile(r"^dc_")),
+    ("BB",       re.compile(r"^bb_")),
+    ("KC",       re.compile(r"^kc_")),
+    ("STOCH",    re.compile(r"^stoch_")),
+    ("RSI",      re.compile(r"^rsi_|^connors_rsi")),
+    ("MFI",      re.compile(r"^mfi_")),
+    ("MA",       re.compile(r"^(ema|sma)_")),
+    ("TREND",    re.compile(r"^clenow_|^sepa_")),
+    ("SQUEEZE",  re.compile(r"^squeeze_")),
+    ("FUNDING",  re.compile(r"^funding_rate")),
+    ("OI",       re.compile(r"^oi_")),
+    ("VOL",      re.compile(r"^(volume|relative_volume|vol_z)")),
+    ("DIV",      re.compile(r"^(div_|wt_(any_|composite_)?(bull|bear)_div)")),
+    ("CROSS",    re.compile(r"^close_(above|below)_")),
+    ("EP",       re.compile(r"^ep_")),
+    ("ATR",      re.compile(r"^atr_")),
+    ("PRICE",    re.compile(r"^(close|open|high|low)(_|\d|$)")),
+    ("HA",       re.compile(r"^ha_")),
+    ("MACD",     re.compile(r"^macd")),
+]
+
+
+def _family_class(field: str) -> str:
+    for cls, rx in _CLASS_PATTERNS:
+        if rx.search(field):
+            return cls
+    return "OTHER"
+
+
 def random_config(rng: random.Random, families: List[PrimitiveFamily],
                   k_entry: Tuple[int, int] = (1, 4),
                   k_exit: Tuple[int, int] = (1, 3),
-                  side: str = "both") -> Config:
+                  side: str = "both",
+                  min_classes_per_side: int = 1) -> Config:
     """Sample one config by drawing K primitives per side from the enabled
-    family pool, with one threshold per family."""
+    family pool, with one threshold per family. When min_classes_per_side > 1,
+    selection is class-stratified — picks one primitive from each of N
+    distinct family classes, guaranteeing diversity (WT + DC + BB combos
+    instead of 4× stoch)."""
     by_side: Dict[str, List[PrimitiveFamily]] = collections.defaultdict(list)
+    by_side_class: Dict[str, Dict[str, List[PrimitiveFamily]]] = collections.defaultdict(lambda: collections.defaultdict(list))
     for f in families:
         if not f.enabled:
             continue
+        cls = _family_class(f.field)
         for s in f.sides:
             by_side[s].append(f)
+            by_side_class[s][cls].append(f)
+
+    def materialize_one(fam: PrimitiveFamily) -> Primitive:
+        if fam.kind in ("bool", "cross"):
+            return materialize(fam, 0, fam.ops[0])
+        op = rng.choice(fam.ops)
+        ti = rng.randrange(len(fam.thresholds))
+        return materialize(fam, ti, op)
 
     def pick(side_key: str, lo: int, hi: int) -> Tuple[Primitive, ...]:
         pool = by_side.get(side_key, [])
         if not pool:
             return tuple()
+        # Class-stratified pick when min_classes_per_side > 1: choose K distinct
+        # classes, then one primitive from each. K randomized in [lo,hi].
+        if min_classes_per_side >= 2:
+            classes = list(by_side_class.get(side_key, {}).keys())
+            if len(classes) >= min_classes_per_side:
+                k = rng.randint(max(lo, min_classes_per_side), min(hi, len(classes)))
+                chosen_classes = rng.sample(classes, k)
+                prims: List[Primitive] = []
+                for cls in chosen_classes:
+                    fam = rng.choice(by_side_class[side_key][cls])
+                    prims.append(materialize_one(fam))
+                return tuple(sorted(prims, key=lambda p: (p.field, p.op, p.threshold)))
+        # Fallback: vanilla random sample (no class constraint)
         k = rng.randint(lo, min(hi, len(pool)))
         chosen_fams = rng.sample(pool, k)
-        prims: List[Primitive] = []
-        for fam in chosen_fams:
-            if fam.kind == "bool" or fam.kind == "cross":
-                prims.append(materialize(fam, 0, fam.ops[0]))
-            else:
-                op = rng.choice(fam.ops)
-                ti = rng.randrange(len(fam.thresholds))
-                prims.append(materialize(fam, ti, op))
-        return tuple(sorted(prims, key=lambda p: (p.field, p.op, p.threshold)))
+        return tuple(sorted([materialize_one(f) for f in chosen_fams],
+                           key=lambda p: (p.field, p.op, p.threshold)))
 
     el = pick("long_entry", *k_entry) if side in ("long", "both") else tuple()
     xl = pick("long_exit", *k_exit) if side in ("long", "both") else tuple()
@@ -714,7 +768,7 @@ def run_per_symbol(args) -> None:
         print(f"  {sym}: bars={len(close):,} years={years:.2f}")
         t0 = time.time(); n_done = n_skipped = 0; best = -9.0
         while n_done < args.max_configs:
-            cfg = random_config(rng, fams, side="both")
+            cfg = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
             cid = upsert_config(db, cfg)
             if already_have(db, cid, sym, mode):
                 n_skipped += 1; n_done += 1; continue
@@ -756,7 +810,7 @@ def run_pooled(args) -> None:
     print(f"[pooled] {len(fams)} families loaded; n_syms={n_syms} avg_years={avg_years:.2f}")
     t0 = time.time(); n_done = 0; best = -9.0
     while n_done < args.max_configs:
-        cfg = random_config(rng, fams, side="both")
+        cfg = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
         cid = upsert_config(db, cfg)
         if already_have(db, cid, args.basket, mode):
             n_done += 1; continue
@@ -902,7 +956,7 @@ def run_streamed(args) -> None:
     configs: List[Config] = []
     seen: set = set()
     while len(configs) < args.max_configs:
-        c = random_config(rng, fams, side="both")
+        c = random_config(rng, fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
         if c.hash in seen: continue
         seen.add(c.hash); configs.append(c)
     cids = [upsert_config(db, c) for c in configs]
@@ -1018,7 +1072,7 @@ def run_v3(args) -> None:
         cache = MaskCache(npz)
         t0 = time.time(); n_done = 0; best = -9.0
         while n_done < args.max_configs:
-            cfg = random_config(rng, all_fams, side="both")
+            cfg = random_config(rng, all_fams, side="both", min_classes_per_side=getattr(args, "min_classes", 1), k_entry=(max(getattr(args, "min_classes", 1), 1), getattr(args, "max_classes", 5)), k_exit=(max(getattr(args, "min_classes", 1)-1, 1), max(getattr(args, "max_classes", 5)-1, 2)))
             cid = upsert_config(db, cfg)
             if already_have(db, cid, sym, mode):
                 n_done += 1; continue
@@ -1099,6 +1153,11 @@ def _add_common(p):
                    help="reject configs with > N trades/sym/yr (anti-overtrading; 0=disabled)")
     p.add_argument("--min-tps-per-yr", type=float, default=0,
                    help="reject configs with < N trades/sym/yr (sample floor; 0=disabled)")
+    p.add_argument("--min-classes", type=int, default=1,
+                   help="min distinct family classes per side (default 1=any). "
+                        "Set ≥3 for diverse strategies (WT+DC+BB combos, not 4×stoch)")
+    p.add_argument("--max-classes", type=int, default=5,
+                   help="max distinct family classes per side")
 
 
 def main():

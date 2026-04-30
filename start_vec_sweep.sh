@@ -14,7 +14,8 @@ set -u
 TIER="${1:-status}"
 HOST="$(hostname -s)"
 REPO="${REPO:-$HOME/binance-sandbox}"
-[ -d "$REPO" ] || REPO="$HOME/binance"   # fall back to live tree on Mac (status only)
+[ -d "$REPO/vec_sweep.py" ] || [ -f "$REPO/vec_sweep.py" ] || REPO="$HOME/binance"
+[ -f "$REPO/vec_sweep.py" ] || REPO="$HOME/Documents/binance"   # Mac default
 PY="${V8_PYTHON:-python3}"
 LOG_DIR="$HOME/logs"
 mkdir -p "$LOG_DIR"
@@ -62,6 +63,47 @@ launch() {
 }
 
 case "$TIER" in
+    streamed_48_diverse)
+        is_s1 || { echo "ERR: streamed_48_diverse is CRYPTO — run on S1"; exit 2; }
+        BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
+        BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT HOTUSDT IOSTUSDT IOTAUSDT IOTXUSDT KAVAUSDT KNCUSDT KSMUSDT LRCUSDT MANAUSDT MTLUSDT NKNUSDT QTUMUSDT RLCUSDT RSRUSDT RVNUSDT SANDUSDT SKLUSDT"
+        SYMS=""; COUNT=0
+        for S in $BASE_USDC $BASE_USDT; do
+            if [ -f "$REPO/backtest_v8/indicators/$S.npz" ]; then
+                SYMS="${SYMS}${S},"; COUNT=$((COUNT+1))
+                [ "$COUNT" -ge 48 ] && break
+            fi
+        done
+        SYMS=${SYMS%,}
+        N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
+        echo "[streamed_48_diverse] basket: $N NPZs"
+        [ "$N" -ge 48 ] || { echo "ERR: only $N NPZs"; exit 2; }
+        # Diverse: each config has 3-5 distinct primitive families per side
+        # (WT+DC+BB+OSC etc.). Plus HTF + frequency cap.
+        launch "streamed_48_diverse" vec_sweep.py streamed --basket crypto48 --syms "$SYMS" \
+            --max-configs 1500 --seed 67 \
+            --tf-filter htf_only --min-tps-per-yr 4 --max-tps-per-yr 150 \
+            --min-classes 3 --max-classes 5
+        ;;
+    streamed_mac_diverse)
+        # Mac local — runs against renamed USDC NPZs
+        BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
+        BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT"
+        SYMS=""; COUNT=0
+        for S in $BASE_USDC $BASE_USDT; do
+            if [ -f "$REPO/backtest_v8/indicators/$S.npz" ]; then
+                SYMS="${SYMS}${S},"; COUNT=$((COUNT+1))
+                [ "$COUNT" -ge 24 ] && break
+            fi
+        done
+        SYMS=${SYMS%,}
+        N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
+        echo "[streamed_mac_diverse] basket: $N NPZs"
+        launch "streamed_mac_diverse" vec_sweep.py streamed --basket crypto24 --syms "$SYMS" \
+            --max-configs 800 --seed 71 \
+            --tf-filter htf_only --min-tps-per-yr 4 --max-tps-per-yr 150 \
+            --min-classes 3 --max-classes 5
+        ;;
     streamed_48)
         is_s1 || { echo "ERR: streamed_48 is CRYPTO — run on S1"; exit 2; }
         BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"

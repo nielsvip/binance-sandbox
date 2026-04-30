@@ -42,6 +42,7 @@ import re
 import sys
 import time
 import traceback
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -51,6 +52,10 @@ sys.path.insert(0, str(ROOT))
 import numpy as np
 import metrics_guard as mg
 from v8_quick_engine import simulate, QuickConfig
+
+# Mode → NPZ filter. Crypto NPZs end in USDT/USDC; tradier NPZs are bare ticker.
+TRADIER_ACCOUNTS = ("trc", "trb")
+CRYPTO_ACCOUNTS = ("flz", "fin", "inf", "ang", "men")
 
 NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 OUT_BASE = ROOT / "data" / "hourly_reconfig"
@@ -103,35 +108,56 @@ EXTRA_CAND_DIR = ROOT / "data" / "hourly_reconfig" / "_candidates"
 def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
     """Return list of (tag, overrides_dict) candidates.
 
-    Static: BEST + dedv3 + baseline. Plus any JSONs dropped into _candidates/
-    by btc_settings_search (auto-pickup) — those persist across cycles.
+    Crypto: BEST + dedv3 + baseline + BEST_more_trades (BTC dedicated path).
+    Tradier: baseline + a few simple entry-loosening mutations (no BTC dedicated).
+    Plus any JSONs dropped into _candidates/ by btc_settings_search (auto-pickup).
     """
+    is_tradier = account in TRADIER_ACCOUNTS
     base_dir = ROOT / "backtest_v8" / "btc_loop_results"
     cand: List[Tuple[str, Dict]] = []
-    for tag, fname in (
-        ("BEST", "override_btc_BEST.json"),
-        ("dedv3", "override_btc_dedicated_v3.json"),
-    ):
-        p = base_dir / fname
-        try:
-            cand.append((tag, load_safe_override(p)))
-        except Exception as e:
-            print(f"  [candidates] skip {tag}: {e}", flush=True)
-    cand.append(("baseline", {}))
-    # Mutation focused on producing more trades (loosens entry gates) — addresses
-    # BTCDOMUSDT and other low-frequency syms.
-    if cand and cand[0][0] == "BEST":
-        base = cand[0][1]
-        more_trades = dict(base)
-        more_trades.update({
-            "BTC_BREAKOUT_MIN_HOLD_BARS": 1,
-            "BTC_MIN_HOLD_BARS": 5,
-            "MIN_HOLD_BARS": 5,
-            "BTC_COOLDOWN_BARS": 1,
-            "BTC_BREAKOUT_COOLDOWN_BARS": 1,
-            "BTC_TECH_EXIT_WT_MIN_TFS": 2,
-        })
-        cand.append(("BEST_more_trades", more_trades))
+
+    if is_tradier:
+        # Tradier candidates: stock-tuned, no BTC_DEDICATED. Defaults + small mutations.
+        cand.append(("baseline", {}))
+        cand.append(("loose_entry", {
+            "TRADIER_WT_DC_ENTRY_THRESHOLD": 18,  # default ~25 → looser
+            "TRADIER_ENTRY_MIN_ALIGNMENT": 1,
+            "TRADIER_MIN_EXIT_TF_AGAINST_TRADIER": 1,
+        }))
+        cand.append(("tight_entry", {
+            "TRADIER_WT_DC_ENTRY_THRESHOLD": 30,
+            "TRADIER_ENTRY_MIN_ALIGNMENT": 3,
+            "TRADIER_MIN_EXIT_TF_AGAINST_TRADIER": 3,
+        }))
+        cand.append(("more_trades", {
+            "MIN_HOLD_BARS": 3,
+            "COOLDOWN_BARS": 1,
+        }))
+    else:
+        for tag, fname in (
+            ("BEST", "override_btc_BEST.json"),
+            ("dedv3", "override_btc_dedicated_v3.json"),
+        ):
+            p = base_dir / fname
+            try:
+                cand.append((tag, load_safe_override(p)))
+            except Exception as e:
+                print(f"  [candidates] skip {tag}: {e}", flush=True)
+        cand.append(("baseline", {}))
+        # Mutation focused on producing more trades (loosens entry gates) — addresses
+        # BTCDOMUSDT and other low-frequency syms.
+        if cand and cand[0][0] == "BEST":
+            base = cand[0][1]
+            more_trades = dict(base)
+            more_trades.update({
+                "BTC_BREAKOUT_MIN_HOLD_BARS": 1,
+                "BTC_MIN_HOLD_BARS": 5,
+                "MIN_HOLD_BARS": 5,
+                "BTC_COOLDOWN_BARS": 1,
+                "BTC_BREAKOUT_COOLDOWN_BARS": 1,
+                "BTC_TECH_EXIT_WT_MIN_TFS": 2,
+            })
+            cand.append(("BEST_more_trades", more_trades))
     # Auto-pickup candidates dropped by btc_settings_search (extra optimizers may
     # publish JSONs here as they discover new winners).
     if EXTRA_CAND_DIR.exists():
@@ -186,16 +212,26 @@ def time_weighted_pool_sharpe(returns_with_ts: List[Tuple[float, int]],
     return wsharpe, eff_trades, len(rs)
 
 
-def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
-                  z, run_dir: Path, now_ts: int, window_start_ts: int) -> Dict:
-    """Drive v8_quick_engine on FULL NPZ (preserves HTF warmup); filter trades to 7d.
+def _worker_run_candidate(args_tuple) -> Dict:
+    """Top-level pickle-safe worker for ProcessPoolExecutor.
 
-    Returns dict with weighted pool_sharpe over the trades exiting in [window_start_ts, now].
+    Each worker re-imports engine in its own process. Returns the same dict shape
+    as the in-process run_candidate.
     """
+    (sym, side, tag, overrides, run_dir_str,
+     now_ts, window_start_ts, npz_dir_str, mode) = args_tuple
+    import sys as _sys, os as _os, json as _json
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    import numpy as _np
+    from v8_quick_engine import simulate as _simulate, QuickConfig as _QC
+
     run_id = f"{sym}__{side}__{tag}"
-    os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
-    os.environ["V8_TRADES_RUN_ID"] = run_id
-    cfg = QuickConfig()
+    _os.environ["V8_TRADES_OUT_DIR"] = run_dir_str
+    _os.environ["V8_TRADES_RUN_ID"] = run_id
+    cfg = _QC()
+    if mode == "tradier":
+        cfg.MODE = "tradier"
     for k, v in overrides.items():
         if k.startswith("_"):
             continue
@@ -203,14 +239,82 @@ def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
             setattr(cfg, k, v)
         except Exception:
             pass
-    cfg.BTC_DEDICATED_SYMBOLS = (sym,)
-    cfg.BTC_DEDICATED_ENABLED = True
+    if mode != "tradier":
+        # Crypto: BTC-dedicated path required for the BTC cluster strategy.
+        cfg.BTC_DEDICATED_SYMBOLS = (sym,)
+        cfg.BTC_DEDICATED_ENABLED = True
+    npz_path = _Path(npz_dir_str) / f"{sym}.npz"
+    z = None
+    try:
+        z = _np.load(str(npz_path))
+        _simulate({sym: z}, cfg, capital=10000.0)
+    except SystemExit as e:
+        return {"sym": sym, "side": side, "tag": tag, "error": f"SystemExit:{e}",
+                "trades": 0, "wsharpe": 0.0, "raw_returns": [], "overrides": overrides}
+    except Exception as e:
+        return {"sym": sym, "side": side, "tag": tag, "error": str(e),
+                "trades": 0, "wsharpe": 0.0, "raw_returns": [], "overrides": overrides}
+    finally:
+        if z is not None:
+            try: z.close()
+            except Exception: pass
+    jp = _Path(run_dir_str) / f"{run_id}__{sym}.jsonl"
+    sided_rets: List[Tuple[float, int]] = []
+    if jp.exists():
+        with jp.open() as f:
+            for line in f:
+                try:
+                    rec = _json.loads(line)
+                    if (rec.get("side") or "").upper() != side.upper():
+                        continue
+                    ets = int(rec.get("exit_ts", 0))
+                    if ets < window_start_ts:
+                        continue
+                    sided_rets.append((float(rec.get("pnl_pct", 0)), ets))
+                except Exception:
+                    pass
+    wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, now_ts)
+    return {
+        "sym": sym, "side": side, "tag": tag,
+        "trades": n_raw,
+        "weighted_eff_trades": eff_n,
+        "wsharpe": wsharpe,
+        "raw_returns": [r for r, _ in sided_rets],
+        "overrides": overrides,
+    }
+
+
+def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
+                  z, run_dir: Path, now_ts: int, window_start_ts: int,
+                  mode: str = "crypto") -> Dict:
+    """In-process variant (used when --workers=1). Calls engine directly.
+    Same return shape as _worker_run_candidate.
+    """
+    run_id = f"{sym}__{side}__{tag}"
+    os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
+    os.environ["V8_TRADES_RUN_ID"] = run_id
+    cfg = QuickConfig()
+    if mode == "tradier":
+        cfg.MODE = "tradier"
+    for k, v in overrides.items():
+        if k.startswith("_"):
+            continue
+        try:
+            setattr(cfg, k, v)
+        except Exception:
+            pass
+    if mode != "tradier":
+        # Crypto: BTC-dedicated path required for the BTC cluster strategy.
+        cfg.BTC_DEDICATED_SYMBOLS = (sym,)
+        cfg.BTC_DEDICATED_ENABLED = True
     try:
         simulate({sym: z}, cfg, capital=10000.0)
     except SystemExit as e:
-        return {"tag": tag, "error": f"SystemExit:{e}", "trades": 0, "wsharpe": 0.0}
+        return {"sym": sym, "side": side, "tag": tag, "error": f"SystemExit:{e}",
+                "trades": 0, "wsharpe": 0.0, "raw_returns": [], "overrides": overrides}
     except Exception as e:
-        return {"tag": tag, "error": str(e), "trades": 0, "wsharpe": 0.0}
+        return {"sym": sym, "side": side, "tag": tag, "error": str(e),
+                "trades": 0, "wsharpe": 0.0, "raw_returns": [], "overrides": overrides}
     jp = run_dir / f"{run_id}__{sym}.jsonl"
     sided_rets: List[Tuple[float, int]] = []
     if jp.exists():
@@ -218,20 +322,17 @@ def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
             for line in f:
                 try:
                     rec = json.loads(line)
-                    rec_side = (rec.get("side") or "").upper()
-                    if rec_side != side.upper():
+                    if (rec.get("side") or "").upper() != side.upper():
                         continue
-                    exit_ts = int(rec.get("exit_ts", 0))
-                    # Only count trades exiting inside the rolling window.
-                    if exit_ts < window_start_ts:
+                    ets = int(rec.get("exit_ts", 0))
+                    if ets < window_start_ts:
                         continue
-                    pnl = float(rec.get("pnl_pct", 0.0))
-                    sided_rets.append((pnl, exit_ts))
+                    sided_rets.append((float(rec.get("pnl_pct", 0)), ets))
                 except Exception:
                     pass
     wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, now_ts)
     return {
-        "tag": tag,
+        "sym": sym, "side": side, "tag": tag,
         "trades": n_raw,
         "weighted_eff_trades": eff_n,
         "wsharpe": wsharpe,
@@ -266,7 +367,7 @@ def write_opinion(account: str, sym: str, side: str, winner: Dict,
     return "FLAT", "INSUFFICIENT"
 
 
-def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
+def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int:
     syms_paths = ACCOUNT_SYMS.get(account)
     if not syms_paths:
         print(f"[hourly] unknown account={account}", flush=True)
@@ -290,7 +391,14 @@ def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
     if not all_syms_set:
         print(f"[hourly] no symbols loaded for account={account}", flush=True)
         return 1
-    all_syms = all_syms_set[:max_syms] if max_syms > 0 else all_syms_set
+    # Mode detection: tradier accounts use tradier-mode engine.
+    mode = "tradier" if account in TRADIER_ACCOUNTS else "crypto"
+    # Filter to syms with NPZs present (skip the silent NO_NPZ noise).
+    syms_with_npz = [s for s in all_syms_set if (NPZ_DIR / f"{s}.npz").exists()]
+    skipped = len(all_syms_set) - len(syms_with_npz)
+    if skipped > 0:
+        print(f"[hourly] {account}: skipped {skipped} syms without NPZ (of {len(all_syms_set)} listed)", flush=True)
+    all_syms = syms_with_npz[:max_syms] if max_syms > 0 else syms_with_npz
     sides = ("LONG", "SHORT")
     cands = candidate_configs(account)
     if not cands:
@@ -320,29 +428,66 @@ def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
     all_returns_by_sym: Dict[str, List[float]] = {}
     years_max = 0.0
     t0 = time.time()
-    for i, sym in enumerate(all_syms, 1):
-        npz_path = NPZ_DIR / f"{sym}.npz"
-        if not npz_path.exists():
-            print(f"  [{i}/{len(all_syms)}] {sym}: NO_NPZ", flush=True)
-            continue
-        z = None
+
+    # Build the per-sym window_start_ts map (one NPZ load per sym).
+    sym_windows: Dict[str, Tuple[int, float]] = {}
+    for sym in all_syms:
         try:
-            z = np.load(str(npz_path))
-            window_start_ts, _, yr = npz_window_seconds(z, days=7.0)
+            z = np.load(str(NPZ_DIR / f"{sym}.npz"))
+            ws_ts, _, yr = npz_window_seconds(z, days=7.0)
+            sym_windows[sym] = (ws_ts, yr)
             years_max = max(years_max, yr)
+            try: z.close()
+            except Exception: pass
         except Exception as e:
-            print(f"  [{i}/{len(all_syms)}] {sym}: NPZ_LOAD_ERR {e}", flush=True)
-            if z is not None:
-                try: z.close()
-                except Exception: pass
+            print(f"  [window] {sym}: NPZ_LOAD_ERR {e}", flush=True)
+
+    # Build full work list: (sym, side, tag, ovr, run_dir_str, now_ts, window_start_ts, npz_dir_str, mode)
+    work: List[Tuple] = []
+    for sym in all_syms:
+        if sym not in sym_windows:
             continue
+        ws_ts, _ = sym_windows[sym]
         for side in sides:
-            best = {"tag": None, "wsharpe": -1e9, "trades": 0}
             for tag, ovr in cands:
-                r = run_candidate(sym, side, tag, ovr, z, run_dir, now_ts, window_start_ts)
-                if r.get("wsharpe", -1e9) > best.get("wsharpe", -1e9):
-                    best = r
+                work.append((sym, side, tag, ovr, str(run_dir),
+                             now_ts, ws_ts, str(NPZ_DIR), mode))
+
+    print(f"[hourly] dispatching {len(work)} sims across {workers} worker(s)", flush=True)
+
+    # Per (sym_key) collect candidate results
+    results_by_key: Dict[str, List[Dict]] = {}
+    if workers <= 1:
+        for i, t in enumerate(work, 1):
+            r = _worker_run_candidate(t)
+            sym_key = f"{r['sym']}_{r['side']}"
+            results_by_key.setdefault(sym_key, []).append(r)
+            if i % max(1, len(work) // 20) == 0:
+                print(f"  [{i}/{len(work)}] {r['sym']}_{r['side']} {r['tag']} ws={r.get('wsharpe',0):+.3f} n={r['trades']} elapsed={time.time()-t0:.0f}s", flush=True)
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(_worker_run_candidate, t): t for t in work}
+            done = 0
+            for fut in as_completed(futs):
+                done += 1
+                try:
+                    r = fut.result()
+                except Exception as e:
+                    print(f"  worker error: {e}", flush=True)
+                    continue
+                sym_key = f"{r['sym']}_{r['side']}"
+                results_by_key.setdefault(sym_key, []).append(r)
+                if done % max(1, len(work) // 20) == 0:
+                    print(f"  [{done}/{len(work)}] {r['sym']}_{r['side']} {r['tag']} ws={r.get('wsharpe',0):+.3f} n={r['trades']} elapsed={time.time()-t0:.0f}s", flush=True)
+
+    # Build opinion + active per (sym, side) by picking max-wsharpe candidate
+    for sym in all_syms:
+        for side in sides:
             sym_key = f"{sym}_{side}"
+            cand_results = results_by_key.get(sym_key, [])
+            if not cand_results:
+                continue
+            best = max(cand_results, key=lambda r: r.get("wsharpe", -1e9))
             prev_op = prev_opinions.get("syms", {}).get(sym_key, {}).get("opinion", "FLAT")
             opinion, sample_tag = write_opinion(account, sym, side, best, prev_op, now_ts)
             active[sym_key] = {
@@ -364,12 +509,7 @@ def reconfig_one_cycle(account: str, max_syms: int = 0) -> int:
                 "tier": mg.tier_name(best["wsharpe"]),
             }
             all_returns_by_sym[sym_key] = best.get("raw_returns", [])
-        try: z.close()
-        except Exception: pass
-        del z
-        gc.collect()
-        if i % 4 == 0 or i == len(all_syms):
-            print(f"  [{i}/{len(all_syms)}] {sym} cycle_elapsed={time.time()-t0:.0f}s", flush=True)
+    print(f"[hourly] all sims done in {time.time()-t0:.0f}s", flush=True)
 
     # Canonical row via metrics_guard (the chokepoint)
     pooled = {k: v for k, v in all_returns_by_sym.items() if v}
@@ -418,16 +558,17 @@ def main() -> int:
     ap.add_argument("--daemon", action="store_true", help="hourly loop")
     ap.add_argument("--max-syms", type=int, default=0)
     ap.add_argument("--cycle-secs", type=int, default=3600)
+    ap.add_argument("--workers", type=int, default=4, help="parallel sim workers (1=in-process)")
     args = ap.parse_args()
     if not (args.once or args.daemon):
         ap.error("specify --once or --daemon")
 
     if args.once:
-        return reconfig_one_cycle(args.account, args.max_syms)
+        return reconfig_one_cycle(args.account, args.max_syms, args.workers)
     while True:
         try:
             t0 = time.time()
-            reconfig_one_cycle(args.account, args.max_syms)
+            reconfig_one_cycle(args.account, args.max_syms, args.workers)
             elapsed = time.time() - t0
             sleep_for = max(60, args.cycle_secs - int(elapsed))
             print(f"[hourly] cycle done in {elapsed:.0f}s; sleeping {sleep_for}s", flush=True)
