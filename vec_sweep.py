@@ -272,20 +272,25 @@ def materialize(fam: PrimitiveFamily, threshold_idx: int, op: str) -> Primitive:
 
 
 def compute_mask(npz: Dict[str, np.ndarray], prim: Primitive) -> np.ndarray:
-    """Materialize a single primitive's bool mask. Pure function over npz."""
+    """Materialize a single primitive's bool mask. Pure function over npz.
+    Returns all-False if any referenced field is missing in this symbol's
+    NPZ — pooled mode runs across symbols with non-identical schemas."""
+    n = len(npz["close_3m"])
     op = prim.op
     if op.startswith("gt_field:"):
         other = op.split(":", 1)[1]
-        a = npz["close"] if "close" in npz else npz["close_3m"]
-        if "close_above_" in prim.field and prim.field.endswith(other):
-            return np.asarray(a > npz[other], dtype=bool)
+        if other not in npz:
+            return np.zeros(n, dtype=bool)
+        a = npz.get("close", npz["close_3m"])
         return np.asarray(a > npz[other], dtype=bool)
     if op.startswith("lt_field:"):
         other = op.split(":", 1)[1]
-        a = npz["close"] if "close" in npz else npz["close_3m"]
+        if other not in npz:
+            return np.zeros(n, dtype=bool)
+        a = npz.get("close", npz["close_3m"])
         return np.asarray(a < npz[other], dtype=bool)
     if prim.field not in npz:
-        return np.zeros(len(npz["close_3m"]), dtype=bool)
+        return np.zeros(n, dtype=bool)
     a = npz[prim.field]
     t = prim.threshold
     if op == "ge":
@@ -742,7 +747,9 @@ def run_pooled(args) -> None:
         }
         insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=mode, metrics=metrics)
         n_done += 1
-        if pool > best and len(all_rets) >= 30 * n_syms:
+        # Same sample-floor gate as validate-mode.
+        sample_ok = len(all_rets) >= 30 * n_syms and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
+        if pool > best and sample_ok:
             best = pool
             print(f"  [pooled] new best pool_sharpe={pool:+.4f} sym_sharpe={ssh:+.4f} "
                   f"trades={len(all_rets)} hash={cfg.hash}")
@@ -801,7 +808,10 @@ def run_validate(args) -> None:
         }
         insert_result(db, cid, args.basket, n_syms=n_syms, years=avg_years, mode=out_mode, metrics=metrics)
         n_done += 1
-        if pool > best:
+        # Sample-floor gate per CLAUDE.md: ignore "best" claims with <30 trades/sym
+        # AND drop |pool|>5 outliers unless trades>=5000 (rule 6 + metrics_guard).
+        sample_ok = len(all_rets) >= 30 * max(1, n_syms) and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
+        if pool > best and sample_ok:
             best = pool
             print(f"  [validate] new best pool_sharpe={pool:+.4f} trades={len(all_rets)} hash={cfg.hash}")
         floor_syms = mg.MIN_SYMS_STOCKS if "tradier" in out_mode else mg.MIN_SYMS_CRYPTO

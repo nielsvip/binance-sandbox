@@ -5152,9 +5152,10 @@ def simulate(stores, cfg, capital=10000.0):
     return _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, early_abort)
 
 
-def _per_symbol_sharpes(per_symbol_pnl, min_trades=1, std_floor=1e-3, cap=20.0):
-    """Include ALL symbols — no cherry-picking. Symbols with 0 trades = Sharpe 0.
-    min_trades=1: any symbol that traded is included. 0-trade symbols added as 0 by _finalize_result."""
+def _per_symbol_sharpes(per_symbol_pnl, min_trades=30, std_floor=1e-3, cap=5.0):
+    """COCKROACH FIX 2026-04-30: min_trades 1→30, cap 20→5. Sub-30-trade symbols
+    contributed noise Sharpes that propagated as 'wins'; a >5 per-trade Sharpe is
+    implausible and was a tell of small-sample lies."""
     out = []
     for sym, plist in per_symbol_pnl.items():
         if len(plist) < min_trades:
@@ -5167,8 +5168,12 @@ def _per_symbol_sharpes(per_symbol_pnl, min_trades=1, std_floor=1e-3, cap=20.0):
     return out
 
 
-def _pool_sharpe(all_pnl, min_trades=30, cap=20.0):
-    if len(all_pnl) < min_trades:
+def _pool_sharpe(all_pnl, n_syms_qualifying=0, min_trades_per_sym=30, cap=5.0):
+    """COCKROACH FIX 2026-04-30: now requires n_syms × min_trades_per_sym total
+    trades, not the old `len(all_pnl) >= 30` floor that let 177-trade samples
+    produce 'pool_sharpe=3.4'. cap 20→5 (per-trade Sharpe >5 is implausible)."""
+    required = max(30, n_syms_qualifying * min_trades_per_sym)
+    if len(all_pnl) < required:
         return 0.0
     p = np.array(all_pnl)
     m = p.mean(); s = p.std()
@@ -5193,7 +5198,10 @@ def _finalize_result(per_symbol_pnl, all_pnl, start_size, symbols_processed, ear
     if zero_pad > 0:
         per_sym_sharpes.extend([0.0] * zero_pad)
     n_trades = len(all_pnl)
-    ps = _pool_sharpe(all_pnl)
+    # COCKROACH FIX 2026-04-30: pool_sharpe now requires per-symbol min_trades.
+    # Count syms with ≥30 trades — those are the ones contributing valid sample.
+    n_syms_qualifying = sum(1 for plist in per_symbol_pnl.values() if len(plist) >= 30)
+    ps = _pool_sharpe(all_pnl, n_syms_qualifying=n_syms_qualifying)
     syms_excluded = 0
     per_sym_dds = [_per_symbol_max_dd_pct(plist) for plist in per_symbol_pnl.values() if plist]
     worst_sym_dd_pct = round(float(max(per_sym_dds)), 4) if per_sym_dds else 0.0
