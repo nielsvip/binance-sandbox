@@ -634,6 +634,7 @@ _DEFAULT_EXCLUDE_DIRS = (
     "klines_cache_backtest", "klines_cache_gateway", "data",
     "_NOLIES_HOLD_20260430", "_legacy_unverified", "node_modules",
     ".venv", "venv", "env",
+    "snapshots_local", "snapshots", ".history",
 )
 
 
