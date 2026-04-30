@@ -24,8 +24,14 @@ cd "$REPO" || { echo "ERR: $REPO not found"; exit 1; }
 [ -f vec_sweep.py ] || { echo "ERR: $REPO/vec_sweep.py missing — rsync it first"; exit 1; }
 [ -f metrics_guard.py ] || { echo "ERR: metrics_guard.py missing"; exit 1; }
 
-is_s1() { [[ "$HOST" == s1* ]] || [[ "$HOSTNAME" == *s1* ]]; }
-is_s2() { [[ "$HOST" == s2* ]] || [[ "$HOSTNAME" == *s2* ]]; }
+# Server detection: hostname OR public IP. S1=157.180.125.52, S2=204.168.181.211.
+_my_ip() { hostname -I 2>/dev/null | awk '{print $1}'; }
+is_s1() { [[ "$HOST" == s1* ]] || [[ "$HOSTNAME" == *s1* ]] \
+          || [[ "$(_my_ip)" == 157.180.* ]] \
+          || { [[ -d /home/niels/binance-sandbox ]] && [[ ! -d /home/niels/miniconda3 ]]; }; }
+is_s2() { [[ "$HOST" == s2* ]] || [[ "$HOSTNAME" == *s2* ]] \
+          || [[ "$(_my_ip)" == 204.168.* ]] \
+          || { [[ -d /home/niels/binance-sandbox ]] && [[ -d /home/niels/miniconda3 ]]; }; }
 
 launch() {
     local name="$1"; shift
@@ -57,15 +63,33 @@ launch() {
 
 case "$TIER" in
     pooled_48)
-        is_s1 || { echo "ERR: pooled_48 is CRYPTO — run on S1 (this is $HOST)"; exit 2; }
-        # 48-sym crypto basket per CLAUDE.md sample floor
-        SYMS="BTCUSDT,ETHUSDT,SOLUSDT,ADAUSDT,BNBUSDT,AVAXUSDT,XRPUSDT,LINKUSDT,LTCUSDT,UNIUSDT,1INCHUSDT,ALGOUSDT,ANKRUSDT,ATOMUSDT,AXSUSDT,BANDUSDT,BATUSDT,BELUSDT,BTCDOMUSDT,C98USDT,CELRUSDT,CHRUSDT,COMPUSDT,COTIUSDT,DASHUSDT,DOTUSDT,EGLDUSDT,ENJUSDT,ETCUSDT,GRTUSDT,GTCUSDT,HOTUSDT,IOSTUSDT,IOTAUSDT,IOTXUSDT,KAVAUSDT,KNCUSDT,KSMUSDT,LRCUSDT,MANAUSDT,MTLUSDT,NKNUSDT,QTUMUSDT,RLCUSDT,RSRUSDT,RVNUSDT,SANDUSDT,SKLUSDT"
+        is_s1 || { echo "ERR: pooled_48 is CRYPTO — run on S1 (this is $HOST $(_my_ip))"; exit 2; }
+        # 48-sym crypto basket per CLAUDE.md sample floor.
+        # 10 USDC-perp majors named USDC per USDC-OVER-USDT policy + 38 legacy USDT.
+        # Auto-discovers existing NPZs to avoid skip-spam.
+        BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
+        BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT HOTUSDT IOSTUSDT IOTAUSDT IOTXUSDT KAVAUSDT KNCUSDT KSMUSDT LRCUSDT MANAUSDT MTLUSDT NKNUSDT QTUMUSDT RLCUSDT RSRUSDT RVNUSDT SANDUSDT SKLUSDT"
+        SYMS=""
+        for S in $BASE_USDC $BASE_USDT; do
+            [ -f "$REPO/backtest_v8/indicators/$S.npz" ] && SYMS="${SYMS}${S},"
+        done
+        SYMS=${SYMS%,}
+        N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
+        echo "[pooled_48] discovered $N NPZs in basket"
+        [ "$N" -ge 48 ] || { echo "ERR: only $N NPZs found, need >=48 for publishable floor"; exit 2; }
         launch "pooled_48" vec_sweep.py pooled --basket crypto48 --syms "$SYMS" --max-configs 5000 --seed 31
         ;;
     validate_top)
-        # Neighbour-search around current top from the DB. seed-mode = whichever has rows.
         is_s1 || { echo "ERR: validate_top is CRYPTO — run on S1"; exit 2; }
-        SYMS="BTCUSDT,ETHUSDT,SOLUSDT,ADAUSDT,BNBUSDT,AVAXUSDT,XRPUSDT,LINKUSDT,LTCUSDT,UNIUSDT,1INCHUSDT,ALGOUSDT,ANKRUSDT,ATOMUSDT,AXSUSDT,BANDUSDT,BATUSDT,BELUSDT,BTCDOMUSDT,C98USDT,CELRUSDT,CHRUSDT,COMPUSDT,COTIUSDT,DASHUSDT,DOTUSDT,EGLDUSDT,ENJUSDT,ETCUSDT,GRTUSDT,GTCUSDT,HOTUSDT,IOSTUSDT,IOTAUSDT,IOTXUSDT,KAVAUSDT,KNCUSDT,KSMUSDT,LRCUSDT,MANAUSDT,MTLUSDT,NKNUSDT,QTUMUSDT,RLCUSDT,RSRUSDT,RVNUSDT,SANDUSDT,SKLUSDT"
+        BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
+        BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT HOTUSDT IOSTUSDT IOTAUSDT IOTXUSDT KAVAUSDT KNCUSDT KSMUSDT LRCUSDT MANAUSDT MTLUSDT NKNUSDT QTUMUSDT RLCUSDT RSRUSDT RVNUSDT SANDUSDT SKLUSDT"
+        SYMS=""
+        for S in $BASE_USDC $BASE_USDT; do
+            [ -f "$REPO/backtest_v8/indicators/$S.npz" ] && SYMS="${SYMS}${S},"
+        done
+        SYMS=${SYMS%,}
+        N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
+        echo "[validate_top] discovered $N NPZs in basket"
         launch "validate_48" vec_sweep.py validate --seed-mode "validate:per_symbol" \
             --top-n 1000 --basket crypto48 --syms "$SYMS" \
             --target-pool-sharpe 4.0 --max-configs 50000 --seed 37

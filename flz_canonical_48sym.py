@@ -27,11 +27,26 @@ def main() -> int:
 
     sys.path.insert(0, str(ROOT))
     import numpy as np
+    import re
     import metrics_guard as mg
-    import chart_sweep
     from v8_quick_engine import simulate, QuickConfig
 
-    overrides = chart_sweep.load_override(Path(args.override))  # imposter-blocked
+    # inline imposter-block (chart_sweep.load_override has a side-effect that breaks
+    # the engine on S1 — sys.path.insert at top-level flips numpy/engine resolution).
+    _IMPOSTER_RE = re.compile(
+        r"trades=\d+\s+WR=[\d.]+%\s+gain=[+\-][\d.]+%|"
+        r"\[UNVERIFIED\b|"
+        r"_imposter_block|"
+        r"override_per_sym_.*_BEST"
+    )
+    override_path = Path(args.override)
+    with override_path.open() as f:
+        overrides = json.load(f)
+    meta_blob = json.dumps({k: v for k, v in overrides.items() if k.startswith("_")})
+    if (overrides.get("_imposter_block", {}).get("do_not_load")
+            or _IMPOSTER_RE.search(meta_blob)
+            or "per_sym" in override_path.stem.lower()):
+        sys.exit(f"IMPOSTER_OVERRIDE_REFUSED: {override_path}")
 
     syms_all = sorted([p.stem for p in NPZ_DIR.glob("*.npz")
                        if (p.stem.endswith("USDC") or p.stem.endswith("USDT"))

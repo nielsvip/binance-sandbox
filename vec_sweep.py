@@ -773,7 +773,10 @@ def run_validate(args) -> None:
             if sample is None: sample = npz
         except FileNotFoundError: pass
     if not sym_data: print("[validate] no data — abort"); return
-    fams = _families_for(args, sample)
+    # Pooled basket → only symbol-relative primitives. Same rule as pooled-mode:
+    # absolute-price thresholds (atr, dc_high_4h, kc_lower_4h, etc.) are not
+    # cross-symbol comparable and produce filter-by-coincidence Sharpes.
+    fams = _families_for(args, sample, symbol_relative_only=True)
     rng = random.Random(args.seed)
     n_syms = len(sym_data); avg_years = sum(y for _, _, y in sym_data.values()) / n_syms
     out_mode = f"validate:{args.seed_mode}"
