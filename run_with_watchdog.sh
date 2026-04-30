@@ -236,6 +236,12 @@ run_script() {
         # (RSS hit 900MB fast), causing constant cutouts user complained about. System has 36GB
         # RAM, 5 ez_manage workers ≈ 3.5GB total; 1.5GB ceiling per worker is plenty of headroom.
         # Apply to ez_orderbook too (long-running OB ingest, similar pattern).
+        # 2026-04-30: per-account ceiling — inf grew to 91 open positions; natural working set
+        # ~1.75GB (200MB base + 91 × ~17MB klines+indicators+WT state per position). Was hitting
+        # 1.5GB → SIGTERM→SIGKILL → exit 137 every 3 min (9× in 30 min). This is workload
+        # scaling, NOT a leak: men=50pos@880MB, fin=24pos@685MB, ang=12pos@474MB all stable
+        # under 1.5GB; only inf's 91-position load exceeds. 36GB RAM means even 5×2.2GB=11GB is
+        # comfortable. Default unchanged at 1.5GB; inf gets 2.2GB.
         if [[ ( "$SCRIPT" == "ez_manage.py" || "$SCRIPT" == "ez_orderbook.py" ) && "$runtime" -gt 60 ]]; then
             local rss_kb
             if [[ "$(uname)" == "Darwin" ]]; then
@@ -243,7 +249,10 @@ run_script() {
             else
                 rss_kb=$(awk '/VmRSS/{print $2}' "/proc/$script_pid/status" 2>/dev/null || echo 0)
             fi
-            local MAX_RSS_KB=1572864  # 1.5GB (was 900MB)
+            local MAX_RSS_KB=1572864  # 1.5GB default (was 900MB)
+            if [[ "$SCRIPT" == "ez_manage.py" && "${ARGS[*]}" == *"--account inf"* ]]; then
+                MAX_RSS_KB=2306867  # ~2.2GB for inf (91 open positions @ ~17MB ea + 200MB base)
+            fi
             if [[ -n "$rss_kb" && "$rss_kb" -gt "$MAX_RSS_KB" ]]; then
                 log "🧹 RSS preemptive recycle: ${rss_kb}KB > ${MAX_RSS_KB}KB. Graceful restart before jetsam fires."
                 kill -TERM "$script_pid" 2>/dev/null || true

@@ -688,6 +688,20 @@ class Config:
     # 'wt_3m_15m_htf2' / 'wt_3m_15m_htf3' (3m+15m+ALL HTF) / 'wt_dc_score' (use wt_dc_exit_scorer).
     HEDGE_CLOSE_MODE: str = 'wt_3m_1h'
     HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
+    # === 2026-04-30 RESTORED HEDGE_BANDAID_OFF (the rule that's been here for 500 yrs) ===
+    # User: "CLOSE the hedge when wt_15m goes against it. Then open again when it goes in favor.
+    #  PLUS when losing (original) positions closes hedge closes at the same moment. Same as
+    #  last 500 years. until you took it out. now you have to put it back acagin for the 1000th time."
+    # Implementation lives at ez_positions_quick.py:5384-5392. Was disabled (default False)
+    # since some prior agent removed the config line. Re-enabled here. NO P/L gate — when 15m
+    # WT flips to favor origin, hedge closes regardless of gain (that's the whole point of the rule).
+    # Reopen handled by scan_and_hedge_losers when 15m WT goes against origin again.
+    # Origin-close → hedge-close is _close_associated_hedge in ez_manage.py:14453 (always was on).
+    HEDGE_BANDAID_OFF_ENABLED: bool = True
+    # Companion: peak-decay nuke. When hedge gain peaks >1% then drops back to 0.5% → close before
+    # going negative. Default True per the historical "exist as SHORT as possible, NEVER close at a loss"
+    # paragraph at ez_positions_quick.py:5385 — this is the "before negative" half of that rule.
+    HEDGE_DECAY_NUKE_ENABLED: bool = True
     # === 2026-04-29 SURFACED hidden wt_dc_exit_scorer knobs (were implicit defaults via getattr-fallback in wt_dc_exit_scorer.py) ===
     # ez_manage.py and tradier_manage.py both call wt_dc_score_exit. Crypto live had ZERO of these declared,
     # so wt_dc_exit_scorer.py was using its hardcoded fallbacks (5/75/0.80). Now explicit + sweep-testable.

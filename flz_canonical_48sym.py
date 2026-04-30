@@ -8,7 +8,7 @@ Usage:
   python3 flz_canonical_48sym.py --override <path> --tag <name> [--limit N]
 """
 from __future__ import annotations
-import argparse, json, os, sys, time, traceback
+import argparse, gc, json, os, sys, time, traceback
 from pathlib import Path
 from typing import Dict, List
 
@@ -74,6 +74,7 @@ def main() -> int:
         # the full list so other syms benefit too. Set fresh on every iter (cfg is fresh).
         cfg.BTC_DEDICATED_SYMBOLS = DEDICATED_FULL
         cfg.BTC_DEDICATED_ENABLED = True
+        z = None
         try:
             z = np.load(str(NPZ_DIR / f"{sym}.npz"))
             simulate({sym: z}, cfg, capital=10000.0)
@@ -82,7 +83,15 @@ def main() -> int:
             years_max = max(years_max, yr)
         except Exception as e:
             print(f"  [{i}/{len(syms)}] {sym} ERR: {e}", flush=True)
-            continue
+        finally:
+            # OOM fix: NpzFile caches decompressed arrays per-access; on the BTC-dedicated
+            # path the engine touches dozens of fields per sym, ~500MB-1GB resident. Across
+            # 60+ syms with no release, RSS hits 25GB+ and the OS OOM-kills. Close + GC.
+            if z is not None:
+                try: z.close()
+                except Exception: pass
+            del z, cfg
+            gc.collect()
         jp = out_dir / f"{args.tag}__{sym}.jsonl"
         rets: List[float] = []
         if jp.exists():

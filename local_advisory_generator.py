@@ -53,14 +53,12 @@ ENTRY_SCORE_MIN = 75.0
 ENTRY_MTF_MIN = 4
 ENTRY_NEAR_DIST_MAX_PCT = 1.5
 
-# 2026-04-30 BLEED KILL: hedge-storm of 134 force-hedges/day on inf bled real money
-# (8 hedges sitting at -0.5% to -5.59% per hedge_safety_alerts). The previous -0.5%
-# threshold + 4-TF gate fired on minor wobbles, opening hedges that themselves bled.
-# Trigger now requires SEVERE losers (-3%) + still-against MTF, not normal noise.
-# Override at runtime via env: INF_AGENT_HEDGE_DISABLED=1 (full kill) or
-# INF_AGENT_LOSER_THRESHOLD=-2.0 (custom).
-LOSER_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_LOSER_THRESHOLD", "-3.0"))
-SR_BREAK_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_SR_BREAK_THRESHOLD", "-1.5"))
+# 2026-04-30: REVERTED to historical thresholds (-0.5/0.0) — the bleed source was the
+# DISABLED HEDGE_BANDAID_OFF wt_15m close rule, NOT the open trigger. With BANDAID_OFF=True
+# in config.py, hedges cycle in/out on wt_15m flips like the past 6 months — opens are fine.
+# Env-var kill switches retained for emergency use only.
+LOSER_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_LOSER_THRESHOLD", "-0.5"))
+SR_BREAK_GAIN_THRESHOLD = float(os.environ.get("INF_AGENT_SR_BREAK_THRESHOLD", "0.0"))
 INF_AGENT_HEDGE_DISABLED = os.environ.get("INF_AGENT_HEDGE_DISABLED", "0") == "1"
 HOLD_MIN_MTF_ALIGN = 3
 HOLD_MIN_GAIN_PCT = 0.0

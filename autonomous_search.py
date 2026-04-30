@@ -335,6 +335,11 @@ def main():
     else:
         subset = load_npz(args.mode, syms, args.start, args.npz_dir)
         gc.collect()
+    # 2026-04-30 fix: when streaming, len(subset) is 5 (the tuple length), not the
+    # symbol count. Use _n_syms_actual everywhere for the real universe size so the
+    # CSV / JSONL / log all carry the correct n_syms (otherwise downstream audits
+    # see n_syms=5 and apply wrong sample-floor logic).
+    _n_syms_actual = len(syms) if args.stream_npz else len(subset)
 
     base = QuickConfig()
     base.MODE = args.mode
@@ -390,29 +395,29 @@ def main():
                 g0 = r0.get("accumulated_gain_pct", 0.0)
                 tr0 = r0.get("trades", 0)
                 w0 = r0.get("wins", 0); l0 = r0.get("losses", 0); wr0 = r0.get("wr", 0.0)
-                floor_total = len(subset) * args.min_trades_per_sym
+                floor_total = _n_syms_actual * args.min_trades_per_sym
                 rel0 = 1 if tr0 >= floor_total else 0
                 sym_s0 = r0.get("sym_sharpe", 0.0)
-                gsy0 = round(g0 / len(subset) / n_years, 4)
+                gsy0 = round(g0 / max(1, _n_syms_actual) / n_years, 4)
                 agt0 = round(g0 / tr0, 4) if tr0 else 0.0
                 gpy0 = round(g0 / n_years, 4)
                 w.writerow([-1, round(s0, 4), round(sym_s0, 4),
                              round(g0, 2), agt0, gpy0, gsy0,
                              round(r0.get("max_dd_pct", 0.0), 2), tr0, w0, l0, round(wr0, 1),
-                             len(subset), round(n_years, 3), args.start,
+                             _n_syms_actual, round(n_years, 3), args.start,
                              round(g0 / args.bh_accumulated_gain_pct, 3) if args.bh_accumulated_gain_pct else 0,
                              round(time.time() - t_bl, 1), 0, rel0, 0, json.dumps({})])
                 csv_f.flush()
                 print(f"[AUTO_SEARCH] BASELINE pool_sharpe={s0:.4f} sym_sharpe={sym_s0:.4f} "
                       f"gain={g0:.1f}% avg_gain_trade={agt0:.4f}%/trade "
                       f"gain_per_yr={gpy0:.2f}%/yr gain_sym_yr={gsy0:.4f}%/sym/yr "
-                      f"trades={tr0} wr={wr0:.1f}% n_syms={len(subset)} n_years={n_years:.2f} "
+                      f"trades={tr0} wr={wr0:.1f}% n_syms={_n_syms_actual} n_years={n_years:.2f} "
                       f"reliable={rel0}", flush=True)
 
         best_gain = -1e9
         best_rank_score = -1e9  # tracks best pool_sharpe (CANONICAL_METRICS.md)
         _as_rg_disabled = os.environ.get("V8_RATE_GUARD_DISABLED", "0") == "1"
-        _as_n_syms = max(1, len(subset))
+        _as_n_syms = max(1, _n_syms_actual)
         _as_rg = None if _as_rg_disabled else RateGuard(n_accts=_as_n_syms, label=f"autonomous_search.{args.mode}")
         _as_total_trades = 0
         _as_completed_iters = 0
@@ -440,7 +445,7 @@ def main():
             losses = r.get("losses", 0)
             wr = r.get("wr", 0.0)
             gvb = gain / args.bh_accumulated_gain_pct if args.bh_accumulated_gain_pct != 0 else 0.0
-            n_syms = len(subset)
+            n_syms = _n_syms_actual
             _as_completed_iters += 1
             _as_total_trades += int(tr or 0)
             if _as_rg is not None:

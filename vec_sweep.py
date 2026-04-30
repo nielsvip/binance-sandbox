@@ -527,6 +527,17 @@ def evaluate_config(cache: MaskCache, close: np.ndarray, cfg: Config,
 # ---------------------------------------------------------------------------
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS streaming_returns (
+    config_hash TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    returns_blob BLOB,
+    n_trades INTEGER NOT NULL,
+    n_long INTEGER NOT NULL,
+    n_short INTEGER NOT NULL,
+    years REAL NOT NULL,
+    PRIMARY KEY(config_hash, symbol)
+);
+CREATE INDEX IF NOT EXISTS idx_streaming_hash ON streaming_returns(config_hash);
 CREATE TABLE IF NOT EXISTS configs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     config_hash TEXT UNIQUE NOT NULL,
@@ -865,6 +876,125 @@ def run_validate(args) -> None:
             print(f"  [validate] {n_done:,}/{args.max_configs:,} best={best:+.4f}")
 
 
+def run_streamed(args) -> None:
+    """Streaming pooled mode — fits ANY basket size in low RAM by processing
+    one symbol at a time. Pre-generates configs upfront, per-symbol loads NPZ,
+    evaluates all configs, saves per-(sym,cfg) returns blobs to streaming_returns
+    table, unloads. Final pass aggregates per config across syms → publishable
+    pool_sharpe + sym_sharpe."""
+    basket = BASKETS.get(args.basket, [])
+    if args.syms:
+        basket = [s.strip() for s in args.syms.split(",") if s.strip()]
+    db = open_db(Path(args.db))
+    rng = random.Random(args.seed)
+    npz_dir = Path(args.npz_dir)
+    mode = f"streamed:{args.basket}"
+    print(f"[streamed] basket={args.basket} n_syms={len(basket)} max_configs={args.max_configs:,}")
+    # Pre-generate configs from sample sym's families.
+    sample_sym = next((s for s in basket if (npz_dir / f"{s}.npz").exists()), None)
+    if not sample_sym:
+        print("[streamed] no NPZ in basket — abort"); return
+    sample = _load_npz(sample_sym, npz_dir)
+    fams = _families_for(args, sample, symbol_relative_only=True)
+    print(f"[streamed] {len(fams)} symbol-relative families "
+          f"({sum(len(f.thresholds)*len(f.ops) for f in fams):,} primitives)")
+    # Pre-roll N configs; save in DB up front.
+    configs: List[Config] = []
+    seen: set = set()
+    while len(configs) < args.max_configs:
+        c = random_config(rng, fams, side="both")
+        if c.hash in seen: continue
+        seen.add(c.hash); configs.append(c)
+    cids = [upsert_config(db, c) for c in configs]
+    print(f"[streamed] pre-generated {len(configs):,} unique configs")
+    del sample
+    # Per-sym evaluation; persist returns blobs.
+    sym_years: Dict[str, float] = {}
+    t0 = time.time()
+    for s_idx, sym in enumerate(basket):
+        try:
+            npz = _load_npz(sym, npz_dir)
+        except FileNotFoundError:
+            print(f"  [streamed] skip {sym}: NPZ missing"); continue
+        close = npz["close_3m"]
+        years = _years_of(close)
+        sym_years[sym] = years
+        cache = MaskCache(npz, limit=2000)
+        ts = time.time()
+        already = set(r[0] for r in db.execute(
+            "SELECT config_hash FROM streaming_returns WHERE symbol=?", (sym,)).fetchall())
+        n_skipped = 0
+        for cfg in configs:
+            if cfg.hash in already:
+                n_skipped += 1; continue
+            m = evaluate_config(cache, close, cfg, years)
+            db.execute("INSERT OR REPLACE INTO streaming_returns VALUES(?,?,?,?,?,?,?)",
+                       (cfg.hash, sym, m["rets_blob"], m["trades"],
+                        m["trades_long"], m["trades_short"], years))
+        del npz, cache
+        rate = (len(configs) - n_skipped) / max(0.01, time.time() - ts)
+        print(f"  [streamed] {sym} done ({s_idx+1}/{len(basket)}): "
+              f"{len(configs)-n_skipped} new evals @ {rate:.0f}/s "
+              f"(skipped {n_skipped} cached) total elapsed {time.time()-t0:.0f}s")
+    # Aggregate per config.
+    print(f"[streamed] aggregating {len(configs):,} configs across {len(sym_years)} syms")
+    n_syms = len(sym_years)
+    avg_years = sum(sym_years.values()) / max(1, n_syms)
+    floor_syms = mg.MIN_SYMS_STOCKS if "tradier" in args.basket else mg.MIN_SYMS_CRYPTO
+    n_above_floor = 0
+    n_inserted = 0
+    best_pool = -9.0
+    for cfg in configs:
+        rows = db.execute(
+            "SELECT symbol, returns_blob, n_trades, n_long, n_short FROM streaming_returns "
+            "WHERE config_hash=?", (cfg.hash,)).fetchall()
+        all_rets: List[float] = []
+        per_sym: Dict[str, List[float]] = {}
+        tl = ts = 0
+        for sym, blob, n_tr, n_l, n_s in rows:
+            if not blob or n_tr == 0:
+                continue
+            rets = np.frombuffer(zlib.decompress(blob), dtype=np.float16).astype(np.float32)
+            if rets.size:
+                all_rets.extend(rets.tolist())
+                per_sym[sym] = rets.tolist()
+            tl += n_l; ts += n_s
+        if not all_rets:
+            continue
+        # Trade-frequency gates (sample-floor + cap)
+        tps = len(all_rets) / max(1, n_syms) / max(0.01, avg_years)
+        max_tps = getattr(args, "max_tps_per_yr", 0) or 0
+        min_tps = getattr(args, "min_tps_per_yr", 0) or 0
+        if (max_tps > 0 and tps > max_tps) or (min_tps > 0 and tps < min_tps):
+            continue
+        rets_arr = np.asarray(all_rets, dtype=np.float32)
+        pool = mg.pool_sharpe(all_rets)
+        ssh = mg.sym_sharpe_from_groups(per_sym)
+        total_gain = float(rets_arr.sum() * 100.0)
+        metrics = {
+            "pool_sharpe": pool, "sym_sharpe": ssh, "trades": len(all_rets),
+            "trades_long": tl, "trades_short": ts, "acc_gain_pct": total_gain,
+            "avg_gain_trade": total_gain / len(all_rets),
+            "gain_per_yr": total_gain / max(0.01, avg_years),
+            "max_dd_pct": _max_drawdown_pct(rets_arr),
+            "win_rate_pct": float((rets_arr > 0).mean() * 100.0),
+            "rets_blob": zlib.compress(rets_arr.astype(np.float16).tobytes(), 6),
+        }
+        insert_result(db, upsert_config(db, cfg), args.basket,
+                      n_syms=n_syms, years=avg_years, mode=mode, metrics=metrics)
+        n_inserted += 1
+        sample_ok = len(all_rets) >= 30 * n_syms and (abs(pool) <= 5.0 or len(all_rets) >= 5000)
+        if pool > best_pool and sample_ok:
+            best_pool = pool
+            tag = "PUBLISHABLE" if (n_syms >= floor_syms and avg_years >= 1.0) else "DIAGNOSTIC"
+            print(f"  [streamed] new best pool={pool:+.4f} sym={ssh:+.4f} "
+                  f"trades={len(all_rets)} tps/yr={tps:.0f} dd={metrics['max_dd_pct']:.1f}% "
+                  f"hash={cfg.hash} [{tag}]")
+    print(f"[streamed] done: {n_inserted:,} configs aggregated, best pool={best_pool:+.4f}, "
+          f"floor={'PUBLISHABLE' if n_syms>=floor_syms else 'DIAGNOSTIC'} "
+          f"({n_syms} syms × {avg_years:.2f}yr)")
+
+
 def run_v3(args) -> None:
     """V3 fast-scalp: restrict families to 3m-suffixed fields."""
     syms = [s.strip() for s in args.syms.split(",") if s.strip()]
@@ -994,6 +1124,13 @@ def main():
     c.add_argument("--target-pool-sharpe", type=float, default=4.0)
     c.add_argument("--max-configs", type=int, default=200_000)
     c.set_defaults(fn=run_validate)
+
+    s = sub.add_parser("streamed", help="Streaming pooled — fits ANY basket in low RAM")
+    _add_common(s)
+    s.add_argument("--basket", default="crypto48")
+    s.add_argument("--syms", default="")
+    s.add_argument("--max-configs", type=int, default=2000)
+    s.set_defaults(fn=run_streamed)
 
     d = sub.add_parser("v3"); _add_common(d)
     d.add_argument("--syms", default="BTCUSDC,ETHUSDC,SOLUSDC")

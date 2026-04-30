@@ -62,6 +62,27 @@ launch() {
 }
 
 case "$TIER" in
+    streamed_48)
+        is_s1 || { echo "ERR: streamed_48 is CRYPTO — run on S1"; exit 2; }
+        BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
+        BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT HOTUSDT IOSTUSDT IOTAUSDT IOTXUSDT KAVAUSDT KNCUSDT KSMUSDT LRCUSDT MANAUSDT MTLUSDT NKNUSDT QTUMUSDT RLCUSDT RSRUSDT RVNUSDT SANDUSDT SKLUSDT"
+        SYMS=""; COUNT=0
+        for S in $BASE_USDC $BASE_USDT; do
+            if [ -f "$REPO/backtest_v8/indicators/$S.npz" ]; then
+                SYMS="${SYMS}${S},"; COUNT=$((COUNT+1))
+                [ "$COUNT" -ge 48 ] && break
+            fi
+        done
+        SYMS=${SYMS%,}
+        N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
+        echo "[streamed_48] basket: $N NPZs"
+        [ "$N" -ge 48 ] || { echo "ERR: only $N NPZs, need 48"; exit 2; }
+        # HTF + symbol-relative + frequency cap = smart, low-noise.
+        # 1500 configs × 48 syms × ~15ms = ~18 min full run, fits any RAM.
+        launch "streamed_48" vec_sweep.py streamed --basket crypto48 --syms "$SYMS" \
+            --max-configs 1500 --seed 53 \
+            --tf-filter htf_only --min-tps-per-yr 4 --max-tps-per-yr 150
+        ;;
     pooled_48|pooled_32|pooled_24)
         is_s1 || { echo "ERR: pooled_* is CRYPTO — run on S1 (this is $HOST $(_my_ip))"; exit 2; }
         # 48-sym = PUBLISHABLE floor; 32/24 = DIAGNOSTIC fallback if RAM-bound.
