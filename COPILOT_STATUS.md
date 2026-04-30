@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-30 15:57:41 UTC
+# Copilot Status — 2026-04-30 16:13:08 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T15:56:25
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T15:56:25
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T15:56:55
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T15:56:55
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T15:56:55
-- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T15:57:00
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T15:57:00
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T15:57:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T15:57:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T15:57:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T16:11:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T16:11:57
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T16:12:27
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T16:12:27
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T16:12:27
+- **RATIO_IMBALANCE** [crypto] ang — 2026-04-30T16:12:27
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T16:12:27
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T16:12:58
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T16:12:58
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T16:12:58
 
 ## Missed Trades (trader comparison)
 
@@ -27,21 +27,20 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 8 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 7 | **Reentered:** 0
 
-- HELD: **SANDUSDT** LONG (crypto) peak +10.9%, now +0.3%
+- HELD: **SANDUSDT** LONG (crypto) peak +10.9%, now +10.3%
 - HELD: **GOOGL** LONG (tradier) peak +8.0%, now +7.0%
-- HELD: **LUNA2USDT** SHORT (crypto) peak +6.5%, now +-0.4%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-7.1%
+- HELD: **LUNA2USDT** SHORT (crypto) peak +6.5%, now +0.2%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-7.3%
 
-- WATCHING: **PENGUUSDC** SHORT (crypto) peaked +13.3%, exited 1m ago
-- WATCHING: **ZECUSDC** LONG (crypto) peaked +5.8%, exited 1m ago
-- WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 1m ago
-- WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 1m ago
-- WATCHING: **CHRUSDT** SHORT (crypto) peaked +4.5%, exited 1m ago
-- WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 1m ago
-- WATCHING: **1INCHUSDT** LONG (crypto) peaked +3.5%, exited 1m ago
-- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 1m ago
+- WATCHING: **ZECUSDC** LONG (crypto) peaked +5.8%, exited 2m ago
+- WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 2m ago
+- WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 2m ago
+- WATCHING: **CHRUSDT** SHORT (crypto) peaked +4.5%, exited 2m ago
+- WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 2m ago
+- WATCHING: **1INCHUSDT** LONG (crypto) peaked +3.5%, exited 2m ago
+- WATCHING: **OPUSDT** LONG (crypto) peaked +3.3%, exited 2m ago
 
 ## Supervisor
 
@@ -49,7 +48,7 @@ _None_
 
 **Issues (last 1h):** 7
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
