@@ -63,11 +63,17 @@ SWEEP_CSV_DIR = ROOT / "data" / "sweep_results"
 
 # Account → tradeable-syms file (long/short or pooled).
 # For accounts with split long/short files, list both — wrapper unions them.
+# 2026-04-30 USER DIRECTIVE: trc must use symbols_trb_long/short, NOT trc-specific lists.
+# Reason: trc is the paper-money "extreme settings" sibling of trb. If trc tests on a
+# different symbol universe than trb the controlled variable (config aggressiveness) gets
+# confounded with the symbol mix — "throw mud at the wall and see what sticks". Pinning
+# trc to trb's symbols means the only difference between trb and trc test results is
+# the config, which is what we actually want to A/B.
 ACCOUNT_SYMS = {
     "flz": [ROOT / "symbols_flz.json"],
     "fin": [ROOT / "symbols_fin.json"],
     "inf": [ROOT / "symbols_inf_long.json", ROOT / "symbols_inf_short.json"],
-    "trc": [ROOT / "symbols_trc_long.json", ROOT / "symbols_trc_short.json"],
+    "trc": [ROOT / "symbols_trb_long.json", ROOT / "symbols_trb_short.json"],   # restricted to trb's symbol set per user 2026-04-30
     "trb": [ROOT / "symbols_trb_long.json", ROOT / "symbols_trb_short.json"],
 }
 

@@ -188,6 +188,15 @@ class QuickConfig:
     WT_HTF_DISCOUNT_ENABLED: bool = True
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0
     MIN_POSITION_SIZE: float = 55.0
+    # 2026-04-30 Phase 2 reentry retrofit: same-side reentry window after a recent exit.
+    # Live system fires GUARANTEED_PRICE_CROSS / DIRECTION_FAVORABLE / GUARANTEED_REENTRY paths
+    # ~2,000+/day combined. v8_quick already routes reentry blocks through compute_entry_signals
+    # (gated by HTF/score), but this window-based path bypasses HTF and fires off the raw vec
+    # (B15/B11/B04/B12 etc) within MAX_AGE_BARS of last exit. Default OFF — preserves prior runs.
+    REENTRY_ENABLED: bool = False
+    REENTRY_RULES_ENABLED: tuple = ('B04', 'B11', 'B12', 'B15')
+    REENTRY_MAX_AGE_BARS: int = 30
+    REENTRY_PHASE2_MIN_GAP_BARS: int = 1
     # 2026-04-30 Phase 4: route process_position exit gates (WT_4H_VEL_EXIT,
     # DC_HOPELESS_EXIT, WT_EXHAUST_EXIT, WT_PERCENTILE_EXIT, E_1 delta, E_3 structure)
     # through position_evaluator.evaluate_exit_gates_vec. Default OFF preserves existing
@@ -4729,6 +4738,26 @@ def simulate(stores, cfg, capital=10000.0):
                 _exit_gate_extras = evaluate_exit_gates_vec(npz, is_long=is_long, config=cfg, ltf=_ltf)
                 # Indicator-only gates fold into exit_sig directly.
                 exit_sig = exit_sig | _exit_gate_extras['wt_exhaust'] | _exit_gate_extras['wt_percentile'] | _exit_gate_extras['e1_wt_delta'] | _exit_gate_extras['e3_structure']
+            # ===== ENGINE-RETROFIT 2026-04-30 PHASE 2: same-side reentry window =====
+            # Pre-compute per-side reentry mask using position_evaluator.evaluate_reentry_vec.
+            # Per-bar gate: FLAT + (i - last_exit_bar) within [MIN_GAP, MAX_AGE] + rule-enabled.
+            # Bypasses HTF/score gates — these are profit-of-the-recent-exit reentries.
+            _reentry_phase2_active = bool(getattr(cfg, 'REENTRY_ENABLED', False))
+            _reentry_window_fire = None
+            if _reentry_phase2_active:
+                from position_evaluator import evaluate_reentry_vec, BLOCK_NAMES
+                _re_vec = evaluate_reentry_vec(npz, is_long=is_long, config=cfg, ltf=_ltf)
+                _re_rules = set(getattr(cfg, 'REENTRY_RULES_ENABLED', ('B04', 'B11', 'B12', 'B15')))
+                # Map rule prefixes (e.g. 'B04') to block_id numbers via BLOCK_NAMES.
+                _re_block_ids = []
+                for _bid, _bname in BLOCK_NAMES.items():
+                    _bprefix = _bname.split('_', 1)[0]  # 'B15_STRONG_TREND' -> 'B15'
+                    if _bprefix in _re_rules:
+                        _re_block_ids.append(_bid)
+                _re_id_arr = _re_vec['block_id']
+                _reentry_window_fire = _re_vec['fire'] & np.isin(_re_id_arr, _re_block_ids)
+            _reentry_max_age = int(getattr(cfg, 'REENTRY_MAX_AGE_BARS', 30))
+            _reentry_min_gap_p2 = int(getattr(cfg, 'REENTRY_PHASE2_MIN_GAP_BARS', 1))
             # ═══ 2026-04-26 HEDGE GATE PRECOMPUTE — vectorized port of LIVE rules from ez_positions_quick ═══
             # Three gates govern hedge OPEN: HEDGE_DC_RESISTANCE_GATE / HEDGE_WT_VEL_GATE / HEDGE_DETERIORATING_GAIN.
             # All sweep-testable (default False here for backward compat with existing autonomous_search runs).
@@ -5215,7 +5244,20 @@ def simulate(stores, cfg, capital=10000.0):
                 px = close[i]
                 if px <= 0: continue
                 _rz_fires_here = _rz_break_arr is not None and bool(_rz_break_arr[i])
-                if not in_pos and (entry_sig[i] or _rz_fires_here) and (not _intraday_enabled or _sec_of_day is None or _sec_of_day[i] < _intraday_entry_cutoff):
+                # ===== PHASE 2 REENTRY WINDOW (2026-04-30) =====
+                # If we exited recently (same side, since the for-is_long loop is per-side) and the
+                # reentry vec mask fires for an enabled rule, fire entry without HTF/score gating.
+                # This ports live GUARANTEED_PRICE_CROSS / DIRECTION_FAVORABLE_REENTRY paths.
+                _phase2_reentry_fires = False
+                if (_reentry_phase2_active and not in_pos
+                        and _reentry_window_fire is not None
+                        and _last_exit_bar >= 0
+                        and (i - _last_exit_bar) >= _reentry_min_gap_p2
+                        and (i - _last_exit_bar) <= _reentry_max_age
+                        and bool(_reentry_window_fire[i])
+                        and (not _intraday_enabled or _sec_of_day is None or _sec_of_day[i] < _intraday_entry_cutoff)):
+                    _phase2_reentry_fires = True
+                if not in_pos and (entry_sig[i] or _rz_fires_here or _phase2_reentry_fires) and (not _intraday_enabled or _sec_of_day is None or _sec_of_day[i] < _intraday_entry_cutoff):
                     in_pos = True; ep = px; eb = i; _aug_done = False; _aug_wt_d_last = _wt1_D_aug[i]; _aug_px_last = px; _aug_4h_done = False; _aug_4h_wt_last = _wt1_4H_aug[i]; _aug_4h_px_last = px
                     _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
@@ -5227,6 +5269,8 @@ def simulate(stores, cfg, capital=10000.0):
                     _entry_was_rz_break = _rz_fires_here
                     if _entry_was_rz_break: _rz_entry_bar = i
                     _peak_gain_running = 0.0; _hpl_fired_this_pos = False; _wa_aug_count = 0; _wa_last_aug_gain = 0.0
+                    if _phase2_reentry_fires and not (entry_sig[i] or _rz_fires_here):
+                        _rec_pending_entry_reason = "REENTRY_PHASE2"
                     continue
                 if in_pos:
                     live_pnl = ((px - ep) / ep * 100) if is_long else ((ep - px) / ep * 100)

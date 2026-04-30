@@ -12,7 +12,12 @@ import os
 import sys
 import time
 
-DEFAULT_MIN_PER_DAY = int(os.environ.get("TEST_RATE_GUARD_MIN_PER_DAY", "50"))
+DEFAULT_MIN_PER_DAY = int(os.environ.get("TEST_RATE_GUARD_MIN_PER_DAY", "3"))
+# 2026-04-30: lowered 50→3. Real live rates per analysis of data/decisions/*.jsonl on 2026-04-29:
+#   crypto OPEN/sym/day: ang=5.8, inf=4.8, fin=6.6, flz=2.2, men=2.3
+#   tradier OPEN/sym/day: tra=22 (real opens), trb/trc=123-144 (mostly blocked LONG_BUY/SHORT_SELL fires, not real opens)
+# Floor of 3 matches crypto-live per-sym-per-day rate (the conservative target). Sweeps that genuinely
+# match live activity will clear it; sparse-regime configs (engine without reentry) will fail honestly.
 DEFAULT_WINDOW_SEC = float(os.environ.get("TEST_RATE_GUARD_WINDOW_SEC", "5"))
 SECONDS_PER_DAY = 86400.0
 

@@ -64,13 +64,43 @@ else:
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
 v8_logger = logging.getLogger("v8_engine")
 v8_logger.setLevel(logging.INFO)
-# V8_SWEEP_MODE=1: suppress verbose per-trade logs, speeds up simulation 10-50x
+# V8_SWEEP_MODE=1: suppress verbose per-trade logs, speeds up simulation 10-50x.
+# 2026-04-30: chart server reads structured `executed_trades` JSONL, NOT logs — so
+# silencing every logger and the per-bar print() debug lines is safe for chart
+# rendering. Whitelisted print prefixes pass through (V8_RESULT, V8_HEARTBEAT,
+# V8_TIER2_CHART_TRADES, V8_RESULT_LIVE, V8_NEW_SWITCHES, V8_LOG, V8_FINAL_PNL,
+# EARLY_ABORT_LOW_RATE, FINAL_BROKEN_RATE, V8_INIT_HEARTBEAT, MISSING_FIELD).
 _SWEEP_MODE = os.environ.get("V8_SWEEP_MODE", "0") == "1"
 if _SWEEP_MODE:
-    logging.root.setLevel(logging.ERROR)
-    v8_logger.setLevel(logging.WARNING)
-    for _lg_name in list(logging.Logger.manager.loggerDict.keys()):
-        logging.getLogger(_lg_name).setLevel(logging.ERROR)
+    # Block ALL log output below CRITICAL+1 (logging.disable is hard cutoff,
+    # beats per-logger setLevel which CRITICAL records bypass).
+    logging.disable(logging.CRITICAL)
+    v8_logger.setLevel(logging.CRITICAL + 1)
+    # Replace builtin print with a whitelist filter. Engine-essential output
+    # (V8_RESULT, heartbeats, chart-trade dump confirmation, rate-guard aborts,
+    # init heartbeat, missing-field warnings) still flows; per-bar debug like
+    # [NEWBORN_PROTECT], [PEAK_GIVEBACK], [HEDGE_*], [RED_ZONE_EXIT] is dropped.
+    import builtins as _bi
+    _bi_print = _bi.print
+    _ALLOW_PREFIXES = (
+        "V8_RESULT", "V8_HEARTBEAT", "V8_RESULT_LIVE", "V8_NEW_SWITCHES",
+        "V8_LOG", "V8_FINAL_PNL", "V8_INIT_HEARTBEAT", "V8_TIER2_CHART_TRADES",
+        "V8_QUICK_RESULT", "EARLY_ABORT_LOW_RATE", "FINAL_BROKEN_RATE",
+        "MISSING_FIELD", "V8_PNL_BREAKDOWN", "V8_TRADES_OUT",
+        "MODE_CONFIG_MISMATCH",
+    )
+    def _quiet_print(*args, **kwargs):
+        if not args:
+            return
+        first = str(args[0]) if args else ""
+        # Strip ANSI color/escape codes for prefix matching
+        s = first.lstrip("\x1b[").lstrip()
+        for p in _ALLOW_PREFIXES:
+            if p in s:
+                _bi_print(*args, **kwargs)
+                return
+        # drop everything else
+    _bi.print = _quiet_print
 
 # Import config — ez_manage.py does `config = Config()` at line 645 which gives
 # the module-level name a Config instance. ez_positions_quick reads config.BASE_PATH
