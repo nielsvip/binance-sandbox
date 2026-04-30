@@ -3091,16 +3091,11 @@ class WebSocketManager:
         self.client = Client(api_key=self.api_key, api_secret=self.api_secret)
         self.sync_binance_time()
         self.session = await self._init_session()
+        # User-data WS owned by ez_positions_service.WebSocketManager (canonical). Binance
+        # allows ONE connection per listen_key — duplicating here kicks service's WS off and
+        # leaves both thrashing (root cause of 2026-04-30 ws_reset detector trip).
         for account_key in self.account_keys:
-            try:
-                listen_key = self.client.futures_stream_get_listen_key()
-                self.listen_keys[account_key] = listen_key
-                user_url = f"wss://fstream.binance.com/ws/{listen_key}"
-                logger.debug(f"[{account_key}] Obtained listen key (length: {len(listen_key)}), starting WS to {user_url[:50]}...")
-                asyncio.create_task(self.user_data_websocket_loop(user_url, account_key))
-                asyncio.create_task(self.keep_listen_key_alive(account_key))
-            except Exception as e:
-                logger.error(f"[{account_key}] Failed to get listen key or start websocket: {e}", exc_info=True)
+            logger.info(f"[{account_key}] User-data WS skipped here; owned by ez_positions_service WebSocketManager.")
         if not self._mark_price_session or self._mark_price_session.closed:
             self._mark_price_session = await self._init_session()
         await self.ensure_mark_price_streams()
