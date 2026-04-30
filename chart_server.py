@@ -35,7 +35,18 @@ BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/niels/Documents/binance"))
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 HISTORY_DIR = BASE_PATH / "data" / "history"
-ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
+TRADIER_HISTORY_DIR = BASE_PATH / "data" / "tradier" / "history"
+STOCK_ACCOUNT_KEYS = {"trb", "trc", "tra"}
+ACCOUNTS = ["ang", "inf", "flz", "men", "fin", "trb", "trc"]
+
+
+def _history_dir_for(account: str) -> Path:
+    """Crypto accounts (ang/inf/flz/men/fin) live under data/history/<acct>;
+    stocks (trb/trc/tra) live under data/tradier/history/<acct>. Both share the
+    same per-event JSONL schema written by ez_positions_quick / tradier_positions."""
+    if account in STOCK_ACCOUNT_KEYS:
+        return TRADIER_HISTORY_DIR / account
+    return HISTORY_DIR / account
 
 # Extra trade-JSONL roots scanned in addition to TRADES_DIR (added 2026-04-30 per
 # user: "make sure I can see and select the latest 7d tests AND all the big sweeps").
@@ -720,8 +731,9 @@ def historic_trades():
         return jsonify({"error": "sym required"}), 400
     out_per_acct: Dict[str, Any] = {}
     for acct in accts:
-        long_path = HISTORY_DIR / acct / f"{sym}_LONG.jsonl"
-        short_path = HISTORY_DIR / acct / f"{sym}_SHORT.jsonl"
+        base = _history_dir_for(acct)
+        long_path = base / f"{sym}_LONG.jsonl"
+        short_path = base / f"{sym}_SHORT.jsonl"
         events: List[Dict[str, Any]] = []
         for p, side in ((long_path, "LONG"), (short_path, "SHORT")):
             if not p.exists():
@@ -883,9 +895,10 @@ _ACCT_POOL_TTL_SEC = 300  # 5min — Live changes minute-to-minute
 
 
 def _load_account_history_all_syms(account: str) -> List[Dict[str, Any]]:
-    """Load every trade event for the account from data/history/<acct>/*.jsonl
-    (all symbols, all sides). Returns chronological list."""
-    base = HISTORY_DIR / account
+    """Load every trade event for the account (all symbols, all sides). Crypto
+    lives in data/history/<acct>; stocks in data/tradier/history/<acct>.
+    Returns chronological list."""
+    base = _history_dir_for(account)
     events: List[Dict[str, Any]] = []
     if not base.exists():
         return events

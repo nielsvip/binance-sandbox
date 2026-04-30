@@ -19,6 +19,7 @@ import metrics_guard
 
 
 TRADIER_BASELINE_PATH = Path("data/orchestrator/winner_overrides/tradier_baseline_0p5823_20260421.json")
+CRYPTO_BASELINE_PATH = Path("data/orchestrator/winner_overrides/crypto_baseline_0p7574_20260421.json")
 
 
 def load_baseline_overrides(path: Path) -> dict:
@@ -124,7 +125,7 @@ def main():
     npz_dir = _resolve_npz_dir("")
     if args.mode == 'crypto':
         syms = _crypto_symbols(npz_dir)
-        base_overrides = {}
+        base_overrides = load_baseline_overrides(CRYPTO_BASELINE_PATH)
     else:
         syms = _tradier_symbols(npz_dir)
         base_overrides = load_baseline_overrides(TRADIER_BASELINE_PATH)
