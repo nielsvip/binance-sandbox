@@ -881,6 +881,147 @@ def _read_sweep_status_from_disk() -> Dict[str, Any]:
     }
 
 
+def _read_top_configs_with_overrides(limit: int = 10):
+    """Same audit as _read_sweep_status_from_disk but ALSO carry the
+    `overrides` dict for each surviving iter so the user can see what
+    strategy choices differ between configs."""
+    base = BASE_PATH / "data" / "autonomous"
+    findings: List[Dict[str, Any]] = []
+    if base.exists():
+        for p in base.rglob("autonomous_*_winners.jsonl"):
+            s = str(p)
+            if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+                continue
+            mode = "tradier" if "tradier" in s.lower() else ("crypto" if "crypto" in s.lower() else "?")
+            n_syms_hint = None
+            for part in p.parts:
+                m = re.search(r"_(\d+)sym", part)
+                if m:
+                    n_syms_hint = int(m.group(1))
+                    break
+            try:
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    rec["_mode"] = mode
+                    rec["_pool"] = p.parent.parent.name
+                    rec["_worker"] = p.parent.name
+                    rec["_n_syms_hint"] = n_syms_hint
+                    findings.append(rec)
+            except Exception:
+                continue
+    def _is_publishable(r):
+        ps = float(r.get("pool_sharpe", 0) or 0)
+        tr = int(r.get("trades", 0) or 0)
+        n = r.get("_n_syms_hint") or 0
+        mode = r.get("_mode")
+        floor = metrics_guard.MIN_SYMS_STOCKS if mode == "tradier" else metrics_guard.MIN_SYMS_CRYPTO
+        if abs(ps) > metrics_guard.PER_SYM_SHARPE_CAP and tr < 5000:
+            return False
+        if n < floor:
+            return False
+        if n and tr / n < metrics_guard.MIN_TRADES_PER_SYM_FOR_SYM_SHARPE:
+            return False
+        return True
+    pub = [r for r in findings if _is_publishable(r)]
+    pub.sort(key=lambda r: float(r.get("pool_sharpe", 0)), reverse=True)
+    return pub[:limit]
+
+
+@app.route("/canonical_top")
+def canonical_top_html():
+    """Side-by-side HTML comparison of top-10 publishable configs.
+    Every override that DIFFERS between top-10 highlighted; common keys collapsed.
+    For 'point out what is wrong' use case."""
+    mode_filter = request.args.get("mode")
+    top = _read_top_configs_with_overrides(limit=20)
+    if mode_filter in ("crypto", "tradier"):
+        top = [r for r in top if r.get("_mode") == mode_filter]
+    top = top[:10]
+    # Collect every override key seen; mark which differ.
+    all_keys: Dict[str, set] = {}
+    for r in top:
+        for k, v in (r.get("overrides") or {}).items():
+            if k.startswith("_"):
+                continue
+            all_keys.setdefault(k, set()).add(repr(v))
+    diff_keys = sorted([k for k, vs in all_keys.items() if len(vs) > 1])
+    common_keys = sorted([k for k, vs in all_keys.items() if len(vs) == 1])
+    rows_html = ""
+    for i, r in enumerate(top, 1):
+        ovr = r.get("overrides") or {}
+        ps = float(r.get("pool_sharpe", 0) or 0)
+        tier = metrics_guard.tier_name(ps)
+        tier_color = {"Discard": "#dc6c6c", "Noise": "#888", "Directional": "#cdb86c",
+                      "Best-of-current": "#7fb069", "Strong": "#3fb950", "Aspirational": "#58a6ff"}.get(tier, "#888")
+        diff_cells = "".join(
+            f'<td title="{html_escape(k)}">{html_escape(str(ovr.get(k, "—")))}</td>'
+            for k in diff_keys
+        )
+        rows_html += (
+            f"<tr><td>#{i}</td>"
+            f"<td><span style='color:{tier_color}'>{tier}</span></td>"
+            f"<td>{r.get('_mode')}</td>"
+            f"<td>{ps:+.4f}</td>"
+            f"<td>{float(r.get('sym_sharpe', 0)):+.4f}</td>"
+            f"<td>{int(r.get('trades', 0)):,}</td>"
+            f"<td>{r.get('_n_syms_hint') or '?'}</td>"
+            f"<td>{float(r.get('acc_gain_pct', 0)):+.1f}%</td>"
+            f"<td>{float(r.get('max_dd_pct', 0)):.1f}%</td>"
+            f"<td title='{html_escape(r.get('_pool', ''))}/{html_escape(r.get('_worker', ''))}' style='font-size:.78em;color:#7a8590'>{html_escape((r.get('_pool') or '')[:18])}</td>"
+            f"{diff_cells}</tr>\n"
+        )
+    diff_th = "".join(f'<th title="{html_escape(k)}">{html_escape(k[:20])}</th>' for k in diff_keys)
+    common_html = "<br>".join(f"<code>{html_escape(k)}</code> = <code>{html_escape(repr(next(iter(all_keys[k]))))}</code>" for k in common_keys[:80])
+    page = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>canonical top-{len(top)} configs · audited</title>
+<style>
+  body {{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:14px;}}
+  h1 {{font-size:1.2em;color:#58a6ff;margin-bottom:6px}}
+  .audit {{background:#1c2837;border:1px solid #2f4f6f;padding:8px 12px;border-radius:5px;margin-bottom:12px;font-size:.86em;color:#a4b8d0}}
+  table {{border-collapse:collapse;font-size:.78em;width:100%}}
+  th, td {{padding:4px 7px;border-bottom:1px solid #21262d;text-align:left;white-space:nowrap}}
+  th {{background:#161b22;color:#8b949e;position:sticky;top:0}}
+  tr:hover {{background:#1c2129}}
+  .common {{margin-top:14px;padding:10px;background:#161b22;border:1px solid #30363d;border-radius:5px;font-size:.78em;color:#a4b8d0}}
+  .common code {{color:#dcc26b}}
+  a {{color:#58a6ff}}
+</style></head><body>
+<h1>canonical top-{len(top)} configs <span style="color:#7a8590;font-size:.7em">— audited via metrics_guard, sample-floor + density enforced</span></h1>
+<div class="audit">
+  Each row = one publishable backtest iteration. <b>Differing override columns highlighted</b> — those are
+  the strategy choices that change between top configs. <b>Common overrides</b> (same value across all
+  top-{len(top)}) are listed below the table.
+  Use this view to compare strategies and identify what's working / what's wrong.
+  <a href="/">← back to chart</a> &nbsp;|&nbsp; <a href="http://127.0.0.1:5057/" target="_blank">full dashboard 5057</a>
+  &nbsp;|&nbsp; mode filter: <a href="/canonical_top">all</a> · <a href="/canonical_top?mode=crypto">crypto</a> · <a href="/canonical_top?mode=tradier">tradier</a>
+</div>
+<table>
+<thead><tr>
+  <th>#</th><th>tier</th><th>mode</th><th>pool_sharpe</th><th>sym_sharpe</th><th>trades</th><th>n_syms</th><th>gain</th><th>dd</th><th>pool</th>
+  {diff_th}
+</tr></thead>
+<tbody>{rows_html}</tbody>
+</table>
+
+<div class="common">
+  <b>Common overrides (same value across all top-{len(top)}):</b><br>{common_html or "(none)"}
+</div>
+</body></html>"""
+    return page
+
+
+def html_escape(s):
+    if s is None:
+        return ""
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
 @app.route("/sweep_status")
 def sweep_status_route():
     """Surface canonical sweep status + top-10 publishable on 5077.
