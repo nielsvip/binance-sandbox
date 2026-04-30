@@ -619,15 +619,32 @@ def write_family_catalog(con: sqlite3.Connection, fams: List[PrimitiveFamily]) -
                      int(f.enabled)))
 
 
-def top_seeds(con: sqlite3.Connection, mode: str, n: int) -> List[Config]:
+def top_seeds(con: sqlite3.Connection, mode: str, n: int,
+              allowed_fields: Optional[set] = None) -> List[Config]:
+    """Pull top-N configs from a mode. If `allowed_fields` provided, drops
+    primitives whose field is not in the allow-set — used by pooled
+    validate-mode to strip absolute-price primitives from per-symbol seeds
+    before mutating, so seed contamination doesn't produce filter-by-
+    coincidence pooled Sharpes."""
     rows = con.execute(
         "SELECT c.config_json FROM results r JOIN configs c ON c.id=r.config_id "
         "WHERE r.mode=? AND r.trades>=30 ORDER BY r.pool_sharpe DESC LIMIT ?",
         (mode, n)).fetchall()
     out: List[Config] = []
     for (j,) in rows:
-        try: out.append(Config.from_json(j))
-        except Exception: continue
+        try:
+            cfg = Config.from_json(j)
+            if allowed_fields is not None:
+                def filt(prims):
+                    return tuple(p for p in prims if p.field in allowed_fields
+                                 or p.op.startswith("gt_field:") or p.op.startswith("lt_field:"))
+                cfg = Config(filt(cfg.entry_long), filt(cfg.exit_long),
+                             filt(cfg.entry_short), filt(cfg.exit_short))
+                if not (cfg.entry_long or cfg.exit_long or cfg.entry_short or cfg.exit_short):
+                    continue
+            out.append(cfg)
+        except Exception:
+            continue
     return out
 
 
@@ -760,9 +777,6 @@ def run_pooled(args) -> None:
 def run_validate(args) -> None:
     db = open_db(Path(args.db))
     npz_dir = Path(args.npz_dir)
-    seeds = top_seeds(db, args.seed_mode, args.top_n)
-    print(f"[validate] {len(seeds)} seeds from mode={args.seed_mode} target={args.target_pool_sharpe:+.2f}")
-    if not seeds: print("[validate] no seeds — run a base sweep first."); return
     basket = [s.strip() for s in (args.syms or ",".join(BASKETS.get(args.basket, []))).split(",") if s.strip()]
     sym_data: Dict[str, Tuple[np.ndarray, MaskCache, float]] = {}
     sample: Optional[Dict[str, np.ndarray]] = None
@@ -773,10 +787,15 @@ def run_validate(args) -> None:
             if sample is None: sample = npz
         except FileNotFoundError: pass
     if not sym_data: print("[validate] no data — abort"); return
-    # Pooled basket → only symbol-relative primitives. Same rule as pooled-mode:
-    # absolute-price thresholds (atr, dc_high_4h, kc_lower_4h, etc.) are not
-    # cross-symbol comparable and produce filter-by-coincidence Sharpes.
+    # Pooled basket → only symbol-relative primitives. Filter applies to BOTH
+    # the random sampler AND the seed configs: per-symbol seeds carry
+    # absolute-price primitives that produce filter-by-coincidence Sharpes
+    # (e.g. kc_lower_4h≤486 fires only on cheap-coin syms by accident).
     fams = _families_for(args, sample, symbol_relative_only=True)
+    allowed = {f.field for f in fams}
+    seeds = top_seeds(db, args.seed_mode, args.top_n, allowed_fields=allowed)
+    print(f"[validate] {len(seeds)} seeds (after sym-relative filter) from mode={args.seed_mode} target={args.target_pool_sharpe:+.2f}")
+    if not seeds: print("[validate] no seeds — run a base sweep first."); return
     rng = random.Random(args.seed)
     n_syms = len(sym_data); avg_years = sum(y for _, _, y in sym_data.values()) / n_syms
     out_mode = f"validate:{args.seed_mode}"

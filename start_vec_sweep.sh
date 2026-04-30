@@ -62,22 +62,26 @@ launch() {
 }
 
 case "$TIER" in
-    pooled_48)
-        is_s1 || { echo "ERR: pooled_48 is CRYPTO — run on S1 (this is $HOST $(_my_ip))"; exit 2; }
-        # 48-sym crypto basket per CLAUDE.md sample floor.
-        # 10 USDC-perp majors named USDC per USDC-OVER-USDT policy + 38 legacy USDT.
-        # Auto-discovers existing NPZs to avoid skip-spam.
+    pooled_48|pooled_32|pooled_24)
+        is_s1 || { echo "ERR: pooled_* is CRYPTO — run on S1 (this is $HOST $(_my_ip))"; exit 2; }
+        # 48-sym = PUBLISHABLE floor; 32/24 = DIAGNOSTIC fallback if RAM-bound.
+        # S1 has 30GB → 48 NPZs OOM, 32 fits.
+        # 10 USDC-perp majors named USDC per USDC-OVER-USDT policy + legacy USDT.
+        TARGET="${TIER#pooled_}"
         BASE_USDC="BTCUSDC ETHUSDC SOLUSDC ADAUSDC BNBUSDC AVAXUSDC XRPUSDC LINKUSDC LTCUSDC UNIUSDC"
         BASE_USDT="1INCHUSDT ALGOUSDT ANKRUSDT ATOMUSDT AXSUSDT BANDUSDT BATUSDT BELUSDT BTCDOMUSDT C98USDT CELRUSDT CHRUSDT COMPUSDT COTIUSDT DASHUSDT DOTUSDT EGLDUSDT ENJUSDT ETCUSDT GRTUSDT GTCUSDT HOTUSDT IOSTUSDT IOTAUSDT IOTXUSDT KAVAUSDT KNCUSDT KSMUSDT LRCUSDT MANAUSDT MTLUSDT NKNUSDT QTUMUSDT RLCUSDT RSRUSDT RVNUSDT SANDUSDT SKLUSDT"
-        SYMS=""
+        SYMS=""; COUNT=0
         for S in $BASE_USDC $BASE_USDT; do
-            [ -f "$REPO/backtest_v8/indicators/$S.npz" ] && SYMS="${SYMS}${S},"
+            if [ -f "$REPO/backtest_v8/indicators/$S.npz" ]; then
+                SYMS="${SYMS}${S},"; COUNT=$((COUNT+1))
+                [ "$COUNT" -ge "$TARGET" ] && break
+            fi
         done
         SYMS=${SYMS%,}
         N=$(echo "$SYMS" | tr ',' '\n' | wc -l)
-        echo "[pooled_48] discovered $N NPZs in basket"
-        [ "$N" -ge 48 ] || { echo "ERR: only $N NPZs found, need >=48 for publishable floor"; exit 2; }
-        launch "pooled_48" vec_sweep.py pooled --basket crypto48 --syms "$SYMS" --max-configs 5000 --seed 31
+        echo "[$TIER] basket: $N NPZs (target $TARGET)"
+        [ "$N" -ge "$TARGET" ] || { echo "ERR: only $N NPZs, need $TARGET"; exit 2; }
+        launch "$TIER" vec_sweep.py pooled --basket "crypto$TARGET" --syms "$SYMS" --max-configs 5000 --seed 31
         ;;
     validate_top)
         is_s1 || { echo "ERR: validate_top is CRYPTO — run on S1"; exit 2; }

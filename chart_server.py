@@ -16,13 +16,19 @@ Trade recorder writes JSONL to V8_TRADES_OUT_DIR (default /tmp/v8_trades).
 import json
 import os
 import statistics
+import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from flask import Flask, jsonify, request, send_from_directory
+
+# Single chokepoint for canonical Sharpe per CLAUDE.md NO-LIES MANDATE.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import metrics_guard  # noqa: E402
 
 BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/niels/Documents/binance"))
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
@@ -639,6 +645,9 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         if peak - v > max_dd: max_dd = peak - v
     # CANONICAL_METRICS.md: NO sharpe_annual emission anywhere — banned for being feel-good frequency inflation.
     trades_per_year = n / window_years if window_years > 0 else 0
+    # Apply CLAUDE.md ±5 cap per inflation rule (single-symbol slices easily blow past ±5)
+    inflated = abs(sharpe_pt) > metrics_guard.PER_SYM_SHARPE_CAP and n < 5000
+    tier = metrics_guard.tier_name(sharpe_pt)
     return {
         "trades": n,
         "wins": wins,
@@ -648,6 +657,9 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         "avg_pnl_pct": avg,
         "std_pnl_pct": std,
         "pool_sharpe": sharpe_pt,
+        "pool_sharpe_per_trade": sharpe_pt,  # alias — chart.html reads this name
+        "tier": tier,
+        "inflated": inflated,
         "max_dd_pct": max_dd,
         "best_pct": max(pnls),
         "worst_pct": min(pnls),
@@ -670,6 +682,121 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         "gain_per_month_pct": round(total_gain / window_months, 2) if window_months > 0 else 0,
         "gain_per_year_pct": round(total_gain / window_years, 1) if window_years > 0 else 0,
     }
+
+
+_acct_pool_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+_ACCT_POOL_TTL_SEC = 300  # 5min — Live changes minute-to-minute
+
+
+def _load_account_history_all_syms(account: str) -> List[Dict[str, Any]]:
+    """Load every trade event for the account from data/history/<acct>/*.jsonl
+    (all symbols, all sides). Returns chronological list."""
+    base = HISTORY_DIR / account
+    events: List[Dict[str, Any]] = []
+    if not base.exists():
+        return events
+    for jsonl_file in sorted(base.glob("*.jsonl")):
+        stem = jsonl_file.stem
+        parts = stem.rsplit("_", 1)
+        symbol = parts[0] if len(parts) == 2 else stem
+        side = parts[1] if len(parts) == 2 else "UNKNOWN"
+        try:
+            for line in jsonl_file.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    ev = json.loads(line)
+                except Exception:
+                    continue
+                ev["symbol"] = symbol
+                ev["side"] = side
+                ev["account"] = account
+                ts_str = ev.get("ts") or ev.get("timestamp")
+                try:
+                    ev["unix_ts"] = int(datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp())
+                except Exception:
+                    ev["unix_ts"] = 0
+                events.append(ev)
+        except Exception:
+            continue
+    events.sort(key=lambda e: e.get("unix_ts", 0))
+    return events
+
+
+def _account_pool_stats(account: str) -> Dict[str, Any]:
+    """Canonical 9-field metric set for account aggregated across ALL symbols.
+    pool_sharpe = mean(all_trade_returns)/std pooled per CLAUDE.md rule 4."""
+    rec = _acct_pool_cache.get(account)
+    if rec and (time.time() - rec[0]) < _ACCT_POOL_TTL_SEC:
+        return rec[1]
+    events = _load_account_history_all_syms(account)
+    closed = _reconstruct_trades_from_events(events)
+    if not closed:
+        result = {
+            "account": account, "trades": 0, "n_syms": 0, "years": 0.0,
+            "pool_sharpe": 0.0, "pool_sharpe_per_trade": 0.0,
+            "sym_sharpe": 0.0, "avg_gain_trade": 0.0,
+            "gain_per_yr": 0.0, "gain_sym_yr": 0.0, "max_dd_pct": 0.0,
+            "tier": "Noise", "inflated": False, "tags": ["NO_TRADES"],
+        }
+        _acct_pool_cache[account] = (time.time(), result)
+        return result
+    by_sym: Dict[str, List[float]] = defaultdict(list)
+    for t in closed:
+        sym = t.get("symbol") or "?"
+        by_sym[sym].append(float(t.get("pnl_pct", 0) or 0))
+    ts_list = sorted([int(t.get("entry_ts", 0)) for t in closed if t.get("entry_ts")])
+    ex_list = sorted([int(t.get("exit_ts", 0)) for t in closed if t.get("exit_ts")])
+    years = max(0.01, (ex_list[-1] - ts_list[0]) / (86400.0 * 365.25)) if ts_list and ex_list else 0.01
+    metrics = metrics_guard.standard_metric_set(by_sym, years)
+    chrono = sorted(closed, key=lambda t: int(t.get("exit_ts", 0)))
+    eq, cum = [], 0.0
+    for t in chrono:
+        cum += float(t.get("pnl_pct", 0) or 0)
+        eq.append(cum)
+    peak = -1e18; max_dd = 0.0
+    for v in eq:
+        if v > peak: peak = v
+        if peak - v > max_dd: max_dd = peak - v
+    pool_sharpe = float(metrics["pool_sharpe"])
+    trades = int(metrics["trades"])
+    inflated = abs(pool_sharpe) > metrics_guard.PER_SYM_SHARPE_CAP and trades < 5000
+    tags = []
+    if inflated:
+        tags.append(f"INFLATED ({pool_sharpe:.2f} >5 with {trades} trades)")
+    n_syms_v = int(metrics["n_syms"])
+    if n_syms_v < metrics_guard.MIN_SYMS_CRYPTO:
+        tags.append(f"DIAGNOSTIC (n_syms={n_syms_v}/{metrics_guard.MIN_SYMS_CRYPTO})")
+    result = {
+        "account": account,
+        "trades": trades,
+        "n_syms": n_syms_v,
+        "years": round(years, 4),
+        "pool_sharpe": round(pool_sharpe, 4),
+        "pool_sharpe_per_trade": round(pool_sharpe, 4),  # alias
+        "sym_sharpe": round(float(metrics["sym_sharpe"]), 4),
+        "avg_gain_trade": round(float(metrics["avg_gain_trade"]), 4),
+        "gain_per_yr": round(float(metrics["gain_per_yr"]), 2),
+        "gain_sym_yr": round(float(metrics["gain_sym_yr"]), 4),
+        "max_dd_pct": round(max_dd, 4),
+        "total_gain_pct": round(float(metrics.get("total_gain_pct", 0)), 2),
+        "tier": metrics_guard.tier_name(pool_sharpe),
+        "inflated": inflated,
+        "tags": tags,
+    }
+    _acct_pool_cache[account] = (time.time(), result)
+    return result
+
+
+@app.route("/account_pool_stats")
+def account_pool_stats_route():
+    """?accounts=inf,flz,...  Returns canonical aggregate pool_sharpe across
+    ALL symbols per account. Replacement for the misleading single-symbol
+    'Live [inf]: 0' that's been there forever."""
+    accts_raw = request.args.get("accounts", ",".join(ACCOUNTS))
+    accts = [a.strip() for a in accts_raw.split(",") if a.strip() and a.strip() in ACCOUNTS]
+    out = {a: _account_pool_stats(a) for a in accts}
+    return jsonify({"per_account": out, "generated_utc": datetime.now(timezone.utc).isoformat()})
 
 
 @app.route("/indicator")
