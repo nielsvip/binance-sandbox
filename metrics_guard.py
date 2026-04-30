@@ -160,13 +160,52 @@ def format_standard_set(metrics: Mapping[str, float], *, mode: str = "crypto") -
 
 # ---------- legacy CSV audit / convert -----------------------------------
 
+# Banned column names per CLAUDE.md NO-LIES MANDATE.
+# Anything that smells of annualization, weighting, proxy, or rough estimation.
 LEGACY_INFLATED_COLUMNS = (
     "sharpe_annual", "sharpe_annualized", "sharpe_yearly", "sharpe_y",
+    "sharpe_ann", "sharpe_w", "sharpe_weighted",
+    "pool_sharpe_proxy", "sharpe_proxy",
+    "sharpe_rough", "sharpe_estimate", "sharpe_est",
+)
+# These are present-but-marked columns; we tolerate them if a canonical column also exists.
+TOLERATED_DIAGNOSTIC_COLUMNS = (
+    "sharpe_ann_INVALID",  # already explicitly named INVALID — author flagged it
+    "deflated_sharpe", "psr",  # Bailey/PSR — diagnostic, OK as long as canonical present
+    "sym_sharpe", "sym_sharpe_avg", "per_sym_sharpe",  # diagnostic per CLAUDE.md
+    "sharpe_pt", "sharpe_per_trade",  # canonical synonyms
+    "sharpe_max", "sharpe_med", "sharpe_min", "sharpe_p25", "sharpe_p75",  # distribution
+    "stage1_sharpe", "stage2_sharpe", "worker_pool_sharpe",  # sub-pool variants
+    "sym_sharpe_old", "long_old_sharpe", "short_old_sharpe",  # old labels, retained
+    "long_strict_sharpe", "short_strict_sharpe",  # OK
+    "sharpe_net", "sharpe_48", "sharpe_100",  # OK
+    "syms_with_sharpe",  # count, not value
+    "cfg_EARLY_ABORT_SHARPE_FLOOR",  # config knob, not a result
 )
 
 
+def _is_canonical_sharpe_col(col: str) -> bool:
+    return col in ("pool_sharpe", "sharpe_per_trade", "sharpe_pt")
+
+
+def _is_banned_sharpe_col(col: str) -> bool:
+    if col in TOLERATED_DIAGNOSTIC_COLUMNS:
+        return False
+    if col in LEGACY_INFLATED_COLUMNS:
+        return True
+    cl = col.lower()
+    # Catch sneaky variants
+    if cl in ("sharpe", "_sharpe"):
+        return True
+    if "annual" in cl and "sharpe" in cl:
+        return True
+    if cl == "sharpe_w":
+        return True
+    return False
+
+
 def audit_csv(path: Path) -> Dict[str, object]:
-    """Inspect a CSV for legacy inflated Sharpe columns. Returns audit dict."""
+    """Inspect a CSV for banned/inflated Sharpe columns. Returns audit dict."""
     p = Path(path)
     if not p.exists():
         return {"path": str(p), "exists": False}
@@ -176,21 +215,33 @@ def audit_csv(path: Path) -> Dict[str, object]:
             cols = rd.fieldnames or []
     except Exception as e:
         return {"path": str(p), "exists": True, "error": str(e)}
-    inflated = [c for c in cols if c in LEGACY_INFLATED_COLUMNS]
-    bare_sharpe = [c for c in cols if c.lower() == "sharpe"]  # ambiguous label
-    has_canonical = "pool_sharpe" in cols
+    banned = [c for c in cols if _is_banned_sharpe_col(c)]
+    bare_sharpe = [c for c in cols if c.lower() in ("sharpe", "_sharpe")]
+    canonical = [c for c in cols if _is_canonical_sharpe_col(c)]
+    has_any_sharpe_col = any("sharpe" in c.lower() for c in cols)
+    if has_any_sharpe_col and not canonical:
+        verdict = "INVALID"  # Sharpe-bearing CSV without a canonical column = lying
+    elif banned and not canonical:
+        verdict = "INVALID"
+    elif banned and canonical:
+        verdict = "QUESTIONABLE"  # canonical present but banned column also present
+    elif bare_sharpe:
+        verdict = "INVALID"
+    elif canonical:
+        verdict = "OK"
+    elif not has_any_sharpe_col:
+        verdict = "NO_SHARPE"  # CSV doesn't claim a Sharpe at all — fine
+    else:
+        verdict = "QUESTIONABLE"
     return {
         "path": str(p),
         "exists": True,
         "columns": cols,
-        "inflated_columns": inflated,
+        "banned_columns": banned,
         "bare_sharpe_columns": bare_sharpe,
-        "has_pool_sharpe": has_canonical,
-        "verdict": (
-            "OK" if has_canonical and not inflated and not bare_sharpe else
-            "QUESTIONABLE" if has_canonical else
-            "INVALID"
-        ),
+        "canonical_columns": canonical,
+        "has_any_sharpe_col": has_any_sharpe_col,
+        "verdict": verdict,
     }
 
 
@@ -200,6 +251,114 @@ def audit_directory(directory: Path) -> List[Dict[str, object]]:
     for p in sorted(Path(directory).rglob("*.csv")):
         out.append(audit_csv(p))
     return out
+
+
+# ---------- write-time chokepoint -----------------------------------------
+
+CANONICAL_REQUIRED_COLS = (
+    "pool_sharpe", "sym_sharpe", "avg_gain_trade",
+    "gain_per_yr", "gain_sym_yr", "trades", "max_dd_pct",
+    "n_syms", "years",
+)
+
+
+def write_sharpe_row(csv_path: Path, row: Mapping[str, object],
+                     mode: str = "crypto", append: bool = True) -> None:
+    """Write a single row to a Sharpe-bearing CSV. REFUSES if the row violates
+    the NO-LIES MANDATE. This is the ONLY sanctioned way to add a Sharpe row
+    to data/sweep_results/ or data/autonomous/.
+
+    Validation:
+      - All CANONICAL_REQUIRED_COLS present.
+      - No banned column names in row keys.
+      - pool_sharpe value within [-5, 5] OR sample is huge (≥5000 trades).
+      - n_syms / years sane.
+      - On below-floor sample, row gets a `verdict` column = `[DIAGNOSTIC]`.
+    """
+    row_keys = set(row.keys())
+    missing = [c for c in CANONICAL_REQUIRED_COLS if c not in row_keys]
+    if missing:
+        raise FakeMetricRefused(
+            f"write_sharpe_row REFUSED: missing canonical columns {missing} in row for {csv_path}. "
+            f"NO-LIES MANDATE requires all 9 canonical columns."
+        )
+    banned_in_row = [c for c in row_keys if _is_banned_sharpe_col(c)]
+    if banned_in_row:
+        raise FakeMetricRefused(
+            f"write_sharpe_row REFUSED: banned columns {banned_in_row} in row for {csv_path}. "
+            f"Per CLAUDE.md NO-LIES MANDATE, drop these or rename to a canonical synonym."
+        )
+    ps = float(row.get("pool_sharpe", 0) or 0)
+    n_syms = int(row.get("n_syms", 0) or 0)
+    years = float(row.get("years", 0) or 0)
+    trades = int(row.get("trades", 0) or 0)
+    if abs(ps) > PER_SYM_SHARPE_CAP and trades < 5000:
+        raise FakeMetricRefused(
+            f"write_sharpe_row REFUSED: pool_sharpe={ps:.4f} on {trades} trades looks inflated. "
+            f"Per CLAUDE.md rule 3, sqrt-annualization banned and rule 6 caps Sharpe at ±{PER_SYM_SHARPE_CAP}."
+        )
+    floor_syms = MIN_SYMS_STOCKS if mode == "stocks" else MIN_SYMS_CRYPTO
+    publishable = (n_syms >= floor_syms) and (years >= MIN_YEARS)
+    row = dict(row)
+    row.setdefault("verdict", "PUBLISHABLE" if publishable else "DIAGNOSTIC")
+    p = Path(csv_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    write_header = (not p.exists()) or (not append)
+    cols = list(CANONICAL_REQUIRED_COLS) + [k for k in row.keys() if k not in CANONICAL_REQUIRED_COLS]
+    mode_str = "a" if append and p.exists() else "w"
+    with p.open(mode_str, newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        if write_header:
+            w.writeheader()
+        w.writerow({k: row.get(k, "") for k in cols})
+
+
+# ---------- recompute from trade list -------------------------------------
+
+def recompute_pool_sharpe_from_jsonl(jsonl_path: Path,
+                                     gain_field: str = "pnl_pct") -> Dict[str, object]:
+    """Read a per-trade JSONL (one trade per line, with a gain_field), recompute
+    pool_sharpe + standard_metric_set. Used to repair lying CSVs that have a
+    sibling JSONL with the underlying trades.
+    """
+    p = Path(jsonl_path)
+    if not p.exists():
+        return {"recovered": False, "reason": "JSONL missing", "path": str(p)}
+    by_sym: Dict[str, List[float]] = {}
+    n_lines = 0
+    bad_lines = 0
+    with p.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            n_lines += 1
+            try:
+                rec = json.loads(line)
+            except Exception:
+                bad_lines += 1
+                continue
+            sym = rec.get("symbol") or rec.get("sym") or rec.get("ticker") or "?"
+            g = rec.get(gain_field)
+            if g is None:
+                # try common fallbacks
+                g = rec.get("gain_pct") or rec.get("pnl") or rec.get("return_pct")
+            if g is None:
+                continue
+            try:
+                by_sym.setdefault(sym, []).append(float(g))
+            except Exception:
+                continue
+    return {
+        "recovered": bool(by_sym),
+        "n_lines": n_lines,
+        "bad_lines": bad_lines,
+        "n_syms": len(by_sym),
+        "n_trades": sum(len(v) for v in by_sym.values()),
+        "pool_sharpe": pool_sharpe([x for v in by_sym.values() for x in v]),
+        "sym_sharpe": sym_sharpe_from_groups(by_sym),
+        "by_sym_count": {k: len(v) for k, v in by_sym.items()},
+    }
 
 
 # ---------- self-test -----------------------------------------------------
@@ -212,12 +371,15 @@ if __name__ == "__main__":
         invalid = [r for r in results if r.get("verdict") == "INVALID"]
         questionable = [r for r in results if r.get("verdict") == "QUESTIONABLE"]
         ok = [r for r in results if r.get("verdict") == "OK"]
+        no_sharpe = [r for r in results if r.get("verdict") == "NO_SHARPE"]
         print(f"Audited {len(results)} CSVs in {target}")
-        print(f"  OK: {len(ok)}")
-        print(f"  QUESTIONABLE (no pool_sharpe column): {len(questionable)}")
-        print(f"  INVALID (legacy inflated columns): {len(invalid)}")
-        for r in invalid:
-            print(f"    {r['path']}: inflated={r['inflated_columns']} bare={r['bare_sharpe_columns']}")
+        print(f"  OK (canonical, no banned): {len(ok)}")
+        print(f"  NO_SHARPE (CSV doesn't claim Sharpe): {len(no_sharpe)}")
+        print(f"  QUESTIONABLE (canonical present + something off): {len(questionable)}")
+        print(f"  INVALID (Sharpe claim without canonical / banned-only): {len(invalid)}")
+        if "--show-invalid" in sys.argv:
+            for r in invalid[:50]:
+                print(f"    {r['path']}: banned={r.get('banned_columns')} bare={r.get('bare_sharpe_columns')} canonical={r.get('canonical_columns')}")
     else:
         # Smoke test
         rets_btc = [0.5, -0.3, 0.8, 0.2, -0.1] * 10

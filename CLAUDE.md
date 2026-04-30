@@ -1,5 +1,37 @@
 # CLAUDE.md — Trading System Rules
 
+## 🚨🚨🚨 NO-LIES MANDATE — READ FIRST. ABSOLUTE. 🚨🚨🚨
+
+**Lying Sharpe / lying gain / lying drawdown numbers wiped out half the user's net worth in 4 months.** Every metric written to disk, displayed, or reported MUST be REAL. Forward AND backward.
+
+### Forward (every new result)
+
+1. **Every script that emits a Sharpe / gain / dd number** to a human-facing surface (CSV, JSONL, log, MD, UI, agent message, memory record) MUST route through `metrics_guard.validate_and_format_sharpe()` or `metrics_guard.format_standard_set()`. NO exceptions. If your script doesn't import `metrics_guard`, you are not allowed to write a Sharpe number anywhere.
+2. **Every CSV written into `data/sweep_results/` or `data/autonomous/`** MUST include the canonical columns: `pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr, gain_sym_yr, trades, max_dd_pct, n_syms, years`. Missing any → CSV is invalid → reject the row.
+3. **No annualization. No sqrt(252). No sqrt(N).** `sharpe_annual`, `sharpe_y`, `sharpe_yearly`, `sharpe_w` (weighted), `pool_sharpe_proxy`, `sharpe_rough` are BANNED column names. Any code emitting them must be deleted or rewritten.
+4. **No bare "Sharpe" label.** Every Sharpe must carry a qualifier (`pool_sharpe`, `sym_sharpe`, `sharpe_per_trade`). Unqualified "Sharpe X" in any text — including agent messages — is a violation.
+5. **Sample floor**: ≥48 crypto syms or ≥100 stocks × >1 yr × ≥30 trades/sym. Below that, the result is `[DIAGNOSTIC ONLY]` — never used for promotion, deployment, or recommendation.
+6. **Source of truth for Sharpe = the trade-return list.** A Sharpe value without an associated per-trade returns dataset is unverifiable and must be marked `[UNVERIFIED]`.
+
+### Backward (historical files)
+
+Every CSV/JSONL in `data/` containing a Sharpe column was audited 2026-04-30 with `metrics_guard.audit_csv()` (extended). Three categories:
+- **OK** (canonical column, no banned names): keep.
+- **RECOMPUTABLE** (trade list pairable): rewrite the column with `pool_sharpe(returns)`, original preserved as `<col>_legacy_lie`.
+- **UNVERIFIABLE** (no trade list): tag header with `[UNVERIFIED]`, move to `data/_legacy_unverified/` or delete.
+
+Any historical claim of Sharpe X without going through the audit is a LIE. Don't cite it. Don't promote it. Don't compare against it.
+
+### Lock the door
+
+- **`metrics_guard.write_sharpe_row()`** is the ONLY sanctioned way to write a Sharpe-bearing row to a CSV in `data/sweep_results/` or `data/autonomous/`. It validates and refuses on violation.
+- **`/tmp/BACKTEST_HOLD`** sentinel suspends Mac→server autosync (see `rsync_to_sandbox.sh`). Any A/B backtest must `touch /tmp/BACKTEST_HOLD` with reason+timestamp before starting and `rm` after.
+- **CLAUDE.md rules 1–8 from the legacy "SHARPE DEFINITION — LIVE-MONEY POLICY" section remain in force** (per-trade returns only; open losers MtM'd; no annualization; pool Sharpe canonical; sample floor; etc).
+
+If you're about to write a Sharpe number ANYWHERE without going through `metrics_guard`, STOP. The user lost half their net worth to that exact pattern. Don't be that script.
+
+---
+
 ## 🚨🚨🚨 SWEEP-LIVENESS MANDATE — READ FIRST. NON-NEGOTIABLE 🚨🚨🚨
 
 ### MACHINE ROLES — IMMUTABLE
