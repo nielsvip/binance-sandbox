@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-30 08:43:21 UTC
+# Copilot Status — 2026-04-30 08:53:36 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T08:40:25
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:41:06
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:42:08
-- **STALE_INDICATORS** [tradier]  — 2026-04-30T08:42:29
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T08:42:29
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T08:42:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T08:42:29
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T08:42:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T08:42:29
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:43:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T08:50:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:51:22
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:52:24
+- **STALE_INDICATORS** [tradier]  — 2026-04-30T08:52:45
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T08:52:45
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T08:52:45
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T08:52:45
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T08:52:45
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T08:52:45
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T08:53:25
 
 ## Missed Trades (trader comparison)
 
@@ -29,19 +29,19 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **COMPUSDT** SHORT (crypto) peak +10.5%, now +-0.4%
 - HELD: **GOOGL** LONG (tradier) peak +7.0%, now +7.0%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-7.3%
+- HELD: **ATOMUSDT** LONG (crypto) peak +5.9%, now +-0.1%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-7.5%
 
 - WATCHING: **FLOWUSDT** SHORT (crypto) peaked +9.3%, exited 0m ago
 - WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +4.3%, exited 0m ago
-- WATCHING: **LUNA2USDT** SHORT (crypto) peaked +4.2%, exited 26m ago
-- WATCHING: **LPTUSDT** LONG (crypto) peaked +4.2%, exited 123m ago
+- WATCHING: **LUNA2USDT** SHORT (crypto) peaked +4.2%, exited 36m ago
+- WATCHING: **LPTUSDT** LONG (crypto) peaked +4.2%, exited 133m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **1INCHUSDT** LONG (crypto) peaked +3.5%, exited 0m ago
-- WATCHING: **RSRUSDT** LONG (crypto) peaked +3.2%, exited 210m ago
+- WATCHING: **RSRUSDT** LONG (crypto) peaked +3.2%, exited 220m ago
 
 ## Supervisor
 
