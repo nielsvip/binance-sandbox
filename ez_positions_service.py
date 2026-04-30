@@ -4065,7 +4065,14 @@ class PositionService:
         if self.redis_manager:
             try :
                 redis_key = f"mark_price:{clean_symbol}"
-                p_data = await self.redis_manager.get(redis_key)
+                # 2026-04-30: bound this redis.get. SimpleRedisManager iterates 3 backends
+                # at 2s each → up to 6s; called per-position from handle_unchanged_position
+                # while holding _positions_lock. 50 positions × 6s drove process_account_update
+                # past the 120s wait_for tripwire (pau_stall fired 4× between 01:35 and 02:40).
+                try:
+                    p_data = await asyncio.wait_for(self.redis_manager.get(redis_key), timeout=0.5)
+                except asyncio.TimeoutError:
+                    p_data = None
                 if p_data is not None:
                     if isinstance(p_data, dict):
                         price = float(p_data.get("price", 0))
@@ -8887,32 +8894,68 @@ class PositionService:
             except Exception as e:
                 logger.error(f"[SYMBOLS] Tracker aggregation failed: {e}")
 
-    async def _sync_memory_with_master_symbols(self):
-        """Dynamically instantiates empty positions for any new symbols in symbols.json 
-        and removes keys not in symbols.json if their positionAmt is 0.0."""
+    def _sync_memory_master_symbols_blocking(self) -> tuple:
+        """Synchronous worker for _sync_memory_with_master_symbols. Reads symbols.json
+        + per-account/per-side positions JSON files from disk. MUST run in asyncio.to_thread —
+        running on the event loop blocked process_account_update on the same loop and
+        contributed to the 120s PAU stalls observed 2026-04-30.
+
+        Returns (master_symbols:set, disk_positions_by_pk:dict[pk -> dict]) — caller
+        applies the dict mutations to in-memory state on the event loop (cheap)."""
         try:
             symbols_file = self.base_path / "symbols.json"
             if not symbols_file.exists():
-                return
-            
+                return (None, {})
             with open(symbols_file, "r") as f:
                 content = json.load(f)
-                if isinstance(content, list):
-                    master_symbols = set([s.strip().upper() for s in content])
-                elif isinstance(content, dict) and 'symbols' in content:
-                    master_symbols = set([s.strip().upper() for s in content['symbols']])
-                else:
-                    return
+            if isinstance(content, list):
+                master_symbols = set([s.strip().upper() for s in content])
+            elif isinstance(content, dict) and 'symbols' in content:
+                master_symbols = set([s.strip().upper() for s in content['symbols']])
+            else:
+                return (None, {})
+            disk_blobs = {}
+            account_keys = [ac.prefix for ac in self.accounts.values()]
+            for account_key in account_keys:
+                for side in ("LONG", "SHORT"):
+                    side_file = self.base_path / account_key / f"{side.lower()}_positions.json"
+                    if not side_file.exists():
+                        disk_blobs[(account_key, side)] = {}
+                        continue
+                    try:
+                        with open(side_file, "r") as df:
+                            disk_data = json.load(df)
+                        if isinstance(disk_data, dict) and "positions" in disk_data:
+                            disk_data = disk_data["positions"]
+                        if not isinstance(disk_data, dict):
+                            disk_data = {}
+                    except Exception:
+                        disk_data = {}
+                    disk_blobs[(account_key, side)] = disk_data
+            return (master_symbols, disk_blobs)
+        except Exception as e:
+            self.logger.error(f"[SYMBOLS] _sync_memory_master_symbols_blocking failed: {e}")
+            return (None, {})
 
+    async def _sync_memory_with_master_symbols(self):
+        """Dynamically instantiates empty positions for any new symbols in symbols.json
+        and removes keys not in symbols.json if their positionAmt is 0.0.
+
+        2026-04-30: All disk I/O moved to asyncio.to_thread. Previously this read up to
+        2 × N_accounts × N_symbols files synchronously on the event loop (~10 files for
+        the symbols.json scan + 10 per-side blobs); on slow disk + busy loop it pegged
+        the loop long enough that process_account_update tripped its 120s safety net.
+        """
+        try:
+            master_symbols, disk_blobs = await asyncio.to_thread(self._sync_memory_master_symbols_blocking)
+            if master_symbols is None:
+                return
             added_count = 0
             removed_count = 0
-
             for account_config in self.accounts.values():
                 account_key = account_config.prefix
                 if account_key not in self.positions_by_account:
                     self.positions_by_account[account_key] = {}
-                
-                # 1. Add missing positions — ONLY if not already in memory or on disk
                 for symbol in master_symbols:
                     for side in ["LONG", "SHORT"]:
                         pos_key = f"{account_key}:{symbol}_{side}"
@@ -8923,37 +8966,27 @@ class PositionService:
                             self.positions_by_account[account_key][pos_key] = existing
                             continue
                         disk_pos = None
-                        try:
-                            side_file = self.base_path / account_key / f"{side.lower()}_positions.json"
-                            if side_file.exists():
-                                with open(side_file, "r") as df:
-                                    disk_data = json.load(df)
-                                if isinstance(disk_data, dict) and "positions" in disk_data:
-                                    disk_data = disk_data["positions"]
-                                if pos_key in disk_data and isinstance(disk_data[pos_key], dict):
-                                    disk_pos = Position.from_dict(disk_data[pos_key])
-                                    logger.debug(f"[_sync_memory] Loaded {pos_key} from disk (amt={disk_pos.positionAmt})")
-                        except Exception:
-                            pass
+                        disk_data = disk_blobs.get((account_key, side), {})
+                        pos_blob = disk_data.get(pos_key)
+                        if isinstance(pos_blob, dict):
+                            try:
+                                disk_pos = Position.from_dict(pos_blob)
+                                logger.debug(f"[_sync_memory] Loaded {pos_key} from disk (amt={disk_pos.positionAmt})")
+                            except Exception:
+                                disk_pos = None
                         if not disk_pos:
                             disk_pos = Position.from_dict({"symbol": symbol, "position_side": side})
                         self.positions_by_account[account_key][pos_key] = disk_pos
                         self.positions[pos_key] = disk_pos
                         added_count += 1
-                
-                # 2. Remove obsolete empty positions
                 keys_to_remove = []
                 for pos_key, pos_obj in list(self.positions_by_account[account_key].items()):
-                    # Avoid accidentally deleting valid custom symbols if they are handled differently,
-                    # but user requested strict control via symbols.json
                     if pos_obj.symbol not in master_symbols and abs(float(pos_obj.positionAmt)) == 0.0:
                         keys_to_remove.append(pos_key)
-                
                 for k in keys_to_remove:
                     self.positions_by_account[account_key].pop(k, None)
                     self.positions.pop(k, None)
                     removed_count += 1
-            
             if added_count > 0 or removed_count > 0:
                 self.logger.info(f"[SYMBOLS] Memory Sync: Added {added_count} new positions, Removed {removed_count} obsolete positions.")
         except Exception as e:

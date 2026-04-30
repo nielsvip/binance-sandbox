@@ -41,9 +41,25 @@ def stem_to_run_id(path: Path) -> str:
     return s
 
 
+_IMPOSTER_META_RE = __import__("re").compile(
+    r"trades=\d+\s+WR=[\d.]+%\s+gain=[+\-][\d.]+%|"
+    r"\[UNVERIFIED\b|"
+    r"_imposter_block|"
+    r"override_per_sym_.*_BEST"
+)
+
+
 def load_override(path: Path) -> dict:
     with open(path) as f:
-        return json.load(f)
+        data = json.load(f)
+    meta_blob = json.dumps({k: v for k, v in data.items() if k.startswith("_") or k == "_meta"})
+    if data.get("_imposter_block", {}).get("do_not_load") or _IMPOSTER_META_RE.search(meta_blob) or "per_sym" in path.stem.lower():
+        raise SystemExit(
+            f"IMPOSTER_OVERRIDE_REFUSED: {path} — single-symbol BEST or [UNVERIFIED]-tagged meta. "
+            "Per CLAUDE.md IMPOSTER BLOCK 2026-04-30: load forbidden until canonical multi-sym "
+            "replacement exists (route through metrics_guard.write_sharpe_row)."
+        )
+    return data
 
 
 def apply_override(cfg, overrides: dict) -> None:

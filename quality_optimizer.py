@@ -301,7 +301,17 @@ def iteration(args):
         return
     # 2. Mutate top-K elites — PER SYMBOL when --per-sym, else global
     if args.per_sym:
-        # Track per-symbol best — top elites per-sym, mutate each, save per-sym winner override
+        # IMPOSTER BLOCK 2026-04-30 (CLAUDE.md): per-sym promotion is a structural sample-floor
+        # violation. The user lost tens of thousands of dollars to override_per_sym_*_BEST.json
+        # files written by this exact path on 2026-04-29. Disarmed until retrofit replaces this
+        # with a multi-symbol pool sweep gated by metrics_guard.write_sharpe_row().
+        raise SystemExit(
+            "IMPOSTER_BLOCK: quality_optimizer --per-sym is FORBIDDEN. Per-symbol single-asset "
+            "promotion violates CLAUDE.md sample-floor (≥48 crypto syms × >1yr × ≥30 trades/sym). "
+            "Use a multi-symbol pool sweep (v8_quick_sweep --mode crypto on S1) and route promotion "
+            "through metrics_guard.write_sharpe_row(). The 6 archive_pre_reset_20260430 per_sym "
+            "files are tagged [UNVERIFIED] and must not be referenced as truth."
+        )
         for sym in syms:
             sym_scored = [(r, s, m, sc) for r, s, m, sc in scored if s == sym]
             if not sym_scored: continue
