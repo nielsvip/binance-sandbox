@@ -380,3 +380,167 @@ BLOCK_NAMES = {
     B01_WT_2OF3: 'B01_WT_2of3',
     B09_SNAPBACK: 'B09_SNAPBACK',
 }
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Phase 3a: TRADE QTY PIPELINE
+# Extracted from ez_positions_quick.execute_trade_wrapper (lines 11589-11782).
+# Backtests historically used a flat START_POSITION_SIZE for every trade —
+# silently dropping the WT_HTF_DISCOUNT (×0.3 / ×0.5) and HEDGE_SIZE_CAP
+# mutations that live applies. Result: sweep-tuned qty multipliers (e.g. B02 1.5×)
+# showed zero variance in Sharpe because the qty was never actually weighted.
+#
+# Live qty pipeline for OPEN/AUGMENT/REENTRY (non-hedge):
+#   1. base_qty = block-multiplier × START_POSITION_SIZE / price
+#   2. If not RZ entry AND HTF (4h+D) WT alignment < 2: qty × WT_HTF_DISCOUNT
+#      - 1/2 aligned: × 0.5
+#      - 0/2 aligned: × 0.3
+#   3. Floor at MIN_POSITION_SIZE / price
+#
+# Live qty pipeline for HEDGE_OPEN:
+#   1. base_qty = block-multiplier × START_POSITION_SIZE / price
+#   2. HEDGE_SIZE_CAP: cap at origin_position_value × HEDGE_MAX_PCT_OF_LOSER / price
+# ════════════════════════════════════════════════════════════════════════════════
+
+# Modifier id constants — for diagnostic dumps + v8_quick stats
+MOD_NONE = 0
+MOD_WT_HTF_DISCOUNT_HALF = 1     # × 0.5 (1/2 HTF aligned)
+MOD_WT_HTF_DISCOUNT_HARSH = 2    # × 0.3 (0/2 HTF aligned)
+MOD_HEDGE_SIZE_CAP = 3           # capped at origin × pct
+MOD_MIN_POS_FLOOR = 4            # raised to MIN_POSITION_SIZE
+
+MODIFIER_NAMES = {
+    MOD_NONE: 'NONE',
+    MOD_WT_HTF_DISCOUNT_HALF: 'WT_HTF_DISCOUNT_x0.5',
+    MOD_WT_HTF_DISCOUNT_HARSH: 'WT_HTF_DISCOUNT_x0.3',
+    MOD_HEDGE_SIZE_CAP: 'HEDGE_SIZE_CAP',
+    MOD_MIN_POS_FLOOR: 'MIN_POS_FLOOR',
+}
+
+
+def _wt_htf_aligned_count_scalar(i: Dict[str, Any], is_long: bool) -> int:
+    """Count of HTF (4h, D) WT timeframes aligned with trade direction."""
+    w1_4h = _sf(i.get('wt1_4h'), 0); w2_4h = _sf(i.get('wt2_4h'), 0)
+    w1_D = _sf(i.get('wt1_D'), 0); w2_D = _sf(i.get('wt2_D'), 0)
+    if is_long:
+        return int(w1_4h > w2_4h and w1_4h != 0) + int(w1_D > w2_D and w1_D != 0)
+    return int(w1_4h < w2_4h and w1_4h != 0) + int(w1_D < w2_D and w1_D != 0)
+
+
+def compute_trade_qty_core(
+    base_qty: float,
+    action: str,
+    is_long: bool,
+    is_hedge: bool,
+    current_price: float,
+    indicators: Dict[str, Any],
+    config: Any,
+    is_rz_entry: bool = False,
+    origin_position_value: float = 0.0,
+) -> Tuple[float, int]:
+    """Apply WT_HTF_DISCOUNT + HEDGE_SIZE_CAP + MIN_POS floor to a proposed qty.
+    Returns (final_qty, modifier_id) — modifier_id surfaces the FIRST mutation that
+    changed the qty (for stats). Multiple mutations can stack, but the dominant one
+    is reported. Use compute_trade_qty_vec for backtest hot-path."""
+    if current_price <= 0 or base_qty <= 0:
+        return 0.0, MOD_NONE
+    qty = base_qty
+    modifier = MOD_NONE
+    # 1. HEDGE_SIZE_CAP
+    if is_hedge and origin_position_value > 0:
+        cap_pct = float(getattr(config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        max_qty = (origin_position_value * cap_pct) / current_price
+        if qty > max_qty:
+            qty = max_qty
+            modifier = MOD_HEDGE_SIZE_CAP
+    # 2. WT_HTF_DISCOUNT (non-hedge OPEN/AUGMENT/REENTRY paths only, RZ exempt)
+    if not is_hedge and not is_rz_entry and getattr(config, 'WT_HTF_DISCOUNT_ENABLED', True):
+        htf_aligned = _wt_htf_aligned_count_scalar(indicators, is_long)
+        if htf_aligned < 2:
+            disc = 0.5 if htf_aligned == 1 else 0.3
+            qty = qty * disc
+            if modifier == MOD_NONE:
+                modifier = MOD_WT_HTF_DISCOUNT_HALF if htf_aligned == 1 else MOD_WT_HTF_DISCOUNT_HARSH
+    # 3. MIN_POSITION_SIZE floor
+    min_pos_size = float(getattr(config, 'MIN_POSITION_SIZE', 55.0))
+    min_qty = min_pos_size / current_price
+    if qty < min_qty:
+        qty = min_qty
+        if modifier == MOD_NONE:
+            modifier = MOD_MIN_POS_FLOOR
+    return qty, modifier
+
+
+def compute_trade_qty_vec(
+    npz: Dict[str, np.ndarray],
+    base_qty_arr: np.ndarray,
+    is_long: bool,
+    config: Any,
+    is_hedge: bool = False,
+    is_rz_entry_arr: Optional[np.ndarray] = None,
+    origin_value_arr: Optional[np.ndarray] = None,
+) -> Dict[str, np.ndarray]:
+    """Vectorized qty pipeline. base_qty_arr is per-bar proposed qty (already
+    multiplied by block multiplier and divided by price by the caller).
+
+    Returns dict with:
+        qty (float32):       final per-bar qty after all mutations
+        modifier (int8):     per-bar dominant modifier id
+    """
+    n = len(base_qty_arr)
+    qty = np.asarray(base_qty_arr, dtype=np.float32).copy()
+    modifier = np.full(n, MOD_NONE, dtype=np.int8)
+    close = npz.get('close')
+    if close is None:
+        # Try LTF close
+        for tf in ('3m', '5m'):
+            close = npz.get(f'close_{tf}')
+            if close is not None:
+                break
+    cp = np.asarray(close, dtype=np.float32) if close is not None else np.ones(n, dtype=np.float32)
+    if len(cp) != n:
+        cp = cp[:n] if len(cp) > n else np.pad(cp, (0, n - len(cp)), constant_values=cp[-1] if len(cp) else 1.0)
+    cp = np.where(cp > 0, cp, 1.0)
+
+    # 1. HEDGE_SIZE_CAP
+    if is_hedge and origin_value_arr is not None:
+        cap_pct = float(getattr(config, 'HEDGE_MAX_PCT_OF_LOSER', 1.0))
+        max_qty = (origin_value_arr * cap_pct) / cp
+        cap_hit = (origin_value_arr > 0) & (qty > max_qty)
+        qty = np.where(cap_hit, max_qty, qty)
+        modifier = np.where(cap_hit, np.int8(MOD_HEDGE_SIZE_CAP), modifier)
+
+    # 2. WT_HTF_DISCOUNT
+    if not is_hedge and getattr(config, 'WT_HTF_DISCOUNT_ENABLED', True):
+        w1_4h = np.nan_to_num(np.asarray(npz.get('wt1_4h', np.zeros(n)), dtype=np.float32), nan=0.0)
+        w2_4h = np.nan_to_num(np.asarray(npz.get('wt2_4h', np.zeros(n)), dtype=np.float32), nan=0.0)
+        w1_D = np.nan_to_num(np.asarray(npz.get('wt1_D', np.zeros(n)), dtype=np.float32), nan=0.0)
+        w2_D = np.nan_to_num(np.asarray(npz.get('wt2_D', np.zeros(n)), dtype=np.float32), nan=0.0)
+        if is_long:
+            al_4h = (w1_4h > w2_4h) & (w1_4h != 0)
+            al_D = (w1_D > w2_D) & (w1_D != 0)
+        else:
+            al_4h = (w1_4h < w2_4h) & (w1_4h != 0)
+            al_D = (w1_D < w2_D) & (w1_D != 0)
+        htf_aligned = al_4h.astype(np.int8) + al_D.astype(np.int8)
+        rz_mask = is_rz_entry_arr if is_rz_entry_arr is not None else np.zeros(n, dtype=bool)
+        eligible = ~rz_mask
+        half_discount = eligible & (htf_aligned == 1)
+        harsh_discount = eligible & (htf_aligned == 0)
+        qty = np.where(half_discount, qty * 0.5, qty)
+        qty = np.where(harsh_discount, qty * 0.3, qty)
+        # Set modifier where it was previously NONE
+        new_mod_half = half_discount & (modifier == MOD_NONE)
+        new_mod_harsh = harsh_discount & (modifier == MOD_NONE)
+        modifier = np.where(new_mod_half, np.int8(MOD_WT_HTF_DISCOUNT_HALF), modifier)
+        modifier = np.where(new_mod_harsh, np.int8(MOD_WT_HTF_DISCOUNT_HARSH), modifier)
+
+    # 3. MIN_POSITION_SIZE floor
+    min_pos_size = float(getattr(config, 'MIN_POSITION_SIZE', 55.0))
+    min_qty_arr = min_pos_size / cp
+    floor_hit = qty < min_qty_arr
+    qty = np.where(floor_hit, min_qty_arr, qty)
+    new_mod_floor = floor_hit & (modifier == MOD_NONE)
+    modifier = np.where(new_mod_floor, np.int8(MOD_MIN_POS_FLOOR), modifier)
+
+    return {'qty': qty, 'modifier': modifier}

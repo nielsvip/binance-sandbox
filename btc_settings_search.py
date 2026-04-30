@@ -43,12 +43,14 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 CAND_DIR.mkdir(parents=True, exist_ok=True)
 
 BTC_SYMS = ("BTCUSDC", "BTCDOMUSDT", "ETHUSDC", "BTCUSDT", "ETHUSDT")
-TARGET_TRADES_PER_WEEK = 20
+TARGET_TRADES_PER_WEEK = 6  # Lowered 2026-04-30 per user — realistic for short window.
 
-# Mutation grid — focused on knobs that affect trade FREQUENCY without breaking the
-# strategy core. We deliberately probe LOOSER values than BEST to surface more trades
-# (especially for BTCDOMUSDT where current configs only fire 3 trades/week).
+# Mutation grid — focused on knobs that affect trade FREQUENCY + reentry behavior.
+# 2026-04-30 user directive: "What HAS to be tested is reentries (vectorized in
+# latest backtest_v8_engine for speed so should now be included everywhere)" — added
+# REENTRY/FOLLOW_THROUGH/GUARANTEED_REENTRY knobs.
 MUTATIONS = {
+    # Trade-frequency knobs (loosen vs default)
     "BTC_BREAKOUT_MIN_HOLD_BARS":        [1, 2, 3, 5],
     "BTC_BREAKOUT_COOLDOWN_BARS":        [1, 2, 3],
     "BTC_MIN_HOLD_BARS":                 [3, 5, 10, 20],
@@ -56,15 +58,30 @@ MUTATIONS = {
     "BTC_COOLDOWN_BARS":                 [1, 3, 5],
     "BTC_TECH_EXIT_WT_MIN_TFS":          [2, 3, 4],
     "BTC_RZ_PROXIMITY_PCT":              [0.3, 0.5, 0.8, 1.0, 1.5],
+    # HTF / alignment / divergence gates
     "BTC_BREAKOUT_HTF_MIN_ALIGNED":      [0, 1, 2],
     "BTC_BREAKOUT_REQUIRE_HTF_ALIGNED":  [True, False],
     "BTC_BREAKOUT_BLOCK_OPPOSING_DIV":   [True, False],
     "BTC_DIVERGENCE_BLOCK_AGAINST":      [True, False],
+    "BTC_DIVERGENCE_EXIT_AGAINST":       [True, False],
+    "BTC_DIVERGENCE_BULL_MIN_INDS":      [1, 2, 3],
+    "BTC_DIVERGENCE_BEAR_MIN_INDS":      [1, 2, 3],
     "BTC_ACCEL_RAMP_MIN_TFS":            [1, 2, 3],
     "BTC_ENTRY_PRIMARY_REQUIRE_RZ":      [True, False],
     "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP": [True, False],
+    # Reverse-on-exit + reentries (REQUESTED 2026-04-30)
     "BTC_REVERSE_ON_EXIT_ENABLED":       [True, False],
     "BTC_FOLLOW_THROUGH_REENTRY_ENABLED": [True, False],
+    "BTC_FOLLOW_THROUGH_MIN_MOVE_PCT":   [0.02, 0.05, 0.1, 0.2],
+    "BTC_GUARANTEED_REENTRY_ENABLED":    [True, False],
+    "BTC_GUARANTEED_REENTRY_MIN_GAP_BARS": [1, 3, 5, 10],
+    "BTC_GUARANTEED_REENTRY_MAX_AGE_BARS": [240, 480, 960, 1920],
+    "BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE": [True, False],
+    # Multifactor RZ (mid-tier knob)
+    "BTC_RZ_WT_DC_MULTIFACTOR":          [True, False],
+    "BTC_RZ_USE_FIB":                    [True, False],
+    "BTC_RZ_USE_ROUND":                  [True, False],
+    "BTC_RZ_USE_WT_DC":                  [True, False],
 }
 
 
@@ -195,9 +212,10 @@ def search_one_iteration(iter_id: int) -> Dict:
                 "tier": mg.tier_name(ws),
             }
     # Promote: per (sym, side), if this score > existing best in CAND_DIR, write candidate.
+    # Min trades to promote = 3 (≥ half of TARGET_TRADES_PER_WEEK floor).
     promoted = []
     for sym_side, r in results["syms"].items():
-        if r["trades"] < TARGET_TRADES_PER_WEEK / 2 or r["wsharpe"] <= 0:
+        if r["trades"] < 3 or r["wsharpe"] <= 0:
             continue  # not promotable
         cand_path = CAND_DIR / f"btc_{sym_side}_top.json"
         prev_score = -1.0

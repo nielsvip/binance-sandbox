@@ -176,6 +176,9 @@ class QuickConfig:
     REENTRY_B12_WT_MOM_ENABLED: bool = True
     REENTRY_B14_HA_TREND_ENABLED: bool = True
     REENTRY_B15_STRONG_TREND_ENABLED: bool = True
+    # 2026-04-30 Phase 2: route reentry through position_evaluator.evaluate_reentry_vec (live-equivalent).
+    # OFF preserves existing v8_quick lookahead-corrected blocks. Sweep this to measure parity gap.
+    USE_LIVE_EVALUATOR_VEC: bool = False
     # PULLBACK-FIRST entry blocks (2026-04-16) — OPT-IN: Sharpe 0.80 test, keep OFF until proven
     REENTRY_PULL1_ENABLED: bool = False  # HTF uptrend + LTF deep oversold + reversing
     REENTRY_PULL2_ENABLED: bool = False  # Rising fundamentals + SMA200 pullback bounce
@@ -1937,8 +1940,24 @@ def compute_entry_signals(npz, n, is_long, cfg):
             d_neutral = (ha_D == 0)
             htf_ok = htf_ok & (d_aligned | d_neutral)
 
-    # Get all enabled reentry blocks
-    blocks = compute_reentry_blocks(npz, n, is_long, cfg)
+    # Get all enabled reentry blocks.
+    # 2026-04-30 Phase 2 vectorization: USE_LIVE_EVALUATOR_VEC swaps the v8_quick-
+    # internal lookahead-corrected blocks for position_evaluator.evaluate_reentry_vec
+    # which is byte-equivalent to ez_manage.evaluate_reentry. Default False to preserve
+    # existing sweep numbers; sweep this flag to measure live-vs-backtest parity gap.
+    if getattr(cfg, 'USE_LIVE_EVALUATOR_VEC', False):
+        from position_evaluator import evaluate_reentry_vec, BLOCK_NAMES
+        _ltf = getattr(cfg, 'LTF', '3m')
+        _vec = evaluate_reentry_vec(npz, is_long=is_long, config=cfg, ltf=_ltf)
+        # Decompose by block_id back into a {name: mask} dict so downstream
+        # confluence / per-block-stat logic continues to work.
+        blocks = {}
+        for bid, name in BLOCK_NAMES.items():
+            mask = (_vec['block_id'] == bid) & _vec['fire']
+            if mask.any():
+                blocks[name.split('_', 1)[0]] = mask  # key = "B15", "B04", etc.
+    else:
+        blocks = compute_reentry_blocks(npz, n, is_long, cfg)
     if not blocks:
         return np.zeros(n, dtype=bool)
 

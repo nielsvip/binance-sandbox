@@ -71,11 +71,12 @@ ACCOUNT_SYMS = {
     "trb": [ROOT / "symbols_trb_long.json", ROOT / "symbols_trb_short.json"],
 }
 
-# Trade thresholds (per CLAUDE.md sample-floor rule 5, but for hourly 7d window we
-# cannot reasonably hit ≥30 trades/sym for low-frequency syms like BTCDOMUSDT).
-# So: full opinion published if ≥30 trades, [LOW_SAMPLE] tag if 14–29, FLAT below 14.
-OPINION_FULL_TRADES = 30
-OPINION_LOW_SAMPLE_TRADES = 14
+# Trade thresholds (lowered 2026-04-30 per user: "anything over 6 should probably
+# count — not every winner/loser gets 30 good setups per week"). The 7-day window
+# is too short to expect ≥30 trades/sym; ranking system already filters tradeable
+# universe so any consistent edge over a few trades is a real signal.
+OPINION_FULL_TRADES = 6
+OPINION_LOW_SAMPLE_TRADES = 3
 OPINION_WSHARPE_FLOOR = 0.3  # Directional tier minimum to publish non-FLAT
 
 # Imposter-block regex (bypass chart_sweep import side effect; same pattern).
