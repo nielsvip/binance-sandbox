@@ -1,4 +1,4 @@
-# Copilot Status — 2026-04-30 10:10:32 UTC
+# Copilot Status — 2026-04-30 10:25:54 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:07:16
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:08:18
-- **STALE_INDICATORS** [tradier]  — 2026-04-30T10:08:39
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T10:08:39
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T10:08:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T10:08:39
-- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T10:08:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T10:08:39
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:09:19
-- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:10:21
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T10:23:00
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:23:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:24:42
+- **STALE_INDICATORS** [tradier]  — 2026-04-30T10:25:03
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-04-30T10:25:03
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-04-30T10:25:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-04-30T10:25:03
+- **BIG_LOSER** [tradier] trc:SLV_LONG — 2026-04-30T10:25:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-04-30T10:25:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-04-30T10:25:43
 
 ## Missed Trades (trader comparison)
 
@@ -27,17 +27,19 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 7 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 7 | **Reentered:** 0
 
+- HELD: **SANDUSDT** LONG (crypto) peak +9.6%, now +0.0%
 - HELD: **GOOGL** LONG (tradier) peak +7.0%, now +7.0%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-8.4%
-- HELD: **KAITOUSDC** LONG (crypto) peak +3.0%, now +2.7%
+- HELD: **ATOMUSDT** LONG (crypto) peak +5.9%, now +0.0%
+- HELD: **KAITOUSDC** LONG (crypto) peak +3.6%, now +2.7%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-8.8%
 
 - WATCHING: **WIFUSDC** LONG (crypto) peaked +20.2%, exited 0m ago
 - WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
 - WATCHING: **OPUSDT** LONG (crypto) peaked +4.3%, exited 0m ago
-- WATCHING: **LPTUSDT** LONG (crypto) peaked +4.2%, exited 210m ago
+- WATCHING: **LPTUSDT** LONG (crypto) peaked +4.2%, exited 226m ago
 - WATCHING: **GRASSUSDT** LONG (crypto) peaked +4.0%, exited 0m ago
 - WATCHING: **1INCHUSDT** LONG (crypto) peaked +3.5%, exited 0m ago
 
