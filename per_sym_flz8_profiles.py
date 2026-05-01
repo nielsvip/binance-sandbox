@@ -205,12 +205,20 @@ def phase1_baseline() -> Dict[str, Dict]:
 
 # ---------- Phase 2 ----------------------------------------------------------
 
+START_TS_2024_07_01 = 1719792000  # 2024-07-01 00:00 UTC, matches BEST run window
+
 def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
-                       npz: dict) -> Tuple[List[float], int]:
+                       npz: dict, start_ts: int = START_TS_2024_07_01) -> Tuple[List[float], int]:
     """Run v8_quick_engine.simulate for one sym with overrides; return pnl list and trade count.
+
+    Filters output trades to exit_ts >= start_ts for parity with BEST's 2024-07-01 window.
     """
     os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
     os.environ["V8_TRADES_RUN_ID"] = run_id
+    # BTC_DEDICATED single-sym path 'continue's past the rate-guard tick, so
+    # final_check() always fires SystemExit on n_accts=0/elapsed-only projection.
+    # Disable rate guard for these single-sym BTC runs.
+    os.environ["V8_RATE_GUARD_DISABLED"] = "1"
     cfg = QuickConfig()
     cfg.MODE = "crypto"
     for k, v in overrides.items():
@@ -231,7 +239,7 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
     except Exception as e:
         print(f"    [engine] EXC {e}")
         return [], 0
-    # Read produced JSONL
+    # Read produced JSONL; filter by exit_ts >= start_ts.
     jp = run_dir / f"{run_id}__{sym}.jsonl"
     rets: List[float] = []
     if jp.exists():
@@ -239,6 +247,8 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
             for line in f:
                 try:
                     rec = json.loads(line)
+                    if int(rec.get("exit_ts", 0) or 0) < start_ts:
+                        continue
                     rets.append(float(rec.get("pnl_pct", 0.0)))
                 except Exception:
                     pass
@@ -246,71 +256,58 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
 
 
 def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
-    """Small focused mutation grid (~20 variants) over the BTC_* knobs.
+    """Focused mutation grid (~22 variants) over the BTC_* knobs.
 
-    All returned configs are full overlays (BEST + mutation deltas).
+    Curated to span: min-hold, breakout HTF gates, divergence sensitivity, hard-loss
+    budgets, cooldown, tech-exit TF count. All returned configs are full overlays
+    (BEST + delta).
     """
     grid: List[Tuple[str, Dict]] = []
     grid.append(("BEST", dict(base)))
 
-    # 1. min-hold variations (more/fewer trades vs structure)
-    for mh in (1, 3, 5, 8):
-        for bk in (1, 3, 5):
-            o = dict(base)
-            o["BTC_MIN_HOLD_BARS"] = mh
-            o["BTC_BREAKOUT_MIN_HOLD_BARS"] = bk
-            grid.append((f"mh{mh}_bk{bk}", o))
+    # 1. min-hold (4 variants)
+    for mh, bk in ((1, 1), (3, 1), (5, 3), (8, 5)):
+        o = dict(base); o["BTC_MIN_HOLD_BARS"] = mh; o["BTC_BREAKOUT_MIN_HOLD_BARS"] = bk
+        grid.append((f"mh{mh}_bk{bk}", o))
 
-    # 2. divergence sensitivity
-    for tf in ("1h", "4h", "D"):
-        o = dict(base)
-        o["BTC_DIVERGENCE_MIN_TF"] = tf
-        grid.append((f"divtf_{tf}", o))
-    for div_block in (True, False):
-        for div_exit in (True, False):
-            o = dict(base)
-            o["BTC_DIVERGENCE_BLOCK_AGAINST"] = div_block
-            o["BTC_DIVERGENCE_EXIT_AGAINST"] = div_exit
-            grid.append((f"divB{int(div_block)}_E{int(div_exit)}", o))
+    # 2. breakout HTF strictness (4 variants)
+    for ht, ac in ((0, 1), (1, 1), (1, 2), (2, 2)):
+        o = dict(base); o["BTC_BREAKOUT_HTF_MIN_ALIGNED"] = ht; o["BTC_BREAKOUT_ACCEL_MIN_TFS"] = ac
+        grid.append((f"ht{ht}_ac{ac}", o))
 
-    # 3. breakout HTF strictness (more trades vs higher quality)
-    for ht in (0, 1, 2):
-        for ac in (1, 2, 3):
-            o = dict(base)
-            o["BTC_BREAKOUT_HTF_MIN_ALIGNED"] = ht
-            o["BTC_BREAKOUT_ACCEL_MIN_TFS"] = ac
-            grid.append((f"ht{ht}_ac{ac}", o))
+    # 3. divergence (3 variants)
+    for tag, dB, dE, dTF in (("dvOFF", False, False, "4h"),
+                              ("dvBlk1h", True, False, "1h"),
+                              ("dvExit4h", True, True, "4h")):
+        o = dict(base); o["BTC_DIVERGENCE_BLOCK_AGAINST"] = dB
+        o["BTC_DIVERGENCE_EXIT_AGAINST"] = dE; o["BTC_DIVERGENCE_MIN_TF"] = dTF
+        grid.append((tag, o))
 
-    # 4. cooldown — looser/tighter
-    for cd in (1, 3, 5):
-        for bcd in (1, 3, 5):
-            o = dict(base)
-            o["BTC_COOLDOWN_BARS"] = cd
-            o["BTC_BREAKOUT_COOLDOWN_BARS"] = bcd
-            grid.append((f"cd{cd}_bcd{bcd}", o))
-
-    # 5. hard-loss budgets ±20%
+    # 4. hard-loss budget (4 variants)
     base_hl = float(base.get("BTC_HARD_LOSS_USD_PER_TRADE", 5.4))
     base_bhl = float(base.get("BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE", 3.75))
-    for f in (0.7, 0.85, 1.0, 1.15, 1.3):
+    for f in (0.7, 0.85, 1.15, 1.3):
         o = dict(base)
         o["BTC_HARD_LOSS_USD_PER_TRADE"] = round(base_hl * f, 3)
         o["BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE"] = round(base_bhl * f, 3)
         grid.append((f"hl_x{f:.2f}", o))
 
-    # 6. tech-exit min TFs
+    # 5. cooldown (3 variants)
+    for cd, bcd in ((1, 1), (3, 1), (3, 3)):
+        o = dict(base); o["BTC_COOLDOWN_BARS"] = cd; o["BTC_BREAKOUT_COOLDOWN_BARS"] = bcd
+        grid.append((f"cd{cd}_bcd{bcd}", o))
+
+    # 6. tech-exit min TFs (3 variants)
     for t in (1, 2, 3):
-        o = dict(base)
-        o["BTC_TECH_EXIT_WT_MIN_TFS"] = t
+        o = dict(base); o["BTC_TECH_EXIT_WT_MIN_TFS"] = t
         grid.append((f"texit_{t}", o))
 
-    # 7. reverse-on-exit + follow-through
-    for ron in (True, False):
-        for ft in (True, False):
-            o = dict(base)
-            o["BTC_REVERSE_ON_EXIT_ENABLED"] = ron
-            o["BTC_FOLLOW_THROUGH_REENTRY_ENABLED"] = ft
-            grid.append((f"ron{int(ron)}_ft{int(ft)}", o))
+    # 7. reverse-on-exit / follow-through (3 variants)
+    for tag, ron, ft in (("ron0_ft1", False, True), ("ron1_ft0", True, False),
+                         ("ron0_ft0", False, False)):
+        o = dict(base); o["BTC_REVERSE_ON_EXIT_ENABLED"] = ron
+        o["BTC_FOLLOW_THROUGH_REENTRY_ENABLED"] = ft
+        grid.append((tag, o))
 
     return grid
 
