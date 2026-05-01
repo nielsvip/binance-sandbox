@@ -136,12 +136,18 @@ def mutate(base: Dict, n_mutations: int = 3) -> Tuple[Dict, List[str]]:
 
 
 def time_weighted_pool_sharpe(returns_with_ts: List[Tuple[float, int]],
-                              now_ts: int) -> Tuple[float, int]:
+                              ref_ts: int) -> Tuple[float, int]:
+    """Weighted pool Sharpe with weight = 2 ** -((ref_ts - exit_ts) / 86400).
+
+    `ref_ts` is the WEIGHTING REFERENCE — not necessarily wall-clock now.
+    For stale NPZs (e.g. stocks 37 days behind real-time), passing `ref_ts =
+    NPZ.ts[-1]` keeps the weighting meaningful: most-recent-data = today.
+    """
     if not returns_with_ts:
         return 0.0, 0
     rs = np.array([r for r, _ in returns_with_ts], dtype=np.float64)
     ts = np.array([t for _, t in returns_with_ts], dtype=np.float64)
-    days_ago = np.maximum(0.0, (now_ts - ts) / 86400.0)
+    days_ago = np.maximum(0.0, (ref_ts - ts) / 86400.0)
     w = np.power(2.0, -days_ago)
     w_sum = w.sum()
     if w_sum <= 0 or len(rs) < 2:
@@ -160,7 +166,7 @@ def score_candidate(wsharpe: float, n_trades: int) -> float:
 
 
 def run_one_test(sym: str, side: str, cfg_dict: Dict, run_dir: Path,
-                 now_ts: int, window_start_ts: int) -> Tuple[float, int]:
+                 ref_ts: int, window_start_ts: int) -> Tuple[float, int]:
     run_id = f"trasearch__{sym}__{side}__{int(time.time()*1000) % 100000}"
     os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
     os.environ["V8_TRADES_RUN_ID"] = run_id
@@ -202,7 +208,7 @@ def run_one_test(sym: str, side: str, cfg_dict: Dict, run_dir: Path,
                     pass
         try: jp.unlink()
         except Exception: pass
-    ws, n = time_weighted_pool_sharpe(sided_rets, now_ts)
+    ws, n = time_weighted_pool_sharpe(sided_rets, ref_ts)
     return ws, n
 
 
@@ -221,12 +227,14 @@ def search_one_iteration(iter_id: int) -> Dict:
         try:
             z = np.load(str(npz_p))
             ts = z["timestamps"] if "timestamps" in z.files else z[z.files[0]]
-            window_start_ts = int(ts[-1]) - 7 * 86400
+            npz_end_ts = int(ts[-1])
+            window_start_ts = npz_end_ts - 7 * 86400
             z.close()
         except Exception:
             continue
+        # Weight relative to NPZ end (handles stale stock NPZs gracefully).
         for side in ("LONG", "SHORT"):
-            ws, n = run_one_test(sym, side, new_cfg, run_dir, now_ts, window_start_ts)
+            ws, n = run_one_test(sym, side, new_cfg, run_dir, npz_end_ts, window_start_ts)
             score = score_candidate(ws, n)
             results["syms"][f"{sym}_{side}"] = {
                 "wsharpe": round(ws, 4),

@@ -197,17 +197,20 @@ def npz_window_seconds(z, days: float) -> Tuple[int, int, float]:
 
 
 def time_weighted_pool_sharpe(returns_with_ts: List[Tuple[float, int]],
-                              now_ts: int) -> Tuple[float, float, int]:
-    """Compute weighted pool_sharpe with weight = 2 ** (-day_ago).
+                              ref_ts: int) -> Tuple[float, float, int]:
+    """Compute weighted pool_sharpe with weight = 2 ** -((ref_ts - exit_ts)/86400).
 
-    returns_with_ts: list of (pnl_pct, exit_ts).
+    `ref_ts` is the WEIGHTING REFERENCE. Pass NPZ end (ts[-1]) for staleness-
+    invariant weighting — stocks have NPZs ~37 days behind real-time, and using
+    wall-clock now would collapse weights to 2^-37 ≈ 0. NPZ-end-relative keeps
+    the most recent data weighted at 1.0 regardless of NPZ freshness.
     Returns (weighted_pool_sharpe, weighted_trade_count_equiv, n_raw_trades).
     """
     if not returns_with_ts:
         return 0.0, 0.0, 0
     rs = np.array([r for r, _ in returns_with_ts], dtype=np.float64)
     ts = np.array([t for _, t in returns_with_ts], dtype=np.float64)
-    days_ago = np.maximum(0.0, (now_ts - ts) / 86400.0)
+    days_ago = np.maximum(0.0, (ref_ts - ts) / 86400.0)
     w = np.power(2.0, -days_ago)
     w_sum = w.sum()
     if w_sum <= 0 or len(rs) < 2:
