@@ -488,6 +488,159 @@ def api_health():
     })
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Hourly reconfig endpoints (added 2026-05-01) — surface the 7d daemon outputs
+# so user can verify on chart with metrics_guard recalculation.
+# ─────────────────────────────────────────────────────────────────────────
+
+HOURLY_CSV_DIR = BASE_DIR / "data" / "sweep_results"
+HOURLY_RECONFIG_DIR = BASE_DIR / "data" / "hourly_reconfig"
+
+
+def _read_hourly_canonical_csv(account: str) -> List[Dict[str, Any]]:
+    """Read canonical_hourly_<account>.csv. Returns list of row dicts."""
+    import csv
+    p = HOURLY_CSV_DIR / f"canonical_hourly_{account}.csv"
+    if not p.exists():
+        return []
+    out: List[Dict[str, Any]] = []
+    with p.open() as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            for k, v in list(row.items()):
+                try:
+                    row[k] = float(v)
+                except Exception:
+                    pass
+            out.append(row)
+    return out
+
+
+@app.route("/api/hourly_canonical/<account>")
+def api_hourly_canonical(account):
+    """Return canonical_hourly_<account>.csv as JSON list, newest last."""
+    if account not in ALL_ACCOUNTS:
+        return jsonify({"error": f"unknown account {account}"}), 404
+    rows = _read_hourly_canonical_csv(account)
+    return jsonify({
+        "account": account,
+        "n_rows": len(rows),
+        "rows": rows,
+        "csv_path": str(HOURLY_CSV_DIR / f"canonical_hourly_{account}.csv"),
+        "generated_utc": _now_iso(),
+    })
+
+
+@app.route("/api/opinions/<account>")
+def api_opinions(account):
+    """Return current opinions.json with per-sym wsharpe + winning_tag + tier."""
+    if account not in ALL_ACCOUNTS:
+        return jsonify({"error": f"unknown account {account}"}), 404
+    p = HOURLY_RECONFIG_DIR / account / "opinions.json"
+    if not p.exists():
+        return jsonify({"account": account, "opinions": None, "error": "no opinions.json yet"}), 200
+    try:
+        data = json.loads(p.read_text())
+    except Exception as e:
+        return jsonify({"account": account, "error": f"parse error: {e}"}), 500
+    syms = data.get("syms", {})
+    ranked = sorted(syms.items(), key=lambda kv: -kv[1].get("wsharpe", 0))
+    return jsonify({
+        "account": account,
+        "cycle_id": data.get("_cycle_id"),
+        "now_ts": data.get("_now_ts"),
+        "ranked": [{"sym_side": k, **v} for k, v in ranked],
+        "n_total": len(syms),
+        "n_actionable": sum(1 for v in syms.values() if v.get("opinion") in ("LONG", "SHORT")),
+        "generated_utc": _now_iso(),
+    })
+
+
+@app.route("/api/recalc/<account>/<sym>/<side>")
+def api_recalc(account, sym, side):
+    """Recompute pool_sharpe + standard_metric_set on the fly from the per-trade
+    JSONL of the current cycle's winning candidate for (sym, side). User-verifiable.
+    Window default: last 7 days (override with ?days=N).
+    """
+    if account not in ALL_ACCOUNTS:
+        return jsonify({"error": f"unknown account {account}"}), 404
+    side = side.upper()
+    if side not in ("LONG", "SHORT"):
+        return jsonify({"error": "side must be LONG or SHORT"}), 400
+    sym = sym.upper()
+    days = float(request.args.get("days", 7))
+    # Find the latest cycle dir
+    runs_dir = HOURLY_RECONFIG_DIR / account / "runs"
+    if not runs_dir.exists():
+        return jsonify({"error": "no runs dir yet"}), 404
+    cycles = sorted([p for p in runs_dir.iterdir() if p.is_dir()], reverse=True)
+    if not cycles:
+        return jsonify({"error": "no completed cycles"}), 404
+    # Find the active_config to know the winning_tag (may not exist yet on first cycle)
+    active_path = HOURLY_RECONFIG_DIR / account / "active_config.json"
+    winning_tag = None
+    if active_path.exists():
+        try:
+            ac = json.loads(active_path.read_text())
+            winning_tag = ac.get(f"{sym}_{side}", {}).get("winning_tag")
+        except Exception:
+            pass
+    # Walk newest cycle first; use first cycle that has the JSONL
+    latest = cycles[0]
+    matched_files: List[Path] = []
+    for c in cycles[:5]:  # up to 5 most recent cycles
+        files = list(c.glob(f"*__{side}__*__{sym}.jsonl"))
+        if files:
+            matched_files = files
+            latest = c
+            break
+    if winning_tag and matched_files:
+        wf = [f for f in matched_files if f.stem.endswith(f"__{side}__{winning_tag}__{sym}")]
+        if wf:
+            matched_files = wf
+    if not matched_files:
+        return jsonify({"error": f"no JSONL for {sym}_{side} in last 5 cycles"}), 404
+    # Recompute via metrics_guard
+    cutoff = time.time() - days * 86400
+    rets: List[float] = []
+    n_total = 0
+    for f in matched_files:
+        with f.open() as fh:
+            for ln in fh:
+                try:
+                    rec = json.loads(ln)
+                    if (rec.get("side") or "").upper() != side:
+                        continue
+                    n_total += 1
+                    ets = int(rec.get("exit_ts", 0) or 0)
+                    if ets < cutoff:
+                        continue
+                    rets.append(float(rec.get("pnl_pct", 0)))
+                except Exception:
+                    pass
+    if not rets:
+        return jsonify({
+            "account": account, "sym": sym, "side": side,
+            "winning_tag": winning_tag, "cycle": latest.name,
+            "n_in_window": 0, "n_total_in_jsonl": n_total,
+            "error": "0 trades in window",
+        }), 200
+    # Compute via metrics_guard's pool_sharpe + standard_metric_set
+    returns_by_sym = {sym: rets}
+    metrics = metrics_guard.standard_metric_set(returns_by_sym, years=max(days / 365.25, 0.01))
+    metrics["tier"] = metrics_guard.tier_name(metrics["pool_sharpe"])
+    metrics["window_days"] = days
+    metrics["winning_tag"] = winning_tag
+    metrics["jsonl_files"] = [f.name for f in matched_files]
+    metrics["cycle"] = latest.name
+    metrics["n_total_in_jsonl"] = n_total
+    return jsonify({
+        "account": account, "sym": sym, "side": side,
+        "metrics": metrics,
+        "generated_utc": _now_iso(),
+    })
+
+
 def _kill_port(port: int):
     """Kill any process listening on port (best-effort, like trade_analytics does)."""
     import subprocess

@@ -1792,8 +1792,8 @@ CRYPTO_ACCOUNTS = {"ang", "inf", "flz", "men", "fin"}
 STOCK_ACCOUNTS = {"trb", "trc"}
 
 CATEGORY_DESCRIPTIONS = {
-    "7D_macbook_crypto": "7-Day hourly reconfig (crypto live accounts: ang/inf/flz/men/fin). Re-optimized every hour, ACTIVATES LIVE IMMEDIATELY — most urgent to monitor.",
-    "7D_macbook_stocks": "7-Day hourly reconfig (stock live accounts: trb/trc). Re-optimized every hour, ACTIVATES LIVE IMMEDIATELY for stocks.",
+    "7D_macbook_crypto": "Hourly reconfig — crypto live accounts (ang/inf/flz/men/fin). Optimizer re-picks parameters every hour using a rolling 7-day fit window; backtest re-runs over FULL multi-year 3m kline history (BTCUSDC ~22mo since perp launch). Promoted config ACTIVATES LIVE IMMEDIATELY — most urgent to monitor.",
+    "7D_macbook_stocks": "Hourly reconfig — stock live accounts (trb/trc). Optimizer re-picks parameters every hour using a rolling 7-day fit window; backtest re-runs over FULL multi-year 5m stock history. Promoted config ACTIVATES LIVE IMMEDIATELY for stocks.",
     "v3_paper": "Scalp V3 paper-trading variants (data/scalp_v3_paper). Live decisions feed but no real-money execution.",
     "v3_shadow": "Scalp V3 shadow A/B variants (data/scalp_v3_shadow). Each variant runs live in shadow with different switches; decisions logged but not executed.",
     "s1_crypto_canonical": "S1 crypto canonical top-N replays (canon_crypto_*). Top-ranked autonomous-search winners replayed via populate_canonical_top10.",
@@ -2254,13 +2254,17 @@ def run_catalog():
         floor_syms = metrics_guard.MIN_SYMS_STOCKS if machine == "s2" else metrics_guard.MIN_SYMS_CRYPTO
         sample_floor_pass = (n_syms >= floor_syms) and (n_years >= 1.0) and (n_syms == 0 or trades / max(1, n_syms) >= 30)
         inflated = abs(ps) > metrics_guard.PER_SYM_SHARPE_CAP and trades < 5000
+        days_span = n_years * 365.25
+        trades_per_sym_day = (trades / max(1, n_syms) / days_span) if days_span > 0 else 0
+        churn_warn = trades_per_sym_day > 100  # >100 trades/sym/day = scalping unrealism warning
         tier = metrics_guard.tier_name(ps)
         canonical_line = (
             f"pool_sharpe={ps:+.4f} | sym_sharpe={float(r.get('sym_sharpe', 0)):+.4f} | "
             f"avg_gain_trade={float(r.get('avg_gain_trade', 0)):.4f}%/trade | "
             f"gain_per_yr={float(r.get('gain_per_yr', 0)):.1f}%/yr | "
             f"gain_sym_yr={float(r.get('gain_sym_yr', 0)):.4f}%/sym/yr | "
-            f"trades={trades} | n_syms={n_syms} | years={n_years:.2f}"
+            f"trades={trades} | n_syms={n_syms} | years={n_years:.2f} | "
+            f"density={trades_per_sym_day:.1f} tr/sym/day"
         )
         entry = {
             "run": run,
@@ -2275,6 +2279,8 @@ def run_catalog():
             "trades": trades,
             "n_syms": n_syms,
             "n_years": n_years,
+            "trades_per_sym_day": round(trades_per_sym_day, 2),
+            "churn_warn": churn_warn,
             "max_dd_pct": float(r.get("max_dd_pct", 0) or 0),
             "gain_per_yr": float(r.get("gain_per_yr", 0) or 0),
             "mtime": int(r.get("mtime", 0) or 0),

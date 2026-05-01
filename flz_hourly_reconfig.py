@@ -107,9 +107,10 @@ def load_safe_override(path: Path) -> Dict:
     return data
 
 
-# Candidate set: known-good overrides + dynamic candidate pool from BTC settings search.
+# Candidate set: known-good overrides + dynamic candidate pool from settings searches.
 # Compact enough (4-6 candidates) for an hourly cycle to finish in <30 min for 8-sym universe.
 EXTRA_CAND_DIR = ROOT / "data" / "hourly_reconfig" / "_candidates"
+EXTRA_CAND_DIR_TRADIER = ROOT / "data" / "hourly_reconfig" / "_candidates_tradier"
 
 
 def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
@@ -165,10 +166,10 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
                 "BTC_TECH_EXIT_WT_MIN_TFS": 2,
             })
             cand.append(("BEST_more_trades", more_trades))
-    # Auto-pickup candidates dropped by btc_settings_search (extra optimizers may
-    # publish JSONs here as they discover new winners).
-    if EXTRA_CAND_DIR.exists():
-        for p in sorted(EXTRA_CAND_DIR.glob("*.json")):
+    # Auto-pickup candidates dropped by settings searches (different dir per mode).
+    pick_dir = EXTRA_CAND_DIR_TRADIER if is_tradier else EXTRA_CAND_DIR
+    if pick_dir.exists():
+        for p in sorted(pick_dir.glob("*.json")):
             try:
                 cfg = load_safe_override(p)
                 tag = f"extra_{p.stem}"

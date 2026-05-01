@@ -538,6 +538,22 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
         ez_manage.process_position = _noop_pp
         v8_logger.info("[V8_ABLATION] process_position DISABLED (stubbed to no-op)")
 
+    # V8_VECTORIZED_REENTRY=1 → swap the 1,177-line scalar evaluate_reentry()
+    # for the numpy-precomputed VectorizedReentryEvaluator. Designed in
+    # ez_reentry_vectorized.py but the docstring's hook was never actually
+    # wired until 2026-05-01. Target: ~3000× speedup on the reentry path.
+    if os.environ.get("V8_VECTORIZED_REENTRY", "0") == "1":
+        try:
+            from ez_reentry_vectorized import VectorizedReentryEvaluator
+            _vec_eval = VectorizedReentryEvaluator(stores, config)
+            ez_manage.evaluate_reentry = _vec_eval.evaluate
+            v8_logger.info(f"[V8_VECTORIZED] evaluate_reentry → VectorizedReentryEvaluator "
+                           f"({len(stores)} stores precomputed)")
+        except Exception as _e:
+            import traceback as _tb
+            v8_logger.warning(f"[V8_VECTORIZED] reentry vectorization failed: {_e}; "
+                              f"falling back to scalar evaluate_reentry\n{_tb.format_exc()}")
+
     # --- Return refs for the simulation loop ---
     return _indicator_cache, _price_cache, _executed_trades
 
