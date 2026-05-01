@@ -137,6 +137,19 @@ mac_pages_free_kb() {
     echo $((pages * 16))
 }
 
+# Read macOS jetsam pressure level. Returns: 1=normal, 2=warning, 4=critical, 8=sustained-critical.
+# 2026-05-01: pages_free is a misleading metric on Mac — it stays at 60-80MB
+# constantly because macOS uses RAM as cache. The true "is jetsam about to fire"
+# signal is kern.memorystatus_vm_pressure_level. Workers should respawn when this is
+# ≤ 2 (normal or warning); avoid spawning when it is ≥ 4 (critical).
+mac_pressure_level() {
+    if [[ "$(uname)" != "Darwin" ]]; then echo 1; return; fi
+    local lvl
+    lvl=$(/usr/sbin/sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null)
+    [[ -z "$lvl" || ! "$lvl" =~ ^[0-9]+$ ]] && { echo 1; return; }
+    echo "$lvl"
+}
+
 # Logging function (with 5MB rotation)
 WD_LOG_MAX=$((5 * 1024 * 1024))
 log() {
@@ -329,22 +342,34 @@ main() {
             sleep "$_backoff"
             # 2026-05-01: pressure-aware extension. Fixed sleep doesn't guarantee memory
             # is actually free. A fresh ez_manage spawn peaks ~600MB during state-load —
-            # if pages_free is still low, that allocation re-trips jetsam and the kill loop
-            # continues. Poll vm_stat until pages_free ≥ 200MB or patience window elapses.
+            # if the host is in jetsam-critical pressure, that allocation re-trips jetsam
+            # and the kill loop continues.
+            # Updated 2026-05-01 22:41: switched from pages_free (Mac always reports
+            # 60-80MB free because of cache), to kern.memorystatus_vm_pressure_level
+            # which is the actual jetsam signal. We launch when pressure ≤ 2 (warning),
+            # block when pressure ≥ 4 (critical). pages_free retained as a fallback floor.
             local _wait_start=$(date +%s)
             local _patience=600
             while true; do
+                local _level=$(mac_pressure_level)
                 local _free_kb=$(mac_pages_free_kb)
+                # Pressure level OK → launch immediately
+                if [[ "$_level" -le 2 ]]; then
+                    log "[SIGKILL_BACKOFF] pressure_level=${_level} (≤2 OK) free=${_free_kb}KB — launching"
+                    break
+                fi
+                # Catastrophic pages_free floor: even with pressure ≥ 4, if the system
+                # has clawed back ≥ 200MB free we're past the worst — launch.
                 if [[ "$_free_kb" -ge 204800 ]]; then
-                    log "[SIGKILL_BACKOFF] pages_free=${_free_kb}KB ≥ 200MB — pressure recovered, launching"
+                    log "[SIGKILL_BACKOFF] pages_free=${_free_kb}KB ≥ 200MB despite pressure_level=${_level} — launching"
                     break
                 fi
                 local _waited=$(( $(date +%s) - _wait_start ))
                 if [[ "$_waited" -ge "$_patience" ]]; then
-                    log "[SIGKILL_BACKOFF] pressure still tight (free=${_free_kb}KB) but patience exhausted (${_patience}s) — launching anyway"
+                    log "[SIGKILL_BACKOFF] pressure_level=${_level} free=${_free_kb}KB still tight, patience exhausted (${_patience}s) — launching anyway"
                     break
                 fi
-                log "[SIGKILL_BACKOFF] pages_free=${_free_kb}KB < 200MB — host still tight, waiting 60s more (${_waited}s/${_patience}s)"
+                log "[SIGKILL_BACKOFF] pressure_level=${_level} (≥4 critical) free=${_free_kb}KB — host still tight, waiting 60s more (${_waited}s/${_patience}s)"
                 sleep 60
             done
         else
