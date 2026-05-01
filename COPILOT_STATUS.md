@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-01 13:12:34 UTC
+# Copilot Status — 2026-05-01 13:27:50 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T13:08:40
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T13:08:40
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T13:08:40
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:08:40
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:09:41
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T13:10:42
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T13:10:42
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T13:10:42
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:10:42
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:11:43
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:23:56
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T13:24:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T13:24:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T13:24:57
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:24:57
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:25:58
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T13:26:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T13:26:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T13:26:59
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T13:26:59
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **GOOGL** LONG (tradier) peak +10.5%, now +9.7%
-- HELD: **CRVUSDC** SHORT (crypto) peak +6.0%, now +-0.1%
-- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-5.3%
+- HELD: **GOOGL** LONG (tradier) peak +10.5%, now +8.9%
+- HELD: **CRVUSDC** SHORT (crypto) peak +6.0%, now +6.0%
+- HELD: **SKYUSDT** LONG (crypto) peak +3.3%, now +-5.2%
 
 - WATCHING: **PENGUUSDC** SHORT (crypto) peaked +13.3%, exited 0m ago
 - WATCHING: **SNDK** LONG (tradier) peaked +11.8%, exited 0m ago
@@ -48,7 +48,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [HIGH] ez_manage.py for inf is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_prices.py is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
