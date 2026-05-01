@@ -2,7 +2,9 @@
 # watchdog_sweep_s2.sh — every 5min check that S2 tradier sweep is alive; relaunch via canonical launcher if dead.
 LOG=/home/niels/logs/watchdog_sweep_s2.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
-N=$(pgrep -afc "v8_quick_sweep.*--mode tradier" || echo 0)
+# Same fix as watchdog_sweep_s1.sh — see comment there.
+N=$(pgrep -afc "v8_quick_sweep.*--mode tradier" 2>/dev/null | head -1)
+N=${N:-0}
 if [ "$N" -lt 1 ]; then
     echo "[$TS] $N v8_quick_sweep tradier procs — relaunching via start_tradier_sweeps.sh entry_gates" >> "$LOG"
     bash /home/niels/binance-sandbox/start_tradier_sweeps.sh entry_gates >> "$LOG" 2>&1
