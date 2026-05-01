@@ -2003,11 +2003,17 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _rfe:
             v8_logger.warning(f"[V8_RESULT_FILE] Failed to write {_v8_result_file}: {_rfe}")
 
-    # Cancel queue processor (after result is already printed)
+    # Cancel queue processor (after result is already printed).
+    # 2026-05-01: catch BaseException — Python 3.11+ asyncio.CancelledError is a
+    # BaseException, NOT Exception, so the legacy `except Exception` did not catch
+    # it and CancelledError propagated up to asyncio.run(). That skipped every
+    # subsequent line including _write_chart_trades(executed_trades) at line ~2034
+    # which writes the chart-server JSONL. Result: V8_PARALLEL workers exited with
+    # rc=1 and produced ZERO trade JSONLs even though V8_RESULT was emitted.
     queue_task.cancel()
     try:
         await queue_task
-    except Exception:
+    except BaseException:
         pass
     v8_logger.info("[V8_FINAL_PNL] === BY CLOSE REASON (sorted by total PnL ascending) ===")
     for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):

@@ -49,22 +49,26 @@ def lr_slope_r2(y: np.ndarray) -> tuple[float, float]:
 
 
 def regime_metrics_for_npz(npz_path: Path, tfs: list[str], t_start: float, t_end: float) -> dict:
-    """Per-TF LR slope + R² of close, mean bb_pct_b, stdev of returns. Filtered to [t_start, t_end]."""
+    """Per-TF LR slope + R² of close, mean bb_pct_b, stdev of returns. Filtered to [t_start, t_end].
+    NPZ has a single shared `timestamps` array (base TF); HTF arrays are aligned to it."""
     try:
         z = np.load(npz_path, allow_pickle=True)
     except Exception as e:
         return {"error": str(e)}
+    if "timestamps" not in z.files:
+        return {"error": "no timestamps key"}
+    ts_all = np.asarray(z["timestamps"], dtype=np.float64)
     out = {}
     for tf in tfs:
         try:
-            ts_key = f"timestamp_{tf}"
             close_key = f"close_{tf}"
             bb_key = f"bb_pct_b_{tf}"
-            if ts_key not in z.files or close_key not in z.files:
+            if close_key not in z.files:
                 out[tf] = {"missing": True}
                 continue
-            ts = np.asarray(z[ts_key], dtype=np.float64)
             close = np.asarray(z[close_key], dtype=np.float64)
+            n = min(len(ts_all), len(close))
+            ts = ts_all[:n]; close = close[:n]
             mask = (ts >= t_start) & (ts <= t_end) & (close > 0) & np.isfinite(close)
             if mask.sum() < 10:
                 out[tf] = {"n_bars": int(mask.sum()), "insufficient": True}
