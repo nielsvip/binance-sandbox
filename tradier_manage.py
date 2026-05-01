@@ -238,10 +238,37 @@ def _reconnect_20260414_sync_aliases():
 _reconnect_20260414_sync_aliases()
 
 
+_tradier_per_sym_cfgs: dict = {}
+_tradier_per_sym_cfgs_mtime: float = 0.0
+_tradier_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trb" / "active_config.json"
+
+
+def _load_tradier_per_sym_cfgs(path: Path) -> dict:
+    global _tradier_per_sym_cfgs, _tradier_per_sym_cfgs_mtime
+    try:
+        mtime = path.stat().st_mtime
+        if mtime != _tradier_per_sym_cfgs_mtime:
+            with path.open() as _f:
+                raw = json.load(_f)
+            _tradier_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _tradier_per_sym_cfgs_mtime = mtime
+    except Exception as _exc:
+        pass
+    return _tradier_per_sym_cfgs
+
+
 def _cfg(param, default=None, account_key=None, symbol=None, side=None):
-    """Per-symbol config lookup: regime override → global default.
+    """Per-symbol config lookup: per-sym file overlay → regime override → global default.
+    Per-sym overlay loaded from data/hourly_reconfig/trb/active_config.json (mtime-cached).
     Use for all sweepable parameters so rolling_config_optimizer can tune per-symbol."""
     if account_key and symbol and side:
+        # 1. Per-symbol JSON overlay (from tradier_hourly_reconfig / per_sym_tradier_profiles)
+        if account_key in ("trb", "trc"):
+            cfgs = _load_tradier_per_sym_cfgs(_tradier_per_sym_cfgs_path)
+            entry = cfgs.get(f"{symbol}_{side}", {})
+            if param in entry:
+                return entry[param]
+        # 2. Regime override → global default (existing path)
         v = config.get_symbol_setting(account_key, f"{symbol}_{side}", param)
         if v is not None:
             return v

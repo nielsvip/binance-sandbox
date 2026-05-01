@@ -1,41 +1,15 @@
 #!/usr/bin/env python3
-"""per_sym_flz8_profiles — Phase 1+2+3 builder for the 8 flz BTC_DEDICATED symbols.
-
-User directive 2026-05-01: "work on a custom profile for each of the other flz
-symbols to be used in the 7D strategy".
+"""per_sym_flz8_profiles — comprehensive per-symbol BTC_DEDICATED optimizer.
 
 Pipeline:
-  Phase 1  — Per-sym BEST baseline.
-             Read existing canonical_trades JSONLs (the BEST run already done at
-             1777522364) and compute per-sym pool_sharpe, sym_sharpe, wr, avg_pnl,
-             gain_per_yr, gain_sym_yr, max_dd_pct, trades. Apply revised promote
-             criteria (pool>=0.3 AND trades>=5000 AND dd<=10% AND gain_per_yr>=100%
-             AND wr>=60%). Flag PROMOTE / DIAGNOSTIC / REJECT_* per sym.
-
-  Phase 2  — Per-sym mutation search for any sym that scores below the promote
-             criteria in Phase 1. Small focused grid over BTC_BREAKOUT_*,
-             BTC_MIN_HOLD_*, BTC_DIVERGENCE_*, hard-loss knobs. Picks the iter
-             that maximizes pool_sharpe * sqrt(trades/1000) SUBJECT TO
-             dd<=10% AND wr>=60% AND gain_per_yr>=100%. Per-sym CSVs written
-             to data/sweep_results/canonical_per_sym_flz_<SYM>.csv via
-             metrics_guard.write_sharpe_row.
-
-  Phase 3  — For each of the 8 syms, write the WINNING override JSON to
-             data/hourly_reconfig/_candidates/extra_btc_<SYM>_winner.json.
-             Naming pattern matches existing extras and avoids the imposter regex.
-
-  Phase 4  — Print final canonical 9-field report per sym + leaderboard sorted
-             by effective score. Recommend any sym to remove from
-             BTC_DEDICATED_SYMBOLS if it can't clear DD<=10%.
-
-Constraints honored:
-  - All Sharpe writes via metrics_guard.write_sharpe_row()
-  - Cockroach _pool_sharpe(n_syms_qualifying * 30, cap=5.0) preserved (use the
-    engine's internal ps for engine runs; recompute via metrics_guard for the
-    JSONL-derived metrics so we stay in canonical chokepoint form)
-  - No live trading processes touched
-  - Engine path: /Users/niels/Documents/binance/v8_quick_engine.py md5
-    5780330e1c4ae1fa0048104170715564
+  Phase 1 — Baseline metrics from existing flz8_BEST canonical trade JSONLs.
+  Phase 2 — Full parameter sweep per symbol. Winner = max(total_gain_pct) among
+             configs with pool_sharpe > 0 AND dd <= PROMOTE_DD_MAX AND trades >= 30.
+             total_gain_pct is the primary definer; pool_sharpe > 0 guards against
+             negative-expectancy configs sneaking through via lucky PnL.
+  Phase 3 — Write winner JSON per symbol to data/hourly_reconfig/_candidates/.
+             Picked up automatically by flz_hourly_reconfig.py next hourly cycle.
+  Phase 4 — Leaderboard sorted by total_gain_pct.
 """
 from __future__ import annotations
 
@@ -66,12 +40,13 @@ BASE_OVERRIDE_PATH = ROOT / "backtest_v8" / "btc_loop_results" / "override_btc_B
 SYMBOLS = ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC",
            "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT"]
 
-# Promote criteria (revised 2026-05-01).
 PROMOTE_POOL_MIN = 0.3
 PROMOTE_TRADES_MIN = 5000
 PROMOTE_DD_MAX = 10.0
 PROMOTE_GAIN_PER_YR_MIN = 100.0
 PROMOTE_WR_MIN = 60.0
+
+START_TS_2024_07_01 = 1719792000
 
 
 def load_base_override() -> Dict:
@@ -81,7 +56,6 @@ def load_base_override() -> Dict:
 
 
 def jsonl_pnls_and_meta(path: Path) -> Tuple[List[float], int, int, float, float]:
-    """Read a per-sym JSONL → (pnl_pct list, n_total, n_wins, first_ts, last_ts)."""
     rs: List[float] = []
     wins = 0
     first = None
@@ -105,12 +79,6 @@ def jsonl_pnls_and_meta(path: Path) -> Tuple[List[float], int, int, float, float
 
 
 def per_sym_metrics(rets: List[float], years: float, sym: str) -> Dict:
-    """Compute per-sym metrics in canonical 9-field form.
-
-    pool_sharpe is per-sym-pool over this single sym's trades; sym_sharpe in this
-    context = same value (single-sym group avg, capped). Equity-cumulative DD
-    computed from pnl_pct (each trade's pct return added to equity).
-    """
     n = len(rets)
     n_wins = sum(1 for r in rets if r > 0)
     wr = (100.0 * n_wins / n) if n else 0.0
@@ -118,12 +86,8 @@ def per_sym_metrics(rets: List[float], years: float, sym: str) -> Dict:
     avg_gain = (total_gain / n) if n else 0.0
     yrs = max(0.01, years)
     pool = mg.pool_sharpe(rets)
-    # sym_sharpe with single-sym group is just the capped per-sym pool
     sym_pool_capped = max(-mg.PER_SYM_SHARPE_CAP, min(mg.PER_SYM_SHARPE_CAP, pool))
-    # DD on cumulative equity (sum of pct returns across the trade order)
-    eq = 0.0
-    peak = 0.0
-    worst = 0.0
+    eq = 0.0; peak = 0.0; worst = 0.0
     for r in rets:
         eq += r
         if eq > peak:
@@ -131,24 +95,16 @@ def per_sym_metrics(rets: List[float], years: float, sym: str) -> Dict:
         elif peak - eq > worst:
             worst = peak - eq
     return {
-        "pool_sharpe": pool,
-        "sym_sharpe": sym_pool_capped,
-        "avg_gain_trade": avg_gain,
-        "gain_per_yr": total_gain / yrs,
-        "gain_sym_yr": total_gain / yrs,    # n_syms=1 here
-        "trades": n,
-        "n_syms": 1,
-        "years": yrs,
-        "total_gain_pct": total_gain,
-        "wr_pct": wr,
-        "max_dd_pct": worst,
-        "n_wins": n_wins,
-        "tag": f"per_sym_{sym}",
+        "pool_sharpe": pool, "sym_sharpe": sym_pool_capped,
+        "avg_gain_trade": avg_gain, "gain_per_yr": total_gain / yrs,
+        "gain_sym_yr": total_gain / yrs,
+        "trades": n, "n_syms": 1, "years": yrs,
+        "total_gain_pct": total_gain, "wr_pct": wr,
+        "max_dd_pct": worst, "n_wins": n_wins, "tag": f"per_sym_{sym}",
     }
 
 
 def verdict(m: Dict) -> str:
-    """Return PROMOTE / DIAGNOSTIC / REJECT_* per revised criteria."""
     if m["max_dd_pct"] > PROMOTE_DD_MAX:
         return "REJECT_DD"
     if m["wr_pct"] < PROMOTE_WR_MIN:
@@ -165,10 +121,9 @@ def verdict(m: Dict) -> str:
 def fmt_canonical(sym: str, m: Dict, years_label: float, v: str) -> str:
     return (
         f"{sym} | pool={m['pool_sharpe']:+.4f} | sym={m['sym_sharpe']:+.4f} | "
-        f"wr={m['wr_pct']:.1f}% | avg_gain_trade={m['avg_gain_trade']:+.4f}% | "
-        f"gain_per_yr={m['gain_per_yr']:+.1f}% | gain_sym_yr={m['gain_sym_yr']:+.1f}% | "
-        f"trades={m['trades']:,} | dd={m['max_dd_pct']:.2f}% | "
-        f"timespan=1sym×{years_label:.2f}yr×2024-07-01 | {v}"
+        f"wr={m['wr_pct']:.1f}% | avg={m['avg_gain_trade']:+.4f}% | "
+        f"gpy={m['gain_per_yr']:+.1f}% | pnl={m['total_gain_pct']:+.1f}% | "
+        f"trades={m['trades']:,} | dd={m['max_dd_pct']:.2f}% | {v}"
     )
 
 
@@ -176,17 +131,28 @@ def effective_score(m: Dict) -> float:
     return float(m["pool_sharpe"]) * math.sqrt(max(1, m["trades"]) / 1000.0)
 
 
+def pick_winner(results: List[Tuple[str, Dict, Dict]]) -> Tuple[str, Dict, Dict, str]:
+    """Pick winner by total_gain_pct (primary) among configs with pool_sharpe>0, dd<=cap, trades>=30."""
+    qualified = [(tag, ovr, m) for tag, ovr, m in results
+                 if m["pool_sharpe"] > 0
+                 and m["max_dd_pct"] <= PROMOTE_DD_MAX
+                 and m["trades"] >= 30]
+    if qualified:
+        best = max(qualified, key=lambda t: t[2]["total_gain_pct"])
+        return best[0], best[1], best[2], "QUALIFIED_BY_PNL"
+    # Fallback: any with trades >= 30, max effective_score
+    viable = [(tag, ovr, m) for tag, ovr, m in results if m["trades"] >= 30] or results
+    best = max(viable, key=lambda t: t[2]["effective_score"])
+    return best[0], best[1], best[2], "FALLBACK_EFF"
+
+
 # ---------- Phase 1 ----------------------------------------------------------
 
 def phase1_baseline() -> Dict[str, Dict]:
-    """Read existing flz8_BEST trade JSONLs and compute per-sym metrics.
-
-    Returns: {sym: metrics_dict}
-    """
     out: Dict[str, Dict] = {}
-    print("=" * 82)
+    print("=" * 88)
     print("PHASE 1 — per-sym BEST baseline (from existing flz8_BEST_1777522364 JSONLs)")
-    print("=" * 82)
+    print("=" * 88)
     for sym in SYMBOLS:
         jp = BEST_JSONL_DIR / f"flz8_BEST__{sym}.jsonl"
         if not jp.exists():
@@ -203,21 +169,139 @@ def phase1_baseline() -> Dict[str, Dict]:
     return out
 
 
-# ---------- Phase 2 ----------------------------------------------------------
+# ---------- Phase 2 — Comprehensive mutation grid ----------------------------
 
-START_TS_2024_07_01 = 1719792000  # 2024-07-01 00:00 UTC, matches BEST run window
+def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
+    """Comprehensive BTC_* sweep. Every major knob from config.py BTC_DEDICATED section.
+    Systematic single-param variations from baseline + key combos.
+    Winner selection uses total_gain_pct as primary criterion.
+    """
+    grid: List[Tuple[str, Dict]] = []
+
+    def add(tag: str, deltas: Dict) -> None:
+        o = dict(base)
+        o.update(deltas)
+        grid.append((tag, o))
+
+    # ── Baseline ──────────────────────────────────────────────────────────────
+    grid.append(("BEST", dict(base)))
+
+    # ── 1. Accel ramp strictness (PRIMARY entry gate) ─────────────────────────
+    for n in (2, 3, 4, 5):
+        add(f"accel_tfs_{n}", {"BTC_ACCEL_RAMP_MIN_TFS": n})
+    add("accel_off",  {"BTC_ACCEL_RAMP_ENABLED": False})
+    add("accel_nopos", {"BTC_ACCEL_RAMP_REQUIRE_POSITIVE": False})
+
+    # ── 2. Entry composition: RZ gate / accel requirement ─────────────────────
+    add("norz_noaccel",  {"BTC_ENTRY_PRIMARY_REQUIRE_RZ": False,
+                          "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP": False})
+    add("norz_accel",    {"BTC_ENTRY_PRIMARY_REQUIRE_RZ": False})
+    add("rz_noaccel",    {"BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP": False})
+    add("div_only_on",   {"BTC_ENTRY_DIV_ONLY_ENABLED": True})
+    add("div_only_min2", {"BTC_ENTRY_DIV_ONLY_ENABLED": True, "BTC_ENTRY_DIV_ONLY_MIN_INDS": 2})
+
+    # ── 3. Red zone proximity & boost mode ────────────────────────────────────
+    for prox in (0.5, 1.0, 1.5, 2.0, 3.0):
+        add(f"rz_prox_{prox:.1f}", {"BTC_RZ_PROXIMITY_PCT": prox})
+    add("rz_gate_mode",  {"BTC_RZ_AS_BOOST_ENABLED": False})
+    for soften in (0, 1, 2):
+        add(f"rz_soften_{soften}", {"BTC_RZ_SOFTEN_ACCEL_BY": soften})
+
+    # ── 4. Divergence ─────────────────────────────────────────────────────────
+    add("div_off",       {"BTC_DIVERGENCE_ENABLED": False})
+    add("div_noblk",     {"BTC_DIVERGENCE_BLOCK_AGAINST": False})
+    add("div_noexit",    {"BTC_DIVERGENCE_EXIT_AGAINST": False})
+    add("div_noblk_noexit", {"BTC_DIVERGENCE_BLOCK_AGAINST": False,
+                              "BTC_DIVERGENCE_EXIT_AGAINST": False})
+    for tf in ("1h", "4h", "D"):
+        add(f"div_min_{tf}", {"BTC_DIVERGENCE_MIN_TF": tf})
+    for lb in (2, 5, 10):
+        add(f"div_lb_{lb}", {"BTC_DIVERGENCE_LB_4H": lb, "BTC_DIVERGENCE_LB_D": lb})
+
+    # ── 5. Hold / cooldown ────────────────────────────────────────────────────
+    for mh, bk in ((1, 1), (3, 1), (5, 3), (8, 5), (12, 8)):
+        add(f"mh{mh}_bk{bk}", {"BTC_MIN_HOLD_BARS": mh, "BTC_BREAKOUT_MIN_HOLD_BARS": bk})
+    for cd, bcd in ((1, 1), (3, 1), (3, 3), (5, 3), (8, 5)):
+        add(f"cd{cd}_bcd{bcd}", {"BTC_COOLDOWN_BARS": cd, "BTC_BREAKOUT_COOLDOWN_BARS": bcd})
+
+    # ── 6. Technical exit strictness ──────────────────────────────────────────
+    for t in (1, 2, 3, 4):
+        add(f"texit_{t}", {"BTC_TECH_EXIT_WT_MIN_TFS": t})
+    add("texit_any_pnl_off", {"BTC_TECH_EXIT_AT_ANY_PNL": False})
+
+    # ── 7. Hard loss budgets ───────────────────────────────────────────────────
+    base_hl  = float(base.get("BTC_HARD_LOSS_USD_PER_TRADE", 10.0))
+    base_bhl = float(base.get("BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE", 5.0))
+    for f in (0.5, 0.7, 0.85, 1.0, 1.15, 1.3, 1.5):
+        add(f"hl_x{f:.2f}", {
+            "BTC_HARD_LOSS_USD_PER_TRADE": round(base_hl * f, 3),
+            "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE": round(base_bhl * f, 3),
+        })
+
+    # ── 8. Breakout entry mode ─────────────────────────────────────────────────
+    add("bk_off",        {"BTC_BREAKOUT_ENTRY_ENABLED": False})
+    for ac in (1, 2, 3):
+        add(f"bk_ac{ac}", {"BTC_BREAKOUT_ACCEL_MIN_TFS": ac})
+    for ht in (1, 2, 3):
+        add(f"bk_htf{ht}", {"BTC_BREAKOUT_HTF_MIN_ALIGNED": ht})
+    add("bk_nohtf",      {"BTC_BREAKOUT_REQUIRE_HTF_ALIGNED": False})
+    add("bk_nodiv",      {"BTC_BREAKOUT_BLOCK_OPPOSING_DIV": False})
+
+    # ── 9. Reentry / follow-through / reverse ─────────────────────────────────
+    add("guaren_off",    {"BTC_GUARANTEED_REENTRY_ENABLED": False})
+    add("guaren_norz",   {"BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE": False})
+    add("guaren_off_norz", {"BTC_GUARANTEED_REENTRY_ENABLED": False,
+                             "BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE": False})
+    for gap in (1, 3, 5, 10):
+        add(f"guaren_gap{gap}", {"BTC_GUARANTEED_REENTRY_MIN_GAP_BARS": gap})
+    add("rev_off",       {"BTC_REVERSE_ON_EXIT_ENABLED": False})
+    add("rev_nohtf",     {"BTC_REVERSE_REQUIRE_HTF_ALIGNED": False})
+    add("ft_off",        {"BTC_FOLLOW_THROUGH_REENTRY_ENABLED": False})
+    for move in (0.1, 0.3, 0.5, 0.8):
+        add(f"ft_move_{move:.1f}", {"BTC_FOLLOW_THROUGH_MIN_MOVE_PCT": move})
+
+    # ── 10. Same-sym hedge ────────────────────────────────────────────────────
+    add("hedge_on",      {"BTC_HEDGE_SAMESYM_ENABLED": True})
+    add("hedge_on_htf2", {"BTC_HEDGE_SAMESYM_ENABLED": True,
+                          "BTC_HEDGE_SAMESYM_REQUIRE_HTF_TFS_MIN": 2})
+
+    # ── 11. MIN_GAIN / augment threshold (WA = winner-augment; PYRAMID = pyramid) ──
+    for mg_pct in (1.0, 2.0, 3.0, 4.0):
+        add(f"mingain_{mg_pct:.0f}pct", {
+            "WA_MIN_GAIN_PCT": mg_pct, "PYRAMID_MIN_GAIN_PCT": mg_pct,
+        })
+
+    # ── 12. Key 2-param combos (accel × RZ, hold × exit, breakout × reentry) ──
+    add("ac3_norz",      {"BTC_ACCEL_RAMP_MIN_TFS": 3, "BTC_ENTRY_PRIMARY_REQUIRE_RZ": False})
+    add("ac2_norz",      {"BTC_ACCEL_RAMP_MIN_TFS": 2, "BTC_ENTRY_PRIMARY_REQUIRE_RZ": False})
+    add("mh5_texit2",    {"BTC_MIN_HOLD_BARS": 5, "BTC_TECH_EXIT_WT_MIN_TFS": 2})
+    add("mh8_texit1",    {"BTC_MIN_HOLD_BARS": 8, "BTC_TECH_EXIT_WT_MIN_TFS": 1})
+    add("bk_off_texit2", {"BTC_BREAKOUT_ENTRY_ENABLED": False, "BTC_TECH_EXIT_WT_MIN_TFS": 2})
+    add("guaren_norz_mg2", {"BTC_GUARANTEED_REENTRY_REQUIRE_RZ_BOUNCE": False,
+                             "WA_MIN_GAIN_PCT": 2.0, "PYRAMID_MIN_GAIN_PCT": 2.0})
+    add("tight_hl_mh5",  {"BTC_HARD_LOSS_USD_PER_TRADE": round(base_hl * 0.7, 3),
+                           "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE": round(base_bhl * 0.7, 3),
+                           "BTC_MIN_HOLD_BARS": 5})
+    add("loose_hl_mh3",  {"BTC_HARD_LOSS_USD_PER_TRADE": round(base_hl * 1.3, 3),
+                           "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE": round(base_bhl * 1.3, 3),
+                           "BTC_MIN_HOLD_BARS": 3})
+    add("mg2_es15",      {"WA_MIN_GAIN_PCT": 2.0, "PYRAMID_MIN_GAIN_PCT": 2.0,
+                          "ENTRY_SCORE_THRESHOLD": 15.0})
+    add("mg1_mh5_ac3",   {"WA_MIN_GAIN_PCT": 1.0, "PYRAMID_MIN_GAIN_PCT": 1.0,
+                          "BTC_MIN_HOLD_BARS": 5, "BTC_ACCEL_RAMP_MIN_TFS": 3})
+    add("mg3_texit2_norz", {"WA_MIN_GAIN_PCT": 3.0, "PYRAMID_MIN_GAIN_PCT": 3.0,
+                             "BTC_TECH_EXIT_WT_MIN_TFS": 2,
+                             "BTC_ENTRY_PRIMARY_REQUIRE_RZ": False})
+
+    return grid
+
+
+# ---------- Engine runner ─────────────────────────────────────────────────────
 
 def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
-                       npz: dict, start_ts: int = START_TS_2024_07_01) -> Tuple[List[float], int]:
-    """Run v8_quick_engine.simulate for one sym with overrides; return pnl list and trade count.
-
-    Filters output trades to exit_ts >= start_ts for parity with BEST's 2024-07-01 window.
-    """
+                       npz: dict, start_ts: int = START_TS_2024_07_01) -> List[float]:
     os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
     os.environ["V8_TRADES_RUN_ID"] = run_id
-    # BTC_DEDICATED single-sym path 'continue's past the rate-guard tick, so
-    # final_check() always fires SystemExit on n_accts=0/elapsed-only projection.
-    # Disable rate guard for these single-sym BTC runs.
     os.environ["V8_RATE_GUARD_DISABLED"] = "1"
     cfg = QuickConfig()
     cfg.MODE = "crypto"
@@ -228,18 +312,15 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
             setattr(cfg, k, v)
         except Exception:
             pass
-    # Single-sym BTC_DEDICATED path
     cfg.BTC_DEDICATED_SYMBOLS = (sym,)
     cfg.BTC_DEDICATED_ENABLED = True
     try:
         simulate({sym: npz}, cfg, capital=10000.0)
-    except SystemExit as e:
-        print(f"    [engine] SystemExit {e}")
-        return [], 0
+    except SystemExit:
+        pass
     except Exception as e:
         print(f"    [engine] EXC {e}")
-        return [], 0
-    # Read produced JSONL; filter by exit_ts >= start_ts.
+        return []
     jp = run_dir / f"{run_id}__{sym}.jsonl"
     rets: List[float] = []
     if jp.exists():
@@ -252,86 +333,20 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
                     rets.append(float(rec.get("pnl_pct", 0.0)))
                 except Exception:
                     pass
-    return rets, len(rets)
+    return rets
 
 
-def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
-    """Focused mutation grid (~22 variants) over the BTC_* knobs.
-
-    Curated to span: min-hold, breakout HTF gates, divergence sensitivity, hard-loss
-    budgets, cooldown, tech-exit TF count. All returned configs are full overlays
-    (BEST + delta).
-    """
-    grid: List[Tuple[str, Dict]] = []
-    grid.append(("BEST", dict(base)))
-
-    # 1. min-hold (4 variants)
-    for mh, bk in ((1, 1), (3, 1), (5, 3), (8, 5)):
-        o = dict(base); o["BTC_MIN_HOLD_BARS"] = mh; o["BTC_BREAKOUT_MIN_HOLD_BARS"] = bk
-        grid.append((f"mh{mh}_bk{bk}", o))
-
-    # 2. breakout HTF strictness (4 variants)
-    for ht, ac in ((0, 1), (1, 1), (1, 2), (2, 2)):
-        o = dict(base); o["BTC_BREAKOUT_HTF_MIN_ALIGNED"] = ht; o["BTC_BREAKOUT_ACCEL_MIN_TFS"] = ac
-        grid.append((f"ht{ht}_ac{ac}", o))
-
-    # 3. divergence (3 variants)
-    for tag, dB, dE, dTF in (("dvOFF", False, False, "4h"),
-                              ("dvBlk1h", True, False, "1h"),
-                              ("dvExit4h", True, True, "4h")):
-        o = dict(base); o["BTC_DIVERGENCE_BLOCK_AGAINST"] = dB
-        o["BTC_DIVERGENCE_EXIT_AGAINST"] = dE; o["BTC_DIVERGENCE_MIN_TF"] = dTF
-        grid.append((tag, o))
-
-    # 4. hard-loss budget (4 variants)
-    base_hl = float(base.get("BTC_HARD_LOSS_USD_PER_TRADE", 5.4))
-    base_bhl = float(base.get("BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE", 3.75))
-    for f in (0.7, 0.85, 1.15, 1.3):
-        o = dict(base)
-        o["BTC_HARD_LOSS_USD_PER_TRADE"] = round(base_hl * f, 3)
-        o["BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE"] = round(base_bhl * f, 3)
-        grid.append((f"hl_x{f:.2f}", o))
-
-    # 5. cooldown (3 variants)
-    for cd, bcd in ((1, 1), (3, 1), (3, 3)):
-        o = dict(base); o["BTC_COOLDOWN_BARS"] = cd; o["BTC_BREAKOUT_COOLDOWN_BARS"] = bcd
-        grid.append((f"cd{cd}_bcd{bcd}", o))
-
-    # 6. tech-exit min TFs (3 variants)
-    for t in (1, 2, 3):
-        o = dict(base); o["BTC_TECH_EXIT_WT_MIN_TFS"] = t
-        grid.append((f"texit_{t}", o))
-
-    # 7. reverse-on-exit / follow-through (3 variants)
-    for tag, ron, ft in (("ron0_ft1", False, True), ("ron1_ft0", True, False),
-                         ("ron0_ft0", False, False)):
-        o = dict(base); o["BTC_REVERSE_ON_EXIT_ENABLED"] = ron
-        o["BTC_FOLLOW_THROUGH_REENTRY_ENABLED"] = ft
-        grid.append((tag, o))
-
-    # 8. MIN_GAIN / augment threshold (4 variants) — maps to WA_MIN_GAIN_PCT in backtest
-    # Live equivalent: config.MIN_GAIN (= 3.0 default). Values 1–4% sweep whether
-    # tighter or looser winner-augment threshold improves the BTC_DEDICATED sym profile.
-    for mg_pct in (1.0, 2.0, 3.0, 4.0):
-        o = dict(base)
-        o["WA_MIN_GAIN_PCT"] = mg_pct
-        o["PYRAMID_MIN_GAIN_PCT"] = mg_pct
-        grid.append((f"mingain_{mg_pct:.0f}pct", o))
-
-    return grid
-
+# ---------- Phase 2 driver ───────────────────────────────────────────────────
 
 def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
                       sweep_csv: Path, full_years: float) -> Tuple[Dict, Dict]:
-    """Run mutation grid for one sym; return (winning_overrides, winning_metrics)."""
     print()
-    print("-" * 72)
-    print(f"PHASE 2 — mutation grid for {sym}")
-    print("-" * 72)
+    print("─" * 80)
+    print(f"PHASE 2 — {sym}")
+    print("─" * 80)
     grid = mutation_grid(base)
     print(f"  grid size: {len(grid)} variants")
 
-    # Load NPZ once for this sym
     npz_path = NPZ_DIR / f"{sym}.npz"
     z = np.load(str(npz_path))
     npz = {k: z[k] for k in z.files}
@@ -340,96 +355,82 @@ def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
     run_dir = run_root / sym
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    results: List[Tuple[str, Dict, Dict]] = []   # (tag, overrides, metrics)
+    results: List[Tuple[str, Dict, Dict]] = []
     t0 = time.time()
+    best_pnl = -1e9
     for i, (tag, ovr) in enumerate(grid, 1):
         run_id = f"{sym}__{tag}__{i:03d}"
-        rets, n = run_engine_for_sym(sym, ovr, run_dir, run_id, npz)
+        rets = run_engine_for_sym(sym, ovr, run_dir, run_id, npz)
         m = per_sym_metrics(rets, full_years, sym)
-        m["override_path"] = "BEST+mutation"
-        m["tag"] = f"per_sym_mut_{sym}_{tag}"
+        m["tag"] = f"mut_{sym}_{tag}"
         v = verdict(m)
         m["verdict"] = v
         m["effective_score"] = effective_score(m)
         results.append((tag, ovr, m))
-        # Write canonical row through the chokepoint
         try:
             mg.write_sharpe_row(sweep_csv, m, mode="crypto", append=True)
         except Exception as e:
-            print(f"    [csv-write] REFUSED {tag}: {e}")
-        if i <= 5 or i % 10 == 0:
-            print(f"    [{i:3d}/{len(grid)}] {tag:25s} pool={m['pool_sharpe']:+.4f} "
-                  f"trades={m['trades']:>6d} dd={m['max_dd_pct']:.2f}% "
-                  f"wr={m['wr_pct']:.1f}% eff={m['effective_score']:+.3f} {v}")
+            print(f"    [csv] REFUSED {tag}: {e}")
+        marker = ""
+        if m["pool_sharpe"] > 0 and m["max_dd_pct"] <= PROMOTE_DD_MAX and m["trades"] >= 30:
+            if m["total_gain_pct"] > best_pnl:
+                best_pnl = m["total_gain_pct"]
+                marker = " ← NEW BEST PNL"
+        if i <= 5 or i % 20 == 0 or marker:
+            print(f"    [{i:3d}/{len(grid)}] {tag:30s} pool={m['pool_sharpe']:+.4f} "
+                  f"pnl={m['total_gain_pct']:+8.1f}% tr={m['trades']:>6d} "
+                  f"dd={m['max_dd_pct']:.2f}% {v}{marker}")
 
-    print(f"  {sym} grid done in {time.time()-t0:.1f}s")
+    elapsed = time.time() - t0
+    print(f"  {sym} done in {elapsed:.1f}s ({elapsed/len(grid):.1f}s/variant)")
 
-    # Pick winner subject to constraints; if none qualify, pick highest effective score.
-    qualified = [(tag, ovr, m) for tag, ovr, m in results
-                 if m["max_dd_pct"] <= PROMOTE_DD_MAX
-                 and m["wr_pct"] >= PROMOTE_WR_MIN
-                 and m["gain_per_yr"] >= PROMOTE_GAIN_PER_YR_MIN
-                 and m["trades"] >= 30]
-    if qualified:
-        best = max(qualified, key=lambda t: t[2]["effective_score"])
-        bucket = "QUALIFIED"
-    else:
-        # Fallback: pick highest effective score among all results, plus flag
-        viable = [(tag, ovr, m) for tag, ovr, m in results if m["trades"] >= 30]
-        if not viable:
-            viable = results
-        best = max(viable, key=lambda t: t[2]["effective_score"])
-        bucket = "FALLBACK"
-    tag, ovr, m = best
-    print(f"  WINNER ({bucket}): tag={tag} pool={m['pool_sharpe']:+.4f} "
-          f"trades={m['trades']:,} dd={m['max_dd_pct']:.2f}% wr={m['wr_pct']:.1f}% "
-          f"gain_per_yr={m['gain_per_yr']:+.1f}% eff={m['effective_score']:+.3f}")
+    tag, ovr, m, bucket = pick_winner(results)
+    print(f"  WINNER ({bucket}): {tag} | pool={m['pool_sharpe']:+.4f} | "
+          f"pnl={m['total_gain_pct']:+.1f}% | trades={m['trades']:,} | "
+          f"dd={m['max_dd_pct']:.2f}% | wr={m['wr_pct']:.1f}% | gpy={m['gain_per_yr']:+.1f}%")
     return ovr, m
 
 
-# ---------- Phase 3 ----------------------------------------------------------
+# ---------- Phase 3 ──────────────────────────────────────────────────────────
 
 def write_winner_json(sym: str, overrides: Dict, m: Dict) -> Path:
     CAND_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = CAND_OUT_DIR / f"extra_btc_{sym}_winner.json"
     payload = dict(overrides)
     payload["_meta"] = (
-        f"per_sym winner for {sym} 2026-05-01 | pool={m['pool_sharpe']:+.4f} "
-        f"trades={m['trades']} dd={m['max_dd_pct']:.2f}% wr={m['wr_pct']:.1f}% "
-        f"verdict={m.get('verdict')} effective_score={m.get('effective_score', 0):+.3f}"
+        f"per_sym winner {sym} | "
+        f"pool={m['pool_sharpe']:+.4f} trades={m['trades']} "
+        f"dd={m['max_dd_pct']:.2f}% wr={m['wr_pct']:.1f}% "
+        f"pnl={m['total_gain_pct']:+.1f}% gpy={m['gain_per_yr']:+.1f}%/yr "
+        f"verdict={m.get('verdict')} eff={m.get('effective_score', 0):+.3f}"
     )
     with out_path.open("w") as f:
         json.dump(payload, f, indent=2, default=str)
     return out_path
 
 
-# ---------- Driver -----------------------------------------------------------
+# ---------- Driver ───────────────────────────────────────────────────────────
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", default="123",
-                    help="any combination of 1/2/3 (default 123)")
-    ap.add_argument("--syms", default="",
-                    help="comma-separated subset (default all 8)")
-    ap.add_argument("--mutate-all", action="store_true",
-                    help="run Phase 2 for ALL syms even if Phase 1 PROMOTEs")
+    ap.add_argument("--phase", default="1234")
+    ap.add_argument("--syms", default="")
+    ap.add_argument("--mutate-all", action="store_true")
     args = ap.parse_args()
 
     syms = [s for s in (args.syms.split(",") if args.syms else SYMBOLS) if s]
     base = load_base_override()
-    sweep_csv = SWEEP_DIR / "canonical_per_sym_flz_20260501.csv"
+    ts = int(time.time())
+    sweep_csv = SWEEP_DIR / f"canonical_per_sym_flz_{ts}.csv"
     SWEEP_DIR.mkdir(parents=True, exist_ok=True)
-    run_root = SWEEP_DIR / "per_sym_flz_20260501" / "engine_runs"
+    run_root = SWEEP_DIR / f"per_sym_flz_{ts}" / "engine_runs"
     run_root.mkdir(parents=True, exist_ok=True)
 
     phase1: Dict[str, Dict] = {}
     if "1" in args.phase:
         phase1 = phase1_baseline()
-        # Write phase1 rows through chokepoint
         for sym, m in phase1.items():
-            row = dict(m)
-            row["override_path"] = str(BASE_OVERRIDE_PATH)
-            row["tag"] = f"per_sym_phase1_{sym}"
+            row = dict(m); row["tag"] = f"phase1_{sym}"
             try:
                 mg.write_sharpe_row(sweep_csv, row, mode="crypto", append=True)
             except Exception as e:
@@ -439,95 +440,73 @@ def main() -> int:
     if "2" in args.phase:
         for sym in syms:
             p1 = phase1.get(sym, {})
-            p1_v = p1.get("verdict", "")
-            # Default: mutate any sym not flagged PROMOTE.
-            need_mutation = (p1_v != "PROMOTE") or args.mutate_all
             full_years = float(p1.get("years", 6.23))
-            if not need_mutation:
-                # Promote BEST as winner directly
+            if p1.get("verdict") == "PROMOTE" and not args.mutate_all:
                 winners[sym] = (dict(base), p1)
-                print(f"\n  {sym}: Phase 1 PROMOTE — using BEST as winner (no mutation)")
+                print(f"\n  {sym}: Phase 1 PROMOTE — using BEST, no mutation (use --mutate-all to force)")
                 continue
             try:
                 ovr, m = phase2_mutate_sym(sym, base, run_root, sweep_csv, full_years)
                 winners[sym] = (ovr, m)
             except Exception as e:
                 print(f"  PHASE2 EXC {sym}: {e}")
-                continue
             gc.collect()
 
     paths_written: List[Path] = []
     if "3" in args.phase:
         print()
-        print("=" * 82)
-        print("PHASE 3 — write winner JSONs to data/hourly_reconfig/_candidates/")
-        print("=" * 82)
+        print("=" * 88)
+        print("PHASE 3 — write winner JSONs → data/hourly_reconfig/_candidates/")
+        print("=" * 88)
         for sym in syms:
             if sym not in winners:
-                # Fallback: use BEST + Phase 1 metrics
                 if sym in phase1:
                     winners[sym] = (dict(base), phase1[sym])
                 else:
-                    print(f"  {sym}: no winner data — skipping write")
+                    print(f"  {sym}: no data — skipping")
                     continue
             ovr, m = winners[sym]
             p = write_winner_json(sym, ovr, m)
             paths_written.append(p)
-            print(f"  wrote {p.name}")
+            print(f"  {p.name}")
 
-    # ---------- Phase 4: report --------------------------------------------
-    print()
-    print("=" * 82)
-    print("PHASE 4 — final canonical report")
-    print("=" * 82)
-    table: List[Tuple[str, str, Dict]] = []
-    for sym in syms:
-        rows = []
-        if sym in phase1:
-            rows.append(("Phase1_BEST", phase1[sym]))
-        if sym in winners and "2" in args.phase:
-            ovr, m = winners[sym]
-            if m.get("tag", "").startswith("per_sym_mut_"):
-                rows.append(("Phase2_winner", m))
-        for label, m in rows:
-            yrs_l = float(m.get("years", 6.23))
+    if "4" in args.phase:
+        print()
+        print("=" * 88)
+        print("PHASE 4 — leaderboard (sorted by total_gain_pct — primary winner criterion)")
+        print("=" * 88)
+        table: List[Tuple[str, str, Dict]] = []
+        for sym in syms:
+            if sym in winners:
+                ovr, m = winners[sym]
+            elif sym in phase1:
+                m = phase1[sym]
+            else:
+                continue
             v = m.get("verdict", verdict(m))
-            print(f"  [{label:14s}] {fmt_canonical(sym, m, yrs_l, v)}")
-        # Use winner if exists else phase1 for leaderboard
-        if sym in winners:
-            ovr, m = winners[sym]
-        elif sym in phase1:
-            m = phase1[sym]
+            table.append((sym, v, m))
+        table.sort(key=lambda t: t[2].get("total_gain_pct", 0), reverse=True)
+        for i, (sym, v, m) in enumerate(table, 1):
+            eff = effective_score(m)
+            print(f"  {i}. {sym:12s} pnl={m.get('total_gain_pct',0):+9.1f}% "
+                  f"pool={m['pool_sharpe']:+.4f} gpy={m['gain_per_yr']:+.1f}%/yr "
+                  f"tr={m['trades']:>7,} dd={m['max_dd_pct']:5.2f}% "
+                  f"wr={m['wr_pct']:.1f}% eff={eff:+.3f} [{v}]")
+
+        rejects = [(sym, m) for sym, v, m in table if m["max_dd_pct"] > PROMOTE_DD_MAX]
+        if rejects:
+            print()
+            print("REJECT_DD (dd > 10%) — consider removing from BTC_DEDICATED_SYMBOLS:")
+            for sym, m in rejects:
+                print(f"  {sym}: dd={m['max_dd_pct']:.2f}%")
         else:
-            continue
-        table.append((sym, m.get("verdict", verdict(m)), m))
-
-    # Leaderboard sorted by effective score
-    print()
-    print("LEADERBOARD (sorted by effective_score = pool_sharpe * sqrt(trades/1000))")
-    print("-" * 82)
-    table.sort(key=lambda t: effective_score(t[2]), reverse=True)
-    for i, (sym, v, m) in enumerate(table, 1):
-        eff = effective_score(m)
-        print(f"  {i}. {sym:11s} eff={eff:+.3f} pool={m['pool_sharpe']:+.4f} "
-              f"trades={m['trades']:>7,} dd={m['max_dd_pct']:5.2f}% "
-              f"wr={m['wr_pct']:5.1f}% gpy={m['gain_per_yr']:+8.1f}% [{v}]")
-
-    # Recommend removals
-    print()
-    rejects = [(sym, m) for sym, v, m in table if m["max_dd_pct"] > PROMOTE_DD_MAX]
-    if rejects:
-        print("REJECT_DD recommendations (DD > 10%):")
-        for sym, m in rejects:
-            print(f"  - REMOVE {sym} from BTC_DEDICATED_SYMBOLS (dd={m['max_dd_pct']:.2f}%)")
-    else:
-        print("No syms exceed DD cap — keep all 8 in BTC_DEDICATED_SYMBOLS.")
+            print("\nAll symbols within DD cap.")
 
     print()
-    print("Files written:")
+    print(f"CSV: {sweep_csv}")
+    print("Candidates written:")
     for p in paths_written:
         print(f"  {p}")
-    print(f"  CSV: {sweep_csv}")
     return 0
 
 
