@@ -9186,25 +9186,34 @@ class PositionService:
             if s in all_winners: add_key('fin', s, 'LONG')
             if s in all_losers: add_key('fin', s, 'SHORT')
         for s in flz:
-            is_winner = s in all_winners
-            is_loser = s in all_losers
-            if is_winner: add_key('flz', s, 'LONG')
-            elif is_loser: add_key('flz', s, 'SHORT')
-            else:
+            # Use w20/l20 directly (not combined all_winners/all_losers) — flz classification
+            # is based on 20-period rankings only. Checks are independent (symbol can be in
+            # both, in which case both LONG and SHORT are tradeable).
+            _flz_winner = s in w20
+            _flz_loser = s in l20
+            if _flz_winner: add_key('flz', s, 'LONG')
+            if _flz_loser: add_key('flz', s, 'SHORT')
+            if not _flz_winner and not _flz_loser:
                 add_key('flz', s, 'LONG')
                 add_key('flz', s, 'SHORT')
-        # Persistence: ONLY for ang/inf accounts — keeps symbols tradeable for config_persist_hours
-        # Other accounts (men/fin/flz) use symbols JSON files as sole source of truth — no persistence
-        _persist_accounts = {'ang', 'inf'}
-        if config_persist_hours > 0.1:
+        # Per-account persistence: ang=300 days, inf=4h, flz/men/fin=24h
+        # inf extends for minutes-hours only; ang is long-term; all others default 24h.
+        _persist_map = {
+            'ang': float(getattr(self.config, 'PERSIST', 7200.0)) * 3600.0,
+            'inf': float(getattr(self.config, 'PERSIST_INF', 4.0)) * 3600.0,
+            'flz': float(getattr(self.config, 'PERSIST_FLZ', 24.0)) * 3600.0,
+            'men': float(getattr(self.config, 'PERSIST_MEN', 24.0)) * 3600.0,
+            'fin': float(getattr(self.config, 'PERSIST_FIN', 24.0)) * 3600.0,
+        }
+        if any(v > 0.1 for v in _persist_map.values()):
             for old_k, old_ts in old_persistence.items():
                 if old_k in fresh_generated_persistence: continue
                 if old_k in global_known_hedges_history: continue
                 _old_acc = old_k.split(':')[0] if ':' in old_k else ''
-                if _old_acc not in _persist_accounts: continue
-                age = now_ts - old_ts
-                if age < retention_seconds:
-                    fresh_generated_persistence[old_k] = old_ts
+                _retain_s = _persist_map.get(_old_acc, 0.0)
+                if _retain_s > 0.1:
+                    if now_ts - old_ts < _retain_s:
+                        fresh_generated_persistence[old_k] = old_ts
         final_local_persistence = {} 
         final_keys_set = set()
         stats = {acc: {'cfg': 0, 'pst': 0, 'pos': 0} for acc in managed_accounts}

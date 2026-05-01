@@ -1888,8 +1888,11 @@ class Config:
     REDUCTION_COOLDOWN_SECONDS = 90.0
     AUGMENTATION_COOLDOWN_SECONDS = 540.0
 
-    PERSIST =7200.0  # hours to stay in tradeable_keys after deletion (ang + general)
-    PERSIST_INF: float = 24.0  # hours: grace period for inf keys in HEDGE_PAIR_CLEANUP after symbol leaves rankings (~1 day)
+    PERSIST =7200.0  # hours to stay in tradeable_keys after deletion (ang — long-term, ~300 days)
+    PERSIST_INF: float = 4.0   # hours: inf extends for minutes-hours only (not days)
+    PERSIST_FLZ: float = 24.0  # hours: retention for flz keys after falling out of winners_20/losers_20
+    PERSIST_MEN: float = 24.0  # hours: retention for men keys after falling out of classification
+    PERSIST_FIN: float = 24.0  # hours: retention for fin keys after falling out of classification
 
     # STOP_ORDERS_FULL_UPDATE:         int =   40  #STOP ORDERS FULL UPDATE
     # THREE_MIN_STRATEGY: Dict[str, Any] = field(default_factory=lambda: {

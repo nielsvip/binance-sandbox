@@ -7,9 +7,13 @@ then plots cumulative PnL + per-trade bars.
 
 Usage:
   python3 per_sym_charts.py --account trb --out plots/
+  python3 per_sym_charts.py --account trb --days 60 --out plots/   # last 60 days of trades
   python3 per_sym_charts.py --account flz --out plots/
   python3 per_sym_charts.py --account trb --sym ADP,CLF,MU --out plots/
   python3 per_sym_charts.py --account trb --all --out plots/   # include FALLBACK too
+
+--days N: show only the most recent N calendar days of trades (0 = all, default 0).
+  Adds _60d / _Nd suffix to output filenames.
 
 Runs on S2 (tradier NPZs) or S1 (flz NPZs). Copy charts back to MacBook after.
 """
@@ -160,10 +164,18 @@ def run_engine(sym: str, overrides: Dict, mode: str, run_dir: Path, run_id: str,
 
 
 def make_chart(sym: str, side: str, trades: List[Tuple], meta: Dict,
-               overrides: Dict, out_path: Path) -> None:
+               overrides: Dict, out_path: Path, days_window: int = 0) -> None:
     if not trades:
         print(f"  {sym}: no trades to chart")
         return
+
+    # Optional: filter to last N calendar days of trades
+    if days_window > 0:
+        cutoff_ts = int(__import__("time").time()) - days_window * 86400
+        trades = [t for t in trades if t[2] >= cutoff_ts]
+        if not trades:
+            print(f"  {sym}: no trades in last {days_window}d window")
+            return
 
     pnl = [t[0] for t in trades]
     exit_ts = [t[2] for t in trades]
@@ -190,7 +202,7 @@ def make_chart(sym: str, side: str, trades: List[Tuple], meta: Dict,
     if not ovr_str:
         ovr_str = "baseline"
 
-    fig = plt.figure(figsize=(14, 8), facecolor="#0d1117")
+    fig = plt.figure(figsize=(16, 9), facecolor="#0d1117")
     fig.patch.set_facecolor("#0d1117")
     gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1], hspace=0.08, figure=fig)
 
@@ -243,12 +255,13 @@ def make_chart(sym: str, side: str, trades: List[Tuple], meta: Dict,
                labelcolor="#c9d1d9")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out_path, dpi=130, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.savefig(out_path, dpi=200, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     print(f"  → {out_path.name}")
 
 
-def process_winner(w: Dict, mode: str, run_root: Path, out_dir: Path) -> Optional[Path]:
+def process_winner(w: Dict, mode: str, run_root: Path, out_dir: Path,
+                   days_window: int = 0) -> Optional[Path]:
     sym = w["sym"]
     side = w["side"]
     ovr = w["overrides"]
@@ -269,11 +282,13 @@ def process_winner(w: Dict, mode: str, run_root: Path, out_dir: Path) -> Optiona
         print(f"  {sym}: engine produced 0 trades")
         return None
 
-    out_path = out_dir / f"trb_{sym}_{side.replace('_', '').lower()}.png"
+    suffix = f"_{days_window}d" if days_window > 0 else ""
+    acct_prefix = "trb" if mode == "tradier" else "flz"
+    out_path = out_dir / f"{acct_prefix}_{sym}_{side.replace('_', '').lower()}{suffix}.png"
     make_chart(sym, side, trades, w, {k: v for k, v in ovr.items()
                                       if k not in {"LONG_ENABLED","SHORT_ENABLED",
                                                    "WT_DC_LONG_ENABLED","WT_DC_SHORT_ENABLED"}},
-               out_path)
+               out_path, days_window=days_window)
     return out_path
 
 
@@ -285,6 +300,8 @@ def main() -> int:
                     help="include FALLBACK winners too (default: QUALIFIED only)")
     ap.add_argument("--out", default="plots", help="output directory")
     ap.add_argument("--years", type=float, default=2.0)
+    ap.add_argument("--days", type=int, default=0,
+                    help="show only last N calendar days of trades (0=all); adds _Nd filename suffix")
     args = ap.parse_args()
 
     if not HAS_MPL:
@@ -302,10 +319,13 @@ def main() -> int:
         syms = {s.strip() for s in args.sym.split(",") if s.strip()}
         winners = [w for w in winners if w["sym"] in syms]
 
+    days_window = max(0, args.days)
     print(f"\nper_sym_charts — {cfg['label']}")
     print(f"  {len(winners)} winners to chart ({'qualified' if qualified_only else 'all'})")
     print(f"  NPZ dir: {NPZ_DIR}")
     print(f"  Output: {out_dir}")
+    if days_window > 0:
+        print(f"  Window: last {days_window} days of trades")
     print()
 
     run_root = Path("/tmp") / f"chart_runs_{int(time.time())}"
@@ -314,7 +334,7 @@ def main() -> int:
     generated = []
     for w in winners:
         try:
-            out_path = process_winner(w, cfg["mode"], run_root, out_dir)
+            out_path = process_winner(w, cfg["mode"], run_root, out_dir, days_window=days_window)
             if out_path:
                 generated.append(out_path)
         except Exception as e:
