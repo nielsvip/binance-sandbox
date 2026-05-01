@@ -126,6 +126,17 @@ fi
 
 RESTART_TRACKER="$LOGDIR/.${SCRIPT_BASE}${ACCT_SUFFIX}_restarts"
 
+# Read macOS pages-free as KB. On non-Darwin returns a large value (always healthy).
+# 2026-05-01: used by SIGKILL_BACKOFF to decide whether the host has actually recovered
+# enough memory to respawn an ez_manage worker without triggering another jetsam kill.
+mac_pages_free_kb() {
+    if [[ "$(uname)" != "Darwin" ]]; then echo 999999; return; fi
+    local pages
+    pages=$(vm_stat 2>/dev/null | awk '/Pages free/ {gsub(/\./, "", $3); print $3; exit}')
+    [[ -z "$pages" || ! "$pages" =~ ^[0-9]+$ ]] && { echo 999999; return; }
+    echo $((pages * 16))
+}
+
 # Logging function (with 5MB rotation)
 WD_LOG_MAX=$((5 * 1024 * 1024))
 log() {
@@ -316,6 +327,26 @@ main() {
             if [[ "$_backoff" -gt 600 ]]; then _backoff=600; fi
             log "[SIGKILL_BACKOFF] consecutive 137 #$consecutive_sigkill — sleeping ${_backoff}s before next launch (system memory pressure)"
             sleep "$_backoff"
+            # 2026-05-01: pressure-aware extension. Fixed sleep doesn't guarantee memory
+            # is actually free. A fresh ez_manage spawn peaks ~600MB during state-load —
+            # if pages_free is still low, that allocation re-trips jetsam and the kill loop
+            # continues. Poll vm_stat until pages_free ≥ 200MB or patience window elapses.
+            local _wait_start=$(date +%s)
+            local _patience=600
+            while true; do
+                local _free_kb=$(mac_pages_free_kb)
+                if [[ "$_free_kb" -ge 204800 ]]; then
+                    log "[SIGKILL_BACKOFF] pages_free=${_free_kb}KB ≥ 200MB — pressure recovered, launching"
+                    break
+                fi
+                local _waited=$(( $(date +%s) - _wait_start ))
+                if [[ "$_waited" -ge "$_patience" ]]; then
+                    log "[SIGKILL_BACKOFF] pressure still tight (free=${_free_kb}KB) but patience exhausted (${_patience}s) — launching anyway"
+                    break
+                fi
+                log "[SIGKILL_BACKOFF] pages_free=${_free_kb}KB < 200MB — host still tight, waiting 60s more (${_waited}s/${_patience}s)"
+                sleep 60
+            done
         else
             if [[ "$consecutive_sigkill" -gt 0 ]]; then
                 log "[SIGKILL_BACKOFF] resetting counter (last exit=$_last_exit, was $consecutive_sigkill)"

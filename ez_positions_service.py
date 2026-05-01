@@ -46,6 +46,52 @@ from binance.exceptions import BinanceAPIException
 from config import Config
 from utils import get_current_environment
 
+# 2026-05-01: Global Binance IP-ban tracker. The watchdog used to reset the user-data
+# WS every 60s during a -1003 ban, which spiraled (each reset POSTs listenKey → another
+# -1003 → IP ban window EXTENDED). On Mac IP rotation is disabled (single home IP), so
+# the only sane response to -1003 is to STOP all REST traffic until the ban expires.
+_BAN_RE = re.compile(r"banned until (\d+)")
+_GLOBAL_BAN_UNTIL_MS = 0
+_GLOBAL_BAN_LOCK = threading.Lock()
+_GLOBAL_BAN_LAST_LOG_TS = 0.0
+
+
+def _record_ip_ban_from_exc(exc) -> int:
+    """If exc text matches Binance -1003 'banned until <ms>', update tracker. Returns ms."""
+    global _GLOBAL_BAN_UNTIL_MS
+    try:
+        m = _BAN_RE.search(str(exc))
+        if not m:
+            return 0
+        ms = int(m.group(1))
+    except Exception:
+        return 0
+    with _GLOBAL_BAN_LOCK:
+        if ms > _GLOBAL_BAN_UNTIL_MS:
+            _GLOBAL_BAN_UNTIL_MS = ms
+    return ms
+
+
+def _ban_remaining_seconds() -> float:
+    """Seconds until the global Binance IP ban clears (0 if not banned)."""
+    with _GLOBAL_BAN_LOCK:
+        until_ms = _GLOBAL_BAN_UNTIL_MS
+    if until_ms <= 0:
+        return 0.0
+    rem = (until_ms / 1000.0) - time.time()
+    return max(0.0, rem)
+
+
+def _log_ban_skip_throttled(logger_obj, tag: str, action: str) -> None:
+    """Log 'skipped <action> during ban' but throttle to once per 30s across whole process."""
+    global _GLOBAL_BAN_LAST_LOG_TS
+    now = time.time()
+    if now - _GLOBAL_BAN_LAST_LOG_TS < 30.0:
+        return
+    _GLOBAL_BAN_LAST_LOG_TS = now
+    rem = _ban_remaining_seconds()
+    logger_obj.warning(f"[{tag}] 🚫 IP banned by Binance for ~{rem:.0f}s — {action}")
+
 
 class PositionsServiceClient:
     def __init__(self, host: str = "127.0.0.1", port: int = 8765, *, timeout: float = 5.0, connect_timeout: Optional[float] = None, long_timeout: Optional[float] = None, endpoints: Optional[Sequence[Union[str, Tuple[str, int]]]] = None, logger: Optional[logging.Logger] = None) -> None:
@@ -2317,11 +2363,18 @@ class WebSocketManager:
                         await asyncio.sleep(backoff)
                         backoff = min(backoff * 1.5, 60)
                         continue
+                ban_rem = _ban_remaining_seconds()
+                if ban_rem > 0:
+                    sleep_for = min(ban_rem + 2, 60.0)
+                    _log_ban_skip_throttled(logger, account_key, f"deferring initial listen-key fetch ({sleep_for:.0f}s)")
+                    await asyncio.sleep(sleep_for)
+                    continue
                 try :
                     listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
                     self.listen_keys[account_key] = listen_key
-                    backoff = 2 
+                    backoff = 2
                 except Exception as key_err:
+                    _record_ip_ban_from_exc(key_err)
                     logger.warning(f"[{account_key}] Listen key fetch failed: {key_err}. Retrying in {backoff}s...")
                     if "client" in str(key_err).lower() or "object" in str(key_err).lower():
                         self.client = None
@@ -2356,13 +2409,17 @@ class WebSocketManager:
             try :
                 if self.session.closed:
                     self.session = await self._init_session()
-                try :
-                    new_listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
-                    self.listen_keys[account_key] = new_listen_key
-                    url = f"wss://fstream.binance.com/ws/{new_listen_key}"
-                    logger.info(f"[{account_key}] 🔑 Fresh listen key obtained for reconnect")
-                except Exception as lk_err:
-                    logger.warning(f"[{account_key}] Failed to get fresh listen key: {lk_err} - using existing URL")
+                if _ban_remaining_seconds() > 0:
+                    _log_ban_skip_throttled(logger, account_key, "skipping fresh listen-key on reconnect, reusing URL")
+                else:
+                    try :
+                        new_listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
+                        self.listen_keys[account_key] = new_listen_key
+                        url = f"wss://fstream.binance.com/ws/{new_listen_key}"
+                        logger.info(f"[{account_key}] 🔑 Fresh listen key obtained for reconnect")
+                    except Exception as lk_err:
+                        _record_ip_ban_from_exc(lk_err)
+                        logger.warning(f"[{account_key}] Failed to get fresh listen key: {lk_err} - using existing URL")
                 async with self.session.ws_connect(url, heartbeat=15, timeout=30) as ws:
                     logger.info(f"[{account_key}] ✅ WebSocket connected!")
                     reconnect_delay = 2
@@ -2395,16 +2452,30 @@ class WebSocketManager:
                                 continue
                             lk = self.listen_keys.get(account_key)
                             probe_ok = False
+                            ban_rem = _ban_remaining_seconds()
+                            if ban_rem > 0:
+                                # IP-banned: probing & resetting just adds load to the same banned bucket.
+                                # The existing WS may still be alive (Binance keeps it open even when
+                                # listenKey HTTP is rate-limited). Sit tight until the ban clears.
+                                _log_ban_skip_throttled(logger, account_key, f"deferring WS reset ({ban_rem:.0f}s remaining, silence={silence:.0f}s)")
+                                lmt[0] = time.time()
+                                continue
                             if lk and self.client:
                                 try:
                                     await asyncio.wait_for(asyncio.to_thread(self.client.futures_stream_keepalive, lk), timeout=8.0)
                                     probe_ok = True
                                 except Exception as probe_err:
+                                    _record_ip_ban_from_exc(probe_err)
                                     logger.warning(f"[{account_key}] Listen-key probe failed during {silence:.0f}s WS silence: {probe_err}")
                             if probe_ok and silence < 600:
                                 idle_probe_ok_count += 1
                                 if idle_probe_ok_count == 1 or idle_probe_ok_count % 10 == 0:
                                     logger.info(f"[{account_key}] WS silent {silence:.0f}s but listen key valid — idle stream (probes_ok={idle_probe_ok_count})")
+                                lmt[0] = time.time()
+                                continue
+                            if _ban_remaining_seconds() > 0:
+                                # Probe just hit a fresh -1003 — defer reset.
+                                _log_ban_skip_throttled(logger, account_key, "probe hit -1003, deferring WS reset")
                                 lmt[0] = time.time()
                                 continue
                             logger.warning(f"[{account_key}] WS frozen (no msg > {silence:.0f}s, probe={'ok' if probe_ok else 'FAIL'}). Resetting with fresh listen key.")
@@ -2615,6 +2686,11 @@ class WebSocketManager:
         while self._running:
             try :
                 await asyncio.sleep(25 * 60)
+                ban_rem = _ban_remaining_seconds()
+                if ban_rem > 0:
+                    _log_ban_skip_throttled(logger, account_key, f"deferring listen-key keepalive ({ban_rem:.0f}s)")
+                    await asyncio.sleep(min(ban_rem + 5, 600))
+                    continue
                 if self.client and self.listen_keys.get(account_key):
                     await asyncio.to_thread(self.client.futures_stream_keepalive, self.listen_keys[account_key])
                     logger.info(f"[{account_key}] Listen key extended successfully")
@@ -2622,6 +2698,7 @@ class WebSocketManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                _record_ip_ban_from_exc(e)
                 consecutive_failures += 1
                 logger.warning(f"[{account_key}] Keepalive failed (attempt {consecutive_failures}): {e}")
                 if consecutive_failures >= 3:
@@ -6076,6 +6153,11 @@ class PositionService:
                 logger.debug(f"[_rest_poll_loop][{account_key}] Watchdog signaled external fetcher working - disabling internal fetcher")
                 self._enable_auto_fetch = False
             if config.VERBOSE_FETCH_LOGGING or loop_count % 5 == 0: logger.info(f"[_rest_poll_loop][{account_key}] 🔄 Loop iteration #{loop_count}, last successful fetch: {time.time() - last_successful_fetch:.1f}s ago, auto_fetch={self._enable_auto_fetch}")
+            ban_rem = _ban_remaining_seconds()
+            if ban_rem > 0:
+                _log_ban_skip_throttled(logger, account_key, f"pausing REST poll for {ban_rem:.0f}s")
+                await asyncio.sleep(min(ban_rem + 2, 60.0))
+                continue
             time_since_last_fetch = time.time() - last_successful_fetch
             if time_since_last_fetch > 6.0 and loop_count > 2:
                 logger.warning(f"[_rest_poll_loop][{account_key}] 🚨 Not updating for {time_since_last_fetch:.1f}s - fetching positions from API")
@@ -6084,6 +6166,7 @@ class PositionService:
                     logger.warning(f"[_rest_poll_loop][{account_key}] Fetched positions from API")
                     last_successful_fetch = time.time()
                 except Exception as sync_err:
+                    _record_ip_ban_from_exc(sync_err)
                     logger.error(f"[_rest_poll_loop][{account_key}] Fallback fetch failed: {sync_err}", exc_info=True)
             if not self._enable_auto_fetch:
                 if loop_count % 20 == 0:
@@ -6242,6 +6325,7 @@ class PositionService:
                         if attempt < retries - 1: continue
                         else: return {}
                     elif e.status_code == 429 or getattr(e, "code", None) == -1003:
+                        _record_ip_ban_from_exc(e)
                         if account and hasattr(account, "handle_api_ban"): account.handle_api_ban(cooldown_seconds=900)
                         if attempt < retries - 1: continue
                         else: return {}
@@ -11665,6 +11749,10 @@ class PositionService:
             active_disk_keys = {pk for pk, pos in account_positions.items() if pos and abs(float(getattr(pos, 'positionAmt', 0) or 0)) > 0}
             if not active_disk_keys:
                 continue
+            ban_rem = _ban_remaining_seconds()
+            if ban_rem > 0:
+                _log_ban_skip_throttled(logger, f"PHANTOM_KILL][{account_key}", f"skipping during IP ban ({ban_rem:.0f}s)")
+                continue
             try:
                 client_obj = getattr(account, "client", None)
                 if not client_obj:
@@ -11677,6 +11765,7 @@ class PositionService:
                 else:
                     positions_data = await asyncio.wait_for(asyncio.to_thread(client_obj.futures_position_information), timeout=30.0)
             except Exception as e:
+                _record_ip_ban_from_exc(e)
                 logger.warning(f"[PHANTOM_KILL][{account_key}] API failed ({e}) — skipping (safe)")
                 continue
             if not positions_data or not isinstance(positions_data, list):
