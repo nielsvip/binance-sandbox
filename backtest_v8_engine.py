@@ -3472,11 +3472,25 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         if _dt_v is not None:
                             _dt_prev[_dt_k] = float(_dt_v)
                 _dt_prev["_last_bar_ts"] = _dt_cur_ts
-        if step > 0 and step % report_every == 0:
-            v8_logger.info(f"[{step}/{len(all_ts)} {step*100//len(all_ts)}%] active={len(open_keys)} trades={len(executed_trades)} {_real_time_module.time()-t0:.0f}s")
+        # Wall-clock-time-based progress emit (silent-death debug 2026-05-01).
+        # Tradier-loop variant of crypto-loop V8_PROGRESS (line ~1965-1984).
+        _wallclock_now = _real_time_module.time()
+        if "_t_last_wallclock_progress" not in dir():
+            _t_last_wallclock_progress = t0
+        _t_wallclock_progress_due = (_wallclock_now - _t_last_wallclock_progress) >= 60.0
+        if step > 0 and (step % report_every == 0 or _t_wallclock_progress_due):
+            _t_last_wallclock_progress = _wallclock_now
+            elapsed = _wallclock_now - t0
+            try:
+                import resource as _rs_mod
+                _rss_mb = _rs_mod.getrusage(_rs_mod.RUSAGE_SELF).ru_maxrss / 1024.0
+            except Exception:
+                _rss_mb = 0.0
+            v8_logger.info(f"[{step}/{len(all_ts)} {step*100//len(all_ts)}%] active={len(open_keys)} trades={len(executed_trades)} {elapsed:.0f}s rss_mb={_rss_mb:.0f}")
+            print(f"V8_PROGRESS: step={step}/{len(all_ts)} pct={step*100//len(all_ts)} trades={len(executed_trades)} active={len(open_keys)} elapsed={elapsed:.0f}s rss_mb={_rss_mb:.0f}", flush=True)
             if _SWEEP_MODE:
                 _r_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
-                print(f"V8_RESULT_LIVE: step={step}/{len(all_ts)} closes={_r_closes} elapsed={_real_time_module.time()-t0:.0f}s", flush=True)
+                print(f"V8_RESULT_LIVE: step={step}/{len(all_ts)} closes={_r_closes} elapsed={elapsed:.0f}s", flush=True)
     elapsed = _real_time_module.time() - t0
     # NEW 2026-04-26 sweep switches: per-run counter dump (tradier path).
     v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  equity_pct={_v8ns_equity_pct[0]:+.2f}%  counters={_v8ns_counters}")
