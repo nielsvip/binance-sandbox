@@ -182,6 +182,103 @@ def format_standard_set(metrics: Mapping[str, float], *, mode: str = "crypto") -
     )
 
 
+# ---------- dead-knob refusal --------------------------------------------
+# Wired against data/_lie_audit/dead_knobs_cross_check.json (cross-check of
+# QuickConfig fields vs every consumer: v8_quick_engine, backtest_v8_engine,
+# tradier_manage, ez_manage). The audit ships three sets:
+#   live_used      : knob is read by live code (ez_manage / tradier_manage /
+#                    backtest_v8_engine) but NOT by v8_quick_engine. Sweeping
+#                    these via v8_quick_engine produces 0-effect rows = lies.
+#   config_only    : knob has a default in config{,_tradier}.py but is read
+#                    NOWHERE — pure noise.
+#   dead_everywhere: knob is in QuickConfig but not in config or any consumer.
+#
+# A v8_quick sweep that varies knobs from any of the three sets is
+# scientifically invalid; v8_quick can't see the change.
+# A backtest_v8_engine (Tier-2) sweep can see knobs in `live_used`, so for
+# engine='backtest_v8' we only refuse `dead_everywhere`.
+_DEAD_KNOBS_CACHE = None
+
+
+def _load_dead_knobs_manifest() -> dict:
+    """Load and cache the dead-knob manifest. Returns dict with three sets.
+    Never raises; on any error returns empty sets so refusal is a no-op."""
+    global _DEAD_KNOBS_CACHE
+    if _DEAD_KNOBS_CACHE is not None:
+        return _DEAD_KNOBS_CACHE
+    try:
+        manifest_path = Path(__file__).resolve().parent / "data" / "_lie_audit" / "dead_knobs_cross_check.json"
+        d = json.loads(manifest_path.read_text(encoding="utf-8"))
+        live_used = d.get("live_used", {}) or {}
+        if isinstance(live_used, dict):
+            live_used_set = set(live_used.keys())
+        else:
+            live_used_set = set(live_used)
+        config_only = d.get("config_only", []) or []
+        dead_everywhere = d.get("dead_everywhere", []) or []
+        _DEAD_KNOBS_CACHE = {
+            "live_used": live_used_set,
+            "config_only": set(config_only),
+            "dead_everywhere": set(dead_everywhere),
+        }
+    except Exception:
+        _DEAD_KNOBS_CACHE = {
+            "live_used": set(),
+            "config_only": set(),
+            "dead_everywhere": set(),
+        }
+    return _DEAD_KNOBS_CACHE
+
+
+def is_knob_consumed_by_engine(knob: str, mode: str = "crypto") -> bool:
+    """Check if a knob is actually read by the v8_quick_engine.
+
+    A knob is "consumed by engine" only if v8_quick_engine reads it. Knobs in
+    the audit's `live_used`, `config_only`, or `dead_everywhere` sets are
+    invisible to v8_quick_engine and produce 0-effect sweep rows.
+
+    Returns True if knob is consumed; False if it's dead in v8_quick_engine.
+    Never raises.
+    """
+    cache = _load_dead_knobs_manifest()
+    if knob in cache["dead_everywhere"]:
+        return False
+    if knob in cache["config_only"]:
+        return False
+    if knob in cache["live_used"]:
+        # Read by live code but NOT by v8_quick_engine — dead for sweeps.
+        return False
+    return True
+
+
+def refuse_dead_knob_sweep(knobs_being_swept, engine: str = "v8_quick"):
+    """Given a list of knob names a sweep wants to test, return the subset
+    that are DEAD in the named engine.
+
+    Caller MUST refuse to publish results for those knobs (or tag rows as
+    [DEAD_KNOB_SWEEP · result_irrelevant]). For engine='v8_quick' this catches
+    all 310 audited dead-in-quick knobs; for engine='backtest_v8' only
+    `dead_everywhere` (since backtest_v8_engine actually invokes live code).
+
+    Never raises.
+    """
+    if not knobs_being_swept:
+        return []
+    cache = _load_dead_knobs_manifest()
+    if engine == "v8_quick":
+        dead_set = (
+            cache["live_used"]
+            | cache["config_only"]
+            | cache["dead_everywhere"]
+        )
+    elif engine == "backtest_v8":
+        dead_set = cache["dead_everywhere"]
+    else:
+        # Unknown engine — be conservative, only refuse confirmed-dead.
+        dead_set = cache["dead_everywhere"]
+    return [k for k in knobs_being_swept if k in dead_set]
+
+
 # ---------- legacy CSV audit / convert -----------------------------------
 
 # Banned column names per CLAUDE.md NO-LIES MANDATE.
@@ -324,7 +421,31 @@ def write_sharpe_row(csv_path: Path, row: Mapping[str, object],
     floor_syms = MIN_SYMS_STOCKS if mode == "stocks" else MIN_SYMS_CRYPTO
     publishable = (n_syms >= floor_syms) and (years >= MIN_YEARS)
     row = dict(row)
-    row.setdefault("verdict", "PUBLISHABLE" if publishable else "DIAGNOSTIC")
+    base_verdict = "PUBLISHABLE" if publishable else "DIAGNOSTIC"
+    swept_knobs = row.get("swept_knobs")
+    dead_knobs = []
+    if swept_knobs:
+        if isinstance(swept_knobs, str):
+            try:
+                parsed = json.loads(swept_knobs)
+                if isinstance(parsed, list):
+                    swept_list = [str(k) for k in parsed]
+                else:
+                    swept_list = [s.strip() for s in swept_knobs.split(",") if s.strip()]
+            except Exception:
+                swept_list = [s.strip() for s in swept_knobs.split(",") if s.strip()]
+        else:
+            try:
+                swept_list = [str(k) for k in swept_knobs]
+            except Exception:
+                swept_list = []
+        engine = str(row.get("engine", "v8_quick"))
+        dead_knobs = refuse_dead_knob_sweep(swept_list, engine=engine)
+    if dead_knobs:
+        tag = f"[DEAD_KNOB_SWEEP · {', '.join(dead_knobs)}]"
+        row.setdefault("verdict", f"{base_verdict} {tag}")
+    else:
+        row.setdefault("verdict", base_verdict)
     p = Path(csv_path)
     p.parent.mkdir(parents=True, exist_ok=True)
     write_header = (not p.exists()) or (not append)
