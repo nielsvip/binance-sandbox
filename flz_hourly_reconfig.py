@@ -284,7 +284,10 @@ def _worker_run_candidate(args_tuple) -> Dict:
                     sided_rets.append((float(rec.get("pnl_pct", 0)), ets))
                 except Exception:
                     pass
-    wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, now_ts)
+    # ref_ts = newest exit_ts in this trade list (NPZ-end). Handles stale stock
+    # NPZs gracefully — weights stay meaningful regardless of NPZ freshness.
+    ref_ts = max((t for _, t in sided_rets), default=now_ts) if sided_rets else now_ts
+    wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, ref_ts)
     return {
         "sym": sym, "side": side, "tag": tag,
         "trades": n_raw,
@@ -341,7 +344,10 @@ def run_candidate(sym: str, side: str, tag: str, overrides: Dict,
                     sided_rets.append((float(rec.get("pnl_pct", 0)), ets))
                 except Exception:
                     pass
-    wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, now_ts)
+    # ref_ts = newest exit_ts in this trade list (NPZ-end). Handles stale stock
+    # NPZs gracefully — weights stay meaningful regardless of NPZ freshness.
+    ref_ts = max((t for _, t in sided_rets), default=now_ts) if sided_rets else now_ts
+    wsharpe, eff_n, n_raw = time_weighted_pool_sharpe(sided_rets, ref_ts)
     return {
         "sym": sym, "side": side, "tag": tag,
         "trades": n_raw,
