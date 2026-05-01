@@ -35,17 +35,18 @@ BASE_PATH = Path(os.environ.get("BASE_PATH", "/Users/niels/Documents/binance"))
 NPZ_DIR = BASE_PATH / "backtest_v8" / "indicators"
 TRADES_DIR = Path(os.environ.get("V8_TRADES_OUT_DIR", "/tmp/v8_trades"))
 HISTORY_DIR = BASE_PATH / "data" / "history"
-TRADIER_HISTORY_DIR = BASE_PATH / "data" / "tradier" / "history"
 STOCK_ACCOUNT_KEYS = {"trb", "trc", "tra"}
+# data/history/<acct> is the canonical per-account live trade log for ALL
+# accounts (crypto + stocks). Stocks dirs (trb/trc/tra) are symlinks into
+# data/tradier/history/<acct> where tradier_positions.append_to_position_history_file
+# physically writes them — so reads via data/history/<acct> resolve transparently.
 ACCOUNTS = ["ang", "inf", "flz", "men", "fin", "trb", "trc"]
+SEVEN_D_AGENT_ACCOUNTS = {"inf", "fin", "trc"}  # NEW agent system (hourly 7d recalcs)
 
 
 def _history_dir_for(account: str) -> Path:
-    """Crypto accounts (ang/inf/flz/men/fin) live under data/history/<acct>;
-    stocks (trb/trc/tra) live under data/tradier/history/<acct>. Both share the
-    same per-event JSONL schema written by ez_positions_quick / tradier_positions."""
-    if account in STOCK_ACCOUNT_KEYS:
-        return TRADIER_HISTORY_DIR / account
+    """Single canonical location: data/history/<account>. trb/trc/tra are
+    symlinks into data/tradier/history/<acct> created 2026-05-01."""
     return HISTORY_DIR / account
 
 # Extra trade-JSONL roots scanned in addition to TRADES_DIR (added 2026-04-30 per
@@ -764,36 +765,41 @@ def historic_trades():
 
 
 def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Walk OPEN/AUGMENT/REDUCE/CLOSE events into closed-trade rounds (per side).
-
-    A "trade" round is from net qty=0 → qty>0 → qty=0. Tracks weighted-avg entry,
-    exits give realized pnl_pct based on weighted entry vs exit price.
+    """Walk OPEN/AUGMENT/REDUCE/CLOSE events into closed-trade rounds keyed by
+    (symbol, side). Per-symbol-per-side keying is required: an account holds
+    many symbols at once. Earlier code keyed only by side, which collided
+    AUGMENTs/REDUCEs across symbols and produced 0 closed rounds for accounts
+    with mixed activity. Dust threshold (0.5% of peak qty) closes a round
+    when residual is small — real exchanges leave fractional residuals.
     """
-    rounds_by_side: Dict[str, Dict[str, Any]] = {}
+    rounds: Dict[Tuple[str, str], Optional[Dict[str, Any]]] = {}
     closed: List[Dict[str, Any]] = []
     for ev in events:
         side = ev.get("side")
+        sym = ev.get("symbol") or ""
         kind = (ev.get("type") or "").upper()
         qty = float(ev.get("qty") or 0)
         price = float(ev.get("price") or 0)
         ts = ev.get("unix_ts", 0)
         reason = ev.get("reason", "")
-        if not side or qty <= 0 or price <= 0:
+        if not side or not sym or qty <= 0 or price <= 0:
             continue
-        rd = rounds_by_side.get(side)
+        key = (sym, side)
+        rd = rounds.get(key)
         if kind in ("OPEN", "AUGMENT"):
             if rd is None or rd.get("qty", 0) <= 0:
                 rd = {
-                    "side": side, "account": ev.get("account"),
+                    "side": side, "account": ev.get("account"), "symbol": sym,
                     "entry_ts": ts, "entry_price": price, "qty": qty,
+                    "peak_qty": qty,
                     "entry_reason": reason, "events": [ev],
                 }
-                rounds_by_side[side] = rd
+                rounds[key] = rd
             else:
-                # weighted-avg entry
                 new_qty = rd["qty"] + qty
                 rd["entry_price"] = (rd["entry_price"] * rd["qty"] + price * qty) / new_qty
                 rd["qty"] = new_qty
+                rd["peak_qty"] = max(rd.get("peak_qty", 0), new_qty)
                 rd["events"].append(ev)
         elif kind in ("REDUCE", "CLOSE"):
             if rd is None or rd.get("qty", 0) <= 0:
@@ -805,9 +811,10 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
                 pnl_pct = (rd["entry_price"] - price) / rd["entry_price"] * 100.0
             rd["events"].append(ev)
             rd["qty"] -= close_qty
-            if rd["qty"] <= 1e-9:
+            dust_threshold = max(1e-9, rd.get("peak_qty", 0) * 0.005)
+            if rd["qty"] <= dust_threshold or kind == "CLOSE":
                 closed.append({
-                    "account": rd["account"], "symbol": ev.get("symbol", ""), "side": side,
+                    "account": rd["account"], "symbol": rd.get("symbol", ""), "side": side,
                     "entry_ts": rd["entry_ts"], "entry_price": rd["entry_price"],
                     "exit_ts": ts, "exit_price": price,
                     "entry_reason": rd["entry_reason"], "exit_reason": reason,
@@ -815,7 +822,7 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
                     "duration_sec": ts - rd["entry_ts"],
                     "stream": "historic",
                 })
-                rounds_by_side[side] = None
+                rounds[key] = None
     return closed
 
 
@@ -1792,8 +1799,9 @@ CRYPTO_ACCOUNTS = {"ang", "inf", "flz", "men", "fin"}
 STOCK_ACCOUNTS = {"trb", "trc"}
 
 CATEGORY_DESCRIPTIONS = {
-    "7D_macbook_crypto": "Hourly reconfig — crypto live accounts (ang/inf/flz/men/fin). Optimizer re-picks parameters every hour using a rolling 7-day fit window; backtest re-runs over FULL multi-year 3m kline history (BTCUSDC ~22mo since perp launch). Promoted config ACTIVATES LIVE IMMEDIATELY — most urgent to monitor.",
-    "7D_macbook_stocks": "Hourly reconfig — stock live accounts (trb/trc). Optimizer re-picks parameters every hour using a rolling 7-day fit window; backtest re-runs over FULL multi-year 5m stock history. Promoted config ACTIVATES LIVE IMMEDIATELY for stocks.",
+    "7D_agent_crypto": "🔴 7D AGENT (NEW system) — agent-based trading on inf, fin (crypto). Hourly 7-day recalculations. Promoted config ACTIVATES LIVE IMMEDIATELY. FIRST PRIORITY to monitor.",
+    "7D_agent_stocks": "🔴 7D AGENT (NEW system) — agent-based trading on trc (stocks). Hourly 7-day recalculations. Promoted config ACTIVATES LIVE IMMEDIATELY. FIRST PRIORITY to monitor.",
+    "legacy_hourly_testing": "Legacy hourly_reconfig runs for non-agent accounts (flz, trb, men, ang). Old testing infrastructure — DO NOT confuse with the 7D agent system. Kept for historical comparison only.",
     "v3_paper": "Scalp V3 paper-trading variants (data/scalp_v3_paper). Live decisions feed but no real-money execution.",
     "v3_shadow": "Scalp V3 shadow A/B variants (data/scalp_v3_shadow). Each variant runs live in shadow with different switches; decisions logged but not executed.",
     "s1_crypto_canonical": "S1 crypto canonical top-N replays (canon_crypto_*). Top-ranked autonomous-search winners replayed via populate_canonical_top10.",
@@ -1818,11 +1826,13 @@ def _classify_run(run: str, syms: List[str]) -> Tuple[str, str]:
             acct = run.split("::", 1)[0].split("_", 1)[1]
         except Exception:
             acct = ""
-        if acct in CRYPTO_ACCOUNTS:
-            return ("macbook", "7D_macbook_crypto")
-        if acct in STOCK_ACCOUNTS:
-            return ("macbook", "7D_macbook_stocks")
-        return ("macbook", "7D_macbook_crypto")
+        if acct in SEVEN_D_AGENT_ACCOUNTS:
+            if acct in STOCK_ACCOUNTS:
+                return ("macbook", "7D_agent_stocks")
+            return ("macbook", "7D_agent_crypto")
+        # Non-agent hr_* runs (flz, trb, men, ang) are legacy hourly testing —
+        # NOT the new 7D agent system. Keep separate per user instruction.
+        return ("macbook", "legacy_hourly_testing")
     if rl.startswith("v3_paper::") or rl.startswith("paper_"):
         return ("macbook", "v3_paper")
     if rl.startswith("v3_shadow::"):
@@ -2076,6 +2086,204 @@ def _find_run_trades_for_sym(run: str, sym: str) -> Optional[Path]:
     return _resolve_trade_path(run, sym)
 
 
+@app.route("/live")
+def live_page():
+    """Priority page (user 2026-05-01): tabs for live monitoring of 7D-best
+    strategies overlaid with ACTUAL live trades. Crypto + stocks separate.
+    Backtest analysis lives in a separate tab linked to /clean_runs."""
+    return """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>live — 7D priorities</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;margin:0;padding:0;font-size:13px}
+  .header{background:#161b22;border-bottom:1px solid #30363d;padding:8px 16px;display:flex;align-items:center;gap:14px}
+  h1{font-size:1.1em;color:#58a6ff;margin:0;font-weight:700}
+  .tabs{display:flex;gap:0;flex:1}
+  .tab{padding:8px 16px;background:#0d1117;border:none;color:#8b949e;cursor:pointer;font-size:13px;font-family:inherit;border-bottom:2px solid transparent}
+  .tab.active{color:#58a6ff;border-bottom-color:#58a6ff;font-weight:600}
+  .tab:hover{color:#c9d1d9}
+  .audit{background:#1c2837;border:1px solid #2f4f6f;padding:6px 12px;border-radius:4px;margin:8px 14px;font-size:11.5px;color:#a4b8d0}
+  .audit b{color:#dcc26b}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 14px}
+  .panel{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:6px;display:flex;flex-direction:column}
+  .panel-head{font-size:11.5px;color:#a4b8d0;padding:4px 6px;border-bottom:1px solid #21262d;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+  .panel-head .sym{color:#58a6ff;font-weight:700;font-size:13px}
+  .tier-Discard{color:#dc6c6c} .tier-Noise{color:#888} .tier-Directional{color:#cdb86c}
+  .tier-Best-of-current{color:#7fb069;background:#1a2617;padding:0 4px;border-radius:3px}
+  .tier-Strong{color:#3fb950;background:#0f1f15;padding:0 4px;border-radius:3px}
+  .tier-Aspirational{color:#58a6ff;background:#0f1c2e;font-weight:700;padding:0 4px;border-radius:3px}
+  .panel-stats{font-size:10.5px;color:#a4b8d0;padding:3px 6px;line-height:1.5}
+  .panel-stats .pos{color:#3fb950} .panel-stats .neg{color:#f85149}
+  .chart-box{height:280px;width:100%}
+  .empty{padding:50px;text-align:center;color:#7a8590;font-size:11px}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  a{color:#58a6ff;text-decoration:none}
+</style></head><body>
+
+<div class="header">
+  <h1>📡 LIVE</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="crypto">🟢 Crypto live (7D)</button>
+    <button class="tab" data-tab="stocks">🟡 Stocks live (7D)</button>
+    <button class="tab" data-tab="backtests">📊 All backtests</button>
+  </div>
+  <a href="/" style="font-size:11px;color:#7a8590">→ full chart</a>
+  <a href="http://127.0.0.1:5057/" target="_blank" style="font-size:11px;color:#dcc26b">→ 5057</a>
+</div>
+
+<div class="audit">
+  Each panel = priority sym + best 7D backtest config (canonical, audited via metrics_guard) + actual live trades from <b>ang/inf/flz/men/fin</b> (crypto) or <b>trb/trc</b> (stocks).
+  <span style="color:#3fb950">●</span> backtest entry · <span style="color:#dc6c6c">●</span> backtest exit ·
+  <span style="color:#dcc26b">▲</span> LIVE entry · <span style="color:#58a6ff">▼</span> LIVE exit
+</div>
+
+<div id="tab-crypto" class="tab-content active"><div class="panels" id="cryptoPanels"></div></div>
+<div id="tab-stocks" class="tab-content"><div class="panels" id="stocksPanels"></div></div>
+<div id="tab-backtests" class="tab-content">
+  <div class="audit">Click any test to open it on the main chart with its trades pre-loaded. Switch the symbol selector to see tests for other symbols.</div>
+  <iframe src="/clean_runs?sym=BTCUSDC" style="width:calc(100% - 28px);height:calc(100vh - 110px);border:0;border-radius:6px;margin:0 14px"></iframe>
+</div>
+
+<script>
+const CRYPTO_SYMS = ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC"];
+const STOCK_SYMS = ["AAPL", "MSFT", "NVDA", "AMZN"];
+const CRYPTO_ACCTS = "ang,inf,flz,men,fin";
+const STOCK_ACCTS = "trb,trc,tra";
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById(`tab-${t.dataset.tab}`).classList.add("active");
+    if (t.dataset.tab === "stocks" && !document.getElementById("stocksPanels").children.length) loadStocksTab();
+  };
+});
+
+const fmt = (n, d=2) => (n===null||n===undefined||isNaN(n)) ? "—" : Number(n).toFixed(d);
+const cls = (n) => Number(n) >= 0 ? "pos" : "neg";
+function tierClass(t){return "tier-" + (t || "Noise")}
+
+async function buildPanel(container, sym, accts) {
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `<div class="panel-head"><span class="sym">${sym}</span><span style="color:#7a8590">loading…</span></div>
+                     <div class="chart-box" id="chart_${sym}"></div>
+                     <div class="panel-stats" id="stats_${sym}"></div>`;
+  container.appendChild(panel);
+  const tf = "1h";
+  const end = Math.floor(Date.now() / 1000);
+  const start = end - 30 * 86400;
+  const klinesP = fetch(`/klines?sym=${sym}&tf=${tf}&start=${start}&end=${end}&max=2000`).then(r=>r.json()).catch(()=>[]);
+  const topP = fetch(`/run_unique?sym=${sym}&limit=1`).then(r=>r.json()).catch(()=>({tests:[]}));
+  const liveP = fetch(`/historic_trades?sym=${sym}&accounts=${accts}`).then(r=>r.json()).catch(()=>({}));
+  const [klines, topR, live] = await Promise.all([klinesP, topP, liveP]);
+  const head = panel.querySelector(".panel-head");
+  if (!Array.isArray(klines) || klines.length === 0) {
+    head.innerHTML = `<span class="sym">${sym}</span><span style="color:#dc6c6c">no NPZ</span>`;
+    panel.querySelector(".chart-box").innerHTML = `<div class="empty">no klines for ${sym}</div>`;
+    return;
+  }
+  const top = (topR.tests || [])[0] || null;
+  let btTrades = [];
+  if (top && top.has_trades_on_sym) {
+    const bt = await fetch(`/backtest_trades?run=${encodeURIComponent(top.run)}&sym=${sym}`).then(r=>r.json()).catch(()=>({}));
+    btTrades = bt.trades || [];
+  }
+  const liveEntries = [], liveExits = [];
+  for (const acct of accts.split(",")) {
+    const trades = (live[acct] || {}).trades || [];
+    for (const t of trades) {
+      liveEntries.push({x: new Date(t.entry_ts*1000), y: t.entry_price, acct, side: t.side, reason: t.entry_reason});
+      liveExits.push({x: new Date(t.exit_ts*1000), y: t.exit_price, acct, side: t.side, reason: t.exit_reason, pnl: t.pnl_pct});
+    }
+  }
+  const xs = klines.map(b => new Date(b.t * 1000));
+  const traces = [{
+    x: xs,
+    open: klines.map(b => b.o), high: klines.map(b => b.h),
+    low: klines.map(b => b.l), close: klines.map(b => b.c),
+    type: "candlestick", name: "price",
+    increasing:{line:{color:"#3fb950",width:1}}, decreasing:{line:{color:"#f85149",width:1}},
+    showlegend: false,
+  }];
+  if (btTrades.length) {
+    traces.push({
+      x: btTrades.map(t => new Date(t.entry_ts*1000)), y: btTrades.map(t => t.entry_price),
+      mode:"markers", type:"scatter", name:"BT entry",
+      marker:{color:"#3fb950", size:6, symbol:"circle", opacity:0.7},
+      hovertext: btTrades.map(t => `BT entry ${t.side} @ ${fmt(t.entry_price,4)} · ${t.entry_reason||""}`),
+      hoverinfo:"text",
+    });
+    traces.push({
+      x: btTrades.map(t => new Date(t.exit_ts*1000)), y: btTrades.map(t => t.exit_price),
+      mode:"markers", type:"scatter", name:"BT exit",
+      marker:{color:"#dc6c6c", size:5, symbol:"circle-open"},
+      hovertext: btTrades.map(t => `BT exit @ ${fmt(t.exit_price,4)} pnl=${fmt(t.pnl_pct,3)}% · ${t.exit_reason||""}`),
+      hoverinfo:"text",
+    });
+  }
+  if (liveEntries.length) traces.push({
+    x: liveEntries.map(p => p.x), y: liveEntries.map(p => p.y),
+    mode:"markers", type:"scatter", name:"LIVE entry",
+    marker:{color:"#dcc26b", size:11, symbol:"triangle-up", line:{width:1,color:"#000"}},
+    hovertext: liveEntries.map(p => `LIVE ${p.acct} ${p.side} @ ${fmt(p.y,4)} · ${p.reason||""}`),
+    hoverinfo:"text",
+  });
+  if (liveExits.length) traces.push({
+    x: liveExits.map(p => p.x), y: liveExits.map(p => p.y),
+    mode:"markers", type:"scatter", name:"LIVE exit",
+    marker:{color:"#58a6ff", size:11, symbol:"triangle-down", line:{width:1,color:"#000"}},
+    hovertext: liveExits.map(p => `LIVE ${p.acct} ${p.side} exit @ ${fmt(p.y,4)} pnl=${fmt(p.pnl,3)}% · ${p.reason||""}`),
+    hoverinfo:"text",
+  });
+  Plotly.newPlot(`chart_${sym}`, traces, {
+    paper_bgcolor:"#161b22", plot_bgcolor:"#161b22",
+    font:{color:"#c9d1d9", size:10},
+    xaxis:{gridcolor:"#21262d", rangeslider:{visible:false}},
+    yaxis:{gridcolor:"#21262d", side:"right"},
+    margin:{t:14, r:50, b:30, l:40},
+    showlegend:false,
+  }, {displayModeBar:false, responsive:true});
+  const ss = top ? (top.sym_stats || {}) : {};
+  const tier = top ? top.tier : "—";
+  if (top) {
+    head.innerHTML = `<span class="sym">${sym}</span>
+      <span class="${tierClass(tier)}">${tier}</span>
+      <span style="color:#7a8590;font-size:10.5px">${(top.run||"").slice(0, 38)}…</span>`;
+  } else {
+    head.innerHTML = `<span class="sym">${sym}</span><span style="color:#dc6c6c">no canonical 7D test</span>`;
+  }
+  const stats = panel.querySelector(`#stats_${sym}`);
+  if (top && ss.sym_trades) {
+    stats.innerHTML = `
+      <b>BT(7D):</b> sym_pool_sharpe <b class="${cls(ss.sym_pool_sharpe)}">${fmt(ss.sym_pool_sharpe,4)}</b>
+      · trades ${(ss.sym_trades||0).toLocaleString()}
+      · dd ${fmt(ss.sym_dd_pct,2)}%
+      · WR ${fmt((ss.sym_wr||0)*100,0)}%
+      · gain ${fmt(ss.sym_total_gain_pct,1)}%
+      · <span style="color:#7a8590">overall pool_sharpe ${fmt(top.pool_sharpe,4)} on ${top.n_syms} syms</span>
+      <br><b>LIVE:</b> ${liveEntries.length} entries · ${liveExits.length} exits across [${accts.replace(/,/g,", ")}]`;
+  } else {
+    stats.innerHTML = `<b>LIVE:</b> ${liveEntries.length} entries · ${liveExits.length} exits across [${accts.replace(/,/g,", ")}]`;
+  }
+}
+async function loadCryptoTab(){
+  const c = document.getElementById("cryptoPanels");
+  if (c.children.length) return;
+  for (const sym of CRYPTO_SYMS) await buildPanel(c, sym, CRYPTO_ACCTS);
+}
+async function loadStocksTab(){
+  const c = document.getElementById("stocksPanels");
+  if (c.children.length) return;
+  for (const sym of STOCK_SYMS) await buildPanel(c, sym, STOCK_ACCTS);
+}
+loadCryptoTab();
+</script>
+</body></html>"""
+
+
 @app.route("/clean_runs")
 def clean_runs_page():
     """Minimal test-selector page. One row per unique test, click to chart."""
@@ -2320,8 +2528,13 @@ def run_catalog():
             })
         def _cat_sort(c):
             k = c["key"]
-            seven_d = 0 if k.startswith("7D_") else 1
-            return (seven_d, -(c.get("best_pool_sharpe") or 0))
+            # Priority: 7D agent (NEW system, real-money urgent) > v3 paper/shadow >
+            # legacy hourly testing > everything else by best pool_sharpe.
+            if k.startswith("7D_agent_"): bucket = 0
+            elif k.startswith("v3_"): bucket = 1
+            elif k == "legacy_hourly_testing": bucket = 3
+            else: bucket = 2
+            return (bucket, -(c.get("best_pool_sharpe") or 0))
         cats.sort(key=_cat_sort)
         output["machines"][machine] = {
             "categories": cats,

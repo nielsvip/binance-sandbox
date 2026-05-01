@@ -251,28 +251,37 @@ def top_10(mode_filter: Optional[str] = None) -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────
 
 def _reconstruct_trades(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Walk OPEN/AUGMENT/REDUCE/CLOSE events into closed rounds (per side)."""
-    rounds_by_side: Dict[str, Optional[Dict[str, Any]]] = {}
+    """Walk OPEN/AUGMENT/REDUCE/CLOSE events into closed rounds keyed by
+    (symbol, side). Per-symbol-per-side keying is required: an account holds
+    many symbols simultaneously and earlier code keyed only by side, which
+    collided BTC AUGMENT with ETH REDUCE and produced 0 closed rounds despite
+    12k events. Pseudo-close rule: a REDUCE that takes residual qty below 0.5%
+    of running entry-weighted qty closes the round (real exchanges leave dust)."""
+    rounds: Dict[Tuple[str, str], Optional[Dict[str, Any]]] = {}
     closed: List[Dict[str, Any]] = []
     for ev in events:
         side = ev.get("side")
+        sym = ev.get("symbol") or ""
         kind = (ev.get("type") or "").upper()
         qty = float(ev.get("qty") or 0)
         price = float(ev.get("price") or 0)
         ts = ev.get("unix_ts", 0)
-        if not side or qty <= 0 or price <= 0:
+        if not side or not sym or qty <= 0 or price <= 0:
             continue
-        rd = rounds_by_side.get(side)
+        key = (sym, side)
+        rd = rounds.get(key)
         if kind in ("OPEN", "AUGMENT"):
             if rd is None or rd.get("qty", 0) <= 0:
-                rd = {"side": side, "account": ev.get("account"), "symbol": ev.get("symbol"),
+                rd = {"side": side, "account": ev.get("account"), "symbol": sym,
                       "entry_ts": ts, "entry_price": price, "qty": qty,
+                      "peak_qty": qty,
                       "entry_reason": ev.get("reason", "")}
-                rounds_by_side[side] = rd
+                rounds[key] = rd
             else:
                 new_qty = rd["qty"] + qty
                 rd["entry_price"] = (rd["entry_price"] * rd["qty"] + price * qty) / new_qty
                 rd["qty"] = new_qty
+                rd["peak_qty"] = max(rd.get("peak_qty", 0), new_qty)
         elif kind in ("REDUCE", "CLOSE"):
             if rd is None or rd.get("qty", 0) <= 0:
                 continue
@@ -282,7 +291,8 @@ def _reconstruct_trades(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             else:
                 pnl_pct = (rd["entry_price"] - price) / rd["entry_price"] * 100.0
             rd["qty"] -= close_qty
-            if rd["qty"] <= 1e-9:
+            dust_threshold = max(1e-9, rd.get("peak_qty", 0) * 0.005)
+            if rd["qty"] <= dust_threshold or kind == "CLOSE":
                 closed.append({
                     "account": rd["account"], "symbol": rd.get("symbol", ""), "side": side,
                     "entry_ts": rd["entry_ts"], "entry_price": rd["entry_price"],
@@ -290,7 +300,7 @@ def _reconstruct_trades(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "duration_sec": ts - rd["entry_ts"],
                     "entry_reason": rd["entry_reason"], "exit_reason": ev.get("reason", ""),
                 })
-                rounds_by_side[side] = None
+                rounds[key] = None
     return closed
 
 
@@ -467,6 +477,114 @@ def api_iter_detail(idx):
     if idx < 0 or idx >= len(iters_pub):
         return jsonify({"error": "out of range"}), 404
     return jsonify(iters_pub[idx])
+
+
+SEVEN_D_AGENT_ACCOUNTS = ["inf", "fin", "trc"]  # NEW agent system
+
+
+def _seven_d_window_stats(account: str, days: float = 7.0) -> Dict[str, Any]:
+    """Canonical metrics over the last N days of LIVE trades for this account."""
+    events = _load_account_history(account)
+    closed = _reconstruct_trades(events)
+    if not closed:
+        return {"trades": 0, "n_syms": 0, "pool_sharpe": 0.0,
+                "tier": "Noise", "total_gain_pct": 0.0, "win_rate": 0.0}
+    cutoff = time.time() - days * 86400
+    in_window = [t for t in closed if int(t.get("exit_ts", 0) or 0) >= cutoff]
+    if not in_window:
+        return {"trades": 0, "n_syms": 0, "pool_sharpe": 0.0,
+                "tier": "Noise", "total_gain_pct": 0.0, "win_rate": 0.0,
+                "window_days": days}
+    by_sym: Dict[str, List[float]] = {}
+    for t in in_window:
+        by_sym.setdefault(t.get("symbol") or "?", []).append(float(t.get("pnl_pct", 0) or 0))
+    metrics = metrics_guard.standard_metric_set(by_sym, years=max(days / 365.25, 0.01))
+    pool_s = float(metrics.get("pool_sharpe", 0))
+    pnls = [p for arr in by_sym.values() for p in arr]
+    wins = sum(1 for p in pnls if p > 0)
+    return {
+        "window_days": days,
+        "trades": int(metrics.get("trades", 0)),
+        "n_syms": int(metrics.get("n_syms", 0)),
+        "pool_sharpe": round(pool_s, 4),
+        "sym_sharpe": round(float(metrics.get("sym_sharpe", 0)), 4),
+        "avg_gain_trade": round(float(metrics.get("avg_gain_trade", 0)), 4),
+        "total_gain_pct": round(sum(pnls), 4),
+        "win_rate": round(wins / max(1, len(pnls)), 4),
+        "tier": metrics_guard.tier_name(pool_s),
+        "first_ts": min(int(t.get("entry_ts", 0)) for t in in_window),
+        "last_ts": max(int(t.get("exit_ts", 0)) for t in in_window),
+    }
+
+
+def _seven_d_opinions_summary(account: str) -> Dict[str, Any]:
+    """Read hourly_reconfig/<acct>/opinions.json and return a compact summary."""
+    p = HOURLY_RECONFIG_DIR / account / "opinions.json"
+    if not p.exists():
+        return {"available": False, "reason": "opinions.json missing — agent not running"}
+    try:
+        data = json.loads(p.read_text())
+    except Exception as e:
+        return {"available": False, "reason": f"parse error: {e}"}
+    syms = data.get("syms", {})
+    ranked = sorted(syms.items(), key=lambda kv: -float(kv[1].get("wsharpe", 0)))
+    actionable_long = sum(1 for v in syms.values() if v.get("opinion") == "LONG")
+    actionable_short = sum(1 for v in syms.values() if v.get("opinion") == "SHORT")
+    top = []
+    for k, v in ranked[:8]:
+        top.append({
+            "sym_side": k,
+            "opinion": v.get("opinion"),
+            "wsharpe": round(float(v.get("wsharpe", 0)), 4),
+            "winning_tag": v.get("winning_tag"),
+            "tier": v.get("tier") or metrics_guard.tier_name(float(v.get("wsharpe", 0))),
+        })
+    return {
+        "available": True,
+        "cycle_id": data.get("_cycle_id"),
+        "now_ts": data.get("_now_ts"),
+        "n_total": len(syms),
+        "n_actionable_long": actionable_long,
+        "n_actionable_short": actionable_short,
+        "top": top,
+    }
+
+
+@app.route("/api/seven_d_priority")
+def api_seven_d_priority():
+    """🔴 7D AGENT priority panel — first-priority view of the NEW agent
+    system on inf/fin/trc. For each account: last-7-day live canonical stats,
+    latest opinions summary, equity curve last 7d, latest cycle age."""
+    days = float(request.args.get("days", 7))
+    out_per_acct: Dict[str, Any] = {}
+    for acct in SEVEN_D_AGENT_ACCOUNTS:
+        # Latest cycle age
+        runs_dir = HOURLY_RECONFIG_DIR / acct / "runs"
+        latest_cycle = None
+        cycle_age_min = None
+        if runs_dir.exists():
+            cycles = sorted([p for p in runs_dir.iterdir() if p.is_dir()], reverse=True)
+            if cycles:
+                latest_cycle = cycles[0].name
+                try:
+                    cycle_age_min = round((time.time() - cycles[0].stat().st_mtime) / 60.0, 1)
+                except Exception:
+                    pass
+        out_per_acct[acct] = {
+            "account": acct,
+            "kind": "stocks" if acct in STOCK_ACCOUNTS else "crypto",
+            "live_stats_7d": _seven_d_window_stats(acct, days=days),
+            "live_stats_alltime": _account_canonical_stats(acct),
+            "opinions": _seven_d_opinions_summary(acct),
+            "latest_cycle": latest_cycle,
+            "cycle_age_min": cycle_age_min,
+        }
+    return jsonify({
+        "accounts": out_per_acct,
+        "agent_accounts": SEVEN_D_AGENT_ACCOUNTS,
+        "window_days": days,
+        "generated_utc": _now_iso(),
+    })
 
 
 @app.route("/api/refresh", methods=["POST"])
