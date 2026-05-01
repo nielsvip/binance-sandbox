@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-01 23:20:54 UTC
+# Copilot Status — 2026-05-01 23:35:25 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:17:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:17:18
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:17:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:18:29
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-01T23:19:20
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T23:19:20
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:19:20
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:19:20
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:19:31
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:20:33
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:31:36
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:31:36
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:31:38
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:32:40
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-01T23:33:41
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T23:33:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:33:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:33:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:33:42
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:34:44
 
 ## Missed Trades (trader comparison)
 
@@ -35,21 +35,21 @@ _None_
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
 - WATCHING: **PENGUUSDC** SHORT (crypto) peaked +13.3%, exited 0m ago
 - WATCHING: **TRUMPUSDC** LONG (crypto) peaked +9.2%, exited 0m ago
-- WATCHING: **CHRUSDT** SHORT (crypto) peaked +8.2%, exited 0m ago
 - WATCHING: **AIAUSDT** LONG (crypto) peaked +8.2%, exited 0m ago
 - WATCHING: **NEARUSDC** LONG (crypto) peaked +7.9%, exited 0m ago
 - WATCHING: **FLOWUSDT** SHORT (crypto) peaked +7.5%, exited 0m ago
 - WATCHING: **AXLUSDT** SHORT (crypto) peaked +6.7%, exited 0m ago
 - WATCHING: **1000SATSUSDT** LONG (crypto) peaked +4.9%, exited 0m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 0m ago
+- WATCHING: **CHRUSDT** SHORT (crypto) peaked +4.5%, exited 0m ago
 
 ## Supervisor
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 50
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for inf is NOT running
+**Issues (last 1h):** 8
+- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [MEDIUM] tradier_manage.py for trb is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running

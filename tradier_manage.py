@@ -8402,13 +8402,22 @@ class TradierTradeManager:
             is_entry_action = action in ['OPEN', 'REENTRY', 'QUICK_OPEN', 'REVERSE', 'HEDGE_OPEN'] if action else False
             _is_exit_or_reduce = action in ('REDUCE', 'CLOSE', 'FULL_CLOSE', 'PROFIT_TAKE', 'QUICK_CLOSE') if action else False
             # ═══ SAFETY SWITCH 1: TRADEABLE_KEY GATE (2026-04-16) ═══
+            # trb/trc/tra use symbols_trb_long/short (not tradeable_keys.json which is crypto-only)
             if is_augment and getattr(config, 'TRADIER_REQUIRE_TRADEABLE_KEY', True):
-                await self.load_tradeable()
-                if position_key not in self.tradeable_keys:
-                    logger.critical(f"🚫 [TRADIER_TRADEABLE_GATE] {position_key}: NOT in tradeable_keys — entry/augment BLOCKED. action={action} reason={reason}")
-                    if lock_acquired and self.redis_manager:
-                        await self.redis_manager.delete(exec_lock_key)
-                    return "BLOCKED_NON_TRADEABLE"
+                _tradier_accts = {'trb', 'trc', 'tra'}
+                if account_key in _tradier_accts:
+                    if not self.is_symbol_tradeable(symbol, account_key, position_side):
+                        logger.critical(f"🚫 [TRADIER_TRADEABLE_GATE] {position_key}: NOT in symbols_{account_key}_long/short — entry/augment BLOCKED. action={action} reason={reason}")
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_NON_TRADEABLE"
+                else:
+                    await self.load_tradeable()
+                    if position_key not in self.tradeable_keys:
+                        logger.critical(f"🚫 [TRADIER_TRADEABLE_GATE] {position_key}: NOT in tradeable_keys — entry/augment BLOCKED. action={action} reason={reason}")
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return "BLOCKED_NON_TRADEABLE"
             
             if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0):
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
