@@ -1962,15 +1962,26 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Drain async tasks (order queue, cooldown writes, etc)
         await asyncio.sleep(0)
 
-        # Progress
-        if step > 0 and step % report_every == 0:
+        # Progress — fires on EITHER step count OR wall-clock 60s elapsed (visibility for silent-death debug 2026-05-01).
+        _wallclock_now = _real_time_module.time()
+        if "_last_wallclock_progress" not in dir():
+            _last_wallclock_progress = t0
+        _wallclock_progress_due = (_wallclock_now - _last_wallclock_progress) >= 60.0
+        if step > 0 and (step % report_every == 0 or _wallclock_progress_due):
+            _last_wallclock_progress = _wallclock_now
             n_trades = len(executed_trades)
             n_active = sum(1 for p in trade_manager.positions.values() if abs(getattr(p, 'positionAmt', 0)) > 0.0001)
-            elapsed = _real_time_module.time() - t0
+            elapsed = _wallclock_now - t0
             _sharpe_w, _gain_pct, _gain_dol, _sum_pct, _sharpe_pt, _sharpe_ann, _tpy = _compute_sharpe_and_gain()
             _wr = _live_pnl['n_wins'] * 100.0 / max(1, _live_pnl['n_closes'])
             _gate_pct = _gate_filtered * 100 // max(1, _gate_total_checks)
-            v8_logger.info(f"[PROGRESS] {step}/{len(sorted_ts)} ({step*100//len(sorted_ts)}%) | trades={n_trades} | active={n_active} | {elapsed:.0f}s | gate_skip={_gate_pct}%")
+            try:
+                import resource as _rs_mod
+                _rss_mb = _rs_mod.getrusage(_rs_mod.RUSAGE_SELF).ru_maxrss / 1024.0
+            except Exception:
+                _rss_mb = 0.0
+            v8_logger.info(f"[PROGRESS] {step}/{len(sorted_ts)} ({step*100//len(sorted_ts)}%) | trades={n_trades} | active={n_active} | {elapsed:.0f}s | gate_skip={_gate_pct}% | rss_mb={_rss_mb:.0f}")
+            print(f"V8_PROGRESS: step={step}/{len(sorted_ts)} pct={step*100//len(sorted_ts)} trades={n_trades} elapsed={elapsed:.0f}s rss_mb={_rss_mb:.0f}", flush=True)
             # CANONICAL_METRICS.md: only pool_sharpe (= sharpe_per_trade in this engine) survives in user-facing logs.
             # sharpe_weekly + sharpe_annual are BANNED for display (they were the "feel-good" inflation that misled decisions for months).
             v8_logger.info(f"[V8_RESULT_LIVE] pool_sharpe={_sharpe_pt:.3f} (trades/yr={_tpy:.0f}) gain_pct={_gain_pct:+.2f}% gain_dollars={_gain_dol:+.2f} sum_trade_pcts={_sum_pct:+.2f}% closes={_live_pnl['n_closes']} W={_live_pnl['n_wins']} L={_live_pnl['n_losses']} WR={_wr:.1f}%")

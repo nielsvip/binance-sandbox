@@ -2086,6 +2086,172 @@ def _find_run_trades_for_sym(run: str, sym: str) -> Optional[Path]:
     return _resolve_trade_path(run, sym)
 
 
+@app.route("/test_detail")
+def test_detail_page():
+    """Per-test detail: per-symbol rollup + overrides (where available) + equity vs B&H.
+    User-spec 2026-05-01: 'parameter diff vs baseline + per-symbol rollup'."""
+    run = request.args.get("run", "")
+    if not run:
+        return "<h1>error</h1><p>?run=&lt;run_id&gt; required</p>", 400
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>test detail — {html_escape(run)}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body{{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:14px;font-size:13px}}
+  h1{{font-size:1.0em;color:#58a6ff;margin:0 0 8px;font-weight:700;font-family:'SF Mono',Menlo,monospace;word-break:break-all}}
+  h2{{font-size:0.95em;color:#dcc26b;margin:14px 0 6px;border-bottom:1px solid #21262d;padding-bottom:3px}}
+  .canonical{{background:#161b22;border:1px solid #30363d;padding:8px 12px;border-radius:5px;margin-bottom:10px;font-size:11.5px;color:#a4b8d0;white-space:pre-wrap;line-height:1.5}}
+  table{{border-collapse:collapse;font-size:12px;width:100%;margin-top:4px}}
+  th{{background:#161b22;color:#8b949e;padding:5px 8px;text-align:left;font-size:11px;font-weight:600}}
+  td{{padding:4px 8px;border-bottom:1px solid #21262d;font-variant-numeric:tabular-nums}}
+  tr:hover{{background:#1c2129;cursor:pointer}}
+  .pos{{color:#3fb950}} .neg{{color:#f85149}}
+  .tier-Discard{{color:#dc6c6c}} .tier-Noise{{color:#888}} .tier-Directional{{color:#cdb86c}}
+  .tier-Best-of-current{{color:#7fb069}} .tier-Strong{{color:#3fb950}} .tier-Aspirational{{color:#58a6ff;font-weight:700}}
+  .ovr{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px}}
+  .ovr-pair{{background:#161b22;border:1px solid #21262d;border-radius:4px;padding:5px 8px;font-size:11.5px;display:flex;justify-content:space-between;gap:8px}}
+  .ovr-pair .k{{color:#7a8590;font-size:10.5px}}
+  .ovr-pair .v{{color:#dcc26b;font-weight:600}}
+  .ovr-pair.diff{{border-color:#3a4a18;background:#1a2410}}
+  a{{color:#58a6ff;text-decoration:none}} a:hover{{text-decoration:underline}}
+  .toolbar{{margin-bottom:10px;font-size:11.5px}}
+  .nodata{{color:#7a8590;font-style:italic;padding:8px 0}}
+  .equity-box{{height:280px;background:#161b22;border:1px solid #30363d;border-radius:5px;padding:6px;margin-top:6px}}
+</style></head><body>
+
+<div class="toolbar">
+  <a href="/clean_runs">← back to all tests</a> ·
+  <a href="/live">→ live</a> ·
+  <a href="#" id="openChart">→ open on full chart</a>
+</div>
+
+<h1 id="runName">{html_escape(run)}</h1>
+<div id="canonical" class="canonical">loading…</div>
+
+<h2>Per-symbol rollup
+  <span style="font-size:.78em;color:#7a8590;font-weight:normal">— how this test performed broken down by symbol</span>
+</h2>
+<div id="perSym"><div class="nodata">loading…</div></div>
+
+<h2>Equity curve
+  <span style="font-size:.78em;color:#7a8590;font-weight:normal">— this test (cum %) vs Buy &amp; Hold (gray dashed)</span>
+  <span style="margin-left:10px;font-size:.85em">on sym
+    <select id="eqSym" style="background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:2px 6px;border-radius:3px;font-size:11.5px">
+      <option value="">(pick from rollup)</option>
+    </select>
+  </span>
+</h2>
+<div id="equityBox" class="equity-box"></div>
+
+<h2>Parameter overrides
+  <span style="font-size:.78em;color:#7a8590;font-weight:normal">— what THIS test changes vs config defaults</span>
+</h2>
+<div id="overrides"><div class="nodata">loading…</div></div>
+
+<script>
+const RUN = {json.dumps(run)};
+const fmt = (n, d=2) => (n===null||n===undefined||isNaN(n)) ? "—" : Number(n).toFixed(d);
+const cls = (n) => Number(n) >= 0 ? "pos" : "neg";
+function tierClass(t){{return "tier-" + (t || "Noise")}}
+function escapeHtml(s){{return (s===null||s===undefined?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}}
+
+async function load() {{
+  const ri = await fetch("/run_info?run=" + encodeURIComponent(RUN)).then(r=>r.json());
+  document.getElementById("canonical").textContent = ri.canonical_line || "(no canonical line)";
+  const primarySym = (ri.per_symbol||[])[0]?.sym || "BTCUSDC";
+  document.getElementById("openChart").href = `/?sym=${{encodeURIComponent(primarySym)}}&runs=${{encodeURIComponent(RUN)}}`;
+
+  const ps = ri.per_symbol || [];
+  if (ps.length) {{
+    const head = `<tr>
+      <th>symbol</th><th>trades</th><th>sym_sharpe</th><th>tier</th>
+      <th>total_gain%</th><th>chained%</th><th>WR%</th></tr>`;
+    const rows = ps.map(s => {{
+      const ss = Number(s.sym_sharpe||0);
+      const tier = (ss < 0) ? "Discard" : (ss < 0.3) ? "Noise" : (ss < 0.6) ? "Directional" :
+                   (ss < 1.0) ? "Best-of-current" : (ss < 1.5) ? "Strong" : "Aspirational";
+      return `<tr onclick="window.location.href='/?sym=${{encodeURIComponent(s.sym)}}&runs=${{encodeURIComponent(RUN)}}'">
+        <td><b>${{escapeHtml(s.sym)}}</b></td>
+        <td>${{(s.trades||0).toLocaleString()}}</td>
+        <td class="${{cls(ss)}}">${{fmt(ss,4)}}</td>
+        <td><span class="${{tierClass(tier)}}">${{tier}}</span></td>
+        <td class="${{cls(s.total_gain_pct)}}">${{fmt(s.total_gain_pct,1)}}%</td>
+        <td class="${{cls(s.chained_pct)}}">${{fmt((s.chained_pct||0)*100,1)}}%</td>
+        <td>${{fmt((s.wr||0)*100,0)}}%</td>
+      </tr>`;
+    }}).join("");
+    document.getElementById("perSym").innerHTML = `<table>${{head}}${{rows}}</table>
+      <div style="font-size:11px;color:#7a8590;margin-top:4px">click a row → open the chart with this test's trades on that symbol</div>`;
+    const eqSel = document.getElementById("eqSym");
+    eqSel.innerHTML = `<option value="">(pick from rollup)</option>` + ps.map(s =>
+      `<option value="${{escapeHtml(s.sym)}}">${{escapeHtml(s.sym)}} (${{(s.trades||0).toLocaleString()}}tr)</option>`).join("");
+    eqSel.value = ps[0].sym;
+    eqSel.onchange = loadEquity;
+    loadEquity();
+  }} else {{
+    document.getElementById("perSym").innerHTML = `<div class="nodata">no per-symbol data — this test may not have produced trades yet</div>`;
+  }}
+
+  const ovr = ri.overrides || {{}};
+  const ovrKeys = Object.keys(ovr).filter(k => !k.startsWith("_"));
+  if (ovrKeys.length) {{
+    const html = ovrKeys.sort().map(k => {{
+      const v = ovr[k];
+      return `<div class="ovr-pair">
+        <span class="k">${{escapeHtml(k)}}</span>
+        <span class="v">${{escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}}</span>
+      </div>`;
+    }}).join("");
+    document.getElementById("overrides").innerHTML = `<div class="ovr">${{html}}</div>`;
+  }} else {{
+    document.getElementById("overrides").innerHTML = `
+      <div class="nodata">No overrides exposed by this test's metadata.<br><br>
+      For <b>hourly-7D tests</b>, the variation name itself encodes the strategy:
+      <code>BEST</code> = top-pick from this hour's ~100 variations ·
+      <code>BEST_more_trades</code> = relaxed-filter sibling ·
+      <code>baseline</code> = unmodified config ·
+      <code>extra_btc_&lt;sym&gt;_LONG/SHORT_top</code> = forced-extra-position variant<br><br>
+      For <b>bigsweep / autonomous</b> tests, overrides are recorded in the source winner JSONL —
+      this run may not have a winner-jsonl source.</div>`;
+  }}
+}}
+
+async function loadEquity() {{
+  const sym = document.getElementById("eqSym").value;
+  if (!sym) return;
+  const r = await fetch(`/equity_curves?sym=${{encodeURIComponent(sym)}}&runs=${{encodeURIComponent(RUN)}}`).then(r=>r.json()).catch(()=>null);
+  if (!r) return;
+  const traces = [];
+  if (Array.isArray(r.buy_hold) && r.buy_hold.length) {{
+    traces.push({{
+      x: r.buy_hold.map(p => new Date(p.t*1000)),
+      y: r.buy_hold.map(p => p.v),
+      mode: "lines", type: "scatter", name: "B&H",
+      line: {{color: "#888", width: 1.5, dash: "dash"}},
+    }});
+  }}
+  const runArr = (r.runs || {{}})[RUN] || [];
+  if (runArr.length) {{
+    traces.push({{
+      x: runArr.map(p => new Date(p.t*1000)),
+      y: runArr.map(p => p.v),
+      mode: "lines", type: "scatter", name: "this test",
+      line: {{color: "#58a6ff", width: 2}},
+    }});
+  }}
+  Plotly.newPlot("equityBox", traces, {{
+    paper_bgcolor:"#161b22", plot_bgcolor:"#161b22",
+    font:{{color:"#c9d1d9", size:10}},
+    xaxis:{{gridcolor:"#21262d"}}, yaxis:{{gridcolor:"#21262d", title:"cum %"}},
+    margin:{{t:14, r:14, b:30, l:50}}, legend:{{orientation:"h", y:-0.2}},
+  }}, {{displayModeBar:false, responsive:true}});
+}}
+
+load();
+</script>
+</body></html>"""
+
+
 @app.route("/live")
 def live_page():
     """Priority page (user 2026-05-01): tabs for live monitoring of 7D-best

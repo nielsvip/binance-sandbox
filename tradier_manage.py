@@ -1937,6 +1937,23 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
     try:
         account_key, _, _ = parse_position_key(position_key)
         current_account.set(account_key)
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚨 BALANCE_FLOOR_HALT — NEVER GO BELOW $0 (user 2026-05-01)
+        # balance_floor_watchdog writes data/HALT_TRADING_<acct> sentinel when
+        # account total_cash drops to/below MIN_FLOOR_USD ($1 default). Refuse
+        # OPEN/AUGMENT/ENTRY/BUY when sentinel exists. CLOSE/REDUCE still allowed.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _bf_act = (action or '').upper()
+            if 'OPEN' in _bf_act or 'AUGMENT' in _bf_act or 'ENTRY' in _bf_act or _bf_act == 'BUY':
+                from pathlib import Path as _BFPath
+                _bf_base = getattr(config, 'BASE_PATH', None) or '/Users/niels/Documents/binance'
+                _bf_halt = _BFPath(_bf_base) / 'data' / f'HALT_TRADING_{account_key}'
+                if _bf_halt.exists():
+                    logger.critical(f"🚨 [BALANCE_FLOOR_HALT] {position_key}: BLOCKED — {_bf_halt} exists. action={action} reason={(reason or '')[:80]}")
+                    return False
+        except Exception as _bf_e:
+            logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return

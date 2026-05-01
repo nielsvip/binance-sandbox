@@ -11475,6 +11475,22 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     if account_key not in trade_manager.accounts:
         return False, f"IGNORED: Account {account_key} not loaded in TradeManager."
     # ═══════════════════════════════════════════════════════════════════════════
+    # 🚨 BALANCE_FLOOR_HALT — NEVER GO BELOW $0 (user 2026-05-01)
+    # balance_floor_watchdog writes data/HALT_TRADING_<acct> sentinel when account
+    # free cash drops to/below MIN_FLOOR_USD ($1 default). Refuse OPEN/AUGMENT/
+    # ENTRY/BUY/REENTRY when sentinel exists. CLOSE/REDUCE still allowed.
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        _bf_act = (action or '').upper()
+        if 'OPEN' in _bf_act or 'AUGMENT' in _bf_act or 'ENTRY' in _bf_act or 'REENTRY' in _bf_act or _bf_act == 'BUY':
+            from pathlib import Path as _BFPath
+            _bf_halt = _BFPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / 'data' / f'HALT_TRADING_{account_key}'
+            if _bf_halt.exists():
+                logger.critical(f"🚨 [BALANCE_FLOOR_HALT] {position_key}: BLOCKED — {_bf_halt} exists. action={action} reason={(reason or '')[:80]}")
+                return False, f"BLOCKED_BALANCE_FLOOR_HALT_{account_key}"
+    except Exception as _bf_e:
+        logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # 🔨🔨🔨 LOSING_POSITION_HARD_BLOCK 2026-04-28 — USER ABSOLUTE 🔨🔨🔨
     # User repeated rule (verbatim): "A POSITION WITH GAIN < config.MIN_GAIN CAN NOT
     # AUGMENT REOPEN HEDGE REENTER WHATEVER if positionAmt > 0".

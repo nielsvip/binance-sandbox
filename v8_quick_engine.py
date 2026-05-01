@@ -362,6 +362,11 @@ class QuickConfig:
     # allows B_PRICE_CROSS_K90 alone (w=4≥3) or B_WT15M_CROSS alone (w=4≥3). Sweep can raise.
     STRENGTH_FILTER_ENABLED: bool = True
     STRENGTH_MIN_SCORE: float = 5.0  # 2026-04-19 sweep: score=5 filters to high-quality entries
+    # 2026-04-30 Job 1 (i): per-sector multiplier on STRENGTH_MIN_SCORE (tradier mode only).
+    # Value <1.0 = LOOSER entry threshold (more trades) for that sector;
+    # >1.0 = TIGHTER. None or empty dict = no tilt (default-bound back-compat).
+    # Sector lookup uses stocks_sectors.json. Untagged symbols: no tilt (mult=1.0).
+    SECTOR_ENTRY_STRENGTH_MULT_TRADIER: Optional[Dict[str, float]] = None
     # Holding period enforcement (avoid rapid exit noise) — WINNER: 10
     MIN_HOLD_BARS: int = 250  # 2026-04-19: 12.5h minimum hold — prevents premature exits at small gains. Sharpe 1.508→2.554.
     # Stop loss exit (sweep-only — cap max loss)
@@ -2058,7 +2063,59 @@ def _combine_engine_sigs(sigs, mode):
     return out
 
 
-def compute_entry_signals(npz, n, is_long, cfg):
+# 2026-04-30 Job 1 (i): sector→multiplier lookup cache for STRENGTH_MIN_SCORE tilt.
+# Loaded once from stocks_sectors.json on first use. Tradier-only.
+_SYM_TO_SECTOR_CACHE: Optional[Dict[str, str]] = None
+
+
+def _build_sym_sector_map() -> Dict[str, str]:
+    """Inverted index sym -> sector_key. Cached; loaded from stocks_sectors.json."""
+    global _SYM_TO_SECTOR_CACHE
+    if _SYM_TO_SECTOR_CACHE is not None:
+        return _SYM_TO_SECTOR_CACHE
+    try:
+        path = Path(__file__).resolve().parent / "stocks_sectors.json"
+        with open(path) as f:
+            data = json.load(f)
+        m: Dict[str, str] = {}
+        for sector_key, syms in data.items():
+            if sector_key.startswith("_") or not isinstance(syms, list):
+                continue
+            if sector_key in ("mix_12", "all", "tech_big"):
+                continue
+            for s in syms:
+                if isinstance(s, str) and s not in m:
+                    m[s] = sector_key
+        _SYM_TO_SECTOR_CACHE = m
+    except Exception:
+        _SYM_TO_SECTOR_CACHE = {}
+    return _SYM_TO_SECTOR_CACHE
+
+
+def _sector_strength_mult(sym: Optional[str], cfg) -> float:
+    """Return multiplicative factor for STRENGTH_MIN_SCORE (tradier mode only).
+    Default 1.0 (back-compat). Active only when:
+      - cfg.MODE == 'tradier'
+      - cfg.SECTOR_ENTRY_STRENGTH_MULT_TRADIER is a non-empty dict
+      - sym is non-None and maps to a sector listed in the dict
+    """
+    mult_map = getattr(cfg, 'SECTOR_ENTRY_STRENGTH_MULT_TRADIER', None)
+    if not mult_map or not isinstance(mult_map, dict):
+        return 1.0
+    if getattr(cfg, 'MODE', 'crypto') != 'tradier':
+        return 1.0
+    if not sym:
+        return 1.0
+    sector = _build_sym_sector_map().get(sym)
+    if sector is None:
+        return 1.0
+    try:
+        return float(mult_map.get(sector, 1.0))
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
     _bph_1h = 60 // _ltf_mins    # bars per 1h: 20 (crypto/3m) or 12 (tradier/5m)
@@ -2235,7 +2292,11 @@ def compute_entry_signals(npz, n, is_long, cfg):
             _pts_4h = np.where(_near_4h, _hlr_pts_4h, _hlr_pts_4h * _hlr_off_frac)
             score = score + (_hl_1h.astype(np.float32) * _pts_1h.astype(np.float32))
             score = score + (_hl_4h.astype(np.float32) * _pts_4h.astype(np.float32))
-        raw = raw & (score >= cfg.STRENGTH_MIN_SCORE)
+        # 2026-04-30 Job 1 (i): per-sector multiplier on STRENGTH_MIN_SCORE.
+        # _sector_strength_mult returns 1.0 unless cfg.SECTOR_ENTRY_STRENGTH_MULT_TRADIER
+        # is set AND mode==tradier AND sym maps to a configured sector.
+        _sect_mult = _sector_strength_mult(sym, cfg)
+        raw = raw & (score >= cfg.STRENGTH_MIN_SCORE * _sect_mult)
         # ENTRY_SCORE_THRESHOLD — second score floor swept independently.
         # DELTA_ENTRY_ENABLED proxy: live delta_tracker fires on velocity zone transitions,
         # bypassing the scorer. Proxy: velocity-strong bars skip ENTRY_SCORE_THRESHOLD (not STRENGTH_MIN_SCORE).
@@ -4828,7 +4889,7 @@ def simulate(stores, cfg, capital=10000.0):
         _generic_trades_dir = os.environ.get('V8_TRADES_OUT_DIR', '')
         _generic_trades_buf = [] if _generic_trades_dir else None
         for is_long in [True, False]:
-            entry_sig = compute_entry_signals(npz, n, is_long, cfg)
+            entry_sig = compute_entry_signals(npz, n, is_long, cfg, sym=sym)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
             # Phase 4 (2026-04-30): OR-merge indicator-only process_position exit gates
             # (WT_EXHAUST, WT_PERCENTILE, E_1 delta, E_3 structure, WT_4H_VEL_full).

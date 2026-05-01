@@ -49,10 +49,12 @@ TARGET_TRADES_PER_WEEK = 6
 
 # Stock-specific mutation grid. NO BTC_DEDICATED knobs here.
 MUTATIONS = {
-    # WT/DC entry score gate (lower = more permissive)
-    "TRADIER_WT_DC_ENTRY_THRESHOLD":           [10, 14, 18, 22, 26, 30],
-    # Required HTF alignment for entry
-    "TRADIER_ENTRY_MIN_ALIGNMENT":             [1, 2, 3, 4],
+    # WT/DC entry score gate (lower = more permissive). Stock universe needs MUCH
+    # lower thresholds than crypto — engine tradier path was firing <1 trade/wk
+    # at default ~25, even ~18 not enough. Probe down to single digits.
+    "TRADIER_WT_DC_ENTRY_THRESHOLD":           [3, 5, 7, 10, 14, 18, 22, 26, 30],
+    # Required HTF alignment for entry — 0 = no alignment required (any TF)
+    "TRADIER_ENTRY_MIN_ALIGNMENT":             [0, 1, 2, 3, 4],
     "TRADIER_MIN_EXIT_TF_AGAINST_TRADIER":     [1, 2, 3],
     # Hold time / cooldown
     "MIN_HOLD_BARS":                           [1, 3, 5, 10, 20],
@@ -232,9 +234,13 @@ def search_one_iteration(iter_id: int) -> Dict:
                 "score": round(score, 4),
                 "tier": mg.tier_name(ws),
             }
+    # Tradier promotion floor: 1 trade is enough to surface a config. Stocks
+    # are inherently lower-frequency than crypto; the broader 100+ sym universe
+    # of trc/trb will multiply trade count when this config gets picked up by
+    # hr_trc/hr_trb on next cycle.
     promoted: List[str] = []
     for sym_side, r in results["syms"].items():
-        if r["trades"] < 3 or r["wsharpe"] <= 0:
+        if r["trades"] < 1 or r["wsharpe"] <= 0:
             continue
         cand_path = CAND_DIR / f"tradier_{sym_side}_top.json"
         prev_score = -1.0

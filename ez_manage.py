@@ -13046,6 +13046,23 @@ class MultiAccountTradeManager:
         #    blocking close-at-loss here for belt+suspenders.
         # ═══════════════════════════════════════════════════════════════════════════
         _kill_act = (action or '').upper()
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚨 BALANCE_FLOOR_HALT — NEVER GO BELOW $0 (user 2026-05-01)
+        # balance_floor_watchdog writes data/HALT_TRADING_<acct> sentinel when
+        # account free cash drops to/below MIN_FLOOR_USD ($1 default). Refuse
+        # OPEN/AUGMENT/ENTRY/BUY when sentinel exists. CLOSE/REDUCE still allowed
+        # (frees capital). Additive guard — none of the existing blocks below removed.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _bf_acct = account_key or (position_key.split(':', 1)[0] if position_key and ':' in position_key else None)
+            if _bf_acct:
+                from pathlib import Path as _BFPath
+                _bf_halt = _BFPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / 'data' / f'HALT_TRADING_{_bf_acct}'
+                if _bf_halt.exists() and ('OPEN' in _kill_act or 'AUGMENT' in _kill_act or 'ENTRY' in _kill_act or _kill_act == 'BUY'):
+                    logger.critical(f"🚨 [BALANCE_FLOOR_HALT] {position_key}: BLOCKED — {_bf_halt} exists. action={action} reason={(reason or '')[:80]}")
+                    return f"BLOCKED_BALANCE_FLOOR_HALT_{_bf_acct}"
+        except Exception as _bf_e:
+            logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # 2026-04-28 02:38 — user correction: AUGMENT is the ONE GOOD path when gain is sufficient.
         # The duplicate-fire problem is HEDGES, not augments. LOSING_POSITION_HARD_BLOCK below
         # already prevents augment on losing positions. Augments on winners pass.
