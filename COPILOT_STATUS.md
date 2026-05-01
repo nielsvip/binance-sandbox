@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-01 23:05:23 UTC
+# Copilot Status — 2026-05-01 23:20:54 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T23:02:48
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:02:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:02:48
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:02:59
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:04:01
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-01T23:04:52
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T23:04:52
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:04:52
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:04:52
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:05:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:17:18
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:17:18
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:17:28
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:18:29
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-01T23:19:20
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-01T23:19:20
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-01T23:19:20
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-01T23:19:20
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:19:31
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-01T23:20:33
 
 ## Missed Trades (trader comparison)
 
@@ -30,7 +30,7 @@ _None_
 **Held:** 2 | **Watching for reentry:** 14 | **Reentered:** 0
 
 - HELD: **TRBUSDT** SHORT (crypto) peak +11.7%, now +9.6%
-- HELD: **GOOGL** LONG (tradier) peak +10.5%, now +9.8%
+- HELD: **GOOGL** LONG (tradier) peak +10.5%, now +9.9%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
 - WATCHING: **PENGUUSDC** SHORT (crypto) peaked +13.3%, exited 0m ago
@@ -49,7 +49,7 @@ _None_
 
 **Issues (last 1h):** 50
 - [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_rankings.py is NOT running
 - [HIGH] ez_manage.py for inf is NOT running
-- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
+- [HIGH] ez_manage.py for inf is NOT running
 - [HIGH] ez_manage.py for inf is NOT running

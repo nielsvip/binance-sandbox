@@ -1888,9 +1888,9 @@ class Config:
     REDUCTION_COOLDOWN_SECONDS = 90.0
     AUGMENTATION_COOLDOWN_SECONDS = 540.0
 
-    PERSIST =7200.0  # hours to stay in tradeable_keys after deletion (ang — long-term, ~300 days)
+    PERSIST = 720.0  # hours to stay in tradeable_keys after deletion (ang — ~30 days)
     PERSIST_INF: float = 4.0   # hours: inf extends for minutes-hours only (not days)
-    PERSIST_FLZ: float = 24.0  # hours: retention for flz keys after falling out of winners_20/losers_20
+    PERSIST_FLZ: float = 0.0   # 0 = no separate persistence needed; cleanup_positions loop adds both sides when symbol not in winners/losers
     PERSIST_MEN: float = 24.0  # hours: retention for men keys after falling out of classification
     PERSIST_FIN: float = 24.0  # hours: retention for fin keys after falling out of classification
 

@@ -4647,6 +4647,17 @@ class RatingRegistry:
                     for key in sym_map[sym]:
                         if key.endswith('_SHORT'):
                             await self._classify_and_queue(key, entry_batch, exit_batch)
+            # BTC_DEDICATED accounts (flz/inf) use their own entry logic inside check_entry_candidates
+            # that bypasses the standard WT ranking. They MUST be queued directly — their symbols
+            # are typically below SMA200_D in a downtrend and will never appear in top_longs via
+            # the standard hedge_rank path. The btc_loop.should_enter_btc_long/short handles the gate.
+            _btc_ded_enabled = bool(getattr(self.trade_manager.config, 'BTC_DEDICATED_ENABLED', False))
+            _btc_ded_accounts = list(getattr(self.trade_manager.config, 'BTC_DEDICATED_ACCOUNTS', []))
+            if _btc_ded_enabled and account_key in _btc_ded_accounts:
+                _already = set(entry_batch) | set(exit_batch)
+                for key in universe:
+                    if key not in _already:
+                        await self._classify_and_queue(key, entry_batch, exit_batch)
             if entry_batch:
                 asyncio.create_task(check_entry_candidates_for_account( self.trade_manager, account_key, self.trade_manager.redis_manager, self.tracker_manager, self.trade_manager.order_queue, self.data_manager, self.trade_manager.hedge_engine, position_keys=entry_batch ))
             if exit_batch:
