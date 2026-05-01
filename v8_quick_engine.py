@@ -203,6 +203,20 @@ class QuickConfig:
     WT_HTF_DISCOUNT_ENABLED: bool = True
     HEDGE_MAX_PCT_OF_LOSER: float = 1.0
     MIN_POSITION_SIZE: float = 55.0
+    # 2026-05-01 Phase 5: options-OI signal injection (READ-ONLY, tradier path).
+    # Uses snapshot from data/stocks_oi_cache/{sym}.json (populated by tradier_options_oi_fetcher.py).
+    # Snapshot-static across all backtest bars — measures whether the live signal has edge today.
+    # Default OFF. NEVER routes orders through options endpoints — read-only sentiment proxy.
+    OPTIONS_OI_BACKTEST_ENABLED: bool = False
+    OPTIONS_OI_RED_ZONE_GATE: bool = True              # block LONG within X% below max_call_oi_strike, SHORT within X% above max_put_oi_strike
+    OPTIONS_OI_RED_ZONE_DIST_PCT: float = 0.5          # distance threshold (matches RED_ZONE_TRADIER_MIN_DISTANCE_PCT)
+    OPTIONS_OI_RED_ZONE_MIN_OI: int = 1000             # minimum contracts at wall to count
+    OPTIONS_OI_DEEP_HEATMAP: bool = True               # iterate top_call_walls/top_put_walls (not just max strike)
+    OPTIONS_OI_PC_INJECT_ENABLED: bool = False         # P/C ratio additive entry signal (sentiment-extreme contrarian)
+    OPTIONS_OI_PC_BULLISH_THRESH: float = 0.6          # near_money_pc < this → call OI dominates → LONG bias
+    OPTIONS_OI_PC_BEARISH_THRESH: float = 1.4          # near_money_pc > this → put OI dominates → SHORT bias
+    OPTIONS_OI_MIN_TOTAL_OI: int = 1000                # require ≥1000 contracts open across monitored exps
+    OPTIONS_OI_CACHE_DIR: str = "data/stocks_oi_cache"
     # 2026-04-30 Phase 2 reentry retrofit: same-side reentry window after a recent exit.
     # Live system fires GUARANTEED_PRICE_CROSS / DIRECTION_FAVORABLE / GUARANTEED_REENTRY paths
     # ~2,000+/day combined. v8_quick already routes reentry blocks through compute_entry_signals
@@ -4722,6 +4736,47 @@ def simulate(stores, cfg, capital=10000.0):
     for sym, npz in _iter:
         sym_pnl = []
         _pnl_slice_start = len(all_pnl)  # Phase 3b: track slice for qty-pipeline re-weight
+        # Phase 5: load options-OI snapshot for tradier (READ-ONLY).
+        # Snapshot-static — same OI walls applied across all backtest bars. NEVER routes orders.
+        _oi_long_block_below = None  # array of strikes BELOW current price that block LONG (call walls above)
+        _oi_short_block_above = None  # strikes ABOVE current price that block SHORT (put walls below)
+        _oi_call_walls = []  # list of (strike, oi) tuples
+        _oi_put_walls = []
+        _oi_pc_ratio = None
+        _oi_near_money_pc = None
+        _oi_total_oi = 0
+        if (bool(getattr(cfg, 'OPTIONS_OI_BACKTEST_ENABLED', False))
+                and getattr(cfg, 'MODE', 'crypto') == 'tradier'):
+            try:
+                import json as _oi_json, os as _oi_os
+                _oi_path = _oi_os.path.join(getattr(cfg, 'OPTIONS_OI_CACHE_DIR', 'data/stocks_oi_cache'), f"{sym}.json")
+                # Try a couple of base paths so this works on MB and on servers
+                if not _oi_os.path.exists(_oi_path):
+                    for _bp in ('/Users/niels/Documents/binance', '/home/niels/binance-sandbox', '/home/niels/binance'):
+                        _alt = _oi_os.path.join(_bp, getattr(cfg, 'OPTIONS_OI_CACHE_DIR', 'data/stocks_oi_cache'), f"{sym}.json")
+                        if _oi_os.path.exists(_alt):
+                            _oi_path = _alt
+                            break
+                if _oi_os.path.exists(_oi_path):
+                    with open(_oi_path) as _oif:
+                        _oi_doc = _oi_json.load(_oif)
+                    _oi_total_oi = int(_oi_doc.get('total_call_oi', 0)) + int(_oi_doc.get('total_put_oi', 0))
+                    _oi_min_total = int(getattr(cfg, 'OPTIONS_OI_MIN_TOTAL_OI', 1000))
+                    if _oi_total_oi >= _oi_min_total:
+                        _oi_pc_ratio = float(_oi_doc.get('pc_ratio') or 0)
+                        _oi_near_money_pc = float(_oi_doc.get('near_money_pc_ratio') or 0)
+                        _min_oi = int(getattr(cfg, 'OPTIONS_OI_RED_ZONE_MIN_OI', 1000))
+                        _deep = bool(getattr(cfg, 'OPTIONS_OI_DEEP_HEATMAP', True))
+                        if _deep:
+                            _oi_call_walls = [(float(w.get('strike', 0)), int(w.get('oi', 0))) for w in (_oi_doc.get('top_call_walls') or []) if int(w.get('oi', 0)) >= _min_oi and float(w.get('strike', 0)) > 0]
+                            _oi_put_walls = [(float(w.get('strike', 0)), int(w.get('oi', 0))) for w in (_oi_doc.get('top_put_walls') or []) if int(w.get('oi', 0)) >= _min_oi and float(w.get('strike', 0)) > 0]
+                        else:
+                            _ms = float(_oi_doc.get('max_call_oi_strike') or 0); _mv = int(_oi_doc.get('max_call_oi_value') or 0)
+                            if _ms > 0 and _mv >= _min_oi: _oi_call_walls = [(_ms, _mv)]
+                            _ps = float(_oi_doc.get('max_put_oi_strike') or 0); _pv = int(_oi_doc.get('max_put_oi_value') or 0)
+                            if _ps > 0 and _pv >= _min_oi: _oi_put_walls = [(_ps, _pv)]
+            except Exception:
+                pass
         # Derive n from LTF close (stocks may not have timestamps/timestamp_3m fields at all).
         ts = npz.get('timestamps', npz.get(f'timestamp_{_ltf}', npz.get('timestamp_3m', np.array([]))))
         n = len(ts)
@@ -4891,6 +4946,51 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg, sym=sym)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            # Phase 5 (2026-05-01): options-OI RED_ZONE gate — block entries near OI walls.
+            # Snapshot-static gate applied per-bar; preserved as AND-merge so it CAN ONLY block,
+            # never adds new entries. Tradier-only path; crypto uses different OI source.
+            if (getattr(cfg, 'OPTIONS_OI_BACKTEST_ENABLED', False)
+                    and getattr(cfg, 'MODE', 'crypto') == 'tradier'
+                    and bool(getattr(cfg, 'OPTIONS_OI_RED_ZONE_GATE', True))
+                    and (_oi_call_walls or _oi_put_walls)):
+                _oi_dist_pct = float(getattr(cfg, 'OPTIONS_OI_RED_ZONE_DIST_PCT', 0.5)) / 100.0
+                _oi_close_arr = _close_with_mode_check(npz, n, cfg, 'options_oi_gate')
+                _oi_block = np.zeros(n, dtype=bool)
+                if is_long:
+                    # Block LONG when within X% below any call wall (wall is resistance ceiling above price)
+                    for _ws, _ in _oi_call_walls:
+                        _dist = (_ws - _oi_close_arr) / np.maximum(_oi_close_arr, 1e-9)
+                        _hit = (_dist > 0) & (_dist < _oi_dist_pct)
+                        _oi_block = _oi_block | _hit
+                else:
+                    # Block SHORT when within X% above any put wall (wall is support floor below price)
+                    for _ws, _ in _oi_put_walls:
+                        _dist = (_oi_close_arr - _ws) / np.maximum(_oi_close_arr, 1e-9)
+                        _hit = (_dist > 0) & (_dist < _oi_dist_pct)
+                        _oi_block = _oi_block | _hit
+                entry_sig = entry_sig & ~_oi_block
+            # Phase 5 P/C ratio injection — when extremely bullish/bearish, ADD entry signal
+            # at the very next bar (signal triggers the existing entry on momentum-up/down).
+            # Snapshot-static — fires only if today's near-money P/C is at extreme on entry path.
+            if (getattr(cfg, 'OPTIONS_OI_BACKTEST_ENABLED', False)
+                    and getattr(cfg, 'MODE', 'crypto') == 'tradier'
+                    and bool(getattr(cfg, 'OPTIONS_OI_PC_INJECT_ENABLED', False))
+                    and _oi_near_money_pc is not None
+                    and _oi_total_oi >= int(getattr(cfg, 'OPTIONS_OI_MIN_TOTAL_OI', 1000))):
+                _pc = _oi_near_money_pc
+                _bull_thr = float(getattr(cfg, 'OPTIONS_OI_PC_BULLISH_THRESH', 0.6))
+                _bear_thr = float(getattr(cfg, 'OPTIONS_OI_PC_BEARISH_THRESH', 1.4))
+                # Static bias: extreme bullish OI → permit only LONG entries through; extreme bearish → only SHORT.
+                # Mid-range = no injection (existing entry_sig stands).
+                _bias_long = _pc < _bull_thr
+                _bias_short = _pc > _bear_thr
+                if is_long and not _bias_long and (_bias_short or False):
+                    # Strong bearish OI sentiment + LONG entry → block (sentiment confirms downside)
+                    entry_sig = entry_sig & False  # turn off LONG entries
+                elif (not is_long) and not _bias_short and (_bias_long or False):
+                    # Strong bullish OI sentiment + SHORT entry → block
+                    entry_sig = entry_sig & False
+
             # Phase 4 (2026-04-30): OR-merge indicator-only process_position exit gates
             # (WT_EXHAUST, WT_PERCENTILE, E_1 delta, E_3 structure, WT_4H_VEL_full).
             # State-dependent gates (DC_HOPELESS needs entry_price; WT_4H_VEL needs profit/age)
