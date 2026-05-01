@@ -1254,6 +1254,45 @@ def account_pool_stats_route():
     return jsonify({"per_account": out, "generated_utc": datetime.now(timezone.utc).isoformat()})
 
 
+@app.route("/best_runs_for_sym")
+def best_runs_for_sym():
+    """Top-N backtest runs that actually have trades for ?sym=X, ranked by
+    pool_sharpe of the run on that specific symbol (sym-level Sharpe, capped ±5).
+    Used by the chart to one-click-overlay the best backtest results onto live.
+
+    Output: [{run, sym_sharpe, trades, total_gain_pct, wr, gain_per_year_pct, machine, category}]
+    """
+    sym = request.args.get("sym", "").upper()
+    n = int(request.args.get("n", 3))
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    rows: List[Dict[str, Any]] = []
+    for run, s, p in _iter_all_trade_files():
+        if s.upper() != sym:
+            continue
+        agg = _file_aggregates(p)
+        if not agg or agg["n"] < 5:
+            continue
+        machine, category = _classify_run(run, [s])
+        rows.append({
+            "run": run,
+            "machine": machine,
+            "category": category,
+            "trades": agg["n"],
+            "wr": round(agg["wr"], 3),
+            "total_gain_pct": round(agg["total_gain"], 2),
+            "sym_sharpe": round(agg["sym_sharpe_capped"], 4),
+            "ts_first": agg["ts_first"],
+            "ts_last": agg["ts_last"],
+            "gain_per_year_pct": round(
+                agg["total_gain"] / max(0.01, (agg["ts_last"] - agg["ts_first"]) / (86400.0 * 365.25)),
+                1,
+            ),
+        })
+    rows.sort(key=lambda r: -r["sym_sharpe"])
+    return jsonify({"sym": sym, "n_runs": len(rows), "top": rows[:n]})
+
+
 @app.route("/live_status")
 def live_status():
     """Per-account file-counts for both crypto (data/history) and stocks

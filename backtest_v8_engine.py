@@ -2003,17 +2003,31 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         except Exception as _rfe:
             v8_logger.warning(f"[V8_RESULT_FILE] Failed to write {_v8_result_file}: {_rfe}")
 
-    # Cancel queue processor (after result is already printed).
-    # 2026-05-01: catch BaseException — Python 3.11+ asyncio.CancelledError is a
-    # BaseException, NOT Exception, so the legacy `except Exception` did not catch
-    # it and CancelledError propagated up to asyncio.run(). That skipped every
-    # subsequent line including _write_chart_trades(executed_trades) at line ~2034
-    # which writes the chart-server JSONL. Result: V8_PARALLEL workers exited with
-    # rc=1 and produced ZERO trade JSONLs even though V8_RESULT was emitted.
+    # 2026-05-01: write chart-trade JSONL + compute trade pnl BEFORE cancelling
+    # the queue task. asyncio.CancelledError (Python 3.11+ is BaseException, NOT
+    # Exception) propagates from `await queue_task` up through asyncio.run() and
+    # was previously skipping _write_chart_trades, leaving V8_PARALLEL with zero
+    # trade JSONLs. Catching BaseException here causes asyncio.run() to wait on
+    # other pending tasks (account-manager loops) and timeout. Reorder fixes both.
+    try:
+        _compute_trade_pnl(executed_trades)
+    except Exception as _ctp_e:
+        v8_logger.warning(f"[V8_FINAL] _compute_trade_pnl error: {_ctp_e}")
+    try:
+        _v8_result_from_trades(executed_trades, capital)
+    except Exception as _vrt_e:
+        v8_logger.warning(f"[V8_FINAL] _v8_result_from_trades error: {_vrt_e}")
+    try:
+        _write_chart_trades(executed_trades)
+    except Exception as _wct_e:
+        v8_logger.warning(f"[V8_FINAL] _write_chart_trades error: {_wct_e}")
+
+    # Now cancel queue processor — CancelledError propagating up through
+    # asyncio.run() is fine; main() returns immediately afterward.
     queue_task.cancel()
     try:
         await queue_task
-    except BaseException:
+    except Exception:
         pass
     v8_logger.info("[V8_FINAL_PNL] === BY CLOSE REASON (sorted by total PnL ascending) ===")
     for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
@@ -2035,9 +2049,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     if _bt_rg is not None and len(sorted_ts) >= 2:
         _bt_days = max((sorted_ts[-1] - sorted_ts[0]) / 86400.0, 1e-6)
         _bt_rg.final_check(_live_pnl["n_closes"], test_window_days=_bt_days)
-    _compute_trade_pnl(executed_trades)
-    _v8_result_from_trades(executed_trades, capital)
-    _write_chart_trades(executed_trades)
+    # 2026-05-01: _compute_trade_pnl / _v8_result_from_trades / _write_chart_trades
+    # moved BEFORE queue_task.cancel() so CancelledError propagating from the
+    # cancel doesn't skip them. See note above the cancel block.
     log_dir = BASE_PATH / "backtest_v8" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"v8_{mode}_{account_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.jsonl"
