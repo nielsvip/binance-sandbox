@@ -13974,6 +13974,25 @@ class MultiAccountTradeManager:
                 if quantity <= 0.0:
                     return f'NO QUANTITY LEFT TO REDUCE (Protected by retention_qty {retention_qty:.6f})'
             await record_decision_context_crypto( self.redis_manager, account_key, position_key, action, reason, i, extra_data={ 'is_hedge': is_hedge, 'hedge_for': hedge_for} )
+            # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
+            # Fires only for reduces/closes; never blocks the trade.
+            try:
+                if is_reduce:
+                    from per_trade_logger import log_close as _ptl_log_close
+                    _ptl_entry = float(getattr(position, 'entryPrice', 0.0) or 0.0)
+                    _ptl_gain = safe_fetch_float(getattr(position, 'gain', 0.0), 0.0)
+                    _ptl_opened = getattr(position, 'opened_at', None)
+                    _ptl_hold_min = 0.0
+                    if _ptl_opened is not None:
+                        try:
+                            _now = datetime.now(timezone.utc)
+                            _opn = _ptl_opened if isinstance(_ptl_opened, datetime) else datetime.fromisoformat(str(_ptl_opened))
+                            _ptl_hold_min = max(0.0, (_now - _opn).total_seconds() / 60.0)
+                        except Exception:
+                            _ptl_hold_min = 0.0
+                    _ptl_log_close(account=account_key, symbol=symbol, side=str(position_side), entry_price=_ptl_entry, exit_price=float(current_price), pnl_pct=_ptl_gain, fees_pct=0.04, hold_minutes=_ptl_hold_min, qty=float(quantity), reason=str(reason))
+            except Exception:
+                pass
             if is_sandbox_account(config, account_key):
                 sandbox_fill_price = current_price
                 if is_augment:

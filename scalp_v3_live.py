@@ -363,3 +363,22 @@ def check_scalp_v3_live_exit(position_key: str, indicators: Dict, price: float,
     if max_hold_min > 0 and age_sec > max_hold_min * 60.0:
         return {"reason": f"SCALP_V3_CLOSE_MAX_HOLD_{side}_age{age_sec/60:.1f}m"}
     return None
+
+
+# 2026-04-30 Job 3 (iii): per-trade returns audit logger entry-point for V3-aware
+# callers. scalp_v3_live.py is signal-only — actual order execution flows through
+# ez_manage.execute_trade_action which has its own logger hook. This wrapper is a
+# convenience for any direct V3 close caller that wants to emit a per-trade row.
+# Risk-zero: never raises; never blocks.
+def notify_v3_close(*, account: str, symbol: str, side: str, entry_price: float,
+                    exit_price: float, pnl_pct: float, fees_pct: float = 0.0,
+                    hold_minutes: float = 0.0, qty: float = 0.0,
+                    reason: str = '') -> bool:
+    try:
+        from per_trade_logger import log_close as _ptl_log_close
+        return _ptl_log_close(account=account, symbol=symbol, side=side,
+                              entry_price=entry_price, exit_price=exit_price,
+                              pnl_pct=pnl_pct, fees_pct=fees_pct,
+                              hold_minutes=hold_minutes, qty=qty, reason=reason)
+    except Exception:
+        return False

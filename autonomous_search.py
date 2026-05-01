@@ -295,6 +295,9 @@ def main():
                     help="Kill any single iteration exceeding this (subprocess SIGKILL). Default 120s.")
     ap.add_argument("--symbol-list", default=None,
                     help="Comma-separated explicit symbol list (overrides alphabetical-first-N).")
+    ap.add_argument("--tradeable-only", action="store_true",
+                    help="Restrict symbol universe to tradeable_keys.json + (tradier) symbols_tradier.json. "
+                         "Per CLAUDE.md / user directive 2026-05-01: autonomous_search runs only on symbols we actually trade.")
     ap.add_argument("--stream-npz", action="store_true",
                     help="Stream NPZs per-iter (for large sym sets). Bounded memory.")
     ap.add_argument("--auto-restart-iters", type=int, default=50,
@@ -317,17 +320,62 @@ def main():
     winners_path = Path(args.out_dir) / f"autonomous_{args.mode}_winners.jsonl"
 
     CRYPTO_SUFFIXES = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
+    CRYPTO_ACCT_PREFIXES = ("ang:", "inf:", "men:", "flz:", "fin:")
+    TRADIER_ACCT_PREFIXES = ("trb:", "trc:")
+
+    def _load_tradeable_universe(mode: str) -> set:
+        """Load tradeable_keys.json + (tradier fallback) symbols_tradier.json. Returns base-symbol set.
+        Per user directive 2026-05-01: autonomous_search runs only on symbols we trade."""
+        base = Path(__file__).parent
+        live_keys_path = base / "tradeable_keys.json"
+        univ: set = set()
+        if live_keys_path.exists():
+            try:
+                with open(live_keys_path) as _f:
+                    keys = json.load(_f)
+                prefixes = CRYPTO_ACCT_PREFIXES if mode == "crypto" else TRADIER_ACCT_PREFIXES
+                for k in keys:
+                    if not isinstance(k, str): continue
+                    if not k.startswith(prefixes): continue
+                    rest = k.split(":", 1)[1]
+                    sym = rest.rsplit("_", 1)[0]  # strip _LONG/_SHORT
+                    if sym: univ.add(sym)
+            except Exception as _e:
+                print(f"[AUTO_SEARCH] WARN tradeable_keys load failed: {_e}", flush=True)
+        if mode == "tradier":
+            for fname in ("symbols_tradier.json", "symbols_tradier_recommended.json"):
+                p = base / fname
+                if p.exists():
+                    try:
+                        with open(p) as _f:
+                            d = json.load(_f)
+                        if isinstance(d, list):
+                            univ.update(s for s in d if isinstance(s, str))
+                    except Exception:
+                        pass
+        return univ
+
     if args.symbol_list:
         syms = [s.strip() for s in args.symbol_list.split(",") if s.strip()]
+        if args.tradeable_only:
+            tradeable = _load_tradeable_universe(args.mode)
+            if tradeable:
+                _before = len(syms)
+                syms = [s for s in syms if s in tradeable]
+                print(f"[AUTO_SEARCH] tradeable_only: {_before} → {len(syms)} after filter", flush=True)
     else:
         all_files = sorted(Path(args.npz_dir).glob("*.npz"))
+        tradeable = _load_tradeable_universe(args.mode) if args.tradeable_only else None
         candidates = []
         for p in all_files:
             sym = p.stem
             is_crypto = any(sym.endswith(s) for s in CRYPTO_SUFFIXES)
             if args.mode == "crypto" and not is_crypto: continue
             if args.mode == "tradier" and is_crypto: continue
+            if tradeable is not None and sym not in tradeable: continue
             candidates.append(sym)
+        if tradeable is not None:
+            print(f"[AUTO_SEARCH] tradeable_only: {len(candidates)} symbols match tradeable universe (size {len(tradeable)})", flush=True)
         syms = candidates[:args.symbols]
     if args.stream_npz:
         subset = ("__STREAM__", args.mode, syms, args.start, args.npz_dir)

@@ -2086,6 +2086,138 @@ def _find_run_trades_for_sym(run: str, sym: str) -> Optional[Path]:
     return _resolve_trade_path(run, sym)
 
 
+@app.route("/symbol_config")
+def symbol_config_page():
+    """Per-symbol config archive viewer (user 2026-05-01 spec):
+       data/symbol_configs/<SYM>/  — BEST.json (current ultimate), HISTORY.csv (timeline),
+       config_<cycle>__<SIDE>.json (per-cycle snapshots).
+    Built by build_symbol_configs.py from hourly_reconfig output."""
+    sym = (request.args.get("sym") or "BTCUSDC").upper()
+    cfg_dir = BASE_PATH / "data" / "symbol_configs" / sym
+    if not cfg_dir.exists():
+        # List available syms
+        configs_root = BASE_PATH / "data" / "symbol_configs"
+        avail = sorted([d.name for d in configs_root.iterdir() if d.is_dir() and not d.name.startswith("_")]) if configs_root.exists() else []
+        opts = "".join(f'<option value="{s}">{s}</option>' for s in avail[:200])
+        return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>symbol config</title>
+<style>body{{font-family:-apple-system,Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:14px}}
+h1{{color:#58a6ff}}.empty{{color:#7a8590;padding:20px}}select{{background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:5px 9px;font-size:13px}}
+a{{color:#58a6ff}}</style></head><body>
+<h1>symbol config — pick a symbol</h1>
+<p class="empty">No config archive for <b>{html_escape(sym)}</b>. Available ({len(avail)}):</p>
+<select onchange="window.location.href='/symbol_config?sym='+this.value">{opts}</select>
+&nbsp;<a href="/live">← live</a>
+</body></html>"""
+    best = {}
+    if (cfg_dir / "BEST.json").exists():
+        try:
+            best = json.loads((cfg_dir / "BEST.json").read_text())
+        except Exception:
+            pass
+    history = []
+    hist_path = cfg_dir / "HISTORY.csv"
+    if hist_path.exists():
+        try:
+            with hist_path.open("r", encoding="utf-8") as f:
+                rd = csv.DictReader(f)
+                for row in rd:
+                    history.append(row)
+        except Exception:
+            pass
+    history.sort(key=lambda r: r.get("cycle_iso", ""), reverse=True)
+    cycles = sorted([p.name for p in cfg_dir.glob("config_*.json")], reverse=True)
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>{html_escape(sym)} — config archive</title>
+<style>
+body{{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:14px;font-size:13px}}
+h1{{color:#58a6ff;margin:0 0 8px;font-size:1.1em}}
+h2{{color:#dcc26b;font-size:.95em;border-bottom:1px solid #21262d;padding-bottom:3px;margin:16px 0 6px}}
+.tier-Discard{{color:#dc6c6c}} .tier-Noise{{color:#888}} .tier-Directional{{color:#cdb86c}}
+.tier-Best-of-current{{color:#7fb069;background:#1a2617;padding:1px 5px;border-radius:3px}}
+.tier-Strong{{color:#3fb950;background:#0f1f15;padding:1px 5px;border-radius:3px}}
+.tier-Aspirational{{color:#58a6ff;background:#0f1c2e;padding:1px 5px;border-radius:3px;font-weight:700}}
+table{{width:100%;border-collapse:collapse;font-size:11.5px}}
+th{{background:#161b22;color:#8b949e;padding:5px 8px;text-align:left;font-weight:600;font-size:10.5px}}
+td{{padding:4px 8px;border-bottom:1px solid #21262d;font-variant-numeric:tabular-nums}}
+tr:hover{{background:#1c2129}}
+.pos{{color:#3fb950}} .neg{{color:#f85149}}
+.audit{{background:#1c2837;border:1px solid #2f4f6f;border-radius:4px;padding:7px 11px;font-size:11.5px;color:#a4b8d0;margin-bottom:10px}}
+.best-block{{background:#161b22;border:1px solid #30363d;border-radius:5px;padding:10px;margin-bottom:8px}}
+.best-block .side{{font-weight:700;color:#dcc26b;font-size:13px;margin-bottom:4px}}
+.best-block code{{background:#0d1117;color:#dcc26b;padding:1px 6px;border-radius:3px;font-size:11px}}
+.kv{{display:grid;grid-template-columns:max-content 1fr;gap:6px 12px;font-size:11px;margin-top:4px}}
+.kv .k{{color:#7a8590}}
+a{{color:#58a6ff;text-decoration:none}} a:hover{{text-decoration:underline}}
+.toolbar{{margin-bottom:10px;font-size:11.5px}}
+select{{background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:3px 7px;border-radius:3px;font-size:12px}}
+</style></head><body>
+<div class="toolbar">
+  <a href="/live">← live</a> ·
+  <a href="/clean_runs?sym={html_escape(sym)}">→ all tests on {html_escape(sym)}</a> ·
+  <a href="/?sym={html_escape(sym)}">→ chart {html_escape(sym)}</a>
+  &nbsp;|&nbsp;
+  switch sym <select onchange="window.location.href='/symbol_config?sym='+this.value">
+""" + "".join(f'<option value="{s}" {"selected" if s == sym else ""}>{s}</option>' for s in sorted({h['symbol'] if 'symbol' in h else sym for h in history} | {sym} | {p.name for p in (BASE_PATH/'data'/'symbol_configs').iterdir() if p.is_dir() and not p.name.startswith('_')})) + f"""</select>
+</div>
+
+<h1>{html_escape(sym)} — config archive
+  <span style="color:#7a8590;font-size:.78em;font-weight:normal">— per-symbol BEST + HISTORY built from 7D hourly winners</span>
+</h1>
+<div class="audit">
+  Updated by <code>build_symbol_configs.py</code> from <code>data/hourly_reconfig/&lt;acct&gt;/runs/&lt;cycle&gt;/</code> outputs.
+  Each cycle (≈hourly) the producer tests ~100 variations on this symbol's tradeable_keys; the winner
+  per side (LONG/SHORT) is captured here. <b>weighted_pool_sharpe</b> uses 2x/day decay
+  (today=1.0, 6d ago=1/64). The <b>BEST.json</b> is the current ultimate config to use right now.
+</div>
+
+<h2>Current BEST <span style="color:#7a8590;font-size:.78em;font-weight:normal">— last updated {html_escape(best.get("last_updated_utc",""))}</span></h2>
+""" + "".join(
+        f"""<div class="best-block">
+  <div class="side">{html_escape(side)} side
+    <span class="tier-{html_escape(blk.get("winner_tier","Noise"))}" style="margin-left:6px;font-size:11.5px">{html_escape(blk.get("winner_tier",""))}</span>
+    <span style="color:#7a8590;font-size:11px;margin-left:8px">winner: <code>{html_escape(blk.get("winner_variation","?"))}</code> from <code>{html_escape(blk.get("account","?"))}</code> cycle <code>{html_escape(blk.get("cycle_id","?"))}</code></span>
+  </div>
+  <div class="kv">
+    <span class="k">weighted_pool_sharpe</span><span><b>{float(blk.get("winner_weighted_pool_sharpe",0)):+.4f}</b></span>
+    <span class="k">trades (last 7d, weighted)</span><span>{int(blk.get("winner_stats",{}).get("trades",0)):,}</span>
+    <span class="k">WR</span><span>{float(blk.get("winner_stats",{}).get("wr",0))*100:.1f}%</span>
+    <span class="k">max_dd_pct</span><span class="{"neg" if float(blk.get("winner_stats",{}).get("max_dd_pct",0))>0 else "pos"}">{float(blk.get("winner_stats",{}).get("max_dd_pct",0)):.2f}%</span>
+    <span class="k">total_gain_pct</span><span class="{"pos" if float(blk.get("winner_stats",{}).get("total_gain_pct",0))>=0 else "neg"}">{float(blk.get("winner_stats",{}).get("total_gain_pct",0)):+.1f}%</span>
+    <span class="k">all variations scored this cycle</span><span>{len(blk.get("all_variations_scored",[]))}</span>
+  </div>
+  <details style="margin-top:6px"><summary style="cursor:pointer;color:#a4b8d0;font-size:11px">all variations ranked this cycle</summary>
+    <table style="margin-top:5px"><thead><tr><th>variation</th><th>weighted_pool_sharpe</th><th>trades</th></tr></thead><tbody>
+""" + "".join(
+        f'<tr><td><code>{html_escape(v.get("variation","?"))}</code></td><td>{float(v.get("weighted_pool_sharpe",0)):+.4f}</td><td>{int(v.get("trades",0)):,}</td></tr>'
+        for v in (blk.get("all_variations_scored") or [])[:30]
+    ) + """</tbody></table></details></div>"""
+        for side, blk in (best.get("by_side") or {}).items()
+    ) + f"""
+<h2>HISTORY <span style="color:#7a8590;font-size:.78em;font-weight:normal">— winner each cycle ({len(history)} entries)</span></h2>
+<table>
+<thead><tr>
+<th>cycle</th><th>side</th><th>acct</th><th>winner_variation</th><th>tier</th><th>weighted_pool_sharpe</th><th>trades</th><th>WR</th><th>gain%</th><th>dd</th>
+</tr></thead><tbody>
+""" + "".join(
+        f"""<tr>
+        <td>{html_escape(r.get("cycle_iso",""))[:16].replace("T"," ")}</td>
+        <td>{html_escape(r.get("side",""))}</td>
+        <td>{html_escape(r.get("account",""))}</td>
+        <td style="font-size:10.5px"><code>{html_escape(r.get("winner_variation",""))}</code></td>
+        <td><span class="tier-{html_escape(r.get("tier","Noise"))}">{html_escape(r.get("tier",""))}</span></td>
+        <td><b>{r.get("weighted_pool_sharpe","")}</b></td>
+        <td>{r.get("trades","")}</td>
+        <td>{round(float(r.get("wr",0))*100,1) if r.get("wr") else 0}%</td>
+        <td>{r.get("total_gain_pct","")}</td>
+        <td>{r.get("max_dd_pct","")}</td>
+        </tr>"""
+        for r in history[:60]
+    ) + f"""</tbody></table>
+<p style="color:#7a8590;font-size:11px;margin-top:8px">{len(cycles)} cycle snapshots stored as <code>config_&lt;cycle&gt;__&lt;SIDE&gt;.json</code> in <code>data/symbol_configs/{html_escape(sym)}/</code></p>
+
+</body></html>"""
+
+
 @app.route("/test_detail")
 def test_detail_page():
     """Per-test detail: per-symbol rollup + overrides (where available) + equity vs B&H.

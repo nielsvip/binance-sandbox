@@ -45,10 +45,19 @@ STATUS() {
 LAUNCH_TIER() {
   local tier=$1
   KILL_CRYPTO
+  # Concurrency cap (user directive 2026-05-01: throttle if needed):
+  # Refuse to launch a NEW tier if ≥2 sweep workers already running.
+  local _running
+  _running=$(pgrep -afc "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier" 2>/dev/null || echo 0)
+  if [ "$_running" -ge 2 ]; then
+    echo "[TRADIER] CONCURRENCY_CAP: $_running sweep workers already running (cap=2). Refusing new launch — kill existing first."
+    pgrep -af "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier" | head -5
+    exit 1
+  fi
   local log="$LOGS/sweep_tradier_${tier}_$(date +%Y%m%d_%H%M%S).log"
-  echo "[TRADIER] launching tier=$tier  log=$log"
+  echo "[TRADIER] launching tier=$tier  log=$log  (nice=0 high-priority per user directive 2026-05-01)"
   cd "$SANDBOX" || exit 1
-  nohup "$PY" -u v8_quick_sweep.py --mode tradier --symbols all --start 2024-01-01 \
+  nohup nice -n 0 "$PY" -u v8_quick_sweep.py --mode tradier --symbols all --start 2024-01-01 \
       --tier "$tier" --workers 3 --stream --shuffle \
       --kill-secs 99999 --kill-sharpe 0 --min-csv-sharpe 0.0 \
       > "$log" 2>&1 < /dev/null &

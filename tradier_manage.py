@@ -8679,6 +8679,22 @@ class TradierTradeManager:
                             _ps = position_side
                             if _ep > 0 and current_price > 0:
                                 _trade_pnl = (current_price - _ep) * quantity if _ps == 'LONG' else (_ep - current_price) * quantity
+                                # 2026-04-30 Job 3 (iii): per-trade returns audit logger — risk-zero additive.
+                                try:
+                                    from per_trade_logger import log_close as _ptl_log_close
+                                    _ptl_pnl_pct = ((current_price - _ep) / _ep * 100.0) if _ps == 'LONG' else ((_ep - current_price) / _ep * 100.0)
+                                    _ptl_opened = getattr(_pos_for_pnl, 'opened_at', None)
+                                    _ptl_hold_min = 0.0
+                                    if _ptl_opened is not None:
+                                        try:
+                                            _now = datetime.now(timezone.utc)
+                                            _opn = _ptl_opened if isinstance(_ptl_opened, datetime) else datetime.fromisoformat(str(_ptl_opened))
+                                            _ptl_hold_min = max(0.0, (_now - _opn).total_seconds() / 60.0)
+                                        except Exception:
+                                            _ptl_hold_min = 0.0
+                                    _ptl_log_close(account=account_key, symbol=symbol, side=str(_ps), entry_price=_ep, exit_price=float(current_price), pnl_pct=_ptl_pnl_pct, fees_pct=0.0, hold_minutes=_ptl_hold_min, qty=float(quantity), reason=str(reason))
+                                except Exception:
+                                    pass
                                 _daily_loss_tracker["realized_pnl"] += _trade_pnl
                                 _max_loss_pct = getattr(config, 'MAX_DAILY_LOSS_PCT', 3.0)
                                 _portfolio_bal = self.get_current_portfolio_balance()
