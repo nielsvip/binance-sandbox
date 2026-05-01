@@ -151,7 +151,14 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
                 cand.append((tag, load_safe_override(p)))
             except Exception as e:
                 print(f"  [candidates] skip {tag}: {e}", flush=True)
-        cand.append(("baseline", {}))
+        # 2026-05-01 USER DIRECTIVE: "apply override_btc_BEST as baseline for the agent
+        # assisted btc trader". The "baseline" candidate WAS engine defaults ({}); now it
+        # is override_btc_BEST.json — the proven 6.23yr / 0.4262 pool / 2.14% DD anchor.
+        # Hourly revisions must beat this to switch — defaults are no longer a fallback.
+        if cand and cand[0][0] == "BEST":
+            cand.append(("baseline", dict(cand[0][1])))   # baseline = BEST (clone, mutation-safe)
+        else:
+            cand.append(("baseline", {}))                 # fallback only if BEST failed to load
         # Mutation focused on producing more trades (loosens entry gates) — addresses
         # BTCDOMUSDT and other low-frequency syms.
         if cand and cand[0][0] == "BEST":
@@ -166,6 +173,18 @@ def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
                 "BTC_TECH_EXIT_WT_MIN_TFS": 2,
             })
             cand.append(("BEST_more_trades", more_trades))
+            # SHORT-ONLY variant per user 2026-05-01: same BEST params with LONG-side blocked.
+            # Switches per BTC dedicated loop conventions (verify in v8_quick_engine.py before launch).
+            short_only = dict(base)
+            short_only.update({
+                "BTC_RESTRICTED_LONG_ENABLED": False,    # block LONG in restricted-mode setup detector
+                "BTC_BREAKOUT_LONG_ENABLED": False,      # block BREAKOUT_LONG entry path
+                "BTC_FOLLOW_THROUGH_LONG_ENABLED": False,
+                "BTC_REVERSE_ON_EXIT_LONG_ENABLED": False,
+                "BTC_GUARANTEED_REENTRY_LONG_ENABLED": False,
+                "WT_DC_ENTRY_LONG_THRESHOLD": 9999,      # raise threshold so LONG never fires
+            })
+            cand.append(("BEST_short_only", short_only))
     # Auto-pickup candidates dropped by settings searches (different dir per mode).
     pick_dir = EXTRA_CAND_DIR_TRADIER if is_tradier else EXTRA_CAND_DIR
     if pick_dir.exists():

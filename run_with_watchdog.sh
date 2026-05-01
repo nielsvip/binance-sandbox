@@ -286,6 +286,13 @@ main() {
     fi
     
     # Main restart loop
+    # 2026-05-01: SIGKILL-aware backoff. When the script exits with code 137 (SIGKILL,
+    # typically Mac jetsam killing it under whole-system memory pressure), respawning
+    # in 60s allocates the working set again and triggers another kill — a thrash loop
+    # that just consumes CPU + adds memory pressure without recovering. Each consecutive
+    # 137 doubles the wait (60→120→240→480→600 cap). Any clean / non-137 exit resets the
+    # counter. Applied only to ez_manage workers (where this pattern was observed).
+    local consecutive_sigkill=0
     while true; do
         # Check for rapid restarts
         check_rapid_restarts
@@ -301,9 +308,22 @@ main() {
 
         # Run the script
         run_script
+        local _last_exit=$?
 
-        log "Script stopped. Restarting in 5 seconds..."
-        sleep 5
+        if [[ "$SCRIPT_BASE" == "ez_manage" && "$_last_exit" -eq 137 ]]; then
+            consecutive_sigkill=$((consecutive_sigkill + 1))
+            local _backoff=$((60 * (1 << (consecutive_sigkill - 1))))
+            if [[ "$_backoff" -gt 600 ]]; then _backoff=600; fi
+            log "[SIGKILL_BACKOFF] consecutive 137 #$consecutive_sigkill — sleeping ${_backoff}s before next launch (system memory pressure)"
+            sleep "$_backoff"
+        else
+            if [[ "$consecutive_sigkill" -gt 0 ]]; then
+                log "[SIGKILL_BACKOFF] resetting counter (last exit=$_last_exit, was $consecutive_sigkill)"
+            fi
+            consecutive_sigkill=0
+            log "Script stopped. Restarting in 5 seconds..."
+            sleep 5
+        fi
     done
 }
 
