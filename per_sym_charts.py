@@ -69,6 +69,24 @@ ACCOUNT_CONFIGS = {
         "mode": "crypto",
         "label": "flz (BTC-dedicated)",
     },
+    "ang": {
+        "cand_dir": ROOT / "data" / "hourly_reconfig" / "ang" / "_candidates",
+        "prefix": "ang_sym_",
+        "mode": "crypto",
+        "label": "ang (crypto)",
+    },
+    "men": {
+        "cand_dir": ROOT / "data" / "hourly_reconfig" / "men" / "_candidates",
+        "prefix": "men_sym_",
+        "mode": "crypto",
+        "label": "men (crypto)",
+    },
+    "fin": {
+        "cand_dir": ROOT / "data" / "hourly_reconfig" / "fin" / "_candidates",
+        "prefix": "fin_sym_",
+        "mode": "crypto",
+        "label": "fin (crypto)",
+    },
 }
 
 _SIDE_OVRS = {
@@ -83,6 +101,149 @@ _SIDE_OVRS = {
     "SHORT": {"LONG_ENABLED": False, "SHORT_ENABLED": True,  # flz variant
               "WT_DC_LONG_ENABLED": False, "WT_DC_SHORT_ENABLED": True},
 }
+
+
+def load_winners_per_sym(cand_dir: Path, prefix: str, qualified_only: bool = True) -> List[Dict]:
+    """Load per_sym_*_profiles.py winner JSONs (ang/men/fin format).
+    Files: {prefix}{sym}_winner.json  with _meta field (no _pool_sharpe fields)."""
+    winners = []
+    if not cand_dir.exists():
+        print(f"  No candidates dir: {cand_dir}")
+        return winners
+    for p in sorted(cand_dir.glob(f"{prefix}*_winner.json")):
+        try:
+            d = json.loads(p.read_text())
+            meta = d.get("_meta", "")
+            pool = 0.0; tg = 0.0; dd = 0.0; tr = 0; wr = 0.0
+            for part in meta.split("|"):
+                part = part.strip()
+                if part.startswith("pool="):
+                    try: pool = float(part[5:])
+                    except Exception: pass
+                elif part.startswith("trades="):
+                    try: tr = int(part[7:])
+                    except Exception: pass
+                elif part.startswith("dd="):
+                    try: dd = float(part[3:].rstrip("%"))
+                    except Exception: pass
+                elif part.startswith("wr="):
+                    try: wr = float(part[3:].rstrip("%"))
+                    except Exception: pass
+            stem = p.stem  # e.g. ang_sym_AAVEUSDC_winner
+            sym = stem.replace(prefix, "").replace("_winner", "")
+            is_qualified = (pool > PROMOTE_POOL_MIN and dd <= PROMOTE_DD_MAX
+                            and tr >= PROMOTE_TRADES_MIN)
+            ovr = {k: v for k, v in d.items() if not k.startswith("_")}
+            winners.append({
+                "sym": sym, "side": "BOTH", "pool": pool, "total_gain": tg,
+                "dd": dd, "wr": wr, "trades": tr, "overrides": ovr,
+                "qualified": is_qualified, "path": p,
+            })
+        except Exception as e:
+            print(f"  ERR loading {p.name}: {e}")
+    if qualified_only:
+        winners = [w for w in winners if w["qualified"]]
+    return winners
+
+
+def make_ohlc_overlay_chart(sym: str, npz: dict, trades: List[Tuple], meta: Dict,
+                             out_path: Path, days_window: int = 60) -> None:
+    """OHLC price chart with entry/exit trade overlays + PnL bars.
+    trades: [(pnl_pct, entry_ts, exit_ts, entry_price, exit_price, side), ...]
+    where side = 'LONG' or 'SHORT'."""
+    if not HAS_MPL:
+        return
+    if not trades:
+        print(f"  {sym}: no trades to chart")
+        return
+    ts_arr = npz.get("timestamps_15m", npz.get("timestamps", None))
+    close_arr = npz.get("close_15m", None)
+    if ts_arr is None or close_arr is None or len(ts_arr) == 0:
+        print(f"  {sym}: no OHLC data in NPZ, skipping chart")
+        return
+    cutoff_ts = int(__import__("time").time()) - max(1, days_window) * 86400
+    mask = ts_arr >= cutoff_ts
+    plot_ts = ts_arr[mask]
+    plot_close = close_arr[mask]
+    if len(plot_ts) == 0:
+        print(f"  {sym}: no recent OHLC bars in last {days_window}d")
+        return
+    trades_win = [(t[0], t[1], t[2], t[3], t[4], t[5] if len(t) > 5 else "LONG")
+                  for t in trades if t[2] >= cutoff_ts and t[1] >= cutoff_ts]
+    if not trades_win:
+        trades_win = [(t[0], t[1], t[2], t[3], t[4], t[5] if len(t) > 5 else "LONG")
+                      for t in trades]
+    pnl = [t[0] for t in trades_win]
+    cum_pnl = []
+    running = 0.0
+    for p in pnl:
+        running += p
+        cum_pnl.append(running)
+    entry_ts_list = [t[1] for t in trades_win]
+    exit_ts_list = [t[2] for t in trades_win]
+    entry_prices = [t[3] for t in trades_win]
+    exit_prices = [t[4] for t in trades_win]
+    sides = [t[5] for t in trades_win]
+    dt_price = [datetime.fromtimestamp(int(ts), tz=timezone.utc) for ts in plot_ts if ts > 0]
+    dt_entry = [datetime.fromtimestamp(int(ts), tz=timezone.utc) for ts in entry_ts_list if ts > 0]
+    dt_exit = [datetime.fromtimestamp(int(ts), tz=timezone.utc) for ts in exit_ts_list if ts > 0]
+    dt_cum = [datetime.fromtimestamp(int(t[2]), tz=timezone.utc) for t in trades_win if t[2] > 0]
+    fig = plt.figure(figsize=(18, 11), facecolor="#0d1117")
+    fig.patch.set_facecolor("#0d1117")
+    gs = gridspec.GridSpec(3, 1, height_ratios=[3, 1.2, 1], hspace=0.06, figure=fig)
+    ax_price = fig.add_subplot(gs[0])
+    ax_price.set_facecolor("#0d1117")
+    if len(dt_price) == len(plot_close):
+        ax_price.plot(dt_price, plot_close, color="#c9d1d9", linewidth=0.8, zorder=2)
+    if dt_entry and len(dt_entry) == len(entry_prices):
+        longs = [(dt_entry[i], entry_prices[i]) for i in range(len(sides)) if sides[i] == "LONG" and i < len(dt_entry)]
+        shorts = [(dt_entry[i], entry_prices[i]) for i in range(len(sides)) if sides[i] == "SHORT" and i < len(dt_entry)]
+        if longs:
+            ax_price.scatter([x[0] for x in longs], [x[1] for x in longs],
+                             marker="^", s=60, color="#3fb950", zorder=5, label="LONG entry")
+        if shorts:
+            ax_price.scatter([x[0] for x in shorts], [x[1] for x in shorts],
+                             marker="v", s=60, color="#f0883e", zorder=5, label="SHORT entry")
+    if dt_exit and len(dt_exit) == len(exit_prices):
+        ax_price.scatter(dt_exit, exit_prices, marker="x", s=40, color="#f85149",
+                         zorder=5, linewidths=1.5, label="Exit")
+    n_win = sum(1 for p in pnl if p > 0)
+    title_str = (f"{sym}  |  pool={meta['pool']:+.4f}  wr={meta['wr']:.1f}%  "
+                 f"dd={meta['dd']:.2f}%  trades={meta['trades']}  wins={n_win}/{len(pnl)}")
+    ax_price.set_title(title_str, color="#c9d1d9", fontsize=10, pad=6)
+    ax_price.set_ylabel("Price", color="#c9d1d9", fontsize=9)
+    ax_price.tick_params(colors="#6e7681", labelsize=7)
+    ax_price.legend(loc="upper left", fontsize=8, facecolor="#161b22",
+                    edgecolor="#30363d", labelcolor="#c9d1d9")
+    for spine in ax_price.spines.values():
+        spine.set_color("#30363d")
+    ax_price.grid(color="#21262d", linewidth=0.4, zorder=0)
+    ax_cum = fig.add_subplot(gs[1], sharex=ax_price)
+    ax_cum.set_facecolor("#0d1117")
+    if dt_cum and len(dt_cum) == len(cum_pnl):
+        ax_cum.plot(dt_cum, cum_pnl, color="#58a6ff", linewidth=1.3, zorder=3)
+        ax_cum.fill_between(dt_cum, cum_pnl, alpha=0.12, color="#58a6ff")
+    ax_cum.axhline(0, color="#6e7681", linewidth=0.5, linestyle="--")
+    ax_cum.set_ylabel("Cum PnL %", color="#c9d1d9", fontsize=9)
+    ax_cum.tick_params(colors="#6e7681", labelsize=7)
+    for spine in ax_cum.spines.values():
+        spine.set_color("#30363d")
+    ax_cum.grid(color="#21262d", linewidth=0.4, zorder=0)
+    ax_bar = fig.add_subplot(gs[2], sharex=ax_price)
+    ax_bar.set_facecolor("#0d1117")
+    if dt_cum and len(dt_cum) == len(pnl):
+        colors_bar = ["#3fb950" if p > 0 else "#f85149" for p in pnl]
+        ax_bar.bar(dt_cum, pnl, color=colors_bar, width=0.4, zorder=3)
+    ax_bar.axhline(0, color="#6e7681", linewidth=0.5, linestyle="--")
+    ax_bar.set_ylabel("Trade %", color="#c9d1d9", fontsize=9)
+    ax_bar.tick_params(colors="#6e7681", labelsize=7)
+    for spine in ax_bar.spines.values():
+        spine.set_color("#30363d")
+    ax_bar.grid(color="#21262d", linewidth=0.4, zorder=0)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    print(f"  → {out_path.name}")
 
 
 def load_winners(cand_dir: Path, prefix: str, qualified_only: bool = True) -> List[Dict]:
@@ -313,7 +474,11 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     qualified_only = not args.all_winners
-    winners = load_winners(cfg["cand_dir"], cfg["prefix"], qualified_only=qualified_only)
+    _per_sym_accts = {"ang", "men", "fin"}
+    if args.account in _per_sym_accts:
+        winners = load_winners_per_sym(cfg["cand_dir"], cfg["prefix"], qualified_only=qualified_only)
+    else:
+        winners = load_winners(cfg["cand_dir"], cfg["prefix"], qualified_only=qualified_only)
 
     if args.sym:
         syms = {s.strip() for s in args.sym.split(",") if s.strip()}
