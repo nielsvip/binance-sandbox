@@ -2638,6 +2638,7 @@ def main():
             for k in cfg_keys:
                 row[f"cfg_{k}"] = cfg_dict.get(k, "")
             ps = result.get("pool_sharpe", 0)
+            s = result.get("sym_sharpe", 0)
             if ps > best_sharpe:
                 best_sharpe = ps
             _min_trades_per_sym = int(result.get("symbols_used", 1) or 1) * 30

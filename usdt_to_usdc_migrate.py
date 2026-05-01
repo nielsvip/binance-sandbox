@@ -202,7 +202,7 @@ def main():
     print(f"[migrate] mode={'DRY-RUN' if args.dry_run else 'EXECUTE'}")
     print(f"[migrate] mapping: {SUB_MAP}")
     print()
-    roots_files = [REPO / "data" / "sweep_results", REPO / "data" / "autonomous", TRADES]
+    roots_files = [REPO / "data" / "sweep_results", REPO / "data" / "autonomous", REPO / "data" / "hourly_reconfig", REPO / "data" / "canonical_trades", REPO / "data" / "scalp_v3_paper", REPO / "data" / "scalp_v3_sweep", TRADES]
     print(f"=== Step 1: rename files (with merge-on-collision) ===")
     n_files, n_merged = rename_files(roots_files, args.dry_run)
     print(f"  total renames: {n_files}, merges: {n_merged}\n")

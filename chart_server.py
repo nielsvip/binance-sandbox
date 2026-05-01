@@ -1921,6 +1921,268 @@ def _v3_paper_runs() -> List[Dict[str, Any]]:
     return out
 
 
+@app.route("/run_unique")
+def run_unique():
+    """Deduplicated test list — one row per unique config result.
+
+    Dedup key: (pool_sharpe rounded 3, sym_sharpe rounded 3, trades, n_syms).
+    Optional ?sym=X — when given, also computes per-symbol stats by reading
+    /tmp/v8_trades/<run>__<sym>.jsonl + extra roots, surfacing only tests that
+    actually have trades for that symbol.
+
+    Returns a clean list, sorted by:
+      1. Has trades on requested sym (if sym given) DESC
+      2. pool_sharpe DESC
+    Each entry: {run, pool_sharpe, sym_sharpe (overall), trades, n_syms,
+                 years, tier, sym_trades (on requested sym), sym_pool_sharpe (on
+                 requested sym), sym_dd_pct (on requested sym), primary_sym}.
+    """
+    target_sym = (request.args.get("sym") or "").upper()
+    with _precompute_lock:
+        rr_body = _precomputed.get("runs_ranked")
+    runs_data: List[Dict[str, Any]] = []
+    if rr_body:
+        try:
+            runs_data = json.loads(rr_body)
+        except Exception:
+            runs_data = []
+    seen_keys: set = set()
+    deduped: List[Dict[str, Any]] = []
+    for r in runs_data:
+        ps = round(float(r.get("pool_sharpe", 0) or 0), 3)
+        ss = round(float(r.get("sym_sharpe", 0) or 0), 3)
+        tr = int(r.get("trades", 0) or 0)
+        ns = int(r.get("n_syms", 0) or 0)
+        key = (ps, ss, tr, ns)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        deduped.append(r)
+    out: List[Dict[str, Any]] = []
+    for r in deduped:
+        run = r.get("run", "")
+        ps = float(r.get("pool_sharpe", 0) or 0)
+        trades = int(r.get("trades", 0) or 0)
+        n_syms = int(r.get("n_syms", 0) or 0)
+        n_years = float(r.get("n_years", 0) or 0)
+        tier = metrics_guard.tier_name(ps)
+        sym_stats = None
+        primary_sym = None
+        if target_sym:
+            jsonl_path = _find_run_trades_for_sym(run, target_sym)
+            if jsonl_path and jsonl_path.exists():
+                pnls = []
+                try:
+                    for ln in jsonl_path.read_text(encoding="utf-8").splitlines():
+                        if not ln.strip():
+                            continue
+                        try:
+                            t = json.loads(ln)
+                        except Exception:
+                            continue
+                        pnls.append(float(t.get("pnl_pct", 0) or 0))
+                except Exception:
+                    pass
+                if pnls:
+                    avg = sum(pnls) / len(pnls)
+                    sd = (sum((x - avg) ** 2 for x in pnls) / len(pnls)) ** 0.5
+                    sym_ps = (avg / sd) if sd > 0 else 0.0
+                    eq = []
+                    cum = 0.0
+                    peak = -1e18
+                    max_dd = 0.0
+                    for p in pnls:
+                        cum += p
+                        eq.append(cum)
+                        if cum > peak:
+                            peak = cum
+                        if peak - cum > max_dd:
+                            max_dd = peak - cum
+                    wins = sum(1 for p in pnls if p > 0)
+                    sym_stats = {
+                        "sym_trades": len(pnls),
+                        "sym_pool_sharpe": round(sym_ps, 4),
+                        "sym_dd_pct": round(max_dd, 3),
+                        "sym_total_gain_pct": round(sum(pnls), 2),
+                        "sym_wr": round(wins / len(pnls), 3),
+                        "sym_tier": metrics_guard.tier_name(sym_ps),
+                        "sym_inflated": abs(sym_ps) > 5 and len(pnls) < 5000,
+                    }
+        # primary sym = first sym in the registry (best-effort)
+        syms = r.get("syms", []) or []
+        if syms:
+            primary_sym = syms[0]
+        out.append({
+            "run": run,
+            "tier": tier,
+            "pool_sharpe": round(ps, 4),
+            "sym_sharpe": round(float(r.get("sym_sharpe", 0) or 0), 4),
+            "avg_gain_trade": round(float(r.get("avg_gain_trade", 0) or 0), 4),
+            "gain_per_yr": round(float(r.get("gain_per_yr", 0) or 0), 1),
+            "trades": trades,
+            "n_syms": n_syms,
+            "years": round(n_years, 2),
+            "primary_sym": primary_sym,
+            "sym_target": target_sym or None,
+            "sym_stats": sym_stats,  # None if no trades on target_sym
+            "has_trades_on_sym": bool(sym_stats and sym_stats.get("sym_trades", 0) > 0),
+        })
+    if target_sym:
+        out.sort(key=lambda r: (r["has_trades_on_sym"], r["pool_sharpe"]), reverse=True)
+    else:
+        out.sort(key=lambda r: r["pool_sharpe"], reverse=True)
+    return jsonify({
+        "n_unique": len(out),
+        "n_with_trades_on_sym": sum(1 for r in out if r["has_trades_on_sym"]),
+        "sym_target": target_sym or None,
+        "tests": out,
+        "generated_utc": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+def _find_run_trades_for_sym(run: str, sym: str) -> Optional[Path]:
+    """Delegate to chart_server's existing _resolve_trade_path which knows about
+    the hr_<acct>::/bigsweep:: prefixes and the registry."""
+    return _resolve_trade_path(run, sym)
+
+
+@app.route("/clean_runs")
+def clean_runs_page():
+    """Minimal test-selector page. One row per unique test, click to chart."""
+    target_sym = request.args.get("sym", "BTCUSDC")
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>tests — pick one</title>
+<style>
+  body{{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:14px;font-size:13px}}
+  h1{{font-size:1.1em;color:#58a6ff;margin-bottom:6px}}
+  .toolbar{{display:flex;gap:10px;align-items:center;margin-bottom:10px;font-size:12px}}
+  .toolbar label{{color:#8b949e}}
+  .toolbar input,.toolbar select{{background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:4px 7px;border-radius:4px;font-size:12px}}
+  .audit{{background:#1c2837;border:1px solid #2f4f6f;padding:7px 12px;border-radius:5px;margin-bottom:10px;font-size:11.5px;color:#a4b8d0}}
+  table{{border-collapse:collapse;font-size:12px;width:100%}}
+  th{{background:#161b22;color:#8b949e;padding:6px 9px;text-align:left;cursor:pointer;position:sticky;top:0;font-weight:600;font-size:11px}}
+  td{{padding:5px 9px;border-bottom:1px solid #21262d;font-variant-numeric:tabular-nums}}
+  tr:hover{{background:#1c2129;cursor:pointer}}
+  .tier-Discard{{color:#dc6c6c}} .tier-Noise{{color:#888}} .tier-Directional{{color:#cdb86c}}
+  .tier-Best-of-current{{color:#7fb069}} .tier-Strong{{color:#3fb950}} .tier-Aspirational{{color:#58a6ff;font-weight:700}}
+  .pos{{color:#3fb950}} .neg{{color:#f85149}}
+  .badge{{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;background:#21262d;color:#8b949e}}
+  .has-trades{{background:#0f1f0f;color:#7fb069}} .no-trades{{background:#1f0f0f;color:#dc6c6c}}
+  .inflated{{color:#dc6c6c;text-decoration:line-through}}
+  a{{color:#58a6ff}}
+</style></head><body>
+
+<h1>tests <span style="color:#7a8590;font-size:.78em">— deduplicated, one row per unique result</span></h1>
+
+<div class="audit">
+  <b>pool_sharpe</b> = overall canonical (across all syms) ·
+  <b>sym_sharpe</b> = mean of per-sym Sharpes (capped ±5) ·
+  <b>on this sym</b> = stats restricted to trades for the chart symbol ·
+  Click any row to open the chart with that test's trades overlaid.
+  <a href="/" style="margin-left:8px">← chart</a> ·
+  <a href="/canonical_top" style="margin-left:8px">canonical_top</a>
+</div>
+
+<div class="toolbar">
+  <label>chart sym: <input id="sym" value="{target_sym}" style="width:110px" /></label>
+  <button id="reload" style="padding:4px 10px;background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;cursor:pointer">reload</button>
+  <label>filter: <input id="filter" type="search" placeholder="run name…" style="width:200px" /></label>
+  <label>tier: <select id="tierFilter">
+    <option value="">all</option>
+    <option value="Aspirational">Aspirational</option>
+    <option value="Strong">Strong</option>
+    <option value="Best-of-current">Best-of-current</option>
+    <option value="Directional">Directional</option>
+    <option value="Noise">Noise</option>
+  </select></label>
+  <label><input type="checkbox" id="onlyWithTrades" checked /> only tests with trades on this sym</label>
+  <span id="cnt" style="color:#7a8590;margin-left:auto;font-size:11px"></span>
+</div>
+
+<table id="tbl">
+<thead><tr>
+  <th data-sort="rank">#</th>
+  <th data-sort="tier">tier</th>
+  <th data-sort="pool_sharpe">pool_sharpe</th>
+  <th data-sort="sym_sharpe">sym_sharpe (overall)</th>
+  <th data-sort="trades">trades (overall)</th>
+  <th data-sort="n_syms">n_syms</th>
+  <th data-sort="years">years</th>
+  <th data-sort="sym_trades">on this sym</th>
+  <th data-sort="sym_pool_sharpe">sym pool_sharpe</th>
+  <th data-sort="sym_dd_pct">sym dd</th>
+  <th data-sort="run">run</th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+
+<script>
+const fmt = (n, d=4) => (n === null || n === undefined || isNaN(n)) ? "—" : Number(n).toFixed(d);
+const cls = (n) => Number(n) >= 0 ? "pos" : "neg";
+let _tests = [];
+
+async function load() {{
+  const sym = document.getElementById("sym").value.toUpperCase();
+  document.getElementById("cnt").textContent = "loading…";
+  const r = await fetch("/run_unique?sym=" + encodeURIComponent(sym)).then(r=>r.json());
+  _tests = r.tests || [];
+  document.getElementById("cnt").textContent =
+    `${{r.n_unique}} unique tests · ${{r.n_with_trades_on_sym}} have trades on ${{sym}}`;
+  render();
+}}
+
+function render() {{
+  const filt = (document.getElementById("filter").value || "").toLowerCase();
+  const tierF = document.getElementById("tierFilter").value;
+  const onlyWith = document.getElementById("onlyWithTrades").checked;
+  const sym = document.getElementById("sym").value.toUpperCase();
+  const rows = _tests.filter(t => {{
+    if (onlyWith && !t.has_trades_on_sym) return false;
+    if (tierF && t.tier !== tierF) return false;
+    if (filt && !(t.run || "").toLowerCase().includes(filt)) return false;
+    return true;
+  }});
+  const html = rows.map((t, idx) => {{
+    const ss = t.sym_stats || {{}};
+    const symTier = ss.sym_tier ? `<span class="tier-${{ss.sym_tier}}">${{fmt(ss.sym_pool_sharpe, 4)}}</span>` :
+                                  '<span style="color:#555">—</span>';
+    const inflClass = ss.sym_inflated ? "inflated" : "";
+    return `<tr onclick="openRun('${{(t.run || "").replace(/'/g, "\\\\'")}}', '${{sym}}')">
+      <td style="color:#7a8590">${{idx+1}}</td>
+      <td><span class="tier-${{t.tier}}">${{t.tier}}</span></td>
+      <td>${{fmt(t.pool_sharpe, 4)}}</td>
+      <td>${{fmt(t.sym_sharpe, 4)}}</td>
+      <td>${{(t.trades||0).toLocaleString()}}</td>
+      <td>${{t.n_syms}}</td>
+      <td>${{fmt(t.years, 2)}}</td>
+      <td class="${{t.has_trades_on_sym ? 'has-trades' : 'no-trades'}}" style="padding:1px 5px">
+        ${{t.has_trades_on_sym ? (ss.sym_trades || 0).toLocaleString() : 'no'}}</td>
+      <td class="${{inflClass}}">${{symTier}}</td>
+      <td class="${{cls(ss.sym_dd_pct)}}">${{fmt(ss.sym_dd_pct, 2)}}%</td>
+      <td style="color:#7a8590;font-size:10.5px;font-family:'SF Mono',Menlo,monospace">${{(t.run || "").length>50 ? t.run.slice(0,48)+"…" : t.run}}</td>
+    </tr>`;
+  }}).join("");
+  document.getElementById("rows").innerHTML = html || `<tr><td colspan="11" style="padding:18px;text-align:center;color:#7a8590">no tests match filter</td></tr>`;
+  document.getElementById("cnt").textContent =
+    `showing ${{rows.length}} / ${{_tests.length}} tests on ${{sym}}`;
+}}
+
+function openRun(run, sym) {{
+  // Open main chart with this run pre-checked + sym set
+  const url = `/?sym=${{encodeURIComponent(sym)}}&runs=${{encodeURIComponent(run)}}`;
+  window.location.href = url;
+}}
+
+document.getElementById("reload").onclick = load;
+document.getElementById("sym").onchange = load;
+document.getElementById("filter").oninput = render;
+document.getElementById("tierFilter").onchange = render;
+document.getElementById("onlyWithTrades").onchange = render;
+load();
+</script>
+</body></html>"""
+
+
 @app.route("/run_catalog")
 def run_catalog():
     """Categorized catalog of all runs partitioned by machine.
