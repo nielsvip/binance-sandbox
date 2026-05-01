@@ -2027,15 +2027,45 @@ def run_unique():
             "sym_stats": sym_stats,  # None if no trades on target_sym
             "has_trades_on_sym": bool(sym_stats and sym_stats.get("sym_trades", 0) > 0),
         })
+    # MODE filter: crypto sym → drop stock-acct runs; stock sym → drop crypto-acct runs.
+    # 2026-05-01: user "diff a/b mentioning stocks absolutely irrelevant in BTC context" — fix.
+    is_crypto_sym = bool(re.search(r"(USDC|USDT|BUSD|FDUSD|TUSD|USDP)$", target_sym or "", re.I))
+    is_stock_sym = bool(target_sym) and not is_crypto_sym
+    def _matches_mode(r):
+        run = r["run"]
+        if is_crypto_sym:
+            # exclude stock-acct runs (hr_trb/hr_trc/hr_tra) and tradier canon
+            if run.startswith(("hr_trb::", "hr_trc::", "hr_tra::")): return False
+            if "canon_tradier" in run or "tradier_" in run: return False
+            return True
+        if is_stock_sym:
+            # exclude crypto-acct runs and crypto canon
+            if run.startswith(("hr_fin::", "hr_flz::", "hr_inf::", "hr_ang::", "hr_men::")): return False
+            if "canon_crypto" in run or "crypto_" in run.lower(): return False
+            return True
+        return True
     if target_sym:
-        out.sort(key=lambda r: (r["has_trades_on_sym"], r["pool_sharpe"]), reverse=True)
+        out = [r for r in out if _matches_mode(r)]
+    # Sort: tests-with-actual-sym-trades first, then by sym_pool_sharpe (the relevant metric on this chart),
+    # then by overall pool_sharpe.
+    if target_sym:
+        out.sort(key=lambda r: (
+            r["has_trades_on_sym"],
+            (r.get("sym_stats") or {}).get("sym_pool_sharpe", -999) if r["has_trades_on_sym"] else -999,
+            r["pool_sharpe"],
+        ), reverse=True)
     else:
         out.sort(key=lambda r: r["pool_sharpe"], reverse=True)
+    # Hard cap top-50 by default for clean view.
+    cap = int(request.args.get("limit", "50"))
+    capped = out[:cap]
     return jsonify({
-        "n_unique": len(out),
+        "n_unique_total": len(out),
+        "n_returned": len(capped),
         "n_with_trades_on_sym": sum(1 for r in out if r["has_trades_on_sym"]),
         "sym_target": target_sym or None,
-        "tests": out,
+        "sym_mode": "crypto" if is_crypto_sym else ("stocks" if is_stock_sym else "unknown"),
+        "tests": capped,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
     })
 
