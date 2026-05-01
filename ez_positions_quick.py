@@ -1634,11 +1634,51 @@ class BreakoutHunter:
 # ════════════════════════════════════════════════════════════════════════
 
 
+class _BtcConfigOverlay:
+    """Lightweight proxy that layers per-symbol overrides on top of the global Config.
+    Only accessed via _get_btc_sym_cfg(); the global Config object is never mutated."""
+    __slots__ = ("_b", "_ov")
+    def __init__(self, base, overrides: dict):
+        object.__setattr__(self, "_b", base)
+        object.__setattr__(self, "_ov", overrides)
+    def __getattr__(self, name: str):
+        ov = object.__getattribute__(self, "_ov")
+        if name in ov:
+            return ov[name]
+        return getattr(object.__getattribute__(self, "_b"), name)
+
+
+_btc_per_sym_cfgs: dict = {}
+_btc_per_sym_cfgs_mtime: float = 0.0
+_btc_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "flz" / "active_config.json"
+
+
+def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
+    """Return a per-symbol config overlay for flz BTC_DEDICATED symbols.
+    Re-reads active_config.json only when the file mtime changes (thread-safe by GIL)."""
+    if account_key != "flz":
+        return base_cfg
+    if not getattr(base_cfg, "BTC_PER_SYM_CONFIG_ENABLED", True):
+        return base_cfg
+    global _btc_per_sym_cfgs, _btc_per_sym_cfgs_mtime
+    try:
+        mtime = _btc_per_sym_cfgs_path.stat().st_mtime
+        if mtime != _btc_per_sym_cfgs_mtime:
+            with _btc_per_sym_cfgs_path.open() as _f:
+                _btc_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in json.load(_f).items()}
+            _btc_per_sym_cfgs_mtime = mtime
+    except Exception as _exc:
+        logger.warning("BTC_PER_SYM_CFG load error: %s", _exc)
+    overrides = _btc_per_sym_cfgs.get(f"{symbol}_{side}", {})
+    return _BtcConfigOverlay(base_cfg, overrides) if overrides else base_cfg
+
+
 def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
     """True iff BTC dedicated loop should override rate() for this acct+symbol."""
     if not getattr(cfg, "BTC_DEDICATED_ENABLED", False):
         return False
-    if symbol not in ("BTCUSDC", "BTCUSDC"):
+    dedicated_syms = getattr(cfg, "BTC_DEDICATED_SYMBOLS", ("BTCUSDC",))
+    if symbol not in dedicated_syms:
         return False
     accounts = getattr(cfg, "BTC_DEDICATED_ACCOUNTS", ["flz", "inf"])
     return account_key in accounts
@@ -1646,7 +1686,8 @@ def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
 
 def _btc_dedicated_account_blocked(account_key: str, symbol: str, cfg) -> bool:
     """Hard-block: True iff BTC trading is disallowed for this account."""
-    if symbol not in ("BTCUSDC", "BTCUSDC"):
+    dedicated_syms = getattr(cfg, "BTC_DEDICATED_SYMBOLS", ("BTCUSDC",))
+    if symbol not in dedicated_syms:
         return False
     if not getattr(cfg, "BTC_HARD_BLOCK_OTHER_ACCOUNTS", True):
         return False
@@ -1715,6 +1756,7 @@ def _btc_dedicated_entry_decision(account_key: str, symbol: str, is_long: bool,
     """Returns (score, rec, reason) tuple matching AdvancedSignalRater.rate() output,
     or None to fall through to rate(). When dedicated loop active and signal fires,
     score=score_threshold to clear gates downstream; if not firing, score=0."""
+    cfg = _get_btc_sym_cfg(account_key, symbol, "LONG" if is_long else "SHORT", cfg)
     rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
     if rz is None:
         return None
@@ -1735,6 +1777,7 @@ def _btc_dedicated_exit_decision(account_key: str, symbol: str, is_long: bool,
                                    current_price: float, indicators: dict, position_size: float,
                                    entry_price: float, age_bars: int, cfg):
     """Returns (score, rec, reason) for exit decision, or None."""
+    cfg = _get_btc_sym_cfg(account_key, symbol, "LONG" if is_long else "SHORT", cfg)
     rz, accel, div = _btc_build_features_from_indicators(indicators, current_price, cfg)
     if rz is None or entry_price <= 0:
         return None

@@ -111,6 +111,8 @@ def build_param_grid_full():
         "ENTRY_SCORE_THRESHOLD": [12.0, 15.0, 18.0, 20.0, 24.0],
         "REENTRY_RALLY_K15M_MAX": [60.0, 80.0, 100.0],
         "REENTRY_RALLY_HTF_MIN": [1, 2, 3],
+        "WA_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
+        "PYRAMID_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
     }
     return grid
 
@@ -127,6 +129,7 @@ def build_param_grid_v3_core():
         "D_TREND_REQUIRED": [True, False],
         "COOLDOWN_BARS": [3, 6, 12],
         "ENTRY_SCORE_THRESHOLD": [15.0, 18.0, 24.0],
+        "WA_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
     }
     return grid
 
@@ -183,6 +186,23 @@ def build_param_grid_tradier_core():
         "K_ZONE_LONG_THRESHOLD": [25, 35, 45],
         "MFI_LONG_THRESHOLD_D": [15.0, 20.0, 25.0, 30.0],
         "FH_MOMENTUM_MIN_MOVE_PCT": [0.3, 0.5, 0.7],
+        "WA_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
+    }
+    return grid
+
+
+def build_param_grid_btc_dedicated_mingain():
+    """BTC_DEDICATED sweep focused on augment / reentry threshold (MIN_GAIN equivalent).
+    Tests WA_MIN_GAIN_PCT × PYRAMID_MIN_GAIN_PCT × core BTC timing knobs.
+    Use with --mode crypto --symbols BTCUSDC,ETHUSDC,... on S1."""
+    grid = {
+        "BTC_DEDICATED_ENABLED": [True],
+        "WA_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
+        "PYRAMID_MIN_GAIN_PCT": [1.0, 2.0, 3.0, 4.0],
+        "BTC_MIN_HOLD_BARS": [1, 3, 5, 8],
+        "BTC_TECH_EXIT_WT_MIN_TFS": [1, 2, 3],
+        "BTC_ACCEL_RAMP_MIN_TFS": [2, 3, 5],
+        "BTC_RZ_PROXIMITY_PCT": [0.5, 1.0, 2.0],
     }
     return grid
 

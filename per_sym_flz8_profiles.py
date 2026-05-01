@@ -309,6 +309,15 @@ def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
         o["BTC_FOLLOW_THROUGH_REENTRY_ENABLED"] = ft
         grid.append((tag, o))
 
+    # 8. MIN_GAIN / augment threshold (4 variants) — maps to WA_MIN_GAIN_PCT in backtest
+    # Live equivalent: config.MIN_GAIN (= 3.0 default). Values 1–4% sweep whether
+    # tighter or looser winner-augment threshold improves the BTC_DEDICATED sym profile.
+    for mg_pct in (1.0, 2.0, 3.0, 4.0):
+        o = dict(base)
+        o["WA_MIN_GAIN_PCT"] = mg_pct
+        o["PYRAMID_MIN_GAIN_PCT"] = mg_pct
+        grid.append((f"mingain_{mg_pct:.0f}pct", o))
+
     return grid
 
 
