@@ -32,7 +32,7 @@ NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 SWEEP_DIR = ROOT / "data" / "sweep_results"
 CAND_OUT_DIR = ROOT / "data" / "hourly_reconfig" / "ang" / "_candidates"
 ACTIVE_CONFIG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
-CHARTS_OUT_DIR = ROOT / "plots" / "ang"
+CHARTS_OUT_DIR = ROOT / "plots"
 SYMBOLS_LONG_FILE = ROOT / "symbols_ang_long.json"
 SYMBOLS_SHORT_FILE = ROOT / "symbols_ang_short.json"
 
@@ -73,96 +73,124 @@ def load_full_trades(run_dir: Path, run_id: str, sym: str) -> List[Dict]:
     return records
 
 
+def _load_tf_ohlc(sym: str, tf: str) -> Optional[tuple]:
+    """Load (timestamps, high, low, close) arrays from klines_cache_backtest JSON."""
+    klines_dir = ROOT / "klines_cache_backtest"
+    for name in [sym, sym.replace("USDC", "USDT")]:
+        p = klines_dir / f"{name}_{tf}.json"
+        if p.exists():
+            try:
+                bars = json.loads(p.read_text())
+                if not bars:
+                    continue
+                ts = np.array([b["timestamp"] for b in bars], dtype=np.float64)
+                h = np.array([float(b.get("high", b["close"])) for b in bars])
+                l = np.array([float(b.get("low", b["close"])) for b in bars])
+                c = np.array([float(b["close"]) for b in bars])
+                return ts, h, l, c
+            except Exception:
+                pass
+    return None
+
+
 def generate_sym_chart(sym: str, npz: dict, trades: List[Dict], m: Dict,
-                       out_dir: Path, days: int = 60) -> Optional[Path]:
-    """Generate OHLC price chart with entry/exit trade overlays + PnL panels."""
-    if not HAS_MPL or not trades:
+                       overrides: Dict, days: int = 60) -> Optional[Path]:
+    """Generate multi-TF OHLC chart matching ez_rankings dark theme with trade overlays."""
+    if not HAS_MPL:
         return None
-    ts_arr = npz.get("timestamps_15m", npz.get("timestamps", None))
-    close_arr = npz.get("close_15m", None)
-    if ts_arr is None or close_arr is None or len(ts_arr) == 0:
-        return None
-    cutoff_ts = int(time.time()) - max(1, days) * 86400
-    mask = ts_arr >= cutoff_ts
-    plot_ts = ts_arr[mask]
-    plot_close = close_arr[mask]
-    if len(plot_ts) == 0:
-        return None
-    trades_win = [t for t in trades if t.get("exit_ts", 0) >= cutoff_ts]
-    if not trades_win:
-        trades_win = trades
-    pnl = [float(t.get("pnl_pct", 0)) for t in trades_win]
-    cum_pnl = []
-    running = 0.0
+    BG = "#272d30"
+    LINE = "#c0c0c0"
+    GRID = "#4a4a4a"
+    TICK = "#d0d0d0"
+    TITLE = "#9c864e"
+    cutoff_ts = time.time() - max(1, days) * 86400
+    trades_w = [t for t in trades if t.get("exit_ts", 0) >= cutoff_ts] or list(trades)
+    pnl = [float(t.get("pnl_pct", 0)) for t in trades_w]
+    cum_pnl: List[float] = []
+    s = 0.0
     for p in pnl:
-        running += p
-        cum_pnl.append(running)
-    dt_price = [datetime.fromtimestamp(int(ts), tz=timezone.utc) for ts in plot_ts if ts > 0]
-    dt_entry = [datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc)
-                for t in trades_win if t.get("entry_ts", 0) > 0]
-    ep_list = [float(t.get("entry_price", 0)) for t in trades_win if t.get("entry_ts", 0) > 0]
-    dt_exit = [datetime.fromtimestamp(int(t["exit_ts"]), tz=timezone.utc)
-               for t in trades_win if t.get("exit_ts", 0) > 0]
-    xp_list = [float(t.get("exit_price", 0)) for t in trades_win if t.get("exit_ts", 0) > 0]
-    sides = [t.get("side", "LONG") for t in trades_win if t.get("entry_ts", 0) > 0]
+        s += p
+        cum_pnl.append(s)
     dt_cum = [datetime.fromtimestamp(int(t.get("exit_ts", 0)), tz=timezone.utc)
-              for t in trades_win if t.get("exit_ts", 0) > 0]
+              for t in trades_w if t.get("exit_ts", 0) > 0]
     n_win = sum(1 for p in pnl if p > 0)
-    fig = plt.figure(figsize=(18, 11), facecolor="#0d1117")
-    fig.patch.set_facecolor("#0d1117")
-    gs = gridspec.GridSpec(3, 1, height_ratios=[3, 1.2, 1], hspace=0.06, figure=fig)
-    ax_p = fig.add_subplot(gs[0])
-    ax_p.set_facecolor("#0d1117")
-    if len(dt_price) == len(plot_close):
-        ax_p.plot(dt_price, plot_close, color="#c9d1d9", linewidth=0.8, zorder=2)
-    if dt_entry and len(dt_entry) == len(ep_list):
-        longs = [(dt_entry[i], ep_list[i]) for i in range(len(sides)) if sides[i] == "LONG"]
-        shorts = [(dt_entry[i], ep_list[i]) for i in range(len(sides)) if sides[i] == "SHORT"]
+    TFS = ["4h", "1h", "15m", "3m"]
+    fig = plt.figure(figsize=(18, 4 * (len(TFS) + 1)), facecolor=BG, dpi=110)
+    gs = gridspec.GridSpec(len(TFS) + 1, 1, height_ratios=[3, 2, 2, 2, 1.5], hspace=0.08, figure=fig)
+    fig.patch.set_facecolor(BG)
+
+    def _style(ax):
+        ax.set_facecolor(BG)
+        for sp in ax.spines.values():
+            sp.set_color(TICK)
+        ax.tick_params(colors=TICK, labelsize=7)
+        ax.grid(color=GRID, alpha=0.5, linestyle=":")
+
+    def _trade_markers(ax, cutoff):
+        tr = [(datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc),
+               float(t.get("entry_price", 0)),
+               t.get("side", "LONG"),
+               datetime.fromtimestamp(int(t["exit_ts"]), tz=timezone.utc),
+               float(t.get("exit_price", 0)))
+              for t in trades_w if t.get("entry_ts", 0) > 0 and t.get("exit_ts", 0) > 0]
+        longs = [(e, ep) for e, ep, side, _, _ in tr if side == "LONG"]
+        shorts = [(e, ep) for e, ep, side, _, _ in tr if side == "SHORT"]
+        exits = [(x, xp) for _, _, _, x, xp in tr]
         if longs:
-            ax_p.scatter([x[0] for x in longs], [x[1] for x in longs],
-                         marker="^", s=55, color="#3fb950", zorder=5, label=f"LONG entry ({len(longs)})")
+            ax.scatter([v[0] for v in longs], [v[1] for v in longs],
+                       marker="^", s=45, color="#3fb950", zorder=5, alpha=0.85)
         if shorts:
-            ax_p.scatter([x[0] for x in shorts], [x[1] for x in shorts],
-                         marker="v", s=55, color="#f0883e", zorder=5, label=f"SHORT entry ({len(shorts)})")
-    if dt_exit and len(dt_exit) == len(xp_list):
-        ax_p.scatter(dt_exit, xp_list, marker="x", s=35, color="#f85149",
-                     zorder=5, linewidths=1.3, label=f"Exit ({len(dt_exit)})")
-    ax_p.set_title(
-        f"ang | {sym}  pool={m['pool_sharpe']:+.4f}  wr={m['wr_pct']:.1f}%  "
-        f"dd={m['max_dd_pct']:.2f}%  trades={m['trades']}  wins={n_win}/{len(pnl)}  "
-        f"({days}d window)",
-        color="#c9d1d9", fontsize=10, pad=6,
-    )
-    ax_p.set_ylabel("Price", color="#c9d1d9", fontsize=9)
-    ax_p.tick_params(colors="#6e7681", labelsize=7)
-    ax_p.legend(loc="upper left", fontsize=8, facecolor="#161b22", edgecolor="#30363d", labelcolor="#c9d1d9")
-    for spine in ax_p.spines.values(): spine.set_color("#30363d")
-    ax_p.grid(color="#21262d", linewidth=0.4, zorder=0)
-    ax_c = fig.add_subplot(gs[1], sharex=ax_p)
-    ax_c.set_facecolor("#0d1117")
-    if dt_cum and len(dt_cum) == len(cum_pnl):
-        ax_c.plot(dt_cum, cum_pnl, color="#58a6ff", linewidth=1.3, zorder=3)
-        ax_c.fill_between(dt_cum, cum_pnl, alpha=0.12, color="#58a6ff")
-    ax_c.axhline(0, color="#6e7681", linewidth=0.5, linestyle="--")
-    ax_c.set_ylabel("Cum PnL %", color="#c9d1d9", fontsize=9)
-    ax_c.tick_params(colors="#6e7681", labelsize=7)
-    for spine in ax_c.spines.values(): spine.set_color("#30363d")
-    ax_c.grid(color="#21262d", linewidth=0.4, zorder=0)
-    ax_b = fig.add_subplot(gs[2], sharex=ax_p)
-    ax_b.set_facecolor("#0d1117")
-    if dt_cum and len(dt_cum) == len(pnl):
-        bar_colors = ["#3fb950" if p > 0 else "#f85149" for p in pnl]
-        ax_b.bar(dt_cum, pnl, color=bar_colors, width=0.4, zorder=3)
-    ax_b.axhline(0, color="#6e7681", linewidth=0.5, linestyle="--")
-    ax_b.set_ylabel("Trade %", color="#c9d1d9", fontsize=9)
-    ax_b.tick_params(colors="#6e7681", labelsize=7)
-    for spine in ax_b.spines.values(): spine.set_color("#30363d")
-    ax_b.grid(color="#21262d", linewidth=0.4, zorder=0)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"ang_{sym}_{days}d.png"
-    plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+            ax.scatter([v[0] for v in shorts], [v[1] for v in shorts],
+                       marker="v", s=45, color="#f0883e", zorder=5, alpha=0.85)
+        if exits:
+            ax.scatter([v[0] for v in exits], [v[1] for v in exits],
+                       marker="x", s=28, color="#f85149", zorder=5, linewidths=1.2, alpha=0.75)
+
+    for i, tf in enumerate(TFS):
+        ax = fig.add_subplot(gs[i])
+        _style(ax)
+        ohlc = _load_tf_ohlc(sym, tf)
+        if ohlc is not None:
+            ts_a, h_a, l_a, c_a = ohlc
+            mask = ts_a >= cutoff_ts
+            ts_a, h_a, l_a, c_a = ts_a[mask], h_a[mask], l_a[mask], c_a[mask]
+            if len(ts_a) > 0:
+                dts = [datetime.fromtimestamp(int(v), tz=timezone.utc) for v in ts_a]
+                ax.plot(dts, c_a, color=LINE, lw=0.9, zorder=2)
+                ax.fill_between(dts, l_a, h_a, alpha=0.10, color=LINE, zorder=1)
+        else:
+            npz_close = npz.get(f"close_{tf}")
+            npz_ts = npz.get("timestamps_15m", npz.get("timestamps"))
+            if npz_close is not None and npz_ts is not None:
+                n = min(len(npz_close), len(npz_ts))
+                mask = npz_ts[:n] >= cutoff_ts
+                dts = [datetime.fromtimestamp(int(v), tz=timezone.utc) for v in npz_ts[:n][mask]]
+                ax.plot(dts, npz_close[:n][mask], color=LINE, lw=0.9, zorder=2)
+        _trade_markers(ax, cutoff_ts)
+        ax.set_ylabel(tf, color=TICK, fontsize=8)
+        if i == 0:
+            ovr_str = "  ".join(f"{k}={v}" for k, v in list(overrides.items())[:10]
+                                if not k.startswith("_"))
+            ax.set_title(
+                f"OPT | {sym}  pool={m['pool_sharpe']:+.4f}  wr={m.get('wr_pct', 0):.1f}%  "
+                f"dd={m.get('max_dd_pct', 0):.1f}%  trades={m['trades']}  wins={n_win}/{len(pnl)}  ({days}d)\n"
+                f"{ovr_str}",
+                color=TITLE, fontsize=9, pad=4,
+            )
+
+    ax_pnl = fig.add_subplot(gs[len(TFS)])
+    _style(ax_pnl)
+    if dt_cum and cum_pnl:
+        ax_pnl.plot(dt_cum, cum_pnl, color="#58a6ff", lw=1.3, zorder=3)
+        ax_pnl.fill_between(dt_cum, cum_pnl, alpha=0.15, color="#58a6ff")
+        ax_pnl.axhline(0, color="#6e7681", lw=0.5, linestyle="--")
+    ax_pnl.set_ylabel("Cum PnL%", color=TICK, fontsize=8)
+
+    CHARTS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = CHARTS_OUT_DIR / f"OPT_{sym}.png"
+    plt.savefig(out_path, dpi=110, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
-    print(f"  [chart] → {out_path.name}")
+    print(f"  [chart] {out_path.name}")
     return out_path
 
 
@@ -375,7 +403,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--syms", default="", help="comma-separated subset (default all with NPZ)")
     ap.add_argument("--years", type=float, default=2.0)
-    ap.add_argument("--charts", action="store_true", help="generate per-symbol price+overlay charts")
     ap.add_argument("--chart-days", type=int, default=60, help="days window for charts (default 60)")
     args = ap.parse_args()
     all_syms = load_ang_symbols()
@@ -399,12 +426,12 @@ def main() -> int:
             winners[sym] = (ovr, m)
             p = write_winner_json(sym, ovr, m)
             print(f"  [winner] {p.name}")
-            if args.charts and HAS_MPL and winner_trades:
+            if HAS_MPL and winner_trades:
                 try:
                     z = np.load(str(NPZ_DIR / f"{sym}.npz"))
                     npz_c = {k: z[k] for k in z.files}
                     z.close()
-                    generate_sym_chart(sym, npz_c, winner_trades, m, CHARTS_OUT_DIR, days=args.chart_days)
+                    generate_sym_chart(sym, npz_c, winner_trades, m, ovr, days=args.chart_days)
                 except Exception as ce:
                     print(f"  [chart] ERR {sym}: {ce}")
         except Exception as e:
