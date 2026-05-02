@@ -590,26 +590,25 @@ def main() -> int:
     if "1" in args.phase:
         phase1 = phase1_baseline(syms, account_label)
 
-    winners: Dict[str, Tuple[Dict, Dict]] = {}
-    winner_trades: Dict[str, List[Dict]] = {}
+    # winners: {sym: (ovr_delta, m, trades)}
+    winners: Dict = {}
 
     if "2" in args.phase:
         for sym in syms:
             p1 = phase1.get(sym, {})
             ps1 = float(p1.get("pool_sharpe", 0))
             if ps1 > PROMOTE_POOL_MIN and not args.mutate_all:
-                winners[sym] = ({}, p1)
+                winners[sym] = ({}, p1, [])
                 print(f"\n  {sym}: Phase 1 pool={ps1:+.4f} — using existing (--mutate-all to force)")
                 continue
             if NPZ_DIR.joinpath(f"{sym}.npz").exists():
                 try:
                     ovr, m, trades = phase2_sweep_sym(sym, run_root, sweep_csv, args.years)
                     if m:
-                        winners[sym] = (ovr, m)
-                        winner_trades[sym] = trades
+                        winners[sym] = (ovr, m, trades)
                         # Write this symbol immediately (don't wait for all symbols)
                         if "3" in args.phase:
-                            promote_to_active_config(account_label, {sym: (ovr, m)})
+                            promote_to_active_config(account_label, {sym: (ovr, m, trades)})
                             if args.sync_to_s1:
                                 sync_config_to_s1()
                 except Exception as e:
@@ -624,13 +623,12 @@ def main() -> int:
         if args.sync_to_s1:
             sync_config_to_s1()
 
-    if "4" in args.phase and winner_trades:
+    if "4" in args.phase:
         print()
         print("=" * 80)
         print(f"PHASE 4 — charts")
         print("=" * 80)
-        for sym, trades in winner_trades.items():
-            _, m = winners[sym]
+        for sym, (ovr, m, trades) in winners.items():
             if trades:
                 generate_ohlc_chart(sym, trades, m, account_label, days=args.days_chart)
             else:
