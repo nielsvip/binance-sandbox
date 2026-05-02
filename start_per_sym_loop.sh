@@ -12,6 +12,7 @@ YEARS=2.0
 # Leave empty to skip (charts stay on S1 at $BINANCE/plots/OPT_*.png).
 MAC_HOST=${MAC_HOST:-""}
 MAC_PLOTS_DIR="/Users/niels/Documents/binance/plots"
+MAC_CFG_PATH="/Users/niels/Documents/binance/data/hourly_reconfig/per_sym_active_config.json"
 
 mkdir -p ~/logs
 
@@ -33,8 +34,15 @@ while true; do
         cd "$BINANCE" && "$PYTHON" -u "$script" --years "$YEARS" >> "$LOG" 2>&1
         ec=$?
         echo "[per_sym_loop] $acct finished (exit=$ec) at $(date -u)" >> "$LOG" 2>&1
+        # Push updated active config to Mac after each account (fresh overrides go live ASAP)
+        if [ -n "$MAC_HOST" ]; then
+            rsync -az --timeout=15 "$BINANCE/data/hourly_reconfig/per_sym_active_config.json" \
+                "${MAC_HOST}:${MAC_CFG_PATH}" >> "$LOG" 2>&1 \
+                && echo "[per_sym_loop] Config pushed to Mac after $acct" >> "$LOG" 2>&1 \
+                || echo "[per_sym_loop] Config push FAILED after $acct (non-fatal)" >> "$LOG" 2>&1
+        fi
     done
-    # Push OPT charts to Mac if MAC_HOST is set
+    # Push OPT charts to Mac at end of full cycle
     if [ -n "$MAC_HOST" ]; then
         echo "[per_sym_loop] Pushing OPT charts to $MAC_HOST at $(date -u)" >> "$LOG" 2>&1
         rsync -az --include='OPT_*.png' --exclude='*' "$BINANCE/plots/" "${MAC_HOST}:${MAC_PLOTS_DIR}/" >> "$LOG" 2>&1 \

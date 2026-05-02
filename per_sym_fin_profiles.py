@@ -204,8 +204,12 @@ def promote_winners_to_active_config(winners: Dict[str, Tuple[Dict, Dict]]) -> N
     now_tag = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     for sym, (ovr, m) in winners.items():
         clean_ovr = {k: v for k, v in ovr.items() if not k.startswith("_")}
-        entry = {"winning_tag": f"per_sym_{sym}_{now_tag}", "wsharpe": float(m.get("pool_sharpe", 0)),
-                 "trades": int(m.get("trades", 0)), "sample_tag": "PER_SYM", "overrides": clean_ovr}
+        ps = float(m.get("pool_sharpe", 0)); tr = int(m.get("trades", 0))
+        if ps <= 0 or tr < 30 or not clean_ovr:
+            print(f"  [active_config] SKIP {sym}: pool_sharpe={ps:+.4f} trades={tr} overrides={clean_ovr} — below quality gate")
+            continue
+        entry = {"winning_tag": f"per_sym_{sym}_{now_tag}", "wsharpe": ps,
+                 "trades": tr, "sample_tag": "PER_SYM", "overrides": clean_ovr}
         for side in ("LONG", "SHORT"): existing[f"{sym}_{side}"] = entry
     ACTIVE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with ACTIVE_CONFIG_PATH.open("w") as f: json.dump(existing, f, indent=2, default=str)

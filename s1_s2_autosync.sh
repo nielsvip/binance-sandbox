@@ -89,9 +89,20 @@ push_to() {
     return 0
 }
 
+PER_SYM_CFG_S1="s1-int:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
+PER_SYM_CFG_MAC="$BASE/data/hourly_reconfig/per_sym_active_config.json"
+
 echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritative interval=${SLEEP_SEC}s" >>"$LOG"
+_pull_tick=0
 while true; do
     push_to s1-int S1
     push_to s2-int S2
+    # Pull per_sym_active_config.json from S1 every ~60 s (profilers write it on S1)
+    _pull_tick=$(( (_pull_tick + 1) % 30 ))
+    if [[ $_pull_tick -eq 0 ]]; then
+        mkdir -p "$BASE/data/hourly_reconfig"
+        rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$PER_SYM_CFG_S1" "$PER_SYM_CFG_MAC" 2>>"$LOG" \
+            && echo "$(date -u +%FT%TZ) PER_SYM_CFG pulled from S1" >>"$LOG"
+    fi
     sleep "$SLEEP_SEC"
 done
