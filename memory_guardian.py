@@ -392,16 +392,24 @@ def kill_local_backtests(dry_run=False):
 
 
 def tier1_restart_hog(dry_run=False):
-    """Tier 1: Find the top memory-abusing trading script and restart it (watchdog auto-relaunches)."""
-    scripts = get_trading_script_memory()
+    """Tier 1: Find the top memory-abusing trading script and restart it (watchdog auto-relaunches).
+
+    Live trading workers (ez_manage, tradier_manage) are EXCLUDED — their watchdog
+    (run_with_watchdog.sh) already does preemptive RSS recycle at 1.5GB MAX_RSS_KB.
+    Pre-2026-05-02 this guardian killed ez_manage workers at 600–900MB RSS (well below
+    the watchdog ceiling), causing a kill→restart→reallocate→kill cycle that produced
+    5 OOM events in 30min on 2026-05-02. Skip them; let the watchdog own RSS recycling.
+    """
+    NEVER_RESTART_VIA_TIER1 = ("ez_manage.py", "tradier_manage.py")
+    scripts = [s for s in get_trading_script_memory() if not any(p in s[2] for p in NEVER_RESTART_VIA_TIER1)]
     if not scripts:
-        logger.info("TIER 1: No trading scripts found to restart")
+        logger.info("TIER 1: No restart-eligible trading scripts found (live workers excluded)")
         return False
     top_pid, top_mb, top_cmd = scripts[0]
     script_name = extract_script_name(top_cmd) or "unknown"
-    logger.warning(f"TIER 1: Top memory hog: {script_name} using {top_mb:.0f}MB (PID {top_pid})")
+    logger.warning(f"TIER 1: Top memory hog (eligible): {script_name} using {top_mb:.0f}MB (PID {top_pid})")
     if top_mb < 200:
-        logger.info(f"TIER 1: Top script only using {top_mb:.0f}MB — not worth restarting")
+        logger.info(f"TIER 1: Top eligible script only using {top_mb:.0f}MB — not worth restarting")
         return False
     if dry_run:
         print(f"[DRY RUN] Would restart {script_name} (PID {top_pid}, {top_mb:.0f}MB)")
