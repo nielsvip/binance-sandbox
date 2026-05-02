@@ -1673,28 +1673,28 @@ def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
     return _BtcConfigOverlay(base_cfg, overrides) if overrides else base_cfg
 
 
-_ang_per_sym_cfgs: dict = {}
-_ang_per_sym_cfgs_mtime: float = 0.0
-_ang_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "ang" / "active_config.json"
+_per_sym_cfgs: dict = {}
+_per_sym_cfgs_mtime: float = 0.0
+_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 
 
-def _get_ang_sym_overrides(symbol: str, side: str) -> dict:
-    """Return per-sym override dict for ang symbols from active_config.json.
-    Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, WA_MIN_GAIN_PCT, etc.).
-    Re-reads only when file mtime changes."""
-    global _ang_per_sym_cfgs, _ang_per_sym_cfgs_mtime
+def _get_per_sym_overrides(symbol: str, side: str) -> dict:
+    """Return per-sym override dict from global per_sym_active_config.json.
+    Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
+    Applies to all accounts. Re-reads only when file mtime changes."""
+    global _per_sym_cfgs, _per_sym_cfgs_mtime
     try:
-        mtime = _ang_per_sym_cfgs_path.stat().st_mtime
-        if mtime != _ang_per_sym_cfgs_mtime:
-            with _ang_per_sym_cfgs_path.open() as _f:
+        mtime = _per_sym_cfgs_path.stat().st_mtime
+        if mtime != _per_sym_cfgs_mtime:
+            with _per_sym_cfgs_path.open() as _f:
                 raw = json.load(_f)
-            _ang_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
-            _ang_per_sym_cfgs_mtime = mtime
+            _per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _per_sym_cfgs_mtime = mtime
     except FileNotFoundError:
         pass
     except Exception as _exc:
-        logger.warning("ANG_PER_SYM_CFG load error: %s", _exc)
-    return _ang_per_sym_cfgs.get(f"{symbol}_{side}", {})
+        logger.warning("PER_SYM_CFG load error: %s", _exc)
+    return _per_sym_cfgs.get(f"{symbol}_{side}", {})
 
 
 def _btc_dedicated_active(account_key: str, symbol: str, cfg) -> bool:
@@ -14905,12 +14905,12 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                 # == SIGNAL-BASED ENTRY (only if no DC breakout) ==
                 if not should_trade:
                     _sig_score_min = 4
-                    if account_key == 'ang' and bool(getattr(config, 'ANG_PER_SYM_CONFIG_ENABLED', True)):
-                        _ang_ovr = _get_ang_sym_overrides(symbol, position_side)
-                        if 'ENTRY_SCORE_THRESHOLD' in _ang_ovr:
-                            _ang_est = float(_ang_ovr['ENTRY_SCORE_THRESHOLD'])
-                            if _ang_est > _sig_score_min:
-                                _sig_score_min = _ang_est
+                    if bool(getattr(config, 'PER_SYM_CONFIG_ENABLED', True)):
+                        _psym_ovr = _get_per_sym_overrides(symbol, position_side)
+                        if 'ENTRY_SCORE_THRESHOLD' in _psym_ovr:
+                            _psym_est = float(_psym_ovr['ENTRY_SCORE_THRESHOLD'])
+                            if _psym_est > _sig_score_min:
+                                _sig_score_min = _psym_est
                     if (score >= _sig_score_min or "BUY" in rec or "SELL" in rec) and ('WAIT' not in str(rec) and 'HEDGE' not in str(rec)):
                         _k1m = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50)
                         _d1m = safe_fetch_float(indicators.get('stoch_d_1m', 50), 50)

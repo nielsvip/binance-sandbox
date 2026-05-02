@@ -2847,7 +2847,7 @@ class Config:
     BTC_DEDICATED_SYMBOLS: List[str] = field(default_factory=lambda: ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT"])  # all flz BTC_DEDICATED symbols
     BTC_PER_SYM_CONFIG_ENABLED: bool = True                               # load per-symbol overrides from data/hourly_reconfig/flz/active_config.json
     BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDC at is_tradeable
-    ANG_PER_SYM_CONFIG_ENABLED: bool = True                               # load per-symbol entry-score overrides from data/hourly_reconfig/ang/active_config.json
+    PER_SYM_CONFIG_ENABLED: bool = True                                    # load per-symbol entry-score overrides from data/hourly_reconfig/per_sym_active_config.json (global, all accounts)
 
     # --- Red zone composition (existing wt_dc + new fib + new round numbers) ---
     BTC_RZ_USE_WT_DC: bool = True
