@@ -91,9 +91,12 @@ push_to() {
 
 PER_SYM_CFG_S1="s1-int:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
 PER_SYM_CFG_MAC="$BASE/data/hourly_reconfig/per_sym_active_config.json"
+S1_PLOTS="s1-int:/home/niels/binance-sandbox/plots/"
+MAC_PLOTS="$BASE/plots/"
 
 echo "$(date -u +%FT%TZ) autosync_start pid=$$ mode=checksum_macbook_authoritative interval=${SLEEP_SEC}s" >>"$LOG"
 _pull_tick=0
+_chart_tick=0
 while true; do
     push_to s1-int S1
     push_to s2-int S2
@@ -103,6 +106,14 @@ while true; do
         mkdir -p "$BASE/data/hourly_reconfig"
         rsync -az --timeout=10 -e "ssh $SSH_OPTS" "$PER_SYM_CFG_S1" "$PER_SYM_CFG_MAC" 2>>"$LOG" \
             && echo "$(date -u +%FT%TZ) PER_SYM_CFG pulled from S1" >>"$LOG"
+    fi
+    # Pull OPT_*.png charts from S1 every ~5 min (per-sym profiler writes them)
+    _chart_tick=$(( (_chart_tick + 1) % 150 ))
+    if [[ $_chart_tick -eq 0 ]]; then
+        mkdir -p "$MAC_PLOTS"
+        rsync -az --timeout=30 --include='OPT_*.png' --exclude='*' -e "ssh $SSH_OPTS" \
+            "$S1_PLOTS" "$MAC_PLOTS" 2>>"$LOG" \
+            && echo "$(date -u +%FT%TZ) OPT_charts pulled from S1" >>"$LOG"
     fi
     sleep "$SLEEP_SEC"
 done

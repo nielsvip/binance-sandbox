@@ -1650,14 +1650,12 @@ class _BtcConfigOverlay:
 
 _btc_per_sym_cfgs: dict = {}
 _btc_per_sym_cfgs_mtime: float = 0.0
-_btc_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "flz" / "active_config.json"
+_btc_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 
 
 def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
-    """Return a per-symbol config overlay for flz BTC_DEDICATED symbols.
-    Re-reads active_config.json only when the file mtime changes (thread-safe by GIL)."""
-    if account_key != "flz":
-        return base_cfg
+    """Return a per-symbol config overlay from per_sym_active_config.json.
+    Re-reads the file only when mtime changes (thread-safe by GIL)."""
     if not getattr(base_cfg, "BTC_PER_SYM_CONFIG_ENABLED", True):
         return base_cfg
     global _btc_per_sym_cfgs, _btc_per_sym_cfgs_mtime

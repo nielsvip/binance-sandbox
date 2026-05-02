@@ -393,6 +393,46 @@ def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
 
 # ---------- Phase 3 ──────────────────────────────────────────────────────────
 
+_ACTIVE_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+_META_BANNED = {"_meta"}
+_BANNED_PARAMS = {"D_TREND_REQUIRED", "HTF_MIN_ALIGNED", "MIN_HOLD_BARS"}
+
+
+def promote_winners_to_active_config(winners: Dict[str, tuple]) -> None:
+    """Write per-symbol BTC_DEDICATED winners to per_sym_active_config.json.
+    All BTC override params are written (they ARE live config, unlike fin/ang/men).
+    Quality gate: pool_sharpe > 0, trades >= 30."""
+    _ACTIVE_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with _ACTIVE_CFG_PATH.open() as f:
+            existing: Dict = json.load(f)
+    except Exception:
+        existing = {}
+    now_tag = __import__("datetime").datetime.utcnow().strftime("%Y-%m-%d")
+    updated = 0
+    for sym, (ovr, m) in winners.items():
+        ps = float(m.get("pool_sharpe", 0))
+        tr = int(m.get("trades", 0))
+        live_ovr = {k: v for k, v in ovr.items() if k not in _META_BANNED and k not in _BANNED_PARAMS}
+        if ps <= 0 or tr < 30 or not live_ovr:
+            print(f"  [active_config] SKIP {sym}: pool_sharpe={ps:+.4f} trades={tr} — quality gate")
+            continue
+        entry = {
+            "winning_tag": f"flz8_{sym}_{now_tag}",
+            "wsharpe": ps,
+            "trades": tr,
+            "sample_tag": "FLZ8",
+            "overrides": live_ovr,
+        }
+        for side in ("LONG", "SHORT"):
+            existing[f"{sym}_{side}"] = entry
+        updated += 1
+        print(f"  [active_config] WRITE {sym}: pool_sharpe={ps:+.4f} trades={tr:,} overrides={len(live_ovr)}")
+    with _ACTIVE_CFG_PATH.open("w") as f:
+        json.dump(existing, f, indent=2, default=str)
+    print(f"  [active_config] {updated}/{len(winners)} symbols written → {_ACTIVE_CFG_PATH}")
+
+
 def write_winner_json(sym: str, overrides: Dict, m: Dict) -> Path:
     CAND_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = CAND_OUT_DIR / f"extra_btc_{sym}_winner.json"
@@ -456,7 +496,7 @@ def main() -> int:
     if "3" in args.phase:
         print()
         print("=" * 88)
-        print("PHASE 3 — write winner JSONs → data/hourly_reconfig/_candidates/")
+        print("PHASE 3 — write winner JSONs → _candidates/ + per_sym_active_config.json")
         print("=" * 88)
         for sym in syms:
             if sym not in winners:
@@ -469,6 +509,7 @@ def main() -> int:
             p = write_winner_json(sym, ovr, m)
             paths_written.append(p)
             print(f"  {p.name}")
+        promote_winners_to_active_config(winners)
 
     if "4" in args.phase:
         print()
