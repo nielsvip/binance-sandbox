@@ -29,6 +29,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -489,6 +490,115 @@ def run_v8_verify_daily():
         log.exception(f"V8_VERIFY_DAILY crashed: {e}")
 
 
+# ═══ Live trading health checks ═══
+WEBHOOK_FAIL_WINDOW_S = 300        # look back 5 min for WEBHOOK_FAIL events
+WEBHOOK_FAIL_RATE_THRESHOLD = 10   # > N fails in window → rate-burst alert
+LOG_STALE_SECONDS = 300            # ez_manage logs every ~30s even idle; 5min stale = dead worker
+_CRYPTO_ACCTS = ["ang", "fin", "flz", "men", "inf"]
+_STOCK_ACCTS = ["tra", "trb", "trc"]
+_LOG_TS_RE = re.compile(r'^\d{1,2} (\d{2}):(\d{2}):(\d{2})')
+
+
+def _log_line_age(line: str, now_epoch: float) -> float | None:
+    m = _LOG_TS_RE.match(line)
+    if not m:
+        return None
+    h, mn, s = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    now_dt = datetime.fromtimestamp(now_epoch)
+    try:
+        line_dt = now_dt.replace(hour=h, minute=mn, second=s, microsecond=0)
+    except ValueError:
+        return None
+    age = now_epoch - line_dt.timestamp()
+    if age < -60:
+        age += 86400
+    return age
+
+
+def check_webhook_health(state: dict) -> None:
+    """Alert on WEBHOOK_FAIL bursts or Finandy IP-block 'access denied' events."""
+    now = time.time()
+    log_dir = Path.home() / "logs"
+    accounts = [(f"ez_manage_{a}", a) for a in _CRYPTO_ACCTS] + \
+               [(f"tradier_manage_{a}", a) for a in _STOCK_ACCTS]
+    total_recent_fails = 0
+    access_denied_accts: list[str] = []
+    for log_stem, acct in accounts:
+        log_path = log_dir / f"{log_stem}.log"
+        if not log_path.exists():
+            continue
+        try:
+            with open(log_path, "rb") as fh:
+                fh.seek(0, 2)
+                size = fh.tell()
+                fh.seek(max(0, size - 80000))
+                lines = fh.read().decode("utf-8", errors="ignore").splitlines()
+        except Exception:
+            continue
+        for line in lines[-500:]:
+            if "WEBHOOK_FAIL" not in line:
+                continue
+            age = _log_line_age(line, now)
+            if age is None or age > WEBHOOK_FAIL_WINDOW_S:
+                continue
+            total_recent_fails += 1
+            if "access denied" in line.lower() and acct not in access_denied_accts:
+                access_denied_accts.append(acct)
+    if access_denied_accts:
+        key = "webhook_access_denied_alert_ts"
+        if now - state.get(key, 0) >= 300:
+            state[key] = now
+            loud_alert(
+                f"WEBHOOK IP BLOCKED on {','.join(access_denied_accts)} — Finandy rejecting webhooks with 'access denied'. "
+                f"Add your current IP to Finandy hook IP whitelist (or remove IP restriction entirely — webhook_secret already authenticates).",
+                server_name="WEBHOOK",
+                severity="CRITICAL",
+            )
+            log.critical(f"WEBHOOK_ACCESS_DENIED accounts={access_denied_accts} recent_fails={total_recent_fails}")
+    elif total_recent_fails >= WEBHOOK_FAIL_RATE_THRESHOLD:
+        key = "webhook_fail_rate_alert_ts"
+        if now - state.get(key, 0) >= 300:
+            state[key] = now
+            loud_alert(
+                f"{total_recent_fails} WEBHOOK_FAIL events in last {WEBHOOK_FAIL_WINDOW_S}s — Finandy webhooks degraded.",
+                server_name="WEBHOOK",
+                severity="WARNING",
+            )
+            log.warning(f"WEBHOOK_FAIL_BURST {total_recent_fails} fails in {WEBHOOK_FAIL_WINDOW_S}s")
+
+
+def check_live_log_freshness(state: dict) -> None:
+    """Alert if a live trading log file has had no new writes for >5 min (worker dead/hung)."""
+    now = time.time()
+    log_dir = Path.home() / "logs"
+    stale: list[str] = []
+    for acct in _CRYPTO_ACCTS:
+        lp = log_dir / f"ez_manage_{acct}.log"
+        if not lp.exists():
+            continue
+        age = now - lp.stat().st_mtime
+        if age > LOG_STALE_SECONDS:
+            stale.append(f"ez_manage[{acct}] +{int(age)}s")
+    for acct in _STOCK_ACCTS:
+        lp = log_dir / f"tradier_manage_{acct}.log"
+        if not lp.exists():
+            continue
+        age = now - lp.stat().st_mtime
+        if age > LOG_STALE_SECONDS:
+            stale.append(f"tradier[{acct}] +{int(age)}s")
+    if stale:
+        key = "live_log_stale_alert_ts"
+        if now - state.get(key, 0) >= 300:
+            state[key] = now
+            loud_alert(
+                f"LIVE TRADING LOG STALE: {', '.join(stale)} — worker may be dead or hung. "
+                f"Check: ps -ef | grep manage.py",
+                server_name="LIVE_TRADING",
+                severity="CRITICAL",
+            )
+            log.critical(f"LIVE_LOG_STALE accounts={stale}")
+
+
 def supervisor_loop():
     acquire_lock()
     state = load_state()
@@ -543,6 +653,14 @@ def supervisor_loop():
                         log.warning(f"SWEEP_STALE {s['loc']} {s['file']} age={s['age_s']}s (inner ZERO_TRADES_TIMEOUT=60 should have caught this)")
             except Exception as e:
                 log.exception(f"sweep freshness check crashed: {e}")
+            try:
+                check_webhook_health(state)
+            except Exception as e:
+                log.exception(f"webhook health check crashed: {e}")
+            try:
+                check_live_log_freshness(state)
+            except Exception as e:
+                log.exception(f"live log freshness check crashed: {e}")
             if time.time() - last_v8_verify >= V8_VERIFY_INTERVAL_SECONDS:
                 log.info("v8_verify_daily window reached → running")
                 run_v8_verify_daily()
