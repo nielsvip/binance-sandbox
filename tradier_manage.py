@@ -242,6 +242,12 @@ _tradier_per_sym_cfgs: dict = {}
 _tradier_per_sym_cfgs_mtime: float = 0.0
 _tradier_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "trb" / "active_config.json"
 
+# Global per-symbol overlay shared with crypto/flz8: per_sym_*_profiles writers
+# put per-symbol custom settings here, keyed by {symbol}_{side} regardless of account.
+_global_per_sym_cfgs: dict = {}
+_global_per_sym_cfgs_mtime: float = 0.0
+_global_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+
 
 def _load_tradier_per_sym_cfgs(path: Path) -> dict:
     global _tradier_per_sym_cfgs, _tradier_per_sym_cfgs_mtime
@@ -257,21 +263,47 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
     return _tradier_per_sym_cfgs
 
 
+def _load_global_per_sym_cfgs() -> dict:
+    """Load per-symbol custom overrides from data/hourly_reconfig/per_sym_active_config.json.
+    Same file that ez_positions_quick._get_per_sym_overrides reads — single source of truth
+    for per-symbol settings written by per_sym_trb_profiles / per_sym_crypto_profiles / per_sym_flz8_profiles."""
+    global _global_per_sym_cfgs, _global_per_sym_cfgs_mtime
+    try:
+        mtime = _global_per_sym_cfgs_path.stat().st_mtime
+        if mtime != _global_per_sym_cfgs_mtime:
+            with _global_per_sym_cfgs_path.open() as _f:
+                raw = json.load(_f)
+            _global_per_sym_cfgs = {k: v.get("overrides", {}) for k, v in raw.items() if isinstance(v, dict)}
+            _global_per_sym_cfgs_mtime = mtime
+    except Exception:
+        pass
+    return _global_per_sym_cfgs
+
+
 def _cfg(param, default=None, account_key=None, symbol=None, side=None):
-    """Per-symbol config lookup: per-sym file overlay → regime override → global default.
-    Per-sym overlay loaded from data/hourly_reconfig/trb/active_config.json (mtime-cached).
-    Use for all sweepable parameters so rolling_config_optimizer can tune per-symbol."""
+    """Per-symbol config lookup with strict per-symbol-first fallback chain.
+    Order:
+      1. trb/active_config.json (7D agent output for this account)
+      2. per_sym_active_config.json (global per-symbol custom — long-term sweep winner)
+      3. regime override (config.get_symbol_setting)
+      4. global default (config.PARAM) — basic baseline
+    Falls back to basic ONLY when no custom settings exist for this (sym, side, param)."""
     if account_key and symbol and side:
-        # 1. Per-symbol JSON overlay (from tradier_hourly_reconfig / per_sym_tradier_profiles)
+        # 1. Per-account 7D overlay (account-specific tuning of per-sym baseline)
         if account_key in ("trb", "trc"):
             cfgs = _load_tradier_per_sym_cfgs(_tradier_per_sym_cfgs_path)
             entry = cfgs.get(f"{symbol}_{side}", {})
             if param in entry:
                 return entry[param]
-        # 2. Regime override → global default (existing path)
+        # 2. Global per-symbol custom (single source of truth for per-symbol settings)
+        gentry = _load_global_per_sym_cfgs().get(f"{symbol}_{side}", {})
+        if param in gentry:
+            return gentry[param]
+        # 3. Regime override
         v = config.get_symbol_setting(account_key, f"{symbol}_{side}", param)
         if v is not None:
             return v
+    # 4. Basic baseline
     return getattr(config, param, default)
 
 

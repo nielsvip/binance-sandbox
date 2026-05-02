@@ -53,6 +53,7 @@ NPZ_DIR = ROOT / "backtest_v8" / "indicators"
 SWEEP_DIR = ROOT / "data" / "sweep_results"
 CAND_OUT_DIR = ROOT / "data" / "hourly_reconfig" / "trb" / "_candidates"
 CHARTS_OUT_DIR = ROOT / "plots"
+GLOBAL_ACTIVE_CFG = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 SYMBOLS_LONG_FILE = ROOT / "symbols_trb_long.json"
 SYMBOLS_SHORT_FILE = ROOT / "symbols_trb_short.json"
 # Phase 1 canonical trade JSONL search root — matches any trb_BEST_* subdirectory
@@ -460,6 +461,52 @@ def phase2_sweep_sym(sym: str, run_root: Path, sweep_csv: Path,
 
 # ── Phase 3 — write winner JSONs + charts ────────────────────────────────────
 
+_TRB_BANNED_PARAMS = {"ATR_TRAIL_ENABLED", "ATR_TRAIL_ENABLED_TRADIER", "_meta"}
+
+
+def _side_metrics(trades: List[Dict], years: float, sym: str, side: str) -> Dict:
+    rets = [float(t.get("pnl_pct", 0)) for t in trades if t.get("side", "").upper() == side.upper()]
+    if not rets:
+        return {}
+    return per_sym_metrics(rets, years, f"{sym}_{side}")
+
+
+def promote_to_global_active_config(sym: str, overrides: Dict, m: Dict, trades: List[Dict]) -> None:
+    """Write trb winner to GLOBAL per_sym_active_config.json so live trading + 7D agent can read it.
+    Keyed by {sym}_{side} (no account prefix) — per-symbol settings are global across all accounts.
+    Skips writing if pool_sharpe<=0 or trades<floor (quality gate)."""
+    ps = float(m.get("pool_sharpe", 0))
+    tr = int(m.get("trades", 0))
+    if ps <= 0 or tr < PROMOTE_TRADES_MIN:
+        print(f"  [global_active] SKIP {sym}: pool={ps:+.4f} trades={tr} — quality gate")
+        return
+    GLOBAL_ACTIVE_CFG.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        existing = json.loads(GLOBAL_ACTIVE_CFG.read_text())
+    except Exception:
+        existing = {}
+    delta = {k: v for k, v in overrides.items()
+             if not k.startswith("_") and k not in _TRB_BANNED_PARAMS}
+    years = float(m.get("years", 2.0))
+    now_tag = time.strftime("%Y-%m-%d", time.gmtime())
+    for side in ("LONG", "SHORT"):
+        sm = _side_metrics(trades, years, sym, side) if trades else {}
+        side_ps = float(sm.get("pool_sharpe", ps))
+        side_tr = int(sm.get("trades", tr // 2))
+        existing[f"{sym}_{side}"] = {
+            "winning_tag": f"trb_{sym}_{now_tag}",
+            "wsharpe": side_ps,
+            "trades": side_tr,
+            "total_trades_combined": tr,
+            "sample_tag": "TRB",
+            "side": side,
+            "overrides": delta,
+            "_delta_params": len(delta),
+        }
+    GLOBAL_ACTIVE_CFG.write_text(json.dumps(existing, indent=2, default=str))
+    print(f"  [global_active] WRITE {sym}: pool={ps:+.4f} trades={tr:,} delta_params={len(delta)} → {GLOBAL_ACTIVE_CFG.name}")
+
+
 def write_winner_json(sym: str, overrides: Dict, m: Dict) -> Path:
     CAND_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = CAND_OUT_DIR / f"trb_{sym}_winner.json"
@@ -749,6 +796,11 @@ def main() -> int:
             p = write_winner_json(sym, ovr, m)
             paths_written.append(p)
             print(f"  {p.name}  pool_sharpe={m['pool_sharpe']:+.4f}  trades={m['trades']:,}  dd={m['max_dd_pct']:.2f}%")
+            # ALSO write to GLOBAL per_sym_active_config.json (live + 7D agent read this)
+            try:
+                promote_to_global_active_config(sym, ovr, m, winner_trades_map.get(sym, []))
+            except Exception as e:
+                print(f"  [global_active] EXC {sym}: {e}")
         print()
         print("PHASE 3b — charts")
         for sym in syms:

@@ -112,6 +112,21 @@ def load_safe_override(path: Path) -> Dict:
 EXTRA_CAND_DIR = ROOT / "data" / "hourly_reconfig" / "_candidates"
 EXTRA_CAND_DIR_TRADIER = ROOT / "data" / "hourly_reconfig" / "_candidates_tradier"
 
+# Global per-symbol custom overrides (written by per_sym_*_profiles, keyed by {sym}_{side}).
+# 7D agent uses these as additional per-(sym, side) candidates so the 7-day re-optimization
+# starts from the long-term per-sym baseline and only switches if a shorter-window winner beats it.
+GLOBAL_PER_SYM_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
+
+
+def load_global_per_sym_overrides() -> Dict[str, Dict]:
+    """Return {f'{sym}_{side}': overrides_dict} from per_sym_active_config.json (or empty)."""
+    try:
+        raw = json.loads(GLOBAL_PER_SYM_CFG_PATH.read_text())
+    except Exception:
+        return {}
+    return {k: v.get("overrides", {}) for k, v in raw.items()
+            if isinstance(v, dict) and v.get("overrides")}
+
 
 def candidate_configs(account: str) -> List[Tuple[str, Dict]]:
     """Return list of (tag, overrides_dict) candidates.
@@ -478,6 +493,12 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
         except Exception as e:
             print(f"  [window] {sym}: NPZ_LOAD_ERR {e}", flush=True)
 
+    # Per-(sym, side) custom overrides from per_sym_active_config.json (long-term sweep winners).
+    # Added as an additional candidate so 7D agent uses per-sym custom as baseline and only flips
+    # if a shorter-window variant beats it. Falls back to fixed candidate set if no custom exists.
+    per_sym_custom = load_global_per_sym_overrides()
+    n_with_custom = 0
+
     # Build full work list: (sym, side, tag, ovr, run_dir_str, now_ts, window_start_ts, npz_dir_str, mode)
     work: List[Tuple] = []
     for sym in all_syms:
@@ -485,9 +506,16 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
             continue
         ws_ts, _ = sym_windows[sym]
         for side in sides:
-            for tag, ovr in cands:
+            sym_cands = list(cands)
+            custom = per_sym_custom.get(f"{sym}_{side}", {})
+            if custom:
+                sym_cands.append(("per_sym_custom", custom))
+                n_with_custom += 1
+            for tag, ovr in sym_cands:
                 work.append((sym, side, tag, ovr, str(run_dir),
                              now_ts, ws_ts, str(NPZ_DIR), mode))
+    if n_with_custom:
+        print(f"[hourly] per_sym_custom candidates injected for {n_with_custom} (sym,side) pairs", flush=True)
 
     print(f"[hourly] dispatching {len(work)} sims across {workers} worker(s)", flush=True)
 
