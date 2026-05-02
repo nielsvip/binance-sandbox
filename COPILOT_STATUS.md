@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-02 18:19:23 UTC
+# Copilot Status — 2026-05-02 18:34:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-02T18:17:15
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-02T18:17:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-02T18:17:15
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-02T18:17:15
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-02T18:17:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-02T18:18:31
-- **STALE_INDICATORS** [tradier]  — 2026-05-02T18:19:23
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-02T18:19:23
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-02T18:19:23
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-02T18:19:23
+- **STALE_INDICATORS** [tradier]  — 2026-05-02T18:31:59
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-02T18:31:59
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-02T18:31:59
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-02T18:31:59
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-02T18:32:11
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-02T18:33:14
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-02T18:34:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-02T18:34:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-02T18:34:05
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-02T18:34:16
 
 ## Missed Trades (trader comparison)
 
@@ -27,7 +27,7 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 18 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 19 | **Reentered:** 0
 
 - HELD: **SANDUSDT** LONG (crypto) peak +10.7%, now +10.6%
 - HELD: **GOOGL** LONG (tradier) peak +10.5%, now +10.0%
@@ -49,9 +49,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 22
+**Issues (last 1h):** 24
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_indicators.py is NOT running
+- [HIGH] ez_indicators.py is NOT running
