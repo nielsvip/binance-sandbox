@@ -454,8 +454,7 @@ def main() -> int:
     print()
     print(f"CSV: {sweep_csv}")
     print(f"Candidates: {CAND_OUT_DIR}")
-    if args.charts:
-        print(f"Charts: {CHARTS_OUT_DIR}")
+    print(f"Charts: {CHARTS_OUT_DIR}")
     return 0
 
 
