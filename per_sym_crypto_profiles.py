@@ -42,7 +42,6 @@ NPZ_DIR       = ROOT / "backtest_v8" / "indicators"
 SWEEP_DIR     = ROOT / "data" / "sweep_results"
 ACTIVE_CFG    = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
 CHARTS_DIR    = ROOT / "plots"
-TK_FILE       = ROOT / "tradeable_keys.json"
 
 PROMOTE_POOL_MIN   = 0.0
 PROMOTE_TRADES_MIN = 30
@@ -50,35 +49,23 @@ PROMOTE_DD_MAX     = 15.0
 PROMOTE_WR_MIN     = 55.0
 
 SUPPORTED_ACCOUNTS = ["flz", "ang", "inf", "fin", "men"]
-_ALL_CRYPTO_ACCOUNTS = SUPPORTED_ACCOUNTS
+
+# tradeable_keys.json is a LIVE RUNTIME file (written by ez_positions_service.cleanup_positions,
+# ≤150 keys, changes every few minutes). Do NOT use it for symbol discovery.
+# The backtest universe = NPZ files in backtest_v8/indicators/ ending in USDT or USDC.
 
 
-# ── symbol loading ─────────────────────────────────────────────────────────
-
-def load_symbols_for_account(account: str) -> List[str]:
-    """Return unique symbols from tradeable_keys.json for this account (or all accounts)."""
-    if not TK_FILE.exists():
-        print(f"  WARNING: {TK_FILE} not found — no symbols")
-        return []
-    keys = json.loads(TK_FILE.read_text())
-    if account == "all":
-        syms = sorted(set(
-            k.rsplit(":", 1)[-1].rsplit("_", 1)[0]
-            for k in keys
-            if any(k.startswith(f"{a}:") for a in _ALL_CRYPTO_ACCOUNTS)
-        ))
-    else:
-        prefix = f"{account}:"
-        syms = sorted(set(
-            k[len(prefix):].rsplit("_", 1)[0]
-            for k in keys if k.startswith(prefix)
-        ))
-    return syms
-
+# ── symbol loading from NPZ universe ──────────────────────────────────────
 
 def load_all_unique_symbols(skip_flz8: bool = True) -> List[str]:
-    """All unique symbols across all crypto accounts, optionally skipping flz8-already-done."""
-    syms = load_symbols_for_account("all")
+    """All crypto symbols with an NPZ file (the actual backtest universe).
+    Skips flz8-dedicated symbols (BTCUSDC, ETHUSDC, etc.) by default.
+    Never uses tradeable_keys.json — that is a live runtime file, not a symbol registry.
+    """
+    syms = sorted(
+        p.stem for p in NPZ_DIR.glob("*.npz")
+        if p.stem.endswith("USDT") or p.stem.endswith("USDC")
+    )
     if skip_flz8 and ACTIVE_CFG.exists():
         try:
             existing = json.loads(ACTIVE_CFG.read_text())
@@ -560,11 +547,8 @@ def main() -> int:
     SWEEP_DIR.mkdir(parents=True, exist_ok=True)
     account_label = args.account
 
-    # Collect symbols
-    if args.account == "all":
-        syms = load_all_unique_symbols(skip_flz8=True)
-    else:
-        syms = load_symbols_for_account(args.account)
+    # Collect symbols from NPZ universe (tradeable_keys.json is a live runtime file — don't use it)
+    syms = load_all_unique_symbols(skip_flz8=True)
     if args.sym:
         filter_syms = {s.strip() for s in args.sym.split(",") if s.strip()}
         syms = [s for s in syms if s in filter_syms]
