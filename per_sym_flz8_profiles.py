@@ -158,69 +158,130 @@ def pick_winner(results: List[Tuple[str, Dict, Dict]]) -> Tuple[str, Dict, Dict,
 
 # ---------- Chart generation -------------------------------------------------
 
-def generate_sym_chart(sym: str, trades: List[Dict], m: Dict, overrides: Dict, days: int = 90) -> None:
+def generate_sym_chart(sym: str, trades: List[Dict], m: Dict, overrides: Dict, days: int = 60) -> None:
+    """3-panel detailed chart: 15m price+markers | cumPnL | per-trade bars."""
     if not HAS_MPL:
         return
     from datetime import datetime, timezone
-    BG = "#272d30"; LINE = "#c0c0c0"; GRID = "#4a4a4a"; TICK = "#d0d0d0"; TITLE = "#9c864e"
+    from matplotlib.patches import Patch
+
+    BG = "#0d1117"; GRID = "#21262d"; TICK = "#6e7681"; TITLE = "#c9d1d9"
     cutoff_ts = time.time() - max(1, days) * 86400
-    trades_w = [t for t in trades if t.get("exit_ts", 0) >= cutoff_ts] or list(trades[-2000:])
+
+    # Filter to window; fall back to most recent 2000 if window is empty
+    trades_w = [t for t in trades if t.get("exit_ts", 0) >= cutoff_ts]
+    if not trades_w:
+        trades_w = list(trades[-2000:])
+    if not trades_w:
+        print(f"  [chart] {sym}: no trades")
+        return
+
     pnl = [float(t.get("pnl_pct", 0)) for t in trades_w]
     eq = 0.0; cum_pnl: List[float] = []
     for p in pnl:
         eq += p; cum_pnl.append(eq)
-    dt_cum = [datetime.fromtimestamp(int(t.get("exit_ts", 0)), tz=timezone.utc)
-              for t in trades_w if t.get("exit_ts", 0) > 0]
     n_win = sum(1 for p in pnl if p > 0)
-    TFS = ["4h", "1h", "15m", "3m"]
-    fig = plt.figure(figsize=(18, 4 * (len(TFS) + 1)), facecolor=BG, dpi=110)
-    gs = gridspec.GridSpec(len(TFS) + 1, 1, height_ratios=[3, 2, 2, 2, 1.5], hspace=0.08, figure=fig)
-    fig.patch.set_facecolor(BG)
-    def _style(ax):
-        ax.set_facecolor(BG)
-        for sp in ax.spines.values(): sp.set_color(TICK)
-        ax.tick_params(colors=TICK, labelsize=7)
-        ax.grid(color=GRID, alpha=0.5, linestyle=":")
-    def _markers(ax):
-        longs = [(datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc), float(t.get("entry_price", 0)))
-                 for t in trades_w if t.get("entry_ts") and t.get("side", "").upper() == "LONG"]
-        shorts = [(datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc), float(t.get("entry_price", 0)))
-                  for t in trades_w if t.get("entry_ts") and t.get("side", "").upper() == "SHORT"]
-        exits = [(datetime.fromtimestamp(int(t["exit_ts"]), tz=timezone.utc), float(t.get("exit_price", 0)))
-                 for t in trades_w if t.get("exit_ts") and t.get("exit_price")]
-        if longs: ax.scatter([v[0] for v in longs], [v[1] for v in longs], marker="^", s=45, color="#3fb950", zorder=5, alpha=0.85)
-        if shorts: ax.scatter([v[0] for v in shorts], [v[1] for v in shorts], marker="v", s=45, color="#f0883e", zorder=5, alpha=0.85)
-        if exits: ax.scatter([v[0] for v in exits], [v[1] for v in exits], marker="x", s=28, color="#f85149", zorder=5, linewidths=1.2, alpha=0.75)
+    n_lose = len(pnl) - n_win
+
+    dt_exit = [datetime.fromtimestamp(int(t.get("exit_ts", 0)), tz=timezone.utc)
+               for t in trades_w if t.get("exit_ts", 0) > 0]
+    if not dt_exit:
+        print(f"  [chart] {sym}: no valid exit timestamps")
+        return
+
+    # Load NPZ for 15m price
     npz_path = NPZ_DIR / f"{sym}.npz"
-    npz: Dict = {}
+    ts_arr = close_arr = None
     if npz_path.exists():
         z = np.load(str(npz_path))
         npz = {k: z[k] for k in z.files}; z.close()
-    for i, tf in enumerate(TFS):
-        ax = fig.add_subplot(gs[i]); _style(ax)
-        close_key = f"close_{tf}"; ts_key = "timestamps_15m"
-        if close_key in npz and ts_key in npz:
-            ts_a = npz[ts_key]; c_a = npz[close_key]
-            n = min(len(ts_a), len(c_a)); mask = ts_a[:n] >= cutoff_ts
-            if mask.any():
-                dts = [datetime.fromtimestamp(int(v), tz=timezone.utc) for v in ts_a[:n][mask]]
-                ax.plot(dts, c_a[:n][mask], color=LINE, lw=0.9, zorder=2)
-        _markers(ax); ax.set_ylabel(tf, color=TICK, fontsize=8)
-        if i == 0:
-            ovr_str = "  ".join(f"{k}={v}" for k, v in list(overrides.items())[:8] if not k.startswith("_"))
-            ax.set_title(
-                f"OPT | {sym}  pool={m['pool_sharpe']:+.4f}  wr={m.get('wr_pct',0):.1f}%  "
-                f"dd={m.get('max_dd_pct',0):.2f}%  trades={m['trades']:,}  wins={n_win}/{len(pnl)}  ({days}d)\n{ovr_str}",
-                color=TITLE, fontsize=9, pad=4)
-    ax_pnl = fig.add_subplot(gs[len(TFS)]); _style(ax_pnl)
-    if dt_cum and cum_pnl:
-        ax_pnl.plot(dt_cum, cum_pnl, color="#58a6ff", lw=1.3, zorder=3)
-        ax_pnl.fill_between(dt_cum, cum_pnl, alpha=0.15, color="#58a6ff")
-        ax_pnl.axhline(0, color="#6e7681", lw=0.5, linestyle="--")
-    ax_pnl.set_ylabel("Cum PnL%", color=TICK, fontsize=8)
+        ts_arr = npz.get("timestamps_15m"); close_arr = npz.get("close_15m")
+        if close_arr is None:
+            close_arr = npz.get("close_4h")
+            ts_arr = npz.get("timestamps_15m")
+
+    fig = plt.figure(figsize=(18, 12), facecolor=BG, dpi=150)
+    fig.patch.set_facecolor(BG)
+    has_price = ts_arr is not None and close_arr is not None and len(ts_arr) > 0
+    ratios = [3, 1.5, 1] if has_price else [2, 1]
+    n_panels = len(ratios)
+    gs = gridspec.GridSpec(n_panels, 1, height_ratios=ratios, hspace=0.05, figure=fig)
+
+    def _style(ax):
+        ax.set_facecolor(BG)
+        for sp in ax.spines.values(): sp.set_color("#30363d")
+        ax.tick_params(colors=TICK, labelsize=7)
+        ax.grid(axis="y", color=GRID, linewidth=0.4, zorder=0)
+
+    panel = 0
+
+    # ── Panel 0: price + entry/exit markers ──────────────────────────────────
+    if has_price:
+        ax_p = fig.add_subplot(gs[panel]); _style(ax_p); panel += 1
+        mask = ts_arr >= cutoff_ts
+        dt_p = [datetime.fromtimestamp(int(v), tz=timezone.utc) for v in ts_arr[mask]]
+        if len(dt_p) == int(mask.sum()) and len(dt_p) > 0:
+            ax_p.plot(dt_p, close_arr[mask], color="#c9d1d9", lw=0.7, zorder=2)
+        # entry markers
+        longs  = [(datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc), float(t.get("entry_price", 0)))
+                  for t in trades_w if t.get("entry_ts") and t.get("side", "").upper() == "LONG"]
+        shorts = [(datetime.fromtimestamp(int(t["entry_ts"]), tz=timezone.utc), float(t.get("entry_price", 0)))
+                  for t in trades_w if t.get("entry_ts") and t.get("side", "").upper() == "SHORT"]
+        exits  = [(datetime.fromtimestamp(int(t["exit_ts"]), tz=timezone.utc), float(t.get("exit_price", 0)))
+                  for t in trades_w if t.get("exit_ts") and t.get("exit_price")]
+        if longs:
+            ax_p.scatter([v[0] for v in longs], [v[1] for v in longs], marker="^", s=50, color="#3fb950", zorder=5, alpha=0.9, label=f"Long ({len(longs)})")
+        if shorts:
+            ax_p.scatter([v[0] for v in shorts], [v[1] for v in shorts], marker="v", s=50, color="#f0883e", zorder=5, alpha=0.9, label=f"Short ({len(shorts)})")
+        if exits:
+            ax_p.scatter([v[0] for v in exits], [v[1] for v in exits], marker="x", s=30, color="#f85149", zorder=5, linewidths=1.3, alpha=0.75, label="Exit")
+        ax_p.set_ylabel("Price (15m)", color=TICK, fontsize=8)
+        ax_p.legend(loc="upper left", fontsize=7, facecolor="#161b22", edgecolor="#30363d", labelcolor="#c9d1d9")
+
+        # Title on price panel
+        # show overrides that differ from baseline (non-BTC_ prefix keys and key BTC_ knobs)
+        key_ovr = {k: v for k, v in overrides.items()
+                   if k in ("ENTRY_SCORE_THRESHOLD", "BTC_ACCEL_RAMP_MIN_TFS",
+                            "BTC_MIN_HOLD_BARS", "BTC_HARD_LOSS_USD_PER_TRADE",
+                            "BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE", "WA_MIN_GAIN_PCT",
+                            "BTC_TECH_EXIT_WT_MIN_TFS") and not k.startswith("_")}
+        ovr_str = "  ".join(f"{k.replace('BTC_','')}={v}" for k, v in key_ovr.items())
+        ax_p.set_title(
+            f"OPT | {sym}  pool={m['pool_sharpe']:+.4f}  wr={m.get('wr_pct',0):.1f}%  "
+            f"dd={m.get('max_dd_pct',0):.2f}%  trades={m['trades']:,}  wins={n_win}/{len(pnl)}  (last {days}d)\n"
+            f"{ovr_str or '(baseline config)'}",
+            color=TITLE, fontsize=9, pad=4)
+        ax_p.xaxis.set_visible(False)
+
+    # ── Panel 1: cumulative PnL ───────────────────────────────────────────────
+    ax_cum = fig.add_subplot(gs[panel]); _style(ax_cum); panel += 1
+    if dt_exit and len(dt_exit) == len(cum_pnl):
+        ax_cum.plot(dt_exit, cum_pnl, color="#58a6ff", lw=1.4, zorder=3)
+        ax_cum.fill_between(dt_exit, cum_pnl, alpha=0.13, color="#58a6ff")
+    ax_cum.axhline(0, color="#6e7681", lw=0.5, linestyle="--")
+    ax_cum.set_ylabel("Cum PnL %", color=TICK, fontsize=8)
+    if not has_price:
+        ax_cum.set_title(
+            f"OPT | {sym}  pool={m['pool_sharpe']:+.4f}  wr={m.get('wr_pct',0):.1f}%  "
+            f"dd={m.get('max_dd_pct',0):.2f}%  trades={m['trades']:,}  (last {days}d)",
+            color=TITLE, fontsize=9, pad=4)
+    ax_cum.xaxis.set_visible(panel < n_panels)
+
+    # ── Panel 2: per-trade bars ───────────────────────────────────────────────
+    ax_bar = fig.add_subplot(gs[panel], sharex=ax_cum); _style(ax_bar)
+    if dt_exit and len(dt_exit) == len(pnl):
+        colors = ["#3fb950" if p > 0 else "#f85149" for p in pnl]
+        ax_bar.bar(dt_exit, pnl, color=colors, width=0.4, zorder=3)
+    ax_bar.axhline(0, color="#6e7681", lw=0.5, linestyle="--")
+    ax_bar.set_ylabel("Trade PnL %", color=TICK, fontsize=8)
+    ax_bar.legend(handles=[Patch(facecolor="#3fb950", label=f"Win ({n_win})"),
+                            Patch(facecolor="#f85149", label=f"Loss ({n_lose})")],
+                  loc="upper right", fontsize=7, facecolor="#161b22",
+                  edgecolor="#30363d", labelcolor="#c9d1d9")
+
     CHARTS_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = CHARTS_OUT_DIR / f"OPT_{sym}.png"
-    plt.savefig(out_path, dpi=110, bbox_inches="tight", facecolor=BG)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
     print(f"  [chart] {out_path.name}")
 
