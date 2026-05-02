@@ -198,12 +198,13 @@ def promote_winners_to_active_config(winners: Dict[str, Tuple[Dict, Dict]]) -> N
     now_tag = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     for sym, (ovr, m) in winners.items():
         clean_ovr = {k: v for k, v in ovr.items() if not k.startswith("_")}
+        live_ovr = {k: v for k, v in clean_ovr.items() if k == 'ENTRY_SCORE_THRESHOLD'}
         ps = float(m.get("pool_sharpe", 0)); tr = int(m.get("trades", 0))
-        if ps <= 0 or tr < 30 or not clean_ovr:
-            print(f"  [active_config] SKIP {sym}: pool_sharpe={ps:+.4f} trades={tr} overrides={clean_ovr} — below quality gate")
+        if ps <= 0 or tr < 30 or not live_ovr:
+            print(f"  [active_config] SKIP {sym}: pool_sharpe={ps:+.4f} trades={tr} live_ovr={live_ovr} — below quality gate or no live-applicable params")
             continue
         entry = {"winning_tag": f"per_sym_{sym}_{now_tag}", "wsharpe": ps,
-                 "trades": tr, "sample_tag": "PER_SYM", "overrides": clean_ovr}
+                 "trades": tr, "sample_tag": "PER_SYM", "overrides": live_ovr}
         for side in ("LONG", "SHORT"): existing[f"{sym}_{side}"] = entry
     ACTIVE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with ACTIVE_CONFIG_PATH.open("w") as f: json.dump(existing, f, indent=2, default=str)
@@ -372,6 +373,18 @@ def sweep_sym(sym: str, run_root: Path, sweep_csv: Path,
     winner_idx = next((i+1 for i, (t, _, _) in enumerate(results) if t == tag), 1)
     winner_run_id = f"{sym}__{tag}__{winner_idx:03d}"
     winner_trades = load_full_trades(run_dir, winner_run_id, sym)
+    # Inject best ENTRY_SCORE_THRESHOLD — the only param live trading can apply from active_config
+    if 'ENTRY_SCORE_THRESHOLD' not in ovr:
+        baseline_eff = next((m2['effective_score'] for t2, _, m2 in results if t2 == 'baseline'), 0.0)
+        es_only = [(t2, o2, m2) for t2, o2, m2 in results
+                   if list(o2.keys()) == ['ENTRY_SCORE_THRESHOLD'] and m2['trades'] >= 30]
+        if es_only:
+            best_es = max(es_only, key=lambda x: x[2]['effective_score'])
+            if best_es[2]['effective_score'] > baseline_eff + 0.01:
+                ovr = dict(ovr)
+                ovr['ENTRY_SCORE_THRESHOLD'] = best_es[1]['ENTRY_SCORE_THRESHOLD']
+                print(f"  [LIVE_INJECT] Added ENTRY_SCORE_THRESHOLD={ovr['ENTRY_SCORE_THRESHOLD']} "
+                      f"(eff={best_es[2]['effective_score']:+.3f} vs baseline={baseline_eff:+.3f})")
     return ovr, m, winner_trades, run_dir / sym, winner_run_id
 
 
