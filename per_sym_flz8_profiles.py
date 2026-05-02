@@ -451,7 +451,8 @@ def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
 # ---------- Engine runner ─────────────────────────────────────────────────────
 
 def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
-                       npz: dict, start_ts: int = START_TS_2024_07_01) -> List[float]:
+                       npz: dict, start_ts: int = START_TS_2024_07_01) -> Tuple[List[float], List[Dict]]:
+    """Returns (rets, trades). trades has full JSONL records (side, entry_price, etc.)."""
     os.environ["V8_TRADES_OUT_DIR"] = str(run_dir)
     os.environ["V8_TRADES_RUN_ID"] = run_id
     os.environ["V8_RATE_GUARD_DISABLED"] = "1"
@@ -472,9 +473,10 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
         pass
     except Exception as e:
         print(f"    [engine] EXC {e}")
-        return []
+        return [], []
     jp = run_dir / f"{run_id}__{sym}.jsonl"
     rets: List[float] = []
+    trades: List[Dict] = []
     if jp.exists():
         with jp.open() as f:
             for line in f:
@@ -483,15 +485,18 @@ def run_engine_for_sym(sym: str, overrides: Dict, run_dir: Path, run_id: str,
                     if int(rec.get("exit_ts", 0) or 0) < start_ts:
                         continue
                     rets.append(float(rec.get("pnl_pct", 0.0)))
+                    trades.append(rec)
                 except Exception:
                     pass
-    return rets
+    return rets, trades
 
 
 # ---------- Phase 2 driver ───────────────────────────────────────────────────
 
 def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
-                      sweep_csv: Path, full_years: float) -> Tuple[Dict, Dict]:
+                      sweep_csv: Path, full_years: float) -> Tuple[Dict, Dict, List[Dict]]:
+    """Returns (delta_overrides, metrics, winner_trades).
+    delta_overrides contains ONLY params that changed from base — never untested baseline values."""
     print()
     print("─" * 80)
     print(f"PHASE 2 — {sym}")
@@ -507,18 +512,18 @@ def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
     run_dir = run_root / sym
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    results: List[Tuple[str, Dict, Dict]] = []
+    results: List[Tuple[str, Dict, Dict, str]] = []  # (tag, full_ovr, m, run_id)
     t0 = time.time()
     best_pnl = -1e9
     for i, (tag, ovr) in enumerate(grid, 1):
         run_id = f"{sym}__{tag}__{i:03d}"
-        rets = run_engine_for_sym(sym, ovr, run_dir, run_id, npz)
+        rets, _trades = run_engine_for_sym(sym, ovr, run_dir, run_id, npz)
         m = per_sym_metrics(rets, full_years, sym)
         m["tag"] = f"mut_{sym}_{tag}"
         v = verdict(m)
         m["verdict"] = v
         m["effective_score"] = effective_score(m)
-        results.append((tag, ovr, m))
+        results.append((tag, ovr, m, run_id))
         try:
             mg.write_sharpe_row(sweep_csv, m, mode="crypto", append=True)
         except Exception as e:
@@ -536,24 +541,55 @@ def phase2_mutate_sym(sym: str, base: Dict, run_root: Path,
     elapsed = time.time() - t0
     print(f"  {sym} done in {elapsed:.1f}s ({elapsed/len(grid):.1f}s/variant)")
 
-    tag, ovr, m, bucket = pick_winner(results)
+    tag, full_ovr, m, bucket = pick_winner([(t, o, mm) for t, o, mm, _ in results])
+    # Find winner's run_id to reload trades
+    winner_run_id = next((rid for t, o, mm, rid in results if t == tag and mm is m), None)
+    winner_trades: List[Dict] = []
+    if winner_run_id:
+        jp = run_dir / f"{winner_run_id}__{sym}.jsonl"
+        if jp.exists():
+            with jp.open() as f:
+                for line in f:
+                    try:
+                        rec = json.loads(line)
+                        if int(rec.get("exit_ts", 0) or 0) >= START_TS_2024_07_01:
+                            winner_trades.append(rec)
+                    except Exception:
+                        pass
+
+    # Compute delta: only params that actually changed from base
+    delta = {k: v for k, v in full_ovr.items()
+             if not k.startswith("_") and str(base.get(k)) != str(v)}
+
     print(f"  WINNER ({bucket}): {tag} | pool={m['pool_sharpe']:+.4f} | "
           f"pnl={m['total_gain_pct']:+.1f}% | trades={m['trades']:,} | "
           f"dd={m['max_dd_pct']:.2f}% | wr={m['wr_pct']:.1f}% | gpy={m['gain_per_yr']:+.1f}%")
-    return ovr, m
+    print(f"  Delta (actually tested params): {delta}")
+    return delta, m, winner_trades
 
 
 # ---------- Phase 3 ──────────────────────────────────────────────────────────
 
 _ACTIVE_CFG_PATH = ROOT / "data" / "hourly_reconfig" / "per_sym_active_config.json"
-_META_BANNED = {"_meta"}
-_BANNED_PARAMS = {"D_TREND_REQUIRED", "HTF_MIN_ALIGNED", "MIN_HOLD_BARS"}
+_BANNED_PARAMS = {"D_TREND_REQUIRED", "HTF_MIN_ALIGNED", "MIN_HOLD_BARS", "_meta"}
+
+
+def _per_side_metrics(trades: List[Dict], years: float, sym: str, side: str) -> Dict:
+    """Compute metrics for one side (LONG or SHORT) from the trade list."""
+    side_trades = [t for t in trades if t.get("side", "").upper() == side.upper()]
+    if not side_trades:
+        return {}
+    rets = [float(t.get("pnl_pct", 0)) for t in side_trades]
+    return per_sym_metrics(rets, years, f"{sym}_{side}")
 
 
 def promote_winners_to_active_config(winners: Dict[str, tuple]) -> None:
     """Write per-symbol BTC_DEDICATED winners to per_sym_active_config.json.
-    All BTC override params are written (they ARE live config, unlike fin/ang/men).
-    Quality gate: pool_sharpe > 0, trades >= 30."""
+
+    Writes ONLY the delta (params that actually changed from baseline for this symbol).
+    Writes separate LONG/SHORT entries with per-side metrics.
+    Quality gate: pool_sharpe > 0, trades >= 30.
+    """
     _ACTIVE_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
     try:
         with _ACTIVE_CFG_PATH.open() as f:
@@ -562,24 +598,38 @@ def promote_winners_to_active_config(winners: Dict[str, tuple]) -> None:
         existing = {}
     now_tag = __import__("datetime").datetime.utcnow().strftime("%Y-%m-%d")
     updated = 0
-    for sym, (ovr, m) in winners.items():
+    for sym, winner_tuple in winners.items():
+        if len(winner_tuple) == 3:
+            delta_ovr, m, trades = winner_tuple
+        else:
+            delta_ovr, m = winner_tuple
+            trades = []
         ps = float(m.get("pool_sharpe", 0))
         tr = int(m.get("trades", 0))
-        live_ovr = {k: v for k, v in ovr.items() if k not in _META_BANNED and k not in _BANNED_PARAMS}
-        if ps <= 0 or tr < 30 or not live_ovr:
+        if ps <= 0 or tr < 30:
             print(f"  [active_config] SKIP {sym}: pool_sharpe={ps:+.4f} trades={tr} — quality gate")
             continue
-        entry = {
-            "winning_tag": f"flz8_{sym}_{now_tag}",
-            "wsharpe": ps,
-            "trades": tr,
-            "sample_tag": "FLZ8",
-            "overrides": live_ovr,
-        }
+        # Filter to safe params (no banned structural params)
+        clean_delta = {k: v for k, v in delta_ovr.items() if k not in _BANNED_PARAMS}
+        years = float(m.get("years", 2.0))
         for side in ("LONG", "SHORT"):
+            side_m = _per_side_metrics(trades, years, sym, side) if trades else {}
+            side_ps = float(side_m.get("pool_sharpe", ps))
+            side_tr = int(side_m.get("trades", tr // 2))
+            entry = {
+                "winning_tag": f"flz8_{sym}_{now_tag}",
+                "wsharpe": side_ps,
+                "trades": side_tr,
+                "total_trades_combined": tr,
+                "sample_tag": "FLZ8",
+                "side": side,
+                "overrides": clean_delta,
+                "_delta_params": len(clean_delta),
+            }
             existing[f"{sym}_{side}"] = entry
         updated += 1
-        print(f"  [active_config] WRITE {sym}: pool_sharpe={ps:+.4f} trades={tr:,} overrides={len(live_ovr)}")
+        print(f"  [active_config] WRITE {sym}: pool_combined={ps:+.4f} trades={tr:,} "
+              f"delta_params={len(clean_delta)} {list(clean_delta.keys())[:5]}")
     with _ACTIVE_CFG_PATH.open("w") as f:
         json.dump(existing, f, indent=2, default=str)
     print(f"  [active_config] {updated}/{len(winners)} symbols written → {_ACTIVE_CFG_PATH}")
@@ -628,18 +678,21 @@ def main() -> int:
             except Exception as e:
                 print(f"  [phase1 csv] REFUSED {sym}: {e}")
 
-    winners: Dict[str, Tuple[Dict, Dict]] = {}
+    # winners: {sym: (delta_ovr, m, trades)}
+    winners: Dict[str, Tuple] = {}
     if "2" in args.phase:
         for sym in syms:
             p1 = phase1.get(sym, {})
             full_years = float(p1.get("years", 6.23))
             if p1.get("verdict") == "PROMOTE" and not args.mutate_all:
-                winners[sym] = (dict(base), p1)
-                print(f"\n  {sym}: Phase 1 PROMOTE — using BEST, no mutation (use --mutate-all to force)")
+                # Phase 1 pass — delta is empty (no params changed), reload trades from JSONL
+                phase1_trades = load_sym_trades(sym)
+                winners[sym] = ({}, p1, phase1_trades)
+                print(f"\n  {sym}: Phase 1 PROMOTE — using BEST baseline (--mutate-all to sweep)")
                 continue
             try:
-                ovr, m = phase2_mutate_sym(sym, base, run_root, sweep_csv, full_years)
-                winners[sym] = (ovr, m)
+                delta, m, trades = phase2_mutate_sym(sym, base, run_root, sweep_csv, full_years)
+                winners[sym] = (delta, m, trades)
             except Exception as e:
                 print(f"  PHASE2 EXC {sym}: {e}")
             gc.collect()
@@ -653,12 +706,13 @@ def main() -> int:
         for sym in syms:
             if sym not in winners:
                 if sym in phase1:
-                    winners[sym] = (dict(base), phase1[sym])
+                    phase1_trades = load_sym_trades(sym)
+                    winners[sym] = ({}, phase1[sym], phase1_trades)
                 else:
                     print(f"  {sym}: no data — skipping")
                     continue
-            ovr, m = winners[sym]
-            p = write_winner_json(sym, ovr, m)
+            delta, m, trades = winners[sym]
+            p = write_winner_json(sym, delta, m)
             paths_written.append(p)
             print(f"  {p.name}")
         promote_winners_to_active_config(winners)
@@ -669,9 +723,9 @@ def main() -> int:
         for sym in syms:
             if sym not in winners:
                 continue
-            ovr, m = winners[sym]
-            trades = load_sym_trades(sym)
-            generate_sym_chart(sym, trades, m, ovr)
+            delta, m, trades = winners[sym]
+            chart_trades = trades if trades else load_sym_trades(sym)
+            generate_sym_chart(sym, chart_trades, m, delta)
 
     if "4" in args.phase:
         print()
@@ -681,7 +735,7 @@ def main() -> int:
         table: List[Tuple[str, str, Dict]] = []
         for sym in syms:
             if sym in winners:
-                ovr, m = winners[sym]
+                _, m, _ = winners[sym]
             elif sym in phase1:
                 m = phase1[sym]
             else:

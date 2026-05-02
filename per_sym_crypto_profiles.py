@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""per_sym_crypto_profiles — comprehensive per-symbol crypto sweeper for ang/inf/fin/men.
+"""per_sym_crypto_profiles — comprehensive per-symbol crypto sweeper for ALL accounts.
 
-Reads tradeable_keys.json to get per-account symbol lists.
+Collects ALL unique symbols from all crypto accounts (flz, ang, fin, men, inf).
+Skips symbols already swept by flz8 profiler (tag starts with 'flz8_').
 Runs full mutation grid (standard crypto params — NO BTC_DEDICATED_*).
 Writes winner config per symbol to per_sym_active_config.json.
 Generates OHLC candlestick chart per symbol.
 
 Usage:
-  python3 per_sym_crypto_profiles.py --account ang
-  python3 per_sym_crypto_profiles.py --account inf --mutate-all
-  python3 per_sym_crypto_profiles.py --account all --sym AAVEUSDC,BTCUSDC
-  python3 per_sym_crypto_profiles.py --account ang --phase 12   (skip chart)
+  python3 per_sym_crypto_profiles.py                       # all unique symbols
+  python3 per_sym_crypto_profiles.py --offset 0 --stride 2 # even symbols (MacBook)
+  python3 per_sym_crypto_profiles.py --offset 1 --stride 2 # odd symbols (S1)
+  python3 per_sym_crypto_profiles.py --sync-to-s1          # push config to S1 after each write
+  python3 per_sym_crypto_profiles.py --account ang          # only symbols in ang
+  python3 per_sym_crypto_profiles.py --sym AAVEUSDC,LDOUSDC --mutate-all
 """
 from __future__ import annotations
 import argparse, gc, json, math, os, sys, time
@@ -46,22 +49,50 @@ PROMOTE_TRADES_MIN = 30
 PROMOTE_DD_MAX     = 15.0
 PROMOTE_WR_MIN     = 55.0
 
-SUPPORTED_ACCOUNTS = ["ang", "inf", "fin", "men"]
+SUPPORTED_ACCOUNTS = ["flz", "ang", "inf", "fin", "men"]
+_ALL_CRYPTO_ACCOUNTS = SUPPORTED_ACCOUNTS
 
 
 # ── symbol loading ─────────────────────────────────────────────────────────
 
 def load_symbols_for_account(account: str) -> List[str]:
-    """Return unique symbols from tradeable_keys.json for this account."""
+    """Return unique symbols from tradeable_keys.json for this account (or all accounts)."""
     if not TK_FILE.exists():
         print(f"  WARNING: {TK_FILE} not found — no symbols")
         return []
     keys = json.loads(TK_FILE.read_text())
-    prefix = f"{account}:"
-    syms = sorted(set(
-        k[len(prefix):].rsplit("_", 1)[0]
-        for k in keys if k.startswith(prefix)
-    ))
+    if account == "all":
+        syms = sorted(set(
+            k.rsplit(":", 1)[-1].rsplit("_", 1)[0]
+            for k in keys
+            if any(k.startswith(f"{a}:") for a in _ALL_CRYPTO_ACCOUNTS)
+        ))
+    else:
+        prefix = f"{account}:"
+        syms = sorted(set(
+            k[len(prefix):].rsplit("_", 1)[0]
+            for k in keys if k.startswith(prefix)
+        ))
+    return syms
+
+
+def load_all_unique_symbols(skip_flz8: bool = True) -> List[str]:
+    """All unique symbols across all crypto accounts, optionally skipping flz8-already-done."""
+    syms = load_symbols_for_account("all")
+    if skip_flz8 and ACTIVE_CFG.exists():
+        try:
+            existing = json.loads(ACTIVE_CFG.read_text())
+        except Exception:
+            existing = {}
+        already_done = {
+            k.rsplit("_", 1)[0]
+            for k, v in existing.items()
+            if str(v.get("winning_tag", "")).startswith("flz8_")
+        }
+        before = len(syms)
+        syms = [s for s in syms if s not in already_done]
+        if already_done:
+            print(f"  Skipping {before - len(syms)} flz8-done symbols: {sorted(already_done)}")
     return syms
 
 
@@ -433,9 +464,17 @@ def phase2_sweep_sym(sym: str, run_root: Path, sweep_csv: Path,
 
 # ── Phase 3: write to active config ───────────────────────────────────────
 
-_BANNED_PARAMS = {"D_TREND_REQUIRED", "MIN_HOLD_BARS"}  # structural — not per-symbol safe via overlay
+_BANNED_PARAMS = {"D_TREND_REQUIRED", "MIN_HOLD_BARS"}
 
-def promote_to_active_config(account: str, winners: Dict[str, Tuple[Dict, Dict]]) -> None:
+
+def _side_metrics(trades: List[Dict], years: float, sym: str, side: str) -> Dict:
+    rets = [float(t.get("pnl_pct", 0)) for t in trades if t.get("side", "").upper() == side.upper()]
+    if not rets:
+        return {}
+    return per_sym_metrics(rets, years, f"{sym}_{side}")
+
+
+def promote_to_active_config(account: str, winners: Dict) -> None:
     print()
     print("=" * 80)
     print(f"PHASE 3 — promote to per_sym_active_config.json ({account})")
@@ -445,112 +484,160 @@ def promote_to_active_config(account: str, winners: Dict[str, Tuple[Dict, Dict]]
     except Exception: existing = {}
     now_tag = time.strftime("%Y-%m-%d", time.gmtime())
     updated = 0
-    for sym, (ovr, m) in winners.items():
-        ps = float(m.get("pool_sharpe", 0)); tr = int(m.get("trades", 0))
-        live_ovr = {k: v for k, v in ovr.items()
-                    if not k.startswith("_") and k not in _BANNED_PARAMS}
-        if ps <= 0 or tr < PROMOTE_TRADES_MIN or not live_ovr:
+    for sym, winner_tuple in winners.items():
+        if len(winner_tuple) == 3:
+            ovr, m, trades = winner_tuple
+        else:
+            ovr, m = winner_tuple
+            trades = []
+        ps = float(m.get("pool_sharpe", 0))
+        tr = int(m.get("trades", 0))
+        # Delta is already delta-only from mutation_grid (each variant specifies only changed params)
+        delta = {k: v for k, v in ovr.items()
+                 if not k.startswith("_") and k not in _BANNED_PARAMS}
+        if ps <= 0 or tr < PROMOTE_TRADES_MIN:
             print(f"  SKIP {sym}: pool={ps:+.4f} trades={tr} — quality gate")
             continue
-        entry = {"winning_tag": f"{account}_{sym}_{now_tag}", "wsharpe": ps, "trades": tr,
-                 "sample_tag": f"CRYPTO_{account.upper()}", "overrides": live_ovr}
+        years = float(m.get("years", 2.0))
         for side in ("LONG", "SHORT"):
+            sm = _side_metrics(trades, years, sym, side) if trades else {}
+            entry = {
+                "winning_tag": f"crypto_{account}_{sym}_{now_tag}",
+                "wsharpe": float(sm.get("pool_sharpe", ps)),
+                "trades": int(sm.get("trades", tr // 2)),
+                "total_trades_combined": tr,
+                "sample_tag": f"CRYPTO_{account.upper()}",
+                "side": side,
+                "overrides": delta,
+                "_delta_params": len(delta),
+            }
             existing[f"{sym}_{side}"] = entry
         updated += 1
-        print(f"  WRITE {sym}: pool={ps:+.4f} trades={tr:,} params={len(live_ovr)}")
+        print(f"  WRITE {sym}: pool={ps:+.4f} trades={tr:,} delta_params={len(delta)} {list(delta.keys())[:4]}")
     ACTIVE_CFG.write_text(json.dumps(existing, indent=2, default=str))
     print(f"  {updated}/{len(winners)} symbols written → {ACTIVE_CFG}")
 
 
 # ── main ───────────────────────────────────────────────────────────────────
 
+def sync_config_to_s1() -> None:
+    """Push local per_sym_active_config.json to S1 (MacBook runs only)."""
+    import subprocess
+    dest = "s1-int:/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_active_config.json"
+    r = subprocess.run(
+        ["rsync", "-az", "--timeout=10", str(ACTIVE_CFG), dest],
+        capture_output=True, timeout=20
+    )
+    if r.returncode == 0:
+        print(f"  [sync] pushed config to S1")
+    else:
+        print(f"  [sync] WARNING: push to S1 failed: {r.stderr.decode()[:100]}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--account", default="ang",
-                    help=f"account to sweep ({'/'.join(SUPPORTED_ACCOUNTS+['all'])})")
+    ap.add_argument("--account", default="all",
+                    help=f"account or 'all' ({'/'.join(SUPPORTED_ACCOUNTS+['all'])})")
     ap.add_argument("--sym", default="", help="comma-separated symbol subset")
     ap.add_argument("--mutate-all", action="store_true",
                     help="force Phase 2 even if Phase 1 already passes")
     ap.add_argument("--phase", default="1234", help="phases to run (e.g. '12' skips chart)")
     ap.add_argument("--years", type=float, default=2.0, help="backtest years")
     ap.add_argument("--days-chart", type=int, default=60, help="days window for charts")
+    ap.add_argument("--offset", type=int, default=0,
+                    help="symbol list offset for parallel runs (0=even, 1=odd)")
+    ap.add_argument("--stride", type=int, default=1,
+                    help="stride for partitioning symbol list between machines")
+    ap.add_argument("--sync-to-s1", action="store_true",
+                    help="after each symbol promote, push config to S1 (use on MacBook)")
     args = ap.parse_args()
 
-    accounts = SUPPORTED_ACCOUNTS if args.account == "all" else [args.account]
-    for acct in accounts:
-        if acct not in SUPPORTED_ACCOUNTS:
-            print(f"Unknown account: {acct}. Choices: {SUPPORTED_ACCOUNTS + ['all']}")
-            return 1
+    if args.account not in SUPPORTED_ACCOUNTS + ["all"]:
+        print(f"Unknown account: {args.account}. Choices: {SUPPORTED_ACCOUNTS + ['all']}")
+        return 1
 
     ts = int(time.time())
     SWEEP_DIR.mkdir(parents=True, exist_ok=True)
+    account_label = args.account
 
-    for account in accounts:
+    # Collect symbols
+    if args.account == "all":
+        syms = load_all_unique_symbols(skip_flz8=True)
+    else:
+        syms = load_symbols_for_account(args.account)
+    if args.sym:
+        filter_syms = {s.strip() for s in args.sym.split(",") if s.strip()}
+        syms = [s for s in syms if s in filter_syms]
+    # Apply stride/offset partitioning
+    if args.stride > 1:
+        syms = syms[args.offset::args.stride]
+        print(f"  Partition: offset={args.offset} stride={args.stride} → {len(syms)} symbols")
+    if not syms:
+        print("  No symbols to process.")
+        return 0
+
+    print()
+    print(f"{'═'*80}")
+    print(f"PER-SYM CRYPTO PROFILES — {account_label.upper()} — {len(syms)} symbols")
+    print(f"{'═'*80}")
+    print(f"  Symbols: {' '.join(syms[:20])}{'...' if len(syms) > 20 else ''}")
+
+    sweep_csv = SWEEP_DIR / f"per_sym_crypto_{account_label}_{ts}.csv"
+    run_root  = SWEEP_DIR / f"per_sym_crypto_{account_label}_{ts}" / "runs"
+    run_root.mkdir(parents=True, exist_ok=True)
+
+    phase1: Dict[str, Dict] = {}
+    if "1" in args.phase:
+        phase1 = phase1_baseline(syms, account_label)
+
+    winners: Dict[str, Tuple[Dict, Dict]] = {}
+    winner_trades: Dict[str, List[Dict]] = {}
+
+    if "2" in args.phase:
+        for sym in syms:
+            p1 = phase1.get(sym, {})
+            ps1 = float(p1.get("pool_sharpe", 0))
+            if ps1 > PROMOTE_POOL_MIN and not args.mutate_all:
+                winners[sym] = ({}, p1)
+                print(f"\n  {sym}: Phase 1 pool={ps1:+.4f} — using existing (--mutate-all to force)")
+                continue
+            if NPZ_DIR.joinpath(f"{sym}.npz").exists():
+                try:
+                    ovr, m, trades = phase2_sweep_sym(sym, run_root, sweep_csv, args.years)
+                    if m:
+                        winners[sym] = (ovr, m)
+                        winner_trades[sym] = trades
+                        # Write this symbol immediately (don't wait for all symbols)
+                        if "3" in args.phase:
+                            promote_to_active_config(account_label, {sym: (ovr, m)})
+                            if args.sync_to_s1:
+                                sync_config_to_s1()
+                except Exception as e:
+                    print(f"  PHASE2 EXC {sym}: {e}")
+                gc.collect()
+            else:
+                print(f"\n  {sym}: NPZ not found — skip")
+
+    # Non-mutate-all path: write all winners at end (they weren't written per-symbol above)
+    if "3" in args.phase and not args.mutate_all and winners:
+        promote_to_active_config(account_label, winners)
+        if args.sync_to_s1:
+            sync_config_to_s1()
+
+    if "4" in args.phase and winner_trades:
         print()
-        print(f"{'═'*80}")
-        print(f"ACCOUNT: {account}")
-        print(f"{'═'*80}")
+        print("=" * 80)
+        print(f"PHASE 4 — charts")
+        print("=" * 80)
+        for sym, trades in winner_trades.items():
+            _, m = winners[sym]
+            if trades:
+                generate_ohlc_chart(sym, trades, m, account_label, days=args.days_chart)
+            else:
+                print(f"  {sym}: no trades for chart")
 
-        syms = load_symbols_for_account(account)
-        if args.sym:
-            filter_syms = {s.strip() for s in args.sym.split(",") if s.strip()}
-            syms = [s for s in syms if s in filter_syms]
-        if not syms:
-            print(f"  No symbols found for account {account}")
-            continue
-        print(f"  {len(syms)} symbols: {' '.join(syms[:20])}{'...' if len(syms)>20 else ''}")
-
-        sweep_csv = SWEEP_DIR / f"per_sym_crypto_{account}_{ts}.csv"
-        run_root = SWEEP_DIR / f"per_sym_crypto_{account}_{ts}" / "runs"
-        run_root.mkdir(parents=True, exist_ok=True)
-
-        phase1: Dict[str, Dict] = {}
-        if "1" in args.phase:
-            phase1 = phase1_baseline(syms, account)
-
-        winners: Dict[str, Tuple[Dict, Dict]] = {}
-        winner_trades: Dict[str, List[Dict]] = {}
-
-        if "2" in args.phase:
-            for sym in syms:
-                p1 = phase1.get(sym, {})
-                ps1 = float(p1.get("pool_sharpe", 0))
-                if ps1 > PROMOTE_POOL_MIN and not args.mutate_all:
-                    winners[sym] = ({}, p1)
-                    print(f"\n  {sym}: Phase 1 pool={ps1:+.4f} — using existing, no mutation (--mutate-all to force)")
-                    continue
-                if NPZ_DIR.joinpath(f"{sym}.npz").exists():
-                    try:
-                        ovr, m, trades = phase2_sweep_sym(sym, run_root, sweep_csv, args.years)
-                        if m:
-                            winners[sym] = (ovr, m)
-                            winner_trades[sym] = trades
-                    except Exception as e:
-                        print(f"  PHASE2 EXC {sym}: {e}")
-                    gc.collect()
-                else:
-                    print(f"\n  {sym}: NPZ not found — skip sweep")
-
-        if "3" in args.phase and winners:
-            promote_to_active_config(account, winners)
-
-        if "4" in args.phase and winners:
-            print()
-            print("=" * 80)
-            print(f"PHASE 4 — charts ({account})")
-            print("=" * 80)
-            for sym in syms:
-                if sym not in winners: continue
-                _, m = winners[sym]
-                trades = winner_trades.get(sym, [])
-                if trades:
-                    generate_ohlc_chart(sym, trades, m, account, days=args.days_chart)
-                else:
-                    print(f"  {sym}: no trades for chart")
-
-        print()
-        print(f"CSV: {sweep_csv}")
-
+    print()
+    print(f"CSV: {sweep_csv}")
     print("\nDone.")
     return 0
 
