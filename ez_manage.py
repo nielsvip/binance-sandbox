@@ -22483,7 +22483,7 @@ async def crypto_fh_momentum_loop(trade_manager: MultiAccountTradeManager):
                     if 0 < dist < 1.5:
                         retest_bonus = 1
                 qty_usd = config.START_POSITION_SIZE * size_mult * (1.5 if retest_bonus else 1.0)
-                for account_key in trade_manager.active_accounts:
+                for account_key in trade_manager.accounts:
                     positions = trade_manager.get_positions_for_account(account_key)
                     if move_pct > 0:
                         pk = f"{symbol}_LONG"
