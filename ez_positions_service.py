@@ -6663,38 +6663,54 @@ class PositionService:
                 self._position_update_timestamps[position_key] = now
                 updated_keys_in_api.add(position_key)
             logger.warning(f"[_process_account_update_impl][{account_key}] Processed {processed_count} positions, skipped {skipped_count}, total updated_keys: {len(updated_keys_in_api)}")
-            try :
+            try:
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
-                _phantom_budget_deadline = time.time() + 15.0
-                _phantom_skip_price = False
-                for pk_mem_not_api in keys_in_memory_not_in_api:
-                    position_obj = account_positions.get(pk_mem_not_api)
-                    fresh_price = None
-                    if not _phantom_skip_price:
-                        if time.time() > _phantom_budget_deadline:
-                            _phantom_skip_price = True
-                            logger.warning(f"[_process_account_update_impl][{account_key}] phantom price-refresh budget exceeded ({len(keys_in_memory_not_in_api)} keys) — skipping quick_price for remainder this cycle; ez_mark_prices is authoritative")
-                        else:
-                            try : fresh_price = await asyncio.wait_for(quick_price(position_obj.symbol), timeout=0.6)
-                            except Exception: pass
-                    if fresh_price is not None and fresh_price > 0:
-                        position_obj.mark_price = fresh_price
-                        position_obj.mark_price_last_updated = now
+                
+                for pk_ghost in keys_in_memory_not_in_api:
+                    position_obj = account_positions.get(pk_ghost)
+                    if not position_obj:
+                        continue
+
                     prev_amt = abs(position_obj.positionAmt) if position_obj.positionAmt else 0.0
+                    
+                    # If position has an amount but is missing from API, apply the "Two-Strike" rule
                     if prev_amt > 0:
-                        # DISABLED: API absence zeroing. Binance API only returns recently-active symbols.
-                        # Absence from API response does NOT mean closed. Only WS positionAmt=0 can confirm closure.
-                        # This path caused 8+ position corruptions on 2026-03-17.
-                        # FIX 2026-03-26: Also STOP tagging as ZERO_REPORTED — was corrupting 241 positions
-                        # by preventing last_updated refresh. API absence is NORMAL for small/inactive positions.
-                        current_count = self._log_zero_report(pk_mem_not_api, now, source="API")
-                        logger.debug(f"[API_ABSENCE_IGNORED][{pk_mem_not_api}] Absent from API (amt={prev_amt:.6f}). NOT zeroing, NOT tagging — API absence ≠ closed.")
+                        current_count = self._log_zero_report(pk_ghost, now, source="API_ABSENCE")
+                        is_confirmed = self._is_zero_confirmed(pk_ghost, threshold=config.ZERO_CONFIRMATION_THRESHOLD_API)
+                        
+                        if is_confirmed:
+                            logger.critical(f"[API_CONFIRMED_CLOSED][{pk_ghost}] 🚨 Position missing from API for {current_count} cycles. ZEROING OUT.")
+                            
+                            # Resolve a final price for the record
+                            final_price = position_obj.mark_price or position_obj.entry_price or 1.0
+                            try:
+                                qp = await quick_price(position_obj.symbol)
+                                if qp: final_price = qp
+                            except: pass
+
+                            # Force reduction to 0
+                            await self.handle_reduction(
+                                position_obj, pk_ghost, prev_amt, 0.0, prev_amt, 
+                                final_price, position_obj.entry_price, 
+                                reduction_source="api_absence_confirmed"  )
+                            
+                            position_obj.positionAmt = 0.0
+                            position_obj.last_updated = now
+                            updated_keys_in_api.add(pk_ghost) # Ensure this 0 gets saved/broadcasted
+                            self._clear_zero_report(pk_ghost)
+                        else:
+                            logger.warning(f"[API_ABSENCE_PENDING][{pk_ghost}] Missing from API (Strike {current_count}/{config.ZERO_CONFIRMATION_THRESHOLD_API}). Waiting for confirmation.")
+                    
+                    # Always keep the timestamp moving so the system knows the tracker is alive
                     if hasattr(position_obj, 'last_updated'):
                         position_obj.last_updated = now
-                logger.info(f"pac2: [API_UPDATE] DONE")
+
+                logger.info(f"[_process_account_update_impl][{account_key}] Ghost reconciliation complete.")
+
             except Exception as ghost_err:
                 logger.error(f"[{account_key}] Ghost position reconciliation failed: {ghost_err}", exc_info=True)
-                return
+
+
         except Exception as err:
             logger.error(f"[{account_key}] Error during process_account_update loop: {err}", exc_info=True)
             return
