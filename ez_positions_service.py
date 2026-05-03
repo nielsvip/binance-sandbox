@@ -6665,7 +6665,7 @@ class PositionService:
             logger.warning(f"[_process_account_update_impl][{account_key}] Processed {processed_count} positions, skipped {skipped_count}, total updated_keys: {len(updated_keys_in_api)}")
             try :
                 keys_in_memory_not_in_api = set(account_positions.keys()) - updated_keys_in_api
-                _phantom_budget_deadline = time.time() + 5.0
+                _phantom_budget_deadline = time.time() + 15.0
                 _phantom_skip_price = False
                 for pk_mem_not_api in keys_in_memory_not_in_api:
                     position_obj = account_positions.get(pk_mem_not_api)
@@ -6687,7 +6687,7 @@ class PositionService:
                         # This path caused 8+ position corruptions on 2026-03-17.
                         # FIX 2026-03-26: Also STOP tagging as ZERO_REPORTED — was corrupting 241 positions
                         # by preventing last_updated refresh. API absence is NORMAL for small/inactive positions.
-                        # current_count = self._log_zero_report(pk_mem_not_api, now, source="API")
+                        current_count = self._log_zero_report(pk_mem_not_api, now, source="API")
                         logger.debug(f"[API_ABSENCE_IGNORED][{pk_mem_not_api}] Absent from API (amt={prev_amt:.6f}). NOT zeroing, NOT tagging — API absence ≠ closed.")
                     if hasattr(position_obj, 'last_updated'):
                         position_obj.last_updated = now
