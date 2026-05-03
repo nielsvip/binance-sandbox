@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 09:11:10 UTC
+# Copilot Status — 2026-05-03 09:26:31 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:09:03
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:09:03
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:09:03
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:09:36
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T09:10:38
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:10:38
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T09:11:10
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:11:10
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:11:10
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:11:10
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:23:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:23:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:23:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:24:23
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:25:26
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T09:25:48
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:25:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:25:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:25:48
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:26:30
 
 ## Missed Trades (trader comparison)
 
@@ -27,10 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 12 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 12 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-2.2%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-0.8%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-2.6%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-1.9%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-0.9%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
