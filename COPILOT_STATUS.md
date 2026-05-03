@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 17:32:49 UTC
+# Copilot Status — 2026-05-03 17:48:04 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:30:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:30:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:30:00
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:30:02
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:31:05
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T17:32:06
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:32:06
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:32:06
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:32:06
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:32:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:44:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:44:41
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:44:53
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:45:56
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T17:46:47
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:46:47
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:46:47
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:46:47
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:47:00
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:48:03
 
 ## Missed Trades (trader comparison)
 
@@ -27,10 +27,11 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 14 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-1.6%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-13.1%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-0.5%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-12.7%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.1%, now +-0.1%
 - HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-1.2%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
