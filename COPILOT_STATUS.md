@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 20:50:25 UTC
+# Copilot Status — 2026-05-03 21:05:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T20:44:48
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T20:44:48
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T20:46:53
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T20:46:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T20:46:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T20:46:53
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T20:49:00
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T20:49:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T20:49:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T20:49:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T20:59:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T20:59:26
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T21:01:34
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T21:01:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T21:01:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T21:01:34
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T21:03:41
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T21:03:41
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T21:03:41
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T21:03:41
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +0.0%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-18.2%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-1.3%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-0.2%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-19.6%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-1.5%
 - HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-1.4%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
