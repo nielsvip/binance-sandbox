@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 08:55:55 UTC
+# Copilot Status — 2026-05-03 09:11:10 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T08:52:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T08:52:01
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T08:52:35
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T08:53:37
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T08:54:08
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T08:54:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T08:54:08
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T08:54:08
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T08:54:41
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T08:55:44
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:09:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:09:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:09:03
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:09:36
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T09:10:38
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-03T09:10:38
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T09:11:10
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T09:11:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T09:11:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T09:11:10
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 12 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-1.8%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-2.2%
 - HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-0.8%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
