@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 17:17:32 UTC
+# Copilot Status — 2026-05-03 17:32:49 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:15:12
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:15:12
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:15:12
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:15:14
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:16:17
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T17:17:18
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:17:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:17:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:17:18
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:17:20
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:30:00
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:30:00
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:30:00
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:30:02
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:31:05
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T17:32:06
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T17:32:06
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T17:32:06
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T17:32:06
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T17:32:07
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-2.1%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-10.9%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-1.1%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-1.6%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-13.1%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-1.2%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
