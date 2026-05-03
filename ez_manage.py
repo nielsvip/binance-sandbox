@@ -10805,7 +10805,7 @@ class MultiAccountTradeManager:
         # downstream tracker + exit pathways see it. ez_rankings outlier injector
         # catches up on next ranking cycle for persistence.
         _is_scalp_v3_entry = 'SCALP_V3_OPEN' in str(reason or '').upper()
-        if position_key not in tradeable_keys and account_key != 'flz' and not is_reduce and not _is_scalp_v3_entry:
+        if position_key not in tradeable_keys and not is_reduce and not _is_scalp_v3_entry:
             logger.error(f"🛡️ [execute_trade_action] BLOCKED NOT TRADEABLE {position_key} (no hedge auto-add) is_hedge={is_hedge} action={action} reason={reason}")
             return f"BLOCKED_NON_TRADEABLE_POSITION_KEY"
         if _is_scalp_v3_entry and position_key not in tradeable_keys:

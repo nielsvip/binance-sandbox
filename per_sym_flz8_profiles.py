@@ -34,6 +34,7 @@ from v8_quick_engine import simulate, QuickConfig
 try:
     import matplotlib
     matplotlib.use("Agg")
+    
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
     HAS_MPL = True
@@ -57,6 +58,74 @@ PROMOTE_GAIN_PER_YR_MIN = 100.0
 PROMOTE_WR_MIN = 60.0
 
 START_TS_2024_07_01 = 1719792000
+DEFAULT_START_TS = 1719792000 # 2024-07-01
+# ------------------------------------
+
+# --- UPDATED: Parameter Grid (The "Meat") ---
+def mutation_grid(base: Dict) -> List[Tuple[str, Dict]]:
+    grid: List[Tuple[str, Dict]] = []
+
+    def add(tag: str, deltas: Dict) -> None:
+        o = dict(base)
+        o.update(deltas)
+        grid.append((tag, o))
+
+    grid.append(("BASELINE", dict(base)))
+
+    # 1. BB (Bollinger) Meat - Crucial for Volatility boundaries
+    for b_len in (14, 20, 50):
+        for b_std in (2.0, 2.5):
+            add(f"bb_l{b_len}_s{b_std}", {"BTC_BB_LEN": b_len, "BTC_BB_STD": b_std})
+
+    # 2. WT (WaveTrend) Meat - Crucial for Momentum timing
+    for w_chan in (9, 10, 14):
+        for w_avg in (12, 21):
+            add(f"wt_c{w_chan}_a{w_avg}", {"BTC_WT_CHAN": w_chan, "BTC_WT_AVG": w_avg})
+
+    # 3. DC (Donchian) Meat - Crucial for Trend Filtering
+    for dc_p in (20, 55, 80):
+        add(f"dc_p{dc_p}", {"BTC_DC_PERIOD": dc_p})
+
+    # 4. Timeframe Concentration
+    for tf in ("15m", "1h", "4h"):
+        add(f"tf_{tf}", {"BTC_TIMEFRAME": tf})
+
+    # 5. Combined "Meat" Presets
+    add("stable_trend", {"BTC_BB_LEN": 50, "BTC_BB_STD": 2.5, "BTC_WT_AVG": 28, "BTC_TIMEFRAME": "1h"})
+    add("aggro_scalp", {"BTC_BB_LEN": 14, "BTC_BB_STD": 2.0, "BTC_WT_AVG": 12, "BTC_TIMEFRAME": "15m"})
+
+    # (Original structural settings removed to focus on Meat as requested)
+    return grid
+
+# --- UPDATED: Safety-First Winner Selection ---
+def pick_winner(results: List[Tuple[str, Dict, Dict]]) -> Tuple[str, Dict, Dict, str]:
+    """
+    Pick winner based on Sharpe-Adjusted Gain with a Slippage Guard.
+    """
+    # 0.05% is a safe 'virtual tax' for USDC/Real world spread
+    SLIPPAGE_GUARD = 0.05 
+
+    qualified = []
+    for tag, ovr, m in results:
+        # QUALITY GATE:
+        # 1. Must have pool_sharpe > 1.0 (Higher bar for production)
+        # 2. Avg Gain per trade must be > SLIPPAGE_GUARD
+        # 3. Max Drawdown must be sane
+        if (m["pool_sharpe"] > 1.0 and 
+            m["avg_gain_trade"] > SLIPPAGE_GUARD and 
+            m["max_dd_pct"] <= PROMOTE_DD_MAX):
+            qualified.append((tag, ovr, m))
+
+    if qualified:
+        # Score = Sharpe * (Total Gain / Max Drawdown)
+        # This prevents picking high-PNL 'lucky' runs with huge drawdowns.
+        best = max(qualified, key=lambda t: t[2]["pool_sharpe"] * (t[2]["total_gain_pct"] / (t[2]["max_dd_pct"] + 1)))
+        return best[0], best[1], best[2], "QUALIFIED_BY_SHARPE_EFF"
+
+    # Fallback: Max Effective Score
+    viable = [(tag, ovr, m) for tag, ovr, m in results if m["trades"] >= 30] or results
+    best = max(viable, key=lambda t: t[2]["effective_score"])
+    return best[0], best[1], best[2], "FALLBACK_EFF"
 
 
 def load_base_override() -> Dict:
@@ -141,19 +210,19 @@ def effective_score(m: Dict) -> float:
     return float(m["pool_sharpe"]) * math.sqrt(max(1, m["trades"]) / 1000.0)
 
 
-def pick_winner(results: List[Tuple[str, Dict, Dict]]) -> Tuple[str, Dict, Dict, str]:
-    """Pick winner by total_gain_pct (primary) among configs with pool_sharpe>0, dd<=cap, trades>=30."""
-    qualified = [(tag, ovr, m) for tag, ovr, m in results
-                 if m["pool_sharpe"] > 0
-                 and m["max_dd_pct"] <= PROMOTE_DD_MAX
-                 and m["trades"] >= 30]
-    if qualified:
-        best = max(qualified, key=lambda t: t[2]["total_gain_pct"])
-        return best[0], best[1], best[2], "QUALIFIED_BY_PNL"
-    # Fallback: any with trades >= 30, max effective_score
-    viable = [(tag, ovr, m) for tag, ovr, m in results if m["trades"] >= 30] or results
-    best = max(viable, key=lambda t: t[2]["effective_score"])
-    return best[0], best[1], best[2], "FALLBACK_EFF"
+# def pick_winner(results: List[Tuple[str, Dict, Dict]]) -> Tuple[str, Dict, Dict, str]:
+#     """Pick winner by total_gain_pct (primary) among configs with pool_sharpe>0, dd<=cap, trades>=30."""
+#     qualified = [(tag, ovr, m) for tag, ovr, m in results
+#                  if m["pool_sharpe"] > 0
+#                  and m["max_dd_pct"] <= PROMOTE_DD_MAX
+#                  and m["trades"] >= 30]
+#     if qualified:
+#         best = max(qualified, key=lambda t: t[2]["total_gain_pct"])
+#         return best[0], best[1], best[2], "QUALIFIED_BY_PNL"
+#     # Fallback: any with trades >= 30, max effective_score
+#     viable = [(tag, ovr, m) for tag, ovr, m in results if m["trades"] >= 30] or results
+#     best = max(viable, key=lambda t: t[2]["effective_score"])
+#     return best[0], best[1], best[2], "FALLBACK_EFF"
 
 
 # ---------- Chart generation -------------------------------------------------
@@ -651,13 +720,12 @@ def write_winner_json(sym: str, overrides: Dict, m: Dict) -> Path:
     return out_path
 
 
-# ---------- Driver ───────────────────────────────────────────────────────────
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", default="1234")
     ap.add_argument("--syms", default="")
     ap.add_argument("--mutate-all", action="store_true")
+    ap.add_argument("--days", type=int, default=0) 
     args = ap.parse_args()
 
     syms = [s for s in (args.syms.split(",") if args.syms else SYMBOLS) if s]
@@ -759,6 +827,11 @@ def main() -> int:
         else:
             print("\nAll symbols within DD cap.")
 
+    # if args.days > 0:
+    #     start_ts = int(time.time()) - (args.days * 86400)
+    #     print(f"RUNNING IN AGENT MODE: Looking at last {args.days} days only.")
+    # else:
+    #     start_ts = DEFAULT_START_TS
 
     print()
     print(f"CSV: {sweep_csv}")
