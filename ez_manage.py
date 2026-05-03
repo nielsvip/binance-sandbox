@@ -13905,7 +13905,7 @@ class MultiAccountTradeManager:
                 if hedge_block_reason and 'ACTION_TAKEN' in hedge_block_reason:
                     return hedge_block_reason
             min_open_qty = max(2 * config.MIN_POSITION_SIZE / max(current_price, 1e-9), 2 * self.min_qty.get(symbol, 0.001))
-            if _is_open_action and 'BTCUSDC' in position_key: min_open_qty = 1. * min_open_qty
+            if _is_open_action and 'BTCUSDC' in position_key: min_open_qty = 2 * min_open_qty
             if action in ('OPEN', 'REENTRY', 'QUICK_OPEN') and 'HEDGE' not in reason.upper() and current_real_amt < min_open_qty:
                 mem_pos = self.positions_by_account.get(account_key, {}).get(position_key)
                 mem_amt = abs(safe_fetch_float(getattr(mem_pos, 'positionAmt', 0.0), 0.0)) if mem_pos else 0.0
@@ -13914,10 +13914,8 @@ class MultiAccountTradeManager:
                     return "BLOCK_OPEN_POSITION_EXISTS"
             logger.info(f"[EXEC_TRACE] {position_key}: STEP3_ROUTE is_aug={is_augment} is_red={_is_reduce} amt={current_real_amt:.6f} action={action}")
             if is_augment:
-                # quantity=max(pos_min_qty, 0.35 * quantity)
 
-
-                if account_key == 'flz' and symbol not in ['BTCUSDC', 'BTCDOMUSDT', 'BNBUSDC', '1000PEPEUSDC', 'AXSUSDT', 'RIVERUSDT']:
+                if account_key == 'flz' and symbol not in ['BTCUSDC', 'BTCDOMUSDT', 'BNBUSDC', 'ETHUSDC', 'SOLUSDC','XRPUSDC','DOGEUSDC','ZECUSDC']:
                     return 'WRONG SYMBOL FOR FLZ'
                 if ('OPEN' in action or 'OPEN' in reason) and current_real_amt > 2 * config.MIN_POSITION_SIZE / current_price and 'HEDGE' not in reason.upper():
                     return f'BLOCKED: {position_key} ${current_real_amt*current_price} over MIN QTY'
@@ -14665,8 +14663,8 @@ class MultiAccountTradeManager:
         if not webhook_url or not webhook_secret: return False
         if is_augmentation:
             block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", **price_data}
-            if 'BTCUSDC' in symbol:
-                block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", "leverage": "6", **price_data}
+            # if 'BTCUSDC' in symbol:
+            #     block1 = {"amountType": "sumUsd", "amount": f"{usd_value:.6f}", "leverage": "6", **price_data}
             payload["open"] = block1
             # DCA block: only include when position is NEW (< pos_min_qty) or in GAIN
             # NEVER send DCA for already-open losing positions — causes runaway growth
