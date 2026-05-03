@@ -2846,7 +2846,7 @@ class Config:
     BTC_DEDICATED_ACCOUNTS: List[str] = field(default_factory=lambda: ["flz", "inf"])  # accounts that route BTC trades through this loop
     BTC_DEDICATED_SYMBOLS: List[str] = field(default_factory=lambda: ["BTCUSDC", "ETHUSDC", "SOLUSDC", "BNBUSDC", "XRPUSDC", "DOGEUSDC", "ZECUSDC", "BTCDOMUSDT"])  # all flz BTC_DEDICATED symbols
     BTC_PER_SYM_CONFIG_ENABLED: bool = True                               # load per-symbol overrides from data/hourly_reconfig/flz/active_config.json
-    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = True                            # block ang/men/fin from BTCUSDC + BTCUSDC at is_tradeable
+    BTC_HARD_BLOCK_OTHER_ACCOUNTS: bool = False                            # block ang/men/fin from BTCUSDC + BTCUSDC at is_tradeable
     PER_SYM_CONFIG_ENABLED: bool = True                                    # load per-symbol entry-score overrides from data/hourly_reconfig/per_sym_active_config.json (global, all accounts)
 
     # --- Red zone composition (existing wt_dc + new fib + new round numbers) ---
@@ -2915,11 +2915,11 @@ class Config:
 
     # --- 20× leverage hard caps (CRITICAL — 2.5% loss = 50% account wipe) ---
     BTC_LEVERAGE: float = 20.0
-    BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 90.0                          # OWN-CAPITAL cap per trade. With 20× → $1,800 effective notional. Per user 2026-04-27.
-    BTC_TOTAL_NOTIONAL_USD_MAX: float = 180.0                             # max concurrent OWN-capital across all BTC positions ($3,600 effective at 20×)
-    BTC_HARD_LOSS_USD_PER_TRADE: float = 10.0                             # max $ loss per trade — implies ~0.55% adverse on $1,800 notional. Hard panic exit.
-    BTC_DAILY_LOSS_PCT_FLOOR: float = -0.5                                # halt new entries if day PnL < -0.5%
-    BTC_WEEKLY_LOSS_PCT_FLOOR: float = -1.5                               # halt all BTC trading 24h if week PnL < -1.5%
+    BTC_PER_TRADE_NOTIONAL_USD_MAX: float = 290.0                          # OWN-CAPITAL cap per trade. With 20× → $1,800 effective notional. Per user 2026-04-27.
+    BTC_TOTAL_NOTIONAL_USD_MAX: float = 980.0                             # max concurrent OWN-capital across all BTC positions ($3,600 effective at 20×)
+    BTC_HARD_LOSS_USD_PER_TRADE: float = 90.0                             # max $ loss per trade — implies ~0.55% adverse on $1,800 notional. Hard panic exit.
+    BTC_DAILY_LOSS_PCT_FLOOR: float = -1.5                                # halt new entries if day PnL < -0.5%
+    BTC_WEEKLY_LOSS_PCT_FLOOR: float = -2.5                               # halt all BTC trading 24h if week PnL < -1.5%
     BTC_PYRAMID_DISABLED: bool = True                                     # NO augmenting at 20×
     BTC_INTRABAR_REVERSAL_EXIT: bool = True                               # exit on accel sign-flip without TF confirm
     BTC_REGIME_PAUSE_ENABLED: bool = True                                 # pause new entries during BTC funding spike or extreme OI

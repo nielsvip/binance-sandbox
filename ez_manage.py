@@ -658,15 +658,18 @@ from binance.client import Client
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
 
-from config import Config
 import hedge_decisions as _hd
+from config import Config
 from ez_positions_service import bootstrap_position_service
+
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
-    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
-    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
     from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
     from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+    from entry_engine_stoch import (
+        should_fire_stoch_entry as _ee_should_fire_stoch_entry,
+    )
+    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
 except Exception:
     _ee_should_fire_wt_entry = None
     _ee_should_fire_stoch_entry = None
@@ -18836,6 +18839,7 @@ async def evaluate_reentry_2(trade_manager):
     config = getattr(trade_manager, 'config', None)
     if config and not getattr(config, 'REENTRY_2_ENABLED', True):
         return
+
     config_accounts = set(getattr(config, 'ACCOUNT_KEYS', [])) if config else set()
     loaded_accounts = set(trade_manager.accounts.keys()) if hasattr(trade_manager, 'accounts') else set()
     managed_accounts = config_accounts.intersection(loaded_accounts)
@@ -18846,6 +18850,9 @@ async def evaluate_reentry_2(trade_manager):
     now = datetime.now(timezone.utc)
     if hasattr(trade_manager, 'service') and trade_manager.service:
         for pk, ts in list(trade_manager.reduced_positions.items()):
+            
+            if pk not in trade_manager.tradeable_keys: return
+
             if pk not in trade_manager.reentry_data:
                 _pos = trade_manager.positions.get(pk)
                 _re_lvl = safe_fetch_float(getattr(_pos, 'last_reduction_price', 0), 0) if _pos else 0.0
