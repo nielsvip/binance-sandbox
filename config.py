@@ -37,7 +37,7 @@ class Config:
     MAX_POSITION_SIZE_FIN: float = 20.0  # 2026-03-30: Same. Was $4000.
     HIGH_GAIN_AUGMENTATION_MIN_SIZE = 50  # BACKTEST_CHANGE_25: was 200. Lower threshold lets more winners get augmented
 
-    MAX_ORDER_VALUE: float = 20.0  # 2026-03-30: 1/50 rule. Was $280.
+    MAX_ORDER_VALUE: float = 200.0  # 2026-03-30: 1/50 rule. Was $280.
     MAX_ORDER_VALUE_MEN: float = 20.0  # Was $240.
     MAX_ORDER_VALUE_FIN: float = 20.0  # Was $120.
     START_POSITION_SIZE: float = 9.0  # Start size per entry. Capped by MAX_POSITION_SIZE.
