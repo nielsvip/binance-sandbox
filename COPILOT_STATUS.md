@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-03 16:25:49 UTC
+# Copilot Status — 2026-05-03 16:41:09 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T16:22:17
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T16:22:17
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T16:22:17
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:22:49
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:23:53
-- **STALE_INDICATORS** [tradier]  — 2026-05-03T16:24:24
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T16:24:24
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T16:24:24
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T16:24:24
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:24:58
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T16:37:08
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T16:37:08
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:37:50
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:38:55
+- **STALE_INDICATORS** [tradier]  — 2026-05-03T16:39:16
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-03T16:39:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-03T16:39:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-03T16:39:16
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:40:05
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-03T16:40:58
 
 ## Missed Trades (trader comparison)
 
@@ -27,16 +27,12 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 8 | **Watching for reentry:** 13 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-4.2%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-11.5%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.6%, now +-0.1%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-0.9%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.8%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-12.0%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-1.1%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
-- HELD: **SNDK** LONG (tradier) peak +9.1%, now +9.1%
-- HELD: **MSTR** LONG (tradier) peak +6.5%, now +6.3%
-- HELD: **MU** LONG (tradier) peak +4.0%, now +1.4%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +18.9%, exited 0m ago
@@ -53,9 +49,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 11
-- [LOW] tradier_indicators.py is NOT running
+**Issues (last 1h):** 17
 - [HIGH] ez_prices.py is NOT running
-- [MEDIUM] tradier_indicators.py running but log stale (10min)
 - [LOW] tradier_indicators.py is NOT running
-- [MEDIUM] tradier_indicators.py running but log stale (12min)
+- [LOW] tradier_indicators.py is NOT running
+- [HIGH] ez_manage.py for men is NOT running
+- [HIGH] ez_manage.py for men is NOT running
