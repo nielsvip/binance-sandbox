@@ -29,20 +29,32 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, getcontext
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import (Any, Awaitable, Callable, DefaultDict, Dict, Iterable,
-                    List, Optional, Sequence, Set, Tuple, Union)
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import aiofiles.os as aio_os
 import aiohttp
 import pandas as pd
+from binance.client import Client
+from binance.enums import *
+from binance.exceptions import BinanceAPIException
 from dateutil.parser import isoparse
 from redis.asyncio import Redis
 from requests.adapters import HTTPAdapter
 
-from binance.client import Client
-from binance.enums import *
-from binance.exceptions import BinanceAPIException
 from config import Config
 from utils import get_current_environment
 
@@ -288,15 +300,27 @@ class PositionsServiceClient:
             return False
 
 from ez_indicators import bootstrap_indicators_service, get_indicators_service
+
 # price_svc middleman removed — service loads price caches directly from disk
-from utils import (REDIS_CHANNELS, RateLimitDuplicateFilter, action_logger,
-                   clean_and_repair_symbol, clean_position_key,
-                   construct_position_key, current_account,
-                   force_usdc_if_needed, get_current_environment,
-                   get_current_price, get_simple_redis_manager,
-                   is_hedge_account, is_sandbox_account,
-                   is_strict_no_loss_account, load_environment_from_gpg,
-                   parse_position_key, safe_fetch_float)
+from utils import (
+    REDIS_CHANNELS,
+    RateLimitDuplicateFilter,
+    action_logger,
+    clean_and_repair_symbol,
+    clean_position_key,
+    construct_position_key,
+    current_account,
+    force_usdc_if_needed,
+    get_current_environment,
+    get_current_price,
+    get_simple_redis_manager,
+    is_hedge_account,
+    is_sandbox_account,
+    is_strict_no_loss_account,
+    load_environment_from_gpg,
+    parse_position_key,
+    safe_fetch_float,
+)
 
 try :
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -1467,8 +1491,7 @@ async def load_accounts_from_config(config_obj: Config, logger_obj: Optional[log
 
 async def delete_heartbeat_on_ban():
     try :
-        from ez_manage import \
-            delete_heartbeat_on_ban as manage_delete_heartbeat_on_ban
+        from ez_manage import delete_heartbeat_on_ban as manage_delete_heartbeat_on_ban
     except Exception:
         return
     try :
@@ -13470,8 +13493,8 @@ async def bootstrap_position_service(logger=None, accounts: Optional[Dict[str, A
     _t3 = time.time()
     # 2026-04-26 FIX: was `logger.critical(...)` — when caller passes logger=None this AttributeError'd 758× in 2 days,
     # crashing ez_positions_realtime workers (which call bootstrap_position_service(logger=None, ...) early in main()).
-    if logger: logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s")
-    if logger: logger.info(f"[bootstrap] DONE. Service initialized with {total_count} total positions.")
+    #if logger: logger.critical(f"[bootstrap] ⏱️ Data loading + init took {_t3-_t2:.2f}s | TOTAL bootstrap: {_t3-_t0:.2f}s")
+    #if logger: logger.info(f"[bootstrap] DONE. Service initialized with {total_count} total positions.")
     return service
 if __name__ == "__main__":
 

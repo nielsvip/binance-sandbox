@@ -13915,7 +13915,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 # ── BTC dedicated loop EXIT override (Phase 6b) ──
                 _btc_exit_dec = None
                 if _btc_dedicated_active(account_key, symbol, config):
-                    _entry_p = float(position.get('entry_price', 0.0) or 0.0) if position else 0.0
+                    _entry_p = float(position.entry_price or 0.0) if position else 0.0
                     _opened_at = float(position.get('opened_at', time.time()) or time.time()) if position else time.time()
                     _age_bars = max(0, int((time.time() - _opened_at) / 180))   # 3m bars
                     _btc_exit_dec = _btc_dedicated_exit_decision(
