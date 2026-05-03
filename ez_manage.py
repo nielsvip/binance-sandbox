@@ -13905,6 +13905,7 @@ class MultiAccountTradeManager:
                 if hedge_block_reason and 'ACTION_TAKEN' in hedge_block_reason:
                     return hedge_block_reason
             min_open_qty = max(2 * config.MIN_POSITION_SIZE / max(current_price, 1e-9), 2 * self.min_qty.get(symbol, 0.001))
+            if _is_open_action and 'BTCUSDC' in position_key: min_open_qty = 1. * min_open_qty
             if action in ('OPEN', 'REENTRY', 'QUICK_OPEN') and 'HEDGE' not in reason.upper() and current_real_amt < min_open_qty:
                 mem_pos = self.positions_by_account.get(account_key, {}).get(position_key)
                 mem_amt = abs(safe_fetch_float(getattr(mem_pos, 'positionAmt', 0.0), 0.0)) if mem_pos else 0.0
