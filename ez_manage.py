@@ -12039,6 +12039,8 @@ class MultiAccountTradeManager:
                     logger.info(f'[{position_key}] SIZE_TIER cap: {_tm.group(1)} → qty ${quantity*current_price:.2f} → ${_tier_cap*current_price:.2f}')
                     quantity = _tier_cap
 
+            if 'BTC' in symbol:
+                _base = _base * 3
         order_value = quantity * current_price
         base_size = getattr(config, 'START_POSITION_SIZE', 45.0)
         if is_reduce:
