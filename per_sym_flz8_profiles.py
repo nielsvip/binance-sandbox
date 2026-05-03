@@ -759,6 +759,7 @@ def main() -> int:
         else:
             print("\nAll symbols within DD cap.")
 
+
     print()
     print(f"CSV: {sweep_csv}")
     print("Candidates written:")

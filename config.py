@@ -15,7 +15,7 @@ from weakref import WeakSet
 
 import aiofiles
 import certifi
-
+import json
 
 @dataclass(eq=False)
 class Config:
@@ -2981,6 +2981,34 @@ class Config:
     # REQUIRED_INDICATORS: List[str] = field(default_factory=lambda: list(REQUIRED_INDICATORS))
     # FINAL_SCORING_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_FINAL_SCORING_INDICATORS))
     # CORE_TECHNICAL_INDICATORS: List[str] = field(default_factory=lambda: list(_DEFAULT_CORE_TECHNICAL_INDICATORS))
+
+
+
+DEFAULT_SETTINGS = {
+    "bb_len": 20,
+    "bb_std": 2.0,
+    "wt_chan": 10,
+    "wt_avg": 21,
+    "dc_period": 20,
+    "timeframe": "15m"
+}
+
+def get_config(symbol):
+    """
+    Returns the best config for a symbol. 
+    Checks for a per-symbol JSON first, otherwise falls back to baseline.
+    """
+    # Path where your 'PROMOTE' script saves the best results
+    override_path = f"./symbol_configs/{symbol}_best.json"
+    
+    if os.path.exists(override_path):
+        with open(override_path, 'r') as f:
+            overrides = json.load(f)
+            # Merge baseline with overrides
+            config = {**DEFAULT_SETTINGS, **overrides}
+            return config
+            
+    return DEFAULT_SETTINGS
 
 
 # REQUIRED_INDICATORS: List[str] = [#v1
