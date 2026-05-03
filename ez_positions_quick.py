@@ -28,15 +28,18 @@ from binance.exceptions import BinanceAPIException
 from dateutil.parser import isoparse
 from requests.adapters import HTTPAdapter
 
-from config import Config
-import hedge_decisions as _hd
 import btc_loop as _btc_loop  # 2026-04-28 Phase 6b: BTC dedicated loop decision module (kill switch BTC_DEDICATED_ENABLED defaults False)
+import hedge_decisions as _hd
+from config import Config
+
 # 2026-04-27 — additive entry-engine imports (pure functions, no I/O, no side effects)
 try:
-    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
-    from entry_engine_stoch import should_fire_stoch_entry as _ee_should_fire_stoch_entry
     from entry_engine_dc import should_fire_dc_entry as _ee_should_fire_dc_entry
     from entry_engine_htf import should_fire_htf_entry as _ee_should_fire_htf_entry
+    from entry_engine_stoch import (
+        should_fire_stoch_entry as _ee_should_fire_stoch_entry,
+    )
+    from entry_engine_wt import should_fire_wt_entry as _ee_should_fire_wt_entry
 except Exception:
     _ee_should_fire_wt_entry = None
     _ee_should_fire_stoch_entry = None
@@ -6675,7 +6678,9 @@ class HedgeEngine:
                                         _kr_h_is_long = hedge_position_key.endswith('_LONG')
                                         _kr_ind = self.data_manager._cold_data.get(losing_symbol, {}) if self.data_manager else {}
                                         # 2026-04-27 USER ABSOLUTE: NEVER act on stale data, NEVER bail. Force-refresh from API.
-                                        from dateutil.parser import isoparse as _kr_isoparse
+                                        from dateutil.parser import (
+                                            isoparse as _kr_isoparse,
+                                        )
                                         _kr_max_age = float(getattr(self.config, 'LIVE_POSITION_FRESHNESS_MAX_SEC', 3.0))
                                         _kr_now = time.time()
                                         def _kr_age_of(_pos, _field):
@@ -11708,7 +11713,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # scanner. All other systems (RED_ZONE, MANDATORY_PRICE_CROSS_REENTRY, HLR,
     # reentry loops) are BLOCKED from adding. This prevents the $20 scalp from
     # being turned into a $150 swing-sized loser by a well-meaning augment path.
-    if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'QUICK_REENTRY') and not is_hedge:
+    if _is_aug_action and action in ('AUGMENT', 'QUICK_AUGMENT', 'REENTRY', 'QUICK_REENTRY') and not is_hedge and positionAmt==0.0:
         _lock_pos = tracker_manager.positions_service.positions_by_account.get(account_key, {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
         _lock_existing_reason = str(getattr(_lock_pos, 'augment_reason', '') or '') if _lock_pos else ''
         _lock_incoming_v3 = 'SCALP_V3_OPEN' in str(reason or '').upper()

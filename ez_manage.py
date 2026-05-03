@@ -655,7 +655,7 @@ class TradingPolicy:
 
 trading_policy = TradingPolicy
 from binance.client import Client
-from binance.enums import *
+# from binance.enums import *
 from binance.exceptions import BinanceAPIException
 
 import hedge_decisions as _hd
@@ -13553,7 +13553,7 @@ class MultiAccountTradeManager:
         _bofzp_act = (action or '').upper()
         _bofzp_is_entry = ('OPEN' in _bofzp_act or 'AUGMENT' in _bofzp_act or 'ENTRY' in _bofzp_act) and 'CLOSE' not in _bofzp_act and 'REDUCE' not in _bofzp_act and 'KILL' not in _bofzp_act
         if _bofzp_is_entry and original_positionAmt > 0:
-            return f'BLOCK_OPEN_IS_FOR_ZERO_POS'
+            return 'BLOCK_OPEN_IS_FOR_ZERO_POS'
         await self.load_tradeable() 
         if account_key not in self._allowed_accounts: 
             return 'BLOCK WRONG ACCOUNT KEY'
@@ -13570,7 +13570,7 @@ class MultiAccountTradeManager:
         is_tradeable = position_key in self.tradeable_keys or account_key == 'flz'
         if not is_tradeable and not is_reduce:
             logger.critical(f"🚫 [NON_TRADEABLE_BLOCK] {position_key}: NOT in tradeable_keys — entry/augment/hedge BLOCKED (no auto-add). action={action} reason={reason} is_hedge={is_hedge}")
-            return f'BLOCK_NON_TRADEABLE_POSITION'
+            return 'BLOCK_NON_TRADEABLE_POSITION'
         # ═══ FIX 2026-04-07: 15-MINUTE NEWBORN PROTECTION — NO closing positions < 15min old ═══
         # UNLESS price broke through dc_3m_low (LONG) or dc_3m_high (SHORT) = structure destroyed
         # Uses time.time() (Unix epoch) — works in both live and backtest (V8 patches time.time).
@@ -13861,7 +13861,7 @@ class MultiAccountTradeManager:
                     max_short_size = config.START_POSITION_SIZE
                     if real_notional >= max_short_size:
                         logger.warning(f"🛑 [SHORT_SMA_GATE] {position_key}: BLOCKED short augment — price {current_price:.4f} > sma_200_15m {sma_200_15m:.4f}, already ${real_notional:.0f} >= ${max_short_size:.0f}")
-                        return f"BLOCKED_SHORT_ABOVE_SMA200_15m"
+                        return "BLOCKED_SHORT_ABOVE_SMA200_15m"
             if abs(original_positionAmt - current_real_amt) > max(original_positionAmt * 0.05, 0.001) and original_positionAmt > 0:
                 logger.warning(f"🛑 [EXECUTE_ABORT] Stale Data for {position_key}. Thought: {original_positionAmt}, Real: {current_real_amt}")
                 if self.tracker_manager:
@@ -16895,7 +16895,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
     symbol = ctx['symbol']; account_key = ctx['account_key']
     trade_manager = ctx['trade_manager']
     position = trade_manager.positions.get(position_key)
-    if not position: return None
+    if not position or position.positionAmt > 0: return None
     # 2026-04-28: pre-flight eligibility gate — return None early if execute_now
     # would BLOCK the resulting signal (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE).
     # Saves the indicator fetch + 7 sub-block traversal cost; suppresses B12_*,
@@ -18584,7 +18584,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
                 logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO] {position_key}: REFUSING force-reentry — {'SHORT' if not is_long else 'LONG'} count={_bull_count_v if not is_long else _bear_count_v}/3 >= {_htf_min_against}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f} ha15m={_ha15_v} ha1h={_ha1_v} ha4h={_ha4_v}")
                 return
         price_above_reduction = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
-        if price_above_reduction:
+        if price_above_reduction and position.positionAmt==0.0:
             # 2026-04-26 RATE LIMIT (rogue-loop fix): refuse to fire MANDATORY_PRICE_CROSS
             # twice on the same position_key within MIN_INTERVAL seconds. The original bug
             # was that this fires every cycle while price > exit_level, even AFTER a
@@ -18701,7 +18701,7 @@ async def process_single_reentry_evaluation(trade_manager, position_key, reentry
         # User rule: price crosses back through exit price AND k_15m < 90 → reenter at 100%.
         # k_15m >= 90 → apply partial multiplier (REENTRY_K15M_PARTIAL_MULT, default 0.5) instead of full skip.
         # Base multiplier 1.0 (100% of original positionAmt approximated via START_POSITION_SIZE notional cap).
-        if getattr(config, 'REENTRY_K15M_PARTIAL_ENABLED', True) and price_ready and min_since_exit < 999:
+        if getattr(config, 'REENTRY_K15M_PARTIAL_ENABLED', True) and price_ready and min_since_exit < 999 and position.positionAmt==0.0:
             _k_thr = float(getattr(config, 'REENTRY_K15M_PARTIAL_THRESHOLD', 90.0))
             _k_ok_long = is_long and k_15m < _k_thr
             _k_ok_short = (not is_long) and k_15m > (100.0 - _k_thr)
