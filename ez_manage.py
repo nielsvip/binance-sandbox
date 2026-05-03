@@ -655,6 +655,7 @@ class TradingPolicy:
 
 trading_policy = TradingPolicy
 from binance.client import Client
+
 # from binance.enums import *
 from binance.exceptions import BinanceAPIException
 
@@ -13849,7 +13850,7 @@ class MultiAccountTradeManager:
             current_price = await quick_price(symbol)
             # ABSOLUTE: > min_pos_qty? Then 3% gain or BLOCKED. Reentry ALWAYS allowed.
             _min_pos_val_exec = getattr(config, 'MIN_POSITION_SIZE', 45.0)
-            if is_augment and real_notional > _min_pos_val_exec and real_gain < 3.0:
+            if is_augment and real_notional > 0 and real_gain < 3.0:
                 if _is_reentry_exec:
                     pass  # reentry ALWAYS allowed
                 else:

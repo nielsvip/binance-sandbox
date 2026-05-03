@@ -2944,7 +2944,7 @@ class AdvancedSignalRater:
                     score += 12; reasons.append(f"TIER2_CHASE_REENTRY(trend_cont,+12,px={current_price:.6f}>exit{actual_last_red_price:.6f})")
                 else:
                     # BC_156: GUARANTEED REENTRY — if exit price crossed + 3/4 WT confirm, bypass K reset
-                    _gr_crossed = (is_long and current_price >= actual_last_red_price) or (not is_long and current_price <= actual_last_red_price)
+                    _gr_crossed = (is_long and current_price >= actual_last_red_price) or (not is_long and current_price <= actual_last_red_price) and positionAmt == 0.0
                     if _gr_crossed:
                         _gr_wt = 0
                         for _tf in ['3m', '15m', '1h', '4h']:
@@ -12542,6 +12542,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             logger.info(f"🔒 [TIGHT_LEASH_APPLIED] {position_key}: Breakout Scalp locked into Strict Close Monitor.")
         return False, "BLOCKED_ALREADY_OPEN_STATE_MISMATCH"
     if action == 'AUGMENT':
+        if positionAmt > 0 and real_gain < config.MIN_GAIN: return False, f"BLOCKED_AUGMENT_OPEN_POSITION_{real_gain:.2f}%"
         # Hedges bypass ALL augment guards — they MUST be able to resize
         _is_sba = 'SBA_' in reason.upper()
         _half_min_gain = config.MIN_GAIN * 0.5 if hasattr(config, 'MIN_GAIN') else 0.5
@@ -14678,7 +14679,7 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                         _warn_min = getattr(config, 'REENTRY_ESCALATION_WARN_MIN', 30.0)
                         _crit_min = getattr(config, 'REENTRY_ESCALATION_CRIT_MIN', 60.0)
                         if not should_trade and _min_since_exit_epq >= _crit_min:
-                            logger.warning(f"⚠️ [REENTRY_OVERDUE] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, STILL not reentered! k3m={_px_k3m:.0f} exhausted={_px_exhausted} momentum={_px_momentum}")
+                            logger.warning(f"⚠️ [REENTRY_OVERDUE] {position_key}: {_min_since_exit_epq:.0f} min since exit at {_reentry_px:.6f}, STILL not reentered! k3m={_px_k3m:.0f} exhausted={_px_exhausted} momentum={_px_momentum}")
                         elif not should_trade and _min_since_exit_epq >= _warn_min:
                             logger.info(f"[REENTRY_PENDING] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, waiting for signal. k3m={_px_k3m:.0f}")
                 # == EVALUATE_REENTRY (ported from ez_manage.py:16010) — 7-block per-symbol reentry evaluator ==
@@ -15480,7 +15481,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     if _tradeable and _pk not in _tradeable: continue
                     _pos_amt = abs(float(getattr(_pos, 'positionAmt', 0) or 0))
                     _max_q = float(getattr(_pos, 'max_quantity', 0) or 0)
-                    if _max_q > 0 and _pos_amt >= _max_q * 0.9: continue
+                    if _max_q > 0 and _pos_amt >= _max_q * 0.9 or _pos_amt>0: continue
                     if _pk not in trade_manager.pending_reentries or trade_manager.pending_reentries[_pk].get('status') == 'filled':
                         _lrt = getattr(_pos, 'last_reduction_time', None)
                         _ts_str = _lrt.isoformat() if hasattr(_lrt, 'isoformat') else str(_lrt or '')
@@ -15551,7 +15552,8 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 _wt1_15m_prev_gr = safe_fetch_float(indicators.get('wt1_15m_prev', _wt1_15m_gr), _wt1_15m_gr)
                 _k_15m_r = safe_fetch_float(indicators.get('stoch_k_15m', indicators.get('k_15m', 50)), 50.0)
                 _k_1h_r = safe_fetch_float(indicators.get('stoch_k_1h', indicators.get('k_1h', 50)), 50.0)
-                # TIER 1: Price crosses exit level → MANDATORY 100% reentry (no gates can block this)
+                # TIER 1: Price crosses exit level → MANDATORY 100% reentry (no gates can block this) but POSITIONAMT NEEDS TO BE ZERO 
+                # position = positions_service.get_position(position_key)
                 if _price_crossed:
                     if position_key not in _price_crossed_since:
                         _price_crossed_since[position_key] = time.time()
@@ -15574,7 +15576,7 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                 if _wt15m_cross_gr:
                     should_reenter = True; _qty_mult = 1.0; _reason_tag = f"T3_WT15M_CROSS_100pct_wt15m={_wt1_15m_gr:.1f}/prev={_wt1_15m_prev_gr:.1f}"
                     logger.warning(f"🟢 [REENTRY_T3_WT15M_CROSS] {position_key}: wt1_15m crossed wt2_15m ({'bullish' if is_long else 'bearish'}) prev={_wt1_15m_prev_gr:.1f} now={_wt1_15m_gr:.1f} — 100% reentry")
-                if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True) and not _price_crossed:
+                if should_reenter and not getattr(config, 'LEGACY_GUARANTEED_REENTRY', True) and not _price_crossed and position.positionAmt==0.0:
                     should_reenter = False
                     logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config (T1 price_crossed bypasses this)")
                 # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation.
