@@ -29,6 +29,8 @@ from typing import Dict, List, Optional, Tuple
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+import shutil
+
 import numpy as np
 import metrics_guard as mg
 from v8_quick_engine import simulate, QuickConfig
@@ -48,6 +50,16 @@ try:
     HAS_MPL = True
 except ImportError:
     HAS_MPL = False
+
+
+def _prune_old_per_sym_runs(sweep_dir: Path, prefix: str, keep: int = 2) -> None:
+    dirs = sorted(sweep_dir.glob(f"{prefix}_*/"), key=lambda p: p.name)
+    for old in dirs[:-keep] if keep > 0 else dirs:
+        try:
+            shutil.rmtree(old)
+        except Exception as e:
+            print(f"  [prune] could not remove {old}: {e}")
+
 
 # Promote criteria — same revised thresholds as flz
 PROMOTE_POOL_MIN = 0.3
@@ -506,6 +518,7 @@ def main() -> int:
     print(f"CSV: {sweep_csv}")
     print(f"Candidates: {CAND_OUT_DIR}")
     print(f"Charts: {CHARTS_OUT_DIR}")
+    _prune_old_per_sym_runs(SWEEP_DIR, "per_sym_fin", keep=2)
     return 0
 
 

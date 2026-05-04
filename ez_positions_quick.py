@@ -2910,11 +2910,13 @@ class AdvancedSignalRater:
                 # 2026-04-28 USER RULE: only enter if WT agrees AND K is NOT in extreme value.
                 # Don't reenter LONG when K already at top (buying tops); don't reenter SHORT at bottom (selling bottoms).
                 # 2026-04-26 FIX: was `indicators.get(...)` — function param is `ind` (line 1583).
-                _mr_wt = 0
-                for _tf in ['3m', '15m', '1h']:
-                    _wb = bool(ind.get(f'wt_bullish_{_tf}', False))
-                    if (is_long and _wb) or (not is_long and not _wb): _mr_wt += 1
-                _mr_min_wt = int(getattr(config, 'MANDATORY_REENTRY_MIN_WT_AGREE', 2))
+                # USER RULE (2026-05-04): 3m AND 15m must agree + ≥1/3 HTF (1h/4h/D). Exception: <5min cont.
+                _mr_aligned = lambda tf: (is_long and bool(ind.get(f'wt_bullish_{tf}', False))) or (not is_long and not bool(ind.get(f'wt_bullish_{tf}', False)))
+                _mr_wt_3m = _mr_aligned('3m')
+                _mr_wt_15m = _mr_aligned('15m')
+                _mr_htf = sum(1 for _tf in ('1h', '4h', 'D') if _mr_aligned(_tf))
+                _mr_is_cont = min_since_red < 5 and _mr_wt_3m and _mr_htf >= 1
+                _mr_min_signal = _mr_wt_3m and _mr_wt_15m and _mr_htf >= 1
                 _mr_req_kx = bool(getattr(config, 'MANDATORY_REENTRY_REQUIRE_K_NOT_EXTREME', True))
                 _mr_k_hi = float(getattr(config, 'MANDATORY_REENTRY_K_HIGH_BLOCK', 80.0))
                 _mr_k_lo = float(getattr(config, 'MANDATORY_REENTRY_K_LOW_BLOCK', 20.0))
@@ -2925,16 +2927,16 @@ class AdvancedSignalRater:
                     _mr_kx_block = False
                 if _mr_kx_block:
                     logger.warning(f"🛡️[MANDATORY_REENTRY_BLOCKED_K_EXTREME] {position_key}: k_3m={k_3m:.0f} {'>='+str(_mr_k_hi) if is_long else '<='+str(_mr_k_lo)} — refusing reentry at extreme K (would buy top / sell bottom)")
-                elif _mr_wt >= _mr_min_wt:
+                elif _mr_min_signal or _mr_is_cont:
                     _tier1_forced = True
-                    score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_WT{_mr_wt}(+30,exit_crossed,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
-                    logger.critical(f"🚀[MANDATORY_REENTRY] {position_key}: price {current_price:.6f} {'>=' if is_long else '<='} exit {actual_last_red_price:.6f} + WT{_mr_wt}/3 (need {_mr_min_wt}) k_3m={k_3m:.0f} — FORCING REENTRY")
-                elif _mr_allow_wt0 and abs(current_price / actual_last_red_price - 1.0) > 0.003:
+                    score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_3m{int(_mr_wt_3m)}15m{int(_mr_wt_15m)}HTF{_mr_htf}(+30,exit_crossed,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY] {position_key}: price {current_price:.6f} {'>=' if is_long else '<='} exit {actual_last_red_price:.6f} + 3m={_mr_wt_3m} 15m={_mr_wt_15m} HTF={_mr_htf}/3 cont={_mr_is_cont} k_3m={k_3m:.0f} — FORCING REENTRY")
+                elif _mr_allow_wt0 and abs(current_price / actual_last_red_price - 1.0) > 0.003 and _mr_wt_3m and _mr_htf >= 1:
                     _tier1_forced = True
-                    score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_WT{_mr_wt}(+20,0.3pct,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
-                    logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct past exit {actual_last_red_price:.6f} WT={_mr_wt} k_3m={k_3m:.0f} — FORCING REENTRY (WT0 fallback explicitly enabled)")
+                    score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_3m1HTF(+20,0.3pct,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct past exit {actual_last_red_price:.6f} 3m={_mr_wt_3m} HTF={_mr_htf}/3 k_3m={k_3m:.0f} — FORCING REENTRY (WT0 fallback)")
                 else:
-                    logger.info(f"🛡️[MANDATORY_REENTRY_BLOCKED_WT] {position_key}: WT{_mr_wt}/3 < min {_mr_min_wt} (k_3m={k_3m:.0f}) — no reentry, waiting for stronger setup")
+                    logger.info(f"🛡️[MANDATORY_REENTRY_BLOCKED_DBS] {position_key}: 3m={_mr_wt_3m} 15m={_mr_wt_15m} HTF={_mr_htf}/3 cont={_mr_is_cont} k_3m={k_3m:.0f} — no reentry, waiting for stronger setup")
             elif not _br_has_reset and actual_last_red_price > 0 and min_since_red >= _tier2_min_min:
                 _trend_continues = (is_long and current_price > actual_last_red_price * (1.0 + _tier2_price_pct)) or (not is_long and current_price < actual_last_red_price * (1.0 - _tier2_price_pct))
                 _momentum_ok = (is_long and k_3m > k_3m_prev and k_1m > d_1m) or (not is_long and k_3m < k_3m_prev and k_1m < d_1m)
@@ -15588,10 +15590,16 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     _gr_k_fav_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_HIGH', 70.0))
                     _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (not is_long and k_3m <= _gr_k_lo)
                     _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (not is_long and k_3m >= _gr_k_fav_hi)
+                    # USER RULE (2026-05-04): 3m AND 15m must agree + ≥1/3 HTF (1h/4h/D).
+                    # Exception: within 5min of exit, price still with us, 3m ok, ≥1 HTF.
+                    _gr_is_cont = _elapsed_s < 300 and _wt3m_ok and _htf_count >= 1 and ((is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price))
                     if _gr_k_adverse:
                         should_reenter = False
                         logger.warning(f"🛡️[GUARANTEED_REENTRY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} {'>=' if is_long else '<='}{_gr_k_hi if is_long else _gr_k_lo} — refusing reentry at top/bottom")
-                    elif not _full_stack and not _gr_k_favorable:
+                    elif not (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _gr_is_cont:
+                        should_reenter = False
+                        logger.warning(f"🛡️[GUARANTEED_REENTRY_DBS] {position_key}: 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 cont={_gr_is_cont} — need 3m+15m+≥1HTF or recent continuation")
+                    elif (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _full_stack and not _gr_k_favorable and not _gr_is_cont:
                         should_reenter = False
                         logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
                 if should_reenter:
@@ -16060,12 +16068,25 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             if _htf_against_short_v or _htf_against_long_v:
                 logger.warning(f"🚫 [PRICE_CROSSED_HTF_AGAINST_VETO_EPQ] {position_key}: REFUSING force-reentry — 15m/1h/4h ALL AGAINST {'SHORT' if not is_long else 'LONG'}. k15m={k_15m:.0f} k1h={k_1h:.0f} k4h={k_4h:.0f}")
                 return
+        # DON'T-BE-STUPID gate (2026-05-04): 3m AND 15m must agree + ≥1/2 HTF (1h/4h).
+        # Exception: <5min after exit + 3m ok + ≥1 HTF (price-cross continuation, 15m may lag).
+        _dbs_wt3m = (is_long and wt1_3m > wt2_3m) or (not is_long and wt1_3m < wt2_3m)
+        _dbs_wt15m = (is_long and wt1_15m > wt2_15m) or (not is_long and wt1_15m < wt2_15m)
+        _dbs_wt1_1h = float(i.get('wt1_1h', 0) or 0); _dbs_wt2_1h = float(i.get('wt2_1h', 0) or 0)
+        _dbs_wt1_4h = float(i.get('wt1_4h', 0) or 0); _dbs_wt2_4h = float(i.get('wt2_4h', 0) or 0)
+        _dbs_wt1h = (is_long and _dbs_wt1_1h > _dbs_wt2_1h) or (not is_long and _dbs_wt1_1h < _dbs_wt2_1h)
+        _dbs_wt4h = (is_long and _dbs_wt1_4h > _dbs_wt2_4h) or (not is_long and _dbs_wt1_4h < _dbs_wt2_4h)
+        _dbs_htf = int(_dbs_wt1h) + int(_dbs_wt4h)
+        _dbs_cont = min_since_exit < 5 and _dbs_wt3m and _dbs_htf >= 1
+        if not ((_dbs_wt3m and _dbs_wt15m and _dbs_htf >= 1) or _dbs_cont):
+            logger.warning(f"🛡️[MANDATORY_EPQ_DBS] {position_key}: 3m={_dbs_wt3m} 15m={_dbs_wt15m} HTF={_dbs_htf}/2 cont={_dbs_cont} k15m={k_15m:.0f} k1h={k_1h:.0f} — blocking stupid reentry")
+            return
         _price_above_red_epq = (is_long and current_price >= reentry_level) or (not is_long and current_price <= reentry_level)
         if _price_above_red_epq:
             _epq_force_mult = 0.5 if (min_since_exit < 60 or k_15m > 70 or k_1h > 70) else 1.0
             _epq_force_qty = max(reentry_amount * _epq_force_mult, getattr(config_obj, 'START_POSITION_SIZE', 45.0) / current_price)
             _epq_force_reason = f"PRICE_CROSSED_MANDATORY_EPQ_k15m{k_15m:.0f}_k1h{k_1h:.0f}_min{min_since_exit:.0f}_mult{_epq_force_mult:.1f}"
-            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry NO QUESTIONS ASKED (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f})")
+            logger.critical(f"🚀 [MANDATORY_PRICE_CROSS_EPQ] {position_key}: price {current_price:.6f} >= exit {reentry_level:.6f} — forcing {_epq_force_mult:.0%} reentry (k_15m={k_15m:.1f} k_1h={k_1h:.1f} min={min_since_exit:.0f} 3m={_dbs_wt3m} 15m={_dbs_wt15m} HTF={_dbs_htf}/2)")
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
             _epq_force_qty = _epq_force_qty * _ee_mult; _epq_force_reason = _epq_force_reason + _ee_tag

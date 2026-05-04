@@ -467,8 +467,12 @@ def _generate_for_account(acct, refresh, market_data, allowed_keys, causality_tr
         # DON'T-BE-STUPID FILTER: 1h AND 15m must both explicitly agree.
         # With mtf_align>=4 the missing TF could be exactly 1h or 15m — that setup is a buy-at-top / sell-at-bottom.
         mtf_per_tf = fs.get("mtf_per_tf") or {}
-        if not mtf_per_tf.get("1h") or not mtf_per_tf.get("15m"):
-            log.debug("MTF_SR_SKIP %s: 1h=%s 15m=%s not both aligned", key, mtf_per_tf.get("1h"), mtf_per_tf.get("15m"))
+        if not mtf_per_tf.get("3m") or not mtf_per_tf.get("15m"):
+            log.debug("MTF_SR_SKIP %s: 3m=%s 15m=%s — triggers not aligned", key, mtf_per_tf.get("3m"), mtf_per_tf.get("15m"))
+            continue
+        _mtf_htf_count = sum(1 for _tf in ("1h", "4h", "D") if mtf_per_tf.get(_tf))
+        if _mtf_htf_count < 2:
+            log.debug("MTF_SR_SKIP %s: only %d/3 HTFs aligned (need ≥2)", key, _mtf_htf_count)
             continue
         # K-extreme proxy: block if WT 1h or 15m is in overbought/oversold zone.
         # wt1 > +53 for a LONG = buying at the top; wt1 < -53 for a SHORT = shorting at the bottom.

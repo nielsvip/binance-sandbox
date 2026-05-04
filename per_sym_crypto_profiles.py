@@ -16,7 +16,7 @@ Usage:
   python3 per_sym_crypto_profiles.py --sym AAVEUSDC,LDOUSDC --mutate-all
 """
 from __future__ import annotations
-import argparse, gc, json, math, os, sys, time
+import argparse, gc, json, math, os, shutil, sys, time
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -37,6 +37,16 @@ try:
     HAS_MPL = True
 except ImportError:
     HAS_MPL = False
+
+
+def _prune_old_per_sym_runs(sweep_dir: Path, prefix: str, keep: int = 2) -> None:
+    dirs = sorted(sweep_dir.glob(f"{prefix}_*/"), key=lambda p: p.name)
+    for old in dirs[:-keep] if keep > 0 else dirs:
+        try:
+            shutil.rmtree(old)
+        except Exception as e:
+            print(f"  [prune] could not remove {old}: {e}")
+
 
 NPZ_DIR       = ROOT / "backtest_v8" / "indicators"
 SWEEP_DIR     = ROOT / "data" / "sweep_results"
@@ -621,6 +631,7 @@ def main() -> int:
     print()
     print(f"CSV: {sweep_csv}")
     print("\nDone.")
+    _prune_old_per_sym_runs(SWEEP_DIR, "per_sym_crypto", keep=2)
     return 0
 
 

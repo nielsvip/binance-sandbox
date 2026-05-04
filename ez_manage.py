@@ -15874,10 +15874,16 @@ class MultiAccountTradeManager:
                         _gr_k_fav_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_HIGH', 70.0))
                         _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (not is_long and k_3m <= _gr_k_lo)
                         _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (not is_long and k_3m >= _gr_k_fav_hi)
+                        # USER RULE (2026-05-04): 3m AND 15m must agree + ≥1/3 HTF (1h/4h/D).
+                        # Exception: within 5min of exit, price still with us, 3m ok, ≥1 HTF.
+                        _gr_is_cont = _elapsed_s < 300 and _wt3m_ok and _htf_count >= 1 and ((is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price))
                         if _gr_k_adverse:
                             should_reenter = False
                             logger.warning(f"🛡️[GUARANTEED_REENTRY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} {'>=' if is_long else '<='}{_gr_k_hi if is_long else _gr_k_lo} — refusing reentry at top/bottom")
-                        elif not _full_stack and not _gr_k_favorable:
+                        elif not (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _gr_is_cont:
+                            should_reenter = False
+                            logger.warning(f"🛡️[GUARANTEED_REENTRY_DBS] {position_key}: 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 cont={_gr_is_cont} — need 3m+15m+≥1HTF or recent continuation")
+                        elif (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _full_stack and not _gr_k_favorable and not _gr_is_cont:
                             should_reenter = False
                             logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
                     if should_reenter:
