@@ -148,9 +148,12 @@ def _audit_iter(row: Dict[str, Any], n_syms_hint: Optional[int],
     out["inflated"] = inflated
     out["inflated_pool"] = inflated_pool
     out["inflated_sym"] = inflated_sym
-    # Publishable = ALL three legs of sample floor + canonical pool not inflated.
-    # sym_sharpe inflation is informational only (sym_sharpe is a diagnostic, not promotion criterion).
-    out["publishable"] = sample_floor_ok and (not inflated_pool)
+    # Publishable = sample floor + not inflated + pool_sharpe >= 0.7 (per user directive:
+    # "run baseline >0.7 for all stocks and crypto as a generalized setting").
+    sharpe_ok = pool_sharpe >= 0.7
+    if not sharpe_ok:
+        tags.append(f"BELOW_FLOOR (pool_sharpe={pool_sharpe:.4f} <0.7)")
+    out["publishable"] = sample_floor_ok and (not inflated_pool) and sharpe_ok
     out["tier"] = metrics_guard.tier_name(pool_sharpe)
     tags: List[str] = []
     if not syms_ok:
@@ -613,6 +616,8 @@ def api_health():
 
 HOURLY_CSV_DIR = BASE_DIR / "data" / "sweep_results"
 HOURLY_RECONFIG_DIR = BASE_DIR / "data" / "hourly_reconfig"
+PER_SYM_ACTIVE_CONFIG = HOURLY_RECONFIG_DIR / "per_sym_active_config.json"
+DECISIONS_DIR_LOCAL = BASE_DIR / "data" / "decisions"
 
 
 def _read_hourly_canonical_csv(account: str) -> List[Dict[str, Any]]:
@@ -755,6 +760,129 @@ def api_recalc(account, sym, side):
     return jsonify({
         "account": account, "sym": sym, "side": side,
         "metrics": metrics,
+        "generated_utc": _now_iso(),
+    })
+
+
+def _load_per_sym_report() -> List[Dict[str, Any]]:
+    """Build per-symbol overview: 4yr sweep winner + 7D hourly opinion + live trade count."""
+    cached = _cache_get("symbol_report")
+    if cached is not None:
+        return cached
+
+    # 1. Load per_sym_active_config (4yr sweep winners)
+    per_sym: Dict[str, Any] = {}
+    if PER_SYM_ACTIVE_CONFIG.exists():
+        try:
+            per_sym = json.loads(PER_SYM_ACTIVE_CONFIG.read_text())
+        except Exception:
+            pass
+
+    # 2. Load all hourly_reconfig active_config.json files (7D opinions)
+    hourly_configs: Dict[str, Dict[str, Any]] = {}
+    for acct_dir in HOURLY_RECONFIG_DIR.iterdir():
+        if not acct_dir.is_dir():
+            continue
+        ac_path = acct_dir / "active_config.json"
+        if not ac_path.exists():
+            continue
+        try:
+            ac = json.loads(ac_path.read_text())
+            for k, v in ac.items():
+                hourly_configs[k] = {**v, "_account": acct_dir.name}
+        except Exception:
+            pass
+
+    # 3. Count live trades per (sym_side) from decisions JSONL (last 30 days)
+    live_counts: Dict[str, int] = defaultdict(int)
+    live_pnl: Dict[str, float] = defaultdict(float)
+    cutoff_30d = time.time() - 30 * 86400
+    _GAIN_RE = re.compile(r"gain[=_\s]([+-]?\d+(?:\.\d+)?)%", re.I)
+    if DECISIONS_DIR_LOCAL.exists():
+        for f in DECISIONS_DIR_LOCAL.glob("decisions_*.jsonl"):
+            try:
+                mtime = f.stat().st_mtime
+                if mtime < cutoff_30d:
+                    continue
+                for line in f.read_text(errors="replace").splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    action = (rec.get("action") or "").upper()
+                    if action not in ("CLOSE", "REDUCE"):
+                        continue
+                    pk = rec.get("position_key") or ""
+                    if "_LONG" in pk:
+                        side = "LONG"
+                        sym = pk.replace("_LONG", "")
+                    elif "_SHORT" in pk:
+                        side = "SHORT"
+                        sym = pk.replace("_SHORT", "")
+                    else:
+                        continue
+                    key = f"{sym}_{side}"
+                    live_counts[key] += 1
+                    reason = rec.get("reason") or ""
+                    m = _GAIN_RE.search(reason)
+                    if m:
+                        live_pnl[key] += float(m.group(1))
+            except Exception:
+                continue
+
+    # 4. Merge into unified rows
+    all_keys = sorted(set(list(per_sym.keys()) + list(hourly_configs.keys())))
+    rows: List[Dict[str, Any]] = []
+    for key in all_keys:
+        ps = per_sym.get(key, {})
+        hc = hourly_configs.get(key, {})
+        sym_part = key.rsplit("_", 1)[0] if "_" in key else key
+        side_part = key.rsplit("_", 1)[1] if "_" in key else "?"
+        acct = hc.get("_account", ps.get("account", ""))
+        mode = "tradier" if acct in STOCK_ACCOUNTS else "crypto"
+        if not acct:
+            mode = "crypto" if (sym_part.endswith("USDC") or sym_part.endswith("USDT")) else "tradier"
+        lc = live_counts.get(key, 0)
+        lp = live_pnl.get(key, 0.0)
+        row = {
+            "key": key,
+            "sym": sym_part,
+            "side": side_part,
+            "mode": mode,
+            "account": acct or "?",
+            "per_sym_wsharpe": round(float(ps.get("wsharpe", 0) or 0), 4),
+            "per_sym_trades": int(ps.get("trades", 0) or 0),
+            "per_sym_tag": ps.get("winning_tag", ""),
+            "per_sym_sample": ps.get("sample_tag", ""),
+            "hourly_wsharpe": round(float(hc.get("wsharpe", 0) or 0), 4),
+            "hourly_trades": int(hc.get("trades", 0) or 0),
+            "hourly_tag": hc.get("winning_tag", ""),
+            "live_closes_30d": lc,
+            "live_pnl_30d": round(lp, 2),
+            "live_avg_pnl": round(lp / lc, 4) if lc > 0 else 0.0,
+            "has_per_sym": bool(ps),
+            "has_hourly": bool(hc) and (hc.get("trades", 0) or 0) > 0,
+        }
+        row["tier_per_sym"] = metrics_guard.tier_name(row["per_sym_wsharpe"]) if row["per_sym_wsharpe"] else "—"
+        row["tier_hourly"] = metrics_guard.tier_name(row["hourly_wsharpe"]) if row["hourly_wsharpe"] else "—"
+        rows.append(row)
+
+    _cache_set("symbol_report", rows)
+    return rows
+
+
+@app.route("/api/symbol_report")
+def api_symbol_report():
+    """Per-symbol overview: 4yr sweep winner + 7D hourly config + live 30d stats."""
+    rows = _load_per_sym_report()
+    mode = request.args.get("mode")
+    if mode in ("crypto", "tradier"):
+        rows = [r for r in rows if r.get("mode") == mode]
+    return jsonify({
+        "rows": rows,
+        "n_total": len(rows),
         "generated_utc": _now_iso(),
     })
 

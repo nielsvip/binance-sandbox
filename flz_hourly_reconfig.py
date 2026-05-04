@@ -410,12 +410,14 @@ def write_opinion(account: str, sym: str, side: str, winner: Dict,
 
     Returns (opinion, sample_tag).
       - opinion: "LONG" / "SHORT" / "FLAT" — what to actually do
-      - sample_tag: "FULL" / "LOW_SAMPLE" / "INSUFFICIENT" — confidence
+      - sample_tag: "FULL" / "LOW_SAMPLE" / "BASELINE_FORCED" / "DISCARD"
 
     Rules:
       - n >= 30 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, FULL
       - n >= 14 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, LOW_SAMPLE
-      - else → FLAT, INSUFFICIENT (or DISCARD if wsharpe<0)
+      - wsharpe < 0                                          → FLAT, DISCARD (actively losing)
+      - else                                                 → side, BASELINE_FORCED
+        (every symbol always gets a direction — no INSUFFICIENT / NO_CONFIG)
     """
     ws = float(winner.get("wsharpe", 0.0))
     n = int(winner.get("trades", 0))
@@ -427,7 +429,7 @@ def write_opinion(account: str, sym: str, side: str, winner: Dict,
         return side.upper(), "LOW_SAMPLE"
     if ws < 0:
         return "FLAT", "DISCARD"
-    return "FLAT", "INSUFFICIENT"
+    return side.upper(), "BASELINE_FORCED"
 
 
 def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int:
