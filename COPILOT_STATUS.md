@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-04 21:29:01 UTC
+# Copilot Status — 2026-05-04 21:44:28 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:24:03
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:24:03
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:25:05
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:25:05
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:26:07
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:26:07
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:27:08
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:27:08
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:28:11
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:28:11
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:39:30
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:40:32
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:40:32
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T21:41:33
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:41:34
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:41:34
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:42:36
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:42:36
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T21:43:38
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-04T21:43:38
 
 ## Missed Trades (trader comparison)
 
@@ -29,7 +29,7 @@ _None_
 
 **Held:** 3 | **Watching for reentry:** 11 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.6%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.5%
 - HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-9.1%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-3.6%
 
@@ -38,11 +38,11 @@ _None_
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +18.9%, exited 3m ago
 - WATCHING: **DOGEUSDC** SHORT (crypto) peaked +10.1%, exited 3m ago
 - WATCHING: **XVGUSDT** SHORT (crypto) peaked +7.7%, exited 3m ago
+- WATCHING: **1000LUNCUSDT** LONG (crypto) peaked +7.7%, exited 3m ago
 - WATCHING: **ZKUSDT** SHORT (crypto) peaked +5.1%, exited 3m ago
 - WATCHING: **RUNEUSDT** SHORT (crypto) peaked +5.0%, exited 3m ago
 - WATCHING: **FLOWUSDT** SHORT (crypto) peaked +4.8%, exited 3m ago
 - WATCHING: **MASKUSDT** LONG (crypto) peaked +4.7%, exited 3m ago
-- WATCHING: **CHRUSDT** SHORT (crypto) peaked +4.5%, exited 3m ago
 
 ## Supervisor
 
@@ -51,6 +51,6 @@ _None_
 **Issues (last 1h):** 7
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_manage.py for ang is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_indicators.py is NOT running
