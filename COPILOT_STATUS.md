@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-04 09:12:53 UTC
+# Copilot Status — 2026-05-04 09:28:32 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T09:09:04
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T09:09:04
-- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-04T09:09:48
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:09:48
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:10:51
-- **STALE_INDICATORS** [tradier]  — 2026-05-04T09:11:13
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T09:11:13
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T09:11:13
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T09:11:13
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:12:01
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-04T09:26:18
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:26:18
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-04T09:27:25
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:27:25
+- **STALE_INDICATORS** [tradier]  — 2026-05-04T09:28:07
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T09:28:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T09:28:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T09:28:07
+- **BIG_LOSER** [crypto] ang:ZROUSDT_LONG — 2026-05-04T09:28:30
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T09:28:30
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 10 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +2.8%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-12.9%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.9%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +1.9%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-14.1%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.1%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
