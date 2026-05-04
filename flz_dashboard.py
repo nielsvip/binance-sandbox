@@ -148,12 +148,6 @@ def _audit_iter(row: Dict[str, Any], n_syms_hint: Optional[int],
     out["inflated"] = inflated
     out["inflated_pool"] = inflated_pool
     out["inflated_sym"] = inflated_sym
-    # Publishable = sample floor + not inflated + pool_sharpe >= 0.7 (per user directive:
-    # "run baseline >0.7 for all stocks and crypto as a generalized setting").
-    sharpe_ok = pool_sharpe >= 0.7
-    if not sharpe_ok:
-        tags.append(f"BELOW_FLOOR (pool_sharpe={pool_sharpe:.4f} <0.7)")
-    out["publishable"] = sample_floor_ok and (not inflated_pool) and sharpe_ok
     out["tier"] = metrics_guard.tier_name(pool_sharpe)
     tags: List[str] = []
     if not syms_ok:
@@ -168,6 +162,12 @@ def _audit_iter(row: Dict[str, Any], n_syms_hint: Optional[int],
         tags.append(f"INFLATED_POOL ({pool_sharpe:.2f} >5 with {trades} trades)")
     if inflated_sym:
         tags.append(f"INFLATED_SYM ({sym_sharpe:.2f} >5 with {trades} trades)")
+    # Publishable = sample floor + not inflated + pool_sharpe >= 0.7 (per user directive:
+    # "run baseline >0.7 for all stocks and crypto as a generalized setting").
+    sharpe_ok = pool_sharpe >= 0.7
+    if not sharpe_ok:
+        tags.append(f"BELOW_FLOOR (pool_sharpe={pool_sharpe:.4f} <0.7)")
+    out["publishable"] = sample_floor_ok and (not inflated_pool) and sharpe_ok
     out["tags"] = tags
     out["mode"] = mode
     return out
@@ -793,44 +793,28 @@ def _load_per_sym_report() -> List[Dict[str, Any]]:
         except Exception:
             pass
 
-    # 3. Count live trades per (sym_side) from decisions JSONL (last 30 days)
+    # 3. Count live CLOSED ROUNDS per (sym_side) from history JSONLs (last 30 days)
+    # Use the same _load_account_history + _reconstruct_trades path for consistency.
     live_counts: Dict[str, int] = defaultdict(int)
     live_pnl: Dict[str, float] = defaultdict(float)
     cutoff_30d = time.time() - 30 * 86400
-    _GAIN_RE = re.compile(r"gain[=_\s]([+-]?\d+(?:\.\d+)?)%", re.I)
-    if DECISIONS_DIR_LOCAL.exists():
-        for f in DECISIONS_DIR_LOCAL.glob("decisions_*.jsonl"):
-            try:
-                mtime = f.stat().st_mtime
-                if mtime < cutoff_30d:
+    for acct in ALL_ACCOUNTS:
+        try:
+            events = _load_account_history(acct)
+            closed = _reconstruct_trades(events)
+            for t in closed:
+                ets = int(t.get("exit_ts") or 0)
+                if ets < cutoff_30d:
                     continue
-                for line in f.read_text(errors="replace").splitlines():
-                    if not line.strip():
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except Exception:
-                        continue
-                    action = (rec.get("action") or "").upper()
-                    if action not in ("CLOSE", "REDUCE"):
-                        continue
-                    pk = rec.get("position_key") or ""
-                    if "_LONG" in pk:
-                        side = "LONG"
-                        sym = pk.replace("_LONG", "")
-                    elif "_SHORT" in pk:
-                        side = "SHORT"
-                        sym = pk.replace("_SHORT", "")
-                    else:
-                        continue
-                    key = f"{sym}_{side}"
-                    live_counts[key] += 1
-                    reason = rec.get("reason") or ""
-                    m = _GAIN_RE.search(reason)
-                    if m:
-                        live_pnl[key] += float(m.group(1))
-            except Exception:
-                continue
+                sym_s = (t.get("symbol") or "").upper()
+                side_s = (t.get("side") or "").upper()
+                if not sym_s or side_s not in ("LONG", "SHORT"):
+                    continue
+                key = f"{sym_s}_{side_s}"
+                live_counts[key] += 1
+                live_pnl[key] += float(t.get("pnl_pct") or 0)
+        except Exception:
+            continue
 
     # 4. Merge into unified rows
     all_keys = sorted(set(list(per_sym.keys()) + list(hourly_configs.keys())))
