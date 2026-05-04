@@ -464,6 +464,26 @@ def _generate_for_account(acct, refresh, market_data, allowed_keys, causality_tr
             continue
         if dist is None or dist > ENTRY_NEAR_DIST_MAX_PCT or not supportive:
             continue
+        # DON'T-BE-STUPID FILTER: 1h AND 15m must both explicitly agree.
+        # With mtf_align>=4 the missing TF could be exactly 1h or 15m — that setup is a buy-at-top / sell-at-bottom.
+        mtf_per_tf = fs.get("mtf_per_tf") or {}
+        if not mtf_per_tf.get("1h") or not mtf_per_tf.get("15m"):
+            log.debug("MTF_SR_SKIP %s: 1h=%s 15m=%s not both aligned", key, mtf_per_tf.get("1h"), mtf_per_tf.get("15m"))
+            continue
+        # K-extreme proxy: block if WT 1h or 15m is in overbought/oversold zone.
+        # wt1 > +53 for a LONG = buying at the top; wt1 < -53 for a SHORT = shorting at the bottom.
+        _is_long_setup = key.endswith("_LONG")
+        _symbol = fs.get("symbol") or key.rsplit("_", 1)[0]
+        _mkt = market_data.get(_symbol) or {}
+        _wt1_15m = float(_mkt.get("wt1_15m") or 0)
+        _wt1_1h = float(_mkt.get("wt1_1h") or 0)
+        _WT_OB = 53.0
+        if _is_long_setup and (_wt1_15m > _WT_OB or _wt1_1h > _WT_OB):
+            log.debug("MTF_SR_SKIP %s: overbought wt1_15m=%.1f wt1_1h=%.1f", key, _wt1_15m, _wt1_1h)
+            continue
+        if not _is_long_setup and (_wt1_15m < -_WT_OB or _wt1_1h < -_WT_OB):
+            log.debug("MTF_SR_SKIP %s: oversold-SHORT wt1_15m=%.1f wt1_1h=%.1f", key, _wt1_15m, _wt1_1h)
+            continue
         causality_bonus = None
         if causality_traders_active:
             causality_bonus = "reliable_traders_active_4h_edge"

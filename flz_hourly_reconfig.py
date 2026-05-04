@@ -39,6 +39,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import time
 import traceback
@@ -92,6 +93,17 @@ _IMPOSTER_RE = re.compile(
     r"_imposter_block|"
     r"override_per_sym_.*_BEST"
 )
+
+
+def _prune_old_runs(runs_parent: Path, keep: int = 2) -> None:
+    """Delete all but the `keep` most recent timestamped run directories."""
+    dirs = sorted(runs_parent.glob("2*"), key=lambda p: p.name)
+    for old in dirs[:-keep] if keep > 0 else dirs:
+        try:
+            shutil.rmtree(old)
+            print(f"  [prune] removed old run dir: {old.name}", flush=True)
+        except Exception as e:
+            print(f"  [prune] could not remove {old}: {e}", flush=True)
 
 
 def load_safe_override(path: Path) -> Dict:
@@ -612,6 +624,7 @@ def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int
     print(f"[hourly] opinion changes this cycle ({len(changes)}): {changes[:8]}", flush=True)
     print(f"[hourly] active_config: {active_path}", flush=True)
     print(f"[hourly] opinions:      {opinions_path}", flush=True)
+    _prune_old_runs(run_dir.parent, keep=2)
     return 0
 
 
