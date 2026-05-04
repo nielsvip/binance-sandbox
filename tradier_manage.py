@@ -8512,7 +8512,7 @@ class TradierTradeManager:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_SRS_BYPASS] {position_key}: gain={_en_gain:.2f}% — STRUCTURAL_RANGE_SHIFT allowed at loss")
                 elif _bb_recov_bypass:
                     pass
-                elif _en_noloss_min > -900 and _en_gain < _en_noloss_min:
+                elif _en_noloss_min > 0 and _en_gain < _en_noloss_min:
                     logger.warning(f"[EXECUTE_NOW_NOLOSS_BLOCK] {position_key}: BLOCKED reduce at gain={_en_gain:.2f}% < noloss_min={_en_noloss_min}% reason={reason}")
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)

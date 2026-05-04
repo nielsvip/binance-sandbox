@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -51,6 +52,16 @@ _SHORT_ONLY_OVR = {"LONG_ENABLED": False, "SHORT_ENABLED": True,
                    "WT_DC_LONG_ENABLED": False, "WT_DC_SHORT_ENABLED": True}
 _BOTH_OVR = {"LONG_ENABLED": True, "SHORT_ENABLED": True,
              "WT_DC_LONG_ENABLED": True, "WT_DC_SHORT_ENABLED": True}
+
+
+def _prune_old_engine_runs(engine_runs_dir: Path, keep: int = 2) -> None:
+    """Delete all but the `keep` most recent timestamped engine-run directories."""
+    dirs = sorted(engine_runs_dir.glob("*"), key=lambda p: p.name) if engine_runs_dir.exists() else []
+    for old in dirs[:-keep] if keep > 0 else dirs:
+        try:
+            shutil.rmtree(old)
+        except Exception as e:
+            print(f"  [prune] could not remove {old}: {e}")
 
 
 def load_symbols_file(path: Path) -> List[str]:
@@ -267,6 +278,7 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path) 
     with active_path.open("w") as f:
         json.dump(existing, f, indent=2)
 
+    _prune_old_engine_runs(out_dir / "_engine_runs", keep=2)
     elapsed = time.time() - t0
     print(f"[{account}] done: {updated} updated, {len(existing)} total entries, {elapsed:.1f}s")
 
