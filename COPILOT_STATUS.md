@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-04 03:36:37 UTC
+# Copilot Status — 2026-05-04 03:51:53 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **STALE_INDICATORS** [tradier]  — 2026-05-04T03:33:41
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T03:33:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T03:33:41
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T03:33:41
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T03:34:17
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T03:35:23
-- **STALE_INDICATORS** [tradier]  — 2026-05-04T03:35:44
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T03:35:44
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T03:35:44
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T03:35:44
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T03:46:27
+- **STALE_INDICATORS** [tradier]  — 2026-05-04T03:48:34
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T03:48:34
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T03:48:34
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T03:48:34
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T03:49:17
+- **STALE_INDICATORS** [tradier]  — 2026-05-04T03:50:35
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T03:50:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T03:50:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T03:50:35
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 10 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +0.2%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-13.0%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.4%, now +-2.1%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-7.1%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +0.3%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-12.6%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.4%, now +-3.5%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-7.0%
 - HELD: **GOOGL** LONG (tradier) peak +10.0%, now +10.0%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
