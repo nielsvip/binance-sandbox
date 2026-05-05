@@ -33,7 +33,7 @@ MIN_TFS_AGREE_FLOOR = 2
 
 # 3m bars per HTF bar
 TF_BARS_3M = {'15m': 5, '1h': 20, '4h': 80, 'D': 480, 'W': 480 * 7, 'M': 480 * 30}
-DECISION_TFS = ('15m', '1h', '4h')
+DECISION_TFS = ('15m', '1h', '4h', 'D')  # User 2026-05-05: include D so it can vote
 
 
 @dataclass
@@ -44,16 +44,26 @@ class SymParams:
     BB_STD_1h: float = 2.0
     BB_LEN_4h: int = 20
     BB_STD_4h: float = 2.0
+    BB_LEN_D: int = 20
+    BB_STD_D: float = 2.0
     WT_CHAN_15m: int = 10
     WT_AVG_15m: int = 21
     WT_CHAN_1h: int = 10
     WT_AVG_1h: int = 21
     WT_CHAN_4h: int = 10
     WT_AVG_4h: int = 21
+    WT_CHAN_D: int = 10
+    WT_AVG_D: int = 21
     DC_PERIOD_15m: int = 20
     DC_PERIOD_1h: int = 20
     DC_PERIOD_4h: int = 20
+    DC_PERIOD_D: int = 20
+    # User 2026-05-05: split MIN_TFS_AGREE for entry vs exit vs reentry. Entry tightest, exit looser, reentry looser still.
+    # MIN_TFS_AGREE kept for back-compat (used as default for entry); engine reads the per-action knobs below.
     MIN_TFS_AGREE: int = 2
+    MIN_TFS_AGREE_ENTRY: int = 3        # 3 of 4 TFs (15m/1h/4h/D) for entry — sweep 1-4
+    MIN_TFS_AGREE_EXIT: int = 2         # 2 of 4 for exit — easier to leave (cap loss)
+    MIN_TFS_AGREE_REENTRY: int = 2      # 2 of 4 for reentry path
     MIN_HOLD_BARS_15m: int = 5
     COOLDOWN_BARS_15m: int = 3
     USE_BB_FILTER: bool = True
@@ -61,8 +71,14 @@ class SymParams:
     USE_DC_BREAK: bool = True
     BB_TOP_THRESHOLD: float = 0.95
     BB_BOT_THRESHOLD: float = 0.05
-    BB_LONG_ENTRY_MAX: float = 0.50  # LONG: only enter when bb_pctb<this (pullback bias)
-    BB_SHORT_ENTRY_MIN: float = 0.50  # SHORT: only enter when bb_pctb>this
+    # USER 2026-05-05 + wt_dc_entry_scorer data: bb_pctb<0.2 = 90% WR for LONG. Default tight, sweep wider.
+    BB_LONG_ENTRY_MAX: float = 0.20
+    BB_SHORT_ENTRY_MIN: float = 0.80
+    # BB auto-tune: per-symbol/per-TF flexible stdev that maximizes balanced touches (bb_auto_tune logic).
+    BB_AUTO_TUNE_ENABLED: bool = False  # default off; sweep ON to test per-sym
+    BB_AUTO_TUNE_LOOKBACK: int = 100   # bars for tune window
+    BB_AUTO_TUNE_MIN_MULT: float = 1.5
+    BB_AUTO_TUNE_MAX_MULT: float = 3.5
     REQUIRE_D_TREND: bool = False  # daily trend gate (HTF context filter)
     REQUIRE_W_TREND: bool = False  # weekly trend gate
     # Entry mode: 'dc_break' (close > prev dc_high) | 'pullback' (bb_pctb<EMA crossing) | 'or' (either)
@@ -143,9 +159,17 @@ class SymParams:
     PEAK_PROTECT_ENABLED: bool = True
     PEAK_PROTECT_REQUIRE_GAIN: bool = True  # only arm after gain has been positive at least once
     # SIGNAL-DRIVEN HEDGE TRIGGER (replaces fixed % drawdown trigger):
-    # Hedge LONG when wt1_3m < wt2_3m (LTF momentum flip). Hedge SHORT when wt1_3m > wt2_3m.
-    # No drawdown threshold. The signal IS the trigger.
-    HEDGE_WT3M_TRIGGER: bool = True
+    # Hedge LONG when wt1_<TF> < wt2_<TF> on the chosen TF. Sweep TF among {3m, 15m, 1h}.
+    HEDGE_WT_TRIGGER: bool = True
+    HEDGE_WT_TF: str = '3m'             # one of: '3m', '15m', '1h' — TEST per user 2026-05-05
+    HEDGE_CYCLES_ENABLED: bool = True   # when True: every flip-against = new hedge cycle (close on flip-back)
+    # User 2026-05-05: allow fixed-% peak giveback (reluctantly) if needed for high WR.
+    PEAK_GIVEBACK_FIXED_PCT_ENABLED: bool = False
+    PEAK_GIVEBACK_FIXED_DROP_PCT: float = 0.5
+    PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT: float = 0.10
+    # User 2026-05-05: re-allow HEDGE_TRIGGER_GAIN_PCT (% drawdown for hedge eligibility on top of WT trigger).
+    HEDGE_TRIGGER_GAIN_PCT_ENABLED: bool = False
+    HEDGE_TRIGGER_GAIN_PCT: float = -0.5
     # HH/HL price-action entry (replaces WT 15m as primary trigger when toggled):
     USE_PRICE_ACTION_ENTRY: bool = False
     PRICE_ACTION_LB: int = 3
@@ -743,34 +767,35 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                 pnl_traj = (ep - traj_h) / ep * 100.0
                 hedge_state = (wt3m_window_1 > wt3m_window_2) & (pnl_traj < 0.0)
             hedge_state[:min_hold] = False
-            # ONE hedge per primary position — open at first sustained adverse wt1_3m flip while underwater,
-            # close when wt1_3m flips BACK in favor (sign of momentum recovery) or at primary's exit.
-            open_local_idxs = np.flatnonzero(hedge_state)
-            if len(open_local_idxs):
-                open_local = int(open_local_idxs[0])
-                h_idx = entry_i + open_local
-                # Find first bar AFTER open where hedge_state goes False (wt1_3m flipped back)
-                close_search = hedge_state[open_local + 1:]
+            # User 2026-05-05: hedge fires on EVERY wt-against-position event during primary's lifetime.
+            # ONE concurrent hedge: open on flip-against, close on flip-back, can repeat through life of primary.
+            prev_state = np.concatenate([[False], hedge_state[:-1]])
+            opens = hedge_state & ~prev_state
+            open_idxs = np.flatnonzero(opens)
+            for open_local in open_idxs:
+                h_idx = entry_i + int(open_local)
+                close_search = hedge_state[int(open_local) + 1:]
                 close_rel = np.flatnonzero(~close_search)
                 if len(close_rel):
                     h_close_idx = h_idx + 1 + int(close_rel[0])
                 else:
                     h_close_idx = exit_i
                 h_close_idx = min(h_close_idx, exit_i)
-                if h_close_idx > h_idx:
-                    h_ep = float(c15[h_idx])
-                    h_xp = float(c15[h_close_idx])
-                    if h_ep > 0 and h_xp > 0:
-                        h_side = 'SHORT' if side == 'LONG' else 'LONG'
-                        h_pnl = (h_xp - h_ep) / h_ep * 100.0 if h_side == 'LONG' else (h_ep - h_xp) / h_ep * 100.0
-                        h_pnl_net = (h_pnl - rt_comm) * hedge_size_frac
-                        trades.append({
-                            'side': h_side, 'entry_idx': h_idx, 'exit_idx': h_close_idx,
-                            'entry_ts': int(ts15[h_idx]), 'exit_ts': int(ts15[h_close_idx]),
-                            'entry_price': h_ep, 'exit_price': h_xp,
-                            'pnl_gross_pct': h_pnl, 'pnl_pct': h_pnl_net,
-                            'bars_held': h_close_idx - h_idx, 'origin': 'hedge_wt3m',
-                        })
+                if h_close_idx <= h_idx:
+                    continue
+                h_ep = float(c15[h_idx]); h_xp = float(c15[h_close_idx])
+                if h_ep <= 0 or h_xp <= 0:
+                    continue
+                h_side = 'SHORT' if side == 'LONG' else 'LONG'
+                h_pnl = (h_xp - h_ep) / h_ep * 100.0 if h_side == 'LONG' else (h_ep - h_xp) / h_ep * 100.0
+                h_pnl_net = (h_pnl - rt_comm) * hedge_size_frac
+                trades.append({
+                    'side': h_side, 'entry_idx': h_idx, 'exit_idx': h_close_idx,
+                    'entry_ts': int(ts15[h_idx]), 'exit_ts': int(ts15[h_close_idx]),
+                    'entry_price': h_ep, 'exit_price': h_xp,
+                    'pnl_gross_pct': h_pnl, 'pnl_pct': h_pnl_net,
+                    'bars_held': h_close_idx - h_idx, 'origin': 'hedge_wt',
+                })
             h_idx_local = -1
             origin = ''
             if False:
@@ -898,9 +923,11 @@ def _build_signals(tf_data: Dict, side: str, params: SymParams) -> Tuple[np.ndar
                 x15 = x15[:n_15m]
         e_count += e15.astype(np.int16)
         x_count += x15.astype(np.int16)
-    min_tfs = max(MIN_TFS_AGREE_FLOOR, int(params.MIN_TFS_AGREE))
-    enter = e_count >= min_tfs
-    leave = x_count >= MIN_TFS_AGREE_FLOOR
+    # Per-action MIN_TFS_AGREE split (user 2026-05-05): entry tightest, exit/reentry looser.
+    min_tfs_entry = max(MIN_TFS_AGREE_FLOOR, int(getattr(params, 'MIN_TFS_AGREE_ENTRY', params.MIN_TFS_AGREE)))
+    min_tfs_exit = max(MIN_TFS_AGREE_FLOOR, int(getattr(params, 'MIN_TFS_AGREE_EXIT', params.MIN_TFS_AGREE)))
+    enter = e_count >= min_tfs_entry
+    leave = x_count >= min_tfs_exit
     return enter, leave
 
 
@@ -937,23 +964,43 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         enter_short = np.zeros_like(enter_short)
     elif only_side == 'SHORT':
         enter_long = np.zeros_like(enter_long)
-    # Compute wt1_15m/wt2_15m for peak-protect, and wt1_3m/wt2_3m mapped to 15m grid for signal-driven hedge
+    # Compute wt1_15m/wt2_15m for peak-protect.
     h15 = tf_data['15m']['high']
     l15 = tf_data['15m']['low']
     c15_close = tf_data['15m']['close']
     wt1_15m_arr, wt2_15m_arr = compute_wt(h15, l15, c15_close,
                                             int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
-    # 3m WT — compute on raw 3m base, then sample at 15m bar ends (every 5th index)
-    o3 = base['open']; h3 = base['high']; l3 = base['low']; c3 = base['close']
-    wt1_3m_full, wt2_3m_full = compute_wt(h3, l3, c3, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+    # Hedge WT trigger TF (sweepable per user 2026-05-05): compute WT on chosen TF, map to 15m grid.
     n_15m = len(c15_close)
-    cut_3m = (len(c3) // 5) * 5
-    wt1_3m_at_15m = wt1_3m_full[:cut_3m][4::5][:n_15m]
-    wt2_3m_at_15m = wt2_3m_full[:cut_3m][4::5][:n_15m]
-    if len(wt1_3m_at_15m) < n_15m:
-        pad = n_15m - len(wt1_3m_at_15m)
-        wt1_3m_at_15m = np.concatenate([np.zeros(pad), wt1_3m_at_15m])
-        wt2_3m_at_15m = np.concatenate([np.zeros(pad), wt2_3m_at_15m])
+    hedge_tf = getattr(params, 'HEDGE_WT_TF', '3m')
+    if hedge_tf == '3m':
+        h_src, l_src, c_src = base['high'], base['low'], base['close']
+        wt1_full, wt2_full = compute_wt(h_src, l_src, c_src, int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+        ratio = 5  # 5 × 3m = 15m
+        cut = (len(c_src) // ratio) * ratio
+        wt1_at_15m = wt1_full[:cut][ratio - 1::ratio][:n_15m]
+        wt2_at_15m = wt2_full[:cut][ratio - 1::ratio][:n_15m]
+    elif hedge_tf in ('15m', '1h', '4h', 'D'):
+        tfd = tf_data[hedge_tf]
+        wt1_tf, wt2_tf = compute_wt(tfd['high'], tfd['low'], tfd['close'],
+                                      int(getattr(params, f'WT_CHAN_{hedge_tf}')),
+                                      int(getattr(params, f'WT_AVG_{hedge_tf}')))
+        repeat_ratio = TF_BARS_3M[hedge_tf] // TF_BARS_3M['15m']
+        if repeat_ratio == 1:
+            wt1_at_15m = wt1_tf[:n_15m]
+            wt2_at_15m = wt2_tf[:n_15m]
+        else:
+            wt1_at_15m = np.repeat(wt1_tf, repeat_ratio)[:n_15m]
+            wt2_at_15m = np.repeat(wt2_tf, repeat_ratio)[:n_15m]
+    else:
+        wt1_at_15m = wt1_15m_arr.copy()
+        wt2_at_15m = wt2_15m_arr.copy()
+    if len(wt1_at_15m) < n_15m:
+        pad = n_15m - len(wt1_at_15m)
+        wt1_at_15m = np.concatenate([np.zeros(pad), wt1_at_15m])
+        wt2_at_15m = np.concatenate([np.zeros(pad), wt2_at_15m])
+    wt1_3m_at_15m = wt1_at_15m
+    wt2_3m_at_15m = wt2_at_15m
     htf_long = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'LONG', params, len(enter_long))
     htf_short = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'SHORT', params, len(enter_short))
     enter_long = enter_long & htf_long
@@ -1074,7 +1121,7 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     n_ft = sum(1 for t in trades if t.get('origin') == 'follow_through')
     n_aug = sum(1 for t in trades if (t.get('origin') or '').startswith('augment_'))
     n_hedge = sum(1 for t in trades if (t.get('origin') or '').startswith('hedge'))
-    n_hedge_wt3m = sum(1 for t in trades if t.get('origin') == 'hedge_wt3m')
+    n_hedge_wt3m = sum(1 for t in trades if (t.get('origin') or '').startswith('hedge_wt'))
     n_peak_protect = sum(1 for t in trades if t.get('origin') == 'peak_protect_wt15m')
     n_mtm_end = sum(1 for t in trades if t.get('origin') == 'mtm_at_end')
     n_mr = sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry')

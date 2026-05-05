@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-05 16:10:03 UTC
+# Copilot Status — 2026-05-05 16:25:23 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T16:08:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T16:08:57
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T16:09:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T16:09:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T16:09:18
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T16:09:49
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T16:09:49
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T16:09:49
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T16:10:02
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T16:10:02
+- **STALE_INDICATORS** [tradier]  — 2026-05-05T16:24:46
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T16:24:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T16:24:46
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T16:24:46
+- **STALE_INDICATORS** [tradier]  — 2026-05-05T16:25:16
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T16:25:16
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T16:25:16
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T16:25:16
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T16:25:22
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T16:25:22
 
 ## Missed Trades (trader comparison)
 
@@ -31,7 +31,7 @@ _None_
 
 - HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-58.6%
 - HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +21.0%
-- HELD: **GOOGL** LONG (tradier) peak +12.0%, now +-1.2%
+- HELD: **GOOGL** LONG (tradier) peak +12.0%, now +-1.0%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +11.8%
 - HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +7.8%
 - HELD: **IBIT** LONG (tradier) peak +3.5%, now +0.2%
@@ -52,9 +52,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 19
+**Issues (last 1h):** 23
+- [HIGH] ez_rankings.py is NOT running
 - [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [HIGH] ez_manage.py for inf is NOT running
-- [HIGH] ez_manage.py for fin is NOT running
-- [HIGH] ez_manage.py for flz is NOT running
 - [HIGH] ez_indicators.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)

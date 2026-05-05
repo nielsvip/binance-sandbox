@@ -197,6 +197,23 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     # HEDGE / NOLOSS switches (default OFF — sweep ON to test)
     grid += variants_for_param(base, 'HEDGE_ENABLED', [True, False])
     grid += variants_for_param(base, 'HEDGE_SIZE_FRAC', [0.25, 0.5, 0.75, 1.0])
+    grid += variants_for_param(base, 'HEDGE_WT_TF', ['3m', '15m', '1h'])
+    # MIN_TFS_AGREE split per user 2026-05-05 (entry/exit/reentry) on 3-or-4 TFs
+    grid += variants_for_param(base, 'MIN_TFS_AGREE_ENTRY', [2, 3, 4])
+    grid += variants_for_param(base, 'MIN_TFS_AGREE_EXIT', [1, 2, 3])
+    grid += variants_for_param(base, 'MIN_TFS_AGREE_REENTRY', [1, 2, 3])
+    # D timeframe BB/WT/DC params (added with D as decision TF)
+    grid += variants_for_param(base, 'BB_LEN_D', BB_LEN_VALUES)
+    grid += variants_for_param(base, 'BB_STD_D', BB_STD_VALUES)
+    grid += variants_for_param(base, 'WT_CHAN_D', WT_CHAN_VALUES)
+    grid += variants_for_param(base, 'WT_AVG_D', WT_AVG_VALUES)
+    grid += variants_for_param(base, 'DC_PERIOD_D', DC_PERIOD_VALUES)
+    # User 2026-05-05: allow fixed-% peak giveback if needed for high WR
+    grid += variants_for_param(base, 'PEAK_GIVEBACK_FIXED_PCT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'PEAK_GIVEBACK_FIXED_DROP_PCT', [0.10, 0.20, 0.30, 0.50, 0.75, 1.0])
+    # Allow HEDGE_TRIGGER_GAIN_PCT back as additional gate
+    grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT', [-0.25, -0.5, -1.0, -2.0])
     grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
     # SIGNAL-DRIVEN exits/hedge — no fixed % anywhere per user 2026-05-05
     grid += variants_for_param(base, 'PEAK_PROTECT_ENABLED', [True, False])
