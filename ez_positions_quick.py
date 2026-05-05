@@ -5034,7 +5034,12 @@ class HedgeEngine:
                     if _shm: _ind = dict(_shm)
                 except Exception:
                     pass
-            # BC_988 updated: 15m OR (3m+1h both against) triggers hedge.
+            # User 2026-05-05: hedge fires when wt1_3m agrees with hedge direction
+            # AND the original position is in loss (loser-list filter upstream
+            # already enforces "in loss"). wt1_3m agreeing with the hedge is the
+            # same condition as wt1_3m being _against_ the loser. The BC_988
+            # 15m-OR-(3m+1h) rule is kept as a wider fallback when WT_3M_ALONE
+            # switch is False, but DEFAULTS ON per user directive.
             _wt1_15m = safe_fetch_float(_ind.get('wt1_15m'), 0)
             _wt2_15m = safe_fetch_float(_ind.get('wt2_15m'), 0)
             _wt1_3m = safe_fetch_float(_ind.get('wt1_3m'), 0)
@@ -5044,10 +5049,14 @@ class HedgeEngine:
             _15m_against = (is_long and _wt1_15m < _wt2_15m) or (not is_long and _wt1_15m > _wt2_15m)
             _3m_against = (is_long and _wt1_3m < _wt2_3m) or (not is_long and _wt1_3m > _wt2_3m)
             _1h_against = (is_long and _wt1_1h < _wt2_1h) or (not is_long and _wt1_1h > _wt2_1h)
-            _wt_against_origin = _15m_against or (_3m_against and _1h_against)
+            _use_3m_alone = bool(getattr(self.config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
+            if _use_3m_alone:
+                _wt_against_origin = _3m_against
+            else:
+                _wt_against_origin = _15m_against or (_3m_against and _1h_against)
             if not _wt_against_origin:
                 continue
-            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} → hedge trigger")
+            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} use_3m_alone={_use_3m_alone} → hedge trigger")
             # Check if already hedged (same-symbol position exists)
             losing_side = 'LONG' if is_long else 'SHORT'
             hedge_side = 'SHORT' if is_long else 'LONG'
@@ -5372,10 +5381,22 @@ class HedgeEngine:
                                     except Exception: pass
                                 _ph_w1_15m = safe_fetch_float(_ph_l_ind.get('wt1_15m'), 0)
                                 _ph_w2_15m = safe_fetch_float(_ph_l_ind.get('wt2_15m'), 0)
+                                _ph_w1_3m = safe_fetch_float(_ph_l_ind.get('wt1_3m'), 0)
+                                _ph_w2_3m = safe_fetch_float(_ph_l_ind.get('wt2_3m'), 0)
                                 # _wt_favors_origin = wt_15m moves AGAINST the hedge (in favor of origin).
                                 # Origin LONG (losing) → hedge SHORT → close when wt1_15m > wt2_15m.
                                 # Origin SHORT (losing) → hedge LONG → close when wt1_15m < wt2_15m.
                                 _ph_favors_origin = (_ph_losing_is_long and _ph_w1_15m > _ph_w2_15m) or (not _ph_losing_is_long and _ph_w1_15m < _ph_w2_15m)
+                                # User 2026-05-05: do NOT nuke the hedge while wt_3m STILL agrees with
+                                # the hedge AND origin is still in loss — the 15m flip alone is the
+                                # path that closed the hedge prematurely on 1000LUNCUSDT.
+                                _ph_3m_still_with_hedge = (_ph_losing_is_long and _ph_w1_3m < _ph_w2_3m) or (not _ph_losing_is_long and _ph_w1_3m > _ph_w2_3m)
+                                _ph_origin_gain = safe_fetch_float(getattr(losing_pos, 'gain', 0), 0)
+                                _ph_origin_in_loss = _ph_origin_gain < float(getattr(self.config, 'BANDAID_OFF_LOSER_RECOVER_PCT', -0.25))
+                                _ph_require_3m_flip = bool(getattr(self.config, 'HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP', True))
+                                if _ph_require_3m_flip and _ph_3m_still_with_hedge and _ph_origin_in_loss and (_ph_w1_3m != 0 or _ph_w2_3m != 0):
+                                    logger.info(f"🛡️ [BANDAID_OFF_FIRST_BLOCKED] {hedge_key}: wt_15m flipped ({_ph_w1_15m:.1f}/{_ph_w2_15m:.1f}) BUT wt_3m still with hedge ({_ph_w1_3m:.1f}/{_ph_w2_3m:.1f}) AND origin still losing g={_ph_origin_gain:.2f}% — HOLDING (user 2026-05-05).")
+                                    _ph_favors_origin = False
                                 if _ph_favors_origin and (_ph_w1_15m != 0 or _ph_w2_15m != 0):
                                     logger.warning(f"🩹 [BANDAID_OFF_FIRST] {hedge_key}: 15m WT favors origin {losing_key} (wt1={_ph_w1_15m:.1f} wt2={_ph_w2_15m:.1f} {'BULL' if _ph_losing_is_long else 'BEAR'}). Hedge gain={hedge_gain:.2f}%. NUKING (NO P/L gate, hoisted above 3m+1h NOLOSS_HOLD).")
                                     try:
@@ -5493,7 +5514,18 @@ class HedgeEngine:
                                     pass
                             _wt1_15m = safe_fetch_float(_l_ind.get('wt1_15m'), 0)
                             _wt2_15m = safe_fetch_float(_l_ind.get('wt2_15m'), 0)
+                            _wt1_3m = safe_fetch_float(_l_ind.get('wt1_3m'), 0)
+                            _wt2_3m = safe_fetch_float(_l_ind.get('wt2_3m'), 0)
                             _wt_favors_origin = (_losing_is_long and _wt1_15m > _wt2_15m) or (not _losing_is_long and _wt1_15m < _wt2_15m)
+                            # User 2026-05-05: do NOT nuke the hedge while wt_3m STILL agrees with
+                            # the hedge AND origin is still in loss. Symmetric to the BANDAID_OFF_FIRST guard above.
+                            _3m_still_with_hedge = (_losing_is_long and _wt1_3m < _wt2_3m) or (not _losing_is_long and _wt1_3m > _wt2_3m)
+                            _origin_gain = safe_fetch_float(getattr(losing_pos, 'gain', 0), 0)
+                            _origin_in_loss = _origin_gain < float(getattr(self.config, 'BANDAID_OFF_LOSER_RECOVER_PCT', -0.25))
+                            _require_3m_flip = bool(getattr(self.config, 'HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP', True))
+                            if _require_3m_flip and _3m_still_with_hedge and _origin_in_loss and (_wt1_3m != 0 or _wt2_3m != 0):
+                                logger.info(f"🛡️ [BANDAID_OFF_BLOCKED] {hedge_key}: wt_15m flipped ({_wt1_15m:.1f}/{_wt2_15m:.1f}) BUT wt_3m still with hedge ({_wt1_3m:.1f}/{_wt2_3m:.1f}) AND origin still losing g={_origin_gain:.2f}% — HOLDING.")
+                                _wt_favors_origin = False
                             # ═══ FIX 2026-03-30: HEDGE LIFECYCLE — exist as SHORT as possible, NEVER close at a loss ═══
                             # Rule 1: WT flips to favor origin → NUKE hedge (if hedge not at loss)
                             if getattr(self.config, 'HEDGE_BANDAID_OFF_ENABLED', False) and _wt_favors_origin and hedge_amt > 0.001:
@@ -11596,6 +11628,28 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             if _wrap_pos:
                 _wrap_amt = abs(safe_fetch_float(getattr(_wrap_pos, 'positionAmt', 0), 0))
                 _wrap_gain_raw = safe_fetch_float(getattr(_wrap_pos, 'gain', 0), 0)
+                # User 2026-05-05: BLOCK if mark_price stale > EXECUTE_NOW_MAX_MARK_AGE_S.
+                # The hidden bug behind the 1000LUNCUSDT 45% loss was that gain was
+                # computed off a stale mark_price; so guards reading position.gain
+                # made false-positive "winner" decisions on a real loser. Refuse
+                # increase actions while gain is unverifiable. CLOSE/REDUCE bypass.
+                _wrap_max_age = float(getattr(config, 'EXECUTE_NOW_MAX_MARK_AGE_S', 3.0))
+                _wrap_mp_ts = getattr(_wrap_pos, 'mark_price_last_updated', None)
+                if isinstance(_wrap_mp_ts, str):
+                    try:
+                        from dateutil.parser import isoparse as _isop
+                        _wrap_mp_ts = _isop(_wrap_mp_ts)
+                    except Exception:
+                        _wrap_mp_ts = None
+                from datetime import datetime as _dt2, timezone as _tz2
+                if isinstance(_wrap_mp_ts, _dt2) and _wrap_mp_ts.tzinfo is None:
+                    _wrap_mp_ts = _wrap_mp_ts.replace(tzinfo=_tz2.utc)
+                _wrap_age = 999999.0
+                if isinstance(_wrap_mp_ts, _dt2):
+                    _wrap_age = (_dt2.now(_tz2.utc) - _wrap_mp_ts).total_seconds()
+                if _wrap_amt > 0 and _wrap_age > _wrap_max_age:
+                    logger.critical(f"🚫 [STALE_MARK_PRICE_BLOCK_WRAPPER] {position_key}: mark age={_wrap_age:.1f}s > {_wrap_max_age:.1f}s; gain={_wrap_gain_raw:.2f}% UNVERIFIABLE — REFUSING. action={action} reason={(reason or '')[:60]}")
+                    return False, f"BLOCKED_STALE_MARK_PRICE_age{_wrap_age:.1f}s"
                 # 2026-04-28: PPL-fired positions get effective gain doubled (raw / (1-FRAC)).
                 try:
                     from ez_reentry import effective_gain_pct as _eff_gain

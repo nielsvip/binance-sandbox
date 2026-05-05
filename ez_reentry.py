@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -330,9 +331,15 @@ def _ts_to_epoch(v) -> float:
 
 
 def _collect_reentry_candidates(trade_manager, base_path: Path) -> list:
-    """Build [(position_key, is_long, exit_px, exit_amt, exit_ts, src)] from disk
-    JSON files PLUS in-memory reentry_data. Sorted by exit_ts desc so the
-    freshest crosses fire first when fire-cap is hit. Disk wins on duplicates."""
+    """Build [(position_key, is_long, exit_px, exit_amt, exit_ts, src, exit_reason)] from
+    disk JSON files PLUS in-memory reentry_data. Sorted by exit_ts desc so the
+    freshest crosses fire first when fire-cap is hit. Disk wins on duplicates.
+    `exit_reason` carries the reduction_reason / reason string so the caller can
+    decide partial-vs-full reentry sizing per user 2026-05-05 directive: the
+    PARTIAL_FRAC=0.5 sizing is correct ONLY for soft exits (wt crossunder, delta
+    slowdown, 3m lower-high/higher-low — \"last breath\" rallies that resumed);
+    every other exit family (DC erosion, peak giveback, structural break, etc.)
+    rebuilds at FULL size."""
     by_key: dict = {}
     for acc in _allowed_accounts_for(trade_manager):
         acc_dir = base_path / acc
@@ -360,7 +367,8 @@ def _collect_reentry_candidates(trade_manager, base_path: Path) -> list:
                 if exit_px <= 0:
                     continue
                 exit_ts = _ts_to_epoch(rd.get("timestamp") or rd.get("exit_timestamp"))
-                by_key[pk] = (is_long, exit_px, exit_amt, exit_ts, f"DISK_{side_name.upper()}")
+                exit_reason = str(rd.get("reduction_reason") or rd.get("reason") or "")
+                by_key[pk] = (is_long, exit_px, exit_amt, exit_ts, f"DISK_{side_name.upper()}", exit_reason)
     src_mem = (
         trade_manager.service.reentry_data
         if getattr(trade_manager, "service", None)
@@ -378,11 +386,28 @@ def _collect_reentry_candidates(trade_manager, base_path: Path) -> list:
             if exit_px <= 0:
                 continue
             exit_ts = _ts_to_epoch(rd.get("timestamp") or rd.get("exit_timestamp"))
+            exit_reason = str(rd.get("reduction_reason") or rd.get("reason") or "")
             is_long = pk.endswith("_LONG")
-            by_key[pk] = (is_long, exit_px, exit_amt, exit_ts, "MEM")
+            by_key[pk] = (is_long, exit_px, exit_amt, exit_ts, "MEM", exit_reason)
     items = [(pk,) + v for pk, v in by_key.items()]
     items.sort(key=lambda r: r[4], reverse=True)
     return items
+
+
+_SOFT_EXIT_REASON_RE = re.compile(
+    r"WT_CROSS_EXIT|DELTA_EXIT|E_1_WT_DELTA_EXIT|STRUCT_LH3M|STRUCT_HL3M|Lower_High|Higher_Low",
+    re.IGNORECASE,
+)
+
+
+def _is_soft_exit(reason: str) -> bool:
+    """Soft-exit families per user 2026-05-05: positions that exited on weakness
+    (wt crossunder / delta slowdown / 3m lower-high|higher-low) and immediately
+    resumed the rally — those are last-breath rallies; reenter at half size.
+    Every other exit family rebuilds full size."""
+    if not reason:
+        return False
+    return bool(_SOFT_EXIT_REASON_RE.search(reason))
 
 
 async def enforce_price_cross_reentry(trade_manager) -> int:
@@ -439,7 +464,7 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
     age_cutoff = now - (max_age_h * 3600.0)
     mkt = _load_market_data(trade_manager)
     fired = 0
-    for pk, is_long, exit_px, exit_amt, exit_ts, src_tag in candidates:
+    for pk, is_long, exit_px, exit_amt, exit_ts, src_tag, exit_reason in candidates:
         if fired >= max_fires:
             break
         if exit_ts > 0 and exit_ts < age_cutoff:
@@ -472,7 +497,14 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         last_fire = float(trade_manager._price_cross_last_fire.get(pk, 0))
         if now - last_fire < min_gap_s:
             continue
-        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * partial_frac
+        # User 2026-05-05: PARTIAL_FRAC=0.5 is ONLY for soft exits where the
+        # position is on its last breath (wt crossunder / delta slowdown / 3m
+        # lower-high|higher-low) and price immediately resumed the rally. Every
+        # other exit family — DC gain erosion, peak giveback, breakeven floor,
+        # structural range shift, parabolic exit, key level break, etc. — must
+        # rebuild at FULL size on price-cross. Applying 0.5 to those is WRONG.
+        sizing_frac = partial_frac if _is_soft_exit(exit_reason) else 1.0
+        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
         if fire_qty <= 0:
             continue
         position = trade_manager.positions.get(pk) if hasattr(trade_manager, "positions") else None
@@ -489,9 +521,10 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
             continue
         try:
             uid = f"PRICE_CROSS_GUARANTEE_{int(now)}"
+            sizing_tag = f"soft{sizing_frac:.2f}" if _is_soft_exit(exit_reason) else f"full{sizing_frac:.2f}"
             reason = (
                 f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
-                f"_cur{cur_px:.6f}_partial{partial_frac:.2f}"
+                f"_cur{cur_px:.6f}_{sizing_tag}_xr{(exit_reason[:40] or 'unk').replace(' ','_')}"
             )
             await trade_manager.execute_now(
                 position_key=pk,

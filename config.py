@@ -698,6 +698,19 @@ class Config:
     # Reopen handled by scan_and_hedge_losers when 15m WT goes against origin again.
     # Origin-close → hedge-close is _close_associated_hedge in ez_manage.py:14453 (always was on).
     HEDGE_BANDAID_OFF_ENABLED: bool = True
+    # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
+    # flip even while wt_3m still agreed with the hedge AND origin was still
+    # losing — leaving the underlying SHORT naked at -45%. With this guard,
+    # BANDAID_OFF requires wt_3m to ALSO flip back to favor origin OR the origin
+    # to have recovered above BANDAID_OFF_LOSER_RECOVER_PCT.
+    HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP: bool = True
+    BANDAID_OFF_LOSER_RECOVER_PCT: float = -0.25
+    # User 2026-05-05: same-symbol hedge fires when wt1_3m agrees with the hedge
+    # direction (i.e., wt_3m against the loser). Original BC_988 rule was 15m OR
+    # (3m+1h) which missed the 1000LUNCUSDT case where 15m was friendly to the
+    # loser but 3m had already flipped against it. Trigger lives at
+    # ez_positions_quick.py:5044-5048.
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True
     # Companion: peak-decay nuke. When hedge gain peaks >1% then drops back to 0.5% → close before
     # going negative. Default True per the historical "exist as SHORT as possible, NEVER close at a loss"
     # paragraph at ez_positions_quick.py:5385 — this is the "before negative" half of that rule.
@@ -2395,6 +2408,11 @@ class Config:
     POSITION_STALE_THRESHOLD_SECONDS: float = 60.0
     # MARK_PRICE_GUARD_INTERVAL: float =      1.0  # Seconds between websocket staleness checks
     MARK_PRICE_MAX_STALENESS: float = 2  # Maximum acceptable age of cached mark price
+    # User 2026-05-05: hard freshness gate at execute_now + execute_trade_wrapper.
+    # If position.mark_price_last_updated > this, REFUSE non-CLOSE orders (after
+    # one Redis refresh attempt). Saved 1000LUNCUSDT-style 45% loss where every
+    # gain-gated guard read an hour-stale mark and fired wrong decisions.
+    EXECUTE_NOW_MAX_MARK_AGE_S: float = 3.0
     # PRICE_FALLBACK_INTERVAL: float =        1.0  # Interval for REST/Redis mark-price fallback loop
     EZ_INDICATORS_SHUTDOWN_CMD: Optional[str] = (
         None  # shell command to stop ez_indicators gracefully

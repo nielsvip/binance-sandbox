@@ -196,14 +196,13 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     grid += variants_for_param(base, 'REENTRY_MEAN_REV_WINDOW_BARS', [3, 5, 10, 20])
     # HEDGE / NOLOSS switches (default OFF — sweep ON to test)
     grid += variants_for_param(base, 'HEDGE_ENABLED', [True, False])
-    grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT', [-0.5, -1.0, -2.0, -3.0])
     grid += variants_for_param(base, 'HEDGE_SIZE_FRAC', [0.25, 0.5, 0.75, 1.0])
     grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
-    grid += variants_for_param(base, 'NOLOSS_FLOOR_PCT', [-0.10, -0.05, 0.0, 0.05, 0.10])
-    # PEAK_GIVEBACK exit (live's QUICK_PEAK_GIVEBACK) — most important for high WR per user 2026-05-05
-    grid += variants_for_param(base, 'PEAK_GIVEBACK_EXIT_ENABLED', [True, False])
-    grid += variants_for_param(base, 'PEAK_GIVEBACK_DROP_PCT', [0.10, 0.20, 0.30, 0.50, 0.75, 1.0, 1.5])
-    grid += variants_for_param(base, 'PEAK_GIVEBACK_MIN_PEAK_PCT', [0.05, 0.10, 0.20, 0.30, 0.50])
+    # SIGNAL-DRIVEN exits/hedge — no fixed % anywhere per user 2026-05-05
+    grid += variants_for_param(base, 'PEAK_PROTECT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'PEAK_PROTECT_REQUIRE_GAIN', [True, False])
+    grid += variants_for_param(base, 'HEDGE_WT3M_TRIGGER', [True, False])
+    grid += variants_for_param(base, 'HEDGE_SIZE_FRAC', [0.25, 0.5, 0.75, 1.0])
     # HH/HL price-action entry alternative
     grid += variants_for_param(base, 'USE_PRICE_ACTION_ENTRY', [True, False])
     grid += variants_for_param(base, 'PRICE_ACTION_LB', [2, 3, 4, 5])

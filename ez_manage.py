@@ -13069,6 +13069,52 @@ class MultiAccountTradeManager:
                     return f"BLOCKED_BALANCE_FLOOR_HALT_{_bf_acct}"
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚫 STALE_MARK_PRICE_BLOCK — user 2026-05-05 (1000LUNCUSDT loss)
+        # If the position's mark_price_last_updated is older than EXECUTE_NOW_MAX_MARK_AGE_S,
+        # try ONE Redis refresh; if still stale, REFUSE non-CLOSE orders. Reasoning:
+        # gain-gated guards (LOSING_POSITION_HARD_BLOCK, MIN_GAIN_TO_BUY, BANDAID_OFF,
+        # WT_CROSS_EXIT, HAIKU_AUGMENT) all read position.gain which is computed off
+        # mark_price. A 60-min-stale mark_price made the engine believe a -45% loser
+        # was a +37% winner and fired AUGMENTs/REDUCEs against the real direction.
+        # CLOSE actions bypass this gate so we can always exit a stuck position.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _stale_block_act = (action or '').upper()
+            _stale_block_skip = ('CLOSE' in _stale_block_act) or is_full_close
+            if not _stale_block_skip and position_key:
+                _stale_max_age = float(getattr(config, 'EXECUTE_NOW_MAX_MARK_AGE_S', 3.0))
+                _stale_pos = None
+                try: _stale_pos = self.positions.get(position_key)
+                except Exception: _stale_pos = None
+                if _stale_pos is not None:
+                    _stale_ts = getattr(_stale_pos, 'mark_price_last_updated', None)
+                    if isinstance(_stale_ts, str):
+                        with suppress(Exception):
+                            _stale_ts = isoparse(_stale_ts)
+                    if isinstance(_stale_ts, datetime) and _stale_ts.tzinfo is None:
+                        _stale_ts = _stale_ts.replace(tzinfo=timezone.utc)
+                    _stale_age_s = 999999.0
+                    if isinstance(_stale_ts, datetime):
+                        _stale_age_s = (datetime.now(timezone.utc) - _stale_ts).total_seconds()
+                    if _stale_age_s > _stale_max_age:
+                        # Try one Redis refresh before refusing.
+                        _stale_sym = getattr(_stale_pos, 'symbol', None) or symbol
+                        try:
+                            _ref_price, _ref_ts = await self._get_mark_price_from_redis(_stale_sym) if _stale_sym else (None, None)
+                            if _ref_price and _ref_price > 0:
+                                await self._apply_mark_price(_stale_sym, _ref_price, _ref_ts or datetime.now(timezone.utc))
+                                _stale_ts2 = getattr(_stale_pos, 'mark_price_last_updated', None)
+                                if isinstance(_stale_ts2, datetime):
+                                    if _stale_ts2.tzinfo is None: _stale_ts2 = _stale_ts2.replace(tzinfo=timezone.utc)
+                                    _stale_age_s = (datetime.now(timezone.utc) - _stale_ts2).total_seconds()
+                        except Exception as _ref_e:
+                            logger.debug(f"[STALE_MARK_PRICE_REFRESH_ERR] {position_key} sym={_stale_sym}: {type(_ref_e).__name__}: {_ref_e}")
+                        if _stale_age_s > _stale_max_age:
+                            logger.critical(f"🚫 [STALE_MARK_PRICE_BLOCK] {position_key}: mark_price age={_stale_age_s:.1f}s > {_stale_max_age:.1f}s. REFUSING action={action} reason={(reason or '')[:60]} — would make decision on stale gain. CLOSE actions bypass this gate.")
+                            return f"BLOCKED_STALE_MARK_PRICE_age{_stale_age_s:.1f}s"
+        except Exception as _stale_e:
+            logger.warning(f"[STALE_MARK_PRICE_BLOCK] guard error (fail-open): {type(_stale_e).__name__}: {_stale_e}")
         # 2026-04-28 02:38 — user correction: AUGMENT is the ONE GOOD path when gain is sufficient.
         # The duplicate-fire problem is HEDGES, not augments. LOSING_POSITION_HARD_BLOCK below
         # already prevents augment on losing positions. Augments on winners pass.
@@ -20272,7 +20318,23 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             # Same-symbol hedge: 15m WT is in _hg_i. Cross-symbol: would need separate fetch.
                             _hg_w1_15m = safe_fetch_float(_hg_i.get('wt1_15m'), 0)
                             _hg_w2_15m = safe_fetch_float(_hg_i.get('wt2_15m'), 0)
+                            _hg_w1_3m = safe_fetch_float(_hg_i.get('wt1_3m'), 0)
+                            _hg_w2_3m = safe_fetch_float(_hg_i.get('wt2_3m'), 0)
                             _hg_favors_origin = (_hg_losing_is_long and _hg_w1_15m > _hg_w2_15m) or (not _hg_losing_is_long and _hg_w1_15m < _hg_w2_15m)
+                            # User 2026-05-05: do NOT nuke the hedge while wt_3m STILL agrees with
+                            # the hedge AND origin still in loss — this is the rule that prevented
+                            # 1000LUNCUSDT from re-bleeding when its hedge got killed at 0.16% gain.
+                            _hg_3m_with_hedge = (_hg_losing_is_long and _hg_w1_3m < _hg_w2_3m) or (not _hg_losing_is_long and _hg_w1_3m > _hg_w2_3m)
+                            try:
+                                _hg_origin_pos = trade_manager.positions.get(_hg_losing_pk) if hasattr(trade_manager, 'positions') else None
+                                _hg_origin_g = safe_fetch_float(getattr(_hg_origin_pos, 'gain', 0), 0) if _hg_origin_pos else 0.0
+                            except Exception:
+                                _hg_origin_g = 0.0
+                            _hg_origin_in_loss = _hg_origin_g < float(getattr(config, 'BANDAID_OFF_LOSER_RECOVER_PCT', -0.25))
+                            _hg_require_3m_flip = bool(getattr(config, 'HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP', True))
+                            if _hg_require_3m_flip and _hg_3m_with_hedge and _hg_origin_in_loss and (_hg_w1_3m != 0 or _hg_w2_3m != 0):
+                                logger.info(f"🛡️ [HEDGE_BANDAID_OFF_FIRST_PRE_BLOCKED] {position_key}: wt_15m flipped ({_hg_w1_15m:.1f}/{_hg_w2_15m:.1f}) BUT wt_3m still with hedge ({_hg_w1_3m:.1f}/{_hg_w2_3m:.1f}) AND origin still losing g={_hg_origin_g:.2f}% — HOLDING.")
+                                _hg_favors_origin = False
                             if _hg_favors_origin and (_hg_w1_15m != 0 or _hg_w2_15m != 0):
                                 _hg_ord_side_first = 'SELL' if _hg_long else 'BUY'
                                 _hg_pos_side_first = 'LONG' if _hg_long else 'SHORT'
