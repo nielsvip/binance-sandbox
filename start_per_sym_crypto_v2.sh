@@ -71,7 +71,7 @@ cmd_start() {
     echo "[per_sym_crypto_v2] starting daemon at $(date -u +%FT%TZ) on $HOSTNAME" | tee -a "$LOG"
     # Daily full-grid: 24h interval. Workers 4 (S1 has 8 cores; leave headroom for sweeps).
     nohup "$PYTHON" -u "$SCRIPT" --daemon --accounts ang,fin,men,flz \
-            --years 4 --workers 4 --sides LONG,SHORT \
+            --years 4 --workers 4 \
             --cycle-interval-s 86400 \
             >> "$LOG" 2>&1 < /dev/null &
     pid=$!
@@ -121,7 +121,7 @@ cmd_stop() {
 cmd_once() {
     echo "[per_sym_crypto_v2] running ONE cycle in foreground (host=$HOSTNAME)"
     "$PYTHON" -u "$SCRIPT" --accounts ang,fin,men,flz \
-            --years 4 --workers 4 --sides LONG,SHORT
+            --years 4 --workers 4
 }
 
 action="${1:-status}"
