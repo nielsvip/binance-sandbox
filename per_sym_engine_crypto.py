@@ -24,15 +24,26 @@ from scipy.signal import lfilter
 
 from wt_dc_hierarchy import compute_hierarchy_full
 
-# Import the v8_quick_engine vectorized RZ cascade — handles BTC's RZ_PROXIMITY logic.
-# v8_quick_engine is a heavy module; lazy-import compute_rz_cascade_signals only.
-def _import_rz_cascade():
+# Import v8_quick_engine vectorized signal aggregators — already include all entry/exit paths
+# (BTC_BREAKOUT, ACCEL_RAMP, BB_SQUEEZE, AUGMENT, DELTA_ENGINE, SATOSHIT, FH_MOMENTUM, DC_DAYTRADE,
+# K_ZONE, MFI_ENTRY, VWAP_FILTER, STDEV_BREAKOUT/BOUNCE, RZ_BREAKOUT, ATR_ADAPTIVE_SIZING,
+# WINNER_PROTECT, RANK_CONVICTION, etc.). User 2026-05-05: "use all functions we have built — years of work".
+def _import_v8():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from v8_quick_engine import compute_rz_cascade_signals as _rz
-    return _rz
-_rz_cascade_signals = None  # set on first use to avoid heavy import at module load
+    from v8_quick_engine import compute_entry_signals as _ce, compute_exit_signals as _cx, compute_rz_cascade_signals as _rz, QuickConfig as _QC
+    return _ce, _cx, _rz, _QC
+
+_v8_compute_entry = None
+_v8_compute_exit = None
+_rz_cascade_signals = None
+_v8_QuickConfig = None
+
+def _ensure_v8_loaded():
+    global _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig
+    if _v8_compute_entry is None:
+        _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig = _import_v8()
 
 ROOT = Path(__file__).resolve().parent
 
@@ -196,6 +207,13 @@ class SymParams:
     # Detects per-TF: at_upper/at_lower (RZ proximity), breakout_up/down, reverse_up/down.
     # Entry = LTF breakout + alignment across HTFs. Exit = HTF rejection at resistance.
     USE_RZ_CASCADE: bool = False
+    # USE_V8_AGGREGATORS — directly use v8_quick_engine.compute_entry_signals + compute_exit_signals.
+    # These contain ALL the v8 paths (BTC_BREAKOUT, BB_SQUEEZE, DELTA, SATOSHIT, FH_MOM, DC_DAYTRADE,
+    # K_ZONE, MFI, VWAP, STDEV, RZ_BREAKOUT, ATR_SIZING, WINNER_PROTECT, etc.) already vectorized.
+    USE_V8_AGGREGATORS: bool = True
+    # K-zone params (consumed by v8 aggregators)
+    K3M_FLOOR: float = 25.0
+    CT_WT_VELOCITY_1H_MIN: float = 0.0
     RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0
     RZ_CASCADE_WT_DELTA_MIN: float = 0.1
     RZ_CASCADE_VEL_MIN: float = 0.1
@@ -1114,7 +1132,44 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         rz_long_15m = None
         rz_short_15m = None
 
-    if getattr(params, 'USE_WT_DC_HIERARCHY', False):
+    # USE_V8_AGGREGATORS — pull entry/exit from v8_quick_engine which already has ALL paths integrated.
+    # This is the single biggest jump in entry quality — bringing in ALL of BTC_BREAKOUT, ACCEL_RAMP,
+    # DELTA, SATOSHIT, K_ZONE, MFI, VWAP, STDEV, RZ_BREAKOUT, ATR_SIZING, WINNER_PROTECT, etc.
+    if getattr(params, 'USE_V8_AGGREGATORS', False):
+        _ensure_v8_loaded()
+        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
+        # Build a QuickConfig and overlay our params
+        qcfg = _v8_QuickConfig()
+        qcfg.MODE = 'crypto'
+        qcfg.LTF = '3m'
+        for pk, pv in params.to_dict().items():
+            if hasattr(qcfg, pk):
+                try: setattr(qcfg, pk, pv)
+                except Exception: pass
+        try:
+            v8_enter_long = _v8_compute_entry(base, n_3m, True, qcfg, sym=sym)
+            v8_enter_short = _v8_compute_entry(base, n_3m, False, qcfg, sym=sym)
+            v8_leave_long = _v8_compute_exit(base, n_3m, True, qcfg)
+            v8_leave_short = _v8_compute_exit(base, n_3m, False, qcfg)
+        except Exception as e:
+            print(f"[per_sym_engine] v8 aggregators error: {e}", flush=True)
+            v8_enter_long = v8_enter_short = v8_leave_long = v8_leave_short = None
+        # Subsample 3m → 15m (every 5th index)
+        n_15m = len(tf_data['15m']['close'])
+        def _ss_v8(arr_3m: np.ndarray) -> np.ndarray:
+            cut = (len(arr_3m) // 5) * 5
+            sub = arr_3m[:cut][4::5]
+            if len(sub) >= n_15m: return sub[:n_15m]
+            return np.concatenate([np.zeros(n_15m - len(sub), dtype=bool), sub])
+        if v8_enter_long is not None:
+            enter_long = _ss_v8(v8_enter_long)
+            enter_short = _ss_v8(v8_enter_short)
+            leave_long = _ss_v8(v8_leave_long)
+            leave_short = _ss_v8(v8_leave_short)
+        else:
+            enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
+            enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+    elif getattr(params, 'USE_WT_DC_HIERARCHY', False):
         n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
         # Trick: clone params with MODE='tradier' so _resolve_tfs returns ('5m','15m','1h','4h','D');
         # crypto NPZ has no close_5m → hierarchy auto-skips 5m, effectively LTF=15m.
