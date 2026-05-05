@@ -20358,8 +20358,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         _ms_close_side = 'SELL' if _ms_long else 'BUY'
                         _ms_uid = f"MS_USDC_CLOSE_{int(time.time()*1000)}"
                         _ms_reason = f"MICRO_SCALP_USDC_CLOSE_g{_ms_gain:.3f}%_prev{_ms_prev:.3f}%"
-                        logger.critical(f"⚡ [MICRO_SCALP_USDC_CLOSE] {position_key}: gain={_ms_gain:.3f}% < prev={_ms_prev:.3f}% (threshold={_ms_threshold}%) — maker close, NO webhook fallback")
-                        _ms_ok, _ms_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ms_pos_amt, current_price, _ms_pos_amt, _ms_close_side, position_side, _ms_uid, _ms_reason)
+                        logger.critical(f"⚡ [MICRO_SCALP_USDC_CLOSE] {position_key}: gain={_ms_gain:.3f}% < prev={_ms_prev:.3f}% (threshold={_ms_threshold}%) — execute_now close")
+                        _ms_result = await self.execute_now(position_key, account_key, symbol, _ms_pos_amt, _ms_close_side, position_side, _ms_pos_amt, current_price, _ms_uid, _ms_reason, True, 'QUICK_CLOSE')
+                        _ms_ok = 'SUCCESS' in str(_ms_result or '').upper()
+                        _ms_filled = _ms_pos_amt if _ms_ok else 0.0
                         if _ms_ok:
                             logger.critical(f"✅ [MICRO_SCALP_USDC_CLOSED] {position_key}: filled qty={_ms_filled} at ${current_price:.6f}. Pending reopen on price re-cross of exit.")
                             _ms_state_dict[position_key] = {'prev_gain': 0.0, 'exit_price': current_price, 'reopen_pending': True, 'original_side': position_side, 'original_qty': _ms_pos_amt}
@@ -20383,8 +20385,10 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _ms_open_side = 'BUY' if _ms_orig_long else 'SELL'
                             _ms_uid = f"MS_USDC_REOPEN_{int(time.time()*1000)}"
                             _ms_reason = f"MICRO_SCALP_USDC_REOPEN_exit{_ms_exit_px:.6f}_now{current_price:.6f}"
-                            logger.critical(f"⚡ [MICRO_SCALP_USDC_REOPEN] {position_key}: price {current_price:.6f} re-crossed exit {_ms_exit_px:.6f} ({_ms_orig_side}) — maker reopen qty={_ms_orig_qty:.6f}, NO webhook fallback")
-                            _ms_ok, _ms_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, 0.0, current_price, _ms_orig_qty, _ms_open_side, _ms_orig_side, _ms_uid, _ms_reason)
+                            logger.critical(f"⚡ [MICRO_SCALP_USDC_REOPEN] {position_key}: price {current_price:.6f} re-crossed exit {_ms_exit_px:.6f} ({_ms_orig_side}) — execute_now open qty={_ms_orig_qty:.6f}")
+                            _ms_result = await self.execute_now(position_key, account_key, symbol, 0.0, _ms_open_side, _ms_orig_side, _ms_orig_qty, current_price, _ms_uid, _ms_reason, False, 'OPEN')
+                            _ms_ok = 'SUCCESS' in str(_ms_result or '').upper()
+                            _ms_filled = _ms_orig_qty if _ms_ok else 0.0
                             if _ms_ok:
                                 logger.critical(f"✅ [MICRO_SCALP_USDC_REOPENED] {position_key}: filled qty={_ms_filled} at ${current_price:.6f}")
                                 _ms_state_dict[position_key] = {'prev_gain': 0.0, 'exit_price': 0.0, 'reopen_pending': False, 'original_side': '', 'original_qty': 0.0}
@@ -21076,6 +21080,60 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                             await trade_manager.redis_manager.delete(_rds_cooldown_key)
                                     except Exception: pass
                                     logger.warning(f"[WT_15M_SAME_HEDGE_FAIL] {_hedge_pk}: hedge_engine returned False — cooldown/daily-count cleared")
+            # MANDATORY_HEDGE: gain < -0.05% AND wt_3m AND wt_15m both against → MUST have a hedge.
+            # No config kill-switch — unconditional. Per user: "NO position can be at < 0.05% without a hedge".
+            # Skips if: position is itself a hedge, hedge already exists, tracker records hedge, Redis cooldown active.
+            _mh_gain_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.05))
+            if not bool(getattr(position, 'is_hedge', False)) and _pp_gain < _mh_gain_thr:
+                _mh_wt1_15m = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
+                _mh_wt2_15m = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
+                _mh_wt15m_against = (is_long and _mh_wt1_15m < _mh_wt2_15m) or (not is_long and _mh_wt1_15m > _mh_wt2_15m)
+                if _wt3m_against and _mh_wt15m_against:
+                    _mh_hedge_side = "SHORT" if is_long else "LONG"
+                    _mh_hedge_pk = f"{account_key}:{symbol}_{_mh_hedge_side}"
+                    _mh_hedge_pos = await trade_manager.get_position(_mh_hedge_pk, max_age_s=5.0)
+                    _mh_hedge_amt = abs(safe_fetch_float(getattr(_mh_hedge_pos, 'positionAmt', 0), 0)) if _mh_hedge_pos else 0
+                    _mh_tracker_hedged = False
+                    if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
+                        _mh_tracker_hedged = any(h.get('losing_position_key') == position_key or h.get('position_key') == _mh_hedge_pk for h in trade_manager.tracker_manager.active_hedges)
+                    if _mh_hedge_amt > 0 or _mh_tracker_hedged:
+                        logger.debug(f"[MANDATORY_HEDGE_EXISTS] {position_key}: hedge present (amt={_mh_hedge_amt:.6f} tracker={_mh_tracker_hedged}) — skip")
+                    else:
+                        _mh_cd_key = f"mandatory_hedge_cd:{position_key}"
+                        _mh_last = 0.0
+                        try:
+                            if trade_manager.redis_manager:
+                                _mh_raw = await trade_manager.redis_manager.get(_mh_cd_key)
+                                _mh_last = float(_mh_raw) if _mh_raw else 0.0
+                        except Exception: pass
+                        _mh_cooldown = int(getattr(config, 'MANDATORY_HEDGE_COOLDOWN_SEC', 900))
+                        if (time.time() - _mh_last) < _mh_cooldown:
+                            logger.debug(f"[MANDATORY_HEDGE_COOLDOWN] {position_key}: {int(time.time()-_mh_last)}s ago < {_mh_cooldown}s")
+                        else:
+                            _mh_he = getattr(trade_manager, 'hedge_engine', None)
+                            _mh_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
+                            logger.critical(f"🛡️ [MANDATORY_HEDGE] {position_key}: gain={_pp_gain:.2f}% < {_mh_gain_thr}% wt_3m+wt_15m against — firing hedge qty={_mh_qty:.6f}")
+                            _mh_ts = time.time()
+                            try:
+                                if trade_manager.redis_manager:
+                                    await trade_manager.redis_manager.set(_mh_cd_key, str(_mh_ts), ex=_mh_cooldown + 60)
+                            except Exception: pass
+                            _mh_result = False
+                            if _mh_he:
+                                try:
+                                    _mh_result = await _mh_he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _mh_qty, current_price)
+                                except Exception as _mh_e:
+                                    logger.error(f"[MANDATORY_HEDGE_ERR] {_mh_hedge_pk}: {type(_mh_e).__name__}: {_mh_e}")
+                            else:
+                                logger.error(f"[MANDATORY_HEDGE_NO_ENGINE] {position_key}: no hedge_engine available")
+                            if _mh_result:
+                                logger.critical(f"✅ [MANDATORY_HEDGE_OK] {_mh_hedge_pk}: hedge opened for {position_key}")
+                            else:
+                                try:
+                                    if trade_manager.redis_manager:
+                                        await trade_manager.redis_manager.delete(_mh_cd_key)
+                                except Exception: pass
+                                logger.warning(f"[MANDATORY_HEDGE_FAIL] {_mh_hedge_pk}: hedge_engine returned False — cooldown cleared")
             if _pp_gain > 0.1:
                 _pp_hold, _pp_hold_reason = trading_policy.check_winner_momentum(i, is_long)
                 if _pp_hold:
@@ -23138,6 +23196,20 @@ async def _price_level_reentry_monitor(trade_manager: MultiAccountTradeManager) 
                 _uid = f"LEVEL_REENTRY_{int(now_ts)}"
                 logger.warning(f"[REENTRY_MONITOR] {position_key}: {source} level={level_price:.6f} cur={_cur_price:.6f} → partial qty={fire_qty:.4f} (${fire_usd:.1f})")
                 await execute_now(trade_manager.order_queue, trade_manager, position_key, _acc, _sym, 0.0, 'BUY' if _is_long else 'SELL', 'LONG' if _is_long else 'SHORT', fire_qty, _cur_price, _uid, f"{source}_LEVEL={level_price:.6f}", False, "AUGMENT")
+                # Consume FILE reentry entry so it cannot re-fire after 900s TTL expires
+                if source.startswith('FILE_') and source.endswith('_REENTRY'):
+                    _side_str = 'long' if 'LONG' in source else 'short'
+                    _rfile = base_path / _acc / f'{_side_str}_reentry.json'
+                    try:
+                        async with aiofiles.open(_rfile, 'r') as _rf:
+                            _rdata = json.loads(await _rf.read())
+                        if position_key in _rdata:
+                            del _rdata[position_key]
+                            async with aiofiles.open(_rfile, 'w') as _rwf:
+                                await _rwf.write(json.dumps(_rdata, indent=2))
+                            logger.warning(f"[REENTRY_MONITOR_CONSUME] {position_key}: removed from {_rfile.name} — will not re-fire")
+                    except Exception as _ce:
+                        logger.debug(f"[REENTRY_MONITOR_CONSUME] {position_key}: consume error: {_ce}")
             except Exception as _e:
                 logger.debug(f"[REENTRY_MONITOR] {position_key} error: {_e}")
     # Purge old cache entries > 2h

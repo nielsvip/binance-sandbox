@@ -3293,17 +3293,8 @@ class StopLevelsManager:
         if (is_long and target_price >= current_price) or (not is_long and target_price <= current_price):
             self.logger.warning(f"[{position_key}] Target stop {target_price} is wrong side of current {current_price}. Skipping.")
             return
-        try :
-            client_oid = self._build_client_order_id(position_key)
-            step_size = float(symbol_cfg.get("stepSize") or symbol_cfg.get("step_size") or 0.001)
-            precision = max(0, int(-math.log10(step_size)))
-            qty_str = f"{positionAmt:.{precision}f}"
-            self.logger.info(f"[{position_key}] Placing STOP_MARKET {qty_str} @ {target_price}")
-            await self._rate_limited_api_call(asyncio.to_thread( client.futures_create_order, symbol=symbol, side='SELL' if is_long else 'BUY', type='STOP_MARKET', stopPrice=str(target_price), quantity=qty_str, positionSide=position_side, newClientOrderId=client_oid ))
-            self._managed_stop_ids.add("PENDING") 
-            self._register_stop(position_key, "PENDING", target_price, qty_str)
-        except Exception as e:
-            self.logger.error(f"[{position_key}] Failed to create stop: {e}")
+        self.logger.error(f"[{position_key}] STOP_MARKET_DISABLED: direct futures_create_order killed — all orders must route through execute_now. stop={target_price} qty={positionAmt}")
+        return
 
     async def _cancel_single_order(self, client, symbol, order, position_key):
         order_id = str(order.get("orderId"))

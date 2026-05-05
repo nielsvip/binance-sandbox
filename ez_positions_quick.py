@@ -12639,22 +12639,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
             # exited). Per user 2026-04-27: "double-close does no harm; closes always fall
             # back to webhook." Webhook fallback fires here only when execute_now's INNER
             # maker→webhook chain returns non-SUCCESS/non-BLOCK after its 2 retries.
-            logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: execute_now={str(result)[:60]} — firing wrapper-level webhook fallback (double-close harmless).")
-            try:
-                _fb_uid = f"{unique_id}:WRAPPER_FB"
-                _fb_reason = f"{reason}_QWFB"
-                success = await trade_manager.send_webhook(
-                    position_key, account_key, symbol, real_amt, reduce_qty, current_price,
-                    side, position_side, _fb_uid, ('CLOSE' in action.upper()), _fb_reason,
-                    level=None, stoch_required=False
-                )
-                if success:
-                    logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: wrapper webhook fired successfully.")
-                else:
-                    logger.error(f"❌ [CLOSE_WEBHOOK_FALLBACK_FAIL] {position_key}: webhook returned False.")
-            except Exception as _wfb_e:
-                logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: {type(_wfb_e).__name__}: {_wfb_e}")
-                success = False
+            logger.error(f"🚫 [CLOSE_EXECUTE_NOW_FAILED] {position_key}: execute_now={str(result)[:60]} — no fallback (ONLY execute_now can execute).")
         if success:
             tracker_manager.registry.release_hedge_slot(account_key, symbol)
         if override_qty is None or not override_qty:
@@ -12702,20 +12687,7 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                 _act_up = (action or '').upper()
                 _is_close_or_reduce = ('CLOSE' in _act_up or 'REDUCE' in _act_up) and 'OPEN' not in _act_up and 'AUGMENT' not in _act_up
                 if _is_close_or_reduce:
-                    logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: action={action} result={str(result)[:60]} — firing wrapper-level webhook fallback (double-close harmless).")
-                    try:
-                        _fb_uid = f"{unique_id}:WRAPPER_FB"
-                        _fb_reason = f"{reason}_QWFB"
-                        _fb_qty = override_qty if (override_qty is not None and override_qty > 0) else qty
-                        success = await trade_manager.send_webhook(
-                            position_key, account_key, symbol, real_amt, _fb_qty, current_price,
-                            side, position_side, _fb_uid, ('CLOSE' in _act_up), _fb_reason,
-                            level=None, stoch_required=False
-                        )
-                        if success:
-                            logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: wrapper webhook fired successfully.")
-                    except Exception as _wfb2_e:
-                        logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: {type(_wfb2_e).__name__}: {_wfb2_e}")
+                    logger.error(f"🚫 [CLOSE_EXECUTE_NOW_FAILED] {position_key}: action={action} result={str(result)[:60]} — no fallback (ONLY execute_now can execute).")
                 else:
                     logger.critical(f"🚫 [WEBHOOK_BYPASS_KILLED] {position_key}: action={action} result={str(result)[:60]} — NOT firing webhook (entry actions stay killed per 2026-04-17 CELRUSDT triple-OPEN).")
         if not success:
@@ -14027,22 +13999,7 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                         return f'{position_key} WAIT MEANS WAIT'
                     result = await trade_manager.execute_now(position_key, account_key, symbol, position.positionAmt, side, position_side, reduction_qty, current_price, f"QUICK_{full_reason}_REDUCE", f"QUICK_{full_reason}_REDUCE", False, rec_exit, is_hedge=is_hedge, hedge_for=hedge_for)
                     if result and 'SUCCESS' not in result and 'BLOCK' not in result and account_key != 'ang':
-                        # 2026-04-27: webhook fallback re-enabled for REDUCE (this branch is
-                        # action_type="REDUCE", always close-side). Per user "double-close does
-                        # no harm." 2026-04-17 blanket kill caused phantom-close loops.
-                        logger.warning(f"⚠️ [CLOSE_WEBHOOK_FALLBACK] {position_key}: REDUCE execute_now={str(result)[:60]} — firing wrapper-level webhook fallback.")
-                        try:
-                            _fb_ok = await trade_manager.send_webhook(
-                                position_key, account_key, symbol, position.positionAmt, reduction_qty, current_price,
-                                side, position_side, f"PROACTIVE_REDUCE_FB:{full_reason}", False,
-                                f"QUICK_{full_reason}_REDUCE_QWFB", level=None, stoch_required=False
-                            )
-                            result = "SUCCESS_WEBHOOK_FALLBACK" if _fb_ok else None
-                            if _fb_ok:
-                                logger.warning(f"✅ [CLOSE_WEBHOOK_FALLBACK_OK] {position_key}: REDUCE webhook fired.")
-                        except Exception as _pfb_e:
-                            logger.error(f"[CLOSE_WEBHOOK_FALLBACK_ERR] {position_key}: REDUCE {type(_pfb_e).__name__}: {_pfb_e}")
-                            result = None
+                        logger.error(f"🚫 [REDUCE_EXECUTE_NOW_FAILED] {position_key}: execute_now={str(result)[:60]} — no fallback (ONLY execute_now can execute).")
                     if result and 'SUCCESS' in result:
                         tracker_manager.registry.release_hedge_slot(account_key, symbol)
                         await tracker_manager.clear_processing(position_key)
@@ -17395,18 +17352,9 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
                         _fppl_reason = f"SCALP_V3_OPEN_FAST_PPL_TP_gain{gain:.2f}_URL2_50pct"
                         _fppl_px = safe_fetch_float(getattr(p, 'mark_price', 0), 0) or safe_fetch_float(ind.get('current_price', 0), 0)
                         if _fppl_px <= 0: continue
-                        logger.warning(f"⚡ [SCALP_V3_FAST_PPL_TP] {pk}: gain={gain:.2f}% ≥ {_fppl_min_gain}% — firing 50% maker→URL2 + BE stop @ {_fppl_be_stop:.6f}")
-                        _fppl_ok = False
-                        try:
-                            _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, pk, sym, amt, _fppl_px, _fppl_reduce, _fppl_close_side, _fppl_pos_side, _fppl_uid, _fppl_reason)
-                            _fppl_ok = bool(_m_ok)
-                        except Exception as _fppl_me:
-                            logger.warning(f"[SCALP_V3_FAST_PPL_MAKER_ERR] {pk}: {type(_fppl_me).__name__}: {_fppl_me} — webhook2 fallback")
-                        if not _fppl_ok:
-                            try:
-                                _fppl_ok = await trade_manager.send_webhook(pk, account_key, sym, amt, _fppl_reduce, _fppl_px, _fppl_close_side, _fppl_pos_side, _fppl_uid, False, _fppl_reason, url_variant="2")
-                            except Exception as _fppl_we:
-                                logger.error(f"[SCALP_V3_FAST_PPL_URL2_ERR] {pk}: {type(_fppl_we).__name__}: {_fppl_we}")
+                        logger.warning(f"⚡ [SCALP_V3_FAST_PPL_TP] {pk}: gain={gain:.2f}% ≥ {_fppl_min_gain}% — execute_now 50% partial close URL2 + BE stop @ {_fppl_be_stop:.6f}")
+                        _fppl_result = await trade_manager.execute_now(pk, account_key, sym, amt, _fppl_close_side, _fppl_pos_side, _fppl_reduce, _fppl_px, _fppl_uid, _fppl_reason, False, 'QUICK_REDUCE', url_variant="2")
+                        _fppl_ok = 'SUCCESS' in str(_fppl_result or '').upper()
                         if _fppl_ok:
                             trade_manager.partial_profit_lock_state[pk] = {'fired': True, 'first_exit_price': _fppl_px, 'stop_level': _fppl_be_stop, 'stop_upgraded': False}
                             fires += 1

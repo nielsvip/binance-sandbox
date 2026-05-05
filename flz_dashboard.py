@@ -765,7 +765,7 @@ def api_recalc(account, sym, side):
 
 
 def _load_per_sym_report() -> List[Dict[str, Any]]:
-    """Build per-symbol overview: 4yr sweep winner + 7D hourly opinion + live trade count."""
+    """Build per-symbol overview: 4yr sweep winner + 7D hourly opinion + live + paper trade stats."""
     cached = _cache_get("symbol_report")
     if cached is not None:
         return cached
@@ -778,23 +778,30 @@ def _load_per_sym_report() -> List[Dict[str, Any]]:
         except Exception:
             pass
 
-    # 2. Load all hourly_reconfig active_config.json files (7D opinions)
+    # 2. Load all hourly_reconfig active_config.json files (7D opinions) + opinions.json
     hourly_configs: Dict[str, Dict[str, Any]] = {}
+    opinions_map: Dict[str, str] = {}  # key → opinion string (LONG/SHORT/FLAT/BELOW_THRESHOLD)
     for acct_dir in HOURLY_RECONFIG_DIR.iterdir():
         if not acct_dir.is_dir():
             continue
         ac_path = acct_dir / "active_config.json"
-        if not ac_path.exists():
-            continue
-        try:
-            ac = json.loads(ac_path.read_text())
-            for k, v in ac.items():
-                hourly_configs[k] = {**v, "_account": acct_dir.name}
-        except Exception:
-            pass
+        if ac_path.exists():
+            try:
+                ac = json.loads(ac_path.read_text())
+                for k, v in ac.items():
+                    hourly_configs[k] = {**v, "_account": acct_dir.name}
+            except Exception:
+                pass
+        op_path = acct_dir / "opinions.json"
+        if op_path.exists():
+            try:
+                op_data = json.loads(op_path.read_text())
+                for k, v in op_data.get("syms", {}).items():
+                    opinions_map[k] = v.get("opinion", "")
+            except Exception:
+                pass
 
     # 3. Count live CLOSED ROUNDS per (sym_side) from history JSONLs (last 30 days)
-    # Use the same _load_account_history + _reconstruct_trades path for consistency.
     live_counts: Dict[str, int] = defaultdict(int)
     live_pnl: Dict[str, float] = defaultdict(float)
     cutoff_30d = time.time() - 30 * 86400
@@ -816,7 +823,41 @@ def _load_per_sym_report() -> List[Dict[str, Any]]:
         except Exception:
             continue
 
-    # 4. Merge into unified rows
+    # 4. Aggregate paper forward trades (CLOSE records, last 30 days, all variants+arms)
+    paper_closes: Dict[str, int] = defaultdict(int)
+    paper_pnl: Dict[str, float] = defaultdict(float)
+    paper_forward_dir = BASE_DIR / "data" / "paper_forward"
+    if paper_forward_dir.exists():
+        for variant_dir in paper_forward_dir.iterdir():
+            if not variant_dir.is_dir():
+                continue
+            for arm_dir in variant_dir.iterdir():
+                if not arm_dir.is_dir() or not arm_dir.name.startswith("arm_"):
+                    continue
+                tf = arm_dir / "trades.jsonl"
+                if not tf.exists():
+                    continue
+                try:
+                    for line in tf.read_text().splitlines():
+                        try:
+                            rec = json.loads(line)
+                        except Exception:
+                            continue
+                        if rec.get("action") != "CLOSE":
+                            continue
+                        if float(rec.get("ts") or 0) < cutoff_30d:
+                            continue
+                        sym_p = (rec.get("symbol") or "").upper()
+                        side_p = (rec.get("side") or "").upper()
+                        if not sym_p or side_p not in ("LONG", "SHORT"):
+                            continue
+                        pk = f"{sym_p}_{side_p}"
+                        paper_closes[pk] += 1
+                        paper_pnl[pk] += float(rec.get("net_pct") or 0)
+                except Exception:
+                    continue
+
+    # 5. Merge into unified rows
     all_keys = sorted(set(list(per_sym.keys()) + list(hourly_configs.keys())))
     rows: List[Dict[str, Any]] = []
     for key in all_keys:
@@ -830,22 +871,46 @@ def _load_per_sym_report() -> List[Dict[str, Any]]:
             mode = "crypto" if (sym_part.endswith("USDC") or sym_part.endswith("USDT")) else "tradier"
         lc = live_counts.get(key, 0)
         lp = live_pnl.get(key, 0.0)
+        pc = paper_closes.get(key, 0)
+        pp = paper_pnl.get(key, 0.0)
+        # Active overrides: merge per_sym overrides + hourly overrides (hourly takes precedence)
+        ps_ovr = {k: v for k, v in ps.get("overrides", {}).items() if not k.startswith("_")}
+        hc_ovr = {k: v for k, v in hc.get("overrides", {}).items() if not k.startswith("_")}
+        merged_ovr = {**ps_ovr, **hc_ovr}
+        trade_gate = hc.get("_trade_gate", "")
+        long_enabled = merged_ovr.get("LONG_ENABLED", None)
+        short_enabled = merged_ovr.get("SHORT_ENABLED", None)
+        opinion = opinions_map.get(key, "")
         row = {
             "key": key,
             "sym": sym_part,
             "side": side_part,
             "mode": mode,
             "account": acct or "?",
+            # 4yr sweep (per_sym)
             "per_sym_wsharpe": round(float(ps.get("wsharpe", 0) or 0), 4),
             "per_sym_trades": int(ps.get("trades", 0) or 0),
             "per_sym_tag": ps.get("winning_tag", ""),
             "per_sym_sample": ps.get("sample_tag", ""),
+            # 7D hourly reconfig
             "hourly_wsharpe": round(float(hc.get("wsharpe", 0) or 0), 4),
             "hourly_trades": int(hc.get("trades", 0) or 0),
             "hourly_tag": hc.get("winning_tag", ""),
+            "trade_gate": trade_gate,
+            "opinion": opinion,
+            # Live closed rounds (30d)
             "live_closes_30d": lc,
             "live_pnl_30d": round(lp, 2),
             "live_avg_pnl": round(lp / lc, 4) if lc > 0 else 0.0,
+            # Paper forward trades (30d, all variants+arms)
+            "paper_closes_30d": pc,
+            "paper_pnl_30d": round(pp, 2),
+            "paper_avg_pnl": round(pp / pc, 4) if pc > 0 else 0.0,
+            # Active settings
+            "long_enabled": long_enabled,
+            "short_enabled": short_enabled,
+            "overrides": merged_ovr,
+            "override_count": len(merged_ovr),
             "has_per_sym": bool(ps),
             "has_hourly": bool(hc) and (hc.get("trades", 0) or 0) > 0,
         }

@@ -140,7 +140,10 @@ async def main():
             sym = p.get("symbol", "")
             qty = float(p.get("quantity", 0))
             cost = float(p.get("cost_basis", 0) or 0)
-            entry = (cost / qty) if qty else 0
+            # Options: qty is contracts, quotes are per-share; 1 contract = 100 shares
+            is_option = bool(re.search(r'\d{6}[CP]\d+', sym))
+            contract_mult = 100.0 if is_option else 1.0
+            entry = (cost / (qty * contract_mult)) if qty else 0
             last = float(quotes.get(sym, 0) or 0)
             if not last and p.get("date_acquired"):
                 last = entry

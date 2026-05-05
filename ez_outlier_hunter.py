@@ -350,25 +350,8 @@ class OutlierHunter:
         if float(q) <= 0:
             logger.warning(f"Qty zero for {sym} @ {price}")
             return False
-        import hmac, hashlib, urllib.parse
-        ts = int(time.time() * 1000)
-        params = {"symbol": sym, "side": side, "positionSide": position_side, "type": "MARKET", "quantity": q, "timestamp": ts, "recvWindow": 5000}
-        query = urllib.parse.urlencode(params)
-        sig = hmac.new(self.api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
-        params["signature"] = sig
-        headers = {"X-MBX-APIKEY": self.api_key}
-        try:
-            async with session.post(f"{FAPI}/fapi/v1/order", data=params, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as r:
-                resp = await r.json()
-                if r.status == 200:
-                    logger.warning(f"ORDER OK {side} {position_side} {sym} qty={q} @ {price}: orderId={resp.get('orderId')}")
-                    return True
-                else:
-                    logger.error(f"ORDER FAIL {sym}: {resp}")
-                    return False
-        except Exception as e:
-            logger.error(f"ORDER ERROR {sym}: {e}")
-            return False
+        logger.error(f"[OUTLIER_HUNTER_ORDER_DISABLED] {sym} {side} {position_side} qty={q} @ {price} — direct REST order KILLED. All orders must route through execute_now.")
+        return False
 
     async def enter_outlier(self, session, cand, now):
         sym = cand["sym"]
