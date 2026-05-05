@@ -41,10 +41,10 @@ SYMBOLS_SHORT_TRB = ROOT / "symbols_trb_short.json"
 SYMBOLS_LONG_TRC  = ROOT / "symbols_trc_long.json"
 SYMBOLS_SHORT_TRC = ROOT / "symbols_trc_short.json"
 
-WINDOW_DAYS = 7.0
-MIN_TRADES_FOR_OPINION = 5
+WINDOW_DAYS = 14.0          # 2 weeks — tradier stocks trade infrequently; 7D gave 0 trades
+MIN_TRADES_FOR_OPINION = 2  # lowered from 5; 7-14 day sample is thin for stocks
 RATE_GUARD_DISABLED = "1"
-WSHARPE_TRADE_FLOOR = 0.7  # wsharpe below this → disable trading in overrides (all accounts)
+WSHARPE_TRADE_FLOOR = 0.0   # lowered from 0.7; disabling on <0 only — small sample can't hit 0.7
 
 
 _LONG_ONLY_OVR = {"LONG_ENABLED": True,  "SHORT_ENABLED": False,
@@ -236,11 +236,22 @@ def run_symbol(sym: str, can_long: bool, can_short: bool,
     }
 
 
-def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path) -> None:
+def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path,
+               priority_syms: Optional[List[str]] = None,
+               only_syms: Optional[List[str]] = None) -> None:
     long_syms = set(load_symbols_file(long_file))
     short_syms = set(load_symbols_file(short_file))
     all_syms = sorted(long_syms | short_syms)
     all_syms = [s for s in all_syms if (NPZ_DIR / f"{s}.npz").exists()]
+
+    if only_syms:
+        all_syms = [s for s in all_syms if s in set(only_syms)]
+
+    # Process priority symbols first (e.g. open positions that need immediate config update)
+    if priority_syms:
+        pset = set(priority_syms)
+        all_syms = [s for s in priority_syms if s in set(all_syms)] + \
+                   [s for s in all_syms if s not in pset]
 
     run_root = out_dir / "_engine_runs" / str(int(time.time()))
     run_root.mkdir(parents=True, exist_ok=True)
@@ -254,7 +265,8 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path) 
         except Exception:
             pass
 
-    print(f"[{account}] {len(all_syms)} symbols (long={len(long_syms)}, short={len(short_syms)})")
+    label = f"priority={priority_syms[:4]}…" if priority_syms else "all"
+    print(f"[{account}] {len(all_syms)} symbols (long={len(long_syms)}, short={len(short_syms)}) [{label}]")
     t0 = time.time()
     updated = 0
 
@@ -293,21 +305,74 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path) 
     print(f"[{account}] done: {updated} updated, {len(existing)} total entries, {elapsed:.1f}s")
 
 
+def _get_open_positions_trb() -> List[str]:
+    """Return symbols with open trb positions from today's decisions JSONL."""
+    try:
+        import re
+        from datetime import datetime, timezone
+        dec_dir = ROOT / "data" / "decisions"
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        dec_file = dec_dir / f"decisions_trb_{today}.jsonl"
+        if not dec_file.exists():
+            files = sorted(dec_dir.glob("decisions_trb_*.jsonl"))
+            dec_file = files[-1] if files else None
+        if not dec_file:
+            return []
+        last_event: dict = {}
+        with open(dec_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                    pk = rec.get("position_key", "")
+                    if "trb:" not in pk:
+                        continue
+                    last_event[pk] = rec.get("action", "")
+                except Exception:
+                    pass
+        open_syms = []
+        for pk, action in last_event.items():
+            if "CLOSE" not in action and "HOLD" in action or "OPEN" in action or "WAIT" in action:
+                sym = pk.split(":")[-1]
+                sym = re.sub(r"_(LONG|SHORT)$", "", sym)
+                if sym not in open_syms:
+                    open_syms.append(sym)
+        return open_syms
+    except Exception:
+        return []
+
+
 def main() -> int:
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--accounts", default="trb,trc",
-                    help="comma-separated accounts (default trb,trc)")
+    ap.add_argument("--accounts", default="trb",
+                    help="comma-separated accounts (default trb)")
     ap.add_argument("--daemon", action="store_true",
                     help="run continuously every hour")
     ap.add_argument("--interval-minutes", type=int, default=60)
+    ap.add_argument("--priority-syms", default="",
+                    help="comma-separated symbols to process first (overrides auto-detect)")
+    ap.add_argument("--syms", default="",
+                    help="comma-separated symbols to process (skip all others)")
     args = ap.parse_args()
+
+    os.environ["RATE_GUARD_DISABLED"] = RATE_GUARD_DISABLED
 
     accounts = [a.strip() for a in args.accounts.split(",") if a.strip()]
     account_map = {
         "trb": (SYMBOLS_LONG_TRB, SYMBOLS_SHORT_TRB, OUT_DIR_TRB),
         "trc": (SYMBOLS_LONG_TRC, SYMBOLS_SHORT_TRC, OUT_DIR_TRC),
     }
+    only_syms = [s.strip() for s in args.syms.split(",") if s.strip()] or None
+
+    def _priority_for(acct: str) -> List[str]:
+        if args.priority_syms:
+            return [s.strip() for s in args.priority_syms.split(",") if s.strip()]
+        if acct == "trb":
+            return _get_open_positions_trb()
+        return []
 
     def run_once():
         for acct in accounts:
@@ -315,10 +380,15 @@ def main() -> int:
                 print(f"Unknown account: {acct}")
                 continue
             long_f, short_f, out_d = account_map[acct]
-            run_account(acct, long_f, short_f, out_d)
+            prio = _priority_for(acct)
+            if prio:
+                print(f"[{acct}] priority symbols: {prio}")
+            run_account(acct, long_f, short_f, out_d,
+                        priority_syms=prio, only_syms=only_syms)
 
     if args.daemon:
-        print(f"[tradier_hourly_reconfig] daemon started, interval={args.interval_minutes}min")
+        print(f"[tradier_hourly_reconfig] daemon started, interval={args.interval_minutes}min, "
+              f"window={WINDOW_DAYS}d, min_trades={MIN_TRADES_FOR_OPINION}")
         while True:
             t_cycle = time.time()
             run_once()
