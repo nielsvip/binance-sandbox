@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field, asdict
+from typing import Any
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -32,18 +33,25 @@ def _import_v8():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from v8_quick_engine import compute_entry_signals as _ce, compute_exit_signals as _cx, compute_rz_cascade_signals as _rz, QuickConfig as _QC
-    return _ce, _cx, _rz, _QC
+    from v8_quick_engine import (
+        compute_entry_signals as _ce,
+        compute_exit_signals as _cx,
+        compute_rz_cascade_signals as _rz,
+        QuickConfig as _QC,
+        simulate as _sim,
+    )
+    return _ce, _cx, _rz, _QC, _sim
 
 _v8_compute_entry = None
 _v8_compute_exit = None
 _rz_cascade_signals = None
 _v8_QuickConfig = None
+_v8_simulate = None
 
 def _ensure_v8_loaded():
-    global _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig
+    global _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig, _v8_simulate
     if _v8_compute_entry is None:
-        _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig = _import_v8()
+        _v8_compute_entry, _v8_compute_exit, _rz_cascade_signals, _v8_QuickConfig, _v8_simulate = _import_v8()
 
 ROOT = Path(__file__).resolve().parent
 
@@ -211,9 +219,18 @@ class SymParams:
     # These contain ALL the v8 paths (BTC_BREAKOUT, BB_SQUEEZE, DELTA, SATOSHIT, FH_MOM, DC_DAYTRADE,
     # K_ZONE, MFI, VWAP, STDEV, RZ_BREAKOUT, ATR_SIZING, WINNER_PROTECT, etc.) already vectorized.
     USE_V8_AGGREGATORS: bool = True
+    # USE_V8_SIMULATE_DIRECT: when True, bypass MY walker entirely and call v8_quick_engine.simulate()
+    # directly. This guarantees v8-equivalent sharpe numbers (matches historical sweep results).
+    # User 2026-05-05 directive: use ALL vectorized funcs. Default ON when BASELINE_OVERRIDES present.
+    USE_V8_SIMULATE_DIRECT: bool = True
     # K-zone params (consumed by v8 aggregators)
     K3M_FLOOR: float = 25.0
     CT_WT_VELOCITY_1H_MIN: float = 0.0
+    # BASELINE_OVERRIDES — arbitrary dict of v8 knobs loaded from a proven override JSON.
+    # User 2026-05-05: per_sym must START from proven >0.7 baselines and optimize UP.
+    # When set, all keys are forwarded to QuickConfig before running v8 aggregators.
+    # Profiler: load from override_btc_BEST.json (BTC) or override_v5_rz_loose.json (multi-sym), etc.
+    BASELINE_OVERRIDES: dict = field(default_factory=dict)
     RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0
     RZ_CASCADE_WT_DELTA_MIN: float = 0.1
     RZ_CASCADE_VEL_MIN: float = 0.1
@@ -1142,7 +1159,20 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         qcfg = _v8_QuickConfig()
         qcfg.MODE = 'crypto'
         qcfg.LTF = '3m'
+        # 1. Apply baseline override (proven config from sweep — e.g. override_btc_BEST.json keys)
+        baseline_ovr = getattr(params, 'BASELINE_OVERRIDES', {}) or {}
+        for k, v in baseline_ovr.items():
+            if k.startswith('_'): continue
+            try: setattr(qcfg, k, v)
+            except Exception: pass
+        # If BTC_DEDICATED_ENABLED is True (override_btc_BEST sets this), per-sym scope it.
+        # Mirrors flz8 profile pattern: cfg.BTC_DEDICATED_SYMBOLS = (sym,) so each sym uses
+        # its own BTC-dedicated config in isolation, not the global tuple.
+        if getattr(qcfg, 'BTC_DEDICATED_ENABLED', False):
+            qcfg.BTC_DEDICATED_SYMBOLS = (sym,)
+        # 2. Then overlay SymParams (per-sym sweep variations on top of baseline)
         for pk, pv in params.to_dict().items():
+            if pk == 'BASELINE_OVERRIDES': continue
             if hasattr(qcfg, pk):
                 try: setattr(qcfg, pk, pv)
                 except Exception: pass

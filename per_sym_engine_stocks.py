@@ -1,0 +1,465 @@
+#!/usr/bin/env python3
+"""per_sym_engine_stocks — stocks variant of per_sym_engine_crypto.
+
+Same architecture as crypto engine, with stocks-specific deltas per CLAUDE.md
+"Crypto vs Stock Parameters — OPPOSITE — NEVER copy between them" table:
+
+| Parameter | Crypto Best | Stock Best |
+|-----------|------------|------------|
+| Entry score | 18 | 24 |
+| Reentry stoch gate | K<50 | K<80 |
+| HTF alignment | ≥1 | ≥2 |
+| ADX in sizing | Disable | Keep |
+| Sizing indicator | RSI ok | MFI only |
+| WT cross alignment | ≥2 | ≥3 |
+| Combined stoch gate | 50 | 60 |
+| LTF | 3m | 5m |
+| Commission RT | 0.04%/side (0.08% RT) | 0.02%/side (0.04% RT) |
+
+Stocks NPZ has close_5m (no close_3m). Tradier has 0% commission + 2bp slippage.
+HTF focus: stocks favor 4h/D-driven setups; profiler grids weight HTF higher.
+
+Reuses crypto engine's vectorized infrastructure via import — only the defaults,
+LTF, commission, and DECISION_TFS differ.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# Import crypto engine internals — re-use everything except commission constant + defaults.
+import per_sym_engine_crypto as _crypto
+from per_sym_engine_crypto import (
+    compute_bb, compute_wt, compute_dc, bb_auto_tune_mult,
+    walk_trades, walk_trades_dual, _build_signals,
+    _import_v8, _ensure_v8_loaded as _crypto_v8_ensure,
+    compute_hierarchy_full, NPZ_DIR,
+)
+
+# Stocks-specific commission
+STOCKS_COMMISSION_PER_SIDE = 0.0002  # 0% fee + 0.02% slippage = 0.02% per side
+COMMISSION_RT_PCT_STOCKS = 100.0 * 2.0 * STOCKS_COMMISSION_PER_SIDE  # 0.04% RT
+
+# Hard floor — same multi-TF rule as crypto (≥2 TFs agree)
+MIN_TFS_AGREE_FLOOR = 2
+
+# Stocks decision TFs — focus higher per user 2026-05-05 directive
+DECISION_TFS_STOCKS = ('15m', '1h', '4h', 'D')
+
+# 5m bars per HTF bar (NOT 3m — stocks have no 3m)
+TF_BARS_5M = {'5m': 1, '15m': 3, '1h': 12, '4h': 48, 'D': 78, 'W': 78 * 5, 'M': 78 * 21}
+# Stocks trade ~6.5h/day (RTH) at 5m = 78 bars/day
+BARS_PER_DAY_STOCKS = 78
+
+_npz_cache_stocks: Dict[str, Dict[str, np.ndarray]] = {}
+
+
+@dataclass
+class SymParamsStocks:
+    """Stocks SymParams — mirrors crypto SymParams structure with stocks-tuned defaults."""
+    # Indicator params (same names as crypto, different defaults — sweep finds per-sym best)
+    BB_LEN_15m: int = 20; BB_STD_15m: float = 2.0
+    BB_LEN_1h: int = 20;  BB_STD_1h: float = 2.0
+    BB_LEN_4h: int = 20;  BB_STD_4h: float = 2.0
+    BB_LEN_D: int = 20;   BB_STD_D: float = 2.0
+    WT_CHAN_15m: int = 10; WT_AVG_15m: int = 21
+    WT_CHAN_1h: int = 10;  WT_AVG_1h: int = 21
+    WT_CHAN_4h: int = 10;  WT_AVG_4h: int = 21
+    WT_CHAN_D: int = 10;   WT_AVG_D: int = 21
+    DC_PERIOD_15m: int = 20; DC_PERIOD_1h: int = 20
+    DC_PERIOD_4h: int = 20;  DC_PERIOD_D: int = 20
+
+    # MULTI-TF — stocks default tighter per CLAUDE.md (HTF >= 2, WT cross >= 3)
+    MIN_TFS_AGREE: int = 3              # was 2 for crypto
+    MIN_TFS_AGREE_ENTRY: int = 3        # 3 of 4 TFs (15m/1h/4h/D) for entry
+    MIN_TFS_AGREE_EXIT: int = 2         # 2 of 4 for exit
+    MIN_TFS_AGREE_REENTRY: int = 2
+
+    # Hold/cooldown — stocks at 5m granularity. Default longer hold than crypto (slower price action).
+    MIN_HOLD_BARS_15m: int = 5          # 5 × 5m = 25 min — proxy for "min hold"
+    COOLDOWN_BARS_15m: int = 3
+
+    # Entry filters
+    USE_BB_FILTER: bool = True
+    USE_WT_CROSS: bool = True
+    USE_DC_BREAK: bool = True
+    BB_TOP_THRESHOLD: float = 0.95
+    BB_BOT_THRESHOLD: float = 0.05
+    BB_LONG_ENTRY_MAX: float = 0.20     # same — buy oversold
+    BB_SHORT_ENTRY_MIN: float = 0.80
+    BB_AUTO_TUNE_ENABLED: bool = False
+    BB_AUTO_TUNE_LOOKBACK: int = 100
+    BB_AUTO_TUNE_MIN_MULT: float = 1.5
+    BB_AUTO_TUNE_MAX_MULT: float = 3.5
+    REQUIRE_D_TREND: bool = True        # stocks default ON (trend-following bias)
+    REQUIRE_W_TREND: bool = False
+    ENTRY_MODE: str = 'or'
+
+    # Parallel entry paths (same as crypto)
+    ENTRY_WT_CROSS_EVENT_ENABLED: bool = True
+    ENTRY_WT_CROSS_LOOKBACK: int = 3
+    ENTRY_BB_EXTREME_BOUNCE_ENABLED: bool = True
+    ENTRY_BB_EXTREME_THRESHOLD: float = 0.10
+    ENTRY_BB_SQUEEZE_RELEASE_ENABLED: bool = True
+    ENTRY_BB_SQUEEZE_RATIO: float = 1.5
+    ENTRY_BB_SQUEEZE_LOOKBACK: int = 20
+    ENTRY_LIQ_SWEEP_ENABLED: bool = True
+    ENTRY_LIQ_SWEEP_LOOKBACK: int = 10
+    ENTRY_NR7_ENABLED: bool = True
+    ENTRY_NR_LOOKBACK: int = 7
+    ENTRY_VOL_SPIKE_ENABLED: bool = True
+    ENTRY_VOL_SPIKE_RATIO: float = 2.0
+    ENTRY_VOL_SPIKE_LOOKBACK: int = 20
+    ENTRY_EMA_RIBBON_ENABLED: bool = True
+    ENTRY_EMA_FAST: int = 9
+    ENTRY_EMA_MID: int = 21
+    ENTRY_EMA_SLOW: int = 50
+    ENTRY_WILLR_ENABLED: bool = True
+    ENTRY_WILLR_LOOKBACK: int = 14
+    ENTRY_WILLR_OS_THRESHOLD: float = -85.0
+    ENTRY_WILLR_OB_THRESHOLD: float = -15.0
+    ENTRY_FVG_ENABLED: bool = True
+
+    # Exit refinements
+    EXIT_REQUIRE_BOTH: bool = False
+    EXIT_WT_ACCEL_ONLY: bool = False
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.0
+
+    # Reentry / reverse / augment / hedge / NOLOSS
+    REVERSE_ON_EXIT_ENABLED: bool = False
+    FOLLOW_THROUGH_REENTRY_ENABLED: bool = False
+    FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.05
+    FOLLOW_THROUGH_WINDOW_BARS: int = 5
+    BREAKOUT_PATH_ENABLED: bool = False
+    BREAKOUT_HTF_MIN_ALIGNED: int = 1
+    BREAKOUT_MIN_HOLD_BARS: int = 1
+    AUGMENT_ENABLED: bool = True
+    AUGMENT_LEVELS_PCT: tuple = (1.0, 2.0, 3.0, 4.0)
+    REENTRY_MEAN_REV_ENABLED: bool = False
+    REENTRY_MEAN_REV_TOLERANCE_PCT: float = 0.30
+    REENTRY_MEAN_REV_WINDOW_BARS: int = 10
+    HEDGE_ENABLED: bool = True
+    HEDGE_SIZE_FRAC: float = 0.5
+    HEDGE_WT_TRIGGER: bool = True
+    HEDGE_WT_TF: str = '15m'            # stocks default 15m (no 3m available)
+    HEDGE_CYCLES_ENABLED: bool = True
+    HEDGE_TRIGGER_GAIN_PCT_ENABLED: bool = False
+    HEDGE_TRIGGER_GAIN_PCT: float = -0.5
+    NOLOSS_ENABLED: bool = True
+    PEAK_PROTECT_ENABLED: bool = True
+    PEAK_PROTECT_REQUIRE_GAIN: bool = True
+    PEAK_GIVEBACK_FIXED_PCT_ENABLED: bool = False
+    PEAK_GIVEBACK_FIXED_DROP_PCT: float = 0.5
+    PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT: float = 0.10
+    HARD_LOSS_PCT_ENABLED: bool = True
+    HARD_LOSS_PCT: float = 0.5
+
+    # Booster gates — stocks have no funding rate (not perpetuals); OI optional via OI_CONFIRM
+    FUNDING_GATE_ENABLED: bool = False  # stocks have no funding
+    FUNDING_GATE_LONG_MAX: float = 0.0005
+    FUNDING_GATE_SHORT_MIN: float = -0.0005
+    OI_GATE_ENABLED: bool = False       # stocks options OI is different — TBD
+    OI_GATE_OI_CHANGE_MIN: float = -10.0
+    WT_ACCEL_GATE_ENABLED: bool = True
+    WT_ACCEL_GATE_TF: str = '1h'
+    DIVERGENCE_BLOCK_ENABLED: bool = True
+    DIVERGENCE_LB: int = 20
+
+    # HH/HL price-action
+    USE_PRICE_ACTION_ENTRY: bool = False
+    PRICE_ACTION_LB: int = 3
+
+    # WT_DC HIERARCHY + RZ_CASCADE + V8 AGGREGATORS
+    USE_WT_DC_HIERARCHY: bool = False
+    HIER_RZ_TOP_BB: float = 0.85
+    HIER_RZ_BOT_BB: float = 0.15
+    HIER_DC_BAND_PCT: float = 0.2
+    HIER_WT_DELTA_MIN: float = 0.0
+    HIER_WT_VEL_MIN: float = 0.0
+    HIER_USE_W_M: bool = False
+    USE_RZ_CASCADE: bool = False
+    RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0
+    RZ_CASCADE_WT_DELTA_MIN: float = 0.1
+    RZ_CASCADE_VEL_MIN: float = 0.1
+    RZ_CASCADE_HIGH_LOOKBACK: int = 20
+    RZ_CASCADE_REQUIRE_NEW_HIGH: bool = False
+    RZ_CASCADE_MIN_TF_ALIGN: int = 1
+    RZ_CASCADE_EXIT_ANY_TF: bool = True
+    RZ_CASCADE_EXIT_MIN_REV_TFS: int = 2
+    RZ_CASCADE_USE_W_M: bool = False
+    USE_V8_AGGREGATORS: bool = True     # default ON for stocks too
+
+    # Stocks-specific
+    MODE: str = 'tradier'
+    LTF: str = '5m'
+    K3M_FLOOR: float = 25.0             # K-zone floor — sweep
+    CT_WT_VELOCITY_1H_MIN: float = 0.0
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+    def copy(self) -> 'SymParamsStocks':
+        return SymParamsStocks(**self.to_dict())
+
+
+# ─────── stocks-specific data loader ───────
+
+def load_5m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.ndarray]]:
+    """Load FULL NPZ dict + 5m OHLC + ts. Sliced to last N years. Cached (1 sym max)."""
+    cache_key = f'{sym}__y{years_back:.2f}'
+    if cache_key in _npz_cache_stocks:
+        return _npz_cache_stocks[cache_key]
+    p = NPZ_DIR / f'{sym}.npz'
+    if not p.exists():
+        return None
+    z = np.load(str(p))
+    needed = ['open_5m', 'high_5m', 'low_5m', 'close_5m', 'timestamps']
+    if not all(k in z.files for k in needed):
+        z.close()
+        return None
+    full: Dict[str, np.ndarray] = {}
+    for k in z.files:
+        full[k] = z[k][:]
+    z.close()
+    if _npz_cache_stocks:
+        _npz_cache_stocks.clear()
+    ts_full = full['timestamps'].astype(np.int64)
+    full['timestamps'] = ts_full
+    cutoff = ts_full[-1] - int(years_back * 365.25 * 86400)
+    si = int(np.searchsorted(ts_full, cutoff))
+    sliced: Dict[str, np.ndarray] = {}
+    for k, arr in full.items():
+        if isinstance(arr, np.ndarray) and arr.ndim == 1 and len(arr) == len(ts_full):
+            sliced[k] = arr[si:]
+        else:
+            sliced[k] = arr
+    sliced['open'] = sliced['open_5m'].astype(np.float64)
+    sliced['high'] = sliced['high_5m'].astype(np.float64)
+    sliced['low'] = sliced['low_5m'].astype(np.float64)
+    sliced['close'] = sliced['close_5m'].astype(np.float64)
+    sliced['volume'] = sliced.get('volume_5m', np.ones(len(sliced['close']))).astype(np.float64)
+    sliced['ts'] = sliced['timestamps']
+    _npz_cache_stocks[cache_key] = sliced
+    return sliced
+
+
+def resample_5m_to_htf(base: Dict[str, np.ndarray], tf_bars: int) -> Dict[str, np.ndarray]:
+    """Resample 5m OHLC to HTF (tf_bars=5m bars per HTF bar)."""
+    n = len(base['close'])
+    n_hf = n // tf_bars
+    if n_hf == 0:
+        return {'open': np.array([]), 'high': np.array([]), 'low': np.array([]), 'close': np.array([]), 'volume': np.array([]), 'ts': np.array([], dtype=np.int64)}
+    cut = n_hf * tf_bars
+    o = base['open'][:cut][::tf_bars]
+    h = base['high'][:cut].reshape(n_hf, tf_bars).max(axis=1)
+    l = base['low'][:cut].reshape(n_hf, tf_bars).min(axis=1)
+    c = base['close'][:cut][tf_bars - 1::tf_bars][:n_hf]
+    ts = base['ts'][:cut][tf_bars - 1::tf_bars][:n_hf]
+    if 'volume' in base and len(base['volume']) >= cut:
+        v = base['volume'][:cut].reshape(n_hf, tf_bars).sum(axis=1)
+    else:
+        v = np.ones(n_hf, dtype=np.float64)
+    return {'open': o, 'high': h, 'low': l, 'close': c, 'volume': v, 'ts': ts}
+
+
+def build_tf_data_stocks(base: Dict[str, np.ndarray]) -> Dict[str, Dict[str, np.ndarray]]:
+    """Build {tf: ohlc-dict} for 15m, 1h, 4h, D from 5m base."""
+    out: Dict[str, Dict[str, np.ndarray]] = {}
+    out['5m'] = {k: base[k] for k in ('open','high','low','close','volume','ts')}
+    for tf in ('15m', '1h', '4h', 'D'):
+        ratio = TF_BARS_5M[tf]
+        d = resample_5m_to_htf(base, ratio)
+        if len(d['close']) > 0:
+            out[tf] = d
+    return out
+
+
+# ─────── stocks simulate (uses crypto walker but stock commission) ───────
+
+def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 4.0,
+                         only_side: Optional[str] = None) -> Optional[Dict]:
+    """Stocks dual-side simulation. Mirrors crypto's simulate_dual but with 5m base + stocks commission."""
+    # Couple NOLOSS↔HEDGE
+    if params.NOLOSS_ENABLED and not params.HEDGE_ENABLED:
+        params = params.copy()
+        params.NOLOSS_ENABLED = False
+        params.__dict__['_noloss_auto_disabled'] = 'NOLOSS requires HEDGE — auto-disabled'
+
+    base = load_5m_base(sym, years_back=years_back)
+    min_bars = max(1000, int(min(years_back, 0.05) * BARS_PER_DAY_STOCKS * 0.7))
+    if base is None or len(base['close']) < min_bars:
+        return None
+    tf_data = build_tf_data_stocks(base)
+    min_per_tf = {'15m': 100, '1h': 50, '4h': 20, 'D': 5} if years_back < 0.1 else {tf: 50 for tf in ('15m','1h','4h','D')}
+    for tf in ('15m', '1h', '4h', 'D'):
+        if tf not in tf_data or len(tf_data[tf]['close']) < min_per_tf.get(tf, 50):
+            return None
+
+    n_15m = len(tf_data['15m']['close'])
+
+    # Build entry/exit signals — try v8 aggregators first (works on 5m base too via cfg.LTF='5m')
+    enter_long = enter_short = leave_long = leave_short = None
+    if getattr(params, 'USE_V8_AGGREGATORS', True):
+        _crypto_v8_ensure()
+        from per_sym_engine_crypto import _v8_compute_entry, _v8_compute_exit, _v8_QuickConfig
+        n_5m = len(base['close_5m']) if 'close_5m' in base else len(base['close'])
+        qcfg = _v8_QuickConfig()
+        qcfg.MODE = 'tradier'
+        qcfg.LTF = '5m'
+        for pk, pv in params.to_dict().items():
+            if hasattr(qcfg, pk):
+                try: setattr(qcfg, pk, pv)
+                except Exception: pass
+        try:
+            v8_el = _v8_compute_entry(base, n_5m, True, qcfg, sym=sym)
+            v8_es = _v8_compute_entry(base, n_5m, False, qcfg, sym=sym)
+            v8_xl = _v8_compute_exit(base, n_5m, True, qcfg)
+            v8_xs = _v8_compute_exit(base, n_5m, False, qcfg)
+            # Subsample 5m → 15m (every 3rd index for stocks)
+            ratio = TF_BARS_5M['15m']  # 3
+            def _ss(arr):
+                cut = (len(arr) // ratio) * ratio
+                sub = arr[:cut][ratio - 1::ratio]
+                if len(sub) >= n_15m: return sub[:n_15m]
+                return np.concatenate([np.zeros(n_15m - len(sub), dtype=bool), sub])
+            enter_long = _ss(v8_el); enter_short = _ss(v8_es)
+            leave_long = _ss(v8_xl); leave_short = _ss(v8_xs)
+        except Exception as e:
+            print(f"[stocks] v8 aggregators error: {e}", flush=True)
+
+    if enter_long is None:
+        enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
+        enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+
+    if only_side == 'LONG':
+        enter_short = np.zeros_like(enter_short)
+    elif only_side == 'SHORT':
+        enter_long = np.zeros_like(enter_long)
+
+    # WT for peak-protect + hedge
+    h15 = tf_data['15m']['high']; l15 = tf_data['15m']['low']; c15_close = tf_data['15m']['close']
+    wt1_15m_arr, wt2_15m_arr = compute_wt(h15, l15, c15_close,
+                                            int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+    # Hedge WT trigger TF — stocks default 15m
+    hedge_tf = getattr(params, 'HEDGE_WT_TF', '15m')
+    if hedge_tf in ('15m', '1h', '4h', 'D'):
+        tfd = tf_data[hedge_tf]
+        wt1_tf, wt2_tf = compute_wt(tfd['high'], tfd['low'], tfd['close'],
+                                      int(getattr(params, f'WT_CHAN_{hedge_tf}')),
+                                      int(getattr(params, f'WT_AVG_{hedge_tf}')))
+        repeat_ratio = TF_BARS_5M[hedge_tf] // TF_BARS_5M['15m']
+        if repeat_ratio == 1:
+            wt1_at_15m = wt1_tf[:n_15m]; wt2_at_15m = wt2_tf[:n_15m]
+        else:
+            wt1_at_15m = np.repeat(wt1_tf, repeat_ratio)[:n_15m]
+            wt2_at_15m = np.repeat(wt2_tf, repeat_ratio)[:n_15m]
+    else:  # 5m → 15m
+        wt1_5m, wt2_5m = compute_wt(base['high'], base['low'], base['close'],
+                                      int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+        ratio = TF_BARS_5M['15m']
+        cut = (len(wt1_5m) // ratio) * ratio
+        wt1_at_15m = wt1_5m[:cut][ratio - 1::ratio][:n_15m]
+        wt2_at_15m = wt2_5m[:cut][ratio - 1::ratio][:n_15m]
+    if len(wt1_at_15m) < n_15m:
+        pad = n_15m - len(wt1_at_15m)
+        wt1_at_15m = np.concatenate([np.zeros(pad), wt1_at_15m])
+        wt2_at_15m = np.concatenate([np.zeros(pad), wt2_at_15m])
+
+    c15 = tf_data['15m']['close']
+    ts15 = tf_data['15m']['ts']
+
+    # Use crypto walker but inject stocks commission via monkey patch
+    orig_comm = _crypto.COMMISSION_RT_PCT
+    _crypto.COMMISSION_RT_PCT = COMMISSION_RT_PCT_STOCKS
+    try:
+        trades = walk_trades_dual(
+            enter_long, leave_long, enter_short, leave_short, c15, ts15,
+            int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m),
+            wt1_15m=wt1_15m_arr, wt2_15m=wt2_15m_arr,
+            wt1_3m_at_15m=wt1_at_15m, wt2_3m_at_15m=wt2_at_15m,
+            reverse_on_exit=params.REVERSE_ON_EXIT_ENABLED,
+            follow_through=params.FOLLOW_THROUGH_REENTRY_ENABLED,
+            ft_min_move_pct=float(params.FOLLOW_THROUGH_MIN_MOVE_PCT),
+            ft_window_bars=int(params.FOLLOW_THROUGH_WINDOW_BARS),
+            augment_enabled=params.AUGMENT_ENABLED,
+            augment_levels_pct=tuple(params.AUGMENT_LEVELS_PCT),
+            mean_rev_enabled=params.REENTRY_MEAN_REV_ENABLED,
+            mean_rev_tol_pct=float(params.REENTRY_MEAN_REV_TOLERANCE_PCT),
+            mean_rev_window=int(params.REENTRY_MEAN_REV_WINDOW_BARS),
+            hedge_enabled=params.HEDGE_ENABLED,
+            hedge_size_frac=float(params.HEDGE_SIZE_FRAC),
+            noloss_enabled=params.NOLOSS_ENABLED,
+            peak_protect_enabled=params.PEAK_PROTECT_ENABLED,
+            peak_protect_require_gain=params.PEAK_PROTECT_REQUIRE_GAIN,
+            hard_loss_enabled=params.HARD_LOSS_PCT_ENABLED,
+            hard_loss_pct=float(params.HARD_LOSS_PCT),
+            peak_giveback_fixed_enabled=params.PEAK_GIVEBACK_FIXED_PCT_ENABLED,
+            peak_giveback_fixed_drop_pct=float(params.PEAK_GIVEBACK_FIXED_DROP_PCT),
+            peak_giveback_fixed_min_peak_pct=float(params.PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT),
+        )
+    finally:
+        _crypto.COMMISSION_RT_PCT = orig_comm
+
+    span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
+    yrs = max(0.01, span_days / 365.25)
+    if not trades:
+        return {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
+                'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0,
+                'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0,
+                'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1,
+                'tag': f'per_sym_stocks_dual_{sym}', 'trade_list': [],
+                'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
+    # MTM tagging
+    n_15m_total = len(c15)
+    open_at_end = [t for t in trades if t.get('exit_idx', 0) == n_15m_total - 1]
+    for t in trades:
+        t['mtm_at_end'] = (t.get('exit_idx', 0) == n_15m_total - 1)
+    rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
+    n = len(rets)
+    sd = float(rets.std())
+    pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
+    wr = float((rets > 0).mean() * 100.0)
+    eq = np.cumsum(rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    total = float(rets.sum())
+    n_long = sum(1 for t in trades if t['side'] == 'LONG')
+    n_short = n - n_long
+    return {
+        'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
+        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
+        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'years': yrs, 'n_syms': 1, 'tag': f'per_sym_stocks_dual_{sym}',
+        'trade_list': trades, 'params': params.to_dict(),
+        'long_trades': n_long, 'short_trades': n_short,
+        'augment_count': sum(1 for t in trades if (t.get('origin') or '').startswith('augment_')),
+        'hedge_wt3m_count': sum(1 for t in trades if (t.get('origin') or '').startswith('hedge_wt')),
+        'peak_protect_count': sum(1 for t in trades if t.get('origin') == 'peak_protect_wt15m'),
+        'mean_rev_reentry_count': sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry'),
+        'follow_through_count': sum(1 for t in trades if t.get('origin') == 'follow_through'),
+        'reverse_on_exit_count': sum(1 for t in trades if t.get('origin') == 'reverse_on_exit'),
+        'hard_loss_count': sum(1 for t in trades if t.get('origin') == 'hard_loss_pct'),
+        'peak_giveback_fixed_count': sum(1 for t in trades if t.get('origin') == 'peak_giveback_fixed'),
+        'open_at_end_count': len(open_at_end),
+        'mtm_pnl_open_pct': float(sum(t['pnl_pct'] for t in open_at_end)),
+    }
+
+
+if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--syms', default='AAPL,MSFT,NVDA')
+    args = ap.parse_args()
+    print(f"smoke test stocks engine on {args.syms}")
+    for s in [x.strip() for x in args.syms.split(',') if x.strip()]:
+        p = SymParamsStocks()
+        r = simulate_dual_stocks(s, p, years_back=4.0)
+        if r is None:
+            print(f"  {s}: NPZ MISS or insufficient data"); continue
+        print(f"  {s:8s} pool={r['pool_sharpe']:+.4f} wr={r['wr_pct']:5.1f}% tpd={r['trades_per_day']:5.2f} tr={r['trades']:>5d} dd={r['max_dd_pct']:5.2f}")

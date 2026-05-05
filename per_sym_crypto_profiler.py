@@ -98,8 +98,59 @@ BB_SQUEEZE_RATIO_VALUES = [1.2, 1.5, 1.8, 2.2]
 BB_SQUEEZE_LB_VALUES = [10, 20, 30, 50]
 
 
-def make_baseline() -> SymParams:
-    return SymParams()
+BTC_DEDICATED_SYMS = {'BTCUSDC','ETHUSDC','SOLUSDC','BNBUSDC','XRPUSDC','DOGEUSDC','ZECUSDC','BTCDOMUSDT'}
+OVERRIDE_BTC_BEST = ROOT / 'backtest_v8' / 'btc_loop_results' / 'override_btc_BEST.json'
+OVERRIDE_V5_RZ_LOOSE = ROOT / 'backtest_v8' / 'btc_loop_results' / 'override_v5_rz_loose.json'
+
+def _load_baseline_override(sym: str) -> Dict:
+    """Load proven >0.5 sharpe baseline override per symbol. User 2026-05-05: per_sym must START
+    from proven baselines and optimize UP."""
+    # BTC and the 7 BTC_DEDICATED-style syms get override_btc_BEST.json (0.5563 BTC, audited honest)
+    if sym in BTC_DEDICATED_SYMS:
+        try:
+            d = json.loads(OVERRIDE_BTC_BEST.read_text())
+            return {k: v for k, v in d.items() if not k.startswith('_')}
+        except Exception:
+            pass
+    # All other crypto syms: try v5_rz_loose (0.502/T over 5 syms) — broader baseline
+    try:
+        d = json.loads(OVERRIDE_V5_RZ_LOOSE.read_text())
+        return {k: v for k, v in d.items() if not k.startswith('_')}
+    except Exception:
+        return {}
+
+
+def make_baseline(sym: str = '') -> SymParams:
+    """Build baseline SymParams. If sym given, load matching proven override into BASELINE_OVERRIDES.
+    Per user 2026-05-05: per_sym must START from proven baselines and optimize UP.
+    When baseline loaded, MY engine's walker overlays (AUGMENT/hedge/mean-rev/NOLOSS/peak/HARD_LOSS)
+    are DISABLED so v8's entry+exit signals drive a pure walk matching the original sweep result.
+    Sweep can re-enable them as variants to test improvement."""
+    p = SymParams()
+    if sym:
+        ovr = _load_baseline_override(sym)
+        if ovr:
+            p.BASELINE_OVERRIDES = ovr
+            # Disable my walker overlays — v8 entry/exit signals from compute_entry_signals/exit_signals
+            # already include all the v8-style augment/hedge/exit logic.
+            p.AUGMENT_ENABLED = False
+            p.HEDGE_ENABLED = False
+            p.REENTRY_MEAN_REV_ENABLED = False
+            p.FOLLOW_THROUGH_REENTRY_ENABLED = False
+            p.REVERSE_ON_EXIT_ENABLED = False
+            p.NOLOSS_ENABLED = False
+            p.PEAK_PROTECT_ENABLED = False
+            p.PEAK_GIVEBACK_FIXED_PCT_ENABLED = False
+            p.HARD_LOSS_PCT_ENABLED = False
+            # USE_V8_AGGREGATORS is required to get the override paths
+            p.USE_V8_AGGREGATORS = True
+            # Mirror common knobs into SymParams direct fields if present (for sweep visibility)
+            for k in ['ENTRY_SCORE_THRESHOLD', 'HTF_MIN_ALIGNED', 'WT_EXIT_MIN_TFS', 'MIN_HOLD_BARS',
+                      'COOLDOWN_BARS']:
+                if k in ovr and hasattr(p, k):
+                    try: setattr(p, k, ovr[k])
+                    except Exception: pass
+    return p
 
 
 def variants_for_param(base: SymParams, param: str, values: List) -> List[Tuple[str, SymParams]]:
@@ -419,7 +470,7 @@ def _simulate_one_side(sym: str, params: SymParams, side: str, years_back: float
 def optimize_sym_side(sym: str, side: str, years_back: float = 4.0) -> Optional[Dict]:
     """Run marginal sweep on this (sym, side) — LONG and SHORT have independent params per user 2026-05-05."""
     import numpy as np
-    base = make_baseline()
+    base = make_baseline(sym)  # loads proven override into BASELINE_OVERRIDES per user 2026-05-05
     base_m = _simulate_one_side(sym, base, side, years_back)
     if base_m is None:
         return None
