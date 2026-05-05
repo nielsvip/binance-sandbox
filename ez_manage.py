@@ -13070,6 +13070,64 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🛡️ HEDGE_PROTECT_OPPOSITE_LOSER — user 2026-05-05 (1000LUNCUSDT)
+        # User: "lose 50% on 1 side then another 20% on the hedge side then keep
+        # selling longs into a rally for $0.02 gains". A LONG/SHORT on a symbol
+        # whose OPPOSITE side is deeply losing is acting as a de-facto hedge for
+        # that loser, regardless of whether it's flagged is_hedge=True. PPL,
+        # WT_CROSS_EXIT, BANDAID_OFF, PEAK_GIVEBACK and similar all fire small-
+        # gain closes that nuke the hedge effect. While opposite-side is bleeding
+        # and current side has not yet earned enough to materially offset it,
+        # REFUSE close/reduce actions. Bypass on EMERGENCY / HARD_STOP / MAX_AGE
+        # / ORPHAN / LIQ / LIQUIDATION (those are forced exits we never block).
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _hpo_act = (action or '').upper()
+            _hpo_is_close = ('CLOSE' in _hpo_act) or ('REDUCE' in _hpo_act) or is_full_close
+            _hpo_enabled = bool(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED', True))
+            if _hpo_enabled and _hpo_is_close and position_key and ':' in position_key:
+                _hpo_reason_up = (reason or '').upper()
+                _hpo_bypass = ('EMERGENCY' in _hpo_reason_up or 'HARD_STOP' in _hpo_reason_up
+                               or 'MAX_AGE' in _hpo_reason_up or 'ORPHAN' in _hpo_reason_up
+                               or 'LIQ' in _hpo_reason_up or 'STRUCTURAL' in _hpo_reason_up
+                               or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
+                               or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
+                               or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up)
+                if not _hpo_bypass:
+                    _hpo_other = position_key[:-len('_LONG')] + '_SHORT' if position_key.endswith('_LONG') else (position_key[:-len('_SHORT')] + '_LONG' if position_key.endswith('_SHORT') else None)
+                    if _hpo_other:
+                        _hpo_other_pos = None
+                        try: _hpo_other_pos = self.positions.get(_hpo_other)
+                        except Exception: _hpo_other_pos = None
+                        if _hpo_other_pos is not None:
+                            _hpo_other_amt = abs(safe_fetch_float(getattr(_hpo_other_pos, 'positionAmt', 0), 0))
+                            _hpo_other_gain = safe_fetch_float(getattr(_hpo_other_pos, 'gain', 0), 0)
+                            _hpo_deep_loss = float(getattr(config, 'OPPOSITE_LOSER_DEEP_LOSS_PCT', -5.0))
+                            if _hpo_other_amt > 0.0001 and _hpo_other_gain < _hpo_deep_loss:
+                                _hpo_cur_pos = None
+                                try: _hpo_cur_pos = self.positions.get(position_key)
+                                except Exception: _hpo_cur_pos = None
+                                _hpo_cur_gain = safe_fetch_float(getattr(_hpo_cur_pos, 'gain', 0), 0) if _hpo_cur_pos else 0.0
+                                _hpo_max_gain = float(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN', 5.0))
+                                # WT_3M agree check: this side's wt_3m must STILL agree with this side direction.
+                                _hpo_is_long = position_key.endswith('_LONG')
+                                _hpo_sym_for_ind = symbol or position_key.split(':',1)[1].rsplit('_',1)[0]
+                                _hpo_w1_3m = 0.0
+                                _hpo_w2_3m = 0.0
+                                try:
+                                    _hpo_ind = self.data_manager._cold_data.get(_hpo_sym_for_ind, {}) if hasattr(self, 'data_manager') and self.data_manager else {}
+                                    _hpo_w1_3m = safe_fetch_float(_hpo_ind.get('wt1_3m'), 0)
+                                    _hpo_w2_3m = safe_fetch_float(_hpo_ind.get('wt2_3m'), 0)
+                                except Exception: pass
+                                _hpo_3m_with = (_hpo_is_long and _hpo_w1_3m > _hpo_w2_3m) or (not _hpo_is_long and _hpo_w1_3m < _hpo_w2_3m)
+                                _hpo_require_3m = bool(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M', False))
+                                _hpo_3m_check_ok = (_hpo_3m_with or _hpo_w1_3m == 0.0) if _hpo_require_3m else True
+                                if _hpo_cur_gain < _hpo_max_gain and _hpo_3m_check_ok:
+                                    logger.critical(f"🛡️ [HEDGE_PROTECT_OPPOSITE_LOSER] {position_key}: BLOCKING {action} (g={_hpo_cur_gain:.2f}% < {_hpo_max_gain:.1f}%) — opposite {_hpo_other} at {_hpo_other_gain:.2f}% < {_hpo_deep_loss:.1f}%; this side serves as de-facto hedge. wt_3m_with={_hpo_3m_with} reason={(reason or '')[:60]}")
+                                    return f"BLOCKED_HEDGE_PROTECT_OPPOSITE_LOSER_oppgain{_hpo_other_gain:.1f}_curgain{_hpo_cur_gain:.2f}"
+        except Exception as _hpo_e:
+            logger.warning(f"[HEDGE_PROTECT_OPPOSITE_LOSER] guard error (fail-open): {type(_hpo_e).__name__}: {_hpo_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🚫 STALE_MARK_PRICE_BLOCK — user 2026-05-05 (1000LUNCUSDT loss)
         # If the position's mark_price_last_updated is older than EXECUTE_NOW_MAX_MARK_AGE_S,
         # try ONE Redis refresh; if still stale, REFUSE non-CLOSE orders. Reasoning:

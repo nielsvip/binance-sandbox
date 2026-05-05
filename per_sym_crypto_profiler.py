@@ -217,6 +217,15 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     # HARD_LOSS_PCT — single biggest WR lever per audit of override_btc_BEST
     grid += variants_for_param(base, 'HARD_LOSS_PCT_ENABLED', [True, False])
     grid += variants_for_param(base, 'HARD_LOSS_PCT', [0.20, 0.30, 0.50, 0.75, 1.0, 1.5, 2.0])
+    # WT_DC HIERARCHY (cascade state machine port — works great for SOL, mixed elsewhere — sweep)
+    grid += variants_for_param(base, 'USE_WT_DC_HIERARCHY', [True, False])
+    grid += variants_for_param(base, 'HIER_RZ_TOP_BB', [0.75, 0.80, 0.85, 0.90])
+    grid += variants_for_param(base, 'HIER_RZ_BOT_BB', [0.10, 0.15, 0.20, 0.25])
+    grid += variants_for_param(base, 'HIER_DC_BAND_PCT', [0.1, 0.2, 0.5, 1.0])
+    grid += variants_for_param(base, 'HIER_WT_DELTA_MIN', [0.0, 0.5, 1.0, 2.0])
+    # bb_auto_tune (per-symbol flexible σ) — your "BB used wrong" point
+    grid += variants_for_param(base, 'BB_AUTO_TUNE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'BB_AUTO_TUNE_LOOKBACK', [50, 100, 200, 500])
     grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
     # SIGNAL-DRIVEN exits/hedge — no fixed % anywhere per user 2026-05-05
     grid += variants_for_param(base, 'PEAK_PROTECT_ENABLED', [True, False])

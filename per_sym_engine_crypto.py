@@ -22,6 +22,8 @@ import numpy as np
 import pandas as pd
 from scipy.signal import lfilter
 
+from wt_dc_hierarchy import compute_hierarchy_full
+
 ROOT = Path(__file__).resolve().parent
 
 # Crypto commission: 0.02% Binance USDC maker + 0.02% slippage = 0.04% per side
@@ -175,6 +177,18 @@ class SymParams:
     # This is the SOURCE of 86.8% WR — caps individual losses tightly so wins>>losses by count.
     HARD_LOSS_PCT_ENABLED: bool = True
     HARD_LOSS_PCT: float = 0.5  # exit if loss reaches this % — caps loss tightly
+    # WT_DC HIERARCHY (port of wt_dc_hierarchy.py — pre-built vectorized cascade state machine).
+    # When ON, replaces my per-tf signal aggregation with the cascade rule:
+    #   LONG entry = LTF at_lower + delta_bull + cascade-confirmed by HTF
+    # User 2026-05-05: "use all wt_dc functions we have built — years of work".
+    USE_WT_DC_HIERARCHY: bool = False  # default off; profiler sweeps ON/OFF per-(sym, side)
+    HIER_RZ_TOP_BB: float = 0.85
+    HIER_RZ_BOT_BB: float = 0.15
+    HIER_DC_BAND_PCT: float = 0.2  # DC extreme = within X% of prev high/low
+    HIER_WT_DELTA_MIN: float = 0.0
+    HIER_WT_VEL_MIN: float = 0.0
+    HIER_USE_W_M: bool = False
+    MODE: str = 'crypto'  # consumed by wt_dc_hierarchy._resolve_tfs
     # HH/HL price-action entry (replaces WT 15m as primary trigger when toggled):
     USE_PRICE_ACTION_ENTRY: bool = False
     PRICE_ACTION_LB: int = 3
@@ -250,6 +264,41 @@ def compute_bb(close: np.ndarray, length: int, std: float) -> Tuple[np.ndarray, 
     return upper, lower, pct_b
 
 
+def bb_auto_tune_mult(high: np.ndarray, low: np.ndarray, close: np.ndarray,
+                      length: int, lookback: int = 200, touch_pct: float = 0.002,
+                      mult_min: float = 1.5, mult_max: float = 3.5) -> float:
+    """Vectorized port of ez_indicators.bb_auto_tune. Sweeps σ multipliers, picks one that
+    maximizes balanced upper+lower band touches over the last `lookback` bars.
+    Returns best σ multiplier."""
+    n = len(close)
+    if n < length + lookback:
+        return 2.0
+    m = _rolling_mean_csum(close, length)
+    s = _rolling_std_csum(close, length)
+    h_w = high[-lookback:]
+    l_w = low[-lookback:]
+    m_w = m[-lookback:]
+    s_w = s[-lookback:]
+    valid = np.isfinite(m_w) & np.isfinite(s_w)
+    best_mult = 2.0
+    best_score = -1.0
+    for mult_10 in range(int(mult_min * 10), int(mult_max * 10) + 1):
+        mult = mult_10 / 10.0
+        upper = m_w + mult * s_w
+        lower = m_w - mult * s_w
+        upper_touch = ((h_w >= upper * (1 - touch_pct)) & (h_w <= upper * (1 + touch_pct)) & valid).sum()
+        lower_touch = ((l_w <= lower * (1 + touch_pct)) & (l_w >= lower * (1 - touch_pct)) & valid).sum()
+        total = upper_touch + lower_touch
+        if total == 0:
+            continue
+        balance = min(upper_touch, lower_touch) / max(upper_touch, lower_touch, 1)
+        score = total * (0.5 + 0.5 * balance)
+        if score > best_score:
+            best_score = score
+            best_mult = mult
+    return best_mult
+
+
 def compute_wt(high: np.ndarray, low: np.ndarray, close: np.ndarray, chan: int, avg: int) -> Tuple[np.ndarray, np.ndarray]:
     typical = (high + low + close) / 3.0
     esa = _ema(typical, chan)
@@ -282,8 +331,9 @@ _npz_cache: Dict[str, Dict[str, np.ndarray]] = {}
 
 
 def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.ndarray]]:
-    """Load 3m OHLC(+V) + ts + booster fields from NPZ, sliced to last N years. Cached per process.
-    Booster fields (when present): funding_rate_3m, oi_change_1h_3m, wt_acceleration_*.
+    """Load FULL NPZ dict + 3m OHLC(+V) + ts. Sliced to last N years. Cached.
+    Returns BOTH the engine-shape dict ('open','high','low','close','volume','ts') AND all original
+    NPZ fields (close_15m, wt1_3m, dc_high_4h, etc.) so wt_dc_hierarchy can read them directly.
     """
     cache_key = f'{sym}__y{years_back:.2f}'
     if cache_key in _npz_cache:
@@ -296,26 +346,29 @@ def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.nda
     if not all(k in z.files for k in needed):
         z.close()
         return None
-    o = z['open_3m'][:].astype(np.float64)
-    h = z['high_3m'][:].astype(np.float64)
-    l = z['low_3m'][:].astype(np.float64)
-    c = z['close_3m'][:].astype(np.float64)
-    ts = z['timestamps'][:].astype(np.int64)
-    v = z['volume_3m'][:].astype(np.float64) if 'volume_3m' in z.files else np.ones(len(c), dtype=np.float64)
-    out_extra: Dict[str, np.ndarray] = {}
-    for fld in ['funding_rate_3m', 'oi_change_1h_3m', 'oi_change_15m_3m', 'oi_3m',
-                'wt_acceleration_3m', 'wt_acceleration_15m', 'wt_acceleration_1h',
-                'wt_acceleration_4h', 'wt_acceleration_D', 'wt_composite_delta']:
-        if fld in z.files:
-            out_extra[fld] = z[fld][:].astype(np.float64)
+    full: Dict[str, np.ndarray] = {}
+    for k in z.files:
+        full[k] = z[k][:]
     z.close()
-    cutoff = ts[-1] - int(years_back * 365.25 * 86400)
-    si = int(np.searchsorted(ts, cutoff))
-    out = {'open': o[si:], 'high': h[si:], 'low': l[si:], 'close': c[si:], 'volume': v[si:], 'ts': ts[si:]}
-    for fld, arr in out_extra.items():
-        out[fld] = arr[si:]
-    _npz_cache[cache_key] = out
-    return out
+    ts_full = full['timestamps'].astype(np.int64)
+    full['timestamps'] = ts_full
+    cutoff = ts_full[-1] - int(years_back * 365.25 * 86400)
+    si = int(np.searchsorted(ts_full, cutoff))
+    sliced: Dict[str, np.ndarray] = {}
+    for k, arr in full.items():
+        if isinstance(arr, np.ndarray) and arr.ndim == 1 and len(arr) == len(ts_full):
+            sliced[k] = arr[si:]
+        else:
+            sliced[k] = arr
+    # Engine-shape aliases (back-compat for the rest of the engine code)
+    sliced['open'] = sliced['open_3m'].astype(np.float64)
+    sliced['high'] = sliced['high_3m'].astype(np.float64)
+    sliced['low'] = sliced['low_3m'].astype(np.float64)
+    sliced['close'] = sliced['close_3m'].astype(np.float64)
+    sliced['volume'] = sliced.get('volume_3m', np.ones(len(sliced['close']))).astype(np.float64)
+    sliced['ts'] = sliced['timestamps']
+    _npz_cache[cache_key] = sliced
+    return sliced
 
 
 def resample_3m_to_htf(base: Dict[str, np.ndarray], tf_bars: int) -> Dict[str, np.ndarray]:
@@ -362,6 +415,11 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     wt_avg = int(getattr(params, f'WT_AVG_{tf}'))
     dc_per = int(getattr(params, f'DC_PERIOD_{tf}'))
 
+    if getattr(params, 'BB_AUTO_TUNE_ENABLED', False):
+        bb_std = bb_auto_tune_mult(h, l, c, bb_len,
+                                     lookback=int(getattr(params, 'BB_AUTO_TUNE_LOOKBACK', 200)),
+                                     mult_min=float(getattr(params, 'BB_AUTO_TUNE_MIN_MULT', 1.5)),
+                                     mult_max=float(getattr(params, 'BB_AUTO_TUNE_MAX_MULT', 3.5)))
     bb_u, bb_l, bb_pctb = compute_bb(c, bb_len, bb_std)
     wt1, wt2 = compute_wt(h, l, c, wt_chan, wt_avg)
     dc_h, dc_l, dc_h_prev, dc_l_prev = compute_dc(h, l, dc_per)
@@ -1002,9 +1060,38 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         params = params.copy()
         params.NOLOSS_ENABLED = False
         params.__dict__['_noloss_auto_disabled'] = 'NOLOSS requires HEDGE — auto-disabled'
-    enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
-    enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
-    # Per-side isolation: zero-out opposite side's entry signal (still allow walker to track it for hedge/reverse)
+    # WT_DC HIERARCHY (vectorized cascade state machine — primary entry/exit when enabled).
+    # Use 'tradier' MODE for crypto so hierarchy skips 3m (no close_5m for crypto → auto-skipped to 15m as LTF).
+    # This aligns hierarchy signals with my 15m walker grid.
+    if getattr(params, 'USE_WT_DC_HIERARCHY', False):
+        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
+        # Trick: clone params with MODE='tradier' so _resolve_tfs returns ('5m','15m','1h','4h','D');
+        # crypto NPZ has no close_5m → hierarchy auto-skips 5m, effectively LTF=15m.
+        hier_cfg = params.copy()
+        hier_cfg.MODE = 'tradier'
+        hier_long = compute_hierarchy_full(base, n_3m, True, hier_cfg)
+        hier_short = compute_hierarchy_full(base, n_3m, False, hier_cfg)
+        # Subsample 3m → 15m (every 5th index is the 15m bar close)
+        def _ss(arr_3m: np.ndarray) -> np.ndarray:
+            cut = (len(arr_3m) // 5) * 5
+            sub = arr_3m[:cut][4::5]
+            n_target = len(tf_data['15m']['close'])
+            if len(sub) >= n_target:
+                return sub[:n_target]
+            return np.concatenate([np.zeros(n_target - len(sub), dtype=bool), sub])
+        if hier_long.get('tfs'):
+            enter_long = _ss(hier_long['entry'])
+            leave_long = _ss(hier_long['exit'])
+        else:
+            enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
+        if hier_short.get('tfs'):
+            enter_short = _ss(hier_short['entry'])
+            leave_short = _ss(hier_short['exit'])
+        else:
+            enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+    else:
+        enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
+        enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
     if only_side == 'LONG':
         enter_short = np.zeros_like(enter_short)
     elif only_side == 'SHORT':
