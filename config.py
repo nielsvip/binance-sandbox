@@ -905,6 +905,12 @@ class Config:
         # SCALP_V3_OPEN_PROTECTIVE = exits from _scalp_v3_protective_exits + max-loss stop
         'SCALP_V3_CLOSE',
         'SCALP_V3_OPEN_PROTECTIVE',
+        # 2026-05-05 USER MANDATE (LUNC -65% incident): emergency safety closes BYPASS NOLOSS.
+        # These are LAST-RESORT exits when position is hopeless (held >48h, or beyond -15%, or wt-against bleed).
+        # NOLOSS_GATE blocking these IS what caused -65% LUNC to never close.
+        'RIDICULOUS_HOLD',                # RIDICULOUS_HOLD_age{X}h_cap48h_g{X}% — held too long
+        'RIDICULOUS_LOSS',                # RIDICULOUS_LOSS_g{X}%_cap-15.0% — beyond catastrophic
+        'UNDERWATER_HEDGE_OR_CLOSE',      # wt1_3m flipped against + already hedged + still bleeding
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
