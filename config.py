@@ -2413,6 +2413,15 @@ class Config:
     # one Redis refresh attempt). Saved 1000LUNCUSDT-style 45% loss where every
     # gain-gated guard read an hour-stale mark and fired wrong decisions.
     EXECUTE_NOW_MAX_MARK_AGE_S: float = 3.0
+    # User 2026-05-05 (1000LUNCUSDT screenshot): a LONG/SHORT on a symbol whose
+    # OPPOSITE side is deeply losing acts as a de-facto hedge. Ban PPL,
+    # WT_CROSS_EXIT, BANDAID_OFF, PEAK_GIVEBACK, and similar small-gain closes
+    # while opposite is bleeding and current side has not yet earned enough to
+    # offset. Bypass at EMERGENCY/HARD_STOP/MAX_AGE/ORPHAN/LIQ/STRUCTURAL/AGENT/USER.
+    OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED: bool = True
+    OPPOSITE_LOSER_DEEP_LOSS_PCT: float = -5.0
+    OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN: float = 5.0
+    OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M: bool = False
     # PRICE_FALLBACK_INTERVAL: float =        1.0  # Interval for REST/Redis mark-price fallback loop
     EZ_INDICATORS_SHUTDOWN_CMD: Optional[str] = (
         None  # shell command to stop ez_indicators gracefully

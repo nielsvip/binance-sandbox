@@ -21281,9 +21281,40 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             #                  scalp gain on the remaining 50%.
             # Step 3 (price ≤ stop_level for long / ≥ for short): close remainder via url (100% of
             #                                                     remaining = 50% of original).
+            # User 2026-05-05: PPL_v2 is fine BUT NEVER FOR HEDGES. A hedge is detected
+            # by ANY of: is_hedge flag, augment_reason hedge tag, presence in
+            # tracker.active_hedges, OR being a de-facto hedge (same-symbol opposite-side
+            # in deep loss > OPPOSITE_LOSER_DEEP_LOSS_PCT). Hedges must ride with the
+            # rally to offset the losing leg — PPL's BE+0.02% stop closes them at
+            # +0.05% which is the exact pattern that bled out 1000LUNCUSDT.
+            _ppl_is_hedge = bool(getattr(position, 'is_hedge', False))
+            if not _ppl_is_hedge:
+                _ppl_aug_reason_up = str(getattr(position, 'augment_reason', '') or '').upper()
+                if any(_m in _ppl_aug_reason_up for _m in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_', 'HEDGE_OPEN', 'BANDAID')):
+                    _ppl_is_hedge = True
+            if not _ppl_is_hedge:
+                try:
+                    if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
+                        for _h in (getattr(trade_manager.tracker_manager, 'active_hedges', None) or []):
+                            if _h.get('position_key') == position_key or _h.get('hedge_position_key') == position_key:
+                                _ppl_is_hedge = True
+                                break
+                except Exception: pass
+            if not _ppl_is_hedge:
+                try:
+                    _ppl_other_pk = position_key[:-len('_LONG')] + '_SHORT' if is_long else position_key[:-len('_SHORT')] + '_LONG'
+                    _ppl_other_pos = trade_manager.positions.get(_ppl_other_pk) if hasattr(trade_manager, 'positions') else None
+                    if _ppl_other_pos:
+                        _ppl_other_amt = abs(safe_fetch_float(getattr(_ppl_other_pos, 'positionAmt', 0), 0))
+                        _ppl_other_g = safe_fetch_float(getattr(_ppl_other_pos, 'gain', 0), 0)
+                        _ppl_dl_pct = float(getattr(config, 'OPPOSITE_LOSER_DEEP_LOSS_PCT', -5.0))
+                        if _ppl_other_amt > 0.0001 and _ppl_other_g < _ppl_dl_pct:
+                            _ppl_is_hedge = True
+                except Exception: pass
             if (getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)
                 and account_key in getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS', [])
-                and not _sat_skip_standard_exits):
+                and not _sat_skip_standard_exits
+                and not _ppl_is_hedge):
                 _ppl_min_gain = float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))
                 _ppl_arm_gain = float(getattr(config, 'PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT', 0.75))
                 _ppl_be_buffer = float(getattr(config, 'PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT', 0.02))

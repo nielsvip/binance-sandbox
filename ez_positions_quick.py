@@ -11622,6 +11622,38 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
          or 'REVERSE' in _wrap_act_up)
         and 'CLOSE' not in _wrap_act_up and 'REDUCE' not in _wrap_act_up and 'KILL' not in _wrap_act_up
     )
+    # User 2026-05-05: HEDGE_PROTECT_OPPOSITE_LOSER (mirror of execute_now guard).
+    # Block CLOSE/REDUCE on a position when same-symbol opposite-side is in deep
+    # loss and current gain hasn't earned enough to materially offset the loser.
+    # Bypass on EMERGENCY/HARD_STOP/MAX_AGE/ORPHAN/LIQ/STRUCTURAL/AGENT/USER reasons.
+    try:
+        _hpo_is_close = ('CLOSE' in _wrap_act_up) or ('REDUCE' in _wrap_act_up)
+        _hpo_enabled = bool(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED', True))
+        if _hpo_enabled and _hpo_is_close and position_key and ':' in position_key:
+            _hpo_reason_up = (reason or '').upper()
+            _hpo_bypass = ('EMERGENCY' in _hpo_reason_up or 'HARD_STOP' in _hpo_reason_up
+                           or 'MAX_AGE' in _hpo_reason_up or 'ORPHAN' in _hpo_reason_up
+                           or 'LIQ' in _hpo_reason_up or 'STRUCTURAL' in _hpo_reason_up
+                           or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
+                           or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
+                           or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up)
+            if not _hpo_bypass:
+                _hpo_other = position_key[:-len('_LONG')] + '_SHORT' if position_key.endswith('_LONG') else (position_key[:-len('_SHORT')] + '_LONG' if position_key.endswith('_SHORT') else None)
+                if _hpo_other:
+                    _hpo_other_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(_hpo_other)
+                    if _hpo_other_pos is not None:
+                        _hpo_other_amt = abs(safe_fetch_float(getattr(_hpo_other_pos, 'positionAmt', 0), 0))
+                        _hpo_other_gain = safe_fetch_float(getattr(_hpo_other_pos, 'gain', 0), 0)
+                        _hpo_deep_loss = float(getattr(config, 'OPPOSITE_LOSER_DEEP_LOSS_PCT', -5.0))
+                        if _hpo_other_amt > 0.0001 and _hpo_other_gain < _hpo_deep_loss:
+                            _hpo_cur_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key)
+                            _hpo_cur_gain = safe_fetch_float(getattr(_hpo_cur_pos, 'gain', 0), 0) if _hpo_cur_pos else 0.0
+                            _hpo_max_gain = float(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN', 5.0))
+                            if _hpo_cur_gain < _hpo_max_gain:
+                                logger.critical(f"🛡️ [HEDGE_PROTECT_OPPOSITE_LOSER_WRAPPER] {position_key}: BLOCKING {action} (g={_hpo_cur_gain:.2f}% < {_hpo_max_gain:.1f}%) — opposite {_hpo_other} at {_hpo_other_gain:.2f}% < {_hpo_deep_loss:.1f}%; this side serves as de-facto hedge. reason={(reason or '')[:60]}")
+                                return False, f"BLOCKED_HEDGE_PROTECT_OPPOSITE_LOSER_oppgain{_hpo_other_gain:.1f}_curgain{_hpo_cur_gain:.2f}"
+    except Exception as _hpo_e:
+        logger.warning(f"[HEDGE_PROTECT_OPPOSITE_LOSER_WRAPPER] guard error (fail-open): {type(_hpo_e).__name__}: {_hpo_e}")
     if _wrap_is_increase and position_key:
         try:
             _wrap_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key)
@@ -17387,7 +17419,35 @@ async def _scalp_v3_protective_exits(trade_manager, account_key: str,
             # at gain ≥ 0.5%, close 50% via maker, set stop_level at BE+buffer. Reuses
             # trade_manager.partial_profit_lock_state so the standard PPL stop-arm/SL
             # path in process_position still handles the upgrade and SL hit.
-            if bool(getattr(config, 'SCALP_V3_FAST_PPL_ENABLED', True)) and bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)):
+            # User 2026-05-05: PPL never on hedges. Detect hedge via flag, augment_reason
+            # tag, tracker active_hedges, or de-facto (opposite-side same-symbol deeply losing).
+            _fppl_is_hedge = bool(getattr(p, 'is_hedge', False))
+            if not _fppl_is_hedge:
+                _fppl_aug_up = str(getattr(p, 'augment_reason', '') or '').upper()
+                if any(_m in _fppl_aug_up for _m in ('HEDGE_PROTECT_', 'HEDGE_ELECTED_', 'QUICK_HEDGE_', 'HEDGE_SAME_', 'HEDGE_OPEN', 'BANDAID')):
+                    _fppl_is_hedge = True
+            if not _fppl_is_hedge:
+                try:
+                    if hasattr(trade_manager, 'tracker_manager') and trade_manager.tracker_manager:
+                        for _h in (getattr(trade_manager.tracker_manager, 'active_hedges', None) or []):
+                            if _h.get('position_key') == pk or _h.get('hedge_position_key') == pk:
+                                _fppl_is_hedge = True
+                                break
+                except Exception: pass
+            if not _fppl_is_hedge:
+                try:
+                    _fppl_other_pk = pk[:-len('_LONG')] + '_SHORT' if side == 'LONG' else pk[:-len('_SHORT')] + '_LONG'
+                    _fppl_other_pos = trade_manager.positions.get(_fppl_other_pk) if hasattr(trade_manager, 'positions') else None
+                    if _fppl_other_pos:
+                        _fppl_other_amt = abs(safe_fetch_float(getattr(_fppl_other_pos, 'positionAmt', 0), 0))
+                        _fppl_other_g = safe_fetch_float(getattr(_fppl_other_pos, 'gain', 0), 0)
+                        _fppl_dl = float(getattr(config, 'OPPOSITE_LOSER_DEEP_LOSS_PCT', -5.0))
+                        if _fppl_other_amt > 0.0001 and _fppl_other_g < _fppl_dl:
+                            _fppl_is_hedge = True
+                except Exception: pass
+            if (bool(getattr(config, 'SCALP_V3_FAST_PPL_ENABLED', True))
+                and bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
+                and not _fppl_is_hedge):
                 _fppl_min_gain = float(getattr(config, 'SCALP_V3_FAST_PPL_GAIN_PCT', float(getattr(config, 'PARTIAL_PROFIT_LOCK_GAIN_PCT', 0.5))))
                 if not hasattr(trade_manager, 'partial_profit_lock_state'):
                     trade_manager.partial_profit_lock_state = {}

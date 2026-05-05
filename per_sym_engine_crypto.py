@@ -24,6 +24,16 @@ from scipy.signal import lfilter
 
 from wt_dc_hierarchy import compute_hierarchy_full
 
+# Import the v8_quick_engine vectorized RZ cascade — handles BTC's RZ_PROXIMITY logic.
+# v8_quick_engine is a heavy module; lazy-import compute_rz_cascade_signals only.
+def _import_rz_cascade():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from v8_quick_engine import compute_rz_cascade_signals as _rz
+    return _rz
+_rz_cascade_signals = None  # set on first use to avoid heavy import at module load
+
 ROOT = Path(__file__).resolve().parent
 
 # Crypto commission: 0.02% Binance USDC maker + 0.02% slippage = 0.04% per side
@@ -182,6 +192,20 @@ class SymParams:
     #   LONG entry = LTF at_lower + delta_bull + cascade-confirmed by HTF
     # User 2026-05-05: "use all wt_dc functions we have built — years of work".
     USE_WT_DC_HIERARCHY: bool = False  # default off; profiler sweeps ON/OFF per-(sym, side)
+    # RZ_CASCADE — port from v8_quick_engine.compute_rz_cascade_signals.
+    # Detects per-TF: at_upper/at_lower (RZ proximity), breakout_up/down, reverse_up/down.
+    # Entry = LTF breakout + alignment across HTFs. Exit = HTF rejection at resistance.
+    USE_RZ_CASCADE: bool = False
+    RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0
+    RZ_CASCADE_WT_DELTA_MIN: float = 0.1
+    RZ_CASCADE_VEL_MIN: float = 0.1
+    RZ_CASCADE_HIGH_LOOKBACK: int = 20
+    RZ_CASCADE_REQUIRE_NEW_HIGH: bool = False
+    RZ_CASCADE_MIN_TF_ALIGN: int = 1
+    RZ_CASCADE_EXIT_ANY_TF: bool = True
+    RZ_CASCADE_EXIT_MIN_REV_TFS: int = 2
+    RZ_CASCADE_USE_W_M: bool = False
+    LTF: str = '3m'  # used by RZ cascade — match crypto LTF
     HIER_RZ_TOP_BB: float = 0.85
     HIER_RZ_BOT_BB: float = 0.15
     HIER_DC_BAND_PCT: float = 0.2  # DC extreme = within X% of prev high/low
@@ -1063,6 +1087,30 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     # WT_DC HIERARCHY (vectorized cascade state machine — primary entry/exit when enabled).
     # Use 'tradier' MODE for crypto so hierarchy skips 3m (no close_5m for crypto → auto-skipped to 15m as LTF).
     # This aligns hierarchy signals with my 15m walker grid.
+    # RZ_CASCADE — v8_quick_engine vectorized port. Adds LTF-breakout-with-HTF-alignment entries.
+    if getattr(params, 'USE_RZ_CASCADE', False):
+        global _rz_cascade_signals
+        if _rz_cascade_signals is None:
+            _rz_cascade_signals = _import_rz_cascade()
+        n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
+        # Use LTF=15m for crypto in RZ cascade (matches walker grid, avoids 3m noise per hierarchy fix)
+        rz_cfg = params.copy()
+        rz_cfg.LTF = '15m'
+        rz_long_3m, _rz_long_exit = _rz_cascade_signals(base, n_3m, True, rz_cfg)
+        rz_short_3m, _rz_short_exit = _rz_cascade_signals(base, n_3m, False, rz_cfg)
+        # Subsample 3m → 15m grid
+        n_15m = len(tf_data['15m']['close'])
+        def _ss_rz(arr_3m: np.ndarray) -> np.ndarray:
+            cut = (len(arr_3m) // 5) * 5
+            sub = arr_3m[:cut][4::5]
+            if len(sub) >= n_15m: return sub[:n_15m]
+            return np.concatenate([np.zeros(n_15m - len(sub), dtype=bool), sub])
+        rz_long_15m = _ss_rz(rz_long_3m)
+        rz_short_15m = _ss_rz(rz_short_3m)
+    else:
+        rz_long_15m = None
+        rz_short_15m = None
+
     if getattr(params, 'USE_WT_DC_HIERARCHY', False):
         n_3m = len(base['close_3m']) if 'close_3m' in base else len(base['close'])
         # Trick: clone params with MODE='tradier' so _resolve_tfs returns ('5m','15m','1h','4h','D');
@@ -1092,6 +1140,13 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     else:
         enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
         enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+    # OR in RZ_CASCADE entry signals if enabled (additive entry path)
+    if rz_long_15m is not None:
+        if len(rz_long_15m) == len(enter_long):
+            enter_long = enter_long | rz_long_15m
+    if rz_short_15m is not None:
+        if len(rz_short_15m) == len(enter_short):
+            enter_short = enter_short | rz_short_15m
     if only_side == 'LONG':
         enter_short = np.zeros_like(enter_short)
     elif only_side == 'SHORT':
