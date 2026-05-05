@@ -552,8 +552,12 @@ def main():
 
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     out_path = OUT_DIR / f"SYMBOL_REPORT_{ts}.xlsx"
+    latest_path = OUT_DIR / "SYMBOL_REPORT_LATEST.xlsx"
     wb.save(str(out_path))
+    import shutil
+    shutil.copy2(str(out_path), str(latest_path))
     print(f"\nSaved: {out_path}")
+    print(f"Latest: {latest_path}")
     return 0
 
 

@@ -10661,24 +10661,24 @@ class MultiAccountTradeManager:
             if time.time() - _last_open_ts < _dup_cooldown:
                 logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
                 return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
-        # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. No exceptions. Not hedge. Not reentry. Not anything.
-        # ONLY exception: REENTRY on position <= min_pos_qty (rebuilding from near-zero, API-verified).
+        # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. NO EXCEPTIONS. Not hedge. Not reentry. Not anything.
+        # ONLY pass when position is at foothold size (near-zero) — any entry type allowed then.
         if is_augment:
             if not position: position = await self.get_position(position_key)
             _gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0) if position else 0.0
             _pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) if position else 0.0
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, 'MIN_POSITION_SIZE', 45.0)
-            if _pos_val <= _min_pos_val and _is_reentry:
-                logger.info(f"[REENTRY_ALLOWED] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — rebuild allowed")
-            elif _pos_val > _min_pos_val and _gain < 3.0 and not _original_action_was_reentry:
-                # ABSOLUTE: NO augments on losing positions. No exceptions.
+            if _pos_val <= _min_pos_val:
+                logger.info(f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action})")
+            elif _pos_val > _min_pos_val and _gain < 3.0:
+                # ABSOLUTE: NO opens/augments/reentries/hedges on positions with gain < 3%. No exceptions.
                 if _gain < 0.0:
-                    logger.critical(f"🚫 [AUGMENT_LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. NEVER augment a losing position. action={action} reason={reason[:80]}")
-                    return f"BLOCKED_AUGMENT_NEGATIVE_GAIN_{_gain:.2f}%"
+                    logger.critical(f"🚫 [LOSER_KILL] {position_key}: BLOCKED — gain={_gain:.2f}% NEGATIVE. positionAmt>0 AND gain<0 = NEVER open/augment/reenter. action={action} is_reentry={_is_reentry}")
+                    return f"BLOCKED_LOSER_KILL_NEGATIVE_{_gain:.2f}%"
                 else:
-                    logger.warning(f"[AUGMENT_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < 3.0%. action={action} is_hedge={is_hedge} reentry={_is_reentry}.")
-                    return f"BLOCKED_AUGMENT_{_gain:.2f}%_pos${_pos_val:.0f}"
+                    logger.warning(f"[GAIN_GATE_3PCT] {position_key}: BLOCKED — pos=${_pos_val:.2f} gain={_gain:.2f}% < 3.0%. action={action} is_reentry={_is_reentry} is_hedge={is_hedge}")
+                    return f"BLOCKED_GAIN_GATE_3PCT_{_gain:.2f}%_pos${_pos_val:.0f}"
         # Cap total augments per position — except REENTRY (rebuilding, not augmenting)
         if is_augment and not _original_action_was_reentry and position:
             _aug_count = safe_fetch_float(getattr(position, 'augmented_count', 0), 0.0)
@@ -13037,7 +13037,7 @@ class MultiAccountTradeManager:
 
 #0E
     _execute_now_open_in_flight: dict = {}  # FIX 2026-04-08: ATOMIC open-in-flight guard inside execute_now itself
-    async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None) -> str:
+    async def execute_now(self, position_key: Optional[str] = None, account_key: Optional[str] = None, symbol: Optional[str] = None, original_positionAmt: float = 0.0, side: str = 'BUY', position_side: str = 'LONG', quantity: float = 0.0, old_price: float = 0.0, unique_id: Optional[str] = None, reason: str = '', is_full_close: bool = False, action: Optional[str] = None, is_hedge: bool = False, hedge_for: Optional[str] = None, url_variant: str = "") -> str:
         _is_reduce = False  # Init early — prevents UnboundLocalError if early return path skips line 13054
         global _AUGMENT_LOCK, _ABSOLUTE_OPEN_LOCK
         # ═══════════════════════════════════════════════════════════════════════════
@@ -14068,7 +14068,7 @@ class MultiAccountTradeManager:
                         await self.clear_all_cooldowns_for_position(position_key, side)
                         return "BLOCKED_MAKER_SUPPRESS_WEBHOOK"
                     logger.warning(f"[MAKER_EXIT_FALLBACK] {position_key}: Maker order failed, falling back to webhook")
-                webhook_success = await self.send_webhook( position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:{reason}", is_full_close, f"{reason}_QWH", level=None, stoch_required=False )
+                webhook_success = await self.send_webhook( position_key, account_key, symbol, current_real_amt, quantity, current_price, side, position_side, f"{unique_id}:{reason}", is_full_close, f"{reason}_QWH", level=None, stoch_required=False, url_variant=url_variant )
                 if not webhook_success:
                     return "FAILED_WEBHOOK"
                 if position: position.last_signal = action.upper()
@@ -21129,20 +21129,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         _ppl_uid = f"PPL_TP_{position_key}_{int(time.time())}"
                         _ppl_reason = f"PPL_TP_gain{_pp_gain:.2f}_URL2_50pct"
                         logger.warning(f"[PARTIAL_PROFIT_LOCK_TP] {position_key}: gain={_pp_gain:.2f}% ≥ {_ppl_min_gain}% — firing URL2 (Finandy 50%) + BE stop @ {_ppl_be_stop:.6f} (entry={_ppl_entry_px:.6f}, buffer={_ppl_be_buffer}%)")
-                        _ppl_ok = False
-                        if _ppl_use_maker:
-                            try:
-                                _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ppl_pos_amt, current_price, _ppl_reduce_qty, _ppl_close_side, position_side, _ppl_uid, _ppl_reason)
-                                _ppl_ok = bool(_m_ok)
-                            except Exception as _m_e:
-                                logger.warning(f"[PPL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to url_2 webhook")
-                                _ppl_ok = False
-                        if not _ppl_ok:
-                            try:
-                                _ppl_ok = await trade_manager.send_webhook(position_key, account_key, symbol, _ppl_pos_amt, _ppl_reduce_qty, current_price, _ppl_close_side, position_side, _ppl_uid, False, _ppl_reason, url_variant="2")
-                            except Exception as _w_e:
-                                logger.error(f"[PPL_WEBHOOK2_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
-                                _ppl_ok = False
+                        _ppl_result = await trade_manager.execute_now(position_key, account_key, symbol, _ppl_pos_amt, _ppl_close_side, position_side, _ppl_reduce_qty, current_price, _ppl_uid, _ppl_reason, False, 'QUICK_REDUCE', url_variant="2")
+                        _ppl_ok = 'SUCCESS' in str(_ppl_result or '').upper()
                         if _ppl_ok:
                             _ppl_eff_entry = _ppl_entry_px * (1.0 - _ppl_frac * (1.0 + _pp_gain / 100.0)) / (1.0 - _ppl_frac) if is_long else _ppl_entry_px * (1.0 - _ppl_frac * (1.0 - _pp_gain / 100.0)) / (1.0 - _ppl_frac)
                             trade_manager.partial_profit_lock_state[position_key] = {'fired': True, 'first_exit_price': current_price, 'stop_level': _ppl_be_stop, 'stop_upgraded': False, 'effective_entry': _ppl_eff_entry}
@@ -21157,20 +21145,8 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         _ppl_sl_uid = f"PPL_SL_{position_key}_{int(time.time())}"
                         _ppl_sl_reason = f"PPL_SL_{'upgraded' if _ppl_stop_upgraded else 'BE'}_px{current_price:.6f}_stop{_ppl_stop_level:.6f}"
                         logger.warning(f"[PARTIAL_PROFIT_LOCK_SL_HIT] {position_key}: price={current_price:.6f} hit stop={_ppl_stop_level:.6f} ({'upgraded-0.5pct' if _ppl_stop_upgraded else 'BE+buffer'}) — firing URL (100% remainder)")
-                        _sl_ok = False
-                        if _ppl_use_maker:
-                            try:
-                                _m_ok, _m_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _ppl_pos_amt, current_price, _ppl_pos_amt, _ppl_close_side, position_side, _ppl_sl_uid, _ppl_sl_reason)
-                                _sl_ok = bool(_m_ok)
-                            except Exception as _m_e:
-                                logger.warning(f"[PPL_SL_MAKER_ERR] {position_key}: {type(_m_e).__name__}: {_m_e} — falling back to url (100%)")
-                                _sl_ok = False
-                        if not _sl_ok:
-                            try:
-                                _sl_ok = await trade_manager.send_webhook(position_key, account_key, symbol, _ppl_pos_amt, _ppl_pos_amt, current_price, _ppl_close_side, position_side, _ppl_sl_uid, True, _ppl_sl_reason)
-                            except Exception as _w_e:
-                                logger.error(f"[PPL_SL_WEBHOOK_ERR] {position_key}: {type(_w_e).__name__}: {_w_e}")
-                                _sl_ok = False
+                        _sl_result = await trade_manager.execute_now(position_key, account_key, symbol, _ppl_pos_amt, _ppl_close_side, position_side, _ppl_pos_amt, current_price, _ppl_sl_uid, _ppl_sl_reason, True, 'QUICK_CLOSE')
+                        _sl_ok = 'SUCCESS' in str(_sl_result or '').upper()
                         if _sl_ok:
                             trade_manager.partial_profit_lock_state.pop(position_key, None)
                             return f"{EvalStatus.ACTION_TAKEN}:PPL_SL_CLOSE"
@@ -21186,16 +21162,16 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if _sat_reduce_qty > pos_min_qty and _sat_keep_qty > pos_min_qty:
                         _sat_side = "SELL" if is_long else "BUY"
                         _sat_unique = f"SATOSHIT_PARTIAL_{position_key}_{int(time.time())}"
-                        if getattr(config, 'SATOSHIT_EXIT_USE_MAKER', True):
-                            logger.warning(f"[SATOSHIT_PARTIAL_EXIT] {position_key}: {_sat_reason} gain={_pp_gain:.2f}% — MAKER partial close {_sat_partial_pct*100:.0f}% ({_sat_reduce_qty:.6f} of {_sat_amt:.6f}), keeping {_sat_keep_qty:.6f} as runner")
+                        if True:
+                            logger.warning(f"[SATOSHIT_PARTIAL_EXIT] {position_key}: {_sat_reason} gain={_pp_gain:.2f}% — routing through execute_now partial close {_sat_partial_pct*100:.0f}%")
                             from ez_satoshit import record_satoshit_exit
                             record_satoshit_exit(position_key, "LONG" if is_long else "SHORT", _pp_gain)
-                            _maker_ok, _maker_filled = await trade_manager.place_maker_order(account_key, position_key, symbol, _sat_amt, current_price, _sat_reduce_qty, _sat_side, position_side, _sat_unique, f"SATOSHIT_EXIT_{_sat_reason}_gain{_pp_gain:.2f}_partial{_sat_partial_pct*100:.0f}pct")
-                            if _maker_ok:
-                                logger.warning(f"[SATOSHIT_PARTIAL_EXIT_OK] {position_key}: Maker filled {_maker_filled:.6f} — runner {_sat_keep_qty:.6f} still riding")
+                            _sat_result = await trade_manager.execute_now(position_key, account_key, symbol, _sat_amt, _sat_side, position_side, _sat_reduce_qty, current_price, _sat_unique, f"SATOSHIT_EXIT_{_sat_reason}_gain{_pp_gain:.2f}_partial{_sat_partial_pct*100:.0f}pct", False, 'QUICK_REDUCE')
+                            if 'SUCCESS' in str(_sat_result or '').upper():
+                                logger.warning(f"[SATOSHIT_PARTIAL_EXIT_OK] {position_key}: execute_now success — runner {_sat_keep_qty:.6f} still riding")
                                 return f"{EvalStatus.ACTION_TAKEN}:SATOSHIT_PARTIAL_EXIT"
                             else:
-                                logger.warning(f"[SATOSHIT_PARTIAL_EXIT_FAILED] {position_key}: Maker failed — NOT falling back to webhook (would close everything)")
+                                logger.warning(f"[SATOSHIT_PARTIAL_EXIT_FAILED] {position_key}: execute_now={str(_sat_result or '')[:60]} — not retrying")
                         else:
                             result = await queue_trade_action(order_queue, trade_manager, position_key, "REDUCE", f"SATOSHIT_EXIT_{_sat_reason}_gain{_pp_gain:.2f}", 0.70, override_qty=_sat_reduce_qty)
                             if result: return f"{EvalStatus.ACTION_TAKEN}:SATOSHIT_EXIT"
