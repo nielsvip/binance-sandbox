@@ -6933,6 +6933,153 @@ class MultiAccountTradeManager:
         self._cache_tasks.append( asyncio.create_task(self._aggressive_indicator_health_check()) )
         self._cache_tasks.append( asyncio.create_task(self._intervention_queue_loop()) )
 
+    async def _golden_rule_loop(self):
+        # GOLDEN RULE — restored 2026-05-05 per user directive.
+        # For ANY tradeable symbol where wt1_3m > wt2_3m AND price > dc_high_15m,
+        # MUST hold a LONG (however small). Vice versa for SHORT (wt1_3m < wt2_3m
+        # AND price < dc_low_15m). Size doubles at 1h breakout, doubles again at
+        # 4h breakout (1x → 2x → 4x cascading). Per-account scope:
+        #   • LONG side fires on symbols in symbols_{acct}_long (ang/inf) or in
+        #     symbols_{acct} (men/flz/fin), OR on any symbol with an existing
+        #     opposite-side losing position (for hedge effect).
+        # Bypasses STALE_MARK_PRICE / LS_RATIO_GATE / MARKET_REGIME via
+        # 'GOLDEN_RULE' marker in reason. Does NOT bypass LOSING_POSITION_HARD_BLOCK
+        # (per-pkey, only matters for AUGMENT; first OPEN passes), BALANCE_FLOOR_HALT,
+        # or HEDGE_PROTECT_OPPOSITE_LOSER (CLOSE-side guard, OPEN doesn't trigger).
+        if not bool(getattr(config, 'GOLDEN_RULE_ENABLED', True)):
+            logger.info('[GOLDEN_RULE] disabled by config')
+            return
+        try: await asyncio.sleep(45)
+        except Exception: pass
+        poll_s = float(getattr(config, 'GOLDEN_RULE_POLL_S', 30.0))
+        base_usd = float(getattr(config, 'GOLDEN_RULE_BASE_USD', 5.0))
+        cooldown = float(getattr(config, 'GOLDEN_RULE_COOLDOWN_S', 600.0))
+        if not hasattr(self, '_golden_last_trigger'):
+            self._golden_last_trigger = {}
+        while True:
+            try:
+                allowed = list(getattr(self, '_allowed_accounts', set()) or {})
+                # Per-account symbol pools
+                _pools = {}
+                for ak in allowed:
+                    if ak == 'ang':
+                        long_pool = set(getattr(self, 'symbols_ang_long', set()) or set())
+                        short_pool = set(getattr(self, 'symbols_ang_short', set()) or set())
+                    elif ak == 'inf':
+                        long_pool = set(getattr(self, 'symbols_inf_long', set()) or set())
+                        short_pool = set(getattr(self, 'symbols_inf_short', set()) or set())
+                    elif ak == 'flz':
+                        long_pool = short_pool = set(getattr(self, 'symbols_flz', set()) or set())
+                    elif ak == 'men':
+                        long_pool = short_pool = set(getattr(self, 'symbols_men', set()) or set())
+                    elif ak == 'fin':
+                        long_pool = short_pool = set(getattr(self, 'symbols_fin', set()) or set())
+                    else:
+                        long_pool = short_pool = set()
+                    _pools[ak] = (long_pool, short_pool)
+                fired = 0
+                max_per_tick = int(getattr(config, 'GOLDEN_RULE_MAX_FIRES_PER_TICK', 5))
+                for ak in allowed:
+                    long_pool, short_pool = _pools.get(ak, (set(), set()))
+                    # Build set of symbols where opposite-side bleed exists (hedge eligible)
+                    _opp_long_eligible = set()
+                    _opp_short_eligible = set()
+                    try:
+                        _acct_pos = self.positions_by_account.get(ak, {}) or {}
+                    except Exception:
+                        _acct_pos = {}
+                    for _pk, _pos in _acct_pos.items():
+                        if not isinstance(_pk, str) or not _pk.startswith(f'{ak}:'): continue
+                        try: _amt = abs(safe_fetch_float(getattr(_pos, 'positionAmt', 0), 0))
+                        except Exception: _amt = 0
+                        if _amt <= 0: continue
+                        try: _gain = safe_fetch_float(getattr(_pos, 'gain', 0), 0)
+                        except Exception: _gain = 0
+                        _sym = _pk.split(':',1)[1].rsplit('_',1)[0]
+                        if _pk.endswith('_SHORT') and _gain < -1.0:
+                            _opp_long_eligible.add(_sym)
+                        elif _pk.endswith('_LONG') and _gain < -1.0:
+                            _opp_short_eligible.add(_sym)
+                    candidate_syms = long_pool | short_pool | _opp_long_eligible | _opp_short_eligible
+                    for sym in list(candidate_syms):
+                        for is_long in (True, False):
+                            pkey = f'{ak}:{sym}_{"LONG" if is_long else "SHORT"}'
+                            # cooldown
+                            if time.time() - self._golden_last_trigger.get(pkey, 0) < cooldown:
+                                continue
+                            # filter by side eligibility
+                            if is_long:
+                                if sym not in long_pool and sym not in _opp_long_eligible:
+                                    continue
+                            else:
+                                if sym not in short_pool and sym not in _opp_short_eligible:
+                                    continue
+                            try:
+                                ind = await ii(self, sym)
+                            except Exception:
+                                continue
+                            if not ind:
+                                continue
+                            try:
+                                wt1 = safe_fetch_float(ind.get('wt1_3m'), None)
+                                wt2 = safe_fetch_float(ind.get('wt2_3m'), None)
+                                price = safe_fetch_float(ind.get('current_price') or ind.get('close_3m'), None)
+                                dc_h_15m = safe_fetch_float(ind.get('dc_high_15m'), None)
+                                dc_l_15m = safe_fetch_float(ind.get('dc_low_15m'), None)
+                                dc_h_1h = safe_fetch_float(ind.get('dc_high_1h'), None)
+                                dc_l_1h = safe_fetch_float(ind.get('dc_low_1h'), None)
+                                dc_h_4h = safe_fetch_float(ind.get('dc_high_4h'), None)
+                                dc_l_4h = safe_fetch_float(ind.get('dc_low_4h'), None)
+                            except Exception:
+                                continue
+                            if wt1 is None or wt2 is None or price is None or price <= 0:
+                                continue
+                            if is_long:
+                                if wt1 <= wt2: continue
+                                if dc_h_15m is None or dc_h_15m <= 0 or price <= dc_h_15m: continue
+                                mult = 1
+                                if dc_h_1h is not None and dc_h_1h > 0 and price > dc_h_1h: mult = 2
+                                if dc_h_4h is not None and dc_h_4h > 0 and price > dc_h_4h: mult = 4
+                            else:
+                                if wt1 >= wt2: continue
+                                if dc_l_15m is None or dc_l_15m <= 0 or price >= dc_l_15m: continue
+                                mult = 1
+                                if dc_l_1h is not None and dc_l_1h > 0 and price < dc_l_1h: mult = 2
+                                if dc_l_4h is not None and dc_l_4h > 0 and price < dc_l_4h: mult = 4
+                            target_usd = base_usd * mult
+                            target_qty = target_usd / price
+                            try:
+                                pos = self.positions.get(pkey)
+                                cur_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0)) if pos else 0
+                            except Exception:
+                                cur_amt = 0
+                            if cur_amt > 0 and cur_amt * price >= target_usd * 0.8:
+                                continue
+                            qty = target_qty - cur_amt
+                            if qty * price < 1.0:
+                                continue
+                            if fired >= max_per_tick:
+                                break
+                            self._golden_last_trigger[pkey] = time.time()
+                            action = 'OPEN' if cur_amt == 0 else 'AUGMENT'
+                            side = 'BUY' if is_long else 'SELL'
+                            pside = 'LONG' if is_long else 'SHORT'
+                            reason_str = f'GOLDEN_RULE_{"LONG" if is_long else "SHORT"}_mult{mult}_INTERVENTION'
+                            logger.critical(f'🌟 [GOLDEN_RULE] {pkey} mult={mult}x wt1_3m={wt1:.1f}>{wt2:.1f} px={price:g} dc_h15={dc_h_15m} → {action} qty={qty:.4f} (\${target_usd:.0f})')
+                            try:
+                                result = await self.execute_now(position_key=pkey, account_key=ak, symbol=sym, side=side, position_side=pside, quantity=qty, reason=reason_str, action=action)
+                                logger.critical(f'🌟 [GOLDEN_RULE] {pkey} → {result}')
+                                fired += 1
+                            except Exception as e:
+                                logger.error(f'[GOLDEN_RULE] {pkey} execute_now err: {type(e).__name__}: {e}')
+                            await asyncio.sleep(0.05)  # yield
+                if fired:
+                    logger.info(f'[GOLDEN_RULE] tick fired={fired}')
+            except Exception as outer:
+                logger.error(f'[GOLDEN_RULE] loop err: {type(outer).__name__}: {outer}', exc_info=True)
+            try: await asyncio.sleep(poll_s)
+            except Exception: await asyncio.sleep(30)
+
     async def _intervention_queue_loop(self):
         # User-pushed manual intervention. Pops commands from Redis list
         # `intervention_queue:<account>` and routes through execute_now()
@@ -10980,7 +11127,8 @@ class MultiAccountTradeManager:
         # --- SUBSTITUTION LOGIC (Make Room for Winners) ---
         is_entry_action = action in ['OPEN', 'AUGMENT', 'REENTRY', 'REVERSE', 'REVERSE_AUGMENT','QUICK_OPEN', 'HEDGE_OPEN', 'QUICK_AUGMENT', 'QUICK_HEDGE_OPEN', 'QUICK_HEDGE_AUGMENT', 'QUICK_QUICK_HEDGE_OPEN'] or 'HEDGE' in action.upper()
         _is_winner_augment = action in ['AUGMENT', 'QUICK_AUGMENT'] and safe_fetch_float(getattr(position, 'gain', 0.0), 0.0) >= 2.0
-        if is_entry_action and 'HEDGE' not in reason.upper() and 'REENTRY' not in action.upper() and not _is_winner_augment and self.positions_service:
+        _is_golden_or_intervention = ('GOLDEN_RULE' in reason.upper()) or ('INTERVENTION' in reason.upper()) or ('MANUAL' in reason.upper())
+        if is_entry_action and 'HEDGE' not in reason.upper() and 'REENTRY' not in action.upper() and not _is_winner_augment and not _is_golden_or_intervention and self.positions_service:
             try:
                 ratio_data = self.positions_service.get_long_short_ratio(account_key)
                 indicators_ratio = await ii(self, 'BTCUSDC') or await ii(self, 'BTCUSDC')
@@ -24781,6 +24929,7 @@ async def main():
             background_tasks.append(asyncio.create_task(periodic_lock_cleanup(trade_manager)))
             background_tasks.append(asyncio.create_task(periodic_heartbeat_update()))
             background_tasks.append(asyncio.create_task(trade_manager._intervention_queue_loop()))
+            background_tasks.append(asyncio.create_task(trade_manager._golden_rule_loop()))
             trade_manager.websocket_managers = websocket_managers
             background_tasks.append(asyncio.create_task(log_timing_summary()))
             background_tasks.append(asyncio.create_task(monitor_hedges_continuously(trade_manager)))
