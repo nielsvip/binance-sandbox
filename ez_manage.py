@@ -6931,6 +6931,83 @@ class MultiAccountTradeManager:
     async def start_hybrid_cache_system(self):
         self._cache_tasks.append( asyncio.create_task(self._last_events_refresh_loop()) )
         self._cache_tasks.append( asyncio.create_task(self._aggressive_indicator_health_check()) )
+        self._cache_tasks.append( asyncio.create_task(self._intervention_queue_loop()) )
+
+    async def _intervention_queue_loop(self):
+        # User-pushed manual intervention. Pops commands from Redis list
+        # `intervention_queue:<account>` and routes through execute_now()
+        # with all live guards intact. Used to unstick the autopilot during
+        # emergencies. Each command JSON: {"symbol","side":"BUY|SELL",
+        # "position_side":"LONG|SHORT","quantity":<float>,"reason":<str>,
+        # "is_hedge":<bool optional>,"hedge_for":<pkey optional>,
+        # "ttl_epoch":<unix_ts optional>}
+        if not bool(getattr(config, 'INTERVENTION_QUEUE_ENABLED', True)):
+            logger.info('[INTERVENTION_QUEUE] disabled by config')
+            return
+        try:
+            await asyncio.sleep(20)
+        except Exception:
+            pass
+        poll_s = float(getattr(config, 'INTERVENTION_QUEUE_POLL_S', 3.0))
+        while True:
+            try:
+                accounts_iter = list(getattr(self, 'accounts', {}) or {})
+                for account_key in accounts_iter:
+                    if hasattr(self, '_check_account_allowed') and not self._check_account_allowed(account_key):
+                        continue
+                    if not self.redis_manager:
+                        break
+                    conns = getattr(self.redis_manager, 'connections', None) or {}
+                    client = conns.get('local') or conns.get('gateway') or conns.get('server')
+                    if client is None:
+                        break
+                    qkey = f'intervention_queue:{account_key}'
+                    try:
+                        n = await client.llen(qkey)
+                    except Exception:
+                        n = 0
+                    if not n:
+                        continue
+                    for _ in range(min(int(n or 0), 20)):
+                        try:
+                            raw = await client.lpop(qkey)
+                        except Exception:
+                            break
+                        if not raw:
+                            break
+                        try:
+                            cmd = json.loads(raw if isinstance(raw, str) else raw.decode('utf-8','replace'))
+                        except Exception as e:
+                            logger.warning(f'[INTERVENTION_QUEUE] {account_key} bad json: {e}')
+                            continue
+                        sym = (cmd.get('symbol') or '').upper()
+                        side = (cmd.get('side') or '').upper()
+                        pside = (cmd.get('position_side') or '').upper()
+                        try: qty = float(cmd.get('quantity') or 0.0)
+                        except Exception: qty = 0.0
+                        reason = str(cmd.get('reason') or 'INTERVENTION_QUEUE')
+                        is_hedge = bool(cmd.get('is_hedge', False))
+                        hedge_for = cmd.get('hedge_for')
+                        try: ttl_epoch = float(cmd.get('ttl_epoch') or 0.0)
+                        except Exception: ttl_epoch = 0.0
+                        if ttl_epoch > 0 and time.time() > ttl_epoch:
+                            logger.warning(f'[INTERVENTION_QUEUE] {account_key} expired: {sym} {pside} qty={qty}')
+                            continue
+                        if not sym or side not in ('BUY','SELL') or pside not in ('LONG','SHORT') or qty <= 0:
+                            logger.warning(f'[INTERVENTION_QUEUE] {account_key} invalid cmd: {cmd}')
+                            continue
+                        pkey = f'{account_key}:{sym}_{pside}'
+                        try:
+                            result = await self.execute_now(position_key=pkey, account_key=account_key, symbol=sym, side=side, position_side=pside, quantity=qty, reason=reason, action='OPEN', is_hedge=is_hedge, hedge_for=hedge_for)
+                            logger.critical(f'[INTERVENTION_QUEUE] {pkey} qty={qty} reason={reason} is_hedge={is_hedge} -> {result}')
+                        except Exception as e:
+                            logger.error(f'[INTERVENTION_QUEUE] {pkey} execute_now error: {type(e).__name__}: {e}')
+            except Exception as outer:
+                logger.error(f'[INTERVENTION_QUEUE] loop error: {type(outer).__name__}: {outer}', exc_info=True)
+            try:
+                await asyncio.sleep(poll_s)
+            except Exception:
+                await asyncio.sleep(3.0)
 
     async def _batch_refresh_loop(self):
         """Refresh entire cache periodically"""
@@ -20252,6 +20329,64 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     if not current_price or current_price <= 0:
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # UNDERWATER_HEDGE_OR_CLOSE — User 2026-05-05 mandate (loss prevention):
+    # If position pnl<0 AND wt1_3m flipped against trade AND no active hedge → fire hedge.
+    # If hedge already active → close primary IMMEDIATELY (don't let it bleed further).
+    # Signal-driven (wt1_3m flip), not %-based — so this is NOT a fixed-% stop loss.
+    # Replicated in backtest_v8_engine + ez_positions_quick for sandbox parity.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_ENABLED', True)):
+        _uh_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+        if _uh_gain < 0:
+            try:
+                _uh_ind = await ii(trade_manager, symbol)
+            except Exception:
+                _uh_ind = {}
+            if _uh_ind:
+                _uh_w1 = safe_fetch_float(_uh_ind.get('wt1_3m'), 0)
+                _uh_w2 = safe_fetch_float(_uh_ind.get('wt2_3m'), 0)
+                if _uh_w1 != 0 or _uh_w2 != 0:
+                    _uh_is_long = (position_side == 'LONG')
+                    _uh_against = (_uh_w1 < _uh_w2) if _uh_is_long else (_uh_w1 > _uh_w2)
+                    if _uh_against:
+                        _uh_tm = getattr(trade_manager, 'tracker_manager', None)
+                        _uh_active = bool(_uh_tm) and any(
+                            (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
+                            for h in (_uh_tm.active_hedges or []))
+                        _uh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        if not _uh_active:
+                            logger.warning(f"⚠️ [UNDERWATER_HEDGE_FIRE] {position_key}: gain={_uh_gain:.2f}% wt1_3m={_uh_w1:.1f} {'<' if _uh_is_long else '>'} wt2_3m={_uh_w2:.1f} → FIRING HEDGE")
+                            try:
+                                _he = getattr(trade_manager, 'hedge_engine', None)
+                                if _he is not None:
+                                    await _he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _uh_pos_amt, current_price)
+                                    trade_manager.processing_keys.discard(position_key)
+                                    return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_FIRED"
+                                else:
+                                    logger.error(f"⚠️ [UNDERWATER_HEDGE_NO_ENGINE] {position_key}: no hedge_engine — falling through to close")
+                                    _uh_force_close = True
+                            except Exception as _uh_he_err:
+                                logger.error(f"⚠️ [UNDERWATER_HEDGE_FIRE_ERR] {position_key}: {type(_uh_he_err).__name__}: {_uh_he_err} — falling through to close")
+                                _uh_force_close = True
+                        else:
+                            _uh_force_close = True
+                            logger.warning(f"⚠️ [UNDERWATER_HEDGED_FORCE_CLOSE] {position_key}: gain={_uh_gain:.2f}% wt1_3m={_uh_w1:.1f}/{_uh_w2:.1f} — hedge active but bleeding → FORCE CLOSE")
+                        if locals().get('_uh_force_close'):
+                            _uh_side = 'SELL' if position_side == 'LONG' else 'BUY'
+                            try:
+                                await trade_manager.execute_now(
+                                    position_key=position_key, account_key=account_key, symbol=symbol,
+                                    original_positionAmt=_uh_pos_amt, side=_uh_side, position_side=position_side,
+                                    quantity=_uh_pos_amt, old_price=current_price,
+                                    unique_id=f"UNDERWATER_HOC_{int(time.time())}",
+                                    reason=f'UNDERWATER_HEDGE_OR_CLOSE_wt3m{_uh_w1:.1f}vs{_uh_w2:.1f}_g{_uh_gain:.2f}%',
+                                    is_full_close=True, action='CLOSE')
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_OR_CLOSE_CLOSED"
+                            except Exception as _uh_cl_err:
+                                logger.error(f"⚠️ [UNDERWATER_FORCE_CLOSE_ERR] {position_key}: {_uh_cl_err}")
     # 2026-04-27 — WIRE evaluate_reentry (was dead code at line 16593, never called).
     # 683 reentry mentions / 0 executions today across 5 crypto accounts. The compact 7-block
     # function (B15/B04/B11/B02/B12/B14/B10) is ablation-tested and returns Signal(action='REENTRY').

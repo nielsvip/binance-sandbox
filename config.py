@@ -698,6 +698,11 @@ class Config:
     # Reopen handled by scan_and_hedge_losers when 15m WT goes against origin again.
     # Origin-close → hedge-close is _close_associated_hedge in ez_manage.py:14453 (always was on).
     HEDGE_BANDAID_OFF_ENABLED: bool = True
+    # USER 2026-05-05 mandate: when position underwater AND wt1_3m flipped against trade:
+    #   if NO active hedge → fire hedge NOW
+    #   if hedge already active → close primary IMMEDIATELY (don't bleed further)
+    # Signal-driven (not %-based) — fires in process_position EARLY before other paths.
+    UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
