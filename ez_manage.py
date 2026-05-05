@@ -12737,17 +12737,21 @@ class MultiAccountTradeManager:
                 # Extend TIMEOUT to allow the deferred limit to fill
                 TIMEOUT = max(TIMEOUT, float(getattr(config, 'OB_PRICE_DEFER_TTL_SEC', 300.0)))
                 logger.warning(f"🎯 [OB_PRICE_DEFER] {position_key} {side}: limit deferred to {_ob_target_override} via {_ob_defer_reason} (TTL={TIMEOUT:.0f}s)")
+            # countdown_cancel_all once before loop — one call covers the full TIMEOUT window.
+            # futures_symbol_ticker removed (mark price not needed; exact bid/ask comes from
+            # futures_order_book per iteration). GTX cancel-replace is the proven design — do not revert.
+            try:
+                await asyncio.to_thread(client.futures_countdown_cancel_all, symbol=symbol, countdownTime=int(TIMEOUT * 1000) + 2000)
+            except Exception:
+                pass
             while time.time() - placement_start_time < TIMEOUT:
                 try:
-                    await asyncio.to_thread(client.futures_countdown_cancel_all, symbol=symbol, countdownTime=5000)
-                    ticker = await asyncio.to_thread(client.futures_symbol_ticker, symbol=symbol)
-                    lp = Decimal(ticker['price'])
-                    elapsed = time.time() - placement_start_time
+                    lp = Decimal(str(current_price))
                     # If OB deferral is active, quantize the wall-target to tick and use it.
                     if _ob_target_override is not None:
                         _quant = (_ob_target_override // tick) * tick
                         target_price_str = str(_quant)
-                    elif elapsed < 5.0:
+                    else:
                         book = await asyncio.to_thread(client.futures_order_book, symbol=symbol, limit=5)
                         bb, ba = Decimal(book['bids'][0][0]), Decimal(book['asks'][0][0])
                         if side == 'BUY':
@@ -12756,8 +12760,6 @@ class MultiAccountTradeManager:
                         else:
                             target = ba - tick
                             target_price_str = str(target if target > bb else ba)
-                    else:
-                        target_price_str = str(lp - tick if side == 'BUY' else lp + tick)
                     # 2026-04-28: clamp target to commission floor for CLOSE orders (post-only — rests if floor not crossed)
                     if _close_floor_price is not None:
                         try:
