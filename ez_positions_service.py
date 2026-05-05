@@ -2434,12 +2434,22 @@ class WebSocketManager:
                     _log_ban_skip_throttled(logger, account_key, f"deferring initial listen-key fetch ({sleep_for:.0f}s)")
                     await asyncio.sleep(sleep_for)
                     continue
+                auth_rem = _auth_ban_remaining(account_key)
+                if auth_rem > 0:
+                    sleep_for = min(auth_rem + 2, _AUTH_BAN_COOLDOWN_SEC)
+                    _log_auth_ban_throttled(logger, account_key, f"deferring initial listen-key fetch ({sleep_for:.0f}s)")
+                    await asyncio.sleep(sleep_for)
+                    continue
                 try :
                     listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
                     self.listen_keys[account_key] = listen_key
                     backoff = 2
                 except Exception as key_err:
                     _record_ip_ban_from_exc(key_err)
+                    if _record_auth_ban(account_key, key_err):
+                        _log_auth_ban_throttled(logger, account_key, f"initial listen-key fetch -2015 — pausing {_AUTH_BAN_COOLDOWN_SEC:.0f}s")
+                        await asyncio.sleep(_AUTH_BAN_COOLDOWN_SEC)
+                        continue
                     logger.warning(f"[{account_key}] Listen key fetch failed: {key_err}. Retrying in {backoff}s...")
                     if "client" in str(key_err).lower() or "object" in str(key_err).lower():
                         self.client = None
