@@ -320,7 +320,7 @@ class Config:
     BREAKOUT_MULTI_LUNG_COMPOSITE_EXHALE: float = -0.10   # Exit threshold
     BREAKOUT_MULTI_LUNG_SLOW_LUNG_OVERRIDE: float = 0.15  # HTF veto threshold (slow lung still inhaling → don't exit)
     BREAKOUT_MULTI_LUNG_COOLDOWN_BARS: int = 4     # bars between multi-lung entries
-    HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin"]  # 2026-04-24 RE-ENABLED (user request). Cascade guards now multi-layered: (1) reason-based hedge-of-hedge block (outer+inner) using augment_reason markers, (2) foothold webhook lock (1h Redis TTL matches hedge lockout), (3) send_webhook lock (same TTL for hedge reasons), (4) universal persist hook on both webhook paths so active_hedges always reflects reality, (5) HEDGE_COMPLETED_LOCKOUT 3600s in-memory + Redis-backed. Keep hedging ON until sell-at-loss proven more profitable on paper.
+    HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 3600.0  # 2026-04-24: 1-hour Redis-backed lock per (account:symbol:side) for HEDGE-reason webhooks. Matches HEDGE_COMPLETED_LOCKOUT_SECONDS. Non-hedge webhooks keep 30s TTL.
     HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
@@ -703,6 +703,16 @@ class Config:
     #   if hedge already active → close primary IMMEDIATELY (don't bleed further)
     # Signal-driven (not %-based) — fires in process_position EARLY before other paths.
     UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True
+    # USER 2026-05-05 (LUNC -65% incident on ang): catastrophic-loss safety net.
+    # Even with hedging, positions reached -65% because hedges kept getting closed (HEDGE_BANDAID_OFF)
+    # while the underlying short bled unbounded. These two caps prevent "ridiculous holds":
+    #   1. RIDICULOUS_LOSS_PCT — absolute loss ceiling: ANY position past this is force-closed regardless of hedge state.
+    #   2. RIDICULOUS_HOLD_HOURS — max underwater duration: position underwater this long → force-closed.
+    # Fires in process_position BEFORE the standard UNDERWATER_HEDGE_OR_CLOSE logic.
+    # Note: previous HARD_MAX_LOSS_PCT=-5% destroyed gains. -15% is the empirical "definitely dead" threshold.
+    RIDICULOUS_HOLD_GUARD_ENABLED: bool = True
+    RIDICULOUS_LOSS_PCT: float = -15.0    # absolute loss cap — never exceed this
+    RIDICULOUS_HOLD_HOURS: float = 48.0   # 2 days max underwater duration
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,

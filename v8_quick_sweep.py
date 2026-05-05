@@ -2289,7 +2289,71 @@ def build_param_grid_wt_dc_full():
     }
 
 
+def build_param_grid_golden_rule():
+    # GOLDEN RULE sweep — find empirical-best DC/BB/multiplier combo per spec 2026-05-05.
+    # Live default ON via _golden_rule_loop. v8_quick has _golden_rule_vec OR-merged into
+    # compute_entry_signals. Sweep varies the per-TF DC/BB enable switches AND multipliers
+    # (multipliers will affect Sharpe once mult-aware sizing is wired in simulate(); for
+    # now only Sharpe-influencing toggles produce variation, but the multiplier values
+    # are recorded in CSV so the next phase can re-rank).
+    grid = {
+        "GOLDEN_RULE_ENABLED": [True],
+        # Per-TF DC and BB requirement switches (every combo: 2^6=64).
+        "GOLDEN_RULE_DC_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_4H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_4H_ENABLED": [True, False],
+        # Multipliers — currently no Sharpe variation since simulate() is not mult-aware,
+        # but recorded for downstream analysis. Once size mult is wired the same grid lands
+        # meaningful results without changing the sweep config.
+        "GOLDEN_RULE_MULT_15M": [1.0],
+        "GOLDEN_RULE_MULT_1H": [1.5],
+        "GOLDEN_RULE_MULT_4H": [2.0],
+        # Keep proven v3_core baseline (don't change unrelated knobs).
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [20],
+        "WT_EXIT_MIN_TFS": [3],
+        "HTF_MIN_ALIGNED": [2],
+        "COOLDOWN_BARS": [3],
+        "EARLY_ABORT_MIN_SYMBOLS": [40],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [180.0],
+    }
+    return grid
+
+
+def build_param_grid_golden_rule_mults():
+    # GOLDEN RULE multiplier sweep — assumes best DC/BB switch combo from golden_rule
+    # tier is already known (default all-ON below; override when running the mult tier).
+    # Once mult-aware sizing is wired in v8 simulate(), this sweep finds the best
+    # cascade. Currently no Sharpe variation but the values are still emitted to CSV.
+    grid = {
+        "GOLDEN_RULE_ENABLED": [True],
+        "GOLDEN_RULE_DC_15M_ENABLED": [True],
+        "GOLDEN_RULE_BB_15M_ENABLED": [True],
+        "GOLDEN_RULE_DC_1H_ENABLED": [True],
+        "GOLDEN_RULE_BB_1H_ENABLED": [True],
+        "GOLDEN_RULE_DC_4H_ENABLED": [True],
+        "GOLDEN_RULE_BB_4H_ENABLED": [True],
+        "GOLDEN_RULE_MULT_15M": [0.5, 1.0, 1.5],
+        "GOLDEN_RULE_MULT_1H": [1.0, 1.5, 2.0, 2.5],
+        "GOLDEN_RULE_MULT_4H": [1.5, 2.0, 3.0, 4.0],
+        "STRENGTH_FILTER_ENABLED": [True],
+        "STRENGTH_MIN_SCORE": [5.0],
+        "MIN_HOLD_BARS": [20],
+        "EARLY_ABORT_MIN_SYMBOLS": [40],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+        "EARLY_ABORT_TIME_LIMIT_SEC": [180.0],
+    }
+    return grid
+
+
 TIER_MAP = {
+    "golden_rule": build_param_grid_golden_rule,
+    "golden_rule_mults": build_param_grid_golden_rule_mults,
     "wt_dc_full": build_param_grid_wt_dc_full,
     "entry_gates": build_param_grid_entry_gates,
     "exit_tuning": build_param_grid_exit_tuning,

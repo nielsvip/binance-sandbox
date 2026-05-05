@@ -20516,13 +20516,61 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
     # ═══════════════════════════════════════════════════════════════════════════
+    # RIDICULOUS_HOLD_GUARD — User 2026-05-05 mandate (LUNC -65% incident on ang):
+    # Catastrophic-loss safety net. Even with hedging, positions can bleed unbounded
+    # when hedges keep getting closed (HEDGE_BANDAID_OFF) while shorts run unbounded.
+    # Absolute fail-safe — fires BEFORE everything else:
+    #   gain ≤ RIDICULOUS_LOSS_PCT (-15% default) → force close regardless of hedge state
+    #   underwater longer than RIDICULOUS_HOLD_HOURS (48h) → force close
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'RIDICULOUS_HOLD_GUARD_ENABLED', True)):
+        _rh_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+        _rh_loss_cap = float(getattr(config, 'RIDICULOUS_LOSS_PCT', -15.0))
+        _rh_hold_hours = float(getattr(config, 'RIDICULOUS_HOLD_HOURS', 48.0))
+        _rh_force = False; _rh_why = ''
+        if _rh_gain <= _rh_loss_cap:
+            _rh_force = True
+            _rh_why = f'RIDICULOUS_LOSS_g{_rh_gain:.2f}%_cap{_rh_loss_cap:.1f}%'
+        elif _rh_gain < 0:
+            _rh_opened = getattr(position, 'opened_at', None)
+            if _rh_opened:
+                try:
+                    _rh_dt = isoparse(_rh_opened) if isinstance(_rh_opened, str) else _rh_opened
+                    if hasattr(_rh_dt, 'tzinfo') and _rh_dt.tzinfo is None:
+                        _rh_dt = _rh_dt.replace(tzinfo=timezone.utc)
+                    _rh_age_h = (now - _rh_dt).total_seconds() / 3600.0 if hasattr(_rh_dt, 'tzinfo') else 0
+                    if _rh_age_h > _rh_hold_hours:
+                        _rh_force = True
+                        _rh_why = f'RIDICULOUS_HOLD_age{_rh_age_h:.1f}h_cap{_rh_hold_hours:.0f}h_g{_rh_gain:.2f}%'
+                except Exception:
+                    pass
+        if _rh_force:
+            _rh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+            _rh_side = 'SELL' if position_side == 'LONG' else 'BUY'
+            logger.error(f"🛑 [RIDICULOUS_HOLD_GUARD] {position_key}: {_rh_why} → FORCE CLOSE (regardless of hedge state)")
+            try:
+                await trade_manager.execute_now(
+                    position_key=position_key, account_key=account_key, symbol=symbol,
+                    original_positionAmt=_rh_pos_amt, side=_rh_side, position_side=position_side,
+                    quantity=_rh_pos_amt, old_price=current_price,
+                    unique_id=f"RIDICULOUS_HOLD_{int(time.time())}",
+                    reason=_rh_why, is_full_close=True, action='CLOSE')
+                trade_manager.processing_keys.discard(position_key)
+                return f"{EvalStatus.ACTION_TAKEN}:RIDICULOUS_HOLD_GUARD_CLOSED"
+            except Exception as _rh_err:
+                logger.error(f"🛑 [RIDICULOUS_HOLD_CLOSE_ERR] {position_key}: {_rh_err}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # UNDERWATER_HEDGE_OR_CLOSE — User 2026-05-05 mandate (loss prevention):
     # If position pnl<0 AND wt1_3m flipped against trade AND no active hedge → fire hedge.
     # If hedge already active → close primary IMMEDIATELY (don't let it bleed further).
     # Signal-driven (wt1_3m flip), not %-based — so this is NOT a fixed-% stop loss.
     # Replicated in backtest_v8_engine + ez_positions_quick for sandbox parity.
     # ═══════════════════════════════════════════════════════════════════════════
-    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+    _uh_cd_dict = trade_manager.__dict__.setdefault('_underwater_safety_cooldown', {})
+    _uh_cd_sec = float(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_COOLDOWN_SEC', 60.0))
+    _uh_recent = (now_ts - _uh_cd_dict.get(position_key, 0)) < _uh_cd_sec
+    if not _uh_recent and position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
        bool(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_ENABLED', True)):
         _uh_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
         if _uh_gain < 0:
@@ -20538,10 +20586,15 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _uh_against = (_uh_w1 < _uh_w2) if _uh_is_long else (_uh_w1 > _uh_w2)
                     if _uh_against:
                         _uh_tm = getattr(trade_manager, 'tracker_manager', None)
-                        _uh_active = bool(_uh_tm) and any(
-                            (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
-                            for h in (_uh_tm.active_hedges or []))
+                        _he_inflight = getattr(getattr(trade_manager, 'hedge_engine', None), '_hedge_same_in_flight', set())
+                        _uh_active = (
+                            (bool(_uh_tm) and any(
+                                (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
+                                for h in (_uh_tm.active_hedges or [])))
+                            or (position_key in _he_inflight)
+                        )
                         _uh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        _uh_cd_dict[position_key] = now_ts  # mark fired (cooldown for next 60s)
                         if not _uh_active:
                             logger.warning(f"⚠️ [UNDERWATER_HEDGE_FIRE] {position_key}: gain={_uh_gain:.2f}% wt1_3m={_uh_w1:.1f} {'<' if _uh_is_long else '>'} wt2_3m={_uh_w2:.1f} → FIRING HEDGE")
                             try:
