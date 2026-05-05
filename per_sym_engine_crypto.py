@@ -122,6 +122,21 @@ class SymParams:
     WT_ACCEL_GATE_TF: str = '1h'   # tf to read acceleration from
     DIVERGENCE_BLOCK_ENABLED: bool = True  # block LONG entries if bearish divergence (price HH + WT LH); block SHORT inverse
     DIVERGENCE_LB: int = 20   # bars to look back for prior swing
+    # AUGMENT pyramid (user directive 2026-05-05: NO EXCEPTIONS — must be in test even if rare on short-hold strategies).
+    # At each gain level, add a leg at current price. Each leg = separate trade for accounting.
+    AUGMENT_ENABLED: bool = True
+    AUGMENT_LEVELS_PCT: tuple = (1.0, 2.0, 3.0, 4.0)  # gain % thresholds for L1..L4
+    # Mean-reversion REENTRY (above OR below exit price — distinct from FOLLOW_THROUGH which is favorable-only).
+    REENTRY_MEAN_REV_ENABLED: bool = True
+    REENTRY_MEAN_REV_TOLERANCE_PCT: float = 0.30  # price returns within ±X% of exit price → reentry same side
+    REENTRY_MEAN_REV_WINDOW_BARS: int = 10
+    # HEDGE: open opposite-side position when current is underwater + opposite signal fires.
+    HEDGE_ENABLED: bool = False  # default off; live system has it on for some accounts
+    HEDGE_TRIGGER_GAIN_PCT: float = -1.0  # current pnl below this → eligible to hedge
+    HEDGE_SIZE_FRAC: float = 0.5    # hedge size as fraction of primary
+    # NOLOSS: block loss exits — only exit at profit OR breakdown_through_dc_low (forced exit)
+    NOLOSS_ENABLED: bool = False
+    NOLOSS_FLOOR_PCT: float = -0.10  # allow exit only if pnl > this (i.e., -0.1% lets near-flat exits pass)
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -563,7 +578,17 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      reverse_on_exit: bool = False,
                      follow_through: bool = False,
                      ft_min_move_pct: float = 0.05,
-                     ft_window_bars: int = 5) -> List[Dict]:
+                     ft_window_bars: int = 5,
+                     augment_enabled: bool = False,
+                     augment_levels_pct: Tuple[float, ...] = (1.0, 2.0, 3.0, 4.0),
+                     mean_rev_enabled: bool = False,
+                     mean_rev_tol_pct: float = 0.30,
+                     mean_rev_window: int = 10,
+                     hedge_enabled: bool = False,
+                     hedge_trigger_gain: float = -1.0,
+                     hedge_size_frac: float = 0.5,
+                     noloss_enabled: bool = False,
+                     noloss_floor: float = -0.10) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -605,6 +630,23 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
         if ep <= 0 or xp <= 0:
             i = exit_i + cooldown + 1
             continue
+        # NOLOSS gate: if eligible exit fired but pnl below floor, push exit to next breakdown event or end.
+        if noloss_enabled:
+            cur_pnl = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
+            if cur_pnl < noloss_floor:
+                # Walk forward looking for either profit recovery (pnl >= floor) or end of data
+                rest_close = c15[exit_i + 1:]
+                if side == 'LONG':
+                    rest_pnl = (rest_close - ep) / ep * 100.0
+                else:
+                    rest_pnl = (ep - rest_close) / ep * 100.0
+                recover = np.flatnonzero(rest_pnl >= noloss_floor)
+                if len(recover):
+                    exit_i = exit_i + 1 + int(recover[0])
+                    xp = float(c15[exit_i])
+                else:
+                    exit_i = n - 1
+                    xp = float(c15[exit_i])
         pnl_gross = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
         trades.append({
             'side': side, 'entry_idx': entry_i, 'exit_idx': exit_i,
@@ -613,6 +655,85 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
             'pnl_gross_pct': pnl_gross, 'pnl_pct': pnl_gross - rt_comm,
             'bars_held': exit_i - entry_i, 'origin': 'primary',
         })
+        # AUGMENT 1-2-3-4: pyramid into winner at +1/2/3/4% gain levels (each = own trade).
+        # Compute pnl trajectory from entry_i to exit_i; mark first crossing of each level.
+        if augment_enabled and exit_i > entry_i:
+            window_close = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_traj = (window_close - ep) / ep * 100.0
+            else:
+                gain_traj = (ep - window_close) / ep * 100.0
+            for lvl_pct in augment_levels_pct:
+                hit = np.flatnonzero(gain_traj >= lvl_pct)
+                if not len(hit):
+                    break  # no higher level can hit if this one didn't
+                aug_idx = entry_i + int(hit[0])
+                aug_ep = float(c15[aug_idx])
+                if aug_ep <= 0 or aug_idx >= exit_i:
+                    continue
+                if side == 'LONG':
+                    aug_pnl = (xp - aug_ep) / aug_ep * 100.0
+                else:
+                    aug_pnl = (aug_ep - xp) / aug_ep * 100.0
+                trades.append({
+                    'side': side, 'entry_idx': aug_idx, 'exit_idx': exit_i,
+                    'entry_ts': int(ts15[aug_idx]), 'exit_ts': int(ts15[exit_i]),
+                    'entry_price': aug_ep, 'exit_price': xp,
+                    'pnl_gross_pct': aug_pnl, 'pnl_pct': aug_pnl - rt_comm,
+                    'bars_held': exit_i - aug_idx, 'origin': f'augment_L{int(lvl_pct)}',
+                })
+        # HEDGE: while LONG is underwater (pnl < trigger), if SHORT signal fires within hold window, open hedge.
+        if hedge_enabled and exit_i > entry_i:
+            window_close = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_traj = (window_close - ep) / ep * 100.0
+                opp_enter = enter_short
+            else:
+                gain_traj = (ep - window_close) / ep * 100.0
+                opp_enter = enter_long
+            underwater = gain_traj < hedge_trigger_gain
+            opp_window = opp_enter[entry_i:exit_i + 1]
+            hedge_candidates = np.flatnonzero(underwater & opp_window)
+            if len(hedge_candidates):
+                h_idx = entry_i + int(hedge_candidates[0])
+                h_ep = float(c15[h_idx])
+                # Hedge closes at primary's exit (synchronized close)
+                h_xp = float(c15[exit_i])
+                if h_ep > 0 and h_xp > 0 and h_idx < exit_i:
+                    h_side = 'SHORT' if side == 'LONG' else 'LONG'
+                    h_pnl = (h_xp - h_ep) / h_ep * 100.0 if h_side == 'LONG' else (h_ep - h_xp) / h_ep * 100.0
+                    h_pnl_net = (h_pnl - rt_comm) * hedge_size_frac
+                    trades.append({
+                        'side': h_side, 'entry_idx': h_idx, 'exit_idx': exit_i,
+                        'entry_ts': int(ts15[h_idx]), 'exit_ts': int(ts15[exit_i]),
+                        'entry_price': h_ep, 'exit_price': h_xp,
+                        'pnl_gross_pct': h_pnl, 'pnl_pct': h_pnl_net,
+                        'bars_held': exit_i - h_idx, 'origin': 'hedge',
+                    })
+        # MEAN-REV REENTRY: after exit at xp, watch next K bars for price returning to ±tol% of xp; reenter same side.
+        if mean_rev_enabled and exit_i + mean_rev_window < n:
+            we = min(exit_i + 1 + mean_rev_window, n)
+            window_close = c15[exit_i + 1:we]
+            tol = mean_rev_tol_pct / 100.0
+            within_tol = np.abs(window_close - xp) / max(xp, 1e-12) <= tol
+            hit_idx = np.flatnonzero(within_tol)
+            if len(hit_idx):
+                mr_entry_i = exit_i + 1 + int(hit_idx[0])
+                mr_x_start = mr_entry_i + min_hold
+                if mr_x_start < n:
+                    mr_leave = leave_long if side == 'LONG' else leave_short
+                    mr_x_idxs = np.flatnonzero(mr_leave[mr_x_start:])
+                    mr_exit_i = mr_x_start + int(mr_x_idxs[0]) if len(mr_x_idxs) else n - 1
+                    mr_ep = float(c15[mr_entry_i]); mr_xp = float(c15[mr_exit_i])
+                    if mr_ep > 0 and mr_xp > 0:
+                        mr_pnl = (mr_xp - mr_ep) / mr_ep * 100.0 if side == 'LONG' else (mr_ep - mr_xp) / mr_ep * 100.0
+                        trades.append({
+                            'side': side, 'entry_idx': mr_entry_i, 'exit_idx': mr_exit_i,
+                            'entry_ts': int(ts15[mr_entry_i]), 'exit_ts': int(ts15[mr_exit_i]),
+                            'entry_price': mr_ep, 'exit_price': mr_xp,
+                            'pnl_gross_pct': mr_pnl, 'pnl_pct': mr_pnl - rt_comm,
+                            'bars_held': mr_exit_i - mr_entry_i, 'origin': 'mean_rev_reentry',
+                        })
         # REVERSE_ON_EXIT: at the exit bar, if opposite side's entry signal fires → enter opposite immediately
         next_i = exit_i + cooldown + 1
         if reverse_on_exit and exit_i + 1 < n:
@@ -792,6 +913,16 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
         follow_through=params.FOLLOW_THROUGH_REENTRY_ENABLED,
         ft_min_move_pct=float(params.FOLLOW_THROUGH_MIN_MOVE_PCT),
         ft_window_bars=int(params.FOLLOW_THROUGH_WINDOW_BARS),
+        augment_enabled=params.AUGMENT_ENABLED,
+        augment_levels_pct=tuple(params.AUGMENT_LEVELS_PCT),
+        mean_rev_enabled=params.REENTRY_MEAN_REV_ENABLED,
+        mean_rev_tol_pct=float(params.REENTRY_MEAN_REV_TOLERANCE_PCT),
+        mean_rev_window=int(params.REENTRY_MEAN_REV_WINDOW_BARS),
+        hedge_enabled=params.HEDGE_ENABLED,
+        hedge_trigger_gain=float(params.HEDGE_TRIGGER_GAIN_PCT),
+        hedge_size_frac=float(params.HEDGE_SIZE_FRAC),
+        noloss_enabled=params.NOLOSS_ENABLED,
+        noloss_floor=float(params.NOLOSS_FLOOR_PCT),
     )
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
@@ -814,6 +945,9 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
     n_short = n - n_long
     n_reverse = sum(1 for t in trades if t.get('origin') == 'reverse_on_exit')
     n_ft = sum(1 for t in trades if t.get('origin') == 'follow_through')
+    n_aug = sum(1 for t in trades if (t.get('origin') or '').startswith('augment_'))
+    n_hedge = sum(1 for t in trades if t.get('origin') == 'hedge')
+    n_mr = sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry')
     return {
         'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
         'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
@@ -823,6 +957,7 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
         'trade_list': trades, 'params': params.to_dict(),
         'long_trades': n_long, 'short_trades': n_short,
         'reverse_on_exit_count': n_reverse, 'follow_through_count': n_ft,
+        'augment_count': n_aug, 'hedge_count': n_hedge, 'mean_rev_reentry_count': n_mr,
     }
 
 
