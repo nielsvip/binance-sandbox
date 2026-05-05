@@ -98,6 +98,30 @@ class SymParams:
     ENTRY_WILLR_OB_THRESHOLD: float = -15.0   # SHORT: %R was above this then crosses below
     # 6) Fair Value Gap (FVG) fill — ICT 3-bar imbalance
     ENTRY_FVG_ENABLED: bool = True
+    # Exit refinements (v8 BTC_DEDICATED parity):
+    EXIT_REQUIRE_BOTH: bool = False  # exit needs WT-flip AND BB-extreme (AND not OR) — holds winners longer
+    EXIT_WT_ACCEL_ONLY: bool = False  # only exit when WT actually decelerating against side (vs simple cross)
+    PARTIAL_PROFIT_LOCK_ENABLED: bool = False
+    PARTIAL_PROFIT_LOCK_GAIN_PCT: float = 1.0  # at +1% gain, lock breakeven
+    # Reentry / reverse paths:
+    REVERSE_ON_EXIT_ENABLED: bool = False   # at exit, open opposite side if its signal fires same bar
+    FOLLOW_THROUGH_REENTRY_ENABLED: bool = False  # after exit, re-enter same side on continuation
+    FOLLOW_THROUGH_MIN_MOVE_PCT: float = 0.05    # required favorable move % within window
+    FOLLOW_THROUGH_WINDOW_BARS: int = 5
+    # Separate breakout entry path (v8 BTC_BREAKOUT_*) — looser gates for momentum continuation:
+    BREAKOUT_PATH_ENABLED: bool = False
+    BREAKOUT_HTF_MIN_ALIGNED: int = 1  # vs main MIN_TFS_AGREE; this path can use looser HTF rule
+    BREAKOUT_MIN_HOLD_BARS: int = 1     # short min-hold for breakouts (mirror v8 BTC_BREAKOUT_MIN_HOLD_BARS)
+    # Booster filters (NPZ-precomputed — no per-bar compute required)
+    FUNDING_GATE_ENABLED: bool = True   # block LONG when funding paid heavy (> threshold), block SHORT inverse
+    FUNDING_GATE_LONG_MAX: float = 0.0005   # 0.05% per 8h: above this, longs are "paying" — block
+    FUNDING_GATE_SHORT_MIN: float = -0.0005  # below this, shorts paying — block
+    OI_GATE_ENABLED: bool = True
+    OI_GATE_OI_CHANGE_MIN: float = -10.0  # block LONG if oi_change_1h_3m < X%; block SHORT if > -X%
+    WT_ACCEL_GATE_ENABLED: bool = True   # require wt_acceleration on side direction (LONG: accel_1h>0)
+    WT_ACCEL_GATE_TF: str = '1h'   # tf to read acceleration from
+    DIVERGENCE_BLOCK_ENABLED: bool = True  # block LONG entries if bearish divergence (price HH + WT LH); block SHORT inverse
+    DIVERGENCE_LB: int = 20   # bars to look back for prior swing
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -202,8 +226,8 @@ _npz_cache: Dict[str, Dict[str, np.ndarray]] = {}
 
 
 def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.ndarray]]:
-    """Load 3m OHLC(+V) + ts from NPZ, sliced to last N years. Cached per process.
-    Returns dict {'open','high','low','close','volume','ts'} or None if missing fields.
+    """Load 3m OHLC(+V) + ts + booster fields from NPZ, sliced to last N years. Cached per process.
+    Booster fields (when present): funding_rate_3m, oi_change_1h_3m, wt_acceleration_*.
     """
     cache_key = f'{sym}__y{years_back:.2f}'
     if cache_key in _npz_cache:
@@ -222,10 +246,18 @@ def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.nda
     c = z['close_3m'][:].astype(np.float64)
     ts = z['timestamps'][:].astype(np.int64)
     v = z['volume_3m'][:].astype(np.float64) if 'volume_3m' in z.files else np.ones(len(c), dtype=np.float64)
+    out_extra: Dict[str, np.ndarray] = {}
+    for fld in ['funding_rate_3m', 'oi_change_1h_3m', 'oi_change_15m_3m', 'oi_3m',
+                'wt_acceleration_3m', 'wt_acceleration_15m', 'wt_acceleration_1h',
+                'wt_acceleration_4h', 'wt_acceleration_D', 'wt_composite_delta']:
+        if fld in z.files:
+            out_extra[fld] = z[fld][:].astype(np.float64)
     z.close()
     cutoff = ts[-1] - int(years_back * 365.25 * 86400)
     si = int(np.searchsorted(ts, cutoff))
     out = {'open': o[si:], 'high': h[si:], 'low': l[si:], 'close': c[si:], 'volume': v[si:], 'ts': ts[si:]}
+    for fld, arr in out_extra.items():
+        out[fld] = arr[si:]
     _npz_cache[cache_key] = out
     return out
 
@@ -404,7 +436,13 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
                     liq_p | nr7_p | vol_p | ema_p | wr_p | fvg_p)
         ceiling_ok = (bb_pctb < params.BB_TOP_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
         entry = wt_ok & any_path & ceiling_ok
-        exit_ = (wt1 < wt2) | (bb_pctb > params.BB_TOP_THRESHOLD) | (c < dc_l_prev)
+        wt_bear_strong = (wt1 < wt2) & (wt1 < np.concatenate([[wt1[0]], wt1[:-1]])) if params.EXIT_WT_ACCEL_ONLY else (wt1 < wt2)
+        bb_extreme = bb_pctb > params.BB_TOP_THRESHOLD
+        breakdown = c < dc_l_prev
+        if params.EXIT_REQUIRE_BOTH:
+            exit_ = (wt_bear_strong & bb_extreme) | breakdown
+        else:
+            exit_ = wt_bear_strong | bb_extreme | breakdown
     else:  # SHORT
         wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
         dc_break = (c < dc_l_prev)
@@ -428,7 +466,13 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
                     liq_p | nr7_p | vol_p | ema_p | wr_p | fvg_p)
         ceiling_ok = (bb_pctb > params.BB_BOT_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
         entry = wt_ok & any_path & ceiling_ok
-        exit_ = (wt1 > wt2) | (bb_pctb < params.BB_BOT_THRESHOLD) | (c > dc_h_prev)
+        wt_bull_strong = (wt1 > wt2) & (wt1 > np.concatenate([[wt1[0]], wt1[:-1]])) if params.EXIT_WT_ACCEL_ONLY else (wt1 > wt2)
+        bb_extreme = bb_pctb < params.BB_BOT_THRESHOLD
+        breakup = c > dc_h_prev
+        if params.EXIT_REQUIRE_BOTH:
+            exit_ = (wt_bull_strong & bb_extreme) | breakup
+        else:
+            exit_ = wt_bull_strong | bb_extreme | breakup
     # NaN safety: treat NaN-context bars as no-signal
     valid = ~(np.isnan(bb_pctb) | np.isnan(wt1) | np.isnan(dc_h_prev))
     return entry & valid, exit_ & valid
@@ -512,7 +556,275 @@ def walk_trades(enter_15m: np.ndarray, leave_15m: np.ndarray, c15: np.ndarray, t
     return trades
 
 
+def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
+                     enter_short: np.ndarray, leave_short: np.ndarray,
+                     c15: np.ndarray, ts15: np.ndarray,
+                     min_hold: int, cooldown: int,
+                     reverse_on_exit: bool = False,
+                     follow_through: bool = False,
+                     ft_min_move_pct: float = 0.05,
+                     ft_window_bars: int = 5) -> List[Dict]:
+    """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
+    Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
+    Returns combined trade list.
+    """
+    trades: List[Dict] = []
+    n = len(c15)
+    rt_comm = COMMISSION_RT_PCT
+    i = 0
+    while i < n:
+        # Find next entry of either side
+        long_remaining = enter_long[i:]
+        short_remaining = enter_short[i:]
+        long_idxs = np.flatnonzero(long_remaining)
+        short_idxs = np.flatnonzero(short_remaining)
+        if not len(long_idxs) and not len(short_idxs):
+            break
+        next_long = i + int(long_idxs[0]) if len(long_idxs) else n + 1
+        next_short = i + int(short_idxs[0]) if len(short_idxs) else n + 1
+        if next_long <= next_short:
+            entry_i = next_long
+            side = 'LONG'
+        else:
+            entry_i = next_short
+            side = 'SHORT'
+        # Find exit for this side
+        x_start = entry_i + min_hold
+        if x_start >= n:
+            break
+        if side == 'LONG':
+            x_idxs = np.flatnonzero(leave_long[x_start:])
+        else:
+            x_idxs = np.flatnonzero(leave_short[x_start:])
+        if len(x_idxs):
+            exit_i = x_start + int(x_idxs[0])
+        else:
+            exit_i = n - 1
+        ep = float(c15[entry_i])
+        xp = float(c15[exit_i])
+        if ep <= 0 or xp <= 0:
+            i = exit_i + cooldown + 1
+            continue
+        pnl_gross = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
+        trades.append({
+            'side': side, 'entry_idx': entry_i, 'exit_idx': exit_i,
+            'entry_ts': int(ts15[entry_i]), 'exit_ts': int(ts15[exit_i]),
+            'entry_price': ep, 'exit_price': xp,
+            'pnl_gross_pct': pnl_gross, 'pnl_pct': pnl_gross - rt_comm,
+            'bars_held': exit_i - entry_i, 'origin': 'primary',
+        })
+        # REVERSE_ON_EXIT: at the exit bar, if opposite side's entry signal fires → enter opposite immediately
+        next_i = exit_i + cooldown + 1
+        if reverse_on_exit and exit_i + 1 < n:
+            opp_side = 'SHORT' if side == 'LONG' else 'LONG'
+            opp_enter = enter_short if opp_side == 'SHORT' else enter_long
+            opp_leave = leave_short if opp_side == 'SHORT' else leave_long
+            # check window: opposite signal at exit_i or exit_i+1
+            check_idx = None
+            if opp_enter[exit_i]:
+                check_idx = exit_i
+            elif exit_i + 1 < n and opp_enter[exit_i + 1]:
+                check_idx = exit_i + 1
+            if check_idx is not None:
+                opp_entry_i = check_idx
+                opp_x_start = opp_entry_i + min_hold
+                if opp_x_start < n:
+                    opp_x_idxs = np.flatnonzero(opp_leave[opp_x_start:])
+                    opp_exit_i = opp_x_start + int(opp_x_idxs[0]) if len(opp_x_idxs) else n - 1
+                    opp_ep = float(c15[opp_entry_i]); opp_xp = float(c15[opp_exit_i])
+                    if opp_ep > 0 and opp_xp > 0:
+                        opp_pnl = (opp_xp - opp_ep) / opp_ep * 100.0 if opp_side == 'LONG' else (opp_ep - opp_xp) / opp_ep * 100.0
+                        trades.append({
+                            'side': opp_side, 'entry_idx': opp_entry_i, 'exit_idx': opp_exit_i,
+                            'entry_ts': int(ts15[opp_entry_i]), 'exit_ts': int(ts15[opp_exit_i]),
+                            'entry_price': opp_ep, 'exit_price': opp_xp,
+                            'pnl_gross_pct': opp_pnl, 'pnl_pct': opp_pnl - rt_comm,
+                            'bars_held': opp_exit_i - opp_entry_i, 'origin': 'reverse_on_exit',
+                        })
+                        next_i = opp_exit_i + cooldown + 1
+        # FOLLOW_THROUGH_REENTRY: after exit, watch next K bars for favorable move; if hit, re-enter same side
+        if follow_through and exit_i + ft_window_bars < n:
+            window_end = min(exit_i + 1 + ft_window_bars, n)
+            window_close = c15[exit_i + 1:window_end]
+            if side == 'LONG':
+                fav = (window_close - xp) / xp * 100.0  # positive = favorable
+            else:
+                fav = (xp - window_close) / xp * 100.0
+            hit_idx = np.flatnonzero(fav >= ft_min_move_pct * 100.0)
+            if len(hit_idx):
+                ft_entry_i = exit_i + 1 + int(hit_idx[0])
+                ft_x_start = ft_entry_i + min_hold
+                if ft_x_start < n:
+                    ft_leave = leave_long if side == 'LONG' else leave_short
+                    ft_x_idxs = np.flatnonzero(ft_leave[ft_x_start:])
+                    ft_exit_i = ft_x_start + int(ft_x_idxs[0]) if len(ft_x_idxs) else n - 1
+                    ft_ep = float(c15[ft_entry_i]); ft_xp = float(c15[ft_exit_i])
+                    if ft_ep > 0 and ft_xp > 0 and ft_entry_i >= next_i:
+                        ft_pnl = (ft_xp - ft_ep) / ft_ep * 100.0 if side == 'LONG' else (ft_ep - ft_xp) / ft_ep * 100.0
+                        trades.append({
+                            'side': side, 'entry_idx': ft_entry_i, 'exit_idx': ft_exit_i,
+                            'entry_ts': int(ts15[ft_entry_i]), 'exit_ts': int(ts15[ft_exit_i]),
+                            'entry_price': ft_ep, 'exit_price': ft_xp,
+                            'pnl_gross_pct': ft_pnl, 'pnl_pct': ft_pnl - rt_comm,
+                            'bars_held': ft_exit_i - ft_entry_i, 'origin': 'follow_through',
+                        })
+                        next_i = max(next_i, ft_exit_i + cooldown + 1)
+        i = next_i
+    # Sort trades chronologically (origins may interleave)
+    trades.sort(key=lambda t: t['entry_idx'])
+    return trades
+
+
 # ───────────────────────── top-level simulate ──────────────────────────────
+
+def _build_signals(tf_data: Dict, side: str, params: SymParams) -> Tuple[np.ndarray, np.ndarray]:
+    """Build (enter_15m, leave_15m) for a side on the 15m grid."""
+    n_15m = len(tf_data['15m']['close'])
+    e_count = np.zeros(n_15m, dtype=np.int16)
+    x_count = np.zeros(n_15m, dtype=np.int16)
+    for tf in DECISION_TFS:
+        e_sig, x_sig = per_tf_signals(tf_data[tf], side, tf, params)
+        ratio = TF_BARS_3M[tf] // TF_BARS_3M['15m']
+        if ratio == 1:
+            e15 = e_sig
+            x15 = x_sig
+        else:
+            e15 = np.repeat(e_sig, ratio)
+            x15 = np.repeat(x_sig, ratio)
+            if len(e15) < n_15m:
+                e15 = np.concatenate([e15, np.zeros(n_15m - len(e15), dtype=bool)])
+                x15 = np.concatenate([x15, np.zeros(n_15m - len(x15), dtype=bool)])
+            else:
+                e15 = e15[:n_15m]
+                x15 = x15[:n_15m]
+        e_count += e15.astype(np.int16)
+        x_count += x15.astype(np.int16)
+    min_tfs = max(MIN_TFS_AGREE_FLOOR, int(params.MIN_TFS_AGREE))
+    enter = e_count >= min_tfs
+    leave = x_count >= MIN_TFS_AGREE_FLOOR
+    return enter, leave
+
+
+def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
+    """Run BOTH LONG and SHORT through unified walker. Supports REVERSE_ON_EXIT + FOLLOW_THROUGH.
+    Returns symbol-level metrics + per-side breakdown.
+    """
+    base = load_3m_base(sym, years_back=years_back)
+    if base is None or len(base['close']) < 5000:
+        return None
+    tf_data = build_tf_data(base)
+    if not all(tf in tf_data and len(tf_data[tf]['close']) >= 50 for tf in list(DECISION_TFS) + ['D']):
+        return None
+    enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
+    enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+    htf_long = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'LONG', params, len(enter_long))
+    htf_short = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'SHORT', params, len(enter_short))
+    enter_long = enter_long & htf_long
+    enter_short = enter_short & htf_short
+    # Booster gates from NPZ-precomputed fields (subsample 3m→15m: every 5th index aligned with 15m bar end).
+    n_15m = len(enter_long)
+    def _resample_3m_to_15m(arr_3m: np.ndarray) -> np.ndarray:
+        if arr_3m is None or len(arr_3m) == 0:
+            return np.zeros(n_15m, dtype=np.float64)
+        # tf_data['15m']['ts'][i] corresponds to (i+1)*5-1 in the 3m index (the 5th 3m bar of the 15m window).
+        # base['ts'] was sliced to last_N_years; tf_data resamples to the same year range.
+        # Simplest: take last n_15m × 5 of arr_3m; resample by taking close-of-bin (every 5th).
+        cut = (len(arr_3m) // 5) * 5
+        out = arr_3m[:cut][4::5]
+        if len(out) >= n_15m:
+            return out[:n_15m]
+        # Pad short
+        return np.concatenate([np.zeros(n_15m - len(out), dtype=np.float64), out])
+
+    fund_3m = base.get('funding_rate_3m')
+    if params.FUNDING_GATE_ENABLED and fund_3m is not None:
+        f15 = _resample_3m_to_15m(fund_3m)
+        long_fund_ok = f15 <= params.FUNDING_GATE_LONG_MAX
+        short_fund_ok = f15 >= params.FUNDING_GATE_SHORT_MIN
+        enter_long = enter_long & long_fund_ok
+        enter_short = enter_short & short_fund_ok
+
+    oi_chg_3m = base.get('oi_change_1h_3m')
+    if params.OI_GATE_ENABLED and oi_chg_3m is not None:
+        oi15 = _resample_3m_to_15m(oi_chg_3m)
+        # LONG: skip when OI dropping hard (signals long unwind/distribution)
+        # SHORT: skip when OI dropping hard the other way (short squeeze setup)
+        long_oi_ok = oi15 >= params.OI_GATE_OI_CHANGE_MIN
+        short_oi_ok = oi15 >= params.OI_GATE_OI_CHANGE_MIN
+        enter_long = enter_long & long_oi_ok
+        enter_short = enter_short & short_oi_ok
+
+    accel_field = f'wt_acceleration_{params.WT_ACCEL_GATE_TF}'
+    wt_acc = base.get(accel_field)
+    if params.WT_ACCEL_GATE_ENABLED and wt_acc is not None:
+        a15 = _resample_3m_to_15m(wt_acc)
+        long_acc_ok = a15 > 0  # wt accelerating up
+        short_acc_ok = a15 < 0
+        enter_long = enter_long & long_acc_ok
+        enter_short = enter_short & short_acc_ok
+
+    # Divergence block: bearish div = price HH but WT LH over LB bars → block LONG entry
+    if params.DIVERGENCE_BLOCK_ENABLED:
+        c15 = tf_data['15m']['close']
+        h15 = tf_data['15m']['high']
+        l15 = tf_data['15m']['low']
+        wt1_15m, _ = compute_wt(h15, l15, c15,
+                                 int(params.WT_CHAN_15m), int(params.WT_AVG_15m))
+        lb = int(params.DIVERGENCE_LB)
+        # Rolling max/min of price and WT over LB bars
+        price_max_lb = _rolling_max(c15, lb)
+        price_min_lb = _rolling_min(c15, lb)
+        wt_max_lb = _rolling_max(wt1_15m, lb)
+        wt_min_lb = _rolling_min(wt1_15m, lb)
+        # Bearish div: current bar at price max but WT NOT at max → bearish
+        bearish_div = (c15 >= price_max_lb) & (wt1_15m < wt_max_lb)
+        bullish_div = (c15 <= price_min_lb) & (wt1_15m > wt_min_lb)
+        # Block LONG when bearish div present (price topping but momentum weakening)
+        enter_long = enter_long & ~bearish_div
+        # Block SHORT when bullish div (price bottoming but momentum strengthening)
+        enter_short = enter_short & ~bullish_div
+    c15 = tf_data['15m']['close']
+    ts15 = tf_data['15m']['ts']
+    trades = walk_trades_dual(
+        enter_long, leave_long, enter_short, leave_short, c15, ts15,
+        int(params.MIN_HOLD_BARS_15m), int(params.COOLDOWN_BARS_15m),
+        reverse_on_exit=params.REVERSE_ON_EXIT_ENABLED,
+        follow_through=params.FOLLOW_THROUGH_REENTRY_ENABLED,
+        ft_min_move_pct=float(params.FOLLOW_THROUGH_MIN_MOVE_PCT),
+        ft_window_bars=int(params.FOLLOW_THROUGH_WINDOW_BARS),
+    )
+    span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
+    yrs = max(0.01, span_days / 365.25)
+    if not trades:
+        empty = {'sym': sym, 'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
+                 'sym_sharpe': 0.0, 'wr_pct': 0.0, 'max_dd_pct': 0.0,
+                 'total_gain_pct': 0.0, 'avg_gain_trade': 0.0, 'gain_per_yr': 0.0,
+                 'gain_sym_yr': 0.0, 'years': yrs, 'n_syms': 1,
+                 'tag': f'per_sym_dual_{sym}', 'trade_list': [],
+                 'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
+        return empty
+    rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
+    n = len(rets)
+    sd = float(rets.std())
+    pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
+    wr = float((rets > 0).mean() * 100.0)
+    eq = np.cumsum(rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    total = float(rets.sum())
+    n_long = sum(1 for t in trades if t['side'] == 'LONG')
+    n_short = n - n_long
+    n_reverse = sum(1 for t in trades if t.get('origin') == 'reverse_on_exit')
+    n_ft = sum(1 for t in trades if t.get('origin') == 'follow_through')
+    return {
+        'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
+        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
+        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'years': yrs, 'n_syms': 1, 'tag': f'per_sym_dual_{sym}',
+        'trade_list': trades, 'params': params.to_dict(),
+        'long_trades': n_long, 'short_trades': n_short,
+        'reverse_on_exit_count': n_reverse, 'follow_through_count': n_ft,
+    }
+
 
 def simulate(sym: str, side: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
     """Returns dict with per-(sym,side) trades + canonical metrics, or None on data miss."""

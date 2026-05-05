@@ -48,7 +48,7 @@ sys.path.insert(0, str(ROOT))
 import numpy as np
 import metrics_guard as mg
 from per_sym_engine_crypto import (
-    SymParams, simulate, COMMISSION_RT_PCT, MIN_TFS_AGREE_FLOOR,
+    SymParams, simulate, simulate_dual, COMMISSION_RT_PCT, MIN_TFS_AGREE_FLOOR,
     NPZ_DIR, _npz_cache,
 )
 
@@ -71,9 +71,9 @@ CHARTS_DIR = ROOT / 'plots'
 TPD_MIN = 5.0
 TPD_MAX = 15.0
 PROMOTE_POOL_FLOOR = 0.3
-PROMOTE_WR_FLOOR = 50.0
-PROMOTE_DD_CAP = 25.0   # crypto can stomach more DD than stocks
-DIAG_POOL_FLOOR = 0.0   # below 0 = noise
+PROMOTE_WR_FLOOR = 40.0  # crypto with multi-TF + commissions: 40-50% WR + positive Sharpe is OK
+PROMOTE_DD_CAP = 25.0
+DIAG_POOL_FLOOR = 0.0
 
 ACCOUNT_ORDER = ['ang', 'fin', 'men', 'flz']
 
@@ -156,6 +156,38 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     grid += variants_for_param(base, 'ENTRY_WILLR_LOOKBACK', [10, 14, 21, 28])
     grid += variants_for_param(base, 'ENTRY_WILLR_OS_THRESHOLD', [-90.0, -85.0, -80.0, -75.0])
     grid += variants_for_param(base, 'ENTRY_FVG_ENABLED', [True, False])
+    # Reverse-on-exit + follow-through (v8 BTC_DEDICATED parity — biggest tpd boosters)
+    grid += variants_for_param(base, 'REVERSE_ON_EXIT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'FOLLOW_THROUGH_REENTRY_ENABLED', [True, False])
+    grid += variants_for_param(base, 'FOLLOW_THROUGH_MIN_MOVE_PCT', [0.02, 0.05, 0.10, 0.20])
+    grid += variants_for_param(base, 'FOLLOW_THROUGH_WINDOW_BARS', [3, 5, 10, 15])
+    # Exit refinements (hold winners — Sharpe boosters)
+    grid += variants_for_param(base, 'EXIT_REQUIRE_BOTH', [True, False])
+    grid += variants_for_param(base, 'EXIT_WT_ACCEL_ONLY', [True, False])
+    # Booster gate toggles + thresholds (NPZ-precomputed — free Sharpe)
+    grid += variants_for_param(base, 'FUNDING_GATE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'FUNDING_GATE_LONG_MAX', [0.0001, 0.0003, 0.0005, 0.0010, 0.0020])
+    grid += variants_for_param(base, 'FUNDING_GATE_SHORT_MIN', [-0.0020, -0.0010, -0.0005, -0.0003, -0.0001])
+    grid += variants_for_param(base, 'OI_GATE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'OI_GATE_OI_CHANGE_MIN', [-30.0, -20.0, -10.0, -5.0, 0.0])
+    grid += variants_for_param(base, 'WT_ACCEL_GATE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'WT_ACCEL_GATE_TF', ['15m', '1h', '4h'])
+    grid += variants_for_param(base, 'DIVERGENCE_BLOCK_ENABLED', [True, False])
+    grid += variants_for_param(base, 'DIVERGENCE_LB', [10, 20, 30, 50])
+    # Critical: 2-param combos that work together (REVERSE_ON_EXIT pairs poorly alone, well with EXIT_REQUIRE_BOTH)
+    p_pair = base.copy()
+    p_pair.REVERSE_ON_EXIT_ENABLED = True
+    p_pair.EXIT_REQUIRE_BOTH = True
+    grid.append(('combo_reverse+exit_both', p_pair))
+    p_pair = base.copy()
+    p_pair.REVERSE_ON_EXIT_ENABLED = True
+    p_pair.FOLLOW_THROUGH_REENTRY_ENABLED = True
+    grid.append(('combo_reverse+ft', p_pair))
+    p_pair = base.copy()
+    p_pair.REVERSE_ON_EXIT_ENABLED = True
+    p_pair.FOLLOW_THROUGH_REENTRY_ENABLED = True
+    p_pair.EXIT_REQUIRE_BOTH = True
+    grid.append(('combo_reverse+ft+exit_both', p_pair))
     return grid
 
 
@@ -282,17 +314,19 @@ def auto_tighten_for_tpd(sym: str, side: str, winner_params: SymParams,
 
 # ───────────────────────── per-(sym, side) job ────────────────────────────
 
-def optimize_sym_side(sym: str, side: str, years_back: float = 4.0) -> Optional[Dict]:
-    """Returns {'sym', 'side', 'params', 'metrics', 'verdict', 'note'} or None."""
+def optimize_sym(sym: str, years_back: float = 4.0) -> Optional[Dict]:
+    """Per-symbol (LONG+SHORT combined) optimizer using simulate_dual.
+    Returns {'sym', 'params', 'metrics', 'verdict', 'note'} or None.
+    """
     base = make_baseline()
-    base_m = simulate(sym, side, base, years_back=years_back)
+    base_m = simulate_dual(sym, base, years_back=years_back)
     if base_m is None:
         return None
 
     grid = marginal_sweep_grid(base)
     results: List[Tuple[str, SymParams, Dict]] = []
     for tag, p in grid:
-        m = simulate(sym, side, p, years_back=years_back)
+        m = simulate_dual(sym, p, years_back=years_back)
         if m is None:
             continue
         m['variant_tag'] = tag
@@ -300,12 +334,12 @@ def optimize_sym_side(sym: str, side: str, years_back: float = 4.0) -> Optional[
 
     winning_tag, winning_params, winning_m = pick_winner(results)
 
-    # Trade-rate auto-tighten
-    final_params, final_m, note = auto_tighten_for_tpd(sym, side, winning_params, winning_m, years_back)
+    # Trade-rate auto-tighten/loosen (works on combined symbol tpd now)
+    final_params, final_m, note = auto_tighten_for_tpd_dual(sym, winning_params, winning_m, years_back)
 
     final_v = verdict(final_m)
     return {
-        'sym': sym, 'side': side,
+        'sym': sym,
         'params': final_params.to_dict(),
         'metrics': final_m,
         'verdict': final_v,
@@ -317,12 +351,33 @@ def optimize_sym_side(sym: str, side: str, years_back: float = 4.0) -> Optional[
     }
 
 
+def auto_tighten_for_tpd_dual(sym: str, winner_params: SymParams,
+                              winner_metrics: Dict, years_back: float) -> Tuple[SymParams, Dict, str]:
+    """Same chain logic but uses simulate_dual."""
+    tpd = float(winner_metrics.get('trades_per_day', 0))
+    if TPD_MIN <= tpd <= TPD_MAX:
+        return winner_params, winner_metrics, 'tpd_in_band'
+    orig_pool = float(winner_metrics.get('pool_sharpe', 0))
+    chain = htf_tighten_chain(winner_params) if tpd > TPD_MAX else loosen_chain(winner_params)
+    direction = 'tighten' if tpd > TPD_MAX else 'loosen'
+    candidates: List[Tuple[str, SymParams, Dict]] = [(f'orig_{direction}_target', winner_params, winner_metrics)]
+    for tag, p in chain:
+        m = simulate_dual(sym, p, years_back=years_back)
+        if m is None:
+            continue
+        candidates.append((tag, p, m))
+        if in_trade_band(float(m.get('trades_per_day', 0))) and m.get('pool_sharpe', 0) >= 0.9 * orig_pool:
+            return p, m, f'auto_{direction}:{tag}'
+    best = max(candidates, key=lambda c: effective_score(c[2]))
+    return best[1], best[2], f'auto_{direction}_best:{best[0]}'
+
+
 def _worker(args_tuple) -> Optional[Dict]:
-    sym, side, years_back = args_tuple
+    sym, years_back = args_tuple
     try:
-        return optimize_sym_side(sym, side, years_back=years_back)
+        return optimize_sym(sym, years_back=years_back)
     except Exception:
-        return {'sym': sym, 'side': side, 'error': traceback.format_exc()[-500:]}
+        return {'sym': sym, 'error': traceback.format_exc()[-500:]}
 
 
 # ───────────────────────── promote to active_config + CSV ─────────────────
@@ -331,6 +386,7 @@ _BANNED_PARAMS = set()  # none banned for crypto-engine — params are all engin
 
 
 def promote_results(results: List[Dict], csv_path: Path) -> int:
+    """Per-symbol promote (LONG+SHORT combined). Writes one entry per symbol with full param set."""
     OUT_CFG.parent.mkdir(parents=True, exist_ok=True)
     SWEEP_CSV_DIR.mkdir(parents=True, exist_ok=True)
     try:
@@ -342,22 +398,25 @@ def promote_results(results: List[Dict], csv_path: Path) -> int:
     for r in results:
         if r is None or 'error' in r:
             continue
-        sym = r['sym']; side = r['side']
+        sym = r['sym']
         m = r['metrics']
         v = r['verdict']
-        # Always write — but mark verdict so the live loader can filter
         entry = {
-            'winning_tag': f"crypto_{sym}_{side}_{now}",
+            'winning_tag': f"crypto_{sym}_{now}",
             'wsharpe': float(m.get('pool_sharpe', 0)),
             'pool_sharpe': float(m.get('pool_sharpe', 0)),
             'trades': int(m.get('trades', 0)),
+            'long_trades': int(m.get('long_trades', 0)),
+            'short_trades': int(m.get('short_trades', 0)),
+            'reverse_on_exit_count': int(m.get('reverse_on_exit_count', 0)),
+            'follow_through_count': int(m.get('follow_through_count', 0)),
             'trades_per_day': float(m.get('trades_per_day', 0)),
             'wr_pct': float(m.get('wr_pct', 0)),
             'max_dd_pct': float(m.get('max_dd_pct', 0)),
             'avg_gain_trade': float(m.get('avg_gain_trade', 0)),
             'gain_per_yr': float(m.get('gain_per_yr', 0)),
             'years': float(m.get('years', 0)),
-            'sample_tag': 'CRYPTO_PER_SYM_V2',
+            'sample_tag': 'CRYPTO_PER_SYM_V3_DUAL',
             'verdict': v,
             'note': r.get('note', ''),
             'baseline_pool': r.get('baseline_pool', 0),
@@ -365,15 +424,15 @@ def promote_results(results: List[Dict], csv_path: Path) -> int:
             'n_variants_tested': r.get('n_variants_tested', 0),
             'overrides': {k: vv for k, vv in r['params'].items() if k not in _BANNED_PARAMS},
         }
-        existing[f"{sym}_{side}"] = entry
-        # Canonical row via metrics_guard — strip trade_list/params blobs (they're huge).
+        # Single key for the symbol (LONG/SHORT combined). Old per-side keys are not deleted (legacy compat).
+        existing[sym] = entry
         try:
             row = {k: vv for k, vv in m.items() if k not in ('trade_list', 'params', 'variant_tag')}
-            row['tag'] = f"per_sym_{sym}_{side}"
+            row['tag'] = f"per_sym_{sym}"
             row['n_syms'] = 1
             mg.write_sharpe_row(csv_path, row, mode='crypto', append=True)
         except Exception as e:
-            print(f"  [csv] REFUSED {sym} {side}: {e}", flush=True)
+            print(f"  [csv] REFUSED {sym}: {e}", flush=True)
         if v == 'PROMOTE':
             promoted += 1
     OUT_CFG.write_text(json.dumps(existing, indent=2, default=str))
@@ -533,12 +592,12 @@ def syms_in_priority_order(accounts: List[str], skip: Optional[set] = None) -> L
 
 # ───────────────────────── main ───────────────────────────────────────────
 
-def run_cycle(syms: List[str], years: float, workers: int, sides: List[str]) -> Dict:
-    print(f"[per_sym_crypto_profiler] cycle starting | syms={len(syms)} sides={sides} years={years} workers={workers}", flush=True)
+def run_cycle(syms: List[str], years: float, workers: int) -> Dict:
+    print(f"[per_sym_crypto_profiler] cycle starting | syms={len(syms)} years={years} workers={workers}", flush=True)
     ts_run = int(time.time())
-    csv_path = SWEEP_CSV_DIR / f'per_sym_crypto_v2_{ts_run}.csv'
-    work = [(s, side, years) for s in syms for side in sides]
-    print(f"  total jobs: {len(work)} = {len(syms)} syms × {len(sides)} sides", flush=True)
+    csv_path = SWEEP_CSV_DIR / f'per_sym_crypto_v3_{ts_run}.csv'
+    work = [(s, years) for s in syms]
+    print(f"  total jobs: {len(work)} (per-symbol LONG+SHORT combined)", flush=True)
     t0 = time.time()
     results: List[Dict] = []
     if workers <= 1:
@@ -547,7 +606,7 @@ def run_cycle(syms: List[str], years: float, workers: int, sides: List[str]) -> 
             if r is not None:
                 results.append(r)
             elapsed = time.time() - t0
-            print(f"  [{i}/{len(work)}] {w[0]:14s} {w[1]:5s} elapsed={elapsed:.0f}s avg={elapsed/i:.1f}s/job", flush=True)
+            print(f"  [{i}/{len(work)}] {w[0]:14s} elapsed={elapsed:.0f}s avg={elapsed/i:.1f}s/job", flush=True)
     else:
         with ProcessPoolExecutor(max_workers=workers) as ex:
             futs = {ex.submit(_worker, w): w for w in work}
@@ -567,12 +626,10 @@ def run_cycle(syms: List[str], years: float, workers: int, sides: List[str]) -> 
     elapsed = time.time() - t0
     print(f"[per_sym_crypto_profiler] sweep done in {elapsed:.0f}s ({elapsed/max(1,len(work)):.2f}s/job)", flush=True)
 
-    # Promote + write canonical CSV
     promoted = promote_results(results, csv_path)
     print(f"[per_sym_crypto_profiler] promoted={promoted}/{len(results)} written to {OUT_CFG}", flush=True)
     print(f"[per_sym_crypto_profiler] canonical CSV: {csv_path}", flush=True)
 
-    # Charts (sequential; matplotlib not pickle-friendly across workers, and they're cheap)
     if HAS_MPL:
         nc = 0
         for r in results:
@@ -580,10 +637,10 @@ def run_cycle(syms: List[str], years: float, workers: int, sides: List[str]) -> 
                 continue
             try:
                 p = SymParams(**r['params'])
-                generate_chart(r['sym'], r['side'], p, r['metrics'])
+                generate_chart(r['sym'], 'BOTH', p, r['metrics'])
                 nc += 1
             except Exception as e:
-                print(f"  [chart] {r.get('sym')} {r.get('side')}: {e}", flush=True)
+                print(f"  [chart] {r.get('sym')}: {e}", flush=True)
         print(f"[per_sym_crypto_profiler] charts: {nc} written to {CHARTS_DIR}", flush=True)
     return {'jobs': len(work), 'completed': len(results), 'promoted': promoted, 'elapsed_s': elapsed, 'csv': str(csv_path)}
 
@@ -594,14 +651,12 @@ def main() -> int:
     ap.add_argument('--accounts', default='ang,fin,men,flz', help='account priority order')
     ap.add_argument('--years', type=float, default=4.0)
     ap.add_argument('--workers', type=int, default=4)
-    ap.add_argument('--sides', default='LONG,SHORT')
     ap.add_argument('--once', action='store_true', default=True)
     ap.add_argument('--daemon', action='store_true', help='loop continuously')
     ap.add_argument('--cycle-interval-s', type=int, default=86400, help='daemon: seconds between cycles')
     ap.add_argument('--max-syms', type=int, default=0, help='cap on symbols (0=no cap)')
     args = ap.parse_args()
 
-    sides = [s.strip().upper() for s in args.sides.split(',') if s.strip()]
     if args.syms:
         syms = [s.strip() for s in args.syms.split(',') if s.strip()]
     else:
@@ -618,7 +673,7 @@ def main() -> int:
         while True:
             t0 = time.time()
             try:
-                run_cycle(syms, args.years, args.workers, sides)
+                run_cycle(syms, args.years, args.workers)
             except KeyboardInterrupt:
                 print("[per_sym_crypto_profiler] interrupted", flush=True)
                 return 0
@@ -629,7 +684,7 @@ def main() -> int:
             print(f"[per_sym_crypto_profiler] cycle done in {elapsed:.0f}s; sleeping {sleep_s}s", flush=True)
             time.sleep(sleep_s)
     else:
-        run_cycle(syms, args.years, args.workers, sides)
+        run_cycle(syms, args.years, args.workers)
     return 0
 
 
