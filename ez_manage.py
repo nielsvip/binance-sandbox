@@ -3086,6 +3086,13 @@ class WebSocketManager:
         self._last_time_sync = 0.0
         self._last_mark_price_heartbeat = 0.0
         self.position_callback_manager = PositionCallbackManager()
+        try:
+            _sym_path = Path(getattr(self.config, "SYMBOLS_FILE", Path(self.config.BASE_PATH) / "symbols.json"))
+            _sym_list = safe_json_loads(_sym_path.read_bytes()) if _sym_path.exists() else []
+            _sym_set = set(_sym_list) if isinstance(_sym_list, list) else set()
+            self._valid_mark_symbols: set = _sym_set | {s.replace("USDC", "USDT") for s in _sym_set if s.endswith("USDC")}
+        except Exception:
+            self._valid_mark_symbols = set()
 
     async def _init_session(self) -> aiohttp.ClientSession:
         timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=60, sock_connect=30)
@@ -3342,6 +3349,8 @@ class WebSocketManager:
             if not isinstance(entry, dict):
                 continue
             symbol = entry.get("s") or entry.get("symbol")
+            if symbol and self._valid_mark_symbols and symbol.upper() not in self._valid_mark_symbols:
+                continue
             price_candidate = entry.get("p") or entry.get("markPrice") or entry.get("price")
             if not symbol or price_candidate is None:
                 continue

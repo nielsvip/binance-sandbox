@@ -63,8 +63,7 @@ import redis.asyncio as aioredis
 import websockets
 
 BASE = Path(__file__).resolve().parent
-TRADEABLE_FILE = BASE / "tradeable_keys.json"
-CRYPTO_ACCOUNTS = ("inf", "ang", "flz", "men", "fin")
+SYMBOLS_FILE = BASE / "symbols.json"
 
 WS_BASE = "wss://fstream.binance.com/stream"
 REST_BASE = "https://fapi.binance.com/fapi/v1/depth"
@@ -95,23 +94,12 @@ logger.setLevel(logging.INFO)
 
 def load_symbols() -> List[str]:
     try:
-        with open(TRADEABLE_FILE) as f:
-            keys = json.load(f)
+        with open(SYMBOLS_FILE) as f:
+            syms = json.load(f)
+        return sorted(s for s in syms if isinstance(s, str) and ("USDT" in s or "USDC" in s))
     except Exception as e:
-        logger.warning(f"tradeable_keys load failed: {e}")
+        logger.warning(f"symbols.json load failed: {e}")
         return []
-    syms: set = set()
-    for k in keys:
-        if not isinstance(k, str) or ":" not in k:
-            continue
-        acct, rest = k.split(":", 1)
-        if acct not in CRYPTO_ACCOUNTS:
-            continue
-        if rest.endswith("_LONG"):
-            syms.add(rest[:-5])
-        elif rest.endswith("_SHORT"):
-            syms.add(rest[:-6])
-    return sorted(syms)
 
 
 class DeepBook:
