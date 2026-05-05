@@ -188,6 +188,32 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     p_pair.FOLLOW_THROUGH_REENTRY_ENABLED = True
     p_pair.EXIT_REQUIRE_BOTH = True
     grid.append(('combo_reverse+ft+exit_both', p_pair))
+    # AUGMENT (default ON per user 2026-05-05 NO EXCEPTIONS) — sweep levels
+    grid += variants_for_param(base, 'AUGMENT_ENABLED', [True, False])
+    # Mean-rev reentry (above/below exit) — sweep tolerance + window
+    grid += variants_for_param(base, 'REENTRY_MEAN_REV_ENABLED', [True, False])
+    grid += variants_for_param(base, 'REENTRY_MEAN_REV_TOLERANCE_PCT', [0.10, 0.20, 0.30, 0.50, 1.0])
+    grid += variants_for_param(base, 'REENTRY_MEAN_REV_WINDOW_BARS', [3, 5, 10, 20])
+    # HEDGE / NOLOSS switches (default OFF — sweep ON to test)
+    grid += variants_for_param(base, 'HEDGE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT', [-0.5, -1.0, -2.0, -3.0])
+    grid += variants_for_param(base, 'HEDGE_SIZE_FRAC', [0.25, 0.5, 0.75, 1.0])
+    grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
+    grid += variants_for_param(base, 'NOLOSS_FLOOR_PCT', [-0.05, -0.10, -0.25, -0.50])
+    # Mega-combo: all the v8-parity paths together (matches BTC_DEDICATED config style)
+    p_mega = base.copy()
+    p_mega.REVERSE_ON_EXIT_ENABLED = True
+    p_mega.FOLLOW_THROUGH_REENTRY_ENABLED = True
+    p_mega.REENTRY_MEAN_REV_ENABLED = True
+    p_mega.AUGMENT_ENABLED = True
+    p_mega.EXIT_REQUIRE_BOTH = True
+    grid.append(('mega_v8parity', p_mega))
+    p_mega2 = p_mega.copy()
+    p_mega2.HEDGE_ENABLED = True
+    grid.append(('mega_v8parity+hedge', p_mega2))
+    p_mega3 = p_mega.copy()
+    p_mega3.NOLOSS_ENABLED = True
+    grid.append(('mega_v8parity+noloss', p_mega3))
     return grid
 
 

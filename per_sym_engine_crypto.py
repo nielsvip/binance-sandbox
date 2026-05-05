@@ -127,7 +127,7 @@ class SymParams:
     AUGMENT_ENABLED: bool = True
     AUGMENT_LEVELS_PCT: tuple = (1.0, 2.0, 3.0, 4.0)  # gain % thresholds for L1..L4
     # Mean-reversion REENTRY (above OR below exit price — distinct from FOLLOW_THROUGH which is favorable-only).
-    REENTRY_MEAN_REV_ENABLED: bool = True
+    REENTRY_MEAN_REV_ENABLED: bool = False  # off by default — sweep finds when to enable
     REENTRY_MEAN_REV_TOLERANCE_PCT: float = 0.30  # price returns within ±X% of exit price → reentry same side
     REENTRY_MEAN_REV_WINDOW_BARS: int = 10
     # HEDGE: open opposite-side position when current is underwater + opposite signal fires.
@@ -831,11 +831,20 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
     Returns symbol-level metrics + per-side breakdown.
     """
     base = load_3m_base(sym, years_back=years_back)
-    if base is None or len(base['close']) < 5000:
+    # Min bars proportional to window: ~500/day at 3m. 7-day window = 3360 OK; require ≥1000 minimum.
+    min_bars = max(1000, int(min(years_back, 0.05) * 365.25 * 480 * 0.7))
+    if base is None or len(base['close']) < min_bars:
         return None
     tf_data = build_tf_data(base)
-    if not all(tf in tf_data and len(tf_data[tf]['close']) >= 50 for tf in list(DECISION_TFS) + ['D']):
-        return None
+    # Min HTF bars proportional. 7-day window has D=7, 4h=42, 1h=168, 15m=672. Be lenient.
+    if years_back < 0.1:
+        # short-window: just need D≥5 and 4h≥20 (otherwise no signal)
+        min_per_tf = {'15m': 100, '1h': 50, '4h': 20, 'D': 5}
+    else:
+        min_per_tf = {tf: 50 for tf in list(DECISION_TFS) + ['D']}
+    for tf in list(DECISION_TFS) + ['D']:
+        if tf not in tf_data or len(tf_data[tf]['close']) < min_per_tf.get(tf, 50):
+            return None
     enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
     enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
     htf_long = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'LONG', params, len(enter_long))
