@@ -14332,6 +14332,11 @@ class MultiAccountTradeManager:
                     or 'LIQUIDATION' in _reason_up_drain
                     or 'MAX_LOSS' in _reason_up_drain
                     or 'BE_STOP' in _reason_up_drain
+                    # 2026-05-05 USER MANDATE — emergency safety closes also bypass drain protection.
+                    # Same set of reasons that bypass UNIVERSAL_NOLOSS_GATE (LUNC -65% incident).
+                    or 'RIDICULOUS_HOLD' in _reason_up_drain
+                    or 'RIDICULOUS_LOSS' in _reason_up_drain
+                    or 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_up_drain
                 )
                 if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper() and not _drain_bypass:
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
