@@ -140,6 +140,22 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     grid += variants_for_param(base, 'REQUIRE_D_TREND', [True, False])
     grid += variants_for_param(base, 'REQUIRE_W_TREND', [True, False])
     grid += variants_for_param(base, 'MIN_TFS_AGREE', [2, 3])
+    # Internet-research strategy paths
+    grid += variants_for_param(base, 'ENTRY_LIQ_SWEEP_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_LIQ_SWEEP_LOOKBACK', [5, 10, 20, 30])
+    grid += variants_for_param(base, 'ENTRY_NR7_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_NR_LOOKBACK', [4, 7, 10, 15])
+    grid += variants_for_param(base, 'ENTRY_VOL_SPIKE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_VOL_SPIKE_RATIO', [1.5, 2.0, 2.5, 3.0])
+    grid += variants_for_param(base, 'ENTRY_VOL_SPIKE_LOOKBACK', [10, 20, 30, 50])
+    grid += variants_for_param(base, 'ENTRY_EMA_RIBBON_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_EMA_FAST', [5, 9, 13])
+    grid += variants_for_param(base, 'ENTRY_EMA_MID', [13, 21, 34])
+    grid += variants_for_param(base, 'ENTRY_EMA_SLOW', [34, 50, 100])
+    grid += variants_for_param(base, 'ENTRY_WILLR_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_WILLR_LOOKBACK', [10, 14, 21, 28])
+    grid += variants_for_param(base, 'ENTRY_WILLR_OS_THRESHOLD', [-90.0, -85.0, -80.0, -75.0])
+    grid += variants_for_param(base, 'ENTRY_FVG_ENABLED', [True, False])
     return grid
 
 

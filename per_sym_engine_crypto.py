@@ -75,6 +75,29 @@ class SymParams:
     ENTRY_BB_SQUEEZE_RELEASE_ENABLED: bool = True  # entry on BB width expansion after compression
     ENTRY_BB_SQUEEZE_RATIO: float = 1.5         # current BB width > prior min × ratio = release
     ENTRY_BB_SQUEEZE_LOOKBACK: int = 20         # bars to find prior min width
+    # Strategies sourced from internet research not present in v8 (see profiler doc):
+    # 1) Liquidity sweep reversal (ICT/Wyckoff): wick below prev-low then reclaim
+    ENTRY_LIQ_SWEEP_ENABLED: bool = True
+    ENTRY_LIQ_SWEEP_LOOKBACK: int = 10  # rolling N bars to define "recent" low/high
+    # 2) NR7 breakout (Crabel): narrowest range in 7 bars → next-bar break
+    ENTRY_NR7_ENABLED: bool = True
+    ENTRY_NR_LOOKBACK: int = 7  # bars; bar i has narrowest range of last N → break on i+1
+    # 3) Volume spike + directional bar (VSA)
+    ENTRY_VOL_SPIKE_ENABLED: bool = True
+    ENTRY_VOL_SPIKE_RATIO: float = 2.0  # vol > rolling_mean(vol, lookback) × ratio
+    ENTRY_VOL_SPIKE_LOOKBACK: int = 20
+    # 4) EMA ribbon pullback (9/21/50 stacked + price reclaiming 21 from below for LONG)
+    ENTRY_EMA_RIBBON_ENABLED: bool = True
+    ENTRY_EMA_FAST: int = 9
+    ENTRY_EMA_MID: int = 21
+    ENTRY_EMA_SLOW: int = 50
+    # 5) Williams %R extreme reclaim
+    ENTRY_WILLR_ENABLED: bool = True
+    ENTRY_WILLR_LOOKBACK: int = 14
+    ENTRY_WILLR_OS_THRESHOLD: float = -85.0   # LONG: %R was below this then crosses above
+    ENTRY_WILLR_OB_THRESHOLD: float = -15.0   # SHORT: %R was above this then crosses below
+    # 6) Fair Value Gap (FVG) fill — ICT 3-bar imbalance
+    ENTRY_FVG_ENABLED: bool = True
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -179,8 +202,8 @@ _npz_cache: Dict[str, Dict[str, np.ndarray]] = {}
 
 
 def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.ndarray]]:
-    """Load 3m OHLC + ts from NPZ, sliced to last N years. Cached per process.
-    Returns dict {'open','high','low','close','ts'} or None if missing fields.
+    """Load 3m OHLC(+V) + ts from NPZ, sliced to last N years. Cached per process.
+    Returns dict {'open','high','low','close','volume','ts'} or None if missing fields.
     """
     cache_key = f'{sym}__y{years_back:.2f}'
     if cache_key in _npz_cache:
@@ -198,10 +221,11 @@ def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.nda
     l = z['low_3m'][:].astype(np.float64)
     c = z['close_3m'][:].astype(np.float64)
     ts = z['timestamps'][:].astype(np.int64)
+    v = z['volume_3m'][:].astype(np.float64) if 'volume_3m' in z.files else np.ones(len(c), dtype=np.float64)
     z.close()
     cutoff = ts[-1] - int(years_back * 365.25 * 86400)
     si = int(np.searchsorted(ts, cutoff))
-    out = {'open': o[si:], 'high': h[si:], 'low': l[si:], 'close': c[si:], 'ts': ts[si:]}
+    out = {'open': o[si:], 'high': h[si:], 'low': l[si:], 'close': c[si:], 'volume': v[si:], 'ts': ts[si:]}
     _npz_cache[cache_key] = out
     return out
 
@@ -211,14 +235,18 @@ def resample_3m_to_htf(base: Dict[str, np.ndarray], tf_bars: int) -> Dict[str, n
     n = len(base['close'])
     n_hf = n // tf_bars
     if n_hf == 0:
-        return {'open': np.array([]), 'high': np.array([]), 'low': np.array([]), 'close': np.array([]), 'ts': np.array([], dtype=np.int64)}
+        return {'open': np.array([]), 'high': np.array([]), 'low': np.array([]), 'close': np.array([]), 'volume': np.array([]), 'ts': np.array([], dtype=np.int64)}
     cut = n_hf * tf_bars
     o = base['open'][:cut][::tf_bars]
     h = base['high'][:cut].reshape(n_hf, tf_bars).max(axis=1)
     l = base['low'][:cut].reshape(n_hf, tf_bars).min(axis=1)
     c = base['close'][:cut][tf_bars - 1::tf_bars][:n_hf]
     ts = base['ts'][:cut][tf_bars - 1::tf_bars][:n_hf]
-    return {'open': o, 'high': h, 'low': l, 'close': c, 'ts': ts}
+    if 'volume' in base and len(base['volume']) >= cut:
+        v = base['volume'][:cut].reshape(n_hf, tf_bars).sum(axis=1)
+    else:
+        v = np.ones(n_hf, dtype=np.float64)
+    return {'open': o, 'high': h, 'low': l, 'close': c, 'volume': v, 'ts': ts}
 
 
 def build_tf_data(base: Dict[str, np.ndarray]) -> Dict[str, Dict[str, np.ndarray]]:
@@ -237,7 +265,8 @@ def build_tf_data(base: Dict[str, np.ndarray]) -> Dict[str, Dict[str, np.ndarray
 
 def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymParams) -> Tuple[np.ndarray, np.ndarray]:
     """Return (entry_sig, exit_sig) boolean arrays for this TF and side."""
-    h, l, c = ohlc['high'], ohlc['low'], ohlc['close']
+    o, h, l, c = ohlc['open'], ohlc['high'], ohlc['low'], ohlc['close']
+    v = ohlc.get('volume', np.ones(len(c)))
     n = len(c)
     bb_len = int(getattr(params, f'BB_LEN_{tf}'))
     bb_std = float(getattr(params, f'BB_STD_{tf}'))
@@ -248,6 +277,80 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     bb_u, bb_l, bb_pctb = compute_bb(c, bb_len, bb_std)
     wt1, wt2 = compute_wt(h, l, c, wt_chan, wt_avg)
     dc_h, dc_l, dc_h_prev, dc_l_prev = compute_dc(h, l, dc_per)
+
+    # ── Internet-research strategy paths ──────────────────────────────────
+    # 1) Liquidity sweep: low taps below rolling-N low then close reclaims (LONG); mirror SHORT.
+    lb = int(params.ENTRY_LIQ_SWEEP_LOOKBACK)
+    rmin_l = _rolling_min(l, lb)  # rolling min of LOW
+    rmin_l_prev = np.concatenate([[rmin_l[0] if n else 0.0], rmin_l[:-1]])
+    rmax_h = _rolling_max(h, lb)
+    rmax_h_prev = np.concatenate([[rmax_h[0] if n else 0.0], rmax_h[:-1]])
+    liq_sweep_long = (l < rmin_l_prev) & (c > rmin_l_prev) & np.isfinite(rmin_l_prev)
+    liq_sweep_short = (h > rmax_h_prev) & (c < rmax_h_prev) & np.isfinite(rmax_h_prev)
+
+    # 2) NR7: bar i has narrowest range of last NR_LOOKBACK; entry on i+1 break of NR bar's H/L.
+    nr_lb = int(params.ENTRY_NR_LOOKBACK)
+    bar_range = h - l
+    range_min = _rolling_min(bar_range, nr_lb)
+    is_nr = (bar_range == range_min) & np.isfinite(range_min)
+    is_nr_prev = np.concatenate([[False], is_nr[:-1]])
+    nr_high_prev = np.concatenate([[h[0] if n else 0.0], h[:-1]])
+    nr_low_prev = np.concatenate([[l[0] if n else 0.0], l[:-1]])
+    nr7_break_long = is_nr_prev & (c > nr_high_prev)
+    nr7_break_short = is_nr_prev & (c < nr_low_prev)
+
+    # 3) Volume spike: vol > rolling_mean(vol, vlb) × ratio AND directional bar
+    vlb = int(params.ENTRY_VOL_SPIKE_LOOKBACK)
+    vol_mean = _rolling_mean_csum(v, vlb)
+    vol_ratio = float(params.ENTRY_VOL_SPIKE_RATIO)
+    vol_spike = (v > vol_mean * vol_ratio) & np.isfinite(vol_mean)
+    bull_bar = c > o
+    bear_bar = c < o
+    vol_spike_long = vol_spike & bull_bar
+    vol_spike_short = vol_spike & bear_bar
+
+    # 4) EMA ribbon stack: ema_fast > ema_mid > ema_slow (LONG stack); pullback = c crosses ema_mid up.
+    ema_fast = _ema(c, int(params.ENTRY_EMA_FAST))
+    ema_mid  = _ema(c, int(params.ENTRY_EMA_MID))
+    ema_slow = _ema(c, int(params.ENTRY_EMA_SLOW))
+    stack_up = (ema_fast > ema_mid) & (ema_mid > ema_slow)
+    stack_dn = (ema_fast < ema_mid) & (ema_mid < ema_slow)
+    c_prev = np.concatenate([[c[0] if n else 0.0], c[:-1]])
+    ema_mid_prev = np.concatenate([[ema_mid[0] if n else 0.0], ema_mid[:-1]])
+    pullback_long = stack_up & (c > ema_mid) & (c_prev <= ema_mid_prev)
+    pullback_short = stack_dn & (c < ema_mid) & (c_prev >= ema_mid_prev)
+
+    # 5) Williams %R: -100 × (HH - close) / (HH - LL); reclaim from extreme = entry
+    wlb = int(params.ENTRY_WILLR_LOOKBACK)
+    wr_hh = _rolling_max(h, wlb)
+    wr_ll = _rolling_min(l, wlb)
+    wr_rng = wr_hh - wr_ll
+    wr_rng_safe = np.where(wr_rng > 1e-12, wr_rng, 1e-12)
+    willr = -100.0 * (wr_hh - c) / wr_rng_safe
+    willr_prev = np.concatenate([[willr[0] if n else 0.0], willr[:-1]])
+    os_th = float(params.ENTRY_WILLR_OS_THRESHOLD)
+    ob_th = float(params.ENTRY_WILLR_OB_THRESHOLD)
+    willr_reclaim_long  = (willr > os_th) & (willr_prev <= os_th)
+    willr_reclaim_short = (willr < ob_th) & (willr_prev >= ob_th)
+
+    # 6) Fair Value Gap: bullish FVG = bar[i-1].high < bar[i+1].low at bar i (3-bar imbalance);
+    # entry on later bar when close returns to fill the gap (touches the gap zone).
+    # We mark the gap on the middle bar then check for fill within next K bars.
+    if n >= 3:
+        h_prev2 = np.concatenate([[h[0], h[0]], h[:-2]])  # bar[i-1].high lined up with bar[i]+1 effectively bar i (gap formed by bars i-1,i,i+1)
+        l_next2 = np.concatenate([l[2:], [l[-1], l[-1]]])  # bar[i+1].low aligned with bar i
+        bull_fvg = (h_prev2 < l_next2) & np.isfinite(h_prev2) & np.isfinite(l_next2)
+        h_next2 = np.concatenate([h[2:], [h[-1], h[-1]]])
+        l_prev2 = np.concatenate([[l[0], l[0]], l[:-2]])
+        bear_fvg = (l_prev2 > h_next2) & np.isfinite(l_prev2) & np.isfinite(h_next2)
+        # Fill detection: next 1 bar after FVG touches the gap zone
+        fvg_long_signal = np.concatenate([[False, False, False], bull_fvg[:-3]])  # entry 3 bars after gap formed
+        fvg_short_signal = np.concatenate([[False, False, False], bear_fvg[:-3]])
+        fvg_long_signal = fvg_long_signal[:n]
+        fvg_short_signal = fvg_short_signal[:n]
+    else:
+        fvg_long_signal = np.zeros(n, dtype=bool)
+        fvg_short_signal = np.zeros(n, dtype=bool)
 
     # WT cross EVENT detection: True at bars where (wt1>wt2) just transitioned from (wt1<=wt2) in last N bars
     wt_bull_now = wt1 > wt2
@@ -277,6 +380,7 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     bb_extreme_long = (bb_pctb > params.ENTRY_BB_EXTREME_THRESHOLD) & (pctb_prev <= params.ENTRY_BB_EXTREME_THRESHOLD)
     bb_extreme_short = (bb_pctb < (1 - params.ENTRY_BB_EXTREME_THRESHOLD)) & (pctb_prev >= (1 - params.ENTRY_BB_EXTREME_THRESHOLD))
 
+    Z = np.zeros(n, dtype=bool)
     if side == 'LONG':
         wt_ok = (wt1 > wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
         dc_break = (c > dc_h_prev)
@@ -287,15 +391,19 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
             base_path = pullback
         else:
             base_path = dc_break | pullback
-        # Additional parallel paths
-        wt_event = wt_bull_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else np.zeros(n, dtype=bool)
-        bb_bounce = bb_extreme_long if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else np.zeros(n, dtype=bool)
-        bb_squeeze = bb_squeeze_release if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else np.zeros(n, dtype=bool)
-        # OR all paths together; gate by WT direction + BB ceiling
-        any_path = base_path | wt_event | bb_bounce | (bb_squeeze & wt_ok)
+        wt_event_p = wt_bull_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else Z
+        bb_bounce_p = bb_extreme_long if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else Z
+        bb_squeeze_p = (bb_squeeze_release & wt_ok) if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else Z
+        liq_p = liq_sweep_long if params.ENTRY_LIQ_SWEEP_ENABLED else Z
+        nr7_p = nr7_break_long if params.ENTRY_NR7_ENABLED else Z
+        vol_p = vol_spike_long if params.ENTRY_VOL_SPIKE_ENABLED else Z
+        ema_p = pullback_long if params.ENTRY_EMA_RIBBON_ENABLED else Z
+        wr_p  = willr_reclaim_long if params.ENTRY_WILLR_ENABLED else Z
+        fvg_p = fvg_long_signal if params.ENTRY_FVG_ENABLED else Z
+        any_path = (base_path | wt_event_p | bb_bounce_p | bb_squeeze_p |
+                    liq_p | nr7_p | vol_p | ema_p | wr_p | fvg_p)
         ceiling_ok = (bb_pctb < params.BB_TOP_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
         entry = wt_ok & any_path & ceiling_ok
-        # Exit signals: WT cross down OR price at top OR breakdown through dc_low_prev
         exit_ = (wt1 < wt2) | (bb_pctb > params.BB_TOP_THRESHOLD) | (c < dc_l_prev)
     else:  # SHORT
         wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
@@ -307,10 +415,17 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
             base_path = pullback
         else:
             base_path = dc_break | pullback
-        wt_event = wt_bear_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else np.zeros(n, dtype=bool)
-        bb_bounce = bb_extreme_short if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else np.zeros(n, dtype=bool)
-        bb_squeeze = bb_squeeze_release if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else np.zeros(n, dtype=bool)
-        any_path = base_path | wt_event | bb_bounce | (bb_squeeze & wt_ok)
+        wt_event_p = wt_bear_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else Z
+        bb_bounce_p = bb_extreme_short if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else Z
+        bb_squeeze_p = (bb_squeeze_release & wt_ok) if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else Z
+        liq_p = liq_sweep_short if params.ENTRY_LIQ_SWEEP_ENABLED else Z
+        nr7_p = nr7_break_short if params.ENTRY_NR7_ENABLED else Z
+        vol_p = vol_spike_short if params.ENTRY_VOL_SPIKE_ENABLED else Z
+        ema_p = pullback_short if params.ENTRY_EMA_RIBBON_ENABLED else Z
+        wr_p  = willr_reclaim_short if params.ENTRY_WILLR_ENABLED else Z
+        fvg_p = fvg_short_signal if params.ENTRY_FVG_ENABLED else Z
+        any_path = (base_path | wt_event_p | bb_bounce_p | bb_squeeze_p |
+                    liq_p | nr7_p | vol_p | ema_p | wr_p | fvg_p)
         ceiling_ok = (bb_pctb > params.BB_BOT_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
         entry = wt_ok & any_path & ceiling_ok
         exit_ = (wt1 > wt2) | (bb_pctb < params.BB_BOT_THRESHOLD) | (c > dc_h_prev)
