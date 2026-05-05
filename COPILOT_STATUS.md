@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-04 23:58:46 UTC
+# Copilot Status — 2026-05-05 00:34:43 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T23:54:50
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T23:54:51
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T23:55:52
-- **STALE_INDICATORS** [tradier]  — 2026-05-04T23:56:53
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-04T23:56:53
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-04T23:56:53
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-04T23:56:53
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-04T23:56:53
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T23:56:53
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-04T23:57:56
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T00:30:46
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T00:30:47
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T00:31:48
+- **STALE_INDICATORS** [tradier]  — 2026-05-05T00:32:49
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-05T00:32:49
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T00:32:49
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T00:32:49
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T00:32:49
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T00:32:50
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T00:33:52
 
 ## Missed Trades (trader comparison)
 
@@ -27,12 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 4 | **Watching for reentry:** 8 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-5.1%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-3.7%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.2%
-- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-2.7%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-4.1%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-6.7%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-4.9%
+- HELD: **DOGEUSDC** SHORT (crypto) peak +10.1%, now +-3.0%
+- HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +-2.3%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
 - WATCHING: **USTCUSDT** SHORT (crypto) peaked +24.5%, exited 0m ago
