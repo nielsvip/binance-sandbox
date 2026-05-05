@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-05 01:51:58 UTC
+# Copilot Status — 2026-05-05 02:07:13 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T01:49:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T01:49:18
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T01:49:20
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T01:50:24
-- **STALE_INDICATORS** [tradier]  — 2026-05-05T01:51:26
-- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-05T01:51:26
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T01:51:26
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T01:51:26
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T01:51:26
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T01:51:27
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T02:04:01
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T02:04:01
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T02:05:04
+- **STALE_INDICATORS** [tradier]  — 2026-05-05T02:06:05
+- **BIG_LOSER** [tradier] trb:NEM_LONG — 2026-05-05T02:06:05
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T02:06:05
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T02:06:05
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T02:06:05
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T02:06:07
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T02:07:11
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 9 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.4%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-2.8%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-7.5%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.5%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-2.3%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-9.8%
 - HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +-1.6%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
