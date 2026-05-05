@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-05 12:27:02 UTC
+# Copilot Status — 2026-05-05 12:42:20 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T12:25:10
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T12:25:10
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T12:26:11
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-05T12:26:11
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T12:26:11
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-05T12:26:11
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T12:26:11
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T12:26:42
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T12:26:42
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T12:26:42
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T12:41:05
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T12:41:05
+- **BIG_LOSER** [tradier] trb:PYPL_LONG — 2026-05-05T12:41:26
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-05T12:41:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-05T12:41:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-05T12:41:26
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-05T12:42:09
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-05T12:42:09
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-05T12:42:09
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-05T12:42:09
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 11 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-4.8%
-- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-1.4%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-16.4%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-5.0%
+- HELD: **BIOUSDC** SHORT (crypto) peak +21.0%, now +-1.1%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-15.8%
 - HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +0.1%
 
 - WATCHING: **ORDIUSDC** SHORT (crypto) peaked +48.3%, exited 0m ago
@@ -49,7 +49,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 3
+**Issues (last 1h):** 4
 - [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_indicators.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
