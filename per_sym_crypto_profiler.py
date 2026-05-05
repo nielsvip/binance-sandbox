@@ -199,7 +199,14 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT', [-0.5, -1.0, -2.0, -3.0])
     grid += variants_for_param(base, 'HEDGE_SIZE_FRAC', [0.25, 0.5, 0.75, 1.0])
     grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
-    grid += variants_for_param(base, 'NOLOSS_FLOOR_PCT', [-0.05, -0.10, -0.25, -0.50])
+    grid += variants_for_param(base, 'NOLOSS_FLOOR_PCT', [-0.10, -0.05, 0.0, 0.05, 0.10])
+    # PEAK_GIVEBACK exit (live's QUICK_PEAK_GIVEBACK) — most important for high WR per user 2026-05-05
+    grid += variants_for_param(base, 'PEAK_GIVEBACK_EXIT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'PEAK_GIVEBACK_DROP_PCT', [0.10, 0.20, 0.30, 0.50, 0.75, 1.0, 1.5])
+    grid += variants_for_param(base, 'PEAK_GIVEBACK_MIN_PEAK_PCT', [0.05, 0.10, 0.20, 0.30, 0.50])
+    # HH/HL price-action entry alternative
+    grid += variants_for_param(base, 'USE_PRICE_ACTION_ENTRY', [True, False])
+    grid += variants_for_param(base, 'PRICE_ACTION_LB', [2, 3, 4, 5])
     # Mega-combo: all the v8-parity paths together (matches BTC_DEDICATED config style)
     p_mega = base.copy()
     p_mega.REVERSE_ON_EXIT_ENABLED = True
@@ -340,40 +347,137 @@ def auto_tighten_for_tpd(sym: str, side: str, winner_params: SymParams,
 
 # ───────────────────────── per-(sym, side) job ────────────────────────────
 
-def optimize_sym(sym: str, years_back: float = 4.0) -> Optional[Dict]:
-    """Per-symbol (LONG+SHORT combined) optimizer using simulate_dual.
-    Returns {'sym', 'params', 'metrics', 'verdict', 'note'} or None.
-    """
+def _restrict_to_side(p: SymParams, side: str) -> SymParams:
+    """Force a SymParams to only fire for the given side (disables opposite side's entries)."""
+    p = p.copy()
+    return p  # Side-restriction handled by per-side enter mask building below
+
+
+def _simulate_one_side(sym: str, params: SymParams, side: str, years_back: float) -> Optional[Dict]:
+    """Run dual with the OTHER side's entries disabled — true per-side isolation."""
+    m = simulate_dual(sym, params, years_back=years_back, only_side=side)
+    if m is None:
+        return None
+    trades = [t for t in m.get('trade_list', []) if t.get('side') == side]
+    if not trades:
+        empty = dict(m)
+        empty.update({'trades': 0, 'trades_per_day': 0.0, 'pool_sharpe': 0.0,
+                      'wr_pct': 0.0, 'max_dd_pct': 0.0, 'total_gain_pct': 0.0,
+                      'avg_gain_trade': 0.0, 'gain_per_yr': 0.0, 'gain_sym_yr': 0.0,
+                      'trade_list': [], 'long_trades': 0, 'short_trades': 0})
+        return empty
+    rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
+    n = len(rets)
+    span_days = max(1.0, (trades[-1]['exit_ts'] - trades[0]['entry_ts']) / 86400.0) if n else 1.0
+    yrs = max(0.01, span_days / 365.25)
+    sd = float(rets.std())
+    pool = float(rets.mean() / sd) if sd > 1e-12 else 0.0
+    wr = float((rets > 0).mean() * 100.0)
+    eq = np.cumsum(rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    total = float(rets.sum())
+    out = dict(m)
+    out.update({
+        'trades': n, 'trades_per_day': n / span_days,
+        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
+        'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'years': yrs, 'side': side, 'trade_list': trades,
+        'long_trades': n if side == 'LONG' else 0,
+        'short_trades': n if side == 'SHORT' else 0,
+    })
+    return out
+
+
+def optimize_sym_side(sym: str, side: str, years_back: float = 4.0) -> Optional[Dict]:
+    """Run marginal sweep on this (sym, side) — LONG and SHORT have independent params per user 2026-05-05."""
+    import numpy as np
     base = make_baseline()
-    base_m = simulate_dual(sym, base, years_back=years_back)
+    base_m = _simulate_one_side(sym, base, side, years_back)
     if base_m is None:
         return None
-
     grid = marginal_sweep_grid(base)
     results: List[Tuple[str, SymParams, Dict]] = []
     for tag, p in grid:
-        m = simulate_dual(sym, p, years_back=years_back)
+        m = _simulate_one_side(sym, p, side, years_back)
         if m is None:
             continue
         m['variant_tag'] = tag
         results.append((tag, p, m))
-
     winning_tag, winning_params, winning_m = pick_winner(results)
-
-    # Trade-rate auto-tighten/loosen (works on combined symbol tpd now)
-    final_params, final_m, note = auto_tighten_for_tpd_dual(sym, winning_params, winning_m, years_back)
-
-    final_v = verdict(final_m)
+    final_v = verdict(winning_m)
     return {
-        'sym': sym,
-        'params': final_params.to_dict(),
-        'metrics': final_m,
+        'sym': sym, 'side': side,
+        'params': winning_params.to_dict(),
+        'metrics': winning_m,
         'verdict': final_v,
-        'note': note,
         'winning_tag': winning_tag,
         'baseline_pool': float(base_m.get('pool_sharpe', 0)),
         'baseline_tpd': float(base_m.get('trades_per_day', 0)),
         'n_variants_tested': len(results),
+    }
+
+
+def optimize_sym(sym: str, years_back: float = 4.0) -> Optional[Dict]:
+    """Per-symbol optimizer: run LONG and SHORT independently (user 2026-05-05 — different dynamics).
+    Combine for symbol-level tpd verdict.
+    """
+    long_r = optimize_sym_side(sym, 'LONG', years_back=years_back)
+    short_r = optimize_sym_side(sym, 'SHORT', years_back=years_back)
+    if long_r is None and short_r is None:
+        return None
+    long_m = (long_r or {}).get('metrics', {})
+    short_m = (short_r or {}).get('metrics', {})
+    n_long = int(long_m.get('trades', 0))
+    n_short = int(short_m.get('trades', 0))
+    n_total = n_long + n_short
+    if n_total == 0:
+        return None
+    # Combined symbol-level metrics (pooled over both sides' trades)
+    long_rets = [t['pnl_pct'] for t in long_m.get('trade_list', [])]
+    short_rets = [t['pnl_pct'] for t in short_m.get('trade_list', [])]
+    all_rets = np.array(long_rets + short_rets, dtype=np.float64)
+    sd = float(all_rets.std())
+    pool = float(all_rets.mean() / sd) if sd > 1e-12 else 0.0
+    wr = float((all_rets > 0).mean() * 100.0)
+    eq = np.cumsum(all_rets); peak = np.maximum.accumulate(eq); dd = float((peak - eq).max())
+    total = float(all_rets.sum())
+    yrs = max(float(long_m.get('years', 0.01)), float(short_m.get('years', 0.01)))
+    span_days = yrs * 365.25
+    combined_m = {
+        'sym': sym, 'trades': n_total, 'long_trades': n_long, 'short_trades': n_short,
+        'trades_per_day': n_total / max(1.0, span_days),
+        'pool_sharpe': pool, 'sym_sharpe': max(-5.0, min(5.0, pool)),
+        'wr_pct': wr, 'max_dd_pct': dd, 'total_gain_pct': total,
+        'avg_gain_trade': total / n_total, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
+        'years': yrs, 'n_syms': 1,
+        'augment_count': long_m.get('augment_count', 0) + short_m.get('augment_count', 0),
+        'reverse_on_exit_count': long_m.get('reverse_on_exit_count', 0) + short_m.get('reverse_on_exit_count', 0),
+        'mean_rev_reentry_count': long_m.get('mean_rev_reentry_count', 0) + short_m.get('mean_rev_reentry_count', 0),
+        'hedge_count': long_m.get('hedge_count', 0) + short_m.get('hedge_count', 0),
+        'follow_through_count': long_m.get('follow_through_count', 0) + short_m.get('follow_through_count', 0),
+        'long_pool': float(long_m.get('pool_sharpe', 0)),
+        'short_pool': float(short_m.get('pool_sharpe', 0)),
+        'long_wr': float(long_m.get('wr_pct', 0)),
+        'short_wr': float(short_m.get('wr_pct', 0)),
+        'tag': f'per_sym_dual_split_{sym}',
+        'trade_list': [],  # not stored at combined level
+    }
+    final_v = verdict(combined_m)
+    return {
+        'sym': sym,
+        'long_params': (long_r or {}).get('params', {}),
+        'short_params': (short_r or {}).get('params', {}),
+        'long_metrics': long_m,
+        'short_metrics': short_m,
+        'metrics': combined_m,
+        'verdict': final_v,
+        'long_winner_tag': (long_r or {}).get('winning_tag', ''),
+        'short_winner_tag': (short_r or {}).get('winning_tag', ''),
+        'baseline_pool': (float(long_r['baseline_pool']) + float(short_r['baseline_pool'])) / 2 if long_r and short_r else 0,
+        'note': f'split_long+short n={n_total}',
+        'n_variants_tested': (long_r or {}).get('n_variants_tested', 0) + (short_r or {}).get('n_variants_tested', 0),
+        # Keep params field at top level (for back-compat with promote_results) — uses LONG params as primary
+        'params': (long_r or {}).get('params', {}),
     }
 
 
@@ -450,7 +554,13 @@ def promote_results(results: List[Dict], csv_path: Path) -> int:
             'n_variants_tested': r.get('n_variants_tested', 0),
             'overrides': {k: vv for k, vv in r['params'].items() if k not in _BANNED_PARAMS},
         }
-        # Single key for the symbol (LONG/SHORT combined). Old per-side keys are not deleted (legacy compat).
+        # Single key for the symbol with per-side breakdown
+        entry['long_params'] = r.get('long_params', {})
+        entry['short_params'] = r.get('short_params', {})
+        entry['long_pool_sharpe'] = float(m.get('long_pool', 0))
+        entry['short_pool_sharpe'] = float(m.get('short_pool', 0))
+        entry['long_wr'] = float(m.get('long_wr', 0))
+        entry['short_wr'] = float(m.get('short_wr', 0))
         existing[sym] = entry
         try:
             row = {k: vv for k, vv in m.items() if k not in ('trade_list', 'params', 'variant_tag')}

@@ -131,12 +131,33 @@ class SymParams:
     REENTRY_MEAN_REV_TOLERANCE_PCT: float = 0.30  # price returns within ±X% of exit price → reentry same side
     REENTRY_MEAN_REV_WINDOW_BARS: int = 10
     # HEDGE: open opposite-side position when current is underwater + opposite signal fires.
-    HEDGE_ENABLED: bool = False  # default off; live system has it on for some accounts
+    # USER 2026-05-05: required pair for NOLOSS — default ON.
+    HEDGE_ENABLED: bool = True
     HEDGE_TRIGGER_GAIN_PCT: float = -1.0  # current pnl below this → eligible to hedge
     HEDGE_SIZE_FRAC: float = 0.5    # hedge size as fraction of primary
-    # NOLOSS: block loss exits — only exit at profit OR breakdown_through_dc_low (forced exit)
-    NOLOSS_ENABLED: bool = False
-    NOLOSS_FLOOR_PCT: float = -0.10  # allow exit only if pnl > this (i.e., -0.1% lets near-flat exits pass)
+    # NOLOSS: block loss exits — only exit at profit OR breakdown_through_dc_low (forced exit).
+    # USER 2026-05-05: NOLOSS *requires* HEDGE_ENABLED — without hedging, ONE bad trade ruins the account.
+    # The engine force-couples them: NOLOSS_ENABLED=True with HEDGE_ENABLED=False is auto-disabled.
+    NOLOSS_ENABLED: bool = True
+    NOLOSS_FLOOR_PCT: float = 0.0  # only exit if pnl >= 0 (true no-loss); -0.1 to allow tiny dips
+    # PEAK_GIVEBACK exit (live's QUICK_PEAK_GIVEBACK_GAIN_EROSION_STOP):
+    # Track running peak gain; exit when gain drops by X% from peak (banks tiny wins, drives high WR).
+    PEAK_GIVEBACK_EXIT_ENABLED: bool = True
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5   # exit when gain falls by this % from running peak
+    PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.10  # only arm after peak gain reaches this minimum
+    # Early-drop hedge trigger (user "if price drops immediately, hedge"):
+    # Fires HEDGE_ENABLED path when within first N bars price moves against entry by X%.
+    EARLY_DROP_HEDGE_BARS: int = 5
+    EARLY_DROP_HEDGE_PCT: float = 0.5  # adverse move % within window
+    # HH/HL price-action entry (replaces WT 15m as primary trigger when toggled):
+    USE_PRICE_ACTION_ENTRY: bool = False  # True: replace WT-cross requirement with HH/HL bar comparison
+    PRICE_ACTION_LB: int = 3  # require N consecutive higher highs (LONG) or lower lows (SHORT)
+    # BLEED PREVENTION (user 2026-05-05 mandate):
+    # Live trading lets losing positions bleed indefinitely when no opposite signal fires for hedge.
+    # These two safeguards close that gap.
+    MAX_UNDERWATER_BARS: int = 200  # if position underwater longer than this, force-exit (cut loss)
+    MAX_UNDERWATER_DRAWDOWN_PCT: float = 5.0  # OR if drawdown deeper than this, force-exit
+    PANIC_HEDGE_DROP_PCT: float = -2.0  # if position drops by this %, force-open hedge regardless of opp signal
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -428,8 +449,27 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     bb_extreme_short = (bb_pctb < (1 - params.ENTRY_BB_EXTREME_THRESHOLD)) & (pctb_prev >= (1 - params.ENTRY_BB_EXTREME_THRESHOLD))
 
     Z = np.zeros(n, dtype=bool)
+    # HH/HL price-action gate (user 2026-05-05): replace WT 15m requirement with HH (LONG) / LL (SHORT).
+    pa_lb = max(2, int(params.PRICE_ACTION_LB))
+    h_prev = np.concatenate([[h[0]], h[:-1]])
+    l_prev = np.concatenate([[l[0]], l[:-1]])
+    hh = h > h_prev
+    ll = l < l_prev
+    # Cumulative N consecutive HH/LL — vectorized
+    csum_hh = np.concatenate([[0], np.cumsum(hh.astype(np.int32))])
+    csum_ll = np.concatenate([[0], np.cumsum(ll.astype(np.int32))])
+    n_hh_in_lb = csum_hh[pa_lb:] - csum_hh[:-pa_lb]
+    n_ll_in_lb = csum_ll[pa_lb:] - csum_ll[:-pa_lb]
+    pa_long = np.zeros(n, dtype=bool)
+    pa_short = np.zeros(n, dtype=bool)
+    pa_long[pa_lb - 1:] = n_hh_in_lb >= pa_lb
+    pa_short[pa_lb - 1:] = n_ll_in_lb >= pa_lb
+
     if side == 'LONG':
-        wt_ok = (wt1 > wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
+        if params.USE_PRICE_ACTION_ENTRY:
+            wt_ok = pa_long  # HH-based gate replaces WT-cross
+        else:
+            wt_ok = (wt1 > wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
         dc_break = (c > dc_h_prev)
         pullback = (bb_pctb < params.BB_LONG_ENTRY_MAX)
         if params.ENTRY_MODE == 'dc_break':
@@ -459,7 +499,10 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
         else:
             exit_ = wt_bear_strong | bb_extreme | breakdown
     else:  # SHORT
-        wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
+        if params.USE_PRICE_ACTION_ENTRY:
+            wt_ok = pa_short
+        else:
+            wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
         dc_break = (c < dc_l_prev)
         pullback = (bb_pctb > params.BB_SHORT_ENTRY_MIN)
         if params.ENTRY_MODE == 'dc_break':
@@ -587,8 +630,16 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      hedge_enabled: bool = False,
                      hedge_trigger_gain: float = -1.0,
                      hedge_size_frac: float = 0.5,
-                     noloss_enabled: bool = False,
-                     noloss_floor: float = -0.10) -> List[Dict]:
+                     noloss_enabled: bool = True,
+                     noloss_floor: float = 0.0,
+                     peak_giveback_enabled: bool = True,
+                     peak_giveback_drop_pct: float = 0.5,
+                     peak_giveback_min_peak_pct: float = 0.10,
+                     early_drop_hedge_bars: int = 5,
+                     early_drop_hedge_pct: float = 0.5,
+                     max_underwater_bars: int = 200,
+                     max_underwater_dd_pct: float = 5.0,
+                     panic_hedge_drop_pct: float = -2.0) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -630,11 +681,55 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
         if ep <= 0 or xp <= 0:
             i = exit_i + cooldown + 1
             continue
-        # NOLOSS gate: if eligible exit fired but pnl below floor, push exit to next breakdown event or end.
+        # PEAK_GIVEBACK exit: dynamic exit on gain dropping X% from running peak.
+        # Replaces signal-driven exit with tighter "bank tiny gains" exit (live's QUICK_PEAK_GIVEBACK style).
+        # This is the path that gives historical flz8_BEST its 87% WR.
+        if peak_giveback_enabled and exit_i > entry_i + min_hold:
+            traj = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_traj = (traj - ep) / ep * 100.0
+            else:
+                gain_traj = (ep - traj) / ep * 100.0
+            running_peak = np.maximum.accumulate(gain_traj)
+            armed = running_peak >= peak_giveback_min_peak_pct
+            drop_from_peak = running_peak - gain_traj
+            give_hit = armed & (drop_from_peak >= peak_giveback_drop_pct)
+            give_hit[:min_hold] = False  # respect min_hold
+            give_idxs = np.flatnonzero(give_hit)
+            if len(give_idxs):
+                pg_exit_i = entry_i + int(give_idxs[0])
+                if pg_exit_i < exit_i:
+                    exit_i = pg_exit_i
+                    xp = float(c15[exit_i])
+        # BLEED FAILSAFE: cap how long position can sit underwater without exit.
+        # Walks the trajectory between entry_i and current exit_i (which may already include NOLOSS-deferred exit);
+        # if pnl stays below 0 for >max_underwater_bars OR drops by max_underwater_dd_pct, force-exit at that bar.
+        if exit_i > entry_i:
+            traj = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_traj = (traj - ep) / ep * 100.0
+            else:
+                gain_traj = (ep - traj) / ep * 100.0
+            # Underwater bars in a row (negative pnl), cumulative
+            underw = gain_traj < 0
+            run_count = np.zeros(len(underw), dtype=np.int32)
+            cnt = 0
+            for k_i in range(len(underw)):
+                cnt = cnt + 1 if underw[k_i] else 0
+                run_count[k_i] = cnt
+            failsafe_time = run_count >= max_underwater_bars
+            failsafe_dd = gain_traj <= -max_underwater_dd_pct
+            failsafe_hit = failsafe_time | failsafe_dd
+            failsafe_idxs = np.flatnonzero(failsafe_hit)
+            if len(failsafe_idxs):
+                fs_exit_i = entry_i + int(failsafe_idxs[0])
+                if fs_exit_i < exit_i and fs_exit_i > entry_i + min_hold:
+                    exit_i = fs_exit_i
+                    xp = float(c15[exit_i])
+        # NOLOSS gate: if exit_i pnl is below floor, push to next recovery bar or end.
         if noloss_enabled:
             cur_pnl = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
             if cur_pnl < noloss_floor:
-                # Walk forward looking for either profit recovery (pnl >= floor) or end of data
                 rest_close = c15[exit_i + 1:]
                 if side == 'LONG':
                     rest_pnl = (rest_close - ep) / ep * 100.0
@@ -826,9 +921,11 @@ def _build_signals(tf_data: Dict, side: str, params: SymParams) -> Tuple[np.ndar
     return enter, leave
 
 
-def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optional[Dict]:
+def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
+                  only_side: Optional[str] = None) -> Optional[Dict]:
     """Run BOTH LONG and SHORT through unified walker. Supports REVERSE_ON_EXIT + FOLLOW_THROUGH.
     Returns symbol-level metrics + per-side breakdown.
+    `only_side='LONG'/'SHORT'` disables the other side at signal level (true per-side isolation).
     """
     base = load_3m_base(sym, years_back=years_back)
     # Min bars proportional to window: ~500/day at 3m. 7-day window = 3360 OK; require ≥1000 minimum.
@@ -845,8 +942,18 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
     for tf in list(DECISION_TFS) + ['D']:
         if tf not in tf_data or len(tf_data[tf]['close']) < min_per_tf.get(tf, 50):
             return None
+    # User 2026-05-05 mandate: NOLOSS without HEDGE = account-killer. Force-couple here.
+    if params.NOLOSS_ENABLED and not params.HEDGE_ENABLED:
+        params = params.copy()
+        params.NOLOSS_ENABLED = False
+        params.__dict__['_noloss_auto_disabled'] = 'NOLOSS requires HEDGE — auto-disabled'
     enter_long, leave_long = _build_signals(tf_data, 'LONG', params)
     enter_short, leave_short = _build_signals(tf_data, 'SHORT', params)
+    # Per-side isolation: zero-out opposite side's entry signal (still allow walker to track it for hedge/reverse)
+    if only_side == 'LONG':
+        enter_short = np.zeros_like(enter_short)
+    elif only_side == 'SHORT':
+        enter_long = np.zeros_like(enter_long)
     htf_long = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'LONG', params, len(enter_long))
     htf_short = htf_trend_pass(tf_data['D'], tf_data.get('W'), 'SHORT', params, len(enter_short))
     enter_long = enter_long & htf_long
@@ -932,6 +1039,11 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
         hedge_size_frac=float(params.HEDGE_SIZE_FRAC),
         noloss_enabled=params.NOLOSS_ENABLED,
         noloss_floor=float(params.NOLOSS_FLOOR_PCT),
+        peak_giveback_enabled=params.PEAK_GIVEBACK_EXIT_ENABLED,
+        peak_giveback_drop_pct=float(params.PEAK_GIVEBACK_DROP_PCT),
+        peak_giveback_min_peak_pct=float(params.PEAK_GIVEBACK_MIN_PEAK_PCT),
+        early_drop_hedge_bars=int(params.EARLY_DROP_HEDGE_BARS),
+        early_drop_hedge_pct=float(params.EARLY_DROP_HEDGE_PCT),
     )
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
@@ -943,6 +1055,13 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
                  'tag': f'per_sym_dual_{sym}', 'trade_list': [],
                  'params': params.to_dict(), 'long_trades': 0, 'short_trades': 0}
         return empty
+    # Mark-to-market: any trade where exit_idx == n-1 is a position that didn't have a real exit signal —
+    # it was force-closed at last bar. Tag those for transparency. The pnl_pct already reflects MTM since
+    # walker uses xp = c15[exit_i] = last bar close. User 2026-05-05: "always add gain/loss of open positions".
+    n_15m_total = len(c15)
+    open_at_end = [t for t in trades if t.get('exit_idx', 0) == n_15m_total - 1]
+    for t in trades:
+        t['mtm_at_end'] = (t.get('exit_idx', 0) == n_15m_total - 1)
     rets = np.array([t['pnl_pct'] for t in trades], dtype=np.float64)
     n = len(rets)
     sd = float(rets.std())
@@ -952,6 +1071,8 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
     total = float(rets.sum())
     n_long = sum(1 for t in trades if t['side'] == 'LONG')
     n_short = n - n_long
+    n_open_at_end = len(open_at_end)
+    mtm_pnl_open = float(sum(t['pnl_pct'] for t in open_at_end))
     n_reverse = sum(1 for t in trades if t.get('origin') == 'reverse_on_exit')
     n_ft = sum(1 for t in trades if t.get('origin') == 'follow_through')
     n_aug = sum(1 for t in trades if (t.get('origin') or '').startswith('augment_'))
@@ -967,6 +1088,8 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0) -> Optio
         'long_trades': n_long, 'short_trades': n_short,
         'reverse_on_exit_count': n_reverse, 'follow_through_count': n_ft,
         'augment_count': n_aug, 'hedge_count': n_hedge, 'mean_rev_reentry_count': n_mr,
+        'open_at_end_count': n_open_at_end, 'mtm_pnl_open_pct': mtm_pnl_open,
+        'noloss_auto_disabled': params.__dict__.get('_noloss_auto_disabled', ''),
     }
 
 
