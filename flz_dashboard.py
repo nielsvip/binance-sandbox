@@ -936,6 +936,107 @@ def api_symbol_report():
     })
 
 
+@app.route("/api/symbol_chart/<sym>")
+def api_symbol_chart(sym: str):
+    """Per-symbol equity curve: live closed rounds + paper forward CLOSE records (90d)."""
+    sym_upper = sym.upper()
+    cutoff = time.time() - 90 * 86400
+
+    # Live trades for this symbol (all accounts, both sides)
+    live_long: List[Tuple[float, float]] = []  # (exit_ts, pnl_pct)
+    live_short: List[Tuple[float, float]] = []
+    live_trades_list: List[Dict] = []
+    for acct in ALL_ACCOUNTS:
+        try:
+            events = _load_account_history(acct)
+            closed = _reconstruct_trades(events)
+            for t in closed:
+                ts = float(t.get("exit_ts") or 0)
+                if ts < cutoff:
+                    continue
+                t_sym = (t.get("symbol") or "").upper()
+                if t_sym != sym_upper:
+                    continue
+                side = (t.get("side") or "").upper()
+                pnl = float(t.get("pnl_pct") or 0)
+                if side == "LONG":
+                    live_long.append((ts, pnl))
+                elif side == "SHORT":
+                    live_short.append((ts, pnl))
+                live_trades_list.append({
+                    "ts": ts,
+                    "side": side,
+                    "entry_price": t.get("entry_price"),
+                    "exit_price": t.get("exit_price"),
+                    "pnl_pct": round(pnl, 4),
+                    "duration_sec": t.get("duration_sec"),
+                    "exit_reason": (t.get("exit_reason") or "")[:80],
+                    "account": acct,
+                })
+        except Exception:
+            continue
+
+    # Paper forward trades for this symbol (all variants + arms, both sides)
+    paper_long: List[Tuple[float, float]] = []
+    paper_short: List[Tuple[float, float]] = []
+    paper_forward_dir = BASE_DIR / "data" / "paper_forward"
+    if paper_forward_dir.exists():
+        for variant_dir in paper_forward_dir.iterdir():
+            if not variant_dir.is_dir():
+                continue
+            for arm_dir in variant_dir.iterdir():
+                if not arm_dir.is_dir() or not arm_dir.name.startswith("arm_"):
+                    continue
+                tf = arm_dir / "trades.jsonl"
+                if not tf.exists():
+                    continue
+                try:
+                    for line in tf.read_text().splitlines():
+                        try:
+                            rec = json.loads(line)
+                        except Exception:
+                            continue
+                        if rec.get("action") != "CLOSE":
+                            continue
+                        ts = float(rec.get("ts") or 0)
+                        if ts < cutoff:
+                            continue
+                        if (rec.get("symbol") or "").upper() != sym_upper:
+                            continue
+                        side = (rec.get("side") or "").upper()
+                        net = float(rec.get("net_pct") or 0)
+                        if side == "LONG":
+                            paper_long.append((ts, net))
+                        elif side == "SHORT":
+                            paper_short.append((ts, net))
+                except Exception:
+                    continue
+
+    def _equity_curve(pairs: List[Tuple[float, float]]) -> List[List]:
+        pairs.sort(key=lambda x: x[0])
+        cum = 0.0
+        out = []
+        for ts, pnl in pairs:
+            cum += pnl
+            out.append([ts, round(cum, 4)])
+        return out
+
+    live_trades_list.sort(key=lambda x: x["ts"])
+    return jsonify({
+        "sym": sym_upper,
+        "live_long_curve": _equity_curve(live_long),
+        "live_short_curve": _equity_curve(live_short),
+        "paper_long_curve": _equity_curve(paper_long),
+        "paper_short_curve": _equity_curve(paper_short),
+        "live_trades": live_trades_list[-100:],
+        "n_live_long": len(live_long),
+        "n_live_short": len(live_short),
+        "n_paper_long": len(paper_long),
+        "n_paper_short": len(paper_short),
+        "generated_utc": _now_iso(),
+    })
+
+
 def _kill_port(port: int):
     """Kill any process listening on port (best-effort, like trade_analytics does)."""
     import subprocess

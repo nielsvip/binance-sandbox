@@ -277,23 +277,33 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path,
             result = run_symbol(sym, can_long, can_short, run_root)
             if result:
                 best_tag, entry = result
-                side_tag = best_tag.split("_")[1] if "_" in best_tag else "BOTH"
-                key = f"{sym}_{side_tag}"
-                prev_ws = existing.get(key, {}).get("wsharpe", -1)
-                # wsharpe < 0.7: config is still written (no error), but trading disabled.
+                # Derive side from the override dict — split("_")[1] was returning "trb"
+                # for extra_trb_SYM_* tags from load_candidates. Use LONG/SHORT_ENABLED.
+                ovr = entry.get("overrides", {})
+                l_on = ovr.get("LONG_ENABLED", True)
+                s_on = ovr.get("SHORT_ENABLED", True)
+                if l_on and not s_on:
+                    write_sides = ["LONG"]
+                elif s_on and not l_on:
+                    write_sides = ["SHORT"]
+                else:
+                    write_sides = ["LONG", "SHORT"]  # BOTH — write under both keys
                 if entry["wsharpe"] < WSHARPE_TRADE_FLOOR:
                     entry["overrides"].update({
                         "LONG_ENABLED": False, "SHORT_ENABLED": False,
                         "WT_DC_LONG_ENABLED": False, "WT_DC_SHORT_ENABLED": False,
                     })
                     entry["_trade_gate"] = f"BELOW_FLOOR wsharpe={entry['wsharpe']:.4f}<{WSHARPE_TRADE_FLOOR}"
-                existing[key] = entry
+                for side_tag in write_sides:
+                    key = f"{sym}_{side_tag}"
+                    prev_ws = existing.get(key, {}).get("wsharpe", -1)
+                    existing[key] = entry
+                    if abs(entry["wsharpe"] - prev_ws) > 0.05:
+                        gate = entry.get("_trade_gate", "")
+                        print(f"  {sym} {key}: wsharpe {prev_ws:.3f} → {entry['wsharpe']:.3f} "
+                              f"trades={entry['trades']} pnl={entry['total_pnl_pct']:+.2f}%"
+                              f"{' [GATED]' if gate else ''}")
                 updated += 1
-                if abs(entry["wsharpe"] - prev_ws) > 0.05:
-                    gate = entry.get("_trade_gate", "")
-                    print(f"  {sym} {key}: wsharpe {prev_ws:.3f} → {entry['wsharpe']:.3f} "
-                          f"trades={entry['trades']} pnl={entry['total_pnl_pct']:+.2f}%"
-                          f"{' [GATED]' if gate else ''}")
         except Exception as e:
             print(f"  {sym} EXC: {e}")
 
