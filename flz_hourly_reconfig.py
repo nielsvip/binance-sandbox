@@ -84,7 +84,7 @@ ACCOUNT_SYMS = {
 # universe so any consistent edge over a few trades is a real signal.
 OPINION_FULL_TRADES = 6
 OPINION_LOW_SAMPLE_TRADES = 3
-OPINION_WSHARPE_FLOOR = 0.3  # Directional tier minimum to publish non-FLAT
+OPINION_WSHARPE_FLOOR = 0.7  # Minimum wsharpe to allow live trades (user directive: <0.7 = no trades)
 
 # Imposter-block regex (bypass chart_sweep import side effect; same pattern).
 _IMPOSTER_RE = re.compile(
@@ -410,14 +410,15 @@ def write_opinion(account: str, sym: str, side: str, winner: Dict,
 
     Returns (opinion, sample_tag).
       - opinion: "LONG" / "SHORT" / "FLAT" — what to actually do
-      - sample_tag: "FULL" / "LOW_SAMPLE" / "BASELINE_FORCED" / "DISCARD"
+      - sample_tag: "FULL" / "LOW_SAMPLE" / "BELOW_THRESHOLD" / "DISCARD"
 
     Rules:
-      - n >= 30 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, FULL
-      - n >= 14 trades AND wsharpe >= 0.3 AND mean_pnl > 0  → side, LOW_SAMPLE
-      - wsharpe < 0                                          → FLAT, DISCARD (actively losing)
-      - else                                                 → side, BASELINE_FORCED
-        (every symbol always gets a direction — no INSUFFICIENT / NO_CONFIG)
+      - n >= 30 trades AND wsharpe >= 0.7 AND mean_pnl > 0  → side, FULL
+      - n >= 14 trades AND wsharpe >= 0.7 AND mean_pnl > 0  → side, LOW_SAMPLE
+      - wsharpe < 0                                          → FLAT, DISCARD
+      - else (0 <= wsharpe < 0.7 or too few trades)         → FLAT, BELOW_THRESHOLD
+        Config is still written — no INSUFFICIENT / NO_CONFIG errors.
+        Live trading simply holds (no new entries) until wsharpe rises above 0.7.
     """
     ws = float(winner.get("wsharpe", 0.0))
     n = int(winner.get("trades", 0))
@@ -429,7 +430,7 @@ def write_opinion(account: str, sym: str, side: str, winner: Dict,
         return side.upper(), "LOW_SAMPLE"
     if ws < 0:
         return "FLAT", "DISCARD"
-    return side.upper(), "BASELINE_FORCED"
+    return "FLAT", "BELOW_THRESHOLD"
 
 
 def reconfig_one_cycle(account: str, max_syms: int = 0, workers: int = 1) -> int:

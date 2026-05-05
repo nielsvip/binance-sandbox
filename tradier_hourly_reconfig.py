@@ -44,6 +44,7 @@ SYMBOLS_SHORT_TRC = ROOT / "symbols_trc_short.json"
 WINDOW_DAYS = 7.0
 MIN_TRADES_FOR_OPINION = 5
 RATE_GUARD_DISABLED = "1"
+WSHARPE_TRADE_FLOOR = 0.7  # wsharpe below this → disable trading in overrides (all accounts)
 
 
 _LONG_ONLY_OVR = {"LONG_ENABLED": True,  "SHORT_ENABLED": False,
@@ -267,11 +268,20 @@ def run_account(account: str, long_file: Path, short_file: Path, out_dir: Path) 
                 side_tag = best_tag.split("_")[1] if "_" in best_tag else "BOTH"
                 key = f"{sym}_{side_tag}"
                 prev_ws = existing.get(key, {}).get("wsharpe", -1)
+                # wsharpe < 0.7: config is still written (no error), but trading disabled.
+                if entry["wsharpe"] < WSHARPE_TRADE_FLOOR:
+                    entry["overrides"].update({
+                        "LONG_ENABLED": False, "SHORT_ENABLED": False,
+                        "WT_DC_LONG_ENABLED": False, "WT_DC_SHORT_ENABLED": False,
+                    })
+                    entry["_trade_gate"] = f"BELOW_FLOOR wsharpe={entry['wsharpe']:.4f}<{WSHARPE_TRADE_FLOOR}"
                 existing[key] = entry
                 updated += 1
                 if abs(entry["wsharpe"] - prev_ws) > 0.05:
+                    gate = entry.get("_trade_gate", "")
                     print(f"  {sym} {key}: wsharpe {prev_ws:.3f} → {entry['wsharpe']:.3f} "
-                          f"trades={entry['trades']} pnl={entry['total_pnl_pct']:+.2f}%")
+                          f"trades={entry['trades']} pnl={entry['total_pnl_pct']:+.2f}%"
+                          f"{' [GATED]' if gate else ''}")
         except Exception as e:
             print(f"  {sym} EXC: {e}")
 
