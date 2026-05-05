@@ -67,6 +67,14 @@ class SymParams:
     REQUIRE_W_TREND: bool = False  # weekly trend gate
     # Entry mode: 'dc_break' (close > prev dc_high) | 'pullback' (bb_pctb<EMA crossing) | 'or' (either)
     ENTRY_MODE: str = 'or'  # 'or' is loosest; profiler may set tighter
+    # Additional entry paths (parallel signals — any may trigger; gated by WT for direction).
+    ENTRY_WT_CROSS_EVENT_ENABLED: bool = True   # entry on WT just-crossed event (last N bars)
+    ENTRY_WT_CROSS_LOOKBACK: int = 3            # bars to consider "just crossed"
+    ENTRY_BB_EXTREME_BOUNCE_ENABLED: bool = True  # entry on bb_pctb crossing back from extreme
+    ENTRY_BB_EXTREME_THRESHOLD: float = 0.10    # extreme = pctb<threshold (LONG) / pctb>(1-threshold) (SHORT)
+    ENTRY_BB_SQUEEZE_RELEASE_ENABLED: bool = True  # entry on BB width expansion after compression
+    ENTRY_BB_SQUEEZE_RATIO: float = 1.5         # current BB width > prior min × ratio = release
+    ENTRY_BB_SQUEEZE_LOOKBACK: int = 20         # bars to find prior min width
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -241,34 +249,70 @@ def per_tf_signals(ohlc: Dict[str, np.ndarray], side: str, tf: str, params: SymP
     wt1, wt2 = compute_wt(h, l, c, wt_chan, wt_avg)
     dc_h, dc_l, dc_h_prev, dc_l_prev = compute_dc(h, l, dc_per)
 
+    # WT cross EVENT detection: True at bars where (wt1>wt2) just transitioned from (wt1<=wt2) in last N bars
+    wt_bull_now = wt1 > wt2
+    wt_bull_event = wt_bull_now & ~np.concatenate([[False], wt_bull_now[:-1]])  # transition this bar
+    wt_bear_event = (~wt_bull_now) & np.concatenate([[False], wt_bull_now[:-1]])
+    if params.ENTRY_WT_CROSS_LOOKBACK > 1:
+        # Smear the event forward by lookback bars (any bar within window is "just crossed")
+        lb = int(params.ENTRY_WT_CROSS_LOOKBACK)
+        kernel = np.ones(lb, dtype=bool)
+        # Use cumulative AND-windowed: event is True if any of last lb bars had a transition
+        wt_bull_event_w = np.zeros(n, dtype=bool)
+        wt_bear_event_w = np.zeros(n, dtype=bool)
+        cs_bull = np.concatenate([[0], np.cumsum(wt_bull_event.astype(np.int32))])
+        cs_bear = np.concatenate([[0], np.cumsum(wt_bear_event.astype(np.int32))])
+        wt_bull_event_w[lb - 1:] = (cs_bull[lb:] - cs_bull[:-lb]) > 0
+        wt_bear_event_w[lb - 1:] = (cs_bear[lb:] - cs_bear[:-lb]) > 0
+        wt_bull_event = wt_bull_event_w
+        wt_bear_event = wt_bear_event_w
+
+    # BB squeeze: compute BB width = upper - lower; release = current width > rolling_min(width, lookback) * ratio
+    bb_width = bb_u - bb_l
+    bb_width_min = _rolling_min(bb_width, int(params.ENTRY_BB_SQUEEZE_LOOKBACK))
+    bb_squeeze_release = (bb_width > bb_width_min * params.ENTRY_BB_SQUEEZE_RATIO) & (bb_width_min > 0)
+
+    # BB extreme bounce: bb_pctb just crossed UP through ENTRY_BB_EXTREME_THRESHOLD (LONG) or DOWN through (1-thresh) (SHORT)
+    pctb_prev = np.concatenate([[bb_pctb[0]], bb_pctb[:-1]])
+    bb_extreme_long = (bb_pctb > params.ENTRY_BB_EXTREME_THRESHOLD) & (pctb_prev <= params.ENTRY_BB_EXTREME_THRESHOLD)
+    bb_extreme_short = (bb_pctb < (1 - params.ENTRY_BB_EXTREME_THRESHOLD)) & (pctb_prev >= (1 - params.ENTRY_BB_EXTREME_THRESHOLD))
+
     if side == 'LONG':
         wt_ok = (wt1 > wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
-        # Entry signals: dc_break = close above prev DC high (breakout). pullback = bb_pctb < BB_LONG_ENTRY_MAX (buying dips).
         dc_break = (c > dc_h_prev)
         pullback = (bb_pctb < params.BB_LONG_ENTRY_MAX)
         if params.ENTRY_MODE == 'dc_break':
-            base_entry = dc_break
+            base_path = dc_break
         elif params.ENTRY_MODE == 'pullback':
-            base_entry = pullback
-        else:  # 'or'
-            base_entry = dc_break | pullback
-        # Hard ceiling: never buy at the top
+            base_path = pullback
+        else:
+            base_path = dc_break | pullback
+        # Additional parallel paths
+        wt_event = wt_bull_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else np.zeros(n, dtype=bool)
+        bb_bounce = bb_extreme_long if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else np.zeros(n, dtype=bool)
+        bb_squeeze = bb_squeeze_release if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else np.zeros(n, dtype=bool)
+        # OR all paths together; gate by WT direction + BB ceiling
+        any_path = base_path | wt_event | bb_bounce | (bb_squeeze & wt_ok)
         ceiling_ok = (bb_pctb < params.BB_TOP_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
-        entry = wt_ok & base_entry & ceiling_ok
-        # Exit on WT cross down OR price at top OR price breaks down through dc_low_prev
+        entry = wt_ok & any_path & ceiling_ok
+        # Exit signals: WT cross down OR price at top OR breakdown through dc_low_prev
         exit_ = (wt1 < wt2) | (bb_pctb > params.BB_TOP_THRESHOLD) | (c < dc_l_prev)
     else:  # SHORT
         wt_ok = (wt1 < wt2) if params.USE_WT_CROSS else np.ones(n, dtype=bool)
         dc_break = (c < dc_l_prev)
         pullback = (bb_pctb > params.BB_SHORT_ENTRY_MIN)
         if params.ENTRY_MODE == 'dc_break':
-            base_entry = dc_break
+            base_path = dc_break
         elif params.ENTRY_MODE == 'pullback':
-            base_entry = pullback
+            base_path = pullback
         else:
-            base_entry = dc_break | pullback
+            base_path = dc_break | pullback
+        wt_event = wt_bear_event if params.ENTRY_WT_CROSS_EVENT_ENABLED else np.zeros(n, dtype=bool)
+        bb_bounce = bb_extreme_short if params.ENTRY_BB_EXTREME_BOUNCE_ENABLED else np.zeros(n, dtype=bool)
+        bb_squeeze = bb_squeeze_release if params.ENTRY_BB_SQUEEZE_RELEASE_ENABLED else np.zeros(n, dtype=bool)
+        any_path = base_path | wt_event | bb_bounce | (bb_squeeze & wt_ok)
         ceiling_ok = (bb_pctb > params.BB_BOT_THRESHOLD) if params.USE_BB_FILTER else np.ones(n, dtype=bool)
-        entry = wt_ok & base_entry & ceiling_ok
+        entry = wt_ok & any_path & ceiling_ok
         exit_ = (wt1 > wt2) | (bb_pctb < params.BB_BOT_THRESHOLD) | (c > dc_h_prev)
     # NaN safety: treat NaN-context bars as no-signal
     valid = ~(np.isnan(bb_pctb) | np.isnan(wt1) | np.isnan(dc_h_prev))

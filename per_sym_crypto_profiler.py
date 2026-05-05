@@ -92,6 +92,10 @@ BB_LONG_ENTRY_MAX_VALUES = [0.30, 0.40, 0.50, 0.60, 0.70]
 BB_SHORT_ENTRY_MIN_VALUES = [0.30, 0.40, 0.50, 0.60, 0.70]
 MIN_HOLD_VALUES = [1, 3, 5, 8, 13, 20]
 COOLDOWN_VALUES = [0, 1, 3, 6, 10]
+WT_CROSS_LB_VALUES = [1, 2, 3, 5, 8]
+BB_EXTREME_THRESH_VALUES = [0.05, 0.10, 0.15, 0.20]
+BB_SQUEEZE_RATIO_VALUES = [1.2, 1.5, 1.8, 2.2]
+BB_SQUEEZE_LB_VALUES = [10, 20, 30, 50]
 
 
 def make_baseline() -> SymParams:
@@ -124,6 +128,18 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     grid += variants_for_param(base, 'BB_SHORT_ENTRY_MIN', BB_SHORT_ENTRY_MIN_VALUES)
     grid += variants_for_param(base, 'MIN_HOLD_BARS_15m', MIN_HOLD_VALUES)
     grid += variants_for_param(base, 'COOLDOWN_BARS_15m', COOLDOWN_VALUES)
+    # Entry-path toggles + their params
+    grid += variants_for_param(base, 'ENTRY_WT_CROSS_EVENT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_BB_EXTREME_BOUNCE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_BB_SQUEEZE_RELEASE_ENABLED', [True, False])
+    grid += variants_for_param(base, 'ENTRY_WT_CROSS_LOOKBACK', WT_CROSS_LB_VALUES)
+    grid += variants_for_param(base, 'ENTRY_BB_EXTREME_THRESHOLD', BB_EXTREME_THRESH_VALUES)
+    grid += variants_for_param(base, 'ENTRY_BB_SQUEEZE_RATIO', BB_SQUEEZE_RATIO_VALUES)
+    grid += variants_for_param(base, 'ENTRY_BB_SQUEEZE_LOOKBACK', BB_SQUEEZE_LB_VALUES)
+    # HTF gating sweep (the OTHER way to control trade rate)
+    grid += variants_for_param(base, 'REQUIRE_D_TREND', [True, False])
+    grid += variants_for_param(base, 'REQUIRE_W_TREND', [True, False])
+    grid += variants_for_param(base, 'MIN_TFS_AGREE', [2, 3])
     return grid
 
 
@@ -202,6 +218,11 @@ def loosen_chain(base: SymParams) -> List[Tuple[str, SymParams]]:
     p.MIN_HOLD_BARS_15m = 1
     p.COOLDOWN_BARS_15m = 0
     chain.append(('loose+min_hold1+cd0', p.copy()))
+    p.ENTRY_WT_CROSS_EVENT_ENABLED = True
+    p.ENTRY_BB_EXTREME_BOUNCE_ENABLED = True
+    p.ENTRY_BB_SQUEEZE_RELEASE_ENABLED = True
+    p.ENTRY_WT_CROSS_LOOKBACK = 5
+    chain.append(('loose+all_paths_on', p.copy()))
     p.DC_PERIOD_15m = 10
     p.DC_PERIOD_1h = 10
     p.DC_PERIOD_4h = 10
