@@ -13228,7 +13228,8 @@ class MultiAccountTradeManager:
         # ═══════════════════════════════════════════════════════════════════════════
         try:
             _stale_block_act = (action or '').upper()
-            _stale_block_skip = ('CLOSE' in _stale_block_act) or is_full_close
+            _stale_block_reason_up = (reason or '').upper()
+            _stale_block_skip = ('CLOSE' in _stale_block_act) or is_full_close or ('INTERVENTION' in _stale_block_reason_up) or ('MANUAL' in _stale_block_reason_up) or ('AGENT' in _stale_block_reason_up)
             if not _stale_block_skip and position_key:
                 _stale_max_age = float(getattr(config, 'EXECUTE_NOW_MAX_MARK_AGE_S', 3.0))
                 _stale_pos = None
@@ -13482,6 +13483,15 @@ class MultiAccountTradeManager:
                         self.tracker_manager._v3_dynamic_keys.add(position_key)
                         if isinstance(self.tracker_manager.tradeable_keys, set):
                             self.tracker_manager.tradeable_keys.add(position_key)
+                except Exception:
+                    pass
+            _intervention_bypass = ('INTERVENTION' in str(reason or '').upper()) or ('MANUAL' in str(reason or '').upper())
+            if _intervention_bypass and position_key not in self.tradeable_keys:
+                logger.critical(f"⚠️ [NON_TRADEABLE_HARD_BLOCK_INTERVENTION_BYPASS] {position_key}: INTERVENTION/MANUAL — auto-adding to tradeable_keys")
+                try:
+                    self.tradeable_keys.add(position_key)
+                    if hasattr(self, 'tracker_manager') and self.tracker_manager and isinstance(getattr(self.tracker_manager, 'tradeable_keys', None), set):
+                        self.tracker_manager.tradeable_keys.add(position_key)
                 except Exception:
                     pass
             if position_key not in self.tradeable_keys:
@@ -24770,6 +24780,7 @@ async def main():
             background_tasks.append(asyncio.create_task(initialize_websocket_managers(accounts, config, symbols, trade_manager)))
             background_tasks.append(asyncio.create_task(periodic_lock_cleanup(trade_manager)))
             background_tasks.append(asyncio.create_task(periodic_heartbeat_update()))
+            background_tasks.append(asyncio.create_task(trade_manager._intervention_queue_loop()))
             trade_manager.websocket_managers = websocket_managers
             background_tasks.append(asyncio.create_task(log_timing_summary()))
             background_tasks.append(asyncio.create_task(monitor_hedges_continuously(trade_manager)))
