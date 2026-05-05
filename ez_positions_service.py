@@ -105,6 +105,48 @@ def _log_ban_skip_throttled(logger_obj, tag: str, action: str) -> None:
     logger_obj.warning(f"[{tag}] 🚫 IP banned by Binance for ~{rem:.0f}s — {action}")
 
 
+# 2026-05-05: Per-account auth-fail cooldown. -2015 (Invalid API-key/IP/permissions)
+# means the outbound IP is not on Binance's whitelist for this key. Tearing down the
+# user-data WS does NOT help — the immediate fresh-listen-key fetch hits the same -2015,
+# and the existing user stream may still deliver events. Without this cooldown the
+# watchdog churns every ~63s (probe → reset → reconnect with stale key → silent → repeat).
+# When -2015 is observed on probe/keepalive, set a per-account cooldown during which the
+# watchdog skips probing AND skips the reset, treating the silence as expected-until-fixed.
+_AUTH_BAN_UNTIL: Dict[str, float] = {}
+_AUTH_BAN_LAST_LOG_TS: Dict[str, float] = {}
+_AUTH_BAN_LOCK = threading.Lock()
+_AUTH_BAN_COOLDOWN_SEC = 300.0
+
+
+def _record_auth_ban(account_key: str, exc) -> bool:
+    """If exc indicates -2015 (invalid API-key/IP/permissions), record per-account cooldown.
+    Returns True iff the exception is -2015 (caller should skip teardown)."""
+    if "-2015" not in str(exc):
+        return False
+    with _AUTH_BAN_LOCK:
+        _AUTH_BAN_UNTIL[account_key] = time.time() + _AUTH_BAN_COOLDOWN_SEC
+    return True
+
+
+def _auth_ban_remaining(account_key: str) -> float:
+    with _AUTH_BAN_LOCK:
+        until = _AUTH_BAN_UNTIL.get(account_key, 0.0)
+    rem = until - time.time()
+    return rem if rem > 0 else 0.0
+
+
+def _log_auth_ban_throttled(logger_obj, account_key: str, action: str) -> None:
+    """Log 'auth ban active' for an account, throttled to once per 60s per account."""
+    now = time.time()
+    with _AUTH_BAN_LOCK:
+        last = _AUTH_BAN_LAST_LOG_TS.get(account_key, 0.0)
+        if now - last < 60.0:
+            return
+        _AUTH_BAN_LAST_LOG_TS[account_key] = now
+    rem = _auth_ban_remaining(account_key)
+    logger_obj.warning(f"[{account_key}] 🔑 Binance API key -2015 (IP not whitelisted) cooldown ~{rem:.0f}s — {action}. FIX: whitelist current outbound IP on Binance API key settings.")
+
+
 class PositionsServiceClient:
     def __init__(self, host: str = "127.0.0.1", port: int = 8765, *, timeout: float = 5.0, connect_timeout: Optional[float] = None, long_timeout: Optional[float] = None, endpoints: Optional[Sequence[Union[str, Tuple[str, int]]]] = None, logger: Optional[logging.Logger] = None) -> None:
         self.timeout = max(timeout, 1.0)
@@ -2434,6 +2476,8 @@ class WebSocketManager:
                     self.session = await self._init_session()
                 if _ban_remaining_seconds() > 0:
                     _log_ban_skip_throttled(logger, account_key, "skipping fresh listen-key on reconnect, reusing URL")
+                elif _auth_ban_remaining(account_key) > 0:
+                    _log_auth_ban_throttled(logger, account_key, "skipping fresh listen-key on reconnect, reusing URL")
                 else:
                     try :
                         new_listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
@@ -2442,7 +2486,10 @@ class WebSocketManager:
                         logger.info(f"[{account_key}] 🔑 Fresh listen key obtained for reconnect")
                     except Exception as lk_err:
                         _record_ip_ban_from_exc(lk_err)
-                        logger.warning(f"[{account_key}] Failed to get fresh listen key: {lk_err} - using existing URL")
+                        if _record_auth_ban(account_key, lk_err):
+                            _log_auth_ban_throttled(logger, account_key, "fresh-listen-key POST -2015 on reconnect — reusing existing URL")
+                        else:
+                            logger.warning(f"[{account_key}] Failed to get fresh listen key: {lk_err} - using existing URL")
                 async with self.session.ws_connect(url, heartbeat=15, timeout=30) as ws:
                     logger.info(f"[{account_key}] ✅ WebSocket connected!")
                     reconnect_delay = 2
@@ -2483,12 +2530,21 @@ class WebSocketManager:
                                 _log_ban_skip_throttled(logger, account_key, f"deferring WS reset ({ban_rem:.0f}s remaining, silence={silence:.0f}s)")
                                 lmt[0] = time.time()
                                 continue
+                            auth_rem = _auth_ban_remaining(account_key)
+                            if auth_rem > 0:
+                                _log_auth_ban_throttled(logger, account_key, f"deferring WS reset (silence={silence:.0f}s)")
+                                lmt[0] = time.time()
+                                continue
                             if lk and self.client:
                                 try:
                                     await asyncio.wait_for(asyncio.to_thread(self.client.futures_stream_keepalive, lk), timeout=8.0)
                                     probe_ok = True
                                 except Exception as probe_err:
                                     _record_ip_ban_from_exc(probe_err)
+                                    if _record_auth_ban(account_key, probe_err):
+                                        _log_auth_ban_throttled(logger, account_key, f"probe failed during {silence:.0f}s WS silence — skipping reset")
+                                        lmt[0] = time.time()
+                                        continue
                                     logger.warning(f"[{account_key}] Listen-key probe failed during {silence:.0f}s WS silence: {probe_err}")
                             if probe_ok and silence < 600:
                                 idle_probe_ok_count += 1
@@ -2714,6 +2770,11 @@ class WebSocketManager:
                     _log_ban_skip_throttled(logger, account_key, f"deferring listen-key keepalive ({ban_rem:.0f}s)")
                     await asyncio.sleep(min(ban_rem + 5, 600))
                     continue
+                auth_rem = _auth_ban_remaining(account_key)
+                if auth_rem > 0:
+                    _log_auth_ban_throttled(logger, account_key, f"deferring listen-key keepalive ({auth_rem:.0f}s)")
+                    await asyncio.sleep(min(auth_rem + 5, _AUTH_BAN_COOLDOWN_SEC))
+                    continue
                 if self.client and self.listen_keys.get(account_key):
                     await asyncio.to_thread(self.client.futures_stream_keepalive, self.listen_keys[account_key])
                     logger.info(f"[{account_key}] Listen key extended successfully")
@@ -2722,6 +2783,10 @@ class WebSocketManager:
                 break
             except Exception as e:
                 _record_ip_ban_from_exc(e)
+                if _record_auth_ban(account_key, e):
+                    _log_auth_ban_throttled(logger, account_key, "keepalive POST -2015 — pausing keepalive, NOT forcing WS reconnect")
+                    await asyncio.sleep(_AUTH_BAN_COOLDOWN_SEC)
+                    continue
                 consecutive_failures += 1
                 logger.warning(f"[{account_key}] Keepalive failed (attempt {consecutive_failures}): {e}")
                 if consecutive_failures >= 3:
