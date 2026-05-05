@@ -2129,6 +2129,77 @@ def _sector_strength_mult(sym: Optional[str], cfg) -> float:
         return 1.0
 
 
+def _golden_rule_vec(npz, n, is_long, cfg):
+    # GOLDEN RULE — restored 2026-05-05 per user directive (live + backtest parity).
+    # LONG: wt1_3m > wt2_3m AND price > dc_high_15m AND (optionally) price > bb_upper_15m
+    #       — base mult M_15M (default 1.0). Cascades: + 1h DC/BB → M_1H. + 4h DC/BB → M_4H.
+    # SHORT: reverse (wt1_3m < wt2_3m, price below dc_low/bb_lower).
+    # Returns (fire_mask, mult_arr): fire_mask is boolean; mult_arr holds the per-bar
+    # multiplier (1.0 if no fire, else MULT_15M/MULT_1H/MULT_4H based on cascade depth).
+    # Switches (all default ON):
+    #   GOLDEN_RULE_ENABLED, GOLDEN_RULE_DC_15M_ENABLED, GOLDEN_RULE_DC_1H_ENABLED,
+    #   GOLDEN_RULE_DC_4H_ENABLED, GOLDEN_RULE_BB_15M_ENABLED, GOLDEN_RULE_BB_1H_ENABLED,
+    #   GOLDEN_RULE_BB_4H_ENABLED.
+    # Multipliers: GOLDEN_RULE_MULT_15M (1.0), _MULT_1H (1.5), _MULT_4H (2.0).
+    if not bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)):
+        return np.zeros(n, dtype=bool), np.ones(n, dtype=np.float32)
+    _ltf = getattr(cfg, 'LTF', '3m')
+    close = _close_with_mode_check(npz, n, cfg, '_golden_rule_vec')
+    wt1 = _safe(npz, f'wt1_{_ltf}', n)
+    wt2 = _safe(npz, f'wt2_{_ltf}', n)
+    dc_h_15m = _safe(npz, 'dc_high_15m', n)
+    dc_l_15m = _safe(npz, 'dc_low_15m', n)
+    dc_h_1h = _safe(npz, 'dc_high_1h', n)
+    dc_l_1h = _safe(npz, 'dc_low_1h', n)
+    dc_h_4h = _safe(npz, 'dc_high_4h', n)
+    dc_l_4h = _safe(npz, 'dc_low_4h', n)
+    bb_u_15m = _safe(npz, 'bb_upper_15m', n)
+    bb_l_15m = _safe(npz, 'bb_lower_15m', n)
+    bb_u_1h = _safe(npz, 'bb_upper_1h', n)
+    bb_l_1h = _safe(npz, 'bb_lower_1h', n)
+    bb_u_4h = _safe(npz, 'bb_upper_4h', n)
+    bb_l_4h = _safe(npz, 'bb_lower_4h', n)
+    dc_15 = bool(getattr(cfg, 'GOLDEN_RULE_DC_15M_ENABLED', True))
+    dc_1h = bool(getattr(cfg, 'GOLDEN_RULE_DC_1H_ENABLED', True))
+    dc_4h = bool(getattr(cfg, 'GOLDEN_RULE_DC_4H_ENABLED', True))
+    bb_15 = bool(getattr(cfg, 'GOLDEN_RULE_BB_15M_ENABLED', True))
+    bb_1h = bool(getattr(cfg, 'GOLDEN_RULE_BB_1H_ENABLED', True))
+    bb_4h = bool(getattr(cfg, 'GOLDEN_RULE_BB_4H_ENABLED', True))
+    m_15 = float(getattr(cfg, 'GOLDEN_RULE_MULT_15M', 1.0))
+    m_1h = float(getattr(cfg, 'GOLDEN_RULE_MULT_1H', 1.5))
+    m_4h = float(getattr(cfg, 'GOLDEN_RULE_MULT_4H', 2.0))
+    if is_long:
+        wt_ok = wt1 > wt2
+        dc15_ok = (~dc_15) | ((dc_h_15m > 0) & (close > dc_h_15m)) if dc_15 else np.ones(n, dtype=bool)
+        bb15_ok = (~bb_15) | ((bb_u_15m > 0) & (close > bb_u_15m)) if bb_15 else np.ones(n, dtype=bool)
+        if not dc_15: dc15_ok = np.ones(n, dtype=bool)
+        if not bb_15: bb15_ok = np.ones(n, dtype=bool)
+        l1 = wt_ok & dc15_ok & bb15_ok
+        dc1h_ok = (dc_h_1h > 0) & (close > dc_h_1h) if dc_1h else np.ones(n, dtype=bool)
+        bb1h_ok = (bb_u_1h > 0) & (close > bb_u_1h) if bb_1h else np.ones(n, dtype=bool)
+        l2 = l1 & dc1h_ok & bb1h_ok
+        dc4h_ok = (dc_h_4h > 0) & (close > dc_h_4h) if dc_4h else np.ones(n, dtype=bool)
+        bb4h_ok = (bb_u_4h > 0) & (close > bb_u_4h) if bb_4h else np.ones(n, dtype=bool)
+        l3 = l2 & dc4h_ok & bb4h_ok
+    else:
+        wt_ok = wt1 < wt2
+        dc15_ok = (dc_l_15m > 0) & (close < dc_l_15m) if dc_15 else np.ones(n, dtype=bool)
+        bb15_ok = (bb_l_15m > 0) & (close < bb_l_15m) if bb_15 else np.ones(n, dtype=bool)
+        l1 = wt_ok & dc15_ok & bb15_ok
+        dc1h_ok = (dc_l_1h > 0) & (close < dc_l_1h) if dc_1h else np.ones(n, dtype=bool)
+        bb1h_ok = (bb_l_1h > 0) & (close < bb_l_1h) if bb_1h else np.ones(n, dtype=bool)
+        l2 = l1 & dc1h_ok & bb1h_ok
+        dc4h_ok = (dc_l_4h > 0) & (close < dc_l_4h) if dc_4h else np.ones(n, dtype=bool)
+        bb4h_ok = (bb_l_4h > 0) & (close < bb_l_4h) if bb_4h else np.ones(n, dtype=bool)
+        l3 = l2 & dc4h_ok & bb4h_ok
+    fire = l1
+    mult = np.ones(n, dtype=np.float32)
+    mult = np.where(l1, m_15, mult)
+    mult = np.where(l2, m_1h, mult)
+    mult = np.where(l3, m_4h, mult)
+    return fire, mult
+
+
 def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
     _ltf = getattr(cfg, 'LTF', '3m')
     _ltf_mins = 3 if _ltf == '3m' else 5
@@ -2867,6 +2938,16 @@ def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
                 base_sig = base_sig | _bk_sig
             except Exception:
                 pass
+    # GOLDEN_RULE: OR-merge with base_sig. Default ON. Sweep-toggleable via
+    # GOLDEN_RULE_ENABLED. The rule fires regardless of confluence/strength gates
+    # because the user's directive is "MUST have a position however small" when
+    # wt_3m direction + 15m DC/BB breakout align.
+    try:
+        _gr_fire, _ = _golden_rule_vec(npz, n, is_long, cfg)
+        if _gr_fire is not None and _gr_fire.any():
+            base_sig = base_sig | _gr_fire
+    except Exception:
+        pass
     return base_sig
 
 

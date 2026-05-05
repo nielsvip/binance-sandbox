@@ -7030,22 +7030,50 @@ class MultiAccountTradeManager:
                                 dc_l_1h = safe_fetch_float(ind.get('dc_low_1h'), None)
                                 dc_h_4h = safe_fetch_float(ind.get('dc_high_4h'), None)
                                 dc_l_4h = safe_fetch_float(ind.get('dc_low_4h'), None)
+                                bb_u_15m = safe_fetch_float(ind.get('bb_upper_15m'), None)
+                                bb_l_15m = safe_fetch_float(ind.get('bb_lower_15m'), None)
+                                bb_u_1h = safe_fetch_float(ind.get('bb_upper_1h'), None)
+                                bb_l_1h = safe_fetch_float(ind.get('bb_lower_1h'), None)
+                                bb_u_4h = safe_fetch_float(ind.get('bb_upper_4h'), None)
+                                bb_l_4h = safe_fetch_float(ind.get('bb_lower_4h'), None)
                             except Exception:
                                 continue
                             if wt1 is None or wt2 is None or price is None or price <= 0:
                                 continue
+                            # Switches: per-TF DC required (default ON), per-TF BB required (default ON), per-TF mult.
+                            _dc_req_15m = bool(getattr(config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
+                            _dc_req_1h = bool(getattr(config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
+                            _dc_req_4h = bool(getattr(config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
+                            _bb_req_15m = bool(getattr(config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
+                            _bb_req_1h = bool(getattr(config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
+                            _bb_req_4h = bool(getattr(config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
+                            _m_15m = float(getattr(config, 'GOLDEN_RULE_MULT_15M', 1.0))
+                            _m_1h = float(getattr(config, 'GOLDEN_RULE_MULT_1H', 1.5))
+                            _m_4h = float(getattr(config, 'GOLDEN_RULE_MULT_4H', 2.0))
                             if is_long:
                                 if wt1 <= wt2: continue
-                                if dc_h_15m is None or dc_h_15m <= 0 or price <= dc_h_15m: continue
-                                mult = 1
-                                if dc_h_1h is not None and dc_h_1h > 0 and price > dc_h_1h: mult = 2
-                                if dc_h_4h is not None and dc_h_4h > 0 and price > dc_h_4h: mult = 4
+                                _dc_15m_ok = (not _dc_req_15m) or (dc_h_15m is not None and dc_h_15m > 0 and price > dc_h_15m)
+                                _bb_15m_ok = (not _bb_req_15m) or (bb_u_15m is not None and bb_u_15m > 0 and price > bb_u_15m)
+                                if not (_dc_15m_ok and _bb_15m_ok): continue
+                                mult = _m_15m
+                                _dc_1h_ok = (not _dc_req_1h) or (dc_h_1h is not None and dc_h_1h > 0 and price > dc_h_1h)
+                                _bb_1h_ok = (not _bb_req_1h) or (bb_u_1h is not None and bb_u_1h > 0 and price > bb_u_1h)
+                                if _dc_1h_ok and _bb_1h_ok: mult = _m_1h
+                                _dc_4h_ok = (not _dc_req_4h) or (dc_h_4h is not None and dc_h_4h > 0 and price > dc_h_4h)
+                                _bb_4h_ok = (not _bb_req_4h) or (bb_u_4h is not None and bb_u_4h > 0 and price > bb_u_4h)
+                                if _dc_4h_ok and _bb_4h_ok and (_dc_1h_ok and _bb_1h_ok): mult = _m_4h
                             else:
                                 if wt1 >= wt2: continue
-                                if dc_l_15m is None or dc_l_15m <= 0 or price >= dc_l_15m: continue
-                                mult = 1
-                                if dc_l_1h is not None and dc_l_1h > 0 and price < dc_l_1h: mult = 2
-                                if dc_l_4h is not None and dc_l_4h > 0 and price < dc_l_4h: mult = 4
+                                _dc_15m_ok = (not _dc_req_15m) or (dc_l_15m is not None and dc_l_15m > 0 and price < dc_l_15m)
+                                _bb_15m_ok = (not _bb_req_15m) or (bb_l_15m is not None and bb_l_15m > 0 and price < bb_l_15m)
+                                if not (_dc_15m_ok and _bb_15m_ok): continue
+                                mult = _m_15m
+                                _dc_1h_ok = (not _dc_req_1h) or (dc_l_1h is not None and dc_l_1h > 0 and price < dc_l_1h)
+                                _bb_1h_ok = (not _bb_req_1h) or (bb_l_1h is not None and bb_l_1h > 0 and price < bb_l_1h)
+                                if _dc_1h_ok and _bb_1h_ok: mult = _m_1h
+                                _dc_4h_ok = (not _dc_req_4h) or (dc_l_4h is not None and dc_l_4h > 0 and price < dc_l_4h)
+                                _bb_4h_ok = (not _bb_req_4h) or (bb_l_4h is not None and bb_l_4h > 0 and price < bb_l_4h)
+                                if _dc_4h_ok and _bb_4h_ok and (_dc_1h_ok and _bb_1h_ok): mult = _m_4h
                             target_usd = base_usd * mult
                             target_qty = target_usd / price
                             try:
