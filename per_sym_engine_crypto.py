@@ -362,6 +362,9 @@ def load_3m_base(sym: str, years_back: float = 4.0) -> Optional[Dict[str, np.nda
     cache_key = f'{sym}__y{years_back:.2f}'
     if cache_key in _npz_cache:
         return _npz_cache[cache_key]
+    # Cap cache at 1 entry per worker — full NPZ dict is ~5GB; prevents OOM with multiple syms.
+    if _npz_cache:
+        _npz_cache.clear()
     p = NPZ_DIR / f'{sym}.npz'
     if not p.exists():
         return None

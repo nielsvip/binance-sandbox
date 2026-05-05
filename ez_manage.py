@@ -657,6 +657,7 @@ trading_policy = TradingPolicy
 from binance.client import Client
 
 # from binance.enums import *
+ORDER_TYPE_LIMIT = 'LIMIT'
 from binance.exceptions import BinanceAPIException
 
 import hedge_decisions as _hd
