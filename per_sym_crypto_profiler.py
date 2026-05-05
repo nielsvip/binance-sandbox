@@ -214,6 +214,9 @@ def marginal_sweep_grid(base: SymParams) -> List[Tuple[str, SymParams]]:
     # Allow HEDGE_TRIGGER_GAIN_PCT back as additional gate
     grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT_ENABLED', [True, False])
     grid += variants_for_param(base, 'HEDGE_TRIGGER_GAIN_PCT', [-0.25, -0.5, -1.0, -2.0])
+    # HARD_LOSS_PCT — single biggest WR lever per audit of override_btc_BEST
+    grid += variants_for_param(base, 'HARD_LOSS_PCT_ENABLED', [True, False])
+    grid += variants_for_param(base, 'HARD_LOSS_PCT', [0.20, 0.30, 0.50, 0.75, 1.0, 1.5, 2.0])
     grid += variants_for_param(base, 'NOLOSS_ENABLED', [True, False])
     # SIGNAL-DRIVEN exits/hedge — no fixed % anywhere per user 2026-05-05
     grid += variants_for_param(base, 'PEAK_PROTECT_ENABLED', [True, False])

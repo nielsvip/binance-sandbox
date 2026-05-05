@@ -170,6 +170,11 @@ class SymParams:
     # User 2026-05-05: re-allow HEDGE_TRIGGER_GAIN_PCT (% drawdown for hedge eligibility on top of WT trigger).
     HEDGE_TRIGGER_GAIN_PCT_ENABLED: bool = False
     HEDGE_TRIGGER_GAIN_PCT: float = -0.5
+    # HARD_LOSS_PCT — equivalent of v8 BTC_HARD_LOSS_USD_PER_TRADE.
+    # On override_btc_BEST: $5.4 per trade on $13.75 min size = -39%, but on typical $1k position = -0.54%.
+    # This is the SOURCE of 86.8% WR — caps individual losses tightly so wins>>losses by count.
+    HARD_LOSS_PCT_ENABLED: bool = True
+    HARD_LOSS_PCT: float = 0.5  # exit if loss reaches this % — caps loss tightly
     # HH/HL price-action entry (replaces WT 15m as primary trigger when toggled):
     USE_PRICE_ACTION_ENTRY: bool = False
     PRICE_ACTION_LB: int = 3
@@ -650,7 +655,12 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
                      hedge_size_frac: float = 0.5,
                      noloss_enabled: bool = True,
                      peak_protect_enabled: bool = True,
-                     peak_protect_require_gain: bool = True) -> List[Dict]:
+                     peak_protect_require_gain: bool = True,
+                     hard_loss_enabled: bool = True,
+                     hard_loss_pct: float = 0.5,
+                     peak_giveback_fixed_enabled: bool = False,
+                     peak_giveback_fixed_drop_pct: float = 0.5,
+                     peak_giveback_fixed_min_peak_pct: float = 0.10) -> List[Dict]:
     """Unified walker over BOTH sides. Allows REVERSE_ON_EXIT and FOLLOW_THROUGH_REENTRY.
     Single position at a time (no augment yet); flips between LONG/SHORT on exit if reverse path fires.
     Returns combined trade list.
@@ -692,9 +702,44 @@ def walk_trades_dual(enter_long: np.ndarray, leave_long: np.ndarray,
         if ep <= 0 or xp <= 0:
             i = exit_i + cooldown + 1
             continue
-        # SIGNAL-DRIVEN PEAK PROTECT: after gain has been positive, exit when wt1_15m flips against side.
-        # No fixed % drop. Position closes earlier on this peak-flip signal than waiting for full multi-TF exit.
+        # HARD_LOSS_PCT exit (the source of v8 BTC_DEDICATED's 87% WR per audit):
+        # If position drops to -HARD_LOSS_PCT, force-exit. Caps individual loss tightly so wins>>losses by count.
         forced_exit_origin = ''
+        if hard_loss_enabled and exit_i > entry_i + min_hold:
+            traj_h = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_h = (traj_h - ep) / ep * 100.0
+            else:
+                gain_h = (ep - traj_h) / ep * 100.0
+            hl_hit = gain_h <= -hard_loss_pct
+            hl_hit[:min_hold] = False
+            hl_idxs = np.flatnonzero(hl_hit)
+            if len(hl_idxs):
+                hl_exit_i = entry_i + int(hl_idxs[0])
+                if hl_exit_i < exit_i:
+                    exit_i = hl_exit_i
+                    xp = float(c15[exit_i])
+                    forced_exit_origin = 'hard_loss_pct'
+        # FIXED-% PEAK GIVEBACK (v8 QUICK_PEAK_GIVEBACK style — re-enabled per user 2026-05-05 if needed):
+        if peak_giveback_fixed_enabled and not forced_exit_origin and exit_i > entry_i + min_hold:
+            traj_pg = c15[entry_i:exit_i + 1]
+            if side == 'LONG':
+                gain_pg = (traj_pg - ep) / ep * 100.0
+            else:
+                gain_pg = (ep - traj_pg) / ep * 100.0
+            running_peak = np.maximum.accumulate(gain_pg)
+            armed = running_peak >= peak_giveback_fixed_min_peak_pct
+            drop_from_peak = running_peak - gain_pg
+            give_hit = armed & (drop_from_peak >= peak_giveback_fixed_drop_pct)
+            give_hit[:min_hold] = False
+            give_idxs = np.flatnonzero(give_hit)
+            if len(give_idxs):
+                pg_exit_i = entry_i + int(give_idxs[0])
+                if pg_exit_i < exit_i:
+                    exit_i = pg_exit_i
+                    xp = float(c15[exit_i])
+                    forced_exit_origin = 'peak_giveback_fixed'
+        # SIGNAL-DRIVEN PEAK PROTECT: after gain has been positive, exit when wt1_15m flips against side.
         if peak_protect_enabled and wt1_15m is not None and wt2_15m is not None and exit_i > entry_i + min_hold:
             traj = c15[entry_i:exit_i + 1]
             if side == 'LONG':
@@ -1088,6 +1133,11 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         noloss_enabled=params.NOLOSS_ENABLED,
         peak_protect_enabled=params.PEAK_PROTECT_ENABLED,
         peak_protect_require_gain=params.PEAK_PROTECT_REQUIRE_GAIN,
+        hard_loss_enabled=params.HARD_LOSS_PCT_ENABLED,
+        hard_loss_pct=float(params.HARD_LOSS_PCT),
+        peak_giveback_fixed_enabled=params.PEAK_GIVEBACK_FIXED_PCT_ENABLED,
+        peak_giveback_fixed_drop_pct=float(params.PEAK_GIVEBACK_FIXED_DROP_PCT),
+        peak_giveback_fixed_min_peak_pct=float(params.PEAK_GIVEBACK_FIXED_MIN_PEAK_PCT),
     )
     span_days = max(1.0, (ts15[-1] - ts15[0]) / 86400.0)
     yrs = max(0.01, span_days / 365.25)
@@ -1124,6 +1174,8 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
     n_hedge_wt3m = sum(1 for t in trades if (t.get('origin') or '').startswith('hedge_wt'))
     n_peak_protect = sum(1 for t in trades if t.get('origin') == 'peak_protect_wt15m')
     n_mtm_end = sum(1 for t in trades if t.get('origin') == 'mtm_at_end')
+    n_hard_loss = sum(1 for t in trades if t.get('origin') == 'hard_loss_pct')
+    n_peak_giveback_fixed = sum(1 for t in trades if t.get('origin') == 'peak_giveback_fixed')
     n_mr = sum(1 for t in trades if t.get('origin') == 'mean_rev_reentry')
     return {
         'sym': sym, 'trades': n, 'trades_per_day': n / span_days,
@@ -1139,6 +1191,8 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         'hedge_wt3m_count': n_hedge_wt3m,
         'peak_protect_count': n_peak_protect,
         'mtm_at_end_count': n_mtm_end,
+        'hard_loss_count': n_hard_loss,
+        'peak_giveback_fixed_count': n_peak_giveback_fixed,
         'noloss_auto_disabled': params.__dict__.get('_noloss_auto_disabled', ''),
     }
 
