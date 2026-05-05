@@ -2170,16 +2170,14 @@ def _golden_rule_vec(npz, n, is_long, cfg):
     m_4h = float(getattr(cfg, 'GOLDEN_RULE_MULT_4H', 2.0))
     if is_long:
         wt_ok = wt1 > wt2
-        dc15_ok = (~dc_15) | ((dc_h_15m > 0) & (close > dc_h_15m)) if dc_15 else np.ones(n, dtype=bool)
-        bb15_ok = (~bb_15) | ((bb_u_15m > 0) & (close > bb_u_15m)) if bb_15 else np.ones(n, dtype=bool)
-        if not dc_15: dc15_ok = np.ones(n, dtype=bool)
-        if not bb_15: bb15_ok = np.ones(n, dtype=bool)
+        dc15_ok = ((dc_h_15m > 0) & (close > dc_h_15m)) if dc_15 else np.ones(n, dtype=bool)
+        bb15_ok = ((bb_u_15m > 0) & (close > bb_u_15m)) if bb_15 else np.ones(n, dtype=bool)
         l1 = wt_ok & dc15_ok & bb15_ok
-        dc1h_ok = (dc_h_1h > 0) & (close > dc_h_1h) if dc_1h else np.ones(n, dtype=bool)
-        bb1h_ok = (bb_u_1h > 0) & (close > bb_u_1h) if bb_1h else np.ones(n, dtype=bool)
+        dc1h_ok = ((dc_h_1h > 0) & (close > dc_h_1h)) if dc_1h else np.ones(n, dtype=bool)
+        bb1h_ok = ((bb_u_1h > 0) & (close > bb_u_1h)) if bb_1h else np.ones(n, dtype=bool)
         l2 = l1 & dc1h_ok & bb1h_ok
-        dc4h_ok = (dc_h_4h > 0) & (close > dc_h_4h) if dc_4h else np.ones(n, dtype=bool)
-        bb4h_ok = (bb_u_4h > 0) & (close > bb_u_4h) if bb_4h else np.ones(n, dtype=bool)
+        dc4h_ok = ((dc_h_4h > 0) & (close > dc_h_4h)) if dc_4h else np.ones(n, dtype=bool)
+        bb4h_ok = ((bb_u_4h > 0) & (close > bb_u_4h)) if bb_4h else np.ones(n, dtype=bool)
         l3 = l2 & dc4h_ok & bb4h_ok
     else:
         wt_ok = wt1 < wt2
