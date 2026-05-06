@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-06 11:37:22 UTC
+# Copilot Status — 2026-05-06 11:52:41 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T11:36:00
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-06T11:36:00
-- **STALE_INDICATORS** [tradier]  — 2026-05-06T11:37:01
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T11:37:01
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T11:37:01
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T11:37:01
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T11:37:02
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T11:37:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T11:37:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-06T11:37:02
+- **STALE_INDICATORS** [tradier]  — 2026-05-06T11:51:26
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T11:51:26
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T11:51:26
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T11:51:26
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T11:51:28
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T11:51:28
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T11:51:28
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T11:52:30
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T11:52:30
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T11:52:30
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 13 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.2%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.6%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +3.3%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-15.4%
-- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-1.5%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-14.7%
+- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-1.4%
 - HELD: **IBIT** LONG (tradier) peak +3.2%, now +-0.6%
 
 - WATCHING: **SNDK** LONG (tradier) peaked +34.8%, exited 0m ago
@@ -55,4 +55,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (636min)
+- [MEDIUM] tradier_prices.py running but log stale (651min)
