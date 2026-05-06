@@ -166,6 +166,25 @@ def _get_redis_client(trade_manager):
         return None
 
 
+def _lookup_indicators(trade_manager, symbol: str) -> dict:
+    """Read live indicators dict for a single symbol from Redis ``indicators:<SYM>``.
+    Returns {} on miss / parse failure. Used by the price-cross safety loop to
+    decide reentry sizing per user 2026-05-06 mandate (K15m+K1h>90 → 50%, WT
+    1h+15m bounce in favor → 150%, else 100%)."""
+    client = _get_redis_client(trade_manager)
+    if client is None or not symbol:
+        return {}
+    try:
+        raw = client.get(f"indicators:{symbol}")
+        if not raw:
+            return {}
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8", errors="ignore")
+        return json.loads(raw) or {}
+    except Exception:
+        return {}
+
+
 def _load_market_data(trade_manager) -> dict:
     """Read Redis ``latest_market_data`` once per tick — it's the canonical live
     price source, a single JSON-encoded string of {symbol: {current_price, ...}}.
@@ -440,6 +459,16 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         import config as _cfg
     except Exception:
         return 0
+    # ─── User mandate 2026-05-06: REENTRY rules (final, no exceptions) ───
+    # 1. Eligible ONLY when positionAmt == 0.0 (strict — no dust, no partial PPL)
+    # 2. NO time cap (FOREVER eligible — exit_ts is informational only)
+    # 3. Sizing of EXITED amount:
+    #      150% if WT 1h+15m bounce in favor (LONG: wt1>wt2 both TFs; SHORT: <)
+    #       50% if rally extended (LONG: k_1h>90; SHORT: k_1h<10)
+    #      100% otherwise (default)
+    # 4. Pre-flight gate (LOSING_POSITION_HARD_BLOCK / NON_TRADEABLE) is automatic
+    #    because positionAmt==0 means LOSING_POSITION block can't trip.
+    # ──────────────────────────────────────────────────────────────────────
     if not bool(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED", True)):
         return 0
     cross_pct = float(getattr(_cfg, "EZ_REENTRY_PRICE_CROSS_PCT", 0.0))
@@ -461,14 +490,12 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         return 0
     allowed = set(_allowed_accounts_for(trade_manager))
     now = time.time()
-    age_cutoff = now - (max_age_h * 3600.0)
+    # User 2026-05-06: NO age cutoff — reentry eligible forever as long as positionAmt==0.
     mkt = _load_market_data(trade_manager)
     fired = 0
     for pk, is_long, exit_px, exit_amt, exit_ts, src_tag, exit_reason in candidates:
         if fired >= max_fires:
             break
-        if exit_ts > 0 and exit_ts < age_cutoff:
-            continue
         try:
             account_key, sym, side = _ppk(pk)
         except Exception:
@@ -497,31 +524,47 @@ async def enforce_price_cross_reentry(trade_manager) -> int:
         last_fire = float(trade_manager._price_cross_last_fire.get(pk, 0))
         if now - last_fire < min_gap_s:
             continue
-        # User 2026-05-05: PARTIAL_FRAC=0.5 is ONLY for soft exits where the
-        # position is on its last breath (wt crossunder / delta slowdown / 3m
-        # lower-high|higher-low) and price immediately resumed the rally. Every
-        # other exit family — DC gain erosion, peak giveback, breakeven floor,
-        # structural range shift, parabolic exit, key level break, etc. — must
-        # rebuild at FULL size on price-cross. Applying 0.5 to those is WRONG.
-        sizing_frac = partial_frac if _is_soft_exit(exit_reason) else 1.0
-        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
-        if fire_qty <= 0:
-            continue
+        # User 2026-05-06 ABSOLUTE: REENTRY only on positionAmt==0.0.
         position = trade_manager.positions.get(pk) if hasattr(trade_manager, "positions") else None
         try:
             pos_amt = abs(float(getattr(position, "positionAmt", 0) or 0)) if position is not None else 0.0
         except Exception:
             pos_amt = 0.0
-        # Only fire when position is FLAT-OR-NEAR-FLAT. Partial-close reentries on
-        # still-substantial positions get blocked downstream by LOSING_POSITION_HARD_BLOCK
-        # when gain<MIN_GAIN (user absolute rule, ez_manage:12990 / ez_positions_quick:11380).
-        # Mirrors TIER1/TIER2 inline gate at ez_positions_quick:14251 (`pos_amt <= _pos_min_qty_entry`).
-        flat_threshold_qty = min_pos_size / max(cur_px, 1e-9)
-        if pos_amt > flat_threshold_qty:
+        if pos_amt != 0.0:
+            continue
+        # ─── Sizing per user 2026-05-06 ───
+        # Indicators from Redis indicators:<SYM>. WT-favor → 150%; rally-extended → 50%; else 100%.
+        ind = _lookup_indicators(trade_manager, sym) if sym else {}
+        def _f(k, default=None):
+            try:
+                v = ind.get(k)
+                if v is None: return default
+                return float(v)
+            except Exception:
+                return default
+        wt1_15m = _f("wt1_15m"); wt2_15m = _f("wt2_15m")
+        wt1_1h  = _f("wt1_1h");  wt2_1h  = _f("wt2_1h")
+        k_1h    = _f("stoch_k_1h")
+        wt_favor = False
+        if (wt1_15m is not None and wt2_15m is not None and wt1_1h is not None and wt2_1h is not None):
+            wt_favor = (
+                (is_long and wt1_15m > wt2_15m and wt1_1h > wt2_1h)
+                or ((not is_long) and wt1_15m < wt2_15m and wt1_1h < wt2_1h)
+            )
+        rally_extended = False
+        if k_1h is not None:
+            rally_extended = (is_long and k_1h > 90.0) or ((not is_long) and k_1h < 10.0)
+        if wt_favor:
+            sizing_frac = 1.5; sizing_tag = "wt_bounce_150"
+        elif rally_extended:
+            sizing_frac = 0.5; sizing_tag = f"rally_ext_k1h{k_1h:.0f}_50"
+        else:
+            sizing_frac = 1.0; sizing_tag = "full_100"
+        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
+        if fire_qty <= 0:
             continue
         try:
             uid = f"PRICE_CROSS_GUARANTEE_{int(now)}"
-            sizing_tag = f"soft{sizing_frac:.2f}" if _is_soft_exit(exit_reason) else f"full{sizing_frac:.2f}"
             reason = (
                 f"GUARANTEED_PRICE_CROSS_REENTRY_{src_tag}_exit{exit_px:.6f}"
                 f"_cur{cur_px:.6f}_{sizing_tag}_xr{(exit_reason[:40] or 'unk').replace(' ','_')}"

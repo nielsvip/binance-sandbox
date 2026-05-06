@@ -2,12 +2,18 @@
 """
 sweep_pullback_ab.py — A/B validation for REENTRY_PROFIT_PULLBACK_ENABLED.
 
-Runs backtest_v8_engine.run_simulation twice (baseline OFF / pullback ON) on
-the full crypto NPZ universe, then reports canonical metrics via metrics_guard.
+Streams one NPZ symbol at a time to stay within S1 memory limits (existing
+sweeps occupy ~15GB; each decompressed crypto NPZ is ~878MB so bulk loading
+63 symbols would need 55GB — impossible on 30GB S1).
 
-Results written to data/sweep_results/pullback_ab_<ts>.csv (2 rows).
-Each row is validated via metrics_guard.write_sharpe_row() — if sample floor
-is not met the row gets [DIAGNOSTIC] tag automatically.
+Strategy: for each symbol, run all 4 variants serially, accumulate trades,
+del the IndicatorStore, gc.collect(). Peak memory ≈ 2GB per symbol.
+
+After all symbols processed, compute canonical metrics from pooled trades and
+write via metrics_guard.write_sharpe_row().
+
+Results written to data/sweep_results/pullback_ab_<ts>.csv (4 rows).
+Each row tagged [DIAGNOSTIC] if n_syms < 48 sample floor.
 
 Usage (on S1):
     cd /home/niels/binance-sandbox
@@ -15,6 +21,8 @@ Usage (on S1):
 """
 
 import asyncio
+import gc
+import logging
 import sys
 import os
 import time
@@ -31,24 +39,14 @@ os.environ["V8_RATE_GUARD_DISABLED"] = "1"
 import config
 import metrics_guard
 
-def _log(msg: str) -> None:
-    sys.stderr.write(f"[sweep_pullback_ab] {msg}\n")
-    sys.stderr.flush()
-
 START_DATE = "2022-01-01"
 ACCOUNT = "ang"
 CAPITAL = 10000.0
 MODE = "crypto"
 
-# Validation subset: 12 symbols (decompressed NPZ ≈ 878MB each → ~10.5GB stores).
-# S1 OOM cleared existing sweeps → 29GB free. 12 syms + overhead ≈ 14GB < 29GB. Safe.
-# Full 63-symbol sweep would be 55GB → OOM. Use this for directional validation only.
-# Results will be tagged [DIAGNOSTIC] by metrics_guard (sample floor ≥48 for PUBLISHABLE).
-VALIDATION_SYMBOLS = [
-    "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC",         # 4 USDC majors
-    "BNBUSDC", "AVAXUSDC", "XRPUSDC", "LINKUSDC",       # 4 more USDC
-    "DOTUSDT", "ATOMUSDT", "SANDUSDT", "ENJUSDT",        # 4 diverse USDT
-]
+# Empty = use all crypto symbols from NPZ dir (streams one at a time → no OOM).
+# Set to a list to restrict to a subset for faster validation runs.
+VALIDATION_SYMBOLS: list = []
 
 PULLBACK_VARIANTS = [
     {
@@ -114,6 +112,14 @@ def _apply_overrides(overrides: dict) -> None:
             pass
 
 
+def _clear_pullback_state() -> None:
+    try:
+        import ez_reentry_pullback as _ppb
+        _ppb._pullback_last_fire.clear()
+    except Exception:
+        pass
+
+
 def _trades_to_metrics(trades: list, label: str) -> dict:
     if not trades:
         return {"label": label, "trades": 0, "pool_sharpe": 0.0, "sym_sharpe": 0.0,
@@ -176,31 +182,76 @@ def _trades_to_metrics(trades: list, label: str) -> dict:
 
 
 async def main():
-    from backtest_v8_engine import load_stores, run_simulation
+    from backtest_v8_engine import load_stores, run_simulation, get_npz_dir
 
-    print(f"[sweep_pullback_ab] Loading NPZ for {MODE} start={START_DATE} symbols={len(VALIDATION_SYMBOLS)}", flush=True)
-    stores, resolution = load_stores(MODE, set(VALIDATION_SYMBOLS), START_DATE)
-    if not stores:
-        print("[sweep_pullback_ab] ERROR: no NPZ data loaded", flush=True)
+    npz_dir, resolution = get_npz_dir(MODE)
+    _crypto_quotes = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
+    all_npz = sorted(npz_dir.glob("*.npz"))
+    sym_paths = [
+        (p.stem, p) for p in all_npz
+        if any(p.stem.endswith(q) for q in _crypto_quotes)
+        and (not VALIDATION_SYMBOLS or p.stem in VALIDATION_SYMBOLS)
+    ]
+
+    if not sym_paths:
+        print("[sweep_pullback_ab] ERROR: no crypto NPZ files found", flush=True)
         sys.exit(1)
-    print(f"[sweep_pullback_ab] Loaded {len(stores)} symbols: {sorted(stores.keys())}", flush=True)
+
+    print(
+        f"[sweep_pullback_ab] Streaming {len(sym_paths)} symbols one-at-a-time "
+        f"(mode={MODE} start={START_DATE} variants={len(PULLBACK_VARIANTS)})",
+        flush=True,
+    )
+
+    # Accumulate trades per variant across all symbols
+    variant_trades: dict[str, list] = {v["label"]: [] for v in PULLBACK_VARIANTS}
+    sym_t0 = time.time()
+
+    for i, (sym, npz_path) in enumerate(sym_paths):
+        print(f"[sweep_pullback_ab] [{i+1}/{len(sym_paths)}] {sym} ...", flush=True)
+        stores_single, _ = load_stores(MODE, {sym}, START_DATE)
+        if not stores_single:
+            print(f"[sweep_pullback_ab]   SKIP {sym} (not in NPZ or stale)", flush=True)
+            continue
+
+        for variant in PULLBACK_VARIANTS:
+            label = variant["label"]
+            _apply_overrides(variant["overrides"])
+            _clear_pullback_state()
+            # Suppress per-bar logging during simulation — each bar fires dozens of
+            # logger.critical/warning/info calls. setLevel on root doesn't work because
+            # child loggers have their own levels. logging.disable() is the global kill.
+            logging.disable(logging.CRITICAL)
+            try:
+                trades = await run_simulation(MODE, ACCOUNT, START_DATE, CAPITAL, stores_single, resolution)
+            except Exception as e:
+                trades = []
+                logging.disable(logging.NOTSET)
+                print(f"[sweep_pullback_ab]   ERROR {sym}/{label}: {e}", flush=True)
+            finally:
+                logging.disable(logging.NOTSET)
+            variant_trades[label].extend(trades or [])
+
+        del stores_single
+        gc.collect()
+
+        elapsed = time.time() - sym_t0
+        eta_s = elapsed / (i + 1) * (len(sym_paths) - i - 1)
+        print(
+            f"[sweep_pullback_ab]   done {sym} "
+            f"[baseline={len([t for t in variant_trades['baseline_no_pullback'] if t.get('symbol')==sym])} trades] "
+            f"elapsed={elapsed:.0f}s ETA={eta_s:.0f}s",
+            flush=True,
+        )
+
+    print(f"\n[sweep_pullback_ab] All {len(sym_paths)} symbols processed. Computing metrics...", flush=True)
 
     results = []
     for variant in PULLBACK_VARIANTS:
         label = variant["label"]
-        overrides = variant["overrides"]
-        print(f"\n[sweep_pullback_ab] Running variant: {label}", flush=True)
-        print(f"  overrides: {json.dumps(overrides)}", flush=True)
-        _apply_overrides(overrides)
-        t0 = time.time()
-        try:
-            trades = await run_simulation(MODE, ACCOUNT, START_DATE, CAPITAL, stores, resolution)
-        except Exception as e:
-            print(f"[sweep_pullback_ab] ERROR in {label}: {e}", flush=True)
-            trades = []
-        elapsed = time.time() - t0
-        metrics = _trades_to_metrics(trades or [], label)
-        metrics["elapsed_s"] = elapsed
+        trades = variant_trades[label]
+        metrics = _trades_to_metrics(trades, label)
+        metrics["elapsed_s"] = time.time() - sym_t0
         results.append(metrics)
         print(
             f"[sweep_pullback_ab] {label}: "
@@ -210,8 +261,7 @@ async def main():
             f"n_syms={metrics['n_syms']} "
             f"gain_per_yr={metrics['gain_per_yr']:.2f}% "
             f"dd={metrics['max_dd_pct']:.2f}% "
-            f"years={metrics['years']:.2f} "
-            f"elapsed={elapsed:.0f}s",
+            f"years={metrics['years']:.2f}",
             flush=True,
         )
 
