@@ -23,6 +23,7 @@ Usage (on S1):
 import asyncio
 import gc
 import logging
+import traceback
 import sys
 import os
 import time
@@ -228,10 +229,19 @@ async def main():
             logging.disable(logging.CRITICAL)
             try:
                 trades = await run_simulation(MODE, ACCOUNT, START_DATE, CAPITAL, stores_single, resolution)
+            except asyncio.CancelledError:
+                # run_simulation completes, then cancels its queue_task and does
+                # `await queue_task` with only `except Exception` — CancelledError
+                # (BaseException in Python 3.8+) escapes. Trades are already in
+                # backtest_v8_engine._executed_trades (populated before the cancel).
+                import backtest_v8_engine as _bte
+                trades = list(getattr(_bte, '_executed_trades', []))
+                logging.disable(logging.NOTSET)
+                print(f"[sweep_pullback_ab]   {sym}/{label}: rescued {len(trades)} trades after CancelledError cleanup", flush=True)
             except Exception as e:
                 trades = []
                 logging.disable(logging.NOTSET)
-                print(f"[sweep_pullback_ab]   ERROR {sym}/{label}: {e}", flush=True)
+                print(f"[sweep_pullback_ab]   ERROR {sym}/{label}: {e}\n{traceback.format_exc()}", flush=True)
             finally:
                 logging.disable(logging.NOTSET)
             variant_trades[label].extend(trades or [])
