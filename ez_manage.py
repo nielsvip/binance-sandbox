@@ -20679,53 +20679,72 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             except Exception:
                 _uh_ind = {}
             if _uh_ind:
-                _uh_w1 = safe_fetch_float(_uh_ind.get('wt1_3m'), 0)
-                _uh_w2 = safe_fetch_float(_uh_ind.get('wt2_3m'), 0)
-                if _uh_w1 != 0 or _uh_w2 != 0:
-                    _uh_is_long = (position_side == 'LONG')
-                    _uh_against = (_uh_w1 < _uh_w2) if _uh_is_long else (_uh_w1 > _uh_w2)
-                    if _uh_against:
-                        _uh_tm = getattr(trade_manager, 'tracker_manager', None)
-                        _he_inflight = getattr(getattr(trade_manager, 'hedge_engine', None), '_hedge_same_in_flight', set())
-                        _uh_active = (
-                            (bool(_uh_tm) and any(
-                                (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
-                                for h in (_uh_tm.active_hedges or [])))
-                            or (position_key in _he_inflight)
-                        )
-                        _uh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
-                        _uh_cd_dict[position_key] = now_ts  # mark fired (cooldown for next 60s)
-                        if not _uh_active:
-                            logger.warning(f"⚠️ [UNDERWATER_HEDGE_FIRE] {position_key}: gain={_uh_gain:.2f}% wt1_3m={_uh_w1:.1f} {'<' if _uh_is_long else '>'} wt2_3m={_uh_w2:.1f} → FIRING HEDGE")
-                            try:
-                                _he = getattr(trade_manager, 'hedge_engine', None)
-                                if _he is not None:
-                                    await _he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _uh_pos_amt, current_price)
-                                    trade_manager.processing_keys.discard(position_key)
-                                    return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_FIRED"
-                                else:
-                                    logger.error(f"⚠️ [UNDERWATER_HEDGE_NO_ENGINE] {position_key}: no hedge_engine — falling through to close")
-                                    _uh_force_close = True
-                            except Exception as _uh_he_err:
-                                logger.error(f"⚠️ [UNDERWATER_HEDGE_FIRE_ERR] {position_key}: {type(_uh_he_err).__name__}: {_uh_he_err} — falling through to close")
-                                _uh_force_close = True
-                        else:
-                            _uh_force_close = True
-                            logger.warning(f"⚠️ [UNDERWATER_HEDGED_FORCE_CLOSE] {position_key}: gain={_uh_gain:.2f}% wt1_3m={_uh_w1:.1f}/{_uh_w2:.1f} — hedge active but bleeding → FORCE CLOSE")
-                        if locals().get('_uh_force_close'):
-                            _uh_side = 'SELL' if position_side == 'LONG' else 'BUY'
-                            try:
-                                await trade_manager.execute_now(
-                                    position_key=position_key, account_key=account_key, symbol=symbol,
-                                    original_positionAmt=_uh_pos_amt, side=_uh_side, position_side=position_side,
-                                    quantity=_uh_pos_amt, old_price=current_price,
-                                    unique_id=f"UNDERWATER_HOC_{int(time.time())}",
-                                    reason=f'UNDERWATER_HEDGE_OR_CLOSE_wt3m{_uh_w1:.1f}vs{_uh_w2:.1f}_g{_uh_gain:.2f}%',
-                                    is_full_close=True, action='CLOSE')
+                _uh_w1_15m = safe_fetch_float(_uh_ind.get('wt1_15m'), 0)
+                _uh_w2_15m = safe_fetch_float(_uh_ind.get('wt2_15m'), 0)
+                _uh_is_long = (position_side == 'LONG')
+                _uh_against_15m = (_uh_w1_15m < _uh_w2_15m) if _uh_is_long else (_uh_w1_15m > _uh_w2_15m)
+                _uh_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.5))
+                # Hedge-fire: gain < -0.5% AND wt1_15m against (HEDGE_BANDAID_BACKTEST winner).
+                # Force-close: hedge already active AND 2/4 HTF (15m/1h/4h/D) agree WT against.
+                # NEVER close on wt1_3m alone — 3m is too noisy; HTF agreement required.
+                if _uh_against_15m and (_uh_w1_15m != 0 or _uh_w2_15m != 0):
+                    _uh_tm = getattr(trade_manager, 'tracker_manager', None)
+                    _he_inflight = getattr(getattr(trade_manager, 'hedge_engine', None), '_hedge_same_in_flight', set())
+                    _uh_active = (
+                        (bool(_uh_tm) and any(
+                            (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
+                            for h in (_uh_tm.active_hedges or [])))
+                        or (position_key in _he_inflight)
+                    )
+                    _uh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                    _uh_cd_dict[position_key] = now_ts  # mark fired (cooldown for next 60s)
+                    if not _uh_active and _uh_gain < _uh_thr:
+                        logger.warning(f"⚠️ [UNDERWATER_HEDGE_FIRE] {position_key}: gain={_uh_gain:.2f}% wt1_15m={_uh_w1_15m:.1f} {'<' if _uh_is_long else '>'} wt2_15m={_uh_w2_15m:.1f} → FIRING HEDGE")
+                        try:
+                            _he = getattr(trade_manager, 'hedge_engine', None)
+                            if _he is not None:
+                                await _he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _uh_pos_amt, current_price)
                                 trade_manager.processing_keys.discard(position_key)
-                                return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_OR_CLOSE_CLOSED"
-                            except Exception as _uh_cl_err:
-                                logger.error(f"⚠️ [UNDERWATER_FORCE_CLOSE_ERR] {position_key}: {_uh_cl_err}")
+                                return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_FIRED"
+                            else:
+                                logger.error(f"⚠️ [UNDERWATER_HEDGE_NO_ENGINE] {position_key}: no hedge_engine — falling through to close")
+                                _uh_force_close = True
+                        except Exception as _uh_he_err:
+                            logger.error(f"⚠️ [UNDERWATER_HEDGE_FIRE_ERR] {position_key}: {type(_uh_he_err).__name__}: {_uh_he_err} — falling through to close")
+                            _uh_force_close = True
+                    elif _uh_active:
+                        # Hedge covers. Only force-close origin if ≥2 of 4 HTF (15m/1h/4h/D) agree WT against.
+                        # USDC maker bypass: reenter is zero-fee maker, so 3m signal alone is acceptable.
+                        _uh_htf_pairs = [('wt1_15m', 'wt2_15m'), ('wt1_1h', 'wt2_1h'), ('wt1_4h', 'wt2_4h'), ('wt1_D', 'wt2_D')]
+                        _uh_htf_count = 0
+                        for _uhh1_k, _uhh2_k in _uh_htf_pairs:
+                            _uhh1 = safe_fetch_float(_uh_ind.get(_uhh1_k), 0)
+                            _uhh2 = safe_fetch_float(_uh_ind.get(_uhh2_k), 0)
+                            if _uhh1 == 0 and _uhh2 == 0:
+                                continue
+                            if (_uh_is_long and _uhh1 < _uhh2) or (not _uh_is_long and _uhh1 > _uhh2):
+                                _uh_htf_count += 1
+                        _uh_htf_req = int(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED', 2))
+                        _uh_usdc_bypass = (symbol.endswith('USDC') and bool(getattr(config, 'MICRO_SCALP_USDC_MAKER_ENABLED', False)) and bool(getattr(config, 'UNDERWATER_HOC_USDC_MAKER_BYPASS', True)))
+                        if _uh_usdc_bypass or _uh_htf_count >= _uh_htf_req:
+                            _uh_force_close = True
+                            logger.warning(f"⚠️ [UNDERWATER_HEDGED_FORCE_CLOSE] {position_key}: gain={_uh_gain:.2f}% wt1_15m={_uh_w1_15m:.1f}/{_uh_w2_15m:.1f} hedge active {'USDC_MAKER_BYPASS' if _uh_usdc_bypass else f'HTF {_uh_htf_count}/4 >= {_uh_htf_req}'} → FORCE CLOSE")
+                        else:
+                            logger.info(f"[UNDERWATER_HEDGED_HOLD] {position_key}: gain={_uh_gain:.2f}% wt1_15m against but {_uh_htf_count}/4 HTF agree (need {_uh_htf_req}) — holding, hedge covers")
+                    if locals().get('_uh_force_close'):
+                        _uh_side = 'SELL' if position_side == 'LONG' else 'BUY'
+                        try:
+                            await trade_manager.execute_now(
+                                position_key=position_key, account_key=account_key, symbol=symbol,
+                                original_positionAmt=_uh_pos_amt, side=_uh_side, position_side=position_side,
+                                quantity=_uh_pos_amt, old_price=current_price,
+                                unique_id=f"UNDERWATER_HOC_{int(time.time())}",
+                                reason=f'UNDERWATER_HEDGE_OR_CLOSE_wt15m{_uh_w1_15m:.1f}vs{_uh_w2_15m:.1f}_g{_uh_gain:.2f}%',
+                                is_full_close=True, action='CLOSE')
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:UNDERWATER_HEDGE_OR_CLOSE_CLOSED"
+                        except Exception as _uh_cl_err:
+                            logger.error(f"⚠️ [UNDERWATER_FORCE_CLOSE_ERR] {position_key}: {_uh_cl_err}")
     # 2026-04-27 — WIRE evaluate_reentry (was dead code at line 16593, never called).
     # 683 reentry mentions / 0 executions today across 5 crypto accounts. The compact 7-block
     # function (B15/B04/B11/B02/B12/B14/B10) is ablation-tested and returns Signal(action='REENTRY').
@@ -21686,15 +21705,15 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                             await trade_manager.redis_manager.delete(_rds_cooldown_key)
                                     except Exception: pass
                                     logger.warning(f"[WT_15M_SAME_HEDGE_FAIL] {_hedge_pk}: hedge_engine returned False — cooldown/daily-count cleared")
-            # MANDATORY_HEDGE: gain < -0.05% AND wt_3m AND wt_15m both against → MUST have a hedge.
-            # No config kill-switch — unconditional. Per user: "NO position can be at < 0.05% without a hedge".
+            # MANDATORY_HEDGE: gain < -0.5% AND wt1_15m against → MUST have a hedge.
+            # Condition: wt1_15m alone (not 3m+15m). Backtest winner: -0.5% / wt_15m (HEDGE_BANDAID_BACKTEST Sharpe 1.24).
             # Skips if: position is itself a hedge, hedge already exists, tracker records hedge, Redis cooldown active.
-            _mh_gain_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.05))
+            _mh_gain_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.5))
             if not bool(getattr(position, 'is_hedge', False)) and _pp_gain < _mh_gain_thr:
                 _mh_wt1_15m = safe_fetch_float(i.get('wt1_15m', 0), 0.0)
                 _mh_wt2_15m = safe_fetch_float(i.get('wt2_15m', 0), 0.0)
                 _mh_wt15m_against = (is_long and _mh_wt1_15m < _mh_wt2_15m) or (not is_long and _mh_wt1_15m > _mh_wt2_15m)
-                if _wt3m_against and _mh_wt15m_against:
+                if _mh_wt15m_against:
                     _mh_hedge_side = "SHORT" if is_long else "LONG"
                     _mh_hedge_pk = f"{account_key}:{symbol}_{_mh_hedge_side}"
                     _mh_hedge_pos = await trade_manager.get_position(_mh_hedge_pk, max_age_s=5.0)
@@ -21718,7 +21737,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         else:
                             _mh_he = getattr(trade_manager, 'hedge_engine', None)
                             _mh_qty = abs(safe_fetch_float(getattr(position, 'positionAmt', 0.0), 0.0))
-                            logger.critical(f"🛡️ [MANDATORY_HEDGE] {position_key}: gain={_pp_gain:.2f}% < {_mh_gain_thr}% wt_3m+wt_15m against — firing hedge qty={_mh_qty:.6f}")
+                            logger.critical(f"🛡️ [MANDATORY_HEDGE] {position_key}: gain={_pp_gain:.2f}% < {_mh_gain_thr}% wt1_15m against — firing hedge qty={_mh_qty:.6f}")
                             _mh_ts = time.time()
                             try:
                                 if trade_manager.redis_manager:

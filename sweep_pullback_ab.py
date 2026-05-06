@@ -24,11 +24,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-os.environ["V8_SWEEP_MODE"] = "1"
+# Do NOT set V8_SWEEP_MODE here — it replaces builtins.print at import time
+# and silences all output from this script. The engine handles its own verbosity.
 os.environ["V8_RATE_GUARD_DISABLED"] = "1"
 
 import config
 import metrics_guard
+
+def _log(msg: str) -> None:
+    sys.stderr.write(f"[sweep_pullback_ab] {msg}\n")
+    sys.stderr.flush()
 
 START_DATE = "2022-01-01"
 ACCOUNT = "ang"

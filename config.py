@@ -703,6 +703,8 @@ class Config:
     #   if hedge already active → close primary IMMEDIATELY (don't bleed further)
     # Signal-driven (not %-based) — fires in process_position EARLY before other paths.
     UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True
+    UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED: int = 2  # N of 4 HTF (15m/1h/4h/D) must agree before force-closing origin when hedge active
+    UNDERWATER_HOC_USDC_MAKER_BYPASS: bool = True  # USDC perp + MICRO_SCALP_USDC_MAKER_ENABLED = 3m ok to close+reenter (zero maker fee)
     # USER 2026-05-05 (LUNC -65% incident on ang): catastrophic-loss safety net.
     # Even with hedging, positions reached -65% because hedges kept getting closed (HEDGE_BANDAID_OFF)
     # while the underlying short bled unbounded. These two caps prevent "ridiculous holds":
@@ -729,7 +731,7 @@ class Config:
     # (3m+1h) which missed the 1000LUNCUSDT case where 15m was friendly to the
     # loser but 3m had already flipped against it. Trigger lives at
     # ez_positions_quick.py:5044-5048.
-    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = False  # 2026-05-06: reverted to 15m-OR-(3m+1h). Backtest winner -0.5%/15m. 3m-alone was causing premature hedges.
     # Companion: peak-decay nuke. When hedge gain peaks >1% then drops back to 0.5% → close before
     # going negative. Default True per the historical "exist as SHORT as possible, NEVER close at a loss"
     # paragraph at ez_positions_quick.py:5385 — this is the "before negative" half of that rule.
@@ -1117,7 +1119,7 @@ class Config:
     # hedge-of-hedge, already-hedged, in-flight dedup. Rule re-enabled with multi-TF WT gate.
     # NEVER DISABLED via `if False:` — tune only via these switches.
     OBLIGATORY_HEDGE_ENABLED: bool = True                # FOREVER RULE — never False in live
-    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.25         # trigger when gain below this
+    OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5           # 2026-05-06: -0.25→-0.5 per HEDGE_BANDAID_BACKTEST winner. trigger when gain below this
     OBLIGATORY_HEDGE_PCT: float = 1.0                    # hedge size (1.0 = 100%)
     # Per-TF enables (VALIDATED 2026-04-17 60d test on 8 bleeding inf shorts):
     # best=3m+1h both required (47% precision, +359% cumulative PnL proxy, +0.19% avg).
@@ -1146,8 +1148,9 @@ class Config:
     # Unconditional same-symbol hedge when gain < threshold regardless of WT direction.
     # Catches positions where HTF is still aligned (so OBLIGATORY_HEDGE WT gate never fires)
     # but price has been bleeding for a long time (MOVEUSDT: -13%, no hedge, 1 month open).
+    MANDATORY_HEDGE_GAIN_THRESHOLD_PCT: float = -0.5    # 2026-05-06: wt1_15m-gated hedge fires when gain < this (was getattr default -0.05%)
     MANDATORY_HEDGE_ON_NEGATIVE_ENABLED: bool = True   # ⚠️ DEATH PENALTY — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
-    MANDATORY_HEDGE_HARD_THRESHOLD_PCT: float = -2.0   # unconditional hedge at -2% (WT-gated fires at -0.25%)
+    MANDATORY_HEDGE_HARD_THRESHOLD_PCT: float = -2.0   # unconditional hedge at -2% (WT-gated fires at -0.5%)
     # ═══ HEDGE MAX AGE (2026-04-17) — user rule: "minutes max hours never days" ═══
     # Every open hedge must close by this age cap regardless of WT state. Safety net for
     # stuck hedges when WT-flip close rule fails to fire (e.g., loser's wt flat for hours).

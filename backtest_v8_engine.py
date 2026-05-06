@@ -1735,6 +1735,173 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if gain > getattr(pos, 'max_gain', 0):
                     pos.max_gain = gain
 
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-7: RIDICULOUS_LOSS_PCT — mirror ez_manage.py:20529
+        # Force-close any position whose gain <= RIDICULOUS_LOSS_PCT (-15% default).
+        # Bypasses UNIVERSAL_NOLOSS_GATE (reason string contains RIDICULOUS_LOSS).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'RIDICULOUS_HOLD_GUARD_ENABLED', True)):
+            _rl_loss_cap = float(getattr(config, 'RIDICULOUS_LOSS_PCT', -15.0))
+            for _rl_pk, _rl_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_rl_pos, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _rl_gain = float(getattr(_rl_pos, 'gain', 0) or 0)
+                if _rl_gain <= _rl_loss_cap:
+                    _rl_sym = getattr(_rl_pos, 'symbol', '') or (_rl_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _rl_pk else _rl_pk[:-5] if _rl_pk.endswith('_LONG') else _rl_pk[:-6])
+                    _rl_px = price_cache.get(_rl_sym, 0)
+                    if _rl_px <= 0:
+                        continue
+                    _rl_is_long = _rl_pk.endswith('_LONG')
+                    _rl_side = 'SELL' if _rl_is_long else 'BUY'
+                    _rl_ps = 'LONG' if _rl_is_long else 'SHORT'
+                    _rl_qty = abs(float(getattr(_rl_pos, 'positionAmt', 0)))
+                    _rl_why = f'RIDICULOUS_LOSS_BACKTEST_g{_rl_gain:.2f}%_cap{_rl_loss_cap:.1f}%'
+                    v8_logger.warning(f"[RIDICULOUS_LOSS_BACKTEST] {_rl_pk}: gain={_rl_gain:.2f}% <= {_rl_loss_cap}%, force-closing at {_rl_px}")
+                    try:
+                        await trade_manager.execute_trade_action(account_key=account_key, position_key=_rl_pk, symbol=_rl_sym, quantity=_rl_qty, current_price=_rl_px, side=_rl_side, position_side=_rl_ps, action='CLOSE', reason=_rl_why, is_full_close=True, is_hedge=False)
+                    except Exception as _rl_err:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[RIDICULOUS_LOSS_BACKTEST_ERR] {_rl_pk}: {_rl_err}")
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-8: UNDERWATER_HEDGE_OR_CLOSE — mirror ez_manage.py:20664
+        # If position pnl<0 AND wt1_15m against AND hedge active AND ≥2 of 4 HTF agree → force-close origin.
+        # If position pnl<0 AND wt1_15m against AND no hedge AND gain < MANDATORY_HEDGE threshold → fire hedge.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_ENABLED', True)):
+            _uh_bt_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.5))
+            _uh_bt_htf_req = int(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED', 2))
+            _uh_bt_cd_dict = trade_manager.__dict__.setdefault('_bt_underwater_cd', {})
+            _uh_bt_cd_sec = float(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_COOLDOWN_SEC', 60.0))
+            _uh_bt_bar_sec = 60.0  # approximate bar duration (15m bars → 900s; use 60s for cooldown compat)
+            for _uh_pk, _uh_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_uh_pos, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _uh_gain = float(getattr(_uh_pos, 'gain', 0) or 0)
+                if _uh_gain >= 0:
+                    continue
+                # Cooldown: skip if fired within last cooldown window (approximate via step count)
+                _uh_last_step = _uh_bt_cd_dict.get(_uh_pk, -9999)
+                if step - _uh_last_step < max(1, int(_uh_bt_cd_sec / 60)):
+                    continue
+                _uh_sym = getattr(_uh_pos, 'symbol', '') or (_uh_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _uh_pk else _uh_pk[:-5] if _uh_pk.endswith('_LONG') else _uh_pk[:-6])
+                _uh_ind = indicator_cache.get(_uh_sym, {})
+                if not _uh_ind:
+                    continue
+                _uh_w1_15m = float(_uh_ind.get('wt1_15m', 0) or 0)
+                _uh_w2_15m = float(_uh_ind.get('wt2_15m', 0) or 0)
+                if _uh_w1_15m == 0 and _uh_w2_15m == 0:
+                    continue
+                _uh_is_long = _uh_pk.endswith('_LONG')
+                _uh_against_15m = (_uh_w1_15m < _uh_w2_15m) if _uh_is_long else (_uh_w1_15m > _uh_w2_15m)
+                if not _uh_against_15m:
+                    continue
+                # Check hedge active via tracker_manager
+                _uh_tm = getattr(trade_manager, 'tracker_manager', None)
+                _uh_active = bool(_uh_tm) and any(
+                    (h.get('losing_position_key') == _uh_pk or h.get('hedge_for') == _uh_pk)
+                    for h in (getattr(_uh_tm, 'active_hedges', None) or []))
+                _uh_px = price_cache.get(_uh_sym, 0)
+                if _uh_px <= 0:
+                    continue
+                _uh_qty = abs(float(getattr(_uh_pos, 'positionAmt', 0)))
+                _uh_side = 'SELL' if _uh_is_long else 'BUY'
+                _uh_ps = 'LONG' if _uh_is_long else 'SHORT'
+                if not _uh_active and _uh_gain < _uh_bt_thr:
+                    # No hedge — fire hedge via scan_and_hedge_losers (DISC-4 overlap)
+                    if getattr(config, 'HEDGE_MODE', False) and account_key in getattr(config, 'HEDGE_ACCOUNTS', []):
+                        _uh_bt_cd_dict[_uh_pk] = step
+                        v8_logger.warning(f"[UNDERWATER_HEDGE_OR_CLOSE_BACKTEST] {_uh_pk}: gain={_uh_gain:.2f}% wt15m against, no hedge — triggering hedge scan")
+                        try:
+                            await hedge_engine.scan_and_hedge_losers(account_key)
+                        except Exception as _uh_he_err:
+                            if step < 10 or step % 1000 == 0:
+                                v8_logger.error(f"[UNDERWATER_HOC_HEDGE_ERR] {_uh_pk}: {_uh_he_err}")
+                elif _uh_active:
+                    # Hedge active — check HTF agreement for force-close of origin
+                    _uh_htf_pairs = [('wt1_15m', 'wt2_15m'), ('wt1_1h', 'wt2_1h'), ('wt1_4h', 'wt2_4h'), ('wt1_D', 'wt2_D')]
+                    _uh_htf_count = 0
+                    for _uhh1_k, _uhh2_k in _uh_htf_pairs:
+                        _uhh1 = float(_uh_ind.get(_uhh1_k, 0) or 0)
+                        _uhh2 = float(_uh_ind.get(_uhh2_k, 0) or 0)
+                        if _uhh1 == 0 and _uhh2 == 0:
+                            continue
+                        if (_uh_is_long and _uhh1 < _uhh2) or (not _uh_is_long and _uhh1 > _uhh2):
+                            _uh_htf_count += 1
+                    if _uh_htf_count >= _uh_bt_htf_req:
+                        _uh_bt_cd_dict[_uh_pk] = step
+                        _uh_reason = f'UNDERWATER_HEDGE_OR_CLOSE_BACKTEST_wt15m{_uh_w1_15m:.1f}vs{_uh_w2_15m:.1f}_HTF{_uh_htf_count}_g{_uh_gain:.2f}%'
+                        v8_logger.warning(f"[UNDERWATER_HEDGE_OR_CLOSE_BACKTEST] {_uh_pk}: gain={_uh_gain:.2f}% hedge active HTF {_uh_htf_count}/4 >= {_uh_bt_htf_req} — FORCE CLOSE origin")
+                        try:
+                            await trade_manager.execute_trade_action(account_key=account_key, position_key=_uh_pk, symbol=_uh_sym, quantity=_uh_qty, current_price=_uh_px, side=_uh_side, position_side=_uh_ps, action='CLOSE', reason=_uh_reason, is_full_close=True, is_hedge=False)
+                        except Exception as _uh_cl_err:
+                            if step < 10 or step % 1000 == 0:
+                                v8_logger.error(f"[UNDERWATER_HOC_CLOSE_ERR] {_uh_pk}: {_uh_cl_err}")
+
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-4: OBLIGATORY_HEDGE — mirror ez_manage.py:14071
+        # When UNIVERSAL_NOLOSS_GATE blocks a close, live fires a hedge if:
+        #   gain <= OBLIGATORY_HEDGE_MIN_LOSS_PCT (-0.25% default)
+        #   AND wt against on (3m OR 15m) + (1h)  [≥2 of enabled TFs]
+        #   AND no existing hedge for this pk
+        # In backtest: run per-bar for all underwater positions (NOLOSS gate fires before check_exit).
+        # ═══════════════════════════════════════════════════════════════════════════
+        if bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)) and \
+           getattr(config, 'HEDGE_MODE', False) and account_key in getattr(config, 'HEDGE_ACCOUNTS', []):
+            _oh_bt_min = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
+            _oh_bt_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
+            _oh_bt_cd_dict = trade_manager.__dict__.setdefault('_bt_obligatory_hedge_cd', {})
+            for _oh_pk, _oh_pos in list(trade_manager.positions.items()):
+                if abs(getattr(_oh_pos, 'positionAmt', 0)) < 0.0001:
+                    continue
+                _oh_gain = float(getattr(_oh_pos, 'gain', 0) or 0)
+                if _oh_gain > _oh_bt_min:
+                    continue
+                # Cooldown: fire at most once per ~5 bars per position
+                _oh_last_step = _oh_bt_cd_dict.get(_oh_pk, -9999)
+                if step - _oh_last_step < 5:
+                    continue
+                _oh_sym = getattr(_oh_pos, 'symbol', '') or (_oh_pk.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in _oh_pk else _oh_pk[:-5] if _oh_pk.endswith('_LONG') else _oh_pk[:-6])
+                _oh_ind = indicator_cache.get(_oh_sym, {})
+                if not _oh_ind:
+                    continue
+                # Check if hedge already active for this position
+                _oh_tm = getattr(trade_manager, 'tracker_manager', None)
+                _oh_hedge_active = bool(_oh_tm) and any(
+                    (h.get('losing_position_key') == _oh_pk or h.get('hedge_for') == _oh_pk)
+                    for h in (getattr(_oh_tm, 'active_hedges', None) or []))
+                if _oh_hedge_active:
+                    continue
+                _oh_is_long = _oh_pk.endswith('_LONG')
+                _oh_use = {
+                    '3m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_3M', True)),
+                    '1m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1M', False)),
+                    '15m': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_15M', False)),
+                    '1h': bool(getattr(config, 'OBLIGATORY_HEDGE_WT_USE_1H', True)),
+                }
+                _oh_wt_against = 0
+                _oh_tfs_enabled = 0
+                for _oh_tf in ('1m', '3m', '15m', '1h'):
+                    if not _oh_use[_oh_tf]:
+                        continue
+                    _oh_tfs_enabled += 1
+                    _ow1 = float(_oh_ind.get(f'wt1_{_oh_tf}', 0) or 0)
+                    _ow2 = float(_oh_ind.get(f'wt2_{_oh_tf}', 0) or 0)
+                    if _ow1 == 0 and _ow2 == 0:
+                        continue
+                    if _oh_is_long:
+                        _oh_wt_against += int(_ow1 < _ow2)
+                    else:
+                        _oh_wt_against += int(_ow1 > _ow2)
+                if _oh_tfs_enabled > 0 and _oh_wt_against >= _oh_bt_req:
+                    _oh_bt_cd_dict[_oh_pk] = step
+                    v8_logger.warning(f"[OBLIGATORY_HEDGE_BACKTEST] {_oh_pk}: gain={_oh_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} — scan_and_hedge_losers")
+                    try:
+                        await hedge_engine.scan_and_hedge_losers(account_key)
+                    except Exception as _oh_err:
+                        if step < 10 or step % 1000 == 0:
+                            v8_logger.error(f"[OBLIGATORY_HEDGE_BACKTEST_ERR] {_oh_pk}: {_oh_err}")
+
         # Clear reduce cooldowns per bar (each bar = 3-15 min in real time)
         if hasattr(ez_manage, '_recent_reduces'):
             ez_manage._recent_reduces.clear()
@@ -2914,6 +3081,42 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _existing_amt = abs(getattr(_existing, 'positionAmt', 0)) if _existing else 0
             if _existing_amt < 0.0001:
                 return "BLOCKED_ALREADY_CLOSED"
+        # ═══════════════════════════════════════════════════════════════════════════
+        # DISC-6: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:13998
+        # Live execute_now blocks any close at loss unless reason bypasses the gate.
+        # Bypass reasons: RIDICULOUS_LOSS, UNDERWATER_HEDGE_OR_CLOSE, STRUCTURAL_RANGE_SHIFT, LIQUIDATION, is_hedge.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_reduce:
+            _is_hedge_en = _en_kw.get('is_hedge', False)
+            _ung_active_en = getattr(tm_mod.config, 'UNIVERSAL_NOLOSS_GATE', True) if hasattr(tm_mod, 'config') else True
+            if _ung_active_en and not _is_hedge_en:
+                _reason_up_en = reason.upper()
+                _ung_bypass_en = (
+                    'LIQUIDATION' in _reason_up_en
+                    or 'RIDICULOUS_LOSS' in _reason_up_en
+                    or 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_up_en
+                    or 'STRUCTURAL_RANGE_SHIFT' in _reason_up_en
+                )
+                if not _ung_bypass_en:
+                    _ung_bypass_reasons_en = getattr(tm_mod.config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or [] if hasattr(tm_mod, 'config') else []
+                    for _brk_en in _ung_bypass_reasons_en:
+                        if _brk_en and _brk_en.upper() in _reason_up_en:
+                            _ung_bypass_en = True
+                            break
+                if not _ung_bypass_en:
+                    # Compute real gain to decide if we're actually at a loss
+                    _en_pos = manager.position_manager.positions.get(position_key) if manager.position_manager else None
+                    if _en_pos:
+                        _en_entry = float(getattr(_en_pos, 'entry_price', 0) or 0)
+                        _en_is_long = (position_side == 'LONG')
+                        _en_comm_buf = float(getattr(tm_mod.config, 'COMMISSION_BUFFER_PCT', 0.10)) if hasattr(tm_mod, 'config') else 0.10
+                        if _en_entry > 0 and px > 0:
+                            _en_real_gain = ((px - _en_entry) / _en_entry * 100) if _en_is_long else ((_en_entry - px) / _en_entry * 100)
+                        else:
+                            _en_real_gain = float(getattr(_en_pos, 'gain', 0) or 0)
+                        if _en_real_gain < _en_comm_buf:
+                            v8_logger.info(f"[UNIVERSAL_NOLOSS_GATE_BACKTEST] {position_key}: blocking {action} reason={reason[:60]} gain={_en_real_gain:.2f}%")
+                            return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_BACKTEST"
         # SWEEPABLE EXIT GATES: block specific exit reasons when config says disabled
         # This allows the sweep to isolate each exit condition's contribution.
         if is_reduce and reason:
