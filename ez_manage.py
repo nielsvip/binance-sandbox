@@ -20654,7 +20654,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         original_positionAmt=0.0, side=_db_open_side, position_side=_db_open_pos_side,
                         quantity=_db_open_qty, old_price=current_price,
                         unique_id=f"DC_BB_D_BREAK_OPEN_{int(time.time())}",
-                        reason=f'DC_BB_D_BREAK_REVERSE_open_{_db_band}_{_db_break_dir}',
+                        reason=f'DC_BB_D_BREAK_REVERSE_open_{_db_band}_{_db_event}',
                         is_full_close=False, action='OPEN')
                     trade_manager.processing_keys.discard(position_key)
                     return f"{EvalStatus.ACTION_TAKEN}:DC_BB_D_BREAK_REVERSED"

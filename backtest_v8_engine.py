@@ -1853,6 +1853,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 10 or step % 1000 == 0:
                     v8_logger.error(f"[V8_REENTRY2_EPQ_ERR] step={step} err={_re_epq_err}")
 
+        # PROFIT-REDUCE PULLBACK REENTRY (Fixes A+B+C — 2026-05-06)
+        # Catches the case where a LONG was profit-reduced at a pump top and price corrected.
+        # reentry_enforcement_loop (live-only) misses this; backtest must call it explicitly.
+        # Gate: REENTRY_PROFIT_PULLBACK_ENABLED=False (default) — sweep to validate first.
+        if getattr(config, 'REENTRY_PROFIT_PULLBACK_ENABLED', False):
+            try:
+                from ez_reentry_pullback import evaluate_profit_pullback_reentry as _ppb_eval
+                await _ppb_eval(trade_manager, config)
+            except Exception as _ppb_err:
+                if step < 10 or step % 1000 == 0:
+                    v8_logger.error(f"[V8_PPB_REENTRY_ERR] step={step} err={_ppb_err}")
+
         # check_exit_candidates (REAL)
         active_pks = [pk for pk, pos in trade_manager.positions.items()
                       if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
