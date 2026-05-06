@@ -713,6 +713,10 @@ class Config:
     RIDICULOUS_HOLD_GUARD_ENABLED: bool = True
     RIDICULOUS_LOSS_PCT: float = -15.0    # absolute loss cap — never exceed this
     RIDICULOUS_HOLD_HOURS: float = 48.0   # 2 days max underwater duration
+    # USER 2026-05-06 (1000LUNC -18% incident): when DC/BB Daily band breaks (UP or DOWN),
+    # close any wrong-side position and immediately open opposite. Reverse AGAIN if same level
+    # crossed back (per-sym state tracked in trade_manager._dc_bb_d_break_state).
+    DC_BB_D_BREAK_REVERSE_ENABLED: bool = True
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
@@ -911,6 +915,7 @@ class Config:
         'RIDICULOUS_HOLD',                # RIDICULOUS_HOLD_age{X}h_cap48h_g{X}% — held too long
         'RIDICULOUS_LOSS',                # RIDICULOUS_LOSS_g{X}%_cap-15.0% — beyond catastrophic
         'UNDERWATER_HEDGE_OR_CLOSE',      # wt1_3m flipped against + already hedged + still bleeding
+        'DC_BB_D_BREAK_REVERSE',          # 2026-05-06 user mandate (LUNC -18%): D-band break/cross-back wrong-side close
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

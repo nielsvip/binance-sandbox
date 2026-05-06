@@ -13768,7 +13768,12 @@ class MultiAccountTradeManager:
             _reason_upper = str(reason or '').upper()
             _v3_urgent_close = ('SCALP_V3_OPEN_MAX_LOSS_CUT' in _reason_upper or
                                  'SCALP_V3_OPEN_PROTECTIVE_EXIT' in _reason_upper or
-                                 'SCALP_V3_OPEN_BE_STOP_AUG' in _reason_upper)
+                                 'SCALP_V3_OPEN_BE_STOP_AUG' in _reason_upper or
+                                 # 2026-05-06 USER MANDATE — emergency safety closes bypass cooldown.
+                                 'DC_BB_D_BREAK_REVERSE' in _reason_upper or
+                                 'RIDICULOUS_HOLD' in _reason_upper or
+                                 'RIDICULOUS_LOSS' in _reason_upper or
+                                 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_upper)
             if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close:
                 logger.warning(f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}")
                 return f"BLOCKED_HARD_REDUCE_LOCK_{_since_red:.0f}s"
@@ -13972,9 +13977,19 @@ class MultiAccountTradeManager:
                                     _nb_dc_broken = True
                             except Exception:
                                 pass
-                        if not _nb_dc_broken:
+                        # 2026-05-06 USER MANDATE — emergency safety closes bypass NEWBORN_PROTECT.
+                        _nb_reason_up = (reason or '').upper()
+                        _nb_emergency = (
+                            'DC_BB_D_BREAK_REVERSE' in _nb_reason_up
+                            or 'RIDICULOUS_HOLD' in _nb_reason_up
+                            or 'RIDICULOUS_LOSS' in _nb_reason_up
+                            or 'UNDERWATER_HEDGE_OR_CLOSE' in _nb_reason_up
+                        )
+                        if not _nb_dc_broken and not _nb_emergency:
                             logger.critical(f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({reason[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at dc_3m extreme")
                             return f"BLOCKED_NEWBORN_PROTECT_{_nb_age_s:.0f}s"
+                        elif _nb_emergency:
+                            logger.warning(f"⚠️ [NEWBORN_EMERGENCY_BYPASS] {position_key}: Allowing {action} despite {_nb_age_s:.0f}s age — emergency safety reason ({reason[:60]})")
                         else:
                             logger.warning(f"⚠️ [NEWBORN_DC_BREAK] {position_key}: Allowing {action} despite {_nb_age_s:.0f}s age — DC 3m structure broken (price={old_price})")
         # ═══ UNIVERSAL NO-LOSS GATE (2026-04-10) ═══════════════════════════════════
@@ -14322,6 +14337,7 @@ class MultiAccountTradeManager:
                     or 'RIDICULOUS_HOLD' in _reason_up_drain
                     or 'RIDICULOUS_LOSS' in _reason_up_drain
                     or 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_up_drain
+                    or 'DC_BB_D_BREAK_REVERSE' in _reason_up_drain   # 2026-05-06 user mandate
                 )
                 if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper() and not _drain_bypass:
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
@@ -20550,6 +20566,100 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 return f"{EvalStatus.ACTION_TAKEN}:RIDICULOUS_HOLD_GUARD_CLOSED"
             except Exception as _rh_err:
                 logger.error(f"🛑 [RIDICULOUS_HOLD_CLOSE_ERR] {position_key}: {_rh_err}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # DC_BB_D_BREAK_REVERSE — USER 2026-05-06 mandate (1000LUNC -18% incident):
+    # When Daily DC or BB band BREAKS or CROSSES BACK:
+    #   close > dc_high_D_prev OR close > bb_upper_D_prev → break-UP → close SHORT, open LONG
+    #   close < dc_low_D_prev  OR close < bb_lower_D_prev → break-DN → close LONG, open SHORT
+    # CROSS-BACK reversal (user 2026-05-06 follow-up): track last break direction+level.
+    # If last_break='UP' AND close drops back below that level → reverse again (close LONG, open SHORT).
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'DC_BB_D_BREAK_REVERSE_ENABLED', True)):
+        try:
+            _db_ind = await ii(trade_manager, symbol)
+        except Exception:
+            _db_ind = {}
+        if _db_ind:
+            _db_close = safe_fetch_float(_db_ind.get('close'), current_price) or current_price
+            _db_dc_hi_d = safe_fetch_float(_db_ind.get('dc_high_D_prev', _db_ind.get('dc_high_D')), 0)
+            _db_dc_lo_d = safe_fetch_float(_db_ind.get('dc_low_D_prev', _db_ind.get('dc_low_D')), 0)
+            _db_bb_up_d = safe_fetch_float(_db_ind.get('bb_upper_D'), 0)
+            _db_bb_lo_d = safe_fetch_float(_db_ind.get('bb_lower_D'), 0)
+            _db_is_long = (position_side == 'LONG')
+            _db_break_up = (_db_dc_hi_d > 0 and _db_close > _db_dc_hi_d) or (_db_bb_up_d > 0 and _db_close > _db_bb_up_d)
+            _db_break_dn = (_db_dc_lo_d > 0 and _db_close < _db_dc_lo_d) or (_db_bb_lo_d > 0 and _db_close < _db_bb_lo_d)
+            # Per-symbol break-state tracking (cross-back detection)
+            _db_state = trade_manager.__dict__.setdefault('_dc_bb_d_break_state', {})
+            _db_sym_st = _db_state.get(symbol, {'last_dir': None, 'last_level': 0.0, 'last_band': ''})
+            _db_cross_back_to_short = False
+            _db_cross_back_to_long = False
+            if _db_break_up:
+                # Update state: last broken UP through this level
+                _db_lvl = _db_dc_hi_d if (_db_dc_hi_d > 0 and _db_close > _db_dc_hi_d) else _db_bb_up_d
+                _db_band_now = 'DC' if (_db_dc_hi_d > 0 and _db_close > _db_dc_hi_d) else 'BB'
+                _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_lvl, 'last_band': _db_band_now}
+            elif _db_break_dn:
+                _db_lvl = _db_dc_lo_d if (_db_dc_lo_d > 0 and _db_close < _db_dc_lo_d) else _db_bb_lo_d
+                _db_band_now = 'DC' if (_db_dc_lo_d > 0 and _db_close < _db_dc_lo_d) else 'BB'
+                _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_lvl, 'last_band': _db_band_now}
+            else:
+                # No fresh break — check cross-back of last-known break level
+                if _db_sym_st.get('last_dir') == 'UP' and _db_sym_st.get('last_level', 0) > 0:
+                    if _db_close < _db_sym_st['last_level']:
+                        _db_cross_back_to_short = True  # was UP, now back down → flip to SHORT
+                        # Update state — broken DOWN through that level
+                        _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC')}
+                elif _db_sym_st.get('last_dir') == 'DOWN' and _db_sym_st.get('last_level', 0) > 0:
+                    if _db_close > _db_sym_st['last_level']:
+                        _db_cross_back_to_long = True  # was DOWN, now back up → flip to LONG
+                        _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC')}
+            # Determine if position is on WRONG side
+            #   SHORT during break-UP or cross-back-to-LONG → wrong (should be LONG)
+            #   LONG during break-DOWN or cross-back-to-SHORT → wrong (should be SHORT)
+            _db_should_be_long = _db_break_up or _db_cross_back_to_long
+            _db_should_be_short = _db_break_dn or _db_cross_back_to_short
+            _db_wrong = (_db_is_long and _db_should_be_short) or ((not _db_is_long) and _db_should_be_long)
+            if _db_wrong:
+                _db_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                _db_close_side = 'SELL' if _db_is_long else 'BUY'
+                _db_open_pos_side = 'SHORT' if _db_is_long else 'LONG'
+                _db_open_side = 'SELL' if _db_open_pos_side == 'SHORT' else 'BUY'
+                if _db_break_up: _db_event = 'BREAK_UP'
+                elif _db_break_dn: _db_event = 'BREAK_DOWN'
+                elif _db_cross_back_to_long: _db_event = 'CROSSBACK_TO_LONG'
+                elif _db_cross_back_to_short: _db_event = 'CROSSBACK_TO_SHORT'
+                else: _db_event = 'UNKNOWN'
+                _db_band = _db_state.get(symbol, {}).get('last_band', 'DC')
+                logger.error(f"🔄 [DC_BB_D_BREAK_REVERSE] {position_key}: {_db_event} (band={_db_band}) "
+                             f"close={_db_close:.6f} dc_hi_D={_db_dc_hi_d:.6f} dc_lo_D={_db_dc_lo_d:.6f} bb_up_D={_db_bb_up_d:.6f} bb_lo_D={_db_bb_lo_d:.6f} "
+                             f"→ CLOSE wrong {position_side} + signal opposite")
+                try:
+                    # 1. Close the wrong-side position
+                    await trade_manager.execute_now(
+                        position_key=position_key, account_key=account_key, symbol=symbol,
+                        original_positionAmt=_db_pos_amt, side=_db_close_side, position_side=position_side,
+                        quantity=_db_pos_amt, old_price=current_price,
+                        unique_id=f"DC_BB_D_BREAK_{int(time.time())}",
+                        reason=f'DC_BB_D_BREAK_REVERSE_close_{_db_band}_{_db_event}',
+                        is_full_close=True, action='CLOSE')
+                    # 2. Open opposite side (small foothold — let normal augment scale up).
+                    # base_min_qty is defined LATER in process_position; compute inline.
+                    _db_base_min_qty = trade_manager.min_qty.get(symbol, 0.0001) if hasattr(trade_manager, 'min_qty') else 0.0001
+                    _db_min_pos_qty = max(config.MIN_POSITION_SIZE / current_price, _db_base_min_qty * 1.2)
+                    _db_open_qty = _db_min_pos_qty
+                    _db_open_pk = f"{account_key}:{symbol}_{_db_open_pos_side}"
+                    await trade_manager.execute_now(
+                        position_key=_db_open_pk, account_key=account_key, symbol=symbol,
+                        original_positionAmt=0.0, side=_db_open_side, position_side=_db_open_pos_side,
+                        quantity=_db_open_qty, old_price=current_price,
+                        unique_id=f"DC_BB_D_BREAK_OPEN_{int(time.time())}",
+                        reason=f'DC_BB_D_BREAK_REVERSE_open_{_db_band}_{_db_break_dir}',
+                        is_full_close=False, action='OPEN')
+                    trade_manager.processing_keys.discard(position_key)
+                    return f"{EvalStatus.ACTION_TAKEN}:DC_BB_D_BREAK_REVERSED"
+                except Exception as _db_err:
+                    logger.error(f"🔄 [DC_BB_D_BREAK_REVERSE_ERR] {position_key}: {_db_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # UNDERWATER_HEDGE_OR_CLOSE — User 2026-05-05 mandate (loss prevention):
     # If position pnl<0 AND wt1_3m flipped against trade AND no active hedge → fire hedge.
