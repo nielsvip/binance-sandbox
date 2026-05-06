@@ -14261,8 +14261,23 @@ class MultiAccountTradeManager:
                 if sma_200_15m > 0 and current_price > sma_200_15m:
                     max_short_size = config.START_POSITION_SIZE
                     if real_notional >= max_short_size:
-                        logger.warning(f"🛑 [SHORT_SMA_GATE] {position_key}: BLOCKED short augment — price {current_price:.4f} > sma_200_15m {sma_200_15m:.4f}, already ${real_notional:.0f} >= ${max_short_size:.0f}")
-                        return "BLOCKED_SHORT_ABOVE_SMA200_15m"
+                        # 2026-05-06 ZECUSDC: extreme-overbought override — short the demise of parabolic moves.
+                        # rsi_4h ≥ 80 + rsi_D ≥ 75 + bb%B_4h ≥ 1.0 → allow SHORT augment despite price > SMA200.
+                        _eob_pass = False
+                        if bool(getattr(config, 'EXTREME_OB_OS_OVERRIDE_ENABLED', True)):
+                            _eob_r4 = safe_fetch_float(i.get('rsi_4h', 50), 50)
+                            _eob_rd = safe_fetch_float(i.get('rsi_D', 50), 50)
+                            _eob_bb = safe_fetch_float(i.get('bb_pct_b_4h', 0.5), 0.5)
+                            _eob_pass = (_eob_r4 >= float(getattr(config, 'EXTREME_OB_RSI_4H_MIN', 80.0))
+                                         and _eob_rd >= float(getattr(config, 'EXTREME_OB_RSI_D_MIN', 75.0))
+                                         and _eob_bb >= float(getattr(config, 'EXTREME_OB_BB_PCT_B_4H_MIN', 1.0)))
+                            if _eob_pass:
+                                logger.warning(f"🌟 [SHORT_SMA_GATE_EXTREME_OB_OVERRIDE] {position_key}: "
+                                               f"rsi_4h={_eob_r4:.1f} rsi_D={_eob_rd:.1f} bb%B_4h={_eob_bb:.2f} "
+                                               f"→ ALLOWING short augment despite price {current_price:.4f} > sma_200_15m {sma_200_15m:.4f}")
+                        if not _eob_pass:
+                            logger.warning(f"🛑 [SHORT_SMA_GATE] {position_key}: BLOCKED short augment — price {current_price:.4f} > sma_200_15m {sma_200_15m:.4f}, already ${real_notional:.0f} >= ${max_short_size:.0f}")
+                            return "BLOCKED_SHORT_ABOVE_SMA200_15m"
             if abs(original_positionAmt - current_real_amt) > max(original_positionAmt * 0.05, 0.001) and original_positionAmt > 0:
                 logger.warning(f"🛑 [EXECUTE_ABORT] Stale Data for {position_key}. Thought: {original_positionAmt}, Real: {current_real_amt}")
                 if self.tracker_manager:
@@ -20663,21 +20678,39 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             except Exception as _w15_err:
                                 logger.error(f"🛡️ [WT15M_AGAINST_FORCE_HEDGE_ERR] {position_key}: {_w15_err} — falling to force-close")
                         else:
-                            # Hedge already on but bleed continues + wt1_15m against → force close primary
-                            _w15_side_close = 'SELL' if _w15_is_long else 'BUY'
-                            logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE] {position_key}: wt1_15m={_w15_w1:.1f}/{_w15_w2:.1f} against + hedge active → FORCE CLOSE")
-                            try:
-                                await trade_manager.execute_now(
-                                    position_key=position_key, account_key=account_key, symbol=symbol,
-                                    original_positionAmt=_w15_pos_amt, side=_w15_side_close, position_side=position_side,
-                                    quantity=_w15_pos_amt, old_price=current_price,
-                                    unique_id=f"WT15M_FORCE_{int(time.time())}",
-                                    reason=f'WT15M_AGAINST_FORCE_CLOSE_w1{_w15_w1:.1f}_w2{_w15_w2:.1f}',
-                                    is_full_close=True, action='CLOSE')
-                                trade_manager.processing_keys.discard(position_key)
-                                return f"{EvalStatus.ACTION_TAKEN}:WT15M_AGAINST_FORCE_CLOSED"
-                            except Exception as _w15_cl_err:
-                                logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE_ERR] {position_key}: {_w15_cl_err}")
+                            # 2026-05-06 ZECUSDC: skip force-close on parabolic — 15m WT will repeatedly
+                            # diverge from price during a strong trend; let it ride instead of whipsawing.
+                            _w15_skip = False
+                            if bool(getattr(config, 'PARABOLIC_PROTECTION_ENABLED', True)):
+                                _pp_r4w = safe_fetch_float(_w15_ind.get('rsi_4h', 50), 50)
+                                _pp_r1w = safe_fetch_float(_w15_ind.get('rsi_1h', 50), 50)
+                                _pp_bb4w = safe_fetch_float(_w15_ind.get('bb_pct_b_4h', 0.5), 0.5)
+                                _pp_up_w = (_pp_r4w >= float(getattr(config, 'PARABOLIC_RSI_4H_MIN', 70.0))
+                                            and _pp_r1w >= float(getattr(config, 'PARABOLIC_RSI_1H_MIN', 65.0))
+                                            and _pp_bb4w >= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MIN', 0.90)))
+                                _pp_dn_w = (_pp_r4w <= float(getattr(config, 'PARABOLIC_RSI_4H_MAX', 30.0))
+                                            and _pp_r1w <= float(getattr(config, 'PARABOLIC_RSI_1H_MAX', 35.0))
+                                            and _pp_bb4w <= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MAX', 0.10)))
+                                if (_w15_is_long and _pp_up_w) or ((not _w15_is_long) and _pp_dn_w):
+                                    _w15_skip = True
+                                    logger.warning(f"🌟 [WT15M_FORCE_CLOSE_PARABOLIC_BYPASS] {position_key}: "
+                                                   f"rsi_4h={_pp_r4w:.1f} rsi_1h={_pp_r1w:.1f} bb%B_4h={_pp_bb4w:.2f} → skip force-close, let trend run")
+                            if not _w15_skip:
+                                # Hedge already on but bleed continues + wt1_15m against → force close primary
+                                _w15_side_close = 'SELL' if _w15_is_long else 'BUY'
+                                logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE] {position_key}: wt1_15m={_w15_w1:.1f}/{_w15_w2:.1f} against + hedge active → FORCE CLOSE")
+                                try:
+                                    await trade_manager.execute_now(
+                                        position_key=position_key, account_key=account_key, symbol=symbol,
+                                        original_positionAmt=_w15_pos_amt, side=_w15_side_close, position_side=position_side,
+                                        quantity=_w15_pos_amt, old_price=current_price,
+                                        unique_id=f"WT15M_FORCE_{int(time.time())}",
+                                        reason=f'WT15M_AGAINST_FORCE_CLOSE_w1{_w15_w1:.1f}_w2{_w15_w2:.1f}',
+                                        is_full_close=True, action='CLOSE')
+                                    trade_manager.processing_keys.discard(position_key)
+                                    return f"{EvalStatus.ACTION_TAKEN}:WT15M_AGAINST_FORCE_CLOSED"
+                                except Exception as _w15_cl_err:
+                                    logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE_ERR] {position_key}: {_w15_cl_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # RIDICULOUS_HOLD_GUARD — User 2026-05-05 mandate (LUNC -65% incident on ang):
     # Catastrophic-loss safety net. Even with hedging, positions can bleed unbounded
@@ -20777,6 +20810,23 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _db_should_be_long = _db_break_up or _db_cross_back_to_long
             _db_should_be_short = _db_break_dn or _db_cross_back_to_short
             _db_wrong = (_db_is_long and _db_should_be_short) or ((not _db_is_long) and _db_should_be_long)
+            # 2026-05-06 ZECUSDC missed-trend incident: don't fight a parabolic move with daily-band cross-back exits.
+            # On extreme overbought (LONG) or extreme oversold (SHORT), let the trend run.
+            if _db_wrong and bool(getattr(config, 'PARABOLIC_PROTECTION_ENABLED', True)):
+                _pp_r4 = safe_fetch_float(_db_ind.get('rsi_4h', 50), 50)
+                _pp_r1 = safe_fetch_float(_db_ind.get('rsi_1h', 50), 50)
+                _pp_bb4 = safe_fetch_float(_db_ind.get('bb_pct_b_4h', 0.5), 0.5)
+                _pp_up = (_pp_r4 >= float(getattr(config, 'PARABOLIC_RSI_4H_MIN', 70.0))
+                          and _pp_r1 >= float(getattr(config, 'PARABOLIC_RSI_1H_MIN', 65.0))
+                          and _pp_bb4 >= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MIN', 0.90)))
+                _pp_dn = (_pp_r4 <= float(getattr(config, 'PARABOLIC_RSI_4H_MAX', 30.0))
+                          and _pp_r1 <= float(getattr(config, 'PARABOLIC_RSI_1H_MAX', 35.0))
+                          and _pp_bb4 <= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MAX', 0.10)))
+                if (_db_is_long and _pp_up) or ((not _db_is_long) and _pp_dn):
+                    logger.warning(f"🌟 [DC_BB_D_BREAK_PARABOLIC_BYPASS] {position_key}: "
+                                   f"rsi_4h={_pp_r4:.1f} rsi_1h={_pp_r1:.1f} bb_pct_b_4h={_pp_bb4:.2f} "
+                                   f"→ skipping cross-back close on parabolic {'UP' if _db_is_long else 'DOWN'}trend, let it ride")
+                    _db_wrong = False
             if _db_wrong:
                 _db_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                 _db_close_side = 'SELL' if _db_is_long else 'BUY'

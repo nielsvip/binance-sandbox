@@ -719,6 +719,27 @@ class Config:
     # close any wrong-side position and immediately open opposite. Reverse AGAIN if same level
     # crossed back (per-sym state tracked in trade_manager._dc_bb_d_break_state).
     DC_BB_D_BREAK_REVERSE_ENABLED: bool = True
+    # USER 2026-05-06 (ZECUSDC +94% week / max gain $0.70 / 6× DC_CROSSBACK closes today):
+    # PARABOLIC PROTECTION — let the trend run on extreme momentum instead of whipsawing
+    # exits/reentries. Applies to: DC_BB_D_BREAK_REVERSE, WT15M_AGAINST_FORCE_CLOSE,
+    # MANDATORY_REENTRY K-extreme block. Confluence required: rsi_4h + rsi_1h + bb_pct_b_4h.
+    PARABOLIC_PROTECTION_ENABLED: bool = True
+    PARABOLIC_RSI_4H_MIN: float = 70.0
+    PARABOLIC_RSI_1H_MIN: float = 65.0
+    PARABOLIC_BB_PCT_B_4H_MIN: float = 0.90
+    PARABOLIC_RSI_4H_MAX: float = 30.0
+    PARABOLIC_RSI_1H_MAX: float = 35.0
+    PARABOLIC_BB_PCT_B_4H_MAX: float = 0.10
+    # USER 2026-05-06: when extreme overbought, allow SHORT entry/augment to fire even on a
+    # rising ticker (override SHORT_SMA_GATE) — so we can short the demise of parabolic moves
+    # instead of being locked out by trend filters. Mirror for extreme oversold + LONG.
+    EXTREME_OB_OS_OVERRIDE_ENABLED: bool = True
+    EXTREME_OB_RSI_4H_MIN: float = 80.0
+    EXTREME_OB_RSI_D_MIN: float = 75.0
+    EXTREME_OB_BB_PCT_B_4H_MIN: float = 1.0
+    EXTREME_OS_RSI_4H_MAX: float = 20.0
+    EXTREME_OS_RSI_D_MAX: float = 25.0
+    EXTREME_OS_BB_PCT_B_4H_MAX: float = 0.0
     # USER 2026-05-06: wt1_15m flipped against trade → fire hedge IMMEDIATELY (no matter what).
     # If hedge already active and bleed continues → close primary. 30s per-position cooldown.
     WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = True

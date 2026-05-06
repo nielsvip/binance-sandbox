@@ -2925,6 +2925,24 @@ class AdvancedSignalRater:
                     _mr_kx_block = (is_long and k_3m >= _mr_k_hi) or (not is_long and k_3m <= _mr_k_lo)
                 else:
                     _mr_kx_block = False
+                # 2026-05-06 ZECUSDC: parabolic override — K-extreme on a confirmed parabolic
+                # move is the SIGNAL to ride, not a reason to block reentry. After we sell too early,
+                # reentry is OBLIGATORY when trend continues per user mandate.
+                if _mr_kx_block and bool(getattr(config, 'PARABOLIC_PROTECTION_ENABLED', True)):
+                    _mr_pp_r4 = float(ind.get('rsi_4h', 50) or 50)
+                    _mr_pp_r1 = float(ind.get('rsi_1h', 50) or 50)
+                    _mr_pp_bb = float(ind.get('bb_pct_b_4h', 0.5) or 0.5)
+                    _mr_pp_up = (_mr_pp_r4 >= float(getattr(config, 'PARABOLIC_RSI_4H_MIN', 70.0))
+                                 and _mr_pp_r1 >= float(getattr(config, 'PARABOLIC_RSI_1H_MIN', 65.0))
+                                 and _mr_pp_bb >= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MIN', 0.90)))
+                    _mr_pp_dn = (_mr_pp_r4 <= float(getattr(config, 'PARABOLIC_RSI_4H_MAX', 30.0))
+                                 and _mr_pp_r1 <= float(getattr(config, 'PARABOLIC_RSI_1H_MAX', 35.0))
+                                 and _mr_pp_bb <= float(getattr(config, 'PARABOLIC_BB_PCT_B_4H_MAX', 0.10)))
+                    if (is_long and _mr_pp_up) or ((not is_long) and _mr_pp_dn):
+                        logger.warning(f"🌟[MANDATORY_REENTRY_PARABOLIC_BYPASS] {position_key}: "
+                                       f"rsi_4h={_mr_pp_r4:.1f} rsi_1h={_mr_pp_r1:.1f} bb%B_4h={_mr_pp_bb:.2f} "
+                                       f"k_3m={k_3m:.0f} → bypassing K-extreme block, reentry OBLIGATORY on parabolic continuation")
+                        _mr_kx_block = False
                 if _mr_kx_block:
                     logger.warning(f"🛡️[MANDATORY_REENTRY_BLOCKED_K_EXTREME] {position_key}: k_3m={k_3m:.0f} {'>='+str(_mr_k_hi) if is_long else '<='+str(_mr_k_lo)} — refusing reentry at extreme K (would buy top / sell bottom)")
                 elif _mr_min_signal or _mr_is_cont:
