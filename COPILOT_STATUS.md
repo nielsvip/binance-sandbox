@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-06 05:52:59 UTC
+# Copilot Status — 2026-05-06 06:08:33 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T05:50:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T05:50:32
-- **STALE_INDICATORS** [tradier]  — 2026-05-06T05:51:33
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T05:51:33
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T05:51:33
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T05:51:33
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T05:51:34
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T05:51:34
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T05:52:37
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T05:52:37
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:06:06
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:06:06
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:07:09
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:07:09
+- **STALE_INDICATORS** [tradier]  — 2026-05-06T06:08:10
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T06:08:10
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T06:08:10
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T06:08:10
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:08:12
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:08:12
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 15 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.7%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.9%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +3.3%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-13.9%
-- HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +1.3%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-14.2%
+- HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +1.2%
 - HELD: **IBIT** LONG (tradier) peak +3.2%, now +-0.6%
 
 - WATCHING: **USTCUSDT** SHORT (crypto) peaked +24.5%, exited 0m ago
@@ -55,4 +55,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (291min)
+- [MEDIUM] tradier_prices.py running but log stale (307min)
