@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-06 13:07:25 UTC
+# Copilot Status — 2026-05-06 13:22:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:04:27
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T13:05:30
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T13:05:30
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:05:30
-- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-05-06T13:06:31
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T13:06:31
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T13:06:31
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T13:06:34
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T13:06:34
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:06:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:20:12
+- **BIG_LOSER** [tradier] trb:USO_LONG — 2026-05-06T13:21:13
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T13:21:13
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T13:21:13
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T13:21:14
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T13:21:14
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:21:14
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T13:22:16
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-06T13:22:16
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T13:22:16
 
 ## Missed Trades (trader comparison)
 
@@ -30,9 +30,9 @@ _None_
 **Held:** 5 | **Watching for reentry:** 9 | **Reentered:** 0
 
 - HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-3.7%
-- HELD: **GOOGL** LONG (tradier) peak +12.0%, now +3.2%
+- HELD: **GOOGL** LONG (tradier) peak +12.0%, now +3.1%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-14.7%
-- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-1.0%
+- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-0.7%
 - HELD: **IBIT** LONG (tradier) peak +3.2%, now +0.7%
 
 - WATCHING: **USTCUSDT** SHORT (crypto) peaked +24.5%, exited 0m ago
@@ -49,9 +49,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 29
-- [HIGH] ez_indicators.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
+**Issues (last 1h):** 28
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
 - [HIGH] ez_prices.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
+- [HIGH] ez_indicators.py is NOT running

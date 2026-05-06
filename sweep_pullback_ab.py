@@ -186,6 +186,47 @@ def _trades_to_metrics(trades: list, label: str) -> dict:
     }
 
 
+CHECKPOINT_PATH = ROOT / "data" / "sweep_results" / "pullback_ab_checkpoint.json"
+
+
+def _save_checkpoint(variant_trades: dict, completed: set) -> None:
+    CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "variant_trades": {k: v for k, v in variant_trades.items()},
+        "completed": list(completed),
+        "start_date": START_DATE,
+        "symbols": VALIDATION_SYMBOLS,
+    }
+    tmp = CHECKPOINT_PATH.with_suffix(".tmp")
+    with open(tmp, "w") as f:
+        json.dump(data, f)
+    tmp.rename(CHECKPOINT_PATH)
+    print(f"[sweep_pullback_ab] Checkpoint saved: {CHECKPOINT_PATH}", flush=True)
+
+
+def _load_checkpoint() -> tuple[dict, set]:
+    if not CHECKPOINT_PATH.exists():
+        return {v["label"]: [] for v in PULLBACK_VARIANTS}, set()
+    try:
+        with open(CHECKPOINT_PATH) as f:
+            data = json.load(f)
+        if data.get("start_date") != START_DATE or data.get("symbols") != VALIDATION_SYMBOLS:
+            print(f"[sweep_pullback_ab] Checkpoint mismatch (different start_date/symbols) — ignoring", flush=True)
+            return {v["label"]: [] for v in PULLBACK_VARIANTS}, set()
+        variant_trades = {v["label"]: [] for v in PULLBACK_VARIANTS}
+        for k, v in data.get("variant_trades", {}).items():
+            if k in variant_trades:
+                variant_trades[k] = v
+        completed = set(tuple(x) for x in data.get("completed", []))
+        print(f"[sweep_pullback_ab] Resuming from checkpoint: {len(completed)} (sym,variant) pairs done", flush=True)
+        for sym_lbl in sorted(completed):
+            print(f"[sweep_pullback_ab]   SKIP (checkpoint) {sym_lbl[0]}/{sym_lbl[1]}", flush=True)
+        return variant_trades, completed
+    except Exception as e:
+        print(f"[sweep_pullback_ab] Checkpoint load failed ({e}) — starting fresh", flush=True)
+        return {v["label"]: [] for v in PULLBACK_VARIANTS}, set()
+
+
 async def main():
     from backtest_v8_engine import load_stores, run_simulation, get_npz_dir
 
@@ -202,24 +243,28 @@ async def main():
         print("[sweep_pullback_ab] ERROR: no crypto NPZ files found", flush=True)
         sys.exit(1)
 
+    variant_trades, completed = _load_checkpoint()
+    sym_t0 = time.time()
+
     print(
         f"[sweep_pullback_ab] Streaming {len(sym_paths)} symbols one-at-a-time "
         f"(mode={MODE} start={START_DATE} variants={len(PULLBACK_VARIANTS)})",
         flush=True,
     )
 
-    # Accumulate trades per variant across all symbols
-    variant_trades: dict[str, list] = {v["label"]: [] for v in PULLBACK_VARIANTS}
-    sym_t0 = time.time()
-
     for i, (sym, npz_path) in enumerate(sym_paths):
-        print(f"[sweep_pullback_ab] [{i+1}/{len(sym_paths)}] {sym} ...", flush=True)
+        remaining_variants = [v for v in PULLBACK_VARIANTS if (sym, v["label"]) not in completed]
+        if not remaining_variants:
+            print(f"[sweep_pullback_ab] [{i+1}/{len(sym_paths)}] {sym} — all variants done (checkpoint)", flush=True)
+            continue
+
+        print(f"[sweep_pullback_ab] [{i+1}/{len(sym_paths)}] {sym} ({len(remaining_variants)} variants remaining) ...", flush=True)
         stores_single, _ = load_stores(MODE, {sym}, START_DATE)
         if not stores_single:
             print(f"[sweep_pullback_ab]   SKIP {sym} (not in NPZ or stale)", flush=True)
             continue
 
-        for variant in PULLBACK_VARIANTS:
+        for variant in remaining_variants:
             label = variant["label"]
             _apply_overrides(variant["overrides"])
             _clear_pullback_state()
@@ -245,6 +290,8 @@ async def main():
             finally:
                 logging.disable(logging.NOTSET)
             variant_trades[label].extend(trades or [])
+            completed.add((sym, label))
+            _save_checkpoint(variant_trades, completed)
 
         del stores_single
         gc.collect()
