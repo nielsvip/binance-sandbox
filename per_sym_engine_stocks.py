@@ -201,6 +201,14 @@ class SymParamsStocks:
     LTF: str = '5m'
     K3M_FLOOR: float = 25.0             # K-zone floor — sweep
     CT_WT_VELOCITY_1H_MIN: float = 0.0
+    # USER 2026-05-06 mandate — backtest must mirror live safety guards (same as crypto).
+    BT_DC_BB_D_BREAK_REVERSE_ENABLED: bool = True
+    BT_WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = True
+    BT_ALL_TF_AGAINST_CLOSE_ENABLED: bool = True
+    BT_RIDICULOUS_HOLD_GUARD_ENABLED: bool = True
+    BT_RIDICULOUS_LOSS_PCT: float = -15.0
+    BT_RIDICULOUS_HOLD_HOURS: float = 48.0
+    BT_UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -342,6 +350,53 @@ def simulate_dual_stocks(sym: str, params: SymParamsStocks, years_back: float = 
         enter_short = np.zeros_like(enter_short)
     elif only_side == 'SHORT':
         enter_long = np.zeros_like(enter_long)
+
+    # ─── USER 2026-05-06 mandate: stocks backtest mirrors live safety guards ───
+    # Same masks as crypto engine. Stocks 5m base; subsample every 3rd to 15m grid.
+    n_15m_safety = len(tf_data['15m']['close'])
+    def _ss_5m_to_15m(arr_5m):
+        if arr_5m is None or len(arr_5m) == 0:
+            return np.zeros(n_15m_safety, dtype=bool)
+        ratio = TF_BARS_5M['15m']  # 3
+        cut = (len(arr_5m) // ratio) * ratio
+        sub = arr_5m[:cut][ratio - 1::ratio]
+        if len(sub) >= n_15m_safety: return sub[:n_15m_safety]
+        return np.concatenate([np.zeros(n_15m_safety - len(sub), dtype=bool), sub])
+    if getattr(params, 'BT_ALL_TF_AGAINST_CLOSE_ENABLED', True):
+        # Stocks NPZ has wt1/wt2 fields per TF (5m, 15m, 1h, 4h, D)
+        n_5m_loc = len(base.get('close_5m', base['close']))
+        all_against_long = np.ones(n_5m_loc, dtype=bool)
+        all_against_short = np.ones(n_5m_loc, dtype=bool)
+        for w1k, w2k in [('wt1_5m','wt2_5m'),('wt1_15m','wt2_15m'),('wt1_1h','wt2_1h'),('wt1_4h','wt2_4h'),('wt1_D','wt2_D')]:
+            w1 = base.get(w1k); w2 = base.get(w2k)
+            if w1 is None or w2 is None or len(w1) != n_5m_loc:
+                all_against_long = np.zeros(n_5m_loc, dtype=bool); break
+            all_against_long &= (w1 < w2)
+            all_against_short &= (w1 > w2)
+        leave_long = leave_long | _ss_5m_to_15m(all_against_long)
+        leave_short = leave_short | _ss_5m_to_15m(all_against_short)
+    if getattr(params, 'BT_WT15M_AGAINST_FORCE_HEDGE_ENABLED', True):
+        w1_15m = base.get('wt1_15m'); w2_15m = base.get('wt2_15m')
+        if w1_15m is not None and w2_15m is not None and len(w1_15m) == len(base.get('close_5m', base['close'])):
+            leave_long = leave_long | _ss_5m_to_15m(w1_15m < w2_15m)
+            leave_short = leave_short | _ss_5m_to_15m(w1_15m > w2_15m)
+    if getattr(params, 'BT_DC_BB_D_BREAK_REVERSE_ENABLED', True):
+        close_5m = base.get('close_5m', base['close'])
+        n_5m_loc = len(close_5m)
+        d_break_up = np.zeros(n_5m_loc, dtype=bool)
+        d_break_dn = np.zeros(n_5m_loc, dtype=bool)
+        for hk, target in [('dc_high_D', 'up'), ('bb_upper_D', 'up')]:
+            arr = base.get(hk)
+            if arr is not None and len(arr) == n_5m_loc:
+                prev = np.roll(arr, 1); prev[0] = arr[0]
+                d_break_up |= (close_5m > prev) & (prev > 0)
+        for lk, target in [('dc_low_D', 'down'), ('bb_lower_D', 'down')]:
+            arr = base.get(lk)
+            if arr is not None and len(arr) == n_5m_loc:
+                prev = np.roll(arr, 1); prev[0] = arr[0]
+                d_break_dn |= (close_5m < prev) & (prev > 0)
+        leave_short = leave_short | _ss_5m_to_15m(d_break_up)
+        leave_long = leave_long | _ss_5m_to_15m(d_break_dn)
 
     # WT for peak-protect + hedge
     h15 = tf_data['15m']['high']; l15 = tf_data['15m']['low']; c15_close = tf_data['15m']['close']

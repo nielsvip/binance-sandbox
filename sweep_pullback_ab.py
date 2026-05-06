@@ -40,13 +40,14 @@ ACCOUNT = "ang"
 CAPITAL = 10000.0
 MODE = "crypto"
 
-# Validation subset: 8 symbols (decompressed NPZ ≈ 878MB each → 7GB stores).
-# Existing S1 sweeps use 15GB → total 22GB < 30GB available. Safe.
+# Validation subset: 12 symbols (decompressed NPZ ≈ 878MB each → ~10.5GB stores).
+# S1 OOM cleared existing sweeps → 29GB free. 12 syms + overhead ≈ 14GB < 29GB. Safe.
 # Full 63-symbol sweep would be 55GB → OOM. Use this for directional validation only.
 # Results will be tagged [DIAGNOSTIC] by metrics_guard (sample floor ≥48 for PUBLISHABLE).
 VALIDATION_SYMBOLS = [
-    "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC",   # 4 USDC majors
-    "DOTUSDT", "ATOMUSDT", "SANDUSDT", "ENJUSDT",  # 4 diverse USDT
+    "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC",         # 4 USDC majors
+    "BNBUSDC", "AVAXUSDC", "XRPUSDC", "LINKUSDC",       # 4 more USDC
+    "DOTUSDT", "ATOMUSDT", "SANDUSDT", "ENJUSDT",        # 4 diverse USDT
 ]
 
 PULLBACK_VARIANTS = [

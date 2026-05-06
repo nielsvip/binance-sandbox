@@ -13786,7 +13786,9 @@ class MultiAccountTradeManager:
                                  'DC_BB_D_BREAK_REVERSE' in _reason_upper or
                                  'RIDICULOUS_HOLD' in _reason_upper or
                                  'RIDICULOUS_LOSS' in _reason_upper or
-                                 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_upper)
+                                 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_upper or
+                                 'WT15M_AGAINST' in _reason_upper or
+                                 'ALL_TF_AGAINST' in _reason_upper)
             if _since_red < _DUPLICATE_REDUCE_COOLDOWN and not _v3_urgent_close:
                 logger.warning(f"[HARD_REDUCE_LOCK] {position_key}: BLOCKED - last reduce {_since_red:.0f}s ago (need {_DUPLICATE_REDUCE_COOLDOWN}s). action={action} reason={reason}")
                 return f"BLOCKED_HARD_REDUCE_LOCK_{_since_red:.0f}s"
@@ -13997,6 +13999,8 @@ class MultiAccountTradeManager:
                             or 'RIDICULOUS_HOLD' in _nb_reason_up
                             or 'RIDICULOUS_LOSS' in _nb_reason_up
                             or 'UNDERWATER_HEDGE_OR_CLOSE' in _nb_reason_up
+                            or 'WT15M_AGAINST' in _nb_reason_up
+                            or 'ALL_TF_AGAINST' in _nb_reason_up
                         )
                         if not _nb_dc_broken and not _nb_emergency:
                             logger.critical(f"🛡️ [NEWBORN_PROTECT] {position_key}: BLOCKED {action} ({reason[:60]}) — position only {_nb_age_s:.0f}s old (need 900s) and price NOT at dc_3m extreme")
@@ -14351,6 +14355,8 @@ class MultiAccountTradeManager:
                     or 'RIDICULOUS_LOSS' in _reason_up_drain
                     or 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_up_drain
                     or 'DC_BB_D_BREAK_REVERSE' in _reason_up_drain   # 2026-05-06 user mandate
+                    or 'WT15M_AGAINST' in _reason_up_drain           # 2026-05-06 user mandate
+                    or 'ALL_TF_AGAINST' in _reason_up_drain          # 2026-05-06 user mandate
                 )
                 if not is_hedge and not is_huge and position.gain < 0.5 and position.gain > -25.0 and 'SCALP' not in action and 'QUICK' not in action and 'GAIN_GUARD' not in reason.upper() and 'FORCE' not in reason.upper() and not _drain_bypass:
                     return "BLOCKED_LOW_GAIN_DRAIN_PROTECTION"
@@ -14435,7 +14441,20 @@ class MultiAccountTradeManager:
                     _force_webhook_reduces = False
                 if is_hedge:
                     _force_webhook_reduces = False  # hedge closes MUST bypass Finandy no-loss protection
-                if ((_is_profitable_exit or _is_scalp_v3_reason or is_hedge) and not _force_webhook_reduces):
+                # 2026-05-06 USER MANDATE: safety closes go through MAKER first (place_maker_order is
+                # the PRIMARY path; webhook is the fallback). When Finandy silently rejects a webhook
+                # close, we want maker to have already attempted first.
+                _safety_close = (
+                    'RIDICULOUS_HOLD' in reason_upper
+                    or 'RIDICULOUS_LOSS' in reason_upper
+                    or 'DC_BB_D_BREAK_REVERSE' in reason_upper
+                    or 'UNDERWATER_HEDGE_OR_CLOSE' in reason_upper
+                    or 'WT15M_AGAINST' in reason_upper
+                    or 'ALL_TF_AGAINST' in reason_upper
+                )
+                if _safety_close:
+                    _force_webhook_reduces = False
+                if ((_is_profitable_exit or _is_scalp_v3_reason or is_hedge or _safety_close) and not _force_webhook_reduces):
                     logger.info(f"💰 [MAKER_EXIT] {position_key}: gain={_pos_gain:.2f}% (after fees: {_gain_after_fees:.2f}%) is_hedge={is_hedge} — using maker order (direct Binance)")
                     maker_success, executed_qty = await self.place_maker_order(account_key, position_key, symbol, current_real_amt, current_price, quantity, side, position_side, unique_id, f"MAKER_PROFIT_EXIT_{reason}")
                     if maker_success:
@@ -20534,6 +20553,127 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     if not current_price or current_price <= 0:
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
+    # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.
+    # The hedge (if open) becomes the new main trade — leave it running on the winning side.
+    # No %-gate, no underwater requirement. Same-side full-TF disagreement = trade is dead.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'ALL_TF_AGAINST_CLOSE_ENABLED', True)):
+        _at_cd_dict = trade_manager.__dict__.setdefault('_all_tf_against_cooldown', {})
+        _at_cd_sec = float(getattr(config, 'ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC', 30.0))
+        _at_recent = (now_ts - _at_cd_dict.get(position_key, 0)) < _at_cd_sec
+        if not _at_recent:
+            try:
+                _at_ind = await ii(trade_manager, symbol)
+            except Exception:
+                _at_ind = {}
+            if _at_ind:
+                _at_w1_3m = safe_fetch_float(_at_ind.get('wt1_3m'), 0)
+                _at_w2_3m = safe_fetch_float(_at_ind.get('wt2_3m'), 0)
+                _at_w1_15m = safe_fetch_float(_at_ind.get('wt1_15m'), 0)
+                _at_w2_15m = safe_fetch_float(_at_ind.get('wt2_15m'), 0)
+                _at_w1_1h = safe_fetch_float(_at_ind.get('wt1_1h'), 0)
+                _at_w2_1h = safe_fetch_float(_at_ind.get('wt2_1h'), 0)
+                _at_w1_4h = safe_fetch_float(_at_ind.get('wt1_4h'), 0)
+                _at_w2_4h = safe_fetch_float(_at_ind.get('wt2_4h'), 0)
+                _at_w1_D = safe_fetch_float(_at_ind.get('wt1_D'), 0)
+                _at_w2_D = safe_fetch_float(_at_ind.get('wt2_D'), 0)
+                _at_is_long = (position_side == 'LONG')
+                if _at_is_long:
+                    _at_against = (_at_w1_3m < _at_w2_3m and _at_w1_15m < _at_w2_15m and
+                                    _at_w1_1h < _at_w2_1h and _at_w1_4h < _at_w2_4h and
+                                    _at_w1_D < _at_w2_D)
+                else:
+                    _at_against = (_at_w1_3m > _at_w2_3m and _at_w1_15m > _at_w2_15m and
+                                    _at_w1_1h > _at_w2_1h and _at_w1_4h > _at_w2_4h and
+                                    _at_w1_D > _at_w2_D)
+                if _at_against:
+                    _at_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                    _at_close_side = 'SELL' if _at_is_long else 'BUY'
+                    _at_cd_dict[position_key] = now_ts
+                    logger.error(f"⛔ [ALL_TF_AGAINST_CLOSE] {position_key}: ALL TFs against — "
+                                 f"3m({_at_w1_3m:.1f}/{_at_w2_3m:.1f}) 15m({_at_w1_15m:.1f}/{_at_w2_15m:.1f}) "
+                                 f"1h({_at_w1_1h:.1f}/{_at_w2_1h:.1f}) 4h({_at_w1_4h:.1f}/{_at_w2_4h:.1f}) "
+                                 f"D({_at_w1_D:.1f}/{_at_w2_D:.1f}) → CLOSE primary, hedge becomes main")
+                    try:
+                        await trade_manager.execute_now(
+                            position_key=position_key, account_key=account_key, symbol=symbol,
+                            original_positionAmt=_at_pos_amt, side=_at_close_side, position_side=position_side,
+                            quantity=_at_pos_amt, old_price=current_price,
+                            unique_id=f"ALL_TF_AGAINST_{int(time.time())}",
+                            reason=f'ALL_TF_AGAINST_CLOSE_3m{_at_w1_3m:.0f}_15m{_at_w1_15m:.0f}_1h{_at_w1_1h:.0f}_4h{_at_w1_4h:.0f}_D{_at_w1_D:.0f}',
+                            is_full_close=True, action='CLOSE')
+                        # Hedge auto-becomes main: when primary closes via execute_now, the hedge
+                        # record stays in tracker.active_hedges but its losing_position_key is now
+                        # closed. The hedge keeps running on the winning side as the main exposure.
+                        # No explicit "promote hedge to main" action needed — it's already the only
+                        # remaining position on the symbol after primary close.
+                        trade_manager.processing_keys.discard(position_key)
+                        return f"{EvalStatus.ACTION_TAKEN}:ALL_TF_AGAINST_CLOSED_HEDGE_PROMOTED"
+                    except Exception as _at_err:
+                        logger.error(f"⛔ [ALL_TF_AGAINST_CLOSE_ERR] {position_key}: {_at_err}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # WT15M_AGAINST_FORCE_HEDGE — USER 2026-05-06 mandate (highest priority safety):
+    # If wt1_15m is against the trade direction → fire hedge IMMEDIATELY, no matter what.
+    # No %-gate, no underwater requirement, no cooldown beyond a 30s per-position dedup.
+    # When hedge can't fire OR already exists with bleed continuing, fall through to close.
+    # Fires BEFORE RIDICULOUS_HOLD / DC_BB_D_BREAK / UNDERWATER guards.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'WT15M_AGAINST_FORCE_HEDGE_ENABLED', True)):
+        _w15_cd_dict = trade_manager.__dict__.setdefault('_wt15m_force_hedge_cooldown', {})
+        _w15_cd_sec = float(getattr(config, 'WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC', 30.0))
+        _w15_recent = (now_ts - _w15_cd_dict.get(position_key, 0)) < _w15_cd_sec
+        if not _w15_recent:
+            try:
+                _w15_ind = await ii(trade_manager, symbol)
+            except Exception:
+                _w15_ind = {}
+            if _w15_ind:
+                _w15_w1 = safe_fetch_float(_w15_ind.get('wt1_15m'), 0)
+                _w15_w2 = safe_fetch_float(_w15_ind.get('wt2_15m'), 0)
+                if _w15_w1 != 0 or _w15_w2 != 0:
+                    _w15_is_long = (position_side == 'LONG')
+                    _w15_against = (_w15_w1 < _w15_w2) if _w15_is_long else (_w15_w1 > _w15_w2)
+                    if _w15_against:
+                        _w15_tm = getattr(trade_manager, 'tracker_manager', None)
+                        _w15_inflight = getattr(getattr(trade_manager, 'hedge_engine', None), '_hedge_same_in_flight', set())
+                        _w15_active = (
+                            (bool(_w15_tm) and any(
+                                (h.get('losing_position_key') == position_key or h.get('hedge_for') == position_key)
+                                for h in (_w15_tm.active_hedges or [])))
+                            or (position_key in _w15_inflight)
+                        )
+                        _w15_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        _w15_cd_dict[position_key] = now_ts
+                        if not _w15_active:
+                            logger.error(f"🛡️ [WT15M_AGAINST_FORCE_HEDGE] {position_key}: wt1_15m={_w15_w1:.1f} {'<' if _w15_is_long else '>'} wt2_15m={_w15_w2:.1f} → FIRING HEDGE (no matter what)")
+                            try:
+                                _w15_he = getattr(trade_manager, 'hedge_engine', None)
+                                if _w15_he is not None:
+                                    await _w15_he.execute_same_symbol_hedge(account_key, position, symbol, position_side, _w15_pos_amt, current_price)
+                                    trade_manager.processing_keys.discard(position_key)
+                                    return f"{EvalStatus.ACTION_TAKEN}:WT15M_AGAINST_HEDGE_FIRED"
+                            except Exception as _w15_err:
+                                logger.error(f"🛡️ [WT15M_AGAINST_FORCE_HEDGE_ERR] {position_key}: {_w15_err} — falling to force-close")
+                        else:
+                            # Hedge already on but bleed continues + wt1_15m against → force close primary
+                            _w15_side_close = 'SELL' if _w15_is_long else 'BUY'
+                            logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE] {position_key}: wt1_15m={_w15_w1:.1f}/{_w15_w2:.1f} against + hedge active → FORCE CLOSE")
+                            try:
+                                await trade_manager.execute_now(
+                                    position_key=position_key, account_key=account_key, symbol=symbol,
+                                    original_positionAmt=_w15_pos_amt, side=_w15_side_close, position_side=position_side,
+                                    quantity=_w15_pos_amt, old_price=current_price,
+                                    unique_id=f"WT15M_FORCE_{int(time.time())}",
+                                    reason=f'WT15M_AGAINST_FORCE_CLOSE_w1{_w15_w1:.1f}_w2{_w15_w2:.1f}',
+                                    is_full_close=True, action='CLOSE')
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:WT15M_AGAINST_FORCE_CLOSED"
+                            except Exception as _w15_cl_err:
+                                logger.error(f"🛡️ [WT15M_AGAINST_FORCE_CLOSE_ERR] {position_key}: {_w15_cl_err}")
     # ═══════════════════════════════════════════════════════════════════════════
     # RIDICULOUS_HOLD_GUARD — User 2026-05-05 mandate (LUNC -65% incident on ang):
     # Catastrophic-loss safety net. Even with hedging, positions can bleed unbounded

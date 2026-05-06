@@ -231,6 +231,15 @@ class SymParams:
     # When set, all keys are forwarded to QuickConfig before running v8 aggregators.
     # Profiler: load from override_btc_BEST.json (BTC) or override_v5_rz_loose.json (multi-sym), etc.
     BASELINE_OVERRIDES: dict = field(default_factory=dict)
+    # USER 2026-05-06 mandate — backtest must reflect live safety guards or it's worthless.
+    # Each guard is a sweepable knob; defaults match live config.py (all ON).
+    BT_DC_BB_D_BREAK_REVERSE_ENABLED: bool = True   # close wrong-side on D-band break, open opposite
+    BT_WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = True   # wt1_15m against → hedge no matter what
+    BT_ALL_TF_AGAINST_CLOSE_ENABLED: bool = True   # all TFs against → close primary, hedge promotes
+    BT_RIDICULOUS_HOLD_GUARD_ENABLED: bool = True   # gain≤-15% OR age>48h underwater → close
+    BT_RIDICULOUS_LOSS_PCT: float = -15.0
+    BT_RIDICULOUS_HOLD_HOURS: float = 48.0
+    BT_UNDERWATER_HEDGE_OR_CLOSE_ENABLED: bool = True  # gain<0 + wt1_3m against → hedge or close
     RZ_CASCADE_AT_RZ_BAND_PCT: float = 1.0
     RZ_CASCADE_WT_DELTA_MIN: float = 0.1
     RZ_CASCADE_VEL_MIN: float = 0.1
@@ -1239,6 +1248,67 @@ def simulate_dual(sym: str, params: SymParams, years_back: float = 4.0,
         enter_short = np.zeros_like(enter_short)
     elif only_side == 'SHORT':
         enter_long = np.zeros_like(enter_long)
+    # ─── USER 2026-05-06 mandate: backtest must mirror live safety guards ───
+    # Compute bar-level forced-exit masks for: ALL_TF_AGAINST, WT15M_AGAINST, DC_BB_D_BREAK_REVERSE.
+    # OR'd into the leave masks so the walker treats them as exit signals (with origin tagged).
+    n_15m_safety = len(tf_data['15m']['close'])
+    def _ss_3m_to_15m(arr_3m):
+        """Subsample 3m npz array to 15m grid by taking every 5th bar."""
+        if arr_3m is None or len(arr_3m) == 0:
+            return np.zeros(n_15m_safety, dtype=bool)
+        cut = (len(arr_3m) // 5) * 5
+        sub = arr_3m[:cut][4::5]
+        if len(sub) >= n_15m_safety: return sub[:n_15m_safety]
+        return np.concatenate([np.zeros(n_15m_safety - len(sub), dtype=bool), sub])
+    # All TF against (LONG: every TF wt1<wt2; SHORT mirror)
+    if getattr(params, 'BT_ALL_TF_AGAINST_CLOSE_ENABLED', True):
+        tf_npz_keys = [('wt1_3m','wt2_3m'),('wt1_15m','wt2_15m'),('wt1_1h','wt2_1h'),('wt1_4h','wt2_4h'),('wt1_D','wt2_D')]
+        n_3m_loc = len(base.get('close_3m', base['close']))
+        all_against_long_3m = np.ones(n_3m_loc, dtype=bool)
+        all_against_short_3m = np.ones(n_3m_loc, dtype=bool)
+        for w1k, w2k in tf_npz_keys:
+            w1 = base.get(w1k); w2 = base.get(w2k)
+            if w1 is None or w2 is None or len(w1) != n_3m_loc:
+                all_against_long_3m = np.zeros(n_3m_loc, dtype=bool); break
+            all_against_long_3m &= (w1 < w2)
+            all_against_short_3m &= (w1 > w2)
+        all_against_long_15m = _ss_3m_to_15m(all_against_long_3m)
+        all_against_short_15m = _ss_3m_to_15m(all_against_short_3m)
+        leave_long = leave_long | all_against_long_15m
+        leave_short = leave_short | all_against_short_15m
+    # WT15M against (looser than ALL_TF — just 15m)
+    if getattr(params, 'BT_WT15M_AGAINST_FORCE_HEDGE_ENABLED', True):
+        w1_15m = base.get('wt1_15m'); w2_15m = base.get('wt2_15m')
+        if w1_15m is not None and w2_15m is not None and len(w1_15m) == len(base.get('close_3m', base['close'])):
+            wt15_against_long_3m = w1_15m < w2_15m
+            wt15_against_short_3m = w1_15m > w2_15m
+            leave_long = leave_long | _ss_3m_to_15m(wt15_against_long_3m)
+            leave_short = leave_short | _ss_3m_to_15m(wt15_against_short_3m)
+    # DC_BB_D_BREAK_REVERSE — close wrong-side on D-band break
+    if getattr(params, 'BT_DC_BB_D_BREAK_REVERSE_ENABLED', True):
+        close_3m = base.get('close_3m', base['close'])
+        n_3m_loc = len(close_3m)
+        dc_hi_d = base.get('dc_high_D')
+        dc_lo_d = base.get('dc_low_D')
+        bb_up_d = base.get('bb_upper_D')
+        bb_lo_d = base.get('bb_lower_D')
+        d_break_up_3m = np.zeros(n_3m_loc, dtype=bool)
+        d_break_dn_3m = np.zeros(n_3m_loc, dtype=bool)
+        if dc_hi_d is not None and len(dc_hi_d) == n_3m_loc:
+            prev = np.roll(dc_hi_d, 1); prev[0] = dc_hi_d[0]
+            d_break_up_3m |= (close_3m > prev) & (prev > 0)
+        if dc_lo_d is not None and len(dc_lo_d) == n_3m_loc:
+            prev = np.roll(dc_lo_d, 1); prev[0] = dc_lo_d[0]
+            d_break_dn_3m |= (close_3m < prev) & (prev > 0)
+        if bb_up_d is not None and len(bb_up_d) == n_3m_loc:
+            prev = np.roll(bb_up_d, 1); prev[0] = bb_up_d[0]
+            d_break_up_3m |= (close_3m > prev) & (prev > 0)
+        if bb_lo_d is not None and len(bb_lo_d) == n_3m_loc:
+            prev = np.roll(bb_lo_d, 1); prev[0] = bb_lo_d[0]
+            d_break_dn_3m |= (close_3m < prev) & (prev > 0)
+        # Break-UP kills SHORT positions, break-DOWN kills LONG
+        leave_short = leave_short | _ss_3m_to_15m(d_break_up_3m)
+        leave_long = leave_long | _ss_3m_to_15m(d_break_dn_3m)
     # Compute wt1_15m/wt2_15m for peak-protect.
     h15 = tf_data['15m']['high']
     l15 = tf_data['15m']['low']

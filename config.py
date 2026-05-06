@@ -719,6 +719,14 @@ class Config:
     # close any wrong-side position and immediately open opposite. Reverse AGAIN if same level
     # crossed back (per-sym state tracked in trade_manager._dc_bb_d_break_state).
     DC_BB_D_BREAK_REVERSE_ENABLED: bool = True
+    # USER 2026-05-06: wt1_15m flipped against trade → fire hedge IMMEDIATELY (no matter what).
+    # If hedge already active and bleed continues → close primary. 30s per-position cooldown.
+    WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = True
+    WT15M_AGAINST_FORCE_HEDGE_COOLDOWN_SEC: float = 30.0
+    # USER 2026-05-06: ALL TFs (3m/15m/1h/4h/D) against → close primary, hedge becomes main.
+    # Strongest single signal — no other gate considered.
+    ALL_TF_AGAINST_CLOSE_ENABLED: bool = True
+    ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
@@ -918,6 +926,8 @@ class Config:
         'RIDICULOUS_LOSS',                # RIDICULOUS_LOSS_g{X}%_cap-15.0% — beyond catastrophic
         'UNDERWATER_HEDGE_OR_CLOSE',      # wt1_3m flipped against + already hedged + still bleeding
         'DC_BB_D_BREAK_REVERSE',          # 2026-05-06 user mandate (LUNC -18%): D-band break/cross-back wrong-side close
+        'WT15M_AGAINST',                  # 2026-05-06 user mandate: wt1_15m against → hedge or close NO MATTER WHAT
+        'ALL_TF_AGAINST',                 # 2026-05-06 user mandate: all TFs against → close primary, hedge becomes main
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
