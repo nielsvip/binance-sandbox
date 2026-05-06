@@ -11369,48 +11369,12 @@ class MultiAccountTradeManager:
                     if not is_long and _htf_dir_eta == 'BULL' and _htf_score_eta >= 5:
                         return f"{position_key}_BLOCKED_HTF_TREND_VETO_SHORT_htfScore={_htf_score_eta}"
             if position and action == "AUGMENT" and not _original_action_was_reentry and 'REENTRY' not in (reason or '').upper() and 'GUARANTEED_CROSS' not in (reason or '').upper() and 'GUARANTEED_BOTTOM' not in (reason or '').upper():
-                if position.gain < -0.3 and 'QUICK' not in action:
-                    _sf_atf = lambda v, d=50.0: float(v) if v is not None else d
-                    _k1m_atf = _sf_atf(i.get('stoch_k_1m')); _d1m_atf = _sf_atf(i.get('stoch_d_1m'))
-                    _k3m_atf = _sf_atf(i.get('stoch_k_3m')); _d3m_atf = _sf_atf(i.get('stoch_d_3m'))
-                    _k15m_atf = _sf_atf(i.get('stoch_k_15m'))
-                    _k1h_atf = _sf_atf(i.get('stoch_k_1h')); _d1h_atf = _sf_atf(i.get('stoch_d_1h'))
-                    _k4h_atf = _sf_atf(i.get('stoch_k_4h')); _d4h_atf = _sf_atf(i.get('stoch_d_4h'))
-                    _rsi1h_atf = _sf_atf(i.get('rsi_1h')); _rsi4h_atf = _sf_atf(i.get('rsi_4h'))
-                    if is_long:
-                        _atf_score = sum([_k1m_atf > _d1m_atf, _k3m_atf > _d3m_atf, _k15m_atf < 50 and _k3m_atf > _d3m_atf, _rsi1h_atf < 45 and _k1h_atf > _d1h_atf, _rsi4h_atf < 50 and _k4h_atf > _d4h_atf])
-                    else:
-                        _atf_score = sum([_k1m_atf < _d1m_atf, _k3m_atf < _d3m_atf, _k15m_atf > 50 and _k3m_atf < _d3m_atf, _rsi1h_atf > 55 and _k1h_atf < _d1h_atf, _rsi4h_atf > 50 and _k4h_atf < _d4h_atf])
-                    if _atf_score >= 4:
-                        logger.info(f"✅ [ALL_TF_CONFLUENCE] {position_key}: score={_atf_score}/5 OVERRIDING LOSS gate. gain={position.gain:.2f}% | k1m={_k1m_atf:.0f} k3m={_k3m_atf:.0f} k15m={_k15m_atf:.0f} rsi1h={_rsi1h_atf:.0f} rsi4h={_rsi4h_atf:.0f}")
-                    else:
-                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_LOSS (position.gain={position.gain:.2f}% < -0.3%, atf={_atf_score}/5)"
-                        logger.error(f"[exe cute_trade_acti on][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
-                        side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
-                        await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
-                        return failure_reason
                 if position.gain < -0.1 and 'QUICK' not in action:
-                    _sf_atf = lambda v, d=50.0: float(v) if v is not None else d
-                    _k1m_atf = _sf_atf(i.get('stoch_k_1m')); _d1m_atf = _sf_atf(i.get('stoch_d_1m'))
-                    _k3m_atf = _sf_atf(i.get('stoch_k_3m')); _d3m_atf = _sf_atf(i.get('stoch_d_3m'))
-                    _k15m_atf = _sf_atf(i.get('stoch_k_15m'))
-                    _k1h_atf = _sf_atf(i.get('stoch_k_1h')); _d1h_atf = _sf_atf(i.get('stoch_d_1h'))
-                    _k4h_atf = _sf_atf(i.get('stoch_k_4h')); _d4h_atf = _sf_atf(i.get('stoch_d_4h'))
-                    _rsi1h_atf = _sf_atf(i.get('rsi_1h')); _rsi4h_atf = _sf_atf(i.get('rsi_4h'))
-                    if is_long:
-                        _atf_score = sum([_k1m_atf > _d1m_atf, _k3m_atf > _d3m_atf, _k15m_atf < 50 and _k3m_atf > _d3m_atf, _rsi1h_atf < 45 and _k1h_atf > _d1h_atf, _rsi4h_atf < 50 and _k4h_atf > _d4h_atf])
-                    else:
-                        _atf_score = sum([_k1m_atf < _d1m_atf, _k3m_atf < _d3m_atf, _k15m_atf > 50 and _k3m_atf < _d3m_atf, _rsi1h_atf > 55 and _k1h_atf < _d1h_atf, _rsi4h_atf > 50 and _k4h_atf < _d4h_atf])
-                    if _atf_score >= 4:
-                        logger.info(f"✅ [ALL_TF_CONFLUENCE] {position_key}: score={_atf_score}/5 OVERRIDING NEGATIVE GAIN gate. gain={position.gain:.2f}% | k1m={_k1m_atf:.0f} k3m={_k3m_atf:.0f} k15m={_k15m_atf:.0f} rsi1h={_rsi1h_atf:.0f} rsi4h={_rsi4h_atf:.0f}")
-                    else:
-                        failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN (position.gain={position.gain:.3f}% < -0.1%, atf={_atf_score}/5)"
-                        logger.warning(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
-                        side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
-                        await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
-                        return failure_reason
-                # high_gain_bypass also fires on half_min_gain (1.5%) so pullback augments
-                # don't get killed by the downstream gain_since_last_augment check.
+                    failure_reason = f"{position_key}_{reason}_BLOCKED_AUGMENT_NOT_ALLOWED_NEGATIVE_GAIN (position.gain={position.gain:.3f}% < -0.1%)"
+                    logger.error(f"[execute_trade_action][{account_key}] {position_key}: ❌ {action} BLOCKED - {failure_reason} | qty={quantity:.6f} price={current_price:.6f} value=${quantity*current_price:.2f}")
+                    side_for_cooldown = "BUY" if position_side == "LONG" else "SELL"
+                    await self.clear_all_cooldowns_for_position(position_key, side_for_cooldown)
+                    return failure_reason
                 # PPL effective_gain: after partial close, use lowered cost basis so augment
                 # fires sooner on pullback (the captured partial profit reduces effective entry).
                 _aug_ppl_state = getattr(self, 'partial_profit_lock_state', {}).get(position_key, {})
@@ -11420,7 +11384,7 @@ class MultiAccountTradeManager:
                     logger.info(f"[PPL_AUG_EFF_GAIN] {position_key}: nominal={position.gain:.2f}% → effective={_aug_pos_gain:.2f}% (eff_entry={_aug_ppl_eff_entry:.6f})")
                 else:
                     _aug_pos_gain = position.gain
-                high_gain_bypass = _aug_pos_gain > 0.5 * config.MIN_GAIN
+                high_gain_bypass = False
                 min_gain_gap = 0.3 * config.MIN_GAIN
                 if position.entry_price > 0:
                     gain_since_last_augment = _aug_pos_gain - ((position.last_augmentation_price - position.entry_price) / position.entry_price) if is_long else _aug_pos_gain - ((position.entry_price - position.last_augmentation_price) / position.entry_price)
@@ -13544,6 +13508,27 @@ class MultiAccountTradeManager:
                     if _lpb_amt > 0 and _lpb_gain < _lpb_min:
                         logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
                         return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain_raw:.2f}_EFF{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
+                    _lpb_act_is_augment = 'AUGMENT' in _lpb_act_up and 'REENTRY' not in _lpb_act_up
+                    if _lpb_amt > 0 and _lpb_act_is_augment:
+                        # Augment-level gate: n-th augment requires n × MIN_GAIN.
+                        # Use positionAmt / initial_quantity to estimate augment depth.
+                        _lpb_init_qty = float(getattr(_lpb_pos, 'initial_quantity', 0) or 0)
+                        if _lpb_init_qty > 0:
+                            _lpb_aug_n = max(1, round(_lpb_amt / _lpb_init_qty))
+                            _lpb_req = _lpb_aug_n * _lpb_min
+                            if _lpb_gain < _lpb_req:
+                                logger.critical(f"🔨 [AUGMENT_LEVEL_GATE] {position_key}: augment#{_lpb_aug_n} needs {_lpb_req:.1f}% ({_lpb_aug_n}×MIN_GAIN={_lpb_min:.1f}%) got {_lpb_gain:.2f}% — BLOCKED. action={action}")
+                                return f"BLOCKED_AUGMENT_LEVEL{_lpb_aug_n}_need{_lpb_req:.1f}_got{_lpb_gain:.2f}"
+                        # Entry-price projection gate: verify post-augment gain stays positive.
+                        # Prevents weighted-entry creep from turning a gaining position into a loser.
+                        _lpb_ep = float(getattr(_lpb_pos, 'entry_price', 0) or 0)
+                        if _lpb_ep > 0 and quantity > 0 and old_price > 0:
+                            _lpb_is_long = position_key.endswith('_LONG')
+                            _lpb_new_entry = (_lpb_amt * _lpb_ep + quantity * old_price) / (_lpb_amt + quantity)
+                            _lpb_post_gain = ((old_price - _lpb_new_entry) / _lpb_new_entry * 100 if _lpb_is_long else (_lpb_new_entry - old_price) / _lpb_new_entry * 100)
+                            if _lpb_post_gain < 0:
+                                logger.critical(f"🔨 [ENTRY_PRICE_GATE] {position_key}: aug {quantity:.4f}@{old_price:.6g} → new_entry={_lpb_new_entry:.6g} post_gain={_lpb_post_gain:.2f}%<0 — would slip into loss. BLOCKED. action={action}")
+                                return f"BLOCKED_ENTRY_PRICE_GATE_post_gain{_lpb_post_gain:.2f}"
             except Exception as _lpb_e:
                 logger.debug(f"[LOSING_POSITION_HARD_BLOCK] {position_key}: check err {type(_lpb_e).__name__}: {_lpb_e}")
         # ═══════════════════════════════════════════════════════════════════════════
