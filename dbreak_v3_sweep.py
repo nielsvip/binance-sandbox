@@ -19,6 +19,19 @@ Approach:
 
 Output: data/sweep_results/dbreak_v3_TS.csv  (one row per param config × side)
         data/scalp_dbreak_overrides/best_<side>.json  (highest sharpe per side)
+
+User 2026-05-06 mandates incorporated:
+  1. Commissions: COMMISSION_RT_PCT (0.08%) subtracted from every trade — see simulate_v3_on_events.
+  2. WT_ALWAYS_POSITIONED toggle: when wt1_3m supports direction, MUST have a position
+     (no flat periods on favorable WT for tradeable_keys).
+  3. EXIT_USE_BAR_PATTERN toggle: exit on LH/LL bar pattern (LONG) or HH/HL (SHORT) instead
+     of K-extreme. IMMEDIATE_REENTRY toggle: when price crosses back over exit price within
+     REENTRY_WINDOW_BARS, reenter ATONCE.
+  4. ez_orderbook: NOT backtestable (live-only data; no historical replay). Winning configs
+     from this sweep should add ez_orderbook depth/imbalance gates AT LIVE-APPLICATION TIME
+     (in scalp_v3_live.py / ez_manage), e.g. only fire entry if order_book_imbalance > X
+     and only fire exit if order_book_wall_distance < Y. Wiring those gates is a separate
+     live-code edit, not a backtest sim.
 """
 from __future__ import annotations
 
@@ -89,18 +102,32 @@ def _safe(npz, key, n, default=0.0):
 
 def simulate_v3_on_events(sym: str, side: str, params: Dict, event_indices: np.ndarray,
                           npz: dict, n: int) -> List[Dict]:
-    """For each event index, simulate v3 entry+exit; return trade records."""
+    """For each event index, simulate v3 entry+exit; return trade records.
+
+    User 2026-05-06 mandates incorporated:
+      1. COMMISSION_RT_PCT (0.08% RT) subtracted from every pnl_pct.
+      2. WT_ALWAYS_POSITIONED: when wt1_3m supports direction, MUST have a position
+         (no flat periods on favorable WT — sym in tradeable_keys must hold).
+      3. EXIT_USE_BAR_PATTERN: exit on bar pattern (LH/LL for LONG, HH/HL for SHORT)
+         instead of K-extreme. IMMEDIATE_REENTRY: when price crosses back over exit price
+         after exit → reenter ATONCE (no cooldown).
+      4. ez_orderbook: NOT backtestable historically (live-only data). Flagged for
+         live application — see USE_ORDERBOOK note.
+    """
     close = npz['close_3m'].astype(np.float64)
     high = npz['high_3m'].astype(np.float64)
     low = npz['low_3m'].astype(np.float64)
+    open_ = npz.get('open_3m', npz['close_3m']).astype(np.float64) if 'open_3m' in npz else close
     k_1m = _safe(npz, 'stoch_k_1m', n, 50)
     k_3m = _safe(npz, 'stoch_k_3m', n, 50)
     k_15m = _safe(npz, 'stoch_k_15m', n, 50)
     k_1h = _safe(npz, 'stoch_k_1h', n, 50)
     k_4h = _safe(npz, 'stoch_k_4h', n, 50)
+    wt1_3m = _safe(npz, 'wt1_3m', n, 0)
+    wt2_3m = _safe(npz, 'wt2_3m', n, 0)
     ts = npz['timestamps'].astype(np.int64) if 'timestamps' in npz else np.arange(n)
 
-    # v3 entry gates (vectorized)
+    # v3 entry gates
     K_1M_MAX = float(params.get('SCALP_V3_ENTRY_K_1M_MAX', 20))
     K_3M_MAX = float(params.get('SCALP_V3_ENTRY_K_3M_MAX', 40))
     K_15M_MAX = float(params.get('SCALP_V3_ENTRY_K_15M_MAX', 65))
@@ -112,44 +139,98 @@ def simulate_v3_on_events(sym: str, side: str, params: Dict, event_indices: np.n
     EXIT_K_15M_MIN = float(params.get('SCALP_V3_EXIT_15M_K_MIN', 95))
     MAX_HOLD_MIN = float(params.get('SCALP_V3_MAX_HOLD_MIN', 5.0))
     max_hold_bars = max(1, int(MAX_HOLD_MIN / 3.0))
+    # USER 2026-05-06 toggles
+    WT_ALWAYS_POSITIONED = bool(params.get('WT_ALWAYS_POSITIONED', False))
+    EXIT_USE_BAR_PATTERN = bool(params.get('EXIT_USE_BAR_PATTERN', False))
+    IMMEDIATE_REENTRY = bool(params.get('IMMEDIATE_REENTRY', False))
+    REENTRY_PRICE_TOL_PCT = float(params.get('REENTRY_PRICE_TOL_PCT', 0.05))  # cross within 0.05% of exit
+    REENTRY_WINDOW_BARS = int(params.get('REENTRY_WINDOW_BARS', 30))           # 30 bars × 3m = 90 min watch
 
+    # WT direction filter
+    wt_for_long = wt1_3m > wt2_3m
+    wt_for_short = wt1_3m < wt2_3m
+
+    # K-based entry (default)
     if side == 'LONG':
-        entry_ok = ((k_1m < K_1M_MAX) & (k_3m < K_3M_MAX) & (k_15m < K_15M_MAX)
-                    & (k_1h < K_1H_MAX) & (k_4h < K_4H_MAX))
-        exit_ok = (k_15m > EXIT_K_15M_MIN)
+        entry_k = ((k_1m < K_1M_MAX) & (k_3m < K_3M_MAX) & (k_15m < K_15M_MAX)
+                   & (k_1h < K_1H_MAX) & (k_4h < K_4H_MAX))
+        # ALWAYS_POSITIONED: looser entry — wt support is sufficient
+        if WT_ALWAYS_POSITIONED:
+            entry_ok = entry_k | wt_for_long
+        else:
+            entry_ok = entry_k & wt_for_long
+        exit_k = (k_15m > EXIT_K_15M_MIN)
     else:
-        entry_ok = ((k_1m > (100 - K_1M_MAX)) & (k_3m > (100 - SHORT_K_3M_MAX))
-                    & (k_15m > (100 - SHORT_K_15M_MAX)) & (k_1h > (100 - SHORT_K_1H_MAX)))
-        exit_ok = (k_15m < (100 - EXIT_K_15M_MIN))
+        entry_k = ((k_1m > (100 - K_1M_MAX)) & (k_3m > (100 - SHORT_K_3M_MAX))
+                   & (k_15m > (100 - SHORT_K_15M_MAX)) & (k_1h > (100 - SHORT_K_1H_MAX)))
+        if WT_ALWAYS_POSITIONED:
+            entry_ok = entry_k | wt_for_short
+        else:
+            entry_ok = entry_k & wt_for_short
+        exit_k = (k_15m < (100 - EXIT_K_15M_MIN))
+
+    # Bar-pattern exit (HH/HL for SHORT continuation = bad for SHORT, exit; LH/LL for LONG = bad, exit)
+    h_prev = np.concatenate([[high[0]], high[:-1]])
+    l_prev = np.concatenate([[low[0]], low[:-1]])
+    hh = high > h_prev
+    ll = low < l_prev
+    lh = high < h_prev
+    hl = low > l_prev
+    if side == 'LONG':
+        # LL+LH = lower-low AND lower-high = bear bar pattern → exit LONG
+        bar_exit = ll & lh
+    else:
+        # HH+HL = higher-high AND higher-low = bull bar pattern → exit SHORT
+        bar_exit = hh & hl
+
+    exit_signal = bar_exit if EXIT_USE_BAR_PATTERN else exit_k
 
     trades = []
     for ev_i in event_indices:
         ev_i = int(ev_i)
         if ev_i + 1 >= n: continue
-        if not entry_ok[ev_i]: continue  # v3 wouldn't enter at this event bar
+        if not entry_ok[ev_i]: continue
         ep = float(close[ev_i])
         if ep <= 0: continue
-        # Find exit
+        # Walk to find exit
         x_end = min(ev_i + max_hold_bars, n - 1)
-        x_window = exit_ok[ev_i + 1:x_end + 1]
+        x_window = exit_signal[ev_i + 1:x_end + 1]
         x_idxs = np.flatnonzero(x_window)
-        if len(x_idxs):
-            xi = ev_i + 1 + int(x_idxs[0])
-        else:
-            xi = x_end
+        xi = ev_i + 1 + int(x_idxs[0]) if len(x_idxs) else x_end
         xp = float(close[xi])
         if xp <= 0: continue
-        if side == 'LONG':
-            pnl_gross = (xp - ep) / ep * 100.0
-        else:
-            pnl_gross = (ep - xp) / ep * 100.0
+        # Item 1: commission applied
+        pnl_gross = (xp - ep) / ep * 100.0 if side == 'LONG' else (ep - xp) / ep * 100.0
         pnl_net = pnl_gross - COMMISSION_RT_PCT
         trades.append({
             'sym': sym, 'side': side, 'event_i': ev_i, 'exit_i': xi,
             'entry_ts': int(ts[ev_i]), 'exit_ts': int(ts[xi]),
             'entry_price': ep, 'exit_price': xp,
-            'pnl_pct': pnl_net, 'bars_held': xi - ev_i,
+            'pnl_pct': pnl_net, 'bars_held': xi - ev_i, 'origin': 'primary',
         })
+        # Item 3: IMMEDIATE_REENTRY when price crosses back over exit price after exit
+        if IMMEDIATE_REENTRY and xi + 1 < n:
+            reenter_end = min(xi + 1 + REENTRY_WINDOW_BARS, n)
+            window_close = close[xi + 1:reenter_end]
+            tol = REENTRY_PRICE_TOL_PCT / 100.0
+            crossed = np.abs(window_close - xp) / max(xp, 1e-12) <= tol
+            cross_idxs = np.flatnonzero(crossed)
+            if len(cross_idxs):
+                re_i = xi + 1 + int(cross_idxs[0])
+                re_x_end = min(re_i + max_hold_bars, n - 1)
+                re_x_window = exit_signal[re_i + 1:re_x_end + 1]
+                re_x_idxs = np.flatnonzero(re_x_window)
+                re_xi = re_i + 1 + int(re_x_idxs[0]) if len(re_x_idxs) else re_x_end
+                re_ep = float(close[re_i]); re_xp = float(close[re_xi])
+                if re_ep > 0 and re_xp > 0:
+                    re_gross = (re_xp - re_ep) / re_ep * 100.0 if side == 'LONG' else (re_ep - re_xp) / re_ep * 100.0
+                    re_net = re_gross - COMMISSION_RT_PCT
+                    trades.append({
+                        'sym': sym, 'side': side, 'event_i': re_i, 'exit_i': re_xi,
+                        'entry_ts': int(ts[re_i]), 'exit_ts': int(ts[re_xi]),
+                        'entry_price': re_ep, 'exit_price': re_xp,
+                        'pnl_pct': re_net, 'bars_held': re_xi - re_i, 'origin': 'immediate_reentry',
+                    })
     return trades
 
 
@@ -238,6 +319,29 @@ def build_param_grid() -> List[Dict]:
         add(SCALP_V3_ENTRY_K_1M_MAX=k1, SCALP_V3_EXIT_15M_K_MIN=ex)
     for sk, mh in product([10, 20, 35], [5.0, 15.0, 60.0]):
         add(SCALP_V3_SHORT_ENTRY_K_3M_MAX=sk, SCALP_V3_MAX_HOLD_MIN=mh)
+    # USER 2026-05-06 toggles (items 2/3): WT_ALWAYS_POSITIONED, EXIT_USE_BAR_PATTERN, IMMEDIATE_REENTRY
+    # Sweep all 8 combos × a couple anchor base configs to check effect
+    base_anchors = [
+        {'SCALP_V3_ENTRY_K_1M_MAX': 20, 'SCALP_V3_MAX_HOLD_MIN': 5.0},
+        {'SCALP_V3_ENTRY_K_1M_MAX': 30, 'SCALP_V3_MAX_HOLD_MIN': 15.0},
+        {'SCALP_V3_ENTRY_K_1M_MAX': 50, 'SCALP_V3_MAX_HOLD_MIN': 60.0},
+    ]
+    for anchor in base_anchors:
+        for wt, bar, reen in product([False, True], [False, True], [False, True]):
+            d = dict(base); d.update(anchor)
+            d['WT_ALWAYS_POSITIONED'] = wt
+            d['EXIT_USE_BAR_PATTERN'] = bar
+            d['IMMEDIATE_REENTRY'] = reen
+            grid.append(d)
+    # Sweep reentry tolerance + window for IMMEDIATE_REENTRY=True
+    for tol in (0.02, 0.05, 0.10, 0.20):
+        d = dict(base); d['IMMEDIATE_REENTRY'] = True; d['EXIT_USE_BAR_PATTERN'] = True
+        d['REENTRY_PRICE_TOL_PCT'] = tol
+        grid.append(d)
+    for win in (5, 15, 30, 60):
+        d = dict(base); d['IMMEDIATE_REENTRY'] = True; d['EXIT_USE_BAR_PATTERN'] = True
+        d['REENTRY_WINDOW_BARS'] = win
+        grid.append(d)
     return grid
 
 
