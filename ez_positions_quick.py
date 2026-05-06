@@ -11657,6 +11657,17 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                                 return False, f"BLOCKED_HEDGE_PROTECT_OPPOSITE_LOSER_oppgain{_hpo_other_gain:.1f}_curgain{_hpo_cur_gain:.2f}"
     except Exception as _hpo_e:
         logger.warning(f"[HEDGE_PROTECT_OPPOSITE_LOSER_WRAPPER] guard error (fail-open): {type(_hpo_e).__name__}: {_hpo_e}")
+    # ═══ REENTRY = positionAmt==0 ONLY (user 2026-05-06) — REFUSE if non-flat ═══
+    # REENTRY is NOT an augment. Empty position has no gain. NEVER reclassify.
+    if _wrap_act_up == 'REENTRY' and position_key:
+        try:
+            _re_pos_w = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key) if hasattr(tracker_manager, 'positions_service') else None
+            _re_amt_w = abs(safe_fetch_float(getattr(_re_pos_w, 'positionAmt', 0), 0)) if _re_pos_w else 0.0
+            if _re_amt_w != 0.0:
+                logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT_WRAPPER] {position_key}: positionAmt={_re_amt_w:.8f} — REENTRY only valid on flat. reason={(reason or '')[:80]}")
+                return False, f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt_w:.8f}"
+        except Exception as _re_we:
+            logger.debug(f"[REENTRY_REFUSED_WRAPPER] {position_key}: check err {type(_re_we).__name__}: {_re_we}")
     if _wrap_is_increase and position_key:
         try:
             _wrap_pos = (tracker_manager.positions_service.positions_by_account.get(account_key, {}) or {}).get(position_key)

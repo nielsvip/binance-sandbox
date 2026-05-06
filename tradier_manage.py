@@ -8299,7 +8299,18 @@ class TradierTradeManager:
 
         position = self.get_position(position_key)
         has_local_pos = position and abs(float(getattr(position, 'positionAmt', 0))) > 0.00001
-        
+
+        # ═══ REENTRY = positionAmt==0 ONLY (user 2026-05-06) — REFUSE if non-flat ═══
+        # REENTRY is NOT an augment. AUGMENT is its own path. Empty positions have no
+        # gain so REENTRY's only valid state is positionAmt==0. NEVER reclassify.
+        if action == "REENTRY" and has_local_pos:
+            _re_amt_t = abs(float(getattr(position, 'positionAmt', 0))) if position else 0.0
+            logger.critical(f"🚫 [TRADIER_REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt_t:.6f} — REENTRY only valid on flat. reason={(reason or '')[:80]}")
+            return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt_t:.6f}"
+        if action == "REENTRY":
+            action = "OPEN"
+            is_entry_action = True
+
         # Auto-switch AUGMENT to OPEN if no position exists
         if action == "AUGMENT" and not has_local_pos:
             logger.info(f"[{position_key}] Switching AUGMENT to OPEN (No local position found)")

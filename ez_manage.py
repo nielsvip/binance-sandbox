@@ -10912,19 +10912,23 @@ class MultiAccountTradeManager:
             if position and abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) > self.min_qty.get(symbol, 0.0001):
                 logger.critical(f"[OPEN_ON_OPEN_RECLASSIFY] {position_key}: action={action} but positionAmt={position.positionAmt:.6f} > 0. Forcing AUGMENT.")
                 action = action.replace('OPEN', 'AUGMENT').replace('open', 'augment')
-        # ═══ REENTRY = GUARANTEED REBUILD — ALWAYS allowed, no threshold ═══
+        # ═══ REENTRY — STRICT positionAmt==0 ONLY (user 2026-05-06) ═══
+        # REENTRY is NOT an augment. AUGMENT is its own path (gain≥MIN_GAIN).
+        # An empty position has no gain → REENTRY's only valid state is positionAmt==0.
+        # If positionAmt > 0 (even dust) → REFUSE. Never silently convert to AUGMENT.
         _is_reentry = False
         _original_action_was_reentry = action == 'REENTRY'
         if action == 'REENTRY':
             _is_reentry = True
             if not position: position = await self.get_position(position_key)
             _re_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) if position else 0.0
-            _re_val = _re_amt * current_price if current_price > 0 else 0.0
-            action = 'OPEN' if _re_val <= safe_fetch_float(config.MIN_POSITION_SIZE, 45.0) else 'AUGMENT'
-            if action == 'OPEN':
-                is_reduce = False
-                is_augment = False
-            logger.info(f"[REENTRY_GUARANTEED] {position_key}: pos=${_re_val:.2f} — TRUE reentry (action={action})")
+            if _re_amt != 0.0:
+                logger.critical(f"🚫 [REENTRY_REFUSED_NONZERO_AMT] {position_key}: positionAmt={_re_amt:.8f} — REENTRY only valid on flat position (0.0). NEVER reclassify to AUGMENT. reason={(reason or '')[:80]}")
+                return f"BLOCKED_REENTRY_POS_AMT_NONZERO_{_re_amt:.8f}"
+            action = 'OPEN'
+            is_reduce = False
+            is_augment = False
+            logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
         # ═══ CRITICAL FIX: HARD DUPLICATE OPEN GUARD — NEVER open same position twice ═══
         # REENTRY is EXEMPT — the whole point of reentry is to rebuild a reduced position quickly.
         # 2026-04-16 FIX: REMOVED hedge exemption — was allowing unlimited hedge cascade

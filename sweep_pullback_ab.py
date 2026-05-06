@@ -39,14 +39,18 @@ os.environ["V8_RATE_GUARD_DISABLED"] = "1"
 import config
 import metrics_guard
 
-START_DATE = "2022-01-01"
+START_DATE = "2025-01-01"
 ACCOUNT = "ang"
 CAPITAL = 10000.0
 MODE = "crypto"
 
-# Empty = use all crypto symbols from NPZ dir (streams one at a time → no OOM).
-# Set to a list to restrict to a subset for faster validation runs.
-VALIDATION_SYMBOLS: list = []
+# Validation scope: 2 symbols, 2025-01-01 start (~16 months).
+# Real engine: 15.6 steps/sec × 231,816 steps = 4.1h per variant.
+# 2 syms × 4 variants = ~33h → results by end of day tomorrow. [DIAGNOSTIC n_syms=2]
+VALIDATION_SYMBOLS: list = [
+    "BTCUSDC",   # highest volume, most representative
+    "ETHUSDC",   # second major, different profile
+]
 
 PULLBACK_VARIANTS = [
     {
