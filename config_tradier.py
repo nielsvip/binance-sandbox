@@ -700,6 +700,24 @@ class TradierConfig:
     FH_MOMENTUM_DC_MAX_LONG: float = 0.5  # Sweep: 0.25-1.0 all Sharpe>1.36. 0.5 = balanced.
 
     # === EXIT ENHANCEMENTS (backtest) ===
+    # USER 2026-05-06 (ZECUSDC missed-trend mirror for tradier): PARABOLIC PROTECTION —
+    # bypass WT_CROSSUNDER_FINAL/WT_CROSSOVER_FINAL/WT_DC_EXIT closes + REENTRY_MONITOR HTF
+    # K-extreme blocks when extreme momentum confluence is on (rsi_4h + rsi_1h + bb_pct_b_4h).
+    # Mirrors the crypto patch verbatim — see config.py 2026-05-06 ZECUSDC block.
+    PARABOLIC_PROTECTION_ENABLED: bool = True
+    PARABOLIC_RSI_4H_MIN: float = 70.0
+    PARABOLIC_RSI_1H_MIN: float = 65.0
+    PARABOLIC_BB_PCT_B_4H_MIN: float = 0.90
+    PARABOLIC_RSI_4H_MAX: float = 30.0
+    PARABOLIC_RSI_1H_MAX: float = 35.0
+    PARABOLIC_BB_PCT_B_4H_MAX: float = 0.10
+    EXTREME_OB_OS_OVERRIDE_ENABLED: bool = True
+    EXTREME_OB_RSI_4H_MIN: float = 80.0
+    EXTREME_OB_RSI_D_MIN: float = 75.0
+    EXTREME_OB_BB_PCT_B_4H_MIN: float = 1.0
+    EXTREME_OS_RSI_4H_MAX: float = 20.0
+    EXTREME_OS_RSI_D_MAX: float = 25.0
+    EXTREME_OS_BB_PCT_B_4H_MAX: float = 0.0
     WT_CROSSUNDER_FINAL_ENABLED: bool = True  # T25 2026-04-14: True=0.357 vs False=0.363 (Δ=0.006) — essentially noise. Keeping True for live WT exit coverage.
     ATR_TRAIL_2X_EXIT_ENABLED: bool = False  # BACKTEST_CHANGE_T58: was True. ATR trail = #1 stock PnL destroyer (-2557% cumulative). Disabled.
     STOCH_CROSS_1H_EXIT_ENABLED: bool = True  # BACKTEST_CHANGE_T17 stoch cross on 1h triggers exit

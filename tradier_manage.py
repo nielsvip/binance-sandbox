@@ -48,6 +48,35 @@ except Exception:
     _ee_should_fire_stoch_entry = None
     _ee_should_fire_dc_entry = None
     _ee_should_fire_htf_entry = None
+# 2026-05-06 ZECUSDC parabolic protection (mirrors ez_manage / ez_positions_quick patches).
+# Returns (parabolic_up, parabolic_dn, extreme_overbought, extreme_oversold) booleans.
+# Confluence: rsi_4h + rsi_1h + bb_pct_b_4h. Pure function — never raises.
+def _parabolic_state(ind: dict, cfg) -> tuple:
+    if not bool(getattr(cfg, 'PARABOLIC_PROTECTION_ENABLED', True)):
+        return (False, False, False, False)
+    try:
+        r4 = float((ind or {}).get('rsi_4h', 50) or 50)
+        r1 = float((ind or {}).get('rsi_1h', 50) or 50)
+        rd = float((ind or {}).get('rsi_D', 50) or 50)
+        bb4 = float((ind or {}).get('bb_pct_b_4h', 0.5) or 0.5)
+        pp_up = (r4 >= float(getattr(cfg, 'PARABOLIC_RSI_4H_MIN', 70.0))
+                 and r1 >= float(getattr(cfg, 'PARABOLIC_RSI_1H_MIN', 65.0))
+                 and bb4 >= float(getattr(cfg, 'PARABOLIC_BB_PCT_B_4H_MIN', 0.90)))
+        pp_dn = (r4 <= float(getattr(cfg, 'PARABOLIC_RSI_4H_MAX', 30.0))
+                 and r1 <= float(getattr(cfg, 'PARABOLIC_RSI_1H_MAX', 35.0))
+                 and bb4 <= float(getattr(cfg, 'PARABOLIC_BB_PCT_B_4H_MAX', 0.10)))
+        eo_on = bool(getattr(cfg, 'EXTREME_OB_OS_OVERRIDE_ENABLED', True))
+        eob = (eo_on
+               and r4 >= float(getattr(cfg, 'EXTREME_OB_RSI_4H_MIN', 80.0))
+               and rd >= float(getattr(cfg, 'EXTREME_OB_RSI_D_MIN', 75.0))
+               and bb4 >= float(getattr(cfg, 'EXTREME_OB_BB_PCT_B_4H_MIN', 1.0)))
+        eos = (eo_on
+               and r4 <= float(getattr(cfg, 'EXTREME_OS_RSI_4H_MAX', 20.0))
+               and rd <= float(getattr(cfg, 'EXTREME_OS_RSI_D_MAX', 25.0))
+               and bb4 <= float(getattr(cfg, 'EXTREME_OS_BB_PCT_B_4H_MAX', 0.0)))
+        return (pp_up, pp_dn, eob, eos)
+    except Exception:
+        return (False, False, False, False)
 def _ee_reentry_boost(symbol, indicators, is_long, cfg):
     """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
     Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
@@ -4852,11 +4881,15 @@ class StockStrategy:
                 # HTF: at least 1 of 1h/4h/D against
                 _htf_against = (_wt1_1h < _wt2_1h) or (_wt1_4h < _wt2_4h) or (_wt1_D < _wt2_D)
                 if _ltf_down and _15m_confirm and _htf_against:
-                    _xu_1h = _wt1_1h < _wt2_1h
-                    _xu_4h = _wt1_4h < _wt2_4h
-                    _xu_D = _wt1_D < _wt2_D
-                    logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
-                    return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config)
+                    if _pp_up_d:
+                        logger.warning(f"🌟 [WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS] {symbol} L: parabolic uptrend → skip close, let LONG ride")
+                    else:
+                        _xu_1h = _wt1_1h < _wt2_1h
+                        _xu_4h = _wt1_4h < _wt2_4h
+                        _xu_D = _wt1_D < _wt2_D
+                        logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                        return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
             else:
                 # SHORT exit: LTF going up (against short)
                 _ltf_up = _wt1_5m > _wt2_5m
@@ -4865,11 +4898,15 @@ class StockStrategy:
                 # HTF: at least 1 of 1h/4h/D against short
                 _htf_against = (_wt1_1h > _wt2_1h) or (_wt1_4h > _wt2_4h) or (_wt1_D > _wt2_D)
                 if _ltf_up and _15m_confirm and _htf_against:
-                    _xo_1h = _wt1_1h > _wt2_1h
-                    _xo_4h = _wt1_4h > _wt2_4h
-                    _xo_D = _wt1_D > _wt2_D
-                    logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
-                    return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                    _pp_up_d, _pp_dn_d, _, _ = _parabolic_state(_d_ind or {}, config)
+                    if _pp_dn_d:
+                        logger.warning(f"🌟 [WT_CROSSOVER_FINAL_PARABOLIC_BYPASS] {symbol} S: parabolic downtrend → skip close, let SHORT ride")
+                    else:
+                        _xo_1h = _wt1_1h > _wt2_1h
+                        _xo_4h = _wt1_4h > _wt2_4h
+                        _xo_D = _wt1_D > _wt2_D
+                        logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m")
+                        return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
         # RZ EXIT standalone — fires independently when DELTA_ENGINE is OFF but RZ zones are enabled
         if not _is_opts_check and not _delta_exit_gate and getattr(config, 'RZ_EXIT_ENABLED', True) and self.trade_manager.delta_tracker:
             _rz_ind = indicators if indicators else i
@@ -4898,21 +4935,29 @@ class StockStrategy:
                 _15m_confirm = (_wt1_15m < _wt2_15m) or (_wt1_15m > 95)
                 _htf_against = (_wt1_1h < _wt2_1h) or (_wt1_4h < _wt2_4h) or (_wt1_D < _wt2_D)
                 if _ltf_down and _15m_confirm and _htf_against:
-                    _xu_1h = _wt1_1h < _wt2_1h
-                    _xu_4h = _wt1_4h < _wt2_4h
-                    _xu_D = _wt1_D < _wt2_D
-                    logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
-                    return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config)
+                    if _pp_up_x:
+                        logger.warning(f"🌟 [WT_CROSSUNDER_FINAL_PARABOLIC_BYPASS] {symbol} L (standalone): parabolic uptrend → skip close")
+                    else:
+                        _xu_1h = _wt1_1h < _wt2_1h
+                        _xu_4h = _wt1_4h < _wt2_4h
+                        _xu_D = _wt1_D < _wt2_D
+                        logger.warning(f"[WT_CROSSUNDER_FINAL] {symbol} L: 5m={_wt1_5m<_wt2_5m} 15m={_wt1_15m<_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xu_1h} 4h={_xu_4h} D={_xu_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
+                        return True, f"WT_CROSSUNDER_FINAL_5m_15m_1h{_xu_1h}_4h{_xu_4h}_D{_xu_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
             else:
                 _ltf_up = _wt1_5m > _wt2_5m
                 _15m_confirm = (_wt1_15m > _wt2_15m) or (_wt1_15m < -95)
                 _htf_against = (_wt1_1h > _wt2_1h) or (_wt1_4h > _wt2_4h) or (_wt1_D > _wt2_D)
                 if _ltf_up and _15m_confirm and _htf_against:
-                    _xo_1h = _wt1_1h > _wt2_1h
-                    _xo_4h = _wt1_4h > _wt2_4h
-                    _xo_D = _wt1_D > _wt2_D
-                    logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
-                    return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
+                    _pp_up_x, _pp_dn_x, _, _ = _parabolic_state(_xu_ind or {}, config)
+                    if _pp_dn_x:
+                        logger.warning(f"🌟 [WT_CROSSOVER_FINAL_PARABOLIC_BYPASS] {symbol} S (standalone): parabolic downtrend → skip close")
+                    else:
+                        _xo_1h = _wt1_1h > _wt2_1h
+                        _xo_4h = _wt1_4h > _wt2_4h
+                        _xo_D = _wt1_D > _wt2_D
+                        logger.warning(f"[WT_CROSSOVER_FINAL] {symbol} S: 5m={_wt1_5m>_wt2_5m} 15m={_wt1_15m>_wt2_15m}(wt1={_wt1_15m:.0f}) 1h={_xo_1h} 4h={_xo_4h} D={_xo_D} — gain={gain:.2f}% hold={hold_time_min:.0f}m (standalone)")
+                        return True, f"WT_CROSSOVER_FINAL_5m_15m_1h{_xo_1h}_4h{_xo_4h}_D{_xo_D}_g{gain:.2f}%_hold{hold_time_min:.0f}m_MANDATORY_REENTRY", qty
         # OPTIONS: exit ONLY on Daily reversal (CLAUDE.md rule, not stock ST scalping)
         _is_options_pos = hasattr(position, 'option_type') and getattr(position, 'option_type', None)
         if _is_options_pos:
@@ -4939,8 +4984,12 @@ class StockStrategy:
         if _ind_age > _stale_max:
             return False, f"STALE_DATA_age={_ind_age:.0f}s>{_stale_max}s", 0
         if _exit_score >= _exit_threshold:
-            logger.warning(f"[WT_DC_EXIT] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% {_exit_reason[:80]} → EXIT_MANDATORY_REENTRY (REENTRY_MONITOR will reopen when ALL exit conditions clear)")
-            return True, f"WT_DC_EXIT_{_exit_score:.0f}_g={gain:.2f}%_{_exit_reason[:60]}_MANDATORY_REENTRY", qty
+            _pp_up_e, _pp_dn_e, _, _ = _parabolic_state(_exit_ind or {}, config)
+            if (is_long and _pp_up_e) or ((not is_long) and _pp_dn_e):
+                logger.warning(f"🌟 [WT_DC_EXIT_PARABOLIC_BYPASS] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% — parabolic {'UP' if is_long else 'DOWN'}trend, skipping close, let trend run")
+            else:
+                logger.warning(f"[WT_DC_EXIT] {symbol} {'L' if is_long else 'S'}: score={_exit_score:.0f} gain={gain:.2f}% {_exit_reason[:80]} → EXIT_MANDATORY_REENTRY (REENTRY_MONITOR will reopen when ALL exit conditions clear)")
+                return True, f"WT_DC_EXIT_{_exit_score:.0f}_g={gain:.2f}%_{_exit_reason[:60]}_MANDATORY_REENTRY", qty
 
         # --------------------------------------------------
         # 2026-04-08: WT/DC SCORER IS THE ONLY EXIT AUTHORITY
@@ -9196,14 +9245,22 @@ class TradierTradeManager:
                                     logger.info(f"[REENTRY_MONITOR] {pk}: LONG stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need <{_kr_long_thr:.0f} and rising, {hours_since:.1f}h)")
                                     continue
                                 if side == "LONG" and (k_1h_rm > 80.0 or k_15m > 80.0):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
-                                    continue
+                                    _rm_pp_up, _rm_pp_dn, _, _ = _parabolic_state(i, config)
+                                    if _rm_pp_up:
+                                        logger.warning(f"🌟 [REENTRY_MONITOR_PARABOLIC_BYPASS] {pk}: LONG HTF overbought BUT parabolic uptrend (rsi/bb confluence) — reentry OBLIGATORY")
+                                    else:
+                                        logger.info(f"[REENTRY_MONITOR] {pk}: LONG HTF overbought BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≤80)")
+                                        continue
                                 if side == "SHORT" and not (k_5m > _kr_short_thr and k_5m < k_5m_prev):
                                     logger.info(f"[REENTRY_MONITOR] {pk}: SHORT stoch gate FAIL k5m={k_5m:.0f} prev={k_5m_prev:.0f} (need >{_kr_short_thr:.0f} and falling, {hours_since:.1f}h)")
                                     continue
                                 if side == "SHORT" and (k_1h_rm < 20.0 or k_15m < 20.0):
-                                    logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
-                                    continue
+                                    _rm_pp_up, _rm_pp_dn, _, _ = _parabolic_state(i, config)
+                                    if _rm_pp_dn:
+                                        logger.warning(f"🌟 [REENTRY_MONITOR_PARABOLIC_BYPASS] {pk}: SHORT HTF oversold BUT parabolic downtrend — reentry OBLIGATORY")
+                                    else:
+                                        logger.info(f"[REENTRY_MONITOR] {pk}: SHORT HTF oversold BLOCK k1h={k_1h_rm:.0f} k15m={k_15m:.0f} (need both ≥20)")
+                                        continue
                         elif not _p0_rescue and not _aggr_fired and not _fav_fired and not _g60_fired:
                             # ═══ SAFETY SWITCH 3: OVERDUE BYPASS GATE (2026-04-16) ═══
                             if not getattr(config, 'TRADIER_REENTRY_OVERDUE_BYPASS_ENABLED', True):
