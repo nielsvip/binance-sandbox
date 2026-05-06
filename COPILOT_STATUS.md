@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-06 06:39:29 UTC
+# Copilot Status — 2026-05-06 06:54:48 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:37:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:37:05
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:38:07
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:38:07
-- **STALE_INDICATORS** [tradier]  — 2026-05-06T06:39:07
-- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T06:39:08
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T06:39:08
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T06:39:08
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:39:09
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:39:09
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:52:34
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:52:34
+- **STALE_INDICATORS** [tradier]  — 2026-05-06T06:53:35
+- **BIG_LOSER** [tradier] trb:COPX_LONG — 2026-05-06T06:53:35
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-06T06:53:35
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-06T06:53:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:53:35
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:53:35
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-06T06:54:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-06T06:54:37
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 6 | **Watching for reentry:** 15 | **Reentered:** 0
+**Held:** 6 | **Watching for reentry:** 14 | **Reentered:** 0
 
-- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-4.0%
+- HELD: **ORDIUSDC** LONG (crypto) peak +24.2%, now +-4.4%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +3.3%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-14.0%
-- HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +1.5%
-- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-0.1%
+- HELD: **ARBUSDC** LONG (crypto) peak +7.8%, now +1.4%
+- HELD: **POLUSDT** SHORT (crypto) peak +3.5%, now +-0.2%
 - HELD: **IBIT** LONG (tradier) peak +3.2%, now +-0.6%
 
 - WATCHING: **USTCUSDT** SHORT (crypto) peaked +24.5%, exited 0m ago
@@ -56,4 +56,4 @@ _None_
 - [LOW] tradier_rankings.py is NOT running
 - [MEDIUM] tradier_manage.py for trb is NOT running
 - [MEDIUM] tradier_manage.py for trc is NOT running
-- [MEDIUM] tradier_prices.py running but log stale (338min)
+- [MEDIUM] tradier_prices.py running but log stale (353min)
