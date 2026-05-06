@@ -11626,6 +11626,9 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
     # Block CLOSE/REDUCE on a position when same-symbol opposite-side is in deep
     # loss and current gain hasn't earned enough to materially offset the loser.
     # Bypass on EMERGENCY/HARD_STOP/MAX_AGE/ORPHAN/LIQ/STRUCTURAL/AGENT/USER reasons.
+    
+    # if positionAmt > 0 and action != 'CLOSE' and action != 'REDUCE' and position.gain<=config.MIN_GAIN: return False, f"STUPID FUCKING VOMIT: {position_key}  {positionAmt} {current_price} NO GAIN AND AUGMENTING."
+
     try:
         _hpo_is_close = ('CLOSE' in _wrap_act_up) or ('REDUCE' in _wrap_act_up)
         _hpo_enabled = bool(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_ENABLED', True))
@@ -11673,7 +11676,8 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                         _wrap_mp_ts = _isop(_wrap_mp_ts)
                     except Exception:
                         _wrap_mp_ts = None
-                from datetime import datetime as _dt2, timezone as _tz2
+                from datetime import datetime as _dt2
+                from datetime import timezone as _tz2
                 if isinstance(_wrap_mp_ts, _dt2) and _wrap_mp_ts.tzinfo is None:
                     _wrap_mp_ts = _wrap_mp_ts.replace(tzinfo=_tz2.utc)
                 _wrap_age = 999999.0
