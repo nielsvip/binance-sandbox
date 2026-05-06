@@ -2138,6 +2138,101 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if step < 3:
                     v8_logger.warning(f"[DBG] check_entry error: {e}")
 
+        # GOLDEN RULE ENFORCEMENT (real backtest) — 2026-05-06
+        # Mirrors live _golden_rule_loop in ez_manage.py (ang/inf always-long mandate).
+        # For every symbol: wt1_3m > wt2_3m AND (price > dc_high_15m OR price > bb_upper_15m)
+        # → must hold a LONG of base_usd×mult. Cascade: 1.5x at 1h, 2x at 4h, 3x at D.
+        # Calls execute_trade_action directly — bypasses signal gate (fires every qualifying bar).
+        # Gate: GOLDEN_RULE_ENABLED (default True).
+        if getattr(config, 'GOLDEN_RULE_ENABLED', True):
+            _gr_base_usd = float(getattr(config, 'GOLDEN_RULE_BASE_USD', 5.0))
+            _gr_dc_15 = bool(getattr(config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
+            _gr_bb_15 = bool(getattr(config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
+            _gr_dc_1h = bool(getattr(config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
+            _gr_bb_1h = bool(getattr(config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
+            _gr_dc_4h = bool(getattr(config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
+            _gr_bb_4h = bool(getattr(config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
+            _gr_dc_D = bool(getattr(config, 'GOLDEN_RULE_DC_D_ENABLED', True))
+            _gr_bb_D = bool(getattr(config, 'GOLDEN_RULE_BB_D_ENABLED', True))
+            _gr_m15 = float(getattr(config, 'GOLDEN_RULE_MULT_15M', 1.0))
+            _gr_m1h = float(getattr(config, 'GOLDEN_RULE_MULT_1H', 1.5))
+            _gr_m4h = float(getattr(config, 'GOLDEN_RULE_MULT_4H', 2.0))
+            _gr_mD = float(getattr(config, 'GOLDEN_RULE_MULT_D', 3.0))
+            for _gr_sym in list(stores.keys()):
+                _gr_ind = indicator_cache.get(_gr_sym, {})
+                _gr_p = float(_gr_ind.get('current_price', 0) or 0)
+                if _gr_p <= 0:
+                    continue
+                _gr_wt1 = float(_gr_ind.get('wt1_3m', 0) or 0)
+                _gr_wt2 = float(_gr_ind.get('wt2_3m', 0) or 0)
+                _gr_dc_h15 = float(_gr_ind.get('dc_high_15m', 0) or 0)
+                _gr_dc_l15 = float(_gr_ind.get('dc_low_15m', 0) or 0)
+                _gr_bb_u15 = float(_gr_ind.get('bb_upper_15m', 0) or 0)
+                _gr_bb_l15 = float(_gr_ind.get('bb_lower_15m', 0) or 0)
+                _gr_dc_h1h = float(_gr_ind.get('dc_high_1h', 0) or 0)
+                _gr_dc_l1h = float(_gr_ind.get('dc_low_1h', 0) or 0)
+                _gr_bb_u1h = float(_gr_ind.get('bb_upper_1h', 0) or 0)
+                _gr_bb_l1h = float(_gr_ind.get('bb_lower_1h', 0) or 0)
+                _gr_dc_h4h = float(_gr_ind.get('dc_high_4h', 0) or 0)
+                _gr_dc_l4h = float(_gr_ind.get('dc_low_4h', 0) or 0)
+                _gr_bb_u4h = float(_gr_ind.get('bb_upper_4h', 0) or 0)
+                _gr_bb_l4h = float(_gr_ind.get('bb_lower_4h', 0) or 0)
+                _gr_dc_hD = float(_gr_ind.get('dc_high_D', 0) or 0)
+                _gr_dc_lD = float(_gr_ind.get('dc_low_D', 0) or 0)
+                _gr_bb_uD = float(_gr_ind.get('bb_upper_D', 0) or 0)
+                _gr_bb_lD = float(_gr_ind.get('bb_lower_D', 0) or 0)
+                for _gr_is_long in (True, False):
+                    _gr_pk = f'{account_key}:{_gr_sym}_{"LONG" if _gr_is_long else "SHORT"}'
+                    if _gr_is_long:
+                        if _gr_wt1 <= _gr_wt2:
+                            continue
+                        _gr_dc15_ok = _gr_dc_15 and _gr_dc_h15 > 0 and _gr_p > _gr_dc_h15
+                        _gr_bb15_ok = _gr_bb_15 and _gr_bb_u15 > 0 and _gr_p > _gr_bb_u15
+                    else:
+                        if _gr_wt1 >= _gr_wt2:
+                            continue
+                        _gr_dc15_ok = _gr_dc_15 and _gr_dc_l15 > 0 and _gr_p < _gr_dc_l15
+                        _gr_bb15_ok = _gr_bb_15 and _gr_bb_l15 > 0 and _gr_p < _gr_bb_l15
+                    if not (_gr_dc15_ok or _gr_bb15_ok):
+                        continue
+                    _gr_mult = _gr_m15
+                    if _gr_is_long:
+                        if (_gr_dc_1h and _gr_dc_h1h > 0 and _gr_p > _gr_dc_h1h) or (_gr_bb_1h and _gr_bb_u1h > 0 and _gr_p > _gr_bb_u1h):
+                            _gr_mult = _gr_m1h
+                        if (_gr_dc_4h and _gr_dc_h4h > 0 and _gr_p > _gr_dc_h4h) or (_gr_bb_4h and _gr_bb_u4h > 0 and _gr_p > _gr_bb_u4h):
+                            _gr_mult = _gr_m4h
+                        if (_gr_dc_D and _gr_dc_hD > 0 and _gr_p > _gr_dc_hD) or (_gr_bb_D and _gr_bb_uD > 0 and _gr_p > _gr_bb_uD):
+                            _gr_mult = _gr_mD
+                    else:
+                        if (_gr_dc_1h and _gr_dc_l1h > 0 and _gr_p < _gr_dc_l1h) or (_gr_bb_1h and _gr_bb_l1h > 0 and _gr_p < _gr_bb_l1h):
+                            _gr_mult = _gr_m1h
+                        if (_gr_dc_4h and _gr_dc_l4h > 0 and _gr_p < _gr_dc_l4h) or (_gr_bb_4h and _gr_bb_l4h > 0 and _gr_p < _gr_bb_l4h):
+                            _gr_mult = _gr_m4h
+                        if (_gr_dc_D and _gr_dc_lD > 0 and _gr_p < _gr_dc_lD) or (_gr_bb_D and _gr_bb_lD > 0 and _gr_p < _gr_bb_lD):
+                            _gr_mult = _gr_mD
+                    _gr_target_usd = _gr_base_usd * _gr_mult
+                    _gr_target_qty = _gr_target_usd / _gr_p
+                    _gr_pos = trade_manager.positions.get(_gr_pk)
+                    _gr_cur_amt = abs(float(getattr(_gr_pos, 'positionAmt', 0))) if _gr_pos else 0.0
+                    if _gr_cur_amt > 0 and _gr_cur_amt * _gr_p >= _gr_target_usd * 0.8:
+                        continue
+                    _gr_qty = _gr_target_qty - _gr_cur_amt
+                    if _gr_qty * _gr_p < 1.0:
+                        continue
+                    _gr_action = 'OPEN' if _gr_cur_amt == 0 else 'AUGMENT'
+                    _gr_side = 'BUY' if _gr_is_long else 'SELL'
+                    _gr_ps = 'LONG' if _gr_is_long else 'SHORT'
+                    try:
+                        await trade_manager.execute_trade_action(
+                            account_key=account_key, position_key=_gr_pk, symbol=_gr_sym,
+                            quantity=_gr_qty, current_price=_gr_p, side=_gr_side,
+                            position_side=_gr_ps, action=_gr_action,
+                            reason=f'GOLDEN_RULE_{_gr_ps}_mult{_gr_mult}x',
+                            is_full_close=False, is_hedge=False)
+                    except Exception as _gr_err:
+                        if step < 10 or step % 5000 == 0:
+                            v8_logger.error(f'[V8_GR_ERR] {_gr_pk}: {_gr_err}')
+
         # Drain async tasks (order queue, cooldown writes, etc)
         await asyncio.sleep(0)
 

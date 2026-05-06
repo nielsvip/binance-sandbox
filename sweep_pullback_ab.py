@@ -40,6 +40,15 @@ ACCOUNT = "ang"
 CAPITAL = 10000.0
 MODE = "crypto"
 
+# Validation subset: 8 symbols (decompressed NPZ ≈ 878MB each → 7GB stores).
+# Existing S1 sweeps use 15GB → total 22GB < 30GB available. Safe.
+# Full 63-symbol sweep would be 55GB → OOM. Use this for directional validation only.
+# Results will be tagged [DIAGNOSTIC] by metrics_guard (sample floor ≥48 for PUBLISHABLE).
+VALIDATION_SYMBOLS = [
+    "BTCUSDC", "ETHUSDC", "SOLUSDC", "ADAUSDC",   # 4 USDC majors
+    "DOTUSDT", "ATOMUSDT", "SANDUSDT", "ENJUSDT",  # 4 diverse USDT
+]
+
 PULLBACK_VARIANTS = [
     {
         "label": "baseline_no_pullback",
@@ -168,12 +177,12 @@ def _trades_to_metrics(trades: list, label: str) -> dict:
 async def main():
     from backtest_v8_engine import load_stores, run_simulation
 
-    print(f"[sweep_pullback_ab] Loading NPZ for {MODE} start={START_DATE}", flush=True)
-    stores, resolution = load_stores(MODE, None, START_DATE)
+    print(f"[sweep_pullback_ab] Loading NPZ for {MODE} start={START_DATE} symbols={len(VALIDATION_SYMBOLS)}", flush=True)
+    stores, resolution = load_stores(MODE, set(VALIDATION_SYMBOLS), START_DATE)
     if not stores:
         print("[sweep_pullback_ab] ERROR: no NPZ data loaded", flush=True)
         sys.exit(1)
-    print(f"[sweep_pullback_ab] Loaded {len(stores)} symbols", flush=True)
+    print(f"[sweep_pullback_ab] Loaded {len(stores)} symbols: {sorted(stores.keys())}", flush=True)
 
     results = []
     for variant in PULLBACK_VARIANTS:
