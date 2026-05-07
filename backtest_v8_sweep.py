@@ -48,6 +48,11 @@ import sys
 import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+try:
+    import psutil as _psutil
+    _PSUTIL_OK = True
+except ImportError:
+    _PSUTIL_OK = False
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -877,6 +882,36 @@ def grid_min_gain_augment():
     return out
 
 
+def _load_configs_from_file(path: str, mode: str, max_variants: int = None):
+    """Load (label, overrides_dict) pairs from configs_to_retest.json, filtered by mode."""
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"configs file not found: {path}")
+    raw = p.read_bytes()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        last = raw.rfind(b'},{')
+        if last < 0:
+            raise
+        data = json.loads(raw[:last] + b']}')
+    configs = data.get("configs", [])
+    out = []
+    for i, c in enumerate(configs):
+        if c.get("mode", "") != mode:
+            continue
+        try:
+            overrides = json.loads(c["overrides_json"])
+        except Exception:
+            continue
+        h = c.get("hash", _config_hash(overrides))[:8]
+        label = f"retest_{h}_{i}"
+        out.append((label, overrides))
+        if max_variants and len(out) >= max_variants:
+            break
+    return out
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -892,6 +927,7 @@ TIER_MAP = {
     "tradier_param_hunt": grid_tradier_param_hunt,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
+    "configs_from_file": lambda: [],  # handled in main() via --configs-file
 }
 
 
@@ -903,9 +939,23 @@ def _config_hash(cfg: dict) -> str:
     return hashlib.md5(json.dumps(cfg, sort_keys=True).encode()).hexdigest()[:8]
 
 
+def _wait_for_memory(threshold_pct=95.0, poll_s=30):
+    """Block until system RAM usage drops below threshold_pct."""
+    if not _PSUTIL_OK:
+        return
+    while True:
+        mem = _psutil.virtual_memory()
+        if mem.percent < threshold_pct:
+            return
+        avail_gb = mem.available / (1024 ** 3)
+        print(f"[sweep] MEM_THROTTLE: {mem.percent:.1f}% used ({avail_gb:.1f} GB free) — waiting {poll_s}s for < {threshold_pct}%", flush=True)
+        time.sleep(poll_s)
+
+
 def run_one_variant(args_tuple):
     """Worker: writes override JSON, runs engine subprocess, parses V8_RESULT."""
-    (label, overrides, mode, account, start, symbols, capital, npz_dir, timeout_s, kill_sharpe, kill_secs) = args_tuple
+    (label, overrides, mode, account, start, symbols, capital, npz_dir, timeout_s, kill_sharpe, kill_secs, mem_throttle_pct) = args_tuple
+    _wait_for_memory(threshold_pct=mem_throttle_pct)
     # MERGE BASE OVERRIDES applied to every variant (including baseline):
     # - USDC_PREFERENCE_BLOCK_ENABLED=False: NPZ data is USDT-only, so the live USDC-preference
     #   gate would block 100% of USDT opens. Turn it off for backtest so entries are evaluated.
@@ -1115,10 +1165,21 @@ def main():
     ap.add_argument("--timeout", type=int, default=600, help="Per-variant subprocess timeout (s)")
     ap.add_argument("--kill-sharpe", type=float, default=0.0, help="Kill variant if live sharpe < this after --kill-secs (0=disabled)")
     ap.add_argument("--kill-secs", type=int, default=60, help="Seconds elapsed before early-kill is checked")
+    ap.add_argument("--mem-throttle-pct", type=float, default=95.0, help="Pause before each variant if RAM usage exceeds this %%")
+    ap.add_argument("--configs-file", default="data/_lie_audit/configs_to_retest.json", help="JSON file for configs_from_file tier")
+    ap.add_argument("--max-variants", type=int, default=0, help="Cap number of variants (0=all)")
     ap.add_argument("--output", default="", help="CSV output path (default: auto-dated)")
     args = ap.parse_args()
 
-    grid = TIER_MAP[args.tier]()
+    if args.tier == "configs_from_file":
+        cfg_path = Path(args.configs_file) if not Path(args.configs_file).is_absolute() else Path(args.configs_file)
+        if not cfg_path.is_absolute():
+            cfg_path = BASE_PATH / args.configs_file
+        grid = _load_configs_from_file(str(cfg_path), args.mode, args.max_variants or None)
+    else:
+        grid = TIER_MAP[args.tier]()
+        if args.max_variants > 0:
+            grid = grid[:args.max_variants]
     kill_info = f"  kill_sharpe={args.kill_sharpe} kill_secs={args.kill_secs}" if args.kill_sharpe > 0 else ""
     print(f"[sweep] tier={args.tier}  variants={len(grid)}  mode={args.mode}  account={args.account}  start={args.start}  symbols={args.symbols or 'ALL'}  workers={args.workers}{kill_info}")
 
@@ -1160,7 +1221,7 @@ def main():
     print(f"[sweep] version sidecar -> {version_path}")
 
     tasks = [
-        (label, overrides, args.mode, args.account, args.start, args.symbols, args.capital, args.npz_dir, args.timeout, args.kill_sharpe, args.kill_secs)
+        (label, overrides, args.mode, args.account, args.start, args.symbols, args.capital, args.npz_dir, args.timeout, args.kill_sharpe, args.kill_secs, args.mem_throttle_pct)
         for (label, overrides) in grid
     ]
 
