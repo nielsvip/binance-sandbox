@@ -8126,6 +8126,42 @@ class TradierTradeManager:
                 self._last_tradeable_update = current_time
             return list(self.tradeable_keys)
 
+    def _get_json_symbols(self, account_key: str, side: str) -> set:
+        # 2026-05-07: JSON files (symbols_<acc>_<side>.json) are the source of truth — refreshed every ~10 min by tradier_rankings. Memory list was being wiped between LOAD and CHECK, blocking 99% of approved syms (only 5 fresh OPENs in 30 days). Read directly with 30s TTL cache.
+        cache = getattr(self, '_json_symbols_cache', None)
+        if cache is None:
+            cache = {}
+            self._json_symbols_cache = cache
+        key = (account_key, side)
+        now = time.time()
+        cached = cache.get(key)
+        if cached and cached[1] > now:
+            return cached[0]
+        try:
+            base = Path(self.config.BASE_PATH)
+            paths = []
+            if account_key == 'tra' and getattr(self.config, 'TRA_SATOSHIT_ONLY', False):
+                paths.append(base / f"symbols_tra_satoshit_{side}.json")
+            paths.append(base / f"symbols_{account_key}_{side}.json")
+            syms = set()
+            for path in paths:
+                if path.exists():
+                    with open(path, 'r') as fh:
+                        raw = json.load(fh)
+                    if isinstance(raw, list):
+                        syms = {str(s).upper().strip() for s in raw if s}
+                    elif isinstance(raw, dict):
+                        syms = {str(k).upper().strip() for k in raw.keys() if k}
+                    if syms:
+                        break
+        except Exception as e:
+            if cached:
+                return cached[0]
+            logger.warning(f"[_get_json_symbols] {account_key}/{side} read failed: {e}")
+            syms = set()
+        cache[key] = (syms, now + 30.0)
+        return syms
+
     def is_symbol_tradeable(self, symbol: str, account_key: str, side: str) -> bool:
         """Centralized tradeability check with debug logging."""
         symbol = symbol.upper()
@@ -8148,7 +8184,7 @@ class TradierTradeManager:
         whitelist += [s.upper() for s in getattr(config, 'EXCEPTIONS', [])]
         if symbol in whitelist:
             return True
-        
+
         # 3. Check if we already have a position (Management always allowed)
         if self.position_manager:
             pk_long = f"{account_key}:{symbol}_LONG"
@@ -8158,17 +8194,17 @@ class TradierTradeManager:
             if pos_long and pos_long.positionAmt > 0: return True
             if pos_short and pos_short.positionAmt > 0: return True
 
-        # 4. Discovery Lists
-        longs = [s.upper() for s in getattr(self, f"symbols_long_{account_key}", [])]
-        shorts = [s.upper() for s in getattr(self, f"symbols_short_{account_key}", [])]
-        
-        if side == 'LONG' and symbol in longs: return True
-        if side == 'SHORT' and symbol in shorts:
-            if symbol in self.non_shortable_symbols:
-                # logger.warning(f"[{account_key}] 🛑 {symbol} is NON-SHORTABLE. Blocking trade.")
+        # 4. Discovery Lists — JSON-first (memory list was unreliable, see _get_json_symbols)
+        side_lower = 'long' if side == 'LONG' else 'short'
+        json_syms = self._get_json_symbols(account_key, side_lower)
+        mem_syms = {s.upper() for s in getattr(self, f"symbols_{side_lower}_{account_key}", [])}
+        all_syms = json_syms | mem_syms
+
+        if symbol in all_syms:
+            if side == 'SHORT' and symbol in self.non_shortable_symbols:
                 return False
             return True
-        
+
         return False
 
     async def execute_trade_action(self, account_key, position_key, symbol, quantity, current_price, side, position_side, unique_id, is_full_close=False, action='', reason='', override_qty=None):
