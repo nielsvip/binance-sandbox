@@ -13522,10 +13522,25 @@ class MultiAccountTradeManager:
                     except Exception:
                         _lpb_gain = _lpb_gain_raw
                     _lpb_min = float(getattr(config, 'MIN_GAIN', 3.0))
-                    if _lpb_amt > 0 and _lpb_gain < _lpb_min:
-                        logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
-                        return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain_raw:.2f}_EFF{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
                     _lpb_act_is_augment = 'AUGMENT' in _lpb_act_up and 'REENTRY' not in _lpb_act_up
+                    _lpb_max_gain = safe_fetch_float(getattr(_lpb_pos, 'max_gain', 0), 0)
+                    _lpb_pb_reversal_min = float(getattr(config, 'PULLBACK_AUGMENT_REVERSAL_MIN', 1.0))
+                    _lpb_pb_floor = 0.5 * _lpb_min
+                    if _lpb_amt > 0 and _lpb_gain < _lpb_min:
+                        # PULLBACK_AUGMENT: a position that reached MIN_GAIN (real winner) may augment
+                        # on dip back to ≥ 0.5×MIN_GAIN if it has pulled back ≥ 1% from peak. AUGMENT only.
+                        _lpb_pb_ok = (
+                            _lpb_act_is_augment
+                            and bool(getattr(config, 'PULLBACK_AUGMENT_ENABLED', True))
+                            and _lpb_max_gain >= _lpb_min
+                            and _lpb_gain >= _lpb_pb_floor
+                            and (_lpb_max_gain - _lpb_gain) >= _lpb_pb_reversal_min
+                        )
+                        if _lpb_pb_ok:
+                            logger.info(f"✅ [PULLBACK_AUGMENT] {position_key}: max={_lpb_max_gain:.2f}% pulled to eff={_lpb_gain:.2f}% (≥{_lpb_pb_floor:.2f}%), Δ={_lpb_max_gain-_lpb_gain:.2f}% ≥ {_lpb_pb_reversal_min:.1f}% — pullback augment allowed. action={action}")
+                        else:
+                            logger.critical(f"🔨 [LOSING_POSITION_HARD_BLOCK] {position_key}: amt={_lpb_amt:.4f} gain={_lpb_gain_raw:.2f}% (eff={_lpb_gain:.2f}%) < MIN_GAIN={_lpb_min:.2f}% — NEVER augment/reopen/hedge/reenter losing position. action={action} reason={(reason or '')[:60]}")
+                            return f"BLOCKED_LOSING_POSITION_GAIN{_lpb_gain_raw:.2f}_EFF{_lpb_gain:.2f}_LT_MIN{_lpb_min:.2f}"
                     if _lpb_amt > 0 and _lpb_act_is_augment:
                         # Augment-level gate: n-th augment requires n × MIN_GAIN.
                         # Use positionAmt / initial_quantity to estimate augment depth.
@@ -13534,8 +13549,19 @@ class MultiAccountTradeManager:
                             _lpb_aug_n = max(1, round(_lpb_amt / _lpb_init_qty))
                             _lpb_req = _lpb_aug_n * _lpb_min
                             if _lpb_gain < _lpb_req:
-                                logger.critical(f"🔨 [AUGMENT_LEVEL_GATE] {position_key}: augment#{_lpb_aug_n} needs {_lpb_req:.1f}% ({_lpb_aug_n}×MIN_GAIN={_lpb_min:.1f}%) got {_lpb_gain:.2f}% — BLOCKED. action={action}")
-                                return f"BLOCKED_AUGMENT_LEVEL{_lpb_aug_n}_need{_lpb_req:.1f}_got{_lpb_gain:.2f}"
+                                # PULLBACK_AUGMENT_LEVEL: if max_gain was at the required level for this
+                                # augment depth, allow pullback augment back to ≥ 0.5×MIN_GAIN floor.
+                                _lpb_alg_pb_ok = (
+                                    bool(getattr(config, 'PULLBACK_AUGMENT_ENABLED', True))
+                                    and _lpb_max_gain >= _lpb_req
+                                    and _lpb_gain >= _lpb_pb_floor
+                                    and (_lpb_max_gain - _lpb_gain) >= _lpb_pb_reversal_min
+                                )
+                                if _lpb_alg_pb_ok:
+                                    logger.info(f"✅ [PULLBACK_AUGMENT_LEVEL] {position_key}: max={_lpb_max_gain:.2f}% was ≥ required={_lpb_req:.1f}% for aug#{_lpb_aug_n}, eff={_lpb_gain:.2f}% — pullback augment allowed. action={action}")
+                                else:
+                                    logger.critical(f"🔨 [AUGMENT_LEVEL_GATE] {position_key}: augment#{_lpb_aug_n} needs {_lpb_req:.1f}% ({_lpb_aug_n}×MIN_GAIN={_lpb_min:.1f}%) got {_lpb_gain:.2f}% — BLOCKED. action={action}")
+                                    return f"BLOCKED_AUGMENT_LEVEL{_lpb_aug_n}_need{_lpb_req:.1f}_got{_lpb_gain:.2f}"
                         # Entry-price projection gate: verify post-augment gain stays positive.
                         # Prevents weighted-entry creep from turning a gaining position into a loser.
                         _lpb_ep = float(getattr(_lpb_pos, 'entry_price', 0) or 0)
