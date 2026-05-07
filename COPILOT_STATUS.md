@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 00:13:40 UTC
+# Copilot Status — 2026-05-07 00:29:27 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:11:25
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T00:12:27
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T00:12:28
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:12:28
-- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T00:13:29
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T00:13:29
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T00:13:29
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T00:13:29
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T00:13:29
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:13:29
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:26:53
+- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:27:54
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T00:28:56
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T00:28:56
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T00:28:56
 
 ## Missed Trades (trader comparison)
 
@@ -27,13 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 3 | **Watching for reentry:** 10 | **Reentered:** 0
+**Held:** 4 | **Watching for reentry:** 9 | **Reentered:** 0
 
+- HELD: **BIOUSDC** SHORT (crypto) peak +13.1%, now +0.7%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +0.4%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-10.3%
-- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-4.2%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-10.2%
+- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-3.5%
 
-- WATCHING: **AIAUSDT** LONG (crypto) peaked +15.3%, exited 231m ago
 - WATCHING: **RSRUSDT** SHORT (crypto) peaked +11.0%, exited 0m ago
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
 - WATCHING: **IPUSDC** SHORT (crypto) peaked +7.9%, exited 0m ago
@@ -48,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 20
-- [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 23
 - [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
-- [LOW] tradier_indicators.py is NOT running
+- [HIGH] ez_indicators.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
