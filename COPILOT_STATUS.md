@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 03:42:48 UTC
+# Copilot Status — 2026-05-07 03:58:01 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T03:40:13
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T03:40:55
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T03:40:55
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T03:40:55
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T03:41:57
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T03:41:57
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T03:41:57
-- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T03:42:18
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T03:42:18
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T03:42:18
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T03:55:35
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T03:56:37
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T03:56:37
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T03:56:37
+- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T03:56:57
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T03:56:57
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T03:56:57
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T03:57:41
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T03:57:41
+- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T03:57:41
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-6.8%
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +5.2%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-7.0%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +0.1%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +0.4%
-- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-1.6%
+- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-1.3%
 
 - WATCHING: **RSRUSDT** SHORT (crypto) peaked +11.0%, exited 0m ago
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +10.0%, exited 0m ago
@@ -45,9 +45,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 27
+**Issues (last 1h):** 25
+- [HIGH] ez_rankings.py is NOT running
 - [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
-- [HIGH] ez_rankings.py is NOT running
-- [HIGH] ez_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_indicators.py is NOT running
