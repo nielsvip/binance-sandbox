@@ -71,9 +71,10 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
     BASELINES = ROOT / 'data' / 'baselines'
     candidates = []
     if mode == 'tradier':
-        candidates = [BASELINES / 'tradier_v5_merged.json', BASELINES / 'tradier_v4_merged.json']
+        candidates = [BASELINES / 'canonical_tradier_top1_post_audit.json', BASELINES / 'tradier_v5_merged.json', BASELINES / 'tradier_v4_merged.json']
     else:
-        candidates = [BASELINES / 'crypto_1p033_20260422.json', BASELINES / 'crypto_0p9543.json', BASELINES / 'crypto_0p7574_full132.json']
+        # 2026-05-07 22:30: canonical_crypto_top1_post_audit.json is now the iter=17 w31811 winner (pool_sharpe 0.6897, rate 2.20/sym/day, dd 5.65% — see data/baselines/promoted/crypto_canonical_v2_20260507_iter17_w31811.json).
+        candidates = [BASELINES / 'canonical_crypto_top1_post_audit.json', BASELINES / 'crypto_1p033_20260422.json', BASELINES / 'crypto_0p9543.json']
     for p in candidates:
         try:
             if p.exists():
