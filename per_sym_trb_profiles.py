@@ -483,14 +483,21 @@ def _side_metrics(trades: List[Dict], years: float, sym: str, side: str) -> Dict
     return per_sym_metrics(rets, years, f"{sym}_{side}")
 
 
-def promote_to_global_active_config(sym: str, overrides: Dict, m: Dict, trades: List[Dict]) -> None:
+MIN_IMPROVEMENT_RATIO = 1.10  # winner must beat baseline by >=10% to write
+
+
+def promote_to_global_active_config(sym: str, overrides: Dict, m: Dict, trades: List[Dict],
+                                     baseline_ps: float = 0.0) -> None:
     """Write trb winner to GLOBAL per_sym_active_config.json so live trading + 7D agent can read it.
     Keyed by {sym}_{side} (no account prefix) — per-symbol settings are global across all accounts.
-    Skips writing if pool_sharpe<=0 or trades<floor (quality gate)."""
+    Skips writing if pool_sharpe<=0 or trades<floor (quality gate) or no >=10% improvement."""
     ps = float(m.get("pool_sharpe", 0))
     tr = int(m.get("trades", 0))
     if ps <= 0 or tr < PROMOTE_TRADES_MIN:
         print(f"  [global_active] SKIP {sym}: pool={ps:+.4f} trades={tr} — quality gate")
+        return
+    if baseline_ps > 0 and ps < baseline_ps * MIN_IMPROVEMENT_RATIO:
+        print(f"  [global_active] SKIP {sym}: pool={ps:+.4f} baseline={baseline_ps:+.4f} — no >=10% improvement (delta={ps-baseline_ps:+.4f})")
         return
     GLOBAL_ACTIVE_CFG.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -810,7 +817,9 @@ def main() -> int:
             print(f"  {p.name}  pool_sharpe={m['pool_sharpe']:+.4f}  trades={m['trades']:,}  dd={m['max_dd_pct']:.2f}%")
             # ALSO write to GLOBAL per_sym_active_config.json (live + 7D agent read this)
             try:
-                promote_to_global_active_config(sym, ovr, m, winner_trades_map.get(sym, []))
+                base_ps = float(phase1.get(sym, {}).get("pool_sharpe", 0))
+                promote_to_global_active_config(sym, ovr, m, winner_trades_map.get(sym, []),
+                                                baseline_ps=base_ps)
             except Exception as e:
                 print(f"  [global_active] EXC {sym}: {e}")
         print()

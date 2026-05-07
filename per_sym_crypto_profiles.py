@@ -471,7 +471,11 @@ def _side_metrics(trades: List[Dict], years: float, sym: str, side: str) -> Dict
     return per_sym_metrics(rets, years, f"{sym}_{side}")
 
 
-def promote_to_active_config(account: str, winners: Dict) -> None:
+MIN_IMPROVEMENT_RATIO = 1.10  # winner must beat baseline by ≥10% to write
+
+
+def promote_to_active_config(account: str, winners: Dict,
+                              baseline: Dict | None = None) -> None:
     print()
     print("=" * 80)
     print(f"PHASE 3 — promote to per_sym_active_config.json ({account})")
@@ -489,11 +493,14 @@ def promote_to_active_config(account: str, winners: Dict) -> None:
             trades = []
         ps = float(m.get("pool_sharpe", 0))
         tr = int(m.get("trades", 0))
-        # Delta is already delta-only from mutation_grid (each variant specifies only changed params)
         delta = {k: v for k, v in ovr.items()
                  if not k.startswith("_") and k not in _BANNED_PARAMS}
         if ps <= 0 or tr < PROMOTE_TRADES_MIN:
             print(f"  SKIP {sym}: pool={ps:+.4f} trades={tr} — quality gate")
+            continue
+        base_ps = float((baseline or {}).get(sym, {}).get("pool_sharpe", 0))
+        if base_ps > 0 and ps < base_ps * MIN_IMPROVEMENT_RATIO:
+            print(f"  SKIP {sym}: pool={ps:+.4f} baseline={base_ps:+.4f} — no ≥10% improvement (delta={ps-base_ps:+.4f})")
             continue
         years = float(m.get("years", 2.0))
         for side in ("LONG", "SHORT"):
@@ -602,7 +609,7 @@ def main() -> int:
                         winners[sym] = (ovr, m, trades)
                         # Write this symbol immediately (don't wait for all symbols)
                         if "3" in args.phase:
-                            promote_to_active_config(account_label, {sym: (ovr, m, trades)})
+                            promote_to_active_config(account_label, {sym: (ovr, m, trades)}, baseline=phase1)
                             if args.sync_to_s1:
                                 sync_config_to_s1()
                 except Exception as e:
@@ -613,7 +620,7 @@ def main() -> int:
 
     # Non-mutate-all path: write all winners at end (they weren't written per-symbol above)
     if "3" in args.phase and not args.mutate_all and winners:
-        promote_to_active_config(account_label, winners)
+        promote_to_active_config(account_label, winners, baseline=phase1)
         if args.sync_to_s1:
             sync_config_to_s1()
 

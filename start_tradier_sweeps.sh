@@ -45,13 +45,14 @@ STATUS() {
 LAUNCH_TIER() {
   local tier=$1
   KILL_CRYPTO
-  # Concurrency cap (user directive 2026-05-01: throttle if needed):
-  # Refuse to launch a NEW tier if ≥2 sweep workers already running.
+  # Concurrency cap: only count v8_quick_sweep (autonomous_search is managed by
+  # canonical_tradier_100sym.sh supervisor independently — do not count it here).
   local _running
-  _running=$(pgrep -afc "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier" 2>/dev/null || echo 0)
+  _running=$(pgrep -fc "v8_quick_sweep.*--mode tradier" 2>/dev/null | head -1 || echo 0)
+  _running=${_running:-0}
   if [ "$_running" -ge 2 ]; then
-    echo "[TRADIER] CONCURRENCY_CAP: $_running sweep workers already running (cap=2). Refusing new launch — kill existing first."
-    pgrep -af "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier" | head -5
+    echo "[TRADIER] CONCURRENCY_CAP: $_running v8_quick_sweep workers already running (cap=2). Refusing new launch — kill existing first."
+    pgrep -af "v8_quick_sweep.*--mode tradier" | head -5
     exit 1
   fi
   local log="$LOGS/sweep_tradier_${tier}_$(date +%Y%m%d_%H%M%S).log"
