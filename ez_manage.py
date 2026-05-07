@@ -14658,7 +14658,8 @@ class MultiAccountTradeManager:
                             remaining_value = 0.0
                             if pos_after:
                                 remaining_value = abs(float(getattr(pos_after, 'positionAmt', 0.0))) * safe_fetch_float(getattr(pos_after, 'mark_price', current_price), current_price)
-                            if remaining_value < config.START_POSITION_SIZE and position_key not in self.pending_reentries:
+                            _pr_existing_status = (self.pending_reentries.get(position_key) or {}).get('status', '')
+                            if remaining_value < config.START_POSITION_SIZE and _pr_existing_status not in ('pending', 'queued'):
                                 exit_price_val = safe_fetch_float(getattr(pos_after, 'mark_price', current_price), current_price) if pos_after else current_price
                                 if exit_price_val <= 0.0: exit_price_val = current_price
                                 self.pending_reentries[position_key] = {'exit_price': exit_price_val, 'exit_time': datetime.now(timezone.utc).isoformat(), 'exit_reason': reason, 'original_qty': float(quantity), 'attempts': 0, 'status': 'pending'}

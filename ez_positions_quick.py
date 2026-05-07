@@ -10017,6 +10017,7 @@ class TrackerManager:
                 ec['is_reduced'] = False
                 if event_type == 'REENTRY':
                     ec['was_reentered'] = True
+                    ec['last_exit_reentry_ready'] = False
                 ec.setdefault('trade_log', [])
                 ec['trade_log'].append({'ts': now_iso, 'action': event_type, 'price': price, 'qty': qty, 'notional_usd': notional_usd, 'reason': reason[:120]})
                 if len(ec['trade_log']) > 200: ec['trade_log'] = ec['trade_log'][-200:]
@@ -10042,6 +10043,7 @@ class TrackerManager:
                 if event_type == 'CLOSE' or event_type == 'HEDGE_CLOSE':
                     ec['status'] = 'closed'
                     ec['reduced_at'] = now_iso
+                    ec['was_reentered'] = False
                 ec['total_realized_pnl_$'] = safe_fetch_float(ec.get('total_realized_pnl_$', 0.0), 0.0) + pnl_usd
                 ec['total_pnl_$'] = safe_fetch_float(ec.get('total_pnl_$', 0.0), 0.0) + pnl_usd
                 ec.setdefault('gain_list', [])
@@ -15749,6 +15751,9 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                             if _gain < 0:
                                 logger.critical(f"💀💀💀 [REENTRY_LOSS_KILL_EPQ] {position_key}: Reentered {_fill_age:.0f}s ago, gain={_gain*100:.2f}% — NOT WINNING AFTER 6MIN. CRASHING.")
                                 os._exit(1)
+                            else:
+                                data['status'] = 'filled'
+                                logger.info(f"[REENTRY_CONFIRMED_EPQ] {position_key}: Reentered {_fill_age:.0f}s ago, positionAmt>0 gain={_gain:.3f}% — marking filled")
         except asyncio.CancelledError:
             logger.info("[REENTRY_ENFORCE_EPQ] Cancelled — exiting loop")
             break

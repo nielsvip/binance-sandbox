@@ -1112,10 +1112,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if is_reduce:
                     pos.positionAmt = max(0.0, abs(pos.positionAmt) - abs(qty))
                 else:
-                    if abs(pos.positionAmt) < 0.0001:
+                    _old_amt = abs(pos.positionAmt)
+                    if _old_amt < 0.0001:
                         pos.entry_price = px
                         pos.opened_at = datetime.utcfromtimestamp(_sim_ts[0]).replace(tzinfo=timezone.utc)
-                    pos.positionAmt = abs(pos.positionAmt) + abs(qty)
+                        pos.initial_quantity = abs(qty)
+                    else:
+                        pos.entry_price = (_old_amt * pos.entry_price + abs(qty) * px) / (_old_amt + abs(qty))
+                    pos.positionAmt = _old_amt + abs(qty)
             return {"orderId": len(executed_trades), "status": "FILLED",
                     "avgPrice": str(px), "executedQty": str(qty)}
         def futures_cancel_order(self, **kw):
@@ -1158,10 +1162,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 if is_full_close:
                     pos.positionAmt = 0.0
             else:
-                if abs(pos.positionAmt) < 0.0001:
+                _wh_old_amt = abs(pos.positionAmt)
+                if _wh_old_amt < 0.0001:
                     pos.entry_price = price
                     pos.opened_at = _sim_datetime_now(timezone.utc)
-                pos.positionAmt = abs(pos.positionAmt) + abs(quantity)
+                    pos.initial_quantity = abs(quantity)
+                else:
+                    pos.entry_price = (_wh_old_amt * pos.entry_price + abs(quantity) * price) / (_wh_old_amt + abs(quantity))
+                pos.positionAmt = _wh_old_amt + abs(quantity)
             # Always ensure opened_at is datetime
             if not isinstance(getattr(pos, 'opened_at', None), datetime):
                 pos.opened_at = _sim_datetime_now(timezone.utc)

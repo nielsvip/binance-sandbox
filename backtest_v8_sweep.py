@@ -862,6 +862,21 @@ def grid_system_combo():
     return out
 
 
+def grid_min_gain_augment():
+    """MIN_GAIN augment gate ablation: sweep threshold from 1–5%.
+    Validates the LOSING_POSITION_HARD_BLOCK gate added 2026-05-06:
+      - baseline = live default (MIN_GAIN=3.0, high_gain_bypass=False)
+      - each variant overrides only MIN_GAIN; all other config stays constant
+    Results: pool_sharpe + trade count at each threshold → find optimal gate.
+    Per-sym breakdown is [DIAGNOSTIC ONLY]; pool across 48+ syms is canonical.
+    """
+    out = [("baseline_MIN_GAIN_3p0", {})]
+    for mg in [1.0, 2.0, 4.0, 5.0]:
+        label = f"MIN_GAIN_{str(mg).replace('.', 'p')}"
+        out.append((label, {"MIN_GAIN": mg}))
+    return out
+
+
 TIER_MAP = {
     "hedge_one_by_one": grid_hedge_one_by_one,
     "reentry_one_by_one": grid_reentry_one_by_one,
@@ -876,6 +891,7 @@ TIER_MAP = {
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "system_combo": grid_system_combo,
+    "min_gain_augment": grid_min_gain_augment,
 }
 
 
