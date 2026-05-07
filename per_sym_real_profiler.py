@@ -66,15 +66,24 @@ PROMOTE_DD_CAP = 10.0
 PROMOTE_TRADES_MIN = 30
 
 
-def _load_baseline(sym: str) -> Dict:
-    # 2026-05-07: BASELINE_FROM_OVERRIDE env var — when "0", return {} so engine uses live defaults (which DO fire trades). The proven override files were producing 0 trades on recent windows (9-month baseline test 0 closes); engine-defaults baseline is closer to live and is the right comparison axis for per-sym sweeps.
-    if os.environ.get('BASELINE_FROM_OVERRIDE', '0') != '1':
-        return {}
-    if sym in BTC_DEDICATED_SYMS:
-        try: return {k: v for k, v in json.loads(OVERRIDE_BTC_BEST.read_text()).items() if not k.startswith('_')}
-        except Exception: pass
-    try: return {k: v for k, v in json.loads(OVERRIDE_V5_RZ_LOOSE.read_text()).items() if not k.startswith('_')}
-    except Exception: return {}
+def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
+    # 2026-05-07 22:00: engine-defaults produce 0 trades for both modes when standalone (verified CF/CTRA tradier 3.4yr = 0 closes; SKYUSDT/TRXUSDT/XLMUSDT crypto 1.4yr = 0 closes). Use known-trade-firing baselines instead. Tradier: tradier_v5_merged.json (honest pool_sharpe 0.5823 per feedback_engine_pool_sharpe_cockroach_smothered_20260430). Crypto: crypto_1p033_20260422.json (filename Sharpe is pre-cockroach lie, but the override knobs DO fire trades — real Sharpe will be measured via metrics_guard from the per-trade returns).
+    BASELINES = ROOT / 'data' / 'baselines'
+    candidates = []
+    if mode == 'tradier':
+        candidates = [BASELINES / 'tradier_v5_merged.json', BASELINES / 'tradier_v4_merged.json']
+    else:
+        candidates = [BASELINES / 'crypto_1p033_20260422.json', BASELINES / 'crypto_0p9543.json', BASELINES / 'crypto_0p7574_full132.json']
+    for p in candidates:
+        try:
+            if p.exists():
+                d = json.loads(p.read_text())
+                clean = {k: v for k, v in d.items() if not k.startswith('_')}
+                if clean:
+                    return clean
+        except Exception:
+            continue
+    return {}
 
 
 def variants_for_sym(base: Dict, sym: str) -> List[Tuple[str, Dict]]:
@@ -179,7 +188,7 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
 def optimize_sym(sym: str, account: str = 'flz', start: str = '2022-01-01',
                  mode: str = 'crypto') -> Optional[Dict]:
     """Sweep variants for one symbol via real engine subprocess. Pick best."""
-    base = _load_baseline(sym)
+    base = _load_baseline(sym, mode=mode)
     grid = variants_for_sym(base, sym)
     run_dir = RUN_BASE / f'real_per_sym_{sym}_{int(time.time())}'
     results = []
