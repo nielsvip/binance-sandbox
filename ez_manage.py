@@ -20785,25 +20785,43 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
             _db_cross_back_to_short = False
             _db_cross_back_to_long = False
             if _db_break_up:
-                # Update state: last broken UP through this level
+                # Update state: last broken UP through this level — record timestamp for 72h continuation window
                 _db_lvl = _db_dc_hi_d if (_db_dc_hi_d > 0 and _db_close > _db_dc_hi_d) else _db_bb_up_d
                 _db_band_now = 'DC' if (_db_dc_hi_d > 0 and _db_close > _db_dc_hi_d) else 'BB'
-                _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_lvl, 'last_band': _db_band_now}
+                _db_prev_up_ts = _db_sym_st.get('last_up_ts', 0)
+                _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_lvl, 'last_band': _db_band_now, 'last_up_ts': _db_prev_up_ts if _db_prev_up_ts > 0 else time.time(), 'last_dn_ts': _db_sym_st.get('last_dn_ts', 0)}
             elif _db_break_dn:
                 _db_lvl = _db_dc_lo_d if (_db_dc_lo_d > 0 and _db_close < _db_dc_lo_d) else _db_bb_lo_d
                 _db_band_now = 'DC' if (_db_dc_lo_d > 0 and _db_close < _db_dc_lo_d) else 'BB'
-                _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_lvl, 'last_band': _db_band_now}
+                _db_prev_dn_ts = _db_sym_st.get('last_dn_ts', 0)
+                _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_lvl, 'last_band': _db_band_now, 'last_up_ts': _db_sym_st.get('last_up_ts', 0), 'last_dn_ts': _db_prev_dn_ts if _db_prev_dn_ts > 0 else time.time()}
             else:
                 # No fresh break — check cross-back of last-known break level
+                # 2026-05-07: hysteresis (DC_BB_CROSSBACK_HYSTERESIS_PCT) prevents hair-trigger flips
+                # on tiny consolidations; BB_BREAKOUT_CONT suppresses crossback within 72h of breakout
+                _db_hyst = float(getattr(config, 'DC_BB_CROSSBACK_HYSTERESIS_PCT', 2.0)) / 100.0
+                _db_cont_hrs = float(getattr(config, 'BB_BREAKOUT_CONT_HOURS', 72.0))
+                _db_cont_on = bool(getattr(config, 'BB_BREAKOUT_CONT_ENABLED', True))
                 if _db_sym_st.get('last_dir') == 'UP' and _db_sym_st.get('last_level', 0) > 0:
-                    if _db_close < _db_sym_st['last_level']:
-                        _db_cross_back_to_short = True  # was UP, now back down → flip to SHORT
-                        # Update state — broken DOWN through that level
-                        _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC')}
+                    _db_cross_level = _db_sym_st['last_level'] * (1.0 - _db_hyst)
+                    if _db_close < _db_cross_level:
+                        _db_last_up_ts = _db_sym_st.get('last_up_ts', 0)
+                        _db_elapsed_h = (time.time() - _db_last_up_ts) / 3600.0 if _db_last_up_ts > 0 else 999.0
+                        if _db_cont_on and _db_last_up_ts > 0 and _db_elapsed_h < _db_cont_hrs:
+                            logger.warning(f"🏄 [BB_BREAKOUT_CONT] {position_key}: {_db_elapsed_h:.1f}h/{_db_cont_hrs:.0f}h window → suppressing CROSSBACK_TO_SHORT px={_db_close:.2f} level={_db_sym_st['last_level']:.2f} hyst={_db_hyst*100:.0f}%")
+                        else:
+                            _db_cross_back_to_short = True  # was UP, now back down → flip to SHORT
+                            _db_state[symbol] = {'last_dir': 'DOWN', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC'), 'last_up_ts': _db_sym_st.get('last_up_ts', 0), 'last_dn_ts': time.time()}
                 elif _db_sym_st.get('last_dir') == 'DOWN' and _db_sym_st.get('last_level', 0) > 0:
-                    if _db_close > _db_sym_st['last_level']:
-                        _db_cross_back_to_long = True  # was DOWN, now back up → flip to LONG
-                        _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC')}
+                    _db_cross_level = _db_sym_st['last_level'] * (1.0 + _db_hyst)
+                    if _db_close > _db_cross_level:
+                        _db_last_dn_ts = _db_sym_st.get('last_dn_ts', 0)
+                        _db_elapsed_h = (time.time() - _db_last_dn_ts) / 3600.0 if _db_last_dn_ts > 0 else 999.0
+                        if _db_cont_on and _db_last_dn_ts > 0 and _db_elapsed_h < _db_cont_hrs:
+                            logger.warning(f"🏄 [BB_BREAKOUT_CONT] {position_key}: {_db_elapsed_h:.1f}h/{_db_cont_hrs:.0f}h window → suppressing CROSSBACK_TO_LONG px={_db_close:.2f} level={_db_sym_st['last_level']:.2f}")
+                        else:
+                            _db_cross_back_to_long = True  # was DOWN, now back up → flip to LONG
+                            _db_state[symbol] = {'last_dir': 'UP', 'last_level': _db_sym_st['last_level'], 'last_band': _db_sym_st.get('last_band', 'DC'), 'last_up_ts': time.time(), 'last_dn_ts': _db_sym_st.get('last_dn_ts', 0)}
             # Determine if position is on WRONG side
             #   SHORT during break-UP or cross-back-to-LONG → wrong (should be LONG)
             #   LONG during break-DOWN or cross-back-to-SHORT → wrong (should be SHORT)

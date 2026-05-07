@@ -63,7 +63,7 @@ LAUNCH_TIER() {
   # nice -n 0 = default (user can't go below 0 without root). Ad-hoc backtests should run at nice 19.
   nohup nice -n 0 "$PY" -u v8_quick_sweep.py --mode crypto --symbols all --start 2022-01-01 \
       --tier "$tier" --workers 4 --stream --shuffle \
-      --kill-secs 99999 --kill-sharpe 0 --min-csv-sharpe 0.5 \
+      --kill-secs 99999 --kill-sharpe 0 --min-csv-sharpe 0.1 \
       > "$log" 2>&1 < /dev/null &
   disown
   local pid=$!

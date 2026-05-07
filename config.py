@@ -726,10 +726,17 @@ class Config:
     PARABOLIC_PROTECTION_ENABLED: bool = True
     PARABOLIC_RSI_4H_MIN: float = 70.0
     PARABOLIC_RSI_1H_MIN: float = 65.0
-    PARABOLIC_BB_PCT_B_4H_MIN: float = 0.90
+    PARABOLIC_BB_PCT_B_4H_MIN: float = 0.70  # was 0.90 — lowered 2026-05-07: ZEC +57% run, parabolic gate was never firing
     PARABOLIC_RSI_4H_MAX: float = 30.0
     PARABOLIC_RSI_1H_MAX: float = 35.0
     PARABOLIC_BB_PCT_B_4H_MAX: float = 0.10
+    # DC_BB crossback hysteresis — price must drop this % BELOW break level before CROSSBACK fires
+    # Prevents hair-trigger flips on tiny consolidations during strong trends (ZEC 2026-05-07)
+    DC_BB_CROSSBACK_HYSTERESIS_PCT: float = 2.0
+    # BB breakout continuation window — after DC/BB daily break, protect the position for N hours.
+    # Suppresses DC_CROSSBACK_TO_SHORT (or LONG) so pullbacks to BB basis don't flip direction.
+    BB_BREAKOUT_CONT_ENABLED: bool = True
+    BB_BREAKOUT_CONT_HOURS: float = 72.0
     # USER 2026-05-06: when extreme overbought, allow SHORT entry/augment to fire even on a
     # rising ticker (override SHORT_SMA_GATE) — so we can short the demise of parabolic moves
     # instead of being locked out by trend filters. Mirror for extreme oversold + LONG.
@@ -1508,6 +1515,7 @@ class Config:
     HLR_BYPASS_MIN_TF_WEIGHT: int = 25  # min HLR points from a single TF to bypass SHIT_IDEA gate (25 = 15m tier)
     # HLR_TOP_EXIT: sell at WT delta slowdown across HTFs, then reenter at 1.5-3x previous positionAmt
     HLR_TOP_EXIT_ENABLED: bool = True
+    HLR_TOP_MIN_GAIN_PCT: float = 1.5    # HLR_TOP_EXIT only fires when position gain >= this % (prevents exit at 0.3%)
     HLR_TOP_MIN_TFS: int = 2             # min TFs confirming top (must include at least one ≥ 4h)
     HLR_TOP_VEL_1H_THRESH: float = -1.0  # wt_velocity_1h must be < this to count as 1h top signal
     HLR_TOP_VEL_4H_THRESH: float = 0.0   # wt_velocity_4h < this counts (0 = any negative)

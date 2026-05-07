@@ -3329,7 +3329,8 @@ class AdvancedSignalRater:
             # HLR_TOP_EXIT: WT delta slowdown at HTFs → sell the top → tag for 1.5-3x reentry.
             # Checks wt_velocity + momentum exhaustion + divergence + peak structure per TF.
             # Requires HLR_TOP_MIN_TFS TFs confirming AND at least one must be 4h or higher.
-            if getattr(config, 'HLR_TOP_EXIT_ENABLED', True) and pnl_pct >= _noloss_min:
+            _hlr_min_gain = float(getattr(config, 'HLR_TOP_MIN_GAIN_PCT', 1.5))
+            if getattr(config, 'HLR_TOP_EXIT_ENABLED', True) and pnl_pct >= _noloss_min and pnl_pct >= _hlr_min_gain:
                 _hte_vel_4h = safe_fetch_float(ind.get('wt_velocity_4h', metrics.get('wt_velocity_4h')), 0)
                 _hte_vel_D = safe_fetch_float(ind.get('wt_velocity_D'), 0)
                 _hte_vel_W = safe_fetch_float(ind.get('wt_velocity_W'), 0)
