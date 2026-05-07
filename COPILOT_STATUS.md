@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 08:02:22 UTC
+# Copilot Status — 2026-05-07 08:17:37 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T08:00:29
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T08:00:29
-- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T08:01:00
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T08:01:00
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T08:01:00
-- **RATIO_IMBALANCE** [crypto] ang — 2026-05-07T08:01:31
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T08:01:31
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T08:01:31
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T08:01:31
-- **RATIO_IMBALANCE** [crypto] flz — 2026-05-07T08:01:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T08:16:04
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T08:16:04
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-07T08:17:06
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-07T08:17:06
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T08:17:06
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T08:17:06
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T08:17:06
+- **BIG_LOSER** [tradier] trb:PLTR_LONG — 2026-05-07T08:17:37
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T08:17:37
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T08:17:37
 
 ## Missed Trades (trader comparison)
 
@@ -29,8 +29,8 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 7 | **Reentered:** 0
 
-- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-9.0%
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-5.2%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-8.7%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-4.8%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +0.9%
 - HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-4.0%
 
@@ -49,6 +49,6 @@ _None_
 **Issues (last 1h):** 11
 - [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
 - [HIGH] ez_prices.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_prices.py is NOT running
