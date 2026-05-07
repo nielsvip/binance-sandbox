@@ -20,7 +20,8 @@ if [ "$NB" -lt 1 ]; then
         --symbols BTCUSDC,ETHUSDC,SOLUSDC,ADAUSDC,BNBUSDC,AVAXUSDC,DOTUSDT,ATOMUSDT \
         --tier system_combo \
         --workers 1 \
-        --timeout 2000 \
+        --timeout 3600 \
+        --mem-throttle-pct 90 \
         > ~/logs/bt_sweep_crypto_8sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
     echo "[$TS] post-relaunch system_combo procs=$(pgrep -afc 'backtest_v8_sweep.*system_combo')" >> "$LOG"

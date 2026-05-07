@@ -35,11 +35,46 @@ TRADIER_RATE_HIGH = TRADIER_RATE_HIGH_PER_WEEK / 7.0
 
 PROMOTE_POOL_SHARPE_MIN = 0.5
 
+# 2026-05-07 22:35: physical bounds — autonomous_search mutates without bounds and produced BTC_PER_TRADE_NOTIONAL_USD_MAX=22.5 (Binance min trade ~$130 — physically impossible). Reject configs that override these knobs OUTSIDE the realistic range. This is non-negotiable for live promotion.
+PHYSICAL_BOUNDS = {
+    'BTC_PER_TRADE_NOTIONAL_USD_MAX': (130.0, 5000.0),
+    'BTC_TREND_NOTIONAL_USD_MAX': (130.0, 10000.0),
+    'BTC_TOTAL_NOTIONAL_USD_MAX': (260.0, 50000.0),
+    'BTC_HARD_LOSS_USD_PER_TRADE': (1.0, 100.0),
+    'BTC_BREAKOUT_HARD_LOSS_USD_PER_TRADE': (1.0, 100.0),
+    'BTC_TREND_HARD_LOSS_USD_PER_TRADE': (1.0, 100.0),
+    'BTC_HF_HEDGE_NOTIONAL_PCT_OF_LOSER': (0.1, 2.0),
+    'MIN_POSITION_SIZE': (10.0, 1000.0),
+    'START_POSITION_SIZE': (50.0, 5000.0),
+    'STOP_LOSS_PCT': (0.1, 10.0),
+    'BTC_TREND_HARD_LOSS_PCT': (0.1, 10.0),
+    'BTC_HEDGE_MIN_HOLD_BARS': (0, 200),
+    'BTC_MIN_HOLD_BARS': (0, 200),
+}
+
+
+def violates_physical_bounds(overrides_json: str) -> tuple[bool, list[str]]:
+    """Returns (violates, list-of-violation-tags)."""
+    try:
+        ovr = json.loads(overrides_json or '{}')
+    except Exception:
+        return False, []
+    bad = []
+    for k, (mn, mx) in PHYSICAL_BOUNDS.items():
+        if k not in ovr: continue
+        try:
+            v = float(ovr[k])
+            if v < mn or v > mx:
+                bad.append(f'{k}={v}|bounds=[{mn},{mx}]')
+        except (TypeError, ValueError):
+            continue
+    return len(bad) > 0, bad
+
 CSV_FIELDS = [
     'ts_utc', 'mode', 'worker', 'iter', 'pool_sharpe', 'sym_sharpe', 'acc_gain_pct',
     'avg_gain_trade', 'gain_per_yr', 'gain_sym_yr', 'max_dd_pct', 'trades', 'wr',
     'n_syms', 'n_years', 'rate_per_sym_per_day', 'rate_band', 'promotable',
-    'overrides_count', 'overrides_json'
+    'physical_bounds_violations', 'overrides_count', 'overrides_json',
 ]
 
 
@@ -63,6 +98,10 @@ def is_promotable(row: dict, mode: str) -> bool:
         return False  # below sample-floor (≥30 trades/sym)
     if row['max_dd_pct'] > 30.0:
         return False  # excessive DD — don't promote risk
+    # Physical-bounds violation — config has impossible values like BTC_PER_TRADE_NOTIONAL_USD_MAX=22.5 (below Binance min trade)
+    violates, _bad = violates_physical_bounds(row.get('overrides_json', '{}'))
+    if violates:
+        return False
     return True
 
 
@@ -85,6 +124,7 @@ def parse_iter_row(row: dict, mode: str, worker: str) -> dict:
             return None
         rate_psd = trades / n_syms / n_years / 365.25
         band = rate_band(rate_psd, mode)
+        violates_pb, bad_pb = violates_physical_bounds(ovr)
         out = dict(
             ts_utc=datetime.now(timezone.utc).isoformat(timespec='seconds'),
             mode=mode, worker=worker, iter=int(row.get('iter', 0) or 0),
@@ -94,7 +134,9 @@ def parse_iter_row(row: dict, mode: str, worker: str) -> dict:
             max_dd_pct=round(dd, 2), trades=trades, wr=round(wr, 1),
             n_syms=n_syms, n_years=round(n_years, 2),
             rate_per_sym_per_day=round(rate_psd, 4), rate_band=band,
-            promotable=False, overrides_count=ovr_count, overrides_json=ovr,
+            promotable=False,
+            physical_bounds_violations='|'.join(bad_pb) if bad_pb else '',
+            overrides_count=ovr_count, overrides_json=ovr,
         )
         out['promotable'] = is_promotable(out, mode)
         return out
@@ -207,7 +249,17 @@ def main():
                                   f"pool_sharpe={parsed['pool_sharpe']} "
                                   f"rate={parsed['rate_per_sym_per_day']:.3f}/sym/day",
                                   flush=True)
-                    else:
+                    elif parsed['rate_band'] == 'RATE_OK' and parsed['pool_sharpe'] >= PROMOTE_POOL_SHARPE_MIN:
+                        # Was eligible on rate+sharpe but blocked by another check
+                        violates, bad = violates_physical_bounds(parsed.get('overrides_json', '{}'))
+                        if violates:
+                            print(f"[rate_filter] PHYSICAL_BLOCK mode={mode} iter={parsed['iter']} "
+                                  f"pool_sharpe={parsed['pool_sharpe']} "
+                                  f"rate={parsed['rate_per_sym_per_day']:.3f}/sym/day "
+                                  f"violations={bad}",
+                                  flush=True)
+                            continue
+                    if not parsed['promotable']:
                         if parsed['rate_band'] == 'RATE_OK' and parsed['pool_sharpe'] >= 0.3:
                             # near-promote - log for visibility
                             print(f"[rate_filter] near-promote mode={mode} iter={parsed['iter']} "
