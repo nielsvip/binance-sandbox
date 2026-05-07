@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 11:34:46 UTC
+# Copilot Status — 2026-05-07 11:50:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T11:33:08
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T11:33:08
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T11:33:08
-- **STALE_INDICATORS** [tradier]  — 2026-05-07T11:33:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T11:33:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T11:33:39
-- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-07T11:34:15
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T11:34:15
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T11:34:15
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T11:34:15
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T11:47:46
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T11:47:46
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T11:48:17
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T11:48:17
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T11:48:48
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T11:48:48
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T11:48:48
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T11:49:50
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T11:49:50
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-07T11:49:50
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 4 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-8.6%
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-8.8%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +-8.2%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-9.8%
 - HELD: **GOOGL** LONG (tradier) peak +12.0%, now +1.7%
-- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-3.2%
+- HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +-2.9%
 
 - WATCHING: **LUNA2USDT** SHORT (crypto) peaked +15.7%, exited 0m ago
 - WATCHING: **DOGEUSDC** SHORT (crypto) peaked +11.5%, exited 0m ago
@@ -47,9 +47,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 29
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 33
+- [HIGH] ez_rankings.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
 - [LOW] tradier_indicators.py is NOT running
-- [MEDIUM] ez_prices.py running but log stale (10min)
-- [HIGH] ez_prices.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [HIGH] ez_rankings.py is NOT running
