@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 15:24:59 UTC
+# Copilot Status — 2026-05-07 15:40:44 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,11 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:23:36
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:23:36
-- **STALE_INDICATORS** [tradier]  — 2026-05-07T15:24:06
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:24:06
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:24:06
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T15:24:08
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T15:24:08
-- **STALE_INDICATORS** [tradier]  — 2026-05-07T15:24:39
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:24:39
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:24:39
+- **STALE_INDICATORS** [tradier]  — 2026-05-07T15:40:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:40:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:40:02
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T15:40:02
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T15:40:02
 
 ## Missed Trades (trader comparison)
 
@@ -32,7 +27,7 @@ _None_
 - HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +11.8%
 - HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +5.7%
 - HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +4.3%
-- HELD: **SLV** LONG (tradier) peak +3.9%, now +3.4%
+- HELD: **SLV** LONG (tradier) peak +3.6%, now +3.0%
 - HELD: **VETUSDT** SHORT (crypto) peak +3.2%, now +3.2%
 
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +41.6%, exited 1m ago
@@ -48,9 +43,8 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 13
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] ez_manage.py for men is NOT running
+**Issues (last 1h):** 4
 - [HIGH] ez_rankings.py is NOT running
-- [HIGH] ez_manage.py for men is NOT running
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] ez_share_ind.py is NOT running
+- [CRITICAL] tradier_manage.py for trb is NOT running (MARKET OPEN!)
+- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
