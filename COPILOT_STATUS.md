@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-07 15:55:25 UTC
+# Copilot Status — 2026-05-07 16:10:36 UTC
 
 **Market Hours:** YES | **Tradier Priority:** YES
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:54:11
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:54:11
-- **STALE_INDICATORS** [tradier]  — 2026-05-07T15:54:41
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:54:41
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:54:41
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T15:54:53
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T15:54:53
-- **STALE_INDICATORS** [tradier]  — 2026-05-07T15:55:15
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T15:55:15
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T15:55:15
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T16:09:32
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T16:09:32
+- **STALE_INDICATORS** [tradier]  — 2026-05-07T16:09:54
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T16:09:54
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T16:09:54
+- **STALE_INDICATORS** [tradier]  — 2026-05-07T16:10:24
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-07T16:10:24
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-07T16:10:24
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-07T16:10:35
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-07T16:10:35
 
 ## Missed Trades (trader comparison)
 
@@ -32,7 +32,7 @@ _None_
 - HELD: **PENGUUSDC** SHORT (crypto) peak +18.5%, now +11.8%
 - HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +5.7%
 - HELD: **SCRUSDT** SHORT (crypto) peak +4.3%, now +4.3%
-- HELD: **SLV** LONG (tradier) peak +3.6%, now +2.4%
+- HELD: **SLV** LONG (tradier) peak +3.6%, now +1.5%
 - HELD: **VETUSDT** SHORT (crypto) peak +3.2%, now +3.2%
 
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +41.6%, exited 1m ago
@@ -48,9 +48,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 11
-- [CRITICAL] tradier_manage.py for trc is NOT running (MARKET OPEN!)
-- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
-- [MEDIUM] tradier_indicators.py running but log stale (10min)
+**Issues (last 1h):** 14
 - [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
 - [HIGH] ez_indicators.py is NOT running
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_indicators.py is NOT running (MARKET OPEN!)
+- [HIGH] tradier_rankings.py is NOT running (MARKET OPEN!)
