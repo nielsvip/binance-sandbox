@@ -4325,7 +4325,13 @@ class PositionService:
         if not client or not order_id:
             return
         try :
-            await asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=order_id)
+            # 2026-05-07: hard 10s ceiling on Binance cancel. Without this, a slow Binance
+            # response stalls handle_reduction which is awaited from inside _process_account_update_impl,
+            # which trips the 120s PAU tripwire. Three pau_stall events fired between 18:43 and 19:00
+            # this way (flz/fin/flz, all on the API_CONFIRMED_CLOSED zero-out path).
+            await asyncio.wait_for(asyncio.to_thread(client.futures_cancel_order, symbol=symbol, orderId=order_id), timeout=10.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[{position_key}] cancel_empty_stop: futures_cancel_order >10s — abandoning to keep PAU live (next stop sync will retry)")
         except BinanceAPIException as exc:
             if exc.code not in (-2011, -2013):
                 logger.warning(f"[{position_key}] Failed to cancel managed stop {order_id}: {exc}")
@@ -7509,7 +7515,14 @@ class PositionService:
         from ez_positions import atomic_save_positions
         await atomic_save_positions(self, account_key, force=True)
         try :
-            await self.stop_manager.manage(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, current_price=current_price, entry_price=entry_price, event="reduction", force_sync=True )
+            # 2026-05-07: bounded; this path issues open-orders fetch + cancel/place via
+            # asyncio.to_thread Binance calls and was a second hang point inside the
+            # API_CONFIRMED_CLOSED zero-out flow. PAU MUST NOT block on Binance cleanup —
+            # if the sync can't complete in 15s, fire-and-forget so the next sync can retry.
+            await asyncio.wait_for(self.stop_manager.manage(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, current_price=current_price, entry_price=entry_price, event="reduction", force_sync=True), timeout=15.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[{position_key}] post-reduction stop_manager.manage >15s — backgrounding to keep PAU live")
+            asyncio.create_task(self.stop_manager.manage(account_key=account_key, symbol=symbol, position_key=position_key, position_side=position_side, position=position, current_price=current_price, entry_price=entry_price, event="reduction", force_sync=True))
         except Exception as update_err:
             stack = traceback.format_exc().replace("\n", " | ")
             logger.warning(f"[{position_key}] Failed to update stops after reduction: {update_err} | stack={stack[:1024]}")
