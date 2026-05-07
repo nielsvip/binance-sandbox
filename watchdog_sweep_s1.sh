@@ -16,10 +16,10 @@ if [ "$NB" -lt 1 ]; then
     cd "$DIR"
     nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode crypto --account ang \
-        --start 2025-01-01 \
+        --start 2026-01-01 \
         --symbols BTCUSDC,ETHUSDC,SOLUSDC,ADAUSDC,BNBUSDC,AVAXUSDC,DOTUSDT,ATOMUSDT \
         --tier system_combo \
-        --workers 2 \
+        --workers 1 \
         --timeout 2000 \
         > ~/logs/bt_sweep_crypto_8sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5

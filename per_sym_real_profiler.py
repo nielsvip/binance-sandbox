@@ -49,7 +49,7 @@ OVERRIDE_V5_RZ_LOOSE = ROOT / 'backtest_v8' / 'btc_loop_results' / 'override_v5_
 BTC_DEDICATED_SYMS = {'BTCUSDC','ETHUSDC','SOLUSDC','BNBUSDC','XRPUSDC','DOGEUSDC','ZECUSDC','BTCDOMUSDT'}
 
 # Promote criteria (per CLAUDE.md NO-LIES)
-PROMOTE_POOL_FLOOR = 0.7   # User 2026-05-05: <0.7 unacceptable
+PROMOTE_POOL_FLOOR = 0.5   # User 2026-05-07: 0.5 is the practical floor for new per-sym configs to ship live before market open
 PROMOTE_DD_CAP = 10.0
 PROMOTE_TRADES_MIN = 30
 
@@ -87,13 +87,23 @@ def variants_for_sym(base: Dict, sym: str) -> List[Tuple[str, Dict]]:
             d['BTC_DEDICATED_ENABLED'] = True
             d['BTC_DEDICATED_SYMBOLS'] = [sym]
     else:
-        # Generic crypto sym sweep
+        # Generic sym sweep — knobs verified-wired in either ez_manage (crypto) or tradier_manage (stocks).
         for es in (12.0, 15.0, 18.0, 22.0, 28.0):
-            add(f'es_{es:.0f}', {'ENTRY_SCORE_THRESHOLD': es})
-        for htf in (1, 2, 3):
-            add(f'htf_{htf}', {'HTF_MIN_ALIGNED': htf})
+            add(f'es_{es:.0f}', {'ENTRY_SCORE_THRESHOLD': es, 'TRADIER_ENTRY_SCORE_THRESHOLD': es})
+        # TF_ALIGNMENT_MIN_LONG/SHORT replaces dead HTF_MIN_ALIGNED. Wired in tradier_manage:8358-8359 + ez_manage entry/exit.
+        for align in (1, 2, 3, 4):
+            add(f'tfalign_{align}', {'TF_ALIGNMENT_MIN_LONG': align, 'TF_ALIGNMENT_MIN_SHORT': align})
         for wt in (1, 2, 3, 4):
-            add(f'wt_exit_{wt}', {'WT_EXIT_MIN_TFS': wt})
+            add(f'wt_exit_{wt}', {'WT_EXIT_MIN_TFS': wt, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': wt})
+        # WT percentile exits (4h/D level) — ez_manage:21535. Tighter exit on top/bottom percentile.
+        add('wt_pct_4h_strict', {'WT_PERCENTILE_EXIT_OB_4H': 80, 'WT_PERCENTILE_EXIT_OS_4H': 20})
+        add('wt_pct_D_strict', {'WT_PERCENTILE_EXIT_OB_D': 85, 'WT_PERCENTILE_EXIT_OS_D': 15})
+        # WT_4H_VEL_EXIT toggle (vel-based 4h exit). ez_manage:wired.
+        add('wt_4h_vel_strict', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_LONG_VEL_MIN': 5.0, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN': -5.0, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': True})
+        add('wt_4h_vel_off', {'WT_4H_VEL_EXIT_ENABLED': False})
+        # WT_EXHAUST_EXIT (HTF reversal exit). Wired ez_manage.
+        add('wt_exhaust_on_gain', {'WT_EXHAUST_EXIT_ENABLED': True, 'WT_EXHAUST_EXIT_REQUIRE_GAIN': True})
+        add('wt_exhaust_off', {'WT_EXHAUST_EXIT_ENABLED': False})
     return grid
 
 
