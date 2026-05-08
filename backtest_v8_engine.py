@@ -3777,6 +3777,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             manager.order_deduplication.clear()
         if hasattr(manager, '_queue_attempt_ts'):
             manager._queue_attempt_ts.clear()
+        # BACKTEST FIX: _pending_closes uses time.time() (real wall clock). Backtest processes
+        # ~200 bars/sec so _since_last < 30s always → CLOSE_COOLDOWN blocks every close after
+        # the first. Clear per step so each bar gets one close attempt per symbol.
+        if hasattr(manager, '_pending_closes'):
+            manager._pending_closes.clear()
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
         oq = manager.order_queue
         if hasattr(oq, '_orders'):
