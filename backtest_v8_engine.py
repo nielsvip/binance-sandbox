@@ -2183,7 +2183,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _gr_mD = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_D', 3.0))
             for _gr_sym in list(stores.keys()):
                 _gr_ind = indicator_cache.get(_gr_sym, {})
-                _gr_p = float(_gr_ind.get('current_price', 0) or 0)
+                # FIX 2026-05-08: tradier NPZ has no 'current_price' field → price was always 0 → rule never fired.
+                _gr_p = float(_gr_ind.get('close_5m', _gr_ind.get('close', _gr_ind.get('current_price', 0))) or 0)
                 if _gr_p <= 0:
                     continue
                 # FIX 2026-05-08: tradier base TF is 5m not 3m — wt1_3m=0 in tradier NPZ → rule never fired.
@@ -2236,12 +2237,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                             _gr_mult = _gr_mD
                     _gr_target_usd = _gr_base_usd * _gr_mult
                     _gr_target_qty = _gr_target_usd / _gr_p
+                    # FIX 2026-05-08: tradier stocks require integer shares — $5 base → 0.018 AAPL → rounds to 0 → never fires.
+                    # For tradier: use integer lot (minimum 1 share). base_usd in config is crypto-sized; override in sweep.
+                    _gr_target_qty_int = max(1.0, round(_gr_target_qty))
+                    _gr_target_usd_int = _gr_target_qty_int * _gr_p
                     _gr_pos = trade_manager.positions.get(_gr_pk)
                     _gr_cur_amt = abs(float(getattr(_gr_pos, 'positionAmt', 0))) if _gr_pos else 0.0
-                    if _gr_cur_amt > 0 and _gr_cur_amt * _gr_p >= _gr_target_usd * 0.8:
+                    if _gr_cur_amt > 0 and _gr_cur_amt * _gr_p >= _gr_target_usd_int * 0.8:
                         continue
-                    _gr_qty = _gr_target_qty - _gr_cur_amt
-                    if _gr_qty * _gr_p < 1.0:
+                    _gr_qty = _gr_target_qty_int - _gr_cur_amt
+                    if _gr_qty < 0.5:
                         continue
                     _gr_action = 'OPEN' if _gr_cur_amt == 0 else 'AUGMENT'
                     _gr_side = 'BUY' if _gr_is_long else 'SELL'

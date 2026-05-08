@@ -499,6 +499,28 @@ def _file_aggregates(p):
             content_side = "SHORT"
         else:
             content_side = "MIXED"
+    # Trade durations — surface so user can see at a glance whether the test
+    # is realistic scalping vs garbage same-bar churning. Compute from actual
+    # exit-entry timestamps (seconds), in case duration_bars is missing.
+    dur_secs: List[int] = []
+    for t in trades:
+        e, x = int(t.get("entry_ts", 0) or 0), int(t.get("exit_ts", 0) or 0)
+        if e > 0 and x >= e:
+            dur_secs.append(x - e)
+    dur_secs.sort()
+    if dur_secs:
+        m = len(dur_secs) // 2
+        median_dur_sec = dur_secs[m]
+        p25_dur_sec = dur_secs[len(dur_secs) // 4]
+        p75_dur_sec = dur_secs[(3 * len(dur_secs)) // 4]
+        max_dur_sec = dur_secs[-1]
+        n_zero_dur = sum(1 for d in dur_secs if d == 0)
+        # Use the most-common duration as a proxy for "1 bar". Anything below
+        # that threshold is sub-bar (impossible in a backtest sim).
+        n_under_5min = sum(1 for d in dur_secs if d < 300)
+    else:
+        median_dur_sec = p25_dur_sec = p75_dur_sec = max_dur_sec = 0
+        n_zero_dur = n_under_5min = 0
     agg = {
         "n": n,
         "wins": wins,
@@ -514,6 +536,12 @@ def _file_aggregates(p):
         "ts_first": ts_first,
         "ts_last": ts_last,
         "content_side": content_side,
+        "median_dur_sec": median_dur_sec,
+        "p25_dur_sec": p25_dur_sec,
+        "p75_dur_sec": p75_dur_sec,
+        "max_dur_sec": max_dur_sec,
+        "n_zero_dur": n_zero_dur,
+        "n_under_5min": n_under_5min,
     }
     _file_agg_cache[sp] = (mtime, agg)
     return agg
@@ -1966,6 +1994,12 @@ def tests_for_symbol():
             "years": round(years, 4),
             "gain_per_yr": round(gain_per_yr, 2),
             "gain_per_mo": round(gain_per_mo, 2),
+            "median_dur_sec": agg.get("median_dur_sec", 0),
+            "p25_dur_sec": agg.get("p25_dur_sec", 0),
+            "p75_dur_sec": agg.get("p75_dur_sec", 0),
+            "max_dur_sec": agg.get("max_dur_sec", 0),
+            "n_zero_dur": agg.get("n_zero_dur", 0),
+            "n_under_5min": agg.get("n_under_5min", 0),
             "diff_summary": diff_summary,
             "diff_keys": overrides,
             "aliases": aliases,
