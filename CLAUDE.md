@@ -63,13 +63,15 @@ The user lost **tens of thousands of dollars** to "imposter" results: numbers th
 
 ## 🚨🚨🚨 SWEEP-LIVENESS MANDATE — READ FIRST. NON-NEGOTIABLE 🚨🚨🚨
 
-### MACHINE ROLES — IMMUTABLE
+### MACHINE ROLES — UPDATED 2026-05-08
+
+**🚨 S2 IS DEAD (shut down by user 2026-05-08). S1 now runs BOTH crypto AND tradier sweeps.**
 
 | Machine | Role | What MUST be running | What MUST NOT be running |
 |---|---|---|---|
 | **MacBook** (`/Users/niels/Documents/binance`) | LIVE TRADING | `ez_manage.py --account {ang,inf,fin,flz,men}` (5 crypto), `tradier_manage.py --account {trb,trc}` (2 stocks), `ez_positions_quick.py`, `ez_positions_service.py`, `ez_market_data.py`, `ez_orderbook.py` | NO sweeps. NO precompute. NO autonomous_search. |
-| **S1** (`s1-int`, `/home/niels/binance-sandbox`) | **CRYPTO SWEEPS ONLY** | `v8_quick_sweep.py --mode crypto` and/or `autonomous_search.py --mode crypto` and/or `v8_test_queue.py --mode crypto`. Continuous. | NO `--mode tradier`. NO live trading. |
-| **S2** (`s2-int`, `/home/niels/binance-sandbox`) | **TRADIER SWEEPS ONLY** | `v8_quick_sweep.py --mode tradier` and/or `autonomous_search.py --mode tradier` and/or `v8_test_queue.py --mode tradier`. Continuous. | NO `--mode crypto`. NO live trading. |
+| **S1** (`s1-int`, `/home/niels/binance-sandbox`) | **CRYPTO + TRADIER SWEEPS** | `backtest_v8_sweep.py --mode crypto` (8 core syms, system_combo) AND `backtest_v8_sweep.py --mode tradier` (20 stocks, tradier_param_hunt). Both continuous via watchdog. | NO live trading. Kill `start_backtest_v8_loop.sh` if seen (OOMs). |
+| **S2** | **DEAD — DO NOT USE** | — | Everything. S2 is deleted. Never SSH to s2-int. |
 
 Mode-mismatch = 0-trade lying results. **Has cost weeks. KILL on sight.**
 
@@ -79,24 +81,18 @@ Mode-mismatch = 0-trade lying results. **Has cost weeks. KILL on sight.**
 # (a) MacBook live trading — expect ≥7
 ps -ef | grep -E 'ez_manage\.py --account|tradier_manage\.py --account' | grep -v grep | wc -l
 
-# (b) S1 crypto sweeps RUNNING — expect ≥3
-ssh s1-int 'pgrep -afc "v8_quick_sweep.*--mode crypto|autonomous_search.*--mode crypto|v8_test_queue.*--mode crypto"'
+# (b) S1 crypto sweeps RUNNING — expect ≥1
+ssh s1-int 'pgrep -afc "backtest_v8_sweep.*--mode crypto"'
 
-# (c) S1 has NO tradier sweeps — expect empty
-ssh s1-int 'pgrep -af "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier|v8_test_queue.*--mode tradier"'
+# (c) S1 tradier sweeps RUNNING — expect ≥1
+ssh s1-int 'pgrep -afc "backtest_v8_sweep.*--mode tradier"'
 
-# (d) S2 tradier sweeps RUNNING — expect ≥3
-ssh s2-int 'pgrep -afc "v8_quick_sweep.*--mode tradier|autonomous_search.*--mode tradier|v8_test_queue.*--mode tradier"'
-
-# (e) S2 has NO crypto sweeps — expect empty
-ssh s2-int 'pgrep -af "v8_quick_sweep.*--mode crypto|autonomous_search.*--mode crypto|v8_test_queue.*--mode crypto"'
-
-# (f) CSVs are GROWING
-ssh s1-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_crypto_*.csv 2>/dev/null | head -1'
-ssh s2-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/v8_quick_tradier_*.csv 2>/dev/null | head -1'
+# (d) Results growing
+ssh s1-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/ 2>/dev/null | head -3'
+ssh s1-int 'ls -lt /home/niels/logs/bt_sweep_*.log 2>/dev/null | head -3'
 ```
 
-If (b)/(d) shows 0: find newest CSV in `sweep_results/`, relaunch via launcher script, tell user "Found dead sweep on {S1|S2}, last alive {mtime}, relaunched {tier}."
+**S2 IS DEAD — do NOT SSH to s2-int.** If crypto or tradier sweep on S1 shows 0: relaunch via watchdog_sweep_s1.sh (crypto) or manually with backtest_v8_sweep.py --mode tradier.
 
 ### LAUNCHER SCRIPTS — USE THESE, NEVER AD-HOC NOHUP
 

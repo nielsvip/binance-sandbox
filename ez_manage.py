@@ -7024,69 +7024,68 @@ class MultiAccountTradeManager:
                                 wt1 = safe_fetch_float(ind.get('wt1_3m'), None)
                                 wt2 = safe_fetch_float(ind.get('wt2_3m'), None)
                                 price = safe_fetch_float(ind.get('current_price') or ind.get('close_3m'), None)
-                                dc_h_15m = safe_fetch_float(ind.get('dc_high_15m'), None)
-                                dc_l_15m = safe_fetch_float(ind.get('dc_low_15m'), None)
                                 dc_h_1h = safe_fetch_float(ind.get('dc_high_1h'), None)
                                 dc_l_1h = safe_fetch_float(ind.get('dc_low_1h'), None)
-                                dc_h_4h = safe_fetch_float(ind.get('dc_high_4h'), None)
-                                dc_l_4h = safe_fetch_float(ind.get('dc_low_4h'), None)
-                                bb_u_15m = safe_fetch_float(ind.get('bb_upper_15m'), None)
-                                bb_l_15m = safe_fetch_float(ind.get('bb_lower_15m'), None)
+                                dc_b_1h = safe_fetch_float(ind.get('dc_basis_1h'), None)
                                 bb_u_1h = safe_fetch_float(ind.get('bb_upper_1h'), None)
                                 bb_l_1h = safe_fetch_float(ind.get('bb_lower_1h'), None)
-                                bb_u_4h = safe_fetch_float(ind.get('bb_upper_4h'), None)
-                                bb_l_4h = safe_fetch_float(ind.get('bb_lower_4h'), None)
-                                bb_u_D = safe_fetch_float(ind.get('bb_upper_D'), None)
-                                bb_l_D = safe_fetch_float(ind.get('bb_lower_D'), None)
-                                dc_h_D = safe_fetch_float(ind.get('dc_high_D'), None)
-                                dc_l_D = safe_fetch_float(ind.get('dc_low_D'), None)
+                                k_3m = safe_fetch_float(ind.get('stoch_k_3m'), 50)
+                                d_3m = safe_fetch_float(ind.get('stoch_d_3m'), 50)
+                                k_3m_prev = safe_fetch_float(ind.get('k_3m_prev') or ind.get('stoch_k_3m_prev'), k_3m)
                             except Exception:
                                 continue
                             if wt1 is None or wt2 is None or price is None or price <= 0:
                                 continue
-                            # Switches: per-TF DC/BB enabled; disabled = that source doesn't contribute.
-                            _dc_req_15m = bool(getattr(config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
-                            _dc_req_1h = bool(getattr(config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
-                            _dc_req_4h = bool(getattr(config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
-                            _dc_req_D = bool(getattr(config, 'GOLDEN_RULE_DC_D_ENABLED', True))
-                            _bb_req_15m = bool(getattr(config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
-                            _bb_req_1h = bool(getattr(config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
-                            _bb_req_4h = bool(getattr(config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
-                            _bb_req_D = bool(getattr(config, 'GOLDEN_RULE_BB_D_ENABLED', True))
-                            _m_15m = float(getattr(config, 'GOLDEN_RULE_MULT_15M', 1.0))
-                            _m_1h = float(getattr(config, 'GOLDEN_RULE_MULT_1H', 1.5))
-                            _m_4h = float(getattr(config, 'GOLDEN_RULE_MULT_4H', 2.0))
-                            _m_D = float(getattr(config, 'GOLDEN_RULE_MULT_D', 3.0))
+                            # GOLDEN_RULE: breakout-then-retest two-phase entry.
+                            # Phase 1 (BREAKOUT): price just crossed above dc_high_1h or bb_upper_1h
+                            #   → tiny entry (MULT_BREAKOUT × base_usd) to lock in participation.
+                            # Phase 2 (RETEST): after breakout, price falls back to dc_basis_1h
+                            #   and is bouncing (k_3m turning up) → 300% entry (MULT_RETEST × base_usd).
+                            if not hasattr(self, '_golden_prev_above'):
+                                self._golden_prev_above = {}
+                            if not hasattr(self, '_golden_breakout_ts'):
+                                self._golden_breakout_ts = {}
+                            _m_breakout = float(getattr(config, 'GOLDEN_RULE_MULT_BREAKOUT', 0.1))
+                            _m_retest = float(getattr(config, 'GOLDEN_RULE_MULT_RETEST', 5.0))
+                            _retest_win = float(getattr(config, 'GOLDEN_RULE_RETEST_WINDOW_S', 14400.0))
+                            _prev_key = (sym, 'LONG' if is_long else 'SHORT')
+                            _bk_key = _prev_key
                             if is_long:
-                                if wt1 <= wt2: continue
-                                _dc_15m_ok = _dc_req_15m and dc_h_15m is not None and dc_h_15m > 0 and price > dc_h_15m
-                                _bb_15m_ok = _bb_req_15m and bb_u_15m is not None and bb_u_15m > 0 and price > bb_u_15m
-                                if not (_dc_15m_ok or _bb_15m_ok): continue
-                                mult = _m_15m
-                                _dc_1h_ok = _dc_req_1h and dc_h_1h is not None and dc_h_1h > 0 and price > dc_h_1h
-                                _bb_1h_ok = _bb_req_1h and bb_u_1h is not None and bb_u_1h > 0 and price > bb_u_1h
-                                if _dc_1h_ok or _bb_1h_ok: mult = _m_1h
-                                _dc_4h_ok = _dc_req_4h and dc_h_4h is not None and dc_h_4h > 0 and price > dc_h_4h
-                                _bb_4h_ok = _bb_req_4h and bb_u_4h is not None and bb_u_4h > 0 and price > bb_u_4h
-                                if _dc_4h_ok or _bb_4h_ok: mult = _m_4h
-                                _dc_D_ok = _dc_req_D and dc_h_D is not None and dc_h_D > 0 and price > dc_h_D
-                                _bb_D_ok = _bb_req_D and bb_u_D is not None and bb_u_D > 0 and price > bb_u_D
-                                if _dc_D_ok or _bb_D_ok: mult = _m_D
+                                _above_now = bool((dc_h_1h and price > dc_h_1h) or (bb_u_1h and price > bb_u_1h))
+                                _above_prev = self._golden_prev_above.get(_prev_key, False)
+                                self._golden_prev_above[_prev_key] = _above_now
+                                if _above_now and not _above_prev:
+                                    self._golden_breakout_ts[_bk_key] = time.time()
+                                    mult = _m_breakout
+                                    if wt1 <= wt2: continue
+                                    logger.info(f'[GOLDEN_RULE] BREAKOUT {sym} LONG px={price:g} dc_h1h={dc_h_1h} mult={mult}x')
+                                elif not _above_now and dc_b_1h and price >= dc_b_1h:
+                                    _bk_ts = self._golden_breakout_ts.get(_bk_key, 0)
+                                    if time.time() - _bk_ts > _retest_win: continue
+                                    if not (k_3m > d_3m and k_3m > k_3m_prev): continue
+                                    if wt1 <= wt2: continue
+                                    mult = _m_retest
+                                    logger.info(f'[GOLDEN_RULE] RETEST {sym} LONG px={price:g} basis={dc_b_1h:g} mult={mult}x k={k_3m:.0f}')
+                                else:
+                                    continue
                             else:
-                                if wt1 >= wt2: continue
-                                _dc_15m_ok = _dc_req_15m and dc_l_15m is not None and dc_l_15m > 0 and price < dc_l_15m
-                                _bb_15m_ok = _bb_req_15m and bb_l_15m is not None and bb_l_15m > 0 and price < bb_l_15m
-                                if not (_dc_15m_ok or _bb_15m_ok): continue
-                                mult = _m_15m
-                                _dc_1h_ok = _dc_req_1h and dc_l_1h is not None and dc_l_1h > 0 and price < dc_l_1h
-                                _bb_1h_ok = _bb_req_1h and bb_l_1h is not None and bb_l_1h > 0 and price < bb_l_1h
-                                if _dc_1h_ok or _bb_1h_ok: mult = _m_1h
-                                _dc_4h_ok = _dc_req_4h and dc_l_4h is not None and dc_l_4h > 0 and price < dc_l_4h
-                                _bb_4h_ok = _bb_req_4h and bb_l_4h is not None and bb_l_4h > 0 and price < bb_l_4h
-                                if _dc_4h_ok or _bb_4h_ok: mult = _m_4h
-                                _dc_D_ok = _dc_req_D and dc_l_D is not None and dc_l_D > 0 and price < dc_l_D
-                                _bb_D_ok = _bb_req_D and bb_l_D is not None and bb_l_D > 0 and price < bb_l_D
-                                if _dc_D_ok or _bb_D_ok: mult = _m_D
+                                _below_now = bool((dc_l_1h and price < dc_l_1h) or (bb_l_1h and price < bb_l_1h))
+                                _below_prev = self._golden_prev_above.get(_prev_key, False)
+                                self._golden_prev_above[_prev_key] = _below_now
+                                if _below_now and not _below_prev:
+                                    self._golden_breakout_ts[_bk_key] = time.time()
+                                    mult = _m_breakout
+                                    if wt1 >= wt2: continue
+                                    logger.info(f'[GOLDEN_RULE] BREAKOUT {sym} SHORT px={price:g} dc_l1h={dc_l_1h} mult={mult}x')
+                                elif not _below_now and dc_b_1h and price <= dc_b_1h:
+                                    _bk_ts = self._golden_breakout_ts.get(_bk_key, 0)
+                                    if time.time() - _bk_ts > _retest_win: continue
+                                    if not (k_3m < d_3m and k_3m < k_3m_prev): continue
+                                    if wt1 >= wt2: continue
+                                    mult = _m_retest
+                                    logger.info(f'[GOLDEN_RULE] RETEST {sym} SHORT px={price:g} basis={dc_b_1h:g} mult={mult}x k={k_3m:.0f}')
+                                else:
+                                    continue
                             target_usd = base_usd * mult
                             target_qty = target_usd / price
                             try:
