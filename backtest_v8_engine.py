@@ -2165,20 +2165,22 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # → must hold a LONG of base_usd×mult. Cascade: 1.5x at 1h, 2x at 4h, 3x at D.
         # Calls execute_trade_action directly — bypasses signal gate (fires every qualifying bar).
         # Gate: GOLDEN_RULE_ENABLED (default True).
-        if getattr(config, 'GOLDEN_RULE_ENABLED', True):
-            _gr_base_usd = float(getattr(config, 'GOLDEN_RULE_BASE_USD', 5.0))
-            _gr_dc_15 = bool(getattr(config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
-            _gr_bb_15 = bool(getattr(config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
-            _gr_dc_1h = bool(getattr(config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
-            _gr_bb_1h = bool(getattr(config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
-            _gr_dc_4h = bool(getattr(config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
-            _gr_bb_4h = bool(getattr(config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
-            _gr_dc_D = bool(getattr(config, 'GOLDEN_RULE_DC_D_ENABLED', True))
-            _gr_bb_D = bool(getattr(config, 'GOLDEN_RULE_BB_D_ENABLED', True))
-            _gr_m15 = float(getattr(config, 'GOLDEN_RULE_MULT_15M', 1.0))
-            _gr_m1h = float(getattr(config, 'GOLDEN_RULE_MULT_1H', 1.5))
-            _gr_m4h = float(getattr(config, 'GOLDEN_RULE_MULT_4H', 2.0))
-            _gr_mD = float(getattr(config, 'GOLDEN_RULE_MULT_D', 3.0))
+        # BUG FIX 2026-05-08: was reading crypto `config` (always True) instead of tradier
+        # tm_mod.config where sweep override GOLDEN_RULE_ENABLED=False was applied.
+        if getattr(tm_mod.config, 'GOLDEN_RULE_ENABLED', True):
+            _gr_base_usd = float(getattr(tm_mod.config, 'GOLDEN_RULE_BASE_USD', 5.0))
+            _gr_dc_15 = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
+            _gr_bb_15 = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
+            _gr_dc_1h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
+            _gr_bb_1h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
+            _gr_dc_4h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
+            _gr_bb_4h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
+            _gr_dc_D = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_D_ENABLED', True))
+            _gr_bb_D = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_D_ENABLED', True))
+            _gr_m15 = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_15M', 1.0))
+            _gr_m1h = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_1H', 1.5))
+            _gr_m4h = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_4H', 2.0))
+            _gr_mD = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_D', 3.0))
             for _gr_sym in list(stores.keys()):
                 _gr_ind = indicator_cache.get(_gr_sym, {})
                 _gr_p = float(_gr_ind.get('current_price', 0) or 0)
@@ -2557,19 +2559,29 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     # SENTINEL_FIX 2026-04-14 (incident 729bd16a90): MI_EXIT_VETO, WT_EXIT_VETO, WT_COMPOSITE_VETO
     # were only set at module+class levels (2/4). Missing: dataclass default + instance re-apply.
     # Apply at ALL 4 levels per DEATH PENALTY rule so the sweep knob actually gates exits.
+    # BUG FIX 2026-05-08: sweep sends keys WITHOUT "TRADIER_" prefix (e.g. "WT_EXIT_MIN_TFS_TRADIER")
+    # but original pairs only checked "TRADIER_WT_EXIT_MIN_TFS_TRADIER" → veto gates NEVER enabled →
+    # all WT_EXIT/K_ZONE/DC variants produced identical results. Added non-prefixed aliases.
     _veto_pairs = [
         ("TRADIER_MI_EXIT_ENABLED_TRADIER", "MI_EXIT_VETO_ENABLED_TRADIER"),
+        ("MI_EXIT_ENABLED_TRADIER", "MI_EXIT_VETO_ENABLED_TRADIER"),
         ("TRADIER_WT_EXIT_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
+        ("WT_EXIT_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
         ("TRADIER_WT_EXIT_MIN_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
+        ("WT_EXIT_MIN_TFS_TRADIER", "WT_EXIT_VETO_ENABLED_TRADIER"),
         ("TRADIER_WT_COMPOSITE_SCORING_ENABLED_TRADIER", "WT_COMPOSITE_VETO_ENABLED_TRADIER"),
+        ("WT_COMPOSITE_SCORING_ENABLED_TRADIER", "WT_COMPOSITE_VETO_ENABLED_TRADIER"),
         # SENTINEL_FIX 2026-04-14 DEAD_PARAMS T4: K_ZONE thresholds were dead because
         # K_ZONE_VETO_ENABLED_TRADIER was never set True (the veto gate at process_position
         # line 1327 requires it). Enable it when sweep varies K_ZONE thresholds.
         ("TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
+        ("K_ZONE_LONG_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
         ("TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
+        ("K_ZONE_SHORT_THRESHOLD_TRADIER", "K_ZONE_VETO_ENABLED_TRADIER"),
         # DC_POSITION_ENTRY_THRESHOLD was only a +5 score bonus, never gated entries.
         # DC_ENTRY_VETO_ENABLED_TRADIER enables the new dc_pos zone gate in process_position.
         ("TRADIER_DC_POSITION_ENTRY_THRESHOLD", "DC_ENTRY_VETO_ENABLED_TRADIER"),
+        ("DC_POSITION_ENTRY_THRESHOLD", "DC_ENTRY_VETO_ENABLED_TRADIER"),
     ]
     for _sweep_k, _veto_k in _veto_pairs:
         if _t_overrides.get(_sweep_k) is None:
@@ -2591,6 +2603,15 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         except Exception: pass
         _veto_verify = getattr(tm_mod.config, _veto_k, 'MISSING')
         v8_logger.info(f"[V8_VETO_FIX] {_veto_k}={_veto_verify} (sweep tests {_sweep_k}={_t_overrides[_sweep_k]}) — applied module+class+dataclass+epq")
+    # FIX 2026-05-08: DELTA_ENTRY_ENABLED defaults False (sweep proof). But when sweep explicitly
+    # tests DELTA_ENGINE_ENABLED=True or DELTA_HTF_GATE variants, delta entries must be enabled or
+    # the HTF gate can never filter anything → identical results. Auto-enable unless sweep
+    # explicitly tests DELTA_ENTRY_ENABLED=False.
+    if (_t_overrides.get("DELTA_ENGINE_ENABLED") is True or _t_overrides.get("DELTA_HTF_GATE") is not None) and "DELTA_ENTRY_ENABLED" not in _t_overrides:
+        setattr(tm_mod.config, "DELTA_ENTRY_ENABLED", True)
+        try: setattr(_ct.TradierConfig, "DELTA_ENTRY_ENABLED", True)
+        except Exception: pass
+        v8_logger.info(f"[V8_DELTA_FIX] DELTA_ENTRY_ENABLED auto-forced True (sweep tests DELTA_ENGINE_ENABLED/DELTA_HTF_GATE but didn't set DELTA_ENTRY_ENABLED)")
     # ALIAS 2026-04-14: old sweep runs used SATOSHIT_ENABLED_TRADIER as the key name;
     # current sweep uses SATOSHIT_ENTRY_FILTER. Map old→new so running sweeps still work.
     # If override has SATOSHIT_ENABLED_TRADIER but NOT SATOSHIT_ENTRY_FILTER, inject it.

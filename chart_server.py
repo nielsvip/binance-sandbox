@@ -1107,7 +1107,8 @@ async function refreshRuns() {{
         const gpt = t.avg_gain_trade != null ? t.avg_gain_trade.toFixed(3) : '?';
         // Strip noisy hr_<acct>:: prefix + redundant SYM__SIDE__ to make name readable
         const cleanRun = t.run.replace(/^hr_(ang|inf|flz|men|fin)::/, '').replace(new RegExp(`${{sym}}__(LONG|SHORT)__`), '');
-        o.textContent = `${{cleanRun}} | ${{wd}}d ${{sym_tr}}tr pool=${{ps}} sym=${{ss}} WR=${{sym_wr}}% dd=${{sym_dd}}% gain=${{sym_gain}}% gain/tr=${{gpt}}%`;
+        // 2026-05-08: dropped total `gain=` (no value across different windows). Keep gain/trade.
+        o.textContent = `${{cleanRun}} | ${{wd}}d ${{sym_tr}}tr pool=${{ps}} sym=${{ss}} WR=${{sym_wr}}% dd=${{sym_dd}}% gain/tr=${{gpt}}%`;
         og.appendChild(o);
       }}
       runSel.appendChild(og);
@@ -1133,28 +1134,42 @@ async function loadAll() {{
   const accts = selectedAccts().join(',');
   const zoomToTest = document.getElementById('zoomTest').checked;
 
-  const klinesP = fetch(`/klines?sym=${{sym}}&tf=${{tf}}&max=5000`).then(r=>r.json()).catch(()=>[]);
-  const btP = run ? fetch(`/backtest_trades?run=${{run}}&sym=${{sym}}`).then(r=>r.json()).catch(()=>({{trades:[]}})) : Promise.resolve({{trades:[]}});
-  const liveP = accts ? fetch(`/historic_trades?sym=${{sym}}&accounts=${{accts}}`).then(r=>r.json()).catch(()=>({{}})) : Promise.resolve({{}});
-  const [klines, bt, live] = await Promise.all([klinesP, btP, liveP]);
-
-  const k = klines || [];
+  // STEP 1: Fetch backtest trades FIRST to know the test window
+  const bt = run ? await fetch(`/backtest_trades?run=${{run}}&sym=${{sym}}`).then(r=>r.json()).catch(()=>({{trades:[]}})) : {{trades:[]}};
   const btTrades = (bt && bt.trades) || [];
 
-  // Determine x-range: zoom to test window if requested + we have backtest trades
-  let xMin = null, xMax = null;
-  if (zoomToTest && btTrades.length > 0) {{
-    const entryTs = btTrades.map(t=>t.entry_ts);
-    const exitTs = btTrades.map(t=>t.exit_ts);
-    const allTs = [...entryTs, ...exitTs].filter(x=>x>0);
+  // STEP 2: Compute test window from BT trades
+  let winStartTs = null, winEndTs = null;
+  if (btTrades.length > 0) {{
+    const allTs = [...btTrades.map(t=>t.entry_ts), ...btTrades.map(t=>t.exit_ts)].filter(x=>x>0);
     if (allTs.length) {{
       const minT = Math.min(...allTs);
       const maxT = Math.max(...allTs);
-      const padding = Math.max((maxT - minT) * 0.05, 86400);  // 5% pad or 1 day
-      xMin = new Date((minT - padding) * 1000);
-      xMax = new Date((maxT + padding) * 1000);
+      const padding = Math.max((maxT - minT) * 0.10, 1800);  // 10% pad or 30min
+      winStartTs = minT - padding;
+      winEndTs = maxT + padding;
     }}
   }}
+
+  // STEP 3: Fetch klines with window — KEY FIX: pass start/end so we get only the test-window bars
+  // This makes 3m TF actually look like 3m candles instead of compressed to fit 2 years.
+  let klinesUrl = `/klines?sym=${{sym}}&tf=${{tf}}&max=5000`;
+  if (zoomToTest && winStartTs) {{
+    klinesUrl += `&start=${{winStartTs}}&end=${{winEndTs}}`;
+  }} else if (!winStartTs) {{
+    // No backtest trades — default to last 30 days so we don't show all-of-history
+    const now = Math.floor(Date.now()/1000);
+    klinesUrl += `&start=${{now - 30*86400}}&end=${{now}}`;
+  }}
+
+  const liveP = accts ? fetch(`/historic_trades?sym=${{sym}}&accounts=${{accts}}`).then(r=>r.json()).catch(()=>({{}})) : Promise.resolve({{}});
+  const klinesP = fetch(klinesUrl).then(r=>r.json()).catch(()=>[]);
+  const [klines, live] = await Promise.all([klinesP, liveP]);
+  const k = klines || [];
+
+  // X-axis range = test window (Plotly uses this directly)
+  const xMin = winStartTs ? new Date(winStartTs * 1000) : null;
+  const xMax = winEndTs ? new Date(winEndTs * 1000) : null;
 
   const traces = [{{
     x: k.map(b => new Date(b.t * 1000)),
