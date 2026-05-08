@@ -3571,8 +3571,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 score = 0.0
                 reason = f"BLOCKED_SATOSHIT_ERROR+{reason}"
         elif not getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True):
-            score -= 15.0
-            reason = f"NO_SAT_CONFIRM_PENALTY-15+{reason}"
+            pass
         if getattr(tm_mod.config, 'STDEV_BREAKOUT_ENABLED', False):
             _sb_htf_list_w = list(getattr(tm_mod.config, 'STDEV_BREAKOUT_HTF_LIST', None) or ['D', '4h'])
             _sb_pctb_thr_lw = float(getattr(tm_mod.config, 'STDEV_BREAKOUT_PCTB_LONG', 1.0))
