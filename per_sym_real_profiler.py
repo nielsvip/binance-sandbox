@@ -208,6 +208,7 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
         'avg_gain_trade': total / n, 'gain_per_yr': total / yrs, 'gain_sym_yr': total / yrs,
         'years': yrs, 'n_syms': 1, 'n_wins': int((arr > 0).sum()),
         'override': override,
+        'note': nonzero_note if nonzero_note else '',
     }
 
 
