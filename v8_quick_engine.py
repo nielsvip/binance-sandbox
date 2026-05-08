@@ -1098,6 +1098,11 @@ class QuickConfig:
     BTC_REVERSE_REQUIRE_HTF_ALIGNED: bool = True
     # ─── GOLDEN RULE — sweep-toggleable (2026-05-06) ────────────────────────────────
     GOLDEN_RULE_ENABLED: bool = True
+    GOLDEN_RULE_GATE_MODE: bool = True
+    GOLDEN_RULE_MULT_APPLY: bool = True
+    GOLDEN_RULE_MULT_BREAKOUT: float = 0.3
+    GOLDEN_RULE_MULT_RETEST: float = 3.0
+    GOLDEN_RULE_RETEST_BARS: int = 80
     GOLDEN_RULE_DC_15M_ENABLED: bool = True
     GOLDEN_RULE_DC_1H_ENABLED: bool = True
     GOLDEN_RULE_DC_4H_ENABLED: bool = True
@@ -1111,8 +1116,6 @@ class QuickConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_BASE_USD: float = 5.0
-    GOLDEN_RULE_GATE_MODE: bool = True
-    GOLDEN_RULE_MULT_APPLY: bool = True
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2147,80 +2150,58 @@ def _sector_strength_mult(sym: Optional[str], cfg) -> float:
 
 
 def _golden_rule_vec(npz, n, is_long, cfg):
-    # GOLDEN RULE — gate + size-cascade on entry impulse (SATOSHIT/base_sig).
-    # Architecture: SATOSHIT is the ENTRY IMPULSE. GOLDEN RULE is the GATE+MULTIPLIER.
-    # Gate condition (default GATE_MODE=True): close vs dc_basis (midline) — trend confirmation.
-    #   LONG: close > dc_basis_15m (price in upper half of 15m channel = trend up)
-    #   SHORT: close < dc_basis_15m (price in lower half)
-    # BB condition: bb_pct_b > 0.5 (price above BB midline) for LONG, < 0.5 for SHORT.
-    # Cascade depth determines size multiplier (not entry permission beyond l1).
-    #   l1 (15m basis+BB): mult MULT_15M — minimum confirmation
-    #   l2 (l1 + 1h basis+BB): mult MULT_1H — 1h trend aligned
-    #   l3 (l1 + 4h basis+BB): mult MULT_4H — 4h trend aligned
-    #   l4 (l1 + D basis+BB): mult MULT_D — daily trend aligned
-    # GATE_MODE=True (default): base_sig AND gate — filters bad entries.
-    # GATE_MODE=False: base_sig OR gate — legacy additive mode (OR adds breakout entries).
+    # GOLDEN RULE — breakout-then-retest gate + multiplier on SATOSHIT impulse.
+    # Architecture: SATOSHIT = entry impulse. GOLDEN RULE = gate + position-size controller.
+    #
+    # LONG pattern:
+    #   Phase 1 (breakout): close crosses ABOVE dc_high_1h or bb_upper_1h → tiny entry (MULT_BREAKOUT)
+    #   Phase 2 (retest):   after breakout, close crosses ABOVE dc_basis_1h from below → 300% entry (MULT_RETEST)
+    # SHORT mirror:
+    #   Phase 1: close crosses BELOW dc_low_1h or bb_lower_1h → tiny entry
+    #   Phase 2: close crosses BELOW dc_basis_1h from above → 300% entry
+    #
+    # GATE_MODE=True (default, AND): base_sig AND fire — SATOSHIT must also fire at that bar.
+    # GATE_MODE=False (OR): legacy additive mode. fire bars added to base_sig.
     if not bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)):
         return np.zeros(n, dtype=bool), np.ones(n, dtype=np.float32)
-    _ltf = getattr(cfg, 'LTF', '3m')
+    from scipy.ndimage import maximum_filter1d as _mf1d
     close = _close_with_mode_check(npz, n, cfg, '_golden_rule_vec')
-    wt1 = _safe(npz, f'wt1_{_ltf}', n)
-    wt2 = _safe(npz, f'wt2_{_ltf}', n)
-    dc_b_15m = _safe(npz, 'dc_basis_15m', n)
+    dc_h_1h = _safe(npz, 'dc_high_1h', n)
+    dc_l_1h = _safe(npz, 'dc_low_1h', n)
     dc_b_1h = _safe(npz, 'dc_basis_1h', n)
-    dc_b_4h = _safe(npz, 'dc_basis_4h', n)
-    dc_b_D = _safe(npz, 'dc_basis_D', n)
-    bb_pb_15m = _safe(npz, 'bb_pct_b_15m', n, 0.5)
-    bb_pb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
-    bb_pb_4h = _safe(npz, 'bb_pct_b_4h', n, 0.5)
-    bb_pb_D = _safe(npz, 'bb_pct_b_D', n, 0.5)
-    dc_15 = bool(getattr(cfg, 'GOLDEN_RULE_DC_15M_ENABLED', True))
-    dc_1h = bool(getattr(cfg, 'GOLDEN_RULE_DC_1H_ENABLED', True))
-    dc_4h = bool(getattr(cfg, 'GOLDEN_RULE_DC_4H_ENABLED', True))
-    dc_D = bool(getattr(cfg, 'GOLDEN_RULE_DC_D_ENABLED', True))
-    bb_15 = bool(getattr(cfg, 'GOLDEN_RULE_BB_15M_ENABLED', True))
-    bb_1h = bool(getattr(cfg, 'GOLDEN_RULE_BB_1H_ENABLED', True))
-    bb_4h = bool(getattr(cfg, 'GOLDEN_RULE_BB_4H_ENABLED', True))
-    bb_D = bool(getattr(cfg, 'GOLDEN_RULE_BB_D_ENABLED', True))
-    m_15 = float(getattr(cfg, 'GOLDEN_RULE_MULT_15M', 1.0))
-    m_1h = float(getattr(cfg, 'GOLDEN_RULE_MULT_1H', 1.5))
-    m_4h = float(getattr(cfg, 'GOLDEN_RULE_MULT_4H', 2.0))
-    m_D = float(getattr(cfg, 'GOLDEN_RULE_MULT_D', 3.0))
-    _z = np.zeros(n, dtype=bool)
+    bb_u_1h = _safe(npz, 'bb_upper_1h', n)
+    bb_l_1h = _safe(npz, 'bb_lower_1h', n)
+    m_breakout = float(getattr(cfg, 'GOLDEN_RULE_MULT_BREAKOUT', 0.3))
+    m_retest = float(getattr(cfg, 'GOLDEN_RULE_MULT_RETEST', 3.0))
+    lookback = int(getattr(cfg, 'GOLDEN_RULE_RETEST_BARS', 80))
+    close_prev = np.roll(close, 1)
+    close_prev[0] = close[0]
     if is_long:
-        wt_ok = wt1 > wt2
-        dc15_f = ((dc_b_15m > 0) & (close > dc_b_15m)) if dc_15 else _z
-        bb15_f = (bb_pb_15m > 0.5) if bb_15 else _z
-        l1 = wt_ok & (dc15_f | bb15_f)
-        dc1h_f = ((dc_b_1h > 0) & (close > dc_b_1h)) if dc_1h else _z
-        bb1h_f = (bb_pb_1h > 0.5) if bb_1h else _z
-        l2 = l1 & (dc1h_f | bb1h_f)
-        dc4h_f = ((dc_b_4h > 0) & (close > dc_b_4h)) if dc_4h else _z
-        bb4h_f = (bb_pb_4h > 0.5) if bb_4h else _z
-        l3 = l1 & (dc4h_f | bb4h_f)
-        dcD_f = ((dc_b_D > 0) & (close > dc_b_D)) if dc_D else _z
-        bbD_f = (bb_pb_D > 0.5) if bb_D else _z
-        l4 = l1 & (dcD_f | bbD_f)
+        above_dch = close > dc_h_1h
+        above_bbu = close > bb_u_1h
+        above_dch_prev = np.roll(above_dch, 1); above_dch_prev[0] = False
+        above_bbu_prev = np.roll(above_bbu, 1); above_bbu_prev[0] = False
+        breakout = (above_dch & ~above_dch_prev) | (above_bbu & ~above_bbu_prev)
+        recently_broke = _mf1d(breakout.astype(np.float32), size=lookback) > 0
+        above_dcb = close > dc_b_1h
+        above_dcb_prev = np.roll(above_dcb, 1); above_dcb_prev[0] = False
+        cross_basis_up = above_dcb & ~above_dcb_prev
+        retest = recently_broke & cross_basis_up & ~above_dch & ~above_bbu
     else:
-        wt_ok = wt1 < wt2
-        dc15_f = ((dc_b_15m > 0) & (close < dc_b_15m)) if dc_15 else _z
-        bb15_f = (bb_pb_15m < 0.5) if bb_15 else _z
-        l1 = wt_ok & (dc15_f | bb15_f)
-        dc1h_f = ((dc_b_1h > 0) & (close < dc_b_1h)) if dc_1h else _z
-        bb1h_f = (bb_pb_1h < 0.5) if bb_1h else _z
-        l2 = l1 & (dc1h_f | bb1h_f)
-        dc4h_f = ((dc_b_4h > 0) & (close < dc_b_4h)) if dc_4h else _z
-        bb4h_f = (bb_pb_4h < 0.5) if bb_4h else _z
-        l3 = l1 & (dc4h_f | bb4h_f)
-        dcD_f = ((dc_b_D > 0) & (close < dc_b_D)) if dc_D else _z
-        bbD_f = (bb_pb_D < 0.5) if bb_D else _z
-        l4 = l1 & (dcD_f | bbD_f)
-    fire = l1
+        below_dcl = close < dc_l_1h
+        below_bbl = close < bb_l_1h
+        below_dcl_prev = np.roll(below_dcl, 1); below_dcl_prev[0] = False
+        below_bbl_prev = np.roll(below_bbl, 1); below_bbl_prev[0] = False
+        breakout = (below_dcl & ~below_dcl_prev) | (below_bbl & ~below_bbl_prev)
+        recently_broke = _mf1d(breakout.astype(np.float32), size=lookback) > 0
+        above_dcb = close > dc_b_1h
+        above_dcb_prev = np.roll(above_dcb, 1); above_dcb_prev[0] = False
+        cross_basis_down = ~above_dcb & above_dcb_prev
+        retest = recently_broke & cross_basis_down & ~below_dcl & ~below_bbl
+    fire = breakout | retest
     mult = np.ones(n, dtype=np.float32)
-    mult = np.where(l1, m_15, mult)
-    mult = np.where(l2, m_1h, mult)
-    mult = np.where(l3, m_4h, mult)
-    mult = np.where(l4, m_D, mult)
+    mult = np.where(breakout, m_breakout, mult)
+    mult = np.where(retest, m_retest, mult)
     return fire, mult
 
 
@@ -2965,17 +2946,18 @@ def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
     # GOLDEN_RULE: gate the entry impulse (SATOSHIT/base_sig) by DC-basis + BB-midline.
     # GATE_MODE=True (default): AND — only enter when impulse fires AND structure confirms.
     # GATE_MODE=False: OR — legacy additive mode (adds breakout entries, hurts Sharpe).
-    # mult_arr is returned via _golden_rule_mult_for_simulate — wired into _cur_sz_mult.
-    try:
-        _gr_fire, _ = _golden_rule_vec(npz, n, is_long, cfg)
-        if _gr_fire is not None:
-            _gr_gate_mode = bool(getattr(cfg, 'GOLDEN_RULE_GATE_MODE', True))
-            if _gr_gate_mode:
-                base_sig = base_sig & _gr_fire
-            elif _gr_fire.any():
-                base_sig = base_sig | _gr_fire
-    except Exception:
-        pass
+    # mult_arr is returned via _gr_mult_arr in simulate() — wired into _cur_sz_mult.
+    if bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)):
+        try:
+            _gr_fire, _ = _golden_rule_vec(npz, n, is_long, cfg)
+            if _gr_fire is not None:
+                _gr_gate_mode = bool(getattr(cfg, 'GOLDEN_RULE_GATE_MODE', True))
+                if _gr_gate_mode:
+                    base_sig = base_sig & _gr_fire
+                elif _gr_fire.any():
+                    base_sig = base_sig | _gr_fire
+        except Exception:
+            pass
     return base_sig
 
 

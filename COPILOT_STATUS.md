@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-08 03:27:39 UTC
+# Copilot Status — 2026-05-08 03:43:01 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T03:25:14
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:25:14
-- **STALE_INDICATORS** [tradier]  — 2026-05-08T03:26:05
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-08T03:26:05
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-08T03:26:05
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T03:26:16
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:26:16
-- **RATIO_IMBALANCE** [crypto] inf — 2026-05-08T03:27:17
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T03:27:17
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:27:17
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:40:54
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-08T03:41:56
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T03:41:56
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:41:56
+- **STALE_INDICATORS** [tradier]  — 2026-05-08T03:42:48
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-08T03:42:48
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-08T03:42:48
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-08T03:43:00
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T03:43:00
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T03:43:00
 
 ## Missed Trades (trader comparison)
 
@@ -29,10 +29,10 @@ _None_
 
 **Held:** 5 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-1.4%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-3.5%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-5.1%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-1.5%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-2.5%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-3.7%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-5.3%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-1.6%
 - HELD: **SLV** LONG (tradier) peak +3.6%, now +-0.3%
 
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +41.6%, exited 0m ago
