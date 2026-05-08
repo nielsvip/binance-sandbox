@@ -2120,6 +2120,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 tracker_manager._processing[pk] = False
             if hasattr(tracker_manager, 'last_check_times'):
                 tracker_manager.last_check_times[pk] = 0.0
+        # BACKTEST FIX: clear real-time dedupe state each step so every bar can attempt entries.
+        if hasattr(trade_manager, 'order_deduplication'):
+            trade_manager.order_deduplication.clear()
+        if hasattr(trade_manager, '_queue_attempt_ts'):
+            trade_manager._queue_attempt_ts.clear()
         _ts_int = int(ts)
         _gate_total_checks += len(all_position_keys)
         entry_pks = []
@@ -3383,6 +3388,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     setattr(manager, f"symbols_short_{account_key}", sym_list)
     manager.symbols = sym_list
     manager.order_queue = tm_mod.OrderQueue(manager)
+    # BACKTEST FIX: deduplication uses real-time (60s/90s) — kills all entries in fast simulation.
+    # Zero out the queue dedupe window so every simulated bar can attempt an entry.
+    setattr(tm_mod.config, 'TRADIER_QUEUE_DEDUPE_SEC', 0.0)
     v8_logger.warning(f"[V8_DEBUG] ETA method: {manager.execute_trade_action.__name__}, is wrapper: {'_v8_real_eta_wrapper' in str(manager.execute_trade_action)}")
     manager.running = True
     _orig_evaluate_stop = manager.strategy.evaluate_stop
@@ -3756,6 +3764,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     cand_keys.append(pk_s)
         all_keys = open_keys + cand_keys
         if not all_keys: continue
+        # BACKTEST FIX: clear real-time dedupe state each step so every bar can attempt entries.
+        if hasattr(manager, 'order_deduplication'):
+            manager.order_deduplication.clear()
+        if hasattr(manager, '_queue_attempt_ts'):
+            manager._queue_attempt_ts.clear()
         await asyncio.gather(*[tm_mod.process_position(account_key, pk, manager.order_queue, manager, event_type="backtest", force=True) for pk in all_keys], return_exceptions=True)
         oq = manager.order_queue
         if hasattr(oq, '_orders'):
