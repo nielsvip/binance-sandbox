@@ -162,8 +162,11 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
     env['V8_RATE_GUARD_DISABLED'] = '1'
     cmd = [PYTHON_BIN, str(ENGINE_PY), '--mode', mode, '--account', account,
            '--start', start, '--symbols', sym, '--capital', '10000']
+    eng_log = run_dir / f'{run_id}.log'
     try:
-        r = subprocess.run(cmd, env=env, capture_output=True, timeout=timeout_s, text=True)
+        with open(eng_log, 'w') as log_f:
+            r = subprocess.run(cmd, env=env, stdout=log_f, stderr=log_f,
+                               timeout=timeout_s)
     except subprocess.TimeoutExpired:
         return {'sym': sym, 'tag': tag, 'error': 'timeout'}
     # Non-zero exit: asyncio cleanup errors are common (CancelledError on teardown).
@@ -175,7 +178,9 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
     jp = run_dir / f'{run_id}__{sym}.jsonl'
     if not jp.exists():
         if nonzero_note:
-            return {'sym': sym, 'tag': tag, 'error': r.stderr[-300:]}
+            try: err_tail = eng_log.read_text()[-300:] if eng_log.exists() else nonzero_note
+            except Exception: err_tail = nonzero_note
+            return {'sym': sym, 'tag': tag, 'error': err_tail}
         return {'sym': sym, 'tag': tag, 'trades': 0, 'pool_sharpe': 0.0,
                 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'trades_per_day': 0.0,
                 'years': 0.0, 'note': 'no_jsonl'}
