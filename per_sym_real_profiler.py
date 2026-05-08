@@ -140,9 +140,10 @@ def variants_for_sym(base: Dict, sym: str, account: str = '') -> List[Tuple[str,
             add('wt_4h_vel_strict', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_LONG_VEL_MIN': 5.0, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN': -5.0, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': True})
             add('wt_exhaust_on_gain', {'WT_EXHAUST_EXIT_ENABLED': True, 'WT_EXHAUST_EXIT_REQUIRE_GAIN': True})
         else:
-            # 2 key variants: tighter entry score + looser exit
+            # key variants: tighter entry score + aggressive exits to get closed trades in trends
             add('es_22', {'ENTRY_SCORE_THRESHOLD': 22.0, 'TRADIER_ENTRY_SCORE_THRESHOLD': 22.0})
-            add('wt_exit_2', {'WT_EXIT_MIN_TFS': 2, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': 2})
+            add('wt_exit_1', {'WT_EXIT_MIN_TFS': 1, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': 1})
+            add('vel_exit', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': False})
     return grid
 
 
