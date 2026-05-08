@@ -998,6 +998,7 @@ def run_one_variant(args_tuple):
     env = os.environ.copy()
     env["V8_OVERRIDE_FILE"] = str(override_path)
     env["V8_SWEEP_MODE"] = "1"  # suppress per-trade logs, 10-50x speedup
+    env["V8_RATE_GUARD_DISABLED"] = "1"  # rate guard fires at t=5s with 0 trades = false abort
 
     t0 = time.time()
     try:

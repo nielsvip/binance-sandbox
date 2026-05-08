@@ -5670,67 +5670,105 @@ class PositionService:
             logger.debug(f"[_broadcast_stop_levels_to_redis] Failed: {exc}")
 
     async def _broadcast_ladder_levels_to_redis(self, account_key: str, side: str, ladder_data: Dict[str, Any]) -> None:
+        # 2026-05-08: outer wait_for guards each redis op. handle_reduction →
+        # save_ladder_levels → here was the path that hung 105s on 2026-05-08
+        # (PAU watchdog fired 3× on flz). Mirrors _broadcast_positions_to_redis
+        # which was hardened the same way on 2026-04-30.
         try :
             if not self.redis_manager: return
             payload_bytes = json_dumps(ladder_data)
             payload_str = payload_bytes.decode('utf-8')
             redis_key = f"ladder_levels:{account_key}:{side.lower()}"
-            await self.redis_manager.set(redis_key, payload_str, ex=300)
+            try:
+                await asyncio.wait_for(self.redis_manager.set(redis_key, payload_str, ex=300), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_ladder_levels][{account_key}:{side}] set timed out >5s — dropping (next save will retry)")
             channel = REDIS_CHANNELS.get("position_updates", "position_updates")
             pub_bytes = json_dumps({ "account_key": account_key, "type": "ladder_levels", "side": side.lower(), "data": ladder_data })
-            await self.redis_manager.publish(channel, pub_bytes.decode('utf-8'))
+            try:
+                await asyncio.wait_for(self.redis_manager.publish(channel, pub_bytes.decode('utf-8')), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_ladder_levels][{account_key}:{side}] publish timed out >5s — dropping")
         except Exception as e:
             logger.debug(f"[broadcast_ladder_levels] Redis broadcast failed: {e}")
 
     async def _broadcast_reentry_levels_to_redis(self, account_key: str, side: str, reentry_data: Dict[str, Any]) -> None:
+        # 2026-05-08: outer wait_for guards each redis op (see _broadcast_ladder_levels_to_redis).
         try :
             if not self.redis_manager: return
             payload_bytes = json_dumps(reentry_data)
             payload_str = payload_bytes.decode('utf-8')
             redis_key = f"reentry_levels:{account_key}:{side.lower()}"
-            await self.redis_manager.set(redis_key, payload_str, ex=300)
+            try:
+                await asyncio.wait_for(self.redis_manager.set(redis_key, payload_str, ex=300), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reentry_levels][{account_key}:{side}] set timed out >5s — dropping")
             channel = REDIS_CHANNELS.get("position_updates", "position_updates")
             pub_bytes = json_dumps({ "account_key": account_key, "type": "reentry_levels", "side": side.lower(), "data": reentry_data })
-            await self.redis_manager.publish(channel, pub_bytes.decode('utf-8'))
+            try:
+                await asyncio.wait_for(self.redis_manager.publish(channel, pub_bytes.decode('utf-8')), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reentry_levels][{account_key}:{side}] publish timed out >5s — dropping")
         except Exception as e:
             logger.debug(f"[broadcast_reentry_levels] Redis broadcast failed: {e}")
 
     async def _broadcast_augmented_positions_to_redis(self, account_key: str, augmented_data: Dict[str, Any]) -> None:
+        # 2026-05-08: outer wait_for guards each redis op (see _broadcast_ladder_levels_to_redis).
         try :
             if not self.redis_manager: return
             payload_bytes = json_dumps(augmented_data)
             payload_str = payload_bytes.decode('utf-8')
             redis_key = f"augmented_positions:{account_key}"
-            await self.redis_manager.set(redis_key, payload_str, ex=300)
+            try:
+                await asyncio.wait_for(self.redis_manager.set(redis_key, payload_str, ex=300), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_augmented][{account_key}] set timed out >5s — dropping")
             channel = REDIS_CHANNELS.get("position_updates", "position_updates")
             pub_bytes = json_dumps({ "account_key": account_key, "type": "augmented_positions", "data": augmented_data })
-            await self.redis_manager.publish(channel, pub_bytes.decode('utf-8'))
+            try:
+                await asyncio.wait_for(self.redis_manager.publish(channel, pub_bytes.decode('utf-8')), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_augmented][{account_key}] publish timed out >5s — dropping")
         except Exception as e:
             logger.debug(f"[broadcast_augmented] Redis broadcast failed: {e}")
 
     async def _broadcast_reduced_positions_to_redis(self, account_key: str, reduced_data: Dict[str, Any]) -> None:
+        # 2026-05-08: outer wait_for guards each redis op (see _broadcast_ladder_levels_to_redis).
         try :
             if not self.redis_manager: return
             payload_bytes = json_dumps(reduced_data)
             payload_str = payload_bytes.decode('utf-8')
             redis_key = f"reduced_positions:{account_key}"
-            await self.redis_manager.set(redis_key, payload_str, ex=300)
+            try:
+                await asyncio.wait_for(self.redis_manager.set(redis_key, payload_str, ex=300), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reduced][{account_key}] set timed out >5s — dropping")
             channel = REDIS_CHANNELS.get("position_updates", "position_updates")
             pub_bytes = json_dumps({ "account_key": account_key, "type": "reduced_positions", "data": reduced_data })
-            await self.redis_manager.publish(channel, pub_bytes.decode('utf-8'))
+            try:
+                await asyncio.wait_for(self.redis_manager.publish(channel, pub_bytes.decode('utf-8')), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reduced][{account_key}] publish timed out >5s — dropping")
         except Exception as e:
             logger.debug(f"[broadcast_reduced] Redis broadcast failed: {e}")
 
     async def _broadcast_reversed_positions_to_redis(self, account_key: str, reversed_data: Dict[str, Any]) -> None:
+        # 2026-05-08: outer wait_for guards each redis op (see _broadcast_ladder_levels_to_redis).
         try :
             if not self.redis_manager: return
             payload_bytes = json_dumps(reversed_data)
             payload_str = payload_bytes.decode('utf-8')
             redis_key = f"reversed_positions:{account_key}"
-            await self.redis_manager.set(redis_key, payload_str, ex=300)
+            try:
+                await asyncio.wait_for(self.redis_manager.set(redis_key, payload_str, ex=300), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reversed][{account_key}] set timed out >5s — dropping")
             channel = REDIS_CHANNELS.get("position_updates", "position_updates")
             pub_bytes = json_dumps({ "account_key": account_key, "type": "reversed_positions", "data": reversed_data })
-            await self.redis_manager.publish(channel, pub_bytes.decode('utf-8'))
+            try:
+                await asyncio.wait_for(self.redis_manager.publish(channel, pub_bytes.decode('utf-8')), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[broadcast_reversed][{account_key}] publish timed out >5s — dropping")
         except Exception as e:
             logger.debug(f"[broadcast_reversed] Redis broadcast failed: {e}")
 
@@ -6752,7 +6790,7 @@ class PositionService:
                         
                         if is_confirmed:
                             logger.critical(f"[API_CONFIRMED_CLOSED][{pk_ghost}] 🚨 Position missing from API for {current_count} cycles. ZEROING OUT.")
-                            
+
                             # Resolve a final price for the record
                             final_price = position_obj.mark_price or position_obj.entry_price or 1.0
                             try:
@@ -6760,16 +6798,25 @@ class PositionService:
                                 if qp: final_price = qp
                             except: pass
 
-                            # Force reduction to 0
-                            await self.handle_reduction(
-                                position_obj, pk_ghost, prev_amt, 0.0, prev_amt, 
-                                final_price, position_obj.entry_price, 
-                                reduction_source="api_absence_confirmed"  )
-                            
-                            position_obj.positionAmt = 0.0
-                            position_obj.last_updated = now
-                            updated_keys_in_api.add(pk_ghost) # Ensure this 0 gets saved/broadcasted
-                            self._clear_zero_report(pk_ghost)
+                            # 2026-05-08: per-phantom 30s timeout. If one zero-out stalls
+                            # (e.g. on a slow disk write or downstream redis op), bail on
+                            # this phantom and continue with the next — do NOT let one
+                            # bad ghost trip the 120s outer PAU watchdog. The next PAU
+                            # cycle will see the same absence and retry.
+                            try:
+                                await asyncio.wait_for(
+                                    self.handle_reduction(
+                                        position_obj, pk_ghost, prev_amt, 0.0, prev_amt,
+                                        final_price, position_obj.entry_price,
+                                        reduction_source="api_absence_confirmed"),
+                                    timeout=30.0)
+                                position_obj.positionAmt = 0.0
+                                position_obj.last_updated = now
+                                updated_keys_in_api.add(pk_ghost)
+                                self._clear_zero_report(pk_ghost)
+                            except asyncio.TimeoutError:
+                                logger.critical(f"[GHOST_RECONCILE_TIMEOUT][{pk_ghost}] handle_reduction stalled >30s — skipping this cycle, will retry. Last positionAmt={prev_amt} kept on disk.")
+                                continue
                         else:
                             logger.warning(f"[API_ABSENCE_PENDING][{pk_ghost}] Missing from API (Strike {current_count}/{config.ZERO_CONFIRMATION_THRESHOLD_API}). Waiting for confirmation.")
                     

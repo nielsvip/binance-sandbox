@@ -96,7 +96,7 @@ def is_promotable(row: dict, mode: str) -> bool:
         return False
     if row['n_syms'] * row['n_years'] * 30 > row['trades']:
         return False  # below sample-floor (≥30 trades/sym)
-    if row['max_dd_pct'] > 30.0:
+    if row['max_dd_pct'] > 50.0:
         return False  # excessive DD — don't promote risk
     # Physical-bounds violation — config has impossible values like BTC_PER_TRADE_NOTIONAL_USD_MAX=22.5 (below Binance min trade)
     violates, _bad = violates_physical_bounds(row.get('overrides_json', '{}'))

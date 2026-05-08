@@ -2551,9 +2551,14 @@ class SimpleRedisManager:
         count = 0
         for conn in self.get_broadcast_clients():
             try:
-                await conn.publish(channel, body)
+                # 2026-05-08: bound conn.publish/conn.set so a stalled backend (e.g.
+                # disabled server tunnel @ 6381 dummy) cannot hang the caller. Mirrors
+                # the timeouts already in get()/set(). Was: unbounded → handle_reduction
+                # → save_ladder_levels → _broadcast_ladder_levels_to_redis stalled
+                # 105s+, tripping the 120s PAU watchdog (flz 3× in 30 min on 2026-05-08).
+                await asyncio.wait_for(conn.publish(channel, body), timeout=2.0)
                 if expiry_seconds:
-                    await conn.set(channel, body, ex=expiry_seconds)
+                    await asyncio.wait_for(conn.set(channel, body, ex=expiry_seconds), timeout=2.0)
                 count += 1
             except Exception: continue
         return count

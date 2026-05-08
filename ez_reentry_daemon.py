@@ -1,49 +1,50 @@
 #!/usr/bin/env python3
 """
-ez_reentry_daemon.py — Standalone 24/7 reentry shadow + watchdog process.
+ez_reentry_daemon.py — Standalone reentry executor process (Phase 2, 2026-05-08).
 
-Runs OUTSIDE the per-account ez_manage workers so a worker crash does not
-take reentry observability with it. Phase 1 role:
+Runs OUTSIDE ez_manage.py so reentry execution is fully independent from the
+trading loop.  Kill this process to stop all daemon-sourced reentries while
+trading continues uninterrupted.
 
-  1. Heartbeat — write a Redis key every 30s under ``ez_reentry:heartbeat:daemon``
-     so external watchdogs (and ez_manage's future fallback) can detect a stall.
+Architecture:
+  This daemon evaluates price-cross reentry candidates from disk JSON files
+  (account/long_reentry.json, account/short_reentry.json) using Redis for
+  live prices and WT indicators, then writes command files to
+  data/reentry_queue/{account}/.
 
-  2. Shadow evaluator — for each account in ACCOUNT_KEYS that still has live
-     reentry_data on disk (account dir's long_reentry.json / short_reentry.json),
-     emit a `reentry_signal:<account>:<position_key>` Redis key with a brief
-     payload (timestamp, exit price, last-known mark price, suggested action).
-     This signal is informational in Phase 1 — ez_manage does not consume it
-     yet. It exists so we can A/B compare daemon vs inline decisions.
+  ez_manage.py has a companion _reentry_queue_consumer_loop that reads those
+  command files and calls execute_now (the ONLY order gate per CLAUDE.md).
 
-  3. Loop liveness audit — every 60s, audit Redis for the in-process loop
-     heartbeats (ez_manage's `reentry_loop_heartbeat:*` if/when ez_manage
-     starts publishing them). Logs warnings when a loop hasn't ticked in 5min.
-
-The daemon NEVER places orders. Order execution stays in ez_manage's
-execute_now path per CLAUDE.md ("execute_now is the ONLY gate"). When the user
-flips ``EZ_REENTRY_INLINE_ENABLED=False``, an upgrade path (Phase 2) will let
-the daemon publish to a Redis command channel that ez_manage subscribes to —
-but that wiring is intentionally out of scope here.
+  The split ensures:
+    kill daemon         → no new commands → reentries stop, trading continues
+    touch /tmp/REENTRY_DAEMON_HOLD → daemon pauses evaluation (stays alive)
+    EZ_REENTRY_INLINE_ENABLED=False → disable fallback inline loops in ez_manage
+    kill ez_manage      → queued commands persist for next restart
 
 CLI:
-  python3 ez_reentry_daemon.py             # default: all crypto accounts
+  python3 ez_reentry_daemon.py             # 24/7 mode, all crypto accounts
   python3 ez_reentry_daemon.py --once      # one pass then exit (smoke test)
+  python3 ez_reentry_daemon.py --dry-run   # evaluate but do NOT write commands
+
+Sentinel files (touch to activate, rm to release):
+  /tmp/REENTRY_DAEMON_HOLD       — pause all evaluation
+  /tmp/REENTRY_HOLD_{account}    — pause evaluation for one account
 
 Environment:
-  EZ_REENTRY_DAEMON_INTERVAL_S — override loop interval (default 30s)
+  EZ_REENTRY_DAEMON_INTERVAL_S — loop interval (default 5s)
   REDIS_HOST / REDIS_PORT       — Redis target (defaults localhost:6379)
+  BINANCE_BASE_PATH             — override base path
 """
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import logging
 import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 
 LOG_PATH = Path("/Users/niels/logs/ez_reentry_daemon.log")
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +59,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ez_reentry_daemon")
 
+_HOLD_GLOBAL = Path("/tmp/REENTRY_DAEMON_HOLD")
+_CMD_TTL_S = 300.0  # command files expire after 5 minutes if not consumed
+_MIN_GAP_S = 60.0   # per-position dedup: don't re-queue within 60s
+_MAX_FIRES_PER_TICK = 20
+_SOFT_EXIT_RE = None  # compiled on first use
+
+
+def _get_soft_exit_re():
+    global _SOFT_EXIT_RE
+    if _SOFT_EXIT_RE is None:
+        import re
+        _SOFT_EXIT_RE = re.compile(r"WT_CROSS_EXIT|DELTA_EXIT|E_1_WT_DELTA_EXIT|STRUCT_LH3M|STRUCT_HL3M|Lower_High|Higher_Low", re.IGNORECASE)
+    return _SOFT_EXIT_RE
+
 
 def _get_redis():
     try:
@@ -68,11 +83,11 @@ def _get_redis():
         client.ping()
         return client
     except Exception as e:
-        logger.warning(f"redis unavailable ({e}); daemon will run heartbeat-less")
+        logger.warning(f"redis unavailable ({e}); running without Redis (file-only mode)")
         return None
 
 
-def _accounts_from_config() -> list[str]:
+def _accounts_from_config() -> List[str]:
     fallback = ["ang", "inf", "flz", "men", "fin"]
     try:
         import config as cfg
@@ -81,13 +96,28 @@ def _accounts_from_config() -> list[str]:
             return [k for k in ks if isinstance(k, str)]
         cls = getattr(cfg, "Config", None)
         if cls is not None:
-            inst = cls()
-            ks = list(getattr(inst, "ACCOUNT_KEYS", []) or [])
+            ks = list(getattr(cls(), "ACCOUNT_KEYS", []) or [])
             if ks:
                 return [k for k in ks if isinstance(k, str)]
     except Exception:
         pass
     return fallback
+
+
+def _cfg_float(attr: str, default: float) -> float:
+    try:
+        import config as cfg
+        return float(getattr(cfg, attr, default))
+    except Exception:
+        return default
+
+
+def _cfg_bool(attr: str, default: bool) -> bool:
+    try:
+        import config as cfg
+        return bool(getattr(cfg, attr, default))
+    except Exception:
+        return default
 
 
 def _load_reentry_file(path: Path) -> dict:
@@ -102,112 +132,305 @@ def _load_reentry_file(path: Path) -> dict:
         return {}
 
 
-def _shadow_publish(redis_client, account: str, side: str, position_key: str, entry: dict, ttl: int = 600) -> None:
-    if redis_client is None:
-        return
-    payload = {
-        "account": account,
-        "side": side,
-        "position_key": position_key,
-        "reentry_level": entry.get("reentry_level") or entry.get("exit_price"),
-        "reentry_amount": entry.get("reentry_amount") or 0,
-        "exit_reason": entry.get("reason") or entry.get("exit_reason"),
-        "exit_timestamp": entry.get("timestamp"),
-        "observed_at": int(time.time()),
-        "source": "ez_reentry_daemon_shadow",
-    }
+def _ts_to_epoch(v) -> float:
+    if not v:
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
     try:
-        redis_client.set(
-            f"reentry_signal:{account}:{position_key}",
-            json.dumps(payload),
-            ex=ttl,
-        )
-    except Exception as e:
-        logger.debug(f"redis set fail {position_key}: {e}")
-
-
-def _scan_account(redis_client, base_path: Path, account: str) -> int:
-    acc_dir = base_path / account
-    if not acc_dir.exists():
-        return 0
-    total = 0
-    for side in ("long", "short"):
-        f = acc_dir / f"{side}_reentry.json"
-        data = _load_reentry_file(f)
-        for pk, entry in data.items():
-            if not isinstance(entry, dict):
-                continue
-            try:
-                amt = float(entry.get("reentry_amount", 0) or 0)
-            except (TypeError, ValueError):
-                amt = 0.0
-            if amt <= 0:
-                continue
-            _shadow_publish(redis_client, account, side, pk, entry)
-            total += 1
-    return total
-
-
-def _audit_inline_loops(redis_client) -> None:
-    if redis_client is None:
-        return
-    try:
-        keys = list(redis_client.scan_iter("reentry_loop_heartbeat:*"))
+        from datetime import datetime
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
     except Exception:
-        return
+        return 0.0
+
+
+def _get_positions_from_redis(redis_client, account_key: str) -> Dict[str, float]:
+    """Returns {position_key: positionAmt} for all positions in account."""
+    if redis_client is None:
+        return {}
+    try:
+        raw = redis_client.get(f"positions:{account_key}")
+        if not raw:
+            return {}
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return {}
+        result = {}
+        for pk, pos in data.items():
+            if isinstance(pos, dict):
+                try:
+                    result[pk] = abs(float(pos.get("positionAmt", 0) or 0))
+                except (TypeError, ValueError):
+                    result[pk] = 0.0
+        return result
+    except Exception as e:
+        logger.debug(f"redis positions:{account_key}: {e}")
+        return {}
+
+
+def _get_market_prices(redis_client, base_path: Path) -> Dict[str, float]:
+    """Returns {symbol: current_price} from price_cache_1/2/3.json (live, <2s old).
+    Falls back to mark_prices Redis hash if files are stale or missing."""
+    result: Dict[str, float] = {}
     now = time.time()
-    for k in keys:
+    max_age_s = 90.0
+    try:
+        import config as _cfg
+        cache_files = [
+            getattr(_cfg, "PRICE_CACHE_FILE", base_path / "price_cache_1.json"),
+            getattr(_cfg, "PRICE_CACHE_FILE_2", base_path / "price_cache_2.json"),
+            getattr(_cfg, "PRICE_CACHE_FILE_3", base_path / "price_cache_3.json"),
+        ]
+    except Exception:
+        cache_files = [base_path / f"price_cache_{i}.json" for i in (1, 2, 3)]
+    for cache_file in cache_files:
         try:
-            ts = float(redis_client.get(k) or 0)
-        except (TypeError, ValueError):
+            with open(cache_file, "r") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                continue
+            for sym, entry in data.items():
+                if sym in result:
+                    continue
+                if not isinstance(entry, dict):
+                    continue
+                try:
+                    price = float(entry.get("price", 0) or 0)
+                    if price <= 0:
+                        continue
+                    ts_str = entry.get("timestamp", "")
+                    if ts_str:
+                        from datetime import datetime, timezone
+                        ts = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00")).timestamp()
+                        if now - ts > max_age_s:
+                            continue
+                    result[sym] = price
+                except (TypeError, ValueError):
+                    pass
+        except Exception as e:
+            logger.debug(f"price cache {cache_file}: {e}")
+    if not result and redis_client is not None:
+        try:
+            all_pairs = redis_client.hgetall("mark_prices")
+            for sym, raw in (all_pairs or {}).items():
+                try:
+                    obj = json.loads(raw)
+                    price = float(obj.get("price", 0) or 0)
+                    if price > 0:
+                        result[sym] = price
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug(f"redis mark_prices fallback: {e}")
+    return result
+
+
+def _get_indicators(redis_client, sym: str) -> Dict:
+    """Returns indicator dict for symbol from Redis indicators:{sym}."""
+    if redis_client is None or not sym:
+        return {}
+    try:
+        raw = redis_client.get(f"indicators:{sym}")
+        if not raw:
+            return {}
+        return json.loads(raw) or {}
+    except Exception:
+        return {}
+
+
+def _collect_candidates(base_path: Path, accounts: List[str]) -> List[Tuple]:
+    """Collect [(pk, is_long, exit_px, exit_amt, exit_ts, exit_reason)] from disk files."""
+    by_key: dict = {}
+    for acc in accounts:
+        acc_dir = base_path / acc
+        if not acc_dir.exists():
             continue
-        age = now - ts
-        if age > 300:
-            logger.warning(f"loop heartbeat stale: {k} age={age:.0f}s (>5min)")
+        for side_name, is_long in (("long", True), ("short", False)):
+            data = _load_reentry_file(acc_dir / f"{side_name}_reentry.json")
+            for pk, rd in data.items():
+                if not isinstance(rd, dict):
+                    continue
+                try:
+                    exit_px = float(rd.get("reentry_level") or rd.get("exit_price") or 0.0)
+                    exit_amt = float(rd.get("reentry_amount", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if exit_px <= 0:
+                    continue
+                exit_ts = _ts_to_epoch(rd.get("timestamp") or rd.get("exit_timestamp"))
+                exit_reason = str(rd.get("reduction_reason") or rd.get("reason") or "")
+                by_key[pk] = (is_long, exit_px, exit_amt, exit_ts, exit_reason)
+    return [(pk,) + v for pk, v in by_key.items()]
 
 
-async def run_loop(once: bool = False) -> None:
+def _parse_pk(pk: str) -> Tuple[str, str, str]:
+    """Returns (account_key, symbol, position_side) from 'acc:SYM_LONG'."""
+    parts = pk.split(":", 1)
+    account_key = parts[0] if len(parts) == 2 else ""
+    rest = parts[1] if len(parts) == 2 else pk
+    sym_parts = rest.split("_", 1)
+    symbol = sym_parts[0]
+    side = sym_parts[1] if len(sym_parts) == 2 else "LONG"
+    return account_key, symbol, side
+
+
+def _write_reentry_command(queue_dir: Path, pk: str, account_key: str, symbol: str, pos_side: str, qty: float, exit_px: float, cur_px: float, sizing_tag: str, reason: str, now: float) -> bool:
+    """Write a reentry command file. Returns True on success."""
+    try:
+        queue_dir.mkdir(parents=True, exist_ok=True)
+        done_dir = queue_dir / "done"
+        done_dir.mkdir(exist_ok=True)
+        uid = f"DAEMON_PRICE_CROSS_{int(now * 1000)}_{pk.replace(':', '_')}"
+        cmd = {
+            "version": 2,
+            "created_at": now,
+            "expires_at": now + _CMD_TTL_S,
+            "position_key": pk,
+            "account_key": account_key,
+            "symbol": symbol,
+            "side": "BUY" if pos_side == "LONG" else "SELL",
+            "position_side": pos_side,
+            "quantity": qty,
+            "exit_price": exit_px,
+            "current_price": cur_px,
+            "sizing_tag": sizing_tag,
+            "reason": reason,
+            "unique_id": uid,
+            "source": "ez_reentry_daemon_v2",
+        }
+        pk_safe = pk.replace(":", "_").replace("/", "_")
+        fname = f"cmd_{int(now * 1000)}_{pk_safe}.json"
+        tmp_path = queue_dir / f".tmp_{fname}"
+        with open(tmp_path, "w") as f:
+            json.dump(cmd, f)
+        tmp_path.rename(queue_dir / fname)
+        return True
+    except Exception as e:
+        logger.error(f"[DAEMON] write command failed for {pk}: {e}")
+        return False
+
+
+def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, accounts: List[str], last_fire: Dict[str, float], dry_run: bool) -> int:
+    """Main evaluation loop: find price-cross candidates and queue reentry commands."""
+    if _HOLD_GLOBAL.exists():
+        logger.debug("[DAEMON] REENTRY_DAEMON_HOLD active — skipping evaluation")
+        return 0
+    if not _cfg_bool("EZ_REENTRY_DAEMON_ENABLED", True):
+        return 0
+    min_gap_s = _cfg_float("EZ_REENTRY_PRICE_CROSS_MIN_GAP_S", _MIN_GAP_S)
+    cross_pct = _cfg_float("EZ_REENTRY_PRICE_CROSS_PCT", 0.0)
+    max_fires = int(_cfg_float("EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK", _MAX_FIRES_PER_TICK))
+    start_size = _cfg_float("START_POSITION_SIZE", 18.0)
+    now = time.time()
+    prices = _get_market_prices(redis_client, base_path)
+    candidates = _collect_candidates(base_path, accounts)
+    if not candidates:
+        return 0
+    fired = 0
+    for pk, is_long, exit_px, exit_amt, exit_ts, exit_reason in candidates:
+        if fired >= max_fires:
+            break
+        account_key, symbol, pos_side = _parse_pk(pk)
+        if not account_key or not symbol:
+            continue
+        hold_path = Path(f"/tmp/REENTRY_HOLD_{account_key}")
+        if hold_path.exists():
+            logger.debug(f"[DAEMON] {account_key} REENTRY_HOLD active — skipping")
+            continue
+        last = last_fire.get(pk, 0.0)
+        if now - last < min_gap_s:
+            continue
+        cur_px = prices.get(symbol, 0.0)
+        if cur_px <= 0:
+            continue
+        if cross_pct > 0:
+            crossed = (is_long and cur_px > exit_px * (1.0 + cross_pct)) or (not is_long and cur_px < exit_px * (1.0 - cross_pct))
+        else:
+            crossed = (is_long and cur_px > exit_px) or (not is_long and cur_px < exit_px)
+        if not crossed:
+            continue
+        positions = _get_positions_from_redis(redis_client, account_key)
+        pos_amt = positions.get(pk, 0.0)
+        if pos_amt != 0.0:
+            continue
+        ind = _get_indicators(redis_client, symbol)
+        def _f(k, default=None):
+            try:
+                v = ind.get(k)
+                return float(v) if v is not None else default
+            except Exception:
+                return default
+        wt1_15m = _f("wt1_15m"); wt2_15m = _f("wt2_15m")
+        wt1_1h = _f("wt1_1h"); wt2_1h = _f("wt2_1h")
+        k_1h = _f("stoch_k_1h")
+        wt_favor = (wt1_15m is not None and wt2_15m is not None and wt1_1h is not None and wt2_1h is not None and ((is_long and wt1_15m > wt2_15m and wt1_1h > wt2_1h) or (not is_long and wt1_15m < wt2_15m and wt1_1h < wt2_1h)))
+        rally_extended = k_1h is not None and ((is_long and k_1h > 90.0) or (not is_long and k_1h < 10.0))
+        if wt_favor:
+            sizing_frac = 1.5; sizing_tag = "wt_bounce_150"
+        elif rally_extended:
+            sizing_frac = 0.5; sizing_tag = f"rally_ext_k1h{k_1h:.0f}_50"
+        else:
+            sizing_frac = 1.0; sizing_tag = "full_100"
+        fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
+        if fire_qty <= 0:
+            continue
+        xr_tag = (exit_reason[:40] or "unk").replace(" ", "_")
+        reason = f"DAEMON_PRICE_CROSS_REENTRY_exit{exit_px:.6f}_cur{cur_px:.6f}_{sizing_tag}_xr{xr_tag}"
+        queue_dir = queue_base / account_key
+        if dry_run:
+            logger.info(f"[DAEMON DRY-RUN] would queue {pk} qty={fire_qty:.4f} {sizing_tag} cross={exit_px:.6f}→{cur_px:.6f}")
+            last_fire[pk] = now
+            fired += 1
+        elif _write_reentry_command(queue_dir, pk, account_key, symbol, pos_side, fire_qty, exit_px, cur_px, sizing_tag, reason, now):
+            logger.info(f"[DAEMON] queued REENTRY {pk} qty={fire_qty:.4f} {sizing_tag} cross={exit_px:.6f}→{cur_px:.6f}")
+            last_fire[pk] = now
+            fired += 1
+    return fired
+
+
+def _heartbeat(redis_client, interval: float) -> None:
+    if redis_client is None:
+        return
+    try:
+        redis_client.set("ez_reentry:heartbeat:daemon", str(time.time()), ex=max(int(interval * 3), 90))
+    except Exception:
+        pass
+
+
+def run(once: bool = False, dry_run: bool = False) -> None:
     redis_client = _get_redis()
     base_path = Path(os.environ.get("BINANCE_BASE_PATH", "/Users/niels/Documents/binance"))
-    interval = int(os.environ.get("EZ_REENTRY_DAEMON_INTERVAL_S", "30"))
+    queue_base = base_path / "data" / "reentry_queue"
+    queue_base.mkdir(parents=True, exist_ok=True)
+    interval = float(os.environ.get("EZ_REENTRY_DAEMON_INTERVAL_S", "5"))
     accounts = _accounts_from_config()
-    logger.info(f"started; accounts={accounts} interval={interval}s once={once} log={LOG_PATH}")
+    last_fire: Dict[str, float] = {}
+    mode = "DRY-RUN" if dry_run else "ACTIVE"
+    logger.info(f"[DAEMON] started {mode} — accounts={accounts} interval={interval}s queue={queue_base}")
     while True:
         cycle_start = time.time()
         try:
-            import ez_reentry as _ezr
-            _ezr.heartbeat(redis_client, role="daemon", ttl=max(interval * 3, 90))
-            if not _ezr.daemon_enabled():
-                logger.info("daemon disabled via EZ_REENTRY_DAEMON_ENABLED=False — sleeping")
-                await asyncio.sleep(interval)
-                if once:
-                    return
-                continue
-            total = 0
-            for acc in accounts:
-                try:
-                    total += _scan_account(redis_client, base_path, acc)
-                except Exception as e:
-                    logger.error(f"scan {acc}: {e}", exc_info=True)
-            _audit_inline_loops(redis_client)
-            elapsed = time.time() - cycle_start
-            logger.info(f"shadow pass: {total} reentry slots observed across {len(accounts)} accounts in {elapsed:.2f}s")
+            _heartbeat(redis_client, interval)
+            n = _evaluate_and_queue(redis_client, base_path, queue_base, accounts, last_fire, dry_run)
+            if n:
+                logger.info(f"[DAEMON] tick: {n} command(s) queued")
         except Exception as e:
-            logger.error(f"loop error: {e}", exc_info=True)
+            logger.error(f"[DAEMON] loop error: {e}", exc_info=True)
         if once:
             return
         sleep_for = max(0.1, interval - (time.time() - cycle_start))
-        await asyncio.sleep(sleep_for)
+        time.sleep(sleep_for)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", action="store_true", help="run a single pass then exit")
+    parser.add_argument("--once", action="store_true", help="single pass then exit")
+    parser.add_argument("--dry-run", action="store_true", help="evaluate but do NOT write commands")
     args = parser.parse_args()
     try:
-        asyncio.run(run_loop(once=args.once))
+        run(once=args.once, dry_run=args.dry_run)
     except KeyboardInterrupt:
-        logger.info("interrupted, exiting")
+        logger.info("[DAEMON] interrupted, exiting")
     return 0
 
 

@@ -671,6 +671,12 @@ class Config:
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
     EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0  # skip exits older than this — stale levels don't matter
     EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20  # cap per 5s tick to prevent queue overload
+    # 2026-05-08 — Daemon queue consumer: ez_reentry_daemon.py writes command files to
+    # data/reentry_queue/{account}/ and this consumer in ez_manage calls execute_now.
+    # Kill ez_reentry_daemon.py to stop all reentry signal generation independently.
+    # Set EZ_REENTRY_INLINE_ENABLED=False once daemon is verified to disable fallback loops.
+    EZ_REENTRY_QUEUE_CONSUMER_ENABLED: bool = True
+    EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S: float = 5.0
     # EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S removed 2026-04-28 — replaced by upstream
     # is_reentry_eligible() pre-flight gate at the source of each REENTRY call so we
     # never call execute_now when we already know it'll be blocked. Per user mandate

@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-08 02:11:25 UTC
+# Copilot Status — 2026-05-08 02:26:36 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:07:30
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T02:08:31
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:08:31
-- **STALE_INDICATORS** [tradier]  — 2026-05-08T02:09:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-08T02:09:32
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-08T02:09:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T02:09:33
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:09:33
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T02:10:34
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:10:34
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-08T02:25:01
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T02:25:01
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:25:01
+- **STALE_INDICATORS** [tradier]  — 2026-05-08T02:26:03
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-08T02:26:03
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-08T02:26:03
+- **RATIO_IMBALANCE** [crypto] ang — 2026-05-08T02:26:05
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-08T02:26:05
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-08T02:26:05
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-08T02:26:05
 
 ## Missed Trades (trader comparison)
 
@@ -27,15 +27,13 @@ _None_
 
 ## Outperformer Tracker
 
-**Held:** 7 | **Watching for reentry:** 6 | **Reentered:** 0
+**Held:** 5 | **Watching for reentry:** 8 | **Reentered:** 0
 
-- HELD: **OPUSDT** SHORT (crypto) peak +15.3%, now +-0.3%
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-2.6%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-2.5%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-6.3%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-2.2%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-2.8%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-2.7%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-6.2%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-1.7%
 - HELD: **SLV** LONG (tradier) peak +3.6%, now +-0.3%
-- HELD: **VETUSDT** SHORT (crypto) peak +3.2%, now +0.1%
 
 - WATCHING: **1000LUNCUSDT** SHORT (crypto) peaked +41.6%, exited 0m ago
 - WATCHING: **RSRUSDT** SHORT (crypto) peaked +11.0%, exited 0m ago
@@ -43,6 +41,8 @@ _None_
 - WATCHING: **XVGUSDT** SHORT (crypto) peaked +7.7%, exited 0m ago
 - WATCHING: **INJUSDT** SHORT (crypto) peaked +6.3%, exited 0m ago
 - WATCHING: **CHRUSDT** SHORT (crypto) peaked +4.5%, exited 0m ago
+- WATCHING: **C98USDT** SHORT (crypto) peaked +3.4%, exited 0m ago
+- WATCHING: **PHBUSDT** SHORT (crypto) peaked +3.2%, exited 0m ago
 
 ## Supervisor
 

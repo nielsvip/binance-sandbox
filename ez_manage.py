@@ -14858,9 +14858,12 @@ class MultiAccountTradeManager:
                 await asyncio.sleep(30)
 
     async def _handle_hedge_guard(self, account_key, position_key, symbol, position, pos_amt, current_price, is_long):
+        if Path(f'/tmp/HEDGE_HOLD_{account_key}').exists() or Path('/tmp/HEDGE_HOLD').exists():
+            logger.warning(f"[HEDGE_GUARD] HEDGE_HOLD sentinel active — skipping hedge for {position_key}")
+            return None
         gain = getattr(position, 'gain', 0.0)
-        if gain >= -0.5: 
-            return None 
+        if gain >= -0.5:
+            return None
         hedge_engine = getattr(self, 'hedge_engine', None)
         if not hedge_engine:
             logger.error(f"[HEDGE_GUARD] No HedgeEngine. Allowing reduction.")
@@ -24137,6 +24140,87 @@ async def _price_level_reentry_monitor_loop(trade_manager: MultiAccountTradeMana
             logger.error(f"[REENTRY_MONITOR_LOOP] error: {_e}", exc_info=True)
         await asyncio.sleep(interval)
 
+
+async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) -> None:
+    """Reads reentry command files written by ez_reentry_daemon.py and executes them via execute_now.
+    Provides independent process separation: kill the daemon to stop all reentry signal generation;
+    this consumer only executes — it makes no reentry decisions."""
+    import glob
+    cfg = getattr(trade_manager, 'config', config)
+    interval = float(getattr(cfg, 'EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S', 5.0))
+    base_path = Path(getattr(cfg, 'BASE_PATH', '/Users/niels/Documents/binance'))
+    queue_base = base_path / 'data' / 'reentry_queue'
+    queue_base.mkdir(parents=True, exist_ok=True)
+    logger.info(f"[REENTRY_QUEUE] consumer started — interval={interval}s queue={queue_base}")
+    while True:
+        try:
+            now = time.time()
+            allowed = set(getattr(trade_manager, '_allowed_accounts', None) or [])
+            if not allowed:
+                acct = getattr(trade_manager, 'account_key', None)
+                if acct:
+                    allowed = {acct}
+            for account_key in allowed:
+                hold_path = Path(f'/tmp/REENTRY_HOLD_{account_key}')
+                if hold_path.exists():
+                    continue
+                queue_dir = queue_base / account_key
+                if not queue_dir.exists():
+                    continue
+                done_dir = queue_dir / 'done'
+                done_dir.mkdir(exist_ok=True)
+                for cmd_file in sorted(queue_dir.glob('cmd_*.json')):
+                    try:
+                        with open(cmd_file) as f:
+                            cmd = json.load(f)
+                        if not isinstance(cmd, dict) or cmd.get('version', 0) < 2:
+                            cmd_file.rename(done_dir / f'bad_{cmd_file.name}')
+                            continue
+                        if now > float(cmd.get('expires_at', 0)):
+                            cmd_file.rename(done_dir / f'expired_{cmd_file.name}')
+                            logger.debug(f"[REENTRY_QUEUE] expired cmd {cmd_file.name}")
+                            continue
+                        pk = cmd.get('position_key', '')
+                        if not pk:
+                            cmd_file.rename(done_dir / f'bad_{cmd_file.name}')
+                            continue
+                        pos = trade_manager.positions.get(pk) if hasattr(trade_manager, 'positions') else None
+                        pos_amt = abs(float(getattr(pos, 'positionAmt', 0) or 0)) if pos is not None else 0.0
+                        if pos_amt != 0.0:
+                            cmd_file.rename(done_dir / f'skip_notzero_{cmd_file.name}')
+                            logger.debug(f"[REENTRY_QUEUE] skip {pk} positionAmt={pos_amt:.4f} (not zero)")
+                            continue
+                        try:
+                            tk = getattr(trade_manager, 'tradeable_keys', None)
+                            if tk and pk not in tk:
+                                cmd_file.rename(done_dir / f'skip_nontradeable_{cmd_file.name}')
+                                logger.warning(f"[REENTRY_QUEUE] skip {pk} NON_TRADEABLE")
+                                continue
+                        except Exception:
+                            pass
+                        await trade_manager.execute_now(
+                            position_key=pk,
+                            account_key=cmd['account_key'],
+                            symbol=cmd['symbol'],
+                            original_positionAmt=0.0,
+                            side=cmd['side'],
+                            position_side=cmd['position_side'],
+                            quantity=float(cmd['quantity']),
+                            old_price=float(cmd.get('current_price', 0.0)),
+                            unique_id=cmd['unique_id'],
+                            reason=cmd['reason'],
+                            is_full_close=False,
+                            action='REENTRY',
+                        )
+                        cmd_file.rename(done_dir / f'done_{cmd_file.name}')
+                        logger.info(f"[REENTRY_QUEUE] executed REENTRY {pk} qty={cmd['quantity']:.4f} via daemon cmd")
+                    except Exception as _ce:
+                        logger.error(f"[REENTRY_QUEUE] error processing {cmd_file.name}: {_ce}", exc_info=True)
+        except Exception as _e:
+            logger.error(f"[REENTRY_QUEUE] consumer loop error: {_e}", exc_info=True)
+        await asyncio.sleep(interval)
+
+
 @timed_function("periodic_evaluate_reentry_loop")
 async def periodic_evaluate_reentry_loop(trade_manager: MultiAccountTradeManager):
     try:
@@ -25419,6 +25503,8 @@ async def main():
             if bool(getattr(config, 'EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED', True)):
                 import ez_reentry as _ezr_mod
                 background_tasks.append(asyncio.create_task(_ezr_mod.price_cross_reentry_safety_loop(trade_manager)))
+            if bool(getattr(config, 'EZ_REENTRY_QUEUE_CONSUMER_ENABLED', True)):
+                background_tasks.append(asyncio.create_task(_reentry_queue_consumer_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
             background_tasks.append(asyncio.create_task(monitor_system_state(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.momentum_rider_loop()))
