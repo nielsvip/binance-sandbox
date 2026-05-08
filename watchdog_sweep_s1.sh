@@ -1,7 +1,7 @@
 #!/bin/bash
 # watchdog_sweep_s1.sh — every 5min: keep BOTH crypto AND tradier backtest_v8_sweep alive.
-# 2026-05-08 v11: per_sym_real_profiler allowed to coexist (NOT killed). Shorter date ranges
-# so each variant completes in 3-7 min (vs 29 min with 2024-01-01 → all variants timed out).
+# 2026-05-08 v12: added --mem-throttle-pct 70 to tradier sweep to prevent OOM kills when
+# profiler + crypto + tradier all run concurrently (each engine peaks ~10GB on 30GB server).
 # Crypto: 8 USDC syms, start=2026-01-01. Tradier: 20 liquid stocks, start=2026-01-01.
 LOG=/home/niels/logs/watchdog_sweep_s1.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
@@ -57,6 +57,7 @@ if [ "$NT" -lt 1 ]; then
         --tier tradier_param_hunt \
         --workers 1 \
         --timeout 3600 \
+        --mem-throttle-pct 70 \
         > ~/logs/bt_sweep_tradier_20sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
     echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"

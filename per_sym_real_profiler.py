@@ -25,6 +25,7 @@ import time
 import shutil
 import subprocess
 import traceback
+import psutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from copy import deepcopy
 from pathlib import Path
@@ -169,6 +170,16 @@ def variants_for_sym(base: Dict, sym: str, account: str = '') -> List[Tuple[str,
     return grid
 
 
+def _wait_for_memory_profiler(threshold_pct: float = 75, max_wait_s: int = 300, poll_s: int = 15) -> None:
+    deadline = time.time() + max_wait_s
+    while time.time() < deadline:
+        used_pct = psutil.virtual_memory().percent
+        if used_pct < threshold_pct:
+            return
+        print(f'[profiler] RAM {used_pct:.1f}% > {threshold_pct}% — waiting {poll_s}s', flush=True)
+        time.sleep(poll_s)
+
+
 def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: str = 'flz',
                     start: str = '2022-01-01', mode: str = 'crypto', timeout_s: int = 3600) -> Optional[Dict]:
     """Invoke backtest_v8_engine subprocess. Returns metrics dict or None."""
@@ -185,6 +196,7 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
     cmd = [PYTHON_BIN, str(ENGINE_PY), '--mode', mode, '--account', account,
            '--start', start, '--symbols', sym, '--capital', '10000']
     eng_log = run_dir / f'{run_id}.log'
+    _wait_for_memory_profiler(threshold_pct=75)
     try:
         with open(eng_log, 'w') as log_f:
             r = subprocess.run(cmd, env=env, stdout=log_f, stderr=log_f,
