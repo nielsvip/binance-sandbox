@@ -20,7 +20,7 @@ if [ "$NB" -lt 1 ]; then
         --symbols AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS \
         --tier tradier_param_hunt \
         --workers 1 \
-        --timeout 2400 \
+        --timeout 3600 \
         > ~/logs/bt_sweep_tradier_param_hunt_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
     echo "[$TS] post-relaunch tradier procs=$(pgrep -afc 'backtest_v8_sweep.*tradier_param_hunt')" >> "$LOG"

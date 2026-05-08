@@ -577,41 +577,49 @@ def grid_indicator_audit_v2():
 
 
 def grid_tradier_param_hunt():
-    """2026-04-19: hunt best tradier params using the REAL backtest_v8_engine.
+    """2026-05-08: full real-engine tradier knob hunt with WT_DC_ENTRY_THRESHOLD sweep.
     Tests ACTUAL config_tradier.py parameter names (not V8Q_ dead params).
 
-    54-combo cartesian of 4 core params + ablation of score/hold/vel-gate.
-    Total: ~63 variants. ETA ~60s each / 4 workers ≈ ~16 min.
+    Primary goal: find the WT_DC_ENTRY_THRESHOLD value that produces trades.
+    Default 75 has been producing 0 trades (score_entry_multitf max=100, threshold 75
+    requires D_bull+4h_bull+1h_cross simultaneously — too strict for most market regimes).
 
-    Launch on S2:
-      python3 backtest_v8_sweep.py --mode tradier --account trb --start 2024-01-01 \\
-          --symbols AAPL,MSFT,NVDA,XOM,GLD,SPY,AMZN,GOOGL \\
-          --tier tradier_param_hunt --workers 4 --timeout 900
+    ETA ~33min/variant × workers=1. Prioritized order: entry threshold first.
     """
     from itertools import product as _product
     combos = [("baseline", {})]
-    # ── CARTESIAN: 4 core real tradier params ── (3×3×3×2 = 54)
-    for wt_exit, k_max, vel_min, htf_min in _product(
-        [2, 3, 4],            # WT_EXIT_MIN_TFS_TRADIER default=5 (5=zero-trades, banned)
-        [40.0, 80.0, 100.0],  # REENTRY_RALLY_K15M_MAX default=100
-        [0.0, 3.0, 6.0],      # CT_WT_VELOCITY_1H_MIN default=0.0
-        [2, 3],               # REENTRY_RALLY_HTF_MIN default=3
-    ):
-        label = f"wt{wt_exit}_k{int(k_max)}_vel{vel_min}_htf{htf_min}"
-        combos.append((label, {
+    # ── PRIORITY 1: WT_DC_ENTRY_THRESHOLD sweep — THE main entry gate (default=75) ──
+    # Start at 0 (diagnostic), then find the real optimum.
+    for thr in [0, 24, 35, 50, 65, 75]:
+        combos.append((f"ENTRY_THR_{thr}", {"WT_DC_ENTRY_THRESHOLD": thr}))
+    # ── PRIORITY 2: DELTA_ENGINE toggle — the primary entry path before WT_DC fallback ──
+    combos.append(("DELTA_OFF", {"DELTA_ENGINE_ENABLED": False}))
+    combos.append(("DELTA_ON_nohtf", {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "none"}))
+    combos.append(("DELTA_ON_any", {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "any"}))
+    # ── PRIORITY 3: HTF exit alignment (user directive: 4h/D is the right TF for stocks) ──
+    for wt_exit in [1, 2, 3, 4]:
+        combos.append((f"WT_EXIT_TFS_{wt_exit}", {"WT_EXIT_MIN_TFS_TRADIER": wt_exit}))
+    # ── PRIORITY 4: GOLDEN_RULE — aggressive buy-on-dip gate affects entry frequency ──
+    combos.append(("GOLDEN_RULE_OFF", {"GOLDEN_RULE_ENABLED": False}))
+    combos.append(("GOLDEN_RULE_ON", {"GOLDEN_RULE_ENABLED": True}))
+    # ── PRIORITY 5: PPL (partial profit lock) — exit quality ──
+    for gain in [0.3, 0.5, 1.0]:
+        combos.append((f"PPL_GAIN_{gain}", {"PARTIAL_PROFIT_LOCK_GAIN_PCT": gain,
+                                             "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT": gain + 0.25}))
+    # ── PRIORITY 6: entry threshold COMBINED with exit alignment ──
+    for thr, wt_exit in [(35, 2), (50, 2), (50, 3), (65, 2)]:
+        combos.append((f"THR{thr}_EXIT{wt_exit}", {
+            "WT_DC_ENTRY_THRESHOLD": thr,
             "WT_EXIT_MIN_TFS_TRADIER": wt_exit,
-            "REENTRY_RALLY_K15M_MAX": k_max,
-            "CT_WT_VELOCITY_1H_MIN": vel_min,
-            "REENTRY_RALLY_HTF_MIN": htf_min,
         }))
-    # ── ABLATION: entry score threshold (default=24) ──
-    for score in [20, 22, 26, 28]:
-        combos.append((f"score{score}", {"TRADIER_ENTRY_SCORE_THRESHOLD": score}))
-    # ── ABLATION: min hold bars (default=32) ──
-    for hold in [16, 24, 48]:
-        combos.append((f"hold{hold}", {"MIN_HOLD_BARS_TRADIER": hold}))
     # ── ABLATION: velocity gate toggle ──
     combos.append(("vel_gate_off", {"CT_WT_VELOCITY_GATE_ENABLED": False}))
+    # ── ABLATION: min hold bars ──
+    for hold in [16, 32, 48]:
+        combos.append((f"hold{hold}", {"MIN_HOLD_BARS_TRADIER": hold}))
+    # ── ABLATION: reentry params ──
+    for k_max in [40.0, 80.0, 100.0]:
+        combos.append((f"reentry_k{int(k_max)}", {"REENTRY_RALLY_K15M_MAX": k_max}))
     return combos
 
 
@@ -863,6 +871,14 @@ def grid_system_combo():
     for th in (0.0, 0.005, 0.01, 0.02):
         out.append((f"FUNDING_TH_{th}", {"FUNDING_GATE_LONG_MAX": -th,
                                           "FUNDING_GATE_SHORT_MIN": +th}))
+
+    # 11. ENTRY_SCORE_THRESHOLD — primary entry gate (crypto default=18)
+    for v in (12, 15, 18, 20, 24):
+        out.append((f"CRYPTO_ENTRY_THR_{v}", {"ENTRY_SCORE_THRESHOLD": v}))
+
+    # 12. GOLDEN_RULE — buy-on-dip cascade gate (added 2026-05-05, default ON)
+    out.append(("GOLDEN_RULE_OFF", {"GOLDEN_RULE_ENABLED": False}))
+    out.append(("GOLDEN_RULE_ON",  {"GOLDEN_RULE_ENABLED": True}))
 
     return out
 
