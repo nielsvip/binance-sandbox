@@ -1111,6 +1111,8 @@ class QuickConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_BASE_USD: float = 5.0
+    GOLDEN_RULE_GATE_MODE: bool = True
+    GOLDEN_RULE_MULT_APPLY: bool = True
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2145,39 +2147,33 @@ def _sector_strength_mult(sym: Optional[str], cfg) -> float:
 
 
 def _golden_rule_vec(npz, n, is_long, cfg):
-    # GOLDEN RULE — restored 2026-05-05 per user directive (live + backtest parity).
-    # LONG: wt1_3m > wt2_3m AND price > dc_high_15m AND (optionally) price > bb_upper_15m
-    #       — base mult M_15M (default 1.0). Cascades: + 1h DC/BB → M_1H. + 4h DC/BB → M_4H.
-    # SHORT: reverse (wt1_3m < wt2_3m, price below dc_low/bb_lower).
-    # Returns (fire_mask, mult_arr): fire_mask is boolean; mult_arr holds the per-bar
-    # multiplier (1.0 if no fire, else MULT_15M/MULT_1H/MULT_4H based on cascade depth).
-    # Switches (all default ON):
-    #   GOLDEN_RULE_ENABLED, GOLDEN_RULE_DC_15M_ENABLED, GOLDEN_RULE_DC_1H_ENABLED,
-    #   GOLDEN_RULE_DC_4H_ENABLED, GOLDEN_RULE_BB_15M_ENABLED, GOLDEN_RULE_BB_1H_ENABLED,
-    #   GOLDEN_RULE_BB_4H_ENABLED.
-    # Multipliers: GOLDEN_RULE_MULT_15M (1.0), _MULT_1H (1.5), _MULT_4H (2.0).
+    # GOLDEN RULE — gate + size-cascade on entry impulse (SATOSHIT/base_sig).
+    # Architecture: SATOSHIT is the ENTRY IMPULSE. GOLDEN RULE is the GATE+MULTIPLIER.
+    # Gate condition (default GATE_MODE=True): close vs dc_basis (midline) — trend confirmation.
+    #   LONG: close > dc_basis_15m (price in upper half of 15m channel = trend up)
+    #   SHORT: close < dc_basis_15m (price in lower half)
+    # BB condition: bb_pct_b > 0.5 (price above BB midline) for LONG, < 0.5 for SHORT.
+    # Cascade depth determines size multiplier (not entry permission beyond l1).
+    #   l1 (15m basis+BB): mult MULT_15M — minimum confirmation
+    #   l2 (l1 + 1h basis+BB): mult MULT_1H — 1h trend aligned
+    #   l3 (l1 + 4h basis+BB): mult MULT_4H — 4h trend aligned
+    #   l4 (l1 + D basis+BB): mult MULT_D — daily trend aligned
+    # GATE_MODE=True (default): base_sig AND gate — filters bad entries.
+    # GATE_MODE=False: base_sig OR gate — legacy additive mode (OR adds breakout entries).
     if not bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)):
         return np.zeros(n, dtype=bool), np.ones(n, dtype=np.float32)
     _ltf = getattr(cfg, 'LTF', '3m')
     close = _close_with_mode_check(npz, n, cfg, '_golden_rule_vec')
     wt1 = _safe(npz, f'wt1_{_ltf}', n)
     wt2 = _safe(npz, f'wt2_{_ltf}', n)
-    dc_h_15m = _safe(npz, 'dc_high_15m', n)
-    dc_l_15m = _safe(npz, 'dc_low_15m', n)
-    dc_h_1h = _safe(npz, 'dc_high_1h', n)
-    dc_l_1h = _safe(npz, 'dc_low_1h', n)
-    dc_h_4h = _safe(npz, 'dc_high_4h', n)
-    dc_l_4h = _safe(npz, 'dc_low_4h', n)
-    bb_u_15m = _safe(npz, 'bb_upper_15m', n)
-    bb_l_15m = _safe(npz, 'bb_lower_15m', n)
-    bb_u_1h = _safe(npz, 'bb_upper_1h', n)
-    bb_l_1h = _safe(npz, 'bb_lower_1h', n)
-    bb_u_4h = _safe(npz, 'bb_upper_4h', n)
-    bb_l_4h = _safe(npz, 'bb_lower_4h', n)
-    dc_h_D = _safe(npz, 'dc_high_D', n)
-    dc_l_D = _safe(npz, 'dc_low_D', n)
-    bb_u_D = _safe(npz, 'bb_upper_D', n)
-    bb_l_D = _safe(npz, 'bb_lower_D', n)
+    dc_b_15m = _safe(npz, 'dc_basis_15m', n)
+    dc_b_1h = _safe(npz, 'dc_basis_1h', n)
+    dc_b_4h = _safe(npz, 'dc_basis_4h', n)
+    dc_b_D = _safe(npz, 'dc_basis_D', n)
+    bb_pb_15m = _safe(npz, 'bb_pct_b_15m', n, 0.5)
+    bb_pb_1h = _safe(npz, 'bb_pct_b_1h', n, 0.5)
+    bb_pb_4h = _safe(npz, 'bb_pct_b_4h', n, 0.5)
+    bb_pb_D = _safe(npz, 'bb_pct_b_D', n, 0.5)
     dc_15 = bool(getattr(cfg, 'GOLDEN_RULE_DC_15M_ENABLED', True))
     dc_1h = bool(getattr(cfg, 'GOLDEN_RULE_DC_1H_ENABLED', True))
     dc_4h = bool(getattr(cfg, 'GOLDEN_RULE_DC_4H_ENABLED', True))
@@ -2193,31 +2189,31 @@ def _golden_rule_vec(npz, n, is_long, cfg):
     _z = np.zeros(n, dtype=bool)
     if is_long:
         wt_ok = wt1 > wt2
-        dc15_f = ((dc_h_15m > 0) & (close > dc_h_15m)) if dc_15 else _z
-        bb15_f = ((bb_u_15m > 0) & (close > bb_u_15m)) if bb_15 else _z
+        dc15_f = ((dc_b_15m > 0) & (close > dc_b_15m)) if dc_15 else _z
+        bb15_f = (bb_pb_15m > 0.5) if bb_15 else _z
         l1 = wt_ok & (dc15_f | bb15_f)
-        dc1h_f = ((dc_h_1h > 0) & (close > dc_h_1h)) if dc_1h else _z
-        bb1h_f = ((bb_u_1h > 0) & (close > bb_u_1h)) if bb_1h else _z
+        dc1h_f = ((dc_b_1h > 0) & (close > dc_b_1h)) if dc_1h else _z
+        bb1h_f = (bb_pb_1h > 0.5) if bb_1h else _z
         l2 = l1 & (dc1h_f | bb1h_f)
-        dc4h_f = ((dc_h_4h > 0) & (close > dc_h_4h)) if dc_4h else _z
-        bb4h_f = ((bb_u_4h > 0) & (close > bb_u_4h)) if bb_4h else _z
+        dc4h_f = ((dc_b_4h > 0) & (close > dc_b_4h)) if dc_4h else _z
+        bb4h_f = (bb_pb_4h > 0.5) if bb_4h else _z
         l3 = l1 & (dc4h_f | bb4h_f)
-        dcD_f = ((dc_h_D > 0) & (close > dc_h_D)) if dc_D else _z
-        bbD_f = ((bb_u_D > 0) & (close > bb_u_D)) if bb_D else _z
+        dcD_f = ((dc_b_D > 0) & (close > dc_b_D)) if dc_D else _z
+        bbD_f = (bb_pb_D > 0.5) if bb_D else _z
         l4 = l1 & (dcD_f | bbD_f)
     else:
         wt_ok = wt1 < wt2
-        dc15_f = ((dc_l_15m > 0) & (close < dc_l_15m)) if dc_15 else _z
-        bb15_f = ((bb_l_15m > 0) & (close < bb_l_15m)) if bb_15 else _z
+        dc15_f = ((dc_b_15m > 0) & (close < dc_b_15m)) if dc_15 else _z
+        bb15_f = (bb_pb_15m < 0.5) if bb_15 else _z
         l1 = wt_ok & (dc15_f | bb15_f)
-        dc1h_f = ((dc_l_1h > 0) & (close < dc_l_1h)) if dc_1h else _z
-        bb1h_f = ((bb_l_1h > 0) & (close < bb_l_1h)) if bb_1h else _z
+        dc1h_f = ((dc_b_1h > 0) & (close < dc_b_1h)) if dc_1h else _z
+        bb1h_f = (bb_pb_1h < 0.5) if bb_1h else _z
         l2 = l1 & (dc1h_f | bb1h_f)
-        dc4h_f = ((dc_l_4h > 0) & (close < dc_l_4h)) if dc_4h else _z
-        bb4h_f = ((bb_l_4h > 0) & (close < bb_l_4h)) if bb_4h else _z
+        dc4h_f = ((dc_b_4h > 0) & (close < dc_b_4h)) if dc_4h else _z
+        bb4h_f = (bb_pb_4h < 0.5) if bb_4h else _z
         l3 = l1 & (dc4h_f | bb4h_f)
-        dcD_f = ((dc_l_D > 0) & (close < dc_l_D)) if dc_D else _z
-        bbD_f = ((bb_l_D > 0) & (close < bb_l_D)) if bb_D else _z
+        dcD_f = ((dc_b_D > 0) & (close < dc_b_D)) if dc_D else _z
+        bbD_f = (bb_pb_D < 0.5) if bb_D else _z
         l4 = l1 & (dcD_f | bbD_f)
     fire = l1
     mult = np.ones(n, dtype=np.float32)
@@ -2966,14 +2962,18 @@ def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
                 base_sig = base_sig | _bk_sig
             except Exception:
                 pass
-    # GOLDEN_RULE: OR-merge with base_sig. Default ON. Sweep-toggleable via
-    # GOLDEN_RULE_ENABLED. The rule fires regardless of confluence/strength gates
-    # because the user's directive is "MUST have a position however small" when
-    # wt_3m direction + 15m DC/BB breakout align.
+    # GOLDEN_RULE: gate the entry impulse (SATOSHIT/base_sig) by DC-basis + BB-midline.
+    # GATE_MODE=True (default): AND — only enter when impulse fires AND structure confirms.
+    # GATE_MODE=False: OR — legacy additive mode (adds breakout entries, hurts Sharpe).
+    # mult_arr is returned via _golden_rule_mult_for_simulate — wired into _cur_sz_mult.
     try:
         _gr_fire, _ = _golden_rule_vec(npz, n, is_long, cfg)
-        if _gr_fire is not None and _gr_fire.any():
-            base_sig = base_sig | _gr_fire
+        if _gr_fire is not None:
+            _gr_gate_mode = bool(getattr(cfg, 'GOLDEN_RULE_GATE_MODE', True))
+            if _gr_gate_mode:
+                base_sig = base_sig & _gr_fire
+            elif _gr_fire.any():
+                base_sig = base_sig | _gr_fire
     except Exception:
         pass
     return base_sig
@@ -5055,6 +5055,12 @@ def simulate(stores, cfg, capital=10000.0):
         for is_long in [True, False]:
             entry_sig = compute_entry_signals(npz, n, is_long, cfg, sym=sym)
             exit_sig = compute_exit_signals(npz, n, is_long, cfg)
+            _gr_mult_arr = None
+            if bool(getattr(cfg, 'GOLDEN_RULE_ENABLED', True)) and bool(getattr(cfg, 'GOLDEN_RULE_MULT_APPLY', True)):
+                try:
+                    _, _gr_mult_arr = _golden_rule_vec(npz, n, is_long, cfg)
+                except Exception:
+                    _gr_mult_arr = None
             # Phase 5 (2026-05-01): options-OI RED_ZONE gate — block entries near OI walls.
             # Snapshot-static gate applied per-bar; preserved as AND-merge so it CAN ONLY block,
             # never adds new entries. Tradier-only path; crypto uses different OI source.
@@ -5573,6 +5579,7 @@ def simulate(stores, cfg, capital=10000.0):
                             _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                             _cur_sz_mult *= _new_sizing_scalar(i)
                             _cur_sz_mult *= _qty_pipe_ratio(i, is_long, False)  # Phase 3d
+                            if _gr_mult_arr is not None: _cur_sz_mult *= float(_gr_mult_arr[i])
                             _peak_gain_running = 0.0; _hpl_fired_this_pos = False; _wa_aug_count = 0; _wa_last_aug_gain = 0.0
                             _qr_exit_px = 0.0; cd = 0
                             continue
@@ -5592,6 +5599,7 @@ def simulate(stores, cfg, capital=10000.0):
                         _cur_sz_mult = max(float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0, 1.0) * _t1pc_sz
                         _cur_sz_mult *= _new_sizing_scalar(i)
                         _cur_sz_mult *= _qty_pipe_ratio(i, is_long, False)  # Phase 3d
+                        if _gr_mult_arr is not None: _cur_sz_mult *= float(_gr_mult_arr[i])
                         _dyn_aug_done = False; _dyn_entry_score = float(_dyn_same_score[i]) if _dyn_same_score is not None else 0.0
                         _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                         _entry_was_breakout = _bfs_enabled and ((px > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (px < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
@@ -5635,6 +5643,7 @@ def simulate(stores, cfg, capital=10000.0):
                     _cur_sz_mult = float(_le_sz_mult_arr[i]) if _le_sz_mult_arr is not None else 1.0
                     _cur_sz_mult *= _new_sizing_scalar(i)
                     _cur_sz_mult *= _qty_pipe_ratio(i, is_long, _rz_fires_here)  # Phase 3d
+                    if _gr_mult_arr is not None: _cur_sz_mult *= float(_gr_mult_arr[i])
                     _dyn_aug_done = False
                     _pe_partial_done = False; _pe_realized = 0.0; _pe_trail_armed = False
                     _entry_was_breakout = _bfs_enabled and ((ep > _dc_h4_prev[i] and _dc_h4_prev[i] > 0) if is_long else (ep < _dc_l4_prev[i] and _dc_l4_prev[i] > 0))
