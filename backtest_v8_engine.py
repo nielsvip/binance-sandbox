@@ -2828,7 +2828,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         pk = f"{account_key}:{sym}_{ps}"
         reason = str(kw.get("reason", act or ""))[:200]
         if qty > 0 and px > 0:
-            executed_trades.append({"timestamp": _sim_ts[0], "symbol": sym, "side": side, "quantity": qty, "price": px, "action": act, "reason": reason, "position_key": pk, "position_side": ps, "is_full_close": kw.get("is_full_close", False)})
+            executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "symbol": sym, "side": side, "quantity": qty, "price": px, "action": act, "reason": reason, "position_key": pk, "position_side": ps, "is_full_close": kw.get("is_full_close", False)})
             v8_logger.warning(f"[TRADE] {side} {qty:.0f} {sym} @{px:.2f} {act} {reason[:50]}")
         return {"id": len(executed_trades), "status": "filled", "order": {"id": len(executed_trades), "status": "ok"}}
     manager.place_order = _place
