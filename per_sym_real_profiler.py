@@ -127,7 +127,7 @@ def variants_for_sym(base: Dict, sym: str) -> List[Tuple[str, Dict]]:
 
 
 def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: str = 'flz',
-                    start: str = '2022-01-01', mode: str = 'crypto', timeout_s: int = 600) -> Optional[Dict]:
+                    start: str = '2022-01-01', mode: str = 'crypto', timeout_s: int = 1800) -> Optional[Dict]:
     """Invoke backtest_v8_engine subprocess. Returns metrics dict or None."""
     run_dir.mkdir(parents=True, exist_ok=True)
     ovr_path = run_dir / f'override_{sym}_{tag}.json'
@@ -187,14 +187,14 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
 
 
 def optimize_sym(sym: str, account: str = 'flz', start: str = '2022-01-01',
-                 mode: str = 'crypto') -> Optional[Dict]:
+                 mode: str = 'crypto', timeout_s: int = 1800) -> Optional[Dict]:
     """Sweep variants for one symbol via real engine subprocess. Pick best."""
     base = _load_baseline(sym, mode=mode)
-    grid = variants_for_sym(base, sym)
+    grid = variants_for_sym(base, sym, account=account)
     run_dir = RUN_BASE / f'real_per_sym_{sym}_{int(time.time())}'
     results = []
     for tag, ovr in grid:
-        r = run_one_variant(sym, tag, ovr, run_dir, account=account, start=start, mode=mode)
+        r = run_one_variant(sym, tag, ovr, run_dir, account=account, start=start, mode=mode, timeout_s=timeout_s)
         if r is None: continue
         results.append(r)
         ps = r.get('pool_sharpe', 0); tr = r.get('trades', 0); dd = r.get('max_dd_pct', 0); wr = r.get('wr_pct', 0)
@@ -244,7 +244,7 @@ def write_active_config(winners: Dict) -> int:
     return promoted
 
 
-def cycle(syms: List[str], account: str, start: str, mode: str, workers: int) -> Dict:
+def cycle(syms: List[str], account: str, start: str, mode: str, workers: int, timeout_s: int = 1800) -> Dict:
     print(f"[per_sym_real_profiler] {len(syms)} syms, account={account}, start={start}, workers={workers}", flush=True)
     t0 = time.time()
     csv_path = SWEEP_DIR / f'per_sym_real_{account}_{int(time.time())}.csv'
@@ -252,13 +252,13 @@ def cycle(syms: List[str], account: str, start: str, mode: str, workers: int) ->
     winners: Dict[str, Dict] = {}
     if workers <= 1:
         for i, s in enumerate(syms, 1):
-            r = optimize_sym(s, account=account, start=start, mode=mode)
+            r = optimize_sym(s, account=account, start=start, mode=mode, timeout_s=timeout_s)
             winners[s] = r
             elapsed = time.time() - t0
             print(f"[{i}/{len(syms)}] {s} done in {elapsed:.0f}s", flush=True)
     else:
         with ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = {ex.submit(optimize_sym, s, account, start, mode): s for s in syms}
+            futs = {ex.submit(optimize_sym, s, account, start, mode, timeout_s): s for s in syms}
             done = 0
             for fut in as_completed(futs):
                 done += 1
@@ -307,14 +307,17 @@ def load_account_syms(account: str) -> List[str]:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--syms', default='', help='comma-sep override (default: account universe)')
-    ap.add_argument('--account', default='flz')
+    ap.add_argument('--account', default='', help='account key; defaults to ang (crypto) or trb (tradier)')
     ap.add_argument('--mode', default='crypto', choices=['crypto', 'tradier'])
     ap.add_argument('--start', default='2022-01-01')
     ap.add_argument('--workers', type=int, default=2)
     ap.add_argument('--once', action='store_true', default=True)
     ap.add_argument('--daemon', action='store_true')
     ap.add_argument('--cycle-interval-s', type=int, default=86400)
+    ap.add_argument('--timeout', type=int, default=1800, help='subprocess timeout per variant in seconds')
     args = ap.parse_args()
+    if not args.account:
+        args.account = 'trb' if args.mode == 'tradier' else 'ang'
     if args.syms:
         syms = [s.strip() for s in args.syms.split(',') if s.strip()]
     else:
@@ -323,14 +326,14 @@ def main():
     if args.daemon:
         while True:
             t0 = time.time()
-            try: cycle(syms, args.account, args.start, args.mode, args.workers)
+            try: cycle(syms, args.account, args.start, args.mode, args.workers, timeout_s=args.timeout)
             except Exception: traceback.print_exc()
             elapsed = time.time() - t0
             sleep_s = max(60, args.cycle_interval_s - int(elapsed))
             print(f"[per_sym_real_profiler] cycle done in {elapsed:.0f}s; sleeping {sleep_s}s", flush=True)
             time.sleep(sleep_s)
     else:
-        cycle(syms, args.account, args.start, args.mode, args.workers)
+        cycle(syms, args.account, args.start, args.mode, args.workers, timeout_s=args.timeout)
     return 0
 
 
