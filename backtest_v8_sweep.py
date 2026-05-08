@@ -603,9 +603,26 @@ def grid_tradier_param_hunt():
     # ── PRIORITY 3: HTF exit alignment (user directive: 4h/D is the right TF for stocks) ──
     for wt_exit in [1, 2, 3, 4]:
         combos.append((f"WT_EXIT_TFS_{wt_exit}", {"WT_EXIT_MIN_TFS_TRADIER": wt_exit}))
-    # ── PRIORITY 4: GOLDEN_RULE — aggressive buy-on-dip gate affects entry frequency ──
-    combos.append(("GOLDEN_RULE_OFF", {"GOLDEN_RULE_ENABLED": False}))
-    combos.append(("GOLDEN_RULE_ON", {"GOLDEN_RULE_ENABLED": True}))
+    # ── PRIORITY 4: GOLDEN_RULE_HTF — 5×5 multi-TF indicator confirmation grid ──
+    # TFs=[5m,15m,1h,4h,D,W]. Entry: need MIN_TFS tfs each with MIN_IND bullish indicators.
+    # Indicators: WT(wt1>wt2), RSI(>50), MFI(>50), DC(position<0.65), BB(pct_b<0.75)
+    combos.append(("GR_HTF_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0}))
+    for min_tfs in [1, 2, 3, 4, 5]:
+        for min_ind in [1, 2, 3, 4, 5]:
+            combos.append((f"GR_HTF_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_MIN_IND": min_ind,
+            }))
+    # Exit gate: bearish confirmation before allowing exit
+    for min_tfs in [1, 2, 3]:
+        for min_ind in [1, 2, 3]:
+            combos.append((f"GR_EXIT_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": 0,  # entry OFF
+                "GOLDEN_RULE_EXIT_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_EXIT_MIN_IND": min_ind,
+            }))
+    # Legacy GOLDEN_RULE (dip cascade) kept for reference
+    combos.append(("GOLDEN_RULE_old_ON", {"GOLDEN_RULE_ENABLED": True}))
     # ── PRIORITY 5: PPL (partial profit lock) — exit quality ──
     for gain in [0.3, 0.5, 1.0]:
         combos.append((f"PPL_GAIN_{gain}", {"PARTIAL_PROFIT_LOCK_GAIN_PCT": gain,
@@ -883,9 +900,17 @@ def grid_system_combo():
     for v in (12, 15, 18, 20, 24):
         out.append((f"CRYPTO_ENTRY_THR_{v}", {"ENTRY_SCORE_THRESHOLD": v}))
 
-    # 12. GOLDEN_RULE — buy-on-dip cascade gate (added 2026-05-05, default ON)
-    out.append(("GOLDEN_RULE_OFF", {"GOLDEN_RULE_ENABLED": False}))
-    out.append(("GOLDEN_RULE_ON",  {"GOLDEN_RULE_ENABLED": True}))
+    # 12. GOLDEN_RULE_HTF — 5×5 multi-TF indicator confirmation grid (crypto: [3m,15m,1h,4h,D])
+    # Indicators: WT(wt1>wt2), RSI(>50), MFI(>50), DC(position<0.65), BB(pct_b<0.75)
+    out.append(("GR_HTF_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0}))
+    for min_tfs in [1, 2, 3, 4, 5]:
+        for min_ind in [1, 2, 3, 4, 5]:
+            out.append((f"GR_HTF_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_MIN_IND": min_ind,
+            }))
+    # Legacy GOLDEN_RULE (dip cascade) kept for reference
+    out.append(("GOLDEN_RULE_old_ON", {"GOLDEN_RULE_ENABLED": True}))
 
     return out
 

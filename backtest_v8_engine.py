@@ -2957,6 +2957,21 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     return f"BLOCKED_LS_RATIO_LONG_{_ratio_pt:.2f}gt{_ls_max_pt}"
                 if position_side == 'SHORT' and _ratio_pt < _ls_min_pt:
                     return f"BLOCKED_LS_RATIO_SHORT_{_ratio_pt:.2f}lt{_ls_min_pt}"
+        if not is_reduce:
+            _gr_min_tfs_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
+            if _gr_min_tfs_pt > 0:
+                try:
+                    from golden_rule_htf import score_entry_htf as _gr_score_entry_pt
+                    _gr_min_ind_pt = int(getattr(tm_mod.config, 'GOLDEN_RULE_MIN_IND', 2))
+                    _gr_mode_pt = "tradier" if account_key.startswith(("trb", "trc", "tra")) else "crypto"
+                    _gr_ind_pt = manager.market_snapshot.get(str(symbol).upper(), {})
+                    _gr_px_pt = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
+                    _gr_is_long_pt = (str(position_side) == "LONG")
+                    _gr_ok_pt, _gr_tfs_pt, _ = _gr_score_entry_pt(_gr_ind_pt, _gr_is_long_pt, _gr_mode_pt, _gr_min_tfs_pt, _gr_min_ind_pt, _gr_px_pt)
+                    if not _gr_ok_pt:
+                        return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_pt}of{_gr_min_tfs_pt}tfs_need{_gr_min_ind_pt}ind"
+                except Exception:
+                    pass
         v8_logger.warning(f"[V8_ETA] {position_key} {side} qty={qty:.4f} px={px:.4f} {act} {reason[:60]}")
         await _place(symbol=symbol, side=side, quantity=qty, price=px, action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
         # Update position (check both dicts — tradier uses position_manager.positions)
@@ -3161,6 +3176,22 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                         return f"BLOCKED_LS_RATIO_LONG_{_ratio_r:.2f}gt{_ls_max_r}"
                     if str(position_side) == 'SHORT' and _ratio_r < _ls_min_r:
                         return f"BLOCKED_LS_RATIO_SHORT_{_ratio_r:.2f}lt{_ls_min_r}"
+                # GOLDEN_RULE HTF gate — requires N timeframes each with M bullish indicators.
+                # min_tfs=0 means disabled (default). Wire GOLDEN_RULE_HTF_MIN_TFS≥1 to activate.
+                _gr_min_tfs_r = int(getattr(tm_mod.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0) if hasattr(tm_mod, 'config') else 0)
+                if _gr_min_tfs_r > 0:
+                    try:
+                        from golden_rule_htf import score_entry_htf as _gr_score_entry
+                        _gr_min_ind_r = int(getattr(tm_mod.config, 'GOLDEN_RULE_MIN_IND', 2))
+                        _gr_mode_r = "tradier" if account_key.startswith(("trb", "trc", "tra")) else "crypto"
+                        _gr_ind_r = manager.market_snapshot.get(str(symbol).upper(), {})
+                        _gr_px_r = float(current_price or price_cache.get(str(symbol).upper(), 0) or 0)
+                        _gr_is_long_r = (str(position_side) == "LONG")
+                        _gr_ok_r, _gr_tfs_r, _gr_detail_r = _gr_score_entry(_gr_ind_r, _gr_is_long_r, _gr_mode_r, _gr_min_tfs_r, _gr_min_ind_r, _gr_px_r)
+                        if not _gr_ok_r:
+                            return f"BLOCKED_GOLDEN_RULE_{_gr_tfs_r}of{_gr_min_tfs_r}tfs_need{_gr_min_ind_r}ind"
+                    except Exception as _gr_err_r:
+                        v8_logger.warning(f"[V8_GOLDEN_RULE_ERR] {position_key}: {_gr_err_r}")
             # Pre-create empty position if OPEN so real ETA's ensure_position_present finds it
             if _act in ('OPEN', 'QUICK_OPEN', 'REENTRY') and manager.position_manager and _pk not in manager.position_manager.positions:
                 class _EmptyPos:

@@ -1614,6 +1614,10 @@ class TradierConfig:
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
     CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-20 sweep: every top result had 2.0 — filters no-momentum entries
     CT_WT_VELOCITY_GATE_ENABLED: bool = False  # BC_170 (crypto). 2026-05-08: wired into tradier_manage BV gate; default OFF for stocks (not yet validated — sweep vel_gate_on=True to test).
+    GOLDEN_RULE_HTF_MIN_TFS: int = 0  # GOLDEN_RULE entry gate: require this many TFs to confirm (0=off). TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6 to find best.
+    GOLDEN_RULE_MIN_IND: int = 2  # Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree. Sweep 1-5.
+    GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
+    GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
     CYCLE_TP_PCT: float = 0.6  # Let winners run to 60%. TP only used as absolute cap, NOT as early exit.
     CYCLE_TP_TIERED_ENABLED: bool = True  # BACKTEST_CHANGE_12: AGGRESSIVE tiered wins 74% of symbols
