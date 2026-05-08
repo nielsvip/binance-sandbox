@@ -477,6 +477,28 @@ def _file_aggregates(p):
             chained += 1
     ts_first = min((int(t.get("entry_ts", 0)) for t in trades if t.get("entry_ts")), default=0)
     ts_last = max((int(t.get("exit_ts", 0)) for t in trades if t.get("exit_ts")), default=0)
+    # Determine the dominant side from actual trade content. Filename can lie
+    # (verified: hourly_reconfig writes the same data into both LONG and SHORT
+    # filenames). MIXED if both sides present; the badge in the UI surfaces it.
+    sides_seen: Dict[str, int] = {}
+    for t in trades:
+        s = (t.get("side") or "").upper()
+        if s in ("LONG", "SHORT"):
+            sides_seen[s] = sides_seen.get(s, 0) + 1
+    if not sides_seen:
+        content_side = ""
+    elif len(sides_seen) == 1:
+        content_side = next(iter(sides_seen))
+    else:
+        # Pick the dominant side, mark MIXED if neither >= 90%
+        long_n, short_n = sides_seen.get("LONG", 0), sides_seen.get("SHORT", 0)
+        total = long_n + short_n
+        if long_n / total >= 0.9:
+            content_side = "LONG"
+        elif short_n / total >= 0.9:
+            content_side = "SHORT"
+        else:
+            content_side = "MIXED"
     agg = {
         "n": n,
         "wins": wins,
@@ -491,6 +513,7 @@ def _file_aggregates(p):
         "chained_pct": chained / n if n else 0,
         "ts_first": ts_first,
         "ts_last": ts_last,
+        "content_side": content_side,
     }
     _file_agg_cache[sp] = (mtime, agg)
     return agg
@@ -1804,51 +1827,135 @@ def _overrides_for_run(run: str) -> Dict[str, Any]:
     return _overrides_index.get(bare, {}) or _overrides_index.get(run, {})
 
 
+def _hourly_reconfig_overrides(acct: str, sym: str, side: str, tag: str) -> Dict[str, Any]:
+    """Look up overrides for an hourly_reconfig (sym, side, tag) tuple. The
+    current cycle's active_config.json holds the WINNING tag's overrides per
+    (sym, side). For non-winning tags we have no per-tag overrides on disk
+    after the cycle ends — they're discarded post-decision."""
+    p = BASE_PATH / "data" / "hourly_reconfig" / acct / "active_config.json"
+    try:
+        data = json.loads(p.read_text())
+    except Exception:
+        return {}
+    key = f"{sym.upper()}_{side.upper()}"
+    rec = data.get(key) or {}
+    if rec.get("winning_tag") == tag:
+        return rec.get("overrides") or {}
+    return {}
+
+
+def _parse_run_for_display(run_keyed: str, sym: str) -> Tuple[str, str, str]:
+    """Return (display_name, side, source_label).
+
+    Hourly-reconfig run files are named `<SYM>__<SIDE>__<tag>__<SYM>.jsonl`.
+    The leading `<SYM>__<SIDE>__` is redundant in the per-symbol test list
+    (symbol is the column we're filtered on; side gets its own badge). Strip
+    it so users see the actual config tag, e.g. `extra_btc_BTCUSDC_LONG_top`
+    instead of `BTCUSDC__LONG__extra_btc_BTCUSDC_LONG_top`."""
+    bare = run_keyed.split("::", 1)[1] if "::" in run_keyed else run_keyed
+    side = ""
+    source = run_keyed.split("::", 1)[0] if "::" in run_keyed else "legacy"
+    sym_u = sym.upper()
+    for s in ("LONG", "SHORT"):
+        prefix = f"{sym_u}__{s}__"
+        if bare.startswith(prefix):
+            return bare[len(prefix):], s, source
+    return bare, side, source
+
+
 @app.route("/tests_for_symbol")
 def tests_for_symbol():
-    """Every backtest that has trades for ?sym=X, returned as a flat list with
-    enough metadata for the per-symbol test panel above the chart.
+    """Every backtest that has trades for ?sym=X, deduplicated by trade-list
+    content. The hourly_reconfig system writes ~10 'tag' variants per
+    (sym, side), but many tags produce IDENTICAL trade lists when their
+    override changes don't affect the symbol — without dedup the user sees
+    127 rows of repeating numbers. We collapse files with the same content
+    signature (n, sum_pnl, ts_first, ts_last) into ONE row, with `aliases`
+    listing the other tags that share the same trade list.
 
-    Output row schema (one per run that has trades on this sym):
-        run            run_id (used to fetch trades + overrides)
-        sym_sharpe     per-sym Sharpe capped ±5 (diagnostic)
-        trades         trade count on this sym
-        wr             win rate 0..1
-        total_gain_pct cumulative pct
-        gain_per_mo    pct/month over the trade-span (monthly proxy of yr metric)
-        gain_per_yr    pct/year
-        ts_first/last  unix timestamps bounding the test
-        years          (ts_last-ts_first) in years
-        diff_summary   short string of the 3 most distinctive override keys (or "(no overrides)")
-        diff_keys      full overrides dict {key: value}
-        category       run category from _classify_run (e.g. 7D_agent_<acct>, bigsweep, ...)
+    Output row schema:
+        run             short display name (config tag, side prefix stripped)
+        run_keyed       original run_id (used by /backtest_trades, /run_info)
+        side            LONG | SHORT | "" (when extractable from filename)
+        source          hr_<acct> | bigsweep | legacy
+        category        _classify_run output
+        sym_sharpe      per-sym Sharpe capped ±5
+        trades, wr, total_gain_pct, gain_per_yr, gain_per_mo, ts_first/last, years
+        diff_summary    first 3 override keys, or "(no overrides recorded)"
+        diff_keys       full overrides dict
+        aliases         list of other config tags with the same trade list
+        n_aliases       len(aliases)
 
-    Sort: pool_sharpe-equivalent (sym_sharpe here, since per-symbol) desc.
-    No machine partition — user wants ALL results merged regardless of source."""
+    Sort: sym_sharpe desc. Sources merged: MB + S1 + toshiba_ext (when mounted)."""
     sym = request.args.get("sym", "").upper()
     if not sym:
         return jsonify({"error": "sym required"}), 400
-    rows: List[Dict[str, Any]] = []
+    # Content-based signature only. The filename's `__LONG__` / `__SHORT__`
+    # token is unreliable: hourly_reconfig writes the SAME trade content into
+    # both LONG and SHORT files for the same config (verified 2026-05-08:
+    # md5 of *__LONG__extra_btc_ETHUSDC_LONG_top__*.jsonl equals md5 of
+    # *__SHORT__extra_btc_ETHUSDC_LONG_top__*.jsonl, and trades inside both
+    # files carry side="LONG"). Trusting filename-side would inflate the test
+    # count 2× with phantom "SHORT" rows that overlay LONG markers anyway.
+    by_sig: Dict[Tuple[int, int, int, int], List[Tuple[str, Path, Dict[str, Any]]]] = {}
     for run, s, p in _iter_all_trade_files():
         if s.upper() != sym:
             continue
         agg = _file_aggregates(p)
         if not agg or agg["n"] < 5:
             continue
-        machine, category = _classify_run(run, [s])
+        sig = (
+            agg["n"],
+            int(round(agg["sum_pnl"] * 100)),
+            int(agg["ts_first"]),
+            int(agg["ts_last"]),
+        )
+        by_sig.setdefault(sig, []).append((run, p, agg))
+    rows: List[Dict[str, Any]] = []
+    for sig, members in by_sig.items():
+        # Pick representative: latest mtime first (so a current 7D-cycle wins
+        # over a stale legacy file with the same signature), tie-break by
+        # shortest display name (cleaner UI label).
+        def _rank(item):
+            run_keyed, path, agg = item
+            try:
+                mt = path.stat().st_mtime
+            except Exception:
+                mt = 0
+            display, _side, _src = _parse_run_for_display(run_keyed, sym)
+            return (-mt, len(display))
+        members.sort(key=_rank)
+        primary_run, primary_path, agg = members[0]
+        primary_display, _filename_side, source = _parse_run_for_display(primary_run, sym)
+        # Use content side over filename side — see _file_aggregates note.
+        side = agg.get("content_side") or _filename_side
+        machine, category = _classify_run(primary_run, [sym])
         years = max(0.01, (agg["ts_last"] - agg["ts_first"]) / (86400.0 * 365.25))
         gain_per_yr = agg["total_gain"] / years
         gain_per_mo = gain_per_yr / 12.0
-        overrides = _overrides_for_run(run) or {}
+        aliases: List[str] = []
+        for run_keyed, _p, _a in members[1:]:
+            disp, _s, _src = _parse_run_for_display(run_keyed, sym)
+            if disp != primary_display and disp not in aliases:
+                aliases.append(disp)
+        overrides: Dict[str, Any] = {}
+        if source.startswith("hr_"):
+            acct = source[3:]
+            overrides = _hourly_reconfig_overrides(acct, sym, side or "LONG", primary_display)
+        if not overrides:
+            overrides = _overrides_for_run(primary_run) or {}
         if overrides:
             sample = list(overrides.items())[:3]
             diff_summary = ", ".join(f"{k}={v}" for k, v in sample)
             if len(overrides) > 3:
                 diff_summary += f", +{len(overrides) - 3} more"
         else:
-            diff_summary = "(baseline / no overrides recorded)"
+            diff_summary = "(no overrides recorded — non-winning variant or baseline)"
         rows.append({
-            "run": run,
+            "run": primary_display,
+            "run_keyed": primary_run,
+            "side": side,
+            "source": source,
             "category": category,
             "trades": agg["n"],
             "wr": round(agg["wr"], 4),
@@ -1861,6 +1968,8 @@ def tests_for_symbol():
             "gain_per_mo": round(gain_per_mo, 2),
             "diff_summary": diff_summary,
             "diff_keys": overrides,
+            "aliases": aliases,
+            "n_aliases": len(aliases),
         })
     rows.sort(key=lambda r: -r["sym_sharpe"])
     return jsonify({"sym": sym, "n_tests": len(rows), "tests": rows})

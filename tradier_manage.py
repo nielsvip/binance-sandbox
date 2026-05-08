@@ -3205,6 +3205,12 @@ class StockStrategy:
             # BLOCK: WT velocity strongly negative for longs (TEST -0.24%)
             if is_long and _wt_vel_1h < -5: return 0.0, "WAIT", f"BV_WT_VEL_DN({_wt_vel_1h:.1f})"
             if not is_long and _wt_vel_1h > 5: return 0.0, "WAIT", f"BV_WT_VEL_UP({_wt_vel_1h:.1f})"
+            # FIX 2026-05-08: wire CT_WT_VELOCITY_GATE_ENABLED (previously only in ez_manage/crypto).
+            # Default OFF for tradier (not yet validated for stocks). Sweep vel_gate_on to test.
+            if getattr(config, 'CT_WT_VELOCITY_GATE_ENABLED', False):
+                _vel_min = float(getattr(config, 'CT_WT_VELOCITY_1H_MIN', 0.0))
+                if is_long and _wt_vel_1h < _vel_min: return 0.0, "WAIT", f"CT_VEL_LONG({_wt_vel_1h:.1f}<{_vel_min})"
+                if not is_long and _wt_vel_1h > -_vel_min: return 0.0, "WAIT", f"CT_VEL_SHORT({_wt_vel_1h:.1f}>-{_vel_min})"
         k_1m, d_1m, k_1m_prev = g('stoch_k_1m', 50), g('stoch_d_1m', 50), g('stoch_k_1m_prev', 50)
         k_5m, d_5m, k_5m_prev = g('stoch_k_5m', 50), g('stoch_d_5m', 50), g('stoch_k_5m_prev', 50)
         k_15m, d_15m = g('stoch_k_15m', 50), g('stoch_d_15m', 50)

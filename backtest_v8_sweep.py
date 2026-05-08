@@ -594,8 +594,12 @@ def grid_tradier_param_hunt():
         combos.append((f"ENTRY_THR_{thr}", {"WT_DC_ENTRY_THRESHOLD": thr}))
     # ── PRIORITY 2: DELTA_ENGINE toggle — the primary entry path before WT_DC fallback ──
     combos.append(("DELTA_OFF", {"DELTA_ENGINE_ENABLED": False}))
+    # FIX 2026-05-08: DELTA_ENTRY_ENABLED defaults False → HTF gate had zero effect (entries never fired).
+    # "any" was unrecognized in tradier_manage (only "none"/"4h"/"4h_D"/"4h_D_strict" handled).
+    # Now engine auto-enables DELTA_ENTRY_ENABLED when DELTA_ENGINE_ENABLED=True is in overrides.
     combos.append(("DELTA_ON_nohtf", {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "none"}))
-    combos.append(("DELTA_ON_any", {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "any"}))
+    combos.append(("DELTA_ON_4h",    {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "4h"}))
+    combos.append(("DELTA_ON_4h_D",  {"DELTA_ENGINE_ENABLED": True, "DELTA_HTF_GATE": "4h_D"}))
     # ── PRIORITY 3: HTF exit alignment (user directive: 4h/D is the right TF for stocks) ──
     for wt_exit in [1, 2, 3, 4]:
         combos.append((f"WT_EXIT_TFS_{wt_exit}", {"WT_EXIT_MIN_TFS_TRADIER": wt_exit}))
@@ -613,7 +617,10 @@ def grid_tradier_param_hunt():
             "WT_EXIT_MIN_TFS_TRADIER": wt_exit,
         }))
     # ── ABLATION: velocity gate toggle ──
-    combos.append(("vel_gate_off", {"CT_WT_VELOCITY_GATE_ENABLED": False}))
+    # FIX 2026-05-08: vel_gate_off was a dead switch (CT_WT_VELOCITY_GATE_ENABLED not wired in
+    # tradier_manage; default was True but unread → both True and False identical to baseline).
+    # Now wired in tradier_manage BV gate; default changed to False. Test True (gate ON).
+    combos.append(("vel_gate_on", {"CT_WT_VELOCITY_GATE_ENABLED": True}))
     # ── ABLATION: min hold bars ──
     for hold in [16, 32, 48]:
         combos.append((f"hold{hold}", {"MIN_HOLD_BARS_TRADIER": hold}))
