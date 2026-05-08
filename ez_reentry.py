@@ -250,6 +250,101 @@ def _allowed_accounts_for(trade_manager) -> list:
     return [a for a in accs if isinstance(a, str)]
 
 
+def evaluate_obligatory_reentry(ind: dict, current_price: float, exit_price: float, prev_close: float, is_long: bool, cfg=None) -> tuple:
+    """2026-05-08 USER MANDATE — ANY exit MUST reenter on one of these tiers:
+      Tier 1: bounce above ema_50_<TF> + 3-of-5 HTF aligned (3m,15m,1h,4h,D)  → 1.5x size
+      Tier 2: 3m alignment + ≥1/5 HTF aligned (no SMA check)                  → 1.0x size
+      Tier 3: pass exit price + break dc_high4_3m (LONG) / dc_low4_3m (SHORT) → 1.0x size
+    K_15m extreme (>95 LONG, <5 SHORT) = SIZE REDUCTION (×0.5) NOT BLOCK.
+    LONG and SHORT have independent enable flags so sweep can tune them separately.
+
+    Returns: (should_reenter: bool, size_mult: float, reason: str, score: int)
+    """
+    import config as _cfg_mod
+    if cfg is None:
+        cfg = _cfg_mod
+    if not bool(getattr(cfg, 'OBLIGATORY_REENTRY_ENABLED', True)):
+        return False, 0.0, "OBLIGATORY_DISABLED", 0
+    side_flag = 'OBLIGATORY_REENTRY_LONG_ENABLED' if is_long else 'OBLIGATORY_REENTRY_SHORT_ENABLED'
+    if not bool(getattr(cfg, side_flag, True)):
+        return False, 0.0, f"OBLIGATORY_{('LONG' if is_long else 'SHORT')}_DISABLED", 0
+
+    def _f(k, d=0.0):
+        try: return float(ind.get(k, d) or d)
+        except Exception: return d
+
+    sma_tf = str(getattr(cfg, 'OBLIGATORY_REENTRY_SMA_TF', '15m'))
+    sma_field = str(getattr(cfg, 'OBLIGATORY_REENTRY_SMA_FIELD', 'ema_50'))
+    sma_now = _f(f'{sma_field}_{sma_tf}')
+    sma_prev = _f(f'{sma_field}_{sma_tf}_prev', sma_now)
+
+    # SMA bounce: price now favorable side AND prev was on unfavorable side (or no prev = fresh cross)
+    if is_long:
+        sma_bounce = sma_now > 0 and current_price > sma_now and (prev_close <= 0 or prev_close < sma_prev)
+    else:
+        sma_bounce = sma_now > 0 and current_price < sma_now and (prev_close <= 0 or prev_close > sma_prev)
+
+    # 5-TF HTF alignment count
+    if is_long:
+        htf_count = sum(1 for tf in ('3m','15m','1h','4h','D') if bool(ind.get(f'wt_bullish_{tf}', False)))
+    else:
+        htf_count = sum(1 for tf in ('3m','15m','1h','4h','D') if not bool(ind.get(f'wt_bullish_{tf}', False)))
+
+    # 3m alignment alone (Tier 2 fallback when no SMA bounce)
+    wt_3m_aligned = bool(ind.get('wt_bullish_3m', False)) if is_long else (not bool(ind.get('wt_bullish_3m', False)))
+
+    # DC break + exit price cross (Tier 3)
+    dc_field = 'dc_high4_3m' if is_long else 'dc_low4_3m'
+    dc_lvl = _f(dc_field)
+    if is_long:
+        dc_break = exit_price > 0 and current_price >= exit_price and dc_lvl > 0 and current_price >= dc_lvl
+    else:
+        dc_break = exit_price > 0 and current_price <= exit_price and dc_lvl > 0 and current_price <= dc_lvl
+
+    # Tier resolution
+    htf_t1 = int(getattr(cfg, 'OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED', 3))
+    htf_t2 = int(getattr(cfg, 'OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED', 1))
+    score_t1 = int(getattr(cfg, 'OBLIGATORY_REENTRY_SCORE_TIER1', 40))
+    score_t2 = int(getattr(cfg, 'OBLIGATORY_REENTRY_SCORE_TIER2', 30))
+    score_t3 = int(getattr(cfg, 'OBLIGATORY_REENTRY_SCORE_TIER3', 30))
+    bounce_mult_key = 'OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT' if is_long else 'OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT'
+    bounce_mult = float(getattr(cfg, bounce_mult_key, 1.5))
+    default_mult = float(getattr(cfg, 'OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT', 1.0))
+
+    side_str = 'LONG' if is_long else 'SHORT'
+    if sma_bounce and htf_count >= htf_t1:
+        size_mult = bounce_mult
+        score = score_t1
+        reason = f"OBLIGATORY_REENTRY_TIER1_SMA_BOUNCE_{side_str}_HTF{htf_count}/5"
+    elif wt_3m_aligned and htf_count >= htf_t2:
+        size_mult = default_mult
+        score = score_t2
+        reason = f"OBLIGATORY_REENTRY_TIER2_3M_ALIGN_{side_str}_HTF{htf_count}/5"
+    elif dc_break:
+        size_mult = default_mult
+        score = score_t3
+        reason = f"OBLIGATORY_REENTRY_TIER3_EXIT_DC_BREAK_{side_str}_dc={dc_lvl:.6f}"
+    else:
+        return False, 0.0, f"OBLIGATORY_NO_TRIGGER_{side_str}_sma_b={int(sma_bounce)}_htf={htf_count}/5_3m={int(wt_3m_aligned)}_dc_b={int(dc_break)}", 0
+
+    # K_15m extreme = SIZE REDUCTION (not BLOCK as before)
+    k_15m = _f('stoch_k_15m', 50.0)
+    if is_long:
+        k_thr = float(getattr(cfg, 'OBLIGATORY_REENTRY_K15_HIGH_BLOCK', 95.0))
+        k_frac = float(getattr(cfg, 'OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC', 0.5))
+        if k_15m > k_thr:
+            size_mult *= k_frac
+            reason += f"_K15HIGH({k_15m:.0f}>{k_thr:.0f})_x{k_frac:.2f}"
+    else:
+        k_thr = float(getattr(cfg, 'OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK', 5.0))
+        k_frac = float(getattr(cfg, 'OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC', 0.5))
+        if k_15m < k_thr:
+            size_mult *= k_frac
+            reason += f"_K15LOW({k_15m:.0f}<{k_thr:.0f})_x{k_frac:.2f}"
+
+    return True, size_mult, reason, score
+
+
 def is_reentry_eligible(trade_manager, position_key: str, account_key: str, symbol: str, cfg=None) -> tuple:
     """Pre-flight check: would execute_now refuse this REENTRY/AUGMENT call?
 

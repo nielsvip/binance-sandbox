@@ -2186,8 +2186,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _gr_p = float(_gr_ind.get('current_price', 0) or 0)
                 if _gr_p <= 0:
                     continue
-                _gr_wt1 = float(_gr_ind.get('wt1_3m', 0) or 0)
-                _gr_wt2 = float(_gr_ind.get('wt2_3m', 0) or 0)
+                # FIX 2026-05-08: tradier base TF is 5m not 3m — wt1_3m=0 in tradier NPZ → rule never fired.
+                _gr_wt1 = float(_gr_ind.get('wt1_5m', _gr_ind.get('wt1_3m', 0)) or 0)
+                _gr_wt2 = float(_gr_ind.get('wt2_5m', _gr_ind.get('wt2_3m', 0)) or 0)
                 _gr_dc_h15 = float(_gr_ind.get('dc_high_15m', 0) or 0)
                 _gr_dc_l15 = float(_gr_ind.get('dc_low_15m', 0) or 0)
                 _gr_bb_u15 = float(_gr_ind.get('bb_upper_15m', 0) or 0)

@@ -4487,6 +4487,35 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
     symbols_inf_short_list = [item["symbol"] for item in to_save_bottom15_15m if item["symbol"] not in _bullish_syms] + \
                              [item["symbol"] for item in to_save_bottom30_r if item["symbol"] not in _bullish_syms]
 
+    # 2026-05-08 USER MANDATE: 24h-gain-leader injection.
+    # Pipeline above is myopic — only catches LAST-15-MINUTE bursts (e.g. AIA -91 fsr in via gain_score)
+    # while symbols pumping +5-10% over 24h but flat in last 15min are EXCLUDED (e.g. ETC fsr=84 omitted).
+    # Inject top-20/bottom-20 by `weighted_gains_st` (24h decay-weighted return) so sustained pumps qualify.
+    try:
+        _wgs_sorted = sorted(final_ranking_data_scalars, key=lambda e: float(e.get("weighted_gains_st", 0) or 0), reverse=True)
+        _wgs_top20 = _wgs_sorted[:20]
+        _wgs_bot20 = _wgs_sorted[-20:]
+        for _e in _wgs_top20:
+            _s = _e.get("symbol")
+            if _s and _s not in symbols_inf_long_list and _s not in _bearish_syms:
+                symbols_inf_long_list.append(_s)
+        for _e in _wgs_bot20:
+            _s = _e.get("symbol")
+            if _s and _s not in symbols_inf_short_list and _s not in _bullish_syms:
+                symbols_inf_short_list.append(_s)
+        # Same for ang lists — they also miss 24h gainers
+        for _e in _wgs_top20:
+            _s = _e.get("symbol")
+            if _s and _s not in symbols_ang_long_list and _s not in _bearish_syms:
+                symbols_ang_long_list.append(_s)
+        for _e in _wgs_bot20:
+            _s = _e.get("symbol")
+            if _s and _s not in symbols_ang_short_list and _s not in _bullish_syms:
+                symbols_ang_short_list.append(_s)
+        logger.info(f"[WGS_24H_INJECT] top20={[e.get('symbol') for e in _wgs_top20[:8]]}... bot20={[e.get('symbol') for e in _wgs_bot20[:8]]}...")
+    except Exception as _wgs_e:
+        logger.warning(f"[WGS_24H_INJECT] failed: {_wgs_e}")
+
     # === SCALP_V3 OUTLIER INJECTION (2026-04-23 evening) ===========================
     # User directive: inject RECENT winners/losers (vs market-wide 15-min median return)
     # into symbols_inf_long/short_list so ez_positions_service auto-adds them to

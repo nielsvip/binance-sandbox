@@ -2029,6 +2029,33 @@ class Config:
     MANDATORY_REENTRY_K_HIGH_BLOCK: float = 80.0     # block LONG reentry when k_3m >= this (top)
     MANDATORY_REENTRY_K_LOW_BLOCK: float = 20.0      # block SHORT reentry when k_3m <= this (bottom)
     MANDATORY_REENTRY_ALLOW_WT0_STRONG_CROSS: bool = False  # banned by user — WT must agree, no WT=0 exception
+
+    # ════════════════════════════════════════════════════════════════════════
+    # 2026-05-08 OBLIGATORY_REENTRY (user mandate: ANY exit MUST reenter on:
+    #   Tier 1: bounce above ema_50_<TF> + 3-of-5 HTF aligned (3m,15m,1h,4h,D)  → 1.5x size
+    #   Tier 2: 3m alignment + ≥1/5 HTF aligned (no SMA check)                  → 1.0x size
+    #   Tier 3: pass exit price + break dc_high4_3m (LONG) / dc_low4_3m (SHORT) → 1.0x size
+    # K_15m extreme (>95 LONG, <5 SHORT) = SIZE REDUCTION (×0.5) NOT BLOCK.
+    # SHORT mirror has independent flags so it can be sweep-tuned separately.
+    # ════════════════════════════════════════════════════════════════════════
+    OBLIGATORY_REENTRY_ENABLED: bool = True
+    OBLIGATORY_REENTRY_LONG_ENABLED: bool = True
+    OBLIGATORY_REENTRY_SHORT_ENABLED: bool = True
+    OBLIGATORY_REENTRY_SMA_TF: str = "15m"           # 3m / 15m / 1h
+    OBLIGATORY_REENTRY_SMA_FIELD: str = "ema_50"     # ema_50 / sma_200 (sma_50 not in indicators)
+    OBLIGATORY_REENTRY_TIER1_HTF_REQUIRED: int = 3   # 3-of-5 (3m,15m,1h,4h,D)
+    OBLIGATORY_REENTRY_TIER2_HTF_REQUIRED: int = 1   # 1-of-5 minimum
+    OBLIGATORY_REENTRY_K15_HIGH_BLOCK: float = 95.0  # LONG: k_15m >= this → size REDUCED
+    OBLIGATORY_REENTRY_K15_HIGH_SIZE_FRAC: float = 0.5
+    OBLIGATORY_REENTRY_SMA_BOUNCE_SIZE_MULT: float = 1.5
+    OBLIGATORY_REENTRY_DEFAULT_SIZE_MULT: float = 1.0
+    OBLIGATORY_REENTRY_SCORE_TIER1: int = 40
+    OBLIGATORY_REENTRY_SCORE_TIER2: int = 30
+    OBLIGATORY_REENTRY_SCORE_TIER3: int = 30
+    # SHORT-side independent (mirror) — sweep-tunable separately
+    OBLIGATORY_REENTRY_SHORT_K15_LOW_BLOCK: float = 5.0
+    OBLIGATORY_REENTRY_SHORT_K15_LOW_SIZE_FRAC: float = 0.5
+    OBLIGATORY_REENTRY_SHORT_SMA_BOUNCE_SIZE_MULT: float = 1.5
     # 2026-04-28 USER RULE: BREAKEVEN_GAIN_EROSION may not close at a loss — only fire when in profit zone
     BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT: bool = True
     BREAKEVEN_GAIN_EROSION_MIN_GAIN: float = 0.0     # gate fires only when MIN_GAIN <= current_gain < 0.02

@@ -2943,8 +2943,20 @@ class AdvancedSignalRater:
                                        f"rsi_4h={_mr_pp_r4:.1f} rsi_1h={_mr_pp_r1:.1f} bb%B_4h={_mr_pp_bb:.2f} "
                                        f"k_3m={k_3m:.0f} → bypassing K-extreme block, reentry OBLIGATORY on parabolic continuation")
                         _mr_kx_block = False
-                if _mr_kx_block:
-                    logger.warning(f"🛡️[MANDATORY_REENTRY_BLOCKED_K_EXTREME] {position_key}: k_3m={k_3m:.0f} {'>='+str(_mr_k_hi) if is_long else '<='+str(_mr_k_lo)} — refusing reentry at extreme K (would buy top / sell bottom)")
+                # 2026-05-08 OBLIGATORY_REENTRY user mandate (replaces K-extreme HARD BLOCK with size scaling).
+                # ANY exit must reenter when: (T1) sma_bounce + 3-of-5 HTF, (T2) 3m alignment + 1-of-5 HTF,
+                # (T3) exit price cross + dc_high4_3m / dc_low4_3m break. K_15m extreme = SIZE REDUCE not BLOCK.
+                from ez_reentry import evaluate_obligatory_reentry as _eval_obl_reentry
+                _obl_ok, _obl_size_mult, _obl_reason, _obl_score = _eval_obl_reentry(
+                    ind, current_price, actual_last_red_price, prev_cross_price, is_long, config
+                )
+                if _obl_ok:
+                    _tier1_forced = True
+                    score += _obl_score; reasons.append(f"{_obl_reason}(+{_obl_score},size{_obl_size_mult:.2f}x,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
+                    logger.critical(f"🚀[{_obl_reason}] {position_key}: price={current_price:.6f} exit={actual_last_red_price:.6f} k_3m={k_3m:.0f} size_mult={_obl_size_mult:.2f}x — FORCING REENTRY")
+                elif _mr_kx_block:
+                    # Legacy K-extreme path retained as fallback (reachable only when OBLIGATORY_REENTRY_ENABLED=False)
+                    logger.warning(f"🛡️[MANDATORY_REENTRY_BLOCKED_K_EXTREME] {position_key}: k_3m={k_3m:.0f} {'>='+str(_mr_k_hi) if is_long else '<='+str(_mr_k_lo)} — refusing reentry at extreme K")
                 elif _mr_min_signal or _mr_is_cont:
                     _tier1_forced = True
                     score += 30; reasons.append(f"MANDATORY_REENTRY_PRICE_CROSS_3m{int(_mr_wt_3m)}15m{int(_mr_wt_15m)}HTF{_mr_htf}(+30,exit_crossed,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
@@ -2954,7 +2966,7 @@ class AdvancedSignalRater:
                     score += 20; reasons.append(f"MANDATORY_REENTRY_STRONG_CROSS_3m1HTF(+20,0.3pct,k3m={k_3m:.0f},exit={actual_last_red_price:.6f})")
                     logger.critical(f"🚀[MANDATORY_REENTRY_STRONG] {position_key}: price {current_price:.6f} 0.3pct past exit {actual_last_red_price:.6f} 3m={_mr_wt_3m} HTF={_mr_htf}/3 k_3m={k_3m:.0f} — FORCING REENTRY (WT0 fallback)")
                 else:
-                    logger.info(f"🛡️[MANDATORY_REENTRY_BLOCKED_DBS] {position_key}: 3m={_mr_wt_3m} 15m={_mr_wt_15m} HTF={_mr_htf}/3 cont={_mr_is_cont} k_3m={k_3m:.0f} — no reentry, waiting for stronger setup")
+                    logger.info(f"🛡️[REENTRY_NO_TRIGGER] {position_key}: {_obl_reason} | 3m={_mr_wt_3m} 15m={_mr_wt_15m} HTF={_mr_htf}/3 cont={_mr_is_cont} k_3m={k_3m:.0f}")
             elif not _br_has_reset and actual_last_red_price > 0 and min_since_red >= _tier2_min_min:
                 _trend_continues = (is_long and current_price > actual_last_red_price * (1.0 + _tier2_price_pct)) or (not is_long and current_price < actual_last_red_price * (1.0 - _tier2_price_pct))
                 _momentum_ok = (is_long and k_3m > k_3m_prev and k_1m > d_1m) or (not is_long and k_3m < k_3m_prev and k_1m < d_1m)
@@ -15678,25 +15690,39 @@ async def reentry_enforcement_loop_epq(trade_manager, stop_event: asyncio.Event,
                     logger.info(f"[LEGACY_BLOCKED] {position_key}: GUARANTEED_REENTRY disabled in config (T1 price_crossed bypasses this)")
                 # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation.
                 # Require either FULL WT STACK (3m+15m+≥2HTF) OR favorable K extreme. Block adverse K extreme.
-                if should_reenter and bool(getattr(config, 'GUARANTEED_REENTRY_STRICT_CONFIRMATION', True)):
+                # 2026-05-08 OBLIGATORY_REENTRY user mandate. K-extreme = SIZE REDUCE not BLOCK.
+                # ANY exit must reenter on (T1) sma_bounce + 3-of-5 HTF, (T2) 3m + 1-of-5 HTF, (T3) exit + dc_high4_3m break.
+                if should_reenter and bool(getattr(config, 'OBLIGATORY_REENTRY_ENABLED', True)):
+                    from ez_reentry import evaluate_obligatory_reentry as _eval_obl_reentry_gr
+                    # Use position's last reduction price as exit price; current_price is from caller scope
+                    _gr_obl_ok, _gr_obl_size, _gr_obl_reason, _gr_obl_score = _eval_obl_reentry_gr(
+                        indicators, current_price, exit_price, current_price, is_long, config
+                    )
+                    if _gr_obl_ok:
+                        # OBLIGATORY granted — apply size_mult on top of existing _qty_mult
+                        _qty_mult = max(0.5, _qty_mult * _gr_obl_size)
+                        logger.critical(f"🚀[GR_OBLIGATORY_OK] {position_key}: {_gr_obl_reason} size_mult={_gr_obl_size:.2f}x effective_qty_mult={_qty_mult:.2f}x — REENTRY GRANTED")
+                    else:
+                        should_reenter = False
+                        logger.info(f"🛡️[GR_OBLIGATORY_NO_TRIGGER] {position_key}: {_gr_obl_reason}")
+                elif should_reenter and bool(getattr(config, 'GUARANTEED_REENTRY_STRICT_CONFIRMATION', True)):
+                    # Legacy K-extreme block path — only reachable if OBLIGATORY_REENTRY_ENABLED=False
                     _gr_k_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_HIGH_BLOCK', 80.0))
                     _gr_k_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_LOW_BLOCK', 20.0))
                     _gr_k_fav_lo = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_LOW', 30.0))
                     _gr_k_fav_hi = float(getattr(config, 'GUARANTEED_REENTRY_K_FAVORABLE_HIGH', 70.0))
                     _gr_k_adverse = (is_long and k_3m >= _gr_k_hi) or (not is_long and k_3m <= _gr_k_lo)
                     _gr_k_favorable = (is_long and k_3m <= _gr_k_fav_lo) or (not is_long and k_3m >= _gr_k_fav_hi)
-                    # USER RULE (2026-05-04): 3m AND 15m must agree + ≥1/3 HTF (1h/4h/D).
-                    # Exception: within 5min of exit, price still with us, 3m ok, ≥1 HTF.
                     _gr_is_cont = _elapsed_s < 300 and _wt3m_ok and _htf_count >= 1 and ((is_long and current_price >= exit_price) or (not is_long and current_price <= exit_price))
                     if _gr_k_adverse:
                         should_reenter = False
-                        logger.warning(f"🛡️[GUARANTEED_REENTRY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} {'>=' if is_long else '<='}{_gr_k_hi if is_long else _gr_k_lo} — refusing reentry at top/bottom")
+                        logger.warning(f"🛡️[GR_LEGACY_BLOCKED_K_ADVERSE] {position_key}: k_3m={k_3m:.0f} — refusing reentry (legacy path)")
                     elif not (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _gr_is_cont:
                         should_reenter = False
-                        logger.warning(f"🛡️[GUARANTEED_REENTRY_DBS] {position_key}: 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 cont={_gr_is_cont} — need 3m+15m+≥1HTF or recent continuation")
+                        logger.warning(f"🛡️[GR_LEGACY_DBS] {position_key}: 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 — legacy DBS")
                     elif (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _full_stack and not _gr_k_favorable and not _gr_is_cont:
                         should_reenter = False
-                        logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
+                        logger.info(f"🛡️[GR_LEGACY_NEED_CONFIRM] {position_key}: legacy path — need full_stack")
                 if should_reenter:
                     _gr_ok, _gr_reason = _ez_check_reentry_delta_tolerant(indicators, is_long, trade_manager, symbol)
                     if not _gr_ok:
