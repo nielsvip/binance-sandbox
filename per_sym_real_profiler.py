@@ -93,6 +93,11 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
                         # doesn't provide (relative_volume_D, bb_pct_b_D etc). Disable so
                         # pure WT_DC_ENTRY score path (A) is used — this path reads NPZ correctly.
                         clean['B_MAIN_ENTRY_GATE_ENABLED'] = False
+                        # ENTRY_MIN_ALIGNMENT=10 (default) requires 10/17 alignment conditions.
+                        # NPZ is missing HA candle colors + stoch D fields → only 5-7 conditions
+                        # satisfy → ALL WT_DC_ENTRY trades BLOCKED_ALIGNMENT. Force to 0 so
+                        # alignment counter acts as info-only, not as a hard gate in backtest.
+                        clean['ENTRY_MIN_ALIGNMENT'] = 0
                     return clean
         except Exception:
             continue
