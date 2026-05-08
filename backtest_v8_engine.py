@@ -3156,6 +3156,28 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _r = str(result or '')
             if "BLOCKED" not in _r:
                 v8_logger.warning(f"[V8_REAL_ETA] {position_key} {_act} {side} → {_r[:80]}")
+            # Backtest: real ETA calls place_order/queue but positionAmt never gets WS-updated.
+            # Update positionAmt here so queue_trade_action CLOSE checks pass on subsequent bars.
+            if "BLOCKED" not in _r and "ERROR" not in _r:
+                _pos_r = None
+                if manager.position_manager:
+                    _pos_r = manager.position_manager.positions.get(_pk)
+                if _pos_r is None and hasattr(manager, 'positions'):
+                    _pos_r = manager.positions.get(_pk)
+                _qty_r = abs(float(override_qty or quantity or 0))
+                _px_r = float(current_price or price_cache.get(str(symbol).upper(), 0))
+                if _pos_r is not None and _qty_r > 0:
+                    if _is_reduce:
+                        _old_r = abs(getattr(_pos_r, 'positionAmt', getattr(_pos_r, 'quantity', 0)))
+                        _new_r = max(0.0, _old_r - _qty_r)
+                        _pos_r.positionAmt = 0.0 if (is_full_close or _new_r < 0.0001) else _new_r
+                        _pos_r.quantity = _pos_r.positionAmt
+                    else:
+                        _old_r = abs(getattr(_pos_r, 'positionAmt', getattr(_pos_r, 'quantity', 0)))
+                        _old_ep_r = getattr(_pos_r, 'entry_price', _px_r) or _px_r
+                        _new_r = _old_r + _qty_r
+                        _pos_r.positionAmt = _new_r; _pos_r.quantity = _new_r
+                        _pos_r.entry_price = (_old_ep_r * _old_r + _px_r * _qty_r) / _new_r if _new_r > 0 else _px_r
             return result
         manager.execute_trade_action = _v8_real_eta_wrapper
     else:
