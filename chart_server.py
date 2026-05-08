@@ -63,6 +63,21 @@ if EXTRA_ROOTS_CFG:
 else:
     EXTRA_ROOT_GLOBS = _DEFAULT_EXTRA_ROOTS
 
+# External archive roots (absolute paths, not under BASE_PATH). Used to merge in
+# results from S2 (now dead — archived to toshiba_ext). Drive may not be mounted,
+# in which case we silently skip. Add more paths via V8_EXTRA_ABS_ROOTS env var
+# (comma-separated absolute paths to dirs containing *__*.jsonl trade files).
+_DEFAULT_ABS_ROOTS = [
+    "/Volumes/toshiba_ext/binance_s2_archive/data/canonical_trades",
+    "/Volumes/toshiba_ext/binance_s2_archive/data/hourly_reconfig",
+    "/Volumes/toshiba_ext/binance_s2_archive/data/sweep_results",
+]
+EXTRA_ABS_ROOTS_CFG = os.environ.get("V8_EXTRA_ABS_ROOTS", "").strip()
+if EXTRA_ABS_ROOTS_CFG:
+    EXTRA_ABS_ROOTS = [Path(p.strip()) for p in EXTRA_ABS_ROOTS_CFG.split(",") if p.strip()]
+else:
+    EXTRA_ABS_ROOTS = [Path(p) for p in _DEFAULT_ABS_ROOTS]
+
 # Registry: run_id → Path. Refreshed every REGISTRY_TTL seconds.
 _run_registry: Dict[str, Path] = {}
 _run_registry_built_at: float = 0.0
@@ -83,7 +98,44 @@ def _all_trade_roots() -> List[Path]:
                     continue
                 seen.add(key)
                 roots.append(p)
+    # External archives (toshiba_ext etc) — only included when actually mounted.
+    for abs_root in EXTRA_ABS_ROOTS:
+        try:
+            if abs_root.exists() and abs_root.is_dir():
+                key = str(abs_root)
+                if key not in seen:
+                    seen.add(key)
+                    roots.append(abs_root)
+        except (OSError, PermissionError):
+            continue
     return roots
+
+
+# ============== ASSET CLASS DETECTION ==============
+# Crypto symbols are quoted as <BASE>USDC or <BASE>USDT (Binance Futures perps).
+# Stock symbols are bare tickers (AAPL, NVDA, ...). The chart UI uses this to
+# split everything into Crypto / Stocks tabs — accounts, symbol list, sweeps.
+def _is_crypto_sym(sym: str) -> bool:
+    s = (sym or "").upper()
+    return s.endswith("USDT") or s.endswith("USDC")
+
+
+def _asset_class_for_sym(sym: str) -> str:
+    return "crypto" if _is_crypto_sym(sym) else "stocks"
+
+
+def _asset_class_for_run(syms: List[str]) -> str:
+    """A run is 'crypto' if any symbol is a crypto perp. Mixed-class runs are
+    extremely rare; if they happen, crypto wins (it's the more permissive set)."""
+    for s in (syms or []):
+        if _is_crypto_sym(s):
+            return "crypto"
+    return "stocks"
+
+
+CRYPTO_ACCOUNT_KEYS = {"ang", "inf", "flz", "men", "fin"}
+STOCK_ACCOUNTS_ORDER = ["tra", "trb", "trc"]
+CRYPTO_ACCOUNTS_ORDER = ["ang", "inf", "flz", "men", "fin"]
 
 
 def _build_run_registry() -> Dict[str, Path]:
@@ -215,7 +267,15 @@ def leaderboard_page():
 
 @app.route("/symbols")
 def symbols():
+    """All symbols with NPZ indicators on disk. Optional ?asset_class=crypto|stocks
+    filters to that class only. The chart UI uses this to populate the symbol
+    dropdown after the user picks a top-level tab."""
+    asset_class = (request.args.get("asset_class") or "").strip().lower()
     syms = sorted(p.stem for p in NPZ_DIR.glob("*.npz"))
+    if asset_class == "crypto":
+        syms = [s for s in syms if _is_crypto_sym(s)]
+    elif asset_class == "stocks":
+        syms = [s for s in syms if not _is_crypto_sym(s)]
     return jsonify(syms)
 
 
@@ -827,6 +887,53 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
     return closed
 
 
+@app.route("/local_runs")
+def local_runs():
+    """List all local backtest runs in TRADES_DIR for a given symbol.
+    Filename pattern: <run_id>__<SYMBOL>.jsonl
+    Each entry: {run, trades, window_days, pool_sharpe, win_rate, gain_per_day_pct, gain_per_trade_pct}
+    Per NO-LIES MANDATE: NO annualized fields. Only per-day, per-trade, window_days.
+    """
+    target_sym = (request.args.get("sym") or "").upper()
+    if not target_sym:
+        return jsonify({"runs": [], "error": "sym required"})
+    out = []
+    if not TRADES_DIR.exists():
+        return jsonify({"runs": []})
+    for path in sorted(TRADES_DIR.glob(f"*__{target_sym}.jsonl")):
+        run_id = path.stem.rsplit(f"__{target_sym}", 1)[0]
+        if not run_id:
+            continue
+        trades = []
+        try:
+            for ln in path.read_text(encoding="utf-8").splitlines():
+                if not ln.strip():
+                    continue
+                try:
+                    trades.append(json.loads(ln))
+                except Exception:
+                    continue
+        except Exception:
+            continue
+        if not trades:
+            continue
+        stats = _trade_stats(trades)
+        out.append({
+            "run": run_id,
+            "trades": stats.get("trades", 0),
+            "window_days": stats.get("window_days", 0),
+            "pool_sharpe": stats.get("pool_sharpe", 0),
+            "win_rate": stats.get("win_rate", 0),
+            "gain_per_day_pct": stats.get("gain_per_day_pct", 0),
+            "gain_per_trade_pct": stats.get("gain_per_trade_pct", 0),
+            "total_gain_pct": stats.get("total_gain_pct", 0),
+            "tier": stats.get("tier", "Noise"),
+            "inflated": stats.get("inflated", False),
+        })
+    out.sort(key=lambda r: -r.get("pool_sharpe", 0))
+    return jsonify({"runs": out, "count": len(out), "trades_dir": str(TRADES_DIR)})
+
+
 @app.route("/parity_chart")
 def parity_chart_page():
     """2026-05-08: Parity overlay — sym + test dropdown + acct checkboxes + auto-zoom + trade table.
@@ -951,28 +1058,52 @@ async function refreshRuns() {{
   const runSel = document.getElementById('run');
   runSel.innerHTML = '<option value="">loading…</option>';
   try {{
-    const r = await fetch(`/run_unique?sym=${{sym}}&limit=200`).then(r=>r.json());
+    const [r, local] = await Promise.all([
+      fetch(`/run_unique?sym=${{sym}}&limit=200`).then(r=>r.json()).catch(()=>({{tests:[]}})),
+      fetch(`/local_runs?sym=${{sym}}`).then(r=>r.json()).catch(()=>({{runs:[]}}))
+    ]);
     const tests = (r && r.tests) || [];
+    const localRuns = (local && local.runs) || [];
     runSel.innerHTML = '';
-    if (!tests.length) {{
-      const o = document.createElement('option'); o.value=''; o.textContent='(no tests for this sym)';
-      runSel.appendChild(o);
+    // Local parity runs first (most relevant)
+    if (localRuns.length) {{
+      const og = document.createElement('optgroup'); og.label = `LOCAL (${{localRuns.length}})`;
+      for (const lr of localRuns) {{
+        const o = document.createElement('option'); o.value = lr.run;
+        const ps = lr.pool_sharpe != null ? lr.pool_sharpe.toFixed(3) : '?';
+        const wd = lr.window_days != null ? lr.window_days.toFixed(1) : '?';
+        const gpd = lr.gain_per_day_pct != null ? lr.gain_per_day_pct.toFixed(3) : '?';
+        const gpt = lr.gain_per_trade_pct != null ? lr.gain_per_trade_pct.toFixed(3) : '?';
+        const wr = lr.win_rate != null ? (lr.win_rate*100).toFixed(0) : '?';
+        o.textContent = `${{lr.run}} | ${{wd}}d ${{lr.trades||0}}tr pool=${{ps}} WR=${{wr}}% gain/d=${{gpd}}% gain/tr=${{gpt}}%`;
+        og.appendChild(o);
+      }}
+      runSel.appendChild(og);
     }}
-    // Always include any local runs from /tmp/v8_trades that match the sym (parity_apr21_*)
-    // by also offering a manual entry option at top:
-    const o0 = document.createElement('option'); o0.value='__custom__'; o0.textContent='— enter custom run id —'; runSel.appendChild(o0);
-    for (const t of tests) {{
-      const o = document.createElement('option');
-      o.value = t.run;
-      // Honest label: pool_sharpe + sym_sharpe + n_trades + days + gain/day + gain/trade — NO ANNUALIZED
-      const days = t.sym_stats && t.sym_stats.window_days ? t.sym_stats.window_days : '?';
-      const ps = t.pool_sharpe!=null ? t.pool_sharpe.toFixed(3) : '?';
-      const ss = t.sym_sharpe!=null ? t.sym_sharpe.toFixed(3) : '?';
-      const ag = t.avg_gain_trade!=null ? t.avg_gain_trade.toFixed(3) : '?';
-      const tr = t.sym_stats && t.sym_stats.trades ? t.sym_stats.trades : (t.trades || '?');
-      o.textContent = `${{t.run.slice(0, 60)}} | pool=${{ps}} sym=${{ss}} trades=${{tr}} days=${{days}} avg=${{ag}}%`;
-      runSel.appendChild(o);
+    // Registry tests
+    if (tests.length) {{
+      const og = document.createElement('optgroup'); og.label = `Registry (${{tests.length}})`;
+      for (const t of tests) {{
+        const o = document.createElement('option'); o.value = t.run;
+        const wd = t.years ? Math.round(t.years * 365) : (t.sym_stats && t.sym_stats.window_days ? t.sym_stats.window_days.toFixed(0) : '?');
+        const ps = t.pool_sharpe != null ? t.pool_sharpe.toFixed(3) : '?';
+        const ss = t.sym_sharpe != null ? t.sym_sharpe.toFixed(3) : '?';
+        const sym_tr = t.sym_stats && t.sym_stats.sym_trades ? t.sym_stats.sym_trades : '?';
+        const sym_gain = t.sym_stats && t.sym_stats.sym_total_gain_pct != null ? t.sym_stats.sym_total_gain_pct.toFixed(1) : '?';
+        const sym_wr = t.sym_stats && t.sym_stats.sym_wr != null ? (t.sym_stats.sym_wr*100).toFixed(0) : '?';
+        const sym_dd = t.sym_stats && t.sym_stats.sym_dd_pct != null ? t.sym_stats.sym_dd_pct.toFixed(2) : '?';
+        const gpt = t.avg_gain_trade != null ? t.avg_gain_trade.toFixed(3) : '?';
+        // Strip noisy hr_<acct>:: prefix + redundant SYM__SIDE__ to make name readable
+        const cleanRun = t.run.replace(/^hr_(ang|inf|flz|men|fin)::/, '').replace(new RegExp(`${{sym}}__(LONG|SHORT)__`), '');
+        o.textContent = `${{cleanRun}} | ${{wd}}d ${{sym_tr}}tr pool=${{ps}} sym=${{ss}} WR=${{sym_wr}}% dd=${{sym_dd}}% gain=${{sym_gain}}% gain/tr=${{gpt}}%`;
+        og.appendChild(o);
+      }}
+      runSel.appendChild(og);
     }}
+    if (!localRuns.length && !tests.length) {{
+      const o = document.createElement('option'); o.value=''; o.textContent='(no tests for this sym)'; runSel.appendChild(o);
+    }}
+    const oC = document.createElement('option'); oC.value='__custom__'; oC.textContent='— enter custom run id —'; runSel.appendChild(oC);
   }} catch (e) {{
     runSel.innerHTML = `<option value="">err: ${{e}}</option>`;
   }}
@@ -1590,6 +1721,112 @@ def best_runs_for_sym():
         })
     rows.sort(key=lambda r: -r["sym_sharpe"])
     return jsonify({"sym": sym, "n_runs": len(rows), "top": rows[:n]})
+
+
+def _overrides_for_run(run: str) -> Dict[str, Any]:
+    """Look up the overrides dict for a run id by scanning autonomous winners
+    JSONLs. Cached at module level on first hit per run id (sweep results are
+    immutable once written)."""
+    cached = _overrides_cache.get(run)
+    if cached is not None:
+        return cached
+    bare = run.split("::", 1)[1] if "::" in run else run
+    base_aut = BASE_PATH / "data" / "autonomous"
+    found: Dict[str, Any] = {}
+    if base_aut.exists():
+        try:
+            for p in base_aut.rglob("autonomous_*_winners.jsonl"):
+                s = str(p)
+                if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+                    continue
+                try:
+                    txt = p.read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                if bare not in txt:
+                    continue
+                for line in txt.splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except Exception:
+                        continue
+                    iter_id = rec.get("iter") or rec.get("run") or rec.get("id") or ""
+                    if str(iter_id) == bare or rec.get("run_id") == bare:
+                        found = rec.get("overrides") or rec.get("overrides_json") or {}
+                        break
+                if found:
+                    break
+        except Exception:
+            pass
+    _overrides_cache[run] = found
+    return found
+
+
+_overrides_cache: Dict[str, Dict[str, Any]] = {}
+
+
+@app.route("/tests_for_symbol")
+def tests_for_symbol():
+    """Every backtest that has trades for ?sym=X, returned as a flat list with
+    enough metadata for the per-symbol test panel above the chart.
+
+    Output row schema (one per run that has trades on this sym):
+        run            run_id (used to fetch trades + overrides)
+        sym_sharpe     per-sym Sharpe capped ±5 (diagnostic)
+        trades         trade count on this sym
+        wr             win rate 0..1
+        total_gain_pct cumulative pct
+        gain_per_mo    pct/month over the trade-span (monthly proxy of yr metric)
+        gain_per_yr    pct/year
+        ts_first/last  unix timestamps bounding the test
+        years          (ts_last-ts_first) in years
+        diff_summary   short string of the 3 most distinctive override keys (or "(no overrides)")
+        diff_keys      full overrides dict {key: value}
+        category       run category from _classify_run (e.g. 7D_agent_<acct>, bigsweep, ...)
+
+    Sort: pool_sharpe-equivalent (sym_sharpe here, since per-symbol) desc.
+    No machine partition — user wants ALL results merged regardless of source."""
+    sym = request.args.get("sym", "").upper()
+    if not sym:
+        return jsonify({"error": "sym required"}), 400
+    rows: List[Dict[str, Any]] = []
+    for run, s, p in _iter_all_trade_files():
+        if s.upper() != sym:
+            continue
+        agg = _file_aggregates(p)
+        if not agg or agg["n"] < 5:
+            continue
+        machine, category = _classify_run(run, [s])
+        years = max(0.01, (agg["ts_last"] - agg["ts_first"]) / (86400.0 * 365.25))
+        gain_per_yr = agg["total_gain"] / years
+        gain_per_mo = gain_per_yr / 12.0
+        overrides = _overrides_for_run(run) or {}
+        if overrides:
+            sample = list(overrides.items())[:3]
+            diff_summary = ", ".join(f"{k}={v}" for k, v in sample)
+            if len(overrides) > 3:
+                diff_summary += f", +{len(overrides) - 3} more"
+        else:
+            diff_summary = "(baseline / no overrides recorded)"
+        rows.append({
+            "run": run,
+            "category": category,
+            "trades": agg["n"],
+            "wr": round(agg["wr"], 4),
+            "total_gain_pct": round(agg["total_gain"], 2),
+            "sym_sharpe": round(agg["sym_sharpe_capped"], 4),
+            "ts_first": agg["ts_first"],
+            "ts_last": agg["ts_last"],
+            "years": round(years, 4),
+            "gain_per_yr": round(gain_per_yr, 2),
+            "gain_per_mo": round(gain_per_mo, 2),
+            "diff_summary": diff_summary,
+            "diff_keys": overrides,
+        })
+    rows.sort(key=lambda r: -r["sym_sharpe"])
+    return jsonify({"sym": sym, "n_tests": len(rows), "tests": rows})
 
 
 @app.route("/live_status")
