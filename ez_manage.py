@@ -230,7 +230,7 @@ def check_dc_high_break_retest(indicators: Dict[str, Any], current_price: float,
     k_3m = _sf(indicators.get('stoch_k_3m'), 50)
     d_3m = _sf(indicators.get('stoch_d_3m'), 50)
     k_3m_prev = _sf(indicators.get('k_3m_prev'), k_3m)
-    tfs = [('4h', 2.0), ('1h', 1.5), ('15m', 1.0), ('3m', 0.7)]
+    tfs = [('4h', 2.0), ('1h', 1.5), ('15m', 1.0), ('3m', 0.7), ('1m', 0.4)]  # 2026-05-08: 1m added — never miss bounce/retest
     for tf, mult in tfs:
         if is_long:
             dc_high = _sf(indicators.get(f'dc_high_{tf}'), 0)

@@ -3921,26 +3921,34 @@ class AdvancedSignalRater:
             if (is_long and sco15m and current_price > dc_basis_15m ) or (not is_long and scu15m and current_price < dc_basis_15m): score += 2.0
             if (is_long and current_price > dc_basis_1h) or (not is_long and current_price < dc_basis_1h): score += 1.0
             if (is_long and current_price < dc_basis_4h) or (not is_long and current_price > dc_basis_4h): score -= 2.0
+            # 2026-05-08: 1m DC breakout added (smallest TF — never miss the trigger). 3m/15m/1h/4h existed.
+            if (is_long and current_price >= dc_high_1m) or (not is_long and current_price <= dc_low_1m): score += 0.5
             if (is_long and current_price >= dc_high_3m) or (not is_long and current_price <= dc_low_3m): score += 1.0
             if (is_long and current_price >= dc_high_15m) or (not is_long and current_price <= dc_low_15m): score += 1.5
             if (is_long and current_price >= dc_high_1h) or (not is_long and current_price <= dc_low_1h): score += 2
             if (is_long and current_price >= dc_high_4h) or (not is_long and current_price <= dc_low_4h): score += 2
-            final_ai_score = safe_fetch_float(ind.get('0final_score_norm'), 0.0)
-            if is_long:
-                if final_ai_score > 90: score += 2.0
-                elif final_ai_score > 80: score += 1.0
-            else:
-                if final_ai_score < -90: score += 2.0
-                elif final_ai_score < -80: score += 1.0
+            # 2026-05-08: REMOVED final_ai_score (0final_score_norm) bonus block — final_score is the GATE
+            # (drives symbols_<acc>_long/short list); double-counting it as a score bonus is forbidden.
+            # Bonuses now come from RANKINGS (0ranking_points, different params) and MARKET data (alpha) only.
             if is_long:
                 if top_sent: score += 2.0
                 elif bot_sent: score -= 5.0
             else:
                 if bot_sent: score += 2.0
                 elif top_sent: score -= 5.0
+            # 2026-05-08: tiered ranking bonus — 0ranking_points uses DIFFERENT parameters than final_score
+            # (final_score is the GATE; rank_points is bonus on top). Top/bottom-of-rank get extra.
             rank_points = safe_fetch_float(ind.get('0ranking_points'), 0.0)
-            if rank_points > 80: score += 1.5
-            elif rank_points > 50: score += 0.5
+            if is_long:
+                if rank_points >= 95: score += 4.0      # top 5%
+                elif rank_points >= 90: score += 2.5    # top 10%
+                elif rank_points >= 80: score += 1.5    # top 20%
+                elif rank_points >= 50: score += 0.5    # above-median
+            else:
+                if rank_points <= 5: score += 4.0       # bottom 5%
+                elif rank_points <= 10: score += 2.5    # bottom 10%
+                elif rank_points <= 20: score += 1.5    # bottom 20%
+                elif rank_points <= 50: score += 0.5    # below-median
             score += history_score_mod
             if ind:
                 alpha = local_sent - global_sent
@@ -3962,13 +3970,16 @@ class AdvancedSignalRater:
                     if global_sent > 20: score -= 3
                     elif global_sent < -50: score +=3
                     elif global_sent < -30: score +=1
+                # 2026-05-08: extreme alpha (bucks-trend) bonus added at >50/<-50
                 if is_long:
-                    if alpha > 40: score += 3.5
+                    if alpha > 50: score += 6.0          # extreme bucks-trend LONG (local 50+ above global)
+                    elif alpha > 40: score += 3.5
                     elif alpha > 20: score += 1.5
                     elif alpha < -20: score -= 2.0
                 else:
-                    if alpha < -40: score += 3.5
-                    if alpha < -20: score += 1.5
+                    if alpha < -50: score += 6.0         # extreme bucks-trend SHORT
+                    elif alpha < -40: score += 3.5
+                    elif alpha < -20: score += 1.5
                     elif alpha > 20: score -= 2.0
             logger.info(f" in rate4 {symbol} {score} ")
             c1_long = k_1m > d_1m
