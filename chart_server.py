@@ -748,6 +748,7 @@ def historic_trades():
                     continue
                 ev["side"] = side
                 ev["account"] = acct
+                ev["symbol"] = sym  # 2026-05-08: BUG FIX — _reconstruct_trades_from_events skips events with empty symbol
                 ts_str = ev.get("ts")
                 try:
                     ev["unix_ts"] = int(datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp())
@@ -826,6 +827,297 @@ def _reconstruct_trades_from_events(events: List[Dict[str, Any]]) -> List[Dict[s
     return closed
 
 
+@app.route("/parity_chart")
+def parity_chart_page():
+    """2026-05-08: Parity overlay — sym + test dropdown + acct checkboxes + auto-zoom + trade table.
+    Tabs: Crypto (ang/inf/flz/men/fin) | Stocks (tra/trb/trc).
+    Stats use per-day, per-trade, window_days only — NO annualized extrapolation per NO-LIES MANDATE.
+    URL: /parity_chart (defaults to BTCUSDC crypto)
+    """
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Parity overlay</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body{{font-family:-apple-system,'SF Mono',Menlo,monospace;background:#0d1117;color:#c9d1d9;margin:0;padding:0;font-size:13px}}
+  .header{{background:#161b22;border-bottom:1px solid #30363d;padding:6px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}}
+  h1{{font-size:1.05em;color:#58a6ff;margin:0;font-weight:700}}
+  .tabs{{display:flex;gap:0;margin-left:8px}}
+  .tab{{padding:6px 14px;background:#0d1117;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:12px;font-family:inherit;border-radius:3px 3px 0 0;border-bottom:0}}
+  .tab.active{{color:#58a6ff;background:#161b22;font-weight:600}}
+  input,select{{background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:4px 8px;font-family:inherit;font-size:12px;border-radius:3px}}
+  select.run{{min-width:520px}}
+  button{{background:#1f6feb;color:white;border:0;padding:4px 12px;cursor:pointer;border-radius:3px;font-family:inherit;font-size:12px}}
+  label.cb{{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:#161b22;border:1px solid #30363d;border-radius:3px;cursor:pointer;font-size:11.5px}}
+  label.cb input{{margin:0}}
+  .legend{{padding:6px 16px;color:#a4b8d0;font-size:11px;background:#0d1117;border-bottom:1px solid #21262d}}
+  .legend b{{color:#dcc26b}}
+  #chart{{width:100%;height:52vh}}
+  .stats{{padding:6px 16px;color:#a4b8d0;font-size:11.5px;background:#0d1117;border-bottom:1px solid #21262d;line-height:1.7}}
+  .stats span{{margin-right:14px;display:inline-block}}
+  .stats .pos{{color:#3fb950}} .stats .neg{{color:#f85149}}
+  .stats .tag-inflated{{color:#dc6c6c;background:#2d0f0f;padding:1px 6px;border-radius:3px;font-weight:700;margin-right:8px}}
+  table{{width:100%;border-collapse:collapse;font-size:11px;font-family:'SF Mono',Menlo,monospace}}
+  th,td{{padding:3px 8px;text-align:left;border-bottom:1px solid #21262d;white-space:nowrap}}
+  th{{background:#161b22;color:#a4b8d0;font-weight:600;position:sticky;top:0}}
+  tr.bt{{background:rgba(63,185,80,0.06)}} tr.live{{background:rgba(220,194,107,0.06)}}
+  td.long{{color:#3fb950}} td.short{{color:#f85149}}
+  td.pnl-pos{{color:#3fb950}} td.pnl-neg{{color:#f85149}}
+  .tbl-wrap{{max-height:34vh;overflow-y:auto;padding:0 16px}}
+  a{{color:#58a6ff;text-decoration:none}}
+  .row{{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 16px;border-bottom:1px solid #21262d;background:#0a0d12}}
+  .row .lbl{{color:#7a8590;font-size:11px;margin-right:4px}}
+</style></head><body>
+
+<div class="header">
+  <h1>📊 Parity overlay</h1>
+  <div class="tabs">
+    <button class="tab active" data-mode="crypto">🟢 Crypto</button>
+    <button class="tab" data-mode="stocks">🟡 Stocks</button>
+  </div>
+  <span style="color:#7a8590;font-size:11px">syms via dropdown ·</span>
+  <a href="/" style="font-size:11px">← chart</a>
+  <a href="/live" style="font-size:11px">→ live</a>
+</div>
+
+<div class="row">
+  <span class="lbl">SYM</span>
+  <select id="sym" class="run" style="min-width:160px"></select>
+  <span class="lbl">TF</span>
+  <select id="tf"><option value="3m">3m</option><option value="15m" selected>15m</option><option value="1h">1h</option><option value="4h">4h</option><option value="D">D</option></select>
+  <span class="lbl">TEST</span>
+  <select id="run" class="run"></select>
+  <button onclick="loadAll()">reload</button>
+</div>
+
+<div class="row" id="acct_row">
+  <span class="lbl">LIVE acct overlays</span>
+  <span id="acct_checks"></span>
+  <span class="lbl" style="margin-left:14px">zoom</span>
+  <label class="cb"><input type="checkbox" id="zoomTest" checked> auto-zoom to test window</label>
+</div>
+
+<div class="legend">
+  🟢▲▼ backtest entry · 🔴✕ backtest exit · <b>▲</b>/<b>▼</b> LIVE entry/exit · klines from NPZ
+</div>
+
+<div id="chart"></div>
+
+<div class="stats" id="stats">choose a symbol and test…</div>
+
+<div class="tbl-wrap">
+  <table id="trades_table">
+    <thead><tr><th>src</th><th>acct</th><th>ts (UTC)</th><th>side</th><th>price</th><th>qty</th><th>pnl%</th><th>reason</th></tr></thead>
+    <tbody id="trades_tbody"></tbody>
+  </table>
+</div>
+
+<script>
+const CRYPTO_ACCTS = ['ang','inf','flz','men','fin'];
+const STOCK_ACCTS = ['tra','trb','trc'];
+const CRYPTO_SYMS = ['BTCUSDC','ETHUSDC','ZECUSDC','TONUSDT','SOLUSDC','BNBUSDC','XRPUSDC','ADAUSDC','AVAXUSDC','LINKUSDC','LTCUSDC','UNIUSDC'];
+const STOCK_SYMS = ['AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','AMD','AVGO','PLTR','SPY','QQQ'];
+let MODE = 'crypto';
+
+const fmt = (n, d=2) => (n===null||n===undefined||isNaN(n)) ? '—' : Number(n).toFixed(d);
+const fmtTs = (t) => new Date(t * 1000).toISOString().slice(0,19).replace('T',' ');
+
+function setMode(m) {{
+  MODE = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode===m));
+  // Sym dropdown
+  const symSel = document.getElementById('sym');
+  symSel.innerHTML = '';
+  const syms = m==='crypto' ? CRYPTO_SYMS : STOCK_SYMS;
+  for (const s of syms) {{ const o=document.createElement('option'); o.value=s; o.textContent=s; symSel.appendChild(o); }}
+  // Acct checkboxes
+  const accts = m==='crypto' ? CRYPTO_ACCTS : STOCK_ACCTS;
+  const wrap = document.getElementById('acct_checks');
+  wrap.innerHTML = '';
+  for (const a of accts) {{
+    const lbl = document.createElement('label'); lbl.className='cb';
+    lbl.innerHTML = `<input type="checkbox" data-acct="${{a}}" checked> ${{a}}`;
+    wrap.appendChild(lbl);
+  }}
+  // After mode change: refresh runs for default sym
+  refreshRuns();
+}}
+
+function selectedAccts() {{
+  return Array.from(document.querySelectorAll('#acct_checks input:checked')).map(c => c.dataset.acct);
+}}
+
+async function refreshRuns() {{
+  const sym = document.getElementById('sym').value;
+  const runSel = document.getElementById('run');
+  runSel.innerHTML = '<option value="">loading…</option>';
+  try {{
+    const r = await fetch(`/run_unique?sym=${{sym}}&limit=200`).then(r=>r.json());
+    const tests = (r && r.tests) || [];
+    runSel.innerHTML = '';
+    if (!tests.length) {{
+      const o = document.createElement('option'); o.value=''; o.textContent='(no tests for this sym)';
+      runSel.appendChild(o);
+    }}
+    // Always include any local runs from /tmp/v8_trades that match the sym (parity_apr21_*)
+    // by also offering a manual entry option at top:
+    const o0 = document.createElement('option'); o0.value='__custom__'; o0.textContent='— enter custom run id —'; runSel.appendChild(o0);
+    for (const t of tests) {{
+      const o = document.createElement('option');
+      o.value = t.run;
+      // Honest label: pool_sharpe + sym_sharpe + n_trades + days + gain/day + gain/trade — NO ANNUALIZED
+      const days = t.sym_stats && t.sym_stats.window_days ? t.sym_stats.window_days : '?';
+      const ps = t.pool_sharpe!=null ? t.pool_sharpe.toFixed(3) : '?';
+      const ss = t.sym_sharpe!=null ? t.sym_sharpe.toFixed(3) : '?';
+      const ag = t.avg_gain_trade!=null ? t.avg_gain_trade.toFixed(3) : '?';
+      const tr = t.sym_stats && t.sym_stats.trades ? t.sym_stats.trades : (t.trades || '?');
+      o.textContent = `${{t.run.slice(0, 60)}} | pool=${{ps}} sym=${{ss}} trades=${{tr}} days=${{days}} avg=${{ag}}%`;
+      runSel.appendChild(o);
+    }}
+  }} catch (e) {{
+    runSel.innerHTML = `<option value="">err: ${{e}}</option>`;
+  }}
+  loadAll();
+}}
+
+async function loadAll() {{
+  const sym = document.getElementById('sym').value;
+  let run = document.getElementById('run').value;
+  if (run === '__custom__') {{
+    run = prompt('Enter run_id (e.g. parity_apr21_ang)', 'parity_apr21_ang');
+    if (!run) return;
+  }}
+  const tf = document.getElementById('tf').value;
+  const accts = selectedAccts().join(',');
+  const zoomToTest = document.getElementById('zoomTest').checked;
+
+  const klinesP = fetch(`/klines?sym=${{sym}}&tf=${{tf}}&max=5000`).then(r=>r.json()).catch(()=>[]);
+  const btP = run ? fetch(`/backtest_trades?run=${{run}}&sym=${{sym}}`).then(r=>r.json()).catch(()=>({{trades:[]}})) : Promise.resolve({{trades:[]}});
+  const liveP = accts ? fetch(`/historic_trades?sym=${{sym}}&accounts=${{accts}}`).then(r=>r.json()).catch(()=>({{}})) : Promise.resolve({{}});
+  const [klines, bt, live] = await Promise.all([klinesP, btP, liveP]);
+
+  const k = klines || [];
+  const btTrades = (bt && bt.trades) || [];
+
+  // Determine x-range: zoom to test window if requested + we have backtest trades
+  let xMin = null, xMax = null;
+  if (zoomToTest && btTrades.length > 0) {{
+    const entryTs = btTrades.map(t=>t.entry_ts);
+    const exitTs = btTrades.map(t=>t.exit_ts);
+    const allTs = [...entryTs, ...exitTs].filter(x=>x>0);
+    if (allTs.length) {{
+      const minT = Math.min(...allTs);
+      const maxT = Math.max(...allTs);
+      const padding = Math.max((maxT - minT) * 0.05, 86400);  // 5% pad or 1 day
+      xMin = new Date((minT - padding) * 1000);
+      xMax = new Date((maxT + padding) * 1000);
+    }}
+  }}
+
+  const traces = [{{
+    x: k.map(b => new Date(b.t * 1000)),
+    open: k.map(b=>b.o), high: k.map(b=>b.h), low: k.map(b=>b.l), close: k.map(b=>b.c),
+    type: 'candlestick', name: sym,
+    increasing:{{line:{{color:'#3fb950'}}}}, decreasing:{{line:{{color:'#f85149'}}}}
+  }}];
+
+  if (btTrades.length) {{
+    traces.push({{
+      x: btTrades.map(t => new Date(t.entry_ts * 1000)),
+      y: btTrades.map(t => t.entry_price),
+      mode:'markers', type:'scatter', name:'BT entry',
+      marker:{{symbol: btTrades.map(t => t.side==='LONG' ? 'triangle-up' : 'triangle-down'),
+              size:11, color:'#3fb950', line:{{width:1,color:'#000'}}}}
+    }});
+    traces.push({{
+      x: btTrades.map(t => new Date(t.exit_ts * 1000)),
+      y: btTrades.map(t => t.exit_price),
+      mode:'markers', type:'scatter', name:'BT exit',
+      marker:{{symbol:'x', size:9, color:'#f85149', line:{{width:1,color:'#000'}}}}
+    }});
+  }}
+
+  // Live events per acct (one trace per acct so legend can toggle individually)
+  const liveTrades = [];
+  let totalLiveEvents = 0;
+  const palette = ['#dcc26b','#58a6ff','#bd93f9','#ff79c6','#50fa7b'];
+  let pi = 0;
+  for (const acct in (live || {{}})) {{
+    const events = (live[acct] && live[acct].events) || [];
+    totalLiveEvents += events.length;
+    if (!events.length) {{ pi++; continue; }}
+    const color = palette[pi % palette.length]; pi++;
+    traces.push({{
+      x: events.map(e => new Date(e.unix_ts * 1000)),
+      y: events.map(e => parseFloat(e.price)),
+      mode:'markers', type:'scatter', name:`LIVE-${{acct}} (${{events.length}})`,
+      marker:{{symbol: events.map(e => (e.type==='AUGMENT'||e.type==='OPEN') ? 'triangle-up-open' : 'triangle-down-open'),
+              size:13, color: color, line:{{width:2, color: color}}}}
+    }});
+    for (const e of events) liveTrades.push({{...e, acct}});
+  }}
+
+  const layout = {{
+    paper_bgcolor:'#0d1117', plot_bgcolor:'#0d1117', font:{{color:'#c9d1d9',family:'monospace'}},
+    margin:{{t:8,r:8,b:30,l:60}}, xaxis:{{rangeslider:{{visible:false}}}},
+    showlegend:true, legend:{{orientation:'h', y:-0.12}}
+  }};
+  if (xMin && xMax) layout.xaxis.range = [xMin, xMax];
+
+  Plotly.newPlot('chart', traces, layout, {{responsive:true}});
+
+  // Stats — HONEST: per-day, per-trade, window_days. NO annualized.
+  const s = (bt && bt.stats) || {{}};
+  const inflTag = s.inflated ? `<span class="tag-inflated">⚠ DIAGNOSTIC (window<30d, sub-floor sample)</span>` : '';
+  const wd = s.window_days || 0;
+  const tpd = s.trades_per_day || 0;
+  const gpd = s.gain_per_day_pct || 0;
+  const gpt = s.gain_per_trade_pct != null ? s.gain_per_trade_pct : (s.avg_pnl_pct || 0);
+  document.getElementById('stats').innerHTML =
+    `${{inflTag}}` +
+    `<span>BT trades=<b>${{btTrades.length}}</b></span>` +
+    `<span>LIVE events=<b>${{totalLiveEvents}}</b></span>` +
+    `<span>window=<b>${{fmt(wd,1)}}d</b></span>` +
+    `<span>pool_sharpe=<b class="${{s.pool_sharpe>=0?'pos':'neg'}}">${{fmt(s.pool_sharpe,3)}}</b></span>` +
+    `<span>WR=<b>${{fmt((s.win_rate||0)*100,1)}}%</b></span>` +
+    `<span>total_gain=<b class="${{s.total_gain_pct>=0?'pos':'neg'}}">${{fmt(s.total_gain_pct,2)}}%</b></span>` +
+    `<span>gain/day=<b class="${{gpd>=0?'pos':'neg'}}">${{fmt(gpd,4)}}%</b></span>` +
+    `<span>gain/trade=<b class="${{gpt>=0?'pos':'neg'}}">${{fmt(gpt,4)}}%</b></span>` +
+    `<span>trades/day=<b>${{fmt(tpd,2)}}</b></span>` +
+    `<span>tier=<b>${{s.tier||'—'}}</b></span>`;
+
+  // Trade table
+  const rows = [];
+  for (const t of btTrades) {{
+    rows.push({{src:'BT', acct:'-', ts:t.entry_ts, side:t.side, price:t.entry_price, qty:'-', pnl:null, reason:t.entry_reason}});
+    rows.push({{src:'BT', acct:'-', ts:t.exit_ts, side:t.side, price:t.exit_price, qty:'-', pnl:t.pnl_pct, reason:t.exit_reason}});
+  }}
+  for (const e of liveTrades) {{
+    rows.push({{src:'LIVE', acct:e.acct, ts:e.unix_ts, side:e.side, price:parseFloat(e.price)||0, qty:e.qty, pnl:null, reason:e.reason}});
+  }}
+  rows.sort((a,b) => a.ts - b.ts);
+  document.getElementById('trades_tbody').innerHTML = rows.map(r => {{
+    const sideCls = r.side==='LONG' ? 'long' : 'short';
+    const pnlCls = r.pnl===null ? '' : (r.pnl>=0 ? 'pnl-pos' : 'pnl-neg');
+    const pnlStr = r.pnl===null ? '' : fmt(r.pnl,2)+'%';
+    return `<tr class="${{r.src==='BT'?'bt':'live'}}"><td>${{r.src}}</td><td>${{r.acct}}</td><td>${{fmtTs(r.ts)}}</td><td class="${{sideCls}}">${{r.side||''}}</td><td>${{fmt(r.price,4)}}</td><td>${{r.qty}}</td><td class="${{pnlCls}}">${{pnlStr}}</td><td style="font-size:10.5px;color:#7a8590">${{(r.reason||'').slice(0,90)}}</td></tr>`;
+  }}).join('');
+}}
+
+// Wiring
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => setMode(t.dataset.mode));
+document.getElementById('sym').onchange = refreshRuns;
+document.getElementById('run').onchange = loadAll;
+document.getElementById('tf').onchange = loadAll;
+document.getElementById('zoomTest').onchange = loadAll;
+document.getElementById('acct_row').addEventListener('change', e => {{
+  if (e.target.matches('input[data-acct]')) loadAll();
+}});
+
+setMode('crypto');
+</script>
+</body></html>"""
+
+
 def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not trades:
         return {"trades": 0}
@@ -859,7 +1151,10 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     # CANONICAL_METRICS.md: NO sharpe_annual emission anywhere — banned for being feel-good frequency inflation.
     trades_per_year = n / window_years if window_years > 0 else 0
     # Apply CLAUDE.md ±5 cap per inflation rule (single-symbol slices easily blow past ±5)
-    inflated = abs(sharpe_pt) > metrics_guard.PER_SYM_SHARPE_CAP and n < 5000
+    # 2026-05-08: ALSO mark inflated when window < 30 days (CLAUDE.md NO-LIES MANDATE — annualized
+    # extrapolation from a sub-month window is the exact lying-numbers pattern that wiped 80% of net worth).
+    _short_window = window_days < 30.0
+    inflated = (abs(sharpe_pt) > metrics_guard.PER_SYM_SHARPE_CAP and n < 5000) or _short_window
     tier = metrics_guard.tier_name(sharpe_pt)
     return {
         "trades": n,
@@ -887,13 +1182,10 @@ def _trade_stats(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
         "window_months": round(window_months, 1),
         "window_years": round(window_years, 2),
         "trades_per_day": round(n / window_days, 2) if window_days > 0 else 0,
-        "trades_per_week": round(n / window_weeks, 1) if window_weeks > 0 else 0,
-        "trades_per_month": round(n / window_months, 1) if window_months > 0 else 0,
-        "trades_per_year": round(trades_per_year, 0),
         "gain_per_day_pct": round(total_gain / window_days, 4) if window_days > 0 else 0,
-        "gain_per_week_pct": round(total_gain / window_weeks, 3) if window_weeks > 0 else 0,
-        "gain_per_month_pct": round(total_gain / window_months, 2) if window_months > 0 else 0,
-        "gain_per_year_pct": round(total_gain / window_years, 1) if window_years > 0 else 0,
+        "gain_per_trade_pct": round(avg, 4),
+        # 2026-05-08 NO-LIES MANDATE: trades_per_week/month/year + gain_per_week/month/year REMOVED.
+        # Annualizing a sub-month window is the lying-numbers pattern. Use per-day + per-trade + window_days.
     }
 
 
