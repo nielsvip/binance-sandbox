@@ -76,7 +76,11 @@ def score_entry_multitf(indicators: dict, is_long: bool, current_price: float = 
     d = indicators
     wt1_D = _safe(d, "wt1_D"); wt2_D = _safe(d, "wt2_D")
     wt1_4h = _safe(d, "wt1_4h"); wt2_4h = _safe(d, "wt2_4h")
-    wt_cross_1h = str(d.get("wt_cross_1h", ""))
+    _cross_1h_str = d.get("wt_cross_1h", "")
+    if not _cross_1h_str:
+        if d.get("wt_cross_bull_1h", 0): _cross_1h_str = "BULL"
+        elif d.get("wt_cross_bear_1h", 0): _cross_1h_str = "BEAR"
+    wt_cross_1h = str(_cross_1h_str)
     dc_1h = _safe(d, "dc_position_1h", 0.5)
     k_5m = _safe(d, "stoch_k_5m", 50)
     if any(np.isnan([wt1_D, wt2_D, wt1_4h, wt2_4h, dc_1h, k_5m])):
@@ -105,7 +109,11 @@ def score_exit_multitf(indicators: dict, is_long: bool, max_gain: float, current
     OR trailing (keep 60% of gains over 2%), OR -2% hard stop.
     """
     d = indicators
-    wt_cross_1h = str(d.get("wt_cross_1h", ""))
+    _cross_1h_exit = d.get("wt_cross_1h", "")
+    if not _cross_1h_exit:
+        if d.get("wt_cross_bull_1h", 0): _cross_1h_exit = "BULL"
+        elif d.get("wt_cross_bear_1h", 0): _cross_1h_exit = "BEAR"
+    wt_cross_1h = str(_cross_1h_exit)
     wt1_4h = _safe(d, "wt1_4h"); wt2_4h = _safe(d, "wt2_4h")
     if any(np.isnan([wt1_4h, wt2_4h])):
         return False, "NO_DATA"

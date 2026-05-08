@@ -163,11 +163,17 @@ def promote_to_active(parsed: dict) -> int:
     # we apply to ALL syms in the universe rather than per-sym keys. Live readers
     # can also read at per-sym key level (sym_LONG / sym_SHORT) for legacy.
     cfg = load_active_config()
-    tag = f"rate_promoter_{parsed['mode']}_w{parsed['worker']}_iter{parsed['iter']}_{int(time.time())}"
+    mode = parsed['mode']
+    meta_key = f'_meta_pool_winner_{mode}'
+    current_meta = cfg.get(meta_key, cfg.get('_meta_pool_winner', {}))
+    current_sharpe = float(current_meta.get('pool_sharpe', current_meta.get('wsharpe', 0.0)) or 0.0)
+    if parsed['pool_sharpe'] <= current_sharpe:
+        return -1  # Don't downgrade — current is already better
+    tag = f"rate_promoter_{mode}_w{parsed['worker']}_iter{parsed['iter']}_{int(time.time())}"
     overrides = json.loads(parsed['overrides_json']) if parsed['overrides_json'] else {}
     if not overrides:
         return 0
-    cfg['_meta_pool_winner'] = {
+    cfg[meta_key] = {
         'winning_tag': tag,
         'wsharpe': parsed['pool_sharpe'],
         'pool_sharpe': parsed['pool_sharpe'],
@@ -181,8 +187,8 @@ def promote_to_active(parsed: dict) -> int:
         'avg_gain_trade': parsed['avg_gain_trade'],
         'years': parsed['n_years'],
         'n_syms': parsed['n_syms'],
-        'sample_tag': f'AUTONOMOUS_RATE_OK_{parsed["mode"].upper()}',
-        'mode': parsed['mode'],
+        'sample_tag': f'AUTONOMOUS_RATE_OK_{mode.upper()}',
+        'mode': mode,
         'overrides': overrides,
         'overrides_count': parsed['overrides_count'],
         'promoted_at_utc': parsed['ts_utc'],
@@ -235,6 +241,12 @@ def main():
                     if parsed['promotable']:
                         if not args.no_promote:
                             n_ovr = promote_to_active(parsed)
+                            if n_ovr == -1:
+                                print(f"[rate_filter] SKIPPED_DOWNGRADE mode={mode} worker={worker} "
+                                      f"iter={parsed['iter']} pool_sharpe={parsed['pool_sharpe']} "
+                                      f"(not better than current)",
+                                      flush=True)
+                                continue
                             promote_count += 1
                             last_winner_ts = time.time()
                             print(f"[rate_filter] PROMOTED mode={mode} worker={worker} "

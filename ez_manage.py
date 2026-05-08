@@ -24141,6 +24141,37 @@ async def _price_level_reentry_monitor_loop(trade_manager: MultiAccountTradeMana
         await asyncio.sleep(interval)
 
 
+async def _reentry_daemon_subprocess_watchdog(config) -> None:
+    """Spawn ez_reentry_daemon.py as an independent child process.
+    Auto-restarts on crash. Kill the child (pkill -f ez_reentry_daemon) to cut all
+    reentry signal generation without touching ez_manage. This is launched as a
+    background task from within ez_manage so start_everything needs no changes."""
+    import sys as _sys
+    daemon_script = Path(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / 'ez_reentry_daemon.py'
+    if not daemon_script.exists():
+        logger.error(f"[REENTRY_DAEMON] {daemon_script} not found — daemon NOT started")
+        return
+    python = _sys.executable
+    log_path = Path('/Users/niels/logs/ez_reentry_daemon.log')
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    while True:
+        proc = None
+        try:
+            log_f = open(log_path, 'a')
+            proc = await asyncio.create_subprocess_exec(python, str(daemon_script), stdout=log_f, stderr=log_f, stdin=asyncio.subprocess.DEVNULL)
+            logger.info(f"[REENTRY_DAEMON] spawned pid={proc.pid} log={log_path}")
+            rc = await proc.wait()
+            logger.warning(f"[REENTRY_DAEMON] pid={proc.pid} exited rc={rc} — restarting in 5s")
+        except Exception as _e:
+            logger.error(f"[REENTRY_DAEMON] spawn error: {_e}")
+        finally:
+            try:
+                log_f.close()
+            except Exception:
+                pass
+        await asyncio.sleep(5)
+
+
 async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) -> None:
     """Reads reentry command files written by ez_reentry_daemon.py and executes them via execute_now.
     Provides independent process separation: kill the daemon to stop all reentry signal generation;
@@ -25497,13 +25528,12 @@ async def main():
             background_tasks.append(asyncio.create_task(trade_manager.monitor_dc_breach_reduce()))
             if bool(getattr(config, 'EZ_REENTRY_INLINE_ENABLED', True)) and bool(getattr(config, 'EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED', True)):
                 background_tasks.append(asyncio.create_task(trade_manager.reentry_enforcement_loop()))
-            # 2026-04-28 — Price-cross GUARANTEE: tight 5s safety loop that NEVER lets a
-            # position cross past exit price without firing at least a partial reentry.
-            # Independent of every other reentry path; uses execute_now directly.
-            if bool(getattr(config, 'EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED', True)):
-                import ez_reentry as _ezr_mod
-                background_tasks.append(asyncio.create_task(_ezr_mod.price_cross_reentry_safety_loop(trade_manager)))
+            # 2026-05-08 — Daemon subprocess model: ez_reentry_daemon runs as a separate
+            # child process spawned here. Kill it (pkill -f ez_reentry_daemon) to cut
+            # reentries independently of ez_manage. Queue consumer below executes its commands.
+            # EZ_REENTRY_PRICE_CROSS_GUARANTEE (inline fast-fire) disabled — daemon owns that path.
             if bool(getattr(config, 'EZ_REENTRY_QUEUE_CONSUMER_ENABLED', True)):
+                background_tasks.append(asyncio.create_task(_reentry_daemon_subprocess_watchdog(config)))
                 background_tasks.append(asyncio.create_task(_reentry_queue_consumer_loop(trade_manager)))
             background_tasks.append(asyncio.create_task(trade_manager.ratio_rebalance_loop()))
             background_tasks.append(asyncio.create_task(monitor_system_state(trade_manager)))

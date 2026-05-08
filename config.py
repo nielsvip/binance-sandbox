@@ -644,37 +644,29 @@ class Config:
     # (huge functions so augments backtest times by up to 50% but if it works it works)".
     EVAL_REENTRY_ENABLED: bool = True
     # 2026-04-28 — ez_reentry.py / ez_reentry_daemon.py wiring switches.
-    # Master EZ_REENTRY_INLINE_ENABLED gates ALL inline reentry call sites in
-    # ez_manage / ez_positions_quick. Granular *_ENABLED switches are checked
-    # only when the master is True. Default True to preserve current behavior;
-    # flip the master False once the daemon is validated to run inline-free.
-    # Daemon process (ez_reentry_daemon.py) is independent — see start_everything_2.command.
+    # 2026-05-08 — Reentry via subprocess daemon (spawned by ez_manage, no start_everything change).
+    # Inline loops DISABLED — daemon is sole reentry signal source.
+    # Kill child (pkill -f ez_reentry_daemon) to stop reentries while trading continues.
     EZ_REENTRY_DAEMON_ENABLED: bool = True
-    EZ_REENTRY_INLINE_ENABLED: bool = True
-    EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED: bool = True
-    EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = True
-    EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = True
-    EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED: bool = True
-    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = True
-    EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = True
-    EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = True
-    EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = True
-    # 2026-04-28 — Price-cross GUARANTEE safety loop. User: "NEVER allow a position
-    # to break out above exit price without having at least a partial reentry".
-    # Tight 5s tick checks every position with reentry_data: if current price has
-    # crossed past the recorded exit price by EZ_REENTRY_PRICE_CROSS_PCT, fires
-    # a partial reentry through execute_now. Idempotent via _price_cross_last_fire.
-    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = True
+    EZ_REENTRY_INLINE_ENABLED: bool = False
+    EZ_REENTRY_INLINE_TIER12_EPQ_ENABLED: bool = False
+    EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED: bool = False
+    EZ_REENTRY_INLINE_EVAL2_DIRECT_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_PERIODIC_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_PRICE_MONITOR_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_ENFORCE_EPQ_ENABLED: bool = False
+    EZ_REENTRY_INLINE_LOOP_EVAL2_EPQ_ENABLED: bool = False
+    # Inline price-cross DISABLED — was the "100% reentry AT ONCE" culprit firing every 5s
+    # inside ez_manage immediately after exits. Daemon subprocess owns this path now.
+    EZ_REENTRY_PRICE_CROSS_GUARANTEE_ENABLED: bool = False
     EZ_REENTRY_PRICE_CROSS_INTERVAL_S: float = 5.0
-    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0  # strict cross — any move past exit fires
-    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0  # 1min per-key dedup; price-cross fires often
+    EZ_REENTRY_PRICE_CROSS_PCT: float = 0.0
+    EZ_REENTRY_PRICE_CROSS_MIN_GAP_S: float = 60.0
     EZ_REENTRY_PRICE_CROSS_PARTIAL_FRAC: float = 0.5
-    EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0  # skip exits older than this — stale levels don't matter
-    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20  # cap per 5s tick to prevent queue overload
-    # 2026-05-08 — Daemon queue consumer: ez_reentry_daemon.py writes command files to
-    # data/reentry_queue/{account}/ and this consumer in ez_manage calls execute_now.
-    # Kill ez_reentry_daemon.py to stop all reentry signal generation independently.
-    # Set EZ_REENTRY_INLINE_ENABLED=False once daemon is verified to disable fallback loops.
+    EZ_REENTRY_PRICE_CROSS_MAX_AGE_HOURS: float = 48.0
+    EZ_REENTRY_PRICE_CROSS_MAX_FIRES_PER_TICK: int = 20
+    # Queue consumer: reads daemon command files, calls execute_now.
     EZ_REENTRY_QUEUE_CONSUMER_ENABLED: bool = True
     EZ_REENTRY_QUEUE_CONSUMER_INTERVAL_S: float = 5.0
     # EZ_REENTRY_PRICE_CROSS_BLOCK_DURATION_S removed 2026-04-28 — replaced by upstream
