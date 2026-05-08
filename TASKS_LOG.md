@@ -13,6 +13,20 @@ Master record of issues, decisions, and pending edits surfaced during the fin-ac
 
 **Live workers NOT restarted** — they're still running pre-edit code. New code only takes effect when watchdog respawns or user restarts. Per CLAUDE.md auto-restart on critical files is NOT enabled.
 
+## S1 sweep relaunched 2026-05-08 23:17 UTC
+
+- Old sweeps (PIDs 11064/11066/12455/12487, --start 2026-01-01, 8 crypto + 20 tradier syms) killed.
+- `watchdog_sweep_s1.sh` edited (backup `.before_4wk_*` saved on S1) — `--start 2026-04-08` (4 weeks), crypto expanded to 12 syms (added LTCUSDC, UNIUSDC, DOGEUSDC, CRVUSDC).
+- New PIDs 548360/548436 (crypto) + 549060/549100 (tradier) running. Sweep banner confirms md5 fingerprints from this session's edits: ez_manage=453947ee23 / ez_positions_quick=9fb85f76bf / config=e74f1e6d56.
+- system_combo grid = 52 variants × 12 syms × 4 wk. tradier_param_hunt grid × 20 syms × 4 wk. Each variant ~3-7 min vs ~18 min on the 4-month window.
+
+## NOT YET DONE — pending user direction
+
+1. **Restart live ez_manage / ez_positions_service workers** so they pick up Edits A/B/C/D-NEW. Per CLAUDE.md no auto-restart on critical-parity files. Restarting risks position-state hiccups during the swap. **User: explicitly OK to restart?**
+2. **Expand backtest_v8_sweep.grid_system_combo()** to cover the ~25 knobs identified above (DELTA_ENTRY_MIN_TF 1..5, NO_STRUCT_OR_BREAKOUT looser, HEDGE_CLEANUP_R6 wt-flip variants 3m / 3m+1h / 3m+15m, AUGMENTED floor 0.25/0.5/1.0×, REENTRY_K15M_THR 85/90/95, ALL_TF_AGAINST count 3/4/5, PEAK_GIVEBACK 0.3/0.5/0.75/1.0, WT_15M_VEL_SLOW_GAIN_BAND_PCT 0.02/0.05/0.10, RATIO_REBALANCE_MAX_CLOSES 1/3/5, etc.). Critical-parity file — backup + rsync.
+3. **Verify the 10 known cooldowns/locks are actually firing** for the NOTUSDT thrash pattern. User assertion: ~10 cooldown systems exist; one or more must be bypassed since thrash happens. Inventory + audit.
+4. **GOLDEN_RULE definition matrix** — still pending user pick (1/5..5/5 × wt/mfi/rsi/all). Currently disabled in grid (toggle ON/OFF only).
+
 ## Live edits authorized by user (executing now in batch)
 
 | # | Edit | File | Status |
