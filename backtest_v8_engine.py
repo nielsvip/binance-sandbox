@@ -3367,6 +3367,44 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         manager.recently_processed_signals[position_key] = _sim_ts[0]
         return "SUCCESS"
     manager.execute_now = _v8_execute_now
+    # Backtest queue_trade_action: bypass live guards (QTY_OVERSHOOT, positionAmt from Redis,
+    # MAX_ORDER_VALUE) and route directly to _v8_execute_now with actual positionAmt.
+    # process_position uses override_qty=999999 (live: clamped by exchange), which the live
+    # QTY_OVERSHOOT_ABORT guard rejects when positionAmt=1 (999999 > 1+1). Fix: use actual
+    # positionAmt as qty for CLOSE/REDUCE and call _v8_execute_now directly.
+    async def _bt_queue_trade_action(order_queue_bt, trade_manager_bt, position_key_bt, action_bt, reason_bt, conviction_bt=50.0, override_qty_bt=None):
+        try:
+            _pm_bt = manager.position_manager
+            _pos_bt = _pm_bt.positions.get(position_key_bt) if _pm_bt else None
+            _act_up = action_bt.upper()
+            if _act_up in ("CLOSE", "REDUCE", "AUGMENT"):
+                if _pos_bt is None or abs(getattr(_pos_bt, 'positionAmt', getattr(_pos_bt, 'quantity', 0))) < 0.0001:
+                    return False
+            _sym_bt = position_key_bt.split(':', 1)[-1].rsplit('_', 1)[0] if ':' in position_key_bt else ''
+            _acct_bt = position_key_bt.split(':')[0] if ':' in position_key_bt else account_key
+            _ps_bt = 'LONG' if position_key_bt.endswith('_LONG') else 'SHORT'
+            _px_bt = price_cache.get(_sym_bt.upper(), 0.0)
+            if not _px_bt and _pos_bt:
+                _px_bt = float(getattr(_pos_bt, 'mark_price', 0) or getattr(_pos_bt, 'entry_price', 0))
+            if not _px_bt:
+                return False
+            if _act_up in ("CLOSE", "REDUCE"):
+                _qty_bt = abs(getattr(_pos_bt, 'positionAmt', getattr(_pos_bt, 'quantity', 1.0)))
+                _side_bt = 'sell' if _ps_bt == 'LONG' else 'buy_to_cover'
+            elif _act_up == 'AUGMENT':
+                _qty_bt = float(override_qty_bt or 1.0)
+                _side_bt = 'buy' if _ps_bt == 'LONG' else 'sell_short'
+            else:
+                _qty_bt = float(override_qty_bt or 1.0)
+                _side_bt = 'buy' if _ps_bt == 'LONG' else 'sell_short'
+            if _qty_bt <= 0:
+                return False
+            await _v8_execute_now(position_key=position_key_bt, account_key_en=_acct_bt, symbol=_sym_bt, original_position_amt=_qty_bt, side=_side_bt, position_side=_ps_bt, quantity=_qty_bt, old_price=_px_bt, reason=reason_bt, is_full_close=(_act_up == 'CLOSE'), action=_act_up)
+            return True
+        except Exception as _btq_e:
+            v8_logger.warning(f"[BT_QTA_ERR] {position_key_bt} {action_bt}: {_btq_e}")
+            return False
+    tm_mod.queue_trade_action = _bt_queue_trade_action
     # _en is NOT needed — _v8_execute_now already handles all paths including
     # self.execute_now() calls from the real execute_trade_action.
     # Previously _en OVERWROTE _v8_execute_now and broke position tracking.
