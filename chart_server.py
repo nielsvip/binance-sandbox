@@ -327,14 +327,25 @@ def runs_grouped():
     return jsonify(groups)
 
 
+_iter_files_cache: Tuple[float, List[Tuple[str, str, Path]]] = (0.0, [])
+_ITER_FILES_TTL = 60.0  # 60s — enough for a hot UI session, short enough to pick up new sweep results
+
+
 def _iter_all_trade_files() -> List[Tuple[str, str, Path]]:
-    """Walk every known run-trade JSONL across all roots.
+    """Walk every known run-trade JSONL across all roots, cached for 60s.
 
     Yields (run_id_keyed, sym, path) tuples. run_id_keyed matches what
     `_build_run_registry` produces (hr_<acct>::, bigsweep::, or bare for legacy).
     Multi-sym runs surface every sym — the registry alone keeps only one Path
     per run_id (latest mtime), but for ranking we need every sibling file.
+    Without caching, /tests_for_symbol scans tens of thousands of jsonl paths
+    on every call, which made first-load timeouts routine.
     """
+    global _iter_files_cache
+    now = time.time()
+    cached_at, cached = _iter_files_cache
+    if cached and (now - cached_at) < _ITER_FILES_TTL:
+        return cached
     out: List[Tuple[str, str, Path]] = []
     seen: set = set()
     for root in _all_trade_roots():
@@ -368,6 +379,7 @@ def _iter_all_trade_files() -> List[Tuple[str, str, Path]]:
                 out.append((run_keyed, sym, p))
         except Exception:
             continue
+    _iter_files_cache = (now, out)
     return out
 
 
@@ -1723,48 +1735,58 @@ def best_runs_for_sym():
     return jsonify({"sym": sym, "n_runs": len(rows), "top": rows[:n]})
 
 
-def _overrides_for_run(run: str) -> Dict[str, Any]:
-    """Look up the overrides dict for a run id by scanning autonomous winners
-    JSONLs. Cached at module level on first hit per run id (sweep results are
-    immutable once written)."""
-    cached = _overrides_cache.get(run)
-    if cached is not None:
-        return cached
-    bare = run.split("::", 1)[1] if "::" in run else run
+_overrides_index: Dict[str, Dict[str, Any]] = {}
+_overrides_index_built_at: float = 0.0
+_OVERRIDES_INDEX_TTL = 300.0  # 5 min — sweep winners barely change
+
+
+def _build_overrides_index() -> Dict[str, Dict[str, Any]]:
+    """One pass over every autonomous_*_winners.jsonl: return {run_id → overrides}.
+    Replaces the per-run scan that was O(runs × files) and timed out
+    /tests_for_symbol. Cached at module level."""
+    out: Dict[str, Dict[str, Any]] = {}
     base_aut = BASE_PATH / "data" / "autonomous"
-    found: Dict[str, Any] = {}
-    if base_aut.exists():
-        try:
-            for p in base_aut.rglob("autonomous_*_winners.jsonl"):
-                s = str(p)
-                if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+    if not base_aut.exists():
+        return out
+    try:
+        for p in base_aut.rglob("autonomous_*_winners.jsonl"):
+            s = str(p)
+            if "_legacy_unverified" in s or "_NOLIES_HOLD_" in s:
+                continue
+            try:
+                txt = p.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            for line in txt.splitlines():
+                line = line.strip()
+                if not line:
                     continue
                 try:
-                    txt = p.read_text(encoding="utf-8")
+                    rec = json.loads(line)
                 except Exception:
                     continue
-                if bare not in txt:
+                ovr = rec.get("overrides") or rec.get("overrides_json") or {}
+                if not ovr:
                     continue
-                for line in txt.splitlines():
-                    if not line.strip():
-                        continue
-                    try:
-                        rec = json.loads(line)
-                    except Exception:
-                        continue
-                    iter_id = rec.get("iter") or rec.get("run") or rec.get("id") or ""
-                    if str(iter_id) == bare or rec.get("run_id") == bare:
-                        found = rec.get("overrides") or rec.get("overrides_json") or {}
-                        break
-                if found:
-                    break
-        except Exception:
-            pass
-    _overrides_cache[run] = found
-    return found
+                for k in ("iter", "run", "id", "run_id"):
+                    rid = rec.get(k)
+                    if rid:
+                        out.setdefault(str(rid), ovr)
+    except Exception:
+        pass
+    return out
 
 
-_overrides_cache: Dict[str, Dict[str, Any]] = {}
+def _overrides_for_run(run: str) -> Dict[str, Any]:
+    """Cheap lookup: bare run-id (post `::` split) → overrides dict.
+    Index rebuilt at most once per _OVERRIDES_INDEX_TTL seconds."""
+    global _overrides_index, _overrides_index_built_at
+    now = time.time()
+    if now - _overrides_index_built_at > _OVERRIDES_INDEX_TTL or not _overrides_index:
+        _overrides_index = _build_overrides_index()
+        _overrides_index_built_at = now
+    bare = run.split("::", 1)[1] if "::" in run else run
+    return _overrides_index.get(bare, {}) or _overrides_index.get(run, {})
 
 
 @app.route("/tests_for_symbol")
@@ -3525,6 +3547,12 @@ def _precompute_loop():
                 _precomputed["per_sym_best"] = psb_body
             (_CACHE_DIR / "per_sym_best.json").write_text(psb_body)
             print(f"[precompute] per_sym_best={len(psb_body)}B in {_t.time()-t1:.1f}s", flush=True)
+            # Warm overrides index so /tests_for_symbol responds quickly.
+            global _overrides_index, _overrides_index_built_at
+            t2 = _t.time()
+            _overrides_index = _build_overrides_index()
+            _overrides_index_built_at = _t.time()
+            print(f"[precompute] overrides_index={len(_overrides_index)} runs in {_t.time()-t2:.1f}s", flush=True)
         except Exception as e:
             import traceback
             print(f"[precompute] error: {e}", flush=True)

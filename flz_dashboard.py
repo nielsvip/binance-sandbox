@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""flz_dashboard — port 5057. The window-to-the-world.
+"""flz_dashboard — port 5057.
 
-REQUIREMENT (user 2026-04-30):
-  - Top-10 best backtest configs in row 1, refreshed hourly from continuous
-    sweeps on S1/S2 + MB.
-  - Every number ABSOLUTELY AUDITED through metrics_guard. Sub-floor results
-    tagged [DIAGNOSTIC]; inflated (|sharpe|>5 with trades<5000) tagged INFLATED
-    and excluded from "real" top-10 (shown in a separate diagnostic tail).
-  - Tabs for Live trades / Backtest details / Equity curves / Comparison.
-  - All numbers respect CLAUDE.md NO-LIES MANDATE.
+LIVE TRADES DASHBOARD: every number on this page comes from real
+data/history/<acct>/<SYMBOL>_<SIDE>.jsonl trade events. Decisions JSONLs
+(data/decisions/) are NOT read — they are decision logs (every-cycle position
+recommendations), not actual trade outcomes, and would be a lying source for
+P&L / win-rate / sharpe.
 
-Data sources:
-  - data/autonomous/<pool>/<wXXX>/autonomous_*_winners.jsonl (per-iter aggregates)
-  - data/decisions/decisions_<acct>_YYYYMMDD.jsonl (live decisions)
-  - data/history/<acct>/<SYMBOL>_<SIDE>.jsonl (live trade history)
+Data sources (the only ones):
+  - data/history/<acct>/<SYMBOL>_<SIDE>.jsonl   (the LIVE trade event log,
+                                                 OPEN/AUGMENT/REDUCE/CLOSE)
+  - data/autonomous/<pool>/<wXXX>/autonomous_*_winners.jsonl   (sweep iters
+                                                 — for the backtest leaderboard
+                                                 only; no live numbers come
+                                                 from here)
+  - data/hourly_reconfig/<acct>/opinions.json   (the 7D-agent's per-symbol
+                                                 LONG/SHORT/HOLD recommendation
+                                                 — display only, not numbers)
 
-This is read-only. No optimization runs from here. Optimization scripts run
-on S1/S2 (autonomous_search.py); this dashboard only displays results.
+Every metric routed through metrics_guard. Sub-floor results tagged
+[DIAGNOSTIC]; inflated (|sharpe|>5 with trades<5000) flagged. Read-only.
 """
 from __future__ import annotations
 
@@ -36,9 +39,11 @@ import metrics_guard
 
 BASE_DIR = Path(__file__).resolve().parent
 AUTONOMOUS_DIR = BASE_DIR / "data" / "autonomous"
-DECISIONS_DIR = BASE_DIR / "data" / "decisions"
 HISTORY_DIR = BASE_DIR / "data" / "history"
-TRADIER_HISTORY_DIR = BASE_DIR / "data" / "tradier" / "history"
+# data/history/<acct> is the canonical LIVE trade-event log for ALL accounts.
+# trb/trc/tra are symlinks into data/tradier/history/<acct> — stocks history
+# resolves transparently through the same path. NEVER read from data/decisions/
+# for numbers: that is a position-recommendation log, not a trade outcome.
 QUARANTINE_DIR = BASE_DIR / "data" / "_legacy_unverified"
 
 CRYPTO_ACCOUNTS = ["ang", "inf", "flz", "men", "fin"]
@@ -308,9 +313,11 @@ def _reconstruct_trades(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _load_account_history(account: str) -> List[Dict[str, Any]]:
-    """Load every trade event for the account from data/history/<acct>/*.jsonl."""
-    is_stock = account in STOCK_ACCOUNTS
-    base = (TRADIER_HISTORY_DIR if is_stock else HISTORY_DIR) / account
+    """Load every LIVE trade event for the account.
+
+    Source: data/history/<acct>/*.jsonl ONLY. For trb/trc/tra this resolves
+    through symlink into data/tradier/history/<acct>. Never reads decisions/."""
+    base = HISTORY_DIR / account
     events: List[Dict[str, Any]] = []
     if not base.exists():
         return events
@@ -617,7 +624,6 @@ def api_health():
 HOURLY_CSV_DIR = BASE_DIR / "data" / "sweep_results"
 HOURLY_RECONFIG_DIR = BASE_DIR / "data" / "hourly_reconfig"
 PER_SYM_ACTIVE_CONFIG = HOURLY_RECONFIG_DIR / "per_sym_active_config.json"
-DECISIONS_DIR_LOCAL = BASE_DIR / "data" / "decisions"
 
 
 def _read_hourly_canonical_csv(account: str) -> List[Dict[str, Any]]:
