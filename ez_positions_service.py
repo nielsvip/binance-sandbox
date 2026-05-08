@@ -7348,13 +7348,33 @@ class PositionService:
                         filename.rename(backup)
                 except Exception: pass
             context = decision_context or {}
+            # 2026-05-08 CURSE FIX: prefer qty-matched recent-order reason on trade_manager.
+            # The Redis `decision:<pkey>` key is overwritten by competing concurrent strategies
+            # so the most-recent decision often belongs to a DIFFERENT order than this fill.
+            # Match by qty within 1% over the last 10s — a single-pkey ring populated by
+            # send_webhook at order placement time.
+            explicit_reason = None
+            try:
+                tm = getattr(self, 'trade_manager', None)
+                if tm and hasattr(tm, '_recent_order_reasons'):
+                    _ror_list = tm._recent_order_reasons.get(position_key, [])
+                    _ror_now = time.time()
+                    _ror_qty = float(qty or 0.0)
+                    for _ror_ts, _ror_amt, _ror_reason in reversed(_ror_list):
+                        if _ror_now - _ror_ts > 10.0:
+                            break
+                        if _ror_amt > 0 and _ror_qty > 0 and abs(_ror_amt - _ror_qty) / max(_ror_amt, 1e-9) < 0.01:
+                            explicit_reason = _ror_reason
+                            break
+            except Exception:
+                pass
             redis_key = f"decision:{position_key}"
-            if not context and self.redis_manager:
+            if explicit_reason is None and not context and self.redis_manager:
                 try :
                     raw = await asyncio.wait_for(self.redis_manager.get(redis_key), timeout=0.5)
                     if raw: context = json.loads(raw)
                 except Exception: pass
-            reason = context.get('reason') or context.get('reason_text') or "Manual/System Detection"
+            reason = explicit_reason or context.get('reason') or context.get('reason_text') or "Manual/System Detection"
             snapshot = context.get('snapshot') or context.get('indicators', {})
             entry = { "ts": datetime.now(timezone.utc).isoformat(), "type": trade_type, "qty": round(float(qty), 6), "price": round(float(price), 8), "value": round(float(qty * price), 2), "reason": reason, "indicators": snapshot }
             async with aiofiles.open(filename, "a") as f:

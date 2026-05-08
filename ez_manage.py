@@ -4590,9 +4590,13 @@ class MultiAccountTradeManager:
         self.tradeable_keys = set()
         self._last_tradeable_update = 0 # Last time we updated the set in memory
         self._last_file_read = 0 # Last time we actually read the JSON disk file
-        self.tradeable_lock = asyncio.Lock() 
+        self.tradeable_lock = asyncio.Lock()
         self.base_path=config.BASE_PATH
         self.raw_indicators_json_content={}
+        # 2026-05-08 CURSE FIX: per-pkey ring of (ts, qty, reason) for orders just sent.
+        # handle_augmentation/handle_reduction match WS-confirmed fill qty against this ring
+        # to attribute the correct reason instead of reading a clobbered Redis decision: key.
+        self._recent_order_reasons: dict = {}
 
     async def _attempt_json_repair(self, content: str) -> Optional[str]:
         if not content or not isinstance(content, str):
@@ -15055,6 +15059,17 @@ class MultiAccountTradeManager:
             return False
 
     async def send_webhook(self, position_key: str, account_key: str, symbol: str, positionAmt: float, amount: float, current_price: float, side: str, position_side: str, unique_id: str, is_full_close: bool, reason: str, level: float | None = None, stoch_required: bool = False, order_ids_to_cancel: list = None, url_variant: str = "") -> bool:
+        # 2026-05-08 CURSE FIX: record (ts, qty, reason) so handle_aug/red can match
+        # the WS-confirmed fill back to its true reason instead of reading a clobbered
+        # Redis decision: key. Ring-trimmed to 10 entries / 30s window per pkey.
+        try:
+            _ror_now = time.time()
+            _ror_list = self._recent_order_reasons.setdefault(position_key, [])
+            _ror_list.append((_ror_now, float(amount or 0.0), reason or ''))
+            while len(_ror_list) > 10 or (_ror_list and _ror_list[0][0] < _ror_now - 30.0):
+                _ror_list.pop(0)
+        except Exception:
+            pass
         if is_sandbox_account(config, account_key): return True
         # 2026-04-24 USER DIRECTIVE: webhook layer does NOT block. Dedup enforced at
         # execute_now via _ABSOLUTE_OPEN_LOCK (5min TTL). Blocking here would prevent
@@ -16651,6 +16666,43 @@ class MultiAccountTradeManager:
                                 _cr = await queue_trade_action(self.order_queue, self, _cpk2, 'REDUCE', _creason, 50.0)
                                 if _cr and ('QUEUED' in str(_cr) or 'SUCCESS' in str(_cr)): _closed += 1
                             except Exception as _ce: logger.error(f"[RATIO_REBALANCE] Close error: {_ce}")
+                    # ═══════════════════════════════════════════════════════════════════════════
+                    # 2026-05-08 USER MANDATE — DISABLE the open-underweight path entirely.
+                    # Until system is verified working we are min-qty only and CANNOT add new
+                    # exposure. Instead, when imbalanced, close OVERWEIGHT positions sorted by
+                    # SMALLEST |wt1_15m - wt2_15m| (least conviction, easiest to close).
+                    # Re-enable open path by setting RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY=False.
+                    # ═══════════════════════════════════════════════════════════════════════════
+                    if bool(getattr(config, 'RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY', True)):
+                        _ow_candidates = []
+                        if account_key in self.positions_by_account:
+                            for _ow_pk, _ow_pos in self.positions_by_account[account_key].items():
+                                if not _ow_pk.endswith(f"_{overweight_side}"): continue
+                                _ow_amt = abs(safe_fetch_float(getattr(_ow_pos, 'positionAmt', 0), 0))
+                                if _ow_amt < 0.0001: continue
+                                _ow_gain = safe_fetch_float(getattr(_ow_pos, 'gain', 0), 0)
+                                if _ow_gain < float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10)):
+                                    continue  # STRICT_NO_LOSS — must be above commissions
+                                _ow_sym = getattr(_ow_pos, 'symbol', '') or _ow_pk.split(':', 1)[1].rsplit('_', 1)[0]
+                                _ow_ind = _snap.get(_ow_sym) if isinstance(_snap, dict) else None
+                                _ow_w1 = safe_fetch_float((_ow_ind or {}).get('wt1_15m'), 0)
+                                _ow_w2 = safe_fetch_float((_ow_ind or {}).get('wt2_15m'), 0)
+                                _ow_delta = abs(_ow_w1 - _ow_w2)
+                                _ow_candidates.append((_ow_pk, _ow_pos, _ow_gain, _ow_delta))
+                        _ow_candidates.sort(key=lambda x: x[3])  # smallest |wt15m delta| first
+                        _ow_max = _cfg_i('RATIO_REBALANCE_MAX_CLOSES', 3)
+                        _ow_closed = 0
+                        for _ow_pk, _ow_pos, _ow_gain, _ow_delta in _ow_candidates:
+                            if _ow_closed >= _ow_max: break
+                            _ow_reason = f"RATIO_CLOSE_OW_{overweight_side}_L{long_pct:.0f}_S{short_pct:.0f}_tgt{target_long:.0f}/{target_short:.0f}_wt15Δ{_ow_delta:.1f}_g{_ow_gain:.2f}%"
+                            logger.warning(f"[RATIO_REBALANCE_CLOSE_OW] {account_key}: Closing {_ow_pk} (gain={_ow_gain:.2f}%, |wt15m Δ|={_ow_delta:.2f}) — {overweight_side} overweight by {skew:.0f}pp, smallest-conviction first.")
+                            try:
+                                _ow_res = await queue_trade_action(self.order_queue, self, _ow_pk, 'REDUCE', _ow_reason, 50.0)
+                                if _ow_res and ('QUEUED' in str(_ow_res) or 'SUCCESS' in str(_ow_res)): _ow_closed += 1
+                            except Exception as _owe: logger.error(f"[RATIO_REBALANCE_CLOSE_OW] error: {_owe}")
+                        if _ow_closed > 0: logger.info(f"[RATIO_REBALANCE_CLOSE_OW] {account_key}: closed {_ow_closed} {overweight_side} positions by smallest wt15m Δ")
+                        _last_rebalance[account_key] = time.time()
+                        continue
                     # Normal path: open underweight side WITH the flow
                     _max_normal = _cfg_i('RATIO_REBALANCE_MAX_OPENS_NORMAL', 8)
                     _max_stuck = _cfg_i('RATIO_REBALANCE_MAX_OPENS_STUCK', 10)
@@ -16661,7 +16713,13 @@ class MultiAccountTradeManager:
                         logger.warning("[RATIO_REBALANCE] No registry available, cannot find candidates.")
                         _last_rebalance[account_key] = time.time()
                         continue
-                    candidates = list(_reg.top_longs[:30]) if open_side == 'LONG' else list(_reg.top_shorts[:30])
+                    # 2026-05-08 USER MANDATE: filter by tradeable_keys at the source so we
+                    # don't pull MORPHO-style ghost candidates that get blocked downstream.
+                    _rrr_tk = getattr(self, 'tradeable_keys', None) or set()
+                    candidates = [(s, sc, p) for (s, sc, p) in (
+                        list(_reg.top_longs[:60]) if open_side == 'LONG' else list(_reg.top_shorts[:60])
+                    ) if not _rrr_tk or f"{account_key}:{s}_{open_side}" in _rrr_tk]
+                    candidates = candidates[:30]
                     opened = 0
                     _already_open = {}  # sym -> position_key for augment
                     if account_key in self.positions_by_account:
@@ -20465,6 +20523,23 @@ async def periodic_direct_high_gain_reopen(order_queue: OrderQueue, trade_manage
     # DEAD_CODE: #0A
 @timed_function("process_position")
 async def process_position(account_key: Optional[str] = None, position_key: Optional[str] = None, order_queue: OrderQueue = None, trade_manager: MultiAccountTradeManager = None, event_type=None, signal_data=None, queue_len=None, force: bool = False):
+    # 2026-05-08 USER MANDATE: filter NON_TRADEABLE + ALREADY_AUGMENTED at the FIRST LINE
+    # so we don't waste 12s of compute on positions that will be rejected at the end anyway.
+    # Cheap O(1) checks before anything else.
+    if not position_key or not trade_manager: return
+    try:
+        if hasattr(trade_manager, 'tradeable_keys') and trade_manager.tradeable_keys and position_key not in trade_manager.tradeable_keys:
+            return
+        _pp_pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
+        if _pp_pos is not None:
+            _pp_amt = abs(safe_fetch_float(getattr(_pp_pos, 'positionAmt', 0), 0))
+            if _pp_amt > 0:
+                _pp_gain = safe_fetch_float(getattr(_pp_pos, 'gain', 0), 0)
+                _pp_min_gain = float(getattr(getattr(trade_manager, 'config', None) or config, 'MIN_GAIN', 3.0))
+                if _pp_gain < 0.5 * _pp_min_gain and (event_type or '').startswith(('queue_processor', 'process_position', 'reentry')):
+                    return
+    except Exception:
+        pass
     logger.debug(f"[[PP] 🚨 {position_key}] entering")
     current_account.set(account_key)
     config = getattr(trade_manager, 'config', None)
@@ -20601,6 +20676,45 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
     if not current_price or current_price <= 0:
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
+    # ═══════════════════════════════════════════════════════════════════════════
+    # WT_15M_VEL_SLOW_AT_ZERO_GAIN — USER 2026-05-08 mandate:
+    # If gain is approximately zero (|g|<0.05%) AND wt_velocity_15m sign is AGAINST
+    # the position AND |vel_now| < |vel_prev| (decelerating against us) → CLOSE NOW.
+    # Bypasses STRICT_NO_LOSS because gain ≈ 0 (no loss being taken).
+    # Catches the "stuck at break-even with momentum dying" scenario before drift
+    # turns it into a real loss.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
+        try:
+            _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+            _wzg_zero_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.05))
+            if abs(_wzg_gain) < _wzg_zero_band:
+                _wzg_ind = await ii(trade_manager, symbol)
+                if _wzg_ind:
+                    _wzg_vel = safe_fetch_float(_wzg_ind.get('wt_velocity_15m'), 0)
+                    _wzg_vel_prev = safe_fetch_float(_wzg_ind.get('wt_velocity_15m_prev', _wzg_ind.get('wt_velocity_15m')), 0)
+                    _wzg_is_long = (position_side == 'LONG')
+                    _wzg_against = (_wzg_is_long and _wzg_vel < 0) or ((not _wzg_is_long) and _wzg_vel > 0)
+                    _wzg_decel = abs(_wzg_vel) < abs(_wzg_vel_prev) and abs(_wzg_vel_prev) > 1e-6
+                    if _wzg_against and _wzg_decel:
+                        _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        _wzg_close_side = 'SELL' if _wzg_is_long else 'BUY'
+                        logger.error(f"⛔ [WT_15M_VEL_SLOW_AT_ZERO_GAIN] {position_key}: g={_wzg_gain:.3f}% (within ±{_wzg_zero_band}%), wt_vel_15m={_wzg_vel:.2f} (prev={_wzg_vel_prev:.2f}) AGAINST + DECELERATING → CLOSE")
+                        try:
+                            await trade_manager.execute_now(
+                                position_key=position_key, account_key=account_key, symbol=symbol,
+                                original_positionAmt=_wzg_amt, side=_wzg_close_side, position_side=position_side,
+                                quantity=_wzg_amt, old_price=current_price,
+                                unique_id=f"WT15M_VEL_SLOW_ZERO_GAIN_{int(time.time())}",
+                                reason=f'WT_15M_VEL_SLOW_AT_ZERO_GAIN_g{_wzg_gain:.3f}%_vel{_wzg_vel:.2f}vs{_wzg_vel_prev:.2f}',
+                                is_full_close=True, action='CLOSE')
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:WT_15M_VEL_SLOW_AT_ZERO_GAIN_CLOSED"
+                        except Exception as _wzg_err:
+                            logger.error(f"⛔ [WT_15M_VEL_SLOW_AT_ZERO_GAIN_ERR] {position_key}: {_wzg_err}")
+        except Exception as _wzg_outer:
+            logger.debug(f"[WT_15M_VEL_SLOW_AT_ZERO_GAIN] {position_key} probe err: {_wzg_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
     # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
     # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.

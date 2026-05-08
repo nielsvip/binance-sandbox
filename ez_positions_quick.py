@@ -14378,6 +14378,29 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
     if not position_keys:
         logger.info(f"🔍 {position_keys} no pos keys sent")
         return
+    # 2026-05-08 USER MANDATE: pre-source filter — drop NON_TRADEABLE and ALREADY_AUGMENTED
+    # candidates BEFORE entering the per-pkey worker. Saves the indicator fetch + scoring
+    # pipeline that would only be rejected later. Cheap O(N) prune.
+    try:
+        _tk = getattr(trade_manager, 'tradeable_keys', None) or set()
+        _min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
+        _pruned = []
+        for _pk in position_keys:
+            if _tk and _pk not in _tk:
+                continue
+            _p = trade_manager.positions.get(_pk) if hasattr(trade_manager, 'positions') else None
+            if _p is not None:
+                _amt = abs(safe_fetch_float(getattr(_p, 'positionAmt', 0), 0))
+                if _amt > 0:
+                    _g = safe_fetch_float(getattr(_p, 'gain', 0), 0)
+                    if _g < 0.5 * _min_gain:
+                        continue
+            _pruned.append(_pk)
+        if not _pruned:
+            return
+        position_keys = _pruned
+    except Exception:
+        pass
     if getattr(config, 'SCALP_V3_DIAG_LOG', True) and account_key in getattr(config, 'SCALP_V3_ACCOUNTS', []):
         logger.info(f"[SCALP_V3_DIAG] check_entry_candidates_for_account({account_key}) called with {len(position_keys)} keys: first3={position_keys[:3]}")
     disk_exit_cache = _load_disk_exit_cache(account_key)
@@ -16401,9 +16424,19 @@ async def evaluate_reentry_2_epq(trade_manager, data_manager=None):
         _eval_tk = await trade_manager.load_tradeable()
     except Exception:
         _eval_tk = _tk
+    _er2_min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
     for position_key, reentry_data in list(reentry_data_dict.items()):
         try:
             if _eval_tk and position_key not in _eval_tk: continue
+            # 2026-05-08 USER MANDATE: skip ALREADY_AUGMENTED candidates here BEFORE _ez_ii
+            # indicator fetch. positionAmt>0 AND gain<0.5×MIN_GAIN → not eligible for reentry.
+            _er2_pos = trade_manager.positions.get(position_key) if hasattr(trade_manager, 'positions') else None
+            if _er2_pos is not None:
+                _er2_amt = abs(safe_fetch_float(getattr(_er2_pos, 'positionAmt', 0), 0))
+                if _er2_amt > 0:
+                    _er2_g = safe_fetch_float(getattr(_er2_pos, 'gain', 0), 0)
+                    if _er2_g < 0.5 * _er2_min_gain:
+                        continue
             parts = position_key.split(':')
             if len(parts) < 2: continue
             account_key = parts[0]

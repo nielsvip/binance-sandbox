@@ -2,15 +2,27 @@
 
 Master record of issues, decisions, and pending edits surfaced during the fin-account audit. Updated each turn so context survives compaction.
 
-## Live edits authorized by user
+## Edits SHIPPED 2026-05-08 22:50–23:15 UTC
+
+| # | Edit | Files | md5 (Mac=S1 verified) |
+|---|---|---|---|
+| **A** | _recent_order_reasons ring on TradeManager populated by send_webhook; _append_to_history prefers qty-matched entry over Redis decision_context (curse fix). | ez_manage.py / ez_positions_service.py | ezm=453947ee … epsv=cf62b3dd |
+| **B** | First-line tradeable + augmented filter in process_position (line 20482), check_entry_candidates_for_account (line 14376), evaluate_reentry_2 inner loop (line 16429). | ez_manage.py / ez_positions_quick.py | ezm=453947ee … epq=9fb85f76 |
+| **C** | ratio_rebalance: open-underweight path GATED OFF behind RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY=True. New close-overweight branch sorts by smallest \|wt1_15m - wt2_15m\|, max 3 closes/cycle. Open path also adds tradeable_keys filter for the day we re-enable it. | ez_manage.py | ezm=453947ee |
+| **D-NEW** | New WT_15M_VEL_SLOW_AT_ZERO_GAIN exit branch above ALL_TF_AGAINST_CLOSE in process_position. \|gain\|<0.05% AND wt_velocity_15m sign-against AND \|vel_now\|<\|vel_prev\| → CLOSE. | ez_manage.py / config.py | ezm=453947ee … cfg=e74f1e6d |
+
+**Live workers NOT restarted** — they're still running pre-edit code. New code only takes effect when watchdog respawns or user restarts. Per CLAUDE.md auto-restart on critical files is NOT enabled.
+
+## Live edits authorized by user (executing now in batch)
 
 | # | Edit | File | Status |
 |---|---|---|---|
-| **A** | Pass `reason` directly into `handle_augmentation` / `handle_reduction` (drop Redis decision-cache lookup that mis-attributes thrash fills). | `ez_positions_service.py` (handle_augmentation, handle_reduction, _append_to_history; PAU/WS callers at 2731-2736 + 6753-6767) | **APPROVED — pending execute** |
-| **B** | Hoist `BLOCKED_NON_TRADEABLE_POSITION_KEY` (line 11087) and `BLOCKED_ALREADY_AUGMENTED` (line 12193) to the **top** of `execute_trade_action` before BB_CONFIDENCE / RATIO_BOOST / MANIP_FLAG_SIZE_CUT. | `ez_manage.py` | **APPROVED — pending execute** |
-| **D-NEW** | Add CLOSE rule: when `abs(gain) < 0.05% AND wt_velocity_15m sign-against-position AND |vel|<|vel_prev|` → CLOSE (bypass STRICT_NO_LOSS since gain ≈ 0). Add wherever exit signals are generated. | `ez_manage.py` (next to RIDICULOUS_HOLD / DC_BB_D_BREAK_REVERSE / ALL_TF_AGAINST_CLOSE branches), `ez_positions_quick.py` (process_position exit gates) | **APPROVED — pending execute** |
-| C | ratio_rebalance pre-filter against `tradeable_keys` at `ez_manage.py:16664` | `ez_manage.py` | Approved earlier — pending after A/B |
-| (Edit "FLIP_COOLDOWN") | New per-pkey AUGMENT/REDUCE cooldown | — | **REJECTED** by user — MTF confirmation should make this unnecessary; if thrash recurs, find the HTF-blind caller and gate it instead |
+| **A** | Pass `reason` directly into `handle_augmentation` / `handle_reduction` (drop Redis decision-cache lookup that mis-attributes thrash fills). | `ez_positions_service.py` (handle_aug, handle_red, _append_to_history; callers at 2731-2736, 6753-6767) | **EXECUTING** |
+| **B** | Pre-source filter at the CALLER sites of `process_position`, `check_entry_candidate*`, `evaluate_reentry*` — NOT inside the functions. Filter by `tradeable_keys` + open-position validity + (positionAmt>0 AND gain<0.5×MIN_GAIN → skip). FIRST LINE of every entry-side loop. Plus first-line filter inside the functions themselves as defense-in-depth. | `ez_manage.py` (callers + first lines of process_position / check_entry_candidates / evaluate_reentry / evaluate_reentry_2 / queue_processor) | **EXECUTING** |
+| **C** | ratio_rebalance: (1) filter candidates by tradeable_keys + open-position state. (2) When imbalance detected, **close the OVERWEIGHT side** picking positions with smallest `|wt1_15m - wt2_15m|` delta (least conviction, easiest to close). NO opening on underweight side until system is verified working. | `ez_manage.py:16410+` (ratio_rebalance_loop) | **EXECUTING** |
+| **D-NEW** | CLOSE when `abs(gain) < 0.05% AND wt_velocity_15m sign-against-position AND |vel_now| < |vel_prev|` (bypass STRICT_NO_LOSS since gain ≈ 0). Add wherever exit signals are generated — process_position exit branches in ez_manage AND ez_positions_quick. | `ez_manage.py` + `ez_positions_quick.py` | **EXECUTING** |
+| (FLIP_COOLDOWN) | per-pkey AUGMENT/REDUCE cooldown | — | **REJECTED** by user — MTF confirmation should suffice. Flag for re-investigation if thrash continues. |
+| GOLDEN_RULE | Definition matrix (1/5..5/5 × wt/mfi/rsi/all) | — | **DEFERRED** — concept stage, not enabled in current sweeps. Gets its own scoping pass after current edits ship. |
 
 ## Open user questions / decisions needed
 

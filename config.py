@@ -753,6 +753,16 @@ class Config:
     # Strongest single signal — no other gate considered.
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0
+    # 2026-05-08 USER MANDATE — WT_15M_VEL_SLOW_AT_ZERO_GAIN exit branch.
+    # |gain|<band AND wt_velocity_15m sign-against AND |vel_now|<|vel_prev| → CLOSE.
+    # Bypasses STRICT_NO_LOSS (gain≈0). Catches stuck-at-breakeven dying-momentum case.
+    WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.05  # |gain|<0.05% counts as "approximately zero"
+    # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
+    # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
+    # Set False to re-enable the old open-underweight path once system is verified.
+    RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY: bool = True
+    RATIO_REBALANCE_MAX_CLOSES: int = 3
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,
