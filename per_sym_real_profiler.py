@@ -81,53 +81,67 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
                 d = json.loads(p.read_text())
                 clean = {k: v for k, v in d.items() if not k.startswith('_')}
                 if clean:
+                    # 2026-05-08: force test-time settings so positions actually close.
+                    # NOLOSS_ENABLED=True in baselines blocks all loss-exits → 0 closes → no JSONL.
+                    # EARLY_ABORT_ENABLED already disabled via V8_RATE_GUARD_DISABLED but belt+suspenders.
+                    clean['NOLOSS_ENABLED'] = False
+                    clean['STRICT_NO_LOSS_ENABLED'] = False
+                    clean['EARLY_ABORT_ENABLED'] = False
                     return clean
         except Exception:
             continue
     return {}
 
 
-def variants_for_sym(base: Dict, sym: str) -> List[Tuple[str, Dict]]:
-    # 2026-05-07 deadline-mode: trim to ~8 most-informative variants per sym to fit ~24h budget. Full grid available with PER_SYM_FULL_GRID=1 env var.
+def variants_for_sym(base: Dict, sym: str, account: str = '') -> List[Tuple[str, Dict]]:
+    # Fast mode: 3 variants per sym (~40 min each on 1 month data). Full grid with PER_SYM_FULL_GRID=1.
     grid: List[Tuple[str, Dict]] = [('BASELINE', dict(base))]
     def add(tag, deltas):
         d = dict(base); d.update(deltas)
         grid.append((tag, d))
     full = os.environ.get('PER_SYM_FULL_GRID', '0') == '1'
     if sym in BTC_DEDICATED_SYMS:
-        for mh, bk in (((1, 1), (5, 3), (8, 5)) if not full else ((1, 1), (3, 1), (5, 3), (8, 5), (12, 8))):
-            add(f'mh{mh}_bk{bk}', {'BTC_MIN_HOLD_BARS': mh, 'BTC_BREAKOUT_MIN_HOLD_BARS': bk})
-        for n in ((2, 3) if not full else (2, 3, 4, 5)):
-            add(f'accel_tfs_{n}', {'BTC_ACCEL_RAMP_MIN_TFS': n})
-        for t in ((1, 3) if not full else (1, 2, 3, 4)):
-            add(f'texit_{t}', {'BTC_TECH_EXIT_WT_MIN_TFS': t})
         if full:
+            for mh, bk in ((1, 1), (3, 1), (5, 3), (8, 5), (12, 8)):
+                add(f'mh{mh}_bk{bk}', {'BTC_MIN_HOLD_BARS': mh, 'BTC_BREAKOUT_MIN_HOLD_BARS': bk})
+            for n in (2, 3, 4, 5):
+                add(f'accel_tfs_{n}', {'BTC_ACCEL_RAMP_MIN_TFS': n})
+            for t in (1, 2, 3, 4):
+                add(f'texit_{t}', {'BTC_TECH_EXIT_WT_MIN_TFS': t})
             for cd, bcd in ((1, 1), (3, 1), (5, 3), (8, 5)):
                 add(f'cd{cd}_bcd{bcd}', {'BTC_COOLDOWN_BARS': cd, 'BTC_BREAKOUT_COOLDOWN_BARS': bcd})
             for hl in (3.0, 5.4, 8.0, 12.0):
                 add(f'hl_{hl}', {'BTC_HARD_LOSS_USD_PER_TRADE': hl})
+        else:
+            # 2 key variants: relaxed hold + strict accel
+            add('mh1_bk1', {'BTC_MIN_HOLD_BARS': 1, 'BTC_BREAKOUT_MIN_HOLD_BARS': 1})
+            add('accel_tfs_3', {'BTC_ACCEL_RAMP_MIN_TFS': 3})
         for tag, d in grid:
             d['BTC_DEDICATED_ENABLED'] = True
             d['BTC_DEDICATED_SYMBOLS'] = [sym]
+            if account:
+                d['BTC_DEDICATED_ACCOUNTS'] = [account]
     else:
-        for es in ((15.0, 22.0) if not full else (12.0, 15.0, 18.0, 22.0, 28.0)):
-            add(f'es_{es:.0f}', {'ENTRY_SCORE_THRESHOLD': es, 'TRADIER_ENTRY_SCORE_THRESHOLD': es})
-        for align in ((1, 3) if not full else (1, 2, 3, 4)):
-            add(f'tfalign_{align}', {'TF_ALIGNMENT_MIN_LONG': align, 'TF_ALIGNMENT_MIN_SHORT': align})
-        for wt in ((2, 3) if not full else (1, 2, 3, 4)):
-            add(f'wt_exit_{wt}', {'WT_EXIT_MIN_TFS': wt, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': wt})
-        add('wt_pct_4h_strict', {'WT_PERCENTILE_EXIT_OB_4H': 80, 'WT_PERCENTILE_EXIT_OS_4H': 20})
         if full:
+            for es in (12.0, 15.0, 18.0, 22.0, 28.0):
+                add(f'es_{es:.0f}', {'ENTRY_SCORE_THRESHOLD': es, 'TRADIER_ENTRY_SCORE_THRESHOLD': es})
+            for align in (1, 2, 3, 4):
+                add(f'tfalign_{align}', {'TF_ALIGNMENT_MIN_LONG': align, 'TF_ALIGNMENT_MIN_SHORT': align})
+            for wt in (1, 2, 3, 4):
+                add(f'wt_exit_{wt}', {'WT_EXIT_MIN_TFS': wt, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': wt})
+            add('wt_pct_4h_strict', {'WT_PERCENTILE_EXIT_OB_4H': 80, 'WT_PERCENTILE_EXIT_OS_4H': 20})
             add('wt_pct_D_strict', {'WT_PERCENTILE_EXIT_OB_D': 85, 'WT_PERCENTILE_EXIT_OS_D': 15})
             add('wt_4h_vel_strict', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_LONG_VEL_MIN': 5.0, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN': -5.0, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': True})
-            add('wt_4h_vel_off', {'WT_4H_VEL_EXIT_ENABLED': False})
             add('wt_exhaust_on_gain', {'WT_EXHAUST_EXIT_ENABLED': True, 'WT_EXHAUST_EXIT_REQUIRE_GAIN': True})
-            add('wt_exhaust_off', {'WT_EXHAUST_EXIT_ENABLED': False})
+        else:
+            # 2 key variants: tighter entry score + looser exit
+            add('es_22', {'ENTRY_SCORE_THRESHOLD': 22.0, 'TRADIER_ENTRY_SCORE_THRESHOLD': 22.0})
+            add('wt_exit_2', {'WT_EXIT_MIN_TFS': 2, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': 2})
     return grid
 
 
 def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: str = 'flz',
-                    start: str = '2022-01-01', mode: str = 'crypto', timeout_s: int = 1800) -> Optional[Dict]:
+                    start: str = '2022-01-01', mode: str = 'crypto', timeout_s: int = 3600) -> Optional[Dict]:
     """Invoke backtest_v8_engine subprocess. Returns metrics dict or None."""
     run_dir.mkdir(parents=True, exist_ok=True)
     ovr_path = run_dir / f'override_{sym}_{tag}.json'
@@ -187,7 +201,7 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
 
 
 def optimize_sym(sym: str, account: str = 'flz', start: str = '2022-01-01',
-                 mode: str = 'crypto', timeout_s: int = 1800) -> Optional[Dict]:
+                 mode: str = 'crypto', timeout_s: int = 3600) -> Optional[Dict]:
     """Sweep variants for one symbol via real engine subprocess. Pick best."""
     base = _load_baseline(sym, mode=mode)
     grid = variants_for_sym(base, sym, account=account)
@@ -244,7 +258,7 @@ def write_active_config(winners: Dict) -> int:
     return promoted
 
 
-def cycle(syms: List[str], account: str, start: str, mode: str, workers: int, timeout_s: int = 1800) -> Dict:
+def cycle(syms: List[str], account: str, start: str, mode: str, workers: int, timeout_s: int = 3600) -> Dict:
     print(f"[per_sym_real_profiler] {len(syms)} syms, account={account}, start={start}, workers={workers}", flush=True)
     t0 = time.time()
     csv_path = SWEEP_DIR / f'per_sym_real_{account}_{int(time.time())}.csv'
@@ -309,12 +323,12 @@ def main():
     ap.add_argument('--syms', default='', help='comma-sep override (default: account universe)')
     ap.add_argument('--account', default='', help='account key; defaults to ang (crypto) or trb (tradier)')
     ap.add_argument('--mode', default='crypto', choices=['crypto', 'tradier'])
-    ap.add_argument('--start', default='2022-01-01')
+    ap.add_argument('--start', default='2026-04-01')
     ap.add_argument('--workers', type=int, default=2)
     ap.add_argument('--once', action='store_true', default=True)
     ap.add_argument('--daemon', action='store_true')
     ap.add_argument('--cycle-interval-s', type=int, default=86400)
-    ap.add_argument('--timeout', type=int, default=1800, help='subprocess timeout per variant in seconds')
+    ap.add_argument('--timeout', type=int, default=3600, help='subprocess timeout per variant in seconds')
     args = ap.parse_args()
     if not args.account:
         args.account = 'trb' if args.mode == 'tradier' else 'ang'
