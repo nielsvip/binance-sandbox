@@ -87,6 +87,12 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
                     clean['NOLOSS_ENABLED'] = False
                     clean['STRICT_NO_LOSS_ENABLED'] = False
                     clean['EARLY_ABORT_ENABLED'] = False
+                    if mode == 'tradier':
+                        # B_MAIN_ENTRY_GATE blocks all entries in backtest because
+                        # should_enter_long/short needs live indicator values the backtest
+                        # doesn't provide (relative_volume_D, bb_pct_b_D etc). Disable so
+                        # pure WT_DC_ENTRY score path (A) is used — this path reads NPZ correctly.
+                        clean['B_MAIN_ENTRY_GATE_ENABLED'] = False
                     return clean
         except Exception:
             continue
@@ -159,11 +165,16 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
         r = subprocess.run(cmd, env=env, capture_output=True, timeout=timeout_s, text=True)
     except subprocess.TimeoutExpired:
         return {'sym': sym, 'tag': tag, 'error': 'timeout'}
+    # Non-zero exit: asyncio cleanup errors are common (CancelledError on teardown).
+    # Still try to read the JSONL — if trades were written before the crash, use them.
+    nonzero_note = ''
     if r.returncode != 0:
-        return {'sym': sym, 'tag': tag, 'error': r.stderr[-300:]}
+        nonzero_note = f'rc={r.returncode}'
     # Read JSONL
     jp = run_dir / f'{run_id}__{sym}.jsonl'
     if not jp.exists():
+        if nonzero_note:
+            return {'sym': sym, 'tag': tag, 'error': r.stderr[-300:]}
         return {'sym': sym, 'tag': tag, 'trades': 0, 'pool_sharpe': 0.0,
                 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'trades_per_day': 0.0,
                 'years': 0.0, 'note': 'no_jsonl'}
