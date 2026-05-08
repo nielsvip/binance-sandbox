@@ -322,6 +322,7 @@ def cycle(syms: List[str], account: str, start: str, mode: str, workers: int, ti
             winners[s] = r
             elapsed = time.time() - t0
             print(f"[{i}/{len(syms)}] {s} done in {elapsed:.0f}s", flush=True)
+            write_active_config({s: r})
     else:
         with ProcessPoolExecutor(max_workers=workers) as ex:
             futs = {ex.submit(optimize_sym, s, account, start, mode, timeout_s): s for s in syms}
