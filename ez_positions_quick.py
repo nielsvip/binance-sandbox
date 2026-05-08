@@ -3922,7 +3922,12 @@ class AdvancedSignalRater:
             if (is_long and current_price > dc_basis_1h) or (not is_long and current_price < dc_basis_1h): score += 1.0
             if (is_long and current_price < dc_basis_4h) or (not is_long and current_price > dc_basis_4h): score -= 2.0
             # 2026-05-08: 1m DC breakout added (smallest TF — never miss the trigger). 3m/15m/1h/4h existed.
-            if (is_long and current_price >= dc_high_1m) or (not is_long and current_price <= dc_low_1m): score += 0.5
+            # Guarded: 1m fields are present LIVE (epq:7311) but absent in NPZ (15m-basis precompute).
+            # Without guard, missing field defaults to 0 → current_price >= 0 always True → bogus bonus.
+            _dc_h1m = safe_fetch_float(ind.get('dc_high_1m'), 0.0)
+            _dc_l1m = safe_fetch_float(ind.get('dc_low_1m'), 0.0)
+            if _dc_h1m > 0 and _dc_l1m > 0:
+                if (is_long and current_price >= _dc_h1m) or (not is_long and current_price <= _dc_l1m): score += 0.5
             if (is_long and current_price >= dc_high_3m) or (not is_long and current_price <= dc_low_3m): score += 1.0
             if (is_long and current_price >= dc_high_15m) or (not is_long and current_price <= dc_low_15m): score += 1.5
             if (is_long and current_price >= dc_high_1h) or (not is_long and current_price <= dc_low_1h): score += 2
