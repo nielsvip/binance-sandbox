@@ -98,6 +98,11 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
                         # satisfy → ALL WT_DC_ENTRY trades BLOCKED_ALIGNMENT. Force to 0 so
                         # alignment counter acts as info-only, not as a hard gate in backtest.
                         clean['ENTRY_MIN_ALIGNMENT'] = 0
+                        # WT_DC_ENTRY_THRESHOLD default=75 requires D_bull+4h_bull+1h_cross
+                        # simultaneously — produces ~2 trades/month per sym (far below 2-8/week
+                        # floor). Lower to 0 so baseline measures raw signal frequency; variants
+                        # then test the optimal non-zero threshold.
+                        clean['WT_DC_ENTRY_THRESHOLD'] = 0
                     return clean
         except Exception:
             continue
@@ -145,10 +150,12 @@ def variants_for_sym(base: Dict, sym: str, account: str = '') -> List[Tuple[str,
             add('wt_4h_vel_strict', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_LONG_VEL_MIN': 5.0, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN': -5.0, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': True})
             add('wt_exhaust_on_gain', {'WT_EXHAUST_EXIT_ENABLED': True, 'WT_EXHAUST_EXIT_REQUIRE_GAIN': True})
         else:
-            # key variants: tighter entry score + aggressive exits to get closed trades in trends
-            add('es_22', {'ENTRY_SCORE_THRESHOLD': 22.0, 'TRADIER_ENTRY_SCORE_THRESHOLD': 22.0})
+            # 2026-05-08: WT_DC_ENTRY_THRESHOLD=0 (baseline) gets ~5/sym/month.
+            # Test higher thresholds to find best Sharpe vs trade-count tradeoff.
+            # Also test exit variants to find which closes positions profitably.
+            add('thr_24', {'WT_DC_ENTRY_THRESHOLD': 24})
+            add('thr_50', {'WT_DC_ENTRY_THRESHOLD': 50})
             add('wt_exit_1', {'WT_EXIT_MIN_TFS': 1, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': 1})
-            add('vel_exit', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': False})
     return grid
 
 
