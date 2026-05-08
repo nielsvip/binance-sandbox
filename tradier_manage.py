@@ -6300,38 +6300,41 @@ class StockStrategy:
         dc_low_4h = float(i.get('dc_low_4h', 0))
         # Breakout-then-retest: Phase 1 (breakout) → tiny entry; Phase 2 (retest at basis) → 3x.
         # Breakout detected by dc_high_1h expanding vs ant (ant was the channel before the break).
+        # FIX 2026-05-08: gate this entire block with GOLDEN_RULE_ENABLED so the sweep can test it.
+        # When GOLDEN_RULE_ENABLED=False, size_mult stays 1.0 (no breakout/retest sizing cascade).
         _m_brk = float(getattr(config, 'GOLDEN_RULE_MULT_BREAKOUT', 0.1))
         _m_ret = float(getattr(config, 'GOLDEN_RULE_MULT_RETEST', 5.0))
         size_mult = 1.0
         dc_info = "above_basis"
-        if is_long:
-            _above_dch = dc_high_1h > 0 and current_price > dc_high_1h
-            _above_bbu = bb_upper_1h > 0 and current_price > bb_upper_1h
-            _breakout = _above_dch or _above_bbu
-            _retest = (dc_basis_1h_val > 0 and current_price >= dc_basis_1h_val and not _breakout
-                       and dc_high_1h_ant > 0 and dc_high_1h > dc_high_1h_ant * 1.005)
-            if _breakout:
-                size_mult = _m_brk; dc_info = "BREAKOUT_1h_tiny"
-            elif _retest:
-                size_mult = _m_ret; dc_info = "RETEST_basis_1h_3x"
-            elif dc_high_15m_val > 0 and current_price > dc_high_15m_val:
-                size_mult = 2.0; dc_info = "above_DC15m"
-            elif dc_high_4h > 0 and current_price > dc_high_4h:
-                size_mult = 3.0; dc_info = "above_DC4h"
-        else:
-            _below_dcl = dc_low_1h > 0 and current_price < dc_low_1h
-            _below_bbl = bb_lower_1h > 0 and current_price < bb_lower_1h
-            _breakout = _below_dcl or _below_bbl
-            _retest = (dc_basis_1h_val > 0 and current_price <= dc_basis_1h_val and not _breakout
-                       and dc_low_1h_ant > 0 and dc_low_1h < dc_low_1h_ant * 0.995)
-            if _breakout:
-                size_mult = _m_brk; dc_info = "BREAKOUT_1h_tiny"
-            elif _retest:
-                size_mult = _m_ret; dc_info = "RETEST_basis_1h_3x"
-            elif dc_low_15m_val > 0 and current_price < dc_low_15m_val:
-                size_mult = 2.0; dc_info = "below_DC15m"
-            elif dc_low_4h > 0 and current_price < dc_low_4h:
-                size_mult = 3.0; dc_info = "below_DC4h"
+        if getattr(config, 'GOLDEN_RULE_ENABLED', True):
+            if is_long:
+                _above_dch = dc_high_1h > 0 and current_price > dc_high_1h
+                _above_bbu = bb_upper_1h > 0 and current_price > bb_upper_1h
+                _breakout = _above_dch or _above_bbu
+                _retest = (dc_basis_1h_val > 0 and current_price >= dc_basis_1h_val and not _breakout
+                           and dc_high_1h_ant > 0 and dc_high_1h > dc_high_1h_ant * 1.005)
+                if _breakout:
+                    size_mult = _m_brk; dc_info = "BREAKOUT_1h_tiny"
+                elif _retest:
+                    size_mult = _m_ret; dc_info = "RETEST_basis_1h_3x"
+                elif dc_high_15m_val > 0 and current_price > dc_high_15m_val:
+                    size_mult = 2.0; dc_info = "above_DC15m"
+                elif dc_high_4h > 0 and current_price > dc_high_4h:
+                    size_mult = 3.0; dc_info = "above_DC4h"
+            else:
+                _below_dcl = dc_low_1h > 0 and current_price < dc_low_1h
+                _below_bbl = bb_lower_1h > 0 and current_price < bb_lower_1h
+                _breakout = _below_dcl or _below_bbl
+                _retest = (dc_basis_1h_val > 0 and current_price <= dc_basis_1h_val and not _breakout
+                           and dc_low_1h_ant > 0 and dc_low_1h < dc_low_1h_ant * 0.995)
+                if _breakout:
+                    size_mult = _m_brk; dc_info = "BREAKOUT_1h_tiny"
+                elif _retest:
+                    size_mult = _m_ret; dc_info = "RETEST_basis_1h_3x"
+                elif dc_low_15m_val > 0 and current_price < dc_low_15m_val:
+                    size_mult = 2.0; dc_info = "below_DC15m"
+                elif dc_low_4h > 0 and current_price < dc_low_4h:
+                    size_mult = 3.0; dc_info = "below_DC4h"
         wt_count = sum([_wt1_5m > _wt2_5m, _wt1_15m > _wt2_15m, _wt1_1h > _wt2_1h]) if is_long else sum([_wt1_5m < _wt2_5m, _wt1_15m < _wt2_15m, _wt1_1h < _wt2_1h])
         qty = base_qty * size_mult * _reentry_size_mult
         confidence = 90.0 if (wt_count >= 2 and _reentry_size_mult >= 1.5) else (85.0 if wt_count >= 2 else 75.0)
