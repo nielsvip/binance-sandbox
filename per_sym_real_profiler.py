@@ -103,6 +103,15 @@ def _load_baseline(sym: str, mode: str = 'crypto') -> Dict:
                         # floor). Lower to 0 so baseline measures raw signal frequency; variants
                         # then test the optimal non-zero threshold.
                         clean['WT_DC_ENTRY_THRESHOLD'] = 0
+                        # CT_WT_VELOCITY_GATE_ENABLED blocks entries when 1h velocity < 2.
+                        # Disable in baseline — NPZ may not have wt_velocity_1h populated.
+                        clean['CT_WT_VELOCITY_GATE_ENABLED'] = False
+                        # WT_DC_HTF_GATE="4h" blocks entries when 4h is against position.
+                        # Set to "none" in baseline to measure all entries; variants re-enable.
+                        clean['WT_DC_HTF_GATE'] = 'none'
+                        # TR_BBWIDTH4H_GATE_ENABLED rejects wide 4h BB bands (>10).
+                        # Disable in baseline — may incorrectly block in backtest context.
+                        clean['TR_BBWIDTH4H_GATE_ENABLED'] = False
                     return clean
         except Exception:
             continue
@@ -150,11 +159,12 @@ def variants_for_sym(base: Dict, sym: str, account: str = '') -> List[Tuple[str,
             add('wt_4h_vel_strict', {'WT_4H_VEL_EXIT_ENABLED': True, 'WT_4H_VEL_EXIT_LONG_VEL_MIN': 5.0, 'WT_4H_VEL_EXIT_SHORT_VEL_MIN': -5.0, 'WT_4H_VEL_EXIT_REQUIRE_K_EXTREME': True})
             add('wt_exhaust_on_gain', {'WT_EXHAUST_EXIT_ENABLED': True, 'WT_EXHAUST_EXIT_REQUIRE_GAIN': True})
         else:
-            # 2026-05-08: WT_DC_ENTRY_THRESHOLD=0 (baseline) gets ~5/sym/month.
-            # Test higher thresholds to find best Sharpe vs trade-count tradeoff.
-            # Also test exit variants to find which closes positions profitably.
-            add('thr_24', {'WT_DC_ENTRY_THRESHOLD': 24})
-            add('thr_50', {'WT_DC_ENTRY_THRESHOLD': 50})
+            # 2026-05-08: baseline = all gates open (threshold=0, velocity off, HTF gate none).
+            # Variants test re-enabling each gate to find best Sharpe vs trade-count tradeoff.
+            # Also tests key entry signals: BB breakout score, squeeze fire, DC htf gate.
+            add('thr_35', {'WT_DC_ENTRY_THRESHOLD': 35})
+            add('vel_gate', {'CT_WT_VELOCITY_GATE_ENABLED': True})
+            add('htf_4h', {'WT_DC_HTF_GATE': '4h'})
             add('wt_exit_1', {'WT_EXIT_MIN_TFS': 1, 'TRADIER_WT_EXIT_MIN_TFS_TRADIER': 1})
     return grid
 
