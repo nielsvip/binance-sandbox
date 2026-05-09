@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-09 08:31:45 UTC
+# Copilot Status — 2026-05-09 08:47:03 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:27:59
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:29:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:29:01
-- **STALE_INDICATORS** [tradier]  — 2026-05-09T08:30:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-09T08:30:02
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-09T08:30:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:30:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:30:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:31:04
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:31:04
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-09T08:44:28
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:44:28
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:44:28
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:45:30
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:45:30
+- **STALE_INDICATORS** [tradier]  — 2026-05-09T08:46:31
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-09T08:46:31
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-09T08:46:31
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-09T08:46:32
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-09T08:46:32
 
 ## Missed Trades (trader comparison)
 
@@ -29,13 +29,13 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 6 | **Reentered:** 0
 
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-14.6%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-5.1%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-14.9%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-5.2%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-10.2%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-7.5%
-- HELD: **ENSUSDT** LONG (crypto) peak +4.6%, now +1.8%
-- HELD: **NEARUSDC** SHORT (crypto) peak +4.5%, now +-8.4%
-- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-9.7%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-7.3%
+- HELD: **ENSUSDT** LONG (crypto) peak +4.6%, now +1.4%
+- HELD: **NEARUSDC** SHORT (crypto) peak +4.5%, now +-8.8%
+- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-9.3%
 - HELD: **SLV** LONG (tradier) peak +3.6%, now +0.5%
 - HELD: **NVDA** LONG (tradier) peak +3.2%, now +0.9%
 
@@ -50,9 +50,9 @@ _None_
 
 **Active Opus agents:** 0 / 2
 
-**Issues (last 1h):** 5
-- [LOW] tradier_rankings.py is NOT running
-- [LOW] tradier_rankings.py is NOT running
+**Issues (last 1h):** 6
 - [LOW] tradier_indicators.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
 - [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_rankings.py is NOT running
+- [LOW] tradier_indicators.py is NOT running
