@@ -769,8 +769,28 @@ class Config:
     # Original 0.05 + decel-only path was too narrow; positions could drift to
     # -2% before the abs(gain)<0.05 ever fired again.
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
-    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10  # one-sided: gain<0.10 fires (incl. losses)
-    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1  # |wt_velocity_15m| ≤ 0.1 → "approaching 0"
+    # 2026-05-09 USER MANDATE: thresholds become configurable + dynamic, not fixed.
+    # Band defines "approaching 0 gain" zone where R2 fires. Floor ensures we don't
+    # close at a real loss (R1 + hedges handle losses). Decel ratio is the dynamic
+    # slowdown gate replacing fixed NEAR_ZERO threshold per user
+    # ("some moves are fast others are slow this can never be a fixed number").
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.50    # gain < this band (upper bound)
+    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # gain >= this floor (positive net of commissions)
+    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1    # legacy fixed gate (still readable but bypass-able by ratio)
+    WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO → "decelerating" — DYNAMIC
+    WT_VEL_USE_DECEL_RATIO_ONLY: bool = True       # 2026-05-09: default ON crypto. False = legacy NEAR_ZERO OR decel.
+    R2_TF_LIST: tuple = ('15m',)                   # crypto: 15m primary. Sweep tests 1h too.
+    # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
+    # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
+    # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True
+    R1_NEWBORN_WINDOW_MIN: float = 15.0            # active only first N min after open
+    R1_USE_DC_4BAR: bool = True                    # True=dc_low4_3m (4-bar). False=dc_low_3m (1-bar).
+    R1_TF: str = '3m'                              # sweep-testable
+    # _DUPLICATE_OPEN_GUARD gain-based replacement (USER 2026-05-09):
+    # Replaces 900s time-cooldown with a gain gate. Augments require gain > 0.5*MIN_GAIN.
+    DUP_GUARD_GAIN_MULTIPLIER: float = 0.5         # threshold = MULT * config.MIN_GAIN (=1.5% by default)
+    DUP_GUARD_USE_GAIN_GATE: bool = True           # False = revert to 900s time gate
     # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
     # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
     # Set False to re-enable the old open-underweight path once system is verified.
@@ -977,6 +997,11 @@ class Config:
         'DC_BB_D_BREAK_REVERSE',          # 2026-05-06 user mandate (LUNC -18%): D-band break/cross-back wrong-side close
         'WT15M_AGAINST',                  # 2026-05-06 user mandate: wt1_15m against → hedge or close NO MATTER WHAT
         'ALL_TF_AGAINST',                 # 2026-05-06 user mandate: all TFs against → close primary, hedge becomes main
+        # 2026-05-09 USER MANDATE: only R1, R2, hedge-failed can close at loss.
+        'R1_DC_LOW4_3M_EMERGENCY',        # newborn-window dc4_3m breach → close
+        'R2_WT_VEL_SLOW',                 # wt vel slowdown near 0 gain → close at small positive
+        'WT_15M_VEL_SLOW',                # legacy alias for R2 (existing block at ez_manage:20696)
+        'HEDGE_FAILED',                   # hedge couldn't be taken → fallback close at loss
     ])
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),

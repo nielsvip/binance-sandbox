@@ -10932,17 +10932,30 @@ class MultiAccountTradeManager:
             is_reduce = False
             is_augment = False
             logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
-        # ═══ HARD DUPLICATE OPEN GUARD — applies to ALL position-increase actions ═══
-        # 2026-05-09 USER MANDATE: cooldown applies to OPEN, AUGMENT, AND REENTRY.
-        # Removed REENTRY exemption (was `not _original_action_was_reentry`). User:
-        # "_AUGMENT_LOCK=900s, should also fire at any position augmentation incl
-        # open reenter etc". No bypasses. Hedges already in this path since 2026-04-16.
-        _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
+        # ═══ HARD DUPLICATE OPEN GUARD — gain-based per USER 2026-05-09 ═══
+        # Replaces the 900s time-cooldown with a gain gate. Augments require
+        # gain > DUP_GUARD_GAIN_MULTIPLIER * config.MIN_GAIN (default 0.5*3.0=1.5%).
+        # Below threshold → BLOCKED. Time-cooldown retained as fallback when
+        # DUP_GUARD_USE_GAIN_GATE=False.
         if is_augment:
-            _last_open_ts = _recent_opens.get(position_key, 0)
-            if time.time() - _last_open_ts < _dup_cooldown:
-                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason} reentry={_original_action_was_reentry}")
-                return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
+            if bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True)):
+                _dg_min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
+                _dg_mult = float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))
+                _dg_thr = _dg_min_gain * _dg_mult
+                if not position: position = await self.get_position(position_key)
+                _dg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0.0) if position else 0.0
+                _dg_pos_amt = abs(safe_fetch_float(getattr(position, 'positionAmt', 0), 0.0)) if position else 0.0
+                _dg_pos_val = _dg_pos_amt * current_price if current_price > 0 else 0.0
+                _dg_min_pos_val = float(getattr(config, 'MIN_POSITION_SIZE', 1.0))
+                if _dg_pos_val > _dg_min_pos_val and _dg_gain <= _dg_thr:
+                    logger.critical(f"🚫 [DUP_GUARD_GAIN] {position_key}: BLOCKED — gain={_dg_gain:.2f}% <= {_dg_thr:.2f}% (=0.5*MIN_GAIN). action={action} reason={(reason or '')[:50]}")
+                    return f"BLOCKED_DUP_GUARD_GAIN_{_dg_gain:.2f}pct_lt_{_dg_thr:.2f}pct"
+            else:
+                _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
+                _last_open_ts = _recent_opens.get(position_key, 0)
+                if time.time() - _last_open_ts < _dup_cooldown:
+                    logger.critical(f"🚫 [DUPLICATE_OPEN_GUARD_TIME] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
+                    return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
         # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. NO EXCEPTIONS. Not hedge. Not reentry. Not anything.
         # ONLY pass when position is at foothold size (near-zero) — any entry type allowed then.
         if is_augment:
@@ -20694,52 +20707,104 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
     # ═══════════════════════════════════════════════════════════════════════════
-    # WT_15M_VEL_SLOW — loss-bypass exit (USER 2026-05-08, widened 2026-05-09).
-    # Companion to the dc_low4_3m / dc_high4_3m loss breach: fires IMMEDIATE CLOSE
-    # before hedging, before NO_LOSS gate, before MTF — gets out at any price.
-    #
-    # Trigger:
-    #   gain < WT_15M_VEL_SLOW_GAIN_BAND_PCT (default 0.10 — "loss or not" per
-    #     user spec; fires on any non-meaningful profit including drawdown), AND
-    #   wt_velocity_15m sign opposes position, AND
-    #   ( |wt_velocity_15m| ≤ WT_15M_VEL_NEAR_ZERO_THRESHOLD  (≤0.1 = momentum dead)
-    #     OR  |wt_velocity_15m| < |wt_velocity_15m_prev|       (decelerating) )
+    # R1 — DC_LOW4_3M EMERGENCY CLOSE (USER 2026-05-09).
+    # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured DC
+    # channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL log
+    # naming the entry signal so bad entry paths can be disabled.
+    # Knobs (sweep-testable): R1_USE_DC_4BAR (4-bar vs 1-bar), R1_NEWBORN_WINDOW_MIN.
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', True)):
+        try:
+            _r1_window = float(getattr(config, 'R1_NEWBORN_WINDOW_MIN', 15.0))
+            _r1_opened = getattr(position, 'opened_at', None)
+            _r1_age_min = 999.0
+            if isinstance(_r1_opened, datetime):
+                _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+            if _r1_age_min <= _r1_window:
+                _r1_ind = await ii(trade_manager, symbol)
+                if _r1_ind:
+                    _r1_use_4bar = bool(getattr(config, 'R1_USE_DC_4BAR', True))
+                    _r1_low_field = 'dc_low4_3m' if _r1_use_4bar else 'dc_low_3m'
+                    _r1_high_field = 'dc_high4_3m' if _r1_use_4bar else 'dc_high_3m'
+                    _r1_dc_low = safe_fetch_float(_r1_ind.get(_r1_low_field), 0)
+                    _r1_dc_high = safe_fetch_float(_r1_ind.get(_r1_high_field), 0)
+                    _r1_is_long = (position_side == 'LONG')
+                    _r1_breached = (
+                        (_r1_is_long and _r1_dc_low > 0 and current_price <= _r1_dc_low) or
+                        ((not _r1_is_long) and _r1_dc_high > 0 and current_price >= _r1_dc_high)
+                    )
+                    if _r1_breached:
+                        _r1_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        _r1_close_side = 'SELL' if _r1_is_long else 'BUY'
+                        _r1_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                        _r1_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
+                        _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
+                        _r1_level = _r1_dc_low if _r1_is_long else _r1_dc_high
+                        logger.error(f"⛔ [R1_DC_LOW4_3M_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m (<={_r1_window}m) price={current_price:.6f} {'<=' if _r1_is_long else '>='} {_r1_low_field if _r1_is_long else _r1_high_field}={_r1_level:.6f} entry={_r1_entry_sig[:40]} → CLOSE")
+                        try:
+                            import ez_alert
+                            ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_DC_LOW4_3M_EMERGENCY_4bar={_r1_use_4bar}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
+                        except Exception as _r1_alert_err:
+                            logger.warning(f"[R1_ALERT_ERR] {position_key}: {_r1_alert_err}")
+                        try:
+                            await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_r1_amt, side=_r1_close_side, position_side=position_side, quantity=_r1_amt, old_price=current_price, unique_id=f"R1_DC_LOW4_3M_{int(time.time())}", reason=f"R1_DC_LOW4_3M_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", is_full_close=True, action='CLOSE')
+                            trade_manager.processing_keys.discard(position_key)
+                            return f"{EvalStatus.ACTION_TAKEN}:R1_DC_LOW4_3M_EMERGENCY_CLOSED"
+                        except Exception as _r1_err:
+                            logger.error(f"⛔ [R1_DC_LOW4_3M_ERR] {position_key}: {_r1_err}")
+        except Exception as _r1_outer:
+            logger.debug(f"[R1_DC_LOW4_3M] {position_key} probe err: {_r1_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-08, tightened 2026-05-09).
+    # Trigger (per TF in R2_TF_LIST):
+    #   floor <= gain < band  (default 0.01 .. 0.50 — "approaching 0 from above"), AND
+    #   wt_velocity_<TF> opposes position, AND
+    #   ( |vel| < |vel_prev| * WT_VEL_DECEL_RATIO  (DYNAMIC slowdown — not fixed)
+    #     OR (legacy) |vel| ≤ WT_15M_VEL_NEAR_ZERO_THRESHOLD when WT_VEL_USE_DECEL_RATIO_ONLY=False )
+    # Closes at current price (≥ floor → positive net of commissions).
+    # Tradier mirrors with R2_TF_LIST=('1h','4h','D') per user 2026-05-09.
     # ═══════════════════════════════════════════════════════════════════════════
     if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
        bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
         try:
             _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+            _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.50))
+            _wzg_floor = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
             _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
-            # ONE-SIDED: gain < band fires on slight profit OR any loss (loss-bypass intent).
-            if _wzg_gain < _wzg_band:
+            _wzg_decel_ratio = float(getattr(config, 'WT_VEL_DECEL_RATIO', 0.5))
+            _wzg_decel_only = bool(getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
+            _wzg_tfs = tuple(getattr(config, 'R2_TF_LIST', ('15m',)) or ('15m',))
+            if _wzg_floor <= _wzg_gain < _wzg_band:
                 _wzg_ind = await ii(trade_manager, symbol)
                 if _wzg_ind:
-                    _wzg_vel = safe_fetch_float(_wzg_ind.get('wt_velocity_15m'), 0)
-                    _wzg_vel_prev = safe_fetch_float(_wzg_ind.get('wt_velocity_15m_prev', _wzg_ind.get('wt_velocity_15m')), 0)
                     _wzg_is_long = (position_side == 'LONG')
-                    _wzg_against = (_wzg_is_long and _wzg_vel < 0) or ((not _wzg_is_long) and _wzg_vel > 0)
-                    _wzg_decel = abs(_wzg_vel) < abs(_wzg_vel_prev) and abs(_wzg_vel_prev) > 1e-6
-                    _wzg_dying = abs(_wzg_vel) <= _wzg_near_zero
-                    if _wzg_against and (_wzg_dying or _wzg_decel):
+                    _wzg_fired_tf = None
+                    _wzg_vel = 0.0
+                    _wzg_vel_prev = 0.0
+                    _wzg_tag = ''
+                    for _wzg_tf in _wzg_tfs:
+                        _v = safe_fetch_float(_wzg_ind.get(f'wt_velocity_{_wzg_tf}'), 0)
+                        _vp = safe_fetch_float(_wzg_ind.get(f'wt_velocity_{_wzg_tf}_prev', _v), 0)
+                        _against = (_wzg_is_long and _v < 0) or ((not _wzg_is_long) and _v > 0)
+                        _decel = abs(_v) < abs(_vp) * _wzg_decel_ratio and abs(_vp) > 1e-6
+                        _dying = (not _wzg_decel_only) and abs(_v) <= _wzg_near_zero
+                        if _against and (_decel or _dying):
+                            _wzg_fired_tf, _wzg_vel, _wzg_vel_prev = _wzg_tf, _v, _vp
+                            _wzg_tag = 'DECEL' if _decel else 'DYING'
+                            break
+                    if _wzg_fired_tf:
                         _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                         _wzg_close_side = 'SELL' if _wzg_is_long else 'BUY'
-                        _wzg_tag = "DYING" if _wzg_dying else "DECEL"
-                        logger.error(f"⛔ [WT_15M_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% (<{_wzg_band}%), wt_vel_15m={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST + {_wzg_tag} → CLOSE (skip NO_LOSS, skip hedge)")
+                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
                         try:
-                            await trade_manager.execute_now(
-                                position_key=position_key, account_key=account_key, symbol=symbol,
-                                original_positionAmt=_wzg_amt, side=_wzg_close_side, position_side=position_side,
-                                quantity=_wzg_amt, old_price=current_price,
-                                unique_id=f"WT15M_VEL_SLOW_{int(time.time())}",
-                                reason=f'WT_15M_VEL_SLOW_{_wzg_tag}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}',
-                                is_full_close=True, action='CLOSE')
+                            await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_wzg_amt, side=_wzg_close_side, position_side=position_side, quantity=_wzg_amt, old_price=current_price, unique_id=f"R2_WT_VEL_SLOW_{int(time.time())}", reason=f'R2_WT_VEL_SLOW_{_wzg_tag}_{_wzg_fired_tf}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}', is_full_close=True, action='CLOSE')
                             trade_manager.processing_keys.discard(position_key)
-                            return f"{EvalStatus.ACTION_TAKEN}:WT_15M_VEL_SLOW_CLOSED"
+                            return f"{EvalStatus.ACTION_TAKEN}:R2_WT_VEL_SLOW_CLOSED_{_wzg_fired_tf}"
                         except Exception as _wzg_err:
-                            logger.error(f"⛔ [WT_15M_VEL_SLOW_ERR] {position_key}: {_wzg_err}")
+                            logger.error(f"⛔ [R2_WT_VEL_SLOW_ERR] {position_key}: {_wzg_err}")
         except Exception as _wzg_outer:
-            logger.debug(f"[WT_15M_VEL_SLOW] {position_key} probe err: {_wzg_outer}")
+            logger.debug(f"[R2_WT_VEL_SLOW] {position_key} probe err: {_wzg_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
     # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
     # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.

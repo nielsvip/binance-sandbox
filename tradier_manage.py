@@ -1325,36 +1325,79 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             return "NO_PRICE"
         is_long = (position_side == "LONG")
         # ═══════════════════════════════════════════════════════════════════════
-        # WT_15M_VEL_SLOW — loss-bypass exit (USER 2026-05-09).
-        # Companion to dc_low4 / dc_high4 loss breach: fires IMMEDIATE CLOSE
-        # before NO_LOSS / hedge / MTF.
-        #   gain < band (default 0.10 — incl. losses), AND
-        #   wt_velocity_15m sign opposes position, AND
-        #   ( |wt_velocity_15m| ≤ near_zero_threshold (≤0.1)
-        #     OR |wt_velocity_15m| < |wt_velocity_15m_prev| (decelerating) )
+        # R1 — DC_LOW4 EMERGENCY CLOSE (USER 2026-05-09, stocks mirror).
+        # Fires within R1_NEWBORN_WINDOW_MIN of open if price breaks the configured
+        # 5m DC channel level. Bypasses NO_LOSS / hedge / MTF. Desktop alert + JSONL.
+        # ═══════════════════════════════════════════════════════════════════════
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+           bool(getattr(config, 'R1_DC_LOW4_3M_EMERGENCY_ENABLED', True)):
+            try:
+                _r1_window = float(getattr(config, 'R1_NEWBORN_WINDOW_MIN', 15.0))
+                _r1_opened = getattr(position, 'opened_at', None)
+                _r1_age_min = 999.0
+                if isinstance(_r1_opened, datetime):
+                    _r1_age_min = (datetime.now(timezone.utc) - _r1_opened).total_seconds() / 60.0
+                if _r1_age_min <= _r1_window:
+                    _r1_use_4bar = bool(getattr(config, 'R1_USE_DC_4BAR', True))
+                    _r1_low_field = 'dc_low4_5m' if _r1_use_4bar else 'dc_low_5m'
+                    _r1_high_field = 'dc_high4_5m' if _r1_use_4bar else 'dc_high_5m'
+                    _r1_dc_low = safe_fetch_float(i.get(_r1_low_field), 0)
+                    _r1_dc_high = safe_fetch_float(i.get(_r1_high_field), 0)
+                    _r1_breached = (
+                        (is_long and _r1_dc_low > 0 and current_price <= _r1_dc_low) or
+                        ((not is_long) and _r1_dc_high > 0 and current_price >= _r1_dc_high)
+                    )
+                    if _r1_breached:
+                        _r1_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                        _r1_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
+                        _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
+                        _r1_level = _r1_dc_low if is_long else _r1_dc_high
+                        logger.error(f"⛔ [R1_DC_LOW4_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.4f} {'<=' if is_long else '>='} {(_r1_low_field if is_long else _r1_high_field)}={_r1_level:.4f} entry={str(_r1_entry_sig)[:40]} → CLOSE")
+                        try:
+                            import ez_alert
+                            ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_DC_LOW4_EMERGENCY_4bar={_r1_use_4bar}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
+                        except Exception as _r1_alert_err:
+                            logger.warning(f"[R1_ALERT_ERR] {position_key}: {_r1_alert_err}")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"R1_DC_LOW4_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", 100.0, override_qty=999999)
+                        return f"R1_DC_LOW4_EMERGENCY_CLOSED"
+            except Exception as _r1_err:
+                logger.debug(f"[R1_DC_LOW4] {position_key} err: {_r1_err}")
+        # ═══════════════════════════════════════════════════════════════════════
+        # R2 — WT_VEL_SLOW near-breakeven exit (USER 2026-05-09, stocks mirror).
+        # Stocks use HTFs (default 1h/4h/D) per user — markets closed most of day,
+        # real moves happen on D/W. floor <= gain < band, |vel| < |vel_prev|*ratio.
         # ═══════════════════════════════════════════════════════════════════════
         if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
            bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
             try:
                 _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.50))
+                _wzg_floor = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
                 _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
-                if _wzg_gain < _wzg_band:
-                    _wzg_vel = safe_fetch_float(i.get('wt_velocity_15m'), 0)
-                    _wzg_vel_prev = safe_fetch_float(i.get('wt_velocity_15m_prev', i.get('wt_velocity_15m')), 0)
-                    _wzg_against = (is_long and _wzg_vel < 0) or ((not is_long) and _wzg_vel > 0)
-                    _wzg_decel = abs(_wzg_vel) < abs(_wzg_vel_prev) and abs(_wzg_vel_prev) > 1e-6
-                    _wzg_dying = abs(_wzg_vel) <= _wzg_near_zero
-                    if _wzg_against and (_wzg_dying or _wzg_decel):
-                        _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
-                        _wzg_tag = "DYING" if _wzg_dying else "DECEL"
-                        logger.error(f"⛔ [WT_15M_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% (<{_wzg_band}%), wt_vel_15m={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST + {_wzg_tag} → CLOSE (skip NO_LOSS, skip hedge)")
-                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE",
-                            f"WT_15M_VEL_SLOW_{_wzg_tag}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}",
-                            100.0, override_qty=999999)
-                        return f"WT_15M_VEL_SLOW_CLOSED:{_wzg_tag}"
+                _wzg_decel_ratio = float(getattr(config, 'WT_VEL_DECEL_RATIO', 0.5))
+                _wzg_decel_only = bool(getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
+                _wzg_tfs = tuple(getattr(config, 'R2_TF_LIST', ('1h', '4h', 'D')) or ('1h', '4h', 'D'))
+                if _wzg_floor <= _wzg_gain < _wzg_band:
+                    _wzg_fired_tf = None
+                    _wzg_vel = 0.0
+                    _wzg_vel_prev = 0.0
+                    _wzg_tag = ''
+                    for _wzg_tf in _wzg_tfs:
+                        _v = safe_fetch_float(i.get(f'wt_velocity_{_wzg_tf}'), 0)
+                        _vp = safe_fetch_float(i.get(f'wt_velocity_{_wzg_tf}_prev', _v), 0)
+                        _against = (is_long and _v < 0) or ((not is_long) and _v > 0)
+                        _decel = abs(_v) < abs(_vp) * _wzg_decel_ratio and abs(_vp) > 1e-6
+                        _dying = (not _wzg_decel_only) and abs(_v) <= _wzg_near_zero
+                        if _against and (_decel or _dying):
+                            _wzg_fired_tf, _wzg_vel, _wzg_vel_prev = _wzg_tf, _v, _vp
+                            _wzg_tag = 'DECEL' if _decel else 'DYING'
+                            break
+                    if _wzg_fired_tf:
+                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f'R2_WT_VEL_SLOW_{_wzg_tag}_{_wzg_fired_tf}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}', 100.0, override_qty=999999)
+                        return f"R2_WT_VEL_SLOW_CLOSED:{_wzg_fired_tf}_{_wzg_tag}"
             except Exception as _wzg_err:
-                logger.debug(f"[WT_15M_VEL_SLOW] {position_key} err: {_wzg_err}")
+                logger.debug(f"[R2_WT_VEL_SLOW] {position_key} err: {_wzg_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
         market_context = await trade_manager.get_market_context(symbol)

@@ -1644,9 +1644,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Clear tracker check times so exit/entry checks run every bar
         if hasattr(tracker_manager, 'last_check_times'):
             tracker_manager.last_check_times.clear()
-        # Clear augment locks
-        if hasattr(trade_manager, 'augmented_positions'):
-            trade_manager.augmented_positions.clear()
+        # 2026-05-09 USER MANDATE: augmented_positions persists across bars until
+        # position is reduced or closed (it's per-position state, not per-bar dedup).
+        # Removed clear() so live + backtest share same persistence semantics.
+        # if hasattr(trade_manager, 'augmented_positions'):
+        #     trade_manager.augmented_positions.clear()
         if hasattr(trade_manager, '_dc_breakout_entry_cd'):
             trade_manager._dc_breakout_entry_cd.clear()
 

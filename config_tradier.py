@@ -556,8 +556,21 @@ class TradierConfig:
     #   gain < band (0.10), wt_velocity_15m sign opposes position, AND
     #   (|wt_velocity_15m| ≤ near_zero (0.1) OR |vel_now| < |vel_prev|).
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
-    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10
-    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1
+    # 2026-05-09 USER MANDATE: stocks need higher TFs (D/W rule the moves; markets closed
+    # most of the day). Sweep-test which TFs and decel-ratio actually fire on stocks.
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.50    # gain < band (upper bound)
+    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # gain >= floor (positive net of commissions)
+    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1    # legacy fixed gate
+    WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO (DYNAMIC)
+    WT_VEL_USE_DECEL_RATIO_ONLY: bool = True
+    R2_TF_LIST: tuple = ('1h', '4h', 'D')          # stocks: HTFs primary per user 2026-05-09
+    # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
+    R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # name kept for parity; tradier uses 5m TF
+    R1_NEWBORN_WINDOW_MIN: float = 15.0
+    R1_USE_DC_4BAR: bool = True                    # True=dc_low4_5m. False=dc_low_5m.
+    R1_TF: str = '5m'                              # tradier base TF
+    DUP_GUARD_GAIN_MULTIPLIER: float = 0.5
+    DUP_GUARD_USE_GAIN_GATE: bool = True
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.
