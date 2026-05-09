@@ -2402,7 +2402,7 @@ class IndicatorOrchestrator:
         self._last_dirty = utc_now()
         self.webhook_url = os.getenv("MARKET_DATA_WEBHOOK_URL")
         self.webhook_secret = os.getenv("MARKET_DATA_WEBHOOK_SECRET")
-        self.zero_allowed_keywords = ("stoch", "rsi", "mfi", "0", "zconviction")
+        self.zero_allowed_keywords = ("stoch", "rsi", "mfi", "0", "zconviction", "bar_", "candle_")
         self._timestamp_format = "%Y%m%d_%H%M%S"
         self.required_by_timeframe = self._build_required_mapping()
         self._signal_channel = REDIS_CHANNELS.get("signals_data", "signals_data")

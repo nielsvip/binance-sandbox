@@ -11714,10 +11714,10 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                            or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
                            or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
                            or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up
-                           # 2026-05-09: emergency force-close paths bypass HPO.
-                           or 'RIDICULOUS' in _hpo_reason_up or 'DUMP' in _hpo_reason_up
-                           or 'INVARIANT' in _hpo_reason_up or 'FORCE_CLOSE' in _hpo_reason_up
-                           or 'OVERSIZE' in _hpo_reason_up or 'BALANCE_FLOOR' in _hpo_reason_up)
+                           # 2026-05-09 user mandate (REVISED): RIDICULOUS / DUMP / INVARIANT do NOT
+                           # bypass. They must trigger OBLIGATORY_HEDGE attempt first. Only BALANCE_FLOOR
+                           # (out-of-funds sentinel) bypasses — that's the legit "can't hedge → close" signal.
+                           or 'BALANCE_FLOOR' in _hpo_reason_up)
             if not _hpo_bypass:
                 # 2026-05-09 BINARY HEDGE-EXISTENCE GATE (user mandate):
                 # If opposite-side position EXISTS → BLOCK close. If no opposite → ALLOW close (no % gate).

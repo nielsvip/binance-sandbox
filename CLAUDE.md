@@ -477,11 +477,58 @@ If CPU < 60% OR MEM-used < 60% of total → **launch more parallel sweeps** unti
 
 ### Watchdog files
 
-- `watchdog_sweep_s1.sh` — crypto auto-relaunch (`system_combo`, 8 syms)
-- `watchdog_sweep_s1_tradier.sh` (TODO: create) — tradier auto-relaunch (`tradier_param_hunt`, 20 syms)
-- The two watchdogs cooperate: each checks for the other's PIDs and yields workers to maintain alternation.
+- `watchdog_sweep_s1.sh` — crypto + tradier alternation (existing v15, cron `*/5`). State file `/home/niels/logs/sweep_next_mode`. Tradier-priority when both dead.
+- `watchdog_sweep_s1_tradier.sh` — tradier-only watchdog (cron `*/7`, offset to avoid race). Activated 2026-05-09. Refuses launch if crypto running. Same state file.
 
 If a sweep dies mid-run (OOM, kill, crash), do NOT just relaunch the same workers — first investigate cause AND ensure new workers fill the utilization floor + the alternation invariant.
+
+---
+
+## 📁 TOSHIBA_EXT PATH MAP — where S2 archive lives now (USER 2026-05-09)
+
+S2 was destroyed 2026-05-08 because of shitty backtesting wasting money. Its data + scripts were archived to TOSHIBA_EXT. **Do NOT bulk-sync TOSHIBA_EXT to S1** — point at it instead. Only copy specific files when S1 needs them.
+
+### Canonical layout (when drive mounted at `/Volumes/TOSHIBA_EXT/`)
+
+| Path | Purpose |
+|---|---|
+| `binance_archive/data/sweep_results/` | S2 historical sweep CSVs (1.5MB) |
+| `binance_archive/data/` | S2 data dir snapshot |
+| `binance_archive/klines_cache_tradier/` | S2 stocks klines (only if S1 missing) |
+| `binance_archive/indicator_cache/` | S2 indicator snapshots |
+| `s2_backup_20260508/binance-sandbox/` | S2's full sandbox at shutdown — scripts, configs, data, logs |
+| `s2_backup_20260508/binance-sandbox/data/sweep_results/` | S2's last-day sweep CSVs |
+| `s2_backup_20260508/binance-sandbox/data/canonical_trades/` | S2's per-trade JSONLs |
+| `s2_backup_20260508/binance-sandbox/data/hourly_reconfig/` | S2's hourly_reconfig dir |
+| `s2_backup_20260508/binance-sandbox/data/per_sym/` | S2's per-symbol agent state |
+| `sweep_results_distilled/s2_baselines/` | **THE good stocks baselines** — 21MB of canonical_tradier_*.json + CANDIDATE_s2_tradier_*.json |
+| `sweep_results_distilled/s2_autonomous_latest/` | most recent autonomous results |
+| `sweep_results_distilled/STOCKS_RECOVERY_MANUAL.md` | written 2026-05-08; honest baseline = pool_sharpe 0.5823 (114 syms, 8078 trades, 2024-01-01 start) |
+| `backtest_npz_master/` | 4.4GB master NPZs — DO NOT pull whole thing |
+
+### What S1 currently has (verified 2026-05-09)
+
+✅ `tradier_manage.py`, `config_tradier.py`, `backtest_v8_engine.py` (synced today with R1+R2 rewrite)
+✅ `backtest_v8/indicators/<TICKER>.npz` (tradier NPZs present — sweeps running)
+✅ `klines_cache_backtest/tradier/<TICKER>_5m.json`
+✅ `data/sweep_results/` (1.6GB)
+✅ `backtest_v8/sweeps/override_tradier_t1_*.json`, `override_tradier_t4_*.json`
+✅ `data/baselines_from_s2_archive/` (3 canonical_tradier_*.json baselines copied 2026-05-09)
+
+### What S1 LACKS — only fetch from TOSHIBA_EXT on demand
+
+- ~20 tradier-only experiment scripts (e.g. `_ab_stocks_matrix.py`, `phase4_htfport_tradier.py`, `validate_tradier_114.py`) — NOT pulled. Can be fetched from `s2_backup_20260508/binance-sandbox/` if a specific run needs them.
+- Active per-symbol configs for `trb`/`trc` (no `data/hourly_reconfig/{trb,trc}/active_config.json` on S1) — pull from `s2_backup_20260508/binance-sandbox/data/hourly_reconfig/{trb,trc}/` only when re-running tradier per-sym agent.
+- Older sweep CSVs prior to 2026-05-08.
+
+### Mac dashboards — auto-merge TOSHIBA_EXT when mounted
+
+- `chart_server.py` (port :5077) — `_DEFAULT_ABS_ROOTS` (line ~70) points at the actual TOSHIBA_EXT paths. Browses Stocks tab from S2 archive when drive mounted.
+- `flz_dashboard.py` (port :5057) — live trades only (`data/history/<acct>/*.jsonl`). Does NOT read TOSHIBA_EXT (live-only by design).
+
+### Rule
+
+**Don't fill S1 with logs or bulk archives.** When you need a specific S2 result, fetch the named file. When you need to compare against S2 baselines, point at TOSHIBA_EXT directly from Mac dashboards.
 
 ---
 

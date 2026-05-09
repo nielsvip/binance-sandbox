@@ -199,43 +199,83 @@ def build_trender_breakout_conditions(loaded, base_tf_minutes: int = 3):
     return C_new, lin, ret_24h, qv_24h_usd
 
 
-# Baselines from vec_validate.CRYPTO_TOP_COMBOS — pick=4 winners (no RSI per memory)
-CRYPTO_BASELINES_PICK4 = [
-    ("baseline_dc1h_dcpos15_mfi1h_smaD",   "L", ["dc_x1h", "dcpos15_lt30", "mfi1h_lt40", "sma200up_D"], [4, 8, 16]),
-    ("baseline_dc1h_dcpos15_wt1h_wt4h",    "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_4h"], [16, 32]),
-    ("baseline_dc1h_dcpos15_wt1h_wtD",     "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_D"], [16, 32]),
-    ("baseline_dc1h_mfi15_wtall3_wt1h",    "L", ["dc_x1h", "mfi15_lt40", "wt_all3", "wt_1h"], [16, 32]),
-    ("baseline_dc1h_dcpos15_mfi15_wt1h",   "L", ["dc_x1h", "dcpos15_lt30", "mfi15_lt40", "wt_1h"], [16, 32]),
+# Mean-reversion baselines (vec_validate.CRYPTO_TOP_COMBOS, translated to crypto keys).
+# Fire on DC-cross-up FROM oversold + WT/MFI confirms — bottom-fishing reversals.
+CRYPTO_BASELINES_MEANREV = [
+    ("MR1_dc1h_dcpos15_mfi1h_smaD",   "L", ["dc_x1h", "dcpos15_lt30", "mfi1h_lt40", "sma200up_1h"], [4, 8, 16]),
+    ("MR2_dc1h_dcpos15_wt1h_wt4h",    "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_4h"], [16, 32]),
+    ("MR3_dc1h_dcpos15_wt1h_wtD",     "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_D"], [16, 32]),
+    ("MR4_dc1h_mfi15_wtall3_wt1h",    "L", ["dc_x1h", "mfi15_lt40", "wt_all3", "wt_1h"], [16, 32]),
+    ("MR5_dc1h_dcpos15_mfi15_wt1h",   "L", ["dc_x1h", "dcpos15_lt30", "mfi15_lt40", "wt_1h"], [16, 32]),
 ]
+# Momentum-continuation baselines — same regime as TRENDER+BREAKOUT.
+# Fire when DC crossed UP, HTF aligned bullish, momentum building.
+CRYPTO_BASELINES_MOMENTUM = [
+    ("MOM1_dcx1h_wt2of3_smaD",        "L", ["dc_x1h", "wt_2of3", "sma200up_1h"], [16, 32, 64]),
+    ("MOM2_dcx1h_dcposup_smaD",       "L", ["dc_x1h", "mom_dcpos15_gt50", "sma200up_1h"], [16, 32, 64]),
+    ("MOM3_wtx1h_wt2of3_smaD",        "L", ["wt_x1h", "wt_2of3", "sma200up_1h"], [16, 32, 64]),
+    ("MOM4_dcx1h_mfiup_smaD_wt1h",    "L", ["dc_x1h", "mom_mfi15_gt50", "sma200up_1h", "wt_1h"], [16, 32, 64]),
+    ("MOM5_dcx4h_wtall3_smaD",        "L", ["dc_x4h", "wt_all3", "sma200up_1h"], [32, 64, 128]),
+    ("MOM6_dcx1h_bbup_smaD_wt4h",     "L", ["dc_x1h", "mom_bb15_gt70", "sma200up_1h", "wt_4h"], [16, 32]),
+]
+CRYPTO_BASELINES_PICK4 = CRYPTO_BASELINES_MEANREV  # legacy alias
 
 
 def build_extended_combos(C_new_keys):
-    """Build the full evaluation list: each baseline × {alone, +TRENDER variants, +BREAKOUT variants}."""
+    """Build evaluation list:
+      - each MR baseline alone
+      - each MOM baseline alone
+      - each MOM baseline + TRENDER (AND) — momentum + trender filter
+      - each MOM baseline + BREAKOUT (AND) — momentum + breakout filter
+      - each MR baseline OR (TRENDER|BREAKOUT) — union, see if injectors add new alpha
+      - standalone TRENDER + BREAKOUT for reference
+    """
     out = []
-    out.extend(CRYPTO_BASELINES_PICK4)  # baseline-alone for parity check
-    # Pick 1 representative TRENDER and BREAKOUT to combine (the tight defaults)
+    # All baselines alone (4-tuple → 5-tuple with op)
+    for n, s, k, h in CRYPTO_BASELINES_MEANREV: out.append((n, s, k, h, "AND"))
+    for n, s, k, h in CRYPTO_BASELINES_MOMENTUM: out.append((n, s, k, h, "AND"))
     add_keys_long = [k for k in C_new_keys if k.startswith("L_trender_") or k.startswith("L_breakout_")]
-    for name, side, base_keys, horizons in CRYPTO_BASELINES_PICK4:
+    # MOM baselines + injector (AND) — same regime, should compose
+    for name, side, base_keys, horizons in CRYPTO_BASELINES_MOMENTUM:
         for ak in add_keys_long:
-            new_name = f"{name}+{ak.replace('L_','')}"
-            out.append((new_name, side, base_keys + [ak], horizons))
-    # Standalone TRENDER + BREAKOUT (no baseline)
+            out.append((f"{name}+{ak.replace('L_','')}", side, base_keys + [ak], horizons, "AND"))
+    # MR baselines OR injector — see if injectors add NEW trades to mean-rev set
+    for name, side, base_keys, horizons in CRYPTO_BASELINES_MEANREV:
+        for ak in add_keys_long:
+            out.append((f"{name}_OR_{ak.replace('L_','')}", side, base_keys, horizons, "OR", [ak]))
+    # Standalone injectors
     for ak in add_keys_long:
-        out.append((f"alone_{ak.replace('L_','')}", "L", [ak], [4, 8, 16, 32]))
+        out.append((f"alone_{ak.replace('L_','')}", "L", [ak], [4, 8, 16, 32], "AND"))
     return out
 
 
-def evaluate_combo(C, fwd_dict, side, base_keys, horizons, min_trades=200):
-    """Returns dict of {h: score_dict} for this combo across requested horizons."""
-    # Build mask: AND of (L_/S_-prefixed) base_keys and any new injector keys
+def _resolve_mask(C, side, keys):
     mask = None
-    for k in base_keys:
-        # Prefix-aware key resolution
+    for k in keys:
         full = k if k in C else (f"{side}_{k}" if f"{side}_{k}" in C else None)
-        if full is None: return {"error": f"missing_key:{k}"}
+        if full is None: return None, f"missing_key:{k}"
         m = C[full]
         mask = m if mask is None else (mask & m)
-    if mask is None: return {"error": "no_keys"}
+    return mask, None
+
+
+def evaluate_combo(C, fwd_dict, side, base_keys, horizons, min_trades=200, op="AND", or_keys=None):
+    """Returns dict of {h: score_dict} for this combo across requested horizons.
+    op="AND": mask = AND(base_keys)
+    op="OR" : mask = AND(base_keys) | OR(or_keys)  (union of two AND-clauses)
+    """
+    base_mask, err = _resolve_mask(C, side, base_keys)
+    if err: return {"error": err}
+    if op == "OR" and or_keys:
+        # OR each or_key into the union (each or_key is single-condition mask)
+        union = base_mask.copy()
+        for k in or_keys:
+            full = k if k in C else (f"{side}_{k}" if f"{side}_{k}" in C else None)
+            if full is None: return {"error": f"missing_or_key:{k}"}
+            union = union | C[full]
+        mask = union
+    else:
+        mask = base_mask
     out = {}
     for h in horizons:
         if h not in fwd_dict: continue
@@ -289,15 +329,17 @@ def main():
 
     # Output rows
     out_rows = []
-    print(f"\n{'combo':<70} {'h':>4} {'n':>6} {'sharpe':>7} {'wr':>6} {'mean':>7} {'pf':>5}", flush=True)
-    print("─"*110, flush=True)
-    for name, side, base_keys, horizons in combos:
-        results = evaluate_combo(C, fwd, side, base_keys, horizons, args.min_trades)
-        if "error" in results:
-            continue
+    print(f"\n{'combo':<78} {'op':>4} {'h':>4} {'n':>6} {'sharpe':>7} {'wr':>6} {'mean':>7} {'pf':>5}", flush=True)
+    print("─"*120, flush=True)
+    for tup in combos:
+        # Tuple is (name, side, base_keys, horizons, op[, or_keys])
+        name, side, base_keys, horizons, op = tup[0], tup[1], tup[2], tup[3], tup[4]
+        or_keys = tup[5] if len(tup) > 5 else None
+        results = evaluate_combo(C, fwd, side, base_keys, horizons, args.min_trades, op=op, or_keys=or_keys)
+        if "error" in results: continue
         for h, r in sorted(results.items()):
-            print(f"{name:<70} {h:>4d} {r['n']:>6d} {r['sharpe']:>7.4f} {r['wr']:>5.1f}% {r['mean']*100:>6.3f}% {r['pf']:>5.2f}", flush=True)
-            out_rows.append({"name": name, "side": side, "horizon": h, **r, "n_syms": n_syms, "years": years})
+            print(f"{name:<78} {op:>4s} {h:>4d} {r['n']:>6d} {r['sharpe']:>7.4f} {r['wr']:>5.1f}% {r['mean']*100:>6.3f}% {r['pf']:>5.2f}", flush=True)
+            out_rows.append({"name": name, "side": side, "op": op, "horizon": h, **r, "n_syms": n_syms, "years": years})
 
     # Write canonical CSV via metrics_guard
     if args.out:

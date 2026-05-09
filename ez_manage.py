@@ -270,6 +270,16 @@ _ABSOLUTE_OPEN_LOCK_TTL: float = 300.0  # 2026-04-24 user directive: dedup at ex
 _ABSOLUTE_WEBHOOK_LOCK: Dict[str, float] = {}  # (account:symbol_side:orderside) → expiry
 _ABSOLUTE_WEBHOOK_TTL: float = 30.0
 _DUPLICATE_OPEN_COOLDOWN = 900.0  # seconds — HARD block on re-opening within this window (matches _AUGMENT_LOCK)
+# 2026-05-09: FOOTHOLD pile-on guard. The free-pass FOOTHOLD branch (pos<=$45) was bypassing both DUP_GUARD paths,
+# letting the system fire $10 opens once a minute when the position never grew (Finandy success-with-empty-data,
+# broker rejecting, or some other downstream silent failure). Tracks per position_key the (timestamp, pos_val) of each
+# FOOTHOLD-allow event; if 3 attempts fire within FOOTHOLD_PILEON_WINDOW and none saw position grow above min, lock
+# that key for FOOTHOLD_PILEON_LOCK seconds.
+_foothold_attempts: Dict[str, list] = {}  # position_key → list[(ts, pos_val)] within window
+_foothold_locked_until: Dict[str, float] = {}  # position_key → expiry ts when FOOTHOLD path is muted
+FOOTHOLD_PILEON_WINDOW = 300.0  # 5 min observation window
+FOOTHOLD_PILEON_MAX_ATTEMPTS = 3  # >this in window with no growth → lock
+FOOTHOLD_PILEON_LOCK = 300.0  # 5 min lock when triggered
 # ═══ CRITICAL FIX: DUPLICATE REDUCE GUARD — NEVER reduce same position twice in quick succession ═══
 _recent_reduces: Dict[str, float] = {}  # position_key → timestamp of last REDUCE execution
 _DUPLICATE_REDUCE_COOLDOWN = 15.0  # seconds — HARD block on re-reducing within this window
@@ -10985,7 +10995,23 @@ class MultiAccountTradeManager:
             _pos_val = _pos_amt * current_price if current_price > 0 else 0.0
             _min_pos_val = getattr(config, 'MIN_POSITION_SIZE', 45.0)
             if _pos_val <= _min_pos_val:
-                logger.info(f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action})")
+                # 2026-05-09 FOOTHOLD pile-on guard
+                _now = time.time()
+                _lock_until = _foothold_locked_until.get(position_key, 0.0)
+                if _now < _lock_until:
+                    logger.critical(f"🚫 [FOOTHOLD_PILEON_LOCKED] {position_key}: BLOCKED — locked for {_lock_until - _now:.0f}s (pos never grew across {FOOTHOLD_PILEON_MAX_ATTEMPTS}+ attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s). action={action}")
+                    return f"BLOCKED_FOOTHOLD_PILEON_{int(_lock_until - _now)}s"
+                _atts = _foothold_attempts.get(position_key, [])
+                _atts = [(t, v) for (t, v) in _atts if _now - t <= FOOTHOLD_PILEON_WINDOW]
+                _max_seen_pos = max([v for (_, v) in _atts], default=0.0)
+                if len(_atts) >= FOOTHOLD_PILEON_MAX_ATTEMPTS and _max_seen_pos <= _min_pos_val:
+                    _foothold_locked_until[position_key] = _now + FOOTHOLD_PILEON_LOCK
+                    _foothold_attempts.pop(position_key, None)
+                    logger.critical(f"🚫 [FOOTHOLD_PILEON_TRIGGER] {position_key}: BLOCKED + LOCKED {FOOTHOLD_PILEON_LOCK:.0f}s — {len(_atts)} attempts in {FOOTHOLD_PILEON_WINDOW:.0f}s, max_pos=${_max_seen_pos:.2f} never crossed ${_min_pos_val:.2f}. action={action}")
+                    return f"BLOCKED_FOOTHOLD_PILEON_TRIGGER_{len(_atts)}_attempts"
+                _atts.append((_now, _pos_val))
+                _foothold_attempts[position_key] = _atts
+                logger.info(f"[ENTRY_ALLOWED_FOOTHOLD] {position_key}: pos=${_pos_val:.2f} <= min=${_min_pos_val:.2f} — foothold size, allow entry (action={action}) [pileon_attempts={len(_atts)}/{FOOTHOLD_PILEON_MAX_ATTEMPTS}]")
             elif _pos_val > _min_pos_val and _gain < 3.0:
                 # ABSOLUTE: NO opens/augments/reentries/hedges on positions with gain < 3%. No exceptions.
                 if _gain < 0.0:
@@ -13406,12 +13432,12 @@ class MultiAccountTradeManager:
                                or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
                                or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
                                or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up
-                               # 2026-05-09: emergency FORCE-CLOSE paths bypass HPO.
-                               # RIDICULOUS_HOLD/LOSS, R3_HEDGE_INVARIANT_DUMP, OVERSIZE, BALANCE_FLOOR
-                               # all say "force close regardless of hedge state" — must pass through.
-                               or 'RIDICULOUS' in _hpo_reason_up or 'DUMP' in _hpo_reason_up
-                               or 'INVARIANT' in _hpo_reason_up or 'FORCE_CLOSE' in _hpo_reason_up
-                               or 'OVERSIZE' in _hpo_reason_up or 'BALANCE_FLOOR' in _hpo_reason_up)
+                               # 2026-05-09 user mandate (REVISED): RIDICULOUS_HOLD / RIDICULOUS_LOSS /
+                               # DUMP / INVARIANT do NOT bypass HPO. They MUST trigger a hedge attempt
+                               # via OBLIGATORY_HEDGE first. Only BALANCE_FLOOR (out-of-funds sentinel
+                               # from balance_floor_watchdog) bypasses — that's the legit "can't hedge
+                               # so must close" signal. RIDICULOUS_LOSS removed from bypass.
+                               or 'BALANCE_FLOOR' in _hpo_reason_up)
                 if not _hpo_bypass:
                     # 2026-05-09 BINARY HEDGE-EXISTENCE GATE (user mandate):
                     # If opposite-side position EXISTS (amt > dust) → BLOCK close (P&L is hedged, leave alone).

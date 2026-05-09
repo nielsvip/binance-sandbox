@@ -68,9 +68,16 @@ else:
 # in which case we silently skip. Add more paths via V8_EXTRA_ABS_ROOTS env var
 # (comma-separated absolute paths to dirs containing *__*.jsonl trade files).
 _DEFAULT_ABS_ROOTS = [
-    "/Volumes/toshiba_ext/binance_s2_archive/data/canonical_trades",
-    "/Volumes/toshiba_ext/binance_s2_archive/data/hourly_reconfig",
-    "/Volumes/toshiba_ext/binance_s2_archive/data/sweep_results",
+    # 2026-05-09: corrected TOSHIBA_EXT paths after S2 archive layout discovery.
+    # Old paths (binance_s2_archive/) never existed on disk — directory layout is:
+    #   /Volumes/TOSHIBA_EXT/binance_archive/{data,klines_cache,klines_cache_tradier,...}
+    #   /Volumes/TOSHIBA_EXT/s2_backup_20260508/binance-sandbox/  (S2's full sandbox snapshot)
+    #   /Volumes/TOSHIBA_EXT/sweep_results_distilled/  (202MB distilled CSVs)
+    "/Volumes/TOSHIBA_EXT/binance_archive/data/sweep_results",
+    "/Volumes/TOSHIBA_EXT/s2_backup_20260508/binance-sandbox/data/sweep_results",
+    "/Volumes/TOSHIBA_EXT/s2_backup_20260508/binance-sandbox/data/canonical_trades",
+    "/Volumes/TOSHIBA_EXT/s2_backup_20260508/binance-sandbox/data/hourly_reconfig",
+    "/Volumes/TOSHIBA_EXT/sweep_results_distilled",
 ]
 EXTRA_ABS_ROOTS_CFG = os.environ.get("V8_EXTRA_ABS_ROOTS", "").strip()
 if EXTRA_ABS_ROOTS_CFG:
