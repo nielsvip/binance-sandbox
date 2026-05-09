@@ -34,8 +34,28 @@ CRYPTO_50_SYMS = [
 ]
 
 
+# Only the NPZ fields the engine actually uses — drops memory ~75% vs loading all 150+ fields.
+NEEDED_FIELDS = (
+    "close", "close_15m", "volume_15m",
+    "stoch_k_5m", "stoch_k_15m", "stoch_k_1h", "stoch_k_4h", "stoch_k_D",
+    "mfi_5m", "mfi_15m", "mfi_1h", "mfi_4h",
+    "rsi_5m", "rsi_15m", "rsi_1h",
+    "sma_200_D", "sma_200_1h", "sma_200_15m",
+    "dc_position_15m", "dc_position_1h",
+    "bb_pct_b_15m", "bb_pct_b_1h", "bb_pct_b_4h",
+    "atr_pct_15m",
+    "wt_bullish_5m", "wt_bullish_15m", "wt_bullish_1h", "wt_bullish_4h", "wt_bullish_D",
+    "wt_cross_bull_5m", "wt_cross_bull_15m", "wt_cross_bull_1h",
+    "wt_cross_bear_5m", "wt_cross_bear_15m",
+    "stoch_crossover_5m", "stoch_crossover_15m", "stoch_crossover_1h",
+    "stoch_crossunder_5m", "stoch_crossunder_15m",
+    "dc_basis_crossover_5m", "dc_basis_crossover_15m", "dc_basis_crossover_1h", "dc_basis_crossover_4h",
+    "dc_basis_crossunder_15m", "dc_basis_crossunder_1h",
+)
+
+
 def load_filtered(npz_dir: Path, symbols: list, max_bars: int, min_bars: int = 5000):
-    """Load NPZ only for the given symbols, truncated to max_bars from the tail."""
+    """Load NPZ only for the given symbols, only NEEDED_FIELDS, truncated to max_bars from the tail."""
     loaded = {}
     skipped = []
     for sym in symbols:
@@ -43,21 +63,24 @@ def load_filtered(npz_dir: Path, symbols: list, max_bars: int, min_bars: int = 5
         if not f.exists():
             skipped.append(f"{sym}:missing"); continue
         try:
-            z = dict(np.load(str(f), allow_pickle=True))
+            with np.load(str(f), allow_pickle=True) as raw:
+                # Only pull NEEDED_FIELDS — major memory win at scale
+                if "close" not in raw.files: skipped.append(f"{sym}:no_close"); continue
+                n = len(raw["close"])
+                if n < min_bars: skipped.append(f"{sym}:short({n})"); continue
+                start = max(0, n - max_bars) if max_bars and n > max_bars else 0
+                z = {}
+                for k in NEEDED_FIELDS:
+                    if k in raw.files:
+                        arr = raw[k]
+                        if hasattr(arr, "shape") and arr.shape and arr.shape[0] == n:
+                            z[k] = np.array(arr[start:], copy=True, dtype=arr.dtype)
+                        else:
+                            z[k] = arr
         except Exception as e:
             skipped.append(f"{sym}:bad({e.__class__.__name__})"); continue
-        if "close" not in z: skipped.append(f"{sym}:no_close"); continue
-        n = len(z["close"])
-        if n < min_bars: skipped.append(f"{sym}:short({n})"); continue
-        # Truncate tail-to-max_bars per file
-        if n > max_bars:
-            for k in list(z.keys()):
-                arr = z[k]
-                if hasattr(arr, "shape") and arr.shape and arr.shape[0] == n:
-                    z[k] = arr[-max_bars:]
         loaded[sym] = z
     if not loaded: return loaded, 0, skipped
-    # Align to common length (tail)
     min_len = min(len(z["close"]) for z in loaded.values())
     for sym, z in loaded.items():
         n = len(z["close"])
