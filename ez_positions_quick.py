@@ -5051,12 +5051,31 @@ class HedgeEngine:
             # ═══ 2026-04-26 USER RULE — gain must be ACTIVELY DETERIORATING (sweep-testable) ═══
             # Prevents "wrong moment" hedge: a position that's flat-lining at -0.3% does not need a hedge.
             # Only hedge when gain is dropping (cur < prev - delta_pp). Knob: HEDGE_DETERIORATING_GAIN_DELTA_PP.
-            if bool(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_ENABLED', True)):
+            # 2026-05-09 USER MANDATE: this gate is BYPASSED when wt1_3m AND wt1_1h are both against —
+            # the 2-TF-against signal IS the hedge trigger and supersedes "is dropping right now".
+            # SKY at -17% for 11 days flat would never satisfy deteriorating gain on its own.
+            _peek_3m_against = False
+            _peek_1h_against = False
+            try:
+                _peek_ind = self.data_manager._cold_data.get(position_key.split(':')[1].replace('_LONG','').replace('_SHORT',''), {}) if self.data_manager else {}
+                _peek_w1_3m = safe_fetch_float(_peek_ind.get('wt1_3m'), 0)
+                _peek_w2_3m = safe_fetch_float(_peek_ind.get('wt2_3m'), 0)
+                _peek_w1_1h = safe_fetch_float(_peek_ind.get('wt1_1h'), 0)
+                _peek_w2_1h = safe_fetch_float(_peek_ind.get('wt2_1h'), 0)
+                _peek_is_long = position_key.endswith('_LONG')
+                _peek_3m_against = (_peek_is_long and _peek_w1_3m < _peek_w2_3m) or (not _peek_is_long and _peek_w1_3m > _peek_w2_3m)
+                _peek_1h_against = (_peek_is_long and _peek_w1_1h < _peek_w2_1h) or (not _peek_is_long and _peek_w1_1h > _peek_w2_1h)
+            except Exception:
+                pass
+            _user_trigger_active = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', True)) and _peek_3m_against and _peek_1h_against
+            if bool(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_ENABLED', True)) and not _user_trigger_active:
                 _det_prev = safe_fetch_float(getattr(pos, 'prev_gain', pnl_pct), pnl_pct)
                 _det_delta = float(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', 0.10))
                 if pnl_pct >= _det_prev - _det_delta:
-                    logger.info(f"[HEDGE_NOT_DETERIORATING] {position_key}: gain={pnl_pct:.2f}% prev={_det_prev:.2f}% drop={_det_prev - pnl_pct:.2f}pp < {_det_delta:.2f}pp — skip")
+                    logger.info(f"[HEDGE_NOT_DETERIORATING] {position_key}: gain={pnl_pct:.2f}% prev={_det_prev:.2f}% drop={_det_prev - pnl_pct:.2f}pp < {_det_delta:.2f}pp — skip (wt_3m_against={_peek_3m_against} wt_1h_against={_peek_1h_against})")
                     continue
+            if _user_trigger_active:
+                logger.warning(f"🚨 [HEDGE_USER_TRIGGER] {position_key}: gain={pnl_pct:.2f}% wt1_3m AND wt1_1h BOTH against — bypassing deteriorating-gain gate")
             symbol = position_key.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
             # ═══ 2026-04-16: NEWBORN GRACE — don't hedge positions < N min old ═══
             # Exception: if price has breached DC support (long) / resistance (short), break grace
@@ -5119,14 +5138,23 @@ class HedgeEngine:
             _15m_against = (is_long and _wt1_15m < _wt2_15m) or (not is_long and _wt1_15m > _wt2_15m)
             _3m_against = (is_long and _wt1_3m < _wt2_3m) or (not is_long and _wt1_3m > _wt2_3m)
             _1h_against = (is_long and _wt1_1h < _wt2_1h) or (not is_long and _wt1_1h > _wt2_1h)
+            # User mandate 2026-05-09: wt1_3m AND wt1_1h against = OBLIGATORY hedge trigger (highest priority).
+            # When HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H=True (default), this is the ONLY trigger.
+            # Falls back to legacy HEDGE_TRIGGER_USE_WT_3M_ALONE / 15m-OR-(3m+1h) when user trigger disabled.
+            _require_3m_and_1h = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', True))
             _use_3m_alone = bool(getattr(self.config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
-            if _use_3m_alone:
+            if _require_3m_and_1h:
+                _wt_against_origin = _3m_against and _1h_against
+                _trigger_label = "3m_AND_1h"
+            elif _use_3m_alone:
                 _wt_against_origin = _3m_against
+                _trigger_label = "3m_alone"
             else:
                 _wt_against_origin = _15m_against or (_3m_against and _1h_against)
+                _trigger_label = "15m_OR_3m_AND_1h"
             if not _wt_against_origin:
                 continue
-            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} use_3m_alone={_use_3m_alone} → hedge trigger")
+            logger.info(f"[HEDGE_WT_TRIGGER] {position_key}: 15m={_15m_against} 3m={_3m_against} 1h={_1h_against} mode={_trigger_label} → hedge trigger")
             # Check if already hedged (same-symbol position exists)
             losing_side = 'LONG' if is_long else 'SHORT'
             hedge_side = 'SHORT' if is_long else 'LONG'
@@ -5152,7 +5180,7 @@ class HedgeEngine:
                         logger.info(f"[HEDGE_TRADEABLE_BYPASS] {_same_hedge_key}: added to tradeable_position_keys for same-symbol hedge open")
                     except Exception as _tk_e:
                         logger.debug(f"[HEDGE_TRADEABLE_BYPASS_ERR] {_same_hedge_key}: {_tk_e}")
-                logger.warning(f"🛡️[HEDGE_OPEN] {position_key}: pnl={pnl_pct:.2f}% wt15m against (wt1={_wt1_15m:.1f} wt2={_wt2_15m:.1f}) — SAME-SYMBOL {_hss_pct*100:.0f}% hedge ({hedge_qty} {symbol})")
+                logger.warning(f"🛡️[HEDGE_OPEN] {position_key}: pnl={pnl_pct:.2f}% wt mode={_trigger_label} (3m={_3m_against} 15m={_15m_against} 1h={_1h_against}) — SAME-SYMBOL {_hss_pct*100:.0f}% hedge ({hedge_qty} {symbol})")
                 # 2026-04-26: stamp dedup dicts BEFORE awaiting execute, so a parallel scan
                 # within the same tick cannot also fire. Both gates (debounce + symbol lock + completed lockout)
                 # checked at top of loop; setting all three here makes them effective immediately.
@@ -5165,7 +5193,41 @@ class HedgeEngine:
                     logger.warning(f"🔒 [HEDGE_SYMBOL_LOCK_SET] {account_key}:{_sym_for_lock}: locked for new hedges until both sides flat")
                 except Exception as _le:
                     logger.debug(f"[HEDGE_SYMBOL_LOCK_SET_ERR] {position_key}: {_le}")
-                await self.execute_same_symbol_hedge(account_key, pos, symbol, losing_side, hedge_qty, mark_price)
+                # 2026-05-09 USER MANDATE: synchronous hedge attempt + HEDGE_FAILED fallback close.
+                # If execute_same_symbol_hedge returns False (couldn't open hedge for ANY reason),
+                # close the losing position immediately with reason that bypasses NOLOSS gate.
+                _hedge_result = False
+                try:
+                    _hedge_result = await self.execute_same_symbol_hedge(account_key, pos, symbol, losing_side, hedge_qty, mark_price)
+                except Exception as _hg_e:
+                    logger.critical(f"💥 [SCAN_HEDGE_CRASH] {position_key}: {type(_hg_e).__name__}: {_hg_e}", exc_info=True)
+                    _hedge_result = False
+                if not bool(_hedge_result) and bool(getattr(self.config, 'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED', True)):
+                    # Hedge could not be taken — close the losing position to bypass NOLOSS.
+                    # Per-position cooldown via _hedge_completed/_scan_hedge_debounce already set above
+                    # (they apply to BOTH future hedge attempts AND this fallback close → one attempt per cycle).
+                    logger.critical(f"☠️ [HEDGE_FAILED_FALLBACK_CLOSE] {position_key}: hedge could not be opened (result={_hedge_result}) — closing losing position to bypass NOLOSS (gain={pnl_pct:.2f}%)")
+                    _close_side = 'SELL' if is_long else 'BUY'
+                    _close_qty = qty
+                    _close_reason = f"HEDGE_FAILED_FALLBACK_CLOSE_g{pnl_pct:.2f}%_wt3m={_3m_against}_wt1h={_1h_against}"
+                    try:
+                        _close_res = await self.trade_manager.execute_now(
+                            position_key=position_key,
+                            account_key=account_key,
+                            symbol=symbol,
+                            original_positionAmt=qty,
+                            side=_close_side,
+                            position_side=losing_side,
+                            quantity=_close_qty,
+                            old_price=mark_price,
+                            reason=_close_reason,
+                            is_full_close=True,
+                            action='CLOSE',
+                            is_hedge=False,
+                        )
+                        logger.warning(f"🏁 [HEDGE_FAILED_FALLBACK_CLOSE_RESULT] {position_key}: {_close_res}")
+                    except Exception as _ce:
+                        logger.critical(f"💥 [HEDGE_FAILED_FALLBACK_CLOSE_CRASH] {position_key}: {type(_ce).__name__}: {_ce}", exc_info=True)
             # KILLED 2026-04-07: Was opening BOTH same-symbol AND cross-symbol = double hedge. ONE only.
 
     async def _manage_hedge_for_position(self, account_key, losing_key, losing_pos, losing_qty, current_price, pnl_pct, tracker_data):
@@ -18382,22 +18444,41 @@ async def main(account_key_filter: Optional[str] = None) -> None:
         all_background_tasks['breathing_hedge'] = asyncio.create_task(hedge_engine.breathing_hedge_scan(stop_event))
         if getattr(config, 'HEDGE_MODE', False):
             all_background_tasks['hedge_monitoring'] = asyncio.create_task(hedge_monitoring_loop())
-        # OBLIGATORY HEDGE SCANNER — PERMANENTLY DISABLED 2026-03-30
-        # Caused 83+ position cascade across ALL accounts. NEVER RE-ENABLE.
-        # async def obligatory_hedge_loop():
-        #     logger.warning(f"[OBLIGATORY_HEDGE_LOOP] RE-ENABLED 2026-04-18: R6 gain-heuristic bug fixed + inf back in HEDGE_ACCOUNTS + daily cap resets on wt_flip close. Cascade guards: tracker_consultation + _already_has_hedge + HEDGE_NEWBORN_GRACE prevent re-hedging hedges.")
-        #     while not stop_event.is_set():
-        #         try:
-        #             await asyncio.sleep(90)
-        #             for ak in allowed_accounts:
-        #                 if ak in getattr(config, 'HEDGE_ACCOUNTS', []):
-        #                     await hedge_engine.scan_and_hedge_losers(ak)
-        #         except asyncio.CancelledError: break
-        #         except Exception as e:
-        #             logger.error(f"[OBLIGATORY_HEDGE_LOOP] Error: {e}")
-        #             import traceback; logger.error(traceback.format_exc())
-        #             await asyncio.sleep(30)
-        # all_background_tasks['obligatory_hedge'] = asyncio.create_task(obligatory_hedge_loop())
+        # ═══ OBLIGATORY HEDGE OR CLOSE LOOP (re-enabled 2026-05-09) ═══
+        # USER MANDATE: positions sitting in loss with wt1_3m AND wt1_1h against MUST take a 100%
+        # same-symbol hedge. If the hedge cannot be opened for ANY reason → close the losing
+        # position immediately, OVERRIDING NOLOSS (HEDGE_FAILED bypass already wired).
+        #
+        # Cascade safety vs the 2026-03-30 incident (15,378 rogue opens in one day):
+        #   - scan_and_hedge_losers has all original cascade guards: _hedge_completed (1h lockout),
+        #     _hedge_in_flight, _scan_hedge_debounce, _symbol_hedge_active, tracker consultation,
+        #     "is hedge itself" check, "hedge already exists" check.
+        #   - Plus new guards: WT 3m AND 1h required (HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H=True),
+        #     deteriorating-gain bypass only on user-trigger, sync await + fallback-close on failure.
+        #   - ONE attempt per loser per debounce window. ONE close attempt per loser per window.
+        #   - Master kill switch: OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED.
+        async def obligatory_hedge_or_close_loop():
+            _enabled = bool(getattr(config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED', True))
+            _interval = float(getattr(config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS', 60.0))
+            if not _enabled:
+                logger.warning("[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] DISABLED via OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED=False — losing positions will NOT be auto-hedged or auto-closed.")
+                return
+            logger.critical(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] STARTED. interval={_interval}s. Trigger: wt1_3m AND wt1_1h against. On hedge-fail: HEDGE_FAILED_FALLBACK_CLOSE.")
+            while not stop_event.is_set():
+                try:
+                    await asyncio.sleep(_interval)
+                    for ak in allowed_accounts:
+                        if ak in getattr(config, 'HEDGE_ACCOUNTS', []):
+                            try:
+                                await hedge_engine.scan_and_hedge_losers(ak)
+                            except Exception as _se:
+                                logger.error(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP][{ak}] scan error: {_se}", exc_info=True)
+                except asyncio.CancelledError: break
+                except Exception as e:
+                    logger.error(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] Error: {e}")
+                    import traceback; logger.error(traceback.format_exc())
+                    await asyncio.sleep(30)
+        all_background_tasks['obligatory_hedge_or_close'] = asyncio.create_task(obligatory_hedge_or_close_loop())
         if not getattr(config, 'HEDGE_MODE', False):
             logger.info("[HEDGE] HEDGE_MODE=False — full hedge engine DISABLED. Obligatory hedge scanner is ACTIVE.")
         all_background_tasks['sentiment_manager'] = asyncio.create_task(sentiment_manager.run_loop(stop_event)) 

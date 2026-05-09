@@ -1275,6 +1275,16 @@ class Config:
     OBLIGATORY_HEDGE_WT_USE_15M: bool = False            # redundant with 3m+1h
     OBLIGATORY_HEDGE_WT_USE_1H: bool = True              # HTF confirmation
     OBLIGATORY_HEDGE_WT_TFS_REQUIRED: int = 0            # 2026-04-27 USER: hedge ENTRY = gain<0 only (no WT confirmation needed). Same-symbol same-qty hedge → effective delta = 0 → deep loss is irrelevant. Was 2 (required wt 2/2 against). Set 0 to fire hedge unconditionally on gain<0 trigger. Per `feedback_hedge_k_wt_3m_1h_gate.md`: "hedge ENTRY = gain<0 only".
+    # ═══ OBLIGATORY HEDGE OR CLOSE — USER MANDATE 2026-05-09 ═══
+    # ⚠️ DEATH PENALTY — DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    # Re-enables periodic scan_and_hedge_losers loop with proper cascade guards. Trigger:
+    # wt1_3m AND wt1_1h against the trade direction → MUST take 100% same-symbol hedge.
+    # If hedge cannot be opened for ANY reason → close losing position immediately, OVERRIDING NOLOSS.
+    # SKY.USDT incident 2026-05-09: -17% for 11 days, no hedge, no close — exact failure mode this fixes.
+    OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = True              # master switch for the periodic loop
+    OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = True                  # USER MANDATE: trigger requires BOTH wt_3m AND wt_1h against
+    HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
     # MOVEUSDT bled from +1.26% peak to -13% because HTF_EXIT_VETO blocked breakeven exit.

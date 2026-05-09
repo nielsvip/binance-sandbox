@@ -14210,11 +14210,11 @@ class MultiAccountTradeManager:
                             pass
                         else:
                             logger.critical(f"🛑 [UNIVERSAL_NOLOSS_GATE][{account_key}] {position_key}: Blocking {action} ({reason[:80]}) at REAL loss ({_real_gain:.2f}%). Wait for recovery to 0% or structural shift.")
-                            # ═══ OBLIGATORY HEDGE — sacred rule (2026-04-17) ═══
-                            # User: "Every short (or long v.v.) with wt1_3m>wt2_3m HAS TO HEDGE. Forever."
-                            # Triggered here because UNIVERSAL_NOLOSS_GATE just blocked the close at loss.
-                            # Multi-TF WT gate: 3m+1h both against (tested 60d → 47% precision, +359% PnL).
-                            # Tracker-consultation guards live in execute_dual_hedge:5244-5261.
+                            # ═══ OBLIGATORY HEDGE — sacred rule (2026-04-17, hardened 2026-05-09) ═══
+                            # USER MANDATE: wt1_3m AND wt1_1h against → MUST take 100% same-symbol hedge.
+                            # If hedge fails for ANY reason → close losing position, OVERRIDING NOLOSS.
+                            # Synchronous: await hedge result. No fire-and-forget. No silent failures.
+                            _hedge_outcome = "skip"  # one of: success | already_covered | failed | wt_not_against | gain_too_small | disabled
                             if bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)):
                                 _oh_min_loss = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
                                 if _real_gain <= _oh_min_loss:
@@ -14236,32 +14236,56 @@ class MultiAccountTradeManager:
                                         }
                                         _oh_wt_against = 0
                                         _oh_tfs_enabled = 0
+                                        _oh_3m_against = False
+                                        _oh_1h_against = False
                                         for _tf in ('1m', '3m', '15m', '1h'):
                                             if not _oh_use[_tf]: continue
                                             _oh_tfs_enabled += 1
                                             _w1 = safe_fetch_float(_oh_ind.get(f'wt1_{_tf}'), 0)
                                             _w2 = safe_fetch_float(_oh_ind.get(f'wt2_{_tf}'), 0)
-                                            if _is_long: _oh_wt_against += int(_w1 < _w2)
-                                            else: _oh_wt_against += int(_w1 > _w2)
+                                            _ag = (_w1 < _w2) if _is_long else (_w1 > _w2)
+                                            _oh_wt_against += int(_ag)
+                                            if _tf == '3m': _oh_3m_against = bool(_ag)
+                                            elif _tf == '1h': _oh_1h_against = bool(_ag)
                                         _oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
-                                        if _oh_tfs_enabled > 0 and _oh_wt_against >= _oh_req:
+                                        # User mandate 2026-05-09: wt1_3m AND wt1_1h against = obligatory trigger.
+                                        # Override req when both are against, even if total count below configured req.
+                                        _oh_user_trigger = _oh_3m_against and _oh_1h_against
+                                        if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_req or _oh_user_trigger):
                                             _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                                             _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
-                                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m+1h) — SAME-SYMBOL hedge via execute_now")
-                                            # 2026-04-17: wrap with exception logger — bare create_task swallows errors silently.
-                                            async def _oh_hedge_wrapper(_he_ref=_he, _pk=position_key, _sym=symbol, _il=_is_long, _pa=_oh_pos_amt, _px=_oh_mark, _ak=account_key, _pos=pos):
-                                                try:
-                                                    logger.warning(f"🎬 [OBLIGATORY_HEDGE_TASK_START] {_pk}: calling execute_same_symbol_hedge")
-                                                    _r = await _he_ref.execute_same_symbol_hedge(_ak, _pos, _sym, 'LONG' if _il else 'SHORT', _pa, _px)
-                                                    logger.warning(f"🏁 [OBLIGATORY_HEDGE_TASK_END] {_pk}: result={_r}")
-                                                except Exception as _e:
-                                                    logger.critical(f"💥 [OBLIGATORY_HEDGE_TASK_CRASH] {_pk}: {type(_e).__name__}: {_e}", exc_info=True)
-                                            asyncio.create_task(_oh_hedge_wrapper())
+                                            logger.warning(f"[OBLIGATORY_HEDGE] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} (3m={_oh_3m_against} 1h={_oh_1h_against}) — SAME-SYMBOL hedge via execute_now (SYNCHRONOUS)")
+                                            try:
+                                                logger.warning(f"🎬 [OBLIGATORY_HEDGE_TASK_START] {position_key}: calling execute_same_symbol_hedge")
+                                                _r = await _he.execute_same_symbol_hedge(account_key, pos, symbol, 'LONG' if _is_long else 'SHORT', _oh_pos_amt, _oh_mark)
+                                                logger.warning(f"🏁 [OBLIGATORY_HEDGE_TASK_END] {position_key}: result={_r}")
+                                                _hedge_outcome = "success" if bool(_r) else "failed"
+                                            except Exception as _e:
+                                                logger.critical(f"💥 [OBLIGATORY_HEDGE_TASK_CRASH] {position_key}: {type(_e).__name__}: {_e}", exc_info=True)
+                                                _hedge_outcome = "failed"
                                         else:
-                                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} < {_oh_req} — WT not yet confirming reversal")
-                            if self.tracker_manager:
-                                await self.tracker_manager.set_trade_cooldown(position_key, duration=300)
-                            return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE"
+                                            logger.info(f"[OBLIGATORY_HEDGE_SKIP_WT] {position_key}: gain={_real_gain:.2f}% wt_against={_oh_wt_against}/{_oh_tfs_enabled} 3m={_oh_3m_against} 1h={_oh_1h_against} req={_oh_req} — WT not yet confirming reversal")
+                                            _hedge_outcome = "wt_not_against"
+                                    else:
+                                        _hedge_outcome = "disabled"
+                                else:
+                                    _hedge_outcome = "gain_too_small"
+                            else:
+                                _hedge_outcome = "disabled"
+                            # Decision: if hedge failed and HEDGE_FAILED_FALLBACK_CLOSE enabled → fall through to close.
+                            # Anything else (success / already_covered / wt_not_against / gain_too_small / disabled) → block close.
+                            _fallback_enabled = bool(getattr(config, 'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED', True))
+                            if _hedge_outcome == "failed" and _fallback_enabled:
+                                logger.critical(f"☠️ [HEDGE_FAILED_FALLBACK_CLOSE] {position_key}: gain={_real_gain:.2f}% — same-symbol hedge could not be opened, FALLING THROUGH to close (overrides NOLOSS via HEDGE_FAILED bypass)")
+                                # Mutate reason so the technical-bypass list ('HEDGE_FAILED' substring) matches downstream paths.
+                                reason = f"HEDGE_FAILED_FALLBACK_CLOSE_g{_real_gain:.2f}%_orig:{(reason or '')[:60]}"
+                                reason_upper = reason.upper()
+                                _ung_bypass = True
+                                # Do NOT return here — let the function continue to place the close order.
+                            else:
+                                if self.tracker_manager:
+                                    await self.tracker_manager.set_trade_cooldown(position_key, duration=300)
+                                return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE"
                     _rpk_em = position_key.split(':', 1)[1] if ':' in position_key else position_key
                     _noloss_min = safe_fetch_float(config.get_symbol_setting(account_key, _rpk_em, 'NOLOSS_MIN_PROFIT_PCT') if account_key else getattr(config, 'NOLOSS_MIN_PROFIT_PCT', 0.0), 0.0)
                     if _noloss_min > 0 and _real_gain < _noloss_min and _real_gain >= -0.01:

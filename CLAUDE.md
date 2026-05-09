@@ -585,7 +585,10 @@ S2 was destroyed 2026-05-08 because of shitty backtesting wasting money. Its dat
 
 **Config**: `config.py` (crypto), `config_tradier.py` (stocks), `symbols.json` (350+ pairs, count must match positions exactly), `.env.gpg` (API keys — do not touch)
 
-**Trade data**: `data/decisions/` JSONL per account per day.
+**Trade data — /history/ IS THE TRADE LEDGER. /decisions/ IS NOT.** (clarified 2026-05-09 after agent confused them.)
+- `data/history/<acct>/<SYMBOL>_<SIDE>.jsonl` — **LIVE TRADES**: one event per actual fill (OPEN / AUGMENT / REDUCE / CLOSE / HEDGE_*). This is the source-of-truth for "what trades happened on the live account." When auditing live trades, comparing live vs backtest, counting trade volume, etc — **read /history/.**
+- `data/decisions/decisions_<acct>_<YYYYMMDD>.jsonl` — **decision-making event log** per account per day: every entry/exit *evaluation* (whether or not it fires a trade), price ticks, signal scores, blocks, gate decisions. Most lines are NOT trades — they're "the engine looked at this position and decided HOLD" or "blocked by NOLOSS gate" etc. **Never treat /decisions/ count as trade count.**
+- `V8_RESULT_LIVE: ...` engine log lines = the backtest's IN-FLIGHT computation status (running heartbeat with `closes=N` etc). The "LIVE" in the label refers to "live during simulation," NOT "live trading account." Don't quote those numbers as if they were live-trading numbers.
 
 ---
 

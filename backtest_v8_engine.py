@@ -1204,6 +1204,41 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             return "BLOCKED_ZERO"
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-09 PARITY AUDIT: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:14140
+        # Live execute_now blocks any close-at-loss unless reason bypasses the gate.
+        # v8 crypto path was missing this — the audit found WT_EXHAUST_EXIT firing 318x
+        # on BTCUSDC_LONG over 7d (live: 0x), causing churn-trading. Port the gate so
+        # v8 crypto matches live execute_now semantics.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_red and not is_hedge:
+            _ung_active_c = bool(getattr(config, 'UNIVERSAL_NOLOSS_GATE', True))
+            if _ung_active_c:
+                _reason_up_c = (reason or '').upper()
+                _ung_bypass_c = (
+                    'LIQUIDATION' in _reason_up_c
+                    or 'RIDICULOUS_LOSS' in _reason_up_c
+                    or 'UNDERWATER_HEDGE_OR_CLOSE' in _reason_up_c
+                    or 'STRUCTURAL_RANGE_SHIFT' in _reason_up_c
+                )
+                if not _ung_bypass_c:
+                    _ung_bypass_reasons_c = getattr(config, 'UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS', []) or []
+                    for _brk_c in _ung_bypass_reasons_c:
+                        if _brk_c and _brk_c.upper() in _reason_up_c:
+                            _ung_bypass_c = True
+                            break
+                if not _ung_bypass_c:
+                    _pos_for_gain = trade_manager.positions.get(pk)
+                    if _pos_for_gain:
+                        _entry_c = float(getattr(_pos_for_gain, 'entry_price', 0) or 0)
+                        _is_long_c = (ps == 'LONG') if ps else pk.endswith('_LONG')
+                        _comm_buf_c = float(getattr(config, 'COMMISSION_BUFFER_PCT', 0.10))
+                        if _entry_c > 0 and px > 0:
+                            _real_gain_c = ((px - _entry_c) / _entry_c * 100) if _is_long_c else ((_entry_c - px) / _entry_c * 100)
+                        else:
+                            _real_gain_c = float(getattr(_pos_for_gain, 'gain', 0) or 0)
+                        if _real_gain_c < _comm_buf_c:
+                            return "BLOCKED_BY_UNIVERSAL_NOLOSS_GATE_BACKTEST_CRYPTO"
         # NEW 2026-04-26 sweep switches: entry vetoes + sizing scalars (crypto path).
         # Apply ONLY to non-reduce / non-hedge OPEN/AUGMENT/REENTRY actions. All default OFF.
         # Hedges intentionally bypass — hedge gates live in HEDGE_* config and hedge_engine.

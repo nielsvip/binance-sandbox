@@ -101,22 +101,19 @@ def build_trender_breakout_conditions(loaded, base_tf_minutes: int = 3):
     safe = np.where(c24h > 0, c24h, 1)
     ret_24h = np.where(c24h > 0, close / safe - 1.0, 0.0)
 
-    # Rolling 24h peak/trough — vectorized via stride trick
-    from numpy.lib.stride_tricks import sliding_window_view
+    # Rolling 24h peak/trough — bottleneck.move_max/move_min (in-place, ~32MB peak vs 15GB stride_tricks)
+    import bottleneck as bn
     win = bars_24h
     if T < win + 10:
-        # Too few bars — fill flat
         peak_24h = close.copy(); trough_24h = close.copy()
     else:
-        # sliding window over axis 0; result shape (T - win + 1, N, win) per axis spec
-        sw = sliding_window_view(close, window_shape=win, axis=0)
-        peak_tail = sw.max(axis=2)   # (T - win + 1, N)
-        trough_tail = sw.min(axis=2)
-        peak_24h = np.empty_like(close); trough_24h = np.empty_like(close)
-        peak_24h[:win-1] = close[:win-1]
-        trough_24h[:win-1] = close[:win-1]
-        peak_24h[win-1:] = peak_tail
-        trough_24h[win-1:] = trough_tail
+        # bn.move_max needs float64; close is float32 → cast cheaply
+        c64 = close.astype(np.float64, copy=False)
+        peak_24h = bn.move_max(c64, window=win, axis=0).astype(np.float32)   # NaN for first win-1 bars
+        trough_24h = bn.move_min(c64, window=win, axis=0).astype(np.float32)
+        # Replace NaN warmup with current close so dd ratios stay 0 there (no false signals)
+        peak_24h = np.where(np.isnan(peak_24h), close, peak_24h)
+        trough_24h = np.where(np.isnan(trough_24h), close, trough_24h)
     # DD: peak→now / peak * 100  (in PERCENT for absolute comparison)
     dd_long = np.where(peak_24h > 0, (peak_24h - close) / peak_24h, 0.0)  # decimal
     dd_short = np.where(trough_24h > 0, (close - trough_24h) / trough_24h, 0.0)
@@ -124,44 +121,51 @@ def build_trender_breakout_conditions(loaded, base_tf_minutes: int = 3):
     dd_ratio_long = np.where(ret_24h > 0.0001, dd_long / ret_24h, 1.0)
     dd_ratio_short = np.where(ret_24h < -0.0001, dd_short / np.abs(ret_24h), 1.0)
 
-    # Linearity proxy: |Pearson r| of close vs index over last 96 bars (≈ last 5h at 3m)
-    # Using the closed-form for r when x = arange(N): r = sum((y - ȳ)(x - x̄)) / sqrt(...)
+    # Linearity proxy: |Pearson r| of close vs linear index, rolling 96 bars.
+    # Closed form: r = (sum(xy) - n·x̄·ȳ) / sqrt((sum(x²) - n·x̄²) · (sum(y²) - n·ȳ²))
+    # x = arange(win) is constant per window so we can precompute x_mean and x_var.
     lin_win = min(96, T // 4)
     if T < lin_win + 10:
         lin = np.zeros_like(close)
     else:
-        sw_close = sliding_window_view(close, window_shape=lin_win, axis=0)
         x = np.arange(lin_win, dtype=np.float64)
         x_mean = x.mean(); x_dev = x - x_mean; x_var = (x_dev**2).sum()
-        y = sw_close.astype(np.float64)
-        y_mean = y.mean(axis=2, keepdims=True)
-        y_dev = y - y_mean
-        num = (y_dev * x_dev).sum(axis=2)  # (T-win+1, N)
-        denom = np.sqrt(((y_dev**2).sum(axis=2)) * x_var)
-        r = np.where(denom > 0, num / denom, 0.0)
-        lin = np.empty_like(close)
-        lin[:lin_win-1] = 0.0
-        lin[lin_win-1:] = np.abs(r)
+        # Compute rolling sums via bn (cheap O(N))
+        c64 = close.astype(np.float64, copy=False)
+        sum_y = bn.move_sum(c64, window=lin_win, axis=0)
+        sum_yy = bn.move_sum(c64**2, window=lin_win, axis=0)
+        # sum_xy needs y multiplied by current bar's x, but x is window-relative not absolute.
+        # Trick: shift the c64 array by 0..lin_win-1 and multiply by x[i], sum.
+        # Instead use the equivalence: cov(x,y) = E[xy] - E[x]E[y]; we have E[y]=sum_y/n,
+        # but E[xy] needs the within-window cross. Do it directly with a cumulative approach.
+        # For speed: compute weighted sum via convolve. ~30ms for our sizes.
+        xw = x_dev[::-1]  # reversed because convolution flips
+        from scipy.signal import fftconvolve
+        sum_xdev_ydev = np.zeros_like(c64)
+        for s in range(c64.shape[1]):
+            ys = c64[:, s]
+            ymean_roll = sum_y[:, s] / lin_win
+            # rolling y_dev (per window): we need sum of (y_t - ȳ)·x_dev[idx_in_win]
+            # = sum(y_t · x_dev) - ȳ · sum(x_dev) [latter is 0 by construction]
+            # = sum over window of y_t weighted by x_dev[t mod win]
+            # Use convolution of y with x_dev kernel
+            conv = np.convolve(ys, xw, mode="full")[lin_win - 1: lin_win - 1 + len(ys)]
+            sum_xdev_ydev[:, s] = conv
+        # variance of y in each window
+        var_y = sum_yy - (sum_y**2) / lin_win
+        denom = np.sqrt(np.maximum(var_y * x_var, 1e-20))
+        r = sum_xdev_ydev / denom
+        lin = np.where(np.isnan(r), 0.0, np.abs(r)).astype(np.float32)
 
-    # 24h quote volume USD = sum over last 96 (15m) bars of (volume_15m × close_15m_at_that_bar)
-    # We have volume_15m forward-filled to base TF — that's redundant per-base-bar. Better: use
-    # the per-bar volume_15m × close_15m_prev as an approximation. For simplicity sum over 480 base bars.
-    # close_15m exists; if not, fall back to close.
+    # 24h quote volume USD: rolling sum of (volume_15m × close_15m), divided by 5 (fwd-fill correction)
     c15m = stack_field(loaded, "close_15m", 0)
     if c15m.shape != close.shape: c15m = close
-    qv_per_bar = vol_15 * c15m
+    qv_per_bar = (vol_15 * c15m).astype(np.float64)
     if T < bars_24h + 10:
         qv_24h_usd = np.zeros_like(close)
     else:
-        sw_qv = sliding_window_view(qv_per_bar, window_shape=bars_24h, axis=0)
-        qv_24h_tail = sw_qv.sum(axis=2)
-        # Divide by 5 because volume_15m is forward-filled to base 3m bars (5 base bars per 15m bar)
-        # Actually fwd-fill duplicates the SAME 15m volume across 5 base bars. Sum over 480 bars
-        # would 5x overcount. Approximate by dividing by 5.
-        qv_24h_tail = qv_24h_tail / 5.0
-        qv_24h_usd = np.empty_like(close)
-        qv_24h_usd[:bars_24h-1] = 0.0
-        qv_24h_usd[bars_24h-1:] = qv_24h_tail
+        qv_24h_usd = (bn.move_sum(qv_per_bar, window=bars_24h, axis=0) / 5.0).astype(np.float32)
+        qv_24h_usd = np.where(np.isnan(qv_24h_usd), 0.0, qv_24h_usd)
 
     # Cross-sectional MAD outlier on ret_4h
     # At each row, median across syms (axis=1)
