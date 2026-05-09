@@ -551,6 +551,13 @@ class TradierConfig:
     # COMBINED WS_KILL+4TF=1.071 Sharpe (-1.36) — combining kill+bypass does NOT help.
     NOLOSS_BYPASS_WT_5OF5_ENABLED: bool = True  # 2026-04-25: belt-and-suspenders — even if NOLOSS sneaks back on somewhere, allow WT-against bypass.
     NOLOSS_BYPASS_WT_5OF5_MIN_TFS: int = 5  # 2026-04-27 EMERGENCY: 3/5 fires constantly during normal market noise. Restored to 5/5 — bypass only when ALL 5 WT TFs flip against position. Backup safety in case UNIVERSAL_NOLOSS_GATE leaks.
+    # 2026-05-09 USER MANDATE — WT_15M_VEL_SLOW loss-bypass exit (mirror of crypto).
+    # Fires CLOSE before NO_LOSS / hedge / MTF when:
+    #   gain < band (0.10), wt_velocity_15m sign opposes position, AND
+    #   (|wt_velocity_15m| ≤ near_zero (0.1) OR |vel_now| < |vel_prev|).
+    WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10
+    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1
     # WRONG_SIDE_ABS_KILL — stocks mirror crypto v2 (K irrelevant, divergence confirms reduced threshold).
     # 2026-04-25 rapid-grid HVC sweep (114-sym): WS_KILL_on=0.407 Sharpe (-2.03 vs baseline, 19.1% DD). CATASTROPHIC.
     # Stocks are mean-reverting — cutting on WT against destroys recovery edge. NEVER enable for tradier.

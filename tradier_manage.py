@@ -1324,6 +1324,37 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
             if force: logger.info(f"[{account_key}] SKIP {symbol}: Price is Zero.")
             return "NO_PRICE"
         is_long = (position_side == "LONG")
+        # ═══════════════════════════════════════════════════════════════════════
+        # WT_15M_VEL_SLOW — loss-bypass exit (USER 2026-05-09).
+        # Companion to dc_low4 / dc_high4 loss breach: fires IMMEDIATE CLOSE
+        # before NO_LOSS / hedge / MTF.
+        #   gain < band (default 0.10 — incl. losses), AND
+        #   wt_velocity_15m sign opposes position, AND
+        #   ( |wt_velocity_15m| ≤ near_zero_threshold (≤0.1)
+        #     OR |wt_velocity_15m| < |wt_velocity_15m_prev| (decelerating) )
+        # ═══════════════════════════════════════════════════════════════════════
+        if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+           bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
+            try:
+                _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+                _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
+                if _wzg_gain < _wzg_band:
+                    _wzg_vel = safe_fetch_float(i.get('wt_velocity_15m'), 0)
+                    _wzg_vel_prev = safe_fetch_float(i.get('wt_velocity_15m_prev', i.get('wt_velocity_15m')), 0)
+                    _wzg_against = (is_long and _wzg_vel < 0) or ((not is_long) and _wzg_vel > 0)
+                    _wzg_decel = abs(_wzg_vel) < abs(_wzg_vel_prev) and abs(_wzg_vel_prev) > 1e-6
+                    _wzg_dying = abs(_wzg_vel) <= _wzg_near_zero
+                    if _wzg_against and (_wzg_dying or _wzg_decel):
+                        _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                        _wzg_tag = "DYING" if _wzg_dying else "DECEL"
+                        logger.error(f"⛔ [WT_15M_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% (<{_wzg_band}%), wt_vel_15m={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST + {_wzg_tag} → CLOSE (skip NO_LOSS, skip hedge)")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE",
+                            f"WT_15M_VEL_SLOW_{_wzg_tag}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}",
+                            100.0, override_qty=999999)
+                        return f"WT_15M_VEL_SLOW_CLOSED:{_wzg_tag}"
+            except Exception as _wzg_err:
+                logger.debug(f"[WT_15M_VEL_SLOW] {position_key} err: {_wzg_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
         market_context = await trade_manager.get_market_context(symbol)

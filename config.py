@@ -753,11 +753,24 @@ class Config:
     # Strongest single signal — no other gate considered.
     ALL_TF_AGAINST_CLOSE_ENABLED: bool = True
     ALL_TF_AGAINST_CLOSE_COOLDOWN_SEC: float = 30.0
-    # 2026-05-08 USER MANDATE — WT_15M_VEL_SLOW_AT_ZERO_GAIN exit branch.
-    # |gain|<band AND wt_velocity_15m sign-against AND |vel_now|<|vel_prev| → CLOSE.
-    # Bypasses STRICT_NO_LOSS (gain≈0). Catches stuck-at-breakeven dying-momentum case.
+    # 2026-05-08 USER MANDATE — WT_15M_VEL_SLOW exit branch (loss-bypass companion
+    # to dc_low4_3m / dc_high4_3m breach exits). Fires immediate close BEFORE
+    # hedging logic — skips NO_LOSS, skips MTF requirements, skips cooldowns.
+    #
+    # Trigger (LONG; mirrored for SHORT):
+    #   gain < WT_15M_VEL_SLOW_GAIN_BAND_PCT (default 0.10 — fires on slight profit
+    #     OR ANY loss; "loss or not" per 2026-05-09 user spec)
+    #   AND wt_velocity_15m sign opposes position
+    #   AND (|wt_velocity_15m| <= WT_15M_VEL_NEAR_ZERO_THRESHOLD     OR
+    #        |wt_velocity_15m| < |wt_velocity_15m_prev|)
+    #     i.e., momentum is either near-zero (≤0.1) OR decelerating against us.
+    #
+    # 2026-05-09: widened band 0.05 → 0.10, added velocity-near-zero alternative.
+    # Original 0.05 + decel-only path was too narrow; positions could drift to
+    # -2% before the abs(gain)<0.05 ever fired again.
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
-    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.05  # |gain|<0.05% counts as "approximately zero"
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10  # one-sided: gain<0.10 fires (incl. losses)
+    WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1  # |wt_velocity_15m| ≤ 0.1 → "approaching 0"
     # 2026-05-08 USER MANDATE — ratio_rebalance: close OVERWEIGHT side instead of opening
     # underweight. Picks positions with smallest |wt1_15m - wt2_15m| (least conviction).
     # Set False to re-enable the old open-underweight path once system is verified.

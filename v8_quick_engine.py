@@ -3893,6 +3893,15 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     # 3m WT for single-TF flip detection (BREAKOUT exits)
     wt1_3m = _safe(npz, 'wt1_3m', n)
     wt2_3m = _safe(npz, 'wt2_3m', n)
+    # WT_15M_VEL_SLOW exit (USER 2026-05-09): paired with dc_low4/high4_3m as the
+    # ONLY MTF-bypassing exit triggers. Fires when wt_velocity_15m sign opposes
+    # the position AND (|vel|≤near_zero OR decel) AND pnl_pct < band.
+    wt_vel_15m_arr = _safe(npz, 'wt_velocity_15m', n, 0.0)
+    wt_vel_15m_prev_arr = np.roll(wt_vel_15m_arr, 1)
+    wt_vel_15m_prev_arr[0] = wt_vel_15m_arr[0]
+    _wzg_enabled = bool(getattr(cfg, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True))
+    _wzg_band = float(getattr(cfg, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+    _wzg_near_zero = float(getattr(cfg, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
 
     # ── Funding rate / OI / Multi-factor wt_dc zone fields (2026-04-28 wiring) ──
     funding_rate_arr = _safe(npz, f'funding_rate_{_ltf}', n, 0.0)
@@ -4506,6 +4515,16 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             short_rejection=short_rejection,
             cfg=cfg,
         )
+        # WT_15M_VEL_SLOW loss-bypass (USER 2026-05-09) — co-equal trigger with
+        # dc_low4/high4_3m breach. Fires before MTF / NO_LOSS / hedge.
+        if not ok_exit and _wzg_enabled and pnl_pct < _wzg_band:
+            _v15 = float(wt_vel_15m_arr[i]); _v15p = float(wt_vel_15m_prev_arr[i])
+            _v15_against = (position == "LONG" and _v15 < 0) or (position == "SHORT" and _v15 > 0)
+            _v15_decel = abs(_v15) < abs(_v15p) and abs(_v15p) > 1e-6
+            _v15_dying = abs(_v15) <= _wzg_near_zero
+            if _v15_against and (_v15_dying or _v15_decel):
+                ok_exit = True
+                _reason = (_reason or "") + ("|" if _reason else "") + ("WT15M_DYING" if _v15_dying else "WT15M_DECEL")
         # Per-entry-type panic floor + min-hold gate
         is_breakout_pos = (entry_type == "BREAKOUT")
         eff_hard_loss_pct = breakout_hard_loss_pct if is_breakout_pos else hard_loss_pct

@@ -20688,19 +20688,25 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         logger.error(f"[process_position_enter] {position_key}: CRITICAL - no valid current_price after all attempts")
         return f"{EvalStatus.NO_ACTION}:NO_PRICE"
     # ═══════════════════════════════════════════════════════════════════════════
-    # WT_15M_VEL_SLOW_AT_ZERO_GAIN — USER 2026-05-08 mandate:
-    # If gain is approximately zero (|g|<0.05%) AND wt_velocity_15m sign is AGAINST
-    # the position AND |vel_now| < |vel_prev| (decelerating against us) → CLOSE NOW.
-    # Bypasses STRICT_NO_LOSS because gain ≈ 0 (no loss being taken).
-    # Catches the "stuck at break-even with momentum dying" scenario before drift
-    # turns it into a real loss.
+    # WT_15M_VEL_SLOW — loss-bypass exit (USER 2026-05-08, widened 2026-05-09).
+    # Companion to the dc_low4_3m / dc_high4_3m loss breach: fires IMMEDIATE CLOSE
+    # before hedging, before NO_LOSS gate, before MTF — gets out at any price.
+    #
+    # Trigger:
+    #   gain < WT_15M_VEL_SLOW_GAIN_BAND_PCT (default 0.10 — "loss or not" per
+    #     user spec; fires on any non-meaningful profit including drawdown), AND
+    #   wt_velocity_15m sign opposes position, AND
+    #   ( |wt_velocity_15m| ≤ WT_15M_VEL_NEAR_ZERO_THRESHOLD  (≤0.1 = momentum dead)
+    #     OR  |wt_velocity_15m| < |wt_velocity_15m_prev|       (decelerating) )
     # ═══════════════════════════════════════════════════════════════════════════
     if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
        bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
         try:
             _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            _wzg_zero_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.05))
-            if abs(_wzg_gain) < _wzg_zero_band:
+            _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+            _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
+            # ONE-SIDED: gain < band fires on slight profit OR any loss (loss-bypass intent).
+            if _wzg_gain < _wzg_band:
                 _wzg_ind = await ii(trade_manager, symbol)
                 if _wzg_ind:
                     _wzg_vel = safe_fetch_float(_wzg_ind.get('wt_velocity_15m'), 0)
@@ -20708,24 +20714,26 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     _wzg_is_long = (position_side == 'LONG')
                     _wzg_against = (_wzg_is_long and _wzg_vel < 0) or ((not _wzg_is_long) and _wzg_vel > 0)
                     _wzg_decel = abs(_wzg_vel) < abs(_wzg_vel_prev) and abs(_wzg_vel_prev) > 1e-6
-                    if _wzg_against and _wzg_decel:
+                    _wzg_dying = abs(_wzg_vel) <= _wzg_near_zero
+                    if _wzg_against and (_wzg_dying or _wzg_decel):
                         _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                         _wzg_close_side = 'SELL' if _wzg_is_long else 'BUY'
-                        logger.error(f"⛔ [WT_15M_VEL_SLOW_AT_ZERO_GAIN] {position_key}: g={_wzg_gain:.3f}% (within ±{_wzg_zero_band}%), wt_vel_15m={_wzg_vel:.2f} (prev={_wzg_vel_prev:.2f}) AGAINST + DECELERATING → CLOSE")
+                        _wzg_tag = "DYING" if _wzg_dying else "DECEL"
+                        logger.error(f"⛔ [WT_15M_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% (<{_wzg_band}%), wt_vel_15m={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST + {_wzg_tag} → CLOSE (skip NO_LOSS, skip hedge)")
                         try:
                             await trade_manager.execute_now(
                                 position_key=position_key, account_key=account_key, symbol=symbol,
                                 original_positionAmt=_wzg_amt, side=_wzg_close_side, position_side=position_side,
                                 quantity=_wzg_amt, old_price=current_price,
-                                unique_id=f"WT15M_VEL_SLOW_ZERO_GAIN_{int(time.time())}",
-                                reason=f'WT_15M_VEL_SLOW_AT_ZERO_GAIN_g{_wzg_gain:.3f}%_vel{_wzg_vel:.2f}vs{_wzg_vel_prev:.2f}',
+                                unique_id=f"WT15M_VEL_SLOW_{int(time.time())}",
+                                reason=f'WT_15M_VEL_SLOW_{_wzg_tag}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}',
                                 is_full_close=True, action='CLOSE')
                             trade_manager.processing_keys.discard(position_key)
-                            return f"{EvalStatus.ACTION_TAKEN}:WT_15M_VEL_SLOW_AT_ZERO_GAIN_CLOSED"
+                            return f"{EvalStatus.ACTION_TAKEN}:WT_15M_VEL_SLOW_CLOSED"
                         except Exception as _wzg_err:
-                            logger.error(f"⛔ [WT_15M_VEL_SLOW_AT_ZERO_GAIN_ERR] {position_key}: {_wzg_err}")
+                            logger.error(f"⛔ [WT_15M_VEL_SLOW_ERR] {position_key}: {_wzg_err}")
         except Exception as _wzg_outer:
-            logger.debug(f"[WT_15M_VEL_SLOW_AT_ZERO_GAIN] {position_key} probe err: {_wzg_outer}")
+            logger.debug(f"[WT_15M_VEL_SLOW] {position_key} probe err: {_wzg_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
     # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
     # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.
