@@ -821,6 +821,14 @@ class Config:
     # Set False to re-enable the old open-underweight path once system is verified.
     RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY: bool = True
     RATIO_REBALANCE_MAX_CLOSES: int = 3
+    # 2026-05-09 SWEEP-EXPOSURE — knobs that were hardcoded in ez_manage.py, now config.
+    # AUGMENTED_POSITIONS_GUARD floor at ez_manage.py:12190 was `0.5 * MIN_GAIN`; tune via this mult.
+    AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5
+    # ALL_TF_AGAINST_CLOSE at ez_manage.py:20633 required ALL 5 TFs against; tune min_tfs (1..5).
+    ALL_TF_AGAINST_CLOSE_MIN_TFS: int = 5
+    # check_entry_vetting NO_STRUCT_OR_BREAKOUT at ez_manage.py:507 had no toggle.
+    # When False, the "structure_ok or dc_breakout" requirement is bypassed (entry trigger alone gates).
+    ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED: bool = True
     # User 2026-05-05 (1000LUNCUSDT): BANDAID_OFF was killing the hedge on a 15m
     # flip even while wt_3m still agreed with the hedge AND origin was still
     # losing — leaving the underlying SHORT naked at -45%. With this guard,

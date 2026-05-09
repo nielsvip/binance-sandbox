@@ -912,6 +912,78 @@ def grid_system_combo():
     # Legacy GOLDEN_RULE (dip cascade) kept for reference
     out.append(("GOLDEN_RULE_old_ON", {"GOLDEN_RULE_ENABLED": True}))
 
+    # ─────────────────────────────────────────────────────────────────────
+    # 2026-05-09 — knob expansion (each verified wired into config + live + bt engine)
+    # ─────────────────────────────────────────────────────────────────────
+    # 13. DELTA_ENTRY_MIN_TF (live=ez_manage uses for fresh entries 1..5)
+    for v in (1, 2, 3, 4, 5):
+        out.append((f"DELTA_MIN_TF_{v}", {"DELTA_ENTRY_MIN_TF": v}))
+
+    # 14. DELTA_HTF_GATE specific values (currently grid only varies engine on/off + none/any/all)
+    for g in ("none", "4h", "4h_D", "D"):
+        out.append((f"DELTA_HTF_VAL_{g}", {"DELTA_HTF_GATE": g}))
+
+    # 15. AUGMENTED_POSITIONS_GUARD floor multiplier (was hardcoded 0.5×MIN_GAIN)
+    for m in (0.25, 0.5, 0.75, 1.0):
+        out.append((f"AUGGUARD_MULT_{m}", {"AUGMENTED_POSITIONS_GUARD_FLOOR_MULT": m}))
+
+    # 16. ALL_TF_AGAINST_CLOSE_MIN_TFS (was hardcoded 5; sweep 3..5)
+    for n in (3, 4, 5):
+        out.append((f"ALL_TF_AGAINST_MIN_{n}", {"ALL_TF_AGAINST_CLOSE_MIN_TFS": n}))
+
+    # 17. ENTRY_VET — bypass vs require structure/breakout
+    out.append(("ENTRY_VET_REQ_OFF", {"ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED": False}))
+
+    # 18. REENTRY_K15M_PARTIAL_THRESHOLD (was 90; sweep 85/90/95)
+    for t in (85.0, 90.0, 95.0):
+        out.append((f"REENTRY_K15M_THR_{int(t)}", {"REENTRY_K15M_PARTIAL_THRESHOLD": t}))
+
+    # 19. DC_BB_D_BREAK_REVERSE on/off
+    out.append(("DC_BB_D_BREAK_REV_OFF", {"DC_BB_D_BREAK_REVERSE_ENABLED": False}))
+
+    # 20. PEAK_GIVEBACK_DROP_PCT (currently 0.5; sweep 0.3 to 1.0)
+    for p in (0.3, 0.5, 0.75, 1.0):
+        out.append((f"PEAK_GB_DROP_{p}", {"PEAK_GIVEBACK_DROP_PCT": p}))
+
+    # 21. WT_4H_VEL_EXIT thresholds (LONG/SHORT mirrored)
+    for v in (1.0, 2.0, 3.0):
+        out.append((f"WT4H_VEL_{v}", {"WT_4H_VEL_EXIT_LONG_VEL_MIN": -v,
+                                       "WT_4H_VEL_EXIT_SHORT_VEL_MIN": +v}))
+    out.append(("WT4H_VEL_OFF", {"WT_4H_VEL_EXIT_ENABLED": False}))
+
+    # 22. WT_15M_VEL_SLOW_AT_ZERO_GAIN (NEW exit branch from edit D 2026-05-08)
+    out.append(("WT15M_VEL_SLOW_OFF", {"WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED": False}))
+    for b in (0.02, 0.05, 0.10):
+        out.append((f"WT15M_VEL_SLOW_BAND_{b}", {"WT_15M_VEL_SLOW_GAIN_BAND_PCT": b}))
+
+    # 23. RATIO_REBALANCE behaviour — close-overweight only vs open-underweight allowed
+    out.append(("RATIO_OPEN_ALLOWED", {"RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY": False}))
+    for n in (1, 3, 5):
+        out.append((f"RATIO_MAX_CLOSES_{n}", {"RATIO_REBALANCE_MAX_CLOSES": n}))
+
+    # 24. PARABOLIC_PROTECTION thresholds (DC_BB_D_BREAK_REVERSE bypass on extreme RSI/BB)
+    for r in (60.0, 70.0, 80.0):
+        out.append((f"PARABOLIC_RSI_4H_{int(r)}", {"PARABOLIC_RSI_4H_MIN": r,
+                                                    "PARABOLIC_RSI_4H_MAX": 100.0 - r}))
+    out.append(("PARABOLIC_PROT_OFF", {"PARABOLIC_PROTECTION_ENABLED": False}))
+
+    # 25. HEDGE_BANDAID_OFF wt_3m flip requirement
+    out.append(("HEDGE_BANDAID_3M_OPT", {"HEDGE_BANDAID_OFF_REQUIRE_WT_3M_FLIP": False}))
+
+    # 26. COMMISSION_BUFFER_PCT (controls when hedge close blocks at gain<buffer)
+    for c in (0.05, 0.10, 0.15, 0.20):
+        out.append((f"COMM_BUF_{c}", {"COMMISSION_BUFFER_PCT": c}))
+
+    # 27. HEDGE_TRIGGER_LOSS_PCT_ENTRY (cross-symbol hedge open trigger)
+    for v in (-1.0, -1.5, -2.0, -3.0):
+        out.append((f"HEDGE_TRIG_LOSS_{v}", {"HEDGE_TRIGGER_LOSS_PCT_ENTRY": v}))
+
+    # 28. NOLOSS_BYPASS_WT_5OF5 (allow loss exit when ALL 5 WT TFs flip)
+    out.append(("NOLOSS_BYPASS_5OF5_ON", {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True}))
+    for n in (3, 4, 5):
+        out.append((f"NOLOSS_BYPASS_{n}OF5", {"NOLOSS_BYPASS_WT_5OF5_ENABLED": True,
+                                                "NOLOSS_BYPASS_WT_5OF5_MIN_TFS": n}))
+
     return out
 
 

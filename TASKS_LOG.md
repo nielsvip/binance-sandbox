@@ -20,6 +20,42 @@ Master record of issues, decisions, and pending edits surfaced during the fin-ac
 - New PIDs 548360/548436 (crypto) + 549060/549100 (tradier) running. Sweep banner confirms md5 fingerprints from this session's edits: ez_manage=453947ee23 / ez_positions_quick=9fb85f76bf / config=e74f1e6d56.
 - system_combo grid = 52 variants × 12 syms × 4 wk. tradier_param_hunt grid × 20 syms × 4 wk. Each variant ~3-7 min vs ~18 min on the 4-month window.
 
+## 2026-05-09 — workers restarted + grid expanded
+
+**Live workers restarted** (SIGTERM ignored, SIGKILL needed for ang/inf/flz/fin) — all 5 ez_manage + 3 tradier running new code. fin restart confirmed via banner: `[DELTA_ENGINE] Initialized: mtf=3 ez=2.5 sm=5 tz=1.5 htf=4h_D` + `[RATIO_REBALANCE] Active ratio rebalance loop started`.
+
+**3 hardcoded knobs exposed as config + wired:**
+- `AUGMENTED_POSITIONS_GUARD_FLOOR_MULT` (default 0.5) — was hardcoded `0.5 * MIN_GAIN` at ez_manage.py:12211
+- `ALL_TF_AGAINST_CLOSE_MIN_TFS` (default 5) — ez_manage.py:20842 now counts TFs against, fires if `count >= min_tfs`
+- `ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED` (default True) — ez_manage.py:507 wraps the structure/breakout pre-check
+
+**grid_system_combo() expanded from 52 → 131 variants** (verified each knob exists in config + wired in live + bt engine):
+
+| Knob block | Levels |
+|---|---|
+| 13. DELTA_ENTRY_MIN_TF | 1, 2, 3, 4, 5 |
+| 14. DELTA_HTF_GATE specific | "none", "4h", "4h_D", "D" |
+| 15. AUGMENTED_POSITIONS_GUARD_FLOOR_MULT | 0.25, 0.5, 0.75, 1.0 |
+| 16. ALL_TF_AGAINST_CLOSE_MIN_TFS | 3, 4, 5 |
+| 17. ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED off | False |
+| 18. REENTRY_K15M_PARTIAL_THRESHOLD | 85, 90, 95 |
+| 19. DC_BB_D_BREAK_REVERSE off | False |
+| 20. PEAK_GIVEBACK_DROP_PCT | 0.3, 0.5, 0.75, 1.0 |
+| 21. WT_4H_VEL_EXIT thresholds | ±1, ±2, ±3, OFF |
+| 22. WT_15M_VEL_SLOW_AT_ZERO_GAIN_BAND | 0.02, 0.05, 0.10, OFF |
+| 23. RATIO_REBALANCE behaviour | open-allowed + max_closes 1/3/5 |
+| 24. PARABOLIC_PROTECTION rsi/bb | 60, 70, 80, OFF |
+| 25. HEDGE_BANDAID_OFF wt_3m flip required | False |
+| 26. COMMISSION_BUFFER_PCT | 0.05, 0.10, 0.15, 0.20 |
+| 27. HEDGE_TRIGGER_LOSS_PCT_ENTRY | -1, -1.5, -2, -3 |
+| 28. NOLOSS_BYPASS_WT_5OF5 | ON, 3/4/5-of-5 |
+
+GOLDEN_RULE 5×5 (TF count × indicator count) is **already wired** in backtest_v8_engine.py:2963/3182 and ez_manage.py:17478. Grid covers it at lines 905-911.
+
+**S1 sweep relaunched 2026-05-09 01:43 UTC** with banner: `tier=system_combo variants=131 mode=crypto account=ang start=2026-04-09 symbols=12 workers=1`. PIDs 2563367/2563369 (crypto) + 2564236/2564252 (tradier). Variants ~3-7min on 4-week window. ~10-15 hours per full pass; watchdog respawns when complete.
+
+md5 parity (Mac=S1): ezm=`55df184e0d` / cfg=`c13f21bbf2` / bts=`3e33cc7d56`.
+
 ## NOT YET DONE — pending user direction
 
 1. **Restart live ez_manage / ez_positions_service workers** so they pick up Edits A/B/C/D-NEW. Per CLAUDE.md no auto-restart on critical-parity files. Restarting risks position-state hiccups during the swap. **User: explicitly OK to restart?**

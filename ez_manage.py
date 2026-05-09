@@ -504,7 +504,11 @@ def check_entry_vetting(indicators: Dict[str, Any], current_price: float, is_lon
         dc_breakout = dc_low_3m > 0 and dc_low_3m_ant > 0 and dc_low_3m < dc_low_3m_ant
         structure_ok = high_15m > 0 and high_15m_prev > 0 and high_15m < high_15m_prev
         trigger = wt_cross_1m == "BEAR" or wt_cross_3m == "BEAR" or (current_price < dc_low_3m and dc_low_3m > 0) or (wt1_3m < wt2_3m and k_3m < d_3m)
-    if not (structure_ok or dc_breakout): return False, f"NO_STRUCT_OR_BREAKOUT"
+    # 2026-05-09 sweep-exposure: when ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED=False the
+    # structure/breakout pre-check is bypassed (the trigger alone gates entry). Default True
+    # preserves legacy "higher-low OR fresh 3m channel expansion" requirement.
+    if bool(getattr(config, 'ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED', True)):
+        if not (structure_ok or dc_breakout): return False, f"NO_STRUCT_OR_BREAKOUT"
     if not trigger: return False, f"NO_TRIGGER"
     return True, f"VETTED_dc={dc_breakout}_struct={structure_ok}"
 
@@ -12204,7 +12208,9 @@ class MultiAccountTradeManager:
             _pos_gain = getattr(position, 'gain', 0) if position else 0
             _aug_age = (datetime.now(timezone.utc) - aug_time).total_seconds() if aug_time and isinstance(aug_time, datetime) else 0
             # 2026-04-09: use 0.5×MIN_GAIN floor so pullback augments at 1.5% pass through.
-            _apg_floor = 0.5 * getattr(config, 'MIN_GAIN', 3.0)
+            # 2026-05-09 sweep-exposure: AUGMENTED_POSITIONS_GUARD_FLOOR_MULT (default 0.5).
+            _apg_mult = float(getattr(config, 'AUGMENTED_POSITIONS_GUARD_FLOOR_MULT', 0.5))
+            _apg_floor = _apg_mult * getattr(config, 'MIN_GAIN', 3.0)
             _gain_ok = _pos_gain >= _apg_floor
             if not _gain_ok:
                 logger.critical(f"🚫🚫🚫 [AUGMENTED_POSITIONS_GUARD] {position_key}: BLOCKED — already augmented {_aug_age:.0f}s ago. gain={_pos_gain:.2f}% < {_apg_floor:.2f}% (0.5×MIN_GAIN) action={action}")
@@ -13356,6 +13362,12 @@ class MultiAccountTradeManager:
                                or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
                                or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up)
                 if not _hpo_bypass:
+                    # 2026-05-09 BINARY HEDGE-EXISTENCE GATE (user mandate):
+                    # If opposite-side position EXISTS (amt > dust) → BLOCK close (P&L is hedged, leave alone).
+                    # If NO opposite position → ALLOW close immediately (no % gate, no max_gain check).
+                    # Removed: OPPOSITE_LOSER_DEEP_LOSS_PCT / OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN / WT_3M_REQUIRE.
+                    # Hedge-FIRST attempt (auto-open hedge when missing) is upstream — if that fails to open,
+                    # there will be no opposite position here and close is permitted.
                     _hpo_other = position_key[:-len('_LONG')] + '_SHORT' if position_key.endswith('_LONG') else (position_key[:-len('_SHORT')] + '_LONG' if position_key.endswith('_SHORT') else None)
                     if _hpo_other:
                         _hpo_other_pos = None
@@ -13363,30 +13375,14 @@ class MultiAccountTradeManager:
                         except Exception: _hpo_other_pos = None
                         if _hpo_other_pos is not None:
                             _hpo_other_amt = abs(safe_fetch_float(getattr(_hpo_other_pos, 'positionAmt', 0), 0))
-                            _hpo_other_gain = safe_fetch_float(getattr(_hpo_other_pos, 'gain', 0), 0)
-                            _hpo_deep_loss = float(getattr(config, 'OPPOSITE_LOSER_DEEP_LOSS_PCT', -5.0))
-                            if _hpo_other_amt > 0.0001 and _hpo_other_gain < _hpo_deep_loss:
+                            if _hpo_other_amt > 0.0001:
+                                _hpo_other_gain = safe_fetch_float(getattr(_hpo_other_pos, 'gain', 0), 0)
                                 _hpo_cur_pos = None
                                 try: _hpo_cur_pos = self.positions.get(position_key)
                                 except Exception: _hpo_cur_pos = None
                                 _hpo_cur_gain = safe_fetch_float(getattr(_hpo_cur_pos, 'gain', 0), 0) if _hpo_cur_pos else 0.0
-                                _hpo_max_gain = float(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_MAX_GAIN', 5.0))
-                                # WT_3M agree check: this side's wt_3m must STILL agree with this side direction.
-                                _hpo_is_long = position_key.endswith('_LONG')
-                                _hpo_sym_for_ind = symbol or position_key.split(':',1)[1].rsplit('_',1)[0]
-                                _hpo_w1_3m = 0.0
-                                _hpo_w2_3m = 0.0
-                                try:
-                                    _hpo_ind = self.data_manager._cold_data.get(_hpo_sym_for_ind, {}) if hasattr(self, 'data_manager') and self.data_manager else {}
-                                    _hpo_w1_3m = safe_fetch_float(_hpo_ind.get('wt1_3m'), 0)
-                                    _hpo_w2_3m = safe_fetch_float(_hpo_ind.get('wt2_3m'), 0)
-                                except Exception: pass
-                                _hpo_3m_with = (_hpo_is_long and _hpo_w1_3m > _hpo_w2_3m) or (not _hpo_is_long and _hpo_w1_3m < _hpo_w2_3m)
-                                _hpo_require_3m = bool(getattr(config, 'OPPOSITE_LOSER_HEDGE_PROTECT_REQUIRE_WT_3M', False))
-                                _hpo_3m_check_ok = (_hpo_3m_with or _hpo_w1_3m == 0.0) if _hpo_require_3m else True
-                                if _hpo_cur_gain < _hpo_max_gain and _hpo_3m_check_ok:
-                                    logger.critical(f"🛡️ [HEDGE_PROTECT_OPPOSITE_LOSER] {position_key}: BLOCKING {action} (g={_hpo_cur_gain:.2f}% < {_hpo_max_gain:.1f}%) — opposite {_hpo_other} at {_hpo_other_gain:.2f}% < {_hpo_deep_loss:.1f}%; this side serves as de-facto hedge. wt_3m_with={_hpo_3m_with} reason={(reason or '')[:60]}")
-                                    return f"BLOCKED_HEDGE_PROTECT_OPPOSITE_LOSER_oppgain{_hpo_other_gain:.1f}_curgain{_hpo_cur_gain:.2f}"
+                                logger.critical(f"🛡️ [HEDGE_PROTECT_OPPOSITE_LOSER] {position_key}: BLOCKING {action} — opposite {_hpo_other} EXISTS (amt={_hpo_other_amt:.4f} g={_hpo_other_gain:.2f}%); this side hedges it. cur_g={_hpo_cur_gain:.2f}% reason={(reason or '')[:60]}")
+                                return f"BLOCKED_HEDGE_PROTECT_OPPOSITE_LOSER_hedge_exists_oppamt{_hpo_other_amt:.4f}"
         except Exception as _hpo_e:
             logger.warning(f"[HEDGE_PROTECT_OPPOSITE_LOSER] guard error (fail-open): {type(_hpo_e).__name__}: {_hpo_e}")
         # ═══════════════════════════════════════════════════════════════════════════
@@ -20833,14 +20829,18 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                 _at_w1_D = safe_fetch_float(_at_ind.get('wt1_D'), 0)
                 _at_w2_D = safe_fetch_float(_at_ind.get('wt2_D'), 0)
                 _at_is_long = (position_side == 'LONG')
+                # 2026-05-09 sweep-exposure: count TFs against; require >= ALL_TF_AGAINST_CLOSE_MIN_TFS.
+                # Default 5 = legacy "all 5 TFs against". Set to 3 or 4 to fire on 3-of-5 / 4-of-5.
                 if _at_is_long:
-                    _at_against = (_at_w1_3m < _at_w2_3m and _at_w1_15m < _at_w2_15m and
-                                    _at_w1_1h < _at_w2_1h and _at_w1_4h < _at_w2_4h and
-                                    _at_w1_D < _at_w2_D)
+                    _at_count = int(_at_w1_3m < _at_w2_3m) + int(_at_w1_15m < _at_w2_15m) + \
+                                 int(_at_w1_1h < _at_w2_1h) + int(_at_w1_4h < _at_w2_4h) + \
+                                 int(_at_w1_D < _at_w2_D)
                 else:
-                    _at_against = (_at_w1_3m > _at_w2_3m and _at_w1_15m > _at_w2_15m and
-                                    _at_w1_1h > _at_w2_1h and _at_w1_4h > _at_w2_4h and
-                                    _at_w1_D > _at_w2_D)
+                    _at_count = int(_at_w1_3m > _at_w2_3m) + int(_at_w1_15m > _at_w2_15m) + \
+                                 int(_at_w1_1h > _at_w2_1h) + int(_at_w1_4h > _at_w2_4h) + \
+                                 int(_at_w1_D > _at_w2_D)
+                _at_min_tfs = int(getattr(config, 'ALL_TF_AGAINST_CLOSE_MIN_TFS', 5))
+                _at_against = _at_count >= _at_min_tfs
                 if _at_against:
                     _at_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                     _at_close_side = 'SELL' if _at_is_long else 'BUY'
