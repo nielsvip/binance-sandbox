@@ -279,6 +279,8 @@ _global_per_sym_cfgs_path = Path(config.BASE_PATH) / "data" / "hourly_reconfig" 
 
 
 def _load_tradier_per_sym_cfgs(path: Path) -> dict:
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return {}
     global _tradier_per_sym_cfgs, _tradier_per_sym_cfgs_mtime
     try:
         mtime = path.stat().st_mtime
@@ -295,7 +297,10 @@ def _load_tradier_per_sym_cfgs(path: Path) -> dict:
 def _load_global_per_sym_cfgs() -> dict:
     """Load per-symbol custom overrides from data/hourly_reconfig/per_sym_active_config.json.
     Same file that ez_positions_quick._get_per_sym_overrides reads — single source of truth
-    for per-symbol settings written by per_sym_trb_profiles / per_sym_crypto_profiles / per_sym_flz8_profiles."""
+    for per-symbol settings written by per_sym_trb_profiles / per_sym_crypto_profiles / per_sym_flz8_profiles.
+    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return {}
     global _global_per_sym_cfgs, _global_per_sym_cfgs_mtime
     try:
         mtime = _global_per_sym_cfgs_path.stat().st_mtime

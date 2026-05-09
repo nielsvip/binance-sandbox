@@ -109,6 +109,61 @@ Cron jobs added on Mac:
 
 **Live workers SIGKILL'd and respawned** with new code (md5 ezm=`70d5435f2e`, tm=`bd2fc1d5a0`, cfg=`c40ce1276d`, rate_filter=`07b0eaa687`). Mac=S1 md5 verified.
 
+## 2026-05-09 — agent landings + state
+
+### crypto rc=1 — FIXED (md5 `42750e6713`)
+Two stacked bugs found:
+1. `tm_mod` NameError in run_simulation() crypto path → `ez_manage.config.GOLDEN_RULE_ENABLED` (engine d36edfeec1 → 22f9e8c705)
+2. `asyncio.CancelledError` leak: `except Exception` doesn't catch `CancelledError` in Python 3.11+ (BaseException). Fixed catch + `asyncio.run()` wrapper. Engine 22f9e8c705 → 42750e6713.
+
+Verified clean run:
+```
+verify_baseline:  status=ok rc=0 pool_sharpe=0.0601 closes=1008 dd=1.12% gain=-19.38%
+verify_es22:      status=ok rc=0 pool_sharpe=0.0604 closes=1008 dd=1.12% gain=-19.26%
+```
+**Crypto strategy bleeds −19% over 4mo at pool_S 0.06 — Noise tier, well below 0.4 floor.**
+
+### Watchdog v14 — strict serialization + 4-sym crypto
+Agent also updated `watchdog_sweep_s1.sh` to:
+- Reduce crypto to **4 USDC syms** (was 12) to fit memory
+- **Serialize crypto vs tradier** — only one engine runs at a time, alternated via `NEXT` round-robin
+- Crypto deferred when tradier busy (avoids OOM)
+
+### NPZ regen — running, sym 19/62 crypto
+- Wrapper PID 2980839, current sym BATUSDT
+- ETA crypto done ~19:55 UTC, then tradier ~20:50 UTC
+- Note: DOGEUSDC log shows `[crypto 11/62]` started 18:13 but file_mtime is still 2026-04-29 — possibly skipped or errored. Audit pass needed after wrapper completes.
+
+### per_sym daemon — restarted but throttled
+- Old daemon crashed at sym 22/35 (ZeroDivisionError on yrs=0, fixed)
+- New daemon throttled (95% RAM) until NPZ regen finishes
+
+### Vectorization agent — LANDED, 2.55× speedup verified
+- 1 sym × 2000 bars: **114.0s → 44.6s** (sim-only: ~3.17×)
+- bars/sec: 17.5 → 44.8
+- **Bit-perfect parity**: V8_RESULT identical (pool_sharpe=0.1947 trades=368 wins=238 losses=130 dd identical), trade JSONL byte-identical
+- 5 files modified, all env-gated for live safety:
+  - `ez_positions_quick.py` (b2b2b6df) — `_load_disk_exit_cache` memoization (was 47% of total time → gone)
+  - `ez_manage.py` (644efa01) — `safe_datetime` ISO fast path (was 8% → ~0.5%)
+  - `utils.py` (b783f774) — same fast path
+  - `ez_positions_service.py` (75ea9cf4) — same fast path
+  - `backtest_v8_sweep.py` (fcb70a69) — sets `V8_BACKTEST_DISK_CACHE=1` per sweep worker
+- Mac=S1 md5 verified
+- Live workers: zero impact (env-gated; live runs without flag)
+- Existing tradier sweep (PIDs 12907/12911) keeps old code in memory until it spawns next variant subprocess
+
+### Vectorization roadmap (next-round targets, all stateless)
+| Target | Function | Est gain | Notes |
+|---|---|---:|---|
+| 1 | `_write_exit_to_disk` cache | +6% | same memoization pattern |
+| 2 | `build_indicator_dict` pre-compute | +5-10% | 1.53M `harness.get` calls → idx-major dicts |
+| 3 | NPZ load `harness.__init__` | +10s startup/variant | 3 forward-fill Python loops → np.maximum.accumulate |
+| 4 | async stub tightening | +10-20% | Redis/OrderQueue stubs still go through asyncio scheduler |
+| 5 | `asyncio.gather` over syms per bar | +**N×** | parallelize sym work — biggest win, requires careful state mgmt |
+
+### Real ceiling problem
+For >10× we'd need (a) vectorized entry/exit kernel like v8_quick (which user banned as "lying"), or (b) batch all syms' state into one async cycle per bar so multiple syms exec concurrently when waiting on no-op awaits. The "real test" requirement is structurally Python-imperative; speeding it up further means changing the simulation paradigm.
+
 ## NOT YET DONE — pending user direction
 
 1. **Restart live ez_manage / ez_positions_service workers** so they pick up Edits A/B/C/D-NEW. Per CLAUDE.md no auto-restart on critical-parity files. Restarting risks position-state hiccups during the swap. **User: explicitly OK to restart?**

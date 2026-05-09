@@ -201,11 +201,11 @@ def build_trender_breakout_conditions(loaded, base_tf_minutes: int = 3):
 
 # Baselines from vec_validate.CRYPTO_TOP_COMBOS — pick=4 winners (no RSI per memory)
 CRYPTO_BASELINES_PICK4 = [
-    ("baseline_dc_dcpos_mfi1h_sma200", "L", ["dc_x1h", "dcpos_lt30", "mfi1h_lt40", "sma200up_D"], [4, 8, 16]),
-    ("baseline_dc_dcpos_wt1h_wt4h",    "L", ["dc_x1h", "dcpos_lt30", "wt_1h", "wt_4h"], [16, 32]),
-    ("baseline_dc_dcpos_wt1h_wtD",     "L", ["dc_x1h", "dcpos_lt30", "wt_1h", "wt_D"], [16, 32]),
-    ("baseline_dc_mfi15_momwt_wt1h",   "L", ["dc_x1h", "mfi15_lt40", "mom_wt_all3", "wt_1h"], [16, 32]),
-    ("baseline_dc_dcpos_mfi15_wt1h",   "L", ["dc_x1h", "dcpos_lt30", "mfi15_lt40", "wt_1h"], [16, 32]),
+    ("baseline_dc1h_dcpos15_mfi1h_smaD",   "L", ["dc_x1h", "dcpos15_lt30", "mfi1h_lt40", "sma200up_D"], [4, 8, 16]),
+    ("baseline_dc1h_dcpos15_wt1h_wt4h",    "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_4h"], [16, 32]),
+    ("baseline_dc1h_dcpos15_wt1h_wtD",     "L", ["dc_x1h", "dcpos15_lt30", "wt_1h", "wt_D"], [16, 32]),
+    ("baseline_dc1h_mfi15_wtall3_wt1h",    "L", ["dc_x1h", "mfi15_lt40", "wt_all3", "wt_1h"], [16, 32]),
+    ("baseline_dc1h_dcpos15_mfi15_wt1h",   "L", ["dc_x1h", "dcpos15_lt30", "mfi15_lt40", "wt_1h"], [16, 32]),
 ]
 
 

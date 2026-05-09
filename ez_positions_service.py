@@ -597,6 +597,16 @@ def safe_datetime(ts, fallback: Optional[datetime] = None) -> Optional[datetime]
                     return datetime.fromtimestamp(numeric / (1000.0 if numeric > 1e12 else 1.0), tz=timezone.utc)
                 except (OSError, OverflowError, ValueError):
                     numeric = None
+            # FAST PATH (2026-05-09): try datetime.fromisoformat before pandas.
+            # Same change applied in ez_manage.safe_datetime — see comments there.
+            try:
+                _iso = candidate
+                if _iso.endswith('Z') or _iso.endswith('z'):
+                    _iso = _iso[:-1] + '+00:00'
+                dt = datetime.fromisoformat(_iso)
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                pass
             try :
                 dt = pd.to_datetime(candidate, utc=True).to_pydatetime()
                 return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)

@@ -2353,6 +2353,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     except Exception as _wct_e:
         v8_logger.warning(f"[V8_FINAL] _write_chart_trades error: {_wct_e}")
 
+    # 2026-05-09 live-vs-sandbox parity audit: dump RAW per-event executed_trades
+    # (every OPEN / AUGMENT / REDUCE / CLOSE) to a JSONL file when
+    # V8_RAW_EVENTS_FILE is set. Schema: one event dict per line, fields preserved
+    # as the engine recorded them. Used by tools/live_v8_parity_diff.py to
+    # compare event-by-event against data/history/<acct>/SYM_SIDE.jsonl.
+    _raw_events_path = os.environ.get("V8_RAW_EVENTS_FILE", "")
+    if _raw_events_path:
+        try:
+            with open(_raw_events_path, "w") as _ef:
+                for _ev in executed_trades:
+                    _ef.write(json.dumps(_ev, default=str) + "\n")
+            print(f"V8_RAW_EVENTS: wrote {len(executed_trades)} events to {_raw_events_path}", flush=True)
+        except Exception as _re:
+            print(f"V8_RAW_EVENTS_ERR: {_re}", flush=True)
+
     # Now cancel queue processor.
     # 2026-05-09 fix: in Python 3.11+, asyncio.CancelledError inherits from
     # BaseException (NOT Exception), so `except Exception:` does NOT catch it.
@@ -3961,6 +3976,16 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     with open(log_path, "w") as f:
         for t in executed_trades:
             f.write(json.dumps(t, default=str) + "\n")
+    # 2026-05-09 live-vs-sandbox parity audit: also dump to V8_RAW_EVENTS_FILE if set
+    _raw_events_path = os.environ.get("V8_RAW_EVENTS_FILE", "")
+    if _raw_events_path:
+        try:
+            with open(_raw_events_path, "w") as _ef:
+                for _ev in executed_trades:
+                    _ef.write(json.dumps(_ev, default=str) + "\n")
+            print(f"V8_RAW_EVENTS: wrote {len(executed_trades)} events to {_raw_events_path}", flush=True)
+        except Exception as _re:
+            print(f"V8_RAW_EVENTS_ERR: {_re}", flush=True)
     v8_logger.info(f"\n{'='*60}\n  V8 TRADIER: {len(stores)} syms, {len(all_ts)} bars, {len(executed_trades)} trades, {elapsed:.0f}s\n  Log: {log_path}\n{'='*60}")
     print(f"V8_LOG: {log_path}")
 

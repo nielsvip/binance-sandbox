@@ -1658,7 +1658,10 @@ _btc_per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reco
 
 def _get_btc_sym_cfg(account_key: str, symbol: str, side: str, base_cfg):
     """Return a per-symbol config overlay from per_sym_active_config.json.
-    Re-reads the file only when mtime changes (thread-safe by GIL)."""
+    Re-reads the file only when mtime changes (thread-safe by GIL).
+    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return base_cfg
     if not getattr(base_cfg, "BTC_PER_SYM_CONFIG_ENABLED", True):
         return base_cfg
     global _btc_per_sym_cfgs, _btc_per_sym_cfgs_mtime
@@ -1682,7 +1685,10 @@ _per_sym_cfgs_path = Path(__file__).resolve().parent / "data" / "hourly_reconfig
 def _get_per_sym_overrides(symbol: str, side: str) -> dict:
     """Return per-sym override dict from global per_sym_active_config.json.
     Keys are QuickConfig names (ENTRY_SCORE_THRESHOLD, etc.).
-    Applies to all accounts. Re-reads only when file mtime changes."""
+    Applies to all accounts. Re-reads only when file mtime changes.
+    V8_DISABLE_PER_SYM=1 forces config defaults (live-vs-sandbox parity audit)."""
+    if os.environ.get("V8_DISABLE_PER_SYM") == "1":
+        return {}
     global _per_sym_cfgs, _per_sym_cfgs_mtime
     try:
         mtime = _per_sym_cfgs_path.stat().st_mtime
@@ -14253,12 +14259,42 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 except Exception: pass
     await asyncio.gather(*(process_single_exit(k) for k in position_keys))
 
+# ── BACKTEST FAST PATH: cache disk-exit JSON parse ─────────────────────────────
+# Live calls _load_disk_exit_cache once per ~60s scan. V8 backtest calls it once
+# per bar = 2000+/run, each parsing ~12 JSON files. Profile (2026-05-09) showed
+# 80.7s of 172s total runtime = 47% — the single biggest hotspot.
+#
+# The disk files only change when _write_exit_to_disk fires (close/reduce). In
+# the bars between writes, the result is identical. Cache it under env flag.
+#
+# Live behavior (V8_BACKTEST_DISK_CACHE != "1") is UNCHANGED: every call reads
+# disk fresh. The cache is OFF unless the engine opts in.
+_DISK_EXIT_CACHE_BACKTEST = {}  # account_key -> {"cache": dict, "dirty": bool}
+
+
+def _disk_exit_cache_invalidate(account_key: str = None) -> None:
+    """Mark cache dirty. Called by _write_exit_to_disk after any write.
+    account_key=None invalidates all (used at sweep boundaries)."""
+    if account_key is None:
+        _DISK_EXIT_CACHE_BACKTEST.clear()
+        return
+    _ent = _DISK_EXIT_CACHE_BACKTEST.get(account_key)
+    if _ent is not None:
+        _ent["dirty"] = True
+
+
 def _load_disk_exit_cache(account_key: str) -> dict:
     """Read EVERY account JSON file every cycle. Called once per account per scan (~60s).
     Covers: long/short_positions, long/short_reentry, long/short_ladder,
             long/short_stop_levels, reduced_positions, augmented_positions,
             direct_high_gain_augmented, tracker.json (entry+exit candidates).
     """
+    # Backtest fast path: return cached result unless an exit-write has dirtied it.
+    # Live path leaves V8_BACKTEST_DISK_CACHE unset → always reads fresh below.
+    if os.environ.get("V8_BACKTEST_DISK_CACHE", "0") == "1":
+        _ent = _DISK_EXIT_CACHE_BACKTEST.get(account_key)
+        if _ent is not None and not _ent.get("dirty", True):
+            return _ent["cache"]
     import json as _jmod
     cache = {}
     _acct_short = account_key.split(':')[-1] if ':' in account_key else account_key
@@ -14356,6 +14392,9 @@ def _load_disk_exit_cache(account_key: str) -> dict:
                         _put(_pk, _ep, _et)
         except Exception: pass
 
+    # Backtest fast path: store the freshly-built cache so subsequent bars reuse it.
+    if os.environ.get("V8_BACKTEST_DISK_CACHE", "0") == "1":
+        _DISK_EXIT_CACHE_BACKTEST[account_key] = {"cache": cache, "dirty": False}
     return cache
 
 
@@ -14391,6 +14430,9 @@ def _write_exit_to_disk(account_key: str, position_key: str, symbol: str, positi
                     _fdata[_pk_match]['reduction_reason'] = reason[:100]
                     _fp.write_text(_jmod.dumps(_fdata, indent=2))
             except Exception: pass
+    # Backtest fast path: writes change disk → invalidate cached read for this account.
+    if os.environ.get("V8_BACKTEST_DISK_CACHE", "0") == "1":
+        _disk_exit_cache_invalidate(account_key)
 
 
 async def check_entry_candidates_for_account(trade_manager, account_key: str, redis_manager, tracker_manager: TrackerManager, order_queue, data_manager: FastDataManager, hedge_engine: HedgeEngine=None, position_keys: List[str] = None, force: bool = False) -> None:
@@ -15067,7 +15109,8 @@ async def check_entry_candidates_for_account(trade_manager, account_key: str, re
                             _psym_est = float(_psym_ovr['ENTRY_SCORE_THRESHOLD'])
                             if _psym_est > _sig_score_min:
                                 _sig_score_min = _psym_est
-                    if (score >= _sig_score_min or "BUY" in rec or "SELL" in rec) and ('WAIT' not in str(rec) and 'HEDGE' not in str(rec)):
+                    _rec_str = str(rec) if rec is not None else ""
+                    if (score >= _sig_score_min or "BUY" in _rec_str or "SELL" in _rec_str) and ('WAIT' not in _rec_str and 'HEDGE' not in _rec_str):
                         _k1m = safe_fetch_float(indicators.get('stoch_k_1m', 50), 50)
                         _d1m = safe_fetch_float(indicators.get('stoch_d_1m', 50), 50)
                         if is_long and _k1m < _d1m:

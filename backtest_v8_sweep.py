@@ -1172,6 +1172,12 @@ def run_one_variant(args_tuple):
     env["V8_OVERRIDE_FILE"] = str(override_path)
     env["V8_SWEEP_MODE"] = "1"  # suppress per-trade logs, 10-50x speedup
     env["V8_RATE_GUARD_DISABLED"] = "1"  # rate guard fires at t=5s with 0 trades = false abort
+    # 2026-05-09: skip per-bar disk re-parse of long_positions.json / tracker.json /
+    # ladder/stop_levels JSON — cached in memory for the engine process, invalidated on
+    # any close/reduce write. Profile (S1, BTCUSDC, 2000 bars) showed _load_disk_exit_cache
+    # was 47% of runtime (80.7s/172s). With cache: full run drops 114s → 44.6s = 2.55×
+    # wall-clock speedup, identical trade list (765 lines, jq diff = 0).
+    env["V8_BACKTEST_DISK_CACHE"] = "1"
 
     t0 = time.time()
     try:

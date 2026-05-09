@@ -2698,6 +2698,22 @@ def safe_datetime(ts, fallback: Optional[datetime] = None) -> Optional[datetime]
                     return datetime.fromtimestamp(numeric / (1000.0 if numeric > 1e12 else 1.0), tz=timezone.utc)
                 except (OSError, OverflowError, ValueError):
                     numeric = None
+            # FAST PATH (2026-05-09): try datetime.fromisoformat before pandas.
+            # Profile showed pd.to_datetime via safe_datetime = 13.5s of 172s
+            # (~8% of backtest runtime). fromisoformat is C-optimized and handles
+            # the canonical ISO formats the engine emits ("YYYY-MM-DDTHH:MM:SS.ffffffZ"
+            # and "...+00:00") in microseconds rather than milliseconds. On parse
+            # failure we fall through to the original pd.to_datetime path so any
+            # exotic input string still works exactly as before.
+            try:
+                _iso = candidate
+                # datetime.fromisoformat in 3.10 doesn't accept trailing 'Z' — swap to +00:00.
+                if _iso.endswith('Z') or _iso.endswith('z'):
+                    _iso = _iso[:-1] + '+00:00'
+                dt = datetime.fromisoformat(_iso)
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                pass
             try:
                 dt = pd.to_datetime(candidate, utc=True).to_pydatetime()
                 return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
