@@ -567,6 +567,12 @@ class TradierConfig:
     WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO (DYNAMIC)
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True
     R2_TF_LIST: tuple = ('1h', '4h', 'D')          # stocks: HTFs primary per user 2026-05-09
+    # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT (mirror of crypto). Stocks
+    # don't have the same hedge engine but the rule still applies: position with
+    # 5m+1h WT against AND gain<0 AND no hedge → dump + alert. Tradier doesn't
+    # currently auto-hedge so R3 will fire as a forced-exit + alert in practice.
+    R3_HEDGE_INVARIANT_DUMP_ENABLED: bool = False  # default OFF for stocks until hedge engine exists
+    R3_GAIN_MAX_PCT: float = 0.0
     # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # name kept for parity; tradier uses 5m TF
     R1_NEWBORN_WINDOW_MIN: float = 15.0

@@ -812,6 +812,16 @@ class Config:
     WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO → "decelerating" — DYNAMIC
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True       # 2026-05-09: default ON crypto. False = legacy NEAR_ZERO OR decel.
     R2_TF_LIST: tuple = ('15m',)                   # crypto: 15m primary. Sweep tests 1h too.
+    # 2026-05-09 USER MANDATE — R3 HEDGE_INVARIANT loss-bypass dump.
+    # When wt1_3m AND wt1_1h are against a position AND gain<0 AND no hedge
+    # exists (and none is pending) → DUMP at a loss, skip NO_LOSS, skip MTF.
+    # The invariant: any losing position with both LTF (3m+1h) WT against MUST
+    # have a live hedge. If the hedge engine failed to set one up, the position
+    # is naked and bleeds — better to dump and alert root cause.
+    # Hedge presence: tracker_manager.active_hedges where hedge_for==position_key
+    # AND account match. Pending: Redis 'hedge_pending:<key>' (60s TTL).
+    R3_HEDGE_INVARIANT_DUMP_ENABLED: bool = True
+    R3_GAIN_MAX_PCT: float = 0.0  # only fires when gain < this (default 0 = any loss)
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.

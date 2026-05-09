@@ -20836,6 +20836,78 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         except Exception as _wzg_outer:
             logger.debug(f"[R2_WT_VEL_SLOW] {position_key} probe err: {_wzg_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
+    # R3 — HEDGE_INVARIANT loss-bypass dump (USER 2026-05-09).
+    # If wt1_3m AND wt1_1h are AGAINST the position AND gain<0 AND no hedge
+    # exists AND no hedge is pending → DUMP. Skips NO_LOSS, MTF, cooldowns.
+    # Fires desktop alert so the root cause (why hedge engine didn't fire) can
+    # be investigated. Hedge presence: active_hedges with hedge_for==position_key.
+    # Pending: Redis 'hedge_pending:<key>' (60s TTL set when hedge setup begins).
+    # ═══════════════════════════════════════════════════════════════════════════
+    if position and abs(safe_float(getattr(position, 'positionAmt', 0))) > 0 and \
+       bool(getattr(config, 'R3_HEDGE_INVARIANT_DUMP_ENABLED', True)):
+        try:
+            _r3_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
+            _r3_gain_max = float(getattr(config, 'R3_GAIN_MAX_PCT', 0.0))
+            if _r3_gain < _r3_gain_max:
+                _r3_ind = await ii(trade_manager, symbol)
+                if _r3_ind:
+                    _r3_w1_3m = safe_fetch_float(_r3_ind.get('wt1_3m'), 0)
+                    _r3_w2_3m = safe_fetch_float(_r3_ind.get('wt2_3m'), 0)
+                    _r3_w1_1h = safe_fetch_float(_r3_ind.get('wt1_1h'), 0)
+                    _r3_w2_1h = safe_fetch_float(_r3_ind.get('wt2_1h'), 0)
+                    _r3_is_long = (position_side == 'LONG')
+                    _r3_3m_against = (_r3_is_long and _r3_w1_3m < _r3_w2_3m) or ((not _r3_is_long) and _r3_w1_3m > _r3_w2_3m)
+                    _r3_1h_against = (_r3_is_long and _r3_w1_1h < _r3_w2_1h) or ((not _r3_is_long) and _r3_w1_1h > _r3_w2_1h)
+                    if _r3_3m_against and _r3_1h_against:
+                        # Hedge present?
+                        _r3_has_hedge = False
+                        try:
+                            _r3_tracker = getattr(trade_manager, 'tracker_manager', None)
+                            _r3_active_hedges = list(getattr(_r3_tracker, 'active_hedges', []) or []) if _r3_tracker else []
+                            for _h in _r3_active_hedges:
+                                if not isinstance(_h, dict):
+                                    continue
+                                if _h.get('hedge_for') == position_key and _h.get('account') == account_key:
+                                    _r3_has_hedge = True
+                                    break
+                                if _h.get('losing_position_key') == position_key and _h.get('account') == account_key:
+                                    _r3_has_hedge = True
+                                    break
+                        except Exception:
+                            _r3_has_hedge = False
+                        # Hedge being started? (Redis lock 'hedge_pending:<key>' 60s TTL)
+                        _r3_pending = False
+                        try:
+                            if not _r3_has_hedge and getattr(trade_manager, 'redis_manager', None):
+                                _r3_pending = bool(await trade_manager.redis_manager.get(f"hedge_pending:{position_key}"))
+                        except Exception:
+                            _r3_pending = False
+                        if not (_r3_has_hedge or _r3_pending):
+                            _r3_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                            _r3_close_side = 'SELL' if _r3_is_long else 'BUY'
+                            _r3_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
+                            _r3_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
+                            logger.critical(f"☢️ [R3_HEDGE_INVARIANT_DUMP] {position_key}: gain={_r3_gain:.2f}% wt1_3m+wt1_1h AGAINST + NO HEDGE + NO PENDING → DUMP. Active_hedges_for_acct={sum(1 for _h in _r3_active_hedges if isinstance(_h,dict) and _h.get('account')==account_key)} entry={_r3_entry_sig[:40]}")
+                            try:
+                                import ez_alert
+                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r3_gain, reason="R3_HEDGE_INVARIANT_NO_HEDGE_FOUND_root_cause_check_hedge_engine", entry_signal=str(_r3_entry_sig), entry_ts=_r3_entry_ts, current_price=current_price)
+                            except Exception as _r3_alert_err:
+                                logger.warning(f"[R3_ALERT_ERR] {position_key}: {_r3_alert_err}")
+                            try:
+                                await trade_manager.execute_now(
+                                    position_key=position_key, account_key=account_key, symbol=symbol,
+                                    original_positionAmt=_r3_amt, side=_r3_close_side, position_side=position_side,
+                                    quantity=_r3_amt, old_price=current_price,
+                                    unique_id=f"R3_HEDGE_INVARIANT_{int(time.time())}",
+                                    reason=f"R3_HEDGE_INVARIANT_DUMP_g{_r3_gain:.2f}_wt3m+1h_against_no_hedge",
+                                    is_full_close=True, action='CLOSE')
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:R3_HEDGE_INVARIANT_DUMPED"
+                            except Exception as _r3_err:
+                                logger.error(f"⛔ [R3_HEDGE_INVARIANT_ERR] {position_key}: {_r3_err}")
+        except Exception as _r3_outer:
+            logger.debug(f"[R3_HEDGE_INVARIANT] {position_key} probe err: {_r3_outer}")
+    # ═══════════════════════════════════════════════════════════════════════════
     # ALL_TF_AGAINST_CLOSE — USER 2026-05-06 mandate (strongest signal):
     # If ALL TFs (3m/15m/1h/4h/D) agree against the trade direction → CLOSE primary IMMEDIATELY.
     # The hedge (if open) becomes the new main trade — leave it running on the winning side.
