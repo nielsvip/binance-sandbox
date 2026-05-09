@@ -1031,6 +1031,178 @@ def safe_fetch_float(value, default=0.0):
     except Exception:
         return default
 
+
+async def obligatory_sector_hedge_or_close_loop(trade_manager):
+    """USER MANDATE 2026-05-09: stocks (Tradier) cannot hold both LONG+SHORT same symbol simultaneously.
+    For trb: when a position is in loss with wt1_5m AND wt1_1h against the trade direction →
+    OBLIGATORY same-SECTOR hedge (different ticker, opposite direction, same sector). If no
+    eligible mate found OR hedge order fails → close losing position with HEDGE_FAILED reason.
+
+    ⚠️ APPROXIMATION WARNING — sector beta differs across names; this is NOT perfect netting
+    like the Binance perp same-symbol hedge. Each fire is logged loudly so the user can monitor.
+    """
+    if not bool(getattr(config, 'OBLIGATORY_SECTOR_HEDGE_ENABLED', True)):
+        logger.warning("[OBLIGATORY_SECTOR_HEDGE_LOOP] DISABLED via OBLIGATORY_SECTOR_HEDGE_ENABLED=False")
+        return
+    interval = float(getattr(config, 'OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS', 90.0))
+    require_5m_1h = bool(getattr(config, 'OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H', True))
+    fallback_close_enabled = bool(getattr(config, 'HEDGE_FAILED_FALLBACK_CLOSE_ENABLED', True))
+    min_loss_pct = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.5))
+    logger.critical(f"[OBLIGATORY_SECTOR_HEDGE_LOOP] STARTED. interval={interval}s require_wt_5m_AND_1h={require_5m_1h} min_loss={min_loss_pct}% fallback_close={fallback_close_enabled}")
+    _hedge_attempts: dict = {}  # losing_pk -> last attempt ts (per-loser cooldown)
+    _COOLDOWN_S = 600.0
+    while getattr(trade_manager, 'running', False):
+        try:
+            await asyncio.sleep(interval)
+            if not is_regular_trading_hours():
+                continue
+            try:
+                from tradier_sector_ls_ratio import _load_sector_map, get_sector
+            except Exception as _ie:
+                logger.error(f"[OBLIGATORY_SECTOR_HEDGE_LOOP] sector helper import failed: {_ie}")
+                continue
+            for account_key in ('trb',):  # only trb supports stocks shorting; tra is long-only, trc is mirror
+                try:
+                    if not hasattr(trade_manager, 'position_manager') or trade_manager.position_manager is None:
+                        continue
+                    positions = trade_manager.position_manager.get_positions_by_account(account_key) or {}
+                except Exception as _pe:
+                    logger.error(f"[OBLIGATORY_SECTOR_HEDGE_LOOP][{account_key}] position fetch err: {_pe}")
+                    continue
+                for pk, pos in list(positions.items()):
+                    try:
+                        pa = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0), 0))
+                        if pa <= 0:
+                            continue
+                        gain = safe_fetch_float(getattr(pos, 'gain', 0), 0.0)
+                        if gain >= min_loss_pct:
+                            continue
+                        if (time.time() - _hedge_attempts.get(pk, 0.0)) < _COOLDOWN_S:
+                            continue
+                        symbol = getattr(pos, 'symbol', None) or pk.split(':')[1].replace('_LONG', '').replace('_SHORT', '')
+                        is_long = pk.endswith('_LONG')
+                        loser_side = 'LONG' if is_long else 'SHORT'
+                        # WT trigger gate: 5m AND 1h against
+                        ind = trade_manager.indicators_cache.get(symbol.upper(), {}) if hasattr(trade_manager, 'indicators_cache') else {}
+                        if not ind:
+                            logger.info(f"[SECTOR_HEDGE_NO_IND] {pk}: no indicators cached for {symbol} — skip cycle")
+                            continue
+                        wt1_5m = safe_fetch_float(ind.get('wt1_5m', 0), 0)
+                        wt2_5m = safe_fetch_float(ind.get('wt2_5m', 0), 0)
+                        wt1_1h = safe_fetch_float(ind.get('wt1_1h', 0), 0)
+                        wt2_1h = safe_fetch_float(ind.get('wt2_1h', 0), 0)
+                        wt_5m_against = (is_long and wt1_5m < wt2_5m) or ((not is_long) and wt1_5m > wt2_5m)
+                        wt_1h_against = (is_long and wt1_1h < wt2_1h) or ((not is_long) and wt1_1h > wt2_1h)
+                        if require_5m_1h and not (wt_5m_against and wt_1h_against):
+                            continue
+                        # Check if a hedge already exists for this loser via tracker (skip if so)
+                        # Tradier doesn't have the same active_hedges structure as crypto; rely on
+                        # mate lookup + cooldown to prevent stacking.
+                        sector = None
+                        try:
+                            sector = get_sector(symbol)
+                        except Exception:
+                            sector = None
+                        if not sector:
+                            logger.warning(f"⚠️ [SECTOR_HEDGE_NO_SECTOR] {pk}: no sector found for {symbol} — fallback close")
+                            if fallback_close_enabled:
+                                await _fire_fallback_close_trb(trade_manager, account_key, pk, f"HEDGE_FAILED_FALLBACK_CLOSE_no_sector_g{gain:.2f}%")
+                            _hedge_attempts[pk] = time.time()
+                            continue
+                        mate_side = 'SHORT' if is_long else 'LONG'  # opposite to loser
+                        sector_map = _load_sector_map() or {}
+                        mates = list(sector_map.get(sector, []))
+                        chosen_mate = None
+                        chosen_mate_pk = None
+                        for mate in mates:
+                            if not mate or mate == symbol:
+                                continue
+                            mate_pk = f"{account_key}:{mate}_{mate_side}"
+                            # Tradeable check
+                            if hasattr(trade_manager, 'tradeable_keys') and trade_manager.tradeable_keys:
+                                if mate_pk not in trade_manager.tradeable_keys:
+                                    continue
+                            # Already-open check: skip if mate side already has a position
+                            existing_mate_pos = positions.get(mate_pk)
+                            if existing_mate_pos and abs(safe_fetch_float(getattr(existing_mate_pos, 'positionAmt', 0), 0)) > 0:
+                                continue
+                            mate_ind = trade_manager.indicators_cache.get(mate.upper(), {}) if hasattr(trade_manager, 'indicators_cache') else {}
+                            if not mate_ind:
+                                continue
+                            m1_5 = safe_fetch_float(mate_ind.get('wt1_5m', 0), 0)
+                            m2_5 = safe_fetch_float(mate_ind.get('wt2_5m', 0), 0)
+                            m1_h = safe_fetch_float(mate_ind.get('wt1_1h', 0), 0)
+                            m2_h = safe_fetch_float(mate_ind.get('wt2_1h', 0), 0)
+                            mate_5_aligned = (mate_side == 'LONG' and m1_5 > m2_5) or (mate_side == 'SHORT' and m1_5 < m2_5)
+                            mate_h_aligned = (mate_side == 'LONG' and m1_h > m2_h) or (mate_side == 'SHORT' and m1_h < m2_h)
+                            if mate_5_aligned and mate_h_aligned:
+                                chosen_mate = mate
+                                chosen_mate_pk = mate_pk
+                                break
+                        if not chosen_mate:
+                            logger.warning(f"⚠️ [SECTOR_HEDGE_NO_MATE] {pk}: no eligible {mate_side} mate in sector={sector} (mates_checked={len(mates)}) — fallback close")
+                            if fallback_close_enabled:
+                                await _fire_fallback_close_trb(trade_manager, account_key, pk, f"HEDGE_FAILED_FALLBACK_CLOSE_no_mate_sector{sector}_g{gain:.2f}%")
+                            _hedge_attempts[pk] = time.time()
+                            continue
+                        # Size: same notional as loser. Need mate price for shares.
+                        mate_ind_full = trade_manager.indicators_cache.get(chosen_mate.upper(), {})
+                        mate_price = safe_fetch_float(mate_ind_full.get('current_price', 0), 0) or safe_fetch_float(mate_ind_full.get('close', 0), 0)
+                        loser_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0)
+                        if mate_price <= 0 or loser_mark <= 0:
+                            logger.warning(f"⚠️ [SECTOR_HEDGE_NO_PRICE] {pk}: missing prices loser={loser_mark} mate={chosen_mate}@{mate_price} — fallback close")
+                            if fallback_close_enabled:
+                                await _fire_fallback_close_trb(trade_manager, account_key, pk, f"HEDGE_FAILED_FALLBACK_CLOSE_no_price_g{gain:.2f}%")
+                            _hedge_attempts[pk] = time.time()
+                            continue
+                        loser_notional = pa * loser_mark
+                        # Cap to START_POSITION_SIZE × 2 to prevent runaway sizing on a deep loser
+                        _start_size = float(getattr(config, 'START_POSITION_SIZE', 600))
+                        target_notional = min(loser_notional, _start_size * 2.0)
+                        mate_qty_raw = target_notional / mate_price
+                        mate_qty = max(1, int(mate_qty_raw))
+                        logger.critical(
+                            f"⚠️ [SECTOR_HEDGE_FIRE] loser={pk} g={gain:.2f}% sector={sector} → opening {mate_side} on {chosen_mate} qty={mate_qty} (~${target_notional:.0f}). "
+                            f"⚠️ APPROXIMATION (sector beta != 1:1) — WATCH CLOSELY."
+                        )
+                        _hedge_reason = f"OBLIGATORY_SECTOR_HEDGE_for_{symbol}_{loser_side}_g{gain:.2f}%_sector={sector}_APPROX"
+                        try:
+                            _result = await queue_trade_action(
+                                trade_manager.order_queue, trade_manager, chosen_mate_pk, "OPEN",
+                                _hedge_reason, 85.0, override_qty=mate_qty,
+                            )
+                        except Exception as _qe:
+                            logger.error(f"💥 [SECTOR_HEDGE_QUEUE_CRASH] {pk}→{chosen_mate_pk}: {_qe}", exc_info=True)
+                            _result = False
+                        _hedge_attempts[pk] = time.time()
+                        if _result and (_result is True or (isinstance(_result, str) and _result.startswith('SUCCESS'))):
+                            logger.warning(f"✅ [SECTOR_HEDGE_OPENED] {pk}→{chosen_mate_pk}: hedge order queued. APPROXIMATION — monitor manually.")
+                        else:
+                            logger.critical(f"☠️ [SECTOR_HEDGE_FAILED] {pk}: hedge order on {chosen_mate_pk} failed (result={_result}) — fallback close losing position")
+                            if fallback_close_enabled:
+                                await _fire_fallback_close_trb(trade_manager, account_key, pk, f"HEDGE_FAILED_FALLBACK_CLOSE_mate{chosen_mate}_failed_g{gain:.2f}%")
+                    except Exception as _pe:
+                        logger.error(f"[SECTOR_HEDGE_PER_POS_ERR] {pk}: {_pe}", exc_info=True)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"[OBLIGATORY_SECTOR_HEDGE_LOOP] error: {e}", exc_info=True)
+            await asyncio.sleep(30)
+
+
+async def _fire_fallback_close_trb(trade_manager, account_key, position_key, reason):
+    """Force-close a losing trb position via queue_trade_action with HEDGE_FAILED_FALLBACK_CLOSE reason.
+    Reason string contains 'HEDGE_FAILED' so any UNIVERSAL_NOLOSS-style bypass that substring-matches works.
+    Uses override_qty=999999 (clamped to actual qty in execute_trade_action)."""
+    try:
+        logger.critical(f"☠️ [HEDGE_FAILED_FALLBACK_CLOSE] {position_key}: closing losing position — reason={reason}")
+        await queue_trade_action(
+            trade_manager.order_queue, trade_manager, position_key, "CLOSE",
+            reason, 100.0, override_qty=999999,
+        )
+    except Exception as _e:
+        logger.error(f"[HEDGE_FAILED_FALLBACK_CLOSE_CRASH] {position_key}: {_e}", exc_info=True)
+
 async def monitor_entries(order_queue: "OrderQueue", trade_manager, account_key: str, position_keys=None, event_type=None, is_priority_add: bool = False, force: bool = False):
     current_account.set(account_key)
     now_ts = time.time()
@@ -1515,7 +1687,7 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                     # REENTRY is REENTRY — not AUGMENT. execute_trade_action handles reclassification internally.
                     exec_action = "REENTRY"
                     _re_tagged_reason = f"REENTRY_{re_reason}" if 'REENTRY' not in re_reason.upper() else re_reason
-                    _re_queued = await queue_trade_action(
+                    _re_queued = await _dispatch_reentry_guaranteed_trd(
                         order_queue, trade_manager, position_key, exec_action,
                         _re_tagged_reason, re_conf, override_qty=re_qty
                     )
@@ -1983,7 +2155,12 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                                 log_rec = "BUDGET"; log_reason = sw_reason
                                 logger.info(f"[{account_key}] 💰 SWING BUDGET BLOCKED {symbol}: {sw_reason}")
                             elif market_open:
-                                await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                # 2026-05-09 USER MANDATE: route reentry-flavored OPENs through guaranteed dispatcher.
+                                # Fresh (non-reentry) opens use the original single-shot dispatch.
+                                if 'REENTRY' in (reason or '').upper():
+                                    await _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
+                                else:
+                                    await queue_trade_action(order_queue, trade_manager, position_key, action_type, reason, conf, override_qty=qty)
                                 trade_manager.strategy.circuit_breaker.record_entry(position_key, current_price, reason, indicators=indicators_raw)
                                 action_taken = True
             
@@ -2101,6 +2278,46 @@ class OrderQueue:
 
         except Exception as e:
             logger.error(f"[handle_order] Critical Error: {e}",  exc_info=True )
+
+
+async def _dispatch_reentry_guaranteed_trd(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=None, max_attempts=None, backoff_s=None):
+    """USER MANDATE 2026-05-09 (mirror of crypto helper): reentry signals must NEVER be silently dropped on transient queue failure.
+    Wraps queue_trade_action with N retries + explicit logging for every attempt.
+    Returns the final result (same contract as queue_trade_action: 'SUCCESS' or False)."""
+    if not bool(getattr(config, 'REENTRY_NEVER_SKIP_ENABLED', True)):
+        return await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+    if max_attempts is None: max_attempts = int(getattr(config, 'REENTRY_DISPATCH_MAX_ATTEMPTS', 3))
+    if backoff_s is None: backoff_s = float(getattr(config, 'REENTRY_DISPATCH_BACKOFF_S', 0.4))
+    last_result = None
+    _block_substrings = ('BALANCE_FLOOR_HALT', 'OVERTRADE_GUARD', 'DAILY_LOSS_HALT', 'MAX_POS_BLOCK', 'LS_RATIO_BLOCK', 'RED_ZONE_TRADIER', 'UNMAPPED_ACTION_BLOCK', 'ALLOWLIST_BLOCK', 'OPENING_BUFFER_NO_TRADE')
+    for attempt in range(1, max_attempts + 1):
+        try:
+            last_result = await queue_trade_action(order_queue, trade_manager, position_key, action, reason, conviction, override_qty=override_qty)
+        except Exception as _re_e:
+            logger.error(f"💥 [REENTRY_DISPATCH_CRASH] {position_key} attempt={attempt}/{max_attempts}: {type(_re_e).__name__}: {_re_e}")
+            last_result = f"CRASH:{type(_re_e).__name__}"
+        if last_result and (last_result is True or (isinstance(last_result, str) and (last_result.startswith("QUEUED") or last_result.startswith("SUCCESS")))):
+            if attempt > 1:
+                logger.warning(f"✅ [REENTRY_DISPATCH_RETRY_OK] {position_key}: queued on attempt {attempt}/{max_attempts} (reason={reason[:80]})")
+            return last_result
+        # If the reason is a known HARD-BLOCK (per pre-queue gates) retrying is pointless.
+        if any(_b in (reason or '') for _b in _block_substrings):
+            logger.warning(f"⚠️ [REENTRY_DISPATCH_HARD_BLOCK] {position_key}: {reason[:120]} — not retrying (hard gate, not transient)")
+            return last_result
+        logger.warning(f"⚠️ [REENTRY_DISPATCH_TRANSIENT_FAIL] {position_key} attempt={attempt}/{max_attempts}: result={last_result} reason={reason[:80]} — retry in {backoff_s}s")
+        if attempt < max_attempts:
+            try: await asyncio.sleep(backoff_s)
+            except Exception: pass
+    logger.critical(f"☠️ [REENTRY_DISPATCH_FAILED_PERSIST] {position_key}: ALL {max_attempts} attempts failed result={last_result} reason={reason[:120]} qty={override_qty} — reentry signal NOT silently dropped, see this log line")
+    try:
+        if not hasattr(trade_manager, '_reentry_dispatch_failures'):
+            trade_manager._reentry_dispatch_failures = {}
+        trade_manager._reentry_dispatch_failures[position_key] = {
+            'ts': time.time(), 'reason': reason, 'conviction': conviction,
+            'override_qty': override_qty, 'last_result': last_result, 'attempts': max_attempts,
+        }
+    except Exception: pass
+    return last_result
 
 
 async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_key: str, action: str, reason: str, conviction: float = 50.0, override_qty: float = None):
@@ -13098,6 +13315,8 @@ class TradierTradeManager:
         self.background_tasks.append(asyncio.create_task(tradier_capital_reallocation_loop(self)))
         self.background_tasks.append(asyncio.create_task(self.copilot_bridge_loop()))
         self.background_tasks.append(asyncio.create_task(self.reentry_monitor_loop()))
+        # 2026-05-09 USER MANDATE: trb obligatory sector hedge / fallback close. Approximate hedge — monitor.
+        self.background_tasks.append(asyncio.create_task(obligatory_sector_hedge_or_close_loop(self)))
         print(f"[START] {len(self.background_tasks)} background tasks launched. Entering trading loop...", flush=True)
         logger.info("☀️ ✅ Manager Running.")
         await self.trading_loop()

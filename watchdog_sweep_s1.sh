@@ -1,5 +1,9 @@
 #!/bin/bash
 # watchdog_sweep_s1.sh — every 5min: keep BOTH crypto AND tradier backtest_v8_sweep alive.
+# 2026-05-09 v16: count_tradier_sweep() now matches --mode tradier (any tier) instead of
+# tradier_param_hunt only. Fix: when tradier_grtf7_hunt runs, watchdog correctly sees it
+# as "tradier running" and does not launch crypto concurrently. Also disabled competing
+# watchdog_sweep_s1_tradier.sh from S1 crontab (was launching rogue sweeps with wrong syms).
 # 2026-05-08 v12: added --mem-throttle-pct 70 to tradier sweep to prevent OOM kills when
 # profiler + crypto + tradier all run concurrently (each engine peaks ~10GB on 30GB server).
 # 2026-05-09 v13: reduced crypto to 4 syms (was 8). Root cause of rc=-9 OOM kills confirmed:
@@ -27,7 +31,7 @@ count_crypto_sweep() {
     ps aux | grep "[b]acktest_v8_sweep.*system_combo" | grep python | wc -l | tr -d '[:space:]'
 }
 count_tradier_sweep() {
-    ps aux | grep "[b]acktest_v8_sweep.*tradier_param_hunt" | grep python | wc -l | tr -d '[:space:]'
+    ps aux | grep "[b]acktest_v8_sweep.*--mode tradier" | grep python | wc -l | tr -d '[:space:]'
 }
 count_crypto_promoter() {
     ps aux | grep "[r]ate_filter_promoter.*--mode crypto" | grep python | wc -l | tr -d '[:space:]'

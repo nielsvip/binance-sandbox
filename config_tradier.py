@@ -1876,6 +1876,27 @@ class TradierConfig:
     OBLIGATORY_HEDGE_MIN_LOSS_PCT: float = -0.5  # 2026-04-16: reverted from 0.0 — was hedging on rounding-error noise
     OBLIGATORY_HEDGE_PCT: float = 0.0  # DISABLED 2026-03-30: Caused cascade. Was 2.0 (200% of losing). Fires regardless of HEDGE_MODE — THAT WAS THE PROBLEM.
     OBLIGATORY_HEDGE_WT_TFS: int = 2  # Need 2 TFs with WT against before opening hedge.
+    # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 (mirror of crypto config) ═══
+    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    # When True: reentry signals that fail to queue (transient: lock contention, in-flight, redis miss, crash)
+    # get RETRIED up to REENTRY_DISPATCH_MAX_ATTEMPTS times with REENTRY_DISPATCH_BACKOFF_S between attempts.
+    # Hard-block reasons (BALANCE_FLOOR_HALT, OVERTRADE_GUARD, DAILY_LOSS_HALT, MAX_POS_BLOCK, LS_RATIO_BLOCK,
+    # RED_ZONE_TRADIER, ALLOWLIST_BLOCK, OPENING_BUFFER_NO_TRADE, UNMAPPED_ACTION_BLOCK) DO NOT retry — they
+    # are intentional gates, not transient. On final failure, REENTRY_DISPATCH_FAILED_PERSIST log line
+    # (CRITICAL level, visible) and recorded on trade_manager._reentry_dispatch_failures.
+    REENTRY_NEVER_SKIP_ENABLED: bool = True
+    REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3
+    REENTRY_DISPATCH_BACKOFF_S: float = 0.4
+    # ═══ HEDGE-FAILED FALLBACK CLOSE — USER MANDATE 2026-05-09 ═══
+    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    # Stocks (Tradier) cannot hold both LONG+SHORT same symbol simultaneously like Binance perps.
+    # → OBLIGATORY hedge for trb is a SAME-SECTOR hedge (different ticker, opposite direction, same sector).
+    # If no eligible sector mate found OR hedge order fails → close losing position with HEDGE_FAILED reason.
+    # The same-sector approximation is NOT perfect netting (sector beta differs across names). Logged loudly.
+    OBLIGATORY_SECTOR_HEDGE_ENABLED: bool = True
+    OBLIGATORY_SECTOR_HEDGE_TRIGGER_REQUIRE_WT_5M_AND_1H: bool = True   # USER mandate: 5m AND 1h against (stocks 5m base TF)
+    OBLIGATORY_SECTOR_HEDGE_LOOP_INTERVAL_SECONDS: float = 90.0          # how often to scan stock losers
+    HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                     # on hedge failure → close losing position
     OI_DIVERGENCE_ENABLED: bool = False  # BACKTEST_CHANGE_143: OI divergence confirmation ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     OI_DIVERGENCE_PENALTY: int = 10  # BACKTEST_CHANGE_143: Score penalty for OI divergence ; DEAD_CONFIRMED (priority 60/100) — no plausible wiring site found 20260416
     OPTIMAL_HOLD_BARS_15M: int = 999  # BACKTEST_CHANGE_16: REVERTED (was 13). Ablation: -6.983 Sharpe, WORST of 52 tested. 0% symbols improved. Hold period too short kills winners. ; DEAD_CONFIRMED (priority 30/100) — no plausible wiring site found 20260416

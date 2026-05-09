@@ -5898,6 +5898,34 @@ class HedgeEngine:
         if final_score <= 0: final_score = 0.00000001
         return final_score
 
+    async def obligatory_hedge_or_close_loop(self, stop_event: asyncio.Event, allowed_accounts):
+        """USER MANDATE 2026-05-09: periodic loss-position scanner with HEDGE_FAILED fallback close.
+        Trigger: wt1_3m AND wt1_1h against. On hedge fail → close (HEDGE_FAILED bypass).
+        Cascade safety: scan_and_hedge_losers retains _hedge_completed (1h lockout), _hedge_in_flight,
+        _scan_hedge_debounce, _symbol_hedge_active, tracker consultation guards.
+        Master kill switch: OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED."""
+        if not bool(getattr(self.config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED', True)):
+            logger.warning("[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] DISABLED via OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED=False — losing positions will NOT be auto-hedged or auto-closed.")
+            return
+        _interval = float(getattr(self.config, 'OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS', 60.0))
+        logger.critical(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] STARTED. interval={_interval}s. Trigger: wt1_3m AND wt1_1h against. On hedge-fail: HEDGE_FAILED_FALLBACK_CLOSE.")
+        while not stop_event.is_set():
+            try:
+                await asyncio.sleep(_interval)
+                _hedge_accounts_set = set(getattr(self.config, 'HEDGE_ACCOUNTS', []) or [])
+                for ak in (allowed_accounts or []):
+                    if ak not in _hedge_accounts_set:
+                        continue
+                    try:
+                        await self.scan_and_hedge_losers(ak)
+                    except Exception as _se:
+                        logger.error(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP][{ak}] scan error: {_se}", exc_info=True)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[OBLIGATORY_HEDGE_OR_CLOSE_LOOP] Error: {e}", exc_info=True)
+                await asyncio.sleep(30)
+
     async def breathing_hedge_scan(self, stop_event: asyncio.Event):
         """PERMANENTLY DISABLED 2026-03-30 — caused 83+ position cascade. NEVER RE-ENABLE."""
         logger.info("[BREATHING_HEDGE] PERMANENTLY DISABLED 2026-03-30 — returning immediately")

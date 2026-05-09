@@ -272,21 +272,28 @@ def build_extended_combos(C_new_keys):
       - standalone TRENDER + BREAKOUT for reference
     """
     out = []
-    # All baselines alone (4-tuple → 5-tuple with op)
+    # LONG baselines alone (4-tuple → 5-tuple with op)
     for n, s, k, h in CRYPTO_BASELINES_MEANREV: out.append((n, s, k, h, "AND"))
     for n, s, k, h in CRYPTO_BASELINES_MOMENTUM: out.append((n, s, k, h, "AND"))
+    # SHORT baselines alone
+    for n, s, k, h in CRYPTO_SHORT_BASELINES_MEANREV: out.append((n, s, k, h, "AND"))
+    for n, s, k, h in CRYPTO_SHORT_BASELINES_MOMENTUM: out.append((n, s, k, h, "AND"))
     add_keys_long = [k for k in C_new_keys if k.startswith("L_trender_") or k.startswith("L_breakout_")]
-    # MOM baselines + injector (AND) — same regime, should compose
+    add_keys_short = [k for k in C_new_keys if k.startswith("S_trender_") or k.startswith("S_breakout_")]
+    # MOM-LONG baselines + LONG injectors (same regime)
     for name, side, base_keys, horizons in CRYPTO_BASELINES_MOMENTUM:
         for ak in add_keys_long:
             out.append((f"{name}+{ak.replace('L_','')}", side, base_keys + [ak], horizons, "AND"))
-    # MR baselines OR injector — see if injectors add NEW trades to mean-rev set
-    for name, side, base_keys, horizons in CRYPTO_BASELINES_MEANREV:
-        for ak in add_keys_long:
-            out.append((f"{name}_OR_{ak.replace('L_','')}", side, base_keys, horizons, "OR", [ak]))
-    # Standalone injectors
+    # MOM-SHORT baselines + SHORT injectors
+    for name, side, base_keys, horizons in CRYPTO_SHORT_BASELINES_MOMENTUM:
+        for ak in add_keys_short:
+            out.append((f"{name}+{ak.replace('S_','')}", side, base_keys + [ak], horizons, "AND"))
+    # Standalone LONG injectors
     for ak in add_keys_long:
         out.append((f"alone_{ak.replace('L_','')}", "L", [ak], [4, 8, 16, 32], "AND"))
+    # Standalone SHORT injectors
+    for ak in add_keys_short:
+        out.append((f"alone_{ak.replace('S_','')}_S", "S", [ak], [4, 8, 16, 32], "AND"))
     return out
 
 

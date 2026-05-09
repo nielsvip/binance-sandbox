@@ -26009,6 +26009,9 @@ async def main():
                 background_tasks.append(asyncio.create_task(registry.run_loop()))
                 background_tasks.append(asyncio.create_task(hedge_engine.monitor_hedge_health_loop(quick_stop_event)))
                 background_tasks.append(asyncio.create_task(hedge_engine.breathing_hedge_scan(quick_stop_event)))
+                # 2026-05-09 USER MANDATE: re-enable obligatory hedge-or-close periodic scanner inside QUICK_EMBED.
+                # scan_and_hedge_losers retains all 2026-03-30 cascade guards. Master kill via config.
+                background_tasks.append(asyncio.create_task(hedge_engine.obligatory_hedge_or_close_loop(quick_stop_event, sorted(_allowed))))
                 # _cross_account_hedge_scanner KILLED 2026-03-30: spreads bad positions to other accounts. Hedges only via breathing_hedge_scan.
                 for _ak in sorted(_allowed):
                     background_tasks.append(asyncio.create_task(_qm.priority_exit_scan_loop(trade_manager, _ak, quick_stop_event, redis_manager, tracker_manager, _order_q, data_manager, hedge_engine)))
