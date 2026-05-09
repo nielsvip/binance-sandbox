@@ -99,6 +99,42 @@ from ez_manage import ii as _ez_ii
 from ez_manage import price as _ez_price
 from ez_manage import queue_trade_action as _ez_queue_trade_action
 from ez_positions_service import bootstrap_position_service
+
+
+async def _dispatch_reentry_guaranteed(trade_manager, position_key, reason, conviction, override_qty=None, max_attempts=None, backoff_s=None):
+    """USER MANDATE 2026-05-09: reentry signals must NEVER be silently dropped on transient queue failure.
+    Wraps _ez_queue_trade_action with N retries + explicit logging for every attempt.
+    Returns the final result string (same contract as _ez_queue_trade_action)."""
+    if not bool(getattr(config, 'REENTRY_NEVER_SKIP_ENABLED', True)):
+        return await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=override_qty)
+    if max_attempts is None: max_attempts = int(getattr(config, 'REENTRY_DISPATCH_MAX_ATTEMPTS', 3))
+    if backoff_s is None: backoff_s = float(getattr(config, 'REENTRY_DISPATCH_BACKOFF_S', 0.4))
+    last_result = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            last_result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, conviction, override_qty=override_qty)
+        except Exception as _re_e:
+            logger.error(f"💥 [REENTRY_DISPATCH_CRASH] {position_key} attempt={attempt}/{max_attempts}: {type(_re_e).__name__}: {_re_e}")
+            last_result = f"CRASH:{type(_re_e).__name__}"
+        if last_result and isinstance(last_result, str) and (last_result.startswith("QUEUED") or last_result.startswith("SUCCESS")):
+            if attempt > 1:
+                logger.warning(f"✅ [REENTRY_DISPATCH_RETRY_OK] {position_key}: queued on attempt {attempt}/{max_attempts} (reason={reason[:80]})")
+            return last_result
+        logger.warning(f"⚠️ [REENTRY_DISPATCH_TRANSIENT_FAIL] {position_key} attempt={attempt}/{max_attempts}: result={last_result} reason={reason[:80]} — retry in {backoff_s}s")
+        if attempt < max_attempts:
+            try: await asyncio.sleep(backoff_s)
+            except Exception: pass
+    logger.critical(f"☠️ [REENTRY_DISPATCH_FAILED_PERSIST] {position_key}: ALL {max_attempts} attempts failed result={last_result} reason={reason[:120]} qty={override_qty} — reentry signal NOT silently dropped, see this log line")
+    try:
+        if not hasattr(trade_manager, '_reentry_dispatch_failures'):
+            trade_manager._reentry_dispatch_failures = {}
+        trade_manager._reentry_dispatch_failures[position_key] = {
+            'ts': time.time(), 'reason': reason, 'conviction': conviction,
+            'override_qty': override_qty, 'last_result': last_result, 'attempts': max_attempts,
+        }
+    except Exception: pass
+    return last_result or "FAILED"
+
 from ez_share_ind import get_shared_memory_client
 from utils import (
     SimpleRedisManager,
@@ -16257,7 +16293,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                 _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
                 _dfr_reason = _dfr_reason + _ee_tag
-                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _dfr_reason, 85.0)
+                result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _dfr_reason, 85.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[DIRECTION_FAVORABLE_REENTRY_EPQ] {position_key}: QUEUED at ${current_price:.4f}")
                 return
@@ -16300,7 +16336,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
             reason = reason + _ee_tag
-            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 90.0)
+            result = await _dispatch_reentry_guaranteed(trade_manager, position_key, reason, 90.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[DC_BREAKOUT_REENTRY_EPQ] {position_key}: QUEUED - {_dc_re_tf} breakout reentry at ${current_price:.4f}")
             return
@@ -16364,7 +16400,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
             _epq_force_qty = _epq_force_qty * _ee_mult; _epq_force_reason = _epq_force_reason + _ee_tag
-            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _epq_force_reason, 99.0, override_qty=_epq_force_qty)
+            result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _epq_force_reason, 99.0, override_qty=_epq_force_qty)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[MANDATORY_PRICE_CROSS_EPQ] {position_key}: QUEUED qty={_epq_force_qty:.4f} at ${current_price:.4f}")
             return
@@ -16405,7 +16441,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                     # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                     _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
                     reason = reason + _ee_tag
-                    result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 75.0)
+                    result = await _dispatch_reentry_guaranteed(trade_manager, position_key, reason, 75.0)
                     if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                         logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: QUICK RECOVERY queued — price={current_price:.6f}")
                     return
@@ -16435,7 +16471,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                 _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
                 _psr_long_reason_epq = f"[PROC_SINGLE_REENTRY_EPQ]_LONG_k3m_cross_above_dc_low_3m_delta_{_psr_delta_reason[:30]}" + _ee_tag
-                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_long_reason_epq, 75.0)
+                result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _psr_long_reason_epq, 75.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSOVER ABOVE DC_LOW_3M queued")
                 return
@@ -16459,7 +16495,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                 # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                 _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
                 _psr_short_reason_epq = f"[PROC_SINGLE_REENTRY_EPQ]_SHORT_k3m_cross_below_dc_high_3m_delta_{_psr_delta_reason_s[:30]}" + _ee_tag
-                result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", _psr_short_reason_epq, 75.0)
+                result = await _dispatch_reentry_guaranteed(trade_manager, position_key, _psr_short_reason_epq, 75.0)
                 if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                     logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: k_3m CROSSUNDER BELOW DC_HIGH_3M queued")
                 return
@@ -16471,7 +16507,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
             _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
             reason = reason + _ee_tag
-            result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 80.0)
+            result = await _dispatch_reentry_guaranteed(trade_manager, position_key, reason, 80.0)
             if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                 logger.warning(f"[evaluate_reentry_2_EPQ] {position_key}: FULL REENTRY queued")
             return
@@ -16494,7 +16530,7 @@ async def process_single_reentry_evaluation_epq(trade_manager, position_key, ree
                         # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                         _ee_mult, _ee_tag = _ee_reentry_boost(symbol, i, is_long, config_obj)
                         reason = reason + _ee_tag
-                        result = await _ez_queue_trade_action(trade_manager.order_queue, trade_manager, position_key, "REENTRY", reason, 65.0)
+                        result = await _dispatch_reentry_guaranteed(trade_manager, position_key, reason, 65.0)
                         if result and (result.startswith("QUEUED") or result.startswith("SUCCESS")):
                             logger.info(f"[evaluate_reentry_2_EPQ] {position_key}: DC bounce reentry queued")
                         return

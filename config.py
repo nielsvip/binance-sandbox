@@ -1285,6 +1285,17 @@ class Config:
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
     HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = True                  # USER MANDATE: trigger requires BOTH wt_3m AND wt_1h against
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
+    # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
+    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    # When True: reentry signals that fail to queue (transient: lock contention, in-flight, redis miss, crash)
+    # get RETRIED up to REENTRY_DISPATCH_MAX_ATTEMPTS times with REENTRY_DISPATCH_BACKOFF_S between attempts.
+    # On final failure, REENTRY_DISPATCH_FAILED_PERSIST log line is emitted (CRITICAL level, visible) and
+    # the failure is recorded on trade_manager._reentry_dispatch_failures for diagnostics.
+    # GUARANTEED price-cross reentry path (ez_positions_quick.py:15885+) keeps its existing crash-on-timeout
+    # mechanism — this switch wraps the OTHER 8 dispatch sites in process_single_reentry_evaluation_epq.
+    REENTRY_NEVER_SKIP_ENABLED: bool = True
+    REENTRY_DISPATCH_MAX_ATTEMPTS: int = 3                            # number of retry attempts on transient queue failure
+    REENTRY_DISPATCH_BACKOFF_S: float = 0.4                           # backoff between attempts (async sleep)
     # ═══ PEAK_GIVEBACK_PROTECTION (2026-04-19) ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
     # MOVEUSDT bled from +1.26% peak to -13% because HTF_EXIT_VETO blocked breakeven exit.

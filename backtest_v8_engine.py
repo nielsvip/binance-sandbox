@@ -2139,13 +2139,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # V8 SRS SWEEP: check_exit_candidates reads SRS from ez_positions_quick.config
         # which has the strict entry>upper+AND cascade. Run the V8 relaxed SRS (OR cascade,
         # no entry>upper gate) as a second pass on still-active positions.
-        # 2026-05-09 PARITY AUDIT: this V8-only second-pass SRS fires 544 closes/week on 9 syms
-        # vs live's 5 events/week per sym. Live has SRS via the strict path only. Per user
-        # mandate "sandbox-only paths → sweep + add to live if pos delta else comment out in
-        # sandbox" — disabling here so v8 matches live's strict SRS. Sweep separately to
-        # measure delta. Set V8_RELAXED_SRS_ENABLED=1 to re-enable for sweep.
+        # 2026-05-09 PARITY AUDIT — re-enabled (was disabled at 20:00, broke v8 by removing
+        # the only fast escape from NOLOSS-locked positions: positions stuck → AUGMENT_LOCK
+        # blocks reopens → deadlock → v8 dormant). Live has SRS active too (config:1218).
+        # The over-firing vs live needs a different fix: tighten the OR cascade to live's
+        # AND cascade in a follow-up patch, not disable. Set V8_DISABLE_RELAXED_SRS=1 to
+        # opt out (e.g. for sweep isolation runs).
         _v8_srs_on = (getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
-                      and os.environ.get("V8_RELAXED_SRS_ENABLED") == "1")
+                      and os.environ.get("V8_DISABLE_RELAXED_SRS") != "1")
         if _v8_srs_on:
             _v8_srs_still_active = [pk for pk, pos in trade_manager.positions.items()
                                     if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
