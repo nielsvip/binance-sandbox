@@ -247,6 +247,20 @@ CRYPTO_BASELINES_MOMENTUM = [
 ]
 CRYPTO_BASELINES_PICK4 = CRYPTO_BASELINES_MEANREV  # legacy alias
 
+# SHORT mirrors — symmetric structure on the bear side
+CRYPTO_SHORT_BASELINES_MEANREV = [
+    ("MR1S_dcxu1h_dcpos15g70_mfi1hg60_smaDdn", "S", ["dc_xu1h", "dcpos15_gt70", "mfi1h_gt60", "sma200dn_D"], [4, 8, 16]),
+    ("MR2S_dcxu1h_dcpos15g70_notwt1h_notwt4h", "S", ["dc_xu1h", "dcpos15_gt70", "not_wt_1h", "not_wt_4h"], [16, 32]),
+    ("MR3S_dcxu1h_dcpos15g70_notwt1h_notwtD",  "S", ["dc_xu1h", "dcpos15_gt70", "not_wt_1h", "not_wt_D"], [16, 32]),
+    ("MR4S_dcxu1h_mfi15g60_notwtall3_notwt1h", "S", ["dc_xu1h", "mfi15_gt60", "not_wt_all3", "not_wt_1h"], [16, 32]),
+    ("MR5S_dcxu1h_dcpos15g70_mfi15g60_notwt1h","S", ["dc_xu1h", "dcpos15_gt70", "mfi15_gt60", "not_wt_1h"], [16, 32]),
+]
+CRYPTO_SHORT_BASELINES_MOMENTUM = [
+    ("MOM1S_dcxu1h_notwt2of3_smaDn1h",         "S", ["dc_xu1h", "not_wt_2of3", "sma200dn_1h"], [16, 32, 64]),
+    ("MOM4S_dcxu1h_mfi15g60_smaDn1h_notwt1h",  "S", ["dc_xu1h", "mfi15_gt60", "sma200dn_1h", "not_wt_1h"], [16, 32, 64]),
+    ("MOM6S_dcxu1h_dcpos15g70_smaDn1h_notwt4h","S", ["dc_xu1h", "dcpos15_gt70", "sma200dn_1h", "not_wt_4h"], [16, 32]),
+]
+
 
 def build_extended_combos(C_new_keys):
     """Build evaluation list:

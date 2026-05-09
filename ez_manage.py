@@ -7139,7 +7139,10 @@ class MultiAccountTradeManager:
                             side = 'BUY' if is_long else 'SELL'
                             pside = 'LONG' if is_long else 'SHORT'
                             reason_str = f'GOLDEN_RULE_{"LONG" if is_long else "SHORT"}_mult{mult}_INTERVENTION'
-                            logger.critical(f'🌟 [GOLDEN_RULE] {pkey} mult={mult}x wt1_3m={wt1:.1f}>{wt2:.1f} px={price:g} dc_h15={dc_h_15m} → {action} qty={qty:.4f} (\${target_usd:.0f})')
+                            # 2026-05-09 NAMEERROR FIX: dc_h_15m was never defined (typo for dc_h_1h).
+                            # Show the actually-defined directional level (high for LONG, low for SHORT).
+                            _gr_lvl = f'dc_h1h={dc_h_1h}' if is_long else f'dc_l1h={dc_l_1h}'
+                            logger.critical(f'🌟 [GOLDEN_RULE] {pkey} mult={mult}x wt1_3m={wt1:.1f}>{wt2:.1f} px={price:g} {_gr_lvl} → {action} qty={qty:.4f} (\${target_usd:.0f})')
                             try:
                                 result = await self.execute_now(position_key=pkey, account_key=ak, symbol=sym, side=side, position_side=pside, quantity=qty, reason=reason_str, action=action)
                                 logger.critical(f'🌟 [GOLDEN_RULE] {pkey} → {result}')
