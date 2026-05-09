@@ -10932,16 +10932,16 @@ class MultiAccountTradeManager:
             is_reduce = False
             is_augment = False
             logger.info(f"[REENTRY_GUARANTEED] {position_key}: positionAmt=0 — TRUE reentry → OPEN. reason={(reason or '')[:80]}")
-        # ═══ CRITICAL FIX: HARD DUPLICATE OPEN GUARD — NEVER open same position twice ═══
-        # REENTRY is EXEMPT — the whole point of reentry is to rebuild a reduced position quickly.
-        # 2026-04-16 FIX: REMOVED hedge exemption — was allowing unlimited hedge cascade
-        # (WT_15M_SAME_HEDGE open → orphan kill → reopen → infinite loop, all bypassing cooldown).
-        # Hedges MUST also respect the 900s cooldown. No exceptions.
+        # ═══ HARD DUPLICATE OPEN GUARD — applies to ALL position-increase actions ═══
+        # 2026-05-09 USER MANDATE: cooldown applies to OPEN, AUGMENT, AND REENTRY.
+        # Removed REENTRY exemption (was `not _original_action_was_reentry`). User:
+        # "_AUGMENT_LOCK=900s, should also fire at any position augmentation incl
+        # open reenter etc". No bypasses. Hedges already in this path since 2026-04-16.
         _dup_cooldown = _DUPLICATE_OPEN_COOLDOWN
-        if is_augment and not _original_action_was_reentry:
+        if is_augment:
             _last_open_ts = _recent_opens.get(position_key, 0)
             if time.time() - _last_open_ts < _dup_cooldown:
-                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason}")
+                logger.critical(f"🚫🚫🚫 [DUPLICATE_OPEN_GUARD] {position_key}: BLOCKED — opened {time.time() - _last_open_ts:.0f}s ago (cooldown={_dup_cooldown}s). action={action} reason={reason} reentry={_original_action_was_reentry}")
                 return f"BLOCKED_DUPLICATE_OPEN_{position_key}"
         # ABSOLUTE: position > min_pos_qty? Then 3% gain or BLOCKED. NO EXCEPTIONS. Not hedge. Not reentry. Not anything.
         # ONLY pass when position is at foothold size (near-zero) — any entry type allowed then.
@@ -13850,14 +13850,20 @@ class MultiAccountTradeManager:
             _pos_gain = safe_fetch_float(getattr(_pos_obj, 'gain', 0), 0.0) if _pos_obj else 0.0
             _existing_amt = abs(safe_fetch_float(getattr(_pos_obj, 'positionAmt', 0), 0.0)) if _pos_obj else 0.0
             _has_existing_position = _existing_amt > self.min_qty.get(symbol or '', 0.0001)
-        if _is_aug and position_key and _has_existing_position:
+        # ═══ HARD AUGMENT LOCK — 900s cooldown on ALL position-increase actions ═══
+        # 2026-05-09 USER MANDATE: applies to OPEN, AUGMENT, REENTER alike — no
+        # REENTRY exemption (`_is_reentry_exec_now` removed from bypass). The
+        # `_gain_ok` bypass (gain >= MIN_GAIN) survives so a profitable position
+        # can still be added to without waiting; that's not the over-trading vector.
+        # Cooldown also fires on TRUE OPEN on empty positions (no _has_existing_position
+        # gate) so two opens on the same (sym,side) within 900s = blocked second.
+        if _is_aug and position_key:
             _min_gain = getattr(config, 'MIN_GAIN', 1.2)
-            _gain_ok = _pos_gain >= _min_gain or _is_reentry_exec_now
-            # _AUGMENT_LOCK: 900s hard cooldown, bypassed by gain >= MIN_GAIN
+            _gain_ok = (_pos_gain >= _min_gain) if _has_existing_position else False
             _last_aug_ts = _AUGMENT_LOCK.get(position_key, 0)
             _since_aug = time.time() - _last_aug_ts
             if _since_aug < _AUGMENT_LOCK_MIN_SECONDS and not _gain_ok:
-                logger.warning(f"[HARD_AUGMENT_LOCK] {position_key}: BLOCKED - last augment {_since_aug:.0f}s ago (need {_AUGMENT_LOCK_MIN_SECONDS}s), gain={_pos_gain:.2f}% < {_min_gain:.1f}% | is_hedge={is_hedge}")
+                logger.warning(f"[HARD_AUGMENT_LOCK] {position_key}: BLOCKED - last position-increase {_since_aug:.0f}s ago (need {_AUGMENT_LOCK_MIN_SECONDS}s), gain={_pos_gain:.2f}% < {_min_gain:.1f}% | action={_act_check} is_hedge={is_hedge} reentry={_is_reentry_exec_now}")
                 return f"BLOCKED_HARD_AUGMENT_LOCK_{_since_aug:.0f}s"
             _AUGMENT_LOCK[position_key] = time.time()
             _recent_opens[position_key] = time.time()
