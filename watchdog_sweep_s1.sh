@@ -10,6 +10,9 @@
 # time. Tradier is priority. State file /home/niels/logs/sweep_next_mode tracks alternation.
 # When both dead: check state file, launch whichever is "next" (default=tradier). The other
 # waits. Natural alternation: tradier full grid (~11h) → crypto full grid → tradier → ...
+# 2026-05-09 v15: tradier tier changed to tradier_grtf7_hunt (7-indicator GR_HTF gate:
+# WT+RSI+MFI+DC+BB+RVOL+stoch_K, 5×6 grid + 3×5 exit grid + 6 ENTRY_THR_0 combos).
+# golden_rule_htf.py updated to score 7 indicators per TF.
 # Crypto: 4 USDC syms, start=2026-01-01. Tradier: 20 liquid stocks, start=2026-01-01.
 LOG=/home/niels/logs/watchdog_sweep_s1.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
@@ -83,7 +86,7 @@ if [ "$NT" -lt 1 ]; then
             --mode tradier --account trb \
             --start 2026-01-01 \
             --symbols "$CORE20_TRADIER" \
-            --tier tradier_param_hunt \
+            --tier tradier_grtf7_hunt \
             --workers 1 \
             --timeout 5400 \
             --mem-throttle-pct 70 \

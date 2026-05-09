@@ -2353,12 +2353,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     except Exception as _wct_e:
         v8_logger.warning(f"[V8_FINAL] _write_chart_trades error: {_wct_e}")
 
-    # Now cancel queue processor — CancelledError propagating up through
-    # asyncio.run() is fine; main() returns immediately afterward.
+    # Now cancel queue processor.
+    # 2026-05-09 fix: in Python 3.11+, asyncio.CancelledError inherits from
+    # BaseException (NOT Exception), so `except Exception:` does NOT catch it.
+    # The bare CancelledError leaked up through asyncio.run() in main(), and
+    # Python exited rc=1 even though V8_RESULT had already been emitted.
+    # The sweep harness saw rc=1 and stamped reason="rc=1" on every variant
+    # row in the CSV. Catching BaseException here keeps the engine's rc=0
+    # and yields clean canonical CSV rows.
     queue_task.cancel()
     try:
         await queue_task
-    except Exception:
+    except BaseException:
         pass
     v8_logger.info("[V8_FINAL_PNL] === BY CLOSE REASON (sorted by total PnL ascending) ===")
     for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
@@ -2417,10 +2423,17 @@ def main():
     if _SWEEP_MODE:
         print(f"V8_INIT_HEARTBEAT: loaded={len(stores)} symbols starting simulation", flush=True)
 
-    if args.mode == "tradier":
-        asyncio.run(run_simulation_tradier(args.account, args.start, args.capital, stores, resolution))
-    else:
-        asyncio.run(run_simulation(args.mode, args.account, args.start, args.capital, stores, resolution))
+    # 2026-05-09 fix: wrap asyncio.run() to swallow CancelledError that may
+    # propagate up from queue_task.cancel() in run_simulation (Python 3.11+
+    # CancelledError is BaseException, not Exception). The V8_RESULT line has
+    # already been emitted before that point, so a clean rc=0 exit is correct.
+    try:
+        if args.mode == "tradier":
+            asyncio.run(run_simulation_tradier(args.account, args.start, args.capital, stores, resolution))
+        else:
+            asyncio.run(run_simulation(args.mode, args.account, args.start, args.capital, stores, resolution))
+    except asyncio.CancelledError:
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════

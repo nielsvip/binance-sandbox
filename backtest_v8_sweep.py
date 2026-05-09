@@ -637,6 +637,23 @@ def grid_tradier_param_hunt():
             }))
     # Legacy GOLDEN_RULE (dip cascade) kept for reference
     combos.append(("GOLDEN_RULE_old_ON", {"GOLDEN_RULE_ENABLED": True}))
+    # ── PRIORITY 4b: GR7_HTF — 7-indicator gate (adds RVOL + stoch_k) — 5×6 grid ──
+    # golden_rule_htf.py now checks 7 indicators per TF: WT,RSI,MFI,DC,BB,RVOL,K.
+    # User hypothesis: sweet spot at 3-4 TFs × 5-7/7 indicators.
+    for min_tfs in [1, 2, 3, 4, 5]:
+        for min_ind in [2, 3, 4, 5, 6, 7]:
+            combos.append((f"GR7_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_MIN_IND": min_ind,
+            }))
+    # GR7 exit gate: 3×5 grid (bearish confirmation before allowing loss exit)
+    for min_tfs in [1, 2, 3]:
+        for min_ind in [3, 4, 5, 6, 7]:
+            combos.append((f"GR7_EXIT_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": 0,
+                "GOLDEN_RULE_EXIT_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_EXIT_MIN_IND": min_ind,
+            }))
     # ── PRIORITY 5: PPL (partial profit lock) — exit quality ──
     for gain in [0.3, 0.5, 1.0]:
         combos.append((f"PPL_GAIN_{gain}", {"PARTIAL_PROFIT_LOCK_GAIN_PCT": gain,
@@ -658,6 +675,43 @@ def grid_tradier_param_hunt():
     # ── ABLATION: reentry params ──
     for k_max in [40.0, 80.0, 100.0]:
         combos.append((f"reentry_k{int(k_max)}", {"REENTRY_RALLY_K15M_MAX": k_max}))
+    return combos
+
+
+def grid_tradier_grtf7_hunt():
+    """2026-05-09: standalone 7-indicator GOLDEN_RULE_HTF sweep.
+    golden_rule_htf.py checks 7 indicators per TF: WT, RSI, MFI, DC, BB, RVOL, stoch_K.
+    All NPZ fields verified present (relative_volume_* + stoch_k_* for all 6 tradier TFs).
+
+    Grid: 5 TF levels × 6 indicator thresholds = 30 entry variants.
+    User hypothesis: sweet spot at min_tfs=3-4 with min_ind=5-7 of 7.
+    Also sweeps GR7 exit gate (3×5 = 15 exit variants) and ENTRY_THR_0 combo.
+    ETA ~10min/variant × workers=1.
+    """
+    combos = [("baseline", {})]
+    combos.append(("GR7_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0}))
+    # ── Entry gate: 5 TF levels × 6 indicator thresholds ──
+    for min_tfs in [1, 2, 3, 4, 5]:
+        for min_ind in [2, 3, 4, 5, 6, 7]:
+            combos.append((f"GR7_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_MIN_IND": min_ind,
+            }))
+    # ── Exit gate: 3 TF levels × 5 indicator thresholds ──
+    for min_tfs in [1, 2, 3]:
+        for min_ind in [3, 4, 5, 6, 7]:
+            combos.append((f"GR7_EXIT_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": 0,
+                "GOLDEN_RULE_EXIT_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_EXIT_MIN_IND": min_ind,
+            }))
+    # ── COMBO: best ENTRY_THR_0 with best GR7 candidates ──
+    for min_tfs, min_ind in [(1, 5), (1, 6), (1, 7), (2, 5), (3, 5), (3, 6)]:
+        combos.append((f"THR0_GR7_tfs{min_tfs}_ind{min_ind}", {
+            "WT_DC_ENTRY_THRESHOLD": 0,
+            "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+            "GOLDEN_RULE_MIN_IND": min_ind,
+        }))
     return combos
 
 
@@ -1059,6 +1113,7 @@ TIER_MAP = {
     "indicator_audit_v2": grid_indicator_audit_v2,
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_param_hunt": grid_tradier_param_hunt,
+    "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file

@@ -4,12 +4,14 @@ golden_rule_htf.py — Multi-timeframe indicator confirmation gate.
 The GOLDEN RULE: a trade signal only fires when at least MIN_TFS timeframes
 each show at least MIN_IND bullish (or bearish for shorts/exits) indicators.
 
-5 indicators checked per TF:
+7 indicators checked per TF (up to 7, skipped gracefully if field missing):
   1. WT   — wt1 > wt2 (bullish) / wt1 < wt2 (bearish)
-  2. RSI  — rsi > 50 (bullish) / rsi < 50 (bearish)
-  3. MFI  — mfi > 50 (bullish) / mfi < 50 (bearish)
-  4. DC   — dc_position < 0.65 (not extended, room to run)  / > 0.35
+  2. RSI  — rsi > 50 (bullish) / rsi < 50 (bearish)  [short-TF signal]
+  3. MFI  — mfi > 50 (bullish) / mfi < 50 (bearish)  [long-TF signal]
+  4. DC   — dc_position < 0.65 (not extended, room to run) / > 0.35
   5. BB   — bb_pct_b < 0.75 (not at top of band) / > 0.25
+  6. RVOL — relative_volume > 1.0 (above-avg volume = conviction, both dirs)
+  7. K    — stoch_k < 80 (not overbought, long) / stoch_k > 20 (not oversold, short)
 
 TFs checked:
   crypto : 3m, 15m, 1h, 4h, D
@@ -83,6 +85,18 @@ def _ind_score(ind: dict, tf: str, is_long: bool, px: float) -> tuple[int, str]:
         ok = bb_pctb < _BB_EXTENDED_LONG if is_long else bb_pctb > _BB_EXTENDED_SHORT
         score += int(ok)
         parts.append(f"BB{'✓' if ok else '✗'}{bb_pctb:.2f}")
+
+    rvol = float(ind.get(f"relative_volume_{tf}") if ind.get(f"relative_volume_{tf}") is not None else -1)
+    if rvol >= 0:
+        ok = rvol > 1.0
+        score += int(ok)
+        parts.append(f"RVOL{'✓' if ok else '✗'}{rvol:.2f}")
+
+    stk = float(ind.get(f"stoch_k_{tf}") if ind.get(f"stoch_k_{tf}") is not None else -1)
+    if stk >= 0:
+        ok = stk < 80.0 if is_long else stk > 20.0
+        score += int(ok)
+        parts.append(f"K{'✓' if ok else '✗'}{stk:.0f}")
 
     return score, "|".join(parts)
 
