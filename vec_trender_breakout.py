@@ -377,17 +377,21 @@ def main():
 
     # Output rows
     out_rows = []
-    print(f"\n{'combo':<78} {'op':>4} {'h':>4} {'n':>6} {'sharpe':>7} {'wr':>6} {'mean':>7} {'pf':>5}", flush=True)
+    print(f"\n{'combo':<78} {'side':>4} {'op':>4} {'h':>4} {'n':>6} {'eff_sh':>7} {'eff_wr':>7} {'eff_mean':>9} {'pf':>5}", flush=True)
     print("─"*120, flush=True)
     for tup in combos:
-        # Tuple is (name, side, base_keys, horizons, op[, or_keys])
         name, side, base_keys, horizons, op = tup[0], tup[1], tup[2], tup[3], tup[4]
         or_keys = tup[5] if len(tup) > 5 else None
         results = evaluate_combo(C, fwd, side, base_keys, horizons, args.min_trades, op=op, or_keys=or_keys)
         if "error" in results: continue
         for h, r in sorted(results.items()):
-            print(f"{name:<78} {op:>4s} {h:>4d} {r['n']:>6d} {r['sharpe']:>7.4f} {r['wr']:>5.1f}% {r['mean']*100:>6.3f}% {r['pf']:>5.2f}", flush=True)
-            out_rows.append({"name": name, "side": side, "op": op, "horizon": h, **r, "n_syms": n_syms, "years": years})
+            # Side-aware sign: SHORT profits when fwd_ret < 0, so flip Sharpe + mean + WR
+            sign = -1 if side == "S" else 1
+            eff_sh = sign * r["sharpe"]
+            eff_mean_pct = sign * r["mean"] * 100
+            eff_wr = (100.0 - r["wr"]) if side == "S" else r["wr"]
+            print(f"{name:<78} {side:>4s} {op:>4s} {h:>4d} {r['n']:>6d} {eff_sh:>7.4f} {eff_wr:>6.1f}% {eff_mean_pct:>8.3f}% {r['pf']:>5.2f}", flush=True)
+            out_rows.append({"name": name, "side": side, "op": op, "horizon": h, **r, "eff_sharpe": eff_sh, "eff_wr": eff_wr, "eff_mean_pct": eff_mean_pct, "n_syms": n_syms, "years": years})
 
     # Write canonical CSV via metrics_guard
     if args.out:
@@ -398,22 +402,20 @@ def main():
         ts_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
         for r in out_rows:
             n = r["n"]
-            avg_gain_trade_pct = r["mean"] * 100  # convert decimal to %
-            acc_gain_pct = avg_gain_trade_pct * n
-            gain_per_yr = acc_gain_pct / max(years, 0.01)
+            # Use eff_* metrics that are sign-corrected for SHORT side (profit = price drop)
             row = {
-                "pool_sharpe": round(r["sharpe"], 4),
+                "pool_sharpe": round(r["eff_sharpe"], 4),
                 "sym_sharpe": 0.0,  # not computed per-sym in this script (vec is pooled)
-                "avg_gain_trade": round(avg_gain_trade_pct, 4),
-                "gain_per_yr": round(gain_per_yr, 2),
-                "gain_sym_yr": round(gain_per_yr / max(n_syms, 1), 4),
+                "avg_gain_trade": round(r["eff_mean_pct"], 4),
+                "gain_per_yr": round(r["eff_mean_pct"] * n / max(years, 0.01), 2),
+                "gain_sym_yr": round(r["eff_mean_pct"] * n / max(years, 0.01) / max(n_syms, 1), 4),
                 "trades": n,
                 "max_dd_pct": 0.0,  # vec doesn't sim equity — DD requires sequencing not done here
                 "n_syms": n_syms,
                 "years": round(years, 2),
                 "ts_utc": ts_iso, "mode": args.mode,
                 "iter": r["name"], "side": r["side"], "horizon": r["horizon"],
-                "wr": round(r["wr"], 1), "pf": round(r["pf"], 3),
+                "wr": round(r["eff_wr"], 1), "pf": round(r["pf"], 3),
                 "engine": "vec_trender_breakout",
             }
             try:
