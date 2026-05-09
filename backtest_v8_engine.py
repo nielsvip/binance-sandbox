@@ -1204,6 +1204,43 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             return "BLOCKED_ZERO"
         is_red = action.upper() in ('CLOSE','REDUCE','QUICK_CLOSE','FULL_CLOSE','PROFIT_TAKE','STOP_MAJOR_LOSS_REDUCE','STOP_FUNCTIONS_KILL','HEDGE_CLOSE') or 'CLOSE' in reason.upper() or 'REDUCE' in reason.upper()
         act = action or ("CLOSE" if is_red else "OPEN")
+        is_aug_action = (not is_red) and (not is_hedge)
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-09 PARITY AUDIT — DUP_GUARD_GAIN — mirror ez_manage.py:10970-10988
+        # Live blocks AUGMENT below 0.5*MIN_GAIN (=1.5%). v8 was emitting 870 AUGMENT
+        # events on GOLDEN_RULE every 3min bar without this gate.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_aug_action and bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True)):
+            _dg_min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
+            _dg_mult = float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))
+            _dg_thr = _dg_min_gain * _dg_mult
+            _dg_pos = trade_manager.positions.get(pk)
+            if _dg_pos:
+                _dg_gain = float(getattr(_dg_pos, 'gain', 0) or 0)
+                _dg_pos_amt = abs(float(getattr(_dg_pos, 'positionAmt', 0) or 0))
+                _dg_pos_val = _dg_pos_amt * px if px > 0 else 0.0
+                _dg_min_pos_val = float(getattr(config, 'MIN_POSITION_SIZE', 1.0))
+                if _dg_pos_val > _dg_min_pos_val and _dg_gain <= _dg_thr:
+                    return f"BLOCKED_DUP_GUARD_GAIN_{_dg_gain:.2f}pct_lt_{_dg_thr:.2f}pct"
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 2026-05-09 PARITY AUDIT — HARD_AUGMENT_LOCK — mirror ez_manage.py:13946-13955
+        # Live blocks AUGMENT/OPEN/REENTRY within 900s of last position-increase unless
+        # gain >= MIN_GAIN. Per today's user mandate also fires on TRUE OPEN on empty.
+        # ═══════════════════════════════════════════════════════════════════════════
+        if is_aug_action:
+            _al_min_sec = int(getattr(config, '_AUGMENT_LOCK_MIN_SECONDS', 900))
+            _al_pos = trade_manager.positions.get(pk)
+            _al_gain = float(getattr(_al_pos, 'gain', 0) or 0) if _al_pos else 0.0
+            _al_pos_amt = abs(float(getattr(_al_pos, 'positionAmt', 0) or 0)) if _al_pos else 0.0
+            _al_has_existing = _al_pos_amt > 0.0001
+            _al_gain_ok = (_al_gain >= float(getattr(config, 'MIN_GAIN', 3.0))) if _al_has_existing else False
+            _al_lock = trade_manager.__dict__.setdefault('_bt_augment_lock', {})
+            _al_now = float(_sim_ts[0]) if _sim_ts else 0.0
+            _al_last = _al_lock.get(pk, 0.0)
+            _al_since = _al_now - _al_last
+            if _al_since < _al_min_sec and not _al_gain_ok:
+                return f"BLOCKED_HARD_AUGMENT_LOCK_{_al_since:.0f}s"
+            _al_lock[pk] = _al_now
         # ═══════════════════════════════════════════════════════════════════════════
         # 2026-05-09 PARITY AUDIT: UNIVERSAL_NOLOSS_GATE — mirror ez_manage.py:14140
         # Live execute_now blocks any close-at-loss unless reason bypasses the gate.
@@ -2102,7 +2139,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # V8 SRS SWEEP: check_exit_candidates reads SRS from ez_positions_quick.config
         # which has the strict entry>upper+AND cascade. Run the V8 relaxed SRS (OR cascade,
         # no entry>upper gate) as a second pass on still-active positions.
-        _v8_srs_on = getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
+        # 2026-05-09 PARITY AUDIT: this V8-only second-pass SRS fires 544 closes/week on 9 syms
+        # vs live's 5 events/week per sym. Live has SRS via the strict path only. Per user
+        # mandate "sandbox-only paths → sweep + add to live if pos delta else comment out in
+        # sandbox" — disabling here so v8 matches live's strict SRS. Sweep separately to
+        # measure delta. Set V8_RELAXED_SRS_ENABLED=1 to re-enable for sweep.
+        _v8_srs_on = (getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
+                      and os.environ.get("V8_RELAXED_SRS_ENABLED") == "1")
         if _v8_srs_on:
             _v8_srs_still_active = [pk for pk, pos in trade_manager.positions.items()
                                     if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
