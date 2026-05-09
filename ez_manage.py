@@ -13389,7 +13389,13 @@ class MultiAccountTradeManager:
                                or 'LIQ' in _hpo_reason_up or 'STRUCTURAL' in _hpo_reason_up
                                or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
                                or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
-                               or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up)
+                               or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up
+                               # 2026-05-09: emergency FORCE-CLOSE paths bypass HPO.
+                               # RIDICULOUS_HOLD/LOSS, R3_HEDGE_INVARIANT_DUMP, OVERSIZE, BALANCE_FLOOR
+                               # all say "force close regardless of hedge state" — must pass through.
+                               or 'RIDICULOUS' in _hpo_reason_up or 'DUMP' in _hpo_reason_up
+                               or 'INVARIANT' in _hpo_reason_up or 'FORCE_CLOSE' in _hpo_reason_up
+                               or 'OVERSIZE' in _hpo_reason_up or 'BALANCE_FLOOR' in _hpo_reason_up)
                 if not _hpo_bypass:
                     # 2026-05-09 BINARY HEDGE-EXISTENCE GATE (user mandate):
                     # If opposite-side position EXISTS (amt > dust) → BLOCK close (P&L is hedged, leave alone).

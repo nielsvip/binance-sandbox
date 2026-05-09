@@ -218,9 +218,9 @@ def load_klines(path: Path) -> Optional[pd.DataFrame]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
         if "timestamp" in df.columns:
-            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], utc=True)
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp"], utc=True, format="ISO8601")
         elif "timestamp_dt" in df.columns:
-            df["timestamp_dt"] = pd.to_datetime(df["timestamp_dt"], utc=True)
+            df["timestamp_dt"] = pd.to_datetime(df["timestamp_dt"], utc=True, format="ISO8601")
         else:
             return None
         df = df.set_index("timestamp_dt").sort_index()

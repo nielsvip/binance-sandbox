@@ -2992,6 +2992,23 @@ class AdvancedSignalRater:
                         return 0, "WAIT", f"BOUNCE_WAIT(k3m={k_3m:.0f},need{'<' if is_long else '>'}{_br_reset_l if is_long else _br_reset_s},min_red={min_since_red:.0f},t2={'trend' if not _trend_continues else 'mom' if not _momentum_ok else 'exh'})_bc155"
         elif _bounce_enabled and not is_exit and min_since_red >= 120:
             _bounce_reentry_k_reset.pop(position_key, None)
+            # 2026-05-09 OBLIGATORY_REENTRY LONG-TAIL — fires AFTER 2h window expires.
+            # Per user mandate "ANY symbol that exits needs to reenter at bounce above sma OR
+            # pass exit price + dc_high4_3m break". Old MANDATORY_REENTRY block was 2h-gated;
+            # this catches stuck old positions where prior exit > 2h ago but criteria match now.
+            if positionAmt == 0.0 and actual_last_red_price > 0:
+                try:
+                    from ez_reentry import evaluate_obligatory_reentry as _eval_obl_lt
+                    _olt_ok, _olt_size, _olt_reason, _olt_score = _eval_obl_lt(
+                        ind, current_price, actual_last_red_price, prev_cross_price, is_long, config
+                    )
+                    if _olt_ok:
+                        _tier1_forced = True
+                        score += _olt_score
+                        reasons.append(f"{_olt_reason}_LONG_TAIL(+{_olt_score},size{_olt_size:.2f}x,min_red={min_since_red:.0f}m)")
+                        logger.critical(f"🚀[OBLIGATORY_REENTRY_LONG_TAIL] {position_key}: {_olt_reason} cur={current_price:.6f} exit={actual_last_red_price:.6f} size={_olt_size:.2f}x min_red={min_since_red:.0f}m — FORCING REENTRY (long-tail path)")
+                except Exception as _olt_e:
+                    logger.warning(f"[OBLIGATORY_REENTRY_LONG_TAIL] error: {_olt_e}")
         force_reentry = False
         if not is_exit and actual_last_red_price > 0 and min_since_red < 1200:
             if is_long and current_price > actual_last_red_price * 0.998:
@@ -11688,7 +11705,11 @@ async def execute_trade_wrapper(trade_manager, tracker_manager: TrackerManager, 
                            or 'LIQ' in _hpo_reason_up or 'STRUCTURAL' in _hpo_reason_up
                            or 'STDEV_BREAKOUT' in _hpo_reason_up or 'KEY_LEVEL' in _hpo_reason_up
                            or 'PARABOLIC' in _hpo_reason_up or 'AGENT' in _hpo_reason_up
-                           or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up)
+                           or 'MANUAL' in _hpo_reason_up or 'USER' in _hpo_reason_up
+                           # 2026-05-09: emergency force-close paths bypass HPO.
+                           or 'RIDICULOUS' in _hpo_reason_up or 'DUMP' in _hpo_reason_up
+                           or 'INVARIANT' in _hpo_reason_up or 'FORCE_CLOSE' in _hpo_reason_up
+                           or 'OVERSIZE' in _hpo_reason_up or 'BALANCE_FLOOR' in _hpo_reason_up)
             if not _hpo_bypass:
                 # 2026-05-09 BINARY HEDGE-EXISTENCE GATE (user mandate):
                 # If opposite-side position EXISTS → BLOCK close. If no opposite → ALLOW close (no % gate).
