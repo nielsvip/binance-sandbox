@@ -826,6 +826,13 @@ class Config:
     # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
     # bypass the cap. Set 0 to disable.
     TRADES_PER_SYM_PER_DAY_MAX: int = 8
+    # 2026-05-09 USER MANDATE — sweep gating thresholds.
+    # Cheap test (12 syms × 4 mo): variants below DISCARD floor are flagged DISCARD.
+    # Only variants with pool_sharpe ≥ DEEP_TEST floor AND positive monthly gain
+    # qualify for the expensive 4-year × 48-symbol sweep.
+    SWEEP_DISCARD_POOL_SHARPE_FLOOR: float = 0.4
+    SWEEP_DEEP_TEST_POOL_SHARPE_MIN: float = 0.5  # 4yr deep test gate
+    SWEEP_DEEP_TEST_GAIN_PER_MO_MIN_PCT: float = 1.0  # ≥ 1%/mo to deserve deep test
     # 2026-05-09 SWEEP-EXPOSURE — knobs that were hardcoded in ez_manage.py, now config.
     # AUGMENTED_POSITIONS_GUARD floor at ez_manage.py:12190 was `0.5 * MIN_GAIN`; tune via this mult.
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5

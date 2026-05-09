@@ -2116,6 +2116,37 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
                     return False
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
+        # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
+        # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency exits bypass.
+        # Mirror of ez_manage equivalent. Module-level _overtrade_counter keyed by
+        # 'YYYYMMDD:pkey'. Trim daily.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _ot_act = (action or '').upper()
+            if ('OPEN' in _ot_act or 'AUGMENT' in _ot_act or 'ENTRY' in _ot_act) and \
+               'CLOSE' not in _ot_act and 'REDUCE' not in _ot_act:
+                _ot_max = int(getattr(config, 'TRADES_PER_SYM_PER_DAY_MAX', 8))
+                _ot_emerg = ('RIDICULOUS' in str(reason or '').upper() or
+                             'BREAK_REVERSE' in str(reason or '').upper() or
+                             'ALL_TF_AGAINST' in str(reason or '').upper() or
+                             'INTERVENTION' in str(reason or '').upper() or
+                             'MANUAL' in str(reason or '').upper())
+                if _ot_max > 0 and not _ot_emerg:
+                    global _OVERTRADE_COUNTER
+                    if '_OVERTRADE_COUNTER' not in globals():
+                        _OVERTRADE_COUNTER = {}
+                    _ot_today = datetime.now(timezone.utc).strftime('%Y%m%d')
+                    _ot_key = f"{_ot_today}:{position_key}"
+                    _ot_n = _OVERTRADE_COUNTER.get(_ot_key, 0)
+                    if len(_OVERTRADE_COUNTER) > 5000:
+                        _OVERTRADE_COUNTER = {k: v for k, v in _OVERTRADE_COUNTER.items() if k.startswith(_ot_today)}
+                    if _ot_n >= _ot_max:
+                        logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
+                        return False
+                    _OVERTRADE_COUNTER[_ot_key] = _ot_n + 1
+        except Exception as _ot_e:
+            logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return

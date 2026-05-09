@@ -284,6 +284,21 @@ run_script() {
                 kill -KILL "$script_pid" 2>/dev/null || true
                 break
             fi
+            # 2026-05-09: Pressure-aware evacuation. Per-process RSS ceilings only catch
+            # leaks/scaling. Whole-system jetsam waves (e.g. 5 workers SIGKILLed simultaneously
+            # 2026-05-09 06:07) hit workers BELOW their per-process ceiling because
+            # jetsam picks the largest RSS regardless. Reading kern.memorystatus_vm_pressure_level
+            # (≥4 = critical) and self-TERMing the largest workers BEFORE jetsam fires lets
+            # them save state cleanly. Threshold 70% of MAX_RSS_KB so only well-loaded workers
+            # self-evict — small workers stay alive, system pressure drops, jetsam stands down.
+            local _pl=$(mac_pressure_level)
+            if [[ -n "$rss_kb" && "$_pl" -ge 4 && "$rss_kb" -gt $((MAX_RSS_KB * 7 / 10)) ]]; then
+                log "🚨 PRESSURE_EVAC: pressure_level=${_pl} (≥4 critical) rss=${rss_kb}KB > 70% of ${MAX_RSS_KB}KB. Graceful evac before jetsam SIGKILLs us."
+                kill -TERM "$script_pid" 2>/dev/null || true
+                sleep 5
+                kill -KILL "$script_pid" 2>/dev/null || true
+                break
+            fi
         fi
     done
     
