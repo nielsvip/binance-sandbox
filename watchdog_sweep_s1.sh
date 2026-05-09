@@ -2,13 +2,13 @@
 # watchdog_sweep_s1.sh — every 5min: keep BOTH crypto AND tradier backtest_v8_sweep alive.
 # 2026-05-08 v12: added --mem-throttle-pct 70 to tradier sweep to prevent OOM kills when
 # profiler + crypto + tradier all run concurrently (each engine peaks ~10GB on 30GB server).
-# Crypto: 8 USDC syms, start=2026-01-01. Tradier: 20 liquid stocks, start=2026-01-01.
+# Crypto: 12 USDC syms, start=2026-01-01. Tradier: 20 liquid stocks, start=2026-01-01.
 LOG=/home/niels/logs/watchdog_sweep_s1.log
 TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
 PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 
-CORE8_CRYPTO=BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC,ADAUSDC,BNBUSDC,AVAXUSDC,LINKUSDC
+CORE8_CRYPTO=BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC,ADAUSDC,BNBUSDC,AVAXUSDC,LINKUSDC,LTCUSDC,UNIUSDC,DOGEUSDC,CRVUSDC
 CORE20_TRADIER=AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS
 
 count_crypto_sweep() {
@@ -21,7 +21,7 @@ count_crypto_promoter() {
     ps aux | grep "[r]ate_filter_promoter.*--mode crypto" | grep python | wc -l | tr -d '[:space:]'
 }
 
-# -- Part 1: crypto backtest_v8_sweep system_combo (8 USDC syms, 2026-01-01) --
+# -- Part 1: crypto backtest_v8_sweep system_combo (12 USDC syms, 2026-01-01) --
 NC=$(count_crypto_sweep)
 if [ "$NC" -lt 1 ]; then
     echo "[$TS] crypto system_combo dead -- relaunching (8 syms, 2026-01-01, timeout=3600)" >> "$LOG"
@@ -29,13 +29,13 @@ if [ "$NC" -lt 1 ]; then
     cd "$DIR"
     nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode crypto --account ang \
-        --start 2026-01-01 \
+        --start 2026-04-09 \
         --symbols "$CORE8_CRYPTO" \
         --tier system_combo \
         --workers 1 \
         --timeout 3600 \
         --mem-throttle-pct 85 \
-        > ~/logs/bt_sweep_crypto_8sym_${TS2}.log 2>&1 < /dev/null & disown
+        > ~/logs/bt_sweep_crypto_12sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
     echo "[$TS] post-relaunch crypto procs=$(count_crypto_sweep)" >> "$LOG"
 else
@@ -52,7 +52,7 @@ if [ "$NT" -lt 1 ]; then
     cd "$DIR"
     nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode tradier --account trb \
-        --start 2026-01-01 \
+        --start 2026-04-09 \
         --symbols "$CORE20_TRADIER" \
         --tier tradier_param_hunt \
         --workers 1 \
