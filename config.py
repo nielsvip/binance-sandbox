@@ -229,8 +229,8 @@ class Config:
     # quietly trend up across 1h/4h/24h on real volume with low drawdown.
     TRENDER_INJECT_SHADOW_LOG: bool = True
     TRENDER_INJECT_LIVE: bool = False
-    TRENDER_LIN_MIN: float = 0.55                # avg |Pearson r| floor across {15m,1h,4h,D}
-    TRENDER_RET24_MIN_PCT: float = 1.5           # absolute 24h return floor (% — kills drift)
+    TRENDER_LIN_MIN: float = 0.65                # avg |Pearson r| floor across {15m,1h,4h,D} — 2026-05-09 audit: 0.55→0.65
+    TRENDER_RET24_MIN_PCT: float = 2.5           # absolute 24h return floor (% — kills drift) — 2026-05-09 audit: 1.5→2.5
     TRENDER_QV_FLOOR_USD: float = 25_000_000     # 24h quote-volume floor (kills pump shells & micro-caps)
     TRENDER_QV_ANCHOR_USD: float = 50_000_000    # log10(qv/anchor) → score multiplier
     TRENDER_QV_MAX_BOOST: float = 1.5            # cap so megacaps don't auto-win
@@ -241,7 +241,7 @@ class Config:
     BREAKOUT_INJECT_SHADOW_LOG: bool = True
     BREAKOUT_INJECT_LIVE: bool = False
     BREAKOUT_MAD_MULTIPLIER: float = 2.0         # threshold = median ± N×MAD of cross-sectional 4h returns
-    BREAKOUT_MIN_RET_PCT: float = 3.0            # absolute floor regardless of band width
+    BREAKOUT_MIN_RET_PCT: float = 5.0            # absolute floor regardless of band width — 2026-05-09 audit: 3.0→5.0 (best LONG fwd_4h +0.77%, pos% 56.5%)
     BREAKOUT_MAX_DD_RATIO: float = 0.5           # looser than TRENDER (breakouts spike) but still cap fades
     # Orderbook-primary entry signals (2026-04-23 late): ez_orderbook.py writes
     # ob_long_score / ob_short_score (0..100). Scanner opens on OB score instead of

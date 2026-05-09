@@ -233,7 +233,8 @@ def run_one_variant(sym: str, tag: str, override: Dict, run_dir: Path, account: 
         return {'sym': sym, 'tag': tag, 'trades': 0, 'pool_sharpe': 0.0,
                 'wr_pct': 0.0, 'max_dd_pct': 0.0, 'trades_per_day': 0.0, 'years': 0.0}
     n = len(rets)
-    yrs = (ts_last - ts_first) / 86400 / 365.25 if ts_first else 0.01
+    # 2026-05-09 fix: when all trades fall in a single bar yrs and span can be 0 → ZeroDivisionError on line 248. Floor to 0.01yr / 1d.
+    yrs = max((ts_last - ts_first) / 86400 / 365.25, 0.01) if ts_first else 0.01
     span_days = max(1.0, (ts_last - ts_first) / 86400) if ts_first else 1.0
     arr = np.array(rets, dtype=np.float64)
     sd = float(arr.std())
