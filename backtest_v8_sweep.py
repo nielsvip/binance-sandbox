@@ -56,6 +56,13 @@ except ImportError:
 from datetime import datetime, timezone
 from pathlib import Path
 
+# CLAUDE.md NO-LIES MANDATE: every Sharpe-bearing CSV row MUST route through
+# metrics_guard.write_sharpe_row() which validates canonical columns + refuses
+# inflated/banned values. Adding the parent dir to sys.path so the import works
+# whether the sweep is run from MacBook, S1, or S2.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import metrics_guard  # noqa: E402
+
 BASE_PATH = Path(__file__).resolve().parent
 ENGINE_PATH = BASE_PATH / "backtest_v8_engine.py"
 OVERRIDE_DIR = BASE_PATH / "data" / "sweep_overrides"
@@ -64,24 +71,27 @@ OVERRIDE_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 PY_BIN = sys.executable
-# 2026-04-29: V8_RESULT now emits pool_sharpe + sym_sharpe + sharpe-alias (CLAUDE.md rule 4).
-# sharpe_w / sharpe_ann are BANNED — sweep ranking now uses pool_sharpe (= sharpe_pt = per-trade canonical).
+# 2026-04-29: V8_RESULT emits pool_sharpe + sym_sharpe + sharpe-alias (CLAUDE.md rule 4).
+# 2026-05-09: rebuilt regex to match the engine's canonical V8_RESULT line directly
+# (no back-compat slot reuse). pool_sharpe / sym_sharpe / gain_pct / closes / wins / losses
+# all flow into the canonical-column row. sharpe_w / sharpe_ann are BANNED per
+# CLAUDE.md NO-LIES rule 3 and never appear in the output CSV.
 V8_RESULT_RE = re.compile(
     r"V8_RESULT:\s*"
-    r"pool_sharpe=(?P<sharpe_w>[-\d.]+)\s+"        # pool_sharpe captured into sharpe_w field for back-compat
-    r"sym_sharpe=(?P<sharpe_pt>[-\d.]+)\s+"         # sym_sharpe → sharpe_pt slot (caller treats as diagnostic)
-    r"sharpe=(?P<sharpe_ann>[-\d.]+)\s+"            # alias = pool_sharpe (also into sharpe_ann slot for compat)
+    r"pool_sharpe=(?P<pool_sharpe>[-\d.]+)\s+"
+    r"sym_sharpe=(?P<sym_sharpe>[-\d.]+)\s+"
+    r"sharpe=(?P<sharpe_alias>[-\d.]+)\s+"          # = pool_sharpe; ignored downstream
     r"gain_pct=(?P<gain_pct>[-+\d.]+)\s+"
     r"closes=(?P<closes>\d+)\s+"
     r"wins=(?P<wins>\d+)\s+"
     r"losses=(?P<losses>\d+)"
 )
-V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*pool_sharpe=(?P<sharpe_w>[-\d.]+)")
-# Fallback _v8_result_from_trades format (now also emits pool/sym/sharpe-alias):
+V8_RESULT_LIVE_RE = re.compile(r"V8_RESULT_LIVE:.*pool_sharpe=(?P<pool_sharpe>[-\d.]+)")
+# Fallback _v8_result_from_trades format (also pool/sym/sharpe-alias):
 V8_RESULT_TRADIER_RE = re.compile(
     r"V8_RESULT:\s*"
-    r"pool_sharpe=[-\d.]+\s+sym_sharpe=[-\d.]+\s+"
-    r"sharpe=(?P<sharpe>[-\d.]+)\s+"
+    r"pool_sharpe=(?P<pool_sharpe>[-\d.]+)\s+sym_sharpe=(?P<sym_sharpe>[-\d.]+)\s+"
+    r"sharpe=(?P<sharpe_alias>[-\d.]+)\s+"
     r"pnl=(?P<pnl>[-+\d.]+)\s+"
     r"trades=(?P<trades>\d+)\s+"
     r"wins=(?P<wins>\d+)\s+"
@@ -89,6 +99,10 @@ V8_RESULT_TRADIER_RE = re.compile(
 )
 # Tradier sweep-mode live format: V8_RESULT_LIVE: step=X/Y closes=X elapsed=Xs
 V8_RESULT_LIVE_SIMPLE_RE = re.compile(r"V8_RESULT_LIVE:.*closes=(?P<closes>\d+)")
+# V8_NEW_SWITCHES: ... dd_min=X.XX  → captures peak-trough drawdown (>= 0)
+V8_NEW_SWITCHES_RE = re.compile(r"V8_NEW_SWITCHES:.*dd_min=(?P<dd_min>[-\d.]+)")
+# V8_INIT_HEARTBEAT: ... stores_loaded=N skipped_mode=M skipped_stale=S
+V8_INIT_HEARTBEAT_RE = re.compile(r"V8_INIT_HEARTBEAT:.*stores_loaded=(?P<n_syms>\d+)\s+skipped_mode=(?P<n_mode>\d+)\s+skipped_stale=(?P<n_stale>\d+)")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1125,16 +1139,38 @@ def run_one_variant(args_tuple):
         live_closes = 0
         killed = False
         stdout_tail = []
+        # 2026-05-09 capture-extras: n_syms (from V8_INIT_HEARTBEAT), n_skipped_stale,
+        # max_dd_pct (from V8_NEW_SWITCHES dd_min). All needed for canonical CSV row.
+        n_syms_loaded = None
+        n_skipped_stale = None
+        n_skipped_mode = None
+        max_dd_pct = None
         try:
             for line in proc.stdout:
                 line = line.rstrip()
                 stdout_tail.append(line)
-                if len(stdout_tail) > 20:
+                if len(stdout_tail) > 30:
                     stdout_tail.pop(0)
+                m_init = V8_INIT_HEARTBEAT_RE.search(line)
+                if m_init:
+                    try:
+                        n_syms_loaded = int(m_init["n_syms"])
+                        n_skipped_mode = int(m_init["n_mode"])
+                        n_skipped_stale = int(m_init["n_stale"])
+                    except Exception:
+                        pass
+                m_dd = V8_NEW_SWITCHES_RE.search(line)
+                if m_dd:
+                    try:
+                        # dd_min in engine output is signed (e.g. -3.45 or +0.00).
+                        # Per CLAUDE.md rule 2 we always store as positive percentage.
+                        max_dd_pct = abs(float(m_dd["dd_min"]))
+                    except Exception:
+                        pass
                 m_live = V8_RESULT_LIVE_RE.search(line)
                 if m_live:
                     try:
-                        live_sharpe = float(m_live["sharpe_w"])
+                        live_sharpe = float(m_live["pool_sharpe"])
                     except Exception:
                         pass
                 m_live_simple = V8_RESULT_LIVE_SIMPLE_RE.search(line)
@@ -1171,59 +1207,78 @@ def run_one_variant(args_tuple):
             proc.kill()
         t_err.join(timeout=2)
         elapsed = time.time() - t0
+        # Diagnostic reason-string for non-ok rows: distinguish stale-NPZ from
+        # timeout from OOM-kill from generic engine error. Per user mandate
+        # 2026-05-09 errors must NOT be silently swallowed.
+        _reason_parts = []
+        if killed:
+            _reason_parts.append("timeout" if elapsed > timeout_s else "killed_low_sharpe")
+        if n_syms_loaded == 0 and n_skipped_stale and n_skipped_stale > 0:
+            _reason_parts.append(f"npz_stale_{n_skipped_stale}_skipped")
+        if n_syms_loaded == 0 and n_skipped_mode and n_skipped_mode > 0:
+            _reason_parts.append(f"npz_mode_filter_{n_skipped_mode}_skipped")
+        if proc.returncode and proc.returncode != 0:
+            _reason_parts.append(f"rc={proc.returncode}")
+        if stderr_lines:
+            _last_err = stderr_lines[-1][:180]
+            if _last_err:
+                _reason_parts.append(f"stderr:{_last_err}")
+        reason_str = " | ".join(_reason_parts) if _reason_parts else ""
+
+        common = {
+            "label": label,
+            "overrides": overrides,
+            "cfg_hash": cfg_hash,
+            "elapsed_s": round(elapsed, 1),
+            "rc": proc.returncode,
+            "stderr_tail": stderr_lines[-5:],
+            "n_syms_loaded": n_syms_loaded,
+            "n_skipped_stale": n_skipped_stale,
+            "n_skipped_mode": n_skipped_mode,
+            "max_dd_pct": max_dd_pct,
+            "reason": reason_str,
+        }
         if killed and not match and not match_tradier:
             status = "timeout" if elapsed > timeout_s else "killed_low_sharpe"
             return {
-                "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
-                "status": status, "elapsed_s": round(elapsed, 1),
-                "live_sharpe": live_sharpe, "live_closes": live_closes, "rc": proc.returncode,
-                "stderr_tail": stderr_lines[-5:],
+                **common,
+                "status": status,
+                "live_sharpe": live_sharpe,
+                "live_closes": live_closes,
             }
         if match:
             return {
-                "label": label,
-                "overrides": overrides,
-                "cfg_hash": cfg_hash,
+                **common,
                 "status": "ok",
-                "sharpe_w": float(match["sharpe_w"]),
-                "sharpe_pt": float(match["sharpe_pt"]),
-                "sharpe_ann": float(match["sharpe_ann"]),
+                "pool_sharpe": float(match["pool_sharpe"]),
+                "sym_sharpe": float(match["sym_sharpe"]),
                 "gain_pct": float(match["gain_pct"]),
                 "closes": int(match["closes"]),
                 "wins": int(match["wins"]),
                 "losses": int(match["losses"]),
-                "elapsed_s": round(elapsed, 1),
-                "rc": proc.returncode,
-                "stderr_tail": stderr_lines[-5:],
             }
         if match_tradier:
-            _sharpe = float(match_tradier["sharpe"])
             return {
-                "label": label,
-                "overrides": overrides,
-                "cfg_hash": cfg_hash,
+                **common,
                 "status": "ok",
-                "sharpe_w": _sharpe,
-                "sharpe_pt": _sharpe,
-                "sharpe_ann": _sharpe,
+                "pool_sharpe": float(match_tradier["pool_sharpe"]),
+                "sym_sharpe": float(match_tradier["sym_sharpe"]),
                 "gain_pct": float(match_tradier["pnl"]),
                 "closes": int(match_tradier["trades"]),
                 "wins": int(match_tradier["wins"]),
                 "losses": int(match_tradier["losses"]),
-                "elapsed_s": round(elapsed, 1),
-                "rc": proc.returncode,
-                "stderr_tail": stderr_lines[-5:],
             }
         return {
-            "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
-            "status": "no_result", "elapsed_s": round(elapsed, 1), "rc": proc.returncode,
-            "stderr_tail": stderr_lines[-5:],
-            "stdout_tail": stdout_tail[-5:],
+            **common,
+            "status": "ERROR" if (proc.returncode != 0 or _reason_parts) else "no_result",
+            "stdout_tail": stdout_tail[-10:],
         }
     except Exception as e:
         return {
             "label": label, "overrides": overrides, "cfg_hash": cfg_hash,
-            "status": "error", "error": str(e),
+            "status": "ERROR", "rc": -1, "elapsed_s": 0,
+            "reason": f"runner_exception:{type(e).__name__}:{str(e)[:200]}",
+            "stderr_tail": [], "stdout_tail": [],
         }
 
 
@@ -1231,42 +1286,107 @@ def run_one_variant(args_tuple):
 # CSV WRITER — incremental flush so interruptions don't lose results
 # ══════════════════════════════════════════════════════════════════════════════
 
-CSV_FIELDS = [
-    "label", "cfg_hash", "status", "sharpe_w", "sharpe_pt", "sharpe_ann",
-    "gain_pct", "closes", "wins", "losses", "win_rate", "elapsed_s", "rc",
-    "overrides_json",
+# 2026-05-09: CSV columns now match CLAUDE.md NO-LIES MANDATE rule 2.
+# Canonical columns (REQUIRED): pool_sharpe, sym_sharpe, avg_gain_trade,
+# gain_per_yr, gain_sym_yr, trades, max_dd_pct, n_syms, years.
+# Banned columns (REJECTED): sharpe_w, sharpe_ann, sharpe_annual, sharpe_y, etc.
+# Diagnostic columns (extra): label, cfg_hash, status, gain_pct, wins, losses,
+# win_rate, elapsed_s, rc, reason, overrides_json. The verdict column is added
+# automatically by metrics_guard.write_sharpe_row().
+CSV_FIELDS = list(metrics_guard.CANONICAL_REQUIRED_COLS) + [
+    "label", "cfg_hash", "status", "gain_pct", "wins", "losses", "win_rate",
+    "elapsed_s", "rc", "reason", "overrides_json",
 ]
 
 
-def _result_to_row(r: dict) -> dict:
+def _years_from_start(start_date: str) -> float:
+    """Compute the backtest window in years from start_date string YYYY-MM-DD
+    to now (UTC). Used to derive `gain_per_yr` and `gain_sym_yr` honestly —
+    no annualization gimmickry, just the actual measurement window."""
+    try:
+        sd = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        days = max((now - sd).total_seconds() / 86400.0, 0.01)
+        return days / 365.25
+    except Exception:
+        return 0.01
+
+
+def _result_to_canonical_row(r: dict, mode_arg: str, start_date: str,
+                              symbols_arg: str) -> dict:
+    """Build a CSV row with the 9 canonical Sharpe columns from a runner result.
+    Errors / no_result rows still produce all 9 fields (with zeros / honest
+    `n_syms_loaded` value) so write_sharpe_row's validator does not refuse them.
+    The `status` column distinguishes ok from ERROR."""
     wins = r.get("wins", 0) or 0
     losses = r.get("losses", 0) or 0
-    total = wins + losses
+    closes = r.get("closes", 0) or 0
+    total_close = wins + losses or closes
+    gain_pct = float(r.get("gain_pct", 0) or 0)
+    pool_s = float(r.get("pool_sharpe", 0) or 0)
+    sym_s = float(r.get("sym_sharpe", 0) or 0)
+    n_syms = r.get("n_syms_loaded")
+    if n_syms is None:
+        # Fall back to count-of-symbols-from-args when init heartbeat wasn't seen.
+        n_syms = len([s for s in symbols_arg.split(",") if s.strip()])
+    years = _years_from_start(start_date)
+    avg_gain_trade = (gain_pct / closes) if closes > 0 else 0.0
+    gain_per_yr = (gain_pct / years) if years > 0 else 0.0
+    gain_sym_yr = (gain_pct / max(1, n_syms) / years) if years > 0 else 0.0
+    max_dd = r.get("max_dd_pct")
+    if max_dd is None:
+        max_dd = 0.0
     return {
+        # — canonical 9 (CLAUDE.md NO-LIES rule 2) —
+        "pool_sharpe": pool_s,
+        "sym_sharpe": sym_s,
+        "avg_gain_trade": avg_gain_trade,
+        "gain_per_yr": gain_per_yr,
+        "gain_sym_yr": gain_sym_yr,
+        "trades": int(closes),
+        "max_dd_pct": float(max_dd),
+        "n_syms": int(n_syms),
+        "years": float(years),
+        # — diagnostic / runner state —
         "label": r.get("label", ""),
         "cfg_hash": r.get("cfg_hash", ""),
         "status": r.get("status", ""),
-        "sharpe_w": r.get("sharpe_w", ""),
-        "sharpe_pt": r.get("sharpe_pt", ""),
-        "sharpe_ann": r.get("sharpe_ann", ""),
-        "gain_pct": r.get("gain_pct", ""),
-        "closes": r.get("closes", ""),
-        "wins": wins,
-        "losses": losses,
-        "win_rate": round(wins / total * 100, 1) if total > 0 else "",
+        "gain_pct": gain_pct,
+        "wins": int(wins),
+        "losses": int(losses),
+        "win_rate": round(wins / total_close * 100, 1) if total_close > 0 else "",
         "elapsed_s": r.get("elapsed_s", ""),
         "rc": r.get("rc", ""),
+        "reason": r.get("reason", ""),
         "overrides_json": json.dumps(r.get("overrides", {}), sort_keys=True),
     }
 
 
-def write_csv_row(path: Path, row: dict, header_written: bool) -> None:
-    mode = "a" if header_written else "w"
-    with path.open(mode, newline="") as f:
-        w = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-        if not header_written:
-            w.writeheader()
-        w.writerow(row)
+def write_csv_row(path: Path, row: dict, header_written: bool, mode_arg: str = "crypto") -> None:
+    """Append a row to the sweep CSV via metrics_guard.write_sharpe_row().
+    The chokepoint validates: all 9 canonical columns present, no banned column
+    names, pool_sharpe within sane bounds, and adds a verdict tag (PUBLISHABLE
+    vs DIAGNOSTIC). Refuses on violation — the sweep should not silently lie.
+
+    For non-ok rows (status=ERROR / timeout / no_result), pool_sharpe defaults
+    to 0.0 which passes the validator; the `status` + `reason` columns capture
+    why no real metric was produced."""
+    try:
+        metrics_guard.write_sharpe_row(path, row, mode=mode_arg, append=header_written)
+    except metrics_guard.FakeMetricRefused as e:
+        # Validator rejected. Per CLAUDE.md, do NOT silently fall back — write
+        # a refusal sidecar so the row is recoverable for audit, then re-raise
+        # so the sweep operator sees the violation immediately.
+        sidecar = path.parent / f"{path.stem}.metrics_guard_refused.jsonl"
+        with sidecar.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "label": row.get("label", ""),
+                "cfg_hash": row.get("cfg_hash", ""),
+                "refusal": str(e),
+                "row": {k: (v if isinstance(v, (int, float, str, bool, type(None))) else str(v)) for k, v in row.items()},
+                "ts_utc": datetime.now(timezone.utc).isoformat(),
+            }) + "\n")
+        raise
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1351,6 +1471,10 @@ def main():
     completed = 0
     baseline_sharpe = None
 
+    # Mode used for metrics_guard sample-floor (crypto vs stocks). Tradier is
+    # stocks; everything else maps to crypto.
+    mg_mode = "stocks" if args.mode == "tradier" else "crypto"
+
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(run_one_variant, t): t[0] for t in tasks}
         for fut in as_completed(futures):
@@ -1358,39 +1482,50 @@ def main():
             try:
                 res = fut.result()
             except Exception as e:
-                res = {"label": label, "status": "worker_error", "error": str(e)}
+                res = {"label": label, "status": "ERROR", "rc": -1, "elapsed_s": 0,
+                       "reason": f"worker_error:{type(e).__name__}:{str(e)[:200]}",
+                       "overrides": {}}
             completed += 1
-            row = _result_to_row(res)
-            write_csv_row(out_path, row, header_written)
+            row = _result_to_canonical_row(res, args.mode, args.start, args.symbols)
+            try:
+                write_csv_row(out_path, row, header_written, mode_arg=mg_mode)
+            except metrics_guard.FakeMetricRefused as _fmr:
+                # Already logged to .metrics_guard_refused.jsonl sidecar.
+                # Print a loud warning so the operator sees the violation but the
+                # sweep continues (one bad row should not abort the whole run).
+                print(f"[{completed:3d}/{len(tasks)}] {label:50s} METRICS_GUARD_REFUSED: {_fmr}")
+                continue
             header_written = True
             delta_s = ""
             if res.get("status") == "ok":
-                s_w = res["sharpe_w"]
+                s_pool = res["pool_sharpe"]
                 if label == "baseline":
-                    baseline_sharpe = s_w
+                    baseline_sharpe = s_pool
                 elif baseline_sharpe is not None:
-                    delta_s = f" Δ={s_w - baseline_sharpe:+.3f}"
-                print(f"[{completed:3d}/{len(tasks)}] {label:50s} sharpe_w={res['sharpe_w']:+.3f}{delta_s} gain={res['gain_pct']:+.2f}% closes={res['closes']} wr={row['win_rate']}% {res['elapsed_s']:.0f}s")
+                    delta_s = f" Δ={s_pool - baseline_sharpe:+.3f}"
+                print(f"[{completed:3d}/{len(tasks)}] {label:50s} pool_sharpe={s_pool:+.3f}{delta_s} sym_sharpe={res['sym_sharpe']:+.3f} gain={res['gain_pct']:+.2f}% closes={res['closes']} wr={row['win_rate']}% dd={row['max_dd_pct']:.2f}% n_syms={row['n_syms']} years={row['years']:.2f} {res['elapsed_s']:.0f}s")
             elif res.get("status") == "killed_low_sharpe":
-                print(f"[{completed:3d}/{len(tasks)}] {label:50s} KILLED live_sharpe={res.get('live_sharpe')} after {res.get('elapsed_s'):.0f}s")
+                print(f"[{completed:3d}/{len(tasks)}] {label:50s} KILLED live_sharpe={res.get('live_sharpe')} after {res.get('elapsed_s'):.0f}s reason={res.get('reason', '')}")
             else:
-                print(f"[{completed:3d}/{len(tasks)}] {label:50s} STATUS={res.get('status')} rc={res.get('rc')} {res.get('stderr_tail', [])}")
+                _stderr_tail = res.get('stderr_tail', [])
+                _reason = res.get('reason', '')
+                print(f"[{completed:3d}/{len(tasks)}] {label:50s} STATUS={res.get('status')} rc={res.get('rc')} reason={_reason!r} stderr_tail={_stderr_tail[-2:] if _stderr_tail else []}")
 
     elapsed_total = time.time() - t_start
     print(f"\n[sweep] done in {elapsed_total:.0f}s ({elapsed_total/60:.1f}m)  out={out_path}")
 
-    # Best-of summary
+    # Best-of summary using canonical pool_sharpe column.
     try:
         import csv as _csv
         rows = []
         with out_path.open() as f:
             for r in _csv.DictReader(f):
-                if r["status"] == "ok" and r["sharpe_w"]:
+                if r["status"] == "ok" and r.get("pool_sharpe"):
                     rows.append(r)
-        rows.sort(key=lambda r: float(r["sharpe_w"] or 0), reverse=True)
-        print("\nTop 5 by sharpe_w:")
+        rows.sort(key=lambda r: float(r["pool_sharpe"] or 0), reverse=True)
+        print("\nTop 5 by pool_sharpe (CLAUDE.md canonical):")
         for r in rows[:5]:
-            print(f"  {r['label']:50s} sharpe_w={r['sharpe_w']} gain={r['gain_pct']}% closes={r['closes']} wr={r['win_rate']}%")
+            print(f"  {r['label']:50s} pool_sharpe={r['pool_sharpe']} sym_sharpe={r['sym_sharpe']} gain={r['gain_pct']}% closes={r['trades']} wr={r['win_rate']}% dd={r['max_dd_pct']}% n_syms={r['n_syms']} years={r['years']}")
     except Exception:
         pass
 
