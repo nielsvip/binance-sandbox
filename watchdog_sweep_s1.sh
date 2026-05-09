@@ -29,11 +29,11 @@ if [ "$NC" -lt 1 ]; then
     cd "$DIR"
     nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode crypto --account ang \
-        --start 2026-04-09 \
+        --start 2026-01-01 \
         --symbols "$CORE8_CRYPTO" \
         --tier system_combo \
         --workers 1 \
-        --timeout 3600 \
+        --timeout 5400 \
         --mem-throttle-pct 85 \
         > ~/logs/bt_sweep_crypto_12sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
@@ -52,11 +52,11 @@ if [ "$NT" -lt 1 ]; then
     cd "$DIR"
     nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode tradier --account trb \
-        --start 2026-04-09 \
+        --start 2026-01-01 \
         --symbols "$CORE20_TRADIER" \
         --tier tradier_param_hunt \
         --workers 1 \
-        --timeout 3600 \
+        --timeout 5400 \
         --mem-throttle-pct 70 \
         > ~/logs/bt_sweep_tradier_20sym_${TS2}.log 2>&1 < /dev/null & disown
     sleep 5
