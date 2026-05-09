@@ -4651,6 +4651,152 @@ async def initial_fetch_and_ranking(symbols, timeframes=["4h","1h","15m","3m"]):
         logger.warning(f"[FUNDING_OI_INJECT] error: {_foi_err}")
     # === END FUNDING + OI INJECTION ====================================================
 
+    # === TRENDER + BREAKOUT INJECTION (2026-05-09 user mandate) ========================
+    # Two new injectors that capture symbols missed by velocity-only funnels:
+    #   TRENDER_INJECT  — sustained + linear + size-credible grinders (clean +5% over 24h on a $100M coin)
+    #   BREAKOUT_INJECT — symbols whose 4h return outliers from cross-sectional cluster
+    #                     (the ZEC/TON-style band-breakers the user actually trades)
+    # Both default to SHADOW_LOG: candidates are written to data/inject_shadow_log.jsonl
+    # WITHOUT modifying symbols_inf_long/short_list. Flip *_LIVE=True after validation.
+    # NO top-N cap — a quiet market may inject 0; a moving market may inject 30+.
+    try:
+        import math as _math
+        import statistics as _stats2
+        from utils import get_symbol_tier as _gst
+        _ts_now = int(time.time())
+        _shadow_path = BASE_PATH / "data" / "inject_shadow_log.jsonl"
+        _shadow_rows = []
+        _tier_mult = {'A': 1.5, 'B': 1.2, 'C': 1.0, 'D': 0.7}
+        # Pre-compute per-symbol horizon returns + 24h DD + 24h quote-volume USD from dfs_for_calc
+        # so both injectors can share the same numbers.
+        _horizons = {}  # sym -> {ret_1h, ret_4h, ret_24h, dd_24h_pct, qv_24h_usd}
+        for _e in final_ranking_data_scalars:
+            _sym = _e.get("symbol")
+            _dfs = _e.get("dfs_for_calc") or {}
+            _df15 = _dfs.get("15m"); _df1h = _dfs.get("1h")
+            if _sym is None or _df15 is None or _df1h is None: continue
+            try:
+                if _df15.empty or 'close' not in _df15.columns: continue
+                if _df1h.empty or 'close' not in _df1h.columns: continue
+                _c15 = _df15['close'].astype(float)
+                _c1h = _df1h['close'].astype(float)
+                if len(_c15) < 17 or len(_c1h) < 25: continue
+                _last = float(_c15.iloc[-1])
+                _ret_1h = (_last / float(_c15.iloc[-5]) - 1.0) * 100.0   # 4×15m back
+                _ret_4h = (_last / float(_c15.iloc[-17]) - 1.0) * 100.0  # 16×15m back
+                _ret_24h = (_last / float(_c1h.iloc[-25]) - 1.0) * 100.0
+                _peak_24h = float(_c1h.iloc[-25:].max())
+                _trough_24h = float(_c1h.iloc[-25:].min())
+                _dd_long_pct = ((_peak_24h - _last) / _peak_24h * 100.0) if _peak_24h > 0 else 0.0   # peak→now drawdown (LONG side)
+                _dd_short_pct = ((_last - _trough_24h) / _trough_24h * 100.0) if _trough_24h > 0 else 0.0  # trough→now rally (SHORT side)
+                _qv_usd = float((_df1h['volume'].astype(float).iloc[-24:] * _c1h.iloc[-24:]).sum()) if 'volume' in _df1h.columns else 0.0
+                _horizons[_sym] = {"ret_1h": _ret_1h, "ret_4h": _ret_4h, "ret_24h": _ret_24h, "dd_long_pct": _dd_long_pct, "dd_short_pct": _dd_short_pct, "qv_24h_usd": _qv_usd}
+            except Exception:
+                continue
+
+        # ---- TRENDER ----
+        if getattr(config, 'TRENDER_INJECT_SHADOW_LOG', True) or getattr(config, 'TRENDER_INJECT_LIVE', False):
+            _lin_min = float(getattr(config, 'TRENDER_LIN_MIN', 0.55))
+            _ret24_min = float(getattr(config, 'TRENDER_RET24_MIN_PCT', 1.5))
+            _qv_floor = float(getattr(config, 'TRENDER_QV_FLOOR_USD', 25_000_000))
+            _qv_anchor = float(getattr(config, 'TRENDER_QV_ANCHOR_USD', 50_000_000))
+            _qv_max_boost = float(getattr(config, 'TRENDER_QV_MAX_BOOST', 1.5))
+            _dd_ratio_max = float(getattr(config, 'TRENDER_DD_RATIO_MAX', 0.40))
+            _trender_long = []; _trender_short = []
+            for _e in final_ranking_data_scalars:
+                _sym = _e.get("symbol")
+                _h = _horizons.get(_sym)
+                if not _sym or not _h: continue
+                _r = _e.get("r_values_raw") or {}
+                _vals = [abs(v) for v in _r.values() if pd.notna(v)]
+                _lin = (sum(_vals) / len(_vals)) if _vals else float(_e.get("avg_linearity", 0.0) or 0.0)
+                if _lin < _lin_min: continue
+                if _h["qv_24h_usd"] < _qv_floor: continue
+                _qv_boost = max(0.0, min(_qv_max_boost, _math.log10(max(_h["qv_24h_usd"], 1.0) / _qv_anchor)))
+                try:
+                    _tier = _gst(_sym, default='B') or 'B'
+                except Exception:
+                    _tier = 'B'
+                _tm = _tier_mult.get(_tier, 1.0)
+                # LONG side: all three windows up + cumulative ≥ floor + drawdown contained
+                if (_h["ret_24h"] >= _ret24_min and _h["ret_4h"] >= 0 and _h["ret_1h"] >= 0):
+                    _ddr = _h["dd_long_pct"] / max(_h["ret_24h"], 0.01)
+                    if _ddr <= _dd_ratio_max:
+                        _stab = max(0.0, 1.0 - _ddr)
+                        _score = _h["ret_24h"] * (_lin ** 2) * _qv_boost * _tm * _stab
+                        _trender_long.append({"symbol": _sym, "score": round(_score, 4), "ret_24h": round(_h["ret_24h"], 2), "ret_4h": round(_h["ret_4h"], 2), "ret_1h": round(_h["ret_1h"], 2), "lin": round(_lin, 3), "qv_M": round(_h["qv_24h_usd"]/1e6, 1), "tier": _tier, "dd_ratio": round(_ddr, 3)})
+                # SHORT side
+                if (_h["ret_24h"] <= -_ret24_min and _h["ret_4h"] <= 0 and _h["ret_1h"] <= 0):
+                    _ddr = _h["dd_short_pct"] / max(abs(_h["ret_24h"]), 0.01)
+                    if _ddr <= _dd_ratio_max:
+                        _stab = max(0.0, 1.0 - _ddr)
+                        _score = abs(_h["ret_24h"]) * (_lin ** 2) * _qv_boost * _tm * _stab
+                        _trender_short.append({"symbol": _sym, "score": round(_score, 4), "ret_24h": round(_h["ret_24h"], 2), "ret_4h": round(_h["ret_4h"], 2), "ret_1h": round(_h["ret_1h"], 2), "lin": round(_lin, 3), "qv_M": round(_h["qv_24h_usd"]/1e6, 1), "tier": _tier, "dd_ratio": round(_ddr, 3)})
+            _trender_long.sort(key=lambda x: x["score"], reverse=True)
+            _trender_short.sort(key=lambda x: x["score"], reverse=True)
+            _live_t = bool(getattr(config, 'TRENDER_INJECT_LIVE', False))
+            for _c in _trender_long:
+                _shadow_rows.append({"ts": _ts_now, "injector": "TRENDER", "side": "LONG", "would_inject": _live_t, **_c})
+                if _live_t and _c["symbol"] not in symbols_inf_long_list and _c["symbol"] not in _bearish_syms:
+                    symbols_inf_long_list.append(_c["symbol"])
+            for _c in _trender_short:
+                _shadow_rows.append({"ts": _ts_now, "injector": "TRENDER", "side": "SHORT", "would_inject": _live_t, **_c})
+                if _live_t and _c["symbol"] not in symbols_inf_short_list and _c["symbol"] not in _bullish_syms:
+                    symbols_inf_short_list.append(_c["symbol"])
+            logger.info(f"📈 [TRENDER_INJECT] mode={'LIVE' if _live_t else 'SHADOW'} long={len(_trender_long)} short={len(_trender_short)} | top_long={[c['symbol'] for c in _trender_long[:5]]} top_short={[c['symbol'] for c in _trender_short[:5]]}")
+
+        # ---- BREAKOUT ----
+        if getattr(config, 'BREAKOUT_INJECT_SHADOW_LOG', True) or getattr(config, 'BREAKOUT_INJECT_LIVE', False):
+            _bk_mad_mult = float(getattr(config, 'BREAKOUT_MAD_MULTIPLIER', 2.0))
+            _bk_min_pct = float(getattr(config, 'BREAKOUT_MIN_RET_PCT', 3.0))
+            _bk_max_dd_ratio = float(getattr(config, 'BREAKOUT_MAX_DD_RATIO', 0.5))  # allow more DD than TRENDER (these spike)
+            _all_4h = [_h["ret_4h"] for _h in _horizons.values()]
+            if len(_all_4h) >= 30:
+                _med4 = _stats2.median(_all_4h)
+                _abs_dev_sorted = sorted(abs(x - _med4) for x in _all_4h)
+                _mad4 = _abs_dev_sorted[len(_abs_dev_sorted) // 2] if _abs_dev_sorted else 0.5
+                _mad4 = max(_mad4, 0.3)  # floor so micro-MAD doesn't admit noise
+                _upper = _med4 + _bk_mad_mult * _mad4
+                _lower = _med4 - _bk_mad_mult * _mad4
+                _bk_long = []; _bk_short = []
+                for _sym, _h in _horizons.items():
+                    _r4 = _h["ret_4h"]
+                    if _r4 >= _upper and _r4 >= _bk_min_pct:
+                        _ddr = _h["dd_long_pct"] / max(_h["ret_24h"], 0.01) if _h["ret_24h"] > 0 else 1.0
+                        if _ddr <= _bk_max_dd_ratio:
+                            _bk_long.append({"symbol": _sym, "ret_4h": round(_r4, 2), "ret_1h": round(_h["ret_1h"], 2), "ret_24h": round(_h["ret_24h"], 2), "z_above": round((_r4 - _med4) / _mad4, 2), "qv_M": round(_h["qv_24h_usd"]/1e6, 1), "dd_ratio": round(_ddr, 3)})
+                    elif _r4 <= _lower and _r4 <= -_bk_min_pct:
+                        _ddr = _h["dd_short_pct"] / max(abs(_h["ret_24h"]), 0.01) if _h["ret_24h"] < 0 else 1.0
+                        if _ddr <= _bk_max_dd_ratio:
+                            _bk_short.append({"symbol": _sym, "ret_4h": round(_r4, 2), "ret_1h": round(_h["ret_1h"], 2), "ret_24h": round(_h["ret_24h"], 2), "z_below": round((_med4 - _r4) / _mad4, 2), "qv_M": round(_h["qv_24h_usd"]/1e6, 1), "dd_ratio": round(_ddr, 3)})
+                _bk_long.sort(key=lambda x: -x["ret_4h"])
+                _bk_short.sort(key=lambda x: x["ret_4h"])
+                _live_b = bool(getattr(config, 'BREAKOUT_INJECT_LIVE', False))
+                for _c in _bk_long:
+                    _shadow_rows.append({"ts": _ts_now, "injector": "BREAKOUT", "side": "LONG", "would_inject": _live_b, "median_4h": round(_med4, 2), "mad_4h": round(_mad4, 2), "upper_band": round(_upper, 2), **_c})
+                    if _live_b and _c["symbol"] not in symbols_inf_long_list and _c["symbol"] not in _bearish_syms:
+                        symbols_inf_long_list.append(_c["symbol"])
+                for _c in _bk_short:
+                    _shadow_rows.append({"ts": _ts_now, "injector": "BREAKOUT", "side": "SHORT", "would_inject": _live_b, "median_4h": round(_med4, 2), "mad_4h": round(_mad4, 2), "lower_band": round(_lower, 2), **_c})
+                    if _live_b and _c["symbol"] not in symbols_inf_short_list and _c["symbol"] not in _bullish_syms:
+                        symbols_inf_short_list.append(_c["symbol"])
+                logger.info(f"💥 [BREAKOUT_INJECT] mode={'LIVE' if _live_b else 'SHADOW'} median_4h={_med4:.2f}% mad={_mad4:.2f}% upper={_upper:.2f}% lower={_lower:.2f}% | long={len(_bk_long)} short={len(_bk_short)} | top_long={[c['symbol'] for c in _bk_long[:5]]} top_short={[c['symbol'] for c in _bk_short[:5]]}")
+            else:
+                logger.info(f"💥 [BREAKOUT_INJECT] insufficient sample (n={len(_all_4h)}) — need ≥30 syms with full 1h+15m history")
+
+        # ---- Persist shadow log (jsonl, one row per candidate per cycle) ----
+        if _shadow_rows:
+            try:
+                _shadow_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(_shadow_path, "ab") as _slf:
+                    for _row in _shadow_rows:
+                        _slf.write(orjson.dumps(_row) + b"\n")
+            except Exception as _slog_err:
+                logger.warning(f"[INJECT_SHADOW_LOG] write failed: {_slog_err}")
+    except Exception as _trbk_err:
+        logger.warning(f"[TRENDER+BREAKOUT_INJECT] error: {_trbk_err}")
+    # === END TRENDER + BREAKOUT INJECTION ==============================================
+
     # Save scores to files
     save_scores(fs, FINAL_SCORE_FILE)
     save_scores(fsr, FINAL_SCORE_R_FILE)

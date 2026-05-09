@@ -218,6 +218,31 @@ class Config:
     SCALP_V3_OUTLIER_MIN_Z_LONG: float = 1.5     # min z-score (vs median) for a LONG outlier inject
     SCALP_V3_OUTLIER_MIN_Z_SHORT: float = -1.5   # max z-score for a SHORT outlier inject
     SCALP_V3_OUTLIER_MAX_INJECT: int = 15        # cap how many get appended per side
+    # ── TRENDER + BREAKOUT INJECTION (2026-05-09) ───────────────────────────────────
+    # Two new injectors that complement the velocity-only funnels (15m gain_score,
+    # weighted_gains_st, V3 outlier z-score). Both default to SHADOW_LOG only — they
+    # write candidates to data/inject_shadow_log.jsonl WITHOUT modifying inf lists.
+    # Flip *_LIVE=True after backtest+live audit confirms picks beat the existing set.
+    # NO top-N cap — quiet markets inject 0, moving markets inject 30+.
+    #
+    # TRENDER: sustained + linear + size-credible grinders. Reward symbols that
+    # quietly trend up across 1h/4h/24h on real volume with low drawdown.
+    TRENDER_INJECT_SHADOW_LOG: bool = True
+    TRENDER_INJECT_LIVE: bool = False
+    TRENDER_LIN_MIN: float = 0.55                # avg |Pearson r| floor across {15m,1h,4h,D}
+    TRENDER_RET24_MIN_PCT: float = 1.5           # absolute 24h return floor (% — kills drift)
+    TRENDER_QV_FLOOR_USD: float = 25_000_000     # 24h quote-volume floor (kills pump shells & micro-caps)
+    TRENDER_QV_ANCHOR_USD: float = 50_000_000    # log10(qv/anchor) → score multiplier
+    TRENDER_QV_MAX_BOOST: float = 1.5            # cap so megacaps don't auto-win
+    TRENDER_DD_RATIO_MAX: float = 0.40           # peak→now drawdown / total return; kills spike-then-fade
+    #
+    # BREAKOUT: cross-sectional 4h-return outliers — symbols breaking up/down out of
+    # the congested cluster where most coins move in tandem (the ZEC/TON pattern).
+    BREAKOUT_INJECT_SHADOW_LOG: bool = True
+    BREAKOUT_INJECT_LIVE: bool = False
+    BREAKOUT_MAD_MULTIPLIER: float = 2.0         # threshold = median ± N×MAD of cross-sectional 4h returns
+    BREAKOUT_MIN_RET_PCT: float = 3.0            # absolute floor regardless of band width
+    BREAKOUT_MAX_DD_RATIO: float = 0.5           # looser than TRENDER (breakouts spike) but still cap fades
     # Orderbook-primary entry signals (2026-04-23 late): ez_orderbook.py writes
     # ob_long_score / ob_short_score (0..100). Scanner opens on OB score instead of
     # waiting for K/candle confirmation.
