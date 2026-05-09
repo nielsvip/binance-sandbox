@@ -20950,6 +20950,25 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                                     break
                         except Exception:
                             _r3_has_hedge = False
+                        # 2026-05-09: opposite-side same-symbol position with material qty acts as hedge.
+                        # The active_hedges list misses untagged positions (manual entries, legacy). If
+                        # an opposite-side position covers ≥50% of losing notional, treat as hedged.
+                        if not _r3_has_hedge:
+                            try:
+                                _r3_opp_side = 'SHORT' if _r3_is_long else 'LONG'
+                                _r3_opp_key = f"{account_key}:{symbol}_{_r3_opp_side}"
+                                _r3_pos_dict = trade_manager.tracker_manager.positions_service.positions_by_account.get(account_key, {}) if hasattr(trade_manager.tracker_manager, 'positions_service') and trade_manager.tracker_manager.positions_service else {}
+                                _r3_opp_pos = _r3_pos_dict.get(_r3_opp_key)
+                                _r3_opp_amt = abs(safe_float(getattr(_r3_opp_pos, 'positionAmt', 0))) if _r3_opp_pos else 0.0
+                                _r3_opp_mark = safe_fetch_float(getattr(_r3_opp_pos, 'mark_price', 0), 0) if _r3_opp_pos else 0.0
+                                _r3_self_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
+                                _r3_self_mark = safe_fetch_float(getattr(position, 'mark_price', current_price), current_price)
+                                if _r3_opp_amt * _r3_opp_mark >= 0.5 * _r3_self_amt * _r3_self_mark and _r3_self_amt * _r3_self_mark > 0:
+                                    _r3_has_hedge = True
+                                    if int(now_ts) % 60 == 0:
+                                        logger.info(f"[R3_OPP_SIDE_COUNTED_AS_HEDGE] {position_key}: opp={_r3_opp_key} amt={_r3_opp_amt:.4f} notional=${_r3_opp_amt*_r3_opp_mark:.2f} ≥ 50% of loser ${_r3_self_amt*_r3_self_mark:.2f}")
+                            except Exception:
+                                pass
                         # Hedge being started? (Redis lock 'hedge_pending:<key>' 60s TTL)
                         _r3_pending = False
                         try:
@@ -20962,10 +20981,30 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _r3_close_side = 'SELL' if _r3_is_long else 'BUY'
                             _r3_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
                             _r3_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
-                            logger.critical(f"☢️ [R3_HEDGE_INVARIANT_DUMP] {position_key}: gain={_r3_gain:.2f}% wt1_3m+wt1_1h AGAINST + NO HEDGE + NO PENDING → DUMP. Active_hedges_for_acct={sum(1 for _h in _r3_active_hedges if isinstance(_h,dict) and _h.get('account')==account_key)} entry={_r3_entry_sig[:40]}")
+                            # 2026-05-09: USER MANDATE — try to OPEN A HEDGE before dumping. R3 dump
+                            # is last resort. The 8000-notification flood today was caused by R3 dumping
+                            # without ever asking the hedge engine. Call execute_same_symbol_hedge directly.
+                            _r3_hedge_attempted = False
+                            _r3_hedge_ok = False
+                            _r3_he = getattr(trade_manager, 'hedge_engine', None)
+                            if _r3_he is not None:
+                                _r3_hedge_attempted = True
+                                try:
+                                    _r3_hedge_ok = bool(await _r3_he.execute_same_symbol_hedge(
+                                        account_key=account_key, origin_position=position, symbol=symbol,
+                                        origin_side=position_side, qty=_r3_amt, current_price=current_price))
+                                except Exception as _r3_he_err:
+                                    logger.error(f"⛔ [R3_HEDGE_ATTEMPT_ERR] {position_key}: {_r3_he_err}")
+                                    _r3_hedge_ok = False
+                            if _r3_hedge_ok:
+                                logger.warning(f"🛡️ [R3_HEDGE_OPENED] {position_key}: gain={_r3_gain:.2f}% — hedge fired by R3 directly (no dump, no alert)")
+                                trade_manager.processing_keys.discard(position_key)
+                                return f"{EvalStatus.ACTION_TAKEN}:R3_HEDGE_OPENED"
+                            # Hedge couldn't open — proceed with dump + alert
+                            logger.critical(f"☢️ [R3_HEDGE_INVARIANT_DUMP] {position_key}: gain={_r3_gain:.2f}% wt1_3m+wt1_1h AGAINST + NO HEDGE + NO PENDING + hedge_attempt={'tried_failed' if _r3_hedge_attempted else 'no_engine'} → DUMP. Active_hedges_for_acct={sum(1 for _h in _r3_active_hedges if isinstance(_h,dict) and _h.get('account')==account_key)} entry={_r3_entry_sig[:40]}")
                             try:
                                 import ez_alert
-                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r3_gain, reason="R3_HEDGE_INVARIANT_NO_HEDGE_FOUND_root_cause_check_hedge_engine", entry_signal=str(_r3_entry_sig), entry_ts=_r3_entry_ts, current_price=current_price)
+                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r3_gain, reason="R3_HEDGE_INVARIANT_HEDGE_ATTEMPT_FAILED_check_hedge_engine_logs", entry_signal=str(_r3_entry_sig), entry_ts=_r3_entry_ts, current_price=current_price)
                             except Exception as _r3_alert_err:
                                 logger.warning(f"[R3_ALERT_ERR] {position_key}: {_r3_alert_err}")
                             try:
