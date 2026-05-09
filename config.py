@@ -821,6 +821,11 @@ class Config:
     # Set False to re-enable the old open-underweight path once system is verified.
     RATIO_REBALANCE_CLOSE_OVERWEIGHT_ONLY: bool = True
     RATIO_REBALANCE_MAX_CLOSES: int = 3
+    # 2026-05-09 USER MANDATE — OVERTRADE_GUARD in execute_now caps OPEN/AUGMENT
+    # to this many per (pkey × UTC day). CLOSE/REDUCE not capped. Emergency-exit
+    # reasons (RIDICULOUS, BREAK_REVERSE, ALL_TF_AGAINST, INTERVENTION, MANUAL)
+    # bypass the cap. Set 0 to disable.
+    TRADES_PER_SYM_PER_DAY_MAX: int = 8
     # 2026-05-09 SWEEP-EXPOSURE — knobs that were hardcoded in ez_manage.py, now config.
     # AUGMENTED_POSITIONS_GUARD floor at ez_manage.py:12190 was `0.5 * MIN_GAIN`; tune via this mult.
     AUGMENTED_POSITIONS_GUARD_FLOOR_MULT: float = 0.5

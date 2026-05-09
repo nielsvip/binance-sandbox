@@ -25,14 +25,18 @@ TRADIER_OUT_BASE = ROOT / 'data' / 'autonomous' / 'canonical_tradier_100sym_post
 WINNERS_DIR = ROOT / 'data' / 'rate_filter_winners'
 ACTIVE_CFG_PATH = ROOT / 'data' / 'hourly_reconfig' / 'per_sym_active_config.json'
 
-# Bands (trades per symbol per day)
+# 2026-05-09 USER MANDATE: 2-8 trades per sym per day MAX for BOTH crypto and stocks.
+# Earlier crypto cap was 5/day; tradier was 2-8 per WEEK. Both unified to 2-8/day.
+# Anything outside this band is REJECTED for promotion (overtrading or undertrading).
 CRYPTO_RATE_LOW = 2.0
-CRYPTO_RATE_HIGH = 5.0
-TRADIER_RATE_LOW_PER_WEEK = 2.0
-TRADIER_RATE_HIGH_PER_WEEK = 8.0
-TRADIER_RATE_LOW = TRADIER_RATE_LOW_PER_WEEK / 7.0
-TRADIER_RATE_HIGH = TRADIER_RATE_HIGH_PER_WEEK / 7.0
+CRYPTO_RATE_HIGH = 8.0
+TRADIER_RATE_LOW = 2.0
+TRADIER_RATE_HIGH = 8.0
+# Legacy aliases kept for any consumers that reference per-week values
+TRADIER_RATE_LOW_PER_WEEK = TRADIER_RATE_LOW * 7.0
+TRADIER_RATE_HIGH_PER_WEEK = TRADIER_RATE_HIGH * 7.0
 
+# 2026-05-09 USER MANDATE: pool_sharpe must be ≥ 0.5 — never promote below.
 PROMOTE_POOL_SHARPE_MIN = 0.5
 
 # 2026-05-07 22:35: physical bounds — autonomous_search mutates without bounds and produced BTC_PER_TRADE_NOTIONAL_USD_MAX=22.5 (Binance min trade ~$130 — physically impossible). Reject configs that override these knobs OUTSIDE the realistic range. This is non-negotiable for live promotion.

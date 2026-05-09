@@ -13338,6 +13338,35 @@ class MultiAccountTradeManager:
         except Exception as _bf_e:
             logger.warning(f"[BALANCE_FLOOR_HALT] check error (fail-open): {_bf_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🚦 OVERTRADE_GUARD — USER 2026-05-09: cap OPEN/AUGMENT to TRADES_PER_SYM_PER_DAY_MAX
+        # per pkey per UTC day. CLOSE/REDUCE NOT capped. Emergency-exit reasons bypass.
+        # Defends against strategy thrash that floods the same pkey with opens/augments.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            if ('OPEN' in _kill_act or 'AUGMENT' in _kill_act or 'ENTRY' in _kill_act) and \
+               'CLOSE' not in _kill_act and 'REDUCE' not in _kill_act:
+                _ot_max = int(getattr(config, 'TRADES_PER_SYM_PER_DAY_MAX', 8))
+                _ot_emerg = ('RIDICULOUS' in str(reason or '').upper() or
+                             'BREAK_REVERSE' in str(reason or '').upper() or
+                             'ALL_TF_AGAINST' in str(reason or '').upper() or
+                             'INTERVENTION' in str(reason or '').upper() or
+                             'MANUAL' in str(reason or '').upper())
+                if _ot_max > 0 and not _ot_emerg:
+                    if not hasattr(self, '_overtrade_counter'):
+                        self._overtrade_counter = {}
+                    _ot_today = datetime.now(timezone.utc).strftime('%Y%m%d')
+                    _ot_key = f"{_ot_today}:{position_key}"
+                    _ot_n = self._overtrade_counter.get(_ot_key, 0)
+                    # Trim yesterday's entries
+                    if len(self._overtrade_counter) > 5000:
+                        self._overtrade_counter = {k: v for k, v in self._overtrade_counter.items() if k.startswith(_ot_today)}
+                    if _ot_n >= _ot_max:
+                        logger.warning(f"🚦 [OVERTRADE_GUARD] {position_key}: BLOCKED — already {_ot_n} opens today (cap={_ot_max}). action={action} reason={(reason or '')[:80]}")
+                        return f"BLOCKED_OVERTRADE_{_ot_n}_OF_{_ot_max}"
+                    self._overtrade_counter[_ot_key] = _ot_n + 1
+        except Exception as _ot_e:
+            logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ HEDGE_PROTECT_OPPOSITE_LOSER — user 2026-05-05 (1000LUNCUSDT)
         # User: "lose 50% on 1 side then another 20% on the hedge side then keep
         # selling longs into a rally for $0.02 gains". A LONG/SHORT on a symbol

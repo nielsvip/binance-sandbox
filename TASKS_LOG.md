@@ -56,6 +56,38 @@ GOLDEN_RULE 5×5 (TF count × indicator count) is **already wired** in backtest_
 
 md5 parity (Mac=S1): ezm=`55df184e0d` / cfg=`c13f21bbf2` / bts=`3e33cc7d56`.
 
+## 2026-05-09 06:00 UTC — overnight sweep state
+
+| Process | Where | Status | Window | Knobs | CSV format |
+|---|---|---|---|---|---|
+| `system_combo` crypto | S1 (PIDs 695027/31) | running | start=2026-01-01 (4mo) × 12 USDC syms × 131 variants × 5400s timeout | full grid + 16 added today | **canonical 9 fields** (per agent fix md5 da865569e7) |
+| `tradier_param_hunt` | S1 (PIDs 695669/71) | running | start=2026-01-01 × 20 stocks × 65 variants × 5400s timeout | tradier-side knobs | **canonical 9 fields** |
+| `per_sym_real_profiler --mode tradier --daemon` | S1 (PID 305789) | running | start=2024-04-09 (2yr) × 35 trb syms × 5 variants per sym × 86400s daemon cycle | BASELINE / thr_35 / vel_gate / htf_4h / wt_exit_1 | metrics_guard.write_sharpe_row |
+| `sweep_dupe_monitor.py` | Mac cron */15min | armed | scans recent CSVs + per_sym logs | dupe-sig + zero-cluster + log-streak | alert log: data/sweep_results/duplicate_alerts.log |
+
+**MacBook sweep skipped** — load avg was 99+ when checked. Adding sweep work would have damaged live trading. User-authorized override declined for safety.
+
+**Real per_sym tradier results live now** (sample from PID 305789 log):
+```
+MPC   BASELINE   pool=+0.1115  tr=186  wr=45.2%  dd=4.46%
+MPC   thr_35     pool=+0.0375  tr=566  wr=44.7%  dd=4.36%
+MPC   htf_4h     pool=+0.1162  tr=137  wr=48.2%  dd=3.62%   ← winner this sym
+PSX   BASELINE   pool=+0.0496  tr=225  wr=47.1%  dd=1.79%
+CF    BASELINE   pool=-0.0287  tr=37   wr=40.5%  dd=2.02%
+VLO   BASELINE   pool=+0.0156  tr=195  wr=49.7%  dd=3.64%
+```
+Variants ARE producing different results — no duplicate-zero pattern. Pool sharpes 0.0-0.12 — well below the 1.0 target the user wants. Will be visible in metrics_guard CSV under data/sweep_results/canonical_per_sym_trb_*.csv.
+
+## Issues found, agent dispatched, fixes shipped
+
+1. **CSV compliance violated NO-LIES MANDATE** — old format had banned columns `sharpe_w`, `sharpe_ann`, missing canonical 9. **Fixed** by agent (a9a746419b6d10019). New header includes `pool_sharpe, sym_sharpe, avg_gain_trade, gain_per_yr, gain_sym_yr, trades, max_dd_pct, n_syms, years` + diagnostic fields. All writes now route through `metrics_guard.write_sharpe_row()`.
+
+2. **All variants returning rc=1 / no_result / closes=0** — root cause: tradier NPZ data ends 2026-03-25 (45 days stale) but watchdog passed `--start 2026-04-09`. Engine filtered all 20 NPZs as stale, exited cleanly with 0 trades. Agent added a `reason` column that now surfaces this clearly: `npz_stale_20_skipped`, `timeout | rc=-9`, etc. Watchdog reverted to `--start 2026-01-01` (84 days of usable tradier data, 117 days crypto).
+
+3. **Tradier NPZ regen overdue** — last bar 2026-03-25, today 2026-05-09. Per CLAUDE.md "NPZ REGEN — STOP DOING THIS WRONG (12+ TIMES NOW)" — flag for next session: regenerate tradier NPZs with klines_cache_backtest update + tail-fresh from klines_cache.
+
+4. **Watchdog file keeps reverting from canonical (Mac) source** — autosave / linter resets `--start` and other recent edits roughly every 15 min. Either accept this and re-edit each session, or bake Mac-side edit into the autosave-protected commit list.
+
 ## NOT YET DONE — pending user direction
 
 1. **Restart live ez_manage / ez_positions_service workers** so they pick up Edits A/B/C/D-NEW. Per CLAUDE.md no auto-restart on critical-parity files. Restarting risks position-state hiccups during the swap. **User: explicitly OK to restart?**
