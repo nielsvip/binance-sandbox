@@ -7647,10 +7647,12 @@ class FastDataManager:
         self.delta_tracker = DeltaTracker(cfg={"tf_weights": config.DELTA_TF_WEIGHTS, "entry_min_tf": config.DELTA_ENTRY_MIN_TF, "entry_speed_threshold": getattr(config, 'DELTA_ENTRY_SPEED_THRESHOLD', 0.5), "exit_speed_decay_pct": getattr(config, 'DELTA_EXIT_SPEED_DECAY_PCT', 50.0), "exit_min_tf_lost": config.DELTA_EXIT_MIN_TF_LOST, "exit_min_hold": config.DELTA_EXIT_MIN_HOLD, "pyramid_price_tolerance": config.DELTA_PYRAMID_PRICE_TOL, "pyramid_qty_mult": config.DELTA_PYRAMID_QTY_MULT, "pyramid_max": config.DELTA_PYRAMID_MAX, "rz_entry_enabled": config.RZ_ENTRY_ENABLED, "rz_exit_enabled": config.RZ_EXIT_ENABLED, "rz_top_bb": config.RZ_TOP_BB_THRESHOLD, "rz_bot_bb": config.RZ_BOT_BB_THRESHOLD, "rz_legs_min": config.RZ_LEGS_MIN, "rz_require_struct": config.RZ_REQUIRE_STRUCT, "rz_k_exit": config.RZ_K_EXIT, "rz_mfi_exit": config.RZ_MFI_EXIT, "rz_k_entry_max": config.RZ_K_ENTRY_MAX, "exit_dominant_tf": (getattr(config, 'DELTA_EXIT_TF', '15m') if getattr(config, 'DELTA_EXIT_DOM_TF_ENABLED', False) else "ANY")}) if config.DELTA_ENGINE_ENABLED else None
         try:
             asyncio.get_running_loop()
-            # DEDUP_STEP4: shm reconnect — authoritative: manage bootstrap registers proxy + service IndicatorsBridge
-            # asyncio.create_task(self._maintain_shared_memory_connection())
-            # DEDUP_STEP3: cold data sync — authoritative: positions_service.indicators_snapshot (shared dict)
-            # asyncio.create_task(self._maintain_cold_data_sync())
+            # 2026-05-09: REVIVED — DEDUP_STEP3/STEP4 commented these out 2026-04-14, claiming positions_service.indicators_snapshot was authoritative.
+            # But many read sites (line 6311, 7423, 4641, 5083, 5098, 5445, 5576, 6371, 6783, 6861, 17303) still read self._cold_data directly,
+            # which is set ONCE at startup (line 448) and never refreshed → 3.5 weeks of frozen indicators across all 5 accounts.
+            # Symptom: rate-gate logs `STALE_INDICATORS ts=<startup-time>` forever; reentry guaranteed to fail.
+            asyncio.create_task(self._maintain_shared_memory_connection())
+            asyncio.create_task(self._maintain_cold_data_sync())
         except RuntimeError:
             pass
 

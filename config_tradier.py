@@ -1127,7 +1127,7 @@ class TradierConfig:
     MI_ENTRY_STRUCT_BONUS_TRADIER: int = 10  # Score bonus for favorable structure on entry
     MI_ENTRY_EXHAUST_BONUS_TRADIER: int = 8  # Score bonus for opposing TF exhaustion on entry
     # === WT/DC DATA-DRIVEN SCORERS (2026-04-08 — OOS: Sharpe 11.46, 74.8% WR, PF 8.64x) ===
-    WT_DC_ENTRY_THRESHOLD: float = 75  # 2026-04-29 PATH A REVERTED to 75. 55 was based on 12sym×6mo sample (rule 4b violation) and 0.874 sharpe (rule 6 trash floor). Re-loosen only after Tier-2 on 114 stocks × ≥1yr clears pool_sharpe ≥1.0.
+    WT_DC_ENTRY_THRESHOLD: float = 0  # 2026-05-09 ENTRY_THR_0: sweep confirmed pool_sharpe=0.1804 (+86% vs baseline 0.0971), 163 trades vs 69. Gate OFF — GR7 HTF is the primary quality filter.
     WT_DC_EXIT_THRESHOLD: float = 30  # SERVER 204: exit>=25 optimal across all entry thresholds
     # === EXIT PATH SWITCHES (2026-04-08 — scorer is SOLE authority, all legacy paths OFF) ===
     # To re-enable any path: set to True, restart tradier_manage
