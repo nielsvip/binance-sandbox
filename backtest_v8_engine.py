@@ -2167,22 +2167,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # → must hold a LONG of base_usd×mult. Cascade: 1.5x at 1h, 2x at 4h, 3x at D.
         # Calls execute_trade_action directly — bypasses signal gate (fires every qualifying bar).
         # Gate: GOLDEN_RULE_ENABLED (default True).
-        # BUG FIX 2026-05-08: was reading crypto `config` (always True) instead of tradier
-        # tm_mod.config where sweep override GOLDEN_RULE_ENABLED=False was applied.
-        if getattr(tm_mod.config, 'GOLDEN_RULE_ENABLED', True):
-            _gr_base_usd = float(getattr(tm_mod.config, 'GOLDEN_RULE_BASE_USD', 5.0))
-            _gr_dc_15 = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
-            _gr_bb_15 = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
-            _gr_dc_1h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
-            _gr_bb_1h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
-            _gr_dc_4h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
-            _gr_bb_4h = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
-            _gr_dc_D = bool(getattr(tm_mod.config, 'GOLDEN_RULE_DC_D_ENABLED', True))
-            _gr_bb_D = bool(getattr(tm_mod.config, 'GOLDEN_RULE_BB_D_ENABLED', True))
-            _gr_m15 = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_15M', 1.0))
-            _gr_m1h = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_1H', 1.5))
-            _gr_m4h = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_4H', 2.0))
-            _gr_mD = float(getattr(tm_mod.config, 'GOLDEN_RULE_MULT_D', 3.0))
+        # BUG FIX 2026-05-09: tm_mod is tradier-only; crypto path uses ez_manage directly.
+        if getattr(ez_manage.config, 'GOLDEN_RULE_ENABLED', True):
+            _gr_base_usd = float(getattr(ez_manage.config, 'GOLDEN_RULE_BASE_USD', 5.0))
+            _gr_dc_15 = bool(getattr(ez_manage.config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
+            _gr_bb_15 = bool(getattr(ez_manage.config, 'GOLDEN_RULE_BB_15M_ENABLED', True))
+            _gr_dc_1h = bool(getattr(ez_manage.config, 'GOLDEN_RULE_DC_1H_ENABLED', True))
+            _gr_bb_1h = bool(getattr(ez_manage.config, 'GOLDEN_RULE_BB_1H_ENABLED', True))
+            _gr_dc_4h = bool(getattr(ez_manage.config, 'GOLDEN_RULE_DC_4H_ENABLED', True))
+            _gr_bb_4h = bool(getattr(ez_manage.config, 'GOLDEN_RULE_BB_4H_ENABLED', True))
+            _gr_dc_D = bool(getattr(ez_manage.config, 'GOLDEN_RULE_DC_D_ENABLED', True))
+            _gr_bb_D = bool(getattr(ez_manage.config, 'GOLDEN_RULE_BB_D_ENABLED', True))
+            _gr_m15 = float(getattr(ez_manage.config, 'GOLDEN_RULE_MULT_15M', 1.0))
+            _gr_m1h = float(getattr(ez_manage.config, 'GOLDEN_RULE_MULT_1H', 1.5))
+            _gr_m4h = float(getattr(ez_manage.config, 'GOLDEN_RULE_MULT_4H', 2.0))
+            _gr_mD = float(getattr(ez_manage.config, 'GOLDEN_RULE_MULT_D', 3.0))
             for _gr_sym in list(stores.keys()):
                 _gr_ind = indicator_cache.get(_gr_sym, {})
                 # FIX 2026-05-08: tradier NPZ has no 'current_price' field → price was always 0 → rule never fired.
