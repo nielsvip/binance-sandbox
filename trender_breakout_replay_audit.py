@@ -35,7 +35,9 @@ DEFAULT_KNOBS = {
     "B_MAD_MULT": 2.0, "B_MIN_RET": 3.0, "B_MAX_DD_RATIO": 0.5,
 }
 
-# ── 19 audit variants: baseline + single-knob sweeps ─────────────────────────────
+# ── audit variants: baseline + single-knob sweeps + freshness ────────────────────
+DEFAULT_KNOBS["FRESH_BARS"] = 0  # 0=disabled, N=require sym was NOT picked at any step in last N×15m bars
+
 def make_variants():
     out = [("baseline", DEFAULT_KNOBS.copy())]
     for v in [0.45, 0.65, 0.75]:                        out.append((f"T_LIN_{int(v*100)}", {**DEFAULT_KNOBS, "T_LIN_MIN": v}))
@@ -44,6 +46,11 @@ def make_variants():
     for v in [0.25, 0.55, 0.70]:                         out.append((f"T_DD_{int(v*100)}", {**DEFAULT_KNOBS, "T_DD_RATIO_MAX": v}))
     for v in [1.5, 2.5, 3.0]:                            out.append((f"B_MAD_{v:.1f}", {**DEFAULT_KNOBS, "B_MAD_MULT": v}))
     for v in [2.0, 4.0, 5.0]:                            out.append((f"B_MIN_{v:.1f}", {**DEFAULT_KNOBS, "B_MIN_RET": v}))
+    # Freshness sweep — fix the late-entry problem (sym must be NEW pick, not stale)
+    for v in [1, 2, 4, 8, 16]:                            out.append((f"FRESH_{v}", {**DEFAULT_KNOBS, "FRESH_BARS": v}))
+    # Combined: tightest gates + freshness
+    out.append(("STRICT_FRESH4", {**DEFAULT_KNOBS, "T_LIN_MIN": 0.65, "T_RET24_MIN": 2.5, "B_MIN_RET": 5.0, "FRESH_BARS": 4}))
+    out.append(("STRICT_FRESH16", {**DEFAULT_KNOBS, "T_LIN_MIN": 0.65, "T_RET24_MIN": 2.5, "B_MIN_RET": 5.0, "FRESH_BARS": 16}))
     return out
 
 
@@ -197,6 +204,9 @@ def run_audit(klines_dir: Path, syms: List[str], start_iso: str, end_iso: str, o
     writer = csv.writer(fout)
     writer.writerow(["variant","ts","sym","injector","side","score_or_z","ret_1h","ret_4h","ret_24h","qv_M","lin","dd_ratio","fwd_1h","fwd_4h","fwd_24h"])
 
+    # Per-variant freshness cache: (variant, sym, injector, side) -> last_step_picked
+    last_pick_step = {}
+
     n_steps = len(grid_idxs); n_picks_total = 0; t0 = time.time()
     for step_i, gi in enumerate(grid_idxs):
         # progress
@@ -214,6 +224,7 @@ def run_audit(klines_dir: Path, syms: List[str], start_iso: str, end_iso: str, o
         ts_iso = str(grid_ts[gi])
         # apply each variant
         for var_name, k in variants:
+            fresh_bars = int(k.get("FRESH_BARS", 0))
             for sym, h in horizons.items():
                 t_idx = sym_start_idx[sym] + gi
                 s_close = data[sym][1]
@@ -221,18 +232,26 @@ def run_audit(klines_dir: Path, syms: List[str], start_iso: str, end_iso: str, o
                 tr = trender_pick(h, k)
                 if tr:
                     side, score, ddr = tr
-                    fwd = fwd_returns(s_close, t_idx, side)
-                    writer.writerow([var_name, ts_iso, sym, "TRENDER", side, f"{score:.4f}", f"{h['ret_1h']:.2f}", f"{h['ret_4h']:.2f}", f"{h['ret_24h']:.2f}", f"{h['qv_24h_usd']/1e6:.1f}", f"{h['lin']:.3f}", f"{ddr:.3f}", f"{fwd['fwd_1h']:.2f}" if fwd['fwd_1h'] is not None else "", f"{fwd['fwd_4h']:.2f}" if fwd['fwd_4h'] is not None else "", f"{fwd['fwd_24h']:.2f}" if fwd['fwd_24h'] is not None else ""])
-                    n_picks_total += 1
+                    cache_k = (var_name, sym, "TRENDER", side)
+                    last = last_pick_step.get(cache_k)
+                    if fresh_bars == 0 or last is None or (gi - last) > fresh_bars:
+                        fwd = fwd_returns(s_close, t_idx, side)
+                        writer.writerow([var_name, ts_iso, sym, "TRENDER", side, f"{score:.4f}", f"{h['ret_1h']:.2f}", f"{h['ret_4h']:.2f}", f"{h['ret_24h']:.2f}", f"{h['qv_24h_usd']/1e6:.1f}", f"{h['lin']:.3f}", f"{ddr:.3f}", f"{fwd['fwd_1h']:.2f}" if fwd['fwd_1h'] is not None else "", f"{fwd['fwd_4h']:.2f}" if fwd['fwd_4h'] is not None else "", f"{fwd['fwd_24h']:.2f}" if fwd['fwd_24h'] is not None else ""])
+                        n_picks_total += 1
+                        last_pick_step[cache_k] = gi
             # BREAKOUT (cross-sectional, computed once per variant per step)
             bk = breakout_picks(horizons, k)
             for sym, (side, z, ddr) in bk.items():
+                cache_k = (var_name, sym, "BREAKOUT", side)
+                last = last_pick_step.get(cache_k)
+                if fresh_bars > 0 and last is not None and (gi - last) <= fresh_bars: continue
                 t_idx = sym_start_idx[sym] + gi
                 s_close = data[sym][1]
                 h = horizons[sym]
                 fwd = fwd_returns(s_close, t_idx, side)
                 writer.writerow([var_name, ts_iso, sym, "BREAKOUT", side, f"{z:.2f}", f"{h['ret_1h']:.2f}", f"{h['ret_4h']:.2f}", f"{h['ret_24h']:.2f}", f"{h['qv_24h_usd']/1e6:.1f}", f"{h['lin']:.3f}", f"{ddr:.3f}", f"{fwd['fwd_1h']:.2f}" if fwd['fwd_1h'] is not None else "", f"{fwd['fwd_4h']:.2f}" if fwd['fwd_4h'] is not None else "", f"{fwd['fwd_24h']:.2f}" if fwd['fwd_24h'] is not None else ""])
                 n_picks_total += 1
+                last_pick_step[cache_k] = gi
     fout.close()
     el = time.time() - t0
     print(f"[AUDIT] DONE: {n_steps} steps × {len(variants)} variants → {n_picks_total} picks in {el:.0f}s → {output_csv}")
