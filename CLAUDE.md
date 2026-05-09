@@ -415,13 +415,73 @@ If a sweep is running when you sync: running workers have OLD code in memory —
 
 ---
 
-## STRICT_NO_LOSS
+## EXIT RULES — USER MANDATE 2026-05-09
 
-**LIVE: active. BACKTEST: disabled for testing.**
+**The user lost 80% on 2 accounts to NO_LOSS lying about safety. New rule: ONLY 3 paths can close a losing position. Everything else: HOLD.**
 
-Disabled % stop paths in tradier_manage.py (MUST STAY DISABLED): `HARD_STOP_LOSS_MAX_PAIN` (gain < -1.5%), `STALE_DATA_HARD_STOP` (gain < -1.5% stale), `STALE_DATA_GAIN_EROSION`, `Market_Against_Position` bias reduce (gain < -0.5%).
+### The 3 (and only 3) loss-exit paths
 
-**If you EVER see `gain < -` followed by `return True` in any exit path — DISABLE IT.**
+| # | Rule | Code site | Knobs (testable) |
+|---|------|-----------|------------------|
+| **R1** | DC4 emergency close — within first `R1_NEWBORN_WINDOW_MIN` (default 15min) of open, if price breaks the configured DC channel level (4-bar or 1-bar), CLOSE NOW. Bypass NO_LOSS / hedge / MTF. Fires desktop alert + JSONL log naming the entry signal. | `ez_manage.py` ~20709 (R1 block, before R2) / `tradier_manage.py` ~1327 (5m TF) | `R1_DC_LOW4_3M_EMERGENCY_ENABLED`, `R1_NEWBORN_WINDOW_MIN`, `R1_USE_DC_4BAR`, `R1_TF` |
+| **R2** | WT velocity slowdown near breakeven — fires when `floor <= gain < band`, vel against, and `\|vel\| < \|vel_prev\| * WT_VEL_DECEL_RATIO` (DYNAMIC slowdown — fixed thresholds banned per user). Iterates over `R2_TF_LIST`. | `ez_manage.py` ~20768 (R2 block, after R1) / `tradier_manage.py` ~1366 | `WT_15M_VEL_SLOW_GAIN_BAND_PCT`, `WT_15M_VEL_SLOW_GAIN_FLOOR_PCT`, `WT_VEL_DECEL_RATIO`, `WT_VEL_USE_DECEL_RATIO_ONLY`, `R2_TF_LIST` |
+| **HEDGE_FAILED** | Same-symbol hedge couldn't be taken (no quote, blacklist, etc) — fall back to direct close. Until then, OBLIGATORY_HEDGE fires the hedge instead. | `ez_manage.py:14132+` (OBLIGATORY_HEDGE block — already wired); fallback close uses reason containing `HEDGE_FAILED` (in bypass list). | `OBLIGATORY_HEDGE_ENABLED`, `OBLIGATORY_HEDGE_WT_TFS_REQUIRED` |
+
+**Crypto TFs** (default): R1=3m, R2=15m. **Stocks TFs** (default): R1=5m, R2=1h/4h/D (per user — markets closed most of day, real moves on D/W).
+
+**Bypass list** (`config.UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS`) MUST contain: `R1_DC_LOW4_3M_EMERGENCY`, `R2_WT_VEL_SLOW`, `WT_15M_VEL_SLOW` (legacy alias), `HEDGE_FAILED`, plus existing emergency reasons. Anything NOT in this list cannot close at loss — it must HOLD until gain >= 0 or hedge fires.
+
+### DUPLICATE_OPEN_GUARD — gain-based, not time-based
+
+The 900s time cooldown was replaced with a gain gate per USER 2026-05-09:
+- AUGMENT (any kind: open/reenter/hedge-open/scalp augment) requires `gain > config.MIN_GAIN * config.DUP_GUARD_GAIN_MULTIPLIER` (default 3.0% * 0.5 = **1.5%**)
+- Below threshold → BLOCKED with reason `BLOCKED_DUP_GUARD_GAIN_<x>pct_lt_<thr>pct`
+- Time cooldown retained as fallback when `DUP_GUARD_USE_GAIN_GATE=False`
+- Site: `ez_manage.py:10936-10961`
+
+### augmented_positions persistence
+
+**MUST persist across bars** until position is REDUCE'd or CLOSE'd. Backtest no longer clears it per bar (`backtest_v8_engine.py:1647-1651` — clear() commented out 2026-05-09). Set sites: `ez_manage.py:13178, 14654, 14751`.
+
+### R3 — DEFERRED. ALL OTHER EXITS NEED MTF CONFIRMATION
+
+User mandate (NON-NEGOTIABLE): every other exit must require multi-TF confirmation. NOT yet implemented (XL refactor, separate session — every exit path needs an MTF gate added). UNIVERSAL_NOLOSS_GATE keeps current loss-exits clamped until R3 ships.
+
+### NO % STOPS — DISABLED PATHS (must stay disabled)
+
+`tradier_manage.py`: `HARD_STOP_LOSS_MAX_PAIN`, `STALE_DATA_HARD_STOP`, `STALE_DATA_GAIN_EROSION`, `Market_Against_Position` bias reduce. **If you EVER see `gain < -` followed by `return True` in any exit path — DISABLE IT.**
+
+---
+
+## 🚨 S1 UTILIZATION FLOOR — ≥60-70% CPU + MEM AT ALL TIMES 🚨
+
+User mandate 2026-05-09: "we have a backlog of literally millions of tests" + "S1 NEVER below 60-70% capacity". S1 idling = lying about progress.
+
+**S2 IS DESTROYED (2026-05-08, shut down because of shitty backtesting wasting money). ALL test load = S1 ONLY. Crypto AND tradier sweeps both run on S1.**
+
+### The "take turns" alternation rule (USER 2026-05-09)
+
+S1 RAM is the binding constraint (~10.8GB/worker peak NPZ decompression on backtest_v8_engine, 31GB total → ~2-3 workers safe). Crypto and tradier sweeps must **take turns** so neither system is starved:
+
+- **Always running**: ≥1 crypto worker AND ≥1 tradier worker simultaneously, alternating which gets the larger share each cycle.
+- **Every cycle (~hourly)**: if last cycle was crypto-heavy (2 crypto + 1 tradier), next cycle goes tradier-heavy (1 crypto + 2 tradier). And vice versa.
+- **Never starve**: a system without sweep results for >2h is stale — flip immediately.
+
+### Every session start
+
+```bash
+ssh s1-int 'top -bn1 | head -3 && free -m | head -2 && pgrep -afc "backtest_v8_sweep.*crypto" && pgrep -afc "backtest_v8_sweep.*tradier"'
+```
+
+If CPU < 60% OR MEM-used < 60% of total → **launch more parallel sweeps** until both ≥60%. If only crypto is running → start tradier (and vice versa). Default safe headroom: stay below 90% CPU and 28GB MEM.
+
+### Watchdog files
+
+- `watchdog_sweep_s1.sh` — crypto auto-relaunch (`system_combo`, 8 syms)
+- `watchdog_sweep_s1_tradier.sh` (TODO: create) — tradier auto-relaunch (`tradier_param_hunt`, 20 syms)
+- The two watchdogs cooperate: each checks for the other's PIDs and yields workers to maintain alternation.
+
+If a sweep dies mid-run (OOM, kill, crash), do NOT just relaunch the same workers — first investigate cause AND ensure new workers fill the utilization floor + the alternation invariant.
 
 ---
 
