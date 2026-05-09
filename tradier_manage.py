@@ -4540,6 +4540,16 @@ class StockStrategy:
         # Crypto baseline uses ALL_TF_BRAKE counting W+M; tradier baseline never reads W or M
         # for exits. F3 fires when W WaveTrend turns against position AND (optional) D agrees.
         # Only fires in profit (gain > 0) — STRICT_NO_LOSS rule still applies.
+        _gr_exit_min_tfs = int(getattr(config, 'GOLDEN_RULE_EXIT_MIN_TFS', 0))
+        if _gr_exit_min_tfs > 0:
+            try:
+                from golden_rule_htf import score_exit_htf as _gr_score_exit
+                _gr_exit_min_ind = int(getattr(config, 'GOLDEN_RULE_EXIT_MIN_IND', 2))
+                _gr_ex_ok, _gr_ex_ntfs, _gr_ex_detail = _gr_score_exit(i, is_long, "tradier", _gr_exit_min_tfs, _gr_exit_min_ind, current_price)
+                if not _gr_ex_ok:
+                    return False, f"GR_HTF_EXIT_HOLD {_gr_ex_ntfs}of{_gr_exit_min_tfs}bearish_tfs_req", 0
+            except Exception as _gree:
+                logger.warning(f"[GR_HTF_EXIT] {symbol}: {_gree}")
         if getattr(config, 'HTF_W_REVERSAL_EXIT_TRADIER_ENABLED', False) and gain > 0:
             try:
                 _w1_W = float(i.get('wt1_W', 0) or 0)
@@ -6336,6 +6346,16 @@ class StockStrategy:
                     size_mult = 2.0; dc_info = "below_DC15m"
                 elif dc_low_4h > 0 and current_price < dc_low_4h:
                     size_mult = 3.0; dc_info = "below_DC4h"
+        _gr_htf_min_tfs = int(getattr(config, 'GOLDEN_RULE_HTF_MIN_TFS', 0))
+        if _gr_htf_min_tfs > 0:
+            try:
+                from golden_rule_htf import score_entry_htf as _gr_score_entry
+                _gr_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 2))
+                _gr_ok, _gr_ntfs, _gr_detail = _gr_score_entry(i, is_long, "tradier", _gr_htf_min_tfs, _gr_min_ind, current_price)
+                if not _gr_ok:
+                    return "NO_ACTION", f"GR_HTF_BLOCK {_gr_ntfs}of{_gr_htf_min_tfs}tfs {_gr_detail}", 0.0, 0.0
+            except Exception as _gre:
+                logger.warning(f"[GR_HTF] {symbol}: {_gre}")
         wt_count = sum([_wt1_5m > _wt2_5m, _wt1_15m > _wt2_15m, _wt1_1h > _wt2_1h]) if is_long else sum([_wt1_5m < _wt2_5m, _wt1_15m < _wt2_15m, _wt1_1h < _wt2_1h])
         qty = base_qty * size_mult * _reentry_size_mult
         confidence = 90.0 if (wt_count >= 2 and _reentry_size_mult >= 1.5) else (85.0 if wt_count >= 2 else 75.0)
