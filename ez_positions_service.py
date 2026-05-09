@@ -2557,15 +2557,26 @@ class WebSocketManager:
                                 continue
                             if lk and self.client:
                                 try:
-                                    await asyncio.wait_for(asyncio.to_thread(self.client.futures_stream_keepalive, lk), timeout=8.0)
+                                    await asyncio.wait_for(asyncio.to_thread(self.client.futures_stream_keepalive, lk), timeout=25.0)
                                     probe_ok = True
+                                except asyncio.TimeoutError:
+                                    # 2026-05-09: timeout != bad listen key. With 5 accounts probing through a
+                                    # shared to_thread executor, the keepalive HTTP can queue behind other calls
+                                    # (network latency to Binance from this Mac is ~770ms — 25s should always
+                                    # be plenty). Treat timeout as a transient blip: do NOT reset the WS, just
+                                    # extend the silence tolerance and try again next cycle. Resetting on every
+                                    # 60s silence used to thrash the listen-key endpoint (we'd been seeing
+                                    # ws_alive=False forever on all 5 crypto accounts).
+                                    logger.warning(f"[{account_key}] Listen-key probe TIMEOUT during {silence:.0f}s WS silence — transient (network/executor), NOT resetting WS")
+                                    lmt[0] = time.time()
+                                    continue
                                 except Exception as probe_err:
                                     _record_ip_ban_from_exc(probe_err)
                                     if _record_auth_ban(account_key, probe_err):
                                         _log_auth_ban_throttled(logger, account_key, f"probe failed during {silence:.0f}s WS silence — skipping reset")
                                         lmt[0] = time.time()
                                         continue
-                                    logger.warning(f"[{account_key}] Listen-key probe failed during {silence:.0f}s WS silence: {probe_err}")
+                                    logger.warning(f"[{account_key}] Listen-key probe failed during {silence:.0f}s WS silence: {probe_err!r}")
                             if probe_ok and silence < 600:
                                 idle_probe_ok_count += 1
                                 if idle_probe_ok_count == 1 or idle_probe_ok_count % 10 == 0:
