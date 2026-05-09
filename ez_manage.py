@@ -20794,13 +20794,18 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
        bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
         try:
             _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-            _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.50))
+            _wzg_max_gain = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
+            _wzg_peak_min = float(getattr(config, 'R2_PEAK_MIN_PCT', 0.5))
+            _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
             _wzg_floor = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
             _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
             _wzg_decel_ratio = float(getattr(config, 'WT_VEL_DECEL_RATIO', 0.5))
             _wzg_decel_only = bool(getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
             _wzg_tfs = tuple(getattr(config, 'R2_TF_LIST', ('15m',)) or ('15m',))
-            if _wzg_floor <= _wzg_gain < _wzg_band:
+            # PEAK-THEN-COLLAPSE: must have peaked ≥ R2_PEAK_MIN_PCT AND now
+            # be back inside [floor, band]. From-open-tiny-profit positions
+            # don't fire here — R1 (DC4 newborn window) handles those.
+            if _wzg_max_gain >= _wzg_peak_min and _wzg_floor <= _wzg_gain < _wzg_band:
                 _wzg_ind = await ii(trade_manager, symbol)
                 if _wzg_ind:
                     _wzg_is_long = (position_side == 'LONG')
@@ -20821,7 +20826,7 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                     if _wzg_fired_tf:
                         _wzg_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
                         _wzg_close_side = 'SELL' if _wzg_is_long else 'BUY'
-                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
+                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: peak={_wzg_max_gain:.2f}% (≥{_wzg_peak_min}%) collapsed→g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
                         try:
                             await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_wzg_amt, side=_wzg_close_side, position_side=position_side, quantity=_wzg_amt, old_price=current_price, unique_id=f"R2_WT_VEL_SLOW_{int(time.time())}", reason=f'R2_WT_VEL_SLOW_{_wzg_tag}_{_wzg_fired_tf}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}', is_full_close=True, action='CLOSE')
                             trade_manager.processing_keys.discard(position_key)

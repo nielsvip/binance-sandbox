@@ -513,11 +513,18 @@ def should_exit_btc(
     # BREAKOUT exit cluster — fires regardless of risk_path because breakouts are
     # by design close-at-loss-with-reentry per user.
     if is_breakout:
-        # 1. DC channel breach (structural failure of the breakout)
-        if position.side == "LONG" and dc_low4_3m_breach:
-            return True, "BREAKOUT_DC_LOW4_3M_BREACH"
-        if position.side == "SHORT" and dc_high4_3m_breach:
-            return True, "BREAKOUT_DC_HIGH4_3M_BREACH"
+        # 1. DC channel breach (structural failure of the breakout) — newborn-only.
+        # 2026-05-09 USER MANDATE: dc_low4_3m breach exit only fires inside the first
+        # R1_NEWBORN_WINDOW_MIN of position life (defaults to 15 min = 5 bars on 3m).
+        # After that, hold and let R2 (peak-collapse) or backstops handle it.
+        _r1_window_min = float(getattr(cfg, "R1_NEWBORN_WINDOW_MIN", 15.0))
+        _r1_max_bars = int(_r1_window_min / 3.0) + 1  # 3m TF base; round up
+        _r1_in_window = position.age_bars <= _r1_max_bars
+        if _r1_in_window:
+            if position.side == "LONG" and dc_low4_3m_breach:
+                return True, f"BREAKOUT_DC_LOW4_3M_BREACH_age{position.age_bars}b"
+            if position.side == "SHORT" and dc_high4_3m_breach:
+                return True, f"BREAKOUT_DC_HIGH4_3M_BREACH_age{position.age_bars}b"
         # 2. Single 3m WT against (the breakout momentum failed)
         if getattr(cfg, "BTC_BREAKOUT_USE_WT_3M_FLIP_EXIT", True) and wt_3m_against:
             return True, "BREAKOUT_WT_3M_FLIP"

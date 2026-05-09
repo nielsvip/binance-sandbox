@@ -1371,13 +1371,16 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
            bool(getattr(config, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True)):
             try:
                 _wzg_gain = safe_fetch_float(getattr(position, 'gain', 0), 0)
-                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.50))
+                _wzg_max_gain = safe_fetch_float(getattr(position, 'max_gain', 0), 0)
+                _wzg_peak_min = float(getattr(config, 'R2_PEAK_MIN_PCT', 0.5))
+                _wzg_band = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
                 _wzg_floor = float(getattr(config, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
                 _wzg_near_zero = float(getattr(config, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
                 _wzg_decel_ratio = float(getattr(config, 'WT_VEL_DECEL_RATIO', 0.5))
                 _wzg_decel_only = bool(getattr(config, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
                 _wzg_tfs = tuple(getattr(config, 'R2_TF_LIST', ('1h', '4h', 'D')) or ('1h', '4h', 'D'))
-                if _wzg_floor <= _wzg_gain < _wzg_band:
+                # PEAK-THEN-COLLAPSE only — see ez_manage.py:20783 comment.
+                if _wzg_max_gain >= _wzg_peak_min and _wzg_floor <= _wzg_gain < _wzg_band:
                     _wzg_fired_tf = None
                     _wzg_vel = 0.0
                     _wzg_vel_prev = 0.0
@@ -1393,8 +1396,8 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                             _wzg_tag = 'DECEL' if _decel else 'DYING'
                             break
                     if _wzg_fired_tf:
-                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
-                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f'R2_WT_VEL_SLOW_{_wzg_tag}_{_wzg_fired_tf}_g{_wzg_gain:.3f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}', 100.0, override_qty=999999)
+                        logger.error(f"⛔ [R2_WT_VEL_SLOW] {position_key}: peak={_wzg_max_gain:.2f}% (≥{_wzg_peak_min}%) collapsed→g={_wzg_gain:.3f}% in [{_wzg_floor},{_wzg_band}], wt_vel_{_wzg_fired_tf}={_wzg_vel:.3f} (prev={_wzg_vel_prev:.3f}) AGAINST+{_wzg_tag} ratio={_wzg_decel_ratio} → CLOSE")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f'R2_WT_VEL_SLOW_{_wzg_tag}_{_wzg_fired_tf}_g{_wzg_gain:.3f}%_peak{_wzg_max_gain:.2f}%_vel{_wzg_vel:.3f}vs{_wzg_vel_prev:.3f}', 100.0, override_qty=999999)
                         return f"R2_WT_VEL_SLOW_CLOSED:{_wzg_fired_tf}_{_wzg_tag}"
             except Exception as _wzg_err:
                 logger.debug(f"[R2_WT_VEL_SLOW] {position_key} err: {_wzg_err}")

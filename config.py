@@ -799,8 +799,15 @@ class Config:
     # close at a real loss (R1 + hedges handle losses). Decel ratio is the dynamic
     # slowdown gate replacing fixed NEAR_ZERO threshold per user
     # ("some moves are fast others are slow this can never be a fixed number").
-    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.50    # gain < this band (upper bound)
-    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # gain >= this floor (positive net of commissions)
+    # 2026-05-09 USER REFINEMENT — R2 fires ONLY on peak-then-collapse, not from-open-tiny-profit:
+    #   max_gain (peak ever seen this position) >= R2_PEAK_MIN_PCT
+    #   AND R2_GAIN_FLOOR_PCT <= current gain <= R2_GAIN_BAND_PCT
+    # I.e. position WAS profitable (≥0.5%), gain has FALLEN BACK to ≤0.10, momentum dying.
+    # Position that opened straight into a small loss without ever reaching +0.5% is NOT
+    # eligible — that's R1 (DC4 newborn window) territory.
+    R2_PEAK_MIN_PCT: float = 0.5                   # max_gain must have peaked ≥ this
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10    # current gain ≤ this (collapsed back to ~0)
+    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # current gain ≥ this (don't close at a real loss)
     WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1    # legacy fixed gate (still readable but bypass-able by ratio)
     WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO → "decelerating" — DYNAMIC
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True       # 2026-05-09: default ON crypto. False = legacy NEAR_ZERO OR decel.

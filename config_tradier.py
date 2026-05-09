@@ -558,8 +558,11 @@ class TradierConfig:
     WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED: bool = True
     # 2026-05-09 USER MANDATE: stocks need higher TFs (D/W rule the moves; markets closed
     # most of the day). Sweep-test which TFs and decel-ratio actually fire on stocks.
-    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.50    # gain < band (upper bound)
-    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # gain >= floor (positive net of commissions)
+    # 2026-05-09 USER REFINEMENT — R2 peak-then-collapse only (matches crypto):
+    #   max_gain ≥ R2_PEAK_MIN_PCT AND FLOOR ≤ current gain ≤ BAND.
+    R2_PEAK_MIN_PCT: float = 0.5                   # max_gain must have peaked ≥ this
+    WT_15M_VEL_SLOW_GAIN_BAND_PCT: float = 0.10    # current gain ≤ this (collapsed back)
+    WT_15M_VEL_SLOW_GAIN_FLOOR_PCT: float = 0.01   # current gain ≥ this (don't close at loss — R1/DC15M backstop handle that)
     WT_15M_VEL_NEAR_ZERO_THRESHOLD: float = 0.1    # legacy fixed gate
     WT_VEL_DECEL_RATIO: float = 0.5                # |vel| < |vel_prev| * RATIO (DYNAMIC)
     WT_VEL_USE_DECEL_RATIO_ONLY: bool = True

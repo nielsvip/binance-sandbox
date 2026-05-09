@@ -3893,15 +3893,19 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     # 3m WT for single-TF flip detection (BREAKOUT exits)
     wt1_3m = _safe(npz, 'wt1_3m', n)
     wt2_3m = _safe(npz, 'wt2_3m', n)
-    # WT_15M_VEL_SLOW exit (USER 2026-05-09): paired with dc_low4/high4_3m as the
-    # ONLY MTF-bypassing exit triggers. Fires when wt_velocity_15m sign opposes
-    # the position AND (|vel|≤near_zero OR decel) AND pnl_pct < band.
+    # R2 — WT_15M_VEL_SLOW peak-then-collapse exit (mirror live ez_manage).
+    # 2026-05-09 spec: max_pnl ≥ peak_min AND floor ≤ pnl ≤ band AND
+    # wt_vel_15m opposing AND (|vel|<|vel_prev|*decel_ratio OR |vel|≤near_zero).
     wt_vel_15m_arr = _safe(npz, 'wt_velocity_15m', n, 0.0)
     wt_vel_15m_prev_arr = np.roll(wt_vel_15m_arr, 1)
     wt_vel_15m_prev_arr[0] = wt_vel_15m_arr[0]
     _wzg_enabled = bool(getattr(cfg, 'WT_15M_VEL_SLOW_AT_ZERO_GAIN_ENABLED', True))
+    _wzg_peak_min = float(getattr(cfg, 'R2_PEAK_MIN_PCT', 0.5))
     _wzg_band = float(getattr(cfg, 'WT_15M_VEL_SLOW_GAIN_BAND_PCT', 0.10))
+    _wzg_floor = float(getattr(cfg, 'WT_15M_VEL_SLOW_GAIN_FLOOR_PCT', 0.01))
     _wzg_near_zero = float(getattr(cfg, 'WT_15M_VEL_NEAR_ZERO_THRESHOLD', 0.1))
+    _wzg_decel_ratio = float(getattr(cfg, 'WT_VEL_DECEL_RATIO', 0.5))
+    _wzg_decel_only = bool(getattr(cfg, 'WT_VEL_USE_DECEL_RATIO_ONLY', True))
 
     # ── Funding rate / OI / Multi-factor wt_dc zone fields (2026-04-28 wiring) ──
     funding_rate_arr = _safe(npz, f'funding_rate_{_ltf}', n, 0.0)
