@@ -4019,6 +4019,10 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
     entry_type = "BOUNCE"        # BOUNCE | BREAKOUT — affects exit cluster
     entry_reason = ""
     entry_ts = 0
+    # Peak gain tracker for R2 (peak-then-collapse) — resets each new entry by
+    # comparing entry_bar; see use site below near should_exit_btc.
+    max_pnl_pct = 0.0
+    _max_pnl_entry_bar = -1
     _ts_arr = npz.get('timestamps', None) if hasattr(npz, 'get') else None
     if _ts_arr is None:
         try: _ts_arr = npz['timestamps']
@@ -4519,16 +4523,24 @@ def _btc_dedicated_simulate_per_sym(npz, cfg, n: int, _ltf: str,
             short_rejection=short_rejection,
             cfg=cfg,
         )
-        # WT_15M_VEL_SLOW loss-bypass (USER 2026-05-09) — co-equal trigger with
-        # dc_low4/high4_3m breach. Fires before MTF / NO_LOSS / hedge.
-        if not ok_exit and _wzg_enabled and pnl_pct < _wzg_band:
+        # R2 — WT_15M_VEL_SLOW peak-then-collapse exit (mirror live, USER 2026-05-09).
+        # Track max_pnl_pct per position; reset when entry_bar advances.
+        if entry_bar != _max_pnl_entry_bar:
+            max_pnl_pct = pnl_pct
+            _max_pnl_entry_bar = entry_bar
+        elif pnl_pct > max_pnl_pct:
+            max_pnl_pct = pnl_pct
+        # Fires only if position WAS profitable (peak ≥ R2_PEAK_MIN_PCT) AND
+        # has fallen back to inside [floor, band].
+        if not ok_exit and _wzg_enabled and \
+           max_pnl_pct >= _wzg_peak_min and _wzg_floor <= pnl_pct < _wzg_band:
             _v15 = float(wt_vel_15m_arr[i]); _v15p = float(wt_vel_15m_prev_arr[i])
             _v15_against = (position == "LONG" and _v15 < 0) or (position == "SHORT" and _v15 > 0)
-            _v15_decel = abs(_v15) < abs(_v15p) and abs(_v15p) > 1e-6
-            _v15_dying = abs(_v15) <= _wzg_near_zero
-            if _v15_against and (_v15_dying or _v15_decel):
+            _v15_decel = abs(_v15) < abs(_v15p) * _wzg_decel_ratio and abs(_v15p) > 1e-6
+            _v15_dying = (not _wzg_decel_only) and abs(_v15) <= _wzg_near_zero
+            if _v15_against and (_v15_decel or _v15_dying):
                 ok_exit = True
-                _reason = (_reason or "") + ("|" if _reason else "") + ("WT15M_DYING" if _v15_dying else "WT15M_DECEL")
+                _reason = (_reason or "") + ("|" if _reason else "") + (f"R2_DECEL_peak{max_pnl_pct:.2f}" if _v15_decel else f"R2_DYING_peak{max_pnl_pct:.2f}")
         # Per-entry-type panic floor + min-hold gate
         is_breakout_pos = (entry_type == "BREAKOUT")
         eff_hard_loss_pct = breakout_hard_loss_pct if is_breakout_pos else hard_loss_pct
