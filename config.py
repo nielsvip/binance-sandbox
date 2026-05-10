@@ -583,7 +583,7 @@ class Config:
     MICRO_SCALP_USDC_ACCOUNTS: list = field(default_factory=lambda: ["ang", "inf", "flz", "men", "fin"])
     MICRO_SCALP_GAIN_THRESHOLD_PCT: float = 0.02
     # === 2026-04-26 HEDGE OPEN TRIGGER (sweep-testable) — gain-deterioration before WT flip is "wrong moment" prevention ===
-    HEDGE_DETERIORATING_GAIN_ENABLED: bool = True   # scan_and_hedge_losers requires losing position's gain to be actively deteriorating.
+    HEDGE_DETERIORATING_GAIN_ENABLED: bool = False  # 2026-05-10 USER MANDATE: hedge fires on wt1_3m alone when in loss — NO deteriorating-gain prerequisite. SKY/BIO/IP/PARTI bled for days because flat-line losers never qualified as "deteriorating".
     HEDGE_DETERIORATING_GAIN_DELTA_PP: float = 0.10 # Min pp drop from prev_gain to qualify as "deteriorating" (e.g., gain went -0.5% → -0.6% = 0.1pp drop).
     # 2026-04-27 USER (C98USDT incident): block hedge entries opening into adverse orderbook pressure.
     # ez_orderbook publishes ob_bid_ask_imb_10 (bid pressure / total). Block LONG hedge if imb < (1-bound), SHORT if imb > bound.
@@ -937,7 +937,7 @@ class Config:
     # === 2026-04-26 USER ABSOLUTE: cross-symbol hedge picker must verify WT across ALL TFs, not just velocity ===
     # _quick_hedge_rank rejects hedge candidates where < HEDGE_STRICT_WT_MIN_TFS_AGAINST of the 5 TFs (3m/15m/1h/4h/D) align against the proposed hedge direction.
     # Stops "shorting a rocket" — symbol may have negative wt_velocity_1h but still be raging on D/4h.
-    HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = True
+    HEDGE_STRICT_WT_ALL_TFS_ENABLED: bool = False  # 2026-05-10 USER MANDATE: hedge picker uses wt1_3m alone — 4-of-5 consensus blocked hedges precisely when origin was bleeding into a strong rally.
     HEDGE_STRICT_WT_MIN_TFS_AGAINST: int = 4  # Out of 5: 3m/15m/1h/4h/D. 4 = strong consensus; raise to 5 for unanimous, lower to 3 to relax.
     # === 2026-04-26 SCALP_V3 exit-trigger toggles (sweep-testable) — user hypothesis: V3 closes too early on minor 3m bar wobbles ===
     # Disable any of these to A/B test which V3 exit family is most/least valuable.
@@ -1332,7 +1332,7 @@ class Config:
     # SKY.USDT incident 2026-05-09: -17% for 11 days, no hedge, no close — exact failure mode this fixes.
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = True              # master switch for the periodic loop
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
-    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = True                  # USER MANDATE: trigger requires BOTH wt_3m AND wt_1h against
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False                 # 2026-05-10 USER MANDATE: hedge fires on wt1_3m ALONE (the May-9 AND-rule silently overrode the May-5 WT_3M_ALONE trigger and blocked hedges on 7 deep-loss SHORTs over 5 days). 1h becomes confirmation, not requirement.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
     # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
