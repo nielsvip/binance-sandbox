@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """
-v8_quick_engine.py — Vectorized V8 backtest engine, complete block set + AND-combinator.
+OPUS_VOMIT.py — QUARANTINED 2026-05-10 BY USER MANDATE.
 
-Each reentry/entry block (B01-B15) is a boolean array over all bars.
-Entry fires when CONFLUENCE_MIN_BLOCKS of the enabled blocks agree simultaneously.
+Formerly v8_quick_engine.py. The vectorized "quick" backtest path is officially
+declared a LIE — its results entrap promotion paths that touch live config and
+have cost the user real money. ONLY backtest_v8_engine.py + its sub-scripts
+(backtest_v8_sweep.py, backtest_v8_precompute.py) are valid backtest tooling
+from this point forward.
 
-Target: Sharpe per-trade > 1.8 via selective confluence.
+This file is preserved (renamed, not deleted) so historical references can
+still grep for it, but ANY attempt to run it as a script raises SystemExit
+immediately. Any code that `from OPUS_VOMIT import *` or `import OPUS_VOMIT`
+also gets the same refusal.
 """
+import sys as _opus_sys
+raise SystemExit(
+    "OPUS_VOMIT.py refused: v8_quick path is banned by user mandate 2026-05-10. "
+    "Use backtest_v8_engine.py + backtest_v8_sweep.py only."
+)
 import argparse
 import json
 import os

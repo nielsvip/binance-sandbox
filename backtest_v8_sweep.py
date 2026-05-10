@@ -745,6 +745,47 @@ def grid_tradier_grtf7_hunt_resume():
     return combos
 
 
+def grid_gr_entry_exit_grid_tradier():
+    """2026-05-10: GOLDEN_RULE entry+exit consensus grid through REAL engine.
+    GR entry: HTF_MIN_TFS x MIN_IND. GR exit: EXIT_MIN_TFS x EXIT_MIN_IND.
+    Sub-grid (3-level coverage) — full 1,764-config grid is ~440h on 1 worker.
+    81 variants × ~12min/variant = ~16h on 1 worker, ~8h on 2 workers.
+    Run on full ≥100-stock universe × start=2024-01-01 (>1yr) for sample-floor compliance."""
+    combos = [("baseline_gr_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0, "GOLDEN_RULE_EXIT_MIN_TFS": 0})]
+    for entry_tfs in [1, 3, 5]:
+        for entry_ind in [3, 5, 7]:
+            for exit_tfs in [1, 3, 5]:
+                for exit_ind in [3, 5, 7]:
+                    name = f"GR_e{entry_tfs}i{entry_ind}_x{exit_tfs}i{exit_ind}"
+                    combos.append((name, {
+                        "GOLDEN_RULE_HTF_MIN_TFS": entry_tfs,
+                        "GOLDEN_RULE_MIN_IND": entry_ind,
+                        "GOLDEN_RULE_EXIT_MIN_TFS": exit_tfs,
+                        "GOLDEN_RULE_EXIT_MIN_IND": exit_ind,
+                    }))
+    return combos
+
+
+def grid_gr_entry_exit_grid_crypto():
+    """2026-05-10: GOLDEN_RULE entry+exit consensus grid for crypto.
+    Crypto config.py only has GR entry knobs (HTF_MIN_TFS, MIN_IND). Exit consensus
+    via WT_EXIT_MIN_TFS (already wired). 27 entry variants × 3 exit-TF = 81 variants.
+    Run on full ≥48-crypto universe × start=2024-01-01 for sample-floor compliance."""
+    combos = [("baseline_gr_off", {"GOLDEN_RULE_HTF_MIN_TFS": 0})]
+    for entry_tfs in [1, 3, 5]:
+        for entry_ind in [3, 5, 7]:
+            for exit_tfs in [1, 3, 5]:
+                for exit_ind in [3, 5, 7]:
+                    name = f"GR_e{entry_tfs}i{entry_ind}_x{exit_tfs}i{exit_ind}"
+                    combos.append((name, {
+                        "GOLDEN_RULE_HTF_MIN_TFS": entry_tfs,
+                        "GOLDEN_RULE_MIN_IND": entry_ind,
+                        "WT_EXIT_MIN_TFS": exit_tfs,
+                        "WT_EXIT_MIN_IND": exit_ind,
+                    }))
+    return combos
+
+
 def grid_indicator_audit_v3_full():
     """2026-04-19 FULL indicator-audit matrix — every new switch gets systematic coverage.
     Four sections: (A) single-switch ablations, (B) value sweeps for numeric params,
@@ -1145,6 +1186,8 @@ TIER_MAP = {
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
+    "gr_entry_exit_grid_tradier": grid_gr_entry_exit_grid_tradier,
+    "gr_entry_exit_grid_crypto": grid_gr_entry_exit_grid_crypto,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file
