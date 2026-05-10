@@ -715,6 +715,36 @@ def grid_tradier_grtf7_hunt():
     return combos
 
 
+def grid_tradier_grtf7_hunt_resume():
+    """2026-05-10: Resume from variant [08] — skips baseline + tfs1 (already in 024358.csv).
+    Covers tfs2-5 entry grid (24 variants) + exit gate (15) + THR0 combos (6) = 45 total.
+    ~10min/variant × 45 = 7.5 hours on CORE20 stocks × 2026-01-01."""
+    combos = []
+    # ── Entry gate: tfs=2-5 × ind=2-7 (skips tfs=1 already done) ──
+    for min_tfs in [2, 3, 4, 5]:
+        for min_ind in [2, 3, 4, 5, 6, 7]:
+            combos.append((f"GR7_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_MIN_IND": min_ind,
+            }))
+    # ── Exit gate: 3 TF levels × 5 indicator thresholds ──
+    for min_tfs in [1, 2, 3]:
+        for min_ind in [3, 4, 5, 6, 7]:
+            combos.append((f"GR7_EXIT_tfs{min_tfs}_ind{min_ind}", {
+                "GOLDEN_RULE_HTF_MIN_TFS": 0,
+                "GOLDEN_RULE_EXIT_MIN_TFS": min_tfs,
+                "GOLDEN_RULE_EXIT_MIN_IND": min_ind,
+            }))
+    # ── COMBO: ENTRY_THR_0 with best GR7 candidates ──
+    for min_tfs, min_ind in [(1, 5), (1, 6), (1, 7), (2, 5), (3, 5), (3, 6)]:
+        combos.append((f"THR0_GR7_tfs{min_tfs}_ind{min_ind}", {
+            "WT_DC_ENTRY_THRESHOLD": 0,
+            "GOLDEN_RULE_HTF_MIN_TFS": min_tfs,
+            "GOLDEN_RULE_MIN_IND": min_ind,
+        }))
+    return combos
+
+
 def grid_indicator_audit_v3_full():
     """2026-04-19 FULL indicator-audit matrix — every new switch gets systematic coverage.
     Four sections: (A) single-switch ablations, (B) value sweeps for numeric params,
@@ -1114,6 +1144,7 @@ TIER_MAP = {
     "indicator_audit_v3_full": grid_indicator_audit_v3_full,
     "tradier_param_hunt": grid_tradier_param_hunt,
     "tradier_grtf7_hunt": grid_tradier_grtf7_hunt,
+    "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file

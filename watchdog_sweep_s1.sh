@@ -97,18 +97,18 @@ if [ "$NT" -lt 1 ]; then
         echo "[$TS] tradier dead — crypto running (procs=$NC), deferring tradier to avoid OOM" >> "$LOG"
     elif [ "$NEXT" = "tradier" ]; then
         # Both dead AND it's tradier's turn
-        echo "[$TS] tradier tradier_grtf7_hunt dead — relaunching (20 stocks, 2026-01-01, mem-throttle 80)" >> "$LOG"
+        echo "[$TS] tradier tradier_grtf7_hunt_resume dead — relaunching (20 stocks, 2026-01-01, mem-throttle 70)" >> "$LOG"
         TS2=$(date +%Y%m%d_%H%M)
         cd "$DIR"
         nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
             --mode tradier --account trb \
             --start 2026-01-01 \
             --symbols "$CORE20_TRADIER" \
-            --tier tradier_grtf7_hunt \
+            --tier tradier_grtf7_hunt_resume \
             --workers 1 \
             --timeout 5400 \
-            --mem-throttle-pct 80 \
-            > ~/logs/bt_sweep_tradier_20sym_${TS2}.log 2>&1 < /dev/null & disown
+            --mem-throttle-pct 70 \
+            > ~/logs/bt_sweep_tradier_grtf7_resume_${TS2}.log 2>&1 < /dev/null & disown
         sleep 5
         echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"
         echo "crypto" > "$STATE"  # crypto goes next after tradier finishes
