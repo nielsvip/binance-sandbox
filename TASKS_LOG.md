@@ -164,6 +164,38 @@ Agent also updated `watchdog_sweep_s1.sh` to:
 ### Real ceiling problem
 For >10× we'd need (a) vectorized entry/exit kernel like v8_quick (which user banned as "lying"), or (b) batch all syms' state into one async cycle per bar so multiple syms exec concurrently when waiting on no-op awaits. The "real test" requirement is structurally Python-imperative; speeding it up further means changing the simulation paradigm.
 
+## 🛑 2026-05-10 04:30 UTC — PARITY HALT (per user mandate "halt until v8 and live in sync")
+
+**Parity test on `ang` / DOGE+ETH+SOL / 2026-05-03 → 2026-05-09:**
+
+| Metric | Live | Backtest | Status |
+|---|---:|---:|---|
+| Total trades | 4 | 106 | 27× too many |
+| Wins / Losses | mixed | 106 / 0 | 100% WR — impossible |
+| Gain over 6 days | (carrying) | +0.09% on 106 trades | 0.0008%/trade — noise wins |
+
+**Diagnosis**: backtest is filling both sides of tiny bid-ask oscillations as "wins" — classic lying-numbers pattern. Either no slippage applied, or close logic only fires when in profit. Per CLAUDE.md NO-LIES MANDATE this is exactly the pattern that wiped half the user's net worth.
+
+**Halts in place** (S1):
+- `/tmp/BACKTEST_HOLD` sentinel created (suspends Mac→S1 autosync per `rsync_to_sandbox.sh`)
+- All running engines killed: `backtest_v8_sweep`, `per_sym_real_profiler`, `backtest_v8_precompute` — 0 procs
+- Watchdog cron `*/5 watchdog_sweep_s1.sh` commented out as `#PARITY_HALT_2026-05-10` so cron won't respawn
+- Backup of crontab saved at `/tmp/crontab.before_halt` on S1
+
+**Bug found + fixed (separate from parity break)**:
+- `ez_positions_quick.py:14210` `position.get('opened_at')` AttributeError — Position is dataclass not dict. Fixed via getattr. md5 `28203cf8c2`. Was firing 610x today in flz live log too — same bug both sides, so NOT the parity divergence.
+
+**Real parity divergence requires investigation**:
+- Why backtest opens 27× more positions than live — likely missing some entry-side guard that's active in live but bypassed in backtest patches
+- Why backtest produces 100% WR — almost certainly idealized fill price (no slippage / spread / partial fills modeled)
+- Apply patches at `backtest_v8_engine.py:321 apply_patches()` is the prime suspect
+
+**RESUMING SWEEPS REQUIRES**:
+1. Identify what the backtest is doing differently
+2. Either fix the engine to match live behavior, or document the divergence and ONLY use backtest for relative ranking (never absolute numbers)
+3. Re-run parity test until live ↔ backtest produce comparable trade counts (not necessarily identical, but order-of-magnitude correct)
+4. User approves resume
+
 ## NOT YET DONE — pending user direction
 
 1. **Restart live ez_manage / ez_positions_service workers** so they pick up Edits A/B/C/D-NEW. Per CLAUDE.md no auto-restart on critical-parity files. Restarting risks position-state hiccups during the swap. **User: explicitly OK to restart?**

@@ -2375,15 +2375,14 @@ def build_param_grid_grtf7_quick():
 
 
 def build_param_grid_grtf7_tradier_mega():
-    """GR_HTF gate + core tradier params — 388,800 configs (2026-05-10).
-    Full cross-product of GR7 gate × 11 core tradier knobs. Low early-abort floor
-    so all results land in CSV regardless of Sharpe. Honest baseline ~0.09.
+    """GR_HTF gate + core tradier params — 544,320 configs (2026-05-10 v2).
+    MIN_IND extended to 7 (real engine found 3x Sharpe lift at ind=6-7).
+    Low early-abort floor so all results land in CSV. Honest baseline ~0.09.
     Run: --mode tradier --symbols CORE20 --start 2026-01-01
-         --tier grtf7_tradier_mega --workers 4 --kill-sharpe 0.0 --kill-secs 999999
-    Expected: ~9.7h for all 388,800 configs at 4 workers × 0.36s/config."""
+         --tier grtf7_tradier_mega --workers 2 --kill-sharpe 0.0 --kill-secs 999999"""
     return {
         "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
-        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5, 6, 7],
         "TRADIER_ENTRY_SCORE_THRESHOLD": [0, 8, 16, 24, 32],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "MIN_HOLD_BARS": [10, 20, 40, 60],
@@ -2399,15 +2398,14 @@ def build_param_grid_grtf7_tradier_mega():
 
 
 def build_param_grid_grtf7_crypto_mega():
-    """GR_HTF gate + core crypto params — 460,800 configs (2026-05-10).
-    Full cross-product of GR7 gate × 11 core crypto knobs. Low early-abort floor.
+    """GR_HTF gate + core crypto params — 645,120 configs (2026-05-10 v2).
+    MIN_IND extended to 7 (real engine finding). Low early-abort floor.
     Run: --mode crypto --symbols BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC
-         --start 2026-04-01 --tier grtf7_crypto_mega --workers 4
-         --kill-sharpe 0.0 --kill-secs 999999
-    Expected: ~6.8h for all 460,800 configs at 4 workers (short window = fast per-config)."""
+         --start 2026-04-01 --tier grtf7_crypto_mega --workers 1
+         --kill-sharpe 0.0 --kill-secs 999999"""
     return {
         "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
-        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5, 6, 7],
         "ENTRY_SCORE_THRESHOLD": [12, 15, 18, 20, 24],
         "WT_EXIT_MIN_TFS": [2, 3, 4],
         "MIN_HOLD_BARS": [5, 10, 20, 50],
