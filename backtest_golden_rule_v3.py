@@ -142,18 +142,27 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
             in_pos = False
             entry_px = 0.0
             entry_idx = 0
-            entry_mult = 1.0  # 2026-05-10: GOLDEN_RULE mult (8x RETEST_BASIS, 0.3x BREAKOUT, etc.)
+            entry_mult = 1.0
+            # 2026-05-10 — per-(sym, side) state for FRESH-breakout / RETEST tracking
+            pattern_state = {
+                'prev_above': False,
+                'breakout_ts': -10**9,
+                'cur_bar': 0,
+                'base_tf': base_tf,
+                'retest_window_bars': 80,  # ~6.5h on 5m
+            }
             for i in range(start_idx, n_bars, sample_every):
                 px = float(close[i])
                 if px <= 0 or px != px: continue
                 ind = _ind_at_bar(npz, i)
+                pattern_state['cur_bar'] = i
                 if not in_pos:
-                    sig = gr3v.evaluate_golden_rule_v3(sym, ind, px, is_long, mode=mode, config=cfg)
+                    sig = gr3v.evaluate_golden_rule_v3(sym, ind, px, is_long, mode=mode, config=cfg, state=pattern_state)
                     if sig.fire:
                         in_pos = True
                         entry_px = px
                         entry_idx = i
-                        entry_mult = max(0.1, float(sig.mult))  # preserve GOLDEN_RULE size weighting
+                        entry_mult = max(0.1, float(sig.mult))
                         fires_total += 1
                 else:
                     bars_held = i - entry_idx
@@ -161,10 +170,17 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
                     if should_exit:
                         gain_pct = (px - entry_px) / entry_px * 100.0
                         if not is_long: gain_pct = -gain_pct
-                        # Size-weighted return: a trade fired with 8x mult contributes 8x return-equivalent.
-                        # This reflects what would happen if you actually sized per the GOLDEN_RULE tier.
                         sym_rets.append(gain_pct * entry_mult)
                         in_pos = False
+                # Update prev_above AFTER evaluation for next-bar fresh-breakout detection
+                dc_h_1h = float(ind.get('dc_high_1h', 0) or 0)
+                dc_l_1h = float(ind.get('dc_low_1h', 0) or 0)
+                bb_u_1h = float(ind.get('bb_upper_1h', 0) or 0)
+                bb_l_1h = float(ind.get('bb_lower_1h', 0) or 0)
+                if is_long:
+                    pattern_state['prev_above'] = (dc_h_1h > 0 and px > dc_h_1h) or (bb_u_1h > 0 and px > bb_u_1h)
+                else:
+                    pattern_state['prev_above'] = (dc_l_1h > 0 and px < dc_l_1h) or (bb_l_1h > 0 and px < bb_l_1h)
             if in_pos and entry_px > 0:
                 final_px = float(close[-1])
                 if final_px > 0:

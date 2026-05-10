@@ -205,24 +205,93 @@ def _score_tf(ind: dict, tf: str, is_long: bool, current_price: float) -> Tuple[
 # ───────────────────────────── GOLDEN_RULE pattern detection ──────────────────
 
 
-def _golden_rule_pattern(ind: dict, current_price: float, is_long: bool) -> Tuple[bool, str]:
-    """Detect GOLDEN_RULE setup: breakout-with-confirmation OR pullback-to-basis-with-bounce.
+def _golden_rule_pattern(ind: dict, current_price: float, is_long: bool,
+                         state: Optional[dict] = None) -> Tuple[bool, str]:
+    """Detect GOLDEN_RULE setup with STATE-AWARE confirmation.
+
+    state is a per-(symbol, side) dict the caller maintains across bars:
+      state['prev_above']  - was price above level on previous bar
+      state['breakout_ts'] - bar index of most recent breakout
+      state['cur_bar']     - bar index of THIS evaluation
+
+    Without state, falls back to stateless mode (location-only — less precise).
+
     Returns (matched, kind) — kind in {'BREAKOUT', 'RETEST_BASIS', 'CONTINUATION', ''}.
+
+    BREAKOUT: price JUST crossed (this bar) above dc_high or bb_upper → tiny entry.
+    RETEST_BASIS: had a breakout within last N bars, price returned to basis, k bouncing →
+      THIS is the legendary big entry. Requires active confirmation:
+        - k_3m/k_5m > d_3m/d_5m (or k > k_prev) on base TF — bounce momentum
+        - wt1 > wt2 on base TF — direction aligned
+    CONTINUATION: between basis and breakout, all of: WT, MACD, HA aligned on 1h.
     """
-    # 1h DC + BB are the primary GOLDEN_RULE levels
     dc_h_1h = _f(ind, 'dc_high_1h'); dc_l_1h = _f(ind, 'dc_low_1h')
     dc_b_1h = _f(ind, 'dc_basis_1h')
     bb_u_1h = _f(ind, 'bb_upper_1h'); bb_l_1h = _f(ind, 'bb_lower_1h')
     if current_price <= 0:
         return False, ''
-    # Phase 1: BREAKOUT — price above dc_high_1h or bb_upper_1h (LONG); below dc_low_1h or bb_lower_1h (SHORT)
+
+    # Determine "above level" for current bar
     if is_long:
-        breakout = (dc_h_1h > 0 and current_price > dc_h_1h) or (bb_u_1h > 0 and current_price > bb_u_1h)
+        above_now = bool((dc_h_1h > 0 and current_price > dc_h_1h)
+                         or (bb_u_1h > 0 and current_price > bb_u_1h))
     else:
-        breakout = (dc_l_1h > 0 and current_price < dc_l_1h) or (bb_l_1h > 0 and current_price < bb_l_1h)
-    if breakout:
+        above_now = bool((dc_l_1h > 0 and current_price < dc_l_1h)
+                         or (bb_l_1h > 0 and current_price < bb_l_1h))
+
+    # Phase 1: FRESH BREAKOUT — only fire when previous bar was NOT above
+    if state is not None:
+        prev_above = state.get('prev_above', False)
+        cur_bar = state.get('cur_bar', 0)
+        retest_window_bars = state.get('retest_window_bars', 80)  # ~80 bars on 5m = ~6.5h
+        # Always update prev_above after this evaluation cycle (caller responsible)
+        if above_now and not prev_above:
+            state['breakout_ts'] = cur_bar
+            return True, 'BREAKOUT'
+        # Phase 2: RETEST_BASIS — had recent breakout, price now near basis, active bounce
+        bk_ts = state.get('breakout_ts', -10**9)
+        bars_since_breakout = cur_bar - bk_ts
+        if 0 < bars_since_breakout <= retest_window_bars and not above_now and dc_b_1h > 0:
+            atr_1h = _f(ind, 'atr_1h', 0)
+            tol = max(atr_1h, current_price * 0.005)
+            in_retest_zone = (
+                (is_long and dc_b_1h <= current_price <= dc_b_1h + tol * 2)
+                or ((not is_long) and dc_b_1h - tol * 2 <= current_price <= dc_b_1h)
+            )
+            if in_retest_zone:
+                # Active bounce confirmation on base TF (5m for stocks, 3m for crypto).
+                # The state dict tells us which base TF.
+                base_tf = state.get('base_tf', '5m')
+                k_base = _f(ind, f'stoch_k_{base_tf}', 50)
+                d_base = _f(ind, f'stoch_d_{base_tf}', 50)
+                wt1 = _f(ind, f'wt1_{base_tf}', 0)
+                wt2 = _f(ind, f'wt2_{base_tf}', 0)
+                if is_long:
+                    bounce_ok = (k_base > d_base) and (wt1 > wt2)
+                else:
+                    bounce_ok = (k_base < d_base) and (wt1 < wt2)
+                if bounce_ok:
+                    return True, 'RETEST_BASIS'
+        # Phase 3: CONTINUATION — full momentum stack while in mid-channel
+        if dc_b_1h > 0 and dc_h_1h > 0 and dc_l_1h > 0:
+            in_mid = (is_long and dc_b_1h < current_price < dc_h_1h) or \
+                     ((not is_long) and dc_l_1h < current_price < dc_b_1h)
+            if in_mid:
+                wt1_1h = _f(ind, 'wt1_1h', 0); wt2_1h = _f(ind, 'wt2_1h', 0)
+                mxo_1h = _f(ind, 'macd_crossover_1h', 0)
+                mxu_1h = _f(ind, 'macd_crossunder_1h', 0)
+                ha_1h = _ha_color(ind, '1h')
+                wt_ok = (is_long and wt1_1h > wt2_1h) or ((not is_long) and wt1_1h < wt2_1h)
+                macd_ok = (is_long and mxo_1h > 0) or ((not is_long) and mxu_1h > 0)
+                ha_ok = (is_long and ha_1h == 'green') or ((not is_long) and ha_1h == 'red')
+                # Need at least 2 of 3 momentum conditions for continuation
+                if int(wt_ok) + int(macd_ok) + int(ha_ok) >= 2:
+                    return True, 'CONTINUATION'
+        return False, ''
+
+    # Stateless fallback (less precise — for callers without state)
+    if above_now:
         return True, 'BREAKOUT'
-    # Phase 2: RETEST_BASIS — price near dc_basis_1h (within ATR or 0.5%)
     if dc_b_1h > 0:
         atr_1h = _f(ind, 'atr_1h', 0)
         tol = max(atr_1h, current_price * 0.005)
@@ -230,7 +299,6 @@ def _golden_rule_pattern(ind: dict, current_price: float, is_long: bool) -> Tupl
             return True, 'RETEST_BASIS'
         if (not is_long) and dc_b_1h - tol * 2 <= current_price <= dc_b_1h:
             return True, 'RETEST_BASIS'
-    # Phase 3: CONTINUATION — between basis and breakout level, momentum aligned
     if dc_b_1h > 0 and dc_h_1h > 0 and dc_l_1h > 0:
         if is_long and dc_b_1h < current_price < dc_h_1h:
             return True, 'CONTINUATION'
@@ -262,6 +330,7 @@ def evaluate_golden_rule_v3(
     is_long: bool,
     mode: str = 'tradier',
     config=None,
+    state: Optional[dict] = None,  # 2026-05-10 stateful pattern detection
 ) -> GR3Signal:
     """v3 evaluator — universe gate + GOLDEN_RULE pattern + LTF/HTF bucketed agreement.
 
@@ -283,9 +352,9 @@ def evaluate_golden_rule_v3(
             return GR3Signal(False, is_long, 0.0, 0.0, 0, 0, 0.0, '',
                              f'GR3_NOT_IN_UNIVERSE_{symbol}_{("LONG" if is_long else "SHORT")}')
 
-    # Pattern gate
+    # Pattern gate (state-aware when caller provides state dict)
     require_pattern = True if config is None else bool(getattr(config, 'GR3_REQUIRE_PATTERN', True))
-    pat_ok, pat_kind = _golden_rule_pattern(indicators, current_price, is_long)
+    pat_ok, pat_kind = _golden_rule_pattern(indicators, current_price, is_long, state=state)
     if require_pattern and not pat_ok:
         return GR3Signal(False, is_long, 0.0, 0.0, 0, 0, 0.0, '', f'GR3_NO_PATTERN_{symbol}')
 
