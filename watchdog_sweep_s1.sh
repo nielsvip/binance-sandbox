@@ -107,7 +107,7 @@ if [ "$NT" -lt 1 ]; then
             --tier tradier_grtf7_hunt_resume \
             --workers 1 \
             --timeout 5400 \
-            --mem-throttle-pct 70 \
+            --mem-throttle-pct 85 \
             > ~/logs/bt_sweep_tradier_grtf7_resume_${TS2}.log 2>&1 < /dev/null & disown
         sleep 5
         echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"
