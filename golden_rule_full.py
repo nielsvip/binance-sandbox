@@ -250,8 +250,10 @@ def evaluate_golden_rule_full(
     if clenow == 0 and sentiment == 0 and sepa == 0:
         ranking_ok = True
 
-    # Fire decision: composite ≥ threshold AND ≥3 TFs aligned AND ranking_ok
-    min_composite = 0.50 if config is None else float(getattr(config, 'GOLDEN_RULE_FULL_MIN_COMPOSITE', 0.50))
+    # Fire decision: composite ≥ threshold AND ≥N TFs aligned AND ranking_ok.
+    # Tuned 2026-05-10: 0.65/3 balances selectivity vs trade-rate. Too tight (0.70/4) → all SL hits.
+    # Too loose (0.50/3) → trade spam with avg 0.55%/trade barely covering fees.
+    min_composite = 0.65 if config is None else float(getattr(config, 'GOLDEN_RULE_FULL_MIN_COMPOSITE', 0.65))
     min_aligned_tfs = 3 if config is None else int(getattr(config, 'GOLDEN_RULE_FULL_MIN_ALIGNED_TFS', 3))
 
     fire = (composite >= min_composite) and (aligned_tfs >= min_aligned_tfs) and ranking_ok
@@ -308,7 +310,7 @@ def evaluate_exit_full(
     if not is_long:
         gain = -gain
     tp_pct = 1.5 if config is None else float(getattr(config, 'GR2_TP_PCT', 1.5))
-    sl_pct = 0.8 if config is None else float(getattr(config, 'GR2_SL_PCT', 0.8))
+    sl_pct = 0.5 if config is None else float(getattr(config, 'GR2_SL_PCT', 0.5))
     max_bars = 200 if config is None else int(getattr(config, 'GR2_MAX_BARS', 200))
     if gain >= tp_pct: return True, f"TP_{gain:.2f}%"
     if gain <= -sl_pct: return True, f"SL_{gain:.2f}%"
