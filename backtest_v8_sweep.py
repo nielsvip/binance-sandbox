@@ -745,6 +745,82 @@ def grid_tradier_grtf7_hunt_resume():
     return combos
 
 
+def grid_gr_micro_ablation_tradier():
+    """PHASE 1 SCREENING — single-knob ablations to rank GR knob importance.
+    Each variant flips ONE knob from baseline. Compare delta_pool_sharpe to identify
+    high-impact knobs for Phase 2 focused grid.
+    ~30 variants × ~8min on 20-stock × start=2025-01-01 = ~4h on 1 worker."""
+    combos = [("baseline", {})]
+    # GR entry consensus knobs
+    combos.append(("GR_off",                {"GOLDEN_RULE_HTF_MIN_TFS": 0}))
+    combos.append(("GR_entry_tfs1",         {"GOLDEN_RULE_HTF_MIN_TFS": 1}))
+    combos.append(("GR_entry_tfs3",         {"GOLDEN_RULE_HTF_MIN_TFS": 3}))
+    combos.append(("GR_entry_tfs5",         {"GOLDEN_RULE_HTF_MIN_TFS": 5}))
+    combos.append(("GR_entry_ind3",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 3}))
+    combos.append(("GR_entry_ind5",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 5}))
+    combos.append(("GR_entry_ind7",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 7}))
+    # GR exit consensus knobs
+    combos.append(("GR_exit_tfs1",          {"GOLDEN_RULE_EXIT_MIN_TFS": 1}))
+    combos.append(("GR_exit_tfs3",          {"GOLDEN_RULE_EXIT_MIN_TFS": 3}))
+    combos.append(("GR_exit_tfs5",          {"GOLDEN_RULE_EXIT_MIN_TFS": 5}))
+    combos.append(("GR_exit_ind3",          {"GOLDEN_RULE_EXIT_MIN_TFS": 3, "GOLDEN_RULE_EXIT_MIN_IND": 3}))
+    combos.append(("GR_exit_ind5",          {"GOLDEN_RULE_EXIT_MIN_TFS": 3, "GOLDEN_RULE_EXIT_MIN_IND": 5}))
+    combos.append(("GR_exit_ind7",          {"GOLDEN_RULE_EXIT_MIN_TFS": 3, "GOLDEN_RULE_EXIT_MIN_IND": 7}))
+    # GR sizing
+    combos.append(("GR_breakout_lo",        {"GOLDEN_RULE_MULT_BREAKOUT": 0.05}))
+    combos.append(("GR_breakout_hi",        {"GOLDEN_RULE_MULT_BREAKOUT": 0.5}))
+    combos.append(("GR_retest_lo",          {"GOLDEN_RULE_MULT_RETEST": 1.5}))
+    combos.append(("GR_retest_hi",          {"GOLDEN_RULE_MULT_RETEST": 8.0}))
+    combos.append(("GR_retest_bars_short",  {"GOLDEN_RULE_RETEST_BARS": 40}))
+    combos.append(("GR_retest_bars_long",   {"GOLDEN_RULE_RETEST_BARS": 240}))
+    combos.append(("GR_mult_apply_off",     {"GOLDEN_RULE_MULT_APPLY": False}))
+    combos.append(("GR_gate_mode_off",      {"GOLDEN_RULE_GATE_MODE": False}))
+    # GR TF participation
+    combos.append(("GR_DC_no_15m",          {"GOLDEN_RULE_DC_15M_ENABLED": False}))
+    combos.append(("GR_DC_no_1h",           {"GOLDEN_RULE_DC_1H_ENABLED": False}))
+    combos.append(("GR_DC_no_4h",           {"GOLDEN_RULE_DC_4H_ENABLED": False}))
+    combos.append(("GR_DC_no_D",            {"GOLDEN_RULE_DC_D_ENABLED": False}))
+    combos.append(("GR_BB_no_15m",          {"GOLDEN_RULE_BB_15M_ENABLED": False}))
+    combos.append(("GR_BB_no_1h",           {"GOLDEN_RULE_BB_1H_ENABLED": False}))
+    combos.append(("GR_BB_no_4h",           {"GOLDEN_RULE_BB_4H_ENABLED": False}))
+    combos.append(("GR_BB_no_D",            {"GOLDEN_RULE_BB_D_ENABLED": False}))
+    combos.append(("GR_HTF_VETO_off",       {"GOLDEN_RULE_HTF_VETO_ENABLED": False}))
+    return combos
+
+
+def grid_gr_micro_ablation_crypto():
+    """PHASE 1 SCREENING for crypto — single-knob ablations to rank GR knobs."""
+    combos = [("baseline", {})]
+    combos.append(("GR_off",                {"GOLDEN_RULE_HTF_MIN_TFS": 0}))
+    combos.append(("GR_entry_tfs1",         {"GOLDEN_RULE_HTF_MIN_TFS": 1}))
+    combos.append(("GR_entry_tfs3",         {"GOLDEN_RULE_HTF_MIN_TFS": 3}))
+    combos.append(("GR_entry_tfs5",         {"GOLDEN_RULE_HTF_MIN_TFS": 5}))
+    combos.append(("GR_entry_ind3",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 3}))
+    combos.append(("GR_entry_ind5",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 5}))
+    combos.append(("GR_entry_ind7",         {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 7}))
+    combos.append(("WT_exit_tfs1",          {"WT_EXIT_MIN_TFS": 1}))
+    combos.append(("WT_exit_tfs3",          {"WT_EXIT_MIN_TFS": 3}))
+    combos.append(("WT_exit_tfs5",          {"WT_EXIT_MIN_TFS": 5}))
+    combos.append(("GR_breakout_lo",        {"GOLDEN_RULE_MULT_BREAKOUT": 0.05}))
+    combos.append(("GR_breakout_hi",        {"GOLDEN_RULE_MULT_BREAKOUT": 0.5}))
+    combos.append(("GR_retest_lo",          {"GOLDEN_RULE_MULT_RETEST": 1.5}))
+    combos.append(("GR_retest_hi",          {"GOLDEN_RULE_MULT_RETEST": 8.0}))
+    combos.append(("GR_retest_bars_short",  {"GOLDEN_RULE_RETEST_BARS": 40}))
+    combos.append(("GR_retest_bars_long",   {"GOLDEN_RULE_RETEST_BARS": 240}))
+    combos.append(("GR_mult_apply_off",     {"GOLDEN_RULE_MULT_APPLY": False}))
+    combos.append(("GR_gate_mode_off",      {"GOLDEN_RULE_GATE_MODE": False}))
+    combos.append(("GR_DC_no_15m",          {"GOLDEN_RULE_DC_15M_ENABLED": False}))
+    combos.append(("GR_DC_no_1h",           {"GOLDEN_RULE_DC_1H_ENABLED": False}))
+    combos.append(("GR_DC_no_4h",           {"GOLDEN_RULE_DC_4H_ENABLED": False}))
+    combos.append(("GR_DC_no_D",            {"GOLDEN_RULE_DC_D_ENABLED": False}))
+    combos.append(("GR_BB_no_15m",          {"GOLDEN_RULE_BB_15M_ENABLED": False}))
+    combos.append(("GR_BB_no_1h",           {"GOLDEN_RULE_BB_1H_ENABLED": False}))
+    combos.append(("GR_BB_no_4h",           {"GOLDEN_RULE_BB_4H_ENABLED": False}))
+    combos.append(("GR_BB_no_D",            {"GOLDEN_RULE_BB_D_ENABLED": False}))
+    combos.append(("GR_HTF_VETO_off",       {"GOLDEN_RULE_HTF_VETO_ENABLED": False}))
+    return combos
+
+
 def grid_gr_entry_exit_grid_tradier():
     """2026-05-10: GOLDEN_RULE entry+exit consensus grid through REAL engine.
     GR entry: HTF_MIN_TFS x MIN_IND. GR exit: EXIT_MIN_TFS x EXIT_MIN_IND.
@@ -1188,6 +1264,8 @@ TIER_MAP = {
     "tradier_grtf7_hunt_resume": grid_tradier_grtf7_hunt_resume,
     "gr_entry_exit_grid_tradier": grid_gr_entry_exit_grid_tradier,
     "gr_entry_exit_grid_crypto": grid_gr_entry_exit_grid_crypto,
+    "gr_micro_ablation_tradier": grid_gr_micro_ablation_tradier,
+    "gr_micro_ablation_crypto": grid_gr_micro_ablation_crypto,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file
