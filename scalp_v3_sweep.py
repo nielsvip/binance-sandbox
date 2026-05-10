@@ -233,12 +233,20 @@ def build_precomputed(symbols: List[str], force: bool = False) -> Dict[str, Dict
     t0 = time.time()
     print(f"[precomp] Building for {len(symbols)} symbols ...")
     out = {}
+    skipped = []
     for i, sym in enumerate(symbols):
-        p = precompute_symbol(sym)
+        # 2026-05-10: tolerate per-symbol failures (sparse/thin coins) — don't crash the sweep
+        try:
+            p = precompute_symbol(sym)
+        except Exception as e:
+            skipped.append((sym, type(e).__name__, str(e)[:60]))
+            p = None
         if p is not None:
             out[sym] = p
         if (i + 1) % 100 == 0:
-            print(f"[precomp]   {i + 1}/{len(symbols)} done ({len(out)} kept)")
+            print(f"[precomp]   {i + 1}/{len(symbols)} done ({len(out)} kept, {len(skipped)} skipped)")
+    if skipped:
+        print(f"[precomp] {len(skipped)} skipped: {skipped[:5]}")
     print(f"[precomp] Done: {len(out)}/{len(symbols)} symbols kept in {time.time() - t0:.1f}s")
     to_save = {"_symbols": set(symbols), **out}
     with open(PRECOMP_CACHE, "wb") as f:
