@@ -1653,8 +1653,13 @@ class TradierConfig:
     CT_VOLUME_SURGE_GATE_ENABLED: bool = False  # BC_174: DEAD. ABLATION 2026-04-16: 0.0000 ΔSharpe on 11sym+12sym. OFF forever.
     CT_WT_VELOCITY_1H_MIN: float = 2.0  # 2026-04-20 sweep: every top result had 2.0 — filters no-momentum entries
     CT_WT_VELOCITY_GATE_ENABLED: bool = False  # BC_170 (crypto). 2026-05-08: wired into tradier_manage BV gate; default OFF for stocks (not yet validated — sweep vel_gate_on=True to test).
-    GOLDEN_RULE_HTF_MIN_TFS: int = 0  # GOLDEN_RULE entry gate: require this many TFs to confirm (0=off). TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6 to find best.
-    GOLDEN_RULE_MIN_IND: int = 2  # Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree. Sweep 1-5.
+    # ═══ FROZEN BASELINE 2026-05-10 — tradier ablation winner ═══
+    # GR_entry_ind5 variant beat baseline 0.4088 → 0.5353 (+30% pool_sharpe),
+    # WR 54.5% → 62.5%, gain +0.01% → +0.03%. Sample: 4 sym × ~7d (DIAGNOSTIC).
+    # Review file: /Users/niels/Documents/binance/canonical_baseline_review.md
+    # Rollback: backups/baseline_freeze_202605102029/config_tradier.py.BASELINE_PRE_WINNING_VALUES
+    GOLDEN_RULE_HTF_MIN_TFS: int = 3  # FROZEN 2026-05-10 (was 0). GOLDEN_RULE entry gate: TFs=[5m,15m,1h,4h,D,W]. Sweep 1-6 to find better.
+    GOLDEN_RULE_MIN_IND: int = 5  # FROZEN 2026-05-10 (was 2). Per-TF: need this many of [WT,RSI,MFI,DC,BB,RVOL,K] to agree. Sweep 1-7 to find better.
     GOLDEN_RULE_EXIT_MIN_TFS: int = 0  # GOLDEN_RULE exit gate: only exit when N TFs show bearish (0=off, no restriction on exits).
     GOLDEN_RULE_EXIT_MIN_IND: int = 2  # Per-TF min indicators for exit gate.
     CYCLE_TP_CONDITIONAL_EXIT: float = 0.003  # BACKTEST_CHANGE_101: was 0.5%. OKX top traders exit at 0.3% when stoch turns against. Matches profitable trader behavior. ; DEAD_CONFIRMED (priority 70/100) — no plausible wiring site found 20260416
