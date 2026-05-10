@@ -2421,7 +2421,91 @@ def build_param_grid_grtf7_crypto_mega():
     }
 
 
+def build_param_grid_gr_pure_grid_tradier():
+    """Pure GOLDEN_RULE entry+exit gate matrix — 840 configs.
+    Every combination of GR entry consensus (HTF_MIN_TFS × MIN_IND) ×
+    GR exit consensus (WT_EXIT_MIN_TFS) × GR gate-mode × mult-apply.
+    Run on full ≥100-stock universe × >1yr to satisfy CLAUDE.md sample floor.
+    Run: --mode tradier --start 2024-01-01 --tier gr_pure_grid_tradier
+         --workers 4 --kill-sharpe 0.0 --kill-secs 999999 --stream"""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5, 6, 7],
+        "WT_EXIT_MIN_TFS": [1, 2, 3, 4, 5],
+        "GOLDEN_RULE_GATE_MODE": [True, False],
+        "GOLDEN_RULE_MULT_APPLY": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+    }
+
+
+def build_param_grid_gr_pure_grid_crypto():
+    """Pure GOLDEN_RULE entry+exit gate matrix — 840 configs.
+    Every combination of GR entry consensus (HTF_MIN_TFS × MIN_IND) ×
+    GR exit consensus (WT_EXIT_MIN_TFS) × GR gate-mode × mult-apply.
+    Run on full ≥48-crypto universe × >1yr to satisfy CLAUDE.md sample floor.
+    Run: --mode crypto --start 2024-01-01 --tier gr_pure_grid_crypto
+         --workers 4 --kill-sharpe 0.0 --kill-secs 999999 --stream"""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5, 6, 7],
+        "WT_EXIT_MIN_TFS": [1, 2, 3, 4, 5],
+        "GOLDEN_RULE_GATE_MODE": [True, False],
+        "GOLDEN_RULE_MULT_APPLY": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+    }
+
+
+def build_param_grid_gr_dcbb_grid_tradier():
+    """GR DC/BB TF-toggle matrix — 256 configs per fixed entry+exit.
+    Sweeps which TFs (15m/1h/4h/D) participate in the GR consensus check
+    (DC enabled × BB enabled per TF). Run AFTER gr_pure_grid_tradier finishes.
+    Run: --mode tradier --start 2024-01-01 --tier gr_dcbb_grid_tradier
+         --workers 4 --kill-sharpe 0.0 --kill-secs 999999 --stream"""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [3],
+        "GOLDEN_RULE_MIN_IND": [4],
+        "WT_EXIT_MIN_TFS": [3],
+        "GOLDEN_RULE_DC_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_4H_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_D_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_4H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_D_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [50],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+    }
+
+
+def build_param_grid_gr_dcbb_grid_crypto():
+    """GR DC/BB TF-toggle matrix — 256 configs per fixed entry+exit.
+    Run: --mode crypto --start 2024-01-01 --tier gr_dcbb_grid_crypto
+         --workers 4 --kill-sharpe 0.0 --kill-secs 999999 --stream"""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [3],
+        "GOLDEN_RULE_MIN_IND": [4],
+        "WT_EXIT_MIN_TFS": [3],
+        "GOLDEN_RULE_DC_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_4H_ENABLED": [True, False],
+        "GOLDEN_RULE_DC_D_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_15M_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_1H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_4H_ENABLED": [True, False],
+        "GOLDEN_RULE_BB_D_ENABLED": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [30],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+    }
+
+
 TIER_MAP = {
+    "gr_pure_grid_tradier": build_param_grid_gr_pure_grid_tradier,
+    "gr_pure_grid_crypto": build_param_grid_gr_pure_grid_crypto,
+    "gr_dcbb_grid_tradier": build_param_grid_gr_dcbb_grid_tradier,
+    "gr_dcbb_grid_crypto": build_param_grid_gr_dcbb_grid_crypto,
     "golden_rule": build_param_grid_golden_rule,
     "golden_rule_mults": build_param_grid_golden_rule_mults,
     "wt_dc_full": build_param_grid_wt_dc_full,
