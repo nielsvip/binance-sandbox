@@ -7122,40 +7122,27 @@ class MultiAccountTradeManager:
                                     logger.info(f'[GOLDEN_RULE] RETEST {sym} SHORT px={price:g} basis={dc_b_1h:g} mult={mult}x k={k_3m:.0f}')
                                 else:
                                     continue
-                            # ═══ CONSENSUS GATE (USER 2026-05-10) ═══════════════════
-                            # ≥ TF_CONSENSUS_REQUIRED of 5 TFs (3m/15m/1h/4h/D) agree, AND
-                            # ≥ INDICATOR_CONSENSUS_REQUIRED of 15 sub-checks agree
-                            # (3 indicators × 5 TFs: wt direction, stoch K vs D, HA color).
-                            # STRKUSDT_SHORT 2026-05-08 03:50 fired with only wt1_3m<wt2_3m
-                            # as the safety check — bled the account. This gate makes that
-                            # impossible: a SHORT in a clean D-up trend won't have anywhere
-                            # near 4-of-5 TFs or 10-of-15 indicators agreeing.
-                            _tf_min = int(getattr(config, 'GOLDEN_RULE_TF_CONSENSUS_REQUIRED', 4))
-                            _ind_min = int(getattr(config, 'GOLDEN_RULE_INDICATOR_CONSENSUS_REQUIRED', 10))
-                            _tfs_5 = ('3m', '15m', '1h', '4h', 'D')
-                            _tf_agree_count = 0
-                            _ind_agree_count = 0
-                            for _ctf in _tfs_5:
-                                _w1 = safe_fetch_float(ind.get(f'wt1_{_ctf}'), 0)
-                                _w2 = safe_fetch_float(ind.get(f'wt2_{_ctf}'), 0)
-                                _kk = safe_fetch_float(ind.get(f'stoch_k_{_ctf}'), 50)
-                                _dd = safe_fetch_float(ind.get(f'stoch_d_{_ctf}'), 50)
-                                _ha = str(ind.get(f'ha_{_ctf}', 'neutral')).lower()
-                                if is_long:
-                                    _wt_ok = _w1 > _w2
-                                    _stoch_ok = _kk > _dd
-                                    _ha_ok = (_ha == 'green')
-                                else:
-                                    _wt_ok = _w1 < _w2
-                                    _stoch_ok = _kk < _dd
-                                    _ha_ok = (_ha == 'red')
-                                _tf_score = int(_wt_ok) + int(_stoch_ok) + int(_ha_ok)
-                                _ind_agree_count += _tf_score
-                                if _tf_score >= 2:  # majority of indicators on this TF
-                                    _tf_agree_count += 1
-                            if _tf_agree_count < _tf_min or _ind_agree_count < _ind_min:
-                                logger.warning(f'[GOLDEN_RULE_CONSENSUS_BLOCK] {pkey} {"LONG" if is_long else "SHORT"}: tf_agree={_tf_agree_count}/{_tf_min} ind_agree={_ind_agree_count}/{_ind_min} — REFUSED')
-                                continue
+                            # ═══ CONSENSUS GATE — calls golden_rule_htf.score_entry_htf
+                            # Uses the SAME config keys (GOLDEN_RULE_HTF_MIN_TFS,
+                            # GOLDEN_RULE_MIN_IND) that backtest_v8_engine.py:3075 already
+                            # uses and that backtest_v8_sweep.py tests across values 1-5.
+                            # When MIN_TFS == 0 (default), gate is disabled — preserves
+                            # existing live behavior. Set the live value via sweep winner
+                            # override; do NOT hardcode here.
+                            _gr_min_tfs = int(getattr(config, 'GOLDEN_RULE_HTF_MIN_TFS', 0))
+                            if _gr_min_tfs > 0:
+                                try:
+                                    from golden_rule_htf import score_entry_htf as _gr_score_entry
+                                    _gr_min_ind = int(getattr(config, 'GOLDEN_RULE_MIN_IND', 2))
+                                    _gr_pass, _gr_n_tfs, _gr_detail = _gr_score_entry(
+                                        ind, is_long, mode='crypto',
+                                        min_tfs=_gr_min_tfs, min_ind=_gr_min_ind, current_price=price,
+                                    )
+                                    if not _gr_pass:
+                                        logger.warning(f'[GOLDEN_RULE_CONSENSUS_BLOCK] {pkey} {"LONG" if is_long else "SHORT"}: {_gr_detail} — REFUSED')
+                                        continue
+                                except Exception as _gr_imp_err:
+                                    logger.error(f'[GOLDEN_RULE_SCORER_IMPORT_FAIL] {pkey}: {_gr_imp_err}')
                             # ═══ HTF VETO (defense-in-depth) ═══════════════════════
                             if bool(getattr(config, 'GOLDEN_RULE_HTF_VETO_ENABLED', True)):
                                 _w1_D = safe_fetch_float(ind.get('wt1_D'), 0)

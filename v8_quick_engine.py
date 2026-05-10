@@ -1116,6 +1116,9 @@ class QuickConfig:
     GOLDEN_RULE_MULT_4H: float = 2.0
     GOLDEN_RULE_MULT_D: float = 3.0
     GOLDEN_RULE_BASE_USD: float = 5.0
+    # ─── GOLDEN RULE HTF gate — 7-indicator multi-TF confirmation (2026-05-10) ──────────
+    GOLDEN_RULE_HTF_MIN_TFS: int = 0   # 0 = gate off; 1-6 = require N TFs confirmed
+    GOLDEN_RULE_MIN_IND: int = 2        # indicators per TF required (of 7: WT RSI MFI DC BB RVOL K)
 
     @classmethod
     def from_override_file(cls, path: str) -> "QuickConfig":
@@ -2203,6 +2206,66 @@ def _golden_rule_vec(npz, n, is_long, cfg):
     mult = np.where(breakout, m_breakout, mult)
     mult = np.where(retest, m_retest, mult)
     return fire, mult
+
+
+def _gr_htf_gate_vec(npz, n: int, is_long: bool, min_tfs: int, min_ind: int, cfg) -> np.ndarray:
+    """Vectorized 7-indicator HTF gate mirroring golden_rule_htf.score_entry_htf().
+    Returns bool mask shape (n,). True = bar passes, False = bar blocked.
+    7 indicators per TF: WT, RSI, MFI, DC_position, BB_pct_b, RVOL, stoch_K.
+    """
+    if min_tfs <= 0:
+        return np.ones(n, dtype=bool)
+    mode = str(getattr(cfg, 'MODE', 'crypto'))
+    tfs = ['5m', '15m', '1h', '4h', 'D', 'W'] if mode == 'tradier' else ['3m', '15m', '1h', '4h', 'D']
+    cl_field = 'close_5m' if mode == 'tradier' else 'close_3m'
+    ind_matrix = np.zeros((n, len(tfs)), dtype=np.int8)
+    close_base = _safe(npz, cl_field, n)
+    for tf_idx, tf in enumerate(tfs):
+        cnt = np.zeros(n, dtype=np.int8)
+        wt1 = _safe(npz, f'wt1_{tf}', n)
+        wt2 = _safe(npz, f'wt2_{tf}', n)
+        if not (np.all(wt1 == 0) and np.all(wt2 == 0)):
+            cnt += (wt1 > wt2 if is_long else wt1 < wt2).astype(np.int8)
+        rsi = _safe(npz, f'rsi_{tf}', n)
+        valid = rsi >= 0
+        if valid.any():
+            cnt += np.where(valid, (rsi > 50 if is_long else rsi < 50), False).astype(np.int8)
+        mfi = _safe(npz, f'mfi_{tf}', n)
+        valid = mfi >= 0
+        if valid.any():
+            cnt += np.where(valid, (mfi > 50 if is_long else mfi < 50), False).astype(np.int8)
+        dc_pos = _safe(npz, f'dc_position_{tf}', n)
+        need_calc = dc_pos < 0
+        if need_calc.any():
+            dc_h = _safe(npz, f'dc_high_{tf}', n)
+            dc_l = _safe(npz, f'dc_low_{tf}', n)
+            denom = np.maximum(dc_h - dc_l, 1e-9)
+            calc_ok = (dc_h > dc_l) & (dc_l > 0) & (close_base > 0)
+            dc_pos = np.where(need_calc & calc_ok, (close_base - dc_l) / denom, dc_pos)
+        valid = dc_pos >= 0
+        if valid.any():
+            cnt += np.where(valid, (dc_pos < 0.65 if is_long else dc_pos > 0.35), False).astype(np.int8)
+        bb_pctb = _safe(npz, f'bb_pct_b_{tf}', n)
+        need_calc = bb_pctb < 0
+        if need_calc.any():
+            bb_u = _safe(npz, f'bb_upper_{tf}', n)
+            bb_l = _safe(npz, f'bb_lower_{tf}', n)
+            denom = np.maximum(bb_u - bb_l, 1e-9)
+            calc_ok = (bb_u > bb_l) & (bb_l > 0) & (close_base > 0)
+            bb_pctb = np.where(need_calc & calc_ok, (close_base - bb_l) / denom, bb_pctb)
+        valid = bb_pctb >= 0
+        if valid.any():
+            cnt += np.where(valid, (bb_pctb < 0.75 if is_long else bb_pctb > 0.25), False).astype(np.int8)
+        rvol = _safe(npz, f'relative_volume_{tf}', n)
+        valid = rvol >= 0
+        if valid.any():
+            cnt += np.where(valid, rvol > 1.0, False).astype(np.int8)
+        stk = _safe(npz, f'stoch_k_{tf}', n)
+        valid = stk >= 0
+        if valid.any():
+            cnt += np.where(valid, (stk < 80 if is_long else stk > 20), False).astype(np.int8)
+        ind_matrix[:, tf_idx] = cnt
+    return (ind_matrix >= min_ind).sum(axis=1) >= min_tfs
 
 
 def compute_entry_signals(npz, n, is_long, cfg, sym: Optional[str] = None):
@@ -5101,6 +5164,15 @@ def simulate(stores, cfg, capital=10000.0):
                         _hit = (_dist > 0) & (_dist < _oi_dist_pct)
                         _oi_block = _oi_block | _hit
                 entry_sig = entry_sig & ~_oi_block
+            # GR_HTF: 7-indicator multi-TF confirmation gate (vectorized, 2026-05-10)
+            _gr_htf_min_tfs = int(getattr(cfg, 'GOLDEN_RULE_HTF_MIN_TFS', 0))
+            if _gr_htf_min_tfs > 0:
+                _gr_htf_min_ind = int(getattr(cfg, 'GOLDEN_RULE_MIN_IND', 2))
+                try:
+                    _htf_mask = _gr_htf_gate_vec(npz, n, is_long, _gr_htf_min_tfs, _gr_htf_min_ind, cfg)
+                    entry_sig = entry_sig & _htf_mask
+                except Exception:
+                    pass
             # Phase 5 P/C ratio injection — when extremely bullish/bearish, ADD entry signal
             # at the very next bar (signal triggers the existing entry on momentum-up/down).
             # Snapshot-static — fires only if today's near-money P/C is at extreme on entry path.

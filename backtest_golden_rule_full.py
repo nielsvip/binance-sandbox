@@ -207,7 +207,35 @@ def main():
     ap.add_argument('--npz-dir', default='backtest_v8/indicators')
     ap.add_argument('--sample-every', type=int, default=1)
     ap.add_argument('--out', default='data/sweep_results/canonical_gr2.csv')
+    ap.add_argument('--min-composite', type=float, default=None, help='override min composite score')
+    ap.add_argument('--min-aligned-tfs', type=int, default=None, help='override min aligned TFs')
+    ap.add_argument('--tp', type=float, default=None, help='override TP %')
+    ap.add_argument('--sl', type=float, default=None, help='override SL %')
+    ap.add_argument('--tag', default='', help='tag for the run iter id')
     args = ap.parse_args()
+    # Inject params via a mock config object to evaluator + exit logic
+    class _CfgOverride:
+        pass
+    _cfg = _CfgOverride()
+    if args.min_composite is not None: _cfg.GOLDEN_RULE_FULL_MIN_COMPOSITE = args.min_composite
+    if args.min_aligned_tfs is not None: _cfg.GOLDEN_RULE_FULL_MIN_ALIGNED_TFS = args.min_aligned_tfs
+    if args.tp is not None: _cfg.GR2_TP_PCT = args.tp
+    if args.sl is not None: _cfg.GR2_SL_PCT = args.sl
+    # Patch the evaluator default by temporarily reaching into the module — simpler than threading config through
+    import golden_rule_full as _grf
+    _orig_eval = _grf.evaluate_golden_rule_full
+    _orig_exit = _grf.evaluate_exit_full
+    def _eval_with_cfg(indicators, current_price, is_long, mode='crypto', config=None):
+        return _orig_eval(indicators, current_price, is_long, mode=mode, config=_cfg)
+    def _exit_with_cfg(entry_price, current_price, is_long, bars_held, indicators, mode='crypto', config=None):
+        return _orig_exit(entry_price, current_price, is_long, bars_held, indicators, mode=mode, config=_cfg)
+    _grf.evaluate_golden_rule_full = _eval_with_cfg
+    _grf.evaluate_exit_full = _exit_with_cfg
+    # Re-import bound names in this module so run_backtest() picks up the overrides
+    import sys as _sys
+    _this = _sys.modules[__name__]
+    _this.evaluate_golden_rule_full = _eval_with_cfg
+    _this.evaluate_exit_full = _exit_with_cfg
     npz_dir = Path(args.npz_dir)
     metrics = run_backtest(args.mode, args.start, args.syms_cap, npz_dir, sample_every=args.sample_every)
     print("\n=== GR2 backtest results ===")
@@ -242,7 +270,7 @@ def main():
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     row = {
-        'iter': f'gr2_{args.mode}_{int(time.time())}',
+        'iter': f'gr2_{args.mode}_{args.tag or "base"}_{int(time.time())}',
         'pool_sharpe': pool_s,
         'sym_sharpe': sym_s,
         'acc_gain_pct': tot,

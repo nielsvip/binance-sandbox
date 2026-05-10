@@ -859,11 +859,13 @@ class Config:
     #       the entry too — never enter naked.
     GOLDEN_RULE_ENABLED: bool = True                       # SACRED — never disable
     LEGACY_GUARANTEED_REENTRY: bool = True                 # OBLIGATION — never disable
-    GOLDEN_RULE_TF_CONSENSUS_REQUIRED: int = 4             # ≥4 of 5 TFs (3m/15m/1h/4h/D) agree
-    GOLDEN_RULE_INDICATOR_CONSENSUS_REQUIRED: int = 10     # ≥10 of 15 indicators agree (3×5)
-    GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True            # mandatory paired hedge
-    GUARANTEED_REENTRY_TF_CONSENSUS_REQUIRED: int = 4
-    GUARANTEED_REENTRY_INDICATOR_CONSENSUS_REQUIRED: int = 10
+    # The GOLDEN_RULE entry consensus uses the EXISTING tested config keys
+    # GOLDEN_RULE_HTF_MIN_TFS and GOLDEN_RULE_MIN_IND (defined at line ~1964
+    # below) — same knobs that backtest_v8_engine.py and backtest_v8_sweep.py
+    # already test. Default 0 = disabled, sweep winners drive the live value.
+    # No new consensus knobs; no hardcoded thresholds. The gate inside the
+    # GOLDEN_RULE producer in ez_manage.py reads those same keys.
+    GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True            # mandatory paired hedge (TODO wire)
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = True
     # HTF-trend vetoes — defense-in-depth alongside the consensus gate.
     GOLDEN_RULE_HTF_VETO_ENABLED: bool = True

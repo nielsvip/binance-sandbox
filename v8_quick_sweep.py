@@ -2357,6 +2357,23 @@ def build_param_grid_golden_rule_mults():
     return grid
 
 
+def build_param_grid_grtf7_quick():
+    """Vectorized GR_HTF 7-indicator gate sweep (2026-05-10).
+    Sweeps GOLDEN_RULE_HTF_MIN_TFS × GOLDEN_RULE_MIN_IND × PPL_GAIN × ENTRY_THR
+    using numpy-vectorized _gr_htf_gate_vec in v8_quick_engine.
+    ~90 configs. Runs in minutes (not hours) via vectorized engine.
+    Run: --mode tradier --symbols AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS
+         --start 2026-01-01 --tier grtf7_quick --workers 4"""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5],
+        "PARTIAL_PROFIT_LOCK_GAIN_PCT": [0.5, 1.0],
+        "TRADIER_ENTRY_SCORE_THRESHOLD": [0, 8, 16, 24],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.0],
+    }
+
+
 TIER_MAP = {
     "golden_rule": build_param_grid_golden_rule,
     "golden_rule_mults": build_param_grid_golden_rule_mults,
@@ -2448,6 +2465,7 @@ TIER_MAP = {
     "ratio_sentiment_tradier": build_param_grid_ratio_sentiment_tradier,
     "ratio_sentiment_crypto": build_param_grid_ratio_sentiment_crypto,
     "hedge_wt_kill": build_param_grid_hedge_wt_kill,
+    "grtf7_quick": build_param_grid_grtf7_quick,
 }
 
 
