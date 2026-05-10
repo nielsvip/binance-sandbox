@@ -142,6 +142,7 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
             in_pos = False
             entry_px = 0.0
             entry_idx = 0
+            entry_mult = 1.0  # 2026-05-10: GOLDEN_RULE mult (8x RETEST_BASIS, 0.3x BREAKOUT, etc.)
             for i in range(start_idx, n_bars, sample_every):
                 px = float(close[i])
                 if px <= 0 or px != px: continue
@@ -152,6 +153,7 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
                         in_pos = True
                         entry_px = px
                         entry_idx = i
+                        entry_mult = max(0.1, float(sig.mult))  # preserve GOLDEN_RULE size weighting
                         fires_total += 1
                 else:
                     bars_held = i - entry_idx
@@ -159,14 +161,16 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
                     if should_exit:
                         gain_pct = (px - entry_px) / entry_px * 100.0
                         if not is_long: gain_pct = -gain_pct
-                        sym_rets.append(gain_pct)
+                        # Size-weighted return: a trade fired with 8x mult contributes 8x return-equivalent.
+                        # This reflects what would happen if you actually sized per the GOLDEN_RULE tier.
+                        sym_rets.append(gain_pct * entry_mult)
                         in_pos = False
             if in_pos and entry_px > 0:
                 final_px = float(close[-1])
                 if final_px > 0:
                     g = (final_px - entry_px) / entry_px * 100.0
                     if not is_long: g = -g
-                    sym_rets.append(g)
+                    sym_rets.append(g * entry_mult)
         if sym_rets:
             returns_by_sym[sym] = sym_rets
         if verbose and (sidx + 1) % 20 == 0:

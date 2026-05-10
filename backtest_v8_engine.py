@@ -1829,8 +1829,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # DISC-7: RIDICULOUS_LOSS_PCT — mirror ez_manage.py:20529
         # Force-close any position whose gain <= RIDICULOUS_LOSS_PCT (-15% default).
         # Bypasses UNIVERSAL_NOLOSS_GATE (reason string contains RIDICULOUS_LOSS).
+        # 2026-05-10 PARITY MODE: V8_PARITY_MODE=1 disables this v8-only mirror so
+        # only live's process_position-driven RIDICULOUS_LOSS path fires.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'RIDICULOUS_HOLD_GUARD_ENABLED', True)):
+        if os.environ.get("V8_PARITY_MODE") != "1" and bool(getattr(config, 'RIDICULOUS_HOLD_GUARD_ENABLED', True)):
             _rl_loss_cap = float(getattr(config, 'RIDICULOUS_LOSS_PCT', -15.0))
             for _rl_pk, _rl_pos in list(trade_manager.positions.items()):
                 if abs(getattr(_rl_pos, 'positionAmt', 0)) < 0.0001:
@@ -1857,8 +1859,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # DISC-8: UNDERWATER_HEDGE_OR_CLOSE — mirror ez_manage.py:20664
         # If position pnl<0 AND wt1_15m against AND hedge active AND ≥2 of 4 HTF agree → force-close origin.
         # If position pnl<0 AND wt1_15m against AND no hedge AND gain < MANDATORY_HEDGE threshold → fire hedge.
+        # 2026-05-10 PARITY MODE gated.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_ENABLED', True)):
+        if os.environ.get("V8_PARITY_MODE") != "1" and bool(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_ENABLED', True)):
             _uh_bt_thr = float(getattr(config, 'MANDATORY_HEDGE_GAIN_THRESHOLD_PCT', -0.5))
             _uh_bt_htf_req = int(getattr(config, 'UNDERWATER_HEDGE_OR_CLOSE_HTF_CLOSE_REQUIRED', 2))
             _uh_bt_cd_dict = trade_manager.__dict__.setdefault('_bt_underwater_cd', {})
@@ -1935,8 +1938,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         #   AND wt against on (3m OR 15m) + (1h)  [≥2 of enabled TFs]
         #   AND no existing hedge for this pk
         # In backtest: run per-bar for all underwater positions (NOLOSS gate fires before check_exit).
+        # 2026-05-10 PARITY MODE gated.
         # ═══════════════════════════════════════════════════════════════════════════
-        if bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)) and \
+        if os.environ.get("V8_PARITY_MODE") != "1" and bool(getattr(config, 'OBLIGATORY_HEDGE_ENABLED', True)) and \
            getattr(config, 'HEDGE_MODE', False) and account_key in getattr(config, 'HEDGE_ACCOUNTS', []):
             _oh_bt_min = float(getattr(config, 'OBLIGATORY_HEDGE_MIN_LOSS_PCT', -0.25))
             _oh_bt_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
@@ -2000,7 +2004,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Step 1 (+0.5%): TP 50% REDUCE; stop_level = entry × (1 ± BE_buffer%). Close before BE.
         # Step 2 (+0.75%): upgrade stop_level → first_exit_price (locks +0.5% scalp).
         # Step 3 (price hits stop): full CLOSE of remainder.
-        _ppl_bt_on = bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False))
+        # 2026-05-10 PARITY MODE gated.
+        _ppl_bt_on = bool(getattr(config, 'PARTIAL_PROFIT_LOCK_ENABLED', False)) and os.environ.get("V8_PARITY_MODE") != "1"
         if _ppl_bt_on:
             _ppl_bt_accts = set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS', []) or []) | set(getattr(config, 'PARTIAL_PROFIT_LOCK_ACCOUNTS_TRADIER', []) or [])
             if account_key in _ppl_bt_accts:
@@ -2146,7 +2151,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # AND cascade in a follow-up patch, not disable. Set V8_DISABLE_RELAXED_SRS=1 to
         # opt out (e.g. for sweep isolation runs).
         _v8_srs_on = (getattr(config, 'STRUCTURAL_RANGE_SHIFT_EXIT', False)
-                      and os.environ.get("V8_DISABLE_RELAXED_SRS") != "1")
+                      and os.environ.get("V8_DISABLE_RELAXED_SRS") != "1"
+                      and os.environ.get("V8_PARITY_MODE") != "1")
         if _v8_srs_on:
             _v8_srs_still_active = [pk for pk, pos in trade_manager.positions.items()
                                     if abs(getattr(pos, 'positionAmt', 0)) > 0.0001]
@@ -2253,7 +2259,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # Calls execute_trade_action directly — bypasses signal gate (fires every qualifying bar).
         # Gate: GOLDEN_RULE_ENABLED (default True).
         # BUG FIX 2026-05-09: tm_mod is tradier-only; crypto path uses ez_manage directly.
-        if getattr(ez_manage.config, 'GOLDEN_RULE_ENABLED', True):
+        if getattr(ez_manage.config, 'GOLDEN_RULE_ENABLED', True) and os.environ.get("V8_PARITY_MODE") != "1":
             _gr_base_usd = float(getattr(ez_manage.config, 'GOLDEN_RULE_BASE_USD', 5.0))
             _gr_dc_15 = bool(getattr(ez_manage.config, 'GOLDEN_RULE_DC_15M_ENABLED', True))
             _gr_bb_15 = bool(getattr(ez_manage.config, 'GOLDEN_RULE_BB_15M_ENABLED', True))

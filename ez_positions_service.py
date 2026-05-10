@@ -2474,9 +2474,11 @@ class WebSocketManager:
                     continue
                 if not getattr(self, 'session', None) or self.session.closed:
                     self.session = await self._init_session()
-                # 2026-05-10: routed /private/ path required since Binance change; /ws/{lk} now silently sends 0 msgs (was the cause of ws_alive=False on all 5 crypto accounts)
-                # Direct path (mirrors old /ws/{lk}) rather than combined-stream format — listen_key is an identifier, not a stream name.
-                user_url = f"wss://fstream.binance.com/private/{listen_key}"
+                # 2026-05-10: REVERTED to /ws/{lk}. Binance's own Python SDK (binance-futures-connector-python) still uses /ws/{listen_key}.
+                # Earlier I tried /private/{lk} based on a blog post — both /private/{lk} and /private/stream?streams={lk} delivered 0 messages.
+                # The user-data WS dying may be a Binance-side or account-level issue, not a URL change. Falling back to REST polling
+                # (position.mark_price + fetch_positions every 4-6s) keeps positions current; this is the "as always" backup pattern.
+                user_url = f"wss://fstream.binance.com/ws/{listen_key}"
                 logger.info(f"[{account_key}] 🔌 Connecting WS to {user_url[:30]}...")
                 keepalive_task = asyncio.create_task(self.keep_listen_key_alive(account_key))
                 asyncio.create_task(self.ensure_mark_price_tasks())
@@ -2510,8 +2512,8 @@ class WebSocketManager:
                     try :
                         new_listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
                         self.listen_keys[account_key] = new_listen_key
-                        # 2026-05-10: routed /private/ path (see comment at user_url assignment above)
-                        url = f"wss://fstream.binance.com/private/{new_listen_key}"
+                        # 2026-05-10: REVERTED to /ws/{lk} (see comment at user_url above)
+                        url = f"wss://fstream.binance.com/ws/{new_listen_key}"
                         logger.info(f"[{account_key}] 🔑 Fresh listen key obtained for reconnect")
                     except Exception as lk_err:
                         _record_ip_ban_from_exc(lk_err)

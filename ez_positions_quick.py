@@ -8136,8 +8136,8 @@ class WebSocketManager:
         while self._running:
             try:
                 listen_key = await asyncio.to_thread(self.client.futures_stream_get_listen_key)
-                # 2026-05-10: routed /private/ required since Binance change; /ws/{lk} silently sends 0 msgs
-                url = f"wss://fstream.binance.com/private/{listen_key}"
+                # 2026-05-10: REVERTED to /ws/{lk}. Binance's own SDK still uses /ws/{listen_key}. /private/ guess didn't deliver either.
+                url = f"wss://fstream.binance.com/ws/{listen_key}"
                 asyncio.create_task(self._keepalive(listen_key))
                 async with self.session.ws_connect(url, heartbeat=30) as ws:
                     logger.info(f"[{account_key}] User Stream Connected")
