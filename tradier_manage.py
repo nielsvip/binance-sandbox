@@ -8978,7 +8978,10 @@ class TradierTradeManager:
                             await self.redis_manager.delete(exec_lock_key)
                         return "BLOCKED_NON_TRADEABLE"
             
-            if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0):
+            # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
+            # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.
+            _wt3m_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+            if is_augment and recent_signal_ts > 0 and time.time() - recent_signal_ts < getattr(config, 'AUGMENTATION_COOLDOWN_SECONDS', 120.0) and not _wt3m_force_open:
                 logger.warning(f"[EXECUTE_NOW_BLOCKED] {position_key}: Augmentation cooldown active")
                 if lock_acquired and self.redis_manager:
                     await self.redis_manager.delete(exec_lock_key)

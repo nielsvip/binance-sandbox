@@ -552,7 +552,7 @@ class Config:
     HEDGE_CLOSE_WT_TFS_FAVOR: int = 3  # BC_988: r2 winner but this is now unused — 15m WT close in code.
     HEDGE_SAME_SYMBOL_ENABLED: bool = True  # Re-enabled 2026-04-01: 150% same-symbol always active regardless of HEDGE_MODE. Cross-symbol only when HEDGE_MODE=True.
     HEDGE_DUAL_IF_HEDGE_MODE: bool = False  # Cross-symbol dual hedge disabled.
-    HEDGE_ALL_POSITIONS: bool = False  # BC_988: NEW. If True, hedge ALL positions when wt15m against (not just losers). Test pending.
+    HEDGE_ALL_POSITIONS: bool = True   # 2026-05-10 USER MANDATE: if wt1_3m against trade → 100% same-symbol hedge. PERIOD. P/L irrelevant. Combined with HEDGE_TRIGGER_USE_WT_3M_ALONE=True + HEDGE_DETERIORATING_GAIN_ENABLED=False = scan_and_hedge_losers fires on wt1_3m flip alone, no loss precondition.
     # === 2026-04-17 HEDGE OVERHAUL — user directive: hedges close on wt_3m flip no matter the P/L ===
     HEDGE_EXIT_BYPASS_NOLOSS: bool = True  # Hedge closes on wt1_3m flip regardless of gain. Bypasses STRICT_NO_LOSS lock.
     HEDGE_EXIT_WT_TF: str = "3m"  # Which TF's WT flip triggers hedge close ("3m" per user rule).
@@ -920,6 +920,9 @@ class Config:
     # loser but 3m had already flipped against it. Trigger lives at
     # ez_positions_quick.py:5044-5048.
     HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True   # 2026-05-10 USER MANDATE: wt1_3m alone IS the open trigger ("stated 12004 times"). Overrides 2026-05-06 backtest revert. Symmetric with HEDGE_CLOSE_MODE='wt_3m'.
+    # 2026-05-10 misinterpretation safety: WT_3M_OPEN_GATE was added to refuse OPEN/AUGMENT/REENTRY when wt1_3m is against.
+    # User clarified that's already-implicit behavior elsewhere — keep code as sweep knob, default OFF so it doesn't fire.
+    WT_3M_OPEN_GATE_ENABLED: bool = False
     # Companion: peak-decay nuke. When hedge gain peaks >1% then drops back to 0.5% → close before
     # going negative. Default True per the historical "exist as SHORT as possible, NEVER close at a loss"
     # paragraph at ez_positions_quick.py:5385 — this is the "before negative" half of that rule.

@@ -13810,6 +13810,36 @@ class MultiAccountTradeManager:
                 symbol = _usdc_sym_en
                 position_key = f"{account_key}:{_usdc_sym_en}_{position_side}"
                 logger.info(f"[USDC_UPGRADE] {_old_pk_en} → {position_key}: auto-redirected USDT→USDC (zero commissions)")
+        # ═══ 2026-05-10 USER MANDATE — WT_3M_OPEN_GATE ═══
+        # NOTHING CAN BE OPEN without a hedge if wt1_3m is against a trade.
+        # Refuse OPEN/AUGMENT/REENTRY when wt1_3m is against position_side.
+        # Hedges exempt: is_hedge=True OR 'HEDGE' in reason — they ARE the protection.
+        # Missing wt data (both zero) → allow with warning (bootstrap case).
+        if (
+            bool(getattr(config, 'WT_3M_OPEN_GATE_ENABLED', True))
+            and _is_open_action
+            and not is_hedge
+            and 'HEDGE' not in (reason or '').upper()
+            and symbol
+        ):
+            try:
+                _wog_ind = {}
+                if getattr(self, 'data_manager', None) is not None:
+                    _wog_hs = await self.data_manager.get_hot_state(symbol)
+                    _wog_ind = _wog_hs[1] if isinstance(_wog_hs, tuple) and len(_wog_hs) > 1 else {}
+                    _wog_ind = _wog_ind or {}
+                _wog_w1 = safe_fetch_float(_wog_ind.get('wt1_3m'), 0)
+                _wog_w2 = safe_fetch_float(_wog_ind.get('wt2_3m'), 0)
+                if _wog_w1 != 0 or _wog_w2 != 0:
+                    _wog_is_long = position_side == 'LONG'
+                    _wog_against = (_wog_is_long and _wog_w1 < _wog_w2) or ((not _wog_is_long) and _wog_w1 > _wog_w2)
+                    if _wog_against:
+                        logger.critical(f"🚫 [WT_3M_OPEN_GATE_BLOCK] {position_key}: action={action} side={position_side} BLOCKED — wt1_3m={_wog_w1:.2f} vs wt2_3m={_wog_w2:.2f} against direction. User mandate: NOTHING opens while wt1_3m is against. Reason='{(reason or '')[:80]}'")
+                        return f"BLOCKED_WT_3M_AGAINST_{position_side}_w1={_wog_w1:.2f}_w2={_wog_w2:.2f}"
+                else:
+                    logger.warning(f"[WT_3M_OPEN_GATE_NO_DATA] {position_key}: action={action} — wt1_3m/wt2_3m both 0 (bootstrap?), allowing through")
+            except Exception as _wog_e:
+                logger.warning(f"[WT_3M_OPEN_GATE_ERR] {position_key}: {type(_wog_e).__name__}: {_wog_e} — proceeding (safe-fail)")
         # 🔒 ABSOLUTE LOCK — applies to every OPEN/AUGMENT/HEDGE/ENTRY, no exemptions.
         # 2026-04-24: Redis-backed so it survives process restarts. TTL 5min (user directive).
         if _is_open_action and position_key:
