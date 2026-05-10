@@ -365,7 +365,6 @@ class Config:
     HEDGE_ACCOUNTS = ["ang", "inf", "men", "fin", "flz"]  # 2026-05-05: ADDED flz per user — flz was bleeding without hedge support; UNDERWATER_HEDGE_OR_CLOSE was logging but not firing. Cascade guards multi-layered (see history below).
     HEDGE_WEBHOOK_LOCK_TTL_SEC: float = 60.0  # USER 2026-05-10: lowered 3600→60 to match HEDGE_COMPLETED_LOCKOUT_SECONDS — re-hedge cycles must be allowed.
     HEDGE_COMPLETED_LOCKOUT_SECONDS: int = 60  # USER 2026-05-10: was 3600 (1h). Blocked re-hedge after wt_3m flip closed prior hedge → R3 fell through to HEDGE_FAILED close. 60s is debounce only.
-    HEDGE_OF_HEDGE_OVERRIDE_LOSS_PCT: float = -2.0  # USER 2026-05-10: every losing position gets hedged. If a hedge-born position is bleeding past this %, allow re-hedge despite birth-reason.
     HEDGE_CLOSE_SCALP_MODE: bool = True  # 2026-04-24: user directive — close hedge on ANY 1m/3m LH/HH/LL/HL against hedge. Don't wait for wt_3m+wt_1h confirmation (too slow for scalp cycles). Original wt_3m+wt_1h gate still fires first if it matches.
     HEDGE_SCALP_MAX_AGE_MIN: float = 15.0  # 2026-04-25 Rule C: losing hedge stuck >15min → close (prevents dual-losing pair like WIFUSDC -0.62%/-0.25%).
     SCALP_V3_PEAK_GIVEBACK_PCT: float = 0.15  # 2026-04-25: if V3 position peaked ≥0.3% and gave back this pp, exit to lock profit. Separate from SCALP_V3_PG_ARM_PCT/_PG_GIVEBACK_PCT which gate only >0.5% peaks.

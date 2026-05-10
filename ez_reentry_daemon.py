@@ -353,42 +353,13 @@ def _evaluate_and_queue(redis_client, base_path: Path, queue_base: Path, account
         pos_amt = positions.get(pk, 0.0)
         if pos_amt != 0.0:
             continue
-        ind = _get_indicators(redis_client, symbol)
-        def _f(k, default=None):
-            try:
-                v = ind.get(k)
-                return float(v) if v is not None else default
-            except Exception:
-                return default
-        # USER 2026-05-10 SPEC — three reentry size tiers:
-        #   T1 (150%): bounce above sma_200_15m (long) / below sma_200_15m (short)
-        #   T2 (100%): break through BOTH exit_price AND dc_high4_3m (long) / dc_low4_3m (short)
-        #   T3 (50%):  k_15m > 95 (long) / k_15m < 5 (short)
-        # Tiers are checked in order — first match wins. NO match = SKIP (don't fire).
-        sma_200_15m = _f("sma_200_15m")
-        dc_high4_3m = _f("dc_high4_3m")
-        dc_low4_3m = _f("dc_low4_3m")
-        k_15m = _f("stoch_k_15m")
-        sizing_frac = None
-        sizing_tag = None
-        if sma_200_15m is not None and sma_200_15m > 0:
-            if is_long and cur_px > sma_200_15m:
-                sizing_frac = 1.5; sizing_tag = f"sma200_15m_bounce_150_px{cur_px:.6f}>sma{sma_200_15m:.6f}"
-            elif (not is_long) and cur_px < sma_200_15m:
-                sizing_frac = 1.5; sizing_tag = f"sma200_15m_breakdown_150_px{cur_px:.6f}<sma{sma_200_15m:.6f}"
-        if sizing_frac is None:
-            if is_long and dc_high4_3m is not None and dc_high4_3m > 0 and cur_px > dc_high4_3m:
-                sizing_frac = 1.0; sizing_tag = f"break_exit_AND_dc_high4_3m_100_px{cur_px:.6f}>dc{dc_high4_3m:.6f}"
-            elif (not is_long) and dc_low4_3m is not None and dc_low4_3m > 0 and cur_px < dc_low4_3m:
-                sizing_frac = 1.0; sizing_tag = f"break_exit_AND_dc_low4_3m_100_px{cur_px:.6f}<dc{dc_low4_3m:.6f}"
-        if sizing_frac is None and k_15m is not None:
-            if is_long and k_15m > 95.0:
-                sizing_frac = 0.5; sizing_tag = f"k_15m_extreme_50_k{k_15m:.0f}"
-            elif (not is_long) and k_15m < 5.0:
-                sizing_frac = 0.5; sizing_tag = f"k_15m_extreme_50_k{k_15m:.0f}"
-        if sizing_frac is None:
-            logger.debug(f"[DAEMON] {pk} crossed exit but no size-tier matched (sma_200_15m={sma_200_15m} dc_high4_3m={dc_high4_3m} dc_low4_3m={dc_low4_3m} k_15m={k_15m}) — skip")
-            continue
+        # USER 2026-05-10 — daemon is signal-only. It detects price-cross and writes a
+        # 100% candidate; ez_manage's _reentry_queue_consumer_loop reads it and applies
+        # the user-spec size tiers (150% sma_200_15m bounce / 100% dc_high4_3m+exit_price /
+        # 50% k_15m extreme) using ii() — HTF indicators (sma_200_15m, dc_high4_3m, k_15m)
+        # are not in Redis hot_metrics, only available via ez_manage's bridge merge.
+        sizing_frac = 1.0
+        sizing_tag = "price_cross_pending_tier_eval"
         fire_qty = (exit_amt if exit_amt > 0 else (start_size / max(cur_px, 1e-9))) * sizing_frac
         if fire_qty <= 0:
             continue

@@ -2312,6 +2312,32 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         _gr_bb15_ok = _gr_bb_15 and _gr_bb_l15 > 0 and _gr_p < _gr_bb_l15
                     if not (_gr_dc15_ok or _gr_bb15_ok):
                         continue
+                    # ═══ DEAD-KNOB REPAIR 2026-05-10 ═══
+                    # Wire HTF consensus + HTF_VETO knobs that were dead in backtest path.
+                    # Ablation 2026-05-10 18:00 UTC found these knobs produced identical
+                    # results across 27/28 crypto + 27/30 tradier variants — they were defined
+                    # in config but never read by the engine GR producer. Now read directly
+                    # via golden_rule_htf.score_entry_htf() for both modes.
+                    _gr_htf_min_tfs = int(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_MIN_TFS', 0))
+                    if _gr_htf_min_tfs > 0:
+                        try:
+                            from golden_rule_htf import score_entry_htf as _gr_score_entry_x
+                            _gr_min_ind_x = int(getattr(ez_manage.config, 'GOLDEN_RULE_MIN_IND', 2))
+                            _gr_mode_x = "tradier" if mode == "tradier" else "crypto"
+                            _gr_passes_x, _gr_ntfs_x, _ = _gr_score_entry_x(_gr_ind, _gr_is_long, _gr_mode_x, _gr_htf_min_tfs, _gr_min_ind_x, _gr_p)
+                            if not _gr_passes_x:
+                                continue
+                        except Exception as _gr_consensus_err:
+                            if step < 5:
+                                v8_logger.warning(f'[GR_HTF_CONSENSUS] {_gr_pk}: {_gr_consensus_err} — gate fail-open')
+                    if bool(getattr(ez_manage.config, 'GOLDEN_RULE_HTF_VETO_ENABLED', False)):
+                        _gr_w1_D_v = float(_gr_ind.get('wt1_D', 0) or 0)
+                        _gr_w2_D_v = float(_gr_ind.get('wt2_D', 0) or 0)
+                        if _gr_w1_D_v != 0 or _gr_w2_D_v != 0:
+                            if _gr_is_long and _gr_w1_D_v < _gr_w2_D_v:
+                                continue
+                            if (not _gr_is_long) and _gr_w1_D_v > _gr_w2_D_v:
+                                continue
                     _gr_mult = _gr_m15
                     if _gr_is_long:
                         if (_gr_dc_1h and _gr_dc_h1h > 0 and _gr_p > _gr_dc_h1h) or (_gr_bb_1h and _gr_bb_u1h > 0 and _gr_p > _gr_bb_u1h):

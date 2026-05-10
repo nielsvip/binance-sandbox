@@ -24842,6 +24842,41 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                                 continue
                         except Exception:
                             pass
+                        # USER 2026-05-10 — apply size tier here (ii() has full HTF indicators):
+                        #   150% on bounce > sma_200_15m (long) / < sma_200_15m (short)
+                        #   100% on price > dc_high4_3m (long) / < dc_low4_3m (short)
+                        #   50%  on k_15m > 95 (long) / < 5 (short)
+                        # No tier match → SKIP. Reason carries the matched-tier tag for audit.
+                        _ind_for_tier = await ii(trade_manager, cmd['symbol'])
+                        _is_long_tier = (cmd['position_side'] == 'LONG')
+                        _cur_px_tier = float(cmd.get('current_price', 0.0))
+                        _sma200_15m = safe_fetch_float(_ind_for_tier.get('sma_200_15m'), 0.0) if _ind_for_tier else 0.0
+                        _dc_h4_3m = safe_fetch_float(_ind_for_tier.get('dc_high4_3m'), 0.0) if _ind_for_tier else 0.0
+                        _dc_l4_3m = safe_fetch_float(_ind_for_tier.get('dc_low4_3m'), 0.0) if _ind_for_tier else 0.0
+                        _k15m = safe_fetch_float(_ind_for_tier.get('stoch_k_15m'), -1.0) if _ind_for_tier else -1.0
+                        _tier_frac = None
+                        _tier_tag = None
+                        if _sma200_15m > 0 and _cur_px_tier > 0:
+                            if _is_long_tier and _cur_px_tier > _sma200_15m:
+                                _tier_frac = 1.5; _tier_tag = f"sma200_15m_bounce_150_px{_cur_px_tier:.6f}>sma{_sma200_15m:.6f}"
+                            elif (not _is_long_tier) and _cur_px_tier < _sma200_15m:
+                                _tier_frac = 1.5; _tier_tag = f"sma200_15m_breakdown_150_px{_cur_px_tier:.6f}<sma{_sma200_15m:.6f}"
+                        if _tier_frac is None:
+                            if _is_long_tier and _dc_h4_3m > 0 and _cur_px_tier > _dc_h4_3m:
+                                _tier_frac = 1.0; _tier_tag = f"break_exit_AND_dc_high4_3m_100_px{_cur_px_tier:.6f}>dc{_dc_h4_3m:.6f}"
+                            elif (not _is_long_tier) and _dc_l4_3m > 0 and _cur_px_tier < _dc_l4_3m:
+                                _tier_frac = 1.0; _tier_tag = f"break_exit_AND_dc_low4_3m_100_px{_cur_px_tier:.6f}<dc{_dc_l4_3m:.6f}"
+                        if _tier_frac is None and _k15m >= 0:
+                            if _is_long_tier and _k15m > 95.0:
+                                _tier_frac = 0.5; _tier_tag = f"k_15m_extreme_50_k{_k15m:.0f}"
+                            elif (not _is_long_tier) and _k15m < 5.0:
+                                _tier_frac = 0.5; _tier_tag = f"k_15m_extreme_50_k{_k15m:.0f}"
+                        if _tier_frac is None:
+                            cmd_file.rename(done_dir / f'skip_no_tier_{cmd_file.name}')
+                            logger.info(f"[REENTRY_QUEUE_TIER_SKIP] {pk}: no user-spec tier matched (sma200_15m={_sma200_15m:.6f} dc_high4_3m={_dc_h4_3m:.6f} dc_low4_3m={_dc_l4_3m:.6f} k_15m={_k15m:.1f} cur_px={_cur_px_tier:.6f}) — skip")
+                            continue
+                        _qty_tiered = float(cmd['quantity']) * _tier_frac
+                        _reason_tiered = f"{cmd['reason']}_{_tier_tag}"
                         await trade_manager.execute_now(
                             position_key=pk,
                             account_key=cmd['account_key'],
@@ -24849,15 +24884,15 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                             original_positionAmt=0.0,
                             side=cmd['side'],
                             position_side=cmd['position_side'],
-                            quantity=float(cmd['quantity']),
-                            old_price=float(cmd.get('current_price', 0.0)),
+                            quantity=_qty_tiered,
+                            old_price=_cur_px_tier,
                             unique_id=cmd['unique_id'],
-                            reason=cmd['reason'],
+                            reason=_reason_tiered,
                             is_full_close=False,
                             action='REENTRY',
                         )
                         cmd_file.rename(done_dir / f'done_{cmd_file.name}')
-                        logger.info(f"[REENTRY_QUEUE] executed REENTRY {pk} qty={cmd['quantity']:.4f} via daemon cmd")
+                        logger.warning(f"[REENTRY_QUEUE_TIER_FIRED] {pk}: tier={_tier_tag} qty_base={cmd['quantity']:.4f} × {_tier_frac} = {_qty_tiered:.4f} — REENTRY queued")
                     except Exception as _ce:
                         logger.error(f"[REENTRY_QUEUE] error processing {cmd_file.name}: {_ce}", exc_info=True)
         except Exception as _e:

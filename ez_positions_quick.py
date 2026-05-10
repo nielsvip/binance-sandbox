@@ -7186,14 +7186,7 @@ class HedgeEngine:
                     if _orphan:
                         logger.warning(f"🟡 [HEDGE_OF_ORPHAN_ALLOWED] {origin_key}: marked as hedge ('{_hm}') but the {_opp_side} it was protecting is closed (amt=0). ORPHAN — allowing hedge.")
                         break  # exit the for-loop, continue past the early gate
-                    # USER 2026-05-10: every losing position gets hedged. If origin is itself bleeding
-                    # past HEDGE_OF_HEDGE_OVERRIDE_LOSS_PCT (default -2.0%), allow hedge regardless of birth-reason.
-                    _hoh_loss_override = float(getattr(self.config, 'HEDGE_OF_HEDGE_OVERRIDE_LOSS_PCT', -2.0))
-                    _hoh_gain = safe_fetch_float(getattr(_op, 'gain', 0), 0)
-                    if _hoh_gain <= _hoh_loss_override:
-                        logger.warning(f"🟡 [HEDGE_OF_HEDGE_LOSS_OVERRIDE] {origin_key}: marked as hedge ('{_hm}') but currently losing {_hoh_gain:.2f}% ≤ {_hoh_loss_override}% — allowing re-hedge per USER 2026-05-10 mandate")
-                        break
-                    logger.critical(f"🚫 [HEDGE_OF_HEDGE_BLOCK_EARLY] {origin_key}: augment_reason has '{_hm}' → origin born as hedge, gain={_hoh_gain:.2f}%>{_hoh_loss_override}%. Refusing to hedge-the-hedge (reason={_ar[:80]})")
+                    logger.critical(f"🚫 [HEDGE_OF_HEDGE_BLOCK_EARLY] {origin_key}: augment_reason has '{_hm}' → origin born as hedge. Refusing to hedge-the-hedge (reason={_ar[:80]})")
                     return False
         except Exception as _re:
             logger.debug(f"[HEDGE_REASON_EARLY_CHECK_ERR] {origin_key}: {_re}")
@@ -7264,14 +7257,8 @@ class HedgeEngine:
                         if _is_orphan:
                             logger.warning(f"🟡 [HEDGE_OF_ORPHAN_ALLOWED_INNER] {origin_key}: hedge tag '{_mark}' but {_opp_side} target closed (amt=0). ORPHAN — allowing.")
                             break  # do not set _origin_is_hedge — proceed past gate
-                        # USER 2026-05-10: every losing position gets hedged. Override block when origin is bleeding past threshold.
-                        _hoh_loss_override_inner = float(getattr(self.config, 'HEDGE_OF_HEDGE_OVERRIDE_LOSS_PCT', -2.0))
-                        _hoh_gain_inner = safe_fetch_float(getattr(_origin_pos, 'gain', 0), 0)
-                        if _hoh_gain_inner <= _hoh_loss_override_inner:
-                            logger.warning(f"🟡 [HEDGE_OF_HEDGE_LOSS_OVERRIDE_INNER] {origin_key}: hedge tag '{_mark}' but currently losing {_hoh_gain_inner:.2f}% ≤ {_hoh_loss_override_inner}% — allowing re-hedge per USER 2026-05-10 mandate")
-                            break
                         _origin_is_hedge = True
-                        logger.critical(f"[HEDGE_OF_HEDGE_BLOCK_BY_REASON] {origin_key}: augment_reason contains '{_mark}' → origin was born as a hedge, gain={_hoh_gain_inner:.2f}%>{_hoh_loss_override_inner}%. Refusing to hedge-the-hedge. reason={_aug_reason[:100]}")
+                        logger.critical(f"[HEDGE_OF_HEDGE_BLOCK_BY_REASON] {origin_key}: augment_reason contains '{_mark}' → origin was born as a hedge. Refusing to hedge-the-hedge. reason={_aug_reason[:100]}")
                         break
             except Exception as _re:
                 logger.debug(f"[HEDGE_REASON_CHECK_ERR] {origin_key}: {_re}")
