@@ -2392,6 +2392,12 @@ class WebSocketManager:
         self._mark_price_task: Optional[asyncio.Task] = None
         self._fallback_task: Optional[asyncio.Task] = None
         self._guard_task: Optional[asyncio.Task] = None
+        # 2026-05-09: REST poll fallback for when Binance WS is silent (connect-but-no-messages).
+        # Confirmed empirically (Mac AND S1, both continents): WS to !markPrice@arr accepts the
+        # connection then sends 0 messages. Account-level shadow-throttle most likely. REST endpoint
+        # /fapi/v1/premiumIndex still works fine, so we poll it every ~2s and route through
+        # _apply_mark_price (which already does the in-memory + Redis write + pubsub).
+        self._rest_poll_task: Optional[asyncio.Task] = None
         self._mark_price_stop = False
         self._fallback_interval = float(getattr(self.config, "PRICE_FALLBACK_INTERVAL", 1.0))
         self._mark_price_guard_interval = float(getattr(self.config, "MARK_PRICE_GUARD_INTERVAL", 1.0))
@@ -2841,18 +2847,21 @@ class WebSocketManager:
             self._fallback_task = asyncio.create_task(self._fallback_refresh_loop())
         if not self._guard_task or self._guard_task.done():
             self._guard_task = asyncio.create_task(self._mark_price_guard_loop())
+        if not self._rest_poll_task or self._rest_poll_task.done():
+            self._rest_poll_task = asyncio.create_task(self._mark_price_rest_poll_loop())
 
     async def stop_mark_price_tasks(self) -> None:
         if not self.is_primary:
             return
         self._mark_price_stop = True
-        for task in (self._mark_price_task, self._fallback_task):
+        for task in (self._mark_price_task, self._fallback_task, self._rest_poll_task):
             if task and not task.done():
                 task.cancel()
                 try : await task
                 except asyncio.CancelledError: pass
         self._mark_price_task = None
         self._fallback_task = None
+        self._rest_poll_task = None
         if self._guard_task and not self._guard_task.done():
             self._guard_task.cancel()
             try : await self._guard_task
@@ -2867,7 +2876,11 @@ class WebSocketManager:
             self.service.primary_ws_manager = None
 
     async def _mark_price_ws_loop(self) -> None:
-        url = "wss://fstream.binance.com/ws/!markPrice@arr"
+        # 2026-05-10: Binance retired unrouted /ws/ for /market streams. The OLD url silently
+        # accepts WS handshake then sends 0 messages. NEW: routed /market/stream?streams=… works.
+        # Confirmed empirically (3 msgs received in 5.3s vs 0 for /ws/). Direct path /market/!markPrice@arr
+        # returns 404 — must use combined-stream format. Per Binance change-log on routed paths.
+        url = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr"
         backoff = 1.0
         try :
             while not self._mark_price_stop:
@@ -2890,6 +2903,73 @@ class WebSocketManager:
             if self._mark_price_session and not self._mark_price_session.closed:
                 await self._mark_price_session.close()
             self._mark_price_session = None
+
+    async def _mark_price_rest_poll_loop(self) -> None:
+        """REST fallback for mark prices when Binance WS stream is silent.
+        2026-05-09: confirmed empirically that wss://fstream.binance.com/ws/!markPrice@arr
+        accepts connections but sends 0 messages from this account/IP set (Mac AND S1).
+        REST /fapi/v1/premiumIndex still works fine (~800ms-1s per call) and returns ALL
+        symbols in a single response, so we poll it every ~2s and route each entry through
+        the same _apply_mark_price method the WS handler uses (which writes Redis + pubsub)."""
+        url = "https://fapi.binance.com/fapi/v1/premiumIndex"
+        interval = float(getattr(self.config, "MARK_PRICE_REST_POLL_INTERVAL", 2.0))
+        backoff = interval
+        consecutive_fail = 0
+        log_first_success = True
+        while not self._mark_price_stop:
+            try:
+                if not self._mark_price_session or self._mark_price_session.closed:
+                    self._mark_price_session = await self._init_session()
+                async with self._mark_price_session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        payload = await resp.json()
+                        if isinstance(payload, list):
+                            ts_now = datetime.now(timezone.utc)
+                            applied = 0
+                            for entry in payload:
+                                if not isinstance(entry, dict): continue
+                                sym = entry.get("symbol") or entry.get("s")
+                                mp_raw = entry.get("markPrice") or entry.get("p")
+                                ts_ms = entry.get("time") or entry.get("E")
+                                if not sym or mp_raw is None: continue
+                                try:
+                                    mp = float(mp_raw)
+                                except (TypeError, ValueError):
+                                    continue
+                                if mp <= 0: continue
+                                if isinstance(ts_ms, (int, float)) and ts_ms > 0:
+                                    try: ts = datetime.fromtimestamp(ts_ms/1000.0, tz=timezone.utc)
+                                    except Exception: ts = ts_now
+                                else:
+                                    ts = ts_now
+                                try:
+                                    if await self._apply_mark_price(sym, mp, ts):
+                                        applied += 1
+                                except Exception:
+                                    continue
+                            if log_first_success and applied > 0:
+                                logger.info(f"[mark_price_rest_poll] ✅ first batch applied: {applied} symbols, polling every {interval:.1f}s")
+                                log_first_success = False
+                            consecutive_fail = 0
+                            backoff = interval
+                    elif resp.status in (418, 429):
+                        consecutive_fail += 1
+                        backoff = min(interval * (2 ** consecutive_fail), 120.0)
+                        logger.warning(f"[mark_price_rest_poll] HTTP {resp.status} (rate-limited) — backoff to {backoff:.0f}s")
+                    else:
+                        consecutive_fail += 1
+                        backoff = min(interval * (1 + consecutive_fail), 30.0)
+                        logger.warning(f"[mark_price_rest_poll] HTTP {resp.status} — backoff to {backoff:.0f}s")
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                consecutive_fail += 1
+                backoff = min(interval * (1 + consecutive_fail), 30.0)
+                logger.debug(f"[mark_price_rest_poll] {type(exc).__name__}: {exc} — backoff {backoff:.0f}s")
+            try:
+                await asyncio.sleep(backoff)
+            except asyncio.CancelledError:
+                break
 
     async def _handle_mark_price_message(self, raw: str) -> None:
         try :

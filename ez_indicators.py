@@ -518,7 +518,7 @@ class SymbolTimeframeState:
     last_df: Optional[pd.DataFrame] = None
 
 class PriceCacheManager:
-    WS_ENDPOINT = "wss://fstream.binance.com/ws/!markPrice@arr"
+    WS_ENDPOINT = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr"  # 2026-05-10: routed /market/ path required since Binance change; old /ws/!markPrice@arr silently sends 0 msgs
 
     def __init__(self, path: Path, redis_client: Optional[redis.Redis] = None, symbols: Optional[List[str]] = None, refresh_seconds: float = 2.0, max_age: float = 3.0, external_pull_path: Optional[Path] = None):
         self.path = path

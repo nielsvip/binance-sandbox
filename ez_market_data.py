@@ -460,7 +460,8 @@ class MarketDataEngine:
     
     async def ws_injector(self):
         """Source 1: Primary High-Speed Websocket"""
-        url = "wss://fstream.binance.com/ws/!markPrice@arr@1s"
+        # 2026-05-10: routed /market/ path required since Binance change; /ws/!markPrice@arr silently sends 0 msgs
+        url = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr@1s"
         while self.running:
             try:
                 session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=60)

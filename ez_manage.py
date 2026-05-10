@@ -3277,7 +3277,8 @@ class WebSocketManager:
               logger.error(f"[{account_key}] Failed to refresh listen key: {e}", exc_info=True)
 
     async def mark_price_aggregate_loop(self):
-        url = "wss://fstream.binance.com/ws/!markPrice@arr@1000ms"
+        # 2026-05-10: routed /market/ path required since Binance change; /ws/!markPrice@arr silently sends 0 msgs
+        url = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr@1000ms"
         backoff = 5
         while self._running and not self._mark_price_stop:
             try:

@@ -8209,7 +8209,8 @@ class WebSocketManager:
             logger.info(f"📡 [WS_MANAGER] Auto-expanded interest list by {added_count} symbols. Total: {len(self.interested_symbols)}")
 
     async def _mark_price_loop(self):
-        url = "wss://fstream.binance.com/ws/!markPrice@arr@1s"
+        # 2026-05-10: routed /market/ path required since Binance change; /ws/!markPrice@arr silently sends 0 msgs
+        url = "wss://fstream.binance.com/market/stream?streams=!markPrice@arr@1s"
         while self._running:
             timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=30)
             try:
