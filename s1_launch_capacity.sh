@@ -5,7 +5,7 @@
 #
 # Designed for cron (every 15min) + manual invocation. Each batch uses a unique
 # symbol set to avoid NPZ overlap. setsid ensures detach survives ssh hangup.
-# mem-throttle-pct=55 → workers self-exit if memory tight (graceful, not OOM kill).
+# mem-throttle-pct=78 → workers self-exit only if memory really tight; bumped from 55 (was causing constant exit/relaunch cycles at ~70% steady-state mem). 2026-05-10 USER mandate.
 #
 # State: total sweep procs measured before launching. If already ≥18, skip
 # (we're saturated; let watchdogs handle replacement when one dies).
@@ -35,7 +35,7 @@ launch() {
     local TIER="tradier_param_hunt"; [ "$MODE" = "crypto" ] && TIER="system_combo"
     setsid nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
         --mode "$MODE" --account "$ACCT" --start 2026-01-01 \
-        --symbols "$SYMS" --tier "$TIER" --workers 1 --timeout 5400 --mem-throttle-pct 55 \
+        --symbols "$SYMS" --tier "$TIER" --workers 1 --timeout 5400 --mem-throttle-pct 78 \
         > /tmp/bt_${MODE}_${TAG}_${FTS}.log 2>&1 < /dev/null &
     disown
     echo "[$TS] launched $MODE $TAG (${SYMS:0:50})" >> "$LOG"

@@ -3169,7 +3169,7 @@ class WebSocketManager:
                 current_listen_key = self.listen_keys.get(account_key)
                 if current_listen_key and current_listen_key not in url:
                     # 2026-05-10: routed /private/ required since Binance change; /ws/{lk} silently sends 0 msgs
-                    url = f"wss://fstream.binance.com/private/stream?streams={current_listen_key}"
+                    url = f"wss://fstream.binance.com/private/{current_listen_key}"
                     logger.debug(f"[{account_key}] Using refreshed listen key, new URL: {url[:50]}...")
                 if self.session.closed:
                     logger.debug(f"[{account_key}] Session was closed, creating new session...")
@@ -3269,7 +3269,7 @@ class WebSocketManager:
                   new_listen_key = self.client.futures_stream_get_listen_key()
                   old_key = self.listen_keys.get(account_key)
                   self.listen_keys[account_key] = new_listen_key
-                  new_url = f"wss://fstream.binance.com/private/stream?streams={new_listen_key}"
+                  new_url = f"wss://fstream.binance.com/private/{new_listen_key}"
                   logger.debug(f"[{account_key}] Listen key refreshed. Old key: {old_key[:20] if old_key else 'None'}..., New key: {new_listen_key[:20]}...")
                   logger.debug(f"[{account_key}] New URL: {new_url[:50]}...")
               else:
@@ -20898,17 +20898,36 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                         _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
                         _r1_level = _r1_dc_low if _r1_is_long else _r1_dc_high
                         logger.error(f"⛔ [R1_DC_LOW4_3M_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m (<={_r1_window}m) price={current_price:.6f} {'<=' if _r1_is_long else '>='} {_r1_low_field if _r1_is_long else _r1_high_field}={_r1_level:.6f} entry={_r1_entry_sig[:40]} → CLOSE")
+                        # 2026-05-10 USER MANDATE: action-first. Try CLOSE; alert ONLY if it
+                        # fails for an unexplained reason. Min-notional / qty=0 / blacklist /
+                        # already-closed are valid silent failures.
+                        _r1_failed = False
+                        _r1_err_str = None
                         try:
-                            import ez_alert
-                            ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_DC_LOW4_3M_EMERGENCY_4bar={_r1_use_4bar}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
-                        except Exception as _r1_alert_err:
-                            logger.warning(f"[R1_ALERT_ERR] {position_key}: {_r1_alert_err}")
-                        try:
-                            await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_r1_amt, side=_r1_close_side, position_side=position_side, quantity=_r1_amt, old_price=current_price, unique_id=f"R1_DC_LOW4_3M_{int(time.time())}", reason=f"R1_DC_LOW4_3M_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", is_full_close=True, action='CLOSE')
+                            _r1_result = await trade_manager.execute_now(position_key=position_key, account_key=account_key, symbol=symbol, original_positionAmt=_r1_amt, side=_r1_close_side, position_side=position_side, quantity=_r1_amt, old_price=current_price, unique_id=f"R1_DC_LOW4_3M_{int(time.time())}", reason=f"R1_DC_LOW4_3M_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", is_full_close=True, action='CLOSE')
+                            if isinstance(_r1_result, str) and ('BLOCK' in _r1_result.upper() or 'SKIP' in _r1_result.upper() or 'REJECT' in _r1_result.upper()):
+                                _r1_failed = True
+                                _r1_err_str = _r1_result
+                        except Exception as _r1_err:
+                            _r1_failed = True
+                            _r1_err_str = repr(_r1_err)
+                        if not _r1_failed:
                             trade_manager.processing_keys.discard(position_key)
                             return f"{EvalStatus.ACTION_TAKEN}:R1_DC_LOW4_3M_EMERGENCY_CLOSED"
-                        except Exception as _r1_err:
-                            logger.error(f"⛔ [R1_DC_LOW4_3M_ERR] {position_key}: {_r1_err}")
+                        try:
+                            import ez_alert
+                            _r1_should = ez_alert.should_alert_for_failure(_r1_err_str)
+                        except Exception:
+                            _r1_should = True
+                        if _r1_should:
+                            logger.critical(f"☢️ [R1_CLOSE_AGENT_BUG] {position_key}: close failed with no valid reason: {_r1_err_str}")
+                            try:
+                                import ez_alert
+                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_CLOSE_DID_NOT_EXECUTE_NO_VALID_REASON_err={str(_r1_err_str)[:80]}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
+                            except Exception:
+                                pass
+                        else:
+                            logger.warning(f"[R1_CLOSE_VALID_SKIP] {position_key}: close suppressed for valid reason: {_r1_err_str}")
         except Exception as _r1_outer:
             logger.debug(f"[R1_DC_LOW4_3M] {position_key} probe err: {_r1_outer}")
     # ═══════════════════════════════════════════════════════════════════════════
@@ -21037,44 +21056,66 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
                             _r3_close_side = 'SELL' if _r3_is_long else 'BUY'
                             _r3_entry_sig = getattr(position, 'last_signal', '') or getattr(position, 'open_reason', '') or '?'
                             _r3_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
-                            # 2026-05-09: USER MANDATE — try to OPEN A HEDGE before dumping. R3 dump
-                            # is last resort. The 8000-notification flood today was caused by R3 dumping
-                            # without ever asking the hedge engine. Call execute_same_symbol_hedge directly.
-                            _r3_hedge_attempted = False
+                            # 2026-05-09: action-first — TRY HEDGE before dumping.
                             _r3_hedge_ok = False
+                            _r3_hedge_err = None
                             _r3_he = getattr(trade_manager, 'hedge_engine', None)
                             if _r3_he is not None:
-                                _r3_hedge_attempted = True
                                 try:
-                                    _r3_hedge_ok = bool(await _r3_he.execute_same_symbol_hedge(
+                                    _r3_hedge_result = await _r3_he.execute_same_symbol_hedge(
                                         account_key=account_key, origin_position=position, symbol=symbol,
-                                        origin_side=position_side, qty=_r3_amt, current_price=current_price))
+                                        origin_side=position_side, qty=_r3_amt, current_price=current_price)
+                                    _r3_hedge_ok = bool(_r3_hedge_result)
+                                    if not _r3_hedge_ok:
+                                        _r3_hedge_err = f"hedge_engine_returned={_r3_hedge_result}"
                                 except Exception as _r3_he_err:
-                                    logger.error(f"⛔ [R3_HEDGE_ATTEMPT_ERR] {position_key}: {_r3_he_err}")
-                                    _r3_hedge_ok = False
+                                    _r3_hedge_err = repr(_r3_he_err)
+                            else:
+                                _r3_hedge_err = "no_hedge_engine"
                             if _r3_hedge_ok:
                                 logger.warning(f"🛡️ [R3_HEDGE_OPENED] {position_key}: gain={_r3_gain:.2f}% — hedge fired by R3 directly (no dump, no alert)")
                                 trade_manager.processing_keys.discard(position_key)
                                 return f"{EvalStatus.ACTION_TAKEN}:R3_HEDGE_OPENED"
-                            # Hedge couldn't open — proceed with dump + alert
-                            logger.critical(f"☢️ [R3_HEDGE_INVARIANT_DUMP] {position_key}: gain={_r3_gain:.2f}% wt1_3m+wt1_1h AGAINST + NO HEDGE + NO PENDING + hedge_attempt={'tried_failed' if _r3_hedge_attempted else 'no_engine'} → DUMP. Active_hedges_for_acct={sum(1 for _h in _r3_active_hedges if isinstance(_h,dict) and _h.get('account')==account_key)} entry={_r3_entry_sig[:40]}")
+                            # Hedge didn't open — try CLOSE as fallback. Reason carries HEDGE_FAILED
+                            # token so it bypasses UNIVERSAL_NOLOSS_GATE per config.py:1083.
+                            logger.warning(f"⚠️ [R3_HEDGE_REFUSED] {position_key}: hedge_engine refused: {_r3_hedge_err} — falling through to close")
+                            _r3_close_failed = False
+                            _r3_close_err = None
                             try:
-                                import ez_alert
-                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r3_gain, reason="R3_HEDGE_INVARIANT_HEDGE_ATTEMPT_FAILED_check_hedge_engine_logs", entry_signal=str(_r3_entry_sig), entry_ts=_r3_entry_ts, current_price=current_price)
-                            except Exception as _r3_alert_err:
-                                logger.warning(f"[R3_ALERT_ERR] {position_key}: {_r3_alert_err}")
-                            try:
-                                await trade_manager.execute_now(
+                                _r3_close_result = await trade_manager.execute_now(
                                     position_key=position_key, account_key=account_key, symbol=symbol,
                                     original_positionAmt=_r3_amt, side=_r3_close_side, position_side=position_side,
                                     quantity=_r3_amt, old_price=current_price,
                                     unique_id=f"R3_HEDGE_INVARIANT_{int(time.time())}",
-                                    reason=f"R3_HEDGE_INVARIANT_DUMP_g{_r3_gain:.2f}_wt3m+1h_against_no_hedge",
+                                    reason=f"HEDGE_FAILED_R3_INVARIANT_DUMP_g{_r3_gain:.2f}_wt3m+1h_against_hedge_err={str(_r3_hedge_err)[:40]}",
                                     is_full_close=True, action='CLOSE')
+                                if isinstance(_r3_close_result, str) and ('BLOCK' in _r3_close_result.upper() or 'SKIP' in _r3_close_result.upper() or 'REJECT' in _r3_close_result.upper()):
+                                    _r3_close_failed = True
+                                    _r3_close_err = _r3_close_result
+                            except Exception as _r3_err:
+                                _r3_close_failed = True
+                                _r3_close_err = repr(_r3_err)
+                            if not _r3_close_failed:
+                                logger.critical(f"☢️ [R3_HEDGE_INVARIANT_DUMPED] {position_key}: gain={_r3_gain:.2f}% — hedge refused, dump executed (HEDGE_FAILED bypass)")
                                 trade_manager.processing_keys.discard(position_key)
                                 return f"{EvalStatus.ACTION_TAKEN}:R3_HEDGE_INVARIANT_DUMPED"
-                            except Exception as _r3_err:
-                                logger.error(f"⛔ [R3_HEDGE_INVARIANT_ERR] {position_key}: {_r3_err}")
+                            # BOTH hedge AND close failed. Alert ONLY if neither failure has a valid reason.
+                            try:
+                                import ez_alert
+                                _r3_alert_hedge = ez_alert.should_alert_for_failure(_r3_hedge_err)
+                                _r3_alert_close = ez_alert.should_alert_for_failure(_r3_close_err)
+                            except Exception:
+                                _r3_alert_hedge = True
+                                _r3_alert_close = True
+                            if _r3_alert_hedge or _r3_alert_close:
+                                logger.critical(f"☢️ [R3_AGENT_BUG] {position_key}: hedge AND close both failed with no valid reason. hedge_err={_r3_hedge_err} close_err={_r3_close_err}")
+                                try:
+                                    import ez_alert
+                                    ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r3_gain, reason=f"R3_HEDGE_AND_CLOSE_BOTH_FAILED_NO_VALID_REASON_h={str(_r3_hedge_err)[:40]}_c={str(_r3_close_err)[:40]}", entry_signal=str(_r3_entry_sig), entry_ts=_r3_entry_ts, current_price=current_price)
+                                except Exception:
+                                    pass
+                            else:
+                                logger.warning(f"[R3_BOTH_VALID_SKIP] {position_key}: both hedge+close suppressed for valid reasons. hedge={_r3_hedge_err} close={_r3_close_err}")
         except Exception as _r3_outer:
             logger.debug(f"[R3_HEDGE_INVARIANT] {position_key} probe err: {_r3_outer}")
     # ═══════════════════════════════════════════════════════════════════════════

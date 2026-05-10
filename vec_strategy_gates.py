@@ -47,6 +47,16 @@ def _b(d: dict, k: str, default=False):
     return default
 
 
+def _wt_bullish(d: dict, tf: str) -> bool:
+    """Live equivalent of NPZ field wt_bullish_<tf> = (wt1 > wt2). Defined in
+    backtest_v8_precompute.py:344. latest_market_data.json doesn't store the boolean
+    so we re-derive from wt1_<tf> and wt2_<tf>."""
+    w1 = _f(d, f"wt1_{tf}")
+    w2 = _f(d, f"wt2_{tf}")
+    if w1 is None or w2 is None: return False
+    return w1 > w2
+
+
 # ── BOOLEAN GATE EVALUATORS ─────────────────────────────────────────────────────
 # Mirror the conditions used by vec_mass_scan.build_crypto_conditions exactly.
 
@@ -56,7 +66,7 @@ def _mr5_long(ind: dict) -> bool:
         _b(ind, "dc_basis_crossover_1h") and
         (_f(ind, "dc_position_15m", 0.5) < 0.30) and
         (_f(ind, "mfi_15m", 50) < 40) and
-        _b(ind, "wt_bullish_1h")
+        _wt_bullish(ind, "1h")
     )
 
 
@@ -65,8 +75,8 @@ def _mr3s_short(ind: dict) -> bool:
     return (
         _b(ind, "dc_basis_crossunder_1h") and
         (_f(ind, "dc_position_15m", 0.5) > 0.70) and
-        (not _b(ind, "wt_bullish_1h")) and
-        (not _b(ind, "wt_bullish_D"))
+        (not _wt_bullish(ind, "1h")) and
+        (not _wt_bullish(ind, "D"))
     )
 
 
@@ -76,7 +86,7 @@ def _mom5_long_baseline(ind: dict) -> bool:
     px = _f(ind, "current_price", 0)
     return (
         _b(ind, "dc_basis_crossover_4h") and
-        _b(ind, "wt_bullish_1h") and _b(ind, "wt_bullish_4h") and _b(ind, "wt_bullish_D") and
+        _wt_bullish(ind, "1h") and _wt_bullish(ind, "4h") and _wt_bullish(ind, "D") and
         (sma1h > 0 and px > 0 and px > sma1h)
     )
 
@@ -89,7 +99,7 @@ def _mom4s_short(ind: dict) -> bool:
         _b(ind, "dc_basis_crossunder_1h") and
         (_f(ind, "mfi_15m", 50) > 60) and
         (sma1h > 0 and px > 0 and px < sma1h) and
-        (not _b(ind, "wt_bullish_1h"))
+        (not _wt_bullish(ind, "1h"))
     )
 
 

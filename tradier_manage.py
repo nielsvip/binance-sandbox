@@ -1530,13 +1530,35 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         _r1_entry_ts = str(getattr(position, 'opened_at', ''))[:19]
                         _r1_level = _r1_dc_low if is_long else _r1_dc_high
                         logger.error(f"⛔ [R1_DC_LOW4_EMERGENCY] {position_key}: g={_r1_gain:.2f}% age={_r1_age_min:.1f}m price={current_price:.4f} {'<=' if is_long else '>='} {(_r1_low_field if is_long else _r1_high_field)}={_r1_level:.4f} entry={str(_r1_entry_sig)[:40]} → CLOSE")
+                        # 2026-05-10 USER MANDATE: action-first. Try CLOSE; alert ONLY on
+                        # unexplained failure. Min-notional / qty=0 / blacklist suppress.
+                        _r1_failed = False
+                        _r1_err_str = None
+                        try:
+                            _r1_qa_result = await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"R1_DC_LOW4_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", 100.0, override_qty=999999)
+                            if isinstance(_r1_qa_result, str) and ('BLOCK' in _r1_qa_result.upper() or 'SKIP' in _r1_qa_result.upper() or 'REJECT' in _r1_qa_result.upper()):
+                                _r1_failed = True
+                                _r1_err_str = _r1_qa_result
+                        except Exception as _r1_qa_err:
+                            _r1_failed = True
+                            _r1_err_str = repr(_r1_qa_err)
+                        if not _r1_failed:
+                            return f"R1_DC_LOW4_EMERGENCY_CLOSED"
                         try:
                             import ez_alert
-                            ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_DC_LOW4_EMERGENCY_4bar={_r1_use_4bar}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
-                        except Exception as _r1_alert_err:
-                            logger.warning(f"[R1_ALERT_ERR] {position_key}: {_r1_alert_err}")
-                        await queue_trade_action(order_queue, trade_manager, position_key, "CLOSE", f"R1_DC_LOW4_EMERGENCY_g{_r1_gain:.2f}_age{_r1_age_min:.1f}m_entry_{str(_r1_entry_sig)[:30]}", 100.0, override_qty=999999)
-                        return f"R1_DC_LOW4_EMERGENCY_CLOSED"
+                            _r1_should = ez_alert.should_alert_for_failure(_r1_err_str)
+                        except Exception:
+                            _r1_should = True
+                        if _r1_should:
+                            logger.critical(f"☢️ [R1_CLOSE_AGENT_BUG] {position_key}: close failed with no valid reason: {_r1_err_str}")
+                            try:
+                                import ez_alert
+                                ez_alert.alert_bad_exit(account=account_key, position_key=position_key, gain=_r1_gain, reason=f"R1_CLOSE_DID_NOT_EXECUTE_NO_VALID_REASON_err={str(_r1_err_str)[:80]}", entry_signal=str(_r1_entry_sig), entry_ts=_r1_entry_ts, current_price=current_price)
+                            except Exception:
+                                pass
+                        else:
+                            logger.warning(f"[R1_CLOSE_VALID_SKIP] {position_key}: close suppressed for valid reason: {_r1_err_str}")
+                        return f"R1_DC_LOW4_EMERGENCY_FAILED:{str(_r1_err_str)[:40]}"
             except Exception as _r1_err:
                 logger.debug(f"[R1_DC_LOW4] {position_key} err: {_r1_err}")
         # ═══════════════════════════════════════════════════════════════════════

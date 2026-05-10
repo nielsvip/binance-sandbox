@@ -18,6 +18,45 @@ ALERT_LOG = "data/sweep_alerts/bad_exits.jsonl"
 ALERT_NOTIFY_THROTTLE_SEC = float(os.environ.get("ALERT_NOTIFY_THROTTLE_SEC", "1800"))
 _NOTIFY_LAST: dict = {}
 
+# Tags that indicate a "valid reason" for an action to fail. When matched, callers
+# should NOT alert — the failure is expected. Match is substring, lowercased.
+# 2026-05-10 USER MANDATE: alert MUST mean "agent bug, no valid reason this didn't execute".
+# If failure cause is in this list, suppress the alert and log debug only.
+_VALID_FAILURE_TAGS = (
+    'min notional', 'min_notional', 'minnotional',
+    'lot size', 'lot_size', 'lotsize',
+    'min qty', 'min_qty', 'minqty',
+    'precision', 'rounddown',
+    'no qty', 'qty=0', 'positionamt=0', 'positionamt=0.0',
+    'already closed', 'already_closed', 'position_closed', 'position not found',
+    'blacklist', 'not tradeable', 'not_tradeable', 'symbol not allowed',
+    'symbol_not_tradeable', 'tradeable=false',
+    'dust', 'reduce_only', 'reduceonly', 'reduce-only',
+    'mode_skip', 'mode_config_mismatch',
+    'symbol_lock', 'completed_lockout', 'completed_lock', 'newborn_grace',
+    'tracker_block', 'hedge_of_hedge', 'hedge_completed_lock',
+    'account not allowed', 'account_not_allowed', 'check_account_allowed',
+    'in flight', 'in_flight', 'in-flight', 'debounce',
+    'duplicate', 'dup_guard', 'cooldown',
+    'newborn-position-immunity', 'augment_lock',
+    'liquidity', 'no quote', 'no_quote', 'stale price',
+    'rate limit', 'rate_limit', '-1003', '-2010', '-2011', '-2018', '-2019',
+    'hedge_pending', 'hedge_in_flight',
+)
+
+
+def should_alert_for_failure(err_or_result) -> bool:
+    """Return True only when the failure is unexplained (no known-valid tag matches).
+
+    USER MANDATE 2026-05-10: alert ONLY when there is no valid reason for the action
+    not to have executed. Min-notional, blacklist, position-already-closed, etc are
+    valid reasons → no alert. Unknown/unexpected failures → alert.
+    """
+    s = str(err_or_result or '').lower()
+    if not s:
+        return True
+    return not any(tag in s for tag in _VALID_FAILURE_TAGS)
+
 
 def _osascript_notify(title, subtitle, body):
     try:
