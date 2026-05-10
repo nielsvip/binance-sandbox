@@ -243,6 +243,23 @@ class Config:
     BREAKOUT_MAD_MULTIPLIER: float = 2.0         # threshold = median ± N×MAD of cross-sectional 4h returns
     BREAKOUT_MIN_RET_PCT: float = 5.0            # absolute floor regardless of band width — 2026-05-09 audit: 3.0→5.0 (best LONG fwd_4h +0.77%, pos% 56.5%)
     BREAKOUT_MAX_DD_RATIO: float = 0.5           # looser than TRENDER (breakouts spike) but still cap fades
+    # ── VEC-ENGINE-VALIDATED ENTRY GATES (2026-05-09 publishable on 56sym×1.17yr) ─────
+    # Boolean-AND condition gates from vec_trender_breakout.py, all default OFF for
+    # safe rollout. Flip *_GATE_ENABLED=True per account when paper-validated.
+    # Two-account split per user: fin=mean-rev (MR5_L+MR3S_S), men=momentum (MOM5+TRENDER_L+MOM4S_S).
+    # Validated Sharpe (sign-corrected for SHORT): MR3S 1.05, MR5 0.95, MOM4S 0.78, MOM5+TRENDER 0.62.
+    MR5_L_GATE_ENABLED: bool = False
+    MR5_L_ACCOUNTS: list = field(default_factory=lambda: ["fin"])
+    MR3S_S_GATE_ENABLED: bool = False
+    MR3S_S_ACCOUNTS: list = field(default_factory=lambda: ["fin"])
+    MOM5_TRENDER_L_GATE_ENABLED: bool = False
+    MOM5_TRENDER_L_ACCOUNTS: list = field(default_factory=lambda: ["men"])
+    MOM4S_S_GATE_ENABLED: bool = False
+    MOM4S_S_ACCOUNTS: list = field(default_factory=lambda: ["men"])
+    # When True, log gate evaluation to data/vec_gates_shadow_log.jsonl WITHOUT enforcing
+    # entry decisions (pipeline behavior unchanged). Set False once gates are paper-validated
+    # and you flip _GATE_ENABLED=True for actual enforcement.
+    VEC_GATES_LOG_ONLY: bool = True
     # Orderbook-primary entry signals (2026-04-23 late): ez_orderbook.py writes
     # ob_long_score / ob_short_score (0..100). Scanner opens on OB score instead of
     # waiting for K/candle confirmation.

@@ -13414,6 +13414,60 @@ class MultiAccountTradeManager:
         except Exception as _ot_e:
             logger.warning(f"[OVERTRADE_GUARD] check error (fail-open): {_ot_e}")
         # ═══════════════════════════════════════════════════════════════════════════
+        # 🎯 VEC_STRATEGY_GATES — user 2026-05-09 (publishable on 56sym×1.17yr)
+        # Boolean entry gates from vec_trender_breakout.py validation:
+        #   fin: MR5_L (Sharpe 0.95) + MR3S_S (Sharpe 1.05)
+        #   men: MOM5+TRENDER_L (Sharpe 0.62) + MOM4S_S (Sharpe 0.78)
+        # Default behavior: VEC_GATES_LOG_ONLY=True → log gate eval to
+        # data/vec_gates_shadow_log.jsonl WITHOUT enforcing. When LOG_ONLY=False
+        # AND any *_GATE_ENABLED=True for this (account, side), entry is blocked
+        # unless the gate fires. Skips CLOSE/REDUCE/HEDGE actions.
+        # ═══════════════════════════════════════════════════════════════════════════
+        try:
+            _vg_act = (action or '').upper()
+            _vg_is_entry = ('OPEN' in _vg_act or 'AUGMENT' in _vg_act or 'ENTRY' in _vg_act) and \
+                           'CLOSE' not in _vg_act and 'REDUCE' not in _vg_act and not is_full_close and not is_hedge
+            if _vg_is_entry and position_key:
+                _vg_acct = account_key or (position_key.split(':', 1)[0] if ':' in position_key else None)
+                _vg_sym = symbol or (position_key.rsplit('_', 1)[0].split(':', 1)[-1] if ':' in position_key else None)
+                _vg_side = "LONG" if (position_side or '').upper() == 'LONG' else "SHORT"
+                if _vg_acct and _vg_sym:
+                    from vec_strategy_gates import check_vec_gate, shadow_log_evaluation
+                    # Pull indicators from latest market data
+                    _vg_ind = {}
+                    try:
+                        _vg_mdf = _get_latest_market_data_file()
+                        if _vg_mdf:
+                            import orjson as _vg_oj
+                            with open(_vg_mdf, 'rb') as _vg_fh:
+                                _vg_md = _vg_oj.loads(_vg_fh.read())
+                            _vg_ind = _vg_md.get(_vg_sym, {}) or {}
+                    except Exception:
+                        pass
+                    # Klines optional — skip TRENDER eval if unavailable (gate harmlessly returns False)
+                    _vg_klines = None
+                    # Always shadow-log
+                    _vg_shadow = shadow_log_evaluation(_vg_acct, _vg_sym, _vg_side, _vg_ind, _vg_klines)
+                    try:
+                        from pathlib import Path as _VGPath
+                        _vg_log = _VGPath(getattr(config, 'BASE_PATH', '/Users/niels/Documents/binance')) / 'data' / 'vec_gates_shadow_log.jsonl'
+                        _vg_log.parent.mkdir(parents=True, exist_ok=True)
+                        import orjson as _vg_oj2
+                        with open(_vg_log, 'ab') as _vg_lf:
+                            _vg_lf.write(_vg_oj2.dumps({"ts": int(time.time()), "account": _vg_acct, "sym": _vg_sym, "side": _vg_side, "action": _vg_act, "reason_in": (reason or '')[:80], "shadow": _vg_shadow}) + b"\n")
+                    except Exception:
+                        pass
+                    # Enforce only when not LOG_ONLY
+                    if not bool(getattr(config, 'VEC_GATES_LOG_ONLY', True)):
+                        _vg_fires, _vg_reason = check_vec_gate(_vg_acct, _vg_sym, _vg_side, _vg_ind, _vg_klines, config_obj=config)
+                        if not _vg_fires:
+                            logger.info(f"🎯 [VEC_GATE_BLOCK] {position_key} side={_vg_side} action={_vg_act}: {_vg_reason}")
+                            return f"BLOCKED_VEC_GATE_{_vg_reason}"
+                        else:
+                            logger.info(f"🎯 [VEC_GATE_ALLOW] {position_key} side={_vg_side}: {_vg_reason}")
+        except Exception as _vg_e:
+            logger.warning(f"[VEC_STRATEGY_GATES] check error (fail-open): {_vg_e}")
+        # ═══════════════════════════════════════════════════════════════════════════
         # 🛡️ HEDGE_PROTECT_OPPOSITE_LOSER — user 2026-05-05 (1000LUNCUSDT)
         # User: "lose 50% on 1 side then another 20% on the hedge side then keep
         # selling longs into a rally for $0.02 gains". A LONG/SHORT on a symbol

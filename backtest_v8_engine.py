@@ -2179,19 +2179,25 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _srs_wt2_15m = float(_srs_ind.get('wt2_15m', 0) or 0)
                 _srs_wt1_3m = float(_srs_ind.get('wt1_3m', _srs_ind.get('wt1_5m', 0)) or 0)
                 _srs_wt2_3m = float(_srs_ind.get('wt2_3m', _srs_ind.get('wt2_5m', 0)) or 0)
+                # 2026-05-10 PARITY AUDIT: tightened OR cascade → live's STRICT cascade
+                # (mirror of ez_positions_quick.py:13586-13601). Added entry>upper
+                # precondition and full AND-gating across 1h, 15m, 3m so v8 SRS fires
+                # only when live's SRS would fire. Was 505 V8_ONLY closes / 7d → expected
+                # near-zero with strict cascade.
+                _srs_entry_v8 = float(getattr(_srs_pos, 'entry_price', 0) or 0)
                 _srs_fire = False
-                if _srs_is_long and _srs_hi > 0:
+                if _srs_is_long and _srs_hi > 0 and _srs_entry_v8 > _srs_hi:
                     _srs_prox = abs(_srs_p - _srs_hi) / _srs_hi <= _srs_band
-                    _srs_1h = ((_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p)) or (_srs_wt1_1h < _srs_wt2_1h)
-                    _srs_15m = ((_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p)) or (_srs_wt1_15m < _srs_wt2_15m)
+                    _srs_1h = (_srs_k1h >= _srs_k_hi) and (_srs_k1h < _srs_k1h_p) and (_srs_wt1_1h < _srs_wt2_1h)
+                    _srs_15m = (_srs_k15m >= _srs_k_hi) and (_srs_k15m < _srs_k15m_p) and (_srs_wt1_15m < _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m < _srs_wt2_3m
-                    _srs_fire = _srs_prox and _srs_1h and (_srs_15m or _srs_3m)
-                elif (not _srs_is_long) and _srs_lo > 0:
+                    _srs_fire = _srs_prox and _srs_1h and _srs_15m and _srs_3m
+                elif (not _srs_is_long) and _srs_lo > 0 and _srs_entry_v8 > _srs_lo:
                     _srs_prox = abs(_srs_p - _srs_lo) / _srs_lo <= _srs_band
-                    _srs_1h = ((_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p)) or (_srs_wt1_1h > _srs_wt2_1h)
-                    _srs_15m = ((_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p)) or (_srs_wt1_15m > _srs_wt2_15m)
+                    _srs_1h = (_srs_k1h <= _srs_k_lo) and (_srs_k1h > _srs_k1h_p) and (_srs_wt1_1h > _srs_wt2_1h)
+                    _srs_15m = (_srs_k15m <= _srs_k_lo) and (_srs_k15m > _srs_k15m_p) and (_srs_wt1_15m > _srs_wt2_15m)
                     _srs_3m = _srs_wt1_3m > _srs_wt2_3m
-                    _srs_fire = _srs_prox and _srs_1h and (_srs_15m or _srs_3m)
+                    _srs_fire = _srs_prox and _srs_1h and _srs_15m and _srs_3m
                 if _srs_fire:
                     _srs_side = 'SELL' if _srs_is_long else 'BUY'
                     _srs_ps = 'LONG' if _srs_is_long else 'SHORT'
