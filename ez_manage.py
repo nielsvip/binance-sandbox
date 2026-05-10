@@ -24844,39 +24844,52 @@ async def _reentry_queue_consumer_loop(trade_manager: MultiAccountTradeManager) 
                                 continue
                         except Exception:
                             pass
-                        # USER 2026-05-10 — apply size tier here (ii() has full HTF indicators):
-                        #   150% on bounce > sma_200_15m (long) / < sma_200_15m (short)
-                        #   100% on price > dc_high4_3m (long) / < dc_low4_3m (short)
-                        #   50%  on k_15m > 95 (long) / < 5 (short)
-                        # No tier match → SKIP. Reason carries the matched-tier tag for audit.
+                        # USER 2026-05-10 (refined) — size tiers, ii() has full HTF indicators:
+                        #   150% — PRE-SMA bounce: cur_px has NOT yet crossed sma_200_15m AND
+                        #          (k_15m bouncing OR wt_15m bouncing) in our direction.
+                        #          LONG  : cur_px < sma_200_15m AND (k_15m > k_15m_prev OR wt1_15m > wt2_15m)
+                        #          SHORT : cur_px > sma_200_15m AND (k_15m < k_15m_prev OR wt1_15m < wt2_15m)
+                        #   50%  — k_15m extreme: LONG k_15m > 95 / SHORT k_15m < 5
+                        #   100% — everything else (default). dc_high4_3m / dc_low4_3m break is just a tag.
                         _ind_for_tier = await ii(trade_manager, cmd['symbol'])
                         _is_long_tier = (cmd['position_side'] == 'LONG')
                         _cur_px_tier = float(cmd.get('current_price', 0.0))
                         _sma200_15m = safe_fetch_float(_ind_for_tier.get('sma_200_15m'), 0.0) if _ind_for_tier else 0.0
                         _dc_h4_3m = safe_fetch_float(_ind_for_tier.get('dc_high4_3m'), 0.0) if _ind_for_tier else 0.0
                         _dc_l4_3m = safe_fetch_float(_ind_for_tier.get('dc_low4_3m'), 0.0) if _ind_for_tier else 0.0
-                        _k15m = safe_fetch_float(_ind_for_tier.get('stoch_k_15m'), -1.0) if _ind_for_tier else -1.0
+                        _k15m = safe_fetch_float(_ind_for_tier.get('stoch_k_15m'), 50.0) if _ind_for_tier else 50.0
+                        _k15m_prev = safe_fetch_float(_ind_for_tier.get('stoch_k_15m_prev'), _k15m) if _ind_for_tier else _k15m
+                        _wt1_15m_t = safe_fetch_float(_ind_for_tier.get('wt1_15m'), 0.0) if _ind_for_tier else 0.0
+                        _wt2_15m_t = safe_fetch_float(_ind_for_tier.get('wt2_15m'), 0.0) if _ind_for_tier else 0.0
                         _tier_frac = None
                         _tier_tag = None
+                        # T1 (150%) — PRE-SMA bounce
                         if _sma200_15m > 0 and _cur_px_tier > 0:
-                            if _is_long_tier and _cur_px_tier > _sma200_15m:
-                                _tier_frac = 1.5; _tier_tag = f"sma200_15m_bounce_150_px{_cur_px_tier:.6f}>sma{_sma200_15m:.6f}"
-                            elif (not _is_long_tier) and _cur_px_tier < _sma200_15m:
-                                _tier_frac = 1.5; _tier_tag = f"sma200_15m_breakdown_150_px{_cur_px_tier:.6f}<sma{_sma200_15m:.6f}"
+                            _k_bounce_long = _k15m > _k15m_prev
+                            _k_bounce_short = _k15m < _k15m_prev
+                            _wt_bull_15m = _wt1_15m_t > _wt2_15m_t
+                            _wt_bear_15m = _wt1_15m_t < _wt2_15m_t
+                            if _is_long_tier and _cur_px_tier < _sma200_15m and (_k_bounce_long or _wt_bull_15m):
+                                _tier_frac = 1.5
+                                _tier_tag = f"pre_sma200_15m_bounce_150_px{_cur_px_tier:.6f}<sma{_sma200_15m:.6f}_k15m{_k15m:.0f}>prev{_k15m_prev:.0f}_wt15m{_wt1_15m_t:.1f}/{_wt2_15m_t:.1f}"
+                            elif (not _is_long_tier) and _cur_px_tier > _sma200_15m and (_k_bounce_short or _wt_bear_15m):
+                                _tier_frac = 1.5
+                                _tier_tag = f"pre_sma200_15m_bounce_150_px{_cur_px_tier:.6f}>sma{_sma200_15m:.6f}_k15m{_k15m:.0f}<prev{_k15m_prev:.0f}_wt15m{_wt1_15m_t:.1f}/{_wt2_15m_t:.1f}"
+                        # T2 (50%) — k_15m extreme
                         if _tier_frac is None:
-                            if _is_long_tier and _dc_h4_3m > 0 and _cur_px_tier > _dc_h4_3m:
-                                _tier_frac = 1.0; _tier_tag = f"break_exit_AND_dc_high4_3m_100_px{_cur_px_tier:.6f}>dc{_dc_h4_3m:.6f}"
-                            elif (not _is_long_tier) and _dc_l4_3m > 0 and _cur_px_tier < _dc_l4_3m:
-                                _tier_frac = 1.0; _tier_tag = f"break_exit_AND_dc_low4_3m_100_px{_cur_px_tier:.6f}<dc{_dc_l4_3m:.6f}"
-                        if _tier_frac is None and _k15m >= 0:
                             if _is_long_tier and _k15m > 95.0:
                                 _tier_frac = 0.5; _tier_tag = f"k_15m_extreme_50_k{_k15m:.0f}"
                             elif (not _is_long_tier) and _k15m < 5.0:
                                 _tier_frac = 0.5; _tier_tag = f"k_15m_extreme_50_k{_k15m:.0f}"
+                        # Default (100%) — any other case
                         if _tier_frac is None:
-                            cmd_file.rename(done_dir / f'skip_no_tier_{cmd_file.name}')
-                            logger.info(f"[REENTRY_QUEUE_TIER_SKIP] {pk}: no user-spec tier matched (sma200_15m={_sma200_15m:.6f} dc_high4_3m={_dc_h4_3m:.6f} dc_low4_3m={_dc_l4_3m:.6f} k_15m={_k15m:.1f} cur_px={_cur_px_tier:.6f}) — skip")
-                            continue
+                            _tier_frac = 1.0
+                            if _is_long_tier and _dc_h4_3m > 0 and _cur_px_tier > _dc_h4_3m:
+                                _tier_tag = f"break_exit_AND_dc_high4_3m_100_px{_cur_px_tier:.6f}>dc{_dc_h4_3m:.6f}"
+                            elif (not _is_long_tier) and _dc_l4_3m > 0 and _cur_px_tier < _dc_l4_3m:
+                                _tier_tag = f"break_exit_AND_dc_low4_3m_100_px{_cur_px_tier:.6f}<dc{_dc_l4_3m:.6f}"
+                            else:
+                                _tier_tag = f"price_cross_default_100_k15m{_k15m:.0f}"
                         _qty_tiered = float(cmd['quantity']) * _tier_frac
                         _reason_tiered = f"{cmd['reason']}_{_tier_tag}"
                         await trade_manager.execute_now(
