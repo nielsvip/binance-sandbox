@@ -3168,7 +3168,8 @@ class WebSocketManager:
             try:
                 current_listen_key = self.listen_keys.get(account_key)
                 if current_listen_key and current_listen_key not in url:
-                    url = f"wss://fstream.binance.com/ws/{current_listen_key}"
+                    # 2026-05-10: routed /private/ required since Binance change; /ws/{lk} silently sends 0 msgs
+                    url = f"wss://fstream.binance.com/private/stream?streams={current_listen_key}"
                     logger.debug(f"[{account_key}] Using refreshed listen key, new URL: {url[:50]}...")
                 if self.session.closed:
                     logger.debug(f"[{account_key}] Session was closed, creating new session...")
@@ -3268,7 +3269,7 @@ class WebSocketManager:
                   new_listen_key = self.client.futures_stream_get_listen_key()
                   old_key = self.listen_keys.get(account_key)
                   self.listen_keys[account_key] = new_listen_key
-                  new_url = f"wss://fstream.binance.com/ws/{new_listen_key}"
+                  new_url = f"wss://fstream.binance.com/private/stream?streams={new_listen_key}"
                   logger.debug(f"[{account_key}] Listen key refreshed. Old key: {old_key[:20] if old_key else 'None'}..., New key: {new_listen_key[:20]}...")
                   logger.debug(f"[{account_key}] New URL: {new_url[:50]}...")
               else:

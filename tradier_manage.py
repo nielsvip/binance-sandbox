@@ -5004,6 +5004,10 @@ class StockStrategy:
                         return True, f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{gain:.2f}%", qty
         if not _is_opts_check and bool(getattr(config, 'PEAK_GIVEBACK_PROTECTION_ENABLED', True)) and hold_time_min < _peak_min_hold:
             logger.info(f"[PEAK_GIVEBACK_MIN_HOLD_BLOCK] {symbol} {'L' if is_long else 'S'}: hold={hold_time_min:.0f}m<{_peak_min_hold:.0f}m — peak-giveback gated (user rule 2026-04-27)")
+            # 2026-05-10: hoist locals from sister branch (>= _peak_min_hold) — they were defined only there,
+            # crashing here for any trb position younger than 240min (e.g. GOOGL, WDAY 2026-05-09 23:50+).
+            _pgp_max_g = float(getattr(position, 'cycle_peak_gain', 0) or 0)
+            _pgp_ind = indicators if indicators else i
             if _pgp_max_g > 0 and getattr(config, 'BREAKEVEN_DC_LOW4_ENABLED', True):
                 _be_dc_low4 = float((_pgp_ind).get('dc_low4_5m', 0) or 0)
                 _be_dc_high4 = float((_pgp_ind).get('dc_high4_5m', 0) or 0)

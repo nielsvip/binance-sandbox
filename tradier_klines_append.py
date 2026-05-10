@@ -35,7 +35,8 @@ TRADIER_DIR = BASE / "klines_cache_backtest" / "tradier"
 TRADIER_DIR.mkdir(parents=True, exist_ok=True)
 
 LIVE_URL = "https://api.tradier.com/v1"
-INTERVAL = "15min"
+INTERVAL = "15min"  # default; can be overridden via --interval (15min, 5min, 1min)
+INTERVAL_TO_TF = {"1min": "1m", "5min": "5m", "15min": "15m"}
 SESSION_FILTER = "all"   # Tradier param: "all" includes pre/post; "open" only RTH
 
 
@@ -162,7 +163,8 @@ def save_atomic(path: Path, data: list[dict]):
 
 
 def append_one(symbol: str, token: str, days_back: int, verbose: bool) -> tuple[int, str]:
-    path = TRADIER_DIR / f"{symbol}_15m.json"
+    tf = INTERVAL_TO_TF.get(INTERVAL, "15m")
+    path = TRADIER_DIR / f"{symbol}_{tf}.json"
     existing = load_existing(path)
     seen = {b.get("timestamp") for b in existing if isinstance(b, dict)}
     last_existing = None
@@ -219,8 +221,11 @@ def main():
     p.add_argument("--symbols", default="", help="Comma-separated tickers")
     p.add_argument("--symbols-file", default="", help="JSON list of tickers")
     p.add_argument("--days-back", type=int, default=60)
+    p.add_argument("--interval", default="15min", choices=["1min", "5min", "15min"], help="bar interval")
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
+    global INTERVAL
+    INTERVAL = args.interval
 
     load_env_from_gpg()
     token = get_tradier_token()
