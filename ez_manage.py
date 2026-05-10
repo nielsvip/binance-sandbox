@@ -14351,9 +14351,10 @@ class MultiAccountTradeManager:
                                             if _tf == '3m': _oh_3m_against = bool(_ag)
                                             elif _tf == '1h': _oh_1h_against = bool(_ag)
                                         _oh_req = int(getattr(config, 'OBLIGATORY_HEDGE_WT_TFS_REQUIRED', 2))
-                                        # User mandate 2026-05-09: wt1_3m AND wt1_1h against = obligatory trigger.
-                                        # Override req when both are against, even if total count below configured req.
-                                        _oh_user_trigger = _oh_3m_against and _oh_1h_against
+                                        # User mandate 2026-05-10: wt1_3m alone against = obligatory trigger.
+                                        # Override req when 3m is against, regardless of 1h (1h becomes optional confirmation).
+                                        # The May-9 "3m AND 1h" rule blocked hedges on 7 deep-loss SHORTs over 5 days.
+                                        _oh_user_trigger = _oh_3m_against
                                         if _oh_tfs_enabled > 0 and (_oh_wt_against >= _oh_req or _oh_user_trigger):
                                             _oh_pos_amt = abs(safe_fetch_float(getattr(pos, 'positionAmt', 0.0), 0.0))
                                             _oh_mark = safe_fetch_float(getattr(pos, 'mark_price', 0), 0) or old_price
@@ -16585,7 +16586,7 @@ class MultiAccountTradeManager:
                         elif (_wt3m_ok and _wt15m_ok and _htf_count >= 1) and not _full_stack and not _gr_k_favorable and not _gr_is_cont:
                             should_reenter = False
                             logger.info(f"🛡️[GUARANTEED_REENTRY_BLOCKED_NEED_CONFIRM] {position_key}: need full_stack OR favorable_K (got 3m={_wt3m_ok} 15m={_wt15m_ok} HTF={_htf_count}/3 k_3m={k_3m:.0f})")
-                    if should_reenter:
+                    if should_reenter and bool(getattr(config, 'GUARANTEED_REENTRY_DELTA_GATE_ENABLED', False)):
                         _gr_ok, _gr_reason = check_reentry_delta_tolerant(indicators, is_long, self, symbol)
                         if not _gr_ok:
                             should_reenter = False

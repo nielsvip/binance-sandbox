@@ -116,16 +116,35 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
             except Exception: pass
 
         sym_rets = []
+        # Pre-compute pullback lookback windows (LONG: recent high vs current; SHORT: recent low vs current)
+        pullback_lookback = 50  # ~4 hours at 5m base TF
+        pullback_threshold_long = 1.025   # need recent high ≥2.5% above current
+        rally_threshold_short = 0.975    # need recent low ≤2.5% below current
         for is_long in (True, False):
             if is_long and sym not in longs: continue
             if (not is_long) and sym not in shorts: continue
             in_pos = False; entry_px = 0.0; entry_idx = 0; entry_mult = 1.0
+            state = {}
             for i in range(sidx_bar, n_bars, sample_every):
                 px = float(close[i])
                 if px <= 0 or px != px: continue
                 ind = _ind_at_bar(npz, i)
+                # 2026-05-10 USER MANDATE: thread recent-pullback (LONG) / recent-rally (SHORT) into state
+                # so GR4 evaluator can require GOLDEN_RULE pattern (recent peak/trough + pullback).
+                lo = max(0, i - pullback_lookback)
+                window = close[lo:i+1]
+                # Filter NaN/zero
+                w_valid = window[(window > 0) & (window == window)]
+                if w_valid.size > 0:
+                    recent_high = float(np.max(w_valid))
+                    recent_low = float(np.min(w_valid))
+                    state['recent_pullback_long'] = (recent_high / px) >= pullback_threshold_long if px > 0 else False
+                    state['recent_rally_short'] = (px / recent_low) >= 1.0 / rally_threshold_short if recent_low > 0 else False
+                else:
+                    state['recent_pullback_long'] = False
+                    state['recent_rally_short'] = False
                 if not in_pos:
-                    sig = gr4v.evaluate_golden_rule_v4(sym, ind, px, is_long, mode=mode, config=cfg)
+                    sig = gr4v.evaluate_golden_rule_v4(sym, ind, px, is_long, mode=mode, config=cfg, state=state)
                     if sig.fire:
                         in_pos = True; entry_px = px; entry_idx = i
                         entry_mult = max(0.1, float(sig.mult))
@@ -136,7 +155,7 @@ def run_backtest(mode: str, start_iso: str, npz_dir: Path,
                     if se:
                         gp = (px - entry_px) / entry_px * 100.0
                         if not is_long: gp = -gp
-                        sym_rets.append(gp)  # NOT mult-weighted (v3 found that hurt)
+                        sym_rets.append(gp)
                         in_pos = False
             if in_pos and entry_px > 0:
                 fp = float(close[-1])

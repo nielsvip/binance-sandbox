@@ -726,7 +726,7 @@ class Config:
     # Default 'wt_3m_1h' = LEGACY behavior (was hardcoded since 2026-04-26). Sweep-testable alternatives:
     # 'wt_3m' / 'wt_3m_15m' / 'wt_3m_15m_1h' (3-TF strict) / 'wt_3m_15m_htf1' (3m+15m+1of{1h,4h,D})
     # 'wt_3m_15m_htf2' / 'wt_3m_15m_htf3' (3m+15m+ALL HTF) / 'wt_dc_score' (use wt_dc_exit_scorer).
-    HEDGE_CLOSE_MODE: str = 'wt_3m_1h'
+    HEDGE_CLOSE_MODE: str = 'wt_3m'  # 2026-05-10 USER MANDATE: hedge closes on wt1_3m alone (not 3m+1h). Symmetric with wt_3m-alone open trigger.
     HEDGE_CLOSE_WT_DC_THRESHOLD: float = 25.0
     # === 2026-04-30 RESTORED HEDGE_BANDAID_OFF (the rule that's been here for 500 yrs) ===
     # User: "CLOSE the hedge when wt_15m goes against it. Then open again when it goes in favor.
@@ -919,7 +919,7 @@ class Config:
     # (3m+1h) which missed the 1000LUNCUSDT case where 15m was friendly to the
     # loser but 3m had already flipped against it. Trigger lives at
     # ez_positions_quick.py:5044-5048.
-    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = False  # 2026-05-06: reverted to 15m-OR-(3m+1h). Backtest winner -0.5%/15m. 3m-alone was causing premature hedges.
+    HEDGE_TRIGGER_USE_WT_3M_ALONE: bool = True   # 2026-05-10 USER MANDATE: wt1_3m alone IS the open trigger ("stated 12004 times"). Overrides 2026-05-06 backtest revert. Symmetric with HEDGE_CLOSE_MODE='wt_3m'.
     # Companion: peak-decay nuke. When hedge gain peaks >1% then drops back to 0.5% → close before
     # going negative. Default True per the historical "exist as SHORT as possible, NEVER close at a loss"
     # paragraph at ez_positions_quick.py:5385 — this is the "before negative" half of that rule.
@@ -1827,7 +1827,8 @@ class Config:
     MAKER_CLOSE_COMMISSION_FLOOR_ENABLED: bool = True
     MAKER_CLOSE_COMMISSION_FLOOR_TTL_SEC: float = 300.0  # how long to wait at floor before timing out
     # 2026-04-28 USER RULE: GUARANTEED_REENTRY needs more WT and/or K confirmation, plus a tight stop.
-    GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = True
+    GUARANTEED_REENTRY_STRICT_CONFIRMATION: bool = False  # 2026-05-10 USER MANDATE: REENTRY guaranteed — strip K-adverse + full-stack-confirmation gates that blocked reentries on inf positions. The 3m+15m+HTF stack requirement was the silent killer.
+    GUARANTEED_REENTRY_DELTA_GATE_ENABLED: bool = False  # 2026-05-10 USER MANDATE: DELTA_REENTRY_BLOCKED_tf/_z/_4h_against gates were silently rejecting reentries via check_reentry_delta_tolerant. Default OFF — re-enable as sweep knob only.
     GUARANTEED_REENTRY_K_HIGH_BLOCK: float = 80.0      # block LONG reentry when k_3m >= this (adverse extreme)
     GUARANTEED_REENTRY_K_LOW_BLOCK: float = 20.0       # block SHORT reentry when k_3m <= this (adverse extreme)
     GUARANTEED_REENTRY_K_FAVORABLE_LOW: float = 30.0   # LONG reentry favorable: k_3m <= this (oversold)

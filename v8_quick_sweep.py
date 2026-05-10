@@ -2374,6 +2374,55 @@ def build_param_grid_grtf7_quick():
     }
 
 
+def build_param_grid_grtf7_tradier_mega():
+    """GR_HTF gate + core tradier params — 388,800 configs (2026-05-10).
+    Full cross-product of GR7 gate × 11 core tradier knobs. Low early-abort floor
+    so all results land in CSV regardless of Sharpe. Honest baseline ~0.09.
+    Run: --mode tradier --symbols CORE20 --start 2026-01-01
+         --tier grtf7_tradier_mega --workers 4 --kill-sharpe 0.0 --kill-secs 999999
+    Expected: ~9.7h for all 388,800 configs at 4 workers × 0.36s/config."""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5],
+        "TRADIER_ENTRY_SCORE_THRESHOLD": [0, 8, 16, 24, 32],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "MIN_HOLD_BARS": [10, 20, 40, 60],
+        "HTF_MIN_ALIGNED": [1, 2, 3],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "D_TREND_REQUIRED": [True, False],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 8.0],
+        "STRENGTH_MIN_SCORE": [3.0, 5.0, 7.0],
+        "EARLY_ABORT_MIN_SYMBOLS": [8],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.05],
+    }
+
+
+def build_param_grid_grtf7_crypto_mega():
+    """GR_HTF gate + core crypto params — 460,800 configs (2026-05-10).
+    Full cross-product of GR7 gate × 11 core crypto knobs. Low early-abort floor.
+    Run: --mode crypto --symbols BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC
+         --start 2026-04-01 --tier grtf7_crypto_mega --workers 4
+         --kill-sharpe 0.0 --kill-secs 999999
+    Expected: ~6.8h for all 460,800 configs at 4 workers (short window = fast per-config)."""
+    return {
+        "GOLDEN_RULE_HTF_MIN_TFS": [0, 1, 2, 3, 4, 5],
+        "GOLDEN_RULE_MIN_IND": [1, 2, 3, 4, 5],
+        "ENTRY_SCORE_THRESHOLD": [12, 15, 18, 20, 24],
+        "WT_EXIT_MIN_TFS": [2, 3, 4],
+        "MIN_HOLD_BARS": [5, 10, 20, 50],
+        "CT_WT_VELOCITY_1H_MIN": [0.0, 4.0, 6.0, 8.0],
+        "CT_WT_VELOCITY_GATE_ENABLED": [True, False],
+        "SATOSHIT_ENABLED": [True, False],
+        "DELTA_ENTRY_ENABLED": [True, False],
+        "WINNER_PROTECT_ENABLED": [True, False],
+        "D_TREND_REQUIRED": [True, False],
+        "STRUCTURAL_RANGE_SHIFT_EXIT": [True, False],
+        "EARLY_ABORT_MIN_SYMBOLS": [3],
+        "EARLY_ABORT_SHARPE_FLOOR": [0.05],
+    }
+
+
 TIER_MAP = {
     "golden_rule": build_param_grid_golden_rule,
     "golden_rule_mults": build_param_grid_golden_rule_mults,
@@ -2466,6 +2515,8 @@ TIER_MAP = {
     "ratio_sentiment_crypto": build_param_grid_ratio_sentiment_crypto,
     "hedge_wt_kill": build_param_grid_hedge_wt_kill,
     "grtf7_quick": build_param_grid_grtf7_quick,
+    "grtf7_tradier_mega": build_param_grid_grtf7_tradier_mega,
+    "grtf7_crypto_mega": build_param_grid_grtf7_crypto_mega,
 }
 
 

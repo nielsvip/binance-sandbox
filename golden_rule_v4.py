@@ -81,6 +81,56 @@ def _ha_color(d: dict, tf: str) -> str:
     return str(v).strip().lower()
 
 
+# ───────────── 2026-05-10 user mandate: GOLDEN_RULE pattern + bounce-on-3-of-5 ─
+
+
+def _bounce_at_tf(ind: dict, tf: str, is_long: bool) -> Tuple[bool, str]:
+    """Return (bounced, what) — TRUE if THIS TF shows a fresh turn in our direction.
+    A bounce is at least one of:
+      - Stoch crossover this bar (k > d AND k_prev <= d_prev for LONG; mirror SHORT)
+      - MACD just crossed (macd_crossover>0 LONG, macd_crossunder>0 SHORT)
+      - WT1 just crossed WT2 in direction (requires wt1_prev/wt2_prev)
+    """
+    sk = _f(ind, f'stoch_k_{tf}', float('nan'))
+    sd = _f(ind, f'stoch_d_{tf}', float('nan'))
+    sk_prev = _f(ind, f'stoch_k_{tf}_prev', float('nan'))
+    sd_prev = _f(ind, f'stoch_d_{tf}_prev', float('nan'))
+    if sk == sk and sd == sd and sk_prev == sk_prev and sd_prev == sd_prev:
+        if is_long and sk > sd and sk_prev <= sd_prev:
+            return True, f'STOCH_XO_{tf}'
+        if (not is_long) and sk < sd and sk_prev >= sd_prev:
+            return True, f'STOCH_XU_{tf}'
+    mxo = _f(ind, f'macd_crossover_{tf}', 0)
+    mxu = _f(ind, f'macd_crossunder_{tf}', 0)
+    if is_long and mxo > 0:
+        return True, f'MACD_XO_{tf}'
+    if (not is_long) and mxu > 0:
+        return True, f'MACD_XU_{tf}'
+    wt1 = _f(ind, f'wt1_{tf}', float('nan'))
+    wt2 = _f(ind, f'wt2_{tf}', float('nan'))
+    wt1_prev = _f(ind, f'wt1_{tf}_prev', float('nan'))
+    wt2_prev = _f(ind, f'wt2_{tf}_prev', float('nan'))
+    if wt1 == wt1 and wt2 == wt2 and wt1_prev == wt1_prev and wt2_prev == wt2_prev:
+        if is_long and wt1 > wt2 and wt1_prev <= wt2_prev:
+            return True, f'WT_XO_{tf}'
+        if (not is_long) and wt1 < wt2 and wt1_prev >= wt2_prev:
+            return True, f'WT_XU_{tf}'
+    return False, ''
+
+
+def _bounce_count(ind: dict, is_long: bool, mode: str = 'tradier') -> Tuple[int, list]:
+    """Return (count, list_of_hits) — count of 5 TFs showing fresh bounce."""
+    base_tf = '5m' if mode == 'tradier' else '3m'
+    tfs = [base_tf, '15m', '1h', '4h', 'D']
+    count = 0; hits = []
+    for tf in tfs:
+        ok, h = _bounce_at_tf(ind, tf, is_long)
+        if ok:
+            count += 1
+            hits.append(h)
+    return count, hits
+
+
 # ───────────── per-TF "at-bottom-for-LONG / at-top-for-SHORT" scoring ─────────
 
 
@@ -223,6 +273,23 @@ def evaluate_golden_rule_v4(
         if not in_universe:
             return GR4Signal(False, is_long, 0.0, 0.0, 0, 0, 0, False,
                              f'GR4_NOT_IN_UNIVERSE_{symbol}')
+
+    # 2026-05-10 USER MANDATE: GOLDEN_RULE pattern gate (recent peak/trough + pullback)
+    # The harness threads this in via state['recent_pullback_long'/'recent_rally_short'].
+    if state is not None:
+        if is_long and not state.get('recent_pullback_long', False):
+            return GR4Signal(False, is_long, 0.0, 0.0, 0, 0, 0, False,
+                             f'GR4_NO_PULLBACK_{symbol}')
+        if (not is_long) and not state.get('recent_rally_short', False):
+            return GR4Signal(False, is_long, 0.0, 0.0, 0, 0, 0, False,
+                             f'GR4_NO_RALLY_{symbol}')
+
+    # 2026-05-10 USER MANDATE: bounce confirmed on ≥3 of 5 TFs.
+    bounce_n, bounce_hits = _bounce_count(indicators, is_long, mode=mode)
+    bounce_min = 3 if config is None else int(getattr(config, 'GR4_BOUNCE_MIN_TFS', 3))
+    if bounce_n < bounce_min:
+        return GR4Signal(False, is_long, 0.0, 0.0, 0, 0, 0, False,
+                         f'GR4_BOUNCE_INSUFFICIENT_{bounce_n}/5_lt_{bounce_min}')
 
     ltfs = [base_tf, '15m']
     htfs = ['1h', '4h', 'D']

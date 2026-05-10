@@ -6460,13 +6460,14 @@ class StockStrategy:
             return "NO_ACTION", "At_max_qty", 0.0, 0.0
 
         # --- FIX 2026-04-08: ANTI-CHURN GATE — do NOT reenter if exit score is still above threshold ---
-        # This prevents the close→reopen→close loop that caused 4700+ CLOSE decisions in one day
-        _re_exit_score, _re_exit_reason = wt_dc_score_exit(i, is_long, current_price)
-        _re_exit_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 30)
-        if _re_exit_score >= _re_exit_threshold:
-            return "NO_ACTION", f"ANTI_CHURN_exit_score={_re_exit_score:.0f}>={_re_exit_threshold}_still_active", 0.0, 0.0
-        # --- RED ZONE REENTRY GATE: don't reenter LONG at TOP or SHORT at BOTTOM ---
-        if config.DELTA_ENGINE_ENABLED and hasattr(self.trade_manager, 'delta_tracker') and self.trade_manager.delta_tracker:
+        # 2026-05-10 USER MANDATE: gated behind TRADIER_REENTRY_ANTI_CHURN_ENABLED (default False).
+        if bool(getattr(config, 'TRADIER_REENTRY_ANTI_CHURN_ENABLED', False)):
+            _re_exit_score, _re_exit_reason = wt_dc_score_exit(i, is_long, current_price)
+            _re_exit_threshold = getattr(config, 'WT_DC_EXIT_THRESHOLD', 30)
+            if _re_exit_score >= _re_exit_threshold:
+                return "NO_ACTION", f"ANTI_CHURN_exit_score={_re_exit_score:.0f}>={_re_exit_threshold}_still_active", 0.0, 0.0
+        # --- RED ZONE REENTRY GATE: 2026-05-10 USER MANDATE — gated behind TRADIER_REENTRY_RZ_BLOCK_ENABLED (default False).
+        if bool(getattr(config, 'TRADIER_REENTRY_RZ_BLOCK_ENABLED', False)) and config.DELTA_ENGINE_ENABLED and hasattr(self.trade_manager, 'delta_tracker') and self.trade_manager.delta_tracker:
             _re_dsig = self.trade_manager.delta_tracker.update(symbol, i)
             if _re_dsig:
                 if is_long and _re_dsig.zone == "TOP" and _re_dsig.exit_long:

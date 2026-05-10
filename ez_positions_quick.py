@@ -14207,7 +14207,14 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                 _btc_exit_dec = None
                 if _btc_dedicated_active(account_key, symbol, config):
                     _entry_p = float(position.entry_price or 0.0) if position else 0.0
-                    _opened_at = float(position.get('opened_at', time.time()) or time.time()) if position else time.time()
+                    # 2026-05-10 fix: position is a dataclass not a dict — use getattr.
+                    # Live (flz) silently failed 610x today, backtest fails identically. Same bug both sides.
+                    _opened_raw = getattr(position, 'opened_at', None) if position else None
+                    if _opened_raw is None: _opened_at = time.time()
+                    elif hasattr(_opened_raw, 'timestamp'): _opened_at = _opened_raw.timestamp()
+                    else:
+                        try: _opened_at = float(_opened_raw)
+                        except Exception: _opened_at = time.time()
                     _age_bars = max(0, int((time.time() - _opened_at) / 180))   # 3m bars
                     _btc_exit_dec = _btc_dedicated_exit_decision(
                         account_key, symbol, is_long, current_price, indicators,
