@@ -1,5 +1,10 @@
 #!/bin/bash
 # watchdog_sweep_s1.sh — every 5min: keep BOTH crypto AND tradier backtest_v8_sweep alive.
+# 2026-05-10 v17: MEMORY GUARD — refuse to launch if available RAM < MEM_GUARD_MB (18000).
+# Root cause of cascading OOM (02:10 UTC): count_crypto_sweep() returned 0 between engine
+# variants (race window when one variant finishes and next hasn't spawned yet), causing Part 2
+# to see NC=0 and launch tradier alongside active crypto engine. Fix: (1) memory guard at top
+# exits if available < 18GB; (2) Part 2 uses snapshot NC/NT from top of script (no recheck).
 # 2026-05-09 v16: count_tradier_sweep() now matches --mode tradier (any tier) instead of
 # tradier_param_hunt only. Fix: when tradier_grtf7_hunt runs, watchdog correctly sees it
 # as "tradier running" and does not launch crypto concurrently. Also disabled competing
@@ -23,9 +28,17 @@ TS=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 DIR=/home/niels/binance-sandbox
 PYTHON=/home/niels/.conda/envs/binance_env/bin/python
 STATE=/home/niels/logs/sweep_next_mode  # contains "crypto" or "tradier" (which runs NEXT)
+MEM_GUARD_MB=18000  # refuse to launch if available RAM < this (each engine peaks ~10GB)
 
 CORE4_CRYPTO=BTCUSDC,ETHUSDC,SOLUSDC,XRPUSDC
 CORE20_TRADIER=AAPL,AMZN,AVGO,AMD,ADBE,ABNB,ARM,ASML,AXON,BA,BABA,ABBV,ABT,ADP,ADM,AEM,AG,AGCO,ALB,ASTS
+
+# -- Memory guard: exit early if not enough RAM to safely launch another engine --
+AVAIL_MB=$(free -m | awk '/^Mem:/{print $7}')
+if [ "$AVAIL_MB" -lt "$MEM_GUARD_MB" ]; then
+    echo "[$TS] MEM_GUARD: available=${AVAIL_MB}MB < ${MEM_GUARD_MB}MB — skipping all launches" >> "$LOG"
+    exit 0
+fi
 
 count_crypto_sweep() {
     ps aux | grep "[b]acktest_v8_sweep.*system_combo" | grep python | wc -l | tr -d '[:space:]'
@@ -72,9 +85,10 @@ else
 fi
 
 # -- Part 2: tradier backtest_v8_sweep tradier_param_hunt (20 stocks, 2026-01-01) --
-# Recheck live counts after potential crypto launch above
+# Re-read NT (tradier count may have changed if Part 1 just launched crypto).
+# NC is NOT rechecked — using snapshot from top of script to avoid race window where
+# count_crypto_sweep returns 0 between engine variants (v17 fix, 2026-05-10).
 NT=$(count_tradier_sweep)
-NC=$(count_crypto_sweep)
 NEXT=$(cat "$STATE" 2>/dev/null || echo "tradier")
 
 if [ "$NT" -lt 1 ]; then
@@ -83,7 +97,7 @@ if [ "$NT" -lt 1 ]; then
         echo "[$TS] tradier dead — crypto running (procs=$NC), deferring tradier to avoid OOM" >> "$LOG"
     elif [ "$NEXT" = "tradier" ]; then
         # Both dead AND it's tradier's turn
-        echo "[$TS] tradier tradier_param_hunt dead — it's tradier's turn, relaunching (20 stocks, 2026-01-01, timeout=5400)" >> "$LOG"
+        echo "[$TS] tradier tradier_grtf7_hunt dead — relaunching (20 stocks, 2026-01-01, mem-throttle 80)" >> "$LOG"
         TS2=$(date +%Y%m%d_%H%M)
         cd "$DIR"
         nohup env V8_RATE_GUARD_DISABLED=1 "$PYTHON" backtest_v8_sweep.py \
@@ -93,7 +107,7 @@ if [ "$NT" -lt 1 ]; then
             --tier tradier_grtf7_hunt \
             --workers 1 \
             --timeout 5400 \
-            --mem-throttle-pct 70 \
+            --mem-throttle-pct 80 \
             > ~/logs/bt_sweep_tradier_20sym_${TS2}.log 2>&1 < /dev/null & disown
         sleep 5
         echo "[$TS] post-relaunch tradier procs=$(count_tradier_sweep)" >> "$LOG"
