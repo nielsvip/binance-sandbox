@@ -1113,7 +1113,18 @@ class Config:
         'R2_WT_VEL_SLOW',                 # wt vel slowdown near 0 gain → close at small positive
         'WT_15M_VEL_SLOW',                # legacy alias for R2 (existing block at ez_manage:20696)
         'HEDGE_FAILED',                   # hedge couldn't be taken → fallback close at loss
+        # 2026-05-10 USER NON-NEGOTIABLE MANDATE: every tradeable_key with wt1_3m vs wt2_3m
+        # condition met must always have a position. Reopen after every close. See
+        # WT_3M_FORCE_OPEN_ENABLED below for full description.
+        'WT_3M_FORCE_OPEN',
     ])
+    # 2026-05-10 USER NON-NEGOTIABLE: every tradeable_key with wt1_3m > wt2_3m (LONG) /
+    # wt1_3m < wt2_3m (SHORT) must always have a position open. If flat, OPEN immediately;
+    # reopen after every close. Reentry/hedge gates may NOT block this. The reason
+    # 'WT_3M_FORCE_OPEN' bypasses HARD_AUGMENT_LOCK / DUP_GUARD / NOLOSS in execute_now.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # bypass HARD_AUGMENT_LOCK + DUP_GUARD on this reason
+    WT_3M_FORCE_OPEN_SIZE_USD: float = 9.0      # opens at this notional (≈ START_POSITION_SIZE)
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,

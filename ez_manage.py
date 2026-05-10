@@ -11017,7 +11017,8 @@ class MultiAccountTradeManager:
         # Below threshold → BLOCKED. Time-cooldown retained as fallback when
         # DUP_GUARD_USE_GAIN_GATE=False.
         if is_augment:
-            if bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True)):
+            _wt3m_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+            if bool(getattr(config, 'DUP_GUARD_USE_GAIN_GATE', True)) and not _wt3m_force_open:
                 _dg_min_gain = float(getattr(config, 'MIN_GAIN', 3.0))
                 _dg_mult = float(getattr(config, 'DUP_GUARD_GAIN_MULTIPLIER', 0.5))
                 _dg_thr = _dg_min_gain * _dg_mult
@@ -14051,7 +14052,10 @@ class MultiAccountTradeManager:
             _gain_ok = (_pos_gain >= _min_gain) if _has_existing_position else False
             _last_aug_ts = _AUGMENT_LOCK.get(position_key, 0)
             _since_aug = time.time() - _last_aug_ts
-            if _since_aug < _AUGMENT_LOCK_MIN_SECONDS and not _gain_ok:
+            # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses HARD_AUGMENT_LOCK so
+            # any tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.
+            _wt3m_bypass = 'WT_3M_FORCE_OPEN' in _reason_up and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))
+            if _since_aug < _AUGMENT_LOCK_MIN_SECONDS and not _gain_ok and not _wt3m_bypass:
                 logger.warning(f"[HARD_AUGMENT_LOCK] {position_key}: BLOCKED - last position-increase {_since_aug:.0f}s ago (need {_AUGMENT_LOCK_MIN_SECONDS}s), gain={_pos_gain:.2f}% < {_min_gain:.1f}% | action={_act_check} is_hedge={is_hedge} reentry={_is_reentry_exec_now}")
                 return f"BLOCKED_HARD_AUGMENT_LOCK_{_since_aug:.0f}s"
             _AUGMENT_LOCK[position_key] = time.time()
@@ -19945,6 +19949,20 @@ async def _process_single_override_check(trade_manager, account_key: str, positi
                             _reason_z = f"TRADEABLE_KEYS_MANDATORY_{'LONG_dc_high_3m' if _is_long_z else 'SHORT_dc_low_3m'}_3M_px{_px_z:.6f}_dc{(_dch3m_z if _is_long_z else _dcl3m_z):.6f}_k3{_k3_z:.0f}/{_k3p_z:.0f}_ha{_ha3_z}"
                             logger.warning(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: ZERO position in tradeable_keys + px {'>' if _is_long_z else '<'} dc_{'high' if _is_long_z else 'low'}_3m ({_px_z:.6f} {'>' if _is_long_z else '<'} {(_dch3m_z if _is_long_z else _dcl3m_z):.6f}) + {'rising' if _is_long_z else 'falling'} → OPEN ~${_tiny_usd:.0f}")
                             await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _reason_z, 75.0)
+                        # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN — runs in parallel
+                        # to the DC trigger above. Any tradeable_key with wt1_3m > wt2_3m (LONG)
+                        # / wt1_3m < wt2_3m (SHORT) MUST have a position. Reopen after every close.
+                        # Reentry/hedge gates may NOT block this (see HARD_AUGMENT_LOCK / DUP_GUARD
+                        # bypass in execute_now).
+                        elif bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)):
+                            _wt1_3m_z = safe_fetch_float(_ind_z.get('wt1_3m'), 0)
+                            _wt2_3m_z = safe_fetch_float(_ind_z.get('wt2_3m'), 0)
+                            _wt_trigger_z = (_is_long_z and _wt1_3m_z > _wt2_3m_z) or (_is_short_z and _wt1_3m_z < _wt2_3m_z)
+                            if _wt_trigger_z and _px_z > 0:
+                                _wf_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 9.0)) or float(getattr(config, 'START_POSITION_SIZE', 9.0))
+                                _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if _is_long_z else 'SHORT'}_wt1={_wt1_3m_z:.1f}_wt2={_wt2_3m_z:.1f}_px{_px_z:.6f}"
+                                logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if _is_long_z else '<'} wt2_3m ({_wt1_3m_z:.1f}{'>' if _is_long_z else '<'}{_wt2_3m_z:.1f}) → OPEN ~${_wf_usd:.0f}")
+                                await queue_trade_action(order_queue, trade_manager, position_key, 'OPEN', _wf_reason, 80.0)
             except Exception as _tkm_e:
                 logger.debug(f"[TRADEABLE_KEYS_MANDATORY] {position_key}: check failed — {_tkm_e}")
         if not position or not hasattr(position, 'positionAmt') or abs(float(position.positionAmt)) <= 0: return

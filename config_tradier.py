@@ -1994,6 +1994,13 @@ class TradierConfig:
     NOLOSS_DC4H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: DC-based NOLOSS off. Same-sector hedge replaces it.
     NOLOSS_BB1H_GATE_ENABLED: bool = False   # 2026-04-25 KILL: BB-based NOLOSS off (technical exits handle this).
     LOSS_EXIT_TECHNICAL_BYPASS: tuple = ('LIQUIDATION', 'EMERGENCY_DC1H_BREACH', 'PARABOLIC_EXIT', 'GAIN_EROSION')  # GAIN_EROSION added 2026-04-20: DC_LOW4_5M structural stop closes at loss instead of hedging
+    # 2026-05-10 USER NON-NEGOTIABLE: every symbol in symbols_trb_long/short must have a
+    # position open whenever wt1_3m vs wt2_3m condition holds. Reopen after every close.
+    # Reentry / cooldown / NOLOSS gates may NOT block this. The reason 'WT_3M_FORCE_OPEN'
+    # bypasses AUGMENTATION_COOLDOWN / TRADIER_REENTRY_ANTI_CHURN in tradier_manage.execute_now.
+    WT_3M_FORCE_OPEN_ENABLED: bool = True
+    WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
+    WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit

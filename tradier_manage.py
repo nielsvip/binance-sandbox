@@ -1600,6 +1600,28 @@ async def process_position(account_key: str, position_key: str, order_queue: "Or
                         return f"R2_WT_VEL_SLOW_CLOSED:{_wzg_fired_tf}_{_wzg_tag}"
             except Exception as _wzg_err:
                 logger.debug(f"[R2_WT_VEL_SLOW] {position_key} err: {_wzg_err}")
+        # ═══════════════════════════════════════════════════════════════════════
+        # WT_3M_FORCE_OPEN — USER NON-NEGOTIABLE 2026-05-10 (stocks).
+        # Every symbol in symbols_trb_long/short must have a position whenever the
+        # wt1_3m vs wt2_3m condition holds. Reopen after every close. Reentry /
+        # cooldown / NOLOSS gates may NOT block this — execute_now bypass is wired
+        # via the WT_3M_FORCE_OPEN reason string.
+        # ═══════════════════════════════════════════════════════════════════════
+        if (not has_position) and bool(getattr(config, 'WT_3M_FORCE_OPEN_ENABLED', True)):
+            try:
+                if trade_manager.is_symbol_tradeable(symbol, account_key, position_side):
+                    _wf_wt1_3m = safe_fetch_float(i.get('wt1_3m'), 0)
+                    _wf_wt2_3m = safe_fetch_float(i.get('wt2_3m'), 0)
+                    _wf_trigger = (is_long and _wf_wt1_3m > _wf_wt2_3m) or ((not is_long) and _wf_wt1_3m < _wf_wt2_3m)
+                    if _wf_trigger and current_price > 0:
+                        _wf_size_usd = float(getattr(config, 'WT_3M_FORCE_OPEN_SIZE_USD', 100.0)) or float(getattr(config, 'START_POSITION_SIZE', 100.0))
+                        _wf_qty = max(_wf_size_usd / current_price, 1.0)
+                        _wf_reason = f"WT_3M_FORCE_OPEN_{'LONG' if is_long else 'SHORT'}_wt1={_wf_wt1_3m:.1f}_wt2={_wf_wt2_3m:.1f}_px{current_price:.4f}"
+                        logger.warning(f"[WT_3M_FORCE_OPEN] {position_key}: ZERO position + wt1_3m {'>' if is_long else '<'} wt2_3m ({_wf_wt1_3m:.1f}{'>' if is_long else '<'}{_wf_wt2_3m:.1f}) → OPEN qty={_wf_qty:.2f}")
+                        await queue_trade_action(order_queue, trade_manager, position_key, "OPEN", _wf_reason, 80.0, override_qty=_wf_qty)
+                        return f"WT_3M_FORCE_OPEN:{position_side}"
+            except Exception as _wf_err:
+                logger.debug(f"[WT_3M_FORCE_OPEN] {position_key}: {_wf_err}")
         was_reduced = getattr(position, 'was_reduced', False)
         last_red_time = getattr(position, 'last_reduction_time', None)
         market_context = await trade_manager.get_market_context(symbol)
