@@ -745,6 +745,47 @@ def grid_tradier_grtf7_hunt_resume():
     return combos
 
 
+def grid_gr_phase2_bb_tradier():
+    """PHASE 2: BB-per-TF cross-product. Phase 1 found GR_BB_no_15m moved Sharpe most.
+    Locks entry consensus at moderate (HTF_MIN_TFS=3, MIN_IND=4) and varies which
+    TFs participate in BB consensus. 16 variants total.
+    Run on 20 stocks × start=2025-01-01 (>1yr)."""
+    combos = []
+    for bb_15m in [True, False]:
+        for bb_1h in [True, False]:
+            for bb_4h in [True, False]:
+                for bb_d in [True, False]:
+                    name = f"BB_{int(bb_15m)}{int(bb_1h)}{int(bb_4h)}{int(bb_d)}"
+                    combos.append((name, {
+                        "GOLDEN_RULE_HTF_MIN_TFS": 3,
+                        "GOLDEN_RULE_MIN_IND": 4,
+                        "GOLDEN_RULE_BB_15M_ENABLED": bb_15m,
+                        "GOLDEN_RULE_BB_1H_ENABLED": bb_1h,
+                        "GOLDEN_RULE_BB_4H_ENABLED": bb_4h,
+                        "GOLDEN_RULE_BB_D_ENABLED": bb_d,
+                    }))
+    return combos
+
+
+def grid_gr_phase2_bb_crypto():
+    """PHASE 2 crypto: same BB-per-TF cross-product. 16 variants."""
+    combos = []
+    for bb_15m in [True, False]:
+        for bb_1h in [True, False]:
+            for bb_4h in [True, False]:
+                for bb_d in [True, False]:
+                    name = f"BB_{int(bb_15m)}{int(bb_1h)}{int(bb_4h)}{int(bb_d)}"
+                    combos.append((name, {
+                        "GOLDEN_RULE_HTF_MIN_TFS": 3,
+                        "GOLDEN_RULE_MIN_IND": 4,
+                        "GOLDEN_RULE_BB_15M_ENABLED": bb_15m,
+                        "GOLDEN_RULE_BB_1H_ENABLED": bb_1h,
+                        "GOLDEN_RULE_BB_4H_ENABLED": bb_4h,
+                        "GOLDEN_RULE_BB_D_ENABLED": bb_d,
+                    }))
+    return combos
+
+
 def grid_gr_micro_ablation_tradier():
     """PHASE 1 SCREENING — single-knob ablations to rank GR knob importance.
     Each variant flips ONE knob from baseline. Compare delta_pool_sharpe to identify
@@ -1266,6 +1307,8 @@ TIER_MAP = {
     "gr_entry_exit_grid_crypto": grid_gr_entry_exit_grid_crypto,
     "gr_micro_ablation_tradier": grid_gr_micro_ablation_tradier,
     "gr_micro_ablation_crypto": grid_gr_micro_ablation_crypto,
+    "gr_phase2_bb_tradier": grid_gr_phase2_bb_tradier,
+    "gr_phase2_bb_crypto": grid_gr_phase2_bb_crypto,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file

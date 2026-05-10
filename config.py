@@ -1347,7 +1347,7 @@ class Config:
     # SKY.USDT incident 2026-05-09: -17% for 11 days, no hedge, no close — exact failure mode this fixes.
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = True              # master switch for the periodic loop
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
-    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False                 # 2026-05-10 USER MANDATE: hedge fires on wt1_3m ALONE (the May-9 AND-rule silently overrode the May-5 WT_3M_ALONE trigger and blocked hedges on 7 deep-loss SHORTs over 5 days). 1h becomes confirmation, not requirement.
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = True                  # USER 2026-05-10 LATEST (supersedes earlier wt_3m_alone): "HEDGES ARE OPEN AS LONG AS wt1_3m AND wt1_1h AGREE with hedge". Both TFs required for open. Close still uses wt_3m alone (HEDGE_CLOSE_MODE='wt_3m'). If no hedge can be taken (3m+1h not aligned) → position closes at loss per user spec.
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
     # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION

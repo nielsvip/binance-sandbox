@@ -15163,12 +15163,14 @@ class MultiAccountTradeManager:
                 logger.info(f"✅ [HEDGE_GUARD] Hedge successful. Lock will expire naturally.")
                 return "ACTION_TAKEN_HEDGE_SUCCESS"
             else:
-                # 2026-04-26 FIX: was returning None which let caller close at loss — STRICT_NO_LOSS violation.
-                # 1,360× in 2d. Per CLAUDE.md feedback_ratio_backtest_253: NEVER close losers. Hedge IS the protection;
-                # if it fails, refuse to close. Position stays open until hedge can be re-attempted or position recovers.
-                logger.error(f"🚨 [HEDGE_GUARD] All hedge attempts failed for {position_key} (gain={getattr(position, 'gain', 0.0):.2f}%). REFUSING CLOSE — hedge will be retried next cycle. Position stays open per STRICT_NO_LOSS.")
+                # USER 2026-05-10 MANDATE (supersedes 2026-04-26 STRICT_NO_LOSS): "IF NO HEDGE CAN BE
+                # TAKEN OUT POSITION IS CLOSED AT A FUCKING LOSS." Position stuck -16%+ for hours under
+                # the old refuse-close policy on men:INJUSDT_SHORT (2.5h bleed -12%→-16.50%). Returning
+                # None lets caller execute the close. HEDGE_FAILED token in the reason already routes
+                # through UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS (config.py:1118).
+                logger.error(f"🚨 [HEDGE_GUARD_FAIL] All hedge attempts failed for {position_key} (gain={getattr(position, 'gain', 0.0):.2f}%). ALLOWING close at loss per USER 2026-05-10 mandate.")
                 if self.redis_manager: await self.redis_manager.delete(lock_key)
-                return "ACTION_TAKEN_HEDGE_FAILED_REFUSE_CLOSE"
+                return None
         except Exception as e:
             logger.error(f"[HEDGE_GUARD] Crash: {e}")
             if self.redis_manager: await self.redis_manager.delete(lock_key)
