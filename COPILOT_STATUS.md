@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-10 08:43:55 UTC
+# Copilot Status — 2026-05-10 08:59:12 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:40:00
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-10T08:41:01
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:41:01
-- **STALE_INDICATORS** [tradier]  — 2026-05-10T08:42:02
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-10T08:42:02
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-10T08:42:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-10T08:42:02
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:42:02
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-10T08:43:04
-- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:43:04
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-10T08:57:29
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-10T08:57:29
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:57:29
+- **STALE_INDICATORS** [tradier]  — 2026-05-10T08:58:30
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-10T08:58:30
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-10T08:58:30
+- **BIG_LOSER** [crypto] ang:1000LUNCUSDT_SHORT — 2026-05-10T08:58:30
+- **RATIO_IMBALANCE** [crypto] inf — 2026-05-10T08:58:30
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-10T08:58:30
+- **RATIO_IMBALANCE** [crypto] fin — 2026-05-10T08:58:30
 
 ## Missed Trades (trader comparison)
 
@@ -29,9 +29,9 @@ _None_
 
 **Held:** 9 | **Watching for reentry:** 7 | **Reentered:** 0
 
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-21.4%
-- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-13.9%
-- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-9.5%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-22.3%
+- HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-14.0%
+- HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-9.4%
 - HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-6.6%
 - HELD: **ENSUSDT** LONG (crypto) peak +4.9%, now +2.6%
 - HELD: **NEARUSDC** SHORT (crypto) peak +4.5%, now +-0.6%
