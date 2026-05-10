@@ -2389,6 +2389,59 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Results — compute and print BEFORE queue cleanup so cancellation errors cannot block result
     elapsed = _real_time_module.time() - t0
     v8_logger.info(f"Done in {elapsed:.1f}s | {len(executed_trades)} trades")
+    # ═══ NO-LIES RULE #2 — MARK-TO-MARKET OPEN POSITIONS AT FINAL BAR ═══
+    # CLAUDE.md: "Open losing positions MUST be marked-to-market at the final bar
+    # and appended to the return distribution BEFORE computing Sharpe. Skipping
+    # this is fraudulent — it hides losses behind held positions and was the
+    # proximate cause of the live blow-up." (Discovered 2026-05-10: crypto Tier-1
+    # showed 100% WR / pool_sharpe=1.16 across all variants because residual open
+    # positions never got their unrealized losses appended to all_pnl_pcts.)
+    _mtm_count = 0
+    _mtm_wins = 0
+    _mtm_losses = 0
+    _mtm_sum_pct = 0.0
+    _mtm_final_ts = int(_sim_ts[0]) if '_sim_ts' in dir() and _sim_ts else 0
+    for _pk, _pos in list(trade_manager.positions.items()):
+        _amt = float(getattr(_pos, 'positionAmt', 0) or 0)
+        if abs(_amt) < 0.0001:
+            continue
+        _entry = float(getattr(_pos, 'entry_price', 0) or 0)
+        _mark = float(getattr(_pos, 'mark_price', 0) or 0)
+        if _entry <= 0 or _mark <= 0:
+            continue
+        _is_long = _amt > 0
+        _mtm_pnl_pct = ((_mark - _entry) / _entry * 100.0) if _is_long else ((_entry - _mark) / _entry * 100.0)
+        _mtm_pnl_dollars = ((_mark - _entry) * abs(_amt)) if _is_long else ((_entry - _mark) * abs(_amt))
+        _live_pnl["all_pnl_pcts"].append(_mtm_pnl_pct)
+        _live_pnl["all_pnl_dollars"].append(_mtm_pnl_dollars) if "all_pnl_dollars" in _live_pnl else None
+        _live_pnl["running_pnl_pct"] += _mtm_pnl_pct
+        _live_pnl["n_closes"] += 1
+        if _mtm_pnl_pct > 0:
+            _live_pnl["n_wins"] += 1
+            _mtm_wins += 1
+        else:
+            _live_pnl["n_losses"] += 1
+            _mtm_losses += 1
+        _sym_for_mtm = _pk.split(':', 1)[1].rsplit('_', 1)[0] if ':' in _pk else _pk.rsplit('_', 1)[0]
+        executed_trades.append({
+            "timestamp": _mtm_final_ts,
+            "symbol": _sym_for_mtm,
+            "position_key": _pk,
+            "side": "SELL" if _is_long else "BUY",
+            "position_side": "LONG" if _is_long else "SHORT",
+            "price": _mark,
+            "quantity": abs(_amt),
+            "action": "MTM_FINAL_BAR_NOLIES_RULE2",
+            "reason": "MTM_FINAL_BAR_NOLIES_RULE2",
+            "pnl_pct": _mtm_pnl_pct,
+            "pnl_dollars": _mtm_pnl_dollars,
+            "is_full_close": True,
+        })
+        _mtm_count += 1
+        _mtm_sum_pct += _mtm_pnl_pct
+    if _mtm_count > 0:
+        v8_logger.info(f"[NOLIES_MTM] Marked-to-market {_mtm_count} open positions at final bar | wins={_mtm_wins} losses={_mtm_losses} sum_pnl_pct={_mtm_sum_pct:+.2f}% (CLAUDE.md NO-LIES rule #2)")
+        print(f"V8_MTM_FINAL: count={_mtm_count} wins={_mtm_wins} losses={_mtm_losses} sum_pnl_pct={_mtm_sum_pct:.2f}", flush=True)
     # ═══ FINAL PnL BREAKDOWN ═══
     v8_logger.info("=" * 80)
     _f_sharpe_w, _f_gain_pct, _f_gain_dol, _f_sum_pct, _f_sharpe_pt, _f_sharpe_ann, _f_tpy = _compute_sharpe_and_gain()
