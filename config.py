@@ -839,6 +839,36 @@ class Config:
     # AND account match. Pending: Redis 'hedge_pending:<key>' (60s TTL).
     R3_HEDGE_INVARIANT_DUMP_ENABLED: bool = True
     R3_GAIN_MAX_PCT: float = 0.0  # only fires when gain < this (default 0 = any loss)
+    # 2026-05-10 USER MANDATE — HTF-trend veto on GOLDEN_RULE + GUARANTEED_REENTRY.
+    # STRKUSDT_SHORT was opened in a clear D-up trend (price 0.026→0.06 over 2 wks)
+    # because phase-1 BREAKOUT only checked wt1_3m<wt2_3m and price below dc_low_1h.
+    # Veto: don't enter AGAINST the HTF trend regardless of LTF setup.
+    #   LONG vetoed when D bearish (ha_D=='red' AND wt1_D<wt2_D)
+    #     OR (HTF_VETO_REQUIRE_D=False) 4h bearish.
+    #   SHORT vetoed when mirror.
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2026-05-10 USER MANDATE — GOLDEN_RULE + GUARANTEED_REENTRY stay ENABLED.
+    # Both are sacred per user. Reentry and hedge are OBLIGATIONS, not options.
+    # The fix for STRKUSDT_SHORT (opened in clear D-up) is NOT to disable the
+    # producer — it's to harden the entry gate INSIDE the producer with:
+    #   (a) ≥ TF_CONSENSUS_REQUIRED of 5 TFs (3m/15m/1h/4h/D) agreeing
+    #   (b) ≥ INDICATOR_CONSENSUS_REQUIRED of 15 indicators agreeing
+    #       (3 indicators × 5 TFs: WT direction, stoch K vs D, HA color)
+    #   (c) REQUIRE_HEDGE_OPEN=True forces a paired-side hedge to be queued in
+    #       the SAME tick as the entry. If the hedge can't be opened, refuse
+    #       the entry too — never enter naked.
+    GOLDEN_RULE_ENABLED: bool = True                       # SACRED — never disable
+    LEGACY_GUARANTEED_REENTRY: bool = True                 # OBLIGATION — never disable
+    GOLDEN_RULE_TF_CONSENSUS_REQUIRED: int = 4             # ≥4 of 5 TFs (3m/15m/1h/4h/D) agree
+    GOLDEN_RULE_INDICATOR_CONSENSUS_REQUIRED: int = 10     # ≥10 of 15 indicators agree (3×5)
+    GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True            # mandatory paired hedge
+    GUARANTEED_REENTRY_TF_CONSENSUS_REQUIRED: int = 4
+    GUARANTEED_REENTRY_INDICATOR_CONSENSUS_REQUIRED: int = 10
+    GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = True
+    # HTF-trend vetoes — defense-in-depth alongside the consensus gate.
+    GOLDEN_RULE_HTF_VETO_ENABLED: bool = True
+    GUARANTEED_REENTRY_HTF_VETO_ENABLED: bool = True
+    HTF_VETO_REQUIRE_D: bool = True  # True=D mandatory bearish/bullish; False=either D or 4h
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.

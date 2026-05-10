@@ -573,6 +573,10 @@ class TradierConfig:
     # currently auto-hedge so R3 will fire as a forced-exit + alert in practice.
     R3_HEDGE_INVARIANT_DUMP_ENABLED: bool = False  # default OFF for stocks until hedge engine exists
     R3_GAIN_MAX_PCT: float = 0.0
+    # 2026-05-10 USER MANDATE — HTF veto (mirror crypto). Stocks HTF = 4h/D/W.
+    GOLDEN_RULE_HTF_VETO_ENABLED: bool = True
+    GUARANTEED_REENTRY_HTF_VETO_ENABLED: bool = True
+    HTF_VETO_REQUIRE_D: bool = True
     # R1 — DC_LOW4 EMERGENCY CLOSE (stocks mirror; uses 5m base instead of 3m)
     R1_DC_LOW4_3M_EMERGENCY_ENABLED: bool = True   # name kept for parity; tradier uses 5m TF
     R1_NEWBORN_WINDOW_MIN: float = 15.0

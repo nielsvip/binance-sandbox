@@ -7122,6 +7122,63 @@ class MultiAccountTradeManager:
                                     logger.info(f'[GOLDEN_RULE] RETEST {sym} SHORT px={price:g} basis={dc_b_1h:g} mult={mult}x k={k_3m:.0f}')
                                 else:
                                     continue
+                            # ═══ CONSENSUS GATE (USER 2026-05-10) ═══════════════════
+                            # ≥ TF_CONSENSUS_REQUIRED of 5 TFs (3m/15m/1h/4h/D) agree, AND
+                            # ≥ INDICATOR_CONSENSUS_REQUIRED of 15 sub-checks agree
+                            # (3 indicators × 5 TFs: wt direction, stoch K vs D, HA color).
+                            # STRKUSDT_SHORT 2026-05-08 03:50 fired with only wt1_3m<wt2_3m
+                            # as the safety check — bled the account. This gate makes that
+                            # impossible: a SHORT in a clean D-up trend won't have anywhere
+                            # near 4-of-5 TFs or 10-of-15 indicators agreeing.
+                            _tf_min = int(getattr(config, 'GOLDEN_RULE_TF_CONSENSUS_REQUIRED', 4))
+                            _ind_min = int(getattr(config, 'GOLDEN_RULE_INDICATOR_CONSENSUS_REQUIRED', 10))
+                            _tfs_5 = ('3m', '15m', '1h', '4h', 'D')
+                            _tf_agree_count = 0
+                            _ind_agree_count = 0
+                            for _ctf in _tfs_5:
+                                _w1 = safe_fetch_float(ind.get(f'wt1_{_ctf}'), 0)
+                                _w2 = safe_fetch_float(ind.get(f'wt2_{_ctf}'), 0)
+                                _kk = safe_fetch_float(ind.get(f'stoch_k_{_ctf}'), 50)
+                                _dd = safe_fetch_float(ind.get(f'stoch_d_{_ctf}'), 50)
+                                _ha = str(ind.get(f'ha_{_ctf}', 'neutral')).lower()
+                                if is_long:
+                                    _wt_ok = _w1 > _w2
+                                    _stoch_ok = _kk > _dd
+                                    _ha_ok = (_ha == 'green')
+                                else:
+                                    _wt_ok = _w1 < _w2
+                                    _stoch_ok = _kk < _dd
+                                    _ha_ok = (_ha == 'red')
+                                _tf_score = int(_wt_ok) + int(_stoch_ok) + int(_ha_ok)
+                                _ind_agree_count += _tf_score
+                                if _tf_score >= 2:  # majority of indicators on this TF
+                                    _tf_agree_count += 1
+                            if _tf_agree_count < _tf_min or _ind_agree_count < _ind_min:
+                                logger.warning(f'[GOLDEN_RULE_CONSENSUS_BLOCK] {pkey} {"LONG" if is_long else "SHORT"}: tf_agree={_tf_agree_count}/{_tf_min} ind_agree={_ind_agree_count}/{_ind_min} — REFUSED')
+                                continue
+                            # ═══ HTF VETO (defense-in-depth) ═══════════════════════
+                            if bool(getattr(config, 'GOLDEN_RULE_HTF_VETO_ENABLED', True)):
+                                _w1_D = safe_fetch_float(ind.get('wt1_D'), 0)
+                                _w2_D = safe_fetch_float(ind.get('wt2_D'), 0)
+                                _ha_D = str(ind.get('ha_D', 'neutral')).lower()
+                                _w1_4h = safe_fetch_float(ind.get('wt1_4h'), 0)
+                                _w2_4h = safe_fetch_float(ind.get('wt2_4h'), 0)
+                                _ha_4h = str(ind.get('ha_4h', 'neutral')).lower()
+                                _D_bullish = (_ha_D == 'green' and _w1_D > _w2_D)
+                                _D_bearish = (_ha_D == 'red' and _w1_D < _w2_D)
+                                _4h_bullish = (_ha_4h == 'green' and _w1_4h > _w2_4h)
+                                _4h_bearish = (_ha_4h == 'red' and _w1_4h < _w2_4h)
+                                _require_D = bool(getattr(config, 'HTF_VETO_REQUIRE_D', True))
+                                _vetoed = False
+                                if is_long:
+                                    if _require_D and _D_bearish: _vetoed = True
+                                    elif (not _require_D) and (_D_bearish or _4h_bearish): _vetoed = True
+                                else:
+                                    if _require_D and _D_bullish: _vetoed = True
+                                    elif (not _require_D) and (_D_bullish or _4h_bullish): _vetoed = True
+                                if _vetoed:
+                                    logger.warning(f'[GOLDEN_RULE_HTF_VETO] {pkey} {"LONG" if is_long else "SHORT"}: HTF against (D ha={_ha_D} wt1>wt2={_w1_D>_w2_D}, 4h ha={_ha_4h} wt1>wt2={_w1_4h>_w2_4h}) — REFUSED')
+                                    continue
                             target_usd = base_usd * mult
                             target_qty = target_usd / price
                             try:
