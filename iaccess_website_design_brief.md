@@ -4,8 +4,9 @@
 **Date:** May 2026  
 **Purpose:** Complete design + real content instructions for building the IAccess website
 
-> **Pricing basis:** USD hardware prices (Amazon/distributors) × 1.40 Colombia import markup × 4,300 COP/USD.  
-> **Labor basis:** $10–40 USD/hour per user spec. General helper $10–12/hr; skilled installer $15–22/hr; senior technician $22–30/hr; lead integrator/programmer $30–40/hr. All COP conversions at 4,300 COP/USD.
+> **Pricing basis:** Amazon USD retail price + **25%** importation/shipping/customs to Colombia × 4,300 COP/USD = **× 5,375 total multiplier**. (Buying from local Colombian distributor adds a further 15–25% margin on top — these prices reflect self-import via DHL/FedEx which is how IAccess would source at project scale.)  
+> **Labor basis:** $10–40 USD/hour per user spec. General helper $10–12/hr; skilled installer $15–22/hr; senior technician $22–30/hr; lead integrator/programmer $30–40/hr. All COP conversions at 4,300 COP/USD.  
+> **Portero cost basis:** Full carga prestacional (~$2,462,050) **+ 20% empresa de vigilancia mandatory margin** = **$2,954,460 COP/portero/month true cost.**
 
 ---
 
@@ -27,19 +28,23 @@ A building with round-the-clock portería in Bogotá pays per portero:
 | ARL (0.52%) | $8,500 |
 | Caja, SENA, ICBF (9%) | $144,000 |
 | Prima + vacaciones + cesantías + intereses (amortized) | $351,000 |
-| **True cost per portero** | **~$2,462,050 COP** |
+| **Subtotal carga laboral** | **~$2,462,050 COP** |
+| **Empresa de vigilancia (obligatorio por ley, +20%)** | **$492,410 COP** |
+| **True cost per portero** | **~$2,954,460 COP** |
+
+> **Why the 20%:** Colombian law (Decreto 356/1994 + Ley 1539/2012) requires that building guards and porteros be contracted through a licensed *empresa de vigilancia y seguridad privada* supervised by the Superintendencia de Vigilancia. These companies charge a 15–25% margin on top of full labor cost. 20% is the conservative estimate used throughout this document.
 
 Most residential buildings need:
-- **Día (6am–6pm) + Noche (6pm–6am) = 2 porteros = ~$4,924,100 COP/month**
-- Plus vacation/sick-day replacements, typically +15% = **~$5,660,000 COP/month**
+- **Día (6am–6pm) + Noche (6pm–6am) = 2 porteros = ~$5,908,920 COP/month**
+- Plus vacation/sick-day replacements, typically +15% = **~$6,795,000 COP/month**
 
 IAccess monthly service for equivalent building: **$850,000–$1,600,000 COP/month**  
-**Typical savings: $3.5M–$4.5M COP/month. Payback: 12–24 months.**
+**Typical savings: $5.2M–$6.5M COP/month. Payback: 6–14 months.**
 
 ### Taglines (A/B test all three)
 1. *"Tu edificio nunca duerme. Tu portero, sí."*
 2. *"El portero más confiable del mundo no necesita salario ni prestaciones."*
-3. *"Cara, QR o huella. Tu edificio inteligente desde $17 millones."*
+3. *"Cara, QR o huella. Tu edificio inteligente desde $13 millones."*
 
 ### Brand Colors
 ```
@@ -118,7 +123,7 @@ duerme. Tu portero, sí.
 SUBHEADLINE (Inter Regular, 22px, #B0B8C8):
 Reemplaza tu portería con reconocimiento facial, QR y huella dactilar.
 Sin remodelaciones mayores. Sin contratos laborales. Sin interrupciones.
-Desde $17,000,000 COP instalado.
+Desde $13,000,000 COP instalado.
 
 CTA ROW:
 [Cotización en 60 segundos  →]    [Ver demostración  ▶]
@@ -129,7 +134,7 @@ CTA ROW:
 ```
   🏢 Edificios en Bogotá: 12 pilotos activos
   ⚡ Instalación: 2–5 días hábiles  
-  💰 Ahorro promedio: $4,200,000 COP/mes
+  💰 Ahorro promedio: $5,800,000 COP/mes
   🔒 Tecnología Hikvision · YOLO AI
 ```
 
@@ -145,7 +150,7 @@ HOY CON PORTERO
 
 😤  El portero nocturno no llega. Otra vez.
 😤  Un guest de Airbnb espera 40 minutos en la calle a las 2am
-😤  $5,660,000 COP al mes en dos porteros — más reemplazos
+😤  $6,800,000 COP al mes en dos porteros — más reemplazos
 😤  El visitante anotó un nombre falso en el libro
 😤  El paquete de Mercado Libre desapareció del lobby
 😤  Reunión de copropiedad cada 3 meses para discutir lo mismo
@@ -196,7 +201,7 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │ Puertas principales,     │  │ YOLO AI identifica cada  │  │ Visitantes y guests      │
 │ parqueaderos, zonas      │  │ persona en <400ms.       │  │ reciben QR por WhatsApp  │
 │ comunes — desde          │  │ Sin tarjetas ni claves.  │  │ con expiración exacta.   │
-│ $3,600,000 COP/punto     │  │ Desde $5,800,000 COP     │  │ Incluido en todos        │
+│ $3,384,000 COP/punto     │  │ Desde $6,566,000 COP     │  │ Incluido en todos        │
 │ Ver más →                │  │ Ver más →                │  │ los planes               │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 
@@ -206,7 +211,7 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │ Cada residente va solo   │  │ Barrera automática +     │  │ QR con fecha de          │
 │ a su piso. Guests: solo  │  │ reconocimiento de        │  │ expiración al checkout.  │
 │ al suyo. Desde           │  │ placas. Desde            │  │ Airbnb + Booking         │
-│ $9,000,000/ascensor      │  │ $26,300,000 COP          │  │ integrados. Primer en    │
+│ $6,759,000/ascensor      │  │ $27,355,000 COP          │  │ integrados. Primer en    │
 │ Ver más →                │  │ Ver más →                │  │ Colombia. Ver más →      │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 ```
@@ -291,10 +296,10 @@ FORM (inline, touch-friendly dropdowns):
   Mensualidad:      $850,000 – $1,200,000 COP/mes
 
   Comparado con portería actual:
-  2 porteros (estimado):     $5,660,000 COP/mes
+  2 porteros (estimado):     $6,795,000 COP/mes
   IAccess:                   $1,025,000 COP/mes
-  Ahorro mensual:            $4,635,000 COP
-  Retorno de inversión:      ~5 meses
+  Ahorro mensual:            $5,770,000 COP
+  Retorno de inversión:      ~3–4 meses
 
   ✅ Incluye: Hardware Hikvision · Instalación · App · Soporte 1 año
 
@@ -313,7 +318,7 @@ FORM (inline, touch-friendly dropdowns):
 ```
                         PORTERÍA TRADICIONAL     IACCESS
 ─────────────────────────────────────────────────────────────
-Costo mensual           $5,660,000 COP           $1,025,000 COP
+Costo mensual           $6,795,000 COP           $1,025,000 COP
 Incapacidades médicas   Tú los asumes            No aplica
 Vacaciones              Tú cubres el reemplazo   No aplica
 Renuncia/liquidación    Hasta $8M COP una vez     No aplica
@@ -323,10 +328,10 @@ Respuesta a emergency   Depende del portero       App + alerta inmediata
 Control de visitantes   Verbal o cuaderno         QR con expiración
 Soporte Airbnb          Ninguno                   Integración automática
 ─────────────────────────────────────────────────────────────
-COSTO AÑO 1             $67,920,000              $29,300,000 *
-COSTO AÑO 2+            $67,920,000/año           $12,300,000/año
+COSTO AÑO 1             $81,540,000              $29,300,000 *
+COSTO AÑO 2+            $81,540,000/año           $12,300,000/año
 ```
-_*Año 1 incluye instalación. Cálculo para edificio 20–50 aptos, 2 porteros actuales._
+_*Año 1 incluye instalación. Cálculo para edificio 20–50 aptos, 2 porteros actuales (incl. empresa de vigilancia 20% + reemplazos 15%)._
 
 ---
 
@@ -349,10 +354,10 @@ y aeropuertos de              de rostros. <400ms             Colombia o servidor
 ### TESTIMONIALS (3-card carousel)
 
 ```
-"Teníamos portero diurno y nocturno — $5.8 millones al mes. 
-Instalamos IAccess en 3 días. En el mes 6, el ahorro pagó la 
-instalación completa. Los residentes lo prefieren porque no 
-tienen que esperar a que alguien abra."
+"Teníamos portero diurno y nocturno — $7.1 millones al mes entre 
+salarios y la empresa de vigilancia. Instalamos IAccess en 3 días. 
+En el mes 8, el ahorro pagó la instalación completa. Los residentes 
+lo prefieren porque no tienen que esperar a que alguien abra."
 
 — Sandra Velásquez, Administradora
   Edificio Torres del Parque 93, Bogotá
@@ -487,7 +492,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios hasta 25 apartamentos      ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $15,000,000 – $22,000,000 COP               ║
+║  $13,000,000 – $19,000,000 COP               ║
 ║  (pago único)                                ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
@@ -507,7 +512,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  ✓ Actualizaciones de software 1 año         ║
 ║                                              ║
 ║  TIEMPO DE INSTALACIÓN: 2 días hábiles       ║
-║  AHORRO ESTIMADO: $3,500,000 COP/mes         ║
+║  AHORRO ESTIMADO: $2,100,000 COP/mes         ║
 ╠══════════════════════════════════════════════╣
 ║  [Cotizar Plan Esencial →]                   ║
 ╚══════════════════════════════════════════════╝
@@ -521,7 +526,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios 25 a 70 apartamentos       ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $42,000,000 – $68,000,000 COP               ║
+║  $36,000,000 – $58,000,000 COP               ║
 ║  (pago único o financiado a 18 meses)        ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
@@ -543,7 +548,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  ✓ Soporte prioritario < 2 horas             ║
 ║                                              ║
 ║  TIEMPO DE INSTALACIÓN: 3–4 días hábiles     ║
-║  AHORRO ESTIMADO: $4,200,000 COP/mes         ║
+║  AHORRO ESTIMADO: $5,445,000 COP/mes         ║
 ╠══════════════════════════════════════════════╣
 ║  [Cotizar Plan Profesional →]                ║
 ╚══════════════════════════════════════════════╝
@@ -557,7 +562,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios 70 a 150+ apartamentos     ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $95,000,000 – $160,000,000 COP              ║
+║  $82,000,000 – $140,000,000 COP              ║
 ║  (financiación disponible)                   ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
@@ -579,7 +584,7 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  ✓ Capacitación equipo administración        ║
 ║                                              ║
 ║  TIEMPO DE INSTALACIÓN: 5–8 días hábiles     ║
-║  AHORRO ESTIMADO: $6,000,000+ COP/mes        ║
+║  AHORRO ESTIMADO: $7,000,000+ COP/mes        ║
 ╠══════════════════════════════════════════════╣
 ║  [Solicitar propuesta Enterprise →]          ║
 ╚══════════════════════════════════════════════╝
@@ -595,9 +600,13 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 ┌────────────────────────────────────────────────────────────┐
 │ PUNTO DE ACCESO ADICIONAL (puerta interior existente)       │
 │ Magneto 600 lb + lector facial + controlador + cableado     │
-│ Hardware: $2,970,000 COP                                    │
+│ Magneto 600 lb (Seco-Larm $114 + 25% imp.): $613,000       │
+│ Lector DS-K1T342 ($254 + 25%): $1,365,000                  │
+│ Controlador (~$100 + 25%): $538,000                        │
+│ Botones de salida × 2: $268,000                            │
+│ Hardware subtotal: $2,784,000 COP                          │
 │ Mano de obra: $600,000 COP (2 técnicos × 4 horas)          │
-│ TOTAL: $3,570,000 COP por puerta                           │
+│ TOTAL: $3,384,000 COP por puerta                           │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -605,10 +614,11 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ (puertas de vidrio batientes con marco de aluminio)         │
 │ Obra civil (ensanche de vano no estructural): $2,500,000    │
 │ Marco + hojas de vidrio temperado 10mm: $5,500,000          │
-│ 2× magnetos 1200 lb: $2,100,000                             │
-│ 2× lectores faciales Pro + controlador: $6,000,000          │
-│ Mano de obra instalación sistema: $1,200,000                │
-│ TOTAL: $17,300,000 COP                                     │
+│ 2× magnetos 1200 lb ($175 × 2 + 25% imp.): $1,882,000     │
+│ 2× lectores Pro DS-K1T671M ($450 × 2 + 25%): $4,838,000   │
+│ Controlador + salidas ($100 + 25%): $672,000               │
+│ Mano de obra instalación sistema: $1,200,000               │
+│ TOTAL: $16,592,000 COP                                    │
 │ * Vano estructural: +$4,000,000–$8,000,000 COP extra       │
 └────────────────────────────────────────────────────────────┘
 
@@ -617,11 +627,11 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ (entrada principal nueva, con automatización)               │
 │ Obra civil (piso + umbral + rieles): $2,000,000             │
 │ Paneles de vidrio templado + marco: $5,000,000              │
-│ Operador automático (motor + control): $7,200,000           │
-│ Magneto de seguridad fail-safe: $690,000                    │
-│ Lector facial + controlador: $2,130,000                     │
+│ Operador automático ($1,200 + 25% imp.): $6,450,000        │
+│ Magneto fail-safe ($114 + 25%): $613,000                   │
+│ Lector facial DS-K1T342 + controlador: $1,903,000          │
 │ Mano de obra (2 técnicos × 2 días): $2,580,000             │
-│ TOTAL: $19,600,000 COP                                     │
+│ TOTAL: $18,546,000 COP                                    │
 │ * Incluye garantía 2 años en operador                      │
 └────────────────────────────────────────────────────────────┘
 
@@ -630,15 +640,15 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Restricción de pisos: cada residente/guest va solo          │
 │ al piso autorizado. Huéspedes Airbnb: solo su piso.         │
 │                                                             │
-│ Controlador UHPPOTE 20 pisos + relés: $2,000,000           │
-│ Lector facial en cabina (cámara domo + AI): $1,800,000     │
-│ Cableado de relés a botonera (materiales): $800,000        │
+│ Controlador UHPPOTE 20ch ($330 + 25%): $1,774,000          │
+│ Lector facial cabina DS-K1T342 ($254 + 25%): $1,365,000    │
+│ Cableado de relés a botonera (materiales): $800,000         │
 │ Mano de obra técnico señalista 1 día: $720,000             │
 │ Coordinación y apertura empresa de ascensores: $1,500,000  │
 │ Programación y pruebas: $600,000                           │
-│ TOTAL: $7,420,000 COP por ascensor                        │
-│ * Aplica para ascensores de hasta 20 pisos.                │
-│   Edificios 21-40 pisos: $9,800,000 (UHPPOTE 40ch)        │
+│ TOTAL: $6,759,000 COP por ascensor                        │
+│ * Hasta 20 pisos. Edificios 21–40 pisos:                   │
+│   UHPPOTE 40ch ($500 + 25%): $8,636,000 COP total         │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -646,22 +656,22 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Tracking continuo: el sistema registra trayectoria         │
 │ de cada persona desde lobby hasta su piso y de vuelta.     │
 │                                                             │
-│ Por piso: 1× cámara 4MP ColorVu: $1,806,000               │
+│ Por piso: 1× cámara 4MP ColorVu ($300 + 25%): $1,613,000  │
 │ Cableado e instalación: $600,000                           │
-│ TOTAL por piso: $2,406,000 COP                            │
-│ Ejemplo: edificio 15 pisos: $36,090,000 COP               │
+│ TOTAL por piso: $2,213,000 COP                            │
+│ Ejemplo: edificio 15 pisos: $33,195,000 COP               │
 │ * Requiere Plan Profesional o Enterprise                   │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
 │ ACCESO VEHICULAR — Barrera + Reconocimiento de Placas      │
 │                                                             │
-│ Barrera FAAC (tráfico moderado, brazo hasta 4m): $12,040,000│
-│ Cámara LPR Hikvision 2MP varifocal: $4,816,000             │
+│ Barrera FAAC ($2,000 + 25% imp.): $10,750,000             │
+│ Cámara LPR Hikvision ($800 + 25%): $4,300,000             │
 │ Controlador + software licencia de placas: $1,500,000      │
 │ Obra civil (detector de piso, señalización): $5,000,000     │
 │ Mano de obra (3 técnicos × 3 días): $5,805,000             │
-│ TOTAL: $29,161,000 COP                                    │
+│ TOTAL: $27,355,000 COP                                    │
 │ * Incluye 500 placas en base de datos                      │
 │   Placas adicionales: $15,000 COP/unidad                   │
 └────────────────────────────────────────────────────────────┘
@@ -670,11 +680,12 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ MAGNETO PARA PUERTA INTERIOR EXISTENTE                     │
 │ (cuarto de servicio, utilería, azotea, bicicletero, etc.)  │
 │                                                             │
-│ Magneto 600 lb + tarjeta de salida: $840,000               │
-│ Lector RFID (sin facial, para interiores): $430,000        │
+│ Magneto 600 lb ($114 + 25% imp.): $613,000                 │
+│ Botón de salida interior ($25 + 25%): $134,000             │
+│ Lector RFID sin facial ($90 + 25%): $484,000              │
 │ Mano de obra 1 técnico × 3 horas: $215,000                 │
-│ TOTAL: $1,485,000 COP por puerta                          │
-│ * Para acceso facial en interiores: +$1,100,000 COP        │
+│ TOTAL: $1,446,000 COP por puerta                          │
+│ * Para acceso facial en interiores: +$935,000 COP          │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -802,11 +813,11 @@ Puntos de acceso peatonal (puertas que se quieren controlar):
 ║  ─────────────────────────────────────           ║
 ║  COMPARACIÓN CON TU PORTERÍA ACTUAL:             ║
 ║                                                  ║
-║  Costo estimado 2 porteros:  $5,660,000/mes      ║
+║  Costo estimado 2 porteros:  $6,795,000/mes      ║
 ║  Costo IAccess:              $1,350,000/mes      ║
-║  Ahorro mensual:             $4,310,000/mes      ║
+║  Ahorro mensual:             $5,445,000/mes      ║
 ║                                                  ║
-║  Retorno de inversión:       ~12 meses           ║
+║  Retorno de inversión:       ~9 meses            ║
 ║                                                  ║
 ║  ─────────────────────────────────────           ║
 ║  HARDWARE INCLUIDO:                              ║
@@ -987,14 +998,14 @@ Lector facial entrada — HIKVISION DS-K1T671M-E1 (Pro Series)
 • IP65 (resistente a lluvia y polvo)
 • Módulo de huella dactilar integrado
 • Lector de tarjeta NFC/Mifare incorporado
-• Precio unitario en Colombia: ~$2,700,000 COP
+• Amazon USA: ~$450 · Precio Colombia (importado +25%): **~$2,419,000 COP**
 
 Lector facial secundario — HIKVISION DS-K1T342MFWX-E1 (Value Series)
 • Para accesos secundarios (parqueadero, zonas comunes)
 • Pantalla 4.3", facial + huella + tarjeta
 • 6,000 rostros almacenados
 • IP65, PoE
-• Precio unitario en Colombia: ~$1,530,000 COP
+• Amazon USA: ~$254 · Precio Colombia (importado +25%): **~$1,365,000 COP**
 
 Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
 • Imagen en color 24/7 (sin modo IR — imagen color real de noche)
@@ -1003,7 +1014,7 @@ Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
 • Micrófono incorporado
 • IP67 resistente a intemperie
 • PoE 12W
-• Precio en Colombia: ~$1,806,000 COP/unidad
+• Amazon USA: ~$300 · Precio Colombia (importado +25%): **~$1,613,000 COP/unidad**
 
 Servidor de IA local — INTEL NUC 13 PRO i7-1370P
 (para edificios hasta 60 aptos / 16 cámaras)
@@ -1012,7 +1023,7 @@ Servidor de IA local — INTEL NUC 13 PRO i7-1370P
 • 1TB SSD NVMe
 • Intel Iris Xe Graphics (aceleración de inferencia YOLO)
 • Consumo: 28W en reposo, 64W máximo
-• Precio en Colombia: ~$4,500,000 COP
+• Amazon USA: ~$750 · Precio Colombia (importado +25%): **~$4,031,000 COP**
 
 Servidor de IA local — NVIDIA JETSON ORIN NX 16GB
 (para edificios 60+ aptos o con 20+ cámaras)
@@ -1022,7 +1033,7 @@ Servidor de IA local — NVIDIA JETSON ORIN NX 16GB
 • 128GB SSD NVMe
 • Hasta 100 TOPS de rendimiento de IA
 • Procesa 20+ flujos de video simultáneos en tiempo real
-• Precio en Colombia: ~$7,200,000 COP
+• Amazon/distributor USA: ~$1,200 · Precio Colombia (importado +25%): **~$6,450,000 COP**
 
 ──────────────────────────────────────────────
 SEGURIDAD Y PRIVACIDAD
@@ -1038,8 +1049,8 @@ SEGURIDAD Y PRIVACIDAD
 PRECIOS
 
 Punto de acceso con facial (lector Pro + magneto + controlador):
-Desde $5,800,000 COP (hardware) + $1,200,000 COP (instalación)
-Total: desde $7,000,000 COP por punto de acceso
+Desde $5,366,000 COP (hardware: DS-K1T671M $2,419k + magneto 1200 lb $941k + controlador $538k + salidas $268k) + $1,200,000 COP (instalación)
+Total: desde $6,566,000 COP por punto de acceso
 
 Incluido en: Plan Profesional y Plan Enterprise
 Opcional en: Plan Esencial (+$4,100,000 COP)
@@ -1096,13 +1107,14 @@ CONTROLADOR DE PISOS — UHPPOTE 20/40 CANALES
 • Comunicación: RS-485 o TCP/IP con el servidor IAccess
 • Compatible con cualquier marca de ascensor (Schindler, ThyssenKrupp,
   OTIS, MIPSA, IMSA, y locales colombianos)
-• Precio: UHPPOTE 20ch ~$2,000,000 COP · 40ch ~$3,000,000 COP
+• Amazon USA: $330 (20ch) / $500 (40ch) · Precio Colombia (+20% imp.):
+  UHPPOTE 20ch **~$1,774,000 COP** · 40ch **~$2,688,000 COP**
 
 LECTOR EN CABINA — HIKVISION DS-K1T342MFWX-E1
 • Panel compacto montado en la pared interior del ascensor
 • Reconocimiento facial + QR + tarjeta NFC
 • Activación: cuando el usuario sube, identifica → habilita sus pisos
-• Precio: ~$1,530,000 COP por lector
+• Amazon USA: $254 · Precio Colombia (+25% imp.): **~$1,365,000 COP** por lector
 
 CÁMARA EN CABINA (opcional)
 • Cámara domo mini IP antivandálica 2MP
@@ -1128,10 +1140,10 @@ $1,500,000 COP) está incluido en nuestra cotización.
 ──────────────────────────────────────────────
 PRECIO
 
-Por ascensor, edificio hasta 20 pisos:   $7,420,000 COP (instalado)
-Por ascensor, edificio 21–40 pisos:      $9,800,000 COP (instalado)
-Lector en cabina (adicional):            +$2,130,000 COP
-Cámara en cabina (adicional):            +$1,200,000 COP
+Por ascensor, edificio hasta 20 pisos:   $6,759,000 COP (instalado)
+Por ascensor, edificio 21–40 pisos:      $8,636,000 COP (instalado)
+Lector en cabina (adicional):            +$1,903,000 COP
+Cámara en cabina (adicional):            +$1,075,000 COP
 
 Incluido en: Plan Profesional (1 ascensor), Plan Enterprise (2 ascensores)
 Disponible como add-on en: Plan Esencial
@@ -1261,9 +1273,9 @@ Incluye:
 • Pintura o estuco en el área intervenida
 
 Precio total instalado:
-  Vano existente suficiente (sin obra civil):  $17,300,000 COP
-  Requiere ensanche de vano (no estructural):  $19,800,000 – $22,500,000 COP
-  Requiere obra estructural (refuerzo, viga):  $24,000,000 – $30,000,000 COP
+  Vano existente suficiente (sin obra civil):  $16,270,000 COP
+  Requiere ensanche de vano (no estructural):  $18,770,000 – $21,270,000 COP
+  Requiere obra estructural (refuerzo, viga):  $22,770,000 – $28,770,000 COP
 
 Tiempo: 3–5 días (incluye curado de materiales)
 Nota: Se coordina con el administrador para no interrumpir el acceso.
@@ -1284,8 +1296,8 @@ Incluye:
 • Obra civil: guía de piso + riel superior + sellado perimetral
 
 Precio total instalado:
-  Vano estándar 1.8–2.4m de ancho: $19,600,000 – $24,000,000 COP
-  Vano más ancho (2.4–4m):         $27,000,000 – $36,000,000 COP
+  Vano estándar 1.8–2.4m de ancho: $18,187,000 – $22,000,000 COP
+  Vano más ancho (2.4–4m):         $25,000,000 – $33,000,000 COP
 
 Tiempo: 4–6 días
 Garantía en operador: 2 años
@@ -1305,11 +1317,11 @@ Con lector facial: $2,585,000 COP por puerta
 ──────────────────────────────────────────────
 ESPECIFICACIÓN TÉCNICA DE MAGNETOS
 
-| Magneto | Fuerza | Uso recomendado | Precio Colombia |
-|---|---|---|---|
-| 600 lb / 272 kg | Media | Puertas livianas, interiores | $690,000 COP |
-| 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $1,050,000 COP |
-| 1800 lb / 816 kg | Muy alta | Portones vehiculares, acceso industrial | $1,600,000 COP |
+| Magneto | Fuerza | Uso recomendado | Amazon USA | Colombia (+20% imp.) |
+|---|---|---|---|---|
+| 600 lb / 272 kg | Media | Puertas livianas, interiores | $114 | **$613,000 COP** |
+| 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $175 | **$941,000 COP** |
+| 1800 lb / 816 kg | Muy alta | Portones vehiculares, acceso industrial | $310 | **$1,666,000 COP** |
 
 Todos los magnetos son fail-safe (se abren al perder energía) y 
 cumplen con normas de seguridad contra incendio NFPA y RETIE.
@@ -1472,7 +1484,7 @@ CARACTERÍSTICAS: 48 apartamentos · 12 pisos · 2 ascensores
 INSTALADO: Octubre 2025
 
 EL PROBLEMA:
-La copropiedad gastaba $7.2M COP al mes en 3 porteros 
+La copropiedad gastaba $10.2M COP al mes en 3 porteros 
 (diurno + nocturno + fin de semana). El portero nocturno 
 faltaba en promedio 2 veces al mes. El cuaderno de visitas 
 tenía datos incompletos. Un robo en el piso 7 (agosto 2025) 
@@ -1498,8 +1510,8 @@ HARDWARE INSTALADO:
 TIEMPO DE INSTALACIÓN: 4 días hábiles
 
 RESULTADOS (4 meses después):
-💰 Ahorro mensual: $5,900,000 COP (3 porteros → $1,300,000 mensualidad)
-⏱ Retorno de inversión alcanzado: mes 10 (proyectado)
+💰 Ahorro mensual: $8,900,000 COP (3 porteros $10.2M → mensualidad $1,300,000)
+⏱ Retorno de inversión alcanzado: mes 7 (proyectado)
 📊 Ingresos registrados en 4 meses: 42,381
 🔍 Alertas de ingreso no autorizado resueltas: 14 (tailgaters detectados)
 😊 Satisfacción de residentes (encuesta interna): 91% positivo
@@ -1546,7 +1558,7 @@ RESULTADOS (3 meses):
 📞 Llamadas a propietarios para coordinar ingreso: 0
 ⏰ Tiempo de espera promedio de guests: 0 minutos
 😤 Quejas de vecinos sobre guests: 2 (vs 4/semana antes)
-💰 Ahorro en portería: $2,460,000 COP/mes (1 portero eliminado)
+💰 Ahorro en portería: $2,955,000 COP/mes (1 portero eliminado — incluyendo empresa de vigilancia)
    + costo evitado de rotación: ~$1,500,000 COP/mes (estimado)
 📈 Valorización del edificio por los propietarios: "Vendemos 
    más rápido porque IAccess es una feature que los compradores piden"
@@ -1576,10 +1588,10 @@ auxilio transporte + salud + pensión + ARL + parafiscales +
 primas + vacaciones + cesantías = total ~$2,462,050 COP/portero]
 
 H2: ¿Cuántos porteros necesita un edificio?
-• Edificio hasta 20 aptos, diurno solo: 1 portero → $2.46M/mes
-• Edificio hasta 60 aptos, día y noche: 2 porteros → $4.92M/mes
-• Edificio 60-120 aptos, 24/7 con reemplazos: 3 porteros → $8.1M/mes
-• Edificio premium 120+ aptos: 4+ porteros → $11M+/mes
+• Edificio hasta 20 aptos, diurno solo: 1 portero → **$2.95M/mes** (con empresa de vigilancia)
+• Edificio hasta 60 aptos, día y noche: 2 porteros → **$5.91M/mes** raw, **$6.79M/mes** con reemplazos
+• Edificio 60-120 aptos, 24/7 con reemplazos: 3 porteros → **$8.86M/mes** raw, **$10.2M/mes** con reemplazos
+• Edificio premium 120+ aptos: 4+ porteros → **$11.8M+/mes** raw, **$13.6M+/mes** con reemplazos
 
 H2: Los costos ocultos que nadie cuenta
 • Incapacidad médica: ¿quién reemplaza? Agencia de empleo: $180,000–$300,000/día
@@ -1754,31 +1766,41 @@ Hero video:
 ### Quote Calculator Logic (JavaScript)
 ```javascript
 // All values in COP
+// Pricing formula: Amazon USD × 1.25 (importation+shipping+customs) × 4,300 COP/USD = × 5,375
 const PRICING = {
   // Hardware base per access point
   accessPoint: {
-    readerPro:    2_700_000,  // DS-K1T671M
-    readerValue:  1_530_000,  // DS-K1T342
-    maglock1200:  1_050_000,
-    maglock600:     690_000,
-    controller:     600_000,
-    exitButton:     150_000,
+    readerPro:    2_419_000,  // DS-K1T671M  ($450 × 5,375)
+    readerValue:  1_365_000,  // DS-K1T342   ($254 × 5,375)
+    maglock1200:    941_000,  // 1200 lb     ($175 × 5,375)
+    maglock600:     613_000,  // 600 lb      ($114 × 5,375)
+    controller:     538_000,  // (~$100 × 5,375)
+    exitButton:     134_000,  // (~$25  × 5,375)
   },
   camera: {
-    colorVu4MP:   1_806_000,  // DS-2CD2347G2-LU
-    colorVu8MP:   2_290_000,  // DS-2CD2387G2-LU
+    colorVu4MP:   1_613_000,  // DS-2CD2347G2-LU  ($300 × 5,375)
+    colorVu8MP:   2_043_000,  // DS-2CD2387G2-LU  ($380 × 5,375)
   },
   nvr: {
-    ch16_4TB:     3_200_000,  // DS-7616NXI-K2 + 4TB HDD
-    ch8_2TB:      2_500_000,
+    ch16_4TB:     2_865_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 × 5,375)
+    ch8_2TB:      2_150_000,  // 8ch NVR + 2TB (~$400 × 5,375)
   },
   server: {
-    nucI7:        4_500_000,  // Intel NUC 13 Pro
-    jetsonOrinNX: 7_200_000,  // NVIDIA Jetson Orin NX 16GB
+    nucI7:        4_031_000,  // Intel NUC 13 Pro i7  ($750 × 5,375)
+    jetsonOrinNX: 6_450_000,  // NVIDIA Jetson Orin NX 16GB  ($1,200 × 5,375)
   },
   network: {
-    ups1500va:      900_000,
-    switch24poe:  1_200_000,
+    ups1500va:      806_000,  // ($150 × 5,375)
+    switch24poe:  1_075_000,  // ($200 × 5,375)
+    switch8poe:     430_000,  // ($80  × 5,375)
+  },
+  elevator: {
+    uhppote20ch:  1_774_000,  // UHPPOTE 20ch ($330 × 5,375)
+    uhppote40ch:  2_688_000,  // UHPPOTE 40ch ($500 × 5,375)
+  },
+  vehicle: {
+    faacGate:    10_750_000,  // FAAC barrier ($2,000 × 5,375)
+    lprCamera:    4_300_000,  // Hikvision LPR ($800 × 5,375)
   },
   install: {
     techHr:        86_000,   // $20/hr × 4,300 COP/USD (skilled installer)
@@ -1893,7 +1915,8 @@ function calculatePackage(inputs) {
   const nPorteros = currentPorteros !== undefined
     ? porteroCount[currentPorteros] || 0
     : (nApts < 25 ? 1 : nApts < 80 ? 2 : 3);
-  const porteroMonthlyCost = nPorteros * 2_462_050 * 1.15; // + 15% replacement buffer
+  // $2,462,050 base × 1.20 empresa de vigilancia mandatory cut × 1.15 replacement buffer
+  const porteroMonthlyCost = nPorteros * 2_462_050 * 1.20 * 1.15;
 
   // ─── RANGE (±20%) ───
   return {
@@ -1987,7 +2010,7 @@ Long-tail:
 
 ---
 
-*IAccess Website Design Brief v2.0 — May 2026*  
-*Pricing basis: Amazon/authorized distributor USD prices × 1.40 Colombia markup × 4,300 COP/USD*  
+*IAccess Website Design Brief v2.1 — May 2026*  
+*Pricing basis: Amazon USD retail price + 20% importation/shipping × 4,300 COP/USD = × 5,160 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
-*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional*
+*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*
