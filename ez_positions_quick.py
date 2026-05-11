@@ -5112,7 +5112,22 @@ class HedgeEngine:
                 _peek_1h_against = (_peek_is_long and _peek_w1_1h < _peek_w2_1h) or (not _peek_is_long and _peek_w1_1h > _peek_w2_1h)
             except Exception:
                 pass
-            _user_trigger_active = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', True)) and _peek_3m_against and _peek_1h_against
+            # USER 2026-05-11: hedge OPEN trigger = wt1_3m AND (wt1_15m OR wt1_1h). The 3m-AND-1h-only path
+            # was causing 31.8% of all closes in 24h to be HEDGE_FAILED_FALLBACK_CLOSE because 1h hadn't flipped
+            # when 3m did. New predicate is tested below at the main trigger (search HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H).
+            # Here we mirror the same logic for the deteriorating-gain bypass — peek wt_15m to allow the new path.
+            _peek_15m_against = False
+            try:
+                _peek_w1_15m = safe_fetch_float(_peek_ind.get('wt1_15m'), 0)
+                _peek_w2_15m = safe_fetch_float(_peek_ind.get('wt2_15m'), 0)
+                _peek_15m_against = (_peek_is_long and _peek_w1_15m < _peek_w2_15m) or (not _peek_is_long and _peek_w1_15m > _peek_w2_15m)
+            except Exception:
+                pass
+            _use_15m_or_1h = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
+            if _use_15m_or_1h:
+                _user_trigger_active = _peek_3m_against and (_peek_15m_against or _peek_1h_against)
+            else:
+                _user_trigger_active = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', True)) and _peek_3m_against and _peek_1h_against
             if bool(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_ENABLED', True)) and not _user_trigger_active:
                 _det_prev = safe_fetch_float(getattr(pos, 'prev_gain', pnl_pct), pnl_pct)
                 _det_delta = float(getattr(self.config, 'HEDGE_DETERIORATING_GAIN_DELTA_PP', 0.10))
@@ -5186,9 +5201,15 @@ class HedgeEngine:
             # User mandate 2026-05-09: wt1_3m AND wt1_1h against = OBLIGATORY hedge trigger (highest priority).
             # When HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H=True (default), this is the ONLY trigger.
             # Falls back to legacy HEDGE_TRIGGER_USE_WT_3M_ALONE / 15m-OR-(3m+1h) when user trigger disabled.
+            # USER 2026-05-11: new predicate `3m AND (15m OR 1h)` takes priority over the legacy 3m+1h gate.
+            # Catches sharp 3m+15m moves the 1h-lag couldn't, while keeping 2-TF confirmation.
+            _require_3m_and_15m_or_1h = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H', True))
             _require_3m_and_1h = bool(getattr(self.config, 'HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H', True))
             _use_3m_alone = bool(getattr(self.config, 'HEDGE_TRIGGER_USE_WT_3M_ALONE', True))
-            if _require_3m_and_1h:
+            if _require_3m_and_15m_or_1h:
+                _wt_against_origin = _3m_against and (_15m_against or _1h_against)
+                _trigger_label = "3m_AND_(15m_OR_1h)"
+            elif _require_3m_and_1h:
                 _wt_against_origin = _3m_against and _1h_against
                 _trigger_label = "3m_AND_1h"
             elif _use_3m_alone:
@@ -14053,12 +14074,16 @@ async def check_exit_candidates_for_account(trade_manager, account_key: str, red
                     if _pgp_max_g >= _pgp_min_peak:
                         _pgp_hard_zero = bool(getattr(config, 'PEAK_GIVEBACK_HARD_ZERO_ENABLED', True))
                         _pgp_drop = float(getattr(config, 'PEAK_GIVEBACK_DROP_PCT', 1.0))
+                        # USER 2026-05-11: gated the 0.5% giveback trigger behind PEAK_GIVEBACK_DROP_TRIGGER_ENABLED
+                        # (default False). It was closing breakouts on first retest (5.98% → 4.47% etc). User mandate:
+                        # "wait until rejection (from bb/dc) before closing". hard_zero breakeven branch remains active.
+                        _pgp_drop_enabled = bool(getattr(config, 'PEAK_GIVEBACK_DROP_TRIGGER_ENABLED', False))
                         if _pgp_hard_zero and current_gain < 0.08:
                             hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_cur{current_gain:.2f}%"
-                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% near-zero cur={current_gain:.2f}% — EXITING (technicals first; HTF veto bypassed) ⚠️ DO NOT DISABLE")
-                        elif current_gain < _pgp_max_g - _pgp_drop:
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: WAS profitable peak={_pgp_max_g:.2f}% near-zero cur={current_gain:.2f}% — EXITING (technicals first; HTF veto bypassed)")
+                        elif _pgp_drop_enabled and current_gain < _pgp_max_g - _pgp_drop:
                             hard_exit_reason = f"PEAK_GIVEBACK_GAIN_EROSION_STOP_peak{_pgp_max_g:.2f}%_drop{_pgp_drop:.1f}%_cur{current_gain:.2f}%"
-                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING ⚠️ DO NOT DISABLE")
+                            logger.critical(f"🔥[PEAK_GIVEBACK] {position_key}: gave back >{_pgp_drop:.1f}% from peak={_pgp_max_g:.2f}% cur={current_gain:.2f}% — EXITING")
                 hard_augment = False
                 if not hard_exit_reason:
                     last_aug_age = minutes_since(position.last_augmentation_time)

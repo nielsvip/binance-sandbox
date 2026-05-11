@@ -755,7 +755,8 @@ class Config:
     # Note: previous HARD_MAX_LOSS_PCT=-5% destroyed gains. -15% is the empirical "definitely dead" threshold.
     RIDICULOUS_HOLD_GUARD_ENABLED: bool = True
     RIDICULOUS_LOSS_PCT: float = -15.0    # absolute loss cap — never exceed this
-    RIDICULOUS_HOLD_HOURS: float = 48.0   # 2 days max underwater duration
+    RIDICULOUS_HOLD_HOURS: float = 720.0  # USER 2026-05-11: was 48h → 720h (30 days). 64.1% of all closes in 24h were RIDICULOUS_HOLD time-caps closing losers at -12/-15/-17%. Not one of the 3 sanctioned loss-exit paths (R1/R2/HEDGE_FAILED). See also RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG below.
+    RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG: bool = True  # USER 2026-05-11: HOLD-cap path may only flatten stale positions when gain >= 0 (clean-up winners that ran out of momentum). Losers get hedged via OBLIGATORY_HEDGE / R1 / R2 instead.
     # USER 2026-05-06 (1000LUNC -18% incident): when DC/BB Daily band breaks (UP or DOWN),
     # close any wrong-side position and immediately open opposite. Reverse AGAIN if same level
     # crossed back (per-sym state tracked in trade_manager._dc_bb_d_break_state).
@@ -869,9 +870,9 @@ class Config:
     GOLDEN_RULE_REQUIRE_HEDGE_OPEN: bool = True            # mandatory paired hedge (TODO wire)
     GUARANTEED_REENTRY_REQUIRE_HEDGE_OPEN: bool = True
     # HTF-trend vetoes — defense-in-depth alongside the consensus gate.
-    GOLDEN_RULE_HTF_VETO_ENABLED: bool = True
-    GUARANTEED_REENTRY_HTF_VETO_ENABLED: bool = True
-    HTF_VETO_REQUIRE_D: bool = True  # True=D mandatory bearish/bullish; False=either D or 4h
+    GOLDEN_RULE_HTF_VETO_ENABLED: bool = False  # USER 2026-05-11: was True → False. Veto was killing day-1 LONG entries on every breakout (Daily HA still red when 3m flips up). Live evidence: missed 1000BONK / TON / ZEC rallies entirely. Backtest GR_HTF_VETO_off shows ambiguous signal (sub-floor DIAGNOSTIC); user mandate explicit.
+    GUARANTEED_REENTRY_HTF_VETO_ENABLED: bool = False  # USER 2026-05-11: same rationale — REENTRY must fire on bounce regardless of HTF, mirroring the entry-side loosening.
+    HTF_VETO_REQUIRE_D: bool = True  # (no-op while HTF_VETO_ENABLED=False) True=D mandatory bearish/bullish; False=either D or 4h
     # R1 — DC4_3M EMERGENCY CLOSE within newborn window (USER 2026-05-09)
     # Fires while position is fresh and price breaks 4-bar 3m channel low/high.
     # Bypasses NO_LOSS, hedge, MTF. Desktop alert + JSONL log naming entry signal.
@@ -1128,7 +1129,7 @@ class Config:
     # 'WT_3M_FORCE_OPEN' bypasses HARD_AUGMENT_LOCK / DUP_GUARD / NOLOSS in execute_now.
     WT_3M_FORCE_OPEN_ENABLED: bool = True
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True  # bypass HARD_AUGMENT_LOCK + DUP_GUARD on this reason
-    WT_3M_FORCE_OPEN_SIZE_USD: float = 9.0      # opens at this notional (≈ START_POSITION_SIZE)
+    WT_3M_FORCE_OPEN_SIZE_USD: float = 25.0     # USER 2026-05-11: raised 9→25. $9 too small to ride breakouts when wt_3m fires (1000BONK / TON / ZEC missed-rally pattern).
     # === DC RECOVERY-TO-ENTRY EXIT BYPASS (2026-04-15, crypto) ===
     # When True: if entry_price is on wrong side of dc_high_4h (LONG above) / dc_low_4h (SHORT below),
     # AND current 3m close has recovered to within tolerance of entry_price,
@@ -1347,7 +1348,8 @@ class Config:
     # SKY.USDT incident 2026-05-09: -17% for 11 days, no hedge, no close — exact failure mode this fixes.
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_ENABLED: bool = True              # master switch for the periodic loop
     OBLIGATORY_HEDGE_OR_CLOSE_LOOP_INTERVAL_SECONDS: float = 60.0    # how often to scan losing positions
-    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = True                  # USER 2026-05-10 LATEST (supersedes earlier wt_3m_alone): "HEDGES ARE OPEN AS LONG AS wt1_3m AND wt1_1h AGREE with hedge". Both TFs required for open. Close still uses wt_3m alone (HEDGE_CLOSE_MODE='wt_3m'). If no hedge can be taken (3m+1h not aligned) → position closes at loss per user spec.
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_1H: bool = False                 # USER 2026-05-11: was True → False. Live data: 5,848 HEDGE_FAILED_FALLBACK_CLOSE in 24h (31.8% of all closes) because 1h hadn't flipped when 3m did. Superseded by HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H below.
+    HEDGE_TRIGGER_REQUIRE_WT_3M_AND_15M_OR_1H: bool = True           # USER 2026-05-11 LATEST: hedge OPEN requires wt1_3m against AND (wt1_15m against OR wt1_1h against). Catches sharp 3m+15m moves the 1h-lag couldn't, while keeping 2-TF confirmation. Close still uses wt_3m alone (HEDGE_CLOSE_MODE='wt_3m').
     HEDGE_FAILED_FALLBACK_CLOSE_ENABLED: bool = True                 # on hedge failure → close (HEDGE_FAILED bypass already in NOLOSS list)
     # ═══ REENTRY NEVER-SKIP — USER MANDATE 2026-05-09 ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
@@ -1364,9 +1366,10 @@ class Config:
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
     # MOVEUSDT bled from +1.26% peak to -13% because HTF_EXIT_VETO blocked breakeven exit.
     # Fires when position was profitable and gains have been given back. Bypasses HTF_EXIT_VETO.
-    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True    # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION
+    PEAK_GIVEBACK_PROTECTION_ENABLED: bool = True    # master switch — keep hard_zero breakeven-protect branch alive
     PEAK_GIVEBACK_MIN_PEAK_PCT: float = 0.5          # must have reached >= 0.5% gain to activate
-    PEAK_GIVEBACK_DROP_PCT: float = 0.5              # 2026-04-27: 1.0→0.5. Live audit: V3 positions peaked +3-7% (UMA 6.58, INX 4.94, NEIRO 4.72) and gave it ALL back to 0% before PEAK_GIVEBACK fired (fired at peak_drop≥1pp, so 4% peak only triggered exit after dropping to 3%). Tighter pp threshold locks more of the peak.
+    PEAK_GIVEBACK_DROP_PCT: float = 0.5              # (no-op while PEAK_GIVEBACK_DROP_TRIGGER_ENABLED=False) drop threshold for the giveback branch.
+    PEAK_GIVEBACK_DROP_TRIGGER_ENABLED: bool = False # USER 2026-05-11: was implicit-True → False. 0.5% giveback trigger was closing breakouts on first retest. User mandate: "wait until rejection (from bb/dc) before closing". The hard_zero breakeven branch remains active (governed by PEAK_GIVEBACK_HARD_ZERO_ENABLED).
     PEAK_GIVEBACK_HARD_ZERO_ENABLED: bool = False    # 2026-04-27 OFF: was forcing exit at exactly 0% gain after a profitable peak — that's WHY UMA/INX/NEIRO all closed at 0%. Now technicals own the loss-side; let positions ride past BE if WT/K/DC haven't reversed.
     # ═══ HARD_BREAKEVEN_FLOOR (2026-04-19) ═══
     # ⚠️ DO NOT DISABLE WITHOUT EXPLICIT USER PERMISSION — REAL MONEY PROTECTION
@@ -1971,7 +1974,7 @@ class Config:
     # ADDITIVE gates — only block bad entries, never create new ones. Default OFF until V8 validated.
     CT_WT_VELOCITY_GATE_ENABLED: bool = True  # BC_170: ENABLED 2026-04-08. 5yr validated: Sharpe 1.94→5.26, 100% monthly positive, keeps 67% of trades. Don't trade against 1h WT velocity.
     GOLDEN_RULE_HTF_MIN_TFS: int = 0  # GOLDEN_RULE gate: require this many TFs to confirm (0=off). TFs=[3m,15m,1h,4h,D]. Sweep 1-5 to find best.
-    GOLDEN_RULE_MIN_IND: int = 2  # Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree. Sweep 1-5.
+    GOLDEN_RULE_MIN_IND: int = 1  # USER 2026-05-11: was 2 → 1. Loosen GR consensus to admit more breakout entries. Backtest sub-floor DIAGNOSTIC doesn't differentiate; user mandate explicit. Per-TF: need this many of [WT,RSI,MFI,DC,BB] to agree.
     CT_WT_VELOCITY_1H_MIN: float = 9.0  # 2026-04-20 sweep: vel=9+rally=30 → Sharpe 2.598 (target met). Was 8.0.
     DD_BOUNCE_ENABLED: bool = False  # 2026-04-20: double-down on wt_D or wt_4h bounce while losing. OFF until sweep validates.
     DD_BOUNCE_WT_D_ENABLED: bool = True  # if DD_BOUNCE_ENABLED: use wt_D trigger

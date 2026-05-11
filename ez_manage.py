@@ -21386,19 +21386,26 @@ async def process_position(account_key: Optional[str] = None, position_key: Opti
         if _rh_gain <= _rh_loss_cap:
             _rh_force = True
             _rh_why = f'RIDICULOUS_LOSS_g{_rh_gain:.2f}%_cap{_rh_loss_cap:.1f}%'
-        elif _rh_gain < 0:
-            _rh_opened = getattr(position, 'opened_at', None)
-            if _rh_opened:
-                try:
-                    _rh_dt = isoparse(_rh_opened) if isinstance(_rh_opened, str) else _rh_opened
-                    if hasattr(_rh_dt, 'tzinfo') and _rh_dt.tzinfo is None:
-                        _rh_dt = _rh_dt.replace(tzinfo=timezone.utc)
-                    _rh_age_h = (now - _rh_dt).total_seconds() / 3600.0 if hasattr(_rh_dt, 'tzinfo') else 0
-                    if _rh_age_h > _rh_hold_hours:
-                        _rh_force = True
-                        _rh_why = f'RIDICULOUS_HOLD_age{_rh_age_h:.1f}h_cap{_rh_hold_hours:.0f}h_g{_rh_gain:.2f}%'
-                except Exception:
-                    pass
+        else:
+            # USER 2026-05-11: HOLD-cap path now requires gain >= 0 (clean-up stale winners only).
+            # Was previously firing on `_rh_gain < 0` after 48h, closing losers at -12/-15% — that path
+            # is OUTSIDE the 3 sanctioned loss-exit paths (R1 / R2 / HEDGE_FAILED) and was the #1 cause
+            # of forced losses (64.1% of 18,363 closes in 24h on 2026-05-11).
+            _rh_require_nonneg = bool(getattr(config, 'RIDICULOUS_HOLD_REQUIRE_GAIN_NONNEG', True))
+            _rh_gain_ok_for_hold = (_rh_gain >= 0.0) if _rh_require_nonneg else (_rh_gain < 0.0)
+            if _rh_gain_ok_for_hold:
+                _rh_opened = getattr(position, 'opened_at', None)
+                if _rh_opened:
+                    try:
+                        _rh_dt = isoparse(_rh_opened) if isinstance(_rh_opened, str) else _rh_opened
+                        if hasattr(_rh_dt, 'tzinfo') and _rh_dt.tzinfo is None:
+                            _rh_dt = _rh_dt.replace(tzinfo=timezone.utc)
+                        _rh_age_h = (now - _rh_dt).total_seconds() / 3600.0 if hasattr(_rh_dt, 'tzinfo') else 0
+                        if _rh_age_h > _rh_hold_hours:
+                            _rh_force = True
+                            _rh_why = f'RIDICULOUS_HOLD_age{_rh_age_h:.1f}h_cap{_rh_hold_hours:.0f}h_g{_rh_gain:.2f}%_nonneg'
+                    except Exception:
+                        pass
         if _rh_force:
             _rh_pos_amt = abs(safe_float(getattr(position, 'positionAmt', 0)))
             _rh_side = 'SELL' if position_side == 'LONG' else 'BUY'

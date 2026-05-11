@@ -1393,8 +1393,14 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if _live_pnl["first_close_ts"] == 0:
                 _live_pnl["first_close_ts"] = _sim_ts[0]
             _live_pnl["last_close_ts"] = _sim_ts[0]
-            if _pnl_pct > 0: _live_pnl["n_wins"] += 1
-            else: _live_pnl["n_losses"] += 1
+            # 2026-05-11 ROUND-TRIP WR FIX: don't count win/loss on each REDUCE.
+            # PARTIAL_PROFIT_LOCK creates many small REDUCE events at +0.5% that get
+            # counted as "wins" while subsequent full-close losses are also counted but
+            # outweighed in count. Result: 97-100% WR with NEGATIVE total gain — the
+            # exact pattern the user warned about. Fix: accumulate per-position cum_pnl,
+            # only count ONE win or ONE loss per round-trip on full close (qty -> 0).
+            _pos["cum_pnl_pct"] = _pos.get("cum_pnl_pct", 0.0) + _pnl_pct
+            _pos["cum_pnl_dollars"] = _pos.get("cum_pnl_dollars", 0.0) + _pnl_dollars
             _br = _live_pnl["by_reason"].setdefault(_close_reason_short, {"n": 0, "pnl_pct_sum": 0.0, "n_wins": 0, "n_losses": 0, "worst_loss": 0.0, "best_win": 0.0, "examples": []})
             _br["n"] += 1
             _br["pnl_pct_sum"] += _pnl_pct
@@ -1414,6 +1420,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             else: _ber["n_losses"] += 1
             _pos["qty"] -= _close_qty
             if _pos["qty"] <= 0.0001:
+                # 2026-05-11 ROUND-TRIP WR FIX: position fully closed — count ONE win/loss
+                # based on cumulative pnl across all REDUCE events on this position.
+                _rt_cum_pnl_pct = _pos.get("cum_pnl_pct", _pnl_pct)
+                if _rt_cum_pnl_pct > 0:
+                    _live_pnl["n_wins"] += 1
+                else:
+                    _live_pnl["n_losses"] += 1
                 del _live_pnl["open_positions"][pk]
             _live_sharpe_w, _live_gain_pct, _live_gain_dol, _, _live_sharpe_pt, _live_sharpe_ann, _live_tpy = _compute_sharpe_and_gain()
             # CANONICAL_METRICS.md: pool_sharpe (= sharpe_per_trade) only — sharpe_ann banned.
@@ -2397,7 +2410,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             n_active = sum(1 for p in trade_manager.positions.values() if abs(getattr(p, 'positionAmt', 0)) > 0.0001)
             elapsed = _wallclock_now - t0
             _sharpe_w, _gain_pct, _gain_dol, _sum_pct, _sharpe_pt, _sharpe_ann, _tpy = _compute_sharpe_and_gain()
-            _wr = _live_pnl['n_wins'] * 100.0 / max(1, _live_pnl['n_closes'])
+            # 2026-05-11 ROUND-TRIP WR FIX: denominator is n_wins+n_losses (round trips),
+            # NOT n_closes (which counts every partial REDUCE event including PARTIAL_PROFIT_LOCK fires).
+            _wr = _live_pnl['n_wins'] * 100.0 / max(1, _live_pnl['n_wins'] + _live_pnl['n_losses'])
             _gate_pct = _gate_filtered * 100 // max(1, _gate_total_checks)
             try:
                 import resource as _rs_mod

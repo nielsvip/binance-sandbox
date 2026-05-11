@@ -48,9 +48,9 @@ Imposter results bypass `metrics_guard`, hide sample, entrap live config. **Refu
 
 ## 🚨🚨🚨 SWEEP-LIVENESS MANDATE — NON-NEGOTIABLE 🚨🚨🚨
 
-### MACHINE ROLES — UPDATED 2026-05-08
+### MACHINE ROLES (2026-05-08)
 
-**S2 IS DEAD (user shut down 2026-05-08). S1 runs BOTH crypto AND tradier sweeps.**
+**S2 DEAD (user shut down). S1 runs BOTH crypto AND tradier sweeps.**
 
 | Machine | Role | MUST run | MUST NOT run |
 |---|---|---|---|
@@ -65,35 +65,32 @@ Mode-mismatch = 0-trade lying results. **Has cost weeks. KILL on sight.**
 ```bash
 # (a) MacBook live trading — expect ≥7
 ps -ef | grep -E 'ez_manage\.py --account|tradier_manage\.py --account' | grep -v grep | wc -l
-# (b) S1 crypto sweeps — expect ≥1
-ssh s1-int 'pgrep -afc "backtest_v8_sweep.*--mode crypto"'
-# (c) S1 tradier sweeps — expect ≥1
-ssh s1-int 'pgrep -afc "backtest_v8_sweep.*--mode tradier"'
+# (b) S1 crypto + (c) tradier sweeps — expect ≥1 each
+ssh s1-int 'pgrep -afc "backtest_v8_sweep.*--mode crypto"; pgrep -afc "backtest_v8_sweep.*--mode tradier"'
 # (d) Results growing
-ssh s1-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/ | head -3'
-ssh s1-int 'ls -lt /home/niels/logs/bt_sweep_*.log | head -3'
+ssh s1-int 'ls -lt /home/niels/binance-sandbox/data/sweep_results/ | head -3; ls -lt /home/niels/logs/bt_sweep_*.log | head -3'
 ```
 Sweep shows 0 → relaunch via `watchdog_sweep_s1.sh` (crypto) or manually `backtest_v8_sweep.py --mode tradier`.
 
-### LAUNCHER SCRIPTS — USE THESE, NEVER AD-HOC NOHUP
+### LAUNCHERS — USE THESE, NEVER AD-HOC NOHUP
 
 GUI: **http://localhost:5051/sweeps** (crypto→S1, tradier→S2, refuses mismatch).
 ```bash
 ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh wt_dc_full'
 ssh s1-int 'bash /home/niels/binance-sandbox/start_crypto_sweeps.sh status'
 ```
-Launchers refuse wrong-host, use `nohup ... > ~/logs/sweep_<tier>_<ts>.log 2>&1 < /dev/null & disown`, verify workers after 30s. **Ad-hoc nohup chains die on ssh disconnect — lost months of compute.**
+Launchers refuse wrong-host, use `nohup ... > ~/logs/sweep_<tier>_<ts>.log 2>&1 < /dev/null & disown`, verify workers after 30s. **Ad-hoc nohup dies on ssh disconnect — lost months of compute.**
 
 ### POST-LAUNCH VERIFICATION (every sweep)
-1. T+5s: `pgrep -af <tier>` ≥3 processes.
-2. T+30s: log shows startup banner — no `Traceback`/`ERROR`/`MODE_CONFIG_MISMATCH_SKIP`.
+1. T+5s: `pgrep -af <tier>` ≥3 procs.
+2. T+30s: log shows banner — no `Traceback`/`ERROR`/`MODE_CONFIG_MISMATCH_SKIP`.
 3. T+5min: CSV rows > header. 0 → stuck, investigate.
-4. Only then state: "S1 wt_dc_full: N workers, log advancing, CSV at R rows."
+4. Only then: "S1 wt_dc_full: N workers, log advancing, CSV at R rows."
 
 Log path: `~/logs/<name>.log` NOT `/tmp/` (cleared on reboot). Always `< /dev/null & disown`.
 
 ### END-OF-SESSION CHECK
-Repeat (a)–(d). State: "MacBook 7 procs. S1: N workers, CSV R rows, growing." NEVER "Launched, exiting." — sweep dying after you leave = compute wasted.
+Repeat (a)–(d). "MacBook 7 procs. S1: N workers, CSV R rows, growing." NEVER "Launched, exiting." — sweep dying after you leave = compute wasted.
 
 ---
 
@@ -107,7 +104,7 @@ Repeat (a)–(d). State: "MacBook 7 procs. S1: N workers, CSV R rows, growing." 
 
 **Backtest convention**: USDT historical data labeled USDC for 10 majors (USDC perps launched 2024). Label=USDC; source rows=USDT. Live queries actual USDC bid/ask before ordering.
 
-**MUST NOT EXIST** for 10 majors: `klines_cache/{sym}USDT_*.json`, `klines_cache_backtest/{sym}USDT_*.json`, `klines_cache_gateway/{sym}USDT_*.json`, `backtest_v8/indicators/{sym}USDT.npz`, `data/funding_cache/{sym}USDT.json`, `data/oi_cache/{sym}USDT.json`. Found → DELETE. Accidental USDT fetch for USDC sym → rename to USDC immediately. Never leave both.
+**MUST NOT EXIST** for 10 majors: `klines_cache{,_backtest,_gateway}/{sym}USDT_*.json`, `backtest_v8/indicators/{sym}USDT.npz`, `data/{funding,oi}_cache/{sym}USDT.json`. Found → DELETE. Accidental USDT fetch for USDC sym → rename to USDC immediately. Never leave both.
 
 ---
 
@@ -116,10 +113,10 @@ Repeat (a)–(d). State: "MacBook 7 procs. S1: N workers, CSV R rows, growing." 
 1. **NPZ source = `klines_cache_backtest/` ONLY.** NOT `klines_cache/` (live), NOT `klines_cache_gateway/`. Holds 5+ yrs 15m klines for 50 USDT + 10 USDC majors. **15m is BASIS — all TFs (1h, 4h, D, W, M, 3m, 5m) derived from 15m by precompute.**
 2. **Mac uses `klines_cache/`** (live + V3 forward-test, ~1200 bars). No multi-year sweeps on Mac.
 3. **Servers backtest from `klines_cache_backtest/`.**
-4. **Tail freshness**: before each regen, append latest klines from `klines_cache/` into `klines_cache_backtest/` so 15m base ≤1hr old.
+4. **Tail freshness**: pre-regen, append latest klines from `klines_cache/` into `klines_cache_backtest/` so 15m base ≤1hr old.
 5. **NPZ scope**: 48+ crypto × 4yr + 128+ stocks × 4yr. Narrower = noise.
-6. **NPZ MUST include EVERY param v8 sweep ever asks for** — all TFs (adx_15m/4h/D/5m, macd_crossover_*/crossunder_* all TFs, wt*_W/wt*_M etc.). Zero-filled missing fields = lying results.
-7. **Mandatory audit pre-sweep**: `python /tmp/audit_npz_fields.py v8_quick_engine.py backtest_v8/indicators MODE` — must report `ALL FIELDS PRESENT ✓`. Failures = REJECT.
+6. **NPZ MUST include EVERY param v8 sweep asks for** — all TFs (adx_15m/4h/D/5m, macd_crossover_*/crossunder_* all TFs, wt*_W/wt*_M etc.). Zero-filled missing = lying results.
+7. **Audit pre-sweep**: `python /tmp/audit_npz_fields.py v8_quick_engine.py backtest_v8/indicators MODE` — must report `ALL FIELDS PRESENT ✓`. Fail = REJECT.
 
 ---
 
@@ -138,13 +135,13 @@ Repeat (a)–(d). State: "MacBook 7 procs. S1: N workers, CSV R rows, growing." 
 ```bash
 cp <file> backups/before_<description>_<YYYYMMDDHHMM>.py
 ```
-Autosave: `autosave_15min.py` → `backups/autosave/<timestamp>/`, auto-commits to git every 15min via launchd (`~/Library/LaunchAgents/com.niels.autosave-15min.plist`). `/backups/` = ONLY reliable history.
+Autosave: `autosave_15min.py` → `backups/autosave/<timestamp>/`, auto-commits git every 15min via launchd (`~/Library/LaunchAgents/com.niels.autosave-15min.plist`). `/backups/` = ONLY reliable history.
 
 ---
 
 ## 🔴 SANDBOX PARITY — S1 MUST ALWAYS MATCH MACBOOK
 
-**MacBook is SOLE SOURCE OF TRUTH.** Sandbox drift → sweep results LIE. (S2 dead 2026-05-08; rule remains S1 must match Mac.)
+**MacBook is SOLE SOURCE OF TRUTH.** Sandbox drift → sweep results LIE.
 
 ### 6 files bit-identical on MacBook + S1 at ALL times
 `ez_manage.py, ez_positions_quick.py, ez_positions_service.py, tradier_manage.py, config.py, config_tradier.py`
@@ -175,14 +172,14 @@ rsync -az --existing --update \
 
 ## 🚫 CRYPTO vs TRADIER CONFIGS — NEVER CONFUSE MODES
 
-| Config file | Machine | Mode | Python |
+| Config | Machine | Mode | Python |
 |---|---|---|---|
 | `config.py` | **S1** | `crypto` | `/home/niels/.conda/envs/binance_env/bin/python` |
 | `config_tradier.py` | **S1** | `tradier` | `/home/niels/.conda/envs/binance_env/bin/python` |
 
-Guards: `v8_test_queue.py` returns `status="mode_skip"` on mismatch (not silent 0-trade). `sweep_cockpit.py` hardcodes correct config per mode. `V8_PYTHON` env var overrides Python path on servers.
+Guards: `v8_test_queue.py` returns `status="mode_skip"` on mismatch (not silent 0-trade). `sweep_cockpit.py` hardcodes correct config per mode. `V8_PYTHON` env var overrides Python path.
 
-Monitoring: `WINNER=<X> Δ=0.000` with both arms `trades=0` = mode mismatch or weak baseline. `v8_test_queue.py` logs `MODE_CONFIG_MISMATCH_SKIP` — do not ignore. Baseline Sharpe < 2 = trash.
+Monitoring: `WINNER=<X> Δ=0.000` with both arms `trades=0` = mode mismatch or weak baseline. `v8_test_queue.py` logs `MODE_CONFIG_MISMATCH_SKIP` — do not ignore. Baseline Sharpe <2 = trash.
 
 ---
 
@@ -190,11 +187,11 @@ Monitoring: `WINNER=<X> Δ=0.000` with both arms `trades=0` = mode mismatch or w
 
 - **NEVER** claim something works without log/exchange proof.
 - **NEVER** guess root causes — trace the actual code path.
-- **NEVER** present backtest numbers from reimplemented logic. Only `process_position()`, `check_entry_candidates()`, `check_exit_candidates()` produce valid numbers.
-- **NEVER** inflate, extrapolate, or cherry-pick. Report exactly what code produced.
+- **NEVER** present backtest from reimplemented logic. Only `process_position()`, `check_entry_candidates()`, `check_exit_candidates()` produce valid numbers.
+- **NEVER** inflate/extrapolate/cherry-pick. Report exactly what code produced.
 - **NEVER** cover up errors. Say "I made an error in X" immediately.
 - **NEVER** blame external systems (Redis, API) before exhausting code-level causes.
-- When in doubt: say "I don't know yet" or "Can you clarify?"
+- When in doubt: "I don't know yet" or "Can you clarify?"
 
 ---
 
@@ -232,10 +229,10 @@ Historical CSVs/JSONLs may have `sharpe_annual` columns. INVALID until converted
 2. `max_dd_pct` (worst-single-sym DD) + `avg_dd_pct` (mean) — MANDATORY.
 2b. `accumulated_gain_pct` — MANDATORY. Sharpe alone insufficient.
 2c. **Engine-tier architecture**:
-   - **Tier 1 — `v8_quick_engine.py`** (vectorized): shortlist only. "Just a feel" — NEVER report Tier 1 as "this config better". ~85% live parity; divergences: DELTA_ENTRY velocity proxy, DC_DAYTRADE/FAST_RISER_REDUCE not wired, portfolio L/S ratio not vectorized.
+   - **Tier 1 — `v8_quick_engine.py`** (vectorized): shortlist only. "Just a feel" — NEVER report Tier 1 as "this config better". ~85% live parity; divergences: DELTA_ENTRY velocity proxy, DC_DAYTRADE/FAST_RISER_REDUCE not wired, L/S ratio not vectorized.
    - **Tier 2 — `backtest_v8_engine.py`** (real-code replica): THE REAL TEST. Calls actual `check_entry_candidates_for_account()`, `check_exit_candidates_for_account()`, `hedge_engine`, `MultiAccountTradeManager`. Run top Tier-1 candidates on 12→48 syms.
-   - **Tier 3 — Full production** (48+ crypto / 128+ stocks × 4yr): only for Tier-2 winners with per-trade per-sym-avg Sharpe > 1.
-2d. **Ratio NOT in NPZ**: `market_sentiment_score` precomputed; portfolio L/S ratio runtime-only (`ez_positions_quick.py:1170`). Prior agents claiming ratio fields in NPZ were wrong.
+   - **Tier 3 — Full production** (48+ crypto / 128+ stocks × 4yr): only Tier-2 winners with per-trade per-sym-avg Sharpe >1.
+2d. **Ratio NOT in NPZ**: `market_sentiment_score` precomputed; L/S ratio runtime-only (`ez_positions_quick.py:1170`). Prior agents claiming ratio fields in NPZ were wrong.
 2e. **PARTIAL_PROFIT_LOCK v2**: 3-step TP. Step 1: close 50% @ +0.5% via `place_maker_order` → `send_webhook(url_variant="2")`; set `stop_level = entry × (1 ± BE_BUFFER_PCT/100)`. Step 2: @ +0.75% upgrade stop to `first_exit_price`. Step 3: stop hit → close remainder via webhook_url (100%). Config: `PARTIAL_PROFIT_LOCK_ENABLED/GAIN_PCT=0.5/ARM_GAIN_PCT=0.75/BE_BUFFER_PCT=0.02/FRAC=0.5`. State: `trade_manager.partial_profit_lock_state[pk] = {fired, first_exit_price, stop_level, stop_upgraded}`. Wired: ez_manage, tradier_manage (pre UNIVERSAL_NOLOSS_GATE), backtest_v8_engine, v8_quick_engine.
 2f. **NOLOSS_BYPASS_WT_5OF5** (default OFF): loss exit when ALL 5 WT TFs (3m/15m/1h/4h/D) flip against. Config: `NOLOSS_BYPASS_WT_5OF5_ENABLED=False`, `MIN_TFS=5`. Wired tradier_manage + v8_quick_engine; NOT ez_manage (per-path edit needed).
 3. **Labels**: crypto base TF = **3m**, stocks = **5m**. Always state `N syms × N bars × N years × base-TF`.
@@ -245,7 +242,7 @@ Historical CSVs/JSONLs may have `sharpe_annual` columns. INVALID until converted
 
 | Metric | Formula | Purpose |
 |---|---|---|
-| `pool_sharpe` | mean(trade_returns)/std(trade_returns) | Risk-adjusted per-trade quality |
+| `pool_sharpe` | mean(trade_returns)/std(trade_returns) | Risk-adj per-trade quality |
 | `sym_sharpe` | mean(per-symbol Sharpes) | Diagnostic; consistency |
 | `avg_gain_trade` | acc_gain_pct / trades | Per-trade return |
 | `gain_per_yr` | acc_gain_pct / n_years | Annual return |
@@ -253,7 +250,7 @@ Historical CSVs/JSONLs may have `sharpe_annual` columns. INVALID until converted
 
 Reporting "Best": `pool_sharpe=X | avg_gain_trade=X%/trade | gain_per_yr=X%/yr | gain_sym_yr=X%/sym/yr | trades=N | dd=X%`
 
-CSV columns (canonical): `iter, pool_sharpe, sym_sharpe, acc_gain_pct, gain_sym_yr, avg_gain_trade, gain_per_yr, max_dd_pct, trades, gain_vs_bh, elapsed_s, overrides_count, reliable, useless, overrides_json`
+CSV columns: `iter, pool_sharpe, sym_sharpe, acc_gain_pct, gain_sym_yr, avg_gain_trade, gain_per_yr, max_dd_pct, trades, gain_vs_bh, elapsed_s, overrides_count, reliable, useless, overrides_json`
 
 Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022-01-01)/365.25.
 
@@ -263,8 +260,8 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 
 | Event | ET | UTC |
 |-------|-----|-----|
-| Market open | 9:30 AM | **13:30** |
-| Market close | 4:00 PM | **20:00** |
+| Open | 9:30 AM | **13:30** |
+| Close | 4:00 PM | **20:00** |
 | Pre-market prep | 8:00 AM | **12:00** |
 
 **NEVER write cron in ET. NEVER assume `date` is ET.**
@@ -275,12 +272,12 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 1. Read STATE OF AFFAIRS at bottom.
 2. Read `100.md` — master audit (Parts 1–15). Skim headers, read relevant.
 3. Refresh KB: `cd /Users/niels/Documents/binance && python3 export_conversations.py`
-4. Parity check: `python3 check_sandbox_parity.py` — DRIFT → STOP.
+4. Parity: `python3 check_sandbox_parity.py` — DRIFT → STOP.
 5. Memory: script → `SCRIPT_STATE.md`; topic → `TOPIC_STATE.md`; "continue from last time" → `INDEX.md`.
 
 ## STEP 0b — Before ANY File Edit
 1. Read `LOCKED_FILES.md` — locked? → **STOP**.
-2. Continue only if user says **"unlock <file>"** in same message.
+2. Continue only if user says **"unlock <file>"** same message.
 
 ## STEP 1 — Every File Edit Workflow
 ```
@@ -298,9 +295,7 @@ Translating old: tradier n_syms=114, crypto n_syms=50, n_years=(current − 2022
 rsync -az --existing --update <edited_files> niels@157.180.125.52:/home/niels/binance-sandbox/
 ```
 
-Files requiring rsync: 6-critical + `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, breakout_multi_lung.py`, any `ez_*.py/tradier_*.py/wt_*.py/utils.py/symbols.json`.
-
-If sweep running when you sync: running workers hold OLD code in memory — only next-spawned workers pick up change.
+Rsync needed: 6-critical + `v8_quick_engine.py, v8_quick_sweep.py, backtest_v8_*.py, breakout_multi_lung.py`, any `ez_*.py/tradier_*.py/wt_*.py/utils.py/symbols.json`. Sweep running on sync: running workers hold OLD code; only next-spawned workers pick up change.
 
 ---
 
@@ -309,7 +304,7 @@ If sweep running when you sync: running workers hold OLD code in memory — only
 | NEVER | Detail |
 |-------|--------|
 | git reset / restore / checkout | Only move forward. |
-| Revert to backup/older version | Ask user instead. |
+| Revert to backup/older version | Ask user. |
 | Access `.history/` | Unless explicitly permitted. |
 | delete/pop/clear position dict entries | No `.pop()`, `del`, `.clear()`. `symbols.json` count must match positions exactly. |
 | Overwrite file with older version | Without explicit permission. |
@@ -319,23 +314,23 @@ If sweep running when you sync: running workers hold OLD code in memory — only
 | Overwrite Redis without validation | Redis may be poisoned/stale. |
 | Use `.clear()` on positions dicts | Empty source = source failed, NOT positions gone. |
 | Make account-specific scripts | Account logic as conditions inside shared scripts. |
-| Call `ez_backup.py` | Live system script, not a Claude utility. |
+| Call `ez_backup.py` | Live system script, not Claude utility. |
 | Close positions at a loss on live | STRICT_NO_LOSS active. |
-| Add stop-loss code to tradier_manage.py | `HARD_STOP_LOSS_MAX_PAIN` caused $500+ losses 2026-03-24. ALL stop loss paths DISABLED. |
-| Present backtest results from reimplemented logic | Only real `process_position()` / `check_entry/exit_candidates()` results. |
-| Inflate trade counts or PnL | Report raw numbers. 120 trades = 120. |
+| Add stop-loss code to tradier_manage.py | `HARD_STOP_LOSS_MAX_PAIN` caused $500+ losses 2026-03-24. ALL paths DISABLED. |
+| Present backtest from reimplemented logic | Only real `process_position()` / `check_entry/exit_candidates()`. |
+| Inflate trade counts or PnL | Report raw. 120 trades = 120. |
 | Call backtest "working" until matches live logs | Compare vs `data/decisions/` JSONL. |
-| Blame "strict gates" for low trade counts | Missing trades = missing mock attributes or broken patches. |
+| Blame "strict gates" for low trade counts | Missing trades = missing mocks or broken patches. |
 | Place orders outside `execute_now()` | THE ONLY gate for ALL Binance orders. |
 | Add `not is_hedge` bypasses to execute_now guards | Guards apply to ALL callers. |
 | Let MOMENTUM_RIDER bypass execute_now | PERMANENTLY DISABLED. |
 | Add new entry strategies to live code | See NEW STRATEGY PROHIBITION. |
 | Add autonomous position-opening loops | No `asyncio.create_task(scan_and_open_*)`. |
-| Add percentage-based exit triggers | No `if gain < -X%: exit`. Exits on technicals ONLY. |
+| Add percentage-based exit triggers | No `if gain < -X%: exit`. Technicals ONLY. |
 | Hardcode config values in backtest engines | Backtests MUST read from config.py. |
 | Auto-expand tradeable_keys | Hand-picked per account. No `.add()` from scanners. |
 | Add hedge loops independent of HEDGE_MODE | All hedges via ez_positions_quick only. |
-| Implement YouTube/web strategies directly | Research → sweep backtest → paper trade → user approval → live. |
+| Implement YouTube/web strategies directly | Research → sweep → paper → user approval → live. |
 | Use HANDS_FREE to add new strategies | HANDS_FREE = bug fixes + proven changes only. |
 
 ---
@@ -343,25 +338,25 @@ If sweep running when you sync: running workers hold OLD code in memory — only
 ## NEW STRATEGY PROHIBITION (2026-03-27: 8 strategies → 0 trades + 15,378 rogue opens)
 
 1. NEVER add strategy without explicit user approval outside HANDS_FREE.
-2. NEVER enable on real money without full sweep proof (48 crypto 4yr S1 + 128 stocks 2yr S2) + paper trading days.
+2. NEVER enable on real money without full sweep proof (48 crypto 4yr + 128 stocks 2yr) + paper trading days.
 3. NEVER "backtest" with reimplemented logic.
 4. NEVER add >1 new strategy per conversation.
 5. NEVER wire strategy without kill switch defaulting to OFF.
 6. Before ANY new strategy: present entry logic, exit logic, data pipeline, trade freq, risk, interaction with existing.
 7. After implementation: verify fires in 24h paper with trades in decision JSONL.
 
-**Banned without V8 backtest proof**: ORB, Clenow, SMFI, Minervini, Connors RSI, DC Daytrade, Episodic Pivot, Squeeze, Outlier Scalper, Outlier Hunter, Mover Detection, momentum fade/rider, autonomous scanners.
+**Banned without V8 proof**: ORB, Clenow, SMFI, Minervini, Connors RSI, DC Daytrade, Episodic Pivot, Squeeze, Outlier Scalper, Outlier Hunter, Mover Detection, momentum fade/rider, autonomous scanners.
 
 ---
 
 ## EXECUTE_NOW IS THE ONLY GATE
 
-1. ALL orders (open, augment, reduce, close, hedge) go through `execute_now()` in ez_manage.py.
+1. ALL orders (open/augment/reduce/close/hedge) go through `execute_now()` in ez_manage.py.
 2. NO `not is_hedge` bypasses — guards apply to ALL callers.
 3. NO reason-string bypasses — reason is for logging only.
-4. OPEN on empty position = allowed. AUGMENT on existing = gain check applies to ALL.
+4. OPEN on empty = allowed. AUGMENT on existing = gain check applies to ALL.
 5. No `futures_create_order` or REST `/fapi/v1/order` calls outside execute_now.
-6. **CONSULT TRACKER BEFORE HEDGING** — check `active_hedges` + `exit_candidates` in tracker.json. (2026-03-29: 24,833 rogue orders from not doing this.)
+6. **CONSULT TRACKER BEFORE HEDGING** — check `active_hedges` + `exit_candidates` in tracker.json. (2026-03-29: 24,833 rogue orders from skipping this.)
 7. `persist_hedge_record` MUST be called after any execute_now for a hedge.
 
 ---
@@ -374,16 +369,16 @@ If sweep running when you sync: running workers hold OLD code in memory — only
 
 | # | Rule | Code site | Knobs |
 |---|------|-----------|-------|
-| **R1** | DC4 emergency close — within first `R1_NEWBORN_WINDOW_MIN` (default 15min) of open, if price breaks configured DC channel (4-bar or 1-bar), CLOSE NOW. Bypass NO_LOSS/hedge/MTF. Fires desktop alert + JSONL log naming entry signal. | `ez_manage.py` ~20709 (R1 block, before R2) / `tradier_manage.py` ~1327 (5m TF) | `R1_DC_LOW4_3M_EMERGENCY_ENABLED`, `R1_NEWBORN_WINDOW_MIN`, `R1_USE_DC_4BAR`, `R1_TF` |
-| **R2** | WT velocity slowdown near breakeven — fires when `floor <= gain < band`, vel against, AND `\|vel\| < \|vel_prev\| * WT_VEL_DECEL_RATIO` (DYNAMIC slowdown — fixed thresholds banned). Iterates `R2_TF_LIST`. | `ez_manage.py` ~20768 (R2 block, after R1) / `tradier_manage.py` ~1366 | `WT_15M_VEL_SLOW_GAIN_BAND_PCT`, `WT_15M_VEL_SLOW_GAIN_FLOOR_PCT`, `WT_VEL_DECEL_RATIO`, `WT_VEL_USE_DECEL_RATIO_ONLY`, `R2_TF_LIST` |
-| **HEDGE_FAILED** | Same-symbol hedge couldn't be taken (no quote, blacklist) — fall back to direct close. Else OBLIGATORY_HEDGE fires hedge instead. | `ez_manage.py:14132+` (OBLIGATORY_HEDGE block — already wired); fallback close uses reason containing `HEDGE_FAILED` (in bypass list). | `OBLIGATORY_HEDGE_ENABLED`, `OBLIGATORY_HEDGE_WT_TFS_REQUIRED` |
+| **R1** | DC4 emergency close — within first `R1_NEWBORN_WINDOW_MIN` (default 15min) of open, price breaks configured DC channel (4-bar or 1-bar) → CLOSE NOW. Bypass NO_LOSS/hedge/MTF. Fires desktop alert + JSONL log naming entry signal. | `ez_manage.py` ~20709 (before R2) / `tradier_manage.py` ~1327 (5m TF) | `R1_DC_LOW4_3M_EMERGENCY_ENABLED`, `R1_NEWBORN_WINDOW_MIN`, `R1_USE_DC_4BAR`, `R1_TF` |
+| **R2** | WT velocity slowdown near breakeven — fires when `floor <= gain < band`, vel against, AND `\|vel\| < \|vel_prev\| * WT_VEL_DECEL_RATIO` (DYNAMIC slowdown — fixed thresholds banned). Iterates `R2_TF_LIST`. | `ez_manage.py` ~20768 (after R1) / `tradier_manage.py` ~1366 | `WT_15M_VEL_SLOW_GAIN_BAND_PCT`, `WT_15M_VEL_SLOW_GAIN_FLOOR_PCT`, `WT_VEL_DECEL_RATIO`, `WT_VEL_USE_DECEL_RATIO_ONLY`, `R2_TF_LIST` |
+| **HEDGE_FAILED** | Same-symbol hedge couldn't be taken (no quote/blacklist) → fall back to direct close. Else OBLIGATORY_HEDGE fires hedge. | `ez_manage.py:14132+` (OBLIGATORY_HEDGE wired); fallback close reason contains `HEDGE_FAILED` (in bypass list). | `OBLIGATORY_HEDGE_ENABLED`, `OBLIGATORY_HEDGE_WT_TFS_REQUIRED` |
 
 **Crypto TFs** (default): R1=3m, R2=15m. **Stocks TFs** (default): R1=5m, R2=1h/4h/D (markets closed most of day, real moves on D/W).
 
-**Bypass list** (`config.UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS`) MUST contain: `R1_DC_LOW4_3M_EMERGENCY`, `R2_WT_VEL_SLOW`, `WT_15M_VEL_SLOW` (legacy alias), `HEDGE_FAILED`, plus existing emergency reasons. Anything NOT in list cannot close at loss — must HOLD until gain >= 0 or hedge fires.
+**Bypass list** (`config.UNIVERSAL_NOLOSS_GATE_BYPASS_REASONS`) MUST contain: `R1_DC_LOW4_3M_EMERGENCY`, `R2_WT_VEL_SLOW`, `WT_15M_VEL_SLOW` (legacy), `HEDGE_FAILED`, plus existing emergency reasons. NOT in list → cannot close at loss; HOLD until gain >= 0 or hedge fires.
 
 ### DUPLICATE_OPEN_GUARD — gain-based, not time-based
-900s time cooldown replaced with gain gate per USER 2026-05-09:
+900s time cooldown replaced with gain gate (USER 2026-05-09):
 - AUGMENT (open/reenter/hedge-open/scalp augment) requires `gain > config.MIN_GAIN * config.DUP_GUARD_GAIN_MULTIPLIER` (default 3.0% * 0.5 = **1.5%**)
 - Below → BLOCKED, reason `BLOCKED_DUP_GUARD_GAIN_<x>pct_lt_<thr>pct`
 - Time cooldown = fallback when `DUP_GUARD_USE_GAIN_GATE=False`
@@ -402,25 +397,25 @@ User mandate (NON-NEGOTIABLE): every other exit must require multi-TF confirmati
 
 ## 🚨 S1 UTILIZATION FLOOR — ≥60-70% CPU + MEM AT ALL TIMES 🚨
 
-User mandate 2026-05-09: "backlog of literally millions of tests" + "S1 NEVER below 60-70% capacity". S1 idling = lying about progress.
+USER 2026-05-09: "backlog of literally millions of tests" + "S1 NEVER below 60-70% capacity". S1 idle = lying about progress.
 
-**S2 DESTROYED 2026-05-08 (shut down because of shitty backtesting wasting money). ALL test load = S1 ONLY. Crypto AND tradier both on S1.**
+**S2 DESTROYED 2026-05-08. ALL test load = S1 ONLY. Crypto AND tradier both on S1.**
 
 ### "Take turns" alternation (USER 2026-05-09)
-S1 RAM = binding constraint (~10.8GB/worker peak NPZ decompression on backtest_v8_engine, 31GB total → ~2-3 workers safe). Crypto and tradier sweeps **take turns** so neither starved:
-- **Always running**: ≥1 crypto worker AND ≥1 tradier worker simultaneously, alternating which gets larger share each cycle.
-- **Every cycle (~hourly)**: if last was crypto-heavy (2 crypto + 1 tradier), next goes tradier-heavy (1+2). Vice versa.
-- **Never starve**: system without sweep results >2h is stale — flip immediately.
+S1 RAM = binding constraint (~10.8GB/worker peak NPZ decompression on backtest_v8_engine, 31GB total → ~2-3 workers safe). Crypto/tradier **take turns**:
+- **Always running**: ≥1 crypto AND ≥1 tradier simultaneously, alternating which gets larger share each cycle.
+- **Every cycle (~hourly)**: last crypto-heavy (2+1) → next tradier-heavy (1+2). Vice versa.
+- **Never starve**: system without sweep results >2h = stale → flip immediately.
 
 ### Every session start
 ```bash
 ssh s1-int 'top -bn1 | head -3 && free -m | head -2 && pgrep -afc "backtest_v8_sweep.*crypto" && pgrep -afc "backtest_v8_sweep.*tradier"'
 ```
-CPU <60% OR MEM-used <60% → **launch more parallel sweeps** until both ≥60%. Only crypto running → start tradier (and vice versa). Safe headroom: <90% CPU and <28GB MEM.
+CPU <60% OR MEM-used <60% → **launch more parallel sweeps** until both ≥60%. Only crypto running → start tradier (vice versa). Safe headroom: <90% CPU, <28GB MEM.
 
 ### Watchdog files
 - `watchdog_sweep_s1.sh` — crypto + tradier alternation (v15, cron `*/5`). State `/home/niels/logs/sweep_next_mode`. Tradier-priority when both dead.
-- `watchdog_sweep_s1_tradier.sh` — tradier-only watchdog (cron `*/7`, offset). Activated 2026-05-09. Refuses launch if crypto running. Same state file.
+- `watchdog_sweep_s1_tradier.sh` — tradier-only (cron `*/7` offset). Activated 2026-05-09. Refuses launch if crypto running. Same state file.
 
 Sweep dies mid-run (OOM/kill/crash) → don't just relaunch — investigate cause AND ensure new workers fill utilization floor + alternation invariant.
 
@@ -428,7 +423,7 @@ Sweep dies mid-run (OOM/kill/crash) → don't just relaunch — investigate caus
 
 ## 📁 TOSHIBA_EXT PATH MAP — S2 archive location (USER 2026-05-09)
 
-S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-sync to S1** — point at it instead. Copy specific files only on demand.
+S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-sync to S1** — point at it. Copy specific files only on demand.
 
 ### Canonical layout (mounted at `/Volumes/TOSHIBA_EXT/`)
 - `binance_archive/data/sweep_results/` — S2 historical sweep CSVs (1.5MB)
@@ -462,9 +457,9 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 
 - MacBook: LIVE TRADING (source of truth). S1: backtesting only. S2: dead.
 - DO NOT start/restart trading services on servers. DO NOT edit scripts on servers.
-- Server Redis tunnel DISABLED (dummy on 6381). Local Redis: 6379. Gateway: 6380.
+- Server Redis tunnel DISABLED (dummy 6381). Local Redis: 6379. Gateway: 6380.
 - **TRADIER IS PRIORITY** — $70k stocks vs $1k crypto.
-- **SERVER LOCKS**: Read `SERVER_LOCKS.md` AND check `/home/niels/SWEEP_RUNNING` before ANY server action. NEVER `killall python3` without checking. Screen sessions `sweep48h` are PROTECTED.
+- **SERVER LOCKS**: Read `SERVER_LOCKS.md` AND check `/home/niels/SWEEP_RUNNING` before ANY server action. NEVER `killall python3` without checking. Screen sessions `sweep48h` PROTECTED.
 
 ---
 
@@ -472,7 +467,7 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 
 **Formatter**: `black` | **Linter**: `pylint`
 - `logger.*` and function calls always one line — never broken.
-- One blank line between functions. **Zero blank lines inside function bodies.**
+- One blank line between functions. **Zero blank lines inside bodies.**
 - Use `config.BASE_PATH` — never hardcoded paths.
 - No docstrings/comments/type annotations on code you didn't change.
 - Naming: `symbol` not `sym`/`s`/`sb`.
@@ -487,7 +482,7 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 | Server 1 | `/home/niels/.conda/envs/binance_env/bin/python` | `/home/niels/binance` |
 | Server 2 | DEAD (2026-05-08) | — |
 | Sandbox | same as Server 1 | `/home/niels/binance-sandbox` |
-| Klines box | — | `157.90.168.35` — klines ONLY, no scripts |
+| Klines box | — | `157.90.168.35` — klines ONLY |
 
 ---
 
@@ -511,9 +506,9 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 **Config**: `config.py` (crypto), `config_tradier.py` (stocks), `symbols.json` (350+ pairs, count must match positions exactly), `.env.gpg` (API keys — do not touch)
 
 **Trade data — /history/ IS THE TRADE LEDGER. /decisions/ IS NOT.** (clarified 2026-05-09)
-- `data/history/<acct>/<SYMBOL>_<SIDE>.jsonl` — **LIVE TRADES**: one event per actual fill (OPEN/AUGMENT/REDUCE/CLOSE/HEDGE_*). Source-of-truth for "what trades happened". When auditing live trades, comparing live vs backtest, counting volume — **read /history/.**
-- `data/decisions/decisions_<acct>_<YYYYMMDD>.jsonl` — **decision event log** per account/day: every entry/exit *evaluation* (fires or not), price ticks, signal scores, blocks, gate decisions. Most lines NOT trades. **Never treat /decisions/ count as trade count.**
-- `V8_RESULT_LIVE: ...` engine log = backtest IN-FLIGHT computation status (heartbeat with `closes=N`). "LIVE" = "live during simulation," NOT "live trading account." Don't quote as live-trading numbers.
+- `data/history/<acct>/<SYMBOL>_<SIDE>.jsonl` — **LIVE TRADES**: one event per fill (OPEN/AUGMENT/REDUCE/CLOSE/HEDGE_*). Source-of-truth. Auditing trades, live-vs-backtest, counting volume → **read /history/.**
+- `data/decisions/decisions_<acct>_<YYYYMMDD>.jsonl` — **decision event log** per account/day: every entry/exit evaluation (fires or not), price ticks, signal scores, blocks, gate decisions. Most lines NOT trades. **Never treat /decisions/ count as trade count.**
+- `V8_RESULT_LIVE: ...` engine log = backtest IN-FLIGHT heartbeat (`closes=N`). "LIVE" = "live during simulation," NOT "live trading." Don't quote as live numbers.
 
 ---
 
@@ -523,9 +518,9 @@ S2 destroyed 2026-05-08. Data + scripts archived to TOSHIBA_EXT. **Do NOT bulk-s
 
 | 15m → Derived | Method |
 |--------------|--------|
-| 1h | resample('1h').agg(open=first, high=max, low=min, close=last, volume=sum) |
-| 4h | resample('4h') same |
-| D | resample('1D') same |
+| 1h | `resample('1h').agg(open=first, high=max, low=min, close=last, volume=sum)` |
+| 4h | `resample('4h')` same |
+| D | `resample('1D')` same |
 | 3m/5m | each 15m bar × 5/3 (interpolated) |
 
 Map HTF arrays back to base TF via `np.searchsorted`.
@@ -534,17 +529,17 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 
 ## Backtest System (V8 — only valid)
 
-`backtest_v8_precompute.py` → NPZ. `v8_quick_engine.py` (Tier 1 vectorized). `backtest_v8_engine.py` (Tier 2 real-code). `v8_quick_sweep.py` / `autonomous_search.py` (sweep runners). V3/V4/V5/old = RETIRED in `old/` — do NOT use.
+`backtest_v8_precompute.py` → NPZ. `v8_quick_engine.py` (Tier 1 vectorized). `backtest_v8_engine.py` (Tier 2 real-code). `v8_quick_sweep.py`/`autonomous_search.py` (sweep runners). V3/V4/V5/old = RETIRED in `old/`.
 
-**NPZ paths** (S1 sandbox): Crypto + Tradier indicators: `backtest_v8/indicators/`. Klines: `klines_cache_backtest/` (crypto) | `klines_cache_backtest/tradier/` (stocks).
+**NPZ paths** (S1 sandbox): Crypto + Tradier indicators in `backtest_v8/indicators/`. Klines: `klines_cache_backtest/` (crypto) | `klines_cache_backtest/tradier/` (stocks).
 
-**Rules**: NEVER write new backtest reimplementing logic. NEVER trust `old/`. Validate with `backtest_evaluate_functions*.py` before deploying. NEVER compare results across different precomputed versions.
+**Rules**: NEVER write new backtest reimplementing logic. NEVER trust `old/`. Validate with `backtest_evaluate_functions*.py` before deploying. NEVER compare results across precomputed versions.
 
 ---
 
-## Crypto vs Stock Parameters — OPPOSITE — NEVER copy between them
+## Crypto vs Stock Parameters — OPPOSITE — NEVER copy between
 
-| Parameter | Crypto Best | Stock Best |
+| Parameter | Crypto | Stock |
 |-----------|------------|------------|
 | Entry score | 18 | **24** |
 | Reentry stoch gate | K<50 | K<**80** |
@@ -554,27 +549,24 @@ Map HTF arrays back to base TF via `np.searchsorted`.
 | WT cross alignment | ≥2 | ≥**3** |
 | Combined stoch gate | 50 | **60** |
 
-**MANDATORY**: Before any tradier_manage.py / config_tradier.py change, run `backtest_evaluate_functions_tradier.py`. NEVER assume crypto finding transfers to stocks.
+**MANDATORY**: Before any tradier_manage.py/config_tradier.py change, run `backtest_evaluate_functions_tradier.py`. NEVER assume crypto finding transfers to stocks.
 
 ---
 
 ## position_key Conventions
 
-- Always: `key.endswith("_LONG")` / `key.endswith("_SHORT")` — NEVER `"LONG" in key`
+- Always: `key.endswith("_LONG")`/`key.endswith("_SHORT")` — NEVER `"LONG" in key`
 - Helpers: `pk_is_long()`, `pk_is_short()`, `pk_symbol()` in `utils.py`
 - `parse_position_key` uses `split("_", 1)` — do not change to rsplit
-- LONG = profits price UP (open=BUY, close=SELL) | SHORT = profits price DOWN (open=SELL, close=BUY)
+- LONG = profits price UP (open=BUY, close=SELL); SHORT = profits price DOWN (open=SELL, close=BUY)
 - `is_reduce = (SELL+LONG) or (BUY+SHORT)`
 
 ---
 
-## HANDS_FREE Mode
-**`HANDS_FREE`** in message: no confirmations, auto-approve edits, chain steps, handle errors silently, full report at end.
-Does NOT override: LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
-
-## HANDS_OFF Mode
-**`HANDS_OFF`** in message: no questions, no confirmation prompts, full autonomy until final result.
-Does NOT override: LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
+## HANDS_FREE / HANDS_OFF Modes
+- **`HANDS_FREE`** in message: no confirmations, auto-approve edits, chain steps, handle errors silently, full report at end.
+- **`HANDS_OFF`** in message: no questions, no confirmation prompts, full autonomy until final result.
+Both: do NOT override LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 
 ---
 
@@ -582,13 +574,11 @@ Does NOT override: LOCKED_FILES.md, Absolute Prohibitions, STRICT_NO_LOSS.
 - **Strategy development**: Phase 1 = cross-symbol rules. Phase 2 = per-symbol. DO NOT skip to Phase 2.
 - **Context compaction**: Before compacting, save full conversation to disk + note path.
 - **100.md condense**: Keep last 7 days perf rows. Merge "Applied Today" after 3 days. Move raw test data to CSV. Never delete Parts 1–5, active BC entries, "Not Yet Applied" priorities.
-- **Auto-Confirm**: Proceed without asking for: "Command contains empty quotes before dash" or "Command contains `$()` command substitution".
+- **Auto-Confirm**: Proceed without asking for "Command contains empty quotes before dash" or "Command contains `$()` substitution".
 
 ---
 
-## STATE OF AFFAIRS
-
-### Config Values That Must Not Change
+## STATE OF AFFAIRS — Config Values That Must Not Change
 
 | Config | Value | Why |
 |--------|-------|-----|

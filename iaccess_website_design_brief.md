@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v3.1
+# IAccess — Website Design Brief v3.2
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -7,6 +7,164 @@
 > **Pricing basis:** Amazon USD retail price + **25%** importation/shipping/customs to Colombia × 4,300 COP/USD = **× 5,375 total multiplier**. (Buying from local Colombian distributor adds a further 15–25% margin on top — these prices reflect self-import via DHL/FedEx which is how IAccess would source at project scale.)  
 > **Labor basis:** $10–40 USD/hour per user spec. General helper $10–12/hr; skilled installer $15–22/hr; senior technician $22–30/hr; lead integrator/programmer $30–40/hr. All COP conversions at 4,300 COP/USD.  
 > **Portero cost basis:** Full carga prestacional (~$2,462,050) **+ 20% empresa de vigilancia mandatory margin** = **$2,954,460 COP/portero/month true cost.**
+
+---
+
+## PRODUCT FRAMEWORK — HOW IACCESS PASSES PORTEA AND EVERY GLOBAL COMPETITOR
+*(Strategic foundation — written May 2026 after full competitive analysis of 20 companies across Colombia, US, and Europe)*
+
+### The Diagnosis: What Every Competitor Gets Wrong
+
+**Portea** (the best Colombian competitor): SaaS-only, no real in-house AI (resells a Peruvian company's HikCentral service), no testimonials, Medellín-centric, missing 20+ features that US/EU systems have. Charges $0.37–$1.10 USD/unit/month.
+
+**US systems** (ButterflyMX, Brivo, Swiftlane, DOOR): Full-featured but priced for US incomes ($2.50–$6.75/unit/month) and built for institutional property managers (Yardi, RealPage integrations). No Colombian context, no Spanish UX, no COP pricing, no Airbnb-heavy-building profile.
+
+**European systems** (SALTO, Dormakaba, Paxton, ASSA Abloy): Hardware-excellent but software-thin. No resident app, no visitor management, no package management as first-class features. Rely on integrators for everything.
+
+**The gap IAccess fills:** A full-stack, AI-native, LatAm-priced platform that has every feature US systems have — but built from the ground up for Colombia's legal context (SIC/Ley 1581, propiedad horizontal), Colombia's building typology (high Airbnb density, older construction, limited IT infrastructure), and Colombia's price sensitivity.
+
+---
+
+### The "Pass Portea" Framework — Feature Stack by Tier
+
+#### TIER 0 — Table Stakes (Portea has these; IAccess must match exactly)
+*If IAccess doesn't have these at launch, it loses on the first sales call.*
+
+| Feature | Portea's version | IAccess version |
+|---|---|---|
+| QR visitor codes | Resident generates in app | Resident generates in app + visitor self-registers via link |
+| Resident push notification on visitor arrival | ✅ | ✅ + video snapshot pre-approval |
+| Package arrival photo alert | ✅ | ✅ + locker integration optional |
+| Admin dashboard (residents, access log, reports) | ✅ web only | ✅ web + mobile |
+| Common area reservations | ✅ UI only | ✅ UI + door unlocks on confirmed booking |
+| PQR / complaints module | ✅ | ✅ |
+| Fee payment gateway (PSE) | ✅ (Portea's differentiator) | ✅ with cuota de administración invoicing |
+| Ley 1581 habeas data compliance | ✅ mentioned | ✅ built-in consent flow + one-click deletion |
+| WhatsApp CTA | ✅ | ✅ |
+| Annual plan pricing | ✅ | ✅ + monthly plan (Portea doesn't offer monthly) |
+
+#### TIER 1 — Differentiation (Portea lacks these; no Colombian competitor has them)
+*These are the features that close deals. Lead with these in every demo.*
+
+| Feature | Why it matters | IAccess implementation |
+|---|---|---|
+| **Real in-house YOLO facial recognition** | Portea resells a Peruvian company's HikCentral. IAccess owns the model. Accuracy auditable, updates push instantly via cloud GPU, no third-party margin. | YOLOv8 + DeepStream on RTX 4060 Ti / RTX 4090 (plan-dependent). Model improves with each building added to the pool. |
+| **Elevator floor restriction** | Zero Colombian competitors offer this. Every multi-floor building needs it. | UHPPOTE 40ch controller wired to floor buttons via relay. Resident's credential unlocks their floor only. Guest QR unlocks the correct floor for checkout window. |
+| **Recurring visitor schedules** | "My cleaner comes every Tuesday 8–11am, my dog walker every weekday 7–8am." Nobody in Colombia does this. ASSA Abloy Accentra built their brand on this in the US. | Admin or resident sets: person → recurring days/hours → max months ahead. System auto-generates time-windowed QR and sends via WhatsApp each occurrence. |
+| **Visitor video snapshot → resident approves/denies** | Visitor arrives → camera captures face → IAccess sends photo to resident's phone → resident taps ✅ or ❌ → door reacts. US: Verkada Guest, Swiftlane. Colombia: nobody. | 1-tap resident approval on unknown visitors. Unknown = not in the facial database. Known residents always pass automatically. |
+| **Rappi / delivery driver integration** | Colombian equivalent of ButterflyMX + Amazon Hub. Rappi driver arrives → gets auto-generated 8-min building PIN via IAccess API → building logs entry → resident notified. No US company does this for Rappi specifically — IAccess would be first. | Rappi Business API + IAccess webhook: delivery order placed → 8-min PIN generated → sent to driver's Rappi app. Expired PINs logged and audited. |
+| **Tailgating detection** | Multiple people enter on one credential → AI alert. Verkada does this natively; no extra hardware. IAccess already has YOLO running on all cameras — it's a model fine-tune, not new infrastructure. | YOLO counts bodies crossing door threshold per credential grant. >1 body = tailgate alert to admin dashboard + push notification. Configurable: warn only, or lock door and require re-auth. |
+| **Airbnb/Booking checkout-synchronized QR** | Deep detail in existing brief. Nobody in Colombia has the full API integration. | Full implementation: Airbnb/Booking/VRBO API → IAccess → WhatsApp QR to guest → expires at checkout → elevator locked to guest's floor only. |
+| **Transparent pricing online** | Portea shows pricing. IAccess shows pricing + hardware line items. Only 2 of 12 competitors in Colombia do this. | Full pricing page in brief (Section 4). This alone drives qualified inbound leads. |
+
+#### TIER 2 — Moat Builders (IAccess builds these in year 1-2; creates competitive lock-in)
+*These features make it expensive for a building to switch away from IAccess.*
+
+| Feature | Lock-in mechanism | IAccess roadmap |
+|---|---|---|
+| **REST API + webhook ecosystem** | Let Colombian property admin software, fintechs, Rappi, WhatsApp integrations plug in. The more integrations, the harder to rip out. Dormakaba Lyazon, Kisi, and Brivo all built moats this way. | Public API v1 at launch. Webhook events: door_opened, visitor_arrived, tailgate_detected, qr_expired, elevator_accessed. Paid integration tier for property admin platforms. |
+| **Propiedad horizontal admin integration** | Colombian buildings use local admin software (AdminPH, Conjunto Seguro, etc.). If IAccess syncs resident lists and cuota payments with their existing tool, switching = losing all data history. | API connector to top 3 Colombian admin platforms. Resident imported from admin software on onboarding. Payment reconciliation auto-exports. |
+| **Multi-building portfolio dashboard** | Target large building management companies (Oikos, Amarilo, Constructora Bolívar). If they have 50 buildings on IAccess, they're locked in for years. Brivo and Avigilon Alta built their enterprise businesses this way. | Portfolio view: all buildings, incidents, access events, system health — one login. Useful from 2 buildings. |
+| **Occupancy analytics** | "Your gym peaks at 7pm Tuesday. Your parking is 60% utilized. 3 residents haven't registered their face yet." Data nobody else provides. Kisi, Verkada do this; nobody in Colombia does. | YOLO people-counting at zone entrances. Dashboard reports. Generates value even when nothing goes wrong. |
+| **Emergency lockdown mode** | One button → all doors locked → all credentials suspended → admin gets evacuation headcount. Kisi and Avigilon Alta sell on this to enterprises. | Single dashboard button + mobile push. Bypass for emergency exits (fail-safe). Configurable: partial zones or full building. |
+| **Lease-to-access automation** | Lease signed → access provisioned automatically. Move-out → all credentials revoked. IAccess becomes the source of truth for who lives in the building. Hard to remove. | Webhook from property admin software → IAccess auto-provisions credential. Move-out date = auto-revocation. Works standalone if no PMS: admin sets lease dates in IAccess. |
+
+#### TIER 3 — Future Vision (year 2–3, after cash flow established)
+*Don't build these at launch. But communicate the roadmap — it signals ambition.*
+
+| Feature | Why eventually | Notes |
+|---|---|---|
+| Apple Wallet / Google Wallet credentials | Colombian smartphone penetration rising fast. No app install needed — credential lives in wallet. Kisi and Avigilon Alta already do this. | Requires Apple/Google developer partnership. |
+| Wearable NFC access (ring, watch) | Luxury building differentiator. Resonates with strata 5–6 market. | Hardware agnostic if NFC-based. |
+| AI anomaly detection | "This person has accessed the gym 40× in the last 7 days but has no registered apartment." Brivo Enterprise does this. | Requires sufficient behavioral data — needs 6+ months of building usage data first. |
+| Colombian insurance integration | IAccess data (who entered, when, tailgating incidents) directly feeds into building insurance assessment. Could unlock lower premiums. | Partnership play with Seguros Bolívar, SURA, Allianz Colombia. |
+| Visitor blacklist sharing (opt-in, between buildings) | A visitor who caused an incident in Building A can be flagged across the IAccess network. Opt-in per building. | Requires Ley 1581 compliance framework first. High value for Airbnb-heavy zones. |
+
+---
+
+### The "Beats Portea" Commercial Argument
+
+**Portea charges COP ~$0.37–$1.10 USD/unit/month** for a SaaS-only product with no real AI and no hardware.
+
+**IAccess should charge COP ~$1.50–$2.50 USD/unit/month** (all-in: cloud GPU + software + 24/7 system monitoring) — 2–3× Portea's price — and win on value. The math for the building admin:
+
+```
+                           PORTEA          IACCESS        TRADITIONAL GUARD
+Monthly cost (50-apt bldg) $228,000 COP    $537,500 COP   $6,800,000 COP
+Hardware (one-time)        Separate quote  ~$40M COP inst  —
+Real in-house AI           ❌ (resold)     ✅ (YOLO)       —
+Elevator floor control     ❌              ✅              —
+Recurring visitor rules    ❌              ✅              —
+Tailgating detection       ❌              ✅              —
+Airbnb checkout sync       ❌              ✅              —
+Rappi driver integration   ❌              ✅              —
+SIC Ley 1581 compliant     ❌ (unclear)    ✅ by design    —
+```
+*(Note: COP conversions at 4,300/USD, 50-unit building. Portea annual plan ÷ 12 = ~228k/month. IAccess = $125/month at $2.50/unit.)*
+
+**The closing argument:** "Portea costs less per month. IAccess includes the AI that actually replaces the portero — not a monthly subscription to a dashboard while a Peruvian company's remote operators still decide who enters your building."
+
+---
+
+### Pricing Model — Unit-Based, Not Door-Based
+
+US systems charge per door ($5–$25/door/month). This penalizes buildings for having more access points and creates friction when expanding. Portea and IAccess both charge per unit — the right model for residential.
+
+**Recommended IAccess pricing structure:**
+
+| Plan | Per Unit/Month (COP) | Per Unit/Month (USD) | What's included |
+|---|---|---|---|
+| **Esencial** | **10,000** | **~$2.30** | QR + facial recognition + visitor notifications + admin dashboard + cloud GPU + support |
+| **Profesional** | **8,500** per unit | **~$2.00** | Everything + elevator control + recurring visitors + tailgating detection + Rappi integration (min 25 units) |
+| **Enterprise** | **7,500** per unit | **~$1.75** | Everything + portfolio dashboard + REST API + SLA 99.9% + Airbnb integration (min 70 units) |
+
+*Volume pricing means larger buildings get more features at a lower per-unit rate — exactly how Portea structures it, but IAccess delivers real AI at the same price tier.*
+
+**One-time hardware installation** quoted separately (see Section 4 for current pricing).
+
+**Why this beats Portea:**
+- Portea Esencial: 50-unit building = COP 228,000/month. IAccess Esencial: 50 units × COP 10,000 = **COP 500,000/month**. Delta: COP 272,000 extra.
+- For that extra COP 272,000/month the building gets: real YOLO AI, elevator floor restriction, recurring visitor schedules, tailgating detection, Rappi integration, SIC-compliant consent module.
+- The building was paying COP 6,800,000/month for a human guard. IAccess at COP 500,000/month is still a COP 6,300,000/month saving vs the status quo.
+- **Portea is never the benchmark. The portero is the benchmark.**
+
+---
+
+### Technology Differentiation: IAccess vs Portea's "AI"
+
+```
+PORTEA ARTURO IA — What's actually happening:
+  Portea → resells Portero Seguro (Lima, Peru)
+  Portero Seguro → uses HikCentral (Hikvision's monitoring platform)
+  HikCentral → streams to human operator in Lima monitoring center
+  Human operator → decides who enters
+  = Remote human guard in Peru. Not AI. Not Colombian. Not scalable.
+
+IACCESS — What's actually happening:
+  IAccess cloud GPU (RTX 4060 Ti / RTX 4090 in Hetzner datacenter)
+  → YOLOv8 running inference on all building camera streams
+  → Face embedding matched against local building database
+  → Door controller receives open/close signal in <400ms
+  → Zero humans in the loop
+  → Event logged with photo + timestamp + confidence score
+  = Real AI. Real-time. Auditable. Scales to 1,000 buildings with no extra headcount.
+```
+
+**This is the core sales message:** When Portea says "AI," they mean a person in Lima watching your cameras via Hikvision software. When IAccess says "AI," we mean a GPU running YOLOv8 that makes the decision in 400 milliseconds without any human.
+
+---
+
+### Go-to-Market Sequence
+
+**Phase 1 — Bogotá (months 1–6):** 10 pilot buildings. Focus on strata 4–5, 25–70 units, high Airbnb density (Chapinero, Usaquén, Zona Rosa). Portea is Medellín-centric — Bogotá is a wide-open first-mover opportunity.
+
+**Phase 2 — Win the Airbnb vertical (months 4–12):** One signed deal with a building management company that runs 5+ Airbnb buildings. This becomes the anchor case study for the entire Airbnb operator segment.
+
+**Phase 3 — Enterprise (months 9–18):** Approach large building management firms (Oikos, Amarilo, Constructora Bolívar). One 200-unit building = COP 1,500,000/month recurring. Portfolio dashboard becomes the product they can't live without.
+
+**Phase 4 — Medellín (months 12–18):** Enter Portea's home market after proving the model. The Colombian inter-city rivalry means Medellín property managers will actively prefer a company with Bogotá roots over a Medellín startup.
+
+**Phase 5 — API ecosystem (months 18–30):** Launch public REST API. First-mover on Colombian building management API will capture integrations that cement IAccess as the standard.
 
 ---
 

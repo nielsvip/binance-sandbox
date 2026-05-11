@@ -92,6 +92,19 @@ class VecConfig:
     K3M_CAP: float = 70.0    # LONG blocked when k_3m >= cap; SHORT mirror
     K3M_FLOOR: float = 30.0  # LONG blocked when k_3m >= (100-floor); SHORT mirror
 
+    # ── WT_DC_ENTRY score gate (parity with wt_dc_entry_scorer.score_entry_multitf) ──
+    # Real engine: 26 of 27 tradier baseline trades went through this scorer.
+    # Score = 25*(wt1_D vs wt2_D match) + 25*(wt1_4h vs wt2_4h match)
+    #       + 30*(wt_cross_1h direction match) + 10*(dc_1h zone) + 10*(stoch_k_5m zone)
+    # Threshold 55 = 4h_bull + 1h_cross_BULL minimum (matches tradier_manage:2000 default).
+    WT_DC_ENTRY_GATE_ENABLED: bool = True
+    WT_DC_ENTRY_THRESHOLD: float = 55.0
+
+    # ── Per-sym entry cooldown (parity with AUGMENT_LOCK / DUP_GUARD) ──
+    # Real engine blocks reentry on same position_key for N seconds after last close.
+    # 900s = 15 min default per CLAUDE.md AUGMENT_LOCK.
+    ENTRY_COOLDOWN_SEC: int = 900
+
     # ── Stoch gates ──────────────────────────────────────────
     TRADIER_STOCH_ENTRY_LONG_TRADIER: float = 80.0
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: float = 20.0
@@ -450,6 +463,7 @@ class _PositionState:
     side: str = ""          # "LONG" or "SHORT"
     entry_price: float = 0.0
     entry_ts: float = 0.0
+    last_close_ts: float = 0.0  # for entry cooldown (parity with AUGMENT_LOCK)
     qty: float = 1.0        # normalized units
     gain_pct: float = 0.0
     max_gain_pct: float = 0.0
@@ -649,7 +663,7 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False
+                            pos.open = False; pos.last_close_ts = ts_i
                             pos.r1_fired = True
                             continue
 
@@ -678,7 +692,7 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False
+                            pos.open = False; pos.last_close_ts = ts_i
 
                 # ── PARTIAL_PROFIT_LOCK v2 ──────────────────────
                 if cfg.PARTIAL_PROFIT_LOCK_ENABLED:
@@ -713,7 +727,7 @@ class VecEngine:
                                 returns_by_sym[sym].append(pnl)
                                 all_returns.append(pnl)
                                 running_gain += pnl
-                                pos.open = False
+                                pos.open = False; pos.last_close_ts = ts_i
 
                 # ── WT-based exit logic ─────────────────────────
                 for pos in (pos_long, pos_short):
@@ -755,7 +769,7 @@ class VecEngine:
                     returns_by_sym[sym].append(pnl)
                     all_returns.append(pnl)
                     running_gain += pnl
-                    pos.open = False
+                    pos.open = False; pos.last_close_ts = ts_i
 
                 # ── RZ exit ─────────────────────────────────────
                 if cfg.RZ_EXIT_ENABLED:
@@ -774,7 +788,7 @@ class VecEngine:
                                 returns_by_sym[sym].append(pnl)
                                 all_returns.append(pnl)
                                 running_gain += pnl
-                                pos.open = False
+                                pos.open = False; pos.last_close_ts = ts_i
 
                 # ── DELTA_ENGINE: velocity-proxy exit ──────────
                 if cfg.DELTA_ENGINE_ENABLED:
@@ -791,13 +805,21 @@ class VecEngine:
                             returns_by_sym[sym].append(pnl)
                             all_returns.append(pnl)
                             running_gain += pnl
-                            pos.open = False
+                            pos.open = False; pos.last_close_ts = ts_i
 
                 # ── Entry logic ─────────────────────────────────
                 for side in ("LONG", "SHORT"):
                     pos = pos_states[sym][side]
                     if pos.open:
                         continue
+
+                    # ── Per-sym entry cooldown (parity with AUGMENT_LOCK / DUP_GUARD) ──
+                    # Real engine blocks new entries for N seconds after last close on this pk.
+                    # Default 900s (15 min) per CLAUDE.md AUGMENT_LOCK.
+                    last_close_ts = pos.last_close_ts if hasattr(pos, "last_close_ts") else 0
+                    if cfg.ENTRY_COOLDOWN_SEC > 0 and last_close_ts > 0:
+                        if (ts_i - last_close_ts) < cfg.ENTRY_COOLDOWN_SEC:
+                            continue
 
                     # ── GOLDEN_RULE entry filter ─────────────
                     if cfg.GOLDEN_RULE_ENABLED:
@@ -820,6 +842,36 @@ class VecEngine:
                                (side == "SHORT" and cross == "BEAR")
                     if not wt_entry:
                         continue
+
+                    # ── WT_DC_ENTRY score gate (parity with tradier_manage:1969) ──
+                    # Replicates wt_dc_entry_scorer.score_entry_multitf exactly.
+                    # 26/27 real-engine trades came through this path with score>=55.
+                    # NPZ stores wt_cross_1h as int8 (-1/0/+1); bull/bear flags as binary.
+                    if cfg.WT_DC_ENTRY_GATE_ENABLED:
+                        wt1_D = store.f("wt1_D", bar_idx, 0.0)
+                        wt2_D = store.f("wt2_D", bar_idx, 0.0)
+                        wt1_4h = store.f("wt1_4h", bar_idx, 0.0)
+                        wt2_4h = store.f("wt2_4h", bar_idx, 0.0)
+                        wt_cross_1h_v = store.f("wt_cross_1h", bar_idx, 0)
+                        bull_1h = wt_cross_1h_v > 0 or store.f("wt_cross_bull_1h", bar_idx, 0) > 0
+                        bear_1h = wt_cross_1h_v < 0 or store.f("wt_cross_bear_1h", bar_idx, 0) > 0
+                        dc_1h = store.f("dc_position_1h", bar_idx, 0.5)
+                        k_5m_for_score = store.f("stoch_k_5m" if self.mode == "tradier" else "stoch_k_3m", bar_idx, 50.0)
+                        wtdc_score = 0.0
+                        if side == "LONG":
+                            if wt1_D > wt2_D: wtdc_score += 25
+                            if wt1_4h > wt2_4h: wtdc_score += 25
+                            if bull_1h: wtdc_score += 30
+                            if dc_1h < 0.50: wtdc_score += 10
+                            if k_5m_for_score < 40: wtdc_score += 10
+                        else:
+                            if wt1_D < wt2_D: wtdc_score += 25
+                            if wt1_4h < wt2_4h: wtdc_score += 25
+                            if bear_1h: wtdc_score += 30
+                            if dc_1h > 0.50: wtdc_score += 10
+                            if k_5m_for_score > 60: wtdc_score += 10
+                        if wtdc_score < cfg.WT_DC_ENTRY_THRESHOLD:
+                            continue
 
                     # ── LTF stoch alignment gate (parity with ez_manage.check_entry_alignment) ──
                     # Real engine requires 3/3 LTF stoch crossover. 1m field not in NPZ,
