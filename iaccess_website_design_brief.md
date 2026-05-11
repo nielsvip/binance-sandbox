@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v3.0
+# IAccess — Website Design Brief v3.1
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -155,6 +155,7 @@ Slate:        #6B7280   (secondary text, captions)
   /servicios/puertas-automaticas
   /servicios/acceso-vehicular
   /servicios/monitoreo-24-7
+  /servicios/deteccion-inteligente
 /cotizacion ............ Instant quote calculator (MOST IMPORTANT)
 /precios ............... Transparent package pricing
 /como-funciona ......... Step-by-step process
@@ -313,6 +314,17 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │ $6,800,000/ascensor      │  │ $27,400,000 COP          │  │ integrados. Primer en    │
 │ Ver más →                │  │ Ver más →                │  │ Colombia. Ver más →      │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
+
+┌─────────────────────────┐
+│ 🔥 Detección inteligente │
+│                          │
+│ Incendio, humo, caídas,  │
+│ intrusión perimetral,    │
+│ armas — el mismo YOLO    │
+│ que reconoce tu cara.    │
+│ Incluido en Plan Pro+    │
+│ Ver más →                │
+└─────────────────────────┘
 ```
 
 ---
@@ -1871,6 +1883,22 @@ Calculadora de ahorro (enlace a /cotizacion)
 
 ---
 
+### Article 5: Competitor comparison (SEO + decision-stage)
+
+**Title:** Portea vs IAccess vs HIPCAM: ¿cuál portería virtual es mejor para tu edificio en Colombia?  
+**Target keyword:** portería virtual Colombia comparación / mejor portería virtual edificio 2026  
+**URL:** /blog/comparacion-porteria-virtual-colombia-2026
+
+```
+H2: Las 5 mejores opciones de portería virtual en Colombia en 2026
+H2: Comparación por funcionalidad (tabla)
+H2: Comparación por precio
+H2: ¿Cuál necesita operador humano? (spoiler: todas menos IAccess)
+H2: ¿Cuál cumple con el fallo SIC de agosto 2025?
+H2: Qué preguntar antes de contratar cualquier servicio
+CTA: Agenda visita técnica gratuita
+```
+
 ### Article 2: SEO for Airbnb operators
 
 **Title:** Cómo automatizar los ingresos de Airbnb en tu edificio en Bogotá  
@@ -1889,7 +1917,23 @@ CTA: Cotización para tu edificio
 
 ---
 
-### Article 3: Legal piece
+### Article 3: SIC compliance (urgent SEO opportunity — almost nobody has written this)
+
+**Title:** La SIC ordenó borrar datos biométricos en un conjunto en Bogotá: qué significa para tu edificio  
+**Target keyword:** reconocimiento facial Colombia legal 2025 / fallo SIC biometría edificios  
+**URL:** /blog/fallo-sic-reconocimiento-facial-edificios-colombia-2025
+
+```
+H2: Qué pasó en Parque de los Cipreses (agosto 2025)
+H2: Qué exige la SIC ahora para usar reconocimiento facial
+H2: Por qué el método único está prohibido — y qué significa eso para tu portería virtual
+H2: Qué debe firmar cada residente (plantilla descargable gratuita)
+H2: ¿Mi portería virtual actual cumple? (checklist de 8 puntos)
+H2: Cómo IAccess resuelve esto por diseño
+CTA: Descarga el checklist de cumplimiento + cotización
+```
+
+### Article 4: Legal piece
 
 **Title:** Reconocimiento facial en edificios de Colombia: ¿es legal?  
 **Target:** personas que buscan antes de comprar  
@@ -2263,24 +2307,34 @@ function calculatePackage(inputs) {
 
 ### Target keywords
 ```
-Primary:
+Primary (own these before Appmosfera does):
   portería virtual Bogotá
   portería virtual Colombia
+  portería virtual Colombia precio 2026
   sistema acceso edificio residencial Colombia
   control de acceso edificio Bogotá
-  
+
 Secondary:
-  reemplazar portero edificio
-  costo portero Colombia
+  reemplazar portero edificio Colombia
+  costo portero Colombia 2026
   reconocimiento facial edificio Colombia
   edificio Airbnb acceso automático
-  control ascensor por piso
-  
-Long-tail:
+  control ascensor por piso conjunto residencial
+  guardia virtual edificio Bogotá
+
+Long-tail (high intent, low competition):
   cuánto cuesta portería virtual en Colombia
-  cómo automatizar el ingreso a mi edificio
+  cómo automatizar el ingreso a mi edificio en Bogotá
   magneto electromagnético puerta vidrio edificio
   control de acceso sin portero Bogotá
+  fallo SIC reconocimiento facial edificios Colombia
+  portería virtual vs portero cual es mejor Colombia
+  
+Competitor displacement (people already searching competitors):
+  Portea alternativa Colombia
+  HIPCAM precio Colombia
+  appmosfera guardia alternativa
+  portería remota DEAS precio
 ```
 
 ---
@@ -2305,7 +2359,7 @@ Long-tail:
 
 ---
 
-*IAccess Website Design Brief v3.0 — May 2026*  
+*IAccess Website Design Brief v3.1 — May 2026*  
 *Pricing basis: Amazon USD retail price + 25% importation/shipping/customs × 4,300 COP/USD = × 5,375 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
 *Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*  
