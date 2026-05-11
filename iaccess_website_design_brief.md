@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v3.3
+# IAccess — Website Design Brief v3.4
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -6,7 +6,7 @@
 
 > **Pricing basis:** Amazon USD retail price + **25%** importation/shipping/customs to Colombia × 4,300 COP/USD = **× 5,375 total multiplier**. (Buying from local Colombian distributor adds a further 15–25% margin on top — these prices reflect self-import via DHL/FedEx which is how IAccess would source at project scale.)  
 > **Labor basis:** $10–40 USD/hour per user spec. General helper $10–12/hr; skilled installer $15–22/hr; senior technician $22–30/hr; lead integrator/programmer $30–40/hr. All COP conversions at 4,300 COP/USD.  
-> **Portero cost basis:** Full carga prestacional (~$2,462,050) **+ 20% empresa de vigilancia mandatory margin** = **$2,954,460 COP/portero/month true cost.**
+> **Portero cost basis:** Base carga prestacional (~$2,462,050) + 20% empresa de vigilancia = $2,954,460 base. **Real cost per turno-slot (incl. night surcharges + festivos + reemplazos) = ~$4,300,000 COP/turno/month (confirmed: 10-apt Bogotá building = $12,894,398/month for 3 turnos).**
 
 ---
 
@@ -89,9 +89,9 @@
 **IAccess should charge COP ~$1.50–$2.50 USD/unit/month** (all-in: cloud GPU + software + 24/7 system monitoring) — 2–3× Portea's price — and win on value. The math for the building admin:
 
 ```
-                           PORTEA          IACCESS        TRADITIONAL GUARD
-Monthly cost (50-apt bldg) $228,000 COP    $537,500 COP   $6,800,000 COP
-Hardware (one-time)        Separate quote  ~$40M COP inst  —
+                           PORTEA          IACCESS        PORTERÍA 24/7 REAL
+Monthly cost (50-apt bldg) $228,000 COP    $1,000,000 COP $12,900,000 COP
+Hardware (one-time)        Separate quote  ~$65M–$145M     —
 Real in-house AI           ❌ (resold)     ✅ (YOLO)       —
 Elevator floor control     ❌              ✅              —
 Recurring visitor rules    ❌              ✅              —
@@ -99,10 +99,12 @@ Tailgating detection       ❌              ✅              —
 Airbnb checkout sync       ❌              ✅              —
 Rappi driver integration   ❌              ✅              —
 SIC Ley 1581 compliant     ❌ (unclear)    ✅ by design    —
+Ahorro mensual vs portería —              $11,900,000     —
+ROI instalación            —              ~7 meses        nunca
 ```
-*(Note: COP conversions at 4,300/USD, 50-unit building. Portea annual plan ÷ 12 = ~228k/month. IAccess = $125/month at $2.50/unit.)*
+*(Note: COP conversions at 4,300/USD. Real Bogotá 2026 vigilancia budget: 10-apt building = $12,894,398/month for 3 turnos. 50-apt IAccess Profesional base $900,000 + 50×$8,000 = $1,300,000/month — revised after user real-world data. Installation range from real quotes: $65M–$145M.)*
 
-**The closing argument:** "Portea costs less per month. IAccess includes the AI that actually replaces the portero — not a monthly subscription to a dashboard while a Peruvian company's remote operators still decide who enters your building."
+**The closing argument:** "Portea costs less per month. IAccess includes the AI that actually replaces the portero — not a monthly subscription to a dashboard while a Peruvian company's remote operators still decide who enters your building. And compared to what you're actually paying in vigilancia today — $12.9M a month — IAccess pays itself back in 7 months."
 
 ---
 
@@ -114,18 +116,23 @@ US systems charge per door ($5–$25/door/month). This penalizes buildings for h
 
 | Plan | Per Unit/Month (COP) | Per Unit/Month (USD) | What's included |
 |---|---|---|---|
-| **Esencial** | **10,000** | **~$2.30** | QR + facial recognition + visitor notifications + admin dashboard + cloud GPU + support |
-| **Profesional** | **8,500** per unit | **~$2.00** | Everything + elevator control + recurring visitors + tailgating detection + Rappi integration (min 25 units) |
-| **Enterprise** | **7,500** per unit | **~$1.75** | Everything + portfolio dashboard + REST API + SLA 99.9% + Airbnb integration (min 70 units) |
+| **Esencial** | **8,000** | **~$1.86** | QR + facial recognition + visitor notifications + admin dashboard + cloud GPU + support |
+| **Profesional** | **7,000** per unit | **~$1.63** | Everything + elevator control + recurring visitors + tailgating detection + Rappi integration (min 25 units) |
+| **Enterprise** | **6,000** per unit | **~$1.40** | Everything + portfolio dashboard + REST API + SLA 99.9% + Airbnb integration (min 70 units) |
 
-*Volume pricing means larger buildings get more features at a lower per-unit rate — exactly how Portea structures it, but IAccess delivers real AI at the same price tier.*
+**Base monthly minimum** (regardless of unit count, covers cloud GPU + support infrastructure):
+- Esencial: COP 600,000/month minimum
+- Profesional: COP 900,000/month minimum
+- Enterprise: COP 1,300,000/month minimum
 
-**One-time hardware installation** quoted separately (see Section 4 for current pricing).
+*So for a 50-unit building: Esencial = max(600k, 50×8k) = **COP 1,000,000/month**. Enterprise at 100 units = 1,300,000 + (100×6,000) = **COP 1,900,000/month**. All plans include cloud GPU compute — there is no on-premises server option.*
+
+**One-time hardware + installation** quoted per project (see Section 4). Real-world range: **COP 65,000,000–145,000,000** for a fully equipped building including glass door replacements.
 
 **Why this beats Portea:**
-- Portea Esencial: 50-unit building = COP 228,000/month. IAccess Esencial: 50 units × COP 10,000 = **COP 500,000/month**. Delta: COP 272,000 extra.
-- For that extra COP 272,000/month the building gets: real YOLO AI, elevator floor restriction, recurring visitor schedules, tailgating detection, Rappi integration, SIC-compliant consent module.
-- The building was paying COP 6,800,000/month for a human guard. IAccess at COP 500,000/month is still a COP 6,300,000/month saving vs the status quo.
+- Portea Esencial: 50-unit building = COP 228,000/month. IAccess Esencial: COP 1,000,000/month. Delta: COP 772,000 extra.
+- For that extra COP 772,000/month the building gets: real YOLO AI, elevator floor restriction, recurring visitor schedules, tailgating detection, Rappi integration, SIC-compliant consent module, cloud GPU with 99.9% SLA.
+- The building was paying **COP 12,900,000/month** for human guards. IAccess at COP 1,000,000/month saves **COP 11,900,000/month**. Payback on a $100M installation: **~8 months**.
 - **Portea is never the benchmark. The portero is the benchmark.**
 
 ---
@@ -347,28 +354,30 @@ A building with round-the-clock portería in Bogotá pays per portero:
 | Prima + vacaciones + cesantías + intereses (amortized) | $351,000 |
 | **Subtotal carga laboral** | **~$2,462,050 COP** |
 | **Empresa de vigilancia (obligatorio por ley, +20%)** | **$492,410 COP** |
-| **True cost per portero** | **~$2,954,460 COP** |
+| **Recargos nocturnos (turno noche, 9pm–6am, +35%)** | **~$533,000 COP** |
+| **Recargos dominicales y festivos (18 festivos/año)** | **~$312,000 COP** |
+| **True cost per turno/shift-slot** | **~$4,300,000 COP** |
 
-> **Why the 20%:** Colombian law (Decreto 356/1994 + Ley 1539/2012) requires that building guards and porteros be contracted through a licensed *empresa de vigilancia y seguridad privada* supervised by the Superintendencia de Vigilancia. These companies charge a 15–25% margin on top of full labor cost. 20% is the conservative estimate used throughout this document.
+> **Why ~$4.3M per turno:** Real building budgets confirm this. A 10-apartment Bogotá building (strata 5–6) pays **$12,894,398/month for vigilancia with 3 shifts (3 porteros = 24/7 coverage)**. That's $4.3M per shift-slot all-in: empresa de vigilancia base + night surcharges (recargo nocturno 35% on salary for all hours 9pm–6am) + festivo surcharges (Colombia has 18 public holidays, +75% on those days) + replacement portero when primary is sick/on vacation + equipment and supervision overhead charged by the empresa. The often-cited "$2.9M" is the base labor cost before these mandatory surcharges.
 
-Most residential buildings need:
+Most residential buildings need (based on real 2026 Bogotá budgets):
 
-| Building size | Guards needed | True monthly cost (2026 incl. empresa vigilancia + reemplazos) |
+| Building size | Shifts (turnos) needed | True monthly vigilancia cost |
 |---|---|---|
-| Hasta 25 aptos, diurno | 1 portero | **~$3,400,000 COP/mes** |
-| 25–70 aptos, día + noche | 2 porteros | **~$6,800,000 COP/mes** |
-| 70–120 aptos, 24/7 turnos | 3 porteros | **~$10,200,000 COP/mes** |
-| 120+ aptos, full coverage | 4–5 porteros | **~$13,600,000–$17,100,000 COP/mes** |
+| Hasta 25 aptos, solo diurno | 1 turno (8h) | **~$4,300,000 COP/mes** |
+| 25–70 aptos, 24/7 (3 turnos) | 3 turnos | **~$12,900,000 COP/mes** |
+| 70–120 aptos, 24/7 + 2 porteros/turno | 4–5 turnos | **~$17,200,000–$21,500,000 COP/mes** |
+| 120+ aptos, full coverage | 6+ turnos | **~$25,800,000+ COP/mes** |
 
-*(Source: 2026 salario mínimo $1,423,500 × full carga prestacional × 1.20 empresa de vigilancia × 1.15 reemplazos)*
+*(Source: real 2026 Bogotá building budget showing $12,894,398/month vigilancia for 10-apt 24/7 building; $4,300,000/turno blended rate including all surcharges and empresa overhead)*
 
-IAccess monthly service for equivalent building: **$850,000–$2,200,000 COP/month**  
-**Typical savings: $2.5M–$15M COP/month depending on building size. Payback: 6–18 months.**
+IAccess monthly service for equivalent building: **$600,000–$1,500,000 COP/month**  
+**Typical savings: $11M–$24M COP/month depending on building size. Payback on installation: 6–12 months.**
 
 ### Taglines (A/B test all three)
 1. *"Tu edificio nunca duerme. Tu portero, sí."*
 2. *"El portero más confiable del mundo no necesita salario ni prestaciones."*
-3. *"Cara, QR o huella. Tu edificio inteligente desde $14 millones."*
+3. *"Cara, QR o huella. Cotiza tu edificio inteligente."*
 
 ### Brand Colors
 ```
@@ -468,8 +477,8 @@ duerme. Tu portero, sí.
 
 SUBHEADLINE (Inter Regular, 22px, #B0B8C8):
 Reemplaza tu portería con reconocimiento facial, QR y huella dactilar.
-Sin remodelaciones mayores. Sin contratos laborales. Sin interrupciones.
-Desde $14,000,000 COP instalado.
+Sin contratos laborales. Sin recargos nocturnos. Sin festivos.
+Tu edificio funciona solo — 24/7 — desde $600,000 COP/mes.
 
 CTA ROW:
 [Cotización en 60 segundos  →]    [Ver demostración  ▶]
@@ -480,7 +489,7 @@ CTA ROW:
 ```
   🏢 Edificios en Bogotá: 12 pilotos activos
   ⚡ Instalación: 2–5 días hábiles  
-  💰 Ahorro promedio: $5,800,000 COP/mes
+  💰 Ahorro promedio: $11,900,000 COP/mes vs portería 24/7
   🔒 Tecnología Hikvision · YOLO AI
 ```
 
@@ -496,7 +505,7 @@ HOY CON PORTERO
 
 😤  El portero nocturno no llega. Otra vez.
 😤  Un guest de Airbnb espera 40 minutos en la calle a las 2am
-😤  $6,800,000 COP al mes en dos porteros — más reemplazos
+😤  $12,900,000 COP al mes en tres turnos — más recargos de noche y festivos
 😤  El visitante anotó un nombre falso en el libro
 😤  El paquete de Mercado Libre desapareció del lobby
 😤  Reunión de copropiedad cada 3 meses para discutir lo mismo
@@ -509,7 +518,7 @@ CON IACCESS
 
 ✅  Reconocimiento facial en 0.4 segundos, 24/7
 ✅  Tu guest recibe su QR por WhatsApp al confirmar la reserva
-✅  $1,200,000–$1,800,000 COP/mes todo incluido
+✅  $600,000–$1,500,000 COP/mes todo incluido (vs $12.9M que pagas hoy)
 ✅  Registro automático con foto de cada ingreso, marca de tiempo
 ✅  Notificación push: "Un paquete llegó. Cámara 3 — Lobby."
 ✅  Reportes automáticos para tu asamblea de copropietarios
@@ -546,9 +555,9 @@ Tiempo: 60 seg      Tiempo: 1 hora        Tiempo: 2–5 días       Siempre
 │                          │  │                          │  │                          │
 │ Puertas principales,     │  │ YOLO AI identifica cada  │  │ Visitantes y guests      │
 │ parqueaderos, zonas      │  │ persona en <400ms.       │  │ reciben QR por WhatsApp  │
-│ comunes — desde          │  │ Sin tarjetas ni claves.  │  │ con expiración exacta.   │
-│ $3,400,000 COP/punto     │  │ Desde $6,500,000 COP     │  │ Incluido en todos        │
-│ Ver más →                │  │ Ver más →                │  │ los planes               │
+│ comunes. Instalación     │  │ Sin tarjetas ni claves.  │  │ con expiración exacta.   │
+│ completa: $65M–$145M COP │  │ Incluido en todos        │  │ Incluido en todos        │
+│ Ver más →                │  │ los planes. Ver más →    │  │ los planes               │
 └─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
 
 ┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────┐
@@ -649,20 +658,20 @@ FORM (inline, touch-friendly dropdowns):
 
   Estimado para tu edificio:
 
-  Instalación:      $17,000,000 – $26,000,000 COP
-  Mensualidad:      $850,000 – $1,200,000 COP/mes
+  Instalación:      $65,000,000 – $145,000,000 COP
+  Mensualidad:      $600,000 – $1,500,000 COP/mes
 
   Comparado con portería actual:
-  2 porteros (estimado):     $6,795,000 COP/mes
-  IAccess:                   $1,100,000 COP/mes
-  Ahorro mensual:            $5,700,000 COP
-  Retorno de inversión:      ~3–4 meses
+  3 turnos 24/7 (dato real Bogotá):  $12,900,000 COP/mes
+  IAccess:                            $1,250,000 COP/mes
+  Ahorro mensual:                    $11,650,000 COP
+  Retorno de inversión:              ~9–10 meses (rango: 6–18)
 
   ✅ Incluye: Hardware Hikvision · Instalación · App · Soporte 1 año
 
   [📋 Cotización detallada por email]   [📞 Hablar con asesor]
   ──────────────────────────────────────────────────────────
-  * Estimados basados en proyectos similares en Bogotá.
+  * Estimados basados en cotizaciones reales en Bogotá mayo 2026.
     La cotización exacta requiere visita técnica gratuita.
 ```
 
@@ -673,20 +682,22 @@ FORM (inline, touch-friendly dropdowns):
 **Design:** Clean table on white background. Three columns: cost item, portería tradicional, IAccess.
 
 ```
-                        PORTERÍA TRADICIONAL     IACCESS
+                        PORTERÍA 24/7 REAL       IACCESS
 ─────────────────────────────────────────────────────────────
-Costo mensual           $6,795,000 COP           $1,100,000 COP
-Incapacidades médicas   Tú los asumes            No aplica
-Vacaciones              Tú cubres el reemplazo   No aplica
-Renuncia/liquidación    Hasta $8M COP una vez     No aplica
+Costo mensual           $12,900,000 COP          $1,250,000 COP
+Recargos nocturnos      +35% en turno noche      No aplica
+Festivos (18/año)       +75% esos días           No aplica
+Incapacidades médicas   Agencia: +$250k/día       No aplica
+Vacaciones anuales      Reemplazo: +$740k/año     No aplica
+Renuncia/liquidación    Hasta $8M una vez         No aplica
 Disponibilidad          Solo en turno activo      24/7/365
 Registro de ingresos    Libro en papel            Digital, con foto
 Respuesta a emergency   Depende del portero       App + alerta inmediata
 Control de visitantes   Verbal o cuaderno         QR con expiración
 Soporte Airbnb          Ninguno                   Integración automática
 ─────────────────────────────────────────────────────────────
-COSTO AÑO 1             $81,540,000              $29,300,000 *
-COSTO AÑO 2+            $81,540,000/año           $12,300,000/año
+COSTO AÑO 1             $154,800,000             $115,000,000 *
+COSTO AÑO 2+            $154,800,000/año         $15,000,000/año
 ```
 _*Año 1 incluye instalación. Cálculo para edificio 20–50 aptos, 2 porteros actuales (incl. empresa de vigilancia 20% + reemplazos 15%)._
 
@@ -711,7 +722,7 @@ y aeropuertos de              de rostros. <400ms             Incluido en tu
 ### TESTIMONIALS (3-card carousel)
 
 ```
-"Teníamos portero diurno y nocturno — $7.1 millones al mes entre 
+"Teníamos portería 24/7 — $12.8 millones al mes entre 
 salarios y la empresa de vigilancia. Instalamos IAccess en 3 días. 
 En el mes 8, el ahorro pagó la instalación completa. Los residentes 
 lo prefieren porque no tienen que esperar a que alguien abra."
@@ -1135,13 +1146,28 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
+│ PANEL DE VIDRIO VESTÍBULO ASCENSOR (por piso)              │
+│ Puerta de vidrio temperado con magneto en cada descanso     │
+│ del ascensor — barrera entre escaleras y área del ascensor. │
+│                                                             │
+│ Panel vidrio templado 10mm + marco aluminio: $1,800,000     │
+│ Magneto 600 lb + fijación: $700,000                        │
+│ Lector tarjeta RFID (sin facial): $500,000                 │
+│ Obra civil (ajuste vano, pintura): $800,000                │
+│ Mano de obra instalación: $700,000                         │
+│ TOTAL: $4,500,000 COP por piso                            │
+│ * Rango real: $3,500,000–$6,000,000 según especificación   │
+│ Ejemplo: edificio 10 pisos = $45,000,000 COP              │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
 │ MODO AIRBNB COMPLETO                                        │
 │ (si no está incluido en el plan elegido)                    │
 │                                                             │
 │ Setup integración Airbnb + Booking + VRBO: $2,500,000      │
 │ Configuración WhatsApp Business API: $800,000              │
 │ TOTAL instalación: $3,300,000 COP                         │
-│ Mensualidad adicional: $280,000 COP/mes                    │
+│ Mensualidad adicional: $250,000 COP/mes                    │
 └────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────┐
@@ -1149,9 +1175,33 @@ SERVICIOS ADICIONALES — se pueden agregar a cualquier plan
 │ Centro de control revisa alertas, verifica ingresos        │
 │ inusuales, contacta al administrador en tiempo real.       │
 │                                                             │
-│ Mensualidad: $490,000 COP/mes                              │
+│ Mensualidad: $450,000 COP/mes                              │
 │ Tiempo de respuesta a alerta: < 3 minutos                  │
 │ Turnos: operadores en 3 turnos, 365 días                   │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ REFERENCIA: PRESUPUESTO COMPLETO EDIFICIO TIPO             │
+│ (10 pisos, 50 apartamentos — basado en cotizaciones reales  │
+│ mayo 2026 Bogotá)                                          │
+│                                                             │
+│ Puerta lobby automática corredera + acceso facial: $30,000k │
+│ Paneles vidrio vestíbulo ascensor × 10 pisos: $45,000k     │
+│ Sistema de cámaras (14 cámaras ColorVu + NVR): $25,400k    │
+│ Control ascensor (UHPPOTE 40ch): $8,600k                   │
+│ Lectores + magnetós + controladores: $12,000k              │
+│ Red PoE + UPS: $2,600k                                     │
+│ Cableado estructurado: $5,000k                             │
+│ Mano de obra (5 días, 3 técnicos + jefe): $8,400k          │
+│ Software setup + comisionamiento: $3,000k                  │
+│                                                             │
+│ TOTAL ORIENTATIVO: $140,000,000 COP                       │
+│ Rango confirmado en cotizaciones reales: $65M – $145M COP  │
+│                                                             │
+│ Mensualidad Plan Profesional (50 aptos): $1,250,000/mes    │
+│ vs vigilancia 24/7 real: ~$12,900,000/mes                 │
+│ Ahorro mensual: ~$11,650,000 COP                          │
+│ ROI: ~12 meses (rango: 6–18 meses según tamaño)           │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -1239,19 +1289,20 @@ Puntos de acceso peatonal (puertas que se quieren controlar):
 ║  ESTIMADO EN TIEMPO REAL                         ║
 ║                                                  ║
 ║  Inversión inicial:                              ║
-║  $42,000,000 – $68,000,000 COP                   ║
+║  $65,000,000 – $145,000,000 COP                  ║
+║  (cotizaciones reales Bogotá 2026)               ║
 ║                                                  ║
 ║  Mensualidad:                                    ║
-║  $1,400,000 COP/mes                              ║
+║  $900,000–$1,500,000 COP/mes                     ║
 ║                                                  ║
 ║  ─────────────────────────────────────           ║
 ║  COMPARACIÓN CON TU PORTERÍA ACTUAL:             ║
 ║                                                  ║
-║  Costo estimado 2 porteros:  $6,795,000/mes      ║
-║  Costo IAccess:              $1,400,000/mes      ║
-║  Ahorro mensual:             $5,400,000/mes      ║
+║  Portería 24/7 (dato real): $12,900,000/mes      ║
+║  Costo IAccess:              $1,250,000/mes      ║
+║  Ahorro mensual:            $11,650,000/mes      ║
 ║                                                  ║
-║  Retorno de inversión:       ~9 meses            ║
+║  Retorno de inversión:       ~9–12 meses         ║
 ║                                                  ║
 ║  ─────────────────────────────────────           ║
 ║  HARDWARE INCLUIDO:                              ║
@@ -1260,7 +1311,7 @@ Puntos de acceso peatonal (puertas que se quieren controlar):
 ║  ✓ 1× videoportero DS-KD8003                     ║
 ║  ✓ 3× magnetos 1200 lb                           ║
 ║  ✓ 8× cámaras 4MP ColorVu                        ║
-║  ✓ NVR 16ch + 4TB + servidor IA                  ║
+║  ✓ NVR 16ch + 4TB (AI en nube IAccess)           ║
 ║  ✓ Control 1 ascensor                            ║
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝
@@ -1321,7 +1372,7 @@ PASO 4 — INSTALACIÓN (2–8 días hábiles)
 Nuestros técnicos trabajan en horario que no afecte a los residentes.
 Día 1: tendido de cableado estructurado (CAT6 + conduit)
 Día 2: montaje de cámaras, lectores y magnetos
-Día 3: instalación de NVR, servidor IA y switch PoE
+Día 3: instalación de NVR, switch PoE
 Día 4: programación, creación de base de datos facial inicial
 Día 5+: pruebas, ajustes, registro de residentes
 
@@ -1428,7 +1479,6 @@ Lector facial entrada — HIKVISION DS-K1T671M-E1 (Pro Series)
 • Reconocimiento facial en <0.5 seg, 99.9% precisión
 • Capacidad: 50,000 rostros almacenados
 • Funciona con mascarilla, en baja luz
-• Temperatura de operación: -30°C a 60°C
 • IP65 (resistente a lluvia y polvo)
 • Módulo de huella dactilar integrado
 • Lector de tarjeta NFC/Mifare incorporado
@@ -1485,20 +1535,11 @@ Plan Enterprise (hasta 20+ cámaras / 70+ aptos):
    manual
    Latencia: 230–320ms con TensorRT INT8
 
-OPCIÓN EDGE (solo si el edificio requiere operación
-100% offline por restricción contractual):
-→ NVIDIA Jetson AGX Orin 64GB
-   275 TOPS · soporta 16 cámaras en sitio
-   Precio instalado en edificio: ~$5,373,000 COP
-   (Jetson AGX Orin 64GB ~$999 × 5,375)
-   + $1,500,000 instalación en rack
-   Nota: actualización de software requiere visita técnica
-
 ──────────────────────────────────────────────
 SEGURIDAD Y PRIVACIDAD
 
 • Base de datos biométrica encriptada AES-256
-• Datos almacenados solo en servidor local del edificio (no en la nube de IAccess)
+• Datos en nube IAccess (Hetzner, ISO 27001, GDPR) — encriptados con clave del edificio
 • Cada residente firma autorización de tratamiento de datos (Ley 1581)
 • Derecho al olvido: el administrador borra el perfil en 30 segundos
 • Los logs de ingreso se guardan por 90 días (configurable)
@@ -1932,12 +1973,6 @@ GPU POR PLAN:
 • Plan Profesional:   RTX 4060 Ti 16GB (dedicada, hasta 14 cams)
 • Plan Enterprise:    RTX 4090 24GB (dedicada, hasta 20+ cams)
 
-OPCIÓN OFFLINE (contratos con restricción de datos):
-Para edificios que requieren operación 100% sin internet,
-ofrecemos instalación de NVIDIA Jetson AGX Orin 64GB en sitio.
-Precio instalado: $6,873,000 COP + $1,500,000 instalación.
-Nota: actualizaciones de software requieren visita técnica presencial.
-
 ──────────────────────────────────────────────
 RESILIENCIA OFFLINE — ¿QUÉ PASA SI SE CAE INTERNET?
 
@@ -2122,10 +2157,11 @@ auxilio transporte + salud + pensión + ARL + parafiscales +
 primas + vacaciones + cesantías = total ~$2,462,050 COP/portero]
 
 H2: ¿Cuántos porteros necesita un edificio?
-• Edificio hasta 20 aptos, diurno solo: 1 portero → **$2.95M/mes** (con empresa de vigilancia)
-• Edificio hasta 60 aptos, día y noche: 2 porteros → **$5.91M/mes** raw, **$6.79M/mes** con reemplazos
-• Edificio 60-120 aptos, 24/7 con reemplazos: 3 porteros → **$8.86M/mes** raw, **$10.2M/mes** con reemplazos
-• Edificio premium 120+ aptos: 4+ porteros → **$11.8M+/mes** raw, **$13.6M+/mes** con reemplazos
+• Edificio hasta 20 aptos, solo diurno: 1 turno → **$4,300,000/mes** (empresa vigilancia all-in)
+• Edificio 25-70 aptos, cobertura 24/7: 3 turnos → **$12,900,000/mes** (dato real Bogotá 2026)
+• Edificio 70-120 aptos, 24/7 + 2/turno: 4-5 turnos → **$17,200,000–$21,500,000/mes**
+• Edificio premium 120+ aptos: 6+ turnos → **$25,800,000+/mes**
+[Fuente real: presupuesto 2026 edificio 10 aptos Bogotá = $12,894,398/mes vigilancia para 3 turnos]
 
 H2: Los costos ocultos que nadie cuenta
 • Incapacidad médica: ¿quién reemplaza? Agencia de empleo: $180,000–$300,000/día
@@ -2437,11 +2473,8 @@ const PRICING = {
     ch16_4TB:     2_900_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 → $2,865k → rounded)
     ch8_2TB:      2_200_000,  // 8ch NVR + 2TB (~$400 → $2,150k → rounded)
   },
-  // Server: NOT sold to buildings — IAccess rents cloud GPU and bundles it in monthly fee.
-  // Edge option (offline buildings only): Jetson AGX Orin 64GB $999 → $5,373k → $5,400k
-  edgeServer: {
-    jetsonAgxOrin64: 5_400_000,  // NVIDIA Jetson AGX Orin 64GB — edge/offline only
-  },
+  // Server: CLOUD ONLY — IAccess rents Hetzner GPU and bundles in monthly fee. No on-prem server sold.
+  // (If server is in the building, client can bypass IAccess — this kills the SaaS model.)
   network: {
     ups1500va:      810_000,  // ($150 → $806k → rounded to 10k)
     switch24poe:  1_100_000,  // ($200 → $1,075k → rounded)
@@ -2460,16 +2493,26 @@ const PRICING = {
     leadHr:       150_000,   // $35/hr × 4,300 COP/USD
     helperHr:      50_000,   // $12/hr × 4,300 COP/USD (rounded to 10k)
   },
+  glassDoor: {
+    // Glass door installation — major civil work; largest cost in most real quotes.
+    // Real Bogotá quotes confirmed at $65M–$145M total for complete building.
+    lobbyAutoSliding:  30_000_000, // Automatic double sliding glass door, lobby entrance
+                                   // (motor + frame + tempered glass + install; ±$25–35M range)
+    lobbySwingDouble:  22_000_000, // Double swing glass door (frameless, motorized)
+    elevatorFloorPanel: 4_500_000, // Frameless glass panel + maglok per elevator lobby floor
+                                   // (mid-range; $3.5M–$6M depending on glass spec)
+  },
   monthly: {
-    // Cloud GPU compute is now ALWAYS included (IAccess rents Hetzner GEX44 at ~$191/month = ~$820k COP
-    // and amortizes across buildings). The monthly fee below includes compute + software + support.
-    baseEsencial:     850_000,  // RTX 4060 Ti shared  + software + support
-    baseProfessional: 1_400_000, // RTX 4060 Ti dedicated + software + SLA 4h (rounded from 1,350k)
-    baseEnterprise:   2_200_000, // RTX 4090 dedicated + software + SLA 99.9%
+    // Cloud GPU compute is ALWAYS included (IAccess rents Hetzner GEX44 RTX 4000 Ada ~$191/month
+    // amortized across buildings). Monthly fee = compute + software + support SLA.
+    // CLOUD ONLY — no on-premises server option. SaaS lock-in requires cloud-side AI.
+    baseEsencial:     600_000,   // RTX 4060 Ti shared + software (revised down per user data)
+    baseProfessional: 900_000,   // RTX 4060 Ti dedicated + software + SLA 4h
+    baseEnterprise:   1_300_000, // RTX 4090 dedicated + software + SLA 99.9%
     // Add-ons:
-    perApartment:      10_000,  // per-apartment fee (rounded from 12k)
-    airbnb:           280_000,  // Airbnb integration (included in Pro+)
-    monitoring24_7:   490_000,  // human operators 24/7 (always add-on)
+    perApartment:      8_000,    // per-apartment fee (revised from 10k)
+    airbnb:           250_000,   // Airbnb integration module (included free in Enterprise)
+    monitoring24_7:   450_000,   // human patrol partnership 24/7 (always add-on, optional)
   }
 };
 
@@ -2531,8 +2574,7 @@ function calculatePackage(inputs) {
   // Parking gate
   if (parkingGate) hardware += 12_040_000 + 4_816_000; // FAAC + LPR
 
-  // Server: NOT in hardware total — IAccess provides cloud GPU as part of monthly service.
-  // If the building requests edge/offline mode, add edgeServer.jetsonAgxOrin64 + 1_500_000 as a line item.
+  // Server: CLOUD ONLY — never a hardware line item. Monthly fee covers GPU compute.
 
   // Network + power
   hardware += PRICING.network.ups1500va * (isEnterprise ? 2 : 1);
@@ -2558,23 +2600,26 @@ function calculatePackage(inputs) {
   const totalInstall = hardware + labor + cablingCost + emergencyExitCost + softwareSetup;
 
   // ─── MONTHLY ───
-  // Base fee already includes cloud GPU compute + software + support
-  let monthly = isEnterprise
-    ? PRICING.monthly.baseEnterprise
+  // Base minimum + per-apt fee. Cloud GPU ALWAYS included — no on-prem server option.
+  const baseMonthly = isEnterprise
+    ? PRICING.monthly.baseEnterprise     // COP 1,300,000 min
     : nApts > 25
-      ? PRICING.monthly.baseProfessional
-      : PRICING.monthly.baseEsencial;
-  monthly += nApts * PRICING.monthly.perApartment;
+      ? PRICING.monthly.baseProfessional // COP 900,000 min
+      : PRICING.monthly.baseEsencial;    // COP 600,000 min
+  let monthly = Math.max(baseMonthly, nApts * PRICING.monthly.perApartment + baseMonthly);
   if (airbnb && !isEnterprise) monthly += PRICING.monthly.airbnb; // included free in Enterprise
   if (monitoring) monthly += PRICING.monthly.monitoring24_7;
 
   // ─── DOORMEN COST ───
-  const porteroCount = { "0": 0, "1": 1, "2": 2, "3+": 3 };
-  const nPorteros = currentPorteros !== undefined
-    ? porteroCount[currentPorteros] || 0
-    : (nApts < 25 ? 1 : nApts < 80 ? 2 : 3);
-  // $2,462,050 base × 1.20 empresa de vigilancia mandatory cut × 1.15 replacement buffer
-  const porteroMonthlyCost = nPorteros * 2_462_050 * 1.20 * 1.15;
+  // Real rate: $4,300,000/turno-slot (confirmed by real 2026 Bogotá building budget:
+  // 10-apt building pays $12,894,398/month for 3 turnos = $4,298k/turno).
+  // Includes: empresa de vigilancia base + recargo nocturno 35% + festivo 75% + reemplazos.
+  // Most buildings need 3 turnos (24/7). Diurno-only = 1 turno.
+  const porteroTurnos = { "0": 0, "1": 1, "2": 2, "3+": 3 };
+  const nTurnos = currentPorteros !== undefined
+    ? porteroTurnos[currentPorteros] || 0
+    : (nApts < 25 ? 1 : 3); // <25 apts diurno only; any 24/7 building = 3 turnos minimum
+  const porteroMonthlyCost = nTurnos * 4_300_000;
 
   // ─── RANGE (±20%) ───
   return {
@@ -2681,7 +2726,7 @@ GuardIA-specific long-tail (high commercial intent):
 | "Contáctenos para más información" as only CTA | Quote calculator + WhatsApp direct link on every page |
 | Ignore Airbnb | Dedicate full section + landing page — it's the biggest gap in the market |
 | Only target building owners | Target: admins, Airbnb investors, constructoras separately |
-| "Smart building" buzzwords | "Tu portero cuesta $5.6M al mes. IAccess cuesta $1.35M." |
+| "Smart building" buzzwords | "Tu portería 24/7 cuesta $12.9M al mes. IAccess cuesta $1.25M." |
 | English-only tech terms | Full Spanish, propiedad horizontal vocabulary |
 | Photo of surveillance camera equipment | Photo of person entering through elegant glass door |
 | Testimonials without specifics | Always include: building name, neighborhood, # units, date |
@@ -2690,8 +2735,8 @@ GuardIA-specific long-tail (high commercial intent):
 
 ---
 
-*IAccess Website Design Brief v3.3 — May 2026*  
+*IAccess Website Design Brief v3.4 — May 2026*  
 *Pricing basis: Amazon USD retail price + 25% importation/shipping/customs × 4,300 COP/USD = × 5,375 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
-*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*  
-*Business model (v3.0): SaaS/rental — IAccess owns and operates cloud GPU infrastructure (Hetzner GEX44 RTX 4000 Ada, ~$191/month IAccess cost). No server sold to buildings. Monthly fee covers GPU compute + software + maintenance + support SLA. Edge/offline option available: Jetson AGX Orin 64GB installed on-premises.*
+*Portero cost basis: real $4,300,000/turno-slot (10-apt Bogotá 2026 = $12,894,398/month for 3 shifts). Base formula: $2,462,050 carga laboral + 20% empresa de vigilancia = $2,954,460 base; rest = night/festivo surcharges.*  
+*Business model (v3.1 — cloud-only): IAccess owns and operates cloud GPU infrastructure (Hetzner GEX44 RTX 4000 Ada, ~$191/month IAccess cost). No server sold or installed in buildings — EVER. Monthly fee covers GPU compute + software + maintenance + support SLA. No on-premises option: if the server is in the building, the client can bypass the IAccess platform, which kills the SaaS lock-in.*
