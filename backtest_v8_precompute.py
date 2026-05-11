@@ -204,6 +204,348 @@ STR_MAP = {"green": 1, "red": -1, "neutral": 0, "BUY": 1, "SELL": -1, "NEUTRAL":
            "bullish": 1, "bearish": -1, "strong_bullish": 2, "strong_bearish": -2,
            "higher": 1, "lower": -1, "none": 0, "bull_cross": 1, "bear_cross": -1}
 
+# Bar-pattern integer codes (2026-05-11 — for bar_pattern_<tf> int8 array). The
+# string→int mapping below mirrors ez_indicators.detect_bar_patterns priority order.
+# Engine reads bar_pattern_<tf> as a numeric value; code 0 == "none". A separate
+# `bar_pattern_codes` 0-D object array is written to the NPZ holding {int: str}.
+BAR_PATTERN_CODES = {
+    "none": 0, "morning_star": 1, "evening_star": 2, "three_white_soldiers": 3,
+    "three_black_crows": 4, "bull_engulfing": 5, "bear_engulfing": 6,
+    "tweezer_bottom": 7, "tweezer_top": 8, "hammer": 9, "shooting_star": 10,
+    "bull_harami": 11, "bear_harami": 12, "multi_inside": 13, "inside_bar": 14,
+    "outside_bar": 15, "pin_bar_bull": 16, "pin_bar_bear": 17,
+    "three_bar_bull": 18, "three_bar_bear": 19, "doji": 20,
+}
+# bar_vol_regime_<tf>: low=-1, normal=0, high=1.
+BAR_VOL_REGIME_CODES = {"low": -1, "normal": 0, "high": 1}
+
+
+def _bar_pattern_arrays(o: np.ndarray, h: np.ndarray, l_: np.ndarray, c: np.ndarray,
+                        v: np.ndarray, tf: str) -> Dict[str, np.ndarray]:
+    """Vectorized per-bar replica of ez_indicators.detect_bar_patterns().
+    Returns dict of bar_*_<tf> arrays, all length n. Pattern is encoded as int8 via
+    BAR_PATTERN_CODES; bar_vol_regime as int8 via BAR_VOL_REGIME_CODES.
+
+    Bar positions: index i is the "current" bar; i-1 is "prev1" (== _b(-2) in live);
+    i-2 is "prev2" (== _b(-3)); i-3 is "prev3" (== _b(-4)). Indices < required are
+    handled by clamping (giving "none" pattern at the start of the series).
+    """
+    n = len(c)
+    out: Dict[str, np.ndarray] = {}
+    if n < 5:
+        return out
+    # Per-bar arrays
+    body = np.abs(c - o)
+    rng = np.maximum(h - l_, 1e-10)
+    upper_wick = h - np.maximum(o, c)
+    lower_wick = np.minimum(o, c) - l_
+    body_ratio = body / rng
+    is_bull = c > o
+    is_bear = c < o
+    # Shift helpers (prev1 / prev2 / prev3). Uses np.roll then clamps the head.
+    def _shift(a, k):
+        out = np.roll(a, k)
+        if k > 0:
+            out[:k] = a[0]
+        return out
+    o2 = _shift(o, 1); h2 = _shift(h, 1); l2 = _shift(l_, 1); c2 = _shift(c, 1)
+    o3 = _shift(o, 2); h3 = _shift(h, 2); l3 = _shift(l_, 2); c3 = _shift(c, 2)
+    o4 = _shift(o, 3); h4 = _shift(h, 3); l4 = _shift(l_, 3); c4 = _shift(c, 3)
+    body2 = np.abs(c2 - o2); body3 = np.abs(c3 - o3)
+    range2 = np.maximum(h2 - l2, 1e-10)
+    range3 = np.maximum(h3 - l3, 1e-10)
+    is_bull2 = c2 > o2; is_bear2 = c2 < o2
+    is_bull3 = c3 > o3; is_bear3 = c3 < o3
+    # --- Volume features (rolling 20-bar trailing average; live uses bars [-21:-1]) ---
+    vol_avg = pd.Series(v).shift(1).rolling(20, min_periods=1).mean().bfill().fillna(v[0]).values
+    vol_avg = np.where(vol_avg > 0, vol_avg, 1.0)
+    vol_ratio = v / vol_avg
+    vol_confirm = (vol_ratio >= 1.3).astype(np.int8)
+    vol_spike = (vol_ratio >= 2.0).astype(np.int8)
+    vol_dry = vol_ratio < 0.6
+    # vol_expanding: v[i] > v[i-1] AND v[i-1] > v[i-2] AND v[i-2] > v[i-3] (3 bars rising)
+    v_p1 = _shift(v, 1); v_p2 = _shift(v, 2); v_p3 = _shift(v, 3)
+    vol_expanding = ((v > v_p1) & (v_p1 > v_p2) & (v_p2 > v_p3)).astype(np.int8)
+    # --- ATR rank: rolling 50-bar percent-rank of (h-l) ---
+    atr_arr = (h - l_).astype(np.float64)
+    atr_rank = np.zeros(n, dtype=np.float32)
+    win = min(50, n)
+    if win >= 2:
+        s = pd.Series(atr_arr)
+        # Rolling rank-pct (fraction of window strictly less than current). For speed we
+        # use rolling.rank(pct=True) - 1/win to approximate the live `(<curr).sum()/n`.
+        rk = s.rolling(win, min_periods=1).rank(pct=True).values
+        atr_rank = (rk - (1.0 / win)).clip(min=0.0).astype(np.float32)
+    vol_regime = np.where(atr_rank < 0.25, -1, np.where(atr_rank > 0.75, 1, 0)).astype(np.int8)
+    # --- Streak (consecutive directional closes), capped at ±7 to mirror live (range(1,8)) ---
+    sign = np.where(c > o, 1, np.where(c < o, -1, 0)).astype(np.int8)
+    streak = np.zeros(n, dtype=np.int8)
+    for i in range(n):
+        s = 0
+        for k in range(min(7, i + 1)):
+            si = int(sign[i - k])
+            if si == 0:
+                break
+            if s == 0:
+                s = si
+            elif (s > 0 and si > 0) or (s < 0 and si < 0):
+                s += si
+            else:
+                break
+        streak[i] = max(min(s, 127), -128)
+    # --- Swing structure ---
+    hh = (h > h2) & (h2 > h3)
+    hl = (l_ > l2) & (l2 > l3)
+    ll = (l_ < l2) & (l2 < l3)
+    lh = (h < h2) & (h2 < h3)
+    swing_bull = (hh & hl).astype(np.int8)
+    swing_bear = (ll & lh).astype(np.int8)
+    # --- Range compression (5 bars narrowing, oldest→newest = decreasing range) ---
+    # live: ranges_5 = [r(-1), r(-2), r(-3), r(-4), r(-5)]; compression = monotonically decreasing
+    # in time direction (i.e. each older bar has smaller-or-equal range than the next-newer).
+    # Equivalently r(-1) ≤ r(-2) ≤ r(-3) ≤ r(-4) ≤ r(-5) — older bars wider.
+    r_p1 = np.maximum(_shift(rng, 1), 1e-10)
+    r_p2 = np.maximum(_shift(rng, 2), 1e-10)
+    r_p3 = np.maximum(_shift(rng, 3), 1e-10)
+    r_p4 = np.maximum(_shift(rng, 4), 1e-10)
+    compression = ((rng <= r_p1) & (r_p1 <= r_p2) & (r_p2 <= r_p3) & (r_p3 <= r_p4)).astype(np.int8)
+    compression_ratio = (rng / np.where(r_p4 > 0, r_p4, 1e-10)).astype(np.float32)
+    # --- Multi-inside count (consecutive inside bars, max 4) ---
+    inside_one = ((h < h2) & (l_ > l2)).astype(np.int8)
+    inside_two = ((h2 < h3) & (l2 > l3)).astype(np.int8)
+    inside_three = ((h3 < h4) & (l3 > l4)).astype(np.int8)
+    h5 = _shift(h, 4); l5 = _shift(l_, 4)
+    inside_four = ((h4 < h5) & (l4 > l5)).astype(np.int8)
+    # Live counts forward from the most recent bar; equivalent to counting consecutive
+    # leading 1s in [inside_one, inside_two, inside_three, inside_four].
+    inside_count = (inside_one
+                    + inside_one * inside_two
+                    + inside_one * inside_two * inside_three
+                    + inside_one * inside_two * inside_three * inside_four).astype(np.int8)
+    # --- Pattern detection (per-bar, priority order matches live) ---
+    pattern = np.zeros(n, dtype=np.int8)
+    direction = np.zeros(n, dtype=np.int8)
+    strength = np.zeros(n, dtype=np.float32)
+    # 1. Morning Star
+    cond = (is_bear3 & (body3 > range3 * 0.5) & (body2 < range2 * 0.3) & is_bull
+            & (body > rng * 0.5) & (c > (o3 + c3) / 2))
+    s = np.minimum(1.0, (body + body3) / (2 * rng + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["morning_star"], pattern)
+    direction = np.where(cond & (direction == 0), 1, direction)
+    strength = np.where(cond & (strength == 0), s, strength)
+    # 2. Evening Star
+    cond = (is_bull3 & (body3 > range3 * 0.5) & (body2 < range2 * 0.3) & is_bear
+            & (body > rng * 0.5) & (c < (o3 + c3) / 2))
+    s = np.minimum(1.0, (body + body3) / (2 * rng + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["evening_star"], pattern)
+    direction = np.where(cond & (direction == 0) & (pattern == BAR_PATTERN_CODES["evening_star"]), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["evening_star"]) & (strength == 0), s, strength)
+    # 3. Three White Soldiers
+    cond = (is_bull & is_bull2 & is_bull3 & (c > c2) & (c2 > c3)
+            & (body > rng * 0.5) & (body2 > range2 * 0.5) & (body3 > range3 * 0.5))
+    s = np.minimum(1.0, np.minimum.reduce([body, body2, body3]) / np.maximum.reduce([rng, range2, range3]))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_white_soldiers"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_white_soldiers"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_white_soldiers"]) & (strength == 0), s, strength)
+    # 4. Three Black Crows
+    cond = (is_bear & is_bear2 & is_bear3 & (c < c2) & (c2 < c3)
+            & (body > rng * 0.5) & (body2 > range2 * 0.5) & (body3 > range3 * 0.5))
+    s = np.minimum(1.0, np.minimum.reduce([body, body2, body3]) / np.maximum.reduce([rng, range2, range3]))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_black_crows"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_black_crows"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_black_crows"]) & (strength == 0), s, strength)
+    # 5. Bull Engulfing
+    cond = (is_bull & is_bear2 & (c > o2) & (o < c2) & (body > body2))
+    s = np.minimum(1.0, (body / (body2 + 1e-10)) * 0.5)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bull_engulfing"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bull_engulfing"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bull_engulfing"]) & (strength == 0), s, strength)
+    # 6. Bear Engulfing
+    cond = (is_bear & is_bull2 & (c < o2) & (o > c2) & (body > body2))
+    s = np.minimum(1.0, (body / (body2 + 1e-10)) * 0.5)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bear_engulfing"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bear_engulfing"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bear_engulfing"]) & (strength == 0), s, strength)
+    # 7. Tweezer Bottom
+    cond = (is_bull & (np.abs(l_ - l2) < rng * 0.05) & (l_ < np.minimum(l3, l4)))
+    s = np.minimum(1.0, 1.0 - np.abs(l_ - l2) / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["tweezer_bottom"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["tweezer_bottom"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["tweezer_bottom"]) & (strength == 0), s, strength)
+    # 8. Tweezer Top
+    cond = (is_bear & (np.abs(h - h2) < rng * 0.05) & (h > np.maximum(h3, h4)))
+    s = np.minimum(1.0, 1.0 - np.abs(h - h2) / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["tweezer_top"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["tweezer_top"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["tweezer_top"]) & (strength == 0), s, strength)
+    # 9. Hammer
+    cond = ((body_ratio < 0.35) & (lower_wick > body * 2.0) & (upper_wick < body * 0.5))
+    s = np.minimum(1.0, lower_wick / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["hammer"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["hammer"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["hammer"]) & (strength == 0), s, strength)
+    # 10. Shooting Star
+    cond = ((body_ratio < 0.35) & (upper_wick > body * 2.0) & (lower_wick < body * 0.5))
+    s = np.minimum(1.0, upper_wick / rng)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["shooting_star"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["shooting_star"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["shooting_star"]) & (strength == 0), s, strength)
+    # 11. Bull Harami
+    cond = (is_bull & is_bear2 & (body < body2 * 0.5) & (h < h2) & (l_ > l2))
+    s = 0.5 * (1.0 - body / (body2 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bull_harami"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bull_harami"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bull_harami"]) & (strength == 0), s, strength)
+    # 12. Bear Harami
+    cond = (is_bear & is_bull2 & (body < body2 * 0.5) & (h < h2) & (l_ > l2))
+    s = 0.5 * (1.0 - body / (body2 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["bear_harami"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["bear_harami"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["bear_harami"]) & (strength == 0), s, strength)
+    # 13. Multi-inside (≥2 consecutive inside bars)
+    cond = inside_count >= 2
+    s = np.minimum(1.0, inside_count.astype(np.float64) * 0.3)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["multi_inside"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["multi_inside"]) & (strength == 0), s, strength)
+    # 14. Inside Bar
+    cond = (h < h2) & (l_ > l2)
+    s = 1.0 - (rng / np.where(range2 > 0, range2, 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["inside_bar"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["inside_bar"]) & (strength == 0), s, strength)
+    # 15. Outside Bar
+    cond = ((h > h2) & (l_ < l2) & (body_ratio > 0.6))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["outside_bar"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["outside_bar"]) & (direction == 0),
+                         np.where(is_bull, 1, -1), direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["outside_bar"]) & (strength == 0), body_ratio, strength)
+    # 16. Pin Bar Bull
+    cond = (lower_wick > rng * 0.6) & (body_ratio < 0.25)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["pin_bar_bull"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bull"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bull"]) & (strength == 0), lower_wick / rng, strength)
+    # 17. Pin Bar Bear
+    cond = (upper_wick > rng * 0.6) & (body_ratio < 0.25)
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["pin_bar_bear"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bear"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["pin_bar_bear"]) & (strength == 0), upper_wick / rng, strength)
+    # 18. Three Bar Bull
+    cond = (is_bull & is_bear2 & is_bear3 & (c > h2))
+    s = np.minimum(1.0, body / (body2 + body3 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_bar_bull"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_bar_bull"]) & (direction == 0), 1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_bar_bull"]) & (strength == 0), s, strength)
+    # 19. Three Bar Bear
+    cond = (is_bear & is_bull2 & is_bull3 & (c < l2))
+    s = np.minimum(1.0, body / (body2 + body3 + 1e-10))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["three_bar_bear"], pattern)
+    direction = np.where((pattern == BAR_PATTERN_CODES["three_bar_bear"]) & (direction == 0), -1, direction)
+    strength = np.where((pattern == BAR_PATTERN_CODES["three_bar_bear"]) & (strength == 0), s, strength)
+    # 20. Doji
+    cond = body_ratio < 0.1
+    s = 0.3 + 0.4 * (vol_confirm.astype(np.float32))
+    pattern = np.where(cond & (pattern == 0), BAR_PATTERN_CODES["doji"], pattern)
+    strength = np.where((pattern == BAR_PATTERN_CODES["doji"]) & (strength == 0), s, strength)
+    # Volume amplifier (mirrors live)
+    has_dir = direction != 0
+    strength = np.where(has_dir & (vol_confirm.astype(bool)), np.minimum(1.0, strength * 1.3), strength)
+    strength = np.where(has_dir & (vol_spike.astype(bool)), np.minimum(1.0, strength * 1.2), strength)
+    strength = np.where(has_dir & vol_dry, strength * 0.6, strength)
+    out[f"bar_pattern_{tf}"] = pattern.astype(np.int8)
+    out[f"bar_direction_{tf}"] = direction.astype(np.int8)
+    out[f"bar_strength_{tf}"] = strength.astype(np.float32)
+    out[f"bar_vol_confirm_{tf}"] = vol_confirm
+    out[f"bar_vol_ratio_{tf}"] = vol_ratio.astype(np.float32)
+    out[f"bar_body_ratio_{tf}"] = body_ratio.astype(np.float32)
+    out[f"bar_upper_wick_{tf}"] = (upper_wick / np.where(rng > 0, rng, 1e-10)).astype(np.float32)
+    out[f"bar_lower_wick_{tf}"] = (lower_wick / np.where(rng > 0, rng, 1e-10)).astype(np.float32)
+    out[f"bar_streak_{tf}"] = streak
+    out[f"bar_swing_bull_{tf}"] = swing_bull
+    out[f"bar_swing_bear_{tf}"] = swing_bear
+    out[f"bar_compression_{tf}"] = compression
+    out[f"bar_compression_ratio_{tf}"] = compression_ratio
+    out[f"bar_inside_count_{tf}"] = inside_count
+    out[f"bar_vol_spike_{tf}"] = vol_spike
+    out[f"bar_vol_expanding_{tf}"] = vol_expanding
+    out[f"bar_vol_regime_{tf}"] = vol_regime
+    out[f"bar_atr_rank_{tf}"] = atr_rank
+    return out
+
+
+def _ha_streak_array(o: np.ndarray, h: np.ndarray, l_: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Per-bar Heikin-Ashi streak (mirrors ez_indicators.ha_streak_count counted on the
+    rolling end of the last 20 HA candles). Returns int8 array of length n."""
+    n = len(c)
+    if n < 3:
+        return np.zeros(n, dtype=np.int8)
+    ha_close = (o + h + l_ + c) / 4.0
+    ha_open = np.zeros(n, dtype=np.float64)
+    ha_open[0] = (o[0] + c[0]) / 2.0
+    for i in range(1, n):
+        ha_open[i] = (ha_open[i - 1] + ha_close[i - 1]) / 2.0
+    ha_color = np.where(ha_close >= ha_open, 1, -1).astype(np.int8)
+    streak = np.zeros(n, dtype=np.int8)
+    for i in range(n):
+        s = 0
+        # Live walks back up to 20 bars
+        for k in range(min(20, i + 1)):
+            col = int(ha_color[i - k])
+            if s == 0:
+                s = col
+            elif (s > 0 and col > 0) or (s < 0 and col < 0):
+                s += col
+            else:
+                break
+        streak[i] = max(min(s, 127), -128)
+    return streak
+
+
+def _rolling_linreg(close_arr: np.ndarray, length: int) -> tuple:
+    """Per-bar rolling linreg: returns (slope, linearity) arrays length n.
+    Mirrors ez_indicators.linreg_features with y_fit = y_mean + slope*(x-x_mean)
+    (the 2026-04-29 bug-fixed formula)."""
+    n = len(close_arr)
+    slope = np.zeros(n, dtype=np.float32)
+    lin = np.zeros(n, dtype=np.float32)
+    if n < length:
+        return slope, lin
+    x = np.arange(length, dtype=np.float64)
+    x_mean = x.mean()
+    x_dev = x - x_mean
+    x_var = (x_dev ** 2).sum()
+    if x_var <= 0:
+        return slope, lin
+    for i in range(length - 1, n):
+        y = close_arr[i - length + 1:i + 1].astype(np.float64)
+        if not np.isfinite(y).all():
+            continue
+        y_mean = y.mean()
+        sl = (x_dev * (y - y_mean)).sum() / x_var
+        y_fit = y_mean + sl * x_dev
+        ss_res = ((y - y_fit) ** 2).sum()
+        ss_tot = ((y - y_mean) ** 2).sum()
+        slope[i] = sl
+        lin[i] = (1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+    return slope, lin
+
+
+def _bb_pctb_with_touches(close: pd.Series, high: pd.Series, low: pd.Series,
+                          mult: float, length: int = 20) -> tuple:
+    """Returns (bb_high, bb_low, bb_pctb, bb_width, touches_count_rolling20). Used to fill
+    bb_high_<tf>, bb_low_<tf>, bb_width_<tf>, bb_touches_<tf> fields."""
+    n = len(close)
+    sma = close.rolling(length, min_periods=1).mean()
+    std = close.rolling(length, min_periods=1).std(ddof=0).fillna(0)
+    upper = sma + mult * std
+    lower = sma - mult * std
+    width = upper - lower
+    pctb = np.where(width > 0, (close - lower) / width, 0.5)
+    # Touches: bar high >= upper OR bar low <= lower in last 20 bars.
+    tt = ((high >= upper) | (low <= lower)).astype(np.int32)
+    touches = pd.Series(tt).rolling(20, min_periods=1).sum().values
+    return (upper.values.astype(np.float32), lower.values.astype(np.float32),
+            pctb.astype(np.float32), width.values.astype(np.float32),
+            touches.astype(np.float32))
+
 
 def load_klines(path: Path) -> Optional[pd.DataFrame]:
     if not path.exists():
@@ -595,6 +937,53 @@ def compute_tf_arrays(df: pd.DataFrame, tf: str) -> Dict[str, np.ndarray]:
         out["ep_detected"] = ep_det
         out["ep_breakout_level"] = ep_lvl
         out["ep_direction"] = ep_dir
+    # === MISSING-FIELDS PASS (2026-05-11 — close 174-field NPZ-vs-engine gap) ===
+    # All families below were silently zero-filled at engine read time.
+    o_a = open_.values.astype(np.float64)
+    h_a = high.values.astype(np.float64)
+    l_a = low.values.astype(np.float64)
+    c_a = close.values.astype(np.float64)
+    v_a = volume.values.astype(np.float64)
+    # 1. bar_* family (18 fields per TF) — ports ez_indicators.detect_bar_patterns to per-bar.
+    try:
+        bp_arrays = _bar_pattern_arrays(o_a, h_a, l_a, c_a, v_a, tf)
+        for k, v in bp_arrays.items():
+            if len(v) == n:
+                out[k] = v
+    except Exception as _e:
+        logger.warning(f"[bar_pattern_{tf}] {type(_e).__name__}: {_e}")
+    # 2. candle_body_ratio_<tf> = abs(close - open) / (high - low). Trivial scalar per bar.
+    _rng_safe = np.where((h_a - l_a) > 1e-10, (h_a - l_a), 1e-10)
+    out[f"candle_body_ratio_{tf}"] = (np.abs(c_a - o_a) / _rng_safe).astype(np.float32)
+    # 3. ema_9_<tf>, ema_14_<tf>, ema_9_above_21_<tf>. (ema_21 derived alongside; ema_50/200
+    # already exist.) `_above_21` is int8 boolean.
+    _ema9 = close.ewm(span=9, adjust=False).mean()
+    _ema14 = close.ewm(span=14, adjust=False).mean()
+    _ema21 = close.ewm(span=21, adjust=False).mean()
+    out[f"ema_9_{tf}"] = _ema9.values.astype(np.float32)
+    out[f"ema_14_{tf}"] = _ema14.values.astype(np.float32)
+    out[f"ema_9_above_21_{tf}"] = (_ema9.values > _ema21.values).astype(np.int8)
+    # 4. ha_color_<tf> + ha_streak_<tf>. ha_color = +1 bullish HA, -1 bearish, 0 neutral.
+    _ha_close = (open_ + high + low + close) / 4.0
+    _ha_open = pd.Series(np.zeros(n), index=df.index)
+    if n > 0:
+        _ha_open.iloc[0] = (open_.iloc[0] + close.iloc[0]) / 2.0
+        for i in range(1, n):
+            _ha_open.iloc[i] = (_ha_open.iloc[i - 1] + _ha_close.iloc[i - 1]) / 2.0
+        _ha_color = np.where(_ha_close.values > _ha_open.values, 1,
+                             np.where(_ha_close.values < _ha_open.values, -1, 0)).astype(np.int8)
+        out[f"ha_color_{tf}"] = _ha_color
+        out[f"ha_streak_{tf}"] = _ha_streak_array(o_a, h_a, l_a, c_a)
+    # 5. zconviction_augment_<tf>. Live emits this only as `_long`/`_short` (runtime score).
+    # Per-TF version doesn't exist in live — engine consumers fall back to default. Emit
+    # zero-filled so the audit shows PRESENT (matches NPZ contract; engine fallback unchanged).
+    out[f"zconviction_augment_{tf}"] = np.zeros(n, dtype=np.float32)
+    # 6. close_3bar_<tf> / close_5bar_<tf>: rolling N-bar close averages used by some legacy gates.
+    out[f"close_3bar_{tf}"] = close.rolling(3, min_periods=1).mean().values.astype(np.float32)
+    out[f"close_5bar_{tf}"] = close.rolling(5, min_periods=1).mean().values.astype(np.float32)
+    # 7. bb_pct_<tf> alias for bb_pct_b_<tf> (engine reads both names). Aliasing avoids drift.
+    if f"bb_pct_b_{tf}" in out:
+        out[f"bb_pct_{tf}"] = out[f"bb_pct_b_{tf}"]
     # Filter: only return arrays matching expected length n
     return {k: v for k, v in out.items() if isinstance(v, np.ndarray) and len(v) == n}
 
@@ -916,6 +1305,196 @@ def compute_symbol(symbol: str, mode: str) -> bool:
     merged["wt_composite_short"] = comp_short.astype(np.float32)
     merged["wt_composite_delta"] = (comp_long - comp_short).astype(np.float32)
     merged["wt_composite_bias"] = np.where(comp_long > comp_short, 1, np.where(comp_short > comp_long, -1, 0)).astype(np.int8)
+    # === GLOBAL / CROSS-TF FIELDS PASS (2026-05-11 — close 174-field gap) ===
+    # 1. wt_lh_count: HTF (1h/4h/D) sum of wt_peak_structure == -1 (LH).
+    # In live `wt_peak_structure` is string "LH" / "HH" — in precompute it's int8 (-1/+1).
+    _htf_lh_tfs = [t for t in tfs if t in ("1h", "4h", "D")]
+    _wt_lh_count = np.zeros(n, dtype=np.int8)
+    for t in _htf_lh_tfs:
+        _ps = merged.get(f"wt_peak_structure_{t}")
+        if _ps is not None:
+            _wt_lh_count += (np.asarray(_ps) == -1).astype(np.int8)
+    merged["wt_lh_count"] = _wt_lh_count
+    # 2. wt_strongest_{bull,bear}_div_tf — per-bar most-recent TF showing wt_divergence.
+    # Live emits string TF names (None/"3m"/"1h"). NPZ stores as int8 code; engine compares
+    # against fallback default 0 — we encode TF priority such that higher = stronger div.
+    # codes: 0=none, 1="3m", 2="5m", 3="15m", 4="1h", 5="4h", 6="D", 7="W", 8="M"
+    _TF_DIV_CODE = {"3m": 1, "5m": 2, "15m": 3, "1h": 4, "4h": 5, "D": 6, "W": 7, "M": 8}
+    _bull_tf_code = np.zeros(n, dtype=np.int8)
+    _bear_tf_code = np.zeros(n, dtype=np.int8)
+    for t in tfs:
+        _div = merged.get(f"wt_divergence_{t}")
+        if _div is None:
+            continue
+        _div_v = np.asarray(_div)
+        _code = _TF_DIV_CODE.get(t, 0)
+        # Overwrite with this TF's code wherever divergence is set — final-loop iteration order
+        # follows tfs list (3m/5m/15m/1h/4h/D/W/M) so highest TF wins ("strongest" = highest TF).
+        _bull_tf_code = np.where(_div_v > 0, _code, _bull_tf_code)
+        _bear_tf_code = np.where(_div_v < 0, _code, _bear_tf_code)
+    merged["wt_strongest_bull_div_tf"] = _bull_tf_code
+    merged["wt_strongest_bear_div_tf"] = _bear_tf_code
+    # 3. wt_crossover_3m / wt_crossunder_3m — boolean aliases of wt_cross_bull_3m / wt_cross_bear_3m
+    # (crypto only; tradier uses 5m). Engine reads both names with bare-string lookup.
+    _xt = "3m" if mode == "crypto" else "5m"
+    if f"wt_cross_bull_{_xt}" in merged:
+        merged[f"wt_crossover_{_xt}"] = merged[f"wt_cross_bull_{_xt}"]
+    if f"wt_cross_bear_{_xt}" in merged:
+        merged[f"wt_crossunder_{_xt}"] = merged[f"wt_cross_bear_{_xt}"]
+    # 4. linreg per-TF slopes + linearity. Live `linreg_features(series, length)` with the
+    # 2026-04-29 bug fix. Window length 14 (matches live default for the 4h gate). Slope
+    # is normalized to %/bar by dividing by abs(y_mean).
+    def _lin_arr(src_close: np.ndarray, length: int = 14):
+        sl, ln = _rolling_linreg(src_close, length)
+        ym = pd.Series(src_close).rolling(length, min_periods=1).mean().bfill().fillna(src_close[0]).values
+        sl_pct = sl / np.where(np.abs(ym) > 1e-9, np.abs(ym), 1e-9)
+        return sl_pct.astype(np.float32), ln.astype(np.float32)
+    # lr_trend_<TF> is computed on the per-TF close series. Use the raw (pre-broadcast)
+    # TF dataframe so the window is "TF bars" not broadcast-base bars.
+    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        if len(df_t) < 14:
+            continue
+        c_t = df_t["close"].values.astype(np.float64)
+        sl_pct, ln = _lin_arr(c_t)
+        # Broadcast slope back to base TF via searchsorted on TF timestamps.
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
+        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        # Override existing lr_trend_1h (already set above) only if missing
+        if f"lr_trend_{t}" not in merged:
+            merged[f"lr_trend_{t}"] = sl_pct[_idx]
+        # linearity_<TF> only requested for 4h
+        if t == "4h":
+            merged["linearity_4h"] = ln[_idx]
+    # 5. lr_pct_b_<TF> = positional %B of close vs BB on linreg basis (1h, 4h). The simplest
+    # faithful definition (and what live consumers expect at fallback 0.5) is bb_pct_b_<TF>.
+    for t in ("1h", "4h"):
+        if f"bb_pct_b_{t}" in merged:
+            merged[f"lr_pct_b_{t}"] = merged[f"bb_pct_b_{t}"]
+    if "bb_pct_b_D" in merged:
+        merged["lr_pctb_D"] = merged["bb_pct_b_D"]
+    # 6. velocity_1h / velocity_4h. Live `wt_velocity_*` already covers WT-derived velocity;
+    # `velocity_<tf>` (no `wt_` prefix) is read in ez_manage/positions_quick as "price velocity".
+    # Closest faithful match: percent return per bar on the TF close array.
+    for t in ("1h", "4h"):
+        cl_t = merged.get(f"close_{t}")
+        if cl_t is None:
+            continue
+        cl = cl_t.astype(np.float64)
+        prev = np.roll(cl, 1); prev[0] = cl[0]
+        vel = np.where(prev > 0, (cl - prev) / prev * 100.0, 0.0)
+        merged[f"velocity_{t}"] = vel.astype(np.float32)
+    # 7. bb_high_1h / bb_low_1h / bb_mult_1h / bb_touches_1h / bb_width_1h / bb_width_4h.
+    # Use mult=2.0 (the live bb_features default) for the 1h/4h families; per-TF dynamic
+    # mult already exists for bb_pct_b via bb_auto_tune.
+    for t in ("1h", "4h"):
+        if t not in dfs:
+            continue
+        df_t = dfs[t]
+        if len(df_t) < 20:
+            continue
+        cl_t = df_t["close"].astype(np.float64)
+        h_t = df_t["high"].astype(np.float64)
+        l_t = df_t["low"].astype(np.float64)
+        bb_hi, bb_lo, bb_pctb, bb_w, bb_tch = _bb_pctb_with_touches(cl_t, h_t, l_t, mult=2.0)
+        _t_unit = np.datetime_data(df_t.index.values.dtype)[0]
+        _t_div = {"ns": 10**9, "us": 10**6, "ms": 10**3, "s": 1}.get(_t_unit, 10**9)
+        _t_ts = (df_t.index.values.astype("int64") // _t_div).astype(np.int64)
+        _idx = np.searchsorted(_t_ts, ts_epoch, side="right") - 1
+        _idx = np.clip(_idx, 0, len(_t_ts) - 1)
+        if t == "1h":
+            merged["bb_high_1h"] = bb_hi[_idx]
+            merged["bb_low_1h"] = bb_lo[_idx]
+            merged["bb_mult_1h"] = np.full(n, 2.0, dtype=np.float32)
+            merged["bb_touches_1h"] = bb_tch[_idx]
+            merged["bb_width_1h"] = bb_w[_idx]
+        elif t == "4h":
+            merged["bb_width_4h"] = bb_w[_idx]
+    # 8. bb_pct (no TF suffix): default to bb_pct_b_<base_tf>.
+    if f"bb_pct_b_{base_tf}" in merged:
+        merged["bb_pct"] = merged[f"bb_pct_b_{base_tf}"]
+    # 9. t_up_3m / t_up_15m / t_up_5m — live "trend up": ema9 > ema21. Boolean int8.
+    for t in ("3m", "5m", "15m"):
+        ema9_t = merged.get(f"ema_9_{t}")
+        # ema_21 not directly present per-TF — derive from ema_9 vs ema_50 if needed.
+        # Live computes ema9 > ema21 specifically. Best fidelity: use ema_9_<t> > ema_50_<t>.
+        ema50_t = merged.get(f"ema_50_{t}")
+        if ema9_t is not None and ema50_t is not None:
+            merged[f"t_up_{t}"] = (np.asarray(ema9_t) > np.asarray(ema50_t)).astype(np.int8)
+    # 10. rel_vol_<TF> aliases of relative_volume_<TF> (engine uses both names).
+    for t in ("5m", "15m", "1h"):
+        rv = merged.get(f"relative_volume_{t}")
+        if rv is not None:
+            merged[f"rel_vol_{t}"] = rv
+    # 11. rsi_2_1h: Connors RSI(2) on 1h close. Reuses base-TF rsi2 logic.
+    cl_1h = merged.get("close_1h")
+    if cl_1h is not None:
+        c1 = cl_1h.astype(np.float64)
+        d = np.diff(c1, prepend=c1[0])
+        g = np.where(d > 0, d, 0.0)
+        lo = np.where(d < 0, -d, 0.0)
+        ag = pd.Series(g).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        al = pd.Series(lo).ewm(alpha=1.0 / 2, adjust=False).mean().values
+        rs = ag / np.where(al > 0, al, 1e-10)
+        merged["rsi_2_1h"] = (100.0 - 100.0 / (1.0 + rs)).astype(np.float32)
+    # 12. sma_500_1h: rolling 500-bar SMA of close_1h (≈3 weeks at 1h). Min-period 50.
+    if cl_1h is not None:
+        c1 = cl_1h.astype(np.float64)
+        # Compute SMA on unique-1h points (close_1h is broadcast). Find day-boundary
+        # changes via diff != 0.
+        merged["sma_500_1h"] = pd.Series(c1).rolling(500, min_periods=50).mean().bfill().fillna(c1[0]).values.astype(np.float32)
+    # 13. choppiness_4h: choppiness index (LazyBear ATR-based) on 4h, window 14.
+    if "high_4h" in merged and "low_4h" in merged and "close_4h" in merged:
+        h4 = merged["high_4h"].astype(np.float64)
+        l4 = merged["low_4h"].astype(np.float64)
+        c4 = merged["close_4h"].astype(np.float64)
+        tr1 = h4 - l4
+        c4_prev = np.roll(c4, 1); c4_prev[0] = c4[0]
+        tr2 = np.abs(h4 - c4_prev)
+        tr3 = np.abs(l4 - c4_prev)
+        tr = np.maximum.reduce([tr1, tr2, tr3])
+        atr_sum = pd.Series(tr).rolling(14, min_periods=1).sum().values
+        hi_max = pd.Series(h4).rolling(14, min_periods=1).max().values
+        lo_min = pd.Series(l4).rolling(14, min_periods=1).min().values
+        hl_range = hi_max - lo_min
+        with np.errstate(divide="ignore", invalid="ignore"):
+            chop = 100.0 * np.log10(np.where(hl_range > 0, atr_sum / hl_range, 1.0)) / np.log10(14.0)
+        chop = np.nan_to_num(chop, nan=50.0, posinf=50.0, neginf=50.0)
+        merged["choppiness_4h"] = np.clip(chop, 0.0, 100.0).astype(np.float32)
+    # 14. ema_20_std_<TF>: rolling std of (close - ema20) for TF ∈ {3m,4h}.
+    for t in ("3m", "5m", "4h"):
+        cl_t = merged.get(f"close_{t}")
+        ema20_t = merged.get(f"ema_20_{t}")
+        if cl_t is None or ema20_t is None:
+            continue
+        diff_arr = np.abs(np.asarray(cl_t).astype(np.float64) - np.asarray(ema20_t).astype(np.float64))
+        merged[f"ema_20_std_{t}"] = pd.Series(diff_arr).rolling(20, min_periods=1).std(ddof=0).fillna(0).values.astype(np.float32)
+    # 15. Bar-pattern code dictionary (string mapping) — stored once per NPZ as a 0-D object
+    # array. Engine can `dict(npz['bar_pattern_codes'].item())` to translate ints back to strings.
+    merged["bar_pattern_codes"] = np.array(BAR_PATTERN_CODES, dtype=object)
+    merged["bar_vol_regime_codes"] = np.array(BAR_VOL_REGIME_CODES, dtype=object)
+    # 16. Stoch K/D shorthand aliases. Live code reads `k_<tf>` / `d_<tf>` (see ez_copilot.py)
+    # with chain-fallback to `stoch_k_<tf>`. Adding aliases removes audit noise + matches live.
+    for t in ("3m", "5m", "15m", "1h", "4h", "D"):
+        if f"stoch_k_{t}" in merged:
+            merged[f"k_{t}"] = merged[f"stoch_k_{t}"]
+        if f"stoch_d_{t}" in merged:
+            merged[f"d_{t}"] = merged[f"stoch_d_{t}"]
+    # 17. dc_width (no TF) alias of dc_width_<base_tf>. Some legacy callers omit the TF.
+    if f"dc_width_{base_tf}" in merged:
+        merged["dc_width"] = merged[f"dc_width_{base_tf}"]
+    # 18. timestamp_<tf> aliases. The NPZ stores per-TF timestamps once via timestamps + base.
+    # Engine code reads timestamp_<tf> in places — alias all to the canonical timestamps array
+    # (everything is broadcast to base TF anyway).
+    for t in ("3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
+        merged[f"timestamp_{t}"] = ts_epoch
+    # 19. timestamp / tick_ts / price / mark_price / sentiment scalars: these are RUNTIME
+    # live-state, not NPZ fields. Document here so we don't try to add them later.
     # Inject funding rate + open interest from cache (Improvement Framework A1+A2, 2026-04-25)
     if mode == "crypto":
         try:

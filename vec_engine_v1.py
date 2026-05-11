@@ -565,7 +565,7 @@ class VecEngine:
 
         # ── Per-symbol simulation ────────────────────────────
         returns_by_sym: Dict[str, List[float]] = {sym: [] for sym in stores}
-        sim_years = (all_ts[-1] - all_ts[0]) / (365.25 * 86400)
+        sim_years = (float(all_ts_np[-1]) - float(all_ts_np[0])) / (365.25 * 86400)
 
         # DD tracking (cumulative % across all trades)
         all_returns: List[float] = []
@@ -621,7 +621,7 @@ class VecEngine:
                     for pos in (pos_long, pos_short):
                         if not pos.open:
                             continue
-                        age_min = (ts - pos.entry_ts) / 60.0
+                        age_min = (ts_i - pos.entry_ts) / 60.0
                         if age_min > cfg.R1_NEWBORN_WINDOW_MIN:
                             continue
                         tf = cfg.R1_TF
@@ -877,7 +877,7 @@ class VecEngine:
                     pos.open = True
                     pos.side = side
                     pos.entry_price = price
-                    pos.entry_ts = ts
+                    pos.entry_ts = ts_i
                     pos.mark_price = price
                     pos.gain_pct = 0.0
                     pos.max_gain_pct = 0.0
@@ -889,19 +889,25 @@ class VecEngine:
                     pos.qty = self._compute_sizing(store, bar_idx, side, cfg, dd_state, running_gain)
 
             # ── Update DD state (end of each bar) ────────────
-            if all_returns:
-                equity_pct = sum(all_returns)
-                if equity_pct > dd_state["peak"]:
-                    dd_state["peak"] = equity_pct
-                dd = equity_pct - dd_state["peak"]
-                dd_state["dd_pct"] = dd
-                if dd < -max_dd:
-                    max_dd = -dd
+            # Include open position unrealized PnL in equity estimate
+            closed_gain = sum(all_returns)
+            open_gain = 0.0
+            for sym, pss in pos_states.items():
+                for pos in pss.values():
+                    if pos.open:
+                        open_gain += pos.gain_pct
+            equity_pct = closed_gain + open_gain
+            if equity_pct > dd_state["peak"]:
+                dd_state["peak"] = equity_pct
+            dd = equity_pct - dd_state["peak"]
+            dd_state["dd_pct"] = dd
+            if dd < -max_dd:
+                max_dd = -dd
 
         # ── NOLIES rule 2: mark open positions to market ────
         for sym, store in stores.items():
-            last_idx = store.ts_to_idx.get(int(all_ts[-1]))
-            if last_idx is None:
+            last_idx = store_start_idx[sym] + len(all_ts) - 1
+            if last_idx >= store.n_bars:
                 last_idx = store.n_bars - 1
             for pos in pos_states[sym].values():
                 if pos.open and pos.entry_price > 0:
