@@ -1015,32 +1015,68 @@ class TradierPositionManager:
     #         return None, None
 
     async def ensure_permanent_positions(self):
-        """If positions are missing from memory after load, search backups and other accounts. NEVER create from zero."""
+        """USER 2026-05-11: EVERY symbol in symbols_tradier.json (the master universe) has BOTH
+        a _LONG and a _SHORT position object in memory for every account. positionAmt may be
+        0 (flat) — that is still a valid object with all metadata fields. 'Orphan' is not a
+        state we tolerate. After load: recover from backups first; for anything still missing,
+        create a flat stub so the API-sync loop (every 5s) can update it. The per-side
+        symbols_<acct>_long/short.json files are signal-discovery scratch lists — NOT used to
+        decide whether the position object exists; the master universe decides that."""
+        # Load the master universe (single source of truth: symbols_tradier.json)
+        master_file = self.config.BASE_PATH / "symbols_tradier.json"
+        universe = set()
+        try:
+            if master_file.exists():
+                with open(master_file, 'r') as _mf:
+                    universe = {str(s).upper() for s in (json.load(_mf) or []) if s}
+        except Exception as _e:
+            logger.error(f"[{self.account_key}] reading {master_file}: {_e}")
+        if not universe:
+            logger.error(f"[{self.account_key}] symbols_tradier.json is empty/missing — cannot ensure permanent positions")
+            return
         missing = []
-        for symbol in self.symbols:
-            for side in ["LONG", "SHORT"]:
+        for symbol in sorted(universe):
+            for side in ("LONG", "SHORT"):
                 pk = construct_position_key(self.account_key, symbol, side)
                 if pk not in self.positions:
                     missing.append((pk, symbol, side))
         if not missing:
             return
-        logger.warning(f"[{self.account_key}] {len(missing)} positions missing after load — searching backups and other accounts")
         recovered = 0
+        stubbed = 0
         for pk, symbol, side in missing:
             pos = await self._restore_position_from_anywhere(symbol, side)
-            if pos:
-                self.positions[pk] = pos
-                self.positions_by_account[self.account_key][pk] = pos
+            if pos is None:
+                # User mandate: NEVER leave a (symbol, side) without an object. Create a flat stub.
+                # The API-sync loop running every 5s will overwrite entry_price / positionAmt
+                # when the broker actually shows the position.
+                now = datetime.now(timezone.utc)
+                pos = TradierPosition(
+                    symbol=symbol,
+                    position_side=side,
+                    positionAmt=0.0,
+                    entry_price=0.0,
+                    mark_price=0.0,
+                    opened_at=None,
+                    last_updated=now,
+                    last_update=now.isoformat(),
+                    entry_time="",
+                    augment_reason="FLAT_STUB_PERMANENT_OBJECT",
+                )
+                stubbed += 1
+            else:
                 recovered += 1
-        if recovered > 0:
-            logger.info(f"[{self.account_key}] Recovered {recovered}/{len(missing)} missing positions from backups/other accounts")
-            self._mark_positions_dirty()
+            self.positions[pk] = pos
+            try:
+                self.positions_by_account[self.account_key][pk] = pos
+            except Exception:
+                pass
+        logger.info(f"[{self.account_key}] ensure_permanent_positions: universe={len(universe)} syms × 2 sides = {len(universe)*2} objects required, recovered={recovered} stubbed_flat={stubbed} ensured_this_pass={len(missing)}")
+        self._mark_positions_dirty()
+        try:
             await self.save_all_positions()
-        still_missing = len(missing) - recovered
-        if still_missing > 0:
-            # 2026-04-26: downgraded CRITICAL→INFO. These are tradeable_keys symbols never opened (no positions to load).
-            # Not data loss — flat-position state is reconstructed on first signal. Real data loss = ORPHAN_EXCHANGE_POSITION.
-            logger.info(f"[{self.account_key}] {still_missing} tradeable_keys have no prior position state (expected for never-opened symbols).")
+        except Exception as _se:
+            logger.warning(f"[{self.account_key}] save_all_positions after ensure failed: {_se}")
 
     async def _restore_position_from_anywhere(self, symbol: str, position_side: str) -> Optional[TradierPosition]:
         """Search: own backups → own main file → ALL other accounts. Never returns None without exhausting everything."""

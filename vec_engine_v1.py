@@ -84,6 +84,14 @@ class VecConfig:
     HTF_ALIGN_REQUIRED_TRADIER: int = 2  # stocks default
     HTF_TFS: List[str] = field(default_factory=lambda: ["1h", "4h", "D"])
 
+    # ── LTF/HTF stoch alignment gates (parity with ez_manage.check_entry_alignment) ──
+    # Default OFF — gate was too restrictive on its own (0 trades on tradier × 2.4mo).
+    # Real engine's 27 trades come through OTHER entry paths (FH_MOMENTUM, SATOSHIT) that
+    # bypass this gate. Use only when you want strict alignment-only entries.
+    LTF_ALIGN_GATE_ENABLED: bool = False
+    K3M_CAP: float = 70.0    # LONG blocked when k_3m >= cap; SHORT mirror
+    K3M_FLOOR: float = 30.0  # LONG blocked when k_3m >= (100-floor); SHORT mirror
+
     # ── Stoch gates ──────────────────────────────────────────
     TRADIER_STOCH_ENTRY_LONG_TRADIER: float = 80.0
     TRADIER_STOCH_ENTRY_SHORT_TRADIER: float = 20.0
@@ -813,7 +821,56 @@ class VecEngine:
                     if not wt_entry:
                         continue
 
-                    # ── HTF alignment gate ───────────────────
+                    # ── LTF stoch alignment gate (parity with ez_manage.check_entry_alignment) ──
+                    # Real engine requires 3/3 LTF stoch crossover. 1m field not in NPZ,
+                    # so _sf default 50 → k_1m==d_1m → 1m alignment always False → effective 2/3 max.
+                    # Real engine therefore demands k_3m>d_3m AND k_15m>d_15m (both must be true).
+                    if cfg.LTF_ALIGN_GATE_ENABLED:
+                        k3 = store.f("stoch_k_3m", bar_idx, 50.0)
+                        d3 = store.f("stoch_d_3m", bar_idx, 50.0)
+                        k15 = store.f("stoch_k_15m", bar_idx, 50.0)
+                        d15 = store.f("stoch_d_15m", bar_idx, 50.0)
+                        if side == "LONG":
+                            if not (k3 > d3 and k15 > d15):
+                                continue
+                        else:
+                            if not (k3 < d3 and k15 < d15):
+                                continue
+                        # ── K3M_CAP / K3M_FLOOR (real engine BC_8 / BC_9) ──
+                        k3m_cap = cfg.K3M_CAP
+                        k3m_floor = cfg.K3M_FLOOR
+                        if side == "LONG":
+                            if k3 >= k3m_cap:
+                                continue
+                            if k3 >= (100 - k3m_floor):
+                                continue
+                        else:
+                            if k3 <= (100 - k3m_cap):
+                                continue
+                            if k3 <= k3m_floor:
+                                continue
+
+                    # ── HTF stoch alignment + D mandatory ────
+                    if cfg.LTF_ALIGN_GATE_ENABLED:
+                        k1h = store.f("stoch_k_1h", bar_idx, 50.0)
+                        d1h = store.f("stoch_d_1h", bar_idx, 50.0)
+                        k4h = store.f("stoch_k_4h", bar_idx, 50.0)
+                        d4h = store.f("stoch_d_4h", bar_idx, 50.0)
+                        kD = store.f("stoch_k_D", bar_idx, 50.0)
+                        dD = store.f("stoch_d_D", bar_idx, 50.0)
+                        ha_D = store.s("ha_color_D", bar_idx) or store.s("ha_D", bar_idx)
+                        if side == "LONG":
+                            d_aligned = (ha_D == "green") or (kD > dD)
+                            htf_stoch = int(k1h > d1h) + int(k4h > d4h) + int(d_aligned)
+                        else:
+                            d_aligned = (ha_D == "red") or (kD < dD)
+                            htf_stoch = int(k1h < d1h) + int(k4h < d4h) + int(d_aligned)
+                        if htf_stoch < 2:
+                            continue
+                        if not d_aligned:
+                            continue
+
+                    # ── HTF alignment gate (vec engine's original WT-based gate) ──
                     htf_req = cfg.HTF_ALIGN_REQUIRED if self.mode == "crypto" else cfg.HTF_ALIGN_REQUIRED_TRADIER
                     htf_count = 0
                     for htf in cfg.HTF_TFS:

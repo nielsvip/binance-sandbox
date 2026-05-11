@@ -2419,6 +2419,24 @@ async def queue_trade_action(order_queue: OrderQueue, trade_manager, position_ke
         if not is_regular_trading_hours():
             logger.debug(f"[queue_trade_action] not in trading hours")
             return
+        # ═══ TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK (2026-05-11) ═══
+        # Tradier cannot hold LONG + SHORT on same equity in same account simultaneously.
+        # Refuse OPEN/AUGMENT/ENTRY/REENTRY at queue time when opposite side has amt > 0.
+        # This is at the EARLIEST gate so the order never even hits the queue.
+        try:
+            _ts_act = (action or '').upper()
+            if ('OPEN' in _ts_act or 'AUGMENT' in _ts_act or 'ENTRY' in _ts_act or 'REENTER' in _ts_act or _ts_act == 'BUY'):
+                _ts_acct, _ts_sym, _ts_side = parse_position_key(position_key)
+                if _ts_acct in {'trb', 'trc', 'tra'} and _ts_side in {'LONG', 'SHORT'}:
+                    _ts_opp_side = 'SHORT' if _ts_side == 'LONG' else 'LONG'
+                    _ts_opp_pk = f"{_ts_acct}:{_ts_sym}_{_ts_opp_side}"
+                    _ts_opp_pos = trade_manager.position_manager.get_position(_ts_opp_pk) if hasattr(trade_manager, 'position_manager') and trade_manager.position_manager else None
+                    _ts_opp_amt = abs(float(getattr(_ts_opp_pos, 'positionAmt', 0) or 0)) if _ts_opp_pos else 0.0
+                    if _ts_opp_amt > 0.0001:
+                        logger.critical(f"🛑 [QUEUE_OPPOSITE_SIDE_BLOCK] {position_key}: opposite-side {_ts_opp_pk} has amt={_ts_opp_amt} — Tradier physics prohibit dual-side, REFUSING queue. action={action} reason={(reason or '')[:80]}")
+                        return False
+        except Exception as _ts_e:
+            logger.warning(f"[QUEUE_OPPOSITE_SIDE_BLOCK] check error (fail-open): {_ts_e}")
         # 2026-04-27 user rule: stop "headless-chicken" duplicate fires. Same
         # (position_key, action) within cooldown → refused. Catches MSTR REBALANCE
         # loop and any other path that re-fires after a rejected/invalid order.
@@ -8610,30 +8628,35 @@ class TradierTradeManager:
         if symbol in self.blacklist:
             return False
 
-        # 2. Always Tradeable / Exceptions (Both ways)
-        whitelist = [s.upper() for s in getattr(config, 'ALWAYS_TRADEABLE', [])]
-        whitelist += [s.upper() for s in getattr(config, 'EXCEPTIONS', [])]
-        if symbol in whitelist:
-            return True
-
-        # 3. Check if we already have a position (Management always allowed)
-        if self.position_manager:
-            pk_long = f"{account_key}:{symbol}_LONG"
-            pk_short = f"{account_key}:{symbol}_SHORT"
-            pos_long = self.position_manager.get_position(pk_long)
-            pos_short = self.position_manager.get_position(pk_short)
-            if pos_long and pos_long.positionAmt > 0: return True
-            if pos_short and pos_short.positionAmt > 0: return True
-
-        # 4. Discovery Lists — JSON-first (memory list was unreliable, see _get_json_symbols)
+        # 2. Same-side discovery list is the AUTHORITATIVE permission.
+        #    ALWAYS_TRADEABLE/EXCEPTIONS only act as side-agnostic enablers — they no longer
+        #    bypass per-side list membership (user 2026-05-11 after MU SHORT $12k disaster:
+        #    MU was in symbols_trb_long.json but NOT symbols_trb_short.json, yet was shorted
+        #    because ALWAYS_TRADEABLE returned True for both sides).
         side_lower = 'long' if side == 'LONG' else 'short'
         json_syms = self._get_json_symbols(account_key, side_lower)
         mem_syms = {s.upper() for s in getattr(self, f"symbols_{side_lower}_{account_key}", [])}
-        all_syms = json_syms | mem_syms
+        same_side_syms = json_syms | mem_syms
 
-        if symbol in all_syms:
-            if side == 'SHORT' and symbol in self.non_shortable_symbols:
-                return False
+        # 3. Management of an existing position is always allowed (so we can close legacy positions).
+        if self.position_manager:
+            pk_self = f"{account_key}:{symbol}_{side}"
+            pos_self = self.position_manager.get_position(pk_self)
+            if pos_self and pos_self.positionAmt > 0:
+                return True
+
+        # 4. Hard non-shortable list
+        if side == 'SHORT' and symbol in self.non_shortable_symbols:
+            return False
+
+        # 5. ALWAYS_TRADEABLE/EXCEPTIONS only count if the symbol is ALSO on the matching side list.
+        whitelist = {s.upper() for s in getattr(config, 'ALWAYS_TRADEABLE', [])}
+        whitelist |= {s.upper() for s in getattr(config, 'EXCEPTIONS', [])}
+        if symbol in whitelist and symbol in same_side_syms:
+            return True
+
+        # 6. Plain side-list membership
+        if symbol in same_side_syms:
             return True
 
         return False
@@ -9199,6 +9222,21 @@ class TradierTradeManager:
                     if lock_acquired and self.redis_manager:
                         await self.redis_manager.delete(exec_lock_key)
                     return f"BLOCKED_{_dg_tag}"
+
+            # ═══ TRADIER_PHYSICS_OPPOSITE_SIDE_BLOCK (2026-05-11 user mandate) ═══
+            # Tradier brokerage CANNOT hold both LONG and SHORT on the same equity in the
+            # same account at the same time. If the opposite side has any positionAmt in
+            # local memory, refuse this entry from queue time — never even attempt the order.
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and self.position_manager:
+                _opp_side = 'SHORT' if position_side == 'LONG' else 'LONG'
+                _opp_pk = f"{account_key}:{symbol}_{_opp_side}"
+                _opp_pos = self.position_manager.positions.get(_opp_pk)
+                _opp_amt = abs(float(getattr(_opp_pos, 'positionAmt', 0) or 0)) if _opp_pos else 0.0
+                if _opp_amt > 0.0001:
+                    logger.critical(f"🛑 [TRADIER_OPPOSITE_SIDE_BLOCK] {position_key}: opposite-side {_opp_pk} has amt={_opp_amt} — Tradier cannot hold both sides, REFUSING entry. reason={reason}")
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return "BLOCKED_OPPOSITE_SIDE_OPEN"
 
             # ═══ BROKER_PREFLIGHT (2026-05-11 user mega-urgent: trust the broker over local memory) ═══
             # Before ANY new entry, fetch live broker positions for this symbol and refuse if:
