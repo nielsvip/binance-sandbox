@@ -8628,38 +8628,29 @@ class TradierTradeManager:
         if symbol in self.blacklist:
             return False
 
-        # 2. Same-side discovery list is the AUTHORITATIVE permission.
-        #    ALWAYS_TRADEABLE/EXCEPTIONS only act as side-agnostic enablers — they no longer
-        #    bypass per-side list membership (user 2026-05-11 after MU SHORT $12k disaster:
-        #    MU was in symbols_trb_long.json but NOT symbols_trb_short.json, yet was shorted
-        #    because ALWAYS_TRADEABLE returned True for both sides).
+        # 2. Hard non-shortable list (Tradier-side restriction; not overridable)
+        if side == 'SHORT' and symbol in self.non_shortable_symbols:
+            return False
+
+        # 3. Same-side discovery list is the SOLE permission for new entries.
+        #    Callers that need to manage (close/reduce) an existing position must NOT route through
+        #    this function — the caller already bypasses is_symbol_tradeable when _is_exit_or_reduce
+        #    (see execute_trade_action ~line 8690, execute_now ~line 9203). The previous code path
+        #    "if positionAmt > 0 → return True" became a self-perpetuating opener: once one share
+        #    leaked through (via ALWAYS_TRADEABLE bypass or any other mechanism), this branch said
+        #    "we have a position, so OPEN/AUGMENT is allowed" — which is exactly how the MU_SHORT
+        #    accumulated to 14 shares. Killed 2026-05-11.
         side_lower = 'long' if side == 'LONG' else 'short'
         json_syms = self._get_json_symbols(account_key, side_lower)
         mem_syms = {s.upper() for s in getattr(self, f"symbols_{side_lower}_{account_key}", [])}
         same_side_syms = json_syms | mem_syms
 
-        # 3. Management of an existing position is always allowed (so we can close legacy positions).
-        if self.position_manager:
-            pk_self = f"{account_key}:{symbol}_{side}"
-            pos_self = self.position_manager.get_position(pk_self)
-            if pos_self and pos_self.positionAmt > 0:
-                return True
-
-        # 4. Hard non-shortable list
-        if side == 'SHORT' and symbol in self.non_shortable_symbols:
+        if symbol not in same_side_syms:
             return False
 
-        # 5. ALWAYS_TRADEABLE/EXCEPTIONS only count if the symbol is ALSO on the matching side list.
-        whitelist = {s.upper() for s in getattr(config, 'ALWAYS_TRADEABLE', [])}
-        whitelist |= {s.upper() for s in getattr(config, 'EXCEPTIONS', [])}
-        if symbol in whitelist and symbol in same_side_syms:
-            return True
-
-        # 6. Plain side-list membership
-        if symbol in same_side_syms:
-            return True
-
-        return False
+        # 4. ALWAYS_TRADEABLE/EXCEPTIONS are now only an enabler ON TOP of same_side_syms —
+        #    they were already de-fanged in step 3, but kept here for any future restrictive use.
+        return True
 
     async def execute_trade_action(self, account_key, position_key, symbol, quantity, current_price, side, position_side, unique_id, is_full_close=False, action='', reason='', override_qty=None):
         if not is_regular_trading_hours(): return "MARKET_CLOSED"
