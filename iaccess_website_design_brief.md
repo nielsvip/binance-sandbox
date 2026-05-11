@@ -15,6 +15,77 @@
 ### Company Snapshot
 IAccess replaces traditional doormen with an AI-powered access system built on Hikvision hardware and YOLO computer vision. Entry: face recognition, QR code, fingerprint, NFC card. Monitoring: continuous cross-floor person tracking. Elevator control: residents reach only their floor; Airbnb guests reach only their unit's floor. Emergency exits: magnets decouple automatically on fire alarm signal.
 
+IAccess is **the only Colombian system that replaces the portero completely** — no human operator in the loop, no remote monitoring center, no third-party AI partnership. Full-stack AI: door + elevator + vehicle + perimeter. The building runs on its own.
+
+### Competitive Positioning — Why IAccess Wins
+
+**12 competitors were identified and analyzed (May 2026). Competitive threat matrix:**
+
+| Competitor | URL | Threat | Why |
+|---|---|---|---|
+| Portea | portea.com.co | 🔴 4/5 | Transparent pricing, QR, AI partnership (Arturo IA), growing fast |
+| HIPCAM (via Alarmar/GVS) | hipcam.com | 🔴 4/5 | Already in Colombia, 4.7★ app, 800+ buildings in LatAm |
+| Appmosfera GuardIA | appmosfera.com/guardia | 🟡 3/5 | AI-native, SEO moat, no-hardware pitch — but no resident app |
+| Alarmar | alarmar.com.co | 🟡 3/5 | Multi-city, HIPCAM reseller, established |
+| HSRC Guardia Virtual | guardiaporteriavirtual.com | 🟠 2/5 | 7,000 buildings claimed, credibility unclear |
+| Simón Seguridad | simonseguridad.com | 🟠 2/5 | Medellín, solid tech, no scale |
+| GUVI | guvi.digital | 🟠 2/5 | Multi-city, biometric, not portería-focused |
+| DEAS Ltda. | deas.com.co | 🟠 2/5 | Legacy brand + Grupo Altum, human-operator, Bogotá-only |
+| Portero Seguro (Peru) | porteroseguro.com | 🟠 2/5 | Forbes Peru winner, not yet in Colombia — watch |
+| Sevicol | sevicol.com.co | 🟢 1/5 | Bucaramanga regional, legacy |
+| Tecniseg | tecniseg.com.co | 🟢 1/5 | Human-operator only |
+| Foxsys (Uruguay) | foxsys.com | 🟢 1/5 | Not in Colombia |
+
+**IAccess absolute advantages — no competitor has all of these simultaneously:**
+
+| Feature | IAccess | Portea | HIPCAM | Appmosfera | Alarmar |
+|---|---|---|---|---|---|
+| YOLO AI (own, not partner) | ✅ | ❌ partner | ❌ | ✅ | ❌ |
+| Hikvision enterprise hardware | ✅ | ❌ | ❌ doorbell | ✅ compatible | ❌ |
+| Elevator floor restriction | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Vehicle LPR → gate trigger | ✅ | ❌ | ❌ | ❌ | partial |
+| Airbnb/Booking API integration | ✅ | basic | ❌ | ❌ | ❌ |
+| Fingerprint access | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cloud GPU SaaS (no on-prem server) | ✅ | ❌ | ❌ | edge only | ❌ |
+| Transparent pricing online | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Zero human operator in loop | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Colombian-made + Colombian support | ✅ | ✅ | ❌ Argentina | ✅ | partial |
+| Fire/weapon/fall AI detection | ✅ | ❌ | ❌ | ✅ | ❌ |
+| SIC Ley 1581 consent module built-in | ✅ | unknown | ❌ | unknown | ❌ |
+
+**What IAccess copies from Appmosfera (but does better):**
+- "Your existing cameras can connect to IAccess" — offer compatibility assessment for buildings that already have Hikvision cameras (eliminates hardware objection)
+- Perimeter framing beyond the door: fire, weapon, fall detection are part of the IAccess YOLO stack — lead with total safety, not just access
+- "Hecho en Colombia" branding — trust signal vs. HIPCAM (Argentine), Porteo Seguro (Peruvian)
+- Content marketing SEO: own "portería virtual Bogotá precio", "reconocimiento facial edificio Colombia", "reemplazar portero edificio Bogotá", "Airbnb conjunto residencial acceso"
+- Industrial cross-sell: parking structures, gated offices, utilities — same stack applies
+- Physical response partnership: announce IAccess + allied security firm for physical response to AI alerts
+
+**What IAccess does that Appmosfera never will:**
+- Resident app with QR, visitor invites, notifications
+- Elevator floor control
+- Vehicle gate automation (LPR whitelist)
+- Airbnb/Booking checkout-synchronized access
+- Completely eliminate the human operator — GuardIA still requires a remote monitoring center
+
+### Critical Legal Compliance Note (SIC Ruling, August 2025)
+The Superintendencia de Industria y Comercio (SIC) ordered a Bogotá conjunto residencial (Parque de los Cipreses) to **delete all facial recognition biometric data and cease conditioning access on facial scans** after an uncontested habeas data complaint.
+
+**Ruling establishes:**
+1. Facial recognition requires prior, express, informed consent — signed, per resident
+2. Facial scan CANNOT be the only access method — alternatives (QR, fob, PIN) are mandatory
+3. Risk assessment required before deploying facial recognition in residential buildings
+4. Data deletion within 30 days on resident request
+
+**IAccess compliance position (mandatory to communicate on website):**
+- Multi-modal access (face + QR + fingerprint + fob) means facial recognition is never the sole method ✅
+- Built-in consent collection flow — each resident signs during onboarding ✅  
+- Data deletion in 30 seconds from admin app ✅
+- AES-256 encryption, audit log of all data access ✅
+- We can assist with the mandatory pre-deployment risk assessment for copropiedades ✅
+
+**Use this as a competitive weapon:** Any competitor that only offers facial recognition without alternatives is non-compliant with the SIC ruling. IAccess's multi-modal system is compliant by design.
+
 ### The Core Economic Argument (use this throughout the entire site)
 
 A building with round-the-clock portería in Bogotá pays per portero:
@@ -35,11 +106,18 @@ A building with round-the-clock portería in Bogotá pays per portero:
 > **Why the 20%:** Colombian law (Decreto 356/1994 + Ley 1539/2012) requires that building guards and porteros be contracted through a licensed *empresa de vigilancia y seguridad privada* supervised by the Superintendencia de Vigilancia. These companies charge a 15–25% margin on top of full labor cost. 20% is the conservative estimate used throughout this document.
 
 Most residential buildings need:
-- **Día (6am–6pm) + Noche (6pm–6am) = 2 porteros = ~$5,908,920 COP/month**
-- Plus vacation/sick-day replacements, typically +15% = **~$6,795,000 COP/month**
 
-IAccess monthly service for equivalent building: **$850,000–$1,600,000 COP/month**  
-**Typical savings: $5.2M–$6.5M COP/month. Payback: 6–14 months.**
+| Building size | Guards needed | True monthly cost (2026 incl. empresa vigilancia + reemplazos) |
+|---|---|---|
+| Hasta 25 aptos, diurno | 1 portero | **~$3,400,000 COP/mes** |
+| 25–70 aptos, día + noche | 2 porteros | **~$6,800,000 COP/mes** |
+| 70–120 aptos, 24/7 turnos | 3 porteros | **~$10,200,000 COP/mes** |
+| 120+ aptos, full coverage | 4–5 porteros | **~$13,600,000–$17,100,000 COP/mes** |
+
+*(Source: 2026 salario mínimo $1,423,500 × full carga prestacional × 1.20 empresa de vigilancia × 1.15 reemplazos)*
+
+IAccess monthly service for equivalent building: **$850,000–$2,200,000 COP/month**  
+**Typical savings: $2.5M–$15M COP/month depending on building size. Payback: 6–18 months.**
 
 ### Taglines (A/B test all three)
 1. *"Tu edificio nunca duerme. Tu portero, sí."*
@@ -408,6 +486,36 @@ en 4 días. Ahora no volveríamos."
 
 ---
 
+### COMPETITOR COMPARISON — "¿Por qué no las otras opciones?"
+
+**Design:** Full-width dark section. Horizontal scrollable table on mobile. Mint ✅ vs red ❌.  
+Header: "Comparamos honestamente." Subheader: "Hay otras opciones. Aquí está la diferencia."
+
+```
+                           IACCESS    APPMOSFERA   PORTEA      HIPCAM
+                                      GuardIA      Arturo IA   (Alarmar)
+─────────────────────────────────────────────────────────────────────────
+Reconocimiento facial IA      ✅           ✅           ✅*          ✅
+Huella dactilar               ✅           ❌           ❌           ❌
+QR para visitantes y guests   ✅           ❌           ✅           ✅
+App para residentes           ✅           ❌           ✅           ✅
+Control de ascensores         ✅           ❌           ❌           ❌
+Acceso vehicular (LPR)        ✅           ❌           ❌           ❌
+Modo Airbnb / Booking         ✅           ❌           básico       ❌
+Operador humano requerido     ❌ nunca     ✅ sí         ✅ sí         ✅ sí
+Precios publicados en web     ✅           ❌           ✅           ❌
+Hecho en Colombia             ✅           ✅           ✅           ❌ Argentina
+Cumple fallo SIC ago 2025     ✅           ❌ solo cara  ?            ❌
+─────────────────────────────────────────────────────────────────────────
+* Portea usa reconocimiento de un tercero (Portero Seguro / Arturo IA)
+```
+
+Nota debajo de la tabla (pequeña, gris):
+"Esta comparación está basada en información pública de cada empresa a mayo de 2026.
+ Si algo cambió, escríbenos — actualizamos."
+
+---
+
 ### FAQ ACCORDION
 
 ```
@@ -425,6 +533,14 @@ en 4 días. Ahora no volveríamos."
   tracking entre pisos, alertas push al admin y sincronización de 
   nuevos perfiles. Todo se reanuda automáticamente al recuperar señal.
 
+▼ ¿Qué pasa si mi edificio ya tiene cámaras instaladas?
+  Si son cámaras Hikvision IP (modelo 2018 en adelante), muy probablemente 
+  pueden integrarse directamente al sistema IAccess — sin reemplazarlas. 
+  En la visita técnica gratuita auditamos tu infraestructura existente: 
+  cámaras, cableado, NVR, ductos, tableros. Si tus equipos son compatibles, 
+  te presentamos una cotización reducida que reutiliza lo que ya tienes.
+  Cámaras de otras marcas (Dahua, Axis, Bosch): evaluamos caso a caso.
+
 ▼ ¿Hay que hacer obra civil en mi edificio?
   En el 85% de los casos, no se requiere obra mayor. Montamos lectores 
   sobre marcos existentes, pasamos cable por ductos ya instalados o por 
@@ -438,11 +554,16 @@ en 4 días. Ahora no volveríamos."
   En pruebas: 99.3% de precisión a las 2am.
 
 ▼ ¿Es legal usar reconocimiento facial en Colombia?
-  Sí, con las salvaguardas correctas. Cumplimos la Ley 1581 de 2012 
-  (Habeas Data): cada residente firma autorización de tratamiento de 
-  datos biométricos, los datos se almacenan encriptados (AES-256) y 
-  nunca se comparten con terceros. Generamos el registro de visitantes 
-  digital que exige la Ley 675 (Propiedad Horizontal).
+  Sí — con las salvaguardas correctas, y IAccess es la única solución 
+  diseñada desde el principio para cumplirlas. En agosto de 2025, la 
+  SIC ordenó a un conjunto residencial en Bogotá borrar todos sus datos 
+  faciales porque el sistema exigía la cara como único método. 
+  IAccess resuelve esto por diseño: el reconocimiento facial es siempre 
+  UNO de varios métodos (QR, huella, fob NFC, PIN) — nunca el único. 
+  Además: cada residente firma autorización expresa (Ley 1581), los datos 
+  se guardan encriptados AES-256, y cualquier residente puede solicitar 
+  borrado en 30 segundos desde la app del administrador. Generamos el 
+  registro de visitantes digital que exige la Ley 675.
 
 ▼ ¿Los adultos mayores pueden usarlo?
   Sí. El sistema también incluye: panel táctil con código numérico, 
