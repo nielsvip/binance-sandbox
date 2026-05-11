@@ -1,4 +1,4 @@
-# IAccess — Website Design Brief v2.0
+# IAccess — Website Design Brief v3.0
 **Company:** IAccess  
 **Location:** Bogotá, Colombia  
 **Date:** May 2026  
@@ -44,7 +44,7 @@ IAccess monthly service for equivalent building: **$850,000–$1,600,000 COP/mon
 ### Taglines (A/B test all three)
 1. *"Tu edificio nunca duerme. Tu portero, sí."*
 2. *"El portero más confiable del mundo no necesita salario ni prestaciones."*
-3. *"Cara, QR o huella. Tu edificio inteligente desde $13 millones."*
+3. *"Cara, QR o huella. Tu edificio inteligente desde $14 millones."*
 
 ### Brand Colors
 ```
@@ -123,7 +123,7 @@ duerme. Tu portero, sí.
 SUBHEADLINE (Inter Regular, 22px, #B0B8C8):
 Reemplaza tu portería con reconocimiento facial, QR y huella dactilar.
 Sin remodelaciones mayores. Sin contratos laborales. Sin interrupciones.
-Desde $13,000,000 COP instalado.
+Desde $14,000,000 COP instalado.
 
 CTA ROW:
 [Cotización en 60 segundos  →]    [Ver demostración  ▶]
@@ -340,13 +340,13 @@ _*Año 1 incluye instalación. Cálculo para edificio 20–50 aptos, 2 porteros 
 **Design:** 3 columns on slightly gray background.
 
 ```
-[Logo Hikvision]              [YOLO AI badge]               [Servidor local / nube]
-Hardware líder mundial        Reconocimiento facial          Tus datos quedan
-en seguridad IP.              en tiempo real. 99.7%          en Colombia.
-Enterprise grade.             precisión con mascarilla.      Cumple Ley 1581.
-En edificios, hoteles         Entrenado en millones          Opción nube AWS
-y aeropuertos de              de rostros. <400ms             Colombia o servidor
-150 países.                   de latencia.                   en tu edificio.
+[Logo Hikvision]              [YOLO AI badge]               [GPU en la nube]
+Hardware líder mundial        Reconocimiento facial          IAccess gestiona la
+en seguridad IP.              en tiempo real. 99.7%          infraestructura GPU.
+Enterprise grade.             precisión con mascarilla.      Tú no compras ni
+En edificios, hoteles         Entrenado en millones          mantienes servidores.
+y aeropuertos de              de rostros. <400ms             Incluido en tu
+150 países.                   de latencia.                   mensualidad.
 ```
 
 ---
@@ -492,11 +492,13 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios hasta 25 apartamentos      ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $13,000,000 – $19,000,000 COP               ║
+║  $14,000,000 – $21,000,000 COP               ║
 ║  (pago único)                                ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
 ║  $850,000 COP/mes                            ║
+║  (incluye cómputo IA en nube + software      ║
+║   + soporte + actualizaciones)               ║
 ╠══════════════════════════════════════════════╣
 ║  INCLUYE:                                    ║
 ║  ✓ 1 punto de acceso principal               ║
@@ -526,11 +528,13 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios 25 a 70 apartamentos       ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $36,000,000 – $58,000,000 COP               ║
+║  $40,000,000 – $64,000,000 COP               ║
 ║  (pago único o financiado a 18 meses)        ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
 ║  $1,350,000 COP/mes                          ║
+║  (incluye GPU en nube + software + soporte   ║
+║   + actualizaciones + SLA 4h Bogotá)         ║
 ╠══════════════════════════════════════════════╣
 ║  INCLUYE TODO LO DE ESENCIAL, MÁS:           ║
 ║  ✓ 2 puntos de acceso                        ║
@@ -540,9 +544,9 @@ estos valores reflejan proyectos reales en Bogotá.
 ║  ✓ 8 cámaras 4MP ColorVu                     ║
 ║    (lobby + parqueadero + 2 pisos clave)     ║
 ║  ✓ NVR 16 canales + 4TB                      ║
-║  ✓ Servidor IA local Intel NUC i7            ║
-║    (reconocimiento en tiempo real,           ║
-║     sin depender de internet)                ║
+║  ✓ Infraestructura GPU en nube (IAccess)      ║
+║    RTX 4060 Ti — gestionado 100% por IAccess ║
+║    Sin servidor en el edificio               ║
 ║  ✓ Modo Airbnb (integración básica)          ║
 ║  ✓ Switch PoE 24 puertos                     ║
 ║  ✓ Soporte prioritario < 2 horas             ║
@@ -562,12 +566,13 @@ estos valores reflejan proyectos reales en Bogotá.
 ║         Edificios 70 a 150+ apartamentos     ║
 ╠══════════════════════════════════════════════╣
 ║  INSTALACIÓN                                 ║
-║  $82,000,000 – $140,000,000 COP              ║
+║  $88,000,000 – $160,000,000 COP              ║
 ║  (financiación disponible)                   ║
 ╠══════════════════════════════════════════════╣
 ║  MENSUALIDAD                                 ║
 ║  $2,200,000 – $3,500,000 COP/mes             ║
-║  (según servicios adicionales contratados)   ║
+║  (incluye GPU dedicada RTX 4090 + software   ║
+║   + soporte prioritario + SLA 99.9%)         ║
 ╠══════════════════════════════════════════════╣
 ║  INCLUYE TODO LO ANTERIOR, MÁS:              ║
 ║  ✓ 3–4 puntos de acceso                      ║
@@ -575,7 +580,8 @@ estos valores reflejan proyectos reales en Bogotá.
 ║    + cámara reconocimiento de placas         ║
 ║  ✓ Control 2 ascensores                      ║
 ║  ✓ Cámaras en todos los pisos (hasta 30)     ║
-║  ✓ Servidor Jetson Orin NX (IA dedicada)     ║
+║  ✓ GPU dedicada en nube (RTX 4090 24GB)       ║
+║    Gestionada y mantenida por IAccess        ║
 ║  ✓ Tracking facial continuo entre pisos      ║
 ║  ✓ Integración Airbnb/Booking/VRBO completa  ║
 ║  ✓ Centro de monitoreo remoto 24/7           ║
@@ -784,10 +790,10 @@ Puntos de acceso peatonal (puertas que se quieren controlar):
 ¿Hay o habrá apartamentos en Airbnb, Booking o renta corta?
   ○ No    ○ Sí, 1 a 5 unidades    ○ Sí, más de 5    ○ El edificio es casi todo STR
 
-¿Dónde prefieres guardar los datos y el sistema de IA?
-  ○ Servidor local en el edificio (más privado, sin depender de internet)
-  ○ Nube (menor mantenimiento, requiere buena conexión)
-  ○ No sé — recomiéndenme
+¿Tu edificio tiene conexión a internet estable?
+  ○ Sí, fibra óptica o cable (≥50 Mbps) — recomendado para nube IAccess
+  ○ Solo móvil / inestable — consultar opción edge
+  ○ No sé
 
 ¿Quieres monitoreo remoto con operadores humanos 24/7?
   ○ Sí, quiero seguridad activa    ○ No, prefiero gestión autónoma por app
@@ -925,10 +931,10 @@ ARQUITECTURA DEL SISTEMA
         |                   |                   |
         └───────────────────┼───────────────────┘
                             |
-                    [SERVIDOR LOCAL]
-                  Intel NUC i7 o Jetson Orin NX
-                  YOLO AI · Base datos facial
-                  Servidor IAccess · Logs
+              [INFRAESTRUCTURA IA — NUBE IACCESS]
+               GPU RTX 4060 Ti / RTX 4090 (según plan)
+               YOLOv8 + DeepStream · Base datos facial
+               Gestionado por IAccess · SLA garantizado
                             |
               ┌─────────────┼─────────────┐
               |             |             |
@@ -1016,24 +1022,49 @@ Cámara de vigilancia — HIKVISION DS-2CD2347G2-LU (4MP ColorVu)
 • PoE 12W
 • Amazon USA: ~$300 · Precio Colombia (importado +25%): **~$1,613,000 COP/unidad**
 
-Servidor de IA local — INTEL NUC 13 PRO i7-1370P
-(para edificios hasta 60 aptos / 16 cámaras)
-• Procesador Intel Core i7 13ª generación, 12 núcleos
-• 32GB RAM DDR4
-• 1TB SSD NVMe
-• Intel Iris Xe Graphics (aceleración de inferencia YOLO)
-• Consumo: 28W en reposo, 64W máximo
-• Amazon USA: ~$750 · Precio Colombia (importado +25%): **~$4,031,000 COP**
+Infraestructura de IA — MODELO SAAS (IACCESS CLOUD)
+IAccess NO vende ni instala un servidor en tu edificio.
+La IA corre en nuestra infraestructura GPU en la nube,
+gestionada y mantenida 100% por nosotros.
 
-Servidor de IA local — NVIDIA JETSON ORIN NX 16GB
-(para edificios 60+ aptos o con 20+ cámaras)
-• GPU 1024 núcleos Ampere (aceleración nativa YOLOv8)
-• CPU: 8 núcleos Cortex-A78AE
-• 16GB LPDDR5 RAM
-• 128GB SSD NVMe
-• Hasta 100 TOPS de rendimiento de IA
-• Procesa 20+ flujos de video simultáneos en tiempo real
-• Amazon/distributor USA: ~$1,200 · Precio Colombia (importado +25%): **~$6,450,000 COP**
+¿Por qué este modelo?
+• Sin hardware que envejece en tu edificio
+• Actualizamos el modelo YOLO sin intervención en sitio
+• Escalamos automáticamente si agregas cámaras
+• El costo está cubierto en tu mensualidad — sin sorpresas
+• SLA garantizado por contrato: 99.9% uptime
+
+¿QUÉ GPU USA IACCESS POR PLAN?
+
+Plan Esencial (hasta 6 cámaras / <25 aptos):
+→ NVIDIA RTX 4060 Ti 16GB compartida (multi-tenant)
+   Arquitectura Ada Lovelace · 4,352 CUDA cores
+   Procesa 6–10 streams YOLO con TensorRT FP16
+   Latencia de inferencia: <400ms
+
+Plan Profesional (hasta 14 cámaras / 25–70 aptos):
+→ NVIDIA RTX 4060 Ti 16GB dedicada a tu edificio
+   Stack: NVIDIA DeepStream 8.0 + YOLOv8 + OSNet ReID
+   Inferencia por lotes — todos los streams en una sola
+   llamada GPU (no una instancia por cámara)
+   Latencia: 280–380ms con TensorRT FP16
+
+Plan Enterprise (hasta 20+ cámaras / 70+ aptos):
+→ NVIDIA RTX 4090 24GB dedicada
+   24GB VRAM soporta 20 streams YOLO simultáneos
+   Cross-camera Re-ID (OSNet-x1.0): rastrea la misma
+   persona entre pisos sin necesidad de re-identificación
+   manual
+   Latencia: 230–320ms con TensorRT INT8
+
+OPCIÓN EDGE (solo si el edificio requiere operación
+100% offline por restricción contractual):
+→ NVIDIA Jetson AGX Orin 64GB
+   275 TOPS · soporta 16 cámaras en sitio
+   Precio instalado en edificio: ~$5,373,000 COP
+   (Jetson AGX Orin 64GB ~$999 × 5,375)
+   + $1,500,000 instalación en rack
+   Nota: actualización de software requiere visita técnica
 
 ──────────────────────────────────────────────
 SEGURIDAD Y PRIVACIDAD
@@ -1107,7 +1138,7 @@ CONTROLADOR DE PISOS — UHPPOTE 20/40 CANALES
 • Comunicación: RS-485 o TCP/IP con el servidor IAccess
 • Compatible con cualquier marca de ascensor (Schindler, ThyssenKrupp,
   OTIS, MIPSA, IMSA, y locales colombianos)
-• Amazon USA: $330 (20ch) / $500 (40ch) · Precio Colombia (+20% imp.):
+• Amazon USA: $330 (20ch) / $500 (40ch) · Precio Colombia (+25% imp.):
   UHPPOTE 20ch **~$1,774,000 COP** · 40ch **~$2,688,000 COP**
 
 LECTOR EN CABINA — HIKVISION DS-K1T342MFWX-E1
@@ -1317,7 +1348,7 @@ Con lector facial: $2,585,000 COP por puerta
 ──────────────────────────────────────────────
 ESPECIFICACIÓN TÉCNICA DE MAGNETOS
 
-| Magneto | Fuerza | Uso recomendado | Amazon USA | Colombia (+20% imp.) |
+| Magneto | Fuerza | Uso recomendado | Amazon USA | Colombia (+25% imp.) |
 |---|---|---|---|---|
 | 600 lb / 272 kg | Media | Puertas livianas, interiores | $114 | **$613,000 COP** |
 | 1200 lb / 544 kg | Alta | Puertas principales, vidrio pesado | $175 | **$941,000 COP** |
@@ -1413,36 +1444,71 @@ RENDIMIENTO REAL (probado en pilot buildings):
 • Funciona bajo 5 Lux (casi oscuridad total)
 
 ──────────────────────────────────────────────
-SERVIDOR LOCAL vs. NUBE
+POR QUÉ YOLO NECESITA UNA GPU — NO UN COMPUTADOR CORRIENTE
 
-SERVIDOR LOCAL (recomendado para la mayoría):
-Toda la IA y los datos se procesan en un servidor dentro del 
-edificio. Internet no es requerido para que el sistema funcione.
+YOLO (You Only Look Once) ejecuta una red neuronal convolucional
+profunda sobre cada frame de cada cámara, en tiempo real.
+Un edificio con 8 cámaras produce ~240 frames por segundo.
 
-+ Sin dependencia de conexión a internet
-+ Datos biométricos nunca salen del edificio
-+ Mejor latencia (procesamiento en la misma red local)
-+ Sin costo de nube en el largo plazo
-- Requiere espacio físico (cuarto de sistemas o rack)
-- Mantenimiento hardware de responsabilidad del edificio 
-  (cubierto en contrato de servicio IAccess)
+Un procesador Intel (NUC, mini-PC, i7 de escritorio) puede
+hacer inferencia YOLO en 1 o 2 cámaras a baja resolución.
+Con 8 cámaras: la latencia supera los 3–5 segundos — la puerta
+no puede abrirse con esa demora. Con re-identificación entre
+cámaras (cross-camera ReID): el NUC colapsa completamente.
 
-SERVIDOR EN NUBE (AWS Colombia, Bogotá):
-La IA se ejecuta en AWS South America (São Paulo) o 
-AWS región Colombia cuando esté disponible.
+Para hacer esto correctamente se necesita una GPU con:
+• Mínimo 8GB VRAM (16GB recomendado)
+• Soporte CUDA para inferencia paralela por lotes
+• Stack: NVIDIA DeepStream 8.0 + TensorRT FP16/INT8
 
-+ Sin hardware en el edificio
-+ IAccess maneja toda la infraestructura
-+ Escalable sin cambio de hardware
-- Requiere internet estable (mínimo 50 Mbps simétrico)
-- Latencia ligeramente mayor (80–200ms adicionales)
-- Costo mensual adicional ($350,000 COP/mes)
-- Datos pasan por infraestructura de terceros (con encriptación)
+CÓMO FUNCIONA LA INFERENCIA POR LOTES:
 
-NUESTRA RECOMENDACIÓN:
-Para edificios con buena infraestructura eléctrica y 
-espacio para un pequeño rack o gabinete: servidor local.
-Para edificios pequeños (<25 aptos) sin cuarto de sistemas: nube.
+Todos los streams de cámaras se agrupan en un solo tensor
+y se pasan a la GPU en una única llamada de inferencia.
+No hay una instancia de YOLO por cámara — hay una instancia
+que procesa todas simultáneamente. Esto multiplica por 8–12×
+la eficiencia de cómputo versus el modelo naive.
+
+Resultado: latencia de 230–420ms con RTX 4060 Ti o 4090,
+en lugar de los 3,000–5,000ms de un NUC sin GPU dedicada.
+
+──────────────────────────────────────────────
+MODELO SAAS: IACCESS GESTIONA LA INFRAESTRUCTURA
+
+IAccess no vende ni instala un servidor en tu edificio.
+La IA corre en nuestra infraestructura GPU en la nube,
+gestionada, actualizada y monitoreada por nuestro equipo.
+
+¿QUÉ SIGNIFICA ESTO PARA TI?
+• Sin hardware que deprecia en tu edificio
+• Sin actualizaciones manuales — nosotros las hacemos en la noche
+• Sin riesgo de que el "servidor del edificio" falle a las 3am
+• El costo de cómputo está incluido en tu mensualidad
+• Cuando agregamos cámaras, escalamos la GPU automáticamente
+
+¿DÓNDE ESTÁN LOS SERVIDORES?
+Utilizamos infraestructura de cómputo en Europa 
+(Hetzner Data Center, certificado ISO 27001, GDPR) 
+con túneles encriptados TLS 1.3 a tu edificio.
+Latencia típica Bogotá–Europa: 140–180ms.
+Latencia de procesamiento YOLO: 230–380ms.
+Latencia total puerta a apertura: <600ms — imperceptible.
+
+TUS DATOS BIOMÉTRICOS:
+Permanecen encriptados (AES-256) en tránsito y en reposo.
+La base de datos facial NO es accesible por ningún tercero,
+ni por Hetzner — opera con clave de encriptación del edificio.
+
+GPU POR PLAN:
+• Plan Esencial:      RTX 4060 Ti 16GB (compartida, hasta 6 cams)
+• Plan Profesional:   RTX 4060 Ti 16GB (dedicada, hasta 14 cams)
+• Plan Enterprise:    RTX 4090 24GB (dedicada, hasta 20+ cams)
+
+OPCIÓN OFFLINE (contratos con restricción de datos):
+Para edificios que requieren operación 100% sin internet,
+ofrecemos instalación de NVIDIA Jetson AGX Orin 64GB en sitio.
+Precio instalado: $6,873,000 COP + $1,500,000 instalación.
+Nota: actualizaciones de software requieren visita técnica presencial.
 
 ──────────────────────────────────────────────
 PRIVACIDAD Y LEY 1581
@@ -1503,7 +1569,7 @@ HARDWARE INSTALADO:
 • 2× controladores de ascensor UHPPOTE 40ch
 • 14× cámaras 4MP ColorVu (lobby + parkeo + pisos 1/4/7/12 + ascensores)
 • NVR 16ch + 8TB
-• Servidor local Intel NUC i7
+• Infraestructura GPU en nube IAccess (RTX 4060 Ti)
 • UPS 1500VA
 • Switch PoE 24 puertos
 
@@ -1785,9 +1851,10 @@ const PRICING = {
     ch16_4TB:     2_865_000,  // DS-7616NXI-K2 + 4TB HDD  ($533 × 5,375)
     ch8_2TB:      2_150_000,  // 8ch NVR + 2TB (~$400 × 5,375)
   },
-  server: {
-    nucI7:        4_031_000,  // Intel NUC 13 Pro i7  ($750 × 5,375)
-    jetsonOrinNX: 6_450_000,  // NVIDIA Jetson Orin NX 16GB  ($1,200 × 5,375)
+  // Server: NOT sold to buildings — IAccess rents cloud GPU and bundles it in monthly fee.
+  // Edge option (offline buildings only): Jetson AGX Orin 64GB $999 → $5,373,000 COP + $1,500,000 install
+  edgeServer: {
+    jetsonAgxOrin64: 5_373_000,  // NVIDIA Jetson AGX Orin 64GB ($999 × 5,375) — edge/offline only
   },
   network: {
     ups1500va:      806_000,  // ($150 × 5,375)
@@ -1808,12 +1875,17 @@ const PRICING = {
     helperHr:      52_000,   // $12/hr × 4,300 COP/USD
   },
   monthly: {
-    softwareLicense: 450_000,
-    support:         380_000,
-    perApartment:     12_000,
-    airbnb:          280_000,
-    monitoring24_7:  490_000,
-    cloud:           350_000,
+    // Cloud GPU compute is now ALWAYS included (IAccess rents Hetzner GEX44 at ~$191/month = ~$820,000 COP
+    // and amortizes across buildings). The monthly fee below already includes compute + software + support.
+    // Per-plan base monthly (cloud GPU + software + support + updates):
+    baseEsencial:     850_000,  // RTX 4060 Ti shared  + software + support Esencial
+    baseProfessional: 1_350_000, // RTX 4060 Ti dedicated + software + SLA 4h
+    baseEnterprise:   2_200_000, // RTX 4090 dedicated + software + SLA 99.9% + monitoring
+    // Add-ons on top of base:
+    perApartment:      12_000,  // per-apartment fee above base
+    airbnb:           280_000,  // Airbnb integration (included in Pro+)
+    monitoring24_7:   490_000,  // human operators 24/7 (always add-on)
+    edgeCloudSurcharge: 0,      // no surcharge — cloud compute is in base fee
   }
 };
 
@@ -1829,7 +1901,8 @@ function calculatePackage(inputs) {
     airbnb,          // boolean
     nAirbnbUnits,    // number
     monitoring,      // boolean
-    serverType,      // "local" | "cloud" | "unknown"
+    // serverType removed — all plans now use IAccess cloud GPU by default.
+    // Edge (offline) option available as separate line item on quote.
     currentPorteros  // 0 | 1 | 2 | 3+
   } = inputs;
 
@@ -1874,11 +1947,8 @@ function calculatePackage(inputs) {
   // Parking gate
   if (parkingGate) hardware += 12_040_000 + 4_816_000; // FAAC + LPR
 
-  // Server
-  const serverCost = isEnterprise
-    ? PRICING.server.jetsonOrinNX
-    : PRICING.server.nucI7;
-  if (serverType !== "cloud") hardware += serverCost;
+  // Server: NOT in hardware total — IAccess provides cloud GPU as part of monthly service.
+  // If the building requests edge/offline mode, add edgeServer.jetsonAgxOrin64 + 1_500_000 as a line item.
 
   // Network + power
   hardware += PRICING.network.ups1500va * (isEnterprise ? 2 : 1);
@@ -1904,11 +1974,15 @@ function calculatePackage(inputs) {
   const totalInstall = hardware + labor + cablingCost + emergencyExitCost + softwareSetup;
 
   // ─── MONTHLY ───
-  let monthly = PRICING.monthly.softwareLicense + PRICING.monthly.support;
+  // Base fee already includes cloud GPU compute + software + support
+  let monthly = isEnterprise
+    ? PRICING.monthly.baseEnterprise
+    : nApts > 25
+      ? PRICING.monthly.baseProfessional
+      : PRICING.monthly.baseEsencial;
   monthly += nApts * PRICING.monthly.perApartment;
-  if (airbnb) monthly += PRICING.monthly.airbnb;
+  if (airbnb && !isEnterprise) monthly += PRICING.monthly.airbnb; // included free in Enterprise
   if (monitoring) monthly += PRICING.monthly.monitoring24_7;
-  if (serverType === "cloud") monthly += PRICING.monthly.cloud;
 
   // ─── DOORMEN COST ───
   const porteroCount = { "0": 0, "1": 1, "2": 2, "3+": 3 };
@@ -2010,7 +2084,8 @@ Long-tail:
 
 ---
 
-*IAccess Website Design Brief v2.1 — May 2026*  
-*Pricing basis: Amazon USD retail price + 20% importation/shipping × 4,300 COP/USD = × 5,160 multiplier*  
+*IAccess Website Design Brief v3.0 — May 2026*  
+*Pricing basis: Amazon USD retail price + 25% importation/shipping/customs × 4,300 COP/USD = × 5,375 multiplier*  
 *Labor rates: $10–40 USD/hr per client spec — skilled installer $20/hr, lead integrator $35/hr*  
-*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*
+*Portero cost basis: 2026 salario mínimo $1,423,500 + full carga prestacional ($2,462,050) + 20% empresa de vigilancia = $2,954,460/portero/month*  
+*Business model (v3.0): SaaS/rental — IAccess owns and operates cloud GPU infrastructure (Hetzner GEX44 RTX 4000 Ada, ~$191/month IAccess cost). No server sold to buildings. Monthly fee covers GPU compute + software + maintenance + support SLA. Edge/offline option available: Jetson AGX Orin 64GB installed on-premises.*
