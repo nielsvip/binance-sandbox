@@ -8926,6 +8926,218 @@ class TradierTradeManager:
         logger.info(f"[{position_key}] {action} EXECUTE: {final_shares} shares @ {current_price}")
         return await self.execute_now(position_key, account_key, symbol, abs(position.positionAmt), side, position_side, float(final_shares), current_price, unique_id, reason, is_full_close, action)
 
+    async def _broker_preflight_check(self, account_key: str, symbol: str, position_side: str, quantity: float) -> tuple:
+        # Self-verify with broker before opening — returns (block: bool, tag: str).
+        # User mandate 2026-05-11: tradier_manage must hit the broker API directly even if
+        # tradier_positions isn't running. Cache last fetch for BROKER_PREFLIGHT_CACHE_S seconds.
+        try:
+            if not hasattr(self, '_broker_preflight_cache'):
+                self._broker_preflight_cache = {}  # {account_key: {ts, positions}}
+            _ttl = float(getattr(config, 'BROKER_PREFLIGHT_CACHE_S', 3.0))
+            _now = time.time()
+            _entry = self._broker_preflight_cache.get(account_key)
+            _positions = None
+            if _entry and (_now - _entry.get('ts', 0)) < _ttl:
+                _positions = _entry.get('positions')
+            if _positions is None:
+                _client = None
+                _existing_client = getattr(self, 'api_client', None)
+                if _existing_client is not None and getattr(_existing_client, 'account_key', None) == account_key:
+                    _client = _existing_client
+                else:
+                    _client = TradierAPIClient(config, account_key=account_key)
+                    try:
+                        await asyncio.wait_for(_client.connect(), timeout=5.0)
+                    except Exception:
+                        return (False, "")
+                try:
+                    _positions = await asyncio.wait_for(_client.get_account_positions(), timeout=5.0)
+                except Exception as _api_err:
+                    logger.warning(f"[BROKER_PREFLIGHT_API_ERR] {account_key}:{symbol}: {_api_err} — fail-open")
+                    return (False, "")
+                self._broker_preflight_cache[account_key] = {'ts': _now, 'positions': _positions or []}
+            if not _positions:
+                return (False, "")
+            _broker_long_qty = 0.0
+            _broker_short_qty = 0.0
+            for _p in _positions:
+                _sym = str(_p.get('symbol', '')).upper()
+                if _sym != symbol.upper():
+                    continue
+                _q = float(_p.get('quantity', 0) or 0)
+                if _q > 0: _broker_long_qty += _q
+                elif _q < 0: _broker_short_qty += abs(_q)
+            _is_long = (position_side == 'LONG')
+            # opposite side already at broker → refuse
+            if _is_long and _broker_short_qty > 0.5:
+                logger.critical(f"🛑 [BROKER_PREFLIGHT_OPPOSITE] {account_key}:{symbol}: broker shows SHORT={_broker_short_qty} but trying to open LONG — REFUSING. Close the SHORT first.")
+                return (True, "BROKER_HAS_OPPOSITE_SHORT")
+            if (not _is_long) and _broker_long_qty > 0.5:
+                logger.critical(f"🛑 [BROKER_PREFLIGHT_OPPOSITE] {account_key}:{symbol}: broker shows LONG={_broker_long_qty} but trying to open SHORT — REFUSING. Close the LONG first.")
+                return (True, "BROKER_HAS_OPPOSITE_LONG")
+            # same-side already filled → refuse adding more
+            _same_qty = _broker_long_qty if _is_long else _broker_short_qty
+            _max_per_key = float(getattr(config, 'BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY', 50.0))
+            if _same_qty >= _max_per_key:
+                logger.critical(f"🛑 [BROKER_PREFLIGHT_FULL] {account_key}:{symbol}_{position_side}: broker already holds {_same_qty} (cap {_max_per_key}) — REFUSING further entry.")
+                return (True, "BROKER_SAME_SIDE_AT_CAP")
+            return (False, "")
+        except Exception as _err:
+            logger.error(f"[BROKER_PREFLIGHT_INTERNAL_ERR] {account_key}:{symbol}: {_err}")
+            return (False, "")
+
+    def _disaster_guard_for_entry(self, position_key: str, account_key: str, symbol: str, position_side: str, quantity: float, current_price: float, reason: str) -> tuple:
+        # Returns (block: bool, block_tag: str). 10 controls — see config_tradier.DISASTER_GUARD section.
+        # User mandate 2026-05-11 after $12k MU short opened against +17.89% rally.
+        # Never call this for REDUCE/CLOSE/HEDGE_CLOSE — exits must remain unobstructed.
+        if not bool(getattr(config, 'DISASTER_GUARD_ENABLED', True)):
+            return (False, "")
+        try:
+            is_long = (position_side == 'LONG')
+            ind = None
+            try:
+                ind = self.get_indicators(symbol)
+            except Exception:
+                ind = None
+            if not ind:
+                return (False, "")
+            px = float(current_price or 0)
+            if px <= 0:
+                return (False, "")
+            notional = float(quantity or 0) * px
+            is_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() or 'AGENT_FORCE_OPEN' in (reason or '').upper()
+            # ── Control 1+2: daily intraday return guard ──
+            day_open = safe_fetch_float(ind.get('open_D', 0)) or safe_fetch_float(ind.get('open_1h', 0))
+            if day_open > 0:
+                day_ret_pct = (px - day_open) / day_open * 100.0
+                _short_thr = float(getattr(config, 'DG_DAILY_GAIN_BLOCK_SHORT_PCT', 2.5))
+                _long_thr = float(getattr(config, 'DG_DAILY_LOSS_BLOCK_LONG_PCT', 2.5))
+                if (not is_long) and day_ret_pct >= _short_thr:
+                    logger.critical(f"🛑 [DG_1_DAILY_GAIN_SHORT_BLOCK] {position_key}: day_ret={day_ret_pct:+.2f}% >= +{_short_thr:.2f}% — REFUSING SHORT (don't short winners). reason={reason}")
+                    return (True, "DG_DAILY_GAIN_SHORT_BLOCK")
+                if is_long and day_ret_pct <= -_long_thr:
+                    logger.critical(f"🛑 [DG_2_DAILY_LOSS_LONG_BLOCK] {position_key}: day_ret={day_ret_pct:+.2f}% <= -{_long_thr:.2f}% — REFUSING LONG (don't catch knives). reason={reason}")
+                    return (True, "DG_DAILY_LOSS_LONG_BLOCK")
+            # ── Control 3: HTF directional alignment ──
+            def _bias(close_now, close_prev):
+                if close_now <= 0 or close_prev <= 0: return 0
+                return 1 if close_now > close_prev else (-1 if close_now < close_prev else 0)
+            close_D = safe_fetch_float(ind.get('close_D', 0))
+            open_D = safe_fetch_float(ind.get('open_D', 0))
+            close_4h = safe_fetch_float(ind.get('close_4h', 0))
+            open_4h = safe_fetch_float(ind.get('open_4h', 0))
+            close_1h = safe_fetch_float(ind.get('close_1h', 0))
+            open_1h = safe_fetch_float(ind.get('open_1h', 0))
+            bias_D = _bias(close_D, open_D)
+            bias_4h = _bias(close_4h, open_4h)
+            bias_1h = _bias(close_1h, open_1h)
+            want = 1 if is_long else -1
+            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_D', True)) and bias_D != 0 and bias_D == -want:
+                logger.critical(f"🛑 [DG_3D_HTF_D_AGAINST] {position_key}: D bias={'bull' if bias_D>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
+                return (True, "DG_HTF_D_AGAINST")
+            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_4H', True)) and bias_4h != 0 and bias_4h == -want:
+                logger.critical(f"🛑 [DG_3H4_HTF_4H_AGAINST] {position_key}: 4h bias={'bull' if bias_4h>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
+                return (True, "DG_HTF_4H_AGAINST")
+            if bool(getattr(config, 'DG_HTF_ALIGN_REQUIRE_1H', False)) and bias_1h != 0 and bias_1h == -want:
+                logger.critical(f"🛑 [DG_3H1_HTF_1H_AGAINST] {position_key}: 1h bias={'bull' if bias_1h>0 else 'bear'} but want {'bull' if is_long else 'bear'} entry — REFUSING. reason={reason}")
+                return (True, "DG_HTF_1H_AGAINST")
+            # ── Control 4: RSI momentum guard ──
+            rsi_15m = safe_fetch_float(ind.get('rsi_15m', 50))
+            rsi_1h = safe_fetch_float(ind.get('rsi_1h', 50))
+            if (not is_long) and rsi_15m >= float(getattr(config, 'DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT', 65.0)):
+                logger.critical(f"🛑 [DG_4A_RSI15M_TOO_BULL_FOR_SHORT] {position_key}: rsi_15m={rsi_15m:.1f} — REFUSING SHORT. reason={reason}")
+                return (True, "DG_RSI15M_TOO_BULL_FOR_SHORT")
+            if (not is_long) and rsi_1h >= float(getattr(config, 'DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT', 65.0)):
+                logger.critical(f"🛑 [DG_4C_RSI1H_TOO_BULL_FOR_SHORT] {position_key}: rsi_1h={rsi_1h:.1f} — REFUSING SHORT. reason={reason}")
+                return (True, "DG_RSI1H_TOO_BULL_FOR_SHORT")
+            if is_long and rsi_15m <= float(getattr(config, 'DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG', 35.0)):
+                logger.critical(f"🛑 [DG_4B_RSI15M_TOO_BEAR_FOR_LONG] {position_key}: rsi_15m={rsi_15m:.1f} — REFUSING LONG. reason={reason}")
+                return (True, "DG_RSI15M_TOO_BEAR_FOR_LONG")
+            if is_long and rsi_1h <= float(getattr(config, 'DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG', 35.0)):
+                logger.critical(f"🛑 [DG_4D_RSI1H_TOO_BEAR_FOR_LONG] {position_key}: rsi_1h={rsi_1h:.1f} — REFUSING LONG. reason={reason}")
+                return (True, "DG_RSI1H_TOO_BEAR_FOR_LONG")
+            # ── Control 5: max notional on force-opens ──
+            if is_force_open:
+                _max_force = float(getattr(config, 'DG_MAX_FORCE_OPEN_NOTIONAL_USD', 500.0))
+                if notional > _max_force:
+                    logger.critical(f"🛑 [DG_5_FORCE_OPEN_NOTIONAL_CAP] {position_key}: notional=${notional:.0f} > ${_max_force:.0f} cap — REFUSING. qty={quantity} px={px} reason={reason}")
+                    return (True, "DG_FORCE_OPEN_NOTIONAL_CAP")
+            # ── Control 6: broker-vs-memory sync guard ──
+            # Inspects last cached broker snapshot from _broker_preflight_cache (populated by
+            # the async pre-flight). If broker has the key with amt>0 but local memory has 0,
+            # refuse. This is a fast in-process check; the real-time broker poll is the
+            # _broker_preflight_check above.
+            if bool(getattr(config, 'DG_BROKER_MEMORY_SYNC_BLOCK', True)):
+                try:
+                    _broker_qty = 0.0
+                    _bpc = getattr(self, '_broker_preflight_cache', None)
+                    if isinstance(_bpc, dict):
+                        _snap = _bpc.get(account_key) or {}
+                        for _p in (_snap.get('positions') or []):
+                            if str(_p.get('symbol', '')).upper() != symbol.upper():
+                                continue
+                            _q = float(_p.get('quantity', 0) or 0)
+                            if (is_long and _q > 0) or ((not is_long) and _q < 0):
+                                _broker_qty = abs(_q)
+                                break
+                    _local_pos = self.position_manager.positions.get(position_key) if self.position_manager else None
+                    _local_amt = abs(float(getattr(_local_pos, 'positionAmt', 0) or 0)) if _local_pos else 0.0
+                    if _broker_qty > 0.5 and _local_amt < 0.5:
+                        logger.critical(f"🛑 [DG_6_BROKER_MEMORY_DESYNC] {position_key}: broker_qty={_broker_qty} but local_amt={_local_amt} — REFUSING further opens until sync. reason={reason}")
+                        return (True, "DG_BROKER_MEMORY_DESYNC")
+                except Exception:
+                    pass
+            # ── Control 7: opposite-side profit block ──
+            _opp_thr = float(getattr(config, 'DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT', 1.0))
+            if _opp_thr > 0:
+                try:
+                    _opp_key = f"{account_key}:{symbol}_{'SHORT' if is_long else 'LONG'}"
+                    _opp_pos = self.position_manager.positions.get(_opp_key) if self.position_manager else None
+                    _opp_gain = float(getattr(_opp_pos, 'gain', 0.0) or 0.0) if _opp_pos else 0.0
+                    _opp_amt = abs(float(getattr(_opp_pos, 'positionAmt', 0) or 0)) if _opp_pos else 0.0
+                    if _opp_amt > 0 and _opp_gain >= _opp_thr:
+                        logger.critical(f"🛑 [DG_7_OPPOSITE_SIDE_WINNING] {position_key}: opposite-side {_opp_key} gain={_opp_gain:.2f}% >= {_opp_thr:.2f}% — REFUSING entry (don't fight your winner). reason={reason}")
+                        return (True, "DG_OPPOSITE_SIDE_WINNING")
+                except Exception:
+                    pass
+            # ── Control 8: per-day fire cap on force-opens ──
+            if is_force_open:
+                _max_per_day = int(getattr(config, 'DG_REPEAT_OPEN_PER_DAY_MAX', 3))
+                try:
+                    if not hasattr(self, '_dg_force_open_count'):
+                        self._dg_force_open_count = {}
+                    if not hasattr(self, '_dg_force_open_day'):
+                        self._dg_force_open_day = ""
+                    _today = datetime.now(timezone.utc).strftime('%Y%m%d')
+                    if self._dg_force_open_day != _today:
+                        self._dg_force_open_count = {}
+                        self._dg_force_open_day = _today
+                    _count = int(self._dg_force_open_count.get(position_key, 0))
+                    if _count >= _max_per_day:
+                        logger.critical(f"🛑 [DG_8_FORCE_OPEN_DAY_CAP] {position_key}: already {_count}/{_max_per_day} force-opens today — REFUSING. reason={reason}")
+                        return (True, "DG_FORCE_OPEN_DAY_CAP")
+                except Exception:
+                    pass
+            # ── Control 9: high-volatility day skip on force-opens ──
+            if is_force_open:
+                _atr_thr = float(getattr(config, 'DG_HIGH_VOLATILITY_ATR_PCT', 4.0))
+                _atr_1h = safe_fetch_float(ind.get('atr_1h', 0))
+                if _atr_1h > 0 and px > 0 and (_atr_1h / px) * 100.0 >= _atr_thr:
+                    logger.critical(f"🛑 [DG_9_HIGH_VOL_FORCE_BLOCK] {position_key}: atr_1h/px={(_atr_1h/px)*100.0:.2f}% >= {_atr_thr:.2f}% — REFUSING force-open on volatile day. reason={reason}")
+                    return (True, "DG_HIGH_VOL_FORCE_BLOCK")
+            # ── Control 10: WT_3M_FORCE_OPEN requires HTF confirm ──
+            if is_force_open and bool(getattr(config, 'DG_WT_3M_REQUIRE_HTF_CONFIRM', True)):
+                _agree = False
+                if bias_D == want and bias_D != 0: _agree = True
+                if bias_4h == want and bias_4h != 0: _agree = True
+                if not _agree:
+                    logger.critical(f"🛑 [DG_10_WT3M_NO_HTF_CONFIRM] {position_key}: force-open requires D OR 4h agreement with side, got D={bias_D} 4h={bias_4h} want={want} — REFUSING. reason={reason}")
+                    return (True, "DG_WT3M_NO_HTF_CONFIRM")
+            return (False, "")
+        except Exception as _dg_err:
+            logger.error(f"[DG_GUARD_ERR] {position_key}: {_dg_err}")
+            return (False, "")
+
     async def execute_now(self, position_key: str, account_key: str, symbol: str, original_position_amt: float, side: str, position_side: str, quantity: float, old_price: float, unique_id: str, reason: str, is_full_close: bool, action: str = None) -> str:
         if not is_regular_trading_hours(): return "MARKET_CLOSED"
         exec_lock_key = f"execute_now:{position_key}:{side}"
@@ -8978,6 +9190,32 @@ class TradierTradeManager:
                             await self.redis_manager.delete(exec_lock_key)
                         return "BLOCKED_NON_TRADEABLE"
             
+            # ═══ DISASTER_GUARD (2026-05-11 after MU $12k short-against-rally) ═══
+            # 10 controls that REFUSE entry before any order is queued. Applies to
+            # every entry path including WT_3M_FORCE_OPEN. Exits/reduces are NOT gated.
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce:
+                _dg_block, _dg_tag = self._disaster_guard_for_entry(position_key, account_key, symbol, position_side, float(quantity), float(old_price), reason)
+                if _dg_block:
+                    if lock_acquired and self.redis_manager:
+                        await self.redis_manager.delete(exec_lock_key)
+                    return f"BLOCKED_{_dg_tag}"
+
+            # ═══ BROKER_PREFLIGHT (2026-05-11 user mega-urgent: trust the broker over local memory) ═══
+            # Before ANY new entry, fetch live broker positions for this symbol and refuse if:
+            #   - opposite-side position already exists at broker (don't fight your own LONG with a SHORT)
+            #   - same-side position is already >= 95% of intended size (already filled, don't double up)
+            # Cached for 3s so back-to-back calls don't flood Tradier's rate-limit.
+            # If the API call itself fails, we DO NOT block — that would freeze legitimate exits.
+            if account_key in {'trb', 'trc', 'tra'} and is_entry_action and not _is_exit_or_reduce and bool(getattr(config, 'BROKER_PREFLIGHT_ENABLED', True)):
+                try:
+                    _bp_block, _bp_tag = await self._broker_preflight_check(account_key, symbol, position_side, float(quantity))
+                    if _bp_block:
+                        if lock_acquired and self.redis_manager:
+                            await self.redis_manager.delete(exec_lock_key)
+                        return f"BLOCKED_{_bp_tag}"
+                except Exception as _bp_err:
+                    logger.error(f"[BROKER_PREFLIGHT_ERR] {position_key}: {_bp_err} — allowing (fail-open to not freeze trading)")
+
             # 2026-05-10 USER NON-NEGOTIABLE: WT_3M_FORCE_OPEN bypasses augment cooldown so any
             # tradeable_key with wt1_3m vs wt2_3m condition met can reopen immediately.
             _wt3m_force_open = 'WT_3M_FORCE_OPEN' in (reason or '').upper() and bool(getattr(config, 'WT_3M_FORCE_OPEN_BYPASS_GATES', True))

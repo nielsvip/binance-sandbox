@@ -2008,6 +2008,35 @@ class TradierConfig:
     WT_3M_FORCE_OPEN_ENABLED: bool = True
     WT_3M_FORCE_OPEN_BYPASS_GATES: bool = True
     WT_3M_FORCE_OPEN_SIZE_USD: float = 100.0  # ≈ START_POSITION_SIZE for trb
+    # ═══════════════════════════════════════════════════════════════════
+    # DISASTER_GUARD — 10 controls vs MU-style shorts-on-winners.
+    # Triggered after 2026-05-11 MU incident: $12k MU short opened while
+    # MU was rallying +17.89%, position fell out of memory, WT_3M_FORCE_OPEN
+    # kept re-firing because has_position stayed False. Every control here
+    # is checked BEFORE any order leaves the box and applies to EVERY entry
+    # action regardless of reason (WT_3M_FORCE_OPEN included). Defaults are
+    # protective — flip OFF only if you have hard backtest evidence.
+    # ═══════════════════════════════════════════════════════════════════
+    DISASTER_GUARD_ENABLED: bool = True                       # master switch — never let this off without explicit user override
+    DG_DAILY_GAIN_BLOCK_SHORT_PCT: float = 2.5                # Control 1: refuse SHORT entry if symbol is up ≥ this % today
+    DG_DAILY_LOSS_BLOCK_LONG_PCT: float = 2.5                 # Control 2: refuse LONG entry if symbol is down ≥ this % today
+    DG_HTF_ALIGN_REQUIRE_D: bool = True                       # Control 3a: D close vs prev_close must agree with side
+    DG_HTF_ALIGN_REQUIRE_4H: bool = True                      # Control 3b: 4h close vs prev 4h close must agree with side
+    DG_HTF_ALIGN_REQUIRE_1H: bool = False                     # Control 3c: 1h close vs prev 1h close (default OFF — too noisy)
+    DG_MOMENTUM_BLOCK_RSI15M_FOR_SHORT: float = 65.0          # Control 4a: refuse SHORT if rsi_15m ≥ this
+    DG_MOMENTUM_BLOCK_RSI15M_FOR_LONG: float = 35.0           # Control 4b: refuse LONG if rsi_15m ≤ this (catch falling knife)
+    DG_MOMENTUM_BLOCK_RSI1H_FOR_SHORT: float = 65.0           # Control 4c: refuse SHORT if rsi_1h ≥ this
+    DG_MOMENTUM_BLOCK_RSI1H_FOR_LONG: float = 35.0            # Control 4d: refuse LONG if rsi_1h ≤ this
+    DG_MAX_FORCE_OPEN_NOTIONAL_USD: float = 500.0             # Control 5: WT_3M_FORCE_OPEN must NEVER size above this $ per fire
+    DG_BROKER_MEMORY_SYNC_BLOCK: bool = True                  # Control 6: if broker amt>0 but local memory has no position → REFUSE further opens for that key
+    DG_OPPOSITE_SIDE_PROFIT_BLOCK_PCT: float = 1.0            # Control 7: if opposite side has gain ≥ this %, block this side opening
+    DG_REPEAT_OPEN_PER_DAY_MAX: int = 3                       # Control 8: cap opens per pos_key per session-day to this many fires of WT_3M_FORCE_OPEN
+    DG_HIGH_VOLATILITY_ATR_PCT: float = 4.0                   # Control 9: if (atr_1h / price) * 100 ≥ this, refuse force-opens (volatile day = false 3m crosses)
+    DG_WT_3M_REQUIRE_HTF_CONFIRM: bool = True                 # Control 10: WT_3M_FORCE_OPEN requires at least D OR 4h agreeing with intended side
+    # ── Broker self-verify (independent of tradier_positions) ──
+    BROKER_PREFLIGHT_ENABLED: bool = True                     # tradier_manage hits Tradier's /positions itself before every entry order
+    BROKER_PREFLIGHT_CACHE_S: float = 3.0                     # cache the broker snapshot this long to avoid rate-limit (≤5s per user mandate)
+    BROKER_PREFLIGHT_MAX_SAME_SIDE_QTY: float = 50.0          # refuse further entries on same side if broker already holds ≥ this many shares
     REENTRY_ESCALATION_CRIT_MIN: float = 60.0  # CRITICAL log if reentry pending > 60min
     REENTRY_ESCALATION_WARN_MIN: float = 30.0  # WARNING log if reentry pending > 30min
     REENTRY_MANDATORY: bool = True  # Enforce reentry after every exit

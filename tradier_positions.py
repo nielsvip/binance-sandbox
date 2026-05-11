@@ -1430,37 +1430,43 @@ class TradierPositionManager:
 
                 existing_position = account_positions.get(position_key)
                 if not existing_position:
-                    logger.error(f"[{self.account_key}] {position_key} in API (amt={amt_abs}) but NOT in memory. Skipping — positions must be loaded at startup, never fabricated.")
-                    skipped_count += 1
-                    continue
-                    
-                    await self.handle_augmentation(
-                        existing_position, position_key, 0.0, amt_abs, amt_abs, 
-                        existing_position.mark_price, entry_price
+                    # 2026-05-11 USER MEGA URGENT: do NOT skip orphans — that's how MU_SHORT $12k slipped through.
+                    # Broker shows it → it IS real → adopt it so management cycle can close it via R1/R2/etc.
+                    # The "never fabricate" rule applied to startup boot, NOT to a running broker-reconciliation loop.
+                    logger.critical(f"🚨 [{self.account_key}] {position_key} BROKER-ONLY ORPHAN amt={amt_abs} entry={entry_price:.4f} — ADOPTING into memory so management cycle can act.")
+                    _mp = current_market_price or entry_price
+                    existing_position = TradierPosition(
+                        symbol=symbol,
+                        position_side=position_side,
+                        positionAmt=amt_abs,
+                        entry_price=entry_price,
+                        mark_price=_mp,
+                        opened_at=now,
+                        last_updated=now,
+                        last_update=now.isoformat(),
+                        entry_time=now.isoformat(),
+                        augment_reason="BROKER_ORPHAN_ADOPTED",
                     )
-                else:
-                    # UPDATE THE MARK PRICE BEFORE HANDLING LOGIC
-                    if current_market_price:
-                        existing_position.mark_price = current_market_price
-                        existing_position.mark_price_last_updated = now
-
-                    # Now 'current_price' for these functions is actually accurate
-                    current_price = existing_position.mark_price or entry_price
-                    prev_amt = float(existing_position.positionAmt)
-                    diff = amt_abs - prev_amt
-                    
-                    # Sync metadata from API
-                    existing_position.entry_price = entry_price
-                    
-                    # 4. NOW RUN LOGIC WITH ACCURATE GAINS
-                    if abs(diff) < 0.0001:
-                        await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
-                    elif diff > 0:
-                        await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
-                    elif diff < 0:
-                        await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
-                    
-                    existing_position.last_updated = now
+                    account_positions[position_key] = existing_position
+                    self._mark_positions_dirty()
+                # UPDATE THE MARK PRICE BEFORE HANDLING LOGIC
+                if current_market_price:
+                    existing_position.mark_price = current_market_price
+                    existing_position.mark_price_last_updated = now
+                # Now 'current_price' for these functions is actually accurate
+                current_price = existing_position.mark_price or entry_price
+                prev_amt = float(existing_position.positionAmt)
+                diff = amt_abs - prev_amt
+                # Sync metadata from API
+                existing_position.entry_price = entry_price
+                # 4. NOW RUN LOGIC WITH ACCURATE GAINS
+                if abs(diff) < 0.0001:
+                    await self.handle_unchanged_position(existing_position, position_key, amt_abs, current_price)
+                elif diff > 0:
+                    await self.handle_augmentation(existing_position, position_key, prev_amt, amt_abs, diff, current_price, entry_price)
+                elif diff < 0:
+                    await self.handle_reduction(existing_position, position_key, prev_amt, amt_abs, abs(diff), current_price, entry_price, reduction_source="api_sync")
+                existing_position.last_updated = now
 
                 if existing_position.positionAmt != amt_abs:
                     existing_position.positionAmt = amt_abs
