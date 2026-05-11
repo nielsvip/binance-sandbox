@@ -1,4 +1,4 @@
-# Copilot Status — 2026-05-11 05:58:56 UTC
+# Copilot Status — 2026-05-11 06:14:11 UTC
 
 **Market Hours:** NO | **Tradier Priority:** NO
 **Interventions this hour:** 0 / 20
@@ -6,16 +6,16 @@
 
 ## Recent Anomalies (last 1h)
 
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T05:55:08
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T05:56:10
-- **STALE_INDICATORS** [tradier]  — 2026-05-11T05:56:32
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T05:56:32
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T05:56:32
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T05:57:13
-- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T05:58:15
-- **STALE_INDICATORS** [tradier]  — 2026-05-11T05:58:36
-- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T05:58:36
-- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T05:58:36
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T06:10:41
+- **STALE_INDICATORS** [tradier]  — 2026-05-11T06:11:02
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T06:11:02
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T06:11:02
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T06:11:44
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T06:12:46
+- **STALE_INDICATORS** [tradier]  — 2026-05-11T06:13:07
+- **RATIO_IMBALANCE** [tradier] trb — 2026-05-11T06:13:07
+- **RATIO_IMBALANCE** [tradier] trc — 2026-05-11T06:13:07
+- **RATIO_IMBALANCE** [crypto] men — 2026-05-11T06:13:50
 
 ## Missed Trades (trader comparison)
 
@@ -29,11 +29,11 @@ _None_
 
 **Held:** 7 | **Watching for reentry:** 4 | **Reentered:** 0
 
-- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-17.5%
+- HELD: **BIOUSDC** SHORT (crypto) peak +12.5%, now +-18.3%
 - HELD: **PARTIUSDT** SHORT (crypto) peak +12.3%, now +-13.7%
 - HELD: **PENGUUSDC** SHORT (crypto) peak +11.8%, now +-6.6%
-- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-8.8%
-- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-16.4%
+- HELD: **IPUSDC** SHORT (crypto) peak +8.2%, now +-8.9%
+- HELD: **ENSUSDT** SHORT (crypto) peak +3.8%, now +-17.7%
 - HELD: **SLV** LONG (tradier) peak +3.6%, now +0.5%
 - HELD: **NVDA** LONG (tradier) peak +3.2%, now +0.9%
 
