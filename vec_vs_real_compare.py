@@ -43,14 +43,12 @@ def load_real_rows(csv_path):
 
 
 def run_vec(overrides, mode, symbols, start_date):
+    import datetime as _dt
     t0 = time.time()
-    cfg = vec_engine_v1.VecConfig.from_overrides(overrides, mode=mode)
-    result = vec_engine_v1.simulate(
-        mode=mode,
-        symbols=symbols,
-        start_date=start_date,
-        cfg=cfg,
-    )
+    cfg = vec_engine_v1.VecConfig().update_from_dict(overrides)
+    engine = vec_engine_v1.VecEngine(mode=mode)
+    start_ts = int(_dt.datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=_dt.timezone.utc).timestamp())
+    result = engine.simulate(symbols=symbols, cfg=cfg, start_ts=start_ts)
     result["elapsed_s"] = time.time() - t0
     return result
 
