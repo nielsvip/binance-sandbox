@@ -745,6 +745,19 @@ def grid_tradier_grtf7_hunt_resume():
     return combos
 
 
+def grid_vec_validate_5cfg():
+    """5-config validation tier: matched against vec_engine_v1 for parity check.
+    Configs chosen to exercise distinct switch states. Used by vec_vs_real_validator
+    to confirm vec engine matches real engine within tolerance before live deployment."""
+    return [
+        ("baseline", {}),
+        ("golden_rule_off",      {"GOLDEN_RULE_ENABLED": False}),
+        ("gr_high_consensus",    {"GOLDEN_RULE_HTF_MIN_TFS": 3, "GOLDEN_RULE_MIN_IND": 5}),
+        ("wt_exit_strict",       {"WT_EXIT_MIN_TFS": 5}),
+        ("stdev_breakout_on",    {"STDEV_BREAKOUT_ENABLED": True}),
+    ]
+
+
 def grid_gr_phase2_bb_tradier():
     """PHASE 2: BB-per-TF cross-product. Phase 1 found GR_BB_no_15m moved Sharpe most.
     Locks entry consensus at moderate (HTF_MIN_TFS=3, MIN_IND=4) and varies which
@@ -1309,6 +1322,7 @@ TIER_MAP = {
     "gr_micro_ablation_crypto": grid_gr_micro_ablation_crypto,
     "gr_phase2_bb_tradier": grid_gr_phase2_bb_tradier,
     "gr_phase2_bb_crypto": grid_gr_phase2_bb_crypto,
+    "vec_validate_5cfg": grid_vec_validate_5cfg,
     "system_combo": grid_system_combo,
     "min_gain_augment": grid_min_gain_augment,
     "configs_from_file": lambda: [],  # handled in main() via --configs-file
