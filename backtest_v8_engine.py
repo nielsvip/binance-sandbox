@@ -1497,7 +1497,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             await tracker_manager.sync_universe(ak)
         except Exception as e:
             v8_logger.warning(f"Tracker sync_universe {ak}: {e}")
-    # Reset ALL loaded positions — we want a clean slate for backtest
+    # Reset ALL loaded positions — clean slate (or seed from snapshot below)
     trade_manager.positions = {}
     trade_manager.positions_by_account = {account_key: {}}
     if trade_manager.positions_service:
@@ -1505,7 +1505,74 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         trade_manager.positions_service.positions_by_account = {account_key: {}}
     tracker_manager.positions = {}
     tracker_manager.positions_by_account = {account_key: {}}
-    v8_logger.info(f"V8 BACKTEST: cleared all loaded positions for clean sim")
+    # ─── V8 SEED-POSITIONS (forward-parity loop) ─────────────────────────────
+    # When --seed-positions <path> is set (or env V8_SEED_POSITIONS_FILE), load
+    # the live open positions / hedges / exit_candidates / tradeable_keys from
+    # the snapshot and inject them into trade_manager + positions_service +
+    # tracker_manager BEFORE the empty-shell scaffolding runs. The shell loop
+    # (~line 1551 below) will then merge — it only creates a shell when the pk
+    # is not already present, so seeded positions survive.
+    _seed_file = os.environ.get("V8_SEED_POSITIONS_FILE", "").strip()
+    if _seed_file and Path(_seed_file).exists():
+        try:
+            with open(_seed_file) as _sf:
+                _seed = json.load(_sf)
+            _seed_account = _seed.get("account")
+            if _seed_account and _seed_account != account_key:
+                v8_logger.warning(f"[V8_SEED] snapshot account={_seed_account} != run account={account_key} — skipping seed")
+            else:
+                _n_pos = 0
+                for _pk, _pdict in (_seed.get("positions") or {}).items():
+                    try:
+                        _pos = ez_manage.Position.from_dict(_pdict)
+                    except Exception as _e:
+                        v8_logger.warning(f"[V8_SEED] failed to reconstruct {_pk}: {_e}")
+                        continue
+                    try:
+                        object.__setattr__(_pos, "_position_key", _pk)
+                    except Exception:
+                        pass
+                    # Recompute gain at sim-start using first available bar price for the
+                    # position's symbol. Live `gain` was current-time; backtest must align
+                    # to the bar the sim opens on.
+                    _sym = getattr(_pos, "symbol", "") or _pk.split(":", 1)[-1].rsplit("_", 1)[0]
+                    _store = stores.get(_sym)
+                    if _store is not None and getattr(_pos, "entry_price", 0):
+                        try:
+                            _p0 = float(_store.price(0))
+                            if _p0 > 0:
+                                _entry = float(_pos.entry_price)
+                                if _pos.position_side == "LONG":
+                                    _g = (_p0 - _entry) / _entry * 100.0
+                                else:
+                                    _g = (_entry - _p0) / _entry * 100.0
+                                try:
+                                    object.__setattr__(_pos, "gain", _g)
+                                    object.__setattr__(_pos, "prev_gain", _g)
+                                    object.__setattr__(_pos, "mark_price", _p0)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                    trade_manager.positions[_pk] = _pos
+                    trade_manager.positions_by_account.setdefault(account_key, {})[_pk] = _pos
+                    if trade_manager.positions_service:
+                        trade_manager.positions_service.positions[_pk] = _pos
+                        trade_manager.positions_service.positions_by_account.setdefault(account_key, {})[_pk] = _pos
+                    _n_pos += 1
+                _hedges = _seed.get("active_hedges") or []
+                tracker_manager.active_hedges = list(_hedges)
+                _ec = _seed.get("exit_candidates") or {}
+                tracker_manager.exit_candidates = dict(_ec)
+                _tk_list = _seed.get("tradeable_keys") or []
+                tracker_manager.tradeable_position_keys[account_key] = set(_tk_list)
+                v8_logger.info(f"[V8_SEED] loaded {_n_pos} positions, {len(_hedges)} hedges, {len(_ec)} exit_candidates, {len(_tk_list)} tradeable_keys from {_seed_file}")
+        except Exception as _e:
+            v8_logger.error(f"[V8_SEED] failed to load {_seed_file}: {_e}")
+    else:
+        if _seed_file:
+            v8_logger.warning(f"[V8_SEED] file not found: {_seed_file}")
+        v8_logger.info(f"V8 BACKTEST: cleared all loaded positions for clean sim")
 
     data_path = Path(config.DATA_DIR) if hasattr(config, 'DATA_DIR') else BASE_PATH / "data"
     data_manager = ez_positions_quick.FastDataManager(redis_manager, data_path, trade_manager=trade_manager)
@@ -2614,7 +2681,10 @@ def main():
     parser.add_argument("--symbols", type=str, default="", help="Comma-separated (empty=all)")
     parser.add_argument("--capital", type=float, default=10000.0)
     parser.add_argument("--npz-dir", type=str, default="", help="Explicit NPZ directory (overrides auto-detect)")
+    parser.add_argument("--seed-positions", type=str, default="", help="Path to snapshot JSON from tools/snapshot_live_state.py — seed open positions/hedges/exit_candidates instead of clean-slate")
     args = parser.parse_args()
+    if args.seed_positions:
+        os.environ["V8_SEED_POSITIONS_FILE"] = args.seed_positions
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()] if args.symbols else None
     if _SWEEP_MODE:
